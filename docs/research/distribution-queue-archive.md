@@ -2,6 +2,44 @@
 
 Older [`distribution-queue.md`](./distribution-queue.md) drafts, split off to keep the active queue under the 20 KB doc cap (CLAUDE.md D4). Same rule: delete an entry once published (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 20) — comparison-page draft: nlqdb vs Zep (r/AI_Agents / Show HN)
+
+**Title:** Zep gives my agent perfect recall. It still can't answer "average per group" about its own memory.
+
+**Body:**
+
+> If you've wired up [Zep](https://www.getzep.com) you know the pitch: it's the
+> Context Lake — a temporal knowledge graph (Graphiti, 27k+ ⭐) that stores every
+> fact your agent learns as a node with a validity window, resolves entities, and
+> hands back the most relevant facts at query time. For *recall* it's genuinely
+> good, and it publishes benchmarks (LongMemEval, DMR) to prove it.
+>
+> But I kept hitting the same wall. Once the agent had logged a few hundred
+> things, I wanted to ask questions *about* the memory, not retrieve from it:
+>
+> > "Top 10 topics I logged this month, ranked by count."
+> > "Average deal size per stage for enterprise customers."
+>
+> A knowledge graph has no query planner. It returns relevant facts and hopes the
+> LLM does the arithmetic — which is a hallucination generator, not a `GROUP BY`.
+>
+> The honest split (I wrote the full side-by-side at nlqdb.com/vs/zep): Zep wins
+> on temporal validity, entity resolution, and vector recall over conversation.
+> nlqdb wins when the agent needs to **aggregate** its memory — it's a real
+> Postgres the agent provisions and queries in English, so `GROUP BY / JOIN /
+> HAVING` actually work. They compose: Zep the recall layer, nlqdb the analytical
+> store. Pick the one that matches the question you actually need answered.
+>
+> (Landscape facts verified 2026-06-19; both products' weaknesses are in the
+> comparison, not just ours.)
+
+**Why this is publishable:** "X alternative" / "X vs Y" is the decision-moment
+keyword and the honest-trade-off format converts ~13.8% (vs 2–5% generic) while
+getting lifted verbatim by Perplexity/ChatGPT. Names Zep once, in context, and
+leads with a genuine architectural distinction (retrieval vs analytics) that the
+r/AI_Agents crowd respects. Sourced from the shipped `/vs/zep` page +
+`docs/competitors.md §4`. First of the WS-02 trio (Letta + LangMem to follow).
+
 ## 2026-06-15 (run 7) — dev.to / lobste.rs post
 
 **Title:** The obvious workaround was also dead — and we only found out because we measured it first

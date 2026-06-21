@@ -49,7 +49,7 @@ canonical run.
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
-| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3 reasoning lever): vote core (run 34) + execution half — `executeRows` + `voteOverSamples` (run 37) — shipped; only the temperature-sampling half + dispatch remain, EX delta next dispatch** |
+| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half — per-request `PlanRequest.temperature` (default greedy, `SK-LLM-024` intact) + `samplePlans` (run 39) — all shipped; only the runner `--self-consistency N` main-loop wiring + dispatch remain. EX delta next dispatch** |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics** | | wall-time, all routes (not `/ask`-only) |
@@ -82,6 +82,17 @@ canonical run.
 
 ## Deltas (recent runs)
 
+- 2026-06-21 (run 40) — **Engine: self-consistency *temperature-sampling half*
+  shipped (`SK-QUAL-017` follow-on) — the §4 #3 lever is now wired end-to-end
+  bar the runner main loop.** No dispatch (BIRD 06-19 + Spider 06-17 both < 7 d,
+  §5). An optional per-*request* `PlanRequest.temperature` threads through every
+  provider `callChat` (`temperature ?? 0`) — **default greedy, so `SK-LLM-024`
+  is byte-identical; only the eval sampler sets it > 0** (the per-request
+  mechanism SK-LLM-024 reserved) — plus `self-consistency.ts::samplePlans`
+  (draws N plans at temp > 0; a throwing draw → no-vote empty sample so N-1 still
+  reach consensus; injected `plan` ⇒ offline-tested). **Δ:** §4 #3 +sampling-half;
+  only the runner `--self-consistency N` wiring + dispatch remain. KPI **engine
+  quality**; none degraded; `@nlqdb/llm` 186 → 189 + eval 19 → 21 green.
 - 2026-06-21 (run 39) — **Engine (agent-memory wedge): E-04 TTL-sweep core
   shipped (`SK-PIVOT-011`) — `facts`-only expiry made durable.** Worst number is
   engine (Spider 0.1852, BIRD 0.520); both evals < 7 d (§5 — no back-to-back
@@ -149,46 +160,12 @@ canonical run.
   `MEMORY_PRESET=1` in prod. **Δ:** a finding resizes a backlog lever before a
   broken on-ramp ships (run-32 precedent). Docs-only; nothing engine touched.
   KPI engine quality / onboarding; none degraded. Artifact queued.
-- 2026-06-20 (run 36) — **WS-07 closed: `/agents` conversion CTA + GLOBAL-024
-  demand signal → messaging 7 → 8/13, pivot 9 → 10/20.** Memory-shaped "try this
-  query" button on `/agents` seeds `nlqdb_draft` (SK-ANON-011), fires
-  `agents.try_query_clicked` (GLOBAL-024) → `/app/new` (reusing the `/vs` +
-  `/solve` pattern, P5); `Agents` Topnav link + P2-keyed `/agents` cross-link on
-  the four memory `/vs` pages. 127 tests green; additive markup only. KPI:
-  **onboarding**; none degraded; BIRD 06-19 + Spider 06-17 untouched.
-- 2026-06-20 (run 35) — **Engine: self-consistency vote core shipped
-  (`SK-QUAL-017`) — the §4 #3 reasoning lever.** Non-colliding engine slice
-  (both evals < 7 d ⇒ §5 no dispatch; #438 owned messaging). Pure
-  `majorityVote` + `fingerprintRows` cluster N executed plans by their **result
-  set** (the answer, not the SQL string); deterministic ties → earliest
-  cluster. Staged ahead of the sampling half (greedy `SK-LLM-024` untouched),
-  the prove-the-primitive pattern. **Δ:** §4 #3 → vote-core shipped+proven (12
-  unit cases); EX delta next dispatch. KPI **engine quality**; none degraded;
-  232 eval tests green (was 220). Artifact "Why we vote on the answer, not the
-  SQL" queued.
-- 2026-06-20 (run 34) — **Engine (memory write-path): fail-loud TTL gap +
-  phantom-column footgun fixed.** `validateRememberInput` parsed `ttlSeconds`
-  for every `kind` but only `facts` carries `expires_at` → a TTL on an
-  episode/entity was **silently dropped** (GLOBAL-012); now rejected. E-04
-  worksheet corrected to facts-only sweep + RLS TTL. **Δ:** `remember.test.ts`
-  16 → 18. KPI engine quality / onboarding; none degraded.
-- 2026-06-20 (run 33) — **Engine: Spider external-knowledge injection shipped
-  (`SK-QUAL-016`).** The Spider loader parsed `external_knowledge` but dropped
-  the doc body, so 13/135 `local###` questions (haversine, RFM, … across 8 DBs)
-  were unanswerable, not hard; `loadExternalKnowledge` now injects the `<name>.md`
-  body through `evidence` → `enrichedGoal` (fail-soft, traversal-gated). EX delta
-  next Spider dispatch. KPI engine quality; none degraded; 29 spider2-lite tests
-  (was 24). Detail in the verification log.
-- 2026-06-20 (run 32) — **Engine-track finding (SK-PIVOT-009): E-03's compile-layer
-  scoping is infeasible** — `/v1/ask` runs free-form LLM SQL via `neonSql.unsafe`
-  with no AST step, so a scope-injecting rewriter on a security boundary = breach
-  risk. Redirected E-03 (+ E-04's read-filter) to row-level RLS on an `app.agent_id`
-  GUC (the `tenant_isolation` pattern); worksheets + INDEX + FEATURE.md corrected.
-  Docs-only; no engine touched. Artifact queued.
-- 2026-06-20 (run 32) — **E-02 GLOBAL-003 parity closed: CLI `nlq remember`**
-  (SK-CLI-018) — wraps `POST /v1/memory/remember`, `wrong_preset` rejects
-  non-memory DBs, admitted as a third data verb under GLOBAL-017. Surface parity
-  HTTP/SDK/MCP → 4/4. Gates green; additive, baselines untouched. Artifact queued.
+- 2026-06-20 (run 36) — **WS-07 closed: `/agents` conversion CTA + GLOBAL-024 demand signal → messaging 7 → 8/13, pivot 9 → 10/20.** Memory-shaped "try this query" button seeds `nlqdb_draft` (SK-ANON-011), fires `agents.try_query_clicked` (GLOBAL-024) → `/app/new`; `Agents` Topnav + P2-keyed `/vs` cross-links. 127 tests green; additive markup. KPI onboarding; none degraded.
+- 2026-06-20 (run 35) — **Engine: self-consistency vote core shipped** (`SK-QUAL-017`, §4 #3) — pure `majorityVote` + `fingerprintRows` cluster N executed plans by their **result set** (deterministic ties → earliest), staged ahead of the sampling half (greedy `SK-LLM-024` untouched). 12 unit cases; KPI engine quality, none degraded; 232 eval tests (was 220). Artifact queued.
+- 2026-06-20 (run 34) — **Engine (memory write-path): fail-loud TTL gap fixed** (`validateRememberInput` silently dropped a TTL on non-`facts` kinds, GLOBAL-012; now rejected). `remember.test.ts` 16 → 18; KPI engine quality / onboarding, none degraded.
+- 2026-06-20 (run 33) — **Engine: Spider external-knowledge injection shipped** (`SK-QUAL-016`) — `loadExternalKnowledge` injects the dropped `<name>.md` doc body through `evidence` → `enrichedGoal`; 13/135 `local###` (9.6%) handicap closed, EX delta next Spider dispatch. KPI engine quality; none degraded (29 spider2-lite tests, was 24).
+- 2026-06-20 (run 32) — **Engine-track finding (SK-PIVOT-009): E-03's compile-layer scoping is infeasible** — `/v1/ask` runs free-form LLM SQL via `neonSql.unsafe(sql)` with no AST step, so a SQL-rewriter on a security boundary = breach risk; redirected E-03/E-04 to row-level RLS on an `app.agent_id` GUC. Docs-only, no engine/chain/scorer touched. Artifact queued.
+- 2026-06-20 (run 32) — **E-02 GLOBAL-003 parity closed: CLI `nlq remember`** (SK-CLI-018) — wraps `POST /v1/memory/remember`; surface parity HTTP/SDK/MCP → 4/4. Additive, baselines untouched. Artifact queued.
 - 2026-06-20 (runs 30–31) — six closed slices (all additive; BIRD 06-19 +
   Spider 06-17 untouched): **E-01** preset wired into the create path → closed
   (engine 0 → 1/7; SK-HDC-020, `POST /v1/databases { preset }` behind

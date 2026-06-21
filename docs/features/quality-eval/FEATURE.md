@@ -220,9 +220,13 @@ deterministic core of the §4 #3 reasoning lever. The **execution half** is now
 shipped: `score.ts::executeRows` (predicted SQL → rows, the vote's input) +
 `voteOverSamples(samples, execute, …)` (executes each sample via an injected
 executor, then votes — pure, offline-tested on a real SQLite fixture), the
-"separate code path" §5 reserves. Offline, 19 unit cases; the *sampling* half
-(`PlanRequest.temperature` + runner `--self-consistency N`) is the follow-on
-(greedy `SK-LLM-024` untouched). EX delta next dispatch.
+"separate code path" §5 reserves. The **sampling half ships too**: an optional
+per-request `PlanRequest.temperature` (default unset ⇒ greedy, `SK-LLM-024`
+untouched) threaded through every provider `callChat` + `samplePlans(plan, req,
+{ samples, temperature })` (draws N plans at temperature > 0; injected `plan` ⇒
+offline-tested). Offline, 21 eval unit cases + 3 provider forwarding cases; the
+runner `--self-consistency N` main-loop wiring is the follow-on. EX delta next
+dispatch.
 
 ## GLOBALs governing this feature
 

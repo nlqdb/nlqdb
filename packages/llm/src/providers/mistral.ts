@@ -39,7 +39,7 @@ export function createMistralProvider(opts: MistralProviderOptions): Provider {
   return createChatProvider({
     name: "mistral",
     models: { ...DEFAULT_MODELS, ...opts.models },
-    callChat: ({ model, messages, jsonMode, opts: callOpts }) =>
+    callChat: ({ model, messages, jsonMode, temperature, opts: callOpts }) =>
       openAICompatibleChat(
         {
           url: `${baseUrl}/chat/completions`,
@@ -47,8 +47,9 @@ export function createMistralProvider(opts: MistralProviderOptions): Provider {
           model,
           messages,
           jsonResponse: jsonMode,
-          // Greedy decoding parity across the free planner chain (SK-LLM-024).
-          temperature: 0,
+          // Greedy decoding parity across the free planner chain (SK-LLM-024)
+          // unless the SK-QUAL-017 self-consistency sampler overrides.
+          temperature: temperature ?? 0,
         },
         callOpts,
       ),

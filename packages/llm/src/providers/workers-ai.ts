@@ -42,6 +42,7 @@ async function workersAIChat(
   baseUrl: string | undefined,
   model: string,
   messages: ChatMessage[],
+  temperature: number | undefined,
   opts: CallOpts,
 ): Promise<string> {
   const fetchFn = opts.fetch ?? globalThis.fetch;
@@ -61,7 +62,9 @@ async function workersAIChat(
       // of the free planner chain. Workers AI's default is 0.6 (stochastic);
       // single-pass text-to-SQL EX is measured under greedy decoding, and a
       // deterministic leg keeps the weekly baseline reproducible (SK-QUAL-006).
-      body: JSON.stringify({ messages, temperature: 0 }),
+      // The SK-QUAL-017 self-consistency sampler is the only caller that
+      // overrides this with temperature > 0, on its separate code path.
+      body: JSON.stringify({ messages, temperature: temperature ?? 0 }),
       signal: opts.signal,
     });
   } catch (err) {
@@ -105,7 +108,15 @@ export function createWorkersAIProvider(opts: WorkersAIProviderOptions): Provide
   return createChatProvider({
     name: "workers-ai",
     models: { ...DEFAULT_MODELS, ...opts.models },
-    callChat: ({ model, messages, opts: callOpts }) =>
-      workersAIChat(opts.accountId, opts.apiToken, opts.baseUrl, model, messages, callOpts),
+    callChat: ({ model, messages, temperature, opts: callOpts }) =>
+      workersAIChat(
+        opts.accountId,
+        opts.apiToken,
+        opts.baseUrl,
+        model,
+        messages,
+        temperature,
+        callOpts,
+      ),
   });
 }

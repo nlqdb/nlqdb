@@ -51,6 +51,30 @@ describe("createGeminiProvider", () => {
     expect(res.sql).toBe("SELECT 4");
   });
 
+  it("plan decodes greedily by default and forwards a temperature override (SK-QUAL-017)", async () => {
+    const provider = createGeminiProvider({ apiKey });
+    const temps: Array<number | undefined> = [];
+    const fetch = mockFetch([
+      {
+        match: /generativelanguage/,
+        respond: async (req) => {
+          const body = (await req.clone().json()) as {
+            generationConfig?: { temperature?: number };
+          };
+          temps.push(body.generationConfig?.temperature);
+          return geminiResponse(JSON.stringify({ sql: "SELECT 4" }));
+        },
+      },
+    ]);
+    await provider.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
+    await provider.plan(
+      { goal: "g", schema: "s", dialect: "postgres", temperature: 0.9 },
+      { fetch },
+    );
+    expect(temps[0]).toBe(0);
+    expect(temps[1]).toBe(0.9);
+  });
+
   it("summarize returns trimmed text", async () => {
     const provider = createGeminiProvider({ apiKey });
     const fetch = mockFetch([

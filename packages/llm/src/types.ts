@@ -92,6 +92,12 @@ export type PlanRequest = {
   // produce a different shape. Absent on first attempts. Capped at the
   // builder; providers reuse `buildPlanUser` so no plumbing per provider.
   previousAttempt?: { sql?: string; error: string };
+  // SK-QUAL-017 — decoding temperature for the self-consistency sampling
+  // path. Absent on every production call ⇒ providers decode greedily at
+  // `temperature: 0` (the SK-LLM-024 invariant — unchanged). The eval's
+  // self-consistency loop is the *only* caller that sets it > 0, and only on
+  // its separate sampling code path, exactly as SK-LLM-024 anticipated.
+  temperature?: number;
 };
 // `model` + `confidence` populate SK-TRUST-002's response-level
 // `trace` block. `confidence` is a placeholder until the

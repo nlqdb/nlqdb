@@ -54,6 +54,27 @@ describe("createGroqProvider", () => {
     expect(res.sql).toBe("SELECT 1");
   });
 
+  it("plan decodes greedily by default and forwards a temperature override (SK-QUAL-017)", async () => {
+    const provider = createGroqProvider({ apiKey });
+    const bodies: Array<{ temperature?: number }> = [];
+    const fetch = mockFetch([
+      {
+        match: /api\.groq\.com/,
+        respond: async (req) => {
+          bodies.push((await req.clone().json()) as { temperature?: number });
+          return openAIChatResponse(JSON.stringify({ sql: "SELECT 1" }));
+        },
+      },
+    ]);
+    await provider.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
+    await provider.plan(
+      { goal: "g", schema: "s", dialect: "postgres", temperature: 0.8 },
+      { fetch },
+    );
+    expect(bodies[0]?.temperature).toBe(0);
+    expect(bodies[1]?.temperature).toBe(0.8);
+  });
+
   it("summarize returns trimmed text", async () => {
     const provider = createGroqProvider({ apiKey });
     const fetch = mockFetch([
