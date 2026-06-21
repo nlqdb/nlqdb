@@ -21,13 +21,29 @@ identifiers identically.
     **drop zero-similarity candidates** (never pad the prompt with an unrelated
     demonstration) and **break ties on pool order** (earliest wins) so
     selection is reproducible run-to-run.
+  Plus, shipped 2026-06-21 as the **pool-curation masking half** — DAIL's
+  schema-identifier mask layered on `maskQuestion`'s value mask (only the
+  exemplar pool rows themselves stay deferred — see below):
+  - `maskSchemaIdentifiers(q, schema)` — replace every question word that names
+    a schema **table or column** with one `col` placeholder, reusing
+    `SK-LLM-037`'s `schemaTokens`/`wordTokens` so the identifier set is
+    byte-identical to what the pruner sees. Value masking alone collapses
+    "albums by the artist named `val`" and "employees at the company named
+    `val`" only as far as their *domain nouns* (`albums`/`artist` vs
+    `employees`/`company`); masking identifiers too yields one shared skeleton
+    "`col` by the `col` named `val`" — the step DAIL §4.1 names as what lets an
+    exemplar match across schemas. Empty/identifier-less schema ⇒ value-only.
+  - `maskWithSchema(q, schema)` — full DAIL mask: values → `val`, then
+    identifiers → `col`; the skeleton a pool row + the live goal are each run
+    through (against their own schema) before `selectExemplars`.
   This is **staged ahead of two halves it does not build:** (a) the exemplar
-  *pool* (masked BIRD-dev train-split Question→SQL pairs) plus, for the hot
-  `plan` path, an embedding index — masked-token Jaccard is the offline,
-  key-free stand-in for DAIL's embedding cosine; (b) wiring into
-  `buildPlanUser` behind a per-lever ablation of the static `SK-LLM-026`
-  prefix. `prompts.ts`, `PLAN_SYSTEM`, and the provider chain are **unchanged**
-  this PR.
+  *pool rows* themselves — the curated masked BIRD-dev train-split Q→SQL pairs
+  (`maskWithSchema` is the mask they pass through; the rows still need
+  sourcing) plus, for the hot `plan` path, an embedding index — masked-token
+  Jaccard is the offline, key-free stand-in for DAIL's embedding cosine;
+  (b) wiring into `buildPlanUser` behind a per-lever ablation of the static
+  `SK-LLM-026` prefix. `prompts.ts`, `PLAN_SYSTEM`, and the provider chain are
+  **unchanged**.
 - **Core value:** Engine quality, Free
 - **Why:** The engine-quality source of truth ranks
   [§4 #1 similarity-retrieved few-shot](../../../progress/quality-score-source-of-truth.md)
@@ -47,12 +63,14 @@ identifiers identically.
   vote core and `SK-QUAL-014/015`): the connective tissue must exist and be
   proven before the pool + index + prod-wiring half is worth building, and it
   must not perturb the shipped chain before the next dispatch can attribute it.
-- **Consequence in code:** New file `packages/llm/src/few-shot-select.ts`
-  (≈90 lines, no new dependency) + `packages/llm/test/few-shot-select.test.ts`
-  (11 cases) — including the **end-to-end DAIL property**: against a fixture
-  where one exemplar is a cross-domain structural twin and another reuses the
-  goal's literal value, masked selection picks the twin (raw lexical overlap
-  would pick the value-overlap distractor). No production code path imports the
+- **Consequence in code:** `packages/llm/src/few-shot-select.ts` +
+  `schema-prune.ts`'s new exported `schemaTokens` (no new dependency) +
+  `packages/llm/test/few-shot-select.test.ts` (16 cases) — including the
+  **end-to-end DAIL property** twice: (1) value-mask only, masked selection
+  picks the cross-domain twin over a literal-overlap distractor; (2)
+  schema-mask, two same-shape questions over *unrelated* schemas collapse to
+  one identical skeleton (similarity 1, where value-only is < 1) and the twin
+  outranks a same-schema row of a different shape. No production code path imports the
   module yet, so the `SK-LLM-024` greedy-decoding determinism invariant and the
   current BIRD/Spider baselines are untouched; the EX delta is measured by the
   next canonical dispatch ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md)

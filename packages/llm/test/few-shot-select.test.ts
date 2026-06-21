@@ -4,9 +4,18 @@ import {
   type Exemplar,
   maskedTokens,
   maskQuestion,
+  maskSchemaIdentifiers,
+  maskWithSchema,
   questionSimilarity,
   selectExemplars,
 } from "../src/few-shot-select.ts";
+
+const ALBUM_SCHEMA =
+  'CREATE TABLE "Album" (AlbumId INTEGER, Title TEXT, ArtistId INTEGER);\n' +
+  'CREATE TABLE "Artist" (ArtistId INTEGER, Name TEXT)';
+const COMPANY_SCHEMA =
+  'CREATE TABLE "Employee" (EmployeeId INTEGER, Name TEXT, CompanyId INTEGER);\n' +
+  'CREATE TABLE "Company" (CompanyId INTEGER, Name TEXT)';
 
 describe("maskQuestion", () => {
   it("masks quoted string literals to a single placeholder", () => {
@@ -22,6 +31,76 @@ describe("maskQuestion", () => {
       "students older than  val  in  val ",
     );
     expect(maskQuestion("orders over 99.50 dollars")).toBe("orders over  val  dollars");
+  });
+});
+
+describe("maskSchemaIdentifiers", () => {
+  it("masks question words that name a table or column", () => {
+    // `albums`→Album table, `artist`→Artist table; `named`/`val` are not
+    // identifiers and survive.
+    expect(
+      maskSchemaIdentifiers("How many albums does the artist named  val  have?", ALBUM_SCHEMA),
+    ).toBe("How many col does the col named  val  have?");
+  });
+
+  it("leaves the question untouched when the schema names no identifiers", () => {
+    const q = "How many albums does the artist have?";
+    expect(maskSchemaIdentifiers(q, "")).toBe(q);
+    expect(maskSchemaIdentifiers(q, "-- no create statements")).toBe(q);
+  });
+
+  it("preserves existing col/val placeholders (idempotent)", () => {
+    const once = maskSchemaIdentifiers("How many albums by the artist", ALBUM_SCHEMA);
+    expect(maskSchemaIdentifiers(once, ALBUM_SCHEMA)).toBe(once);
+  });
+});
+
+describe("maskWithSchema", () => {
+  it("collapses two cross-domain questions of the same shape to one skeleton", () => {
+    // Value-only masking leaves the domain nouns (albums/artist vs
+    // employees/company) different; schema masking folds them to `col` so the
+    // two structurally-identical questions over unrelated schemas read alike.
+    const goal = maskWithSchema(
+      "How many albums does the artist named 'Queen' have?",
+      ALBUM_SCHEMA,
+    );
+    const twin = maskWithSchema(
+      "How many employees does the company named 'Acme' have?",
+      COMPANY_SCHEMA,
+    );
+    expect(goal).toBe(twin);
+    // …and so they are maximally similar, where value-only masking is not.
+    expect(questionSimilarity(goal, twin)).toBe(1);
+    expect(
+      questionSimilarity(
+        "How many albums does the artist named 'Queen' have?",
+        "How many employees does the company named 'Acme' have?",
+      ),
+    ).toBeLessThan(1);
+  });
+
+  it("lets a schema-masked pool rank a cross-domain twin top", () => {
+    // The full DAIL retrieval shape: goal + each pool row pre-masked against
+    // their own schema, then ranked. The cross-domain twin (different schema,
+    // same skeleton) beats a same-schema row of a different shape.
+    const goal = maskWithSchema(
+      "How many albums does the artist named 'Queen' have?",
+      ALBUM_SCHEMA,
+    );
+    const pool: Exemplar<string>[] = [
+      {
+        question: maskWithSchema("List the title of every album by the artist", ALBUM_SCHEMA),
+        payload: "same-schema-different-shape",
+      },
+      {
+        question: maskWithSchema(
+          "How many employees does the company named 'Acme' have?",
+          COMPANY_SCHEMA,
+        ),
+        payload: "cross-domain-twin",
+      },
+    ];
+    expect(selectExemplars(goal, pool, 1).map((e) => e.payload)).toEqual(["cross-domain-twin"]);
   });
 });
 

@@ -33,8 +33,10 @@ error). So value-sampling (§4 #2a) flips ~0 rows standalone; the path to the
 gate floor is the §4 **reasoning** levers (#3 self-consistency, #1 retrieval
 few-shot), not retrieval. Value-retrieval is demoted + privacy-gated. **Both
 reasoning-lever cores now ship:** #3 vote core (`SK-QUAL-017`, run 34) + #1
-DAIL-SQL retrieval core (`SK-LLM-041`, run 38 — question masking + masked-token
-similarity + top-k select); each still needs its dispatch half, EX delta next
+DAIL-SQL retrieval core (`SK-LLM-041`, run 38) — and run 39 adds #1's
+**pool-curation masking half** (`maskSchemaIdentifiers`/`maskWithSchema`:
+schema table/column words → `col`, the DAIL §4.1 cross-domain step value-masking
+can't reach alone); each lever still needs its dispatch half, EX delta next
 canonical run.
 
 | # | Metric | Value | Target / note |
@@ -80,66 +82,57 @@ canonical run.
 
 ## Deltas (recent runs)
 
+- 2026-06-21 (run 39) — **Engine: similarity-retrieved few-shot *pool-curation
+  masking half* shipped (`SK-LLM-041` follow-on, T23) — continues run 38's §4 #1
+  DAIL-SQL retrieval lever.** Worst number is engine (Spider 0.1852, BIRD 0.520)
+  but both baselines are < 7 d (§5: no back-to-back dispatch), and the two open
+  PRs own the other lanes — #444 the §4 #3 self-consistency *sampling* half, #445
+  the agent-memory E-04 sweep. The clean non-colliding slice is #1's next staged
+  half. `few-shot-select.ts` gains `maskSchemaIdentifiers(q, schema)` (question
+  words naming a schema **table/column** → one `col`, reusing a new exported
+  `schema-prune.ts::schemaTokens` so the identifier set matches the pruner's) +
+  `maskWithSchema` (values→`val`, then identifiers→`col`). This is DAIL §4.1's
+  cross-domain step value-masking can't reach alone: "albums by the artist named
+  `val`" and "employees at the company named `val`" only collapse to one skeleton
+  once the domain nouns mask too. Proven offline: two same-shape questions over
+  *unrelated* schemas → identical skeleton (similarity 1 vs < 1 value-only); the
+  twin outranks a same-schema different-shape row. Staged ahead of the curated
+  pool *rows* + index + `buildPlanUser` wiring (T9-ablation-gated, §P5) — no prod
+  import, so `SK-LLM-024` determinism + BIRD/Spider baselines untouched, EX delta
+  next dispatch (`SK-QUAL-002`). **Δ:** §4 #1 core → core **+ pool-curation mask**
+  shipped+proven; `@nlqdb/llm` 186 → 191 tests green (16 few-shot cases, was 11).
+  **KPI:** engine quality; **none degraded** — no prod chain/scorer/runner change,
+  perf untouched. `source-of-truth` (21286 → 21266 B), `verification-log`
+  (21321 → 21242 B), `scorecard` all net-shrunk (D4). Artifact: "Mask the table
+  and column names too, not just the values" queued.
 - 2026-06-21 (run 38) — **Engine: similarity-retrieved few-shot deterministic
   core shipped (`SK-LLM-041`, T23) — the §4 #1 retrieval half of DAIL-SQL
-  ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) that T9 left, the top
-  reasoning lever alongside #3.** Worst number is engine (Spider 0.1852, BIRD
-  0.520) but BIRD 06-19 + Spider 06-17 are both < 7 d (§5: no back-to-back
-  dispatch), and the two open PRs own the other lanes — #442 the §4 #3
-  self-consistency *execution half*, #441 the agent-memory E-06 docs. The clean
-  non-colliding engine slice is the **other** named reasoning lever's core. New
-  pure `packages/llm/src/few-shot-select.ts`: question **masking** (literal
-  values → one `val` placeholder ⇒ similarity scores the question skeleton, so
-  an exemplar can cross domains) + masked-token Jaccard `questionSimilarity` +
-  stable top-k `selectExemplars` (drops zero-similarity, ties → earliest for
-  run-to-run reproducibility). Proven offline by the cross-domain-twin-beats-
-  value-distractor fixture (the exact DAIL masking property). Staged ahead of
-  the exemplar *pool* + embedding index + `buildPlanUser` wiring (gated on the
-  T9 ablation, `CLAUDE.md` §P5) — no prod path imports it, so the `SK-LLM-024`
-  determinism invariant + BIRD/Spider baselines are untouched; EX delta is the
-  next canonical dispatch (`SK-QUAL-002`). **Δ:** §4 #1 backlog → retrieval core
-  shipped + proven (11 unit cases); `@nlqdb/llm` 175 → 186 tests green.
-  **KPI:** engine quality; **none degraded** — no prod chain/scorer/runner
-  change, baselines + perf untouched. `verification-log.md` net-shrunk 20161 →
-  20073 B; `scorecard.md` net-shrunk (D4). Artifact: "Retrieving the right
-  few-shot example by masking the question, not matching the words." queued.
+  ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) that T9 left.** New
+  pure `few-shot-select.ts`: value **masking** (`val`) + masked-token Jaccard
+  `questionSimilarity` + stable top-k `selectExemplars` (drops zero-similarity,
+  ties → earliest). Proven offline by the cross-domain-twin-beats-value-distractor
+  fixture. Staged ahead of the pool + index + `buildPlanUser` wiring (T9-ablation-
+  gated). **Δ:** §4 #1 backlog → retrieval core shipped (11 unit cases);
+  `@nlqdb/llm` 175 → 186 tests. KPI engine quality; none degraded (no prod
+  import, baselines + perf untouched). Artifact queued.
 - 2026-06-21 (run 37) — **Engine: self-consistency *execution half* shipped
-  (`SK-QUAL-017` follow-on) — the connective tissue between the vote core (run
-  34) and the runner.** Worst number is engine (Spider 0.1852); BIRD 06-19 +
-  Spider 06-17 both < 7 d so §5 forbids a dispatch, and the open PR owns the
-  agent-memory/E-06 docs lane — leaving the named §4 #3 follow-on as the clean
-  non-colliding engine slice. `majorityVote` needs each candidate's **rows**,
-  which only a DB round-trip supplies: added `score.ts::executeRows` (SQL →
-  rows, `null` on empty/exec-error; shares `scoreOne`'s SQLite path so a sample
-  scores byte-identically to the winner) + `self-consistency.ts::voteOverSamples`
-  (executes each sample via an *injected* executor, then votes — pure ⇒
-  offline-tested on a real SQLite fixture; the §5 "separate code path" that
-  never touches the greedy `scoreOne`/`withExecRetry` path). **Δ:** §4 #3
-  vote-core → vote-core **+ execution half** shipped+proven; only the
-  temperature-sampling half + dispatch remain. KPI: **engine quality**; none
-  degraded — no prod chain/scorer/runner change, baselines untouched, perf N/A;
-  239 eval tests green (was 232). Artifact: "Voting on the answer needs the
-  answer: executing N SQL samples to consensus" queued. Next: the
-  temperature-sampling half (`PlanRequest.temperature` + `--self-consistency N`).
+  (`SK-QUAL-017` follow-on) — the tissue between the vote core (run 34) and the
+  runner.** `majorityVote` needs each candidate's **rows**: added
+  `score.ts::executeRows` (SQL → rows, shares `scoreOne`'s SQLite path) +
+  `self-consistency.ts::voteOverSamples` (executes each sample via an *injected*
+  executor, then votes — pure ⇒ offline-tested; the §5 "separate code path").
+  **Δ:** §4 #3 vote-core → **+ execution half**; only the sampling half + dispatch
+  remain; 239 eval tests (was 232). KPI engine quality; none degraded. Artifact
+  queued.
 - 2026-06-21 (run 37) — **Engine-track finding (SK-PIVOT-010): E-06's
   anon-`/agents`-CreateForm preset on-ramp is infeasible — redirected to the
-  authed create surface.** Worst number is engine (Spider 0.1852); BIRD 06-19 +
-  Spider 06-17 both < 7 d so §5 forbids a back-to-back dispatch, and the named
-  reasoning lever (self-consistency *sampling*, run 35's follow-on) needs a
-  dispatch to measure — so the clean in-bounds engine slice was E-06, run 36's
-  flagged "next." Investigating it (the loop's job) found the on-ramp can't
-  work as written across **three** auth boundaries: `POST /v1/databases` is
-  `requireSession` + `MEMORY_PRESET`-gated (`index.ts:2357,2390`),
-  `POST /v1/memory/remember` rejects anon+pk_live (`index.ts:1426-1433`), and
-  CreateForm is anon-only by contract (`credentials:"omit"`, SK-ANON-008). The
-  preset on-ramp moves to the **authed** create surface and is blocked on
-  `MEMORY_PRESET=1` in prod (now in `blocked-by-human.md`). **Δ:** a finding
-  prunes/resizes a backlog lever (low/1-run → med/~2 + prod-flag prereq) before
-  a broken on-ramp ships — the run-32 SK-PIVOT-009 precedent. Docs-only; no
-  code/engine/chain/scorer/eval touched; BIRD 06-19 + Spider 06-17 untouched.
-  KPI: **engine quality / onboarding** (correctness of the on-ramp design);
-  **none degraded**. Artifact: "Why agent memory is authed-only (and what that
-  costs the anon on-ramp)" queued.
+  authed create surface.** The on-ramp can't work across **three** auth
+  boundaries (`POST /v1/databases` requireSession + `MEMORY_PRESET`-gated;
+  `/v1/memory/remember` rejects anon+pk_live; CreateForm anon-only by contract,
+  SK-ANON-008); moved to the **authed** create surface, blocked on
+  `MEMORY_PRESET=1` in prod. **Δ:** a finding resizes a backlog lever before a
+  broken on-ramp ships (run-32 precedent). Docs-only; nothing engine touched.
+  KPI engine quality / onboarding; none degraded. Artifact queued.
 - 2026-06-20 (run 36) — **WS-07 closed: `/agents` conversion CTA + GLOBAL-024
   demand signal → messaging 7 → 8/13, pivot 9 → 10/20.** Memory-shaped "try this
   query" button on `/agents` seeds `nlqdb_draft` (SK-ANON-011), fires

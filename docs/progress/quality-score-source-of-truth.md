@@ -28,8 +28,7 @@ canonical ICP flows ([`GLOBAL-032`](../decisions/GLOBAL-032-top-5-user-flows-can
 every walker today reaches the first query and **dead-ends at gate-403**
 (verified 2026-06-04). So free-chain BIRD/Spider EX is the valve on the inbound
 funnel — moving it is moving acquisition. The gate surfaces render the two
-numbers as live progress bars from `apps/api/src/gate/eval-baseline.ts`, so §2
-is also what a blocked user sees.
+numbers as live progress bars from `apps/api/src/gate/eval-baseline.ts`.
 
 ## 2. The progress bar (evidence-based; every number sourced)
 
@@ -42,9 +41,8 @@ is also what a blocked user sees.
 
 **How to read the two BIRD rows.** Raw EX (the gate metric) also pays
 chain-exhaustion `no_sql`; reasoning EX isolates SQL quality from capacity. T18
-+ T19 closed the once-30–70% divergence (smoke `no_sql` 47 → 1; 06-19 canonical
-`no_sql` is **1**). The remaining gap to the floor is **SQL reasoning**
-(mismatches), not availability — §4's levers target it.
++ T19 closed the once-30–70% divergence (06-19 canonical `no_sql` is **1**). The
+remaining gap to the floor is **SQL reasoning** (mismatches), not availability.
 
 **Where the losses are now** (canonical 500-q BIRD run, 2026-06-19): match 260 ·
 **mismatch 238** · exec_error 1 · `no_sql` 1 — the loss is now almost purely
@@ -53,28 +51,25 @@ chain-exhaustion `no_sql`; reasoning EX isolates SQL quality from capacity. T18
 `agg_fn_diff` 58 · `more_subqueries` 43 · `missing_DISTINCT` 42 ·
 `col_count_diff` 37 · `fewer_tables` 33 · `extra_DISTINCT` 31 ·
 `other_predicate_or_value` 30. **The literal axis re-ranks §4 #2a
-(value-retrieval) down — measured, not inferred:** `literal_diff` is the
-*largest* tag (90, 38%), yet `literal_case_only` is **6** and **`literal_only`
-is 0** — *no* mismatch is recoverable by fixing string literals alone (each
-co-occurs with a structural error; of the 90, `date_literal_only` is **2**
-total / **0 standalone** (§4 #2c), so ~88 are categorical value diffs each
-riding a structural error). That falsifies
-the "additive, do-first" read the `SK-QUAL-015` column-name ceiling (12.8%)
-implied (§4 #2). **Schema-link recall is *not* the bottleneck either**
+(value-retrieval) down:** `literal_diff` is the *largest* tag (90, 38%) yet
+**`literal_only` is 0** (`literal_case_only` 6; `date_literal_only` 2 total / 0
+standalone, §4 #2c) — *no* mismatch is recoverable by fixing literals alone
+(each rides a structural error), falsifying the "do-first" read the
+`SK-QUAL-015` 12.8% column-name ceiling implied (§4 #2). **Schema-link recall
+is *not* the bottleneck either**
 (`fewer_tables` 33/238, pre-T21); the dominant mass is structural **reasoning**
 (grain, subquery shape), now **saturated** on directives (06-19 re-run flat,
 McNemar p=0.50) ⇒ the path to the floor is the *reasoning* levers (§4 #1
 similarity-retrieved few-shot, §4 #3 self-consistency). Spider's
-residual `no_sql` is **9** (capacity-only post-Gemini-heal, §6); its 27
-newly-answered questions mostly produced *wrong* SQL, so its bottleneck is also
-SQL reasoning — column pruning (§4 #2b) still helps it via *distractor* removal
-(T19: 0.15 → 0.25).
+residual `no_sql` is **9** (capacity-only post-Gemini-heal, §6); its
+newly-answered questions mostly produced *wrong* SQL ⇒ SQL reasoning too —
+column pruning (§4 #2b) helps it via *distractor* removal (T19: 0.15 → 0.25).
 
 > **How these numbers are produced.** `tools/eval/src/runner.ts` drives
-> `router.ts::plan()` against the SQLite fixture and scores EX (BIRD
-> `SK-QUAL-010` · Spider `SK-QUAL-008`); `bun analyze-mismatches` buckets
-> mismatch rows (`SK-QUAL-014`), `bun column-coverage` the column-prune recall
-> ceiling (`SK-QUAL-015`). **PR CI never fires real keys** (`SK-QUAL-002`).
+> `router.ts::plan()` over the SQLite fixture, scores EX (BIRD `SK-QUAL-010` ·
+> Spider `SK-QUAL-008`); `bun analyze-mismatches` buckets mismatches
+> (`SK-QUAL-014`), `bun column-coverage` the column-prune ceiling
+> (`SK-QUAL-015`). **PR CI never fires real keys** (`SK-QUAL-002`).
 
 ## 3. What we have tried (with how, and how much)
 
@@ -86,7 +81,7 @@ same-seed A/B.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
-| T23 | **Similarity-retrieved few-shot — deterministic core** | New pure `few-shot-select.ts`: question **masking** (literal values → one `val`), masked-token Jaccard, stable top-k `selectExemplars` (drops zero-similarity, ties → earliest). §4 #1 retrieval half; masking scores the question skeleton so an exemplar crosses domains — DAIL-SQL ≈+3–5 pp beyond static T9. | **measured (unit):** 11 cases incl. cross-domain-twin-beats-value-distractor. No prod import (T8 + baselines untouched); EX → next dispatch | [`SK-LLM-041`](../features/llm-router/decisions/SK-LLM-041-similarity-retrieved-few-shot.md) — core shipped; pool + index + wiring (T9-ablation-gated) follow-on |
+| T23 | **Similarity-retrieved few-shot — core + pool-curation mask** | Pure `few-shot-select.ts`: value masking (`val`) + masked-token Jaccard + stable top-k `selectExemplars` (drops zero-similarity, ties → earliest); **+ schema-identifier masking** (`maskSchemaIdentifiers`/`maskWithSchema`, reuses new `schemaTokens` — table/column words → `col`, so two same-shape questions over *unrelated* schemas collapse to one skeleton: DAIL §4.1's cross-domain step). §4 #1 retrieval half; ≈+3–5 pp beyond static T9. | **measured (unit):** 16 cases incl. cross-domain-twin-beats-value-distractor + schema-masked twins → similarity 1. No prod import (T8 + baselines untouched); EX → next dispatch | [`SK-LLM-041`](../features/llm-router/decisions/SK-LLM-041-similarity-retrieved-few-shot.md) — core + pool-curation mask shipped; pool rows + index + wiring (T9-ablation-gated) follow-on |
 | T22 | **Aggregate-filter HAVING directive** | One `PLAN_DIRECTIVES` bullet: a threshold on a group's aggregate goes in HAVING after GROUP BY, not WHERE. Covers the **HAVING half** of E5 *Unaligned Aggregation Structure* that T15 (GROUP BY half) left; "keep per-row predicates in WHERE" bounds the regression. ≈55 tok | **prompt-only; saturated — 06-19 BIRD re-run flat** (McNemar p=0.50) | [`SK-LLM-040`](../features/llm-router/decisions/SK-LLM-040-aggregate-filter-having-directive.md) — shipped |
 | T21 | **Join-bridge recall in schema pruning** | T19's FK closure was outbound-only; a junction table linking two goal-matched tables via generic FK names (`a`/`b`) matched no path and got dropped, making the join unplannable. `pruneSchemaForGoal` now also keeps any table that `REFERENCES` ≥ 2 goal-matched tables, seeded from the goal-matched set only ⇒ recall-monotonic + distractor-bounded | **measured (unit):** synthetic `student↔enroll↔course` bridge dropped → kept; one-endpoint referencer stays out. Recall monotone over T19. Real EX → next eval | [`SK-LLM-037`](../features/llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md) rev — shipped |
 | T20 | **Capacity-honest budget stop** | Budget-stop on every-attempt ∈ {`rate_limited`,`circuit_open`}, one bounded `--capacity-wait-ms` retry, SHA-keyed resume — fixes the 2026-06-11 run scoring 246 breaker-wall rows as `no_sql` | **measurement honesty** — keeps a breaker wall out of the scores | [`SK-QUAL-013`](../features/quality-eval/decisions/SK-QUAL-013-capacity-honest-budget-stop.md) — shipped |
@@ -113,11 +108,13 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
 (`CLAUDE.md` §P4).
 
 1. **Similarity-retrieved few-shot exemplars (full DAIL-SQL).** Deterministic
-   core **SHIPPED 2026-06-21** (T23 / `SK-LLM-041`; est. +3–5 pp beyond static
-   T9, arXiv:2308.15363). **Staged follow-on (not built):** the exemplar *pool*
-   (masked BIRD-dev train-split Q→SQL) + an embedding index on hot `plan`, then
-   wiring into `buildPlanUser` gated on a per-lever ablation of T9 (`CLAUDE.md`
-   §P5). EX delta = next canonical dispatch.
+   core + the **pool-curation masking half SHIPPED 2026-06-21** (T23 /
+   `SK-LLM-041`: value + schema-identifier masking, so a pool row + the goal
+   collapse to a cross-domain skeleton; est. +3–5 pp beyond static T9,
+   arXiv:2308.15363). **Staged follow-on (not built):** the exemplar *pool rows*
+   (curated masked BIRD-dev train-split Q→SQL) + an embedding index on hot
+   `plan`, then wiring into `buildPlanUser` gated on a per-lever ablation of T9
+   (`CLAUDE.md` §P5). EX delta = next canonical dispatch.
 2. **Value retrieval + column-level pruning (the M-Schema half T19 left) —
    DEMOTED 2026-06-19 by the `SK-QUAL-014` literal axis.** The column-name
    ceiling (`SK-QUAL-015`: 12.8% of needed columns named by *value*) implied
@@ -134,11 +131,10 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
      0.15→0.25). Gate: run `SK-QUAL-015` against introspected DDL for
      per-column recall ≥ a T19-grade floor before wiring into `buildPlanUser`.
    - **2c. Date-literal normalisation directive — FALSIFIED standalone
-     2026-06-20.** The `SK-QUAL-014` date sub-axis (`canonDate` +
-     `isDateLiteralOnly`) sized it on the 238-mismatch 06-19 baseline:
-     `date_literal_only` = **2** total, **0 standalone** — every date diff
-     also carries a structural error (`LIKE '…%'` vs `= '…'` needs an operator
-     change) ⇒ #2c parked, same verdict as #2a. Rationale: `SK-QUAL-014` body.
+     2026-06-20.** The `SK-QUAL-014` date sub-axis sized it on the 06-19
+     baseline: `date_literal_only` = **2** total, **0 standalone** — every date
+     diff also carries a structural error (`LIKE '…%'` vs `= '…'`) ⇒ #2c parked,
+     same verdict as #2a. Rationale: `SK-QUAL-014` body.
 3. **Self-consistency majority vote (N=3, free tokens) — the top reasoning
    lever; vote core + execution half SHIPPED 2026-06-20/21 (`SK-QUAL-017`).**
    Sample N plans at temperature > 0 on a separate code path, execute,

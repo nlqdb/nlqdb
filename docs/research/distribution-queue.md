@@ -5,6 +5,46 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-21 (run 39) — engine-lesson: "Mask the table and column names too, not just the values" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`), the direct sequel to run 38's
+value-masking post — publish as a two-part series or a single combined piece.
+
+**Title:** Few-shot retrieval for text-to-SQL: mask the schema, not just the values
+
+**Body:**
+
+> Last time we masked the *values* out of a question before ranking few-shot
+> examples by similarity, so "how many albums by the artist named `<val>`"
+> stopped pulling in every example that happened to mention the same value. But
+> value masking alone only gets you halfway. Those two questions —
+>
+> > how many **albums** by the **artist** named `<val>`
+> > how many **employees** at the **company** named `<val>`
+>
+> are the *same query shape* over different schemas, yet after value masking they
+> still disagree on four words: `albums`/`artist` vs `employees`/`company`. The
+> domain nouns are exactly the schema's table and column names leaking into the
+> question — and they're what stop a great cross-schema example from ranking
+> first.
+>
+> So mask those too. DAIL-SQL (arXiv:2308.15363 §4.1) masks *domain-specific
+> words* — table and column identifiers — alongside the literals. Both questions
+> collapse to one skeleton: "how many `<col>` by the `<col>` named `<val>`". Now
+> they score as identical, and an example mined from a music database can
+> demonstrate the right SQL shape for a question over an HR database.
+>
+> The implementation is small and reuses what you already have. We parse the
+> schema once to get every table/column token (the same parser that prunes the
+> schema for the prompt), then replace any question word that names one with a
+> `col` placeholder — folding `snake_case`, `camelCase`, and plurals together so
+> `albums` matches an `Album` table. No schema → it degrades to value-only
+> masking. Pure, deterministic, zero new dependencies; the identical code runs
+> in production and in our eval harness so the benchmark can't drift.
+>
+> The measured delta lands on our next benchmark run, gated behind an ablation
+> of the static prefix. Code's open in `packages/llm/few-shot-select.ts`.
+
 ## 2026-06-21 (run 38) — engine-lesson: "Pick the few-shot example by masking the question, not matching the words" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series as
@@ -143,39 +183,7 @@ not just recall?" thread. nlqdb mentioned once, with the live try-it link.
 > Honest scope: native vector similarity is a later opt-in slice — pair it with
 > your existing recall layer, don't replace it.
 
-## 2026-06-20 (run 35) — engine-lesson: "Why we vote on the answer, not the SQL" (dev.to / lobste.rs)
-
-**Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series.
-
-**Title:** Self-consistency for text-to-SQL: vote on the answer, not the query
-
-**Body:**
-
-> Prompt tricks for text-to-SQL hit a wall. We shipped a dozen planner
-> directives — NULL-safe ordering, COUNT vs COUNT(DISTINCT), GROUP-BY grain,
-> HAVING placement — and on BIRD they saturated: three runs in a row clustered
-> at ~0.52 with no statistically significant move. The residual errors aren't
-> "the model didn't know the rule." They're reasoning variance: same prompt,
-> the model sometimes picks the right join grain and sometimes doesn't.
->
-> The classic fix is **self-consistency** (Wang et al. 2022): sample N answers,
-> take the majority. The subtlety in SQL is *what* you vote on. Voting on the
-> SQL string fails — `SELECT a, b` and `SELECT b, a ORDER BY 1` can be the same
-> answer or different ones, and equivalent queries scatter into singleton
-> buckets that never reach consensus. So we vote on the **result set**: run each
-> sampled query, fingerprint its rows (multiset, or sequence-strict when the
-> question is ordered), and pick the modal cluster. Two different queries that
-> return the same rows reinforce each other; that's the signal you want.
->
-> We built the vote as a pure, deterministic function first — ties break to the
-> earliest candidate, an empty result set is a valid vote, a query that failed
-> to execute casts none — and unit-tested every edge before spending a single
-> token sampling. The agreement share (how many of N agreed) doubles as a free
-> confidence signal. The sampling half rides a separate, temperature>0 code
-> path so the greedy, reproducible baseline never moves.
-
-**Why this advances the north-star:** engine-quality credibility + AEO — signals
-consensus-sampling SOTA to the NL→SQL audience. Ties to `SK-QUAL-017`.
+## 2026-06-20 (run 35) — engine-lesson: "Why we vote on the answer, not the SQL" (dev.to / lobste.rs) — superseded by the run-37 "Voting on the answer needs the answer" draft above (same self-consistency topic, fuller execution angle); full run-35 draft in git history.
 
 ## 2026-06-20 (run 34) — "How nlqdb expires agent memory (and why only facts get a TTL)" (dev.to / r/AI_Agents)
 
@@ -247,36 +255,7 @@ a defensible decision (SK-PIVOT-009); the "don't rewrite the LLM's SQL" angle
 stands alone as a useful lesson. Honest: per-agent scoping is in-flight (E-03)
 — describes the committed mechanism, not a shipped claim; hold until E-03 lands.
 
-## 2026-06-20 (run 32) — "Give your AI agent memory from the terminal" (dev.to / r/commandline / r/AI_Agents)
-
-**Where:** dev.to / r/commandline / r/AI_Agents — the CLI/scripting crowd,
-anchored on the just-shipped `nlq remember` verb.
-
-**Title:** Your agent's memory is a database — so you can write to it from a shell
-
-**Body:**
-
-> If agent memory is a real database (in nlqdb it is — Postgres the agent
-> provisions in English), writing to it shouldn't need an SDK or a running
-> agent. So `nlq remember` now ships in the CLI:
->
-> ```
-> nlq remember --type preference --tag ui "user prefers dark mode"
-> nlq remember --ttl 7d "promo code expires next week"
-> ```
->
-> No SQL, no LLM in the loop: the *server* composes a deterministic
-> parameterised INSERT from your typed flags, so the trust boundary holds — you
-> control data, never the statement. It writes into an `agent_memory_v1` preset
-> DB, the same one your agent later runs `GROUP BY` over via `nlq ask`. Write
-> from a cron job, read in English — one Postgres, four surfaces (HTTP, SDK,
-> MCP, CLI).
-
-**Why it's publishable:** the terminal crowd is a real distribution channel for
-agent infra; `nlq remember` is a concrete hook. Sourced from
-`cli/internal/cmd/remember.go` (SK-CLI-018) + the E-02 write path (SK-PIVOT-008).
-Honest scope: target must be a memory-preset DB, created today via the SDK/MCP
-`db.create` preset (CLI `nlq new --preset` is the fast-follow).
+## 2026-06-20 (run 32) — "Give your AI agent memory from the terminal" (dev.to / r/commandline / r/AI_Agents) — title + `nlq remember` hook; full draft in git history. Honest scope: target must be a memory-preset DB (CLI `nlq new --preset` is the fast-follow).
 
 ## 2026-06-20 (run 30) — "Show HN: analytical memory for AI agents" (Hacker News, → `/agents`)
 
