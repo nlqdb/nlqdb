@@ -185,43 +185,44 @@ not just recall?" thread. nlqdb mentioned once, with the live try-it link.
 
 ## 2026-06-20 (run 35) — engine-lesson: "Why we vote on the answer, not the SQL" (dev.to / lobste.rs) — superseded by the run-37 "Voting on the answer needs the answer" draft above (same self-consistency topic, fuller execution angle); full run-35 draft in git history.
 
-## 2026-06-20 (run 34) — "How nlqdb expires agent memory (and why only facts get a TTL)" (dev.to / r/AI_Agents)
+## 2026-06-21 (run 39) — "How nlqdb expires agent memory (and why only facts get a TTL)" (dev.to / r/AI_Agents)
 
 **Where:** dev.to (`ai` / `database`) + a helpful r/AI_Agents reply when someone
-asks how to make agent memory forget. Short, design-rationale angle — the kind
-of post that signals the wedge is engineered, not just marketing.
+asks how to make agent memory forget. Design-rationale angle — signals the wedge
+is engineered, not marketed.
 
 **Title:** How nlqdb expires agent memory (and why only facts get a TTL)
 
 **Body:**
 
 > "Explicit forget" is on every agent-memory checklist (Mem0, Zep, Letta all
-> advertise it). When we wired TTL into nlqdb's memory schema we hit a design
-> question worth stating out loud: **which memories should expire?**
+> advertise it). Wiring TTL into nlqdb's memory schema surfaced a design
+> question worth stating: **which memories should expire?**
 >
 > An agent's memory in nlqdb is three tables. `facts` are discrete things it
-> learned ("user prefers dark mode", "deploys run at 3am") — exactly the rows
-> that go stale. `episodes` are an append-only conversation log; you don't
-> silently delete history. `entities` are long-lived people/projects the agent
-> keeps re-seeing. So TTL is a **`facts`-only** concern — only `facts` carries
-> an `expires_at` column, and `nlqdb_remember` now *rejects* a `ttlSeconds` on
-> an episode or entity instead of quietly dropping it. A memory store that
-> accepts a TTL and silently ignores it is worse than one that doesn't offer it
-> — the agent thinks it set an expiry that never existed.
+> learned ("user prefers dark mode") — exactly what goes stale. `episodes` are
+> an append-only conversation log; you don't silently delete history.
+> `entities` are long-lived people/projects. So TTL is **`facts`-only** — only
+> `facts` carries `expires_at`, and `nlqdb_remember` *rejects* a `ttlSeconds` on
+> an episode/entity rather than quietly dropping it. A store that accepts a TTL
+> and silently ignores it is worse than one that doesn't offer it.
 >
-> Two layers enforce it: a daily cron sweep (`DELETE FROM facts WHERE expires_at
-> < NOW()`, per database, isolated) for cleanup, and — because reads run as
-> real SQL — a row-level-security clause (`expires_at IS NULL OR expires_at >
-> NOW()`) so an expired fact is invisible the instant it lapses, before the
-> sweep even runs. Postgres does the filtering; we don't rewrite the query.
+> Two layers enforce it: a daily sweep — a server-built, parameterised
+> `DELETE FROM facts WHERE expires_at < $cutoff`, run **per database with each
+> DB's failure isolated** so one unreachable tenant can't stall the rest — and,
+> because reads run as real SQL, a row-level-security clause (`expires_at IS
+> NULL OR expires_at > NOW()`) so an expired fact is invisible the instant it
+> lapses, before the sweep runs. Postgres does the filtering; we never rewrite
+> the query or let the model compose the delete.
 >
-> (nlqdb is a database your agent provisions and queries in plain English.
-> The memory schema is one opt-in preset.)
+> (nlqdb is a database your agent provisions and queries in plain English; the
+> memory schema is one opt-in preset.)
 
-**Why this advances the north-star:** onboarding/engine-quality — answers a
-real agent-builder checklist question ("can it forget?") with an honest,
-engineered answer, and the fail-loud TTL validation is the shipped proof. Ties
-to E-04 + SK-PIVOT-009; names no competitor unfavourably.
+**Why this advances the north-star:** onboarding/engine-quality — answers a real
+agent-builder checklist question ("can it forget?") with an honest, engineered
+answer; the shipped sweep core (`SK-PIVOT-011`, facts-only `DELETE` +
+per-DB-isolated `orchestrateSweep`) is the proof. Ties to E-04; no competitor
+named unfavourably.
 
 ## 2026-06-20 (run 32) — technical note: "Agent-memory scoping in nlqdb is row-level RLS, not query-rewriting" (dev.to / lobste.rs)
 
