@@ -43,7 +43,7 @@ dispatch (blocked today — both evals < 7 d, §5).
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half (run 40) + **runner `--self-consistency N` / `--sc-temperature T` main-loop wiring (run 41)** — `samples>=2` branch in `runOneQuestion` (separate from `withExecRetry`): `samplePlans`→`voteOverSamples` over `executeRows`→score-the-winner; folds into checkpoint/budget-stop/`attempts`, `.scN` checkpoint variant. The lever is now end-to-end bar the CI `workflow_dispatch` input. EX delta next dispatch** |
-| 8 | persona-bench | — | not yet built |
+| 8 | persona-bench | **v0: 12 q / 2 ICP schemas, 12/12 golds execute** | offline fixture shipped (`SK-QUAL-018`, run 43) — `saas_app` (P1) + `agent_memory` (P2); free-chain EX next dispatch (runner-wiring staged) |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics** | | wall-time, all routes (not `/ask`-only) |
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
@@ -75,6 +75,27 @@ dispatch (blocked today — both evals < 7 d, §5).
 
 ## Deltas (recent runs)
 
+- 2026-06-21 (run 43) — **Engine: persona-bench v0 shipped (`SK-QUAL-018`) —
+  metric #8 created from "not yet built" → 12 questions / 2 ICP schemas, 12/12
+  golds execute.** Worst number is engine (Spider 0.1852, BIRD 0.520); both
+  reasoning levers in flight (§4 #1 retrieval-wiring open PR #455, #3 done) and
+  both evals < 7 d (§5: no back-to-back dispatch), so the clean non-colliding
+  slice is the founder-endorsed third quality number `GLOBAL-027` §Lifecycle
+  kept: nlqdb's **own** ICP-shaped benchmark. New `tools/eval/src/datasets/persona-bench.ts`:
+  `saas_app` (personas §P1 Solo Builder — plans/referrers/users/orders) +
+  `agent_memory` (§P2 Agent Builder — the GLOBAL-036 analytics-over-memory wedge:
+  GROUP BY / top-N / TTL over `facts`) as inline DDL+seed, 12 NL→gold-SQL pairs
+  from each persona's "Representative queries", gold SQL **time-stable
+  (literal dates, no `date('now')`)** + tagged by `SK-QUAL-014` bucket. v0 ships
+  the **data half + gold-executability invariant** (`bun persona-bench` + test:
+  **12/12 golds execute, non-empty**, hand-checked); runner-wiring (a
+  `persona-bench` `EvalDataset` for free-chain EX) is the staged follow-on, so
+  no runner/scorer/chain/`EvalDataset`-type edit ⇒ **BIRD 06-19 + Spider 06-17
+  baselines untouched**, EX next dispatch. **Δ:** #8 — → **v0 fixture, 12/12**;
+  `@nlqdb/eval` tests 246 → 254. **KPI:** engine quality (the ICP-relevant
+  number); **none degraded** — additive, offline, zero prod import. typecheck +
+  biome clean. Artifact: "We built our own NL→SQL benchmark from our users'
+  schemas" queued.
 - 2026-06-21 (run 43) — **Distribution: WS-12 band shipped — agent-memory is
   now the first narrative section on the home page → WS-12 🟡 1/2.** Worst
   number is engine (Spider 0.1852, BIRD 0.520), but the engine lane is blocked
@@ -163,47 +184,27 @@ dispatch (blocked today — both evals < 7 d, §5).
   execution half (`SK-QUAL-017`, `executeRows`+`voteOverSamples`; 239 eval) +
   the SK-PIVOT-010 finding (E-06 anon on-ramp infeasible across 3 auth
   boundaries → authed surface). KPI engine quality / onboarding; none degraded.
-- 2026-06-20 (run 36) — **WS-07 closed: `/agents` conversion CTA + GLOBAL-024 demand signal → messaging 7 → 8/13, pivot 9 → 10/20.** "Try this query" seeds `nlqdb_draft` (SK-ANON-011), fires `agents.try_query_clicked` → `/app/new`; `Agents` Topnav + P2 `/vs` cross-links. KPI onboarding; none degraded.
-- 2026-06-20 (run 35) — **Engine: self-consistency vote core shipped** (`SK-QUAL-017`, §4 #3) — pure `majorityVote` + `fingerprintRows` cluster N plans by **result set** (deterministic ties → earliest), staged ahead of the sampling half. KPI engine quality; none degraded.
-- 2026-06-20 (run 34) — **Engine (memory write-path): fail-loud TTL gap fixed** (`validateRememberInput` dropped a TTL on non-`facts` kinds, GLOBAL-012; now rejected). KPI engine quality; none degraded.
-- 2026-06-20 (run 33) — **Engine: Spider external-knowledge injection shipped** (`SK-QUAL-016`) — `loadExternalKnowledge` injects the dropped `<name>.md` doc through `evidence`; 13/135 `local###` handicap closed, EX delta next dispatch. KPI engine quality; none degraded.
-- 2026-06-20 (run 32) — **Two slices:** (a) finding `SK-PIVOT-009` — E-03's compile-layer scoping is infeasible (`/v1/ask` runs free-form LLM SQL via `neonSql.unsafe`, no AST step) → redirected to row-level RLS on `app.agent_id`; (b) **E-02 GLOBAL-003 parity closed: CLI `nlq remember`** (SK-CLI-018), surface parity HTTP/SDK/MCP → 4/4. No engine/chain/scorer touched.
-- 2026-06-20 (runs 30–31) — six closed slices (all additive; BIRD 06-19 +
-  Spider 06-17 untouched): **E-01** preset wired into the create path → closed
-  (engine 0 → 1/7; SK-HDC-020, `POST /v1/databases { preset }` behind
-  `MEMORY_PRESET`); **E-02** `nlqdb_remember` write primitive → closed (engine
-  → 2/7; #432, SK-PIVOT-008, server-built INSERT via `POST /v1/memory/remember`,
-  SDK `remember()` + tool); **WS-07 runs 1–2/3** skeleton+hero then
-  matrix+moat+FSL band on `/agents` (#433); **WS-09 run 2/2** launch-post draft;
-  **§4 #2c date-normalisation directive FALSIFIED standalone** (#434, parked
-  like #2a). Per-slice detail in the WS/E worksheets + verification log.
-- 2026-06-20 (runs 26–29) — agent-memory pivot wave (all closed/merged,
-  additive; no engine/chain/scorer touched; BIRD 06-19 + Spider 06-17 untouched).
-  Engine lane blocked all four (both evals < 7 d, §5), so each picked the
-  lowest-numbered in-bounds pivot slice: **WS-05** (run 26) two analytics-over-memory
-  home-carousel `read` slides (`GROUP BY`/top-N over an `agent_memory` table;
-  data-only `showcase-examples.ts`); **WS-06** (runs 27+28) the Mem0·Zep·Letta·nlqdb
-  capability matrix — data `agentMemoryMatrix.ts` (9 honest rows, SK-PIVOT-001,
-  self-host row honesty-corrected vs the framing doc) then the `AgentMemoryMatrix.astro`
-  four-up glyph render (live text, no `<img>`, SK-PIVOT-004) → WS-06 ✅, unblocks
-  WS-07; **WS-10** (run 28) FSL-1.1 self-host copy on `/pricing` + README
-  (SK-PIVOT-005, no turnkey-image claim); **E-01** (run 29) the `agent_memory_v1`
-  preset DDL module (`agent-memory-v1.ts`, plain DDL through `sql-validate-ddl`,
-  SK-PIVOT-006/007). Counters reached pivot 9/20, messaging 7/13, engine 1/2.
-  Per-slice detail in the WS/E worksheets; drafts queued in `distribution-queue.md`.
-- 2026-06-20 (run 25) — **WS-03 run 2/2: analytical sibling solve page
-  `/solve/analytical-queries-over-agent-memory` shipped → WS-03 closed**
-  (messaging 3 → 4/13, pivot 3 → 4/20, solve pages 5 → 6). The read-side wedge:
-  reports (counts/top-N/averages per group) over agent memory a vector store
-  can't run. Additive `SolveEntry`; no engine/chain/scorer touched; BIRD 06-19 +
-  Spider 06-17 untouched. KPI onboarding. Detail in the WS-03 worksheet.
+- 2026-06-20 (runs 35–36) — **WS-07 closed** (`/agents` CTA + `agents.try_query_clicked` GLOBAL-024 signal → messaging 8/13, pivot 10/20) **and engine: self-consistency vote core** (`SK-QUAL-017` §4 #3 — `majorityVote` + `fingerprintRows`, deterministic ties → earliest). KPI onboarding / engine quality; none degraded.
+- 2026-06-20 (runs 33–34) — **Engine: Spider external-knowledge injection** (`SK-QUAL-016`, the dropped `<name>.md` doc rides `evidence`; 13/135 `local###` handicap closed) **and** a fail-loud memory-write TTL fix (`validateRememberInput` now rejects a TTL on non-`facts` kinds, GLOBAL-012). KPI engine quality; none degraded.
+- 2026-06-20 (run 32) — **Two slices:** (a) finding `SK-PIVOT-009` — E-03 compile-layer scoping infeasible (`/v1/ask` runs free-form SQL via `neonSql.unsafe`, no AST) → redirected to RLS on `app.agent_id`; (b) **E-02 parity closed: CLI `nlq remember`** (SK-CLI-018, HTTP/SDK/MCP → 4/4). No engine/chain/scorer touched.
+- 2026-06-20 (runs 26–31) — agent-memory pivot + engine-staging wave (all closed,
+  additive; BIRD 06-19 + Spider 06-17 untouched): **E-01** preset (`agent_memory_v1`
+  DDL + create-path wiring, SK-HDC-020/PIVOT-006/007) + **E-02** `nlqdb_remember`
+  write primitive (#432, SK-PIVOT-008) → engine 2/7; **WS-05/06/07/09/10** the
+  pivot messaging surfaces (carousel slides, the Mem0·Zep·Letta·nlqdb matrix,
+  `/agents` skeleton+hero+matrix, launch-post draft, FSL self-host copy) → pivot
+  9/20, messaging 7/13; **§4 #2c date-normalisation directive FALSIFIED standalone**
+  (#434, parked like #2a). Per-slice detail in the WS/E worksheets + verification log.
+- 2026-06-20 (run 25) — **WS-03 closed: analytical sibling solve page
+  `/solve/analytical-queries-over-agent-memory`** (messaging 4/13, pivot 4/20) —
+  the read-side wedge: reports over agent memory a vector store can't run.
+  Additive `SolveEntry`; baselines untouched. KPI onboarding.
 - 2026-06-19/20 (runs 23–24) — agent-memory messaging wave (both closed, additive copy; no engine/chain/scorer touched; BIRD 06-19 + Spider 06-17 untouched): **WS-03 run 1/2** (run 23) sharpened `/solve/give-ai-agent-persistent-memory` to the retrieval≠analytics wedge + fixed phantom MCP tool names (real three only, SK-PIVOT-002); **WS-04** (run 24) reframed the MCP surface — three tool `description`s/`title`s + `package.json` + `mcp.mdx` lead with "analytical memory" (copy only, SK-PIVOT-003; SK-MCP-002 contract + 33 tests intact). Messaging track → 3/13, pivot → 3/20. Per-slice detail in the WS worksheets; drafts queued in `distribution-queue.md`.
 - 2026-06-19/21 (runs 19–22) — agent-memory wedge launch wave (all closed, additive content; no engine/chain/scorer touched): **WS-01** anchored the Zep / Letta / LangMem cluster in `docs/competitors.md §4` (run 19, pivot 0 → 1/20); **WS-02** shipped the three memory `/vs` pages — `/vs/zep` (run 20), `/vs/letta` (run 21), `/vs/langmem` (run 22) — each one `Competitor` entry keyed on the retrieval-vs-analytics wedge (`GROUP BY`/`JOIN`/`HAVING` over memory), facts web-verified 06-19, real tool names only. WS-02 closed → messaging track 2/13, pivot 2/20. Per-slice detail in the WS worksheets + `competitors.ts` history; comparison drafts queued in `distribution-queue.md`.
 - 2026-06-19 (runs 17–18) — canonical BIRD re-run flat (EX 0.522 → 0.520,
-  McNemar p=0.50) ⇒ prompt-directive levers saturated; the `SK-QUAL-014`
-  literal axis then **falsified value-retrieval as the top lever**
-  (`literal_only` = 0), demoting it below the reasoning levers. No
-  engine/chain change; no eval dispatched. Detail in the verification log.
+  McNemar p=0.50) ⇒ directive levers saturated; `SK-QUAL-014` then **falsified
+  value-retrieval as the top lever** (`literal_only` = 0), demoting it below the
+  reasoning levers. No engine change. Detail in the verification log.
 - 2026-06-13/18 (runs 1–16) — day-one scorecard + engine-instrument /
   provider-resilience / deferred-lever waves (Gemini key heal + Spider re-run
   to 0.1852, join-bridge pruner T21, HAVING directive T22, `SK-QUAL-014/015`

@@ -29,7 +29,7 @@ when-to-load:
   - `src/baseline.ts` + `src/significance.ts` — baseline diff + McNemar exact-binomial / Edwards' χ² (`SK-QUAL-006`)
   - `src/emit.ts` — POST report to `/v1/events/eval`
   - `src/analyze-mismatches.ts` — mismatch error-class classifier (`SK-QUAL-014`); `src/column-coverage.ts` — column-prune recall-ceiling harness (`SK-QUAL-015`); `src/self-consistency.ts` — `majorityVote` + `voteOverSamples` orchestration + `score.ts::{fingerprintRows,executeRows}` (`SK-QUAL-017`)
-  - `src/datasets/{bird-mini,spider2-lite}.ts` — HF BIRD loader; Spider 2.0-lite loader + gold-CSV hydration + external-knowledge injection from `xlang-ai/Spider2@main` (`SK-QUAL-007`/`008`/`016`)
+  - `src/datasets/{bird-mini,spider2-lite,persona-bench}.ts` — HF BIRD loader; Spider 2.0-lite loader + gold-CSV hydration + external-knowledge injection (`SK-QUAL-007`/`008`/`016`); persona-bench ICP fixture (`SK-QUAL-018`)
   - `src/output.ts` + `src/checkpoint.ts` — JSON report writer; resumable checkpoint (`SK-QUAL-011`)
   - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
 - `.github/workflows/quality-eval-bird-mini.yml` — BIRD: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke` (smoke = sampled + resumable per `SK-QUAL-011`); `include_agentic_frontier` → `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`; `self_consistency`/`sc_temperature` → smoke `--self-consistency N --sc-temperature T` per `SK-QUAL-017`
@@ -203,12 +203,11 @@ value/measure. Read-only, no keys/quota/chain change.
 ### SK-QUAL-016 — Inject Spider 2.0-lite external-knowledge docs into the prompt, the way BIRD `evidence` already is
 
 **Body:** [`decisions/SK-QUAL-016-spider-external-knowledge.md`](./decisions/SK-QUAL-016-spider-external-knowledge.md).
-`loadSpider2Lite` fetches each instance's `external_knowledge`
-(`resource/documents/<name>.md`) and rides it through `EvalQuestion.evidence`
-into the runner's `enrichedGoal` — the channel BIRD always used. Closes the
-`SK-QUAL-007` deferral. **13 of 135 `local###` questions (9.6%)** carried a
-dropped doc (haversine, RFM, music-length, …) — the knowledge-gated tail.
-Cache-authoritative, fail-soft, traversal-gated. EX delta next Spider dispatch.
+`loadSpider2Lite` rides each instance's `external_knowledge` doc through
+`EvalQuestion.evidence` into `enrichedGoal` — the channel BIRD always used,
+closing the `SK-QUAL-007` deferral. **13 of 135 `local###` (9.6%)** carried a
+dropped doc — the knowledge-gated tail. Cache-authoritative, fail-soft,
+traversal-gated. EX delta next Spider dispatch.
 
 ### SK-QUAL-017 — Self-consistency majority vote: cluster N sampled plans by the result set, vote the answer
 
@@ -224,32 +223,38 @@ budget-stop / `attempts`, `.scN` variant), and the `self_consistency`/`sc_temper
 `workflow_dispatch` inputs on both smoke jobs — the baseline-safe vehicle (N=1
 default = greedy). EX delta is the greedy-vs-SC smoke gap on the first N>=2 dispatch.
 
+### SK-QUAL-018 — persona-bench: nlqdb's own ICP-shaped NL→SQL benchmark, gold-executable fixture first
+
+**Body:** [`decisions/SK-QUAL-018-persona-bench.md`](./decisions/SK-QUAL-018-persona-bench.md).
+The user-relevant third quality number `GLOBAL-027` §Lifecycle kept as agent
+work: NL→gold-SQL over the schemas `personas.md` builds. v0
+(`src/datasets/persona-bench.ts`) ships the **data half** — `saas_app` (§P1) +
+`agent_memory` (§P2, the GLOBAL-036 wedge) as inline DDL+seed, 12 questions
+with time-stable literal-date gold SQL tagged by `SK-QUAL-014` bucket, and the
+**gold-executability invariant** (`bun persona-bench` + test: **12/12 execute,
+non-empty**). Runner-wiring (a `persona-bench` `EvalDataset` for free-chain EX)
+is the staged follow-on — no runner/scorer/chain edit, baselines untouched.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/).
 
-- **GLOBAL-013** — $0/month for the free tier.
-  - *In this feature:* the harness uses the same strict-$0 chain users hit; if we exceed the free tier on eval, we're hiding cost that users will hit too.
-- **GLOBAL-014** — OTel span on every external call.
-  - *In this feature:* the harness instruments per-question spans so failures can be debugged the same way as production calls.
+- **GLOBAL-013** — $0/month free tier. *The harness uses the same strict-$0 chain users hit; exceeding it on eval hides cost users will hit too.*
+- **GLOBAL-014** — OTel span on every external call. *Per-question spans so failures debug like production.*
 - **GLOBAL-024** — Demand-signal telemetry. *(Eval results emit `feature.eval.*` events.)*
-- **GLOBAL-025** — North-star: engine quality, onboarding, UX — each with explicit KPIs.
-  - *In this feature:* this feature owns the engine-quality NL→SQL KPIs (BIRD-dev EM, Spider 2.0-lite EM, free-vs-frontier delta, validator FP rate, refuse-vs-hallucinate ratio). Phase 2 floor and Phase 3 floor are set in the GLOBAL-025 KPI table; baseline by 2026-06-15 per `SK-QUAL-005`.
-- **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid (flat sub + included monthly request allowance + soft-meter overage, 0% markup).
-  - *In this feature:* eval runs through both the free chain and the hosted-premium chain (per `SK-QUAL-004`); BYOLLM lane instrumented when an opt-in eval key is configured but never used to gate a floor.
-- **GLOBAL-027** — Pre-alpha gate consumes the free-chain BIRD/Spider numbers this feature produces.
-  - *In this feature:* the eval report shape is the contract `apps/api/src/gate/eval-baseline.ts` mirrors; a run landing new numbers triggers a follow-up PR to amend it. Removal lifecycle (lanes clear ⇒ retire `GLOBAL-027`): see [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
+- **GLOBAL-025** — North-star KPIs. *This feature owns the engine-quality NL→SQL KPIs (BIRD/Spider EX, free-vs-frontier delta) + the ICP-relevant persona-bench (`SK-QUAL-018`); floors in the GLOBAL-025 table, baseline per `SK-QUAL-005`.*
+- **GLOBAL-026** — LLM strategy. *Eval runs the free + hosted-premium chains (`SK-QUAL-004`); BYOLLM lane instrumented but never gates a floor.*
+- **GLOBAL-027** — Pre-alpha gate consumes this feature's free-chain BIRD/Spider numbers. *The report shape is the contract `apps/api/src/gate/eval-baseline.ts` mirrors; new numbers trigger an amend PR. Lifecycle: [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).*
 
 ## Open questions / known unknowns
 
-- **Privacy** — Decided: no user data ever flows into the eval harness; public benchmark data only (BIRD, Spider). A PR adding production schema sampling is a security defect.
-- **Deferred:** a `feature.eval.smoke` event; a hard token-budget counter (`SK-QUAL-011`/`SK-QUAL-012` reactive controls cover it).
-- **Still open** (agentic lane shipped per [`SK-QUAL-009`](#sk-qual-009)): multi-model frontier (GPT-5 + Gemini 2.5 Pro) until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA next Spider baseline.
+- **Privacy** — Decided: no user data ever enters the harness; public benchmark + hand-authored persona-bench data only. A PR sampling production schemas is a security defect.
+- **Deferred:** a `feature.eval.smoke` event; a hard token-budget counter (`SK-QUAL-011`/`012` cover it reactively).
+- **Still open** (agentic lane shipped, [`SK-QUAL-009`](#sk-qual-009)): multi-model frontier until the Sonnet 4.6 baseline lands; BYOLLM lane depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA next Spider baseline.
 - **Canonical raw EX — BIRD 0.520 (2026-06-19, flat) / Spider 0.1852 (2026-06-17)**, 6-provider GHA runs (`SK-QUAL-013`). Breakdown: `quality-score-source-of-truth.md` §2.
-- **Value retrieval (§4 #2a) is demoted + prod-side privacy-gated (2026-06-19).**
-  `SK-QUAL-014` literal axis: `literal_only` = 0 ⇒ value-sampling flips ~0
-  mismatches standalone, so it ranks below the reasoning levers. The **prod**
-  build needs a **founder decision** — it would feed **user cell-values** into
-  the free third-party chain (today only schema DDL leaves the system); a new
-  data-exposure posture, do not build until ruled on.
+- **Value retrieval (§4 #2a) demoted + prod-side privacy-gated (2026-06-19).**
+  `SK-QUAL-014`: `literal_only` = 0 ⇒ value-sampling flips ~0 mismatches
+  standalone, below the reasoning levers. The **prod** build needs a **founder
+  decision** — it would feed **user cell-values** to the free chain (today only
+  DDL leaves the system); do not build until ruled on.
 - **Corrected-set evaluation — parked until the next BIRD refresh** (`GLOBAL-033`). UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% BIRD annotation errors. **Adopt iff** license permits bundling **and** it's a ~50-LOC scorer-reuse patch; else skip.
