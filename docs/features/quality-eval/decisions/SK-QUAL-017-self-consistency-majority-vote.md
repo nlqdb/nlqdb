@@ -82,12 +82,14 @@ literal/date axes falsified value-retrieval standalone.
   answers — it never mis-scores a winner, only potentially understates the
   Spider2 EX gain; revisit if Spider2 SC accuracy matters.) It folds into the existing machinery: an
   all-empty vote records `no_sql` (the greedy empty-plan outcome), a chain that
-  is capacity-exhausted (SK-LLM-030) on **every** draw raises the same
-  `BudgetStopError` → checkpoint + resume (SK-QUAL-013), each row carries
+  is capacity-exhausted (SK-LLM-030) on **every** draw honours the same one
+  bounded `--capacity-wait-ms` wait-and-retry then raises `BudgetStopError` →
+  checkpoint + resume (SK-QUAL-013, the greedy path's contract), each row carries
   `attempts: N` so `total_attempts` reflects the N× quota cost, and the
   checkpoint variant keys on `.scN` so a greedy run's scores never replay into
-  an `--self-consistency N` resume. Three runner tests (modal-vote-scores-match,
-  all-broken → no_sql, all-rate-limited → resumable) cover it offline. **Follow-on
+  an `--self-consistency N` resume. Four runner tests (modal-vote-scores-match,
+  all-broken → no_sql, all-rate-limited → resumable, wait-once-then-recover)
+  cover it offline. **Follow-on
   (named, not built):** passing the flag through a `workflow_dispatch` input on
   the BIRD/Spider smoke jobs (the sampled, no-emit, baseline-safe vehicle). The
   EX delta is measured by the **next canonical dispatch**

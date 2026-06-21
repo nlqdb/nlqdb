@@ -759,6 +759,50 @@ describe("runEval — self-consistency dispatch (SK-QUAL-017)", () => {
     expect(report.results).toHaveLength(0);
   });
 
+  it("waits once then recovers when an early capacity-exhausted batch later succeeds (SK-QUAL-013)", async () => {
+    // First full batch is whole-chain rate-limited; with a capacity-wait
+    // budget the SC path waits once and re-draws instead of budget-stopping,
+    // so the recovered batch scores rather than the run reading as resumable.
+    let batch = 0;
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      selfConsistency: { samples: 3, temperature: 0.7 },
+      capacityWaitMs: 1,
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          maxAttempts: 1,
+          router: {
+            ...fakeRouter(""),
+            plan: async (req: PlanRequest): Promise<PlanResponse> => {
+              // First N draws (one question's batch) all fail capacity; after
+              // the one wait, every later draw answers.
+              if (batch++ < 3) {
+                throw new AllProvidersFailedError("chain rate-limited", [
+                  { provider: "gemini", reason: "rate_limited", error: new Error("429") },
+                ]);
+              }
+              return req.goal.includes("How many")
+                ? { sql: "SELECT COUNT(*) FROM pet WHERE species='cat'", model: "m", confidence: 1 }
+                : {
+                    sql: "SELECT name FROM pet ORDER BY id DESC LIMIT 1",
+                    model: "m",
+                    confidence: 1,
+                  };
+            },
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+    });
+    expect(report.resumable).toBeFalsy();
+    const free = report.lanes.find((l) => l.lane === "free");
+    expect(free?.match).toBe(2);
+  });
+
   it("clusters the vote ordered when the gold has ORDER BY, so a mis-ordered draw can't win", async () => {
     // Gold is sequence-strict (ORDER BY name DESC → milo, whisk). Two draws
     // return the correct order; one returns the same rows reversed (same

@@ -404,20 +404,35 @@ async function runOneQuestion(
     // because the *whole* chain is capacity-exhausted (SK-LLM-030). If every
     // draw hit that, the chain is down — budget-stop + resume (SK-QUAL-013)
     // rather than scoring a spurious no_sql.
-    let capacityFails = 0;
-    const samples = await samplePlans(
-      async (req) => {
-        try {
-          return await lane.router.plan(req);
-        } catch (err) {
-          if (isChainCapacityExhausted(err)) capacityFails++;
-          throw err;
-        }
-      },
-      { goal: enrichedGoal, schema, dialect: "sqlite" },
-      selfConsistency,
-    );
-    if (capacityFails === selfConsistency.samples) throw new BudgetStopError();
+    let samples: Awaited<ReturnType<typeof samplePlans>> = [];
+    let waitedForCapacity = false;
+    for (;;) {
+      let capacityFails = 0;
+      samples = await samplePlans(
+        async (req) => {
+          try {
+            return await lane.router.plan(req);
+          } catch (err) {
+            if (isChainCapacityExhausted(err)) capacityFails++;
+            throw err;
+          }
+        },
+        { goal: enrichedGoal, schema, dialect: "sqlite" },
+        selfConsistency,
+      );
+      if (capacityFails < selfConsistency.samples) break;
+      // Every draw hit a capacity-exhausted chain (SK-LLM-030). Honour the
+      // SK-QUAL-013 one bounded wait-and-retry, then budget-stop + resume —
+      // the same capacity-honest contract the greedy path uses below.
+      if (capacityWaitMs > 0 && !waitedForCapacity && waitBudget.remaining > 0) {
+        waitedForCapacity = true;
+        waitBudget.remaining--;
+        await new Promise((r) => setTimeout(r, capacityWaitMs));
+        start = Date.now(); // the wait is harness pacing, not question latency
+        continue;
+      }
+      throw new BudgetStopError();
+    }
     // Cluster the vote under the same order-sensitivity the scorer applies to
     // the winner — otherwise an unordered cluster can elect a mis-ordered
     // member that then fails the strict scorer, understating the EX gain.
