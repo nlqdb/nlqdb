@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { AllProvidersFailedError } from "@nlqdb/llm";
 import type {
   EngineClassifyRequest,
   PlanRequest,
@@ -617,6 +618,145 @@ describe("runEval — end-to-end with mocked routers", () => {
       emitEvalReport: emitMock as unknown as typeof import("../src/emit.ts").emitEvalReport,
     });
     expect(emitMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("runEval — self-consistency dispatch (SK-QUAL-017)", () => {
+  let dir: string;
+  let questionsPath: string;
+  let outDir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "nlqdb-runner-sc-"));
+    const dbDir = join(dir, "dev_databases", "pets");
+    mkdirSync(dbDir, { recursive: true });
+    const db = new Database(join(dbDir, "pets.sqlite"));
+    db.exec("CREATE TABLE pet (id INTEGER PRIMARY KEY, name TEXT, species TEXT);");
+    db.exec("INSERT INTO pet VALUES (1,'whisk','cat'),(2,'rex','dog'),(3,'milo','cat');");
+    db.close();
+    questionsPath = join(dir, "questions.json");
+    writeFileSync(questionsPath, JSON.stringify(QUESTIONS));
+    outDir = join(dir, "out");
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("votes the modal answer across N sampled plans and scores the winner", async () => {
+    const temps: Array<number | undefined> = [];
+    // Per-question draw sequence: two correct phrasings out-vote one wrong
+    // draw — the modal result-set cluster wins, so the winning SQL scores match.
+    const draws: Record<string, string[]> = {
+      "How many": [
+        "SELECT COUNT(*) FROM pet WHERE species='cat'",
+        "SELECT COUNT(*) FROM pet WHERE species = 'cat'", // same answer, different phrasing
+        "SELECT COUNT(*) FROM pet", // wrong (counts all) → minority
+      ],
+      Newest: [
+        "SELECT name FROM pet ORDER BY id DESC LIMIT 1",
+        "SELECT name FROM pet ORDER BY id DESC LIMIT 1",
+        "SELECT name FROM pet ORDER BY id ASC LIMIT 1", // wrong → minority
+      ],
+    };
+    const cursor: Record<string, number> = {};
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      selfConsistency: { samples: 3, temperature: 0.7 },
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          maxAttempts: 1,
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (req: PlanRequest): Promise<PlanResponse> => {
+              temps.push(req.temperature);
+              const key = req.goal.includes("How many") ? "How many" : "Newest";
+              const i = cursor[key] ?? 0;
+              cursor[key] = i + 1;
+              // biome-ignore lint/style/noNonNullAssertion: i is bounded by the 3-element draw arrays
+              return { sql: draws[key]![i]!, model: `m${i}`, confidence: 1 };
+            },
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+    });
+    const free = report.lanes.find((l) => l.lane === "free");
+    expect(free?.match).toBe(2);
+    expect(free?.execution_accuracy).toBe(1);
+    // Every draw carried the sampling temperature (the greedy path never sets it).
+    expect(temps).toHaveLength(6); // 2 questions × 3 draws
+    expect(temps.every((t) => t === 0.7)).toBe(true);
+    // The N draws surface as attempts=N so total_attempts reflects the cost.
+    const rows = report.results.filter((r) => r.lane === "free");
+    expect(rows.every((r) => r.attempts === 3)).toBe(true);
+    expect(free?.total_attempts).toBe(6);
+  });
+
+  it("records no_sql when no sampled plan produces executable SQL", async () => {
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      selfConsistency: { samples: 3, temperature: 0.5 },
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          maxAttempts: 1,
+          router: {
+            ...fakeRouter(""),
+            // Every draw is broken SQL → executeRows returns null → no vote.
+            plan: async (): Promise<PlanResponse> => ({
+              sql: "SELECT BROKEN FROM nope",
+              model: "m",
+              confidence: 1,
+            }),
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+    });
+    const free = report.lanes.find((l) => l.lane === "free");
+    expect(free?.no_sql).toBe(2);
+    expect(free?.match).toBe(0);
+    const rows = report.results.filter((r) => r.lane === "free");
+    expect(rows.every((r) => r.attempts === 3)).toBe(true);
+    expect(rows.every((r) => r.error?.includes("no sample produced executable SQL"))).toBe(true);
+  });
+
+  it("budget-stops (resumable) when every draw hits a capacity-exhausted chain", async () => {
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      selfConsistency: { samples: 3, temperature: 0.7 },
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          maxAttempts: 1,
+          router: {
+            ...fakeRouter(""),
+            // Whole chain rate-limited on every draw → budget-stop, not no_sql.
+            plan: async (): Promise<PlanResponse> => {
+              throw new AllProvidersFailedError("chain rate-limited", [
+                { provider: "gemini", reason: "rate_limited", error: new Error("429") },
+                { provider: "groq", reason: "circuit_open", error: undefined },
+              ]);
+            },
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+    });
+    expect(report.resumable).toBe(true);
+    // Budget stop before any row scored — the checkpoint resumes next dispatch.
+    expect(report.results).toHaveLength(0);
   });
 });
 

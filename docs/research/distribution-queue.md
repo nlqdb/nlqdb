@@ -39,22 +39,21 @@ masking arc (runs 38–39) — publish as the third part or fold into the combin
 ## 2026-06-21 (run 40) — engine-lesson: "Self-consistency for text-to-SQL: sample at temperature > 0 without breaking your benchmark" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series as
-the few-shot post (run 38) and the vote posts (runs 35/37).
+the few-shot post (run 38); covers the full self-consistency lever (runs 35/37/40/41).
 
 **Title:** Self-consistency for text-to-SQL: how to sample at temperature > 0 without breaking your benchmark
 
 **Body:**
 
-> Self-consistency (Wang et al. 2022) is a cheap accuracy lever: instead of the
-> model's one greedy answer, sample N answers at temperature > 0 and let them
-> vote. For text-to-SQL the vote is on the **executed rows**, not the SQL string
-> — many different queries return the same correct answer.
+> Self-consistency (Wang et al. 2022) is a cheap lever: instead of one greedy
+> answer, sample N at temperature > 0 and let them vote. For text-to-SQL the
+> vote is on the **executed rows**, not the SQL string
+> — many queries return the same correct rows.
 >
 > The tension nobody mentions: your *production* planner should decode greedily
 > (temperature 0) — single-pass accuracy in the literature is measured under
-> argmax, and a stochastic planner makes your benchmark non-reproducible (the
-> McNemar regression test compares per-question outcomes run-to-run; a flipping
-> leg turns signal into noise). So you can't crank temperature globally.
+> argmax, and a stochastic planner makes your benchmark non-reproducible. So you
+> can't crank temperature globally.
 >
 > The clean separation: make decoding temperature a **per-request** parameter
 > that **defaults to greedy when unset**. Every production call leaves it unset
@@ -62,13 +61,13 @@ the few-shot post (run 38) and the vote posts (runs 35/37).
 > is the eval's self-consistency sampler. One optional field through each
 > provider's request body — not a global knob, not a forked planner.
 >
-> One footgun: when a sampled draw fails (chain rate-limited for that one call),
-> record it as a *no-vote* empty sample rather than aborting — N-1 good draws
-> still reach consensus. Vote on what executed; ignore what didn't.
->
-> The sampling + voting code is pure and unit-tested offline (inject the planner
-> and the SQL executor — no network, no quota); EX delta lands on our next run.
-> Code's open in `packages/llm/` + `tools/eval/`.
+> One footgun, and a free-tier one: N samples is N× the quota. When a sampled
+> draw fails, record it as a *no-vote* empty sample rather than aborting — N-1
+> good draws still reach consensus. But separate that from the *whole chain*
+> being rate-limited on every draw: budget-stop + resume, so the sampler stays
+> resumable instead of burning a daily cap into a wall of empty answers. Vote on
+> what executed; ignore what didn't. Code's pure + offline-tested (inject planner
+> + executor), open in `packages/llm/` + `tools/eval/`; EX delta next run.
 
 ## 2026-06-21 (run 39) — engine-lesson: "Mask the table and column names too, not just the values" (dev.to / lobste.rs)
 
