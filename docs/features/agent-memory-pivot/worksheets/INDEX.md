@@ -62,7 +62,7 @@ swap.
 | [06](WS-06-capability-matrix.md) ✅ | Mem0 \| Zep \| Letta \| nlqdb capability matrix (new surface) — data ✅ + render ✅ | med | ~2 | 01 | — |
 | [07](WS-07-agents-landing.md) ✅ | Dedicated `/agents` front door | med | ~3 | 06 | — |
 | [08](WS-08-og-images.md) | On-brand OG / social images for the wedge surfaces | low | ~2 | 07 | — |
-| [09](WS-09-blog-and-demo.md) | "Database, not a vector store" blog + live in-page demo | med | ~2 | 06 | — |
+| [09](WS-09-blog-and-demo.md) ✅ | "Database, not a vector store" blog + live in-page demo | med | ~2 | 06 | — |
 | [10](WS-10-fsl-selfhost-messaging.md) ✅ | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix already shipped in the pivot PR) | low | 1 | — | — |
 | [11](WS-11-selfhost-container.md) | Pull the self-host container forward (`ghcr.io/nlqdb/api`) | high | multi | 10 | infra-gated |
 | [12](WS-12-home-reweight.md) | Home reweight: agent-memory primary + demote P1/P3/P4 to an "also works for…" fold | med | ~2 | 06, 07 | — |
@@ -88,7 +88,7 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 - [x] WS-06 — capability matrix: **data ✅** (2026-06-20, run 27 — `apps/web/src/data/agentMemoryMatrix.ts` + test, branch `claude/vibrant-newton-s9e2r2`); **render ✅** (2026-06-20, run 28 — `apps/web/src/components/AgentMemoryMatrix.astro`, branch `claude/vibrant-newton-rldywf`)
 - [x] WS-07 — `/agents` landing ✅ (run 1 skeleton+hero 2026-06-20 #430; run 2 matrix+moat+FSL band 2026-06-20 branch `claude/vibrant-newton-23gz7c`; run 3 CTA+demand-signal 2026-06-20 branch `claude/vibrant-newton-r3gupc` — `agents.try_query_clicked` GLOBAL-024 + Topnav `Agents` link + P2-keyed `/vs` cross-link). Unblocks E-06.
 - [ ] WS-08 — OG / social images
-- [ ] WS-09 — blog + live demo (🟡 1/2 — blog draft ✅ 2026-06-20 run 30, branch `claude/vibrant-newton-wah6ow`; live `/agents` demo pending WS-07)
+- [x] WS-09 — blog + live demo ✅ 2/2 — blog draft ✅ (2026-06-20, run 30, branch `claude/vibrant-newton-wah6ow`); live `/agents` demo ✅ (2026-06-21, run 41, branch `claude/vibrant-newton-36il2y` — gate-honest fixture round-trip: `agent_memory` rows → English goal → compiled `GROUP BY` SQL → result table, server-rendered, `agents.demo_run_clicked` demand signal)
 - [x] WS-10 — FSL self-host messaging (2026-06-20, run 28 — branch `claude/vibrant-newton-fh8mgw`; pricing self-host band + README "Models & plans" self-host line, FSL-accurate, no turnkey-image claim per WS-11 note)
 - [ ] WS-11 — self-host container (infra-gated)
 - [ ] WS-12 — home reweight + demote personas

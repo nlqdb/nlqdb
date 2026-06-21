@@ -57,8 +57,8 @@ prod-wiring/dispatch half, EX delta next canonical run.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 10 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
-| | *Messaging track — WS-\** | 8 / 13 (WS-07 ✅ 3/3, WS-09 🟡 1/2) | pick when worst number is funnel / distribution |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 11 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | *Messaging track — WS-\** | 9 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
 | WS-03 | solve pages — sharpen + sibling | ✅ 2/2 | run 23 — **sharpen ✅**; run 25 — **analytical sibling ✅** (`analytical-queries-over-agent-memory`, the read-side report-over-memory wedge) |
@@ -67,7 +67,7 @@ prod-wiring/dispatch half, EX delta next canonical run.
 | WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | ✅ | run 27 — **data ✅** (`agentMemoryMatrix.ts`, 9 honest rows + test); run 28 — **render ✅** (`AgentMemoryMatrix.astro`, four-up glyph grid, nlqdb accent column, no `<img>`) |
 | WS-07 | `/agents` landing | ✅ 3/3 | run 30 — **skeleton + hero ✅**; run 31 — **matrix + moat ✅** (WS-06 matrix + typed-plan trust-boundary pipeline + FSL/BYO-key band); run 35 — **CTA + demand-signal ✅** (memory-shaped "try this query" → `agents.try_query_clicked` GLOBAL-024 → `/app/new`; Topnav `Agents` link; P2-keyed `/vs` cross-link). WS-07 closed → **unblocks E-06** |
 | WS-08 | on-brand OG / social images | ⬜ | low · ~2 runs · WS-07 |
-| WS-09 | "database, not a vector store" blog + live demo | 🟡 1/2 | run 30 — **blog draft ✅** (launch post in `distribution-queue.md`: Replit incident → recall≠analytics → typed-plan boundary → measured BIRD 0.52 / Spider 0.1852 + `tools/eval/` link + WS-06 matrix); live `/agents` demo deferred (run 1, collides with WS-07 #430) |
+| WS-09 | "database, not a vector store" blog + live demo | ✅ 2/2 | run 30 — **blog draft ✅** (launch post in `distribution-queue.md`); run 41 — **live `/agents` demo ✅** — gate-honest fixture round-trip (`agent_memory` rows → English goal → compiled `GROUP BY` SQL → result table, server-rendered for AEO/no-JS per SK-PIVOT-004; "Run this query" button → `agents.demo_run_clicked` GLOBAL-024 signal; no open `/v1/ask`). WS-07 page existing cleared the #430 collision |
 | WS-10 | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix shipped) | ✅ | run 28 — pricing self-host band + README "Models & plans" self-host line (FSL-accurate; no turnkey-image claim per WS-11 note) |
 | WS-11 | pull `ghcr.io/nlqdb/api` self-host container forward | ⬜ | high · multi · WS-10 · infra-gated |
 | WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ⬜ | med · ~2 runs · WS-06, WS-07 |
@@ -103,6 +103,24 @@ prod-wiring/dispatch half, EX delta next canonical run.
   **KPI:** engine quality; **none degraded.** `verification-log` net-shrunk (D4).
   Artifact: "Mask each exemplar against its own schema, the goal against the
   live one" queued.
+- 2026-06-21 (run 41) — **Distribution: WS-09 closed — live in-page demo on
+  `/agents` → messaging 8 → 9/13, pivot 10 → 11/20.** Worst number is engine
+  (Spider 0.1852), but the engine lane is fully blocked today: both reasoning
+  levers sit in open PRs (#448 §4 #1 retrieval, #447 §4 #3 self-consistency)
+  and both evals are < 7 d (§5 — no back-to-back dispatch). So the clean
+  non-colliding slice is the lowest open funnel/distribution item, WS-09's
+  deferred demo half (WS-07 page now exists → #430 collision cleared). Added a
+  **gate-honest, server-rendered** demo to `/agents`: the wedge end to end —
+  typed `agent_memory` rows → the English goal → the **compiled `GROUP BY`
+  SQL** → the result table a vector store structurally can't return. All
+  server-rendered (crawlable / no-JS, AEO) per SK-PIVOT-004 (type + brand
+  tables, no screenshot/video); the "Run this query" button replays a pulse
+  and fires `agents.demo_run_clicked` (GLOBAL-024 demand signal). No open
+  `/v1/ask` call — fixture-backed, pre-alpha-honest. **Δ:** WS-09 🟡 1/2 → ✅
+  2/2; `/agents` shows the claim *and* the proof. **KPI:** onboarding (UX);
+  **none degraded** — frontend-only, additive, zero engine/chain/scorer/perf
+  touch, BIRD 06-19 + Spider 06-17 untouched. Astro check 0 err, web 127
+  tests green, tsc clean. Artifact: the `/agents` demo round-trip queued.
 - 2026-06-21 (run 40) — **Engine: self-consistency *temperature-sampling half*
   shipped (`SK-QUAL-017` follow-on) — the §4 #3 lever is now wired end-to-end
   bar the runner main loop.** No dispatch (BIRD 06-19 + Spider 06-17 both < 7 d,
@@ -114,50 +132,17 @@ prod-wiring/dispatch half, EX delta next canonical run.
   reach consensus; injected `plan` ⇒ offline-tested). **Δ:** §4 #3 +sampling-half;
   only the runner `--self-consistency N` wiring + dispatch remain. KPI **engine
   quality**; none degraded; `@nlqdb/llm` 186 → 189 + eval 19 → 21 green.
-- 2026-06-21 (run 39) — **Engine (agent-memory wedge): E-04 TTL-sweep core
-  shipped (`SK-PIVOT-011`)** — pure `apps/api/src/memory/expire.ts`:
-  `buildExpirySweep` (deterministic parameterised `DELETE FROM facts WHERE
-  expires_at < $1`, never LLM-composed) + `orchestrateSweep` (memory-preset DBs
-  only, per-DB failure isolation). Engine lane blocked (both evals < 7 d; PR #444
-  owned §4 #3 sampling), so picked the lowest open engine-track item. **Δ:** E-04
-  ⬜ → sweep core 🟡 (7 cases); apps/api memory tests 18 → 25. KPI engine
-  quality / onboarding; none degraded (no prod import, baselines + perf untouched).
-- 2026-06-21 (run 39) — **Engine: similarity-retrieved few-shot *pool-curation
-  masking half* shipped (`SK-LLM-041` follow-on, T23)** — `maskSchemaIdentifiers`
-  / `maskWithSchema` fold schema table/column words → `col` (reusing exported
-  `schema-prune.ts::schemaTokens`), the DAIL §4.1 cross-domain step value-masking
-  can't reach alone. Proven offline: two same-shape questions over *unrelated*
-  schemas → identical skeleton (similarity 1 vs < 1 value-only). **Δ:** §4 #1
-  core → **+ pool-curation mask**; `@nlqdb/llm` 186 → 191 (16 few-shot cases).
-  KPI engine quality; none degraded (no prod import, baselines + perf untouched).
-- 2026-06-21 (run 38) — **Engine: similarity-retrieved few-shot deterministic
-  core shipped (`SK-LLM-041`, T23) — the §4 #1 retrieval half of DAIL-SQL
-  ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) that T9 left.** New
-  pure `few-shot-select.ts`: value **masking** (`val`) + masked-token Jaccard
-  `questionSimilarity` + stable top-k `selectExemplars` (drops zero-similarity,
-  ties → earliest). Proven offline by the cross-domain-twin-beats-value-distractor
-  fixture. Staged ahead of the pool + index + `buildPlanUser` wiring (T9-ablation-
-  gated). **Δ:** §4 #1 backlog → retrieval core shipped (11 unit cases);
-  `@nlqdb/llm` 175 → 186 tests. KPI engine quality; none degraded (no prod
-  import, baselines + perf untouched). Artifact queued.
-- 2026-06-21 (run 37) — **Engine: self-consistency *execution half* shipped
-  (`SK-QUAL-017` follow-on) — the tissue between the vote core (run 34) and the
-  runner.** `majorityVote` needs each candidate's **rows**: added
-  `score.ts::executeRows` (SQL → rows, shares `scoreOne`'s SQLite path) +
-  `self-consistency.ts::voteOverSamples` (executes each sample via an *injected*
-  executor, then votes — pure ⇒ offline-tested; the §5 "separate code path").
-  **Δ:** §4 #3 vote-core → **+ execution half**; only the sampling half + dispatch
-  remain; 239 eval tests (was 232). KPI engine quality; none degraded. Artifact
-  queued.
-- 2026-06-21 (run 37) — **Engine-track finding (SK-PIVOT-010): E-06's
-  anon-`/agents`-CreateForm preset on-ramp is infeasible — redirected to the
-  authed create surface.** The on-ramp can't work across **three** auth
-  boundaries (`POST /v1/databases` requireSession + `MEMORY_PRESET`-gated;
-  `/v1/memory/remember` rejects anon+pk_live; CreateForm anon-only by contract,
-  SK-ANON-008); moved to the **authed** create surface, blocked on
-  `MEMORY_PRESET=1` in prod. **Δ:** a finding resizes a backlog lever before a
-  broken on-ramp ships (run-32 precedent). Docs-only; nothing engine touched.
-  KPI engine quality / onboarding; none degraded. Artifact queued.
+- 2026-06-21 (runs 37–39) — engine + agent-memory staging wave (all offline,
+  BIRD 06-19 + Spider 06-17 untouched, no prod import; full detail in the
+  verification log + worksheets): **run 39** E-04 TTL-sweep core (`SK-PIVOT-011`,
+  pure `expire.ts::buildExpirySweep`+`orchestrateSweep`, `facts`-only `DELETE`,
+  per-DB isolation; apps/api memory 18→25) **and** §4 #1 few-shot *pool-curation
+  mask* (`SK-LLM-041`, `maskSchemaIdentifiers`/`maskWithSchema`; `@nlqdb/llm`
+  186→191); **run 38** §4 #1 retrieval core (`SK-LLM-041`, `few-shot-select.ts`
+  value-mask + Jaccard + top-k; 175→186); **run 37** §4 #3 self-consistency
+  execution half (`SK-QUAL-017`, `executeRows`+`voteOverSamples`; 239 eval) +
+  the SK-PIVOT-010 finding (E-06 anon on-ramp infeasible across 3 auth
+  boundaries → authed surface). KPI engine quality / onboarding; none degraded.
 - 2026-06-20 (run 36) — **WS-07 closed: `/agents` conversion CTA + GLOBAL-024 demand signal → messaging 7 → 8/13, pivot 9 → 10/20.** Memory-shaped "try this query" button seeds `nlqdb_draft` (SK-ANON-011), fires `agents.try_query_clicked` (GLOBAL-024) → `/app/new`; `Agents` Topnav + P2-keyed `/vs` cross-links. 127 tests green; additive markup. KPI onboarding; none degraded.
 - 2026-06-20 (run 35) — **Engine: self-consistency vote core shipped** (`SK-QUAL-017`, §4 #3) — pure `majorityVote` + `fingerprintRows` cluster N executed plans by their **result set** (deterministic ties → earliest), staged ahead of the sampling half (greedy `SK-LLM-024` untouched). 12 unit cases; KPI engine quality, none degraded; 232 eval tests (was 220). Artifact queued.
 - 2026-06-20 (run 34) — **Engine (memory write-path): fail-loud TTL gap fixed** (`validateRememberInput` silently dropped a TTL on non-`facts` kinds, GLOBAL-012; now rejected). `remember.test.ts` 16 → 18; KPI engine quality / onboarding, none degraded.
