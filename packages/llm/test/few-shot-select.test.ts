@@ -60,7 +60,10 @@ describe("maskWithSchema", () => {
     // Value-only masking leaves the domain nouns (albums/artist vs
     // employees/company) different; schema masking folds them to `col` so the
     // two structurally-identical questions over unrelated schemas read alike.
-    const goal = maskWithSchema("How many albums does the artist named 'Queen' have?", ALBUM_SCHEMA);
+    const goal = maskWithSchema(
+      "How many albums does the artist named 'Queen' have?",
+      ALBUM_SCHEMA,
+    );
     const twin = maskWithSchema(
       "How many employees does the company named 'Acme' have?",
       COMPANY_SCHEMA,
@@ -80,7 +83,10 @@ describe("maskWithSchema", () => {
     // The full DAIL retrieval shape: goal + each pool row pre-masked against
     // their own schema, then ranked. The cross-domain twin (different schema,
     // same skeleton) beats a same-schema row of a different shape.
-    const goal = maskWithSchema("How many albums does the artist named 'Queen' have?", ALBUM_SCHEMA);
+    const goal = maskWithSchema(
+      "How many albums does the artist named 'Queen' have?",
+      ALBUM_SCHEMA,
+    );
     const pool: Exemplar<string>[] = [
       {
         question: maskWithSchema("List the title of every album by the artist", ALBUM_SCHEMA),
