@@ -62,4 +62,12 @@ describe("COMPETITORS data integrity", () => {
   test("competitorBySlug returns undefined for unknown slug (404 path)", () => {
     expect(competitorBySlug("definitely-not-a-real-competitor")).toBeUndefined();
   });
+
+  // WS-07: the /vs template cross-links /agents on exactly the
+  // agent-memory cluster, keyed on the P2 persona. Pin that membership so
+  // the cross-link stays scoped to the four memory comparisons.
+  test("WS-07: the agent-memory cluster is the P2-agent-builder persona", () => {
+    const p2 = COMPETITORS.filter((c) => c.persona === "P2 agent builder").map((c) => c.slug);
+    expect(new Set(p2)).toEqual(new Set(["mem0", "zep", "letta", "langmem"]));
+  });
 });

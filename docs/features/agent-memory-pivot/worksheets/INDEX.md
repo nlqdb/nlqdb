@@ -60,7 +60,7 @@ swap.
 | [04](WS-04-mcp-framing.md) ✅ | MCP tool + package + docs framing → "analytical memory" | low | 1 | — | — |
 | [05](WS-05-carousel-slides.md) ✅ | Carousel: analytics-over-agent-memory slides | low | 1 | — | — |
 | [06](WS-06-capability-matrix.md) ✅ | Mem0 \| Zep \| Letta \| nlqdb capability matrix (new surface) — data ✅ + render ✅ | med | ~2 | 01 | — |
-| [07](WS-07-agents-landing.md) | Dedicated `/agents` front door | med | ~3 | 06 | — |
+| [07](WS-07-agents-landing.md) ✅ | Dedicated `/agents` front door | med | ~3 | 06 | — |
 | [08](WS-08-og-images.md) | On-brand OG / social images for the wedge surfaces | low | ~2 | 07 | — |
 | [09](WS-09-blog-and-demo.md) | "Database, not a vector store" blog + live in-page demo | med | ~2 | 06 | — |
 | [10](WS-10-fsl-selfhost-messaging.md) ✅ | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix already shipped in the pivot PR) | low | 1 | — | — |
@@ -86,7 +86,7 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 - [x] WS-04 — MCP framing (2026-06-19, run 24 — branch `claude/vibrant-newton-rk77n7`)
 - [x] WS-05 — carousel slides (2026-06-20, run 26 — branch `claude/vibrant-newton-8gbdxc`; 2 analytics-over-memory slides: `read-agent-memory-by-category` GROUP BY + `read-agent-memory-top-recalled` top-N)
 - [x] WS-06 — capability matrix: **data ✅** (2026-06-20, run 27 — `apps/web/src/data/agentMemoryMatrix.ts` + test, branch `claude/vibrant-newton-s9e2r2`); **render ✅** (2026-06-20, run 28 — `apps/web/src/components/AgentMemoryMatrix.astro`, branch `claude/vibrant-newton-rldywf`)
-- [ ] WS-07 — `/agents` landing (🟡 in progress: run 1 skeleton+hero 2026-06-20 #430; run 2 matrix+moat+FSL band 2026-06-20 branch `claude/vibrant-newton-23gz7c`; run 3 CTA+demand-signal remaining)
+- [x] WS-07 — `/agents` landing ✅ (run 1 skeleton+hero 2026-06-20 #430; run 2 matrix+moat+FSL band 2026-06-20 branch `claude/vibrant-newton-23gz7c`; run 3 CTA+demand-signal 2026-06-20 branch `claude/vibrant-newton-r3gupc` — `agents.try_query_clicked` GLOBAL-024 + Topnav `Agents` link + P2-keyed `/vs` cross-link). Unblocks E-06.
 - [ ] WS-08 — OG / social images
 - [ ] WS-09 — blog + live demo (🟡 1/2 — blog draft ✅ 2026-06-20 run 30, branch `claude/vibrant-newton-wah6ow`; live `/agents` demo pending WS-07)
 - [x] WS-10 — FSL self-host messaging (2026-06-20, run 28 — branch `claude/vibrant-newton-fh8mgw`; pricing self-host band + README "Models & plans" self-host line, FSL-accurate, no turnkey-image claim per WS-11 note)

@@ -38,7 +38,7 @@ copy with a real tool to point at), etc.
 | [E-03](E-03-memory-scoping.md) | Per-agent / per-end-user / per-thread scoping (the security-critical slice) | high | ~2 | E-01 | — | — |
 | [E-04](E-04-ttl-decay.md) | TTL + cron sweep — `expires_at` on memory rows | low | 1 | E-01 | — | — |
 | [E-05](E-05-hybrid-recall-pgvector.md) | Hybrid recall — pgvector + `nlqdb_recall` (closes the honest gap) | high | multi | E-01 | infra-gated (Neon pgvector + free embeddings) | sharpens WS-03 |
-| [E-06](E-06-agents-createform-preset.md) | `/agents` CreateForm uses the `agent_memory_v1` preset by default | low | 1 | E-01, WS-07 | — | — |
+| [E-06](E-06-agents-createform-preset.md) | `/agents` CreateForm uses the `agent_memory_v1` preset by default | low | 1 | E-01 ✅, WS-07 ✅ | — | now unblocked |
 | [E-07](E-07-memory-workload-analyzer.md) | Workload-analyzer rule: memory DB above N facts → recommend ClickHouse | med | multi | E-01 | depends on `multi-engine-adapter` / `engine-migration` features (Phase 3) | — |
 
 **Why this order:** E-01 anchors everything (every later slice writes to or

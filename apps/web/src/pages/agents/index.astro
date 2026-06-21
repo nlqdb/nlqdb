@@ -10,10 +10,17 @@ import Base from "../../layouts/Base.astro";
 // story even though the sitewide lead strings (Hero.astro, README,
 // llms.txt) stay gated to WS-13.
 //
-// Run 1 = skeleton + hero + AEO direct-answer. Run 2 (this edit) =
-// the WS-06 capability matrix + the typed-plan-trust-boundary moat +
-// the FSL self-host / BYO-key band (FSL-accurate per WS-10). The
-// waitlist CTA + demand-signal event (GLOBAL-024) land in run 3.
+// Run 1 = skeleton + hero + AEO direct-answer. Run 2 = the WS-06
+// capability matrix + the typed-plan-trust-boundary moat + the FSL
+// self-host / BYO-key band (FSL-accurate per WS-10). Run 3 (this edit) =
+// the conversion CTA — a memory-shaped "try this query" button that
+// seeds the anonymous-create draft and fires the GLOBAL-024
+// demand-signal event, mirroring the proven /vs + /solve pattern.
+
+// Memory-shaped demo goal — the analytical-over-memory wedge (a GROUP BY
+// a vector store can't run). Mirrors the /solve analytical sibling so the
+// seeded draft lands the agent-builder on the read-side story.
+const demoGoal = "Count of facts my agent logged per category this month, highest first";
 ---
 
 <Base
@@ -22,7 +29,7 @@ import Base from "../../layouts/Base.astro";
   canonical="/agents"
 >
   <div class="page">
-    <Topnav />
+    <Topnav current="agents" />
 
     <main class="agents">
       <header class="agents__head">
@@ -157,15 +164,51 @@ import Base from "../../layouts/Base.astro";
         </ul>
       </section>
 
+      <section class="agents__cta" aria-labelledby="cta-title">
+        <h2 class="agents__h2" id="cta-title">Give your agent memory it can query.</h2>
+        <p class="agents__cta-lede">
+          Start from a goal, not a schema. nlqdb provisions the database,
+          your agent writes typed rows as it learns, and you ask in English.
+        </p>
+        <button
+          type="button"
+          class="agents__try-btn"
+          data-try-goal={demoGoal}
+        >
+          Try: &ldquo;{demoGoal}&rdquo; &rarr;
+        </button>
+        <p class="agents__cta-meta">
+          No sign-in. The anonymous database lasts 72 hours; adopt it with one
+          click if you keep it. Or <a href="/app/new">start with your own goal</a>.
+        </p>
+      </section>
+
       <p class="agents__more">
-        A live in-page demo lands here next. For now, see the
-        <a href="/vs">side-by-side comparisons</a> or the
+        See the <a href="/vs">side-by-side comparisons</a> or the
         <a href="/manifesto#not-title">manifesto</a>.
       </p>
     </main>
 
     <Footer />
   </div>
+
+  <script>
+    // "Try this query" → seed the anonymous-create input via the same
+    // `nlqdb_draft` localStorage slot CreateForm rehydrates from
+    // (SK-ANON-011), emit the GLOBAL-024 demand signal, then navigate.
+    // No URL param so the goal can't be sniffed from referrer / logs —
+    // mirrors the /vs + /solve "try this query" pattern exactly.
+    import { emit } from "../../lib/logsnag";
+    import { saveDraft } from "../../lib/prompt-storage";
+    document.querySelectorAll<HTMLButtonElement>(".agents__try-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const goal = btn.dataset["tryGoal"] ?? "";
+        if (goal) saveDraft(goal);
+        emit("agents.try_query_clicked", { goal });
+        location.assign("/app/new");
+      });
+    });
+  </script>
 </Base>
 
 <style is:global>
@@ -383,6 +426,52 @@ import Base from "../../layouts/Base.astro";
 
   .agents__fsl-list strong {
     color: var(--fg);
+  }
+
+  .agents__cta {
+    margin: 0 0 clamp(32px, 5vw, 48px);
+    padding: clamp(24px, 3.5vw, 36px);
+    border: 2px solid var(--accent);
+    background: var(--bg-elev);
+    box-shadow: var(--shadow-hard-accent);
+  }
+
+  .agents__cta-lede {
+    margin: 0 0 20px;
+    color: var(--fg-dim);
+    font-size: clamp(15px, 1.7vw, 17px);
+    max-width: 60ch;
+    line-height: 1.6;
+  }
+
+  .agents__try-btn {
+    appearance: none;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: clamp(14px, 1.7vw, 16px);
+    color: var(--bg);
+    background: var(--accent);
+    border: 2px solid var(--accent);
+    padding: 12px 20px;
+    line-height: 1.4;
+    text-align: left;
+    max-width: 100%;
+  }
+
+  .agents__try-btn:hover {
+    background: var(--bg);
+    color: var(--accent);
+  }
+
+  .agents__cta-meta {
+    margin: 16px 0 0;
+    font-size: 14px;
+    color: var(--fg-muted);
+    line-height: 1.6;
+  }
+
+  .agents__cta-meta a {
+    color: var(--accent);
   }
 
   .agents__more {

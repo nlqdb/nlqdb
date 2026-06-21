@@ -1,6 +1,6 @@
 # WS-07 — Dedicated `/agents` front door
 
-**Status:** 🟡 in progress (run 2/3 — matrix + moat + FSL band shipped 2026-06-20; run 1 skeleton + hero shipped 2026-06-20)
+**Status:** ✅ done (run 3/3 — CTA + demand signal shipped 2026-06-20; run 2 matrix + moat + FSL band 2026-06-20; run 1 skeleton + hero 2026-06-20)
 **Sequence:** 7 of 13 · **Risk:** med · **Runs:** ~3 · **Prereqs:** WS-06 ✅ · **Gate:** none
 
 ## Goal
@@ -40,18 +40,23 @@ dedicated `/agents` row to the funnel once traffic lands. `Pivot:` boolean
    (Fortune) + Cortex-Analyst (Snowflake) receipts, and the FSL-1.1 / BYO-key /
    no-per-call-fees band (FSL-accurate per WS-10). `apps/web/src/pages/agents/index.astro`
    only — additive, no `<img>`.
-3. **Run 3 — CTA + demand signal.** Waitlist CTA + an agent-memory CreateForm
-   variant; fire the `GLOBAL-024` typed event on CTA click (reuse the
-   `vs.try_query_clicked` pattern). Link `/agents` from Topnav and the `/vs`
-   memory pages.
-4. `bun run --filter @nlqdb/web check` + test + Lighthouse parity.
+3. ✅ **Run 3 — CTA + demand signal** (2026-06-20). Added the conversion CTA to
+   `apps/web/src/pages/agents/index.astro`: a memory-shaped "try this query"
+   button (`agents.try_query_clicked`, GLOBAL-024) that seeds the
+   `nlqdb_draft` slot and navigates to `/app/new` — the proven `/vs` + `/solve`
+   pattern, not a new CreateForm variant (P5: reuse the established path). Added
+   the `Agents` link to `Topnav` (`current="agents"`) and a P2-keyed `/agents`
+   cross-link in the `/vs` CTA so it renders on exactly the four memory
+   comparisons (Mem0/Zep/Letta/LangMem). `competitors.test.ts` pins that
+   persona membership.
+4. ✅ `bun run --filter @nlqdb/web check` (0/0/0) + 127 tests green.
 
 ## Done when
 
-- [ ] `/agents` builds, on-brand, with hero + matrix + moat + FSL band + CTA.
-- [ ] Own SEO/OG/JSON-LD; demand-signal event on CTA; linked from nav + memory `/vs` pages.
-- [ ] Sitewide lead strings (`Hero.astro`, README, llms.txt) untouched.
-- [ ] INDEX tracker + status ticked.
+- [x] `/agents` builds, on-brand, with hero + matrix + moat + FSL band + CTA.
+- [x] Own SEO/OG/JSON-LD; demand-signal event on CTA; linked from nav + memory `/vs` pages.
+- [x] Sitewide lead strings (`Hero.astro`, README, llms.txt) untouched.
+- [x] INDEX tracker + status ticked.
 
 ## Artifact
 

@@ -5,6 +5,29 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 36) — helpful-answer: "run a GROUP BY over your agent's memory in 30s, no signup" (r/AI_Agents / r/LocalLLaMA)
+
+**Where:** a real reply on a "how do I get my agent to *report* over its memory,
+not just recall?" thread. nlqdb mentioned once, with the live try-it link.
+
+**Body:**
+
+> *Recall* (find the relevant past note) → a vector store is fine. *Analytics
+> over* memory — "how many times did this user ask about pricing this month,"
+> "top 5 tools I called this week" — is a `GROUP BY`, and a similarity index has
+> no query planner, so you end up making the model do arithmetic over search
+> hits. Unreliable and unauditable.
+>
+> The fix is making the memory a real database. nlqdb does this: the agent
+> writes typed rows, then asks in English and gets SQL back (compiled through a
+> typed-plan boundary; it shows the exact query — no raw LLM SQL hits your
+> data). You can try the analytical side without signing up — a one-click "try
+> this query" on https://nlqdb.com/agents seeds a `GROUP BY` over a sample
+> agent-memory table; the anonymous DB lasts 72h.
+>
+> Honest scope: native vector similarity is a later opt-in slice — pair it with
+> your existing recall layer, don't replace it.
+
 ## 2026-06-20 (run 35) — engine-lesson: "Why we vote on the answer, not the SQL" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series.
@@ -173,52 +196,19 @@ r/AI_Agents and r/LocalLLaMA.
 > Front door: https://nlqdb.com/agents · MCP server so your agent discovers it
 > at tool-list time. Pre-alpha, closed beta — feedback very welcome.
 
-**Note:** hold until WS-07 run 3 ships the CTA so the Show HN lands on a
-complete page (hero + matrix + moat + waitlist), not the run-1 skeleton.
+**Note:** **ready to post** — WS-07 run 3 shipped the CTA (run 35), so the page
+is now complete (hero + matrix + moat + FSL band + live "try this query" CTA).
+The run-1 skeleton hold is lifted.
 
 ## 2026-06-20 (run 30) — "Give your AI agent a real memory database in one call" (Show HN / dev.to)
 
-**Where:** a Show-HN-style post (cross-post dev.to / r/AI_Agents) anchored on
-the now-shipped one-call on-ramp — the *action*, where the run-29 page is the
-*schema reference*. Pair them: this links to that.
-
-**Title:** Show HN: One API call gives your agent a queryable memory database (not a vector blob)
-
-**Body (lead with the call, end with the query):**
-
-> Agent memory usually means a vector store: you can recall fuzzy matches, but
-> you can't ask "how many preferences did this user state this month?" — that's
-> a `GROUP BY`, and a vector index has no query planner.
->
-> nlqdb now ships an opt-in memory preset. One call, no schema design, no
-> migration:
->
-> ```
-> POST /v1/databases   { "preset": "agent_memory_v1" }
-> ```
->
-> You get four plain Postgres tables (`facts` / `episodes` / `entities` /
-> `entity_facts`), scoped by `agent_id` / `end_user_id` / `thread_id`, with the
-> read indexes already in place. Then your agent talks to it in English and gets
-> SQL back:
->
-> > *"top 5 things this user told me to remember, most-mentioned first"*
-> > → `SELECT content, count(*) … GROUP BY content ORDER BY count(*) DESC LIMIT 5`
->
-> The schema is deterministic and versioned — same four tables every time, zero
-> LLM tokens spent designing it — and it widens (add a column) but never renames
-> in place, so your queries keep working as it grows.
->
-> *(Honest scope: vector similarity over `facts.embedding` is a later opt-in
-> slice; today the wedge is the analytical side — the part a vector store
-> structurally can't do.)*
-
-**Why it converts:** answers the P2 agent-builder's two objections in the first
-two lines — "I don't want to design a schema" (one call, deterministic) and
-"recall isn't analytics" (the `GROUP BY` example). The call + the query are the
-whole pitch; no diagram needed.
-
----
+**Where:** a Show-HN-style post (cross-post dev.to / r/AI_Agents) anchored on the
+one-call memory-preset on-ramp (`POST /v1/databases { "preset":
+"agent_memory_v1" }` → four plain Postgres tables, deterministic, scoped). The
+*action* companion to the run-29 schema-reference page; this links to that.
+**Folded into** the run-30 Show HN above (same `GROUP BY`-over-memory pitch) —
+keep only if the founder wants a separate API-first angle; full draft in git
+history.
 
 ## 2026-06-20 (run 30) — launch post: "Why agent memory should be a database, not a vector store" (HN / lobste.rs / dev.to)
 
