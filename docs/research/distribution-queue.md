@@ -61,7 +61,7 @@ the discipline of bot-filtering your own metrics before you believe them.
 ## 2026-06-21 (runs 43–44) — engine-lesson: "Your benchmark should look like your users' database, not a research paper's" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`); a build-in-public note on
-measuring NL→SQL on the schemas users actually create.
+measuring NL→SQL on the schemas users create.
 
 **Title:** Your benchmark should look like your users' database, not a research paper's
 
@@ -71,7 +71,7 @@ measuring NL→SQL on the schemas users actually create.
 > neither looks like what our users build: they're sprawling academic schemas
 > with dozens of cryptic tables; our users spin up a 4–8-table side-project DB
 > or an agent-memory store. A 52% on BIRD tells you how you'd do on a research
-> paper's data — not on the query a real user just typed.
+> paper's data — not on the query a user just typed.
 >
 > So we wrote our own benchmark, persona-bench: NL questions over the two
 > schema shapes our personas build — a solo-builder SaaS (plans/users/orders:
@@ -86,8 +86,8 @@ measuring NL→SQL on the schemas users actually create.
 > and returns a non-empty, hand-verified result. 12/12. Prove the ruler is
 > straight before you measure anything with it.
 >
-> Then we wired it into the eval runner without spending a measurement window.
-> The runner scores BIRD and Spider by opening a SQLite file per question, so
+> Then we wired it into the runner without spending a measurement window. It
+> scores BIRD/Spider by opening a SQLite file per question, so
 > persona-bench now materialises its schemas to a real `.sqlite` on demand — one
 > new dataset branch, BIRD/Spider untouched. `--dataset persona-bench` now scores
 > our free chain against the queries our users actually type.
@@ -95,7 +95,7 @@ measuring NL→SQL on the schemas users actually create.
 ## 2026-06-21 (run 43) — build-in-public: "We put agent memory front and centre on the home page" (X / Bluesky / dev.to)
 
 **Where:** X / Bluesky build-in-public note + dev.to; the positioning companion
-to the `/agents` launch. Links the reweighted home → `/agents`.
+to the `/agents` launch.
 
 **Title:** We moved agent memory above the fold — without touching the wordmark
 
@@ -107,19 +107,17 @@ to the `/agents` launch. Links the reweighted home → `/agents`.
 > just recall.* A vector store hands back the top-k similar chunks; nlqdb gives
 > the agent a real database, so it can `GROUP BY`, `JOIN`, and aggregate over
 > what it remembered. The band carries the same Mem0 · Zep · Letta · nlqdb
-> capability matrix from `/agents` — everyone recalls; only one column
-> aggregates.
+> capability matrix from `/agents` — everyone recalls; only one aggregates.
 >
 > The discipline we're keeping: this is **additive and reversible**. The hero
-> wordmark and tagline don't change — that's a deliberate, separate, founder-only
-> call. A positioning bet should be testable before it's permanent, so we
-> reorder and add, we don't rewrite the identity. The home page stays
-> illustration-free, 100/100/100/100, and works with JavaScript off — the
-> `/agents` link is a plain anchor; the signal is fire-and-forget on top.
+> wordmark and tagline don't change — a separate, founder-only call. A positioning
+> bet should be testable before it's permanent, so we reorder and add, we don't
+> rewrite the identity. The home page stays illustration-free, 100/100/100/100,
+> and works with JavaScript off — the `/agents` link is a plain anchor; the
+> signal rides fire-and-forget on top.
 
-**Why this advances the north-star:** onboarding (UX) — the agent-builder who
-lands on `nlqdb.com` now reads the wedge first, one click from `/agents`
-(GLOBAL-036 + WS-12).
+**Why this advances the north-star:** onboarding (UX) — the agent-builder on
+`nlqdb.com` now reads the wedge first, one click from `/agents` (GLOBAL-036 + WS-12).
 
 ## 2026-06-21 (run 43) — engine-lesson: "Ship your LLM lever as a default-off ablation — measure before you adopt" (dev.to / lobste.rs)
 

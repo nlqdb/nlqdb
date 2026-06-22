@@ -29,7 +29,7 @@ when-to-load:
   - `src/baseline.ts` + `src/significance.ts` — baseline diff + McNemar exact-binomial / Edwards' χ² (`SK-QUAL-006`)
   - `src/emit.ts` — POST report to `/v1/events/eval`
   - `src/analyze-mismatches.ts` — mismatch error-class classifier (`SK-QUAL-014`); `src/column-coverage.ts` — column-prune recall-ceiling harness (`SK-QUAL-015`); `src/self-consistency.ts` — `majorityVote` + `voteOverSamples` orchestration + `score.ts::{fingerprintRows,executeRows}` (`SK-QUAL-017`)
-  - `src/datasets/{bird-mini,spider2-lite,persona-bench}.ts` — HF BIRD loader; Spider 2.0-lite loader + gold-CSV hydration + external-knowledge injection (`SK-QUAL-007`/`008`/`016`); persona-bench ICP fixture + `loadPersonaBench` SQLite materialiser (`SK-QUAL-018`)
+  - `src/datasets/{bird-mini,spider2-lite,persona-bench}.ts` — HF BIRD loader; Spider 2.0-lite loader + gold-CSV hydration + external-knowledge injection (`SK-QUAL-007`/`008`/`016`); persona-bench ICP fixture + `loadPersonaBench` materialiser (`SK-QUAL-018`)
   - `src/output.ts` + `src/checkpoint.ts` — JSON report writer; resumable checkpoint (`SK-QUAL-011`)
   - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
 - `.github/workflows/quality-eval-bird-mini.yml` — BIRD: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke` (smoke = sampled + resumable per `SK-QUAL-011`); `include_agentic_frontier` → `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`; `self_consistency`/`sc_temperature` → smoke `--self-consistency N --sc-temperature T` per `SK-QUAL-017`
@@ -226,17 +226,14 @@ default = greedy). EX delta is the greedy-vs-SC smoke gap on the first N>=2 disp
 ### SK-QUAL-018 — persona-bench: nlqdb's own ICP-shaped NL→SQL benchmark, gold-executable fixture first
 
 **Body:** [`decisions/SK-QUAL-018-persona-bench.md`](./decisions/SK-QUAL-018-persona-bench.md).
-The user-relevant third quality number `GLOBAL-027` §Lifecycle kept as agent
-work: NL→gold-SQL over the schemas `personas.md` builds. v0
-(`src/datasets/persona-bench.ts`) ships the **data half** — `saas_app` (§P1) +
-`agent_memory` (§P2, the GLOBAL-036 wedge) as inline DDL+seed, 12 questions
-with time-stable literal-date gold SQL tagged by `SK-QUAL-014` bucket, and the
-**gold-executability invariant** (`bun persona-bench` + test: **12/12 execute,
-non-empty**). The **runner-wiring half** then makes it a dispatchable
-`EvalDataset`: `loadPersonaBench` materialises each schema to SQLite on demand
-(`--dataset persona-bench [--persona P1|P2]`); additive new-branch only, BIRD/Spider
-byte-untouched, free-chain EX = next canonical dispatch (a `workflow_dispatch`
-job is the last remaining half).
+The third quality number `GLOBAL-027` §Lifecycle kept: NL→gold-SQL over the
+schemas `personas.md` builds. v0 (`persona-bench.ts`) ships
+the **data half** — `saas_app` (§P1) + `agent_memory` (§P2), 12 questions with
+time-stable literal-date gold + the **gold-executability invariant** (12/12
+execute, non-empty). The **runner-wiring half** then makes it a dispatchable
+`EvalDataset` — `loadPersonaBench` materialises each schema to SQLite on demand
+(`--dataset persona-bench [--persona P1|P2]`), additive new-branch (BIRD/Spider
+untouched); free-chain EX = next dispatch.
 
 ## GLOBALs governing this feature
 
