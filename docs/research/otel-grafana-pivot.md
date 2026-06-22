@@ -10,7 +10,7 @@
 > question is resolved.
 >
 > **Cross-refs:**
-> - [`docs/competitors.md`](../competitors.md) — the **canonical** competitor scan; the o11y-vendor detail this doc used to repeat lives there.
+> - [`docs/competitors.md`](../competitors.md) — canonical scan for the DB / NL-over-DB space (not o11y vendors; this doc owns that landscape).
 > - [`docs/architecture.md §0`](../architecture.md) — core values (Free, OSS, Simple, Effortless, Goal-first)
 > - [`docs/future/semantic-layer.md`](../future/semantic-layer.md) — same "exploratory, not yet promoted" template
 > - [`docs/features/observability/FEATURE.md`](../features/observability/FEATURE.md) — current OTel posture (we *emit* OTel; we don't *ingest* it)
@@ -36,9 +36,9 @@ it's also why it's a real pivot question, not an obvious yes.
 
 ## 2. The 2026 landscape — the two trends that matter
 
-Vendor-by-vendor detail (Grafana, Datadog, SigNoz, OpenObserve, Honeycomb,
-ClickStack, …) lives in [`competitors.md`](../competitors.md). Two trends are
-load-bearing for *this* decision:
+The per-vendor survey was trimmed as non-decision-load-bearing (D5). The two
+trends below are what bear on the decision; the OSS cohort and the storage-cost
+floor are named inline, the incumbents recur in §5 Option C:
 
 1. **OTel has neutralised instrumentation lock-in.** Every credible vendor now
    accepts OTLP. Differentiation has moved to *storage economics* and *query/UI
