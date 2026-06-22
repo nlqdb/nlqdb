@@ -110,8 +110,8 @@ dispatch (blocked today — both evals < 7 d, §5).
   copy was actively mis-teaching ChatGPT/Perplexity/Claude nlqdb's own API.
   **Δ (measured, before/after on the data file):** phantom-verb occurrences
   **10 → 0** across the 5 pages; corrected to the real trio
-  `nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe` (now 20 correct
-  mentions); 3 stale `MCP server with provisioning verbs` labels aligned to
+  `nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe` (+23 correct-tool
+  mentions added); 3 stale `MCP server with provisioning verbs` labels aligned to
   `MCP server (agent-callable)` (the label the 4 newer pages use). Locked by **2
   new `competitors.test.ts` invariants** (no `create_database` token; every
   `nlqdb_*` token in the SK-MCP-002 allowed set) — web tests **11 → 13**,
