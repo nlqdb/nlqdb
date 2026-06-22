@@ -73,33 +73,6 @@ the discipline of bot-filtering your own metrics before you believe them.
 > the stranger count leaves 1, it'll be because the model got good enough to
 > open the valve — and we'll have the honest baseline to prove it moved.
 
-## 2026-06-21 (run 44) — build-in-public: "We demoted three of our four personas on the home page. On purpose." (X / Bluesky / dev.to)
-
-**Where:** X / Bluesky thread + a short dev.to note on positioning discipline.
-
-**Title:** We demoted three of our four personas on our home page. On purpose.
-
-**Body:**
-
-> nlqdb is a database you talk to in English. For a while the home page tried
-> to be everything to everyone: solo builders, analysts, backend engineers,
-> AI-agent builders — four readers, four pitches, one muddy page.
->
-> We picked one. Agent memory is now the first thing you read after the hero:
-> a vector store recalls the top-k similar chunks; nlqdb gives your agent a
-> real database it can `GROUP BY`, `JOIN`, and aggregate over — the analysis a
-> similarity index structurally can't do. That's the wedge.
->
-> The other three personas didn't get deleted — they got a fold. Lower on the
-> page, under a quiet "Also works for solo builders, analysts, and backend
-> engineers" divider, sits the full general-purpose story (one tag replaces a
-> whole backend; pick any of eight surfaces). Present, honest, secondary.
->
-> The lesson we keep relearning: a home page that ranks its readers converts
-> the top one. A home page that treats them equally converts none. Reversible
-> too — it's a composition change, not a rewrite, so if the wedge is wrong we
-> reorder back in a commit. Positioning is a bet you should be able to unmake.
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -128,6 +101,7 @@ recovers any body.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 
+- run 44 — "We demoted three of our four personas on the home page. On purpose." (agent-memory wedge above the fold; other three folded under a quiet divider; reversible composition change, GLOBAL-036 + WS-12).
 - run 43 — "We moved agent memory above the fold — without touching the wordmark" (additive/reversible home band; Mem0·Zep·Letta·nlqdb matrix; GLOBAL-036 + WS-12).
 - run 42 — launch image "GROUP BY your agent's memory" (`og/agents.png` + four `vs-*.png` cards, SK-PIVOT-004; the `/agents` share card).
 - run 41 — "A live demo of analytical agent memory — the GROUP BY, and the SQL it ran" (fixture-backed `/agents` round-trip, no signup; typed-plan trust boundary).

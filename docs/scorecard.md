@@ -96,18 +96,18 @@ dispatch (blocked today — both evals < 7 d, §5).
   Artifact (step 3) deferred this run to avoid colliding with #462's in-flight
   full rewrite of `distribution-queue.md`; queue once #462 lands.
 - 2026-06-22 (run 46) — **D4 doc hygiene: `distribution-queue.md` net-shrunk
-  35.9 KB → 10.3 KB (−25.6 KB), back under the 20 KB cap.** Worst number is
+  35.9 KB → 9.1 KB (−26.8 KB), back under the 20 KB cap.** Worst number is
   engine (Spider 0.1852) but the engine lane is owned by the one open daily PR
   (#461, DAIL-SQL pool 10→12) and dispatch-gated (both baselines < 7 d, §5), and
   #458 owns the SDK lane — so no code lever was non-colliding today. Per the
   loop, the deliverable is the sanctioned D5/D4 cleanup. The queue had grown to
   35.9 KB (a clear D4 violation — not on the GLOBAL-028 exemption list) by
   keeping a dozen full drafts inline that already live in git; applied the file's
-  own collapse convention as a stated **two-draft rolling window** (runs 44–46
-  full, all ≤ 43 collapsed to title + gist). The 130 KB
+  own collapse convention as a stated **two-draft rolling window** (runs 45–46
+  full, all ≤ 44 collapsed to title + gist). The 130 KB
   `automated-icp-validation-plan-verification.md` was checked first and left
   untouched — it is **explicitly cap-exempt** per GLOBAL-029 (gutting it would
-  violate P1). **Δ:** queue −25.6 KB, under cap. **KPI:** onboarding/UX of the
+  violate P1). **Δ:** queue −26.8 KB, under cap. **KPI:** onboarding/UX of the
   autonomous loop (leaner agent-facing context per `/daily` run); **none
   degraded** — docs-only, zero engine/funnel/code touch, BIRD 06-19 + Spider
   06-17 untouched. Artifact: "We cap every doc at 20 KB — even the marketing
