@@ -228,12 +228,14 @@ default = greedy). EX delta is the greedy-vs-SC smoke gap on the first N>=2 disp
 **Body:** [`decisions/SK-QUAL-018-persona-bench.md`](./decisions/SK-QUAL-018-persona-bench.md).
 The third quality number `GLOBAL-027` §Lifecycle kept: NL→gold-SQL over the
 schemas `personas.md` builds. v0 (`persona-bench.ts`) ships
-the **data half** — `saas_app` (§P1) + `agent_memory` (§P2), 12 questions with
-time-stable literal-date gold + the **gold-executability invariant** (12/12
+the **data half** — `saas_app` (§P1) + `agent_memory` (§P2), now **20 questions**
+(batch 2 added the anti-join/negation + challenging multi-join shapes v0 lacked)
+with time-stable literal-date gold + the **gold-executability invariant** (20/20
 execute, non-empty). The **runner-wiring half** then makes it a dispatchable
 `EvalDataset` — `loadPersonaBench` materialises each schema to SQLite on demand
 (`--dataset persona-bench [--persona P1|P2]`), additive new-branch (BIRD/Spider
-untouched); free-chain EX = next dispatch.
+untouched); free-chain EX = next dispatch. Growth toward the 50–100-question
+target continues one batch per run.
 
 ## GLOBALs governing this feature
 
