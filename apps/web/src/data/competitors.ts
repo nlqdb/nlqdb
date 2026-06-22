@@ -103,10 +103,10 @@ export const COMPETITORS: Competitor[] = [
         note: "Supabase has SQL Editor + RLS; the diff/preview before destructive NL is unique to nlqdb.",
       },
       {
-        feature: "MCP server with provisioning verbs",
+        feature: "MCP server (agent-callable)",
         us: "shipped",
         them: "partial",
-        note: "Supabase MCP queries an existing DB; nlqdb's MCP can also create the DB.",
+        note: "Supabase MCP queries an existing DB; nlqdb's `nlqdb_query` materialises Postgres on first reference.",
       },
       { feature: "HTML embed element", us: "shipped", them: "no" },
       { feature: "Anonymous mode (try before sign-in)", us: "shipped", them: "no" },
@@ -134,7 +134,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Can my AI agent create a Supabase project the way it can create an nlqdb database?",
-        a: "Supabase's MCP server queries an existing project but doesn't provision one. nlqdb's MCP exposes `create_database` so an autonomous agent can stand up its own data layer end-to-end.",
+        a: "Supabase's MCP server queries an existing project but doesn't provision one. nlqdb's MCP exposes `nlqdb_query`, which materialises Postgres on first reference (no separate create-DB verb), so an autonomous agent can stand up its own data layer end-to-end.",
       },
     ],
     demo: {
@@ -203,7 +203,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Which one is better for an AI agent over MCP?",
-        a: "nlqdb ships an MCP server with `create_database`, `ask`, and `run` verbs. Vanna doesn't ship an MCP server today, so an agent has to wrap the Python SDK itself.",
+        a: "nlqdb ships an MCP server with `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe` — `nlqdb_query` materialises Postgres on first reference, so the agent never calls a separate create-DB verb. Vanna doesn't ship an MCP server today, so an agent has to wrap the Python SDK itself.",
       },
       {
         q: "Can I migrate from Vanna to nlqdb without rewriting my queries?",
@@ -258,7 +258,7 @@ export const COMPETITORS: Competitor[] = [
     faqs: [
       {
         q: "Can I use Mem0 for fuzzy facts and nlqdb for structured data?",
-        a: "Yes — they're complementary. Mem0 handles 'remember the user prefers Celsius', nlqdb handles 'list the user's orders this month'. Both can sit behind one MCP-aware agent; nlqdb's MCP server exposes `create_database` so the structured side is self-provisioned.",
+        a: "Yes — they're complementary. Mem0 handles 'remember the user prefers Celsius', nlqdb handles 'list the user's orders this month'. Both can sit behind one MCP-aware agent; nlqdb's MCP server exposes `nlqdb_query`, which materialises Postgres on first reference, so the structured side is self-provisioned.",
       },
       {
         q: "Is nlqdb a vector database?",
@@ -266,7 +266,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "How does my agent provision an nlqdb database autonomously?",
-        a: "The MCP server exposes `create_database` — your agent calls it with a goal in English, the server materialises Postgres + schema in one call, and returns connection metadata bound to the agent's tenant.",
+        a: "The MCP server exposes `nlqdb_query` — your agent calls it with a goal in English, the server materialises Postgres + schema on first reference, and returns the answer bound to the agent's tenant. There's no separate create-DB verb to call first.",
       },
       {
         q: "Does nlqdb support forget / TTL like Mem0?",
@@ -296,7 +296,7 @@ export const COMPETITORS: Competitor[] = [
       "You want destructive operations and schema changes diff-previewed before they apply, even when an English request triggered them.",
       "You want to embed the answer inside your own product via one HTML element, not link out to a hosted admin UI.",
       "You're spinning up a new feature or service that needs its own database — nlqdb provisions Postgres on the first query.",
-      "An AI agent needs to provision its own database via MCP — `create_database` is the verb Outerbase doesn't ship.",
+      "An AI agent needs to provision its own database via MCP — `nlqdb_query` materialises Postgres on first reference, the on-ramp Outerbase doesn't ship.",
     ],
     whenChooseThem: [
       "You already run a production Postgres / MySQL / Snowflake / BigQuery you can't migrate.",
@@ -320,10 +320,10 @@ export const COMPETITORS: Competitor[] = [
         note: "Outerbase's spreadsheet editor confirms row edits inline; the NL-side diff preview is unique to nlqdb.",
       },
       {
-        feature: "MCP server with provisioning verbs",
+        feature: "MCP server (agent-callable)",
         us: "shipped",
         them: "no",
-        note: "Outerbase has no public MCP server today; nlqdb ships `create_database`, `ask`, `run`.",
+        note: "Outerbase has no public MCP server today; nlqdb ships `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` — `nlqdb_query` materialises Postgres on first reference.",
       },
       {
         feature: "HTML embed element (in-product render)",
@@ -379,7 +379,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Can my AI agent provision an Outerbase-managed DB the way it provisions an nlqdb database?",
-        a: "Outerbase is admin-UI shaped — it doesn't expose a `create_database` primitive an autonomous agent can call. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `create_database`, `ask`, and `run` so a Claude / Cursor / Cline agent stands up its own data layer end-to-end.",
+        a: "Outerbase is admin-UI shaped — it doesn't expose a provisioning primitive an autonomous agent can call. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe` — `nlqdb_query` materialises Postgres on first reference (no separate create-DB verb) — so a Claude / Cursor / Cline agent stands up its own data layer end-to-end.",
       },
       {
         q: "Is nlqdb HIPAA or SOC 2 compliant like Outerbase?",
@@ -405,7 +405,7 @@ export const COMPETITORS: Competitor[] = [
       "You need a new database — nlqdb provisions Postgres on the first query.",
       "You want destructive operations and schema changes diff-previewed before they apply, even when triggered by English.",
       "You want one HTML element rendering the answer in-product, not a hosted analytics surface.",
-      "You need an agent calling MCP `create_database` — Wren AI's skills query an existing warehouse.",
+      "An agent provisions its DB via MCP `nlqdb_query` — Wren AI queries an existing warehouse.",
     ],
     whenChooseThem: [
       "You already run a production warehouse (BigQuery, Snowflake, PostgreSQL, DuckDB, …) you can't migrate.",
@@ -441,10 +441,10 @@ export const COMPETITORS: Competitor[] = [
         note: "Wren AI's Apache DataFusion engine documents 22+ data sources including PostgreSQL, BigQuery, Snowflake, and DuckDB. nlqdb is Postgres-first in Phase 1; ClickHouse lands on the workload-analyser path.",
       },
       {
-        feature: "MCP server with provisioning verbs",
+        feature: "MCP server (agent-callable)",
         us: "shipped",
         them: "no",
-        note: "Wren AI ships a Python SDK, LangChain/LangGraph bindings, and skill bundles for Claude Code; no public MCP primitive for `create_database`.",
+        note: "Wren AI ships a Python SDK, LangChain/LangGraph bindings, and skill bundles for Claude Code; no public MCP server. nlqdb's `nlqdb_query` materialises Postgres on first reference.",
       },
       {
         feature: "Destructive-op diff preview before apply",
@@ -491,7 +491,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Can my AI agent provision a Wren-AI-managed warehouse the way it provisions an nlqdb database?",
-        a: "Wren AI is a context layer plus agent toolkit — its Python SDK and LangChain bindings let an agent issue NL queries against an MDL-modelled data source, but the warehouse itself must already exist. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `create_database`, `ask`, and `run`, so a Claude / Cursor / Cline agent stands up its own Postgres plus schema end-to-end without a human in the loop.",
+        a: "Wren AI is a context layer plus agent toolkit — its Python SDK and LangChain bindings let an agent issue NL queries against an MDL-modelled data source, but the warehouse itself must already exist. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe` — `nlqdb_query` materialises Postgres plus schema on first reference — so a Claude / Cursor / Cline agent stands up its own data layer end-to-end without a human in the loop.",
       },
       {
         q: "Wren AI is open source — why not just self-host that?",
