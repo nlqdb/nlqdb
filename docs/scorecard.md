@@ -106,7 +106,7 @@ dispatch (blocked today — both evals < 7 d, §5).
   NULL-guarded against the empty-result trap) + `group-order-limit`. **Δ
   (offline, same-probe before/after — the `SK-LLM-036/037` pattern):** the
   "never" goal flips to anti-join `NOT IN` top-1; **precision@1 held 12/12**,
-  lift +0.592 → **+0.595**, retrieved k=3 prefix 0.969×
+  lift +0.592 → **+0.595**, retrieved k=3 prefix 0.935×
   static (token-negative); `@nlqdb/llm` 207 → 208 tests. **KPI:** engine
   quality; **none degraded** — prod byte-identical (`buildPlanSystem` default-off
   `k<=0` ⇒ static `PLAN_SYSTEM`; `SK-LLM-024` greedy + BIRD 06-19/Spider 06-17
