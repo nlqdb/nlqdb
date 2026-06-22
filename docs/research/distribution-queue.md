@@ -20,8 +20,8 @@ the discipline of bot-filtering your own metrics before you believe them.
 >
 > But 78 of those 79 rows are us — our own end-to-end "stranger test" walker
 > signs up a throwaway address daily to prove the funnel works, plus a few
-> probes. Filter them out and the genuine-stranger count is **1**: me. Users
-> tells the same story — 7 rows, every one founder or test, 0 real strangers.
+> probes. Filter them out and the genuine-stranger count is **1**: me. The users
+> table tells the same story — 7 rows, every one founder or test, 0 real strangers.
 >
 > We keep the bot-filtered number on the scorecard on purpose: the unfiltered
 > one would let us lie to ourselves. Walker traffic is load — it proves the
