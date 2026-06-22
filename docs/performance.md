@@ -169,6 +169,8 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.ask.hash`              | Schema-hash + query-hash compute.              |
 | `nlqdb.cache.plan.lookup`     | KV read for cached plan (label `hit=true/false`). |
 | `nlqdb.cache.plan.write`      | KV write of new plan.                          |
+| `nlqdb.cache.first_query.lookup` | KV read — has this user fired `user.first_query` yet? (`apps/api/src/ask/orchestrate.ts`; `onError`→false to avoid re-emit-forever). |
+| `nlqdb.cache.first_query.commit` | KV write marking `user.first_query` emitted (emit-then-commit; a failed commit re-emits next request, non-fatal). |
 | `nlqdb.recent_tables.lookup`  | KV read of principal's recent-tables MRU (`SK-ASK-012`). |
 | `nlqdb.recent_tables.touch`   | KV read-merge-write to push new tables onto the MRU (`SK-ASK-012`). `ctx.waitUntil` on `/v1/ask`; awaited inline on create. |
 | `llm.route`                   | Merged kind + dbId classification (SK-ASK-009). One cheap-tier call per cache-miss / dbId-absent send; replaces the older `llm.classify` + `llm.disambiguate` pair. |
@@ -255,27 +257,21 @@ cardinality assertion in CI.
 
 ---
 
-## 4. Slice-by-slice instrumentation plan
+## 4. Instrumentation requirement (standing rule)
 
-Every slice from 3 onward MUST include:
+Every new slice — route, LLM provider, engine, or event sink — MUST ship,
+in the same PR:
 
-1. The spans + metrics in the table below.
-2. A **vitest assertion** that each new span/metric was emitted
-   (using OTel's in-memory test exporter). Missing instrumentation
-   fails CI.
-3. A **budget assertion** in the same test — if measured p50 in the
-   test exceeds 1.5× the §2 budget, fail.
+1. Its spans + metrics, named per the §3 catalog (no one-off variants).
+2. A **vitest assertion** (OTel in-memory exporter) that each new
+   span/metric is emitted. Missing instrumentation fails CI.
+3. A **budget assertion** in the same test — if measured p50 exceeds
+   1.5× the §2 budget, fail.
 
-| Slice | New spans                                              | New metrics                                                      | CI assertion                            |
-| :---- | :----------------------------------------------------- | :--------------------------------------------------------------- | :-------------------------------------- |
-| 3 — Neon adapter      | `db.query` (label `db.system=postgresql`, `db.operation.name`) | `nlqdb.db.duration_ms{operation}`                                | span emitted; p50 < 200 ms in test.     |
-| 4 — LLM router        | `llm.route` / `llm.plan` / `llm.summarize` / `llm.schema_infer` / `llm.engine_classify` (label `llm.provider`, `llm.model`) | `nlqdb.llm.calls.total`, `nlqdb.llm.duration_ms`, `nlqdb.llm.failover.total` | failover counter increments on forced provider failure. `llm.schema_infer` lands in Phase 1 with hosted db.create. `llm.route` replaces the older `llm.classify` + `llm.disambiguate` pair (SK-ASK-009). |
-| 5 — Better Auth       | `nlqdb.auth.verify`, `nlqdb.auth.oauth.callback`, `nlqdb.events.emit` (new sign-in only) | `nlqdb.auth.events.total`                                        | sign-in success + failure both emit OTel events; first-time sign-in fires exactly one `user.registered` into the sink (asserted with stub sink — real `LOGSNAG_TOKEN` not required in CI). |
-| 6 — `/v1/ask` E2E     | `nlqdb.ask` (parent), `nlqdb.cache.plan.lookup` / `write`, `nlqdb.sql.validate`, `nlqdb.ratelimit.check`, `nlqdb.cache.first_query.lookup` / `commit`, `nlqdb.events.emit` (first-query only) | `nlqdb.ask.duration_ms`, `nlqdb.cache.plan.hits.total` / `misses.total` | end-to-end span tree present; cache hit on second identical request; `user.first_query` fires exactly once per user (lookup-then-emit-then-commit). **Also:** Better Auth `session.cookieCache` + KV revocation-set check on every session read (DESIGN §4.3, §4.5) — land together (cookie cache without the revocation hook regresses the "≤2s revocation" guarantee). Drops `nlqdb.auth.verify` from D1-bound (~30 ms p99) to HMAC + KV (~6 ms p99). |
-| 7 — Stripe webhook    | `nlqdb.webhook.stripe`, `nlqdb.events.emit`            | `nlqdb.requests.total{route="/v1/stripe/webhook"}`               | signature verify span emitted; `billing.subscription_created` / `billing.subscription_canceled` map 1:1 to events fired into the sink (asserted with stub sink). No `trial.*` events — PLAN §5.3 has no Stripe trial period. |
-
-The **OTel SDK + OTLP exporter** lands as part of Slice 3 (one-time
-infrastructure). All later slices just call into it.
+The OTel SDK + OTLP exporter is one-time infrastructure (landed with the
+Neon-adapter slice); later slices just call into it. The per-slice span/
+metric sets are not re-listed here — §3 is the single source of truth, and
+each slice's exact CI assertions live in its test file.
 
 ---
 
