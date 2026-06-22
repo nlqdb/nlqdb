@@ -13,6 +13,10 @@
 // The buckets are picked from evidence, not taste: `SK-QUAL-014` classified the
 // BIRD mismatch mass as aggregation/DISTINCT **grain** + subquery **shape** +
 // GROUP BY/HAVING, so every row below targets one of those structural classes.
+// The `null-filter` row (13th) was added on a second evidence source — the
+// persona-bench (`SK-QUAL-018`) ICP-retrieval probe (`tools/eval`): nlqdb's own
+// "who never logged in" query retrieved the anti-join NOT-IN demo, the wrong
+// shape for a plain `IS NULL` filter (ICP retrieval precision@1 18/20 → 19/20).
 // Rows deliberately span domains and dialects: masking is what lets a pool row
 // written over `employees` help a goal over `students`, so a domain-varied pool
 // is a feature, not noise.
@@ -43,6 +47,7 @@ export type PlanBucket =
   | "group-max"
   | "group-order-limit"
   | "null-safe-min"
+  | "null-filter"
   | "ratio-cast"
   | "date-range";
 
@@ -146,6 +151,23 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
     "CREATE TABLE employees (id INTEGER, name TEXT, salary REAL)",
     "Which employee has the lowest salary? Return their name.",
     "SELECT name FROM employees WHERE salary IS NOT NULL ORDER BY salary ASC LIMIT 1",
+  ),
+  ex(
+    // "Never <did X>" where X is an **attribute of the row itself** (a NULL
+    // timestamp/column) — the plain `WHERE col IS NULL` filter, NOT the
+    // anti-join NOT-IN subquery. The two read identically as questions ("…have
+    // never …"); the distinguishing token is the *verb* (logged in ⇒ a NULL
+    // login column on the same table; placed an order ⇒ absence in a related
+    // table ⇒ anti-join). Without this row the headline "who never logged in"
+    // ICP query (personas.md §P1, persona-bench q3) retrieved the anti-join
+    // NOT-IN demo — teaching a subquery over a table that does not exist.
+    // Ordered after `anti-join` so an ambiguous "never <relation>" goal still
+    // breaks the masked-Jaccard tie to anti-join (earliest pool index wins).
+    "null-filter",
+    "sqlite",
+    "CREATE TABLE users (id INTEGER, name TEXT, last_login TEXT)",
+    "Which users have never logged in? Return their name.",
+    "SELECT name FROM users WHERE last_login IS NULL",
   ),
   ex(
     "ratio-cast",

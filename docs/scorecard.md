@@ -28,10 +28,13 @@ masking + the **curated pool (#451, half (a))** + now the **T9-ablation wiring
 byte-for-byte, the eval `--retrieve-exemplars k` flag swaps in the retrieved
 prefix (token-budget 0.935× of static — token-negative), so the next dispatch
 A/Bs greedy-static vs greedy-retrieved. **#1 is now built end-to-end bar the
-dispatch**; only the hot-path embedding index remains — the **pool grew 10 → 12
-buckets (run 46)**, adding the two high-mass shapes it could not demonstrate at
-all (anti-join/NOT-IN negation + order-by-aggregate-limit top-N), precision@1
-held 12/12. The #3 EX delta is the
+dispatch**; only the hot-path embedding index remains — the **pool grew 10 → 13
+buckets** (run 46 +anti-join/NOT-IN negation + order-by-aggregate-limit top-N;
+**run 48 +null-filter**), held precision@1 at 13/13. **Run 48 added a second
+evidence source — a persona-bench ICP-retrieval probe** (`SK-LLM-041 ×
+SK-QUAL-018`): over nlqdb's OWN 20 ICP queries the pool's retrieval precision@1
+is **18/20 → 19/20** (the "who never logged in" P1 query flips off the
+misleading anti-join NOT-IN demo onto the `IS NULL` demo). The #3 EX delta is the
 greedy-vs-SC smoke gap on the first N>=2 dispatch; both land the next canonical
 dispatch (blocked today — both evals < 7 d, §5).
 
@@ -123,6 +126,29 @@ dispatch (blocked today — both evals < 7 d, §5).
   *"Your competitor comparison pages are teaching ChatGPT the wrong API — we
   found 10 fabricated tool names on our own site and pinned a test so they can't
   come back."*
+- 2026-06-22 (run 48) — **Engine: §4 #1 DAIL-SQL pool grown 12 → 13 + a new
+  persona-bench ICP-retrieval probe (`SK-LLM-041 × SK-QUAL-018`).** Worst number
+  is engine (Spider 0.1852), dispatch-gated (both baselines < 7 d, §5), and the
+  one open PR (#458, external SDK packaging) owns no engine lane — so the
+  non-colliding, offline-measurable engine slice is the retrieval lever on
+  nlqdb's *own* ICP. Built a probe that runs `retrievePlanExemplars` over the 20
+  persona-bench questions (the real target distribution, not synthetic held-out
+  probes) and scores precision@1 against a structural expected-bucket map. **It
+  surfaced a real gap:** the headline "who never logged in" P1 query (q3)
+  retrieved the **anti-join NOT-IN** demo — the wrong shape for a plain
+  `WHERE col IS NULL` (a NULL *attribute*, not a missing *relation*). Added one
+  `null-filter` pool row (placed after anti-join so an ambiguous "never
+  <relation>" still ties to anti-join). **Δ (offline, same-probe before/after —
+  the `SK-LLM-036/037` pattern):** ICP retrieval **precision@1 18/20 → 19/20**;
+  the pool's own held-out precision@1 **held 13/13**; q3 flips anti-join →
+  `IS NULL`, while q12/q16 ("never placed an order / recalled") + the in-subquery
+  probe stay put (bidirectional guard — the verb discriminates, not "never").
+  The 1 remaining miss (q8 masks to `ratio-cast`) is **documented as a
+  selector-side artifact**, not absorbed. **KPI:** engine quality (ICP-relevant
+  NL→SQL); **none degraded** — prod byte-identical (`buildPlanSystem` default-off
+  `k<=0` ⇒ static `PLAN_SYSTEM`; BIRD 06-19 / Spider 06-17 untouched); 209 llm
+  tests (was 208), 262 eval (was 258). Artifact: "Your few-shot pool, tested
+  against your *own* users' queries — not just the benchmark" queued.
 - 2026-06-22 (run 47) — **Engine: persona-bench grown 12 → 20 questions
   (`SK-QUAL-018` documented "one batch per run" follow-on).** Worst number is
   engine (Spider 0.1852), but it's dispatch-gated (both baselines < 7 d, §5) and

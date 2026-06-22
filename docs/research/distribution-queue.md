@@ -10,42 +10,48 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-22 (run 46) — build-in-public: "We cap every doc at 20 KB — even the marketing backlog" (dev.to / lobste.rs)
+## 2026-06-22 (run 48) — dev.to / lobste.rs: "Test your few-shot retrieval against your *own* users' queries — not just the benchmark" (text-to-SQL engineering)
 
-**Where:** dev.to + lobste.rs (`ai` / `engineering`); a build-in-public note on
-running an autonomous daily agent and why its own context discipline is a
-product input, not overhead.
+**Where:** dev.to + lobste.rs (`databases` / `ai`); the direct sequel to the
+"wrong shape" post below — same DAIL-SQL retrieval, the eval-honesty twist.
+nlqdb mentioned once. Pairs with `SK-LLM-041` + persona-bench (`SK-QUAL-018`).
 
-**Title:** We cap every doc at 20 KB — even the marketing backlog
+**Title:** Test your few-shot retrieval against your own users' queries — not just the benchmark
 
 **Body:**
 
-> An autonomous agent runs our daily build-in-public loop: measure the funnel,
-> pull one lever, draft one post, open one PR. The thing nobody warns you about
-> is that the agent's *reading list* is the bottleneck. Every doc it must load to
-> decide what to do competes for the same finite context window the actual work
-> needs. A 36 KB backlog of old marketing drafts is 36 KB the agent reads before
-> it does anything useful — and pays for, every single run.
+> We retrieve few-shot demonstrations by masked question similarity before a
+> small model writes SQL (the DAIL-SQL trick). To prove the retrieval worked we
+> built a held-out probe set: a paraphrase of each pool example, over a fresh
+> schema. Precision@1 was a clean 13/13. Looked done.
 >
-> So we cap every markdown doc in the repo at 20 KB, and the rule has teeth: an
-> edit to an over-cap file *must net-shrink it*. This week the cap bit our own
-> distribution queue — the list of drafted-but-unpublished posts. The fix wasn't
-> to raise the cap, it was to notice the queue had quietly become an archive:
-> a dozen full drafts from days ago sitting inline when their bodies already live
-> in git history. We keep a rolling window — the two newest drafts full, the rest
-> collapsed to a title and a one-line gist, one `git show` away if the founder
-> wants the body back.
+> Then we ran the *exact same* retrieval over a different question set — not the
+> research benchmark, but the schemas and questions our own users actually build
+> (side-project SaaS: plans, users, orders; agent memory: facts, episodes,
+> recalls). One query missed in a way the held-out probes never caught: **"which
+> users have never logged in?"** retrieved a `NOT IN (SELECT …)` anti-join demo.
+> Wrong. That's a plain `WHERE last_login IS NULL` — the "never" here is a NULL
+> *attribute of the row*, not a missing row in a *related* table. The single
+> token "never" had dragged it to the anti-join example, and our benchmark-shaped
+> probes were all too tidy to ever phrase it the way a real user would.
 >
-> The discipline generalises. If a doc is too big to keep under 20 KB, that's
-> usually a signal it's two docs, or that half of it is history pretending to be
-> state. The cap forces the split before the rot sets in — and it keeps the agent
-> that reads it next fast, cheap, and focused on the one lever that matters today.
-> Lean docs aren't tidiness. For an agent, they're throughput.
+> The fix was one pool row (a plain `IS NULL` filter), placed so an ambiguous
+> "never <relation>" still ties to the anti-join demo. Measured the boring way —
+> same queries, before vs after — our own-query precision@1 went **18/20 →
+> 19/20**, while the synthetic held-out precision stayed **13/13**. The benchmark
+> number never moved; it couldn't see the gap.
+>
+> Lesson: a retrieval eval is only as honest as its query *distribution*. A probe
+> set that paraphrases your own examples will happily report green while your
+> users' bread-and-butter queries silently retrieve the wrong shape. Keep a small
+> set of *your* representative questions — the ones your product is actually for —
+> and measure retrieval against those too. (We run this over nlqdb's free-tier
+> NL→SQL chain; the own-users set is ~20 hand-checked queries.)
 
-**Why this advances the north-star:** onboarding/UX of the autonomous loop — a
-leaner agent-facing doc set is faster and cheaper context for every subsequent
-`/daily` run; the post itself is a build-in-public credibility artifact. No
-engine/funnel KPI degrades (docs-only).
+**Why this advances the north-star:** engine quality (NL→SQL retrieval on the
+ICP-relevant distribution); the post is a genuinely useful eval-honesty lesson
+with one nlqdb mention. No engine/funnel KPI degrades (offline, prod
+byte-identical).
 
 ## 2026-06-22 (run 46) — dev.to / lobste.rs: "Your few-shot examples might be teaching the model the wrong shape" (text-to-SQL engineering)
 
@@ -115,6 +121,7 @@ recovers any body.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 
+- run 46 — "We cap every doc at 20 KB — even the marketing backlog" (autonomous-agent context discipline; an over-cap edit must net-shrink; rolling two-draft window over the queue itself).
 - run 45 — "Our waitlist has 79 rows. The honest count is 1." (honest funnel pull: 78/79 waitlist rows are us, genuine-stranger count is 1; gated on engine accuracy, GLOBAL-027).
 - run 44 — "We demoted three of our four personas on the home page. On purpose." (agent-memory wedge above the fold; other three folded under a quiet divider; reversible composition change, GLOBAL-036 + WS-12).
 - run 43 — "We moved agent memory above the fold — without touching the wordmark" (additive/reversible home band; Mem0·Zep·Letta·nlqdb matrix; GLOBAL-036 + WS-12).
