@@ -10,6 +10,51 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-22 (run 51) — dev.to / lobste.rs: "The most common query has no benchmark row" (text-to-SQL engineering)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`); third in the DAIL-SQL
+retrieval / eval-honesty series, the "your benchmark is missing the obvious one"
+angle. nlqdb mentioned once. Pairs with `SK-LLM-041` + persona-bench
+(`SK-QUAL-018`).
+
+**Title:** The most common query in your product has no row in your benchmark
+
+**Body:**
+
+> We pick few-shot demonstrations by masked question similarity before a small
+> model writes SQL (the DAIL-SQL trick). Our example pool had a row for every
+> *interesting* shape the research benchmarks stress: anti-joins, HAVING,
+> COUNT(DISTINCT), top-N-of-an-aggregate, NULL-safe extrema. Held-out
+> precision@1: 13/13. Tidy.
+>
+> Then we ran retrieval over our own users' questions and the very first one
+> missed: **"show the 10 most recent signups."** A plain `ORDER BY signup_date
+> DESC LIMIT 10` — no grouping, no aggregate, the single most common thing anyone
+> asks a dashboard. It retrieved our `group-order-limit` demo (`GROUP BY … ORDER
+> BY COUNT(*) DESC LIMIT 1`), which would teach the model to bolt on a `GROUP BY`
+> that doesn't belong. The benchmark error-class taxonomy we'd sized the pool
+> from never listed "plain top-N" because it's *too easy to be an error class* —
+> so the pool had no row for it, and the nearest neighbour was a more complex
+> shape that read similar after masking ("most … limit").
+>
+> The fix was one pool row — a plain `ORDER BY <col> DESC LIMIT n`, ordered after
+> the grouped variant so a genuinely *grouped* top-N ("which plan earns the most
+> revenue") still ties to the aggregate demo. Measured the boring way, same
+> queries before vs after: our own-query precision@1 held at 18/20 but q0 now
+> lands the *correct* skeleton instead of a tolerated stand-in, and held-out went
+> 13/13 → 14/14 with the new bucket. (Free-tier NL→SQL chain; the own-users set is
+> ~20 hand-checked queries.)
+>
+> Lesson: error-class taxonomies are built from what *goes wrong* on hard
+> benchmarks, so they systematically omit the easy, high-frequency shapes that
+> dominate real traffic. Your few-shot pool inherits that blind spot. Audit it
+> against your product's actual most-common queries — the boring ones are the
+> ones your users send all day.
+
+**Why this advances the north-star:** engine quality (NL→SQL retrieval on the
+ICP-relevant distribution); a genuinely useful eval-honesty lesson with one
+nlqdb mention. No engine/funnel KPI degrades (offline, prod byte-identical).
+
 ## 2026-06-22 (run 48) — dev.to / lobste.rs: "Test your few-shot retrieval against your *own* users' queries — not just the benchmark" (text-to-SQL engineering)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`); the direct sequel to the
@@ -53,46 +98,6 @@ ICP-relevant distribution); the post is a genuinely useful eval-honesty lesson
 with one nlqdb mention. No engine/funnel KPI degrades (offline, prod
 byte-identical).
 
-## 2026-06-22 (run 46) — dev.to / lobste.rs: "Your few-shot examples might be teaching the model the wrong shape" (text-to-SQL engineering)
-
-**Where:** dev.to + lobste.rs (`databases` / `ai`); a genuinely useful NL→SQL
-retrieval lesson, nlqdb mentioned once as the system it came from. Pairs with
-the DAIL-SQL retrieval work (`SK-LLM-041`).
-
-**Title:** Your few-shot examples might be teaching the model the wrong shape
-
-**Body:**
-
-> We retrieve few-shot examples by question similarity before asking a small
-> model to write SQL (the DAIL-SQL trick: mask the literals and table/column
-> names, compare the question *skeletons*, show the model the closest
-> demonstrations). It works — until you look at what gets retrieved for a
-> *negation*.
->
-> Ask "which customers have **never** placed an order?" and, if your example
-> pool only contains the positive version ("which customers **have** placed an
-> order?" → `WHERE id IN (SELECT …)`), that positive example is the nearest
-> neighbour. The single word "never" is the only token that differs, so
-> similarity ranks the un-negated demo first — and now you're showing the model
-> the exact shape you *don't* want. The example actively teaches the wrong
-> answer. Same trap for "which department has the **most** employees": if your
-> pool has `GROUP BY … COUNT(*)` and per-group `MAX()` but no `ORDER BY COUNT(*)
-> DESC LIMIT 1`, the model gets two near-misses and no demonstration of the
-> shape it actually needs.
->
-> The fix isn't a smarter ranker — it's a pool that can *represent* the shape.
-> We added two rows (a NULL-guarded `NOT IN` anti-join; a top-N-of-aggregate),
-> measured it the boring way — same probe, before vs after — and watched the
-> "never" query flip from the positive demo to the negation demo, while the
-> positive query still kept its positive demo (the masking stays
-> bidirectional). Precision held at 12/12 with the two near-twins added.
->
-> Lesson: retrieval quality is bounded by pool *coverage*, not just the
-> similarity function. Before you tune the ranker, audit whether your examples
-> can even express the shapes your hard queries need — and check that a
-> one-word negation isn't quietly retrieving its own opposite. (We do this in
-> nlqdb's free-tier NL→SQL chain; the whole pool is ~12 hand-authored rows.)
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -101,6 +106,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 46 — "Your few-shot examples might be teaching the model the wrong shape" (retrieval quality is bounded by pool *coverage*, not the ranker; a one-word negation retrieves its own opposite if the pool can't represent the shape; +anti-join/+top-N-of-aggregate, precision held 12/12).
 - runs 43–44 — "Your benchmark should look like your users' database, not a research paper's" (persona-bench: NL→SQL on the schema shapes users actually build; sound-ruler invariant 12/12 before any accuracy number).
 - run 43 — "Ship your LLM lever as a default-off ablation — measure before you adopt" (`buildPlanSystem(goal, schema, k)`, `k=0` byte-identical; prove inert + token-negative before spending quota; closes runs 38–43 retrieval arc).
 - run 42 — "Don't hand-pick few-shot examples — size the pool from your benchmark's error classes" (one exemplar per mismatch class; precision@1 10/10, 3.5× closer skeleton; `packages/llm/plan-exemplar-pool.ts`).

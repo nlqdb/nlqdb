@@ -52,15 +52,19 @@ identifiers identically.
   `{question, schema, SQL}` `PlanExemplar`s (one per `SK-QUAL-014` structural
   mismatch bucket — group-by-count, HAVING, COUNT(DISTINCT), scalar/IN subquery,
   **anti-join (NOT IN, NULL-guarded)**, join-aggregate, group-max,
-  **group-order-limit (top-N of an aggregate)**, NULL-safe-min,
+  **group-order-limit (top-N of an aggregate)**, **order-by-limit (plain top-N,
+  no aggregation)**, NULL-safe-min,
   **null-filter (plain `WHERE col IS NULL`)**, REAL-cast ratio,
-  date-range — **13 rows, grown 2026-06-22** from the initial 10: +anti-join and
+  date-range — **14 rows, grown 2026-06-22** from the initial 10: +anti-join and
   +group-order-limit (two high-mass `SK-QUAL-014` shapes the pool could not
-  demonstrate at all — negation, order-by-aggregate-limit), then +null-filter
-  on a **second** evidence source — the persona-bench (`SK-QUAL-018`)
-  ICP-retrieval probe (see Consequence): nlqdb's own "who never logged in" query
-  (`personas.md` §P1) retrieved the anti-join NOT-IN demo, the wrong shape for a
-  plain `IS NULL` filter), each
+  demonstrate at all — negation, order-by-aggregate-limit), then +null-filter and
+  +order-by-limit on a **second** evidence source — the persona-bench
+  (`SK-QUAL-018`) ICP-retrieval probe (see Consequence): nlqdb's own "who never
+  logged in" query (`personas.md` §P1) retrieved the anti-join NOT-IN demo, the
+  wrong shape for a plain `IS NULL` filter; and the most common ICP dashboard
+  shape — plain top-N ("the 10 most recent signups") — retrieved
+  `group-order-limit`, teaching a spurious `GROUP BY` a plain `ORDER BY … LIMIT`
+  doesn't have), each
   `payload` rendered through the now-exported `prompts.ts::planExample` so a
   retrieved demonstration is byte-identical in shape to a static `SK-LLM-026`
   one, plus `retrievePlanExemplars(goal, schema, k)` (thin wrapper over
@@ -118,11 +122,11 @@ identifiers identically.
   inside the selector, no hand-masking). Plus `plan-exemplar-pool.ts` +
   `plan-exemplar-pool.test.ts`: an **offline retrieval measurement**
   over a held-out probe set (each probe a paraphrase of one bucket over a
-  *different* schema) records **precision@1 = 13/13** (every probe retrieves its
+  *different* schema) records **precision@1 = 14/14** (every probe retrieves its
   intended structural bucket across domains — **held at 1.0 across the 2026-06-22
-  pool growth to three near-neighbour buckets** — anti-join, group-order-limit,
-  null-filter — the harder regime) and **lift = +0.595** — masked
-  skeleton-similarity of the top-1 retrieved exemplar **0.840** vs **0.245** for
+  pool growth to four near-neighbour buckets** — anti-join, group-order-limit,
+  null-filter, order-by-limit — the harder regime) and **lift = +0.576** — masked
+  skeleton-similarity of the top-1 retrieved exemplar **0.818** vs **0.242** for
   an uninformed pool-average pick, the offline analog of DAIL's measured
   retrieval win, proving the pool+selector is worth a dispatch before paying for
   one. The 2026-06-22 growth records two **same-probe before/after coverage
@@ -138,9 +142,13 @@ identifiers identically.
   **Second evidence source — persona-bench ICP retrieval** (`tools/eval/test/persona-retrieval.test.ts`,
   the `SK-LLM-041 × SK-QUAL-018` bridge): running `retrievePlanExemplars` over
   the **20 persona-bench (`SK-QUAL-018`) ICP questions** — nlqdb's OWN target
-  distribution, not synthetic probes — scores **precision@1 17/20 → 18/20**
+  distribution, not synthetic probes — scores **precision@1 18/20**
   against a per-question expected-bucket map: the null-filter row flips q3 ("who
-  never logged in") off the misleading anti-join demo (+1). The 2 remaining
+  never logged in") off the misleading anti-join demo, and the order-by-limit row
+  lands q0 ("the 10 most recent signups") on the plain `ORDER BY … LIMIT` demo —
+  the expected-bucket map for q0 was tightened to drop the `group-order-limit`
+  GROUP-BY stand-in it previously tolerated (17/20 under the corrected contract
+  *without* the row → 18/20 *with* it). The 2 remaining
   misses (q8, "the 5 most-recalled facts …"; q10, "which predicates does
   'support-bot' use, and how often" — a filtered GROUP-BY-COUNT with NO HAVING
   whose top-1 is the `having` demo) are **documented, not absorbed**: both are
