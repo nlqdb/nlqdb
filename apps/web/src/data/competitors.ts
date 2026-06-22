@@ -103,10 +103,10 @@ export const COMPETITORS: Competitor[] = [
         note: "Supabase has SQL Editor + RLS; the diff/preview before destructive NL is unique to nlqdb.",
       },
       {
-        feature: "MCP server with provisioning verbs",
+        feature: "MCP server (agent-callable)",
         us: "shipped",
         them: "partial",
-        note: "Supabase MCP queries an existing DB; nlqdb's MCP can also create the DB.",
+        note: "Supabase MCP queries an existing DB; nlqdb's `nlqdb_query` materialises Postgres on first reference.",
       },
       { feature: "HTML embed element", us: "shipped", them: "no" },
       { feature: "Anonymous mode (try before sign-in)", us: "shipped", them: "no" },

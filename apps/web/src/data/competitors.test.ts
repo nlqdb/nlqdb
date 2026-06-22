@@ -84,7 +84,7 @@ describe("COMPETITORS data integrity", () => {
       c.oneLiner,
       ...c.whenChooseUs,
       ...c.whenChooseThem,
-      ...c.features.map((f) => f.note ?? ""),
+      ...c.features.flatMap((f) => [f.feature, f.note ?? ""]),
       ...c.faqs.flatMap((f) => [f.q, f.a]),
     ].join(" ");
 
