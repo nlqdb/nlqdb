@@ -152,10 +152,10 @@ Open-source Python SDK that adds long-term memory to LangGraph agents. Three mem
 - **Threat vector:** **High for P2 on distribution** — LangChain's mass adoption means LangMem is the default an agent builder meets first; low on capability for the analytical wedge (fact recall only).
 
 ### Pinecone — https://pinecone.io
-Managed vector DB. Free Starter + usage-based Standard.
+Managed serverless vector DB (detail in `competitors.ts`).
 - **Overlaps with:** P2 retrieval use cases.
-- **Gap nlqdb exploits:** Vector-only; expensive at agent-scale testing volumes; no structured data.
-- **Threat vector:** Medium — but the conversation has shifted toward pgvector-in-Postgres and lighter alternatives.
+- **Gap nlqdb exploits:** Vector-only — no SQL, joins, or aggregations. The "database, not a vector store" wedge: finds the similar, can't GROUP BY over what the agent stored.
+- **Threat vector:** Medium — shifting toward pgvector-in-Postgres. `/vs/pinecone` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
 
 ### Weaviate — https://weaviate.io
 OSS + managed vector DB.
