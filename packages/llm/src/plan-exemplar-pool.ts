@@ -38,8 +38,10 @@ export type PlanBucket =
   | "count-distinct"
   | "scalar-subquery"
   | "in-subquery"
+  | "anti-join"
   | "join-aggregate"
   | "group-max"
+  | "group-order-limit"
   | "null-safe-min"
   | "ratio-cast"
   | "date-range";
@@ -102,6 +104,17 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
     "SELECT name FROM customers WHERE id IN (SELECT customer_id FROM orders)",
   ),
   ex(
+    // The negated twin of in-subquery: NOT IN over the FK, NULL-guarded so a
+    // NULL in the subquery can't silently empty the result (the classic NOT IN
+    // trap). Without this row a "never …" goal retrieves the *positive*
+    // in-subquery demo — the un-negated shape, actively the wrong lesson.
+    "anti-join",
+    "sqlite",
+    "CREATE TABLE customers (id INTEGER, name TEXT);\nCREATE TABLE orders (id INTEGER, customer_id INTEGER)",
+    "Which customers have never placed an order? Return their name.",
+    "SELECT name FROM customers WHERE id NOT IN (SELECT customer_id FROM orders WHERE customer_id IS NOT NULL)",
+  ),
+  ex(
     "join-aggregate",
     "sqlite",
     "CREATE TABLE customers (id INTEGER, name TEXT);\nCREATE TABLE orders (id INTEGER, customer_id INTEGER, amount REAL)",
@@ -114,6 +127,18 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
     "CREATE TABLE employees (id INTEGER, name TEXT, department TEXT, salary REAL)",
     "What is the highest salary in each department?",
     "SELECT department, MAX(salary) FROM employees GROUP BY department",
+  ),
+  ex(
+    // Top-N of an aggregate (GROUP BY → ORDER BY agg → LIMIT) — distinct from
+    // group-max (per-group extremum) and null-safe-min (whole-table extremum):
+    // here the grain is "the group with the largest count". A "which X has the
+    // most Y" goal otherwise retrieves group-by-count or group-max, neither of
+    // which demonstrates the order-by-count-limit shape.
+    "group-order-limit",
+    "postgres",
+    "CREATE TABLE employees (id INTEGER, name TEXT, department TEXT)",
+    "Which department has the most employees? Return the department.",
+    "SELECT department FROM employees GROUP BY department ORDER BY COUNT(*) DESC LIMIT 1",
   ),
   ex(
     "null-safe-min",

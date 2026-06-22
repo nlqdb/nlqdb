@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { maskWithSchema, questionSimilarity } from "../src/few-shot-select.ts";
+import {
+  maskWithSchema,
+  questionSimilarity,
+  selectExemplarsForSchema,
+} from "../src/few-shot-select.ts";
 import {
   buildPlanSystem,
   PLAN_EXEMPLAR_POOL,
   type PlanBucket,
+  type PlanExemplar,
   retrievePlanExemplars,
 } from "../src/plan-exemplar-pool.ts";
 import { PLAN_DIRECTIVES, PLAN_FEW_SHOT_HEADER, PLAN_SYSTEM } from "../src/prompts.ts";
@@ -42,6 +47,16 @@ const PROBES: readonly Probe[] = [
       "CREATE TABLE authors (id INTEGER, name TEXT);\nCREATE TABLE books (id INTEGER, author_id INTEGER)",
   },
   {
+    // The negated near-twin of the in-subquery probe — differs only by "never".
+    // It must retrieve anti-join, not the positive in-subquery row (and the
+    // in-subquery probe above must still retrieve in-subquery, not anti-join):
+    // the bidirectional masking test that the skeletons stay distinguishable.
+    bucket: "anti-join",
+    goal: "Which authors have never written a book? Return their name.",
+    schema:
+      "CREATE TABLE authors (id INTEGER, name TEXT);\nCREATE TABLE books (id INTEGER, author_id INTEGER)",
+  },
+  {
     bucket: "join-aggregate",
     goal: "What is the total payment for each member? Return the member name and total.",
     schema:
@@ -51,6 +66,11 @@ const PROBES: readonly Probe[] = [
     bucket: "group-max",
     goal: "What is the highest score in each class?",
     schema: "CREATE TABLE students (id INTEGER, name TEXT, class TEXT, score REAL)",
+  },
+  {
+    bucket: "group-order-limit",
+    goal: "Which class has the most students? Return the class.",
+    schema: "CREATE TABLE students (id INTEGER, name TEXT, class TEXT)",
   },
   {
     bucket: "null-safe-min",
@@ -107,7 +127,7 @@ describe("plan-exemplar-pool", () => {
   it("covers one row per structural bucket, all distinct", () => {
     const buckets = PLAN_EXEMPLAR_POOL.map((r) => r.bucket);
     expect(new Set(buckets).size).toBe(buckets.length);
-    expect(PLAN_EXEMPLAR_POOL.length).toBe(10);
+    expect(PLAN_EXEMPLAR_POOL.length).toBe(12);
   });
 
   it("renders each payload in the static-prefix Question→JSON shape", () => {
@@ -139,6 +159,39 @@ describe("plan-exemplar-pool", () => {
     expect(probe).toBeDefined();
     const [top] = retrievePlanExemplars(probe?.goal ?? "", probe?.schema ?? "", 1);
     expect(top?.bucket).toBe("group-by-count");
+  });
+
+  // The measured coverage delta for adding the anti-join row: the same probe,
+  // before (pool without anti-join) vs after (full pool). Before, a "never …"
+  // goal's nearest demonstration is the *positive* in-subquery row — the
+  // un-negated shape, which would teach the model to drop the negation; after,
+  // it retrieves the NOT IN exemplar. This is the SK-LLM-036/037 same-probe
+  // before/after pattern, the unit that earns the pool row a dispatch.
+  it("anti-join row flips a 'never' goal from the positive in-subquery demo to the negation demo", () => {
+    const probe = PROBES.find((p) => p.bucket === "anti-join");
+    expect(probe).toBeDefined();
+    const goal = probe?.goal ?? "";
+    const schema = probe?.schema ?? "";
+
+    // Before: rank against the pool with the anti-join row removed.
+    const before = selectExemplarsForSchema(
+      goal,
+      schema,
+      PLAN_EXEMPLAR_POOL.filter((r) => r.bucket !== "anti-join"),
+      1,
+    ) as PlanExemplar[];
+    expect(before[0]?.bucket).toBe("in-subquery");
+
+    // After: the full pool retrieves the negation demonstration top-1.
+    const [after] = retrievePlanExemplars(goal, schema, 1);
+    expect(after?.bucket).toBe("anti-join");
+    expect(after?.payload).toContain("NOT IN");
+
+    // And the bidirectional guard: the positive in-subquery probe must NOT be
+    // pulled to anti-join now that the near-twin exists in the pool.
+    const inSub = PROBES.find((p) => p.bucket === "in-subquery");
+    const [posTop] = retrievePlanExemplars(inSub?.goal ?? "", inSub?.schema ?? "", 1);
+    expect(posTop?.bucket).toBe("in-subquery");
   });
 });
 
