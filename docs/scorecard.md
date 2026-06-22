@@ -40,7 +40,13 @@ the GROUP-BY `group-order-limit` stand-in onto the plain `ORDER BY … LIMIT` de
 q8/q10 pinned selector-side misses).
 The #3 EX delta is the
 greedy-vs-SC smoke gap on the first N>=2 dispatch; both land the next canonical
-dispatch (blocked today — both evals < 7 d, §5).
+dispatch (blocked today — both evals < 7 d, §5). **The pool/lexical-selector half
+of #1 is now at its offline ceiling** (run 52): the two pinned ICP misses (q8,
+q10) were falsified as lexically-unfixable — a stopword filter regresses
+(18/20→17/20) and phrase normalisation is flat (18/20); q10's miss is driven by
+generic filler + a coincidental masked literal slot, not structure. The only
+remaining offline #1 gain is query-skeleton (predicted-SQL) similarity (an LLM
+round-trip — not a daily lever) or the gated dispatch.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -85,6 +91,29 @@ dispatch (blocked today — both evals < 7 d, §5).
 
 ## Deltas (recent runs)
 
+- 2026-06-22 (run 52) — **Engine (finding, Δ ≤ 0 — variant reverted): the
+  lexical-selector avenue for the two pinned persona-bench ICP misses (q8, q10)
+  is falsified — the pool/lexical-selector half of §4 #1 is at its offline
+  ceiling.** With the canonical dispatch gated (BIRD 06-19 / Spider 06-17 both
+  < 7 d, §5) and the one open PR (#458) on SDK packaging, the non-colliding
+  offline engine slice was the two documented selector-side misses. Rather than
+  pad a 15th pool row (overfitting the self-probe), measured whether a cheaper
+  *lexical* selector change closes q8/q10 (same-probe before/after,
+  `SK-LLM-036/037`): **(a) stopword filter → ICP precision@1 18/20 → 17/20 (−1)**
+  — too-sparse token sets shuffle misses; **(b) phrase normalisation → 18/20
+  (Δ0)** — q8 improves `ratio-cast`→`order-by-limit` but still misses, q10
+  unchanged; held-out pool stays **14/14** under both. Root cause (debugged):
+  q10's top-1 `having` wins on `{which, the, col, val}` — generic filler + a
+  *coincidental masked literal slot*, not structure; flat masked-token Jaccard
+  can't resolve it. **Redirect:** the only remaining offline §4 #1 gain is
+  query-skeleton (predicted-SQL) similarity — an LLM round-trip, not a daily
+  lever — or the gated canonical dispatch of the staged `--retrieve-exemplars`.
+  Variant code reverted; the finding is pinned in the q8/q10 test comments +
+  `SK-LLM-041` body so future runs don't re-attempt it. **KPI:** engine quality
+  (measurement integrity — closes a dead-end avenue); **none degraded** — prod
+  byte-identical, BIRD 06-19 / Spider 06-17 untouched. Artifact: *"We tested our
+  few-shot retrieval against our own users' queries — then tried to fix the
+  misses with lexical tricks, and measured why that can't work."*
 - 2026-06-22 (run 51) — **Engine: §4 #1 DAIL-SQL pool grown 13 → 14 —
   `order-by-limit` (plain top-N) added on the persona-bench evidence source
   (`SK-LLM-041 × SK-QUAL-018`).** Worst number is engine (Spider 0.1852),

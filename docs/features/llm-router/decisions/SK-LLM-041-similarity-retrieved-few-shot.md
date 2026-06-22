@@ -154,7 +154,15 @@ identifiers identically.
   whose top-1 is the `having` demo) are **documented, not absorbed**: both are
   *selector*-side artifacts (the right buckets exist), so the fix is
   query-skeleton similarity (DAIL §4.1's second variant), out of scope for a
-  pool-row add. Half (b) adds `buildPlanSystem` + `prompts.ts`'s exported `PLAN_DIRECTIVES`
+  pool-row add. **The cheaper lexical-selector avenue was measured and
+  falsified** (2026-06-22, verification log): a stopword filter regresses ICP
+  precision@1 (18/20 → 17/20) and phrase normalisation leaves it flat (18/20),
+  both holding held-out 14/14 — q10's top-1 `having` wins on generic filler plus
+  a *coincidental masked literal slot* (`val`), which flat masked-token Jaccard
+  cannot separate from a real structural token. So the **only** remaining offline
+  gain on §4 #1 is query-skeleton similarity (needs an LLM round-trip — not an
+  offline lever) or the gated canonical dispatch of `--retrieve-exemplars`; the
+  pool/lexical-selector half is at its offline ceiling. Half (b) adds `buildPlanSystem` + `prompts.ts`'s exported `PLAN_DIRECTIVES`
   / `PLAN_FEW_SHOT_HEADER` / `fewShotBlock` (the static `PLAN_FEW_SHOT` rebuilt
   through `fewShotBlock`, byte-identical) + the `_chat-provider.ts` system-prompt
   call + the eval `--retrieve-exemplars` flag (`runner.ts`), with 4 new
