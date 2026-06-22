@@ -24,12 +24,14 @@ DAIL-SQL pool/lexical-selector half is at its **offline ceiling** (run 52:
 q8/q10 ICP misses falsified as lexically-unfixable; held-out precision@1
 **14/14**, own-ICP **18/20**); the only remaining offline #1 gain is
 SQL-skeleton similarity (an LLM round-trip, not a daily lever) or the gated
-dispatch. **Run 55** shipped the persona-bench **dispatch**
-(`quality-eval-persona-bench.yml`): the free chain is now scoreable on nlqdb's
-OWN ICP schemas, ungated by the < 7-day rule (it never touches the canonical
-baseline); free-chain EX + the ICP free-vs-frontier delta land on the first
-post-merge dispatch. Today's non-colliding lever is the funnel's top-of-funnel
-AEO surface (distribution lane).
+dispatch. **Run 58** fired the first persona-bench
+dispatch (`quality-eval-persona-bench.yml`, now on `main`): the free chain
+scores **0.90 EX (18/20) on the ICP shape** (row 8) — **2.7× BIRD, 4.9× Spider**
+— quantifying the GLOBAL-026 bet that clean product-shaped schemas are already
+solved on free LLMs, so the engine bottleneck is the messy *academic* shape, not
+the user's. The **frontier** lane (row 9, the headline delta) is **secret-blocked,
+not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed in
+`blocked-by-human.md`; the delta lands the instant the founder sets it.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -39,11 +41,11 @@ AEO surface (distribution lane).
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev accounts |
 | 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
 | 5 | Anon DBs with a recorded first answer | **113 of 113** | instrument fix (runs 1–3) holding; +12 since 06-15 (119 DBs total, 6 authed). Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
-| | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
+| | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d) · persona-bench 2026-06-22** | | `apps/api/src/gate/eval-baseline.ts` (BIRD/Spider only; persona-bench never overwrites the canonical baseline, `SK-QUAL-018`) |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half (run 40) + **runner `--self-consistency N` / `--sc-temperature T` main-loop wiring (run 41)** — `samples>=2` branch in `runOneQuestion` (separate from `withExecRetry`): `samplePlans`→`voteOverSamples` over `executeRows`→score-the-winner; folds into checkpoint/budget-stop/`attempts`, `.scN` checkpoint variant. The lever is now end-to-end bar the CI `workflow_dispatch` input. EX delta next dispatch** |
-| 8 | persona-bench | **20 q / 2 ICP schemas; CI-dispatchable (run 55); 20/20 golds execute** | run 55 — `quality-eval-persona-bench.yml` (the documented "last half") makes the free chain scoreable on the ICP shape: `workflow_dispatch` `persona: all\|P1\|P2` + `include_frontier`, no fixture/baseline/emit, so ungated by `SK-QUAL-002`'s < 7-day rule. Free-chain EX + ICP free-vs-frontier delta land on the first dispatch (post-merge — `workflow_dispatch` needs the file on `main`). Batch 2 (run 47) grew 12 → 20 q; retrieval precision@1 18/20 (`SK-LLM-041 × SK-QUAL-018`) |
-| 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp); the **ICP-shape** delta is now dispatchable via persona-bench (run 55, `include_frontier`) |
+| 8 | persona-bench free-chain EX | **0.90 (18/20)** | **first measured 2026-06-22 (run 58, GHA 27983818047, `persona=all`)** — the free chain on nlqdb's OWN ICP shape. **2.7× the BIRD canonical (0.52) and 4.9× Spider (0.19)** — the GLOBAL-026 bet, quantified: clean small product schemas ⇒ free LLMs already nail them. Per-leg: gpt-oss-120b 6/6 · gemini-2.5-flash 6/6 · llama-3.3-70b (Groq) **6/8**. Both misses on the Groq leg + both "challenging" multi-join aggregations: q13 drops the `status='paid'` value filter (the `SK-QUAL-014` `literal_diff` pattern) + confuses the group/select name column; q18 `LEFT JOIN`s where the gold inner-joins (0-recall agents appear). p50 490 ms / p95 1687 ms. Batch 2 (run 47) grew 12 → 20 q; retrieval precision@1 18/20 (`SK-LLM-041 × SK-QUAL-018`) |
+| 9 | free-vs-frontier delta | null *(secret-blocked, not dispatch-blocked)* | run 58 dispatched persona-bench with `include_frontier=true`, but the job log shows `OPENROUTER_FRONTIER_API_KEY:` resolves **empty** → only the free lane built, `free_vs_frontier_delta=null`. Root-caused + filed in `blocked-by-human.md` (founder sets the repo secret). The dispatch path itself is proven working; the delta lands the moment the key is set. Agentic lane also not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics (06-22 re-pull)** | | wall-time, all routes (not `/ask`-only) |
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
@@ -98,6 +100,28 @@ AEO surface (distribution lane).
   prod byte-identical, no engine file touched, BIRD 06-19 / Spider 06-17 untouched;
   13 competitors invariants green, astro-check 0 errors. Artifact: *"Hybrid search
   made your recall smarter. It still can't count."*
+- 2026-06-22 (run 58) — **Engine measurement: fired the first persona-bench
+  dispatch → free-chain EX = 0.90 (18/20) on nlqdb's OWN ICP shape (row 8,
+  previously undispatched).** With #472 merged the workflow is on `main`, so the
+  documented "first post-merge dispatch" was the highest-value non-colliding
+  lever (only open PR is the external #458 SDK fix; both canonical evals are
+  dispatch-gated < 7 d; persona-bench never touches the canonical baseline,
+  `SK-QUAL-018`). **Δ (measured, engine lane):** row 8 undispatched → **0.90 EX**
+  (GHA 27983818047, `persona=all`); the GLOBAL-026 bet is now a number —
+  **2.7× the BIRD canonical (0.52), 4.9× Spider (0.19)** — clean small product
+  schemas are already solved on the free chain, so the engine bottleneck is the
+  *academic* shape, not the user's. Per-leg: gpt-oss-120b 6/6 · gemini-2.5-flash
+  6/6 · llama-3.3-70b (Groq) 6/8; both misses are challenging multi-join
+  aggregations on the Groq leg (q13 drops the `status='paid'` value filter —
+  the `SK-QUAL-014` `literal_diff` shape; q18 `LEFT JOIN` vs the gold inner
+  join). **Finding (row 9):** the frontier lane is **secret-blocked, not
+  dispatch-blocked** — `include_frontier=true` was passed but the job log shows
+  `OPENROUTER_FRONTIER_API_KEY:` empty, so only the free lane built and
+  `free_vs_frontier_delta=null`; root-caused + filed in `blocked-by-human.md`.
+  **KPI:** engine quality (a real product-relevant accuracy number, first ever);
+  **none degraded** — measurement only, no chain/scorer/prod change, BIRD 06-19 /
+  Spider 06-17 + `eval-baseline.ts` byte-identical (persona-bench never overwrites
+  them). Artifact: *"Your text-to-SQL eval is failing the wrong schema."*
 - 2026-06-22 (run 57) — **Hygiene (D4 + D5 + P3): `docs/performance.md`
   net-shrunk 26,378 → 24,441 B (−1,937 B) by collapsing §4's "slice-by-slice
   instrumentation plan".** Both live lanes were owned by open PRs (engine #472 ·

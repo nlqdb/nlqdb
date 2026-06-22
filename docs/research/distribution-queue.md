@@ -59,6 +59,55 @@ reporting*. nlqdb mentioned once.
 the "Weaviate hybrid search agent memory" P2 keyword) — a genuinely useful
 architectural lesson with one nlqdb mention, anchoring the new `/vs/weaviate`
 page. No engine/funnel KPI degrades (content + data + one OG PNG only).
+## 2026-06-22 (run 58) — dev.to / lobste.rs / HN: "Your text-to-SQL eval is failing the wrong schema" (engine quality, with a number)
+
+**Where:** dev.to + lobste.rs (`ai` / `databases` / `sql`), optionally Show HN;
+build-in-public, the "benchmark vs production shape" angle, now backed by a fresh
+measured number (0.52 / 0.19 / 0.90). Sibling to run 55's *"measured on schemas
+your users will never build"* — that one introduced the ICP benchmark; this one
+reports the first score. nlqdb mentioned once.
+
+**Title:** Your text-to-SQL eval is failing the wrong schema
+
+**Body:**
+
+> The two benchmarks everyone quotes for text-to-SQL — BIRD and Spider — run
+> over academic databases: 20–100 tables, cryptic column names, the schema of a
+> 1990s university registrar. Our free LLM chain scores **0.52** on BIRD and
+> **0.19** on Spider. Read those numbers cold and you'd conclude the engine
+> can't write SQL.
+>
+> So we built a third benchmark out of the schemas our users *actually* create —
+> a SaaS app (users, plans, orders) and an agent-memory store (agents, facts,
+> recalls). Four to six tables. Names a human picked. Twenty hand-written
+> questions with gold SQL, scored by the exact same execution-accuracy harness.
+>
+> Same engine, same free models, same prompts. Score: **0.90** (18/20).
+>
+> That's not the engine getting better between Tuesday and Wednesday. It's the
+> same engine measured against the shape of the problem people actually have.
+> BIRD's 60-table joins and Spider's snake_case riddles are real difficulty —
+> but they're not *your* difficulty if your database is the six tidy tables you
+> designed last week. The academic number was answering a question we weren't
+> asking.
+>
+> The two misses are worth more than the 18 hits. Both landed on the same weak
+> model leg, and both on genuinely hard multi-join aggregations: one dropped a
+> `WHERE status = 'paid'` filter the English clearly implied ("paid revenue"),
+> the other used a `LEFT JOIN` where the gold inner-joined, so agents with zero
+> recalls showed up with a count of 0. Those are the failures to chase —
+> value-filters the model silently omits, join semantics it picks plausibly but
+> wrongly — not "can it survive a 60-table schema."
+>
+> Lesson: an off-the-shelf benchmark measures the difficulty *it* chose, not the
+> difficulty you ship. If your product constrains the schema shape, score against
+> that shape too — the number you get back might be twice as high, and the
+> handful of failures it surfaces are the ones your users will actually hit.
+
+**Why this advances the north-star:** engine quality (the headline pillar) — a
+genuinely useful eval-design lesson carrying a real, first-of-its-kind product
+accuracy number (0.90 on the ICP shape), with one nlqdb mention. No funnel KPI
+degrades (it's a measurement + a post; no prod change).
 
 ## 2026-06-22 (run 57) — dev.to / lobste.rs: "Your 'instrumentation plan' is lying to you — the catalog already shipped" (observability-docs discipline)
 
@@ -115,6 +164,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers vendor lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING — deployment and capability are orthogonal axes; anchors `/vs/chroma`).
 - run 55 — "Your text-to-SQL accuracy is measured on schemas your users will never build" (BIRD/Spider run over messy 20–100-table academic schemas, not the small clean ones your users build; we added a third benchmark — hand-authored gold NL→SQL over the ICP shape, same EX scorer, literal-date gold so it never drifts with the clock; anchors persona-bench, SK-QUAL-018).
 - run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING; deployment model and data model are independent axes; anchors `/vs/chroma`).
 - run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no GROUP BY/COUNT/JOIN/HAVING; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
