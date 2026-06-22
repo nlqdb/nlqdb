@@ -7,8 +7,8 @@ publishes at the weekly session. Newest first. Delete an entry once published
 
 **Retention (D4, 20 KB cap):** keep the **two most recent full drafts** below
 inline; everything older collapses to a one-line title + venue + gist, with the
-full body recoverable from git history. Split point to the archive stays at
-runs 1–7.
+full body recoverable from git history. The earliest drafts live in the
+[archive](./distribution-queue-archive.md).
 
 ## 2026-06-22 (run 46) — build-in-public: "We cap every doc at 20 KB — even the marketing backlog" (dev.to / lobste.rs)
 
@@ -145,4 +145,4 @@ recovers any body.
 - runs 23, 25 — analytics-over-agent-memory threads → `/solve/analytical-queries-over-agent-memory`, `/solve/give-ai-agent-persistent-memory`.
 - runs 21–22 — WS-02 "X vs nlqdb" / "X alternative" posts → `/vs/langmem`, `/vs/letta`.
 
-Older drafts (runs 1–7): [`distribution-queue-archive.md`](./distribution-queue-archive.md).
+Earliest drafts: [`distribution-queue-archive.md`](./distribution-queue-archive.md).
