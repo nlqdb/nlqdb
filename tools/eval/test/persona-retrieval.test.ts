@@ -125,7 +125,11 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
   // counts as the miss it is, not a false hit.
   it("documents the q10 known miss (top-1 `having` for a no-HAVING grouped count)", () => {
     const q10 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 10);
-    const [top] = retrievePlanExemplars(q10?.question ?? "", ddlFor(q10?.db_id ?? "agent_memory"), 1);
+    const [top] = retrievePlanExemplars(
+      q10?.question ?? "",
+      ddlFor(q10?.db_id ?? "agent_memory"),
+      1,
+    );
     expect(EXPECTED[10]).not.toContain(top?.bucket);
   });
 });

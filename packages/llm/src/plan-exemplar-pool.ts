@@ -16,7 +16,7 @@
 // The `null-filter` row (13th) was added on a second evidence source — the
 // persona-bench (`SK-QUAL-018`) ICP-retrieval probe (`tools/eval`): nlqdb's own
 // "who never logged in" query retrieved the anti-join NOT-IN demo, the wrong
-// shape for a plain `IS NULL` filter (ICP retrieval precision@1 18/20 → 19/20).
+// shape for a plain `IS NULL` filter (ICP retrieval precision@1 17/20 → 18/20).
 // Rows deliberately span domains and dialects: masking is what lets a pool row
 // written over `employees` help a goal over `students`, so a domain-varied pool
 // is a feature, not noise.

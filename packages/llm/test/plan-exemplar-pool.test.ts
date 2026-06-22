@@ -209,7 +209,7 @@ describe("plan-exemplar-pool", () => {
   // NOT-IN demo — while "never <relation>" (absence in a related table) stays
   // anti-join. Same SK-LLM-036/037 same-probe before/after pattern. This is the
   // shape persona-bench q3 ("who never logged in") needs (ICP retrieval
-  // precision@1 18/20 → 19/20, the `tools/eval` persona-retrieval probe).
+  // precision@1 17/20 → 18/20, the `tools/eval` persona-retrieval probe).
   it("null-filter row flips a 'never logged in' goal from the anti-join demo to the IS NULL demo", () => {
     const probe = PROBES.find((p) => p.bucket === "null-filter");
     expect(probe).toBeDefined();

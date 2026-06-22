@@ -88,7 +88,7 @@ dispatch (blocked today — both evals < 7 d, §5).
   Spider 06-17 both < 7 d, §5) **and owned by #464**; #465 owns comparison-pages,
   #458 the SDK; §4 backlog exhausted (#1 owned, #2 falsified, #3 dispatch-only,
   #5/#6 blocked); growing persona-bench would collide with #464's
-  `persona-retrieval.test.ts` (hardcoded 19/20). So per the loop the deliverable
+  `persona-retrieval.test.ts` (hardcoded 18/20). So per the loop the deliverable
   is the sanctioned cleanup of the engine progress bar agents read every run (a
   standing D4 offender per `blocked-by-human.md`). **Δ:** collapsed the 5 redundant
   prompt-directive-bullet rows (T10, T13–T16 — each "one bullet, measured combined
@@ -144,39 +144,21 @@ dispatch (blocked today — both evals < 7 d, §5).
   the pool's own held-out precision@1 **held 13/13**; q3 flips anti-join →
   `IS NULL`, while q12/q16 ("never placed an order / recalled") + the in-subquery
   probe stay put (bidirectional guard — the verb discriminates, not "never").
-  The 1 remaining miss (q8 masks to `ratio-cast`) is **documented as a
-  selector-side artifact**, not absorbed. **KPI:** engine quality (ICP-relevant
+  The 2 remaining misses (q8 masks to `ratio-cast`; q10 — a no-HAVING grouped
+  count — masks to `having`) are **documented as selector-side artifacts**, not
+  absorbed. **KPI:** engine quality (ICP-relevant
   NL→SQL); **none degraded** — prod byte-identical (`buildPlanSystem` default-off
   `k<=0` ⇒ static `PLAN_SYSTEM`; BIRD 06-19 / Spider 06-17 untouched); 209 llm
-  tests (was 208), 262 eval (was 258). Artifact: "Your few-shot pool, tested
+  tests (was 208), 263 eval (was 258). Artifact: "Your few-shot pool, tested
   against your *own* users' queries — not just the benchmark" queued.
-- 2026-06-22 (run 47) — **Engine: persona-bench grown 12 → 20 questions
-  (`SK-QUAL-018` documented "one batch per run" follow-on).** Worst number is
-  engine (Spider 0.1852), but it's dispatch-gated (both baselines < 7 d, §5) and
-  the open daily PRs own the live engine/docs/SDK lanes (#461 SK-LLM-041 pool,
-  #462 distribution-queue D4, #458 SDK packaging) — so the non-colliding,
-  offline-measurable engine slice is growing nlqdb's *own* ICP benchmark. Batch 2
-  adds 8 hand-authored, hand-checked golds across the existing two schemas: the
-  **anti-join / negation** (`NOT IN` — "never placed an order", "never recalled")
-  and **challenging multi-join** shapes v0 lacked, plus the first `challenging`
-  difficulty tier. These are precisely the `SK-QUAL-014` structural loss mass
-  `SK-LLM-041`'s new pool exemplars target, so persona-bench can now *measure*
-  whether those exemplars help on ICP-shaped queries. **Δ (offline, the
-  gold-executability invariant — no LLM, no quota):** #8 — **12/12 → 20/20 golds
-  execute non-empty**; persona-bench assertions 78 → 118 expect() calls;
-  `@nlqdb/eval` 258 tests green, typecheck + biome clean. **KPI:** engine quality
-  (the ICP-relevant NL→SQL number); **none degraded** — additive data-only (no
-  `runner.ts`/chain/scorer edit), PR CI never fires keys (`SK-QUAL-002`),
-  BIRD 06-19 + Spider 06-17 byte-untouched, free-chain EX = next dispatch.
-  Artifact (step 3) deferred this run to avoid colliding with #462's in-flight
-  full rewrite of `distribution-queue.md`; queue once #462 lands.
-- 2026-06-22 (runs 43–46) — engine + distribution + hygiene wave (all merged;
+- 2026-06-22 (runs 43–47) — engine + distribution + hygiene wave (all merged;
   BIRD 06-19 + Spider 06-17 untouched). **Engine:** §4 #1 DAIL-SQL retrieval
   T9-ablation wiring `buildPlanSystem(goal,schema,k)` (run 43, static at `k<=0`)
   + curated pool grown 10 → 12 buckets with anti-join `NOT IN` + group-order-limit
   (run 46, `SK-LLM-041`, precision@1 12/12, prod byte-identical); persona-bench v0
   (run 43, `SK-QUAL-018`, 12 golds execute) → runner-wired dispatchable
-  `EvalDataset` (run 44, `@nlqdb/eval` → 258). **Distribution:** WS-12 closed
+  `EvalDataset` (run 44, `@nlqdb/eval` → 258) → grown 12 → 20 golds (run 47,
+  batch 2 — anti-join + challenging multi-join shapes; 20/20 execute). **Distribution:** WS-12 closed
   (`AgentMemoryBand` + `AlsoWorksFor` fold, runs 43–44) → messaging 11/13, pivot
   13/20. **Hygiene:** `distribution-queue.md` net-shrunk 35.9 → 9.1 KB under cap
   (run 46). **Measurement (run 45, live):** visits 62/98, waitlist 79 rows (1 real
