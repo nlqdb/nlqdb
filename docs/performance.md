@@ -169,6 +169,8 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.ask.hash`              | Schema-hash + query-hash compute.              |
 | `nlqdb.cache.plan.lookup`     | KV read for cached plan (label `hit=true/false`). |
 | `nlqdb.cache.plan.write`      | KV write of new plan.                          |
+| `nlqdb.cache.first_query.lookup` | KV read — has this user fired `user.first_query` yet? (`apps/api/src/ask/orchestrate.ts`; `onError`→false to avoid re-emit-forever). |
+| `nlqdb.cache.first_query.commit` | KV write marking `user.first_query` emitted (emit-then-commit; a failed commit re-emits next request, non-fatal). |
 | `nlqdb.recent_tables.lookup`  | KV read of principal's recent-tables MRU (`SK-ASK-012`). |
 | `nlqdb.recent_tables.touch`   | KV read-merge-write to push new tables onto the MRU (`SK-ASK-012`). `ctx.waitUntil` on `/v1/ask`; awaited inline on create. |
 | `llm.route`                   | Merged kind + dbId classification (SK-ASK-009). One cheap-tier call per cache-miss / dbId-absent send; replaces the older `llm.classify` + `llm.disambiguate` pair. |
