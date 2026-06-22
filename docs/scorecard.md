@@ -94,6 +94,35 @@ dispatch (blocked today — both evals < 7 d, §5).
   byte-untouched. Artifact deferred (avoids colliding with #464's
   `distribution-queue.md` edit; runs 47–48 precedent), draft parked: *"We cap
   every internal doc at 20 KB — even the engine-quality progress tracker."*
+- 2026-06-22 (run 49) — **Distribution/UX: AEO-copy correctness fix — 5 comparison
+  pages stop fabricating a phantom MCP `create_database` verb.** Worst number is
+  still engine (Spider 0.1852), but it's dispatch-gated (BIRD 06-19 / Spider 06-17
+  both < 7 d, §5) **and the engine lane is owned by the one open daily PR (#464,
+  DAIL-SQL pool 12→13 + persona-bench retrieval); #458 owns the SDK lane** — so
+  the non-colliding lever is a documented correctness bug on the distribution
+  surface. The comparison-pages feature flagged it (Open questions): the 5 older
+  `/vs` pages (Supabase / Vanna AI / Mem0 / Outerbase / Wren AI) named
+  `create_database`, `ask`, `run` as MCP verbs that **do not exist** —
+  [`SK-MCP-002`](features/mcp-server/decisions/SK-MCP-002-three-tools.md) is
+  explicit there is **no `nlqdb_create_database` tool** (`nlqdb_query`
+  materialises Postgres on first reference). Comparison FAQs are **lifted verbatim
+  by AI search engines** (the feature's whole thesis, §Why this exists), so this
+  copy was actively mis-teaching ChatGPT/Perplexity/Claude nlqdb's own API.
+  **Δ (measured, before/after on the data file):** phantom-verb occurrences
+  **10 → 0** across the 5 pages; corrected to the real trio
+  `nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe` (now 20 correct
+  mentions); 3 stale `MCP server with provisioning verbs` labels aligned to
+  `MCP server (agent-callable)` (the label the 4 newer pages use). Locked by **2
+  new `competitors.test.ts` invariants** (no `create_database` token; every
+  `nlqdb_*` token in the SK-MCP-002 allowed set) — web tests **11 → 13**,
+  `676` expect() calls, astro-check 0 errors, biome clean. **KPI:** UX +
+  onboarding (accurate third-party-keyword on-ramp copy); **none degraded** —
+  web-data-only, zero engine/SDK/funnel-code touch, BIRD 06-19 + Spider 06-17
+  byte-untouched. **Artifact (step 3) deferred** to avoid colliding with #464's
+  in-flight `distribution-queue.md` append; queue once #464 lands. Draft:
+  *"Your competitor comparison pages are teaching ChatGPT the wrong API — we
+  found 10 fabricated tool names on our own site and pinned a test so they can't
+  come back."*
 - 2026-06-22 (run 47) — **Engine: persona-bench grown 12 → 20 questions
   (`SK-QUAL-018` documented "one batch per run" follow-on).** Worst number is
   engine (Spider 0.1852), but it's dispatch-gated (both baselines < 7 d, §5) and

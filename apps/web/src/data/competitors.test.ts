@@ -68,6 +68,41 @@ describe("COMPETITORS data integrity", () => {
     expect(competitorBySlug("definitely-not-a-real-competitor")).toBeUndefined();
   });
 
+  // SK-MCP-002: comparison FAQs are lifted verbatim by AI search engines, so
+  // user-facing copy must only ever name MCP tools that actually exist —
+  // `nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe` (+ `nlqdb_remember`).
+  // There is no `nlqdb_create_database` verb (nlqdb_query materialises on first
+  // reference). Pin both invariants so a future page can't reintroduce a phantom.
+  const ALLOWED_MCP_TOOLS = new Set([
+    "nlqdb_query",
+    "nlqdb_list_databases",
+    "nlqdb_describe",
+    "nlqdb_remember",
+  ]);
+  const userFacingText = (c: (typeof COMPETITORS)[number]): string =>
+    [
+      c.oneLiner,
+      ...c.whenChooseUs,
+      ...c.whenChooseThem,
+      ...c.features.map((f) => f.note ?? ""),
+      ...c.faqs.flatMap((f) => [f.q, f.a]),
+    ].join(" ");
+
+  test("SK-MCP-002: no comparison page names a phantom `create_database` verb", () => {
+    for (const c of COMPETITORS) {
+      expect(userFacingText(c)).not.toContain("create_database");
+    }
+  });
+
+  test("SK-MCP-002: every nlqdb_* tool named in copy is a real MCP tool", () => {
+    for (const c of COMPETITORS) {
+      const tokens = userFacingText(c).match(/nlqdb_[a-z_]+/g) ?? [];
+      for (const tok of tokens) {
+        expect(ALLOWED_MCP_TOOLS.has(tok)).toBe(true);
+      }
+    }
+  });
+
   // WS-07: the /vs template cross-links /agents on exactly the
   // agent-memory cluster, keyed on the P2 persona. Pin that membership so
   // the cross-link stays scoped to the four memory comparisons.
