@@ -95,6 +95,23 @@ dispatch (blocked today — both evals < 7 d, §5).
   BIRD 06-19 + Spider 06-17 byte-untouched, free-chain EX = next dispatch.
   Artifact (step 3) deferred this run to avoid colliding with #462's in-flight
   full rewrite of `distribution-queue.md`; queue once #462 lands.
+- 2026-06-22 (run 46) — **D4 doc hygiene: `distribution-queue.md` net-shrunk
+  35.9 KB → 9.1 KB (−26.8 KB), back under the 20 KB cap.** Worst number is
+  engine (Spider 0.1852) but the engine lane is owned by the one open daily PR
+  (#461, DAIL-SQL pool 10→12) and dispatch-gated (both baselines < 7 d, §5), and
+  #458 owns the SDK lane — so no code lever was non-colliding today. Per the
+  loop, the deliverable is the sanctioned D5/D4 cleanup. The queue had grown to
+  35.9 KB (a clear D4 violation — not on the GLOBAL-028 exemption list) by
+  keeping a dozen full drafts inline that already live in git; applied the file's
+  own collapse convention as a stated **two-draft rolling window** (runs 45–46
+  full, all ≤ 44 collapsed to title + gist). The 130 KB
+  `automated-icp-validation-plan-verification.md` was checked first and left
+  untouched — it is **explicitly cap-exempt** per GLOBAL-029 (gutting it would
+  violate P1). **Δ:** queue −26.8 KB, under cap. **KPI:** onboarding/UX of the
+  autonomous loop (leaner agent-facing context per `/daily` run); **none
+  degraded** — docs-only, zero engine/funnel/code touch, BIRD 06-19 + Spider
+  06-17 untouched. Artifact: "We cap every doc at 20 KB — even the marketing
+  backlog" queued.
 - 2026-06-22 (run 45) — **Measurement refresh: full funnel + ops re-pulled live
   (D1 `nlqdb-app` + CF GraphQL), 06-15/06-13 → 06-22.** No code lever was
   shippable today — the worst number is engine (Spider 0.1852, unchanged,
@@ -112,41 +129,7 @@ dispatch (blocked today — both evals < 7 d, §5).
   Spider 06-17 both < 7 d ⇒ no dispatch alert. **KPI:** none degraded
   (measurement-only, zero code). Artifact: "Our waitlist has 79 rows. The honest
   count is 1." queued.
-- 2026-06-21 (run 44) — **Engine: persona-bench runner-wired (`SK-QUAL-018`
-  follow-on) — metric #8 from "v0 fixture" → "dispatchable `EvalDataset`,
-  free-chain EX one dispatch away".** New `loadPersonaBench` materialises each
-  in-memory ICP schema to a real `.sqlite` on first `resolveDbPath` (the runner
-  opens fixtures by path, readonly — same `introspectSchema`/`executeRows`
-  driver), keeping `bun:sqlite` a dynamic import so the data-half module stays
-  type-context-importable; `"persona-bench"` added to `EvalDataset` +
-  `KNOWN_DATASETS` + a `loadDatasetByName` branch + a `--persona P1|P2` filter, so
-  `bun src/runner.ts --dataset persona-bench` scores the free chain's EX. **Δ:**
-  #8 — v0 fixture → **runner-wired/dispatchable**; `@nlqdb/eval` 254 → 258 tests
-  (3 new: every question resolves a materialised path, each gold runs readonly
-  ≥1 row, persona filter). **KPI:** engine quality (the ICP-relevant number);
-  **none degraded** — additive new-branch only, offline, PR CI never fires keys
-  (`SK-QUAL-002`); BIRD/Spider load paths byte-unchanged, baselines untouched, EX
-  next dispatch. typecheck + biome clean. Remaining half: a
-  `quality-eval-persona-bench.yml` `workflow_dispatch`.
-- 2026-06-21 (run 44) — **Distribution: WS-12 closed — P1/P3/P4 personas
-  demoted into an "also works for…" fold → home reweight complete (band run 43
-  + fold run 44).** Worst number is engine (Spider 0.1852, BIRD 0.520), but the
-  engine lane is dispatch-gated (both evals < 7 d, §5 forbids a back-to-back
-  canonical dispatch; the §4 reasoning levers are offline-complete and a clean
-  greedy-vs-SC smoke is a multi-day quota campaign, not one run) **and the one
-  open PR (#457) owns the engine-lane slice** (persona-bench runner-wiring,
-  `SK-QUAL-018` follow-on). So the clean non-colliding slice is the named next
-  half of WS-12. New `AlsoWorksFor.astro` — a quiet divider (muted kicker +
-  heading + lede, **no accent, no CTA, no JS**) inserted before `CodePanel` +
-  `Replaces` in `index.astro`, so the general-purpose persona framing reads as a
-  secondary fold below the agent-memory band. Composition-only; **nothing
-  deleted**, hero wordmark/lede untouched (gated to WS-13). **Δ:** WS-12 🟡 1/2 →
-  ✅ 2/2; messaging 10 → 11/13, pivot 12 → 13/20. **KPI:** onboarding (UX) —
-  agent-builder-first home hierarchy; **none degraded** — web-only + additive,
-  zero engine/chain/scorer/perf touch, BIRD 06-19 + Spider 06-17 untouched.
-  astro check 0 err, 128 web tests green, biome clean, build renders the fold
-  into `dist/index.html`. Artifact: "We demoted three of our four personas on
-  purpose" build-in-public note queued.
+- 2026-06-21 (run 44) — **two slices** (both merged): **(a) Engine:** persona-bench runner-wired (`SK-QUAL-018` follow-on) — metric #8 v0 fixture → dispatchable `EvalDataset` (`loadPersonaBench` materialises each ICP schema to a real `.sqlite`; `--dataset persona-bench [--persona P1|P2]`; `@nlqdb/eval` 254 → 258, free-chain EX one dispatch away). **(b) Distribution: WS-12 closed** — `AlsoWorksFor.astro` quiet divider demotes P1/P3/P4 into an "also works for…" fold before `CodePanel`+`Replaces` (composition-only, nothing deleted, hero untouched) → WS-12 ✅ 2/2, messaging 10 → 11/13, pivot 12 → 13/20. KPI engine quality / onboarding; none degraded; all offline/additive, BIRD 06-19 + Spider 06-17 untouched.
 - 2026-06-21 (run 43) — three slices, all merged: **(a) Engine: persona-bench v0** (`SK-QUAL-018`, #456) — metric #8 created, `saas_app` (P1) + `agent_memory` (P2) inline DDL+seed, 12 NL→gold-SQL pairs (time-stable), **12/12 golds execute non-empty**; data half only ⇒ baselines untouched, `@nlqdb/eval` 246 → 254. **(b) Distribution: WS-12 band** (`AgentMemoryBand.astro` after `<Hero />`, `/agents` CTA) → WS-12 🟡 1/2. **(c) Engine: §4 #1 DAIL-SQL retrieval T9-ablation wiring** (`SK-LLM-041` half b, #455) — `buildPlanSystem(goal, schema, k)` static byte-for-byte at `k<=0`, swaps in `k` exemplars at `k>0`; token budget 0.935× static; `@nlqdb/llm` 203 → 207. KPI engine quality / onboarding; none degraded; BIRD 06-19 + Spider 06-17 untouched.
 - 2026-06-21 (run 42) — **three slices** (all merged): **(a)** §4 #1 curated plan-exemplar pool (`SK-LLM-041` half (a)) — 10 hand-authored rows, offline precision@1 10/10, similarity lift +0.592; staged ⇒ baselines untouched; `@nlqdb/llm` 198 → 203. **(b)** WS-08 on-brand OG/social cards (`gen-og.mjs`, SK-PIVOT-012) → messaging 9 → 10/13, pivot 11 → 12/20. **(c)** §4 #3 self-consistency dispatch vehicle (`SK-QUAL-017`) — `self_consistency`/`sc_temperature` smoke inputs, lever fully dispatchable. KPI engine quality / onboarding; none degraded.
 - 2026-06-21 (runs 40–41) — engine + distribution wave: **§4 #1** schema-aware selector `selectExemplarsForSchema` (`SK-LLM-041` T23; `@nlqdb/llm` 16 → 20 few-shot cases); **§4 #3** self-consistency `temperature`-sampling half (run 40, default greedy ⇒ `SK-LLM-024` byte-identical) + runner `--self-consistency N` / `--sc-temperature T` wiring (run 41, `SK-QUAL-017`, eval 241 → 244); **WS-09 closed** — gate-honest server-rendered live demo on `/agents` → messaging 8 → 9/13, pivot 10 → 11/20. All offline / additive; BIRD 06-19 + Spider 06-17 untouched. KPI engine quality / onboarding; none degraded.
