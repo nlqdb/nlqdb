@@ -10,6 +10,51 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-22 (run 52) — dev.to / lobste.rs: "Some retrieval misses can't be fixed with lexical tricks — and that's a finding" (text-to-SQL engineering)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`); fourth in the DAIL-SQL
+retrieval / eval-honesty series — the "negative result" angle. nlqdb mentioned
+once. Pairs with `SK-LLM-041` + persona-bench (`SK-QUAL-018`).
+
+**Title:** Some few-shot retrieval misses can't be fixed with lexical tricks — and measuring *why* is the win
+
+**Body:**
+
+> We pick few-shot demonstrations by masked question similarity before a small
+> model writes SQL (the DAIL-SQL trick). After auditing the pool against our own
+> users' queries (the last three posts), two misses were left — and both looked
+> like ranker bugs, not pool gaps. The right demo *was* in the pool; the ranker
+> just didn't pick it.
+>
+> Miss: **"which predicates does the agent named 'support-bot' use, and how
+> often?"** — a filtered `GROUP BY … COUNT(*)`, no `HAVING`. Top-1 retrieved was
+> the `HAVING COUNT(*) > N` demo, which would teach the model a threshold filter
+> the query doesn't have. The obvious fix is a smarter selector, so we tried the
+> two cheapest: drop stopwords before scoring, and normalise synonyms ("how
+> often" / "how many times" → one count marker, "more than" → a threshold
+> marker). We measured both the boring way — same queries, before vs after.
+>
+> Stopwords made it *worse* (own-query precision 18/20 → 17/20): the token sets
+> got so sparse the misses just moved around. Normalisation left it flat (18/20).
+> Neither touched the held-out 14/14. Then we looked at *why*: the bad demo wins
+> on `{which, the, col, val}` — generic filler plus a **coincidental masked value
+> slot**. Both questions happen to contain a literal, so after masking they each
+> have a `val` token, and that spurious match plus two filler words outweighs the
+> one token that actually encodes structure. Flat token-overlap can't tell a
+> meaningful match from an accidental one; no amount of word-list tuning fixes
+> that. The real fix is a different *kind* of similarity — comparing a draft SQL
+> skeleton, which needs a model round-trip, so it's a feature, not a config tweak.
+>
+> Lesson: when a retrieval miss survives the cheap fixes, *measure the cheap
+> fixes anyway* — a negative result that says "this class of change can't work
+> here, and here's the mechanism" is worth more than a tweak that moves the number
+> by luck. We reverted both experiments and wrote down the ceiling. (Free-tier
+> NL→SQL chain; the own-users set is ~20 hand-checked queries.)
+
+**Why this advances the north-star:** engine quality (measurement integrity on
+the NL→SQL retrieval lever); a genuinely useful negative-result lesson with one
+nlqdb mention. No engine/funnel KPI degrades (offline, prod byte-identical).
+
 ## 2026-06-22 (run 51) — dev.to / lobste.rs: "The most common query has no benchmark row" (text-to-SQL engineering)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`); third in the DAIL-SQL
@@ -55,49 +100,6 @@ angle. nlqdb mentioned once. Pairs with `SK-LLM-041` + persona-bench
 ICP-relevant distribution); a genuinely useful eval-honesty lesson with one
 nlqdb mention. No engine/funnel KPI degrades (offline, prod byte-identical).
 
-## 2026-06-22 (run 48) — dev.to / lobste.rs: "Test your few-shot retrieval against your *own* users' queries — not just the benchmark" (text-to-SQL engineering)
-
-**Where:** dev.to + lobste.rs (`databases` / `ai`); the direct sequel to the
-"wrong shape" post below — same DAIL-SQL retrieval, the eval-honesty twist.
-nlqdb mentioned once. Pairs with `SK-LLM-041` + persona-bench (`SK-QUAL-018`).
-
-**Title:** Test your few-shot retrieval against your own users' queries — not just the benchmark
-
-**Body:**
-
-> We retrieve few-shot demonstrations by masked question similarity before a
-> small model writes SQL (the DAIL-SQL trick). To prove the retrieval worked we
-> built a held-out probe set: a paraphrase of each pool example, over a fresh
-> schema. Precision@1 was a clean 13/13. Looked done.
->
-> Then we ran the *exact same* retrieval over a different question set — not the
-> research benchmark, but the schemas and questions our own users actually build
-> (side-project SaaS: plans, users, orders; agent memory: facts, episodes,
-> recalls). One query missed in a way the held-out probes never caught: **"which
-> users have never logged in?"** retrieved a `NOT IN (SELECT …)` anti-join demo.
-> Wrong. That's a plain `WHERE last_login IS NULL` — the "never" here is a NULL
-> *attribute of the row*, not a missing row in a *related* table. The single
-> token "never" had dragged it to the anti-join example, and our benchmark-shaped
-> probes were all too tidy to ever phrase it the way a real user would.
->
-> The fix was one pool row (a plain `IS NULL` filter), placed so an ambiguous
-> "never <relation>" still ties to the anti-join demo. Measured the boring way —
-> same queries, before vs after — our own-query precision@1 went **17/20 →
-> 18/20**, while the synthetic held-out precision stayed **13/13**. The benchmark
-> number never moved; it couldn't see the gap.
->
-> Lesson: a retrieval eval is only as honest as its query *distribution*. A probe
-> set that paraphrases your own examples will happily report green while your
-> users' bread-and-butter queries silently retrieve the wrong shape. Keep a small
-> set of *your* representative questions — the ones your product is actually for —
-> and measure retrieval against those too. (We run this over nlqdb's free-tier
-> NL→SQL chain; the own-users set is ~20 hand-checked queries.)
-
-**Why this advances the north-star:** engine quality (NL→SQL retrieval on the
-ICP-relevant distribution); the post is a genuinely useful eval-honesty lesson
-with one nlqdb mention. No engine/funnel KPI degrades (offline, prod
-byte-identical).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -106,6 +108,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 48 — "Test your few-shot retrieval against your *own* users' queries — not just the benchmark" (a held-out probe set that paraphrases your own examples reports green while real-user queries silently retrieve the wrong shape; "never logged in" → anti-join not `IS NULL`; own-query precision 17/20 → 18/20, held-out 13/13 unmoved).
 - run 46 — "Your few-shot examples might be teaching the model the wrong shape" (retrieval quality is bounded by pool *coverage*, not the ranker; a one-word negation retrieves its own opposite if the pool can't represent the shape; +anti-join/+top-N-of-aggregate, precision held 12/12).
 - runs 43–44 — "Your benchmark should look like your users' database, not a research paper's" (persona-bench: NL→SQL on the schema shapes users actually build; sound-ruler invariant 12/12 before any accuracy number).
 - run 43 — "Ship your LLM lever as a default-off ablation — measure before you adopt" (`buildPlanSystem(goal, schema, k)`, `k=0` byte-identical; prove inert + token-negative before spending quota; closes runs 38–43 retrieval arc).

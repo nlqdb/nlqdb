@@ -126,6 +126,15 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
   // pool-row add. These tests pin the known state so a future selector change
   // that fixes either is visible as a delta.
   //
+  // The cheaper LEXICAL-selector avenue is measured-and-rejected (2026-06-22,
+  // run 52 — quality-score-verification-log.md): a stopword filter regresses ICP
+  // precision@1 (18/20 → 17/20) and phrase normalisation leaves it flat (18/20),
+  // both keeping held-out 14/14. Root cause: q10's top-1 `having` wins on generic
+  // filler plus a coincidental masked literal slot (`val` — both questions happen
+  // to contain a literal), which flat masked-token Jaccard cannot separate from a
+  // real structural token. Do NOT re-attempt a lexical selector tweak here; the
+  // only remaining offline gain needs query-skeleton (predicted-SQL) similarity.
+  //
   // q8 ("the 5 most-recalled facts … how many times") masks to a generic
   // skeleton whose top-1 is `ratio-cast` rather than `group-order-limit`/`group-max`.
   it("documents the q8 known miss (masking artifact, not a pool gap)", () => {
