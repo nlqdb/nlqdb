@@ -33,8 +33,9 @@ buckets** (run 46 +anti-join/NOT-IN negation + order-by-aggregate-limit top-N;
 **run 48 +null-filter**), held precision@1 at 13/13. **Run 48 added a second
 evidence source — a persona-bench ICP-retrieval probe** (`SK-LLM-041 ×
 SK-QUAL-018`): over nlqdb's OWN 20 ICP queries the pool's retrieval precision@1
-is **18/20 → 19/20** (the "who never logged in" P1 query flips off the
-misleading anti-join NOT-IN demo onto the `IS NULL` demo). The #3 EX delta is the
+is **17/20 → 18/20** (the "who never logged in" P1 query flips off the
+misleading anti-join NOT-IN demo onto the `IS NULL` demo; q8/q10 pinned misses).
+The #3 EX delta is the
 greedy-vs-SC smoke gap on the first N>=2 dispatch; both land the next canonical
 dispatch (blocked today — both evals < 7 d, §5).
 
@@ -139,7 +140,7 @@ dispatch (blocked today — both evals < 7 d, §5).
   `WHERE col IS NULL` (a NULL *attribute*, not a missing *relation*). Added one
   `null-filter` pool row (placed after anti-join so an ambiguous "never
   <relation>" still ties to anti-join). **Δ (offline, same-probe before/after —
-  the `SK-LLM-036/037` pattern):** ICP retrieval **precision@1 18/20 → 19/20**;
+  the `SK-LLM-036/037` pattern):** ICP retrieval **precision@1 17/20 → 18/20**;
   the pool's own held-out precision@1 **held 13/13**; q3 flips anti-join →
   `IS NULL`, while q12/q16 ("never placed an order / recalled") + the in-subquery
   probe stay put (bidirectional guard — the verb discriminates, not "never").

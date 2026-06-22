@@ -37,8 +37,8 @@ nlqdb mentioned once. Pairs with `SK-LLM-041` + persona-bench (`SK-QUAL-018`).
 >
 > The fix was one pool row (a plain `IS NULL` filter), placed so an ambiguous
 > "never <relation>" still ties to the anti-join demo. Measured the boring way —
-> same queries, before vs after — our own-query precision@1 went **18/20 →
-> 19/20**, while the synthetic held-out precision stayed **13/13**. The benchmark
+> same queries, before vs after — our own-query precision@1 went **17/20 →
+> 18/20**, while the synthetic held-out precision stayed **13/13**. The benchmark
 > number never moved; it couldn't see the gap.
 >
 > Lesson: a retrieval eval is only as honest as its query *distribution*. A probe

@@ -34,7 +34,7 @@ function ddlFor(db_id: string): string {
 // model the wrong skeleton. Authored from each gold's structure, not its
 // retrieval, so the map is the contract and the pool is measured against it.
 const EXPECTED: Record<number, readonly string[]> = {
-  0: ["order-by-limit", "group-order-limit"], // plain top-N; ORDER..DESC LIMIT is the mechanic
+  0: ["order-by-limit", "group-order-limit"], // plain top-N; `group-order-limit` is a structural stand-in for a pool gap (no plain `order-by-limit` bucket exists)
   1: ["group-by-count", "join-aggregate"],
   2: ["date-range", "group-by-count", "join-aggregate"],
   3: ["null-filter"], // "never logged in" ⇒ IS NULL, NOT the anti-join NOT-IN demo
@@ -44,7 +44,7 @@ const EXPECTED: Record<number, readonly string[]> = {
   7: ["group-by-count", "join-aggregate"],
   8: ["group-order-limit", "group-max"], // known miss: masks to ratio-cast (see below)
   9: ["date-range"],
-  10: ["group-by-count", "having", "join-aggregate"],
+  10: ["group-by-count", "join-aggregate"], // known miss: filtered GROUP-BY-COUNT, NO HAVING; top-1 is the `having` demo (see below)
   11: ["having"],
   12: ["anti-join"],
   13: ["group-order-limit", "join-aggregate"],
@@ -80,13 +80,14 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  it("retrieves a structurally-appropriate demo for ≥ 19/20 ICP queries", () => {
+  it("retrieves a structurally-appropriate demo for ≥ 18/20 ICP queries", () => {
     const m = measure();
     // Surface the numbers in the run log for the verification record.
     console.info("[persona-retrieval] measure:", JSON.stringify(m));
-    // 19/20 after the null-filter row (was 18/20): q3 "who never logged in"
-    // flipped from the anti-join NOT-IN demo to the null-filter IS-NULL demo.
-    expect(m.hits).toBeGreaterThanOrEqual(19);
+    // 18/20 after the null-filter row (was 17/20): q3 "who never logged in"
+    // flipped from the anti-join NOT-IN demo to the null-filter IS-NULL demo
+    // (+1). The two pinned, documented misses are q8 + q10 (see below).
+    expect(m.hits).toBeGreaterThanOrEqual(18);
   });
 
   it("the null-filter row lands q3 ('never logged in') on the IS-NULL demo, not anti-join", () => {
@@ -103,16 +104,28 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  // The one remaining miss is documented, not silently accepted: q8 ("the 5
-  // most-recalled facts … how many times") masks to a generic skeleton whose
-  // top-1 is `ratio-cast` rather than `group-order-limit`/`group-max`. That is a
-  // masking artifact (the right buckets exist in the pool), not a missing bucket,
-  // so the fix is on the selector side (query-skeleton similarity, DAIL §4.1's
-  // second variant) — out of scope for a pool-row add. This test pins the known
-  // state so a future selector change that fixes it is visible as a delta.
+  // The two remaining misses are documented, not silently accepted. Both are
+  // selector-side (the right buckets exist in the pool), so the fix is
+  // query-skeleton similarity (DAIL §4.1's second variant) — out of scope for a
+  // pool-row add. These tests pin the known state so a future selector change
+  // that fixes either is visible as a delta.
+  //
+  // q8 ("the 5 most-recalled facts … how many times") masks to a generic
+  // skeleton whose top-1 is `ratio-cast` rather than `group-order-limit`/`group-max`.
   it("documents the q8 known miss (masking artifact, not a pool gap)", () => {
     const q8 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 8);
     const [top] = retrievePlanExemplars(q8?.question ?? "", ddlFor(q8?.db_id ?? "agent_memory"), 1);
     expect(EXPECTED[8]).not.toContain(top?.bucket);
+  });
+
+  // q10 ("which predicates does 'support-bot' use, and how often") is a filtered
+  // GROUP-BY-COUNT with NO HAVING clause, yet its top-1 is the `having` demo — a
+  // structurally-wrong skeleton (it would teach the model a `HAVING COUNT(*)`
+  // filter the gold doesn't have). `having` was dropped from EXPECTED[10] so this
+  // counts as the miss it is, not a false hit.
+  it("documents the q10 known miss (top-1 `having` for a no-HAVING grouped count)", () => {
+    const q10 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 10);
+    const [top] = retrievePlanExemplars(q10?.question ?? "", ddlFor(q10?.db_id ?? "agent_memory"), 1);
+    expect(EXPECTED[10]).not.toContain(top?.bucket);
   });
 });

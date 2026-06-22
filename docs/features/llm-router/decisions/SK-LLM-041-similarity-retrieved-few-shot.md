@@ -138,13 +138,15 @@ identifiers identically.
   **Second evidence source — persona-bench ICP retrieval** (`tools/eval/test/persona-retrieval.test.ts`,
   the `SK-LLM-041 × SK-QUAL-018` bridge): running `retrievePlanExemplars` over
   the **20 persona-bench (`SK-QUAL-018`) ICP questions** — nlqdb's OWN target
-  distribution, not synthetic probes — scores **precision@1 18/20 → 19/20**
+  distribution, not synthetic probes — scores **precision@1 17/20 → 18/20**
   against a per-question expected-bucket map: the null-filter row flips q3 ("who
-  never logged in") off the misleading anti-join demo. The 1 remaining miss (q8,
-  "the 5 most-recalled facts …") is **documented, not absorbed**: it masks to a
-  generic skeleton whose top-1 is `ratio-cast`, a *selector*-side artifact (the
-  right buckets exist), so the fix is query-skeleton similarity (DAIL §4.1's
-  second variant), out of scope for a pool-row add. Half (b) adds `buildPlanSystem` + `prompts.ts`'s exported `PLAN_DIRECTIVES`
+  never logged in") off the misleading anti-join demo (+1). The 2 remaining
+  misses (q8, "the 5 most-recalled facts …"; q10, "which predicates does
+  'support-bot' use, and how often" — a filtered GROUP-BY-COUNT with NO HAVING
+  whose top-1 is the `having` demo) are **documented, not absorbed**: both are
+  *selector*-side artifacts (the right buckets exist), so the fix is
+  query-skeleton similarity (DAIL §4.1's second variant), out of scope for a
+  pool-row add. Half (b) adds `buildPlanSystem` + `prompts.ts`'s exported `PLAN_DIRECTIVES`
   / `PLAN_FEW_SHOT_HEADER` / `fewShotBlock` (the static `PLAN_FEW_SHOT` rebuilt
   through `fewShotBlock`, byte-identical) + the `_chat-provider.ts` system-prompt
   call + the eval `--retrieve-exemplars` flag (`runner.ts`), with 4 new
