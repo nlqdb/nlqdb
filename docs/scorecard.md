@@ -71,6 +71,23 @@ top-of-funnel AEO surface (distribution lane).
 
 ## Deltas (recent runs)
 
+- 2026-06-22 (run 57) — **Hygiene (D4 + D5 + P3): `docs/performance.md`
+  net-shrunk 26,378 → 24,441 B (−1,937 B) by collapsing §4's "slice-by-slice
+  instrumentation plan".** Both live lanes were owned by open PRs (engine #472 ·
+  distribution #473) and the canonical BIRD/Spider dispatch is gated (06-19 /
+  06-17 both < 7 d, §5), so the non-colliding lever was doc hygiene. §4's
+  slice-3–7 table re-listed a **stale subset** of the §3 span/metric catalog
+  (P3 — §3 is the single source of truth, per observability/FEATURE.md) and its
+  per-slice "CI assertion" notes duplicate specs that live in the test files
+  (D5: inferable from code). Replaced with the load-bearing standing rule
+  (catalog names + vitest assertion + budget assertion); **0 span/metric names
+  lost** — the two `nlqdb.cache.first_query.lookup`/`commit` spans the §4 table
+  named but §3 omitted were added to the §3 catalog so it stays the single
+  source of truth; observability cross-ref label synced. **KPI:**
+  performance / onboarding (the perf-doc front door lands on the live §3
+  catalog, not a stale plan); **none degraded** — docs-only, prod byte-identical,
+  BIRD 06-19 / Spider 06-17 untouched. Artifact: *"Your 'instrumentation plan'
+  is lying to you — the catalog already shipped."*
 - 2026-06-22 (run 56) — **Distribution: shipped `/vs/chroma`, the OSS-first
   vector-store wing of the "database, not a vector store" wedge.** Worst real
   number is the genuine-stranger funnel (rows #2/#3 ≈ 0), engine-gated
@@ -92,33 +109,17 @@ top-of-funnel AEO surface (distribution lane).
   13 competitors invariants green, astro-check 0 errors. Artifact: *"'Self-hosted'
   fixes lock-in, not the query model — your open-source vector store still can't
   GROUP BY."*
-- 2026-06-22 (run 54) — **Hygiene (D4 + P3): `docs/progress.md` net-shrunk
-  22,108 → 20,428 B back under the 20 KB cap** by trimming §0 surface-status Notes
-  that had accreted feature-doc bodies (quality-eval slice IDs, premium pricing,
-  anon source files) back to status + essence + link (P3). 0 rows / facts removed.
-  KPI onboarding / UX; none degraded (docs-only). Artifact: *"Your status table is
-  drifting because it answers 'why', not just 'what'"*.
-- 2026-06-22 (run 53) — **Distribution: shipped `/vs/pinecone`, the pivot's
-  "database, not a vector store" wedge given its canonical comparison page.**
-  Worst real number is the genuine-stranger funnel (rows #2/#3 ≈ 0), which is
-  engine-gated (GLOBAL-027 valve) — but the engine lane is both *owned* (open PR
-  #469, DAIL-SQL lexical-selector falsification) and *dispatch-gated* (BIRD 06-19
-  / Spider 06-17 both < 7 d, §5), so the non-colliding lever is the funnel's
-  top-of-funnel AEO surface. Covered P2 memory players were all *memory layers*
-  (mem0 / zep / letta / langmem); none was the canonical **vector database** the
-  ICP actually searches — exactly the pivot headline (GLOBAL-036). **Δ (measured,
-  distribution lane):** comparison pages **9 → 10**; P2 agent-builder cluster
-  **4 → 5** (WS-07 cross-link + WS-08 OG card both extended to pinecone);
-  llms.txt + sitemap entries **+1** (auto from the slug); OG cards **5 → 6**
-  (`vs-pinecone.png`, generator deterministic — the 5 existing cards byte-identical).
-  Facts web-verified 2026-06-22 (P2): serverless default, Starter free / Builder
-  $20 / Standard $50 / Enterprise $500, **no SQL / joins / transactions /
-  aggregations** — the honest "finds similar, can't GROUP BY" axis. **KPI:**
-  onboarding / distribution (AEO on the "agent memory vector store" P2 keyword);
-  **none degraded** — content + typed-data only, prod byte-identical, no engine
-  file touched, BIRD 06-19 / Spider 06-17 untouched; 13 competitors invariants +
-  130 web tests green. Artifact: *"Your agent's memory is a vector store. Ask it
-  'how many' and watch it fall over."* (the aggregation gap).
+- 2026-06-22 (run 54) — **Hygiene (D4 + P3):** `docs/progress.md` net-shrunk
+  22,108 → 20,428 B back under the 20 KB cap; the §0 surface-status matrix had
+  accreted feature-doc bodies into its Notes column (P3 duplication) — trimmed
+  every Note to status + one-line essence + owning-feature link, 0 rows/facts
+  removed. KPI onboarding / UX; none degraded.
+- 2026-06-22 (run 53) — **Distribution:** shipped `/vs/pinecone`, the pivot's
+  "database, not a vector store" wedge as a canonical comparison page (the first
+  *vector DB*, vs the memory-layer /vs set: mem0 / zep / letta / langmem).
+  Comparison pages 9 → 10; P2 cluster 4 → 5 (WS-07 cross-link + WS-08 OG card);
+  OG cards 5 → 6; sitemap/llms.txt +1. KPI onboarding / distribution; none
+  degraded — content + typed-data only, prod byte-identical, engine untouched.
 - 2026-06-22 (run 52) — **Engine (finding, Δ ≤ 0 — variant reverted): the
   lexical-selector avenue for the two pinned persona-bench ICP misses (q8, q10)
   is falsified — the pool/lexical-selector half of §4 #1 is at its offline
@@ -134,12 +135,6 @@ top-of-funnel AEO surface (distribution lane).
   BIRD 06-19 / Spider 06-17 untouched. Artifact: *"We tested our few-shot retrieval
   against our own users' queries — then tried to fix the misses with lexical
   tricks, and measured why that can't work."*
-- 2026-06-22 (run 51) — **Engine: §4 #1 DAIL-SQL pool grown 13 → 14 —
-  `order-by-limit` (plain top-N) added (`SK-LLM-041 × SK-QUAL-018`).** q0 ("10
-  most recent signups") flipped off the spurious `group-order-limit` GROUP-BY
-  stand-in onto the plain `ORDER BY … LIMIT` demo; persona-bench ICP precision@1
-  18/20, held-out 13/13 → 14/14 (q8/q10 selector-side misses closed by run 52
-  above). None degraded — prod byte-identical, BIRD/Spider untouched.
 - 2026-06-22 (runs 48–50) — engine + distribution + hygiene wave (all merged;
   BIRD 06-19 + Spider 06-17 untouched). **Engine (run 48):** §4 #1 DAIL-SQL pool
   grown 12 → 13 (+`null-filter`) on a new persona-bench ICP-retrieval probe

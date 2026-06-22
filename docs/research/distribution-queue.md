@@ -10,6 +10,53 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-22 (run 57) — dev.to / lobste.rs: "Your 'instrumentation plan' is lying to you — the catalog already shipped" (observability-docs discipline)
+
+**Where:** dev.to + lobste.rs (`observability` / `engineering`); build-in-public,
+the "stale forward-looking plan" angle (sibling to run 54's single-source-of-truth
+post, applied to a telemetry doc). nlqdb mentioned once.
+
+**Title:** Your "instrumentation plan" is lying to you — the catalog already shipped
+
+**Body:**
+
+> Open a mature repo's observability doc and you'll usually find a section called
+> something like "instrumentation plan" — a table of slices, each with the spans
+> and metrics it *will* add and the CI assertions it *should* have.
+> Forward-looking, sensible, written early.
+>
+> Ours had one too: slices 3–7 — the DB adapter, the LLM router, auth, the query
+> pipeline, the billing webhook. Each row listed its new spans and metrics. All
+> five shipped months ago.
+>
+> The trap: right above that table sat the *actual* catalog — every span and
+> metric name we emit, kept current as we added analytics, MCP, DNS, and billing
+> instrumentation. The "plan" table only ever knew about the original five
+> slices. So we had two lists of span names: one live and complete, one frozen on
+> the day the plan was written — and a reader had no signal which was which. The
+> stale one even looked *more* authoritative, because it had a tidy "CI
+> assertion" column.
+>
+> But those CI-assertion blurbs weren't documentation — they were a paraphrase of
+> assertions that already live in the test files. The test is the spec. Re-typing
+> it into prose just makes a second copy that drifts.
+>
+> So we deleted the slice table. What stays is the only part that's load-bearing
+> *and* not inferable from anything else — the standing rule: every new slice
+> ships its spans/metrics (named from the one catalog), a test that asserts
+> they're emitted, and a budget assertion that fails if it's too slow. Three
+> sentences. The catalog is the catalog; the tests are the spec; the doc holds
+> only the rule that binds them.
+>
+> Lesson: a "plan" section is a stale list waiting to happen. Once the work
+> ships, delete the plan — or it quietly becomes a worse copy of your catalog and
+> your test suite. Document the *rule*, not the rollout.
+
+**Why this advances the north-star:** performance / onboarding (the observability
+doc's front door lands on the live catalog + the durable rule, not a frozen
+rollout list a contributor might trust); a genuinely useful docs-discipline lesson
+with one nlqdb mention. No engine/funnel KPI degrades (docs-only).
+
 ## 2026-06-22 (run 56) — dev.to / lobste.rs: "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (agent-memory architecture)
 
 **Where:** dev.to + lobste.rs (`ai` / `databases` / `opensource`); pairs with the
@@ -57,53 +104,6 @@ the "open source agent memory vector store" P2 keyword) — a genuinely useful
 architectural lesson with one nlqdb mention, anchoring the new `/vs/chroma`
 page. No engine/funnel KPI degrades (content + data + one OG PNG only).
 
-## 2026-06-22 (run 54) — dev.to / lobste.rs: "Your status table is drifting because it answers 'why', not just 'what'" (engineering-docs discipline)
-
-**Where:** dev.to + lobste.rs (`documentation` / `engineering`); build-in-public,
-the docs-hygiene angle (distinct from run 46's 20 KB-cap mechanics — this one is
-single-source-of-truth). nlqdb mentioned once.
-
-**Title:** Your status table is drifting because it answers "why", not just "what"
-
-**Body:**
-
-> Every codebase grows a status table — the one that says which surfaces ship,
-> which are queued, which are wishlist. Ours lives in one Markdown file and is the
-> *canonical* status for everything advertised on the homepage. Useful. The
-> problem is what creeps into the Notes column.
->
-> A row that should read **"Shipped — see `quality-eval/FEATURE.md`"** had instead
-> accreted the whole feature: every sub-slice ID, the McNemar detail, the loader
-> names, the remaining-work list. The premium row re-stated the entire pricing
-> shape. The anonymous-mode row listed three source files and two decision IDs.
-> Each looked harmless the day it was written — you were *right there* editing the
-> feature, so you pasted the detail into the status table too.
->
-> Then the feature doc moves on and the table doesn't. Now you have two records of
-> the same decision and a reader has no way to know which is stale. The table was
-> supposed to answer one question — *what's the status?* — and it had quietly
-> taken on a second job: *why, and how, and with which IDs?* That second job
-> already belongs to the feature doc. Two homes for one fact is just drift with
-> extra steps.
->
-> The fix isn't clever: a status table holds **status + one line of essence + a
-> link**. The "why" lives once, in the feature doc, and the table points at it.
-> We trimmed the Notes back to that shape across the whole table — and as a
-> side-effect it dropped back under our 20 KB-per-doc cap (21.6 KB → 20.0 KB)
-> without losing a single fact, because the facts were never *supposed* to be
-> there.
->
-> Lesson: a table that answers two questions decays at the rate of the faster-
-> moving one. Decide what each document is the single source of truth *for*, and
-> ruthlessly send everything else to a link. (We do a one-pass version of this on
-> every doc edit — find one sentence that the code or a linked doc already proves,
-> and delete it.)
-
-**Why this advances the north-star:** onboarding / UX (docs an agent or new
-contributor can trust — single-source-of-truth keeps the canonical status table
-honest); a genuinely useful engineering-docs lesson with one nlqdb mention. No
-engine/funnel KPI degrades (docs-only).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -137,6 +137,7 @@ recovers any body.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 
+- run 54 — "Your status table is drifting because it answers 'why', not just 'what'" (single-source-of-truth: a status table holds status + one-line essence + a link; the "why" lives once in the feature doc — two homes for one fact is drift with extra steps).
 - run 46 — "We cap every doc at 20 KB — even the marketing backlog" (autonomous-agent context discipline; an over-cap edit must net-shrink; rolling two-draft window over the queue itself).
 - run 45 — "Our waitlist has 79 rows. The honest count is 1." (honest funnel pull: 78/79 waitlist rows are us, genuine-stranger count is 1; gated on engine accuracy, GLOBAL-027).
 - run 44 — "We demoted three of our four personas on the home page. On purpose." (agent-memory wedge above the fold; other three folded under a quiet divider; reversible composition change, GLOBAL-036 + WS-12).
@@ -144,6 +145,7 @@ recovers any body.
 - run 42 — launch image "GROUP BY your agent's memory" (`og/agents.png` + four `vs-*.png` cards, SK-PIVOT-004; the `/agents` share card).
 - run 41 — "A live demo of analytical agent memory — the GROUP BY, and the SQL it ran" (fixture-backed `/agents` round-trip, no signup; typed-plan trust boundary).
 - run 30 — "Show HN: Analytical memory for AI agents — a database it can GROUP BY, not just recall" (HN + r/AI_Agents/r/LocalLLaMA → `/agents`).
+- run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no `GROUP BY`/`COUNT`/`JOIN`/`HAVING`; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
 - run 30 — "Why your AI agent's memory should be a database, not a vector store" (WS-09 centrepiece; opens on the Replit incident, sub-target BIRD/Spider shown, open harness; → `/agents`).
 - run 29 — "Your AI agent's memory, as four Postgres tables (no schema design required)" (the `agent_memory_v1` preset is the argument; docs page + dev.to).
 - run 28 — agent-memory social/note drafts: "the one bright column" matrix teaser + "'Source-available' isn't a trap if you read the license" (FSL-1.1).

@@ -17,7 +17,7 @@ when-to-load:
 **One-liner:** OTel span / metric / label catalog; mandatory on every external call.
 **Status:** implemented (Phase 0 / Slice 3 — OTel SDK + OTLP/HTTP exporters land as one-time infrastructure; later slices import the helpers).
 **Owners (code):** `packages/otel/**` (the canonical helpers), `apps/api/src/index.ts` (per-request setup + force-flush), `apps/api/src/ask/orchestrate.ts` (`/v1/ask` span tree), `apps/api/src/stripe/webhook.ts` (`nlqdb.webhook.stripe`), `packages/db/src/postgres.ts` (`db.query`), `apps/api/src/llm-router.ts` (`llm.*`).
-**Cross-refs:** docs/performance.md §1 (SLOs) · §2 (latency budgets) · §3 (span / metric / label catalog — load-bearing) · §4 (slice instrumentation plan) · §5 (sampling + cost discipline) · docs/architecture.md §5.4 line 743 (Sentry + OTel → Grafana Cloud) · §5.4 line 772 (events-vs-spans boundary) · docs/runbook.md §2.6 line 343 (telemetry env wiring) · [GLOBAL-014](../../decisions/GLOBAL-014-otel-on-external-calls.md) · [GLOBAL-011](../../decisions/GLOBAL-011-honest-latency.md)
+**Cross-refs:** docs/performance.md §1 (SLOs) · §2 (latency budgets) · §3 (span / metric / label catalog — load-bearing) · §4 (instrumentation requirement — standing rule) · §5 (sampling + cost discipline) · docs/architecture.md §5.4 line 743 (Sentry + OTel → Grafana Cloud) · §5.4 line 772 (events-vs-spans boundary) · docs/runbook.md §2.6 line 343 (telemetry env wiring) · [GLOBAL-014](../../decisions/GLOBAL-014-otel-on-external-calls.md) · [GLOBAL-011](../../decisions/GLOBAL-011-honest-latency.md)
 
 ## Touchpoints — read this feature before editing
 
