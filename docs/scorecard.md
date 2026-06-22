@@ -28,13 +28,16 @@ masking + the **curated pool (#451, half (a))** + now the **T9-ablation wiring
 byte-for-byte, the eval `--retrieve-exemplars k` flag swaps in the retrieved
 prefix (token-budget 0.935× of static — token-negative), so the next dispatch
 A/Bs greedy-static vs greedy-retrieved. **#1 is now built end-to-end bar the
-dispatch**; only the hot-path embedding index remains — the **pool grew 10 → 13
+dispatch**; only the hot-path embedding index remains — the **pool grew 10 → 14
 buckets** (run 46 +anti-join/NOT-IN negation + order-by-aggregate-limit top-N;
-**run 48 +null-filter**), held precision@1 at 13/13. **Run 48 added a second
-evidence source — a persona-bench ICP-retrieval probe** (`SK-LLM-041 ×
-SK-QUAL-018`): over nlqdb's OWN 20 ICP queries the pool's retrieval precision@1
-is **17/20 → 18/20** (the "who never logged in" P1 query flips off the
-misleading anti-join NOT-IN demo onto the `IS NULL` demo; q8/q10 pinned misses).
+run 48 +null-filter; **run 51 +order-by-limit (plain top-N)**), held held-out
+precision@1 at **14/14**. **A persona-bench ICP-retrieval probe** (run 48,
+`SK-LLM-041 × SK-QUAL-018`) is a second evidence source: over nlqdb's OWN 20 ICP
+queries the pool's retrieval precision@1 is **18/20** (run 48's null-filter row
+flipped "who never logged in" off the misleading anti-join NOT-IN demo onto
+`IS NULL`; run 51's order-by-limit row flips q0 "the 10 most recent signups" off
+the GROUP-BY `group-order-limit` stand-in onto the plain `ORDER BY … LIMIT` demo;
+q8/q10 pinned selector-side misses).
 The #3 EX delta is the
 greedy-vs-SC smoke gap on the first N>=2 dispatch; both land the next canonical
 dispatch (blocked today — both evals < 7 d, §5).
@@ -82,75 +85,43 @@ dispatch (blocked today — both evals < 7 d, §5).
 
 ## Deltas (recent runs)
 
-- 2026-06-22 (run 50) — **D4 doc hygiene: `quality-score-source-of-truth.md`
-  net-shrunk 21,229 → 20,322 B, back under the 20 KB cap.** No number-moving
-  lever was non-colliding: engine (Spider 0.1852) is dispatch-gated (BIRD 06-19 /
-  Spider 06-17 both < 7 d, §5) **and owned by #464**; #465 owns comparison-pages,
-  #458 the SDK; §4 backlog exhausted (#1 owned, #2 falsified, #3 dispatch-only,
-  #5/#6 blocked); growing persona-bench would collide with #464's
-  `persona-retrieval.test.ts` (hardcoded 18/20). So per the loop the deliverable
-  is the sanctioned cleanup of the engine progress bar agents read every run (a
-  standing D4 offender per `blocked-by-human.md`). **Δ:** collapsed the 5 redundant
-  prompt-directive-bullet rows (T10, T13–T16 — each "one bullet, measured combined
-  in T17," bodies canonical in their `SK-LLM-*` per P3) into one row; all 5
-  `SK-LLM-*` links kept, §3 table 19 → 15 rows, −907 B. **KPI:** onboarding/UX of
-  the autonomous loop; **none degraded** — docs-only, BIRD 06-19 + Spider 06-17
-  byte-untouched. Artifact deferred (avoids colliding with #464's
-  `distribution-queue.md` edit; runs 47–48 precedent), draft parked: *"We cap
-  every internal doc at 20 KB — even the engine-quality progress tracker."*
-- 2026-06-22 (run 49) — **Distribution/UX: AEO-copy correctness fix — 5 comparison
-  pages stop fabricating a phantom MCP `create_database` verb.** Worst number is
-  still engine (Spider 0.1852), but it's dispatch-gated (BIRD 06-19 / Spider 06-17
-  both < 7 d, §5) **and the engine lane is owned by the one open daily PR (#464,
-  DAIL-SQL pool 12→13 + persona-bench retrieval); #458 owns the SDK lane** — so
-  the non-colliding lever is a documented correctness bug on the distribution
-  surface. The comparison-pages feature flagged it (Open questions): the 5 older
-  `/vs` pages (Supabase / Vanna AI / Mem0 / Outerbase / Wren AI) named
-  `create_database`, `ask`, `run` as MCP verbs that **do not exist** —
-  [`SK-MCP-002`](features/mcp-server/decisions/SK-MCP-002-three-tools.md) is
-  explicit there is **no `nlqdb_create_database` tool** (`nlqdb_query`
-  materialises Postgres on first reference). Comparison FAQs are **lifted verbatim
-  by AI search engines** (the feature's whole thesis, §Why this exists), so this
-  copy was actively mis-teaching ChatGPT/Perplexity/Claude nlqdb's own API.
-  **Δ (measured, before/after on the data file):** phantom-verb occurrences
-  **10 → 0** across the 5 pages; corrected to the real trio
-  `nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe` (+23 correct-tool
-  mentions added); 3 stale `MCP server with provisioning verbs` labels aligned to
-  `MCP server (agent-callable)` (the label the 4 newer pages use). Locked by **2
-  new `competitors.test.ts` invariants** (no `create_database` token; every
-  `nlqdb_*` token in the SK-MCP-002 allowed set) — web tests **11 → 13**,
-  `676` expect() calls, astro-check 0 errors, biome clean. **KPI:** UX +
-  onboarding (accurate third-party-keyword on-ramp copy); **none degraded** —
-  web-data-only, zero engine/SDK/funnel-code touch, BIRD 06-19 + Spider 06-17
-  byte-untouched. **Artifact (step 3) deferred** to avoid colliding with #464's
-  in-flight `distribution-queue.md` append; queue once #464 lands. Draft:
-  *"Your competitor comparison pages are teaching ChatGPT the wrong API — we
-  found 10 fabricated tool names on our own site and pinned a test so they can't
-  come back."*
-- 2026-06-22 (run 48) — **Engine: §4 #1 DAIL-SQL pool grown 12 → 13 + a new
-  persona-bench ICP-retrieval probe (`SK-LLM-041 × SK-QUAL-018`).** Worst number
-  is engine (Spider 0.1852), dispatch-gated (both baselines < 7 d, §5), and the
-  one open PR (#458, external SDK packaging) owns no engine lane — so the
-  non-colliding, offline-measurable engine slice is the retrieval lever on
-  nlqdb's *own* ICP. Built a probe that runs `retrievePlanExemplars` over the 20
-  persona-bench questions (the real target distribution, not synthetic held-out
-  probes) and scores precision@1 against a structural expected-bucket map. **It
-  surfaced a real gap:** the headline "who never logged in" P1 query (q3)
-  retrieved the **anti-join NOT-IN** demo — the wrong shape for a plain
-  `WHERE col IS NULL` (a NULL *attribute*, not a missing *relation*). Added one
-  `null-filter` pool row (placed after anti-join so an ambiguous "never
-  <relation>" still ties to anti-join). **Δ (offline, same-probe before/after —
-  the `SK-LLM-036/037` pattern):** ICP retrieval **precision@1 17/20 → 18/20**;
-  the pool's own held-out precision@1 **held 13/13**; q3 flips anti-join →
-  `IS NULL`, while q12/q16 ("never placed an order / recalled") + the in-subquery
-  probe stay put (bidirectional guard — the verb discriminates, not "never").
-  The 2 remaining misses (q8 masks to `ratio-cast`; q10 — a no-HAVING grouped
-  count — masks to `having`) are **documented as selector-side artifacts**, not
-  absorbed. **KPI:** engine quality (ICP-relevant
+- 2026-06-22 (run 51) — **Engine: §4 #1 DAIL-SQL pool grown 13 → 14 —
+  `order-by-limit` (plain top-N) added on the persona-bench evidence source
+  (`SK-LLM-041 × SK-QUAL-018`).** Worst number is engine (Spider 0.1852),
+  dispatch-gated (BIRD 06-19 / Spider 06-17 both < 7 d, §5); the one open PR (#458,
+  external SDK packaging) owns no engine lane and #464/#465/#466 all merged — so
+  the non-colliding, offline-measurable engine slice is the retrieval lever on
+  nlqdb's *own* ICP. The probe surfaced the **most common ICP dashboard shape** as
+  the gap: plain top-N ("the 10 most recent signups", q0) had **no** pool row, so
+  it retrieved `group-order-limit` (GROUP BY → ORDER BY agg → LIMIT) — teaching a
+  spurious `GROUP BY`/`COUNT` a plain `ORDER BY … LIMIT` doesn't have. Added one
+  `order-by-limit` row ("List the 5 most recent orders." → `ORDER BY order_date
+  DESC LIMIT 5`), ordered after `group-order-limit` so a *grouped* top-N still
+  breaks an exact tie to the aggregate demo. **Δ (offline, same-probe before/after
+  — the `SK-LLM-036/037` pattern):** persona-bench ICP **precision@1 18/20** — q0
+  flips `group-order-limit` (spurious GROUP-BY stand-in) → `order-by-limit`
+  (EXPECTED[0] tightened to drop the stand-in: 17/20 *without* the row → 18/20
+  *with* it); held-out pool **precision@1 13/13 → 14/14**, lift +0.595 → **+0.576**
+  (top-1 sim 0.818 vs 0.242 pool-average); a grouped top-N stays group-order-limit
+  (bidirectional guard — the aggregate, not "most", discriminates); q8/q10 the two
+  pinned selector-side misses, unchanged. **KPI:** engine quality (ICP-relevant
   NL→SQL); **none degraded** — prod byte-identical (`buildPlanSystem` default-off
-  `k<=0` ⇒ static `PLAN_SYSTEM`; BIRD 06-19 / Spider 06-17 untouched); 209 llm
-  tests (was 208), 263 eval (was 258). Artifact: "Your few-shot pool, tested
-  against your *own* users' queries — not just the benchmark" queued.
+  `k<=0` ⇒ static `PLAN_SYSTEM`; BIRD 06-19 / Spider 06-17 untouched); 210 llm
+  tests (was 209), 264 eval (was 263). Artifact: *"The most common dashboard query
+  has no benchmark row — we test our few-shot pool against our own users' queries."*
+- 2026-06-22 (runs 48–50) — engine + distribution + hygiene wave (all merged;
+  BIRD 06-19 + Spider 06-17 untouched). **Engine (run 48):** §4 #1 DAIL-SQL pool
+  grown 12 → 13 (+`null-filter`) on a new persona-bench ICP-retrieval probe
+  (`SK-LLM-041 × SK-QUAL-018`); "who never logged in" (q3) flipped off the
+  misleading anti-join NOT-IN demo onto `IS NULL` — ICP precision@1 17/20 → 18/20,
+  held-out 13/13, q8/q10 documented selector-side misses. **Distribution (run
+  49):** 5 older `/vs` pages stopped fabricating a phantom MCP `create_database`
+  verb (10 → 0 occurrences; corrected to `nlqdb_query`/`_list_databases`/`_describe`
+  per `SK-MCP-002`; AEO copy is lifted verbatim by AI search) — 2 new
+  `competitors.test.ts` invariants, web tests 11 → 13. **Hygiene (run 50):**
+  `quality-score-source-of-truth.md` net-shrunk 21,229 → 20,322 B under the D4
+  cap (collapsed 5 redundant directive-bullet rows, links kept). KPI engine
+  quality / UX / onboarding; none degraded.
 - 2026-06-22 (runs 43–47) — engine + distribution + hygiene wave (all merged;
   BIRD 06-19 + Spider 06-17 untouched). **Engine:** §4 #1 DAIL-SQL retrieval
   T9-ablation wiring `buildPlanSystem(goal,schema,k)` (run 43, static at `k<=0`)

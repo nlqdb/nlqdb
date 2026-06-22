@@ -34,7 +34,7 @@ function ddlFor(db_id: string): string {
 // model the wrong skeleton. Authored from each gold's structure, not its
 // retrieval, so the map is the contract and the pool is measured against it.
 const EXPECTED: Record<number, readonly string[]> = {
-  0: ["order-by-limit", "group-order-limit"], // plain top-N; `group-order-limit` is a structural stand-in for a pool gap (no plain `order-by-limit` bucket exists)
+  0: ["order-by-limit"], // plain top-N; the `order-by-limit` pool row now demonstrates the exact `ORDER BY … LIMIT` skeleton (the GROUP-BY stand-in is no longer accepted)
   1: ["group-by-count", "join-aggregate"],
   2: ["date-range", "group-by-count", "join-aggregate"],
   3: ["null-filter"], // "never logged in" ⇒ IS NULL, NOT the anti-join NOT-IN demo
@@ -84,9 +84,11 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     const m = measure();
     // Surface the numbers in the run log for the verification record.
     console.info("[persona-retrieval] measure:", JSON.stringify(m));
-    // 18/20 after the null-filter row (was 17/20): q3 "who never logged in"
-    // flipped from the anti-join NOT-IN demo to the null-filter IS-NULL demo
-    // (+1). The two pinned, documented misses are q8 + q10 (see below).
+    // 18/20: the null-filter row landed q3 ("who never logged in") on IS-NULL,
+    // and the order-by-limit row lands q0 ("the 10 most recent signups") on the
+    // plain ORDER BY … LIMIT demo (the GROUP-BY `group-order-limit` stand-in is
+    // no longer accepted for q0, EXPECTED[0]). The two pinned, documented misses
+    // are q8 + q10 (see below).
     expect(m.hits).toBeGreaterThanOrEqual(18);
   });
 
@@ -101,6 +103,20 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
       const q = PERSONA_BENCH_QUESTIONS.find((x) => x.question_id === id);
       const [aj] = retrievePlanExemplars(q?.question ?? "", ddlFor(q?.db_id ?? "saas_app"), 1);
       expect(aj?.bucket).toBe("anti-join");
+    }
+  });
+
+  it("the order-by-limit row lands q0 ('the 10 most recent signups') on the plain ORDER BY … LIMIT demo", () => {
+    const q0 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 0);
+    expect(q0).toBeDefined();
+    const [top] = retrievePlanExemplars(q0?.question ?? "", ddlFor(q0?.db_id ?? "saas_app"), 1);
+    expect(top?.bucket).toBe("order-by-limit");
+    // …while the grouped top-N queries (q8/q13/q18, "X with the most Y") must NOT
+    // be pulled to the plain order-by-limit demo — the aggregate discriminates.
+    for (const id of [13, 18]) {
+      const q = PERSONA_BENCH_QUESTIONS.find((x) => x.question_id === id);
+      const [g] = retrievePlanExemplars(q?.question ?? "", ddlFor(q?.db_id ?? "saas_app"), 1);
+      expect(g?.bucket).not.toBe("order-by-limit");
     }
   });
 

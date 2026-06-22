@@ -73,6 +73,15 @@ const PROBES: readonly Probe[] = [
     schema: "CREATE TABLE students (id INTEGER, name TEXT, class TEXT)",
   },
   {
+    // Plain top-N over a different schema + phrasing than the pool row
+    // ("transactions" vs "orders") — proves the plain `ORDER BY … LIMIT`
+    // skeleton retrieves across domains and is not pulled to the grouped
+    // `group-order-limit` near-twin.
+    bucket: "order-by-limit",
+    goal: "List the 3 most recent transactions. Return the amount.",
+    schema: "CREATE TABLE payments (id INTEGER, txn_date TEXT, amount REAL)",
+  },
+  {
     bucket: "null-safe-min",
     goal: "Which product has the lowest price? Return its name.",
     schema: "CREATE TABLE products (id INTEGER, name TEXT, price REAL)",
@@ -135,7 +144,7 @@ describe("plan-exemplar-pool", () => {
   it("covers one row per structural bucket, all distinct", () => {
     const buckets = PLAN_EXEMPLAR_POOL.map((r) => r.bucket);
     expect(new Set(buckets).size).toBe(buckets.length);
-    expect(PLAN_EXEMPLAR_POOL.length).toBe(13);
+    expect(PLAN_EXEMPLAR_POOL.length).toBe(14);
   });
 
   it("renders each payload in the static-prefix Question→JSON shape", () => {
@@ -236,6 +245,42 @@ describe("plan-exemplar-pool", () => {
     const antiJoin = PROBES.find((p) => p.bucket === "anti-join");
     const [ajTop] = retrievePlanExemplars(antiJoin?.goal ?? "", antiJoin?.schema ?? "", 1);
     expect(ajTop?.bucket).toBe("anti-join");
+  });
+
+  // The order-by-limit row's measured coverage delta: a plain top-N goal ("the N
+  // most recent X" — `ORDER BY <col> DESC LIMIT n`, no aggregation) must retrieve
+  // the plain ORDER BY … LIMIT demo, not the `group-order-limit` demo (GROUP BY →
+  // ORDER BY agg → LIMIT), which would teach a spurious aggregation. Meanwhile a
+  // genuinely *grouped* top-N ("which X has the most Y") stays group-order-limit.
+  // Same SK-LLM-036/037 before/after pattern; this is the shape persona-bench q0
+  // ("the 10 most recent signups") needs (ICP retrieval probe in `tools/eval`).
+  it("order-by-limit row flips a plain top-N goal off the grouped group-order-limit demo", () => {
+    const probe = PROBES.find((p) => p.bucket === "order-by-limit");
+    expect(probe).toBeDefined();
+    const goal = probe?.goal ?? "";
+    const schema = probe?.schema ?? "";
+
+    // Before: rank against the pool with the order-by-limit row removed — the
+    // nearest demo is `group-order-limit`, the grouped top-N (wrong skeleton).
+    const before = selectExemplarsForSchema(
+      goal,
+      schema,
+      PLAN_EXEMPLAR_POOL.filter((r) => r.bucket !== "order-by-limit"),
+      1,
+    ) as PlanExemplar[];
+    expect(before[0]?.bucket).toBe("group-order-limit");
+
+    // After: the full pool retrieves the plain ORDER BY … LIMIT demonstration.
+    const [after] = retrievePlanExemplars(goal, schema, 1);
+    expect(after?.bucket).toBe("order-by-limit");
+    expect(after?.payload).toContain("LIMIT");
+    expect(after?.payload).not.toContain("GROUP BY");
+
+    // The guard: a grouped top-N ("which X has the most Y") must still retrieve
+    // group-order-limit — the aggregate, not just "most", is the discriminator.
+    const grouped = PROBES.find((p) => p.bucket === "group-order-limit");
+    const [gTop] = retrievePlanExemplars(grouped?.goal ?? "", grouped?.schema ?? "", 1);
+    expect(gTop?.bucket).toBe("group-order-limit");
   });
 });
 

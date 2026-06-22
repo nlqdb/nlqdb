@@ -17,6 +17,11 @@
 // persona-bench (`SK-QUAL-018`) ICP-retrieval probe (`tools/eval`): nlqdb's own
 // "who never logged in" query retrieved the anti-join NOT-IN demo, the wrong
 // shape for a plain `IS NULL` filter (ICP retrieval precision@1 17/20 → 18/20).
+// The `order-by-limit` row (14th) was added on the same evidence source: the
+// most common ICP dashboard shape — plain top-N ("the 10 most recent signups",
+// persona-bench q0) — had no pool row, so it retrieved `group-order-limit`
+// (GROUP BY → ORDER BY agg → LIMIT), teaching a spurious aggregation a plain
+// `ORDER BY … LIMIT` doesn't have.
 // Rows deliberately span domains and dialects: masking is what lets a pool row
 // written over `employees` help a goal over `students`, so a domain-varied pool
 // is a feature, not noise.
@@ -46,6 +51,7 @@ export type PlanBucket =
   | "join-aggregate"
   | "group-max"
   | "group-order-limit"
+  | "order-by-limit"
   | "null-safe-min"
   | "null-filter"
   | "ratio-cast"
@@ -144,6 +150,23 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
     "CREATE TABLE employees (id INTEGER, name TEXT, department TEXT)",
     "Which department has the most employees? Return the department.",
     "SELECT department FROM employees GROUP BY department ORDER BY COUNT(*) DESC LIMIT 1",
+  ),
+  ex(
+    // Plain top-N — `ORDER BY <col> DESC LIMIT n`, NO GROUP BY, no aggregate.
+    // The single most common ICP dashboard shape ("show the N most recent /
+    // latest X"), and the one structural class the pool could not demonstrate:
+    // a plain top-N goal otherwise retrieves `group-order-limit` (GROUP BY →
+    // ORDER BY agg → LIMIT), which teaches a spurious GROUP BY/COUNT the query
+    // doesn't have. Ordered after `group-order-limit` so a genuinely *grouped*
+    // top-N ("which X has the most Y") still breaks an exact masked-Jaccard tie
+    // toward the aggregate-bearing demo (earliest pool index wins). Without this
+    // row the headline "10 most recent signups" ICP query (persona-bench q0)
+    // retrieved `group-order-limit`; with it, the plain `ORDER BY … LIMIT` demo.
+    "order-by-limit",
+    "sqlite",
+    "CREATE TABLE orders (id INTEGER, order_date TEXT, amount REAL)",
+    "List the 5 most recent orders.",
+    "SELECT id, order_date FROM orders ORDER BY order_date DESC LIMIT 5",
   ),
   ex(
     "null-safe-min",
