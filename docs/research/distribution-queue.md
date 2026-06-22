@@ -5,6 +5,32 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-22 (run 45) — build-in-public: "We measure 'real strangers', and the number is still 0" (X / Bluesky / dev.to)
+
+**Where:** X / Bluesky build-in-public note + dev.to; an honest funnel update —
+the discipline of bot-filtering your own metrics before you believe them.
+
+**Title:** Our waitlist has 79 rows. The honest count is 1.
+
+**Body:**
+
+> Today's funnel pull, live from the database: 79 waitlist rows, 119 databases
+> created, 113 of them with a recorded first answer (100%), 0 errors across ~1,300
+> worker requests. A founder's dashboard would screenshot the 79.
+>
+> But 78 of those 79 rows are us — our own end-to-end "stranger test" walker
+> signs up a throwaway address daily to prove the funnel works, plus a few
+> probes. Filter them out and the genuine-stranger count is **1**: me. The users
+> table tells the same story — 7 rows, every one founder or test, 0 real strangers.
+>
+> We keep the bot-filtered number on the scorecard on purpose: the unfiltered
+> one would let us lie to ourselves. Walker traffic is load — it proves the
+> pipes carry water, not that anyone's thirsty. What gates real adoption isn't
+> the landing page, it's the engine: first answers stay behind an invite valve
+> until NL→SQL accuracy clears the bar, and that's where every lever goes. When
+> the stranger count leaves 1, it'll be because the model got good enough to
+> open the valve — and we'll have the honest baseline to prove it moved.
+
 ## 2026-06-21 (run 44) — build-in-public: "We demoted three of our four personas on the home page. On purpose." (X / Bluesky / dev.to)
 
 **Where:** X / Bluesky thread + a short dev.to note on positioning discipline.
@@ -229,13 +255,9 @@ masking arc (runs 38–39).
 > deterministic, zero new dependencies; the same code runs in production and the
 > eval harness. Measured delta lands next run. Code's in `packages/llm/few-shot-select.ts`.
 
-## 2026-06-21 (runs 40+42) — engine-lesson: "Self-consistency for text-to-SQL: sample at temperature > 0 without breaking your benchmark" (dev.to / lobste.rs) — title + thesis (per-request temperature defaulting to greedy; vote on executed rows not SQL strings; N-sample failures become no-vote empties with budget-stop/resume; dispatch through a no-emit smoke job so the canonical argmax baseline stays pinned). Largely subsumed by the run-43 "default-off ablation" post above; full draft in git history.
-
-## 2026-06-21 (run 39) — engine-lesson: "Mask the table and column names too, not just the values" (dev.to / lobste.rs) — title + thesis (value masking only collapses two same-shape questions halfway; DAIL-SQL §4.1 masks domain-specific *identifiers* too, so a music-DB example demonstrates the SQL shape for an HR-DB question — reusing the schema-prune tokenizer, per-row, zero-dep, prod-identical). Folded into the run-42/43 retrieval-arc posts above; full draft in git history.
-
-## 2026-06-21 (run 38) — engine-lesson: "Pick the few-shot example by masking the question, not matching the words" (dev.to / lobste.rs) — value-masking angle recapped in the run-39 combined piece above (publish as one part-1; full standalone draft in git history).
-
-## 2026-06-21 (run 37) — engine-lesson: "Voting on the answer needs the answer — executing N SQL samples to consensus" (dev.to / lobste.rs) — title + thesis (to cluster by result set you must *execute* each sampled query, sharing the scorer's exact SQLite path so vote and grade can't diverge; errors/empties cast no vote; inject the executor so the consensus path unit-tests offline). Subsumed by the SC arc above; full draft in git history. Ties to `SK-QUAL-017`.
+_(Runs 37–42 engine-lesson stubs — value/identifier masking, self-consistency,
+the SC executor — were consolidated into the run-42/43 retrieval-arc + "default-off
+ablation" posts above; full standalone drafts remain in git history.)_
 
 ## 2026-06-21 (run 41) — launch post: "We built a live demo: run a GROUP BY over agent memory and see the SQL" (X / Bluesky / r/AI_Agents → `/agents`)
 
