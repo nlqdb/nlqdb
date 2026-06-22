@@ -10,6 +10,53 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-22 (run 56) — dev.to / lobste.rs: "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (agent-memory architecture)
+
+**Where:** dev.to + lobste.rs (`ai` / `databases` / `opensource`); pairs with the
+new `/vs/chroma` page (the OSS-first wing of the "database, not a vector store"
+wedge). A fresh angle on run 53 — that one was the *aggregation* gap; this one is
+the *open-source-doesn't-fix-it* trap. nlqdb mentioned once.
+
+**Title:** "Self-hosted" fixes lock-in, not the query model — your open-source vector store still can't GROUP BY
+
+**Body:**
+
+> A common move when you outgrow a managed vector DB: reach for an open-source
+> one you can self-host. Chroma, Qdrant, Weaviate, pgvector. The reasoning is
+> sound — you own the data, no per-read billing, no vendor holding your
+> embeddings hostage. If lock-in was the worry, self-hosting answers it.
+>
+> But notice what self-hosting *doesn't* change: the query model. An
+> open-source vector store does exactly what the managed one did —
+> nearest-neighbour search over embeddings, plus metadata filtering and maybe
+> full-text. Run it on your own box and it still has no `GROUP BY`, no `JOIN`,
+> no `COUNT`, no `HAVING`. The thing you were frustrated by was never the
+> hosting; it was that a similarity index isn't a query engine.
+>
+> So when your agent needs to *report* over its memory — "how many facts did I
+> write per user this month", "which tools did I call most", "average
+> confidence since Tuesday" — switching from a hosted vector DB to a
+> self-hosted one buys you nothing. Both answer "what's similar to this?"
+> Neither answers "count, group, and rank." That's a different operation, and
+> open source vs hosted is orthogonal to it.
+>
+> The decision that actually matters is the data model, not the deployment
+> model. Pick a vector store (hosted or self-hosted, whatever your lock-in
+> tolerance) for fuzzy recall. Put the structured facts your agent logs in
+> something that speaks SQL when you need to aggregate them. (We build that
+> second half at nlqdb — an agent provisions a Postgres it queries in plain
+> English — but the point holds whatever you reach for: don't pick "open
+> source" and assume you also picked "can do arithmetic.")
+>
+> Lesson: "self-hosted" and "can run the query I need" are independent axes.
+> Optimise lock-in and capability separately, or you'll self-host your way into
+> the same wall.
+
+**Why this advances the north-star:** onboarding / distribution (AEO surface on
+the "open source agent memory vector store" P2 keyword) — a genuinely useful
+architectural lesson with one nlqdb mention, anchoring the new `/vs/chroma`
+page. No engine/funnel KPI degrades (content + data + one OG PNG only).
+
 ## 2026-06-22 (run 54) — dev.to / lobste.rs: "Your status table is drifting because it answers 'why', not just 'what'" (engineering-docs discipline)
 
 **Where:** dev.to + lobste.rs (`documentation` / `engineering`); build-in-public,
@@ -57,54 +104,6 @@ contributor can trust — single-source-of-truth keeps the canonical status tabl
 honest); a genuinely useful engineering-docs lesson with one nlqdb mention. No
 engine/funnel KPI degrades (docs-only).
 
-## 2026-06-22 (run 53) — dev.to / lobste.rs: "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (agent-memory engineering)
-
-**Where:** dev.to + lobste.rs (`ai` / `databases`); the agent-memory pivot's
-"database, not a vector store" wedge, sharpened to the *aggregation* gap (a fresh
-angle on the WS-09 launch post — not the same ground). Pairs with the new
-`/vs/pinecone` comparison page. nlqdb mentioned once.
-
-**Title:** Your agent's memory is a vector store. Ask it "how many" and watch it fall over.
-
-**Body:**
-
-> Almost every "give your agent memory" tutorial reaches for a vector store —
-> Pinecone, Chroma, Weaviate, pgvector. Embed what the agent learns, do
-> nearest-neighbour search to recall it. For *recall* — "what do I know that's
-> relevant to this question" — that's exactly right.
->
-> Then the agent (or you) asks a question that isn't recall:
->
-> - "How many tools did I call this week, by category?"
-> - "Which user have I logged the most facts about?"
-> - "What's the average confidence of the memories I wrote since Tuesday?"
->
-> A vector index has no answer. Similarity search returns the *k* nearest
-> vectors to a query — it has no `GROUP BY`, no `COUNT`, no `JOIN`, no
-> `HAVING`. Metadata filtering narrows the candidate set, but the result is
-> still a ranking of similar items, not a computed aggregate. There's no query
-> planner under there, because that was never the job. "Find the similar" and
-> "count, group, and rank" are different operations, and a vector DB only does
-> the first.
->
-> The tell is the word *how* — "how many", "how often", "how much". The moment
-> your agent needs to reason over its memory in aggregate — usage analytics,
-> per-entity rollups, trend-over-time — you've outgrown the vector store and
-> you want a database: typed rows and real SQL. The two compose cleanly. Keep
-> the vector store for fuzzy recall; put the structured facts the agent logs in
-> something it can actually `SELECT category, COUNT(*) … GROUP BY category`
-> over. (We build the second half at nlqdb — an agent provisions a Postgres it
-> queries in plain English — but the architectural point stands whatever you
-> reach for: don't ask a similarity index to do arithmetic.)
->
-> Lesson: "agent memory" is two jobs wearing one name. Recall is similarity;
-> reporting is aggregation. Pick the store per job, not per buzzword.
-
-**Why this advances the north-star:** onboarding / distribution (AEO surface on
-the P2 agent-builder keyword "agent memory vector store") — a genuinely useful
-architectural lesson with one nlqdb mention, anchoring the new `/vs/pinecone`
-page. No engine/funnel KPI degrades (content + data only; prod byte-identical).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -113,6 +112,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no GROUP BY/COUNT/JOIN/HAVING; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
 - run 52 — "Some few-shot retrieval misses can't be fixed with lexical tricks — and measuring *why* is the win" (two pinned ICP misses (q8/q10) are lexically unfixable; stopword filter regresses 18/20 → 17/20, phrase-normalisation flat (18/20), held-out 14/14; the bad demo wins on generic filler + a coincidental masked-value slot, so flat token-overlap can't resolve it — the real fix is SQL-skeleton similarity, a model round-trip; both experiments reverted).
 - run 51 — "The most common query in your product has no row in your benchmark" (error-class taxonomies omit easy high-frequency shapes; "show the 10 most recent signups" retrieved a `GROUP BY` demo; +plain `ORDER BY … LIMIT` row, held-out 13/13 → 14/14, own-query 18/20 held).
 - run 48 — "Test your few-shot retrieval against your *own* users' queries — not just the benchmark" (a held-out probe set that paraphrases your own examples reports green while real-user queries silently retrieve the wrong shape; "never logged in" → anti-join not `IS NULL`; own-query precision 17/20 → 18/20, held-out 13/13 unmoved).

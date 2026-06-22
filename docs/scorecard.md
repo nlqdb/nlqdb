@@ -14,39 +14,19 @@ until then the daily lever targets the worst number below)*
 **Worst number today:** real strangers reaching a first answer = **0**
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
 engine-side worst, **Spider 0.1852 vs 0.75**, owns it. The bottleneck is **SQL
-reasoning** (mismatches), not provider availability (Gemini key healed 06-17,
-`SK-LLM-039`) and not value/literal grounding (`SK-QUAL-014` run 18:
-`literal_only` = 0 — no mismatch fixable by literals alone). BIRD re-run 06-19
-is **flat** (0.522 → 0.520, McNemar p=0.50) ⇒ directive levers (T13–T22)
-**saturated**; the path to the gate floor is the §4 **reasoning** levers.
-**#3 self-consistency** is now **fully dispatchable**: runner merged (#447,
-`SK-QUAL-017`) + the `self_consistency`/`sc_temperature` smoke-job
-`workflow_dispatch` inputs (run 42, baseline-safe vehicle — no-emit, never
-overwrites the canonical baseline). **#1 DAIL-SQL retrieval** — selector +
-masking + the **curated pool (#451, half (a))** + now the **T9-ablation wiring
-`buildPlanSystem` (half (b), run 43)**: default off ⇒ static `PLAN_SYSTEM`
-byte-for-byte, the eval `--retrieve-exemplars k` flag swaps in the retrieved
-prefix (token-budget 0.935× of static — token-negative), so the next dispatch
-A/Bs greedy-static vs greedy-retrieved. **#1 is now built end-to-end bar the
-dispatch**; only the hot-path embedding index remains — the **pool grew 10 → 14
-buckets** (run 46 +anti-join/NOT-IN negation + order-by-aggregate-limit top-N;
-run 48 +null-filter; **run 51 +order-by-limit (plain top-N)**), held held-out
-precision@1 at **14/14**. **A persona-bench ICP-retrieval probe** (run 48,
-`SK-LLM-041 × SK-QUAL-018`) is a second evidence source: over nlqdb's OWN 20 ICP
-queries the pool's retrieval precision@1 is **18/20** (run 48's null-filter row
-flipped "who never logged in" off the misleading anti-join NOT-IN demo onto
-`IS NULL`; run 51's order-by-limit row flips q0 "the 10 most recent signups" off
-the GROUP-BY `group-order-limit` stand-in onto the plain `ORDER BY … LIMIT` demo;
-q8/q10 pinned selector-side misses).
-The #3 EX delta is the
-greedy-vs-SC smoke gap on the first N>=2 dispatch; both land the next canonical
-dispatch (blocked today — both evals < 7 d, §5). **The pool/lexical-selector half
-of #1 is now at its offline ceiling** (run 52): the two pinned ICP misses (q8,
-q10) were falsified as lexically-unfixable — a stopword filter regresses
-(18/20→17/20) and phrase normalisation is flat (18/20); q10's miss is driven by
-generic filler + a coincidental masked literal slot, not structure. The only
-remaining offline #1 gain is query-skeleton (predicted-SQL) similarity (an LLM
-round-trip — not a daily lever) or the gated dispatch.
+reasoning** (mismatches), not provider availability (Gemini healed 06-17,
+`SK-LLM-039`) nor literal grounding (`SK-QUAL-014`: `literal_only` = 0). BIRD
+re-run 06-19 is **flat** (0.522 → 0.520, McNemar p=0.50) ⇒ directive levers
+(T13–T22) **saturated**; the path to the gate floor is the §4 **reasoning**
+levers (#1 DAIL-SQL retrieval, #3 self-consistency), both **built end-to-end
+and dispatchable** but **dispatch-gated today** (both evals < 7 d, §5). The
+DAIL-SQL pool/lexical-selector half is at its **offline ceiling** (run 52:
+q8/q10 ICP misses falsified as lexically-unfixable; held-out precision@1
+**14/14**, own-ICP **18/20**); the only remaining offline #1 gain is
+SQL-skeleton similarity (an LLM round-trip, not a daily lever) or the gated
+dispatch. The engine lane is also **owned** by open PR #472 (persona-bench
+dispatch workflow), so today's non-colliding lever is the funnel's
+top-of-funnel AEO surface (distribution lane).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -65,7 +45,7 @@ round-trip — not a daily lever) or the gated dispatch.
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 4 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (vector-store wing — P2 cluster 4→5) |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 6 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6) |
 | | *Messaging track — WS-\** | 11 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
@@ -91,19 +71,33 @@ round-trip — not a daily lever) or the gated dispatch.
 
 ## Deltas (recent runs)
 
+- 2026-06-22 (run 56) — **Distribution: shipped `/vs/chroma`, the OSS-first
+  vector-store wing of the "database, not a vector store" wedge.** Worst real
+  number is the genuine-stranger funnel (rows #2/#3 ≈ 0), engine-gated
+  (GLOBAL-027) — but the engine lane is dispatch-gated (BIRD 06-19 / Spider
+  06-17 < 7 d, §5) **and** owned (open PR #472, persona-bench dispatch), so the
+  non-colliding lever is the funnel's top-of-funnel AEO surface. Run 53 gave
+  the *hosted* vector DB (Pinecone) its page; Chroma is the **open-source /
+  self-hostable** vector store the OSS-first ICP reaches for — the differentiator
+  axis Pinecone can't claim, plus full-text search. Same aggregation wedge: no
+  SQL / joins / GROUP BY. **Δ (measured, distribution lane):** comparison pages
+  **10 → 11**; P2 agent-builder cluster **5 → 6** (WS-07 cross-link + WS-08 OG
+  card auto-extend on the P2 persona key); OG cards **6 → 7** (`vs-chroma.png`,
+  generator deterministic — 6 existing cards byte-identical); llms.txt + sitemap
+  **+1**. Facts web-verified 2026-06-22: Apache-2.0, embedded / self-host /
+  serverless Chroma Cloud, `chroma-mcp` server, vector + full-text + metadata
+  search only (no SQL). **KPI:** onboarding / distribution (AEO on "open source
+  agent memory vector store"); **none degraded** — content + typed-data + one PNG,
+  prod byte-identical, no engine file touched, BIRD 06-19 / Spider 06-17 untouched;
+  13 competitors invariants green, astro-check 0 errors. Artifact: *"'Self-hosted'
+  fixes lock-in, not the query model — your open-source vector store still can't
+  GROUP BY."*
 - 2026-06-22 (run 54) — **Hygiene (D4 + P3): `docs/progress.md` net-shrunk
-  22,108 → 20,428 B (−1,680 B, 21.6 → 20.0 KB) back under the 20 KB cap.** Both
-  engine/distribution lanes were owned by open PRs (#469, #470) and dispatch-gated
-  (BIRD 06-19 / Spider 06-17 < 7 d, §5), so the non-colliding lever was doc
-  hygiene. The §0 surface-status matrix had accreted feature-doc bodies into its
-  Notes column (quality-eval slice IDs, premium pricing shape, anon source files +
-  decision IDs) — duplicating what each `FEATURE.md` is canonically the single
-  source of truth for (P3). Trimmed every such Note to **status + one-line essence
-  + a link to the owning feature**, plus tightened build-philosophy prose (D5).
-  **0 rows / 0 statuses / 0 facts removed** (9 feature links verified resolvable).
-  **KPI:** onboarding / UX (a status table trustworthy without drift); **none
-  degraded** — docs-only, BIRD 06-19 / Spider 06-17 untouched. Artifact: *"Your
-  status table is drifting because it answers 'why', not just 'what'"*.
+  22,108 → 20,428 B back under the 20 KB cap** by trimming §0 surface-status Notes
+  that had accreted feature-doc bodies (quality-eval slice IDs, premium pricing,
+  anon source files) back to status + essence + link (P3). 0 rows / facts removed.
+  KPI onboarding / UX; none degraded (docs-only). Artifact: *"Your status table is
+  drifting because it answers 'why', not just 'what'"*.
 - 2026-06-22 (run 53) — **Distribution: shipped `/vs/pinecone`, the pivot's
   "database, not a vector store" wedge given its canonical comparison page.**
   Worst real number is the genuine-stranger funnel (rows #2/#3 ≈ 0), which is
