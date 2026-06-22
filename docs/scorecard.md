@@ -76,6 +76,19 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
+- 2026-06-22 (run 60) — **Hygiene (D4 + P1/P3): net-shrank `docs/architecture.md`
+  34,809 → 33,789 B and fixed a stale superseded-decision restatement in §3.6.**
+  Doc hygiene was the non-colliding lever (live lanes owned by #475/#476;
+  BIRD/Spider gated, §5). §3.6.4 restated **two superseded decisions
+  verbatim** (`SK-ASK-003` + `SK-HDC-005`, both superseded by `SK-ASK-009`'s merged
+  `routeAsk` — a classify+disambiguate two-step the engine no longer runs); §3.6.5
+  duplicated `SK-HDC-006`'s body (P3). Both collapsed to the architectural
+  invariant + a FEATURE pointer, preserving the `selected_db`-echo containment, the
+  "multi-statement / `EXPLAIN ANALYZE` rejected" contract, and §3.6.7's BYO shape —
+  **0 canonical decisions lost**; the four §3.6.4/§3.6.5 cross-refs stay valid
+  (headings unchanged). **KPI:** engine quality / onboarding; **none degraded** —
+  docs-only, prod byte-identical, BIRD 06-19 / Spider 06-17 untouched. Artifact:
+  *"Your architecture doc is describing a pipeline your code deleted."*
 - 2026-06-22 (run 59) — **Distribution: shipped `/vs/weaviate`, the
   enterprise/hybrid-search wing of the "database, not a vector store" wedge**
   (after Pinecone *hosted* run 53, Chroma *OSS-first* run 56 — the next P2
@@ -91,24 +104,15 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   degraded** — content + one PNG, prod byte-identical, no engine file touched; 13
   competitors invariants green, astro-check 0 errors. Artifact: *"Hybrid search
   made your recall smarter. It still can't count."*
-- 2026-06-22 (run 58) — **Engine measurement: fired the first persona-bench
-  dispatch → free-chain EX = 0.90 (18/20) on nlqdb's OWN ICP shape** (row 8,
-  previously undispatched; GHA 27983818047, `persona=all`). With #472 merged the
-  workflow is on `main`, so the documented first post-merge dispatch was the
-  highest-value non-colliding lever (both canonical evals dispatch-gated < 7 d;
-  persona-bench never touches the canonical baseline, `SK-QUAL-018`). Per-leg +
-  the two-miss analysis in row 8. **Finding (row 9):** the frontier lane is
-  **secret-blocked, not dispatch-blocked** — `OPENROUTER_FRONTIER_API_KEY` empty
-  in CI, so `free_vs_frontier_delta=null`; filed in `blocked-by-human.md`.
-  **KPI:** engine quality (first product-relevant accuracy number); **none
-  degraded** — measurement only, BIRD 06-19 / Spider 06-17 + `eval-baseline.ts`
-  byte-identical. Artifact: *"Your text-to-SQL eval is failing the wrong schema."*
-- 2026-06-22 (runs 55–57) — persona-bench + distribution + hygiene wave (all
-  merged; BIRD 06-19 / Spider 06-17 untouched). **Engine (run 55):** shipped
-  `quality-eval-persona-bench.yml` (SK-QUAL-018 "last half") — the free chain
-  became dispatchable on the ICP shape via one `workflow_dispatch` (`persona:
-  all\|P1\|P2`, `include_frontier`), ungated by `SK-QUAL-002` (no
-  baseline/fixture/emit); the EX number then landed in run 58 (row 8).
+- 2026-06-22 (runs 55–58) — persona-bench + distribution + hygiene wave (all
+  merged; BIRD 06-19 / Spider 06-17 untouched). **Engine (runs 55, 58):** shipped
+  `quality-eval-persona-bench.yml` (SK-QUAL-018 "last half", ungated by
+  `SK-QUAL-002` — no baseline/fixture/emit), then fired the first post-merge
+  dispatch → free-chain **EX 0.90 (18/20)** on the ICP shape (row 8; **1.7× BIRD,
+  4.9× Spider**, GHA 27983818047); both Groq-leg misses are challenging multi-join
+  aggregations (q13 the `SK-QUAL-014` `literal_diff`, q18 a `LEFT JOIN` vs the gold
+  inner-join). Frontier lane (row 9) **secret-blocked, not dispatch-blocked** —
+  `OPENROUTER_FRONTIER_API_KEY` empty in CI; filed in `blocked-by-human.md`.
   **Distribution (run 56):** shipped `/vs/chroma`, the OSS-first vector-store
   wing of the "database, not a vector store" wedge — comparison pages 10 → 11,
   P2 cluster 5 → 6, OG cards 6 → 7, llms.txt/sitemap +1; same aggregation wedge

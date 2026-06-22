@@ -218,25 +218,28 @@ goal → classifier (cheap tier)
 
 #### 3.6.4 Per-surface dbId resolution
 
-`dbId` is fully optional in `/v1/ask`. Resolution is per-surface; on REST and the chat surface a cheap-tier LLM picks among 2+ candidates with a confidence floor (`SK-ASK-003` / `SK-HDC-005`). CLI / MCP stay deterministic.
-
-| Surface | If `dbId` absent | Auth shape |
-|---|---|---|
-| HTML (`<nlq-data>`) | Resolved from `pk_live_<dbId>` key; keyless + goal → CREATE on first call | `pk_live_<dbId>` (per-db, read-only, origin-pinned) |
-| REST + chat | 0 dbs → CREATE; 1 db → auto-target; 2+ → `llm.disambiguate` cheap-tier pick (≥ 0.7 confidence → auto-target with `selected_db` echo on response); else `409` with `candidate_dbs` ranked by LLM score | `Bearer sk_live_…` (REST) / session cookie (chat) |
-| CLI | MRU + interactive `select`; `nlq new "<goal>"` always creates | `sk_live_…` from keychain |
-| MCP | 0 dbs → CREATE; 1 db → auto-target; 2+ → MCP elicitation | `sk_mcp_<host>_<device>_…` |
-
-The "silent wrong-tenant" failure mode the original deterministic-only rule guarded against (`docs/research-receipts.md §7`) is contained by three properties of the LLM path: a confidence floor (`≥ 0.7`), a visible `selected_db` echo on every response (chosen slug + reason — a wrong pick is immediately visible to the user, not silent), and one-click recovery via the rail. Destructive verbs still pass the SK-ASK-004 / SK-HDC-006 validator split + the SK-ONBOARD-004 confirm-diff gate; a wrong-tenant *destructive* call requires both a wrong LLM pick AND the user approving a diff that names the wrong table.
+`dbId` is optional in `/v1/ask`. Resolution — and the merge of classify +
+disambiguate into one `routeAsk` call — is canonical in
+[`ask-pipeline`](../features/ask-pipeline/FEATURE.md) `SK-ASK-009`, which
+superseded the per-surface deterministic-then-LLM two-step (`SK-ASK-003` /
+`SK-HDC-005`). The architectural invariant: a wrong auto-target can never be
+*silent* or *destructive*. A confidence floor, a visible `selected_db` echo on
+every response (`docs/research-receipts.md §7`), and one-click rail recovery
+contain a wrong pick; a wrong-tenant *destructive* call additionally requires
+the user to approve a diff that names the wrong table (`SK-ASK-004` /
+`SK-HDC-006` validator split + the `SK-ONBOARD-004` confirm-diff gate).
 
 #### 3.6.5 Validator architecture — read/write vs DDL paths
 
-| Path | Allowed verbs | Why this scope |
-|---|---|---|
-| **Read/write** (every query/write via `/v1/ask`) | `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW` only. `CREATE / ALTER / DROP / TRUNCATE / GRANT / REVOKE / VACUUM` rejected. `EXPLAIN ANALYZE` rejected (executes). Multi-statement rejected. | LLM never has DDL rights through this path. |
-| **DDL** (only from §3.6.2 typed-plan compiler) | Compiled `CREATE TABLE / CREATE INDEX / FK` only. `DROP / TRUNCATE / GRANT / REVOKE / pg_catalog / information_schema` rejected via AST. | Defense-in-depth: even our compiler's output is re-parsed with the Postgres parser before execution. |
-
-Both paths follow the **layered guardrails** principle from [`research-receipts.md §1`](./research-receipts.md): AST reject-list, role isolation, RLS, statement timeout, transactional wrapper.
+Two non-overlapping validators: the **read/write** path
+(`SELECT/INSERT/UPDATE/DELETE/WITH/EXPLAIN/SHOW` only, `EXPLAIN ANALYZE` and
+multi-statement rejected — the LLM never gets DDL rights here) and the **DDL**
+path (only the §3.6.2 compiler's `CREATE TABLE/INDEX/FK`, re-parsed with
+libpg_query). Canonical:
+[`hosted-db-create`](../features/hosted-db-create/FEATURE.md) `SK-HDC-006` +
+[`sql-allowlist`](../features/sql-allowlist/FEATURE.md). Both follow the
+**layered guardrails** principle ([`research-receipts.md §1`](./research-receipts.md)):
+AST reject-list, role isolation, RLS, statement timeout, transactional wrapper.
 
 #### 3.6.6 Tenancy and storage
 
