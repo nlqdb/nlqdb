@@ -70,7 +70,7 @@ when-to-load:
 
 ### SK-OBS-005 — Test telemetry uses in-memory exporters; CI asserts spans + metrics emitted per slice
 
-- **Decision:** Tests install telemetry via `installTelemetryForTest({ spanProcessors, metricReaders })` with in-memory exporters. Every slice from 3 onward MUST include a vitest assertion that each new span/metric was emitted; missing instrumentation fails CI (PERFORMANCE §4 line 192).
+- **Decision:** Tests install telemetry via `installTelemetryForTest({ spanProcessors, metricReaders })` with in-memory exporters. Every slice from 3 onward MUST include a vitest assertion that each new span/metric was emitted; missing instrumentation fails CI (PERFORMANCE §4).
 - **Core value:** Bullet-proof, Honest latency
 - **Why:** Treating telemetry as a "ship it and hope it works" surface lets observability rot. Asserting in tests means the catalog and the code stay in sync, and a refactor that accidentally drops a span fails before merge. The in-memory exporter pattern is fast (no network) and deterministic.
 - **Consequence in code:** `installTelemetryForTest` resets prior global state (the OTel `setGlobalMeterProvider` silently no-ops on re-registration; we `disable()` first). `resetTelemetryForTest()` and `resetInstrumentsForTest()` are exported so beforeEach hooks can install fresh exporters per test. PRs adding a new external call must add a span-presence assertion; reviewers reject untested instrumentation.
