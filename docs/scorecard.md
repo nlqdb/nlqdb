@@ -49,8 +49,8 @@ dispatch (blocked today — both evals < 7 d, §5).
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 12 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
-| | *Messaging track — WS-\** | 10 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2) | pick when worst number is funnel / distribution |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | *Messaging track — WS-\** | 11 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
 | WS-03 | solve pages — sharpen + sibling | ✅ 2/2 | run 23 — **sharpen ✅**; run 25 — **analytical sibling ✅** (`analytical-queries-over-agent-memory`, the read-side report-over-memory wedge) |
@@ -62,7 +62,7 @@ dispatch (blocked today — both evals < 7 d, §5).
 | WS-09 | "database, not a vector store" blog + live demo | ✅ 2/2 | run 30 — **blog draft ✅** (launch post in `distribution-queue.md`); run 41 — **live `/agents` demo ✅** — gate-honest fixture round-trip (`agent_memory` rows → English goal → compiled `GROUP BY` SQL → result table, server-rendered for AEO/no-JS per SK-PIVOT-004; "Run this query" button → `agents.demo_run_clicked` GLOBAL-024 signal; no open `/v1/ask`). WS-07 page existing cleared the #430 collision |
 | WS-10 | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix shipped) | ✅ | run 28 — pricing self-host band + README "Models & plans" self-host line (FSL-accurate; no turnkey-image claim per WS-11 note) |
 | WS-11 | pull `ghcr.io/nlqdb/api` self-host container forward | ⬜ | high · multi · WS-10 · infra-gated |
-| WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ⬜ | med · ~2 runs · WS-06, WS-07 |
+| WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ✅ 2/2 | run 43 band; run 44 `AlsoWorksFor` fold before CodePanel + Replaces (composition-only, nothing deleted, hero untouched) |
 | WS-13 | headline reposition (hero / README / llms.txt / JSON-LD) | ⬜ | high · ~2 runs · WS-07, WS-12 · 🔒 **FOUNDER-GATED** |
 | | *Engine track — E-\** | 2 / 7 | pick when worst number is engine quality / agent on-ramp |
 | E-01 | `agent_memory_v1` schema preset for `db.create` | ✅ | run 29 module + run 30 wiring (SK-HDC-020): `db.create { preset: "agent_memory_v1" }` provisions the 4 tables deterministically, no LLM; gated behind `MEMORY_PRESET`. One follow-on: quality-eval ablation row (Neon-branch gated) |
@@ -75,77 +75,40 @@ dispatch (blocked today — both evals < 7 d, §5).
 
 ## Deltas (recent runs)
 
-- 2026-06-21 (run 43) — **Engine: persona-bench v0 shipped (`SK-QUAL-018`) —
-  metric #8 created from "not yet built" → 12 questions / 2 ICP schemas, 12/12
-  golds execute.** Worst number is engine (Spider 0.1852, BIRD 0.520); both
-  reasoning levers in flight (§4 #1 retrieval-wiring open PR #455, #3 done) and
-  both evals < 7 d (§5: no back-to-back dispatch), so the clean non-colliding
-  slice is the founder-endorsed third quality number `GLOBAL-027` §Lifecycle
-  kept: nlqdb's **own** ICP-shaped benchmark. New `tools/eval/src/datasets/persona-bench.ts`:
-  `saas_app` (personas §P1 Solo Builder — plans/referrers/users/orders) +
-  `agent_memory` (§P2 Agent Builder — the GLOBAL-036 analytics-over-memory wedge:
-  GROUP BY / top-N / TTL over `facts`) as inline DDL+seed, 12 NL→gold-SQL pairs
-  from each persona's "Representative queries", gold SQL **time-stable
-  (literal dates, no `date('now')`)** + tagged by `SK-QUAL-014` bucket. v0 ships
-  the **data half + gold-executability invariant** (`bun persona-bench` + test:
-  **12/12 golds execute, non-empty**, hand-checked); runner-wiring (a
-  `persona-bench` `EvalDataset` for free-chain EX) is the staged follow-on, so
-  no runner/scorer/chain/`EvalDataset`-type edit ⇒ **BIRD 06-19 + Spider 06-17
-  baselines untouched**, EX next dispatch. **Δ:** #8 — → **v0 fixture, 12/12**;
-  `@nlqdb/eval` tests 246 → 254. **KPI:** engine quality (the ICP-relevant
-  number); **none degraded** — additive, offline, zero prod import. typecheck +
-  biome clean. Artifact: "We built our own NL→SQL benchmark from our users'
-  schemas" queued.
-- 2026-06-21 (run 43) — **Distribution: WS-12 band shipped — agent-memory is
-  now the first narrative section on the home page → WS-12 🟡 1/2.** Worst
-  number is engine (Spider 0.1852, BIRD 0.520), but the engine lane is blocked
-  for a self-contained PR today: the §4 reasoning levers (#1 retrieval, #3
-  self-consistency) have their offline cores merged through run 42, and every
-  remaining half is dispatch-gated — both evals < 7 d (§5: no back-to-back
-  canonical dispatch) and a clean greedy-vs-SC smoke needs two dispatches on the
-  shared quota (a multi-day campaign, not one run). No open PR. So the clean
-  non-colliding slice is the lowest open ungated pivot item, WS-12 (prereqs
-  WS-06 ✅, WS-07 ✅; the founder-gated wordmark/headline swap is WS-13, untouched).
-  New `AgentMemoryBand.astro` inserted right after `<Hero />` in `index.astro`:
-  a wedge statement (retrieval ≠ analytics) + the WS-06 `AgentMemoryMatrix`
-  teaser (reused, DRY) + a `/agents` CTA firing `home.agents_cta_clicked`
-  (GLOBAL-024 demand signal). The CTA is a plain anchor (works no-JS, crawlable);
-  the signal is fire-and-forget enhancement. Hero lede/wordmark untouched (gated
-  to WS-13 per the messaging-surface-map lead-string list). **Δ:** WS-12 ⬜ →
-  🟡 1/2 (band ✅; demote P1/P3/P4 to an "also works for…" fold = next run).
-  **KPI:** onboarding (UX) — home → `/agents` click-through; **none degraded** —
-  web-only + additive, zero engine/chain/scorer/perf touch, BIRD 06-19 + Spider
-  06-17 untouched. astro check 0 err, 128 web tests green, biome clean, build
-  renders the band into `dist/index.html`. Artifact: "we put agent memory front
-  and centre" build-in-public note queued.
-- 2026-06-21 (run 43) — **Engine: §4 #1 DAIL-SQL retrieval wired into the
-  provider chain — the per-lever T9 ablation `buildPlanSystem` (`SK-LLM-041`
-  half (b)) — so #1 is now built end-to-end bar the canonical dispatch.** Worst
-  number is engine (Spider 0.1852, BIRD 0.520); both baselines < 7 d (§5: no
-  back-to-back canonical dispatch) and the only open PR owns the ungated pivot
-  slice WS-12, so the clean non-colliding slice is #1's explicitly-named next
-  half — the wiring, not the dispatch. The retrieval core + masking +
-  schema-aware selector + curated pool were all merged through run 42 as staged
-  offline halves; this run wires them in: `plan-exemplar-pool.ts::buildPlanSystem(goal, schema, k)`
-  returns the static `PLAN_SYSTEM` **byte-for-byte** when `k <= 0` (every prod
-  call — `PlanRequest.retrieveExemplars` is unset, like `temperature` for
-  `SK-QUAL-017`) and swaps the static `SK-LLM-026` 3-shot prefix for the `k`
-  retrieved exemplars (rendered via the shared, now-exported `fewShotBlock`, so
-  byte-identical in shape) when `k > 0`, falling back to static on no match.
-  `_chat-provider.ts` calls it with `req.retrieveExemplars ?? 0`; the eval's new
-  `--retrieve-exemplars k` flag threads `k` into every `plan()` request (greedy +
-  self-consistency paths), so the next dispatch runs greedy-static vs
-  greedy-retrieved as a clean A/B. **Measured offline:** the off-path is
-  byte-identical to `PLAN_SYSTEM` (`SK-LLM-024` determinism + the `SK-LLM-009`
-  cache prefix intact), and the **token budget** is **retrieved `k=3` prefix 3225
-  vs static 3448 chars (0.935×)**: retrieval is token-*negative*. Only the
-  hot-path embedding index over a larger pool remains. **Δ:** §4 #1 pool → **+ the
-  T9-ablation wiring** (lever end-to-end bar dispatch); `@nlqdb/llm` 203 → 207
-  tests, `@nlqdb/eval` 246 → 247. **KPI:** engine quality; **none degraded** —
-  prod output byte-identical (default off), zero scorer/runner-default/perf
-  touch; BIRD 06-19 + Spider 06-17 baselines untouched. EX delta next dispatch.
-  `source-of-truth` + `verification-log` net-shrunk (D4). Artifact: "Wire a
-  retrieval lever as a default-off ablation: measure before you adopt" queued.
+- 2026-06-21 (run 44) — **Distribution: WS-12 closed — P1/P3/P4 personas
+  demoted into an "also works for…" fold → home reweight complete (band run 43
+  + fold run 44).** Worst number is engine (Spider 0.1852, BIRD 0.520), but the
+  engine lane is dispatch-gated (both evals < 7 d, §5 forbids a back-to-back
+  canonical dispatch; the §4 reasoning levers are offline-complete and a clean
+  greedy-vs-SC smoke is a multi-day quota campaign, not one run) **and the one
+  open PR (#457) owns the engine-lane slice** (persona-bench runner-wiring,
+  `SK-QUAL-018` follow-on). So the clean non-colliding slice is the named next
+  half of WS-12. New `AlsoWorksFor.astro` — a quiet divider (muted kicker +
+  heading + lede, **no accent, no CTA, no JS**) inserted before `CodePanel` +
+  `Replaces` in `index.astro`, so the general-purpose persona framing reads as a
+  secondary fold below the agent-memory band. Composition-only; **nothing
+  deleted**, hero wordmark/lede untouched (gated to WS-13). **Δ:** WS-12 🟡 1/2 →
+  ✅ 2/2; messaging 10 → 11/13, pivot 12 → 13/20. **KPI:** onboarding (UX) —
+  agent-builder-first home hierarchy; **none degraded** — web-only + additive,
+  zero engine/chain/scorer/perf touch, BIRD 06-19 + Spider 06-17 untouched.
+  astro check 0 err, 128 web tests green, biome clean, build renders the fold
+  into `dist/index.html`. Artifact: "We demoted three of our four personas on
+  purpose" build-in-public note queued.
+- 2026-06-21 (run 43) — three slices, all merged (full detail in worksheets +
+  verification log): **(a) Engine: persona-bench v0** (`SK-QUAL-018`, #456) —
+  metric #8 created → `tools/eval/.../persona-bench.ts`, `saas_app` (P1) +
+  `agent_memory` (P2) inline DDL+seed, 12 NL→gold-SQL pairs, gold time-stable
+  (literal dates), **12/12 golds execute non-empty**; data half only ⇒ baselines
+  untouched, `@nlqdb/eval` 246 → 254. **(b) Distribution: WS-12 band**
+  (`AgentMemoryBand.astro` after `<Hero />`, wedge statement + WS-06 matrix
+  teaser + `/agents` CTA firing `home.agents_cta_clicked`) → WS-12 🟡 1/2. **(c)
+  Engine: §4 #1 DAIL-SQL retrieval T9-ablation wiring** (`SK-LLM-041` half b,
+  #455) — `buildPlanSystem(goal, schema, k)` returns static `PLAN_SYSTEM`
+  byte-for-byte at `k<=0` (every prod call), swaps in `k` retrieved exemplars at
+  `k>0`; eval `--retrieve-exemplars k` flag; token budget 0.935× static
+  (token-negative); `@nlqdb/llm` 203 → 207. #1 built end-to-end bar dispatch.
+  KPI engine quality / onboarding; none degraded; BIRD 06-19 + Spider 06-17
+  untouched.
 - 2026-06-21 (run 42) — **three slices** (all merged; full detail in the
   verification log + worksheets): **(a) §4 #1 curated plan-exemplar pool**
   (`SK-LLM-041` half (a), `plan-exemplar-pool.ts`) — 10 hand-authored

@@ -5,6 +5,33 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-21 (run 44) — build-in-public: "We demoted three of our four personas on the home page. On purpose." (X / Bluesky / dev.to)
+
+**Where:** X / Bluesky thread + a short dev.to note on positioning discipline.
+
+**Title:** We demoted three of our four personas on our home page. On purpose.
+
+**Body:**
+
+> nlqdb is a database you talk to in English. For a while the home page tried
+> to be everything to everyone: solo builders, analysts, backend engineers,
+> AI-agent builders — four readers, four pitches, one muddy page.
+>
+> We picked one. Agent memory is now the first thing you read after the hero:
+> a vector store recalls the top-k similar chunks; nlqdb gives your agent a
+> real database it can `GROUP BY`, `JOIN`, and aggregate over — the analysis a
+> similarity index structurally can't do. That's the wedge.
+>
+> The other three personas didn't get deleted — they got a fold. Lower on the
+> page, under a quiet "Also works for solo builders, analysts, and backend
+> engineers" divider, sits the full general-purpose story (one tag replaces a
+> whole backend; pick any of eight surfaces). Present, honest, secondary.
+>
+> The lesson we keep relearning: a home page that ranks its readers converts
+> the top one. A home page that treats them equally converts none. Reversible
+> too — it's a composition change, not a rewrite, so if the wedge is wrong we
+> reorder back in a commit. Positioning is a bet you should be able to unmake.
+
 ## 2026-06-21 (run 43) — engine-lesson: "Your benchmark should look like your users' database, not a research paper's" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`); a build-in-public note on
