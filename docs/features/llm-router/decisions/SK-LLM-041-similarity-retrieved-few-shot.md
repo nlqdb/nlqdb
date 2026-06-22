@@ -48,10 +48,14 @@ identifiers identically.
     identical skeleton) now ranks top from **raw** rows, with no caller-side
     pre-masking. `maskedTokensWithSchema` is the symmetric tokenizer.
   And, shipped 2026-06-21 as the **curated pool rows** half (a) —
-  `plan-exemplar-pool.ts`: `PLAN_EXEMPLAR_POOL`, ten hand-authored
+  `plan-exemplar-pool.ts`: `PLAN_EXEMPLAR_POOL`, hand-authored
   `{question, schema, SQL}` `PlanExemplar`s (one per `SK-QUAL-014` structural
   mismatch bucket — group-by-count, HAVING, COUNT(DISTINCT), scalar/IN subquery,
-  join-aggregate, group-max, NULL-safe-min, REAL-cast ratio, date-range), each
+  **anti-join (NOT IN, NULL-guarded)**, join-aggregate, group-max,
+  **group-order-limit (top-N of an aggregate)**, NULL-safe-min, REAL-cast ratio,
+  date-range — **12 rows, grown 2026-06-22** from the initial 10 to cover two
+  high-mass shapes the pool could not demonstrate at all: negation and
+  order-by-aggregate-limit), each
   `payload` rendered through the now-exported `prompts.ts::planExample` so a
   retrieved demonstration is byte-identical in shape to a static `SK-LLM-026`
   one, plus `retrievePlanExemplars(goal, schema, k)` (thin wrapper over
@@ -107,14 +111,21 @@ identifiers identically.
   outranks a same-schema row of a different shape; (3) `selectExemplarsForSchema`
   ranks that twin top from **raw** rows (each masked against its own schema
   inside the selector, no hand-masking). Plus `plan-exemplar-pool.ts` +
-  `plan-exemplar-pool.test.ts` (5 cases): an **offline retrieval measurement**
-  over a 10-probe held-out set (each probe a paraphrase of one bucket over a
-  *different* schema) records **precision@1 = 10/10** (every probe retrieves its
-  intended structural bucket across domains) and **lift = +0.592** — masked
-  skeleton-similarity of the top-1 retrieved exemplar **0.833** vs **0.240** for
-  an uninformed pool-average pick (3.46×), the offline analog of DAIL's measured
-  retrieval win, proving the pool+selector is worth a dispatch before paying for
-  one. Half (b) adds `buildPlanSystem` + `prompts.ts`'s exported `PLAN_DIRECTIVES`
+  `plan-exemplar-pool.test.ts`: an **offline retrieval measurement**
+  over a held-out probe set (each probe a paraphrase of one bucket over a
+  *different* schema) records **precision@1 = 12/12** (every probe retrieves its
+  intended structural bucket across domains — **held at 1.0 after the 2026-06-22
+  pool growth added two near-neighbour buckets**, the harder regime) and **lift
+  = +0.595** — masked skeleton-similarity of the top-1 retrieved exemplar
+  **0.840** vs **0.245** for an uninformed pool-average pick, the offline analog
+  of DAIL's measured retrieval win, proving the pool+selector is worth a dispatch
+  before paying for one. The 2026-06-22 growth records a **same-probe
+  before/after coverage delta** (the `SK-LLM-036/037` pattern): a "…have never
+  …" goal retrieved the *positive* in-subquery demo (the un-negated shape — the
+  wrong lesson) **before** the `anti-join` row existed and the NOT-IN demo
+  **after**, while the positive in-subquery probe still retrieves in-subquery
+  (the bidirectional masking guard — "never" is the only distinguishing token,
+  and masked Jaccard keeps the skeletons separable). Half (b) adds `buildPlanSystem` + `prompts.ts`'s exported `PLAN_DIRECTIVES`
   / `PLAN_FEW_SHOT_HEADER` / `fewShotBlock` (the static `PLAN_FEW_SHOT` rebuilt
   through `fewShotBlock`, byte-identical) + the `_chat-provider.ts` system-prompt
   call + the eval `--retrieve-exemplars` flag (`runner.ts`), with 4 new

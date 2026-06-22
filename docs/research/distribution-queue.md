@@ -47,31 +47,45 @@ leaner agent-facing doc set is faster and cheaper context for every subsequent
 `/daily` run; the post itself is a build-in-public credibility artifact. No
 engine/funnel KPI degrades (docs-only).
 
-## 2026-06-22 (run 45) — build-in-public: "We measure 'real strangers', and the number is still 0" (X / Bluesky / dev.to)
+## 2026-06-22 (run 46) — dev.to / lobste.rs: "Your few-shot examples might be teaching the model the wrong shape" (text-to-SQL engineering)
 
-**Where:** X / Bluesky build-in-public note + dev.to; an honest funnel update —
-the discipline of bot-filtering your own metrics before you believe them.
+**Where:** dev.to + lobste.rs (`databases` / `ai`); a genuinely useful NL→SQL
+retrieval lesson, nlqdb mentioned once as the system it came from. Pairs with
+the DAIL-SQL retrieval work (`SK-LLM-041`).
 
-**Title:** Our waitlist has 79 rows. The honest count is 1.
+**Title:** Your few-shot examples might be teaching the model the wrong shape
 
 **Body:**
 
-> Today's funnel pull, live from the database: 79 waitlist rows, 119 databases
-> created, 113 of them with a recorded first answer (100%), 0 errors across ~1,300
-> worker requests. A founder's dashboard would screenshot the 79.
+> We retrieve few-shot examples by question similarity before asking a small
+> model to write SQL (the DAIL-SQL trick: mask the literals and table/column
+> names, compare the question *skeletons*, show the model the closest
+> demonstrations). It works — until you look at what gets retrieved for a
+> *negation*.
 >
-> But 78 of those 79 rows are us — our own end-to-end "stranger test" walker
-> signs up a throwaway address daily to prove the funnel works, plus a few
-> probes. Filter them out and the genuine-stranger count is **1**: me. The users
-> table tells the same story — 7 rows, every one founder or test, 0 real strangers.
+> Ask "which customers have **never** placed an order?" and, if your example
+> pool only contains the positive version ("which customers **have** placed an
+> order?" → `WHERE id IN (SELECT …)`), that positive example is the nearest
+> neighbour. The single word "never" is the only token that differs, so
+> similarity ranks the un-negated demo first — and now you're showing the model
+> the exact shape you *don't* want. The example actively teaches the wrong
+> answer. Same trap for "which department has the **most** employees": if your
+> pool has `GROUP BY … COUNT(*)` and per-group `MAX()` but no `ORDER BY COUNT(*)
+> DESC LIMIT 1`, the model gets two near-misses and no demonstration of the
+> shape it actually needs.
 >
-> We keep the bot-filtered number on the scorecard on purpose: the unfiltered
-> one would let us lie to ourselves. Walker traffic is load — it proves the
-> pipes carry water, not that anyone's thirsty. What gates real adoption isn't
-> the landing page, it's the engine: first answers stay behind an invite valve
-> until NL→SQL accuracy clears the bar, and that's where every lever goes. When
-> the stranger count leaves 1, it'll be because the model got good enough to
-> open the valve — and we'll have the honest baseline to prove it moved.
+> The fix isn't a smarter ranker — it's a pool that can *represent* the shape.
+> We added two rows (a NULL-guarded `NOT IN` anti-join; a top-N-of-aggregate),
+> measured it the boring way — same probe, before vs after — and watched the
+> "never" query flip from the positive demo to the negation demo, while the
+> positive query still kept its positive demo (the masking stays
+> bidirectional). Precision held at 12/12 with the two near-twins added.
+>
+> Lesson: retrieval quality is bounded by pool *coverage*, not just the
+> similarity function. Before you tune the ranker, audit whether your examples
+> can even express the shapes your hard queries need — and check that a
+> one-word negation isn't quietly retrieving its own opposite. (We do this in
+> nlqdb's free-tier NL→SQL chain; the whole pool is ~12 hand-authored rows.)
 
 ## Collapsed — full drafts in git history
 
@@ -101,6 +115,7 @@ recovers any body.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 
+- run 45 — "Our waitlist has 79 rows. The honest count is 1." (honest funnel pull: 78/79 waitlist rows are us, genuine-stranger count is 1; gated on engine accuracy, GLOBAL-027).
 - run 44 — "We demoted three of our four personas on the home page. On purpose." (agent-memory wedge above the fold; other three folded under a quiet divider; reversible composition change, GLOBAL-036 + WS-12).
 - run 43 — "We moved agent memory above the fold — without touching the wordmark" (additive/reversible home band; Mem0·Zep·Letta·nlqdb matrix; GLOBAL-036 + WS-12).
 - run 42 — launch image "GROUP BY your agent's memory" (`og/agents.png` + four `vs-*.png` cards, SK-PIVOT-004; the `/agents` share card).

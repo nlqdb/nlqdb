@@ -28,7 +28,10 @@ masking + the **curated pool (#451, half (a))** + now the **T9-ablation wiring
 byte-for-byte, the eval `--retrieve-exemplars k` flag swaps in the retrieved
 prefix (token-budget 0.935× of static — token-negative), so the next dispatch
 A/Bs greedy-static vs greedy-retrieved. **#1 is now built end-to-end bar the
-dispatch**; only the hot-path embedding index remains. The #3 EX delta is the
+dispatch**; only the hot-path embedding index remains — the **pool grew 10 → 12
+buckets (run 46)**, adding the two high-mass shapes it could not demonstrate at
+all (anti-join/NOT-IN negation + order-by-aggregate-limit top-N), precision@1
+held 12/12. The #3 EX delta is the
 greedy-vs-SC smoke gap on the first N>=2 dispatch; both land the next canonical
 dispatch (blocked today — both evals < 7 d, §5).
 
@@ -95,6 +98,20 @@ dispatch (blocked today — both evals < 7 d, §5).
   BIRD 06-19 + Spider 06-17 byte-untouched, free-chain EX = next dispatch.
   Artifact (step 3) deferred this run to avoid colliding with #462's in-flight
   full rewrite of `distribution-queue.md`; queue once #462 lands.
+- 2026-06-22 (run 46) — **Engine: §4 #1 DAIL-SQL retrieval — curated
+  plan-exemplar pool grown 10 → 12 buckets (`SK-LLM-041`, #461).** The pool had
+  no negation and no order-by-aggregate-limit exemplar, so a "…never ordered"
+  goal retrieved the *positive* in-subquery demo (the wrong lesson) and "which X
+  has the most Y" pulled group-by-count/group-max. Added `anti-join` (`NOT IN`,
+  NULL-guarded against the empty-result trap) + `group-order-limit`. **Δ
+  (offline, same-probe before/after — the `SK-LLM-036/037` pattern):** the
+  "never" goal flips to anti-join `NOT IN` top-1; **precision@1 held 12/12**,
+  lift +0.592 → **+0.595**, retrieved k=3 prefix 0.935×
+  static (token-negative); `@nlqdb/llm` 207 → 208 tests. **KPI:** engine
+  quality; **none degraded** — prod byte-identical (`buildPlanSystem` default-off
+  `k<=0` ⇒ static `PLAN_SYSTEM`; `SK-LLM-024` greedy + BIRD 06-19/Spider 06-17
+  baselines untouched); EX delta = next canonical dispatch. Artifact: "Your
+  few-shot examples are teaching the model the wrong shape" queued.
 - 2026-06-22 (run 46) — **D4 doc hygiene: `distribution-queue.md` net-shrunk
   35.9 KB → 9.1 KB (−26.8 KB), back under the 20 KB cap.** Worst number is
   engine (Spider 0.1852) but the engine lane is owned by the one open daily PR
