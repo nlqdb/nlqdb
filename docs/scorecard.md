@@ -91,6 +91,19 @@ round-trip — not a daily lever) or the gated dispatch.
 
 ## Deltas (recent runs)
 
+- 2026-06-22 (run 54) — **Hygiene (D4 + P3): `docs/progress.md` net-shrunk
+  22,108 → 20,428 B (−1,680 B, 21.6 → 20.0 KB) back under the 20 KB cap.** Both
+  engine/distribution lanes were owned by open PRs (#469, #470) and dispatch-gated
+  (BIRD 06-19 / Spider 06-17 < 7 d, §5), so the non-colliding lever was doc
+  hygiene. The §0 surface-status matrix had accreted feature-doc bodies into its
+  Notes column (quality-eval slice IDs, premium pricing shape, anon source files +
+  decision IDs) — duplicating what each `FEATURE.md` is canonically the single
+  source of truth for (P3). Trimmed every such Note to **status + one-line essence
+  + a link to the owning feature**, plus tightened build-philosophy prose (D5).
+  **0 rows / 0 statuses / 0 facts removed** (9 feature links verified resolvable).
+  **KPI:** onboarding / UX (a status table trustworthy without drift); **none
+  degraded** — docs-only, BIRD 06-19 / Spider 06-17 untouched. Artifact: *"Your
+  status table is drifting because it answers 'why', not just 'what'"*.
 - 2026-06-22 (run 53) — **Distribution: shipped `/vs/pinecone`, the pivot's
   "database, not a vector store" wedge given its canonical comparison page.**
   Worst real number is the genuine-stranger funnel (rows #2/#3 ≈ 0), which is
@@ -115,34 +128,24 @@ round-trip — not a daily lever) or the gated dispatch.
 - 2026-06-22 (run 52) — **Engine (finding, Δ ≤ 0 — variant reverted): the
   lexical-selector avenue for the two pinned persona-bench ICP misses (q8, q10)
   is falsified — the pool/lexical-selector half of §4 #1 is at its offline
-  ceiling.** With the canonical dispatch gated (BIRD 06-19 / Spider 06-17 both
-  < 7 d, §5) and the one open PR (#458) on SDK packaging, the non-colliding
-  offline engine slice was the two documented selector-side misses. Rather than
-  pad a 15th pool row (overfitting the self-probe), measured whether a cheaper
-  *lexical* selector change closes q8/q10 (same-probe before/after,
-  `SK-LLM-036/037`): **(a) stopword filter → ICP precision@1 18/20 → 17/20 (−1)**
-  — too-sparse token sets shuffle misses; **(b) phrase normalisation → 18/20
-  (Δ0)** — q8 improves `ratio-cast`→`order-by-limit` but still misses, q10
-  unchanged; held-out pool stays **14/14** under both. Root cause (debugged):
-  q10's top-1 `having` wins on `{which, the, col, val}` — generic filler + a
-  *coincidental masked literal slot*, not structure; flat masked-token Jaccard
-  can't resolve it. **Redirect:** the only remaining offline §4 #1 gain is
-  query-skeleton (predicted-SQL) similarity — an LLM round-trip, not a daily
-  lever — or the gated canonical dispatch of the staged `--retrieve-exemplars`.
-  Variant code reverted; the finding is pinned in the q8/q10 test comments +
-  `SK-LLM-041` body so future runs don't re-attempt it. **KPI:** engine quality
-  (measurement integrity — closes a dead-end avenue); **none degraded** — prod
-  byte-identical, BIRD 06-19 / Spider 06-17 untouched. Artifact: *"We tested our
-  few-shot retrieval against our own users' queries — then tried to fix the
-  misses with lexical tricks, and measured why that can't work."*
+  ceiling.** Same-probe before/after (`SK-LLM-036/037`): **(a) stopword filter →
+  ICP precision@1 18/20 → 17/20 (−1)**; **(b) phrase normalisation → 18/20 (Δ0)**;
+  held-out pool stays **14/14** under both. Root cause: q10's top-1 `having` wins
+  on generic filler + a *coincidental masked literal slot*, not structure — flat
+  masked-token Jaccard can't resolve it. **Redirect:** the only remaining offline
+  §4 #1 gain is query-skeleton (predicted-SQL) similarity (an LLM round-trip, not
+  a daily lever) or the gated canonical dispatch. Variant reverted; finding pinned
+  in the q8/q10 test comments + `SK-LLM-041`. **KPI:** engine quality (measurement
+  integrity — closes a dead-end avenue); **none degraded** — prod byte-identical,
+  BIRD 06-19 / Spider 06-17 untouched. Artifact: *"We tested our few-shot retrieval
+  against our own users' queries — then tried to fix the misses with lexical
+  tricks, and measured why that can't work."*
 - 2026-06-22 (run 51) — **Engine: §4 #1 DAIL-SQL pool grown 13 → 14 —
-  `order-by-limit` (plain top-N) added on the persona-bench evidence source
-  (`SK-LLM-041 × SK-QUAL-018`).** Plain top-N (q0, "10 most recent signups") had no
-  pool row so retrieved `group-order-limit` (spurious GROUP BY); the new row flips
-  q0 to the correct skeleton. **Δ (offline, same-probe):** persona-bench ICP
-  precision@1 18/20; held-out pool 13/13 → 14/14; q8/q10 selector-side misses
-  unchanged (closed by run 52's falsification above). **KPI:** engine quality;
-  none degraded — prod byte-identical, BIRD 06-19 / Spider 06-17 untouched.
+  `order-by-limit` (plain top-N) added (`SK-LLM-041 × SK-QUAL-018`).** q0 ("10
+  most recent signups") flipped off the spurious `group-order-limit` GROUP-BY
+  stand-in onto the plain `ORDER BY … LIMIT` demo; persona-bench ICP precision@1
+  18/20, held-out 13/13 → 14/14 (q8/q10 selector-side misses closed by run 52
+  above). None degraded — prod byte-identical, BIRD/Spider untouched.
 - 2026-06-22 (runs 48–50) — engine + distribution + hygiene wave (all merged;
   BIRD 06-19 + Spider 06-17 untouched). **Engine (run 48):** §4 #1 DAIL-SQL pool
   grown 12 → 13 (+`null-filter`) on a new persona-bench ICP-retrieval probe
@@ -166,10 +169,9 @@ round-trip — not a daily lever) or the gated dispatch.
   batch 2 — anti-join + challenging multi-join shapes; 20/20 execute). **Distribution:** WS-12 closed
   (`AgentMemoryBand` + `AlsoWorksFor` fold, runs 43–44) → messaging 11/13, pivot
   13/20. **Hygiene:** `distribution-queue.md` net-shrunk 35.9 → 9.1 KB under cap
-  (run 46). **Measurement (run 45, live):** visits 62/98, waitlist 79 rows (1 real
-  = founder), users 7 (0 real strangers), anon DBs 113/113 first-answer, api 990
-  req / 0 err, p50 0.94 ms / p95 2.62 s, ~$0 — genuine-stranger lane still 0,
-  engine-gated. KPI engine quality / onboarding; none degraded.
+  (run 46). **Measurement (run 45, live):** metrics re-pulled (table above) —
+  genuine-stranger lane still 0, engine-gated. KPI engine quality / onboarding;
+  none degraded.
 - 2026-06-21 (runs 37–42) — engine + distribution staging wave (all merged/additive; BIRD 06-19 + Spider 06-17 untouched). **§4 #1 DAIL-SQL retrieval** built end-to-end offline: retrieval core (`few-shot-select.ts` value-mask + Jaccard + top-k, run 38), schema-aware selector (run 40), pool-curation mask + 10-row curated pool precision@1 10/10 (runs 39, 42a, `SK-LLM-041`). **§4 #3 self-consistency** (`SK-QUAL-017`): execution half (run 37) + `temperature`-sampling half (run 40, default greedy ⇒ `SK-LLM-024` byte-identical) + runner `--self-consistency N`/`--sc-temperature T` (run 41) + smoke dispatch vehicle (run 42c) — fully dispatchable. **Distribution:** WS-08 OG cards (run 42b, SK-PIVOT-012), WS-09 gate-honest `/agents` live demo (run 41) → messaging → 10/13, pivot → 12/20. Plus E-04 TTL-sweep core (`SK-PIVOT-011`, run 39) + SK-PIVOT-010 finding (E-06 authed-only). KPI engine quality / onboarding; none degraded.
 - 2026-06-19/20 (runs 19–36) — agent-memory pivot launch wave + engine staging
   (all closed/additive; BIRD 06-19 + Spider 06-17 untouched). Messaging

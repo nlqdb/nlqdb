@@ -10,6 +10,53 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-22 (run 54) — dev.to / lobste.rs: "Your status table is drifting because it answers 'why', not just 'what'" (engineering-docs discipline)
+
+**Where:** dev.to + lobste.rs (`documentation` / `engineering`); build-in-public,
+the docs-hygiene angle (distinct from run 46's 20 KB-cap mechanics — this one is
+single-source-of-truth). nlqdb mentioned once.
+
+**Title:** Your status table is drifting because it answers "why", not just "what"
+
+**Body:**
+
+> Every codebase grows a status table — the one that says which surfaces ship,
+> which are queued, which are wishlist. Ours lives in one Markdown file and is the
+> *canonical* status for everything advertised on the homepage. Useful. The
+> problem is what creeps into the Notes column.
+>
+> A row that should read **"Shipped — see `quality-eval/FEATURE.md`"** had instead
+> accreted the whole feature: every sub-slice ID, the McNemar detail, the loader
+> names, the remaining-work list. The premium row re-stated the entire pricing
+> shape. The anonymous-mode row listed three source files and two decision IDs.
+> Each looked harmless the day it was written — you were *right there* editing the
+> feature, so you pasted the detail into the status table too.
+>
+> Then the feature doc moves on and the table doesn't. Now you have two records of
+> the same decision and a reader has no way to know which is stale. The table was
+> supposed to answer one question — *what's the status?* — and it had quietly
+> taken on a second job: *why, and how, and with which IDs?* That second job
+> already belongs to the feature doc. Two homes for one fact is just drift with
+> extra steps.
+>
+> The fix isn't clever: a status table holds **status + one line of essence + a
+> link**. The "why" lives once, in the feature doc, and the table points at it.
+> We trimmed the Notes back to that shape across the whole table — and as a
+> side-effect it dropped back under our 20 KB-per-doc cap (21.6 KB → 20.0 KB)
+> without losing a single fact, because the facts were never *supposed* to be
+> there.
+>
+> Lesson: a table that answers two questions decays at the rate of the faster-
+> moving one. Decide what each document is the single source of truth *for*, and
+> ruthlessly send everything else to a link. (We do a one-pass version of this on
+> every doc edit — find one sentence that the code or a linked doc already proves,
+> and delete it.)
+
+**Why this advances the north-star:** onboarding / UX (docs an agent or new
+contributor can trust — single-source-of-truth keeps the canonical status table
+honest); a genuinely useful engineering-docs lesson with one nlqdb mention. No
+engine/funnel KPI degrades (docs-only).
+
 ## 2026-06-22 (run 53) — dev.to / lobste.rs: "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (agent-memory engineering)
 
 **Where:** dev.to + lobste.rs (`ai` / `databases`); the agent-memory pivot's
@@ -58,51 +105,6 @@ the P2 agent-builder keyword "agent memory vector store") — a genuinely useful
 architectural lesson with one nlqdb mention, anchoring the new `/vs/pinecone`
 page. No engine/funnel KPI degrades (content + data only; prod byte-identical).
 
-## 2026-06-22 (run 52) — dev.to / lobste.rs: "Some retrieval misses can't be fixed with lexical tricks — and that's a finding" (text-to-SQL engineering)
-
-**Where:** dev.to + lobste.rs (`databases` / `ai`); fourth in the DAIL-SQL
-retrieval / eval-honesty series — the "negative result" angle. nlqdb mentioned
-once. Pairs with `SK-LLM-041` + persona-bench (`SK-QUAL-018`).
-
-**Title:** Some few-shot retrieval misses can't be fixed with lexical tricks — and measuring *why* is the win
-
-**Body:**
-
-> We pick few-shot demonstrations by masked question similarity before a small
-> model writes SQL (the DAIL-SQL trick). After auditing the pool against our own
-> users' queries (the last three posts), two misses were left — and both looked
-> like ranker bugs, not pool gaps. The right demo *was* in the pool; the ranker
-> just didn't pick it.
->
-> Miss: **"which predicates does the agent named 'support-bot' use, and how
-> often?"** — a filtered `GROUP BY … COUNT(*)`, no `HAVING`. Top-1 retrieved was
-> the `HAVING COUNT(*) > N` demo, which would teach the model a threshold filter
-> the query doesn't have. The obvious fix is a smarter selector, so we tried the
-> two cheapest: drop stopwords before scoring, and normalise synonyms ("how
-> often" / "how many times" → one count marker, "more than" → a threshold
-> marker). We measured both the boring way — same queries, before vs after.
->
-> Stopwords made it *worse* (own-query precision 18/20 → 17/20): the token sets
-> got so sparse the misses just moved around. Normalisation left it flat (18/20).
-> Neither touched the held-out 14/14. Then we looked at *why*: the bad demo wins
-> on `{which, the, col, val}` — generic filler plus a **coincidental masked value
-> slot**. Both questions happen to contain a literal, so after masking they each
-> have a `val` token, and that spurious match plus two filler words outweighs the
-> one token that actually encodes structure. Flat token-overlap can't tell a
-> meaningful match from an accidental one; no amount of word-list tuning fixes
-> that. The real fix is a different *kind* of similarity — comparing a draft SQL
-> skeleton, which needs a model round-trip, so it's a feature, not a config tweak.
->
-> Lesson: when a retrieval miss survives the cheap fixes, *measure the cheap
-> fixes anyway* — a negative result that says "this class of change can't work
-> here, and here's the mechanism" is worth more than a tweak that moves the number
-> by luck. We reverted both experiments and wrote down the ceiling. (Free-tier
-> NL→SQL chain; the own-users set is ~20 hand-checked queries.)
-
-**Why this advances the north-star:** engine quality (measurement integrity on
-the NL→SQL retrieval lever); a genuinely useful negative-result lesson with one
-nlqdb mention. No engine/funnel KPI degrades (offline, prod byte-identical).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -111,6 +113,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 52 — "Some few-shot retrieval misses can't be fixed with lexical tricks — and measuring *why* is the win" (two pinned ICP misses (q8/q10) are lexically unfixable; stopword filter regresses 18/20 → 17/20, phrase-normalisation flat (18/20), held-out 14/14; the bad demo wins on generic filler + a coincidental masked-value slot, so flat token-overlap can't resolve it — the real fix is SQL-skeleton similarity, a model round-trip; both experiments reverted).
 - run 51 — "The most common query in your product has no row in your benchmark" (error-class taxonomies omit easy high-frequency shapes; "show the 10 most recent signups" retrieved a `GROUP BY` demo; +plain `ORDER BY … LIMIT` row, held-out 13/13 → 14/14, own-query 18/20 held).
 - run 48 — "Test your few-shot retrieval against your *own* users' queries — not just the benchmark" (a held-out probe set that paraphrases your own examples reports green while real-user queries silently retrieve the wrong shape; "never logged in" → anti-join not `IS NULL`; own-query precision 17/20 → 18/20, held-out 13/13 unmoved).
 - run 46 — "Your few-shot examples might be teaching the model the wrong shape" (retrieval quality is bounded by pool *coverage*, not the ranker; a one-word negation retrieves its own opposite if the pool can't represent the shape; +anti-join/+top-N-of-aggregate, precision held 12/12).
