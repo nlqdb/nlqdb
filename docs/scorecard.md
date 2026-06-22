@@ -24,9 +24,12 @@ DAIL-SQL pool/lexical-selector half is at its **offline ceiling** (run 52:
 q8/q10 ICP misses falsified as lexically-unfixable; held-out precision@1
 **14/14**, own-ICP **18/20**); the only remaining offline #1 gain is
 SQL-skeleton similarity (an LLM round-trip, not a daily lever) or the gated
-dispatch. The engine lane is also **owned** by open PR #472 (persona-bench
-dispatch workflow), so today's non-colliding lever is the funnel's
-top-of-funnel AEO surface (distribution lane).
+dispatch. **Run 55** shipped the persona-bench **dispatch**
+(`quality-eval-persona-bench.yml`): the free chain is now scoreable on nlqdb's
+OWN ICP schemas, ungated by the < 7-day rule (it never touches the canonical
+baseline); free-chain EX + the ICP free-vs-frontier delta land on the first
+post-merge dispatch. Today's non-colliding lever is the funnel's top-of-funnel
+AEO surface (distribution lane).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -39,8 +42,8 @@ top-of-funnel AEO surface (distribution lane).
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half (run 40) + **runner `--self-consistency N` / `--sc-temperature T` main-loop wiring (run 41)** — `samples>=2` branch in `runOneQuestion` (separate from `withExecRetry`): `samplePlans`→`voteOverSamples` over `executeRows`→score-the-winner; folds into checkpoint/budget-stop/`attempts`, `.scN` checkpoint variant. The lever is now end-to-end bar the CI `workflow_dispatch` input. EX delta next dispatch** |
-| 8 | persona-bench | **20 q / 2 ICP schemas, dispatchable; 20/20 golds execute** | run 47 — batch 2 grew 12 → **20 q** (first `challenging` tier + anti-join/negation + multi-join shapes v0 lacked, the `SK-QUAL-014` mass `SK-LLM-041` targets). `loadPersonaBench` materialises both schemas to SQLite; `--dataset persona-bench [--persona P1\|P2]` scores the free chain. Additive new-branch, BIRD/Spider byte-untouched; free-chain EX = next dispatch (a `workflow_dispatch` job is the last half). `@nlqdb/eval` 258 tests, 78 → 118 persona-bench expect() calls |
-| 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
+| 8 | persona-bench | **20 q / 2 ICP schemas; CI-dispatchable (run 55); 20/20 golds execute** | run 55 — `quality-eval-persona-bench.yml` (the documented "last half") makes the free chain scoreable on the ICP shape: `workflow_dispatch` `persona: all\|P1\|P2` + `include_frontier`, no fixture/baseline/emit, so ungated by `SK-QUAL-002`'s < 7-day rule. Free-chain EX + ICP free-vs-frontier delta land on the first dispatch (post-merge — `workflow_dispatch` needs the file on `main`). Batch 2 (run 47) grew 12 → 20 q; retrieval precision@1 18/20 (`SK-LLM-041 × SK-QUAL-018`) |
+| 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp); the **ICP-shape** delta is now dispatchable via persona-bench (run 55, `include_frontier`) |
 | | **Ops — 7d, CF Workers analytics (06-22 re-pull)** | | wall-time, all routes (not `/ask`-only) |
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
@@ -109,32 +112,35 @@ top-of-funnel AEO surface (distribution lane).
   13 competitors invariants green, astro-check 0 errors. Artifact: *"'Self-hosted'
   fixes lock-in, not the query model — your open-source vector store still can't
   GROUP BY."*
-- 2026-06-22 (run 54) — **Hygiene (D4 + P3):** `docs/progress.md` net-shrunk
-  22,108 → 20,428 B back under the 20 KB cap; the §0 surface-status matrix had
-  accreted feature-doc bodies into its Notes column (P3 duplication) — trimmed
-  every Note to status + one-line essence + owning-feature link, 0 rows/facts
-  removed. KPI onboarding / UX; none degraded.
-- 2026-06-22 (run 53) — **Distribution:** shipped `/vs/pinecone`, the pivot's
-  "database, not a vector store" wedge as a canonical comparison page (the first
-  *vector DB*, vs the memory-layer /vs set: mem0 / zep / letta / langmem).
-  Comparison pages 9 → 10; P2 cluster 4 → 5 (WS-07 cross-link + WS-08 OG card);
-  OG cards 5 → 6; sitemap/llms.txt +1. KPI onboarding / distribution; none
-  degraded — content + typed-data only, prod byte-identical, engine untouched.
-- 2026-06-22 (run 52) — **Engine (finding, Δ ≤ 0 — variant reverted): the
-  lexical-selector avenue for the two pinned persona-bench ICP misses (q8, q10)
-  is falsified — the pool/lexical-selector half of §4 #1 is at its offline
-  ceiling.** Same-probe before/after (`SK-LLM-036/037`): **(a) stopword filter →
-  ICP precision@1 18/20 → 17/20 (−1)**; **(b) phrase normalisation → 18/20 (Δ0)**;
-  held-out pool stays **14/14** under both. Root cause: q10's top-1 `having` wins
-  on generic filler + a *coincidental masked literal slot*, not structure — flat
-  masked-token Jaccard can't resolve it. **Redirect:** the only remaining offline
-  §4 #1 gain is query-skeleton (predicted-SQL) similarity (an LLM round-trip, not
-  a daily lever) or the gated canonical dispatch. Variant reverted; finding pinned
-  in the q8/q10 test comments + `SK-LLM-041`. **KPI:** engine quality (measurement
-  integrity — closes a dead-end avenue); **none degraded** — prod byte-identical,
-  BIRD 06-19 / Spider 06-17 untouched. Artifact: *"We tested our few-shot retrieval
-  against our own users' queries — then tried to fix the misses with lexical
-  tricks, and measured why that can't work."*
+- 2026-06-22 (run 55) — **Engine measurement: shipped
+  `quality-eval-persona-bench.yml`, the documented "last half" of SK-QUAL-018 —
+  the free chain is now scoreable on nlqdb's OWN ICP-shaped schemas.** A
+  *measurement* with no baseline to overwrite, so it is explicitly **ungated** by
+  `SK-QUAL-002`'s < 7-day rule and needs no upstream fixture (inline DDL via
+  `loadPersonaBench`). **Δ (measurement infra):** persona-bench free-chain EX
+  (row 8) + the **ICP free-vs-frontier delta** (row 9, the GLOBAL-025 headline
+  KPI) go from **undispatchable → a single `workflow_dispatch`** (`persona:
+  all\|P1\|P2`, `include_frontier`); the EX number lands on the first post-merge
+  dispatch. Runner path unchanged, unit-test-verified (eval 17/17, retrieval
+  precision@1 18/20). **KPI:** engine quality; **none degraded** — additive
+  workflow + docs only, prod byte-identical, BIRD 06-19 / Spider 06-17 untouched.
+  Artifact: *"Your text-to-SQL accuracy is measured on schemas your users will
+  never build."*
+- 2026-06-22 (runs 51–54) — engine + distribution + hygiene wave (all merged;
+  BIRD 06-19 / Spider 06-17 untouched). **Engine (run 51):** §4 #1 DAIL-SQL pool
+  grown 13 → 14 (+`order-by-limit` plain top-N, `SK-LLM-041 × SK-QUAL-018`), q0
+  flipped off the GROUP-BY stand-in onto plain `ORDER BY … LIMIT`; ICP precision@1
+  18/20, held-out 14/14. **Engine finding (run 52, Δ ≤ 0 reverted):** the
+  lexical-selector avenue for the two pinned ICP misses (q8/q10) is falsified —
+  stopword filter regresses 18/20 → 17/20, phrase-norm flat (`SK-LLM-036/037`);
+  the pool/lexical half of §4 #1 is at its **offline ceiling** (only
+  query-skeleton similarity, an LLM round-trip, or the gated dispatch remain).
+  **Distribution (run 53):** shipped `/vs/pinecone` (the first *vector DB* /vs
+  page, vs the memory-layer set mem0/zep/letta/langmem), comparison pages 9 → 10,
+  P2 cluster 4 → 5, OG cards 5 → 6, sitemap/llms.txt +1. **Hygiene (run 54):**
+  `docs/progress.md` net-shrunk 22,108 → 20,428 B under the 20 KB cap (§0 Notes
+  trimmed of accreted feature-doc bodies, P3; 0 rows/facts removed). None
+  degraded; prod byte-identical.
 - 2026-06-22 (runs 48–50) — engine + distribution + hygiene wave (all merged;
   BIRD 06-19 + Spider 06-17 untouched). **Engine (run 48):** §4 #1 DAIL-SQL pool
   grown 12 → 13 (+`null-filter`) on a new persona-bench ICP-retrieval probe
