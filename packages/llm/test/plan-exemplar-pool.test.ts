@@ -78,6 +78,14 @@ const PROBES: readonly Probe[] = [
     schema: "CREATE TABLE products (id INTEGER, name TEXT, price REAL)",
   },
   {
+    // "Never <attribute>" → a plain IS-NULL filter, over a different schema +
+    // phrasing than the pool row ("logged into the portal" vs "logged in",
+    // members vs users) — proves cross-schema reuse, not a copy of the row.
+    bucket: "null-filter",
+    goal: "Which members have never logged into the portal? Return their email.",
+    schema: "CREATE TABLE members (id INTEGER, email TEXT, last_login TEXT)",
+  },
+  {
     bucket: "ratio-cast",
     goal: "What is the revenue per employee in office 5?\nEvidence: revenue per employee = revenue / employees",
     schema: "CREATE TABLE offices (id INTEGER, revenue INTEGER, employees INTEGER)",
@@ -127,7 +135,7 @@ describe("plan-exemplar-pool", () => {
   it("covers one row per structural bucket, all distinct", () => {
     const buckets = PLAN_EXEMPLAR_POOL.map((r) => r.bucket);
     expect(new Set(buckets).size).toBe(buckets.length);
-    expect(PLAN_EXEMPLAR_POOL.length).toBe(12);
+    expect(PLAN_EXEMPLAR_POOL.length).toBe(13);
   });
 
   it("renders each payload in the static-prefix Question→JSON shape", () => {
@@ -173,11 +181,13 @@ describe("plan-exemplar-pool", () => {
     const goal = probe?.goal ?? "";
     const schema = probe?.schema ?? "";
 
-    // Before: rank against the pool with the anti-join row removed.
+    // Before: rank against the pool as it was before *either* "never"-bearing
+    // row existed (anti-join + the later null-filter, which also carries
+    // "never") — the historical state this delta documents.
     const before = selectExemplarsForSchema(
       goal,
       schema,
-      PLAN_EXEMPLAR_POOL.filter((r) => r.bucket !== "anti-join"),
+      PLAN_EXEMPLAR_POOL.filter((r) => r.bucket !== "anti-join" && r.bucket !== "null-filter"),
       1,
     ) as PlanExemplar[];
     expect(before[0]?.bucket).toBe("in-subquery");
@@ -192,6 +202,40 @@ describe("plan-exemplar-pool", () => {
     const inSub = PROBES.find((p) => p.bucket === "in-subquery");
     const [posTop] = retrievePlanExemplars(inSub?.goal ?? "", inSub?.schema ?? "", 1);
     expect(posTop?.bucket).toBe("in-subquery");
+  });
+
+  // The null-filter row's measured coverage delta: "never <attribute>" (a NULL
+  // column on the row itself) must retrieve the IS-NULL demo, not the anti-join
+  // NOT-IN demo — while "never <relation>" (absence in a related table) stays
+  // anti-join. Same SK-LLM-036/037 same-probe before/after pattern. This is the
+  // shape persona-bench q3 ("who never logged in") needs (ICP retrieval
+  // precision@1 17/20 → 18/20, the `tools/eval` persona-retrieval probe).
+  it("null-filter row flips a 'never logged in' goal from the anti-join demo to the IS NULL demo", () => {
+    const probe = PROBES.find((p) => p.bucket === "null-filter");
+    expect(probe).toBeDefined();
+    const goal = probe?.goal ?? "";
+    const schema = probe?.schema ?? "";
+
+    // Before: rank against the pool with the null-filter row removed — the
+    // "never" token pulls the anti-join NOT-IN demonstration (the wrong shape).
+    const before = selectExemplarsForSchema(
+      goal,
+      schema,
+      PLAN_EXEMPLAR_POOL.filter((r) => r.bucket !== "null-filter"),
+      1,
+    ) as PlanExemplar[];
+    expect(before[0]?.bucket).toBe("anti-join");
+
+    // After: the full pool retrieves the IS NULL demonstration top-1.
+    const [after] = retrievePlanExemplars(goal, schema, 1);
+    expect(after?.bucket).toBe("null-filter");
+    expect(after?.payload).toContain("IS NULL");
+
+    // The guard: a "never <relation>" goal (absence in a related table) must
+    // still go to anti-join — the verb, not just "never", is the discriminator.
+    const antiJoin = PROBES.find((p) => p.bucket === "anti-join");
+    const [ajTop] = retrievePlanExemplars(antiJoin?.goal ?? "", antiJoin?.schema ?? "", 1);
+    expect(ajTop?.bucket).toBe("anti-join");
   });
 });
 

@@ -52,10 +52,15 @@ identifiers identically.
   `{question, schema, SQL}` `PlanExemplar`s (one per `SK-QUAL-014` structural
   mismatch bucket — group-by-count, HAVING, COUNT(DISTINCT), scalar/IN subquery,
   **anti-join (NOT IN, NULL-guarded)**, join-aggregate, group-max,
-  **group-order-limit (top-N of an aggregate)**, NULL-safe-min, REAL-cast ratio,
-  date-range — **12 rows, grown 2026-06-22** from the initial 10 to cover two
-  high-mass shapes the pool could not demonstrate at all: negation and
-  order-by-aggregate-limit), each
+  **group-order-limit (top-N of an aggregate)**, NULL-safe-min,
+  **null-filter (plain `WHERE col IS NULL`)**, REAL-cast ratio,
+  date-range — **13 rows, grown 2026-06-22** from the initial 10: +anti-join and
+  +group-order-limit (two high-mass `SK-QUAL-014` shapes the pool could not
+  demonstrate at all — negation, order-by-aggregate-limit), then +null-filter
+  on a **second** evidence source — the persona-bench (`SK-QUAL-018`)
+  ICP-retrieval probe (see Consequence): nlqdb's own "who never logged in" query
+  (`personas.md` §P1) retrieved the anti-join NOT-IN demo, the wrong shape for a
+  plain `IS NULL` filter), each
   `payload` rendered through the now-exported `prompts.ts::planExample` so a
   retrieved demonstration is byte-identical in shape to a static `SK-LLM-026`
   one, plus `retrievePlanExemplars(goal, schema, k)` (thin wrapper over
@@ -113,19 +118,35 @@ identifiers identically.
   inside the selector, no hand-masking). Plus `plan-exemplar-pool.ts` +
   `plan-exemplar-pool.test.ts`: an **offline retrieval measurement**
   over a held-out probe set (each probe a paraphrase of one bucket over a
-  *different* schema) records **precision@1 = 12/12** (every probe retrieves its
-  intended structural bucket across domains — **held at 1.0 after the 2026-06-22
-  pool growth added two near-neighbour buckets**, the harder regime) and **lift
-  = +0.595** — masked skeleton-similarity of the top-1 retrieved exemplar
-  **0.840** vs **0.245** for an uninformed pool-average pick, the offline analog
-  of DAIL's measured retrieval win, proving the pool+selector is worth a dispatch
-  before paying for one. The 2026-06-22 growth records a **same-probe
-  before/after coverage delta** (the `SK-LLM-036/037` pattern): a "…have never
-  …" goal retrieved the *positive* in-subquery demo (the un-negated shape — the
-  wrong lesson) **before** the `anti-join` row existed and the NOT-IN demo
-  **after**, while the positive in-subquery probe still retrieves in-subquery
-  (the bidirectional masking guard — "never" is the only distinguishing token,
-  and masked Jaccard keeps the skeletons separable). Half (b) adds `buildPlanSystem` + `prompts.ts`'s exported `PLAN_DIRECTIVES`
+  *different* schema) records **precision@1 = 13/13** (every probe retrieves its
+  intended structural bucket across domains — **held at 1.0 across the 2026-06-22
+  pool growth to three near-neighbour buckets** — anti-join, group-order-limit,
+  null-filter — the harder regime) and **lift = +0.595** — masked
+  skeleton-similarity of the top-1 retrieved exemplar **0.840** vs **0.245** for
+  an uninformed pool-average pick, the offline analog of DAIL's measured
+  retrieval win, proving the pool+selector is worth a dispatch before paying for
+  one. The 2026-06-22 growth records two **same-probe before/after coverage
+  deltas** (the `SK-LLM-036/037` pattern): (1) a "…have never …" goal retrieved
+  the *positive* in-subquery demo (the un-negated shape — the wrong lesson)
+  **before** the `anti-join` row existed and the NOT-IN demo **after**; (2) a
+  "never logged in" goal (a NULL **attribute** of the row, not a missing
+  **relation**) retrieved the anti-join NOT-IN demo **before** the `null-filter`
+  row existed and the `IS NULL` demo **after** — while the positive in-subquery
+  probe still retrieves in-subquery and a "never <relation>" goal still retrieves
+  anti-join (the bidirectional masking guards — masked Jaccard keeps the
+  skeletons separable; the discriminating token is the verb, not "never").
+  **Second evidence source — persona-bench ICP retrieval** (`tools/eval/test/persona-retrieval.test.ts`,
+  the `SK-LLM-041 × SK-QUAL-018` bridge): running `retrievePlanExemplars` over
+  the **20 persona-bench (`SK-QUAL-018`) ICP questions** — nlqdb's OWN target
+  distribution, not synthetic probes — scores **precision@1 17/20 → 18/20**
+  against a per-question expected-bucket map: the null-filter row flips q3 ("who
+  never logged in") off the misleading anti-join demo (+1). The 2 remaining
+  misses (q8, "the 5 most-recalled facts …"; q10, "which predicates does
+  'support-bot' use, and how often" — a filtered GROUP-BY-COUNT with NO HAVING
+  whose top-1 is the `having` demo) are **documented, not absorbed**: both are
+  *selector*-side artifacts (the right buckets exist), so the fix is
+  query-skeleton similarity (DAIL §4.1's second variant), out of scope for a
+  pool-row add. Half (b) adds `buildPlanSystem` + `prompts.ts`'s exported `PLAN_DIRECTIVES`
   / `PLAN_FEW_SHOT_HEADER` / `fewShotBlock` (the static `PLAN_FEW_SHOT` rebuilt
   through `fewShotBlock`, byte-identical) + the `_chat-provider.ts` system-prompt
   call + the eval `--retrieve-exemplars` flag (`runner.ts`), with 4 new
