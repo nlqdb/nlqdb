@@ -22,6 +22,10 @@
 //
 // Sibling: `docs/features/quality-eval/decisions/SK-QUAL-018-persona-bench.md`.
 
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import type { EvalQuestion } from "../types.ts";
 
 export type Persona = "P1" | "P2";
@@ -237,6 +241,48 @@ export const PERSONA_BENCH_QUESTIONS: PersonaQuestion[] = [
 
 export function schemaFor(db_id: string): PersonaSchema | undefined {
   return PERSONA_BENCH_SCHEMAS.find((s) => s.db_id === db_id);
+}
+
+// ── Runner wiring (SK-QUAL-018 staged follow-on) — make persona-bench a
+//    dispatchable `EvalDataset` so the free chain scores EX against the ICP
+//    schemas. The runner opens fixtures by **file path** (`introspectSchema`
+//    + `executeRows` both `new Database(path, { readonly: true })`), so the
+//    loader materialises each in-memory schema to a real `.sqlite` on first
+//    request and caches the path. bun:sqlite stays a dynamic import (the
+//    bun-runtime-only dependency) so this module is still importable from a
+//    plain type context; `node:{os,fs,path}` are portable. Structurally
+//    identical to BIRD/Spider's `LoadedDataset` so `loadDatasetByName` adds
+//    one branch and nothing in the bird/spider paths changes.
+export async function loadPersonaBench(
+  opts: { persona?: Persona; limit?: number; dbDir?: string } = {},
+): Promise<{
+  questions: EvalQuestion[];
+  resolveDbPath: (db_id: string) => Promise<string | null>;
+}> {
+  const questions = toEvalQuestions({ persona: opts.persona, limit: opts.limit });
+  const { Database } = (await import(/* @vite-ignore */ "bun:sqlite")) as {
+    Database: new (filename: string) => { run: (sql: string) => void; close: () => void };
+  };
+  const dir = opts.dbDir ?? mkdtempSync(join(tmpdir(), "persona-bench-"));
+  mkdirSync(dir, { recursive: true });
+
+  const cache = new Map<string, string>();
+  return {
+    questions,
+    resolveDbPath: async (db_id) => {
+      const cached = cache.get(db_id);
+      if (cached) return cached;
+      const schema = schemaFor(db_id);
+      if (!schema) return null;
+      const file = join(dir, `${db_id}.sqlite`);
+      rmSync(file, { force: true }); // fresh, deterministic seed each load
+      const db = new Database(file);
+      for (const stmt of schema.setup) db.run(stmt);
+      db.close();
+      cache.set(db_id, file);
+      return file;
+    },
+  };
 }
 
 // Project to the canonical harness type so the staged runner-wiring is a

@@ -1,6 +1,7 @@
 // quality-eval harness — multi-dataset driver. Usage:
 //   bun src/runner.ts --dataset bird-mini-dev-sqlite --data-dir ./bird_data --limit 500
 //   bun src/runner.ts --dataset spider2-lite-sqlite --data-dir ./spider2-lite
+//   bun src/runner.ts --dataset persona-bench [--persona P1|P2]   # SK-QUAL-018 ICP fixture
 // All real provider calls require env vars (see lanes.ts); no key → one-sentence error per GLOBAL-012.
 
 import { parseArgs } from "node:util";
@@ -16,6 +17,7 @@ import {
   loadCheckpoint,
 } from "./checkpoint.ts";
 import { loadBirdMini } from "./datasets/bird-mini.ts";
+import { loadPersonaBench, type Persona } from "./datasets/persona-bench.ts";
 import { loadSpider2Lite } from "./datasets/spider2-lite.ts";
 import { emitEvalReport } from "./emit.ts";
 import { type AttemptScore, withExecRetry } from "./exec-retry.ts";
@@ -46,6 +48,9 @@ export type RunOptions = {
   // Defaults to `bird-mini-dev-sqlite` for back-compat with slice-1 callers.
   dataset?: EvalDataset;
   dataDir?: string;
+  // SK-QUAL-018 — persona-bench only: narrow to P1 (Solo Builder) or P2
+  // (Agent Builder). Ignored by BIRD/Spider. Unset ⇒ both personas.
+  persona?: Persona;
   questionsJsonPath?: string;
   questionsJsonUrl?: string;
   limit?: number;
@@ -125,6 +130,11 @@ async function loadDatasetByName(opts: RunOptions): Promise<LoadedDataset> {
       questionsJsonlUrl: opts.questionsJsonUrl,
       limit: opts.limit,
     });
+  }
+  if (name === "persona-bench") {
+    // SK-QUAL-018 — ICP fixture; schemas materialise to SQLite under
+    // `--data-dir` (or an OS temp dir). `--persona` narrows to P1/P2.
+    return loadPersonaBench({ persona: opts.persona, limit: opts.limit, dbDir: opts.dataDir });
   }
   // BIRD Mini-Dev — the default.
   return loadBirdMini({
@@ -717,6 +727,7 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
 const KNOWN_DATASETS: readonly EvalDataset[] = [
   "bird-mini-dev-sqlite",
   "spider2-lite-sqlite",
+  "persona-bench",
 ] as const;
 
 function parseDatasetFlag(raw: string | undefined): EvalDataset | undefined {
@@ -730,6 +741,8 @@ function parseCliArgs(): RunOptions {
     args: process.argv.slice(2),
     options: {
       dataset: { type: "string" },
+      // SK-QUAL-018 — persona-bench persona filter (P1|P2); ignored otherwise.
+      persona: { type: "string" },
       "data-dir": { type: "string" },
       "questions-json": { type: "string" },
       limit: { type: "string" },
@@ -762,6 +775,7 @@ function parseCliArgs(): RunOptions {
   const out: RunOptions = {};
   const dataset = parseDatasetFlag(values.dataset);
   if (dataset) out.dataset = dataset;
+  if (values.persona === "P1" || values.persona === "P2") out.persona = values.persona;
   if (values["data-dir"]) out.dataDir = values["data-dir"];
   if (values["questions-json"]) out.questionsJsonPath = values["questions-json"];
   if (values.limit) out.limit = Number.parseInt(values.limit, 10);

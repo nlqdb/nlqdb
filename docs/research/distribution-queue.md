@@ -58,66 +58,66 @@ the discipline of bot-filtering your own metrics before you believe them.
 > too — it's a composition change, not a rewrite, so if the wedge is wrong we
 > reorder back in a commit. Positioning is a bet you should be able to unmake.
 
-## 2026-06-21 (run 43) — engine-lesson: "Your benchmark should look like your users' database, not a research paper's" (dev.to / lobste.rs)
+## 2026-06-21 (runs 43–44) — engine-lesson: "Your benchmark should look like your users' database, not a research paper's" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`); a build-in-public note on
-measuring NL→SQL on the schemas users actually create.
+measuring NL→SQL on the schemas users create.
 
 **Title:** Your benchmark should look like your users' database, not a research paper's
 
 **Body:**
 
 > BIRD and Spider are the standard NL→SQL benchmarks, and we run both. But
-> neither looks like what our users actually build. They're sprawling academic
-> schemas with dozens of cryptic tables; our users spin up a 4–8-table
-> side-project DB or an agent-memory store. A 52% on BIRD tells you how you'd do
-> on a research paper's data — not on the query a real user just typed.
+> neither looks like what our users build: they're sprawling academic schemas
+> with dozens of cryptic tables; our users spin up a 4–8-table side-project DB
+> or an agent-memory store. A 52% on BIRD tells you how you'd do on a research
+> paper's data — not on the query a user just typed.
 >
 > So we wrote our own benchmark, persona-bench: NL questions over the two
-> schema shapes our personas build. A solo-builder SaaS (plans, referrers,
-> users, orders — "how many signups in March, grouped by referrer," "who never
-> logged in," "revenue from paid orders in dollars") and an agent-memory store
-> (agents, facts with TTL, recalls — "how many facts per agent," "the 5
-> most-recalled facts," "how many expired"). The gold SQL is hand-written and
-> hand-checked, with one rule that matters: **no `date('now')`** — every date is
-> a literal bound, so the benchmark means the same thing next year as today.
+> schema shapes our personas build — a solo-builder SaaS (plans/users/orders:
+> "signups in March by referrer," "revenue from paid orders") and an
+> agent-memory store (agents/facts-with-TTL/recalls: "facts per agent," "the 5
+> most-recalled facts"). The gold SQL is hand-written, with one
+> rule that matters: **no `date('now')`** — every date is a literal bound, so the
+> benchmark means the same thing next year as today.
 >
 > The first thing we shipped isn't an accuracy number — it's the invariant that
 > the benchmark is *sound*: every gold query executes against its seeded schema
-> and returns a non-empty, hand-verified result. 12/12. A benchmark whose own
-> gold answers don't run is just noise in your denominator. Prove the ruler is
-> straight before you measure anything with it; the model's score against it is
-> the next run. Fixture's in `tools/eval/src/datasets/persona-bench.ts`.
+> and returns a non-empty, hand-verified result. 12/12. Prove the ruler is
+> straight before you measure anything with it.
+>
+> Then we wired it into the runner without spending a measurement window. It
+> scores BIRD/Spider by opening a SQLite file per question, so
+> persona-bench now materialises its schemas to a real `.sqlite` on demand — one
+> new dataset branch, BIRD/Spider untouched. `--dataset persona-bench` now scores
+> our free chain against the queries our users actually type.
 
 ## 2026-06-21 (run 43) — build-in-public: "We put agent memory front and centre on the home page" (X / Bluesky / dev.to)
 
 **Where:** X / Bluesky build-in-public note + dev.to; the positioning companion
-to the `/agents` launch. Links the reweighted home → `/agents`.
+to the `/agents` launch.
 
 **Title:** We moved agent memory above the fold — without touching the wordmark
 
 **Body:**
 
-> We're betting that "a database your AI agent can query as memory" is the
-> sharpest way to explain nlqdb, so we made it the first thing you read on the
-> home page — a new band right under the hero: *memory your agent can query, not
+> We're betting "a database your AI agent can query as memory" is the sharpest
+> way to explain nlqdb, so we made it the first thing you read on the home
+> page — a new band right under the hero: *memory your agent can query, not
 > just recall.* A vector store hands back the top-k similar chunks; nlqdb gives
 > the agent a real database, so it can `GROUP BY`, `JOIN`, and aggregate over
 > what it remembered. The band carries the same Mem0 · Zep · Letta · nlqdb
-> capability matrix from `/agents` — everyone recalls; only one column
-> aggregates.
+> capability matrix from `/agents` — everyone recalls; only one aggregates.
 >
 > The discipline we're keeping: this is **additive and reversible**. The hero
-> wordmark and tagline don't change — that's a deliberate, separate, founder-only
-> call. A positioning bet should be testable before it's permanent, so we
-> reorder and add, we don't rewrite the identity. The home page stays
-> illustration-free (type on dark, live tables, no stock art), 100/100/100/100,
+> wordmark and tagline don't change — a separate, founder-only call. A positioning
+> bet should be testable before it's permanent, so we reorder and add, we don't
+> rewrite the identity. The home page stays illustration-free, 100/100/100/100,
 > and works with JavaScript off — the `/agents` link is a plain anchor; the
-> click-through signal is fire-and-forget on top.
+> signal rides fire-and-forget on top.
 
-**Why this advances the north-star:** onboarding (UX) — the agent-builder who
-lands on `nlqdb.com` now reads the wedge first and has a one-click path to
-`/agents`. Ties to GLOBAL-036 + WS-12.
+**Why this advances the north-star:** onboarding (UX) — the agent-builder on
+`nlqdb.com` now reads the wedge first, one click from `/agents` (GLOBAL-036 + WS-12).
 
 ## 2026-06-21 (run 43) — engine-lesson: "Ship your LLM lever as a default-off ablation — measure before you adopt" (dev.to / lobste.rs)
 
