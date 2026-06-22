@@ -106,10 +106,10 @@ describe("COMPETITORS data integrity", () => {
   // WS-07: the /vs template cross-links /agents on exactly the
   // agent-memory cluster, keyed on the P2 persona. Pin that membership so
   // the cross-link stays scoped to the memory comparisons (the four memory
-  // layers + the vector-store wing, Pinecone).
+  // layers + the vector-store wing — Pinecone (hosted) and Chroma (OSS-first)).
   test("WS-07: the agent-memory cluster is the P2-agent-builder persona", () => {
     const p2 = COMPETITORS.filter((c) => c.persona === "P2 agent builder").map((c) => c.slug);
-    expect(new Set(p2)).toEqual(new Set(["mem0", "zep", "letta", "langmem", "pinecone"]));
+    expect(new Set(p2)).toEqual(new Set(["mem0", "zep", "letta", "langmem", "pinecone", "chroma"]));
   });
 
   // WS-08 (SK-PIVOT-012): vs/[slug].astro sets ogImage for every P2 page, so

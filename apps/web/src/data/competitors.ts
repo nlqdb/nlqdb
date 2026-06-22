@@ -1030,6 +1030,114 @@ export const COMPETITORS: Competitor[] = [
       why: "The aggregation Pinecone's similarity search can't run — it returns the vectors nearest a query, not a GROUP BY / COUNT ranking; nlqdb answers it as SQL over the agent's own memory.",
     },
   },
+  {
+    slug: "chroma",
+    name: "Chroma",
+    url: "https://www.trychroma.com",
+    // Agent-memory cluster (vector-store wing, OSS-first) anchored in
+    // docs/competitors.md §Chroma. Facts verified via web search + the
+    // official pricing page 2026-06-22: Apache-2.0 open-source, runs
+    // embedded/in-memory or self-hosted, plus serverless Chroma Cloud —
+    // Starter $0/mo + usage ($5 free credits) · Team $250/mo + usage
+    // ($100 credits) · Enterprise custom; usage billed on write ($2.50/GiB),
+    // storage ($0.33/GiB-mo), query ($0.0075/TiB), egress ($0.09/GiB).
+    // Primitives: vector similarity + full-text + metadata filtering. No SQL,
+    // no joins, no transactions, no aggregations. Official `chroma-mcp` server
+    // ships (create-collection / add / query / metadata filter).
+    tagline:
+      "Open-source embedding database — vector similarity, full-text, and metadata search over documents; runs embedded, self-hosted, or on serverless Chroma Cloud.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Chroma if your agent recalls by similarity and you want an open-source store you can run embedded or self-hosted — nearest-neighbour plus full-text and metadata filtering. Pick nlqdb if your agent must aggregate what it stored: GROUP BY, JOIN, and HAVING over typed rows it provisions in plain English. Chroma finds the similar; nlqdb counts, groups, and ranks.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not just find similar items.",
+      "You store structured rows the agent later reports over ('deals per stage this quarter').",
+      "You want exact filters and counts, not approximate nearest-neighbour ranking, over memory.",
+      "The schema should evolve as the agent learns ('add a `priority` field') via English.",
+    ],
+    whenChooseThem: [
+      "Your agent recalls by semantic similarity — nearest-neighbour over text or document embeddings.",
+      "RAG context or related-document lookup is the job, often with full-text search alongside.",
+      "You want an open-source store you can run embedded in-process or self-host yourself.",
+      "You're prototyping locally and want a zero-config vector store before any cloud.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Chroma takes a query embedding (or text) plus a metadata filter; it has no English-to-SQL compiler.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Chroma returns the top-k most similar documents; it ships no SQL engine, no joins, and no transactions.",
+      },
+      {
+        feature: "Vector / semantic similarity search over memory",
+        us: "no",
+        them: "shipped",
+        note: "Nearest-neighbour over embeddings is Chroma's core primitive; nlqdb stores typed rows and ships no embedding search today.",
+      },
+      {
+        feature: "Full-text search over stored documents",
+        us: "partial",
+        them: "shipped",
+        note: "Chroma indexes documents for full-text + vector search; nlqdb matches text with SQL LIKE / pattern predicates, not a ranked text index.",
+      },
+      {
+        feature: "Filtering on retrieval",
+        us: "partial",
+        them: "shipped",
+        note: "nlqdb filters with exact SQL WHERE over typed columns; Chroma filters by metadata around the nearest-neighbour search.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Chroma's `chroma-mcp` creates collections and adds/queries documents by similarity; nlqdb's `nlqdb_query` materialises Postgres on first reference and runs aggregating SQL.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "shipped",
+        note: "Chroma is Apache-2.0 and runs embedded or self-hosted; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Chroma for semantic recall and nlqdb for analytics over the same agent memory?",
+        a: "Yes — they compose. Chroma handles 'find the documents most similar to this question' via nearest-neighbour and full-text search; nlqdb handles 'how many tools did the agent call per category this week' via SQL. Run Chroma as the recall layer and nlqdb as the analytical store the agent queries with GROUP BY / JOIN / HAVING.",
+      },
+      {
+        q: "Does nlqdb do vector / similarity search like Chroma?",
+        a: "No. nlqdb is Postgres-first — typed rows queried with exact SQL, not embeddings ranked by distance. If approximate nearest-neighbour search over text or document vectors is the job, Chroma is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions.",
+      },
+      {
+        q: "Chroma is open source and self-hostable — is nlqdb?",
+        a: "nlqdb is source-available under FSL 1.1 (Functional Source License), which auto-converts to Apache 2.0 two years after each release; Chroma is Apache 2.0 today and runs embedded in-process or self-hosted. Both let you keep your data; they differ on the query model, not on lock-in — Chroma does vector + full-text recall, nlqdb does relational SQL.",
+      },
+      {
+        q: "Chroma has metadata filtering — isn't that the same as nlqdb's SQL WHERE?",
+        a: "Not quite. Chroma's metadata filter narrows candidates around a nearest-neighbour search, so the result is still a similarity ranking. nlqdb runs exact SQL — WHERE, GROUP BY, COUNT, JOIN — and returns a precise result set, not the top-k closest documents. Different jobs: one finds similar, the other computes answers.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Chroma the way it can with nlqdb?",
+        a: "Chroma's `chroma-mcp` server can create a collection and add documents, but the agent gets a similarity store, not a relational database it can aggregate or migrate. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent stands up and reports over its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "the 10 tools the agent called most this week, ranked by call count",
+      why: "The aggregation Chroma's similarity search can't run — it returns the documents nearest a query, not a GROUP BY / COUNT ranking; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
