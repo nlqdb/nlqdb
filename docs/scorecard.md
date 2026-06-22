@@ -43,7 +43,7 @@ dispatch (blocked today — both evals < 7 d, §5).
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half (run 40) + **runner `--self-consistency N` / `--sc-temperature T` main-loop wiring (run 41)** — `samples>=2` branch in `runOneQuestion` (separate from `withExecRetry`): `samplePlans`→`voteOverSamples` over `executeRows`→score-the-winner; folds into checkpoint/budget-stop/`attempts`, `.scN` checkpoint variant. The lever is now end-to-end bar the CI `workflow_dispatch` input. EX delta next dispatch** |
-| 8 | persona-bench | **v0 + runner-wired: 12 q / 2 ICP schemas, dispatchable** | run 44 — `loadPersonaBench` materialises both schemas to SQLite; `--dataset persona-bench [--persona P1\|P2]` scores the free chain. Additive new-branch, BIRD/Spider byte-untouched; free-chain EX = next dispatch (a `workflow_dispatch` job is the last half). `@nlqdb/eval` 254 → 258 tests |
+| 8 | persona-bench | **20 q / 2 ICP schemas, dispatchable; 20/20 golds execute** | run 47 — batch 2 grew 12 → **20 q** (first `challenging` tier + anti-join/negation + multi-join shapes v0 lacked, the `SK-QUAL-014` mass `SK-LLM-041` targets). `loadPersonaBench` materialises both schemas to SQLite; `--dataset persona-bench [--persona P1\|P2]` scores the free chain. Additive new-branch, BIRD/Spider byte-untouched; free-chain EX = next dispatch (a `workflow_dispatch` job is the last half). `@nlqdb/eval` 258 tests, 78 → 118 persona-bench expect() calls |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics (06-22 re-pull)** | | wall-time, all routes (not `/ask`-only) |
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
@@ -75,6 +75,26 @@ dispatch (blocked today — both evals < 7 d, §5).
 
 ## Deltas (recent runs)
 
+- 2026-06-22 (run 47) — **Engine: persona-bench grown 12 → 20 questions
+  (`SK-QUAL-018` documented "one batch per run" follow-on).** Worst number is
+  engine (Spider 0.1852), but it's dispatch-gated (both baselines < 7 d, §5) and
+  the open daily PRs own the live engine/docs/SDK lanes (#461 SK-LLM-041 pool,
+  #462 distribution-queue D4, #458 SDK packaging) — so the non-colliding,
+  offline-measurable engine slice is growing nlqdb's *own* ICP benchmark. Batch 2
+  adds 8 hand-authored, hand-checked golds across the existing two schemas: the
+  **anti-join / negation** (`NOT IN` — "never placed an order", "never recalled")
+  and **challenging multi-join** shapes v0 lacked, plus the first `challenging`
+  difficulty tier. These are precisely the `SK-QUAL-014` structural loss mass
+  `SK-LLM-041`'s new pool exemplars target, so persona-bench can now *measure*
+  whether those exemplars help on ICP-shaped queries. **Δ (offline, the
+  gold-executability invariant — no LLM, no quota):** #8 — **12/12 → 20/20 golds
+  execute non-empty**; persona-bench assertions 78 → 118 expect() calls;
+  `@nlqdb/eval` 258 tests green, typecheck + biome clean. **KPI:** engine quality
+  (the ICP-relevant NL→SQL number); **none degraded** — additive data-only (no
+  `runner.ts`/chain/scorer edit), PR CI never fires keys (`SK-QUAL-002`),
+  BIRD 06-19 + Spider 06-17 byte-untouched, free-chain EX = next dispatch.
+  Artifact (step 3) deferred this run to avoid colliding with #462's in-flight
+  full rewrite of `distribution-queue.md`; queue once #462 lands.
 - 2026-06-22 (run 45) — **Measurement refresh: full funnel + ops re-pulled live
   (D1 `nlqdb-app` + CF GraphQL), 06-15/06-13 → 06-22.** No code lever was
   shippable today — the worst number is engine (Spider 0.1852, unchanged,

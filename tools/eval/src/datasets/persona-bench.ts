@@ -237,6 +237,98 @@ export const PERSONA_BENCH_QUESTIONS: PersonaQuestion[] = [
     bucket: "having",
     difficulty: "moderate",
   },
+  // ── Batch 2 (SK-QUAL-018 growth follow-on): the negation / anti-join and
+  //    challenging multi-join shapes v0 lacked. Buckets chosen to match the
+  //    SK-QUAL-014 loss mass BIRD/Spider analysis flagged (subquery-negation,
+  //    multi-join grain) — exactly the shapes SK-LLM-041's new pool exemplars
+  //    target, so persona-bench can measure whether those exemplars help.
+  {
+    question_id: 12,
+    db_id: "saas_app",
+    persona: "P1",
+    question: "Which users have never placed an order? List their emails.",
+    sql: "SELECT email FROM users WHERE id NOT IN (SELECT user_id FROM orders)",
+    bucket: "anti-join",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 13,
+    db_id: "saas_app",
+    persona: "P1",
+    question:
+      "Which plan generates the most total paid revenue? Show the plan name and revenue in dollars.",
+    sql:
+      "SELECT p.name, SUM(o.amount_cents) / 100.0 AS revenue FROM orders o " +
+      "JOIN users u ON o.user_id = u.id JOIN plans p ON u.plan_id = p.id " +
+      "WHERE o.status = 'paid' GROUP BY p.id, p.name ORDER BY revenue DESC LIMIT 1",
+    bucket: "group-order-limit-multi-join",
+    difficulty: "challenging",
+  },
+  {
+    question_id: 14,
+    db_id: "saas_app",
+    persona: "P1",
+    question:
+      "Which users have spent more than $30 on paid orders? Show their email and total spent in dollars.",
+    sql:
+      "SELECT u.email, SUM(o.amount_cents) / 100.0 AS total_dollars FROM users u " +
+      "JOIN orders o ON o.user_id = u.id WHERE o.status = 'paid' " +
+      "GROUP BY u.id, u.email HAVING SUM(o.amount_cents) > 3000",
+    bucket: "having-aggregate-threshold",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 15,
+    db_id: "saas_app",
+    persona: "P1",
+    question: "How much paid revenue came in during April 2026, in dollars?",
+    sql:
+      "SELECT SUM(amount_cents) / 100.0 FROM orders " +
+      "WHERE status = 'paid' AND created_at >= '2026-04-01' AND created_at < '2026-05-01'",
+    bucket: "aggregate-date-range-filter",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 16,
+    db_id: "agent_memory",
+    persona: "P2",
+    question: "Which facts have never been recalled? Show the fact id and its object.",
+    sql: "SELECT id, object FROM facts WHERE id NOT IN (SELECT fact_id FROM recalls)",
+    bucket: "anti-join",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 17,
+    db_id: "agent_memory",
+    persona: "P2",
+    question: "How many facts were still active — not expired — as of 2026-06-12?",
+    sql: "SELECT COUNT(*) FROM facts WHERE expires_at IS NULL OR expires_at >= '2026-06-12'",
+    bucket: "ttl-active-or-null",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 18,
+    db_id: "agent_memory",
+    persona: "P2",
+    question:
+      "For each agent, how many times have its facts been recalled in total? Show the agent name and total, most recalled first.",
+    sql:
+      "SELECT ag.name, COUNT(*) AS total_recalls FROM recalls r " +
+      "JOIN facts f ON r.fact_id = f.id JOIN agents ag ON f.agent_id = ag.id " +
+      "GROUP BY ag.id, ag.name ORDER BY total_recalls DESC",
+    bucket: "group-by-count-multi-join-order",
+    difficulty: "challenging",
+  },
+  {
+    question_id: 19,
+    db_id: "agent_memory",
+    persona: "P2",
+    question:
+      "Which subjects have more than one fact stored about them? Show the subject and the fact count.",
+    sql: "SELECT subject, COUNT(*) FROM facts GROUP BY subject HAVING COUNT(*) > 1",
+    bucket: "having",
+    difficulty: "moderate",
+  },
 ];
 
 export function schemaFor(db_id: string): PersonaSchema | undefined {

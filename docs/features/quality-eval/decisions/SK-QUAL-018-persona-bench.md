@@ -88,4 +88,7 @@ and [`SK-QUAL-015`](./SK-QUAL-015-column-coverage-harness.md).
   - **Author all 50–100 questions now.** v0 deliberately ships 12 across 2
     schemas to lock the format + invariant in one run; growth toward the
     5–20-table, 50–100-question target is the documented follow-on, one batch
-    per run.
+    per run. **Batch 2 (run 47): 12 → 20 questions** — adds the anti-join /
+    negation (`NOT IN`) and challenging multi-join shapes v0 lacked (the
+    `SK-QUAL-014` loss mass `SK-LLM-041`'s pool now targets), 20/20 golds still
+    execute non-empty.
