@@ -10,6 +10,54 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-22 (run 53) — dev.to / lobste.rs: "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (agent-memory engineering)
+
+**Where:** dev.to + lobste.rs (`ai` / `databases`); the agent-memory pivot's
+"database, not a vector store" wedge, sharpened to the *aggregation* gap (a fresh
+angle on the WS-09 launch post — not the same ground). Pairs with the new
+`/vs/pinecone` comparison page. nlqdb mentioned once.
+
+**Title:** Your agent's memory is a vector store. Ask it "how many" and watch it fall over.
+
+**Body:**
+
+> Almost every "give your agent memory" tutorial reaches for a vector store —
+> Pinecone, Chroma, Weaviate, pgvector. Embed what the agent learns, do
+> nearest-neighbour search to recall it. For *recall* — "what do I know that's
+> relevant to this question" — that's exactly right.
+>
+> Then the agent (or you) asks a question that isn't recall:
+>
+> - "How many tools did I call this week, by category?"
+> - "Which user have I logged the most facts about?"
+> - "What's the average confidence of the memories I wrote since Tuesday?"
+>
+> A vector index has no answer. Similarity search returns the *k* nearest
+> vectors to a query — it has no `GROUP BY`, no `COUNT`, no `JOIN`, no
+> `HAVING`. Metadata filtering narrows the candidate set, but the result is
+> still a ranking of similar items, not a computed aggregate. There's no query
+> planner under there, because that was never the job. "Find the similar" and
+> "count, group, and rank" are different operations, and a vector DB only does
+> the first.
+>
+> The tell is the word *how* — "how many", "how often", "how much". The moment
+> your agent needs to reason over its memory in aggregate — usage analytics,
+> per-entity rollups, trend-over-time — you've outgrown the vector store and
+> you want a database: typed rows and real SQL. The two compose cleanly. Keep
+> the vector store for fuzzy recall; put the structured facts the agent logs in
+> something it can actually `SELECT category, COUNT(*) … GROUP BY category`
+> over. (We build the second half at nlqdb — an agent provisions a Postgres it
+> queries in plain English — but the architectural point stands whatever you
+> reach for: don't ask a similarity index to do arithmetic.)
+>
+> Lesson: "agent memory" is two jobs wearing one name. Recall is similarity;
+> reporting is aggregation. Pick the store per job, not per buzzword.
+
+**Why this advances the north-star:** onboarding / distribution (AEO surface on
+the P2 agent-builder keyword "agent memory vector store") — a genuinely useful
+architectural lesson with one nlqdb mention, anchoring the new `/vs/pinecone`
+page. No engine/funnel KPI degrades (content + data only; prod byte-identical).
+
 ## 2026-06-22 (run 52) — dev.to / lobste.rs: "Some retrieval misses can't be fixed with lexical tricks — and that's a finding" (text-to-SQL engineering)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`); fourth in the DAIL-SQL
@@ -55,51 +103,6 @@ once. Pairs with `SK-LLM-041` + persona-bench (`SK-QUAL-018`).
 the NL→SQL retrieval lever); a genuinely useful negative-result lesson with one
 nlqdb mention. No engine/funnel KPI degrades (offline, prod byte-identical).
 
-## 2026-06-22 (run 51) — dev.to / lobste.rs: "The most common query has no benchmark row" (text-to-SQL engineering)
-
-**Where:** dev.to + lobste.rs (`databases` / `ai`); third in the DAIL-SQL
-retrieval / eval-honesty series, the "your benchmark is missing the obvious one"
-angle. nlqdb mentioned once. Pairs with `SK-LLM-041` + persona-bench
-(`SK-QUAL-018`).
-
-**Title:** The most common query in your product has no row in your benchmark
-
-**Body:**
-
-> We pick few-shot demonstrations by masked question similarity before a small
-> model writes SQL (the DAIL-SQL trick). Our example pool had a row for every
-> *interesting* shape the research benchmarks stress: anti-joins, HAVING,
-> COUNT(DISTINCT), top-N-of-an-aggregate, NULL-safe extrema. Held-out
-> precision@1: 13/13. Tidy.
->
-> Then we ran retrieval over our own users' questions and the very first one
-> missed: **"show the 10 most recent signups."** A plain `ORDER BY signup_date
-> DESC LIMIT 10` — no grouping, no aggregate, the single most common thing anyone
-> asks a dashboard. It retrieved our `group-order-limit` demo (`GROUP BY … ORDER
-> BY COUNT(*) DESC LIMIT 1`), which would teach the model to bolt on a `GROUP BY`
-> that doesn't belong. The benchmark error-class taxonomy we'd sized the pool
-> from never listed "plain top-N" because it's *too easy to be an error class* —
-> so the pool had no row for it, and the nearest neighbour was a more complex
-> shape that read similar after masking ("most … limit").
->
-> The fix was one pool row — a plain `ORDER BY <col> DESC LIMIT n`, ordered after
-> the grouped variant so a genuinely *grouped* top-N ("which plan earns the most
-> revenue") still ties to the aggregate demo. Measured the boring way, same
-> queries before vs after: our own-query precision@1 held at 18/20 but q0 now
-> lands the *correct* skeleton instead of a tolerated stand-in, and held-out went
-> 13/13 → 14/14 with the new bucket. (Free-tier NL→SQL chain; the own-users set is
-> ~20 hand-checked queries.)
->
-> Lesson: error-class taxonomies are built from what *goes wrong* on hard
-> benchmarks, so they systematically omit the easy, high-frequency shapes that
-> dominate real traffic. Your few-shot pool inherits that blind spot. Audit it
-> against your product's actual most-common queries — the boring ones are the
-> ones your users send all day.
-
-**Why this advances the north-star:** engine quality (NL→SQL retrieval on the
-ICP-relevant distribution); a genuinely useful eval-honesty lesson with one
-nlqdb mention. No engine/funnel KPI degrades (offline, prod byte-identical).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -108,6 +111,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 51 — "The most common query in your product has no row in your benchmark" (error-class taxonomies omit easy high-frequency shapes; "show the 10 most recent signups" retrieved a `GROUP BY` demo; +plain `ORDER BY … LIMIT` row, held-out 13/13 → 14/14, own-query 18/20 held).
 - run 48 — "Test your few-shot retrieval against your *own* users' queries — not just the benchmark" (a held-out probe set that paraphrases your own examples reports green while real-user queries silently retrieve the wrong shape; "never logged in" → anti-join not `IS NULL`; own-query precision 17/20 → 18/20, held-out 13/13 unmoved).
 - run 46 — "Your few-shot examples might be teaching the model the wrong shape" (retrieval quality is bounded by pool *coverage*, not the ranker; a one-word negation retrieves its own opposite if the pool can't represent the shape; +anti-join/+top-N-of-aggregate, precision held 12/12).
 - runs 43–44 — "Your benchmark should look like your users' database, not a research paper's" (persona-bench: NL→SQL on the schema shapes users actually build; sound-ruler invariant 12/12 before any accuracy number).

@@ -926,6 +926,110 @@ export const COMPETITORS: Competitor[] = [
       why: "The aggregation LangMem's similarity search can't run — it returns the memories most relevant to a query, not a COUNT(DISTINCT) per week; nlqdb answers it as SQL over the agent's own memory.",
     },
   },
+  {
+    slug: "pinecone",
+    name: "Pinecone",
+    url: "https://www.pinecone.io",
+    // Agent-memory cluster (vector-store wing) anchored in docs/competitors.md
+    // §Pinecone. Facts verified via web search 2026-06-22: serverless is the
+    // 2026 default; Starter (free, 1 index / ~2GB) · Builder $20/mo · Standard
+    // $50/mo min · Enterprise $500/mo min; billed on read units / write units /
+    // storage. No SQL interface, no joins, no transactions, no aggregations —
+    // nearest-neighbour + metadata filter only. Official Developer + Assistant
+    // MCP servers ship (create-index / upsert / search-records).
+    tagline:
+      "Managed serverless vector database — nearest-neighbour similarity search over embeddings with metadata filtering, plus hosted embedding and reranking (Pinecone Inference).",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Pinecone if your agent retrieves by semantic similarity — nearest-neighbour search over embeddings with metadata filters, plus hosted embedding and reranking. Pick nlqdb if your agent must aggregate what it stored: GROUP BY, JOIN, and HAVING over typed rows it provisions and migrates itself in plain English. Pinecone finds the similar; nlqdb counts, groups, and ranks.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not just find similar items.",
+      "You store structured rows the agent later reports over ('deals per stage this quarter').",
+      "You want exact filters and counts, not approximate nearest-neighbour ranking, over memory.",
+      "The schema should evolve as the agent learns ('add a `priority` field') via English.",
+    ],
+    whenChooseThem: [
+      "Your agent retrieves by semantic similarity — nearest-neighbour over text or image embeddings.",
+      "Recall is the job: RAG context, related-document lookup, fuzzy 'find what's like this'.",
+      "You want hosted embedding and reranking models in the pipeline (Pinecone Inference).",
+      "You need proven large-scale vector search on a serverless pay-per-use model.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Pinecone takes a query vector plus a metadata filter; it has no English-to-SQL compiler.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Pinecone returns the top-k most similar vectors; it ships no SQL engine, no joins, and no transactions.",
+      },
+      {
+        feature: "Vector / semantic similarity search over memory",
+        us: "no",
+        them: "shipped",
+        note: "Nearest-neighbour over embeddings is Pinecone's core primitive; nlqdb stores typed rows and ships no embedding search today.",
+      },
+      {
+        feature: "Hosted embedding + reranking models (Pinecone Inference)",
+        us: "no",
+        them: "shipped",
+      },
+      {
+        feature: "Filtering on retrieval",
+        us: "partial",
+        them: "shipped",
+        note: "nlqdb filters with exact SQL WHERE over typed columns; Pinecone filters vectors by metadata around the ANN search.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Pinecone's Developer MCP creates a vector index and upserts/searches records; nlqdb's `nlqdb_query` materialises Postgres on first reference and runs aggregating SQL.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "no",
+        note: "Pinecone is hosted-only and proprietary; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Pinecone for semantic recall and nlqdb for analytics over the same agent memory?",
+        a: "Yes — they compose. Pinecone handles 'find the memories most similar to this question' via nearest-neighbour search; nlqdb handles 'how many tools did the agent call per category this week' via SQL. Run Pinecone as the recall layer and nlqdb as the analytical store the agent queries with GROUP BY / JOIN / HAVING.",
+      },
+      {
+        q: "Does nlqdb do vector / similarity search like Pinecone?",
+        a: "No. nlqdb is Postgres-first — typed rows queried with exact SQL, not embeddings ranked by cosine distance. If approximate nearest-neighbour search over text or image vectors is the job, Pinecone is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions.",
+      },
+      {
+        q: "Pinecone has metadata filtering — isn't that the same as nlqdb's SQL WHERE?",
+        a: "Not quite. Pinecone's metadata filter narrows candidates around an approximate nearest-neighbour search, so the result is still a similarity ranking. nlqdb runs exact SQL — WHERE, GROUP BY, COUNT, JOIN — and returns a precise result set, not the top-k closest vectors. Different jobs: one finds similar, the other computes answers.",
+      },
+      {
+        q: "How does pricing compare to Pinecone's serverless model?",
+        a: "Pinecone serverless bills on read units, write units, and storage above a free Starter index (Builder is $20/mo, Standard $50/mo minimum). nlqdb's free chain is forever (BYO-LLM at 0% markup); hosted premium adds a flat sub with an included allowance and soft-meter overage. Until monetization ships, everything is free.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Pinecone the way it can with nlqdb?",
+        a: "Pinecone's MCP server can create a vector index and upsert records, but the agent gets a similarity store, not a relational database it can aggregate or migrate. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent stands up and reports over its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "the 10 tools the agent called most this week, ranked by call count",
+      why: "The aggregation Pinecone's similarity search can't run — it returns the vectors nearest a query, not a GROUP BY / COUNT ranking; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {

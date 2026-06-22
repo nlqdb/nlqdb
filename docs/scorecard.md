@@ -65,7 +65,7 @@ round-trip — not a daily lever) or the gated dispatch.
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 4 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (vector-store wing — P2 cluster 4→5) |
 | | *Messaging track — WS-\** | 11 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
@@ -91,6 +91,27 @@ round-trip — not a daily lever) or the gated dispatch.
 
 ## Deltas (recent runs)
 
+- 2026-06-22 (run 53) — **Distribution: shipped `/vs/pinecone`, the pivot's
+  "database, not a vector store" wedge given its canonical comparison page.**
+  Worst real number is the genuine-stranger funnel (rows #2/#3 ≈ 0), which is
+  engine-gated (GLOBAL-027 valve) — but the engine lane is both *owned* (open PR
+  #469, DAIL-SQL lexical-selector falsification) and *dispatch-gated* (BIRD 06-19
+  / Spider 06-17 both < 7 d, §5), so the non-colliding lever is the funnel's
+  top-of-funnel AEO surface. Covered P2 memory players were all *memory layers*
+  (mem0 / zep / letta / langmem); none was the canonical **vector database** the
+  ICP actually searches — exactly the pivot headline (GLOBAL-036). **Δ (measured,
+  distribution lane):** comparison pages **9 → 10**; P2 agent-builder cluster
+  **4 → 5** (WS-07 cross-link + WS-08 OG card both extended to pinecone);
+  llms.txt + sitemap entries **+1** (auto from the slug); OG cards **5 → 6**
+  (`vs-pinecone.png`, generator deterministic — the 5 existing cards byte-identical).
+  Facts web-verified 2026-06-22 (P2): serverless default, Starter free / Builder
+  $20 / Standard $50 / Enterprise $500, **no SQL / joins / transactions /
+  aggregations** — the honest "finds similar, can't GROUP BY" axis. **KPI:**
+  onboarding / distribution (AEO on the "agent memory vector store" P2 keyword);
+  **none degraded** — content + typed-data only, prod byte-identical, no engine
+  file touched, BIRD 06-19 / Spider 06-17 untouched; 13 competitors invariants +
+  130 web tests green. Artifact: *"Your agent's memory is a vector store. Ask it
+  'how many' and watch it fall over."* (the aggregation gap).
 - 2026-06-22 (run 52) — **Engine (finding, Δ ≤ 0 — variant reverted): the
   lexical-selector avenue for the two pinned persona-bench ICP misses (q8, q10)
   is falsified — the pool/lexical-selector half of §4 #1 is at its offline
@@ -116,28 +137,12 @@ round-trip — not a daily lever) or the gated dispatch.
   misses with lexical tricks, and measured why that can't work."*
 - 2026-06-22 (run 51) — **Engine: §4 #1 DAIL-SQL pool grown 13 → 14 —
   `order-by-limit` (plain top-N) added on the persona-bench evidence source
-  (`SK-LLM-041 × SK-QUAL-018`).** Worst number is engine (Spider 0.1852),
-  dispatch-gated (BIRD 06-19 / Spider 06-17 both < 7 d, §5); the one open PR (#458,
-  external SDK packaging) owns no engine lane and #464/#465/#466 all merged — so
-  the non-colliding, offline-measurable engine slice is the retrieval lever on
-  nlqdb's *own* ICP. The probe surfaced the **most common ICP dashboard shape** as
-  the gap: plain top-N ("the 10 most recent signups", q0) had **no** pool row, so
-  it retrieved `group-order-limit` (GROUP BY → ORDER BY agg → LIMIT) — teaching a
-  spurious `GROUP BY`/`COUNT` a plain `ORDER BY … LIMIT` doesn't have. Added one
-  `order-by-limit` row ("List the 5 most recent orders." → `ORDER BY order_date
-  DESC LIMIT 5`), ordered after `group-order-limit` so a *grouped* top-N still
-  breaks an exact tie to the aggregate demo. **Δ (offline, same-probe before/after
-  — the `SK-LLM-036/037` pattern):** persona-bench ICP **precision@1 18/20** — q0
-  flips `group-order-limit` (spurious GROUP-BY stand-in) → `order-by-limit`
-  (EXPECTED[0] tightened to drop the stand-in: 17/20 *without* the row → 18/20
-  *with* it); held-out pool **precision@1 13/13 → 14/14**, lift +0.595 → **+0.576**
-  (top-1 sim 0.818 vs 0.242 pool-average); a grouped top-N stays group-order-limit
-  (bidirectional guard — the aggregate, not "most", discriminates); q8/q10 the two
-  pinned selector-side misses, unchanged. **KPI:** engine quality (ICP-relevant
-  NL→SQL); **none degraded** — prod byte-identical (`buildPlanSystem` default-off
-  `k<=0` ⇒ static `PLAN_SYSTEM`; BIRD 06-19 / Spider 06-17 untouched); 210 llm
-  tests (was 209), 264 eval (was 263). Artifact: *"The most common dashboard query
-  has no benchmark row — we test our few-shot pool against our own users' queries."*
+  (`SK-LLM-041 × SK-QUAL-018`).** Plain top-N (q0, "10 most recent signups") had no
+  pool row so retrieved `group-order-limit` (spurious GROUP BY); the new row flips
+  q0 to the correct skeleton. **Δ (offline, same-probe):** persona-bench ICP
+  precision@1 18/20; held-out pool 13/13 → 14/14; q8/q10 selector-side misses
+  unchanged (closed by run 52's falsification above). **KPI:** engine quality;
+  none degraded — prod byte-identical, BIRD 06-19 / Spider 06-17 untouched.
 - 2026-06-22 (runs 48–50) — engine + distribution + hygiene wave (all merged;
   BIRD 06-19 + Spider 06-17 untouched). **Engine (run 48):** §4 #1 DAIL-SQL pool
   grown 12 → 13 (+`null-filter`) on a new persona-bench ICP-retrieval probe
