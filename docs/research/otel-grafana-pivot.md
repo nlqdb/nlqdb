@@ -290,8 +290,8 @@ existing `multi-engine-adapter` Phase-3 plan, for compute runtimes.
 
 ## Sources (May 2026)
 
-Competitor scans are consolidated in [`competitors.md`](../competitors.md);
-primary sources kept here:
+Primary sources for the trimmed (D5) o11y survey — competitors.md covers
+DB / NL-over-DB, not o11y:
 
 - **Landscape:** [Grafana Alternatives — SigNoz](https://signoz.io/blog/grafana-alternatives/) · [SigNoz pricing](https://signoz.io/pricing/) · [Grafana AI launch, GrafanaCON 2026](https://grafana.com/press/2026/04/21/grafana-labs-targets-the-ai-blind-spot-with-new-observability-tools-announced-at-grafanacon-2026/) · [Grafana Assistant](https://grafana.com/products/cloud/ai-observability/) · [Honeycomb Query Assistant](https://www.honeycomb.io/blog/introducing-query-assistant) · [OpenObserve AI Assistant (Mar 2026)](https://openobserve.ai/blog/product-update-march-2026/)
 - **Cost floor:** [ClickHouse observability cost playbook (2026)](https://clickhouse.com/resources/engineering/observability-cost-optimization-playbook) · [Managed ClickStack pricing](https://clickhouse.com/blog/introducing-managed-clickstack-beta) · [Cloudflare: exporting OTel](https://developers.cloudflare.com/workers/observability/exporting-opentelemetry-data/) · [Workers limits](https://developers.cloudflare.com/workers/platform/limits/)
