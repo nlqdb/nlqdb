@@ -13,6 +13,11 @@ import { SOLVE_ENTRIES } from "../data/solve";
 const SITE = "https://nlqdb.com";
 const DOCS_SITE = "https://docs.nlqdb.com";
 
+// Internal links resolve to the trailing-slash 200 (CF serves
+// `<route>/index.html`; the bare path 307-redirects). Advertise the
+// non-redirecting URL so AI crawlers fetching llms.txt skip the hop.
+const url = (path: string) => `${SITE}${path.endsWith("/") ? path : `${path}/`}`;
+
 const PRIMARY_LINKS = [
   { title: "Homepage", path: "/", desc: "Pitch, embed demo, live carousel." },
   {
@@ -61,17 +66,17 @@ export const GET: APIRoute = () => {
         "```",
     ).join("\n\n") +
     `\n\n## Pages\n\n` +
-    PRIMARY_LINKS.map((l) => `- [${l.title}](${SITE}${l.path}): ${l.desc}`).join("\n") +
+    PRIMARY_LINKS.map((l) => `- [${l.title}](${url(l.path)}): ${l.desc}`).join("\n") +
     `\n\n## Comparisons\n\n` +
-    COMPETITORS.map((c) => `- [nlqdb vs ${c.name}](${SITE}/vs/${c.slug}): ${c.oneLiner}`).join(
+    COMPETITORS.map((c) => `- [nlqdb vs ${c.name}](${url(`/vs/${c.slug}`)}): ${c.oneLiner}`).join(
       "\n",
     ) +
     `\n\n## Solve pages\n\n` +
-    SOLVE_ENTRIES.map((s) => `- [${s.searchTitle}](${SITE}/solve/${s.slug}): ${s.oneLiner}`).join(
-      "\n",
-    ) +
+    SOLVE_ENTRIES.map(
+      (s) => `- [${s.searchTitle}](${url(`/solve/${s.slug}`)}): ${s.oneLiner}`,
+    ).join("\n") +
     `\n\n## Optional\n\n` +
-    OPTIONAL_LINKS.map((l) => `- [${l.title}](${SITE}${l.path}): ${l.desc}`).join("\n") +
+    OPTIONAL_LINKS.map((l) => `- [${l.title}](${url(l.path)}): ${l.desc}`).join("\n") +
     `\n\n## Status\n\n` +
     `Pre-alpha, closed beta. Phase 0 shipped; Phase 1 onboarding in progress.\n` +
     `Free chain forever (BYO-LLM at 0% markup). Source is private until general\n` +

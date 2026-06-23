@@ -10,6 +10,55 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-23 (run 69) — dev.to / lobste.rs: "Your sitemap is advertising redirects — and your canonical tag points at one" (AEO/SEO hygiene)
+
+**Where:** dev.to + lobste.rs (`webdev` / `seo` / `astro`); build-in-public,
+the static-site / AEO sibling to the engine-eval posts. The hook: a one-line
+config default quietly turns every URL you advertise to crawlers into a 307.
+nlqdb mentioned once.
+
+**Title:** Your sitemap is advertising redirects — and your canonical tag points at one
+
+**Body:**
+
+> I went to confirm our marketing site was crawl-clean and found something I'd
+> walked past a dozen times. Every page served fine: `/agents/` returned 200,
+> `/vs/pinecone/` returned 200. But the *bare* paths — `/agents`, `/vs/pinecone`
+> — all 307-redirected to the trailing-slash version. That's normal for a
+> static host that emits `route/index.html`. The problem was *which* URL we were
+> handing to crawlers.
+>
+> Three places advertise URLs to machines: the `<link rel="canonical">` tag, the
+> `og:url` meta, and the XML sitemap. All three of ours emitted the *bare* path.
+> So the sitemap listed 27 URLs that every one 307-redirected, and each page's
+> canonical tag pointed at a URL that redirected right back to the page
+> declaring it — a self-referential redirect. Google follows it, but it treats a
+> redirecting canonical as a weak signal and burns crawl budget on the hop;
+> AI crawlers fetching your `llms.txt` links eat the same redirect.
+>
+> The root cause was a single unset config default. Our static-site generator
+> defaults `trailingSlash` to "ignore", which leaves `Astro.url.pathname` bare
+> even though the build emits directory-style `index.html` files served *with* a
+> slash. Setting `trailingSlash: "always"` fixed the dev-server expectation —
+> but, thanks to a long-standing quirk, the build-time `pathname` *still* came
+> out bare, so the canonical/og tags didn't move. The reliable fix was to
+> normalize the path in one place — the layout that renders `<head>` — and the
+> sitemap/llms.txt generators the same way: if it doesn't end in `/`, append
+> one. Now all three signals point at the 200, zero redirects.
+>
+> (We hit this on nlqdb's marketing site; the fix was four lines across the
+> config, the head layout, and the two URL generators.)
+>
+> Lesson: "the page loads fine" and "the URL I advertise to crawlers is the
+> canonical 200" are different claims. Audit them separately — `curl -sI` every
+> URL in your sitemap and watch the status column. Any 3xx is you paying twice
+> for one page.
+
+**Why this advances the north-star:** onboarding / distribution (AEO/SEO
+hygiene on the marketing surface — every crawler-advertised URL now resolves to
+the 200 directly), one nlqdb mention. No engine/funnel KPI degrades
+(static-site config + URL-formatting only).
+
 ## 2026-06-23 (run 68) — dev.to / lobste.rs: "Your offline LLM eval isn't measuring your model — it's measuring your rate limits" (eval-harness discipline)
 
 **Where:** dev.to + lobste.rs (`ai` / `llm` / `databases`); build-in-public, the
@@ -60,57 +109,6 @@ wearing an *accuracy* number's clothes. nlqdb mentioned once.
 useful eval-discipline post (one nlqdb mention) that names the
 availability-vs-accuracy trap and the throttle-and-resume fix. No engine/funnel
 KPI degrades (the post reports an already-shipped harness behavior).
-## 2026-06-23 (run 67) — dev.to / lobste.rs: "AI made the internal-tool builder faster. It didn't ask whether you needed the tool." (build-vs-skip)
-
-**Where:** dev.to + lobste.rs (`ai` / `databases` / `lowcode`); pairs with the
-new `/vs/retool` page (the internal-tools incumbent, P4). The wedge: low-code AI
-(AppGen, Ask AI, native agents) scaffolds the admin tool faster — but it's still
-a destination tool a human builds and ships, and the faster path is often *no
-tool at all*. nlqdb mentioned once.
-
-**Title:** AI made the internal-tool builder faster. It didn't ask whether you needed the tool.
-
-**Body:**
-
-> Every low-code platform now has an AI layer. Describe the app, it scaffolds the
-> screens against your schema. Ask in English, it writes the SQL. Point an agent
-> at it and it plans, calls tools, and queries your data with guardrails. This is
-> real and it's good — the thing that used to take an afternoon of dragging
-> components and wiring queries takes a prompt.
->
-> But notice what got faster: *building the tool*. The output is still a
-> destination — an internal app a human opens, logs into, and reads. AI shortened
-> the path from "I need a dashboard" to "I have a dashboard." It didn't question
-> the premise that the answer to a data question is a dashboard you build.
->
-> A lot of the time it isn't. The data question lives *inside* a product you're
-> already shipping — "show this customer their last five orders," "what did this
-> account spend this quarter" — and the honest deliverable isn't a separate admin
-> app, it's an answer rendered inline, on the page the user is already on. Or the
-> asker isn't a human at all: it's an agent that needs to provision a database,
-> write to it, and query it programmatically on every request, with no UI in the
-> loop ever. Neither of those wants a built tool. They want a backend primitive.
->
-> That's the fork. A builder — even an AI-supercharged one — assumes a human will
-> assemble and operate the result. A backend primitive assumes nobody will: you
-> embed one element or call one API, pass an English goal, and get typed rows
-> back. (At nlqdb we took the second side on purpose — English compiles to SQL
-> over a Postgres the product or agent *provisions and owns*, writes diff-previewed,
-> no app to assemble first — which is exactly why we don't ship a drag-drop
-> canvas. Different job.) The builder wins when the deliverable genuinely is a
-> standalone tool a team will run; the primitive wins when the answer belongs in
-> the product, or the asker is code.
->
-> Lesson: when an AI feature makes an old workflow 10× faster, check whether it
-> made the *workflow* faster or the *outcome* faster. Scaffolding an internal tool
-> faster is a real win — but if what you actually needed was the answer in your
-> own app, or a database your agent stands up itself, the fastest builder is still
-> building something you didn't need.
-
-**Why this advances the north-star:** onboarding / distribution (AEO on the
-"Retool alternative" / "skip building the admin UI" P4 keyword), anchors the new
-`/vs/retool` page with one nlqdb mention. No engine/funnel KPI degrades
-(content + one data object only).
 
 ## Collapsed — full drafts in git history
 
@@ -119,6 +117,7 @@ is title + venue + one-line gist; `git log -p docs/research/distribution-queue.m
 recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
+- run 67 — "AI made the internal-tool builder faster. It didn't ask whether you needed the tool." (low-code AI — AppGen / Ask AI / agents — scaffolds the admin tool faster, but the output is still a destination a human builds and operates; often the answer belongs inline in the product you already ship, or the asker is an agent that wants a backend primitive, not a built tool — check whether the AI sped up the workflow or the outcome; anchors `/vs/retool`).
 - run 66 — "Your most over-documented code is your security code — and that's where stale docs lie loudest" (security code attracts callsite-by-callsite "consequence in code" narration because terse feels irresponsible; but a list of today's callsites + test names is the fastest-rotting prose in the repo, and a stale "every site is checked" reads as a guarantee — document the enforced invariant + review rule, not the implementation tour).
 - run 65 — "Two homes for one decision is drift — even inside the same file" (single-source-of-truth isn't only cross-file: a long doc paraphrasing its own decision two headings down is the same drift bug; a pointer can't drift, a paraphrase is a hand-synced copy — link up and add only what's local to the section).
 - run 64 — "Your AI data analyst can't be your app's backend (and vice versa)" (an analysis app is a destination — a human uploads/connects data and reads a chart; a product backend owns the write path and is queried programmatically on every request; "talks to your data in English" is one phrase covering two contracts — pick the one you're buying; anchors `/vs/julius`).
