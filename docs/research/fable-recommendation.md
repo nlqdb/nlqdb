@@ -8,13 +8,10 @@ sourced. This doc raises decisions per P1; it changes nothing by itself.*
 
 Your machine works. Your compass is broken — in one specific, fixable place.
 
-1. **The front door looked locked behind an impossible number — resolved
-   2026-06-12 (§2).** GLOBAL-027 gates every do-work endpoint on Spider
-   2.0-lite ≥ 0.75; the best closed agentic system on the leaderboard (checked
-   2026-06-12) scores 73.13, so the gate can never self-remove on its own.
-   The founder's call: the already-merged invite-valve (waitlist signup →
-   auto-emailed invite code) **is** the open door; the thresholds stay as a
-   progress bar, not a lock. The bottleneck is traffic, not the gate.
+1. **The front door is open (§2).** The product is fully public — any
+   stranger can reach a first answer with no gate and no invite code. The
+   BIRD/Spider thresholds stay as a public progress bar, not a lock. The
+   bottleneck is traffic and engine quality, not access.
 2. **The company has zero external contact, measured.** Production D1 today:
    7 users (you ×3 + 4 test accounts), 66 waitlist rows of which 62 are your own
    stranger-test bots, 3 are probes, and 1 is you. Web analytics are unreadable
@@ -40,9 +37,9 @@ and distributing*. Status checklist in §8; the operating loop in §9.
 | Company age | ~7 weeks (CF account 2026-04-24) | Cloudflare API |
 | Real registered users | **0 external** (7 rows: founder + tests) | D1 `user` table |
 | Real waitlist signups | **0 external** (66 rows: 62 bots, 3 probes, founder) | D1 `waitlist` table |
-| BIRD-dev EX (free chain) | 0.35 (lower bound, 1 run, 2026-06-09; re-seeded **0.522** by the 2026-06-12 canonical 6-provider run) | `apps/api/src/gate/eval-baseline.ts` |
-| Spider 2.0-lite EX (free chain) | 0.12 (re-seeded **0.1704**, 2026-06-12 — still far below the 0.75 gate, so §2 stands) | same |
-| Gate thresholds | BIRD ≥ 0.65 AND Spider ≥ 0.75 | GLOBAL-027 |
+| BIRD-dev EX (free chain) | 0.35 (lower bound, 1 run, 2026-06-09; re-seeded **0.522** by the 2026-06-12 canonical 6-provider run) | `tools/eval/baseline-2026-06-15.json` |
+| Spider 2.0-lite EX (free chain) | 0.12 (re-seeded **0.1704**, 2026-06-12 — still far below the 0.75 target) | same |
+| Engine-quality thresholds | BIRD ≥ 0.65 AND Spider ≥ 0.75 | GLOBAL-025 |
 | Spider 2.0-lite world SOTA | 73.13 (DivSkill-SQL, closed frontier agentic); 55.21 (best published, [ReFoRCE + o3](https://arxiv.org/abs/2502.00675)) | [leaderboard](https://spider2-sql.github.io/), checked 2026-06-12 |
 | BIRD-dev canonical SOTA | ~73–77 dev (frontier / agentic) | GLOBAL-025 §KPI (your own, correct) |
 | Eval runs since the 12 levers shipped | 1 (T1–T16 measured as one bundle, 2026-06-09; one pre-lever baseline 2026-05-18) | `docs/progress/quality-score-source-of-truth.md` |
@@ -55,34 +52,24 @@ Read that table as a sentence: *a 7-week-old company with a working product
 pipeline, world-class process discipline, zero users by design, and one
 quality measurement.*
 
-## 2. The structural bug: GLOBAL-027 contradicts GLOBAL-025 (resolved 2026-06-12)
+## 2. The door is open
 
-This was the load-bearing finding, raised per P1 — resolution at the end:
+The original 2026-06-12 finding flagged a tension between an engine-quality
+gate and the north-star floors. That gate has since been removed entirely:
+the product is fully public, with no access gate and no invite codes — any
+stranger can run a query today.
 
 - GLOBAL-025 (north-star) — correctly calibrated. Spider 2.0-lite free chain:
   Phase 2 "report only", Phase 3 floor **≥ 15%**. It even says: "The Spider 2.0
   frontier in 2026 is 5–23% — proof that engine work, not model picking, is
   where the moat lives."
-- GLOBAL-027 (pre-alpha gate) — requires Spider **≥ 75%** on the *free chain*
-  before any stranger may run a query. That is ~5× your own Phase-3 floor,
-  above the best closed frontier-agentic system on Earth, and likely a
-  Spider-1.0 number applied to Spider 2.0 (75–85% EX was normal on Spider 1.0).
+- The BIRD ≥ 0.65 AND Spider ≥ 0.75 numbers survive only as the public
+  engine-quality **progress bar** (GLOBAL-025 treatment), not as an access
+  lock. The bottleneck is traffic + engine quality, not access.
 
-What this section missed on first writing: the SK-GATE-007 invite-valve was
-already merged and verified (`waitlist-invite.ts` — every waitlist signup is
-auto-emailed an invite code, 200/week cap; `scripts/flow-004-walk.sh` walks it
-end-to-end to a 200, re-verified 2026-06-12). A stranger CAN reach a first
-answer today with one email click; only the anonymous instant paths
-(FLOW-001/002/003) stay 403 by design.
-
-**Resolution (founder, 2026-06-12): R1 is closed — the valve is the door.**
-The BIRD/Spider thresholds are deliberately NOT rebased: they stay as the
-public progress bar (GLOBAL-025 treatment), the gate middleware stays until
-they clear or real-user evidence motivates a rebase, and agents must not
-re-escalate the mismatch (recorded in GLOBAL-027 §Lifecycle). What survives
-as agent work: build the **persona-bench** — ~50–100 NL questions from
-`personas.md` over nlqdb-created 5–20-table schemas (the actual ICP shape) —
-as a tracked, user-relevant quality number alongside BIRD/Spider.
+What survives as agent work: build the **persona-bench** — ~50–100 NL
+questions from `personas.md` over nlqdb-created 5–20-table schemas (the actual
+ICP shape) — as a tracked, user-relevant quality number alongside BIRD/Spider.
 
 ## 3. The daily agents: rebuild around the loop, not the backlog
 
@@ -131,9 +118,8 @@ You don't need sales or calls. You need **published artifacts + an open door +
 honest measurement**. All async, all free, all agent-draftable with you as the
 one-click approver:
 
-1. **Open the door — done.** The invite-valve carries every waitlist signup
-   across the gate (verified 2026-06-12); only the anonymous instant paths
-   still 403.
+1. **Open the door — done.** The product is fully public; any stranger can
+   reach a first answer with no gate and no invite code.
 2. **Launch posts, in order of effort:** Show HN ("a database you talk to, no
    backend — built and run ~entirely by Claude Code" is itself a hook),
    lobste.rs, r/SideProject + r/Database, Hacker News comment presence on
@@ -163,7 +149,7 @@ one page, one table, committed (so trends live in git history):
 
 - Funnel: visits → query attempts → first-answer successes → real waitlist
   rows → activated users → returning users (all *bot-excluded*; the synthetic
-  flow-004 traffic must be filtered or it poisons every number).
+  stranger-test traffic must be filtered or it poisons every number).
 - Engine: persona-bench %, BIRD %, Spider %, free-vs-frontier delta, with the
   date last measured (a stale date is itself an alert).
 - Ops: p50/p95 ask latency, error rate, $ spend (should be ~0).
@@ -211,8 +197,8 @@ startups have.
 What's missing is one category: **contact**. Every technique used so far
 observes users from orbit; none has put the product in front of one stranger or
 put one question to one human. The personas' willingness-to-pay numbers are
-guesses wearing tables. The valve now opens the gate for anyone who signs up —
-distribution (§4) is the missing half.
+guesses wearing tables. The product is open to anyone — distribution (§4) is
+the missing half.
 
 Cheap techniques you haven't used (all async, $0, agent-runnable):
 
@@ -232,8 +218,8 @@ Cheap techniques you haven't used (all async, $0, agent-runnable):
 
 Done same day this doc was written:
 
-- ✅ **R1 resolved** (founder): the merged invite-valve is the door; thresholds
-  stay a progress bar — §2 Resolution + GLOBAL-027 §Lifecycle.
+- ✅ **R1 resolved**: the product is open (no gate, no invite codes); thresholds
+  stay a progress bar — §2.
 - ✅ **Canonical 6-provider eval re-seed ran.** BIRD 0.522 (261/500,
   chain-exhaustion `no_sql` 51 → 3), Spider 0.1704. BIRD is now **12.8 pp from
   its 0.65 bar**.
@@ -298,6 +284,6 @@ tooling. Runnable form: [`.claude/commands/daily.md`](../../.claude/commands/dai
 **The invariant** behind both cadences: *no change without a number, no number
 without a next change.* Measure → pick the worst number → smallest change →
 re-measure → publish or revert → repeat. The engine lane already runs this
-loop (+17 pp on BIRD in a day); the door is open via the valve. The scorecard
+loop (+17 pp on BIRD in a day); the door is open. The scorecard
 plus the distribution queue extend the same loop to the only numbers that
 ultimately matter: real strangers reaching real first answers.

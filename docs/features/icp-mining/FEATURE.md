@@ -57,8 +57,8 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-ICP-NNN
   - *In this feature:* once the first cluster file lands (Mon 2026-05-26), §8 `FLOW-NNN` blocks in `automated-icp-validation-plan.md` get amended with verbatim cluster labels; the mirrored verification blocks gain new walkthrough steps proving the cluster→`/solve/` auto-suggestion path (open question in this feature). Implementation and verification trackers stay in lockstep per the GLOBAL.
 - **GLOBAL-030** — Evidence-grade acquisition tracker edits.
   - *In this feature:* ICP evidence and flow-status updates must name the verification artifact (cron output, deployed-surface walkthrough, env inspection, or code/test check) and keep the implementation tracker plus mirror synced before the PR is considered green.
-- **GLOBAL-032** — Top-5 user flows canonical.
-  - *In this feature:* this cron's persona-fit rubric (P1 / P2 / P3 / P6 per `icp-score.ts`) is one of the three anchors the GLOBAL cites for naming the canonical-five (the other two: `personas.md` priority + `stranger-test/src/personas.ts` seeded-prompt split). P6 currently has no dedicated FLOW-NNN — it's flagged in the GLOBAL as the natural next gap once engine quality clears.
+- **GLOBAL-032** — Canonical user flows.
+  - *In this feature:* this cron's persona-fit rubric (P1 / P2 / P3 / P6 per `icp-score.ts`) is one of the three anchors the GLOBAL cites for naming the canonical flows (the other two: `personas.md` priority + `stranger-test/src/personas.ts` seeded-prompt split). P6 currently has no dedicated FLOW-NNN — it's flagged in the GLOBAL as the natural next gap once engine quality clears.
 
 ## Open questions / known unknowns
 

@@ -2,8 +2,6 @@
 
 No SDK, no CLI, no client library. Three `curl` calls cover read, write, and anonymous mode.
 
-> **Pre-alpha:** every example below returns `403 feature_gated` today unless you pass an invite code as `X-Invite-Code: $NLQDB_INVITE_CODE`, or your account is on the design-partner allowlist. See [`docs.nlqdb.com/pre-alpha/`](https://docs.nlqdb.com/pre-alpha/) ([`GLOBAL-027`](../../docs/decisions/GLOBAL-027-pre-alpha-gate.md)).
-
 ## Read (no `Idempotency-Key` needed)
 
 ```bash

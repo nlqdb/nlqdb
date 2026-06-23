@@ -34,8 +34,9 @@ Spider comparator this aligns the BIRD path with).
     into the row identity, so a correct answer whose alias or function-name
     casing differed from gold — `count(*) AS total` vs `COUNT(*)` — scored
     `mismatch`. That is a **measurement artifact**, not a model error, and
-    it depresses the free-chain BIRD EX the [`GLOBAL-027`](../../../decisions/GLOBAL-027-pre-alpha-gate.md)
-    gate reads. Removing it serves `SK-QUAL-001`'s comparability mandate
+    it depresses the free-chain BIRD EX the
+    [`GLOBAL-025`](../../../decisions/GLOBAL-025-north-star.md)
+    engine-quality KPIs read. Removing it serves `SK-QUAL-001`'s comparability mandate
     directly.
   - **Positional comparison is strictly more correct, both directions.**
     It recovers false-mismatches (alias/case differences on identical
@@ -77,8 +78,7 @@ Spider comparator this aligns the BIRD path with).
     run's per-question diff (`SK-QUAL-006` McNemar / `SK-QUAL-002` 5-pp
     threshold) conflates the scorer change with any model change and must
     be read as a one-time scorer migration, not a regression. That run's
-    report re-seeds `baseline-2026-06-15.json` and
-    `apps/api/src/gate/eval-baseline.ts` (`SK-QUAL-005` / `GLOBAL-027`)
+    report re-seeds `baseline-2026-06-15.json` (`SK-QUAL-005`)
     under the corrected scorer; thereafter diffs are model-only again.
 
 - **Alternatives rejected:**

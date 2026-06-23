@@ -1,8 +1,7 @@
 # SK-QUAL-018 — persona-bench: nlqdb's own ICP-shaped NL→SQL benchmark, gold-executable fixture first
 
 Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). The third,
-user-relevant quality number [`GLOBAL-027`](../../../decisions/GLOBAL-027-pre-alpha-gate.md)
-§Lifecycle kept as agent work alongside BIRD/Spider, per
+user-relevant quality number tracked alongside BIRD/Spider, per
 [`fable-recommendation.md §2`](../../../research/fable-recommendation.md):
 "~50–100 NL questions from `personas.md` over nlqdb-created 5–20-table
 schemas (the actual ICP shape)." Sibling of the offline
@@ -40,7 +39,7 @@ and [`SK-QUAL-015`](./SK-QUAL-015-column-coverage-harness.md).
     many-table public academic schemas; nlqdb's ICP builds small, clean
     side-project / agent-memory schemas. An accuracy number on BIRD is
     comparable-to-research but not predictive of *the queries a real nlqdb user
-    types* — exactly the gap GLOBAL-027 §Lifecycle named. persona-bench measures
+    types*. persona-bench measures
     the production shape, scored by the same EX comparator (`SK-QUAL-010`).
   - **Gold-executable-first is the cheap, honest unit of progress.** A benchmark
     whose gold SQL doesn't run, or returns nothing, silently inflates

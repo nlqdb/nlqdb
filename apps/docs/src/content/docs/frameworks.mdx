@@ -3,13 +3,6 @@ title: Framework wrappers
 description: "Typed React, Next, Vue, Nuxt, Svelte, SvelteKit, Astro, and Solid wrappers over <nlq-data>."
 ---
 
-import { Aside } from "@astrojs/starlight/components";
-
-<Aside type="caution" title="Pre-alpha">
-  Wrappers call the same gated `/v1/ask` engine — calls return `403 feature_gated` until
-  the free LLM chain clears its targets. See [pre-alpha access](/pre-alpha/).
-</Aside>
-
 Each wrapper is a thin, typed adapter over the `<nlq-data>` element and
 [`@nlqdb/sdk`](/sdk/) — it adds your framework's component and typing idiom and nothing
 else (no second network layer, `SK-FW-001`). Install the one for your framework; the

@@ -175,8 +175,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* the 72h anon-TTL warning emits `feature.requested.persist_anon_db`; the anonymous-mode rate-limit hits surface `feature.requested.heavier_tier`. These are the in-product half of the [`founder-playbook §1`](../../founder-playbook.md) design-partner recruitment loop.
-- **GLOBAL-027** — Pre-alpha gate fires before the anon-cap chain (`gatePreAlpha` runs after `requirePrincipal` and before the anon rate-limit / global-cap on `/v1/ask` and `/v1/run`). See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
-  - *In this feature:* an anon caller without an invite hits the gate (403 `feature_gated`) before they ever consume an anon-cap budget; with a valid `X-Invite-Code` they pass to the existing anon ordering — global cap → IP bucket → device peek — unchanged.
 
 ## Open questions / known unknowns
 

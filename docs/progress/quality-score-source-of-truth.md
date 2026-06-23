@@ -8,7 +8,6 @@
 >
 > **Authority.** On any conflict the canonical sources win, in order:
 > [`GLOBAL-025`](../decisions/GLOBAL-025-north-star.md) (KPI floors) ·
-> [`GLOBAL-027`](../decisions/GLOBAL-027-pre-alpha-gate.md) (gate thresholds) ·
 > [`quality-eval/FEATURE.md`](../features/quality-eval/FEATURE.md) (`Status:`) ·
 > [`llm-router/FEATURE.md`](../features/llm-router/FEATURE.md) (system under
 > test). If this file disagrees, they win and this file is the bug.
@@ -21,25 +20,27 @@
 
 ## 1. Why engine quality is the #1 acquisition lever (not just an engine nicety)
 
-The pre-alpha gate ([`GLOBAL-027`](../decisions/GLOBAL-027-pre-alpha-gate.md))
-blocks **every "do-work" surface** until the **free chain** clears **BIRD-dev
-EX ≥ 0.65 AND Spider 2.0-lite EX ≥ 0.75**. That gate sits at the end of all five
-canonical ICP flows ([`GLOBAL-032`](../decisions/GLOBAL-032-top-5-user-flows-canonical.md)):
-every walker today reaches the first query and **dead-ends at gate-403**
-(verified 2026-06-04). So free-chain BIRD/Spider EX is the valve on the inbound
-funnel — moving it is moving acquisition. The gate surfaces render the two
-numbers as live progress bars from `apps/api/src/gate/eval-baseline.ts`.
+The free chain's NL→SQL accuracy is what every stranger experiences on their
+first query. The Phase-2 engine-quality floor
+([`GLOBAL-025`](../decisions/GLOBAL-025-north-star.md)) targets **free-chain
+BIRD-dev EX ≥ 0.65 AND Spider 2.0-lite EX ≥ 0.75**. Those numbers sit at the end
+of the canonical ICP flows
+([`GLOBAL-032`](../decisions/GLOBAL-032-top-5-user-flows-canonical.md)): a
+stranger reaches the first query, and the quality of the compiled SQL is what
+decides whether they get a useful answer. So free-chain BIRD/Spider EX is the
+lever on the inbound funnel — moving it is moving acquisition. The canonical
+numbers live in `tools/eval/baseline-2026-06-15.json`.
 
 ## 2. The progress bar (evidence-based; every number sourced)
 
-| KPI (free chain) | Now | Gate floor (GLOBAL-027) | Phase-2 floor (GLOBAL-025) | Source |
-|---|---|---|---|---|
-| **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **0.521** (was 0.354 on 2026-05-18) | — | — | canonical 500-q run 2026-06-19 (260/499); was 0.525 (261/497) on 2026-06-12 |
-| BIRD-dev EX (raw — the gate metric) | **0.520** (was 0.522 on 2026-06-12; 0.318 on 2026-05-18) | ≥ 0.65 | ≥ 0.60 | canonical 500-q 6-provider GHA run 2026-06-19 (260/500, `no_sql` 1; 3 windows, `SK-QUAL-013`); flat vs 0.522 — McNemar b=38/c=37, p=0.50 |
-| Spider 2.0-lite EX (raw) | **0.1852** (was 0.1704 on 2026-06-12; 0.12 on 2026-06-09) | ≥ 0.75 | report only (Phase-3 ≥ 0.15) | canonical 135-q GHA run 2026-06-17 after the Gemini free-tier key heal (25/135; reasoning EX 0.198; `no_sql` 36 → 9, now capacity-only); same-seed smoke 0.15 → 0.25 |
-| free-vs-agentic-frontier delta | **null** (lane not yet run) | — | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
+| KPI (free chain) | Now | Phase-2 floor (GLOBAL-025) | Source |
+|---|---|---|---|
+| **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **0.521** (was 0.354 on 2026-05-18) | — | canonical 500-q run 2026-06-19 (260/499); was 0.525 (261/497) on 2026-06-12 |
+| BIRD-dev EX (raw — the headline metric) | **0.520** (was 0.522 on 2026-06-12; 0.318 on 2026-05-18) | ≥ 0.60 | canonical 500-q 6-provider GHA run 2026-06-19 (260/500, `no_sql` 1; 3 windows, `SK-QUAL-013`); flat vs 0.522 — McNemar b=38/c=37, p=0.50 |
+| Spider 2.0-lite EX (raw) | **0.1852** (was 0.1704 on 2026-06-12; 0.12 on 2026-06-09) | report only (Phase-3 ≥ 0.15) | canonical 135-q GHA run 2026-06-17 after the Gemini free-tier key heal (25/135; reasoning EX 0.198; `no_sql` 36 → 9, now capacity-only); same-seed smoke 0.15 → 0.25 |
+| free-vs-agentic-frontier delta | **null** (lane not yet run) | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
 
-**How to read the two BIRD rows.** Raw EX (the gate metric) also pays
+**How to read the two BIRD rows.** Raw EX (the headline metric) also pays
 chain-exhaustion `no_sql`; reasoning EX isolates SQL quality from capacity. T18
 + T19 closed the once-30–70% divergence (06-19 canonical `no_sql` is **1**). The
 remaining gap to the floor is **SQL reasoning** (mismatches), not availability.
@@ -160,7 +161,7 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
   `apps/api/src/llm-router.ts` (`tools/eval/src/lanes.ts` comment). T19
   holds this by construction — prod and eval share `buildPlanUser`.
 - **Optimising BIRD alone.** Two thresholds force generalisation
-  (`GLOBAL-027`); move both or neither.
+  (`GLOBAL-025`); move both or neither.
 - **PR CI firing real keys.** Keep it mocked (`SK-QUAL-002`).
 - **Overlapping or back-to-back eval dispatches.** Two runs share every
   free-tier quota: the 2026-06-10 Spider smoke that overlapped a BIRD run
@@ -182,8 +183,8 @@ The dated, evidence-referenced log of every shipped lever lives in
 (append-only; split out per `CLAUDE.md` §D4). §3 above is the current-state
 view of the same levers.
 
-> **Measurement state.** Canonical numbers + sourcing are in §2 (mirrored to
-> `eval-baseline.ts`); full runs are sequential per §5, resumed across quota
+> **Measurement state.** Canonical numbers + sourcing are in §2 (seeded into
+> `tools/eval/baseline-2026-06-15.json`); full runs are sequential per §5, resumed across quota
 > windows (`SK-QUAL-013`), dispatched via the `GH_TOKEN_WORKFLOW` PAT (no human
 > click). The flat 06-19 BIRD re-run **confirms the directive levers have
 > saturated**, and the `SK-QUAL-014` literal + date axes (`literal_only` /

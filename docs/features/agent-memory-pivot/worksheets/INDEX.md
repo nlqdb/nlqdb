@@ -45,8 +45,8 @@ You are the 6×/day operating agent (`.claude/commands/daily.md`). When the
    performance untouched.
 
 **Hard rules inherited from the loop:** do **not** re-escalate the
-GLOBAL-027 gate thresholds; the billing lane stays frozen; the wedge feeds
-the **waitlist**, it does not open the product. Every slice is **additive**
+engine-quality (BIRD/Spider) thresholds; the billing lane stays frozen; the
+wedge feeds the **waitlist** as a demand signal. Every slice is **additive**
 until WS-13 — nothing irreversible ships before the founder-gated headline
 swap.
 

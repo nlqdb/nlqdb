@@ -60,9 +60,8 @@
     (`SK-SOLVE-*`), demand-signal on every CTA (`GLOBAL-024`), analytics via
     `GLOBAL-034`. New competitors are anchored in `docs/competitors.md`
     before their page ships.
-  - The pre-alpha gate (`GLOBAL-027`) is unchanged: the product's "do-work"
-    surfaces stay gated; the wedge feeds the **waitlist**, it does not open
-    the gate. Messaging ships; the engine bar is not re-escalated.
+  - The wedge feeds the **waitlist** as a demand signal alongside the open
+    product. Messaging ships; the engine bar is not re-escalated.
   - The headline reposition is a single, clearly-labelled, founder-gated
     worksheet (last in the sequence). No PR swaps the wordmark/README/llms.txt
     lead line until that gate trips.
@@ -102,9 +101,6 @@
 - [`GLOBAL-025`](./GLOBAL-025-north-star.md) — KPI advanced is **onboarding**
   (a sharper wedge lifts landing→waitlist conversion) and **UX** (clearer
   story); **engine quality and performance are untouched** by messaging work.
-- [`GLOBAL-027`](./GLOBAL-027-pre-alpha-gate.md) — unchanged. The wedge
-  drives waitlist demand while the gate stands; thresholds are not
-  re-escalated (founder-resolved 2026-06-12).
 - [`GLOBAL-033`](./GLOBAL-033-resolution-defaults.md) — the three strategy
   bets this GLOBAL encodes (pivot intensity, open/free framing, fate of the
   off-wedge personas) were founder-resolved 2026-06-16; tactical follow-ons
