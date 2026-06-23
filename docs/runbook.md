@@ -866,84 +866,15 @@ Phase 2 with the rest of the admin surface.
 
 ## 10. Personas — design-partner reference
 
-Operational reference for design-partner recruitment, activation-funnel
-decisions, and product judgement calls. Drafted pre-launch from public
-Discord, GitHub issue, and Reddit research; treat as starting hypotheses
-to be validated with real users in Phase 1.
+Personas, anti-personas, the use-case → feature-priority table, and the
+Phase-1 validation plan are **canonical in
+[`docs/research/personas.md`](./research/personas.md)** (P1–P6, anti-personas
+A1–A5). They moved out of this runbook per `CLAUDE.md` P3 (one home): the
+runbook holds operational state, the persona narratives are strategy and
+already lived — in a richer superset — under `docs/research/`.
 
-### 10.1 Priority table
-
-Ranked by how much of Phase 1 capacity they deserve.
-
-| Use case | Persona | Priority | Notes |
-|---|---|---|---|
-| Solo dev prototyping a new app's DB | P1 | **P0** | The flagship journey. Optimize onboarding for this. |
-| Agent giving itself memory via MCP | P2 | **P0** | MCP server is the first item in the Phase 2 distribution slice (see `docs/phase-plan.md §4`); Phase 1 must still flow for an agent-shaped first call. |
-| Non-engineer answering a one-off question from a CSV | P3 | **P1** | Requires CSV upload. Ship it. |
-| Solo dev using chat as an admin UI over their own nlqdb | P1 | **P1** | Falls out of P0 naturally. |
-| Startup team using chat as admin UI over *their own* PG | P4 | **Active (`SK-DB-011`)** | BYO-connection per `docs/architecture.md §3.6.7`; promoted from Phase 4+; not yet shipped. |
-| Scheduled/recurring queries ("email me this weekly") | P3 | **Phase 2** | Useful but not foundational. |
-| Destructive ops with NL-diff preview | P1, P4 | **Phase 1.5 (`GLOBAL-023` SK-TRUST-001)** | Trust-building. Ships with the trust-UX slice. |
-| Sharing a query result by link | P3, P1 | **P1** | Cheap to build, high word-of-mouth. |
-| Team workspaces with roles | P4 | **Phase 3** | Per `docs/phase-plan.md §5`. |
-| Embedded NL-query widget in user's own app | — | **Phase 3** | Tempting but dilutes the message. |
-
-**P0 = must ship in Phase 1. P1 = ship in Phase 1 if capacity allows. Phase 2+ = explicitly deferred.**
-
-### 10.2 Persona vignettes
-
-#### 10.2.1 P1 — Maya (Solo Builder)
-
-Maya is building a meal-planning side project on a Friday night. She runs `nlq db create mealplan`, drops the connection string into her Next.js app, and by Sunday has real users signing up. Monday morning she types `"how many signups this weekend, grouped by referrer"` into the chat instead of opening psql. Two weeks in she needs a `trial_ends_at` column — says so in chat, reviews the diff, approves. She never writes a migration file, never runs `pg_dump`, never logs into a cloud console.
-
-#### 10.2.2 P2 — Jordan (Agent Builder)
-
-Jordan is building a personal research agent that browses the web and drafts memos. Before nlqdb the agent dumped facts into a messy `notes.json` and forgot things between sessions. Now at session start the agent calls `nlqdb_create_database("session_<id>")` and stores claims, sources, and user corrections as structured rows it designs itself. At session end the agent either persists the DB (if the user liked the output) or drops it. Jordan's entire memory layer is ~40 lines of glue code instead of a bespoke vector store + metadata service.
-
-#### 10.2.3 P3 — Priya (Data-Curious Analyst / PM / Ops)
-
-Priya is a growth PM at a 30-person SaaS. Thursday afternoon a conference vendor emails a 12k-row CSV of leads. She drops it in the chat: `"load this as conference_leads_q2"`. Then: `"how many of these are already in our users table, and which plan are they on"` — the chat joins her upload with a read-only mirror of prod. She has the numbers for her 4pm exec sync without opening a data-request ticket, and shares a result link in Slack.
-
-#### 10.2.4 P4 — Dmitri (Backend Engineer at a Small Startup)
-
-Dmitri is on-call at a 20-person startup. Support escalates: a pricing bug double-charged ~180 customers between 11pm and midnight. Instead of writing a one-off refund script, he opens the team workspace pointed at their existing Postgres, types the refund in plain English, and reviews the generated diff (183 rows, $2,104 total) before approving. The audit log captures who ran it, and the Retool page he would've had to build doesn't need to exist. *(Requires "bring your own Postgres" mode — now in active development per `SK-DB-011`; not yet shipped.)*
-
-Representative query example: `"migrate users from plan 'starter' to 'basic'"` (with diff preview, per [`docs/features/onboarding/FEATURE.md` SK-ONBOARD-004](../docs/features/onboarding/FEATURE.md)).
-
-#### 10.2.5 P5 — Aarav (Student / First-Timer)
-
-Aarav is doing the CS50 web track. Instead of spending day one fighting `brew install postgresql` and password errors, he runs `nlq db create cs50_final` and types `"i need a table for blog posts with title, body, and author"`. The chat creates it and shows him the SQL it ran, which he pastes into his notes for the write-up. He ships the assignment by Wednesday and actually understands what a foreign key is by the end of it.
-
-### 10.3 Anti-personas
-
-Being clear about this prevents scope creep and bad-fit support tickets.
-
-#### A1 — The Regulated Enterprise
-
-Finance, healthcare, anyone with HIPAA/SOC2/GDPR-DPA requirements today. We are not compliant yet, our LLM providers make data-handling a hard conversation, and "an LLM might look at my PII" is a non-starter. Point them at a roadmap page; revisit in Phase 3.
-
-#### A2 — High-Volume OLTP at Scale
-
-Payment processors, ad-tech, real-time bidding, anyone doing >10k writes/sec. Our abstraction tax (p99 latency within 1.3× of hand-written queries, per [`docs/features/multi-engine-adapter/FEATURE.md` Phase 2 exit criteria](../docs/features/multi-engine-adapter/FEATURE.md)) means we're not for the top of that curve yet. They should run Postgres / CockroachDB / Scylla directly.
-
-#### A3 — Strict-Schema Shops Built Around dbt / Great Expectations / Flyway
-
-Their whole workflow is about pinning schema. Our whole workflow is about inferring it. Fundamental mismatch. We will never convince them and shouldn't try.
-
-#### A4 — Users Who Want a BI Tool
-
-If someone wants dashboards, charts, scheduled reports, embedded analytics — that is Metabase / Hex / Mode / Superset. We can be the *data* layer underneath one of those eventually, but we are not building the visualization product.
-
-#### A5 — Users Who Want an ORM
-
-Prisma / Drizzle / SQLAlchemy are not what we are. If they want codegen from a schema they control, we're the wrong tool.
-
-### 10.4 Validation plan
-
-For each P0 persona, before we declare Phase 1 done:
-
-- **P1 Solo Builder:** 5 design partners each ship a real project using nlqdb as the primary DB. **Paid-conversion target (≥ 2 to Hobby)** becomes measurable once Stripe live-mode go-live lands (`docs/blocked-by-human.md`); the equivalent qualitative gate is the Sean Ellis "very disappointed" check in [`docs/founder-playbook.md §2`](../docs/founder-playbook.md).
-- **P2 Agent Builder:** MCP server installed in 3 distinct agent frameworks in the wild. At least 1 agent product publicly integrates nlqdb as its memory layer. (MCP is the first item in the Phase 2 distribution slice — this gate is measured after MCP ships.)
-- **P3 Analyst:** 3 non-engineers complete a real analysis end-to-end in under 10 minutes, unassisted, in user tests.
-
-If any of these don't hit, we don't ship Phase 2 — we iterate.
+`personas.md` is the superset this section duplicated: it adds **P6** (the
+ClickHouse analytics / observability engineer) and fuller per-persona pain /
+ROI / query detail. Cross-references elsewhere to `§10` / `§10.x` (e.g. the
+`§10.2.5` P5/Aarav first-touch vignette) resolve here — follow them to
+`personas.md`, where P-numbering matches (P5 = Aarav, the student / first-timer).
