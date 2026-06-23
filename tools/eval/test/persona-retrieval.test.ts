@@ -55,9 +55,9 @@ const EXPECTED: Record<number, readonly string[]> = {
   18: ["join-aggregate", "group-order-limit", "group-by-count"],
   19: ["having"],
   // Batch 3 (SK-QUAL-018) — authored from each gold's structure.
-  20: ["scalar-subquery"], // price above the AVG(price) scalar subquery
-  21: ["count-distinct"], // COUNT(DISTINCT referrer_id)
-  22: ["join-aggregate", "group-by-count"], // COUNT(*) over a filtered JOIN
+  20: ["scalar-subquery"], // known miss: top-1 is `having` (see below)
+  21: ["count-distinct"], // COUNT(DISTINCT referrer_id) — landed by the "different cities" exemplar phrasing (no longer a miss)
+  22: ["join-aggregate", "group-by-count"], // known miss: top-1 is `date-range` (see below)
 };
 
 function measure() {
@@ -84,16 +84,18 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  it("retrieves a structurally-appropriate demo for ≥ 18/20 ICP queries", () => {
+  it("retrieves a structurally-appropriate demo for ≥ 19/23 ICP queries", () => {
     const m = measure();
     // Surface the numbers in the run log for the verification record.
     console.info("[persona-retrieval] measure:", JSON.stringify(m));
-    // 18/20: the null-filter row landed q3 ("who never logged in") on IS-NULL,
-    // and the order-by-limit row lands q0 ("the 10 most recent signups") on the
-    // plain ORDER BY … LIMIT demo (the GROUP-BY `group-order-limit` stand-in is
-    // no longer accepted for q0, EXPECTED[0]). The two pinned, documented misses
-    // are q8 + q10 (see below).
-    expect(m.hits).toBeGreaterThanOrEqual(18);
+    // 19/23: the null-filter row lands q3 ("who never logged in") on IS-NULL, the
+    // order-by-limit row lands q0 ("the 10 most recent signups") on the plain
+    // ORDER BY … LIMIT demo, and the count-distinct row's "how many different"
+    // phrasing lands q21 ("how many different referral sources") instead of
+    // `group-by-count` (was a miss at 18/23 when the exemplar echoed the SQL
+    // keyword "distinct"). The four pinned, documented misses are q8, q10, q20,
+    // q22 (see below) — all selector-side (the right buckets exist in the pool).
+    expect(m.hits).toBeGreaterThanOrEqual(19);
   });
 
   it("the null-filter row lands q3 ('never logged in') on the IS-NULL demo, not anti-join", () => {
@@ -124,20 +126,29 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  // The two remaining misses are documented, not silently accepted. Both are
-  // selector-side (the right buckets exist in the pool), so the fix is
-  // query-skeleton similarity (DAIL §4.1's second variant) — out of scope for a
-  // pool-row add. These tests pin the known state so a future selector change
-  // that fixes either is visible as a delta.
+  // The four remaining misses (q8, q10, q20, q22) are documented, not silently
+  // accepted. All are selector-side (the right buckets exist in the pool), so the
+  // fix is query-skeleton similarity (DAIL §4.1's second variant) — out of scope
+  // for a pool-row add. These tests pin the known state so a future selector
+  // change that fixes any of them is visible as a delta.
+  //
+  // NOTE: q21 (run 68's third "new shape" miss) was NOT selector-unfixable — it
+  // was an exemplar-phrasing leak: the count-distinct pool row echoed the SQL
+  // keyword "distinct" while q21 (and most real users) say "how many different".
+  // Rephrasing the exemplar to "how many different cities" (a pool-curation lever,
+  // not a selector tweak) lands q21 and held the held-out probe at 14/14 (it still
+  // says "distinct"). So the run-52 "lexical avenue is dead" verdict is scoped to
+  // SELECTOR-code tweaks (stopwords / phrase normalisation in few-shot-select.ts),
+  // not to pool-exemplar curation.
   //
   // The cheaper LEXICAL-selector avenue is measured-and-rejected (2026-06-22,
   // run 52 — quality-score-verification-log.md): a stopword filter regresses ICP
-  // precision@1 (18/20 → 17/20) and phrase normalisation leaves it flat (18/20),
-  // both keeping held-out 14/14. Root cause: q10's top-1 `having` wins on generic
-  // filler plus a coincidental masked literal slot (`val` — both questions happen
-  // to contain a literal), which flat masked-token Jaccard cannot separate from a
-  // real structural token. Do NOT re-attempt a lexical selector tweak here; the
-  // only remaining offline gain needs query-skeleton (predicted-SQL) similarity.
+  // precision@1 and phrase normalisation leaves it flat, both keeping held-out
+  // 14/14. Root cause: q10's top-1 `having` wins on generic filler plus a
+  // coincidental masked literal slot (`val` — both questions happen to contain a
+  // literal), which flat masked-token Jaccard cannot separate from a real
+  // structural token. Do NOT re-attempt a lexical selector tweak here; the only
+  // remaining offline gain needs query-skeleton (predicted-SQL) similarity.
   //
   // q8 ("the 5 most-recalled facts … how many times") masks to a generic
   // skeleton whose top-1 is `ratio-cast` rather than `group-order-limit`/`group-max`.
@@ -160,5 +171,29 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
       1,
     );
     expect(EXPECTED[10]).not.toContain(top?.bucket);
+  });
+
+  // q20 ("which plans cost more than the average plan price") is a scalar-subquery
+  // (> AVG()), but masks to a skeleton whose top-1 is the `having` demo by one
+  // token ("more than" overlaps "placed more than 5 orders"); the discriminating
+  // word "average" can't overcome it on flat masked Jaccard. Selector-side.
+  it("documents the q20 known miss (top-1 `having` for a scalar-subquery)", () => {
+    const q20 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 20);
+    const [top] = retrievePlanExemplars(q20?.question ?? "", ddlFor(q20?.db_id ?? "saas_app"), 1);
+    expect(EXPECTED[20]).not.toContain(top?.bucket);
+  });
+
+  // q22 ("how many of 'support-bot' facts have no expiry date") is a COUNT(*) over
+  // a filtered JOIN, but "how many … no expiry date" masks toward the `date-range`
+  // demo (the "how many … date" tokens dominate the JOIN/aggregate signal).
+  // Selector-side; the right buckets (join-aggregate / group-by-count) exist.
+  it("documents the q22 known miss (top-1 `date-range` for a filtered join-aggregate)", () => {
+    const q22 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 22);
+    const [top] = retrievePlanExemplars(
+      q22?.question ?? "",
+      ddlFor(q22?.db_id ?? "agent_memory"),
+      1,
+    );
+    expect(EXPECTED[22]).not.toContain(top?.bucket);
   });
 });
