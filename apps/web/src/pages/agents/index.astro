@@ -75,6 +75,50 @@ const demoResult = [
   { category: "tool_result", facts: 11 },
   { category: "correction", facts: 5 },
 ];
+
+// AEO: a visible FAQ block + matching FAQPage JSON-LD — the wedge front
+// door was the only key landing page emitting no FAQPage structured data
+// (every /vs + /solve page does), so answer engines and Google rich
+// results couldn't extract its Q&A. Every answer restates a claim already
+// made visibly elsewhere on this page (direct-answer, split, moat, FSL,
+// honest-scope) — no new claim — so the structured data stays backed by
+// on-page content (Google FAQPage policy) and honest (SK-PIVOT-004).
+const faqs = [
+  {
+    q: "What is analytical memory for an AI agent?",
+    a: "A real, queryable database an agent uses to remember — typed rows it can GROUP BY, JOIN, and aggregate over in plain English, not an opaque vector blob it can only search. Recall is table stakes; analysis over memory is the part a vector store structurally can't do.",
+  },
+  {
+    q: "How is this different from a vector store or vector database for agent memory?",
+    a: "A vector store returns the top-k most similar chunks — semantic recall with no query planner, so rollups become the model doing arithmetic over search hits. nlqdb stores typed rows in Postgres, so it answers “how many times did this user ask about pricing this month?” with one GROUP BY.",
+  },
+  {
+    q: "Does my agent have to design a database schema first?",
+    a: "No. The database is created from a goal, not a schema. Your agent writes typed rows as it learns and asks questions in English; nlqdb provisions the Postgres database and infers the shape.",
+  },
+  {
+    q: "Is it safe to let an AI agent write SQL against its memory?",
+    a: "The LLM never emits SQL. It returns a typed JSON plan; nlqdb's compiler emits parameterised SQL, an AST re-parse checks it against a verb and table allow-list, and destructive writes show a diff you confirm first — and every query returns the exact SQL it ran.",
+  },
+  {
+    q: "Can my agent run similarity or vector recall too?",
+    a: "Similarity search over an embedding column (pgvector) is an opt-in slice still landing. Today the wedge is the analytical side — the GROUP BY, JOIN, and per-group aggregate queries a vector store can't run.",
+  },
+  {
+    q: "What does it cost, and can I use my own LLM key?",
+    a: "Bring your own Anthropic, OpenAI, Gemini, or OpenRouter key at 0% markup on the free tier — no card, no per-call fees. The engine, CLI, MCP server, and SDKs are source-available under FSL-1.1 and self-hostable for any non-competing use.",
+  },
+];
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
 ---
 
 <Base
@@ -290,6 +334,20 @@ const demoResult = [
         </ul>
       </section>
 
+      <section class="agents__faqs" aria-labelledby="faqs-title">
+        <h2 class="agents__h2" id="faqs-title">Questions agent builders ask</h2>
+        <dl>
+          {
+            faqs.map((f) => (
+              <div class="agents__faq">
+                <dt>{f.q}</dt>
+                <dd>{f.a}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </section>
+
       <section class="agents__cta" aria-labelledby="cta-title">
         <h2 class="agents__h2" id="cta-title">Give your agent memory it can query.</h2>
         <p class="agents__cta-lede">
@@ -317,6 +375,8 @@ const demoResult = [
 
     <Footer />
   </div>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
 
   <script>
     // "Try this query" → seed the anonymous-create input via the same
@@ -714,6 +774,31 @@ const demoResult = [
 
   .agents__fsl-list strong {
     color: var(--fg);
+  }
+
+  .agents__faqs {
+    margin: 0 0 clamp(32px, 5vw, 48px);
+  }
+
+  .agents__faqs dl {
+    margin: 0;
+  }
+
+  .agents__faq {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .agents__faq dt {
+    margin: 0 0 8px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .agents__faq dd {
+    margin: 0;
+    color: var(--fg-dim);
+    line-height: 1.6;
   }
 
   .agents__cta {

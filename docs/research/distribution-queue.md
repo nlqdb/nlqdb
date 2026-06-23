@@ -10,6 +10,54 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-23 (run 77) — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to"
+
+**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, an
+AEO/structured-data lesson. The hook: the page you care about most is the
+easiest to leave un-instrumented, because it's bespoke. nlqdb mentioned once.
+
+**Title:** We put FAQ schema on every comparison page — and forgot the page they all point to
+
+**Body:**
+
+> We generate our comparison and "solve" pages from data — one TypeScript
+> object per competitor, one template. The template emits `FAQPage` JSON-LD for
+> every page, so all ~26 of them are eligible for FAQ rich results and are
+> trivially extractable by answer engines (ChatGPT, Perplexity, Google's AI
+> Overviews read structured data first, prose second).
+>
+> Our single most important landing page had none. It's the bespoke one — the
+> hand-authored front door for our lead use case, the page every templated page
+> *links to*. It was dense with question-shaped content: a "what is this?"
+> direct-answer block, a "how is it different from X?" split, a safety
+> explainer, a pricing section. All of it visible to humans, all of it invisible
+> to a crawler looking for `FAQPage`. The templated pages got the schema for
+> free; the important page missed it precisely *because* it wasn't templated.
+>
+> The fix was boring and that's the point: lift the Q&As that were already on
+> the page into a typed `faqs` array, render them as a visible `<dl>` (Google
+> requires the answer to be on the page — schema describing hidden text is a
+> manual-action risk), and `JSON.stringify` the same array into one
+> `<script type="application/ld+json">`. One source of truth, visible copy and
+> structured data can't drift. Every answer was a restatement of a claim already
+> made elsewhere on the page — no new marketing, just making the existing
+> content machine-readable.
+>
+> The lesson: audit structured-data coverage by *importance*, not by template.
+> Your generated pages are probably fine — the gap is the hero page someone
+> built by hand before the template existed. Grep your built `dist/` for
+> `"@type":"FAQPage"` and check the list against your top-traffic URLs, not your
+> page count.
+>
+> (We hit this on nlqdb's `/agents` page; the FAQ block is now visible and in
+> the JSON-LD, both derived from one array.)
+
+**Why this advances the north-star:** onboarding / distribution — a
+reproducible AEO lesson with a concrete before/after (the wedge front door went
+from 0 to 1 `FAQPage` block, 6 Q&As; site coverage 24 → 25 pages), one nlqdb
+mention. No engine/funnel/ops KPI degrades (additive static JSON-LD + visible
+copy on one page; every answer restates existing on-page content).
+
 ## 2026-06-23 (run 75) — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (provision-from-English wedge)
 
 **Where:** Show HN + dev.to (`ai` / `mcp` / `databases`) and a one-link r/mcp
@@ -58,52 +106,6 @@ search-shaped on-ramp for the high-volume "database MCP server" query that
 names the provision-vs-connect distinction honestly, one nlqdb mention. No
 engine/funnel KPI degrades (one solve-page data object + doc edits).
 
-## 2026-06-23 (run 74) — dev.to / lobste.rs: "Some of your 'unfixable' few-shot misses are just SQL keywords leaking into your examples"
-
-**Where:** dev.to + lobste.rs (`ai` / `databases` / `llm`); build-in-public,
-the direct follow-up to the run-52 post ("some few-shot retrieval misses can't be
-fixed with lexical tricks"). The honest twist: I'd filed three new misses under
-that same verdict — and one of them wasn't. nlqdb mentioned once.
-
-**Title:** Some of your "unfixable" few-shot misses are just SQL keywords leaking into your examples
-
-**Body:**
-
-> We retrieve few-shot examples for our NL→SQL engine by matching the question's
-> *masked skeleton* (DAIL-SQL style: blank out the literals and table/column
-> names, compare what's left). When I grew our in-house benchmark by three
-> questions, retrieval precision dropped from 18/20 to 18/23 — three new misses.
-> I almost filed all three under a verdict I'd already written: "selector-side,
-> the masking can't separate them, the only real fix is a model round-trip."
->
-> One of them didn't deserve it. The question was *"how many different referral
-> sources brought in a user?"* — a textbook `COUNT(DISTINCT …)`. But it kept
-> retrieving the plain `GROUP BY COUNT` example instead of the `COUNT(DISTINCT)`
-> one. The reason was embarrassing once I saw it: my `COUNT(DISTINCT)` example
-> question read *"how many **distinct** cities…"*. I'd written the SQL keyword
-> into the natural-language prompt. Real users (and my benchmark) say
-> *"different"* or *"unique"*, almost never *"distinct"* — so the example that was
-> supposed to teach the shape shared no distinguishing token with the questions
-> that need it.
->
-> The fix was one word: *"how many **different** cities…"*. That landed the miss
-> (18/23 → 19/23). The part I care about more: my held-out probe — which still
-> phrases it *"distinct countries"* — kept retrieving the same example top-1. So
-> the change generalised across **both** phrasings; it wasn't me overfitting the
-> example to the one question I was staring at.
->
-> Lesson: your few-shot demonstration's *question* is data too, and it should read
-> like your users talk, not like the SQL it maps to. A keyword that's natural in
-> the query is often unnatural in the question — and when it leaks, the example
-> quietly stops matching the very inputs it exists to serve. Before you conclude a
-> retrieval miss needs a smarter ranker, check whether the example is speaking SQL
-> at a user who's speaking English.
-
-**Why this advances the north-star:** engine quality (a concrete, reproducible
-NL→SQL retrieval lesson with a measured before/after), one nlqdb mention. No
-funnel/ops KPI degrades (the change is a default-off eval-only exemplar; prod
-output byte-identical).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -111,6 +113,7 @@ is title + venue + one-line gist; `git log -p docs/research/distribution-queue.m
 recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
+- run 74 — "Some of your 'unfixable' few-shot misses are just SQL keywords leaking into your examples" (a `COUNT(DISTINCT)` exemplar whose *question* read "how many distinct cities" never matched users who say "different"/"unique"; the demo was speaking SQL at a user speaking English; one-word fix landed precision@1 18/23 → 19/23 and held-out probe 14/14 — check the exemplar's phrasing before blaming the ranker).
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).
 - run 70 — "Your AI BI tool reads your data. It doesn't own it — and can't write to it" (a wave of AI-native BI tools converge on "describe what to track, AI builds the dashboard" — great at it, but "your data" is a read-only connection to a warehouse you already run; they don't own a DB or write to yours; the data layer that provisions the store and takes English for the write *and* the read is a different altitude; anchors `/vs/basedash`).
 - run 69 — "Your sitemap is advertising redirects — and your canonical tag points at one" (a static host serving `route/index.html` makes the bare path a 307, but `canonical`/`og:url`/sitemap/llms.txt all emitted the bare path — 27 redirecting sitemap URLs + a self-referential redirecting canonical; `trailingSlash: "always"` plus a one-place path-normalize in the head layout + URL generators, audit with `curl -sI` over every sitemap URL).

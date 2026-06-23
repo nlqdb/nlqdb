@@ -79,6 +79,24 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
+- 2026-06-23 (run 77) — **AEO: `/agents` (the lead-wedge front door) now emits
+  `FAQPage` structured data — it was the only key landing page without it.**
+  Engine offline-retrieval lane was in an open PR (#494) and canonical BIRD/Spider
+  dispatch-gated (< 7d), so this run took the non-colliding **AEO/structured-data**
+  lever. Every `/vs` (17) and `/solve` (9) page emits `FAQPage` JSON-LD via the
+  shared template; the hand-authored `/agents` page — dense with question-shaped
+  copy (the "what is analytical agent memory?" direct-answer block, the
+  retrieval-vs-analytics split, the trust-boundary moat, the FSL/pricing band) —
+  emitted only the sitewide `SoftwareApplication` block, invisible to answer
+  engines / Google FAQ rich results. Added a visible "Questions agent builders
+  ask" `<dl>` (6 Q&As) + matching `FAQPage` JSON-LD, both derived from one typed
+  `faqs` array (visible copy + schema can't drift; Google requires the answer
+  on-page). Every answer restates a claim already visible elsewhere on the page —
+  no new claim (SK-PIVOT-004 honest). **Δ:** `/agents` `FAQPage` blocks **0 → 1**
+  (6 Q&As); site `FAQPage`-emitting pages **24 → 25** (verified in `dist/`).
+  **KPI:** onboarding / distribution; **none degraded** — additive static
+  JSON-LD + copy on one page, no engine/funnel/ops file touched; astro-check 0
+  errors, 130 web tests, biome clean.
 - 2026-06-23 (run 75) — **Distribution: shipped `/solve/database-claude-cursor-can-query`
   (7th solve page, P2 MCP-host wedge).** Engine canonical dispatch-gated and the
   offline-retrieval / comparison / doc-hygiene lanes were already in open PRs
