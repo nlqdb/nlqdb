@@ -76,6 +76,23 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
+- 2026-06-23 (run 67) — **Distribution: shipped `/vs/retool` (Retool), the
+  internal-tools incumbent — first P4 comparison since Outerbase (2026-05-24)
+  and the natural next slice after Julius (P3, run 64) by the comparison-pages
+  decision rule (persona-weighted threat × keyword volume — Retool's brand keyword
+  dwarfs Basedash's).** Engine lane dispatch-gated (BIRD 06-19 = 4 d, Spider 06-17
+  = 6 d, both < 7 d), so the lever was AEO. Honest wedge: Retool is a destination
+  low-code **builder** — even with AppGen / Ask AI / native AI agents, a human
+  assembles an admin UI over an *existing* database; nlqdb provisions/owns the DB
+  and embeds one element / agent-callable API ("skip building the admin UI"). Retool's
+  builder + connector ecosystem + AI agents (guardrails/audit, hourly-billed) +
+  SOC 2 Type II / ISO 27001:2022 / GDPR + enterprise SSO conceded `them: shipped`.
+  Facts web-verified 2026-06-23 (retool.com/ai + retool.com/pricing + trust.retool.com).
+  **Δ (distribution):** comparison pages **14 → 15**; llms.txt + sitemap **+1**
+  (auto). **KPI:** onboarding / distribution; **none degraded** — one data object
+  + FEATURE status, no engine/funnel/ops file touched; 13 competitors invariants +
+  astro-check **0 errors** green. Next P4 slice: Basedash. Artifact: *"AI made the
+  internal-tool builder faster. It didn't ask whether you needed the tool."*
 - 2026-06-23 (runs 62, 65) — **Doc-hygiene wave (D4 + D5 + P3), prod
   byte-identical, engine/funnel untouched.** Run 65 net-shrank
   `ask-pipeline/FEATURE.md` 32,596 → 31,339 B (−1,257 B, ~3.9%): D5
