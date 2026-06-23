@@ -213,25 +213,24 @@ traversal-gated. EX delta next Spider dispatch.
 ### SK-QUAL-017 — Self-consistency majority vote: cluster N sampled plans by the result set, vote the answer
 
 **Body:** [`decisions/SK-QUAL-017-self-consistency-majority-vote.md`](./decisions/SK-QUAL-017-self-consistency-majority-vote.md).
-Pure `majorityVote` + reusable `fingerprintRows` (score.ts) cluster N executed
-plans by their **result set** (the answer, not the SQL string), returning the
-modal cluster's SQL — the deterministic core of the §4 #3 reasoning lever. **Now
-end-to-end:** `executeRows` + `voteOverSamples` (the vote), `PlanRequest.temperature`
-+ `samplePlans` (the sampling, default greedy ⇒ `SK-LLM-024` byte-identical), the
-`--self-consistency N` / `--sc-temperature T` runner branch (`samples >= 2` in
-`runOneQuestion`, a separate path from `withExecRetry`, folding into checkpoint /
-budget-stop / `attempts`, `.scN` variant), and the `self_consistency`/`sc_temperature`
-`workflow_dispatch` inputs on both smoke jobs — the baseline-safe vehicle (N=1
-default = greedy). EX delta is the greedy-vs-SC smoke gap on the first N>=2 dispatch.
+`majorityVote` clusters N executed plans by their **result set** (the answer, not
+the SQL string), returning the modal cluster's SQL — the §4 #3 reasoning lever.
+**Now end-to-end:** sampling at temperature > 0 + the vote + the
+`--self-consistency N` / `--sc-temperature T` runner branch (separate from
+`withExecRetry`) + the `self_consistency`/`sc_temperature` smoke inputs, all
+baseline-safe (N=1 default = greedy, `SK-LLM-024` byte-identical). EX delta is the
+greedy-vs-SC gap on the first N≥2 dispatch.
 
 ### SK-QUAL-018 — persona-bench: nlqdb's own ICP-shaped NL→SQL benchmark, gold-executable fixture first
 
 **Body:** [`decisions/SK-QUAL-018-persona-bench.md`](./decisions/SK-QUAL-018-persona-bench.md).
 The third quality number `GLOBAL-027` §Lifecycle kept: NL→gold-SQL over the
 schemas `personas.md` builds. v0 (`persona-bench.ts`) ships
-the **data half** — `saas_app` (§P1) + `agent_memory` (§P2), now **20 questions**
-(batch 2 added the anti-join/negation + challenging multi-join shapes v0 lacked)
-with time-stable literal-date gold + the **gold-executability invariant** (20/20
+the **data half** — `saas_app` (§P1) + `agent_memory` (§P2), now **23 questions**
+(batch 2: anti-join/negation + multi-join; batch 3: scalar-subquery,
+COUNT(DISTINCT), and the **multi-predicate-retention** filter shape a 2026-06-23
+run flagged as an engine miss — q13 dropped a `status = 'paid'` predicate) with
+time-stable literal-date gold + the **gold-executability invariant** (23/23
 execute, non-empty). The **runner-wiring half** then makes it a dispatchable
 `EvalDataset` — `loadPersonaBench` materialises each schema to SQLite on demand
 (`--dataset persona-bench [--persona P1|P2]`), additive new-branch (BIRD/Spider

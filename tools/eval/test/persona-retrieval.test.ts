@@ -54,6 +54,10 @@ const EXPECTED: Record<number, readonly string[]> = {
   17: ["date-range"],
   18: ["join-aggregate", "group-order-limit", "group-by-count"],
   19: ["having"],
+  // Batch 3 (SK-QUAL-018) — authored from each gold's structure.
+  20: ["scalar-subquery"], // price above the AVG(price) scalar subquery
+  21: ["count-distinct"], // COUNT(DISTINCT referrer_id)
+  22: ["join-aggregate", "group-by-count"], // COUNT(*) over a filtered JOIN
 };
 
 function measure() {

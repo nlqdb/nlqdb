@@ -335,6 +335,41 @@ export const PERSONA_BENCH_QUESTIONS: PersonaQuestion[] = [
     bucket: "having",
     difficulty: "moderate",
   },
+  // ── Batch 3 (SK-QUAL-018 growth follow-on): three shapes batches 1–2 lacked,
+  //    each mapping to an existing DAIL-SQL pool bucket (so the SK-LLM-041
+  //    retrieval instrument stays clean) — scalar-subquery and COUNT(DISTINCT),
+  //    plus the **multi-predicate-retention** filter shape the 2026-06-23 greedy
+  //    run flagged as an engine miss (q13 dropped a `status = 'paid'` predicate on
+  //    a "which X has the most Y"). Buckets mirror SK-QUAL-014's classes.
+  {
+    question_id: 20,
+    db_id: "saas_app",
+    persona: "P1",
+    question: "Which plans cost more than the average plan price? List the plan names.",
+    sql: "SELECT name FROM plans WHERE price_cents > (SELECT AVG(price_cents) FROM plans)",
+    bucket: "scalar-subquery",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 21,
+    db_id: "saas_app",
+    persona: "P1",
+    question: "How many different referral sources have brought in at least one user?",
+    sql: "SELECT COUNT(DISTINCT referrer_id) FROM users WHERE referrer_id IS NOT NULL",
+    bucket: "count-distinct",
+    difficulty: "simple",
+  },
+  {
+    question_id: 22,
+    db_id: "agent_memory",
+    persona: "P2",
+    question: "How many of the agent 'support-bot' facts have no expiry date?",
+    sql:
+      "SELECT COUNT(*) FROM facts f JOIN agents a ON f.agent_id = a.id " +
+      "WHERE a.name = 'support-bot' AND f.expires_at IS NULL",
+    bucket: "join-aggregate-filter",
+    difficulty: "moderate",
+  },
 ];
 
 export function schemaFor(db_id: string): PersonaSchema | undefined {

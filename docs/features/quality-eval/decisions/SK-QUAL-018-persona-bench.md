@@ -96,5 +96,9 @@ and [`SK-QUAL-015`](./SK-QUAL-015-column-coverage-harness.md).
     5–20-table, 50–100-question target is the documented follow-on, one batch
     per run. **Batch 2 (run 47): 12 → 20 questions** — adds the anti-join /
     negation (`NOT IN`) and challenging multi-join shapes v0 lacked (the
-    `SK-QUAL-014` loss mass `SK-LLM-041`'s pool now targets), 20/20 golds still
-    execute non-empty.
+    `SK-QUAL-014` loss mass `SK-LLM-041`'s pool now targets). **Batch 3
+    (2026-06-23): 20 → 23 questions** — scalar-subquery, COUNT(DISTINCT), and a
+    multi-predicate join filter, the multi-predicate-retention shape a greedy run
+    flagged as an engine miss (q13 dropped a `status = 'paid'` predicate); each
+    maps to an existing DAIL-SQL pool bucket so the retrieval instrument stays
+    clean. 23/23 golds still execute non-empty.
