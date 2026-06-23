@@ -1138,6 +1138,116 @@ export const COMPETITORS: Competitor[] = [
       why: "The aggregation Chroma's similarity search can't run — it returns the documents nearest a query, not a GROUP BY / COUNT ranking; nlqdb answers it as SQL over the agent's own memory.",
     },
   },
+  {
+    slug: "weaviate",
+    name: "Weaviate",
+    url: "https://weaviate.io",
+    // Agent-memory cluster (vector-store wing, enterprise/hybrid-search) anchored
+    // in docs/competitors.md §Weaviate. Facts verified via web search + the
+    // official GitHub + pricing page 2026-06-22: BSD-3-Clause open source
+    // (self-host is full-featured and free), plus Weaviate Cloud — Sandbox
+    // (14-day, auto-expires) · Flex ($45/mo min, shared GCP, 99.5% SLA) · Plus
+    // ($280/mo annual, 99.9% SLA, SOC 2) · Premium (custom, BYOC, HIPAA);
+    // vector-dimension billing ($0.01668 / M dims-mo from Oct 2025).
+    // Primitives: vector similarity + BM25 keyword + first-class hybrid search,
+    // metadata filtering, RAG/generative, reranking, multimodal. Enterprise:
+    // built-in multi-tenancy, replication, RBAC. No SQL, no joins, no GROUP BY
+    // aggregations, no transactions. Official `mcp-server-weaviate` ships
+    // (insert objects + hybrid search).
+    tagline:
+      "Open-source, cloud-native vector database — first-class hybrid search (BM25 + vector), metadata filtering, multi-tenancy, and replication; self-host on BSD-3 or run on Weaviate Cloud.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Weaviate if your agent recalls by hybrid search — BM25 keyword fused with vector similarity — at enterprise scale with multi-tenancy, replication, and RBAC. Pick nlqdb if your agent must aggregate what it stored: GROUP BY, JOIN, and HAVING over typed rows it provisions in plain English. Weaviate ranks the relevant; nlqdb counts, groups, and reports.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not just rank relevant items.",
+      "You store structured rows the agent later reports over ('calls per tool this week').",
+      "You want exact filters and counts, not a fused similarity + keyword ranking, over memory.",
+      "The schema should evolve as the agent learns ('add a `priority` field') via English.",
+    ],
+    whenChooseThem: [
+      "Your agent recalls by hybrid search — BM25 keyword fused with vector similarity over text.",
+      "You need enterprise scale: built-in multi-tenancy, replication, and RBAC across many namespaces.",
+      "RAG context, reranking, or multimodal retrieval is the job, not relational reporting.",
+      "You want an open-source store you can self-host full-featured under BSD-3.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Weaviate takes a vector, a BM25 query, or a hybrid blend plus a metadata filter; it has no English-to-SQL compiler.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Weaviate returns ranked nearest objects; it ships no SQL engine, no joins, and no transactions across collections.",
+      },
+      {
+        feature: "Vector / semantic similarity search over memory",
+        us: "no",
+        them: "shipped",
+        note: "Nearest-neighbour over embeddings is core to Weaviate; nlqdb stores typed rows and ships no embedding search today.",
+      },
+      {
+        feature: "Hybrid search (BM25 keyword + vector) over stored documents",
+        us: "partial",
+        them: "shipped",
+        note: "First-class fused BM25 + dense ranking is Weaviate's headline; nlqdb matches text with SQL LIKE / pattern predicates, not a fused-rank index.",
+      },
+      {
+        feature: "Filtering on retrieval",
+        us: "partial",
+        them: "shipped",
+        note: "nlqdb filters with exact SQL WHERE over typed columns; Weaviate filters by metadata around the hybrid / nearest-neighbour search.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Weaviate's `mcp-server-weaviate` inserts objects and runs hybrid search; nlqdb's `nlqdb_query` materialises Postgres on first reference and runs aggregating SQL.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "shipped",
+        note: "Weaviate is BSD-3 and self-hosts full-featured; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Weaviate for hybrid recall and nlqdb for analytics over the same agent memory?",
+        a: "Yes — they compose. Weaviate handles 'find the passages most relevant to this question' via fused BM25 + vector ranking; nlqdb handles 'how many tools did the agent call per category this week' via SQL. Run Weaviate as the recall layer and nlqdb as the analytical store the agent queries with GROUP BY / JOIN / HAVING.",
+      },
+      {
+        q: "Does nlqdb do vector or hybrid search like Weaviate?",
+        a: "No. nlqdb is Postgres-first — typed rows queried with exact SQL, not embeddings fused with BM25 and ranked by relevance. If hybrid keyword-plus-semantic search over text is the job, Weaviate is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions.",
+      },
+      {
+        q: "Weaviate is open source and self-hostable — is nlqdb?",
+        a: "nlqdb is source-available under FSL 1.1 (Functional Source License), which auto-converts to Apache 2.0 two years after each release; Weaviate is BSD-3 today and self-hosts full-featured. Both let you keep your data; they differ on the query model, not on lock-in — Weaviate does hybrid recall, nlqdb does relational SQL.",
+      },
+      {
+        q: "Weaviate has metadata filtering — isn't that the same as nlqdb's SQL WHERE?",
+        a: "Not quite. Weaviate's metadata filter narrows candidates around a hybrid or nearest-neighbour search, so the result is still a relevance ranking. nlqdb runs exact SQL — WHERE, GROUP BY, COUNT, JOIN — and returns a precise result set, not the top-k most relevant objects. Different jobs: one ranks the relevant, the other computes answers.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Weaviate the way it can with nlqdb?",
+        a: "Weaviate's `mcp-server-weaviate` can insert objects and run hybrid search, but the agent gets a vector store, not a relational database it can aggregate or migrate. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent stands up and reports over its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "calls per tool category this week, only categories above 20 calls",
+      why: "The HAVING-filtered aggregation Weaviate's hybrid search can't run — it ranks the most relevant objects, not a GROUP BY / COUNT with a threshold; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {

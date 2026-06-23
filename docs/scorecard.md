@@ -48,7 +48,7 @@ AEO surface (distribution lane).
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 6 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6) |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 7 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7) |
 | | *Messaging track — WS-\** | 11 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
@@ -74,6 +74,30 @@ AEO surface (distribution lane).
 
 ## Deltas (recent runs)
 
+- 2026-06-22 (run 59) — **Distribution: shipped `/vs/weaviate`, the
+  enterprise/hybrid-search wing of the "database, not a vector store" wedge.**
+  Worst real number is the genuine-stranger funnel (rows #2/#3 ≈ 0), engine-gated
+  (GLOBAL-027) — but the engine lane is dispatch-gated (BIRD 06-19 / Spider 06-17
+  < 7 d, §5) **and** owned (open PR #475, persona-bench dispatch, run 58), so the
+  non-colliding lever is the funnel's top-of-funnel AEO surface. Run 53 gave the
+  *hosted* vector DB (Pinecone) its page, run 56 the *OSS-first* one (Chroma);
+  Weaviate is the **enterprise / hybrid-search** vector store the comparison-pages
+  FEATURE.md named as the next P2 follow-on — first-class fused BM25 + vector
+  ranking plus built-in multi-tenancy / replication / RBAC, the differentiator
+  axis Pinecone (hosted) and Chroma (OSS-first) don't lead with. Same aggregation
+  wedge: hybrid search ranks the relevant, it has no GROUP BY / JOIN / HAVING.
+  **Δ (measured, distribution lane):** comparison pages **11 → 12**; P2
+  agent-builder cluster **6 → 7** (WS-07 cross-link + WS-08 OG card auto-extend on
+  the P2 persona key); OG cards **7 → 8** (`vs-weaviate.png`, generator
+  deterministic — 7 existing cards byte-identical); llms.txt + sitemap **+1**.
+  Facts web-verified 2026-06-22: BSD-3-Clause self-host (full-featured, free) +
+  Weaviate Cloud (Sandbox / Flex $45 / Plus $280 / Premium), first-class hybrid
+  search, multi-tenancy / replication / RBAC, official `mcp-server-weaviate`, no
+  SQL / joins / aggregations. **KPI:** onboarding / distribution (AEO on "Weaviate
+  hybrid search agent memory"); **none degraded** — content + typed-data + one PNG,
+  prod byte-identical, no engine file touched, BIRD 06-19 / Spider 06-17 untouched;
+  13 competitors invariants green, astro-check 0 errors. Artifact: *"Hybrid search
+  made your recall smarter. It still can't count."*
 - 2026-06-22 (run 57) — **Hygiene (D4 + D5 + P3): `docs/performance.md`
   net-shrunk 26,378 → 24,441 B (−1,937 B) by collapsing §4's "slice-by-slice
   instrumentation plan".** Both live lanes were owned by open PRs (engine #472 ·
