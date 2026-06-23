@@ -20,7 +20,7 @@ when-to-load:
 - `apps/api/src/ask/sql-validate-ddl.ts` (DDL-path validator, separate from the read/write allowlist)
 - `packages/llm/src/prompts/schema-inference.ts` (typed-plan prompt)
 
-**Cross-refs:** docs/architecture.md §3.6.1–§3.6.8 (canonical) · docs/phase-plan.md §2 (Phase 1 slice — sub-modules, anonymous-db lifecycle, exit gate) · docs/research-receipts.md §1 (Replit incident → layered guardrails), §2 (Cortex Analyst + SchemaAgent → typed plans), §7 (per-surface dbId resolution, with confidence-gated LLM pick + visible echo on REST + chat — SK-HDC-005), §8 (semantic-layer-at-create moat) · GLOBAL-005, GLOBAL-014, GLOBAL-017, GLOBAL-020 (see governing-GLOBALs section below)
+**Cross-refs:** docs/architecture.md §3.6.1–§3.6.8 (canonical) · docs/phase-plan.md §2 (Phase 1 slice — sub-modules, anonymous-db lifecycle, exit gate) · docs/research-receipts.md §1 (Replit incident → layered guardrails), §2 (Cortex Analyst + SchemaAgent → typed plans), §7 (dbId resolution → merged `routeAsk`, confidence floor + visible `selected_db` echo — SK-ASK-009), §8 (semantic-layer-at-create moat) · GLOBAL-005, GLOBAL-014, GLOBAL-017, GLOBAL-020 (see governing-GLOBALs section below)
 
 **Sibling features to read alongside:**
 - `docs/features/ask-pipeline/FEATURE.md` — the classifier branches off the existing `/v1/ask` orchestrator; this feature owns the `kind=create` arm
