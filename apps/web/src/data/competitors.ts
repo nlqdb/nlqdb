@@ -1360,6 +1360,131 @@ export const COMPETITORS: Competitor[] = [
       why: "The HAVING-filtered aggregation Qdrant's quantized vector search can't run — it ranks the most relevant points, not a GROUP BY / COUNT with a threshold; nlqdb answers it as SQL over the agent's own memory.",
     },
   },
+  {
+    slug: "julius",
+    name: "Julius AI",
+    url: "https://julius.ai",
+    // P3 analyst slot (the pre-pivot slate the comparison-pages FEATURE names
+    // now the top-tier vector-DB cluster is closed; highest keyword volume +
+    // most on-message of Retool AI / Julius AI / Basedash). Anchored in
+    // docs/competitors.md §Julius AI ("analysis-only; no durable data layer").
+    // Facts web-verified 2026-06-23 (julius.ai homepage + pricing + 2026
+    // reviews): cloud-based conversational data-analysis web app — upload
+    // Excel / CSV / Google Sheets, auto-generate charts (line/bar/pie/scatter/
+    // heatmap) + presentation dashboards, generate + run Python you can
+    // inspect, pre-built notebooks (sales/financial/HR/marketing/academic).
+    // Pricing: Free (15 messages/mo) · Plus (~$29/mo annual) · Pro ($45/mo,
+    // removes the message cap + adds live DB connectors: PostgreSQL, Snowflake,
+    // BigQuery, Supabase, Google Drive, OneDrive, Google Ads, Stripe) ·
+    // Business + Enterprise (custom). It is a destination chat app for
+    // analysts — no embeddable element, no SDK/API to build on, no MCP server,
+    // and it does not provision or own a database (it reads files or an
+    // existing warehouse).
+    tagline:
+      "Conversational AI data analyst — upload a CSV, Excel, or Google Sheet (or connect a warehouse on Pro), then chat your way to charts, dashboards, and Python notebooks.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Julius AI if you're an analyst who wants to upload a spreadsheet and chat your way to charts and a Python notebook. Pick nlqdb if you're building a product or agent that needs English-to-SQL over a database it provisions — embeddable, API-first, with every write diff-previewed.",
+    whenChooseUs: [
+      "You're building data features into your own product, not running ad-hoc analysis in a chat app.",
+      "An AI agent must query — and provision — its own database, callable over MCP.",
+      "You embed one HTML element (`<nlq-data>`) or call an API, not a destination web app.",
+      "Writes and schema changes should be diff-previewed before they apply.",
+    ],
+    whenChooseThem: [
+      "You're an analyst exploring uploaded CSVs, Excel, or Google Sheets ad hoc.",
+      "You want presentation-ready charts and dashboards generated from a chat prompt.",
+      "You need Python notebooks and generated data-science code you can inspect.",
+      "You want a ready-to-use analysis app, not a backend to build on.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Julius reads uploaded files or connects to an existing warehouse; it doesn't provision or own a database your app writes to.",
+      },
+      {
+        feature: "Natural-language data questions",
+        us: "shipped",
+        them: "shipped",
+        note: "Both take English — Julius generates Python/analysis over your data, nlqdb compiles SQL against a Postgres it owns.",
+      },
+      {
+        feature: "Embeddable in your product (HTML element / SDK / API)",
+        us: "shipped",
+        them: "no",
+        note: "Julius is a standalone chat web app analysts log into; nlqdb ships `<nlq-data>`, an SDK, and an HTTP API to embed.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "no",
+        note: "nlqdb's `nlqdb_query` materialises Postgres on first reference for a Claude / Cursor agent; Julius has no MCP surface.",
+      },
+      {
+        feature: "Charts + dashboards from a prompt",
+        us: "no",
+        them: "shipped",
+        note: "Julius auto-generates line/bar/pie/scatter charts and dashboards; nlqdb returns typed result rows you render in your own UI.",
+      },
+      {
+        feature: "CSV / Excel / Google Sheets file analysis",
+        us: "no",
+        them: "shipped",
+        note: "Upload-and-analyse is Julius's home turf; nlqdb is database-backed, not ad-hoc file analysis.",
+      },
+      {
+        feature: "Python / data-science code generation",
+        us: "no",
+        them: "shipped",
+        note: "Julius writes and runs Python you can inspect; nlqdb's output contract is SQL plus rows.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "Julius analyses; it doesn't manage your schema. nlqdb previews writes and DDL before applying.",
+      },
+      {
+        feature: "Live database connectors",
+        us: "partial",
+        them: "shipped",
+        note: "Julius (Pro) connects to Postgres/Snowflake/BigQuery/Supabase; nlqdb provisions and queries its own Postgres rather than reading many external warehouses.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Julius AI and nlqdb together?",
+        a: "Yes — they serve different stages. Julius AI is where an analyst explores a dataset and produces charts; nlqdb is the database your product or agent queries in plain English at runtime. Use Julius for ad-hoc exploration, nlqdb for the data layer your app ships on.",
+      },
+      {
+        q: "Does nlqdb make charts like Julius AI?",
+        a: "No. nlqdb returns typed result rows from SQL it compiles; it doesn't generate charts or dashboards. If presentation-ready visualizations from a chat prompt are the goal, Julius is the right shape; nlqdb's contract is the data, which you render in your own UI.",
+      },
+      {
+        q: "Can I upload a CSV to nlqdb the way I do with Julius AI?",
+        a: "Not today — nlqdb is database-backed, not an ad-hoc file-analysis app. It provisions a Postgres you query in English (and an agent can provision via MCP). Julius's home turf is uploading a spreadsheet and chatting over it; nlqdb's is the durable data layer your product builds on.",
+      },
+      {
+        q: "Is Julius AI embeddable in my own app like nlqdb?",
+        a: "No. Julius is a standalone chat web app analysts log into; it has no embeddable element, SDK, or MCP server. nlqdb ships `<nlq-data>`, an SDK, an HTTP API, and an MCP server, so a product or AI agent queries the database in English without leaving your app.",
+      },
+      {
+        q: "Julius AI can connect to my database — why provision a new one with nlqdb?",
+        a: "Julius (on Pro) reads your existing Snowflake/Postgres/BigQuery for analysis. nlqdb owns the database your app writes to: it provisions Postgres, migrates the schema via English, and diff-previews destructive writes. Connecting-to-read and owning-the-write-path are different jobs.",
+      },
+    ],
+    demo: {
+      goal: "top 5 customers by total order value this quarter",
+      why: "A grouped, ranked query nlqdb answers as SQL over the database your app owns — the live data layer your product queries, not a one-off chart from an uploaded spreadsheet.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
