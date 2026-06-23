@@ -62,55 +62,61 @@ tool at all*. nlqdb mentioned once.
 `/vs/retool` page with one nlqdb mention. No engine/funnel KPI degrades
 (content + one data object only).
 
-## 2026-06-23 (run 65) — dev.to / lobste.rs: "Two homes for one decision is drift — even inside the same file" (engineering-doc discipline)
+## 2026-06-23 (run 66) — dev.to / lobste.rs: "Your most over-documented code is your security code — and that's where stale docs lie loudest" (engineering-doc discipline)
 
-**Where:** dev.to + lobste.rs (`architecture` / `engineering`); build-in-public,
-the intra-file sibling to run 62 (doc narrating *code*) and run 60 (one doc
-narrating *another* doc). This one is the subtlest: a single file paraphrasing
-its *own* decision two headings down. nlqdb mentioned once.
+**Where:** dev.to + lobste.rs (`security` / `engineering`); build-in-public,
+the security-flavoured sibling to run 62 (docs narrating code) — the twist is
+*which* code attracts the worst narration, and why it's the most dangerous
+place for it. nlqdb mentioned once.
 
-**Title:** Two homes for one decision is drift — even inside the same file
+**Title:** Your most over-documented code is your security code — and that's where stale docs lie loudest
 
 **Body:**
 
-> We keep a strict rule that every decision has exactly one canonical home, and
-> everything else *links* to it. It's obvious why across files: if two docs both
-> describe how retries work, one of them is wrong within a month. What I didn't
-> expect was to catch the same bug *inside a single file*.
+> I net-shrank a feature doc this week — the one for the part of our system that
+> takes an LLM's output and turns it into a real database: typed-plan
+> validation, a DDL compiler, SQL-injection defenses, a rollback primitive. The
+> security-critical surface. And that's exactly where the rot was worst.
 >
-> The doc had a clean decision block — "each pipeline stage wraps its work in a
-> 3-attempt retry, feeding the previous attempt's error into the next prompt;
-> non-recoverable cases skip the retry." Good: the why, the shape, the escape
-> hatch. Then, four screens down, under a section that maps the doc's local
-> decisions to the cross-cutting rules they obey, there it was again — a second,
-> longer paragraph re-explaining the exact same retry mechanism, stage by stage,
-> in slightly different words. Same fact, two homes, one file. The instant
-> someone tightens the retry count in the decision block, the paraphrase below
-> becomes a confident lie that passes every review because nobody scrolls that
-> far.
+> Every one of those decisions had a clean record — what we decided, why, the
+> alternatives we rejected. Good. But each one also carried a "consequence in
+> code" section that had ballooned into a guided tour: *this helper is called at
+> line 237; tests cover schema-present-row-present, schema-missing,
+> row-missing, both-missing; the span is named `db.transaction` with a
+> `statement_count` attribute; `safeRollback` was removed.* Four screens of it.
+> I think I know why security code attracts this: it feels irresponsible to
+> document a SQL-injection guard tersely, so you over-prove it — you narrate
+> every callsite to show you were thorough. But a list of today's callsites and
+> test names is the fastest-rotting prose in the repo, and on a security feature
+> a stale "we validate every interpolation site" reads as a *guarantee* long
+> after someone adds the site that doesn't.
 >
-> The tell is paraphrase. A *pointer* — "see the retry decision above for the
-> mechanism; here we only note it satisfies the never-surface-a-fixable-error
-> rule" — can't drift, because it carries no restated facts, only the one
-> sentence that's genuinely local to this section (which rule it maps to). A
-> *paraphrase* restates the mechanism, and a restatement is a copy you've
-> volunteered to keep in sync by hand. The fix was to cut the second copy down
-> to the pointer plus the one local sentence. Net: a few hundred bytes lighter,
-> zero facts lost, and one fewer place the file can contradict itself.
+> The load-bearing part of a security decision isn't the tour of where the check
+> runs today. It's the invariant plus the rule that keeps it true: "every
+> identifier passes `assertSafeIdentifier` before interpolation; **a new
+> interpolation site that skips it fails review.**" That sentence is worth more
+> than the whole callsite tour, because it survives refactors — it describes the
+> *gate*, not the current floor plan. I cut the line numbers, the test-case
+> enumerations, and the span names (those live once, in the observability
+> section that owns them) and kept the invariant + the review rule for each of
+> the twenty decisions. Net a few percent lighter; not one "why", rejected
+> alternative, or enforcement rule lost — because none of those were what I was
+> cutting.
 >
-> Lesson: "single source of truth" isn't only a cross-file discipline. A long
-> document is a small filesystem — every heading is a place a fact can hide a
-> second copy of itself. When a section needs to *reference* a decision made
-> elsewhere in the same doc, link up to it and add only what's local to that
-> section. The moment you find yourself re-explaining a mechanism you already
-> explained, you're not documenting — you're forking. (We hold this hard because
-> our repo is edited by AI agents daily, and an agent that updates the canonical
-> block will not hunt down the paraphrase four screens away.)
+> Lesson: the more security-critical the code, the *less* its doc should read
+> like a changelog of the implementation, and the more it should read like the
+> contract a reviewer enforces. "Here's where we check it today" ages into a
+> lie. "Here's the check, and here's why a PR that skips it doesn't merge" stays
+> true through every refactor. (We hold this as a hard rule because the repo is
+> edited by AI agents daily — an agent that adds a new interpolation site will
+> trust a doc that says "every site is checked" unless the doc is really a rule
+> the review gate enforces, not a snapshot of last month's callsites.)
 
-**Why this advances the north-star:** onboarding / engine quality — a genuinely
-useful doc-discipline post (one nlqdb mention) that names a failure mode the
-"two homes for one fact" rule exists to prevent, applied at a finer grain than
-the usual cross-file framing. No engine/funnel KPI degrades (docs-only).
+**Why this advances the north-star:** engine quality / onboarding — a genuinely
+useful security-doc-discipline post (one nlqdb mention) that doubles as the
+rationale for the "document the enforced invariant, not the implementation
+tour" rule keeping our agent-edited security surface coherent. No engine/funnel
+KPI degrades (docs-only).
 
 ## Collapsed — full drafts in git history
 
@@ -120,6 +126,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 65 — "Two homes for one decision is drift — even inside the same file" (single-source-of-truth at intra-file grain: a doc paraphrasing its *own* decision two headings down is a copy you've volunteered to hand-sync; replace the paraphrase with a pointer up to the canonical block plus only the sentence local to that section; engineering-doc discipline).
 - run 64 — "Your AI data analyst can't be your app's backend (and vice versa)" (the same English-over-data phrase covers two products: an analyst's destination app whose deliverable is a chart, vs. an application's data layer whose deliverable is typed rows it owns and writes to; connecting-to-read and owning-the-write-path are different jobs; anchors `/vs/julius`).
 - run 62 — "Your decision record is just narrating code the reader can already read" (a "Consequence in code" section that lists files, functions, and line numbers is a second, worse copy of the code — untestable and already stale; keep only the why / rejected path / non-obvious constraint, cut the implementation narration; load-bearing decisions only).
 - run 61 — "Quantization made your recall cheaper. It still can't count." (quantization optimises *how cheaply* you retrieve the nearest items, not *what* you can compute over them; scalar/binary/product compression still yields a ranked list, never a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/qdrant`).
