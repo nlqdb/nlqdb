@@ -44,7 +44,7 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d) · persona-bench 2026-06-22** | | `apps/api/src/gate/eval-baseline.ts` (BIRD/Spider only; persona-bench never overwrites the canonical baseline, `SK-QUAL-018`) |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half (run 40) + **runner `--self-consistency N` / `--sc-temperature T` main-loop wiring (run 41)** — `samples>=2` branch in `runOneQuestion` (separate from `withExecRetry`): `samplePlans`→`voteOverSamples` over `executeRows`→score-the-winner; folds into checkpoint/budget-stop/`attempts`, `.scN` checkpoint variant. The lever is now end-to-end bar the CI `workflow_dispatch` input. EX delta next dispatch** |
-| 8 | persona-bench free-chain EX | **0.90 (18/20)** | full-chain ICP EX (run 58 GHA 27983818047; **run 63 reproduced it locally**). **1.7× BIRD, 4.9× Spider** — GLOBAL-026 bet. **Single N=20 runs are ±1 noisy** — misses flake across legs/runs (q8/q11/q18) as failover assigns models per run — so canonical N=500 BIRD/Spider (dispatch-gated <7d) stay the only *powered* engine levers. Run 63 root-caused the one **stable** miss q8: a **tie-fragile gold**, not an engine gap — `score.ts` is sequence-strict on `ORDER BY` golds and q8 tied two facts at count 2, so the weak llama leg (`GROUP BY object`) false-mismatched gold (`GROUP BY f.id`); fixed tie-free (`SK-QUAL-019`, fixture-only). Batch 2 (run 47) 12 → 20 q; retrieval precision@1 18/20 |
+| 8 | persona-bench free-chain EX | **0.90 (18/20)** | full-chain ICP EX (run 58 GHA 27983818047; **run 63 reproduced it locally**). **1.7× BIRD, 4.9× Spider** — GLOBAL-026 bet. **Single N=20 runs are ±1 noisy** — misses flake across legs/runs (q8/q11/q18) as failover assigns models per run — so canonical N=500 BIRD/Spider (dispatch-gated <7d) stay the only *powered* engine levers. Run 63 root-caused the one **stable** miss q8: a **tie-fragile gold**, not an engine gap — `score.ts` is sequence-strict on `ORDER BY` golds and q8 tied two facts at count 2, so the weak llama leg (`GROUP BY object`) false-mismatched gold (`GROUP BY f.id`); fixed tie-free (`SK-QUAL-019`, fixture-only). Batch 3 (run 68) 20 → 23 q, gold-exec 23/23 (GHA 0.90 was on 20 q; local throttled 21/23); retrieval precision@1 18/20 → 18/23 (hits flat 18, 3 new shapes = selector misses) |
 | 9 | free-vs-frontier delta | null *(secret-blocked, not dispatch-blocked)* | run 58 dispatched persona-bench with `include_frontier=true`, but the job log shows `OPENROUTER_FRONTIER_API_KEY:` resolves **empty** → only the free lane built, `free_vs_frontier_delta=null`. Root-caused + filed in `blocked-by-human.md` (founder sets the repo secret). The dispatch path itself is proven working; the delta lands the moment the key is set. Agentic lane also not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics (06-22 re-pull)** | | wall-time, all routes (not `/ask`-only) |
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
@@ -76,6 +76,22 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
+- 2026-06-23 (run 68) — **Engine instrument: persona-bench grown 20 → 23,
+  gold-exec 23/23** (SK-QUAL-018). Batch 3 adds three SK-QUAL-014 shapes batches
+  1–2 lacked, each mapped to an existing DAIL-SQL pool bucket: `scalar-subquery`,
+  `count-distinct`, and a multi-predicate `join-aggregate-filter` — the
+  **multi-predicate-retention** shape the first greedy run flagged as a real
+  engine miss (q13 dropped `WHERE status = 'paid'`). Clean throttled EX
+  **21/23** (~run-58's 0.90);
+  back-to-back un-throttled runs collapsed to provider-starvation (17/20 → an
+  immediate self-consistency N=3 = 6/20, all-`circuit_open`) — re-confirming
+  SK-QUAL-013/§5 that offline free-chain EX is **not** a powered measure (gated
+  N=500 BIRD/Spider stay the only powered levers). The 3 new shapes are
+  selector-side retrieval misses (correct buckets exist; precision@1 18/20 →
+  18/23, hits flat at 18 — run 52's lexical-selector ceiling).
+  **KPI:** engine quality (broader ICP bench); **none degraded** — fixture
+  + test only; BIRD 06-19 / Spider 06-17 / canonical baselines byte-untouched;
+  265 eval green. Artifact: run-68 draft.
 - 2026-06-23 (run 67) — **Distribution: shipped `/vs/retool` (Retool), the
   internal-tools incumbent — first P4 comparison since Outerbase, the next slice
   after Julius (run 64) by the comparison-pages decision rule (threat × keyword
@@ -138,33 +154,16 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   24,441 B (collapsed §4's stale slice-by-slice plan into the standing rule; 0
   span/metric names lost). None degraded; prod byte-identical.
 - 2026-06-22 (runs 51–54) — engine + distribution + hygiene wave (all merged;
-  BIRD 06-19 / Spider 06-17 untouched). **Engine (run 51):** §4 #1 DAIL-SQL pool
-  grown 13 → 14 (+`order-by-limit` plain top-N, `SK-LLM-041 × SK-QUAL-018`), q0
-  flipped off the GROUP-BY stand-in onto plain `ORDER BY … LIMIT`; ICP precision@1
-  18/20, held-out 14/14. **Engine finding (run 52, Δ ≤ 0 reverted):** the
-  lexical-selector avenue for the two pinned ICP misses (q8/q10) is falsified —
-  stopword filter regresses 18/20 → 17/20, phrase-norm flat (`SK-LLM-036/037`);
-  the pool/lexical half of §4 #1 is at its **offline ceiling** (only
-  query-skeleton similarity, an LLM round-trip, or the gated dispatch remain).
-  **Distribution (run 53):** shipped `/vs/pinecone` (the first *vector DB* /vs
-  page, vs the memory-layer set mem0/zep/letta/langmem), comparison pages 9 → 10,
-  P2 cluster 4 → 5, OG cards 5 → 6, sitemap/llms.txt +1. **Hygiene (run 54):**
-  `docs/progress.md` net-shrunk 22,108 → 20,428 B under the 20 KB cap (§0 Notes
-  trimmed of accreted feature-doc bodies, P3; 0 rows/facts removed). None
-  degraded; prod byte-identical.
+  BIRD 06-19 / Spider 06-17 untouched): DAIL-SQL pool 13 → 14 (+`order-by-limit`,
+  ICP precision@1 18/20); run 52 falsified the lexical-selector avenue for the
+  q8/q10 misses (Δ ≤ 0 reverted) ⇒ §4 #1 pool/lexical half at its **offline
+  ceiling**; shipped `/vs/pinecone` (comparison pages 9 → 10); `docs/progress.md`
+  net-shrunk under the cap. None degraded. (Detail: verification log + git.)
 - 2026-06-22 (runs 48–50) — engine + distribution + hygiene wave (all merged;
-  BIRD 06-19 + Spider 06-17 untouched). **Engine (run 48):** §4 #1 DAIL-SQL pool
-  grown 12 → 13 (+`null-filter`) on a new persona-bench ICP-retrieval probe
-  (`SK-LLM-041 × SK-QUAL-018`); "who never logged in" (q3) flipped off the
-  misleading anti-join NOT-IN demo onto `IS NULL` — ICP precision@1 17/20 → 18/20,
-  held-out 13/13, q8/q10 documented selector-side misses. **Distribution (run
-  49):** 5 older `/vs` pages stopped fabricating a phantom MCP `create_database`
-  verb (10 → 0 occurrences; corrected to `nlqdb_query`/`_list_databases`/`_describe`
-  per `SK-MCP-002`; AEO copy is lifted verbatim by AI search) — 2 new
-  `competitors.test.ts` invariants, web tests 11 → 13. **Hygiene (run 50):**
-  `quality-score-source-of-truth.md` net-shrunk 21,229 → 20,322 B under the D4
-  cap (collapsed 5 redundant directive-bullet rows, links kept). KPI engine
-  quality / UX / onboarding; none degraded.
+  BIRD 06-19 + Spider 06-17 untouched): DAIL-SQL pool 12 → 13 (+`null-filter`,
+  ICP precision@1 17/20 → 18/20); 5 `/vs` pages dropped a phantom MCP
+  `create_database` verb (web tests 11 → 13); `quality-score-source-of-truth.md`
+  net-shrunk under the D4 cap. None degraded. (Detail: verification log + git.)
 - 2026-06-21/22 (runs 37–47) — engine + distribution + hygiene staging wave (all
   merged/additive; BIRD 06-19 + Spider 06-17 untouched). **Engine:** §4 #1
   DAIL-SQL retrieval built end-to-end offline (`few-shot-select.ts` value-mask +

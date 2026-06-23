@@ -10,6 +10,56 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-23 (run 68) — dev.to / lobste.rs: "Your offline LLM eval isn't measuring your model — it's measuring your rate limits" (eval-harness discipline)
+
+**Where:** dev.to + lobste.rs (`ai` / `llm` / `databases`); build-in-public, the
+empirical sibling to the "score against your own schema" post (run 58). The wedge:
+a small benchmark on a free multi-provider chain reports an *availability* number
+wearing an *accuracy* number's clothes. nlqdb mentioned once.
+
+**Title:** Your offline LLM eval isn't measuring your model — it's measuring your rate limits
+
+**Body:**
+
+> We keep a 20-question NL→SQL benchmark over the database shapes our users
+> actually build, and we can run it locally against our free LLM chain (a handful
+> of providers behind a failover router). Yesterday it scored 17/20. Then I ran it
+> again, immediately, with a different decoding setting — and it scored 6/20.
+>
+> The engine didn't get three times worse in ninety seconds. The *providers* got
+> tired. The first run hammered every free tier; the second run hit open circuit
+> breakers on nearly every question and recorded them as "no SQL produced." My
+> "accuracy" number had quietly become an availability number — and at N=20, one
+> exhausted provider is five percentage points.
+>
+> The tell was in the failure reasons. A real engine miss looks like a wrong
+> `JOIN` or a dropped `WHERE` clause — you can read the SQL and see the mistake.
+> A starved run looks like `circuit_open`, `rate_limited`, `network`, and a p50
+> latency of *zero milliseconds*: the model was never called. Those aren't the
+> same event, and averaging them into one percentage hides which one you're
+> looking at.
+>
+> Two fixes, one principle. (1) Throttle between questions so the low-RPM head of
+> your chain doesn't cascade every breaker open — pace the run to measure
+> reasoning, not capacity. With a 4-second gap the same bench scored 21/23, stable.
+> (2) Treat a wall of breaker-opens as a *pause*, not a score: checkpoint, stop,
+> resume when the quota resets — never write `0%` for questions no model saw. The
+> principle underneath both: a tiny offline run on shared free tiers is a smoke
+> test, not a measurement. The number you can defend comes from a larger run, on
+> dedicated keys, spread across quota windows — and you keep the two apart on
+> purpose. (At nlqdb the offline pass is exactly that smoke check; the powered
+> accuracy numbers come from a separate, windowed run that resumes from a
+> checkpoint instead of restarting.)
+>
+> Lesson: before you trust an LLM eval delta, look at the failure reasons and the
+> latency. If your misses are circuit-breaker errors and your p50 is zero, you
+> measured your rate limits. Pace the run, pause on exhaustion, and never let a
+> provider's bad afternoon look like your model's regression.
+
+**Why this advances the north-star:** engine quality / onboarding — a genuinely
+useful eval-discipline post (one nlqdb mention) that names the
+availability-vs-accuracy trap and the throttle-and-resume fix. No engine/funnel
+KPI degrades (the post reports an already-shipped harness behavior).
 ## 2026-06-23 (run 67) — dev.to / lobste.rs: "AI made the internal-tool builder faster. It didn't ask whether you needed the tool." (build-vs-skip)
 
 **Where:** dev.to + lobste.rs (`ai` / `databases` / `lowcode`); pairs with the
@@ -62,62 +112,6 @@ tool at all*. nlqdb mentioned once.
 `/vs/retool` page with one nlqdb mention. No engine/funnel KPI degrades
 (content + one data object only).
 
-## 2026-06-23 (run 66) — dev.to / lobste.rs: "Your most over-documented code is your security code — and that's where stale docs lie loudest" (engineering-doc discipline)
-
-**Where:** dev.to + lobste.rs (`security` / `engineering`); build-in-public,
-the security-flavoured sibling to run 62 (docs narrating code) — the twist is
-*which* code attracts the worst narration, and why it's the most dangerous
-place for it. nlqdb mentioned once.
-
-**Title:** Your most over-documented code is your security code — and that's where stale docs lie loudest
-
-**Body:**
-
-> I net-shrank a feature doc this week — the one for the part of our system that
-> takes an LLM's output and turns it into a real database: typed-plan
-> validation, a DDL compiler, SQL-injection defenses, a rollback primitive. The
-> security-critical surface. And that's exactly where the rot was worst.
->
-> Every one of those decisions had a clean record — what we decided, why, the
-> alternatives we rejected. Good. But each one also carried a "consequence in
-> code" section that had ballooned into a guided tour: *this helper is called at
-> line 237; tests cover schema-present-row-present, schema-missing,
-> row-missing, both-missing; the span is named `db.transaction` with a
-> `statement_count` attribute; `safeRollback` was removed.* Four screens of it.
-> I think I know why security code attracts this: it feels irresponsible to
-> document a SQL-injection guard tersely, so you over-prove it — you narrate
-> every callsite to show you were thorough. But a list of today's callsites and
-> test names is the fastest-rotting prose in the repo, and on a security feature
-> a stale "we validate every interpolation site" reads as a *guarantee* long
-> after someone adds the site that doesn't.
->
-> The load-bearing part of a security decision isn't the tour of where the check
-> runs today. It's the invariant plus the rule that keeps it true: "every
-> identifier passes `assertSafeIdentifier` before interpolation; **a new
-> interpolation site that skips it fails review.**" That sentence is worth more
-> than the whole callsite tour, because it survives refactors — it describes the
-> *gate*, not the current floor plan. I cut the line numbers, the test-case
-> enumerations, and the span names (those live once, in the observability
-> section that owns them) and kept the invariant + the review rule for each of
-> the twenty decisions. Net a few percent lighter; not one "why", rejected
-> alternative, or enforcement rule lost — because none of those were what I was
-> cutting.
->
-> Lesson: the more security-critical the code, the *less* its doc should read
-> like a changelog of the implementation, and the more it should read like the
-> contract a reviewer enforces. "Here's where we check it today" ages into a
-> lie. "Here's the check, and here's why a PR that skips it doesn't merge" stays
-> true through every refactor. (We hold this as a hard rule because the repo is
-> edited by AI agents daily — an agent that adds a new interpolation site will
-> trust a doc that says "every site is checked" unless the doc is really a rule
-> the review gate enforces, not a snapshot of last month's callsites.)
-
-**Why this advances the north-star:** engine quality / onboarding — a genuinely
-useful security-doc-discipline post (one nlqdb mention) that doubles as the
-rationale for the "document the enforced invariant, not the implementation
-tour" rule keeping our agent-edited security surface coherent. No engine/funnel
-KPI degrades (docs-only).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -125,9 +119,10 @@ is title + venue + one-line gist; `git log -p docs/research/distribution-queue.m
 recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
+- run 66 — "Your most over-documented code is your security code — and that's where stale docs lie loudest" (security code attracts callsite-by-callsite "consequence in code" narration because terse feels irresponsible; but a list of today's callsites + test names is the fastest-rotting prose in the repo, and a stale "every site is checked" reads as a guarantee — document the enforced invariant + review rule, not the implementation tour).
+- run 65 — "Two homes for one decision is drift — even inside the same file" (single-source-of-truth isn't only cross-file: a long doc paraphrasing its own decision two headings down is the same drift bug; a pointer can't drift, a paraphrase is a hand-synced copy — link up and add only what's local to the section).
+- run 64 — "Your AI data analyst can't be your app's backend (and vice versa)" (an analysis app is a destination — a human uploads/connects data and reads a chart; a product backend owns the write path and is queried programmatically on every request; "talks to your data in English" is one phrase covering two contracts — pick the one you're buying; anchors `/vs/julius`).
 
-- run 65 — "Two homes for one decision is drift — even inside the same file" (single-source-of-truth at intra-file grain: a doc paraphrasing its *own* decision two headings down is a copy you've volunteered to hand-sync; replace the paraphrase with a pointer up to the canonical block plus only the sentence local to that section; engineering-doc discipline).
-- run 64 — "Your AI data analyst can't be your app's backend (and vice versa)" (the same English-over-data phrase covers two products: an analyst's destination app whose deliverable is a chart, vs. an application's data layer whose deliverable is typed rows it owns and writes to; connecting-to-read and owning-the-write-path are different jobs; anchors `/vs/julius`).
 - run 62 — "Your decision record is just narrating code the reader can already read" (a "Consequence in code" section that lists files, functions, and line numbers is a second, worse copy of the code — untestable and already stale; keep only the why / rejected path / non-obvious constraint, cut the implementation narration; load-bearing decisions only).
 - run 61 — "Quantization made your recall cheaper. It still can't count." (quantization optimises *how cheaply* you retrieve the nearest items, not *what* you can compute over them; scalar/binary/product compression still yields a ranked list, never a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/qdrant`).
 - run 60 — "Your architecture doc is describing a pipeline your code deleted" (a superseded decision record gets fixed in its one canonical place, but every other doc that paraphrased it keeps narrating the dead version; link, don't restate, and grep the ID across all docs when something is superseded).
