@@ -59,53 +59,55 @@ reporting*. nlqdb mentioned once.
 the "Weaviate hybrid search agent memory" P2 keyword) — a genuinely useful
 architectural lesson with one nlqdb mention, anchoring the new `/vs/weaviate`
 page. No engine/funnel KPI degrades (content + data + one OG PNG only).
+## 2026-06-22 (run 58) — dev.to / lobste.rs / HN: "Your text-to-SQL eval is failing the wrong schema" (engine quality, with a number)
 
-## 2026-06-22 (run 57) — dev.to / lobste.rs: "Your 'instrumentation plan' is lying to you — the catalog already shipped" (observability-docs discipline)
+**Where:** dev.to + lobste.rs (`ai` / `databases` / `sql`), optionally Show HN;
+build-in-public, the "benchmark vs production shape" angle, now backed by a fresh
+measured number (0.52 / 0.19 / 0.90). Sibling to run 55's *"measured on schemas
+your users will never build"* — that one introduced the ICP benchmark; this one
+reports the first score. nlqdb mentioned once.
 
-**Where:** dev.to + lobste.rs (`observability` / `engineering`); build-in-public,
-the "stale forward-looking plan" angle (sibling to run 54's single-source-of-truth
-post, applied to a telemetry doc). nlqdb mentioned once.
-
-**Title:** Your "instrumentation plan" is lying to you — the catalog already shipped
+**Title:** Your text-to-SQL eval is failing the wrong schema
 
 **Body:**
 
-> Open a mature repo's observability doc and you'll usually find a section called
-> something like "instrumentation plan" — a table of slices, each with the spans
-> and metrics it *will* add and the CI assertions it *should* have.
-> Forward-looking, sensible, written early.
+> The two benchmarks everyone quotes for text-to-SQL — BIRD and Spider — run
+> over academic databases: 20–100 tables, cryptic column names, the schema of a
+> 1990s university registrar. Our free LLM chain scores **0.52** on BIRD and
+> **0.19** on Spider. Read those numbers cold and you'd conclude the engine
+> can't write SQL.
 >
-> Ours had one too: slices 3–7 — the DB adapter, the LLM router, auth, the query
-> pipeline, the billing webhook. Each row listed its new spans and metrics. All
-> five shipped months ago.
+> So we built a third benchmark out of the schemas our users *actually* create —
+> a SaaS app (users, plans, orders) and an agent-memory store (agents, facts,
+> recalls). Four to six tables. Names a human picked. Twenty hand-written
+> questions with gold SQL, scored by the exact same execution-accuracy harness.
 >
-> The trap: right above that table sat the *actual* catalog — every span and
-> metric name we emit, kept current as we added analytics, MCP, DNS, and billing
-> instrumentation. The "plan" table only ever knew about the original five
-> slices. So we had two lists of span names: one live and complete, one frozen on
-> the day the plan was written — and a reader had no signal which was which. The
-> stale one even looked *more* authoritative, because it had a tidy "CI
-> assertion" column.
+> Same engine, same free models, same prompts. Score: **0.90** (18/20).
 >
-> But those CI-assertion blurbs weren't documentation — they were a paraphrase of
-> assertions that already live in the test files. The test is the spec. Re-typing
-> it into prose just makes a second copy that drifts.
+> That's not the engine getting better between Tuesday and Wednesday. It's the
+> same engine measured against the shape of the problem people actually have.
+> BIRD's 60-table joins and Spider's snake_case riddles are real difficulty —
+> but they're not *your* difficulty if your database is the six tidy tables you
+> designed last week. The academic number was answering a question we weren't
+> asking.
 >
-> So we deleted the slice table. What stays is the only part that's load-bearing
-> *and* not inferable from anything else — the standing rule: every new slice
-> ships its spans/metrics (named from the one catalog), a test that asserts
-> they're emitted, and a budget assertion that fails if it's too slow. Three
-> sentences. The catalog is the catalog; the tests are the spec; the doc holds
-> only the rule that binds them.
+> The two misses are worth more than the 18 hits. Both landed on the same weak
+> model leg, and both on genuinely hard multi-join aggregations: one dropped a
+> `WHERE status = 'paid'` filter the English clearly implied ("paid revenue"),
+> the other used a `LEFT JOIN` where the gold inner-joined, so agents with zero
+> recalls showed up with a count of 0. Those are the failures to chase —
+> value-filters the model silently omits, join semantics it picks plausibly but
+> wrongly — not "can it survive a 60-table schema."
 >
-> Lesson: a "plan" section is a stale list waiting to happen. Once the work
-> ships, delete the plan — or it quietly becomes a worse copy of your catalog and
-> your test suite. Document the *rule*, not the rollout.
+> Lesson: an off-the-shelf benchmark measures the difficulty *it* chose, not the
+> difficulty you ship. If your product constrains the schema shape, score against
+> that shape too — the number you get back might be twice as high, and the
+> handful of failures it surfaces are the ones your users will actually hit.
 
-**Why this advances the north-star:** performance / onboarding (the observability
-doc's front door lands on the live catalog + the durable rule, not a frozen
-rollout list a contributor might trust); a genuinely useful docs-discipline lesson
-with one nlqdb mention. No engine/funnel KPI degrades (docs-only).
+**Why this advances the north-star:** engine quality (the headline pillar) — a
+genuinely useful eval-design lesson carrying a real, first-of-its-kind product
+accuracy number (0.90 on the ICP shape), with one nlqdb mention. No funnel KPI
+degrades (it's a measurement + a post; no prod change).
 
 ## Collapsed — full drafts in git history
 
@@ -115,8 +117,8 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers vendor lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING — deployment and capability are orthogonal axes; anchors `/vs/chroma`).
 - run 55 — "Your text-to-SQL accuracy is measured on schemas your users will never build" (BIRD/Spider run over messy 20–100-table academic schemas, not the small clean ones your users build; we added a third benchmark — hand-authored gold NL→SQL over the ICP shape, same EX scorer, literal-date gold so it never drifts with the clock; anchors persona-bench, SK-QUAL-018).
-- run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING; deployment model and data model are independent axes; anchors `/vs/chroma`).
 - run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no GROUP BY/COUNT/JOIN/HAVING; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
 - run 52 — "Some few-shot retrieval misses can't be fixed with lexical tricks — and measuring *why* is the win" (two pinned ICP misses (q8/q10) are lexically unfixable; stopword filter regresses 18/20 → 17/20, phrase-normalisation flat (18/20), held-out 14/14; the bad demo wins on generic filler + a coincidental masked-value slot, so flat token-overlap can't resolve it — the real fix is SQL-skeleton similarity, a model round-trip; both experiments reverted).
 - run 51 — "The most common query in your product has no row in your benchmark" (error-class taxonomies omit easy high-frequency shapes; "show the 10 most recent signups" retrieved a `GROUP BY` demo; +plain `ORDER BY … LIMIT` row, held-out 13/13 → 14/14, own-query 18/20 held).
@@ -142,6 +144,7 @@ recovers any body.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 
+- run 57 — "Your 'instrumentation plan' is lying to you — the catalog already shipped" (once the work ships, delete the forward-looking plan table or it quietly becomes a worse copy of your live span/metric catalog + test suite; document the standing rule, not the rollout; observability-docs discipline).
 - run 54 — "Your status table is drifting because it answers 'why', not just 'what'" (single-source-of-truth: a status table holds status + one-line essence + a link; the "why" lives once in the feature doc — two homes for one fact is drift with extra steps).
 - run 46 — "We cap every doc at 20 KB — even the marketing backlog" (autonomous-agent context discipline; an over-cap edit must net-shrink; rolling two-draft window over the queue itself).
 - run 45 — "Our waitlist has 79 rows. The honest count is 1." (honest funnel pull: 78/79 waitlist rows are us, genuine-stranger count is 1; gated on engine accuracy, GLOBAL-027).

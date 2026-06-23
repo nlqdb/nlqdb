@@ -24,12 +24,14 @@ DAIL-SQL pool/lexical-selector half is at its **offline ceiling** (run 52:
 q8/q10 ICP misses falsified as lexically-unfixable; held-out precision@1
 **14/14**, own-ICP **18/20**); the only remaining offline #1 gain is
 SQL-skeleton similarity (an LLM round-trip, not a daily lever) or the gated
-dispatch. **Run 55** shipped the persona-bench **dispatch**
-(`quality-eval-persona-bench.yml`): the free chain is now scoreable on nlqdb's
-OWN ICP schemas, ungated by the < 7-day rule (it never touches the canonical
-baseline); free-chain EX + the ICP free-vs-frontier delta land on the first
-post-merge dispatch. Today's non-colliding lever is the funnel's top-of-funnel
-AEO surface (distribution lane).
+dispatch. **Run 58** fired the first persona-bench
+dispatch (`quality-eval-persona-bench.yml`, now on `main`): the free chain
+scores **0.90 EX (18/20) on the ICP shape** (row 8) — **1.7× BIRD, 4.9× Spider**
+— quantifying the GLOBAL-026 bet that clean product-shaped schemas are already
+solved on free LLMs, so the engine bottleneck is the messy *academic* shape, not
+the user's. The **frontier** lane (row 9, the headline delta) is **secret-blocked,
+not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed in
+`blocked-by-human.md`; the delta lands the instant the founder sets it.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -39,11 +41,11 @@ AEO surface (distribution lane).
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev accounts |
 | 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
 | 5 | Anon DBs with a recorded first answer | **113 of 113** | instrument fix (runs 1–3) holding; +12 since 06-15 (119 DBs total, 6 authed). Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
-| | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
+| | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d) · persona-bench 2026-06-22** | | `apps/api/src/gate/eval-baseline.ts` (BIRD/Spider only; persona-bench never overwrites the canonical baseline, `SK-QUAL-018`) |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half (run 40) + **runner `--self-consistency N` / `--sc-temperature T` main-loop wiring (run 41)** — `samples>=2` branch in `runOneQuestion` (separate from `withExecRetry`): `samplePlans`→`voteOverSamples` over `executeRows`→score-the-winner; folds into checkpoint/budget-stop/`attempts`, `.scN` checkpoint variant. The lever is now end-to-end bar the CI `workflow_dispatch` input. EX delta next dispatch** |
-| 8 | persona-bench | **20 q / 2 ICP schemas; CI-dispatchable (run 55); 20/20 golds execute** | run 55 — `quality-eval-persona-bench.yml` (the documented "last half") makes the free chain scoreable on the ICP shape: `workflow_dispatch` `persona: all\|P1\|P2` + `include_frontier`, no fixture/baseline/emit, so ungated by `SK-QUAL-002`'s < 7-day rule. Free-chain EX + ICP free-vs-frontier delta land on the first dispatch (post-merge — `workflow_dispatch` needs the file on `main`). Batch 2 (run 47) grew 12 → 20 q; retrieval precision@1 18/20 (`SK-LLM-041 × SK-QUAL-018`) |
-| 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp); the **ICP-shape** delta is now dispatchable via persona-bench (run 55, `include_frontier`) |
+| 8 | persona-bench free-chain EX | **0.90 (18/20)** | **first measured 2026-06-22 (run 58, GHA 27983818047, `persona=all`)** — the free chain on nlqdb's OWN ICP shape. **1.7× the BIRD canonical (0.52) and 4.9× Spider (0.19)** — the GLOBAL-026 bet, quantified: clean small product schemas ⇒ free LLMs already nail them. Per-leg: gpt-oss-120b 6/6 · gemini-2.5-flash 6/6 · llama-3.3-70b (Groq) **6/8**. Both misses on the Groq leg + both "challenging" multi-join aggregations: q13 drops the `status='paid'` value filter (the `SK-QUAL-014` `literal_diff` pattern) + confuses the group/select name column; q18 `LEFT JOIN`s where the gold inner-joins (0-recall agents appear). p50 490 ms / p95 1687 ms. Batch 2 (run 47) grew 12 → 20 q; retrieval precision@1 18/20 (`SK-LLM-041 × SK-QUAL-018`) |
+| 9 | free-vs-frontier delta | null *(secret-blocked, not dispatch-blocked)* | run 58 dispatched persona-bench with `include_frontier=true`, but the job log shows `OPENROUTER_FRONTIER_API_KEY:` resolves **empty** → only the free lane built, `free_vs_frontier_delta=null`. Root-caused + filed in `blocked-by-human.md` (founder sets the repo secret). The dispatch path itself is proven working; the delta lands the moment the key is set. Agentic lane also not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics (06-22 re-pull)** | | wall-time, all routes (not `/ask`-only) |
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
@@ -75,81 +77,46 @@ AEO surface (distribution lane).
 ## Deltas (recent runs)
 
 - 2026-06-22 (run 59) — **Distribution: shipped `/vs/weaviate`, the
-  enterprise/hybrid-search wing of the "database, not a vector store" wedge.**
-  Worst real number is the genuine-stranger funnel (rows #2/#3 ≈ 0), engine-gated
-  (GLOBAL-027) — but the engine lane is dispatch-gated (BIRD 06-19 / Spider 06-17
-  < 7 d, §5) **and** owned (open PR #475, persona-bench dispatch, run 58), so the
-  non-colliding lever is the funnel's top-of-funnel AEO surface. Run 53 gave the
-  *hosted* vector DB (Pinecone) its page, run 56 the *OSS-first* one (Chroma);
-  Weaviate is the **enterprise / hybrid-search** vector store the comparison-pages
-  FEATURE.md named as the next P2 follow-on — first-class fused BM25 + vector
-  ranking plus built-in multi-tenancy / replication / RBAC, the differentiator
-  axis Pinecone (hosted) and Chroma (OSS-first) don't lead with. Same aggregation
-  wedge: hybrid search ranks the relevant, it has no GROUP BY / JOIN / HAVING.
-  **Δ (measured, distribution lane):** comparison pages **11 → 12**; P2
-  agent-builder cluster **6 → 7** (WS-07 cross-link + WS-08 OG card auto-extend on
-  the P2 persona key); OG cards **7 → 8** (`vs-weaviate.png`, generator
-  deterministic — 7 existing cards byte-identical); llms.txt + sitemap **+1**.
-  Facts web-verified 2026-06-22: BSD-3-Clause self-host (full-featured, free) +
-  Weaviate Cloud (Sandbox / Flex $45 / Plus $280 / Premium), first-class hybrid
-  search, multi-tenancy / replication / RBAC, official `mcp-server-weaviate`, no
-  SQL / joins / aggregations. **KPI:** onboarding / distribution (AEO on "Weaviate
-  hybrid search agent memory"); **none degraded** — content + typed-data + one PNG,
-  prod byte-identical, no engine file touched, BIRD 06-19 / Spider 06-17 untouched;
-  13 competitors invariants green, astro-check 0 errors. Artifact: *"Hybrid search
+  enterprise/hybrid-search wing of the "database, not a vector store" wedge**
+  (after Pinecone *hosted* run 53, Chroma *OSS-first* run 56 — the next P2
+  follow-on named in comparison-pages FEATURE.md). Engine lane dispatch-gated
+  (BIRD 06-19 / Spider 06-17 < 7 d, §5) and owned (PR #475), so the lever was the
+  top-of-funnel AEO surface. Same aggregation wedge: hybrid search ranks the
+  relevant; it has no GROUP BY / JOIN / HAVING. **Δ (distribution):** comparison
+  pages **11 → 12**, P2 cluster **6 → 7**, OG cards **7 → 8** (`vs-weaviate.png`,
+  generator deterministic — 7 existing byte-identical), llms.txt + sitemap **+1**.
+  Facts web-verified 2026-06-22: BSD-3 self-host + Weaviate Cloud (Flex $45 / Plus
+  $280), hybrid search, multi-tenancy / RBAC, official `mcp-server-weaviate`, no
+  SQL / joins / aggregations. **KPI:** onboarding / distribution; **none
+  degraded** — content + one PNG, prod byte-identical, no engine file touched; 13
+  competitors invariants green, astro-check 0 errors. Artifact: *"Hybrid search
   made your recall smarter. It still can't count."*
-- 2026-06-22 (run 57) — **Hygiene (D4 + D5 + P3): `docs/performance.md`
-  net-shrunk 26,378 → 24,441 B (−1,937 B) by collapsing §4's "slice-by-slice
-  instrumentation plan".** Both live lanes were owned by open PRs (engine #472 ·
-  distribution #473) and the canonical BIRD/Spider dispatch is gated (06-19 /
-  06-17 both < 7 d, §5), so the non-colliding lever was doc hygiene. §4's
-  slice-3–7 table re-listed a **stale subset** of the §3 span/metric catalog
-  (P3 — §3 is the single source of truth, per observability/FEATURE.md) and its
-  per-slice "CI assertion" notes duplicate specs that live in the test files
-  (D5: inferable from code). Replaced with the load-bearing standing rule
-  (catalog names + vitest assertion + budget assertion); **0 span/metric names
-  lost** — the two `nlqdb.cache.first_query.lookup`/`commit` spans the §4 table
-  named but §3 omitted were added to the §3 catalog so it stays the single
-  source of truth; observability cross-ref label synced. **KPI:**
-  performance / onboarding (the perf-doc front door lands on the live §3
-  catalog, not a stale plan); **none degraded** — docs-only, prod byte-identical,
-  BIRD 06-19 / Spider 06-17 untouched. Artifact: *"Your 'instrumentation plan'
-  is lying to you — the catalog already shipped."*
-- 2026-06-22 (run 56) — **Distribution: shipped `/vs/chroma`, the OSS-first
-  vector-store wing of the "database, not a vector store" wedge.** Worst real
-  number is the genuine-stranger funnel (rows #2/#3 ≈ 0), engine-gated
-  (GLOBAL-027) — but the engine lane is dispatch-gated (BIRD 06-19 / Spider
-  06-17 < 7 d, §5) **and** owned (open PR #472, persona-bench dispatch), so the
-  non-colliding lever is the funnel's top-of-funnel AEO surface. Run 53 gave
-  the *hosted* vector DB (Pinecone) its page; Chroma is the **open-source /
-  self-hostable** vector store the OSS-first ICP reaches for — the differentiator
-  axis Pinecone can't claim, plus full-text search. Same aggregation wedge: no
-  SQL / joins / GROUP BY. **Δ (measured, distribution lane):** comparison pages
-  **10 → 11**; P2 agent-builder cluster **5 → 6** (WS-07 cross-link + WS-08 OG
-  card auto-extend on the P2 persona key); OG cards **6 → 7** (`vs-chroma.png`,
-  generator deterministic — 6 existing cards byte-identical); llms.txt + sitemap
-  **+1**. Facts web-verified 2026-06-22: Apache-2.0, embedded / self-host /
-  serverless Chroma Cloud, `chroma-mcp` server, vector + full-text + metadata
-  search only (no SQL). **KPI:** onboarding / distribution (AEO on "open source
-  agent memory vector store"); **none degraded** — content + typed-data + one PNG,
-  prod byte-identical, no engine file touched, BIRD 06-19 / Spider 06-17 untouched;
-  13 competitors invariants green, astro-check 0 errors. Artifact: *"'Self-hosted'
-  fixes lock-in, not the query model — your open-source vector store still can't
-  GROUP BY."*
-- 2026-06-22 (run 55) — **Engine measurement: shipped
-  `quality-eval-persona-bench.yml`, the documented "last half" of SK-QUAL-018 —
-  the free chain is now scoreable on nlqdb's OWN ICP-shaped schemas.** A
-  *measurement* with no baseline to overwrite, so it is explicitly **ungated** by
-  `SK-QUAL-002`'s < 7-day rule and needs no upstream fixture (inline DDL via
-  `loadPersonaBench`). **Δ (measurement infra):** persona-bench free-chain EX
-  (row 8) + the **ICP free-vs-frontier delta** (row 9, the GLOBAL-025 headline
-  KPI) go from **undispatchable → a single `workflow_dispatch`** (`persona:
-  all\|P1\|P2`, `include_frontier`); the EX number lands on the first post-merge
-  dispatch. Runner path unchanged, unit-test-verified (eval 17/17, retrieval
-  precision@1 18/20). **KPI:** engine quality; **none degraded** — additive
-  workflow + docs only, prod byte-identical, BIRD 06-19 / Spider 06-17 untouched.
-  Artifact: *"Your text-to-SQL accuracy is measured on schemas your users will
-  never build."*
+- 2026-06-22 (run 58) — **Engine measurement: fired the first persona-bench
+  dispatch → free-chain EX = 0.90 (18/20) on nlqdb's OWN ICP shape** (row 8,
+  previously undispatched; GHA 27983818047, `persona=all`). With #472 merged the
+  workflow is on `main`, so the documented first post-merge dispatch was the
+  highest-value non-colliding lever (both canonical evals dispatch-gated < 7 d;
+  persona-bench never touches the canonical baseline, `SK-QUAL-018`). Per-leg +
+  the two-miss analysis in row 8. **Finding (row 9):** the frontier lane is
+  **secret-blocked, not dispatch-blocked** — `OPENROUTER_FRONTIER_API_KEY` empty
+  in CI, so `free_vs_frontier_delta=null`; filed in `blocked-by-human.md`.
+  **KPI:** engine quality (first product-relevant accuracy number); **none
+  degraded** — measurement only, BIRD 06-19 / Spider 06-17 + `eval-baseline.ts`
+  byte-identical. Artifact: *"Your text-to-SQL eval is failing the wrong schema."*
+- 2026-06-22 (runs 55–57) — persona-bench + distribution + hygiene wave (all
+  merged; BIRD 06-19 / Spider 06-17 untouched). **Engine (run 55):** shipped
+  `quality-eval-persona-bench.yml` (SK-QUAL-018 "last half") — the free chain
+  became dispatchable on the ICP shape via one `workflow_dispatch` (`persona:
+  all\|P1\|P2`, `include_frontier`), ungated by `SK-QUAL-002` (no
+  baseline/fixture/emit); the EX number then landed in run 58 (row 8).
+  **Distribution (run 56):** shipped `/vs/chroma`, the OSS-first vector-store
+  wing of the "database, not a vector store" wedge — comparison pages 10 → 11,
+  P2 cluster 5 → 6, OG cards 6 → 7, llms.txt/sitemap +1; same aggregation wedge
+  (no SQL/JOIN/GROUP BY), facts web-verified. **Hygiene (run 57, D4+D5+P3):**
+  `docs/performance.md` net-shrunk 26,378 → 24,441 B by collapsing §4's stale
+  slice-by-slice plan into the load-bearing standing rule (0 span/metric names
+  lost; §3 catalog stays the single source of truth). None degraded;
+  prod byte-identical.
 - 2026-06-22 (runs 51–54) — engine + distribution + hygiene wave (all merged;
   BIRD 06-19 / Spider 06-17 untouched). **Engine (run 51):** §4 #1 DAIL-SQL pool
   grown 13 → 14 (+`order-by-limit` plain top-N, `SK-LLM-041 × SK-QUAL-018`), q0
