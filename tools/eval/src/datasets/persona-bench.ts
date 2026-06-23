@@ -108,7 +108,7 @@ const AGENT_MEMORY: PersonaSchema = {
     // q8 "most-recalled facts" ranking has no count-tie: an ORDER BY-only gold is
     // scored sequence-strict (score.ts `hasOrderBy`), and an unbroken rank-key tie
     // false-mismatches a semantically-correct prediction that orders the tie
-    // differently (SK-QUAL-018 tie-free-ranked-gold invariant). The recalled-fact
+    // differently (SK-QUAL-019 tie-free-ranked-gold invariant). The recalled-fact
     // SET is unchanged ({1,2,4,6}) so the "never recalled" gold (q12-shape) holds.
     "INSERT INTO recalls (id, fact_id, recalled_at) VALUES " +
       "(1,1,'2026-06-08'),(2,1,'2026-06-09'),(3,1,'2026-06-10'),(9,1,'2026-06-11')," +
