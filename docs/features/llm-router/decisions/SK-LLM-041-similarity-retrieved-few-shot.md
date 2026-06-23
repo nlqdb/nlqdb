@@ -141,28 +141,35 @@ identifiers identically.
   skeletons separable; the discriminating token is the verb, not "never").
   **Second evidence source — persona-bench ICP retrieval** (`tools/eval/test/persona-retrieval.test.ts`,
   the `SK-LLM-041 × SK-QUAL-018` bridge): running `retrievePlanExemplars` over
-  the **20 persona-bench (`SK-QUAL-018`) ICP questions** — nlqdb's OWN target
-  distribution, not synthetic probes — scores **precision@1 18/20**
+  the **23 persona-bench (`SK-QUAL-018`) ICP questions** — nlqdb's OWN target
+  distribution, not synthetic probes — scores **precision@1 19/23**
   against a per-question expected-bucket map: the null-filter row flips q3 ("who
-  never logged in") off the misleading anti-join demo, and the order-by-limit row
-  lands q0 ("the 10 most recent signups") on the plain `ORDER BY … LIMIT` demo —
-  the expected-bucket map for q0 was tightened to drop the `group-order-limit`
-  GROUP-BY stand-in it previously tolerated (17/20 under the corrected contract
-  *without* the row → 18/20 *with* it). The 2 remaining
+  never logged in") off the misleading anti-join demo, the order-by-limit row
+  lands q0 ("the 10 most recent signups") on the plain `ORDER BY … LIMIT` demo,
+  and the count-distinct row's phrasing lands q21 (see next). The 4 remaining
   misses (q8, "the 5 most-recalled facts …"; q10, "which predicates does
   'support-bot' use, and how often" — a filtered GROUP-BY-COUNT with NO HAVING
-  whose top-1 is the `having` demo) are **documented, not absorbed**: both are
-  *selector*-side artifacts (the right buckets exist), so the fix is
-  query-skeleton similarity (DAIL §4.1's second variant), out of scope for a
-  pool-row add. **The cheaper lexical-selector avenue was measured and
-  falsified** (2026-06-22, verification log): a stopword filter regresses ICP
-  precision@1 (18/20 → 17/20) and phrase normalisation leaves it flat (18/20),
-  both holding held-out 14/14 — q10's top-1 `having` wins on generic filler plus
-  a *coincidental masked literal slot* (`val`), which flat masked-token Jaccard
-  cannot separate from a real structural token. So the **only** remaining offline
-  gain on §4 #1 is query-skeleton similarity (needs an LLM round-trip — not an
-  offline lever) or the gated canonical dispatch of `--retrieve-exemplars`; the
-  pool/lexical-selector half is at its offline ceiling. Half (b) adds `buildPlanSystem` + `prompts.ts`'s exported `PLAN_DIRECTIVES`
+  whose top-1 is the `having` demo; q20, a scalar-subquery whose top-1 is `having`
+  by one "more than" token; q22, a filtered join-aggregate whose top-1 is
+  `date-range`) are **documented, not absorbed**: all are *selector*-side
+  artifacts (the right buckets exist), so the fix is query-skeleton similarity
+  (DAIL §4.1's second variant), out of scope for a pool-row add. **q21 was the
+  exception that scopes the run-52 verdict** (2026-06-23): run 68's third "new
+  shape" miss was *not* selector-unfixable — the count-distinct exemplar echoed
+  the SQL keyword "distinct" while q21 (and most users) say "how many *different*
+  X". Rephrasing the demonstration to "how many different cities" — a
+  **pool-curation** lever, not a selector tweak — landed q21 (18/23 → 19/23) and
+  held the held-out probe at 14/14 (it still says "distinct"; the masked skeleton
+  matches across both triggers, so it is generalisation, not a tune to q21). **The
+  cheaper lexical-*selector* avenue was measured and falsified** (2026-06-22): a
+  stopword filter regresses ICP precision@1 and phrase normalisation leaves it
+  flat, both holding held-out 14/14 — q10's top-1 `having` wins on generic filler
+  plus a *coincidental masked literal slot* (`val`), which flat masked-token
+  Jaccard cannot separate from a real structural token. So the **only** remaining
+  offline gain on §4 #1 is query-skeleton similarity (needs an LLM round-trip —
+  not an offline lever) or the gated canonical dispatch of `--retrieve-exemplars`;
+  the *selector* half is at its offline ceiling, while pool-exemplar curation
+  stays a live lever wherever a demonstration's NL phrasing is unrepresentative. Half (b) adds `buildPlanSystem` + `prompts.ts`'s exported `PLAN_DIRECTIVES`
   / `PLAN_FEW_SHOT_HEADER` / `fewShotBlock` (the static `PLAN_FEW_SHOT` rebuilt
   through `fewShotBlock`, byte-identical) + the `_chat-provider.ts` system-prompt
   call + the eval `--retrieve-exemplars` flag (`runner.ts`), with 4 new

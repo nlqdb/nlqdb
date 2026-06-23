@@ -58,55 +58,51 @@ search-shaped on-ramp for the high-volume "database MCP server" query that
 names the provision-vs-connect distinction honestly, one nlqdb mention. No
 engine/funnel KPI degrades (one solve-page data object + doc edits).
 
-## 2026-06-23 (run 72) — dev.to / lobste.rs: "Your BI tool got an AI assistant. Your agent still can't call it." (assistant-in-an-app vs. callable backend)
+## 2026-06-23 (run 74) — dev.to / lobste.rs: "Some of your 'unfixable' few-shot misses are just SQL keywords leaking into your examples"
 
 **Where:** dev.to + lobste.rs (`ai` / `databases` / `llm`); build-in-public,
-the P3-BI sibling to the read-vs-own post (run 70) but on a different axis —
-*where the AI lives*, not what it owns. The hook: open-source BI tools are
-shipping excellent in-app AI assistants, and that's exactly why it's easy to
-mistake one for an agent backend. nlqdb mentioned once. Anchors `/vs/metabase`.
+the direct follow-up to the run-52 post ("some few-shot retrieval misses can't be
+fixed with lexical tricks"). The honest twist: I'd filed three new misses under
+that same verdict — and one of them wasn't. nlqdb mentioned once.
 
-**Title:** Your BI tool got an AI assistant. Your agent still can't call it.
+**Title:** Some of your "unfixable" few-shot misses are just SQL keywords leaking into your examples
 
 **Body:**
 
-> The open-source BI tools have caught up fast. The one I use just shipped an AI
-> assistant that answers questions in plain English, builds a chart from a
-> prompt, writes SQL in the native editor, and even has a "fix it" button when
-> the SQL errors. It answers in Slack. It's genuinely good, and on the
-> open-source edition you get basic SQL generation for free. If a human analyst
-> lives in that tool all day, this is a real upgrade.
+> We retrieve few-shot examples for our NL→SQL engine by matching the question's
+> *masked skeleton* (DAIL-SQL style: blank out the literals and table/column
+> names, compare what's left). When I grew our in-house benchmark by three
+> questions, retrieval precision dropped from 18/20 to 18/23 — three new misses.
+> I almost filed all three under a verdict I'd already written: "selector-side,
+> the masking can't separate them, the only real fix is a model round-trip."
 >
-> Then I tried to wire it into an agent, and the shape gave it away. The AI
-> assistant is a *feature inside a destination app*: it helps a person who is
-> already logged into the dashboard tool, looking at a chart. There's no handle
-> an autonomous agent can grab — no "provision me a database, write these rows,
-> then query it" primitive. The assistant makes the human faster; it isn't a
-> backend the software can call.
+> One of them didn't deserve it. The question was *"how many different referral
+> sources brought in a user?"* — a textbook `COUNT(DISTINCT …)`. But it kept
+> retrieving the plain `GROUP BY COUNT` example instead of the `COUNT(DISTINCT)`
+> one. The reason was embarrassing once I saw it: my `COUNT(DISTINCT)` example
+> question read *"how many **distinct** cities…"*. I'd written the SQL keyword
+> into the natural-language prompt. Real users (and my benchmark) say
+> *"different"* or *"unique"*, almost never *"distinct"* — so the example that was
+> supposed to teach the shape shared no distinguishing token with the questions
+> that need it.
 >
-> That's the distinction the word "AI" papers over. "Natural-language SQL" shows
-> up in two completely different products. One is an assistant bolted onto a BI
-> UI for analysts — read-only over a warehouse someone else maintains, answers
-> rendered as charts in that tool. The other is a queryable data layer: it
-> *owns* the database, takes English for the write as well as the read, and is
-> callable from code, an HTTP API, or an MCP tool an agent invokes — the answer
-> comes back as rows your app embeds, not a dashboard you log in to see.
+> The fix was one word: *"how many **different** cities…"*. That landed the miss
+> (18/23 → 19/23). The part I care about more: my held-out probe — which still
+> phrases it *"distinct countries"* — kept retrieving the same example top-1. So
+> the change generalised across **both** phrasings; it wasn't me overfitting the
+> example to the one question I was staring at.
 >
-> (At nlqdb that callable shape is the whole product: an agent calls one MCP
-> tool, the Postgres materialises on first reference, writes and migrations are
-> diff-previewed in English before they apply, and the result renders in one web
-> component.)
->
-> Lesson: "our BI tool has an AI assistant now" and "an agent can use this as its
-> database" are different claims on different axes. One is about *who* the AI
-> helps (a logged-in human); the other is about *whether software can call it*.
-> Before you point an agent at your analytics stack, ask whether the AI is a
-> feature in an app or a primitive in an API.
+> Lesson: your few-shot demonstration's *question* is data too, and it should read
+> like your users talk, not like the SQL it maps to. A keyword that's natural in
+> the query is often unnatural in the question — and when it leaks, the example
+> quietly stops matching the very inputs it exists to serve. Before you conclude a
+> retrieval miss needs a smarter ranker, check whether the example is speaking SQL
+> at a user who's speaking English.
 
-**Why this advances the north-star:** onboarding / distribution — an
-assistant-in-an-app vs. callable-backend framing (one nlqdb mention) that
-anchors `/vs/metabase` and the P3 analyst/BI lane. No engine/funnel KPI degrades
-(positioning content only).
+**Why this advances the north-star:** engine quality (a concrete, reproducible
+NL→SQL retrieval lesson with a measured before/after), one nlqdb mention. No
+funnel/ops KPI degrades (the change is a default-off eval-only exemplar; prod
+output byte-identical).
 
 ## Collapsed — full drafts in git history
 
@@ -115,6 +111,7 @@ is title + venue + one-line gist; `git log -p docs/research/distribution-queue.m
 recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
+- run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).
 - run 70 — "Your AI BI tool reads your data. It doesn't own it — and can't write to it" (a wave of AI-native BI tools converge on "describe what to track, AI builds the dashboard" — great at it, but "your data" is a read-only connection to a warehouse you already run; they don't own a DB or write to yours; the data layer that provisions the store and takes English for the write *and* the read is a different altitude; anchors `/vs/basedash`).
 - run 69 — "Your sitemap is advertising redirects — and your canonical tag points at one" (a static host serving `route/index.html` makes the bare path a 307, but `canonical`/`og:url`/sitemap/llms.txt all emitted the bare path — 27 redirecting sitemap URLs + a self-referential redirecting canonical; `trailingSlash: "always"` plus a one-place path-normalize in the head layout + URL generators, audit with `curl -sI` over every sitemap URL).
 - run 68 — "Your offline LLM eval isn't measuring your model — it's measuring your rate limits" (a tiny NL→SQL bench on a free multi-provider chain scored 17/20 then 6/20 ninety seconds later; the engine didn't regress, the providers got tired — `circuit_open`/`rate_limited` errors with p50=0ms are availability, not accuracy; throttle to measure reasoning, pause-and-resume on exhaustion, keep the smoke test apart from the powered windowed run).
@@ -165,10 +162,7 @@ recovers any body.
 - run 41 — "A live demo of analytical agent memory — the GROUP BY, and the SQL it ran" (fixture-backed `/agents` round-trip, no signup; typed-plan trust boundary).
 - run 30 — "Show HN: Analytical memory for AI agents — a database it can GROUP BY, not just recall" (HN + r/AI_Agents/r/LocalLLaMA → `/agents`).
 - run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no `GROUP BY`/`COUNT`/`JOIN`/`HAVING`; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
-- run 30 — "Why your AI agent's memory should be a database, not a vector store" (WS-09 centrepiece; opens on the Replit incident, sub-target BIRD/Spider shown, open harness; → `/agents`).
-- run 29 — "Your AI agent's memory, as four Postgres tables (no schema design required)" (the `agent_memory_v1` preset is the argument; docs page + dev.to).
-- run 28 — agent-memory social/note drafts: "the one bright column" matrix teaser + "'Source-available' isn't a trap if you read the license" (FSL-1.1).
-- run 27 — "Mem0 vs Zep vs Letta vs nlqdb — what can your agent actually DO with its memory?" (the capability matrix is the whole post; honest ◐ self-host row).
+- runs 27–30 — agent-memory wave (WS-09): "Why your AI agent's memory should be a database, not a vector store" (Replit-incident open, BIRD/Spider sub-target, open harness), "…as four Postgres tables (no schema design)" (`agent_memory_v1` preset), the "one bright column" matrix teaser + FSL-1.1 license note, and the Mem0/Zep/Letta/nlqdb capability matrix → `/agents`. Bodies in git history.
 
 ### Helpful-answer + comparison drafts (Reddit / Show HN)
 
