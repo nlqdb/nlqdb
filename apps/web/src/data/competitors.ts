@@ -1248,6 +1248,118 @@ export const COMPETITORS: Competitor[] = [
       why: "The HAVING-filtered aggregation Weaviate's hybrid search can't run — it ranks the most relevant objects, not a GROUP BY / COUNT with a threshold; nlqdb answers it as SQL over the agent's own memory.",
     },
   },
+  {
+    slug: "qdrant",
+    name: "Qdrant",
+    url: "https://qdrant.tech",
+    // Agent-memory cluster (vector-store wing, Rust/performance + permissive
+    // license) anchored in docs/competitors.md §Qdrant. Facts verified via web
+    // search + the official pricing page + the qdrant/mcp-server-qdrant repo
+    // 2026-06-23: Apache-2.0 open source (self-host full-featured and free —
+    // the most permissive licence of the vector cluster), plus Qdrant Cloud —
+    // Free (0.5 vCPU / 1GB RAM / 4GB disk, single node, free forever) ·
+    // Standard (usage-based hourly, dedicated, 99.5% SLA) · Premium (min spend,
+    // SSO, private VPC, 99.9% SLA) · Hybrid Cloud (managed on your infra) ·
+    // Private Cloud (air-gapped). Written in Rust. Primitives: HNSW vector
+    // search, scalar/binary/product quantization (memory-efficient recall),
+    // native hybrid search (dense + sparse fused via the Query API), metadata
+    // filtering, REST + gRPC. No SQL, no joins, no GROUP BY aggregations, no
+    // transactions across collections. Official `mcp-server-qdrant` ships
+    // (`qdrant-store` + `qdrant-find` semantic-memory tools).
+    tagline:
+      "High-performance, Rust-built open-source vector database — HNSW search, scalar/binary/product quantization, native hybrid (dense + sparse) search; self-host on Apache-2.0 or run on Qdrant Cloud.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Qdrant if your agent recalls by fast, memory-efficient vector search — quantized HNSW with dense-plus-sparse hybrid ranking, self-hostable on Apache-2.0. Pick nlqdb if your agent must aggregate what it stored: GROUP BY, JOIN, and HAVING over typed rows it provisions in plain English. Qdrant ranks the relevant cheaply; nlqdb counts, groups, and reports.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not just rank relevant items.",
+      "You store structured rows the agent later reports over ('calls per tool this week').",
+      "You want exact filters and counts, not a quantized similarity ranking, over memory.",
+      "The schema should evolve as the agent learns ('add a `priority` field') via English.",
+    ],
+    whenChooseThem: [
+      "Your agent recalls by vector search and you want quantization to cut RAM and cost.",
+      "You need native hybrid search — dense plus sparse vectors fused in one Query API call.",
+      "Raw recall throughput and self-hosting on a permissive Apache-2.0 licence matter most.",
+      "RAG context or semantic retrieval is the job, not relational reporting over rows.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Qdrant takes a dense vector, a sparse vector, or a hybrid blend plus a metadata filter; it has no English-to-SQL compiler.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Qdrant returns ranked nearest points; it ships no SQL engine, no joins, and no transactions across collections. Quantization makes recall cheaper, not relational.",
+      },
+      {
+        feature: "Vector / semantic similarity search over memory",
+        us: "no",
+        them: "shipped",
+        note: "Quantized HNSW nearest-neighbour over embeddings is core to Qdrant; nlqdb stores typed rows and ships no embedding search today.",
+      },
+      {
+        feature: "Hybrid search (dense + sparse vectors) over stored documents",
+        us: "partial",
+        them: "shipped",
+        note: "Native dense + sparse fusion via the Query API is Qdrant's headline; nlqdb matches text with SQL LIKE / pattern predicates, not a fused-rank index.",
+      },
+      {
+        feature: "Filtering on retrieval",
+        us: "partial",
+        them: "shipped",
+        note: "nlqdb filters with exact SQL WHERE over typed columns; Qdrant filters by payload metadata around the nearest-neighbour search.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Qdrant's `mcp-server-qdrant` stores and finds memories by vector (`qdrant-store` / `qdrant-find`); nlqdb's `nlqdb_query` materialises Postgres on first reference and runs aggregating SQL.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "shipped",
+        note: "Qdrant is Apache-2.0 and self-hosts full-featured; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Qdrant for vector recall and nlqdb for analytics over the same agent memory?",
+        a: "Yes — they compose. Qdrant handles 'find the points most relevant to this question' via quantized HNSW with dense-plus-sparse ranking; nlqdb handles 'how many tools did the agent call per category this week' via SQL. Run Qdrant as the recall layer and nlqdb as the analytical store the agent queries with GROUP BY / JOIN / HAVING.",
+      },
+      {
+        q: "Does nlqdb do vector or hybrid search like Qdrant?",
+        a: "No. nlqdb is Postgres-first — typed rows queried with exact SQL, not quantized embeddings fused with sparse vectors and ranked by relevance. If fast, memory-efficient semantic search over text is the job, Qdrant is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions.",
+      },
+      {
+        q: "Qdrant is Apache-2.0 and self-hostable — is nlqdb open source too?",
+        a: "nlqdb is source-available under FSL 1.1 (Functional Source License), which auto-converts to Apache 2.0 two years after each release; Qdrant is Apache-2.0 today and self-hosts full-featured. Both let you keep your data; they differ on the query model, not on lock-in — Qdrant does quantized vector recall, nlqdb does relational SQL.",
+      },
+      {
+        q: "Qdrant has payload filtering — isn't that the same as nlqdb's SQL WHERE?",
+        a: "Not quite. Qdrant's payload filter narrows candidates around a nearest-neighbour search, so the result is still a relevance ranking. nlqdb runs exact SQL — WHERE, GROUP BY, COUNT, JOIN — and returns a precise result set, not the top-k most relevant points. Different jobs: one ranks the relevant, the other computes answers.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Qdrant the way it can with nlqdb?",
+        a: "Qdrant's `mcp-server-qdrant` can store and find memories by vector, but the agent gets a vector collection, not a relational database it can aggregate or migrate. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent stands up and reports over its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "calls per tool category this week, only categories above 20 calls",
+      why: "The HAVING-filtered aggregation Qdrant's quantized vector search can't run — it ranks the most relevant points, not a GROUP BY / COUNT with a threshold; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {

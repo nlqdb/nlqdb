@@ -50,7 +50,7 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 7 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7) |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 8 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7); run 61 +`/vs/qdrant` (Rust/quantization wing — P2 cluster 7→8, closes the top-tier vector-DB brand cluster) |
 | | *Messaging track — WS-\** | 11 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
@@ -78,32 +78,33 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 - 2026-06-23 (run 62) — **Hygiene (D4 + D5 + P3): net-shrank
   `docs/features/anonymous-mode/FEATURE.md` 38,134 → 34,160 B (−3,974 B, ~10%).**
-  Doc hygiene was the non-colliding lever: the comparison-pages distribution lane
-  was taken (PR #478, `/vs/qdrant`, run 61) and both engine evals are dispatch-gated
-  (BIRD 06-19 / Spider 06-17, < 7 d, §5). Target was the largest FEATURE.md (a
-  mandatory pre-read, so tightening it compounds every time an agent touches
-  `apps/web` / `cli` / anon-adopt). The cut was pure **D5 implementation-narration**:
-  SK-ANON-012's 7-bullet "Consequence in code" diary and SK-ANON-014's 6-bullet
-  file/line-number diary (e.g. "fallback at line 615-629") collapsed to the
-  load-bearing invariants (route-top `peekDevice` enforcement, `auth_required`
-  envelope, commit-after-success, server-primary after-hook adoption + client
-  fallbacks; the nullable `database_id` column + RETURNING/back-fill/replay read),
-  and SK-ANON-008's hero-bypass tail (a P3 duplication of SK-ANON-001) collapsed to
-  a pointer. **0 decisions lost** — all 14 SK-ANON-* IDs + their five fields + all 7
-  GLOBAL refs + Open questions + Happy path intact (`grep` verified). **KPI:**
-  engine quality / onboarding (agent-context discipline); **none degraded** —
-  docs-only, prod byte-identical, BIRD 06-19 / Spider 06-17 untouched. Artifact:
-  *"Your decision record is just narrating code the reader can already read."*
+  Cut pure **D5 implementation-narration** (SK-ANON-012/014 file/line diaries →
+  load-bearing invariants; SK-ANON-008 hero-bypass tail, a P3 dup, → a pointer).
+  **0 decisions lost** — all 14 SK-ANON-* IDs + five fields + 7 GLOBAL refs intact.
+  **KPI:** onboarding; **none degraded** — docs-only, prod byte-identical.
+- 2026-06-23 (run 61) — **Distribution: shipped `/vs/qdrant`, the
+  Rust/quantization wing of the "database, not a vector store" wedge** — the
+  P2 follow-on the comparison-pages FEATURE named, closing the canonical
+  vector-DB cluster (Pinecone run 53, Chroma run 56, Weaviate run 59, Qdrant
+  *Rust/quantization* now). Engine lane dispatch-gated, so the lever was AEO. Same
+  aggregation wedge: quantized HNSW + dense+sparse hybrid makes recall cheaper;
+  it still has no GROUP BY / JOIN / HAVING. **Δ (distribution):** comparison
+  pages **12 → 13**, P2 cluster **7 → 8**, OG cards **8 → 9** (`vs-qdrant.png`;
+  generator deterministic), llms.txt + sitemap **+1**. Facts web-verified
+  2026-06-23 (Apache-2.0 self-host + Qdrant Cloud, Rust, scalar/binary/product
+  quantization, native dense+sparse hybrid, official `mcp-server-qdrant`).
+  **KPI:** onboarding / distribution; **none degraded** — content + one PNG, no
+  engine file touched; 130 web tests + 14 competitors invariants green,
+  astro-check 0 errors. Artifact: *"Quantization made your recall cheaper. It
+  still can't count."*
 - 2026-06-22 (runs 59–60) — distribution + hygiene wave (all merged; BIRD 06-19 /
   Spider 06-17 untouched). **Distribution (run 59):** shipped `/vs/weaviate`, the
   enterprise/hybrid-search wing of the "database, not a vector store" wedge —
   comparison pages 11 → 12, P2 cluster 6 → 7, OG cards 7 → 8, llms.txt/sitemap +1;
   same aggregation wedge (hybrid search ranks; no GROUP BY/JOIN/HAVING), facts
   web-verified. **Hygiene (run 60, D4+P1/P3):** `docs/architecture.md` net-shrunk
-  34,809 → 33,789 B + fixed §3.6.4/§3.6.5 restating two superseded decisions
-  verbatim (`SK-ASK-003`/`SK-HDC-005` → merged `routeAsk`; `SK-HDC-006` dup) —
-  collapsed to invariant + FEATURE pointer, 0 canonical decisions lost. None
-  degraded; prod byte-identical.
+  + fixed §3.6.4/§3.6.5 restating superseded decisions (`SK-ASK-003`/`SK-HDC-005`/
+  `SK-HDC-006`) → invariant + pointer, 0 lost. None degraded; prod byte-identical.
 - 2026-06-22 (runs 55–58) — persona-bench + distribution + hygiene wave (all
   merged; BIRD 06-19 / Spider 06-17 untouched). **Engine (runs 55, 58):** shipped
   `quality-eval-persona-bench.yml` (SK-QUAL-018 "last half", ungated by

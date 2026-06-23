@@ -165,6 +165,12 @@ OSS + managed vector DB.
 OSS-first vector DB with a new managed cloud offering.
 - **Threat vector:** Medium for P2, particularly for devs who prefer OSS-first.
 
+### Qdrant — https://qdrant.tech
+High-performance Rust vector DB / search engine, Apache-2.0; managed Qdrant Cloud (free tier · usage-based Standard · Premium) + Hybrid/Private Cloud. HNSW + scalar/binary/product quantization, native hybrid search (dense + sparse via the Query API), REST + gRPC. Official `mcp-server-qdrant` (`qdrant-store` / `qdrant-find`). Detail in `competitors.ts`.
+- **Overlaps with:** P2 retrieval use cases — the Rust/performance + permissive-license wing of the vector-store cluster.
+- **Gap nlqdb exploits:** Vector-only — no SQL, joins, or aggregations. Quantization makes recall cheaper and faster; it still can't GROUP BY / COUNT / HAVING over what the agent stored. The "database, not a vector store" wedge.
+- **Threat vector:** Medium for P2, particularly for devs who self-host on Apache-2.0. `/vs/qdrant` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
+
 ### Postgres MCP servers (community + vendor) — e.g. `@modelcontextprotocol/server-postgres`, Supabase MCP
 Let an agent run read (and sometimes write) SQL against a *pre-provisioned* Postgres.
 - **Overlaps with:** P2.
