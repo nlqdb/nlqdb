@@ -77,28 +77,19 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 ## Deltas (recent runs)
 
 - 2026-06-22 (run 59) — **Distribution: shipped `/vs/weaviate`, the
-  enterprise/hybrid-search wing of the "database, not a vector store" wedge.**
-  Worst real number is the genuine-stranger funnel (rows #2/#3 ≈ 0), engine-gated
-  (GLOBAL-027) — but the engine lane is dispatch-gated (BIRD 06-19 / Spider 06-17
-  < 7 d, §5) **and** owned (open PR #475, persona-bench dispatch, run 58), so the
-  non-colliding lever is the funnel's top-of-funnel AEO surface. Run 53 gave the
-  *hosted* vector DB (Pinecone) its page, run 56 the *OSS-first* one (Chroma);
-  Weaviate is the **enterprise / hybrid-search** vector store the comparison-pages
-  FEATURE.md named as the next P2 follow-on — first-class fused BM25 + vector
-  ranking plus built-in multi-tenancy / replication / RBAC, the differentiator
-  axis Pinecone (hosted) and Chroma (OSS-first) don't lead with. Same aggregation
-  wedge: hybrid search ranks the relevant, it has no GROUP BY / JOIN / HAVING.
-  **Δ (measured, distribution lane):** comparison pages **11 → 12**; P2
-  agent-builder cluster **6 → 7** (WS-07 cross-link + WS-08 OG card auto-extend on
-  the P2 persona key); OG cards **7 → 8** (`vs-weaviate.png`, generator
-  deterministic — 7 existing cards byte-identical); llms.txt + sitemap **+1**.
-  Facts web-verified 2026-06-22: BSD-3-Clause self-host (full-featured, free) +
-  Weaviate Cloud (Sandbox / Flex $45 / Plus $280 / Premium), first-class hybrid
-  search, multi-tenancy / replication / RBAC, official `mcp-server-weaviate`, no
-  SQL / joins / aggregations. **KPI:** onboarding / distribution (AEO on "Weaviate
-  hybrid search agent memory"); **none degraded** — content + typed-data + one PNG,
-  prod byte-identical, no engine file touched, BIRD 06-19 / Spider 06-17 untouched;
-  13 competitors invariants green, astro-check 0 errors. Artifact: *"Hybrid search
+  enterprise/hybrid-search wing of the "database, not a vector store" wedge**
+  (after Pinecone *hosted* run 53, Chroma *OSS-first* run 56 — the next P2
+  follow-on named in comparison-pages FEATURE.md). Engine lane dispatch-gated
+  (BIRD 06-19 / Spider 06-17 < 7 d, §5) and owned (PR #475), so the lever was the
+  top-of-funnel AEO surface. Same aggregation wedge: hybrid search ranks the
+  relevant; it has no GROUP BY / JOIN / HAVING. **Δ (distribution):** comparison
+  pages **11 → 12**, P2 cluster **6 → 7**, OG cards **7 → 8** (`vs-weaviate.png`,
+  generator deterministic — 7 existing byte-identical), llms.txt + sitemap **+1**.
+  Facts web-verified 2026-06-22: BSD-3 self-host + Weaviate Cloud (Flex $45 / Plus
+  $280), hybrid search, multi-tenancy / RBAC, official `mcp-server-weaviate`, no
+  SQL / joins / aggregations. **KPI:** onboarding / distribution; **none
+  degraded** — content + one PNG, prod byte-identical, no engine file touched; 13
+  competitors invariants green, astro-check 0 errors. Artifact: *"Hybrid search
   made your recall smarter. It still can't count."*
 - 2026-06-22 (run 58) — **Engine measurement: fired the first persona-bench
   dispatch → free-chain EX = 0.90 (18/20) on nlqdb's OWN ICP shape** (row 8,
