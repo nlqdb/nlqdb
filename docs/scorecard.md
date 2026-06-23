@@ -76,6 +76,20 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
+- 2026-06-23 (run 75) — **Distribution: shipped `/solve/database-claude-cursor-can-query`
+  (7th solve page, P2 MCP-host wedge).** Engine canonical dispatch-gated and the
+  offline-retrieval / comparison / doc-hygiene lanes were already in open PRs
+  (#491 / #489 / #490), so this run took the non-colliding **solve-page** lane.
+  Honest wedge vs every DB-MCP server (Postgres / SQL Server / SQLite — all
+  "paste your connection string"): nlqdb's `nlqdb_query` provisions Postgres
+  from the agent's first English goal (no string, no schema), create implicit in
+  query (`SK-MCP-002`); the inverse trade-off (can't query a DB you already run)
+  stated honestly. Also fixed the stale solve FEATURE status (5 → 7; run-25
+  analytical-over-memory page never listed) + logged the **P4 persona gap** as
+  gap-blocked (wants an NL layer over their own DB, not shipped), not unwritten.
+  **Δ:** solve pages **6 → 7**, llms.txt/sitemap +1. **KPI:** onboarding /
+  distribution; **none degraded** — one data object + doc edits, no
+  engine/funnel/ops file touched; 130 web + 17 solve-data tests + biome green.
 - 2026-06-23 (run 73) — **Doc-hygiene (D4 + D5 + P3): net-shrank the largest
   non-exempt doc, `docs/runbook.md` 47,451 → 46,685 B (−766 B), prod
   byte-identical.** Engine lane dispatch-gated (BIRD 06-19 / Spider 06-17 both
@@ -109,23 +123,16 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   sitemap +1. **KPI:** onboarding / distribution; **none degraded** — one data
   object + doc edits, no engine/funnel/ops file touched; 130 web tests +
   astro-check 0 errors + biome green.
-- 2026-06-23 (run 70) — **Distribution: shipped `/vs/basedash` — and the
-  web-verification corrected a stale competitor read.** Engine lane dispatch-gated
-  (BIRD 06-19 / Spider 06-17 both < 7d), so the lever was AEO. Basedash had
-  **repositioned** (verified 2026-06-23 — basedash.com + /pricing) from "admin UI
-  with AI" (the stale `docs/competitors.md` P4 row) to an **AI-native BI platform**:
-  NL → dashboards, an AI data analyst with daily Insights briefings, a semantic
-  layer, chart embedding, MCP server, 750+ read-only sources; no write/edit, no DB
-  provisioning; 14-day trial → $1,000/mo (≤25 seats, no free tier); SOC 2 Type II.
-  Shipped as **P3 analyst** with the honest wedge: read-only BI over *your existing*
-  data vs. nlqdb owning the DB (provision + NL writes/migrations with diff-preview)
-  and embedding an answer element, not a dashboard. Both `competitors.md` entry +
-  threat-matrix row corrected. **Δ:** comparison pages **15 → 16**, llms.txt/sitemap
-  +1. **KPI:** onboarding / distribution; **none degraded** — one data object + doc
-  edits, no engine/funnel/ops file touched; 130 web tests + astro-check 0 errors +
-  biome green. Doc-hygiene rider: `competitors.md` (already > 20 KB) net-shrunk
-  −40 B under D4 (condensed Zep/Letta/LangMem architecture clauses → their canonical
-  `/vs` pages, dropped duplicated Outerbase/AYD/Wren pointers).
+- 2026-06-23 (run 70) — **Distribution: shipped `/vs/basedash`; web-verification
+  corrected a stale competitor read.** AEO lever (engine dispatch-gated). Basedash
+  had **repositioned** (verified 2026-06-23) from "admin UI with AI" (the stale P4
+  row) to an **AI-native BI platform** (NL → dashboards, AI analyst, semantic layer,
+  750+ read-only sources; no write/DB-provisioning; $1,000/mo, no free tier).
+  Shipped **P3 analyst**, honest wedge: read-only BI over *your existing* data vs.
+  nlqdb owning the DB (provision + NL writes with diff-preview). `competitors.md`
+  entry + threat-matrix row corrected. **Δ:** comparison pages **15 → 16**,
+  llms.txt/sitemap +1. None degraded — data object + doc edits. Rider:
+  `competitors.md` (> 20 KB) net-shrunk −40 B under D4.
 - 2026-06-23 (run 69) — **AEO/SEO hygiene: every crawler-advertised URL now
   resolves to the 200 directly (was a 307).** CF serves `<route>/index.html`, so
   the trailing-slash URL is the 200 and the bare path 307-redirects — but
@@ -145,15 +152,12 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   verification log). The 3 new shapes are selector-side misses (precision@1
   18/20 → 18/23). **KPI:** engine quality; **none degraded** — fixture + test
   only; BIRD/Spider/canonical baselines byte-untouched; 265 eval green.
-- 2026-06-23 (run 67) — **Distribution: shipped `/vs/retool` (Retool), the
-  internal-tools incumbent — first P4 comparison since Outerbase, the next slice
-  after Julius (run 64) by the comparison-pages decision rule (threat × keyword
-  volume).** Engine lane dispatch-gated, so the lever was AEO. Honest wedge:
-  Retool is a destination low-code **builder** (a human assembles an admin UI over
-  an existing DB); nlqdb provisions/owns the DB and embeds one element / agent API
-  ("skip building the admin UI"). Facts web-verified 2026-06-23. **Δ:** comparison
-  pages **14 → 15**, llms.txt/sitemap +1. **None degraded** — one data object +
-  FEATURE status, no engine/funnel/ops file touched. Next P4 slice: Basedash.
+- 2026-06-23 (run 67) — **Distribution: shipped `/vs/retool`, the internal-tools
+  incumbent.** AEO lever (engine dispatch-gated). Honest wedge: Retool is a
+  destination low-code **builder** over an existing DB; nlqdb provisions/owns the
+  DB and embeds one element / agent API. Comparison pages **14 → 15**,
+  llms.txt/sitemap +1; facts web-verified. None degraded — one data object +
+  FEATURE status.
 - 2026-06-23 (runs 62, 65, 66) — **Doc-hygiene wave (D4 + D5 + P3), prod
   byte-identical.** Run 66 net-shrank the largest D4 violation,
   `hosted-db-create/FEATURE.md` 35,376 → 34,099 B (−1,277 B): D5
@@ -163,21 +167,12 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   gate clean. Run 65 `ask-pipeline/FEATURE.md` −1,257 B (22 SK-ASK-* intact); run
   62 `anonymous-mode/FEATURE.md` −3,974 B (14 SK-ANON-* intact). **KPI:**
   onboarding; **none degraded** — docs-only.
-- 2026-06-23 (run 64) — **Distribution: shipped `/vs/julius` (Julius AI), the
-  first P3-analyst comparison after the vector-DB cluster closed.** Engine lane
-  dispatch-gated, so the lever was AEO; honest wedge: Julius is a destination
-  data-analyst **app** (CSV/Sheets → charts + Python, analysis-only), nlqdb is
-  the embeddable/agent **backend** that owns the DB. **Δ:** comparison pages
-  **13 → 14**, llms.txt/sitemap +1; facts web-verified 2026-06-23. **None
-  degraded** — one data object + FEATURE status, no engine/funnel/ops file
-  touched.
-- 2026-06-23 (run 61) — **Distribution: shipped `/vs/qdrant`, the
-  Rust/quantization wing of the "database, not a vector store" wedge** — closing
-  the canonical vector-DB cluster (Pinecone/Chroma/Weaviate/Qdrant). Engine lane
-  dispatch-gated, so the lever was AEO; same aggregation wedge (quantized hybrid
-  recall, no GROUP BY/JOIN/HAVING). **Δ:** comparison pages **12 → 13**, P2
-  cluster **7 → 8**, OG cards **8 → 9**, llms.txt/sitemap +1; facts web-verified
-  2026-06-23. **None degraded** — content + one PNG, no engine file touched.
+- 2026-06-23 (runs 61, 64) — **Distribution: shipped `/vs/qdrant` (closing the
+  canonical vector-DB cluster Pinecone/Chroma/Weaviate/Qdrant) + `/vs/julius`
+  (first P3-analyst comparison), both AEO levers while engine stayed
+  dispatch-gated.** Comparison pages **12 → 14**, P2 cluster 7 → 8, OG cards
+  8 → 9, llms.txt/sitemap +2; facts web-verified. None degraded — data objects
+  + one PNG, no engine/funnel/ops file touched.
 - 2026-06-22 (runs 59–60) — distribution + hygiene wave (all merged; BIRD 06-19 /
   Spider 06-17 untouched). **Distribution (run 59):** shipped `/vs/weaviate`, the
   enterprise/hybrid-search wing of the "database, not a vector store" wedge —
