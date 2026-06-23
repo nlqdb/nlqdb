@@ -13,6 +13,15 @@
 // The buckets are picked from evidence, not taste: `SK-QUAL-014` classified the
 // BIRD mismatch mass as aggregation/DISTINCT **grain** + subquery **shape** +
 // GROUP BY/HAVING, so every row below targets one of those structural classes.
+// The `null-filter` row (13th) was added on a second evidence source — the
+// persona-bench (`SK-QUAL-018`) ICP-retrieval probe (`tools/eval`): nlqdb's own
+// "who never logged in" query retrieved the anti-join NOT-IN demo, the wrong
+// shape for a plain `IS NULL` filter (ICP retrieval precision@1 17/20 → 18/20).
+// The `order-by-limit` row (14th) was added on the same evidence source: the
+// most common ICP dashboard shape — plain top-N ("the 10 most recent signups",
+// persona-bench q0) — had no pool row, so it retrieved `group-order-limit`
+// (GROUP BY → ORDER BY agg → LIMIT), teaching a spurious aggregation a plain
+// `ORDER BY … LIMIT` doesn't have.
 // Rows deliberately span domains and dialects: masking is what lets a pool row
 // written over `employees` help a goal over `students`, so a domain-varied pool
 // is a feature, not noise.
@@ -38,9 +47,13 @@ export type PlanBucket =
   | "count-distinct"
   | "scalar-subquery"
   | "in-subquery"
+  | "anti-join"
   | "join-aggregate"
   | "group-max"
+  | "group-order-limit"
+  | "order-by-limit"
   | "null-safe-min"
+  | "null-filter"
   | "ratio-cast"
   | "date-range";
 
@@ -81,10 +94,19 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
     "SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) > 5",
   ),
   ex(
+    // The demonstration question says "how many **different** cities", not "how
+    // many distinct cities": "distinct" is the SQL keyword leaking into the NL
+    // prompt, but real COUNT(DISTINCT) questions far more often read "how many
+    // different/unique X". Phrasing the exemplar the way users phrase it lands
+    // nlqdb's own "how many different referral sources" ICP query (persona-bench
+    // q21) on this row instead of `group-by-count` (precision@1 18/23 → 19/23),
+    // while the held-out probe — which still says "distinct countries" — keeps
+    // retrieving this row top-1 (pool test 14/14): the masked skeleton matches
+    // across BOTH triggers, so this is generalisation, not a tune to q21.
     "count-distinct",
     "sqlite",
     "CREATE TABLE customers (id INTEGER, name TEXT, city TEXT)",
-    "How many distinct cities do customers come from?",
+    "How many different cities do customers come from?",
     "SELECT COUNT(DISTINCT city) FROM customers",
   ),
   ex(
@@ -102,6 +124,17 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
     "SELECT name FROM customers WHERE id IN (SELECT customer_id FROM orders)",
   ),
   ex(
+    // The negated twin of in-subquery: NOT IN over the FK, NULL-guarded so a
+    // NULL in the subquery can't silently empty the result (the classic NOT IN
+    // trap). Without this row a "never …" goal retrieves the *positive*
+    // in-subquery demo — the un-negated shape, actively the wrong lesson.
+    "anti-join",
+    "sqlite",
+    "CREATE TABLE customers (id INTEGER, name TEXT);\nCREATE TABLE orders (id INTEGER, customer_id INTEGER)",
+    "Which customers have never placed an order? Return their name.",
+    "SELECT name FROM customers WHERE id NOT IN (SELECT customer_id FROM orders WHERE customer_id IS NOT NULL)",
+  ),
+  ex(
     "join-aggregate",
     "sqlite",
     "CREATE TABLE customers (id INTEGER, name TEXT);\nCREATE TABLE orders (id INTEGER, customer_id INTEGER, amount REAL)",
@@ -116,11 +149,57 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
     "SELECT department, MAX(salary) FROM employees GROUP BY department",
   ),
   ex(
+    // Top-N of an aggregate (GROUP BY → ORDER BY agg → LIMIT) — distinct from
+    // group-max (per-group extremum) and null-safe-min (whole-table extremum):
+    // here the grain is "the group with the largest count". A "which X has the
+    // most Y" goal otherwise retrieves group-by-count or group-max, neither of
+    // which demonstrates the order-by-count-limit shape.
+    "group-order-limit",
+    "postgres",
+    "CREATE TABLE employees (id INTEGER, name TEXT, department TEXT)",
+    "Which department has the most employees? Return the department.",
+    "SELECT department FROM employees GROUP BY department ORDER BY COUNT(*) DESC LIMIT 1",
+  ),
+  ex(
+    // Plain top-N — `ORDER BY <col> DESC LIMIT n`, NO GROUP BY, no aggregate.
+    // The single most common ICP dashboard shape ("show the N most recent /
+    // latest X"), and the one structural class the pool could not demonstrate:
+    // a plain top-N goal otherwise retrieves `group-order-limit` (GROUP BY →
+    // ORDER BY agg → LIMIT), which teaches a spurious GROUP BY/COUNT the query
+    // doesn't have. Ordered after `group-order-limit` so a genuinely *grouped*
+    // top-N ("which X has the most Y") still breaks an exact masked-Jaccard tie
+    // toward the aggregate-bearing demo (earliest pool index wins). Without this
+    // row the headline "10 most recent signups" ICP query (persona-bench q0)
+    // retrieved `group-order-limit`; with it, the plain `ORDER BY … LIMIT` demo.
+    "order-by-limit",
+    "sqlite",
+    "CREATE TABLE orders (id INTEGER, order_date TEXT, amount REAL)",
+    "List the 5 most recent orders.",
+    "SELECT id, order_date FROM orders ORDER BY order_date DESC LIMIT 5",
+  ),
+  ex(
     "null-safe-min",
     "postgres",
     "CREATE TABLE employees (id INTEGER, name TEXT, salary REAL)",
     "Which employee has the lowest salary? Return their name.",
     "SELECT name FROM employees WHERE salary IS NOT NULL ORDER BY salary ASC LIMIT 1",
+  ),
+  ex(
+    // "Never <did X>" where X is an **attribute of the row itself** (a NULL
+    // timestamp/column) — the plain `WHERE col IS NULL` filter, NOT the
+    // anti-join NOT-IN subquery. The two read identically as questions ("…have
+    // never …"); the distinguishing token is the *verb* (logged in ⇒ a NULL
+    // login column on the same table; placed an order ⇒ absence in a related
+    // table ⇒ anti-join). Without this row the headline "who never logged in"
+    // ICP query (personas.md §P1, persona-bench q3) retrieved the anti-join
+    // NOT-IN demo — teaching a subquery over a table that does not exist.
+    // Ordered after `anti-join` so an ambiguous "never <relation>" goal still
+    // breaks the masked-Jaccard tie to anti-join (earliest pool index wins).
+    "null-filter",
+    "sqlite",
+    "CREATE TABLE users (id INTEGER, name TEXT, last_login TEXT)",
+    "Which users have never logged in? Return their name.",
+    "SELECT name FROM users WHERE last_login IS NULL",
   ),
   ex(
     "ratio-cast",

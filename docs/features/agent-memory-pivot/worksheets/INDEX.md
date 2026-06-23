@@ -65,7 +65,7 @@ swap.
 | [09](WS-09-blog-and-demo.md) ✅ | "Database, not a vector store" blog + live in-page demo | med | ~2 | 06 | — |
 | [10](WS-10-fsl-selfhost-messaging.md) ✅ | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix already shipped in the pivot PR) | low | 1 | — | — |
 | [11](WS-11-selfhost-container.md) | Pull the self-host container forward (`ghcr.io/nlqdb/api`) | high | multi | 10 | infra-gated |
-| [12](WS-12-home-reweight.md) | Home reweight: agent-memory primary + demote P1/P3/P4 to an "also works for…" fold | med | ~2 | 06, 07 | — |
+| [12](WS-12-home-reweight.md) ✅ | Home reweight: agent-memory primary + demote P1/P3/P4 to an "also works for…" fold | med | ~2 | 06, 07 | — |
 | [13](WS-13-headline-reposition.md) | Headline reposition (wordmark / README / llms.txt / JSON-LD lead) | high | ~2 | 07, 12 | **FOUNDER-GATED** |
 
 **Why this order:** WS-01–05 are additive content on existing machinery
@@ -91,5 +91,5 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 - [x] WS-09 — blog + live demo ✅ 2/2 — blog draft ✅ (2026-06-20, run 30, branch `claude/vibrant-newton-wah6ow`); live `/agents` demo ✅ (2026-06-21, run 41, branch `claude/vibrant-newton-36il2y` — gate-honest fixture round-trip: `agent_memory` rows → English goal → compiled `GROUP BY` SQL → result table, server-rendered, `agents.demo_run_clicked` demand signal)
 - [x] WS-10 — FSL self-host messaging (2026-06-20, run 28 — branch `claude/vibrant-newton-fh8mgw`; pricing self-host band + README "Models & plans" self-host line, FSL-accurate, no turnkey-image claim per WS-11 note)
 - [ ] WS-11 — self-host container (infra-gated)
-- [ ] WS-12 — home reweight + demote personas: **band ✅** (2026-06-21, run 43, branch `claude/vibrant-newton-2ou3c2` — `AgentMemoryBand.astro` inserted after `<Hero />`: wedge statement + WS-06 matrix teaser + `/agents` CTA firing `home.agents_cta_clicked`; hero lede untouched, gated to WS-13); **demote P1/P3/P4 to "also works for…" fold ⬜** next run
+- [x] WS-12 — home reweight + demote personas: **band ✅** (2026-06-21, run 43, branch `claude/vibrant-newton-2ou3c2` — `AgentMemoryBand.astro` inserted after `<Hero />`: wedge statement + WS-06 matrix teaser + `/agents` CTA firing `home.agents_cta_clicked`; hero lede untouched, gated to WS-13); **demote P1/P3/P4 to "also works for…" fold ✅** (2026-06-21, run 44, branch `claude/vibrant-newton-nqwd8q` — `AlsoWorksFor.astro` quiet divider before `CodePanel` + `Replaces`, composition-only, nothing deleted, hero untouched). WS-12 closed.
 - [ ] WS-13 — headline reposition (founder-gated)

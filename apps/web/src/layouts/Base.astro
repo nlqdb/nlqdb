@@ -12,9 +12,17 @@ interface Props {
 }
 
 const { title, description, canonical, ogImage, ogImageAlt } = Astro.props;
-const canonicalURL = canonical
-  ? new URL(canonical, Astro.site)
-  : new URL(Astro.url.pathname, Astro.site);
+// CF Static Assets serves `<route>/index.html`, so the trailing-slash URL is
+// the 200 and the bare path 307-redirects (astro.config `trailingSlash:
+// "always"`). `Astro.url.pathname` doesn't carry the slash at build
+// (withastro/astro#12833), so normalise here to keep canonical + og:url on
+// the non-redirecting URL — a bare canonical points crawlers at a redirect of
+// the page declaring it, diluting the AEO/SEO signal.
+const canonicalPath = canonical ?? Astro.url.pathname;
+const canonicalURL = new URL(
+  canonicalPath.endsWith("/") ? canonicalPath : `${canonicalPath}/`,
+  Astro.site,
+);
 const ogImageURL = new URL(ogImage ?? "/og-default.png", Astro.site);
 const ogImageAltText = ogImageAlt ?? "nlqdb — create a database in a word, query it in English.";
 

@@ -1,0 +1,132 @@
+# quality-eval — persona-bench (nlqdb's OWN ICP-shaped NL→SQL benchmark).
+# SK-QUAL-018: the third, user-relevant quality number (GLOBAL-027
+# §Lifecycle) — small, clean side-project / agent-memory schemas shaped
+# like what an nlqdb user actually creates, not messy academic ones. The
+# runner + fixture shipped offline-first (gold-executability + loader); this
+# is the documented remaining half: the dispatchable `workflow_dispatch`.
+#
+# Manual on-demand only (SK-QUAL-002); never a PR gate. Unlike BIRD/Spider
+# there is NO upstream fixture download — the ICP schemas are inline DDL in
+# `persona-bench.ts`, materialised to SQLite by `loadPersonaBench`. And no
+# baseline + no emit: persona-bench is a measurement, never the canonical
+# baseline, so a dispatch never overwrites BIRD 06-19 / Spider 06-17 and is
+# not blocked by the SK-QUAL-002 < 7-day gate.
+
+name: Quality eval — persona-bench (ICP)
+
+on:
+  workflow_dispatch:
+    inputs:
+      persona:
+        description: "ICP slice: all · P1 (Solo Builder, saas_app) · P2 (Agent Builder, agent_memory)"
+        type: choice
+        options: [all, P1, P2]
+        default: all
+      include_frontier:
+        description: "Run the frontier lane too (paid OpenRouter) → free-vs-frontier delta on the ICP shape (the GLOBAL-025 headline KPI)"
+        type: boolean
+        default: false
+      include_agentic_frontier:
+        description: "Run the SK-QUAL-009 agentic-frontier lane (exec-retry; ~3x provider RPS)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Coalesce with the other eval workflows' posture: one persona-bench run at
+# a time so a second dispatch queues rather than competing for the shared
+# free-tier budget. NOT cancel-in-progress — let a started run finish.
+concurrency:
+  group: quality-eval-persona-bench
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Run persona-bench (free chain + optional frontier)
+    runs-on: ubuntu-latest
+    # 20 questions × (≈3 s throttle, SK-QUAL-012 + ~2 s LLM tail) ≈ a few
+    # minutes; ×2 lanes with the frontier toggle. 30 min absorbs
+    # single-provider degradation + the bounded SK-QUAL-013 capacity waits.
+    timeout-minutes: 30
+    env:
+      PERSONA: ${{ inputs.persona || 'all' }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Run quality-eval (persona-bench)
+        working-directory: tools/eval
+        env:
+          # Free chain — same provider keys as production (SK-LLM-023 /
+          # SK-LLM-028). The router skips any provider whose key is absent,
+          # so a partial-key run still ships.
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          # Frontier chain — opt-in per dispatch (default off to preserve the
+          # OpenRouter paid budget). The agentic lane (SK-QUAL-009) needs the
+          # same key + the explicit `include_agentic_frontier` toggle so an
+          # `include_frontier=true` run doesn't fire the 3x-RPS exec budget.
+          OPENROUTER_FRONTIER_API_KEY: ${{ (inputs.include_frontier == true || inputs.include_agentic_frontier == true) && secrets.OPENROUTER_FRONTIER_API_KEY || '' }}
+          RUN_AGENTIC_FRONTIER: ${{ inputs.include_agentic_frontier == true && '1' || '' }}
+        run: |
+          set -euo pipefail
+          # persona-bench narrows to one persona, or runs both. No
+          # --questions-json (the loader generates them) and no upstream
+          # fixture download — the schemas are inline DDL materialised under
+          # --data-dir. No --baseline / no --emit: a measurement, never the
+          # canonical baseline (SK-QUAL-018).
+          persona_arg=""
+          if [ "$PERSONA" != "all" ]; then
+            persona_arg="--persona $PERSONA"
+          fi
+          mkdir -p persona_data
+          # shellcheck disable=SC2086  # word-splitting on the optional arg is intentional
+          bun src/runner.ts \
+            --dataset persona-bench \
+            --data-dir persona_data \
+            --out results \
+            --throttle-ms 3000 \
+            --capacity-wait-ms 65000 \
+            $persona_arg
+
+      - name: Upload report JSON
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: quality-eval-persona-bench-${{ github.run_id }}
+          path: tools/eval/results/*.json
+          retention-days: 90
+
+      # Same step-summary shape as BIRD/Spider so the operator's eye doesn't
+      # context-switch between reports. The free-vs-frontier delta is the
+      # GLOBAL-025 headline KPI — now reported on the ICP shape too.
+      - name: Emit run summary
+        if: always()
+        run: |
+          set -euo pipefail
+          latest=$(ls -t tools/eval/results/*.json 2>/dev/null | head -1 || true)
+          if [ -z "$latest" ]; then
+            echo "::warning::No results JSON produced (runner failed)."
+            exit 0
+          fi
+          {
+            echo "## quality-eval — persona-bench (ICP, ${PERSONA})"
+            echo ""
+            jq -r '
+              "Run at: " + .run_at,
+              "Dataset: " + .dataset,
+              "Questions: " + (.question_count | tostring),
+              "",
+              "| Lane | Match | Attempted | EX | p50 ms | p95 ms |",
+              "|---|---|---|---|---|---|",
+              (.lanes[] | "| " + .lane + " | " + (.match | tostring) + " | " + (.attempted | tostring) + " | " + ((.execution_accuracy * 100 | tostring) + "%") + " | " + (.p50_latency_ms | tostring) + " | " + (.p95_latency_ms | tostring) + " |"),
+              "",
+              "Free-vs-frontier delta: " + (if .free_vs_frontier_delta == null then "n/a (free-only run — set include_frontier)" else ((.free_vs_frontier_delta * 100 | tostring) + " pts") end)
+            ' "$latest"
+          } >> "$GITHUB_STEP_SUMMARY"

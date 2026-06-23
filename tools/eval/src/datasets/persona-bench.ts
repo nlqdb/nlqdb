@@ -22,6 +22,10 @@
 //
 // Sibling: `docs/features/quality-eval/decisions/SK-QUAL-018-persona-bench.md`.
 
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import type { EvalQuestion } from "../types.ts";
 
 export type Persona = "P1" | "P2";
@@ -100,9 +104,15 @@ const AGENT_MEMORY: PersonaSchema = {
       "(6,1,'user:42','plan','pro','2026-06-06',NULL)," +
       "(7,3,'job:1','state','done','2026-06-07','2026-06-15')",
     "INSERT INTO episodes (id, agent_id, content, created_at) VALUES (1,1,'greeted user','2026-06-01'),(2,2,'sent quote','2026-06-04')",
+    // Recall counts per fact are kept DISTINCT (fact 1→4, 2→3, 6→2, 4→1) so the
+    // q8 "most-recalled facts" ranking has no count-tie: an ORDER BY-only gold is
+    // scored sequence-strict (score.ts `hasOrderBy`), and an unbroken rank-key tie
+    // false-mismatches a semantically-correct prediction that orders the tie
+    // differently (SK-QUAL-019 tie-free-ranked-gold invariant). The recalled-fact
+    // SET is unchanged ({1,2,4,6}) so the "never recalled" gold (q12-shape) holds.
     "INSERT INTO recalls (id, fact_id, recalled_at) VALUES " +
-      "(1,1,'2026-06-08'),(2,1,'2026-06-09'),(3,1,'2026-06-10')," +
-      "(4,2,'2026-06-09'),(5,2,'2026-06-11')," +
+      "(1,1,'2026-06-08'),(2,1,'2026-06-09'),(3,1,'2026-06-10'),(9,1,'2026-06-11')," +
+      "(4,2,'2026-06-09'),(5,2,'2026-06-11'),(10,2,'2026-06-12')," +
       "(6,4,'2026-06-12'),(7,6,'2026-06-13'),(8,6,'2026-06-14')",
   ],
 };
@@ -233,10 +243,179 @@ export const PERSONA_BENCH_QUESTIONS: PersonaQuestion[] = [
     bucket: "having",
     difficulty: "moderate",
   },
+  // ── Batch 2 (SK-QUAL-018 growth follow-on): the negation / anti-join and
+  //    challenging multi-join shapes v0 lacked. Buckets chosen to match the
+  //    SK-QUAL-014 loss mass BIRD/Spider analysis flagged (subquery-negation,
+  //    multi-join grain) — exactly the shapes SK-LLM-041's new pool exemplars
+  //    target, so persona-bench can measure whether those exemplars help.
+  {
+    question_id: 12,
+    db_id: "saas_app",
+    persona: "P1",
+    question: "Which users have never placed an order? List their emails.",
+    sql: "SELECT email FROM users WHERE id NOT IN (SELECT user_id FROM orders)",
+    bucket: "anti-join",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 13,
+    db_id: "saas_app",
+    persona: "P1",
+    question:
+      "Which plan generates the most total paid revenue? Show the plan name and revenue in dollars.",
+    sql:
+      "SELECT p.name, SUM(o.amount_cents) / 100.0 AS revenue FROM orders o " +
+      "JOIN users u ON o.user_id = u.id JOIN plans p ON u.plan_id = p.id " +
+      "WHERE o.status = 'paid' GROUP BY p.id, p.name ORDER BY revenue DESC LIMIT 1",
+    bucket: "group-order-limit-multi-join",
+    difficulty: "challenging",
+  },
+  {
+    question_id: 14,
+    db_id: "saas_app",
+    persona: "P1",
+    question:
+      "Which users have spent more than $30 on paid orders? Show their email and total spent in dollars.",
+    sql:
+      "SELECT u.email, SUM(o.amount_cents) / 100.0 AS total_dollars FROM users u " +
+      "JOIN orders o ON o.user_id = u.id WHERE o.status = 'paid' " +
+      "GROUP BY u.id, u.email HAVING SUM(o.amount_cents) > 3000",
+    bucket: "having-aggregate-threshold",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 15,
+    db_id: "saas_app",
+    persona: "P1",
+    question: "How much paid revenue came in during April 2026, in dollars?",
+    sql:
+      "SELECT SUM(amount_cents) / 100.0 FROM orders " +
+      "WHERE status = 'paid' AND created_at >= '2026-04-01' AND created_at < '2026-05-01'",
+    bucket: "aggregate-date-range-filter",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 16,
+    db_id: "agent_memory",
+    persona: "P2",
+    question: "Which facts have never been recalled? Show the fact id and its object.",
+    sql: "SELECT id, object FROM facts WHERE id NOT IN (SELECT fact_id FROM recalls)",
+    bucket: "anti-join",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 17,
+    db_id: "agent_memory",
+    persona: "P2",
+    question: "How many facts were still active — not expired — as of 2026-06-12?",
+    sql: "SELECT COUNT(*) FROM facts WHERE expires_at IS NULL OR expires_at >= '2026-06-12'",
+    bucket: "ttl-active-or-null",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 18,
+    db_id: "agent_memory",
+    persona: "P2",
+    question:
+      "For each agent, how many times have its facts been recalled in total? Show the agent name and total, most recalled first.",
+    sql:
+      "SELECT ag.name, COUNT(*) AS total_recalls FROM recalls r " +
+      "JOIN facts f ON r.fact_id = f.id JOIN agents ag ON f.agent_id = ag.id " +
+      "GROUP BY ag.id, ag.name ORDER BY total_recalls DESC",
+    bucket: "group-by-count-multi-join-order",
+    difficulty: "challenging",
+  },
+  {
+    question_id: 19,
+    db_id: "agent_memory",
+    persona: "P2",
+    question:
+      "Which subjects have more than one fact stored about them? Show the subject and the fact count.",
+    sql: "SELECT subject, COUNT(*) FROM facts GROUP BY subject HAVING COUNT(*) > 1",
+    bucket: "having",
+    difficulty: "moderate",
+  },
+  // ── Batch 3 (SK-QUAL-018 growth follow-on): three shapes batches 1–2 lacked,
+  //    each mapping to an existing DAIL-SQL pool bucket (so the SK-LLM-041
+  //    retrieval instrument stays clean) — scalar-subquery and COUNT(DISTINCT),
+  //    plus the **multi-predicate-retention** filter shape the 2026-06-23 greedy
+  //    run flagged as an engine miss (q13 dropped a `status = 'paid'` predicate on
+  //    a "which X has the most Y"). Buckets mirror SK-QUAL-014's classes.
+  {
+    question_id: 20,
+    db_id: "saas_app",
+    persona: "P1",
+    question: "Which plans cost more than the average plan price? List the plan names.",
+    sql: "SELECT name FROM plans WHERE price_cents > (SELECT AVG(price_cents) FROM plans)",
+    bucket: "scalar-subquery",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 21,
+    db_id: "saas_app",
+    persona: "P1",
+    question: "How many different referral sources have brought in at least one user?",
+    sql: "SELECT COUNT(DISTINCT referrer_id) FROM users WHERE referrer_id IS NOT NULL",
+    bucket: "count-distinct",
+    difficulty: "simple",
+  },
+  {
+    question_id: 22,
+    db_id: "agent_memory",
+    persona: "P2",
+    question: "How many of the agent 'support-bot' facts have no expiry date?",
+    sql:
+      "SELECT COUNT(*) FROM facts f JOIN agents a ON f.agent_id = a.id " +
+      "WHERE a.name = 'support-bot' AND f.expires_at IS NULL",
+    bucket: "join-aggregate-filter",
+    difficulty: "moderate",
+  },
 ];
 
 export function schemaFor(db_id: string): PersonaSchema | undefined {
   return PERSONA_BENCH_SCHEMAS.find((s) => s.db_id === db_id);
+}
+
+// ── Runner wiring (SK-QUAL-018 staged follow-on) — make persona-bench a
+//    dispatchable `EvalDataset` so the free chain scores EX against the ICP
+//    schemas. The runner opens fixtures by **file path** (`introspectSchema`
+//    + `executeRows` both `new Database(path, { readonly: true })`), so the
+//    loader materialises each in-memory schema to a real `.sqlite` on first
+//    request and caches the path. bun:sqlite stays a dynamic import (the
+//    bun-runtime-only dependency) so this module is still importable from a
+//    plain type context; `node:{os,fs,path}` are portable. Structurally
+//    identical to BIRD/Spider's `LoadedDataset` so `loadDatasetByName` adds
+//    one branch and nothing in the bird/spider paths changes.
+export async function loadPersonaBench(
+  opts: { persona?: Persona; limit?: number; dbDir?: string } = {},
+): Promise<{
+  questions: EvalQuestion[];
+  resolveDbPath: (db_id: string) => Promise<string | null>;
+}> {
+  const questions = toEvalQuestions({ persona: opts.persona, limit: opts.limit });
+  const { Database } = (await import(/* @vite-ignore */ "bun:sqlite")) as {
+    Database: new (filename: string) => { run: (sql: string) => void; close: () => void };
+  };
+  const dir = opts.dbDir ?? mkdtempSync(join(tmpdir(), "persona-bench-"));
+  mkdirSync(dir, { recursive: true });
+
+  const cache = new Map<string, string>();
+  return {
+    questions,
+    resolveDbPath: async (db_id) => {
+      const cached = cache.get(db_id);
+      if (cached) return cached;
+      const schema = schemaFor(db_id);
+      if (!schema) return null;
+      const file = join(dir, `${db_id}.sqlite`);
+      rmSync(file, { force: true }); // fresh, deterministic seed each load
+      const db = new Database(file);
+      for (const stmt of schema.setup) db.run(stmt);
+      db.close();
+      cache.set(db_id, file);
+      return file;
+    },
+  };
 }
 
 // Project to the canonical harness type so the staged runner-wiring is a

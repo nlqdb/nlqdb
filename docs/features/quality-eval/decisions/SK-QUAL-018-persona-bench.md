@@ -18,10 +18,20 @@ and [`SK-QUAL-015`](./SK-QUAL-015-column-coverage-harness.md).
   phrasing compiles to a time-stable gold. v0 ships the **fixture + the
   gold-executability invariant** (`checkGoldExecutability` + a `bun persona-bench`
   CLI + unit test: every gold runs against its seeded schema and returns ≥ 1
-  hand-checked row) — the **data half**. Runner-wiring (a `persona-bench`
-  `EvalDataset` whose `resolveDbPath` materialises these schemas so the free
-  chain scores EX) is the **staged follow-on**, so no `runner.ts`/scorer/chain
-  edit lands and no baseline can move.
+  hand-checked row) — the **data half**. The **runner-wiring half** then makes
+  `persona-bench` a dispatchable `EvalDataset`: `loadPersonaBench` materialises
+  each in-memory schema to a real `.sqlite` on first `resolveDbPath` (the runner
+  opens fixtures by path, readonly), wired into `loadDatasetByName` /
+  `KNOWN_DATASETS` with a `--persona P1|P2` filter, so `bun src/runner.ts
+  --dataset persona-bench` scores the free chain's EX. The wiring adds only a new
+  dataset branch (BIRD/Spider paths byte-unchanged) and PR CI never fires real
+  keys (`SK-QUAL-002`), so **no baseline moves**. The **dispatch half** is the
+  manual `.github/workflows/quality-eval-persona-bench.yml` (`workflow_dispatch`,
+  `persona: all|P1|P2`, `include_frontier`): no upstream fixture download (inline
+  DDL materialised by `loadPersonaBench`) and no `--baseline`/`--emit` — a
+  measurement that never overwrites the canonical baseline, so unlike a back-to-back
+  BIRD/Spider run it is **not** blocked by the `SK-QUAL-002` < 7-day gate. The
+  free-chain EX and the ICP free-vs-frontier delta land on the first dispatch.
 
 - **Core value:** Legible
 
@@ -54,19 +64,27 @@ and [`SK-QUAL-015`](./SK-QUAL-015-column-coverage-harness.md).
 
 - **Consequence in code:** `tools/eval/src/datasets/persona-bench.ts`
   (`PERSONA_BENCH_SCHEMAS`, `PERSONA_BENCH_QUESTIONS`, `toEvalQuestions`,
-  `checkGoldExecutability`, `import.meta.main` CLI), `test/datasets/persona-bench.test.ts`
-  (fixture integrity + gold-executability + persona/limit filters), and a
-  `persona-bench` script in `tools/eval/package.json`. The module imports only
-  the canonical `EvalQuestion` type; the `bun:sqlite` handle is structural +
-  injected (mirrors `score.ts`) so the module pulls in no driver. **No runner /
-  scorer / chain / `EvalDataset`-type edit** ⇒ no KPI can move; it directs and
-  grounds the lever that will.
+  `checkGoldExecutability`, `import.meta.main` CLI, **+ `loadPersonaBench`** —
+  the materialising loader), the `"persona-bench"` member on `EvalDataset`
+  (`types.ts`), the `loadDatasetByName` branch + `KNOWN_DATASETS` member +
+  `--persona` flag (`runner.ts`), and `test/datasets/persona-bench.test.ts`
+  (fixture integrity + gold-executability + persona/limit filters + the
+  loader's path-materialisation + readonly-gold-exec end-to-end). The
+  data-half module imports only the `EvalQuestion` type; `loadPersonaBench`
+  keeps `bun:sqlite` a **dynamic** import (the bun-only driver) so the module
+  is still importable from a plain type context, materialising under
+  `--data-dir` or an OS temp dir. The wiring is additive (new dataset branch
+  only); the EX number it unlocks is the lever that moves the KPI, on the next
+  dispatch.
 
 - **Alternatives rejected:**
-  - **Wire it into the runner now and dispatch the free chain against it.** That
-    spends a quota-gated eval window before the fixture is proven sound and
-    collides with the in-flight runner edits; the gold-executable fixture is the
-    prerequisite, dispatch is the follow-on.
+  - **Dispatch the free chain against it the moment the fixture existed.** That
+    spends a quota-gated eval window before the fixture is proven sound; v0
+    proved 12/12 golds executable offline first, then wired the dispatchable
+    `EvalDataset`, then shipped the `workflow_dispatch` — each additive and
+    baseline-safe. The dispatch is NOT gated by `SK-QUAL-002`'s < 7-day
+    back-to-back rule (that guards the canonical BIRD/Spider baseline; persona-bench
+    has no baseline to overwrite), so the EX number lands on the first dispatch.
   - **Reuse BIRD/Spider rows as "the persona set".** Defeats the point — the
     whole value is schemas shaped like what nlqdb users build, not relabelled
     academic ones.
@@ -76,4 +94,11 @@ and [`SK-QUAL-015`](./SK-QUAL-015-column-coverage-harness.md).
   - **Author all 50–100 questions now.** v0 deliberately ships 12 across 2
     schemas to lock the format + invariant in one run; growth toward the
     5–20-table, 50–100-question target is the documented follow-on, one batch
-    per run.
+    per run. **Batch 2 (run 47): 12 → 20 questions** — adds the anti-join /
+    negation (`NOT IN`) and challenging multi-join shapes v0 lacked (the
+    `SK-QUAL-014` loss mass `SK-LLM-041`'s pool now targets). **Batch 3
+    (2026-06-23): 20 → 23 questions** — scalar-subquery, COUNT(DISTINCT), and a
+    multi-predicate join filter, the multi-predicate-retention shape a greedy run
+    flagged as an engine miss (q13 dropped a `status = 'paid'` predicate); each
+    maps to an existing DAIL-SQL pool bucket so the retrieval instrument stays
+    clean. 23/23 golds still execute non-empty.

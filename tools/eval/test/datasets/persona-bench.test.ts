@@ -1,8 +1,12 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, it } from "bun:test";
+import { existsSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
   checkGoldExecutability,
+  loadPersonaBench,
   PERSONA_BENCH_QUESTIONS,
   PERSONA_BENCH_SCHEMAS,
   type PersonaDb,
@@ -63,6 +67,30 @@ describe("persona-bench gold-executability invariant (v0)", () => {
     expect(Object.values(rows[0] ?? {})[0]).toBe(2);
   });
 
+  // SK-QUAL-019 — a gold with ORDER BY is scored sequence-strict (score.ts
+  // `hasOrderBy`), so an unbroken rank-key tie false-mismatches a correct
+  // prediction that orders the tie differently. Every ranked gold must return a
+  // total order: the rank-key column (last SELECT column for these golds) is
+  // duplicate-free. Caught q8 (two facts tied at recall_count=2) as a stable
+  // llama-leg false-miss before the recalls seed was made tie-free.
+  it("every ORDER BY gold has a duplicate-free rank key (tie-free ranking)", () => {
+    const ties: string[] = [];
+    for (const q of PERSONA_BENCH_QUESTIONS) {
+      if (!/\border\s+by\b/i.test(q.sql)) continue;
+      const schema = schemaFor(q.db_id);
+      if (!schema) throw new Error(`no schema for ${q.db_id}`);
+      const db = new Database(":memory:");
+      for (const stmt of schema.setup) db.run(stmt);
+      const rows = db.query(q.sql).values() as unknown[][];
+      db.close();
+      const rankKey = rows.map((r) => JSON.stringify(r[r.length - 1]));
+      if (new Set(rankKey).size !== rankKey.length) {
+        ties.push(`q${q.question_id} (${q.bucket}): ${JSON.stringify(rankKey)}`);
+      }
+    }
+    expect(ties, ties.join("\n")).toHaveLength(0);
+  });
+
   it("filters by persona", () => {
     const p1 = checkGoldExecutability(openDb, { persona: "P1" });
     expect(p1.every((c) => c.db_id === "saas_app")).toBe(true);
@@ -81,5 +109,47 @@ describe("toEvalQuestions", () => {
   it("applies persona filter and limit", () => {
     expect(toEvalQuestions({ persona: "P2" }).every((q) => q.db_id === "agent_memory")).toBe(true);
     expect(toEvalQuestions({ limit: 3 })).toHaveLength(3);
+  });
+});
+
+// SK-QUAL-018 staged follow-on — the runner-wiring loader. Proves the
+// `EvalDataset` is dispatchable end-to-end offline: every question resolves a
+// materialised `.sqlite` path the runner can open readonly (the same driver
+// `introspectSchema` / `executeRows` use), and every gold executes against
+// that materialised file — not just the in-memory `:memory:` fixture. No
+// network, no LLM; BIRD/Spider untouched.
+describe("loadPersonaBench (runner wiring)", () => {
+  it("resolves a materialised SQLite path for every question's db_id", async () => {
+    const dbDir = mkdtempSync(join(tmpdir(), "persona-bench-test-"));
+    const { questions, resolveDbPath } = await loadPersonaBench({ dbDir });
+    expect(questions).toHaveLength(PERSONA_BENCH_QUESTIONS.length);
+    for (const q of questions) {
+      const path = await resolveDbPath(q.db_id);
+      expect(path, `db_id ${q.db_id} resolves a path`).not.toBeNull();
+      expect(existsSync(path ?? ""), `materialised file exists for ${q.db_id}`).toBe(true);
+    }
+    expect(await resolveDbPath("nonexistent")).toBeNull();
+  });
+
+  it("the materialised file runs each gold readonly and returns ≥1 row", async () => {
+    const dbDir = mkdtempSync(join(tmpdir(), "persona-bench-test-"));
+    const { questions, resolveDbPath } = await loadPersonaBench({ dbDir });
+    for (const q of questions) {
+      const path = await resolveDbPath(q.db_id);
+      const db = new Database(path ?? "", { readonly: true });
+      const rows = db.query(q.sql).all();
+      db.close();
+      expect(
+        rows.length,
+        `q${q.question_id} returns rows from the materialised db`,
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it("honours the persona filter", async () => {
+    const dbDir = mkdtempSync(join(tmpdir(), "persona-bench-test-"));
+    const { questions } = await loadPersonaBench({ persona: "P2", dbDir });
+    expect(questions.every((q) => q.db_id === "agent_memory")).toBe(true);
+    expect(questions.length).toBeGreaterThan(0);
   });
 });

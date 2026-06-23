@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { maskWithSchema, questionSimilarity } from "../src/few-shot-select.ts";
+import {
+  maskWithSchema,
+  questionSimilarity,
+  selectExemplarsForSchema,
+} from "../src/few-shot-select.ts";
 import {
   buildPlanSystem,
   PLAN_EXEMPLAR_POOL,
   type PlanBucket,
+  type PlanExemplar,
   retrievePlanExemplars,
 } from "../src/plan-exemplar-pool.ts";
 import { PLAN_DIRECTIVES, PLAN_FEW_SHOT_HEADER, PLAN_SYSTEM } from "../src/prompts.ts";
@@ -42,6 +47,16 @@ const PROBES: readonly Probe[] = [
       "CREATE TABLE authors (id INTEGER, name TEXT);\nCREATE TABLE books (id INTEGER, author_id INTEGER)",
   },
   {
+    // The negated near-twin of the in-subquery probe — differs only by "never".
+    // It must retrieve anti-join, not the positive in-subquery row (and the
+    // in-subquery probe above must still retrieve in-subquery, not anti-join):
+    // the bidirectional masking test that the skeletons stay distinguishable.
+    bucket: "anti-join",
+    goal: "Which authors have never written a book? Return their name.",
+    schema:
+      "CREATE TABLE authors (id INTEGER, name TEXT);\nCREATE TABLE books (id INTEGER, author_id INTEGER)",
+  },
+  {
     bucket: "join-aggregate",
     goal: "What is the total payment for each member? Return the member name and total.",
     schema:
@@ -53,9 +68,31 @@ const PROBES: readonly Probe[] = [
     schema: "CREATE TABLE students (id INTEGER, name TEXT, class TEXT, score REAL)",
   },
   {
+    bucket: "group-order-limit",
+    goal: "Which class has the most students? Return the class.",
+    schema: "CREATE TABLE students (id INTEGER, name TEXT, class TEXT)",
+  },
+  {
+    // Plain top-N over a different schema + phrasing than the pool row
+    // ("transactions" vs "orders") — proves the plain `ORDER BY … LIMIT`
+    // skeleton retrieves across domains and is not pulled to the grouped
+    // `group-order-limit` near-twin.
+    bucket: "order-by-limit",
+    goal: "List the 3 most recent transactions. Return the amount.",
+    schema: "CREATE TABLE payments (id INTEGER, txn_date TEXT, amount REAL)",
+  },
+  {
     bucket: "null-safe-min",
     goal: "Which product has the lowest price? Return its name.",
     schema: "CREATE TABLE products (id INTEGER, name TEXT, price REAL)",
+  },
+  {
+    // "Never <attribute>" → a plain IS-NULL filter, over a different schema +
+    // phrasing than the pool row ("logged into the portal" vs "logged in",
+    // members vs users) — proves cross-schema reuse, not a copy of the row.
+    bucket: "null-filter",
+    goal: "Which members have never logged into the portal? Return their email.",
+    schema: "CREATE TABLE members (id INTEGER, email TEXT, last_login TEXT)",
   },
   {
     bucket: "ratio-cast",
@@ -107,7 +144,7 @@ describe("plan-exemplar-pool", () => {
   it("covers one row per structural bucket, all distinct", () => {
     const buckets = PLAN_EXEMPLAR_POOL.map((r) => r.bucket);
     expect(new Set(buckets).size).toBe(buckets.length);
-    expect(PLAN_EXEMPLAR_POOL.length).toBe(10);
+    expect(PLAN_EXEMPLAR_POOL.length).toBe(14);
   });
 
   it("renders each payload in the static-prefix Question→JSON shape", () => {
@@ -139,6 +176,111 @@ describe("plan-exemplar-pool", () => {
     expect(probe).toBeDefined();
     const [top] = retrievePlanExemplars(probe?.goal ?? "", probe?.schema ?? "", 1);
     expect(top?.bucket).toBe("group-by-count");
+  });
+
+  // The measured coverage delta for adding the anti-join row: the same probe,
+  // before (pool without anti-join) vs after (full pool). Before, a "never …"
+  // goal's nearest demonstration is the *positive* in-subquery row — the
+  // un-negated shape, which would teach the model to drop the negation; after,
+  // it retrieves the NOT IN exemplar. This is the SK-LLM-036/037 same-probe
+  // before/after pattern, the unit that earns the pool row a dispatch.
+  it("anti-join row flips a 'never' goal from the positive in-subquery demo to the negation demo", () => {
+    const probe = PROBES.find((p) => p.bucket === "anti-join");
+    expect(probe).toBeDefined();
+    const goal = probe?.goal ?? "";
+    const schema = probe?.schema ?? "";
+
+    // Before: rank against the pool as it was before *either* "never"-bearing
+    // row existed (anti-join + the later null-filter, which also carries
+    // "never") — the historical state this delta documents.
+    const before = selectExemplarsForSchema(
+      goal,
+      schema,
+      PLAN_EXEMPLAR_POOL.filter((r) => r.bucket !== "anti-join" && r.bucket !== "null-filter"),
+      1,
+    ) as PlanExemplar[];
+    expect(before[0]?.bucket).toBe("in-subquery");
+
+    // After: the full pool retrieves the negation demonstration top-1.
+    const [after] = retrievePlanExemplars(goal, schema, 1);
+    expect(after?.bucket).toBe("anti-join");
+    expect(after?.payload).toContain("NOT IN");
+
+    // And the bidirectional guard: the positive in-subquery probe must NOT be
+    // pulled to anti-join now that the near-twin exists in the pool.
+    const inSub = PROBES.find((p) => p.bucket === "in-subquery");
+    const [posTop] = retrievePlanExemplars(inSub?.goal ?? "", inSub?.schema ?? "", 1);
+    expect(posTop?.bucket).toBe("in-subquery");
+  });
+
+  // The null-filter row's measured coverage delta: "never <attribute>" (a NULL
+  // column on the row itself) must retrieve the IS-NULL demo, not the anti-join
+  // NOT-IN demo — while "never <relation>" (absence in a related table) stays
+  // anti-join. Same SK-LLM-036/037 same-probe before/after pattern. This is the
+  // shape persona-bench q3 ("who never logged in") needs (ICP retrieval
+  // precision@1 17/20 → 18/20, the `tools/eval` persona-retrieval probe).
+  it("null-filter row flips a 'never logged in' goal from the anti-join demo to the IS NULL demo", () => {
+    const probe = PROBES.find((p) => p.bucket === "null-filter");
+    expect(probe).toBeDefined();
+    const goal = probe?.goal ?? "";
+    const schema = probe?.schema ?? "";
+
+    // Before: rank against the pool with the null-filter row removed — the
+    // "never" token pulls the anti-join NOT-IN demonstration (the wrong shape).
+    const before = selectExemplarsForSchema(
+      goal,
+      schema,
+      PLAN_EXEMPLAR_POOL.filter((r) => r.bucket !== "null-filter"),
+      1,
+    ) as PlanExemplar[];
+    expect(before[0]?.bucket).toBe("anti-join");
+
+    // After: the full pool retrieves the IS NULL demonstration top-1.
+    const [after] = retrievePlanExemplars(goal, schema, 1);
+    expect(after?.bucket).toBe("null-filter");
+    expect(after?.payload).toContain("IS NULL");
+
+    // The guard: a "never <relation>" goal (absence in a related table) must
+    // still go to anti-join — the verb, not just "never", is the discriminator.
+    const antiJoin = PROBES.find((p) => p.bucket === "anti-join");
+    const [ajTop] = retrievePlanExemplars(antiJoin?.goal ?? "", antiJoin?.schema ?? "", 1);
+    expect(ajTop?.bucket).toBe("anti-join");
+  });
+
+  // The order-by-limit row's measured coverage delta: a plain top-N goal ("the N
+  // most recent X" — `ORDER BY <col> DESC LIMIT n`, no aggregation) must retrieve
+  // the plain ORDER BY … LIMIT demo, not the `group-order-limit` demo (GROUP BY →
+  // ORDER BY agg → LIMIT), which would teach a spurious aggregation. Meanwhile a
+  // genuinely *grouped* top-N ("which X has the most Y") stays group-order-limit.
+  // Same SK-LLM-036/037 before/after pattern; this is the shape persona-bench q0
+  // ("the 10 most recent signups") needs (ICP retrieval probe in `tools/eval`).
+  it("order-by-limit row flips a plain top-N goal off the grouped group-order-limit demo", () => {
+    const probe = PROBES.find((p) => p.bucket === "order-by-limit");
+    expect(probe).toBeDefined();
+    const goal = probe?.goal ?? "";
+    const schema = probe?.schema ?? "";
+
+    // Before: rank against the pool with the order-by-limit row removed — the
+    // nearest demo is `group-order-limit`, the grouped top-N (wrong skeleton).
+    const before = selectExemplarsForSchema(
+      goal,
+      schema,
+      PLAN_EXEMPLAR_POOL.filter((r) => r.bucket !== "order-by-limit"),
+      1,
+    ) as PlanExemplar[];
+    expect(before[0]?.bucket).toBe("group-order-limit");
+
+    // After: the full pool retrieves the plain ORDER BY … LIMIT demonstration.
+    const [after] = retrievePlanExemplars(goal, schema, 1);
+    expect(after?.bucket).toBe("order-by-limit");
+    expect(after?.payload).toContain("LIMIT");
+    expect(after?.payload).not.toContain("GROUP BY");
+
+    // The guard: a grouped top-N ("which X has the most Y") must still retrieve
+    // group-order-limit — the aggregate, not just "most", is the discriminator.
+    const grouped = PROBES.find((p) => p.bucket === "group-order-limit");
+    const [gTop] = retrievePlanExemplars(grouped?.goal ?? "", grouped?.schema ?? "", 1);
+    expect(gTop?.bucket).toBe("group-order-limit");
   });
 });
 

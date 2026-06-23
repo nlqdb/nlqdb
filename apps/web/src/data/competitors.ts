@@ -103,10 +103,10 @@ export const COMPETITORS: Competitor[] = [
         note: "Supabase has SQL Editor + RLS; the diff/preview before destructive NL is unique to nlqdb.",
       },
       {
-        feature: "MCP server with provisioning verbs",
+        feature: "MCP server (agent-callable)",
         us: "shipped",
         them: "partial",
-        note: "Supabase MCP queries an existing DB; nlqdb's MCP can also create the DB.",
+        note: "Supabase MCP queries an existing DB; nlqdb's `nlqdb_query` materialises Postgres on first reference.",
       },
       { feature: "HTML embed element", us: "shipped", them: "no" },
       { feature: "Anonymous mode (try before sign-in)", us: "shipped", them: "no" },
@@ -134,7 +134,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Can my AI agent create a Supabase project the way it can create an nlqdb database?",
-        a: "Supabase's MCP server queries an existing project but doesn't provision one. nlqdb's MCP exposes `create_database` so an autonomous agent can stand up its own data layer end-to-end.",
+        a: "Supabase's MCP server queries an existing project but doesn't provision one. nlqdb's MCP exposes `nlqdb_query`, which materialises Postgres on first reference (no separate create-DB verb), so an autonomous agent can stand up its own data layer end-to-end.",
       },
     ],
     demo: {
@@ -203,7 +203,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Which one is better for an AI agent over MCP?",
-        a: "nlqdb ships an MCP server with `create_database`, `ask`, and `run` verbs. Vanna doesn't ship an MCP server today, so an agent has to wrap the Python SDK itself.",
+        a: "nlqdb ships an MCP server with `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe` — `nlqdb_query` materialises Postgres on first reference, so the agent never calls a separate create-DB verb. Vanna doesn't ship an MCP server today, so an agent has to wrap the Python SDK itself.",
       },
       {
         q: "Can I migrate from Vanna to nlqdb without rewriting my queries?",
@@ -258,7 +258,7 @@ export const COMPETITORS: Competitor[] = [
     faqs: [
       {
         q: "Can I use Mem0 for fuzzy facts and nlqdb for structured data?",
-        a: "Yes — they're complementary. Mem0 handles 'remember the user prefers Celsius', nlqdb handles 'list the user's orders this month'. Both can sit behind one MCP-aware agent; nlqdb's MCP server exposes `create_database` so the structured side is self-provisioned.",
+        a: "Yes — they're complementary. Mem0 handles 'remember the user prefers Celsius', nlqdb handles 'list the user's orders this month'. Both can sit behind one MCP-aware agent; nlqdb's MCP server exposes `nlqdb_query`, which materialises Postgres on first reference, so the structured side is self-provisioned.",
       },
       {
         q: "Is nlqdb a vector database?",
@@ -266,7 +266,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "How does my agent provision an nlqdb database autonomously?",
-        a: "The MCP server exposes `create_database` — your agent calls it with a goal in English, the server materialises Postgres + schema in one call, and returns connection metadata bound to the agent's tenant.",
+        a: "The MCP server exposes `nlqdb_query` — your agent calls it with a goal in English, the server materialises Postgres + schema on first reference, and returns the answer bound to the agent's tenant. There's no separate create-DB verb to call first.",
       },
       {
         q: "Does nlqdb support forget / TTL like Mem0?",
@@ -296,7 +296,7 @@ export const COMPETITORS: Competitor[] = [
       "You want destructive operations and schema changes diff-previewed before they apply, even when an English request triggered them.",
       "You want to embed the answer inside your own product via one HTML element, not link out to a hosted admin UI.",
       "You're spinning up a new feature or service that needs its own database — nlqdb provisions Postgres on the first query.",
-      "An AI agent needs to provision its own database via MCP — `create_database` is the verb Outerbase doesn't ship.",
+      "An AI agent needs to provision its own database via MCP — `nlqdb_query` materialises Postgres on first reference, the on-ramp Outerbase doesn't ship.",
     ],
     whenChooseThem: [
       "You already run a production Postgres / MySQL / Snowflake / BigQuery you can't migrate.",
@@ -320,10 +320,10 @@ export const COMPETITORS: Competitor[] = [
         note: "Outerbase's spreadsheet editor confirms row edits inline; the NL-side diff preview is unique to nlqdb.",
       },
       {
-        feature: "MCP server with provisioning verbs",
+        feature: "MCP server (agent-callable)",
         us: "shipped",
         them: "no",
-        note: "Outerbase has no public MCP server today; nlqdb ships `create_database`, `ask`, `run`.",
+        note: "Outerbase has no public MCP server today; nlqdb ships `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` — `nlqdb_query` materialises Postgres on first reference.",
       },
       {
         feature: "HTML embed element (in-product render)",
@@ -379,7 +379,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Can my AI agent provision an Outerbase-managed DB the way it provisions an nlqdb database?",
-        a: "Outerbase is admin-UI shaped — it doesn't expose a `create_database` primitive an autonomous agent can call. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `create_database`, `ask`, and `run` so a Claude / Cursor / Cline agent stands up its own data layer end-to-end.",
+        a: "Outerbase is admin-UI shaped — it doesn't expose a provisioning primitive an autonomous agent can call. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe` — `nlqdb_query` materialises Postgres on first reference (no separate create-DB verb) — so a Claude / Cursor / Cline agent stands up its own data layer end-to-end.",
       },
       {
         q: "Is nlqdb HIPAA or SOC 2 compliant like Outerbase?",
@@ -405,7 +405,7 @@ export const COMPETITORS: Competitor[] = [
       "You need a new database — nlqdb provisions Postgres on the first query.",
       "You want destructive operations and schema changes diff-previewed before they apply, even when triggered by English.",
       "You want one HTML element rendering the answer in-product, not a hosted analytics surface.",
-      "You need an agent calling MCP `create_database` — Wren AI's skills query an existing warehouse.",
+      "An agent provisions its DB via MCP `nlqdb_query` — Wren AI queries an existing warehouse.",
     ],
     whenChooseThem: [
       "You already run a production warehouse (BigQuery, Snowflake, PostgreSQL, DuckDB, …) you can't migrate.",
@@ -441,10 +441,10 @@ export const COMPETITORS: Competitor[] = [
         note: "Wren AI's Apache DataFusion engine documents 22+ data sources including PostgreSQL, BigQuery, Snowflake, and DuckDB. nlqdb is Postgres-first in Phase 1; ClickHouse lands on the workload-analyser path.",
       },
       {
-        feature: "MCP server with provisioning verbs",
+        feature: "MCP server (agent-callable)",
         us: "shipped",
         them: "no",
-        note: "Wren AI ships a Python SDK, LangChain/LangGraph bindings, and skill bundles for Claude Code; no public MCP primitive for `create_database`.",
+        note: "Wren AI ships a Python SDK, LangChain/LangGraph bindings, and skill bundles for Claude Code; no public MCP server. nlqdb's `nlqdb_query` materialises Postgres on first reference.",
       },
       {
         feature: "Destructive-op diff preview before apply",
@@ -491,7 +491,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Can my AI agent provision a Wren-AI-managed warehouse the way it provisions an nlqdb database?",
-        a: "Wren AI is a context layer plus agent toolkit — its Python SDK and LangChain bindings let an agent issue NL queries against an MDL-modelled data source, but the warehouse itself must already exist. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `create_database`, `ask`, and `run`, so a Claude / Cursor / Cline agent stands up its own Postgres plus schema end-to-end without a human in the loop.",
+        a: "Wren AI is a context layer plus agent toolkit — its Python SDK and LangChain bindings let an agent issue NL queries against an MDL-modelled data source, but the warehouse itself must already exist. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe` — `nlqdb_query` materialises Postgres plus schema on first reference — so a Claude / Cursor / Cline agent stands up its own data layer end-to-end without a human in the loop.",
       },
       {
         q: "Wren AI is open source — why not just self-host that?",
@@ -924,6 +924,931 @@ export const COMPETITORS: Competitor[] = [
     demo: {
       goal: "distinct users who asked about pricing each week this quarter",
       why: "The aggregation LangMem's similarity search can't run — it returns the memories most relevant to a query, not a COUNT(DISTINCT) per week; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
+  {
+    slug: "pinecone",
+    name: "Pinecone",
+    url: "https://www.pinecone.io",
+    // Agent-memory cluster (vector-store wing) anchored in docs/competitors.md
+    // §Pinecone. Facts verified via web search 2026-06-22: serverless is the
+    // 2026 default; Starter (free, 1 index / ~2GB) · Builder $20/mo · Standard
+    // $50/mo min · Enterprise $500/mo min; billed on read units / write units /
+    // storage. No SQL interface, no joins, no transactions, no aggregations —
+    // nearest-neighbour + metadata filter only. Official Developer + Assistant
+    // MCP servers ship (create-index / upsert / search-records).
+    tagline:
+      "Managed serverless vector database — nearest-neighbour similarity search over embeddings with metadata filtering, plus hosted embedding and reranking (Pinecone Inference).",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Pinecone if your agent retrieves by semantic similarity — nearest-neighbour search over embeddings with metadata filters, plus hosted embedding and reranking. Pick nlqdb if your agent must aggregate what it stored: GROUP BY, JOIN, and HAVING over typed rows it provisions and migrates itself in plain English. Pinecone finds the similar; nlqdb counts, groups, and ranks.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not just find similar items.",
+      "You store structured rows the agent later reports over ('deals per stage this quarter').",
+      "You want exact filters and counts, not approximate nearest-neighbour ranking, over memory.",
+      "The schema should evolve as the agent learns ('add a `priority` field') via English.",
+    ],
+    whenChooseThem: [
+      "Your agent retrieves by semantic similarity — nearest-neighbour over text or image embeddings.",
+      "Recall is the job: RAG context, related-document lookup, fuzzy 'find what's like this'.",
+      "You want hosted embedding and reranking models in the pipeline (Pinecone Inference).",
+      "You need proven large-scale vector search on a serverless pay-per-use model.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Pinecone takes a query vector plus a metadata filter; it has no English-to-SQL compiler.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Pinecone returns the top-k most similar vectors; it ships no SQL engine, no joins, and no transactions.",
+      },
+      {
+        feature: "Vector / semantic similarity search over memory",
+        us: "no",
+        them: "shipped",
+        note: "Nearest-neighbour over embeddings is Pinecone's core primitive; nlqdb stores typed rows and ships no embedding search today.",
+      },
+      {
+        feature: "Hosted embedding + reranking models (Pinecone Inference)",
+        us: "no",
+        them: "shipped",
+      },
+      {
+        feature: "Filtering on retrieval",
+        us: "partial",
+        them: "shipped",
+        note: "nlqdb filters with exact SQL WHERE over typed columns; Pinecone filters vectors by metadata around the ANN search.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Pinecone's Developer MCP creates a vector index and upserts/searches records; nlqdb's `nlqdb_query` materialises Postgres on first reference and runs aggregating SQL.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "no",
+        note: "Pinecone is hosted-only and proprietary; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Pinecone for semantic recall and nlqdb for analytics over the same agent memory?",
+        a: "Yes — they compose. Pinecone handles 'find the memories most similar to this question' via nearest-neighbour search; nlqdb handles 'how many tools did the agent call per category this week' via SQL. Run Pinecone as the recall layer and nlqdb as the analytical store the agent queries with GROUP BY / JOIN / HAVING.",
+      },
+      {
+        q: "Does nlqdb do vector / similarity search like Pinecone?",
+        a: "No. nlqdb is Postgres-first — typed rows queried with exact SQL, not embeddings ranked by cosine distance. If approximate nearest-neighbour search over text or image vectors is the job, Pinecone is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions.",
+      },
+      {
+        q: "Pinecone has metadata filtering — isn't that the same as nlqdb's SQL WHERE?",
+        a: "Not quite. Pinecone's metadata filter narrows candidates around an approximate nearest-neighbour search, so the result is still a similarity ranking. nlqdb runs exact SQL — WHERE, GROUP BY, COUNT, JOIN — and returns a precise result set, not the top-k closest vectors. Different jobs: one finds similar, the other computes answers.",
+      },
+      {
+        q: "How does pricing compare to Pinecone's serverless model?",
+        a: "Pinecone serverless bills on read units, write units, and storage above a free Starter index (Builder is $20/mo, Standard $50/mo minimum). nlqdb's free chain is forever (BYO-LLM at 0% markup); hosted premium adds a flat sub with an included allowance and soft-meter overage. Until monetization ships, everything is free.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Pinecone the way it can with nlqdb?",
+        a: "Pinecone's MCP server can create a vector index and upsert records, but the agent gets a similarity store, not a relational database it can aggregate or migrate. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent stands up and reports over its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "the 10 tools the agent called most this week, ranked by call count",
+      why: "The aggregation Pinecone's similarity search can't run — it returns the vectors nearest a query, not a GROUP BY / COUNT ranking; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
+  {
+    slug: "chroma",
+    name: "Chroma",
+    url: "https://www.trychroma.com",
+    // Agent-memory cluster (vector-store wing, OSS-first) anchored in
+    // docs/competitors.md §Chroma. Facts verified via web search + the
+    // official pricing page 2026-06-22: Apache-2.0 open-source, runs
+    // embedded/in-memory or self-hosted, plus serverless Chroma Cloud —
+    // Starter $0/mo + usage ($5 free credits) · Team $250/mo + usage
+    // ($100 credits) · Enterprise custom; usage billed on write ($2.50/GiB),
+    // storage ($0.33/GiB-mo), query ($0.0075/TiB), egress ($0.09/GiB).
+    // Primitives: vector similarity + full-text + metadata filtering. No SQL,
+    // no joins, no transactions, no aggregations. Official `chroma-mcp` server
+    // ships (create-collection / add / query / metadata filter).
+    tagline:
+      "Open-source embedding database — vector similarity, full-text, and metadata search over documents; runs embedded, self-hosted, or on serverless Chroma Cloud.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Chroma if your agent recalls by similarity and you want an open-source store you can run embedded or self-hosted — nearest-neighbour plus full-text and metadata filtering. Pick nlqdb if your agent must aggregate what it stored: GROUP BY, JOIN, and HAVING over typed rows it provisions in plain English. Chroma finds the similar; nlqdb counts, groups, and ranks.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not just find similar items.",
+      "You store structured rows the agent later reports over ('deals per stage this quarter').",
+      "You want exact filters and counts, not approximate nearest-neighbour ranking, over memory.",
+      "The schema should evolve as the agent learns ('add a `priority` field') via English.",
+    ],
+    whenChooseThem: [
+      "Your agent recalls by semantic similarity — nearest-neighbour over text or document embeddings.",
+      "RAG context or related-document lookup is the job, often with full-text search alongside.",
+      "You want an open-source store you can run embedded in-process or self-host yourself.",
+      "You're prototyping locally and want a zero-config vector store before any cloud.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Chroma takes a query embedding (or text) plus a metadata filter; it has no English-to-SQL compiler.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Chroma returns the top-k most similar documents; it ships no SQL engine, no joins, and no transactions.",
+      },
+      {
+        feature: "Vector / semantic similarity search over memory",
+        us: "no",
+        them: "shipped",
+        note: "Nearest-neighbour over embeddings is Chroma's core primitive; nlqdb stores typed rows and ships no embedding search today.",
+      },
+      {
+        feature: "Full-text search over stored documents",
+        us: "partial",
+        them: "shipped",
+        note: "Chroma indexes documents for full-text + vector search; nlqdb matches text with SQL LIKE / pattern predicates, not a ranked text index.",
+      },
+      {
+        feature: "Filtering on retrieval",
+        us: "partial",
+        them: "shipped",
+        note: "nlqdb filters with exact SQL WHERE over typed columns; Chroma filters by metadata around the nearest-neighbour search.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Chroma's `chroma-mcp` creates collections and adds/queries documents by similarity; nlqdb's `nlqdb_query` materialises Postgres on first reference and runs aggregating SQL.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "shipped",
+        note: "Chroma is Apache-2.0 and runs embedded or self-hosted; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Chroma for semantic recall and nlqdb for analytics over the same agent memory?",
+        a: "Yes — they compose. Chroma handles 'find the documents most similar to this question' via nearest-neighbour and full-text search; nlqdb handles 'how many tools did the agent call per category this week' via SQL. Run Chroma as the recall layer and nlqdb as the analytical store the agent queries with GROUP BY / JOIN / HAVING.",
+      },
+      {
+        q: "Does nlqdb do vector / similarity search like Chroma?",
+        a: "No. nlqdb is Postgres-first — typed rows queried with exact SQL, not embeddings ranked by distance. If approximate nearest-neighbour search over text or document vectors is the job, Chroma is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions.",
+      },
+      {
+        q: "Chroma is open source and self-hostable — is nlqdb?",
+        a: "nlqdb is source-available under FSL 1.1 (Functional Source License), which auto-converts to Apache 2.0 two years after each release; Chroma is Apache 2.0 today and runs embedded in-process or self-hosted. Both let you keep your data; they differ on the query model, not on lock-in — Chroma does vector + full-text recall, nlqdb does relational SQL.",
+      },
+      {
+        q: "Chroma has metadata filtering — isn't that the same as nlqdb's SQL WHERE?",
+        a: "Not quite. Chroma's metadata filter narrows candidates around a nearest-neighbour search, so the result is still a similarity ranking. nlqdb runs exact SQL — WHERE, GROUP BY, COUNT, JOIN — and returns a precise result set, not the top-k closest documents. Different jobs: one finds similar, the other computes answers.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Chroma the way it can with nlqdb?",
+        a: "Chroma's `chroma-mcp` server can create a collection and add documents, but the agent gets a similarity store, not a relational database it can aggregate or migrate. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent stands up and reports over its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "the 10 tools the agent called most this week, ranked by call count",
+      why: "The aggregation Chroma's similarity search can't run — it returns the documents nearest a query, not a GROUP BY / COUNT ranking; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
+  {
+    slug: "weaviate",
+    name: "Weaviate",
+    url: "https://weaviate.io",
+    // Agent-memory cluster (vector-store wing, enterprise/hybrid-search) anchored
+    // in docs/competitors.md §Weaviate. Facts verified via web search + the
+    // official GitHub + pricing page 2026-06-22: BSD-3-Clause open source
+    // (self-host is full-featured and free), plus Weaviate Cloud — Sandbox
+    // (14-day, auto-expires) · Flex ($45/mo min, shared GCP, 99.5% SLA) · Plus
+    // ($280/mo annual, 99.9% SLA, SOC 2) · Premium (custom, BYOC, HIPAA);
+    // vector-dimension billing ($0.01668 / M dims-mo from Oct 2025).
+    // Primitives: vector similarity + BM25 keyword + first-class hybrid search,
+    // metadata filtering, RAG/generative, reranking, multimodal. Enterprise:
+    // built-in multi-tenancy, replication, RBAC. No SQL, no joins, no GROUP BY
+    // aggregations, no transactions. Official `mcp-server-weaviate` ships
+    // (insert objects + hybrid search).
+    tagline:
+      "Open-source, cloud-native vector database — first-class hybrid search (BM25 + vector), metadata filtering, multi-tenancy, and replication; self-host on BSD-3 or run on Weaviate Cloud.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Weaviate if your agent recalls by hybrid search — BM25 keyword fused with vector similarity — at enterprise scale with multi-tenancy, replication, and RBAC. Pick nlqdb if your agent must aggregate what it stored: GROUP BY, JOIN, and HAVING over typed rows it provisions in plain English. Weaviate ranks the relevant; nlqdb counts, groups, and reports.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not just rank relevant items.",
+      "You store structured rows the agent later reports over ('calls per tool this week').",
+      "You want exact filters and counts, not a fused similarity + keyword ranking, over memory.",
+      "The schema should evolve as the agent learns ('add a `priority` field') via English.",
+    ],
+    whenChooseThem: [
+      "Your agent recalls by hybrid search — BM25 keyword fused with vector similarity over text.",
+      "You need enterprise scale: built-in multi-tenancy, replication, and RBAC across many namespaces.",
+      "RAG context, reranking, or multimodal retrieval is the job, not relational reporting.",
+      "You want an open-source store you can self-host full-featured under BSD-3.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Weaviate takes a vector, a BM25 query, or a hybrid blend plus a metadata filter; it has no English-to-SQL compiler.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Weaviate returns ranked nearest objects; it ships no SQL engine, no joins, and no transactions across collections.",
+      },
+      {
+        feature: "Vector / semantic similarity search over memory",
+        us: "no",
+        them: "shipped",
+        note: "Nearest-neighbour over embeddings is core to Weaviate; nlqdb stores typed rows and ships no embedding search today.",
+      },
+      {
+        feature: "Hybrid search (BM25 keyword + vector) over stored documents",
+        us: "partial",
+        them: "shipped",
+        note: "First-class fused BM25 + dense ranking is Weaviate's headline; nlqdb matches text with SQL LIKE / pattern predicates, not a fused-rank index.",
+      },
+      {
+        feature: "Filtering on retrieval",
+        us: "partial",
+        them: "shipped",
+        note: "nlqdb filters with exact SQL WHERE over typed columns; Weaviate filters by metadata around the hybrid / nearest-neighbour search.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Weaviate's `mcp-server-weaviate` inserts objects and runs hybrid search; nlqdb's `nlqdb_query` materialises Postgres on first reference and runs aggregating SQL.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "shipped",
+        note: "Weaviate is BSD-3 and self-hosts full-featured; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Weaviate for hybrid recall and nlqdb for analytics over the same agent memory?",
+        a: "Yes — they compose. Weaviate handles 'find the passages most relevant to this question' via fused BM25 + vector ranking; nlqdb handles 'how many tools did the agent call per category this week' via SQL. Run Weaviate as the recall layer and nlqdb as the analytical store the agent queries with GROUP BY / JOIN / HAVING.",
+      },
+      {
+        q: "Does nlqdb do vector or hybrid search like Weaviate?",
+        a: "No. nlqdb is Postgres-first — typed rows queried with exact SQL, not embeddings fused with BM25 and ranked by relevance. If hybrid keyword-plus-semantic search over text is the job, Weaviate is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions.",
+      },
+      {
+        q: "Weaviate is open source and self-hostable — is nlqdb?",
+        a: "nlqdb is source-available under FSL 1.1 (Functional Source License), which auto-converts to Apache 2.0 two years after each release; Weaviate is BSD-3 today and self-hosts full-featured. Both let you keep your data; they differ on the query model, not on lock-in — Weaviate does hybrid recall, nlqdb does relational SQL.",
+      },
+      {
+        q: "Weaviate has metadata filtering — isn't that the same as nlqdb's SQL WHERE?",
+        a: "Not quite. Weaviate's metadata filter narrows candidates around a hybrid or nearest-neighbour search, so the result is still a relevance ranking. nlqdb runs exact SQL — WHERE, GROUP BY, COUNT, JOIN — and returns a precise result set, not the top-k most relevant objects. Different jobs: one ranks the relevant, the other computes answers.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Weaviate the way it can with nlqdb?",
+        a: "Weaviate's `mcp-server-weaviate` can insert objects and run hybrid search, but the agent gets a vector store, not a relational database it can aggregate or migrate. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent stands up and reports over its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "calls per tool category this week, only categories above 20 calls",
+      why: "The HAVING-filtered aggregation Weaviate's hybrid search can't run — it ranks the most relevant objects, not a GROUP BY / COUNT with a threshold; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
+  {
+    slug: "qdrant",
+    name: "Qdrant",
+    url: "https://qdrant.tech",
+    // Agent-memory cluster (vector-store wing, Rust/performance + permissive
+    // license) anchored in docs/competitors.md §Qdrant. Facts verified via web
+    // search + the official pricing page + the qdrant/mcp-server-qdrant repo
+    // 2026-06-23: Apache-2.0 open source (self-host full-featured and free —
+    // the most permissive licence of the vector cluster), plus Qdrant Cloud —
+    // Free (0.5 vCPU / 1GB RAM / 4GB disk, single node, free forever) ·
+    // Standard (usage-based hourly, dedicated, 99.5% SLA) · Premium (min spend,
+    // SSO, private VPC, 99.9% SLA) · Hybrid Cloud (managed on your infra) ·
+    // Private Cloud (air-gapped). Written in Rust. Primitives: HNSW vector
+    // search, scalar/binary/product quantization (memory-efficient recall),
+    // native hybrid search (dense + sparse fused via the Query API), metadata
+    // filtering, REST + gRPC. No SQL, no joins, no GROUP BY aggregations, no
+    // transactions across collections. Official `mcp-server-qdrant` ships
+    // (`qdrant-store` + `qdrant-find` semantic-memory tools).
+    tagline:
+      "High-performance, Rust-built open-source vector database — HNSW search, scalar/binary/product quantization, native hybrid (dense + sparse) search; self-host on Apache-2.0 or run on Qdrant Cloud.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Qdrant if your agent recalls by fast, memory-efficient vector search — quantized HNSW with dense-plus-sparse hybrid ranking, self-hostable on Apache-2.0. Pick nlqdb if your agent must aggregate what it stored: GROUP BY, JOIN, and HAVING over typed rows it provisions in plain English. Qdrant ranks the relevant cheaply; nlqdb counts, groups, and reports.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not just rank relevant items.",
+      "You store structured rows the agent later reports over ('calls per tool this week').",
+      "You want exact filters and counts, not a quantized similarity ranking, over memory.",
+      "The schema should evolve as the agent learns ('add a `priority` field') via English.",
+    ],
+    whenChooseThem: [
+      "Your agent recalls by vector search and you want quantization to cut RAM and cost.",
+      "You need native hybrid search — dense plus sparse vectors fused in one Query API call.",
+      "Raw recall throughput and self-hosting on a permissive Apache-2.0 licence matter most.",
+      "RAG context or semantic retrieval is the job, not relational reporting over rows.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Qdrant takes a dense vector, a sparse vector, or a hybrid blend plus a metadata filter; it has no English-to-SQL compiler.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Qdrant returns ranked nearest points; it ships no SQL engine, no joins, and no transactions across collections. Quantization makes recall cheaper, not relational.",
+      },
+      {
+        feature: "Vector / semantic similarity search over memory",
+        us: "no",
+        them: "shipped",
+        note: "Quantized HNSW nearest-neighbour over embeddings is core to Qdrant; nlqdb stores typed rows and ships no embedding search today.",
+      },
+      {
+        feature: "Hybrid search (dense + sparse vectors) over stored documents",
+        us: "partial",
+        them: "shipped",
+        note: "Native dense + sparse fusion via the Query API is Qdrant's headline; nlqdb matches text with SQL LIKE / pattern predicates, not a fused-rank index.",
+      },
+      {
+        feature: "Filtering on retrieval",
+        us: "partial",
+        them: "shipped",
+        note: "nlqdb filters with exact SQL WHERE over typed columns; Qdrant filters by payload metadata around the nearest-neighbour search.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Qdrant's `mcp-server-qdrant` stores and finds memories by vector (`qdrant-store` / `qdrant-find`); nlqdb's `nlqdb_query` materialises Postgres on first reference and runs aggregating SQL.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "shipped",
+        note: "Qdrant is Apache-2.0 and self-hosts full-featured; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Qdrant for vector recall and nlqdb for analytics over the same agent memory?",
+        a: "Yes — they compose. Qdrant handles 'find the points most relevant to this question' via quantized HNSW with dense-plus-sparse ranking; nlqdb handles 'how many tools did the agent call per category this week' via SQL. Run Qdrant as the recall layer and nlqdb as the analytical store the agent queries with GROUP BY / JOIN / HAVING.",
+      },
+      {
+        q: "Does nlqdb do vector or hybrid search like Qdrant?",
+        a: "No. nlqdb is Postgres-first — typed rows queried with exact SQL, not quantized embeddings fused with sparse vectors and ranked by relevance. If fast, memory-efficient semantic search over text is the job, Qdrant is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions.",
+      },
+      {
+        q: "Qdrant is Apache-2.0 and self-hostable — is nlqdb open source too?",
+        a: "nlqdb is source-available under FSL 1.1 (Functional Source License), which auto-converts to Apache 2.0 two years after each release; Qdrant is Apache-2.0 today and self-hosts full-featured. Both let you keep your data; they differ on the query model, not on lock-in — Qdrant does quantized vector recall, nlqdb does relational SQL.",
+      },
+      {
+        q: "Qdrant has payload filtering — isn't that the same as nlqdb's SQL WHERE?",
+        a: "Not quite. Qdrant's payload filter narrows candidates around a nearest-neighbour search, so the result is still a relevance ranking. nlqdb runs exact SQL — WHERE, GROUP BY, COUNT, JOIN — and returns a precise result set, not the top-k most relevant points. Different jobs: one ranks the relevant, the other computes answers.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Qdrant the way it can with nlqdb?",
+        a: "Qdrant's `mcp-server-qdrant` can store and find memories by vector, but the agent gets a vector collection, not a relational database it can aggregate or migrate. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent stands up and reports over its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "calls per tool category this week, only categories above 20 calls",
+      why: "The HAVING-filtered aggregation Qdrant's quantized vector search can't run — it ranks the most relevant points, not a GROUP BY / COUNT with a threshold; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
+  {
+    slug: "julius",
+    name: "Julius AI",
+    url: "https://julius.ai",
+    // P3 analyst slot (the pre-pivot slate the comparison-pages FEATURE names
+    // now the top-tier vector-DB cluster is closed; highest keyword volume +
+    // most on-message of Retool AI / Julius AI / Basedash). Anchored in
+    // docs/competitors.md §Julius AI ("analysis-only; no durable data layer").
+    // Facts web-verified 2026-06-23 (julius.ai homepage + pricing + 2026
+    // reviews): cloud-based conversational data-analysis web app — upload
+    // Excel / CSV / Google Sheets, auto-generate charts (line/bar/pie/scatter/
+    // heatmap) + presentation dashboards, generate + run Python you can
+    // inspect, pre-built notebooks (sales/financial/HR/marketing/academic).
+    // Pricing: Free (15 messages/mo) · Plus (~$29/mo annual) · Pro ($45/mo,
+    // removes the message cap + adds live DB connectors: PostgreSQL, Snowflake,
+    // BigQuery, Supabase, Google Drive, OneDrive, Google Ads, Stripe) ·
+    // Business + Enterprise (custom). It is a destination chat app for
+    // analysts — no embeddable element, no SDK/API to build on, no MCP server,
+    // and it does not provision or own a database (it reads files or an
+    // existing warehouse).
+    tagline:
+      "Conversational AI data analyst — upload a CSV, Excel, or Google Sheet (or connect a warehouse on Pro), then chat your way to charts, dashboards, and Python notebooks.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Julius AI if you're an analyst who wants to upload a spreadsheet and chat your way to charts and a Python notebook. Pick nlqdb if you're building a product or agent that needs English-to-SQL over a database it provisions — embeddable, API-first, with every write diff-previewed.",
+    whenChooseUs: [
+      "You're building data features into your own product, not running ad-hoc analysis in a chat app.",
+      "An AI agent must query — and provision — its own database, callable over MCP.",
+      "You embed one HTML element (`<nlq-data>`) or call an API, not a destination web app.",
+      "Writes and schema changes should be diff-previewed before they apply.",
+    ],
+    whenChooseThem: [
+      "You're an analyst exploring uploaded CSVs, Excel, or Google Sheets ad hoc.",
+      "You want presentation-ready charts and dashboards generated from a chat prompt.",
+      "You need Python notebooks and generated data-science code you can inspect.",
+      "You want a ready-to-use analysis app, not a backend to build on.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Julius reads uploaded files or connects to an existing warehouse; it doesn't provision or own a database your app writes to.",
+      },
+      {
+        feature: "Natural-language data questions",
+        us: "shipped",
+        them: "shipped",
+        note: "Both take English — Julius generates Python/analysis over your data, nlqdb compiles SQL against a Postgres it owns.",
+      },
+      {
+        feature: "Embeddable in your product (HTML element / SDK / API)",
+        us: "shipped",
+        them: "no",
+        note: "Julius is a standalone chat web app analysts log into; nlqdb ships `<nlq-data>`, an SDK, and an HTTP API to embed.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "no",
+        note: "nlqdb's `nlqdb_query` materialises Postgres on first reference for a Claude / Cursor agent; Julius has no MCP surface.",
+      },
+      {
+        feature: "Charts + dashboards from a prompt",
+        us: "no",
+        them: "shipped",
+        note: "Julius auto-generates line/bar/pie/scatter charts and dashboards; nlqdb returns typed result rows you render in your own UI.",
+      },
+      {
+        feature: "CSV / Excel / Google Sheets file analysis",
+        us: "no",
+        them: "shipped",
+        note: "Upload-and-analyse is Julius's home turf; nlqdb is database-backed, not ad-hoc file analysis.",
+      },
+      {
+        feature: "Python / data-science code generation",
+        us: "no",
+        them: "shipped",
+        note: "Julius writes and runs Python you can inspect; nlqdb's output contract is SQL plus rows.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "Julius analyses; it doesn't manage your schema. nlqdb previews writes and DDL before applying.",
+      },
+      {
+        feature: "Live database connectors",
+        us: "partial",
+        them: "shipped",
+        note: "Julius (Pro) connects to Postgres/Snowflake/BigQuery/Supabase; nlqdb provisions and queries its own Postgres rather than reading many external warehouses.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Julius AI and nlqdb together?",
+        a: "Yes — they serve different stages. Julius AI is where an analyst explores a dataset and produces charts; nlqdb is the database your product or agent queries in plain English at runtime. Use Julius for ad-hoc exploration, nlqdb for the data layer your app ships on.",
+      },
+      {
+        q: "Does nlqdb make charts like Julius AI?",
+        a: "No. nlqdb returns typed result rows from SQL it compiles; it doesn't generate charts or dashboards. If presentation-ready visualizations from a chat prompt are the goal, Julius is the right shape; nlqdb's contract is the data, which you render in your own UI.",
+      },
+      {
+        q: "Can I upload a CSV to nlqdb the way I do with Julius AI?",
+        a: "Not today — nlqdb is database-backed, not an ad-hoc file-analysis app. It provisions a Postgres you query in English (and an agent can provision via MCP). Julius's home turf is uploading a spreadsheet and chatting over it; nlqdb's is the durable data layer your product builds on.",
+      },
+      {
+        q: "Is Julius AI embeddable in my own app like nlqdb?",
+        a: "No. Julius is a standalone chat web app analysts log into; it has no embeddable element, SDK, or MCP server. nlqdb ships `<nlq-data>`, an SDK, an HTTP API, and an MCP server, so a product or AI agent queries the database in English without leaving your app.",
+      },
+      {
+        q: "Julius AI can connect to my database — why provision a new one with nlqdb?",
+        a: "Julius (on Pro) reads your existing Snowflake/Postgres/BigQuery for analysis. nlqdb owns the database your app writes to: it provisions Postgres, migrates the schema via English, and diff-previews destructive writes. Connecting-to-read and owning-the-write-path are different jobs.",
+      },
+    ],
+    demo: {
+      goal: "top 5 customers by total order value this quarter",
+      why: "A grouped, ranked query nlqdb answers as SQL over the database your app owns — the live data layer your product queries, not a one-off chart from an uploaded spreadsheet.",
+    },
+  },
+  {
+    slug: "retool",
+    name: "Retool",
+    url: "https://retool.com",
+    // P4 backend-engineer slot — the internal-tools incumbent with the
+    // strongest distribution moat in docs/competitors.md §3 ("already
+    // installed; distribution moat"), the natural next slice after Julius (P3)
+    // per the comparison-pages FEATURE decision rule (persona-weighted threat ×
+    // keyword volume — Retool's brand keyword dwarfs Basedash's). Facts
+    // web-verified 2026-06-23 (retool.com/ai + retool.com/pricing + trust.retool.com):
+    // low-code platform — drag-drop components + queries assemble internal
+    // apps/dashboards over your *existing* production data (Postgres, Databricks,
+    // Salesforce, …). AI layer: AppGen (describe an app → scaffold against your
+    // schema), Ask AI (NL → SQL/JS/GraphQL while building), NL queries → dashboards,
+    // and native AI Agents (plan/call-tools/query with guardrails + audit, billed
+    // hourly, separate from the pooled AI credits). Pricing: Free ≤5 users · Team
+    // (~€9/builder + €5/user) · Business (~€46/builder + €14/user) · Enterprise
+    // (custom; SSO Enterprise-only). Self-host on all tiers (advanced on Enterprise).
+    // Compliance: SOC 2 Type II + ISO 27001:2022 + GDPR; HIPAA via self-host (no BAA
+    // by default). Custom model providers (OpenAI/Anthropic/Google/AWS/Azure). No
+    // public MCP server; it connects to an existing DB and does not provision one.
+    tagline:
+      "Low-code platform for internal tools — drag-drop UI plus AI (AppGen, Ask AI, native agents) over your existing Postgres, Databricks, Salesforce, and more.",
+    persona: "P4 backend engineer",
+    oneLiner:
+      "Pick Retool if you want to build internal admin tools and dashboards — visually, on top of a database you already run — with AI that scaffolds the app and writes the queries. Pick nlqdb if you want to skip building the UI entirely: provision the database, ask in English, and render the answer inline in your own product or agent.",
+    whenChooseUs: [
+      "Skip building an admin UI — one HTML element answers the English goal in-product.",
+      "You need the database itself — nlqdb provisions Postgres on the first query.",
+      "An AI agent must provision and migrate its own database over MCP, end-to-end.",
+      "Writes and schema changes should be diff-previewed in plain English before they apply.",
+    ],
+    whenChooseThem: [
+      "You already run a production database and want a polished internal-tools UI over it.",
+      "Your team needs drag-drop apps, dashboards, and a deep connector ecosystem.",
+      "You want native AI agents with guardrails, audit trails, and any model provider.",
+      "Enterprise SSO, self-hosting, and SOC 2 / ISO 27001 / GDPR are hard requirements today.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Retool connects to an existing warehouse (Postgres, Databricks, Salesforce, …); provisioning the database is out of scope by design.",
+      },
+      { feature: "Natural-language → SQL", us: "shipped", them: "shipped" },
+      {
+        feature: "Build the UI yourself (drag-drop / low-code)",
+        us: "no",
+        them: "shipped",
+        note: "Retool's core is assembling apps from components, even with AppGen scaffolding; nlqdb's contract is 'skip the UI — one element renders the answer'.",
+      },
+      {
+        feature: "Embeddable answer in your own product (HTML element / SDK / API)",
+        us: "shipped",
+        them: "partial",
+        note: "Retool apps are destination internal tools (embeddable via an Enterprise iframe); nlqdb's `<nlq-data>` is a vanilla web component answering inline in your product layout.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+        note: "Ask AI writes queries against the existing schema; English-driven schema migration is not part of the product.",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "partial",
+        note: "Retool gates writes behind buttons a human clicks; the per-operation diff preview on an NL-triggered write/DDL is unique to nlqdb.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "no",
+        note: "nlqdb exposes `nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe`; `nlqdb_query` materialises Postgres on first reference. Retool ships no public MCP server today.",
+      },
+      {
+        feature: "Native AI agents (plan / call tools / query)",
+        us: "partial",
+        them: "shipped",
+        note: "Retool ships production AI agents with guardrails + audit trails (billed hourly); nlqdb is the data layer an external agent calls, not an agent runtime.",
+      },
+      {
+        feature: "Multi-engine connector ecosystem",
+        us: "partial",
+        them: "shipped",
+        note: "Retool connects to dozens of databases and SaaS APIs; nlqdb is Postgres-first in Phase 1 (ClickHouse on the workload-analyser path).",
+      },
+      {
+        feature: "SOC 2 Type II + ISO 27001 + enterprise SSO",
+        us: "no",
+        them: "shipped",
+        note: "Retool carries SOC 2 Type II / ISO 27001:2022 / GDPR with SSO on Enterprise (HIPAA via self-host). nlqdb is pre-alpha and carries none yet.",
+      },
+      {
+        feature: "Anonymous mode (try before sign-in)",
+        us: "shipped",
+        them: "no",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I point Retool at an nlqdb database, or nlqdb at a Retool-connected DB?",
+        a: "Retool connects to an existing database via a connection string, and nlqdb provisions Postgres, so the connection string nlqdb returns could slot in as a Retool resource. The reverse — nlqdb querying a database Retool manages — isn't supported today: nlqdb owns the database it queries, and bring-your-own-Postgres is on the roadmap, not shipped.",
+      },
+      {
+        q: "How is nlqdb different from Retool's Ask AI and AppGen?",
+        a: "Retool's AI scaffolds an internal app and writes queries against your existing schema, but a human still assembles and ships the UI. nlqdb skips the UI entirely: you embed one `<nlq-data>` element (or call the SDK / API), pass an English goal, and the answer renders inline. Retool is a builder for the people building tools; nlqdb is a backend primitive your product and agents call.",
+      },
+      {
+        q: "Does nlqdb ship AI agents with guardrails like Retool?",
+        a: "Not as a runtime. Retool ships native AI agents that plan, call tools, and query data with audit trails. nlqdb is the data layer those agents call — its MCP server exposes `nlqdb_query`, which materialises Postgres on first reference, so an external Claude / Cursor / Cline agent provisions and queries its own database. Compose them: the agent runtime on one side, nlqdb as the store it stands up.",
+      },
+      {
+        q: "Is nlqdb SOC 2 or HIPAA compliant like Retool?",
+        a: "No. nlqdb is pre-alpha and carries no certifications yet. Retool holds SOC 2 Type II, ISO 27001:2022, and GDPR, with enterprise SSO and HIPAA-capable self-hosting. If a documented compliance posture is required today, Retool is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
+      },
+      {
+        q: "Why pick nlqdb over Retool if I just need an internal dashboard?",
+        a: "If the deliverable is a polished internal tool over a database you already run, Retool's builder and connector ecosystem are hard to beat. nlqdb wins when (a) you don't have the database yet and want it provisioned, (b) you want the answer embedded in your own product rather than a separate Retool app, or (c) an AI agent needs to provision and migrate its own data layer over MCP without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "this week's failed background jobs grouped by service, top 10",
+      why: "The ops question a backend engineer would build a Retool dashboard for — nlqdb mints the Postgres and answers the English goal in one element, no app to assemble first.",
+    },
+  },
+  {
+    slug: "basedash",
+    name: "Basedash",
+    url: "https://www.basedash.com",
+    // P3 analyst slot — Basedash repositioned from "admin UI" (the stale
+    // docs/competitors.md read) to an "AI-native Business Intelligence
+    // platform": NL → dashboards, an AI data analyst with daily briefings
+    // (Insights), a reusable-metrics semantic layer, chart embedding, and an
+    // MCP server, federating 750+ data sources. So the honest persona is now
+    // P3 analyst, not P4 admin. Facts web-verified 2026-06-23
+    // (basedash.com + basedash.com/pricing): read-only analytics over data you
+    // already store (Postgres, Snowflake, BigQuery, Salesforce, HubSpot,
+    // Stripe, …) — no write/edit and no database provisioning. Pricing:
+    // 14-day full-feature trial, then Startup $1,000/mo (≤25 seats, $100/mo AI
+    // credits, + AI usage); Enterprise custom adds self-hosting, SSO
+    // (SAML/OIDC), SCIM, audit logs, custom AI models. No permanent free tier.
+    // Compliance: SOC 2 Type II, encryption in transit + at rest, customer
+    // data never trains models.
+    tagline:
+      "AI-native BI platform — natural-language dashboards, a daily AI data analyst, and a semantic layer over 750+ data sources.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Basedash if you want governed BI dashboards and daily AI briefings over data you already store across 750+ sources. Pick nlqdb if you want to own the database itself — provision Postgres, ask in English, write and migrate with diff-previews, and embed the answer inline in your product or agent.",
+    whenChooseUs: [
+      "You need the database itself — nlqdb provisions Postgres on the first query.",
+      "You write and migrate data in English, with diff-previews before changes apply.",
+      "You want an answer embedded inline in your product, not a BI dashboard.",
+      "An AI agent must provision and query its own database over MCP, end-to-end.",
+    ],
+    whenChooseThem: [
+      "You already store data across many sources and want governed BI dashboards over it.",
+      "You need a semantic layer, daily AI briefings, and 750+ connectors today.",
+      "SOC 2 Type II, SSO, and audit logs are hard requirements right now.",
+      "Your team wants polished, shareable charts and reports, not a data-layer primitive.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Basedash connects to data you already store (Postgres, Snowflake, Salesforce, …); provisioning the database is out of scope by design.",
+      },
+      { feature: "Natural-language → SQL / charts", us: "shipped", them: "shipped" },
+      {
+        feature: "Write / edit data via NL (not read-only)",
+        us: "shipped",
+        them: "no",
+        note: "Basedash is read-only analytics over connected data; nlqdb runs NL-driven writes and schema changes.",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "Basedash has no NL write path to gate; the per-operation diff preview on an NL-triggered write/DDL is unique to nlqdb.",
+      },
+      {
+        feature: "BI dashboards + reusable-metrics semantic layer",
+        us: "no",
+        them: "shipped",
+        note: "Basedash builds governed dashboards with a semantic layer and daily AI briefings; nlqdb returns answers, not dashboards.",
+      },
+      {
+        feature: "750+ data-source connectors",
+        us: "partial",
+        them: "shipped",
+        note: "Basedash federates 750+ sources; nlqdb is Postgres-first in Phase 1 (ClickHouse on the workload-analyser path).",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Both ship MCP; Basedash connects an AI client to existing data, while nlqdb's `nlqdb_query` materialises Postgres on first reference.",
+      },
+      {
+        feature: "Embeddable answer in your own product",
+        us: "shipped",
+        them: "partial",
+        note: "Basedash embeds finished charts; nlqdb's `<nlq-data>` is a vanilla web component answering an English goal inline in your layout.",
+      },
+      {
+        feature: "SOC 2 Type II + SSO + audit logs",
+        us: "no",
+        them: "shipped",
+        note: "Basedash carries SOC 2 Type II with SSO / SCIM / audit logs on Enterprise; nlqdb is pre-alpha and carries none yet.",
+      },
+      {
+        feature: "Free / anonymous tier (try before sign-in)",
+        us: "shipped",
+        them: "no",
+        note: "Basedash is a 14-day trial then $1,000/mo (≤25 seats); nlqdb has anonymous mode and a free tier on the free LLM chain.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Is Basedash a database, or does it connect to one I already have?",
+        a: "Basedash connects to data you already store — 750+ sources from Postgres and Snowflake to Salesforce and Stripe — and builds governed BI dashboards over it. It does not provision or own a database. nlqdb is the database: `nlqdb_query` materialises Postgres on first reference, so there's no existing warehouse to wire up first.",
+      },
+      {
+        q: "Can Basedash write or edit my data, or only read it?",
+        a: "Basedash is read-only analytics — dashboards, reports, and daily AI briefings over connected data, with no NL write or migration path. nlqdb runs natural-language writes and schema changes (e.g. 'add a column for tags'), and every destructive operation is diff-previewed in plain English before it applies.",
+      },
+      {
+        q: "How is nlqdb's embedding different from Basedash embedding charts?",
+        a: "Basedash embeds finished charts and dashboards into your product. nlqdb embeds an answer primitive: the `<nlq-data>` web component takes an English goal and renders the result inline in your own layout, and the same goal is callable from the SDK, API, or an MCP agent. One ships visualizations; the other ships a queryable data layer.",
+      },
+      {
+        q: "Is nlqdb cheaper than Basedash for a small team?",
+        a: "Basedash starts at $1,000/month for up to 25 seats (plus AI usage) after a 14-day trial, with no permanent free tier. nlqdb has an anonymous mode you can try without signing in and a free tier on the free LLM chain. For a small team that mainly needs to query and embed data, nlqdb removes the per-seat BI bill.",
+      },
+      {
+        q: "Is nlqdb SOC 2 compliant like Basedash?",
+        a: "No. Basedash carries SOC 2 Type II with encryption in transit and at rest, plus SSO, SCIM, and audit logs on Enterprise. nlqdb is pre-alpha and holds no certifications yet. If a documented compliance posture is required today, Basedash is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
+      },
+    ],
+    demo: {
+      goal: "monthly active customers grouped by plan, last 6 months",
+      why: "The dashboard question a team would open Basedash for — nlqdb mints the Postgres and answers the English goal in one element, no BI seat or connector setup first.",
+    },
+  },
+  {
+    slug: "metabase",
+    name: "Metabase",
+    url: "https://www.metabase.com",
+    // P3 analyst/BI slot — the comparison-pages FEATURE names Metabase Metabot
+    // as the next slice after Basedash by the persona-weighted threat ×
+    // keyword-volume rule: it carries the strongest OSS-distribution moat in
+    // the P3 BI cluster (docs/competitors.md §Metabase Metabot, threat-matrix
+    // row "OSS distribution + familiar BI UX"). Facts web-verified 2026-06-23
+    // (metabase.com/docs/latest/ai/metabot + metabase.com/pricing + 2026
+    // pricing write-ups): Metabase is an OSS + cloud BI platform (AGPL
+    // self-host; cloud Starter from ~$85/mo). Metabot is the AI layer inside
+    // it — answers data questions in natural language, builds charts via the
+    // query builder from a prompt, generates SQL in the native editor, fixes
+    // SQL errors ("Have Metabot fix it"), summarises/analyses existing
+    // visualizations, generates code for transforms, and answers in Slack.
+    // The full Metabot needs a paid Cloud plan plus a $100/mo add-on (500
+    // requests; included in Enterprise); the OSS edition includes only basic
+    // single-shot SQL generation. It is a destination BI/dashboard app over
+    // your existing warehouse — read-only analytics, no DB provisioning, no
+    // NL writes/migrations, no embeddable answer element or agent API.
+    tagline:
+      "Open-source + cloud BI platform — dashboards, charts, and SQL over your existing data; Metabot adds an AI layer that answers questions and writes SQL in natural language.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Metabase if you want an open-source BI tool to build dashboards and let analysts ask charts in chat over your existing warehouse. Pick nlqdb if you're building a product or agent that needs English-to-SQL over a database it provisions — embeddable, API-first, every write diff-previewed.",
+    whenChooseUs: [
+      "You're embedding data features into a product or agent, not building dashboards.",
+      "You want one HTML element (`<nlq-data>`) or an API, not a BI app to log into.",
+      "An AI agent must query — and provision — its own database, callable over MCP.",
+      "Writes and schema changes should be diff-previewed before they apply.",
+    ],
+    whenChooseThem: [
+      "You want a self-hostable open-source BI tool over an existing warehouse.",
+      "Your team builds and shares dashboards, charts, and scheduled reports.",
+      "Analysts want a familiar query builder with an AI assistant alongside.",
+      "You need read-only analytics across many connected data sources.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Metabase connects to an existing warehouse to read it; it doesn't provision or own a database your app writes to.",
+      },
+      {
+        feature: "Natural-language data questions",
+        us: "shipped",
+        them: "partial",
+        note: "Metabot (paid add-on) answers in English and writes SQL; the OSS edition is basic single-shot SQL generation. nlqdb compiles SQL against a Postgres it owns on every plan.",
+      },
+      {
+        feature: "Embeddable in your product (HTML element / SDK / API)",
+        us: "shipped",
+        them: "partial",
+        note: "Metabase embeds finished dashboards/charts (iframe/SDK); nlqdb embeds an answer primitive — `<nlq-data>` takes an English goal and returns rows you render in your own layout.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "no",
+        note: "nlqdb's `nlqdb_query` materialises Postgres on first reference for a Claude / Cursor agent; Metabot answers inside Metabase (and Slack), not as an agent-callable database.",
+      },
+      {
+        feature: "Dashboards, charts + scheduled reports",
+        us: "no",
+        them: "shipped",
+        note: "Dashboards and visualizations are Metabase's home turf; nlqdb returns typed result rows you render in your own UI.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "no",
+        them: "shipped",
+        note: "Metabase ships an AGPL open-source edition you self-host; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "Metabase reads and visualizes; it doesn't manage your schema. nlqdb previews writes and DDL before applying.",
+      },
+      {
+        feature: "Read across many connected sources",
+        us: "partial",
+        them: "shipped",
+        note: "Metabase connects to many warehouses for read-only BI; nlqdb provisions and queries its own Postgres rather than federating external sources.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Metabase and nlqdb together?",
+        a: "Yes — they serve different jobs. Metabase is where analysts build dashboards and explore an existing warehouse; nlqdb is the database your product or agent queries in plain English at runtime. Use Metabase for BI reporting, nlqdb for the embedded data layer your app ships on.",
+      },
+      {
+        q: "How is Metabot different from nlqdb's natural-language querying?",
+        a: "Metabot is an AI assistant inside the Metabase BI app — it answers questions, builds charts, and writes SQL for analysts working in Metabase. nlqdb is a backend: it compiles English to SQL over a Postgres it provisions and owns, and exposes that through an HTML element, SDK, API, and MCP server you build on.",
+      },
+      {
+        q: "Does nlqdb build dashboards like Metabase?",
+        a: "No. nlqdb returns typed result rows from SQL it compiles; it doesn't build dashboards, charts, or scheduled reports. If shareable BI dashboards over your warehouse are the goal, Metabase is the right shape; nlqdb's contract is the data, which you render in your own UI.",
+      },
+      {
+        q: "Is Metabot free in the open-source Metabase?",
+        a: "Only partly. The open-source Metabase edition includes basic single-shot SQL generation, but the full Metabot — natural-language questions, chart building, error fixing, chart analysis — requires a paid Cloud plan plus a $100/month add-on (500 requests), or an Enterprise contract. nlqdb's English-to-SQL works on every plan, including the free LLM chain.",
+      },
+      {
+        q: "Can an AI agent call Metabase the way it calls nlqdb?",
+        a: "Not as a database. Metabot answers inside Metabase and Slack for human analysts; it isn't an agent-callable data layer. nlqdb ships an MCP server, so a Claude or Cursor agent can provision a Postgres and query it in English — `nlqdb_query` materialises the database on first reference.",
+      },
+    ],
+    demo: {
+      goal: "top 10 products by revenue this quarter, with month-over-month growth",
+      why: "The kind of question an analyst would build a Metabase dashboard for — nlqdb answers the English goal as SQL over a database it owns, returned as rows your product embeds, not a dashboard you log in to.",
     },
   },
 ];
