@@ -1801,10 +1801,10 @@ export const COMPETITORS: Competitor[] = [
         note: "Dashboards and visualizations are Metabase's home turf; nlqdb returns typed result rows you render in your own UI.",
       },
       {
-        feature: "Self-hostable open source",
+        feature: "Open source / self-hostable",
         us: "no",
         them: "shipped",
-        note: "Metabase ships an AGPL open-source edition you self-host; nlqdb is a hosted service (FSL-licensed) today.",
+        note: "Metabase ships an AGPL open-source edition you self-host; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
       },
       {
         feature: "Auto-migration via NL ('add a column for tags')",
