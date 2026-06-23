@@ -240,6 +240,18 @@ baseline-safe (no fixture/baseline/emit) so ungated by `SK-QUAL-002`'s < 7-day
 rule; free-chain EX + ICP free-vs-frontier delta land on the first dispatch.
 Growth toward the 50–100-question target continues per run.
 
+### SK-QUAL-019 — persona-bench ranked golds must be tie-free (no false-negative under sequence-strict scoring)
+
+**Body:** [`decisions/SK-QUAL-019-tie-free-ranked-golds.md`](./decisions/SK-QUAL-019-tie-free-ranked-golds.md).
+`score.ts` is sequence-strict whenever the gold has `ORDER BY`, so an unbroken
+rank-key tie false-mismatches a correct prediction that orders the tie
+differently. q8 ("5 most-recalled facts") tied two facts at `recall_count = 2`
+and was a **stable** llama-leg false-miss (2/2 local runs); the `recalls` seed now
+gives distinct counts (4/3/2/1) so q8's gold == the prediction deterministically
+(stable match, 2/2 post-fix), the recalled-fact set is unchanged so `q18` /
+"never recalled" hold, and a unit test asserts every `ORDER BY` gold has a
+duplicate-free rank key (audit: q8 was the only tie-fragile one of q0/q8/q13/q18).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/).

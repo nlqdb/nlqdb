@@ -104,9 +104,15 @@ const AGENT_MEMORY: PersonaSchema = {
       "(6,1,'user:42','plan','pro','2026-06-06',NULL)," +
       "(7,3,'job:1','state','done','2026-06-07','2026-06-15')",
     "INSERT INTO episodes (id, agent_id, content, created_at) VALUES (1,1,'greeted user','2026-06-01'),(2,2,'sent quote','2026-06-04')",
+    // Recall counts per fact are kept DISTINCT (fact 1→4, 2→3, 6→2, 4→1) so the
+    // q8 "most-recalled facts" ranking has no count-tie: an ORDER BY-only gold is
+    // scored sequence-strict (score.ts `hasOrderBy`), and an unbroken rank-key tie
+    // false-mismatches a semantically-correct prediction that orders the tie
+    // differently (SK-QUAL-019 tie-free-ranked-gold invariant). The recalled-fact
+    // SET is unchanged ({1,2,4,6}) so the "never recalled" gold (q12-shape) holds.
     "INSERT INTO recalls (id, fact_id, recalled_at) VALUES " +
-      "(1,1,'2026-06-08'),(2,1,'2026-06-09'),(3,1,'2026-06-10')," +
-      "(4,2,'2026-06-09'),(5,2,'2026-06-11')," +
+      "(1,1,'2026-06-08'),(2,1,'2026-06-09'),(3,1,'2026-06-10'),(9,1,'2026-06-11')," +
+      "(4,2,'2026-06-09'),(5,2,'2026-06-11'),(10,2,'2026-06-12')," +
       "(6,4,'2026-06-12'),(7,6,'2026-06-13'),(8,6,'2026-06-14')",
   ],
 };

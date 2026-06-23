@@ -67,6 +67,30 @@ describe("persona-bench gold-executability invariant (v0)", () => {
     expect(Object.values(rows[0] ?? {})[0]).toBe(2);
   });
 
+  // SK-QUAL-019 — a gold with ORDER BY is scored sequence-strict (score.ts
+  // `hasOrderBy`), so an unbroken rank-key tie false-mismatches a correct
+  // prediction that orders the tie differently. Every ranked gold must return a
+  // total order: the rank-key column (last SELECT column for these golds) is
+  // duplicate-free. Caught q8 (two facts tied at recall_count=2) as a stable
+  // llama-leg false-miss before the recalls seed was made tie-free.
+  it("every ORDER BY gold has a duplicate-free rank key (tie-free ranking)", () => {
+    const ties: string[] = [];
+    for (const q of PERSONA_BENCH_QUESTIONS) {
+      if (!/\border\s+by\b/i.test(q.sql)) continue;
+      const schema = schemaFor(q.db_id);
+      if (!schema) throw new Error(`no schema for ${q.db_id}`);
+      const db = new Database(":memory:");
+      for (const stmt of schema.setup) db.run(stmt);
+      const rows = db.query(q.sql).values() as unknown[][];
+      db.close();
+      const rankKey = rows.map((r) => JSON.stringify(r[r.length - 1]));
+      if (new Set(rankKey).size !== rankKey.length) {
+        ties.push(`q${q.question_id} (${q.bucket}): ${JSON.stringify(rankKey)}`);
+      }
+    }
+    expect(ties, ties.join("\n")).toHaveLength(0);
+  });
+
   it("filters by persona", () => {
     const p1 = checkGoldExecutability(openDb, { persona: "P1" });
     expect(p1.every((c) => c.db_id === "saas_app")).toBe(true);
