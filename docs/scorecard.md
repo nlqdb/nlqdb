@@ -76,6 +76,20 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
+- 2026-06-23 (run 73) — **Doc-hygiene (D4 + D5 + P3): net-shrank the largest
+  non-exempt doc, `docs/runbook.md` 47,451 → 46,685 B (−766 B), prod
+  byte-identical.** Engine lane dispatch-gated (BIRD 06-19 / Spider 06-17 both
+  < 7d, §5) and the AEO/distribution comparison-pages lever was already in
+  flight (PR #489, `/vs/metabase`), so the non-colliding lever was D5 dedup.
+  Trimmed two passages whose canonical home is elsewhere (P3, one home): §6
+  `apps/api` slice-by-slice build narration (every slice already tracked
+  row-by-row with PR numbers in the §7 checklist) → pointer; §10 personas
+  meta-prose explaining *why* personas moved to `personas.md` → kept the
+  pointer + cross-ref resolution + P-numbering note, dropped the
+  "superset/duplicated" justification. **Δ:** runbook.md −766 B (D4: edits to a
+  > 20 KB file must net-shrink). **KPI:** onboarding (operability docs stay
+  load-bearing, easier to scan); **none degraded** — docs-only, no
+  engine/funnel/ops/code file touched.
 - 2026-06-23 (run 70) — **Distribution: shipped `/vs/basedash` — and the
   web-verification corrected a stale competitor read.** Engine lane dispatch-gated
   (BIRD 06-19 / Spider 06-17 both < 7d), so the lever was AEO. Basedash had
