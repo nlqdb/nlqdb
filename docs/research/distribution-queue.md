@@ -62,54 +62,57 @@ useful doc-discipline post (one nlqdb mention) that doubles as the rationale for
 the "load-bearing decisions only" rule that keeps our agent-edited repo
 coherent. No engine/funnel KPI degrades (docs-only).
 
-## 2026-06-22 (run 60) — dev.to / lobste.rs: "Your architecture doc is describing a pipeline your code deleted" (engineering-doc discipline)
+## 2026-06-23 (run 61) — dev.to / lobste.rs: "Quantization made your recall cheaper. It still can't count." (agent-memory architecture)
 
-**Where:** dev.to + lobste.rs (`architecture` / `engineering`); build-in-public,
-the "stale doc that outlived the code" angle — a sibling to run 57 (the stale
-instrumentation plan) and run 54 (single-source-of-truth). nlqdb mentioned once.
+**Where:** dev.to + lobste.rs (`ai` / `databases` / `vectorsearch`); pairs with the
+new `/vs/qdrant` page (the Rust/quantization wing of the "database, not a vector
+store" wedge). Fourth angle in the wedge: run 53 was the *aggregation gap*, run 56
+*OSS-doesn't-fix-it*, run 59 *better recall isn't reporting*, this one is
+*faster/cheaper recall still isn't reporting*. nlqdb mentioned once.
 
-**Title:** Your architecture doc is describing a pipeline your code deleted
+**Title:** Quantization made your recall cheaper. It still can't count.
 
 **Body:**
 
-> We merged two LLM calls into one a while back. The request pipeline used to
-> "classify" an instruction (create? query? write?) and then, in a second call,
-> "disambiguate" which database it meant. We folded both into a single routing
-> call — fewer round-trips, half the latency on that leg. Good change. Shipped,
-> tested, forgotten.
+> Vector quantization is the upgrade you reach for when your embedding index
+> gets expensive. Scalar, binary, or product quantization shrinks each vector
+> from a few kilobytes to a few hundred bytes, so the same RAM holds an order of
+> magnitude more points and nearest-neighbour search runs faster and cheaper.
+> Qdrant ships all three first-class, and they genuinely deliver: binary
+> quantization can cut memory ~32× with a re-scoring pass that claws most of the
+> accuracy back. Recall gets cheaper without getting worse.
 >
-> Except the architecture doc still described the two-step. Worse, it described
-> it *authoritatively*: a tidy per-surface table of how disambiguation resolves,
-> citing two decision records by ID. Both of those records had been marked
-> "superseded" — but the architecture doc didn't get the memo. A new engineer
-> (or an AI coding agent) reading the front-door doc would build a mental model
-> of a pipeline that no longer exists, and cite IDs that point at tombstones.
+> But notice *what* got cheaper. Quantization compresses the vectors and speeds
+> up the distance math — it changes the cost and latency of the same operation.
+> The operation is still "find the points nearest this query vector." Make it as
+> cheap as you like and the output is unchanged: a ranked list of the top-k most
+> similar points. Quantization optimises the ranking; it doesn't add a new verb.
 >
-> This is the quiet failure mode of "we document our decisions": the decision
-> record gets superseded correctly, in one place — and every *other* doc that
-> paraphrased it keeps narrating the dead version. The paraphrase has no
-> backlink that screams when the original dies. It just rots in place, looking
-> confident.
+> Now ask your agent's memory a different kind of question: "how many tools did
+> I call per category this week, and only the categories above twenty calls."
+> There's no vector to rank against — there's a `GROUP BY`, a `COUNT`, and a
+> `HAVING`. No quantization scheme produces an aggregate, because aggregation
+> isn't a cheaper nearest-neighbour search; it's a different operation that lives
+> in a different kind of engine.
 >
-> The fix isn't "write less." It's: a decision lives in exactly one canonical
-> place, and everywhere else *points* at it instead of restating it. When the
-> canonical decision changes, the pointers still resolve to the truth; only the
-> one body has to move. We re-checked our architecture doc against the actual
-> decision records, collapsed the restated tables back into pointers, and
-> deleted ~1 KB of confidently-wrong prose. (We keep this discipline as a hard
-> rule in our agent guide — "decisions live in one place" — because the repo is
-> edited by AI agents daily, and an agent trusts a confident doc even faster
-> than a human does.)
+> This is the trap in "we quantized the index." You made the *recall* leg of
+> your agent cheaper, and recall was probably the leg that needed it. But if the
+> agent also has to *report* over what it stored — counts, groupings,
+> thresholds, joins across what it logged — a smaller, faster index buys you
+> exactly nothing there. (We build that second leg at nlqdb: the agent
+> provisions a Postgres it queries in plain English, so "group and count my
+> memory" compiles to SQL. The point holds whatever you reach for: recall and
+> reporting are two jobs.)
 >
-> Lesson: every time you paraphrase a decision in a second doc, you've created a
-> thing that can silently disagree with the truth. Link, don't restate — and
-> when something gets superseded, grep for its ID across *all* the docs, not
-> just its own file.
+> Lesson: quantization optimises *how cheaply* you retrieve the nearest items,
+> not *what you can compute over them*. If your roadmap item is "cut the vector
+> bill," ship it. If it's "the agent needs to count its own history," no
+> compression scheme gets you there — you need something that speaks SQL.
 
-**Why this advances the north-star:** engine quality / onboarding — the lesson
-is a genuinely useful doc-discipline post (one nlqdb mention) that doubles as
-the rationale for the same "decisions live in one place" rule that keeps our
-agent-edited repo coherent. No engine/funnel KPI degrades (docs-only).
+**Why this advances the north-star:** onboarding / distribution (AEO surface on
+the "Qdrant quantization agent memory" P2 keyword) — a genuinely useful
+architectural lesson with one nlqdb mention, anchoring the new `/vs/qdrant` page.
+No engine/funnel KPI degrades (content + data + one OG PNG only).
 
 ## Collapsed — full drafts in git history
 
@@ -119,6 +122,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 60 — "Your architecture doc is describing a pipeline your code deleted" (a superseded decision record gets fixed in its one canonical place, but every other doc that paraphrased it keeps narrating the dead version; link, don't restate, and grep the ID across all docs when something is superseded).
 - run 59 — "Hybrid search made your recall smarter. It still can't count." (hybrid search optimises *which* items rank, not what you can compute over them; BM25+vector fusion is still a relevance score, not a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/weaviate`).
 - run 58 — "Your text-to-SQL eval is failing the wrong schema" (BIRD 0.52 / Spider 0.19 are academic-schema scores; the same free chain scores 0.90 EX on the ICP shape — score against your product's schema, and the two misses it surfaces are the ones users actually hit; persona-bench, SK-QUAL-018).
 - run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers vendor lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING — deployment and capability are orthogonal axes; anchors `/vs/chroma`).

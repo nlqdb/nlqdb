@@ -107,11 +107,12 @@ describe("COMPETITORS data integrity", () => {
   // agent-memory cluster, keyed on the P2 persona. Pin that membership so
   // the cross-link stays scoped to the memory comparisons (the four memory
   // layers + the vector-store wing — Pinecone (hosted), Chroma (OSS-first),
-  // and Weaviate (enterprise/hybrid-search)).
+  // Weaviate (enterprise/hybrid-search), and Qdrant (Rust/quantization,
+  // Apache-2.0)).
   test("WS-07: the agent-memory cluster is the P2-agent-builder persona", () => {
     const p2 = COMPETITORS.filter((c) => c.persona === "P2 agent builder").map((c) => c.slug);
     expect(new Set(p2)).toEqual(
-      new Set(["mem0", "zep", "letta", "langmem", "pinecone", "chroma", "weaviate"]),
+      new Set(["mem0", "zep", "letta", "langmem", "pinecone", "chroma", "weaviate", "qdrant"]),
     );
   });
 
