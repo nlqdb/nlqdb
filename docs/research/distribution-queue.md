@@ -10,6 +10,55 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-22 (run 60) — dev.to / lobste.rs: "Your architecture doc is describing a pipeline your code deleted" (engineering-doc discipline)
+
+**Where:** dev.to + lobste.rs (`architecture` / `engineering`); build-in-public,
+the "stale doc that outlived the code" angle — a sibling to run 57 (the stale
+instrumentation plan) and run 54 (single-source-of-truth). nlqdb mentioned once.
+
+**Title:** Your architecture doc is describing a pipeline your code deleted
+
+**Body:**
+
+> We merged two LLM calls into one a while back. The request pipeline used to
+> "classify" an instruction (create? query? write?) and then, in a second call,
+> "disambiguate" which database it meant. We folded both into a single routing
+> call — fewer round-trips, half the latency on that leg. Good change. Shipped,
+> tested, forgotten.
+>
+> Except the architecture doc still described the two-step. Worse, it described
+> it *authoritatively*: a tidy per-surface table of how disambiguation resolves,
+> citing two decision records by ID. Both of those records had been marked
+> "superseded" — but the architecture doc didn't get the memo. A new engineer
+> (or an AI coding agent) reading the front-door doc would build a mental model
+> of a pipeline that no longer exists, and cite IDs that point at tombstones.
+>
+> This is the quiet failure mode of "we document our decisions": the decision
+> record gets superseded correctly, in one place — and every *other* doc that
+> paraphrased it keeps narrating the dead version. The paraphrase has no
+> backlink that screams when the original dies. It just rots in place, looking
+> confident.
+>
+> The fix isn't "write less." It's: a decision lives in exactly one canonical
+> place, and everywhere else *points* at it instead of restating it. When the
+> canonical decision changes, the pointers still resolve to the truth; only the
+> one body has to move. We re-checked our architecture doc against the actual
+> decision records, collapsed the restated tables back into pointers, and
+> deleted ~1 KB of confidently-wrong prose. (We keep this discipline as a hard
+> rule in our agent guide — "decisions live in one place" — because the repo is
+> edited by AI agents daily, and an agent trusts a confident doc even faster
+> than a human does.)
+>
+> Lesson: every time you paraphrase a decision in a second doc, you've created a
+> thing that can silently disagree with the truth. Link, don't restate — and
+> when something gets superseded, grep for its ID across *all* the docs, not
+> just its own file.
+
+**Why this advances the north-star:** engine quality / onboarding — the lesson
+is a genuinely useful doc-discipline post (one nlqdb mention) that doubles as
+the rationale for the same "decisions live in one place" rule that keeps our
+agent-edited repo coherent. No engine/funnel KPI degrades (docs-only).
+
 ## 2026-06-22 (run 59) — dev.to / lobste.rs: "Hybrid search made your recall smarter. It still can't count." (agent-memory architecture)
 
 **Where:** dev.to + lobste.rs (`ai` / `databases` / `search`); pairs with the new
@@ -59,55 +108,6 @@ reporting*. nlqdb mentioned once.
 the "Weaviate hybrid search agent memory" P2 keyword) — a genuinely useful
 architectural lesson with one nlqdb mention, anchoring the new `/vs/weaviate`
 page. No engine/funnel KPI degrades (content + data + one OG PNG only).
-## 2026-06-22 (run 58) — dev.to / lobste.rs / HN: "Your text-to-SQL eval is failing the wrong schema" (engine quality, with a number)
-
-**Where:** dev.to + lobste.rs (`ai` / `databases` / `sql`), optionally Show HN;
-build-in-public, the "benchmark vs production shape" angle, now backed by a fresh
-measured number (0.52 / 0.19 / 0.90). Sibling to run 55's *"measured on schemas
-your users will never build"* — that one introduced the ICP benchmark; this one
-reports the first score. nlqdb mentioned once.
-
-**Title:** Your text-to-SQL eval is failing the wrong schema
-
-**Body:**
-
-> The two benchmarks everyone quotes for text-to-SQL — BIRD and Spider — run
-> over academic databases: 20–100 tables, cryptic column names, the schema of a
-> 1990s university registrar. Our free LLM chain scores **0.52** on BIRD and
-> **0.19** on Spider. Read those numbers cold and you'd conclude the engine
-> can't write SQL.
->
-> So we built a third benchmark out of the schemas our users *actually* create —
-> a SaaS app (users, plans, orders) and an agent-memory store (agents, facts,
-> recalls). Four to six tables. Names a human picked. Twenty hand-written
-> questions with gold SQL, scored by the exact same execution-accuracy harness.
->
-> Same engine, same free models, same prompts. Score: **0.90** (18/20).
->
-> That's not the engine getting better between Tuesday and Wednesday. It's the
-> same engine measured against the shape of the problem people actually have.
-> BIRD's 60-table joins and Spider's snake_case riddles are real difficulty —
-> but they're not *your* difficulty if your database is the six tidy tables you
-> designed last week. The academic number was answering a question we weren't
-> asking.
->
-> The two misses are worth more than the 18 hits. Both landed on the same weak
-> model leg, and both on genuinely hard multi-join aggregations: one dropped a
-> `WHERE status = 'paid'` filter the English clearly implied ("paid revenue"),
-> the other used a `LEFT JOIN` where the gold inner-joined, so agents with zero
-> recalls showed up with a count of 0. Those are the failures to chase —
-> value-filters the model silently omits, join semantics it picks plausibly but
-> wrongly — not "can it survive a 60-table schema."
->
-> Lesson: an off-the-shelf benchmark measures the difficulty *it* chose, not the
-> difficulty you ship. If your product constrains the schema shape, score against
-> that shape too — the number you get back might be twice as high, and the
-> handful of failures it surfaces are the ones your users will actually hit.
-
-**Why this advances the north-star:** engine quality (the headline pillar) — a
-genuinely useful eval-design lesson carrying a real, first-of-its-kind product
-accuracy number (0.90 on the ICP shape), with one nlqdb mention. No funnel KPI
-degrades (it's a measurement + a post; no prod change).
 
 ## Collapsed — full drafts in git history
 
@@ -117,6 +117,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 58 — "Your text-to-SQL eval is failing the wrong schema" (BIRD 0.52 / Spider 0.19 are academic-schema scores; the same free chain scores 0.90 EX on the ICP shape — score against your product's schema, and the two misses it surfaces are the ones users actually hit; persona-bench, SK-QUAL-018).
 - run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers vendor lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING — deployment and capability are orthogonal axes; anchors `/vs/chroma`).
 - run 55 — "Your text-to-SQL accuracy is measured on schemas your users will never build" (BIRD/Spider run over messy 20–100-table academic schemas, not the small clean ones your users build; we added a third benchmark — hand-authored gold NL→SQL over the ICP shape, same EX scorer, literal-date gold so it never drifts with the clock; anchors persona-bench, SK-QUAL-018).
 - run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no GROUP BY/COUNT/JOIN/HAVING; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
