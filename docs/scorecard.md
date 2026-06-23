@@ -76,35 +76,34 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
+- 2026-06-23 (run 69) — **AEO/SEO hygiene: every crawler-advertised URL now
+  resolves to the 200 directly (was a 307).** CF serves `<route>/index.html`, so
+  the trailing-slash URL is the 200 and the bare path 307-redirects — but
+  `<link rel=canonical>`, `og:url`, sitemap, and llms.txt all emitted the *bare*
+  path (self-referential redirecting canonical; 27 redirecting sitemap URLs).
+  Fix (4 sites): `trailingSlash: "always"` + path-normalize in `Base.astro`
+  (Astro build-time `pathname` stays bare, withastro/astro#12833), `sitemap.xml.ts`,
+  `llms.txt.ts`; root `/` unchanged. **Δ:** sitemap 200/307 **1/27 → 28/0**.
+  **KPI:** onboarding / distribution; **none degraded** — static-site config +
+  URL-formatting only; 130 web tests + astro-check 0 errors + biome green.
 - 2026-06-23 (run 68) — **Engine instrument: persona-bench grown 20 → 23,
-  gold-exec 23/23** (SK-QUAL-018). Batch 3 adds three SK-QUAL-014 shapes batches
-  1–2 lacked, each mapped to an existing DAIL-SQL pool bucket: `scalar-subquery`,
-  `count-distinct`, and a multi-predicate `join-aggregate-filter` — the
-  **multi-predicate-retention** shape the first greedy run flagged as a real
-  engine miss (q13 dropped `WHERE status = 'paid'`). Clean throttled EX
-  **21/23** (~run-58's 0.90);
-  back-to-back un-throttled runs collapsed to provider-starvation (17/20 → an
-  immediate self-consistency N=3 = 6/20, all-`circuit_open`) — re-confirming
-  SK-QUAL-013/§5 that offline free-chain EX is **not** a powered measure (gated
-  N=500 BIRD/Spider stay the only powered levers). The 3 new shapes are
-  selector-side retrieval misses (correct buckets exist; precision@1 18/20 →
-  18/23, hits flat at 18 — run 52's lexical-selector ceiling).
-  **KPI:** engine quality (broader ICP bench); **none degraded** — fixture
-  + test only; BIRD 06-19 / Spider 06-17 / canonical baselines byte-untouched;
-  265 eval green. Artifact: run-68 draft.
+  gold-exec 23/23** (SK-QUAL-018). Batch 3 adds three SK-QUAL-014 shapes
+  (`scalar-subquery`, `count-distinct`, multi-predicate `join-aggregate-filter`),
+  each in an existing DAIL-SQL bucket; clean throttled EX 21/23, but back-to-back
+  un-throttled runs collapsed to provider-starvation — re-confirming
+  SK-QUAL-013/§5 that offline free-chain EX is **not** powered (detail: row 8 +
+  verification log). The 3 new shapes are selector-side misses (precision@1
+  18/20 → 18/23). **KPI:** engine quality; **none degraded** — fixture + test
+  only; BIRD/Spider/canonical baselines byte-untouched; 265 eval green.
 - 2026-06-23 (run 67) — **Distribution: shipped `/vs/retool` (Retool), the
   internal-tools incumbent — first P4 comparison since Outerbase, the next slice
   after Julius (run 64) by the comparison-pages decision rule (threat × keyword
   volume).** Engine lane dispatch-gated, so the lever was AEO. Honest wedge:
-  Retool is a destination low-code **builder** — even with AppGen / Ask AI / AI
-  agents, a human assembles an admin UI over an existing DB; nlqdb provisions/owns
-  the DB and embeds one element / agent API ("skip building the admin UI"). Retool's
-  builder + connectors + AI agents + SOC 2 / ISO 27001 / SSO conceded
-  `them: shipped`; facts web-verified 2026-06-23. **Δ:** comparison pages **14 →
-  15**, llms.txt/sitemap +1. **None degraded** — one data object + FEATURE
-  status, no engine/funnel/ops file touched. Next P4 slice: Basedash. Artifact:
-  *"AI made the internal-tool builder faster. It didn't ask whether you needed
-  the tool."*
+  Retool is a destination low-code **builder** (a human assembles an admin UI over
+  an existing DB); nlqdb provisions/owns the DB and embeds one element / agent API
+  ("skip building the admin UI"). Facts web-verified 2026-06-23. **Δ:** comparison
+  pages **14 → 15**, llms.txt/sitemap +1. **None degraded** — one data object +
+  FEATURE status, no engine/funnel/ops file touched. Next P4 slice: Basedash.
 - 2026-06-23 (runs 62, 65, 66) — **Doc-hygiene wave (D4 + D5 + P3), prod
   byte-identical.** Run 66 net-shrank the largest D4 violation,
   `hosted-db-create/FEATURE.md` 35,376 → 34,099 B (−1,277 B): D5
@@ -121,8 +120,7 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   the embeddable/agent **backend** that owns the DB. **Δ:** comparison pages
   **13 → 14**, llms.txt/sitemap +1; facts web-verified 2026-06-23. **None
   degraded** — one data object + FEATURE status, no engine/funnel/ops file
-  touched. Artifact: *"Your AI data analyst can't be your app's backend (and
-  vice versa)."*
+  touched.
 - 2026-06-23 (run 61) — **Distribution: shipped `/vs/qdrant`, the
   Rust/quantization wing of the "database, not a vector store" wedge** — closing
   the canonical vector-DB cluster (Pinecone/Chroma/Weaviate/Qdrant). Engine lane
@@ -130,7 +128,6 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   recall, no GROUP BY/JOIN/HAVING). **Δ:** comparison pages **12 → 13**, P2
   cluster **7 → 8**, OG cards **8 → 9**, llms.txt/sitemap +1; facts web-verified
   2026-06-23. **None degraded** — content + one PNG, no engine file touched.
-  Artifact: *"Quantization made your recall cheaper. It still can't count."*
 - 2026-06-22 (runs 59–60) — distribution + hygiene wave (all merged; BIRD 06-19 /
   Spider 06-17 untouched). **Distribution (run 59):** shipped `/vs/weaviate`, the
   enterprise/hybrid-search wing of the "database, not a vector store" wedge —
