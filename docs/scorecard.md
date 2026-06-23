@@ -77,62 +77,44 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 ## Deltas (recent runs)
 
 - 2026-06-23 (run 67) — **Distribution: shipped `/vs/retool` (Retool), the
-  internal-tools incumbent — first P4 comparison since Outerbase (2026-05-24)
-  and the natural next slice after Julius (P3, run 64) by the comparison-pages
-  decision rule (persona-weighted threat × keyword volume — Retool's brand keyword
-  dwarfs Basedash's).** Engine lane dispatch-gated (BIRD 06-19 = 4 d, Spider 06-17
-  = 6 d, both < 7 d), so the lever was AEO. Honest wedge: Retool is a destination
-  low-code **builder** — even with AppGen / Ask AI / native AI agents, a human
-  assembles an admin UI over an *existing* database; nlqdb provisions/owns the DB
-  and embeds one element / agent-callable API ("skip building the admin UI"). Retool's
-  builder + connector ecosystem + AI agents (guardrails/audit, hourly-billed) +
-  SOC 2 Type II / ISO 27001:2022 / GDPR + enterprise SSO conceded `them: shipped`.
-  Facts web-verified 2026-06-23 (retool.com/ai + retool.com/pricing + trust.retool.com).
-  **Δ (distribution):** comparison pages **14 → 15**; llms.txt + sitemap **+1**
-  (auto). **KPI:** onboarding / distribution; **none degraded** — one data object
-  + FEATURE status, no engine/funnel/ops file touched; 13 competitors invariants +
-  astro-check **0 errors** green. Next P4 slice: Basedash. Artifact: *"AI made the
-  internal-tool builder faster. It didn't ask whether you needed the tool."*
-- 2026-06-23 (runs 62, 65) — **Doc-hygiene wave (D4 + D5 + P3), prod
-  byte-identical, engine/funnel untouched.** Run 65 net-shrank
-  `ask-pipeline/FEATURE.md` 32,596 → 31,339 B (−1,257 B, ~3.9%): D5
-  implementation-narration in `Consequence in code` (file:line refs, exhaustive
-  span/export enumerations duplicating the Decision, test-restatements) → the
-  load-bearing contract; GLOBAL-022 commentary, a paraphrase of SK-ASK-013, → a
-  pointer (P3, intra-file single-source). All 22 SK-ASK-* IDs + 20 five-field
-  blocks intact, §8 gate clean. Run 62 net-shrank `anonymous-mode/FEATURE.md`
-  38,134 → 34,160 B (−3,974 B, ~10%; D5 file/line diaries → invariants, all 14
-  SK-ANON-* intact). **KPI:** onboarding; **none degraded** — docs-only.
+  internal-tools incumbent — first P4 comparison since Outerbase, the next slice
+  after Julius (run 64) by the comparison-pages decision rule (threat × keyword
+  volume).** Engine lane dispatch-gated, so the lever was AEO. Honest wedge:
+  Retool is a destination low-code **builder** — even with AppGen / Ask AI / AI
+  agents, a human assembles an admin UI over an existing DB; nlqdb provisions/owns
+  the DB and embeds one element / agent API ("skip building the admin UI"). Retool's
+  builder + connectors + AI agents + SOC 2 / ISO 27001 / SSO conceded
+  `them: shipped`; facts web-verified 2026-06-23. **Δ:** comparison pages **14 →
+  15**, llms.txt/sitemap +1. **None degraded** — one data object + FEATURE
+  status, no engine/funnel/ops file touched. Next P4 slice: Basedash. Artifact:
+  *"AI made the internal-tool builder faster. It didn't ask whether you needed
+  the tool."*
+- 2026-06-23 (runs 62, 65, 66) — **Doc-hygiene wave (D4 + D5 + P3), prod
+  byte-identical.** Run 66 net-shrank the largest D4 violation,
+  `hosted-db-create/FEATURE.md` 35,376 → 34,099 B (−1,277 B): D5
+  implementation-narration in `Consequence in code` (line numbers, test-case
+  lists, span names the GLOBAL-014 section already owns, Decision restatements) →
+  the load-bearing invariant + its enforcing review rule; 20 SK-HDC-* intact, §8
+  gate clean. Run 65 `ask-pipeline/FEATURE.md` −1,257 B (22 SK-ASK-* intact); run
+  62 `anonymous-mode/FEATURE.md` −3,974 B (14 SK-ANON-* intact). **KPI:**
+  onboarding; **none degraded** — docs-only.
 - 2026-06-23 (run 64) — **Distribution: shipped `/vs/julius` (Julius AI), the
-  first P3-analyst comparison after the vector-DB cluster closed** — the
-  pre-pivot slate the comparison-pages FEATURE names, picked by keyword volume
-  × on-message fit (Julius AI > Retool AI / Basedash). Honest wedge:
-  Julius is a destination conversational data-analyst **app** (upload
-  CSV/Excel/Sheets → charts + Python notebooks, live warehouse connectors on
-  Pro) — analysis-only, no durable data layer; nlqdb is the embeddable/agent
-  **backend** that provisions and owns the database. Julius's strengths
-  conceded `them: shipped` (charts, file analysis, Python). Facts web-verified
-  2026-06-23 (julius.ai + pricing + 2026 reviews). **Δ (distribution):**
-  comparison pages **13 → 14**; llms.txt + sitemap **+1** (auto). **KPI:**
-  onboarding / distribution; **none degraded** — one data object + FEATURE
-  status, no engine/funnel/ops file touched; 13 competitors invariants +
-  astro-check **0 errors** green. Artifact: *"Your AI data analyst can't be
-  your app's backend (and vice versa)."*
+  first P3-analyst comparison after the vector-DB cluster closed.** Engine lane
+  dispatch-gated, so the lever was AEO; honest wedge: Julius is a destination
+  data-analyst **app** (CSV/Sheets → charts + Python, analysis-only), nlqdb is
+  the embeddable/agent **backend** that owns the DB. **Δ:** comparison pages
+  **13 → 14**, llms.txt/sitemap +1; facts web-verified 2026-06-23. **None
+  degraded** — one data object + FEATURE status, no engine/funnel/ops file
+  touched. Artifact: *"Your AI data analyst can't be your app's backend (and
+  vice versa)."*
 - 2026-06-23 (run 61) — **Distribution: shipped `/vs/qdrant`, the
-  Rust/quantization wing of the "database, not a vector store" wedge** — the
-  P2 follow-on the comparison-pages FEATURE named, closing the canonical
-  vector-DB cluster (Pinecone run 53, Chroma run 56, Weaviate run 59, Qdrant
-  *Rust/quantization* now). Engine lane dispatch-gated, so the lever was AEO. Same
-  aggregation wedge: quantized HNSW + dense+sparse hybrid makes recall cheaper;
-  it still has no GROUP BY / JOIN / HAVING. **Δ (distribution):** comparison
-  pages **12 → 13**, P2 cluster **7 → 8**, OG cards **8 → 9** (`vs-qdrant.png`;
-  generator deterministic), llms.txt + sitemap **+1**. Facts web-verified
-  2026-06-23 (Apache-2.0 self-host + Qdrant Cloud, Rust, scalar/binary/product
-  quantization, native dense+sparse hybrid, official `mcp-server-qdrant`).
-  **KPI:** onboarding / distribution; **none degraded** — content + one PNG, no
-  engine file touched; 130 web tests + 14 competitors invariants green,
-  astro-check 0 errors. Artifact: *"Quantization made your recall cheaper. It
-  still can't count."*
+  Rust/quantization wing of the "database, not a vector store" wedge** — closing
+  the canonical vector-DB cluster (Pinecone/Chroma/Weaviate/Qdrant). Engine lane
+  dispatch-gated, so the lever was AEO; same aggregation wedge (quantized hybrid
+  recall, no GROUP BY/JOIN/HAVING). **Δ:** comparison pages **12 → 13**, P2
+  cluster **7 → 8**, OG cards **8 → 9**, llms.txt/sitemap +1; facts web-verified
+  2026-06-23. **None degraded** — content + one PNG, no engine file touched.
+  Artifact: *"Quantization made your recall cheaper. It still can't count."*
 - 2026-06-22 (runs 59–60) — distribution + hygiene wave (all merged; BIRD 06-19 /
   Spider 06-17 untouched). **Distribution (run 59):** shipped `/vs/weaviate`, the
   enterprise/hybrid-search wing of the "database, not a vector store" wedge —
