@@ -10,6 +10,56 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-23 (run 65) — dev.to / lobste.rs: "Two homes for one decision is drift — even inside the same file" (engineering-doc discipline)
+
+**Where:** dev.to + lobste.rs (`architecture` / `engineering`); build-in-public,
+the intra-file sibling to run 62 (doc narrating *code*) and run 60 (one doc
+narrating *another* doc). This one is the subtlest: a single file paraphrasing
+its *own* decision two headings down. nlqdb mentioned once.
+
+**Title:** Two homes for one decision is drift — even inside the same file
+
+**Body:**
+
+> We keep a strict rule that every decision has exactly one canonical home, and
+> everything else *links* to it. It's obvious why across files: if two docs both
+> describe how retries work, one of them is wrong within a month. What I didn't
+> expect was to catch the same bug *inside a single file*.
+>
+> The doc had a clean decision block — "each pipeline stage wraps its work in a
+> 3-attempt retry, feeding the previous attempt's error into the next prompt;
+> non-recoverable cases skip the retry." Good: the why, the shape, the escape
+> hatch. Then, four screens down, under a section that maps the doc's local
+> decisions to the cross-cutting rules they obey, there it was again — a second,
+> longer paragraph re-explaining the exact same retry mechanism, stage by stage,
+> in slightly different words. Same fact, two homes, one file. The instant
+> someone tightens the retry count in the decision block, the paraphrase below
+> becomes a confident lie that passes every review because nobody scrolls that
+> far.
+>
+> The tell is paraphrase. A *pointer* — "see the retry decision above for the
+> mechanism; here we only note it satisfies the never-surface-a-fixable-error
+> rule" — can't drift, because it carries no restated facts, only the one
+> sentence that's genuinely local to this section (which rule it maps to). A
+> *paraphrase* restates the mechanism, and a restatement is a copy you've
+> volunteered to keep in sync by hand. The fix was to cut the second copy down
+> to the pointer plus the one local sentence. Net: a few hundred bytes lighter,
+> zero facts lost, and one fewer place the file can contradict itself.
+>
+> Lesson: "single source of truth" isn't only a cross-file discipline. A long
+> document is a small filesystem — every heading is a place a fact can hide a
+> second copy of itself. When a section needs to *reference* a decision made
+> elsewhere in the same doc, link up to it and add only what's local to that
+> section. The moment you find yourself re-explaining a mechanism you already
+> explained, you're not documenting — you're forking. (We hold this hard because
+> our repo is edited by AI agents daily, and an agent that updates the canonical
+> block will not hunt down the paraphrase four screens away.)
+
+**Why this advances the north-star:** onboarding / engine quality — a genuinely
+useful doc-discipline post (one nlqdb mention) that names a failure mode the
+"two homes for one fact" rule exists to prevent, applied at a finer grain than
+the usual cross-file framing. No engine/funnel KPI degrades (docs-only).
+
 ## 2026-06-23 (run 62) — dev.to / lobste.rs: "Your decision record is just narrating code the reader can already read" (engineering-doc discipline)
 
 **Where:** dev.to + lobste.rs (`architecture` / `engineering`); build-in-public,
@@ -62,58 +112,6 @@ useful doc-discipline post (one nlqdb mention) that doubles as the rationale for
 the "load-bearing decisions only" rule that keeps our agent-edited repo
 coherent. No engine/funnel KPI degrades (docs-only).
 
-## 2026-06-23 (run 61) — dev.to / lobste.rs: "Quantization made your recall cheaper. It still can't count." (agent-memory architecture)
-
-**Where:** dev.to + lobste.rs (`ai` / `databases` / `vectorsearch`); pairs with the
-new `/vs/qdrant` page (the Rust/quantization wing of the "database, not a vector
-store" wedge). Fourth angle in the wedge: run 53 was the *aggregation gap*, run 56
-*OSS-doesn't-fix-it*, run 59 *better recall isn't reporting*, this one is
-*faster/cheaper recall still isn't reporting*. nlqdb mentioned once.
-
-**Title:** Quantization made your recall cheaper. It still can't count.
-
-**Body:**
-
-> Vector quantization is the upgrade you reach for when your embedding index
-> gets expensive. Scalar, binary, or product quantization shrinks each vector
-> from a few kilobytes to a few hundred bytes, so the same RAM holds an order of
-> magnitude more points and nearest-neighbour search runs faster and cheaper.
-> Qdrant ships all three first-class, and they genuinely deliver: binary
-> quantization can cut memory ~32× with a re-scoring pass that claws most of the
-> accuracy back. Recall gets cheaper without getting worse.
->
-> But notice *what* got cheaper. Quantization compresses the vectors and speeds
-> up the distance math — it changes the cost and latency of the same operation.
-> The operation is still "find the points nearest this query vector." Make it as
-> cheap as you like and the output is unchanged: a ranked list of the top-k most
-> similar points. Quantization optimises the ranking; it doesn't add a new verb.
->
-> Now ask your agent's memory a different kind of question: "how many tools did
-> I call per category this week, and only the categories above twenty calls."
-> There's no vector to rank against — there's a `GROUP BY`, a `COUNT`, and a
-> `HAVING`. No quantization scheme produces an aggregate, because aggregation
-> isn't a cheaper nearest-neighbour search; it's a different operation that lives
-> in a different kind of engine.
->
-> This is the trap in "we quantized the index." You made the *recall* leg of
-> your agent cheaper, and recall was probably the leg that needed it. But if the
-> agent also has to *report* over what it stored — counts, groupings,
-> thresholds, joins across what it logged — a smaller, faster index buys you
-> exactly nothing there. (We build that second leg at nlqdb: the agent
-> provisions a Postgres it queries in plain English, so "group and count my
-> memory" compiles to SQL. The point holds whatever you reach for: recall and
-> reporting are two jobs.)
->
-> Lesson: quantization optimises *how cheaply* you retrieve the nearest items,
-> not *what you can compute over them*. If your roadmap item is "cut the vector
-> bill," ship it. If it's "the agent needs to count its own history," no
-> compression scheme gets you there — you need something that speaks SQL.
-
-**Why this advances the north-star:** onboarding / distribution (AEO surface on
-the "Qdrant quantization agent memory" P2 keyword) — a genuinely useful
-architectural lesson with one nlqdb mention, anchoring the new `/vs/qdrant` page.
-No engine/funnel KPI degrades (content + data + one OG PNG only).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -122,6 +120,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 61 — "Quantization made your recall cheaper. It still can't count." (quantization optimises *how cheaply* you retrieve the nearest items, not *what* you can compute over them; scalar/binary/product compression still yields a ranked list, never a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/qdrant`).
 - run 60 — "Your architecture doc is describing a pipeline your code deleted" (a superseded decision record gets fixed in its one canonical place, but every other doc that paraphrased it keeps narrating the dead version; link, don't restate, and grep the ID across all docs when something is superseded).
 - run 59 — "Hybrid search made your recall smarter. It still can't count." (hybrid search optimises *which* items rank, not what you can compute over them; BM25+vector fusion is still a relevance score, not a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/weaviate`).
 - run 58 — "Your text-to-SQL eval is failing the wrong schema" (BIRD 0.52 / Spider 0.19 are academic-schema scores; the same free chain scores 0.90 EX on the ICP shape — score against your product's schema, and the two misses it surfaces are the ones users actually hit; persona-bench, SK-QUAL-018).

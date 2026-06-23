@@ -76,12 +76,16 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
-- 2026-06-23 (run 62) — **Hygiene (D4 + D5 + P3): net-shrank
-  `docs/features/anonymous-mode/FEATURE.md` 38,134 → 34,160 B (−3,974 B, ~10%).**
-  Cut pure **D5 implementation-narration** (SK-ANON-012/014 file/line diaries →
-  load-bearing invariants; SK-ANON-008 hero-bypass tail, a P3 dup, → a pointer).
-  **0 decisions lost** — all 14 SK-ANON-* IDs + five fields + 7 GLOBAL refs intact.
-  **KPI:** onboarding; **none degraded** — docs-only, prod byte-identical.
+- 2026-06-23 (runs 62, 65) — **Doc-hygiene wave (D4 + D5 + P3), prod
+  byte-identical, engine/funnel untouched.** Run 65 net-shrank
+  `ask-pipeline/FEATURE.md` 32,596 → 31,339 B (−1,257 B, ~3.9%): D5
+  implementation-narration in `Consequence in code` (file:line refs, exhaustive
+  span/export enumerations duplicating the Decision, test-restatements) → the
+  load-bearing contract; GLOBAL-022 commentary, a paraphrase of SK-ASK-013, → a
+  pointer (P3, intra-file single-source). All 22 SK-ASK-* IDs + 20 five-field
+  blocks intact, §8 gate clean. Run 62 net-shrank `anonymous-mode/FEATURE.md`
+  38,134 → 34,160 B (−3,974 B, ~10%; D5 file/line diaries → invariants, all 14
+  SK-ANON-* intact). **KPI:** onboarding; **none degraded** — docs-only.
 - 2026-06-23 (run 61) — **Distribution: shipped `/vs/qdrant`, the
   Rust/quantization wing of the "database, not a vector store" wedge** — the
   P2 follow-on the comparison-pages FEATURE named, closing the canonical
@@ -149,17 +153,13 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   quality / UX / onboarding; none degraded.
 - 2026-06-22 (runs 43–47) — engine + distribution + hygiene wave (all merged;
   BIRD 06-19 + Spider 06-17 untouched). **Engine:** §4 #1 DAIL-SQL retrieval
-  T9-ablation wiring `buildPlanSystem(goal,schema,k)` (run 43, static at `k<=0`)
-  + curated pool grown 10 → 12 buckets with anti-join `NOT IN` + group-order-limit
-  (run 46, `SK-LLM-041`, precision@1 12/12, prod byte-identical); persona-bench v0
-  (run 43, `SK-QUAL-018`, 12 golds execute) → runner-wired dispatchable
-  `EvalDataset` (run 44, `@nlqdb/eval` → 258) → grown 12 → 20 golds (run 47,
-  batch 2 — anti-join + challenging multi-join shapes; 20/20 execute). **Distribution:** WS-12 closed
-  (`AgentMemoryBand` + `AlsoWorksFor` fold, runs 43–44) → messaging 11/13, pivot
-  13/20. **Hygiene:** `distribution-queue.md` net-shrunk 35.9 → 9.1 KB under cap
-  (run 46). **Measurement (run 45, live):** metrics re-pulled (table above) —
-  genuine-stranger lane still 0, engine-gated. KPI engine quality / onboarding;
-  none degraded.
+  ablation wiring `buildPlanSystem(goal,schema,k)` + curated pool 10 → 12 buckets
+  (anti-join `NOT IN` + group-order-limit, `SK-LLM-041`, precision@1 12/12);
+  persona-bench v0 → dispatchable `EvalDataset` → 12 → 20 golds (`SK-QUAL-018`,
+  20/20 execute). **Distribution:** WS-12 closed → messaging 11/13, pivot 13/20.
+  **Hygiene:** `distribution-queue.md` 35.9 → 9.1 KB. **Measurement (run 45):**
+  metrics re-pulled — genuine-stranger lane still 0, engine-gated. KPI engine
+  quality / onboarding; none degraded.
 - 2026-06-21 (runs 37–42) — engine + distribution staging wave (all merged/additive; BIRD 06-19 + Spider 06-17 untouched). **§4 #1 DAIL-SQL retrieval** built end-to-end offline: retrieval core (`few-shot-select.ts` value-mask + Jaccard + top-k, run 38), schema-aware selector (run 40), pool-curation mask + 10-row curated pool precision@1 10/10 (runs 39, 42a, `SK-LLM-041`). **§4 #3 self-consistency** (`SK-QUAL-017`): execution half (run 37) + `temperature`-sampling half (run 40, default greedy ⇒ `SK-LLM-024` byte-identical) + runner `--self-consistency N`/`--sc-temperature T` (run 41) + smoke dispatch vehicle (run 42c) — fully dispatchable. **Distribution:** WS-08 OG cards (run 42b, SK-PIVOT-012), WS-09 gate-honest `/agents` live demo (run 41) → messaging → 10/13, pivot → 12/20. Plus E-04 TTL-sweep core (`SK-PIVOT-011`, run 39) + SK-PIVOT-010 finding (E-06 authed-only). KPI engine quality / onboarding; none degraded.
 - 2026-06-19/20 (runs 19–36) — agent-memory pivot launch wave + engine staging
   (all closed/additive; BIRD 06-19 + Spider 06-17 untouched). Messaging
