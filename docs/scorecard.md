@@ -104,8 +104,8 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   an existing warehouse) vs. nlqdb owning the DB (provision + NL writes/
   migrations with diff-preview) and embedding an *answer element* / agent-
   callable API; dashboards/charts/scheduled-reports + OSS self-host + many-
-  source read conceded `them: shipped`. Both `competitors.md` §Metabase Metabot +
-  threat-matrix row refreshed. **Δ:** comparison pages **16 → 17**, llms.txt/
+  source read conceded `them: shipped`. `competitors.md` §Metabase Metabot
+  entry refreshed (threat-matrix row already current). **Δ:** comparison pages **16 → 17**, llms.txt/
   sitemap +1. **KPI:** onboarding / distribution; **none degraded** — one data
   object + doc edits, no engine/funnel/ops file touched; 130 web tests +
   astro-check 0 errors + biome green.
