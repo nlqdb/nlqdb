@@ -10,6 +10,58 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-23 (run 67) — dev.to / lobste.rs: "AI made the internal-tool builder faster. It didn't ask whether you needed the tool." (build-vs-skip)
+
+**Where:** dev.to + lobste.rs (`ai` / `databases` / `lowcode`); pairs with the
+new `/vs/retool` page (the internal-tools incumbent, P4). The wedge: low-code AI
+(AppGen, Ask AI, native agents) scaffolds the admin tool faster — but it's still
+a destination tool a human builds and ships, and the faster path is often *no
+tool at all*. nlqdb mentioned once.
+
+**Title:** AI made the internal-tool builder faster. It didn't ask whether you needed the tool.
+
+**Body:**
+
+> Every low-code platform now has an AI layer. Describe the app, it scaffolds the
+> screens against your schema. Ask in English, it writes the SQL. Point an agent
+> at it and it plans, calls tools, and queries your data with guardrails. This is
+> real and it's good — the thing that used to take an afternoon of dragging
+> components and wiring queries takes a prompt.
+>
+> But notice what got faster: *building the tool*. The output is still a
+> destination — an internal app a human opens, logs into, and reads. AI shortened
+> the path from "I need a dashboard" to "I have a dashboard." It didn't question
+> the premise that the answer to a data question is a dashboard you build.
+>
+> A lot of the time it isn't. The data question lives *inside* a product you're
+> already shipping — "show this customer their last five orders," "what did this
+> account spend this quarter" — and the honest deliverable isn't a separate admin
+> app, it's an answer rendered inline, on the page the user is already on. Or the
+> asker isn't a human at all: it's an agent that needs to provision a database,
+> write to it, and query it programmatically on every request, with no UI in the
+> loop ever. Neither of those wants a built tool. They want a backend primitive.
+>
+> That's the fork. A builder — even an AI-supercharged one — assumes a human will
+> assemble and operate the result. A backend primitive assumes nobody will: you
+> embed one element or call one API, pass an English goal, and get typed rows
+> back. (At nlqdb we took the second side on purpose — English compiles to SQL
+> over a Postgres the product or agent *provisions and owns*, writes diff-previewed,
+> no app to assemble first — which is exactly why we don't ship a drag-drop
+> canvas. Different job.) The builder wins when the deliverable genuinely is a
+> standalone tool a team will run; the primitive wins when the answer belongs in
+> the product, or the asker is code.
+>
+> Lesson: when an AI feature makes an old workflow 10× faster, check whether it
+> made the *workflow* faster or the *outcome* faster. Scaffolding an internal tool
+> faster is a real win — but if what you actually needed was the answer in your
+> own app, or a database your agent stands up itself, the fastest builder is still
+> building something you didn't need.
+
+**Why this advances the north-star:** onboarding / distribution (AEO on the
+"Retool alternative" / "skip building the admin UI" P4 keyword), anchors the new
+`/vs/retool` page with one nlqdb mention. No engine/funnel KPI degrades
+(content + one data object only).
+
 ## 2026-06-23 (run 65) — dev.to / lobste.rs: "Two homes for one decision is drift — even inside the same file" (engineering-doc discipline)
 
 **Where:** dev.to + lobste.rs (`architecture` / `engineering`); build-in-public,
@@ -60,58 +112,6 @@ useful doc-discipline post (one nlqdb mention) that names a failure mode the
 "two homes for one fact" rule exists to prevent, applied at a finer grain than
 the usual cross-file framing. No engine/funnel KPI degrades (docs-only).
 
-## 2026-06-23 (run 64) — dev.to / lobste.rs: "Your AI data analyst can't be your app's backend (and vice versa)" (two-jobs split)
-
-**Where:** dev.to + lobste.rs (`ai` / `databases` / `data`); pairs with the new
-`/vs/julius` page (the first P3-analyst comparison after the vector-DB cluster
-closed). The wedge: "talks to your data in English" is one phrase covering two
-products — an analyst's destination app vs. an application's data layer. nlqdb
-mentioned once.
-
-**Title:** Your AI data analyst can't be your app's backend (and vice versa)
-
-**Body:**
-
-> There's a whole category of tools now where you upload a spreadsheet, ask a
-> question in English, and get back a chart and the Python that made it. They're
-> genuinely good at it — drop in a CSV and a non-technical analyst is producing
-> presentation-ready dashboards in minutes. The job is *ad-hoc analysis*: a
-> human, a dataset, an answer.
->
-> It's tempting to assume that same tool can sit behind your product. It can't,
-> and the reason isn't quality — it's shape. An analysis app is a destination: a
-> human logs in, uploads or connects data, and reads the output. A product
-> backend is the opposite — no human in the loop at request time, it owns the
-> data your app writes to, and something (your code, or increasingly an AI
-> agent) queries it programmatically, on every request, forever.
->
-> Those are different contracts. The analysis app's is "give me an answer and a
-> chart for this dataset right now." The backend's is "provision and own a
-> database, accept writes, evolve the schema, and answer queries via an API or
-> an embeddable element — no chat window, no upload step, no human." A chart is
-> the deliverable in one; a typed result set you render in your own UI is the
-> deliverable in the other. Connecting-to-read and owning-the-write-path are not
-> the same job.
->
-> Teams that try to collapse the two get stuck halfway: the analysis tool reads
-> their warehouse beautifully but can't be the thing their app provisions and
-> writes to; the backend speaks SQL over its own database but won't draw the
-> chart the analyst wanted. (At nlqdb we picked the backend side on purpose —
-> English compiles to SQL over a Postgres the product or agent provisions and
-> queries, with writes diff-previewed — which is exactly why we don't generate
-> charts or take a CSV upload. Different job.)
->
-> Lesson: "talks to your data in English" is one phrase covering two products.
-> One is an analyst's destination app; the other is your application's data
-> layer. Before you adopt either, decide which contract you're buying — a human
-> reading an answer, or your code (or your agent) querying a database it owns.
-> Tools that nail one rarely nail the other, and that's fine.
-
-**Why this advances the north-star:** onboarding / distribution (AEO on the
-"Julius AI alternative" / "AI data analyst vs. app backend" P3 keyword), anchors
-the new `/vs/julius` page with one nlqdb mention. No engine/funnel KPI degrades
-(content + one data object only).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -120,6 +120,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 64 — "Your AI data analyst can't be your app's backend (and vice versa)" (the same English-over-data phrase covers two products: an analyst's destination app whose deliverable is a chart, vs. an application's data layer whose deliverable is typed rows it owns and writes to; connecting-to-read and owning-the-write-path are different jobs; anchors `/vs/julius`).
 - run 62 — "Your decision record is just narrating code the reader can already read" (a "Consequence in code" section that lists files, functions, and line numbers is a second, worse copy of the code — untestable and already stale; keep only the why / rejected path / non-obvious constraint, cut the implementation narration; load-bearing decisions only).
 - run 61 — "Quantization made your recall cheaper. It still can't count." (quantization optimises *how cheaply* you retrieve the nearest items, not *what* you can compute over them; scalar/binary/product compression still yields a ranked list, never a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/qdrant`).
 - run 60 — "Your architecture doc is describing a pipeline your code deleted" (a superseded decision record gets fixed in its one canonical place, but every other doc that paraphrased it keeps narrating the dead version; link, don't restate, and grep the ID across all docs when something is superseded).

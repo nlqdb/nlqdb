@@ -1485,6 +1485,133 @@ export const COMPETITORS: Competitor[] = [
       why: "A grouped, ranked query nlqdb answers as SQL over the database your app owns — the live data layer your product queries, not a one-off chart from an uploaded spreadsheet.",
     },
   },
+  {
+    slug: "retool",
+    name: "Retool",
+    url: "https://retool.com",
+    // P4 backend-engineer slot — the internal-tools incumbent with the
+    // strongest distribution moat in docs/competitors.md §3 ("already
+    // installed; distribution moat"), the natural next slice after Julius (P3)
+    // per the comparison-pages FEATURE decision rule (persona-weighted threat ×
+    // keyword volume — Retool's brand keyword dwarfs Basedash's). Facts
+    // web-verified 2026-06-23 (retool.com/ai + retool.com/pricing + trust.retool.com):
+    // low-code platform — drag-drop components + queries assemble internal
+    // apps/dashboards over your *existing* production data (Postgres, Databricks,
+    // Salesforce, …). AI layer: AppGen (describe an app → scaffold against your
+    // schema), Ask AI (NL → SQL/JS/GraphQL while building), NL queries → dashboards,
+    // and native AI Agents (plan/call-tools/query with guardrails + audit, billed
+    // hourly, separate from the pooled AI credits). Pricing: Free ≤5 users · Team
+    // (~€9/builder + €5/user) · Business (~€46/builder + €14/user) · Enterprise
+    // (custom; SSO Enterprise-only). Self-host on all tiers (advanced on Enterprise).
+    // Compliance: SOC 2 Type II + ISO 27001:2022 + GDPR; HIPAA via self-host (no BAA
+    // by default). Custom model providers (OpenAI/Anthropic/Google/AWS/Azure). No
+    // public MCP server; it connects to an existing DB and does not provision one.
+    tagline:
+      "Low-code platform for internal tools — drag-drop UI plus AI (AppGen, Ask AI, native agents) over your existing Postgres, Databricks, Salesforce, and more.",
+    persona: "P4 backend engineer",
+    oneLiner:
+      "Pick Retool if you want to build internal admin tools and dashboards — visually, on top of a database you already run — with AI that scaffolds the app and writes the queries. Pick nlqdb if you want to skip building the UI entirely: provision the database, ask in English, and render the answer inline in your own product or agent.",
+    whenChooseUs: [
+      "Skip building an admin UI — one HTML element answers the English goal in-product.",
+      "You need the database itself — nlqdb provisions Postgres on the first query.",
+      "An AI agent must provision and migrate its own database over MCP, end-to-end.",
+      "Writes and schema changes should be diff-previewed in plain English before they apply.",
+    ],
+    whenChooseThem: [
+      "You already run a production database and want a polished internal-tools UI over it.",
+      "Your team needs drag-drop apps, dashboards, and a deep connector ecosystem.",
+      "You want native AI agents with guardrails, audit trails, and any model provider.",
+      "Enterprise SSO, self-hosting, and SOC 2 / ISO 27001 / GDPR are hard requirements today.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Retool connects to an existing warehouse (Postgres, Databricks, Salesforce, …); provisioning the database is out of scope by design.",
+      },
+      { feature: "Natural-language → SQL", us: "shipped", them: "shipped" },
+      {
+        feature: "Build the UI yourself (drag-drop / low-code)",
+        us: "no",
+        them: "shipped",
+        note: "Retool's core is assembling apps from components, even with AppGen scaffolding; nlqdb's contract is 'skip the UI — one element renders the answer'.",
+      },
+      {
+        feature: "Embeddable answer in your own product (HTML element / SDK / API)",
+        us: "shipped",
+        them: "partial",
+        note: "Retool apps are destination internal tools (embeddable via an Enterprise iframe); nlqdb's `<nlq-data>` is a vanilla web component answering inline in your product layout.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+        note: "Ask AI writes queries against the existing schema; English-driven schema migration is not part of the product.",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "partial",
+        note: "Retool gates writes behind buttons a human clicks; the per-operation diff preview on an NL-triggered write/DDL is unique to nlqdb.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "no",
+        note: "nlqdb exposes `nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe`; `nlqdb_query` materialises Postgres on first reference. Retool ships no public MCP server today.",
+      },
+      {
+        feature: "Native AI agents (plan / call tools / query)",
+        us: "partial",
+        them: "shipped",
+        note: "Retool ships production AI agents with guardrails + audit trails (billed hourly); nlqdb is the data layer an external agent calls, not an agent runtime.",
+      },
+      {
+        feature: "Multi-engine connector ecosystem",
+        us: "partial",
+        them: "shipped",
+        note: "Retool connects to dozens of databases and SaaS APIs; nlqdb is Postgres-first in Phase 1 (ClickHouse on the workload-analyser path).",
+      },
+      {
+        feature: "SOC 2 Type II + ISO 27001 + enterprise SSO",
+        us: "no",
+        them: "shipped",
+        note: "Retool carries SOC 2 Type II / ISO 27001:2022 / GDPR with SSO on Enterprise (HIPAA via self-host). nlqdb is pre-alpha and carries none yet.",
+      },
+      {
+        feature: "Anonymous mode (try before sign-in)",
+        us: "shipped",
+        them: "no",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I point Retool at an nlqdb database, or nlqdb at a Retool-connected DB?",
+        a: "Retool connects to an existing database via a connection string, and nlqdb provisions Postgres, so the connection string nlqdb returns could slot in as a Retool resource. The reverse — nlqdb querying a database Retool manages — isn't supported today: nlqdb owns the database it queries, and bring-your-own-Postgres is on the roadmap, not shipped.",
+      },
+      {
+        q: "How is nlqdb different from Retool's Ask AI and AppGen?",
+        a: "Retool's AI scaffolds an internal app and writes queries against your existing schema, but a human still assembles and ships the UI. nlqdb skips the UI entirely: you embed one `<nlq-data>` element (or call the SDK / API), pass an English goal, and the answer renders inline. Retool is a builder for the people building tools; nlqdb is a backend primitive your product and agents call.",
+      },
+      {
+        q: "Does nlqdb ship AI agents with guardrails like Retool?",
+        a: "Not as a runtime. Retool ships native AI agents that plan, call tools, and query data with audit trails. nlqdb is the data layer those agents call — its MCP server exposes `nlqdb_query`, which materialises Postgres on first reference, so an external Claude / Cursor / Cline agent provisions and queries its own database. Compose them: the agent runtime on one side, nlqdb as the store it stands up.",
+      },
+      {
+        q: "Is nlqdb SOC 2 or HIPAA compliant like Retool?",
+        a: "No. nlqdb is pre-alpha and carries no certifications yet. Retool holds SOC 2 Type II, ISO 27001:2022, and GDPR, with enterprise SSO and HIPAA-capable self-hosting. If a documented compliance posture is required today, Retool is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
+      },
+      {
+        q: "Why pick nlqdb over Retool if I just need an internal dashboard?",
+        a: "If the deliverable is a polished internal tool over a database you already run, Retool's builder and connector ecosystem are hard to beat. nlqdb wins when (a) you don't have the database yet and want it provisioned, (b) you want the answer embedded in your own product rather than a separate Retool app, or (c) an AI agent needs to provision and migrate its own data layer over MCP without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "this week's failed background jobs grouped by service, top 10",
+      why: "The ops question a backend engineer would build a Retool dashboard for — nlqdb mints the Postgres and answers the English goal in one element, no app to assemble first.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
