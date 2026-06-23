@@ -157,7 +157,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     sources: [
       {
         url: "https://github.com/modelcontextprotocol/servers",
-        label: "MCP server registry — the recurring 'database MCP server' demand hub (many DB connectors, all assuming an existing DB).",
+        label:
+          "MCP server registry — the recurring 'database MCP server' demand hub (many DB connectors, all assuming an existing DB).",
       },
       {
         url: "https://www.reddit.com/r/mcp/search/?q=database",
