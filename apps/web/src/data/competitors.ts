@@ -1612,6 +1612,125 @@ export const COMPETITORS: Competitor[] = [
       why: "The ops question a backend engineer would build a Retool dashboard for — nlqdb mints the Postgres and answers the English goal in one element, no app to assemble first.",
     },
   },
+  {
+    slug: "basedash",
+    name: "Basedash",
+    url: "https://www.basedash.com",
+    // P3 analyst slot — Basedash repositioned from "admin UI" (the stale
+    // docs/competitors.md read) to an "AI-native Business Intelligence
+    // platform": NL → dashboards, an AI data analyst with daily briefings
+    // (Insights), a reusable-metrics semantic layer, chart embedding, and an
+    // MCP server, federating 750+ data sources. So the honest persona is now
+    // P3 analyst, not P4 admin. Facts web-verified 2026-06-23
+    // (basedash.com + basedash.com/pricing): read-only analytics over data you
+    // already store (Postgres, Snowflake, BigQuery, Salesforce, HubSpot,
+    // Stripe, …) — no write/edit and no database provisioning. Pricing:
+    // 14-day full-feature trial, then Startup $1,000/mo (≤25 seats, $100/mo AI
+    // credits, + AI usage); Enterprise custom adds self-hosting, SSO
+    // (SAML/OIDC), SCIM, audit logs, custom AI models. No permanent free tier.
+    // Compliance: SOC 2 Type II, encryption in transit + at rest, customer
+    // data never trains models.
+    tagline:
+      "AI-native BI platform — natural-language dashboards, a daily AI data analyst, and a semantic layer over 750+ data sources.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Basedash if you want governed BI dashboards and daily AI briefings over data you already store across 750+ sources. Pick nlqdb if you want to own the database itself — provision Postgres, ask in English, write and migrate with diff-previews, and embed the answer inline in your product or agent.",
+    whenChooseUs: [
+      "You need the database itself — nlqdb provisions Postgres on the first query.",
+      "You write and migrate data in English, with diff-previews before changes apply.",
+      "You want an answer embedded inline in your product, not a BI dashboard.",
+      "An AI agent must provision and query its own database over MCP, end-to-end.",
+    ],
+    whenChooseThem: [
+      "You already store data across many sources and want governed BI dashboards over it.",
+      "You need a semantic layer, daily AI briefings, and 750+ connectors today.",
+      "SOC 2 Type II, SSO, and audit logs are hard requirements right now.",
+      "Your team wants polished, shareable charts and reports, not a data-layer primitive.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Basedash connects to data you already store (Postgres, Snowflake, Salesforce, …); provisioning the database is out of scope by design.",
+      },
+      { feature: "Natural-language → SQL / charts", us: "shipped", them: "shipped" },
+      {
+        feature: "Write / edit data via NL (not read-only)",
+        us: "shipped",
+        them: "no",
+        note: "Basedash is read-only analytics over connected data; nlqdb runs NL-driven writes and schema changes.",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "Basedash has no NL write path to gate; the per-operation diff preview on an NL-triggered write/DDL is unique to nlqdb.",
+      },
+      {
+        feature: "BI dashboards + reusable-metrics semantic layer",
+        us: "no",
+        them: "shipped",
+        note: "Basedash builds governed dashboards with a semantic layer and daily AI briefings; nlqdb returns answers, not dashboards.",
+      },
+      {
+        feature: "750+ data-source connectors",
+        us: "partial",
+        them: "shipped",
+        note: "Basedash federates 750+ sources; nlqdb is Postgres-first in Phase 1 (ClickHouse on the workload-analyser path).",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Both ship MCP; Basedash connects an AI client to existing data, while nlqdb's `nlqdb_query` materialises Postgres on first reference.",
+      },
+      {
+        feature: "Embeddable answer in your own product",
+        us: "shipped",
+        them: "partial",
+        note: "Basedash embeds finished charts; nlqdb's `<nlq-data>` is a vanilla web component answering an English goal inline in your layout.",
+      },
+      {
+        feature: "SOC 2 Type II + SSO + audit logs",
+        us: "no",
+        them: "shipped",
+        note: "Basedash carries SOC 2 Type II with SSO / SCIM / audit logs on Enterprise; nlqdb is pre-alpha and carries none yet.",
+      },
+      {
+        feature: "Free / anonymous tier (try before sign-in)",
+        us: "shipped",
+        them: "no",
+        note: "Basedash is a 14-day trial then $1,000/mo (≤25 seats); nlqdb has anonymous mode and a free tier on the free LLM chain.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Is Basedash a database, or does it connect to one I already have?",
+        a: "Basedash connects to data you already store — 750+ sources from Postgres and Snowflake to Salesforce and Stripe — and builds governed BI dashboards over it. It does not provision or own a database. nlqdb is the database: `nlqdb_query` materialises Postgres on first reference, so there's no existing warehouse to wire up first.",
+      },
+      {
+        q: "Can Basedash write or edit my data, or only read it?",
+        a: "Basedash is read-only analytics — dashboards, reports, and daily AI briefings over connected data, with no NL write or migration path. nlqdb runs natural-language writes and schema changes (e.g. 'add a column for tags'), and every destructive operation is diff-previewed in plain English before it applies.",
+      },
+      {
+        q: "How is nlqdb's embedding different from Basedash embedding charts?",
+        a: "Basedash embeds finished charts and dashboards into your product. nlqdb embeds an answer primitive: the `<nlq-data>` web component takes an English goal and renders the result inline in your own layout, and the same goal is callable from the SDK, API, or an MCP agent. One ships visualizations; the other ships a queryable data layer.",
+      },
+      {
+        q: "Is nlqdb cheaper than Basedash for a small team?",
+        a: "Basedash starts at $1,000/month for up to 25 seats (plus AI usage) after a 14-day trial, with no permanent free tier. nlqdb has an anonymous mode you can try without signing in and a free tier on the free LLM chain. For a small team that mainly needs to query and embed data, nlqdb removes the per-seat BI bill.",
+      },
+      {
+        q: "Is nlqdb SOC 2 compliant like Basedash?",
+        a: "No. Basedash carries SOC 2 Type II with encryption in transit and at rest, plus SSO, SCIM, and audit logs on Enterprise. nlqdb is pre-alpha and holds no certifications yet. If a documented compliance posture is required today, Basedash is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
+      },
+    ],
+    demo: {
+      goal: "monthly active customers grouped by plan, last 6 months",
+      why: "The dashboard question a team would open Basedash for — nlqdb mints the Postgres and answers the English goal in one element, no BI seat or connector setup first.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {

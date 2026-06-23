@@ -57,7 +57,6 @@ Open-source context layer for AI agents — an MDL semantic model (models, relat
 - **Overlaps with:** P3 (governed NL→SQL for analyst orgs), P2 (Python SDK + LangChain bindings position it as agent infrastructure).
 - **Gap nlqdb exploits:** Wren AI doesn't own the database — it sits on a warehouse you already run, so DB provisioning, NL-driven schema migration, and in-product `<nlq-data>` render are not in its lane.
 - **Threat vector:** **High for governed-analyst orgs on paid plans.** Paid-plan SOC 2 + RLAC/CLAC + 22 engines is a compliance-first answer nlqdb cannot match in Phase 1; OSS core + 15k stars gives it a self-host moat.
-- **Last verified:** 2026-05-29 (getwren.ai + Canner/WrenAI README + LICENSE).
 
 ### Vanna AI — https://vanna.ai
 OSS + cloud text-to-SQL trained on your schema and prior queries. Free OSS, commercial tiers above.
@@ -72,10 +71,10 @@ Fine-tuned open-weights SQL model + commercial product layer.
 - **Threat vector:** Medium. The OSS weights are credible baseline tech for anyone self-hosting.
 
 ### AskYourDatabase — https://askyourdatabase.com
-Chat-style AI Data Analyst over your existing database, in two products: a Desktop App (creds + query execution stay local) and a cloud Website Chatbot (embeddable, with a Dashboard Builder). Engines: BigQuery, MSSQL, MySQL, PostgreSQL, Snowflake. Paid from ~$49/mo (Desktop) / ~$149/mo (Chatbot) + Enterprise on-prem. (Plans, models, and SOC 2 status — audit initiated, not yet certified on the free product — in [`comparison-pages/FEATURE.md`](../features/comparison-pages/FEATURE.md) open questions.)
+Chat-style AI Data Analyst over your existing database, in two products: a Desktop App (creds + query execution stay local) and a cloud Website Chatbot (embeddable, with a Dashboard Builder). Engines: BigQuery, MSSQL, MySQL, PostgreSQL, Snowflake. Paid from ~$49/mo (Desktop) / ~$149/mo (Chatbot) + Enterprise on-prem. (Plans/models/SOC 2 status — audit initiated, not yet certified — in [`comparison-pages/FEATURE.md`](../features/comparison-pages/FEATURE.md).)
 - **Overlaps with:** P3, P4 ("chat with my DB" angle).
 - **Gap nlqdb exploits:** Connects to an already-existing warehouse — no provisioning verb, no English-driven DDL, no in-product `<nlq-data>` element (chat widget is the only embed shape).
-- **Threat vector:** Medium for P3 specifically — the "one-off question" vector; the Dashboard Builder + embeddable chatbot extends it into customer-facing BI nlqdb does not target today. The `/vs/askyourdatabase` page ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning.
+- **Threat vector:** Medium for P3 — the "one-off question" vector; the Dashboard Builder + embeddable chatbot extends into customer-facing BI nlqdb doesn't target. `/vs/askyourdatabase` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is canonical.
 
 ### Julius AI — https://julius.ai
 NL data analysis over uploaded CSVs and connected DBs. ~$20/mo individual plans.
@@ -96,14 +95,14 @@ These layer NL on top of admin or BI UIs. The ones with strong distribution (Ret
 ### Outerbase — https://outerbase.com
 AI-assisted database interface: EZQL natural-language queries, spreadsheet-like editor, dashboards, data catalog. Multi-engine (Postgres / MySQL / SQLite / MongoDB / ClickHouse / Snowflake / BigQuery / Redshift / MSSQL). Acquired by **Cloudflare** on 2025-04-07 ([press release](https://www.cloudflare.com/press/press-releases/2025/cloudflare-acquires-outerbase-to-expand-developer-experience/)).
 - **Overlaps with:** P1 admin-chat, P3, P4 NL-over-existing-DB.
-- **Gap nlqdb exploits:** Outerbase sits on top of *your* DB; nlqdb is the DB + chat + MCP-provisioning in one. The Cloudflare acquisition puts it on the same infra as nlqdb (Workers / D1 / Agents SDK) in a different shape (admin-UI vs chat-first / `<nlq-data>`). The `/vs/outerbase` page ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is canonical.
-- **Threat vector:** **High.** The single product most in nlqdb's lane today; the Cloudflare alignment narrows the infra-differentiation lane.
+- **Gap nlqdb exploits:** Outerbase sits on top of *your* DB; nlqdb is the DB + chat + MCP-provisioning in one. The `/vs/outerbase` page ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is canonical.
+- **Threat vector:** **High.** The single product most in nlqdb's lane today; the Cloudflare acquisition puts it on the same infra (Workers / D1 / Agents SDK), narrowing the infra-differentiation lane.
 
-### Basedash — https://basedash.com
-Admin UI with AI. ~$25/user/mo Team tier.
-- **Overlaps with:** P4 heavily, P1 lightly.
-- **Gap nlqdb exploits:** Admin-UI-shaped, not chat-first; assumes existing DB.
-- **Threat vector:** Medium for P4.
+### Basedash — https://www.basedash.com
+Repositioned (verified 2026-06-23) from "admin UI with AI" to an **AI-native BI platform**: NL → dashboards, an AI data analyst with daily Insights briefings, a semantic layer, chart embedding, MCP server, over 750+ read-only sources. No write/edit, no DB provisioning. 14-day trial → $1,000/mo (≤25 seats); SOC 2 Type II. (Verified dossier in `/vs/basedash` `competitors.ts`.)
+- **Overlaps with:** P3 (analyst BI); P4/P1 only via legacy admin-panel heritage.
+- **Gap nlqdb exploits:** read-only BI over *your existing* data; nlqdb owns the DB (provisions Postgres + NL writes/migrations with diff-preview) and embeds an answer element, not a dashboard.
+- **Threat vector:** Medium for P3; the $1,000/mo floor (no free tier) cedes the small-team / anonymous-mode lane.
 
 ### Retool AI — https://retool.com
 Retool's NL query + app-generation add-ons on top of the Retool platform. Team from $10/user/mo + AI usage.
@@ -134,19 +133,19 @@ P2's home territory. These solve "agent needs to remember things" but generally 
 - **Threat vector:** **High for P2.** If an agent builder just wants memory, Mem0 is lighter-weight.
 
 ### Zep — https://getzep.com
-Agent-memory platform built on **Graphiti**, a temporal knowledge-graph engine (facts stored as graph nodes with start/end validity windows + entity resolution across conversation and business data). Positions as "the Context Lake for AI agents"; Graphiti is OSS (27k+ GitHub stars, Q2 2026) with a hosted cloud — free tier, paid from ~$125/mo. Publishes memory benchmarks (LongMemEval, Deep Memory Retrieval).
+Agent-memory platform built on **Graphiti**, a temporal knowledge-graph engine (facts as graph nodes with validity windows + entity resolution). Positions as "the Context Lake for AI agents"; Graphiti is OSS (27k+ stars, Q2 2026) with a hosted cloud — free tier, paid from ~$125/mo. (Full architecture in `/vs/zep`.)
 - **Overlaps with:** **P2 directly** — the same "agent needs to remember things" job as Mem0.
 - **Gap nlqdb exploits:** Zep is a *retrieval* graph — it returns the facts most relevant to a query, but it has no query planner: an agent can't `GROUP BY` / `JOIN` / `HAVING` / aggregate over its own memory. The temporal validity windows are point-in-time fact recall, not analytics. nlqdb is a real database the agent designs and aggregates over in NL.
 - **Threat vector:** **High for P2** — well-funded, benchmark-led, same lane as Mem0; the knowledge-graph framing is more structured than a flat vector store, but it stops short of SQL semantics.
 
 ### Letta (formerly MemGPT) — https://letta.com
-Open-source (Apache-2.0) agent runtime with persistent memory built in — out of the 2023 Berkeley MemGPT paper. Three memory tiers modelled on an OS: **core** (editable blocks always in the context window, the agent self-edits them), **recall** (searchable conversation history), and **archival** (long-term store queried via tool calls). Self-host or hosted.
+Open-source (Apache-2.0) agent runtime with persistent memory built in — out of the 2023 Berkeley MemGPT paper. OS-style memory tiers (core/recall/archival); self-host or hosted. (Full architecture in `/vs/letta`.)
 - **Overlaps with:** P2 — the stateful-agent builder.
 - **Gap nlqdb exploits:** Letta is an agent *framework* whose memory is self-edited prose blocks + a searchable archive; nlqdb is a DB primitive that framework can use. Letta can recall "Alice has a $50k deal"; it can't answer "average deal size per stage for enterprise customers" — there is no relational query layer over the memory. The two compose: Letta the runtime, nlqdb the analytical store.
 - **Threat vector:** Medium — they want to be the runtime, not the storage layer, so the overlap is the default built-in memory rather than a head-to-head store.
 
 ### LangMem (LangChain) — https://langchain.com
-Open-source Python SDK that adds long-term memory to LangGraph agents. Three memory types: **semantic** (facts/preferences), **episodic** (past interactions), **procedural** (the agent rewrites its own system prompt from feedback). Extracts, consolidates, and deduplicates memories from live interactions; storage-backend-agnostic (works standalone or with LangGraph's store).
+Open-source Python SDK that adds long-term memory (semantic / episodic / procedural) to LangGraph agents — extract, consolidate, dedup from live interactions; storage-backend-agnostic. (Full architecture in `/vs/langmem`.)
 - **Overlaps with:** P2 — agent builders already inside the LangChain ecosystem.
 - **Gap nlqdb exploits:** LangMem is extraction-and-recall logic over a key-value store, not a database — no SQL, no aggregation, no schema the agent can query analytically. Its win is *distribution* (it ships where LangGraph already is), not the analytical shape. nlqdb is the queryable memory an agent reaches for when "what's the trend across everything I remembered?" matters.
 - **Threat vector:** **High for P2 on distribution** — LangChain's mass adoption means LangMem is the default an agent builder meets first; low on capability for the analytical wedge (fact recall only).
@@ -235,7 +234,7 @@ Adjacent DIY components: LlamaIndex's SQL query engine (like LangChain's), Defog
 | Wren AI | Text-to-SQL (semantic-layer) | P3, P2 | MDL semantic model + RLAC/CLAC + SOC 2 (paid) + 22 engines; OSS-core self-host moat |
 | AskYourDatabase | Text-to-SQL | P3, P4 | Low-friction "chat with my DB" + Dashboard Builder + embeddable chatbot; Enterprise on-prem |
 | MCP Postgres servers | Agent tooling | P2 | Free + standard; gap narrows if they add provisioning |
-| Basedash | AI admin | P4 | AI-aware admin UI for small teams |
+| Basedash | AI-native BI | P3 | NL dashboards + semantic layer over 750+ sources; $1,000/mo floor |
 | Metabase Metabot | BI + NL | P3 | OSS distribution + familiar BI UX |
 | Turso | Managed DB | P1, P5 | Cheap + edge-distributed |
 | LangChain SQL agent | OSS framework | P2 | Free DIY path |

@@ -10,6 +10,56 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-23 (run 70) — dev.to / lobste.rs: "Your AI BI tool reads your data. It doesn't own it — and can't write to it" (read-vs-own data layer)
+
+**Where:** dev.to + lobste.rs (`ai` / `databases` / `dataengineering`);
+build-in-public, the BI-shaped sibling to the "AI analyst can't be your backend"
+post (run 64). The wedge: a wave of tools now say "ask your data in English and
+get a dashboard" — and they're great at it — but "your data" there means a
+read-only connection to a warehouse you already run. nlqdb mentioned once.
+Anchors `/vs/basedash`.
+
+**Title:** Your AI BI tool reads your data. It doesn't own it — and can't write to it
+
+**Body:**
+
+> I was comparing a few "AI-native BI" tools this week and noticed they've all
+> converged on the same sentence: *describe what you want to track, and AI builds
+> the dashboard.* It genuinely works — natural-language charts, a semantic layer
+> so metrics stay consistent, a daily AI briefing that surfaces what moved. If the
+> job is "give my ops team governed analytics over the data we already store,"
+> these are a good buy.
+>
+> But read the integration page and the shape becomes clear: they connect to
+> hundreds of sources — Postgres, Snowflake, Salesforce, Stripe — and read from
+> them. They don't *own* a database, and they don't *write* to yours. That's not
+> a flaw; it's the BI contract. Analytics tools are read-only by design, sitting
+> downstream of a system that already holds the data and already handles the
+> writes.
+>
+> The trap is that "ask your data in English" sounds identical to two very
+> different products. One renders a dashboard over a warehouse you maintain. The
+> other *is* the data layer: it provisions the store, takes English for the read
+> *and* the write ("add a column for tags", "mark these orders refunded"), and
+> hands back an answer your app or agent embeds inline — not a chart on a separate
+> BI site. Before you buy "talk to your data," ask two questions the demo won't:
+> *who owns the database, and can English change the data, not just query it?*
+>
+> If you have the warehouse and want governed dashboards, buy the BI tool. If you
+> *don't have the database yet*, or an agent needs to stand up and migrate its own
+> store, a read-only dashboard layer is the wrong altitude — you want the thing
+> that owns the write path. (At nlqdb that's the whole product: `nlqdb_query`
+> materialises Postgres on first reference, writes and migrations are diff-previewed
+> in English before they apply, and the answer renders in one web component.)
+>
+> Lesson: "AI over your data" splits on a single axis — does the tool *own* the
+> data or *read* it? Dashboards live downstream of a database. Don't buy one
+> expecting the other.
+
+**Why this advances the north-star:** onboarding / distribution — an honest
+read-vs-own framing (one nlqdb mention) that anchors `/vs/basedash` and the P3
+analyst lane. No engine/funnel KPI degrades (positioning content only).
+
 ## 2026-06-23 (run 69) — dev.to / lobste.rs: "Your sitemap is advertising redirects — and your canonical tag points at one" (AEO/SEO hygiene)
 
 **Where:** dev.to + lobste.rs (`webdev` / `seo` / `astro`); build-in-public,
@@ -59,57 +109,6 @@ hygiene on the marketing surface — every crawler-advertised URL now resolves t
 the 200 directly), one nlqdb mention. No engine/funnel KPI degrades
 (static-site config + URL-formatting only).
 
-## 2026-06-23 (run 68) — dev.to / lobste.rs: "Your offline LLM eval isn't measuring your model — it's measuring your rate limits" (eval-harness discipline)
-
-**Where:** dev.to + lobste.rs (`ai` / `llm` / `databases`); build-in-public, the
-empirical sibling to the "score against your own schema" post (run 58). The wedge:
-a small benchmark on a free multi-provider chain reports an *availability* number
-wearing an *accuracy* number's clothes. nlqdb mentioned once.
-
-**Title:** Your offline LLM eval isn't measuring your model — it's measuring your rate limits
-
-**Body:**
-
-> We keep a 20-question NL→SQL benchmark over the database shapes our users
-> actually build, and we can run it locally against our free LLM chain (a handful
-> of providers behind a failover router). Yesterday it scored 17/20. Then I ran it
-> again, immediately, with a different decoding setting — and it scored 6/20.
->
-> The engine didn't get three times worse in ninety seconds. The *providers* got
-> tired. The first run hammered every free tier; the second run hit open circuit
-> breakers on nearly every question and recorded them as "no SQL produced." My
-> "accuracy" number had quietly become an availability number — and at N=20, one
-> exhausted provider is five percentage points.
->
-> The tell was in the failure reasons. A real engine miss looks like a wrong
-> `JOIN` or a dropped `WHERE` clause — you can read the SQL and see the mistake.
-> A starved run looks like `circuit_open`, `rate_limited`, `network`, and a p50
-> latency of *zero milliseconds*: the model was never called. Those aren't the
-> same event, and averaging them into one percentage hides which one you're
-> looking at.
->
-> Two fixes, one principle. (1) Throttle between questions so the low-RPM head of
-> your chain doesn't cascade every breaker open — pace the run to measure
-> reasoning, not capacity. With a 4-second gap the same bench scored 21/23, stable.
-> (2) Treat a wall of breaker-opens as a *pause*, not a score: checkpoint, stop,
-> resume when the quota resets — never write `0%` for questions no model saw. The
-> principle underneath both: a tiny offline run on shared free tiers is a smoke
-> test, not a measurement. The number you can defend comes from a larger run, on
-> dedicated keys, spread across quota windows — and you keep the two apart on
-> purpose. (At nlqdb the offline pass is exactly that smoke check; the powered
-> accuracy numbers come from a separate, windowed run that resumes from a
-> checkpoint instead of restarting.)
->
-> Lesson: before you trust an LLM eval delta, look at the failure reasons and the
-> latency. If your misses are circuit-breaker errors and your p50 is zero, you
-> measured your rate limits. Pace the run, pause on exhaustion, and never let a
-> provider's bad afternoon look like your model's regression.
-
-**Why this advances the north-star:** engine quality / onboarding — a genuinely
-useful eval-discipline post (one nlqdb mention) that names the
-availability-vs-accuracy trap and the throttle-and-resume fix. No engine/funnel
-KPI degrades (the post reports an already-shipped harness behavior).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -117,6 +116,7 @@ is title + venue + one-line gist; `git log -p docs/research/distribution-queue.m
 recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
+- run 68 — "Your offline LLM eval isn't measuring your model — it's measuring your rate limits" (a tiny NL→SQL bench on a free multi-provider chain scored 17/20 then 6/20 ninety seconds later; the engine didn't regress, the providers got tired — `circuit_open`/`rate_limited` errors with p50=0ms are availability, not accuracy; throttle to measure reasoning, pause-and-resume on exhaustion, keep the smoke test apart from the powered windowed run).
 - run 67 — "AI made the internal-tool builder faster. It didn't ask whether you needed the tool." (low-code AI — AppGen / Ask AI / agents — scaffolds the admin tool faster, but the output is still a destination a human builds and operates; often the answer belongs inline in the product you already ship, or the asker is an agent that wants a backend primitive, not a built tool — check whether the AI sped up the workflow or the outcome; anchors `/vs/retool`).
 - run 66 — "Your most over-documented code is your security code — and that's where stale docs lie loudest" (security code attracts callsite-by-callsite "consequence in code" narration because terse feels irresponsible; but a list of today's callsites + test names is the fastest-rotting prose in the repo, and a stale "every site is checked" reads as a guarantee — document the enforced invariant + review rule, not the implementation tour).
 - run 65 — "Two homes for one decision is drift — even inside the same file" (single-source-of-truth isn't only cross-file: a long doc paraphrasing its own decision two headings down is the same drift bug; a pointer can't drift, a paraphrase is a hand-synced copy — link up and add only what's local to the section).

@@ -76,6 +76,23 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
+- 2026-06-23 (run 70) — **Distribution: shipped `/vs/basedash` — and the
+  web-verification corrected a stale competitor read.** Engine lane dispatch-gated
+  (BIRD 06-19 / Spider 06-17 both < 7d), so the lever was AEO. Basedash had
+  **repositioned** (verified 2026-06-23 — basedash.com + /pricing) from "admin UI
+  with AI" (the stale `docs/competitors.md` P4 row) to an **AI-native BI platform**:
+  NL → dashboards, an AI data analyst with daily Insights briefings, a semantic
+  layer, chart embedding, MCP server, 750+ read-only sources; no write/edit, no DB
+  provisioning; 14-day trial → $1,000/mo (≤25 seats, no free tier); SOC 2 Type II.
+  Shipped as **P3 analyst** with the honest wedge: read-only BI over *your existing*
+  data vs. nlqdb owning the DB (provision + NL writes/migrations with diff-preview)
+  and embedding an answer element, not a dashboard. Both `competitors.md` entry +
+  threat-matrix row corrected. **Δ:** comparison pages **15 → 16**, llms.txt/sitemap
+  +1. **KPI:** onboarding / distribution; **none degraded** — one data object + doc
+  edits, no engine/funnel/ops file touched; 130 web tests + astro-check 0 errors +
+  biome green. Doc-hygiene rider: `competitors.md` (already > 20 KB) net-shrunk
+  −40 B under D4 (condensed Zep/Letta/LangMem architecture clauses → their canonical
+  `/vs` pages, dropped duplicated Outerbase/AYD/Wren pointers).
 - 2026-06-23 (run 69) — **AEO/SEO hygiene: every crawler-advertised URL now
   resolves to the 200 directly (was a 307).** CF serves `<route>/index.html`, so
   the trailing-slash URL is the 200 and the bare path 307-redirects — but
