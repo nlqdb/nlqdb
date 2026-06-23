@@ -2,12 +2,13 @@
 // One template, N comparison pages — generated at build via
 // `getStaticPaths()` from `data/competitors.ts`. AEO patterning:
 // direct-answer capsule above the fold, named-competitor in H1 + FAQ,
-// FAQPage + Article JSON-LD, working `<nlq-data>` embed as proof.
+// FAQPage + BreadcrumbList JSON-LD, working `<nlq-data>` embed as proof.
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { COMPETITORS, type ComparisonClaim, competitorBySlug } from "../../data/competitors";
 import Base from "../../layouts/Base.astro";
+import { breadcrumbJsonLd } from "../../lib/breadcrumb";
 
 export function getStaticPaths() {
   return COMPETITORS.map((c) => ({ params: { slug: c.slug } }));
@@ -48,6 +49,15 @@ const faqJsonLd = {
     acceptedAnswer: { "@type": "Answer", text: f.a },
   })),
 };
+
+const breadcrumbLd = breadcrumbJsonLd(
+  [
+    { name: "Home", path: "/" },
+    { name: "Compare", path: "/vs" },
+    { name: `nlqdb vs ${c.name}`, path: canonical },
+  ],
+  Astro.site,
+);
 ---
 <Base
   title={pageTitle}
@@ -60,6 +70,14 @@ const faqJsonLd = {
     <Topnav current="vs" />
 
     <main class="vs">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <ol>
+          <li><a href="/">Home</a></li>
+          <li><a href="/vs">Compare</a></li>
+          <li aria-current="page">nlqdb vs {c.name}</li>
+        </ol>
+      </nav>
+
       <header class="vs__head">
         <p class="vs__kicker">Comparison</p>
         <h1 class="vs__title">nlqdb vs {c.name}</h1>
@@ -187,6 +205,7 @@ const faqJsonLd = {
   </div>
 
   <script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
   <script>
     // "Try this query" → seed the anonymous-create input via the same
     // `nlqdb_draft` localStorage slot CreateForm rehydrates from
@@ -213,6 +232,35 @@ const faqJsonLd = {
     max-width: 960px;
     margin: 0 auto;
     padding: clamp(32px, 5vw, 64px) clamp(16px, 4vw, 32px);
+  }
+  .crumbs {
+    font-family: var(--mono);
+    font-size: 12px;
+    margin: 0 0 24px;
+  }
+  .crumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    color: var(--fg-dim);
+  }
+  .crumbs li + li::before {
+    content: "/";
+    margin-right: 8px;
+    opacity: 0.6;
+  }
+  .crumbs a {
+    color: var(--fg-dim);
+    text-decoration: none;
+  }
+  .crumbs a:hover {
+    color: var(--accent);
+  }
+  .crumbs [aria-current="page"] {
+    color: var(--fg);
   }
   .vs__kicker {
     font-family: var(--mono);

@@ -79,6 +79,22 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
+- 2026-06-23 (run 78) — **AEO: every `/vs` + `/solve` page now emits
+  `BreadcrumbList` JSON-LD + a visible breadcrumb trail — structured-data
+  coverage 0 → 24 pages.** Engine canonical dispatch-gated (BIRD 06-19 /
+  Spider 06-17 both < 7d); offline-retrieval, `/agents` FAQPage, and
+  gate-removal levers all in open PRs (#494 / #495 / #496), so this run took the
+  non-colliding site-wide AEO lane. `/vs/[slug]` (17) emitted FAQPage only and
+  `/solve/[slug]` (7) FAQPage+HowTo — **neither carried `BreadcrumbList`**, so
+  Google rendered the raw URL (no breadcrumb trail) in SERPs and answer engines
+  had no hierarchy signal. Added a shared `lib/breadcrumb.ts` builder
+  (trailing-slash `item` URLs matching the run-69 canonical fix) + a Home →
+  Compare/Solve → page trail (visible `<nav>` **and** matching JSON-LD — the
+  Google "markup matches visible breadcrumb" rule). **Δ:** pages emitting
+  BreadcrumbList **0 → 24**; FAQPage 24 unchanged (no regression). **KPI:**
+  onboarding / distribution; **none degraded** — additive structured data + one
+  small nav, no engine/funnel/ops file touched; 130 web tests + astro-check 0
+  errors + biome clean.
 - 2026-06-23 (run 75) — **Distribution: shipped `/solve/database-claude-cursor-can-query`
   (7th solve page, P2 MCP-host wedge).** Engine canonical dispatch-gated and the
   offline-retrieval / comparison / doc-hygiene lanes were already in open PRs
@@ -147,35 +163,14 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   sitemap +1. **KPI:** onboarding / distribution; **none degraded** — one data
   object + doc edits, no engine/funnel/ops file touched; 130 web tests +
   astro-check 0 errors + biome green.
-- 2026-06-23 (run 70) — **Distribution: shipped `/vs/basedash`; web-verification
-  corrected a stale competitor read.** AEO lever (engine dispatch-gated). Basedash
-  had **repositioned** (verified 2026-06-23) from "admin UI with AI" (the stale P4
-  row) to an **AI-native BI platform** (NL → dashboards, AI analyst, semantic layer,
-  750+ read-only sources; no write/DB-provisioning; $1,000/mo, no free tier).
-  Shipped **P3 analyst**, honest wedge: read-only BI over *your existing* data vs.
-  nlqdb owning the DB (provision + NL writes with diff-preview). `competitors.md`
-  entry + threat-matrix row corrected. **Δ:** comparison pages **15 → 16**,
-  llms.txt/sitemap +1. None degraded — data object + doc edits. Rider:
-  `competitors.md` (> 20 KB) net-shrunk −40 B under D4.
-- 2026-06-23 (run 69) — **AEO/SEO hygiene: every crawler-advertised URL now
-  resolves to the 200 directly (was a 307).** CF serves `<route>/index.html`, so
-  the trailing-slash URL is the 200 and the bare path 307-redirects — but
-  `<link rel=canonical>`, `og:url`, sitemap, and llms.txt all emitted the *bare*
-  path (self-referential redirecting canonical; 27 redirecting sitemap URLs).
-  Fix (4 sites): `trailingSlash: "always"` + path-normalize in `Base.astro`
-  (Astro build-time `pathname` stays bare, withastro/astro#12833), `sitemap.xml.ts`,
-  `llms.txt.ts`; root `/` unchanged. **Δ:** sitemap 200/307 **1/27 → 28/0**.
-  **KPI:** onboarding / distribution; **none degraded** — static-site config +
-  URL-formatting only; 130 web tests + astro-check 0 errors + biome green.
-- 2026-06-23 (run 68) — **Engine instrument: persona-bench grown 20 → 23,
-  gold-exec 23/23** (SK-QUAL-018). Batch 3 adds three SK-QUAL-014 shapes
-  (`scalar-subquery`, `count-distinct`, multi-predicate `join-aggregate-filter`),
-  each in an existing DAIL-SQL bucket; clean throttled EX 21/23, but back-to-back
-  un-throttled runs collapsed to provider-starvation — re-confirming
-  SK-QUAL-013/§5 that offline free-chain EX is **not** powered (detail: row 8 +
-  verification log). The 3 new shapes are selector-side misses (precision@1
-  18/20 → 18/23). **KPI:** engine quality; **none degraded** — fixture + test
-  only; BIRD/Spider/canonical baselines byte-untouched; 265 eval green.
+- 2026-06-23 (runs 68–70) — **Engine-instrument + AEO/SEO-hygiene + distribution
+  wave** (all merged; BIRD 06-19 / Spider 06-17 untouched). **Run 70:** `/vs/basedash`
+  (comparison pages 15 → 16); web-verification corrected the stale P4 "admin UI"
+  read → AI-native BI platform. **Run 69:** `trailingSlash: "always"` + path-normalise
+  across 4 sites so every crawler-advertised URL is the 200, not a 307 (sitemap
+  200/307 **1/27 → 28/0**). **Run 68:** persona-bench grown 20 → 23 (SK-QUAL-018,
+  gold-exec 23/23); the 3 batch-3 shapes are selector-side misses (precision@1
+  18/20 → 18/23). None degraded; fixture/config/data only.
 - 2026-06-23 (run 67) — **Distribution: shipped `/vs/retool`, the internal-tools
   incumbent.** AEO lever (engine dispatch-gated). Honest wedge: Retool is a
   destination low-code **builder** over an existing DB; nlqdb provisions/owns the

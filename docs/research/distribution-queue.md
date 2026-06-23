@@ -10,6 +10,54 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-23 (run 78) — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search"
+
+**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public,
+the structured-data follow-up to the run-69 canonical-URL post. nlqdb mentioned
+once. The hook: FAQPage gets all the SEO attention, but it tells an answer
+engine nothing about *where a page sits* — and hierarchy is what they use to
+decide a page is authoritative rather than orphaned.
+
+**Title:** Your pages can win the FAQ rich result and still be invisible to AI search
+
+**Body:**
+
+> We ship a lot of programmatic pages — one per competitor comparison, one per
+> user problem. Every one emitted `FAQPage` JSON-LD, because that's the
+> structured-data type everyone writes about: it earns the expandable Q&A rich
+> result in Google and ChatGPT/Perplexity lift the answers almost verbatim.
+>
+> What none of them had was `BreadcrumbList`. I'd mentally filed breadcrumbs
+> under "nice-to-have navigation," but that misses what the markup actually does
+> for machines: it states the page's *position in a hierarchy*. `Home → Compare
+> → nlqdb vs X` tells a crawler this isn't an orphan — it's a leaf under a real
+> category, with siblings. Google uses it to render a breadcrumb trail instead
+> of a raw URL in the result (measurably higher CTR), and answer engines use the
+> same signal to decide whether a page is a coherent part of a site or a
+> drive-by.
+>
+> Two things bit me that are worth passing on:
+>
+> 1. **Match the visible trail.** Google's guidance is that `BreadcrumbList`
+>    markup should mirror a breadcrumb a human can actually see and click. JSON-LD
+>    with no on-page trail is a quality smell. So I added both, from one source
+>    of truth — a tiny builder function the visible `<nav>` and the JSON-LD both
+>    read — so they can't drift.
+> 2. **Use the canonical URL, not the bare path.** Our host serves
+>    `/vs/x/index.html`, so the trailing-slash URL is the 200 and the bare path
+>    301/307-redirects. My `canonical` and `og:url` already pointed at the 200,
+>    but it's easy to feed the bare path into breadcrumb `item` URLs and quietly
+>    point every hierarchy node at a redirect. Normalise once, reuse everywhere.
+>
+> Net: 24 pages went from "has FAQ schema" to "has FAQ schema *and* declares
+> where it lives." FAQPage answers the question; BreadcrumbList tells the engine
+> the page is worth trusting with the answer. If you've done the FAQ work,
+> breadcrumbs are the cheapest next win — a few lines, no new copy.
+
+**Why this advances the north-star:** onboarding / distribution — a concrete
+AEO/SEO lesson with a measured before/after (0 → 24 pages), one nlqdb mention.
+No funnel/ops KPI degrades (additive static structured data).
+
 ## 2026-06-23 (run 75) — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (provision-from-English wedge)
 
 **Where:** Show HN + dev.to (`ai` / `mcp` / `databases`) and a one-link r/mcp
@@ -58,57 +106,17 @@ search-shaped on-ramp for the high-volume "database MCP server" query that
 names the provision-vs-connect distinction honestly, one nlqdb mention. No
 engine/funnel KPI degrades (one solve-page data object + doc edits).
 
-## 2026-06-23 (run 74) — dev.to / lobste.rs: "Some of your 'unfixable' few-shot misses are just SQL keywords leaking into your examples"
-
-**Where:** dev.to + lobste.rs (`ai` / `databases` / `llm`); build-in-public,
-the direct follow-up to the run-52 post ("some few-shot retrieval misses can't be
-fixed with lexical tricks"). The honest twist: I'd filed three new misses under
-that same verdict — and one of them wasn't. nlqdb mentioned once.
-
-**Title:** Some of your "unfixable" few-shot misses are just SQL keywords leaking into your examples
-
-**Body:**
-
-> We retrieve few-shot examples for our NL→SQL engine by matching the question's
-> *masked skeleton* (DAIL-SQL style: blank out the literals and table/column
-> names, compare what's left). When I grew our in-house benchmark by three
-> questions, retrieval precision dropped from 18/20 to 18/23 — three new misses.
-> I almost filed all three under a verdict I'd already written: "selector-side,
-> the masking can't separate them, the only real fix is a model round-trip."
->
-> One of them didn't deserve it. The question was *"how many different referral
-> sources brought in a user?"* — a textbook `COUNT(DISTINCT …)`. But it kept
-> retrieving the plain `GROUP BY COUNT` example instead of the `COUNT(DISTINCT)`
-> one. The reason was embarrassing once I saw it: my `COUNT(DISTINCT)` example
-> question read *"how many **distinct** cities…"*. I'd written the SQL keyword
-> into the natural-language prompt. Real users (and my benchmark) say
-> *"different"* or *"unique"*, almost never *"distinct"* — so the example that was
-> supposed to teach the shape shared no distinguishing token with the questions
-> that need it.
->
-> The fix was one word: *"how many **different** cities…"*. That landed the miss
-> (18/23 → 19/23). The part I care about more: my held-out probe — which still
-> phrases it *"distinct countries"* — kept retrieving the same example top-1. So
-> the change generalised across **both** phrasings; it wasn't me overfitting the
-> example to the one question I was staring at.
->
-> Lesson: your few-shot demonstration's *question* is data too, and it should read
-> like your users talk, not like the SQL it maps to. A keyword that's natural in
-> the query is often unnatural in the question — and when it leaks, the example
-> quietly stops matching the very inputs it exists to serve. Before you conclude a
-> retrieval miss needs a smarter ranker, check whether the example is speaking SQL
-> at a user who's speaking English.
-
-**Why this advances the north-star:** engine quality (a concrete, reproducible
-NL→SQL retrieval lesson with a measured before/after), one nlqdb mention. No
-funnel/ops KPI degrades (the change is a default-off eval-only exemplar; prod
-output byte-identical).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
+
+- **run 74** — dev.to / lobste.rs: *"Some of your 'unfixable' few-shot misses are
+  just SQL keywords leaking into your examples"* — a `COUNT(DISTINCT)` exemplar
+  whose question said "distinct" matched nothing real; rephrasing to "different"
+  landed the miss (18/23 → 19/23) and held out. Your few-shot demo's *question*
+  should read like users talk, not like the SQL it maps to.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).
