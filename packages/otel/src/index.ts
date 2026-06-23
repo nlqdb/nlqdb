@@ -333,16 +333,6 @@ export const retryTotal = lazyCounter(
   "Recoverable-failure retries fired. Labelled by stage ∈ {route, plan, exec, sdk} and reason ∈ {timeout, network, http_5xx, llm_failed, sql_rejected, db_unreachable, transport, parse, unknown}.",
 );
 
-// SK-GATE-008 — the pre-alpha gate (GLOBAL-027) funnel as a counter, not
-// just a span attribute. Tempo caps trace queries at 30 days, so the
-// block rate / invite redemptions / brute-force attempts fall out of
-// history; a counter keeps the funnel queryable in Prometheus forever.
-export const gateChecksTotal = lazyCounter(
-  "@nlqdb/api",
-  "nlqdb.gate.checks.total",
-  "Pre-alpha gate decisions. Labelled by outcome ∈ {pass, block}, bypass_reason ∈ {env_bypass, open, allowlist, invite_code, invite_invalid, none}, principal_kind. Mirrors the nlqdb.gate.check span attrs so the funnel survives Tempo's 30-day retention.",
-);
-
 export function resetInstrumentsForTest(): void {
   for (const fn of resetFns) fn();
 }

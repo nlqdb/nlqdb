@@ -145,7 +145,7 @@ func doRemember(ctx context.Context, cmd *cobra.Command, g *globalFlags, req api
 		printErr(cmd, "auth: %v", err)
 		return err
 	}
-	client := api.New(g.apiURL, id).WithInviteCode(g.inviteCode)
+	client := api.New(g.apiURL, id)
 	resp, err := client.Remember(ctx, req)
 	if err != nil {
 		return renderRememberError(cmd, err)

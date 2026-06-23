@@ -117,22 +117,6 @@ describe("buildPayload", () => {
     });
   });
 
-  it("maps feature.requested.early_access onto the #north-star channel (GLOBAL-027 / SK-GATE-006)", () => {
-    const out = buildPayload("nlqdb", {
-      name: "feature.requested.early_access",
-      principalId: "anon:abc",
-      surface: "hero",
-    });
-    expect(out).toMatchObject({
-      project: "nlqdb",
-      channel: "north-star",
-      event: "Early-access requested",
-      notify: false,
-      user_id: "anon:abc",
-      tags: { surface: "hero" },
-    });
-  });
-
   it("maps home.surface_wishlist onto the demand-signal channel with surface tag (SK-EVENTS-011)", () => {
     const out = buildPayload("nlqdb", {
       name: "home.surface_wishlist",

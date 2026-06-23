@@ -1,10 +1,4 @@
 // `/v1/run` integration — auth-gate + body-parse only; the 200 path lives in `src/run/orchestrate.test.ts`.
-//
-// The body-parse tests pass `X-Invite-Code: TEST_INVITE` so the
-// `GLOBAL-027` pre-alpha gate (which mounts between `requirePrincipal`
-// and the handler) lets them through to the body-parse seam. The
-// principal-gate tests deliberately omit it — those assertions fire
-// before the gate runs, at the `requirePrincipal` step.
 
 import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -41,7 +35,6 @@ describe("POST /v1/run — body parse", () => {
       headers: {
         "content-type": "application/json",
         authorization: "Bearer anon_abcdef0123456789",
-        "x-invite-code": "TEST_INVITE",
       },
       body: JSON.stringify({ db: "db_x" }),
     });
@@ -55,7 +48,6 @@ describe("POST /v1/run — body parse", () => {
       headers: {
         "content-type": "application/json",
         authorization: "Bearer anon_abcdef0123456789",
-        "x-invite-code": "TEST_INVITE",
       },
       body: JSON.stringify({ db: "db_x", sql: "   " }),
     });
@@ -69,7 +61,6 @@ describe("POST /v1/run — body parse", () => {
       headers: {
         "content-type": "application/json",
         authorization: "Bearer anon_abcdef0123456789",
-        "x-invite-code": "TEST_INVITE",
       },
       body: JSON.stringify({ sql: "SELECT 1" }),
     });
@@ -84,7 +75,6 @@ describe("POST /v1/run — body parse", () => {
       headers: {
         "content-type": "application/json",
         authorization: "Bearer anon_abcdef0123456789",
-        "x-invite-code": "TEST_INVITE",
       },
       body: JSON.stringify({ db: "db_x", sql: huge }),
     });
@@ -100,7 +90,6 @@ describe("POST /v1/run — body parse", () => {
       headers: {
         "content-type": "application/json",
         authorization: "Bearer anon_abcdef0123456789",
-        "x-invite-code": "TEST_INVITE",
       },
       body: "not json",
     });

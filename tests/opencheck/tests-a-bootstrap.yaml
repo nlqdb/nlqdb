@@ -31,8 +31,8 @@ tests:
     case: |
       Navigate to the base URL. Call browser_snapshot immediately
       after the page loads — do NOT press Control+G or any other
-      key first (the hero form is unconditionally visible since
-      GLOBAL-027 retired the Cmd+G gate). Use browser_snapshot to
+      key first (the hero form is unconditionally visible; there is
+      no Cmd+G chord). Use browser_snapshot to
       verify (do NOT use browser_evaluate or DOM queries).
       In the snapshot the hero input appears as:
         textbox "What are you building?" with /placeholder: an orders tracker

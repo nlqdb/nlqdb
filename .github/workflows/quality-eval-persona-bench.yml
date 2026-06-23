@@ -1,7 +1,7 @@
 # quality-eval — persona-bench (nlqdb's OWN ICP-shaped NL→SQL benchmark).
-# SK-QUAL-018: the third, user-relevant quality number (GLOBAL-027
-# §Lifecycle) — small, clean side-project / agent-memory schemas shaped
-# like what an nlqdb user actually creates, not messy academic ones. The
+# SK-QUAL-018: the third, user-relevant quality number — small, clean
+# side-project / agent-memory schemas shaped like what an nlqdb user
+# actually creates, not messy academic ones. The
 # runner + fixture shipped offline-first (gold-executability + loader); this
 # is the documented remaining half: the dispatchable `workflow_dispatch`.
 #

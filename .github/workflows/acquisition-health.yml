@@ -1,12 +1,11 @@
 # Daily acquisition-health cron — runs every agent-runnable walker
-# (verify-flows + stranger-test + flow-004 + flow-005) against the
-# production deployment and surfaces their JSON artifacts.
+# (verify-flows + stranger-test + flow-005) against the production
+# deployment and surfaces their JSON artifacts.
 #
 # Closes the open questions in docs/features/stranger-test/FEATURE.md:
 # (a) §1.1 stranger-test daily cron + JSON archive,
-# (b) §1.4 FLOW-004 continuous regression watch,
 # and satisfies the GLOBAL-032 seven-day walker-freshness rule by
-# re-running the canonical-five walkers every 24 h.
+# re-running the canonical walkers every 24 h.
 #
 # Why GitHub Actions and not a Cloudflare cron Worker: CF Workers cannot
 # host Chromium for the Playwright walker, and the stranger-IP rule in
@@ -40,10 +39,6 @@ on:
       mcp_url:
         description: "Override the MCP host for the FLOW-005 walker (default: mcp.nlqdb.com)"
         required: false
-      skip_flow_004:
-        description: "Skip the FLOW-004 invite-valve walk (saves 1 of 200/week SK-GATE-007 cap)"
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -56,7 +51,7 @@ concurrency:
 
 jobs:
   walk:
-    name: Walk FLOW-001/002/003/004/005 + verify-flows
+    name: Walk FLOW-001/002/003/005 + verify-flows
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # SK-STRG-003: always succeed. Walker failures land in the artifact,
@@ -106,20 +101,6 @@ jobs:
             --out tools/stranger-test/results/walk-cron.json
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
-      - name: flow-004-walk (invite-valve end-to-end)
-        id: flow-004
-        if: ${{ inputs.skip_flow_004 != true }}
-        continue-on-error: true
-        env:
-          # SK-GATE-007 invite-valve is on app.nlqdb.com; verify-flows /
-          # stranger-test hit the marketing host nlqdb.com.
-          NLQDB_BASE_URL: ${{ inputs.base_url || 'https://app.nlqdb.com' }}
-          FLOW_004_OUT: tools/stranger-test/results/flow-004-cron.json
-        run: |
-          set +e
-          bash scripts/flow-004-walk.sh
-          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
-
       - name: flow-005-walk (MCP discovery + auth-wall)
         id: flow-005
         continue-on-error: true
@@ -162,13 +143,11 @@ jobs:
         if: always()
         run: |
           set -u
-          flow004="tools/stranger-test/results/flow-004-cron.json"
           flow005="tools/stranger-test/results/flow-005-cron.json"
           flow005stdio="tools/stranger-test/results/flow-005-stdio-cron.json"
           walk="tools/stranger-test/results/walk-cron.json"
           # Read the canonical `state` from the JSON artifacts so the agent
           # re-fetching the summary can react without downloading the bundle.
-          flow004_state="$([ -f "$flow004" ] && jq -r '.state // "missing"' "$flow004" || echo "skipped")"
           flow005_state="$([ -f "$flow005" ] && jq -r '.state // "missing"' "$flow005" || echo "missing")"
           flow005stdio_state="$([ -f "$flow005stdio" ] && jq -r '.state // "missing"' "$flow005stdio" || echo "missing")"
           walk_state="missing"
@@ -183,23 +162,9 @@ jobs:
             echo "|---|---|---|---|"
             echo "| verify-flows.sh | ${vf_state} | ${{ steps.verify-flows.outputs.exit_code || 'n/a' }} | verify-flows.log |"
             echo "| stranger-test.sh | ${walk_state} | ${{ steps.stranger-test.outputs.exit_code || 'n/a' }} | walk-cron.json |"
-            echo "| flow-004-walk.sh | ${flow004_state} | ${{ steps.flow-004.outputs.exit_code || 'skipped' }} | flow-004-cron.json |"
             echo "| flow-005-walk.sh | ${flow005_state} | ${{ steps.flow-005.outputs.exit_code || 'n/a' }} | flow-005-cron.json |"
             echo "| flow-005-stdio-walk.sh | ${flow005stdio_state} | ${{ steps.flow-005-stdio.outputs.exit_code || 'n/a' }} | flow-005-stdio-cron.json |"
             echo ""
-            if [ -f "$flow004" ]; then
-              echo "### FLOW-004 outcome"
-              jq -r '
-                "- state: " + .state,
-                "- gate_bypassed: " + (.gate_bypassed | tostring),
-                "- control_blocked: " + (.control_blocked | tostring),
-                "- email_latency_s: " + (.email_latency_s | tostring),
-                "- total_wall_s: " + (.total_wall_s | tostring),
-                "- ask_status: " + (.ask_status | tostring),
-                "- ask_error_status: " + (.ask_error_status // "" | tostring),
-                "- first_value_quality: " + (.first_value_quality // "n/a" | tostring) + " (kind=" + (.first_value_kind // "n/a" | tostring) + ", " + (.table_count // 0 | tostring) + " tables, " + (.row_count // 0 | tostring) + " rows)"
-              ' "$flow004"
-            fi
             if [ -f "$flow005" ]; then
               echo ""
               echo "### FLOW-005 outcome"

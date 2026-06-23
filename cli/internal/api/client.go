@@ -29,9 +29,6 @@ type Client struct {
 	Identity   auth.Identity
 	UserAgent  string
 	MaxRetries int
-	// GLOBAL-027 — when non-empty, sent as `X-Invite-Code` on every
-	// request. Set via `--invite-code` or `NLQDB_INVITE_CODE`.
-	InviteCode string
 	// SK-CLI-016 — when non-empty, the `<provider>:<model>:<key>` BYOLLM
 	// header value. Only `doAsk` sets it (via `WithByollm`); a raw
 	// provider key must never ride `run`/`keys`/`databases` calls, so it
@@ -49,28 +46,12 @@ func New(baseURL string, identity auth.Identity) *Client {
 	}
 }
 
-func (c *Client) WithInviteCode(code string) *Client {
-	c.InviteCode = code
-	return c
-}
-
 // WithByollm sets the `x-nlq-byollm-key` header for this client's calls
 // (SK-CLI-016). Call it only on the ask client — the value is a raw
 // provider key and has no business on any other endpoint.
 func (c *Client) WithByollm(header string) *Client {
 	c.Byollm = header
 	return c
-}
-
-// GateProgress mirrors @nlqdb/sdk's `GateProgress` shape — carried on
-// every `feature_gated` envelope (GLOBAL-027 / SK-GATE-005). Lane
-// accuracies are pointers so `null` round-trips distinctly from 0.0.
-type GateProgress struct {
-	BirdAccuracy   *float64 `json:"bird_accuracy"`
-	SpiderAccuracy *float64 `json:"spider_accuracy"`
-	BirdTarget     float64  `json:"bird_target"`
-	SpiderTarget   float64  `json:"spider_target"`
-	MeasuredAt     string   `json:"measured_at"`
 }
 
 // APIError carries the API's typed `status` discriminant plus the
@@ -84,9 +65,6 @@ type APIError struct {
 	Message    string
 	Path       string
 	Raw        json.RawMessage
-	// GLOBAL-027 — populated only on `feature_gated` envelopes.
-	Gate        *GateProgress
-	WaitlistURL string
 }
 
 func (e *APIError) Error() string {
@@ -168,9 +146,6 @@ func (c *Client) send(ctx context.Context, method, path string, body []byte, ide
 	if idemKey != "" {
 		req.Header.Set("Idempotency-Key", idemKey)
 	}
-	if c.InviteCode != "" {
-		req.Header.Set("X-Invite-Code", c.InviteCode)
-	}
 	if c.Byollm != "" {
 		req.Header.Set("x-nlq-byollm-key", c.Byollm)
 	}
@@ -233,20 +208,16 @@ func extractError(status int, path string, data []byte) *APIError {
 	}
 
 	var asObject struct {
-		Status      string        `json:"status"`
-		Code        string        `json:"code"`
-		Action      string        `json:"action"`
-		Message     string        `json:"message"`
-		Reason      string        `json:"reason"`
-		WaitlistURL string        `json:"waitlist_url"`
-		Gate        *GateProgress `json:"gate"`
+		Status  string `json:"status"`
+		Code    string `json:"code"`
+		Action  string `json:"action"`
+		Message string `json:"message"`
+		Reason  string `json:"reason"`
 	}
 	if err := json.Unmarshal(generic.Error, &asObject); err == nil && asObject.Status != "" {
 		out.Status = asObject.Status
 		out.Code = asObject.Code
 		out.Action = asObject.Action
-		out.WaitlistURL = asObject.WaitlistURL
-		out.Gate = asObject.Gate
 		switch {
 		case asObject.Message != "":
 			out.Message = asObject.Message

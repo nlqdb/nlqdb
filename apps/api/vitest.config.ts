@@ -133,7 +133,7 @@ export default defineConfig(async () => {
               "test/databases-delete.test.ts",
               "test/run.test.ts",
             ],
-            setupFiles: ["./test/apply-migrations.ts", "./test/seed-gate-bypass.ts"],
+            setupFiles: ["./test/apply-migrations.ts"],
           },
         },
       ],

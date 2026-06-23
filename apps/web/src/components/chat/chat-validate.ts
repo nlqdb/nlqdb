@@ -58,20 +58,6 @@ function isValidReplyState(s: Record<string, unknown>): boolean {
       const p = pinnedDb as Record<string, unknown>;
       return typeof p["id"] === "string" && typeof p["slug"] === "string";
     }
-    case "feature_gated": {
-      // Validate every field the view dereferences — `.toFixed` throws on a non-number accuracy.
-      if (typeof s["message"] !== "string") return false;
-      if (typeof s["waitlistUrl"] !== "string") return false;
-      const gate = s["gate"];
-      if (!gate || typeof gate !== "object") return false;
-      const g = gate as Record<string, unknown>;
-      return (
-        typeof g["bird_target"] === "number" &&
-        typeof g["spider_target"] === "number" &&
-        (g["bird_accuracy"] === null || typeof g["bird_accuracy"] === "number") &&
-        (g["spider_accuracy"] === null || typeof g["spider_accuracy"] === "number")
-      );
-    }
     case "error":
       return typeof s["message"] === "string";
     default:

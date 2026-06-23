@@ -116,7 +116,6 @@ function defaultId(event: ProductEvent): string {
       return `evt.${crypto.randomUUID()}`;
     case "feature.requested.ddl_via_ask":
     case "feature.requested.heavier_tier":
-    case "feature.requested.early_access":
       // SK-EVENTS-010: per-(principal, day) dedup. One demand-signal
       // per user per day per missed feature is the unit the §6
       // monetization trigger reasons about ("unique submissions over
