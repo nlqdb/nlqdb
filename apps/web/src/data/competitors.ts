@@ -1731,6 +1731,126 @@ export const COMPETITORS: Competitor[] = [
       why: "The dashboard question a team would open Basedash for — nlqdb mints the Postgres and answers the English goal in one element, no BI seat or connector setup first.",
     },
   },
+  {
+    slug: "metabase",
+    name: "Metabase",
+    url: "https://www.metabase.com",
+    // P3 analyst/BI slot — the comparison-pages FEATURE names Metabase Metabot
+    // as the next slice after Basedash by the persona-weighted threat ×
+    // keyword-volume rule: it carries the strongest OSS-distribution moat in
+    // the P3 BI cluster (docs/competitors.md §Metabase Metabot, threat-matrix
+    // row "OSS distribution + familiar BI UX"). Facts web-verified 2026-06-23
+    // (metabase.com/docs/latest/ai/metabot + metabase.com/pricing + 2026
+    // pricing write-ups): Metabase is an OSS + cloud BI platform (AGPL
+    // self-host; cloud Starter from ~$85/mo). Metabot is the AI layer inside
+    // it — answers data questions in natural language, builds charts via the
+    // query builder from a prompt, generates SQL in the native editor, fixes
+    // SQL errors ("Have Metabot fix it"), summarises/analyses existing
+    // visualizations, generates code for transforms, and answers in Slack.
+    // The full Metabot needs a paid Cloud plan plus a $100/mo add-on (500
+    // requests; included in Enterprise); the OSS edition includes only basic
+    // single-shot SQL generation. It is a destination BI/dashboard app over
+    // your existing warehouse — read-only analytics, no DB provisioning, no
+    // NL writes/migrations, no embeddable answer element or agent API.
+    tagline:
+      "Open-source + cloud BI platform — dashboards, charts, and SQL over your existing data; Metabot adds an AI layer that answers questions and writes SQL in natural language.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Metabase if you want an open-source BI tool to build dashboards and let analysts ask charts in chat over your existing warehouse. Pick nlqdb if you're building a product or agent that needs English-to-SQL over a database it provisions — embeddable, API-first, every write diff-previewed.",
+    whenChooseUs: [
+      "You're embedding data features into a product or agent, not building dashboards.",
+      "You want one HTML element (`<nlq-data>`) or an API, not a BI app to log into.",
+      "An AI agent must query — and provision — its own database, callable over MCP.",
+      "Writes and schema changes should be diff-previewed before they apply.",
+    ],
+    whenChooseThem: [
+      "You want a self-hostable open-source BI tool over an existing warehouse.",
+      "Your team builds and shares dashboards, charts, and scheduled reports.",
+      "Analysts want a familiar query builder with an AI assistant alongside.",
+      "You need read-only analytics across many connected data sources.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Metabase connects to an existing warehouse to read it; it doesn't provision or own a database your app writes to.",
+      },
+      {
+        feature: "Natural-language data questions",
+        us: "shipped",
+        them: "partial",
+        note: "Metabot (paid add-on) answers in English and writes SQL; the OSS edition is basic single-shot SQL generation. nlqdb compiles SQL against a Postgres it owns on every plan.",
+      },
+      {
+        feature: "Embeddable in your product (HTML element / SDK / API)",
+        us: "shipped",
+        them: "partial",
+        note: "Metabase embeds finished dashboards/charts (iframe/SDK); nlqdb embeds an answer primitive — `<nlq-data>` takes an English goal and returns rows you render in your own layout.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "no",
+        note: "nlqdb's `nlqdb_query` materialises Postgres on first reference for a Claude / Cursor agent; Metabot answers inside Metabase (and Slack), not as an agent-callable database.",
+      },
+      {
+        feature: "Dashboards, charts + scheduled reports",
+        us: "no",
+        them: "shipped",
+        note: "Dashboards and visualizations are Metabase's home turf; nlqdb returns typed result rows you render in your own UI.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "no",
+        them: "shipped",
+        note: "Metabase ships an AGPL open-source edition you self-host; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "Metabase reads and visualizes; it doesn't manage your schema. nlqdb previews writes and DDL before applying.",
+      },
+      {
+        feature: "Read across many connected sources",
+        us: "partial",
+        them: "shipped",
+        note: "Metabase connects to many warehouses for read-only BI; nlqdb provisions and queries its own Postgres rather than federating external sources.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Metabase and nlqdb together?",
+        a: "Yes — they serve different jobs. Metabase is where analysts build dashboards and explore an existing warehouse; nlqdb is the database your product or agent queries in plain English at runtime. Use Metabase for BI reporting, nlqdb for the embedded data layer your app ships on.",
+      },
+      {
+        q: "How is Metabot different from nlqdb's natural-language querying?",
+        a: "Metabot is an AI assistant inside the Metabase BI app — it answers questions, builds charts, and writes SQL for analysts working in Metabase. nlqdb is a backend: it compiles English to SQL over a Postgres it provisions and owns, and exposes that through an HTML element, SDK, API, and MCP server you build on.",
+      },
+      {
+        q: "Does nlqdb build dashboards like Metabase?",
+        a: "No. nlqdb returns typed result rows from SQL it compiles; it doesn't build dashboards, charts, or scheduled reports. If shareable BI dashboards over your warehouse are the goal, Metabase is the right shape; nlqdb's contract is the data, which you render in your own UI.",
+      },
+      {
+        q: "Is Metabot free in the open-source Metabase?",
+        a: "Only partly. The open-source Metabase edition includes basic single-shot SQL generation, but the full Metabot — natural-language questions, chart building, error fixing, chart analysis — requires a paid Cloud plan plus a $100/month add-on (500 requests), or an Enterprise contract. nlqdb's English-to-SQL works on every plan, including the free LLM chain.",
+      },
+      {
+        q: "Can an AI agent call Metabase the way it calls nlqdb?",
+        a: "Not as a database. Metabot answers inside Metabase and Slack for human analysts; it isn't an agent-callable data layer. nlqdb ships an MCP server, so a Claude or Cursor agent can provision a Postgres and query it in English — `nlqdb_query` materialises the database on first reference.",
+      },
+    ],
+    demo: {
+      goal: "top 10 products by revenue this quarter, with month-over-month growth",
+      why: "The kind of question an analyst would build a Metabase dashboard for — nlqdb answers the English goal as SQL over a database it owns, returned as rows your product embeds, not a dashboard you log in to.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {

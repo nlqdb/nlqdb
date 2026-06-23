@@ -10,6 +10,56 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-23 (run 72) — dev.to / lobste.rs: "Your BI tool got an AI assistant. Your agent still can't call it." (assistant-in-an-app vs. callable backend)
+
+**Where:** dev.to + lobste.rs (`ai` / `databases` / `llm`); build-in-public,
+the P3-BI sibling to the read-vs-own post (run 70) but on a different axis —
+*where the AI lives*, not what it owns. The hook: open-source BI tools are
+shipping excellent in-app AI assistants, and that's exactly why it's easy to
+mistake one for an agent backend. nlqdb mentioned once. Anchors `/vs/metabase`.
+
+**Title:** Your BI tool got an AI assistant. Your agent still can't call it.
+
+**Body:**
+
+> The open-source BI tools have caught up fast. The one I use just shipped an AI
+> assistant that answers questions in plain English, builds a chart from a
+> prompt, writes SQL in the native editor, and even has a "fix it" button when
+> the SQL errors. It answers in Slack. It's genuinely good, and on the
+> open-source edition you get basic SQL generation for free. If a human analyst
+> lives in that tool all day, this is a real upgrade.
+>
+> Then I tried to wire it into an agent, and the shape gave it away. The AI
+> assistant is a *feature inside a destination app*: it helps a person who is
+> already logged into the dashboard tool, looking at a chart. There's no handle
+> an autonomous agent can grab — no "provision me a database, write these rows,
+> then query it" primitive. The assistant makes the human faster; it isn't a
+> backend the software can call.
+>
+> That's the distinction the word "AI" papers over. "Natural-language SQL" shows
+> up in two completely different products. One is an assistant bolted onto a BI
+> UI for analysts — read-only over a warehouse someone else maintains, answers
+> rendered as charts in that tool. The other is a queryable data layer: it
+> *owns* the database, takes English for the write as well as the read, and is
+> callable from code, an HTTP API, or an MCP tool an agent invokes — the answer
+> comes back as rows your app embeds, not a dashboard you log in to see.
+>
+> (At nlqdb that callable shape is the whole product: an agent calls one MCP
+> tool, the Postgres materialises on first reference, writes and migrations are
+> diff-previewed in English before they apply, and the result renders in one web
+> component.)
+>
+> Lesson: "our BI tool has an AI assistant now" and "an agent can use this as its
+> database" are different claims on different axes. One is about *who* the AI
+> helps (a logged-in human); the other is about *whether software can call it*.
+> Before you point an agent at your analytics stack, ask whether the AI is a
+> feature in an app or a primitive in an API.
+
+**Why this advances the north-star:** onboarding / distribution — an
+assistant-in-an-app vs. callable-backend framing (one nlqdb mention) that
+anchors `/vs/metabase` and the P3 analyst/BI lane. No engine/funnel KPI degrades
+(positioning content only).
+
 ## 2026-06-23 (run 70) — dev.to / lobste.rs: "Your AI BI tool reads your data. It doesn't own it — and can't write to it" (read-vs-own data layer)
 
 **Where:** dev.to + lobste.rs (`ai` / `databases` / `dataengineering`);
@@ -60,55 +110,6 @@ Anchors `/vs/basedash`.
 read-vs-own framing (one nlqdb mention) that anchors `/vs/basedash` and the P3
 analyst lane. No engine/funnel KPI degrades (positioning content only).
 
-## 2026-06-23 (run 69) — dev.to / lobste.rs: "Your sitemap is advertising redirects — and your canonical tag points at one" (AEO/SEO hygiene)
-
-**Where:** dev.to + lobste.rs (`webdev` / `seo` / `astro`); build-in-public,
-the static-site / AEO sibling to the engine-eval posts. The hook: a one-line
-config default quietly turns every URL you advertise to crawlers into a 307.
-nlqdb mentioned once.
-
-**Title:** Your sitemap is advertising redirects — and your canonical tag points at one
-
-**Body:**
-
-> I went to confirm our marketing site was crawl-clean and found something I'd
-> walked past a dozen times. Every page served fine: `/agents/` returned 200,
-> `/vs/pinecone/` returned 200. But the *bare* paths — `/agents`, `/vs/pinecone`
-> — all 307-redirected to the trailing-slash version. That's normal for a
-> static host that emits `route/index.html`. The problem was *which* URL we were
-> handing to crawlers.
->
-> Three places advertise URLs to machines: the `<link rel="canonical">` tag, the
-> `og:url` meta, and the XML sitemap. All three of ours emitted the *bare* path.
-> So the sitemap listed 27 URLs that every one 307-redirected, and each page's
-> canonical tag pointed at a URL that redirected right back to the page
-> declaring it — a self-referential redirect. Google follows it, but it treats a
-> redirecting canonical as a weak signal and burns crawl budget on the hop;
-> AI crawlers fetching your `llms.txt` links eat the same redirect.
->
-> The root cause was a single unset config default. Our static-site generator
-> defaults `trailingSlash` to "ignore", which leaves `Astro.url.pathname` bare
-> even though the build emits directory-style `index.html` files served *with* a
-> slash. Setting `trailingSlash: "always"` fixed the dev-server expectation —
-> but, thanks to a long-standing quirk, the build-time `pathname` *still* came
-> out bare, so the canonical/og tags didn't move. The reliable fix was to
-> normalize the path in one place — the layout that renders `<head>` — and the
-> sitemap/llms.txt generators the same way: if it doesn't end in `/`, append
-> one. Now all three signals point at the 200, zero redirects.
->
-> (We hit this on nlqdb's marketing site; the fix was four lines across the
-> config, the head layout, and the two URL generators.)
->
-> Lesson: "the page loads fine" and "the URL I advertise to crawlers is the
-> canonical 200" are different claims. Audit them separately — `curl -sI` every
-> URL in your sitemap and watch the status column. Any 3xx is you paying twice
-> for one page.
-
-**Why this advances the north-star:** onboarding / distribution (AEO/SEO
-hygiene on the marketing surface — every crawler-advertised URL now resolves to
-the 200 directly), one nlqdb mention. No engine/funnel KPI degrades
-(static-site config + URL-formatting only).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -116,6 +117,7 @@ is title + venue + one-line gist; `git log -p docs/research/distribution-queue.m
 recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
+- run 69 — "Your sitemap is advertising redirects — and your canonical tag points at one" (a static host emits `route/index.html`, so the trailing-slash URL is the 200 and the bare path 307s — but the canonical tag, og:url, and sitemap all emitted the bare path, so 27 sitemap URLs redirected and every canonical pointed at a redirect back to itself; fix is `trailingSlash: "always"` + normalize the path in the head layout and the URL generators; `curl -sI` every sitemap URL).
 - run 68 — "Your offline LLM eval isn't measuring your model — it's measuring your rate limits" (a tiny NL→SQL bench on a free multi-provider chain scored 17/20 then 6/20 ninety seconds later; the engine didn't regress, the providers got tired — `circuit_open`/`rate_limited` errors with p50=0ms are availability, not accuracy; throttle to measure reasoning, pause-and-resume on exhaustion, keep the smoke test apart from the powered windowed run).
 - run 67 — "AI made the internal-tool builder faster. It didn't ask whether you needed the tool." (low-code AI — AppGen / Ask AI / agents — scaffolds the admin tool faster, but the output is still a destination a human builds and operates; often the answer belongs inline in the product you already ship, or the asker is an agent that wants a backend primitive, not a built tool — check whether the AI sped up the workflow or the outcome; anchors `/vs/retool`).
 - run 66 — "Your most over-documented code is your security code — and that's where stale docs lie loudest" (security code attracts callsite-by-callsite "consequence in code" narration because terse feels irresponsible; but a list of today's callsites + test names is the fastest-rotting prose in the repo, and a stale "every site is checked" reads as a guarantee — document the enforced invariant + review rule, not the implementation tour).
