@@ -90,6 +90,25 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   > 20 KB file must net-shrink). **KPI:** onboarding (operability docs stay
   load-bearing, easier to scan); **none degraded** — docs-only, no
   engine/funnel/ops/code file touched.
+- 2026-06-23 (run 72) — **Distribution: shipped `/vs/metabase` (Metabase
+  Metabot), the strongest OSS-distribution moat in the P3 BI cluster.** Engine
+  lane dispatch-gated (BIRD 06-19 / Spider 06-17 both < 7d), so the lever was
+  AEO. Facts web-verified 2026-06-23 (metabase.com/docs/latest/ai/metabot +
+  pricing): Metabase is an OSS (AGPL self-host) + cloud BI platform (cloud
+  Starter ~$85/mo); Metabot is its AI layer — NL questions, query-builder chart
+  creation, native-editor SQL gen, "Have Metabot fix it" repair, visualization
+  analysis, transform code-gen, Slack answers. Full Metabot = paid Cloud plan +
+  $100/mo add-on (500 requests; Enterprise-included); OSS edition is basic
+  single-shot SQL generation only. Shipped as **P3 analyst/BI** with the honest
+  wedge: a destination self-hostable BI/dashboard app (read-only analytics over
+  an existing warehouse) vs. nlqdb owning the DB (provision + NL writes/
+  migrations with diff-preview) and embedding an *answer element* / agent-
+  callable API; dashboards/charts/scheduled-reports + OSS self-host + many-
+  source read conceded `them: shipped`. Both `competitors.md` §Metabase Metabot +
+  threat-matrix row refreshed. **Δ:** comparison pages **16 → 17**, llms.txt/
+  sitemap +1. **KPI:** onboarding / distribution; **none degraded** — one data
+  object + doc edits, no engine/funnel/ops file touched; 130 web tests +
+  astro-check 0 errors + biome green.
 - 2026-06-23 (run 70) — **Distribution: shipped `/vs/basedash` — and the
   web-verification corrected a stale competitor read.** Engine lane dispatch-gated
   (BIRD 06-19 / Spider 06-17 both < 7d), so the lever was AEO. Basedash had

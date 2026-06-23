@@ -110,11 +110,11 @@ Retool's NL query + app-generation add-ons on top of the Retool platform. Team f
 - **Gap nlqdb exploits:** Retool is a low-code builder; nlqdb's "skip building the admin UI entirely" is a stronger message for small teams.
 - **Threat vector:** **Very high for P4.** Distribution + inertia.
 
-### Metabase Metabot — https://metabase.com
-Metabase is OSS + cloud; Metabot is the NL layer inside. Free OSS, cloud from ~$85/mo.
+### Metabase Metabot — https://www.metabase.com
+OSS (AGPL self-host) + cloud BI platform (cloud Starter ~$85/mo). Metabot is the AI layer inside: NL questions, chart-building via the query builder, native-editor SQL generation, "Have Metabot fix it" error repair, visualization analysis, transform code-gen, Slack answers. Full Metabot = paid Cloud plan + $100/mo add-on (500 requests; included in Enterprise); OSS edition is basic single-shot SQL generation only. (Facts web-verified 2026-06-23: metabase.com/docs/latest/ai/metabot + pricing.) `/vs/metabase` shipped 2026-06-23.
 - **Overlaps with:** P3.
-- **Gap nlqdb exploits:** BI-dashboard shaped; not transactional; read-only.
-- **Threat vector:** Medium for P3 — but Metabase users typically want charts, not queries-in-chat.
+- **Gap nlqdb exploits:** BI-dashboard shaped, read-only over an existing warehouse; doesn't provision/own the DB, no NL writes/migrations with diff-preview, no embeddable answer element or agent-callable API.
+- **Threat vector:** Medium for P3 — strong OSS-distribution moat, but Metabase users want dashboards/charts, not an embedded queryable data layer.
 
 ### Hex Magic / Mode AI / Fabi.ai / Count — notebook-first AI BI
 AI inside collaborative analyst notebooks (Hex from ~$24/user/mo; Mode/Fabi/Count similar). Different DNA — analyst notebooks, not PM chat.
