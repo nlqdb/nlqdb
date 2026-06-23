@@ -76,34 +76,34 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
-- 2026-06-22 (run 60) — **Hygiene (D4 + P1/P3): net-shrank `docs/architecture.md`
-  34,809 → 33,789 B and fixed a stale superseded-decision restatement in §3.6.**
-  Doc hygiene was the non-colliding lever (live lanes owned by #475/#476;
-  BIRD/Spider gated, §5). §3.6.4 restated **two superseded decisions
-  verbatim** (`SK-ASK-003` + `SK-HDC-005`, both superseded by `SK-ASK-009`'s merged
-  `routeAsk` — a classify+disambiguate two-step the engine no longer runs); §3.6.5
-  duplicated `SK-HDC-006`'s body (P3). Both collapsed to the architectural
-  invariant + a FEATURE pointer, preserving the `selected_db`-echo containment, the
-  "multi-statement / `EXPLAIN ANALYZE` rejected" contract, and §3.6.7's BYO shape —
-  **0 canonical decisions lost**; the four §3.6.4/§3.6.5 cross-refs stay valid
-  (headings unchanged). **KPI:** engine quality / onboarding; **none degraded** —
+- 2026-06-23 (run 62) — **Hygiene (D4 + D5 + P3): net-shrank
+  `docs/features/anonymous-mode/FEATURE.md` 38,134 → 34,160 B (−3,974 B, ~10%).**
+  Doc hygiene was the non-colliding lever: the comparison-pages distribution lane
+  was taken (PR #478, `/vs/qdrant`, run 61) and both engine evals are dispatch-gated
+  (BIRD 06-19 / Spider 06-17, < 7 d, §5). Target was the largest FEATURE.md (a
+  mandatory pre-read, so tightening it compounds every time an agent touches
+  `apps/web` / `cli` / anon-adopt). The cut was pure **D5 implementation-narration**:
+  SK-ANON-012's 7-bullet "Consequence in code" diary and SK-ANON-014's 6-bullet
+  file/line-number diary (e.g. "fallback at line 615-629") collapsed to the
+  load-bearing invariants (route-top `peekDevice` enforcement, `auth_required`
+  envelope, commit-after-success, server-primary after-hook adoption + client
+  fallbacks; the nullable `database_id` column + RETURNING/back-fill/replay read),
+  and SK-ANON-008's hero-bypass tail (a P3 duplication of SK-ANON-001) collapsed to
+  a pointer. **0 decisions lost** — all 14 SK-ANON-* IDs + their five fields + all 7
+  GLOBAL refs + Open questions + Happy path intact (`grep` verified). **KPI:**
+  engine quality / onboarding (agent-context discipline); **none degraded** —
   docs-only, prod byte-identical, BIRD 06-19 / Spider 06-17 untouched. Artifact:
-  *"Your architecture doc is describing a pipeline your code deleted."*
-- 2026-06-22 (run 59) — **Distribution: shipped `/vs/weaviate`, the
-  enterprise/hybrid-search wing of the "database, not a vector store" wedge**
-  (after Pinecone *hosted* run 53, Chroma *OSS-first* run 56 — the next P2
-  follow-on named in comparison-pages FEATURE.md). Engine lane dispatch-gated
-  (BIRD 06-19 / Spider 06-17 < 7 d, §5) and owned (PR #475), so the lever was the
-  top-of-funnel AEO surface. Same aggregation wedge: hybrid search ranks the
-  relevant; it has no GROUP BY / JOIN / HAVING. **Δ (distribution):** comparison
-  pages **11 → 12**, P2 cluster **6 → 7**, OG cards **7 → 8** (`vs-weaviate.png`,
-  generator deterministic — 7 existing byte-identical), llms.txt + sitemap **+1**.
-  Facts web-verified 2026-06-22: BSD-3 self-host + Weaviate Cloud (Flex $45 / Plus
-  $280), hybrid search, multi-tenancy / RBAC, official `mcp-server-weaviate`, no
-  SQL / joins / aggregations. **KPI:** onboarding / distribution; **none
-  degraded** — content + one PNG, prod byte-identical, no engine file touched; 13
-  competitors invariants green, astro-check 0 errors. Artifact: *"Hybrid search
-  made your recall smarter. It still can't count."*
+  *"Your decision record is just narrating code the reader can already read."*
+- 2026-06-22 (runs 59–60) — distribution + hygiene wave (all merged; BIRD 06-19 /
+  Spider 06-17 untouched). **Distribution (run 59):** shipped `/vs/weaviate`, the
+  enterprise/hybrid-search wing of the "database, not a vector store" wedge —
+  comparison pages 11 → 12, P2 cluster 6 → 7, OG cards 7 → 8, llms.txt/sitemap +1;
+  same aggregation wedge (hybrid search ranks; no GROUP BY/JOIN/HAVING), facts
+  web-verified. **Hygiene (run 60, D4+P1/P3):** `docs/architecture.md` net-shrunk
+  34,809 → 33,789 B + fixed §3.6.4/§3.6.5 restating two superseded decisions
+  verbatim (`SK-ASK-003`/`SK-HDC-005` → merged `routeAsk`; `SK-HDC-006` dup) —
+  collapsed to invariant + FEATURE pointer, 0 canonical decisions lost. None
+  degraded; prod byte-identical.
 - 2026-06-22 (runs 55–58) — persona-bench + distribution + hygiene wave (all
   merged; BIRD 06-19 / Spider 06-17 untouched). **Engine (runs 55, 58):** shipped
   `quality-eval-persona-bench.yml` (SK-QUAL-018 "last half", ungated by
@@ -113,14 +113,11 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   aggregations (q13 the `SK-QUAL-014` `literal_diff`, q18 a `LEFT JOIN` vs the gold
   inner-join). Frontier lane (row 9) **secret-blocked, not dispatch-blocked** —
   `OPENROUTER_FRONTIER_API_KEY` empty in CI; filed in `blocked-by-human.md`.
-  **Distribution (run 56):** shipped `/vs/chroma`, the OSS-first vector-store
-  wing of the "database, not a vector store" wedge — comparison pages 10 → 11,
-  P2 cluster 5 → 6, OG cards 6 → 7, llms.txt/sitemap +1; same aggregation wedge
-  (no SQL/JOIN/GROUP BY), facts web-verified. **Hygiene (run 57, D4+D5+P3):**
-  `docs/performance.md` net-shrunk 26,378 → 24,441 B by collapsing §4's stale
-  slice-by-slice plan into the load-bearing standing rule (0 span/metric names
-  lost; §3 catalog stays the single source of truth). None degraded;
-  prod byte-identical.
+  **Distribution (run 56):** shipped `/vs/chroma` (OSS-first vector-store wing) —
+  comparison pages 10 → 11, P2 cluster 5 → 6, same aggregation wedge.
+  **Hygiene (run 57, D4+D5+P3):** `docs/performance.md` net-shrunk 26,378 →
+  24,441 B (collapsed §4's stale slice-by-slice plan into the standing rule; 0
+  span/metric names lost). None degraded; prod byte-identical.
 - 2026-06-22 (runs 51–54) — engine + distribution + hygiene wave (all merged;
   BIRD 06-19 / Spider 06-17 untouched). **Engine (run 51):** §4 #1 DAIL-SQL pool
   grown 13 → 14 (+`order-by-limit` plain top-N, `SK-LLM-041 × SK-QUAL-018`), q0

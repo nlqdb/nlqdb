@@ -10,6 +10,58 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-23 (run 62) — dev.to / lobste.rs: "Your decision record is just narrating code the reader can already read" (engineering-doc discipline)
+
+**Where:** dev.to + lobste.rs (`architecture` / `engineering`); build-in-public,
+a sibling to run 60 (the stale architecture doc) and run 57 (the stale
+instrumentation plan) — this one is the *over-documented* failure mode rather
+than the *stale* one. nlqdb mentioned once.
+
+**Title:** Your decision record is just narrating code the reader can already read
+
+**Body:**
+
+> We keep a decision record per non-obvious choice: what we decided, why, the
+> consequence, the alternatives we rejected. It's a good habit — the "why" is
+> the part that evaporates from a codebase, and the rejected alternatives stop
+> the next person (or the next AI agent) from re-litigating a settled call.
+>
+> But I opened one of our feature docs this week and found a "Consequence in
+> code" section that was seven bullets long, each naming a file, a function, and
+> in two places a *line number* — "the fallback at line 615-629 stays as graceful
+> degrade." That's not a decision record anymore. That's a second, worse copy of
+> the code: it can't be type-checked, it can't be tested, and the line numbers
+> were already wrong. The moment a doc starts narrating the implementation
+> step-by-step, it has signed up to drift the instant anyone touches the file.
+>
+> The fix is a test you can apply to every line of a decision record: *would the
+> reader plausibly choose differently without this, and would that choice be
+> expensive to reverse?* "We store the migrated id on the adoptions row because
+> the after-hook is the primary adopter, so by replay-time the UPDATE is a no-op
+> and RETURNING is empty" — keep that. It's a non-obvious reason a reader would
+> get wrong, and getting it wrong costs a schema migration. "ChatPanel reads
+> ?db= on mount at line 173" — cut it. The reader is about to open ChatPanel;
+> the line number is a liability, not information.
+>
+> I ran that test down one 38 KB feature doc and cut ~10% — every byte of it
+> implementation narration that the code stated more accurately. Not one
+> decision, "why", or rejected alternative was lost, because none of those were
+> what I was cutting. (We hold this as a hard rule in our agent guide — "document
+> only load-bearing decisions; on every edit, find one section that fails the
+> test and trim it" — because the repo is edited by AI agents daily, and a doc
+> that re-narrates code is a doc that confidently lies the moment the code moves.)
+>
+> Lesson: a decision record earns its keep with the part that *isn't* in the
+> code — the why, the rejected path, the constraint you'd otherwise re-discover
+> the hard way. The part that *is* in the code belongs only in the code. If your
+> "consequence" section reads like a changelog, you're maintaining the same fact
+> twice and one copy is always stale.
+
+**Why this advances the north-star:** engine quality / onboarding — a genuinely
+useful doc-discipline post (one nlqdb mention) that doubles as the rationale for
+the "load-bearing decisions only" rule that keeps our agent-edited repo
+coherent. No engine/funnel KPI degrades (docs-only).
+
 ## 2026-06-22 (run 60) — dev.to / lobste.rs: "Your architecture doc is describing a pipeline your code deleted" (engineering-doc discipline)
 
 **Where:** dev.to + lobste.rs (`architecture` / `engineering`); build-in-public,
@@ -59,56 +111,6 @@ is a genuinely useful doc-discipline post (one nlqdb mention) that doubles as
 the rationale for the same "decisions live in one place" rule that keeps our
 agent-edited repo coherent. No engine/funnel KPI degrades (docs-only).
 
-## 2026-06-22 (run 59) — dev.to / lobste.rs: "Hybrid search made your recall smarter. It still can't count." (agent-memory architecture)
-
-**Where:** dev.to + lobste.rs (`ai` / `databases` / `search`); pairs with the new
-`/vs/weaviate` page (the enterprise/hybrid-search wing of the "database, not a
-vector store" wedge). The third angle in the wedge: run 53 was the *aggregation
-gap*, run 56 was *open-source-doesn't-fix-it*, this one is *better recall isn't
-reporting*. nlqdb mentioned once.
-
-**Title:** Hybrid search made your recall smarter. It still can't count.
-
-**Body:**
-
-> Hybrid search is the upgrade everyone reaches for when pure vector recall
-> gets fuzzy. Fuse BM25 keyword scoring with dense-vector similarity, blend the
-> two rankings, and the right passage surfaces even when the embedding alone
-> would have missed it. Weaviate, Qdrant, and the rest ship it first-class now,
-> and it genuinely helps: keyword precision rescues the exact-match cases,
-> vectors rescue the paraphrases. Recall gets measurably smarter.
->
-> But notice *what kind* of question hybrid search answers better. It's still
-> "what's most relevant to this query?" — just with a better relevance score.
-> The output is the same shape: a ranked list of the top-k objects. Make the
-> fusion as clever as you like and you never change the operation. It ranks.
->
-> Now ask your agent's memory a different kind of question: "how many tools did
-> I call per category this week, and only the categories above twenty calls."
-> There's no query to rank against — there's a `GROUP BY`, a `COUNT`, and a
-> `HAVING`. Hybrid search has no answer because it's not a relevance problem.
-> No amount of BM25-plus-vector tuning produces an aggregate; aggregation is a
-> different operation that lives in a different kind of engine.
->
-> This is the trap in "we upgraded to hybrid search." You made the *recall* leg
-> of your agent better, and recall was probably the leg that needed it. But if
-> the agent also has to *report* over what it stored — counts, groupings,
-> thresholds, joins across what it logged — a smarter ranking buys you exactly
-> nothing there. (We build that second leg at nlqdb: the agent provisions a
-> Postgres it queries in plain English, so "group and count my memory" compiles
-> to SQL. The point holds whatever you reach for: recall and reporting are two
-> jobs.)
->
-> Lesson: hybrid search optimises *which* items come back, not *what you can
-> compute over them*. If your roadmap item is "smarter recall," ship it. If it's
-> "the agent needs to count its own history," no ranking function will get you
-> there — you need something that speaks SQL.
-
-**Why this advances the north-star:** onboarding / distribution (AEO surface on
-the "Weaviate hybrid search agent memory" P2 keyword) — a genuinely useful
-architectural lesson with one nlqdb mention, anchoring the new `/vs/weaviate`
-page. No engine/funnel KPI degrades (content + data + one OG PNG only).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -117,6 +119,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 59 — "Hybrid search made your recall smarter. It still can't count." (hybrid search optimises *which* items rank, not what you can compute over them; BM25+vector fusion is still a relevance score, not a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/weaviate`).
 - run 58 — "Your text-to-SQL eval is failing the wrong schema" (BIRD 0.52 / Spider 0.19 are academic-schema scores; the same free chain scores 0.90 EX on the ICP shape — score against your product's schema, and the two misses it surfaces are the ones users actually hit; persona-bench, SK-QUAL-018).
 - run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers vendor lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING — deployment and capability are orthogonal axes; anchors `/vs/chroma`).
 - run 55 — "Your text-to-SQL accuracy is measured on schemas your users will never build" (BIRD/Spider run over messy 20–100-table academic schemas, not the small clean ones your users build; we added a third benchmark — hand-authored gold NL→SQL over the ICP shape, same EX scorer, literal-date gold so it never drifts with the clock; anchors persona-bench, SK-QUAL-018).
