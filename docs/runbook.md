@@ -259,15 +259,9 @@ can be deleted from the dashboard.
 Cloudflare Worker `nlqdb-api` at **`app.nlqdb.com`** (custom domain
 managed by `[[routes]] custom_domain = true` in `wrangler.toml` —
 wrangler creates the proxied DNS record + Universal SSL cert on first
-deploy, idempotent thereafter). Slice 1 shipped `/v1/health`; Slice 2
-added KV + D1 bindings (R2 deferred); Slice 3 added the Neon adapter
-(`packages/db`), the OTel SDK + OTLP exporters (`packages/otel`), and
-the first D1 migration; Slice 4 landed the strict-$0 LLM router
-(`packages/llm`) — Groq + Gemini + Workers AI + OpenRouter behind a
-cost-ordered failover chain; Slice 5 wires Better Auth at
-`/api/auth/*` with GitHub + Google social providers, backed by D1
-(four tables in `migrations/0002_better_auth.sql`). Resource IDs are
-committed in `apps/api/wrangler.toml` (account-scoped, not secret).
+deploy, idempotent thereafter). Per-slice build history with PR
+numbers lives in the §7 checklist. Resource IDs are committed in
+`apps/api/wrangler.toml` (account-scoped, not secret).
 
 **Auto-deploy on merge to `main`**: `.github/workflows/deploy-api.yml`
 runs `migrate:remote` + `wrangler deploy` + `secrets:remote` whenever
@@ -869,12 +863,7 @@ Phase 2 with the rest of the admin surface.
 Personas, anti-personas, the use-case → feature-priority table, and the
 Phase-1 validation plan are **canonical in
 [`docs/research/personas.md`](./research/personas.md)** (P1–P6, anti-personas
-A1–A5). They moved out of this runbook per `CLAUDE.md` P3 (one home): the
-runbook holds operational state, the persona narratives are strategy and
-already lived — in a richer superset — under `docs/research/`.
-
-`personas.md` is the superset this section duplicated: it adds **P6** (the
-ClickHouse analytics / observability engineer) and fuller per-persona pain /
-ROI / query detail. Cross-references elsewhere to `§10` / `§10.x` (e.g. the
-`§10.2.5` P5/Aarav first-touch vignette) resolve here — follow them to
-`personas.md`, where P-numbering matches (P5 = Aarav, the student / first-timer).
+A1–A5) per `CLAUDE.md` P3 (one home — the runbook holds operational state).
+Cross-references elsewhere to `§10` / `§10.x` (e.g. the `§10.2.5` P5/Aarav
+first-touch vignette) resolve there; P-numbering matches (P5 = Aarav, the
+student / first-timer).
