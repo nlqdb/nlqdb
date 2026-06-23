@@ -86,6 +86,21 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   blocks intact, §8 gate clean. Run 62 net-shrank `anonymous-mode/FEATURE.md`
   38,134 → 34,160 B (−3,974 B, ~10%; D5 file/line diaries → invariants, all 14
   SK-ANON-* intact). **KPI:** onboarding; **none degraded** — docs-only.
+- 2026-06-23 (run 64) — **Distribution: shipped `/vs/julius` (Julius AI), the
+  first P3-analyst comparison after the vector-DB cluster closed** — the
+  pre-pivot slate the comparison-pages FEATURE names, picked by keyword volume
+  × on-message fit (Julius AI > Retool AI / Basedash). Honest wedge:
+  Julius is a destination conversational data-analyst **app** (upload
+  CSV/Excel/Sheets → charts + Python notebooks, live warehouse connectors on
+  Pro) — analysis-only, no durable data layer; nlqdb is the embeddable/agent
+  **backend** that provisions and owns the database. Julius's strengths
+  conceded `them: shipped` (charts, file analysis, Python). Facts web-verified
+  2026-06-23 (julius.ai + pricing + 2026 reviews). **Δ (distribution):**
+  comparison pages **13 → 14**; llms.txt + sitemap **+1** (auto). **KPI:**
+  onboarding / distribution; **none degraded** — one data object + FEATURE
+  status, no engine/funnel/ops file touched; 13 competitors invariants +
+  astro-check **0 errors** green. Artifact: *"Your AI data analyst can't be
+  your app's backend (and vice versa)."*
 - 2026-06-23 (run 61) — **Distribution: shipped `/vs/qdrant`, the
   Rust/quantization wing of the "database, not a vector store" wedge** — the
   P2 follow-on the comparison-pages FEATURE named, closing the canonical
@@ -151,34 +166,29 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   `quality-score-source-of-truth.md` net-shrunk 21,229 → 20,322 B under the D4
   cap (collapsed 5 redundant directive-bullet rows, links kept). KPI engine
   quality / UX / onboarding; none degraded.
-- 2026-06-22 (runs 43–47) — engine + distribution + hygiene wave (all merged;
-  BIRD 06-19 + Spider 06-17 untouched). **Engine:** §4 #1 DAIL-SQL retrieval
-  ablation wiring `buildPlanSystem(goal,schema,k)` + curated pool 10 → 12 buckets
-  (anti-join `NOT IN` + group-order-limit, `SK-LLM-041`, precision@1 12/12);
-  persona-bench v0 → dispatchable `EvalDataset` → 12 → 20 golds (`SK-QUAL-018`,
-  20/20 execute). **Distribution:** WS-12 closed → messaging 11/13, pivot 13/20.
-  **Hygiene:** `distribution-queue.md` 35.9 → 9.1 KB. **Measurement (run 45):**
-  metrics re-pulled — genuine-stranger lane still 0, engine-gated. KPI engine
-  quality / onboarding; none degraded.
-- 2026-06-21 (runs 37–42) — engine + distribution staging wave (all merged/additive; BIRD 06-19 + Spider 06-17 untouched). **§4 #1 DAIL-SQL retrieval** built end-to-end offline: retrieval core (`few-shot-select.ts` value-mask + Jaccard + top-k, run 38), schema-aware selector (run 40), pool-curation mask + 10-row curated pool precision@1 10/10 (runs 39, 42a, `SK-LLM-041`). **§4 #3 self-consistency** (`SK-QUAL-017`): execution half (run 37) + `temperature`-sampling half (run 40, default greedy ⇒ `SK-LLM-024` byte-identical) + runner `--self-consistency N`/`--sc-temperature T` (run 41) + smoke dispatch vehicle (run 42c) — fully dispatchable. **Distribution:** WS-08 OG cards (run 42b, SK-PIVOT-012), WS-09 gate-honest `/agents` live demo (run 41) → messaging → 10/13, pivot → 12/20. Plus E-04 TTL-sweep core (`SK-PIVOT-011`, run 39) + SK-PIVOT-010 finding (E-06 authed-only). KPI engine quality / onboarding; none degraded.
+- 2026-06-21/22 (runs 37–47) — engine + distribution + hygiene staging wave (all
+  merged/additive; BIRD 06-19 + Spider 06-17 untouched). **Engine:** §4 #1
+  DAIL-SQL retrieval built end-to-end offline (`few-shot-select.ts` value-mask +
+  Jaccard + top-k, schema-aware selector, `buildPlanSystem(goal,schema,k)`,
+  curated pool → 12 buckets, `SK-LLM-041`, precision@1 12/12); §4 #3
+  self-consistency (`SK-QUAL-017`, runner `--self-consistency`/`--sc-temperature`,
+  default greedy byte-identical); persona-bench → dispatchable `EvalDataset` 20
+  golds (`SK-QUAL-018`). **Distribution:** WS-08 OG cards (SK-PIVOT-012), WS-09
+  gate-honest `/agents` demo, WS-12 → messaging 11/13, pivot 13/20. **Hygiene:**
+  `distribution-queue.md` 35.9 → 9.1 KB. Plus E-04 TTL-sweep core (`SK-PIVOT-011`)
+  + SK-PIVOT-010 finding. KPI engine quality / onboarding; none degraded.
 - 2026-06-19/20 (runs 19–36) — agent-memory pivot launch wave + engine staging
-  (all closed/additive; BIRD 06-19 + Spider 06-17 untouched). Messaging
-  WS-01..07/09/10: competitors anchor, three memory `/vs` pages, both solve
-  pages, MCP framing, carousel slides, the Mem0·Zep·Letta·nlqdb matrix
-  (data+render), `/agents` skeleton+hero+matrix+CTA, launch post, FSL self-host
-  copy → messaging 8/13, pivot 10/20. Engine: **E-01** `agent_memory_v1` preset +
-  **E-02** `nlqdb_remember` (+CLI parity, SK-CLI-018) → engine 2/7;
-  self-consistency vote core (`SK-QUAL-017`), Spider external-knowledge injection
-  (`SK-QUAL-016`), TTL fail-loud fix (GLOBAL-012); §4 #2a/#2c directive levers
-  falsified standalone; findings SK-PIVOT-009/010 (E-03 RLS-not-rewrite, E-06
-  authed-only). Per-run detail: `progress/quality-score-verification-log.md` +
-  the WS/E worksheets.
-- 2026-06-19 (runs 17–18) — canonical BIRD re-run flat (EX 0.522 → 0.520,
-  McNemar p=0.50) ⇒ directive levers saturated; `SK-QUAL-014` then **falsified
-  value-retrieval as the top lever** (`literal_only` = 0), demoting it below the
-  reasoning levers. No engine change. Detail in the verification log.
-- 2026-06-13/18 (runs 1–16) — day-one scorecard + engine-instrument /
-  provider-resilience / deferred-lever waves (Gemini key heal + Spider re-run
-  to 0.1852, join-bridge pruner T21, HAVING directive T22, `SK-QUAL-014/015`
-  classifiers, `SK-LLM-038/039`, `SK-HDC-019`). Full per-run detail:
-  `progress/quality-score-verification-log.md`.
+  (all closed/additive; BIRD 06-19 + Spider 06-17 untouched). Messaging → 8/13,
+  pivot → 10/20 (competitors anchor, memory `/vs` pages, `/agents`
+  skeleton+hero+matrix+CTA, launch post, FSL self-host copy). Engine: **E-01**
+  `agent_memory_v1` preset + **E-02** `nlqdb_remember` (+CLI parity) → engine
+  2/7; self-consistency core (`SK-QUAL-017`), Spider external-knowledge
+  (`SK-QUAL-016`), TTL fail-loud (GLOBAL-012); findings SK-PIVOT-009/010. Per-run
+  detail: `progress/quality-score-verification-log.md` + the WS/E worksheets.
+- 2026-06-13/19 (runs 1–18) — day-one scorecard + engine-instrument /
+  provider-resilience / deferred-lever waves (Gemini key heal, Spider 0.1852,
+  join-bridge pruner T21, HAVING directive T22, `SK-QUAL-014/015`,
+  `SK-LLM-038/039`, `SK-HDC-019`), then canonical BIRD re-run flat (0.522 →
+  0.520, McNemar p=0.50) ⇒ directive levers saturated and `SK-QUAL-014`
+  falsified value-retrieval as the top lever (`literal_only` = 0). Full per-run
+  detail: `progress/quality-score-verification-log.md`.

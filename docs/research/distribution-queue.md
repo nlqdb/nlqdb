@@ -60,57 +60,57 @@ useful doc-discipline post (one nlqdb mention) that names a failure mode the
 "two homes for one fact" rule exists to prevent, applied at a finer grain than
 the usual cross-file framing. No engine/funnel KPI degrades (docs-only).
 
-## 2026-06-23 (run 62) — dev.to / lobste.rs: "Your decision record is just narrating code the reader can already read" (engineering-doc discipline)
+## 2026-06-23 (run 64) — dev.to / lobste.rs: "Your AI data analyst can't be your app's backend (and vice versa)" (two-jobs split)
 
-**Where:** dev.to + lobste.rs (`architecture` / `engineering`); build-in-public,
-a sibling to run 60 (the stale architecture doc) and run 57 (the stale
-instrumentation plan) — this one is the *over-documented* failure mode rather
-than the *stale* one. nlqdb mentioned once.
+**Where:** dev.to + lobste.rs (`ai` / `databases` / `data`); pairs with the new
+`/vs/julius` page (the first P3-analyst comparison after the vector-DB cluster
+closed). The wedge: "talks to your data in English" is one phrase covering two
+products — an analyst's destination app vs. an application's data layer. nlqdb
+mentioned once.
 
-**Title:** Your decision record is just narrating code the reader can already read
+**Title:** Your AI data analyst can't be your app's backend (and vice versa)
 
 **Body:**
 
-> We keep a decision record per non-obvious choice: what we decided, why, the
-> consequence, the alternatives we rejected. It's a good habit — the "why" is
-> the part that evaporates from a codebase, and the rejected alternatives stop
-> the next person (or the next AI agent) from re-litigating a settled call.
+> There's a whole category of tools now where you upload a spreadsheet, ask a
+> question in English, and get back a chart and the Python that made it. They're
+> genuinely good at it — drop in a CSV and a non-technical analyst is producing
+> presentation-ready dashboards in minutes. The job is *ad-hoc analysis*: a
+> human, a dataset, an answer.
 >
-> But I opened one of our feature docs this week and found a "Consequence in
-> code" section that was seven bullets long, each naming a file, a function, and
-> in two places a *line number* — "the fallback at line 615-629 stays as graceful
-> degrade." That's not a decision record anymore. That's a second, worse copy of
-> the code: it can't be type-checked, it can't be tested, and the line numbers
-> were already wrong. The moment a doc starts narrating the implementation
-> step-by-step, it has signed up to drift the instant anyone touches the file.
+> It's tempting to assume that same tool can sit behind your product. It can't,
+> and the reason isn't quality — it's shape. An analysis app is a destination: a
+> human logs in, uploads or connects data, and reads the output. A product
+> backend is the opposite — no human in the loop at request time, it owns the
+> data your app writes to, and something (your code, or increasingly an AI
+> agent) queries it programmatically, on every request, forever.
 >
-> The fix is a test you can apply to every line of a decision record: *would the
-> reader plausibly choose differently without this, and would that choice be
-> expensive to reverse?* "We store the migrated id on the adoptions row because
-> the after-hook is the primary adopter, so by replay-time the UPDATE is a no-op
-> and RETURNING is empty" — keep that. It's a non-obvious reason a reader would
-> get wrong, and getting it wrong costs a schema migration. "ChatPanel reads
-> ?db= on mount at line 173" — cut it. The reader is about to open ChatPanel;
-> the line number is a liability, not information.
+> Those are different contracts. The analysis app's is "give me an answer and a
+> chart for this dataset right now." The backend's is "provision and own a
+> database, accept writes, evolve the schema, and answer queries via an API or
+> an embeddable element — no chat window, no upload step, no human." A chart is
+> the deliverable in one; a typed result set you render in your own UI is the
+> deliverable in the other. Connecting-to-read and owning-the-write-path are not
+> the same job.
 >
-> I ran that test down one 38 KB feature doc and cut ~10% — every byte of it
-> implementation narration that the code stated more accurately. Not one
-> decision, "why", or rejected alternative was lost, because none of those were
-> what I was cutting. (We hold this as a hard rule in our agent guide — "document
-> only load-bearing decisions; on every edit, find one section that fails the
-> test and trim it" — because the repo is edited by AI agents daily, and a doc
-> that re-narrates code is a doc that confidently lies the moment the code moves.)
+> Teams that try to collapse the two get stuck halfway: the analysis tool reads
+> their warehouse beautifully but can't be the thing their app provisions and
+> writes to; the backend speaks SQL over its own database but won't draw the
+> chart the analyst wanted. (At nlqdb we picked the backend side on purpose —
+> English compiles to SQL over a Postgres the product or agent provisions and
+> queries, with writes diff-previewed — which is exactly why we don't generate
+> charts or take a CSV upload. Different job.)
 >
-> Lesson: a decision record earns its keep with the part that *isn't* in the
-> code — the why, the rejected path, the constraint you'd otherwise re-discover
-> the hard way. The part that *is* in the code belongs only in the code. If your
-> "consequence" section reads like a changelog, you're maintaining the same fact
-> twice and one copy is always stale.
+> Lesson: "talks to your data in English" is one phrase covering two products.
+> One is an analyst's destination app; the other is your application's data
+> layer. Before you adopt either, decide which contract you're buying — a human
+> reading an answer, or your code (or your agent) querying a database it owns.
+> Tools that nail one rarely nail the other, and that's fine.
 
-**Why this advances the north-star:** engine quality / onboarding — a genuinely
-useful doc-discipline post (one nlqdb mention) that doubles as the rationale for
-the "load-bearing decisions only" rule that keeps our agent-edited repo
-coherent. No engine/funnel KPI degrades (docs-only).
+**Why this advances the north-star:** onboarding / distribution (AEO on the
+"Julius AI alternative" / "AI data analyst vs. app backend" P3 keyword), anchors
+the new `/vs/julius` page with one nlqdb mention. No engine/funnel KPI degrades
+(content + one data object only).
 
 ## Collapsed — full drafts in git history
 
@@ -120,6 +120,7 @@ recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 
+- run 62 — "Your decision record is just narrating code the reader can already read" (a "Consequence in code" section that lists files, functions, and line numbers is a second, worse copy of the code — untestable and already stale; keep only the why / rejected path / non-obvious constraint, cut the implementation narration; load-bearing decisions only).
 - run 61 — "Quantization made your recall cheaper. It still can't count." (quantization optimises *how cheaply* you retrieve the nearest items, not *what* you can compute over them; scalar/binary/product compression still yields a ranked list, never a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/qdrant`).
 - run 60 — "Your architecture doc is describing a pipeline your code deleted" (a superseded decision record gets fixed in its one canonical place, but every other doc that paraphrased it keeps narrating the dead version; link, don't restate, and grep the ID across all docs when something is superseded).
 - run 59 — "Hybrid search made your recall smarter. It still can't count." (hybrid search optimises *which* items rank, not what you can compute over them; BM25+vector fusion is still a relevance score, not a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/weaviate`).
