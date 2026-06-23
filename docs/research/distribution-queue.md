@@ -10,6 +10,54 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-23 (run 75) — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (provision-from-English wedge)
+
+**Where:** Show HN + dev.to (`ai` / `mcp` / `databases`) and a one-link r/mcp
+helpful answer; build-in-public. The hook: the MCP ecosystem has dozens of DB
+connectors and every one starts with "paste your connection string" — an agent
+that needs a *scratch* database to write to and query has nowhere to put one
+without a human doing the DBA work first. nlqdb mentioned once. Anchors
+`/solve/database-claude-cursor-can-query`.
+
+**Title:** Every "database MCP server" assumes you already have a database
+
+**Body:**
+
+> I was wiring up database access for an agent over MCP and went shopping for a
+> server. There are a lot of good ones — Postgres, SQL Server, SQLite, a
+> multi-DB bridge. Every single one opens the same way: provision a database,
+> design the schema, paste the connection string into the host config. Which is
+> exactly right when the database is your source of truth and the agent is a
+> read client over it.
+>
+> But that wasn't my case. I wanted the agent to have a *scratch* store — a
+> place to log what it did and then answer "how many of each this week" over it.
+> That database doesn't exist yet. None of the connectors help, because step one
+> of all of them is "have a database." The DBA work is the prerequisite, and the
+> agent can't do it for itself through the same tool it queries with.
+>
+> The shape I actually wanted: the agent's *first English goal* provisions the
+> store. No connection string, no `CREATE TABLE`. Call one tool with no database
+> set — "tasks grouped by status with a count of each" — and it mints Postgres,
+> infers the schema, runs the aggregate, and hands back rows plus the SQL it ran
+> so I can audit the grain. Create and query are the same call; there's
+> deliberately no separate "create database" verb to get the trust boundary
+> wrong.
+>
+> The trade-off is the honest part, and it's the inverse of the connectors:
+> a tool that provisions its own database can't query the one you already run.
+> If your warehouse is the source of truth, you want a Postgres-MCP server, not
+> this. The two are different jobs — "connect my agent to my database" vs. "give
+> my agent a database" — and "database MCP server" is one phrase covering both.
+>
+> (We hit this building nlqdb's MCP surface; the provision-from-English path is
+> `nlqdb_query` with no `db` set against `mcp.nlqdb.com`.)
+
+**Why this advances the north-star:** onboarding / distribution — a
+search-shaped on-ramp for the high-volume "database MCP server" query that
+names the provision-vs-connect distinction honestly, one nlqdb mention. No
+engine/funnel KPI degrades (one solve-page data object + doc edits).
+
 ## 2026-06-23 (run 72) — dev.to / lobste.rs: "Your BI tool got an AI assistant. Your agent still can't call it." (assistant-in-an-app vs. callable backend)
 
 **Where:** dev.to + lobste.rs (`ai` / `databases` / `llm`); build-in-public,
@@ -60,56 +108,6 @@ assistant-in-an-app vs. callable-backend framing (one nlqdb mention) that
 anchors `/vs/metabase` and the P3 analyst/BI lane. No engine/funnel KPI degrades
 (positioning content only).
 
-## 2026-06-23 (run 70) — dev.to / lobste.rs: "Your AI BI tool reads your data. It doesn't own it — and can't write to it" (read-vs-own data layer)
-
-**Where:** dev.to + lobste.rs (`ai` / `databases` / `dataengineering`);
-build-in-public, the BI-shaped sibling to the "AI analyst can't be your backend"
-post (run 64). The wedge: a wave of tools now say "ask your data in English and
-get a dashboard" — and they're great at it — but "your data" there means a
-read-only connection to a warehouse you already run. nlqdb mentioned once.
-Anchors `/vs/basedash`.
-
-**Title:** Your AI BI tool reads your data. It doesn't own it — and can't write to it
-
-**Body:**
-
-> I was comparing a few "AI-native BI" tools this week and noticed they've all
-> converged on the same sentence: *describe what you want to track, and AI builds
-> the dashboard.* It genuinely works — natural-language charts, a semantic layer
-> so metrics stay consistent, a daily AI briefing that surfaces what moved. If the
-> job is "give my ops team governed analytics over the data we already store,"
-> these are a good buy.
->
-> But read the integration page and the shape becomes clear: they connect to
-> hundreds of sources — Postgres, Snowflake, Salesforce, Stripe — and read from
-> them. They don't *own* a database, and they don't *write* to yours. That's not
-> a flaw; it's the BI contract. Analytics tools are read-only by design, sitting
-> downstream of a system that already holds the data and already handles the
-> writes.
->
-> The trap is that "ask your data in English" sounds identical to two very
-> different products. One renders a dashboard over a warehouse you maintain. The
-> other *is* the data layer: it provisions the store, takes English for the read
-> *and* the write ("add a column for tags", "mark these orders refunded"), and
-> hands back an answer your app or agent embeds inline — not a chart on a separate
-> BI site. Before you buy "talk to your data," ask two questions the demo won't:
-> *who owns the database, and can English change the data, not just query it?*
->
-> If you have the warehouse and want governed dashboards, buy the BI tool. If you
-> *don't have the database yet*, or an agent needs to stand up and migrate its own
-> store, a read-only dashboard layer is the wrong altitude — you want the thing
-> that owns the write path. (At nlqdb that's the whole product: `nlqdb_query`
-> materialises Postgres on first reference, writes and migrations are diff-previewed
-> in English before they apply, and the answer renders in one web component.)
->
-> Lesson: "AI over your data" splits on a single axis — does the tool *own* the
-> data or *read* it? Dashboards live downstream of a database. Don't buy one
-> expecting the other.
-
-**Why this advances the north-star:** onboarding / distribution — an honest
-read-vs-own framing (one nlqdb mention) that anchors `/vs/basedash` and the P3
-analyst lane. No engine/funnel KPI degrades (positioning content only).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
@@ -117,7 +115,8 @@ is title + venue + one-line gist; `git log -p docs/research/distribution-queue.m
 recovers any body.
 
 ### Engine-lesson posts (dev.to / lobste.rs)
-- run 69 — "Your sitemap is advertising redirects — and your canonical tag points at one" (a static host emits `route/index.html`, so the trailing-slash URL is the 200 and the bare path 307s — but the canonical tag, og:url, and sitemap all emitted the bare path, so 27 sitemap URLs redirected and every canonical pointed at a redirect back to itself; fix is `trailingSlash: "always"` + normalize the path in the head layout and the URL generators; `curl -sI` every sitemap URL).
+- run 70 — "Your AI BI tool reads your data. It doesn't own it — and can't write to it" (a wave of AI-native BI tools converge on "describe what to track, AI builds the dashboard" — great at it, but "your data" is a read-only connection to a warehouse you already run; they don't own a DB or write to yours; the data layer that provisions the store and takes English for the write *and* the read is a different altitude; anchors `/vs/basedash`).
+- run 69 — "Your sitemap is advertising redirects — and your canonical tag points at one" (a static host serving `route/index.html` makes the bare path a 307, but `canonical`/`og:url`/sitemap/llms.txt all emitted the bare path — 27 redirecting sitemap URLs + a self-referential redirecting canonical; `trailingSlash: "always"` plus a one-place path-normalize in the head layout + URL generators, audit with `curl -sI` over every sitemap URL).
 - run 68 — "Your offline LLM eval isn't measuring your model — it's measuring your rate limits" (a tiny NL→SQL bench on a free multi-provider chain scored 17/20 then 6/20 ninety seconds later; the engine didn't regress, the providers got tired — `circuit_open`/`rate_limited` errors with p50=0ms are availability, not accuracy; throttle to measure reasoning, pause-and-resume on exhaustion, keep the smoke test apart from the powered windowed run).
 - run 67 — "AI made the internal-tool builder faster. It didn't ask whether you needed the tool." (low-code AI — AppGen / Ask AI / agents — scaffolds the admin tool faster, but the output is still a destination a human builds and operates; often the answer belongs inline in the product you already ship, or the asker is an agent that wants a backend primitive, not a built tool — check whether the AI sped up the workflow or the outcome; anchors `/vs/retool`).
 - run 66 — "Your most over-documented code is your security code — and that's where stale docs lie loudest" (security code attracts callsite-by-callsite "consequence in code" narration because terse feels irresponsible; but a list of today's callsites + test names is the fastest-rotting prose in the repo, and a stale "every site is checked" reads as a guarantee — document the enforced invariant + review rule, not the implementation tour).

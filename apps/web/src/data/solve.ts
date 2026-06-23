@@ -115,6 +115,61 @@ export type SolveEntry = {
 
 export const SOLVE_ENTRIES: SolveEntry[] = [
   {
+    slug: "database-claude-cursor-can-query",
+    persona: "P2 agent builder",
+    searchTitle: "How do I give Claude or Cursor a SQL database it can create and query?",
+    oneLiner:
+      "If you want Claude Desktop, Cursor, or any MCP host to have a SQL database — not just a connection to one you configured yourself — point it at nlqdb's hosted MCP server. The `nlqdb_query` tool provisions Postgres from the agent's first English goal (no connection string, no schema) and answers in English with the SQL shown.",
+    painContext:
+      "Every database MCP server (Postgres, SQL Server, SQLite) assumes you've already provisioned the database, designed the schema, and pasted a connection string into the host config. That's the right shape when an existing warehouse is the source of truth. But an agent that needs a scratch database to write to and query — a place to log what it does and answer 'how many' over it — has nowhere to put one without a human doing the DBA work first.",
+    demoGoal: "tasks grouped by status with a count of each",
+    demoWhy:
+      "The first thing an MCP host does with a fresh database — provision it, then ask an aggregate over it — is one English goal here, not a connection string plus a CREATE TABLE.",
+    howNlqdbAnswers: [
+      "Point Claude Desktop, Cursor, Cline, or Claude Code at `mcp.nlqdb.com` — the `nlqdb_query` tool needs no connection string and no schema setup.",
+      "Calling `nlqdb_query` with no `db` set provisions Postgres from the agent's first English goal — create and query are one call, no separate create tool.",
+      "`nlqdb_list_databases` and `nlqdb_describe` let the host enumerate and inspect schemas; every answer returns rows plus the compiled SQL to audit.",
+      "Per-`(mcp_host, device_id)` `sk_mcp_*` keys scope access per agent and device; revocation is per-device and shown in the dashboard.",
+    ],
+    whatItDoesnt: [
+      "No connecting to a database you already run — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped. To query an existing DB over MCP, a Postgres-MCP server is the right shape.",
+      "No native vector search — nlqdb is Postgres-first; unstructured similarity recall over text strings is Mem0 or pgvector's job.",
+      "No public `nlqdb_create_database` verb — provisioning is implicit in `nlqdb_query` by design (`SK-MCP-002`, trust boundary).",
+    ],
+    faqs: [
+      {
+        q: "How is this different from a Postgres or SQL Server MCP server?",
+        a: "Those connect an MCP host to a database you already provisioned, configured, and supplied a connection string for. nlqdb provisions the Postgres itself from the agent's first English goal — no connection string, no schema authored by hand. The trade-off is honest: nlqdb owns its database, so it can't query one you already run.",
+      },
+      {
+        q: "Which MCP hosts can use the nlqdb database?",
+        a: "Any host that speaks MCP — Claude Desktop, Cursor, Cline, Claude Code. Point it at the hosted server `mcp.nlqdb.com` (no local install), or run the `@nlqdb/mcp` npm binary for local stdio. The `@nlqdb/sdk` TypeScript client is the typed fallback for non-MCP integrations.",
+      },
+      {
+        q: "How does the agent create the database — is there a create tool?",
+        a: "No separate create tool. The agent calls `nlqdb_query` with no `db` set and an English goal; when it has no database, nlqdb provisions Postgres from the goal and answers in the same call. Keeping create implicit in query is a deliberate trust-boundary choice (`SK-MCP-002`).",
+      },
+      {
+        q: "Can the agent see the SQL it ran?",
+        a: "Yes — every `nlqdb_query` answer returns the result rows plus the compiled SQL, so the host (and you) can audit the grain before trusting it. nlqdb never hides the SQL behind the answer.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://github.com/modelcontextprotocol/servers",
+        label: "MCP server registry — the recurring 'database MCP server' demand hub (many DB connectors, all assuming an existing DB).",
+      },
+      {
+        url: "https://www.reddit.com/r/mcp/search/?q=database",
+        label: "r/mcp — recurring 'database for my MCP agent' threads.",
+      },
+      {
+        url: "https://hn.algolia.com/?q=mcp+database",
+        label: 'HN search: "mcp database" — discussion on giving AI assistants a queryable store.',
+      },
+    ],
+  },
+  {
     slug: "cheap-internal-dashboard",
     persona: "P3 analyst",
     searchTitle: "How do I build an internal dashboard without per-seat pricing?",
