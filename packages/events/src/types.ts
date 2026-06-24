@@ -73,17 +73,6 @@ export type FeatureRequestedHeavierTierEvent = {
   surface: NlqSurface;
 };
 
-// `feature.requested.early_access` is the GLOBAL-027 pre-alpha gate
-// demand signal. Fires fire-and-forget on every 403 `feature_gated`
-// response so the waitlist surface gets the same telemetry shape as
-// the other GLOBAL-024 "not yet" paths. Per-(principalId, day) dedup
-// via `defaultId()` keeps the LogSnag quota safe.
-export type FeatureRequestedEarlyAccessEvent = {
-  name: "feature.requested.early_access";
-  principalId: string;
-  surface: NlqSurface;
-};
-
 // Closed union of wishlist surface ids. Must match the `data-wishlist`
 // attributes in `apps/web/src/components/CodePanel.astro` AND the
 // `WISHLIST_SURFACES` validation set in `apps/api/src/events-feature.ts`.
@@ -206,7 +195,6 @@ export type ProductEvent =
   | AskCompletedEvent
   | FeatureRequestedDdlViaAskEvent
   | FeatureRequestedHeavierTierEvent
-  | FeatureRequestedEarlyAccessEvent
   | HomeSurfaceWishlistEvent
   | FeatureEvalWeeklyEvent
   | FeatureEvalRegressionEvent;

@@ -19,11 +19,10 @@ failover order behind the new head.
 - **Core value:** Free, Bullet-proof, Honest latency
 - **Why:** The free-chain BIRD-dev execution-accuracy baseline is
   **31.8%** (159/500, `baseline-2026-06-15.json`) — far below the
-  `GLOBAL-027` gate floor (BIRD ≥ 65% AND Spider ≥ 75%) that blocks
-  every top-5 ICP acquisition flow ([`GLOBAL-032`](../../../decisions/GLOBAL-032-top-5-user-flows-canonical.md);
-  every walker dead-ends at gate-403). Free-chain planner quality is
-  therefore the single highest-leverage acquisition lever, and the
-  planner model is the dominant term. `gpt-oss-120b` is a frontier-class
+  [`GLOBAL-025`](../../../decisions/GLOBAL-025-north-star.md) Phase 2
+  engine-quality floor (BIRD ≥ 65% AND Spider ≥ 75%). Free-chain
+  planner quality is therefore the single highest-leverage engine-quality
+  lever, and the planner model is the dominant term. `gpt-oss-120b` is a frontier-class
   open-weight reasoning model (≈ OpenAI o4-mini parity on core reasoning
   benchmarks) available card-free, and Cerebras serves it at the highest
   throughput of any provider (~3,000 tok/s), so it both raises the

@@ -163,7 +163,6 @@ in editors that support it; otherwise read manually before editing.)
 | `apps/api/src/run/**`, the `POST /v1/run` raw-SQL escape hatch (`GLOBAL-015`) | `docs/features/sdk/FEATURE.md` (`SK-SDK-009`) + `docs/features/cli/FEATURE.md` + `docs/features/sql-allowlist/FEATURE.md` |
 | write/DDL diff preview, `confidence`, response `trace` block | `docs/features/trust-ux/FEATURE.md` |
 | `apps/api/src/db-create/**`, `apps/api/src/ask/classifier.ts`, `apps/api/src/ask/sql-validate-ddl.ts` | `docs/features/hosted-db-create/FEATURE.md` |
-| `apps/api/src/gate/**`, gatePreAlpha middleware, X-Invite-Code header, gate KV keys | `docs/features/pre-alpha-gate/FEATURE.md` |
 | `apps/api/src/plan-cache/**`, plan storage | `docs/features/plan-cache/FEATURE.md` |
 | `packages/llm/**`, model routing, prompts | `docs/features/llm-router/FEATURE.md` |
 | `tools/eval/**`, `.github/workflows/quality-eval-*.yml` (BIRD/Spider NL-accuracy harness) | `docs/features/quality-eval/FEATURE.md` |
@@ -193,7 +192,7 @@ in editors that support it; otherwise read manually before editing.)
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |
 | `tests/personas/**`, `tests/opencheck/**`, `tests/e2e/**`, `examples/**/e2e/**`, `.github/workflows/e2e*.yml`, `.github/workflows/_e2e-*.yml`, `packages/nlqdb-rb/spec/e2e/**`, `packages/nlqdb-rs/tests/e2e/**` | `docs/features/e2e-coverage/FEATURE.md` |
 | `apps/api/src/icp-*.ts`, `docs/research/automated-icp-validation-plan*.md`, `docs/research/icp-evidence-*.md` | `docs/features/icp-mining/FEATURE.md` |
-| `tools/stranger-test/**`, `scripts/stranger-test.sh`, `scripts/flow-004-walk.sh`, `scripts/stranger-test-invited.sh` | `docs/features/stranger-test/FEATURE.md` |
+| `tools/stranger-test/**`, `scripts/stranger-test.sh`, `scripts/flow-005-walk.sh`, `scripts/flow-005-stdio-walk.sh` | `docs/features/stranger-test/FEATURE.md` |
 
 Per-area `AGENTS.md` files (e.g. `packages/db/AGENTS.md`) repeat just
 their slice of this table, so you don't need the full root view when

@@ -78,7 +78,7 @@ jobs:
   # Runs whenever the deploy is up and depth != 'a' — EVEN IF Suite A failed. `needs: opencheck-a` is
   # ORDER-ONLY here (keeps suites sequential so the shared Groq daily budget never spikes; the whole
   # A→B→C app-side draw is ~20-40K, well under the 100K/day cap — the ~94K consumer is the agent, on
-  # OpenRouter :free). It is NOT a success gate: A's dominant flake is GLOBAL-027 (the bootstrapped DB
+  # OpenRouter :free). It is NOT a success gate: A's dominant flake is the bootstrap (the db.create'd DB
   # exists but isn't queryable as "users"), so the DB is still present and B can pin it by name for an
   # independent read/write signal. Turning B's skip into a signal is the fix for the documented
   # "no sense of progress" trap — one A flake used to zero out all of B+C.

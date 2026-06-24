@@ -126,18 +126,15 @@ dev.to (#sql #postgres #debugging) or lobste.rs (`databases`, `practices`).*
 > You can also bring your own LLM key (any tier, 0% markup) — it rides
 > Cloudflare AI Gateway with the key sealed in an AES-256-GCM envelope.
 >
-> It's pre-alpha behind an invite gate, but the waitlist auto-invites
-> instantly (weekly-capped to protect the free-LLM quota), so you can try it
-> in under a minute: https://nlqdb.com
+> It's early but open — you can try it in under a minute: https://nlqdb.com
 >
 > Stack: Cloudflare Workers + D1/KV, Neon Postgres, OpenTelemetry throughout.
 > BYO Postgres/ClickHouse is landing (the SSRF egress-guard work for that was
 > a rabbit hole of IPv4-mapped IPv6 and decimal-encoded IPs). Happy to answer
 > anything about the NL→SQL pipeline or the free-LLM routing.
 
-*Reviewer notes: numbers sourced from `apps/api/src/gate/eval-baseline.ts`
-(2026-06-12 canonical run). Verify the auto-invite valve is healthy
-(scorecard #4) before posting. Best posted weekday morning US-East.*
+*Reviewer notes: numbers sourced from `tools/eval/baseline-2026-06-15.json`
+(2026-06-12 canonical run). Best posted weekday morning US-East.*
 
 ## One-line gists (runs 60–66) — bodies in git history
 

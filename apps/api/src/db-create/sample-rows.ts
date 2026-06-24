@@ -9,7 +9,7 @@
 // a SINGLE bad row aborts the whole insert with SQLSTATE class 22/23 and
 // SK-HDC-018 retries with `sample_rows: []` — i.e. one bad row degrades the
 // stranger's first value from "seeded demo" to "empty DB". That all-or-nothing
-// drop is what `seeded_ok_ratio` (SK-STRG-008) measures the cost of.
+// drop is what `seeded_ok_ratio` measures the cost of.
 //
 // This pass runs BEFORE provisioning and drops ONLY rows it can statically
 // PROVE will fail to insert against the plan's declared constraints — never a

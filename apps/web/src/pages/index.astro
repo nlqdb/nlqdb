@@ -40,9 +40,8 @@ import Base from "../layouts/Base.astro";
 
 <script>
   // Provision the anonymous-mode token on first visit (SK-ANON-001).
-  // Mints even when the hero is gated — no cost; useful when the
+  // Mint the anon token up front — no cost; useful when the
   // visitor crosses to /app/new from the carousel / footer.
-  // ?invite=<code> capture runs site-wide via `Base.astro` (SK-GATE-007).
   import { getOrMintAnonToken } from "../lib/anon";
   getOrMintAnonToken();
 </script>

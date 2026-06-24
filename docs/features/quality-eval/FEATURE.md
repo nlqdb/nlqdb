@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Quality Eval
 
 **One-liner:** NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite SQLite subset + internal `db.create` eval per [`SK-QUAL-003`](#sk-qual-003)) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-agentic-frontier delta** (`SK-QUAL-004`) is the headline KPI for [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine north-star.
-**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** BIRD Mini-Dev + Spider 2.0-lite runners + EX scorers; free / single-model-frontier / `agentic-frontier` lanes; baseline diff vs `tools/eval/baseline-2026-06-15.json` + McNemar (`SK-QUAL-006`); `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`. The runner is **resumable** (`SK-QUAL-011`/`SK-QUAL-013`) and runs **manually on demand** (`SK-QUAL-002`); canonical 6-provider runs seed the baseline + `apps/api/src/gate/eval-baseline.ts`. **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export). Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
+**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** BIRD Mini-Dev + Spider 2.0-lite runners + EX scorers; free / single-model-frontier / `agentic-frontier` lanes; baseline diff vs `tools/eval/baseline-2026-06-15.json` + McNemar (`SK-QUAL-006`); `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`. The runner is **resumable** (`SK-QUAL-011`/`SK-QUAL-013`) and runs **manually on demand** (`SK-QUAL-002`); canonical 6-provider runs seed the baseline `tools/eval/baseline-2026-06-15.json`. **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export). Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
 
 **Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument; the on-demand run (`SK-QUAL-002`) is the alert-and-decision input.
 **Owners (code):** `tools/eval/**`, `packages/llm/**`, `.github/workflows/quality-eval-bird-mini.yml`
@@ -224,7 +224,7 @@ greedy-vs-SC gap on the first N≥2 dispatch.
 ### SK-QUAL-018 — persona-bench: nlqdb's own ICP-shaped NL→SQL benchmark, gold-executable fixture first
 
 **Body:** [`decisions/SK-QUAL-018-persona-bench.md`](./decisions/SK-QUAL-018-persona-bench.md).
-The third quality number `GLOBAL-027` §Lifecycle kept: NL→gold-SQL over the
+The third quality number alongside BIRD/Spider: NL→gold-SQL over the
 schemas `personas.md` builds. v0 (`persona-bench.ts`) ships
 the **data half** — `saas_app` (§P1) + `agent_memory` (§P2), now **23 questions**
 (batch 2: anti-join/negation + multi-join; batch 3: scalar-subquery,
@@ -260,7 +260,6 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 - **GLOBAL-024** — Demand-signal telemetry. *Eval results emit `feature.eval.*` events.*
 - **GLOBAL-025** — North-star KPIs. *This feature owns the engine-quality NL→SQL KPIs (BIRD/Spider EX, free-vs-frontier delta) + persona-bench (`SK-QUAL-018`); baseline per `SK-QUAL-005`.*
 - **GLOBAL-026** — LLM strategy. *Eval runs the free + hosted-premium chains (`SK-QUAL-004`); BYOLLM lane instrumented but never gates a floor.*
-- **GLOBAL-027** — Pre-alpha gate consumes this feature's free-chain BIRD/Spider numbers. *The report shape is the contract `apps/api/src/gate/eval-baseline.ts` mirrors. Lifecycle: [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).*
 
 ## Open questions / known unknowns
 

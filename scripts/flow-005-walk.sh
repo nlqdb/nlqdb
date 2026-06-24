@@ -62,7 +62,7 @@ TIMEOUT_S="${FLOW_005_TIMEOUT_S:-15}"
 UTC_STAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
 OUT_PATH="${FLOW_005_OUT:-tools/stranger-test/results/flow-005-$UTC_STAMP.json}"
 
-# --- display helpers (mirror scripts/flow-004-walk.sh) --------------------
+# --- display helpers (shared shape with the other flow walkers) -----------
 
 say()  { printf '\n\033[1;34m== %s ==\033[0m\n' "$*"; }
 ok()   { printf '  \033[1;32m✓\033[0m %s\n' "$*"; }
@@ -283,7 +283,7 @@ fi
 
 # Pick the most descriptive state label. Discovery failures point at the
 # Worker / route regression; auth-wall failures point at the mcp-server
-# regression. Same SK-* triage shape as flow-004-walk.sh.
+# regression. Same SK-* triage shape as the other flow walkers.
 if [[ "$DISCOVERY_OK" != "true" ]]; then
   state="failed discovery"
 elif [[ "$AUTH_WALL_OK" != "true" ]]; then

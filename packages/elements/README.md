@@ -122,9 +122,6 @@ data.addEventListener("nlq-data:load", (e) => {
 });
 data.addEventListener("nlq-data:error", (e) => {
   // e.detail.kind = "network" | "auth" | "api"
-  // For the pre-alpha gate (GLOBAL-027): detail.kind === "api" with
-  // detail.error.status === "feature_gated" — the element renders the
-  // server's waitlist CTA inline (SK-ELEM-014).
 });
 
 const action = document.querySelector("nlq-action");

@@ -24,8 +24,9 @@ import { faqPageJsonLd } from "../../lib/faq-jsonld";
 const demoGoal = "Count of facts my agent logged per category this month, highest first";
 
 // WS-09 — the live in-page demo. Rendered from a fixture through the same
-// typed-plan compile path the product runs, NOT an open `/v1/ask` (the
-// public API is pre-alpha gated — gate-honest per the worksheet). It shows
+// typed-plan compile path the product runs, NOT a live `/v1/ask` call — the
+// proof stays server-rendered so it's crawlable (AEO) and works with no JS
+// (SK-PIVOT-004). It shows
 // the wedge end to end: typed memory rows the agent wrote → the English
 // question → the compiled, parameterised SQL → the GROUP BY answer a vector
 // store structurally can't return. Type + brand tables only, no screenshot
@@ -250,8 +251,8 @@ const faqJsonLd = faqPageJsonLd(faqs);
 
         <p class="agents__demo-honest">
           Rendered from a fixture through the same typed-plan compile path the
-          product runs &mdash; the public demo doesn&rsquo;t hit an open
-          <code>/v1/ask</code> (pre-alpha). Numbers are illustrative.
+          product runs &mdash; server-rendered so it stays crawlable and works
+          with no JS, not a live <code>/v1/ask</code> call. Numbers are illustrative.
         </p>
       </section>
 
@@ -388,10 +389,10 @@ const faqJsonLd = faqPageJsonLd(faqs);
       });
     });
 
-    // WS-09 demo "Run this query" — gate-honest replay: the result is already
-    // on the page (crawlable, no-JS), so the button just pulses the result
-    // table and fires the GLOBAL-024 demand signal for demo engagement. No
-    // network call — the public demo never hits an open `/v1/ask`.
+    // WS-09 demo "Run this query" — server-rendered replay: the result is
+    // already on the page (crawlable, no-JS), so the button just pulses the
+    // result table and fires the GLOBAL-024 demand signal for demo engagement.
+    // No network call — the demo never hits a live `/v1/ask`.
     const demoResultEl = document.querySelector<HTMLElement>("[data-demo-result]");
     document.querySelectorAll<HTMLButtonElement>(".agents__demo-run").forEach((btn) => {
       btn.addEventListener("click", () => {

@@ -101,19 +101,9 @@ describe("makeQueueEmitter", () => {
       surface: "chat",
     });
 
-    // GLOBAL-027 — gate's demand-signal emit shares the same
-    // per-(principal, day) dedup envelope so a single visitor doesn't
-    // burn the LogSnag quota by retrying a blocked request all day.
-    await emitter.emit({
-      name: "feature.requested.early_access",
-      principalId: "anon:def",
-      surface: "hero",
-    });
-
     const today = new Date().toISOString().slice(0, 10);
     expect(queue.sent[0]?.id).toBe(`feature.requested.ddl_via_ask.anon:abc.${today}`);
     expect(queue.sent[1]?.id).toBe(`feature.requested.heavier_tier.u_1.${today}`);
-    expect(queue.sent[2]?.id).toBe(`feature.requested.early_access.anon:def.${today}`);
   });
 
   it("keys home.surface_wishlist by (name, principalId, surface, utcDay) so VSCode + Slack stay distinct (SK-EVENTS-011)", async () => {

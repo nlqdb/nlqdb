@@ -121,23 +121,14 @@ describe("fetchAsk", () => {
     expect(outcome).toEqual({ ok: false, failure: { kind: "auth", status: 401 } });
   });
 
-  it("surfaces the structured body for 403 (feature_gated etc.) as kind=api", async () => {
-    const gatedBody = {
+  it("surfaces the structured body for a non-401 4xx (403 etc.) as kind=api", async () => {
+    const forbiddenBody = {
       error: {
-        status: "feature_gated",
-        message: "nlqdb is pre-alpha — join the waitlist for early access.",
-        action: "Join the waitlist",
-        waitlist_url: "https://nlqdb.com/#waitlist",
-        gate: {
-          bird_accuracy: 0.318,
-          spider_accuracy: null,
-          bird_target: 0.65,
-          spider_target: 0.75,
-          measured_at: "2026-05-18T22:42:29.917Z",
-        },
+        status: "forbidden",
+        reason: "pk_live_read_only",
       },
     };
-    const fetchImpl = vi.fn<FetchLike>(async () => jsonResponse(gatedBody, { status: 403 }));
+    const fetchImpl = vi.fn<FetchLike>(async () => jsonResponse(forbiddenBody, { status: 403 }));
     const outcome = await fetchAsk({
       endpoint: "https://api.example/v1/ask",
       goal: "x",
@@ -146,7 +137,7 @@ describe("fetchAsk", () => {
     });
     expect(outcome).toEqual({
       ok: false,
-      failure: { kind: "api", status: 403, error: gatedBody.error },
+      failure: { kind: "api", status: 403, error: forbiddenBody.error },
     });
   });
 

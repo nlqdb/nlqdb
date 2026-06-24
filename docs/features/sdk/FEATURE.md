@@ -165,8 +165,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* both `ask()` and `runSql()` responses include the `trace` block (`SK-TRUST-002`); surfaces render it.
 - **GLOBAL-026** — BYOLLM via the per-request `byollm` client option (`SK-SDK-010`) and the account-stored verbs `setByollm` / `getByollmStatus` / `clearByollm` (`SK-SDK-011`).
-- **GLOBAL-027** — Pre-alpha gate.
-  - *In this feature:* `ApiErrorCode` gained `"feature_gated"`; `ApiErrorBody` gained optional `gate`, `action`, `waitlist_url` fields (plus the `GateProgress` type); `createClient()` accepts an `inviteCode` option forwarded as `X-Invite-Code`. `isRecoverable` treats `feature_gated` as terminal (no retry). See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
 
 ## Open questions / known unknowns
 

@@ -58,7 +58,7 @@ Parent GLOBAL:
   - Let the server reject `env_key`/`anonymous` callers — wastes a
     round-trip and a vaguer error; the SDK fails loud at construction, so
     the CLI fails loud locally for parity.
-  - Attach the header to every CLI call (like `--invite-code`) — ships a
+  - Attach the header to every CLI call via a persistent root flag — ships a
     raw provider key to `run`/`keys`/`databases`, which have no LLM call.
 - **Source:** canonical here · `SK-SDK-010` (SDK sibling) · `SK-LLM-021`
   (wire header) · `SK-PREMIUM-008` (BYOLLM key handling, signed-in gate) ·

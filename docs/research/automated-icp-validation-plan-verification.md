@@ -27,16 +27,14 @@
 
 > **Status (2026-06-08):** **Canonical-five all re-walked that day against the deployed surface (GLOBAL-032 7-day freshness met). FLOW-004 REGRESSED to `partial` — control `403` ✓ + invite **bypassed the gate** ✓ (SK-GATE-007 intact) BUT `/v1/ask` returned `HTTP 500 {kind:"provision_failed",reason:"sample_insert_failed",rolled_back:true}` on 5/5 reproductions for "a meal planner for couples". SK-HDC-017's class mapping (shipped #332) correctly attributes it to the seed-insert phase, NOT infra: the free chain authored a sample row that violates the FK/NOT-NULL constraints its own plan declares, and because schema + RLS + seed rows share one atomic transaction (SK-HDC-012) that single decorative row rolled the entire create back — so the invited stranger got NO database (500), not just an un-seeded one. Per the operator loop, a broken funnel IS the next agent's #1, so this PR ships the fix instead of new surfaces: SK-HDC-018 (provisioner retries once without seed rows → working un-seeded DB, never a 500; unit-tested) + SK-LLM-033 (inference prompt now requires insertable seed rows). Deployed re-walk to a green 200 is pending deploy; the fix is proven locally (real Groq plan reproduction over HTTPS + orchestrator unit tests — Postgres :5432 is blocked in the agent sandbox, only HTTPS egresses, so the psql replay couldn't run). FLOW-005 passed 6/6 (no-credential subset); FLOW-001/002/003 baseline static green, gate-403 by design (GLOBAL-027).** The older narrative below predates this run and is kept for history.
 > The 2026-05-24 founder directive named engine quality (BIRD 0.318 /
-> Spider `null` per
-> [`apps/api/src/gate/eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts) /
-> [`SK-GATE-001`](../features/pre-alpha-gate/FEATURE.md#sk-gate-001) /
-> [`SK-GATE-002`](../features/pre-alpha-gate/FEATURE.md#sk-gate-002))
-> as the binding bottleneck for FLOW-001/002/003 — the gate is doing
-> what GLOBAL-027 asks it to. FLOW-004 is the path that carries a
-> stranger across the gate before BIRD/Spider clear, and as of
-> 2026-05-24 it is **verified twice end-to-end** by
-> [`scripts/flow-004-walk.sh`](../../scripts/flow-004-walk.sh)
-> ([`SK-STRG-002`](../features/stranger-test/FEATURE.md)): a mail.tm
+> Spider `null` per the canonical baseline, now
+> `tools/eval/baseline-2026-06-15.json`)
+> as the binding bottleneck for FLOW-001/002/003. At the time, the
+> (now-removed) pre-alpha gate 403'd those flows at `/v1/ask`, and
+> FLOW-004 was the path that carried a stranger across that gate before
+> BIRD/Spider cleared; as of 2026-05-24 it was **verified twice
+> end-to-end** by the then-current `scripts/flow-004-walk.sh` walker
+> (SK-STRG-002): a mail.tm
 > throwaway inbox + curl walk landed `HTTP 200` on `/v1/ask` 18s after
 > waitlist signup (11–13s of which was Resend's transactional latency).
 > The walk now runs **daily at 06:00 UTC** under
@@ -47,10 +45,9 @@
 > unconditionally so no founder-facing email channel is created — the
 > next agent run reads the artifact via `mcp__github__list_workflow_runs`.
 > Future agents pick from: FLOW-006 (SDK runSql), FLOW-007 (anon→adopt),
-> the post-deploy invite-bearing re-walk for FLOW-002/003 (proves the
-> `captureInviteFromUrl` fix landed), FLOW-001 step 6 trace-toggle
-> regression surfaced by the SK-STRG-004 walker, or whatever regression
-> the daily artifact surfaces.
+> or whatever regression the daily artifact surfaces. (The invite-bearing
+> re-walk and the SK-STRG-004 composer that were once listed here are
+> gone — the pre-alpha gate they exercised has been removed.)
 >
 > **The §1.1 stranger-test Playwright primitive shipped 2026-05-24** —
 > [`tools/stranger-test/`](../../tools/stranger-test/), agent-invoked
@@ -60,10 +57,11 @@
 > handoff + `/app/new` rehydrate + the `solve.try_query_clicked`
 > event spy (sessionStorage-persisted so it survives the post-CTA
 > navigation). The 2026-05-24 walk recorded every static-surface
-> and CTA-side assertion as `ok`; the binding gap is the gate-403
-> on `/v1/ask` (FLOW-001 step 5, FLOW-002 step 9, FLOW-003 step 8)
-> — GLOBAL-027 / SK-GATE-002 gate is closed until BIRD/Spider clear
-> or an invite carries the user across. FLOW-002's prior "step 8
+> and CTA-side assertion as `ok`; at the time, those flows 403'd at
+> `/v1/ask` (FLOW-001 step 5, FLOW-002 step 9, FLOW-003 step 8) because
+> the pre-alpha gate was still in place. That gate has since been
+> removed — the first `/v1/ask` now reaches the open engine, so the
+> binding question is first-query accuracy, not access. FLOW-002's prior "step 8
 > event-spy missing" finding is **corrected** by the walker: the spy
 > ran on the post-navigation page where the array was reset;
 > sessionStorage persistence observes the event firing on every slug
@@ -79,21 +77,23 @@
 
 ## The five user flows that matter most (canonical per [GLOBAL-032](../decisions/GLOBAL-032-top-5-user-flows-canonical.md))
 
-Of the eight `FLOW-NNN` blocks below, five carry the inbound funnel:
-**FLOW-001 / FLOW-002 / FLOW-003 / FLOW-004 / FLOW-005**. The remaining
-three are either post-acquisition (FLOW-006 SDK escape hatch, FLOW-007
-anonymous-DB adoption) or a system pipeline (FLOW-008 cron source-health).
+Of the eight `FLOW-NNN` blocks below, four carry the inbound funnel today:
+**FLOW-001 / FLOW-002 / FLOW-003 / FLOW-005**. FLOW-004 (the old waitlist →
+invite → gate-bypass flow) is **retired** — the pre-alpha gate it crossed
+has been removed and the product is public, so its walker no longer exists.
+The remaining three are either post-acquisition (FLOW-006 SDK escape hatch,
+FLOW-007 anonymous-DB adoption) or a system pipeline (FLOW-008 cron source-health).
 [`GLOBAL-032`](../decisions/GLOBAL-032-top-5-user-flows-canonical.md)
-mandates each canonical flow has at least one agent-runnable walker that
-ran against the deployed surface inside the last seven days; a walker
+mandates each surviving canonical flow has at least one agent-runnable walker
+that ran against the deployed surface inside the last seven days; a walker
 stale beyond that bar is the next agent's priority #1.
 
 | # | Flow | Persona | Canonical walker | Last verified | Outcome |
 |---|---|---|---|---|---|
-| 1 | FLOW-001 | P1 Solo Builder | `bash scripts/stranger-test.sh` (+ `bash scripts/stranger-test-invited.sh`) | 2026-06-12 | Playwright walk (browser build 1223): steps 1–4 green on the seeded prompt; gate-403 at step 5 per GLOBAL-027 (`feature_gated`). The SK-GATE-007 invited-browser CORS fix holds — `verify-flows.sh` preflight guard allows `x-invite-code` |
-| 2 | FLOW-002 | P3 Data-Curious Analyst | `bash scripts/stranger-test.sh` (+ invite variant) | 2026-06-12 | every static + CTA + draft + `solve.try_query_clicked` event-spy assertion green across the probed slugs; gate-403 at step 9 expected per GLOBAL-027 |
-| 3 | FLOW-003 | P3 / P4 | `bash scripts/stranger-test.sh` (+ invite variant) | 2026-06-12 | every static + CTA + draft + `/llms.txt` assertion green across all 6 vs slugs (incl. askyourdatabase); gate-403 at step 8 expected per GLOBAL-027 |
-| 4 | FLOW-004 | P1 invited | `bash scripts/flow-004-walk.sh` (+ `bash scripts/flow-004-seed-quality.sh`, SK-STRG-008) | 2026-06-12 | **passed_degraded — gate-bypass intact; first-value seed-quality LIFTED ~0.25 → ~0.75.** Control 403 ✓ + invite **bypassed the gate** ✓ (SK-GATE-007 intact) AND `/v1/ask` **HTTP 200** (the 2026-06-08 `sample_insert_failed` 500 stays cleared — SK-HDC-018 + SK-LLM-033 #352 deployed). Default-goal walk → first-value `degraded` (0/0). SK-STRG-008 re-measured: two same-set 4-goal runs both **`seeded_ok_ratio = 0.75`** (degrader = "a meal planner for couples"), up from 0.25 on 2026-06-10; a wider 8-goal run recorded **4 `provision_failed`** (HTTP 422 `infer_failed`) at ratio 0.75 (`…02-04-02Z.json`); across three 8-goal runs the wide ratio varied **0.6–0.8** (LLM variance). Seeding/building every goal is the open SK-LLM-033 lift |
+| 1 | FLOW-001 | P1 Solo Builder | `bash scripts/stranger-test.sh` | 2026-06-12 | Playwright walk (browser build 1223): steps 1–4 green on the seeded prompt. With the product public, step 5 (`/v1/ask`) reaches the open engine — first-query accuracy is the lever, not access |
+| 2 | FLOW-002 | P3 Data-Curious Analyst | `bash scripts/stranger-test.sh` | 2026-06-12 | every static + CTA + draft + `solve.try_query_clicked` event-spy assertion green across the probed slugs; step 9 (`/v1/ask`) reaches the open engine |
+| 3 | FLOW-003 | P3 / P4 | `bash scripts/stranger-test.sh` | 2026-06-12 | every static + CTA + draft + `/llms.txt` assertion green across all 6 vs slugs (incl. askyourdatabase); step 8 (`/v1/ask`) reaches the open engine |
+| 4 | FLOW-004 | — | _retired_ | — | **Retired — the pre-alpha gate this flow crossed has been removed; the product is fully public, so there is no invite walk.** First-value seed *quality* on `create` goals lives on as an engine-quality concern (SK-HDC-018 / SK-LLM-033) under priority #1 |
 | 5 | FLOW-005 | P2 Agent Builder | `bash scripts/flow-005-walk.sh` (hosted, [`SK-STRG-005`](../features/stranger-test/FEATURE.md)) + `bash scripts/flow-005-stdio-walk.sh` (local-stdio, [`SK-STRG-009`](../features/stranger-test/FEATURE.md)) | 2026-06-12 | **both transports green.** Hosted: 6/6 in <1s (RFC 9728 root + scoped discovery, RFC 8414 AS metadata, `initialize` + `tools/list` 401 with `WWW-Authenticate` challenge URL matching scoped discovery). Stdio: 16/16 in 0.2s (real `@nlqdb/mcp` binary `initialize` + `tools/list` over OS pipes; catalog = `nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`, no `create_database` tool). Authenticated tool invocation stays credentialed-mirror |
 
 The daily [`acquisition-health.yml`](../../.github/workflows/acquisition-health.yml)
@@ -107,10 +107,10 @@ founder-facing inbox.
 
 | Flow | Persona | Verification status | Last verified | Mirror impl % |
 |---|---|---|---|---|
-| FLOW-001 | P1 solo builder | **2026-06-12 re-walked** — Playwright `bash scripts/stranger-test.sh --prompts 1` (browser build 1223) steps 1–4 green on the seeded prompt; failed step 5 (gate 403 per GLOBAL-027, `feature_gated`). The SK-GATE-007 invited-browser CORS fix holds — `verify-flows.sh` preflight guard confirms `/v1/ask` `Access-Control-Allow-Headers` lists `x-invite-code`; GLOBAL-032 7-day freshness rule met | 2026-06-12 | 6/7 (86%) |
-| FLOW-002 | P3 analyst | **2026-06-12 re-walked** — `bash scripts/stranger-test.sh` baseline failed step 9 (gate 403 as documented per GLOBAL-027); every static + CTA + draft + sessionStorage-persisted `solve.try_query_clicked` event-spy assertion green | 2026-06-12 | 5/6 (83%) |
-| FLOW-003 | P3 / P4 | **2026-06-12 re-walked** — `bash scripts/stranger-test.sh` baseline failed step 8 (gate 403 as documented per GLOBAL-027); every static + CTA + draft + `/llms.txt` assertion green across all 6 vs slugs (supabase / vanna / mem0 / outerbase / wrenai / askyourdatabase) | 2026-06-12 | 5/5 (100%) |
-| FLOW-004 | P1 solo builder | **2026-06-12 re-walked passed_degraded — gate-bypass intact; first-value seed-quality LIFTED ~0.25 → ~0.75** — `bash scripts/flow-004-walk.sh`: control `403 feature_gated` ✓ + invite **bypassed the gate** ✓ (SK-GATE-007 intact) AND `/v1/ask` returned **HTTP 200**. The 2026-06-08 `sample_insert_failed` 500 stays cleared (SK-HDC-018 + SK-LLM-033 #352 deployed). Default-goal walk → first-value `degraded` (0/0). SK-STRG-008 re-measured: two same-set 4-goal runs both **`seeded_ok_ratio = 0.75`** (degrader = "a meal planner for couples"), up from 0.25 on 2026-06-10; a wider 8-goal run recorded **4 `provision_failed`** (HTTP 422 `infer_failed`) at ratio 0.75 (`…02-04-02Z.json`); across three 8-goal runs the wide ratio varied **0.6–0.8** (LLM variance). Funnel green to a 200; seeding/building every goal is the open SK-LLM-033 lift | 2026-06-12 | 10/10 (100%) |
+| FLOW-001 | P1 solo builder | **2026-06-12 re-walked** — Playwright `bash scripts/stranger-test.sh --prompts 1` (browser build 1223) steps 1–4 green on the seeded prompt. With the product public, step 5 (`/v1/ask`) reaches the open engine — first-query accuracy is the lever, not access; GLOBAL-032 7-day freshness rule met | 2026-06-12 | 6/7 (86%) |
+| FLOW-002 | P3 analyst | **2026-06-12 re-walked** — `bash scripts/stranger-test.sh` baseline; every static + CTA + draft + sessionStorage-persisted `solve.try_query_clicked` event-spy assertion green; step 9 (`/v1/ask`) reaches the open engine | 2026-06-12 | 5/6 (83%) |
+| FLOW-003 | P3 / P4 | **2026-06-12 re-walked** — `bash scripts/stranger-test.sh` baseline; every static + CTA + draft + `/llms.txt` assertion green across all 6 vs slugs (supabase / vanna / mem0 / outerbase / wrenai / askyourdatabase); step 8 (`/v1/ask`) reaches the open engine | 2026-06-12 | 5/5 (100%) |
+| FLOW-004 | — | **Retired** — the pre-alpha gate this flow crossed has been removed; the product is fully public, so there is no invite-valve to walk. First-value seed *quality* on `create` goals lives on as an engine-quality concern (SK-HDC-018 / SK-LLM-033) under priority #1 | — | _retired_ |
 | FLOW-005 | P2 agent builder | **2026-06-12 re-walked passed — both SK-MCP-001 transports** — hosted `bash scripts/flow-005-walk.sh` 6/6 in <1s (discovery + auth wall + challenge URL, SK-STRG-005); local-stdio `bash scripts/flow-005-stdio-walk.sh` 16/16 in 0.2s (real `@nlqdb/mcp` `initialize` + `tools/list` catalog = `nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`, no `create_database` tool, SK-STRG-009). Authenticated tool *invocation* still needs an `sk_mcp_*` key | 2026-06-12 | 7/8 (88%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
 | FLOW-007 | P1 / P3 | not yet attempted | — | 5/6 (83%) |
@@ -119,7 +119,7 @@ founder-facing inbox.
 **Verification states:**
 - `not yet attempted` — no agent has tried this flow.
 - `passed YYYY-MM-DD` — agent completed every step within pass criteria.
-- `passed_degraded` — FLOW-004 only: the gate-bypass invariant passed (control 403 + invite 200) but first-value is an un-seeded `create` DB (0 seeded rows). Walker exit code is still 0 (the gate-bypass claim held); the first-value verdict lives in `.state` ([`SK-STRG-007`](../features/stranger-test/decisions/SK-STRG-007-flow-004-degraded-create-state.md)).
+- `passed_degraded` — (was FLOW-004 only; retired with the pre-alpha gate.) Historically meant the gate-bypass invariant passed but first-value was an un-seeded `create` DB (0 seeded rows). No surviving flow uses this state.
 - `partial YYYY-MM-DD steps A,B,…` — agent walked a subset (typically the static / HTTP-observable steps via curl) and recorded results; remaining steps need a richer tool (Playwright, MCP inspector, OAuth account, email inbox). Not a pass.
 - `failed YYYY-MM-DD step N` — agent reached step N; assertion failed; outcome log carries the trace.
 - `blocked credentials` — agent could not complete because a credential it does not possess is required; founder has been asked.
@@ -164,10 +164,9 @@ The operator's email is in `CLAUDE.md` (`# userEmail`). For email
 inboxes / OAuth accounts / API keys you don't have, ask via the same
 PR conversation, like:
 
-> FLOW-004 needs an email inbox to receive the invite Resend sends.
-> Can you (a) forward `omer@salfati.group` waitlist invites to me
-> for the next 24h, (b) provide a test inbox alias, or (c) point me
-> at a Resend webhook capture I can read?
+> FLOW-007 needs a signed-in account to walk the anon-DB adoption step.
+> Can you (a) provide a throwaway GitHub/Google test account I can sign
+> in with, or (b) point me at a mock-IdP preview I can use?
 
 Never fabricate a "verified" outcome. `blocked credentials` is the
 honest state and is preferable to a falsified pass.
@@ -280,9 +279,10 @@ requires credentials, that itself is the failure.
 
 ### If blocked
 
-- Gate returns 403 on `/v1/ask` for anonymous mode → mark `failed step 5`
-  and triage; gate is supposed to honour anonymous-mode bypass
-  per [`GLOBAL-027`](../decisions/GLOBAL-027-pre-alpha-gate.md).
+- `/v1/ask` returns a `4xx`/`5xx` (other than the expected `401` on
+  session probes) for anonymous mode → mark `failed step 5` and triage.
+  With the product public there is no gate to bypass — a failure here is
+  an engine or anon-provisioning regression, not an access decision.
 - Free-chain LLM (Groq → Gemini) returns 5xx for the entire window →
   mark `blocked upstream` and re-run within 30 minutes; persistent
   failure escalates to founder.
@@ -298,7 +298,7 @@ requires credentials, that itself is the failure.
 | 2026-05-23 | composer-4 | partial steps 1–2 | — | `scripts/verify-flows.sh` re-run with the new egress-policy-aware `fetch_json` and FLOW-005 discovery block: hero placeholder still matches; FLOW-005 OAuth discovery surface now also passes (see FLOW-005 outcome log). Steps 3–9 unchanged. |
 | 2026-05-24 | claude-code | failed step 5 | 150 | First `tools/stranger-test/` (`SK-STRG-001`) Playwright walk against `https://nlqdb.com` — 3 prompts (`a meal planner for couples`, `side project to track my reading`, `a tiny CRM for my coaching practice`). Steps 1-4 ok on every run (hero placeholder matches, goal typed, Create-the-DB clicked). Step 5 fails on every run: `POST https://app.nlqdb.com/v1/ask` returns `403 feature_gated` (anon principal hits `gatePreAlpha`; SK-ANON-001 wants ephemeral Postgres but GLOBAL-027 / SK-GATE-004 blocks `/v1/ask` for any unbypassed principal). ttfvMs is time-to-403, not time-to-value — TTFV-as-spec is unmeasurable until §1.4 anon-bypass lands. Steps 6-8 skipped (blocked by step 5). 0 console errors beyond the expected `Failed to load resource: 403` for `/v1/ask`. Artifact: `tools/stranger-test/results/walk-<utc>.json`. |
 | 2026-05-24 | claude-code | unchanged — gate-403 reinterpreted | — | No new walk; the 2026-05-24 founder directive reinterprets this step-5 failure as *correct* gate behaviour (BIRD 0.318 / Spider null per `eval-baseline.ts`; GLOBAL-027 unambiguously requires the 403 until thresholds clear). Future runs against this URL without an invite code will keep failing identically — that's the gate working as specified, not a regression. The actionable verification is **FLOW-004** (invite-valve end-to-end: signup → Resend inbox → `?invite=` → 200 on `/v1/ask`), which has remained unattempted since SK-GATE-007 shipped 2026-05-21. Until either BIRD/Spider clear OR an agent walks FLOW-004 to a 200, this row stays the canonical FLOW-001 outcome. |
-| 2026-05-24 | claude-code | **passed (invite-bearing)** | 4146 | First-ever HTTP 200 on `/v1/ask` from a FLOW-001 walk: `bash scripts/stranger-test-invited.sh --flows flow-001 --prompts 1` against `https://app.nlqdb.com` ([`SK-STRG-004`](../features/stranger-test/decisions/SK-STRG-004-invite-bearing-composer.md)). Composer minted one SK-GATE-007 invite via mail.tm (11s email latency, code redacted via `redact()` helper), wiped the mode-600 sidecar, then drove the Playwright walker with `?invite=<c>` prepended to `/`. Step 9 (`captureInviteFromUrl`: localStorage set + URL-param stripped) **ok**; step 5 (`/v1/ask`) returned **HTTP 200** in 4146 ms — the gate honoured the code through the browser path AND `apps/web/src/lib/api.ts` forwarded `X-Invite-Code` correctly. Step 6 (trace toggle visible) failed — a separate UI regression the gate-403 was masking, filed for a follow-up PR. Artifact: `tools/stranger-test/results/walk-invited-2026-05-24T21-15-54Z.json`. Per-walk cost: 1/200 SK-GATE-007 weekly cap + 1 Resend send. |
+| 2026-05-24 | claude-code | **passed (invite-bearing)** | 4146 | First-ever HTTP 200 on `/v1/ask` from a FLOW-001 walk: `bash scripts/stranger-test-invited.sh --flows flow-001 --prompts 1` against `https://app.nlqdb.com` (SK-STRG-004 composer, since removed with the pre-alpha gate). Composer minted one SK-GATE-007 invite via mail.tm (11s email latency, code redacted via `redact()` helper), wiped the mode-600 sidecar, then drove the Playwright walker with `?invite=<c>` prepended to `/`. Step 9 (`captureInviteFromUrl`: localStorage set + URL-param stripped) **ok**; step 5 (`/v1/ask`) returned **HTTP 200** in 4146 ms — the gate honoured the code through the browser path AND `apps/web/src/lib/api.ts` forwarded `X-Invite-Code` correctly. Step 6 (trace toggle visible) failed — a separate UI regression the gate-403 was masking, filed for a follow-up PR. Artifact: `tools/stranger-test/results/walk-invited-2026-05-24T21-15-54Z.json`. Per-walk cost: 1/200 SK-GATE-007 weekly cap + 1 Resend send. |
 | 2026-06-04 | claude-code | failed step 5 (baseline) | 947 | GLOBAL-032 7-day-freshness refresh: `bash scripts/stranger-test.sh --prompts 2` against `https://nlqdb.com`. Steps 1-4 ok (hero placeholder `"an orders tracker"`; goal typed; Create-the-DB clicked). Step 5 fails identically across both prompts: `POST https://app.nlqdb.com/v1/ask` → `403 feature_gated` — engine-quality bottleneck per GLOBAL-027 (BIRD 0.318 / Spider null), gate doing exactly what it's specified to do. The 2026-05-24 invite-bearing walk (`stranger-test-invited.sh`) remains the high-water mark for HTTP 200 on this flow; this baseline row records the GLOBAL-032 freshness signal. Artifact: `tools/stranger-test/results/walk-2026-06-04T01-44-29Z.json`. |
 | 2026-06-05 | claude-code | failed step 5 (baseline) | 178 | GLOBAL-032 freshness re-walk: `bash scripts/stranger-test.sh --prompts 2` against `https://nlqdb.com`. Steps 1-4 ok; step 5 `403 feature_gated` per GLOBAL-027 (unchanged engine-quality bottleneck). |
 | 2026-06-05 | claude-code | **failed step 5 (invite-bearing — CORS regression, fixed this PR)** | — | `bash scripts/stranger-test-invited.sh --flows flow-001 --prompts 1`: invite minted via mail.tm (`flow-004-walk.sh` control-403 + invite-200 OK), `captureInviteFromUrl` step 9 ok (localStorage set, `?invite=` stripped), but step 5 failed — `waitForResponse` timed out at 60s because the cross-origin `POST https://app.nlqdb.com/v1/ask` **never left the browser**. Chromium console: `Access to fetch ... blocked by CORS policy: Request header field x-invite-code is not allowed by Access-Control-Allow-Headers in preflight response`. Confirmed against production: `curl -X OPTIONS https://app.nlqdb.com/v1/ask -H 'Origin: https://nlqdb.com' -H 'Access-Control-Request-Headers: content-type,x-invite-code'` → `access-control-allow-headers: Content-Type,Authorization,cf-turnstile-response,idempotency-key,traceparent,x-nlq-byollm-key` (**no `x-invite-code`**). Root cause: `apps/web/src/lib/api.ts` forwards `X-Invite-Code` cross-origin (`PUBLIC_API_BASE=https://app.nlqdb.com`) but `credentialedCors.allowHeaders` never listed it (git: `#262`/`#289`). Every invited *browser* was silently blocked; curl walkers never preflight, so this was invisible to `flow-004-walk.sh` + `verify-flows.sh`. **Fixed this PR:** `x-invite-code` added to `allowHeaders`; `test/cors.test.ts` pins the allow-list (code), `verify-flows.sh` adds a deployed-surface preflight guard (surface). The prior 2026-05-24 invite-bearing "passed" row is unreconcilable with the never-present allow-list entry and is treated as superseded (stale-evidence — the GLOBAL-029 failure mode). Re-walk to a green HTTP 200 expected once the fix deploys. Artifact: `tools/stranger-test/results/walk-invited-2026-06-05T01-44-02Z.json`. |
@@ -308,14 +308,13 @@ requires credentials, that itself is the failure.
 | 2026-06-10 | claude-code | failed step 5 (baseline) | 217 (p50) | GLOBAL-032 freshness re-walk: `bash scripts/stranger-test.sh --prompts 2` against `https://nlqdb.com` (Playwright `chromium` build 1223). Steps 1–4 ok on both seeded prompts (hero placeholder `"an orders tracker"`; goal typed; Create-the-DB clicked); step 5 fails per GLOBAL-027 — both prompts gate-blocked at `/v1/ask` (one explicit `403 gate=feature_gated`, one `no /v1/ask response` within 60s; both are gate outcomes, not a regression). `verify-flows.sh` preflight guard confirms `/v1/ask` `Access-Control-Allow-Headers` lists `x-invite-code` (EXIT=0). Artifact: `tools/stranger-test/results/walk-2026-06-10T01-38-39Z.json`. |
 | 2026-06-12 | claude-code | failed step 5 (baseline) | 206 (ttfv) | GLOBAL-032 freshness re-walk: `bash scripts/stranger-test.sh --prompts 1` against `https://nlqdb.com` (Playwright `chromium-headless-shell` build 1223). Steps 1–4 ok (hero placeholder `"an orders tracker"`; goal `"a meal planner for couples"` typed; Create-the-DB clicked); step 5 fails per GLOBAL-027 — `403 feature_gated` at `POST app.nlqdb.com/v1/ask`. The SK-GATE-007 CORS preflight fix holds (`verify-flows.sh` preflight guard green). Artifact: `tools/stranger-test/results/walk-2026-06-12T01-35-51Z.json`. |
 
-### Invite-bearing variant (SK-STRG-004)
+### Invite-bearing variant (retired)
 
-Pass criteria when `NLQDB_INVITE_CODE` is set (or `--invite-code <c>`):
-- Step 1 navigates to `/?invite=<c>` instead of `/`.
-- Step 9 asserts `localStorage["nlqdb_invite"] === code` AND `?invite=` stripped from the URL (proves `apps/web/src/lib/invite.ts::captureInviteFromUrl` ran).
-- Step 5's `/v1/ask` response must NOT be `feature_gated` (HTTP 200 = pass; non-200 non-`feature_gated` = downstream non-200, e.g. transient LLM 422). `feature_gated WITH invite` is one SK-GATE-007 regression signature. The *other* (caught 2026-06-05) is **no `/v1/ask` response at all + a Chromium console `x-invite-code is not allowed by Access-Control-Allow-Headers` CORS error** — the cross-origin preflight must list `x-invite-code` (`apps/api/src/index.ts` `credentialedCors.allowHeaders`, pinned by `test/cors.test.ts` and the `verify-flows.sh` deployed-surface preflight guard).
-
-Drive via `bash scripts/stranger-test-invited.sh --flows flow-001` — the composer mints one fresh invite via `flow-004-walk.sh` per run.
+This flow once had an invite-bearing variant (`scripts/stranger-test-invited.sh`,
+SK-STRG-004) that prepended `?invite=<code>` to carry a stranger past the
+pre-alpha gate. The gate has been removed and the product is public, so the
+variant and its walker no longer exist — the baseline `bash scripts/stranger-test.sh`
+walk reaches the open `/v1/ask` directly.
 
 ---
 
@@ -392,7 +391,7 @@ None.
 | 2026-05-23 | composer-2 | partial steps 1, 3, 4 | all 5 slugs | `scripts/verify-flows.sh` re-walk against `https://nlqdb.com`: every slug (`cheap-internal-dashboard`, `give-ai-agent-persistent-memory`, `skip-postgres-setup-side-project`, `natural-language-sql-without-training-data`, `ship-leaderboard-no-sql`) returns `307 → https://nlqdb.com/solve/<slug>/` and the final `200` body carries `"@type": "FAQPage"`, `"@type": "HowTo"`, and a "What nlqdb doesn't do here" section. Trailing-slash redirect is new evidence — see Triage. Steps 5–9 still need a browser; the prior step 8 failure stands. |
 | 2026-05-23 | composer-4 | partial steps 1, 3, 4 | all 5 slugs | Same re-walk after the FLOW-005 + egress-policy script additions landed: every slug still 307 → trailing-slash → 200 with FAQPage + HowTo JSON-LD and the honest-limits section. Steps 5–9 still need a browser; step 8 failure stands. |
 | 2026-05-24 | claude-code | failed step 9 | cheap-internal-dashboard, give-ai-agent-persistent-memory, skip-postgres-setup-side-project | `tools/stranger-test/` Playwright walk against `https://nlqdb.com`. Steps 1-8 pass on every walked slug — h1, FAQPage + HowTo JSON-LD, honest-limits section (≥2 `<li>`), Try-this-query CTA, `localStorage["nlqdb_draft"]` equals `SolveEntry.demoGoal`, navigation to `/app/new`, AND `solve.try_query_clicked` event observed via sessionStorage-persisted spy. Step 9 fails on every slug: `POST .../v1/ask` returns `403 feature_gated`. The prior 2026-05-23 "step 8 event-spy missing" finding is **corrected** by this run — the prior in-window spy got reset by the navigation; sessionStorage survives it and the event IS fired. Binding gap is now step 9 (gate) only. ttfvMs ~250 ms is time-to-gate-403, not time-to-table. Artifact: `tools/stranger-test/results/walk-<utc>.json`. |
-| 2026-05-24 | claude-code | **failed step 10 — regression discovered** | cheap-internal-dashboard | `bash scripts/stranger-test-invited.sh --flows flow-002 --prompts 1` against `https://app.nlqdb.com` ([`SK-STRG-004`](../features/stranger-test/decisions/SK-STRG-004-invite-bearing-composer.md)). Composer minted one fresh invite via mail.tm (12s email latency), drove the walker with `?invite=<c>` prepended to `/solve/cheap-internal-dashboard/`. **Walker uncovered a real regression**: step 10 (`captureInviteFromUrl: localStorage.nlqdb_invite set + ?invite= stripped`) failed — `stored=<null> urlClean=false`. Root cause: the `[slug].astro` script bundle did NOT import `captureInviteFromUrl`; the call lived only on `index.astro` and `app/new.astro`. A stranger landing on `/solve/<slug>?invite=<c>` lost the code at the first `location.assign("/app/new")` because that navigation dropped the query string. **Fix applied in this PR**: added `captureInviteFromUrl()` import + call to `apps/web/src/pages/solve/[slug].astro` (and `vs/[slug].astro`). Post-deploy re-walk pending. (Initial artifact JSON contained the raw `?invite=<code>` value in step-1 description — confirmed leak; fixed in round-2 review iteration via `redactInviteFromUrl()` helper applied in `flow-002.ts`/`flow-003.ts`; leaked code was burned by the agent post-discovery; local artifacts scrubbed.) |
+| 2026-05-24 | claude-code | **failed step 10 — regression discovered** | cheap-internal-dashboard | `bash scripts/stranger-test-invited.sh --flows flow-002 --prompts 1` against `https://app.nlqdb.com` (SK-STRG-004 composer, since removed with the pre-alpha gate). Composer minted one fresh invite via mail.tm (12s email latency), drove the walker with `?invite=<c>` prepended to `/solve/cheap-internal-dashboard/`. **Walker uncovered a real regression**: step 10 (`captureInviteFromUrl: localStorage.nlqdb_invite set + ?invite= stripped`) failed — `stored=<null> urlClean=false`. Root cause: the `[slug].astro` script bundle did NOT import `captureInviteFromUrl`; the call lived only on `index.astro` and `app/new.astro`. A stranger landing on `/solve/<slug>?invite=<c>` lost the code at the first `location.assign("/app/new")` because that navigation dropped the query string. **Fix applied in this PR**: added `captureInviteFromUrl()` import + call to `apps/web/src/pages/solve/[slug].astro` (and `vs/[slug].astro`). Post-deploy re-walk pending. (Initial artifact JSON contained the raw `?invite=<code>` value in step-1 description — confirmed leak; fixed in round-2 review iteration via `redactInviteFromUrl()` helper applied in `flow-002.ts`/`flow-003.ts`; leaked code was burned by the agent post-discovery; local artifacts scrubbed.) |
 | 2026-06-04 | claude-code | failed step 9 (baseline) | cheap-internal-dashboard, give-ai-agent-persistent-memory | GLOBAL-032 7-day-freshness refresh: `bash scripts/stranger-test.sh --prompts 2` against `https://nlqdb.com`. Steps 1-8 ok on both walked slugs — h1 rendered (`How do I build an internal dashboard without per-seat pricing?` / persistent-memory equivalent), FAQPage + HowTo JSON-LD, honest-limits ≥2 `<li>`, CTA clickable, `localStorage["nlqdb_draft"]` matches `SolveEntry.demoGoal`, navigation to `/app/new`, `solve.try_query_clicked` event observed via the sessionStorage spy. Step 9 fails identically per the GLOBAL-027 expectation: `POST /v1/ask` → `403 feature_gated`. Artifact: `tools/stranger-test/results/walk-2026-06-04T01-44-29Z.json`. |
 | 2026-05-30 | claude-code | candidate `/solve/no-migration-files-database` pulled after round-2 review | (none — slug never shipped) | Round-2 independent self-review (sub-agent, opus 4.7) on PR #288 found 1 round-2 CRITICAL (R2-C1) the round-1 review had missed: the candidate page's entire thesis (NL-driven `ALTER TABLE ADD COLUMN NULL` widening) is not shipped. Code-side proof: `apps/api/src/ask/sql-validate.ts:90` `LEADING_VERB_REJECT` rejects every DDL verb (`alter` / `drop` / `create` / `truncate` / `grant` / `revoke` / `vacuum`); `apps/api/src/ask/orchestrate.ts:156` returns `schema_unavailable` when `db.schemaHash` is null; `apps/api/src/ask/types.ts:62-64` says `DDL via /v1/ask` is rejected by the allowlist; [`schema-widening/FEATURE.md`](../features/schema-widening/FEATURE.md) Status `partial` (observed-fields collector + widening trigger post-Phase-0); `apps/api/src/run/orchestrate.ts:83` uses the same `validateSql` so the `runSql` escape hatch also rejects DDL; `SK-DB-008` ([`db-adapter/FEATURE.md:98`](../features/db-adapter/FEATURE.md)) describes widening as **planner-observed on a SELECT against a new field**, not as an English DDL verb. The page would have shipped a promise the product doesn't keep. Pull was the right call (revert vs. reframe: reframing into "what we're building" would have violated SK-SOLVE-002's "demo that works today" contract). Source-vetting on a candidate 7th Lemmy ICP source (probed `programming.dev` + `lemmy.world`; `programming.dev` Content-Signal `ai-train=no` respected, `lemmy.world` dominated by Reddit-RSS bot bridges) is recorded under the impl plan's Progress log row for future agents — the verification work was real even if no surface ships from this PR. |
 | 2026-06-05 | claude-code | failed step 9 (baseline) | cheap-internal-dashboard, give-ai-agent-persistent-memory | GLOBAL-032 freshness re-walk: `bash scripts/stranger-test.sh --prompts 2` against `https://nlqdb.com`. Steps 1-8 ok (h1, FAQPage + HowTo JSON-LD, honest-limits, CTA, `nlqdb_draft`, `/app/new`, `solve.try_query_clicked` sessionStorage spy); step 9 `403 feature_gated` per GLOBAL-027 (unchanged). `verify-flows.sh` solve-side assertions all green pre/post-edit. |
@@ -404,11 +403,11 @@ None.
 
 ### Triage
 
-The first failed assertion across every walked slug is the post-submit `/v1/ask` returning `403 feature_gated` — SK-ANON-001 vs GLOBAL-027 / SK-GATE-004. Static + CTA + draft-handoff + event-spy all confirmed healthy by the 2026-05-24 walker run; the earlier "event-spy missing" finding was a measurement artifact (spy reset by the post-CTA `location.assign`). Closing FLOW-002 requires the §1.4 anon-bypass slice from the impl plan or an invite-bearing walk variant (`tools/stranger-test/` open question).
+Through 2026-06-12, the dated rows above record the post-submit `/v1/ask` returning `403 feature_gated` because the pre-alpha gate was still in place. Static + CTA + draft-handoff + event-spy were all confirmed healthy by the 2026-05-24 walker run; the earlier "event-spy missing" finding was a measurement artifact (spy reset by the post-CTA `location.assign`). The gate has since been removed and the product is public — the post-submit `/v1/ask` now reaches the open engine, so the only remaining question for FLOW-002 is first-query accuracy.
 
 **Trailing-slash redirect (2026-05-23, composer-2):** the deployed CDN now serves `/solve/<slug>` only via `307 → /solve/<slug>/`. A curl probe without `-L` (or without the trailing slash) gets HTTP 307 + 0 bytes and looks like a regression; with `-L` (or against the trailing-slash URL) every slug returns 200. `scripts/verify-flows.sh` follows redirects and additionally records the redirect chain as informational, so future agents don't re-discover this on every PR. No content regression — the static AEO surface is intact.
 
-**Invite-bearing variant (SK-STRG-004):** when `NLQDB_INVITE_CODE` is set, the walker prepends `?invite=<c>` to the navigation URL and inserts step 10 (`captureInviteFromUrl: localStorage.nlqdb_invite set + ?invite= stripped`) right after step 1. The 2026-05-24 first run against the deployed surface caught a regression: `[slug].astro` did not call `captureInviteFromUrl()`, so the invite was lost at `location.assign("/app/new")`. **Fix landed in the same PR** (import + call added to `solve/[slug].astro` and `vs/[slug].astro`). Drive via `bash scripts/stranger-test-invited.sh --flows flow-002`.
+**Invite-bearing variant (retired):** this flow once had an invite-bearing variant (`scripts/stranger-test-invited.sh`, SK-STRG-004) that prepended `?invite=<c>` and asserted `captureInviteFromUrl` ran. Its 2026-05-24 first run caught a real regression (`[slug].astro` didn't call `captureInviteFromUrl()`, losing the invite at `location.assign("/app/new")`), which was fixed in that PR. The variant and its walker are now gone — the pre-alpha gate they exercised has been removed.
 
 ---
 
@@ -488,111 +487,30 @@ None.
 
 ---
 
-## FLOW-004 — Waitlist signup → invite email → gate bypass
+## FLOW-004 — Retired (pre-alpha gate removed)
 
-**Persona:** P1 Solo Builder (invited)
+**Persona:** — (was P1 Solo Builder, invited)
 **Mirror:** [`automated-icp-validation-plan.md §8 FLOW-004`](./automated-icp-validation-plan.md)
 
-### Source signal
+### Status
 
-This flow proves the [`SK-GATE-007`](../features/pre-alpha-gate/FEATURE.md)
-release-valve actually closes the loop: a stranger arrives, hits the
-gate, joins the waitlist, gets a code, and lands a working first
-query — all without any human in the loop.
+**Retired.** This flow walked a stranger from a waitlist signup, through
+an emailed invite code, across the pre-alpha gate to a first `/v1/ask`
+200. The pre-alpha gate has been **removed** and the product is fully
+public, so the invite valve, the `?invite=`/`X-Invite-Code` machinery,
+and the `scripts/flow-004-walk.sh` / `scripts/flow-004-seed-quality.sh`
+walkers no longer exist. There is nothing to walk here.
 
-### Required tools
+The one durable concern this flow surfaced — first-value seed *quality*
+on `create` goals (`seeded_ok_ratio ≈ 0.75` plus a `provision_failed`
+422 tail at last measurement) — lives on under priority #1 as an
+engine-quality lift ([`SK-HDC-018`](../features/hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md)
++ [`SK-LLM-033`](../features/llm-router/decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md)),
+exercised through the public `create` path rather than a gated invite walk.
 
-- `bash scripts/flow-004-walk.sh` — agent-runnable end-to-end walker
-  ([`SK-STRG-002`](../features/stranger-test/FEATURE.md)). Uses
-  `curl` + `jq` + `openssl` plus the free, no-key `api.mail.tm` REST
-  API to mint a throwaway inbox; no Playwright needed because every
-  step is HTTP-observable. Browser walks remain valid for verifying
-  the web-app capture of `?invite=` into `localStorage["nlqdb_invite"]`.
-- `bash scripts/flow-004-seed-quality.sh` — agent-on-demand first-value
-  seed-quality probe ([`SK-STRG-008`](../features/stranger-test/decisions/SK-STRG-008-flow-004-seed-quality-probe.md)).
-  Mints ONE invite via the walker above, then re-uses it across N `create`
-  asks (one fresh `anon_<uuid>` each) to report `seeded_ok_ratio` — the
-  measured fraction of goals that yield a *seeded* DB — plus a
-  `provision_failed` bucket for goals whose create 422'd (engine couldn't
-  build the DB at all; excluded from the ratio but reported separately so a
-  hard build failure stays visible). Not in the daily cron (1+N throwaway
-  DBs per run); run it to size the SK-LLM-033 lift.
-
-### Required credentials
-
-- **None for the script path.** mail.tm provides anonymous bearer-token
-  access to a fresh inbox per run (8 QPS limit, no signup, no key).
-  The walker consumes one entry of the 200/week SK-GATE-007 invite cap
-  and one Resend send (3k/mo free tier) per pass.
-
-### Walkthrough steps
-
-1. Mint a throwaway mail.tm inbox (script: `POST api.mail.tm/accounts`
-   + `POST /token`; no key, no signup).
-2. `POST $NLQDB_BASE_URL/v1/waitlist` with the mail.tm address
-   (`source: "flow-004-walker"`); assert `200 {received: true}`.
-3. Poll `GET api.mail.tm/messages` every `FLOW_004_POLL_INTERVAL_S`
-   (default 10s) up to `FLOW_004_TIMEOUT_S` (default 300s) for an email
-   whose `from.address` matches `/nlqdb/i`. Resend SLA is sub-30 s for
-   transactional; the live 2026-05-24 walks observed 10–13 s.
-4. Extract `?invite=<code>` from the message text+html. The code is
-   128-bit base64url per [`SK-GATE-007`](../features/pre-alpha-gate/FEATURE.md);
-   match `/invite=[A-Za-z0-9_-]{16,}/`.
-5. **Control probe** — `POST $NLQDB_BASE_URL/v1/ask` with
-   `Authorization: Bearer anon_<uuid>` and NO `X-Invite-Code`. Assert:
-   `error.status="feature_gated"`. If control is NOT blocked the gate
-   is open globally and the walk is `inconclusive` — the SK-GATE-007
-   invariant is unprovable on this run (BIRD/Spider crossed the
-   threshold; the walker must not silently green-light).
-6. **Invite probe** — `POST $NLQDB_BASE_URL/v1/ask` with the same
-   anon bearer AND `X-Invite-Code: <code>`. Assert: response is NOT
-   `feature_gated`. Pass when `HTTP 200`; `partial` when non-200 +
-   non-`feature_gated` (gate bypassed; downstream owns the failure,
-   e.g. a transient LLM 422 on schema-infer).
-7. (Optional browser variant — open `https://nlqdb.com/?invite=<code>`
-   in a Playwright context and assert `localStorage["nlqdb_invite"]`
-   is set; covers the web-app's `?invite=` URL-param capture path,
-   tracked as the "Playwright invite-bearing slice" open question
-   in `stranger-test/FEATURE.md`.)
-
-### Pass criteria
-
-- Step 5 control returns `error.status="feature_gated"` (proves the
-  gate is doing its job and the walker is exercising the bypass path,
-  not a globally-open gate).
-- Step 6 invite returns a response that is NOT `feature_gated`
-  (`HTTP 200` is the strict pass; non-200 non-`feature_gated` is
-  `partial`).
-- Step 3 polling completes inside `FLOW_004_TIMEOUT_S` (default 5 min).
-- **First-value quality (SK-STRG-006 / SK-STRG-007):** on the `HTTP 200`
-  the walker grades the invited stranger's first-value. A `create`
-  envelope is `ok` only when it carries a real `db` + `schemaName` AND
-  ≥ 1 seeded sample row; a `create` that returns **0 seeded rows** (the
-  SK-HDC-018 un-seeded fallback — the LLM's seed rows violated their own
-  schema) records `state:"passed_degraded"` so the dashboards can't show
-  a bare "passed" for an empty-DB stranger. The **process exit code stays
-  0** in both cases — the SK-STRG-002 control×invite gate-bypass invariant
-  still passed; the quality verdict lives in `.state` + `first_value_quality`,
-  not the exit code (composer/cron contract preserved). A 0-row *query*
-  stays `passed` (legitimate first-value on a fresh DB).
-
-### If blocked
-
-- No email arrives within `FLOW_004_TIMEOUT_S` → `blocked upstream`
-  (Resend outage, mail.tm spam-filter, or waitlist cap exhausted —
-  the Worker silently emits no code when the cap is hit and still
-  returns 200, so the symptom is identical). Triage by checking the
-  Resend dashboard + the `wl:invite-cap:*` KV counter.
-- Email arrives but no `invite=` token in the body → `failed step 4`;
-  the Resend template regressed (the buildInviteEmail string moved).
-- Control probe (step 5) returns `200` instead of `feature_gated` →
-  `inconclusive`; the gate is open globally (BIRD ≥ 0.65 AND Spider ≥
-  0.75 per `eval-baseline.ts`). This is GOOD news for the product, but
-  the walker can no longer prove SK-GATE-007 is honoured — switch the
-  next slice to direct middleware probes.
-- Control blocked but invite returns `feature_gated` → `failed step 6`;
-  the gate's `X-Invite-Code` honouring regressed. This is the real
-  SK-GATE-007 regression signature.
+The dated outcome log below is kept as an append-only historical record
+of when the gate existed; the runs and the gate-bypass invariant they
+proved are no longer reproducible.
 
 ### Outcome log
 

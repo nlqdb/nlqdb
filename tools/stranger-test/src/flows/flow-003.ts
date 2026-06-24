@@ -3,14 +3,7 @@
 
 import type { Browser } from "@playwright/test";
 
-import {
-  assertInviteCaptured,
-  openSession,
-  redactInviteFromUrl,
-  step,
-  withDeadline,
-  withInviteParam,
-} from "../browser.ts";
+import { openSession, step, withDeadline } from "../browser.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
 // Pinned literal mirror of `apps/web/src/data/competitors.ts` — drift fails
@@ -41,10 +34,9 @@ export async function walkFlow003(
   baseUrl: string,
   userAgent: string,
   browser: Browser,
-  inviteCode: string | null = null,
 ): Promise<FlowRun> {
   return withDeadline(`flow-003:${slug}`, WALK_DEADLINE_MS, () =>
-    doWalk(slug, baseUrl, userAgent, browser, inviteCode),
+    doWalk(slug, baseUrl, userAgent, browser),
   ).catch((e) => ({
     prompt: slug,
     state: "failed" as const,
@@ -64,7 +56,6 @@ async function doWalk(
   baseUrl: string,
   userAgent: string,
   browser: Browser,
-  inviteCode: string | null,
 ): Promise<FlowRun> {
   const meta = SLUG_META[slug];
   const session = await openSession({ baseUrl, userAgent, browser });
@@ -75,22 +66,14 @@ async function doWalk(
   let failedStep: number | null = null;
 
   try {
-    const url = `${baseUrl}${withInviteParam(`/vs/${slug}/`, inviteCode)}`;
-    // SK-GATE-007 redaction — see flow-002.ts for rationale.
-    const safeUrl = redactInviteFromUrl(url);
+    const url = `${baseUrl}/vs/${slug}/`;
     const navResp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     const navStatus = navResp?.status() ?? 0;
     if (navStatus !== 200) {
-      steps.push(step(1, `GET ${safeUrl} returns 200`, "fail", `status=${navStatus}`));
+      steps.push(step(1, `GET ${url} returns 200`, "fail", `status=${navStatus}`));
       failedStep = 1;
     } else {
-      steps.push(step(1, `GET ${safeUrl} returns 200`, "ok"));
-    }
-
-    if (inviteCode !== null && failedStep === null) {
-      const inviteStep = await assertInviteCaptured(page, 10, inviteCode);
-      steps.push(inviteStep);
-      if (inviteStep.status === "fail") failedStep = 10;
+      steps.push(step(1, `GET ${url} returns 200`, "ok"));
     }
 
     const h1Text = (
@@ -180,13 +163,12 @@ async function doWalk(
       await page.waitForURL(/\/app\/new\/?$/, { timeout: 10_000 }).catch(() => {});
       const currentUrl = page.url();
       const onAppNew = /\/app\/new\/?$/.test(currentUrl);
-      // Defence-in-depth — same rationale as flow-002.ts step 7.
       steps.push(
         step(
           7,
           "navigated to /app/new with form prefilled",
           onAppNew ? "ok" : "fail",
-          `url=${redactInviteFromUrl(currentUrl)}`,
+          `url=${currentUrl}`,
         ),
       );
       if (!onAppNew) failedStep = 7;
@@ -222,18 +204,14 @@ async function doWalk(
         ttfvMs = Date.now() - t0;
         const status = askResp.status();
         const body = await askResp.text().catch(() => "");
-        const gate = body.match(/"status":\s*"feature_gated"/);
-        const gateNote = gate
-          ? inviteCode === null
-            ? "feature_gated"
-            : "feature_gated WITH invite — SK-GATE-007 regression"
-          : "no";
         steps.push(
           step(
             8,
             "submit → /v1/ask 200 + table within 60 s",
             status === 200 ? "ok" : "fail",
-            `status=${status} ttfvMs=${ttfvMs} gate=${gateNote}`,
+            status === 200
+              ? `status=200 ttfvMs=${ttfvMs}`
+              : `status=${status} ttfvMs=${ttfvMs} body=${body.slice(0, 120)}`,
           ),
         );
         if (status !== 200) failedStep = 8;

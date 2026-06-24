@@ -3,14 +3,6 @@ title: SDK (TypeScript)
 description: "@nlqdb/sdk — install, authenticate, ask / runSql, and recover from errors on err.code."
 ---
 
-import { Aside } from "@astrojs/starlight/components";
-
-<Aside type="caution" title="Pre-alpha">
-  `ask` and `runSql` return `403 feature_gated` until the free LLM chain clears
-  BIRD ≥ 65% AND Spider ≥ 75%. Pass `inviteCode` to `createClient` to bypass with a
-  design-partner code. See [pre-alpha access](/pre-alpha/).
-</Aside>
-
 `@nlqdb/sdk` is the typed, zero-dependency HTTP client every other surface is built on
 (it is the **only** HTTP client — `GLOBAL-001`). It runs anywhere `fetch` exists:
 browsers, Node ≥ 18, Bun, Cloudflare Workers, Deno.
@@ -81,7 +73,6 @@ try {
     switch (err.code) {
       case "rate_limited":  // err.body.limit, err.body.count — wait and retry
       case "ambiguous_db":  // err.body.candidate_dbs — pick one, resend with dbId
-      case "feature_gated": // err.body.gate, err.body.waitlist_url — terminal
       case "network_error": // httpStatus === 0 — transport failure
     }
   }

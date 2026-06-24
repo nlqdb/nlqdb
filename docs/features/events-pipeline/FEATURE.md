@@ -77,7 +77,7 @@ when-to-load:
 
 ### SK-EVENTS-006 — Canonical event-name schema: `<domain>.<verb_noun>`, snake_dot, lowercase
 
-- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `billing.subscription_created`). Domains today: `user`, `billing`, `ask`, `feature`, `home`. **No `trial.*`** — the free tier IS the trial (`docs/architecture.md §5`). Sign-ins are not emitted — would dominate the LogSnag 2,500/mo quota with no founder signal. `user.waitlist_joined` IS routed to LogSnag (channel `users`, `notify: true`, persona tag); pre-alpha volume is 0/mo so the quota concern is theoretical — revisit if we cross ~500/mo.
+- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `billing.subscription_created`). Domains today: `user`, `billing`, `ask`, `feature`, `home`. **No `trial.*`** — the free tier IS the trial (`docs/architecture.md §5`). Sign-ins are not emitted — would dominate the LogSnag 2,500/mo quota with no founder signal. `user.waitlist_joined` IS routed to LogSnag (channel `users`, `notify: true`, persona tag); current volume is low so the quota concern is theoretical — revisit if we cross ~500/mo.
 - **Core value:** Free, Simple, Honest latency
 - **Why:** Consistent naming keeps LogSnag dashboards readable without a translation layer. The 2,500/mo quota is the hard constraint on what's worth routing; high-volume or noisy signals would burn it. Trial events would lie about a funnel that doesn't exist.
 - **Consequence in code:** Reviewers reject `userSignedIn` (camelCase), `signin` (no domain). New events firing more than once per user-lifecycle need an explicit cost analysis. Stripe deliberately omits `billing.subscription_updated` (`SK-STRIPE-005`); update is pure state sync. `billing.payment_failed` (`SK-STRIPE-011`) is `notify: true` but dedupes per `invoice.id`, so dunning retries collapse to one alert per invoice.
@@ -155,7 +155,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-021** — Each external system has one canonical owning module. *In this feature:* the events-worker owns `EVENTS_QUEUE` (consumer); `packages/events/` owns the producer types; Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/`, so `SK-EVENTS-009`'s sink imports `writeQueryLog` rather than POSTing (owner-to-owner deps are GLOBAL-021-allowed).
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this feature:* `SK-EVENTS-010` + `SK-EVENTS-011`.
-- **GLOBAL-027** — Pre-alpha gate. *In this feature:* the new `feature.requested.early_access` `ProductEvent` variant is dedup-keyed `(name, principalId, utcDay)` like its siblings and lands on the LogSnag `#north-star` channel beside the weekly eval summaries, so gate-block rate sits next to the eval delta.
 - **GLOBAL-034** — Analytics stack. *In this feature:* PostHog Cloud, when wired, is a second sink draining `EVENTS_QUEUE` server-side, no client SDK.
 
 ## Open questions / known unknowns

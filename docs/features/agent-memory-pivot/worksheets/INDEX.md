@@ -45,8 +45,8 @@ You are the 6×/day operating agent (`.claude/commands/daily.md`). When the
    performance untouched.
 
 **Hard rules inherited from the loop:** do **not** re-escalate the
-GLOBAL-027 gate thresholds; the billing lane stays frozen; the wedge feeds
-the **waitlist**, it does not open the product. Every slice is **additive**
+engine-quality (BIRD/Spider) thresholds; the billing lane stays frozen; the
+wedge feeds the **waitlist** as a demand signal. Every slice is **additive**
 until WS-13 — nothing irreversible ships before the founder-gated headline
 swap.
 
@@ -88,7 +88,7 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 - [x] WS-06 — capability matrix: **data ✅** (2026-06-20, run 27 — `apps/web/src/data/agentMemoryMatrix.ts` + test, branch `claude/vibrant-newton-s9e2r2`); **render ✅** (2026-06-20, run 28 — `apps/web/src/components/AgentMemoryMatrix.astro`, branch `claude/vibrant-newton-rldywf`)
 - [x] WS-07 — `/agents` landing ✅ (run 1 skeleton+hero 2026-06-20 #430; run 2 matrix+moat+FSL band 2026-06-20 branch `claude/vibrant-newton-23gz7c`; run 3 CTA+demand-signal 2026-06-20 branch `claude/vibrant-newton-r3gupc` — `agents.try_query_clicked` GLOBAL-024 + Topnav `Agents` link + P2-keyed `/vs` cross-link). Unblocks E-06.
 - [x] WS-08 — OG / social images ✅ (2026-06-21, run 42, branch `claude/vibrant-newton-bj8olc` — `scripts/og/gen-og.mjs` SVG→PNG generator + committed `public/og/{agents,vs-mem0,vs-zep,vs-letta,vs-langmem}.png`; `ogImage` set on `/agents` + the P2 memory `/vs` cluster; SK-PIVOT-012)
-- [x] WS-09 — blog + live demo ✅ 2/2 — blog draft ✅ (2026-06-20, run 30, branch `claude/vibrant-newton-wah6ow`); live `/agents` demo ✅ (2026-06-21, run 41, branch `claude/vibrant-newton-36il2y` — gate-honest fixture round-trip: `agent_memory` rows → English goal → compiled `GROUP BY` SQL → result table, server-rendered, `agents.demo_run_clicked` demand signal)
+- [x] WS-09 — blog + live demo ✅ 2/2 — blog draft ✅ (2026-06-20, run 30, branch `claude/vibrant-newton-wah6ow`); live `/agents` demo ✅ (2026-06-21, run 41, branch `claude/vibrant-newton-36il2y` — fixture round-trip: `agent_memory` rows → English goal → compiled `GROUP BY` SQL → result table, server-rendered, `agents.demo_run_clicked` demand signal)
 - [x] WS-10 — FSL self-host messaging (2026-06-20, run 28 — branch `claude/vibrant-newton-fh8mgw`; pricing self-host band + README "Models & plans" self-host line, FSL-accurate, no turnkey-image claim per WS-11 note)
 - [ ] WS-11 — self-host container (infra-gated)
 - [x] WS-12 — home reweight + demote personas: **band ✅** (2026-06-21, run 43, branch `claude/vibrant-newton-2ou3c2` — `AgentMemoryBand.astro` inserted after `<Hero />`: wedge statement + WS-06 matrix teaser + `/agents` CTA firing `home.agents_cta_clicked`; hero lede untouched, gated to WS-13); **demote P1/P3/P4 to "also works for…" fold ✅** (2026-06-21, run 44, branch `claude/vibrant-newton-nqwd8q` — `AlsoWorksFor.astro` quiet divider before `CodePanel` + `Replaces`, composition-only, nothing deleted, hero untouched). WS-12 closed.

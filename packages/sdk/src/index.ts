@@ -290,8 +290,6 @@ export type ApiErrorCode =
   // SK-DB-010: 400 returned when `engine` is set to a string that's
   // not in the allowed engine set on `/v1/ask` or `/v1/databases`.
   | "invalid_engine"
-  // `GLOBAL-027` / `SK-GATE-005` — 403 with `gate` + `waitlist_url`. Terminal.
-  | "feature_gated"
   // SK-SDK-011: the account-stored BYOLLM verbs — 400 on a mis-shaped
   // credential, 503 when the deployment can't seal keys (KEK unset).
   | "invalid_byollm_key"
@@ -315,16 +313,6 @@ export type CandidateDb = { id: string; slug: string };
 // Null when the pinned id couldn't be resolved (stale URL param).
 export type PinnedDb = { id: string; slug: string };
 
-// `GLOBAL-027` / `SK-GATE-005` — eval-baseline snapshot on every
-// `feature_gated` envelope. Null lane = "not yet measured".
-export type GateProgress = {
-  bird_accuracy: number | null;
-  spider_accuracy: number | null;
-  bird_target: number;
-  spider_target: number;
-  measured_at: string;
-};
-
 // JSON body the API returns on every non-2xx response; surfaced as `NlqdbApiError.body`.
 export type ApiErrorBody = {
   status: ApiErrorCode;
@@ -336,10 +324,6 @@ export type ApiErrorBody = {
   // SK-ASK-014 — only present on `clarify_required` envelopes.
   clarification?: "create_or_query_pinned";
   pinned_db?: PinnedDb | null;
-  // GLOBAL-027 — present only on `feature_gated` envelopes.
-  action?: string;
-  waitlist_url?: string;
-  gate?: GateProgress;
 };
 
 // Mirrors apps/api/src/chat/types.ts. Keep these definitions in sync
@@ -414,8 +398,6 @@ export type ByollmCredential = {
 type ClientOptionsBase = {
   baseUrl?: string;
   fetch?: FetchLike;
-  /** `GLOBAL-027` — sent as `X-Invite-Code`; bypasses the pre-alpha gate. */
-  inviteCode?: string;
   /**
    * `SK-PREMIUM-008` / `SK-LLM-021` — route `ask()` / `askStream()`
    * through your own provider key at 0% markup. Signed-in only: the API
@@ -770,8 +752,8 @@ export class NlqdbApiError extends Error {
  * for a browser cookie session; passing both throws. Omitting both leaves
  * calls anonymous. The session-only verbs (`setByollm` / `getByollmStatus` /
  * `clearByollm`) and the `byollm` option require `withCredentials: true` and
- * throw otherwise (`SK-SDK-010` / `SK-SDK-011`). Optional `baseUrl`, a custom
- * `fetch`, and an `inviteCode` (`GLOBAL-027`) round out the options.
+ * throw otherwise (`SK-SDK-010` / `SK-SDK-011`). Optional `baseUrl` and a custom
+ * `fetch` round out the options.
  */
 export function createClient(opts: ClientOptions = {}): NlqClient {
   // Defensive runtime guard — the union type above blocks this at
@@ -817,7 +799,6 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
   // mutation patterns.
   const baseHeaders: Record<string, string> = { "content-type": "application/json" };
   if (opts.apiKey) baseHeaders["authorization"] = `Bearer ${opts.apiKey}`;
-  if (opts.inviteCode) baseHeaders["x-invite-code"] = opts.inviteCode;
 
   async function call<T>(path: string, init: RequestInit): Promise<T> {
     // GLOBAL-022 + SK-SDK-006 — wire-layer retry loop. Up to 3

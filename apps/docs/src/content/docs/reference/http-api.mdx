@@ -3,16 +3,6 @@ title: HTTP API
 description: POST /v1/ask, POST /v1/run, idempotency, anonymous mode.
 ---
 
-import { Aside } from "@astrojs/starlight/components";
-
-<Aside type="caution" title="Pre-alpha">
-  The four "do-work" endpoints below (`POST /v1/ask`, `POST /v1/run`,
-  `POST /v1/databases`, `POST /v1/chat/messages`) return `403 feature_gated`
-  until the free LLM chain clears BIRD ≥ 65% AND Spider ≥ 75%. Listing
-  endpoints stay open. Design partners with an invite code add
-  `X-Invite-Code: <code>` to bypass — see [pre-alpha access](/pre-alpha/).
-</Aside>
-
 The auto-generated HTTP API reference (SK-DOCS-003 slice d) is blocked on
 `apps/api` emitting an OpenAPI schema. The contract this page will eventually
 render is canonical in [`packages/sdk/src/index.ts`](/reference/sdk/) — every
@@ -54,7 +44,6 @@ retryable and which need a human. `status` is the discriminant the SDK exposes a
 | `rate_limited` | 429 | Too many requests (`body.limit`, `body.count`). | Yes | Wait, honor `Retry-After`, then retry. |
 | `unauthorized` | 401 | Missing, invalid, or expired credential. | No | Sign in again, or mint a new key. |
 | `forbidden` | 403 | A read-only key tried to write via `/v1/run` (`SK-APIKEYS-003`). | No | Use a write-capable key. |
-| `feature_gated` | 403 | Pre-alpha gate (`body.gate`, `body.waitlist_url`). | No | Join the waitlist or send `X-Invite-Code`. Terminal. |
 | `ambiguous_db` | 409 | 2+ databases match; confidence below the floor. | No | Pick from `body.candidate_dbs`, resend with `dbId`. |
 | `clarify_required` | 409 | Pinned `dbId` but the goal looks like a create (`body.pinned_db`). | No | Resend without `dbId` to create, or cancel. |
 | `invalid_engine` | 400 | `engine` isn't in the allowed set. | No | Use `postgres` or `clickhouse`. |
@@ -84,6 +73,5 @@ Some codes carry extra fields an agent should branch on:
 
 - `candidate_dbs` — on `ambiguous_db`: `[{ id, slug }]` to render a picker.
 - `pinned_db` — on `clarify_required`: the DB that was pinned when the goal looked like a create.
-- `gate` + `waitlist_url` — on `feature_gated`: the live BIRD/Spider lane snapshot and the join link.
 - `requires_confirm` + `diff` — on a write preview (`dryRun` / destructive op): apply only after the human approves the diff (`GLOBAL-023`).
 - `limit` + `count` — on `rate_limited`: the window cap and how many you've used.

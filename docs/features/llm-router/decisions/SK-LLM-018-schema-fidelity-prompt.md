@@ -19,7 +19,7 @@
 - **Why:** Free-chain BIRD-dev EX sits at **0.318** vs the
   [`GLOBAL-025`](../../../decisions/GLOBAL-025-north-star.md) Phase 2 floor
   **0.65** (see
-  [`apps/api/src/gate/eval-baseline.ts`](../../../../apps/api/src/gate/eval-baseline.ts) +
+  [`tools/eval/baseline-2026-06-15.json`](../../../../tools/eval/baseline-2026-06-15.json) +
   [`SK-QUAL-005`](../../quality-eval/FEATURE.md#sk-qual-005)), and the
   acquisition tracker's 2026-05-24 founder directive names BIRD-gap
   closure as priority #1 (`automated-icp-validation-plan.md`

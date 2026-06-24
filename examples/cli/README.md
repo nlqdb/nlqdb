@@ -2,8 +2,6 @@
 
 No frontend at all. Four commands ship a working data tool.
 
-> **Pre-alpha:** the API is gated today ([`GLOBAL-027`](../../docs/decisions/GLOBAL-027-pre-alpha-gate.md)). If you have an invite code, set it once with `export NLQDB_INVITE_CODE=<code>` (or pass `--invite-code <code>` per call) before running anything below — otherwise commands return a one-line `feature_gated` error with the waitlist URL. See [`docs.nlqdb.com/pre-alpha/`](https://docs.nlqdb.com/pre-alpha/).
-
 ```bash
 nlq login                                              # one click, browser, done
 nlq new "an orders tracker — customer, drink, total"

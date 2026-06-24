@@ -21,8 +21,7 @@ export default defineConfig({
           projectName: "nlqdb",
           description:
             "A database you talk to. Create one in plain English; query it in English via the <nlq-data> HTML element, the @nlqdb/sdk client, the nlq CLI, an MCP server (mcp.nlqdb.com), or POST /v1/ask. The schema, engine, indexes, and backups stay invisible unless you ask to see them.",
-          details:
-            "Pre-alpha: the do-work endpoints return 403 feature_gated until the free LLM chain clears BIRD >= 65% and Spider >= 75% (see /pre-alpha/). Free chain forever, bring-your-own-LLM at 0% markup.",
+          details: "Free chain forever, bring-your-own-LLM at 0% markup.",
           optionalLinks: [
             { label: "Marketing site", url: "https://nlqdb.com" },
             { label: "GitHub", url: "https://github.com/nlqdb/nlqdb" },
@@ -30,12 +29,6 @@ export default defineConfig({
         }),
       ],
       sidebar: [
-        // GLOBAL-027 — pinned first so visitors see the gate state before they paste a snippet.
-        {
-          label: "Pre-alpha access",
-          link: "/pre-alpha/",
-          badge: { text: "gated", variant: "caution" },
-        },
         { label: "Tutorials", items: [{ autogenerate: { directory: "tutorials" } }] },
         { label: "SDK", link: "/sdk/" },
         { label: "Framework wrappers", link: "/frameworks/" },

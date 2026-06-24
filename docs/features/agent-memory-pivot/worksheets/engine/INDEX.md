@@ -61,8 +61,8 @@ north-star (data-engine pillar) to the wedge.
   / generic flows are untouched (dual front door from GLOBAL-036).
 - **No rebuilding of the typed-plan pipeline.** That's the moat as-shipped;
   the memory track *uses* it, doesn't replace it.
-- **Gate (GLOBAL-027) is not touched.** The engine slices change *what's
-  behind* the gate; the gate itself stays. Free-chain BIRD/Spider lanes
+- **Engine-quality lanes are not re-escalated.** The engine slices change
+  *what's behind* the API; free-chain BIRD/Spider lanes
   are unaffected by adding tables (the existing `db.create` eval covers
   the schema-inference path, not the preset path — preset path is a
   separate ablation, owned by E-01).

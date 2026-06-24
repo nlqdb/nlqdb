@@ -30,7 +30,7 @@ Parent GLOBAL:
 - **Why:** `SK-LLM-021` wired the header on `/v1/ask` but left every code
   surface (`GLOBAL-001`: the SDK is the only HTTP client) unable to set it
   without hand-rolling fetch — the exact gap tracked in
-  `premium-tier/FEATURE.md`. A client-level option (mirroring `inviteCode`)
+  `premium-tier/FEATURE.md`. A client-level option (mirroring `apiKey`)
   is the one-way-to-do-it (`GLOBAL-017`) ergonomics for "I am a BYOLLM
   user, route my asks through my key," and putting the validation +
   signed-in guard in the SDK means the contract is enforced once instead
@@ -47,9 +47,9 @@ Parent GLOBAL:
 - **Alternatives rejected:**
   - Per-request `byollm` on `ask(req, opts)` — the key is a persistent
     credential, not a per-call routing hint; a client-level option avoids
-    threading the secret through every call site and matches `inviteCode`.
+    threading the secret through every call site and matches `apiKey`.
     A per-call override can be added later without breaking this shape.
-  - Attach the header to every request (like `inviteCode`) — needlessly
+  - Attach the header to every request (like `apiKey`) — needlessly
     ships a raw provider key to endpoints that never dispatch an LLM call;
     minimising the secret's blast radius is the safer default.
   - Accept the pre-joined `<provider>:<model>:<key>` string — pushes the

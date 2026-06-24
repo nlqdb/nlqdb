@@ -311,10 +311,8 @@ index in [`docs/decisions.md`](../../decisions.md)).
 - **GLOBAL-019** — Free + Open Source core.
   - *In this feature:* the anti-VC angle leans on it; its stale "Apache-2.0 today" wording (and `architecture.md §0`) is corrected to FSL-1.1→Apache in this PR. The FSL-accurate self-host *marketing copy* is WS-10.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this feature:* every new wedge CTA (matrix "try this", `/agents` waitlist) emits the typed event; the waitlist is the conversion, not the gated product.
+  - *In this feature:* every new wedge CTA (matrix "try this", `/agents` waitlist) emits the typed event; the waitlist is a conversion signal alongside the open product.
 - **GLOBAL-025** — North-star KPIs (advance ≥ 1, degrade 0).
-- **GLOBAL-027** — Pre-alpha gate.
-  - *In this feature:* messaging ships; the product stays gated; the wedge feeds the waitlist; thresholds are **not** re-escalated.
 - **GLOBAL-033** — Resolution defaults.
 - **GLOBAL-034** — Analytics stack.
 
@@ -323,10 +321,10 @@ index in [`docs/decisions.md`](../../decisions.md)).
 Advances **onboarding** (a sharper, single-story wedge lifts landing →
 waitlist conversion — the funnel lane the scorecard currently calls the worst
 number) and **UX** (a clearer category story). It does **not** touch
-**engine quality** or **performance** — every slice is copy/data/page work
-behind the unchanged pre-alpha gate, so the BIRD/Spider lanes and the
+**engine quality** or **performance** — every slice is copy/data/page work,
+so the BIRD/Spider lanes and the
 latency budgets are unaffected by construction. The headline reposition is
-gated precisely so an irreversible brand change cannot degrade the generalist
+staged precisely so an irreversible brand change cannot degrade the generalist
 funnel before the wedge content proves itself.
 
 ## Open questions / known unknowns

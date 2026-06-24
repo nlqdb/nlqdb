@@ -150,15 +150,8 @@ declare global {
       // so synthetic events can be POSTed against /v1/stripe/webhook
       // without configuring STRIPE_WEBHOOK_SECRET. The dispatcher,
       // idempotency insert, and downstream emit all run real.
-      //
-      // GATE_OPEN=1: bypasses the GLOBAL-027 pre-alpha gate entirely
-      // so the E2E staging environment can exercise the full create→
-      // write→delete flow without waiting for eval thresholds to clear.
-      // MUST remain unset in production — injected via `--var` in the
-      // E2E staging workflow only.
       MOCK_IDP?: string;
       MOCK_STRIPE?: string;
-      GATE_OPEN?: string;
 
       // MEMORY_PRESET=1: enables the opt-in `agent_memory_v1` schema
       // preset on `db.create` (E-01 / SK-HDC-020 in

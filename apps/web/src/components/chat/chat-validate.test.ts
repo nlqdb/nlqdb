@@ -176,57 +176,6 @@ describe("isValidMessage — other kinds", () => {
     expect(isValidMessage(withState({ kind: "error" }))).toBe(false);
   });
 
-  test("accepts feature_gated with message, waitlistUrl and numeric gate targets", () => {
-    expect(
-      isValidMessage(
-        withState({
-          kind: "feature_gated",
-          message: "pre-alpha",
-          waitlistUrl: "https://nlqdb.com/#waitlist",
-          gate: {
-            bird_accuracy: 0.318,
-            spider_accuracy: null,
-            bird_target: 0.65,
-            spider_target: 0.75,
-            measured_at: "2026-05-18T22:42:29.917Z",
-          },
-        }),
-      ),
-    ).toBe(true);
-  });
-
-  test("rejects feature_gated missing gate targets", () => {
-    expect(
-      isValidMessage(
-        withState({
-          kind: "feature_gated",
-          message: "x",
-          waitlistUrl: "https://nlqdb.com/#waitlist",
-          gate: { bird_accuracy: null, spider_accuracy: null },
-        }),
-      ),
-    ).toBe(false);
-  });
-
-  test("rejects feature_gated with non-numeric accuracy that would crash .toFixed", () => {
-    expect(
-      isValidMessage(
-        withState({
-          kind: "feature_gated",
-          message: "x",
-          waitlistUrl: "https://nlqdb.com/#waitlist",
-          gate: {
-            bird_accuracy: "broken",
-            spider_accuracy: null,
-            bird_target: 0.65,
-            spider_target: 0.75,
-            measured_at: "2026-05-18T22:42:29.917Z",
-          },
-        }),
-      ),
-    ).toBe(false);
-  });
-
   test("rejects unknown kind so a future state isn't silently kept", () => {
     expect(isValidMessage(withState({ kind: "future-state" }))).toBe(false);
   });

@@ -70,7 +70,7 @@ func doRun(ctx context.Context, cmd *cobra.Command, g *globalFlags, dbID, sql st
 		printErr(cmd, "auth: %v", err)
 		return err
 	}
-	client := api.New(g.apiURL, id).WithInviteCode(g.inviteCode)
+	client := api.New(g.apiURL, id)
 	resp, err := client.Run(ctx, api.RunRequest{DB: dbID, SQL: sql})
 	if err != nil {
 		return renderRunError(cmd, err)

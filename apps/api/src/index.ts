@@ -5,7 +5,6 @@ import {
   createTinybirdAdapter,
   type Engine,
 } from "@nlqdb/db";
-import { makeEmailSender } from "@nlqdb/email";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import {
   isValidSpanId,
@@ -72,7 +71,6 @@ import { AGENT_MEMORY_V1_VERSION, type MemoryPreset } from "./db-create/presets/
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import { recordEvalReport, recordWishlist } from "./events-feature.ts";
-import { makeGatePreAlpha } from "./gate/middleware.ts";
 import {
   isAllowedEngine,
   MAX_GOAL_LENGTH,
@@ -180,10 +178,6 @@ const credentialedCors = cors({
     // SK-LLM-021 — the signed-in-only BYOLLM lane is cookie-session, so it
     // rides this credentialed handler; without it browsers abort the preflight.
     "x-nlq-byollm-key",
-    // SK-GATE-007 — the web client forwards the invite code as `X-Invite-Code`
-    // on the cross-origin `/v1/ask` POST; without it the browser preflight
-    // aborts and the invited-stranger first-value path silently 403s.
-    "x-invite-code",
   ],
   allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
   maxAge: 86400,
@@ -269,12 +263,6 @@ const requirePrincipal = makeRequirePrincipal({
   lookupSkKey: (key) => lookupSkKeyImpl(env.DB, apiKeyHmacSecret(env), key),
   bumpKeyLastUsed: (keyId) => bumpKeyLastUsedImpl(env.DB, keyId),
 });
-
-// `GLOBAL-027` pre-alpha gate. Mounted on the four "do-work" routes
-// only (`SK-GATE-004`): `POST /v1/ask`, `POST /v1/run`,
-// `POST /v1/databases`, `POST /v1/chat/messages`. Listings are
-// untouched.
-const gatePreAlpha = makeGatePreAlpha({ kv: env.KV, eventsQueue: env.EVENTS_QUEUE });
 
 // Per-request telemetry install + flush. setupTelemetry is idempotent
 // — first call per isolate wins; later calls return the cached handle.
@@ -522,7 +510,7 @@ if (env.MOCK_IDP === "1") {
 // internal JWT here (docs/architecture.md §4.4) and verify it on the receiving
 // end. In-isolate today, so signing would be cargo-culting (see
 // commit 1a body for the rationale).
-app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
+app.post("/v1/ask", requirePrincipal, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.ask", async (span) => {
     const principal = c.var.principal as Principal;
@@ -1253,7 +1241,7 @@ app.use("/v1/run", (c, next) => {
   return handler(c, next);
 });
 
-app.post("/v1/run", requirePrincipal, gatePreAlpha, async (c) => {
+app.post("/v1/run", requirePrincipal, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.run", async (span) => {
     try {
@@ -1410,7 +1398,7 @@ app.post("/v1/run", requirePrincipal, gatePreAlpha, async (c) => {
 // stays the read verb. Idempotency-Key is auto-keyed by the SDK on
 // retries (SK-SDK-006) and accepted here, same posture as `/v1/run`
 // (the general dedupe middleware is the idempotency feature's open work).
-app.post("/v1/memory/remember", requirePrincipal, gatePreAlpha, async (c) => {
+app.post("/v1/memory/remember", requirePrincipal, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.memory.remember.request", async (span) => {
     try {
@@ -1525,10 +1513,6 @@ app.post("/v1/waitlist", async (c) => {
       db: c.env.DB,
       kv: c.env.KV,
       events: buildEventEmitter(c.env.EVENTS_QUEUE),
-      emailSender: makeEmailSender({
-        apiKey: c.env.RESEND_API_KEY,
-        from: c.env.RESEND_FROM ?? "nlqdb <hello@nlqdb.com>",
-      }),
     },
     body.body.email,
     c.req.header("cf-connecting-ip") ?? null,
@@ -2354,7 +2338,7 @@ app.get("/v1/databases", requirePrincipal, async (c) => {
 // do not yet pay through that same gate. The gap is bounded by
 // `requireSession` (no anon traffic) and tenant scope (a user can
 // only thrash their own DBs), so it's accepted for Phase 1.
-app.post("/v1/databases", requireSession, gatePreAlpha, async (c) => {
+app.post("/v1/databases", requireSession, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.databases.create", async (span) => {
     const session = c.var.session;
@@ -2581,7 +2565,7 @@ app.delete("/v1/databases/:id", requireSession, async (c) => {
   });
 });
 
-app.post("/v1/chat/messages", requireSession, gatePreAlpha, async (c) => {
+app.post("/v1/chat/messages", requireSession, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.chat.turn", async (span) => {
     const session = c.var.session;
