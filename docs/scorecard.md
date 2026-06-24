@@ -98,6 +98,24 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   onboarding / distribution; **none degraded** — additive structured data + one
   small nav, no engine/funnel/ops file touched; 130 web tests + astro-check 0
   errors + biome clean.
+- 2026-06-23 (run 77) — **AEO: `/agents` (the lead-wedge front door) now emits
+  `FAQPage` structured data — it was the only key landing page without it.**
+  Engine offline-retrieval lane was in an open PR (#494) and canonical BIRD/Spider
+  dispatch-gated (< 7d), so this run took the non-colliding **AEO/structured-data**
+  lever. Every `/vs` (17) and `/solve` (9) page emits `FAQPage` JSON-LD via the
+  shared template; the hand-authored `/agents` page — dense with question-shaped
+  copy (the "what is analytical agent memory?" direct-answer block, the
+  retrieval-vs-analytics split, the trust-boundary moat, the FSL/pricing band) —
+  emitted only the sitewide `SoftwareApplication` block, invisible to answer
+  engines / Google FAQ rich results. Added a visible "Questions agent builders
+  ask" `<dl>` (6 Q&As) + matching `FAQPage` JSON-LD, both derived from one typed
+  `faqs` array (visible copy + schema can't drift; Google requires the answer
+  on-page). Every answer restates a claim already visible elsewhere on the page —
+  no new claim (SK-PIVOT-004 honest). **Δ:** `/agents` `FAQPage` blocks **0 → 1**
+  (6 Q&As); site `FAQPage`-emitting pages **24 → 25** (verified in `dist/`).
+  **KPI:** onboarding / distribution; **none degraded** — additive static
+  JSON-LD + copy on one page, no engine/funnel/ops file touched; astro-check 0
+  errors, 130 web tests, biome clean.
 - 2026-06-23 (run 76) — **Engine: a second DAIL-SQL pool-curation fix —
   persona-bench retrieval precision@1 19/23 → 20/23 (q20).** Engine canonical
   lane dispatch-gated (BIRD 06-19 / Spider 06-17 both < 7d), so the lever was the
@@ -138,42 +156,18 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   Rephrasing the demo to "how many different cities" landed q21 and held held-out
   14/14 (probe still says "distinct" ⇒ generalisation). Prod byte-identical;
   baselines untouched. (Full detail: `quality-score-verification-log.md`.)
-- 2026-06-23 (run 73) — **Doc-hygiene (D4 + D5 + P3): net-shrank the largest
-  non-exempt doc, `docs/runbook.md` 47,451 → 46,685 B (−766 B), prod
-  byte-identical.** Engine lane dispatch-gated (BIRD 06-19 / Spider 06-17 both
-  < 7d, §5) and the AEO/distribution comparison-pages lever was already in
-  flight (PR #489, `/vs/metabase`), so the non-colliding lever was D5 dedup.
-  Trimmed two passages whose canonical home is elsewhere (P3, one home): §6
-  `apps/api` slice-by-slice build narration (every slice already tracked
-  row-by-row with PR numbers in the §7 checklist) → pointer; §10 personas
-  meta-prose explaining *why* personas moved to `personas.md` → kept the
-  pointer + cross-ref resolution + P-numbering note, dropped the
-  "superset/duplicated" justification. **Δ:** runbook.md −766 B (D4: edits to a
-  > 20 KB file must net-shrink). **KPI:** onboarding (operability docs stay
-  load-bearing, easier to scan); **none degraded** — docs-only, no
-  engine/funnel/ops/code file touched.
-- 2026-06-23 (run 72) — **Distribution: shipped `/vs/metabase` (Metabase
-  Metabot), the strongest OSS-distribution moat in the P3 BI cluster.** AEO lever
-  (engine dispatch-gated); facts web-verified 2026-06-23. Honest wedge: a
-  destination self-hostable BI/dashboard app (read-only analytics over an
-  existing warehouse) vs. nlqdb owning the DB (provision + NL writes with
-  diff-preview) and embedding an answer element / agent API; dashboards + OSS
-  self-host + many-source read conceded `them: shipped`. **Δ:** comparison pages
-  **16 → 17**, llms.txt/sitemap +1. None degraded — one data object + doc edits.
-- 2026-06-23 (runs 68–70) — **Engine-instrument + AEO/SEO-hygiene + distribution
-  wave** (all merged; BIRD 06-19 / Spider 06-17 untouched). **Run 70:** `/vs/basedash`
-  (comparison pages 15 → 16); web-verification corrected the stale P4 "admin UI"
-  read → AI-native BI platform. **Run 69:** `trailingSlash: "always"` + path-normalise
-  across 4 sites so every crawler-advertised URL is the 200, not a 307 (sitemap
-  200/307 **1/27 → 28/0**). **Run 68:** persona-bench grown 20 → 23 (SK-QUAL-018,
-  gold-exec 23/23); the 3 batch-3 shapes are selector-side misses (precision@1
-  18/20 → 18/23). None degraded; fixture/config/data only.
-- 2026-06-23 (run 67) — **Distribution: shipped `/vs/retool`, the internal-tools
-  incumbent.** AEO lever (engine dispatch-gated). Honest wedge: Retool is a
-  destination low-code **builder** over an existing DB; nlqdb provisions/owns the
-  DB and embeds one element / agent API. Comparison pages **14 → 15**,
-  llms.txt/sitemap +1; facts web-verified. None degraded — one data object +
-  FEATURE status.
+- 2026-06-23 (runs 67–73) — **Distribution + doc-hygiene wave (all merged;
+  engine dispatch-gated, BIRD 06-19 / Spider 06-17 untouched; none degraded).**
+  **Distribution (AEO):** `/vs/retool` (run 67, internal-tools builder),
+  `/vs/basedash` (run 70 — repositioned to AI-native BI, stale P4 row corrected),
+  `/vs/metabase` (run 72 — Metabase Metabot, P3 OSS-BI moat), comparison pages
+  **14 → 17**, facts web-verified, honest builder/BI-over-existing-DB-vs-own-the-DB
+  wedge each. **Engine instrument (run 68):** persona-bench 20 → 23, gold-exec
+  23/23 (SK-QUAL-018; 3 new SK-QUAL-014 shapes, selector-side misses, baselines
+  byte-untouched). **AEO hygiene (run 69):** `trailingSlash: "always"` + canonical/
+  og:url/sitemap/llms.txt normalize → sitemap 200/307 **1/27 → 28/0**.
+  **Doc-hygiene (run 73, D4+D5+P3):** `runbook.md` −766 B + `competitors.md`
+  −40 B (run 70 rider), both net-shrunk under D4, prod byte-identical.
 - 2026-06-23 (runs 62, 65, 66) — **Doc-hygiene wave (D4 + D5 + P3), prod
   byte-identical.** Run 66 net-shrank the largest D4 violation,
   `hosted-db-create/FEATURE.md` 35,376 → 34,099 B (−1,277 B): D5

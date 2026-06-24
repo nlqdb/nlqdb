@@ -57,55 +57,54 @@ decide a page is authoritative rather than orphaned.
 **Why this advances the north-star:** onboarding / distribution — a concrete
 AEO/SEO lesson with a measured before/after (0 → 24 pages), one nlqdb mention.
 No funnel/ops KPI degrades (additive static structured data).
-## 2026-06-23 (run 76) — dev.to / lobste.rs: "I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English"
+## 2026-06-23 (run 77) — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to"
 
-**Where:** dev.to + lobste.rs (`ai` / `databases` / `llm`); build-in-public.
-The stronger successor to the run-74 post — same lesson, now with **two**
-independent instances a week apart, which turns "a cute one-off" into "a class of
-bug worth auditing your whole pool for." nlqdb mentioned once.
+**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, an
+AEO/structured-data lesson. The hook: the page you care about most is the
+easiest to leave un-instrumented, because it's bespoke. nlqdb mentioned once.
 
-**Title:** I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English
+**Title:** We put FAQ schema on every comparison page — and forgot the page they all point to
 
 **Body:**
 
-> We pick few-shot examples for our NL→SQL engine by matching the question's
-> *masked skeleton* — DAIL-SQL style: blank out the literals and table/column
-> names, compare what's left. The idea is that an example over `employees` can
-> teach a query over `students` because, masked, they read the same.
+> We generate our comparison and "solve" pages from data — one TypeScript
+> object per competitor, one template. The template emits `FAQPage` JSON-LD for
+> every page, so all ~26 of them are eligible for FAQ rich results and are
+> trivially extractable by answer engines (ChatGPT, Perplexity, Google's AI
+> Overviews read structured data first, prose second).
 >
-> Last week one of our benchmark questions — *"how many **different** referral
-> sources?"*, a textbook `COUNT(DISTINCT)` — kept retrieving the plain
-> `GROUP BY COUNT` example. The cause was embarrassing: my `COUNT(DISTINCT)`
-> example *question* read *"how many **distinct** cities"*. I'd written the SQL
-> keyword into the English prompt. Users say "different" or "unique", almost never
-> "distinct", so the example shared no distinguishing word with the questions it
-> existed to serve. One-word fix; miss landed; held-out probe (still phrased
-> "distinct") kept matching, so it generalised.
+> Our single most important landing page had none. It's the bespoke one — the
+> hand-authored front door for our lead use case, the page every templated page
+> *links to*. It was dense with question-shaped content: a "what is this?"
+> direct-answer block, a "how is it different from X?" split, a safety
+> explainer, a pricing section. All of it visible to humans, all of it invisible
+> to a crawler looking for `FAQPage`. The templated pages got the schema for
+> free; the important page missed it precisely *because* it wasn't templated.
 >
-> I filed it as a fluke. Then this week, a different question — *"which plans cost
-> **more than the average** price?"*, a scalar `> (SELECT AVG(...))` — retrieved a
-> `HAVING COUNT(*) > N` example instead. Same root cause, wearing a different hat:
-> my scalar-subquery example was phrased as a stilted *"List the names of products
-> priced above the average price."* — a bare imperative that shared none of the
-> *"which … ? list the … names"* shape a real user uses, while the `HAVING`
-> example's "placed **more than** 5 orders" hoovered up the generic comparison
-> words. Reframing the example to *"Which products are priced above the average
-> price? List the product names."* landed it — and again the held-out probe, which
-> keeps the original phrasing, still matched. (I kept "above", not "more than", on
-> purpose: "more than" would have started stealing the genuine `HAVING` queries.)
+> The fix was boring and that's the point: lift the Q&As that were already on
+> the page into a typed `faqs` array, render them as a visible `<dl>` (Google
+> requires the answer to be on the page — schema describing hidden text is a
+> manual-action risk), and `JSON.stringify` the same array into one
+> `<script type="application/ld+json">`. One source of truth, visible copy and
+> structured data can't drift. Every answer was a restatement of a claim already
+> made elsewhere on the page — no new marketing, just making the existing
+> content machine-readable.
 >
-> Two instances, same lesson: **your few-shot demonstration's question is data,
-> and it should read like your users talk — not like the SQL it compiles to.** A
-> word that's natural in the query ("distinct", a bare "list the names of X") is
-> often unnatural in the question, and when it leaks, the example quietly stops
-> matching the inputs it's supposed to win. Before you blame the ranker, read your
-> examples out loud and ask: would a user actually phrase it this way? Twice now,
-> the answer was no — and the fix was free.
+> The lesson: audit structured-data coverage by *importance*, not by template.
+> Your generated pages are probably fine — the gap is the hero page someone
+> built by hand before the template existed. Grep your built `dist/` for
+> `"@type":"FAQPage"` and check the list against your top-traffic URLs, not your
+> page count.
+>
+> (We hit this on nlqdb's `/agents` page; the FAQ block is now visible and in
+> the JSON-LD, both derived from one array.)
 
-**Why this advances the north-star:** engine quality (two reproducible NL→SQL
-retrieval before/afters and a generalisable rule), one nlqdb mention; the
-GLOBAL-026 bet that scaffolding compounds with the model. No funnel/ops KPI
-degrades (default-off eval-only exemplar; prod byte-identical).
+**Why this advances the north-star:** onboarding / distribution — a
+reproducible AEO lesson with a concrete before/after (the wedge front door went
+from 0 to 1 `FAQPage` block, 6 Q&As; site coverage 24 → 25 pages), one nlqdb
+mention. No engine/funnel/ops KPI degrades (additive static JSON-LD + visible
+copy on one page; every answer restates existing on-page content).
+
 
 ## Collapsed — full drafts in git history
 
@@ -113,6 +112,7 @@ Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
+- run 76 — dev.to / lobste.rs: "I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English" (two independent few-shot retrieval misses a week apart, same root cause — the exemplar's *question* echoed SQL keywords/phrasing users don't say; `COUNT(DISTINCT)`→"different" and scalar-subquery→"which … list the names" both landed and held out; read your examples aloud before blaming the ranker).
 - run 75 — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (every DB-MCP connector opens with "paste your connection string"; an agent needing a *scratch* store to write+query has nowhere to put one — provision-from-English makes create and query the same call, no separate create verb; anchors `/solve/database-claude-cursor-can-query`).
 
 ### Engine-lesson posts (dev.to / lobste.rs)
