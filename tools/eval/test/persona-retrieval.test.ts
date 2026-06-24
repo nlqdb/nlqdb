@@ -55,7 +55,7 @@ const EXPECTED: Record<number, readonly string[]> = {
   18: ["join-aggregate", "group-order-limit", "group-by-count"],
   19: ["having"],
   // Batch 3 (SK-QUAL-018) — authored from each gold's structure.
-  20: ["scalar-subquery"], // known miss: top-1 is `having` (see below)
+  20: ["scalar-subquery"], // landed by the "Which … ? List the …" exemplar framing (no longer a miss)
   21: ["count-distinct"], // COUNT(DISTINCT referrer_id) — landed by the "different cities" exemplar phrasing (no longer a miss)
   22: ["join-aggregate", "group-by-count"], // known miss: top-1 is `date-range` (see below)
 };
@@ -84,18 +84,23 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  it("retrieves a structurally-appropriate demo for ≥ 19/23 ICP queries", () => {
+  it("retrieves a structurally-appropriate demo for ≥ 20/23 ICP queries", () => {
     const m = measure();
     // Surface the numbers in the run log for the verification record.
     console.info("[persona-retrieval] measure:", JSON.stringify(m));
-    // 19/23: the null-filter row lands q3 ("who never logged in") on IS-NULL, the
+    // 20/23: the null-filter row lands q3 ("who never logged in") on IS-NULL, the
     // order-by-limit row lands q0 ("the 10 most recent signups") on the plain
-    // ORDER BY … LIMIT demo, and the count-distinct row's "how many different"
+    // ORDER BY … LIMIT demo, the count-distinct row's "how many different"
     // phrasing lands q21 ("how many different referral sources") instead of
-    // `group-by-count` (was a miss at 18/23 when the exemplar echoed the SQL
-    // keyword "distinct"). The four pinned, documented misses are q8, q10, q20,
-    // q22 (see below) — all selector-side (the right buckets exist in the pool).
-    expect(m.hits).toBeGreaterThanOrEqual(19);
+    // `group-by-count`, and the scalar-subquery row's "Which … ? List the …"
+    // framing lands q20 ("which plans cost more than the average plan price")
+    // instead of `having` (was a miss at 19/23 when the exemplar read as a bare
+    // "List the names of products priced above…", sharing none of q20's
+    // which/list/names tokens). Both were exemplar-phrasing leaks fixed by
+    // pool curation, not selector tweaks (run-52-falsified). The three pinned,
+    // documented misses are q8, q10, q22 (see below) — all selector-side (the
+    // right buckets exist in the pool).
+    expect(m.hits).toBeGreaterThanOrEqual(20);
   });
 
   it("the null-filter row lands q3 ('never logged in') on the IS-NULL demo, not anti-join", () => {
@@ -126,20 +131,23 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  // The four remaining misses (q8, q10, q20, q22) are documented, not silently
+  // The three remaining misses (q8, q10, q22) are documented, not silently
   // accepted. All are selector-side (the right buckets exist in the pool), so the
   // fix is query-skeleton similarity (DAIL §4.1's second variant) — out of scope
   // for a pool-row add. These tests pin the known state so a future selector
   // change that fixes any of them is visible as a delta.
   //
-  // NOTE: q21 (run 68's third "new shape" miss) was NOT selector-unfixable — it
-  // was an exemplar-phrasing leak: the count-distinct pool row echoed the SQL
-  // keyword "distinct" while q21 (and most real users) say "how many different".
-  // Rephrasing the exemplar to "how many different cities" (a pool-curation lever,
-  // not a selector tweak) lands q21 and held the held-out probe at 14/14 (it still
-  // says "distinct"). So the run-52 "lexical avenue is dead" verdict is scoped to
-  // SELECTOR-code tweaks (stopwords / phrase normalisation in few-shot-select.ts),
-  // not to pool-exemplar curation.
+  // NOTE: q21 (run 68) and q20 (run 76) were both NOT selector-unfixable — each
+  // was an exemplar-phrasing leak. The count-distinct pool row echoed the SQL
+  // keyword "distinct" while q21 (and most real users) say "how many different";
+  // the scalar-subquery row read as a bare "List the names of products priced
+  // above…" while q20 (and most users) ask "Which … cost … the average …? List
+  // the … names". Rephrasing each exemplar to match how users phrase it (a
+  // pool-curation lever, not a selector tweak) landed q21 then q20 and held the
+  // held-out probe at 14/14 both times (each probe keeps the original phrasing).
+  // So the run-52 "lexical avenue is dead" verdict is scoped to SELECTOR-code
+  // tweaks (stopwords / phrase normalisation in few-shot-select.ts), not to
+  // pool-exemplar curation.
   //
   // The cheaper LEXICAL-selector avenue is measured-and-rejected (2026-06-22,
   // run 52 — quality-score-verification-log.md): a stopword filter regresses ICP
@@ -173,14 +181,23 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     expect(EXPECTED[10]).not.toContain(top?.bucket);
   });
 
-  // q20 ("which plans cost more than the average plan price") is a scalar-subquery
-  // (> AVG()), but masks to a skeleton whose top-1 is the `having` demo by one
-  // token ("more than" overlaps "placed more than 5 orders"); the discriminating
-  // word "average" can't overcome it on flat masked Jaccard. Selector-side.
-  it("documents the q20 known miss (top-1 `having` for a scalar-subquery)", () => {
+  // q20 ("which plans cost more than the average plan price") now retrieves the
+  // scalar-subquery demo top-1 — landed by reframing the exemplar from the bare
+  // "List the names of products priced above…" to "Which products are priced
+  // above the average price? List the product names" (run 76, the same
+  // pool-curation lever as q21). Pinned so a regression is visible as a delta.
+  it("the scalar-subquery row lands q20 ('cost more than the average') on the > AVG() demo", () => {
     const q20 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 20);
     const [top] = retrievePlanExemplars(q20?.question ?? "", ddlFor(q20?.db_id ?? "saas_app"), 1);
-    expect(EXPECTED[20]).not.toContain(top?.bucket);
+    expect(top?.bucket).toBe("scalar-subquery");
+    // …while the genuine HAVING queries (q5/q11, "placed more than N") must NOT
+    // be pulled to scalar-subquery — "above"/"average", not "more than", keeps
+    // the two skeletons distinguishable on flat masked Jaccard.
+    for (const id of [5, 11]) {
+      const q = PERSONA_BENCH_QUESTIONS.find((x) => x.question_id === id);
+      const [h] = retrievePlanExemplars(q?.question ?? "", ddlFor(q?.db_id ?? "saas_app"), 1);
+      expect(h?.bucket).toBe("having");
+    }
   });
 
   // q22 ("how many of 'support-bot' facts have no expiry date") is a COUNT(*) over
