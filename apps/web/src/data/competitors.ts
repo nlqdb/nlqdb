@@ -1981,9 +1981,10 @@ export const COMPETITORS: Competitor[] = [
     // DiskANN / GPU; metric types L2 / IP / cosine. Capabilities: vector
     // similarity/ANN search, scalar/metadata filtering, hybrid search (dense +
     // sparse / BM25 full-text), multi-vector search. `query` supports boolean
-    // filter expressions + count(*), and search has a `group_by_field`
-    // dedup-grouping — but there is NO relational JOIN / GROUP BY aggregation /
-    // HAVING over typed rows. Deploy as Milvus Lite (embedded) / Standalone
+    // filter expressions + count(*) and scalar group-by aggregation (count/sum/
+    // avg/min/max — analytics queries in 2.6, full `group_by_fields` in the 3.0
+    // RC), but there is NO relational JOIN and NO HAVING, and aggregation is
+    // single-collection only. Deploy as Milvus Lite (embedded) / Standalone
     // (Docker) / Distributed (k8s), or the managed Zilliz Cloud (Serverless /
     // Dedicated / Enterprise; free tier 5 GB / 2.5M vCUs). Official
     // `zilliztech/mcp-server-milvus` (milvus_vector_search / milvus_text_search /
@@ -2018,7 +2019,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
         us: "shipped",
         them: "no",
-        note: "Milvus `query` filters rows and can `count(*)`, and search has a `group_by_field` dedup; it ships no relational JOIN / GROUP BY aggregation / HAVING engine.",
+        note: "Milvus `query` filters rows, can `count(*)`, and does single-collection scalar group-by aggregation (full `group_by_fields` in the 3.0 RC); it ships no relational JOIN and no HAVING.",
       },
       {
         feature: "Vector similarity / ANN search over embeddings",
@@ -2054,7 +2055,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "Open source / self-hostable",
         us: "partial",
         them: "shipped",
-        note: "Milvus is Apache-2.0 and self-hosts full-featured; nlqdb is source-available on FSL 1.1, auto-converting to Apache 2.0 two years after each release.",
+        note: "Milvus is Apache-2.0 and self-hosts full-featured; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
       },
     ],
     faqs: [
@@ -2068,7 +2069,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Milvus can filter and count rows — isn't that the same as nlqdb's SQL?",
-        a: "Only partly. Milvus `query` applies a boolean filter expression and can `count(*)`, and search supports a `group_by_field` to dedupe results — but it has no relational JOIN, no multi-column GROUP BY aggregation, and no HAVING. nlqdb compiles those to SQL and runs them in Postgres. Milvus answers 'which vectors are nearest, filtered'; nlqdb answers 'how many, grouped by what, above which threshold'.",
+        a: "Only partly. Milvus `query` applies a boolean filter, can `count(*)`, and does single-collection scalar group-by aggregation (full `group_by_fields` lands in the 3.0 RC) — but it has no relational JOIN across collections and no HAVING. nlqdb compiles those to SQL and runs them in Postgres. Milvus answers 'which vectors are nearest, filtered'; nlqdb answers 'how many, grouped by what, joined across tables, above which threshold'.",
       },
       {
         q: "Milvus is Apache-2.0 and self-hostable — is nlqdb open source too?",
@@ -2081,7 +2082,7 @@ export const COMPETITORS: Competitor[] = [
     ],
     demo: {
       goal: "tool calls per category this month, only categories with more than 50 calls",
-      why: "The HAVING-filtered aggregation Milvus's vector search can't run — it ranks the nearest embeddings with a metadata filter, not a GROUP BY / COUNT with a threshold; nlqdb answers it as SQL over the agent's own memory.",
+      why: "The HAVING-filtered aggregation Milvus has no operator for — its vector search ranks the nearest embeddings with a metadata filter, and even its scalar group-by has no HAVING threshold; nlqdb answers it as SQL over the agent's own memory.",
     },
   },
 ];
