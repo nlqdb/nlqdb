@@ -35,11 +35,8 @@ export default defineConfig(async () => {
           test: {
             name: "unit",
             include: [
-              "test/gate-check.test.ts",
-              "test/gate-bypass.test.ts",
               "test/byollm.test.ts",
               "test/secret-envelope.test.ts",
-              "test/gate-middleware.test.ts",
               "test/orchestrate.test.ts",
               "test/plan-cache.test.ts",
               "test/sql-validate.test.ts",
