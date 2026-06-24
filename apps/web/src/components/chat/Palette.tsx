@@ -4,11 +4,15 @@
 // type "snip" → Copy embed snippet without learning a vocabulary.
 //
 // All keyboard navigation is handled on the search input (the
-// natural keyboard focus inside the palette). Mouse fallback
-// uses a <button> per row so screen readers and keyboard-only
-// users still hit the same tabbable affordances.
+// natural keyboard focus inside the palette), exposed to assistive
+// tech as a WAI-ARIA combobox: the input keeps focus and
+// `aria-activedescendant` names the highlighted option in the
+// listbox below, so a screen reader announces each command as the
+// user arrows through it. Each row is still a <button> so mouse and
+// keyboard-only users keep a real, tabbable click target.
 
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { nextHighlight, paletteOptionId } from "../../lib/palette-nav";
 
 export type PaletteAction = {
   id: string;
@@ -59,10 +63,10 @@ export default function Palette({ open, actions, onClose }: PaletteProps) {
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlight((h) => Math.min(filtered.length - 1, h + 1));
+      setHighlight((h) => nextHighlight("ArrowDown", h, filtered.length));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setHighlight((h) => Math.max(0, h - 1));
+      setHighlight((h) => nextHighlight("ArrowUp", h, filtered.length));
     } else if (e.key === "Enter") {
       e.preventDefault();
       const action = filtered[highlight];
@@ -94,13 +98,25 @@ export default function Palette({ open, actions, onClose }: PaletteProps) {
           onKeyDown={onKeyDown}
           spellCheck={false}
           autoComplete="off"
+          // WAI-ARIA combobox: the input owns the listbox and points at
+          // the highlighted option so screen readers announce the active
+          // command as the user arrows through it (the visual highlight
+          // alone is silent to AT).
+          role="combobox"
+          aria-controls="palette-listbox"
+          aria-expanded={filtered.length > 0}
+          aria-autocomplete="list"
+          aria-activedescendant={filtered.length > 0 ? paletteOptionId(highlight) : undefined}
         />
-        <ul className="palette__list">
-          {filtered.length === 0 ? <li className="palette__empty">No commands match.</li> : null}
+        <div id="palette-listbox" role="listbox" aria-label="Commands" className="palette__list">
+          {filtered.length === 0 ? <div className="palette__empty">No commands match.</div> : null}
           {filtered.map((action, idx) => (
-            <li key={action.id} className="palette__item-wrap">
+            <div key={action.id} className="palette__item-wrap">
               <button
                 type="button"
+                id={paletteOptionId(idx)}
+                role="option"
+                aria-selected={idx === highlight}
                 className="palette__item"
                 data-highlight={idx === highlight || undefined}
                 onMouseEnter={() => setHighlight(idx)}
@@ -113,9 +129,9 @@ export default function Palette({ open, actions, onClose }: PaletteProps) {
                 <span className="palette__item-label">{action.label}</span>
                 {action.hint ? <span className="palette__item-hint">{action.hint}</span> : null}
               </button>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
     </div>
   );

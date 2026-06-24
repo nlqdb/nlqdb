@@ -73,50 +73,50 @@ lands the instant the founder sets it.
 
 ## Deltas (recent runs)
 
-- 2026-06-24 (run 85) — **Distribution: shipped `/solve/track-ai-token-usage-and-cost`
-  — solve pages 8 → 9, the first P2 LLM-spend-attribution on-ramp.** With engine
-  canonical dispatch-gated (BIRD 06-19 <7d; Spider 06-17 crosses the 7-day edge
-  **tomorrow 06-25** — re-dispatch due then on a non-merging run) and offline
-  retrieval exhausted (run 81), took the highest-search-volume *uncovered* P2
-  agent-builder intent: **"how do I track my LLM app's token usage and cost per
-  user?"** — squarely the analytical agent-memory wedge (log each call as a typed
-  row → `GROUP BY` user/model/day in SQL, not arithmetic over a JSON log). Honest
-  limits stated (no automatic token metering — that's the app's/provider SDK's job;
-  no BYO-store; no live meter; composes with Langfuse/Helicone rather than
-  replacing them). Data-driven, so the `/solve` hub `ItemList`, sitemap, and
-  llms.txt auto-extend. **Δ:** solve pages **8 → 9** (`/solve` `ItemList`
-  `numberOfItems` 8 → 9; the page emits FAQPage + HowTo + BreadcrumbList +
-  SoftwareApplication JSON-LD, in sitemap + llms.txt); persona coverage P2 ×4 → ×5;
-  web tests **129 → 132** (data-integrity invariants pin the new entry);
-  astro-check 0 errors; biome clean. **KPI:** onboarding / distribution
-  (GLOBAL-025); **none degraded** — additive data object, no engine/funnel/ops file
-  touched.
-- 2026-06-24 (run 84) — **Distribution: shipped `/vs/milvus` — comparison pages
-  18 → 19, P2 memory vector-cluster 9 → 10.** With offline-retrieval exhausted
-  (run 81), canonical BIRD (06-19) / Spider (06-17, crosses the 7-day edge 06-25
-  — re-dispatch due on a non-merging run), and the apps/web AEO + a11y lanes held
-  by open PRs #501/#502, took the highest-search-volume uncovered vector-DB
-  brand: **Milvus** (Go, Apache-2.0, ~45k stars, LF AI & Data graduated; the
-  open-source billion-scale ANN sibling of Pinecone/Chroma/Weaviate/Qdrant; facts
-  web-verified via github.com/milvus-io, milvus.io, zilliz.com/pricing). Honest
-  wedge: Milvus ranks nearest embeddings (HNSW/IVF/DiskANN, hybrid dense+sparse)
-  and `query` filters+counts, but ships no relational JOIN / GROUP BY / HAVING —
-  nlqdb aggregates over typed rows the agent provisions in English. Data-driven,
-  so the `/vs` hub `ItemList`, sitemap, and llms.txt auto-extend. **Δ:** comparison
-  pages **18 → 19** (`/vs` `ItemList` numberOfItems 19; `/vs/milvus` emits FAQPage
-  + BreadcrumbList, in sitemap + llms.txt); web tests 121/121; astro-check 0
-  errors; OG card `vs-milvus.png` (1200×630). **KPI:** onboarding / distribution;
-  **none degraded** — additive data object + one PNG, no engine/funnel/ops file
-  touched; `competitors.md` net-shrunk under D4 (Milvus anchor added).
-- 2026-06-24 (runs 82–83) — **UX/AEO wave (both merged; engine untouched; none
-  degraded).** Run 82: CreateForm error state now exposed to assistive tech
-  (`aria-invalid` + `aria-describedby` → one `role="alert"` region; per-kind copy
-  to tested `lib/create-errors.ts`; ARIA associations 0 → 2, net −1 error branch;
-  web tests 121 → 129). Run 83: homepage declares its brand entity —
-  `Organization` + `WebSite` JSON-LD with stable `@id`s, every page's
-  `SoftwareApplication` names that Organization as `publisher`; **no SearchAction**
-  (the hero submits via JS, no GET `q` route — a sitelinks-searchbox target would
-  be a lie); homepage entity nodes 1 → 3 (verified in `dist/`).
+- 2026-06-24 (run 85) — **Distribution: `/solve/track-ai-token-usage-and-cost`
+  — solve pages 8 → 9, first P2 LLM-spend-attribution on-ramp.** Highest-search
+  uncovered P2 intent ("track my LLM app's token usage/cost per user?") — the
+  analytical-memory wedge (log each call as a typed row → `GROUP BY`
+  user/model/day in SQL, not arithmetic over a JSON log). Honest limits (no auto
+  metering — app/provider SDK's job; no BYO-store; no live meter; composes with
+  Langfuse/Helicone). Data-driven → `/solve` `ItemList`/sitemap/llms.txt
+  auto-extend; persona P2 ×4 → ×5; web tests 129 → 132; none degraded. (#504)
+- 2026-06-24 (run 87) — **UX/a11y: the Cmd+K command palette is now a proper
+  WAI-ARIA combobox — assistive tech announces each command as the user arrows
+  through it.** Arrow-key navigation moved only a *visual* `data-highlight`; the
+  input had no `aria-activedescendant`, the list no `listbox`/`option` roles, so
+  screen-reader users heard nothing as the selection moved (SK-WEB-005 is
+  keyboard-first — this closes the silent-SR gap). Input → `role=combobox` +
+  `aria-controls` + `aria-activedescendant`; list → `role=listbox`; rows →
+  `role=option` + `aria-selected`. The clamp/bounds nav logic was extracted to a
+  tested pure `lib/palette-nav.ts` (mirrors run 82's `create-errors.ts`), which
+  also hardened the out-of-range recovery (a narrowing filter can leave the index
+  past the end). **Δ:** web tests **132 → 139 (+7)**; palette active-command ARIA
+  associations **0 → 3** (combobox→listbox `aria-controls`, combobox→active option
+  `aria-activedescendant`, option `aria-selected`). **KPI:** UX (GLOBAL-025);
+  **none degraded** — additive ARIA + a pure-logic extraction, no
+  engine/funnel/ops/prod-behaviour change; astro-check 0 errors, biome clean.
+- 2026-06-24 (run 84) — **Distribution: `/vs/milvus`** (open-source billion-scale
+  ANN sibling of Pinecone/Chroma/Weaviate/Qdrant; facts web-verified). Honest
+  wedge: Milvus ranks embeddings + filters/counts but ships no JOIN/GROUP BY/HAVING.
+  Data-driven, so `/vs` `ItemList`/sitemap/llms.txt auto-extend. **Δ:** comparison
+  pages **18 → 19**; OG card `vs-milvus.png`; none degraded. (#503)
+- 2026-06-24 (run 83) — **AEO: homepage declares its brand entity — `Organization`
+  + `WebSite` JSON-LD; every page's `SoftwareApplication` names it as `publisher`
+  by `@id`** (shared `lib/site-jsonld.ts` + test; stable `#organization`/`#website`
+  `@id`s; no SearchAction — the hero posts via JS, no GET `q` route). **Δ:**
+  homepage entity nodes **1 → 3**; 124 web tests; none degraded. (#502)
+- 2026-06-24 (run 82) — **UX/onboarding a11y: the anonymous first-query
+  CreateForm now exposes its error state to assistive tech.** On a failed first
+  query the input gained `aria-invalid` + `aria-describedby` pointing at the
+  error, now a single `role="alert"` region; previously the field gave AT users no
+  invalid signal and the two duplicate error branches (`error` vs `networkError`)
+  rendered separately. Per-kind copy extracted to a tested `lib/create-errors.ts`;
+  redundant `aria-label` dropped (the visible `<label htmlFor>` already names it).
+  **Δ:** web tests **121 → 129 (+8)**; CreateForm error-state ARIA associations
+  **0 → 2**; net −1 error branch (dedup). **KPI:** onboarding / UX (GLOBAL-025);
+  **none degraded** — additive a11y attrs + a code dedup, no
+  engine/funnel/ops/prod-behaviour change; astro-check 0 errors, biome clean.
 - 2026-06-24 (run 81) — **AEO: `/vs` + `/solve` *hub* pages emit `ItemList`
   JSON-LD enumerating the full collection — hub pages with a collection signal
   0 → 2** (`lib/itemlist-jsonld.ts`, data-driven from `COMPETITORS`/`SOLVE_ENTRIES`
