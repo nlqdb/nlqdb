@@ -601,6 +601,62 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "analyze-agent-tool-call-logs",
+    persona: "P2 agent builder",
+    searchTitle: "How do I log my AI agent's tool calls and query which tool fails most?",
+    oneLiner:
+      "If your agent calls tools and you need to know which tool fails most and how slow each one is — log every tool call as a row and ask in English. nlqdb provisions Postgres from your first goal and runs the GROUP BY in SQL, so 'error rate per tool' is a real query, not a grep over traces.",
+    painContext:
+      "Agents fail across steps — a tool returns the wrong shape, a call times out, a retrieval step finds the wrong doc — and the questions that matter are aggregations: which tool fails most, p95 latency per tool, calls per session, success rate this week. Those answers live in flat trace logs or a JSON column, where you grep instead of GROUP BY. Counting failures by hand (or asking the LLM to tally a log) doesn't scale; these are queries, and queries want a planner.",
+    demoGoal: "error rate and average latency grouped by tool name this week, worst first",
+    demoWhy:
+      "The first reliability question an agent team asks — which tool is failing and how slow — is one English goal here, not a hand-written GROUP BY over a trace log.",
+    howNlqdbAnswers: [
+      "Log each tool call as a typed row — tool name, agent/session id, status, latency_ms, input/output size, timestamp — so error-rate-per-tool and p95-latency run as real SQL GROUP BY, not log scraping.",
+      "Ask the reliability question in English via the `<nlq-data>` element, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL under a trace toggle.",
+      "Write call records with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, and report over the same database — no separate analytics store, no ETL out of your tracing tool.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly reliability rollup hits the cache and returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "No automatic tracing — nlqdb stores and aggregates the call rows you write; capturing each tool invocation, its status, and its latency is your agent framework's job (or an OTel/tracing SDK's).",
+      "No nested trace-tree UI — nlqdb answers tabular 'per tool / per session' aggregations, not the multi-step span waterfall a dedicated agent-observability tool draws.",
+      "No connecting to your existing log store — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped.",
+    ],
+    faqs: [
+      {
+        q: "Why not just count tool failures in my application code?",
+        a: "Because the questions are aggregations — failures per tool, p95 latency, calls per session — and pulling rows back to tally them in app code is fragile and slow as call volume grows. Asking the LLM to count a log is worse: arithmetic over a list hallucinates. nlqdb runs the GROUP BY in Postgres and shows you the SQL it ran, so you can trust the grain.",
+      },
+      {
+        q: "How do the tool-call records get into the database?",
+        a: "Write one row per tool call — tool name, session id, status, latency, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run` (`GLOBAL-015`). The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the reliability questions in English over the same table.",
+      },
+      {
+        q: "Can I see the SQL behind the error rates?",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can check the grain (per call vs per session) before trusting a failure rate. nlqdb never hides the SQL behind the answer.",
+      },
+      {
+        q: "Is this a replacement for an agent-observability tool like Langfuse or AgentOps?",
+        a: "No — those instrument your agent and capture every span automatically, with nested trace-tree UIs built for debugging one run. nlqdb is the database half: you decide what to log, and you get a SQL query planner over it for ad-hoc 'per tool / per week' questions without a per-seat dashboard. They compose; nlqdb doesn't trace your runs.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/LLMDevs/search/?q=agent+tool+call+logging",
+        label: "r/LLMDevs — recurring threads on logging and debugging agent tool calls.",
+      },
+      {
+        url: "https://hn.algolia.com/?q=agent+observability",
+        label:
+          'HN search: "agent observability" — discussion on tracing and analyzing agent tool calls.',
+      },
+      {
+        url: "https://www.reddit.com/r/LangChain/search/?q=tool+call+errors",
+        label: 'r/LangChain — "tool call errors / reliability" recurring discussion hub.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
