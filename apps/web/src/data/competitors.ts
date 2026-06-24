@@ -1986,8 +1986,8 @@ export const COMPETITORS: Competitor[] = [
     // HAVING over typed rows. Deploy as Milvus Lite (embedded) / Standalone
     // (Docker) / Distributed (k8s), or the managed Zilliz Cloud (Serverless /
     // Dedicated / Enterprise; free tier 5 GB / 2.5M vCUs). Official
-    // `zilliztech/mcp-server-milvus` (milvus-vector-search / milvus-text-search /
-    // milvus-hybrid-search / milvus-query / milvus_list_collections; stdio + SSE)
+    // `zilliztech/mcp-server-milvus` (milvus_vector_search / milvus_text_search /
+    // milvus_hybrid_search / milvus_query / milvus_list_collections; stdio + SSE)
     // for Claude / Cursor.
     tagline:
       "High-performance, cloud-native open-source vector database built for scalable vector ANN search — HNSW / IVF / DiskANN indexes, metadata filtering, and hybrid dense + sparse search at billion-vector scale; Apache-2.0, self-host or managed Zilliz Cloud.",
