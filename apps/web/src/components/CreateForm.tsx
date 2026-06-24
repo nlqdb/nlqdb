@@ -24,6 +24,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
+import { messageFor } from "../lib/create-errors";
 import { emit } from "../lib/logsnag";
 import {
   appendHistory,
@@ -56,6 +57,7 @@ export default function CreateForm(props: CreateFormProps) {
 
 function CreateFormInner({ apiBase }: CreateFormProps) {
   const inputId = useId();
+  const errorId = useId();
   const [goal, setGoal] = useState("");
   const [loading, setLoading] = useState(false);
   // Track the structured error, not the rendered string — the rate-limit
@@ -143,6 +145,11 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
     }
   }
 
+  // One error string from either source — the structured CreateError copy or
+  // the network catch — so the field association and the alert region have a
+  // single thing to point at.
+  const shownError = error ? messageFor(error) : networkError;
+
   return (
     <section className="createform">
       <h1 className="createform__title">Spin up a database from a sentence.</h1>
@@ -171,7 +178,8 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
           spellCheck={false}
           disabled={loading}
           className="createform__field"
-          aria-label="What are you building?"
+          aria-invalid={shownError ? true : undefined}
+          aria-describedby={shownError ? errorId : undefined}
         />
         <button
           type="submit"
@@ -187,15 +195,10 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
             "Create the DB"
           )}
         </button>
-        {error && (
-          <div className="createform__error-wrap" role="alert">
-            <p className="createform__error">{messageFor(error)}</p>
+        {shownError && (
+          <div id={errorId} className="createform__error-wrap" role="alert">
+            <p className="createform__error">{shownError}</p>
           </div>
-        )}
-        {networkError && (
-          <p className="createform__error" role="alert">
-            {networkError}
-          </p>
         )}
       </form>
 
@@ -369,26 +372,5 @@ function withReplayFlag(signInUrl: string): string {
     return url.toString();
   } catch {
     return signInUrl;
-  }
-}
-
-function messageFor(error: CreateError): string {
-  switch (error.kind) {
-    case "challenge_required":
-      return "Refresh and try again in a moment.";
-    case "rate_limited":
-      return error.retryAfter
-        ? `Slow down — try again in ${error.retryAfter}s.`
-        : "Slow down — try again in a moment.";
-    case "auth_required":
-      // Reached only if the redirect didn't fire (e.g. browser
-      // blocked navigation). The pending prompt is already saved.
-      return "Sign in to continue — your prompt is saved.";
-    case "unauthorized":
-      return "Clear your browser storage and reload to continue.";
-    case "goal_unclear":
-      return "Try describing what you want to build, e.g. 'a messages database' or 'an orders tracker'.";
-    case "server_error":
-      return "Try again — the database couldn't be created.";
   }
 }
