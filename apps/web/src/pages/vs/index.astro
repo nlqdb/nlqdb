@@ -7,6 +7,16 @@ import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { COMPETITORS } from "../../data/competitors";
 import Base from "../../layouts/Base.astro";
+import { itemListJsonLd } from "../../lib/itemlist-jsonld";
+
+// ItemList JSON-LD (SK-CMP-006) — enumerate the full comparison set for answer
+// engines, built from the same COMPETITORS the list below renders so the two
+// can't drift. `name` mirrors the visible `nlqdb vs X` heading.
+const itemListLd = itemListJsonLd(
+  "Compare nlqdb to alternatives",
+  COMPETITORS.map((c) => ({ name: `nlqdb vs ${c.name}`, path: `/vs/${c.slug}` })),
+  Astro.site,
+);
 ---
 <Base
   title="Compare nlqdb to alternatives — natural-language databases"
@@ -55,6 +65,8 @@ import Base from "../../layouts/Base.astro";
 
     <Footer />
   </div>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(itemListLd)} />
 </Base>
 
 <style>

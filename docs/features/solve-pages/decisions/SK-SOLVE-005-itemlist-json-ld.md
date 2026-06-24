@@ -1,0 +1,10 @@
+# SK-SOLVE-005 — The `/solve` index emits ItemList JSON-LD enumerating the full solve-guide set
+
+- **Decision:** The `/solve` hub page renders an `ItemList` JSON-LD block enumerating every solve guide (one `ListItem` per `SOLVE_ENTRIES` entry, in array order, with `position`, the visible `searchTitle` `name`, and a trailing-slash-normalised `url`), built from the same `SOLVE_ENTRIES` the visible persona-grouped lists render via the shared `apps/web/src/lib/itemlist-jsonld.ts` (shared with `/vs` per [`SK-CMP-006`](../../comparison-pages/decisions/SK-CMP-006-itemlist-json-ld.md)). `url`s are normalised to the 200, matching the canonical/og:url Base.astro emits — never the bare-path 307.
+- **Core value:** Effortless onboarding (distribution / AEO)
+- **Why:** FAQPage and BreadcrumbList ([`SK-SOLVE-004`](SK-SOLVE-004-breadcrumb-json-ld.md)) live on the *leaf* solve pages; the `/solve` hub itself carried only the site-wide `SoftwareApplication`, so an answer engine had to scrape the prose to learn the set of problems nlqdb has guides for. `ItemList` is the schema.org type answer engines read to enumerate and cite a collection — it makes "what problems does nlqdb solve?" answerable from one fetch and surfaces the leaves as a coherent set. The list is a flat enumeration of all entries (not the persona grouping), so the structured signal stays a single complete set.
+- **Consequence in code:** `solve/index.astro` builds the list from `SOLVE_ENTRIES` (the same array the persona-grouped `<ul>`s iterate), so the JSON-LD can't drift from the visible content and a new solve page appears in both with no extra edit.
+- **Alternatives rejected:**
+  - "Leave the hub with only `SoftwareApplication`" — leaves the collection-enumeration signal on the table; the lift is ≈ free and data-driven.
+  - "Emit one ItemList per persona group" — fragments the collection signal into partial sets; a single flat ItemList is the honest "here is everything" enumeration.
+  - "Hand-author the ItemList separately" — drifts from the rendered list; one `.map` over `SOLVE_ENTRIES` keeps them identical.
