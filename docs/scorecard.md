@@ -81,63 +81,38 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
-- 2026-06-24 (run 81) — **AEO: the `/vs` and `/solve` *hub* pages now emit
-  `ItemList` JSON-LD enumerating the full collection — hub pages with a
-  collection signal 0 → 2.** First confirmed the engine offline-retrieval lever
-  is genuinely exhausted for the 3 residual persona-bench misses: q8/q10/q22 are
-  **not** q20/q21-style phrasing leaks (their held-out probes share the
-  exemplars' phrasing, so nothing leaks, and the buckets they need already serve
-  other queries correctly); the one latent imperfection found — the ratio-cast
-  exemplar's plural "What **are**…" vs its held-out probe's singular "What
-  **is**…", spuriously attracting q8 — doesn't move precision@1 (fixing it just
-  shifts q8's miss ratio-cast → group-by-count). With offline-retrieval
-  exhausted, comparison/solve/gate lanes in open PRs (#498/#499/#496), and
-  canonical Spider at the 7-day edge (a fresh multi-window run, not completable
-  in-session — due next run), this took the non-colliding **hub structured-data**
-  lever. The leaf `/vs/[slug]` and `/solve/[slug]` pages emit FAQPage +
-  BreadcrumbList (runs 77/78), but the `/vs` and `/solve` *index* hubs carried
-  only the site-wide `SoftwareApplication` — an answer engine landing on a hub
-  had to scrape prose rather than read a declared, complete collection. Added a
-  shared `lib/itemlist-jsonld.ts` builder (trailing-slash `url`s, `name` mirrors
-  the visible `nlqdb vs X` / search-query heading), data-driven from
-  `COMPETITORS` / `SOLVE_ENTRIES` so the JSON-LD can't drift from the rendered
-  list. **Δ:** hub pages emitting `ItemList` **0 → 2** (verified in `dist/`: `/vs`
-  17 items, `/solve` 7 items); leaf-page FAQPage/BreadcrumbList unchanged.
-  **KPI:** onboarding / distribution; **none degraded** — additive static JSON-LD
-  on 2 hub pages, no engine/funnel/ops file touched; 133 web tests (+3 new) +
-  astro-check 0 errors + biome clean.
-- 2026-06-24 (runs 79–80) — **Distribution wave (both merged; engine
-  dispatch-gated, none degraded).** Run 79: `/vs/cognee` (18th comparison page,
-  P2 knowledge-graph wing — Cognee does hybrid vector+KG recall but ships no SQL
-  layer; comparison pages 17 → 18, memory /vs 8 → 9). Run 80:
-  `/solve/store-query-chatbot-conversation-history` (8th solve page, the
-  conversation-transcript + engagement-analytics wedge — a vector store recalls
-  a message but can't `GROUP BY`; solve pages 7 → 8). Both additive AEO pages
-  with FAQPage/BreadcrumbList(/HowTo) JSON-LD verified in `dist/`, honest limits
-  stated; no engine/funnel/ops file touched.
-- 2026-06-23 (runs 77–78) — **AEO structured-data wave (both merged; engine
-  dispatch-gated, none degraded).** Run 78: every `/vs` + `/solve` page now
-  emits `BreadcrumbList` JSON-LD + a visible breadcrumb trail (shared
-  `lib/breadcrumb.ts`, trailing-slash `item` URLs matching the run-69 canonical
-  fix; visible `<nav>` matches markup per Google's rule) — **0 → 24 pages**.
-  Run 77: the hand-authored `/agents` lead-wedge front door (the only key
-  landing page without it) now emits `FAQPage` JSON-LD from a typed `faqs`
-  array (visible `<dl>` + schema, can't drift; every answer restates on-page
-  copy) — site `FAQPage` pages **24 → 25**. Both additive static structured
-  data; 130 web tests + astro-check clean.
-- 2026-06-23 (runs 74–76) — **Engine pool-curation + distribution wave (all
-  merged; engine canonical dispatch-gated, BIRD 06-19 / Spider 06-17 untouched;
-  none degraded).** Two DAIL-SQL pool-curation fixes (the offline retrieval
-  instrument): run 74 q21 (COUNT DISTINCT — `count-distinct` demo echoed the SQL
-  keyword "distinct" while users say "different"), run 76 q20 (scalar `> AVG()` —
-  `scalar-subquery` demo read as a bare "List the names…" sharing none of q20's
-  `which`/`list`/`names` tokens). Both **exemplar-phrasing leaks**, not the
-  run-52-falsified selector-code tweak — own-ICP retrieval precision@1 **18/23 →
-  19/23 → 20/23**, held-out **14/14** held (generalises, not tuned to the
-  question); prod byte-identical (`buildPlanSystem` default-off), baselines
-  byte-untouched. 3 residual misses (q8/q10/q22) confirmed selector-side. Run 75:
-  shipped `/solve/database-claude-cursor-can-query` (solve pages 6 → 7). Detail:
-  `quality-score-verification-log.md` + git.
+- 2026-06-24 (run 82) — **UX/onboarding a11y: the anonymous first-query
+  CreateForm now exposes its error state to assistive tech.** On a failed first
+  query the input gained `aria-invalid` + `aria-describedby` pointing at the
+  error, which is now a single `role="alert"` region; previously the field gave
+  AT users no invalid signal and wasn't linked to the message, and the two
+  duplicate error branches (`error` vs `networkError`) rendered separately. Per-
+  kind error copy extracted to a tested `lib/create-errors.ts`; the redundant
+  `aria-label` dropped (the visible `<label htmlFor>` already names the field).
+  **Δ:** web tests **121 → 129 (+8)**; CreateForm error-state ARIA associations
+  **0 → 2**; net −1 error branch (dedup). **KPI:** onboarding / UX (GLOBAL-025);
+  **none degraded** — additive a11y attrs + a code dedup, no
+  engine/funnel/ops/prod-behaviour change; astro-check 0 errors, biome clean.
+  **Engine note:** canonical Spider (06-17) crosses the 7-day staleness edge on
+  06-25 — re-dispatch is due on a run that does **not** merge a PR (a merge
+  moves `main` and misses the SHA-keyed multi-window checkpoint).
+- 2026-06-24 (run 81) — **AEO: `/vs` + `/solve` *hub* pages emit `ItemList`
+  JSON-LD (full collection) — hub collection signal 0 → 2** (verified in
+  `dist/`: `/vs` 17 items, `/solve` 7); shared `lib/itemlist-jsonld.ts`,
+  data-driven from `COMPETITORS`/`SOLVE_ENTRIES`. Also confirmed engine
+  offline-retrieval is exhausted (q8/q10/q22 are selector-side, not phrasing
+  leaks). +3 web tests; none degraded.
+- 2026-06-24 (runs 79–80) — Distribution: `/vs/cognee` (comparison pages 17 →
+  18, memory /vs 8 → 9) + `/solve/store-query-chatbot-conversation-history`
+  (solve pages 7 → 8); additive AEO, none degraded.
+- 2026-06-23 (runs 77–78) — AEO: `BreadcrumbList` JSON-LD + visible trail on
+  every `/vs` + `/solve` page (0 → 24) and `FAQPage` on `/agents` (site 24 →
+  25); additive, none degraded.
+- 2026-06-23 (runs 74–76) — Engine pool-curation (DAIL-SQL offline retrieval):
+  q21 (COUNT DISTINCT) + q20 (scalar `> AVG()`) were exemplar-phrasing leaks —
+  own-ICP precision@1 **18/23 → 20/23**, held-out **14/14**; prod byte-identical,
+  baselines untouched. Run 75: `/solve/database-claude-cursor-can-query` (solve
+  6 → 7). Detail: `quality-score-verification-log.md` + git.
 - 2026-06-23 (runs 67–73) — **Distribution + doc-hygiene wave (all merged;
   engine dispatch-gated, BIRD 06-19 / Spider 06-17 untouched; none degraded).**
   **Distribution (AEO):** `/vs/retool` (run 67, internal-tools builder),
