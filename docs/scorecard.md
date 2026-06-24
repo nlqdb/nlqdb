@@ -47,7 +47,7 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev accounts |
 | 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
 | 5 | Anon DBs with a recorded first answer | **113 of 113** | instrument fix (runs 1–3) holding; +12 since 06-15 (119 DBs total, 6 authed). Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
-| | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d) · persona-bench 2026-06-22** | | `apps/api/src/gate/eval-baseline.ts` (BIRD/Spider only; persona-bench never overwrites the canonical baseline, `SK-QUAL-018`) |
+| | **Engine — BIRD 2026-06-19 (< 7d) · Spider 2026-06-17 (at 7-day edge on 06-24) · persona-bench 2026-06-22** | | `apps/api/src/gate/eval-baseline.ts` (BIRD/Spider only; persona-bench never overwrites the canonical baseline, `SK-QUAL-018`). Spider re-dispatch is due next run once it crosses 7d; last run completed clean on main (no resumable checkpoint), so it will be a fresh windowed run, not a resume |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half (run 40) + **runner `--self-consistency N` / `--sc-temperature T` main-loop wiring (run 41)** — `samples>=2` branch in `runOneQuestion` (separate from `withExecRetry`): `samplePlans`→`voteOverSamples` over `executeRows`→score-the-winner; folds into checkpoint/budget-stop/`attempts`, `.scN` checkpoint variant. The lever is now end-to-end bar the CI `workflow_dispatch` input. EX delta next dispatch** |
 | 8 | persona-bench free-chain EX | **0.90 (18/20)** | full-chain ICP EX (run 58 GHA 27983818047; **run 63 reproduced it locally**). **1.7× BIRD, 4.9× Spider** — GLOBAL-026 bet. **Single N=20 runs are ±1 noisy** — misses flake across legs/runs (q8/q11/q18) as failover assigns models per run — so canonical N=500 BIRD/Spider (dispatch-gated <7d) stay the only *powered* engine levers. Run 63 root-caused the one **stable** miss q8: a **tie-fragile gold**, not an engine gap — `score.ts` is sequence-strict on `ORDER BY` golds and q8 tied two facts at count 2, so the weak llama leg (`GROUP BY object`) false-mismatched gold (`GROUP BY f.id`); fixed tie-free (`SK-QUAL-019`, fixture-only). Batch 3 (run 68) 20 → 23 q, gold-exec 23/23 (GHA 0.90 was on 20 q; local throttled 21/23); retrieval precision@1 18/20 → 18/23 (run 68) → 19/23 (run 74) → **20/23** (run 76: q20 landed by reframing the `scalar-subquery` demo to the natural "Which products are priced above the average price? List the product names"; both q21+q20 were exemplar-phrasing leaks, not selector gaps; held-out still 14/14; 3 residual misses q8/q10/q22 stay selector-side) |
@@ -82,40 +82,37 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
-- 2026-06-23 (run 78) — **AEO: every `/vs` + `/solve` page now emits
-  `BreadcrumbList` JSON-LD + a visible breadcrumb trail — structured-data
-  coverage 0 → 24 pages.** Engine canonical dispatch-gated (BIRD 06-19 /
-  Spider 06-17 both < 7d); offline-retrieval, `/agents` FAQPage, and
-  gate-removal levers all in open PRs (#494 / #495 / #496), so this run took the
-  non-colliding site-wide AEO lane. `/vs/[slug]` (17) emitted FAQPage only and
-  `/solve/[slug]` (7) FAQPage+HowTo — **neither carried `BreadcrumbList`**, so
-  Google rendered the raw URL (no breadcrumb trail) in SERPs and answer engines
-  had no hierarchy signal. Added a shared `lib/breadcrumb.ts` builder
-  (trailing-slash `item` URLs matching the run-69 canonical fix) + a Home →
-  Compare/Solve → page trail (visible `<nav>` **and** matching JSON-LD — the
-  Google "markup matches visible breadcrumb" rule). **Δ:** pages emitting
-  BreadcrumbList **0 → 24**; FAQPage 24 unchanged (no regression). **KPI:**
-  onboarding / distribution; **none degraded** — additive structured data + one
-  small nav, no engine/funnel/ops file touched; 130 web tests + astro-check 0
-  errors + biome clean.
-- 2026-06-23 (run 77) — **AEO: `/agents` (the lead-wedge front door) now emits
-  `FAQPage` structured data — it was the only key landing page without it.**
-  Engine offline-retrieval lane was in an open PR (#494) and canonical BIRD/Spider
-  dispatch-gated (< 7d), so this run took the non-colliding **AEO/structured-data**
-  lever. Every `/vs` (17) and `/solve` (9) page emits `FAQPage` JSON-LD via the
-  shared template; the hand-authored `/agents` page — dense with question-shaped
-  copy (the "what is analytical agent memory?" direct-answer block, the
-  retrieval-vs-analytics split, the trust-boundary moat, the FSL/pricing band) —
-  emitted only the sitewide `SoftwareApplication` block, invisible to answer
-  engines / Google FAQ rich results. Added a visible "Questions agent builders
-  ask" `<dl>` (6 Q&As) + matching `FAQPage` JSON-LD, both derived from one typed
-  `faqs` array (visible copy + schema can't drift; Google requires the answer
-  on-page). Every answer restates a claim already visible elsewhere on the page —
-  no new claim (SK-PIVOT-004 honest). **Δ:** `/agents` `FAQPage` blocks **0 → 1**
-  (6 Q&As); site `FAQPage`-emitting pages **24 → 25** (verified in `dist/`).
-  **KPI:** onboarding / distribution; **none degraded** — additive static
-  JSON-LD + copy on one page, no engine/funnel/ops file touched; astro-check 0
-  errors, 130 web tests, biome clean.
+- 2026-06-24 (run 80) — **Distribution: shipped
+  `/solve/store-query-chatbot-conversation-history` (8th solve page, P2
+  agent-builder, the conversation-transcript + engagement-analytics wedge).**
+  Comparison-pages (#498 cognee) and gate-removal (#496) lanes were in open
+  PRs; engine offline-retrieval is exhausted (persona-bench precision@1 20/23,
+  3 residuals selector-side); canonical BIRD/Spider dispatch-gated (BIRD 06-19
+  < 7d, Spider 06-17 only at the 7-day edge on 06-24, last run clean on main =
+  fresh windowed run not a resume → deferred, due next run). So this run took
+  the non-colliding **solve-pages** lane (distinct files from #498). The page
+  targets a distinct high-volume search ("store/query chatbot conversation
+  history") and the GLOBAL-036 "a database, not a vector store" wedge: a vector
+  store recalls the most-similar message but has no query planner, so
+  "messages per day"/"most active users" become the LLM doing arithmetic over
+  search hits — nlqdb runs the `GROUP BY` in Postgres and shows the SQL. Honest
+  limits stated (no semantic search, no BYO-Postgres, no PII redaction). **Δ:**
+  solve pages **7 → 8** (P2 3 → 4); llms.txt/sitemap +1; FAQPage+HowTo+
+  BreadcrumbList JSON-LD all verified in `dist/`. **KPI:** onboarding /
+  distribution; **none degraded** — one data object + doc edits, no
+  engine/funnel/ops file touched; 130 web tests + astro-check 0 errors + biome
+  clean. Doc-hygiene rider: `distribution-queue.md` kept under the 20 KB cap
+  (run-77 collapsed, superseded run-74 line dropped).
+- 2026-06-23 (runs 77–78) — **AEO structured-data wave (both merged; engine
+  dispatch-gated, none degraded).** Run 78: every `/vs` + `/solve` page now
+  emits `BreadcrumbList` JSON-LD + a visible breadcrumb trail (shared
+  `lib/breadcrumb.ts`, trailing-slash `item` URLs matching the run-69 canonical
+  fix; visible `<nav>` matches markup per Google's rule) — **0 → 24 pages**.
+  Run 77: the hand-authored `/agents` lead-wedge front door (the only key
+  landing page without it) now emits `FAQPage` JSON-LD from a typed `faqs`
+  array (visible `<dl>` + schema, can't drift; every answer restates on-page
+  copy) — site `FAQPage` pages **24 → 25**. Both additive static structured
+  data; 130 web tests + astro-check clean.
 - 2026-06-23 (run 76) — **Engine: a second DAIL-SQL pool-curation fix —
   persona-bench retrieval precision@1 19/23 → 20/23 (q20).** Engine canonical
   lane dispatch-gated (BIRD 06-19 / Spider 06-17 both < 7d), so the lever was the

@@ -491,6 +491,61 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "store-query-chatbot-conversation-history",
+    persona: "P2 agent builder",
+    searchTitle: "How do I store and query my chatbot's conversation history?",
+    oneLiner:
+      "If your chatbot needs to keep its conversation history and answer questions like 'messages per day' or 'most active users this week', give it a real database. nlqdb provisions Postgres from your first English goal and runs the GROUP BY in SQL — a vector store recalls one message, a database counts them all.",
+    painContext:
+      "Teams building a chatbot or support assistant log every turn somewhere — but the moment a PM asks 'how many conversations did we have this week?' or 'which users send the most messages?', a transcript dumped in a JSON column or a vector store is the wrong shape. Vector memory (Mem0, Zep) recalls the most similar past message; it has no query planner, so an engagement rollup becomes the LLM doing arithmetic over search hits instead of a real GROUP BY.",
+    demoGoal: "conversations grouped by day with a message count for each",
+    demoWhy:
+      "The first engagement question a chatbot team asks — volume over time — is one English goal here, not a hand-written GROUP BY over a transcript table.",
+    howNlqdbAnswers: [
+      "Conversation turns live as typed rows in real Postgres, so 'messages per day', 'most active users', and 'average turns per session' run as actual SQL GROUP BY — not arithmetic over a list of search hits.",
+      "Ask the engagement question in English via MCP `nlqdb_query` or the `@nlqdb/sdk`; every answer returns rows plus the compiled SQL under a trace toggle so you can audit the grain.",
+      "Write turns with the deterministic `nlqdb_remember` tool (or a `POST /v1/run` parameterised INSERT) and report over the same database — no second analytics store, no ETL.",
+      'Schema evolves in English: `"add a sentiment column to messages"` migrates the table; the diff is shown before apply (`SK-ONBOARD-004`).',
+    ],
+    whatItDoesnt: [
+      "No semantic search over message text — finding the most similar past message is a vector store's job (Mem0, pgvector); nlqdb answers the counting questions, not the similarity ones.",
+      "No connecting to your existing logging store — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped.",
+      "No built-in PII redaction or retention policy on message text — you choose what to write; anonymous DBs auto-sweep at 72h, authed rows persist until deleted.",
+    ],
+    faqs: [
+      {
+        q: "How is this different from giving my agent persistent memory?",
+        a: "Persistent memory stores the facts an agent learns so it can recall them later (see /solve/give-ai-agent-persistent-memory). This page is the raw conversation transcript plus engagement analytics over it — messages per day, most active users, turns per session. nlqdb is the same Postgres for both, so there's no second store to keep in sync.",
+      },
+      {
+        q: "Why can't a vector store answer 'how many conversations this week'?",
+        a: "A vector store returns the top-k most similar messages; it has no query planner. A count or a per-day rollup then becomes the LLM doing arithmetic over a list of search hits — a hallucination generator, not a GROUP BY. nlqdb runs the aggregation in Postgres and shows you the SQL it ran.",
+      },
+      {
+        q: "How do I get conversation turns into the database?",
+        a: "Write each turn with the deterministic `nlqdb_remember` MCP tool, or send a parameterised INSERT through `POST /v1/run` (`GLOBAL-015`). Then ask engagement questions in English over the same table. The remember path builds the INSERT server-side, so the row shape stays a trust boundary, not LLM-guessed.",
+      },
+      {
+        q: "Can I see the SQL behind the engagement numbers?",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can verify the grain (per message vs per conversation) before trusting a dashboard number. nlqdb never hides the SQL behind the answer.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/LangChain/search/?q=conversation+history",
+        label: 'r/LangChain — recurring "store / query conversation history" threads.',
+      },
+      {
+        url: "https://www.reddit.com/r/LLMDevs/search/?q=chat+history",
+        label: "r/LLMDevs — recurring threads on storing and analysing chat history.",
+      },
+      {
+        url: "https://hn.algolia.com/?q=chatbot+conversation+history",
+        label: 'HN search: "chatbot conversation history" — logging + analytics over chat logs.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
