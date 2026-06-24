@@ -10,6 +10,55 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-24 (run 84) — dev.to / r/LocalLLaMA / lobste.rs: "Scaling your vector store to a billion rows doesn't give it a GROUP BY"
+
+**Where:** dev.to + r/LocalLLaMA + lobste.rs (`ai` / `database` / `vectordb`);
+build-in-public design lesson for agent builders evaluating vector DBs at scale.
+nlqdb mentioned once. The hook: teams outgrow a hosted vector store and reach for
+Milvus/Qdrant for *scale* — then find the aggregate questions still impossible,
+because ANN throughput and a query planner are orthogonal.
+
+**Title:** Scaling your vector store to a billion rows doesn't give it a GROUP BY
+
+**Body:**
+
+> When an agent's memory outgrows a starter vector store, the natural next move
+> is a heavier engine — Milvus, Qdrant, something built for billions of vectors
+> with HNSW/DiskANN indexes and GPU search. You get more recall, lower latency,
+> hybrid dense+sparse ranking. What you do *not* get is the thing people expect
+> scale to unlock: the ability to answer "how many", "per category", "top N this
+> month", "only the groups above a threshold."
+>
+> This trips people up because "bigger database" sounds like "more capable
+> database." But the two axes are independent. A vector index is optimised for
+> one operation — *find the K nearest embeddings to this one* — at any scale.
+> Relational aggregation is a different machine: a query planner that joins
+> tables, groups rows, and filters groups with `HAVING`. Milvus will happily
+> `count(*)` with a filter and even dedupe by a field, but there's no `JOIN`, no
+> multi-column `GROUP BY`, no `HAVING`. Scaling the ANN side to a trillion
+> vectors adds zero of that.
+>
+> The tell is when you catch yourself pulling rows back and counting them in
+> application code (or worse, asking the LLM to count them — arithmetic over a
+> list of search hits is a hallucination generator). That's the signal the
+> question was analytics, not retrieval: it wants a database with a planner, not
+> a faster nearest-neighbour search.
+>
+> The clean split: keep the vector engine for similarity recall, and put the
+> rows the agent needs to *count and group* in something that speaks SQL. They
+> compose — one finds the relevant, the other reports over the set. Don't make
+> your nearest-neighbour index do arithmetic just because it scaled.
+>
+> (We built nlqdb around the analytics half — the agent provisions a Postgres in
+> plain English and asks the `GROUP BY` questions over its own memory. But the
+> lesson holds whatever you pair it with: scale and aggregation are different
+> problems.)
+
+**Why this advances the north-star:** onboarding / distribution — a reproducible
+design lesson for the GLOBAL-036 agent-memory wedge, anchoring the new
+`/vs/milvus` page; one nlqdb mention, honest about Milvus's real strengths (ANN
+at scale). No engine/funnel/ops KPI degrades (a queue draft, not a code change).
+
 ## 2026-06-24 (run 83) — dev.to / lobste.rs: "I skipped the rich result Google was begging me to add"
 
 **Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, fourth
@@ -67,75 +116,18 @@ slightly contrarian AEO lesson (honest schema > valid schema) with a measured
 before/after (homepage brand-entity nodes 1 → 3), one nlqdb mention. No
 engine/funnel/ops KPI degrades (additive static structured data).
 
-## 2026-06-24 (run 82) — dev.to / lobste.rs: "Your AI app tells sighted users the query failed. Screen readers get silence."
-
-**Where:** dev.to + lobste.rs (`accessibility` / `webdev` / `ai`);
-build-in-public a11y lesson for anyone shipping an LLM-backed form (a chat box,
-a "describe what you want" generator, an NL search). nlqdb mentioned once. The
-hook: AI features live behind a single text input that swaps state async — and
-the error state is the one almost everyone forgets to announce.
-
-**Title:** Your AI app tells sighted users the query failed. Screen readers get silence.
-
-**Body:**
-
-> Almost every AI feature ships as the same control: one text box, a button,
-> and a region below that swaps between *loading*, *result*, and *error* without
-> a page load. It's the chat composer, the "generate" form, the NL search bar.
-> Visually it's fine. For a screen-reader user it has two quiet failure modes,
-> and the second is the one you'll miss in review.
->
-> **1. The result region isn't a live region.** When you replace the box's
-> contents async, a screen reader has no reason to look — the user submitted,
-> heard nothing, and is left guessing whether anything happened. Fix: mark the
-> region that receives the swapped-in content `aria-live="polite"` (or
-> `role="status"`), set once on the container, not per-render. Now every state
-> change is announced.
->
-> **2. The *input* never says it's invalid.** This is the subtle one. You
-> render an error message below the field — sighted users see it, and if the
-> message has `role="alert"` it even gets read out once. But the field itself
-> still looks valid to assistive tech: no `aria-invalid`, and no link from the
-> input to the message. A user who tabs *back* to the box to fix their query
-> hears "edit text, [the label]" — no "invalid", no idea what went wrong.
->
-> Two attributes close it, and they're the ones people skip:
->
-> 1. `aria-invalid="true"` on the input whenever an error is showing — so the
->    field announces its own state, not just the banner.
-> 2. `aria-describedby="<error-id>"` pointing at the error element (give it a
->    stable `id`) — so focusing the field reads the field's specific reason, on
->    demand, however the user got back to it.
->
-> A trap worth calling out: if you have *two* error sources — a structured
-> "the API said no" and a catch-all "couldn't reach the server" — and you
-> render them as two separate blocks, `aria-describedby` can only point at one.
-> Collapse them to a single error region with one id; the field then always has
-> exactly one thing to describe it. (We just did this on our anonymous
-> first-query form — two branches became one `role="alert"` region the input
-> points at; the dedup was the same change as the a11y fix.)
->
-> None of this needs a framework or an a11y library. It's four attributes —
-> `aria-live` on the region, `role="alert"` on the error, `aria-invalid` +
-> `aria-describedby` on the input — and the discipline to test the *error* path
-> with the screen reader on, not just the happy path.
-
-**Why this advances the north-star:** onboarding / UX (GLOBAL-025) — a
-reproducible a11y lesson anchored to this run's CreateForm fix (error-state
-ARIA associations 0 → 2), one nlqdb mention. No engine/funnel/ops KPI degrades
-(a draft for the queue; the code change is additive a11y attrs + a dedup).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
+- run 82 — dev.to / lobste.rs: "Your AI app tells sighted users the query failed. Screen readers get silence." (the AI-feature text box swaps *loading*/*result*/*error* async with two quiet a11y misses: the result region isn't a live region (`aria-live`/`role="status"` once on the container), and the *input* never says it's invalid — add `aria-invalid` + `aria-describedby` pointing at one error `id`, collapsing the structured + network error branches into a single `role="alert"` region; test the error path with the reader on; anchored to this run's CreateForm fix, ARIA associations 0 → 2).
 - run 81 — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections" (leaf `/vs` + `/solve` pages emit `FAQPage`/`BreadcrumbList`, but the hubs listing them carried only the site-wide `SoftwareApplication`; `ItemList` declares "an ordered, complete set" — build it from the same array the `<ul>` renders so it can't drift, item URLs at the trailing-slash 200; hub collection signal 0 → 2).
 - run 80 — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases" (a vector store answers *what is most similar* — top-k, no query planner; the moment the question is an aggregate ("how many conversations this week?") you either make the LLM count rows (hallucination) or bolt on a real DB; retrieval and analytics are different jobs — store turns as typed rows and the engagement questions become trustworthy `GROUP BY`s; anchors `/solve/store-query-chatbot-conversation-history`).
 - run 79 — dev.to / r/LLMDevs / lobste.rs: "Your agent's memory can recall anything and count nothing" (vector stores, Mem0/Zep/Letta/LangMem, and knowledge graphs like Cognee all converge on *recall* — top-k relevant — but counting/aggregation (GROUP BY/COUNT/JOIN/HAVING over the rows the agent stored) is a different job that needs a query planner; recall and analytics want two stores that compose, not one doing both; anchors `/vs/cognee`).
 - run 78 — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search" (FAQPage earns the rich result but says nothing about where a page sits; `BreadcrumbList` declares a page's position in a hierarchy — match the visible trail from one source of truth so they can't drift, and point `item` URLs at the canonical 200 not the bare-path redirect; `/vs` + `/solve` pages 0 → 24 BreadcrumbList).
-- run 77 — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to" (the page you care about most is the easiest to leave un-instrumented, because it's bespoke; the templated `/vs` + `/solve` pages all emitted `FAQPage`, the hand-authored `/agents` hero didn't — lift the already-visible Q&As into one typed `faqs` array → visible `<dl>` + JSON-LD; audit coverage by importance, not by template).
+- run 77 — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to" (the page you care about most is easiest to leave un-instrumented because it's bespoke; the templated `/vs` + `/solve` pages all emitted `FAQPage`, the hand-authored `/agents` hero didn't — lift the visible Q&As into one typed `faqs` array → `<dl>` + JSON-LD; audit coverage by importance, not template).
 - run 76 — dev.to / lobste.rs: "I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English" (two independent few-shot retrieval misses a week apart, same root cause — the exemplar's *question* echoed SQL keywords/phrasing users don't say; `COUNT(DISTINCT)`→"different" and scalar-subquery→"which … list the names" both landed and held out; read your examples aloud before blaming the ranker).
 - run 75 — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (every DB-MCP connector opens with "paste your connection string"; an agent needing a *scratch* store to write+query has nowhere to put one — provision-from-English makes create and query the same call, no separate create verb; anchors `/solve/database-claude-cursor-can-query`).
 
@@ -178,10 +170,6 @@ recovers any body.
 
 ### Helpful-answer + comparison drafts (Reddit / Show HN)
 
-- run 36 — "run a GROUP BY over your agent's memory in 30s, no signup" (r/AI_Agents / r/LocalLLaMA; one `/agents` link).
-- run 32 — "Agent-memory scoping in nlqdb is row-level RLS, not query-rewriting" (dev.to / lobste.rs; SK-PIVOT-009, hold until E-03 lands).
-- run 32 — "Give your AI agent memory from the terminal" (`nlq remember`; target must be a memory-preset DB).
-- runs 23, 25 — analytics-over-agent-memory threads → `/solve/analytical-queries-over-agent-memory`, `/solve/give-ai-agent-persistent-memory`.
-- runs 21–22 — WS-02 "X vs nlqdb" / "X alternative" posts → `/vs/langmem`, `/vs/letta`.
+*(runs 21–36 moved to [`distribution-queue-archive.md`](./distribution-queue-archive.md) under D4.)*
 
 Earliest drafts: [`distribution-queue-archive.md`](./distribution-queue-archive.md).

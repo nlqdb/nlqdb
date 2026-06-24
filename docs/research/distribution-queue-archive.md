@@ -163,3 +163,13 @@ Moved from [`distribution-queue.md`](./distribution-queue.md)'s collapsed list t
 - run 10 — "'Auto-re-probes so it recovers without a deploy' — a comment that was quietly false" (30-min `auth_denied` cooldown).
 - run 9 — "The dead provider in the fast lane: when a hedged request races a 403" (SK-LLM-039).
 - run 8 — "One bad row shouldn't cost you all the rows: salvaging LLM-generated seed data" (SK-HDC-019).
+
+## Helpful-answer + comparison drafts (runs 21–36) — bodies in git history
+
+Moved from [`distribution-queue.md`](./distribution-queue.md)'s collapsed list to hold that doc under the 20 KB cap (CLAUDE.md D4). `git log -p docs/research/distribution-queue.md` recovers any body.
+
+- run 36 — "run a GROUP BY over your agent's memory in 30s, no signup" (r/AI_Agents / r/LocalLLaMA; one `/agents` link).
+- run 32 — "Agent-memory scoping in nlqdb is row-level RLS, not query-rewriting" (dev.to / lobste.rs; SK-PIVOT-009, hold until E-03 lands).
+- run 32 — "Give your AI agent memory from the terminal" (`nlq remember`; target must be a memory-preset DB).
+- runs 23, 25 — analytics-over-agent-memory threads → `/solve/analytical-queries-over-agent-memory`, `/solve/give-ai-agent-persistent-memory`.
+- runs 21–22 — WS-02 "X vs nlqdb" / "X alternative" posts → `/vs/langmem`, `/vs/letta`.

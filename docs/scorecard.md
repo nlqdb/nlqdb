@@ -47,7 +47,7 @@ lands the instant the founder sets it.
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 9 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7); run 61 +`/vs/qdrant` (Rust/quantization wing — P2 cluster 7→8, closes the top-tier vector-DB brand cluster); run 79 +`/vs/cognee` (knowledge-graph wing — P2 cluster 8→9, the "not a vector store" memory framework) |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 10 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7); run 61 +`/vs/qdrant` (Rust/quantization wing — P2 cluster 7→8, closes the top-tier vector-DB brand cluster); run 79 +`/vs/cognee` (knowledge-graph wing — P2 cluster 8→9, the "not a vector store" memory framework); run 84 +`/vs/milvus` (open-source billion-scale ANN wing — P2 cluster 9→10) |
 | | *Messaging track — WS-\** | 11 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
@@ -73,33 +73,47 @@ lands the instant the founder sets it.
 
 ## Deltas (recent runs)
 
+- 2026-06-24 (run 84) — **Distribution: shipped `/vs/milvus` — comparison pages
+  18 → 19, P2 memory vector-cluster 9 → 10.** With offline-retrieval exhausted
+  (run 81), canonical BIRD (06-19) / Spider (06-17, crosses the 7-day edge 06-25
+  — re-dispatch due on a non-merging run), and the apps/web AEO + a11y lanes held
+  by open PRs #501/#502, took the highest-search-volume uncovered vector-DB
+  brand: **Milvus** (Go, Apache-2.0, ~45k stars, LF AI & Data graduated; the
+  open-source billion-scale ANN sibling of Pinecone/Chroma/Weaviate/Qdrant; facts
+  web-verified via github.com/milvus-io, milvus.io, zilliz.com/pricing). Honest
+  wedge: Milvus ranks nearest embeddings (HNSW/IVF/DiskANN, hybrid dense+sparse)
+  and `query` filters+counts, but ships no relational JOIN / GROUP BY / HAVING —
+  nlqdb aggregates over typed rows the agent provisions in English. Data-driven,
+  so the `/vs` hub `ItemList`, sitemap, and llms.txt auto-extend. **Δ:** comparison
+  pages **18 → 19** (`/vs` `ItemList` numberOfItems 19; `/vs/milvus` emits FAQPage
+  + BreadcrumbList, in sitemap + llms.txt); web tests 121/121; astro-check 0
+  errors; OG card `vs-milvus.png` (1200×630). **KPI:** onboarding / distribution;
+  **none degraded** — additive data object + one PNG, no engine/funnel/ops file
+  touched; `competitors.md` net-shrunk under D4 (Milvus anchor added).
 - 2026-06-24 (run 83) — **AEO: the homepage now declares its brand entity —
   `Organization` + `WebSite` JSON-LD, and every page's `SoftwareApplication`
   names that Organization as `publisher` by `@id`.** With offline-retrieval
-  exhausted (run 81), engine canonical dispatch-gated (Spider 06-17 crosses 7 d
-  on 06-25 — re-dispatch is due on a run that does *not* merge a PR, so not this
-  run), and the CreateForm a11y lever taken by run 82 (PR #501), this took the
-  highest-leverage non-colliding structured-data gap: the homepage carried only
-  the site-wide `SoftwareApplication` — no `Organization` (brand-authority entity
-  for "nlqdb" queries) and no `WebSite` (the node Google reads for the SERP site
-  name). Added shared `lib/site-jsonld.ts` (+test); homepage-only nodes with
-  stable `@id`s (`#organization`/`#website`) that crawlers consolidate with the
-  per-page `publisher` reference. **No SearchAction** — the goal-first hero
-  submits via JS to `/v1/ask` (SK-WEB-002) and no GET route consumes a `q` term,
-  so a sitelinks-searchbox target would be a broken signal; omitted until a
-  URL-driven query entrypoint exists. **Δ:** homepage entity nodes **1 → 3**
-  (verified in `dist/index.html`: all 3 parse; `/pricing` correctly carries only
-  `SoftwareApplication` + the `publisher` `@id` binding). **KPI:** onboarding /
-  distribution; **none degraded** — additive static JSON-LD, no engine/funnel/ops
-  file touched; 124 web tests (+3 new) + build green + biome clean.
+  exhausted (run 81), engine canonical dispatch-gated (Spider crosses 7 d 06-25
+  on a non-merging run), and the CreateForm a11y lever taken by run 82 (PR #501),
+  took the non-colliding structured-data gap: the homepage carried only the
+  site-wide `SoftwareApplication` — no `Organization` (brand-authority for "nlqdb"
+  queries) and no `WebSite` (the node Google reads for the SERP site name). Added
+  shared `lib/site-jsonld.ts` (+test); homepage-only nodes with stable `@id`s
+  (`#organization`/`#website`) that crawlers consolidate with the per-page
+  `publisher` reference. **No SearchAction** — the hero submits via JS to `/v1/ask`
+  (SK-WEB-002), no GET route consumes a `q` term, so a sitelinks-searchbox target
+  would be a broken signal. **Δ:** homepage entity nodes **1 → 3** (verified in
+  `dist/index.html`: all 3 parse; `/pricing` carries only `SoftwareApplication` +
+  the `publisher` `@id`). **KPI:** onboarding / distribution; **none degraded** —
+  additive static JSON-LD, no engine/funnel/ops file touched; 124 web tests (+3
+  new) + build green + biome clean.
 - 2026-06-24 (run 82) — **UX/onboarding a11y: the anonymous first-query
   CreateForm now exposes its error state to assistive tech.** On a failed first
   query the input gained `aria-invalid` + `aria-describedby` pointing at the
-  error, which is now a single `role="alert"` region; previously the field gave
-  AT users no invalid signal and wasn't linked to the message, and the two
-  duplicate error branches (`error` vs `networkError`) rendered separately. Per-
-  kind error copy extracted to a tested `lib/create-errors.ts`; the redundant
-  `aria-label` dropped (the visible `<label htmlFor>` already names the field).
+  error, now a single `role="alert"` region; previously the field gave AT users no
+  invalid signal and the two duplicate error branches (`error` vs `networkError`)
+  rendered separately. Per-kind copy extracted to a tested `lib/create-errors.ts`;
+  redundant `aria-label` dropped (the visible `<label htmlFor>` already names it).
   **Δ:** web tests **121 → 129 (+8)**; CreateForm error-state ARIA associations
   **0 → 2**; net −1 error branch (dedup). **KPI:** onboarding / UX (GLOBAL-025);
   **none degraded** — additive a11y attrs + a code dedup, no
@@ -121,58 +135,42 @@ lands the instant the founder sets it.
   a message but can't `GROUP BY`; solve pages 7 → 8). Both additive AEO pages
   with FAQPage/BreadcrumbList(/HowTo) JSON-LD verified in `dist/`, honest limits
   stated; no engine/funnel/ops file touched.
-- 2026-06-23 (runs 77–78) — **AEO structured-data wave (both merged; engine
-  dispatch-gated, none degraded).** Run 78: every `/vs` + `/solve` page now
-  emits `BreadcrumbList` JSON-LD + a visible breadcrumb trail (shared
-  `lib/breadcrumb.ts`, trailing-slash `item` URLs matching the run-69 canonical
-  fix; visible `<nav>` matches markup per Google's rule) — **0 → 24 pages**.
-  Run 77: the hand-authored `/agents` lead-wedge front door (the only key
-  landing page without it) now emits `FAQPage` JSON-LD from a typed `faqs`
-  array (visible `<dl>` + schema, can't drift; every answer restates on-page
-  copy) — site `FAQPage` pages **24 → 25**. Both additive static structured
-  data; 130 web tests + astro-check clean.
-- 2026-06-22/23 (runs 48–76) — **engine + distribution + doc-hygiene waves (all
+- 2026-06-21/23 (runs 37–78) — **engine + distribution + doc-hygiene waves (all
   merged; BIRD 06-19 / Spider 06-17 untouched; none degraded). Full per-run
   detail: `progress/quality-score-verification-log.md` + git.** **Engine (offline
-  retrieval instrument):** DAIL-SQL pool 12 → 14, run-52 lexical-selector avenue
-  falsified ⇒ selector half at offline ceiling; pool-curation fixes (q21 run 74,
-  q20 run 76 — exemplar-phrasing leaks) → own-ICP precision@1 **17/20 → 20/23**,
-  held-out **14/14**; persona-bench 20 → 23 golds, gold-exec 23/23 (SK-QUAL-018);
-  `quality-eval-persona-bench.yml` shipped + first dispatch → free-chain **EX 0.90
-  (18/20)** on the ICP shape (row 8; 1.7× BIRD, 4.9× Spider; GHA 27983818047).
-  Frontier lane (row 9) secret-blocked (`OPENROUTER_FRONTIER_API_KEY` empty),
-  filed in `blocked-by-human.md`. **Distribution (AEO):** `/vs/pinecone`, `chroma`,
-  `weaviate`, `qdrant`, `julius`, `retool`, `basedash`, `metabase` → comparison
-  pages **9 → 17**, OG cards +; FAQPage (run 77, site 24 → 25) + BreadcrumbList
-  (run 78, 0 → 24 pages); `trailingSlash: "always"` normalize → sitemap 200/307
-  **1/27 → 28/0** (run 69); `/solve/database-claude-cursor-can-query` (solve 6 → 7).
-  **Doc-hygiene (D4+D5+P3, prod byte-identical):** net-shrank `hosted-db-create`
-  (−1,277 B), `ask-pipeline` (−1,257 B), `anonymous-mode` (−3,974 B),
-  `performance.md`, `architecture.md`, `runbook.md`, `progress.md`,
-  `quality-score-source-of-truth.md` — all under the D4 cap, all SK-IDs intact.
-- 2026-06-21/22 (runs 37–47) — engine + distribution + hygiene staging wave (all
-  merged/additive; BIRD 06-19 + Spider 06-17 untouched). **Engine:** §4 #1
-  DAIL-SQL retrieval built end-to-end offline (`few-shot-select.ts` value-mask +
-  Jaccard + top-k, schema-aware selector, `buildPlanSystem(goal,schema,k)`,
-  curated pool → 12 buckets, `SK-LLM-041`, precision@1 12/12); §4 #3
-  self-consistency (`SK-QUAL-017`, runner `--self-consistency`/`--sc-temperature`,
-  default greedy byte-identical); persona-bench → dispatchable `EvalDataset` 20
-  golds (`SK-QUAL-018`). **Distribution:** WS-08 OG cards (SK-PIVOT-012), WS-09
-  `/agents` fixture demo, WS-12 → messaging 11/13, pivot 13/20. **Hygiene:**
-  `distribution-queue.md` 35.9 → 9.1 KB. Plus E-04 TTL-sweep core (`SK-PIVOT-011`)
-  + SK-PIVOT-010 finding. KPI engine quality / onboarding; none degraded.
-- 2026-06-19/20 (runs 19–36) — agent-memory pivot launch wave + engine staging
-  (all closed/additive; BIRD 06-19 + Spider 06-17 untouched). Messaging → 8/13,
-  pivot → 10/20 (competitors anchor, memory `/vs` pages, `/agents`
-  skeleton+hero+matrix+CTA, launch post, FSL self-host copy). Engine: **E-01**
-  `agent_memory_v1` preset + **E-02** `nlqdb_remember` (+CLI parity) → engine
-  2/7; self-consistency core (`SK-QUAL-017`), Spider external-knowledge
-  (`SK-QUAL-016`), TTL fail-loud (GLOBAL-012); findings SK-PIVOT-009/010. Per-run
-  detail: `progress/quality-score-verification-log.md` + the WS/E worksheets.
-- 2026-06-13/19 (runs 1–18) — day-one scorecard + engine-instrument /
-  provider-resilience / deferred-lever waves (Gemini key heal, Spider 0.1852,
-  join-bridge pruner T21, HAVING directive T22, `SK-QUAL-014/015`,
-  `SK-LLM-038/039`, `SK-HDC-019`), then canonical BIRD re-run flat (0.522 →
-  0.520, McNemar p=0.50) ⇒ directive levers saturated and `SK-QUAL-014`
-  falsified value-retrieval as the top lever (`literal_only` = 0). Full per-run
-  detail: `progress/quality-score-verification-log.md`.
+  retrieval instrument):** §4 #1 DAIL-SQL retrieval built end-to-end offline
+  (`few-shot-select.ts` value-mask + Jaccard + top-k, schema-aware selector,
+  `buildPlanSystem(goal,schema,k)`, `SK-LLM-041`); §4 #3 self-consistency
+  (`SK-QUAL-017`, runner `--self-consistency`/`--sc-temperature`, default greedy
+  byte-identical); pool 12 → 14, run-52 lexical-selector avenue falsified ⇒
+  selector half at offline ceiling; pool-curation fixes (q21 run 74, q20 run 76 —
+  exemplar-phrasing leaks) → own-ICP precision@1 **12/12 → 20/23**, held-out
+  **14/14**; persona-bench → dispatchable `EvalDataset` 20 → 23 golds, gold-exec
+  23/23 (SK-QUAL-018); `quality-eval-persona-bench.yml` shipped + first dispatch →
+  free-chain **EX 0.90 (18/20)** on the ICP shape (row 8; 1.7× BIRD, 4.9× Spider;
+  GHA 27983818047). Frontier lane (row 9) secret-blocked
+  (`OPENROUTER_FRONTIER_API_KEY` empty), filed in `blocked-by-human.md`. Plus E-04
+  TTL-sweep core (`SK-PIVOT-011`) + SK-PIVOT-010 finding. **Distribution (AEO):**
+  `/vs/pinecone`, `chroma`, `weaviate`, `qdrant`, `julius`, `retool`, `basedash`,
+  `metabase` → comparison pages **9 → 17**, OG cards (WS-08, SK-PIVOT-012); WS-09
+  `/agents` fixture demo; WS-12 → messaging 11/13, pivot 13/20; FAQPage (run 77,
+  site 24 → 25) + BreadcrumbList (run 78, 0 → 24 pages); `trailingSlash: "always"`
+  → sitemap 200/307 **1/27 → 28/0** (run 69);
+  `/solve/database-claude-cursor-can-query` (solve 6 → 7). **Doc-hygiene
+  (D4+D5+P3, prod byte-identical):** `distribution-queue.md` 35.9 → 9.1 KB;
+  net-shrank `hosted-db-create` (−1,277 B), `ask-pipeline` (−1,257 B),
+  `anonymous-mode` (−3,974 B), `performance.md`, `architecture.md`, `runbook.md`,
+  `progress.md`, `quality-score-source-of-truth.md` — all under the D4 cap, all
+  SK-IDs intact.
+- 2026-06-13/20 (runs 1–36) — day-one scorecard + engine-instrument /
+  provider-resilience waves, then the agent-memory pivot launch (all
+  closed/additive; BIRD 06-19 + Spider 06-17 untouched). Engine: Gemini key heal,
+  Spider 0.1852, join-bridge pruner T21 + HAVING directive T22, `SK-QUAL-014/015/016/017`,
+  `SK-LLM-038/039`, `SK-HDC-019` — then canonical BIRD flat (0.522 → 0.520,
+  McNemar p=0.50) ⇒ directive levers saturated, value-retrieval falsified
+  (`literal_only` = 0, `SK-QUAL-014`). Pivot → 10/20, messaging → 8/13: **E-01**
+  `agent_memory_v1` preset + **E-02** `nlqdb_remember` (+CLI parity) → engine 2/7,
+  competitors anchor, memory `/vs` pages, `/agents` skeleton+hero+matrix+CTA,
+  launch post, FSL self-host copy; TTL fail-loud (GLOBAL-012); findings
+  SK-PIVOT-009/010. Full per-run detail:
+  `progress/quality-score-verification-log.md` + the WS/E worksheets.
