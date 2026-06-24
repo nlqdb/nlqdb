@@ -98,7 +98,7 @@ Three problems:
 
 | # | Agent | Daily loop | The number it owns |
 |---|---|---|---|
-| 1 | **Scorecard** | Pull eval results, D1 counts, CF analytics, LogSnag → regenerate `docs/scorecard.md` (one page, ≤ 5 KB) → flag the worst number | all (read-only) |
+| 1 | **Scorecard** | Pull eval results, D1 counts, CF analytics, LogSnag → regenerate `docs/scorecard.md` (current-state tracker, no changelog) → flag the worst number | all (read-only) |
 | 2 | **Eval loop** | Pick ONE lever → run mini-eval (fixed 60-q slice) before/after → merge only if Δ ≥ 0, else revert + record | persona-bench %, BIRD % |
 | 3 | **Distribution** | Produce one publishable artifact/day: Show-HN draft, dev.to post, answer to a real SO/Reddit thread, comparison-page improvement, directory submission. Queue in `docs/research/distribution-queue.md`; founder reviews weekly | external visits, real waitlist rows |
 | 4 | **User evidence** | ICP mining toward the ≥30-quote bar; draft (not send) outreach to authors of mined pain-quotes; in-product Sean Ellis survey slice | scored quotes, survey responses |
@@ -108,8 +108,8 @@ Three problems:
 
 **Prompt pattern for every lane** (this is the rethink you asked about):
 start with "read `docs/scorecard.md`; state the one number you intend to move
-today"; end with "re-measure it; append the delta to the scorecard; if it
-didn't move, revert and write one line on why." An agent that can't name its
+today"; end with "re-measure it; overwrite the scorecard's Last-change entry
+with the delta; if it didn't move, revert and write one line on why." An agent that can't name its
 number does docs cleanup instead of shipping code.
 
 ## 4. Growth, within your real constraints ($0, no calls, Claude-run)
