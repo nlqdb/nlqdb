@@ -7,6 +7,16 @@ import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { SOLVE_ENTRIES, SOLVE_PERSONA_ORDER, SOLVE_PERSONAS } from "../../data/solve";
 import Base from "../../layouts/Base.astro";
+import { itemListJsonLd } from "../../lib/itemlist-jsonld";
+
+// ItemList JSON-LD (SK-SOLVE-005) — enumerate the full solve-guide set for
+// answer engines, built from the same SOLVE_ENTRIES the lists below render so
+// the two can't drift. `name` mirrors the visible search-query heading.
+const itemListLd = itemListJsonLd(
+  "Solve a specific problem with nlqdb",
+  SOLVE_ENTRIES.map((s) => ({ name: s.searchTitle, path: `/solve/${s.slug}` })),
+  Astro.site,
+);
 
 const groupedByPersona = SOLVE_PERSONA_ORDER.map((persona) => ({
   persona,
@@ -71,6 +81,8 @@ const groupedByPersona = SOLVE_PERSONA_ORDER.map((persona) => ({
 
     <Footer />
   </div>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(itemListLd)} />
 </Base>
 
 <style>

@@ -10,6 +10,49 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-24 (run 81) — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections"
+
+**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, third
+post in the AEO/structured-data thread. nlqdb mentioned once. The hook: you
+schema'd every leaf page and forgot the hub that lists them — so the one page
+that answers "what's the *whole set*?" is the one an engine has to scrape.
+
+**Title:** Your collection pages don't tell answer engines they're collections
+
+**Body:**
+
+> We generate two families of pages from data: one comparison page per
+> competitor, one "how do I solve X" page per recurring search. Each *leaf*
+> emits `FAQPage` and `BreadcrumbList`. Solid coverage — on the leaves.
+>
+> Then I looked at the two `/vs` and `/solve` *index* pages: the hubs that list
+> every comparison and every guide. Visibly they're exactly what a crawler
+> wants — a clean enumerated list with links. In structured data they had
+> nothing but the site-wide `SoftwareApplication` block. An answer engine
+> landing on "what does nlqdb compare against?" had to parse prose `<li>`s to
+> reconstruct the set instead of reading a declared one.
+>
+> The fix is `ItemList` — the schema.org type for "here is an ordered, complete
+> set of things." Each `ListItem` carries a `position`, the visible link `name`,
+> and the page `url`. Answer engines read it to enumerate and cite the set as a
+> group; Google treats the page as the index of a set, not one more leaf. Two
+> things to pass on:
+>
+> 1. **Build it from the same array you render** — one `.map` over the data the
+>    `<ul>` already maps, so the human's list and the JSON-LD can't drift.
+> 2. **Normalise the item URLs to the 200.** Same trap as breadcrumbs: if your
+>    host serves `/vs/x/index.html`, point every `ListItem.url` at the
+>    trailing-slash canonical, not the redirecting bare path.
+>
+> If you've done FAQ + breadcrumb schema on your leaves, the hub `ItemList` is
+> the cheapest next win — it answers the broadest question you get ("what are
+> *all* my options?"), and it was probably the one page you left bare.
+
+**Why this advances the north-star:** onboarding / distribution — a concrete
+AEO lesson with a measured before/after (hub pages declaring their collection
+0 → 2), one nlqdb mention. No engine/funnel/ops KPI degrades (additive static
+structured data, data-driven from the existing list).
+
 ## 2026-06-24 (run 80) — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases"
 
 **Where:** dev.to + r/LLMDevs + lobste.rs (`ai` / `llm` / `database`); a
@@ -59,67 +102,6 @@ arithmetic over search hits.
 reproducible design lesson for the GLOBAL-036 agent-memory wedge, anchoring the
 new `/solve/store-query-chatbot-conversation-history` page; one nlqdb mention.
 No engine/funnel/ops KPI degrades (a draft for the queue, not a code change).
-## 2026-06-24 (run 79) — dev.to / r/LLMDevs / lobste.rs: "Your agent's memory can recall anything and count nothing"
-
-**Where:** dev.to + r/LLMDevs + lobste.rs (`ai` / `llm` / `databases`);
-build-in-public, an architecture lesson for agent builders. The hook: every
-agent-memory tool is built for *recall*, and the moment you ask it a *counting*
-question you fall off a cliff. nlqdb mentioned once.
-
-**Title:** Your agent's memory can recall anything and count nothing
-
-**Body:**
-
-> I've been comparing agent-memory tools — vector stores (Pinecone, Qdrant,
-> Chroma), memory frameworks (Mem0, Zep, Letta, LangMem), and knowledge-graph
-> engines like Cognee — and they converge on the same primitive: **recall**.
-> Store everything the agent sees, then at query time return the items *most
-> relevant* to a question. Vector similarity, graph traversal, hybrid rerank —
-> different mechanisms, same shape: top-k relevant things.
->
-> That's the right primitive for "what do I know about this user?" It is the
-> *wrong* primitive for an entire class of question that shows up the second your
-> agent does anything operational:
->
-> - "How many tools did I call per category this week?"
-> - "What's the average deal size per stage for the accounts I remember?"
-> - "Which predicates does this agent use most, and how often?"
->
-> None of those are recall. They're **aggregation** — GROUP BY, COUNT, JOIN,
-> HAVING over the rows the agent stored. A relevance ranking can't answer them.
-> Ask a vector store "how many?" and it returns the *k* most similar vectors, not
-> a number. Ask a knowledge graph and it returns connected context, not a sum.
-> The honest answer from every recall engine is "that's not what I do."
->
-> The fix isn't a better embedding model or more retrieval modes. It's
-> recognising you have **two different jobs** and they want two different stores:
->
-> 1. **Recall** — fuzzy, semantic, "find the relevant context." Vector / graph
->    memory is great here. Keep it.
-> 2. **Analytics** — exact, relational, "compute the answer over everything I
->    stored." This wants a database with a query planner: real SQL, real types,
->    real aggregation.
->
-> They compose cleanly: the recall layer feeds the agent context per turn; the
-> analytical layer answers the reporting questions the agent (or you) asks *about*
-> its own memory. The mistake is forcing one store to do both — you either bolt a
-> half-working aggregation API onto a vector index, or you dump structured rows
-> into a graph and lose the ability to `GROUP BY` them.
->
-> Concretely: if your agent stores typed events ("called tool X, category Y, at
-> time T"), put those in something that speaks SQL, not just cosine distance. I've
-> been building nlqdb around exactly this — a Postgres the agent provisions and
-> queries in plain English, so "calls per tool category this week, only categories
-> above 20" is one query, not an unanswerable one — but the architectural point
-> stands whatever you reach for: **don't ask your recall layer to count.**
-
-**Why this advances the north-star:** onboarding / distribution — a reusable
-architecture lesson aimed squarely at the P2 agent-builder ICP (the GLOBAL-036
-pivot), framing the "database, not a vector store / not a knowledge graph" wedge
-as a general design principle, with one honest nlqdb mention. It seeds the same
-recall-vs-analytics distinction the new `/vs/cognee` page makes. No
-engine/funnel/ops KPI degrades — it's a draft post, published only at the
-founder's weekly review.
 
 ## Collapsed — full drafts in git history
 
@@ -127,6 +109,7 @@ Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
+- run 79 — dev.to / r/LLMDevs / lobste.rs: "Your agent's memory can recall anything and count nothing" (vector stores, Mem0/Zep/Letta/LangMem, and knowledge graphs like Cognee all converge on *recall* — top-k relevant — but counting/aggregation (GROUP BY/COUNT/JOIN/HAVING over the rows the agent stored) is a different job that needs a query planner; recall and analytics want two stores that compose, not one doing both; anchors `/vs/cognee`).
 - run 78 — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search" (FAQPage earns the rich result but says nothing about where a page sits; `BreadcrumbList` declares a page's position in a hierarchy — match the visible trail from one source of truth so they can't drift, and point `item` URLs at the canonical 200 not the bare-path redirect; `/vs` + `/solve` pages 0 → 24 BreadcrumbList).
 - run 77 — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to" (the page you care about most is the easiest to leave un-instrumented, because it's bespoke; the templated `/vs` + `/solve` pages all emitted `FAQPage`, the hand-authored `/agents` hero didn't — lift the already-visible Q&As into one typed `faqs` array → visible `<dl>` + JSON-LD; audit coverage by importance, not by template).
 - run 76 — dev.to / lobste.rs: "I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English" (two independent few-shot retrieval misses a week apart, same root cause — the exemplar's *question* echoed SQL keywords/phrasing users don't say; `COUNT(DISTINCT)`→"different" and scalar-subquery→"which … list the names" both landed and held out; read your examples aloud before blaming the ranker).

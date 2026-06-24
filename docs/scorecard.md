@@ -82,39 +82,40 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
-- 2026-06-24 (run 80) — **Distribution: shipped
-  `/solve/store-query-chatbot-conversation-history` (8th solve page, P2
-  agent-builder, the conversation-transcript + engagement-analytics wedge).**
-  Comparison-pages (#498 cognee) and gate-removal (#496) lanes were in open
-  PRs; engine offline-retrieval is exhausted (persona-bench precision@1 20/23,
-  3 residuals selector-side); canonical BIRD/Spider dispatch-gated (BIRD 06-19
-  < 7d, Spider 06-17 only at the 7-day edge on 06-24, last run clean on main =
-  fresh windowed run not a resume → deferred, due next run). So this run took
-  the non-colliding **solve-pages** lane (distinct files from #498). The page
-  targets a distinct high-volume search ("store/query chatbot conversation
-  history") and the GLOBAL-036 "a database, not a vector store" wedge: a vector
-  store recalls the most-similar message but has no query planner, so
-  "messages per day"/"most active users" become the LLM doing arithmetic over
-  search hits — nlqdb runs the `GROUP BY` in Postgres and shows the SQL. Honest
-  limits stated (no semantic search, no BYO-Postgres, no PII redaction). **Δ:**
-  solve pages **7 → 8** (P2 3 → 4); llms.txt/sitemap +1; FAQPage+HowTo+
-  BreadcrumbList JSON-LD all verified in `dist/`. **KPI:** onboarding /
-  distribution; **none degraded** — one data object + doc edits, no
-  engine/funnel/ops file touched; 130 web tests + astro-check 0 errors + biome
-  clean. Doc-hygiene rider: `distribution-queue.md` kept under the 20 KB cap
-  (run-77 collapsed, superseded run-74 line dropped).
-- 2026-06-24 (run 79) — **Distribution: shipped `/vs/cognee` (18th comparison
-  page; P2 knowledge-graph wing of the agent-memory wedge).** Non-colliding
-  AEO lane (engine offline-retrieval exhausted at persona-bench precision@1
-  20/23, canonical BIRD/Spider dispatch-gated, gate-removal in #496). Cognee is
-  the highest-keyword uncovered memory framework that is explicitly *not a
-  vector store* (hybrid vector + knowledge-graph recall) — the GLOBAL-036 pivot
-  headline; honest wedge: it recalls graph-connected context but ships no SQL
-  layer, its KG construction + Apache-2.0 self-host conceded `them: shipped`;
-  facts web-verified. **Δ:** comparison pages 17 → 18, memory /vs 8 → 9,
-  llms.txt/sitemap +1, OG +1; FAQPage+BreadcrumbList+SoftwareApplication in
-  `dist/`. **KPI:** onboarding / distribution; **none degraded** — one typed
-  data object + doc anchors + one PNG; 130 web + 13 invariants + biome green.
+- 2026-06-24 (run 81) — **AEO: the `/vs` and `/solve` *hub* pages now emit
+  `ItemList` JSON-LD enumerating the full collection — hub pages with a
+  collection signal 0 → 2.** First confirmed the engine offline-retrieval lever
+  is genuinely exhausted for the 3 residual persona-bench misses: q8/q10/q22 are
+  **not** q20/q21-style phrasing leaks (their held-out probes share the
+  exemplars' phrasing, so nothing leaks, and the buckets they need already serve
+  other queries correctly); the one latent imperfection found — the ratio-cast
+  exemplar's plural "What **are**…" vs its held-out probe's singular "What
+  **is**…", spuriously attracting q8 — doesn't move precision@1 (fixing it just
+  shifts q8's miss ratio-cast → group-by-count). With offline-retrieval
+  exhausted, comparison/solve/gate lanes in open PRs (#498/#499/#496), and
+  canonical Spider at the 7-day edge (a fresh multi-window run, not completable
+  in-session — due next run), this took the non-colliding **hub structured-data**
+  lever. The leaf `/vs/[slug]` and `/solve/[slug]` pages emit FAQPage +
+  BreadcrumbList (runs 77/78), but the `/vs` and `/solve` *index* hubs carried
+  only the site-wide `SoftwareApplication` — an answer engine landing on a hub
+  had to scrape prose rather than read a declared, complete collection. Added a
+  shared `lib/itemlist-jsonld.ts` builder (trailing-slash `url`s, `name` mirrors
+  the visible `nlqdb vs X` / search-query heading), data-driven from
+  `COMPETITORS` / `SOLVE_ENTRIES` so the JSON-LD can't drift from the rendered
+  list. **Δ:** hub pages emitting `ItemList` **0 → 2** (verified in `dist/`: `/vs`
+  17 items, `/solve` 7 items); leaf-page FAQPage/BreadcrumbList unchanged.
+  **KPI:** onboarding / distribution; **none degraded** — additive static JSON-LD
+  on 2 hub pages, no engine/funnel/ops file touched; 133 web tests (+3 new) +
+  astro-check 0 errors + biome clean.
+- 2026-06-24 (runs 79–80) — **Distribution wave (both merged; engine
+  dispatch-gated, none degraded).** Run 79: `/vs/cognee` (18th comparison page,
+  P2 knowledge-graph wing — Cognee does hybrid vector+KG recall but ships no SQL
+  layer; comparison pages 17 → 18, memory /vs 8 → 9). Run 80:
+  `/solve/store-query-chatbot-conversation-history` (8th solve page, the
+  conversation-transcript + engagement-analytics wedge — a vector store recalls
+  a message but can't `GROUP BY`; solve pages 7 → 8). Both additive AEO pages
+  with FAQPage/BreadcrumbList(/HowTo) JSON-LD verified in `dist/`, honest limits
+  stated; no engine/funnel/ops file touched.
 - 2026-06-23 (runs 77–78) — **AEO structured-data wave (both merged; engine
   dispatch-gated, none degraded).** Run 78: every `/vs` + `/solve` page now
   emits `BreadcrumbList` JSON-LD + a visible breadcrumb trail (shared

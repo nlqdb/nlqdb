@@ -35,6 +35,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-SOLVE-N
 - [**SK-SOLVE-002**](decisions/SK-SOLVE-002-honest-limits-mandatory.md) — Every solve page ships a "What nlqdb doesn't do here" section.
 - [**SK-SOLVE-003**](decisions/SK-SOLVE-003-enduring-source-citations.md) — Every solve page cites ≥2 enduring discussion-hub URLs, never single-thread URLs.
 - [**SK-SOLVE-004**](decisions/SK-SOLVE-004-breadcrumb-json-ld.md) — Every solve page emits BreadcrumbList JSON-LD mirroring a visible, clickable trail (shared `lib/breadcrumb.ts` with `/vs`).
+- [**SK-SOLVE-005**](decisions/SK-SOLVE-005-itemlist-json-ld.md) — The `/solve` index emits ItemList JSON-LD enumerating the full solve-guide set (shared `lib/itemlist-jsonld.ts` with `/vs`).
 
 ## GLOBALs governing this feature
 

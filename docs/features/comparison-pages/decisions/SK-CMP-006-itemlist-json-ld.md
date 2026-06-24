@@ -1,0 +1,10 @@
+# SK-CMP-006 — The `/vs` index emits ItemList JSON-LD enumerating the full comparison set
+
+- **Decision:** The `/vs` hub page renders an `ItemList` JSON-LD block enumerating every comparison page (one `ListItem` per `COMPETITORS` entry, in render order, with `position`, the visible `nlqdb vs X` `name`, and a trailing-slash-normalised `url`), built from the same `COMPETITORS` array the visible `<ul>` renders via the shared `apps/web/src/lib/itemlist-jsonld.ts` (shared with `/solve` per [`SK-SOLVE-005`](../../solve-pages/decisions/SK-SOLVE-005-itemlist-json-ld.md)). `url`s are normalised to the 200, matching the canonical/og:url Base.astro emits — never the bare-path 307.
+- **Core value:** Effortless onboarding (distribution / AEO)
+- **Why:** FAQPage ([`SK-CMP-003`](SK-CMP-003-faqpage-json-ld.md)) and BreadcrumbList ([`SK-CMP-005`](SK-CMP-005-breadcrumb-json-ld.md)) live on the *leaf* pages; the `/vs` hub itself had no structured data beyond the site-wide `SoftwareApplication`, so an answer engine landing on `/vs` saw a prose list it had to scrape rather than a declared, complete collection. `ItemList` is the schema.org type Google and AI answer engines read to enumerate and cite a set as a group — it makes "what does nlqdb compare against?" answerable from one fetch and the per-page leaves discoverable as a coherent collection.
+- **Consequence in code:** `vs/index.astro` builds the list from `COMPETITORS` (the same array the `<ul>` maps), so the JSON-LD can't drift from the visible list and a new competitor appears in both with no extra edit. Bare-path `url`s are forbidden (they point list nodes at a 307).
+- **Alternatives rejected:**
+  - "Leave the hub with only `SoftwareApplication`" — leaves the collection-enumeration signal on the table; the lift is ≈ free and data-driven.
+  - "Hand-author the ItemList separately from the visible list" — two sources drift; one `.map` over `COMPETITORS` keeps them identical.
+  - "Wrap in `CollectionPage`" — extra nesting for no rich-result gain; a bare `ItemList` is what Google documents for list pages.
