@@ -11,63 +11,55 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-24 (run 87) — dev.to / lobste.rs: "Your Cmd+K palette is invisible to screen readers — one attribute fixes it"
+## 2026-06-24 (run 88) — dev.to / r/LLMDevs / lobste.rs: "You're grepping your agent's trace logs to count which tool fails. That's a GROUP BY."
 
-**Where:** dev.to + lobste.rs (`a11y` / `webdev` / `react`); build-in-public,
-sibling to the run-82 form-error post. nlqdb mentioned once. The hook: the Cmd+K
-palette every app ships in 2026 has a near-universal a11y bug, and the fix is one
-attribute most tutorials skip.
+**Where:** dev.to + r/LLMDevs + lobste.rs (`ai` / `llm` / `agents`);
+build-in-public, sibling to the run-85 token-cost post. nlqdb mentioned once. The
+hook: agent-observability questions ("which tool fails most, how slow is each
+one") are aggregations, and a flat trace log is the one thing you can't aggregate.
 
-**Title:** Your Cmd+K palette is invisible to screen readers — one attribute fixes it
+**Title:** You're grepping your agent's trace logs to count which tool fails. That's a GROUP BY.
 
 **Body:**
 
-> Cmd+K palettes all work the same: an input, a filtered list, arrow keys move a
-> highlight, Enter runs it. Built the obvious way it's perfect — for people who
-> can *see* the highlight move. Turn on a screen reader and arrow through it:
-> silence. The highlight is just a CSS class; focus never leaves the input, so to
-> assistive tech *nothing is happening*.
+> Your agent calls tools. Some return the wrong shape, some time out, some are
+> slow. So you reach for the questions that actually tell you if the thing is
+> healthy: *which tool fails most this week? what's the p95 latency per tool? how
+> many calls does an average run take?* And then you open your trace viewer, or
+> `jq` over a JSONL file, and start counting by hand.
 >
-> The naive model — "the highlighted row is focused" — is wrong. Focus stays on
-> the input (you're still typing to filter); what moves is a *selection*. ARIA has
-> a mechanism for exactly this, and it's the piece tutorials skip:
+> Those aren't lookups. They're aggregations — `COUNT(*) … GROUP BY tool`,
+> `percentile_cont(0.95) … GROUP BY tool`, `AVG(calls) per session`. A flat trace
+> log is built for the opposite job: reconstructing *one* run as a nested span
+> tree so you can debug it. It's the wrong shape for "across all runs, rank the
+> tools by failure rate." So you either scrape the log in app code (fragile, and
+> slower every week as volume grows) or — worse — paste the log into an LLM and
+> ask it to tally. Arithmetic over a list is a confident-wrong-number generator.
 >
-> ```jsx
-> <input
->   role="combobox"
->   aria-controls="cmd-listbox"
->   aria-activedescendant={results.length ? `cmd-opt-${highlight}` : undefined}
-> />
-> <div id="cmd-listbox" role="listbox">
->   {results.map((r, i) => (
->     <button id={`cmd-opt-${i}`} role="option" aria-selected={i === highlight}>
->       {r.label}
->     </button>
->   ))}
-> </div>
-> ```
+> The split worth internalizing: **capture and query are different machines.**
+> Your agent framework (or an OTel/AgentOps/Langfuse SDK) is great at *capture* —
+> grabbing every tool invocation, its status, its latency, the span tree. None of
+> them is a query planner. The moment your question is "per tool, across all runs,
+> ranked," you wanted a database, not a log.
 >
-> `aria-activedescendant` is the trick: it lets the focused element (the input)
-> point at a *different* element as "active." The reader announces that option
-> every time the attribute changes — so each ArrowDown reads the command it lands
-> on, while focus never moves. The `combobox`/`listbox`/`option` roles make the
-> reference meaningful; `aria-selected` mirrors the visual highlight into the
-> accessibility tree.
+> So log each tool call as a typed *row* — `tool_name`, `session_id`, `status`,
+> `latency_ms`, `ts` — the moment it returns, in parallel with whatever your
+> tracer captures. Now "error rate per tool this week, worst first" is one query,
+> not a script. You don't have to write the SQL yourself: that's the demo on
+> [nlqdb](https://nlqdb.com/solve/analyze-agent-tool-call-logs/) — you ask in
+> English, it provisions the Postgres and runs the `GROUP BY`, and it shows you the
+> SQL it ran so you can check the grain (per call vs per session) before you trust
+> a failure rate.
 >
-> Two gotchas. **Keep the option ids in one helper** — the input's
-> `aria-activedescendant` and each option's `id` must agree exactly; an off-by-one
-> announces nothing. **And clamp the highlight in pure logic, not just render** — a
-> narrowing filter can leave the index past the list's end, dangling the reference
-> and re-silencing the reader. Pull the next-index math into a pure
-> `nextHighlight(key, current, length)`, clamp `current` into range *first*, and
-> unit-test the bounds. None of this changes what sighted users see; it's the line
-> between a palette that delights everyone and a dead end for keyboard/voice users.
+> The tell that you crossed the line: you're counting rows in application code, or
+> asking a model to count search hits. Keep the tracer for debugging one run. Put
+> the rows you *count and group* somewhere that speaks SQL.
 
-**Why this advances the north-star:** UX (GLOBAL-025) — a concrete, widely
-applicable a11y lesson with a measured before/after (palette active-command ARIA
-associations 0 → 3; web tests 132 → 139), one nlqdb mention. No engine/funnel/ops
-KPI degrades (additive ARIA + a pure-logic extraction, no runtime behaviour
-change).
+**Why this advances the north-star:** onboarding / distribution (GLOBAL-025) — a
+P2-agent-builder search-intent on-ramp anchoring `/solve/analyze-agent-tool-call-logs`
+(solve pages 9 → 10, the first agent-reliability/tool-observability wedge), honest
+about what nlqdb doesn't do (no tracing, no span-tree UI). One nlqdb mention. No
+engine/funnel/ops KPI degrades (additive AEO page, data-only).
 
 ## Collapsed — full drafts in git history
 
@@ -76,6 +68,7 @@ has grown enough that even two no longer fit under the D4 20 KB cap). Each line 
 title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
+- run 87 — dev.to / lobste.rs: "Your Cmd+K palette is invisible to screen readers — one attribute fixes it" (the palette every app ships is perfect for people who can *see* the highlight move; under a screen reader it's silent because the highlight is just a CSS class and focus never leaves the input; the fix tutorials skip is `aria-activedescendant` letting the focused input point at a *different* "active" option, with `combobox`/`listbox`/`option` + `aria-selected`; keep option ids in one helper and clamp the index in pure logic; palette ARIA associations 0 → 3).
 - run 86 — dev.to / lobste.rs / r/LLMDevs: "Your llms.txt is a sitemap for robots that read — and mine was missing the page I care about most" (the machine-readable index LLM-IDE crawlers fetch was hand-curated *before* the flagship landing page existed, so the page our positioning is built around was silently absent; the comparison/how-to lists were data-driven and stayed in sync, but the bespoke top-level array nobody revisited rotted — audit the *rendered* artifact not the source, and pin bespoke entries with a test; also caught a stale "closed beta" status string; `llms.txt` primary routes 4 → 6, pivot page 0 → 1).
 - run 85 — dev.to / r/LLMDevs / lobste.rs: "Your token-cost dashboard is doing arithmetic in your app code" (LLM token/cost numbers land in a JSON log, but "spend per customer this month, which model is expensive?" is an aggregation — `SUM(cost) GROUP BY user`/`model` — and a log isn't a thing you aggregate, so you total rows in app code or ask the LLM to add them (a confident-wrong-total generator); *capture* (provider SDK / Langfuse / Helicone) and *query* (a planner) are different machines — the moment a dashboard sums a column in app code it wanted a database; anchors `/solve/track-ai-token-usage-and-cost`).
 - run 84 — dev.to / r/LocalLLaMA / lobste.rs: "Scaling your vector store to a billion rows doesn't give it a GROUP BY" (teams outgrow a hosted vector store and reach for Milvus/Qdrant for *scale* — but ANN throughput and a query planner are orthogonal axes; a vector index only finds the K nearest embeddings at any scale, while `JOIN`/multi-column `GROUP BY`/`HAVING` need a relational planner; the tell is counting rows in app code or asking the LLM to count search hits — keep the vector engine for recall, put the rows you count+group in something that speaks SQL; anchors `/vs/milvus`, honest about Milvus's ANN-at-scale strengths).
