@@ -11,55 +11,63 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-24 (run 88) — dev.to / r/LLMDevs / lobste.rs: "You're grepping your agent's trace logs to count which tool fails. That's a GROUP BY."
+## 2026-06-24 (run 90) — dev.to / r/LangChain / r/LLMDevs: "Your vector store found the chunk. It can't tell you which source you keep retrieving and never use."
 
-**Where:** dev.to + r/LLMDevs + lobste.rs (`ai` / `llm` / `agents`);
-build-in-public, sibling to the run-85 token-cost post. nlqdb mentioned once. The
-hook: agent-observability questions ("which tool fails most, how slow is each
-one") are aggregations, and a flat trace log is the one thing you can't aggregate.
+**Where:** dev.to + r/LangChain + r/LLMDevs (`rag` / `llm` / `agents`);
+build-in-public, sibling to the run-88 tool-call-logs and run-80 chatbot-memory
+posts. nlqdb mentioned once. The hook: RAG retrieval is *recall* (find the K
+nearest), but "which source gets retrieved most / never surfaces / how relevant
+per source" is an aggregation over the retrieval log — and a vector store, like a
+flat trace log, is the wrong shape to GROUP BY.
 
-**Title:** You're grepping your agent's trace logs to count which tool fails. That's a GROUP BY.
+**Title:** Your vector store found the chunk. It can't tell you which source you keep retrieving and never use.
 
 **Body:**
 
-> Your agent calls tools. Some return the wrong shape, some time out, some are
-> slow. So you reach for the questions that actually tell you if the thing is
-> healthy: *which tool fails most this week? what's the p95 latency per tool? how
-> many calls does an average run take?* And then you open your trace viewer, or
-> `jq` over a JSONL file, and start counting by hand.
+> Your RAG pipeline retrieves chunks on every query. Some sources get pulled
+> constantly, some never surface, some score high relevance and still produce bad
+> answers. So you reach for the questions that actually tell you if retrieval is
+> healthy: *which source documents get retrieved most this week? which ones in my
+> corpus never get hit? what's the average relevance score per source?* And then
+> you open the vector-store query traces, or `jq` over a retrieval log, and start
+> counting by hand.
 >
-> Those aren't lookups. They're aggregations — `COUNT(*) … GROUP BY tool`,
-> `percentile_cont(0.95) … GROUP BY tool`, `AVG(calls) per session`. A flat trace
-> log is built for the opposite job: reconstructing *one* run as a nested span
-> tree so you can debug it. It's the wrong shape for "across all runs, rank the
-> tools by failure rate." So you either scrape the log in app code (fragile, and
-> slower every week as volume grows) or — worse — paste the log into an LLM and
-> ask it to tally. Arithmetic over a list is a confident-wrong-number generator.
+> Those aren't similarity lookups. They're aggregations — `COUNT(*) … GROUP BY
+> source`, `AVG(score) … GROUP BY source`, an anti-join for "sources never
+> retrieved." A vector store is built for the opposite job: given an embedding,
+> return the K nearest. That's *recall*, and it's a different machine from a query
+> planner. The moment your question is "across all retrievals, ranked by source,"
+> the vector index has nothing to say — it finds neighbors, it doesn't `GROUP BY`.
+> So you scrape the log in app code (fragile, slower every week as the corpus
+> grows) or — worse — paste it into an LLM and ask it to tally. Arithmetic over a
+> list is a confident-wrong-number generator.
 >
-> The split worth internalizing: **capture and query are different machines.**
-> Your agent framework (or an OTel/AgentOps/Langfuse SDK) is great at *capture* —
-> grabbing every tool invocation, its status, its latency, the span tree. None of
-> them is a query planner. The moment your question is "per tool, across all runs,
-> ranked," you wanted a database, not a log.
+> The split worth internalizing: **retrieval and analytics are different
+> machines.** Your vector store (Pinecone, pgvector, Chroma, Weaviate) is great at
+> *which chunks are most similar*. None of them is a query planner over the
+> retrieval *log*. The moment your question is "per source, across all queries,
+> ranked," you wanted a database, not a vector index.
 >
-> So log each tool call as a typed *row* — `tool_name`, `session_id`, `status`,
-> `latency_ms`, `ts` — the moment it returns, in parallel with whatever your
-> tracer captures. Now "error rate per tool this week, worst first" is one query,
-> not a script. You don't have to write the SQL yourself: that's the demo on
-> [nlqdb](https://nlqdb.com/solve/analyze-agent-tool-call-logs/) — you ask in
+> So log each retrieval as a typed *row* — `query_id`, `source`, `chunk_id`,
+> `relevance_score`, `ts` — the moment it returns, in parallel with the search
+> itself. Now "retrievals per source this week, most first" and "sources that
+> never surface" are one query each, not a script. You don't have to write the SQL
+> yourself: that's the demo on
+> [nlqdb](https://nlqdb.com/solve/analyze-rag-retrieval-logs/) — you ask in
 > English, it provisions the Postgres and runs the `GROUP BY`, and it shows you the
-> SQL it ran so you can check the grain (per call vs per session) before you trust
-> a failure rate.
+> SQL it ran so you can check the grain (per retrieval vs per query) before you
+> trust a number. The retrieval still happens in your vector store; nlqdb is the
+> database half you analyze the log with.
 >
-> The tell that you crossed the line: you're counting rows in application code, or
-> asking a model to count search hits. Keep the tracer for debugging one run. Put
-> the rows you *count and group* somewhere that speaks SQL.
+> The tell that you crossed the line: you're counting retrievals in application
+> code, or asking a model to count log lines. Keep the vector store for finding the
+> chunk. Put the rows you *count and group* somewhere that speaks SQL.
 
 **Why this advances the north-star:** onboarding / distribution (GLOBAL-025) — a
-P2-agent-builder search-intent on-ramp anchoring `/solve/analyze-agent-tool-call-logs`
-(solve pages 9 → 10, the first agent-reliability/tool-observability wedge), honest
-about what nlqdb doesn't do (no tracing, no span-tree UI). One nlqdb mention. No
-engine/funnel/ops KPI degrades (additive AEO page, data-only).
+P2-agent-builder search-intent on-ramp anchoring `/solve/analyze-rag-retrieval-logs`
+(solve pages 10 → 11, the RAG retrieval-quality wedge), honest about what nlqdb
+doesn't do (no vector search or embedding — that stays in your vector store). One
+nlqdb mention. No engine/funnel/ops KPI degrades (additive AEO page, data-only).
 
 ## Collapsed — full drafts in git history
 
@@ -68,6 +76,7 @@ has grown enough that even two no longer fit under the D4 20 KB cap). Each line 
 title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
+- run 88 — dev.to / r/LLMDevs / lobste.rs: "You're grepping your agent's trace logs to count which tool fails. That's a GROUP BY." (agent-observability questions — which tool fails most, p95 latency per tool, calls per session — are aggregations, and a flat trace log built to reconstruct *one* run as a span tree is the wrong shape to `GROUP BY` across all runs; *capture* (OTel/AgentOps/Langfuse) and *query* (a planner) are different machines — log each tool call as a typed row alongside the tracer; anchors `/solve/analyze-agent-tool-call-logs`).
 - run 87 — dev.to / lobste.rs: "Your Cmd+K palette is invisible to screen readers — one attribute fixes it" (the palette every app ships is perfect for people who can *see* the highlight move; under a screen reader it's silent because the highlight is just a CSS class and focus never leaves the input; the fix tutorials skip is `aria-activedescendant` letting the focused input point at a *different* "active" option, with `combobox`/`listbox`/`option` + `aria-selected`; keep option ids in one helper and clamp the index in pure logic; palette ARIA associations 0 → 3).
 - run 86 — dev.to / lobste.rs / r/LLMDevs: "Your llms.txt is a sitemap for robots that read — and mine was missing the page I care about most" (the machine-readable index LLM-IDE crawlers fetch was hand-curated *before* the flagship landing page existed, so the page our positioning is built around was silently absent; the comparison/how-to lists were data-driven and stayed in sync, but the bespoke top-level array nobody revisited rotted — audit the *rendered* artifact not the source, and pin bespoke entries with a test; also caught a stale "closed beta" status string; `llms.txt` primary routes 4 → 6, pivot page 0 → 1).
 - run 85 — dev.to / r/LLMDevs / lobste.rs: "Your token-cost dashboard is doing arithmetic in your app code" (LLM token/cost numbers land in a JSON log, but "spend per customer this month, which model is expensive?" is an aggregation — `SUM(cost) GROUP BY user`/`model` — and a log isn't a thing you aggregate, so you total rows in app code or ask the LLM to add them (a confident-wrong-total generator); *capture* (provider SDK / Langfuse / Helicone) and *query* (a planner) are different machines — the moment a dashboard sums a column in app code it wanted a database; anchors `/solve/track-ai-token-usage-and-cost`).
@@ -89,10 +98,7 @@ recovers any body.
 - run 68 — "Your offline LLM eval isn't measuring your model — it's measuring your rate limits" (a tiny NL→SQL bench on a free multi-provider chain scored 17/20 then 6/20 ninety seconds later; the engine didn't regress, the providers got tired — `circuit_open`/`rate_limited` errors with p50=0ms are availability, not accuracy; throttle to measure reasoning, pause-and-resume on exhaustion, keep the smoke test apart from the powered windowed run).
 - run 67 — "AI made the internal-tool builder faster. It didn't ask whether you needed the tool." (low-code AI — AppGen / Ask AI / agents — scaffolds the admin tool faster, but the output is still a destination a human builds and operates; often the answer belongs inline in the product you already ship, or the asker is an agent that wants a backend primitive, not a built tool — check whether the AI sped up the workflow or the outcome; anchors `/vs/retool`).
 
-*(runs 60–66 moved to [`distribution-queue-archive.md`](./distribution-queue-archive.md) under D4.)*
-- run 59 — "Hybrid search made your recall smarter. It still can't count." (hybrid search optimises *which* items rank, not what you can compute over them; BM25+vector fusion is still a relevance score, not a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/weaviate`).
-- run 58 — "Your text-to-SQL eval is failing the wrong schema" (BIRD 0.52 / Spider 0.19 are academic-schema scores; the same free chain scores 0.90 EX on the ICP shape — score against your product's schema, and the two misses it surfaces are the ones users actually hit; persona-bench, SK-QUAL-018).
-- run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers vendor lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING — deployment and capability are orthogonal axes; anchors `/vs/chroma`).
+*(runs 56–66 moved to [`distribution-queue-archive.md`](./distribution-queue-archive.md) under D4.)*
 - run 55 — "Your text-to-SQL accuracy is measured on schemas your users will never build" (BIRD/Spider run over messy 20–100-table academic schemas, not the small clean ones your users build; we added a third benchmark — hand-authored gold NL→SQL over the ICP shape, same EX scorer, literal-date gold so it never drifts with the clock; anchors persona-bench, SK-QUAL-018).
 - run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no GROUP BY/COUNT/JOIN/HAVING; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
 - run 52 — "Some few-shot retrieval misses can't be fixed with lexical *selector* tricks — and measuring *why* is the win" (stopword filter regressed 18/20 → 17/20, phrase-normalisation flat, held-out 14/14; the verdict was later narrowed by runs 74/76 to selector-*code* tweaks — pool-exemplar phrasing turned out to be the live lever; both selector experiments reverted).
