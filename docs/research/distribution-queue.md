@@ -10,6 +10,60 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-24 (run 85) — dev.to / r/LLMDevs / lobste.rs: "Your token-cost dashboard is doing arithmetic in your app code"
+
+**Where:** dev.to + r/LLMDevs + lobste.rs (`ai` / `llm` / `database`);
+build-in-public lesson for anyone shipping LLM features who needs to attribute
+spend. nlqdb mentioned once. The hook: the moment "how much are we spending per
+customer?" becomes a real question, the JSON log you've been writing token counts
+to is the wrong shape — and summing them in app code (or asking the LLM to) is a
+bug waiting to happen.
+
+**Title:** Your token-cost dashboard is doing arithmetic in your app code
+
+**Body:**
+
+> Every LLM app grows the same appendage: somewhere you start writing down how
+> many tokens each call burned and what it cost. Usually it lands in a log line or
+> a JSON column — `{user, model, prompt_tokens, completion_tokens, cost}`. Fine,
+> until a PM asks the question that actually matters: *how much are we spending per
+> customer this month, and which model is the expensive one?*
+>
+> Now you're in trouble, because that's an aggregation — `SUM(cost) GROUP BY
+> user`, `GROUP BY model` — and a log is not a thing you aggregate. So you do one
+> of two bad things. You pull the rows back and total them in application code (a
+> loop that gets slower and more wrong every week as volume grows and pagination
+> creeps in). Or — worse — you hand the list to the LLM and ask it to add the
+> numbers up. Arithmetic over a list of items is one of the most reliable ways to
+> make a model hallucinate a confident wrong total. Neither of these is a
+> *database* answering a *query*; they're your app pretending to be a query
+> planner.
+>
+> The tell is simple: if you're writing a `for` loop to sum a column, the question
+> wanted SQL. Token counts and dollar costs are tidy, typed, numeric rows — the
+> single most natural thing in the world to put in a relational table and ask
+> `GROUP BY` over. The reason it didn't start there is usually that standing up a
+> database for "just some usage numbers" felt heavier than appending to a log. So
+> the log won, and the aggregation problem got deferred until it became a bug.
+>
+> Two things worth separating in your head. **Capture** — getting accurate token
+> and cost numbers per call — is a job for your provider SDK or an observability
+> proxy (Langfuse, Helicone, and friends do this well, automatically). **Query** —
+> "spend per user", "tokens per model", "cost per day this week" — is a job for a
+> query planner. They're different machines, and the second one is the one people
+> skip because the log was right there.
+>
+> (We built nlqdb around the query half — you write each call as a typed row and
+> ask "total cost by model this month" in English; it runs the actual `GROUP BY`
+> in Postgres and shows you the SQL. But the lesson stands whatever you reach for:
+> the moment your dashboard is summing a column in app code, it wanted a database.)
+
+**Why this advances the north-star:** onboarding / distribution — a concrete,
+reproducible lesson for the GLOBAL-036 agent-builder persona, anchoring the new
+`/solve/track-ai-token-usage-and-cost` page; one nlqdb mention, honest that capture
+(Langfuse/Helicone) and query are different jobs. No engine/funnel/ops KPI degrades
+(a queue draft, not a code change).
+
 ## 2026-06-24 (run 84) — dev.to / r/LocalLLaMA / lobste.rs: "Scaling your vector store to a billion rows doesn't give it a GROUP BY"
 
 **Where:** dev.to + r/LocalLLaMA + lobste.rs (`ai` / `database` / `vectordb`);
@@ -59,69 +113,13 @@ design lesson for the GLOBAL-036 agent-memory wedge, anchoring the new
 `/vs/milvus` page; one nlqdb mention, honest about Milvus's real strengths (ANN
 at scale). No engine/funnel/ops KPI degrades (a queue draft, not a code change).
 
-## 2026-06-24 (run 83) — dev.to / lobste.rs: "I skipped the rich result Google was begging me to add"
-
-**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, fourth
-post in the AEO/structured-data thread. nlqdb mentioned once. The hook: the
-contrarian one — the most-recommended structured-data win (the sitelinks search
-box) is the one I deliberately *didn't* ship, and why "valid schema" and "honest
-schema" are different bars.
-
-**Title:** I skipped the rich result Google was begging me to add
-
-**Body:**
-
-> Every "improve your SEO with structured data" checklist has the same top item:
-> add a `WebSite` block with a `SearchAction` and Google may render a sitelinks
-> search box right under your result. It's a big, clickable win. The snippet is
-> ten lines. I had the `WebSite` block open in my editor. And I deleted the
-> `SearchAction`.
->
-> Here's why. A `SearchAction` is a *promise*: it tells Google "POST or GET a
-> term to this URL template and it runs a search." The contract is that the
-> target URL actually performs the query. Our homepage is a single goal-first
-> input — you type what you're building, it answers. But that input submits over
-> JavaScript to an API; there is no `GET /search?q=…` route that takes a term in
-> the URL and returns results. So a `SearchAction` pointing at `/app/new?q={…}`
-> would validate perfectly in the Rich Results Test and be a lie — the param
-> falls on the floor.
->
-> The schema would be *valid*. It would not be *true*. And structured data that
-> claims a capability the page doesn't have is exactly the kind of thing search
-> and answer engines learn to distrust — per source, and then per pattern.
->
-> What I kept is the honest half, and it's the half that actually compounds:
->
-> - **`Organization`** with a stable `@id` (`https://site/#organization`), name,
->   logo, and `sameAs` to the GitHub org. This is the entity-authority node —
->   it's how an answer engine binds the string "nlqdb" to *one thing* it can
->   accumulate facts about, instead of guessing per page.
-> - **`WebSite`** (no `SearchAction`) naming that same Organization as
->   `publisher` by `@id`. This is the node Google reads for the *site name* it
->   shows in results, and it ties the site to the entity.
-> - Every other page's existing `SoftwareApplication` block now also points
->   `publisher` at that one `@id`, so the whole site consolidates to a single
->   entity graph rather than N disconnected nodes.
->
-> Two things to take away. **Declare site-wide nodes once, on the root** — the
-> Organization and WebSite belong on `/`, not stamped onto all 40 pages; the
-> stable `@id` is what lets every page *reference* them. And **"would this
-> validate?" is the wrong test — "is this true?" is the test.** The sitelinks
-> search box is a great rich result. It's also one you have to *earn* with a real
-> query endpoint, not assert. I'd rather ship it the day the endpoint exists than
-> claim it today.
-
-**Why this advances the north-star:** onboarding / distribution — a concrete,
-slightly contrarian AEO lesson (honest schema > valid schema) with a measured
-before/after (homepage brand-entity nodes 1 → 3), one nlqdb mention. No
-engine/funnel/ops KPI degrades (additive static structured data).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
+- run 83 — dev.to / lobste.rs: "I skipped the rich result Google was begging me to add" (the most-recommended structured-data win — the `WebSite` `SearchAction` sitelinks search box — is the one I deliberately *didn't* ship: a `SearchAction` is a promise that a URL template runs a query, but the homepage submits over JS with no `GET /search?q=…` route, so the schema would *validate* and be a *lie*; kept the honest half — `Organization` + `WebSite` with stable `@id`s and every page's `SoftwareApplication` naming that Organization as `publisher`; "would this validate?" is the wrong test, "is this true?" is; brand-entity nodes 1 → 3).
 - run 82 — dev.to / lobste.rs: "Your AI app tells sighted users the query failed. Screen readers get silence." (the AI-feature text box swaps *loading*/*result*/*error* async with two quiet a11y misses: the result region isn't a live region (`aria-live`/`role="status"` once on the container), and the *input* never says it's invalid — add `aria-invalid` + `aria-describedby` pointing at one error `id`, collapsing the structured + network error branches into a single `role="alert"` region; test the error path with the reader on; anchored to this run's CreateForm fix, ARIA associations 0 → 2).
 - run 81 — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections" (leaf `/vs` + `/solve` pages emit `FAQPage`/`BreadcrumbList`, but the hubs listing them carried only the site-wide `SoftwareApplication`; `ItemList` declares "an ordered, complete set" — build it from the same array the `<ul>` renders so it can't drift, item URLs at the trailing-slash 200; hub collection signal 0 → 2).
 - run 80 — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases" (a vector store answers *what is most similar* — top-k, no query planner; the moment the question is an aggregate ("how many conversations this week?") you either make the LLM count rows (hallucination) or bolt on a real DB; retrieval and analytics are different jobs — store turns as typed rows and the engagement questions become trustworthy `GROUP BY`s; anchors `/solve/store-query-chatbot-conversation-history`).
@@ -165,7 +163,6 @@ recovers any body.
 - run 43 — "We moved agent memory above the fold — without touching the wordmark" (additive/reversible home band; Mem0·Zep·Letta·nlqdb matrix; GLOBAL-036 + WS-12).
 - run 42 — launch image "GROUP BY your agent's memory" (`og/agents.png` + four `vs-*.png` cards, SK-PIVOT-004; the `/agents` share card).
 - run 41 — "A live demo of analytical agent memory — the GROUP BY, and the SQL it ran" (fixture-backed `/agents` round-trip, no signup; typed-plan trust boundary).
-- run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no `GROUP BY`/`COUNT`/`JOIN`/`HAVING`; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
 - runs 27–30 — agent-memory wave (WS-09): "Why your AI agent's memory should be a database, not a vector store" (Replit-incident open, BIRD/Spider sub-target, open harness), "…as four Postgres tables (no schema design)" (`agent_memory_v1` preset), the "one bright column" matrix teaser + FSL-1.1 license note, and the Mem0/Zep/Letta/nlqdb capability matrix → `/agents`. Bodies in git history.
 
 ### Helpful-answer + comparison drafts (Reddit / Show HN)

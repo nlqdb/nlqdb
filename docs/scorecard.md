@@ -73,6 +73,24 @@ lands the instant the founder sets it.
 
 ## Deltas (recent runs)
 
+- 2026-06-24 (run 85) — **Distribution: shipped `/solve/track-ai-token-usage-and-cost`
+  — solve pages 8 → 9, the first P2 LLM-spend-attribution on-ramp.** With engine
+  canonical dispatch-gated (BIRD 06-19 <7d; Spider 06-17 crosses the 7-day edge
+  **tomorrow 06-25** — re-dispatch due then on a non-merging run) and offline
+  retrieval exhausted (run 81), took the highest-search-volume *uncovered* P2
+  agent-builder intent: **"how do I track my LLM app's token usage and cost per
+  user?"** — squarely the analytical agent-memory wedge (log each call as a typed
+  row → `GROUP BY` user/model/day in SQL, not arithmetic over a JSON log). Honest
+  limits stated (no automatic token metering — that's the app's/provider SDK's job;
+  no BYO-store; no live meter; composes with Langfuse/Helicone rather than
+  replacing them). Data-driven, so the `/solve` hub `ItemList`, sitemap, and
+  llms.txt auto-extend. **Δ:** solve pages **8 → 9** (`/solve` `ItemList`
+  `numberOfItems` 8 → 9; the page emits FAQPage + HowTo + BreadcrumbList +
+  SoftwareApplication JSON-LD, in sitemap + llms.txt); persona coverage P2 ×4 → ×5;
+  web tests **129 → 132** (data-integrity invariants pin the new entry);
+  astro-check 0 errors; biome clean. **KPI:** onboarding / distribution
+  (GLOBAL-025); **none degraded** — additive data object, no engine/funnel/ops file
+  touched.
 - 2026-06-24 (run 84) — **Distribution: shipped `/vs/milvus` — comparison pages
   18 → 19, P2 memory vector-cluster 9 → 10.** With offline-retrieval exhausted
   (run 81), canonical BIRD (06-19) / Spider (06-17, crosses the 7-day edge 06-25
@@ -90,34 +108,15 @@ lands the instant the founder sets it.
   errors; OG card `vs-milvus.png` (1200×630). **KPI:** onboarding / distribution;
   **none degraded** — additive data object + one PNG, no engine/funnel/ops file
   touched; `competitors.md` net-shrunk under D4 (Milvus anchor added).
-- 2026-06-24 (run 83) — **AEO: the homepage now declares its brand entity —
-  `Organization` + `WebSite` JSON-LD, and every page's `SoftwareApplication`
-  names that Organization as `publisher` by `@id`.** With offline-retrieval
-  exhausted (run 81), engine canonical dispatch-gated (Spider crosses 7 d 06-25
-  on a non-merging run), and the CreateForm a11y lever taken by run 82 (PR #501),
-  took the non-colliding structured-data gap: the homepage carried only the
-  site-wide `SoftwareApplication` — no `Organization` (brand-authority for "nlqdb"
-  queries) and no `WebSite` (the node Google reads for the SERP site name). Added
-  shared `lib/site-jsonld.ts` (+test); homepage-only nodes with stable `@id`s
-  (`#organization`/`#website`) that crawlers consolidate with the per-page
-  `publisher` reference. **No SearchAction** — the hero submits via JS to `/v1/ask`
-  (SK-WEB-002), no GET route consumes a `q` term, so a sitelinks-searchbox target
-  would be a broken signal. **Δ:** homepage entity nodes **1 → 3** (verified in
-  `dist/index.html`: all 3 parse; `/pricing` carries only `SoftwareApplication` +
-  the `publisher` `@id`). **KPI:** onboarding / distribution; **none degraded** —
-  additive static JSON-LD, no engine/funnel/ops file touched; 124 web tests (+3
-  new) + build green + biome clean.
-- 2026-06-24 (run 82) — **UX/onboarding a11y: the anonymous first-query
-  CreateForm now exposes its error state to assistive tech.** On a failed first
-  query the input gained `aria-invalid` + `aria-describedby` pointing at the
-  error, now a single `role="alert"` region; previously the field gave AT users no
-  invalid signal and the two duplicate error branches (`error` vs `networkError`)
-  rendered separately. Per-kind copy extracted to a tested `lib/create-errors.ts`;
-  redundant `aria-label` dropped (the visible `<label htmlFor>` already names it).
-  **Δ:** web tests **121 → 129 (+8)**; CreateForm error-state ARIA associations
-  **0 → 2**; net −1 error branch (dedup). **KPI:** onboarding / UX (GLOBAL-025);
-  **none degraded** — additive a11y attrs + a code dedup, no
-  engine/funnel/ops/prod-behaviour change; astro-check 0 errors, biome clean.
+- 2026-06-24 (runs 82–83) — **UX/AEO wave (both merged; engine untouched; none
+  degraded).** Run 82: CreateForm error state now exposed to assistive tech
+  (`aria-invalid` + `aria-describedby` → one `role="alert"` region; per-kind copy
+  to tested `lib/create-errors.ts`; ARIA associations 0 → 2, net −1 error branch;
+  web tests 121 → 129). Run 83: homepage declares its brand entity —
+  `Organization` + `WebSite` JSON-LD with stable `@id`s, every page's
+  `SoftwareApplication` names that Organization as `publisher`; **no SearchAction**
+  (the hero submits via JS, no GET `q` route — a sitelinks-searchbox target would
+  be a lie); homepage entity nodes 1 → 3 (verified in `dist/`).
 - 2026-06-24 (run 81) — **AEO: `/vs` + `/solve` *hub* pages emit `ItemList`
   JSON-LD enumerating the full collection — hub pages with a collection signal
   0 → 2** (`lib/itemlist-jsonld.ts`, data-driven from `COMPETITORS`/`SOLVE_ENTRIES`
