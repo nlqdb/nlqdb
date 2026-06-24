@@ -10,6 +10,53 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-23 (run 78) — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search"
+
+**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public,
+the structured-data follow-up to the run-69 canonical-URL post. nlqdb mentioned
+once. The hook: FAQPage gets all the SEO attention, but it tells an answer
+engine nothing about *where a page sits* — and hierarchy is what they use to
+decide a page is authoritative rather than orphaned.
+
+**Title:** Your pages can win the FAQ rich result and still be invisible to AI search
+
+**Body:**
+
+> We ship a lot of programmatic pages — one per competitor comparison, one per
+> user problem. Every one emitted `FAQPage` JSON-LD, because that's the
+> structured-data type everyone writes about: it earns the expandable Q&A rich
+> result in Google and ChatGPT/Perplexity lift the answers almost verbatim.
+>
+> What none of them had was `BreadcrumbList`. I'd mentally filed breadcrumbs
+> under "nice-to-have navigation," but that misses what the markup actually does
+> for machines: it states the page's *position in a hierarchy*. `Home → Compare
+> → nlqdb vs X` tells a crawler this isn't an orphan — it's a leaf under a real
+> category, with siblings. Google uses it to render a breadcrumb trail instead
+> of a raw URL in the result (measurably higher CTR), and answer engines use the
+> same signal to decide whether a page is a coherent part of a site or a
+> drive-by.
+>
+> Two things bit me that are worth passing on:
+>
+> 1. **Match the visible trail.** Google's guidance is that `BreadcrumbList`
+>    markup should mirror a breadcrumb a human can actually see and click. JSON-LD
+>    with no on-page trail is a quality smell. So I added both, from one source
+>    of truth — a tiny builder function the visible `<nav>` and the JSON-LD both
+>    read — so they can't drift.
+> 2. **Use the canonical URL, not the bare path.** Our host serves
+>    `/vs/x/index.html`, so the trailing-slash URL is the 200 and the bare path
+>    301/307-redirects. My `canonical` and `og:url` already pointed at the 200,
+>    but it's easy to feed the bare path into breadcrumb `item` URLs and quietly
+>    point every hierarchy node at a redirect. Normalise once, reuse everywhere.
+>
+> Net: 24 pages went from "has FAQ schema" to "has FAQ schema *and* declares
+> where it lives." FAQPage answers the question; BreadcrumbList tells the engine
+> the page is worth trusting with the answer. If you've done the FAQ work,
+> breadcrumbs are the cheapest next win — a few lines, no new copy.
+
+**Why this advances the north-star:** onboarding / distribution — a concrete
+AEO/SEO lesson with a measured before/after (0 → 24 pages), one nlqdb mention.
+No funnel/ops KPI degrades (additive static structured data).
 ## 2026-06-23 (run 76) — dev.to / lobste.rs: "I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English"
 
 **Where:** dev.to + lobste.rs (`ai` / `databases` / `llm`); build-in-public.
@@ -60,59 +107,13 @@ retrieval before/afters and a generalisable rule), one nlqdb mention; the
 GLOBAL-026 bet that scaffolding compounds with the model. No funnel/ops KPI
 degrades (default-off eval-only exemplar; prod byte-identical).
 
-## 2026-06-23 (run 75) — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (provision-from-English wedge)
-
-**Where:** Show HN + dev.to (`ai` / `mcp` / `databases`) and a one-link r/mcp
-helpful answer; build-in-public. The hook: the MCP ecosystem has dozens of DB
-connectors and every one starts with "paste your connection string" — an agent
-that needs a *scratch* database to write to and query has nowhere to put one
-without a human doing the DBA work first. nlqdb mentioned once. Anchors
-`/solve/database-claude-cursor-can-query`.
-
-**Title:** Every "database MCP server" assumes you already have a database
-
-**Body:**
-
-> I was wiring up database access for an agent over MCP and went shopping for a
-> server. There are a lot of good ones — Postgres, SQL Server, SQLite, a
-> multi-DB bridge. Every single one opens the same way: provision a database,
-> design the schema, paste the connection string into the host config. Which is
-> exactly right when the database is your source of truth and the agent is a
-> read client over it.
->
-> But that wasn't my case. I wanted the agent to have a *scratch* store — a
-> place to log what it did and then answer "how many of each this week" over it.
-> That database doesn't exist yet. None of the connectors help, because step one
-> of all of them is "have a database." The DBA work is the prerequisite, and the
-> agent can't do it for itself through the same tool it queries with.
->
-> The shape I actually wanted: the agent's *first English goal* provisions the
-> store. No connection string, no `CREATE TABLE`. Call one tool with no database
-> set — "tasks grouped by status with a count of each" — and it mints Postgres,
-> infers the schema, runs the aggregate, and hands back rows plus the SQL it ran
-> so I can audit the grain. Create and query are the same call; there's
-> deliberately no separate "create database" verb to get the trust boundary
-> wrong.
->
-> The trade-off is the honest part, and it's the inverse of the connectors:
-> a tool that provisions its own database can't query the one you already run.
-> If your warehouse is the source of truth, you want a Postgres-MCP server, not
-> this. The two are different jobs — "connect my agent to my database" vs. "give
-> my agent a database" — and "database MCP server" is one phrase covering both.
->
-> (We hit this building nlqdb's MCP surface; the provision-from-English path is
-> `nlqdb_query` with no `db` set against `mcp.nlqdb.com`.)
-
-**Why this advances the north-star:** onboarding / distribution — a
-search-shaped on-ramp for the high-volume "database MCP server" query that
-names the provision-vs-connect distinction honestly, one nlqdb mention. No
-engine/funnel KPI degrades (one solve-page data object + doc edits).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
+
+- run 75 — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (every DB-MCP connector opens with "paste your connection string"; an agent needing a *scratch* store to write+query has nowhere to put one — provision-from-English makes create and query the same call, no separate create verb; anchors `/solve/database-claude-cursor-can-query`).
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 - run 74 — "Some of your 'unfixable' few-shot misses are just SQL keywords leaking into your examples" (the single-example v1 of the run-76 post above — `COUNT(DISTINCT)` demo phrased "how many distinct cities" shared no token with users' "how many different"; **superseded by run-76's two-example version**).
