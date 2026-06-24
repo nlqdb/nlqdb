@@ -10,6 +10,56 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-24 (run 80) — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases"
+
+**Where:** dev.to + r/LLMDevs + lobste.rs (`ai` / `llm` / `database`); a
+build-in-public design lesson for chatbot/agent builders. nlqdb mentioned once.
+The hook: people reach for a vector store for *everything* their bot remembers,
+then can't answer "how many conversations this week?" without the LLM doing
+arithmetic over search hits.
+
+**Title:** Your chatbot's memory and your chatbot's metrics are two different databases
+
+**Body:**
+
+> Every chatbot project hits the same fork. You've wired up a vector store
+> (Mem0, Zep, pgvector) so the bot can recall "what did the user say earlier?"
+> — and it works. Then a PM asks: *how many conversations did we have last
+> week? Which users send the most messages? What's the average turns per
+> session?* And you realise your memory layer can't answer any of them.
+>
+> The reason is structural, not a missing feature. A vector store answers one
+> question: *what is the most similar thing to this?* It returns the top-k
+> nearest rows. It has no query planner, no `GROUP BY`, no `COUNT`. So the
+> moment the question is an aggregate, your only options are (a) pull a pile of
+> rows and let the LLM count them — a hallucination generator, because LLMs are
+> bad at arithmetic over lists — or (b) bolt a real database alongside the
+> vector store and keep two copies of the same conversation in sync.
+>
+> The cleaner mental model: **retrieval and analytics are different jobs.**
+> Similarity recall ("the user prefers Celsius") is retrieval — vector's
+> domain. Counting, ranking, and rolling up ("top 10 intents this month",
+> "messages per day") is analytics — a SQL database's domain. They look like
+> the same "memory" feature in a design doc; they're not. One needs cosine
+> distance, the other needs a query planner.
+>
+> Practically: store conversation turns as **typed rows** — `conversation_id`,
+> `user_id`, `role`, `text`, `created_at` — in Postgres, and the engagement
+> questions become one-line `GROUP BY`s you can trust, with the SQL visible to
+> audit the grain (per message vs per conversation — easy to get wrong, easy to
+> verify). Keep the vector store for similarity if you need it; just stop asking
+> it to count.
+>
+> (We built nlqdb around exactly this split — you ask the engagement question
+> in English, it runs the `GROUP BY` in Postgres and shows you the SQL. But the
+> lesson stands whatever you use: don't make your similarity index do
+> arithmetic.)
+
+**Why this advances the north-star:** onboarding / distribution — a
+reproducible design lesson for the GLOBAL-036 agent-memory wedge, anchoring the
+new `/solve/store-query-chatbot-conversation-history` page; one nlqdb mention.
+No engine/funnel/ops KPI degrades (a draft for the queue, not a code change).
+
 ## 2026-06-23 (run 78) — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search"
 
 **Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public,
@@ -57,66 +107,17 @@ decide a page is authoritative rather than orphaned.
 **Why this advances the north-star:** onboarding / distribution — a concrete
 AEO/SEO lesson with a measured before/after (0 → 24 pages), one nlqdb mention.
 No funnel/ops KPI degrades (additive static structured data).
-## 2026-06-23 (run 77) — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to"
-
-**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, an
-AEO/structured-data lesson. The hook: the page you care about most is the
-easiest to leave un-instrumented, because it's bespoke. nlqdb mentioned once.
-
-**Title:** We put FAQ schema on every comparison page — and forgot the page they all point to
-
-**Body:**
-
-> We generate our comparison and "solve" pages from data — one TypeScript
-> object per competitor, one template. The template emits `FAQPage` JSON-LD for
-> every page, so all ~26 of them are eligible for FAQ rich results and are
-> trivially extractable by answer engines (ChatGPT, Perplexity, Google's AI
-> Overviews read structured data first, prose second).
->
-> Our single most important landing page had none. It's the bespoke one — the
-> hand-authored front door for our lead use case, the page every templated page
-> *links to*. It was dense with question-shaped content: a "what is this?"
-> direct-answer block, a "how is it different from X?" split, a safety
-> explainer, a pricing section. All of it visible to humans, all of it invisible
-> to a crawler looking for `FAQPage`. The templated pages got the schema for
-> free; the important page missed it precisely *because* it wasn't templated.
->
-> The fix was boring and that's the point: lift the Q&As that were already on
-> the page into a typed `faqs` array, render them as a visible `<dl>` (Google
-> requires the answer to be on the page — schema describing hidden text is a
-> manual-action risk), and `JSON.stringify` the same array into one
-> `<script type="application/ld+json">`. One source of truth, visible copy and
-> structured data can't drift. Every answer was a restatement of a claim already
-> made elsewhere on the page — no new marketing, just making the existing
-> content machine-readable.
->
-> The lesson: audit structured-data coverage by *importance*, not by template.
-> Your generated pages are probably fine — the gap is the hero page someone
-> built by hand before the template existed. Grep your built `dist/` for
-> `"@type":"FAQPage"` and check the list against your top-traffic URLs, not your
-> page count.
->
-> (We hit this on nlqdb's `/agents` page; the FAQ block is now visible and in
-> the JSON-LD, both derived from one array.)
-
-**Why this advances the north-star:** onboarding / distribution — a
-reproducible AEO lesson with a concrete before/after (the wedge front door went
-from 0 to 1 `FAQPage` block, 6 Q&As; site coverage 24 → 25 pages), one nlqdb
-mention. No engine/funnel/ops KPI degrades (additive static JSON-LD + visible
-copy on one page; every answer restates existing on-page content).
-
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
+- run 77 — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to" (the page you care about most is the easiest to leave un-instrumented, because it's bespoke; the templated `/vs` + `/solve` pages all emitted `FAQPage`, the hand-authored `/agents` hero didn't — lift the already-visible Q&As into one typed `faqs` array → visible `<dl>` + JSON-LD; audit coverage by importance, not by template).
 - run 76 — dev.to / lobste.rs: "I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English" (two independent few-shot retrieval misses a week apart, same root cause — the exemplar's *question* echoed SQL keywords/phrasing users don't say; `COUNT(DISTINCT)`→"different" and scalar-subquery→"which … list the names" both landed and held out; read your examples aloud before blaming the ranker).
 - run 75 — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (every DB-MCP connector opens with "paste your connection string"; an agent needing a *scratch* store to write+query has nowhere to put one — provision-from-English makes create and query the same call, no separate create verb; anchors `/solve/database-claude-cursor-can-query`).
 
 ### Engine-lesson posts (dev.to / lobste.rs)
-- run 74 — "Some of your 'unfixable' few-shot misses are just SQL keywords leaking into your examples" (the single-example v1 of the run-76 post above — `COUNT(DISTINCT)` demo phrased "how many distinct cities" shared no token with users' "how many different"; **superseded by run-76's two-example version**).
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).
 - run 70 — "Your AI BI tool reads your data. It doesn't own it — and can't write to it" (a wave of AI-native BI tools converge on "describe what to track, AI builds the dashboard" — great at it, but "your data" is a read-only connection to a warehouse you already run; they don't own a DB or write to yours; the data layer that provisions the store and takes English for the write *and* the read is a different altitude; anchors `/vs/basedash`).
 - run 69 — "Your sitemap is advertising redirects — and your canonical tag points at one" (a static host serving `route/index.html` makes the bare path a 307, but `canonical`/`og:url`/sitemap/llms.txt all emitted the bare path — 27 redirecting sitemap URLs + a self-referential redirecting canonical; `trailingSlash: "always"` plus a one-place path-normalize in the head layout + URL generators, audit with `curl -sI` over every sitemap URL).
