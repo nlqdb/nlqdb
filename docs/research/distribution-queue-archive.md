@@ -138,3 +138,18 @@ dev.to (#sql #postgres #debugging) or lobste.rs (`databases`, `practices`).*
 *Reviewer notes: numbers sourced from `apps/api/src/gate/eval-baseline.ts`
 (2026-06-12 canonical run). Verify the auto-invite valve is healthy
 (scorecard #4) before posting. Best posted weekday morning US-East.*
+
+## One-line engine-lesson gists (runs 8–18) — bodies in git history
+
+Moved from [`distribution-queue.md`](./distribution-queue.md)'s collapsed list to hold that doc under the 20 KB cap (CLAUDE.md D4). `git log -p docs/research/distribution-queue.md` recovers any body.
+
+- run 18 — "We were one run away from building the wrong feature" (value-retrieval falsified, 90→0 literal-only; SK-QUAL-014).
+- run 17 — "Our text-to-SQL benchmark went flat. That was the signal to stop tuning prompts" (directive levers saturated; McNemar p=0.50).
+- run 16 — "Before you prune the schema you send an LLM, measure what the prune would throw away" (SK-QUAL-015).
+- run 15 — "We thought our text-to-SQL engine couldn't join. A regex bug was lying to us" (SK-QUAL-014).
+- run 14 — "The text-to-SQL mistake that fails two ways — and only one of them throws" (HAVING vs WHERE; SK-LLM-040).
+- run 13 — "Schema pruning for text-to-SQL drops the one table the join needs" (inbound junction tables; SK-LLM-037).
+- run 11 — "Failover, retry, repair: the three error classes in an LLM text-to-SQL pipeline" (SK-ASK-022).
+- run 10 — "'Auto-re-probes so it recovers without a deploy' — a comment that was quietly false" (30-min `auth_denied` cooldown).
+- run 9 — "The dead provider in the fast lane: when a hedged request races a 403" (SK-LLM-039).
+- run 8 — "One bad row shouldn't cost you all the rows: salvaging LLM-generated seed data" (SK-HDC-019).

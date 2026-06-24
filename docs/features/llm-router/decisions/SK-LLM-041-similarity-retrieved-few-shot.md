@@ -142,25 +142,31 @@ identifiers identically.
   **Second evidence source — persona-bench ICP retrieval** (`tools/eval/test/persona-retrieval.test.ts`,
   the `SK-LLM-041 × SK-QUAL-018` bridge): running `retrievePlanExemplars` over
   the **23 persona-bench (`SK-QUAL-018`) ICP questions** — nlqdb's OWN target
-  distribution, not synthetic probes — scores **precision@1 19/23**
+  distribution, not synthetic probes — scores **precision@1 20/23**
   against a per-question expected-bucket map: the null-filter row flips q3 ("who
   never logged in") off the misleading anti-join demo, the order-by-limit row
   lands q0 ("the 10 most recent signups") on the plain `ORDER BY … LIMIT` demo,
-  and the count-distinct row's phrasing lands q21 (see next). The 4 remaining
-  misses (q8, "the 5 most-recalled facts …"; q10, "which predicates does
-  'support-bot' use, and how often" — a filtered GROUP-BY-COUNT with NO HAVING
-  whose top-1 is the `having` demo; q20, a scalar-subquery whose top-1 is `having`
-  by one "more than" token; q22, a filtered join-aggregate whose top-1 is
-  `date-range`) are **documented, not absorbed**: all are *selector*-side
-  artifacts (the right buckets exist), so the fix is query-skeleton similarity
-  (DAIL §4.1's second variant), out of scope for a pool-row add. **q21 was the
-  exception that scopes the run-52 verdict** (2026-06-23): run 68's third "new
-  shape" miss was *not* selector-unfixable — the count-distinct exemplar echoed
-  the SQL keyword "distinct" while q21 (and most users) say "how many *different*
-  X". Rephrasing the demonstration to "how many different cities" — a
-  **pool-curation** lever, not a selector tweak — landed q21 (18/23 → 19/23) and
-  held the held-out probe at 14/14 (it still says "distinct"; the masked skeleton
-  matches across both triggers, so it is generalisation, not a tune to q21). **The
+  and the count-distinct + scalar-subquery rows' phrasing land q21 + q20 (see
+  next). The 3 remaining misses (q8, "the 5 most-recalled facts …"; q10, "which
+  predicates does 'support-bot' use, and how often" — a filtered GROUP-BY-COUNT
+  with NO HAVING whose top-1 is the `having` demo; q22, a filtered join-aggregate
+  whose top-1 is `date-range`) are **documented, not absorbed**: all are
+  *selector*-side artifacts (the right buckets exist), so the fix is
+  query-skeleton similarity (DAIL §4.1's second variant), out of scope for a
+  pool-row add. **q21 + q20 were the exceptions that scope the run-52 verdict**
+  (2026-06-23): two of run 68's "new shape" misses were *not* selector-unfixable
+  — each was an exemplar-phrasing leak. The count-distinct exemplar echoed the
+  SQL keyword "distinct" while q21 (and most users) say "how many *different* X";
+  the scalar-subquery exemplar read as the stilted bare "List the names of
+  products priced above…" while q20 (and most users) ask "*Which* … ? *List* the
+  … *names*". Rephrasing each demonstration the way users phrase it — "how many
+  different cities" (q21) and "Which products are priced above the average price?
+  List the product names" (q20, keeping "above" not "more than" so q5/q11's
+  genuine HAVING queries stay pinned) — a **pool-curation** lever, not a selector
+  tweak — landed q21 (18/23 → 19/23) then q20 (→ 20/23) and held the held-out
+  probe at 14/14 both times (each probe keeps the original phrasing; the masked
+  skeleton matches across both triggers, so it is generalisation, not a tune).
+  **The
   cheaper lexical-*selector* avenue was measured and falsified** (2026-06-22): a
   stopword filter regresses ICP precision@1 and phrase normalisation leaves it
   flat, both holding held-out 14/14 — q10's top-1 `having` wins on generic filler

@@ -32,6 +32,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-CMP-NNN
 - [**SK-CMP-002**](decisions/SK-CMP-002-single-template-data-driven.md) — One Astro template + typed data file; adding a competitor is a one-file edit.
 - [**SK-CMP-003**](decisions/SK-CMP-003-faqpage-json-ld.md) — Every comparison page emits FAQPage JSON-LD with 4-6 Q&A pairs.
 - [**SK-CMP-004**](decisions/SK-CMP-004-llms-txt-endpoint.md) — `llms.txt` ships as a build-time endpoint, not a hand-edited static file.
+- [**SK-CMP-005**](decisions/SK-CMP-005-breadcrumb-json-ld.md) — Every comparison page emits BreadcrumbList JSON-LD mirroring a visible, clickable trail (shared `lib/breadcrumb.ts` with `/solve`).
 
 ## GLOBALs governing this feature
 

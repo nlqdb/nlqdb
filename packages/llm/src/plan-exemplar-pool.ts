@@ -110,10 +110,25 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
     "SELECT COUNT(DISTINCT city) FROM customers",
   ),
   ex(
+    // Framed as a "Which … ? List the …" question, the way users actually ask
+    // it ("which plans cost above the average price"), not the stilted bare
+    // "List the names of products priced above…". The discriminating core
+    // ("priced above the average price") is byte-unchanged, so the held-out
+    // probe ("books priced above the average price", a different domain) still
+    // retrieves this row top-1 (pool test 14/14); the added question framing
+    // ("Which … ? List the … names") lands nlqdb's own "which plans cost more
+    // than the average plan price" ICP query (persona-bench q20) on this row
+    // instead of `having` (precision@1 19/23 → 20/23). The bare phrasing leaked
+    // q20 to `having` — q20 shares "which/list/names" with a question but the
+    // old exemplar had none of them; the same exemplar-phrasing-leak class as
+    // the count-distinct row, fixed the same pool-curation way (not a selector
+    // tweak — run-52-falsified). "above", not "more than", so it doesn't
+    // collide with the `having` row's "placed more than 5 orders" (which would
+    // mis-pull the genuine HAVING queries q5/q11).
     "scalar-subquery",
     "postgres",
     "CREATE TABLE products (id INTEGER, name TEXT, price REAL)",
-    "List the names of products priced above the average price.",
+    "Which products are priced above the average price? List the product names.",
     "SELECT name FROM products WHERE price > (SELECT AVG(price) FROM products)",
   ),
   ex(

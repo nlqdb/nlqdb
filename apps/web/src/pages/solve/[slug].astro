@@ -2,13 +2,14 @@
 // One template, N pain-driven pages — generated at build via
 // `getStaticPaths()` from `data/solve.ts`. AEO patterning: direct-
 // answer capsule above the fold, named search query in <h1>, FAQPage
-// + HowTo JSON-LD, honest "what nlqdb doesn't do" section, cited
+// + HowTo + BreadcrumbList JSON-LD, honest "what nlqdb doesn't do" section, cited
 // public-discussion hubs as evidence trail.
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { SOLVE_ENTRIES, SOLVE_PERSONAS, solveBySlug } from "../../data/solve";
 import Base from "../../layouts/Base.astro";
+import { breadcrumbJsonLd } from "../../lib/breadcrumb";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
 
 export function getStaticPaths() {
@@ -56,12 +57,29 @@ const howToJsonLd = {
     },
   ],
 };
+
+const breadcrumbLd = breadcrumbJsonLd(
+  [
+    { name: "Home", path: "/" },
+    { name: "Solve", path: "/solve" },
+    { name: s.searchTitle, path: canonical },
+  ],
+  Astro.site,
+);
 ---
 <Base title={pageTitle} description={description} canonical={canonical}>
   <div class="page">
     <Topnav />
 
     <main class="solve">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <ol>
+          <li><a href="/">Home</a></li>
+          <li><a href="/solve">Solve</a></li>
+          <li aria-current="page">{s.searchTitle}</li>
+        </ol>
+      </nav>
+
       <header class="solve__head">
         <p class="solve__kicker">Solve · {SOLVE_PERSONAS[s.persona].label}</p>
         <h1 class="solve__title">{s.searchTitle}</h1>
@@ -165,6 +183,7 @@ const howToJsonLd = {
 
   <script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
   <script is:inline type="application/ld+json" set:html={JSON.stringify(howToJsonLd)} />
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
   <script>
     // "Try this query" → seed the anonymous-create input via the same
     // `nlqdb_draft` localStorage slot CreateForm rehydrates from
@@ -191,6 +210,35 @@ const howToJsonLd = {
     max-width: 880px;
     margin: 0 auto;
     padding: clamp(32px, 5vw, 64px) clamp(16px, 4vw, 32px);
+  }
+  .crumbs {
+    font-family: var(--mono);
+    font-size: 12px;
+    margin: 0 0 24px;
+  }
+  .crumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    color: var(--fg-dim);
+  }
+  .crumbs li + li::before {
+    content: "/";
+    margin-right: 8px;
+    opacity: 0.6;
+  }
+  .crumbs a {
+    color: var(--fg-dim);
+    text-decoration: none;
+  }
+  .crumbs a:hover {
+    color: var(--accent);
+  }
+  .crumbs [aria-current="page"] {
+    color: var(--fg);
   }
   .solve__kicker {
     font-family: var(--mono);
