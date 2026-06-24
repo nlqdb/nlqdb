@@ -5,121 +5,80 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
-**Retention (D4, 20 KB cap):** keep the **two most recent full drafts** below
-inline; everything older collapses to a one-line title + venue + gist, with the
-full body recoverable from git history. The earliest drafts live in the
+**Retention (D4, 20 KB cap):** keep the most recent full draft(s) below inline —
+as many as fit under the cap (drafts have grown, so that is currently **one**);
+everything older collapses to a one-line title + venue + gist, with the full body
+recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-24 (run 85) — dev.to / r/LLMDevs / lobste.rs: "Your token-cost dashboard is doing arithmetic in your app code"
+## 2026-06-24 (run 87) — dev.to / lobste.rs: "Your Cmd+K palette is invisible to screen readers — one attribute fixes it"
 
-**Where:** dev.to + r/LLMDevs + lobste.rs (`ai` / `llm` / `database`);
-build-in-public lesson for anyone shipping LLM features who needs to attribute
-spend. nlqdb mentioned once. The hook: the moment "how much are we spending per
-customer?" becomes a real question, the JSON log you've been writing token counts
-to is the wrong shape — and summing them in app code (or asking the LLM to) is a
-bug waiting to happen.
+**Where:** dev.to + lobste.rs (`a11y` / `webdev` / `react`); build-in-public,
+sibling to the run-82 form-error post. nlqdb mentioned once. The hook: the Cmd+K
+palette every app ships in 2026 has a near-universal a11y bug, and the fix is one
+attribute most tutorials skip.
 
-**Title:** Your token-cost dashboard is doing arithmetic in your app code
+**Title:** Your Cmd+K palette is invisible to screen readers — one attribute fixes it
 
 **Body:**
 
-> Every LLM app grows the same appendage: somewhere you start writing down how
-> many tokens each call burned and what it cost. Usually it lands in a log line or
-> a JSON column — `{user, model, prompt_tokens, completion_tokens, cost}`. Fine,
-> until a PM asks the question that actually matters: *how much are we spending per
-> customer this month, and which model is the expensive one?*
+> Cmd+K palettes all work the same: an input, a filtered list, arrow keys move a
+> highlight, Enter runs it. Built the obvious way it's perfect — for people who
+> can *see* the highlight move. Turn on a screen reader and arrow through it:
+> silence. The highlight is just a CSS class; focus never leaves the input, so to
+> assistive tech *nothing is happening*.
 >
-> Now you're in trouble, because that's an aggregation — `SUM(cost) GROUP BY
-> user`, `GROUP BY model` — and a log is not a thing you aggregate. So you do one
-> of two bad things. You pull the rows back and total them in application code (a
-> loop that gets slower and more wrong every week as volume grows and pagination
-> creeps in). Or — worse — you hand the list to the LLM and ask it to add the
-> numbers up. Arithmetic over a list of items is one of the most reliable ways to
-> make a model hallucinate a confident wrong total. Neither of these is a
-> *database* answering a *query*; they're your app pretending to be a query
-> planner.
+> The naive model — "the highlighted row is focused" — is wrong. Focus stays on
+> the input (you're still typing to filter); what moves is a *selection*. ARIA has
+> a mechanism for exactly this, and it's the piece tutorials skip:
 >
-> The tell is simple: if you're writing a `for` loop to sum a column, the question
-> wanted SQL. Token counts and dollar costs are tidy, typed, numeric rows — the
-> single most natural thing in the world to put in a relational table and ask
-> `GROUP BY` over. The reason it didn't start there is usually that standing up a
-> database for "just some usage numbers" felt heavier than appending to a log. So
-> the log won, and the aggregation problem got deferred until it became a bug.
+> ```jsx
+> <input
+>   role="combobox"
+>   aria-controls="cmd-listbox"
+>   aria-activedescendant={results.length ? `cmd-opt-${highlight}` : undefined}
+> />
+> <div id="cmd-listbox" role="listbox">
+>   {results.map((r, i) => (
+>     <button id={`cmd-opt-${i}`} role="option" aria-selected={i === highlight}>
+>       {r.label}
+>     </button>
+>   ))}
+> </div>
+> ```
 >
-> Two things worth separating in your head. **Capture** — getting accurate token
-> and cost numbers per call — is a job for your provider SDK or an observability
-> proxy (Langfuse, Helicone, and friends do this well, automatically). **Query** —
-> "spend per user", "tokens per model", "cost per day this week" — is a job for a
-> query planner. They're different machines, and the second one is the one people
-> skip because the log was right there.
+> `aria-activedescendant` is the trick: it lets the focused element (the input)
+> point at a *different* element as "active." The reader announces that option
+> every time the attribute changes — so each ArrowDown reads the command it lands
+> on, while focus never moves. The `combobox`/`listbox`/`option` roles make the
+> reference meaningful; `aria-selected` mirrors the visual highlight into the
+> accessibility tree.
 >
-> (We built nlqdb around the query half — you write each call as a typed row and
-> ask "total cost by model this month" in English; it runs the actual `GROUP BY`
-> in Postgres and shows you the SQL. But the lesson stands whatever you reach for:
-> the moment your dashboard is summing a column in app code, it wanted a database.)
+> Two gotchas. **Keep the option ids in one helper** — the input's
+> `aria-activedescendant` and each option's `id` must agree exactly; an off-by-one
+> announces nothing. **And clamp the highlight in pure logic, not just render** — a
+> narrowing filter can leave the index past the list's end, dangling the reference
+> and re-silencing the reader. Pull the next-index math into a pure
+> `nextHighlight(key, current, length)`, clamp `current` into range *first*, and
+> unit-test the bounds. None of this changes what sighted users see; it's the line
+> between a palette that delights everyone and a dead end for keyboard/voice users.
 
-**Why this advances the north-star:** onboarding / distribution — a concrete,
-reproducible lesson for the GLOBAL-036 agent-builder persona, anchoring the new
-`/solve/track-ai-token-usage-and-cost` page; one nlqdb mention, honest that capture
-(Langfuse/Helicone) and query are different jobs. No engine/funnel/ops KPI degrades
-(a queue draft, not a code change).
-
-## 2026-06-24 (run 84) — dev.to / r/LocalLLaMA / lobste.rs: "Scaling your vector store to a billion rows doesn't give it a GROUP BY"
-
-**Where:** dev.to + r/LocalLLaMA + lobste.rs (`ai` / `database` / `vectordb`);
-build-in-public design lesson for agent builders evaluating vector DBs at scale.
-nlqdb mentioned once. The hook: teams outgrow a hosted vector store and reach for
-Milvus/Qdrant for *scale* — then find the aggregate questions still impossible,
-because ANN throughput and a query planner are orthogonal.
-
-**Title:** Scaling your vector store to a billion rows doesn't give it a GROUP BY
-
-**Body:**
-
-> When an agent's memory outgrows a starter vector store, the natural next move
-> is a heavier engine — Milvus, Qdrant, something built for billions of vectors
-> with HNSW/DiskANN indexes and GPU search. You get more recall, lower latency,
-> hybrid dense+sparse ranking. What you do *not* get is the thing people expect
-> scale to unlock: the ability to answer "how many", "per category", "top N this
-> month", "only the groups above a threshold."
->
-> This trips people up because "bigger database" sounds like "more capable
-> database." But the two axes are independent. A vector index is optimised for
-> one operation — *find the K nearest embeddings to this one* — at any scale.
-> Relational aggregation is a different machine: a query planner that joins
-> tables, groups rows, and filters groups with `HAVING`. Milvus will happily
-> `count(*)` with a filter and even dedupe by a field, but there's no `JOIN`, no
-> multi-column `GROUP BY`, no `HAVING`. Scaling the ANN side to a trillion
-> vectors adds zero of that.
->
-> The tell is when you catch yourself pulling rows back and counting them in
-> application code (or worse, asking the LLM to count them — arithmetic over a
-> list of search hits is a hallucination generator). That's the signal the
-> question was analytics, not retrieval: it wants a database with a planner, not
-> a faster nearest-neighbour search.
->
-> The clean split: keep the vector engine for similarity recall, and put the
-> rows the agent needs to *count and group* in something that speaks SQL. They
-> compose — one finds the relevant, the other reports over the set. Don't make
-> your nearest-neighbour index do arithmetic just because it scaled.
->
-> (We built nlqdb around the analytics half — the agent provisions a Postgres in
-> plain English and asks the `GROUP BY` questions over its own memory. But the
-> lesson holds whatever you pair it with: scale and aggregation are different
-> problems.)
-
-**Why this advances the north-star:** onboarding / distribution — a reproducible
-design lesson for the GLOBAL-036 agent-memory wedge, anchoring the new
-`/vs/milvus` page; one nlqdb mention, honest about Milvus's real strengths (ANN
-at scale). No engine/funnel/ops KPI degrades (a queue draft, not a code change).
+**Why this advances the north-star:** UX (GLOBAL-025) — a concrete, widely
+applicable a11y lesson with a measured before/after (palette active-command ARIA
+associations 0 → 3; web tests 132 → 139), one nlqdb mention. No engine/funnel/ops
+KPI degrades (additive ARIA + a pure-logic extraction, no runtime behaviour
+change).
 
 ## Collapsed — full drafts in git history
 
-Newest first; collapsed once past the two-draft inline window above. Each line
-is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
+Newest first; collapsed once past the single inline draft above (the latest draft
+has grown enough that even two no longer fit under the D4 20 KB cap). Each line is
+title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
-- run 83 — dev.to / lobste.rs: "I skipped the rich result Google was begging me to add" (the most-recommended structured-data win — the `WebSite` `SearchAction` sitelinks search box — is the one I deliberately *didn't* ship: a `SearchAction` is a promise that a URL template runs a query, but the homepage submits over JS with no `GET /search?q=…` route, so the schema would *validate* and be a *lie*; kept the honest half — `Organization` + `WebSite` with stable `@id`s and every page's `SoftwareApplication` naming that Organization as `publisher`; "would this validate?" is the wrong test, "is this true?" is; brand-entity nodes 1 → 3).
+- run 85 — dev.to / r/LLMDevs / lobste.rs: "Your token-cost dashboard is doing arithmetic in your app code" (the moment "how much are we spending per customer?" becomes real, the JSON log you've been writing token counts to is the wrong shape — summing them in app code or asking the LLM to is a bug; capture (Langfuse/Helicone) and query (a planner) are different machines — write each call as a typed row and `GROUP BY` user/model/day in SQL; anchors `/solve/track-ai-token-usage-and-cost`).
+- run 84 — dev.to / r/LocalLLaMA / lobste.rs: "Scaling your vector store to a billion rows doesn't give it a GROUP BY" (teams outgrow a hosted vector store and reach for Milvus/Qdrant for *scale* — then find the aggregate questions still impossible because ANN throughput and a query planner are orthogonal axes; a vector index does *find the K nearest* at any size, but no `JOIN`/multi-col `GROUP BY`/`HAVING` — the tell is counting rows in app code or asking the LLM to add them; keep the vector engine for recall and put the count/group rows in something that speaks SQL; anchors `/vs/milvus`).
+- run 83 — dev.to / lobste.rs: "I skipped the rich result Google was begging me to add" (the most-recommended structured-data win — a `WebSite` `SearchAction` sitelinks search box — is a *promise* that a URL template runs a query; our homepage submits over JS with no `GET /search?q=` route, so the schema would validate and be a lie; kept the honest half — `Organization` + `WebSite` with stable `@id`s consolidating every page's `publisher`; "would this validate?" is the wrong test, "is this true?" is; brand-entity nodes 1 → 3).
 - run 82 — dev.to / lobste.rs: "Your AI app tells sighted users the query failed. Screen readers get silence." (the AI-feature text box swaps *loading*/*result*/*error* async with two quiet a11y misses: the result region isn't a live region (`aria-live`/`role="status"` once on the container), and the *input* never says it's invalid — add `aria-invalid` + `aria-describedby` pointing at one error `id`, collapsing the structured + network error branches into a single `role="alert"` region; test the error path with the reader on; anchored to this run's CreateForm fix, ARIA associations 0 → 2).
 - run 81 — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections" (leaf `/vs` + `/solve` pages emit `FAQPage`/`BreadcrumbList`, but the hubs listing them carried only the site-wide `SoftwareApplication`; `ItemList` declares "an ordered, complete set" — build it from the same array the `<ul>` renders so it can't drift, item URLs at the trailing-slash 200; hub collection signal 0 → 2).
 - run 80 — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases" (a vector store answers *what is most similar* — top-k, no query planner; the moment the question is an aggregate ("how many conversations this week?") you either make the LLM count rows (hallucination) or bolt on a real DB; retrieval and analytics are different jobs — store turns as typed rows and the engagement questions become trustworthy `GROUP BY`s; anchors `/solve/store-query-chatbot-conversation-history`).
