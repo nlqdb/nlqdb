@@ -57,54 +57,55 @@ decide a page is authoritative rather than orphaned.
 **Why this advances the north-star:** onboarding / distribution — a concrete
 AEO/SEO lesson with a measured before/after (0 → 24 pages), one nlqdb mention.
 No funnel/ops KPI degrades (additive static structured data).
+## 2026-06-23 (run 76) — dev.to / lobste.rs: "I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English"
 
-## 2026-06-23 (run 75) — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (provision-from-English wedge)
+**Where:** dev.to + lobste.rs (`ai` / `databases` / `llm`); build-in-public.
+The stronger successor to the run-74 post — same lesson, now with **two**
+independent instances a week apart, which turns "a cute one-off" into "a class of
+bug worth auditing your whole pool for." nlqdb mentioned once.
 
-**Where:** Show HN + dev.to (`ai` / `mcp` / `databases`) and a one-link r/mcp
-helpful answer; build-in-public. The hook: the MCP ecosystem has dozens of DB
-connectors and every one starts with "paste your connection string" — an agent
-that needs a *scratch* database to write to and query has nowhere to put one
-without a human doing the DBA work first. nlqdb mentioned once. Anchors
-`/solve/database-claude-cursor-can-query`.
-
-**Title:** Every "database MCP server" assumes you already have a database
+**Title:** I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English
 
 **Body:**
 
-> I was wiring up database access for an agent over MCP and went shopping for a
-> server. There are a lot of good ones — Postgres, SQL Server, SQLite, a
-> multi-DB bridge. Every single one opens the same way: provision a database,
-> design the schema, paste the connection string into the host config. Which is
-> exactly right when the database is your source of truth and the agent is a
-> read client over it.
+> We pick few-shot examples for our NL→SQL engine by matching the question's
+> *masked skeleton* — DAIL-SQL style: blank out the literals and table/column
+> names, compare what's left. The idea is that an example over `employees` can
+> teach a query over `students` because, masked, they read the same.
 >
-> But that wasn't my case. I wanted the agent to have a *scratch* store — a
-> place to log what it did and then answer "how many of each this week" over it.
-> That database doesn't exist yet. None of the connectors help, because step one
-> of all of them is "have a database." The DBA work is the prerequisite, and the
-> agent can't do it for itself through the same tool it queries with.
+> Last week one of our benchmark questions — *"how many **different** referral
+> sources?"*, a textbook `COUNT(DISTINCT)` — kept retrieving the plain
+> `GROUP BY COUNT` example. The cause was embarrassing: my `COUNT(DISTINCT)`
+> example *question* read *"how many **distinct** cities"*. I'd written the SQL
+> keyword into the English prompt. Users say "different" or "unique", almost never
+> "distinct", so the example shared no distinguishing word with the questions it
+> existed to serve. One-word fix; miss landed; held-out probe (still phrased
+> "distinct") kept matching, so it generalised.
 >
-> The shape I actually wanted: the agent's *first English goal* provisions the
-> store. No connection string, no `CREATE TABLE`. Call one tool with no database
-> set — "tasks grouped by status with a count of each" — and it mints Postgres,
-> infers the schema, runs the aggregate, and hands back rows plus the SQL it ran
-> so I can audit the grain. Create and query are the same call; there's
-> deliberately no separate "create database" verb to get the trust boundary
-> wrong.
+> I filed it as a fluke. Then this week, a different question — *"which plans cost
+> **more than the average** price?"*, a scalar `> (SELECT AVG(...))` — retrieved a
+> `HAVING COUNT(*) > N` example instead. Same root cause, wearing a different hat:
+> my scalar-subquery example was phrased as a stilted *"List the names of products
+> priced above the average price."* — a bare imperative that shared none of the
+> *"which … ? list the … names"* shape a real user uses, while the `HAVING`
+> example's "placed **more than** 5 orders" hoovered up the generic comparison
+> words. Reframing the example to *"Which products are priced above the average
+> price? List the product names."* landed it — and again the held-out probe, which
+> keeps the original phrasing, still matched. (I kept "above", not "more than", on
+> purpose: "more than" would have started stealing the genuine `HAVING` queries.)
 >
-> The trade-off is the honest part, and it's the inverse of the connectors:
-> a tool that provisions its own database can't query the one you already run.
-> If your warehouse is the source of truth, you want a Postgres-MCP server, not
-> this. The two are different jobs — "connect my agent to my database" vs. "give
-> my agent a database" — and "database MCP server" is one phrase covering both.
->
-> (We hit this building nlqdb's MCP surface; the provision-from-English path is
-> `nlqdb_query` with no `db` set against `mcp.nlqdb.com`.)
+> Two instances, same lesson: **your few-shot demonstration's question is data,
+> and it should read like your users talk — not like the SQL it compiles to.** A
+> word that's natural in the query ("distinct", a bare "list the names of X") is
+> often unnatural in the question, and when it leaks, the example quietly stops
+> matching the inputs it's supposed to win. Before you blame the ranker, read your
+> examples out loud and ask: would a user actually phrase it this way? Twice now,
+> the answer was no — and the fix was free.
 
-**Why this advances the north-star:** onboarding / distribution — a
-search-shaped on-ramp for the high-volume "database MCP server" query that
-names the provision-vs-connect distinction honestly, one nlqdb mention. No
-engine/funnel KPI degrades (one solve-page data object + doc edits).
+**Why this advances the north-star:** engine quality (two reproducible NL→SQL
+retrieval before/afters and a generalisable rule), one nlqdb mention; the
+GLOBAL-026 bet that scaffolding compounds with the model. No funnel/ops KPI
+degrades (default-off eval-only exemplar; prod byte-identical).
 
 ## Collapsed — full drafts in git history
 
@@ -112,13 +113,10 @@ Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
-- **run 74** — dev.to / lobste.rs: *"Some of your 'unfixable' few-shot misses are
-  just SQL keywords leaking into your examples"* — a `COUNT(DISTINCT)` exemplar
-  whose question said "distinct" matched nothing real; rephrasing to "different"
-  landed the miss (18/23 → 19/23) and held out. Your few-shot demo's *question*
-  should read like users talk, not like the SQL it maps to.
+- run 75 — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (every DB-MCP connector opens with "paste your connection string"; an agent needing a *scratch* store to write+query has nowhere to put one — provision-from-English makes create and query the same call, no separate create verb; anchors `/solve/database-claude-cursor-can-query`).
 
 ### Engine-lesson posts (dev.to / lobste.rs)
+- run 74 — "Some of your 'unfixable' few-shot misses are just SQL keywords leaking into your examples" (the single-example v1 of the run-76 post above — `COUNT(DISTINCT)` demo phrased "how many distinct cities" shared no token with users' "how many different"; **superseded by run-76's two-example version**).
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).
 - run 70 — "Your AI BI tool reads your data. It doesn't own it — and can't write to it" (a wave of AI-native BI tools converge on "describe what to track, AI builds the dashboard" — great at it, but "your data" is a read-only connection to a warehouse you already run; they don't own a DB or write to yours; the data layer that provisions the store and takes English for the write *and* the read is a different altitude; anchors `/vs/basedash`).
 - run 69 — "Your sitemap is advertising redirects — and your canonical tag points at one" (a static host serving `route/index.html` makes the bare path a 307, but `canonical`/`og:url`/sitemap/llms.txt all emitted the bare path — 27 redirecting sitemap URLs + a self-referential redirecting canonical; `trailingSlash: "always"` plus a one-place path-normalize in the head layout + URL generators, audit with `curl -sI` over every sitemap URL).
@@ -136,7 +134,7 @@ recovers any body.
 - run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers vendor lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING — deployment and capability are orthogonal axes; anchors `/vs/chroma`).
 - run 55 — "Your text-to-SQL accuracy is measured on schemas your users will never build" (BIRD/Spider run over messy 20–100-table academic schemas, not the small clean ones your users build; we added a third benchmark — hand-authored gold NL→SQL over the ICP shape, same EX scorer, literal-date gold so it never drifts with the clock; anchors persona-bench, SK-QUAL-018).
 - run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no GROUP BY/COUNT/JOIN/HAVING; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
-- run 52 — "Some few-shot retrieval misses can't be fixed with lexical tricks — and measuring *why* is the win" (two pinned ICP misses (q8/q10) are lexically unfixable; stopword filter regresses 18/20 → 17/20, phrase-normalisation flat (18/20), held-out 14/14; the bad demo wins on generic filler + a coincidental masked-value slot, so flat token-overlap can't resolve it — the real fix is SQL-skeleton similarity, a model round-trip; both experiments reverted).
+- run 52 — "Some few-shot retrieval misses can't be fixed with lexical *selector* tricks — and measuring *why* is the win" (stopword filter regressed 18/20 → 17/20, phrase-normalisation flat, held-out 14/14; the verdict was later narrowed by runs 74/76 to selector-*code* tweaks — pool-exemplar phrasing turned out to be the live lever; both selector experiments reverted).
 - run 51 — "The most common query in your product has no row in your benchmark" (error-class taxonomies omit easy high-frequency shapes; "show the 10 most recent signups" retrieved a `GROUP BY` demo; +plain `ORDER BY … LIMIT` row, held-out 13/13 → 14/14, own-query 18/20 held).
 - run 48 — "Test your few-shot retrieval against your *own* users' queries — not just the benchmark" (a held-out probe set that paraphrases your own examples reports green while real-user queries silently retrieve the wrong shape; "never logged in" → anti-join not `IS NULL`; own-query precision 17/20 → 18/20, held-out 13/13 unmoved).
 - run 46 — "Your few-shot examples might be teaching the model the wrong shape" (retrieval quality is bounded by pool *coverage*, not the ranker; a one-word negation retrieves its own opposite if the pool can't represent the shape; +anti-join/+top-N-of-aggregate, precision held 12/12).
@@ -147,16 +145,7 @@ recovers any body.
 - run 39 — "How nlqdb expires agent memory (and why only facts get a TTL)" (facts-only `expires_at`, per-DB-isolated daily `DELETE` + RLS recency clause; `SK-PIVOT-011`, E-04).
 - run 37 — "Agent memory should be authed-only" (no durable identity to scope row reads on a throwaway anon DB; write verb + create both need a session).
 - run 33 — "We were grading our text-to-SQL engine on questions it couldn't possibly answer" (Spider external-knowledge dropped; 13/135 unanswerable; SK-QUAL-016).
-- run 18 — "We were one run away from building the wrong feature" (value-retrieval falsified, 90→0 literal-only; SK-QUAL-014).
-- run 17 — "Our text-to-SQL benchmark went flat. That was the signal to stop tuning prompts" (directive levers saturated; McNemar p=0.50).
-- run 16 — "Before you prune the schema you send an LLM, measure what the prune would throw away" (SK-QUAL-015).
-- run 15 — "We thought our text-to-SQL engine couldn't join. A regex bug was lying to us" (SK-QUAL-014).
-- run 14 — "The text-to-SQL mistake that fails two ways — and only one of them throws" (HAVING vs WHERE; SK-LLM-040).
-- run 13 — "Schema pruning for text-to-SQL drops the one table the join needs" (inbound junction tables; SK-LLM-037).
-- run 11 — "Failover, retry, repair: the three error classes in an LLM text-to-SQL pipeline" (SK-ASK-022).
-- run 10 — "'Auto-re-probes so it recovers without a deploy' — a comment that was quietly false" (30-min `auth_denied` cooldown).
-- run 9 — "The dead provider in the fast lane: when a hedged request races a 403" (SK-LLM-039).
-- run 8 — "One bad row shouldn't cost you all the rows: salvaging LLM-generated seed data" (SK-HDC-019).
+- runs 8–18 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 

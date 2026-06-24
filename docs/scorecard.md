@@ -23,11 +23,14 @@ and dispatchable** but **dispatch-gated today** (both evals < 7 d, §5). The
 DAIL-SQL **selector** half is at its **offline ceiling** (run 52: q8/q10 ICP
 misses falsified as selector-tweak-unfixable; held-out precision@1 **14/14**),
 but **pool-exemplar curation stays a live offline lever** — run 74 landed
-persona-bench q21 by rephrasing the `count-distinct` demo off the SQL keyword
-"distinct" → the natural "different" (own-ICP precision@1 **18/23 → 19/23**,
-held-out still 14/14). The only remaining offline #1 gain beyond pool curation is
-SQL-skeleton similarity (an LLM round-trip, not a daily lever) or the gated
-dispatch. **Run 58** fired the first persona-bench
+persona-bench q21 (rephrasing the `count-distinct` demo off the SQL keyword
+"distinct" → the natural "different"), then run 76 landed q20 (reframing the
+`scalar-subquery` demo from the stilted "List the names of products priced
+above…" to the natural "Which products are priced above the average price? List
+the product names") — both **exemplar-phrasing leaks**, not selector gaps
+(own-ICP precision@1 **18/23 → 20/23**, held-out still 14/14). The only remaining
+offline #1 gain beyond pool curation is SQL-skeleton similarity (an LLM
+round-trip, not a daily lever) or the gated dispatch. **Run 58** fired the first persona-bench
 dispatch (`quality-eval-persona-bench.yml`, now on `main`): the free chain
 scores **0.90 EX (18/20) on the ICP shape** (row 8) — **1.7× BIRD, 4.9× Spider**
 — quantifying the GLOBAL-026 bet that clean product-shaped schemas are already
@@ -47,7 +50,7 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d) · persona-bench 2026-06-22** | | `apps/api/src/gate/eval-baseline.ts` (BIRD/Spider only; persona-bench never overwrites the canonical baseline, `SK-QUAL-018`) |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half (run 40) + **runner `--self-consistency N` / `--sc-temperature T` main-loop wiring (run 41)** — `samples>=2` branch in `runOneQuestion` (separate from `withExecRetry`): `samplePlans`→`voteOverSamples` over `executeRows`→score-the-winner; folds into checkpoint/budget-stop/`attempts`, `.scN` checkpoint variant. The lever is now end-to-end bar the CI `workflow_dispatch` input. EX delta next dispatch** |
-| 8 | persona-bench free-chain EX | **0.90 (18/20)** | full-chain ICP EX (run 58 GHA 27983818047; **run 63 reproduced it locally**). **1.7× BIRD, 4.9× Spider** — GLOBAL-026 bet. **Single N=20 runs are ±1 noisy** — misses flake across legs/runs (q8/q11/q18) as failover assigns models per run — so canonical N=500 BIRD/Spider (dispatch-gated <7d) stay the only *powered* engine levers. Run 63 root-caused the one **stable** miss q8: a **tie-fragile gold**, not an engine gap — `score.ts` is sequence-strict on `ORDER BY` golds and q8 tied two facts at count 2, so the weak llama leg (`GROUP BY object`) false-mismatched gold (`GROUP BY f.id`); fixed tie-free (`SK-QUAL-019`, fixture-only). Batch 3 (run 68) 20 → 23 q, gold-exec 23/23 (GHA 0.90 was on 20 q; local throttled 21/23); retrieval precision@1 18/20 → 18/23 (run 68) → **19/23** (run 74: q21 landed by rephrasing the `count-distinct` demo off the SQL keyword "distinct" → "different"; held-out still 14/14; 4 residual misses q8/q10/q20/q22 stay selector-side) |
+| 8 | persona-bench free-chain EX | **0.90 (18/20)** | full-chain ICP EX (run 58 GHA 27983818047; **run 63 reproduced it locally**). **1.7× BIRD, 4.9× Spider** — GLOBAL-026 bet. **Single N=20 runs are ±1 noisy** — misses flake across legs/runs (q8/q11/q18) as failover assigns models per run — so canonical N=500 BIRD/Spider (dispatch-gated <7d) stay the only *powered* engine levers. Run 63 root-caused the one **stable** miss q8: a **tie-fragile gold**, not an engine gap — `score.ts` is sequence-strict on `ORDER BY` golds and q8 tied two facts at count 2, so the weak llama leg (`GROUP BY object`) false-mismatched gold (`GROUP BY f.id`); fixed tie-free (`SK-QUAL-019`, fixture-only). Batch 3 (run 68) 20 → 23 q, gold-exec 23/23 (GHA 0.90 was on 20 q; local throttled 21/23); retrieval precision@1 18/20 → 18/23 (run 68) → 19/23 (run 74) → **20/23** (run 76: q20 landed by reframing the `scalar-subquery` demo to the natural "Which products are priced above the average price? List the product names"; both q21+q20 were exemplar-phrasing leaks, not selector gaps; held-out still 14/14; 3 residual misses q8/q10/q22 stay selector-side) |
 | 9 | free-vs-frontier delta | null *(secret-blocked, not dispatch-blocked)* | run 58 dispatched persona-bench with `include_frontier=true`, but the job log shows `OPENROUTER_FRONTIER_API_KEY:` resolves **empty** → only the free lane built, `free_vs_frontier_delta=null`. Root-caused + filed in `blocked-by-human.md` (founder sets the repo secret). The dispatch path itself is proven working; the delta lands the moment the key is set. Agentic lane also not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics (06-22 re-pull)** | | wall-time, all routes (not `/ask`-only) |
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
@@ -95,41 +98,46 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   onboarding / distribution; **none degraded** — additive structured data + one
   small nav, no engine/funnel/ops file touched; 130 web tests + astro-check 0
   errors + biome clean.
-- 2026-06-23 (run 75) — **Distribution: shipped `/solve/database-claude-cursor-can-query`
-  (7th solve page, P2 MCP-host wedge).** Engine canonical dispatch-gated and the
-  offline-retrieval / comparison / doc-hygiene lanes were already in open PRs
-  (#491 / #489 / #490), so this run took the non-colliding **solve-page** lane.
-  Honest wedge vs every DB-MCP server (Postgres / SQL Server / SQLite — all
-  "paste your connection string"): nlqdb's `nlqdb_query` provisions Postgres
-  from the agent's first English goal (no string, no schema), create implicit in
-  query (`SK-MCP-002`); the inverse trade-off (can't query a DB you already run)
-  stated honestly. Also fixed the stale solve FEATURE status (5 → 7; run-25
-  analytical-over-memory page never listed) + logged the **P4 persona gap** as
-  gap-blocked (wants an NL layer over their own DB, not shipped), not unwritten.
-  **Δ:** solve pages **6 → 7**, llms.txt/sitemap +1. **KPI:** onboarding /
-  distribution; **none degraded** — one data object + doc edits, no
-  engine/funnel/ops file touched; 130 web + 17 solve-data tests + biome green.
-- 2026-06-23 (run 74) — **Engine: DAIL-SQL pool curation closed the q21
-  ICP-retrieval miss — persona-bench precision@1 18/23 → 19/23, held-out 14/14.**
-  Engine canonical lane dispatch-gated (BIRD 06-19 / Spider 06-17 both < 7d), so
-  the lever was the offline retrieval instrument. Run 68 filed all three batch-3
-  misses as "selector-side, re-confirming run 52"; measured-and-refined: q21
-  ("how many **different** referral sources", COUNT DISTINCT) was an
-  exemplar-phrasing leak, not selector-unfixable — the `count-distinct` pool row
-  echoed the SQL keyword "distinct" while q21 and most users say "different".
-  Rephrasing the demonstration to "how many different cities" (a **pool-curation**
-  lever — the same before/after pattern as the run-48–51 null-filter/order-by-limit
-  rows — **not** the run-52-falsified selector-code tweak) lands q21
-  (`group-by-count` → `count-distinct`) and **holds held-out precision@1 14/14**:
-  the held-out probe still says "distinct" and still retrieves the row top-1, so
-  the masked skeleton matches across both triggers ⇒ generalisation, not a tune to
-  q21. No other persona-bench question moved; the 4 residual misses (q8/q10/q20/q22)
-  stay pinned selector-side. **Δ:** own-ICP retrieval precision@1 **18/23 → 19/23**.
+- 2026-06-23 (run 76) — **Engine: a second DAIL-SQL pool-curation fix —
+  persona-bench retrieval precision@1 19/23 → 20/23 (q20).** Engine canonical
+  lane dispatch-gated (BIRD 06-19 / Spider 06-17 both < 7d), so the lever was the
+  offline retrieval instrument, continuing run 74's finding that some "residual
+  selector-side misses" are actually pool-fixable exemplar-phrasing leaks. q20
+  ("which plans cost more than the average plan price", a scalar `> AVG()`)
+  retrieved the `having` demo because the `scalar-subquery` pool row read as a
+  bare "List the names of products priced above…" — sharing none of q20's
+  `which`/`list`/`names` tokens, while `having`'s "placed more than 5 orders"
+  carried the generic filler. Reframing the demo to the way users actually ask
+  ("Which products are priced above the average price? List the product names" —
+  a **pool-curation** lever, the same before/after pattern as q21, **not** the
+  run-52-falsified selector-code tweak) lands q20 and **holds held-out 14/14**
+  (the probe keeps "priced above…" ⇒ generalisation, not a tune to q20); kept
+  "above" not "more than" so the genuine HAVING queries q5/q11 stay pinned to
+  `having`. No other persona-bench question moved; 3 residual misses (q8/q10/q22)
+  stay selector-side. **Δ:** own-ICP retrieval precision@1 **19/23 → 20/23**.
   **KPI:** engine quality; **none degraded** — prod byte-identical
   (`buildPlanSystem` default-off, `k≤0`), BIRD/Spider/baselines byte-untouched,
-  pool-exemplar change only. Doc-hygiene rider: `quality-score-verification-log.md`
-  (> 20 KB) net-shrunk −26 B under D4 (collapsed two superseded 06-12 smoke rows +
-  the mooted 06-13 correction).
+  the scalar-subquery demo SQL unchanged (only its NL phrasing). Doc-hygiene
+  rider: `quality-score-verification-log.md` (> 20 KB) net-shrunk −109 B under D4
+  (collapsed the run-52 row, whose "no offline lever remains" verdict runs 74/76
+  have narrowed to selector-*code* only). 267 eval + 210 llm + biome green.
+- 2026-06-23 (run 75) — **Distribution: shipped `/solve/database-claude-cursor-can-query`
+  (7th solve page, P2 MCP-host wedge).** Other lanes were already in open PRs
+  (#491 / #489 / #490), so this took the non-colliding solve-page lane. Honest
+  wedge vs every DB-MCP server (all "paste your connection string"): nlqdb's
+  `nlqdb_query` provisions Postgres from the agent's first English goal, create
+  implicit in query (`SK-MCP-002`); inverse trade-off stated honestly. Also fixed
+  stale solve FEATURE status (5 → 7) + logged the P4 persona gap as gap-blocked.
+  **Δ:** solve pages **6 → 7**, llms.txt/sitemap +1. **KPI:** onboarding /
+  distribution; none degraded — one data object + doc edits.
+- 2026-06-23 (run 74) — **Engine: first DAIL-SQL pool-curation fix —
+  persona-bench precision@1 18/23 → 19/23 (q21), held-out 14/14.** Same lever and
+  pattern run 76 (above) generalised: q21 ("how many **different** referral
+  sources", COUNT DISTINCT) was an exemplar-phrasing leak — the `count-distinct`
+  pool row echoed the SQL keyword "distinct" while users say "different".
+  Rephrasing the demo to "how many different cities" landed q21 and held held-out
+  14/14 (probe still says "distinct" ⇒ generalisation). Prod byte-identical;
+  baselines untouched. (Full detail: `quality-score-verification-log.md`.)
 - 2026-06-23 (run 73) — **Doc-hygiene (D4 + D5 + P3): net-shrank the largest
   non-exempt doc, `docs/runbook.md` 47,451 → 46,685 B (−766 B), prod
   byte-identical.** Engine lane dispatch-gated (BIRD 06-19 / Spider 06-17 both
@@ -145,24 +153,13 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   load-bearing, easier to scan); **none degraded** — docs-only, no
   engine/funnel/ops/code file touched.
 - 2026-06-23 (run 72) — **Distribution: shipped `/vs/metabase` (Metabase
-  Metabot), the strongest OSS-distribution moat in the P3 BI cluster.** Engine
-  lane dispatch-gated (BIRD 06-19 / Spider 06-17 both < 7d), so the lever was
-  AEO. Facts web-verified 2026-06-23 (metabase.com/docs/latest/ai/metabot +
-  pricing): Metabase is an OSS (AGPL self-host) + cloud BI platform (cloud
-  Starter ~$85/mo); Metabot is its AI layer — NL questions, query-builder chart
-  creation, native-editor SQL gen, "Have Metabot fix it" repair, visualization
-  analysis, transform code-gen, Slack answers. Full Metabot = paid Cloud plan +
-  $100/mo add-on (500 requests; Enterprise-included); OSS edition is basic
-  single-shot SQL generation only. Shipped as **P3 analyst/BI** with the honest
-  wedge: a destination self-hostable BI/dashboard app (read-only analytics over
-  an existing warehouse) vs. nlqdb owning the DB (provision + NL writes/
-  migrations with diff-preview) and embedding an *answer element* / agent-
-  callable API; dashboards/charts/scheduled-reports + OSS self-host + many-
-  source read conceded `them: shipped`. `competitors.md` §Metabase Metabot
-  entry refreshed (threat-matrix row already current). **Δ:** comparison pages **16 → 17**, llms.txt/
-  sitemap +1. **KPI:** onboarding / distribution; **none degraded** — one data
-  object + doc edits, no engine/funnel/ops file touched; 130 web tests +
-  astro-check 0 errors + biome green.
+  Metabot), the strongest OSS-distribution moat in the P3 BI cluster.** AEO lever
+  (engine dispatch-gated); facts web-verified 2026-06-23. Honest wedge: a
+  destination self-hostable BI/dashboard app (read-only analytics over an
+  existing warehouse) vs. nlqdb owning the DB (provision + NL writes with
+  diff-preview) and embedding an answer element / agent API; dashboards + OSS
+  self-host + many-source read conceded `them: shipped`. **Δ:** comparison pages
+  **16 → 17**, llms.txt/sitemap +1. None degraded — one data object + doc edits.
 - 2026-06-23 (runs 68–70) — **Engine-instrument + AEO/SEO-hygiene + distribution
   wave** (all merged; BIRD 06-19 / Spider 06-17 untouched). **Run 70:** `/vs/basedash`
   (comparison pages 15 → 16); web-verification corrected the stale P4 "admin UI"
