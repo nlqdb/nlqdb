@@ -128,22 +128,14 @@ lands the instant the founder sets it.
   (the hero submits via JS, no GET `q` route — a sitelinks-searchbox target would
   be a lie); homepage entity nodes 1 → 3 (verified in `dist/`).
 - 2026-06-24 (run 81) — **AEO: `/vs` + `/solve` *hub* pages emit `ItemList`
-  JSON-LD enumerating the full collection — hub pages with a collection signal
-  0 → 2** (`lib/itemlist-jsonld.ts`, data-driven from `COMPETITORS`/`SOLVE_ENTRIES`
-  so the JSON-LD can't drift; `dist/`: `/vs` 17 items, `/solve` 7). First
-  confirmed offline-retrieval is **exhausted** for the 3 residual persona-bench
-  misses (q8/q10/q22 are *not* q20/q21-style phrasing leaks; the one latent
-  ratio-cast plural/singular imperfection doesn't move precision@1). None
-  degraded; 133 web tests.
-- 2026-06-24 (runs 79–80) — **Distribution wave (both merged; engine
-  dispatch-gated, none degraded).** Run 79: `/vs/cognee` (18th comparison page,
-  P2 knowledge-graph wing — Cognee does hybrid vector+KG recall but ships no SQL
-  layer; comparison pages 17 → 18, memory /vs 8 → 9). Run 80:
-  `/solve/store-query-chatbot-conversation-history` (8th solve page, the
-  conversation-transcript + engagement-analytics wedge — a vector store recalls
-  a message but can't `GROUP BY`; solve pages 7 → 8). Both additive AEO pages
-  with FAQPage/BreadcrumbList(/HowTo) JSON-LD verified in `dist/`, honest limits
-  stated; no engine/funnel/ops file touched.
+  JSON-LD — collection-signal hub pages 0 → 2** (`lib/itemlist-jsonld.ts`,
+  data-driven so it can't drift). Confirmed offline-retrieval **exhausted** for
+  the 3 residual persona-bench misses (q8/q10/q22). None degraded; 133 web tests.
+- 2026-06-24 (runs 79–80) — **Distribution wave (both merged; none degraded).**
+  Run 79 `/vs/cognee` (18th comparison page, P2 knowledge-graph wing; memory /vs
+  8 → 9). Run 80 `/solve/store-query-chatbot-conversation-history` (8th solve
+  page; solve 7 → 8). Both additive AEO pages, JSON-LD verified in `dist/`, no
+  engine/funnel/ops file touched.
 - 2026-06-21/23 (runs 37–78) — **engine + distribution + doc-hygiene waves (all
   merged; BIRD 06-19 / Spider 06-17 untouched; none degraded). Full per-run
   detail: `progress/quality-score-verification-log.md` + git.** **Engine (offline

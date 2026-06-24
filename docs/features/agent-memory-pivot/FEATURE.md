@@ -49,10 +49,10 @@ the memory-shaped primitives that make the wedge claims durable).
 | Area | Change | Owned by |
 |---|---|---|
 | **Docs decisions** | New **GLOBAL-036** (lead positioning, dual front door). **GLOBAL-019** + `architecture.md §0` wording synced to FSL-1.1→Apache. This feature's `SK-PIVOT-*` carry the tactical calls. | GLOBAL-036 |
-| **Scorecard / daily loop** | A **Pivot — agent-memory wedge** section in `docs/scorecard.md` carries **one row per worksheet** (13 WS + 7 E), ticked ⬜→✅ with the PR link on merge — **no `.claude/commands/daily.md` changes**. The weekly focus number stays founder-set. | this PR (`scorecard.md`) |
+| **Scorecard / daily loop** | A **Pivot — agent-memory wedge** section in `docs/scorecard.md` carries one row per worksheet (13 WS + 7 E), ticked ⬜→✅ on merge. The weekly focus number stays founder-set. | this PR (`scorecard.md`) |
 | **Architecture** | `architecture.md §0` "Open source … Apache-2.0" corrected to FSL-1.1 in this PR. `§2.1` gains the `/agents` route (a path on `nlqdb.com`, **no new domain**). `§0.1` already uses `nlqdb_query("memory", …)` — kept. | this PR (§0); WS-07 (§2.1 route) |
-| **Phase plan** | Phase 2 already targets "1 agent product publicly uses nlqdb as memory" — the wedge content is folded into Phase 2 distribution. The **self-host container** (`ghcr.io/nlqdb/api`) is pulled forward from Phase 3 so the self-host claim is true before `/agents` leads with it. | WS-11 |
-| **Home page & product/APIs** | Home reweights to agent-memory-primary with a demoted "also works for…" fold; new `/agents` landing; Mem0+Zep+Letta+LangMem matrix; sharpened solve pages; **MCP tool + package descriptions carry the agent-memory framing**; on-brand demo + OG images. Headline/README/llms.txt swap is **founder-gated, sequenced last**. | WS-01…WS-09, WS-12, WS-13 |
+| **Phase plan** | Phase 2 already targets "1 agent product publicly uses nlqdb as memory" — the wedge content folds into Phase 2 distribution. Self-host container pulled forward from Phase 3 (SK-PIVOT-005). | WS-11 |
+| **Home page & product/APIs** | Home reweights to agent-memory-primary with a demoted "also works for…" fold; new `/agents` landing; Mem0+Zep+Letta+LangMem matrix; sharpened solve pages; **MCP tool + package descriptions carry the agent-memory framing**; on-brand demo + OG images. Headline/README/llms.txt swap shipped 2026-06-24 (SK-PIVOT-013). | WS-01…WS-09, WS-12, WS-13 |
 | **Engine / actual architecture** | Canonical `agent_memory_v1` preset (`facts`/`episodes`/`entities`/`entity_facts`) as a `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (SK-MCP-002). Per-agent scope via row-level RLS (SK-PIVOT-009). TTL + cron sweep, `facts`-only (SK-PIVOT-011). pgvector hybrid recall. Preset on-ramp on the **authed** surface (SK-PIVOT-010). Workload-analyzer routes large memory DBs to ClickHouse (Phase 3). | E-01…E-07 |
 
 ## Decisions
@@ -282,62 +282,11 @@ the memory-shaped primitives that make the wedge claims durable).
 
 ### SK-PIVOT-005 — The self-host / anti-VC angle is messaged under FSL-1.1 honestly, and the container is pulled forward to make it true
 
-- **Decision:** The open/free wedge is stated truthfully under **FSL-1.1**
-  ("source-available, self-hostable for non-competing use, bring your own LLM
-  key at 0% markup, no per-call fees, no pricing page") — **not** as
-  "Apache-2.0, `docker compose up`" which is false today. The self-host
-  container (`ghcr.io/nlqdb/api`) is pulled forward from Phase 3 so the
-  self-host claim is shippable before `/agents` leads with it.
-- **Core value:** Free, Open source, Honest latency
-- **Why:** The "Free" moat is real leverage with the self-hosted-agent crowd,
-  but the literal "Apache-2.0 + `docker compose up`" pitch over-claims: the
-  license is FSL-1.1 and no image has shipped. Leading on an unshipped claim
-  burns trust.
-- **Consequence in code & docs:** `GLOBAL-019` + `architecture.md §0` wording
-  corrected to "FSL-1.1-ALv2 → Apache-2.0" (a factual sync). `/agents`,
-  `README`, and the manifesto state the self-host angle in FSL-accurate terms
-  (WS-10). Pulling the container forward (WS-11) is multi-run, founder/infra-gated.
-- **Alternatives rejected:** Relicense to Apache-2.0 now — reverses a
-  deliberate FSL choice (a money/legal bet the founder declined). · Claim
-  self-host before the image ships — over-claim.
+**Body:** [`decisions/SK-PIVOT-005-fsl-self-host.md`](./decisions/SK-PIVOT-005-fsl-self-host.md). The open/free wedge is stated truthfully under **FSL-1.1** (source-available, self-hostable for non-competing use, BYO LLM key at 0% markup) — not the false "Apache-2.0 + `docker compose up`" today. `GLOBAL-019` + `architecture.md §0` synced to "FSL-1.1-ALv2 → Apache-2.0"; `/agents`/`README` state it FSL-accurately (WS-10). The container (`ghcr.io/nlqdb/api`) is pulled forward (WS-11) so the claim is true before `/agents` leads with it.
 
 ### SK-PIVOT-013 — The lead string is "Analytical memory for AI agents"; the WS-13 founder gate tripped 2026-06-24
 
-- **Decision:** The sitewide lead identity now leads with the agent-memory
-  wedge. Canonical lede: **"Analytical memory for AI agents."**, with the
-  support clause *"a real database your agent connects to over MCP and queries
-  in English — `GROUP BY`, `JOIN`, aggregate over what it remembered, not just
-  the top-k a vector store recalls."* The four gated lead strings (Hero lede,
-  `README` H1 + tagline, `llms.txt` lede, root `package.json` description +
-  homepage `<title>` / `SoftwareApplication` JSON-LD description) are swapped
-  to this consistently. The generalist umbrella stays one click away — the
-  hero `<CreateForm>` input is untouched (SK-WEB-002), and the `AlsoWorksFor`
-  fold + every off-wedge `/vs`/`/solve` page + an "also a natural-language
-  database for any app" line keep the GLOBAL-036 dual front door intact.
-- **Core value:** Goal-first, Creative, Honest latency
-- **Why:** WS-13 was the founder-gated final slice. The founder tripped the
-  gate on 2026-06-24: the wedge content (`/agents`, the capability matrix, 10
-  memory `/vs` pages, the live demo) is all live, so the brand bet is backed by
-  real surface and reverts in a single `git revert` because every prior slice
-  shipped additively. Leading on the true moat — analytical SQL over structured
-  memory + the typed-plan trust boundary, reached over MCP — focuses the brand
-  on the one adjacent category the funded incumbents can't enter without
-  rebuilding their storage layer.
-- **Consequence in code:** `Hero.astro` lede/sub, `README.md` H1+tagline+intro,
-  `llms.txt.ts` lede + surfaces clause, `index.astro` `<title>`+description
-  (drives the homepage JSON-LD `description`), root `package.json`
-  `description`, and `Base.astro` default `ogImageAlt` all lead with the wedge;
-  the homepage OG card points at the wedge-led `/og/agents.png`. The `/agents`
-  terminal CTA is rebuilt to **connect-via-MCP** (paste `mcp.nlqdb.com` /
-  `nlq mcp install`, naming Claude / Cursor / Codex), demoting the generalist
-  `/app/new` "try a goal" path to a secondary link — the agent-builder's real
-  next action is connecting a host, not typing into a web form.
-- **Alternatives rejected:** Keep the gate closed until wedge-sourced waitlist
-  rows are non-zero (the open-question default below) — founder overrode it
-  2026-06-24, judging the built wedge surface sufficient and the revert cost one
-  commit. · Swap only the hero, leave README/llms.txt/JSON-LD generalist —
-  leaves the brand half-repositioned and inconsistent across the very surfaces
-  crawlers and agents read.
+**Body:** [`decisions/SK-PIVOT-013-headline-reposition.md`](./decisions/SK-PIVOT-013-headline-reposition.md). Founder tripped the GLOBAL-036 headline gate 2026-06-24: the four gated lead strings (Hero lede, `README` H1+tagline, `llms.txt` lede, `package.json` desc + homepage `<title>`/JSON-LD) now lead with **"Analytical memory for AI agents."**; homepage OG → `/og/agents.png`; the `/agents` CTA is rebuilt connect-via-MCP. The dual front door survives (hero `<CreateForm>` SK-WEB-002, `AlsoWorksFor` fold, off-wedge `/vs`/`/solve`). Reverts in one commit.
 
 ## GLOBALs governing this feature
 
@@ -377,9 +326,6 @@ funnel before the wedge content proves itself.
   may exceed one daily run and touches infra; the worksheet flags the
   founder/infra gate rather than assuming a copy-only diff.
 - ~~**Headline-reposition trigger** — what evidence trips WS-13?~~
-  **Resolved 2026-06-24 (SK-PIVOT-013):** founder tripped the gate directly
-  rather than waiting for non-zero wedge-sourced waitlist rows, judging the
-  built wedge surface (`/agents` + matrix + 10 memory `/vs` pages + live demo)
-  sufficient and the revert cost one commit. The conversion-proof precondition
-  is now a *post-hoc* check: if the repositioned funnel still shows ~0
-  wedge-sourced signups after a fair window, revert per the WS-13 rollback note.
+  **Resolved 2026-06-24 (SK-PIVOT-013):** founder tripped the gate directly;
+  conversion proof is now a post-hoc check — revert per the WS-13 rollback note
+  if the repositioned funnel still shows ~0 wedge-sourced signups.
