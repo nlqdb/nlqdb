@@ -705,11 +705,13 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         url: "https://www.reddit.com/r/LLMDevs/search/?q=rag+evaluation",
-        label: 'r/LLMDevs — "RAG evaluation / which chunks get retrieved" recurring discussion hub.',
+        label:
+          'r/LLMDevs — "RAG evaluation / which chunks get retrieved" recurring discussion hub.',
       },
       {
         url: "https://hn.algolia.com/?q=rag+retrieval",
-        label: 'HN search: "rag retrieval" — discussion on measuring and analyzing what RAG pipelines retrieve.',
+        label:
+          'HN search: "rag retrieval" — discussion on measuring and analyzing what RAG pipelines retrieve.',
       },
     ],
   },
