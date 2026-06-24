@@ -1,6 +1,6 @@
 # WS-09 — "Database, not a vector store" blog + live in-page demo
 
-**Status:** ✅ 2/2 — blog draft ✅ (run 30); live `/agents` demo ✅ (run 41, gate-honest fixture round-trip)
+**Status:** ✅ 2/2 — blog draft ✅ (run 30); live `/agents` demo ✅ (run 41, fixture round-trip)
 **Sequence:** 9 of 13 · **Risk:** med · **Runs:** ~2 · **Prereqs:** WS-06 ✅ · **Gate:** none
 
 ## Goal
