@@ -73,6 +73,10 @@ lands the instant the founder sets it.
 | E-06 | preset on-ramp — **authed** create surface (`MEMORY_PRESET`-gated) | ⬜ redirected | run 37 (SK-PIVOT-010): anon `/agents` CreateForm path infeasible (3 auth boundaries); blocked on `MEMORY_PRESET=1` in prod (dark) |
 | E-07 | workload-analyzer rule: memory DBs → ClickHouse (Phase 3) | ⬜ | med · multi · E-01 + Phase-3 multi-engine |
 
+## Shipped distribution (live URLs)
+
+Published artifacts from [`distribution-queue.md`](research/distribution-queue.md), current state — newest first. *(none yet — drafts await the founder's weekly review.)*
+
 ## Last change
 
 **2026-06-24 (founder-directed, #506)** — WS-13 headline reposition: the site
