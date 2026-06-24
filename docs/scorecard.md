@@ -56,7 +56,7 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 8 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7); run 61 +`/vs/qdrant` (Rust/quantization wing — P2 cluster 7→8, closes the top-tier vector-DB brand cluster) |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 9 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7); run 61 +`/vs/qdrant` (Rust/quantization wing — P2 cluster 7→8, closes the top-tier vector-DB brand cluster); run 79 +`/vs/cognee` (knowledge-graph wing — P2 cluster 8→9, the "not a vector store" memory framework) |
 | | *Messaging track — WS-\** | 11 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
@@ -103,6 +103,18 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   engine/funnel/ops file touched; 130 web tests + astro-check 0 errors + biome
   clean. Doc-hygiene rider: `distribution-queue.md` kept under the 20 KB cap
   (run-77 collapsed, superseded run-74 line dropped).
+- 2026-06-24 (run 79) — **Distribution: shipped `/vs/cognee` (18th comparison
+  page; P2 knowledge-graph wing of the agent-memory wedge).** Non-colliding
+  AEO lane (engine offline-retrieval exhausted at persona-bench precision@1
+  20/23, canonical BIRD/Spider dispatch-gated, gate-removal in #496). Cognee is
+  the highest-keyword uncovered memory framework that is explicitly *not a
+  vector store* (hybrid vector + knowledge-graph recall) — the GLOBAL-036 pivot
+  headline; honest wedge: it recalls graph-connected context but ships no SQL
+  layer, its KG construction + Apache-2.0 self-host conceded `them: shipped`;
+  facts web-verified. **Δ:** comparison pages 17 → 18, memory /vs 8 → 9,
+  llms.txt/sitemap +1, OG +1; FAQPage+BreadcrumbList+SoftwareApplication in
+  `dist/`. **KPI:** onboarding / distribution; **none degraded** — one typed
+  data object + doc anchors + one PNG; 130 web + 13 invariants + biome green.
 - 2026-06-23 (runs 77–78) — **AEO structured-data wave (both merged; engine
   dispatch-gated, none degraded).** Run 78: every `/vs` + `/solve` page now
   emits `BreadcrumbList` JSON-LD + a visible breadcrumb trail (shared
@@ -113,46 +125,19 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   array (visible `<dl>` + schema, can't drift; every answer restates on-page
   copy) — site `FAQPage` pages **24 → 25**. Both additive static structured
   data; 130 web tests + astro-check clean.
-- 2026-06-23 (run 76) — **Engine: a second DAIL-SQL pool-curation fix —
-  persona-bench retrieval precision@1 19/23 → 20/23 (q20).** Engine canonical
-  lane dispatch-gated (BIRD 06-19 / Spider 06-17 both < 7d), so the lever was the
-  offline retrieval instrument, continuing run 74's finding that some "residual
-  selector-side misses" are actually pool-fixable exemplar-phrasing leaks. q20
-  ("which plans cost more than the average plan price", a scalar `> AVG()`)
-  retrieved the `having` demo because the `scalar-subquery` pool row read as a
-  bare "List the names of products priced above…" — sharing none of q20's
-  `which`/`list`/`names` tokens, while `having`'s "placed more than 5 orders"
-  carried the generic filler. Reframing the demo to the way users actually ask
-  ("Which products are priced above the average price? List the product names" —
-  a **pool-curation** lever, the same before/after pattern as q21, **not** the
-  run-52-falsified selector-code tweak) lands q20 and **holds held-out 14/14**
-  (the probe keeps "priced above…" ⇒ generalisation, not a tune to q20); kept
-  "above" not "more than" so the genuine HAVING queries q5/q11 stay pinned to
-  `having`. No other persona-bench question moved; 3 residual misses (q8/q10/q22)
-  stay selector-side. **Δ:** own-ICP retrieval precision@1 **19/23 → 20/23**.
-  **KPI:** engine quality; **none degraded** — prod byte-identical
-  (`buildPlanSystem` default-off, `k≤0`), BIRD/Spider/baselines byte-untouched,
-  the scalar-subquery demo SQL unchanged (only its NL phrasing). Doc-hygiene
-  rider: `quality-score-verification-log.md` (> 20 KB) net-shrunk −109 B under D4
-  (collapsed the run-52 row, whose "no offline lever remains" verdict runs 74/76
-  have narrowed to selector-*code* only). 267 eval + 210 llm + biome green.
-- 2026-06-23 (run 75) — **Distribution: shipped `/solve/database-claude-cursor-can-query`
-  (7th solve page, P2 MCP-host wedge).** Other lanes were already in open PRs
-  (#491 / #489 / #490), so this took the non-colliding solve-page lane. Honest
-  wedge vs every DB-MCP server (all "paste your connection string"): nlqdb's
-  `nlqdb_query` provisions Postgres from the agent's first English goal, create
-  implicit in query (`SK-MCP-002`); inverse trade-off stated honestly. Also fixed
-  stale solve FEATURE status (5 → 7) + logged the P4 persona gap as gap-blocked.
-  **Δ:** solve pages **6 → 7**, llms.txt/sitemap +1. **KPI:** onboarding /
-  distribution; none degraded — one data object + doc edits.
-- 2026-06-23 (run 74) — **Engine: first DAIL-SQL pool-curation fix —
-  persona-bench precision@1 18/23 → 19/23 (q21), held-out 14/14.** Same lever and
-  pattern run 76 (above) generalised: q21 ("how many **different** referral
-  sources", COUNT DISTINCT) was an exemplar-phrasing leak — the `count-distinct`
-  pool row echoed the SQL keyword "distinct" while users say "different".
-  Rephrasing the demo to "how many different cities" landed q21 and held held-out
-  14/14 (probe still says "distinct" ⇒ generalisation). Prod byte-identical;
-  baselines untouched. (Full detail: `quality-score-verification-log.md`.)
+- 2026-06-23 (runs 74–76) — **Engine pool-curation + distribution wave (all
+  merged; engine canonical dispatch-gated, BIRD 06-19 / Spider 06-17 untouched;
+  none degraded).** Two DAIL-SQL pool-curation fixes (the offline retrieval
+  instrument): run 74 q21 (COUNT DISTINCT — `count-distinct` demo echoed the SQL
+  keyword "distinct" while users say "different"), run 76 q20 (scalar `> AVG()` —
+  `scalar-subquery` demo read as a bare "List the names…" sharing none of q20's
+  `which`/`list`/`names` tokens). Both **exemplar-phrasing leaks**, not the
+  run-52-falsified selector-code tweak — own-ICP retrieval precision@1 **18/23 →
+  19/23 → 20/23**, held-out **14/14** held (generalises, not tuned to the
+  question); prod byte-identical (`buildPlanSystem` default-off), baselines
+  byte-untouched. 3 residual misses (q8/q10/q22) confirmed selector-side. Run 75:
+  shipped `/solve/database-claude-cursor-can-query` (solve pages 6 → 7). Detail:
+  `quality-score-verification-log.md` + git.
 - 2026-06-23 (runs 67–73) — **Distribution + doc-hygiene wave (all merged;
   engine dispatch-gated, BIRD 06-19 / Spider 06-17 untouched; none degraded).**
   **Distribution (AEO):** `/vs/retool` (run 67, internal-tools builder),
