@@ -21,6 +21,11 @@ const url = (path: string) => `${SITE}${path.endsWith("/") ? path : `${path}/`}`
 const PRIMARY_LINKS = [
   { title: "Homepage", path: "/", desc: "Pitch, embed demo, live carousel." },
   {
+    title: "Agents",
+    path: "/agents",
+    desc: "Analytical memory for AI agents — give an agent a real Postgres it can GROUP BY, JOIN, and aggregate over, not just top-k vector recall.",
+  },
+  {
     title: "Manifesto",
     path: "/manifesto",
     desc: "Nine non-negotiables that decide every nlqdb design choice.",
@@ -34,6 +39,11 @@ const PRIMARY_LINKS = [
     title: "Solve pages",
     path: "/solve",
     desc: "One page per recurring search query; each answers the question with a working snippet and names what nlqdb doesn't do.",
+  },
+  {
+    title: "Pricing",
+    path: "/pricing",
+    desc: "Free forever; upgrade when you need more. No credit card for the free tier.",
   },
 ];
 
@@ -78,7 +88,7 @@ export const GET: APIRoute = () => {
     `\n\n## Optional\n\n` +
     OPTIONAL_LINKS.map((l) => `- [${l.title}](${url(l.path)}): ${l.desc}`).join("\n") +
     `\n\n## Status\n\n` +
-    `Pre-alpha, closed beta. Phase 0 shipped; Phase 1 onboarding in progress.\n` +
+    `Pre-alpha, open — start anonymously, no invite needed. Phase 0 shipped; Phase 1 onboarding in progress.\n` +
     `Free chain forever (BYO-LLM at 0% markup). Source is private until general\n` +
     `availability; SDKs and elements will be open source.\n\n` +
     `## Contact\n\n` +
