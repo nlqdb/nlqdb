@@ -24,9 +24,11 @@
   for non-competing use, bring-your-own-LLM key at 0% markup, no per-call
   fees, no pricing page). The **full headline reposition** (wordmark
   tagline, `README` H1, `llms.txt` lede, `SoftwareApplication` JSON-LD
-  description) is sequenced **last and is founder-gated**; until it trips,
-  the pivot ships entirely through **additive** surfaces so it stays
-  reversible.
+  description) was sequenced **last and founder-gated**; the founder
+  **tripped that gate on 2026-06-24** (SK-PIVOT-013 in the feature doc), so
+  all four lead strings now lead with the wedge. Every prior slice shipped
+  **additively**, so the reposition reverts in a single `git revert` if the
+  funnel doesn't follow.
 
 - **Core value:** Goal-first, Creative, Free, Open source, Honest latency
 
@@ -62,9 +64,11 @@
     before their page ships.
   - The wedge feeds the **waitlist** as a demand signal alongside the open
     product. Messaging ships; the engine bar is not re-escalated.
-  - The headline reposition is a single, clearly-labelled, founder-gated
-    worksheet (last in the sequence). No PR swaps the wordmark/README/llms.txt
-    lead line until that gate trips.
+  - The headline reposition (WS-13) was the single founder-gated worksheet
+    (last in the sequence). **Tripped 2026-06-24 — see SK-PIVOT-013.** The
+    dual front door survives the swap: the hero `<CreateForm>` input
+    (SK-WEB-002), the `AlsoWorksFor` fold, and the off-wedge `/vs`+`/solve`
+    pages keep the generalist umbrella one click away.
   - The open/free angle is messaged under **FSL-1.1** truthfully — see
     [`GLOBAL-019`](./GLOBAL-019-apache2-open-source-core.md), whose stale
     "Apache-2.0 today" wording is corrected to "FSL-1.1-ALv2,

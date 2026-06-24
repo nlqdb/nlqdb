@@ -19,7 +19,7 @@ memory — delivered as a sequence of small, reversible, daily-loop-sized
 slices rather than a relaunch. **Two tracks ship in parallel:** messaging
 (WS-01..WS-13 — how users discover the wedge) and **engine** (E-01..E-07 —
 the memory-shaped primitives that make the wedge claims durable).
-**Status:** in progress (Phase 2 distribution) — backlog ready; WS-01 shipped (run 19); E-04 TTL-sweep core shipped (SK-PIVOT-011; cron + RLS clause pending).
+**Status:** in progress (Phase 2 distribution) — **WS-13 headline reposition shipped 2026-06-24** (SK-PIVOT-013; founder tripped the GLOBAL-036 gate, the site now leads with the wedge sitewide); E-04 TTL-sweep core shipped (SK-PIVOT-011; cron + RLS clause pending).
 **Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/db-create/neon-provision.ts` + `ask/build-deps.ts` (agent-scope RLS, SK-PIVOT-009), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
 **Cross-refs:** `docs/research/deepseek-moat-framing.md` (the thesis) · `docs/competitors.md §4` (agent-memory landscape) · `docs/research/personas.md §P2` · GLOBAL-036 (canonical text in `docs/decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md`; index in `docs/decisions.md`).
 
@@ -301,6 +301,44 @@ the memory-shaped primitives that make the wedge claims durable).
   deliberate FSL choice (a money/legal bet the founder declined). · Claim
   self-host before the image ships — over-claim.
 
+### SK-PIVOT-013 — The lead string is "Analytical memory for AI agents"; the WS-13 founder gate tripped 2026-06-24
+
+- **Decision:** The sitewide lead identity now leads with the agent-memory
+  wedge. Canonical lede: **"Analytical memory for AI agents."**, with the
+  support clause *"a real database your agent connects to over MCP and queries
+  in English — `GROUP BY`, `JOIN`, aggregate over what it remembered, not just
+  the top-k a vector store recalls."* The four gated lead strings (Hero lede,
+  `README` H1 + tagline, `llms.txt` lede, root `package.json` description +
+  homepage `<title>` / `SoftwareApplication` JSON-LD description) are swapped
+  to this consistently. The generalist umbrella stays one click away — the
+  hero `<CreateForm>` input is untouched (SK-WEB-002), and the `AlsoWorksFor`
+  fold + every off-wedge `/vs`/`/solve` page + an "also a natural-language
+  database for any app" line keep the GLOBAL-036 dual front door intact.
+- **Core value:** Goal-first, Creative, Honest latency
+- **Why:** WS-13 was the founder-gated final slice. The founder tripped the
+  gate on 2026-06-24: the wedge content (`/agents`, the capability matrix, 10
+  memory `/vs` pages, the live demo) is all live, so the brand bet is backed by
+  real surface and reverts in a single `git revert` because every prior slice
+  shipped additively. Leading on the true moat — analytical SQL over structured
+  memory + the typed-plan trust boundary, reached over MCP — focuses the brand
+  on the one adjacent category the funded incumbents can't enter without
+  rebuilding their storage layer.
+- **Consequence in code:** `Hero.astro` lede/sub, `README.md` H1+tagline+intro,
+  `llms.txt.ts` lede + surfaces clause, `index.astro` `<title>`+description
+  (drives the homepage JSON-LD `description`), root `package.json`
+  `description`, and `Base.astro` default `ogImageAlt` all lead with the wedge;
+  the homepage OG card points at the wedge-led `/og/agents.png`. The `/agents`
+  terminal CTA is rebuilt to **connect-via-MCP** (paste `mcp.nlqdb.com` /
+  `nlq mcp install`, naming Claude / Cursor / Codex), demoting the generalist
+  `/app/new` "try a goal" path to a secondary link — the agent-builder's real
+  next action is connecting a host, not typing into a web form.
+- **Alternatives rejected:** Keep the gate closed until wedge-sourced waitlist
+  rows are non-zero (the open-question default below) — founder overrode it
+  2026-06-24, judging the built wedge surface sufficient and the revert cost one
+  commit. · Swap only the hero, leave README/llms.txt/JSON-LD generalist —
+  leaves the brand half-repositioned and inconsistent across the very surfaces
+  crawlers and agents read.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL;
@@ -338,7 +376,10 @@ funnel before the wedge content proves itself.
 - **Self-host container scope** — pulling `ghcr.io/nlqdb/api` forward (WS-11)
   may exceed one daily run and touches infra; the worksheet flags the
   founder/infra gate rather than assuming a copy-only diff.
-- **Headline-reposition trigger** — what evidence trips WS-13 (the gated
-  swap)? Proposed default: founder call at a weekly session once the
-  `/agents` page + matrix + ≥ 2 memory-competitor pages are live and the
-  funnel `Pivot:` line shows non-zero wedge-sourced waitlist rows.
+- ~~**Headline-reposition trigger** — what evidence trips WS-13?~~
+  **Resolved 2026-06-24 (SK-PIVOT-013):** founder tripped the gate directly
+  rather than waiting for non-zero wedge-sourced waitlist rows, judging the
+  built wedge surface (`/agents` + matrix + 10 memory `/vs` pages + live demo)
+  sufficient and the revert cost one commit. The conversion-proof precondition
+  is now a *post-hoc* check: if the repositioned funnel still shows ~0
+  wedge-sourced signups after a fair window, revert per the WS-13 rollback note.

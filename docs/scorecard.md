@@ -47,8 +47,8 @@ lands the instant the founder sets it.
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 10 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7); run 61 +`/vs/qdrant` (Rust/quantization wing — P2 cluster 7→8, closes the top-tier vector-DB brand cluster); run 79 +`/vs/cognee` (knowledge-graph wing — P2 cluster 8→9, the "not a vector store" memory framework); run 84 +`/vs/milvus` (open-source billion-scale ANN wing — P2 cluster 9→10) |
-| | *Messaging track — WS-\** | 11 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2) | pick when worst number is funnel / distribution |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 14 / 20 + 10 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7); run 61 +`/vs/qdrant` (Rust/quantization wing — P2 cluster 7→8, closes the top-tier vector-DB brand cluster); run 79 +`/vs/cognee` (knowledge-graph wing — P2 cluster 8→9, the "not a vector store" memory framework); run 84 +`/vs/milvus` (open-source billion-scale ANN wing — P2 cluster 9→10) |
+| | *Messaging track — WS-\** | 12 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2, WS-13 ✅) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
 | WS-03 | solve pages — sharpen + sibling | ✅ 2/2 | run 23 — **sharpen ✅**; run 25 — **analytical sibling ✅** (`analytical-queries-over-agent-memory`, the read-side report-over-memory wedge) |
@@ -61,7 +61,7 @@ lands the instant the founder sets it.
 | WS-10 | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix shipped) | ✅ | run 28 — pricing self-host band + README "Models & plans" self-host line (FSL-accurate; no turnkey-image claim per WS-11 note) |
 | WS-11 | pull `ghcr.io/nlqdb/api` self-host container forward | ⬜ | high · multi · WS-10 · infra-gated |
 | WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ✅ 2/2 | run 43 band; run 44 `AlsoWorksFor` fold before CodePanel + Replaces (composition-only, nothing deleted, hero untouched) |
-| WS-13 | headline reposition (hero / README / llms.txt / JSON-LD) | ⬜ | high · ~2 runs · WS-07, WS-12 · 🔒 **FOUNDER-GATED** |
+| WS-13 | headline reposition (hero / README / llms.txt / JSON-LD) | ✅ | **founder tripped the gate 2026-06-24** (SK-PIVOT-013); 4 lead strings → "Analytical memory for AI agents" + `/agents` connect-via-MCP CTA |
 | | *Engine track — E-\** | 2 / 7 | pick when worst number is engine quality / agent on-ramp |
 | E-01 | `agent_memory_v1` schema preset for `db.create` | ✅ | run 29 module + run 30 wiring (SK-HDC-020): `db.create { preset: "agent_memory_v1" }` provisions the 4 tables deterministically, no LLM; gated behind `MEMORY_PRESET`. One follow-on: quality-eval ablation row (Neon-branch gated) |
 | E-02 | additive MCP tool `nlqdb_remember` (no rename) | ✅ | run 31 (SK-PIVOT-008): server-built deterministic parameterised INSERT via `POST /v1/memory/remember` (never `/v1/run` — trust boundary), `wrong_preset` guard, SDK `remember()`, `nlqdb_remember` tool. Follow-ons: e2e Neon smoke (infra) + CLI `nlq remember` (Go) |
@@ -73,6 +73,24 @@ lands the instant the founder sets it.
 
 ## Deltas (recent runs)
 
+- 2026-06-24 (founder-directed) — **WS-13 headline reposition shipped — the
+  site now leads with the wedge sitewide, and `/agents` connects an agent over
+  MCP instead of dumping it into the generalist create flow.** Founder tripped
+  the GLOBAL-036 founder-gate directly (SK-PIVOT-013), overriding the
+  "wait for non-zero wedge-sourced waitlist rows" default — the wedge surface
+  (`/agents` + matrix + 10 memory `/vs` + live demo) is live and the revert
+  cost is one commit. **Δ:** four lead strings (`Hero.astro` lede/sub,
+  `README` H1+tagline, `llms.txt` lede, homepage `<title>`+description/JSON-LD,
+  root `package.json` desc, `Base.astro` default `ogImageAlt`) → "Analytical
+  memory for AI agents"; homepage OG → wedge card `/og/agents.png`; `/agents`
+  terminal CTA rebuilt to connect-via-MCP (paste `mcp.nlqdb.com` + `nlq mcp
+  install` + docs link, naming Claude/Cursor/Codex), generalist `/app/new`
+  demoted to a secondary link, new `agents.connect_clicked` demand signal
+  (GLOBAL-024). Pivot **13→14/20**, messaging **11→12/13**. **KPI:** onboarding
+  + UX (GLOBAL-025); **none degraded** — copy/markup only, hero input
+  (SK-WEB-002) + `AlsoWorksFor` fold + off-wedge pages kept (dual front door),
+  no engine/ops/funnel-instrument file touched. If the repositioned funnel still
+  shows ~0 wedge-sourced signups after a fair window, revert (WS-13 rollback note).
 - 2026-06-24 (run 87) — **UX/a11y: the Cmd+K command palette is now a proper
   WAI-ARIA combobox — assistive tech announces each command as the user arrows
   through it.** Arrow-key navigation moved only a *visual* `data-highlight`; the
@@ -83,38 +101,23 @@ lands the instant the founder sets it.
   `role=option` + `aria-selected`. The clamp/bounds nav logic was extracted to a
   tested pure `lib/palette-nav.ts` (mirrors run 82's `create-errors.ts`), which
   also hardened the out-of-range recovery (a narrowing filter can leave the index
-  past the end). **Δ:** web tests **+7**; palette active-command ARIA
-  associations **0 → 3** (combobox→listbox `aria-controls`, combobox→active option
-  `aria-activedescendant`, option `aria-selected`). **KPI:** UX (GLOBAL-025);
-  **none degraded** — additive ARIA + a pure-logic extraction, no
-  engine/funnel/ops/prod-behaviour change; astro-check 0 errors, biome clean. (#507)
-- 2026-06-24 (run 86) — **AEO/discoverability: `llms.txt` now advertises the
-  `/agents` pivot landing page + `/pricing`.** The machine-readable index that
-  LLM-IDE crawlers (Claude Desktop, Perplexity, Cursor) fetch silently omitted
-  `/agents` — the GLOBAL-036 analytical-memory wedge, the pivot's *headline*
-  page — and `/pricing`; only `/`, `/manifesto`, `/vs`, `/solve` were listed, so
-  the exact crawler audience the pivot targets couldn't see its on-ramp. Also
-  corrected the stale `Status` line (`closed beta` → `open — start anonymously,
-  no invite needed`; the GLOBAL-027 gate was removed in #496, product is fully
-  public). **Δ:** `llms.txt` `PRIMARY_LINKS` **4 → 6** (verified in
-  `dist/llms.txt`: `/agents/` + `/pricing/` present in the Pages section); web
-  tests **132 → 135 (+3)** — new `pages/__tests__/llms.txt.test.ts` pins the two
-  routes + the open-status so the pivot page can't silently drop from the index.
-  **KPI:** onboarding / distribution; **none degraded** — additive index entries
-  + a copy correction + a test, no engine/funnel/ops/runtime file touched;
-  astro-check 0 errors, biome clean.
-- 2026-06-24 (run 85) — **Distribution: shipped `/solve/track-ai-token-usage-and-cost`
-  — solve pages 8 → 9, the first P2 LLM-spend-attribution on-ramp** (the
-  agent-memory wedge: log each call as a typed row → `GROUP BY` user/model/day in
-  SQL, not arithmetic over a JSON log; honest limits — no auto metering, composes
-  with Langfuse/Helicone). Data-driven, so `/solve` `ItemList`/sitemap/llms.txt
-  auto-extend; web tests 129 → 132; none degraded.
-- 2026-06-24 (run 84) — **Distribution: shipped `/vs/milvus` — comparison pages
-  18 → 19, P2 memory vector-cluster 9 → 10** (Milvus, the OSS billion-scale ANN
-  sibling of Pinecone/Chroma/Weaviate/Qdrant; honest wedge: nearest-embedding
-  recall, no relational JOIN/GROUP BY/HAVING). Data-driven, so `/vs` `ItemList`,
-  sitemap, and llms.txt auto-extend; FAQPage + BreadcrumbList verified in `dist/`;
-  OG card added. None degraded.
+  past the end). **Δ:** web tests **+7**; palette active-command ARIA associations
+  **0 → 3** (combobox→listbox + active option + `aria-selected`). **KPI:** UX
+  (GLOBAL-025); none degraded — additive ARIA + pure-logic extraction, no
+  engine/funnel/ops file touched; astro-check 0 errors, biome clean. (#507)
+- 2026-06-24 (run 86) — **AEO: `llms.txt` now advertises the `/agents` pivot
+  landing + `/pricing`** (the crawler index LLM IDEs fetch had omitted the wedge's
+  *headline* page); also corrected the stale `Status` line (`closed beta` → `open`,
+  GLOBAL-027 gate removed in #496). **Δ:** `PRIMARY_LINKS` **4 → 6** (verified in
+  `dist/llms.txt`); web tests **132 → 135 (+3)** (new `llms.txt.test.ts` pins the
+  routes + open-status). **KPI:** onboarding / distribution; none degraded —
+  additive index entries + copy fix + test, no engine/funnel/ops file touched.
+- 2026-06-24 (run 85) — **Distribution: `/solve/track-ai-token-usage-and-cost`**
+  — solve pages 8 → 9, the first P2 LLM-spend-attribution on-ramp (log each call
+  as a typed row → `GROUP BY` in SQL). Web tests 129 → 132; none degraded. (#504)
+- 2026-06-24 (run 84) — **Distribution: `/vs/milvus`** — comparison pages 18 → 19,
+  P2 memory vector-cluster 9 → 10 (OSS ANN; embedding recall, no JOIN/GROUP BY).
+  None degraded. (#503)
 - 2026-06-24 (runs 82–83) — **UX/AEO wave (both merged; engine untouched; none
   degraded).** Run 82: CreateForm error state now exposed to assistive tech
   (`aria-invalid` + `aria-describedby` → one `role="alert"` region; per-kind copy

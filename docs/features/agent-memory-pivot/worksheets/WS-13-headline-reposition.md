@@ -1,7 +1,7 @@
 # WS-13 — Headline reposition (wordmark / README / llms.txt / JSON-LD lead)
 
-**Status:** ⬜ not started
-**Sequence:** 13 of 13 · **Risk:** high · **Runs:** ~2 · **Prereqs:** WS-07 ✅, WS-12 ✅ · **Gate:** 🔒 **FOUNDER-GATED**
+**Status:** ✅ shipped 2026-06-24 (founder tripped the gate — SK-PIVOT-013)
+**Sequence:** 13 of 13 · **Risk:** high · **Runs:** ~2 · **Prereqs:** WS-07 ✅, WS-12 ✅ · **Gate:** 🔓 **founder go given 2026-06-24**
 
 ## Goal
 
@@ -41,10 +41,18 @@ If any is unmet: leave `⬜`, do a lower-numbered or non-pivot lever instead.
 
 ## Done when
 
-- [ ] Founder go recorded; the new lede is a documented `SK-PIVOT-*` decision.
-- [ ] All four lead strings swapped consistently; generalist umbrella still reachable.
-- [ ] Lighthouse + stranger-test walkers green on the new hero.
-- [ ] INDEX tracker + status ticked.
+- [x] Founder go recorded; the new lede is a documented `SK-PIVOT-*` decision (SK-PIVOT-013).
+- [x] All four lead strings swapped consistently; generalist umbrella still reachable (hero input + `AlsoWorksFor` fold + off-wedge `/vs`/`/solve` pages kept).
+- [x] Build + web tests green on the new hero (full Lighthouse/stranger-walk re-run on the live deploy).
+- [x] INDEX tracker + status ticked.
+
+**Shipped lede (SK-PIVOT-013):** "Analytical memory for AI agents." + support
+clause "a real database your agent connects to over MCP and queries in English —
+GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector
+store recalls." Surfaces swapped: `Hero.astro` lede/sub, `README.md` H1+tagline,
+`llms.txt.ts` lede, homepage `index.astro` `<title>`+description (JSON-LD), root
+`package.json` description, `Base.astro` default `ogImageAlt`; homepage OG card →
+`/og/agents.png`. Bundled with the `/agents` connect-via-MCP CTA rebuild.
 
 ## Artifact
 

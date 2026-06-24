@@ -4,6 +4,12 @@
 // React island as `/app/new`; both routes hit `/v1/ask` with an
 // anonymous bearer (SK-ANON-008), gated by the global anon cap
 // (SK-ANON-010) with prompt-persistence (SK-ANON-011).
+//
+// The lede leads with the agent-memory wedge (WS-13 / SK-PIVOT-013 —
+// the founder-gated headline reposition, tripped 2026-06-24). The
+// goal-first input below is untouched (SK-WEB-002): it is still the
+// 60-second on-ramp and the generalist umbrella (dual front door,
+// GLOBAL-036) the credo line keeps reachable.
 
 import CreateForm from "./CreateForm.tsx";
 
@@ -20,12 +26,17 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 <section class="hero">
   <h1 class="hero__wordmark">nlqdb</h1>
-  <p class="hero__lede">Natural-language databases.</p>
+  <p class="hero__lede">Analytical memory for AI agents.</p>
   <p class="hero__sub">
-    Create one in a word. Query it in English. The infrastructure stays
-    invisible — the escape hatch to raw SQL is one click away, always.
+    Connect a real database to Claude, Cursor, or any MCP host. Your agent
+    writes typed rows as it learns, then queries them in English —
+    <code>GROUP BY</code>, <code>JOIN</code>, aggregate over what it
+    remembered, not just the top-<em>k</em> a vector store recalls.
   </p>
-  <p class="hero__credo">Built with an obsessive standard for user experience.</p>
+  <p class="hero__credo">
+    Also a natural-language database for any app — created from a goal, not a
+    schema. Start one below, or <a href="/agents">see the agent-memory story</a>.
+  </p>
 
   <CreateForm client:load apiBase={apiBase} />
 </section>
