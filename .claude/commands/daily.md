@@ -31,8 +31,9 @@ founder is not watching and must not be pinged. The loop you execute is
 
 ### 1 — Measure first (always)
 
-Regenerate `docs/scorecard.md` (≤ 5 KB, one table; create it if missing —
-creating it is a complete day-one run):
+Regenerate `docs/scorecard.md` (current-state tracker — the metrics table +
+progress tables + one "Last change" entry, no changelog; create it if missing
+— creating it is a complete day-one run):
 
 - **Funnel, bot-filtered** (exclude stranger-test bot emails): visits (CF
   Web Analytics — `Zone Analytics:Read` granted 2026-06-12), waitlist rows
@@ -59,8 +60,11 @@ creating it is a complete day-one run):
 
 Pick the smallest change that moves the weekly focus number (or, if none is
 set, the worst number). State the before-value, make the change, re-measure
-the same way, write the delta into the scorecard. One lever per run — not
-three.
+the same way, then **overwrite the scorecard's single "Last change" entry**
+with this run's delta (and any revert note) — the scorecard is a current-state
+tracker, so per-run history lives in `git log` +
+`progress/quality-score-verification-log.md`, never as an accreting changelog
+in the scorecard. One lever per run — not three.
 
 ### 3 — One artifact out
 

@@ -108,8 +108,8 @@ Three problems:
 
 **Prompt pattern for every lane** (this is the rethink you asked about):
 start with "read `docs/scorecard.md`; state the one number you intend to move
-today"; end with "re-measure it; append the delta to the scorecard; if it
-didn't move, revert and write one line on why." An agent that can't name its
+today"; end with "re-measure it; overwrite the scorecard's Last-change entry
+with the delta; if it didn't move, revert and write one line on why." An agent that can't name its
 number does docs cleanup instead of shipping code.
 
 ## 4. Growth, within your real constraints ($0, no calls, Claude-run)
