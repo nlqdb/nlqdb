@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { ORGANIZATION_ID_FRAGMENT, organizationJsonLd, webSiteJsonLd } from "../lib/site-jsonld.ts";
 
 interface Props {
   title: string;
@@ -26,6 +27,12 @@ const canonicalURL = new URL(
 const ogImageURL = new URL(ogImage ?? "/og-default.png", Astro.site);
 const ogImageAltText = ogImageAlt ?? "nlqdb — create a database in a word, query it in English.";
 
+// The app node names the Organization as publisher (by stable `@id`) on every
+// page so crawlers consolidate it with the homepage Organization/WebSite nodes
+// below — one entity, declared once on the root, referenced everywhere.
+const organizationId = Astro.site
+  ? new URL(ORGANIZATION_ID_FRAGMENT, Astro.site).toString()
+  : undefined;
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
@@ -35,7 +42,16 @@ const jsonLd = {
   description,
   url: Astro.site?.toString(),
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  ...(organizationId ? { publisher: { "@id": organizationId } } : {}),
 };
+
+// Homepage-only site-wide entity nodes (lib/site-jsonld.ts) — Organization
+// (brand authority) + WebSite (site name + publisher link). Site-wide nodes
+// belong on the root, not every page.
+const siteEntityJsonLd =
+  canonicalURL.pathname === "/" && Astro.site
+    ? [organizationJsonLd(Astro.site), webSiteJsonLd(Astro.site)]
+    : [];
 ---
 <!doctype html>
 <html lang="en">
@@ -67,6 +83,9 @@ const jsonLd = {
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
     <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    {siteEntityJsonLd.map((ld) => (
+      <script is:inline type="application/ld+json" set:html={JSON.stringify(ld)} />
+    ))}
   </head>
   <body>
     <slot />

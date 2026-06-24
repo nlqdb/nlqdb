@@ -14,9 +14,9 @@ full body recoverable from git history. The earliest drafts live in the
 
 **Where:** dev.to + r/LocalLLaMA + lobste.rs (`ai` / `database` / `vectordb`);
 build-in-public design lesson for agent builders evaluating vector DBs at scale.
-nlqdb mentioned once. The hook: teams outgrow a hosted vector store and reach
-for Milvus/Qdrant for *scale* — then are surprised the aggregate questions are
-still impossible, because ANN throughput and a query planner are orthogonal.
+nlqdb mentioned once. The hook: teams outgrow a hosted vector store and reach for
+Milvus/Qdrant for *scale* — then find the aggregate questions still impossible,
+because ANN throughput and a query planner are orthogonal.
 
 **Title:** Scaling your vector store to a billion rows doesn't give it a GROUP BY
 
@@ -25,24 +25,24 @@ still impossible, because ANN throughput and a query planner are orthogonal.
 > When an agent's memory outgrows a starter vector store, the natural next move
 > is a heavier engine — Milvus, Qdrant, something built for billions of vectors
 > with HNSW/DiskANN indexes and GPU search. You get more recall, lower latency,
-> hybrid dense+sparse ranking. What you do *not* get is the thing people quietly
-> expect scale to unlock: the ability to answer "how many", "per category",
-> "top N this month", "only the groups above a threshold."
+> hybrid dense+sparse ranking. What you do *not* get is the thing people expect
+> scale to unlock: the ability to answer "how many", "per category", "top N this
+> month", "only the groups above a threshold."
 >
 > This trips people up because "bigger database" sounds like "more capable
 > database." But the two axes are independent. A vector index is optimised for
-> one operation — *find the K nearest embeddings to this one* — and it does that
-> at any scale. Relational aggregation is a different machine entirely: a query
-> planner that joins tables, groups rows, and filters groups with `HAVING`.
-> Milvus will happily `count(*)` with a filter and even dedupe results by a
-> field, but there's no `JOIN`, no multi-column `GROUP BY`, no `HAVING`. Scaling
-> the ANN side to a trillion vectors adds zero of that.
+> one operation — *find the K nearest embeddings to this one* — at any scale.
+> Relational aggregation is a different machine: a query planner that joins
+> tables, groups rows, and filters groups with `HAVING`. Milvus will happily
+> `count(*)` with a filter and even dedupe by a field, but there's no `JOIN`, no
+> multi-column `GROUP BY`, no `HAVING`. Scaling the ANN side to a trillion
+> vectors adds zero of that.
 >
 > The tell is when you catch yourself pulling rows back and counting them in
 > application code (or worse, asking the LLM to count them — arithmetic over a
 > list of search hits is a hallucination generator). That's the signal the
-> question was analytics, not retrieval, and it wants a database with a planner
-> — not a faster nearest-neighbour search.
+> question was analytics, not retrieval: it wants a database with a planner, not
+> a faster nearest-neighbour search.
 >
 > The clean split: keep the vector engine for similarity recall, and put the
 > rows the agent needs to *count and group* in something that speaks SQL. They
@@ -50,58 +50,71 @@ still impossible, because ANN throughput and a query planner are orthogonal.
 > your nearest-neighbour index do arithmetic just because it scaled.
 >
 > (We built nlqdb around the analytics half — the agent provisions a Postgres in
-> plain English and asks the `GROUP BY` questions over its own memory, SQL shown.
-> But the lesson holds whatever you pair it with: scale and aggregation are
-> different problems.)
+> plain English and asks the `GROUP BY` questions over its own memory. But the
+> lesson holds whatever you pair it with: scale and aggregation are different
+> problems.)
 
 **Why this advances the north-star:** onboarding / distribution — a reproducible
 design lesson for the GLOBAL-036 agent-memory wedge, anchoring the new
-`/vs/milvus` comparison page; one nlqdb mention, honest about Milvus's real
-strengths (ANN at scale). No engine/funnel/ops KPI degrades (a queue draft, not
-a code change).
+`/vs/milvus` page; one nlqdb mention, honest about Milvus's real strengths (ANN
+at scale). No engine/funnel/ops KPI degrades (a queue draft, not a code change).
 
-## 2026-06-24 (run 81) — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections"
+## 2026-06-24 (run 83) — dev.to / lobste.rs: "I skipped the rich result Google was begging me to add"
 
-**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, third
-post in the AEO/structured-data thread. nlqdb mentioned once. The hook: you
-schema'd every leaf page and forgot the hub that lists them — so the one page
-that answers "what's the *whole set*?" is the one an engine has to scrape.
+**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, fourth
+post in the AEO/structured-data thread. nlqdb mentioned once. The hook: the
+contrarian one — the most-recommended structured-data win (the sitelinks search
+box) is the one I deliberately *didn't* ship, and why "valid schema" and "honest
+schema" are different bars.
 
-**Title:** Your collection pages don't tell answer engines they're collections
+**Title:** I skipped the rich result Google was begging me to add
 
 **Body:**
 
-> We generate two families of pages from data: one comparison page per
-> competitor, one "how do I solve X" page per recurring search. Each *leaf*
-> emits `FAQPage` and `BreadcrumbList`. Solid coverage — on the leaves.
+> Every "improve your SEO with structured data" checklist has the same top item:
+> add a `WebSite` block with a `SearchAction` and Google may render a sitelinks
+> search box right under your result. It's a big, clickable win. The snippet is
+> ten lines. I had the `WebSite` block open in my editor. And I deleted the
+> `SearchAction`.
 >
-> Then I looked at the two `/vs` and `/solve` *index* pages: the hubs that list
-> every comparison and every guide. Visibly they're exactly what a crawler
-> wants — a clean enumerated list with links. In structured data they had
-> nothing but the site-wide `SoftwareApplication` block. An answer engine
-> landing on "what does nlqdb compare against?" had to parse prose `<li>`s to
-> reconstruct the set instead of reading a declared one.
+> Here's why. A `SearchAction` is a *promise*: it tells Google "POST or GET a
+> term to this URL template and it runs a search." The contract is that the
+> target URL actually performs the query. Our homepage is a single goal-first
+> input — you type what you're building, it answers. But that input submits over
+> JavaScript to an API; there is no `GET /search?q=…` route that takes a term in
+> the URL and returns results. So a `SearchAction` pointing at `/app/new?q={…}`
+> would validate perfectly in the Rich Results Test and be a lie — the param
+> falls on the floor.
 >
-> The fix is `ItemList` — the schema.org type for "here is an ordered, complete
-> set of things." Each `ListItem` carries a `position`, the visible link `name`,
-> and the page `url`. Answer engines read it to enumerate and cite the set as a
-> group; Google treats the page as the index of a set, not one more leaf. Two
-> things to pass on:
+> The schema would be *valid*. It would not be *true*. And structured data that
+> claims a capability the page doesn't have is exactly the kind of thing search
+> and answer engines learn to distrust — per source, and then per pattern.
 >
-> 1. **Build it from the same array you render** — one `.map` over the data the
->    `<ul>` already maps, so the human's list and the JSON-LD can't drift.
-> 2. **Normalise the item URLs to the 200.** Same trap as breadcrumbs: if your
->    host serves `/vs/x/index.html`, point every `ListItem.url` at the
->    trailing-slash canonical, not the redirecting bare path.
+> What I kept is the honest half, and it's the half that actually compounds:
 >
-> If you've done FAQ + breadcrumb schema on your leaves, the hub `ItemList` is
-> the cheapest next win — it answers the broadest question you get ("what are
-> *all* my options?"), and it was probably the one page you left bare.
+> - **`Organization`** with a stable `@id` (`https://site/#organization`), name,
+>   logo, and `sameAs` to the GitHub org. This is the entity-authority node —
+>   it's how an answer engine binds the string "nlqdb" to *one thing* it can
+>   accumulate facts about, instead of guessing per page.
+> - **`WebSite`** (no `SearchAction`) naming that same Organization as
+>   `publisher` by `@id`. This is the node Google reads for the *site name* it
+>   shows in results, and it ties the site to the entity.
+> - Every other page's existing `SoftwareApplication` block now also points
+>   `publisher` at that one `@id`, so the whole site consolidates to a single
+>   entity graph rather than N disconnected nodes.
+>
+> Two things to take away. **Declare site-wide nodes once, on the root** — the
+> Organization and WebSite belong on `/`, not stamped onto all 40 pages; the
+> stable `@id` is what lets every page *reference* them. And **"would this
+> validate?" is the wrong test — "is this true?" is the test.** The sitelinks
+> search box is a great rich result. It's also one you have to *earn* with a real
+> query endpoint, not assert. I'd rather ship it the day the endpoint exists than
+> claim it today.
 
-**Why this advances the north-star:** onboarding / distribution — a concrete
-AEO lesson with a measured before/after (hub pages declaring their collection
-0 → 2), one nlqdb mention. No engine/funnel/ops KPI degrades (additive static
-structured data, data-driven from the existing list).
+**Why this advances the north-star:** onboarding / distribution — a concrete,
+slightly contrarian AEO lesson (honest schema > valid schema) with a measured
+before/after (homepage brand-entity nodes 1 → 3), one nlqdb mention. No
+engine/funnel/ops KPI degrades (additive static structured data).
 
 ## Collapsed — full drafts in git history
 
@@ -109,10 +122,12 @@ Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
-- run 80 — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases" (a vector store answers "most similar to this?" — top-k, no query planner — so engagement aggregates ("how many conversations this week", "messages per day") become the LLM doing arithmetic over search hits; store conversation turns as typed rows so the rollups are one-line `GROUP BY`s with the SQL visible to audit the grain; anchors `/solve/store-query-chatbot-conversation-history`).
+- run 82 — dev.to / lobste.rs: "Your AI app tells sighted users the query failed. Screen readers get silence." (the AI-feature text box swaps *loading*/*result*/*error* async with two quiet a11y misses: the result region isn't a live region (`aria-live`/`role="status"` once on the container), and the *input* never says it's invalid — add `aria-invalid` + `aria-describedby` pointing at one error `id`, collapsing the structured + network error branches into a single `role="alert"` region; test the error path with the reader on; anchored to this run's CreateForm fix, ARIA associations 0 → 2).
+- run 81 — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections" (leaf `/vs` + `/solve` pages emit `FAQPage`/`BreadcrumbList`, but the hubs listing them carried only the site-wide `SoftwareApplication`; `ItemList` declares "an ordered, complete set" — build it from the same array the `<ul>` renders so it can't drift, item URLs at the trailing-slash 200; hub collection signal 0 → 2).
+- run 80 — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases" (a vector store answers *what is most similar* — top-k, no query planner; the moment the question is an aggregate ("how many conversations this week?") you either make the LLM count rows (hallucination) or bolt on a real DB; retrieval and analytics are different jobs — store turns as typed rows and the engagement questions become trustworthy `GROUP BY`s; anchors `/solve/store-query-chatbot-conversation-history`).
 - run 79 — dev.to / r/LLMDevs / lobste.rs: "Your agent's memory can recall anything and count nothing" (vector stores, Mem0/Zep/Letta/LangMem, and knowledge graphs like Cognee all converge on *recall* — top-k relevant — but counting/aggregation (GROUP BY/COUNT/JOIN/HAVING over the rows the agent stored) is a different job that needs a query planner; recall and analytics want two stores that compose, not one doing both; anchors `/vs/cognee`).
 - run 78 — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search" (FAQPage earns the rich result but says nothing about where a page sits; `BreadcrumbList` declares a page's position in a hierarchy — match the visible trail from one source of truth so they can't drift, and point `item` URLs at the canonical 200 not the bare-path redirect; `/vs` + `/solve` pages 0 → 24 BreadcrumbList).
-- run 77 — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to" (the page you care about most is the easiest to leave un-instrumented, because it's bespoke; the templated `/vs` + `/solve` pages all emitted `FAQPage`, the hand-authored `/agents` hero didn't — lift the already-visible Q&As into one typed `faqs` array → visible `<dl>` + JSON-LD; audit coverage by importance, not by template).
+- run 77 — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to" (the page you care about most is easiest to leave un-instrumented because it's bespoke; the templated `/vs` + `/solve` pages all emitted `FAQPage`, the hand-authored `/agents` hero didn't — lift the visible Q&As into one typed `faqs` array → `<dl>` + JSON-LD; audit coverage by importance, not template).
 - run 76 — dev.to / lobste.rs: "I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English" (two independent few-shot retrieval misses a week apart, same root cause — the exemplar's *question* echoed SQL keywords/phrasing users don't say; `COUNT(DISTINCT)`→"different" and scalar-subquery→"which … list the names" both landed and held out; read your examples aloud before blaming the ranker).
 - run 75 — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (every DB-MCP connector opens with "paste your connection string"; an agent needing a *scratch* store to write+query has nowhere to put one — provision-from-English makes create and query the same call, no separate create verb; anchors `/solve/database-claude-cursor-can-query`).
 
@@ -138,9 +153,7 @@ recovers any body.
 - run 42 — "Don't hand-pick few-shot examples — size the pool from your benchmark's error classes" (one exemplar per mismatch class; precision@1 10/10, 3.5× closer skeleton; `packages/llm/plan-exemplar-pool.ts`).
 - run 41 — "Cross-schema few-shot retrieval: mask each example against *its own* schema" (`selectExemplarsForSchema`, per-row masking; `packages/llm/few-shot-select.ts`). Runs 37–42 value/identifier-masking + self-consistency stubs consolidated here.
 - run 39 — "How nlqdb expires agent memory (and why only facts get a TTL)" (facts-only `expires_at`, per-DB-isolated daily `DELETE` + RLS recency clause; `SK-PIVOT-011`, E-04).
-- run 37 — "Agent memory should be authed-only" (no durable identity to scope row reads on a throwaway anon DB; write verb + create both need a session).
-- run 33 — "We were grading our text-to-SQL engine on questions it couldn't possibly answer" (Spider external-knowledge dropped; 13/135 unanswerable; SK-QUAL-016).
-- runs 8–18 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
+- runs 8–18, 33, 37 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 
@@ -152,16 +165,11 @@ recovers any body.
 - run 43 — "We moved agent memory above the fold — without touching the wordmark" (additive/reversible home band; Mem0·Zep·Letta·nlqdb matrix; GLOBAL-036 + WS-12).
 - run 42 — launch image "GROUP BY your agent's memory" (`og/agents.png` + four `vs-*.png` cards, SK-PIVOT-004; the `/agents` share card).
 - run 41 — "A live demo of analytical agent memory — the GROUP BY, and the SQL it ran" (fixture-backed `/agents` round-trip, no signup; typed-plan trust boundary).
-- run 30 — "Show HN: Analytical memory for AI agents — a database it can GROUP BY, not just recall" (HN + r/AI_Agents/r/LocalLLaMA → `/agents`).
 - run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no `GROUP BY`/`COUNT`/`JOIN`/`HAVING`; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
 - runs 27–30 — agent-memory wave (WS-09): "Why your AI agent's memory should be a database, not a vector store" (Replit-incident open, BIRD/Spider sub-target, open harness), "…as four Postgres tables (no schema design)" (`agent_memory_v1` preset), the "one bright column" matrix teaser + FSL-1.1 license note, and the Mem0/Zep/Letta/nlqdb capability matrix → `/agents`. Bodies in git history.
 
 ### Helpful-answer + comparison drafts (Reddit / Show HN)
 
-- run 36 — "run a GROUP BY over your agent's memory in 30s, no signup" (r/AI_Agents / r/LocalLLaMA; one `/agents` link).
-- run 32 — "Agent-memory scoping in nlqdb is row-level RLS, not query-rewriting" (dev.to / lobste.rs; SK-PIVOT-009, hold until E-03 lands).
-- run 32 — "Give your AI agent memory from the terminal" (`nlq remember`; target must be a memory-preset DB).
-- runs 23, 25 — analytics-over-agent-memory threads → `/solve/analytical-queries-over-agent-memory`, `/solve/give-ai-agent-persistent-memory`.
-- runs 21–22 — WS-02 "X vs nlqdb" / "X alternative" posts → `/vs/langmem`, `/vs/letta`.
+*(runs 21–36 moved to [`distribution-queue-archive.md`](./distribution-queue-archive.md) under D4.)*
 
 Earliest drafts: [`distribution-queue-archive.md`](./distribution-queue-archive.md).
