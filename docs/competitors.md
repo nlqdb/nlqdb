@@ -31,7 +31,7 @@ Commodity managed Postgres, no NL / agent layer. Low threat individually, but co
 These translate natural language into SQL against *your existing database*. They don't own the data layer — they're a translator. nlqdb's answer: owning the DB lets us do auto-migration and destructive-op diff preview that a pure translator can't.
 
 ### Wren AI — https://getwren.ai (OSS: https://github.com/Canner/WrenAI)
-Open-source context layer — an MDL semantic model + row/column access controls on an existing warehouse (22+ sources). 15k+ stars; cloud + self-host; SOC 2 Type II on paid plans only. (Full dossier in [`comparison-pages/FEATURE.md`](../features/comparison-pages/FEATURE.md).)
+Open-source context layer — an MDL semantic model + row/column access controls on an existing warehouse (22+ sources). 15k+ stars; cloud + self-host; SOC 2 Type II on paid plans only.
 - **Overlaps with:** P3 (governed NL→SQL for analyst orgs), P2 (Python SDK + LangChain bindings position it as agent infrastructure).
 - **Gap nlqdb exploits:** Wren AI doesn't own the database — it sits on a warehouse you already run, so DB provisioning, NL-driven schema migration, and in-product `<nlq-data>` render are not in its lane.
 - **Threat vector:** **High for governed-analyst orgs on paid plans.** Paid-plan SOC 2 + RLAC/CLAC + 22 engines is a compliance-first answer nlqdb cannot match in Phase 1; OSS core + 15k stars gives it a self-host moat.
@@ -47,7 +47,7 @@ Fine-tuned open-weights SQL model + commercial product layer.
 - **Gap nlqdb exploits:** Same as Vanna — translator layer only. **Threat vector:** Medium — credible OSS baseline tech for self-hosters.
 
 ### AskYourDatabase — https://askyourdatabase.com
-Chat-style AI Data Analyst over your existing DB, in two products: a local-creds Desktop App and a cloud Website Chatbot (embeddable, with a Dashboard Builder). Engines: BigQuery, MSSQL, MySQL, PostgreSQL, Snowflake. Paid from ~$49/mo (Desktop) / ~$149/mo (Chatbot) + Enterprise on-prem. (Plans/models/SOC 2 — audit initiated, not yet certified — in [`comparison-pages/FEATURE.md`](../features/comparison-pages/FEATURE.md).)
+Chat-style AI Data Analyst over your existing DB, in two products: a local-creds Desktop App and a cloud Website Chatbot (embeddable, with a Dashboard Builder). Engines: BigQuery, MSSQL, MySQL, PostgreSQL, Snowflake. Paid from ~$49/mo (Desktop) / ~$149/mo (Chatbot) + Enterprise on-prem. (Plans/models/SOC 2 in [`comparison-pages/FEATURE.md`](../features/comparison-pages/FEATURE.md).)
 - **Overlaps with:** P3, P4 ("chat with my DB" angle).
 - **Gap nlqdb exploits:** Connects to an already-existing warehouse — no provisioning verb, no English-driven DDL, no in-product `<nlq-data>` element (chat widget is the only embed shape).
 - **Threat vector:** Medium for P3 — the "one-off question" vector; the Dashboard Builder + embeddable chatbot extends into customer-facing BI nlqdb doesn't target. `/vs/askyourdatabase` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is canonical.
@@ -73,7 +73,7 @@ AI-assisted database interface: EZQL natural-language queries, spreadsheet-like 
 - **Threat vector:** **High.** The single product most in nlqdb's lane today; the Cloudflare acquisition puts it on the same infra (Workers / D1 / Agents SDK), narrowing the infra-differentiation lane.
 
 ### Basedash — https://www.basedash.com
-Repositioned (verified 2026-06-23) from "admin UI with AI" to an **AI-native BI platform**: NL → dashboards, an AI data analyst, a semantic layer, chart embedding, MCP server, 750+ read-only sources. No write/edit, no DB provisioning. 14-day trial → $1,000/mo; SOC 2 Type II. (Dossier in `/vs/basedash` `competitors.ts`.)
+Repositioned from "admin UI with AI" to an **AI-native BI platform**: NL → dashboards, an AI data analyst, a semantic layer, chart embedding, MCP server, 750+ read-only sources. No write/edit, no DB provisioning. 14-day trial → $1,000/mo; SOC 2 Type II. (Detail in `/vs/basedash`.)
 - **Overlaps with:** P3 (analyst BI); P4/P1 only via legacy admin-panel heritage.
 - **Gap nlqdb exploits:** read-only BI over *your existing* data; nlqdb owns the DB (provisions Postgres + NL writes/migrations with diff-preview) and embeds an answer element, not a dashboard.
 - **Threat vector:** Medium for P3; the $1,000/mo floor (no free tier) cedes the small-team / anonymous-mode lane.
@@ -85,7 +85,7 @@ Retool's NL query + app-generation add-ons on top of the Retool platform. Team f
 - **Threat vector:** **Very high for P4.** Distribution + inertia.
 
 ### Metabase Metabot — https://www.metabase.com
-OSS (AGPL self-host) + cloud BI (Starter ~$85/mo). Metabot is the AI layer: NL questions, chart-building, SQL generation + "fix it" repair, viz analysis, Slack answers. Full Metabot = paid Cloud + $100/mo add-on; OSS edition is single-shot SQL gen only. (Web-verified 2026-06-23; full detail in `/vs/metabase` `competitors.ts`.)
+OSS (AGPL self-host) + cloud BI (Starter ~$85/mo). Metabot is the AI layer: NL questions, chart-building, SQL generation + "fix it" repair, viz analysis, Slack answers. Full Metabot = paid Cloud + $100/mo add-on; OSS edition is single-shot SQL gen only. (Detail in `/vs/metabase`.)
 - **Overlaps with:** P3.
 - **Gap nlqdb exploits:** BI-dashboard shaped, read-only over an existing warehouse; doesn't provision/own the DB, no NL writes/migrations with diff-preview, no embeddable answer element or agent-callable API.
 - **Threat vector:** Medium for P3 — strong OSS-distribution moat, but Metabase users want dashboards/charts, not an embedded queryable data layer.
@@ -123,35 +123,25 @@ Open-source Python SDK that adds long-term memory (semantic / episodic / procedu
 - **Gap nlqdb exploits:** Extraction-and-recall logic over a key-value store, not a database — no SQL, no aggregation, no analytically-queryable schema. Its win is *distribution* (ships where LangGraph already is), not the analytical shape.
 - **Threat vector:** **High for P2 on distribution** — LangChain's mass adoption makes LangMem the default a builder meets first; low on capability for the analytical wedge.
 
+**Vector stores (P2 retrieval).** All share one gap: they rank the nearest embeddings but have no SQL layer — an agent can't `GROUP BY` / `JOIN` / `HAVING` over what it stored. This is the "database, not a vector store" wedge (Gap analysis §4). Each has a canonical `/vs` page ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)); per-vendor distinctives below.
+
 ### Pinecone — https://pinecone.io
-Managed serverless vector DB (detail in `competitors.ts`).
-- **Overlaps with:** P2 retrieval use cases.
-- **Gap nlqdb exploits:** Vector-only — finds the similar, can't GROUP BY over what the agent stored. The "database, not a vector store" wedge. `/vs/pinecone` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
-- **Threat vector:** Medium — shifting toward pgvector-in-Postgres.
+Managed serverless vector DB (detail in `competitors.ts`). **Threat:** medium — shifting toward pgvector-in-Postgres. `/vs/pinecone`.
 
 ### Weaviate — https://weaviate.io
-OSS + managed vector DB.
-- **Threat vector:** Medium for P2 — same shape as Pinecone.
+OSS + managed vector DB. **Threat:** medium — same shape as Pinecone.
 
 ### Chroma — https://trychroma.com
-OSS-first vector DB with a new managed cloud offering.
-- **Threat vector:** Medium for P2 — OSS-first devs.
+OSS-first vector DB with a new managed cloud. **Threat:** medium — OSS-first devs.
 
 ### Qdrant — https://qdrant.tech
-High-performance Rust vector DB, Apache-2.0; managed Qdrant Cloud. HNSW + scalar/binary/product quantization, native hybrid search, REST + gRPC, official `mcp-server-qdrant`. Detail in `competitors.ts`.
-- **Overlaps with:** P2 retrieval — the Rust/performance + permissive-license wing of the vector cluster.
-- **Gap nlqdb exploits:** Vector-only — quantization makes recall cheaper, but still no GROUP BY / COUNT / HAVING. The "database, not a vector store" wedge. `/vs/qdrant` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
+High-performance Rust vector DB, Apache-2.0; managed Qdrant Cloud. HNSW + scalar/binary/product quantization, native hybrid search, REST + gRPC, official `mcp-server-qdrant`. Quantization makes recall cheaper but adds no aggregation. `/vs/qdrant`.
 
 ### Milvus — https://milvus.io
-High-performance, cloud-native open-source vector DB built for scalable ANN search (Go, Apache-2.0, ~45k stars, LF AI & Data graduated project; Zilliz is creator + major contributor). HNSW / IVF / DiskANN / GPU indexes, metadata filtering, hybrid dense + sparse / BM25 search at billion-vector scale. Deploy as Milvus Lite / Standalone / Distributed, or managed Zilliz Cloud (free tier 5 GB). Official `zilliztech/mcp-server-milvus`. Detail in `competitors.ts`.
-- **Overlaps with:** P2 retrieval use cases — the open-source, billion-scale ANN wing of the vector-store cluster.
-- **Gap nlqdb exploits:** Vector-only — `query` filters rows; single-collection scalar group-by (`count(*)`/sum/avg via `group_by_fields`) is new in Milvus 3.0 (the v3.0-beta pre-release; 2.6 GA has only vector-search GroupBy), but no relational JOIN across collections and no HAVING. The "database, not a vector store" wedge at scale: ranks the nearest embeddings; can't join and report. `/vs/milvus` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
+Cloud-native open-source vector DB for scalable ANN (Go, Apache-2.0, ~45k stars, LF AI & Data graduated; Zilliz is creator). HNSW / IVF / DiskANN / GPU indexes, hybrid dense + sparse / BM25 at billion-vector scale; deploy Lite / Standalone / Distributed or managed Zilliz Cloud (free 5 GB). Official `zilliztech/mcp-server-milvus`. Single-collection scalar group-by (`count`/sum/avg) is new in Milvus 3.0-beta (2.6 GA: vector-search GroupBy only) — still no cross-collection JOIN or HAVING. `/vs/milvus`.
 
 ### Cognee — https://www.cognee.ai
-Open-source AI memory framework (Apache-2.0, ~20k stars) — builds a self-hosted **knowledge graph** from ingested data (Extract → Cognify → Load), fusing vector embeddings + graph reasoning + ontology generation; pluggable graph/vector backends, official `cognee-mcp`. Detail in `competitors.ts`.
-- **Overlaps with:** **P2 directly** — the knowledge-graph wing of agent memory.
-- **Gap nlqdb exploits:** A *recall* engine — `search()` returns the most relevant entities/relationships via hybrid vector + graph traversal; no SQL layer, so an agent can't `GROUP BY` / `JOIN` / `HAVING`. The "database, not a vector store" wedge, graph wing. `/vs/cognee` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
-- **Threat vector:** **High for P2** — well-funded, MCP-native, the most credible "not just a vector store" framing; stops short of relational analytics.
+Open-source AI memory framework (Apache-2.0, ~20k stars) — builds a self-hosted **knowledge graph** (Extract → Cognify → Load) fusing vector embeddings + graph reasoning + ontology generation; pluggable backends, official `cognee-mcp`. A *recall* engine via hybrid vector + graph traversal (graph wing of the wedge). **Threat:** high for P2 — well-funded, MCP-native, the most credible "not just a vector store" framing; stops short of relational analytics. `/vs/cognee`.
 
 ### Postgres MCP servers (community + vendor) — e.g. `@modelcontextprotocol/server-postgres`, Supabase MCP
 Let an agent run read (and sometimes write) SQL against a *pre-provisioned* Postgres.
@@ -238,4 +228,4 @@ The scariest threats: (a) Supabase adding a first-class NL + agent story, and (b
 
 ---
 
-*Last verified: 2026-06-19 (§4 agent-memory cluster — Zep/Graphiti, Letta, and the new LangMem entry re-checked via web search; threat matrix gained Letta + LangMem rows for the WS-01 agent-memory anchor). Outerbase ownership / engine list checked 2026-05-24 against the Cloudflare press release; rest of the doc last verified 2026-04-18. Pricing, URLs, and acquisitions change — re-check quarterly, especially anything in §1 (Managed Postgres), §3 (AI admin), and §4 (Agent memory) where consolidation and funding are active.*
+*Last verified: 2026-06-19 (§4 agent-memory cluster). Pricing, URLs, and acquisitions change — re-check quarterly, especially §1 (Managed Postgres), §3 (AI admin), §4 (Agent memory), where consolidation and funding move fastest.*
