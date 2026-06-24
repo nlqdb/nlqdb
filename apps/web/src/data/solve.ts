@@ -546,6 +546,61 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "track-ai-token-usage-and-cost",
+    persona: "P2 agent builder",
+    searchTitle: "How do I track and query my AI app's token usage and cost per user?",
+    oneLiner:
+      "If your LLM app needs to track token usage and cost — per user, per model, per day — log each call as a row and ask in English. nlqdb provisions Postgres from your first goal and runs the GROUP BY in SQL, so 'spend per user this month' is a real query, not arithmetic over a JSON log.",
+    painContext:
+      "Teams shipping LLM features need to answer 'how much are we spending per customer?' and 'which model cost the most this week?' — but token counts and dollar costs usually land in application logs or a JSON column. Pulling those back to total them in app code (or asking the LLM to add them up) is fragile and doesn't scale; these questions are aggregations, and aggregations want a query planner, not a log scan.",
+    demoGoal: "total tokens and cost grouped by model this month, highest cost first",
+    demoWhy:
+      "The first cost question an LLM team asks — spend broken down by model — is one English goal here, not a hand-written GROUP BY over a usage log.",
+    howNlqdbAnswers: [
+      "Log each call as a typed row — user, model, prompt/completion tokens, cost, timestamp — so cost-per-user and tokens-per-model run as real SQL GROUP BY, not log math.",
+      "Ask the cost question in English via the `<nlq-data>` element, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL under a trace toggle.",
+      "Write usage rows with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, and report over the same database — no separate analytics store, no ETL.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly cost rollup hits the cache and returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "No automatic token metering — nlqdb stores and aggregates the usage rows you write; counting tokens and computing cost per call is your app's job (or your provider SDK's).",
+      "No connecting to your existing logging or billing store — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped.",
+      "No live streaming cost meter — the table refreshes on query, not via websocket push; realtime dashboards are roadmap, not shipped.",
+    ],
+    faqs: [
+      {
+        q: "Why not just total token usage in my application code?",
+        a: "Because the questions are aggregations — spend per user, tokens per model, cost per day — and pulling rows back to sum them in app code is fragile and slow as volume grows. Asking the LLM to add them up is worse: arithmetic over a list is a hallucination generator. nlqdb runs the GROUP BY in Postgres and shows you the SQL it ran.",
+      },
+      {
+        q: "How do the token and cost numbers get into the database?",
+        a: "Write one row per LLM call — user, model, prompt and completion tokens, computed cost, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run` (`GLOBAL-015`). The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the cost questions in English over the same table.",
+      },
+      {
+        q: "Can I see the SQL behind the cost numbers?",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can verify the grain (per call vs per user) before trusting a spend figure. nlqdb never hides the SQL behind the answer.",
+      },
+      {
+        q: "Is this a replacement for an LLM observability tool like Langfuse or Helicone?",
+        a: "No — those proxy or instrument your calls and capture token and cost automatically, with tracing UIs built for it. nlqdb is the database half: you decide what to log, and you get a SQL query planner over it for ad-hoc 'spend per X' questions without a per-seat dashboard tool. They compose; nlqdb doesn't proxy your traffic.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/LLMDevs/search/?q=token+cost",
+        label: "r/LLMDevs — recurring threads on tracking token usage and cost per user.",
+      },
+      {
+        url: "https://hn.algolia.com/?q=llm+token+cost",
+        label: 'HN search: "llm token cost" — discussion on metering and attributing LLM spend.',
+      },
+      {
+        url: "https://www.reddit.com/r/LocalLLaMA/search/?q=token+usage",
+        label: 'r/LocalLLaMA — "token usage / cost tracking" recurring discussion hub.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
