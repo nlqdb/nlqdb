@@ -59,6 +59,8 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 </section>
 
 <script>
+  import { isValidEmail } from "../lib/email";
+
   const form = document.getElementById("waitlist-form") as HTMLFormElement | null;
   if (form) {
     const apiBase = (form.dataset["apiBase"] ?? "").replace(/\/$/, "");
@@ -68,15 +70,28 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     const errorEl = document.getElementById("waitlist-error") as HTMLParagraphElement;
     const doneEl = document.getElementById("waitlist-done") as HTMLDivElement;
 
-    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Show an error in the role="alert" region and tie it to the field so
+    // assistive tech announces it and keyboard users land on the problem
+    // input (mirrors CreateForm's run-82 aria-invalid/-describedby pattern).
+    const showError = (msg: string) => {
+      errorEl.textContent = msg;
+      errorEl.hidden = false;
+      emailInput.setAttribute("aria-invalid", "true");
+      emailInput.setAttribute("aria-describedby", "waitlist-error");
+      emailInput.focus();
+    };
+    const clearError = () => {
+      errorEl.hidden = true;
+      emailInput.removeAttribute("aria-invalid");
+      emailInput.removeAttribute("aria-describedby");
+    };
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = emailInput.value.trim();
-      errorEl.hidden = true;
-      if (!EMAIL_RE.test(email)) {
-        errorEl.textContent = "That doesn't look like a valid email.";
-        errorEl.hidden = false;
+      clearError();
+      if (!isValidEmail(email)) {
+        showError("That doesn't look like a valid email.");
         return;
       }
       submitBtn.disabled = true;
@@ -95,8 +110,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       } catch {
         // Show a single, generic message — never echo the network
         // error verbatim (could leak proxy/CDN internals on misconfig).
-        errorEl.textContent = "Couldn't add you. Try again in a moment.";
-        errorEl.hidden = false;
+        showError("Couldn't add you. Try again in a moment.");
         submitBtn.disabled = false;
         submitBtn.textContent = idle;
       }
