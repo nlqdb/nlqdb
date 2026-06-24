@@ -613,9 +613,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The first reliability question an agent team asks — which tool is failing and how slow — is one English goal here, not a hand-written GROUP BY over a trace log.",
     howNlqdbAnswers: [
-      "Log each tool call as a typed row — tool name, agent/session id, status, latency_ms, input/output size, timestamp — so error-rate-per-tool and p95-latency run as real SQL GROUP BY, not log scraping.",
-      "Ask the reliability question in English via the `<nlq-data>` element, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL under a trace toggle.",
-      "Write call records with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, and report over the same database — no separate analytics store, no ETL out of your tracing tool.",
+      "Log each tool call as a typed row — tool name, session id, status, latency_ms, timestamp — so error-rate-per-tool and p95-latency run as real SQL GROUP BY.",
+      "Ask the reliability question in English via `<nlq-data>`, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
+      "Write call records with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, then report over the same database — no separate analytics store.",
       "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly reliability rollup hits the cache and returns in single-digit ms.",
     ],
     whatItDoesnt: [
