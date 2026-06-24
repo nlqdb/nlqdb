@@ -78,7 +78,7 @@ lands the instant the founder sets it.
   names that Organization as `publisher` by `@id`.** With offline-retrieval
   exhausted (run 81), engine canonical dispatch-gated (Spider 06-17 crosses 7 d
   on 06-25 — re-dispatch is due on a run that does *not* merge a PR, so not this
-  run), and the CreateForm a11y lever taken by open PR #501, this took the
+  run), and the CreateForm a11y lever taken by run 82 (PR #501), this took the
   highest-leverage non-colliding structured-data gap: the homepage carried only
   the site-wide `SoftwareApplication` — no `Organization` (brand-authority entity
   for "nlqdb" queries) and no `WebSite` (the node Google reads for the SERP site
@@ -92,6 +92,18 @@ lands the instant the founder sets it.
   `SoftwareApplication` + the `publisher` `@id` binding). **KPI:** onboarding /
   distribution; **none degraded** — additive static JSON-LD, no engine/funnel/ops
   file touched; 124 web tests (+3 new) + build green + biome clean.
+- 2026-06-24 (run 82) — **UX/onboarding a11y: the anonymous first-query
+  CreateForm now exposes its error state to assistive tech.** On a failed first
+  query the input gained `aria-invalid` + `aria-describedby` pointing at the
+  error, which is now a single `role="alert"` region; previously the field gave
+  AT users no invalid signal and wasn't linked to the message, and the two
+  duplicate error branches (`error` vs `networkError`) rendered separately. Per-
+  kind error copy extracted to a tested `lib/create-errors.ts`; the redundant
+  `aria-label` dropped (the visible `<label htmlFor>` already names the field).
+  **Δ:** web tests **121 → 129 (+8)**; CreateForm error-state ARIA associations
+  **0 → 2**; net −1 error branch (dedup). **KPI:** onboarding / UX (GLOBAL-025);
+  **none degraded** — additive a11y attrs + a code dedup, no
+  engine/funnel/ops/prod-behaviour change; astro-check 0 errors, biome clean.
 - 2026-06-24 (run 81) — **AEO: `/vs` + `/solve` *hub* pages emit `ItemList`
   JSON-LD enumerating the full collection — hub pages with a collection signal
   0 → 2** (`lib/itemlist-jsonld.ts`, data-driven from `COMPETITORS`/`SOLVE_ENTRIES`

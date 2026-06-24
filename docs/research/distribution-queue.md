@@ -67,48 +67,63 @@ slightly contrarian AEO lesson (honest schema > valid schema) with a measured
 before/after (homepage brand-entity nodes 1 → 3), one nlqdb mention. No
 engine/funnel/ops KPI degrades (additive static structured data).
 
-## 2026-06-24 (run 81) — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections"
+## 2026-06-24 (run 82) — dev.to / lobste.rs: "Your AI app tells sighted users the query failed. Screen readers get silence."
 
-**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, third
-post in the AEO/structured-data thread. nlqdb mentioned once. The hook: you
-schema'd every leaf page and forgot the hub that lists them — so the one page
-that answers "what's the *whole set*?" is the one an engine has to scrape.
+**Where:** dev.to + lobste.rs (`accessibility` / `webdev` / `ai`);
+build-in-public a11y lesson for anyone shipping an LLM-backed form (a chat box,
+a "describe what you want" generator, an NL search). nlqdb mentioned once. The
+hook: AI features live behind a single text input that swaps state async — and
+the error state is the one almost everyone forgets to announce.
 
-**Title:** Your collection pages don't tell answer engines they're collections
+**Title:** Your AI app tells sighted users the query failed. Screen readers get silence.
 
 **Body:**
 
-> We generate two families of pages from data: one comparison page per
-> competitor, one "how do I solve X" page per recurring search. Each *leaf*
-> emits `FAQPage` and `BreadcrumbList`. Solid coverage — on the leaves.
+> Almost every AI feature ships as the same control: one text box, a button,
+> and a region below that swaps between *loading*, *result*, and *error* without
+> a page load. It's the chat composer, the "generate" form, the NL search bar.
+> Visually it's fine. For a screen-reader user it has two quiet failure modes,
+> and the second is the one you'll miss in review.
 >
-> Then I looked at the two `/vs` and `/solve` *index* pages: the hubs that list
-> every comparison and every guide. Visibly they're exactly what a crawler
-> wants — a clean enumerated list with links. In structured data they had
-> nothing but the site-wide `SoftwareApplication` block. An answer engine
-> landing on "what does nlqdb compare against?" had to parse prose `<li>`s to
-> reconstruct the set instead of reading a declared one.
+> **1. The result region isn't a live region.** When you replace the box's
+> contents async, a screen reader has no reason to look — the user submitted,
+> heard nothing, and is left guessing whether anything happened. Fix: mark the
+> region that receives the swapped-in content `aria-live="polite"` (or
+> `role="status"`), set once on the container, not per-render. Now every state
+> change is announced.
 >
-> The fix is `ItemList` — the schema.org type for "here is an ordered, complete
-> set of things." Each `ListItem` carries a `position`, the visible link `name`,
-> and the page `url`. Answer engines read it to enumerate and cite the set as a
-> group; Google treats the page as the index of a set, not one more leaf. Two
-> things to pass on:
+> **2. The *input* never says it's invalid.** This is the subtle one. You
+> render an error message below the field — sighted users see it, and if the
+> message has `role="alert"` it even gets read out once. But the field itself
+> still looks valid to assistive tech: no `aria-invalid`, and no link from the
+> input to the message. A user who tabs *back* to the box to fix their query
+> hears "edit text, [the label]" — no "invalid", no idea what went wrong.
 >
-> 1. **Build it from the same array you render** — one `.map` over the data the
->    `<ul>` already maps, so the human's list and the JSON-LD can't drift.
-> 2. **Normalise the item URLs to the 200.** Same trap as breadcrumbs: if your
->    host serves `/vs/x/index.html`, point every `ListItem.url` at the
->    trailing-slash canonical, not the redirecting bare path.
+> Two attributes close it, and they're the ones people skip:
 >
-> If you've done FAQ + breadcrumb schema on your leaves, the hub `ItemList` is
-> the cheapest next win — it answers the broadest question you get ("what are
-> *all* my options?"), and it was probably the one page you left bare.
+> 1. `aria-invalid="true"` on the input whenever an error is showing — so the
+>    field announces its own state, not just the banner.
+> 2. `aria-describedby="<error-id>"` pointing at the error element (give it a
+>    stable `id`) — so focusing the field reads the field's specific reason, on
+>    demand, however the user got back to it.
+>
+> A trap worth calling out: if you have *two* error sources — a structured
+> "the API said no" and a catch-all "couldn't reach the server" — and you
+> render them as two separate blocks, `aria-describedby` can only point at one.
+> Collapse them to a single error region with one id; the field then always has
+> exactly one thing to describe it. (We just did this on our anonymous
+> first-query form — two branches became one `role="alert"` region the input
+> points at; the dedup was the same change as the a11y fix.)
+>
+> None of this needs a framework or an a11y library. It's four attributes —
+> `aria-live` on the region, `role="alert"` on the error, `aria-invalid` +
+> `aria-describedby` on the input — and the discipline to test the *error* path
+> with the screen reader on, not just the happy path.
 
-**Why this advances the north-star:** onboarding / distribution — a concrete
-AEO lesson with a measured before/after (hub pages declaring their collection
-0 → 2), one nlqdb mention. No engine/funnel/ops KPI degrades (additive static
-structured data, data-driven from the existing list).
+**Why this advances the north-star:** onboarding / UX (GLOBAL-025) — a
+reproducible a11y lesson anchored to this run's CreateForm fix (error-state
+ARIA associations 0 → 2), one nlqdb mention. No engine/funnel/ops KPI degrades
+(a draft for the queue; the code change is additive a11y attrs + a dedup).
 
 ## Collapsed — full drafts in git history
 
@@ -116,7 +131,8 @@ Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
-- run 80 — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases" (a vector store answers "what's most similar?" — top-k, no query planner; the moment the question is an aggregate ("how many conversations this week?") your only options are let the LLM count rows (hallucination) or bolt on a real DB; retrieval and analytics are different jobs — store turns as typed rows and the engagement questions become trustable one-line GROUP BYs; anchors `/solve/store-query-chatbot-conversation-history`).
+- run 81 — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections" (leaf `/vs` + `/solve` pages emit `FAQPage`/`BreadcrumbList`, but the hubs listing them carried only the site-wide `SoftwareApplication`; `ItemList` declares "an ordered, complete set" — build it from the same array the `<ul>` renders so it can't drift, item URLs at the trailing-slash 200; hub collection signal 0 → 2).
+- run 80 — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases" (a vector store answers *what is most similar* — top-k, no query planner; the moment the question is an aggregate ("how many conversations this week?") you either make the LLM count rows (hallucination) or bolt on a real DB; retrieval and analytics are different jobs — store turns as typed rows and the engagement questions become trustworthy `GROUP BY`s; anchors `/solve/store-query-chatbot-conversation-history`).
 - run 79 — dev.to / r/LLMDevs / lobste.rs: "Your agent's memory can recall anything and count nothing" (vector stores, Mem0/Zep/Letta/LangMem, and knowledge graphs like Cognee all converge on *recall* — top-k relevant — but counting/aggregation (GROUP BY/COUNT/JOIN/HAVING over the rows the agent stored) is a different job that needs a query planner; recall and analytics want two stores that compose, not one doing both; anchors `/vs/cognee`).
 - run 78 — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search" (FAQPage earns the rich result but says nothing about where a page sits; `BreadcrumbList` declares a page's position in a hierarchy — match the visible trail from one source of truth so they can't drift, and point `item` URLs at the canonical 200 not the bare-path redirect; `/vs` + `/solve` pages 0 → 24 BreadcrumbList).
 - run 77 — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to" (the page you care about most is the easiest to leave un-instrumented, because it's bespoke; the templated `/vs` + `/solve` pages all emitted `FAQPage`, the hand-authored `/agents` hero didn't — lift the already-visible Q&As into one typed `faqs` array → visible `<dl>` + JSON-LD; audit coverage by importance, not by template).
@@ -145,9 +161,7 @@ recovers any body.
 - run 42 — "Don't hand-pick few-shot examples — size the pool from your benchmark's error classes" (one exemplar per mismatch class; precision@1 10/10, 3.5× closer skeleton; `packages/llm/plan-exemplar-pool.ts`).
 - run 41 — "Cross-schema few-shot retrieval: mask each example against *its own* schema" (`selectExemplarsForSchema`, per-row masking; `packages/llm/few-shot-select.ts`). Runs 37–42 value/identifier-masking + self-consistency stubs consolidated here.
 - run 39 — "How nlqdb expires agent memory (and why only facts get a TTL)" (facts-only `expires_at`, per-DB-isolated daily `DELETE` + RLS recency clause; `SK-PIVOT-011`, E-04).
-- run 37 — "Agent memory should be authed-only" (no durable identity to scope row reads on a throwaway anon DB; write verb + create both need a session).
-- run 33 — "We were grading our text-to-SQL engine on questions it couldn't possibly answer" (Spider external-knowledge dropped; 13/135 unanswerable; SK-QUAL-016).
-- runs 8–18 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
+- runs 8–18, 33, 37 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 
@@ -159,7 +173,6 @@ recovers any body.
 - run 43 — "We moved agent memory above the fold — without touching the wordmark" (additive/reversible home band; Mem0·Zep·Letta·nlqdb matrix; GLOBAL-036 + WS-12).
 - run 42 — launch image "GROUP BY your agent's memory" (`og/agents.png` + four `vs-*.png` cards, SK-PIVOT-004; the `/agents` share card).
 - run 41 — "A live demo of analytical agent memory — the GROUP BY, and the SQL it ran" (fixture-backed `/agents` round-trip, no signup; typed-plan trust boundary).
-- run 30 — "Show HN: Analytical memory for AI agents — a database it can GROUP BY, not just recall" (HN + r/AI_Agents/r/LocalLLaMA → `/agents`).
 - run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no `GROUP BY`/`COUNT`/`JOIN`/`HAVING`; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
 - runs 27–30 — agent-memory wave (WS-09): "Why your AI agent's memory should be a database, not a vector store" (Replit-incident open, BIRD/Spider sub-target, open harness), "…as four Postgres tables (no schema design)" (`agent_memory_v1` preset), the "one bright column" matrix teaser + FSL-1.1 license note, and the Mem0/Zep/Letta/nlqdb capability matrix → `/agents`. Bodies in git history.
 
