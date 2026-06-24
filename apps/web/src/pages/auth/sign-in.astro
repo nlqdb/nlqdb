@@ -135,10 +135,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 </Base>
 
 <script>
-  // Inline helpers — auth-client.ts was removed in the pivot; the
-  // sign-in page is the only consumer that needs them now.
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const isLikelyEmail = (s: string) => EMAIL_RE.test(s.trim());
+  import { isValidEmail } from "../../lib/email";
 
   type ButtonState = {
     el: HTMLButtonElement;
@@ -184,6 +181,22 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     const resendStatus = document.getElementById(
       "signin-resend-status",
     ) as HTMLElement;
+
+    // Show an error in the role="alert" region and tie it to the email field
+    // so assistive tech announces it and keyboard users land on the input
+    // (mirrors CreateForm's run-82 aria-invalid/-describedby pattern).
+    const showError = (msg: string) => {
+      errorEl.textContent = msg;
+      errorEl.hidden = false;
+      emailInput.setAttribute("aria-invalid", "true");
+      emailInput.setAttribute("aria-describedby", "signin-error");
+      emailInput.focus();
+    };
+    const clearError = () => {
+      errorEl.hidden = true;
+      emailInput.removeAttribute("aria-invalid");
+      emailInput.removeAttribute("aria-describedby");
+    };
 
     const params = new URLSearchParams(location.search);
     const returnTo = params.get("return_to") ?? "/app";
@@ -303,7 +316,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       busyState: ButtonState,
       options: { showSent: boolean },
     ) {
-      errorEl.hidden = true;
+      clearError();
       resendStatus.hidden = true;
       setBusy(busyState, true);
       try {
@@ -320,8 +333,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           resendStatus.hidden = false;
         }
       } catch {
-        errorEl.textContent = "Couldn't send the link — try again.";
-        errorEl.hidden = false;
+        showError("Couldn't send the link — try again.");
       } finally {
         setBusy(busyState, false);
       }
@@ -331,9 +343,8 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       e.preventDefault();
       const email = emailInput.value.trim();
       if (!email) return;
-      if (!isLikelyEmail(email)) {
-        errorEl.textContent = "That doesn't look like a valid email — check the address.";
-        errorEl.hidden = false;
+      if (!isValidEmail(email)) {
+        showError("That doesn't look like a valid email — check the address.");
         return;
       }
       sendMagicLink(email, submitBtnState, { showSent: true });
@@ -366,7 +377,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       btn.addEventListener("click", async () => {
         const provider = btn.dataset["social"];
         if (!provider) return;
-        errorEl.hidden = true;
+        clearError();
         btn.disabled = true;
         btn.classList.add("signin__oauth--busy");
         // SK-ANON-012 — stash anon-bearer before the top-level OAuth
