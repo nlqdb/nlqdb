@@ -1,14 +1,10 @@
-// ItemList JSON-LD builder — the AEO/SEO list signal for the `/vs` and `/solve`
-// hub pages. A listing page that enumerates a whole collection (every
-// comparison, every solve guide) should tell answer engines the *complete* set
-// so they can enumerate and cite it as a group; Google supports `ItemList` for
-// such pages and answer engines read it to treat the page as the collection's
-// index rather than one more leaf. Each `url` is trailing-slash-normalised to
-// the 200 (mirrors `breadcrumb.ts` / `Base.astro` canonical), so the list
-// points at pages, never the 307 redirect CF serves for a bare path. Built from
-// the same data the page renders visibly, so the markup can't drift from the
-// list. Shared by `/vs` and `/solve` so the two index pages can't drift on
-// shape — mirrors `breadcrumb.ts` and `faq-jsonld.ts`.
+// ItemList JSON-LD builder — the AEO/SEO collection signal for the `/vs` and
+// `/solve` hub pages, so answer engines read the *complete* set in one fetch
+// instead of scraping the prose list. Each `url` is trailing-slash-normalised
+// to the 200 (mirrors `breadcrumb.ts` / `Base.astro` canonical), never the 307
+// redirect CF serves for a bare path. Callers pass `entries` from the same
+// array the page renders, so the markup can't drift from the visible list.
+// Shared by both hubs so they can't drift on shape — mirrors `breadcrumb.ts`.
 
 export interface ListEntry {
   /** Visible link label on the page (the `/vs` <h2> or `/solve` <h3>). */
