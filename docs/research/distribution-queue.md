@@ -10,6 +10,63 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-24 (run 83) — dev.to / lobste.rs: "I skipped the rich result Google was begging me to add"
+
+**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, fourth
+post in the AEO/structured-data thread. nlqdb mentioned once. The hook: the
+contrarian one — the most-recommended structured-data win (the sitelinks search
+box) is the one I deliberately *didn't* ship, and why "valid schema" and "honest
+schema" are different bars.
+
+**Title:** I skipped the rich result Google was begging me to add
+
+**Body:**
+
+> Every "improve your SEO with structured data" checklist has the same top item:
+> add a `WebSite` block with a `SearchAction` and Google may render a sitelinks
+> search box right under your result. It's a big, clickable win. The snippet is
+> ten lines. I had the `WebSite` block open in my editor. And I deleted the
+> `SearchAction`.
+>
+> Here's why. A `SearchAction` is a *promise*: it tells Google "POST or GET a
+> term to this URL template and it runs a search." The contract is that the
+> target URL actually performs the query. Our homepage is a single goal-first
+> input — you type what you're building, it answers. But that input submits over
+> JavaScript to an API; there is no `GET /search?q=…` route that takes a term in
+> the URL and returns results. So a `SearchAction` pointing at `/app/new?q={…}`
+> would validate perfectly in the Rich Results Test and be a lie — the param
+> falls on the floor.
+>
+> The schema would be *valid*. It would not be *true*. And structured data that
+> claims a capability the page doesn't have is exactly the kind of thing search
+> and answer engines learn to distrust — per source, and then per pattern.
+>
+> What I kept is the honest half, and it's the half that actually compounds:
+>
+> - **`Organization`** with a stable `@id` (`https://site/#organization`), name,
+>   logo, and `sameAs` to the GitHub org. This is the entity-authority node —
+>   it's how an answer engine binds the string "nlqdb" to *one thing* it can
+>   accumulate facts about, instead of guessing per page.
+> - **`WebSite`** (no `SearchAction`) naming that same Organization as
+>   `publisher` by `@id`. This is the node Google reads for the *site name* it
+>   shows in results, and it ties the site to the entity.
+> - Every other page's existing `SoftwareApplication` block now also points
+>   `publisher` at that one `@id`, so the whole site consolidates to a single
+>   entity graph rather than N disconnected nodes.
+>
+> Two things to take away. **Declare site-wide nodes once, on the root** — the
+> Organization and WebSite belong on `/`, not stamped onto all 40 pages; the
+> stable `@id` is what lets every page *reference* them. And **"would this
+> validate?" is the wrong test — "is this true?" is the test.** The sitelinks
+> search box is a great rich result. It's also one you have to *earn* with a real
+> query endpoint, not assert. I'd rather ship it the day the endpoint exists than
+> claim it today.
+
+**Why this advances the north-star:** onboarding / distribution — a concrete,
+slightly contrarian AEO lesson (honest schema > valid schema) with a measured
+before/after (homepage brand-entity nodes 1 → 3), one nlqdb mention. No
+engine/funnel/ops KPI degrades (additive static structured data).
+
 ## 2026-06-24 (run 81) — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections"
 
 **Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, third
@@ -53,62 +110,13 @@ AEO lesson with a measured before/after (hub pages declaring their collection
 0 → 2), one nlqdb mention. No engine/funnel/ops KPI degrades (additive static
 structured data, data-driven from the existing list).
 
-## 2026-06-24 (run 80) — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases"
-
-**Where:** dev.to + r/LLMDevs + lobste.rs (`ai` / `llm` / `database`); a
-build-in-public design lesson for chatbot/agent builders. nlqdb mentioned once.
-The hook: people reach for a vector store for *everything* their bot remembers,
-then can't answer "how many conversations this week?" without the LLM doing
-arithmetic over search hits.
-
-**Title:** Your chatbot's memory and your chatbot's metrics are two different databases
-
-**Body:**
-
-> Every chatbot project hits the same fork. You've wired up a vector store
-> (Mem0, Zep, pgvector) so the bot can recall "what did the user say earlier?"
-> — and it works. Then a PM asks: *how many conversations did we have last
-> week? Which users send the most messages? What's the average turns per
-> session?* And you realise your memory layer can't answer any of them.
->
-> The reason is structural, not a missing feature. A vector store answers one
-> question: *what is the most similar thing to this?* It returns the top-k
-> nearest rows. It has no query planner, no `GROUP BY`, no `COUNT`. So the
-> moment the question is an aggregate, your only options are (a) pull a pile of
-> rows and let the LLM count them — a hallucination generator, because LLMs are
-> bad at arithmetic over lists — or (b) bolt a real database alongside the
-> vector store and keep two copies of the same conversation in sync.
->
-> The cleaner mental model: **retrieval and analytics are different jobs.**
-> Similarity recall ("the user prefers Celsius") is retrieval — vector's
-> domain. Counting, ranking, and rolling up ("top 10 intents this month",
-> "messages per day") is analytics — a SQL database's domain. They look like
-> the same "memory" feature in a design doc; they're not. One needs cosine
-> distance, the other needs a query planner.
->
-> Practically: store conversation turns as **typed rows** — `conversation_id`,
-> `user_id`, `role`, `text`, `created_at` — in Postgres, and the engagement
-> questions become one-line `GROUP BY`s you can trust, with the SQL visible to
-> audit the grain (per message vs per conversation — easy to get wrong, easy to
-> verify). Keep the vector store for similarity if you need it; just stop asking
-> it to count.
->
-> (We built nlqdb around exactly this split — you ask the engagement question
-> in English, it runs the `GROUP BY` in Postgres and shows you the SQL. But the
-> lesson stands whatever you use: don't make your similarity index do
-> arithmetic.)
-
-**Why this advances the north-star:** onboarding / distribution — a
-reproducible design lesson for the GLOBAL-036 agent-memory wedge, anchoring the
-new `/solve/store-query-chatbot-conversation-history` page; one nlqdb mention.
-No engine/funnel/ops KPI degrades (a draft for the queue, not a code change).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
+- run 80 — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases" (a vector store answers "what's most similar?" — top-k, no query planner; the moment the question is an aggregate ("how many conversations this week?") your only options are let the LLM count rows (hallucination) or bolt on a real DB; retrieval and analytics are different jobs — store turns as typed rows and the engagement questions become trustable one-line GROUP BYs; anchors `/solve/store-query-chatbot-conversation-history`).
 - run 79 — dev.to / r/LLMDevs / lobste.rs: "Your agent's memory can recall anything and count nothing" (vector stores, Mem0/Zep/Letta/LangMem, and knowledge graphs like Cognee all converge on *recall* — top-k relevant — but counting/aggregation (GROUP BY/COUNT/JOIN/HAVING over the rows the agent stored) is a different job that needs a query planner; recall and analytics want two stores that compose, not one doing both; anchors `/vs/cognee`).
 - run 78 — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search" (FAQPage earns the rich result but says nothing about where a page sits; `BreadcrumbList` declares a page's position in a hierarchy — match the visible trail from one source of truth so they can't drift, and point `item` URLs at the canonical 200 not the bare-path redirect; `/vs` + `/solve` pages 0 → 24 BreadcrumbList).
 - run 77 — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to" (the page you care about most is the easiest to leave un-instrumented, because it's bespoke; the templated `/vs` + `/solve` pages all emitted `FAQPage`, the hand-authored `/agents` hero didn't — lift the already-visible Q&As into one typed `faqs` array → visible `<dl>` + JSON-LD; audit coverage by importance, not by template).
