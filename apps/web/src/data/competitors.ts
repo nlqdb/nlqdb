@@ -1981,10 +1981,11 @@ export const COMPETITORS: Competitor[] = [
     // DiskANN / GPU; metric types L2 / IP / cosine. Capabilities: vector
     // similarity/ANN search, scalar/metadata filtering, hybrid search (dense +
     // sparse / BM25 full-text), multi-vector search. `query` supports boolean
-    // filter expressions + count(*) and scalar group-by aggregation (count/sum/
-    // avg/min/max — analytics queries in 2.6, full `group_by_fields` in the 3.0
-    // RC), but there is NO relational JOIN and NO HAVING, and aggregation is
-    // single-collection only. Deploy as Milvus Lite (embedded) / Standalone
+    // filter expressions; scalar group-by aggregation (count(*)/sum/avg/min/max
+    // via `group_by_fields`) is new in Milvus 3.0 (currently the v3.0-beta
+    // pre-release, May 2026 — 2.6 GA has only vector-search GroupBy, not SQL-
+    // style scalar aggregation), but there is NO relational JOIN and NO HAVING,
+    // and aggregation is single-collection only. Deploy as Milvus Lite (embedded) / Standalone
     // (Docker) / Distributed (k8s), or the managed Zilliz Cloud (Serverless /
     // Dedicated / Enterprise; free tier 5 GB / 2.5M vCUs). Official
     // `zilliztech/mcp-server-milvus` (milvus_vector_search / milvus_text_search /
@@ -2019,7 +2020,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
         us: "shipped",
         them: "no",
-        note: "Milvus `query` filters rows, can `count(*)`, and does single-collection scalar group-by aggregation (full `group_by_fields` in the 3.0 RC); it ships no relational JOIN and no HAVING.",
+        note: "Milvus `query` filters rows; single-collection scalar group-by aggregation (`count(*)` / sum / avg via `group_by_fields`) is new in Milvus 3.0 (the v3.0-beta pre-release); it ships no relational JOIN and no HAVING.",
       },
       {
         feature: "Vector similarity / ANN search over embeddings",
@@ -2069,7 +2070,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Milvus can filter and count rows — isn't that the same as nlqdb's SQL?",
-        a: "Only partly. Milvus `query` applies a boolean filter, can `count(*)`, and does single-collection scalar group-by aggregation (full `group_by_fields` lands in the 3.0 RC) — but it has no relational JOIN across collections and no HAVING. nlqdb compiles those to SQL and runs them in Postgres. Milvus answers 'which vectors are nearest, filtered'; nlqdb answers 'how many, grouped by what, joined across tables, above which threshold'.",
+        a: "Only partly. Milvus `query` applies a boolean filter, and single-collection scalar group-by aggregation (`count(*)`, sum, avg via `group_by_fields`) arrives in Milvus 3.0 (the v3.0-beta pre-release) — but it has no relational JOIN across collections and no HAVING. nlqdb compiles those to SQL and runs them in Postgres. Milvus answers 'which vectors are nearest, filtered'; nlqdb answers 'how many, grouped by what, joined across tables, above which threshold'.",
       },
       {
         q: "Milvus is Apache-2.0 and self-hostable — is nlqdb open source too?",
