@@ -132,74 +132,18 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   pool-exemplar change only. Doc-hygiene rider: `quality-score-verification-log.md`
   (> 20 KB) net-shrunk −26 B under D4 (collapsed two superseded 06-12 smoke rows +
   the mooted 06-13 correction).
-- 2026-06-23 (run 73) — **Doc-hygiene (D4 + D5 + P3): net-shrank the largest
-  non-exempt doc, `docs/runbook.md` 47,451 → 46,685 B (−766 B), prod
-  byte-identical.** Engine lane dispatch-gated (BIRD 06-19 / Spider 06-17 both
-  < 7d, §5) and the AEO/distribution comparison-pages lever was already in
-  flight (PR #489, `/vs/metabase`), so the non-colliding lever was D5 dedup.
-  Trimmed two passages whose canonical home is elsewhere (P3, one home): §6
-  `apps/api` slice-by-slice build narration (every slice already tracked
-  row-by-row with PR numbers in the §7 checklist) → pointer; §10 personas
-  meta-prose explaining *why* personas moved to `personas.md` → kept the
-  pointer + cross-ref resolution + P-numbering note, dropped the
-  "superset/duplicated" justification. **Δ:** runbook.md −766 B (D4: edits to a
-  > 20 KB file must net-shrink). **KPI:** onboarding (operability docs stay
-  load-bearing, easier to scan); **none degraded** — docs-only, no
-  engine/funnel/ops/code file touched.
-- 2026-06-23 (run 72) — **Distribution: shipped `/vs/metabase` (Metabase
-  Metabot), the strongest OSS-distribution moat in the P3 BI cluster.** Engine
-  lane dispatch-gated (BIRD 06-19 / Spider 06-17 both < 7d), so the lever was
-  AEO. Facts web-verified 2026-06-23 (metabase.com/docs/latest/ai/metabot +
-  pricing): Metabase is an OSS (AGPL self-host) + cloud BI platform (cloud
-  Starter ~$85/mo); Metabot is its AI layer — NL questions, query-builder chart
-  creation, native-editor SQL gen, "Have Metabot fix it" repair, visualization
-  analysis, transform code-gen, Slack answers. Full Metabot = paid Cloud plan +
-  $100/mo add-on (500 requests; Enterprise-included); OSS edition is basic
-  single-shot SQL generation only. Shipped as **P3 analyst/BI** with the honest
-  wedge: a destination self-hostable BI/dashboard app (read-only analytics over
-  an existing warehouse) vs. nlqdb owning the DB (provision + NL writes/
-  migrations with diff-preview) and embedding an *answer element* / agent-
-  callable API; dashboards/charts/scheduled-reports + OSS self-host + many-
-  source read conceded `them: shipped`. `competitors.md` §Metabase Metabot
-  entry refreshed (threat-matrix row already current). **Δ:** comparison pages **16 → 17**, llms.txt/
-  sitemap +1. **KPI:** onboarding / distribution; **none degraded** — one data
-  object + doc edits, no engine/funnel/ops file touched; 130 web tests +
-  astro-check 0 errors + biome green.
-- 2026-06-23 (run 70) — **Distribution: shipped `/vs/basedash`; web-verification
-  corrected a stale competitor read.** AEO lever (engine dispatch-gated). Basedash
-  had **repositioned** (verified 2026-06-23) from "admin UI with AI" (the stale P4
-  row) to an **AI-native BI platform** (NL → dashboards, AI analyst, semantic layer,
-  750+ read-only sources; no write/DB-provisioning; $1,000/mo, no free tier).
-  Shipped **P3 analyst**, honest wedge: read-only BI over *your existing* data vs.
-  nlqdb owning the DB (provision + NL writes with diff-preview). `competitors.md`
-  entry + threat-matrix row corrected. **Δ:** comparison pages **15 → 16**,
-  llms.txt/sitemap +1. None degraded — data object + doc edits. Rider:
-  `competitors.md` (> 20 KB) net-shrunk −40 B under D4.
-- 2026-06-23 (run 69) — **AEO/SEO hygiene: every crawler-advertised URL now
-  resolves to the 200 directly (was a 307).** CF serves `<route>/index.html`, so
-  the trailing-slash URL is the 200 and the bare path 307-redirects — but
-  `<link rel=canonical>`, `og:url`, sitemap, and llms.txt all emitted the *bare*
-  path (self-referential redirecting canonical; 27 redirecting sitemap URLs).
-  Fix (4 sites): `trailingSlash: "always"` + path-normalize in `Base.astro`
-  (Astro build-time `pathname` stays bare, withastro/astro#12833), `sitemap.xml.ts`,
-  `llms.txt.ts`; root `/` unchanged. **Δ:** sitemap 200/307 **1/27 → 28/0**.
-  **KPI:** onboarding / distribution; **none degraded** — static-site config +
-  URL-formatting only; 130 web tests + astro-check 0 errors + biome green.
-- 2026-06-23 (run 68) — **Engine instrument: persona-bench grown 20 → 23,
-  gold-exec 23/23** (SK-QUAL-018). Batch 3 adds three SK-QUAL-014 shapes
-  (`scalar-subquery`, `count-distinct`, multi-predicate `join-aggregate-filter`),
-  each in an existing DAIL-SQL bucket; clean throttled EX 21/23, but back-to-back
-  un-throttled runs collapsed to provider-starvation — re-confirming
-  SK-QUAL-013/§5 that offline free-chain EX is **not** powered (detail: row 8 +
-  verification log). The 3 new shapes are selector-side misses (precision@1
-  18/20 → 18/23). **KPI:** engine quality; **none degraded** — fixture + test
-  only; BIRD/Spider/canonical baselines byte-untouched; 265 eval green.
-- 2026-06-23 (run 67) — **Distribution: shipped `/vs/retool`, the internal-tools
-  incumbent.** AEO lever (engine dispatch-gated). Honest wedge: Retool is a
-  destination low-code **builder** over an existing DB; nlqdb provisions/owns the
-  DB and embeds one element / agent API. Comparison pages **14 → 15**,
-  llms.txt/sitemap +1; facts web-verified. None degraded — one data object +
-  FEATURE status.
+- 2026-06-23 (runs 67–73) — **Distribution + doc-hygiene wave (all merged;
+  engine dispatch-gated, BIRD 06-19 / Spider 06-17 untouched; none degraded).**
+  **Distribution (AEO):** `/vs/retool` (run 67, internal-tools builder),
+  `/vs/basedash` (run 70 — repositioned to AI-native BI, stale P4 row corrected),
+  `/vs/metabase` (run 72 — Metabase Metabot, P3 OSS-BI moat), comparison pages
+  **14 → 17**, facts web-verified, honest builder/BI-over-existing-DB-vs-own-the-DB
+  wedge each. **Engine instrument (run 68):** persona-bench 20 → 23, gold-exec
+  23/23 (SK-QUAL-018; 3 new SK-QUAL-014 shapes, selector-side misses, baselines
+  byte-untouched). **AEO hygiene (run 69):** `trailingSlash: "always"` + canonical/
+  og:url/sitemap/llms.txt normalize → sitemap 200/307 **1/27 → 28/0**.
+  **Doc-hygiene (run 73, D4+D5+P3):** `runbook.md` −766 B + `competitors.md`
+  −40 B (run 70 rider), both net-shrunk under D4, prod byte-identical.
 - 2026-06-23 (runs 62, 65, 66) — **Doc-hygiene wave (D4 + D5 + P3), prod
   byte-identical.** Run 66 net-shrank the largest D4 violation,
   `hosted-db-create/FEATURE.md` 35,376 → 34,099 B (−1,277 B): D5
