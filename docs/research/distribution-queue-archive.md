@@ -139,6 +139,17 @@ dev.to (#sql #postgres #debugging) or lobste.rs (`databases`, `practices`).*
 (2026-06-12 canonical run). Verify the auto-invite valve is healthy
 (scorecard #4) before posting. Best posted weekday morning US-East.*
 
+## One-line gists (runs 60–66) — bodies in git history
+
+Moved from the queue's collapsed list to hold that doc under the 20 KB cap (D4).
+
+- run 66 — "Your most over-documented code is your security code — and that's where stale docs lie loudest" (a callsite list + test names is the fastest-rotting prose; document the enforced invariant + review rule, not the tour).
+- run 65 — "Two homes for one decision is drift — even inside the same file" (a long doc paraphrasing its own decision two headings down is the same drift bug; link up, add only what's local).
+- run 64 — "Your AI data analyst can't be your app's backend (and vice versa)" (analysis app = a human reads a chart; product backend = queried programmatically on every request; anchors `/vs/julius`).
+- run 62 — "Your decision record is just narrating code the reader can already read" (a "Consequence in code" file/line list is a second, worse copy of the code; keep the why / rejected path / non-obvious constraint).
+- run 61 — "Quantization made your recall cheaper. It still can't count." (compression optimises how cheaply you retrieve the nearest items, not what you compute over them; recall ≠ reporting; anchors `/vs/qdrant`).
+- run 60 — "Your architecture doc is describing a pipeline your code deleted" (fix a superseded decision in its canonical place, then grep the ID across all docs; link, don't restate).
+
 ## One-line engine-lesson gists (runs 8–18) — bodies in git history
 
 Moved from [`distribution-queue.md`](./distribution-queue.md)'s collapsed list to hold that doc under the 20 KB cap (CLAUDE.md D4). `git log -p docs/research/distribution-queue.md` recovers any body.

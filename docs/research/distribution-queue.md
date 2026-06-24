@@ -59,60 +59,75 @@ arithmetic over search hits.
 reproducible design lesson for the GLOBAL-036 agent-memory wedge, anchoring the
 new `/solve/store-query-chatbot-conversation-history` page; one nlqdb mention.
 No engine/funnel/ops KPI degrades (a draft for the queue, not a code change).
+## 2026-06-24 (run 79) — dev.to / r/LLMDevs / lobste.rs: "Your agent's memory can recall anything and count nothing"
 
-## 2026-06-23 (run 78) — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search"
+**Where:** dev.to + r/LLMDevs + lobste.rs (`ai` / `llm` / `databases`);
+build-in-public, an architecture lesson for agent builders. The hook: every
+agent-memory tool is built for *recall*, and the moment you ask it a *counting*
+question you fall off a cliff. nlqdb mentioned once.
 
-**Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public,
-the structured-data follow-up to the run-69 canonical-URL post. nlqdb mentioned
-once. The hook: FAQPage gets all the SEO attention, but it tells an answer
-engine nothing about *where a page sits* — and hierarchy is what they use to
-decide a page is authoritative rather than orphaned.
-
-**Title:** Your pages can win the FAQ rich result and still be invisible to AI search
+**Title:** Your agent's memory can recall anything and count nothing
 
 **Body:**
 
-> We ship a lot of programmatic pages — one per competitor comparison, one per
-> user problem. Every one emitted `FAQPage` JSON-LD, because that's the
-> structured-data type everyone writes about: it earns the expandable Q&A rich
-> result in Google and ChatGPT/Perplexity lift the answers almost verbatim.
+> I've been comparing agent-memory tools — vector stores (Pinecone, Qdrant,
+> Chroma), memory frameworks (Mem0, Zep, Letta, LangMem), and knowledge-graph
+> engines like Cognee — and they converge on the same primitive: **recall**.
+> Store everything the agent sees, then at query time return the items *most
+> relevant* to a question. Vector similarity, graph traversal, hybrid rerank —
+> different mechanisms, same shape: top-k relevant things.
 >
-> What none of them had was `BreadcrumbList`. I'd mentally filed breadcrumbs
-> under "nice-to-have navigation," but that misses what the markup actually does
-> for machines: it states the page's *position in a hierarchy*. `Home → Compare
-> → nlqdb vs X` tells a crawler this isn't an orphan — it's a leaf under a real
-> category, with siblings. Google uses it to render a breadcrumb trail instead
-> of a raw URL in the result (measurably higher CTR), and answer engines use the
-> same signal to decide whether a page is a coherent part of a site or a
-> drive-by.
+> That's the right primitive for "what do I know about this user?" It is the
+> *wrong* primitive for an entire class of question that shows up the second your
+> agent does anything operational:
 >
-> Two things bit me that are worth passing on:
+> - "How many tools did I call per category this week?"
+> - "What's the average deal size per stage for the accounts I remember?"
+> - "Which predicates does this agent use most, and how often?"
 >
-> 1. **Match the visible trail.** Google's guidance is that `BreadcrumbList`
->    markup should mirror a breadcrumb a human can actually see and click. JSON-LD
->    with no on-page trail is a quality smell. So I added both, from one source
->    of truth — a tiny builder function the visible `<nav>` and the JSON-LD both
->    read — so they can't drift.
-> 2. **Use the canonical URL, not the bare path.** Our host serves
->    `/vs/x/index.html`, so the trailing-slash URL is the 200 and the bare path
->    301/307-redirects. My `canonical` and `og:url` already pointed at the 200,
->    but it's easy to feed the bare path into breadcrumb `item` URLs and quietly
->    point every hierarchy node at a redirect. Normalise once, reuse everywhere.
+> None of those are recall. They're **aggregation** — GROUP BY, COUNT, JOIN,
+> HAVING over the rows the agent stored. A relevance ranking can't answer them.
+> Ask a vector store "how many?" and it returns the *k* most similar vectors, not
+> a number. Ask a knowledge graph and it returns connected context, not a sum.
+> The honest answer from every recall engine is "that's not what I do."
 >
-> Net: 24 pages went from "has FAQ schema" to "has FAQ schema *and* declares
-> where it lives." FAQPage answers the question; BreadcrumbList tells the engine
-> the page is worth trusting with the answer. If you've done the FAQ work,
-> breadcrumbs are the cheapest next win — a few lines, no new copy.
+> The fix isn't a better embedding model or more retrieval modes. It's
+> recognising you have **two different jobs** and they want two different stores:
+>
+> 1. **Recall** — fuzzy, semantic, "find the relevant context." Vector / graph
+>    memory is great here. Keep it.
+> 2. **Analytics** — exact, relational, "compute the answer over everything I
+>    stored." This wants a database with a query planner: real SQL, real types,
+>    real aggregation.
+>
+> They compose cleanly: the recall layer feeds the agent context per turn; the
+> analytical layer answers the reporting questions the agent (or you) asks *about*
+> its own memory. The mistake is forcing one store to do both — you either bolt a
+> half-working aggregation API onto a vector index, or you dump structured rows
+> into a graph and lose the ability to `GROUP BY` them.
+>
+> Concretely: if your agent stores typed events ("called tool X, category Y, at
+> time T"), put those in something that speaks SQL, not just cosine distance. I've
+> been building nlqdb around exactly this — a Postgres the agent provisions and
+> queries in plain English, so "calls per tool category this week, only categories
+> above 20" is one query, not an unanswerable one — but the architectural point
+> stands whatever you reach for: **don't ask your recall layer to count.**
 
-**Why this advances the north-star:** onboarding / distribution — a concrete
-AEO/SEO lesson with a measured before/after (0 → 24 pages), one nlqdb mention.
-No funnel/ops KPI degrades (additive static structured data).
+**Why this advances the north-star:** onboarding / distribution — a reusable
+architecture lesson aimed squarely at the P2 agent-builder ICP (the GLOBAL-036
+pivot), framing the "database, not a vector store / not a knowledge graph" wedge
+as a general design principle, with one honest nlqdb mention. It seeds the same
+recall-vs-analytics distinction the new `/vs/cognee` page makes. No
+engine/funnel/ops KPI degrades — it's a draft post, published only at the
+founder's weekly review.
+
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
+- run 78 — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search" (FAQPage earns the rich result but says nothing about where a page sits; `BreadcrumbList` declares a page's position in a hierarchy — match the visible trail from one source of truth so they can't drift, and point `item` URLs at the canonical 200 not the bare-path redirect; `/vs` + `/solve` pages 0 → 24 BreadcrumbList).
 - run 77 — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to" (the page you care about most is the easiest to leave un-instrumented, because it's bespoke; the templated `/vs` + `/solve` pages all emitted `FAQPage`, the hand-authored `/agents` hero didn't — lift the already-visible Q&As into one typed `faqs` array → visible `<dl>` + JSON-LD; audit coverage by importance, not by template).
 - run 76 — dev.to / lobste.rs: "I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English" (two independent few-shot retrieval misses a week apart, same root cause — the exemplar's *question* echoed SQL keywords/phrasing users don't say; `COUNT(DISTINCT)`→"different" and scalar-subquery→"which … list the names" both landed and held out; read your examples aloud before blaming the ranker).
 - run 75 — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (every DB-MCP connector opens with "paste your connection string"; an agent needing a *scratch* store to write+query has nowhere to put one — provision-from-English makes create and query the same call, no separate create verb; anchors `/solve/database-claude-cursor-can-query`).
@@ -123,13 +138,8 @@ recovers any body.
 - run 69 — "Your sitemap is advertising redirects — and your canonical tag points at one" (a static host serving `route/index.html` makes the bare path a 307, but `canonical`/`og:url`/sitemap/llms.txt all emitted the bare path — 27 redirecting sitemap URLs + a self-referential redirecting canonical; `trailingSlash: "always"` plus a one-place path-normalize in the head layout + URL generators, audit with `curl -sI` over every sitemap URL).
 - run 68 — "Your offline LLM eval isn't measuring your model — it's measuring your rate limits" (a tiny NL→SQL bench on a free multi-provider chain scored 17/20 then 6/20 ninety seconds later; the engine didn't regress, the providers got tired — `circuit_open`/`rate_limited` errors with p50=0ms are availability, not accuracy; throttle to measure reasoning, pause-and-resume on exhaustion, keep the smoke test apart from the powered windowed run).
 - run 67 — "AI made the internal-tool builder faster. It didn't ask whether you needed the tool." (low-code AI — AppGen / Ask AI / agents — scaffolds the admin tool faster, but the output is still a destination a human builds and operates; often the answer belongs inline in the product you already ship, or the asker is an agent that wants a backend primitive, not a built tool — check whether the AI sped up the workflow or the outcome; anchors `/vs/retool`).
-- run 66 — "Your most over-documented code is your security code — and that's where stale docs lie loudest" (security code attracts callsite-by-callsite "consequence in code" narration because terse feels irresponsible; but a list of today's callsites + test names is the fastest-rotting prose in the repo, and a stale "every site is checked" reads as a guarantee — document the enforced invariant + review rule, not the implementation tour).
-- run 65 — "Two homes for one decision is drift — even inside the same file" (single-source-of-truth isn't only cross-file: a long doc paraphrasing its own decision two headings down is the same drift bug; a pointer can't drift, a paraphrase is a hand-synced copy — link up and add only what's local to the section).
-- run 64 — "Your AI data analyst can't be your app's backend (and vice versa)" (an analysis app is a destination — a human uploads/connects data and reads a chart; a product backend owns the write path and is queried programmatically on every request; "talks to your data in English" is one phrase covering two contracts — pick the one you're buying; anchors `/vs/julius`).
 
-- run 62 — "Your decision record is just narrating code the reader can already read" (a "Consequence in code" section that lists files, functions, and line numbers is a second, worse copy of the code — untestable and already stale; keep only the why / rejected path / non-obvious constraint, cut the implementation narration; load-bearing decisions only).
-- run 61 — "Quantization made your recall cheaper. It still can't count." (quantization optimises *how cheaply* you retrieve the nearest items, not *what* you can compute over them; scalar/binary/product compression still yields a ranked list, never a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/qdrant`).
-- run 60 — "Your architecture doc is describing a pipeline your code deleted" (a superseded decision record gets fixed in its one canonical place, but every other doc that paraphrased it keeps narrating the dead version; link, don't restate, and grep the ID across all docs when something is superseded).
+*(runs 60–66 moved to [`distribution-queue-archive.md`](./distribution-queue-archive.md) under D4.)*
 - run 59 — "Hybrid search made your recall smarter. It still can't count." (hybrid search optimises *which* items rank, not what you can compute over them; BM25+vector fusion is still a relevance score, not a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/weaviate`).
 - run 58 — "Your text-to-SQL eval is failing the wrong schema" (BIRD 0.52 / Spider 0.19 are academic-schema scores; the same free chain scores 0.90 EX on the ICP shape — score against your product's schema, and the two misses it surfaces are the ones users actually hit; persona-bench, SK-QUAL-018).
 - run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers vendor lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING — deployment and capability are orthogonal axes; anchors `/vs/chroma`).

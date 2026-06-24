@@ -1361,6 +1361,121 @@ export const COMPETITORS: Competitor[] = [
     },
   },
   {
+    slug: "cognee",
+    name: "Cognee",
+    url: "https://www.cognee.ai",
+    // Agent-memory cluster (knowledge-graph wing — the "not a vector store"
+    // headline of the GLOBAL-036 pivot, distinct from the vector cluster
+    // Pinecone/Chroma/Weaviate/Qdrant). Anchored in docs/competitors.md §Cognee.
+    // Facts web-verified 2026-06-24 via github.com/topoteretes/cognee + cognee.ai
+    // + docs.cognee.ai/cognee-mcp: open-source Apache-2.0 Python framework
+    // (~20k GitHub stars, $7.5M seed); builds a self-hosted knowledge graph from
+    // ingested data via the ECL pipeline (Extract → Cognify → Load) — the
+    // `add()` → `cognify()` → `search()` API (~8 LOC to set up). Combines vector
+    // embeddings + graph reasoning + cognitive-science ontology generation;
+    // pluggable backends — graph (Neo4j, Kuzu, FalkorDB, NetworkX), vector
+    // (pgvector, Qdrant, Weaviate, Redis), relational metadata (Postgres,
+    // SQLite). Self-host (Docker / on-prem) or the managed Cognee Cloud. Ships
+    // an official `cognee-mcp` server (14 tools — cognify / search / codify) for
+    // Claude / Cursor / Cline. Retrieval is hybrid semantic + graph traversal
+    // (14 search modes), NOT relational SQL: no GROUP BY / JOIN / HAVING
+    // aggregation over typed rows.
+    tagline:
+      "Open-source AI memory framework — builds a self-hosted knowledge graph from your data (Extract → Cognify → Load), with hybrid vector + graph-traversal recall; Apache-2.0 Python package, self-host or Cognee Cloud.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Cognee if your agent recalls by reasoning over a knowledge graph — entities and relationships fused with vector similarity for context-rich semantic recall. Pick nlqdb if your agent must aggregate what it stored: GROUP BY, JOIN, and HAVING over typed rows it provisions in plain English. Cognee connects and recalls the relevant; nlqdb counts, groups, and reports.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not traverse a graph for context.",
+      "You want a database provisioned and migrated from English, not a Python pipeline to wire and host.",
+      "You store typed rows the agent later reports over ('calls per tool this week').",
+      "You want exact SQL counts and filters, not a semantic + graph relevance ranking.",
+    ],
+    whenChooseThem: [
+      "Your agent recalls by meaning and relationships — a knowledge graph fused with vector similarity.",
+      "You ingest unstructured documents and want an ontology built and evolved automatically.",
+      "You want a self-hostable Apache-2.0 framework with pluggable graph and vector backends.",
+      "Context-rich semantic recall for RAG is the job, not relational reporting over rows.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Cognee's `search()` runs hybrid vector + graph-traversal recall over a knowledge graph; it has no English-to-SQL compiler.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Cognee returns relevant, graph-connected context; it ships no SQL engine for GROUP BY / JOIN / HAVING over typed rows.",
+      },
+      {
+        feature: "Knowledge-graph construction from unstructured data",
+        us: "no",
+        them: "shipped",
+        note: "Cognee's `cognify()` builds entities + relationships + an ontology from ingested documents; nlqdb stores typed relational rows, not a graph.",
+      },
+      {
+        feature: "Hybrid semantic + graph-traversal recall over memory",
+        us: "no",
+        them: "shipped",
+        note: "Vector similarity fused with graph relationships (14 search modes) is Cognee's core; nlqdb stores typed rows and ships no embedding or graph recall today.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "partial",
+        note: "nlqdb migrates the schema from English with a diff-preview; Cognee's graph evolves as data is re-cognified, but there's no typed-column migration step.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Cognee's `cognee-mcp` exposes cognify / search over the knowledge graph; nlqdb's `nlqdb_query` materialises Postgres on first reference and runs aggregating SQL.",
+      },
+      {
+        feature: "Runs with no backend to host (embeddable element / hosted API)",
+        us: "shipped",
+        them: "no",
+        note: "Cognee is a Python package you host and wire to LLM keys plus graph and vector backends; nlqdb is one `<nlq-data>` element or a hosted agent-callable API.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "shipped",
+        note: "Cognee is Apache-2.0 and self-hosts full-featured; nlqdb is source-available on FSL 1.1, auto-converting to Apache 2.0 two years after each release.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Cognee for knowledge-graph recall and nlqdb for analytics over the same agent memory?",
+        a: "Yes — they compose. Cognee handles 'pull the relevant, connected context for this question' via vector + graph traversal; nlqdb handles 'how many tools did the agent call per category this week' via SQL. Run Cognee as the semantic-recall layer and nlqdb as the analytical store the agent queries with GROUP BY / JOIN / HAVING.",
+      },
+      {
+        q: "Does nlqdb build a knowledge graph like Cognee?",
+        a: "No. nlqdb is Postgres-first — typed rows queried with exact SQL, not entities and relationships fused with embeddings into a graph. If reasoning over connected context and semantic recall is the job, Cognee is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions in plain English.",
+      },
+      {
+        q: "Cognee is Apache-2.0 and self-hostable — is nlqdb open source too?",
+        a: "nlqdb is source-available under FSL 1.1 (Functional Source License), which auto-converts to Apache 2.0 two years after each release; Cognee is Apache-2.0 today and self-hosts full-featured. They differ on the query model, not on lock-in — Cognee does hybrid vector + graph recall, nlqdb does relational SQL.",
+      },
+      {
+        q: "Cognee's search returns connected context — isn't that the same as nlqdb's SQL query?",
+        a: "Not quite. Cognee's `search()` returns the entities and relationships most relevant to a query — a recall result. nlqdb runs exact SQL — WHERE, GROUP BY, COUNT, JOIN — and returns a precise result set, not the most relevant context. Different jobs: one recalls and connects, the other computes answers.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Cognee the way it can with nlqdb?",
+        a: "Cognee's `cognee-mcp` lets an agent cognify data into and search a knowledge graph, but the agent gets a graph engine you've hosted and wired to backends — not a relational database it can aggregate or migrate. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent stands up and reports over its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "calls per tool category this week, only categories above 20 calls",
+      why: "The HAVING-filtered aggregation Cognee's knowledge-graph search can't run — it recalls relevant, connected context, not a GROUP BY / COUNT with a threshold; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
+  {
     slug: "julius",
     name: "Julius AI",
     url: "https://julius.ai",
