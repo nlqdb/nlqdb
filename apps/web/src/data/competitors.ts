@@ -1387,7 +1387,7 @@ export const COMPETITORS: Competitor[] = [
       "Pick Cognee if your agent recalls by reasoning over a knowledge graph — entities and relationships fused with vector similarity for context-rich semantic recall. Pick nlqdb if your agent must aggregate what it stored: GROUP BY, JOIN, and HAVING over typed rows it provisions in plain English. Cognee connects and recalls the relevant; nlqdb counts, groups, and reports.",
     whenChooseUs: [
       "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not traverse a graph for context.",
-      "You want a database provisioned and migrated from English, not a Python pipeline to wire and host.",
+      "You want a database provisioned and migrated from English, not a Python pipeline to host.",
       "You store typed rows the agent later reports over ('calls per tool this week').",
       "You want exact SQL counts and filters, not a semantic + graph relevance ranking.",
     ],
