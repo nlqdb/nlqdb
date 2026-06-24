@@ -79,16 +79,19 @@ Published artifacts from [`distribution-queue.md`](research/distribution-queue.m
 
 ## Last change
 
-**2026-06-24 (run 90)** — solve pages **10 → 11**: new
-`/solve/analyze-rag-retrieval-logs` (P2 agent builder, RAG retrieval-quality
-wedge — "which sources get retrieved most / never surface / avg relevance per
-source" is a `GROUP BY` over the retrieval log, not a vector-store lookup). Honest
-"no vector search; that stays in your vector store" limit sharpens the
-database-half positioning. Worst-number lane = funnel/distribution (real
-strangers = 0); this adds one search-intent on-ramp + one distribution draft.
-**KPI:** onboarding/distribution (GLOBAL-025); none degraded — additive AEO page,
-data-only (engine/funnel/ops untouched). Revert cost = one commit. Engine evals
-unchanged (BIRD 06-19, Spider re-dispatch due 06-25, both <7d today).
+**2026-06-24 (run 91)** — solve pages **11 → 12**: new
+`/solve/track-llm-eval-scores-across-prompt-versions` (P2 agent builder,
+eval-quality-tracking wedge — "pass rate per prompt version, which cases
+regressed, score trend per model" is a `GROUP BY`/trend over accumulated eval
+runs, not a spreadsheet pivot or an LLM tally). Honest "no running or scoring the
+evals; that stays in your harness (promptfoo/Braintrust/LangSmith)" limit keeps
+the database-half positioning. Distinct from the existing runtime-log pages
+(token-cost, tool-calls, RAG retrievals) — it's the eval-result/regression
+intent. Worst-number lane = funnel/distribution (real strangers = 0); this adds
+one search-intent on-ramp + one distribution draft. **KPI:**
+onboarding/distribution (GLOBAL-025); none degraded — additive AEO page, data-only
+(engine/funnel/ops untouched). Revert cost = one commit. Engine evals unchanged
+(BIRD 06-19, Spider re-dispatch due 06-25, both <7d today).
 
 *Full per-run history: `git log`, `progress/quality-score-verification-log.md`,
 and the WS-*/E-* worksheets — not this file.*

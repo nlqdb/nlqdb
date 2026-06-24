@@ -715,6 +715,63 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "track-llm-eval-scores-across-prompt-versions",
+    persona: "P2 agent builder",
+    searchTitle: "How do I track and query my LLM eval scores across prompt versions?",
+    oneLiner:
+      "If you run LLM evals and need to know which prompt version regressed — log each scored case as a row and ask in English. nlqdb provisions Postgres from your first goal and runs the GROUP BY in SQL, so 'pass rate per prompt version this month' is a real query, not a spreadsheet pivot.",
+    painContext:
+      "Teams shipping LLM features run evals on every prompt change — a set of test cases scored pass/fail or 0-1 — and the questions that tell you whether a change helped are aggregations: pass rate per prompt version, average score per model, which test cases regressed between v3 and v4, score trend over the last month. Those answers live in eval-tool exports, JSON run logs, or spreadsheets, where you pivot by hand instead of GROUP BY. Asking the LLM to tally a run log doesn't scale and miscounts; these are queries, and queries want a planner.",
+    demoGoal:
+      "pass rate and average score grouped by prompt version this month, newest version first",
+    demoWhy:
+      "The first eval-tracking question a team asks — did pass rate go up or down across prompt versions — is one English goal here, not a hand-built pivot over a run log.",
+    howNlqdbAnswers: [
+      "Log each scored eval case as a typed row — prompt version, test case, model, score, pass/fail, timestamp — so pass-rate-per-version runs as real SQL GROUP BY.",
+      "Ask the regression question in English via `<nlq-data>`, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
+      "Write eval records with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, then trend over the same database — no separate analytics store.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly pass-rate rollup hits the cache and returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "No running the evals or scoring outputs — your eval harness (promptfoo, Braintrust, LangSmith, or a custom judge) produces the scores; nlqdb stores and aggregates them.",
+      "No LLM-as-judge built in — you bring the score per case; nlqdb is the query planner over the scored results, not the grader.",
+      "No connecting to your existing eval store or LangSmith project — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped.",
+    ],
+    faqs: [
+      {
+        q: "Why not track LLM eval results in a spreadsheet?",
+        a: "Because a spreadsheet can't answer 'which test cases regressed between v3 and v4' or 'pass rate per model this month' without manual pivoting, and it breaks as runs pile up. Those are GROUP BY and trend queries. Log each scored case as a row and nlqdb runs the aggregation in Postgres, showing the SQL it ran.",
+      },
+      {
+        q: "How do the eval results get into the database?",
+        a: "Write one row per scored case — prompt version, test case id, model, score, pass/fail, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run` (`GLOBAL-015`). The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the trend questions in English over the same table.",
+      },
+      {
+        q: "Does nlqdb run the evals or score the outputs itself?",
+        a: "No — your eval harness (promptfoo, Braintrust, LangSmith, or a custom LLM-as-judge) runs the cases and produces the scores. nlqdb is the database half: you log the scored results and get a SQL query planner over them for 'per version / over time' questions. They compose; nlqdb doesn't grade your outputs.",
+      },
+      {
+        q: "Can I see the SQL behind a regression number?",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can check the grain (per case vs per run) before trusting a pass-rate figure. nlqdb never hides the SQL behind the answer.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/LLMDevs/search/?q=eval",
+        label: "r/LLMDevs — recurring threads on tracking and comparing LLM eval results.",
+      },
+      {
+        url: "https://www.reddit.com/r/LangChain/search/?q=evaluation",
+        label:
+          'r/LangChain — "how do you track eval scores across prompt versions" recurring discussion hub.',
+      },
+      {
+        url: "https://hn.algolia.com/?q=llm+eval",
+        label: 'HN search: "llm eval" — discussion on measuring and tracking LLM output quality.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
