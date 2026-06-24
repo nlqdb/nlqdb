@@ -25,7 +25,9 @@ const canonicalURL = new URL(
   Astro.site,
 );
 const ogImageURL = new URL(ogImage ?? "/og-default.png", Astro.site);
-const ogImageAltText = ogImageAlt ?? "nlqdb — create a database in a word, query it in English.";
+const ogImageAltText =
+  ogImageAlt ??
+  "nlqdb — analytical memory for AI agents; a database your agent queries in English.";
 
 // The app node names the Organization as publisher (by stable `@id`) on every
 // page so crawlers consolidate it with the homepage Organization/WebSite nodes

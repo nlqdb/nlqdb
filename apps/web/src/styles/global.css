@@ -211,6 +211,16 @@ h3 {
   margin: 0;
 }
 
+.hero__sub code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--fg);
+}
+
+.hero__sub em {
+  font-style: italic;
+}
+
 .hero__credo {
   font-family: var(--mono);
   font-size: clamp(12px, 1.4vw, 13px);

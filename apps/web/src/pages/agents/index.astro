@@ -13,10 +13,23 @@ import { faqPageJsonLd } from "../../lib/faq-jsonld";
 //
 // Run 1 = skeleton + hero + AEO direct-answer. Run 2 = the WS-06
 // capability matrix + the typed-plan-trust-boundary moat + the FSL
-// self-host / BYO-key band (FSL-accurate per WS-10). Run 3 (this edit) =
-// the conversion CTA — a memory-shaped "try this query" button that
-// seeds the anonymous-create draft and fires the GLOBAL-024
-// demand-signal event, mirroring the proven /vs + /solve pattern.
+// self-host / BYO-key band (FSL-accurate per WS-10). Run 3 = the
+// conversion CTA. WS-13 / SK-PIVOT-013 (founder gate tripped 2026-06-24)
+// reworks that terminal CTA to lead with the real agent-builder action —
+// connect a host over MCP (paste mcp.nlqdb.com or `nlq mcp install`,
+// naming Claude / Cursor / Codex) — and demotes the generalist /app/new
+// "try a goal" path to a secondary link. Both still fire GLOBAL-024
+// demand signals.
+
+// The MCP connector config an agent builder pastes into their host
+// (Claude Desktop, Cursor, Codex, Zed, Windsurf). Same shape every host
+// uses; the hosted server handles OAuth on the first tool call, so no key
+// is wired up front. Mirrors `data/snippets.ts` + `data/integrate.ts`.
+const mcpConfig = `{
+  "mcpServers": {
+    "nlqdb": { "url": "https://mcp.nlqdb.com" }
+  }
+}`;
 
 // Memory-shaped demo goal — the analytical-over-memory wedge (a GROUP BY
 // a vector store can't run). Mirrors the /solve analytical sibling so the
@@ -343,21 +356,52 @@ const faqJsonLd = faqPageJsonLd(faqs);
       </section>
 
       <section class="agents__cta" aria-labelledby="cta-title">
-        <h2 class="agents__h2" id="cta-title">Give your agent memory it can query.</h2>
+        <h2 class="agents__h2" id="cta-title">Connect your agent&rsquo;s memory.</h2>
         <p class="agents__cta-lede">
-          Start from a goal, not a schema. nlqdb provisions the database,
-          your agent writes typed rows as it learns, and you ask in English.
+          nlqdb is an MCP server. Add it to Claude, Cursor, Codex, or any MCP
+          host and your agent can write and query its memory in English &mdash;
+          no schema to design, no key to wire up first.
         </p>
-        <button
-          type="button"
-          class="agents__try-btn"
-          data-try-goal={demoGoal}
-        >
-          Try: &ldquo;{demoGoal}&rdquo; &rarr;
-        </button>
+
+        <div class="agents__connect">
+          <div class="agents__connect-card agents__connect-card--primary">
+            <p class="agents__connect-h">1 &middot; Paste the connector URL</p>
+            <p class="agents__connect-note">
+              Into your host&rsquo;s MCP config &mdash; Claude Desktop, Cursor,
+              Codex, Zed, Windsurf. OAuth opens in your browser on the first
+              tool call; nothing to wire up first.
+            </p>
+            <pre class="agents__connect-code"><code>{mcpConfig}</code></pre>
+            <button type="button" class="agents__connect-copy" data-copy-config>
+              Copy config
+            </button>
+          </div>
+
+          <div class="agents__connect-card">
+            <p class="agents__connect-h">Or: one command</p>
+            <p class="agents__connect-note">
+              The <code>nlq</code> CLI auto-detects every installed host, signs
+              you in once, and patches each config in place.
+            </p>
+            <pre class="agents__connect-code"><code>nlq mcp install</code></pre>
+            <a
+              class="agents__connect-docs"
+              href="https://docs.nlqdb.com/mcp/"
+              data-connect-docs
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Full MCP setup &rarr;
+            </a>
+          </div>
+        </div>
+
         <p class="agents__cta-meta">
-          No sign-in. The anonymous database lasts 72 hours; adopt it with one
-          click if you keep it. Or <a href="/app/new">start with your own goal</a>.
+          No agent handy?
+          <a href="/app/new" class="agents__cta-try" data-try-goal={demoGoal}>
+            Try a query in the browser
+          </a>
+          &mdash; an anonymous database, no sign-in, gone in 72 hours.
         </p>
       </section>
 
@@ -373,19 +417,47 @@ const faqJsonLd = faqPageJsonLd(faqs);
   <script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
 
   <script>
-    // "Try this query" → seed the anonymous-create input via the same
-    // `nlqdb_draft` localStorage slot CreateForm rehydrates from
-    // (SK-ANON-011), emit the GLOBAL-024 demand signal, then navigate.
-    // No URL param so the goal can't be sniffed from referrer / logs —
-    // mirrors the /vs + /solve "try this query" pattern exactly.
     import { emit } from "../../lib/logsnag";
     import { saveDraft } from "../../lib/prompt-storage";
-    document.querySelectorAll<HTMLButtonElement>(".agents__try-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const goal = btn.dataset["tryGoal"] ?? "";
+
+    // Primary CTA — copy the MCP connector config + fire the connect demand
+    // signal (GLOBAL-024). The config text is read from the rendered <pre> so
+    // the string isn't duplicated in JS. Clipboard failure (insecure context /
+    // denied permission) still fires the signal and leaves the config visible.
+    const copyBtn = document.querySelector<HTMLButtonElement>("[data-copy-config]");
+    const configCode = document.querySelector<HTMLElement>(
+      ".agents__connect-card--primary .agents__connect-code code",
+    );
+    copyBtn?.addEventListener("click", async () => {
+      emit("agents.connect_clicked", { method: "url" });
+      try {
+        await navigator.clipboard.writeText(configCode?.textContent ?? "");
+        const original = copyBtn.textContent;
+        copyBtn.textContent = "Copied ✓";
+        copyBtn.classList.add("is-copied");
+        setTimeout(() => {
+          copyBtn.textContent = original;
+          copyBtn.classList.remove("is-copied");
+        }, 1600);
+      } catch {
+        /* clipboard blocked — signal already fired, config is selectable */
+      }
+    });
+
+    // CLI / docs path — fire the signal; the anchor then navigates (_blank).
+    document
+      .querySelector<HTMLAnchorElement>("[data-connect-docs]")
+      ?.addEventListener("click", () => emit("agents.connect_clicked", { method: "cli" }));
+
+    // Secondary fallback — seed the anonymous-create draft via the same
+    // `nlqdb_draft` localStorage slot CreateForm rehydrates from (SK-ANON-011)
+    // + fire the try demand signal, then let the anchor navigate normally
+    // (no preventDefault → crawlable, no URL param leaking the goal).
+    document.querySelectorAll<HTMLAnchorElement>(".agents__cta-try").forEach((a) => {
+      a.addEventListener("click", () => {
+        const goal = a.dataset["tryGoal"] ?? "";
         if (goal) saveDraft(goal);
         emit("agents.try_query_clicked", { goal });
-        location.assign("/app/new");
       });
     });
 
@@ -811,22 +883,86 @@ const faqJsonLd = faqPageJsonLd(faqs);
     line-height: 1.6;
   }
 
-  .agents__try-btn {
+  .agents__connect {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .agents__connect-card {
+    border: 2px solid var(--border-strong);
+    background: var(--bg);
+    padding: clamp(16px, 2.4vw, 22px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .agents__connect-card--primary {
+    border-color: var(--accent);
+  }
+
+  .agents__connect-h {
+    margin: 0 0 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .agents__connect-note {
+    margin: 0 0 16px;
+    font-size: 14px;
+    color: var(--fg-dim);
+    line-height: 1.55;
+  }
+
+  .agents__connect-note code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    color: var(--fg);
+  }
+
+  .agents__connect-code {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border-strong);
+    overflow-x: auto;
+  }
+
+  .agents__connect-code code {
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.4vw, 13px);
+    color: var(--fg);
+    white-space: pre;
+  }
+
+  .agents__connect-copy {
     appearance: none;
     cursor: pointer;
+    margin-top: auto;
+    align-self: flex-start;
     font-family: var(--mono);
-    font-size: clamp(14px, 1.7vw, 16px);
+    font-size: 14px;
     color: var(--bg);
     background: var(--accent);
     border: 2px solid var(--accent);
-    padding: 12px 20px;
+    padding: 10px 18px;
     line-height: 1.4;
-    text-align: left;
-    max-width: 100%;
   }
 
-  .agents__try-btn:hover {
+  .agents__connect-copy:hover,
+  .agents__connect-copy.is-copied {
     background: var(--bg);
+    color: var(--accent);
+  }
+
+  .agents__connect-docs {
+    margin-top: auto;
+    align-self: flex-start;
+    font-family: var(--mono);
+    font-size: 14px;
     color: var(--accent);
   }
 
@@ -850,7 +986,8 @@ const faqJsonLd = faqPageJsonLd(faqs);
   }
 
   @media (max-width: 640px) {
-    .agents__cols {
+    .agents__cols,
+    .agents__connect {
       grid-template-columns: 1fr;
     }
   }

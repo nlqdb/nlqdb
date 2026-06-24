@@ -1,14 +1,22 @@
-# nlqdb — natural-language databases
+# nlqdb — analytical memory for AI agents
 
-> *A database you talk to, with a backend that doesn't exist.*
+> *Memory your agent can query, not just recall — a real database it reaches over MCP.*
 
-You write HTML. Each component asks for what it wants in plain English.
-nlqdb infers the schema, writes the SQL, runs it, and renders the result.
-There is no backend for you to build.
+Connect nlqdb to Claude, Cursor, Codex, or any MCP host. Your agent writes
+typed rows as it learns, then asks questions in plain English — `GROUP BY`,
+`JOIN`, aggregate over what it remembered. A vector store returns the top-k
+similar chunks; nlqdb runs the query a similarity index structurally can't.
+The LLM never emits SQL: it returns a typed plan, our compiler emits the
+parameterised statement, and you see the exact SQL every time.
+
+**It's also a natural-language database for any app.** You write HTML; each
+component asks for what it wants in plain English; nlqdb infers the schema,
+writes the SQL, runs it, and renders the result. There is no backend for you
+to build.
 
 Two actions. That's the whole product:
 
-1. **Create a database** — one word: a name.
+1. **Create a database** — one word: a name (or a goal).
 2. **Talk to it** in plain English.
 
 ```html

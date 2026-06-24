@@ -2,7 +2,7 @@
   "name": "nlqdb",
   "private": true,
   "version": "0.0.0",
-  "description": "Natural-language databases. Ship data-driven features with an English goal, not a query.",
+  "description": "Analytical memory for AI agents — a real database your agent queries over MCP in English (GROUP BY, JOIN, aggregate), not just recall. Also a natural-language database for any app.",
   "type": "module",
   "packageManager": "bun@1.3.13",
   "engines": {

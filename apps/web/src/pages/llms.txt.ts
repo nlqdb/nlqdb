@@ -55,14 +55,19 @@ const OPTIONAL_LINKS = [
 export const GET: APIRoute = () => {
   const body =
     `# nlqdb\n\n` +
-    `> Natural-language databases. Create one in a word. Query it in English.\n` +
-    `> The schema, the engine, the indexes, and the backups stay invisible —\n` +
-    `> unless you want to see them.\n\n` +
-    `nlqdb inverts the usual database experience. Instead of choosing a schema, an engine,\n` +
-    `and a set of indexes upfront, the user states a goal in English and the system\n` +
-    `materialises the database that fits the workload, migrating engines underneath as\n` +
-    `the workload evolves. Five surfaces share one engine: an HTML element (` +
-    `\`<nlq-data>\`), a typed SDK, a CLI (\`nlq\`), an MCP server (\`mcp.nlqdb.com\`), and a\n` +
+    `> Analytical memory for AI agents. A real database your agent connects to over\n` +
+    `> MCP and queries in English — GROUP BY, JOIN, aggregate over what it remembered,\n` +
+    `> not just the top-k a vector store recalls. Also a natural-language database for\n` +
+    `> any app.\n\n` +
+    `nlqdb gives an AI agent a real Postgres database it uses as memory: it writes typed\n` +
+    `rows as it learns and asks questions in plain English, so it can analyse its memory\n` +
+    `(counts, top-N, per-group rollups) instead of only recalling similar chunks. The LLM\n` +
+    `never emits SQL — it returns a typed plan, the compiler emits parameterised SQL,\n` +
+    `\`libpg_query\` re-validates it, and every answer carries the exact SQL it ran.\n` +
+    `The same engine is also a generalist natural-language database: state a goal in\n` +
+    `English and the system materialises the database that fits the workload, migrating\n` +
+    `engines underneath as it evolves. Five surfaces share one engine: an HTML element\n` +
+    `(\`<nlq-data>\`), a typed SDK, a CLI (\`nlq\`), an MCP server (\`mcp.nlqdb.com\`), and a\n` +
     `chat web app at app.nlqdb.com.\n\n` +
     `## Integrate\n\n` +
     `Add nlqdb to an app. Every surface calls the same \`/v1/ask\` engine — pick one;\n` +

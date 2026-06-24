@@ -57,14 +57,18 @@ live code, never an image of a UI. (SK-PIVOT-004.)
 
 ---
 
-## Lead strings — the gate list (do NOT touch before WS-13)
+## Lead strings — the gate list (✅ tripped 2026-06-24, SK-PIVOT-013)
 
-These four are the brand's lead identity. WS-13 (founder-gated) is the only
-worksheet allowed to change them, and only after the wedge content is live:
+These four are the brand's lead identity. WS-13 (founder-gated) was the only
+worksheet allowed to change them. **The founder tripped the gate on
+2026-06-24**; all four now lead with "Analytical memory for AI agents":
 
-1. Home hero lede — `Hero.astro:24`
-2. README H1 + tagline — `README.md:1,3`
-3. `llms.txt` lede — `llms.txt.ts:42-51`
-4. Root `package.json` description + sitewide JSON-LD/`<title>` default
+1. Home hero lede — `Hero.astro` ✅
+2. README H1 + tagline — `README.md:1,3` ✅
+3. `llms.txt` lede — `llms.txt.ts` ✅
+4. Root `package.json` description + homepage JSON-LD/`<title>` + `Base.astro`
+   default `ogImageAlt` ✅
 
-Everything else in tables A–C is **additive** and ships now.
+The generalist umbrella stays one click away (hero `<CreateForm>` input,
+`AlsoWorksFor` fold, off-wedge `/vs`/`/solve` pages) — the GLOBAL-036 dual
+front door survives. Revert = `git revert` the lead-string commit.
