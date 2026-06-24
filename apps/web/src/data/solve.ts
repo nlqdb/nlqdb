@@ -657,6 +657,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "analyze-rag-retrieval-logs",
+    persona: "P2 agent builder",
+    searchTitle: "How do I log my RAG retrievals and query which sources get used most?",
+    oneLiner:
+      "If your RAG agent retrieves chunks and you need to know which sources get used most — log each retrieval as a row and ask in English. nlqdb provisions Postgres from your first goal and runs the GROUP BY in SQL, so 'retrievals per source this week' is a real query, not a scan over a vector-store log.",
+    painContext:
+      "RAG agents retrieve chunks from a vector store on every query, and the questions that tell you whether retrieval is healthy are aggregations: which source documents get retrieved most, which ones never surface, average relevance score per source, retrievals per session. Those answers live in flat retrieval logs or scattered across vector-store query traces, where you scan instead of GROUP BY. Tallying by hand — or asking the LLM to count a log — doesn't scale; these are queries, and queries want a planner.",
+    demoGoal:
+      "retrieval count and average relevance score grouped by source document this week, most retrieved first",
+    demoWhy:
+      "The first retrieval-quality question a RAG team asks — which sources get pulled most and how relevant they score — is one English goal here, not a hand-written GROUP BY over a retrieval log.",
+    howNlqdbAnswers: [
+      "Log each retrieval as a typed row — query id, source document, relevance score, timestamp — so retrievals-per-source and avg-score run as real SQL GROUP BY.",
+      "Ask the retrieval-quality question in English via `<nlq-data>`, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
+      "Write retrieval records with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, then report over the same database — no separate analytics store.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly retrieval rollup hits the cache and returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "No vector search or embedding — nlqdb stores and aggregates the retrieval rows you write; the similarity search that picks the chunks stays in your vector store (Pinecone, pgvector, Chroma).",
+      "No automatic capture — logging each retrieval, its source, and its relevance score is your RAG pipeline's job (or your framework's callback hook).",
+      "No connecting to your existing log or vector store — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped.",
+    ],
+    faqs: [
+      {
+        q: "Why not just count RAG retrievals in my application code?",
+        a: "Because the questions are aggregations — retrievals per source, average relevance, sources that never surface — and pulling rows back to tally them in app code is fragile and slow as your corpus grows. Asking the LLM to count a log is worse: arithmetic over a list hallucinates. nlqdb runs the GROUP BY in Postgres and shows you the SQL it ran.",
+      },
+      {
+        q: "How do the retrieval records get into the database?",
+        a: "Write one row per retrieval — query id, source document, chunk id, relevance score, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run` (`GLOBAL-015`). The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the retrieval-quality questions in English over the same table.",
+      },
+      {
+        q: "Does nlqdb do the vector search or retrieval itself?",
+        a: "No — the embedding and similarity search that picks which chunks to retrieve stays in your vector store (Pinecone, pgvector, Chroma, Weaviate). nlqdb is the database half: you log what got retrieved, and you get a SQL query planner over that log for 'per source / per week' questions. They compose; nlqdb doesn't embed or rank your documents.",
+      },
+      {
+        q: "Can I see the SQL behind the retrieval numbers?",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can check the grain (per retrieval vs per query) before trusting a usage figure. nlqdb never hides the SQL behind the answer.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/LangChain/search/?q=rag+retrieval+evaluation",
+        label: "r/LangChain — recurring threads on evaluating and debugging RAG retrieval quality.",
+      },
+      {
+        url: "https://www.reddit.com/r/LLMDevs/search/?q=rag+evaluation",
+        label:
+          'r/LLMDevs — "RAG evaluation / which chunks get retrieved" recurring discussion hub.',
+      },
+      {
+        url: "https://hn.algolia.com/?q=rag+retrieval",
+        label:
+          'HN search: "rag retrieval" — discussion on measuring and analyzing what RAG pipelines retrieve.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {

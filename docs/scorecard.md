@@ -79,12 +79,16 @@ Published artifacts from [`distribution-queue.md`](research/distribution-queue.m
 
 ## Last change
 
-**2026-06-24 (founder-directed, #506)** — WS-13 headline reposition: the site
-now leads with the agent-memory wedge sitewide and `/agents` connects an agent
-over MCP instead of dropping it into the generalist create flow. Pivot
-13 → 14/20, messaging 11 → 12/13. **KPI:** onboarding + UX (GLOBAL-025); none
-degraded — copy/markup only, hero input (SK-WEB-002) + `AlsoWorksFor` fold +
-off-wedge pages kept (dual front door). Revert cost = one commit.
+**2026-06-24 (run 90)** — solve pages **10 → 11**: new
+`/solve/analyze-rag-retrieval-logs` (P2 agent builder, RAG retrieval-quality
+wedge — "which sources get retrieved most / never surface / avg relevance per
+source" is a `GROUP BY` over the retrieval log, not a vector-store lookup). Honest
+"no vector search; that stays in your vector store" limit sharpens the
+database-half positioning. Worst-number lane = funnel/distribution (real
+strangers = 0); this adds one search-intent on-ramp + one distribution draft.
+**KPI:** onboarding/distribution (GLOBAL-025); none degraded — additive AEO page,
+data-only (engine/funnel/ops untouched). Revert cost = one commit. Engine evals
+unchanged (BIRD 06-19, Spider re-dispatch due 06-25, both <7d today).
 
 *Full per-run history: `git log`, `progress/quality-score-verification-log.md`,
 and the WS-*/E-* worksheets — not this file.*

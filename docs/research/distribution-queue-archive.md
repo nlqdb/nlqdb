@@ -136,7 +136,7 @@ dev.to (#sql #postgres #debugging) or lobste.rs (`databases`, `practices`).*
 *Reviewer notes: numbers sourced from `tools/eval/baseline-2026-06-15.json`
 (2026-06-12 canonical run). Best posted weekday morning US-East.*
 
-## One-line gists (runs 60–66) — bodies in git history
+## One-line gists (runs 56–66) — bodies in git history
 
 Moved from the queue's collapsed list to hold that doc under the 20 KB cap (D4).
 
@@ -146,6 +146,9 @@ Moved from the queue's collapsed list to hold that doc under the 20 KB cap (D4).
 - run 62 — "Your decision record is just narrating code the reader can already read" (a "Consequence in code" file/line list is a second, worse copy of the code; keep the why / rejected path / non-obvious constraint).
 - run 61 — "Quantization made your recall cheaper. It still can't count." (compression optimises how cheaply you retrieve the nearest items, not what you compute over them; recall ≠ reporting; anchors `/vs/qdrant`).
 - run 60 — "Your architecture doc is describing a pipeline your code deleted" (fix a superseded decision in its canonical place, then grep the ID across all docs; link, don't restate).
+- run 59 — "Hybrid search made your recall smarter. It still can't count." (hybrid search optimises *which* items rank, not what you can compute over them; BM25+vector fusion is still a relevance score, not a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/weaviate`).
+- run 58 — "Your text-to-SQL eval is failing the wrong schema" (BIRD 0.52 / Spider 0.19 are academic-schema scores; the same free chain scores 0.90 EX on the ICP shape — score against your product's schema, and the two misses it surfaces are the ones users actually hit; persona-bench, SK-QUAL-018).
+- run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers vendor lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING — deployment and capability are orthogonal axes; anchors `/vs/chroma`).
 
 ## One-line engine-lesson gists (runs 8–18, 33, 37) — bodies in git history
 
