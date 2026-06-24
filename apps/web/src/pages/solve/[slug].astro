@@ -9,6 +9,7 @@ import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { SOLVE_ENTRIES, SOLVE_PERSONAS, solveBySlug } from "../../data/solve";
 import Base from "../../layouts/Base.astro";
+import { faqPageJsonLd } from "../../lib/faq-jsonld";
 
 export function getStaticPaths() {
   return SOLVE_ENTRIES.map((s) => ({ params: { slug: s.slug } }));
@@ -24,15 +25,7 @@ const pageTitle = `${s.searchTitle} — nlqdb`;
 const description = s.oneLiner;
 const canonical = `/solve/${s.slug}`;
 
-const faqJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: s.faqs.map((f) => ({
-    "@type": "Question",
-    name: f.q,
-    acceptedAnswer: { "@type": "Answer", text: f.a },
-  })),
-};
+const faqJsonLd = faqPageJsonLd(s.faqs);
 
 // HowTo JSON-LD — per §3.1 of automated-icp-validation-plan.md. The
 // three steps map to the canonical anonymous-mode arc: read, embed,

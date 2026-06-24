@@ -3,6 +3,7 @@ import AgentMemoryMatrix from "../../components/AgentMemoryMatrix.astro";
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
+import { faqPageJsonLd } from "../../lib/faq-jsonld";
 
 // `/agents` — the dedicated analytical-agent-memory front door
 // (GLOBAL-036, agent-memory-pivot WS-07). A new route on nlqdb.com,
@@ -110,15 +111,7 @@ const faqs = [
   },
 ];
 
-const faqJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: faqs.map((f) => ({
-    "@type": "Question",
-    name: f.q,
-    acceptedAnswer: { "@type": "Answer", text: f.a },
-  })),
-};
+const faqJsonLd = faqPageJsonLd(faqs);
 ---
 
 <Base

@@ -8,6 +8,7 @@ import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { COMPETITORS, type ComparisonClaim, competitorBySlug } from "../../data/competitors";
 import Base from "../../layouts/Base.astro";
+import { faqPageJsonLd } from "../../lib/faq-jsonld";
 
 export function getStaticPaths() {
   return COMPETITORS.map((c) => ({ params: { slug: c.slug } }));
@@ -39,15 +40,7 @@ const claimLabel: Record<ComparisonClaim, string> = {
   no: "No",
 };
 
-const faqJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: c.faqs.map((f) => ({
-    "@type": "Question",
-    name: f.q,
-    acceptedAnswer: { "@type": "Answer", text: f.a },
-  })),
-};
+const faqJsonLd = faqPageJsonLd(c.faqs);
 ---
 <Base
   title={pageTitle}
