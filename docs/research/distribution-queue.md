@@ -10,6 +10,56 @@ inline; everything older collapses to a one-line title + venue + gist, with the
 full body recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
+## 2026-06-24 (run 84) — dev.to / r/LocalLLaMA / lobste.rs: "Scaling your vector store to a billion rows doesn't give it a GROUP BY"
+
+**Where:** dev.to + r/LocalLLaMA + lobste.rs (`ai` / `database` / `vectordb`);
+build-in-public design lesson for agent builders evaluating vector DBs at scale.
+nlqdb mentioned once. The hook: teams outgrow a hosted vector store and reach
+for Milvus/Qdrant for *scale* — then are surprised the aggregate questions are
+still impossible, because ANN throughput and a query planner are orthogonal.
+
+**Title:** Scaling your vector store to a billion rows doesn't give it a GROUP BY
+
+**Body:**
+
+> When an agent's memory outgrows a starter vector store, the natural next move
+> is a heavier engine — Milvus, Qdrant, something built for billions of vectors
+> with HNSW/DiskANN indexes and GPU search. You get more recall, lower latency,
+> hybrid dense+sparse ranking. What you do *not* get is the thing people quietly
+> expect scale to unlock: the ability to answer "how many", "per category",
+> "top N this month", "only the groups above a threshold."
+>
+> This trips people up because "bigger database" sounds like "more capable
+> database." But the two axes are independent. A vector index is optimised for
+> one operation — *find the K nearest embeddings to this one* — and it does that
+> at any scale. Relational aggregation is a different machine entirely: a query
+> planner that joins tables, groups rows, and filters groups with `HAVING`.
+> Milvus will happily `count(*)` with a filter and even dedupe results by a
+> field, but there's no `JOIN`, no multi-column `GROUP BY`, no `HAVING`. Scaling
+> the ANN side to a trillion vectors adds zero of that.
+>
+> The tell is when you catch yourself pulling rows back and counting them in
+> application code (or worse, asking the LLM to count them — arithmetic over a
+> list of search hits is a hallucination generator). That's the signal the
+> question was analytics, not retrieval, and it wants a database with a planner
+> — not a faster nearest-neighbour search.
+>
+> The clean split: keep the vector engine for similarity recall, and put the
+> rows the agent needs to *count and group* in something that speaks SQL. They
+> compose — one finds the relevant, the other reports over the set. Don't make
+> your nearest-neighbour index do arithmetic just because it scaled.
+>
+> (We built nlqdb around the analytics half — the agent provisions a Postgres in
+> plain English and asks the `GROUP BY` questions over its own memory, SQL shown.
+> But the lesson holds whatever you pair it with: scale and aggregation are
+> different problems.)
+
+**Why this advances the north-star:** onboarding / distribution — a reproducible
+design lesson for the GLOBAL-036 agent-memory wedge, anchoring the new
+`/vs/milvus` comparison page; one nlqdb mention, honest about Milvus's real
+strengths (ANN at scale). No engine/funnel/ops KPI degrades (a queue draft, not
+a code change).
+
 ## 2026-06-24 (run 81) — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections"
 
 **Where:** dev.to + lobste.rs (`seo` / `webdev` / `ai`); build-in-public, third
@@ -53,62 +103,13 @@ AEO lesson with a measured before/after (hub pages declaring their collection
 0 → 2), one nlqdb mention. No engine/funnel/ops KPI degrades (additive static
 structured data, data-driven from the existing list).
 
-## 2026-06-24 (run 80) — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases"
-
-**Where:** dev.to + r/LLMDevs + lobste.rs (`ai` / `llm` / `database`); a
-build-in-public design lesson for chatbot/agent builders. nlqdb mentioned once.
-The hook: people reach for a vector store for *everything* their bot remembers,
-then can't answer "how many conversations this week?" without the LLM doing
-arithmetic over search hits.
-
-**Title:** Your chatbot's memory and your chatbot's metrics are two different databases
-
-**Body:**
-
-> Every chatbot project hits the same fork. You've wired up a vector store
-> (Mem0, Zep, pgvector) so the bot can recall "what did the user say earlier?"
-> — and it works. Then a PM asks: *how many conversations did we have last
-> week? Which users send the most messages? What's the average turns per
-> session?* And you realise your memory layer can't answer any of them.
->
-> The reason is structural, not a missing feature. A vector store answers one
-> question: *what is the most similar thing to this?* It returns the top-k
-> nearest rows. It has no query planner, no `GROUP BY`, no `COUNT`. So the
-> moment the question is an aggregate, your only options are (a) pull a pile of
-> rows and let the LLM count them — a hallucination generator, because LLMs are
-> bad at arithmetic over lists — or (b) bolt a real database alongside the
-> vector store and keep two copies of the same conversation in sync.
->
-> The cleaner mental model: **retrieval and analytics are different jobs.**
-> Similarity recall ("the user prefers Celsius") is retrieval — vector's
-> domain. Counting, ranking, and rolling up ("top 10 intents this month",
-> "messages per day") is analytics — a SQL database's domain. They look like
-> the same "memory" feature in a design doc; they're not. One needs cosine
-> distance, the other needs a query planner.
->
-> Practically: store conversation turns as **typed rows** — `conversation_id`,
-> `user_id`, `role`, `text`, `created_at` — in Postgres, and the engagement
-> questions become one-line `GROUP BY`s you can trust, with the SQL visible to
-> audit the grain (per message vs per conversation — easy to get wrong, easy to
-> verify). Keep the vector store for similarity if you need it; just stop asking
-> it to count.
->
-> (We built nlqdb around exactly this split — you ask the engagement question
-> in English, it runs the `GROUP BY` in Postgres and shows you the SQL. But the
-> lesson stands whatever you use: don't make your similarity index do
-> arithmetic.)
-
-**Why this advances the north-star:** onboarding / distribution — a
-reproducible design lesson for the GLOBAL-036 agent-memory wedge, anchoring the
-new `/solve/store-query-chatbot-conversation-history` page; one nlqdb mention.
-No engine/funnel/ops KPI degrades (a draft for the queue, not a code change).
-
 ## Collapsed — full drafts in git history
 
 Newest first; collapsed once past the two-draft inline window above. Each line
 is title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
+- run 80 — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases" (a vector store answers "most similar to this?" — top-k, no query planner — so engagement aggregates ("how many conversations this week", "messages per day") become the LLM doing arithmetic over search hits; store conversation turns as typed rows so the rollups are one-line `GROUP BY`s with the SQL visible to audit the grain; anchors `/solve/store-query-chatbot-conversation-history`).
 - run 79 — dev.to / r/LLMDevs / lobste.rs: "Your agent's memory can recall anything and count nothing" (vector stores, Mem0/Zep/Letta/LangMem, and knowledge graphs like Cognee all converge on *recall* — top-k relevant — but counting/aggregation (GROUP BY/COUNT/JOIN/HAVING over the rows the agent stored) is a different job that needs a query planner; recall and analytics want two stores that compose, not one doing both; anchors `/vs/cognee`).
 - run 78 — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search" (FAQPage earns the rich result but says nothing about where a page sits; `BreadcrumbList` declares a page's position in a hierarchy — match the visible trail from one source of truth so they can't drift, and point `item` URLs at the canonical 200 not the bare-path redirect; `/vs` + `/solve` pages 0 → 24 BreadcrumbList).
 - run 77 — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to" (the page you care about most is the easiest to leave un-instrumented, because it's bespoke; the templated `/vs` + `/solve` pages all emitted `FAQPage`, the hand-authored `/agents` hero didn't — lift the already-visible Q&As into one typed `faqs` array → visible `<dl>` + JSON-LD; audit coverage by importance, not by template).

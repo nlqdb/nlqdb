@@ -1966,6 +1966,124 @@ export const COMPETITORS: Competitor[] = [
       why: "The kind of question an analyst would build a Metabase dashboard for — nlqdb answers the English goal as SQL over a database it owns, returned as rows your product embeds, not a dashboard you log in to.",
     },
   },
+  {
+    slug: "milvus",
+    name: "Milvus",
+    url: "https://milvus.io",
+    // Agent-memory cluster (open-source vector wing — the large-scale ANN
+    // sibling of Pinecone/Chroma/Weaviate/Qdrant in the GLOBAL-036 "database,
+    // not a vector store" pivot). Anchored in docs/competitors.md §Milvus.
+    // Facts web-verified 2026-06-24 via github.com/milvus-io/milvus + milvus.io
+    // + zilliz.com/pricing + github.com/zilliztech/mcp-server-milvus:
+    // high-performance, cloud-native vector database built for scalable vector
+    // ANN search (Go, Apache-2.0, ~45k GitHub stars, LF AI & Data graduated
+    // project, Zilliz is the creator + major contributor). Indexes HNSW / IVF /
+    // DiskANN / GPU; metric types L2 / IP / cosine. Capabilities: vector
+    // similarity/ANN search, scalar/metadata filtering, hybrid search (dense +
+    // sparse / BM25 full-text), multi-vector search. `query` supports boolean
+    // filter expressions + count(*), and search has a `group_by_field`
+    // dedup-grouping — but there is NO relational JOIN / GROUP BY aggregation /
+    // HAVING over typed rows. Deploy as Milvus Lite (embedded) / Standalone
+    // (Docker) / Distributed (k8s), or the managed Zilliz Cloud (Serverless /
+    // Dedicated / Enterprise; free tier 5 GB / 2.5M vCUs). Official
+    // `zilliztech/mcp-server-milvus` (milvus-vector-search / milvus-text-search /
+    // milvus-hybrid-search / milvus-query / milvus_list_collections; stdio + SSE)
+    // for Claude / Cursor.
+    tagline:
+      "High-performance, cloud-native open-source vector database built for scalable vector ANN search — HNSW / IVF / DiskANN indexes, metadata filtering, and hybrid dense + sparse search at billion-vector scale; Apache-2.0, self-host or managed Zilliz Cloud.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Milvus if your agent recalls by similarity at scale — billions of embeddings, ANN search with metadata filters and hybrid dense + sparse ranking. Pick nlqdb if your agent must aggregate what it stored: GROUP BY, JOIN, and HAVING over typed rows it provisions in plain English. Milvus ranks the nearest vectors; nlqdb counts, groups, and reports over the rows.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not rank nearest vectors.",
+      "You want a database provisioned and migrated from English, not a vector index to operate.",
+      "You store typed rows the agent later reports over ('tool calls per category this week').",
+      "You want exact SQL counts and filters, not an approximate-nearest-neighbour relevance ranking.",
+    ],
+    whenChooseThem: [
+      "Your agent recalls by semantic similarity over millions-to-billions of embeddings.",
+      "You need ANN indexes (HNSW / IVF / DiskANN / GPU) tuned for recall-vs-latency at scale.",
+      "Hybrid dense + sparse / full-text search ranking is the retrieval job, not relational reporting.",
+      "You want a self-hostable Apache-2.0 vector engine with a managed Zilliz Cloud option.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Milvus exposes a vector-search + scalar-filter API (SDKs / REST / gRPC); it has no English-to-SQL compiler.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Milvus `query` filters rows and can `count(*)`, and search has a `group_by_field` dedup; it ships no relational JOIN / GROUP BY aggregation / HAVING engine.",
+      },
+      {
+        feature: "Vector similarity / ANN search over embeddings",
+        us: "no",
+        them: "shipped",
+        note: "HNSW / IVF / DiskANN / GPU indexes at billion-vector scale are Milvus's core; nlqdb stores typed rows and ships no embedding or ANN search today.",
+      },
+      {
+        feature: "Hybrid dense + sparse / full-text retrieval ranking",
+        us: "no",
+        them: "shipped",
+        note: "Milvus fuses dense vectors with sparse / BM25 full-text into one ranked result; nlqdb has no similarity ranking — it returns exact SQL result sets.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+        note: "nlqdb migrates the schema from English with a diff-preview; Milvus collections have a fixed schema you alter via the SDK, not a typed-column NL migration.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Milvus's `mcp-server-milvus` exposes vector / text / hybrid search + query over collections; nlqdb's `nlqdb_query` materialises Postgres on first reference and runs aggregating SQL.",
+      },
+      {
+        feature: "Runs with no backend to host (embeddable element / hosted API)",
+        us: "shipped",
+        them: "partial",
+        note: "Milvus Lite embeds in Python and Zilliz Cloud is managed, but there's no HTML element; nlqdb is one `<nlq-data>` element or a hosted agent-callable API.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "shipped",
+        note: "Milvus is Apache-2.0 and self-hosts full-featured; nlqdb is source-available on FSL 1.1, auto-converting to Apache 2.0 two years after each release.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Milvus for similarity recall and nlqdb for analytics over the same agent memory?",
+        a: "Yes — they compose. Milvus handles 'find the most similar past facts to this query' via ANN search over embeddings; nlqdb handles 'how many facts did the agent log per category this month' via SQL. Run Milvus as the semantic-recall layer and nlqdb as the analytical store the agent queries with GROUP BY / JOIN / HAVING.",
+      },
+      {
+        q: "Does nlqdb do vector / ANN search like Milvus?",
+        a: "No. nlqdb is Postgres-first — typed rows queried with exact SQL, not embeddings ranked by approximate nearest neighbour. If billion-scale similarity recall is the job, Milvus is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions in plain English.",
+      },
+      {
+        q: "Milvus can filter and count rows — isn't that the same as nlqdb's SQL?",
+        a: "Only partly. Milvus `query` applies a boolean filter expression and can `count(*)`, and search supports a `group_by_field` to dedupe results — but it has no relational JOIN, no multi-column GROUP BY aggregation, and no HAVING. nlqdb compiles those to SQL and runs them in Postgres. Milvus answers 'which vectors are nearest, filtered'; nlqdb answers 'how many, grouped by what, above which threshold'.",
+      },
+      {
+        q: "Milvus is Apache-2.0 and self-hostable — is nlqdb open source too?",
+        a: "nlqdb is source-available under FSL 1.1 (Functional Source License), which auto-converts to Apache 2.0 two years after each release; Milvus is Apache-2.0 today and self-hosts full-featured (Milvus Lite, Standalone, or Distributed), with managed Zilliz Cloud as an option. They differ on the query model — Milvus does vector ANN search, nlqdb does relational SQL.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Milvus the way it can with nlqdb?",
+        a: "Milvus's `mcp-server-milvus` lets an agent search and query collections you've created in a Milvus instance you operate (self-hosted or Zilliz Cloud) — the agent gets a vector index, not a relational database it can aggregate or migrate. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent stands up and reports over its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "tool calls per category this month, only categories with more than 50 calls",
+      why: "The HAVING-filtered aggregation Milvus's vector search can't run — it ranks the nearest embeddings with a metadata filter, not a GROUP BY / COUNT with a threshold; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {

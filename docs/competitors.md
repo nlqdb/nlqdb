@@ -120,14 +120,14 @@ Open-source (Apache-2.0) agent runtime with persistent memory built in — out o
 ### LangMem (LangChain) — https://langchain.com
 Open-source Python SDK that adds long-term memory (semantic / episodic / procedural) to LangGraph agents — extract, consolidate, dedup from live interactions; storage-backend-agnostic. (Full architecture in `/vs/langmem`.)
 - **Overlaps with:** P2 — agent builders already inside the LangChain ecosystem.
-- **Gap nlqdb exploits:** LangMem is extraction-and-recall logic over a key-value store, not a database — no SQL, no aggregation, no schema the agent can query analytically. Its win is *distribution* (it ships where LangGraph already is), not the analytical shape. nlqdb is the queryable memory an agent reaches for when "what's the trend across everything I remembered?" matters.
-- **Threat vector:** **High for P2 on distribution** — LangChain's mass adoption means LangMem is the default an agent builder meets first; low on capability for the analytical wedge (fact recall only).
+- **Gap nlqdb exploits:** Extraction-and-recall logic over a key-value store, not a database — no SQL, no aggregation, no analytically-queryable schema. Its win is *distribution* (ships where LangGraph already is), not the analytical shape.
+- **Threat vector:** **High for P2 on distribution** — LangChain's mass adoption makes LangMem the default a builder meets first; low on capability for the analytical wedge.
 
 ### Pinecone — https://pinecone.io
 Managed serverless vector DB (detail in `competitors.ts`).
 - **Overlaps with:** P2 retrieval use cases.
-- **Gap nlqdb exploits:** Vector-only — no SQL, joins, or aggregations. The "database, not a vector store" wedge: finds the similar, can't GROUP BY over what the agent stored.
-- **Threat vector:** Medium — shifting toward pgvector-in-Postgres. `/vs/pinecone` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
+- **Gap nlqdb exploits:** Vector-only — finds the similar, can't GROUP BY over what the agent stored. The "database, not a vector store" wedge. `/vs/pinecone` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
+- **Threat vector:** Medium — shifting toward pgvector-in-Postgres.
 
 ### Weaviate — https://weaviate.io
 OSS + managed vector DB.
@@ -135,19 +135,23 @@ OSS + managed vector DB.
 
 ### Chroma — https://trychroma.com
 OSS-first vector DB with a new managed cloud offering.
-- **Threat vector:** Medium for P2, particularly for devs who prefer OSS-first.
+- **Threat vector:** Medium for P2 — OSS-first devs.
 
 ### Qdrant — https://qdrant.tech
-High-performance Rust vector DB / search engine, Apache-2.0; managed Qdrant Cloud (free tier · usage-based Standard · Premium) + Hybrid/Private Cloud. HNSW + scalar/binary/product quantization, native hybrid search (dense + sparse via the Query API), REST + gRPC. Official `mcp-server-qdrant` (`qdrant-store` / `qdrant-find`). Detail in `competitors.ts`.
-- **Overlaps with:** P2 retrieval use cases — the Rust/performance + permissive-license wing of the vector-store cluster.
-- **Gap nlqdb exploits:** Vector-only — no SQL, joins, or aggregations. Quantization makes recall cheaper and faster; it still can't GROUP BY / COUNT / HAVING over what the agent stored. The "database, not a vector store" wedge.
-- **Threat vector:** Medium for P2, particularly for devs who self-host on Apache-2.0. `/vs/qdrant` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
+High-performance Rust vector DB, Apache-2.0; managed Qdrant Cloud. HNSW + scalar/binary/product quantization, native hybrid search, REST + gRPC, official `mcp-server-qdrant`. Detail in `competitors.ts`.
+- **Overlaps with:** P2 retrieval — the Rust/performance + permissive-license wing of the vector cluster.
+- **Gap nlqdb exploits:** Vector-only — quantization makes recall cheaper, but still no GROUP BY / COUNT / HAVING. The "database, not a vector store" wedge. `/vs/qdrant` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
+
+### Milvus — https://milvus.io
+High-performance, cloud-native open-source vector DB built for scalable ANN search (Go, Apache-2.0, ~45k stars, LF AI & Data graduated project; Zilliz is creator + major contributor). HNSW / IVF / DiskANN / GPU indexes, metadata filtering, hybrid dense + sparse / BM25 search at billion-vector scale. Deploy as Milvus Lite / Standalone / Distributed, or managed Zilliz Cloud (free tier 5 GB). Official `zilliztech/mcp-server-milvus`. Detail in `competitors.ts`.
+- **Overlaps with:** P2 retrieval use cases — the open-source, billion-scale ANN wing of the vector-store cluster.
+- **Gap nlqdb exploits:** Vector-only — `query` filters + counts and search dedupes by a field, but no relational JOIN / GROUP BY / HAVING over typed rows. The "database, not a vector store" wedge at scale: ranks the nearest embeddings; can't group and report. `/vs/milvus` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
 
 ### Cognee — https://www.cognee.ai
-Open-source AI memory framework (Apache-2.0, ~20k stars, $7.5M seed) — builds a self-hosted **knowledge graph** from ingested data via the ECL pipeline (Extract → Cognify → Load; the `add()` → `cognify()` → `search()` API). Combines vector embeddings + graph reasoning + ontology generation; pluggable graph (Neo4j/Kuzu/FalkorDB/NetworkX) and vector (pgvector/Qdrant/Weaviate/Redis) backends, self-host or Cognee Cloud, official `cognee-mcp` (14 tools). Detail in `competitors.ts`.
-- **Overlaps with:** **P2 directly** — the knowledge-graph wing of agent memory, more structured than a flat vector store.
-- **Gap nlqdb exploits:** Cognee is a *recall* engine — `search()` returns the entities and relationships most relevant to a query via hybrid vector + graph traversal; it has no SQL layer, so an agent can't `GROUP BY` / `JOIN` / `HAVING` over its memory. It's also a Python framework you host and wire to backends, not a database provisioned from English. The "database, not a vector store" wedge, applied to the graph wing: connects and recalls the relevant; can't count, group, or report.
-- **Threat vector:** **High for P2** — well-funded, fast-growing, MCP-native, and the most credible "not just a vector store" memory framing; stops short of relational analytics. `/vs/cognee` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
+Open-source AI memory framework (Apache-2.0, ~20k stars) — builds a self-hosted **knowledge graph** from ingested data (Extract → Cognify → Load), fusing vector embeddings + graph reasoning + ontology generation; pluggable graph/vector backends, official `cognee-mcp`. Detail in `competitors.ts`.
+- **Overlaps with:** **P2 directly** — the knowledge-graph wing of agent memory.
+- **Gap nlqdb exploits:** A *recall* engine — `search()` returns the most relevant entities/relationships via hybrid vector + graph traversal; no SQL layer, so an agent can't `GROUP BY` / `JOIN` / `HAVING`. The "database, not a vector store" wedge, graph wing. `/vs/cognee` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning (P2).
+- **Threat vector:** **High for P2** — well-funded, MCP-native, the most credible "not just a vector store" framing; stops short of relational analytics.
 
 ### Postgres MCP servers (community + vendor) — e.g. `@modelcontextprotocol/server-postgres`, Supabase MCP
 Let an agent run read (and sometimes write) SQL against a *pre-provisioned* Postgres.

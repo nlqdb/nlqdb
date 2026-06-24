@@ -55,7 +55,7 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 9 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7); run 61 +`/vs/qdrant` (Rust/quantization wing — P2 cluster 7→8, closes the top-tier vector-DB brand cluster); run 79 +`/vs/cognee` (knowledge-graph wing — P2 cluster 8→9, the "not a vector store" memory framework) |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 13 / 20 + 10 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone`; run 56 +`/vs/chroma`; run 59 +`/vs/weaviate`; run 61 +`/vs/qdrant` (closes the top-tier vector-DB brand cluster); run 79 +`/vs/cognee` (knowledge-graph wing); run 84 +`/vs/milvus` (open-source billion-scale ANN wing — P2 cluster 9→10) |
 | | *Messaging track — WS-\** | 11 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
@@ -81,6 +81,25 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
 
 ## Deltas (recent runs)
 
+- 2026-06-24 (run 84) — **Distribution: shipped `/vs/milvus` — comparison pages
+  18 → 19, P2 memory vector-cluster 9 → 10.** With the engine offline-retrieval
+  lever exhausted (run 81), canonical BIRD (06-19) / Spider (06-17, crosses the
+  7-day edge 06-25 — re-dispatch due on a non-merging run), and the apps/web AEO
+  (hub `ItemList`, run 81) + a11y lanes occupied by open PRs #501/#502, took the
+  highest-search-volume uncovered vector-DB brand: **Milvus** (Go, Apache-2.0,
+  ~45k stars, LF AI & Data graduated; the open-source, billion-scale ANN sibling
+  of Pinecone/Chroma/Weaviate/Qdrant). Facts web-verified (github.com/milvus-io
+  + milvus.io + zilliz.com/pricing + zilliztech/mcp-server-milvus). Honest wedge:
+  Milvus ranks the nearest embeddings (HNSW/IVF/DiskANN, hybrid dense+sparse) and
+  `query` filters+counts, but ships no relational JOIN / GROUP BY / HAVING — nlqdb
+  aggregates over typed rows the agent provisions in English. Data-driven, so the
+  /vs hub `ItemList`, sitemap, and llms.txt auto-extend. **Δ:** comparison pages
+  **18 → 19** (verified in `dist/`: `/vs` `ItemList` numberOfItems 19, `/vs/milvus`
+  emits FAQPage + BreadcrumbList, in sitemap + llms.txt); web tests 121/121 green;
+  astro-check 0 errors; OG card `vs-milvus.png` generated (1200×630). **KPI:**
+  onboarding / distribution; **none degraded** — additive data object + one PNG,
+  no engine/funnel/ops file touched. `competitors.md` net-shrunk under D4 (Milvus
+  anchor added, vector-cluster prose compressed).
 - 2026-06-24 (run 81) — **AEO: the `/vs` and `/solve` *hub* pages now emit
   `ItemList` JSON-LD enumerating the full collection — hub pages with a
   collection signal 0 → 2.** First confirmed the engine offline-retrieval lever
@@ -125,79 +144,22 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   array (visible `<dl>` + schema, can't drift; every answer restates on-page
   copy) — site `FAQPage` pages **24 → 25**. Both additive static structured
   data; 130 web tests + astro-check clean.
-- 2026-06-23 (runs 74–76) — **Engine pool-curation + distribution wave (all
-  merged; engine canonical dispatch-gated, BIRD 06-19 / Spider 06-17 untouched;
-  none degraded).** Two DAIL-SQL pool-curation fixes (the offline retrieval
-  instrument): run 74 q21 (COUNT DISTINCT — `count-distinct` demo echoed the SQL
-  keyword "distinct" while users say "different"), run 76 q20 (scalar `> AVG()` —
-  `scalar-subquery` demo read as a bare "List the names…" sharing none of q20's
-  `which`/`list`/`names` tokens). Both **exemplar-phrasing leaks**, not the
-  run-52-falsified selector-code tweak — own-ICP retrieval precision@1 **18/23 →
-  19/23 → 20/23**, held-out **14/14** held (generalises, not tuned to the
-  question); prod byte-identical (`buildPlanSystem` default-off), baselines
-  byte-untouched. 3 residual misses (q8/q10/q22) confirmed selector-side. Run 75:
-  shipped `/solve/database-claude-cursor-can-query` (solve pages 6 → 7). Detail:
-  `quality-score-verification-log.md` + git.
-- 2026-06-23 (runs 67–73) — **Distribution + doc-hygiene wave (all merged;
-  engine dispatch-gated, BIRD 06-19 / Spider 06-17 untouched; none degraded).**
-  **Distribution (AEO):** `/vs/retool` (run 67, internal-tools builder),
-  `/vs/basedash` (run 70 — repositioned to AI-native BI, stale P4 row corrected),
-  `/vs/metabase` (run 72 — Metabase Metabot, P3 OSS-BI moat), comparison pages
-  **14 → 17**, facts web-verified, honest builder/BI-over-existing-DB-vs-own-the-DB
-  wedge each. **Engine instrument (run 68):** persona-bench 20 → 23, gold-exec
-  23/23 (SK-QUAL-018; 3 new SK-QUAL-014 shapes, selector-side misses, baselines
-  byte-untouched). **AEO hygiene (run 69):** `trailingSlash: "always"` + canonical/
-  og:url/sitemap/llms.txt normalize → sitemap 200/307 **1/27 → 28/0**.
-  **Doc-hygiene (run 73, D4+D5+P3):** `runbook.md` −766 B + `competitors.md`
-  −40 B (run 70 rider), both net-shrunk under D4, prod byte-identical.
-- 2026-06-23 (runs 62, 65, 66) — **Doc-hygiene wave (D4 + D5 + P3), prod
-  byte-identical.** Run 66 net-shrank the largest D4 violation,
-  `hosted-db-create/FEATURE.md` 35,376 → 34,099 B (−1,277 B): D5
-  implementation-narration in `Consequence in code` (line numbers, test-case
-  lists, span names the GLOBAL-014 section already owns, Decision restatements) →
-  the load-bearing invariant + its enforcing review rule; 20 SK-HDC-* intact, §8
-  gate clean. Run 65 `ask-pipeline/FEATURE.md` −1,257 B (22 SK-ASK-* intact); run
-  62 `anonymous-mode/FEATURE.md` −3,974 B (14 SK-ANON-* intact). **KPI:**
-  onboarding; **none degraded** — docs-only.
-- 2026-06-23 (runs 61, 64) — **Distribution: shipped `/vs/qdrant` (closing the
-  canonical vector-DB cluster Pinecone/Chroma/Weaviate/Qdrant) + `/vs/julius`
-  (first P3-analyst comparison), both AEO levers while engine stayed
-  dispatch-gated.** Comparison pages **12 → 14**, P2 cluster 7 → 8, OG cards
-  8 → 9, llms.txt/sitemap +2; facts web-verified. None degraded — data objects
-  + one PNG, no engine/funnel/ops file touched.
-- 2026-06-22 (runs 59–60) — distribution + hygiene wave (all merged; BIRD 06-19 /
-  Spider 06-17 untouched). **Distribution (run 59):** shipped `/vs/weaviate`, the
-  enterprise/hybrid-search wing of the "database, not a vector store" wedge —
-  comparison pages 11 → 12, P2 cluster 6 → 7, OG cards 7 → 8, llms.txt/sitemap +1;
-  same aggregation wedge (hybrid search ranks; no GROUP BY/JOIN/HAVING), facts
-  web-verified. **Hygiene (run 60, D4+P1/P3):** `docs/architecture.md` net-shrunk
-  + fixed §3.6.4/§3.6.5 restating superseded decisions (`SK-ASK-003`/`SK-HDC-005`/
-  `SK-HDC-006`) → invariant + pointer, 0 lost. None degraded; prod byte-identical.
-- 2026-06-22 (runs 55–58) — persona-bench + distribution + hygiene wave (all
-  merged; BIRD 06-19 / Spider 06-17 untouched). **Engine (runs 55, 58):** shipped
-  `quality-eval-persona-bench.yml` (SK-QUAL-018 "last half", ungated by
-  `SK-QUAL-002` — no baseline/fixture/emit), then fired the first post-merge
-  dispatch → free-chain **EX 0.90 (18/20)** on the ICP shape (row 8; **1.7× BIRD,
-  4.9× Spider**, GHA 27983818047); both Groq-leg misses are challenging multi-join
-  aggregations (q13 the `SK-QUAL-014` `literal_diff`, q18 a `LEFT JOIN` vs the gold
-  inner-join). Frontier lane (row 9) **secret-blocked, not dispatch-blocked** —
-  `OPENROUTER_FRONTIER_API_KEY` empty in CI; filed in `blocked-by-human.md`.
-  **Distribution (run 56):** shipped `/vs/chroma` (OSS-first vector-store wing) —
-  comparison pages 10 → 11, P2 cluster 5 → 6, same aggregation wedge.
-  **Hygiene (run 57, D4+D5+P3):** `docs/performance.md` net-shrunk 26,378 →
-  24,441 B (collapsed §4's stale slice-by-slice plan into the standing rule; 0
-  span/metric names lost). None degraded; prod byte-identical.
-- 2026-06-22 (runs 51–54) — engine + distribution + hygiene wave (all merged;
-  BIRD 06-19 / Spider 06-17 untouched): DAIL-SQL pool 13 → 14 (+`order-by-limit`,
-  ICP precision@1 18/20); run 52 falsified the lexical-selector avenue for the
-  q8/q10 misses (Δ ≤ 0 reverted) ⇒ §4 #1 pool/lexical half at its **offline
-  ceiling**; shipped `/vs/pinecone` (comparison pages 9 → 10); `docs/progress.md`
-  net-shrunk under the cap. None degraded. (Detail: verification log + git.)
-- 2026-06-22 (runs 48–50) — engine + distribution + hygiene wave (all merged;
-  BIRD 06-19 + Spider 06-17 untouched): DAIL-SQL pool 12 → 13 (+`null-filter`,
-  ICP precision@1 17/20 → 18/20); 5 `/vs` pages dropped a phantom MCP
-  `create_database` verb (web tests 11 → 13); `quality-score-source-of-truth.md`
-  net-shrunk under the D4 cap. None degraded. (Detail: verification log + git.)
+- 2026-06-22/23 (runs 48–76) — **engine pool-curation + distribution + doc-hygiene
+  waves (all merged; canonical BIRD 06-19 / Spider 06-17 untouched; none
+  degraded).** Engine (offline retrieval instrument): DAIL-SQL pool 12 → 14, then
+  run-52 falsified the lexical-selector tweak for q8/q10 (Δ ≤ 0 reverted) ⇒ pool/
+  lexical half at its **offline ceiling**; runs 74/76 landed persona-bench q21/q20
+  as **exemplar-phrasing leaks** (own-ICP precision@1 18/23 → 20/23, held-out
+  14/14); persona-bench 20 → 23 golds (SK-QUAL-018, gold-exec 23/23); run-58
+  dispatch → free-chain **EX 0.90 (18/20)** on the ICP shape (1.7× BIRD, 4.9×
+  Spider), frontier lane secret-blocked (`OPENROUTER_FRONTIER_API_KEY` empty,
+  filed). Distribution: `/vs/{pinecone,chroma,weaviate,qdrant,retool,basedash,
+  metabase,julius}` + `/solve/database-claude-cursor-can-query` → comparison pages
+  9 → 17, OG cards per P2 page. AEO hygiene: `trailingSlash:"always"` → sitemap
+  200/307 1/27 → 28/0. Doc-hygiene (D4/D5/P3): `hosted-db-create` −1,277 B,
+  `ask-pipeline` −1,257 B, `anonymous-mode` −3,974 B, `performance.md` −1,937 B,
+  `architecture.md` net-shrunk, all SK-IDs intact, prod byte-identical. Per-run
+  detail: `progress/quality-score-verification-log.md` + git.
 - 2026-06-21/22 (runs 37–47) — engine + distribution + hygiene staging wave (all
   merged/additive; BIRD 06-19 + Spider 06-17 untouched). **Engine:** §4 #1
   DAIL-SQL retrieval built end-to-end offline (`few-shot-select.ts` value-mask +
@@ -209,18 +171,13 @@ not dispatch-blocked**: `OPENROUTER_FRONTIER_API_KEY` is empty in CI — filed i
   `/agents` fixture demo, WS-12 → messaging 11/13, pivot 13/20. **Hygiene:**
   `distribution-queue.md` 35.9 → 9.1 KB. Plus E-04 TTL-sweep core (`SK-PIVOT-011`)
   + SK-PIVOT-010 finding. KPI engine quality / onboarding; none degraded.
-- 2026-06-19/20 (runs 19–36) — agent-memory pivot launch wave + engine staging
-  (all closed/additive; BIRD 06-19 + Spider 06-17 untouched). Messaging → 8/13,
-  pivot → 10/20 (competitors anchor, memory `/vs` pages, `/agents`
-  skeleton+hero+matrix+CTA, launch post, FSL self-host copy). Engine: **E-01**
-  `agent_memory_v1` preset + **E-02** `nlqdb_remember` (+CLI parity) → engine
-  2/7; self-consistency core (`SK-QUAL-017`), Spider external-knowledge
-  (`SK-QUAL-016`), TTL fail-loud (GLOBAL-012); findings SK-PIVOT-009/010. Per-run
-  detail: `progress/quality-score-verification-log.md` + the WS/E worksheets.
-- 2026-06-13/19 (runs 1–18) — day-one scorecard + engine-instrument /
-  provider-resilience / deferred-lever waves (Gemini key heal, Spider 0.1852,
-  join-bridge pruner T21, HAVING directive T22, `SK-QUAL-014/015`,
-  `SK-LLM-038/039`, `SK-HDC-019`), then canonical BIRD re-run flat (0.522 →
-  0.520, McNemar p=0.50) ⇒ directive levers saturated and `SK-QUAL-014`
-  falsified value-retrieval as the top lever (`literal_only` = 0). Full per-run
-  detail: `progress/quality-score-verification-log.md`.
+- 2026-06-13/20 (runs 1–36) — day-one scorecard + engine-instrument /
+  provider-resilience waves, then the agent-memory pivot launch (all
+  closed/additive; BIRD 06-19 + Spider 06-17 untouched). Engine: Gemini key heal,
+  join-bridge pruner T21 + HAVING directive T22, `SK-QUAL-014/015/016/017`,
+  `SK-LLM-038/039` — then canonical BIRD flat (0.522 → 0.520, McNemar p=0.50) ⇒
+  directive levers saturated, value-retrieval falsified (`literal_only` = 0).
+  Pivot → 10/20: **E-01** `agent_memory_v1` preset + **E-02** `nlqdb_remember`,
+  competitors anchor, memory `/vs` pages, `/agents` skeleton+hero+matrix+CTA,
+  launch post, FSL self-host copy. Full per-run detail:
+  `progress/quality-score-verification-log.md` + the WS/E worksheets.
