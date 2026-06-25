@@ -148,7 +148,7 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 ### SK-WEB-015 — Three-beat homepage + quiet-brutalism token system
 
 **Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md).
-The marketing site adopts one token system in `global.css` (six warm-green-biased neutrals, one accent reserved to three lime moments per fold, three faces with mono demoted to code/data only, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero + one input) → HOW (`Demo.astro` live `/v1/ask` + `<nlq-data>` snippet) → WHY (`Replaces.astro` editorial strikethrough + one CTA); `AgentMemoryBand`, `Waitlist`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt` are removed from `/`; `/agents` mirrors the rhythm, `/manifesto` is a single editorial column, `/pricing` uses one button primitive, `/vs/*` and `/solve/*` collapse to a tight what-we-replace template; motion budget is one moment per page gated on `prefers-reduced-motion: no-preference`.
+One quiet-brutalism token system in `global.css` (neutrals + one accent gated to three lime moments per fold, three faces, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero) → HOW (`Demo.astro` live `/v1/ask` + snippet) → WHY (`Replaces.astro` + one CTA). Off-`/` blocks (`AgentMemoryBand`, `Waitlist`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt`) removed; `/vs/*` and `/solve/*` collapse to one what-we-replace template; motion is one moment per page, gated on `prefers-reduced-motion`.
 
 ## GLOBALs governing this feature
 

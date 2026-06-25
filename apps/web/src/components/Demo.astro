@@ -32,9 +32,7 @@ const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
 // Title-case the column headers (mirrors the chat surface's
 // prettifyHeader() so the marketing demo doesn't show raw snake_case).
 function prettify(key: string): string {
-  return key
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (m) => m.toUpperCase());
+  return key.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 // Format a sample value as the chat would.
@@ -50,8 +48,7 @@ function fmt(v: string | number | null): string {
 // One-sentence answer the chat would compose. Hand-written for the
 // showpiece — the chat surface synthesises this from the result; we
 // hardcode the equivalent here so the demo block is JS-free.
-const answerSentence =
-  "Flat white leads the morning — six drinks, ranked by revenue.";
+const answerSentence = "Flat white leads the morning — six drinks, ranked by revenue.";
 
 // The exact snippet text. The `<nlq-data>` tag is wrapped in a
 // `.demo__tag` span at render time so the accent highlights only

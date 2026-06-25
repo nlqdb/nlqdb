@@ -1,7 +1,7 @@
 ---
-import Base from "../layouts/Base.astro";
-import Topnav from "../components/Topnav.astro";
 import Footer from "../components/Footer.astro";
+import Topnav from "../components/Topnav.astro";
+import Base from "../layouts/Base.astro";
 
 // /integrations — quiet support page. New home for AlsoWorksFor's
 // "also works for solo builders, analysts, backend engineers" framing
@@ -27,13 +27,38 @@ const DOCS = "https://docs.nlqdb.com";
 
 const FRAMEWORKS: readonly Surface[] = [
   { id: "@nlqdb/react", name: "React", note: "React 19 wrapper", href: `${DOCS}/tutorials/react/` },
-  { id: "@nlqdb/next", name: "Next.js", note: "Next 15 helpers + RSC server factory", href: `${DOCS}/tutorials/next/` },
+  {
+    id: "@nlqdb/next",
+    name: "Next.js",
+    note: "Next 15 helpers + RSC server factory",
+    href: `${DOCS}/tutorials/next/`,
+  },
   { id: "@nlqdb/vue", name: "Vue", note: "Vue 3.5 component", href: `${DOCS}/tutorials/vue/` },
   { id: "@nlqdb/nuxt", name: "Nuxt", note: "Nuxt 4 module", href: `${DOCS}/tutorials/nuxt/` },
-  { id: "@nlqdb/svelte", name: "Svelte", note: "Svelte 5 component", href: `${DOCS}/tutorials/svelte/` },
-  { id: "@nlqdb/sveltekit", name: "SvelteKit", note: "load() + <NlqHead>", href: `${DOCS}/tutorials/sveltekit/` },
-  { id: "@nlqdb/astro", name: "Astro", note: "Astro 6 integration", href: `${DOCS}/tutorials/astro/` },
-  { id: "@nlqdb/solid", name: "SolidJS", note: "Solid component", href: `${DOCS}/tutorials/solid/` },
+  {
+    id: "@nlqdb/svelte",
+    name: "Svelte",
+    note: "Svelte 5 component",
+    href: `${DOCS}/tutorials/svelte/`,
+  },
+  {
+    id: "@nlqdb/sveltekit",
+    name: "SvelteKit",
+    note: "load() + <NlqHead>",
+    href: `${DOCS}/tutorials/sveltekit/`,
+  },
+  {
+    id: "@nlqdb/astro",
+    name: "Astro",
+    note: "Astro 6 integration",
+    href: `${DOCS}/tutorials/astro/`,
+  },
+  {
+    id: "@nlqdb/solid",
+    name: "SolidJS",
+    note: "Solid component",
+    href: `${DOCS}/tutorials/solid/`,
+  },
 ];
 
 const MCP_HOSTS: readonly Surface[] = [
@@ -44,15 +69,40 @@ const MCP_HOSTS: readonly Surface[] = [
 ];
 
 const UNIVERSAL: readonly Surface[] = [
-  { id: "<nlq-data>", name: "HTML element", note: "drop a tag, ship the page", href: `${DOCS}/tutorials/html/` },
-  { id: "@nlqdb/sdk", name: "TypeScript SDK", note: "fetch-based, zero deps, runs anywhere", href: `${DOCS}/sdk/` },
+  {
+    id: "<nlq-data>",
+    name: "HTML element",
+    note: "drop a tag, ship the page",
+    href: `${DOCS}/tutorials/html/`,
+  },
+  {
+    id: "@nlqdb/sdk",
+    name: "TypeScript SDK",
+    note: "fetch-based, zero deps, runs anywhere",
+    href: `${DOCS}/sdk/`,
+  },
   { id: "nlq", name: "CLI", note: "one binary, two verbs", href: `${DOCS}/cli/` },
-  { id: "mcp.nlqdb.com", name: "MCP server", note: "hosted Model Context Protocol endpoint", href: `${DOCS}/mcp/` },
-  { id: "POST /v1/ask", name: "HTTP API", note: "raw HTTP, no SDK required", href: `${DOCS}/reference/http-api/` },
+  {
+    id: "mcp.nlqdb.com",
+    name: "MCP server",
+    note: "hosted Model Context Protocol endpoint",
+    href: `${DOCS}/mcp/`,
+  },
+  {
+    id: "POST /v1/ask",
+    name: "HTTP API",
+    note: "raw HTTP, no SDK required",
+    href: `${DOCS}/reference/http-api/`,
+  },
 ];
 
 const OTHER_LANGS: readonly Surface[] = [
-  { id: "nlqdb-swift", name: "Swift", note: "Swift 6 package — iOS / macOS / Linux", href: `${DOCS}/sdk/swift/` },
+  {
+    id: "nlqdb-swift",
+    name: "Swift",
+    note: "Swift 6 package — iOS / macOS / Linux",
+    href: `${DOCS}/sdk/swift/`,
+  },
   { id: "nlqdb-rb", name: "Ruby", note: "Ruby gem", href: `${DOCS}/sdk/ruby/` },
   { id: "nlqdb-rs", name: "Rust", note: "Rust crate", href: `${DOCS}/sdk/rust/` },
 ];
