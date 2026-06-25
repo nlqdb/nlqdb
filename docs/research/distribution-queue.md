@@ -11,50 +11,58 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-25 (run 94) — dev.to / lobste.rs: "We made share cards for half our buyer's journey and forgot the other half"
+## 2026-06-25 (run 95) — dev.to / lobste.rs / r/MachineLearning: "Your eval harness will report 0% when the problem is your Wi-Fi"
 
-**Where:** dev.to + lobste.rs (`webdev` / `seo` / `showdev`); a build-in-public
-SEO-discipline lesson in the run-77/86 family ("audit the rendered artifact, not the
-template"). nlqdb is the worked example, mentioned once. The hook: templated pages
-get instrumented *together*, so a gap hides not in the page you forgot but in the
-**parallel cluster** you never paired it with.
+**Where:** dev.to + lobste.rs + r/MachineLearning (`machinelearning` / `llmops` /
+`testing`); a build-in-public anti-self-deception lesson in the run-77/86 family
+("audit the artifact, not the template" → here: "audit the *measurement*, not just
+the model"). nlqdb is the worked example, mentioned once. The hook: a number from a
+broken pipe looks exactly like a number from a broken model — and only one of them
+should ever touch your baseline.
 
-**Title:** We made share cards for half our buyer's journey and forgot the other half
+**Title:** Your eval harness will report 0% when the problem is your Wi-Fi
 
 **Body:**
 
-> We ship two clusters of pages for one buyer: comparison pages ("nlqdb vs X") and
-> solve pages ("how do I do Y"). Same audience, same wedge, two halves of one decision.
-> A while back we built bespoke Open Graph / social cards for the comparison cluster:
-> on-brand type-only images so a link pasted into Slack or a tweet shows the actual
-> claim, not a gray box. We were proud of them.
+> We run an NL→SQL eval: ask a model to write SQL for a question, execute it, compare
+> the rows to a gold answer, report execution accuracy. The whole point is to catch the
+> day a prompt or model change makes the engine *worse*. So a regression has teeth — a
+> bad number can re-seed the baseline and fire an alert.
 >
-> Then we pasted a *solve*-page link into a channel and got the generic site-wide card.
-> Every solve page — the half of the journey closer to "I'll try it" — was falling
-> back to the default. Not because we forgot a page: we'd instrumented "the comparison
-> template" as a unit and never asked whether its twin deserved the same treatment. The
-> two clusters were authored months apart, each internally consistent, so nothing
-> looked broken in either one. The gap only existed *between* them.
+> Running it from a new sandbox, it printed `EA=0.00% (match=0/1)`. A total collapse —
+> except the model was fine. Every single attempt had failed with `network` errors: the
+> sandbox couldn't reach any provider. The harness had dutifully scored each unanswered
+> question as "no SQL produced," averaged them, and reported a clean, catastrophic,
+> completely meaningless **0%**. One config flip and that 0% would have overwritten a
+> real baseline and paged someone about an engine regression that never happened.
 >
-> The fix was small once we saw it — the generator was already data-driven, so it was a
-> second list of slugs and one line wiring the per-page image into the solve template
-> (we copied the branch the comparison template already had). Ten cards, each
-> a two-line version of the page's question plus the SQL that answers it (`SELECT
-> version, AVG(score) FROM evals GROUP BY version`).
+> The bug isn't the network. It's that **"I couldn't measure" and "I measured zero" were
+> the same outcome.** A timeout, a revoked API key, a DNS failure — none of those are
+> signal about the thing under test, but they all collapse into the same 0 as a genuine
+> failure if you let them.
 >
-> The transferable bit isn't "add OG cards." It's that **coverage audits keyed on
-> templates miss gaps that live between parallel clusters.** When two page types serve
-> one journey, diff the instrumentation — structured data, share cards, analytics
-> events — cluster against cluster, not page against template. The page you forgot is
-> findable; the *cluster* you never paired is the one that stays dark.
-> ([nlqdb](https://nlqdb.com/solve/); the comparison twins are at /vs.)
+> The fix is to make non-measurement a distinct, loud state. We already classify *why*
+> each attempt failed (network / timeout / rate-limit / the model returned non-SQL).
+> So: if **every** scored row failed for an infrastructure reason — and not one question
+> got a real answer — the run is an *outage*, not a result. It refuses to compare to the
+> baseline, refuses to emit, throws away its partial state, and exits non-zero so it
+> re-runs clean. The guard is deliberately one-sided: the moment *any* question gets an
+> answer, or any failure is "the model wrote garbage" (real signal), it scores the run
+> normally. It can suppress an outage; it can never hide a regression.
+>
+> The transferable rule: **every metric needs a third value besides good and bad —
+> "didn't run."** If your dashboard can't tell a 0 from a 0/0, some day it will treat a
+> dead pipe as a dead model, and you'll debug the wrong one.
+> ([nlqdb](https://nlqdb.com); the guard is `isTransportCollapse` in our eval runner.)
 
-**Why this advances the north-star:** onboarding / distribution (GLOBAL-025) — the
-lesson post for this run's lever (P2 solve-page OG cards 0 → 10, parity with the
-`/vs` WS-08 cards). One nlqdb mention. No engine/funnel/ops KPI degrades.
+**Why this advances the north-star:** engine quality (GLOBAL-025) — the lesson post for
+this run's lever (the SK-QUAL-020 transport-collapse guard that protects the
+BIRD/Spider/persona-bench baseline from a false 0.00). One nlqdb mention. No
+engine/funnel/ops KPI degrades.
 
 ## Collapsed — full drafts in git history
 
+- run 94 — dev.to / lobste.rs: "We made share cards for half our buyer's journey and forgot the other half" (two page clusters serve one buyer — comparison `/vs` + solve pages; bespoke OG cards shipped for `/vs` months earlier, solve pages silently fell back to the generic card; each cluster internally consistent so nothing looked broken — the gap lived *between* them; coverage audits keyed on a template miss gaps between parallel clusters — diff instrumentation cluster-against-cluster; P2 solve-page OG cards 0 → 10).
 - run 93 — dev.to / r/LLMDevs / r/AI_Agents: "Your agents each have their own memory. That's why they keep redoing each other's work." (a crew breaks memory a new way — one agent's facts are invisible to another; "shared vector store" fixes recall only, but "what did each agent decide / tasks each closed / latest fact" is `GROUP BY`/`COUNT`/most-recent; one shared store where each row carries `agent_id` lets any agent read another's and roll the crew up per agent; honest limits — no per-agent access control, no vector recall; anchors `/solve/share-memory-across-multiple-ai-agents`).
 - run 92 — dev.to / r/LLMDevs / r/AI_Agents: "Your 'read-only' AI agent is one SQL comment away from a write." (a read-only role + connection string leaks via a write in a SQL comment, a `DROP` in a CTE, a `JOIN` onto `oauth_tokens`, a pool-draining query; root cause is the agent holding credentials *and* authoring SQL — take authorship away: server-built parameterised writes + fail-closed read validator + engine RLS, not a regex; anchors `/solve/safely-give-ai-agent-database-access`).
 - run 91 — dev.to / r/LLMDevs / r/LangChain: "Your eval results live in a spreadsheet. The question 'which version regressed' lives in SQL." (an eval run is scored cases, but "pass rate per version, which regressed, trend per model" are aggregations across every run — a pivot rots, asking the LLM to tally hallucinates; scoring and tracking are different machines — log each case as a typed row; anchors `/solve/track-llm-eval-scores-across-prompt-versions`).
@@ -76,9 +84,7 @@ recovers any body.
 - run 80 — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases" (a vector store answers *what is most similar* — top-k, no query planner; the moment the question is an aggregate ("how many conversations this week?") you either make the LLM count rows (hallucination) or bolt on a real DB; retrieval and analytics are different jobs — store turns as typed rows and the engagement questions become trustworthy `GROUP BY`s; anchors `/solve/store-query-chatbot-conversation-history`).
 - run 79 — dev.to / r/LLMDevs / lobste.rs: "Your agent's memory can recall anything and count nothing" (vector stores, Mem0/Zep/Letta/LangMem, and knowledge graphs like Cognee all converge on *recall* — top-k relevant — but counting/aggregation (GROUP BY/COUNT/JOIN/HAVING over the rows the agent stored) is a different job that needs a query planner; recall and analytics want two stores that compose, not one doing both; anchors `/vs/cognee`).
 - run 78 — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search" (FAQPage earns the rich result but says nothing about where a page sits; `BreadcrumbList` declares a page's position in a hierarchy — match the visible trail from one source of truth so they can't drift, and point `item` URLs at the canonical 200 not the bare-path redirect; `/vs` + `/solve` pages 0 → 24 BreadcrumbList).
-- run 77 — dev.to / lobste.rs: "We put FAQ schema on every comparison page — and forgot the page they all point to" (the page you care about most is easiest to leave un-instrumented because it's bespoke; the templated `/vs` + `/solve` pages all emitted `FAQPage`, the hand-authored `/agents` hero didn't — lift the visible Q&As into one typed `faqs` array → `<dl>` + JSON-LD; audit coverage by importance, not template).
-- run 76 — dev.to / lobste.rs: "I found the same few-shot bug twice in a week: your examples are speaking SQL to a user speaking English" (two independent few-shot retrieval misses a week apart, same root cause — the exemplar's *question* echoed SQL keywords/phrasing users don't say; `COUNT(DISTINCT)`→"different" and scalar-subquery→"which … list the names" both landed and held out; read your examples aloud before blaming the ranker).
-- run 75 — Show HN / dev.to / r/mcp: "Every 'database MCP server' assumes you already have a database" (every DB-MCP connector opens with "paste your connection string"; an agent needing a *scratch* store to write+query has nowhere to put one — provision-from-English makes create and query the same call, no separate create verb; anchors `/solve/database-claude-cursor-can-query`).
+*(runs 75–77 moved to git history under D4 — `git log -p` recovers the bodies.)*
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).

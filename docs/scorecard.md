@@ -81,24 +81,29 @@ Published artifacts from [`distribution-queue.md`](research/distribution-queue.m
 
 ## Last change
 
-**2026-06-25 (run 94)** — **P2 agent-builder solve-page OG cards 0 → 10**: the
-10 `persona: "P2 agent builder"` `/solve/*` pages fell back to the generic
-`/og-default.png` while the parallel `/vs` agent-memory cluster all carry bespoke
-WS-08 share cards — an asymmetry on the *same* wedge. Extended the existing
-`apps/web/scripts/og/gen-og.mjs` generator (deterministic, stays out of `astro
-build` per GLOBAL-013/SK-PIVOT-012) with a data-driven `solveCards` loop and wired
-`ogImage` in `pages/solve/[slug].astro` for the P2 cluster (mirrors `vs/[slug].astro`);
-committed 10 `public/og/solve-*.png` (1200×630, type-only brand). Each card: punchy
-2-line take on the page's search query + the `GROUP BY` SQL that answers it. Chose
-this over a 5th consecutive new solve page (runs 90–93) — it improves **existing**
-surfaces (social/Slack/Discord share CTR into the AEO on-ramps), no doorway-page
-sprawl. Worst-number lane = funnel/distribution; **real strangers = 0** (waitlist
-1/81 = founder; registered 0/7) stays distribution-gated, so this advances the
-share-CTR proxy, not the genuine worst-number. **KPI:** onboarding/distribution
-(GLOBAL-025); none degraded — additive, data-only, runtime untouched. Revert = one
-commit. **Engine measurement:** Spider re-dispatch re-confirmed blocked this session
-(MCP `workflow_dispatch` → 403, "org admin must connect the Claude GitHub App"),
-carries to cron `/daily`; BIRD 06-19 <7d (crosses 06-26); solve pages stay 14.
+**2026-06-25 (run 95)** — **measurement-integrity fix: eval transport-collapse
+guard (SK-QUAL-020)**. Engine + funnel measurement was **triple-blocked this
+session** — every dispatch/measurement tool fails to traverse the egress proxy:
+MCP **and** direct-`curl` `workflow_dispatch` → 403 ("org admin must connect the
+Claude GitHub App"); **bun `fetch`** to LLM providers → socket-closed (MITM CA not
+applied to the tunnel); **chromium** (stranger-test) → `ERR_CONNECTION_CLOSED`
+even to example.com. Only `curl` + node-22 `fetch` (`NODE_USE_ENV_PROXY=1`) egress;
+the eval runner is bun/`bun:sqlite`-coupled, so local BIRD/Spider/persona-bench
+can't run here either. The finding *became* the lever: a local persona-bench smoke
+reported **`EA=0.00% (match=0/1)`** with `no_sql reasons: *:network` — an outage the
+runner would have compared to the baseline / emitted as a regression. Added
+`isTransportCollapse` (sibling to the SK-QUAL-013 capacity stop): when every ran
+lane is all-`no_sql` with only `network`/`timeout`/`not_configured`/`auth_denied`
+reasons, set `transport_failed`, **drop** the poisoned checkpoint, skip
+baseline-diff + emit, exit non-zero. Conservative — any answered question or
+`parse`/`http_*` reason scores normally, so a real regression is never suppressed.
+9 unit + e2e tests; 274/274 eval tests green, typecheck + biome clean. D4: trimmed
+SK-QUAL-014/016/017/018/019 glosses so quality-eval `FEATURE.md` **net-shrank**
+(21729 → 21710 B) despite the new SK-QUAL-020 block. **KPI:** engine-quality
+measurement integrity (GLOBAL-025) — protects the BIRD/Spider/persona-bench
+baseline from a false 0.00; none degraded (runtime untouched, eval-only). Revert =
+one commit. **Engine numbers:** unchanged — Spider re-dispatch carries to cron
+`/daily` (blocked here); BIRD 06-19 <7d (crosses 06-26); persona-bench 06-22.
 
 *Full per-run history: `git log`, `progress/quality-score-verification-log.md`,
 and the WS-*/E-* worksheets — not this file.*
