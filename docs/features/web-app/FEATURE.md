@@ -150,6 +150,11 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 **Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md).
 One quiet-brutalism token system in `global.css` (neutrals + one accent gated to three lime moments per fold, three faces, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero) → HOW (`Demo.astro` live `/v1/ask` + snippet) → WHY (`Replaces.astro` + one CTA). Off-`/` blocks (`AgentMemoryBand`, `Waitlist`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt`) removed; `/vs/*` and `/solve/*` collapse to one what-we-replace template; motion is one moment per page, gated on `prefers-reduced-motion`.
 
+### SK-WEB-016 — One-click MCP install affordance: shared `<McpInstall>` at three venues, deep-link where supported
+
+**Body:** [`decisions/SK-WEB-016-mcp-install-affordance.md`](./decisions/SK-WEB-016-mcp-install-affordance.md).
+A single `<McpInstall apiKey mcpUrl compact />` Astro component renders four host buttons (Claude · Cursor · Windsurf · Zed) and ships at three venues — `/agents` connect card, post-create `CreateResultView`, `/integrations` MCP-hosts section. Cursor uses its deep-link install scheme; Claude / Windsurf / Zed fall back to per-host paste-ready JSON (each with the correct wrapper key — `mcpServers` for Claude/Windsurf, `context_servers` for Zed — and field name — `url` for Claude/Zed, `serverUrl` + `/mcp` for Windsurf). One promoted lime button per row (`SK-WEB-015` ladder); placeholder `pk_live_REPLACE_ME` + sign-in nudge on anon surfaces (`SK-ANON-012` / `SK-WEB-010`).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.

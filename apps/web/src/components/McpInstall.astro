@@ -1,0 +1,401 @@
+---
+// SK-WEB-016 — One-click MCP install affordance.
+//
+// One component, three venues: `/agents` final connect card, the
+// post-create CreateResultView, and `/integrations` MCP-hosts section.
+// Four hosts: Claude, Cursor, Windsurf, Zed. Where the host ships a
+// documented deep-link install scheme, the button is an `<a>` whose
+// `href` is the resolved URI (the OS hands the click to the host's
+// URI handler); where no scheme exists, the button copies the host's
+// JSON config block and points the user at the one place to paste it.
+//
+// Research outputs (canonical, fetched Phase 1 — DO NOT mutate without
+// re-running the research):
+//   - Claude Desktop: fallback-only (Custom Connectors via Settings).
+//   - Cursor:         deep-link `cursor://anysphere.cursor-deeplink/mcp/install`.
+//   - Windsurf:       fallback-only (no payload-accepting scheme).
+//   - Zed:            fallback-only (no scheme shipped as of Jun 2026).
+//
+// Per `SK-WEB-010` / `SK-ANON-012`: any anon-side caller passes the
+// `pk_live_REPLACE_ME` placeholder (the marketing surface burned its
+// 1-call cap on create). When a real key arrives post-sign-in, the
+// `apiKey` prop carries it and the "sign in to inline" hint is hidden.
+// Lime is reserved to one promoted button per row (the `<Cta>` ladder
+// in `SK-WEB-015`); we promote "Add to Claude" by default since Claude
+// is the first-party hosted MCP target.
+
+interface Props {
+  /** The per-DB `pk_live_…` key, or `"pk_live_REPLACE_ME"` for anon. */
+  apiKey?: string;
+  /** Hosted MCP endpoint. Override only for staging/preview environments. */
+  mcpUrl?: string;
+  /**
+   * `true` packs the buttons into one row with terse labels (post-create);
+   * `false` stacks them with descriptive secondary labels (/integrations).
+   */
+  compact?: boolean;
+}
+
+const {
+  apiKey = "pk_live_REPLACE_ME",
+  mcpUrl = "https://mcp.nlqdb.com",
+  compact = false,
+} = Astro.props;
+
+const PLACEHOLDER_KEY = "pk_live_REPLACE_ME";
+const isPlaceholder = apiKey === PLACEHOLDER_KEY;
+
+// Build the Cursor deep-link. The `config` query parameter is
+// `base64(JSON.stringify(innerEntry))` — the INNER value of an
+// `mcpServers` entry, NOT the wrapped `{mcpServers:{…}}` object
+// (per cursor.com/docs/context/mcp/install-links). For a remote URL
+// server the inner shape is `{url: "https://…"}`. URL-encode the
+// base64 because `=` padding is reserved in query components.
+const cursorInner = JSON.stringify({ url: mcpUrl });
+// SSR runs on the build worker; `Buffer` is available in Node + Bun build.
+const cursorB64 = Buffer.from(cursorInner, "utf8").toString("base64");
+const cursorHref = `cursor://anysphere.cursor-deeplink/mcp/install?name=nlqdb&config=${encodeURIComponent(cursorB64)}`;
+
+// JSON config blocks for the three fallback hosts. Each block is the
+// FULL paste-ready document the host expects in its config file. The
+// shapes are host-specific:
+//   - Claude:   `mcpServers` wrapper, `url` field (modern Custom Connector).
+//   - Windsurf: `mcpServers` wrapper, `serverUrl` field, `/mcp` path suffix.
+//   - Zed:      `context_servers` wrapper (NOT `mcpServers`), `url` field.
+const claudeConfig = JSON.stringify({ mcpServers: { nlqdb: { url: mcpUrl } } }, null, 2);
+const windsurfConfig = JSON.stringify(
+  { mcpServers: { nlqdb: { serverUrl: `${mcpUrl}/mcp` } } },
+  null,
+  2,
+);
+const zedConfig = JSON.stringify({ context_servers: { nlqdb: { url: mcpUrl } } }, null, 2);
+
+interface HostEntry {
+  id: "claude" | "cursor" | "windsurf" | "zed";
+  name: string;
+  status: "deep-link" | "fallback-only";
+  /** Resolved deep-link URI (only when `status === "deep-link"`). */
+  href?: string;
+  /** Full paste-ready JSON config (only when `status === "fallback-only"`). */
+  config?: string;
+  /** One sentence pointing the user at where to paste the config. */
+  pasteHint?: string;
+  /** Documented minimum host version, when known. */
+  versionHint?: string;
+}
+
+const HOSTS: readonly HostEntry[] = [
+  {
+    id: "claude",
+    name: "Claude",
+    status: "fallback-only",
+    config: claudeConfig,
+    pasteHint: "Settings → Connectors → Add custom connector — paste the URL.",
+    versionHint: "Claude Desktop (Custom Connectors, 2025+)",
+  },
+  {
+    id: "cursor",
+    name: "Cursor",
+    status: "deep-link",
+    href: cursorHref,
+    versionHint: "Cursor (current stable, 2026+)",
+  },
+  {
+    id: "windsurf",
+    name: "Windsurf",
+    status: "fallback-only",
+    config: windsurfConfig,
+    pasteHint: "Cascade → MCPs → Configure, or ~/.codeium/windsurf/mcp_config.json.",
+    versionHint: "Windsurf (team MCP access enabled)",
+  },
+  {
+    id: "zed",
+    name: "Zed",
+    status: "fallback-only",
+    config: zedConfig,
+    pasteHint: "Agent Panel → Add Custom Server, or ~/.config/zed/settings.json.",
+    versionHint: "Zed (any current build — no deep-link yet)",
+  },
+];
+
+// One promoted CTA per row — Claude wins by default (the first-party
+// hosted MCP target). Every other host renders as `.cta--ghost`.
+const PROMOTED_HOST: HostEntry["id"] = "claude";
+
+const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinstall__row";
+---
+
+<section class="mcpinstall" aria-labelledby="mcpinstall-eyebrow">
+  <p class="mcpinstall__eyebrow" id="mcpinstall-eyebrow">Install in your agent.</p>
+
+  <ul class={rowClass} role="list">
+    {HOSTS.map((host) => {
+      const promoted = host.id === PROMOTED_HOST;
+      const ctaClass = promoted ? "cta mcpinstall__btn" : "cta cta--ghost mcpinstall__btn";
+      if (host.status === "deep-link" && host.href) {
+        return (
+          <li class="mcpinstall__cell">
+            <a
+              class={ctaClass}
+              href={host.href}
+              data-mcp-host={host.id}
+              data-mcp-mode="deeplink"
+              target="_self"
+              title={host.versionHint}
+            >
+              Add to {host.name}
+            </a>
+            {!compact && (
+              <p class="mcpinstall__sub">
+                Opens {host.name} and asks you to confirm before writing the config.
+              </p>
+            )}
+          </li>
+        );
+      }
+      // fallback-only — copy-to-clipboard button.
+      return (
+        <li class="mcpinstall__cell">
+          <button
+            type="button"
+            class={ctaClass}
+            data-mcp-host={host.id}
+            data-mcp-mode="copy"
+            data-mcp-config={host.config}
+            title={host.versionHint}
+          >
+            <span data-mcp-label>Copy {host.name} config</span>
+          </button>
+          {!compact && host.pasteHint && (
+            <p class="mcpinstall__sub">{host.pasteHint}</p>
+          )}
+        </li>
+      );
+    })}
+  </ul>
+
+  {/* Compact mode lists the paste hints once below the row to avoid
+      duplicating the row's vertical rhythm. */}
+  {compact && (
+    <ul class="mcpinstall__hints" aria-label="Where to paste the config">
+      {HOSTS.filter((h) => h.status === "fallback-only" && h.pasteHint).map((host) => (
+        <li class="mcpinstall__hint">
+          <span class="mcpinstall__hint-host">{host.name}:</span> {host.pasteHint}
+        </li>
+      ))}
+    </ul>
+  )}
+
+  {isPlaceholder && (
+    <p class="mcpinstall__placeholder">
+      Anonymous — the configs ship with the
+      <code>pk_live_REPLACE_ME</code> placeholder.
+      <a href="/auth/sign-in?return_to=/app" class="mcpinstall__signin">
+        Sign in (free) to inline your live key →
+      </a>
+    </p>
+  )}
+</section>
+
+<script>
+  // One inline handler for every copy button on the page. The button
+  // carries `data-mcp-config` (the paste-ready JSON) and
+  // `data-mcp-host` (the demand-signal label). Clipboard failure is
+  // swallowed silently — the user can still triple-click the configs
+  // we point at in the docs. We gate the success animation on the
+  // reduced-motion preference (one motion moment per page,
+  // SK-WEB-015).
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const COPY_RESET_MS = 1600;
+
+  document.querySelectorAll<HTMLButtonElement>('[data-mcp-mode="copy"]').forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const config = btn.dataset["mcpConfig"] ?? "";
+      const host = btn.dataset["mcpHost"] ?? "unknown";
+      const label = btn.querySelector<HTMLSpanElement>("[data-mcp-label]");
+      const original = label?.textContent ?? "";
+      try {
+        await navigator.clipboard.writeText(config);
+        if (label) label.textContent = "Copied ✓";
+        if (!reducedMotion) btn.classList.add("is-copied");
+        window.setTimeout(() => {
+          if (label) label.textContent = original;
+          btn.classList.remove("is-copied");
+        }, COPY_RESET_MS);
+      } catch {
+        // Non-secure context / locked-down extension — leave the
+        // config visible (host JSON shows up on /integrations too).
+      }
+      // Demand signal — same `home.snippet_copied` envelope the other
+      // copy buttons use, with a `surface` that scopes to this affordance.
+      // The emit module is dynamically imported because this script
+      // is inline-included; bundling pulls the singleton.
+      try {
+        const { emit } = await import("../lib/logsnag");
+        emit("home.snippet_copied", { surface: `mcp_install_${host}` });
+      } catch {
+        /* logsnag stub absent — no-op */
+      }
+    });
+  });
+
+  // Demand signal for the deep-link buttons too — the click means the
+  // user picked an install path, so we want it counted alongside the
+  // copy outcomes.
+  document.querySelectorAll<HTMLAnchorElement>('[data-mcp-mode="deeplink"]').forEach((a) => {
+    a.addEventListener("click", async () => {
+      const host = a.dataset["mcpHost"] ?? "unknown";
+      try {
+        const { emit } = await import("../lib/logsnag");
+        emit("home.snippet_copied", { surface: `mcp_install_${host}` });
+      } catch {
+        /* logsnag stub absent — no-op */
+      }
+    });
+  });
+</script>
+
+<style>
+  /* Quiet-brutalism token system (SK-WEB-015) — no new tokens,
+   * only `--ground` / `--raised` / `--rule` / `--muted` / `--body`
+   * / `--ink` / `--accent` and the type steps. The component sits
+   * on whatever ground its parent renders against and reuses the
+   * `.cta` / `.cta--ghost` primitives for its buttons. */
+  .mcpinstall {
+    margin: clamp(20px, 3vw, 28px) 0 0;
+  }
+
+  .mcpinstall__eyebrow {
+    margin: 0 0 clamp(10px, 1.6vw, 14px);
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+  }
+
+  .mcpinstall__row {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: clamp(14px, 2vw, 20px);
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 720px) {
+    .mcpinstall__row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .mcpinstall__row {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  /* Compact mode — one row at every breakpoint that fits four
+   * buttons. The post-create surface drops the descriptive subline,
+   * so the buttons can shrink to a tight bar. */
+  .mcpinstall__row--compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .mcpinstall__row--compact .mcpinstall__cell {
+    flex: 1 1 auto;
+    min-width: 140px;
+  }
+
+  .mcpinstall__cell {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .mcpinstall__btn {
+    width: 100%;
+    /* Keep the buttons compact so the four-up layout fits the
+     * /integrations grid without hard wraps. The base `.cta` height
+     * (~46px) is too tall for a quad row; shave the inner padding. */
+    padding: 11px 16px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .mcpinstall__sub {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.45;
+  }
+
+  .mcpinstall__hints {
+    list-style: none;
+    margin: 14px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 4px;
+  }
+
+  .mcpinstall__hint {
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.45;
+  }
+
+  .mcpinstall__hint-host {
+    color: var(--body);
+    font-weight: 600;
+  }
+
+  .mcpinstall__placeholder {
+    margin: clamp(14px, 2vw, 18px) 0 0;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .mcpinstall__placeholder code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--body);
+  }
+
+  .mcpinstall__signin {
+    margin-left: 6px;
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 3px;
+  }
+
+  .mcpinstall__signin:hover {
+    text-decoration-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Transient "Copied ✓" state on the ghost buttons. Lime tint
+   * borrows the promoted-CTA shadow so the success feedback reads
+   * as the same vocabulary. One motion moment, gated. */
+  .mcpinstall__btn.is-copied {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .mcpinstall__btn {
+      transition:
+        transform 80ms ease-out,
+        box-shadow 80ms ease-out,
+        border-color 120ms ease-out,
+        color 120ms ease-out;
+    }
+  }
+</style>
