@@ -833,8 +833,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "share-memory-across-multiple-ai-agents",
     persona: "P2 agent builder",
-    searchTitle:
-      "How do I give multiple AI agents shared, persistent memory?",
+    searchTitle: "How do I give multiple AI agents shared, persistent memory?",
     oneLiner:
       "If you want a crew of agents to share one memory instead of each keeping its own, nlqdb gives them a single Postgres they all write to with `nlqdb_remember` and recall in English — every row tagged with the agent that wrote it, so you can roll the team's memory up per agent.",
     painContext:
@@ -879,8 +878,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         url: "https://www.reddit.com/r/LLMDevs/search/?q=shared%20memory%20agents",
-        label:
-          "r/LLMDevs — recurring threads on shared/persistent memory across multiple agents.",
+        label: "r/LLMDevs — recurring threads on shared/persistent memory across multiple agents.",
       },
       {
         url: "https://www.reddit.com/r/AI_Agents/search/?q=shared%20memory",
