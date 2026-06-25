@@ -31,6 +31,25 @@ export interface McpHostEntry {
 export const PLACEHOLDER_KEY = "pk_live_REPLACE_ME";
 
 /**
+ * The hosted MCP endpoint every install config points at. The server
+ * serves the MCP protocol at `/mcp`, NOT at root (see
+ * `apps/mcp/src/index.ts` — `apiRoute: "/mcp"` /
+ * `NlqdbMcpAgent.serve("/mcp")`). A config pointing at the bare domain
+ * 404s on the first POST and then fails the SSE fallback. This is the
+ * one place the URL is defined; every venue imports it. The path is
+ * pinned by `mcp-install.test.ts` against the server's route so the two
+ * can't drift again.
+ */
+export const MCP_ENDPOINT_URL = "https://mcp.nlqdb.com/mcp";
+
+/**
+ * The route the hosted MCP server serves the protocol on
+ * (`apps/mcp/src/index.ts`). Pinned here so the contract test can assert
+ * the shipped URL's path matches it without a cross-workspace import.
+ */
+export const MCP_SERVER_ROUTE = "/mcp";
+
+/**
  * One promoted CTA per row — Claude wins by default (the first-party
  * hosted MCP target). Every other host renders as a ghost.
  */

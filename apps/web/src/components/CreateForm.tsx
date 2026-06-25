@@ -28,6 +28,7 @@ import { messageFor } from "../lib/create-errors";
 import { emit } from "../lib/logsnag";
 import {
   type McpHostEntry,
+  MCP_ENDPOINT_URL,
   PLACEHOLDER_KEY,
   PROMOTED_HOST,
   buildMcpHosts,
@@ -42,8 +43,6 @@ import {
 import { prettifyHeader } from "../lib/text";
 import { solveChallenge } from "../lib/turnstile";
 import ErrorBoundary from "./ErrorBoundary";
-
-const MCP_URL = "https://mcp.nlqdb.com/mcp";
 
 interface CreateFormProps {
   apiBase: string;
@@ -248,7 +247,7 @@ function CreateResultView({ result }: { result: CreateResult }) {
 // point is always the SK-ANON-012 placeholder (the anon 1-call cap was
 // burned by the create call itself), so the sign-in nudge always shows.
 function McpInstallView() {
-  const hosts = buildMcpHosts(MCP_URL);
+  const hosts = buildMcpHosts(MCP_ENDPOINT_URL);
   return (
     <section
       className="createresult__mcp"

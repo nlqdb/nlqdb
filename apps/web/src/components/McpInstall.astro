@@ -23,6 +23,20 @@
 // Lime is reserved to one promoted button per row (the `<Cta>` ladder
 // in `SK-WEB-015`); we promote "Add to Claude" by default since Claude
 // is the first-party hosted MCP target.
+//
+// The host descriptors (deep-link URIs, fallback config blocks,
+// promoted host, endpoint URL) live in `lib/mcp-install.ts` — the one
+// source of truth shared with the React post-create venue. This
+// component only renders them; it does NOT rebuild them, so the two
+// venues can never drift (the original `/mcp`-vs-root bug was exactly
+// such a drift).
+
+import {
+  buildMcpHosts,
+  MCP_ENDPOINT_URL,
+  PLACEHOLDER_KEY,
+  PROMOTED_HOST,
+} from "../lib/mcp-install.ts";
 
 interface Props {
   /** The per-DB `pk_live_…` key, or `"pk_live_REPLACE_ME"` for anon. */
@@ -37,90 +51,13 @@ interface Props {
 }
 
 const {
-  apiKey = "pk_live_REPLACE_ME",
-  mcpUrl = "https://mcp.nlqdb.com/mcp",
+  apiKey = PLACEHOLDER_KEY,
+  mcpUrl = MCP_ENDPOINT_URL,
   compact = false,
 } = Astro.props;
 
-const PLACEHOLDER_KEY = "pk_live_REPLACE_ME";
 const isPlaceholder = apiKey === PLACEHOLDER_KEY;
-
-// Build the Cursor deep-link. The `config` query parameter is
-// `base64(JSON.stringify(innerEntry))` — the INNER value of an
-// `mcpServers` entry, NOT the wrapped `{mcpServers:{…}}` object
-// (per cursor.com/docs/context/mcp/install-links). For a remote URL
-// server the inner shape is `{url: "https://…"}`. URL-encode the
-// base64 because `=` padding is reserved in query components.
-const cursorInner = JSON.stringify({ url: mcpUrl });
-// SSR runs on the build worker; `Buffer` is available in Node + Bun build.
-const cursorB64 = Buffer.from(cursorInner, "utf8").toString("base64");
-const cursorHref = `cursor://anysphere.cursor-deeplink/mcp/install?name=nlqdb&config=${encodeURIComponent(cursorB64)}`;
-
-// JSON config blocks for the three fallback hosts. Each block is the
-// FULL paste-ready document the host expects in its config file. The
-// shapes are host-specific:
-//   - Claude:   `mcpServers` wrapper, `url` field (modern Custom Connector).
-//   - Windsurf: `mcpServers` wrapper, `serverUrl` field, `/mcp` path suffix.
-//   - Zed:      `context_servers` wrapper (NOT `mcpServers`), `url` field.
-const claudeConfig = JSON.stringify({ mcpServers: { nlqdb: { url: mcpUrl } } }, null, 2);
-const windsurfConfig = JSON.stringify(
-  { mcpServers: { nlqdb: { serverUrl: `${mcpUrl}/mcp` } } },
-  null,
-  2,
-);
-const zedConfig = JSON.stringify({ context_servers: { nlqdb: { url: mcpUrl } } }, null, 2);
-
-interface HostEntry {
-  id: "claude" | "cursor" | "windsurf" | "zed";
-  name: string;
-  status: "deep-link" | "fallback-only";
-  /** Resolved deep-link URI (only when `status === "deep-link"`). */
-  href?: string;
-  /** Full paste-ready JSON config (only when `status === "fallback-only"`). */
-  config?: string;
-  /** One sentence pointing the user at where to paste the config. */
-  pasteHint?: string;
-  /** Documented minimum host version, when known. */
-  versionHint?: string;
-}
-
-const HOSTS: readonly HostEntry[] = [
-  {
-    id: "claude",
-    name: "Claude",
-    status: "fallback-only",
-    config: claudeConfig,
-    pasteHint: "Settings → Connectors → Add custom connector — paste the URL.",
-    versionHint: "Claude Desktop (Custom Connectors, 2025+)",
-  },
-  {
-    id: "cursor",
-    name: "Cursor",
-    status: "deep-link",
-    href: cursorHref,
-    versionHint: "Cursor (current stable, 2026+)",
-  },
-  {
-    id: "windsurf",
-    name: "Windsurf",
-    status: "fallback-only",
-    config: windsurfConfig,
-    pasteHint: "Cascade → MCPs → Configure, or ~/.codeium/windsurf/mcp_config.json.",
-    versionHint: "Windsurf (team MCP access enabled)",
-  },
-  {
-    id: "zed",
-    name: "Zed",
-    status: "fallback-only",
-    config: zedConfig,
-    pasteHint: "Agent Panel → Add Custom Server, or ~/.config/zed/settings.json.",
-    versionHint: "Zed (any current build — no deep-link yet)",
-  },
-];
-
-// One promoted CTA per row — Claude wins by default (the first-party
-// hosted MCP target). Every other host renders as `.cta--ghost`.
-const PROMOTED_HOST: HostEntry["id"] = "claude";
+const HOSTS = buildMcpHosts(mcpUrl);
 
 const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinstall__row";
 ---
