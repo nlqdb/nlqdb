@@ -1,37 +1,86 @@
 ---
-// Marketing hero — the goal-first input that morphs into a real-LLM
-// chat (SK-WEB-002 / SK-WEB-008). Two text layers + the form: a
-// display-serif lede that leads with the agent-memory wedge (WS-13 /
-// SK-PIVOT-013, the founder-gated 2026-06-24 reposition), one
-// sans-serif explainer line, then the same `<CreateForm>` React
-// island as `/app/new`. The form posts to `/v1/ask` with an
-// anonymous bearer (SK-ANON-008), gated by the global anon cap
-// (SK-ANON-010) with prompt-persistence (SK-ANON-011).
+// Marketing hero — connect-first for agent builders, generalist input
+// retained as a secondary affordance.
 //
-// Wordmark moved to the topnav (redesign-plan §3, §5/`/`): the
-// hero's lime moment is the form's submit CTA — nothing above it
-// competes. Credo line ("Also a natural-language database for any
-// app…") removed: the demo block below this hero shows that idea
-// rather than apologising for the headline in text.
+// Reposition of the home (this session's founder call, follow-on to
+// WS-13 / SK-PIVOT-013): the hero leads with CONNECT-TO-AGENT — the
+// SK-WEB-016 `<McpInstall>` row is the primary action — and demotes
+// the goal text input that previously dominated the screen. The input
+// stays in the hero so the no-login-wall first-value promise
+// (GLOBAL-007) and the morph-to-chat behaviour SK-WEB-002 protects
+// still hold; it just doesn't lead. This closes the gap WS-13 left
+// open — it swapped the headline strings to "Analytical memory for
+// AI agents." but left the hero's primary action showing the
+// generalist orders-table flow.
+//
+// SK-WEB-002 is superseded in place by SK-WEB-017 (see web-app
+// FEATURE.md), not deleted: connect-first primary, single-input
+// secondary, anon create still works.
 
 import CreateForm from "./CreateForm.tsx";
+import McpInstall from "./McpInstall.astro";
 
 // Default to "" (same-origin) — `apps/web` is bundled into the
-// `nlqdb-api` Worker's [assets] binding (SK-AUTH-016), so `app.nlqdb.com`
-// and the per-PR preview URL (`<hash>-nlqdb-api.<account>.workers.dev`)
-// both serve the page and `/v1/ask` from the same origin. Hardcoding
-// `https://app.nlqdb.com` previously broke the preview hero with a
-// CORS preflight rejection (the preview origin isn't in the API's
-// allowlist). When the standalone marketing worker (`nlqdb-web`,
-// future `nlqdb.com`) goes live, set `PUBLIC_API_BASE=https://app.nlqdb.com`
-// for that build target.
+// `nlqdb-api` Worker's [assets] binding (SK-AUTH-016).
 const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 <section class="hero">
   <h1 class="hero__lede">Analytical memory for AI agents.</h1>
   <p class="hero__say">
-    Connect a database your agent can write to and query in English.
+    Give your agent a real Postgres database as memory — typed rows it
+    writes as it learns, queried in English.
   </p>
 
-  <CreateForm client:load apiBase={apiBase} />
+  <div class="hero__connect" aria-labelledby="hero-connect-label">
+    <p class="hero__connect-label" id="hero-connect-label">Connect it to your agent.</p>
+    <McpInstall compact={true} />
+  </div>
+
+  <div class="hero__try" aria-labelledby="hero-try-label">
+    <p class="hero__try-label" id="hero-try-label">Or spin one up yourself —</p>
+    <CreateForm client:load apiBase={apiBase} />
+  </div>
 </section>
+
+<style is:global>
+  .hero {
+    /* Beat 1 of the three-beat home (SK-WEB-015). Connect row is the
+       primary moment; try-it form sits below as a quieter affordance. */
+    padding: clamp(64px, 12vw, 120px) 0 clamp(40px, 6vw, 64px);
+    max-width: var(--col);
+  }
+
+  .hero__connect {
+    margin-top: clamp(24px, 3vw, 32px);
+  }
+
+  .hero__connect-label {
+    margin: 0 0 12px;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* Visually quieten the try-it block — a separator rule + smaller
+     scale say "secondary" without removing the affordance. */
+  .hero__try {
+    margin-top: clamp(32px, 4vw, 48px);
+    padding-top: clamp(24px, 3vw, 32px);
+    border-top: 1px solid var(--rule);
+  }
+
+  .hero__try-label {
+    margin: 0 0 14px;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+
+  /* The form's submit CTA is still lime — but at smaller scale than the
+     connect row so the eye lands on connect first. */
+  .hero__try .createform__submit {
+    font-size: var(--t-body);
+  }
+</style>

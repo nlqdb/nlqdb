@@ -33,14 +33,14 @@ when-to-load:
 
 ### SK-WEB-002 — Goal-first hero: one input, no pricing dialog, no signup wall
 
-- **Decision:** The marketing-site hero is a single input — *"What are you building?"* — that morphs into a chat via View Transitions. The first chat reply streams; the DB materializes silently. No pricing dialog, no "create your first database" button, no signup wall before first value.
+- **Status:** Superseded in part by [`SK-WEB-017`](./decisions/SK-WEB-017-connect-first-hero.md). The no-signup-wall floor (GLOBAL-007) and the morph-to-chat behaviour are **retained**; only the "one input is THE hero" structural claim is replaced — the home hero now leads with the SK-WEB-016 `<McpInstall>` row as primary, with the goal input retained as a secondary affordance below it. `/agents` already followed that split; SK-WEB-017 extends it to `/`.
+- **Decision:** The marketing-site hero centres a single goal input — *"What are you building?"* — that morphs into a chat via View Transitions (first reply streams; the DB materializes silently). No pricing dialog, no "create your first database" button, no signup wall before first value. (SK-WEB-017 demotes the input from *primary* to *secondary* on the home hero; the no-wall floor and morph behaviour below are retained.)
 - **Core value:** Goal-first, Effortless UX, Free
-- **Why:** No persona ever woke up wanting to "create a database" (`docs/runbook.md §10`). The goal-first inversion (`docs/architecture.md §0.1`) is the project's most important design principle, and the hero is its most visible expression. Every required input before first value drops the funnel; one input is the floor.
-- **Consequence in code:** `apps/web/src/pages/index.astro` is one input + one button + the code panel below. The chat morph is in-place (View Transitions), not navigation. The page works with JS off (input submits to a fallback chat URL). No dialog / modal / "are you sure" interrupts first value.
+- **Why:** No persona ever woke up wanting to "create a database" (`docs/runbook.md §10`). The goal-first inversion (`docs/architecture.md §0.1`) is core; every required input before first value drops the funnel, so the no-wall floor is non-negotiable.
+- **Consequence in code:** The chat morph is in-place (View Transitions), not navigation; the input works with JS off (submits to a fallback chat URL). No dialog / modal / "are you sure" interrupts first value.
 - **Alternatives rejected:**
-  - Required signup with "free trial" framing — measurably worse for activation; contradicts `GLOBAL-007`.
-  - Region picker + project name on first run — `GLOBAL-020` rejects this explicitly.
-  - Marketing copy above the fold, demo below — runnable code is the proof; copy is for closers.
+  - Required signup with "free trial" framing — worse for activation; contradicts `GLOBAL-007`.
+  - Region picker + project name on first run — `GLOBAL-020` rejects this.
 
 ### SK-WEB-003 — Above-the-fold is runnable code, not feature bullets
 
@@ -54,7 +54,7 @@ when-to-load:
 
 ### SK-WEB-004 — Demo endpoint `POST /v1/demo/ask`: no auth, canned fixtures, server-owned
 
-- **Status:** superseded by `SK-WEB-008` — canned fixtures lied by accident the moment a goal missed the matcher, so the marketing demo now hits the real `/v1/ask` with an anon bearer. The free-LLM-proxy concern this guarded is now covered by the global anon cap (`SK-ANON-010`) over the per-IP cap (`SK-ANON-004`). See `SK-WEB-008` for the live rationale.
+- **Status:** Superseded by `SK-WEB-008` (canned fixtures lied on a matcher miss; the demo now hits real `/v1/ask` with an anon bearer). See `SK-WEB-008` for the live rationale.
 
 ### SK-WEB-008 — Demo === real `/v1/ask` with anon bearer; canned fixtures live only in the static carousel
 
@@ -79,7 +79,7 @@ when-to-load:
 
 ### SK-WEB-006 — Cookie is `__Secure-session` with cross-subdomain `Domain=nlqdb.com`
 
-- **Status:** Superseded by `SK-WEB-009` once `apps/web` and `apps/api` merged into one same-origin worker. Pre-merge, one identity (`GLOBAL-008`) across two subdomains needed a cookie that spanned both, and `__Host-` can't carry `Domain=` — so the cookie was downgraded to `__Secure-session` + `Domain=nlqdb.com` (Better Auth `crossSubDomainCookies: true`). The merge restores the path to `__Host-`. Historical context for `SK-AUTH-013` / `SK-AUTH-015` lives in those records.
+- **Status:** Superseded by `SK-WEB-009` once `apps/web` and `apps/api` merged into one same-origin worker (the merge removes the cross-subdomain `Domain=` need). See `SK-WEB-009` for the live cookie posture.
 
 ### SK-WEB-009 — Host-only `__Secure-…session` cookie on `app.nlqdb.com` after the web/API merge
 
@@ -106,8 +106,8 @@ when-to-load:
 
 - **Decision:** The marketing-page create result (`CreateResultView` in `apps/web/src/components/CreateForm.tsx`) renders an embed-snippet block alongside the schema preview. The snippet shows the `<nlq-data>` shape with a goal derived from the primary table and `api-key="pk_live_REPLACE_ME"` as a literal placeholder. A "Copy" button writes the placeholder snippet to the clipboard; a "Sign in to continue →" CTA routes to `/auth/sign-in?return_to=/app`. The real `pk_live_` inlining still happens in one place only — the chat's per-answer Copy snippet (`SK-WEB-007`).
 - **Core value:** Goal-first, Effortless UX, Bullet-proof
-- **Why:** A fresh visitor lands on the marketing page, types one sentence, and sees their schema render in ~6 seconds (the wow moment). The natural follow-through is "how do I use this from my own page?" — without a snippet affordance there, the user has to click *Open chat →* → sign in → ask a question → find Copy snippet. Five steps before any HTML lands in their clipboard. The snippet-shape-first approach closes the gap to one step: paste the structure now, sign in to fill in the key. Inlining the actual anon `pk_live_` here would 401 on the element's first fetch — the create call already consumed the `SK-ANON-012` 1-call budget, so the embedded `<nlq-data>` would auth-wall before rendering. The CTA is honest about both the seam (sign-in needed) and the destination (the chat's Copy snippet, which inlines the working key per `SK-WEB-007`).
-- **Consequence in code:** `CreateForm.tsx` adds a `CreateSnippetView` sub-component rendered inside `CreateResultView` after the schema-preview tables. Snippet text is built client-side from `result.sampleRows[0].table` so the example goal references the actual table the user just created. The Copy button uses `navigator.clipboard.writeText` with a transient *"Copied"* state; clipboard failures (non-secure context, extension policy) are swallowed silently — users can still triple-click the `<pre>`. CSS lives under `.createresult__snippet*` in `apps/web/src/styles/global.css`. `SK-WEB-007` is **not** modified; the chat remains the only surface that inlines a working `pk_live_`. Two `GLOBAL-024` demand-signal events fire from this surface via `apps/web/src/lib/logsnag.ts` `emit()`: `home.snippet_copied` (extends the existing event used by chat / CodePanel; props `{ surface: "create_result" }`) and `home.snippet_signin_cta_clicked` (new; same `surface` prop) — the pair lets the funnel read *snippet-engaged → signed-in* without inferring it from page-view sequence.
+- **Why:** After the schema-render wow moment the natural follow-through is "how do I use this from my own page?" Without a snippet affordance the user faces five steps (*Open chat →* → sign in → ask → find Copy snippet) before any HTML lands; snippet-shape-first closes that to one — paste the structure now, sign in to fill in the key. A working key can't be inlined here (the create call consumed the `SK-ANON-012` device cap, so the embed would 401 — see Alternatives), so the CTA is honest about the seam and points at the chat's Copy snippet (`SK-WEB-007`).
+- **Consequence in code:** `CreateForm.tsx` adds a `CreateSnippetView` inside `CreateResultView`; snippet text is built client-side from `result.sampleRows[0].table` so the example goal references the just-created table. Clipboard failures are swallowed silently (users can triple-click the `<pre>`). `SK-WEB-007` is **not** modified — the chat stays the only surface that inlines a working `pk_live_`. Two `GLOBAL-024` events fire via `lib/logsnag.ts` — `home.snippet_copied` (`{ surface: "create_result" }`) and `home.snippet_signin_cta_clicked` — so the funnel reads *snippet-engaged → signed-in* directly.
 - **Alternatives rejected:**
   - **Inline the real anon `pk_live_` on the marketing page.** Per `SK-ANON-012` the device cap is consumed by the create call, so any `<nlq-data>` element embedded with the anon key would 401 on first fetch — silent-broken-embed is the worst possible UX after the wow moment.
   - **Don't show a snippet at all; only show "Open chat →".** Drops to five clicks before the user sees their first HTML; loses the chance to teach the embed shape during the most-engaged moment of the session.
@@ -153,6 +153,11 @@ One quiet-brutalism token system in `global.css` (neutrals + one accent gated to
 
 **Body:** [`decisions/SK-WEB-016-mcp-install-affordance.md`](./decisions/SK-WEB-016-mcp-install-affordance.md).
 A shared `<McpInstall>` (host descriptors in `lib/mcp-install.ts`) renders four host buttons — Cursor via its deep-link scheme, Claude/Windsurf/Zed via paste-ready per-host JSON — at three venues: `/agents` hero (under the form), post-create `CreateResultView`, `/integrations`. One promoted lime button per row (`SK-WEB-015`); `pk_live_REPLACE_ME` placeholder + sign-in nudge on anon surfaces (`SK-ANON-012` / `SK-WEB-010`); `SK-WEB-002` kept (install only after the CTA, never on the homepage hero).
+
+### SK-WEB-017 — Connect-first hero on the agent-memory home; goal input retained as secondary
+
+**Body:** [`decisions/SK-WEB-017-connect-first-hero.md`](./decisions/SK-WEB-017-connect-first-hero.md).
+The home hero leads with the SK-WEB-016 `<McpInstall compact>` row of host buttons ("Connect it to your agent.") as the **primary** affordance; the goal text input (`<CreateForm>`) is retained below it as a quieter secondary ("Or spin one up yourself —") separated by a `--rule` line. The form still posts to `/v1/ask` (SK-ANON-008), still morphs to chat, still requires no sign-in (GLOBAL-007) — only its visual primacy demotes. Supersedes SK-WEB-002's "one input IS the hero" claim in place (no-signup-wall floor + morph-to-chat retained). Closes the gap WS-13 / SK-PIVOT-013 left — the headline strings now match the hero's primary action.
 
 ## GLOBALs governing this feature
 

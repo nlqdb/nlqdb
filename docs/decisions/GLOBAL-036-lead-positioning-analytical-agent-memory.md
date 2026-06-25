@@ -66,9 +66,17 @@
     product. Messaging ships; the engine bar is not re-escalated.
   - The headline reposition (WS-13) was the single founder-gated worksheet
     (last in the sequence). **Tripped 2026-06-24 — see SK-PIVOT-013.** The
-    dual front door survives the swap: the hero `<CreateForm>` input
-    (SK-WEB-002), the `AlsoWorksFor` fold, and the off-wedge `/vs`+`/solve`
-    pages keep the generalist umbrella one click away.
+    follow-on home-flow reposition (the home's PROOF, not just its headline,
+    leads the wedge) tripped in the same session — **see SK-PIVOT-014**: the
+    hero's primary action becomes the SK-WEB-016 `<McpInstall>` row
+    (SK-WEB-017 supersedes SK-WEB-002's "one input IS the hero" in place;
+    the no-signup-wall floor + morph-to-chat are retained as a secondary
+    affordance), the `Demo.astro` beat shows the agent loop instead of the
+    generalist orders table, and the dual-front-door seam to the generalist
+    flow is one quiet `.alsoworks` line below the three beats linking
+    `/app/new` (one click away, never on the main canvas). The off-wedge
+    `/vs` + `/solve` pages and `/integrations` still keep the generalist
+    umbrella reachable.
   - The open/free angle is messaged under **FSL-1.1** truthfully — see
     [`GLOBAL-019`](./GLOBAL-019-apache2-open-source-core.md), whose stale
     "Apache-2.0 today" wording is corrected to "FSL-1.1-ALv2,
