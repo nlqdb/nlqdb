@@ -11,63 +11,61 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-24 (run 90) — dev.to / r/LangChain / r/LLMDevs: "Your vector store found the chunk. It can't tell you which source you keep retrieving and never use."
+## 2026-06-24 (run 91) — dev.to / r/LLMDevs / r/LangChain: "Your eval results live in a spreadsheet. The question 'which version regressed' lives in SQL."
 
-**Where:** dev.to + r/LangChain + r/LLMDevs (`rag` / `llm` / `agents`);
-build-in-public, sibling to the run-88 tool-call-logs and run-80 chatbot-memory
-posts. nlqdb mentioned once. The hook: RAG retrieval is *recall* (find the K
-nearest), but "which source gets retrieved most / never surfaces / how relevant
-per source" is an aggregation over the retrieval log — and a vector store, like a
-flat trace log, is the wrong shape to GROUP BY.
+**Where:** dev.to + r/LLMDevs + r/LangChain (`llm` / `evals` / `agents`);
+build-in-public, sibling to the run-85 token-cost and run-88 tool-call-logs posts.
+nlqdb mentioned once. The hook: an eval *run* produces a list of scored cases, but
+"pass rate per prompt version, which cases regressed, score trend per model" are
+aggregations over the accumulated runs — and a spreadsheet (or asking the LLM to
+tally) is the wrong shape to GROUP BY.
 
-**Title:** Your vector store found the chunk. It can't tell you which source you keep retrieving and never use.
+**Title:** Your eval results live in a spreadsheet. The question "which version regressed" lives in SQL.
 
 **Body:**
 
-> Your RAG pipeline retrieves chunks on every query. Some sources get pulled
-> constantly, some never surface, some score high relevance and still produce bad
-> answers. So you reach for the questions that actually tell you if retrieval is
-> healthy: *which source documents get retrieved most this week? which ones in my
-> corpus never get hit? what's the average relevance score per source?* And then
-> you open the vector-store query traces, or `jq` over a retrieval log, and start
-> counting by hand.
+> You run evals on every prompt change — a set of test cases, each scored pass/fail
+> or 0–1 by your harness. The output is a list. Then the questions that actually
+> tell you whether the change helped show up: *did pass rate go up from v3 to v4?
+> which specific cases regressed? what's the average score per model over the last
+> month?* And you open the CSV export, build a pivot table, and start dragging
+> columns around — again, next release.
 >
-> Those aren't similarity lookups. They're aggregations — `COUNT(*) … GROUP BY
-> source`, `AVG(score) … GROUP BY source`, an anti-join for "sources never
-> retrieved." A vector store is built for the opposite job: given an embedding,
-> return the K nearest. That's *recall*, and it's a different machine from a query
-> planner. The moment your question is "across all retrievals, ranked by source,"
-> the vector index has nothing to say — it finds neighbors, it doesn't `GROUP BY`.
-> So you scrape the log in app code (fragile, slower every week as the corpus
-> grows) or — worse — paste it into an LLM and ask it to tally. Arithmetic over a
-> list is a confident-wrong-number generator.
+> Those aren't lookups in one run. They're aggregations across every run you've
+> ever logged — `AVG(score) … GROUP BY prompt_version`, an anti-join for "passed in
+> v3, failed in v4," a windowed trend per model. A spreadsheet does this once, by
+> hand, and rots the moment a new run lands. Pasting the run log into an LLM and
+> asking it to tally is worse: arithmetic over a list is a confident-wrong-number
+> generator, and a regression you can't trust is a regression you'll ship.
 >
-> The split worth internalizing: **retrieval and analytics are different
-> machines.** Your vector store (Pinecone, pgvector, Chroma, Weaviate) is great at
-> *which chunks are most similar*. None of them is a query planner over the
-> retrieval *log*. The moment your question is "per source, across all queries,
-> ranked," you wanted a database, not a vector index.
+> The split worth internalizing: **scoring and tracking are different machines.**
+> Your eval harness (promptfoo, Braintrust, LangSmith, a custom LLM-as-judge) is
+> great at *running the cases and producing a score*. None of them is a query
+> planner over the months of scored results that pile up behind them. The moment
+> your question is "per version, across every run, ranked," you wanted a database,
+> not another export.
 >
-> So log each retrieval as a typed *row* — `query_id`, `source`, `chunk_id`,
-> `relevance_score`, `ts` — the moment it returns, in parallel with the search
-> itself. Now "retrievals per source this week, most first" and "sources that
-> never surface" are one query each, not a script. You don't have to write the SQL
+> So log each scored case as a typed *row* — `prompt_version`, `test_case`,
+> `model`, `score`, `passed`, `ts` — the moment the harness finishes. Now "pass
+> rate per prompt version this month, newest first" and "cases that regressed since
+> v3" are one query each, not a pivot table. You don't have to write the SQL
 > yourself: that's the demo on
-> [nlqdb](https://nlqdb.com/solve/analyze-rag-retrieval-logs/) — you ask in
-> English, it provisions the Postgres and runs the `GROUP BY`, and it shows you the
-> SQL it ran so you can check the grain (per retrieval vs per query) before you
-> trust a number. The retrieval still happens in your vector store; nlqdb is the
-> database half you analyze the log with.
+> [nlqdb](https://nlqdb.com/solve/track-llm-eval-scores-across-prompt-versions/) —
+> you ask in English, it provisions the Postgres and runs the `GROUP BY`, and it
+> shows you the SQL it ran so you can check the grain (per case vs per run) before
+> you trust a pass-rate number. The scoring still happens in your eval harness;
+> nlqdb is the database half you track it with.
 >
-> The tell that you crossed the line: you're counting retrievals in application
-> code, or asking a model to count log lines. Keep the vector store for finding the
-> chunk. Put the rows you *count and group* somewhere that speaks SQL.
+> The tell that you crossed the line: you're rebuilding the same pivot table every
+> release, or asking a model to count pass/fail rows. Keep the harness for scoring.
+> Put the rows you *count and group* somewhere that speaks SQL.
 
 **Why this advances the north-star:** onboarding / distribution (GLOBAL-025) — a
-P2-agent-builder search-intent on-ramp anchoring `/solve/analyze-rag-retrieval-logs`
-(solve pages 10 → 11, the RAG retrieval-quality wedge), honest about what nlqdb
-doesn't do (no vector search or embedding — that stays in your vector store). One
-nlqdb mention. No engine/funnel/ops KPI degrades (additive AEO page, data-only).
+P2-agent-builder search-intent on-ramp anchoring
+`/solve/track-llm-eval-scores-across-prompt-versions` (solve pages 11 → 12, the
+eval-quality-tracking wedge), honest about what nlqdb doesn't do (no running or
+scoring the evals — that stays in your harness). One nlqdb mention. No
+engine/funnel/ops KPI degrades (additive AEO page, data-only).
 
 ## Collapsed — full drafts in git history
 
@@ -76,6 +74,7 @@ has grown enough that even two no longer fit under the D4 20 KB cap). Each line 
 title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
+- run 90 — dev.to / r/LangChain / r/LLMDevs: "Your vector store found the chunk. It can't tell you which source you keep retrieving and never use." (RAG retrieval is *recall*; "which source gets retrieved most / never surfaces / avg relevance per source" is an aggregation over the retrieval log — a vector store is the wrong shape to `GROUP BY`; log each retrieval as a typed row alongside the search; anchors `/solve/analyze-rag-retrieval-logs`).
 - run 88 — dev.to / r/LLMDevs / lobste.rs: "You're grepping your agent's trace logs to count which tool fails. That's a GROUP BY." (agent-observability questions — which tool fails most, p95 latency per tool, calls per session — are aggregations, and a flat trace log built to reconstruct *one* run as a span tree is the wrong shape to `GROUP BY` across all runs; *capture* (OTel/AgentOps/Langfuse) and *query* (a planner) are different machines — log each tool call as a typed row alongside the tracer; anchors `/solve/analyze-agent-tool-call-logs`).
 - run 87 — dev.to / lobste.rs: "Your Cmd+K palette is invisible to screen readers — one attribute fixes it" (the palette every app ships is perfect for people who can *see* the highlight move; under a screen reader it's silent because the highlight is just a CSS class and focus never leaves the input; the fix tutorials skip is `aria-activedescendant` letting the focused input point at a *different* "active" option, with `combobox`/`listbox`/`option` + `aria-selected`; keep option ids in one helper and clamp the index in pure logic; palette ARIA associations 0 → 3).
 - run 86 — dev.to / lobste.rs / r/LLMDevs: "Your llms.txt is a sitemap for robots that read — and mine was missing the page I care about most" (the machine-readable index LLM-IDE crawlers fetch was hand-curated *before* the flagship landing page existed, so the page our positioning is built around was silently absent; the comparison/how-to lists were data-driven and stayed in sync, but the bespoke top-level array nobody revisited rotted — audit the *rendered* artifact not the source, and pin bespoke entries with a test; also caught a stale "closed beta" status string; `llms.txt` primary routes 4 → 6, pivot page 0 → 1).
