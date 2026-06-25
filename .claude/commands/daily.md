@@ -53,6 +53,15 @@ progress tables + one "Last change" entry, no changelog; create it if missing
   number and append a `quality-score-verification-log.md` row. persona-bench %
   once it exists; free-vs-frontier delta.
 - **Ops:** p50/p95 ask latency, error rate, $ spend (expect ~0).
+- **E2E (manual suites, not in CI):** score the four `workflow_dispatch`-only
+  e2e workflows — `e2e-sdk`, `e2e-mcp`, `e2e-examples`, `e2e-opencheck` (CLI
+  excluded: it auto-runs on `cli/**` PRs). Read each one's latest run via
+  `mcp__github__actions_list` (`list_workflow_runs`). Per suite: `pass` = 1 if
+  the latest completed run concluded `success` else 0; `freshness` =
+  `max(0, 1 − days_since_last_success / 7)`. Row score = **mean of
+  `pass × freshness`** across the four (0–1; any red or > 7-day-stale suite
+  drags it toward 0). Put the latest-green count + each suite's last-success
+  date in the value cell.
 - **Top lines:** the weekly focus number (founder-set — never overwrite it),
   then "worst number today" + which lane owns it.
 
