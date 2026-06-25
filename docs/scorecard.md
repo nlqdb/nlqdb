@@ -81,25 +81,24 @@ Published artifacts from [`distribution-queue.md`](research/distribution-queue.m
 
 ## Last change
 
-**2026-06-25 (run 93)** — solve pages **13 → 14**: new
-`/solve/share-memory-across-multiple-ai-agents` (P2 agent builder, multi-agent
-shared-memory wedge — "how do I give multiple AI agents shared, persistent
-memory"). **Distinct** from the single-agent persistence pages: the multi-agent
-coordination angle — web-research (AWS, CockroachDB, mem0, O'Reilly, 2026)
-confirmed the recurring "shared memory = a shared vector store" assumption, whose
-gap is that crew coordination ("what did each agent decide", "tasks per agent") is
-*aggregation*, not similarity — a SQL job. Page is honest on shipped behaviour
-(one shared Postgres, `nlqdb_remember` writes + `nlqdb_query` English recall, every
-row carries `agent_id`) and limits (no per-agent access control — `app.agent_id`
-RLS is roadmap E-03; no vector recall — E-05; owns its Postgres). Worst-number lane
-= funnel/distribution; **measured live 06-25:** real strangers = **0** (waitlist
-1/81 = founder; registered 0/7) — **unchanged**, so this run advances the AEO
-on-ramp proxy (solve pages 13 → 14) + one distribution draft, not the genuine
-worst-number, which stays distribution-gated. **KPI:** onboarding/distribution
-(GLOBAL-025); none degraded — additive AEO page, data-only. Revert = one commit.
-**Engine measurement:** Spider crossed 7d today; re-dispatch re-confirmed blocked
-in this session (MCP `workflow_dispatch` → 403), carries to cron `/daily`. BIRD
-06-19 still <7d (crosses 06-26).
+**2026-06-25 (run 94)** — **P2 agent-builder solve-page OG cards 0 → 10**: the
+10 `persona: "P2 agent builder"` `/solve/*` pages fell back to the generic
+`/og-default.png` while the parallel `/vs` agent-memory cluster all carry bespoke
+WS-08 share cards — an asymmetry on the *same* wedge. Extended the existing
+`apps/web/scripts/og/gen-og.mjs` generator (deterministic, stays out of `astro
+build` per GLOBAL-013/SK-PIVOT-012) with a data-driven `solveCards` loop and wired
+`ogImage` in `pages/solve/[slug].astro` for the P2 cluster (mirrors `vs/[slug].astro`);
+committed 10 `public/og/solve-*.png` (1200×630, type-only brand). Each card: punchy
+2-line take on the page's search query + the `GROUP BY` SQL that answers it. Chose
+this over a 5th consecutive new solve page (runs 90–93) — it improves **existing**
+surfaces (social/Slack/Discord share CTR into the AEO on-ramps), no doorway-page
+sprawl. Worst-number lane = funnel/distribution; **real strangers = 0** (waitlist
+1/81 = founder; registered 0/7) stays distribution-gated, so this advances the
+share-CTR proxy, not the genuine worst-number. **KPI:** onboarding/distribution
+(GLOBAL-025); none degraded — additive, data-only, runtime untouched. Revert = one
+commit. **Engine measurement:** Spider re-dispatch re-confirmed blocked this session
+(MCP `workflow_dispatch` → 403, "org admin must connect the Claude GitHub App"),
+carries to cron `/daily`; BIRD 06-19 <7d (crosses 06-26); solve pages stay 14.
 
 *Full per-run history: `git log`, `progress/quality-score-verification-log.md`,
 and the WS-*/E-* worksheets — not this file.*

@@ -26,6 +26,12 @@ const pageTitle = `${s.searchTitle} — nlqdb`;
 const description = s.oneLiner;
 const canonical = `/solve/${s.slug}`;
 
+// Bespoke share card for the P2 agent-builder solve cluster (parity with the
+// `/vs` cluster's WS-08 cards). Other personas fall back to the site-wide
+// default. PNGs are committed under public/og/ by scripts/og/gen-og.mjs.
+const ogImage = s.persona === "P2 agent builder" ? `/og/solve-${s.slug}.png` : undefined;
+const ogImageAlt = `${s.searchTitle} — answered with a GROUP BY in nlqdb.`;
+
 const faqJsonLd = faqPageJsonLd(s.faqs);
 
 // HowTo JSON-LD — per §3.1 of automated-icp-validation-plan.md. The
@@ -67,7 +73,13 @@ const breadcrumbLd = breadcrumbJsonLd(
   Astro.site,
 );
 ---
-<Base title={pageTitle} description={description} canonical={canonical}>
+<Base
+  title={pageTitle}
+  description={description}
+  canonical={canonical}
+  ogImage={ogImage}
+  ogImageAlt={ogImage ? ogImageAlt : undefined}
+>
   <div class="page">
     <Topnav />
 

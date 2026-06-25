@@ -138,6 +138,91 @@ for (const { slug, name } of vsCompetitors) {
   });
 }
 
+// P2 agent-builder `/solve/*` cards — the share-card half of the wedge the
+// `/vs` cluster already covers. Title is a punchy 2-line take on the page's
+// search query; `mono` shows the GROUP BY shape that answers it (the SQL the
+// page is really about). Keep this list in sync with the `persona: "P2 agent
+// builder"` entries in `src/data/solve.ts` and the `ogImage` branch in
+// `pages/solve/[slug].astro`. Slugs only here, no card for non-P2 solve pages.
+const solveCards = [
+  {
+    slug: "database-claude-cursor-can-query",
+    title: [
+      [{ t: "A database Claude" }],
+      [{ t: "& Cursor can " }, { t: "query", accent: true }, { t: "." }],
+    ],
+    mono: "SELECT status, COUNT(*) FROM tasks GROUP BY status",
+  },
+  {
+    slug: "give-ai-agent-persistent-memory",
+    title: [[{ t: "Persistent " }, { t: "memory", accent: true }], [{ t: "for your AI agent." }]],
+    mono: "SELECT fact, COUNT(*) FROM memory GROUP BY fact",
+  },
+  {
+    slug: "analytical-queries-over-agent-memory",
+    title: [
+      [{ t: "Run " }, { t: "reports", accent: true }, { t: " over" }],
+      [{ t: "your agent's memory." }],
+    ],
+    mono: "SELECT category, COUNT(*) FROM memory GROUP BY category",
+  },
+  {
+    slug: "store-query-chatbot-conversation-history",
+    title: [
+      [{ t: "Query your chatbot's" }],
+      [{ t: "conversation " }, { t: "history", accent: true }, { t: "." }],
+    ],
+    mono: "SELECT day, COUNT(*) FROM messages GROUP BY day",
+  },
+  {
+    slug: "track-ai-token-usage-and-cost",
+    title: [
+      [{ t: "Track token usage" }],
+      [{ t: "and " }, { t: "cost", accent: true }, { t: " per user." }],
+    ],
+    mono: "SELECT model, SUM(cost) FROM usage GROUP BY model",
+  },
+  {
+    slug: "analyze-agent-tool-call-logs",
+    title: [[{ t: "Which agent " }, { t: "tool", accent: true }], [{ t: "fails the most?" }]],
+    mono: "SELECT tool, AVG(latency) FROM calls GROUP BY tool",
+  },
+  {
+    slug: "analyze-rag-retrieval-logs",
+    title: [[{ t: "Which RAG " }, { t: "sources", accent: true }], [{ t: "actually get used?" }]],
+    mono: "SELECT source, COUNT(*) FROM retrievals GROUP BY source",
+  },
+  {
+    slug: "track-llm-eval-scores-across-prompt-versions",
+    title: [[{ t: "Which prompt version" }], [{ t: "regressed", accent: true }, { t: "?" }]],
+    mono: "SELECT version, AVG(score) FROM evals GROUP BY version",
+  },
+  {
+    slug: "safely-give-ai-agent-database-access",
+    title: [[{ t: "Give an AI agent" }], [{ t: "safe", accent: true }, { t: " database access." }]],
+    mono: "SELECT type, COUNT(*) FROM logs GROUP BY type",
+  },
+  {
+    slug: "share-memory-across-multiple-ai-agents",
+    title: [
+      [{ t: "Shared " }, { t: "memory", accent: true }, { t: " for" }],
+      [{ t: "multiple AI agents." }],
+    ],
+    mono: "SELECT agent_id, COUNT(*) FROM memory GROUP BY agent_id",
+  },
+];
+for (const { slug, title, mono } of solveCards) {
+  cards[`solve-${slug}`] = card({
+    kicker: "SOLVE · AGENT BUILDERS",
+    title,
+    titleSize: 62,
+    titleTop: 296,
+    mono,
+    monoTop: 442,
+    url: `nlqdb.com/solve/${slug}`,
+  });
+}
+
 for (const [name, svg] of Object.entries(cards)) {
   const png = new Resvg(svg, {
     fitTo: { mode: "width", value: W },
