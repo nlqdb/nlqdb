@@ -35,11 +35,11 @@ lands the instant the founder sets it.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel — bot-filtered, 2026-06-22 (live re-pull)** | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF Web Analytics) | 62 visits / 98 pageloads | was 94/147 (06-15); walker traffic still aging out of the 7d window |
-| 2 | Waitlist rows, real | 1 of 79 | 78 walker/test/probe; the 1 is the founder → ~0 genuine strangers |
-| 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev accounts |
-| 4 | Anon DBs with a recorded first answer | **113 of 113** | instrument fix (runs 1–3) holding; +12 since 06-15 (119 DBs total, 6 authed). Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
+| | **Funnel — 2026-06-25 (live re-pull)** | | exclude synthetic stranger-test walker traffic |
+| 1 | Visits, 7d (CF Web Analytics) | 83 visits / 139 pageloads (raw, incl. walker) | was 62/98 bot-filtered (06-22); account-level RUM here can't split per-path so this is unfiltered — genuine-stranger signal lives in rows #2/#3, not here |
+| 2 | Waitlist rows, real | 1 of 81 | 80 walker/test/probe; the 1 is the founder → ~0 genuine strangers (+2 since 06-22, both flow004 walker) |
+| 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev accounts (unchanged from 06-22) |
+| 4 | Anon DBs with a recorded first answer | **130 of 130** | every DB has a first query; +11 since 06-22 (130 total, 92 anon-adoptions). Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
 | | **Engine — BIRD 2026-06-19 (< 7d) · Spider 2026-06-17 (crosses 7d on 06-25) · persona-bench 2026-06-22** | | `tools/eval/baseline-2026-06-15.json` (BIRD/Spider only; persona-bench never overwrites the canonical baseline, `SK-QUAL-018`). Spider re-dispatch is due 06-25 on a run that does **not** merge a PR (a merge moves `main` and misses the SHA-keyed multi-window checkpoint); last run completed clean on main (no resumable checkpoint), so it will be a fresh windowed run, not a resume |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Now crosses 7d (06-17 → 06-25): stale.** Run 92 attempted the canonical re-dispatch on main (515a033) but the GitHub-workflow API is **blocked in this session** (proxy: "org admin must connect the Claude GitHub App") — `GH_TOKEN_WORKFLOW` present but the proxy gates the dispatch; the cron `/daily` lane is unaffected, so the re-dispatch carries to the next cron run. Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half (run 40) + **runner `--self-consistency N` / `--sc-temperature T` main-loop wiring (run 41)** — `samples>=2` branch in `runOneQuestion` (separate from `withExecRetry`): `samplePlans`→`voteOverSamples` over `executeRows`→score-the-winner; folds into checkpoint/budget-stop/`attempts`, `.scN` checkpoint variant. The lever is now end-to-end bar the CI `workflow_dispatch` input. EX delta next dispatch** |
@@ -79,22 +79,25 @@ Published artifacts from [`distribution-queue.md`](research/distribution-queue.m
 
 ## Last change
 
-**2026-06-25 (run 92)** — solve pages **12 → 13**: new
-`/solve/safely-give-ai-agent-database-access` (P2 agent builder,
-agent-DB-trust-boundary wedge — "how do I give an AI agent database access without
-it running dangerous SQL"). A genuinely **distinct** cluster from the five
-"log-rows-then-GROUP-BY" P2 pages (token-cost, tool-calls, RAG, eval-scores,
-chat-history were saturating that shape): this is the security/trust angle —
-server-built parameterised writes (`SK-PIVOT-008`), a fail-closed three-stage read
-validator (`SK-SQLAL-001`), engine-level RLS, always-shown SQL. Honest limits
-(not a proxy over your existing DB; no statement-timeout cap yet; per-agent RLS is
-roadmap) keep it accurate (web-verified the 2026 "read-only role is leaky" theme,
-P2). Worst-number lane = funnel/distribution (real strangers = 0); adds one
-search-intent on-ramp + one distribution draft (run 92). **KPI:**
-onboarding/distribution (GLOBAL-025); none degraded — additive AEO page, data-only
-(engine/funnel/ops untouched). Revert = one commit. **Engine measurement:** Spider
-crossed 7d today; re-dispatch blocked in this session (row 7), carries to cron
-`/daily`. BIRD 06-19 still <7d.
+**2026-06-25 (run 93)** — solve pages **13 → 14**: new
+`/solve/share-memory-across-multiple-ai-agents` (P2 agent builder, multi-agent
+shared-memory wedge — "how do I give multiple AI agents shared, persistent
+memory"). **Distinct** from the single-agent persistence pages: the multi-agent
+coordination angle — web-research (AWS, CockroachDB, mem0, O'Reilly, 2026)
+confirmed the recurring "shared memory = a shared vector store" assumption, whose
+gap is that crew coordination ("what did each agent decide", "tasks per agent") is
+*aggregation*, not similarity — a SQL job. Page is honest on shipped behaviour
+(one shared Postgres, `nlqdb_remember` writes + `nlqdb_query` English recall, every
+row carries `agent_id`) and limits (no per-agent access control — `app.agent_id`
+RLS is roadmap E-03; no vector recall — E-05; owns its Postgres). Worst-number lane
+= funnel/distribution; **measured live 06-25:** real strangers = **0** (waitlist
+1/81 = founder; registered 0/7) — **unchanged**, so this run advances the AEO
+on-ramp proxy (solve pages 13 → 14) + one distribution draft, not the genuine
+worst-number, which stays distribution-gated. **KPI:** onboarding/distribution
+(GLOBAL-025); none degraded — additive AEO page, data-only. Revert = one commit.
+**Engine measurement:** Spider crossed 7d today; re-dispatch re-confirmed blocked
+in this session (MCP `workflow_dispatch` → 403), carries to cron `/daily`. BIRD
+06-19 still <7d (crosses 06-26).
 
 *Full per-run history: `git log`, `progress/quality-score-verification-log.md`,
 and the WS-*/E-* worksheets — not this file.*
