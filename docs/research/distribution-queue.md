@@ -11,61 +11,53 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-25 (run 93) — dev.to / r/LLMDevs / r/AI_Agents: "Your agents each have their own memory. That's why they keep redoing each other's work."
+## 2026-06-25 (run 94) — dev.to / lobste.rs: "We made share cards for half our buyer's journey and forgot the other half"
 
-**Where:** dev.to + r/LLMDevs + r/AI_Agents (`llm` / `agents` / `multi-agent`);
-the multi-agent sibling to the agent-memory cluster. nlqdb
-mentioned once. The hook: "shared memory = a shared vector store" is half the
-answer — recall is similarity, but coordination is aggregation, and that's SQL.
+**Where:** dev.to + lobste.rs (`webdev` / `seo` / `showdev`); a build-in-public
+SEO-discipline lesson in the run-77/86 family ("audit the rendered artifact, not the
+template"). nlqdb is the worked example, mentioned once. The hook: templated pages
+get instrumented *together*, so a gap hides not in the page you forgot but in the
+**parallel cluster** you never paired it with.
 
-**Title:** Your agents each have their own memory. That's why they keep redoing each other's work.
+**Title:** We made share cards for half our buyer's journey and forgot the other half
 
 **Body:**
 
-> The moment you go from one agent to a crew, memory breaks in a new way. Each agent
-> keeps its own context, so the research agent learns a fact the writer agent never
-> sees, two agents redo the same lookup, and a decision made in step 3 is gone by
-> step 7. The standard fix — give them a shared vector store — solves recall and
-> nothing else.
+> We ship two clusters of pages for one buyer: comparison pages ("nlqdb vs X") and
+> solve pages ("how do I do Y"). Same audience, same wedge, two halves of one decision.
+> A while back we built bespoke Open Graph / social cards for the comparison cluster:
+> on-brand type-only images so a link pasted into Slack or a tweet shows the actual
+> claim, not a gray box. We were proud of them.
 >
-> Here's the part the "shared memory" posts skip: most of what a crew needs to share
-> isn't a similarity question. "What did each agent decide?" "How many tasks did each
-> one close?" "What's the latest fact about this project?" Those are `GROUP BY`,
-> `COUNT`, "most recent row" — a query planner's job, not an embedding's. A vector
-> store is the wrong shape to aggregate; ask the LLM to tally its own memory and it
-> hands you a confident, wrong total.
+> Then we pasted a *solve*-page link into a channel and got the generic site-wide card.
+> Every solve page — the half of the journey closer to "I'll try it" — was falling
+> back to the default. Not because we forgot a page: we'd instrumented "the comparison
+> template" as a unit and never asked whether its twin deserved the same treatment. The
+> two clusters were authored months apart, each internally consistent, so nothing
+> looked broken in either one. The gap only existed *between* them.
 >
-> Recall and analytics are two different machines. The durable shape is one shared
-> store every agent writes to, where each row carries *which* agent (and user, and
-> thread) wrote it — so any agent can read another's memory, and you can roll the
-> whole crew's memory up per agent with a real query.
+> The fix was small once we saw it — the generator was already data-driven, so it was a
+> second list of slugs and one line wiring the per-page image into the solve template
+> (we copied the branch the comparison template already had). Ten cards, each
+> a two-line version of the page's question plus the SQL that answers it (`SELECT
+> version, AVG(score) FROM evals GROUP BY version`).
 >
-> That's the shape nlqdb takes for agent memory: every agent writes through a
-> server-built parameterised insert (it supplies data, never SQL), recalls in plain
-> English (compiled to SQL you can see), and every fact/episode/entity is tagged with
-> an `agent_id`. The honest limits, because they matter for a multi-agent design:
-> there's no per-agent *access control* yet — agents sharing one database see all of
-> each other's rows (engine-enforced private-vs-shared scoping is on the roadmap), and
-> recall is structured SQL, not vector similarity, so keep your embeddings in your
-> vector store and put nlqdb beside it for the counting half. Full trade-offs + a live
-> demo: [nlqdb](https://nlqdb.com/solve/share-memory-across-multiple-ai-agents/).
->
-> The tell you've outgrown per-agent memory: you're writing glue code to copy facts
-> between agents, or asking one agent to summarize what the others did. Give them one
-> store that speaks SQL and the copying disappears.
+> The transferable bit isn't "add OG cards." It's that **coverage audits keyed on
+> templates miss gaps that live between parallel clusters.** When two page types serve
+> one journey, diff the instrumentation — structured data, share cards, analytics
+> events — cluster against cluster, not page against template. The page you forgot is
+> findable; the *cluster* you never paired is the one that stays dark.
+> ([nlqdb](https://nlqdb.com/solve/); the comparison twins are at /vs.)
 
-**Why this advances the north-star:** onboarding / distribution (GLOBAL-025) — a
-P2-agent-builder on-ramp anchoring the new
-`/solve/share-memory-across-multiple-ai-agents` (solve pages 13 → 14, the
-multi-agent shared-memory wedge, distinct from the single-agent persistence
-pages), honest about the limits (no per-agent access control yet; no vector
-recall; owns its Postgres). One nlqdb mention. No engine/funnel/ops KPI degrades
-(additive AEO page, data-only).
+**Why this advances the north-star:** onboarding / distribution (GLOBAL-025) — the
+lesson post for this run's lever (P2 solve-page OG cards 0 → 10, parity with the
+`/vs` WS-08 cards). One nlqdb mention. No engine/funnel/ops KPI degrades.
 
 ## Collapsed — full drafts in git history
 
-- run 92 — dev.to / r/LLMDevs / r/AI_Agents: "Your 'read-only' AI agent is one SQL comment away from a write." (a read-only role + connection string leaks — a write in a SQL comment, a `DROP` in a CTE, a valid `JOIN` onto `oauth_tokens`, a pool-draining query, prompt-injected rows; root cause is the agent holding credentials *and* authoring SQL — take authorship away: server-built parameterised writes + fail-closed three-stage read validator + engine RLS, not a regex; anchors `/solve/safely-give-ai-agent-database-access`).
-- run 91 — dev.to / r/LLMDevs / r/LangChain: "Your eval results live in a spreadsheet. The question 'which version regressed' lives in SQL." (an eval run is a list of scored cases, but "pass rate per version, which cases regressed, trend per model" are aggregations across every run — a pivot rots on the next run, asking the LLM to tally hallucinates; scoring and tracking are different machines — log each scored case as a typed row; anchors `/solve/track-llm-eval-scores-across-prompt-versions`).
+- run 93 — dev.to / r/LLMDevs / r/AI_Agents: "Your agents each have their own memory. That's why they keep redoing each other's work." (a crew breaks memory a new way — one agent's facts are invisible to another; "shared vector store" fixes recall only, but "what did each agent decide / tasks each closed / latest fact" is `GROUP BY`/`COUNT`/most-recent; one shared store where each row carries `agent_id` lets any agent read another's and roll the crew up per agent; honest limits — no per-agent access control, no vector recall; anchors `/solve/share-memory-across-multiple-ai-agents`).
+- run 92 — dev.to / r/LLMDevs / r/AI_Agents: "Your 'read-only' AI agent is one SQL comment away from a write." (a read-only role + connection string leaks via a write in a SQL comment, a `DROP` in a CTE, a `JOIN` onto `oauth_tokens`, a pool-draining query; root cause is the agent holding credentials *and* authoring SQL — take authorship away: server-built parameterised writes + fail-closed read validator + engine RLS, not a regex; anchors `/solve/safely-give-ai-agent-database-access`).
+- run 91 — dev.to / r/LLMDevs / r/LangChain: "Your eval results live in a spreadsheet. The question 'which version regressed' lives in SQL." (an eval run is scored cases, but "pass rate per version, which regressed, trend per model" are aggregations across every run — a pivot rots, asking the LLM to tally hallucinates; scoring and tracking are different machines — log each case as a typed row; anchors `/solve/track-llm-eval-scores-across-prompt-versions`).
 
 Newest first; collapsed once past the single inline draft above (the latest draft
 has grown enough that even two no longer fit under the D4 20 KB cap). Each line is
