@@ -126,6 +126,15 @@ export type EvalReport = {
   // workflow re-dispatches; the next run loads the checkpoint and
   // finishes the remaining pairs. Absent on a completed run.
   resumable?: boolean;
+  // SK-QUAL-020 — true when the whole provider chain was unreachable
+  // (every scored row a `network`/`timeout`/`not_configured`/`auth_denied`
+  // transport-or-config failure, never an LLM answer). The run measured an
+  // outage, not engine quality, so it is NOT compared to the baseline and
+  // NOT emitted; the poisoned all-`no_sql` checkpoint is dropped and the
+  // CLI exits non-zero so the dispatch re-runs fresh. Sibling to
+  // `resumable` (capacity) but the opposite checkpoint move. Absent on a
+  // run that produced any engine signal.
+  transport_failed?: boolean;
 };
 
 // SK-QUAL-006 — paired McNemar result on per-question outcomes.

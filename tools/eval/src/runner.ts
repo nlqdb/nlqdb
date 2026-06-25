@@ -189,6 +189,42 @@ function isChainCapacityExhausted(err: unknown): boolean {
   );
 }
 
+// SK-QUAL-020 — `FailoverReason`s that mean the chain was never *reachable
+// or usable*, so a row scored `no_sql` under one of them carries zero
+// engine signal: `network`/`timeout` (transport), `not_configured` (no key
+// registered), `auth_denied` (401/403 — key revoked/billing unlinked,
+// SK-LLM-039). The capacity pair (`rate_limited`/`circuit_open`) is
+// deliberately excluded — SK-QUAL-013's budget-stop owns it and it never
+// reaches a scored `no_sql`. The answer-signal reasons (`parse`,
+// `http_4xx`, `http_5xx`, `provider_error`, `unknown`) are NOT here, so a
+// run that fails because the model returned non-SQL is never misread as an
+// outage.
+const NON_ENGINE_REASONS = new Set(["network", "timeout", "not_configured", "auth_denied"]);
+
+// SK-QUAL-020 — a transport collapse: every lane that ran produced *zero*
+// engine signal (no match / mismatch / exec_error) and every one of its
+// `no_sql` rows was a `NON_ENGINE_REASONS` failure. The chain was
+// unreachable end-to-end, so the run measured an outage, not SQL quality —
+// recording its EX=0% would overwrite the baseline / emit a false
+// regression. Pure over the assembled lane summaries so it's unit-testable
+// without a live chain. Conservative by construction: any answered question
+// (or any `parse`/`http_*` reason) makes it `false`, so a genuine engine
+// regression is never suppressed.
+function isTransportCollapse(lanes: LaneSummary[]): boolean {
+  const ran = lanes.filter((l) => l.attempted > 0);
+  if (ran.length === 0) return false;
+  return ran.every((l) => {
+    if (l.match + l.mismatch + l.exec_error !== 0) return false;
+    if (l.no_sql === 0) return false;
+    const tags = Object.keys(l.no_sql_reasons ?? {});
+    if (tags.length === 0) return false;
+    return tags.every((tag) => {
+      const reason = tag.includes(":") ? tag.slice(tag.indexOf(":") + 1) : tag;
+      return NON_ENGINE_REASONS.has(reason);
+    });
+  });
+}
+
 // Seeded PRNG (mulberry32) — tiny, dependency-free, deterministic per seed.
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -692,6 +728,20 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
     return report;
   }
 
+  // SK-QUAL-020 — transport collapse: the whole chain was unreachable
+  // (every scored row a network/timeout/config failure, never an LLM
+  // answer). Unlike the capacity stop above, these rows ARE scored `no_sql`
+  // and so are already in the checkpoint — a resume would replay them and
+  // re-report 0%. Write the report for inspection, DROP the poisoned
+  // checkpoint so the re-dispatch starts fresh, and DON'T compare to the
+  // baseline or emit: the run measured an outage, not engine quality.
+  if (isTransportCollapse(laneSummaries)) {
+    report.transport_failed = true;
+    await writer(report, opts.outDir);
+    await completeCheckpoint(cpPath);
+    return report;
+  }
+
   // Baseline diff + McNemar. Failures are converted to console warnings;
   // a missing or unreadable baseline must not block the run summary —
   // the operator sees the warning in the GH-Actions log and re-runs.
@@ -863,6 +913,15 @@ if (import.meta.main) {
       if (ag !== null && ag !== undefined) {
         console.info(`  delta (agentic, KPI): ${(ag * 100).toFixed(2)} pts`);
       }
+      if (r.transport_failed) {
+        // SK-QUAL-020 — the chain was unreachable end-to-end; the EX=0% is
+        // an outage, not a measurement. Fail loud so the dispatch re-runs
+        // fresh instead of recording 0% / overwriting the baseline.
+        console.error(
+          "quality-eval: transport collapse — whole chain unreachable (network/timeout/config), EX is an outage not a measurement; checkpoint dropped, re-dispatch when connectivity is back",
+        );
+        process.exit(1);
+      }
     })
     .catch((err) => {
       console.error(`quality-eval: ${err instanceof Error ? err.message : String(err)}`);
@@ -878,4 +937,5 @@ export const _testing = {
   parseDatasetFlag,
   sampleQuestions,
   isChainCapacityExhausted,
+  isTransportCollapse,
 };
