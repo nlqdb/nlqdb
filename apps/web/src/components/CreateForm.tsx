@@ -43,7 +43,7 @@ import { prettifyHeader } from "../lib/text";
 import { solveChallenge } from "../lib/turnstile";
 import ErrorBoundary from "./ErrorBoundary";
 
-const MCP_URL = "https://mcp.nlqdb.com";
+const MCP_URL = "https://mcp.nlqdb.com/mcp";
 
 interface CreateFormProps {
   apiBase: string;

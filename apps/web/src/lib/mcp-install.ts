@@ -65,15 +65,19 @@ export function buildCursorHref(mcpUrl: string): string {
 /**
  * Full paste-ready config docs. The shapes are host-specific:
  *   - Claude:   `mcpServers` wrapper, `url` field.
- *   - Windsurf: `mcpServers` wrapper, `serverUrl` field, `/mcp` suffix.
+ *   - Windsurf: `mcpServers` wrapper, `serverUrl` field.
  *   - Zed:      `context_servers` wrapper, `url` field.
+ *
+ * All hosts connect to the FULL endpoint URL — callers must pass
+ * `mcpUrl` with the protocol path included (the server serves the
+ * MCP protocol at `/mcp`, not at root; see `apps/mcp/src/index.ts`).
  */
 export function buildClaudeConfig(mcpUrl: string): string {
   return JSON.stringify({ mcpServers: { nlqdb: { url: mcpUrl } } }, null, 2);
 }
 
 export function buildWindsurfConfig(mcpUrl: string): string {
-  return JSON.stringify({ mcpServers: { nlqdb: { serverUrl: `${mcpUrl}/mcp` } } }, null, 2);
+  return JSON.stringify({ mcpServers: { nlqdb: { serverUrl: mcpUrl } } }, null, 2);
 }
 
 export function buildZedConfig(mcpUrl: string): string {

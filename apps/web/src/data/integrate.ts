@@ -59,7 +59,7 @@ nlq "an orders tracker for my coffee shop"`,
     title: "MCP server",
     sub: "talk to your data from Claude, Cursor, Zed, Windsurf",
     lang: "json",
-    snippet: `{ "mcpServers": { "nlqdb": { "url": "https://mcp.nlqdb.com" } } }`,
+    snippet: `{ "mcpServers": { "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" } } }`,
     docs: `${DOCS}/mcp/`,
   },
   {
