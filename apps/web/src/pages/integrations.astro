@@ -1,5 +1,6 @@
 ---
 import Footer from "../components/Footer.astro";
+import McpInstall from "../components/McpInstall.astro";
 import Topnav from "../components/Topnav.astro";
 import Base from "../layouts/Base.astro";
 
@@ -59,13 +60,6 @@ const FRAMEWORKS: readonly Surface[] = [
     note: "Solid component",
     href: `${DOCS}/tutorials/solid/`,
   },
-];
-
-const MCP_HOSTS: readonly Surface[] = [
-  { id: "claude.ai", name: "Claude", note: "Claude Desktop / Claude Code" },
-  { id: "cursor", name: "Cursor", note: "Cursor IDE" },
-  { id: "windsurf", name: "Windsurf", note: "Codeium Windsurf" },
-  { id: "zed", name: "Zed", note: "Zed editor" },
 ];
 
 const UNIVERSAL: readonly Surface[] = [
@@ -198,15 +192,7 @@ const OTHER_LANGS: readonly Surface[] = [
           agent gets <code>nlqdb_remember</code> / <code>nlqdb_recall</code>
           plus the ask tool. Tested against:
         </p>
-        <ul class="ints__grid">
-          {MCP_HOSTS.map((s) => (
-            <li class="ints__cell">
-              <p class="ints__id"><code>{s.id}</code></p>
-              <p class="ints__name">{s.name}</p>
-              {s.note && <p class="ints__note">{s.note}</p>}
-            </li>
-          ))}
-        </ul>
+        <McpInstall compact={false} />
       </section>
 
       <section class="ints__footnote" aria-label="Missing your stack?">

@@ -28,6 +28,7 @@ import AgentMemoryMatrix from "../../components/AgentMemoryMatrix.astro";
 import CreateForm from "../../components/CreateForm.tsx";
 import Cta from "../../components/Cta.astro";
 import Footer from "../../components/Footer.astro";
+import McpInstall from "../../components/McpInstall.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
@@ -150,6 +151,16 @@ const faqJsonLd = faqPageJsonLd(faqs);
         <p class="ag-hero__meta">
           Pre-loaded with an agent-memory goal — edit it, or paste your own.
         </p>
+
+        {/* SK-WEB-016 — Install affordance lives adjacent to the hero
+            CTA on `/agents` (the one venue where MCP install IS the
+            on-message next step, not noise). Compact row of four
+            host buttons; thin rule above for rhythm without competing
+            with the form. SK-WEB-002 honored — form stays the primary
+            input above. */}
+        <div class="ag-hero__install">
+          <McpInstall compact={true} />
+        </div>
       </section>
 
       {/* BEAT 2 — Demo. The MCP tool-call pair (nlqdb_remember +
@@ -399,6 +410,16 @@ const faqJsonLd = faqPageJsonLd(faqs);
     font-family: var(--mono);
     font-size: var(--t-small);
     color: var(--muted);
+  }
+
+  /* SK-WEB-016 — Hero-adjacent MCP install affordance. Thin 1px rule
+   * separates it from the form without competing visually. The
+   * `<McpInstall>` component already owns its own top margin, so we
+   * only add the rule + a small breathing gap above. */
+  .ag-hero__install {
+    margin-top: clamp(24px, 4vw, 36px);
+    padding-top: clamp(20px, 3vw, 28px);
+    border-top: 1px solid var(--rule);
   }
 
   /* Demo — beat 2. Side-by-side at ≥880px (matches the homepage

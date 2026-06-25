@@ -27,6 +27,12 @@ import { type CreateError, type CreateResult, type CreateRow, postAskCreate } fr
 import { messageFor } from "../lib/create-errors";
 import { emit } from "../lib/logsnag";
 import {
+  type McpHostEntry,
+  PLACEHOLDER_KEY,
+  PROMOTED_HOST,
+  buildMcpHosts,
+} from "../lib/mcp-install";
+import {
   appendHistory,
   clearDraft,
   loadDraft,
@@ -36,6 +42,8 @@ import {
 import { prettifyHeader } from "../lib/text";
 import { solveChallenge } from "../lib/turnstile";
 import ErrorBoundary from "./ErrorBoundary";
+
+const MCP_URL = "https://mcp.nlqdb.com";
 
 interface CreateFormProps {
   apiBase: string;
@@ -223,8 +231,156 @@ function CreateResultView({ result }: { result: CreateResult }) {
       {grouped.map((tbl) => (
         <SampleTable key={tbl.table} table={tbl.table} rows={tbl.rows} />
       ))}
+      <McpInstallView />
       <CreateSnippetView primaryTable={grouped[0]?.table} />
     </section>
+  );
+}
+
+// SK-WEB-016 — Post-create MCP install affordance. React mirror of
+// `McpInstall.astro` (the Astro component scopes its styles, so a React
+// island next to it can't borrow them; we render an equivalent surface
+// inline). Both venues source their URI + JSON shapes from
+// `lib/mcp-install.ts` so the host descriptors stay in lockstep.
+//
+// `compact={false}` equivalent — this is the wow→action handoff after a
+// successful create, worth the descriptive sublines. The apiKey at this
+// point is always the SK-ANON-012 placeholder (the anon 1-call cap was
+// burned by the create call itself), so the sign-in nudge always shows.
+function McpInstallView() {
+  const hosts = buildMcpHosts(MCP_URL);
+  return (
+    <section
+      className="createresult__mcp"
+      aria-label="Install in your agent"
+      style={{
+        marginTop: "clamp(20px, 3vw, 28px)",
+      }}
+    >
+      <p
+        style={{
+          margin: "0 0 clamp(10px, 1.6vw, 14px)",
+          fontFamily: "var(--mono)",
+          fontSize: "var(--t-small)",
+          color: "var(--muted)",
+          textTransform: "uppercase",
+          letterSpacing: "0.16em",
+        }}
+      >
+        Install in your agent.
+      </p>
+      <ul
+        style={{
+          listStyle: "none",
+          margin: 0,
+          padding: 0,
+          display: "grid",
+          gap: "clamp(14px, 2vw, 20px)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        }}
+      >
+        {hosts.map((host) => (
+          <McpHostCell key={host.id} host={host} />
+        ))}
+      </ul>
+      <p
+        style={{
+          margin: "clamp(14px, 2vw, 18px) 0 0",
+          fontFamily: "var(--sans)",
+          fontSize: "var(--t-small)",
+          color: "var(--muted)",
+          lineHeight: 1.5,
+        }}
+      >
+        Anonymous — the configs ship with the{" "}
+        <code style={{ fontFamily: "var(--mono)", fontSize: "0.92em", color: "var(--body)" }}>
+          {PLACEHOLDER_KEY}
+        </code>{" "}
+        placeholder.{" "}
+        <a
+          href="/auth/sign-in?return_to=/app"
+          style={{
+            marginLeft: 6,
+            color: "var(--ink)",
+            textDecoration: "underline",
+            textDecorationColor: "var(--rule)",
+            textUnderlineOffset: 3,
+          }}
+        >
+          Sign in (free) to inline your live key →
+        </a>
+      </p>
+    </section>
+  );
+}
+
+function McpHostCell({ host }: { host: McpHostEntry }) {
+  const [copied, setCopied] = useState(false);
+  const promoted = host.id === PROMOTED_HOST;
+  const ctaClass = promoted ? "cta" : "cta cta--ghost";
+  const btnStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "11px 16px",
+    fontSize: 13,
+    whiteSpace: "nowrap",
+  };
+  const subStyle: React.CSSProperties = {
+    margin: 0,
+    fontFamily: "var(--sans)",
+    fontSize: "var(--t-small)",
+    color: "var(--muted)",
+    lineHeight: 1.45,
+  };
+  const cellStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    minWidth: 0,
+  };
+
+  if (host.status === "deep-link" && host.href) {
+    return (
+      <li style={cellStyle}>
+        <a
+          className={ctaClass}
+          href={host.href}
+          target="_self"
+          title={host.versionHint}
+          style={btnStyle}
+          onClick={() => emit("home.snippet_copied", { surface: `mcp_install_${host.id}` })}
+        >
+          Add to {host.name}
+        </a>
+        <p style={subStyle}>Opens {host.name} and asks you to confirm before writing the config.</p>
+      </li>
+    );
+  }
+  // fallback-only — copy-to-clipboard.
+  async function onCopy() {
+    if (!host.config) return;
+    try {
+      await navigator.clipboard.writeText(host.config);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Non-secure context / extension lockdown — the /integrations
+      // page shows the same configs; not fatal.
+    }
+    emit("home.snippet_copied", { surface: `mcp_install_${host.id}` });
+  }
+  return (
+    <li style={cellStyle}>
+      <button
+        type="button"
+        className={ctaClass}
+        title={host.versionHint}
+        onClick={() => void onCopy()}
+        style={btnStyle}
+      >
+        {copied ? "Copied ✓" : `Copy ${host.name} config`}
+      </button>
+      {host.pasteHint && <p style={subStyle}>{host.pasteHint}</p>}
+    </li>
   );
 }
 
