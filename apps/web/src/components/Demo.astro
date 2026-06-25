@@ -1,0 +1,202 @@
+---
+// Homepage demo block (redesign-plan §5 `/` beat 2, SK-WEB-003 "code
+// is the proof" made literal). The same answer, two ways: a static
+// pre-rendered chat reply on the left, the `<nlq-data>` snippet that
+// produces it on the right.
+//
+// The snippet is the page's *second* lime moment — the `<nlq-data>`
+// tag itself is wrapped in `.demo__tag` so the accent lands only on
+// the identifier, not the surrounding markup. (The first lime moment
+// is the `<CreateForm>` submit CTA in the hero; the third is the
+// Replaces final CTA below.)
+//
+// No React island here — we want this rendered at build time so the
+// page proves "code is the proof" without a single byte of JS for
+// the demo. The showcase row data is borrowed from `data/showcase-examples`
+// so the example evolves with the rest of the carousel/eval surface.
+
+import { SHOWCASE_EXAMPLES } from "../data/showcase-examples";
+
+// Pick the showpiece — revenue-by-drink. Populated table, immediate
+// "the AI answered me" moment. Falls back to the first read example
+// if the id ever changes.
+const SHOWPIECE_ID = "read-revenue-by-drink";
+const showpiece =
+  SHOWCASE_EXAMPLES.find((e) => e.id === SHOWPIECE_ID) ??
+  SHOWCASE_EXAMPLES.find((e) => e.category === "read") ??
+  SHOWCASE_EXAMPLES[0];
+
+const rows = showpiece.rows ?? [];
+const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+
+// Title-case the column headers (mirrors the chat surface's
+// prettifyHeader() so the marketing demo doesn't show raw snake_case).
+function prettify(key: string): string {
+  return key.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+// Format a sample value as the chat would.
+function fmt(v: string | number | null): string {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "number") {
+    // Two-decimal money-style for fractional, plain integer otherwise.
+    return Number.isInteger(v) ? v.toString() : v.toFixed(2);
+  }
+  return String(v);
+}
+
+// One-sentence answer the chat would compose. Hand-written for the
+// showpiece — the chat surface synthesises this from the result; we
+// hardcode the equivalent here so the demo block is JS-free.
+const answerSentence = "Flat white leads the morning — six drinks, ranked by revenue.";
+
+// The exact snippet text. The `<nlq-data>` tag is wrapped in a
+// `.demo__tag` span at render time so the accent highlights only
+// that identifier.
+const snippetGoal = showpiece.goal;
+---
+
+<section class="demo" aria-labelledby="demo-eyebrow">
+  <p class="demo__eyebrow" id="demo-eyebrow">The same answer, two ways.</p>
+
+  <div class="demo__pair">
+    <article class="demo__answer" aria-label="Example chat reply">
+      <p class="demo__answer-text">{answerSentence}</p>
+      <div class="demo__data" role="region" aria-label="Result data">
+        <table class="nlq-table">
+          <thead>
+            <tr>
+              {columns.map((c) => <th>{prettify(c)}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr>
+                {columns.map((c) => <td>{fmt(r[c])}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {showpiece.summary && (
+        <p class="demo__answer-foot">{showpiece.summary}</p>
+      )}
+    </article>
+
+    <aside class="demo__snippet" aria-label="Embed snippet">
+      <p class="demo__snippet-label">Drop into any HTML page:</p>
+      <pre class="demo__snippet-code"><code>&lt;<span class="demo__tag">nlq-data</span> goal=&quot;{snippetGoal}&quot;&gt;&lt;/<span class="demo__tag">nlq-data</span>&gt;</code></pre>
+      <p class="demo__snippet-hint">
+        One element. Schema, plan, cache, auth — server-side, invisible.
+      </p>
+    </aside>
+  </div>
+</section>
+
+<style is:global>
+  .demo {
+    padding: clamp(64px, 12vw, 120px) 0 clamp(48px, 8vw, 80px);
+    max-width: var(--bleed);
+  }
+
+  .demo__eyebrow {
+    margin: 0 0 clamp(20px, 3vw, 32px);
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .demo__pair {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(20px, 3vw, 32px);
+    align-items: stretch;
+  }
+
+  @media (min-width: 880px) {
+    .demo__pair {
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+    }
+  }
+
+  .demo__answer,
+  .demo__snippet {
+    margin: 0;
+    padding: clamp(20px, 3vw, 28px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+  }
+
+  .demo__answer-text {
+    margin: 0 0 18px;
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 400;
+    color: var(--ink);
+    line-height: 1.4;
+    text-wrap: balance;
+  }
+
+  .demo__data {
+    overflow-x: auto;
+    margin: 0 0 14px;
+  }
+
+  .demo__answer-foot {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+
+  .demo__snippet {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .demo__snippet-label {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .demo__snippet-code {
+    margin: 0;
+    padding: 18px;
+    background: var(--ground);
+    border: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--body);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .demo__snippet-code code {
+    font-family: inherit;
+  }
+
+  /* The lime moment for this beat — only the tag identifier glows. */
+  .demo__tag {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .demo__snippet-hint {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.55;
+    max-width: 40ch;
+  }
+</style>

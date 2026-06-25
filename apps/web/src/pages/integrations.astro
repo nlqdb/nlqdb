@@ -1,0 +1,384 @@
+---
+import Footer from "../components/Footer.astro";
+import Topnav from "../components/Topnav.astro";
+import Base from "../layouts/Base.astro";
+
+// /integrations — quiet support page. New home for AlsoWorksFor's
+// "also works for solo builders, analysts, backend engineers" framing
+// after redesign-plan §5 demoted it off `/`. Plain organized list of
+// the surfaces nlqdb already plugs into: framework SDKs (one per
+// `packages/<framework>/`), MCP hosts (the agent IDEs the hosted MCP
+// server lists), and the universal surfaces. No lime, no icons, no
+// table — two-column auto-fit grids per the redesign-plan §3 quiet
+// brutalism direction.
+
+interface Surface {
+  /** package or host identifier — rendered in mono */
+  id: string;
+  /** human-readable label — rendered in body sans */
+  name: string;
+  /** optional one-line description */
+  note?: string;
+  /** link to docs/repo */
+  href?: string;
+}
+
+const DOCS = "https://docs.nlqdb.com";
+
+const FRAMEWORKS: readonly Surface[] = [
+  { id: "@nlqdb/react", name: "React", note: "React 19 wrapper", href: `${DOCS}/tutorials/react/` },
+  {
+    id: "@nlqdb/next",
+    name: "Next.js",
+    note: "Next 15 helpers + RSC server factory",
+    href: `${DOCS}/tutorials/next/`,
+  },
+  { id: "@nlqdb/vue", name: "Vue", note: "Vue 3.5 component", href: `${DOCS}/tutorials/vue/` },
+  { id: "@nlqdb/nuxt", name: "Nuxt", note: "Nuxt 4 module", href: `${DOCS}/tutorials/nuxt/` },
+  {
+    id: "@nlqdb/svelte",
+    name: "Svelte",
+    note: "Svelte 5 component",
+    href: `${DOCS}/tutorials/svelte/`,
+  },
+  {
+    id: "@nlqdb/sveltekit",
+    name: "SvelteKit",
+    note: "load() + <NlqHead>",
+    href: `${DOCS}/tutorials/sveltekit/`,
+  },
+  {
+    id: "@nlqdb/astro",
+    name: "Astro",
+    note: "Astro 6 integration",
+    href: `${DOCS}/tutorials/astro/`,
+  },
+  {
+    id: "@nlqdb/solid",
+    name: "SolidJS",
+    note: "Solid component",
+    href: `${DOCS}/tutorials/solid/`,
+  },
+];
+
+const MCP_HOSTS: readonly Surface[] = [
+  { id: "claude.ai", name: "Claude", note: "Claude Desktop / Claude Code" },
+  { id: "cursor", name: "Cursor", note: "Cursor IDE" },
+  { id: "windsurf", name: "Windsurf", note: "Codeium Windsurf" },
+  { id: "zed", name: "Zed", note: "Zed editor" },
+];
+
+const UNIVERSAL: readonly Surface[] = [
+  {
+    id: "<nlq-data>",
+    name: "HTML element",
+    note: "drop a tag, ship the page",
+    href: `${DOCS}/tutorials/html/`,
+  },
+  {
+    id: "@nlqdb/sdk",
+    name: "TypeScript SDK",
+    note: "fetch-based, zero deps, runs anywhere",
+    href: `${DOCS}/sdk/`,
+  },
+  { id: "nlq", name: "CLI", note: "one binary, two verbs", href: `${DOCS}/cli/` },
+  {
+    id: "mcp.nlqdb.com",
+    name: "MCP server",
+    note: "hosted Model Context Protocol endpoint",
+    href: `${DOCS}/mcp/`,
+  },
+  {
+    id: "POST /v1/ask",
+    name: "HTTP API",
+    note: "raw HTTP, no SDK required",
+    href: `${DOCS}/reference/http-api/`,
+  },
+];
+
+const OTHER_LANGS: readonly Surface[] = [
+  {
+    id: "nlqdb-swift",
+    name: "Swift",
+    note: "Swift 6 package — iOS / macOS / Linux",
+    href: `${DOCS}/sdk/swift/`,
+  },
+  { id: "nlqdb-rb", name: "Ruby", note: "Ruby gem", href: `${DOCS}/sdk/ruby/` },
+  { id: "nlqdb-rs", name: "Rust", note: "Rust crate", href: `${DOCS}/sdk/rust/` },
+];
+---
+
+<Base
+  title="Integrations — nlqdb"
+  description="Frameworks, MCP hosts, and surfaces nlqdb already plugs into. One engine; many places to call it from."
+  canonical="/integrations"
+>
+  <div class="page">
+    <Topnav />
+
+    <main class="ints">
+      <header class="ints__head">
+        <p class="ints__kicker">Integrations</p>
+        <h1 class="ints__title">
+          One engine. Wherever you write code.
+        </h1>
+        <p class="ints__lede">
+          Agent memory is the sharp edge &mdash; but the same talk-to-it
+          database is a whole backend you didn&rsquo;t have to build. If
+          you&rsquo;re shipping a side project, exploring data, or replacing a
+          CRUD service, nlqdb plugs into the place you&rsquo;re already
+          writing code.
+        </p>
+      </header>
+
+      <section class="ints__section" aria-labelledby="ints-universal">
+        <h2 class="ints__heading" id="ints-universal">Surfaces</h2>
+        <p class="ints__section-lede">
+          Five universal surfaces, one shared engine. Pick the smallest one
+          that fits the job.
+        </p>
+        <ul class="ints__grid">
+          {UNIVERSAL.map((s) => (
+            <li class="ints__cell">
+              <p class="ints__id"><code>{s.id}</code></p>
+              <p class="ints__name">{s.name}</p>
+              {s.note && <p class="ints__note">{s.note}</p>}
+              {s.href && (
+                <a class="ints__link" href={s.href}>Docs &rarr;</a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section class="ints__section" aria-labelledby="ints-frameworks">
+        <h2 class="ints__heading" id="ints-frameworks">Frameworks</h2>
+        <p class="ints__section-lede">
+          Typed wrappers around the SDK. Install the one for your framework;
+          render <code>&lt;NlqData&gt;</code> server-side or client-side.
+        </p>
+        <ul class="ints__grid">
+          {FRAMEWORKS.map((s) => (
+            <li class="ints__cell">
+              <p class="ints__id"><code>{s.id}</code></p>
+              <p class="ints__name">{s.name}</p>
+              {s.note && <p class="ints__note">{s.note}</p>}
+              {s.href && (
+                <a class="ints__link" href={s.href}>Docs &rarr;</a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section class="ints__section" aria-labelledby="ints-langs">
+        <h2 class="ints__heading" id="ints-langs">Other languages</h2>
+        <p class="ints__section-lede">
+          Native SDKs outside the JavaScript ecosystem. Same
+          <code>/v1/ask</code> on the wire.
+        </p>
+        <ul class="ints__grid">
+          {OTHER_LANGS.map((s) => (
+            <li class="ints__cell">
+              <p class="ints__id"><code>{s.id}</code></p>
+              <p class="ints__name">{s.name}</p>
+              {s.note && <p class="ints__note">{s.note}</p>}
+              {s.href && (
+                <a class="ints__link" href={s.href}>Docs &rarr;</a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section class="ints__section" aria-labelledby="ints-mcp">
+        <h2 class="ints__heading" id="ints-mcp">MCP hosts</h2>
+        <p class="ints__section-lede">
+          Point any MCP-aware host at <code>mcp.nlqdb.com</code> and your
+          agent gets <code>nlqdb_remember</code> / <code>nlqdb_recall</code>
+          plus the ask tool. Tested against:
+        </p>
+        <ul class="ints__grid">
+          {MCP_HOSTS.map((s) => (
+            <li class="ints__cell">
+              <p class="ints__id"><code>{s.id}</code></p>
+              <p class="ints__name">{s.name}</p>
+              {s.note && <p class="ints__note">{s.note}</p>}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section class="ints__footnote" aria-label="Missing your stack?">
+        <p>
+          Missing your stack? Every surface above is a thin client over
+          <code>POST /v1/ask</code>. Wire it up in any language with an
+          HTTP client &mdash; or <a href="mailto:hello@nlqdb.com">tell us</a>
+          which framework to ship next.
+        </p>
+      </section>
+    </main>
+
+    <Footer />
+  </div>
+</Base>
+
+<style>
+  .ints {
+    max-width: var(--bleed);
+    margin: 0 auto;
+    padding: clamp(48px, 8vw, 96px) 0 clamp(64px, 10vw, 120px);
+    width: 100%;
+  }
+
+  .ints__head {
+    max-width: var(--col);
+    margin: 0 0 clamp(48px, 8vw, 96px);
+  }
+
+  .ints__kicker {
+    margin: 0 0 16px;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .ints__title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.08;
+    color: var(--ink);
+    margin: 0 0 20px;
+    max-width: 22ch;
+  }
+
+  .ints__lede {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-large);
+    line-height: 1.5;
+    color: var(--body);
+    max-width: 60ch;
+  }
+
+  .ints__section {
+    margin: 0 0 clamp(48px, 7vw, 80px);
+  }
+
+  .ints__heading {
+    font-family: var(--display);
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    color: var(--ink);
+    margin: 0 0 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .ints__section-lede {
+    margin: 0 0 28px;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    line-height: 1.55;
+    color: var(--body);
+    max-width: 60ch;
+  }
+
+  .ints__section-lede code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--ink);
+  }
+
+  .ints__grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .ints__cell {
+    background: var(--ground);
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ints__id {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
+
+  .ints__id code {
+    font-family: var(--mono);
+    color: var(--muted);
+  }
+
+  .ints__name {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+
+  .ints__note {
+    margin: 4px 0 0;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--body);
+    line-height: 1.45;
+  }
+
+  .ints__link {
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--body);
+    text-decoration: none;
+    align-self: flex-start;
+  }
+
+  .ints__link:hover {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .ints__footnote {
+    max-width: var(--col);
+    margin: clamp(40px, 6vw, 64px) 0 0;
+    padding-top: clamp(28px, 4vw, 40px);
+    border-top: 1px solid var(--rule);
+  }
+
+  .ints__footnote p {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    line-height: 1.6;
+    color: var(--body);
+    max-width: 60ch;
+  }
+
+  .ints__footnote code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--ink);
+  }
+</style>

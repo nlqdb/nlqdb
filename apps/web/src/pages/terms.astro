@@ -66,3 +66,87 @@ import Legal from "../layouts/Legal.astro";
     <a href="mailto:hello@nlqdb.com">hello@nlqdb.com</a>.
   </p>
 </Legal>
+
+<style>
+  /* /terms is intentionally unobtrusive (redesign-plan §5). See the
+   * matching block in privacy.astro for the rationale — the two pages
+   * share the Legal layout and apply identical scoped overrides so the
+   * lime accents, mono headers, and decorative borders from the legacy
+   * layout collapse into the quiet-brutalism token system. */
+  :global(.legal__kicker) {
+    color: var(--muted);
+  }
+
+  :global(.legal__title) {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+
+  :global(.legal__updated) {
+    color: var(--muted);
+  }
+
+  :global(.legal__note) {
+    border: 1px solid var(--rule);
+    background: transparent;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  :global(.legal__body h2) {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: var(--t-large);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    color: var(--ink);
+    margin: clamp(32px, 5vw, 44px) 0 12px;
+  }
+
+  :global(.legal__body p),
+  :global(.legal__body li) {
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    line-height: 1.5;
+    color: var(--body);
+  }
+
+  :global(.legal__body a) {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  :global(.legal__body a:hover) {
+    color: var(--ink);
+  }
+
+  :global(.legal__body strong) {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  :global(.legal__cta) {
+    border-top: 1px solid var(--rule);
+  }
+
+  :global(.legal__cta .btn--accent) {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--rule);
+    box-shadow: none;
+  }
+
+  :global(.legal__cta .btn--accent:hover) {
+    color: var(--ink);
+    border-color: var(--ink);
+    transform: none;
+    box-shadow: none;
+  }
+</style>

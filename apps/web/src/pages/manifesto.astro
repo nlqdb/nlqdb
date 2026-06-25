@@ -2,12 +2,16 @@
 import Footer from "../components/Footer.astro";
 import Topnav from "../components/Topnav.astro";
 import { inversion, tenets } from "../data/manifesto";
+import { RECEIPTS } from "../data/research-receipts";
 import Base from "../layouts/Base.astro";
 
-// Long-form manifesto: §0 of DESIGN.md, written for humans rather
-// than spec-readers. AEO-friendly: definition lead in the first 150
-// words; one direct-answer block; tenet content sourced from
-// `data/manifesto`.
+// Long-form manifesto (redesign-plan §5 /manifesto). Editorial moment:
+// single 720px column, display serif at 400 for running text, drop cap
+// on the opening paragraph, smallcaps via <abbr> for cited entities,
+// pull-quotes at --t-section with lime hairline rules. No hard-shadow
+// boxes — the page IS the rhythm. Lime only on pull-quote hairlines
+// and the closing CTA. ResearchReceipts content is folded in below as
+// a "Receipts" section (each receipt is a citation, not a card).
 ---
 
 <Base
@@ -18,48 +22,53 @@ import Base from "../layouts/Base.astro";
   <div class="page">
     <Topnav current="manifesto" />
 
-    <main class="manifesto">
-      <header class="manifesto__head">
-        <p class="manifesto__kicker">Manifesto</p>
-        <h1 class="manifesto__title">
+    <main class="m">
+      <header class="m-head">
+        <p class="m-kicker">Manifesto</p>
+        <h1 class="m-title">
           A database you talk to,<br />
           with a backend that doesn&rsquo;t exist.
         </h1>
-        <p class="manifesto__lede">
-          nlqdb is a natural-language database: you create one with a name,
-          you query it in English, and the schema, the engine, the indexes,
-          the migrations and the cache are all background concerns you
-          never have to see.
-        </p>
-        <p class="manifesto__sub">
-          What follows is the bar every change is judged against. If a
-          change violates one of these, it doesn&rsquo;t ship. Not as
-          guidelines &mdash; as acceptance criteria.
-        </p>
       </header>
 
-      <section class="manifesto__answer" aria-label="Direct answer">
-        <p>
-          <strong>What is nlqdb?</strong> A database that accepts natural
-          language as its query language, picks the right engine for your
-          workload (Postgres, ClickHouse, Redis, &hellip;), and
-          exposes itself through five surfaces &mdash; an HTML element, a
-          typed SDK, a CLI, an MCP server, and a chat web app &mdash; all
-          backed by the same engine. The free tier is the same engine
-          paying customers run on; the escape hatch to raw SQL stays one
-          click away, always.
+      <div class="m-prose">
+        <p class="m-lede">
+          <span class="m-dropcap">N</span>lqdb is a natural-language database:
+          you create one with a name, you query it in English, and the schema,
+          the engine, the indexes, the migrations and the cache are all
+          background concerns you never have to see. What follows is the bar
+          every change is judged against. If a change violates one of these,
+          it doesn&rsquo;t ship. Not as guidelines &mdash; as acceptance
+          criteria.
         </p>
-      </section>
 
-      <ol class="tenets">
+        <blockquote class="m-pull">
+          What is nlqdb? A database that accepts natural language as its
+          query language, picks the right engine for your workload &mdash;
+          <abbr title="Postgres">Postgres</abbr>,
+          <abbr title="ClickHouse">ClickHouse</abbr>,
+          <abbr title="Redis">Redis</abbr> &mdash; and exposes itself through
+          five surfaces: an <abbr title="HTML">HTML</abbr> element, a typed
+          <abbr title="Software Development Kit">SDK</abbr>, a
+          <abbr title="Command Line Interface">CLI</abbr>, an
+          <abbr title="Model Context Protocol">MCP</abbr> server, and a chat
+          web app &mdash; all backed by the same engine.
+        </blockquote>
+
+        <p>
+          The free tier is the same engine paying customers run on; the
+          escape hatch to raw <abbr title="Structured Query Language">SQL</abbr>
+          stays one click away, always.
+        </p>
+      </div>
+
+      <ol class="m-tenets">
         {
           tenets.map((t) => (
-            <li class="tenet">
-              <div class="tenet__head">
-                <span class="tenet__num">{t.n}</span>
-                <h2 class="tenet__title">{t.title}</h2>
-              </div>
-              <div class="tenet__body">
+            <li class="m-tenet">
+              <p class="m-tenet-num">{t.n}</p>
+              <h2 class="m-tenet-title">{t.title}</h2>
+              <div class="m-tenet-body">
                 {t.body.map((p) => (
                   <p>{p}</p>
                 ))}
@@ -69,19 +78,17 @@ import Base from "../layouts/Base.astro";
         }
       </ol>
 
-      <section class="manifesto__inversion" aria-labelledby="inversion-title">
-        <h2 class="manifesto__h2" id="inversion-title">
-          The on-ramp inversion.
-        </h2>
+      <section class="m-section" aria-labelledby="inversion-title">
+        <h2 class="m-h2" id="inversion-title">The on-ramp inversion.</h2>
         <p>
           The single most important design decision: every entry point
           accepts <em>a goal</em>, not a database name. Every surface,
           reframed.
         </p>
 
-        <div class="inversion-table-wrap">
-          <table class="inversion-table">
-            <caption class="inversion-table__caption">
+        <div class="m-table-wrap">
+          <table class="m-table">
+            <caption class="m-table-cap">
               Surface-by-surface inversion of the first action.
             </caption>
             <thead>
@@ -106,33 +113,78 @@ import Base from "../layouts/Base.astro";
         </div>
       </section>
 
-      <section class="manifesto__not" aria-labelledby="not-title">
-        <h2 class="manifesto__h2" id="not-title">What this isn&rsquo;t.</h2>
-        <ul class="not-list">
-          <li>
-            <strong>Not</strong> a SQL builder. There is no &ldquo;here is
-            your generated SQL, paste it into your ORM&rdquo; step.
-          </li>
-          <li>
-            <strong>Not</strong> a vector store with a wrapper. Postgres
-            with pgvector is one of the engines under the hood, not the
-            product.
-          </li>
-          <li>
-            <strong>Not</strong> a chat-on-top-of-your-warehouse layer.
-            We own the storage too. Otherwise schema, indexes and
-            migrations leak back into the user&rsquo;s brain.
-          </li>
-          <li>
-            <strong>Not</strong> a no-code tool. The whole point is that
-            developers stay in their editor, in their language, against
-            their build. nlqdb is a backend, not a GUI.
-          </li>
-        </ul>
+      <section class="m-section" aria-labelledby="not-title">
+        <h2 class="m-h2" id="not-title">What this isn&rsquo;t.</h2>
+        <dl class="m-not">
+          <div class="m-not-row">
+            <dt>Not a SQL builder.</dt>
+            <dd>
+              There is no &ldquo;here is your generated SQL, paste it into
+              your <abbr title="Object-Relational Mapper">ORM</abbr>&rdquo;
+              step.
+            </dd>
+          </div>
+          <div class="m-not-row">
+            <dt>Not a vector store with a wrapper.</dt>
+            <dd>
+              <abbr title="Postgres">Postgres</abbr> with
+              <abbr title="pgvector">pgvector</abbr> is one of the engines
+              under the hood, not the product.
+            </dd>
+          </div>
+          <div class="m-not-row">
+            <dt>Not a chat-on-top-of-your-warehouse layer.</dt>
+            <dd>
+              We own the storage too. Otherwise schema, indexes and
+              migrations leak back into the user&rsquo;s brain.
+            </dd>
+          </div>
+          <div class="m-not-row">
+            <dt>Not a no-code tool.</dt>
+            <dd>
+              The whole point is that developers stay in their editor, in
+              their language, against their build. nlqdb is a backend, not
+              a <abbr title="Graphical User Interface">GUI</abbr>.
+            </dd>
+          </div>
+        </dl>
       </section>
 
-      <p class="manifesto__cta">
-        <a class="btn btn--accent" href="/">&larr; Back to the snippet</a>
+      <section class="m-section" aria-labelledby="receipts-title">
+        <h2 class="m-h2" id="receipts-title">Receipts.</h2>
+        <p>
+          A pre-alpha making technical claims has to show its work. Each
+          design call below is anchored to a paper, postmortem, or
+          production system that taught us the lesson.
+        </p>
+
+        <ol class="m-receipts">
+          {
+            RECEIPTS.map((r) => (
+              <li class="m-receipt">
+                <h3 class="m-receipt-lesson">{r.lesson}</h3>
+                <p class="m-receipt-why">{r.why}</p>
+                <p class="m-receipt-cite">
+                  <a
+                    class="m-receipt-src"
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {r.source}
+                  </a>
+                  <span class="m-receipt-applied">
+                    Applied at <span class="m-receipt-loc">{r.appliedAt.label}</span>.
+                  </span>
+                </p>
+              </li>
+            ))
+          }
+        </ol>
+      </section>
+
+      <p class="m-cta-wrap">
+        <a class="cta" href="/">Back to the snippet</a>
       </p>
     </main>
 
@@ -141,254 +193,390 @@ import Base from "../layouts/Base.astro";
 </Base>
 
 <style is:global>
-  .manifesto {
-    padding: clamp(48px, 8vw, 96px) 0 clamp(48px, 6vw, 80px);
-    max-width: 760px;
+  /* /manifesto — editorial long-form moment (redesign-plan §5).
+     Single 720px measure, Source Serif 4 at body weight 400 for running
+     text. Drop cap on the opening paragraph. <abbr> rendered as
+     smallcaps. Pull-quotes at --t-section with lime hairline rules.
+     No hard-shadow boxes anywhere; the page is the rhythm. */
+
+  .m {
+    max-width: var(--col);
     margin: 0 auto;
+    padding: clamp(56px, 9vw, 96px) 0 clamp(56px, 8vw, 96px);
+    font-family: var(--display);
+    color: var(--body);
   }
 
-  .manifesto__head {
-    margin-bottom: clamp(40px, 6vw, 64px);
+  .m-head {
+    margin-bottom: clamp(48px, 7vw, 72px);
   }
 
-  .manifesto__kicker {
-    margin: 0 0 16px;
+  .m-kicker {
+    margin: 0 0 20px;
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--t-small);
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--muted);
   }
 
-  .manifesto__title {
-    font-size: clamp(36px, 6vw, 64px);
-    letter-spacing: -0.03em;
-    line-height: 0.96;
-    margin: 0 0 24px;
-  }
-
-  .manifesto__lede {
-    font-family: var(--mono);
-    font-size: clamp(16px, 2vw, 19px);
-    color: var(--fg);
-    margin: 0 0 16px;
-    line-height: 1.5;
-    max-width: 56ch;
-  }
-
-  .manifesto__sub {
-    margin: 0;
-    color: var(--fg-dim);
-    font-size: clamp(14px, 1.6vw, 16px);
-    max-width: 60ch;
-  }
-
-  .manifesto__answer {
-    margin: 0 0 clamp(32px, 5vw, 48px);
-    padding: clamp(20px, 3vw, 28px);
-    border: 2px solid var(--accent);
-    background: var(--bg-elev);
-    font-size: clamp(15px, 1.6vw, 16px);
-    color: var(--fg);
-  }
-
-  .manifesto__answer p {
+  .m-title {
+    font-family: var(--display);
+    font-size: var(--t-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--ink);
+    text-wrap: balance;
     margin: 0;
   }
 
-  .manifesto__answer strong {
-    color: var(--accent);
-    font-weight: 700;
+  .m-prose {
+    margin: 0 0 clamp(48px, 7vw, 72px);
   }
 
-  /* Tenet list. The <ol>'s native numbers are suppressed visually,
-     but the explicit numeric span IS announced (no aria-hidden) so
-     screen readers still hear "01 Free. Forever." in order. */
-  .tenets {
-    list-style: none;
-    margin: 0 0 clamp(40px, 6vw, 64px);
-    padding: 0;
-    display: grid;
-    gap: clamp(20px, 3vw, 28px);
+  .m-prose p {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: var(--t-large);
+    line-height: 1.55;
+    color: var(--body);
+    margin: 0 0 1.2em;
   }
 
-  .tenet {
-    border: 2px solid var(--border-strong);
-    padding: clamp(20px, 3vw, 28px);
-    background: var(--bg-elev);
-  }
-
-  .tenet__head {
-    display: flex;
-    align-items: baseline;
-    gap: 16px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-  }
-
-  .tenet__num {
-    font-family: var(--mono);
-    font-size: clamp(14px, 1.5vw, 15px);
-    color: var(--accent);
-    font-weight: 700;
-    letter-spacing: 0.04em;
-  }
-
-  .tenet__title {
-    font-family: var(--mono);
-    font-size: clamp(18px, 2.4vw, 22px);
-    letter-spacing: -0.01em;
-    margin: 0;
-    line-height: 1.2;
-  }
-
-  .tenet__body p {
-    margin: 0 0 12px;
-    font-size: clamp(15px, 1.6vw, 16px);
-    color: var(--fg-dim);
-    line-height: 1.7;
-  }
-
-  .tenet__body p:last-child {
+  .m-prose p:last-child {
     margin-bottom: 0;
   }
 
-  .manifesto__h2 {
+  .m-lede {
+    font-size: var(--t-large);
+  }
+
+  .m-dropcap {
+    float: left;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 4.4em;
+    line-height: 0.85;
+    color: var(--ink);
+    margin: 0.06em 0.08em 0 0;
+    padding: 0;
+  }
+
+  /* Pull-quote — section-sized type, lime hairline rules above + below.
+     This is the only place lime appears on the page apart from the
+     closing CTA. */
+  .m-pull {
+    margin: clamp(40px, 6vw, 56px) 0;
+    padding: clamp(28px, 4vw, 40px) 0;
+    border-top: 1px solid var(--accent);
+    border-bottom: 1px solid var(--accent);
+    font-family: var(--display);
+    font-weight: 400;
+    font-style: italic;
+    font-size: var(--t-section);
+    line-height: 1.18;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
+  .m-pull abbr {
+    font-style: normal;
+  }
+
+  /* Smallcaps for cited entities. font-variant-caps:all-small-caps gets
+     true smallcaps from Source Serif 4 where supported, falling back
+     to scale+uppercase elsewhere. No underline (the default UA <abbr>
+     dotted underline reads as noise here). */
+  abbr[title] {
+    font-variant-caps: all-small-caps;
+    font-feature-settings: "smcp", "c2sc";
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    border-bottom: 0;
+    cursor: help;
+  }
+
+  /* Numbered tenets — no card chrome. Numeral as mono eyebrow,
+     title as display, body as display 400 running text. */
+  .m-tenets {
+    list-style: none;
+    margin: 0 0 clamp(48px, 7vw, 72px);
+    padding: 0;
+    display: grid;
+    gap: clamp(40px, 6vw, 56px);
+  }
+
+  .m-tenet {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .m-tenet-num {
+    margin: 0 0 8px;
     font-family: var(--mono);
-    font-size: clamp(20px, 3vw, 28px);
-    letter-spacing: -0.02em;
+    font-size: var(--t-small);
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .m-tenet-title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.05;
+    color: var(--ink);
     margin: 0 0 16px;
+    text-wrap: balance;
   }
 
-  .manifesto__inversion {
-    margin: 0 0 clamp(40px, 6vw, 64px);
+  .m-tenet-body p {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: var(--t-large);
+    line-height: 1.55;
+    color: var(--body);
+    margin: 0 0 0.9em;
   }
 
-  .manifesto__inversion p {
-    color: var(--fg-dim);
+  .m-tenet-body p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Generic section (inversion, not-list, receipts). */
+  .m-section {
+    margin: 0 0 clamp(48px, 7vw, 72px);
+  }
+
+  .m-section > p {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: var(--t-large);
+    line-height: 1.55;
+    color: var(--body);
+    margin: 0 0 clamp(24px, 3vw, 32px);
+  }
+
+  .m-h2 {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.05;
+    color: var(--ink);
     margin: 0 0 20px;
-    font-size: clamp(15px, 1.6vw, 16px);
   }
 
-  /* Real <table> — gives screen-reader users row/col navigation. */
-  .inversion-table-wrap {
-    border: 2px solid var(--border-strong);
-    background: var(--bg-elev);
+  /* Inversion table — hairline rules only, no surrounding card. */
+  .m-table-wrap {
     overflow-x: auto;
   }
 
-  .inversion-table {
+  .m-table {
     width: 100%;
     border-collapse: collapse;
-    font-family: var(--mono);
-    font-size: 13px;
+    font-family: var(--sans);
+    font-size: var(--t-body);
     text-align: left;
+    color: var(--body);
   }
 
-  .inversion-table__caption {
+  .m-table-cap {
     caption-side: top;
     text-align: left;
-    padding: 12px 16px;
-    font-size: 11px;
+    padding: 0 0 14px;
+    font-family: var(--mono);
+    font-size: var(--t-small);
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--accent);
-    background: var(--bg);
-    border-bottom: 2px solid var(--border-strong);
+    color: var(--muted);
   }
 
-  .inversion-table th,
-  .inversion-table td {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
+  .m-table th,
+  .m-table td {
+    padding: 14px 16px 14px 0;
+    border-bottom: 1px solid var(--rule);
     vertical-align: top;
-    font-weight: normal;
+    font-weight: 400;
   }
 
-  .inversion-table thead th {
-    color: var(--accent);
+  .m-table thead th {
+    color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    font-size: 11px;
-    background: var(--bg);
+    font-size: var(--t-small);
+    font-family: var(--mono);
+    padding-bottom: 10px;
   }
 
-  .inversion-table tbody tr:last-child th,
-  .inversion-table tbody tr:last-child td {
+  .m-table tbody tr:last-child th,
+  .m-table tbody tr:last-child td {
     border-bottom: none;
   }
 
-  .inversion-table th[scope="row"] {
-    color: var(--fg);
+  .m-table th[scope="row"] {
+    color: var(--ink);
+    font-family: var(--display);
+    font-weight: 600;
   }
 
-  .inversion-table code {
+  .m-table code {
     font-family: var(--mono);
-    font-size: 12px;
-    color: var(--fg);
+    font-size: 0.92em;
+    color: var(--ink);
   }
 
   @media (max-width: 640px) {
-    .inversion-table thead {
+    .m-table thead {
       display: none;
     }
-    .inversion-table,
-    .inversion-table tbody,
-    .inversion-table tr {
+    .m-table,
+    .m-table tbody,
+    .m-table tr {
       display: block;
     }
-    .inversion-table tr {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
+    .m-table tr {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--rule);
     }
-    .inversion-table tr:last-child {
+    .m-table tr:last-child {
       border-bottom: none;
     }
-    .inversion-table th[scope="row"] {
+    .m-table th[scope="row"] {
       display: block;
-      padding: 0 0 4px;
+      padding: 0 0 6px;
       border-bottom: none;
-      color: var(--accent);
     }
-    .inversion-table td {
+    .m-table td {
       display: block;
       padding: 2px 0;
       border-bottom: none;
     }
   }
 
-  .manifesto__not {
-    margin: 0 0 clamp(40px, 6vw, 64px);
-  }
-
-  .not-list {
-    list-style: none;
+  /* "What this isn't" — definition list, hairline-separated. */
+  .m-not {
+    margin: 0;
     padding: 0;
-    margin: 0;
     display: grid;
-    gap: 12px;
+    gap: 0;
   }
 
-  .not-list li {
-    padding: 14px 18px;
-    border: 1px solid var(--border);
-    font-size: 15px;
-    color: var(--fg-dim);
-    line-height: 1.5;
+  .m-not-row {
+    padding: 18px 0;
+    border-bottom: 1px solid var(--rule);
   }
 
-  .not-list strong {
-    color: var(--accent);
-    font-family: var(--mono);
-    font-size: 13px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    margin-right: 6px;
+  .m-not-row:first-child {
+    padding-top: 0;
   }
 
-  .manifesto__cta {
+  .m-not-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .m-not dt {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: var(--t-large);
+    color: var(--ink);
+    margin: 0 0 6px;
+  }
+
+  .m-not dd {
     margin: 0;
-    padding-top: clamp(20px, 3vw, 28px);
-    border-top: 1px solid var(--border);
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: var(--t-large);
+    line-height: 1.55;
+    color: var(--body);
+  }
+
+  /* Receipts — each one a citation, not a card. Hairline-separated,
+     source name as the link, applied-at as a mono footer. */
+  .m-receipts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0;
+  }
+
+  .m-receipt {
+    padding: clamp(20px, 3vw, 28px) 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .m-receipt:first-child {
+    padding-top: 0;
+  }
+
+  .m-receipt:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .m-receipt-lesson {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: var(--t-large);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    color: var(--ink);
+    margin: 0 0 10px;
+  }
+
+  .m-receipt-why {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: var(--t-body);
+    line-height: 1.6;
+    color: var(--body);
+    margin: 0 0 10px;
+  }
+
+  .m-receipt-cite {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+  }
+
+  .m-receipt-src {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 3px;
+  }
+
+  .m-receipt-src:hover {
+    color: var(--ink);
+    text-decoration-color: var(--ink);
+  }
+
+  .m-receipt-applied {
+    color: var(--muted);
+  }
+
+  .m-receipt-loc {
+    color: var(--body);
+  }
+
+  /* Closing CTA — lime moment, the only one on the page besides the
+     pull-quote hairlines. */
+  .m-cta-wrap {
+    margin: clamp(56px, 8vw, 80px) 0 0;
+    padding-top: clamp(28px, 4vw, 40px);
+    border-top: 1px solid var(--rule);
+    text-align: left;
   }
 </style>
+</Base>

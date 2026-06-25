@@ -1,15 +1,18 @@
 ---
 // Marketing hero — the goal-first input that morphs into a real-LLM
-// chat (SK-WEB-002 / SK-WEB-008). Backed by the same `<CreateForm>`
-// React island as `/app/new`; both routes hit `/v1/ask` with an
+// chat (SK-WEB-002 / SK-WEB-008). Two text layers + the form: a
+// display-serif lede that leads with the agent-memory wedge (WS-13 /
+// SK-PIVOT-013, the founder-gated 2026-06-24 reposition), one
+// sans-serif explainer line, then the same `<CreateForm>` React
+// island as `/app/new`. The form posts to `/v1/ask` with an
 // anonymous bearer (SK-ANON-008), gated by the global anon cap
 // (SK-ANON-010) with prompt-persistence (SK-ANON-011).
 //
-// The lede leads with the agent-memory wedge (WS-13 / SK-PIVOT-013 —
-// the founder-gated headline reposition, tripped 2026-06-24). The
-// goal-first input below is untouched (SK-WEB-002): it is still the
-// 60-second on-ramp and the generalist umbrella (dual front door,
-// GLOBAL-036) the credo line keeps reachable.
+// Wordmark moved to the topnav (redesign-plan §3, §5/`/`): the
+// hero's lime moment is the form's submit CTA — nothing above it
+// competes. Credo line ("Also a natural-language database for any
+// app…") removed: the demo block below this hero shows that idea
+// rather than apologising for the headline in text.
 
 import CreateForm from "./CreateForm.tsx";
 
@@ -25,17 +28,9 @@ import CreateForm from "./CreateForm.tsx";
 const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 <section class="hero">
-  <h1 class="hero__wordmark">nlqdb</h1>
-  <p class="hero__lede">Analytical memory for AI agents.</p>
-  <p class="hero__sub">
-    Connect a real database to Claude, Cursor, or any MCP host. Your agent
-    writes typed rows as it learns, then queries them in English —
-    <code>GROUP BY</code>, <code>JOIN</code>, aggregate over what it
-    remembered, not just the top-<em>k</em> a vector store recalls.
-  </p>
-  <p class="hero__credo">
-    Also a natural-language database for any app — created from a goal, not a
-    schema. Start one below, or <a href="/agents">see the agent-memory story</a>.
+  <h1 class="hero__lede">Analytical memory for AI agents.</h1>
+  <p class="hero__say">
+    Connect a database your agent can write to and query in English.
   </p>
 
   <CreateForm client:load apiBase={apiBase} />

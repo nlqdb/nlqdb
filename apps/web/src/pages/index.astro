@@ -1,17 +1,16 @@
 ---
-import AgentMemoryBand from "../components/AgentMemoryBand.astro";
-import AlsoWorksFor from "../components/AlsoWorksFor.astro";
+// Homepage — three beats (redesign-plan §5, SK-WEB-015 foundation):
+// hero → demo → replaces. Everything else moved off `/` (legacy
+// component files survive until Phase 2 page-sweep agents port their
+// content; the `Waitlist` block is deleted outright because the
+// product is open per d63fb01).
+
 import AuthedHomeBanner from "../components/AuthedHomeBanner.astro";
-import Carousel from "../components/Carousel.astro";
-import CodePanel from "../components/CodePanel.astro";
+import Demo from "../components/Demo.astro";
 import Footer from "../components/Footer.astro";
 import Hero from "../components/Hero.astro";
-import ManifestoExcerpt from "../components/ManifestoExcerpt.astro";
 import Replaces from "../components/Replaces.astro";
-import ResearchReceipts from "../components/ResearchReceipts.astro";
 import Topnav from "../components/Topnav.astro";
-import Waitlist from "../components/Waitlist.astro";
-import { SHOWCASE_EXAMPLES } from "../data/showcase-examples";
 import Base from "../layouts/Base.astro";
 ---
 <Base
@@ -26,14 +25,8 @@ import Base from "../layouts/Base.astro";
     <main>
       <AuthedHomeBanner />
       <Hero />
-      <AgentMemoryBand />
-      <Carousel examples={SHOWCASE_EXAMPLES} />
-      <Waitlist />
-      <AlsoWorksFor />
-      <CodePanel />
+      <Demo />
       <Replaces />
-      <ResearchReceipts />
-      <ManifestoExcerpt />
     </main>
 
     <Footer />
@@ -43,7 +36,7 @@ import Base from "../layouts/Base.astro";
 <script>
   // Provision the anonymous-mode token on first visit (SK-ANON-001).
   // Mint the anon token up front — no cost; useful when the
-  // visitor crosses to /app/new from the carousel / footer.
+  // visitor crosses to /app/new from the footer / replaces CTA.
   import { getOrMintAnonToken } from "../lib/anon";
   getOrMintAnonToken();
 </script>

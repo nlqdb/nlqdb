@@ -1,103 +1,97 @@
 ---
+// `/agents` — the agent-memory-specific mirror of the homepage
+// (redesign-plan §5 `/agents`, SK-WEB-015). Same three-beat rhythm
+// as `/`: HERO → DEMO → REPLACEMENT. The hero ships one input
+// pre-seeded with an agent-memory goal (SK-WEB-002 honored — one
+// input, no signup wall). The demo shows an MCP `nlqdb_remember` +
+// `nlqdb_recall` tool-call pair with the resulting SQL and answer,
+// side-by-side like the homepage's `<Demo>`. The replacement block
+// reuses the editorial-serif strikethrough vocabulary from
+// `<Replaces>` but lists what this kills for agent builders:
+// vector store top-k, per-agent SQLite, embedding cache.
+//
+// The `AgentMemoryMatrix` (the four-up Mem0/Zep/Letta/nlqdb
+// capability table) sits inside beat 2 as visual evidence of the
+// "memory you can GROUP BY" claim — restyled inline against the new
+// token system. The FAQPage JSON-LD is kept for AEO (rich results /
+// answer-engine extraction) — every answer restates a claim already
+// made visibly on the page, so the structured data stays honest
+// (SK-PIVOT-004, Google FAQPage policy).
+//
+// Agent-memory pivot reading (docs/features/agent-memory-pivot/):
+// GLOBAL-036 + WS-07 (this page) + WS-13/SK-PIVOT-013 (pivot copy).
+// The MCP connector path (paste the URL into Claude / Cursor / Codex,
+// `nlq mcp install`) is the real agent-builder action; the
+// browser-try fallback is a secondary link below the final CTA.
+
 import AgentMemoryMatrix from "../../components/AgentMemoryMatrix.astro";
+import CreateForm from "../../components/CreateForm.tsx";
+import Cta from "../../components/Cta.astro";
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
 
-// `/agents` — the dedicated analytical-agent-memory front door
-// (GLOBAL-036, agent-memory-pivot WS-07). A new route on nlqdb.com,
-// not a new domain. This page is allowed to lead with the agent-memory
-// story even though the sitewide lead strings (Hero.astro, README,
-// llms.txt) stay gated to WS-13.
-//
-// Run 1 = skeleton + hero + AEO direct-answer. Run 2 = the WS-06
-// capability matrix + the typed-plan-trust-boundary moat + the FSL
-// self-host / BYO-key band (FSL-accurate per WS-10). Run 3 = the
-// conversion CTA. WS-13 / SK-PIVOT-013 (founder gate tripped 2026-06-24)
-// reworks that terminal CTA to lead with the real agent-builder action —
-// connect a host over MCP (paste mcp.nlqdb.com or `nlq mcp install`,
-// naming Claude / Cursor / Codex) — and demotes the generalist /app/new
-// "try a goal" path to a secondary link. Both still fire GLOBAL-024
-// demand signals.
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
-// The MCP connector config an agent builder pastes into their host
-// (Claude Desktop, Cursor, Codex, Zed, Windsurf). Same shape every host
-// uses; the hosted server handles OAuth on the first tool call, so no key
-// is wired up front. Mirrors `data/snippets.ts` + `data/integrate.ts`.
+// The hero input is pre-seeded with an agent-memory goal — the
+// analytical-over-memory wedge (a GROUP BY a vector store can't run).
+// An inline script writes this into the `nlqdb_draft` localStorage
+// slot before the `<CreateForm>` island hydrates, so `loadDraft()`
+// rehydrates the textarea on first paint. (SK-ANON-011 — same slot
+// CreateForm reads from after a refresh.)
+const heroGoal = "agents that remember feedback per user, ranked by count this month";
+
+// The MCP connector config the agent builder pastes into their host
+// (Claude Desktop, Cursor, Codex, Zed, Windsurf). Hosted server, OAuth
+// on the first tool call, no key wired up front.
 const mcpConfig = `{
   "mcpServers": {
     "nlqdb": { "url": "https://mcp.nlqdb.com" }
   }
 }`;
 
-// Memory-shaped demo goal — the analytical-over-memory wedge (a GROUP BY
-// a vector store can't run). Mirrors the /solve analytical sibling so the
-// seeded draft lands the agent-builder on the read-side story.
-const demoGoal = "Count of facts my agent logged per category this month, highest first";
+// The DEMO block — an `nlqdb_remember` / `nlqdb_recall` MCP tool call
+// pair, the compiled SQL, and the answer rows. Rendered from a fixture
+// through the same typed-plan compile shape the product runs (NOT a
+// live `/v1/ask` call — the proof stays server-rendered so it's
+// crawlable / AEO-friendly and works with no JS, SK-PIVOT-004).
+const rememberCall = `nlqdb_remember({
+  category: "user_preference",
+  content: "prefers concise replies",
+  user_id: "u_412"
+})`;
+const rememberResult = `→ { id: 4129, ok: true }`;
 
-// WS-09 — the live in-page demo. Rendered from a fixture through the same
-// typed-plan compile path the product runs, NOT a live `/v1/ask` call — the
-// proof stays server-rendered so it's crawlable (AEO) and works with no JS
-// (SK-PIVOT-004). It shows
-// the wedge end to end: typed memory rows the agent wrote → the English
-// question → the compiled, parameterised SQL → the GROUP BY answer a vector
-// store structurally can't return. Type + brand tables only, no screenshot
-// or produced video (SK-PIVOT-004). Everything renders server-side so the
-// proof is crawlable (AEO) and works with no JS; the button only replays a
-// pulse + fires the GLOBAL-024 demand signal.
-const demoMemoryRows = [
-  {
-    id: 412,
-    category: "user_preference",
-    content: "prefers metric units",
-    created_at: "2026-06-19",
-  },
-  {
-    id: 408,
-    category: "task_outcome",
-    content: "shipped the invoice export",
-    created_at: "2026-06-18",
-  },
-  {
-    id: 401,
-    category: "user_preference",
-    content: "timezone is Asia/Jerusalem",
-    created_at: "2026-06-17",
-  },
-  {
-    id: 396,
-    category: "entity_fact",
-    content: "primary repo is nlqdb/nlqdb",
-    created_at: "2026-06-15",
-  },
-  {
-    id: 390,
-    category: "task_outcome",
-    content: "fixed the flaky e2e test",
-    created_at: "2026-06-14",
-  },
-];
-const demoSql = `SELECT category, COUNT(*) AS facts
+const recallCall = `nlqdb_recall({
+  question: "feedback per user, ranked by count this month"
+})`;
+
+const recallSql = `SELECT user_id, COUNT(*) AS feedback
   FROM agent_memory
- WHERE created_at >= date_trunc('month', now())
- GROUP BY category
- ORDER BY facts DESC;`;
-const demoResult = [
-  { category: "user_preference", facts: 38 },
-  { category: "task_outcome", facts: 24 },
-  { category: "entity_fact", facts: 19 },
-  { category: "tool_result", facts: 11 },
-  { category: "correction", facts: 5 },
+ WHERE category = 'user_preference'
+   AND created_at >= date_trunc('month', now())
+ GROUP BY user_id
+ ORDER BY feedback DESC;`;
+
+const recallRows = [
+  { user_id: "u_412", feedback: 14 },
+  { user_id: "u_207", feedback: 9 },
+  { user_id: "u_388", feedback: 6 },
+  { user_id: "u_104", feedback: 4 },
+  { user_id: "u_551", feedback: 2 },
 ];
 
-// AEO: a visible FAQ block + matching FAQPage JSON-LD — the wedge front
-// door was the only key landing page emitting no FAQPage structured data
-// (every /vs + /solve page does), so answer engines and Google rich
-// results couldn't extract its Q&A. Every answer restates a claim already
-// made visibly elsewhere on this page (direct-answer, split, moat, FSL,
-// honest-scope) — no new claim — so the structured data stays backed by
-// on-page content (Google FAQPage policy) and honest (SK-PIVOT-004).
+// What this kills for agent builders — the third beat, editorial-serif
+// strikethrough vocabulary from `<Replaces>`.
+const replaces = [
+  "Vector store top-k",
+  "Per-agent SQLite",
+  "Embedding cache",
+  "Schema design",
+  "Re-rank pipeline",
+];
+
 const faqs = [
   {
     q: "What is analytical memory for an AI agent?",
@@ -130,7 +124,7 @@ const faqJsonLd = faqPageJsonLd(faqs);
 
 <Base
   title="Analytical memory for AI agents — nlqdb"
-  description="Memory your AI agent can query. nlqdb gives an agent a real Postgres database as memory — so it can GROUP BY, JOIN, and aggregate over what it remembered, not just recall the top-k similar rows a vector store returns."
+  description="Memory your agents can GROUP BY. nlqdb gives an AI agent a real Postgres database as memory over MCP — so it can aggregate over what it remembered, not just recall the top-k similar rows a vector store returns."
   canonical="/agents"
   ogImage="/og/agents.png"
   ogImageAlt="GROUP BY your agent's memory — analytical memory for AI agents."
@@ -138,277 +132,186 @@ const faqJsonLd = faqPageJsonLd(faqs);
   <div class="page">
     <Topnav current="agents" />
 
-    <main class="agents">
-      <header class="agents__head">
-        <p class="agents__kicker">For AI agents</p>
-        <h1 class="agents__title">Memory your agent can query.</h1>
-        <p class="agents__lede">
-          Give your AI agent a real database as its memory &mdash; created from
-          a goal, not a schema. It writes typed rows as it learns, and later
-          runs actual SQL over them: counts, top-N, averages per group.
+    <main>
+      {/* BEAT 1 — Hero. Display-serif lede, one sans explainer, one
+          input pre-seeded with an agent-memory goal. Lime moment is
+          the CreateForm submit. */}
+      <section class="hero ag-hero">
+        <h1 class="hero__lede">
+          Memory your agents can <code class="ag-hero__code">GROUP BY</code>.
+        </h1>
+        <p class="hero__say">
+          Give your agent a real database as its memory — typed rows it writes
+          as it learns, queried in English. Not the top-k a vector store returns.
         </p>
-        <p class="agents__sub">
-          A vector store returns the <em>k</em> most similar chunks. It can
-          recall, but it can&rsquo;t answer &ldquo;how many times did this user
-          ask about pricing this month?&rdquo; &mdash; that&rsquo;s a
-          <code>GROUP BY</code>, and a similarity index has no query planner.
-          nlqdb does, because the memory <em>is</em> a database.
-        </p>
-      </header>
 
-      <section class="agents__answer" aria-label="Direct answer">
-        <p>
-          <strong>What is analytical agent memory?</strong> A real, queryable
-          database an agent uses to remember &mdash; typed rows it can
-          <code>GROUP BY</code>, <code>JOIN</code>, and aggregate over in plain
-          English, not an opaque vector blob it can only search. The agent asks
-          in natural language; nlqdb compiles the question to SQL through a
-          typed-plan trust boundary, runs it on Postgres, and returns rows plus
-          the exact SQL it ran. Recall is table stakes &mdash; <em>analysis</em>
-          over memory is the part a vector store structurally can&rsquo;t do.
+        <CreateForm client:load apiBase={apiBase} />
+
+        <p class="ag-hero__meta">
+          Pre-loaded with an agent-memory goal — edit it, or paste your own.
         </p>
       </section>
 
-      <section class="agents__split" aria-labelledby="split-title">
-        <h2 class="agents__h2" id="split-title">Retrieval is not analytics.</h2>
-        <div class="agents__cols">
-          <div class="agents__col">
-            <p class="agents__col-h">A vector store gives your agent</p>
-            <ul>
-              <li>top-<em>k</em> similar chunks for a query</li>
-              <li>semantic recall of past text</li>
-              <li>no query planner &mdash; rollups become the model doing
-                arithmetic over search hits</li>
-            </ul>
+      {/* BEAT 2 — Demo. The MCP tool-call pair (nlqdb_remember +
+          nlqdb_recall), the compiled SQL, and the answer rows.
+          Side-by-side at ≥880px like the homepage <Demo>. */}
+      <section class="ag-demo" aria-labelledby="ag-demo-eyebrow">
+        <p class="ag-demo__eyebrow" id="ag-demo-eyebrow">Two MCP tools. One database.</p>
+        <h2 class="ag-demo__title">
+          Your agent writes a row, then asks a question.
+        </h2>
+        <p class="ag-demo__lede">
+          Over MCP your agent calls
+          <code><span class="ag-demo__tag">nlqdb_remember</span></code> to write
+          a typed row, then
+          <code><span class="ag-demo__tag">nlqdb_recall</span></code> to ask in
+          English. nlqdb compiles the question to SQL through a typed-plan
+          trust boundary and runs it on Postgres.
+        </p>
+
+        <div class="ag-demo__pair">
+          <article class="ag-demo__col" aria-label="Remember">
+            <p class="ag-demo__col-label">1 · Remember</p>
+            <pre class="ag-demo__code"><code>{rememberCall}</code></pre>
+            <p class="ag-demo__col-out"><code>{rememberResult}</code></p>
+            <p class="ag-demo__col-note">
+              The row lands in <code>agent_memory</code> — typed columns, not
+              an opaque vector blob.
+            </p>
+          </article>
+
+          <article class="ag-demo__col" aria-label="Recall">
+            <p class="ag-demo__col-label">2 · Recall</p>
+            <pre class="ag-demo__code"><code>{recallCall}</code></pre>
+            <p class="ag-demo__col-sub">Compiled SQL (the exact statement nlqdb ran):</p>
+            <pre class="ag-demo__sql"><code>{recallSql}</code></pre>
+          </article>
+        </div>
+
+        <div class="ag-demo__result" role="region" aria-label="Recall result">
+          <p class="ag-demo__col-label">3 · The answer — one <code>GROUP BY</code></p>
+          <div class="ag-demo__tablewrap">
+            <table class="ag-demo__table">
+              <thead>
+                <tr><th>user_id</th><th>feedback</th></tr>
+              </thead>
+              <tbody>
+                {recallRows.map((r) => (
+                  <tr><td>{r.user_id}</td><td>{r.feedback}</td></tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div class="agents__col agents__col--us">
-            <p class="agents__col-h">nlqdb gives your agent</p>
-            <ul>
-              <li>the same recall <em>plus</em> real SQL over its memory</li>
-              <li><code>GROUP BY</code> / <code>JOIN</code> / <code>HAVING</code>,
-                top-N, per-period &mdash; run in Postgres</li>
-              <li>the SQL it ran, every time &mdash; auditable, not a black box</li>
-            </ul>
+          <p class="ag-demo__honest">
+            Rendered from a fixture through the same typed-plan compile path
+            the product runs — server-rendered so it stays crawlable and works
+            with no JS. Numbers are illustrative.
+          </p>
+        </div>
+
+        <div class="ag-demo__matrix">
+          <AgentMemoryMatrix heading="Recall is table stakes. Only one of these can aggregate." />
+        </div>
+      </section>
+
+      {/* BEAT 3 — The replacement. Editorial-serif strikethrough list
+          of what this kills for agent builders, then one CTA. */}
+      <section class="ag-replaces" aria-labelledby="ag-replaces-title">
+        <h2 class="ag-replaces__title" id="ag-replaces-title">
+          Five boxes&hairsp;&mdash;&hairsp;or one MCP tool.
+        </h2>
+
+        <ul class="ag-replaces__list" aria-label="Things your agent no longer needs">
+          {
+            replaces.map((item, i) => (
+              <li class="ag-replaces__item" style={`--i:${i}`}>
+                <span class="ag-replaces__strike">{item}</span>
+              </li>
+            ))
+          }
+        </ul>
+
+        <div class="ag-replaces__final">
+          <code class="ag-replaces__code">
+            <span class="ag-replaces__tag">nlqdb_recall</span>(…)
+          </code>
+        </div>
+
+        <div class="ag-replaces__cta">
+          <Cta href="#connect" label="Connect your agent →" />
+        </div>
+      </section>
+
+      {/* Final connect card — the primary agent-builder action.
+          Paste the MCP connector URL into a host, or run the CLI. */}
+      <section class="ag-connect" id="connect" aria-labelledby="ag-connect-title">
+        <h2 class="ag-connect__title" id="ag-connect-title">Connect over MCP.</h2>
+        <p class="ag-connect__lede">
+          nlqdb is a hosted MCP server. Add it to Claude, Cursor, Codex, or any
+          MCP host — OAuth opens in your browser on the first tool call, no
+          key wired up front.
+        </p>
+
+        <div class="ag-connect__grid">
+          <div class="ag-connect__card ag-connect__card--primary">
+            <p class="ag-connect__h">1 · Paste the connector URL</p>
+            <p class="ag-connect__note">
+              Into your host&rsquo;s MCP config — Claude Desktop, Cursor,
+              Codex, Zed, Windsurf.
+            </p>
+            <pre class="ag-connect__code"><code>{mcpConfig}</code></pre>
+            <button type="button" class="cta ag-connect__copy" data-copy-config>
+              Copy config
+            </button>
+          </div>
+
+          <div class="ag-connect__card">
+            <p class="ag-connect__h">Or: one command</p>
+            <p class="ag-connect__note">
+              The <code>nlq</code> CLI auto-detects every installed host, signs
+              you in once, and patches each config in place.
+            </p>
+            <pre class="ag-connect__code"><code>nlq mcp install</code></pre>
+            <a
+              class="cta cta--ghost ag-connect__docs"
+              href="https://docs.nlqdb.com/mcp/"
+              data-connect-docs
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Full MCP setup →
+            </a>
           </div>
         </div>
-        <p class="agents__honest">
-          Honest scope: similarity search over an <code>embedding</code> column
-          (pgvector) is an opt-in slice still landing &mdash; today the wedge is
-          the analytical side. nlqdb is a database, not a vector store
-          (<a href="/manifesto#not-title">manifesto</a>).
+
+        <p class="ag-connect__meta">
+          No agent handy?
+          <a href="/app/new" class="ag-connect__try" data-try-goal={heroGoal}>
+            Try a query in the browser
+          </a>
+          — an anonymous database, no sign-in, gone in 72 hours.
         </p>
       </section>
 
-      <section class="agents__demo" aria-labelledby="demo-title">
-        <h2 class="agents__h2" id="demo-title">See it: a <code>GROUP BY</code> over agent memory.</h2>
-        <p class="agents__demo-lede">
-          Your agent writes typed rows as it learns. Later it asks a question
-          in English &mdash; nlqdb compiles it to SQL through the typed-plan
-          boundary and runs it on Postgres. Here is the whole round-trip.
-        </p>
-
-        <ol class="agents__demo-steps">
-          <li class="agents__demo-step">
-            <p class="agents__demo-label">1 &middot; What the agent remembered &mdash; <code>agent_memory</code></p>
-            <div class="agents__demo-tablewrap">
-              <table class="agents__demo-table">
-                <thead>
-                  <tr><th>id</th><th>category</th><th>content</th><th>created_at</th></tr>
-                </thead>
-                <tbody>
-                  {demoMemoryRows.map((r) => (
-                    <tr>
-                      <td>{r.id}</td>
-                      <td>{r.category}</td>
-                      <td>{r.content}</td>
-                      <td>{r.created_at}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p class="agents__demo-note">Typed rows, not an opaque vector blob &mdash; 412 facts and counting.</p>
-          </li>
-
-          <li class="agents__demo-step">
-            <p class="agents__demo-label">2 &middot; The question, in English</p>
-            <p class="agents__demo-goal">&ldquo;{demoGoal}&rdquo;</p>
-            <button type="button" class="agents__demo-run" data-demo-goal={demoGoal}>
-              Run this query &rarr;
-            </button>
-            <p class="agents__demo-label agents__demo-label--sql">Compiled SQL (the exact statement nlqdb ran)</p>
-            <pre class="agents__demo-sql"><code>{demoSql}</code></pre>
-          </li>
-
-          <li class="agents__demo-step">
-            <p class="agents__demo-label">3 &middot; The answer &mdash; one <code>GROUP BY</code>, run in Postgres</p>
-            <div class="agents__demo-tablewrap" data-demo-result>
-              <table class="agents__demo-table agents__demo-table--result">
-                <thead>
-                  <tr><th>category</th><th>facts</th></tr>
-                </thead>
-                <tbody>
-                  {demoResult.map((r) => (
-                    <tr><td>{r.category}</td><td>{r.facts}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p class="agents__demo-note">
-              A vector store would return the rows most <em>similar</em> to your
-              query text. It can&rsquo;t count them per category &mdash; that
-              needs a query planner, which an index doesn&rsquo;t have.
-            </p>
-          </li>
-        </ol>
-
-        <p class="agents__demo-honest">
-          Rendered from a fixture through the same typed-plan compile path the
-          product runs &mdash; server-rendered so it stays crawlable and works
-          with no JS, not a live <code>/v1/ask</code> call. Numbers are illustrative.
-        </p>
-      </section>
-
-      <section class="agents__matrix" aria-label="Capability matrix">
-        <AgentMemoryMatrix
-          heading="What can your agent actually DO with its memory?"
-        />
-      </section>
-
-      <section class="agents__moat" aria-labelledby="moat-title">
-        <h2 class="agents__h2" id="moat-title">The moat: a typed-plan trust boundary.</h2>
-        <p class="agents__moat-lede">
-          Letting an agent write SQL against your database is how a coding
-          agent <a
-            href="https://fortune.com/2025/07/23/ai-coding-tool-replit-wiped-database-called-it-a-catastrophic-failure/"
-            rel="nofollow noopener noreferrer" target="_blank">wiped a production
-            database</a> during a code freeze
-          with three guardrails active. So in nlqdb the LLM never emits SQL.
-        </p>
-        <ol class="agents__pipeline">
-          <li>
-            <span class="agents__step">LLM &rarr; typed JSON plan</span>
-            The model picks <em>structure</em> &mdash; tables, filters,
-            aggregates &mdash; and returns it as a typed plan, not a SQL string.
-          </li>
-          <li>
-            <span class="agents__step">compiler &rarr; parameterised SQL</span>
-            nlqdb&rsquo;s code emits the SQL. Every value is a bound parameter;
-            identifiers come only from the schema allow-list.
-          </li>
-          <li>
-            <span class="agents__step">AST re-parse &rarr; allowlist</span>
-            A SQL parser re-parses the compiled statement and checks it
-            against a verb + table allowlist before it touches your data
-            (the create path re-parses with the real Postgres parser,
-            <code>libpg_query</code>).
-          </li>
-          <li>
-            <span class="agents__step">diff preview &rarr; confirm</span>
-            Destructive writes and schema changes show a diff you confirm
-            first &mdash; and the exact SQL is returned in the trace, every time.
-          </li>
-        </ol>
-        <p class="agents__moat-source">
-          Same logic Snowflake&rsquo;s Cortex Analyst uses to hit <a
-            href="https://www.snowflake.com/en/engineering-blog/cortex-analyst-text-to-sql-accuracy-bi/"
-            rel="nofollow noopener noreferrer" target="_blank">~2&times;
-            single-prompt accuracy</a>: the model picks
-          from a curated structure instead of writing raw SQL.
-        </p>
-      </section>
-
-      <section class="agents__fsl" aria-labelledby="fsl-title">
-        <h2 class="agents__h2" id="fsl-title">Your key, your infra, no per-call fees.</h2>
-        <ul class="agents__fsl-list">
-          <li>
-            <strong>BYO LLM at 0% markup.</strong> Paste an Anthropic, OpenAI,
-            Gemini, or OpenRouter key &mdash; your agent&rsquo;s memory routes
-            through it with no markup, on the free tier, no card.
-          </li>
-          <li>
-            <strong>Source-available, self-hostable.</strong> The engine, CLI,
-            MCP server, and SDKs are under <a
-              href="https://github.com/nlqdb/nlqdb/blob/main/LICENSE"
-              rel="noopener noreferrer" target="_blank">FSL-1.1-ALv2</a>
-            &mdash; yours to read, fork, and self-host for any non-competing use.
-            It auto-converts to Apache&nbsp;2.0 two years after each release.
-          </li>
-          <li>
-            <strong>No per-call fees, no &ldquo;contact sales.&rdquo;</strong>
-            Memory you can query shouldn&rsquo;t meter every recall.
-          </li>
-        </ul>
-      </section>
-
-      <section class="agents__faqs" aria-labelledby="faqs-title">
-        <h2 class="agents__h2" id="faqs-title">Questions agent builders ask</h2>
-        <dl>
+      {/* AEO — visible FAQ block + matching FAQPage JSON-LD. Every
+          answer restates an on-page claim. */}
+      <section class="ag-faqs" aria-labelledby="ag-faqs-title">
+        <h2 class="ag-faqs__title" id="ag-faqs-title">Questions agent builders ask</h2>
+        <dl class="ag-faqs__list">
           {
             faqs.map((f) => (
-              <div class="agents__faq">
+              <div class="ag-faqs__row">
                 <dt>{f.q}</dt>
                 <dd>{f.a}</dd>
               </div>
             ))
           }
         </dl>
-      </section>
-
-      <section class="agents__cta" aria-labelledby="cta-title">
-        <h2 class="agents__h2" id="cta-title">Connect your agent&rsquo;s memory.</h2>
-        <p class="agents__cta-lede">
-          nlqdb is an MCP server. Add it to Claude, Cursor, Codex, or any MCP
-          host and your agent can write and query its memory in English &mdash;
-          no schema to design, no key to wire up first.
-        </p>
-
-        <div class="agents__connect">
-          <div class="agents__connect-card agents__connect-card--primary">
-            <p class="agents__connect-h">1 &middot; Paste the connector URL</p>
-            <p class="agents__connect-note">
-              Into your host&rsquo;s MCP config &mdash; Claude Desktop, Cursor,
-              Codex, Zed, Windsurf. OAuth opens in your browser on the first
-              tool call; nothing to wire up first.
-            </p>
-            <pre class="agents__connect-code"><code>{mcpConfig}</code></pre>
-            <button type="button" class="agents__connect-copy" data-copy-config>
-              Copy config
-            </button>
-          </div>
-
-          <div class="agents__connect-card">
-            <p class="agents__connect-h">Or: one command</p>
-            <p class="agents__connect-note">
-              The <code>nlq</code> CLI auto-detects every installed host, signs
-              you in once, and patches each config in place.
-            </p>
-            <pre class="agents__connect-code"><code>nlq mcp install</code></pre>
-            <a
-              class="agents__connect-docs"
-              href="https://docs.nlqdb.com/mcp/"
-              data-connect-docs
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              Full MCP setup &rarr;
-            </a>
-          </div>
-        </div>
-
-        <p class="agents__cta-meta">
-          No agent handy?
-          <a href="/app/new" class="agents__cta-try" data-try-goal={demoGoal}>
-            Try a query in the browser
-          </a>
-          &mdash; an anonymous database, no sign-in, gone in 72 hours.
+        <p class="ag-faqs__more">
+          See the <a href="/vs">side-by-side comparisons</a> or the
+          <a href="/manifesto#not-title"> manifesto</a>.
         </p>
       </section>
-
-      <p class="agents__more">
-        See the <a href="/vs">side-by-side comparisons</a> or the
-        <a href="/manifesto#not-title">manifesto</a>.
-      </p>
     </main>
 
     <Footer />
@@ -416,17 +319,29 @@ const faqJsonLd = faqPageJsonLd(faqs);
 
   <script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
 
+  {/* Pre-seed the `nlqdb_draft` localStorage slot BEFORE the
+      CreateForm React island hydrates, so `loadDraft()` rehydrates
+      the textarea with the agent-memory goal on first paint. Only
+      writes when the slot is empty — never clobbers a draft the
+      visitor was typing on another page. (SK-ANON-011.) */}
+  <script is:inline define:vars={{ heroGoal }}>
+    try {
+      if (!localStorage.getItem("nlqdb_draft")) {
+        localStorage.setItem("nlqdb_draft", heroGoal);
+      }
+    } catch { /* private mode / disabled storage — CreateForm shows the placeholder */ }
+  </script>
+
   <script>
     import { emit } from "../../lib/logsnag";
     import { saveDraft } from "../../lib/prompt-storage";
 
-    // Primary CTA — copy the MCP connector config + fire the connect demand
-    // signal (GLOBAL-024). The config text is read from the rendered <pre> so
-    // the string isn't duplicated in JS. Clipboard failure (insecure context /
-    // denied permission) still fires the signal and leaves the config visible.
+    // Copy the MCP connector config + fire the connect demand signal
+    // (GLOBAL-024). Clipboard failure still fires the signal and
+    // leaves the config visible.
     const copyBtn = document.querySelector<HTMLButtonElement>("[data-copy-config]");
     const configCode = document.querySelector<HTMLElement>(
-      ".agents__connect-card--primary .agents__connect-code code",
+      ".ag-connect__card--primary .ag-connect__code code",
     );
     copyBtn?.addEventListener("click", async () => {
       emit("agents.connect_clicked", { method: "url" });
@@ -444,551 +359,510 @@ const faqJsonLd = faqPageJsonLd(faqs);
       }
     });
 
-    // CLI / docs path — fire the signal; the anchor then navigates (_blank).
+    // CLI / docs path — fire the signal; the anchor then navigates.
     document
       .querySelector<HTMLAnchorElement>("[data-connect-docs]")
       ?.addEventListener("click", () => emit("agents.connect_clicked", { method: "cli" }));
 
-    // Secondary fallback — seed the anonymous-create draft via the same
-    // `nlqdb_draft` localStorage slot CreateForm rehydrates from (SK-ANON-011)
-    // + fire the try demand signal, then let the anchor navigate normally
-    // (no preventDefault → crawlable, no URL param leaking the goal).
-    document.querySelectorAll<HTMLAnchorElement>(".agents__cta-try").forEach((a) => {
+    // Browser-try fallback — seed the same `nlqdb_draft` slot the
+    // CreateForm island reads from, then let the anchor navigate
+    // normally (crawlable, no URL param leaking the goal).
+    document.querySelectorAll<HTMLAnchorElement>(".ag-connect__try").forEach((a) => {
       a.addEventListener("click", () => {
         const goal = a.dataset["tryGoal"] ?? "";
         if (goal) saveDraft(goal);
         emit("agents.try_query_clicked", { goal });
       });
     });
-
-    // WS-09 demo "Run this query" — server-rendered replay: the result is
-    // already on the page (crawlable, no-JS), so the button just pulses the
-    // result table and fires the GLOBAL-024 demand signal for demo engagement.
-    // No network call — the demo never hits a live `/v1/ask`.
-    const demoResultEl = document.querySelector<HTMLElement>("[data-demo-result]");
-    document.querySelectorAll<HTMLButtonElement>(".agents__demo-run").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        emit("agents.demo_run_clicked", { goal: btn.dataset["demoGoal"] ?? "" });
-        if (demoResultEl) {
-          demoResultEl.classList.remove("is-ran");
-          void demoResultEl.offsetWidth; // restart the CSS animation
-          demoResultEl.classList.add("is-ran");
-        }
-      });
-    });
   </script>
 </Base>
 
 <style is:global>
-  .agents {
-    padding: clamp(48px, 8vw, 96px) 0 clamp(48px, 6vw, 80px);
-    max-width: 820px;
-    margin: 0 auto;
+  /* Hero — composes with the global `.hero` chrome. The lime
+   * `GROUP BY` literal in the lede is the page's one identifier
+   * accent in beat 1; the submit CTA is the page's first earned
+   * lime moment (`<CreateForm>` already uses `.cta`). */
+  .ag-hero {
+    max-width: var(--col);
   }
 
-  .agents__head {
-    margin-bottom: clamp(36px, 5vw, 56px);
-  }
-
-  .agents__kicker {
-    margin: 0 0 16px;
+  .ag-hero__code {
     font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+    font-size: 0.78em;
+    font-weight: 600;
     color: var(--accent);
+    letter-spacing: -0.01em;
   }
 
-  .agents__title {
-    font-size: clamp(40px, 7vw, 72px);
-    letter-spacing: -0.03em;
-    line-height: 0.96;
-    margin: 0 0 24px;
-  }
-
-  .agents__lede {
+  .ag-hero__meta {
+    margin: 4px 0 0;
     font-family: var(--mono);
-    font-size: clamp(16px, 2vw, 19px);
-    color: var(--fg);
-    margin: 0 0 16px;
-    line-height: 1.5;
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+
+  /* Demo — beat 2. Side-by-side at ≥880px (matches the homepage
+   * `<Demo>` breakpoint), stacked below. Lime is reserved for the
+   * `nlqdb_remember` / `nlqdb_recall` identifiers in the lede; the
+   * code panels themselves stay ink-on-raised. */
+  .ag-demo {
+    padding: clamp(64px, 12vw, 120px) 0 clamp(40px, 6vw, 64px);
+    max-width: var(--bleed);
+  }
+
+  .ag-demo__eyebrow {
+    margin: 0 0 clamp(12px, 2vw, 18px);
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .ag-demo__title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 clamp(16px, 2vw, 20px);
+    max-width: 22ch;
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+
+  .ag-demo__lede {
+    margin: 0 0 clamp(28px, 4vw, 40px);
+    font-family: var(--sans);
+    font-size: var(--t-large);
+    color: var(--body);
+    line-height: 1.45;
     max-width: 60ch;
   }
 
-  .agents__sub {
-    margin: 0;
-    color: var(--fg-dim);
-    font-size: clamp(15px, 1.7vw, 17px);
-    max-width: 64ch;
-    line-height: 1.6;
-  }
-
-  .agents__sub code,
-  .agents__answer code,
-  .agents__col code,
-  .agents__honest code,
-  .agents__pipeline code {
+  .ag-demo__lede code,
+  .ag-demo__result code,
+  .ag-demo__col-note code {
     font-family: var(--mono);
     font-size: 0.9em;
-    color: var(--fg);
+    color: var(--body);
   }
 
-  .agents__answer {
-    margin: 0 0 clamp(32px, 5vw, 48px);
+  .ag-demo__tag {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .ag-demo__pair {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(16px, 2.5vw, 24px);
+    align-items: stretch;
+  }
+
+  @media (min-width: 880px) {
+    .ag-demo__pair {
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+  }
+
+  .ag-demo__col {
+    margin: 0;
     padding: clamp(20px, 3vw, 28px);
-    border: 2px solid var(--accent);
-    background: var(--bg-elev);
-    font-size: clamp(15px, 1.6vw, 16px);
-    color: var(--fg);
-    line-height: 1.6;
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
   }
 
-  .agents__answer p {
+  .ag-demo__col-label {
     margin: 0;
-  }
-
-  .agents__answer strong {
-    color: var(--accent);
-    font-weight: 700;
-  }
-
-  .agents__h2 {
     font-family: var(--mono);
-    font-size: clamp(20px, 3vw, 28px);
-    letter-spacing: -0.02em;
-    margin: 0 0 20px;
-  }
-
-  .agents__split {
-    margin: 0 0 clamp(32px, 5vw, 48px);
-  }
-
-  .agents__cols {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-
-  .agents__col {
-    border: 2px solid var(--border-strong);
-    background: var(--bg-elev);
-    padding: clamp(18px, 2.6vw, 24px);
-  }
-
-  .agents__col--us {
-    border-color: var(--accent);
-    box-shadow: var(--shadow-hard-accent);
-  }
-
-  .agents__col-h {
-    margin: 0 0 12px;
-    font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: 0.06em;
+    font-size: var(--t-small);
+    color: var(--muted);
     text-transform: uppercase;
-    color: var(--accent);
+    letter-spacing: 0.08em;
   }
 
-  .agents__col ul {
-    margin: 0;
-    padding-left: 1.1em;
-    display: grid;
-    gap: 8px;
-  }
-
-  .agents__col li {
-    color: var(--fg-dim);
-    font-size: clamp(14px, 1.6vw, 15px);
-    line-height: 1.5;
-  }
-
-  .agents__col--us li {
-    color: var(--fg);
-  }
-
-  .agents__honest {
-    margin: 16px 0 0;
-    font-size: 14px;
-    color: var(--fg-muted);
-    line-height: 1.6;
-  }
-
-  .agents__honest a,
-  .agents__more a {
-    color: var(--accent);
-  }
-
-  .agents__matrix,
-  .agents__moat,
-  .agents__fsl,
-  .agents__demo {
-    margin: 0 0 clamp(32px, 5vw, 48px);
-  }
-
-  .agents__demo-lede {
-    margin: 0 0 24px;
-    color: var(--fg-dim);
-    font-size: clamp(15px, 1.7vw, 17px);
-    max-width: 64ch;
-    line-height: 1.6;
-  }
-
-  .agents__demo code {
+  .ag-demo__col-sub {
+    margin: 4px 0 0;
     font-family: var(--mono);
-    font-size: 0.9em;
-    color: var(--fg);
+    font-size: var(--t-small);
+    color: var(--muted);
   }
 
-  .agents__demo-steps {
+  .ag-demo__code,
+  .ag-demo__sql {
     margin: 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 16px;
-  }
-
-  .agents__demo-step {
-    border: 2px solid var(--border-strong);
-    background: var(--bg-elev);
-    padding: clamp(16px, 2.4vw, 22px);
-  }
-
-  .agents__demo-label {
-    margin: 0 0 12px;
+    padding: 14px 16px;
+    background: var(--ground);
+    border: 1px solid var(--rule);
     font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--accent);
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--body);
+    overflow-x: auto;
+    white-space: pre;
   }
 
-  .agents__demo-label--sql {
-    margin-top: 20px;
+  .ag-demo__col-out {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--body);
   }
 
-  .agents__demo-tablewrap {
+  .ag-demo__col-note {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  .ag-demo__result {
+    margin-top: clamp(20px, 3vw, 28px);
+    padding: clamp(20px, 3vw, 28px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+  }
+
+  .ag-demo__tablewrap {
+    margin: 12px 0 14px;
     overflow-x: auto;
   }
 
-  .agents__demo-table {
+  .ag-demo__table {
     width: 100%;
     border-collapse: collapse;
     font-family: var(--mono);
-    font-size: clamp(12px, 1.4vw, 13px);
+    font-size: 13px;
   }
 
-  .agents__demo-table th {
+  .ag-demo__table th {
     text-align: left;
-    color: var(--fg-muted);
+    color: var(--muted);
     font-weight: 400;
-    padding: 4px 16px 8px 0;
-    border-bottom: 1px solid var(--border);
+    padding: 4px 24px 8px 0;
+    border-bottom: 1px solid var(--rule);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
     white-space: nowrap;
   }
 
-  .agents__demo-table td {
-    color: var(--fg-dim);
-    padding: 6px 16px 6px 0;
-    border-bottom: 1px solid var(--border);
+  .ag-demo__table td {
+    color: var(--body);
+    padding: 8px 24px 8px 0;
+    border-bottom: 1px solid var(--rule);
     white-space: nowrap;
   }
 
-  .agents__demo-table--result td:last-child {
-    color: var(--accent);
-    font-weight: 700;
+  .ag-demo__table tbody tr:last-child td {
+    border-bottom: none;
   }
 
-  .agents__demo-note {
-    margin: 12px 0 0;
-    font-size: 13px;
-    color: var(--fg-muted);
-    line-height: 1.55;
+  .ag-demo__table td:last-child {
+    color: var(--ink);
+    font-weight: 600;
   }
 
-  .agents__demo-goal {
-    margin: 0 0 16px;
-    font-size: clamp(15px, 1.7vw, 17px);
-    color: var(--fg);
-    line-height: 1.5;
-  }
-
-  .agents__demo-run {
-    appearance: none;
-    cursor: pointer;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--accent);
-    background: transparent;
-    border: 2px solid var(--accent);
-    padding: 8px 16px;
-    line-height: 1.4;
-  }
-
-  .agents__demo-run:hover {
-    background: var(--accent);
-    color: var(--bg);
-  }
-
-  .agents__demo-sql {
+  .ag-demo__honest {
     margin: 0;
-    padding: clamp(14px, 2vw, 18px);
-    background: var(--bg);
-    border: 1px solid var(--border-strong);
-    overflow-x: auto;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.55;
+    max-width: 60ch;
   }
 
-  .agents__demo-sql code {
-    font-family: var(--mono);
-    font-size: clamp(12px, 1.4vw, 13px);
-    color: var(--fg);
-    white-space: pre;
+  .ag-demo__matrix {
+    margin-top: clamp(40px, 6vw, 64px);
   }
 
-  .agents__demo-tablewrap.is-ran {
-    animation: agents-demo-pulse 0.6s ease-out;
+  /* Beat 3 — the replacement. Editorial-serif strikethrough list,
+   * shape and motion borrowed verbatim from `<Replaces>` (the page's
+   * one earned scroll moment lives here, gated on no-preference). */
+  .ag-replaces {
+    padding: clamp(64px, 12vw, 120px) 0 clamp(48px, 8vw, 80px);
+    max-width: var(--col);
+    border-top: 1px solid var(--rule);
+    margin-top: clamp(40px, 6vw, 80px);
   }
 
-  @keyframes agents-demo-pulse {
-    0% { box-shadow: 0 0 0 0 var(--accent); }
-    100% { box-shadow: 0 0 0 6px transparent; }
+  .ag-replaces__title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+    color: var(--ink);
+    text-wrap: balance;
+    max-width: 20ch;
+    margin: 0 0 clamp(28px, 4vw, 40px);
+  }
+
+  .ag-replaces__list {
+    list-style: none;
+    margin: 0 0 clamp(36px, 5vw, 56px);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ag-replaces__item {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 400;
+    line-height: 1.15;
+    color: var(--muted);
+    position: relative;
+    display: inline-block;
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .ag-replaces__strike {
+    position: relative;
+    display: inline-block;
+  }
+
+  /* The page's one earned scroll moment — gated on no-preference,
+   * with a static fallback for browsers without `animation-timeline`. */
+  @media (prefers-reduced-motion: no-preference) {
+    .ag-replaces__strike::after {
+      content: "";
+      position: absolute;
+      top: 52%;
+      left: -2px;
+      right: -2px;
+      height: 3px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left center;
+      animation: ag-replaces-strike linear both;
+      animation-timeline: view();
+      animation-range: entry 30% cover 60%;
+      animation-delay: calc(var(--i, 0) * 40ms);
+    }
+
+    @keyframes ag-replaces-strike {
+      to {
+        transform: scaleX(1);
+      }
+    }
+
+    @supports not (animation-timeline: view()) {
+      .ag-replaces__strike::after {
+        transform: scaleX(1);
+        animation: none;
+      }
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .agents__demo-tablewrap.is-ran {
-      animation: none;
+    .ag-replaces__strike::after {
+      content: "";
+      position: absolute;
+      top: 52%;
+      left: -2px;
+      right: -2px;
+      height: 3px;
+      background: var(--accent);
     }
   }
 
-  .agents__demo-honest {
-    margin: 16px 0 0;
-    font-size: 14px;
-    color: var(--fg-muted);
-    line-height: 1.6;
+  .ag-replaces__final {
+    margin: 0 0 clamp(28px, 4vw, 40px);
   }
 
-  .agents__demo-honest code {
-    font-size: 0.9em;
+  .ag-replaces__code {
+    font-family: var(--mono);
+    font-size: clamp(22px, 3.4vw, 36px);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
   }
 
-  .agents__moat-lede {
-    margin: 0 0 24px;
-    color: var(--fg-dim);
-    font-size: clamp(15px, 1.7vw, 17px);
-    max-width: 64ch;
-    line-height: 1.6;
-  }
-
-  .agents__moat-lede a,
-  .agents__moat-source a,
-  .agents__fsl a {
+  .ag-replaces__tag {
     color: var(--accent);
   }
 
-  .agents__pipeline {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 12px;
-    counter-reset: step;
+  .ag-replaces__cta {
+    display: flex;
   }
 
-  .agents__pipeline li {
-    counter-increment: step;
-    border-left: 2px solid var(--accent);
-    padding: 0 0 0 16px;
-    color: var(--fg-dim);
-    font-size: clamp(14px, 1.6vw, 15px);
-    line-height: 1.55;
+  /* Connect card — the primary agent-builder action. Restyled
+   * against the new tokens; uses the unified `.cta` primitive. */
+  .ag-connect {
+    padding: clamp(48px, 8vw, 80px) 0;
+    max-width: var(--bleed);
   }
 
-  .agents__pipeline li::before {
-    content: counter(step);
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--accent);
-    margin-right: 8px;
-  }
-
-  .agents__step {
-    display: inline;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--fg);
-    margin-right: 8px;
-  }
-
-  .agents__moat-source {
-    margin: 20px 0 0;
-    font-size: 14px;
-    color: var(--fg-muted);
-    line-height: 1.6;
-  }
-
-  .agents__fsl-list {
-    margin: 0;
-    padding-left: 1.1em;
-    display: grid;
-    gap: 12px;
-  }
-
-  .agents__fsl-list li {
-    color: var(--fg-dim);
-    font-size: clamp(14px, 1.6vw, 15px);
-    line-height: 1.55;
-  }
-
-  .agents__fsl-list strong {
-    color: var(--fg);
-  }
-
-  .agents__faqs {
-    margin: 0 0 clamp(32px, 5vw, 48px);
-  }
-
-  .agents__faqs dl {
-    margin: 0;
-  }
-
-  .agents__faq {
-    padding: 16px 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .agents__faq dt {
-    margin: 0 0 8px;
+  .ag-connect__title {
+    font-family: var(--display);
+    font-size: var(--t-section);
     font-weight: 600;
-    color: var(--fg);
+    color: var(--ink);
+    margin: 0 0 16px;
+    max-width: 18ch;
+    line-height: 1.1;
   }
 
-  .agents__faq dd {
-    margin: 0;
-    color: var(--fg-dim);
-    line-height: 1.6;
-  }
-
-  .agents__cta {
-    margin: 0 0 clamp(32px, 5vw, 48px);
-    padding: clamp(24px, 3.5vw, 36px);
-    border: 2px solid var(--accent);
-    background: var(--bg-elev);
-    box-shadow: var(--shadow-hard-accent);
-  }
-
-  .agents__cta-lede {
-    margin: 0 0 20px;
-    color: var(--fg-dim);
-    font-size: clamp(15px, 1.7vw, 17px);
+  .ag-connect__lede {
+    margin: 0 0 clamp(28px, 4vw, 40px);
+    font-family: var(--sans);
+    font-size: var(--t-large);
+    color: var(--body);
+    line-height: 1.45;
     max-width: 60ch;
-    line-height: 1.6;
   }
 
-  .agents__connect {
+  .ag-connect__grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    grid-template-columns: 1fr;
+    gap: clamp(16px, 2.5vw, 24px);
   }
 
-  .agents__connect-card {
-    border: 2px solid var(--border-strong);
-    background: var(--bg);
-    padding: clamp(16px, 2.4vw, 22px);
+  @media (min-width: 880px) {
+    .ag-connect__grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+  }
+
+  .ag-connect__card {
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    padding: clamp(20px, 3vw, 28px);
     display: flex;
     flex-direction: column;
+    gap: 14px;
   }
 
-  .agents__connect-card--primary {
-    border-color: var(--accent);
+  .ag-connect__card--primary {
+    border-color: var(--ink);
   }
 
-  .agents__connect-h {
-    margin: 0 0 10px;
+  .ag-connect__h {
+    margin: 0;
     font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: 0.06em;
+    font-size: var(--t-small);
+    color: var(--muted);
     text-transform: uppercase;
-    color: var(--accent);
+    letter-spacing: 0.08em;
   }
 
-  .agents__connect-note {
-    margin: 0 0 16px;
-    font-size: 14px;
-    color: var(--fg-dim);
+  .ag-connect__note {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
     line-height: 1.55;
   }
 
-  .agents__connect-note code {
+  .ag-connect__note code {
     font-family: var(--mono);
     font-size: 0.9em;
-    color: var(--fg);
+    color: var(--ink);
   }
 
-  .agents__connect-code {
-    margin: 0 0 16px;
+  .ag-connect__code {
+    margin: 0;
     padding: 14px 16px;
-    background: var(--bg-elev);
-    border: 1px solid var(--border-strong);
-    overflow-x: auto;
-  }
-
-  .agents__connect-code code {
+    background: var(--ground);
+    border: 1px solid var(--rule);
     font-family: var(--mono);
-    font-size: clamp(12px, 1.4vw, 13px);
-    color: var(--fg);
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--body);
+    overflow-x: auto;
     white-space: pre;
   }
 
-  .agents__connect-copy {
-    appearance: none;
-    cursor: pointer;
-    margin-top: auto;
+  .ag-connect__copy,
+  .ag-connect__docs {
     align-self: flex-start;
-    font-family: var(--mono);
-    font-size: 14px;
-    color: var(--bg);
-    background: var(--accent);
-    border: 2px solid var(--accent);
-    padding: 10px 18px;
-    line-height: 1.4;
-  }
-
-  .agents__connect-copy:hover,
-  .agents__connect-copy.is-copied {
-    background: var(--bg);
-    color: var(--accent);
-  }
-
-  .agents__connect-docs {
     margin-top: auto;
-    align-self: flex-start;
+  }
+
+  .ag-connect__copy.is-copied {
+    background: var(--ink);
+    color: var(--ground);
+  }
+
+  .ag-connect__meta {
+    margin: clamp(20px, 3vw, 28px) 0 0;
     font-family: var(--mono);
-    font-size: 14px;
-    color: var(--accent);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.55;
   }
 
-  .agents__cta-meta {
-    margin: 16px 0 0;
-    font-size: 14px;
-    color: var(--fg-muted);
-    line-height: 1.6;
+  .ag-connect__meta a {
+    color: var(--ink);
   }
 
-  .agents__cta-meta a {
-    color: var(--accent);
+  /* FAQs — quiet editorial pass. Display-serif heading, sans body. */
+  .ag-faqs {
+    padding: clamp(48px, 8vw, 80px) 0;
+    max-width: var(--col);
+    border-top: 1px solid var(--rule);
   }
 
-  .agents__more {
+  .ag-faqs__title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 clamp(24px, 3vw, 32px);
+    max-width: 22ch;
+    line-height: 1.1;
+  }
+
+  .ag-faqs__list {
     margin: 0;
-    padding-top: clamp(20px, 3vw, 28px);
-    border-top: 1px solid var(--border);
-    color: var(--fg-dim);
-    font-size: clamp(14px, 1.6vw, 16px);
   }
 
-  @media (max-width: 640px) {
-    .agents__cols,
-    .agents__connect {
-      grid-template-columns: 1fr;
-    }
+  .ag-faqs__row {
+    padding: 18px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .ag-faqs__row:last-child {
+    border-bottom: none;
+  }
+
+  .ag-faqs__row dt {
+    margin: 0 0 8px;
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+
+  .ag-faqs__row dd {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.55;
+  }
+
+  .ag-faqs__more {
+    margin: clamp(20px, 3vw, 28px) 0 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+
+  .ag-faqs__more a {
+    color: var(--ink);
   }
 </style>
+</Base>
+</content>
+</invoke>

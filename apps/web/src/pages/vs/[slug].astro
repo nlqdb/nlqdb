@@ -3,6 +3,13 @@
 // `getStaticPaths()` from `data/competitors.ts`. AEO patterning:
 // direct-answer capsule above the fold, named-competitor in H1 + FAQ,
 // FAQPage + BreadcrumbList JSON-LD, working `<nlq-data>` embed as proof.
+//
+// SK-WEB-015 page sweep (redesign-plan §5 `/vs/*`): the comparison
+// table is the HERO of the page, not buried below feature copy.
+// Three beats: (1) "What we replace" — one line; (2) "The same goal,
+// two ways" — their approach beside ours, mirroring the homepage Demo
+// block treatment, lime tag highlight only on ours; (3) "What's
+// different" — tight 4-row table. Extra rows fold into a `<details>`.
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
@@ -51,6 +58,19 @@ const breadcrumbLd = breadcrumbJsonLd(
   ],
   Astro.site,
 );
+
+// Redesign-plan §5: keep four decisive rows above the fold; fold the
+// rest into a `<details>`. Rows are author-ordered in competitors.ts
+// (highest-decisive first), so a head/tail split honours intent
+// without ranking heuristics here.
+const primaryRows = c.features.slice(0, 4);
+const moreRows = c.features.slice(4);
+
+// "Their way" descriptor — derived from the first `whenChooseThem`
+// bullet, which is the author-curated "highest-decisive" reason. We
+// don't fabricate a competitor code snippet; we render their
+// positioning honestly beside our embed.
+const theirApproach = c.whenChooseThem[0] ?? c.tagline;
 ---
 <Base
   title={pageTitle}
@@ -63,7 +83,7 @@ const breadcrumbLd = breadcrumbJsonLd(
     <Topnav current="vs" />
 
     <main class="vs">
-      <nav class="crumbs" aria-label="Breadcrumb">
+      <nav class="vs__crumbs" aria-label="Breadcrumb">
         <ol>
           <li><a href="/">Home</a></li>
           <li><a href="/vs">Compare</a></li>
@@ -72,84 +92,109 @@ const breadcrumbLd = breadcrumbJsonLd(
       </nav>
 
       <header class="vs__head">
-        <p class="vs__kicker">Comparison</p>
+        <p class="vs__eyebrow">Comparison</p>
         <h1 class="vs__title">nlqdb vs {c.name}</h1>
-        <p class="vs__lede">{description}</p>
-        <p class="vs__sub">
-          Persona this comparison serves: <strong>{c.persona}</strong>. {c.name}'s positioning:
-          <a href={c.url} rel="nofollow noopener noreferrer" target="_blank">{c.tagline}</a>
-        </p>
+        <p class="vs__replace">{c.oneLiner}</p>
       </header>
 
-      <section class="vs__decision" aria-label="Direct answer">
-        <div class="vs__choice vs__choice--us">
-          <h2 class="vs__choice-title">When to choose nlqdb</h2>
-          <ul>
-            {c.whenChooseUs.map((b) => <li>{b}</li>)}
-          </ul>
-        </div>
-        <div class="vs__choice vs__choice--them">
-          <h2 class="vs__choice-title">When to choose {c.name}</h2>
-          <ul>
-            {c.whenChooseThem.map((b) => <li>{b}</li>)}
-          </ul>
-        </div>
-      </section>
+      <section class="vs__demo" aria-labelledby="vs-demo-eyebrow">
+        <p class="vs__demo-eyebrow" id="vs-demo-eyebrow">The same goal, two ways.</p>
+        <p class="vs__demo-goal">
+          <span class="vs__demo-arrow">&gt;</span>
+          <code>{c.demo.goal}</code>
+        </p>
 
-      <section class="vs__demo" aria-label={`Code snippet for the goal "${c.demo.goal}"`}>
-        <h2 class="vs__h2">In your HTML</h2>
-        <p class="vs__demo-why">{c.demo.why}</p>
-        <div class="vs__demo-card">
-          <div class="vs__demo-prompt">
-            <span class="vs__demo-arrow">&gt;</span>
-            <code>{c.demo.goal}</code>
-          </div>
-          <pre class="vs__demo-snippet"><code>{`<nlq-data goal="${c.demo.goal}"></nlq-data>`}</code></pre>
-          <div class="vs__demo-footer">
-            <p class="vs__demo-note">
-              Drop the tag in any HTML page. The first query mints a database;
-              subsequent queries reuse it. No keys, no schema setup.
+        <div class="vs__demo-pair">
+          <article class="vs__demo-card vs__demo-card--them" aria-label={`How ${c.name} answers`}>
+            <p class="vs__demo-label">In {c.name}</p>
+            <p class="vs__demo-text">{theirApproach}</p>
+            <p class="vs__demo-foot">
+              <a href={c.url} rel="nofollow noopener noreferrer" target="_blank">{c.tagline}</a>
             </p>
+          </article>
+
+          <article class="vs__demo-card vs__demo-card--us" aria-label="How nlqdb answers">
+            <p class="vs__demo-label">In your HTML</p>
+            <pre class="vs__demo-snippet"><code>&lt;<span class="vs__demo-tag">nlq-data</span> goal=&quot;{c.demo.goal}&quot;&gt;&lt;/<span class="vs__demo-tag">nlq-data</span>&gt;</code></pre>
+            <p class="vs__demo-foot">{c.demo.why}</p>
             <button
               type="button"
-              class="vs__try-btn"
+              class="cta vs__try-btn"
               data-try-goal={c.demo.goal}
               data-competitor-slug={c.slug}
             >
               Try this query &rarr;
             </button>
-          </div>
+          </article>
         </div>
       </section>
 
-      <section class="vs__table-wrap" aria-labelledby="vs-table-title">
-        <h2 class="vs__h2" id="vs-table-title">Feature parity, honest</h2>
-        <table class="vs__table">
-          <thead>
-            <tr>
-              <th scope="col">Feature</th>
-              <th scope="col">nlqdb</th>
-              <th scope="col">{c.name}</th>
-              <th scope="col" class="vs__th-note">Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            {
-              c.features.map((row) => (
-                <tr>
-                  <th scope="row">{row.feature}</th>
-                  <td class={`vs__claim vs__claim--${row.us}`} aria-label={claimLabel[row.us]}>
-                    <span aria-hidden="true">{claimGlyph[row.us]}</span>
-                  </td>
-                  <td class={`vs__claim vs__claim--${row.them}`} aria-label={claimLabel[row.them]}>
-                    <span aria-hidden="true">{claimGlyph[row.them]}</span>
-                  </td>
-                  <td class="vs__note">{row.note ?? ""}</td>
-                </tr>
-              ))
-            }
-          </tbody>
-        </table>
+      <section class="vs__diff" aria-labelledby="vs-diff-title">
+        <p class="vs__diff-eyebrow">What's different</p>
+        <h2 class="vs__diff-title" id="vs-diff-title">Four dimensions that decide it</h2>
+        <div class="vs__table-wrap">
+          <table class="vs__table">
+            <thead>
+              <tr>
+                <th scope="col">Dimension</th>
+                <th scope="col">nlqdb</th>
+                <th scope="col">{c.name}</th>
+                <th scope="col" class="vs__th-note">Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                primaryRows.map((row) => (
+                  <tr>
+                    <th scope="row">{row.feature}</th>
+                    <td class={`vs__claim vs__claim--${row.us}`} aria-label={claimLabel[row.us]}>
+                      <span aria-hidden="true">{claimGlyph[row.us]}</span>
+                    </td>
+                    <td class={`vs__claim vs__claim--${row.them}`} aria-label={claimLabel[row.them]}>
+                      <span aria-hidden="true">{claimGlyph[row.them]}</span>
+                    </td>
+                    <td class="vs__note">{row.note ?? ""}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+
+        {
+          moreRows.length > 0 && (
+            <details class="vs__more">
+              <summary>Show {moreRows.length} more {moreRows.length === 1 ? "row" : "rows"}</summary>
+              <div class="vs__table-wrap">
+                <table class="vs__table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Dimension</th>
+                      <th scope="col">nlqdb</th>
+                      <th scope="col">{c.name}</th>
+                      <th scope="col" class="vs__th-note">Note</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {moreRows.map((row) => (
+                      <tr>
+                        <th scope="row">{row.feature}</th>
+                        <td class={`vs__claim vs__claim--${row.us}`} aria-label={claimLabel[row.us]}>
+                          <span aria-hidden="true">{claimGlyph[row.us]}</span>
+                        </td>
+                        <td class={`vs__claim vs__claim--${row.them}`} aria-label={claimLabel[row.them]}>
+                          <span aria-hidden="true">{claimGlyph[row.them]}</span>
+                        </td>
+                        <td class="vs__note">{row.note ?? ""}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )
+        }
+
         <p class="vs__legend">
           <span class="vs__claim vs__claim--shipped" aria-hidden="true">✓</span> shipped &nbsp;·&nbsp;
           <span class="vs__claim vs__claim--partial" aria-hidden="true">◐</span> partial &nbsp;·&nbsp;
@@ -157,8 +202,23 @@ const breadcrumbLd = breadcrumbJsonLd(
         </p>
       </section>
 
+      <section class="vs__decision" aria-label="Direct answer">
+        <div class="vs__choice">
+          <h2 class="vs__choice-title">When to choose nlqdb</h2>
+          <ul>
+            {c.whenChooseUs.map((b) => <li>{b}</li>)}
+          </ul>
+        </div>
+        <div class="vs__choice">
+          <h2 class="vs__choice-title">When to choose {c.name}</h2>
+          <ul>
+            {c.whenChooseThem.map((b) => <li>{b}</li>)}
+          </ul>
+        </div>
+      </section>
+
       <section class="vs__faqs" aria-labelledby="vs-faqs-title">
-        <h2 class="vs__h2" id="vs-faqs-title">Questions buyers ask</h2>
+        <h2 class="vs__faqs-title" id="vs-faqs-title">Questions buyers ask</h2>
         <dl>
           {
             c.faqs.map((f) => (
@@ -172,9 +232,9 @@ const breadcrumbLd = breadcrumbJsonLd(
       </section>
 
       <section class="vs__cta">
-        <h2 class="vs__h2">Try nlqdb in 30 seconds</h2>
+        <h2 class="vs__cta-title">Try nlqdb in 30 seconds</h2>
         <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
-        <a class="vs__cta-btn" href="/app/new">Start with a goal &rarr;</a>
+        <a class="cta vs__cta-btn" href="/app/new">Start with a goal &rarr;</a>
         <p class="vs__cta-meta">
           Want a comparison against another tool?{" "}
           <a href="mailto:hello@nlqdb.com?subject=Comparison request">Email us</a> or browse
@@ -222,77 +282,302 @@ const breadcrumbLd = breadcrumbJsonLd(
 
 <style>
   .vs {
-    max-width: 960px;
+    max-width: var(--bleed);
     margin: 0 auto;
-    padding: clamp(32px, 5vw, 64px) clamp(16px, 4vw, 32px);
+    padding: clamp(32px, 5vw, 64px) 0;
   }
-  .crumbs {
+
+  .vs__crumbs {
     font-family: var(--mono);
-    font-size: 12px;
-    margin: 0 0 24px;
+    font-size: var(--t-small);
+    margin: 0 0 var(--gap-block);
   }
-  .crumbs ol {
+  .vs__crumbs ol {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     list-style: none;
     margin: 0;
     padding: 0;
-    color: var(--fg-dim);
+    color: var(--muted);
   }
-  .crumbs li + li::before {
+  .vs__crumbs li + li::before {
     content: "/";
     margin-right: 8px;
     opacity: 0.6;
   }
-  .crumbs a {
-    color: var(--fg-dim);
+  .vs__crumbs a {
+    color: var(--muted);
     text-decoration: none;
   }
-  .crumbs a:hover {
-    color: var(--accent);
+  .vs__crumbs a:hover {
+    color: var(--ink);
   }
-  .crumbs [aria-current="page"] {
-    color: var(--fg);
+  .vs__crumbs [aria-current="page"] {
+    color: var(--ink);
   }
-  .vs__kicker {
+
+  /* Beat 1 — "What we replace". One line, no decoration. */
+  .vs__head {
+    max-width: var(--col);
+    margin: 0 0 var(--gap-beat);
+  }
+  .vs__eyebrow {
+    margin: 0 0 16px;
     font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--fg-dim);
-    font-size: 13px;
-    margin: 0 0 12px;
+    letter-spacing: 0.08em;
   }
   .vs__title {
-    font-family: var(--mono);
-    font-size: clamp(28px, 4.5vw, 44px);
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
     letter-spacing: -0.02em;
-    line-height: 1.1;
-    margin: 0 0 16px;
+    line-height: 1.05;
+    color: var(--ink);
+    margin: 0 0 24px;
+    text-wrap: balance;
   }
-  .vs__lede {
-    font-size: clamp(16px, 1.8vw, 18px);
-    color: var(--fg);
+  .vs__replace {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-large);
+    color: var(--body);
+    line-height: 1.5;
     max-width: 60ch;
+    text-wrap: balance;
+  }
+
+  /* Beat 2 — "The same goal, two ways". Mirrors the homepage Demo
+     block: two cards on --raised, --rule border, --ground snippet
+     ground, lime tag-highlight on ours only. */
+  .vs__demo {
+    margin: 0 0 var(--gap-beat);
+    max-width: var(--bleed);
+  }
+  .vs__demo-eyebrow {
     margin: 0 0 16px;
-  }
-  .vs__sub {
-    color: var(--fg-dim);
-    font-size: 14px;
-    margin: 0 0 48px;
-    max-width: 60ch;
-  }
-  .vs__h2 {
     font-family: var(--mono);
-    font-size: clamp(20px, 2.4vw, 26px);
-    letter-spacing: -0.01em;
-    margin: 0 0 16px;
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
+  .vs__demo-goal {
+    margin: 0 0 clamp(20px, 3vw, 32px);
+    font-family: var(--mono);
+    font-size: var(--t-large);
+    color: var(--ink);
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+  }
+  .vs__demo-goal code {
+    font-family: inherit;
+  }
+  .vs__demo-arrow {
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .vs__demo-pair {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(20px, 3vw, 32px);
+    align-items: stretch;
+  }
+  @media (min-width: 880px) {
+    .vs__demo-pair {
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+    }
+  }
+  .vs__demo-card {
+    margin: 0;
+    padding: clamp(20px, 3vw, 28px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .vs__demo-label {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .vs__demo-text {
+    margin: 0;
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 400;
+    color: var(--ink);
+    line-height: 1.4;
+    text-wrap: balance;
+  }
+  .vs__demo-snippet {
+    margin: 0;
+    padding: 18px;
+    background: var(--ground);
+    border: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--body);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .vs__demo-snippet code {
+    font-family: inherit;
+  }
+  /* The lime moment for this beat — only the tag identifier glows,
+     and only on our side (redesign-plan §5: lime tag highlight on ours). */
+  .vs__demo-tag {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .vs__demo-foot {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.55;
+  }
+  .vs__demo-foot a {
+    color: var(--muted);
+  }
+  .vs__demo-foot a:hover {
+    color: var(--ink);
+  }
+  .vs__try-btn {
+    align-self: flex-start;
+    margin-top: auto;
+  }
+
+  /* Beat 3 — "What's different". Tight 4-row table; the rest folds
+     into a <details>. */
+  .vs__diff {
+    margin: 0 0 var(--gap-beat);
+    max-width: var(--bleed);
+  }
+  .vs__diff-eyebrow {
+    margin: 0 0 12px;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .vs__diff-title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.05;
+    color: var(--ink);
+    margin: 0 0 clamp(20px, 3vw, 32px);
+    text-wrap: balance;
+  }
+  .vs__table-wrap {
+    overflow-x: auto;
+  }
+  .vs__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+  }
+  .vs__table th,
+  .vs__table td {
+    text-align: left;
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  .vs__table thead th {
+    font-family: var(--mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    font-size: var(--t-small);
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--ink);
+    font-weight: 500;
+  }
+  .vs__table tbody th {
+    font-family: var(--mono);
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .vs__claim {
+    font-family: var(--mono);
+    text-align: center;
+    width: 72px;
+  }
+  .vs__claim--shipped {
+    color: var(--accent);
+  }
+  .vs__claim--partial {
+    color: var(--body);
+  }
+  .vs__claim--no {
+    color: var(--muted);
+  }
+  .vs__note {
+    color: var(--body);
+    font-size: var(--t-small);
+    line-height: 1.5;
+  }
+  .vs__more {
+    margin: 20px 0 0;
+  }
+  .vs__more summary {
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--rule);
+    list-style: none;
+  }
+  .vs__more summary::-webkit-details-marker {
+    display: none;
+  }
+  .vs__more summary::before {
+    content: "+ ";
+    color: var(--muted);
+  }
+  .vs__more[open] summary::before {
+    content: "− ";
+  }
+  .vs__more summary:hover {
+    color: var(--ink);
+  }
+  .vs__more[open] .vs__table-wrap {
+    margin-top: 12px;
+  }
+  .vs__legend {
+    margin: 16px 0 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+
+  /* Secondary — "When to choose" cards, demoted below the diff table.
+     One column on mobile, two on desktop; quiet neutral border, no
+     lime accent (the diff table is the eye now). */
   .vs__decision {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 24px;
-    margin-bottom: 64px;
+    gap: clamp(20px, 3vw, 32px);
+    margin: 0 0 var(--gap-beat);
+    max-width: var(--bleed);
   }
   @media (min-width: 720px) {
     .vs__decision {
@@ -300,199 +585,99 @@ const breadcrumbLd = breadcrumbJsonLd(
     }
   }
   .vs__choice {
-    padding: 24px;
-    border: 2px solid var(--border-strong);
-    background: var(--bg-elev);
-  }
-  .vs__choice--us {
-    border-color: var(--accent);
+    padding: clamp(20px, 3vw, 28px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
   }
   .vs__choice-title {
-    font-family: var(--mono);
-    font-size: 16px;
-    margin: 0 0 12px;
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 16px;
   }
   .vs__choice ul {
     margin: 0;
-    padding-left: 18px;
-    color: var(--fg);
-    font-size: 15px;
+    padding-left: 20px;
+    color: var(--body);
+    font-size: var(--t-body);
     line-height: 1.55;
   }
   .vs__choice li + li {
-    margin-top: 8px;
+    margin-top: 10px;
   }
-  .vs__demo {
-    margin-bottom: 64px;
-  }
-  .vs__demo-why {
-    color: var(--fg-dim);
-    margin: 0 0 16px;
-    max-width: 60ch;
-  }
-  .vs__demo-card {
-    border: 2px solid var(--border-strong);
-    background: var(--bg-elev);
-    padding: 20px;
-  }
-  .vs__demo-prompt {
-    display: flex;
-    gap: 12px;
-    align-items: baseline;
-    font-family: var(--mono);
-    font-size: 15px;
-    margin-bottom: 16px;
-  }
-  .vs__demo-arrow {
-    color: var(--accent);
-  }
-  .vs__demo-snippet {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    padding: 12px;
-    margin: 0 0 12px;
-    overflow-x: auto;
-    font-size: 13px;
-  }
-  .vs__demo-snippet code {
-    font-family: var(--mono);
-  }
-  .vs__demo-footer {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  @media (min-width: 560px) {
-    .vs__demo-footer {
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: center;
-    }
-  }
-  .vs__demo-note {
-    color: var(--fg-dim);
-    font-size: 13px;
-    margin: 0;
-    max-width: 42ch;
-  }
-  .vs__try-btn {
-    align-self: flex-start;
-    padding: 10px 18px;
-    font-family: var(--mono);
-    font-size: 14px;
-    background: var(--accent);
-    color: var(--accent-fg);
-    border: 2px solid var(--accent-fg);
-    box-shadow: 3px 3px 0 0 var(--accent-fg);
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  .vs__try-btn:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 0 var(--accent-fg);
-  }
-  .vs__table-wrap {
-    margin-bottom: 64px;
-    overflow-x: auto;
-  }
-  .vs__table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  .vs__table th,
-  .vs__table td {
-    text-align: left;
-    padding: 12px 8px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top;
-  }
-  .vs__table thead th {
-    font-family: var(--mono);
-    color: var(--fg-dim);
-    text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 0.06em;
-    border-bottom: 2px solid var(--border-strong);
-  }
-  .vs__table tbody th {
-    font-weight: 500;
-    color: var(--fg);
-  }
-  .vs__claim {
-    font-family: var(--mono);
-    text-align: center;
-    width: 60px;
-  }
-  .vs__claim--shipped {
-    color: var(--accent);
-  }
-  .vs__claim--partial {
-    color: var(--fg-dim);
-  }
-  .vs__claim--no {
-    color: var(--fg-dim);
-    opacity: 0.5;
-  }
-  .vs__note {
-    color: var(--fg-dim);
-    font-size: 13px;
-    line-height: 1.4;
-  }
-  .vs__legend {
-    font-size: 13px;
-    color: var(--fg-dim);
-    margin: 12px 0 0;
-  }
+
+  /* FAQs — boring is the goal. Display serif Q, sans A, hairline rules. */
   .vs__faqs {
-    margin-bottom: 64px;
+    margin: 0 0 var(--gap-beat);
+    max-width: var(--col);
+  }
+  .vs__faqs-title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: 0 0 clamp(20px, 3vw, 32px);
   }
   .vs__faqs dl {
     margin: 0;
   }
   .vs__faq {
-    padding: 16px 0;
-    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .vs__faq:last-child {
+    border-bottom: none;
   }
   .vs__faq dt {
+    font-family: var(--display);
     font-weight: 600;
-    margin: 0 0 8px;
-    color: var(--fg);
+    font-size: var(--t-large);
+    color: var(--ink);
+    margin: 0 0 10px;
+    line-height: 1.3;
   }
   .vs__faq dd {
     margin: 0;
-    color: var(--fg);
-    line-height: 1.55;
+    color: var(--body);
+    font-size: var(--t-body);
+    line-height: 1.6;
   }
+
+  /* Final CTA — quiet card, the .cta primitive does the lime moment. */
   .vs__cta {
-    padding: 32px;
-    border: 2px solid var(--accent);
-    background: var(--bg-elev);
-    text-align: center;
+    padding: clamp(28px, 4vw, 40px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    max-width: var(--col);
+  }
+  .vs__cta-title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: 0 0 12px;
   }
   .vs__cta p {
-    color: var(--fg-dim);
+    color: var(--body);
     margin: 0 0 20px;
+    font-size: var(--t-body);
   }
   .vs__cta-btn {
-    display: inline-block;
-    padding: 14px 28px;
-    background: var(--accent);
-    color: var(--accent-fg);
-    font-family: var(--mono);
-    text-decoration: none;
-    border: 2px solid var(--accent-fg);
-    box-shadow: 4px 4px 0 0 var(--accent-fg);
-  }
-  .vs__cta-btn:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0 0 var(--accent-fg);
+    padding: 16px 28px;
   }
   .vs__cta-meta {
-    margin: 24px 0 0;
-    font-size: 13px;
+    margin: 20px 0 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
   }
   .vs__cta-meta a {
-    color: var(--accent);
+    color: var(--body);
+  }
+  .vs__cta-meta a:hover {
+    color: var(--ink);
   }
 </style>

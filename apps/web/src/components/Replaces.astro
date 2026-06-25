@@ -1,11 +1,13 @@
 ---
-// "What this replaces" strip (DESIGN §3.1, §0.1). Eight things a
-// normal stack forces you to set up — DB, schema, ORM, endpoint,
-// auth, cache, migration, deploy — collapsing into a single line of
-// HTML. Pure CSS scroll animation; no JS. Strikes are staggered via
-// `--i` so they sweep left-to-right as the section scrolls into
-// view; the @supports fallback shows them at rest on browsers
-// without scroll-driven timelines.
+// "What this replaces" — the third and final homepage beat
+// (redesign-plan §5 `/` beat 3). Eight things a normal stack forces
+// you to wire up, struck through, collapsing into the single
+// `<nlq-data>` line. The strikethrough sweep is the page's one
+// earned scroll moment (motion budget §6 step 9); the final
+// `<nlq-data>` row keeps mono — code earns it here — with lime on
+// the tag identifier. One CTA below; no supporting paragraph.
+
+import Cta from "./Cta.astro";
 
 const replaces = ["Database", "Schema", "ORM", "Endpoint", "Auth", "Cache", "Migrations", "Deploy"];
 ---
@@ -14,102 +16,65 @@ const replaces = ["Database", "Schema", "ORM", "Endpoint", "Auth", "Cache", "Mig
   <h2 class="replaces__title" id="replaces-title">
     Eight boxes&hairsp;&mdash;&hairsp;or one tag.
   </h2>
-  <p class="replaces__lede">
-    Everything a normal backend forces you to wire together, replaced by
-    a single element on the page.
-  </p>
 
-  <div class="replaces__grid">
-    <ul class="replaces__list" aria-label="Things you no longer build">
-      {
-        replaces.map((item, i) => (
-          <li class="replaces__item" style={`--i:${i}`}>
-            <span class="replaces__strike">{item}</span>
-          </li>
-        ))
-      }
-    </ul>
+  <ul class="replaces__list" aria-label="Things you no longer build">
+    {
+      replaces.map((item, i) => (
+        <li class="replaces__item" style={`--i:${i}`}>
+          <span class="replaces__strike">{item}</span>
+        </li>
+      ))
+    }
+  </ul>
 
-    <div class="replaces__arrow" aria-hidden="true">
-      <span>&rarr;</span>
-    </div>
-
-    <div class="replaces__final">
-      <code class="replaces__code">&lt;nlq-data&gt;</code>
-      <p class="replaces__final-note">
-        One element. Schema, plan, cache, auth — all server-side, all
-        invisible.
-      </p>
-    </div>
+  <div class="replaces__final" aria-hidden="false">
+    <code class="replaces__code">
+      &lt;<span class="replaces__tag">nlq-data</span>&gt;
+    </code>
   </div>
+
+  <Cta href="/app/new" label="Start with one sentence →" />
 </section>
 
 <style is:global>
   .replaces {
-    padding: clamp(48px, 8vw, 96px) 0;
-    border-top: 1px solid var(--border);
+    padding: clamp(64px, 12vw, 120px) 0 clamp(80px, 14vw, 140px);
+    max-width: var(--col);
+    border-top: 1px solid var(--rule);
+    margin-top: clamp(40px, 6vw, 80px);
   }
 
   .replaces__title {
-    font-family: var(--mono);
-    font-size: clamp(24px, 3.6vw, 36px);
-    letter-spacing: -0.02em;
-    max-width: 22ch;
-  }
-
-  .replaces__lede {
-    margin: 12px 0 clamp(28px, 4vw, 40px);
-    color: var(--fg-dim);
-    max-width: 60ch;
-    font-size: clamp(15px, 1.6vw, 16px);
-  }
-
-  .replaces__grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 24px;
-    align-items: center;
-  }
-
-  @media (min-width: 880px) {
-    .replaces__grid {
-      grid-template-columns: 1fr auto 1fr;
-      gap: 32px;
-    }
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+    color: var(--ink);
+    text-wrap: balance;
+    max-width: 18ch;
+    margin: 0 0 clamp(28px, 4vw, 40px);
   }
 
   .replaces__list {
     list-style: none;
-    margin: 0;
+    margin: 0 0 clamp(36px, 5vw, 56px);
     padding: 0;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-
-  @media (min-width: 540px) {
-    .replaces__list {
-      grid-template-columns: repeat(4, 1fr);
-    }
-  }
-
-  @media (min-width: 880px) {
-    .replaces__list {
-      grid-template-columns: repeat(2, 1fr);
-    }
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .replaces__item {
-    padding: 16px 18px;
-    border: 2px solid var(--border-strong);
-    background: var(--bg-elev);
-    font-family: var(--mono);
-    font-size: clamp(15px, 1.4vw, 17px);
-    font-weight: 500;
-    color: var(--fg-muted);
-    text-align: center;
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 400;
+    line-height: 1.15;
+    color: var(--muted);
     position: relative;
-    overflow: hidden;
+    display: inline-block;
+    width: max-content;
+    max-width: 100%;
   }
 
   .replaces__strike {
@@ -117,83 +82,66 @@ const replaces = ["Database", "Schema", "ORM", "Endpoint", "Auth", "Cache", "Mig
     display: inline-block;
   }
 
-  .replaces__strike::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: -4px;
-    right: -4px;
-    height: 3px;
-    background: var(--accent);
-    transform: scaleX(0);
-    transform-origin: left center;
-    animation: replaces-strike linear both;
-    animation-timeline: view();
-    animation-range: entry 30% cover 60%;
-    animation-delay: calc(var(--i, 0) * 40ms);
-  }
-
-  @keyframes replaces-strike {
-    to {
-      transform: scaleX(1);
-    }
-  }
-
-  /* Browsers without scroll-driven timelines: show the strike at rest. */
-  @supports not (animation-timeline: view()) {
+  /* The page's one earned scroll moment — strikes sweep left-to-right
+   * as the section enters the viewport, staggered by --i. */
+  @media (prefers-reduced-motion: no-preference) {
     .replaces__strike::after {
-      transform: scaleX(1);
-      animation: none;
+      content: "";
+      position: absolute;
+      top: 52%;
+      left: -2px;
+      right: -2px;
+      height: 3px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left center;
+      animation: replaces-strike linear both;
+      animation-timeline: view();
+      animation-range: entry 30% cover 60%;
+      animation-delay: calc(var(--i, 0) * 40ms);
+    }
+
+    @keyframes replaces-strike {
+      to {
+        transform: scaleX(1);
+      }
+    }
+
+    /* Browsers without scroll-driven timelines: show the strike at rest. */
+    @supports not (animation-timeline: view()) {
+      .replaces__strike::after {
+        transform: scaleX(1);
+        animation: none;
+      }
     }
   }
 
+  /* Reduced motion + scroll-timeline missing: pre-draw the strike. */
   @media (prefers-reduced-motion: reduce) {
     .replaces__strike::after {
-      transform: scaleX(1);
-      animation: none;
-    }
-  }
-
-  .replaces__arrow {
-    font-family: var(--mono);
-    font-size: clamp(28px, 4vw, 40px);
-    color: var(--accent);
-    text-align: center;
-    line-height: 1;
-  }
-
-  @media (max-width: 879px) {
-    .replaces__arrow {
-      transform: rotate(90deg);
+      content: "";
+      position: absolute;
+      top: 52%;
+      left: -2px;
+      right: -2px;
+      height: 3px;
+      background: var(--accent);
     }
   }
 
   .replaces__final {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-    padding: clamp(20px, 3vw, 28px);
-    background: var(--accent);
-    color: var(--accent-fg);
-    border: 2px solid var(--accent-fg);
-    box-shadow: 6px 6px 0 0 var(--accent-fg);
+    margin: 0 0 clamp(28px, 4vw, 40px);
   }
 
   .replaces__code {
     font-family: var(--mono);
-    font-size: clamp(20px, 3vw, 30px);
+    font-size: clamp(22px, 3.4vw, 36px);
     font-weight: 700;
     letter-spacing: -0.01em;
-    color: var(--accent-fg);
+    color: var(--ink);
   }
 
-  .replaces__final-note {
-    margin: 0;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--accent-fg);
-    opacity: 0.85;
-    max-width: 30ch;
+  .replaces__tag {
+    color: var(--accent);
   }
 </style>
