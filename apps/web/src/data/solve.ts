@@ -772,6 +772,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "safely-give-ai-agent-database-access",
+    persona: "P2 agent builder",
+    searchTitle:
+      "How do I safely give an AI agent database access without it running dangerous SQL?",
+    oneLiner:
+      "If you want an AI agent to use a database without handing it a connection string and hoping it never emits a DROP, nlqdb keeps the agent on the data side of a trust boundary: writes are server-built parameterised inserts, read SQL passes a fail-closed three-stage validator, Postgres RLS isolates every row, and the compiled SQL is always shown.",
+    painContext:
+      "Teams wiring an agent to SQL reach for the obvious shape — a read-only database role and a connection string in the tool config — then find it's leaky. A 'read-only' check enforced in app code is one SQL-comment trick away from a DELETE, a perfectly valid join can expose an oauth_tokens column, a single heavy query can exhaust the connection pool, and prompt-injected text sitting in a stored row can steer the next query. The risk is the agent holding credentials and authoring the SQL.",
+    demoGoal: "things the agent logged grouped by type with a count of each",
+    demoWhy:
+      "The agent asks in English; nlqdb compiles and shows the exact SELECT, so you audit the grain — and the validator would have rejected anything that wasn't a read before it ran.",
+    howNlqdbAnswers: [
+      "Agent writes go through `nlqdb_remember`: the server builds a parameterised INSERT from a fixed column allow-list, so the agent supplies data, never SQL (`SK-PIVOT-008`).",
+      "Read SQL passes a three-stage validator — leading-verb gate, `node-sql-parser` AST parse, embedded-verb/function walk — that fails closed, so a CTE-hidden DROP or a `pg_sleep` is rejected, not run (`SK-SQLAL-001`).",
+      "Postgres row-level security isolates each tenant's rows at the engine, enforced on every read and write regardless of the SQL shape — not a guard living in app code.",
+      "Every answer returns the compiled SQL under a trace toggle, and destructive operations show a row-count diff that needs a second confirmation before applying (`SK-ONBOARD-004`).",
+    ],
+    whatItDoesnt: [
+      "No pointing nlqdb at a database you already run — it provisions and owns its Postgres, so it's the safe store an agent writes to and reads from, not a guard layer over your prod DB. Bring-your-own-Postgres is roadmap, not shipped.",
+      "No per-query statement-timeout or cost cap yet — a heavy SELECT can still run long; resource-exhaustion guards are tracked in the db-adapter, not wired.",
+      "No per-agent (sub-tenant) row scoping yet — `app.agent_id` RLS is roadmap (E-03); today isolation is per-tenant / per-database, not per-agent-within-a-tenant.",
+    ],
+    faqs: [
+      {
+        q: "Is a read-only Postgres role enough to let an AI agent query my database safely?",
+        a: "It's a start, but on its own it's leaky: a 'read-only' check enforced in app code is one SQL-comment trick from a write, a valid join can still expose a credentials column, and one heavy query can exhaust your connection pool. nlqdb layers engine-level guards — a fail-closed three-stage SQL validator plus Postgres row-level security — instead of trusting a single role or a single regex.",
+      },
+      {
+        q: "How does nlqdb stop an agent from running a destructive or injected query?",
+        a: "Writes never use agent-authored SQL — `nlqdb_remember` builds a parameterised INSERT server-side from a fixed column allow-list. Read SQL passes three independent stages (a leading-verb gate, a `node-sql-parser` AST parse, and an embedded-verb/function walk) and fails closed, so a CTE-hidden DROP, a `pg_sleep`, or an unparseable statement is rejected before it runs (`SK-SQLAL-001`).",
+      },
+      {
+        q: "Can I see exactly what SQL the agent ran?",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), and any destructive operation shows a row-count diff that needs a second confirmation before it applies (`SK-ONBOARD-004`). The SQL is the audit surface; nlqdb never hides it behind the answer.",
+      },
+      {
+        q: "Can I point nlqdb at my existing production database to make it agent-safe?",
+        a: "Not today — nlqdb provisions and owns the Postgres it queries, so it's the safe store an agent writes to and reads from, not a guard layer over a database you already run. If your goal is protecting an existing prod DB, a read replica plus a policy proxy is the right shape; bring-your-own-Postgres is on the roadmap.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://hn.algolia.com/?q=ai+agent+database",
+        label:
+          'HN search: "ai agent database" — recurring threads on giving agents safe DB access.',
+      },
+      {
+        url: "https://www.reddit.com/r/LLMDevs/search/?q=agent+database+access",
+        label:
+          "r/LLMDevs — recurring threads on safe agent/LLM database access and SQL guardrails.",
+      },
+      {
+        url: "https://www.reddit.com/r/AI_Agents/search/?q=database",
+        label: 'r/AI_Agents — "let my agent query a database safely" recurring discussion hub.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {

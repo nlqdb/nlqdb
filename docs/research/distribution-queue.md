@@ -11,75 +11,78 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-24 (run 91) — dev.to / r/LLMDevs / r/LangChain: "Your eval results live in a spreadsheet. The question 'which version regressed' lives in SQL."
+## 2026-06-25 (run 92) — dev.to / r/LLMDevs / r/AI_Agents: "Your 'read-only' AI agent is one SQL comment away from a write."
 
-**Where:** dev.to + r/LLMDevs + r/LangChain (`llm` / `evals` / `agents`);
-build-in-public, sibling to the run-85 token-cost and run-88 tool-call-logs posts.
-nlqdb mentioned once. The hook: an eval *run* produces a list of scored cases, but
-"pass rate per prompt version, which cases regressed, score trend per model" are
-aggregations over the accumulated runs — and a spreadsheet (or asking the LLM to
-tally) is the wrong shape to GROUP BY.
+**Where:** dev.to + r/LLMDevs + r/AI_Agents (`llm` / `agents` / `security`);
+build-in-public, the trust-boundary sibling to the agent-memory cluster. nlqdb
+mentioned once. The hook: the obvious read-only-role + connection-string shape is
+leaky, and the fix is to move SQL *authorship* off the agent, not add a regex.
 
-**Title:** Your eval results live in a spreadsheet. The question "which version regressed" lives in SQL.
+**Title:** Your "read-only" AI agent is one SQL comment away from a write.
 
 **Body:**
 
-> You run evals on every prompt change — a set of test cases, each scored pass/fail
-> or 0–1 by your harness. The output is a list. Then the questions that actually
-> tell you whether the change helped show up: *did pass rate go up from v3 to v4?
-> which specific cases regressed? what's the average score per model over the last
-> month?* And you open the CSV export, build a pivot table, and start dragging
-> columns around — again, next release.
+> The first time you wire an agent to a SQL database you reach for the obvious
+> shape: a read-only Postgres role, a connection string in the tool config, "SELECT
+> only" in the prompt. It demos perfectly. Then you read how it actually fails.
 >
-> Those aren't lookups in one run. They're aggregations across every run you've
-> ever logged — `AVG(score) … GROUP BY prompt_version`, an anti-join for "passed in
-> v3, failed in v4," a windowed trend per model. A spreadsheet does this once, by
-> hand, and rots the moment a new run lands. Pasting the run log into an LLM and
-> asking it to tally is worse: arithmetic over a list is a confident-wrong-number
-> generator, and a regression you can't trust is a regression you'll ship.
+> "Read-only" enforced in app code is one pattern-match from not being read-only —
+> an agent can hide a write in a SQL comment, or a `DROP` in a CTE
+> (`WITH x AS (DELETE FROM …) SELECT 1`), and a regex gate waves it through. A
+> *perfectly valid* `JOIN` across `users` and `oauth_tokens` is still authorized
+> and still a credential leak. A single unbounded query drains your connection
+> pool. And prompt injection doesn't only come from the user — malicious text in a
+> row the agent reads can steer the next query it writes.
 >
-> The split worth internalizing: **scoring and tracking are different machines.**
-> Your eval harness (promptfoo, Braintrust, LangSmith, a custom LLM-as-judge) is
-> great at *running the cases and producing a score*. None of them is a query
-> planner over the months of scored results that pile up behind them. The moment
-> your question is "per version, across every run, ranked," you wanted a database,
-> not another export.
+> The pattern under all of these: **the agent holds credentials and authors the
+> SQL.** Every guardrail is then a bet you can out-parse an adversarial author —
+> the wrong bet. The durable fix is to take SQL authorship away from the agent and
+> enforce the boundary in the engine, not in a string check its output flows
+> through.
 >
-> So log each scored case as a typed *row* — `prompt_version`, `test_case`,
-> `model`, `score`, `passed`, `ts` — the moment the harness finishes. Now "pass
-> rate per prompt version this month, newest first" and "cases that regressed since
-> v3" are one query each, not a pivot table. You don't have to write the SQL
-> yourself: that's the demo on
-> [nlqdb](https://nlqdb.com/solve/track-llm-eval-scores-across-prompt-versions/) —
-> you ask in English, it provisions the Postgres and runs the `GROUP BY`, and it
-> shows you the SQL it ran so you can check the grain (per case vs per run) before
-> you trust a pass-rate number. The scoring still happens in your eval harness;
-> nlqdb is the database half you track it with.
+> Two moves. Writes shouldn't be agent-authored SQL at all: the server builds a
+> parameterised `INSERT` from a fixed column allow-list, so the agent supplies
+> *data*, never *statements*. Reads that do run model-emitted SQL go through
+> layered, fail-closed validation (a leading-verb gate **and** an AST parse **and**
+> an embedded-verb/function walk — one stage catches what another misses, and an
+> unparseable statement is rejected, not allowed) plus row-level security in the
+> database itself, which filters every read and write whatever shape the SQL takes.
 >
-> The tell that you crossed the line: you're rebuilding the same pivot table every
-> release, or asking a model to count pass/fail rows. Keep the harness for scoring.
-> Put the rows you *count and group* somewhere that speaks SQL.
+> That's the boundary nlqdb is built around: the agent asks in English, you see the
+> compiled SQL, destructive ops show a row-count diff before they apply, and the
+> engine — not a regex — decides what rows it can touch. The honest limit: nlqdb
+> owns the Postgres it queries, so it's the safe store an agent writes to and reads
+> from, not a guard you bolt in front of your existing prod DB (for that, a read
+> replica plus a policy proxy is the right shape). Demo + full trade-offs:
+> [nlqdb](https://nlqdb.com/solve/safely-give-ai-agent-database-access/).
+>
+> The tell you're on the wrong side of the boundary: your safety story is "we told
+> the model to only SELECT" and "we strip dangerous keywords." Move SQL authorship
+> off the agent; let the engine enforce the rest.
 
 **Why this advances the north-star:** onboarding / distribution (GLOBAL-025) — a
-P2-agent-builder search-intent on-ramp anchoring
-`/solve/track-llm-eval-scores-across-prompt-versions` (solve pages 11 → 12, the
-eval-quality-tracking wedge), honest about what nlqdb doesn't do (no running or
-scoring the evals — that stays in your harness). One nlqdb mention. No
-engine/funnel/ops KPI degrades (additive AEO page, data-only).
+P2-agent-builder on-ramp anchoring the new
+`/solve/safely-give-ai-agent-database-access` (solve pages 12 → 13, the
+agent-DB-trust-boundary wedge, a distinct cluster from the five
+"log-rows-then-GROUP-BY" pages), honest about the limits (not a proxy over your
+existing DB; no statement-timeout cap yet; per-agent RLS is roadmap). One nlqdb
+mention. No engine/funnel/ops KPI degrades (additive AEO page, data-only).
 
 ## Collapsed — full drafts in git history
+
+- run 91 — dev.to / r/LLMDevs / r/LangChain: "Your eval results live in a spreadsheet. The question 'which version regressed' lives in SQL." (an eval run is a list of scored cases, but "pass rate per version, which cases regressed, trend per model" are aggregations across every run — a pivot rots on the next run, asking the LLM to tally hallucinates; scoring and tracking are different machines — log each scored case as a typed row; anchors `/solve/track-llm-eval-scores-across-prompt-versions`).
 
 Newest first; collapsed once past the single inline draft above (the latest draft
 has grown enough that even two no longer fit under the D4 20 KB cap). Each line is
 title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
 recovers any body.
 
-- run 90 — dev.to / r/LangChain / r/LLMDevs: "Your vector store found the chunk. It can't tell you which source you keep retrieving and never use." (RAG retrieval is *recall*; "which source gets retrieved most / never surfaces / avg relevance per source" is an aggregation over the retrieval log — a vector store is the wrong shape to `GROUP BY`; log each retrieval as a typed row alongside the search; anchors `/solve/analyze-rag-retrieval-logs`).
-- run 88 — dev.to / r/LLMDevs / lobste.rs: "You're grepping your agent's trace logs to count which tool fails. That's a GROUP BY." (agent-observability questions — which tool fails most, p95 latency per tool, calls per session — are aggregations, and a flat trace log built to reconstruct *one* run as a span tree is the wrong shape to `GROUP BY` across all runs; *capture* (OTel/AgentOps/Langfuse) and *query* (a planner) are different machines — log each tool call as a typed row alongside the tracer; anchors `/solve/analyze-agent-tool-call-logs`).
+- run 90 — dev.to / r/LangChain / r/LLMDevs: "Your vector store found the chunk. It can't tell you which source you keep retrieving and never use." (RAG retrieval is *recall*; "which source retrieved most / never surfaces / avg relevance" is an aggregation over the retrieval log — a vector store is the wrong shape to `GROUP BY`; log each retrieval as a typed row; anchors `/solve/analyze-rag-retrieval-logs`).
+- run 88 — dev.to / r/LLMDevs / lobste.rs: "You're grepping your agent's trace logs to count which tool fails. That's a GROUP BY." (which tool fails most, p95 per tool, calls per session are aggregations, and a span-tree trace log is the wrong shape to `GROUP BY` across runs; *capture* (OTel/AgentOps/Langfuse) and *query* are different machines — log each tool call as a typed row; anchors `/solve/analyze-agent-tool-call-logs`).
 - run 87 — dev.to / lobste.rs: "Your Cmd+K palette is invisible to screen readers — one attribute fixes it" (the palette every app ships is perfect for people who can *see* the highlight move; under a screen reader it's silent because the highlight is just a CSS class and focus never leaves the input; the fix tutorials skip is `aria-activedescendant` letting the focused input point at a *different* "active" option, with `combobox`/`listbox`/`option` + `aria-selected`; keep option ids in one helper and clamp the index in pure logic; palette ARIA associations 0 → 3).
-- run 86 — dev.to / lobste.rs / r/LLMDevs: "Your llms.txt is a sitemap for robots that read — and mine was missing the page I care about most" (the machine-readable index LLM-IDE crawlers fetch was hand-curated *before* the flagship landing page existed, so the page our positioning is built around was silently absent; the comparison/how-to lists were data-driven and stayed in sync, but the bespoke top-level array nobody revisited rotted — audit the *rendered* artifact not the source, and pin bespoke entries with a test; also caught a stale "closed beta" status string; `llms.txt` primary routes 4 → 6, pivot page 0 → 1).
+- run 86 — dev.to / lobste.rs / r/LLMDevs: "Your llms.txt is a sitemap for robots that read — and mine was missing the page I care about most" (the LLM-crawler index was hand-curated *before* the flagship landing page existed, so it was silently absent; data-driven lists stayed in sync, the bespoke array nobody revisited rotted — audit the *rendered* artifact, pin bespoke entries with a test; `llms.txt` primary routes 4 → 6).
 - run 85 — dev.to / r/LLMDevs / lobste.rs: "Your token-cost dashboard is doing arithmetic in your app code" (LLM token/cost numbers land in a JSON log, but "spend per customer this month, which model is expensive?" is an aggregation — `SUM(cost) GROUP BY user`/`model` — and a log isn't a thing you aggregate, so you total rows in app code or ask the LLM to add them (a confident-wrong-total generator); *capture* (provider SDK / Langfuse / Helicone) and *query* (a planner) are different machines — the moment a dashboard sums a column in app code it wanted a database; anchors `/solve/track-ai-token-usage-and-cost`).
-- run 84 — dev.to / r/LocalLLaMA / lobste.rs: "Scaling your vector store to a billion rows doesn't give it a GROUP BY" (teams outgrow a hosted vector store and reach for Milvus/Qdrant for *scale* — but ANN throughput and a query planner are orthogonal axes; a vector index only finds the K nearest embeddings at any scale, while `JOIN`/multi-column `GROUP BY`/`HAVING` need a relational planner; the tell is counting rows in app code or asking the LLM to count search hits — keep the vector engine for recall, put the rows you count+group in something that speaks SQL; anchors `/vs/milvus`, honest about Milvus's ANN-at-scale strengths).
+- run 84 — dev.to / r/LocalLLaMA / lobste.rs: "Scaling your vector store to a billion rows doesn't give it a GROUP BY" (teams reach for Milvus/Qdrant for *scale*, but ANN throughput and a query planner are orthogonal — a vector index finds the K nearest embeddings at any scale, `JOIN`/`GROUP BY`/`HAVING` need a relational planner; keep the vector engine for recall, put rows you count+group in something that speaks SQL; anchors `/vs/milvus`).
 - run 83 — dev.to / lobste.rs: "I skipped the rich result Google was begging me to add" (the most-recommended structured-data win — the `WebSite` `SearchAction` sitelinks search box — is the one I deliberately *didn't* ship: a `SearchAction` is a promise that a URL template runs a query, but the homepage submits over JS with no `GET /search?q=…` route, so the schema would *validate* and be a *lie*; kept the honest half — `Organization` + `WebSite` with stable `@id`s and every page's `SoftwareApplication` naming that Organization as `publisher`; "would this validate?" is the wrong test, "is this true?" is; brand-entity nodes 1 → 3).
 - run 82 — dev.to / lobste.rs: "Your AI app tells sighted users the query failed. Screen readers get silence." (the AI-feature text box swaps *loading*/*result*/*error* async with two quiet a11y misses: the result region isn't a live region (`aria-live`/`role="status"` once on the container), and the *input* never says it's invalid — add `aria-invalid` + `aria-describedby` pointing at one error `id`, collapsing the structured + network error branches into a single `role="alert"` region; test the error path with the reader on; anchored to this run's CreateForm fix, ARIA associations 0 → 2).
 - run 81 — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections" (leaf `/vs` + `/solve` pages emit `FAQPage`/`BreadcrumbList`, but the hubs listing them carried only the site-wide `SoftwareApplication`; `ItemList` declares "an ordered, complete set" — build it from the same array the `<ul>` renders so it can't drift, item URLs at the trailing-slash 200; hub collection signal 0 → 2).
