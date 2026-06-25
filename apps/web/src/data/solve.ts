@@ -843,7 +843,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Each agent's writes carry an `agent_id`, so one English question rolls the shared memory up per agent — the cross-team view a per-agent store can't give you.",
     howNlqdbAnswers: [
       "Every agent writes to one shared Postgres via `nlqdb_remember`: the server builds a parameterised insert, so each agent supplies data, never SQL (`SK-PIVOT-008`).",
-      "Facts, episodes, and entities each carry `agent_id`, `end_user_id`, and `thread_id` columns, so you attribute and filter shared memory by which agent (or user, or thread) wrote it.",
+      "Every row carries `agent_id`, and facts and episodes also carry `end_user_id` and `thread_id`, so you attribute and filter shared memory by which agent (and, for facts and episodes, which user or thread) wrote it.",
       "Any agent recalls in English via `nlqdb_query` — nlqdb compiles the NL→SQL over the shared tables, so one agent reads what another wrote, and the compiled SQL is always shown.",
       "It's one Postgres, so concurrent writes from many agents are handled by the engine; entities upsert on `(agent_id, kind, canonical_name)` so two agents recording the same thing don't duplicate it.",
     ],
