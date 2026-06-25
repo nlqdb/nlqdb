@@ -1,23 +1,30 @@
 ---
 // "What this replaces" — the third and final homepage beat
-// (redesign-plan §5 `/` beat 3). Eight things a normal stack forces
-// you to wire up, struck through, collapsing into the single
-// `<nlq-data>` line. The strikethrough sweep is the page's one
-// earned scroll moment (motion budget §6 step 9); the final
-// `<nlq-data>` row keeps mono — code earns it here — with lime on
-// the tag identifier. One CTA below; no supporting paragraph.
+// (redesign-plan §5 `/` beat 3). The agent-memory set, struck
+// through, collapsing into the `nlqdb_recall(…)` punchline. Mirrors
+// the /agents replacement block so the home and the deep door share
+// the same vocabulary. The strikethrough sweep is the page's one
+// earned scroll moment (motion budget §6 step 9); the final code
+// line keeps mono — code earns it here — with lime on the
+// `nlqdb_recall` identifier.
 
 import Cta from "./Cta.astro";
 
-const replaces = ["Database", "Schema", "ORM", "Endpoint", "Auth", "Cache", "Migrations", "Deploy"];
+const replaces = [
+  "Vector store top-k",
+  "Per-agent SQLite",
+  "Embedding cache",
+  "Schema design",
+  "Re-rank pipeline",
+];
 ---
 
 <section class="replaces" aria-labelledby="replaces-title">
   <h2 class="replaces__title" id="replaces-title">
-    Eight boxes&hairsp;&mdash;&hairsp;or one tag.
+    Five things&hairsp;&mdash;&hairsp;or one tool call.
   </h2>
 
-  <ul class="replaces__list" aria-label="Things you no longer build">
+  <ul class="replaces__list" aria-label="What agent memory replaces">
     {
       replaces.map((item, i) => (
         <li class="replaces__item" style={`--i:${i}`}>
@@ -29,11 +36,11 @@ const replaces = ["Database", "Schema", "ORM", "Endpoint", "Auth", "Cache", "Mig
 
   <div class="replaces__final" aria-hidden="false">
     <code class="replaces__code">
-      &lt;<span class="replaces__tag">nlq-data</span>&gt;
+      <span class="replaces__tag">nlqdb_recall</span>(&hellip;)
     </code>
   </div>
 
-  <Cta href="/app/new" label="Start with one sentence →" />
+  <Cta href="/agents" label="Connect it to your agent →" />
 </section>
 
 <style is:global>

@@ -1,9 +1,12 @@
 ---
 // Homepage — three beats (redesign-plan §5, SK-WEB-015 foundation):
-// hero → demo → replaces. Everything else moved off `/` (legacy
-// component files survive until Phase 2 page-sweep agents port their
-// content; the `Waitlist` block is deleted outright because the
-// product is open per d63fb01).
+// hero → demo → replaces, with one quiet "also works for app devs →"
+// demotion link below (GLOBAL-036 dual front door: the wedge leads,
+// the generalist describe→table→embed story is one click away at
+// /app/new, never on the main canvas). Everything else moved off `/`
+// in SK-WEB-015. The home now tells the agent-memory story end to
+// end — headline, demo, and CTA all align (closes WS-13's
+// headline-only gap; recorded in the SK-PIVOT follow-on).
 
 import AuthedHomeBanner from "../components/AuthedHomeBanner.astro";
 import Demo from "../components/Demo.astro";
@@ -15,7 +18,7 @@ import Base from "../layouts/Base.astro";
 ---
 <Base
   title="nlqdb — analytical memory for AI agents"
-  description="Memory your AI agent can query, not just recall. Connect a real database over MCP — your agent writes typed rows and runs GROUP BY, JOIN, and aggregates over them in English. Also a natural-language database for any app."
+  description="Give your AI agent a real Postgres database as memory — typed rows it writes as it learns, queried in English. Connect it over MCP to Claude, Cursor, Windsurf, or Zed; aggregate over what it remembered, not just the top-k a vector store recalls."
   ogImage="/og/agents.png"
   ogImageAlt="GROUP BY your agent's memory — analytical memory for AI agents."
 >
@@ -27,11 +30,54 @@ import Base from "../layouts/Base.astro";
       <Hero />
       <Demo />
       <Replaces />
+
+      <section class="alsoworks" aria-label="Other use cases">
+        <p class="alsoworks__line">
+          Not building an agent? nlqdb is also a natural-language database you
+          embed in any app —
+          <a class="alsoworks__link" href="/app/new">
+            describe data, drop one tag &rarr;
+          </a>
+        </p>
+      </section>
     </main>
 
     <Footer />
   </div>
 </Base>
+
+<style is:global>
+  .alsoworks {
+    /* GLOBAL-036's demotion: the generalist describe→table→embed
+       story is one quiet line below the three beats, never on the
+       main canvas. No accent, no card chrome — visually subordinate. */
+    max-width: var(--col);
+    padding: clamp(28px, 4vw, 40px) 0 clamp(40px, 6vw, 64px);
+    border-top: 1px solid var(--rule);
+    margin-top: clamp(24px, 3vw, 32px);
+  }
+
+  .alsoworks__line {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 60ch;
+  }
+
+  .alsoworks__link {
+    color: var(--body);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  .alsoworks__link:hover,
+  .alsoworks__link:focus-visible {
+    color: var(--ink);
+  }
+</style>
 
 <script>
   // Provision the anonymous-mode token on first visit (SK-ANON-001).

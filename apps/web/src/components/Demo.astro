@@ -1,95 +1,88 @@
 ---
-// Homepage demo block (redesign-plan §5 `/` beat 2, SK-WEB-003 "code
-// is the proof" made literal). The same answer, two ways: a static
-// pre-rendered chat reply on the left, the `<nlq-data>` snippet that
-// produces it on the right.
+// Homepage beat 2 — the agent loop, server-rendered as proof
+// (SK-WEB-003 "code is the proof", SK-PIVOT-004 crawlable/no-JS).
 //
-// The snippet is the page's *second* lime moment — the `<nlq-data>`
-// tag itself is wrapped in `.demo__tag` so the accent lands only on
-// the identifier, not the surrounding markup. (The first lime moment
-// is the `<CreateForm>` submit CTA in the hero; the third is the
-// Replaces final CTA below.)
+// Closes the headline-demo gap WS-13 left: the headline talks about
+// agent memory, so the demo shows the agent loop, not a generalist
+// orders table. Two MCP tool calls (`nlqdb_remember` → typed row,
+// `nlqdb_recall` → NL question), the exact SQL nlqdb compiled, the
+// answer rows. Same proof shape `/agents` uses, in compact form;
+// `/agents` keeps the deeper version (matrix, trust boundary,
+// self-host).
 //
-// No React island here — we want this rendered at build time so the
-// page proves "code is the proof" without a single byte of JS for
-// the demo. The showcase row data is borrowed from `data/showcase-examples`
-// so the example evolves with the rest of the carousel/eval surface.
+// The lime moments are the two MCP tool identifiers — the only
+// accent on this beat. No React island; pre-rendered HTML.
 
-import { SHOWCASE_EXAMPLES } from "../data/showcase-examples";
+// The remember/recall pair. Kept in sync with /agents/index.astro;
+// if you change one, change the other (same story, two depths). The
+// tool-call code blocks are inlined in the JSX below so the lime
+// `.demo__tag` span can wrap just the identifier without splitting
+// the literal.
 
-// Pick the showpiece — revenue-by-drink. Populated table, immediate
-// "the AI answered me" moment. Falls back to the first read example
-// if the id ever changes.
-const SHOWPIECE_ID = "read-revenue-by-drink";
-const showpiece =
-  SHOWCASE_EXAMPLES.find((e) => e.id === SHOWPIECE_ID) ??
-  SHOWCASE_EXAMPLES.find((e) => e.category === "read") ??
-  SHOWCASE_EXAMPLES[0];
+const rememberResult = `→ { id: 4129, ok: true }`;
 
-const rows = showpiece.rows ?? [];
-const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+const recallSql = `SELECT user_id, COUNT(*) AS feedback
+  FROM agent_memory
+ WHERE category = 'user_preference'
+   AND created_at >= date_trunc('month', now())
+ GROUP BY user_id
+ ORDER BY feedback DESC;`;
 
-// Title-case the column headers (mirrors the chat surface's
-// prettifyHeader() so the marketing demo doesn't show raw snake_case).
-function prettify(key: string): string {
-  return key.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
-}
-
-// Format a sample value as the chat would.
-function fmt(v: string | number | null): string {
-  if (v === null || v === undefined) return "";
-  if (typeof v === "number") {
-    // Two-decimal money-style for fractional, plain integer otherwise.
-    return Number.isInteger(v) ? v.toString() : v.toFixed(2);
-  }
-  return String(v);
-}
-
-// One-sentence answer the chat would compose. Hand-written for the
-// showpiece — the chat surface synthesises this from the result; we
-// hardcode the equivalent here so the demo block is JS-free.
-const answerSentence = "Flat white leads the morning — six drinks, ranked by revenue.";
-
-// The exact snippet text. The `<nlq-data>` tag is wrapped in a
-// `.demo__tag` span at render time so the accent highlights only
-// that identifier.
-const snippetGoal = showpiece.goal;
+const recallRows = [
+  { user_id: "u_412", feedback: 14 },
+  { user_id: "u_207", feedback: 9 },
+  { user_id: "u_388", feedback: 6 },
+  { user_id: "u_104", feedback: 4 },
+];
 ---
 
 <section class="demo" aria-labelledby="demo-eyebrow">
-  <p class="demo__eyebrow" id="demo-eyebrow">The same answer, two ways.</p>
+  <p class="demo__eyebrow" id="demo-eyebrow">What your agent does with it.</p>
+  <h2 class="demo__title">
+    Your agent writes a row, then asks a question.
+  </h2>
 
   <div class="demo__pair">
-    <article class="demo__answer" aria-label="Example chat reply">
-      <p class="demo__answer-text">{answerSentence}</p>
-      <div class="demo__data" role="region" aria-label="Result data">
+    <article class="demo__col" aria-label="Remember">
+      <p class="demo__col-label">1 · Remember</p>
+      <pre class="demo__code"><code><span class="demo__tag">nlqdb_remember</span>(&#123;
+  category: "user_preference",
+  content: "prefers concise replies",
+  user_id: "u_412"
+&#125;)</code></pre>
+      <p class="demo__col-out"><code>{rememberResult}</code></p>
+      <p class="demo__col-note">
+        The row lands in <code>agent_memory</code> — typed columns, not an
+        opaque vector blob.
+      </p>
+    </article>
+
+    <article class="demo__col" aria-label="Recall">
+      <p class="demo__col-label">2 · Recall</p>
+      <pre class="demo__code"><code><span class="demo__tag">nlqdb_recall</span>(&#123;
+  question: "feedback per user, ranked by count this month"
+&#125;)</code></pre>
+      <p class="demo__col-sub">Compiled SQL (the exact statement nlqdb ran):</p>
+      <pre class="demo__sql"><code>{recallSql}</code></pre>
+      <div class="demo__data" role="region" aria-label="Result rows">
         <table class="nlq-table">
           <thead>
             <tr>
-              {columns.map((c) => <th>{prettify(c)}</th>)}
+              <th>User ID</th>
+              <th>Feedback</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {recallRows.map((r) => (
               <tr>
-                {columns.map((c) => <td>{fmt(r[c])}</td>)}
+                <td>{r.user_id}</td>
+                <td>{r.feedback}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {showpiece.summary && (
-        <p class="demo__answer-foot">{showpiece.summary}</p>
-      )}
     </article>
-
-    <aside class="demo__snippet" aria-label="Embed snippet">
-      <p class="demo__snippet-label">Drop into any HTML page:</p>
-      <pre class="demo__snippet-code"><code>&lt;<span class="demo__tag">nlq-data</span> goal=&quot;{snippetGoal}&quot;&gt;&lt;/<span class="demo__tag">nlq-data</span>&gt;</code></pre>
-      <p class="demo__snippet-hint">
-        One element. Schema, plan, cache, auth — server-side, invisible.
-      </p>
-    </aside>
   </div>
 </section>
 
@@ -100,7 +93,7 @@ const snippetGoal = showpiece.goal;
   }
 
   .demo__eyebrow {
-    margin: 0 0 clamp(20px, 3vw, 32px);
+    margin: 0 0 12px;
     font-family: var(--mono);
     font-size: var(--t-small);
     color: var(--muted);
@@ -108,11 +101,23 @@ const snippetGoal = showpiece.goal;
     letter-spacing: 0.08em;
   }
 
+  .demo__title {
+    margin: 0 0 clamp(28px, 4vw, 40px);
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    text-wrap: balance;
+    max-width: 22ch;
+  }
+
   .demo__pair {
     display: grid;
     grid-template-columns: 1fr;
     gap: clamp(20px, 3vw, 32px);
-    align-items: stretch;
+    align-items: start;
   }
 
   @media (min-width: 880px) {
@@ -122,43 +127,17 @@ const snippetGoal = showpiece.goal;
     }
   }
 
-  .demo__answer,
-  .demo__snippet {
+  .demo__col {
     margin: 0;
     padding: clamp(20px, 3vw, 28px);
     background: var(--raised);
     border: 1px solid var(--rule);
-  }
-
-  .demo__answer-text {
-    margin: 0 0 18px;
-    font-family: var(--display);
-    font-size: var(--t-large);
-    font-weight: 400;
-    color: var(--ink);
-    line-height: 1.4;
-    text-wrap: balance;
-  }
-
-  .demo__data {
-    overflow-x: auto;
-    margin: 0 0 14px;
-  }
-
-  .demo__answer-foot {
-    margin: 0;
-    font-family: var(--mono);
-    font-size: var(--t-small);
-    color: var(--muted);
-  }
-
-  .demo__snippet {
     display: flex;
     flex-direction: column;
     gap: 14px;
   }
 
-  .demo__snippet-label {
+  .demo__col-label {
     margin: 0;
     font-family: var(--mono);
     font-size: var(--t-small);
@@ -167,36 +146,62 @@ const snippetGoal = showpiece.goal;
     letter-spacing: 0.08em;
   }
 
-  .demo__snippet-code {
+  .demo__code,
+  .demo__sql {
     margin: 0;
-    padding: 18px;
+    padding: 16px 18px;
     background: var(--ground);
     border: 1px solid var(--rule);
     font-family: var(--mono);
     font-size: 14px;
-    line-height: 1.7;
+    line-height: 1.55;
     color: var(--body);
     overflow-x: auto;
     white-space: pre-wrap;
-    word-break: break-word;
+    word-break: normal;
   }
 
-  .demo__snippet-code code {
+  .demo__code code,
+  .demo__sql code {
     font-family: inherit;
   }
 
-  /* The lime moment for this beat — only the tag identifier glows. */
-  .demo__tag {
-    color: var(--accent);
-    font-weight: 600;
+  .demo__col-out {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
   }
 
-  .demo__snippet-hint {
+  .demo__col-out code,
+  .demo__col-note code {
+    font-family: inherit;
+    color: var(--body);
+  }
+
+  .demo__col-note {
     margin: 0;
     font-family: var(--sans);
     font-size: var(--t-small);
     color: var(--muted);
     line-height: 1.55;
-    max-width: 40ch;
+    max-width: 46ch;
+  }
+
+  .demo__col-sub {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+
+  .demo__data {
+    overflow-x: auto;
+  }
+
+  /* The lime moment for this beat — only the two MCP tool identifiers glow. */
+  .demo__tag {
+    color: var(--accent);
+    font-weight: 600;
   }
 </style>
