@@ -1,6 +1,15 @@
 # Auto-deploys apps/mcp on merge. Mirrors deploy-events-worker.yml —
-# no D1, no asset bundle, no Worker secrets to mirror yet. wrangler
-# auto-provisions OAUTH_KV + mcp.nlqdb.com DNS + cert on first run.
+# no D1, no asset bundle. wrangler auto-provisions OAUTH_KV +
+# mcp.nlqdb.com DNS + cert on first run.
+#
+# secrets:remote — `scripts/mirror-secrets-workers.sh remote mcp`
+# re-syncs the Worker-level secrets (BETTER_AUTH_SECRET + the OTel
+# pair) from GHA → Worker after deploy, when latest = deployed (CF
+# API code 10214 otherwise). BETTER_AUTH_SECRET is required: the
+# OAuth bridge (SK-MCP-013) HMAC-signs the flow blob with it, and a
+# missing value makes GET /authorize throw a raw 1101 (the 2026-06-25
+# Cursor-install incident). Without this step every deploy leaves the
+# Worker with no secrets.
 
 name: Deploy MCP server
 
@@ -39,3 +48,17 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/mcp
           command: deploy
+
+      # Re-sync Worker-level secrets from GHA secrets. Same script path
+      # as `bun run --cwd apps/mcp secrets:remote`. Latest = deployed at
+      # this point because `wrangler deploy` just ran; `wrangler secret
+      # bulk` requires that.
+      - name: Sync Worker secrets (mirror-secrets-workers.sh)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          jq -r 'to_entries[] | "export \(.key)=\(.value | @sh)"' <<<"$ALL_SECRETS" > .envrc
+          ./scripts/mirror-secrets-workers.sh remote mcp
+          rm -f .envrc

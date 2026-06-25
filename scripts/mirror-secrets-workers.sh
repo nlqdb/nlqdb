@@ -7,6 +7,7 @@
 # where <app> is one of:
 #   api            → apps/api          (Worker nlqdb-api)
 #   events-worker  → apps/events-worker (Worker nlqdb-events-worker)
+#   mcp            → apps/mcp          (Worker nlqdb-mcp-server)
 #
 # Each app declares its own runtime-secret subset in select_secrets()
 # below. Adding a new app is one case-arm there + a worker dir on disk.
@@ -44,7 +45,7 @@ APP="${2:-}"
 case "$MODE" in
   local|remote) ;;
   *)
-    echo "Usage: $0 local|remote <api|events-worker>" >&2
+    echo "Usage: $0 local|remote <api|events-worker|mcp>" >&2
     echo "  local   write apps/<app>/.dev.vars from .envrc (for wrangler dev)" >&2
     echo "  remote  push to deployed Worker via wrangler secret bulk" >&2
     exit 2
@@ -54,8 +55,9 @@ esac
 case "$APP" in
   api)            APP_DIR="apps/api";           WORKER_NAME="nlqdb-api" ;;
   events-worker)  APP_DIR="apps/events-worker"; WORKER_NAME="nlqdb-events-worker" ;;
+  mcp)            APP_DIR="apps/mcp";           WORKER_NAME="nlqdb-mcp-server" ;;
   *)
-    echo "Usage: $0 local|remote <api|events-worker>" >&2
+    echo "Usage: $0 local|remote <api|events-worker|mcp>" >&2
     echo "  unknown app: '$APP'" >&2
     exit 2
     ;;
@@ -133,6 +135,20 @@ select_secrets() {
         GRAFANA_OTLP_ENDPOINT
         # Customer dunning email (SK-STRIPE-013) — same Resend key as apps/api.
         RESEND_API_KEY
+      )
+      ;;
+    mcp)
+      SECRETS=(
+        # HMAC key for the OAuth flow-state envelope signed in
+        # apps/mcp/src/oauth-bridge.ts (SK-MCP-013). Shared with apps/api
+        # so the bridge blob round-trips. WITHOUT it, signBlob calls
+        # crypto.subtle.importKey with a zero-length key and throws —
+        # GET /authorize returns a raw Cloudflare 1101 (the 2026-06-25
+        # Cursor-install incident). The mcp Worker reads no other secret;
+        # everything else (NLQDB_API_BASE_URL, NLQDB_WEB_ORIGIN) is a
+        # non-secret [vars] entry in apps/mcp/wrangler.toml.
+        BETTER_AUTH_SECRET
+        GRAFANA_OTLP_ENDPOINT
       )
       ;;
   esac

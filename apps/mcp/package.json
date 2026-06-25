@@ -8,7 +8,9 @@
     "build": "wrangler deploy --dry-run --outdir dist",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "secrets:local": "../../scripts/mirror-secrets-workers.sh local mcp",
+    "secrets:remote": "../../scripts/mirror-secrets-workers.sh remote mcp"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "0.6.0",

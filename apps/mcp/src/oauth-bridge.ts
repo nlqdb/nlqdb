@@ -53,6 +53,16 @@ async function handleAuthorize(req: Request, env: BridgeEnv): Promise<Response> 
   const client = await env.OAUTH_PROVIDER.lookupClient(oauthReq.clientId);
   if (!client) return new Response("Unknown client_id", { status: 400 });
 
+  // `BETTER_AUTH_SECRET` HMAC-signs the flow blob (SK-MCP-013). If it's
+  // unprovisioned, `signBlob` calls `crypto.subtle.importKey` with a
+  // zero-length key and throws a `DataError`, surfacing as a raw 1101
+  // (the 2026-06-25 Cursor-install incident). `parseAuthRequest` has
+  // already validated the client + redirect_uri, so we can fail back to
+  // the client per RFC 6749 §4.1.2.1 with `error=server_error` instead.
+  if (!env.BETTER_AUTH_SECRET) {
+    return redirectError(oauthReq.redirectUri, oauthReq.state, "server_error");
+  }
+
   const blob: BridgeStateBlob = {
     rt: oauthReq.responseType,
     ci: oauthReq.clientId,
@@ -71,6 +81,17 @@ async function handleAuthorize(req: Request, env: BridgeEnv): Promise<Response> 
   consentUrl.searchParams.set("client_name", client.clientName ?? client.clientId);
   consentUrl.searchParams.set("callback", new URL(BRIDGE_CALLBACK_PATH, req.url).toString());
   return Response.redirect(consentUrl.toString(), 302);
+}
+
+// Fail an authorize request back to the client's redirect_uri with an
+// OAuth error (RFC 6749 §4.1.2.1). Used only after parseAuthRequest has
+// validated the redirect_uri belongs to the client. Custom schemes
+// (e.g. `cursor://…`) parse fine through `URL`.
+function redirectError(redirectUri: string, state: string, error: string): Response {
+  const target = new URL(redirectUri);
+  target.searchParams.set("error", error);
+  if (state) target.searchParams.set("state", state);
+  return Response.redirect(target.toString(), 302);
 }
 
 async function handleBridgeCallback(url: URL, env: BridgeEnv): Promise<Response> {
