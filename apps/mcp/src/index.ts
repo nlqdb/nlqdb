@@ -105,9 +105,28 @@ export default {
         if (res.status >= 500) span.setStatus({ code: SpanStatusCode.ERROR });
         return res;
       } catch (err) {
+        // A throw here would escape the fetch handler as a raw Cloudflare
+        // 1101 ("Worker threw exception") — what Cursor's /authorize hit on
+        // 2026-06-25 when BETTER_AUTH_SECRET was unprovisioned and the
+        // bridge's HMAC sign threw. Convert any escaped exception into a
+        // structured OAuth `server_error` so the client sees a parseable
+        // response instead of an opaque Cloudflare error page. recordOAuthError
+        // runs inside this active span (auth-failure.ts contract) so the
+        // failure still lands in OTel.
         span.recordException(err as Error);
-        span.setStatus({ code: SpanStatusCode.ERROR });
-        throw err;
+        recordOAuthError({
+          code: "server_error",
+          description: err instanceof Error ? err.message : "unhandled exception",
+          status: 500,
+          headers: {},
+        });
+        return Response.json(
+          {
+            error: "server_error",
+            error_description: "The MCP server failed to process the request.",
+          },
+          { status: 500 },
+        );
       } finally {
         span.end();
       }

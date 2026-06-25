@@ -5,12 +5,16 @@ import { defineConfig } from "vitest/config";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-// Two projects, mirroring `apps/api/vitest.config.ts`:
-//   unit        — pure functions (oauth-bridge encode/decode). Runs in node.
-//                 No imports of `cloudflare:workers`-bound code.
-//   integration — needs the Workers runtime (OAuthProvider + McpAgent).
-//                 Uses `cloudflareTest` so `cloudflare:workers` resolves
-//                 and `SELF.fetch` hits the real Worker entry point.
+// Three projects, mirroring `apps/api/vitest.config.ts`:
+//   unit                  — pure functions (oauth-bridge encode/decode). Runs
+//                            in node. No `cloudflare:workers`-bound imports.
+//   integration           — needs the Workers runtime (OAuthProvider +
+//                            McpAgent). `cloudflareTest` resolves
+//                            `cloudflare:workers` and `SELF.fetch` hits the
+//                            real Worker entry point. BETTER_AUTH_SECRET set.
+//   integration-no-secret — same runtime but BETTER_AUTH_SECRET deliberately
+//                            unset, reproducing the prod misconfiguration that
+//                            made GET /authorize throw a raw 1101 (2026-06-25).
 
 export default defineConfig({
   test: {
@@ -43,6 +47,29 @@ export default defineConfig({
         test: {
           name: "integration",
           include: ["test/bearer-gate.test.ts"],
+        },
+      },
+      {
+        extends: true,
+        plugins: [
+          cloudflareTest({
+            main: "./src/index.ts",
+            singleWorker: true,
+            isolatedStorage: true,
+            wrangler: { configPath: path.join(here, "wrangler.toml") },
+            miniflare: {
+              bindings: {
+                NODE_ENV: "test",
+                NLQDB_WEB_ORIGIN: "https://app.nlqdb.test",
+                NLQDB_API_BASE_URL: "https://app.nlqdb.test",
+                // BETTER_AUTH_SECRET deliberately omitted.
+              },
+            },
+          }),
+        ],
+        test: {
+          name: "integration-no-secret",
+          include: ["test/authorize-no-secret.test.ts"],
         },
       },
     ],

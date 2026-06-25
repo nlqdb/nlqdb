@@ -120,7 +120,7 @@ curl -X POST https://app.nlqdb.com/v1/ask \\
 {
   "mcpServers": {
     "nlqdb": {
-      "url": "https://mcp.nlqdb.com",
+      "url": "https://mcp.nlqdb.com/mcp",
       "headers": {
         "Authorization": "Bearer sk_mcp_..."
       }

@@ -79,11 +79,51 @@ describe("apps/mcp auth boundary (slice 3b)", () => {
     expect(res.status).toBe(400);
   });
 
-  // `/authorize` happy + sad paths are owned by `OAuthProvider` —
-  // we don't re-verify what `workers-oauth-provider`'s own test
-  // suite already covers. The `handleAuthorize` slice we own (state
-  // blob construction) is unit-tested separately in
-  // `oauth-bridge.test.ts`.
+  // `/authorize` is handled by our `bridgeHandler.handleAuthorize`
+  // (OAuthProvider delegates it to `defaultHandler`). A real Cursor
+  // install sends a custom-scheme `redirect_uri` (`cursor://…`), an
+  // RFC 8707 `resource` indicator, and S256 PKCE — exactly the request
+  // that 1101'd in prod on 2026-06-25. With BETTER_AUTH_SECRET present
+  // it must reach the consent screen (302), never throw / never 500.
+  it("/authorize with Cursor's custom-scheme redirect_uri + resource + PKCE reaches consent (302)", async () => {
+    const reg = await SELF.fetch("https://mcp.nlqdb.test/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Cursor",
+        redirect_uris: ["cursor://anysphere.cursor-mcp/oauth/callback"],
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+        token_endpoint_auth_method: "none",
+        scope: "mcp",
+      }),
+    });
+    expect(reg.status).toBe(201);
+    const clientId = ((await reg.json()) as Record<string, string>)["client_id"];
+    expect(clientId).toBeTruthy();
+
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId as string,
+      code_challenge: "80W-cXbDJYh-GOZquemS6aBLf0WcSB5S5RJ1P33YrqU",
+      code_challenge_method: "S256",
+      redirect_uri: "cursor://anysphere.cursor-mcp/oauth/callback",
+      state: "abc123state",
+      scope: "mcp",
+      resource: "https://mcp.nlqdb.com/mcp",
+    });
+    const res = await SELF.fetch(`https://mcp.nlqdb.test/authorize?${params.toString()}`, {
+      redirect: "manual",
+    });
+    // The regression guard: must NOT be a 1101/500 (worker exception).
+    expect(res.status).not.toBe(500);
+    expect(res.status).toBe(302);
+    // Redirects to the consent screen with the signed flow blob.
+    const loc = res.headers.get("location");
+    expect(loc).toBeTruthy();
+    expect(new URL(loc as string).pathname).toBe("/oauth/mcp-authorize");
+    expect(new URL(loc as string).searchParams.get("flow")).toBeTruthy();
+  });
 
   it("/health stays unauthenticated", async () => {
     const res = await SELF.fetch("https://mcp.nlqdb.test/health");

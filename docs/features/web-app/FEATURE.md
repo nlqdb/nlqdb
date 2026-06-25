@@ -10,9 +10,9 @@ when-to-load:
 # Feature: Web App
 
 **One-liner:** Marketing + product web app — onboarding, anonymous-mode default, demo dataset.
-**Status:** partial (Phase 1.5 — Phase 1 surfaces shipped; GLOBAL-024 queued wishlist landed via `SK-EVENTS-011` (see `events-pipeline/FEATURE.md`); the wishlist fanout lives in `CodePanel.astro`. `SK-WEB-010` adds the marketing-create Copy-snippet bridge to chat-side Copy snippet).
+**Status:** partial (Phase 1.5 — Phase 1 surfaces shipped; GLOBAL-024 wishlist landed via `SK-EVENTS-011`; `SK-WEB-010` bridges marketing-create Copy-snippet to the chat-side Copy snippet).
 **Owners (code):** `apps/web/**`
-**Cross-refs:** docs/architecture.md §3.1 (marketing site) · docs/architecture.md §3.2 (platform web app) · docs/runbook.md §10 (P1, P3, P5) · docs/phase-plan.md §2 (Phase 1 web slices)
+**Cross-refs:** docs/architecture.md §3.1–§3.2 (marketing + platform web app) · docs/runbook.md §10 (P1, P3, P5) · docs/phase-plan.md §2 (Phase 1 web slices)
 
 ## Touchpoints — read this feature before editing
 
@@ -22,22 +22,21 @@ when-to-load:
 
 ### SK-WEB-001 — Astro static-first with React islands; one project for marketing + product; every island ships behind an ErrorBoundary; no blank screens
 
-- **Decision:** `apps/web` is a single Astro project. Marketing pages (`nlqdb.com`) ship as static-first Astro routes (0 KB JS by default); product pages (`app.nlqdb.com`) are Astro routes with React islands for chat, dashboard, and key management. **Every React island is wrapped in `<ErrorBoundary>` (`apps/web/src/components/ErrorBoundary.tsx`) and `Base.astro` ships an inline pre-hydration `boot-fallback` block.** A render throw never produces a blank `<main>`; a chunk-load or top-level eval failure never produces an empty body. Persisted-state loaders (`localStorage` histories) shape-validate before returning hydrated values; mismatched entries are dropped, not trusted. Crashes POST best-effort to `/v1/errors/web` (`apps/api/src/index.ts`) so client-side throws land in the same OTel pipeline as server errors.
+- **Decision:** `apps/web` is a single Astro project. Marketing pages (`nlqdb.com`) ship as static-first Astro routes (0 KB JS by default); product pages (`app.nlqdb.com`) are Astro routes with React islands for chat, dashboard, and key management. **Every React island is wrapped in `<ErrorBoundary>` (`apps/web/src/components/ErrorBoundary.tsx`) and `Base.astro` ships an inline pre-hydration `boot-fallback` block.** A render throw never produces a blank `<main>`; a chunk-load or top-level eval failure never produces an empty body. Persisted-state loaders (`localStorage` histories) shape-validate before returning hydrated values. Crashes POST best-effort to `/v1/errors/web` so client-side throws land in the same OTel pipeline as server errors.
 - **Core value:** Free, Fast, Simple, Bullet-proof
-- **Why:** A single project gives one build, one deploy, one set of components, one design system. The Lighthouse 100/100/100/100 target on the marketing site requires static-first; the product surface needs interactive islands. Astro is the only popular framework that does both without forking the project. Also keeps `GLOBAL-013` (≤3 MiB Workers bundle) attainable — static pages contribute ~0 to the worker bundle. The ErrorBoundary + boot-fallback layer is non-negotiable: production hit a `Cannot read properties of undefined (reading 'sql')` throw in `ChatPanel` against stale persisted history and the entire chat surface vanished with no recovery affordance. A blank screen is the worst possible failure mode — it has no callback to action and no breadcrumb for support. Defence-in-depth (type narrowing + ErrorBoundary + pre-hydration handler + history shape guard) keeps every reachable failure visible.
-- **Consequence in code:** `apps/web` has one `astro.config.mjs`, one `package.json`. React appears only inside `*.tsx` islands; routes are `*.astro`. State in islands is URL-first (every chat is permalinkable). No global Redux. Marketing pages must remain JS-free unless an island is genuinely required. **Every island's top-level component renders its children inside `<ErrorBoundary>` (current islands: `ChatPanel`, `CreateForm`, `KeysPanel` — see their `*Inner` split). New islands MUST do the same; reviewers reject otherwise.** `Base.astro` contains a hidden `#boot-fallback` div and inline `error` / `unhandledrejection` listeners that reveal it. Persisted-state loaders (`loadHistory` in `ChatPanel.tsx`, etc.) run a shape guard before returning hydrated values.
+- **Why:** A single project gives one build, one deploy, one component set, one design system. The Lighthouse 100/100/100/100 marketing target needs static-first; the product surface needs interactive islands. Astro is the only popular framework that does both without forking the project, and keeps `GLOBAL-013` (≤3 MiB Workers bundle) attainable — static pages contribute ~0. The ErrorBoundary + boot-fallback layer is non-negotiable: production hit a stale-history throw in `ChatPanel` that vanished the whole chat surface with no recovery affordance. A blank screen is the worst failure mode — no call to action, no breadcrumb. Defence-in-depth (type narrowing + ErrorBoundary + pre-hydration handler + history shape guard) keeps every reachable failure visible.
+- **Consequence in code:** `apps/web` has one `astro.config.mjs`, one `package.json`. React appears only inside `*.tsx` islands; routes are `*.astro`. State in islands is URL-first (every chat is permalinkable). No global Redux. Marketing pages stay JS-free unless an island is genuinely required. **Every island's top-level component renders its children inside `<ErrorBoundary>` (`*Inner` split); new islands MUST do the same — reviewers reject otherwise.** `Base.astro` ships the `#boot-fallback` recovery block; persisted-state loaders shape-guard before returning hydrated values.
 - **Alternatives rejected:**
-  - Two projects (Next.js for product, Astro for marketing) — duplicated tokens, components, and deploys; double the surface area to keep in sync.
+  - Two projects (Next.js product + Astro marketing) — duplicated tokens, components, deploys; double the surface.
   - Next.js for everything — heavier client bundles by default; misses the static-marketing message.
-  - Trust islands not to throw — proven false; any future refactor or stale-schema can break it again.
-  - Catch only at the page level — misses islands mounted with `client:only`, which replace rather than enhance the SSR markup.
+  - Page-level-only error catching — misses `client:only` islands, which replace rather than enhance the SSR markup.
 
 ### SK-WEB-002 — Goal-first hero: one input, no pricing dialog, no signup wall
 
 - **Decision:** The marketing-site hero is a single input — *"What are you building?"* — that morphs into a chat via View Transitions. The first chat reply streams; the DB materializes silently. No pricing dialog, no "create your first database" button, no signup wall before first value.
 - **Core value:** Goal-first, Effortless UX, Free
-- **Why:** No persona ever woke up wanting to "create a database" (`docs/runbook.md §10`). The goal-first inversion (`docs/architecture.md §0.1`) is the most important design principle in the project, and the hero is its most visible expression. Every required input before first value drops the funnel; one input is the floor.
-- **Consequence in code:** `apps/web/src/pages/index.astro` is one input + one button + the code panel below. The chat morph happens in-place (View Transitions), not via navigation. The page is 100% functional with JS off (input still submits to a fallback chat URL). No dialog / modal / "are you sure" interrupts first value.
+- **Why:** No persona ever woke up wanting to "create a database" (`docs/runbook.md §10`). The goal-first inversion (`docs/architecture.md §0.1`) is the project's most important design principle, and the hero is its most visible expression. Every required input before first value drops the funnel; one input is the floor.
+- **Consequence in code:** `apps/web/src/pages/index.astro` is one input + one button + the code panel below. The chat morph is in-place (View Transitions), not navigation. The page works with JS off (input submits to a fallback chat URL). No dialog / modal / "are you sure" interrupts first value.
 - **Alternatives rejected:**
   - Required signup with "free trial" framing — measurably worse for activation; contradicts `GLOBAL-007`.
   - Region picker + project name on first run — `GLOBAL-020` rejects this explicitly.
@@ -138,17 +137,22 @@ when-to-load:
 ### SK-WEB-013 — `/pricing` surfaces a scheduled cancellation; the current-tier CTA becomes one-click "Resubscribe"
 
 **Body:** [`decisions/SK-WEB-013-cancellation-transparency.md`](./decisions/SK-WEB-013-cancellation-transparency.md).
-When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` current-plan badge reads *"Ends {date}"* and that tier's CTA becomes a **"Resubscribe"** via the Billing Portal (Stripe un-cancels) — no silent lapse, no new Stripe call; SK-STRIPE-010's no-double-bill guard still holds.
+When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` current-plan badge reads *"Ends {date}"* and that tier's CTA becomes a **"Resubscribe"** via the Billing Portal (Stripe un-cancels) — no silent lapse; SK-STRIPE-010's no-double-bill guard still holds.
 
 ### SK-WEB-014 — Homepage declares its brand entity: Organization + WebSite JSON-LD, no SearchAction
 
 **Body:** [`decisions/SK-WEB-014-site-entity-json-ld.md`](./decisions/SK-WEB-014-site-entity-json-ld.md).
-`nlqdb.com/` (root only) emits `Organization` + `WebSite` JSON-LD (`apps/web/src/lib/site-jsonld.ts`) with stable `@id`s; every page's `SoftwareApplication` names that Organization as `publisher` by `@id` so crawlers consolidate one brand entity. No `SearchAction` — the goal-first hero (`SK-WEB-002`) has no GET `q` entrypoint to honour it.
+`nlqdb.com/` (root only) emits `Organization` + `WebSite` JSON-LD (`apps/web/src/lib/site-jsonld.ts`) with stable `@id`s; every page's `SoftwareApplication` names that Organization as `publisher` by `@id` so crawlers consolidate one brand entity. No `SearchAction` — the goal-first hero (`SK-WEB-002`) has no GET `q` entrypoint.
 
 ### SK-WEB-015 — Three-beat homepage + quiet-brutalism token system
 
 **Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md).
-One quiet-brutalism token system in `global.css` (neutrals + one accent gated to three lime moments per fold, three faces, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero) → HOW (`Demo.astro` live `/v1/ask` + snippet) → WHY (`Replaces.astro` + one CTA). Off-`/` blocks (`AgentMemoryBand`, `Waitlist`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt`) removed; `/vs/*` and `/solve/*` collapse to one what-we-replace template; motion is one moment per page, gated on `prefers-reduced-motion`.
+One quiet-brutalism token system in `global.css` (neutrals + one accent gated to three lime moments per fold, three faces, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero) → HOW (`Demo.astro` live `/v1/ask` + snippet) → WHY (`Replaces.astro` + one CTA). Off-`/` blocks (`AgentMemoryBand`, `Waitlist`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt`) removed; `/vs/*` and `/solve/*` collapse to one what-we-replace template; one motion moment per page, `prefers-reduced-motion`-gated.
+
+### SK-WEB-016 — One-click MCP install affordance: shared `<McpInstall>` at three venues, deep-link where supported
+
+**Body:** [`decisions/SK-WEB-016-mcp-install-affordance.md`](./decisions/SK-WEB-016-mcp-install-affordance.md).
+A shared `<McpInstall>` (host descriptors in `lib/mcp-install.ts`) renders four host buttons — Cursor via its deep-link scheme, Claude/Windsurf/Zed via paste-ready per-host JSON — at three venues: `/agents` hero (under the form), post-create `CreateResultView`, `/integrations`. One promoted lime button per row (`SK-WEB-015`); `pk_live_REPLACE_ME` placeholder + sign-in nudge on anon surfaces (`SK-ANON-012` / `SK-WEB-010`); `SK-WEB-002` kept (install only after the CTA, never on the homepage hero).
 
 ## GLOBALs governing this feature
 
