@@ -50,11 +50,7 @@ interface Props {
   compact?: boolean;
 }
 
-const {
-  apiKey = PLACEHOLDER_KEY,
-  mcpUrl = MCP_ENDPOINT_URL,
-  compact = false,
-} = Astro.props;
+const { apiKey = PLACEHOLDER_KEY, mcpUrl = MCP_ENDPOINT_URL, compact = false } = Astro.props;
 
 const isPlaceholder = apiKey === PLACEHOLDER_KEY;
 const HOSTS = buildMcpHosts(mcpUrl);

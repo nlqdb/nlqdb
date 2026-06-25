@@ -27,11 +27,11 @@ import { type CreateError, type CreateResult, type CreateRow, postAskCreate } fr
 import { messageFor } from "../lib/create-errors";
 import { emit } from "../lib/logsnag";
 import {
-  type McpHostEntry,
+  buildMcpHosts,
   MCP_ENDPOINT_URL,
+  type McpHostEntry,
   PLACEHOLDER_KEY,
   PROMOTED_HOST,
-  buildMcpHosts,
 } from "../lib/mcp-install";
 import {
   appendHistory,

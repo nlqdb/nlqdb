@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
-  MCP_ENDPOINT_URL,
-  MCP_SERVER_ROUTE,
   buildCursorHref,
   buildMcpHosts,
+  MCP_ENDPOINT_URL,
+  MCP_SERVER_ROUTE,
 } from "./mcp-install.ts";
 
 // SK-WEB-016 regression guard. The hosted MCP server serves the protocol
