@@ -2,7 +2,7 @@
 
 Point-in-time **progress tracker**, regenerated each
 [`/daily`](../.claude/commands/daily.md) run from live sources (D1, KV, CF
-GraphQL, `tools/eval/baseline-2026-06-15.json`). **Current state only — no
+GraphQL, GH Actions runs, `tools/eval/baseline-2026-06-15.json`). **Current state only — no
 run-by-run changelog accretes here** (that is what kept this file growing past
 its cap). Full per-run history lives in `git log` +
 [`progress/quality-score-verification-log.md`](progress/quality-score-verification-log.md)
@@ -49,6 +49,8 @@ lands the instant the founder sets it.
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
 | 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
+| | **E2E — manual suites (not in CI), 2026-06-25 live (GH Actions)** | | mean(`pass × freshness`) over the 4 `workflow_dispatch`-only suites (`e2e-sdk`/`e2e-mcp`/`e2e-examples`/`e2e-opencheck`); freshness decays 1.0→0 over the 7 d since each suite's last green. Regen rule: `/daily` §1. CLI excluded — it auto-runs on `cli/**` PRs |
+| 13 | E2E manual-suite freshness | **0.00** | target > 0 (1.0 = all 4 green & run today). **3/4 latest-green** (sdk ✅, examples ✅, opencheck ✅; **mcp ❌ failed 06-24**) — but **all 4 last-green ≥ 7 d** ⇒ every freshness = 0 ⇒ score 0. Last green: opencheck 06-12 (13 d), sdk/examples/mcp 05-31 (25 d; mcp now red). Re-dispatch the 4 `e2e-*.yml` to lift it |
 | | **Pivot — agent-memory wedge** (GLOBAL-036) | 14 / 20 + 10 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7); run 61 +`/vs/qdrant` (Rust/quantization wing — P2 cluster 7→8, closes the top-tier vector-DB brand cluster); run 79 +`/vs/cognee` (knowledge-graph wing — P2 cluster 8→9, the "not a vector store" memory framework); run 84 +`/vs/milvus` (open-source billion-scale ANN wing — P2 cluster 9→10) |
 | | *Messaging track — WS-\** | 12 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2, WS-13 ✅) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
