@@ -33,6 +33,7 @@ when-to-load:
 
 ### SK-WEB-002 — Goal-first hero: one input, no pricing dialog, no signup wall
 
+- **Status:** Superseded in part by [`SK-WEB-017`](./decisions/SK-WEB-017-connect-first-hero.md). The no-signup-wall floor (GLOBAL-007) and the morph-to-chat behaviour are **retained**; only the "one input is THE hero" structural claim is replaced — the home hero now leads with the SK-WEB-016 `<McpInstall>` row as primary, with the goal input retained as a secondary affordance below it. `/agents` already followed that split; SK-WEB-017 extends it to `/`.
 - **Decision:** The marketing-site hero is a single input — *"What are you building?"* — that morphs into a chat via View Transitions. The first chat reply streams; the DB materializes silently. No pricing dialog, no "create your first database" button, no signup wall before first value.
 - **Core value:** Goal-first, Effortless UX, Free
 - **Why:** No persona ever woke up wanting to "create a database" (`docs/runbook.md §10`). The goal-first inversion (`docs/architecture.md §0.1`) is the project's most important design principle, and the hero is its most visible expression. Every required input before first value drops the funnel; one input is the floor.
@@ -153,6 +154,11 @@ One quiet-brutalism token system in `global.css` (neutrals + one accent gated to
 
 **Body:** [`decisions/SK-WEB-016-mcp-install-affordance.md`](./decisions/SK-WEB-016-mcp-install-affordance.md).
 A shared `<McpInstall>` (host descriptors in `lib/mcp-install.ts`) renders four host buttons — Cursor via its deep-link scheme, Claude/Windsurf/Zed via paste-ready per-host JSON — at three venues: `/agents` hero (under the form), post-create `CreateResultView`, `/integrations`. One promoted lime button per row (`SK-WEB-015`); `pk_live_REPLACE_ME` placeholder + sign-in nudge on anon surfaces (`SK-ANON-012` / `SK-WEB-010`); `SK-WEB-002` kept (install only after the CTA, never on the homepage hero).
+
+### SK-WEB-017 — Connect-first hero on the agent-memory home; goal input retained as secondary
+
+**Body:** [`decisions/SK-WEB-017-connect-first-hero.md`](./decisions/SK-WEB-017-connect-first-hero.md).
+The home hero leads with the SK-WEB-016 `<McpInstall compact>` row of host buttons ("Connect it to your agent.") as the **primary** affordance; the goal text input (`<CreateForm>`) is retained below it as a quieter secondary ("Or spin one up yourself —") separated by a `--rule` line. The form still posts to `/v1/ask` (SK-ANON-008), still morphs to chat, still requires no sign-in (GLOBAL-007) — only its visual primacy demotes. Supersedes SK-WEB-002's "one input IS the hero" claim in place (no-signup-wall floor + morph-to-chat retained). Closes the gap WS-13 / SK-PIVOT-013 left — the headline strings now match the hero's primary action.
 
 ## GLOBALs governing this feature
 

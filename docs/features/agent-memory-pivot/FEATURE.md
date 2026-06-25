@@ -19,7 +19,7 @@ memory — delivered as a sequence of small, reversible, daily-loop-sized
 slices rather than a relaunch. **Two tracks ship in parallel:** messaging
 (WS-01..WS-13 — how users discover the wedge) and **engine** (E-01..E-07 —
 the memory-shaped primitives that make the wedge claims durable).
-**Status:** in progress (Phase 2 distribution) — **WS-13 headline reposition shipped 2026-06-24** (SK-PIVOT-013; founder tripped the GLOBAL-036 gate, the site now leads with the wedge sitewide); E-04 TTL-sweep core shipped (SK-PIVOT-011; cron + RLS clause pending).
+**Status:** in progress (Phase 2 distribution) — **WS-13 headline reposition shipped 2026-06-24** (SK-PIVOT-013; founder tripped the GLOBAL-036 gate, the site now leads with the wedge sitewide); **WS-14 home-flow reposition shipped same session** (SK-PIVOT-014 + SK-WEB-017; the home's proof and primary action now match the headline, closing the WS-13 head-only gap); E-04 TTL-sweep core shipped (SK-PIVOT-011; cron + RLS clause pending).
 **Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/db-create/neon-provision.ts` + `ask/build-deps.ts` (agent-scope RLS, SK-PIVOT-009), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
 **Cross-refs:** `docs/research/deepseek-moat-framing.md` (the thesis) · `docs/competitors.md §4` (agent-memory landscape) · `docs/research/personas.md §P2` · GLOBAL-036 (canonical text in `docs/decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md`; index in `docs/decisions.md`).
 
@@ -286,7 +286,11 @@ the memory-shaped primitives that make the wedge claims durable).
 
 ### SK-PIVOT-013 — The lead string is "Analytical memory for AI agents"; the WS-13 founder gate tripped 2026-06-24
 
-**Body:** [`decisions/SK-PIVOT-013-headline-reposition.md`](./decisions/SK-PIVOT-013-headline-reposition.md). Founder tripped the GLOBAL-036 headline gate 2026-06-24: the four gated lead strings (Hero lede, `README` H1+tagline, `llms.txt` lede, `package.json` desc + homepage `<title>`/JSON-LD) now lead with **"Analytical memory for AI agents."**; homepage OG → `/og/agents.png`; the `/agents` CTA is rebuilt connect-via-MCP. The dual front door survives (hero `<CreateForm>` SK-WEB-002, `AlsoWorksFor` fold, off-wedge `/vs`/`/solve`). Reverts in one commit.
+**Body:** [`decisions/SK-PIVOT-013-headline-reposition.md`](./decisions/SK-PIVOT-013-headline-reposition.md). Founder tripped the GLOBAL-036 headline gate 2026-06-24: the four gated lead strings (Hero lede, `README` H1+tagline, `llms.txt` lede, `package.json` desc + homepage `<title>`/JSON-LD) now lead with **"Analytical memory for AI agents."**; homepage OG → `/og/agents.png`; the `/agents` CTA is rebuilt connect-via-MCP. The dual front door survives (hero `<CreateForm>` SK-WEB-002, `AlsoWorksFor` fold, off-wedge `/vs`/`/solve`). Reverts in one commit. **Head-only** — the home's primary action and `Demo.astro` were intentionally out of scope; the proof follow-on lands in **SK-PIVOT-014** (WS-14).
+
+### SK-PIVOT-014 — Home-flow reposition: the home's proof leads the wedge (WS-14 follow-on to WS-13)
+
+**Body:** [`decisions/SK-PIVOT-014-home-flow-reposition.md`](./decisions/SK-PIVOT-014-home-flow-reposition.md). The follow-on WS-13 deferred. Hero's primary action becomes the SK-WEB-016 `<McpInstall>` row (SK-WEB-017 supersedes SK-WEB-002's "one input IS the hero" in place; no-signup-wall + morph-to-chat retained); `Demo.astro` shows the agent loop (`nlqdb_remember` → `nlqdb_recall` → GROUP BY SQL + answer rows) instead of the orders-table generalist demo; `Replaces.astro` swaps to the agent-memory list collapsing into `nlqdb_recall(…)`; the generalist describe→table→embed flow demotes to one quiet `.alsoworks` line linking `/app/new` (GLOBAL-036 dual-front-door seam). Closes the founder-named "the title talks about agent memory and then there is a hero with input box… and html tags" incoherence.
 
 ## GLOBALs governing this feature
 
