@@ -145,6 +145,11 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 **Body:** [`decisions/SK-WEB-014-site-entity-json-ld.md`](./decisions/SK-WEB-014-site-entity-json-ld.md).
 `nlqdb.com/` (root only) emits `Organization` + `WebSite` JSON-LD (`apps/web/src/lib/site-jsonld.ts`) with stable `@id`s; every page's `SoftwareApplication` names that Organization as `publisher` by `@id` so crawlers consolidate one brand entity. No `SearchAction` — the goal-first hero (`SK-WEB-002`) has no GET `q` entrypoint to honour it.
 
+### SK-WEB-015 — Three-beat homepage + quiet-brutalism token system
+
+**Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md).
+The marketing site adopts one token system in `global.css` (six warm-green-biased neutrals, one accent reserved to three lime moments per fold, three faces with mono demoted to code/data only, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero + one input) → HOW (`Demo.astro` live `/v1/ask` + `<nlq-data>` snippet) → WHY (`Replaces.astro` editorial strikethrough + one CTA); `AgentMemoryBand`, `Waitlist`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt` are removed from `/`; `/agents` mirrors the rhythm, `/manifesto` is a single editorial column, `/pricing` uses one button primitive, `/vs/*` and `/solve/*` collapse to a tight what-we-replace template; motion budget is one moment per page gated on `prefers-reduced-motion: no-preference`.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
