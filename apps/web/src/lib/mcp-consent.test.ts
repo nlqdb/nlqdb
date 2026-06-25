@@ -86,6 +86,12 @@ describe("validateCallback", () => {
     expect(validateCallback("", ORIGIN)).toBeNull();
   });
 
+  test("canonicalizes — strips any tag-along query/fragment", () => {
+    expect(
+      validateCallback("https://mcp.nlqdb.com/oauth/mcp-bridge-callback?x=1#frag", ORIGIN),
+    ).toBe("https://mcp.nlqdb.com/oauth/mcp-bridge-callback");
+  });
+
   test("honors a preview MCP origin override", () => {
     const ok = validateCallback(
       "https://x-nlqdb-mcp.workers.dev/oauth/mcp-bridge-callback",

@@ -85,7 +85,9 @@ export function validateCallback(callback: string, origin = mcpOrigin()): string
     return null;
   }
   if (url.origin !== expected.origin || url.pathname !== expected.pathname) return null;
-  return url.toString();
+  // Return the canonical URL, not the attacker-supplied string — drops any
+  // query/fragment so nothing rides along to the bridge callback.
+  return expected.toString();
 }
 
 // Derive the `sk_mcp_<host>_…` host slug from the OAuth client's display
