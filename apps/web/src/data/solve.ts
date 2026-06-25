@@ -830,6 +830,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "share-memory-across-multiple-ai-agents",
+    persona: "P2 agent builder",
+    searchTitle:
+      "How do I give multiple AI agents shared, persistent memory?",
+    oneLiner:
+      "If you want a crew of agents to share one memory instead of each keeping its own, nlqdb gives them a single Postgres they all write to with `nlqdb_remember` and recall in English — every row tagged with the agent that wrote it, so you can roll the team's memory up per agent.",
+    painContext:
+      "Teams running multi-agent systems (CrewAI, LangGraph, AutoGen) hit the same wall: each agent keeps its own context, so they duplicate work, contradict each other, and lose decisions between steps. The usual fix is a shared vector store, but embeddings can't answer 'what did the research agent decide?' or 'how many tasks did each agent close?' — those are structured-query questions, not similarity ones.",
+    demoGoal: "memories grouped by the agent that wrote them with a count of each",
+    demoWhy:
+      "Each agent's writes carry an `agent_id`, so one English question rolls the shared memory up per agent — the cross-team view a per-agent store can't give you.",
+    howNlqdbAnswers: [
+      "Every agent writes to one shared Postgres via `nlqdb_remember`: the server builds a parameterised insert, so each agent supplies data, never SQL (`SK-PIVOT-008`).",
+      "Facts, episodes, and entities each carry `agent_id`, `end_user_id`, and `thread_id` columns, so you attribute and filter shared memory by which agent (or user, or thread) wrote it.",
+      "Any agent recalls in English via `nlqdb_query` — nlqdb compiles the NL→SQL over the shared tables, so one agent reads what another wrote, and the compiled SQL is always shown.",
+      "It's one Postgres, so concurrent writes from many agents are handled by the engine; entities upsert on `(agent_id, kind, canonical_name)` so two agents recording the same thing don't duplicate it.",
+    ],
+    whatItDoesnt: [
+      "No per-agent access control yet — every agent sharing one nlqdb database sees the same rows. Engine-enforced private-vs-shared scoping (`app.agent_id` RLS) is roadmap (E-03), not shipped; today the boundary is per-database / per-tenant.",
+      "No semantic / vector recall — recall is structured SQL (filter, `GROUP BY`, aggregate), not embedding similarity. Keep embeddings in your vector store; nlqdb is the structured shared memory beside it, not a replacement for it.",
+      "No pointing nlqdb at a store you already run — it provisions and owns its Postgres, so it's the shared memory your agents write to, not a layer over an existing database.",
+    ],
+    faqs: [
+      {
+        q: "How do multiple AI agents share memory in nlqdb?",
+        a: "All agents write to and read from one shared Postgres database. Writes go through `nlqdb_remember` (a server-built parameterised insert); reads go through `nlqdb_query` (English compiled to SQL). Every row is tagged with the `agent_id` that wrote it, so one agent can recall another's memory and you can roll the whole crew's memory up per agent.",
+      },
+      {
+        q: "Do I need a vector database for shared multi-agent memory?",
+        a: "Only if your recall is similarity search. A lot of multi-agent memory is structured — 'what did each agent decide', 'count tasks per agent', 'the latest fact about this project' — which is a SQL question, not an embedding one. nlqdb covers that structured half; keep a vector store alongside it for semantic recall (that stays in your vector store, it's not shipped here).",
+      },
+      {
+        q: "Can one agent read what another agent remembered?",
+        a: "Yes — all agents sharing an nlqdb database query the same tables, so the research agent's facts are visible to the writer agent via `nlqdb_query`. The honest limit: there's no per-agent access control yet (`app.agent_id` RLS is roadmap, E-03), so today it's shared-by-default — every agent on that database sees every row.",
+      },
+      {
+        q: "How does nlqdb handle concurrent writes from many agents at once?",
+        a: "It's one Postgres, so concurrent inserts from multiple agents are handled by the database, not a hand-rolled merge loop. Entities upsert on `(agent_id, kind, canonical_name)`, so two agents recording the same project don't create duplicate rows — the conflict resolves to a single updated entity.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://hn.algolia.com/?q=multi-agent%20memory",
+        label:
+          'HN search: "multi-agent memory" — recurring threads on sharing state/memory across a crew of agents.',
+      },
+      {
+        url: "https://www.reddit.com/r/LLMDevs/search/?q=shared%20memory%20agents",
+        label:
+          "r/LLMDevs — recurring threads on shared/persistent memory across multiple agents.",
+      },
+      {
+        url: "https://www.reddit.com/r/AI_Agents/search/?q=shared%20memory",
+        label: 'r/AI_Agents — "how do my agents share memory" recurring discussion hub.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {

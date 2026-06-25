@@ -11,65 +11,60 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-25 (run 92) — dev.to / r/LLMDevs / r/AI_Agents: "Your 'read-only' AI agent is one SQL comment away from a write."
+## 2026-06-25 (run 93) — dev.to / r/LLMDevs / r/AI_Agents: "Your agents each have their own memory. That's why they keep redoing each other's work."
 
-**Where:** dev.to + r/LLMDevs + r/AI_Agents (`llm` / `agents` / `security`);
-build-in-public, the trust-boundary sibling to the agent-memory cluster. nlqdb
-mentioned once. The hook: the obvious read-only-role + connection-string shape is
-leaky, and the fix is to move SQL *authorship* off the agent, not add a regex.
+**Where:** dev.to + r/LLMDevs + r/AI_Agents (`llm` / `agents` / `multi-agent`);
+the multi-agent sibling to the agent-memory cluster. nlqdb
+mentioned once. The hook: "shared memory = a shared vector store" is half the
+answer — recall is similarity, but coordination is aggregation, and that's SQL.
 
-**Title:** Your "read-only" AI agent is one SQL comment away from a write.
+**Title:** Your agents each have their own memory. That's why they keep redoing each other's work.
 
 **Body:**
 
-> The first time you wire an agent to a SQL database you reach for the obvious
-> shape: a read-only Postgres role, a connection string in the tool config, "SELECT
-> only" in the prompt. It demos perfectly. Then you read how it actually fails.
+> The moment you go from one agent to a crew, memory breaks in a new way. Each agent
+> keeps its own context, so the research agent learns a fact the writer agent never
+> sees, two agents redo the same lookup, and a decision made in step 3 is gone by
+> step 7. The standard fix — give them a shared vector store — solves recall and
+> nothing else.
 >
-> "Read-only" enforced in app code is one pattern-match from not being read-only —
-> an agent can hide a write in a SQL comment, or a `DROP` in a CTE
-> (`WITH x AS (DELETE FROM …) SELECT 1`), and a regex gate waves it through. A
-> *perfectly valid* `JOIN` across `users` and `oauth_tokens` is still authorized
-> and still a credential leak. A single unbounded query drains your connection
-> pool. And prompt injection doesn't only come from the user — malicious text in a
-> row the agent reads can steer the next query it writes.
+> Here's the part the "shared memory" posts skip: most of what a crew needs to share
+> isn't a similarity question. "What did each agent decide?" "How many tasks did each
+> one close?" "What's the latest fact about this project?" Those are `GROUP BY`,
+> `COUNT`, "most recent row" — a query planner's job, not an embedding's. A vector
+> store is the wrong shape to aggregate; ask the LLM to tally its own memory and it
+> hands you a confident, wrong total.
 >
-> The pattern under all of these: **the agent holds credentials and authors the
-> SQL.** Every guardrail is then a bet you can out-parse an adversarial author —
-> the wrong bet. The durable fix is to take SQL authorship away from the agent and
-> enforce the boundary in the engine, not in a string check its output flows
-> through.
+> Recall and analytics are two different machines. The durable shape is one shared
+> store every agent writes to, where each row carries *which* agent (and user, and
+> thread) wrote it — so any agent can read another's memory, and you can roll the
+> whole crew's memory up per agent with a real query.
 >
-> Two moves. Writes shouldn't be agent-authored SQL at all: the server builds a
-> parameterised `INSERT` from a fixed column allow-list, so the agent supplies
-> *data*, never *statements*. Reads that do run model-emitted SQL go through
-> layered, fail-closed validation (a leading-verb gate **and** an AST parse **and**
-> an embedded-verb/function walk — one stage catches what another misses, and an
-> unparseable statement is rejected, not allowed) plus row-level security in the
-> database itself, which filters every read and write whatever shape the SQL takes.
+> That's the shape nlqdb takes for agent memory: every agent writes through a
+> server-built parameterised insert (it supplies data, never SQL), recalls in plain
+> English (compiled to SQL you can see), and every fact/episode/entity is tagged with
+> an `agent_id`. The honest limits, because they matter for a multi-agent design:
+> there's no per-agent *access control* yet — agents sharing one database see all of
+> each other's rows (engine-enforced private-vs-shared scoping is on the roadmap), and
+> recall is structured SQL, not vector similarity, so keep your embeddings in your
+> vector store and put nlqdb beside it for the counting half. Full trade-offs + a live
+> demo: [nlqdb](https://nlqdb.com/solve/share-memory-across-multiple-ai-agents/).
 >
-> That's the boundary nlqdb is built around: the agent asks in English, you see the
-> compiled SQL, destructive ops show a row-count diff before they apply, and the
-> engine — not a regex — decides what rows it can touch. The honest limit: nlqdb
-> owns the Postgres it queries, so it's the safe store an agent writes to and reads
-> from, not a guard you bolt in front of your existing prod DB (for that, a read
-> replica plus a policy proxy is the right shape). Demo + full trade-offs:
-> [nlqdb](https://nlqdb.com/solve/safely-give-ai-agent-database-access/).
->
-> The tell you're on the wrong side of the boundary: your safety story is "we told
-> the model to only SELECT" and "we strip dangerous keywords." Move SQL authorship
-> off the agent; let the engine enforce the rest.
+> The tell you've outgrown per-agent memory: you're writing glue code to copy facts
+> between agents, or asking one agent to summarize what the others did. Give them one
+> store that speaks SQL and the copying disappears.
 
 **Why this advances the north-star:** onboarding / distribution (GLOBAL-025) — a
 P2-agent-builder on-ramp anchoring the new
-`/solve/safely-give-ai-agent-database-access` (solve pages 12 → 13, the
-agent-DB-trust-boundary wedge, a distinct cluster from the five
-"log-rows-then-GROUP-BY" pages), honest about the limits (not a proxy over your
-existing DB; no statement-timeout cap yet; per-agent RLS is roadmap). One nlqdb
-mention. No engine/funnel/ops KPI degrades (additive AEO page, data-only).
+`/solve/share-memory-across-multiple-ai-agents` (solve pages 13 → 14, the
+multi-agent shared-memory wedge, distinct from the single-agent persistence
+pages), honest about the limits (no per-agent access control yet; no vector
+recall; owns its Postgres). One nlqdb mention. No engine/funnel/ops KPI degrades
+(additive AEO page, data-only).
 
 ## Collapsed — full drafts in git history
 
+- run 92 — dev.to / r/LLMDevs / r/AI_Agents: "Your 'read-only' AI agent is one SQL comment away from a write." (a read-only role + connection string leaks — a write in a SQL comment, a `DROP` in a CTE, a valid `JOIN` onto `oauth_tokens`, a pool-draining query, prompt-injected rows; root cause is the agent holding credentials *and* authoring SQL — take authorship away: server-built parameterised writes + fail-closed three-stage read validator + engine RLS, not a regex; anchors `/solve/safely-give-ai-agent-database-access`).
 - run 91 — dev.to / r/LLMDevs / r/LangChain: "Your eval results live in a spreadsheet. The question 'which version regressed' lives in SQL." (an eval run is a list of scored cases, but "pass rate per version, which cases regressed, trend per model" are aggregations across every run — a pivot rots on the next run, asking the LLM to tally hallucinates; scoring and tracking are different machines — log each scored case as a typed row; anchors `/solve/track-llm-eval-scores-across-prompt-versions`).
 
 Newest first; collapsed once past the single inline draft above (the latest draft
@@ -120,8 +115,7 @@ recovers any body.
 - run 54 — "Your status table is drifting because it answers 'why', not just 'what'" (single-source-of-truth: a status table holds status + one-line essence + a link; the "why" lives once in the feature doc — two homes for one fact is drift with extra steps).
 - run 46 — "We cap every doc at 20 KB — even the marketing backlog" (autonomous-agent context discipline; an over-cap edit must net-shrink; rolling two-draft window over the queue itself).
 - run 45 — "Our waitlist has 79 rows. The honest count is 1." (honest funnel pull: 78/79 waitlist rows are us, genuine-stranger count is 1; the real bottleneck is engine accuracy).
-- run 44 — "We demoted three of our four personas on the home page. On purpose." (agent-memory wedge above the fold; other three folded under a quiet divider; reversible composition change, GLOBAL-036 + WS-12).
-- run 43 — "We moved agent memory above the fold — without touching the wordmark" (additive/reversible home band; Mem0·Zep·Letta·nlqdb matrix; GLOBAL-036 + WS-12).
+- runs 43–44 — "We moved agent memory above the fold and demoted three of our four personas. On purpose." (additive/reversible home reweight; agent-memory wedge + Mem0·Zep·Letta·nlqdb matrix above the fold, other personas folded under a quiet divider; GLOBAL-036 + WS-12).
 - run 42 — launch image "GROUP BY your agent's memory" (`og/agents.png` + four `vs-*.png` cards, SK-PIVOT-004; the `/agents` share card).
 - run 41 — "A live demo of analytical agent memory — the GROUP BY, and the SQL it ran" (fixture-backed `/agents` round-trip, no signup; typed-plan trust boundary).
 - runs 27–30 — agent-memory wave (WS-09): "Why your AI agent's memory should be a database, not a vector store" (Replit-incident open, BIRD/Spider sub-target, open harness), "…as four Postgres tables (no schema design)" (`agent_memory_v1` preset), the "one bright column" matrix teaser + FSL-1.1 license note, and the Mem0/Zep/Letta/nlqdb capability matrix → `/agents`. Bodies in git history.
