@@ -2,8 +2,16 @@
 // One template, N pain-driven pages — generated at build via
 // `getStaticPaths()` from `data/solve.ts`. AEO patterning: direct-
 // answer capsule above the fold, named search query in <h1>, FAQPage
-// + HowTo + BreadcrumbList JSON-LD, honest "what nlqdb doesn't do" section, cited
-// public-discussion hubs as evidence trail.
+// + HowTo + BreadcrumbList JSON-LD, honest "what nlqdb doesn't do"
+// section, cited public-discussion hubs as evidence trail.
+//
+// SK-WEB-015 page sweep (redesign-plan §5 `/solve/*`): same template
+// treatment as `/vs`. Three beats: (1) Hero — the one-line problem
+// statement; (2) Demo — the snippet that solves it, side-by-side
+// (mirrors the homepage Demo block, lime tag highlight only on the
+// `<nlq-data>` identifier); (3) "What this replaces" — short
+// strikethrough list. The AEO-mandated sections (honest limits,
+// FAQs, sources, final CTA) ride below as quiet supporting beats.
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
@@ -83,8 +91,8 @@ const breadcrumbLd = breadcrumbJsonLd(
   <div class="page">
     <Topnav />
 
-    <main class="solve">
-      <nav class="crumbs" aria-label="Breadcrumb">
+    <main class="slv">
+      <nav class="slv__crumbs" aria-label="Breadcrumb">
         <ol>
           <li><a href="/">Home</a></li>
           <li><a href="/solve">Solve</a></li>
@@ -92,60 +100,63 @@ const breadcrumbLd = breadcrumbJsonLd(
         </ol>
       </nav>
 
-      <header class="solve__head">
-        <p class="solve__kicker">Solve · {SOLVE_PERSONAS[s.persona].label}</p>
-        <h1 class="solve__title">{s.searchTitle}</h1>
-        <p class="solve__lede">{s.oneLiner}</p>
-        <p class="solve__context">{s.painContext}</p>
+      {/* Beat 1 — Hero. One-line problem statement. */}
+      <header class="slv__head">
+        <p class="slv__eyebrow">Solve · {SOLVE_PERSONAS[s.persona].label}</p>
+        <h1 class="slv__title">{s.searchTitle}</h1>
+        <p class="slv__lede">{s.oneLiner}</p>
+        <p class="slv__context">{s.painContext}</p>
       </header>
 
-      <section class="solve__demo" aria-label={`Code snippet for the goal "${s.demoGoal}"`}>
-        <h2 class="solve__h2">Drop this in your HTML</h2>
-        <p class="solve__demo-why">{s.demoWhy}</p>
-        <div class="solve__demo-card">
-          <div class="solve__demo-prompt">
-            <span class="solve__demo-arrow">&gt;</span>
-            <code>{s.demoGoal}</code>
-          </div>
-          <pre class="solve__demo-snippet"><code>{`<nlq-data goal="${s.demoGoal}"></nlq-data>`}</code></pre>
-          <div class="solve__demo-footer">
-            <p class="solve__demo-note">
-              First query mints a Postgres database in your anonymous tenant; the
-              compiled SQL appears under the trace toggle so you can audit it
-              before trusting the answer.
-            </p>
+      {/* Beat 2 — Demo. The snippet that solves it, side-by-side. */}
+      <section class="slv__demo" aria-labelledby="slv-demo-eyebrow">
+        <p class="slv__demo-eyebrow" id="slv-demo-eyebrow">The snippet that solves it.</p>
+        <p class="slv__demo-goal">
+          <span class="slv__demo-arrow">&gt;</span>
+          <code>{s.demoGoal}</code>
+        </p>
+
+        <div class="slv__demo-pair">
+          <article class="slv__demo-card" aria-label="What nlqdb does for this">
+            <p class="slv__demo-label">What nlqdb does for this</p>
+            <ul class="slv__demo-bullets">
+              {s.howNlqdbAnswers.map((b) => <li>{b}</li>)}
+            </ul>
+          </article>
+
+          <article class="slv__demo-card" aria-label="Embed snippet">
+            <p class="slv__demo-label">Drop into any HTML page</p>
+            <pre class="slv__demo-snippet"><code>&lt;<span class="slv__demo-tag">nlq-data</span> goal=&quot;{s.demoGoal}&quot;&gt;&lt;/<span class="slv__demo-tag">nlq-data</span>&gt;</code></pre>
+            <p class="slv__demo-foot">{s.demoWhy}</p>
             <button
               type="button"
-              class="solve__try-btn"
+              class="cta slv__try-btn"
               data-try-goal={s.demoGoal}
               data-solve-slug={s.slug}
             >
               Try this query &rarr;
             </button>
-          </div>
+          </article>
         </div>
       </section>
 
-      <section class="solve__answers" aria-labelledby="solve-answers-title">
-        <h2 class="solve__h2" id="solve-answers-title">What nlqdb actually does for this</h2>
-        <ul class="solve__bullets">
-          {s.howNlqdbAnswers.map((b) => <li>{b}</li>)}
+      {/* Beat 3 — What this replaces. Strikethrough list. */}
+      <section class="slv__replaces" aria-labelledby="slv-replaces-title">
+        <p class="slv__replaces-eyebrow">What this replaces</p>
+        <h2 class="slv__replaces-title" id="slv-replaces-title">
+          What nlqdb doesn't try to do here
+        </h2>
+        <ul class="slv__strike-list">
+          {s.whatItDoesnt.map((b) => <li><span class="slv__strike">{b}</span></li>)}
         </ul>
       </section>
 
-      <section class="solve__limits" aria-labelledby="solve-limits-title">
-        <h2 class="solve__h2" id="solve-limits-title">What nlqdb doesn't do here</h2>
-        <ul class="solve__bullets solve__bullets--limits">
-          {s.whatItDoesnt.map((b) => <li>{b}</li>)}
-        </ul>
-      </section>
-
-      <section class="solve__faqs" aria-labelledby="solve-faqs-title">
-        <h2 class="solve__h2" id="solve-faqs-title">Questions buyers ask</h2>
+      <section class="slv__faqs" aria-labelledby="slv-faqs-title">
+        <h2 class="slv__faqs-title" id="slv-faqs-title">Questions buyers ask</h2>
         <dl>
           {
             s.faqs.map((f) => (
-              <div class="solve__faq">
+              <div class="slv__faq">
                 <dt>{f.q}</dt>
                 <dd>{f.a}</dd>
               </div>
@@ -154,14 +165,14 @@ const breadcrumbLd = breadcrumbJsonLd(
         </dl>
       </section>
 
-      <section class="solve__sources" aria-labelledby="solve-sources-title">
-        <h2 class="solve__h2" id="solve-sources-title">Where this pain shows up in public</h2>
-        <p class="solve__sources-lede">
+      <section class="slv__sources" aria-labelledby="slv-sources-title">
+        <h2 class="slv__sources-title" id="slv-sources-title">Where this pain shows up in public</h2>
+        <p class="slv__sources-lede">
           Enduring discussion hubs where you can verify the theme without
           taking our word for it. We don't quote individual posts; we cite
           search-result and subreddit URLs that stay live as new threads land.
         </p>
-        <ul class="solve__sources-list">
+        <ul class="slv__sources-list">
           {
             s.sources.map((src) => (
               <li>
@@ -174,14 +185,11 @@ const breadcrumbLd = breadcrumbJsonLd(
         </ul>
       </section>
 
-      <section class="solve__cta">
-        <h2 class="solve__h2">Try nlqdb in 30 seconds</h2>
-        <p>
-          No sign-in. The anonymous database lasts 72 hours; adopt it with one
-          click if you keep it.
-        </p>
-        <a class="solve__cta-btn" href="/app/new">Start with a goal &rarr;</a>
-        <p class="solve__cta-meta">
+      <section class="slv__cta">
+        <h2 class="slv__cta-title">Try nlqdb in 30 seconds</h2>
+        <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
+        <a class="cta slv__cta-btn" href="/app/new">Start with a goal &rarr;</a>
+        <p class="slv__cta-meta">
           Looking at this from a different angle?{" "}
           <a href="/solve">Browse all solve pages</a>
           {" "}or{" "}
@@ -204,7 +212,7 @@ const breadcrumbLd = breadcrumbJsonLd(
     // referrer / access logs.
     import { emit } from "../../lib/logsnag";
     import { saveDraft } from "../../lib/prompt-storage";
-    document.querySelectorAll<HTMLButtonElement>(".solve__try-btn").forEach((btn) => {
+    document.querySelectorAll<HTMLButtonElement>(".slv__try-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const goal = btn.dataset["tryGoal"] ?? "";
         const slug = btn.dataset["solveSlug"] ?? "";
@@ -217,232 +225,349 @@ const breadcrumbLd = breadcrumbJsonLd(
 </Base>
 
 <style>
-  .solve {
-    max-width: 880px;
+  .slv {
+    max-width: var(--bleed);
     margin: 0 auto;
-    padding: clamp(32px, 5vw, 64px) clamp(16px, 4vw, 32px);
+    padding: clamp(32px, 5vw, 64px) 0;
   }
-  .crumbs {
+
+  .slv__crumbs {
     font-family: var(--mono);
-    font-size: 12px;
-    margin: 0 0 24px;
+    font-size: var(--t-small);
+    margin: 0 0 var(--gap-block);
   }
-  .crumbs ol {
+  .slv__crumbs ol {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     list-style: none;
     margin: 0;
     padding: 0;
-    color: var(--fg-dim);
+    color: var(--muted);
   }
-  .crumbs li + li::before {
+  .slv__crumbs li + li::before {
     content: "/";
     margin-right: 8px;
     opacity: 0.6;
   }
-  .crumbs a {
-    color: var(--fg-dim);
+  .slv__crumbs a {
+    color: var(--muted);
     text-decoration: none;
   }
-  .crumbs a:hover {
-    color: var(--accent);
+  .slv__crumbs a:hover {
+    color: var(--ink);
   }
-  .crumbs [aria-current="page"] {
-    color: var(--fg);
+  .slv__crumbs [aria-current="page"] {
+    color: var(--ink);
   }
-  .solve__kicker {
+
+  /* Beat 1 — Hero. One-line problem statement, display-serif title. */
+  .slv__head {
+    max-width: var(--col);
+    margin: 0 0 var(--gap-beat);
+  }
+  .slv__eyebrow {
+    margin: 0 0 16px;
     font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--fg-dim);
-    font-size: 13px;
-    margin: 0 0 12px;
+    letter-spacing: 0.08em;
   }
-  .solve__title {
-    font-family: var(--mono);
-    font-size: clamp(24px, 4vw, 38px);
+  .slv__title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
     letter-spacing: -0.02em;
-    line-height: 1.15;
-    margin: 0 0 16px;
+    line-height: 1.05;
+    color: var(--ink);
+    margin: 0 0 24px;
+    text-wrap: balance;
   }
-  .solve__lede {
-    font-size: clamp(16px, 1.8vw, 18px);
-    color: var(--fg);
-    max-width: 62ch;
+  .slv__lede {
     margin: 0 0 20px;
+    font-family: var(--sans);
+    font-size: var(--t-large);
+    color: var(--body);
+    line-height: 1.5;
+    max-width: 60ch;
+    text-wrap: balance;
   }
-  .solve__context {
-    color: var(--fg-dim);
-    font-size: 15px;
-    line-height: 1.55;
-    max-width: 62ch;
-    margin: 0 0 48px;
+  .slv__context {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 60ch;
   }
-  .solve__h2 {
+
+  /* Beat 2 — Demo. Mirrors the homepage Demo block + /vs treatment:
+     two cards on --raised, --rule border, --ground snippet ground,
+     lime tag-highlight on the `<nlq-data>` identifier only. */
+  .slv__demo {
+    margin: 0 0 var(--gap-beat);
+    max-width: var(--bleed);
+  }
+  .slv__demo-eyebrow {
+    margin: 0 0 16px;
     font-family: var(--mono);
-    font-size: clamp(18px, 2.4vw, 24px);
-    letter-spacing: -0.01em;
-    margin: 0 0 16px;
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
-  .solve__demo {
-    margin-bottom: 56px;
-  }
-  .solve__demo-why {
-    color: var(--fg-dim);
-    margin: 0 0 16px;
-    max-width: 62ch;
-  }
-  .solve__demo-card {
-    border: 2px solid var(--border-strong);
-    background: var(--bg-elev);
-    padding: 20px;
-  }
-  .solve__demo-prompt {
+  .slv__demo-goal {
+    margin: 0 0 clamp(20px, 3vw, 32px);
+    font-family: var(--mono);
+    font-size: var(--t-large);
+    color: var(--ink);
     display: flex;
     gap: 12px;
     align-items: baseline;
-    font-family: var(--mono);
-    font-size: 15px;
-    margin-bottom: 16px;
   }
-  .solve__demo-arrow {
-    color: var(--accent);
+  .slv__demo-goal code {
+    font-family: inherit;
   }
-  .solve__demo-snippet {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    padding: 12px;
-    margin: 0 0 12px;
-    overflow-x: auto;
-    font-size: 13px;
+  .slv__demo-arrow {
+    color: var(--muted);
+    font-weight: 700;
   }
-  .solve__demo-snippet code {
-    font-family: var(--mono);
+  .slv__demo-pair {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(20px, 3vw, 32px);
+    align-items: stretch;
   }
-  .solve__demo-footer {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  @media (min-width: 560px) {
-    .solve__demo-footer {
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: center;
+  @media (min-width: 880px) {
+    .slv__demo-pair {
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
     }
   }
-  .solve__demo-note {
-    color: var(--fg-dim);
-    font-size: 13px;
+  .slv__demo-card {
     margin: 0;
-    max-width: 44ch;
+    padding: clamp(20px, 3vw, 28px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
   }
-  .solve__try-btn {
-    align-self: flex-start;
-    padding: 10px 18px;
+  .slv__demo-label {
+    margin: 0;
     font-family: var(--mono);
-    font-size: 14px;
-    background: var(--accent);
-    color: var(--accent-fg);
-    border: 2px solid var(--accent-fg);
-    box-shadow: 3px 3px 0 0 var(--accent-fg);
-    cursor: pointer;
-    white-space: nowrap;
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
-  .solve__try-btn:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 0 var(--accent-fg);
-  }
-  .solve__answers,
-  .solve__limits {
-    margin-bottom: 56px;
-  }
-  .solve__bullets {
+  .slv__demo-bullets {
     margin: 0;
     padding-left: 20px;
-    color: var(--fg);
-    font-size: 15px;
-    line-height: 1.6;
-    max-width: 62ch;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.55;
   }
-  .solve__bullets li + li {
+  .slv__demo-bullets li + li {
     margin-top: 10px;
   }
-  .solve__bullets--limits {
-    color: var(--fg-dim);
-  }
-  .solve__faqs {
-    margin-bottom: 56px;
-  }
-  .solve__faqs dl {
+  .slv__demo-snippet {
     margin: 0;
+    padding: 18px;
+    background: var(--ground);
+    border: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--body);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
-  .solve__faq {
-    padding: 16px 0;
-    border-bottom: 1px solid var(--border);
+  .slv__demo-snippet code {
+    font-family: inherit;
   }
-  .solve__faq dt {
+  /* The lime moment for this page — only the tag identifier glows. */
+  .slv__demo-tag {
+    color: var(--accent);
     font-weight: 600;
-    margin: 0 0 8px;
-    color: var(--fg);
   }
-  .solve__faq dd {
+  .slv__demo-foot {
     margin: 0;
-    color: var(--fg);
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
     line-height: 1.55;
   }
-  .solve__sources {
-    margin-bottom: 56px;
+  .slv__try-btn {
+    align-self: flex-start;
+    margin-top: auto;
   }
-  .solve__sources-lede {
-    color: var(--fg-dim);
-    font-size: 14px;
+
+  /* Beat 3 — What this replaces. Strikethrough list, editorial. */
+  .slv__replaces {
+    margin: 0 0 var(--gap-beat);
+    max-width: var(--col);
+  }
+  .slv__replaces-eyebrow {
     margin: 0 0 12px;
-    max-width: 62ch;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
-  .solve__sources-list {
+  .slv__replaces-title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.05;
+    color: var(--ink);
+    margin: 0 0 clamp(20px, 3vw, 32px);
+    text-wrap: balance;
+  }
+  .slv__strike-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 14px;
+  }
+  .slv__strike-list li {
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.55;
+    padding-left: 20px;
+    position: relative;
+  }
+  .slv__strike-list li::before {
+    content: "—";
+    position: absolute;
+    left: 0;
+    color: var(--muted);
+  }
+  .slv__strike {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--rule);
+    text-decoration-thickness: 1px;
+  }
+
+  /* FAQs — boring is the goal. Display serif Q, sans A, hairline rules. */
+  .slv__faqs {
+    margin: 0 0 var(--gap-beat);
+    max-width: var(--col);
+  }
+  .slv__faqs-title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: 0 0 clamp(20px, 3vw, 32px);
+  }
+  .slv__faqs dl {
+    margin: 0;
+  }
+  .slv__faq {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .slv__faq:last-child {
+    border-bottom: none;
+  }
+  .slv__faq dt {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: var(--t-large);
+    color: var(--ink);
+    margin: 0 0 10px;
+    line-height: 1.3;
+  }
+  .slv__faq dd {
+    margin: 0;
+    font-family: var(--sans);
+    color: var(--body);
+    font-size: var(--t-body);
+    line-height: 1.6;
+  }
+
+  /* Sources — quiet evidence trail. */
+  .slv__sources {
+    margin: 0 0 var(--gap-beat);
+    max-width: var(--col);
+  }
+  .slv__sources-title {
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 12px;
+  }
+  .slv__sources-lede {
+    font-family: var(--sans);
+    color: var(--muted);
+    font-size: var(--t-small);
+    margin: 0 0 16px;
+    max-width: 60ch;
+    line-height: 1.55;
+  }
+  .slv__sources-list {
     margin: 0;
     padding-left: 20px;
-    color: var(--fg);
-    font-size: 14px;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--body);
     line-height: 1.55;
   }
-  .solve__sources-list li + li {
+  .slv__sources-list li + li {
     margin-top: 8px;
   }
-  .solve__sources-list a {
-    color: var(--accent);
+  .slv__sources-list a {
+    color: var(--body);
   }
-  .solve__cta {
-    padding: 32px;
-    border: 2px solid var(--accent);
-    background: var(--bg-elev);
-    text-align: center;
+  .slv__sources-list a:hover {
+    color: var(--ink);
   }
-  .solve__cta p {
-    color: var(--fg-dim);
+
+  /* Final CTA — quiet card, the .cta primitive does the lime moment. */
+  .slv__cta {
+    padding: clamp(28px, 4vw, 40px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    max-width: var(--col);
+  }
+  .slv__cta-title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: 0 0 12px;
+  }
+  .slv__cta p {
+    font-family: var(--sans);
+    color: var(--body);
     margin: 0 0 20px;
+    font-size: var(--t-body);
   }
-  .solve__cta-btn {
-    display: inline-block;
-    padding: 14px 28px;
-    background: var(--accent);
-    color: var(--accent-fg);
+  .slv__cta-btn {
+    padding: 16px 28px;
+  }
+  .slv__cta-meta {
+    margin: 20px 0 0;
     font-family: var(--mono);
-    text-decoration: none;
-    border: 2px solid var(--accent-fg);
-    box-shadow: 4px 4px 0 0 var(--accent-fg);
+    font-size: var(--t-small);
+    color: var(--muted);
   }
-  .solve__cta-btn:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0 0 var(--accent-fg);
+  .slv__cta-meta a {
+    color: var(--body);
   }
-  .solve__cta-meta {
-    margin: 24px 0 0;
-    font-size: 13px;
-  }
-  .solve__cta-meta a {
-    color: var(--accent);
+  .slv__cta-meta a:hover {
+    color: var(--ink);
   }
 </style>

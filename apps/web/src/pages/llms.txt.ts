@@ -31,6 +31,11 @@ const PRIMARY_LINKS = [
     desc: "Nine non-negotiables that decide every nlqdb design choice.",
   },
   {
+    title: "Integrations",
+    path: "/integrations",
+    desc: "Frameworks, MCP hosts, and surfaces nlqdb already plugs into.",
+  },
+  {
     title: "Comparisons",
     path: "/vs",
     desc: "Honest side-by-side against adjacent tools (Supabase, Vanna, Mem0, Outerbase, …).",

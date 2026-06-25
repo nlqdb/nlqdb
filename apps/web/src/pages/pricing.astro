@@ -18,7 +18,8 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
     <main class="pricing">
       <header class="pricing__head">
-        <h1 class="pricing__title">Simple, honest pricing</h1>
+        <p class="pricing__eyebrow">Pricing</p>
+        <h1 class="pricing__title">Simple, honest pricing.</h1>
         <p class="pricing__sub">
           Free forever. No credit card to start. Upgrade only when you need to.
         </p>
@@ -27,14 +28,15 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       <div class="pricing__grid">
 
         <!-- Free -->
-        <div class="pricing__card">
-          <div class="pricing__card-header">
-            <span class="pricing__tier">Free</span>
+        <article class="pricing__card">
+          <header class="pricing__card-header">
+            <h2 class="pricing__tier">Free</h2>
             <div class="pricing__price">
               <span class="pricing__amount">$0</span>
               <span class="pricing__cadence">/ month</span>
             </div>
-          </div>
+            <p class="pricing__pitch">For learning the shape of the thing.</p>
+          </header>
           <ul class="pricing__features">
             <li>1,000 queries / month</li>
             <li>500 MB per database</li>
@@ -43,18 +45,19 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
             <li>Free LLM chain — forever</li>
             <li>Paste your own provider key (BYO-LLM) at 0% markup</li>
           </ul>
-          <a href="/app" class="btn pricing__cta pricing__cta--secondary">Start for free &rarr;</a>
-        </div>
+          <a href="/app" class="cta cta--ghost pricing__cta">Start for free &rarr;</a>
+        </article>
 
         <!-- Hobby -->
-        <div class="pricing__card pricing__card--featured">
-          <div class="pricing__card-header">
-            <span class="pricing__tier">Hobby</span>
+        <article class="pricing__card">
+          <header class="pricing__card-header">
+            <h2 class="pricing__tier">Hobby</h2>
             <div class="pricing__price">
               <span class="pricing__amount">$10</span>
               <span class="pricing__cadence">/ month</span>
             </div>
-          </div>
+            <p class="pricing__pitch">For projects past the proof.</p>
+          </header>
           <ul class="pricing__features">
             <li>50,000 queries / month</li>
             <li>5 GB per database</li>
@@ -65,23 +68,24 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           </ul>
           <button
             type="button"
-            class="btn pricing__cta pricing__cta--primary"
+            class="cta pricing__cta"
             data-plan="hobby"
             data-api-base={apiBase}
           >
             Upgrade to Hobby &rarr;
           </button>
-        </div>
+        </article>
 
         <!-- Pro -->
-        <div class="pricing__card">
-          <div class="pricing__card-header">
-            <span class="pricing__tier">Pro</span>
+        <article class="pricing__card">
+          <header class="pricing__card-header">
+            <h2 class="pricing__tier">Pro</h2>
             <div class="pricing__price">
               <span class="pricing__amount">$25</span>
-              <span class="pricing__cadence">/ month +&nbsp;usage</span>
+              <span class="pricing__cadence">/ month + usage</span>
             </div>
-          </div>
+            <p class="pricing__pitch">For traffic that earns its keep.</p>
+          </header>
           <ul class="pricing__features">
             <li>50,000 queries included + $0.0005 / extra query</li>
             <li>5 GB included + $0.10 / GB-month extra</li>
@@ -90,33 +94,13 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           </ul>
           <button
             type="button"
-            class="btn pricing__cta pricing__cta--secondary"
+            class="cta cta--ghost pricing__cta"
             data-plan="pro"
             data-api-base={apiBase}
           >
             Upgrade to Pro &rarr;
           </button>
-        </div>
-
-        <!-- Enterprise -->
-        <div class="pricing__card">
-          <div class="pricing__card-header">
-            <span class="pricing__tier">Enterprise</span>
-            <div class="pricing__price">
-              <span class="pricing__amount">Custom</span>
-            </div>
-          </div>
-          <ul class="pricing__features">
-            <li>VPC peering</li>
-            <li>SAML SSO</li>
-            <li>Audit-log export</li>
-            <li>On-premises deployment</li>
-            <li>Annual billing</li>
-          </ul>
-          <a href="mailto:hello@nlqdb.com" class="btn pricing__cta pricing__cta--secondary">
-            Contact us &rarr;
-          </a>
-        </div>
+        </article>
 
       </div>
 
@@ -136,9 +120,18 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
         </p>
       </section>
 
+      <!-- Enterprise footnote — kept off the tier chrome to honour the "three tiers, same metric" rule. -->
+      <section class="pricing__enterprise">
+        <h2 class="pricing__section-title">Need VPC peering, SSO, or annual billing?</h2>
+        <p>
+          Enterprise terms include VPC peering, SAML SSO, audit-log export, on-premises deployment, and annual
+          contracts. <a href="mailto:hello@nlqdb.com">Email us</a> with what you need.
+        </p>
+      </section>
+
       <!-- BYOLLM callout -->
-      <section class="pricing__byollm">
-        <h2 class="pricing__byollm-title">Bring your own LLM — free on every tier</h2>
+      <section class="pricing__aside">
+        <h2 class="pricing__section-title">Bring your own LLM — free on every tier</h2>
         <p>
           Paste an Anthropic, OpenAI, Gemini, or OpenRouter key in <a href="/app/keys">Settings &rarr; Keys</a>.
           Your queries route through your key at <strong>0% markup</strong>. Works on the free tier, no card needed.
@@ -146,8 +139,8 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       </section>
 
       <!-- Self-host callout (FSL-1.1, SK-PIVOT-005) — source-available, not a turnkey image yet -->
-      <section class="pricing__byollm">
-        <h2 class="pricing__byollm-title">Or self-host the source — no pricing page at all</h2>
+      <section class="pricing__aside">
+        <h2 class="pricing__section-title">Or self-host the source — no pricing page at all</h2>
         <p>
           The engine, CLI, MCP server, and SDKs are source-available under
           <a href="https://github.com/nlqdb/nlqdb/blob/main/LICENSE">FSL-1.1-ALv2</a> — yours to read, fork, and
@@ -158,7 +151,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
       <!-- Honest billing rules -->
       <section class="pricing__rules">
-        <h2 class="pricing__rules-title">Honest billing — hard rules</h2>
+        <h2 class="pricing__section-title">Honest billing — hard rules</h2>
         <ul class="pricing__rules-list">
           <li><strong>No credit card for the free tier, ever.</strong> Not "to verify identity." Not for "spam protection." No.</li>
           <li><strong>Hitting a limit rate-limits — never silently upgrades.</strong> You'll see a clear message; you decide what to do next.</li>
@@ -345,86 +338,122 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 </script>
 
 <style>
+  /* /pricing — quiet brutalism token sweep (SK-WEB-015, redesign-plan §5).
+   * Same card chrome on every tier (no "popular" badge unless measured).
+   * Tier names in display serif; prices in mono — digits are data here.
+   * Every tier CTA uses the foundation `.cta` primitive; this file adds
+   * `.pricing__cta` only to stretch it full-width inside the card. */
+
   .pricing {
-    max-width: 1100px;
+    max-width: var(--bleed);
     margin: 0 auto;
-    padding: 4rem 1.5rem 6rem;
+    padding: clamp(48px, 8vw, 96px) 0 var(--gap-beat);
   }
 
   .pricing__head {
+    max-width: var(--col);
+    margin: 0 auto clamp(48px, 7vw, 80px);
     text-align: center;
-    margin-bottom: 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .pricing__eyebrow {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
 
   .pricing__title {
-    font-family: var(--mono);
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    font-weight: 700;
+    font-family: var(--display);
+    font-size: var(--t-display);
+    font-weight: 600;
     letter-spacing: -0.02em;
-    margin: 0 0 0.75rem;
+    line-height: 1;
+    color: var(--ink);
+    text-wrap: balance;
+    margin: 0;
   }
 
   .pricing__sub {
-    color: var(--fg-dim);
-    font-size: 1.1rem;
     margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-large);
+    color: var(--body);
+    line-height: 1.45;
+    max-width: 48ch;
+    margin-inline: auto;
+    text-wrap: balance;
   }
 
   .pricing__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 4rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--gap-block);
+    margin-bottom: clamp(56px, 8vw, 96px);
   }
 
+  /* Same metric chrome on every tier — no "popular" lift, no accent border. */
   .pricing__card {
-    background: var(--bg-elev);
-    border: 1px solid var(--border);
-    padding: 2rem;
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    padding: clamp(24px, 3vw, 36px);
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .pricing__card--featured {
-    border-color: var(--accent);
-    box-shadow: var(--shadow-hard-accent);
+    gap: 28px;
   }
 
   .pricing__card-header {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 12px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--rule);
   }
 
   .pricing__tier {
-    font-family: var(--mono);
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
-
-  .pricing__card--featured .pricing__tier {
-    color: var(--accent);
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    line-height: 1;
+    color: var(--ink);
+    margin: 0;
+    letter-spacing: -0.015em;
   }
 
   .pricing__price {
     display: flex;
     align-items: baseline;
-    gap: 0.25rem;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
+  /* Mono earns its keep here — digits are data. */
   .pricing__amount {
     font-family: var(--mono);
-    font-size: 2.25rem;
-    font-weight: 700;
+    font-size: clamp(36px, 5vw, 52px);
+    font-weight: 600;
     line-height: 1;
+    color: var(--ink);
+    letter-spacing: -0.02em;
   }
 
   .pricing__cadence {
-    color: var(--fg-dim);
-    font-size: 0.875rem;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+
+  .pricing__pitch {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.45;
   }
 
   .pricing__features {
@@ -433,13 +462,16 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 10px;
     flex: 1;
   }
 
   .pricing__features li {
-    font-size: 0.9rem;
-    padding-left: 1.25rem;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.5;
+    padding-left: 20px;
     position: relative;
   }
 
@@ -447,84 +479,73 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     content: "→";
     position: absolute;
     left: 0;
-    color: var(--accent);
+    top: 0;
     font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.6;
   }
 
+  /* Stretch the foundation `.cta` full-width inside each card; no per-tier
+   * visual variants — the lime/ghost split is the same primitive used in
+   * the hero, just composed via `.cta` / `.cta--ghost`. */
   .pricing__cta {
     width: 100%;
-    text-align: center;
-    cursor: pointer;
-    text-decoration: none;
-    display: block;
-    padding: 0.75rem 1.25rem;
-    font-family: var(--mono);
-    font-size: 0.875rem;
-    font-weight: 600;
-    border: 2px solid var(--fg);
-    background: transparent;
-    color: var(--fg);
-    transition: background 0.1s, color 0.1s;
-  }
-
-  .pricing__cta--primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--accent-fg);
-    box-shadow: var(--shadow-hard-accent);
-  }
-
-  .pricing__cta--primary:hover {
-    background: var(--fg);
-    border-color: var(--fg);
-    color: var(--bg);
-  }
-
-  .pricing__cta--secondary:hover {
-    background: var(--fg);
-    color: var(--bg);
   }
 
   .pricing__cta:disabled {
-    opacity: 0.6;
+    opacity: 0.55;
     cursor: not-allowed;
   }
 
+  /* SK-WEB-013 — scheduled-cancel badge. Same neutral chrome as the rest of
+   * the card; "Current plan" gets the lime fill, "Ends {date}" stays quiet
+   * because it's the user's own choice ending, not an error. */
   .pricing__badge {
     align-self: flex-start;
     font-family: var(--mono);
-    font-size: 0.7rem;
+    font-size: var(--t-small);
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--accent-fg);
+    color: var(--accent-ink);
     background: var(--accent);
-    padding: 0.2rem 0.5rem;
+    padding: 4px 10px;
   }
 
-  /* Scheduled-to-cancel: neutral outline, not the accent fill — it's the
-     user's own choice ending, not an error, but it must read distinctly. */
   .pricing__badge--ending {
-    color: var(--fg-dim);
+    color: var(--muted);
     background: transparent;
-    border: 1px solid var(--border-strong);
+    border: 1px solid var(--rule);
   }
 
   .pricing__manage {
+    max-width: var(--col);
+    margin: 0 auto clamp(48px, 6vw, 72px);
     text-align: center;
-    margin-bottom: 2.5rem;
-    color: var(--fg-dim);
-    font-size: 0.95rem;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+  }
+
+  .pricing__manage p {
+    margin: 0;
   }
 
   .pricing__manage-link {
     background: none;
-    border: none;
+    border: 0;
     padding: 0;
-    color: var(--accent);
+    color: var(--ink);
     font: inherit;
-    font-weight: 600;
     cursor: pointer;
     text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  .pricing__manage-link:hover {
+    color: var(--accent);
+    text-decoration-color: var(--accent);
   }
 
   .pricing__manage-link:disabled {
@@ -532,37 +553,36 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     cursor: not-allowed;
   }
 
-  .pricing__byollm {
-    background: var(--bg-elev);
-    border: 1px solid var(--border);
-    padding: 2rem;
-    margin-bottom: 2.5rem;
-  }
-
-  .pricing__byollm-title {
-    font-family: var(--mono);
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 0 0 0.75rem;
-  }
-
-  .pricing__byollm p {
-    margin: 0;
-    color: var(--fg-dim);
-    font-size: 0.95rem;
-    line-height: 1.65;
-  }
-
+  /* Asides — Enterprise mention, BYOLLM, self-host. Quiet typographic
+   * blocks, no card chrome. The tier grid is the only place cards live. */
+  .pricing__enterprise,
+  .pricing__aside,
   .pricing__rules {
-    border-top: 1px solid var(--border);
-    padding-top: 2.5rem;
+    max-width: var(--col);
+    margin: 0 auto;
+    padding: clamp(32px, 5vw, 48px) 0;
+    border-top: 1px solid var(--rule);
   }
 
-  .pricing__rules-title {
-    font-family: var(--mono);
-    font-size: 1.1rem;
+  .pricing__section-title {
+    font-family: var(--display);
+    font-size: var(--t-section);
     font-weight: 600;
-    margin: 0 0 1.25rem;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+    color: var(--ink);
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+
+  .pricing__enterprise p,
+  .pricing__aside p {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.65;
+    max-width: 60ch;
   }
 
   .pricing__rules-list {
@@ -571,26 +591,30 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 12px;
   }
 
   .pricing__rules-list li {
-    font-size: 0.9rem;
-    color: var(--fg-dim);
-    padding-left: 1.25rem;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.6;
+    padding-left: 20px;
     position: relative;
-    line-height: 1.55;
+    max-width: 70ch;
   }
 
   .pricing__rules-list li::before {
     content: "·";
     position: absolute;
-    left: 0;
-    color: var(--accent);
+    left: 4px;
+    top: 0;
+    color: var(--muted);
     font-weight: 700;
   }
 
   .pricing__rules-list strong {
-    color: var(--fg);
+    color: var(--ink);
+    font-weight: 600;
   }
 </style>
