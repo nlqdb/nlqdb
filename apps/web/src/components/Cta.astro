@@ -1,0 +1,22 @@
+---
+// Unified CTA primitive (redesign-plan §3 — one button primitive for
+// every affordance). Renders an `<a>` styled with the `.cta` class
+// from `global.css`. `tone="ghost"` swaps to the quiet ladder for
+// secondary actions; the form's submit button reuses `.cta` directly
+// via React (`createform__submit`), so this wrapper is only needed
+// for marketing-page links.
+
+interface Props {
+  href: string;
+  label: string;
+  tone?: "primary" | "ghost";
+  "aria-label"?: string;
+}
+
+const { href, label, tone = "primary", "aria-label": ariaLabel } = Astro.props;
+const cls = tone === "ghost" ? "cta cta--ghost" : "cta";
+---
+
+<a class={cls} href={href} aria-label={ariaLabel}>
+  {label}
+</a>

@@ -1,45 +1,88 @@
-/* Design tokens — neo-brutalist + terminal (DESIGN §3.1).
- * Acid Lime on near-black, thick borders, hard shadows, JetBrains
- * Mono for headlines + UI chrome, system sans for prose.
+/* Design tokens — "quiet brutalism" (redesign-plan §3, §4, SK-WEB-015
+ * foundation). Same materials, calmer arrangement: acid lime reserved
+ * for one moment per fold, mono demoted to code/data/identifiers,
+ * editorial display serif for narrative headlines, quiet sans body.
+ *
+ * Six neutrals (warm-green-biased off the ground), three faces,
+ * five type steps, two widths, two gaps. Legacy `--bg / --fg / …`
+ * tokens are kept as aliases composed from the new ladder so pages
+ * not yet ported keep rendering — page-sweep agents replace the
+ * call sites; this file is the single source of truth for the
+ * underlying values.
  *
  * Per-component styles live in <style is:global> blocks inside the
  * component's .astro file. This file holds tokens + base typography
  * + the chrome shared across every page (page wrapper, topnav,
  * footer, btn, hero, demo panel, <nlq-data> output defaults). */
 
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/source-serif-4-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
 :root {
-  --bg: #0b0f0a;
-  --bg-elev: #131811;
-  --fg: #f4f4f0;
-  --fg-dim: #a8a8a0;
-  /* --fg-muted bumped from #5e5e5a so 11–13px text passes WCAG AA
-     4.5:1 against both --bg and --bg-elev. Anything dimmer needs a
-     dedicated decorative-only role. */
-  --fg-muted: #8b8b85;
+  /* Ground & ink (warm-green-biased neutrals, 6 steps) — redesign-plan §4. */
+  --ground: #0b0f0a;
+  --raised: #161b14;
+  --rule: #2a2f26;
+  --muted: #8b8b85;
+  --body: #c8c8c0;
+  --ink: #f4f4f0;
 
+  /* Accent — reserved for one moment per fold (hero CTA, demo tag highlight, final CTA). */
   --accent: #c6f432;
-  --accent-fg: #0b0f0a;
+  --accent-ink: #0b0f0a;
 
-  --border: #1f241d;
-  --border-strong: var(--fg);
+  /* Faces — three voices: display serif for narrative, mono for code/identifiers, sans for body. */
+  --display: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
+  --sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 
-  --shadow-hard: 6px 6px 0 0 var(--border-strong);
-  --shadow-hard-accent: 6px 6px 0 0 var(--accent);
+  /* Type scale — five steps, no clamp soup. */
+  --t-display: clamp(44px, 7vw, 88px);
+  --t-section: clamp(28px, 4vw, 44px);
+  --t-large: 20px;
+  --t-body: 16px;
+  --t-small: 13px;
 
-  /* Syntax-highlighter palette. Picked for AA contrast on --bg-elev
+  /* Rhythm — two widths, two gaps. */
+  --col: 720px;
+  --bleed: 1120px;
+  --gap-beat: clamp(80px, 14vw, 160px);
+  --gap-block: 32px;
+
+  /* Syntax-highlighter palette. Picked for AA contrast on --raised
      where the code blocks render. Used by CodeBlock.astro. */
   --tk-keyword: #f0a4ff;
   --tk-function: #8be9fd;
   --tk-tag: #f0a4ff;
   --tk-attr: #8be9fd;
 
-  --mono:
-    ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    monospace;
-  --sans:
-    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-
   --radius: 0;
+
+  /* Legacy aliases — composed from the new ladder so call sites that
+   * haven't been ported yet keep rendering. Phase 2 page-sweep agents
+   * replace these references; do not add new uses. */
+  --bg: var(--ground);
+  --bg-elev: var(--raised);
+  --bg-base: var(--ground);
+  --fg: var(--ink);
+  --fg-dim: var(--body);
+  --fg-muted: var(--muted);
+  --accent-fg: var(--accent-ink);
+  --border: var(--rule);
+  --border-strong: var(--ink);
+  --shadow-hard: 6px 6px 0 0 var(--ink);
+  --shadow-hard-accent: 6px 6px 0 0 var(--accent);
 }
 
 *,
@@ -52,10 +95,10 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--ground);
+  color: var(--body);
   font-family: var(--sans);
-  font-size: 16px;
+  font-size: var(--t-body);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -86,10 +129,11 @@ a:focus-visible {
 h1,
 h2,
 h3 {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 0.95;
+  letter-spacing: -0.015em;
+  line-height: 1.05;
+  color: var(--ink);
   margin: 0;
 }
 
@@ -110,14 +154,21 @@ h3 {
   align-items: center;
   padding: 24px 0;
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--t-small);
 }
 
 .topnav__brand {
+  font-family: var(--mono);
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.02em;
   text-decoration: none;
-  color: var(--fg);
+  color: var(--ink);
+}
+
+.topnav__brand:hover {
+  color: var(--ink);
+  text-decoration: none;
 }
 
 .topnav__links {
@@ -179,55 +230,40 @@ h3 {
   color: var(--fg-dim);
 }
 
-/* Hero (Hero.astro — Agent A's territory; styles live here so the
- * component file stays single-concern). */
+/* Hero (Hero.astro — SK-WEB-015 foundation). Two text layers + the
+ * form. Display-serif lede ink-on-ground; one sans line below;
+ * `<CreateForm>` submit is the page's first lime moment. */
 
 .hero {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: clamp(24px, 4vw, 40px);
-  padding: clamp(48px, 8vw, 96px) 0;
-}
-
-.hero__wordmark {
-  font-size: clamp(48px, 12vw, 120px);
-  font-weight: 700;
-  letter-spacing: -0.04em;
+  gap: clamp(20px, 3vw, 32px);
+  padding: clamp(56px, 10vw, 120px) 0 clamp(32px, 6vw, 64px);
+  max-width: var(--col);
 }
 
 .hero__lede {
-  font-family: var(--mono);
-  font-size: clamp(18px, 2.6vw, 24px);
-  color: var(--fg);
-  max-width: 28ch;
+  font-family: var(--display);
+  font-size: var(--t-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink);
+  text-wrap: balance;
   margin: 0;
+  max-width: 14ch;
 }
 
-.hero__sub {
-  font-size: clamp(15px, 1.8vw, 17px);
-  color: var(--fg-dim);
-  max-width: 56ch;
+.hero__say {
+  font-family: var(--sans);
+  font-size: var(--t-large);
+  font-weight: 400;
+  color: var(--body);
+  line-height: 1.45;
   margin: 0;
-}
-
-.hero__sub code {
-  font-family: var(--mono);
-  font-size: 0.9em;
-  color: var(--fg);
-}
-
-.hero__sub em {
-  font-style: italic;
-}
-
-.hero__credo {
-  font-family: var(--mono);
-  font-size: clamp(12px, 1.4vw, 13px);
-  color: var(--fg-dim);
-  font-style: italic;
-  margin: 0;
-  opacity: 0.75;
+  max-width: 38ch;
+  text-wrap: balance;
 }
 
 .heroinput {
@@ -353,14 +389,76 @@ h3 {
 
 .btn--accent {
   background: var(--accent);
-  color: var(--accent-fg);
-  border-color: var(--accent-fg);
-  box-shadow: 4px 4px 0 0 var(--accent-fg);
+  color: var(--accent-ink);
+  border-color: var(--accent-ink);
+  box-shadow: 4px 4px 0 0 var(--accent-ink);
 }
 
 .btn--accent:hover {
-  color: var(--accent-fg);
-  box-shadow: 6px 6px 0 0 var(--accent-fg);
+  color: var(--accent-ink);
+  box-shadow: 6px 6px 0 0 var(--accent-ink);
+}
+
+/* Unified CTA primitive (SK-WEB-015 foundation). One affordance class
+ * the redesign uses on the form submit, the Replaces final CTA, and
+ * (Phase 2) /pricing tier buttons. `.cta` is the lime primary, ground
+ * ink on accent; `.cta--ghost` is the quiet alternative for secondary
+ * actions. Composes with the same hard-shadow vocabulary as `.btn` so
+ * un-ported pages stay visually consistent.  */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 22px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 2px solid var(--accent-ink);
+  box-shadow: 4px 4px 0 0 var(--accent-ink);
+  cursor: pointer;
+}
+
+.cta:hover {
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+
+.cta--ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--rule);
+  box-shadow: none;
+}
+
+.cta--ghost:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cta {
+    transition:
+      transform 80ms ease-out,
+      box-shadow 80ms ease-out;
+  }
+  .cta:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 0 var(--accent-ink);
+  }
+  .cta:active {
+    transform: translate(0, 0);
+    box-shadow: 2px 2px 0 0 var(--accent-ink);
+  }
+}
+
+.cta:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
 }
 
 /* Destructive modifier — `DELETE` confirmations in the chat surface
@@ -600,7 +698,7 @@ h3 {
   opacity: 0.55;
   cursor: not-allowed;
   transform: none;
-  box-shadow: 4px 4px 0 0 var(--accent-fg);
+  box-shadow: 4px 4px 0 0 var(--accent-ink);
 }
 
 .createform__spinner {

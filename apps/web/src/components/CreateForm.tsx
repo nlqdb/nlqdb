@@ -183,7 +183,7 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
         />
         <button
           type="submit"
-          className="btn btn--accent createform__submit"
+          className="cta createform__submit"
           disabled={loading || goal.trim().length === 0}
         >
           {loading ? (
