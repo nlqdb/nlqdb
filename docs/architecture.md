@@ -375,14 +375,14 @@ Canonical: `llm-router/FEATURE.md` (`SK-LLM-001..011`). Tables below are at-a-gl
 
 | Job | Provider | Free limit | Card |
 |---|---|---|---|
-| Classification | Groq — Llama 3.1 8B Instant | 14,400 RPD / 500k TPD | No |
+| Classification | Groq — GPT OSS 20B | 1,000 RPD / 200k TPD | No |
 | NL → query plan | Cerebras gpt-oss-120b → Gemini 2.5 Flash (SK-LLM-023) | 1M tok/day Cerebras / 500 RPD Gemini | No |
 | Hard-plan fallback | Google AI Studio — Gemini 2.5 Pro | 100 RPD | No |
-| Summarization | Groq — Llama 3.3 70B / Qwen3 32B | 1,000 RPD | No |
+| Summarization | Groq — GPT OSS 120B | 1,000 RPD | No |
 | Embeddings | Cloudflare Workers AI — bge-base-en-v1.5 | 10,000 Neurons/day | No |
 | Universal fallback | OpenRouter — `qwen/qwen3-coder:free` (plan / schema_infer); Llama 3.x `:free` (route / summarize) | 50 RPD anon / 1,000 RPD after a one-time $10 deposit | No (deposit unlocks the 1k tier and is kept even if balance falls to $0) |
 
-**Capacity:** ~500 plan + ~14,400 classify/day → ~2–4k queries/day after the plan cache.
+**Capacity:** ~500 plan + ~10k classify/day (Groq GPT OSS 20B 1,000 RPD, then Workers-AI + OpenRouter failover) → ~2–4k queries/day after the plan cache.
 
 **Total cost to add intelligence Day 1: $0.**
 

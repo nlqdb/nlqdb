@@ -140,8 +140,8 @@ Operational guardrails:
 | Cloudflare Workers AI        | plan              | 500 ms | 1200 ms | Heavier model.                  |
 | Gemini 2.0 Flash             | route             | 150 ms | 500 ms |                                  |
 | Gemini 2.0 Flash             | plan              | 700 ms | 1800 ms |                                  |
-| Groq (Llama 3.1 8B Instant)  | route / engine_classify | 100 ms | 400 ms | Cheap-tier hot path; chain default. |
-| Groq (Llama 3.1 70B)         | plan              | 400 ms | 1000 ms | Fastest paid.                    |
+| Groq (GPT OSS 20B)           | route / engine_classify | 100 ms | 400 ms | Cheap-tier hot path; chain default. |
+| Groq (GPT OSS 120B)          | plan              | 400 ms | 1000 ms | Planner-tier failover.           |
 | OpenRouter (fallback)        | plan              | 1000 ms| 3000 ms | Used only on multi-provider failover. |
 | Neon HTTP (us-east-1)        | SELECT (warm)     | 80 ms  | 300 ms | Cold pool can spike to 1 s.      |
 | Cloudflare D1 (read, warm)   | SELECT            | 10 ms  | 30 ms  | listDatabasesForTenant prelude.  |

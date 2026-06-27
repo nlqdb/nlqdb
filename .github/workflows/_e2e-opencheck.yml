@@ -6,7 +6,7 @@
 # Top-5 free LLM models for opencheck (researched 2026-06-12T01:25Z via live API: gpt-oss-120b:free tool-call usage.cost:0; OpenRouter $20.21/$40 ⇒ 1000 req/day free tier; engine-chain head Cerebras 921K tok/DAY free. ⚠ check the DAILY budget (TPD/RPD) not per-minute — at run time today Groq TPD was spent (99,677/100,000) and Gemini quota exhausted):
 #   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
 #   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
-#   3. Groq llama-3.3-70b-versatile        — 12K TPM / 1K RPM but ~100K tokens/DAY ACCOUNT cap (shared across all Groq models).
+#   3. Groq openai/gpt-oss-20b             — 8K TPM; lighter/faster; shares the same Groq daily account cap (llama-3.3-70b-versatile decommissioned 2026-08-16).
 #   4. Groq openai/gpt-oss-120b            — 8K TPM; reasoning-tuned; shares the same Groq daily account cap.
 #   5. Cerebras gpt-oss-120b               — 30K TPM / 1M TPD; tool-use verified; BUT only 5 RPM (too slow for agent loops).
 # NOT usable: qwen/qwen3-32b (tool-call fails on Groq), llama-4-scout (type coercion error on number params).
@@ -34,7 +34,7 @@ on:
         description: "Model id used by the pre-flight connectivity curl; must match the suite YAML's `model:` and exist on provider_base_url."
         required: false
         type: string
-        default: llama-3.3-70b-versatile
+        default: openai/gpt-oss-120b
     secrets:
       LLM_API_KEY:
         description: "LLM API key for the active provider. Surfaced via OPENAI_API_KEY + provider-specific OPENAI_BASE_URL."

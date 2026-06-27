@@ -81,5 +81,5 @@
   published evidence the counter improves correctness; would add
   cardinality to the cache key without a measured win. **(5) Drop
   the 500-char SQL cap.** The cap is load-bearing for the free-chain
-  token budget on Groq's 8 k context Llama-3.1-8b — lifting it would
+  token budget on the smallest-context cheap-tier leg — lifting it would
   truncate the schema instead.

@@ -1,6 +1,9 @@
-// Groq — strict-$0 hot-path classification + 70B summarization.
-// docs/architecture.md §7.1 free-tier limits: 14,400 RPD on Llama 3.1 8B Instant,
-// 1,000 RPD on Llama 3.3 70B / Qwen3 32B.
+// Groq — strict-$0 hot-path classification + planner-tier summarization.
+// llama-3.1-8b-instant + llama-3.3-70b-versatile were decommissioned by Groq
+// on 2026-08-16; migrated to the recommended replacements per SK-LLM-003.
+// docs/architecture.md §7.1 free-tier limits: 1,000 RPD on gpt-oss-20b /
+// gpt-oss-120b (Groq's per-model free cap; route/classify overflow falls
+// through to Workers-AI + OpenRouter).
 
 import type { LLMOperation, Provider } from "../types.ts";
 import { createChatProvider } from "./_chat-provider.ts";
@@ -9,15 +12,15 @@ import { openAICompatibleChat } from "./openai-compatible.ts";
 const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
-  // SK-ASK-009 — merged routeAsk rides the cheap-tier 8B model. Prompt
+  // SK-ASK-009 — merged routeAsk rides the cheap-tier model. Prompt
   // is short (goal + dbset + recent-tables MRU), budget is 1500 ms.
-  route: "llama-3.1-8b-instant",
-  plan: "llama-3.3-70b-versatile",
-  summarize: "llama-3.3-70b-versatile",
-  schema_infer: "llama-3.3-70b-versatile",
+  route: "openai/gpt-oss-20b",
+  plan: "openai/gpt-oss-120b",
+  summarize: "openai/gpt-oss-120b",
+  schema_infer: "openai/gpt-oss-120b",
   // Engine classification (SK-DB-010) — short prompt (the engine-fit
   // table + one goal sentence), cheap-tier model, same budget as route.
-  engine_classify: "llama-3.1-8b-instant",
+  engine_classify: "openai/gpt-oss-20b",
 };
 
 export type GroqProviderOptions = {

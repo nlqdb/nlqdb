@@ -188,7 +188,7 @@ export type CallOpts = {
 
 export type Provider = {
   name: ProviderName;
-  // Resolved model string (e.g. "llama-3.1-8b-instant") used as the
+  // Resolved model string (e.g. "openai/gpt-oss-20b") used as the
   // `llm.model` span attribute. Operation-specific because providers
   // commonly use different models for different jobs.
   model(op: LLMOperation): string;
