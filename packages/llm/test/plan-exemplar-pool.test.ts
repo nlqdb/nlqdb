@@ -84,6 +84,16 @@ const PROBES: readonly Probe[] = [
     schema: "CREATE TABLE students (id INTEGER, name TEXT, class TEXT)",
   },
   {
+    // Top-N groups WITH their count, over a different schema + phrasing than the
+    // pool row ("most-cited papers" vs "most-borrowed books") — proves the
+    // GROUP-BY-COUNT-ORDER-BY-COUNT-DESC-LIMIT skeleton retrieves across domains
+    // and is not pulled to the count-less `group-order-limit` or the unranked
+    // `group-by-count` near-twins.
+    bucket: "group-count-top-n",
+    goal: "What are the 3 most-cited papers? Show the paper and how many times each was cited.",
+    schema: "CREATE TABLE citations (id INTEGER, paper TEXT)",
+  },
+  {
     // Plain top-N over a different schema + phrasing than the pool row
     // ("transactions" vs "orders") — proves the plain `ORDER BY … LIMIT`
     // skeleton retrieves across domains and is not pulled to the grouped
@@ -155,7 +165,7 @@ describe("plan-exemplar-pool", () => {
   it("covers one row per structural bucket, all distinct", () => {
     const buckets = PLAN_EXEMPLAR_POOL.map((r) => r.bucket);
     expect(new Set(buckets).size).toBe(buckets.length);
-    expect(PLAN_EXEMPLAR_POOL.length).toBe(15);
+    expect(PLAN_EXEMPLAR_POOL.length).toBe(16);
   });
 
   it("renders each payload in the static-prefix Question→JSON shape", () => {
@@ -332,6 +342,47 @@ describe("plan-exemplar-pool", () => {
     const plain = PROBES.find((p) => p.bucket === "group-by-count");
     const [pTop] = retrievePlanExemplars(plain?.goal ?? "", plain?.schema ?? "", 1);
     expect(pTop?.bucket).toBe("group-by-count");
+  });
+
+  // The group-count-top-n row's measured coverage delta: a "top-N groups with
+  // their count" goal ("what are the N most-<verb> X? show the X and how many
+  // times each was <verb>") must retrieve the GROUP-BY-COUNT-ORDER-BY-COUNT-DESC
+  // demo. Without the row the nearest demo is `group-by-count` — a grouped count
+  // with no ranking, which teaches no ORDER BY/LIMIT. Meanwhile a genuinely
+  // *grouped* top-N that returns only the top key ("which X has the most Y")
+  // stays group-order-limit. Same SK-LLM-036/037 before/after pattern; this is
+  // the shape persona-bench q8 ("5 most-recalled facts … and how many times")
+  // needs (ICP retrieval probe in `tools/eval`); on q8 itself the displaced demo
+  // is `ratio-cast`.
+  it("group-count-top-n row flips a top-N-with-count goal off the unranked group-by-count demo", () => {
+    const probe = PROBES.find((p) => p.bucket === "group-count-top-n");
+    expect(probe).toBeDefined();
+    const goal = probe?.goal ?? "";
+    const schema = probe?.schema ?? "";
+
+    // Before: rank against the pool with the group-count-top-n row removed — the
+    // nearest demo is `group-by-count`, a grouped count with no ranking.
+    const before = selectExemplarsForSchema(
+      goal,
+      schema,
+      PLAN_EXEMPLAR_POOL.filter((r) => r.bucket !== "group-count-top-n"),
+      1,
+    ) as PlanExemplar[];
+    expect(before[0]?.bucket).toBe("group-by-count");
+
+    // After: the full pool retrieves the ranked grouped-count demonstration.
+    const [after] = retrievePlanExemplars(goal, schema, 1);
+    expect(after?.bucket).toBe("group-count-top-n");
+    expect(after?.payload).toContain("GROUP BY");
+    expect(after?.payload).toContain("ORDER BY COUNT(*) DESC");
+    expect(after?.payload).toContain("LIMIT");
+
+    // The guard: a grouped top-N that returns only the top key ("which X has the
+    // most Y") must still retrieve group-order-limit — returning the count, not
+    // just the ranking, is the discriminator.
+    const keyOnly = PROBES.find((p) => p.bucket === "group-order-limit");
+    const [kTop] = retrievePlanExemplars(keyOnly?.goal ?? "", keyOnly?.schema ?? "", 1);
+    expect(kTop?.bucket).toBe("group-order-limit");
   });
 });
 

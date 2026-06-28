@@ -11,53 +11,57 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-28 (run 99) — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for."
+## 2026-06-28 (run 100) — dev.to / r/LLMDevs / lobste.rs: "Two SQL examples that use the same clauses are not the same example — and your few-shot retriever can't tell."
 
 **Where:** dev.to + r/LLMDevs + lobste.rs; a transferable lesson on dynamic-few-shot
-(RAG-for-exemplars) retrieval for text-to-SQL agents. nlqdb mentioned once, as the
-place the lesson came from.
+(RAG-for-exemplars) retrieval for text-to-SQL agents — the *output shape* gap, distinct
+from last week's *missing skeleton* lesson. nlqdb mentioned once, as the place the
+lesson came from.
 
-**Title:** Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for.
+**Title:** Two SQL examples that use the same clauses are not the same example — and your few-shot retriever can't tell.
 
 **Body:**
 
-> Dynamic few-shot is the cheap, real win in text-to-SQL: instead of a fixed prompt
-> prefix, retrieve the demonstrations whose *question* is closest to the user's, so the
-> model sees examples that match what's being asked. The standard trick (DAIL-SQL) is to
-> **mask** the question first — replace literal values and table/column names with
-> placeholders — so you match the question's *skeleton* ("how many X of each Y, for the
-> Z named ‹val›") and not its domain words. It works startlingly well from a tiny pool.
+> If you build a text-to-SQL agent, the cheapest real win is dynamic few-shot: retrieve
+> the example whose *question* is closest to the user's (mask the literals and
+> table/column names first, so you match the question's skeleton, not its domain words)
+> and show the model that. It punches far above its weight from a tiny hand-curated pool.
 >
-> Then we measured it on our own users' questions and found a quiet failure. "Which
-> predicates does the agent named 'support-bot' use, and how often?" — a grouped count
-> over a join, no threshold — retrieved a `HAVING COUNT(*) > n` example as its closest
-> demonstration. The masked skeletons genuinely overlapped, so a word-overlap score
-> ranked the threshold example top, and the model would have been shown a filter the
-> question never asked for.
+> Here's the failure we caught measuring it on our own users' questions. "What are the 5
+> most-recalled facts? Show the fact and how many times it was recalled." That's a
+> textbook ranked grouped count: `GROUP BY fact, COUNT(*) … ORDER BY COUNT(*) DESC LIMIT
+> 5`. The retriever handed it a *percentage* example — `CAST(x AS REAL) / y`. Nothing
+> about the masked skeleton said "ratio"; it just shared the most generic words ("what
+> are the…", a number) with the wrong row and there was no better match to beat it.
 >
-> The instinct is to fix the *ranker* — stopwords, phrase normalisation, similarity
-> tuning. We'd measured that and it lost: it shuffles which question breaks without
-> raising the hit rate, because flat token overlap can't tell a real structural token
-> from a coincidental one. The actual bug was the *pool*: it had no example of "grouped
-> count scoped to one named entity through a join." Every demonstration is a teacher, and
-> we had no teacher for that shape — so the question fell to the nearest wrong one. One
-> correct example for the missing skeleton fixed it.
+> The deeper bug wasn't the ranker — it was that our pool conflated two examples we
+> *thought* were close enough. We had "which department has the most employees?" — same
+> `GROUP BY … ORDER BY … LIMIT` clauses — and assumed it covered ranked counts. But that
+> example returns *only the winning key*; the user asked for the key **and its count**.
+> Same clauses, different answer. An example that drops the count teaches the model to
+> drop the count. Adding one example that returns both — phrased the way users actually
+> ask ("what are the N most-X? show the X and how many times") — landed the question, and
+> as a bonus fixed a second one our pool had been quietly answering with `SUM` instead of
+> `COUNT`.
 >
-> Two transferable rules: **(1) a retrieval pool is a curriculum — a missing shape
-> doesn't return "no match," it returns the closest wrong thing, confidently. (2)
-> Measure retrieval offline before you spend a model call on it:** hold out a probe per
-> shape, phrased over a *different* domain than the example, and assert each retrieves
-> its intended skeleton — a cross-domain hit proves the masking generalises, not lexical
-> luck. We run it as a unit test; this fix moved the score 20/23 → 21/23 with the
-> held-out probes still perfect. (At [nlqdb](https://nlqdb.com) the exemplar pool and its
-> retrieval precision are both under test.)
+> The transferable rule: **a few-shot pool needs a teacher for every *output shape*, not
+> every *SQL operation*.** "Return the top group" and "return the top groups with their
+> counts" share every keyword and are different answers; if your pool has one, the
+> retriever will confidently teach the other. And measure it offline before you spend a
+> model call: hold out one probe per shape, phrased over a *different* domain than the
+> example, and assert each retrieves its intended skeleton — a cross-domain hit proves
+> the masking generalises, not lexical luck. We run it as a unit test; this fix moved the
+> score 21/23 → 22/23 with the held-out probes still perfect. (At
+> [nlqdb](https://nlqdb.com) the exemplar pool and its retrieval precision are both under
+> test.)
 
-**Why this advances the north-star:** GLOBAL-025 engine quality — a genuinely useful,
-specific lesson for anyone building a text-to-SQL or tool-calling agent, anchored to a
-real measured engine improvement; the post earns a citation without a pitch.
+**Why this advances the north-star:** GLOBAL-025 engine quality — a specific, useful
+lesson for anyone building a text-to-SQL or tool-calling agent, anchored to a real
+measured engine improvement; earns a citation without a pitch.
 
 ## Collapsed — full drafts in git history
 
+- run 99 — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for." (a grouped count over a join with no threshold retrieved a `HAVING COUNT(*) > n` example because the masked skeletons genuinely overlapped; fixing the *ranker* lost — flat token overlap can't tell a real structural token from a coincidental one — the bug was the *pool* had no "grouped count scoped to one named entity through a join" teacher, so the question fell to the nearest wrong one; a retrieval pool is a curriculum and a missing shape returns the closest wrong thing confidently; measure retrieval offline with a held-out cross-domain probe per shape; 20/23 → 21/23).
 - run 98 — dev.to / lobste.rs / r/webdev: "Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed." (a site has three machine-readable indexes of itself — `robots.txt`/`sitemap.xml`/`llms.txt` — maintained by three reflexes that drift because nothing forces them to agree; a real indexable page advertised in `llms.txt` + allowed in `robots.txt` was never in the hand-rolled `sitemap.xml`, so link-followers found it and sitemap-trusting crawlers never knew it existed; fix re-derives the real top-level-page set and asserts every one is in the sitemap so the next forgotten page fails CI not search — if two lists must agree, don't maintain two, derive one or test the divergence).
 - run 97 — dev.to / r/LLMDevs / r/AI_Agents: "Your multi-tenant agent memory is one forgotten WHERE clause from a leak." (one DB holds a thousand customers' agent memory; the only thing between tenant A's rows and tenant B's answer is a `WHERE tenant_id = ?` the LLM has to remember in every query forever, and one miss leaks every tenant at once; fix moves isolation below the SQL into Postgres RLS keyed on `current_setting('app.tenant_id')` so a query with no filter sees nothing, not everything — isolation belongs in the layer that can't forget it; anchors `/solve/isolate-ai-agent-memory-per-tenant`).
 
@@ -74,11 +78,7 @@ real measured engine improvement; the post earns a citation without a pitch.
 - run 87 — dev.to / lobste.rs: "Your Cmd+K palette is invisible to screen readers — one attribute fixes it" (the palette every app ships is perfect for people who can *see* the highlight move; under a screen reader it's silent because the highlight is just a CSS class and focus never leaves the input; the fix tutorials skip is `aria-activedescendant` letting the focused input point at a *different* "active" option, with `combobox`/`listbox`/`option` + `aria-selected`; keep option ids in one helper and clamp the index in pure logic; palette ARIA associations 0 → 3).
 - run 86 — dev.to / lobste.rs / r/LLMDevs: "Your llms.txt is a sitemap for robots that read — and mine was missing the page I care about most" (the LLM-crawler index was hand-curated *before* the flagship landing page existed, so it was silently absent; data-driven lists stayed in sync, the bespoke array nobody revisited rotted — audit the *rendered* artifact, pin bespoke entries with a test; `llms.txt` primary routes 4 → 6).
 - run 85 — dev.to / r/LLMDevs / lobste.rs: "Your token-cost dashboard is doing arithmetic in your app code" (LLM token/cost numbers land in a JSON log, but "spend per customer this month, which model is expensive?" is an aggregation — `SUM(cost) GROUP BY user`/`model` — and a log isn't a thing you aggregate, so you total rows in app code or ask the LLM to add them (a confident-wrong-total generator); *capture* (provider SDK / Langfuse / Helicone) and *query* (a planner) are different machines — the moment a dashboard sums a column in app code it wanted a database; anchors `/solve/track-ai-token-usage-and-cost`).
-- run 84 — dev.to / r/LocalLLaMA / lobste.rs: "Scaling your vector store to a billion rows doesn't give it a GROUP BY" (teams reach for Milvus/Qdrant for *scale*, but ANN throughput and a query planner are orthogonal — a vector index finds the K nearest embeddings at any scale, `JOIN`/`GROUP BY`/`HAVING` need a relational planner; keep the vector engine for recall, put rows you count+group in something that speaks SQL; anchors `/vs/milvus`).
-- run 83 — dev.to / lobste.rs: "I skipped the rich result Google was begging me to add" (the most-recommended structured-data win — the `WebSite` `SearchAction` sitelinks search box — is the one I deliberately *didn't* ship: a `SearchAction` is a promise that a URL template runs a query, but the homepage submits over JS with no `GET /search?q=…` route, so the schema would *validate* and be a *lie*; kept the honest half — `Organization` + `WebSite` with stable `@id`s and every page's `SoftwareApplication` naming that Organization as `publisher`; "would this validate?" is the wrong test, "is this true?" is; brand-entity nodes 1 → 3).
-- run 82 — dev.to / lobste.rs: "Your AI app tells sighted users the query failed. Screen readers get silence." (the AI-feature text box swaps *loading*/*result*/*error* async with two quiet a11y misses: the result region isn't a live region (`aria-live`/`role="status"` once on the container), and the *input* never says it's invalid — add `aria-invalid` + `aria-describedby` pointing at one error `id`, collapsing the structured + network error branches into a single `role="alert"` region; test the error path with the reader on; anchored to this run's CreateForm fix, ARIA associations 0 → 2).
-- run 81 — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections" (leaf `/vs` + `/solve` pages emit `FAQPage`/`BreadcrumbList`, but the hubs listing them carried only the site-wide `SoftwareApplication`; `ItemList` declares "an ordered, complete set" — build it from the same array the `<ul>` renders so it can't drift, item URLs at the trailing-slash 200; hub collection signal 0 → 2).
-*(runs 75–80 moved to git history under D4 — `git log -p` recovers the bodies.)*
+*(runs 75–84 moved to git history under D4 — `git log -p` recovers the bodies.)*
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).

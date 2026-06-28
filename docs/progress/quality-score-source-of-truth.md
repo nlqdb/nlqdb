@@ -82,7 +82,7 @@ same-seed A/B.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
-| T23 | **Similarity-retrieved few-shot** | Pure `few-shot-select.ts`: value + schema-identifier masking (`maskWithSchema`, table/column words → `col`, so same-shape questions over *unrelated* schemas collapse to one skeleton — DAIL §4.1 cross-domain) + masked-token Jaccard + schema-aware top-k `selectExemplarsForSchema`. Curated pool (15 rows, one per `SK-QUAL-014`/ICP bucket) + `buildPlanSystem(goal,schema,k)`: the per-lever **T9 ablation** — default off ⇒ static `PLAN_SYSTEM`; `k>0` (eval only) swaps in the retrieved prefix. §4 #1 retrieval half; ≈+3–5 pp beyond T9. | **measured (offline):** held-out precision@1 = 15/15, lift +0.543; persona-bench ICP precision@1 21/23 (run 99); ablation off-path byte-identical, retrieved `k=3` prefix 0.936× static (token-negative). Prod byte-identical (T8 + baselines untouched); EX → next dispatch A/B | [`SK-LLM-041`](../features/llm-router/decisions/SK-LLM-041-similarity-retrieved-few-shot.md) — shipped; only hot-path embedding index follows |
+| T23 | **Similarity-retrieved few-shot** | Pure `few-shot-select.ts`: value + schema-identifier masking (`maskWithSchema`, table/column words → `col`, so same-shape questions over *unrelated* schemas collapse to one skeleton — DAIL §4.1 cross-domain) + masked-token Jaccard + schema-aware top-k `selectExemplarsForSchema`. Curated pool (16 rows, one per `SK-QUAL-014`/ICP bucket) + `buildPlanSystem(goal,schema,k)`: the per-lever **T9 ablation** — default off ⇒ static `PLAN_SYSTEM`; `k>0` (eval only) swaps in the retrieved prefix. §4 #1 retrieval half; ≈+3–5 pp beyond T9. | **measured (offline):** held-out precision@1 = 16/16, lift +0.543; persona-bench ICP precision@1 22/23 (run 100); ablation off-path byte-identical, retrieved `k=3` prefix 0.936× static (token-negative). Prod byte-identical (T8 + baselines untouched); EX → next dispatch A/B | [`SK-LLM-041`](../features/llm-router/decisions/SK-LLM-041-similarity-retrieved-few-shot.md) — shipped; only hot-path embedding index follows |
 | T22 | **Aggregate-filter HAVING directive** | One `PLAN_DIRECTIVES` bullet: a threshold on a group's aggregate goes in HAVING after GROUP BY, not WHERE. Covers the **HAVING half** of E5 *Unaligned Aggregation Structure* that T15 (GROUP BY half) left; "keep per-row predicates in WHERE" bounds the regression. ≈55 tok | **prompt-only; saturated — 06-19 BIRD re-run flat** (McNemar p=0.50) | [`SK-LLM-040`](../features/llm-router/decisions/SK-LLM-040-aggregate-filter-having-directive.md) — shipped |
 | T21 | **Join-bridge recall in schema pruning** | T19's FK closure was outbound-only; a junction table linking two goal-matched tables via generic FK names (`a`/`b`) matched no path and got dropped, making the join unplannable. `pruneSchemaForGoal` now also keeps any table that `REFERENCES` ≥ 2 goal-matched tables, seeded from the goal-matched set only ⇒ recall-monotonic + distractor-bounded | **measured (unit):** synthetic `student↔enroll↔course` bridge dropped → kept; one-endpoint referencer stays out. Recall monotone over T19. Real EX → next eval | [`SK-LLM-037`](../features/llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md) rev — shipped |
 | T20 | **Capacity-honest budget stop** | Budget-stop on every-attempt ∈ {`rate_limited`,`circuit_open`}, one bounded `--capacity-wait-ms` retry, SHA-keyed resume — fixes the 2026-06-11 run scoring 246 breaker-wall rows as `no_sql` | **measurement honesty** — keeps a breaker wall out of the scores | [`SK-QUAL-013`](../features/quality-eval/decisions/SK-QUAL-013-capacity-honest-budget-stop.md) — shipped |
@@ -105,13 +105,13 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
 (`CLAUDE.md` §P4).
 
 1. **Similarity-retrieved few-shot exemplars (full DAIL-SQL).** Core + masking +
-   schema-aware selector + the **curated pool (15 rows, held-out precision@1 = 15/15)** +
+   schema-aware selector + the **curated pool (16 rows, held-out precision@1 = 16/16)** +
    the **per-lever T9 ablation `buildPlanSystem` ALL SHIPPED 2026-06-21** (T23 /
    `SK-LLM-041`): default off ⇒ static `PLAN_SYSTEM` byte-for-byte; the eval
-   `--retrieve-exemplars k` flag swaps it for the retrieved prefix (0.935× the
-   static token budget), so the next dispatch A/Bs greedy-static vs
-   greedy-retrieved (est. +3–5 pp, arXiv:2308.15363). **Only the hot-path
-   embedding index over a larger pool remains.** EX delta = next dispatch.
+   `--retrieve-exemplars k` flag swaps in the retrieved prefix (0.935× static
+   tokens), A/Bing greedy-static vs greedy-retrieved next dispatch (est. +3–5 pp,
+   arXiv:2308.15363). **Only the hot-path embedding index over a larger pool
+   remains.**
 2. **Value retrieval + column-level pruning (the M-Schema half T19 left) —
    DEMOTED 2026-06-19 by the `SK-QUAL-014` literal axis.** The column-name
    ceiling (`SK-QUAL-015`: 12.8% of needed columns named by *value*) implied

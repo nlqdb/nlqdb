@@ -52,6 +52,7 @@ export type PlanBucket =
   | "filtered-group-by-count"
   | "group-max"
   | "group-order-limit"
+  | "group-count-top-n"
   | "order-by-limit"
   | "null-safe-min"
   | "null-filter"
@@ -193,6 +194,29 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
     "CREATE TABLE employees (id INTEGER, name TEXT, department TEXT)",
     "Which department has the most employees? Return the department.",
     "SELECT department FROM employees GROUP BY department ORDER BY COUNT(*) DESC LIMIT 1",
+  ),
+  ex(
+    // Top-N groups returned WITH their count — `GROUP BY x, COUNT(*) … ORDER BY
+    // COUNT(*) DESC LIMIT n`. Distinct from `group-order-limit` (which returns
+    // only the top group's *key*, not its count) and from plain `group-by-count`
+    // (no ranking): here the goal is "the N most-frequent X, and how many times
+    // each occurred". Phrased the way users actually ask it ("What are the N
+    // most-<verb> <things>? Show the <thing> and how many times each was
+    // <verb>") so the masked skeleton matches nlqdb's own ICP queries. Without
+    // this row the headline "5 most-recalled facts … and how many times"
+    // (persona-bench q8) masked to `ratio-cast`, and the "for each agent, how
+    // many times … most recalled first" grouped-count ranking (q18) retrieved
+    // `join-aggregate` — a SUM-over-join, the wrong aggregate; with it both land
+    // the GROUP-BY-COUNT-ORDER-BY-COUNT-DESC demo (ICP retrieval precision@1
+    // 21/23 → 22/23, the `tools/eval` persona-retrieval probe). Ordered right
+    // after `group-order-limit` so an unfiltered grouped count ("how many X in
+    // each Y", persona-bench q7) still breaks an exact masked-Jaccard tie toward
+    // the earlier `group-by-count` (earliest pool index wins).
+    "group-count-top-n",
+    "sqlite",
+    "CREATE TABLE loans (id INTEGER, title TEXT)",
+    "What are the 5 most-borrowed books? Show the title and how many times each was borrowed.",
+    "SELECT title, COUNT(*) FROM loans GROUP BY title ORDER BY COUNT(*) DESC LIMIT 5",
   ),
   ex(
     // Plain top-N — `ORDER BY <col> DESC LIMIT n`, NO GROUP BY, no aggregate.

@@ -42,7 +42,7 @@ const EXPECTED: Record<number, readonly string[]> = {
   5: ["having"],
   6: ["join-aggregate", "ratio-cast"],
   7: ["group-by-count", "join-aggregate"],
-  8: ["group-order-limit", "group-max"], // known miss: masks to ratio-cast (see below)
+  8: ["group-count-top-n"], // landed by the `group-count-top-n` pool row (top-N groups WITH their count); was a ratio-cast miss at 21/23
   9: ["date-range"],
   10: ["filtered-group-by-count", "group-by-count", "join-aggregate"], // landed by the `filtered-group-by-count` pool row (named-entity grouped count through a JOIN); was the `having` demo at 20/23
 
@@ -53,7 +53,7 @@ const EXPECTED: Record<number, readonly string[]> = {
   15: ["date-range"],
   16: ["anti-join"],
   17: ["date-range"],
-  18: ["join-aggregate", "group-order-limit", "group-by-count"],
+  18: ["group-count-top-n", "join-aggregate", "group-order-limit", "group-by-count"], // now lands `group-count-top-n` (grouped COUNT ordered desc) — was `join-aggregate` (a SUM, the wrong aggregate)
   19: ["having"],
   // Batch 3 (SK-QUAL-018) — authored from each gold's structure.
   20: ["scalar-subquery"], // landed by the "Which … ? List the …" exemplar framing (no longer a miss)
@@ -85,25 +85,28 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  it("retrieves a structurally-appropriate demo for ≥ 21/23 ICP queries", () => {
+  it("retrieves a structurally-appropriate demo for ≥ 22/23 ICP queries", () => {
     const m = measure();
     // Surface the numbers in the run log for the verification record.
     console.info("[persona-retrieval] measure:", JSON.stringify(m));
-    // 21/23: the null-filter row lands q3 ("who never logged in") on IS-NULL, the
+    // 22/23: the null-filter row lands q3 ("who never logged in") on IS-NULL, the
     // order-by-limit row lands q0 ("the 10 most recent signups") on the plain
     // ORDER BY … LIMIT demo, the count-distinct row's "how many different"
     // phrasing lands q21 ("how many different referral sources") instead of
     // `group-by-count`, the scalar-subquery row's "Which … ? List the …" framing
     // lands q20 ("which plans cost more than the average plan price") instead of
-    // `having`, and the new `filtered-group-by-count` row (a named-entity grouped
-    // count through a JOIN) lands q10 ("which predicates does the agent named
-    // 'support-bot' use, and how often") instead of `having` (was a miss at 20/23
-    // — the `having` demo would teach a HAVING COUNT filter the gold doesn't have).
-    // All four were structural pool gaps closed by pool curation (adding/rephrasing
-    // a row), not selector tweaks (run-52-falsified). The two remaining pinned,
-    // documented misses are q8, q22 (see below) — both selector-side (the right
-    // buckets exist in the pool; the masked skeleton mis-ranks them).
-    expect(m.hits).toBeGreaterThanOrEqual(21);
+    // `having`, the `filtered-group-by-count` row (a named-entity grouped count
+    // through a JOIN) lands q10 ("which predicates does the agent named
+    // 'support-bot' use, and how often") instead of `having`, and the new
+    // `group-count-top-n` row (top-N groups WITH their count) lands q8 ("the 5
+    // most-recalled facts … and how many times") off `ratio-cast` AND improves
+    // q18 ("for each agent, how many times … most recalled first") from
+    // `join-aggregate` (a SUM, the wrong aggregate) to the grouped-COUNT demo.
+    // All were structural pool gaps closed by pool curation (adding/rephrasing a
+    // row), not selector tweaks (run-52-falsified). The one remaining pinned,
+    // documented miss is q22 (see below) — selector-side (the right buckets exist
+    // in the pool; the masked skeleton mis-ranks it).
+    expect(m.hits).toBeGreaterThanOrEqual(22);
   });
 
   it("the null-filter row lands q3 ('never logged in') on the IS-NULL demo, not anti-join", () => {
@@ -134,24 +137,27 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  // The two remaining misses (q8, q22) are documented, not silently accepted.
-  // Both are selector-side (the right buckets exist in the pool), so the
-  // fix is query-skeleton similarity (DAIL §4.1's second variant) — out of scope
-  // for a pool-row add. These tests pin the known state so a future selector
-  // change that fixes either of them is visible as a delta.
+  // The one remaining miss (q22) is documented, not silently accepted. It is
+  // selector-side (the right buckets exist in the pool), so the fix is
+  // query-skeleton similarity (DAIL §4.1's second variant) — out of scope for a
+  // pool-row add. This test pins the known state so a future selector change that
+  // fixes it is visible as a delta.
   //
-  // NOTE: q21 (run 68), q20 (run 76) and q10 (run 99) were all NOT
+  // NOTE: q21 (run 68), q20 (run 76), q10 (run 99) and q8 (run 100) were all NOT
   // selector-unfixable — q21/q20 were exemplar-phrasing leaks (the count-distinct
   // row echoed the SQL keyword "distinct" while users say "how many different";
   // the scalar-subquery row read as a bare "List the names of products priced
   // above…" while users ask "Which … cost … the average …? List the … names"),
-  // and q10 was a missing structural bucket (a named-entity grouped count through
-  // a JOIN, which neither `group-by-count` nor `join-aggregate` demonstrated; the
-  // new `filtered-group-by-count` row closed it). Each was fixed by pool curation
-  // — rephrasing or adding a row to match how users phrase the shape — holding the
-  // held-out probe at full precision@1 each time. So the run-52 "lexical avenue is
-  // dead" verdict is scoped to SELECTOR-code tweaks (stopwords / phrase
-  // normalisation in few-shot-select.ts), NOT to pool-exemplar curation.
+  // and q10/q8 were missing structural buckets (q10: a named-entity grouped count
+  // through a JOIN, which neither `group-by-count` nor `join-aggregate`
+  // demonstrated — closed by `filtered-group-by-count`; q8: top-N groups WITH
+  // their count, which neither `group-order-limit` (top key only, no count) nor
+  // `group-by-count` (no ranking) demonstrated — closed by `group-count-top-n`).
+  // Each was fixed by pool curation — rephrasing or adding a row to match how
+  // users phrase the shape — holding the held-out probe at full precision@1 each
+  // time. So the run-52 "lexical avenue is dead" verdict is scoped to
+  // SELECTOR-code tweaks (stopwords / phrase normalisation in few-shot-select.ts),
+  // NOT to pool-exemplar curation.
   //
   // The cheaper LEXICAL-selector avenue is measured-and-rejected (2026-06-22,
   // run 52 — quality-score-verification-log.md): a stopword filter regresses ICP
@@ -162,12 +168,23 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
   // structural token. Do NOT re-attempt a lexical selector tweak here; the only
   // remaining offline gain needs query-skeleton (predicted-SQL) similarity.
   //
-  // q8 ("the 5 most-recalled facts … how many times") masks to a generic
-  // skeleton whose top-1 is `ratio-cast` rather than `group-order-limit`/`group-max`.
-  it("documents the q8 known miss (masking artifact, not a pool gap)", () => {
+  // q8 ("the 5 most-recalled facts … and how many times") is a top-N-groups-with-
+  // count (GROUP BY object, COUNT(*), ORDER BY COUNT(*) DESC, LIMIT 5). The
+  // `group-count-top-n` pool row (run 100) now lands it top-1 — was a `ratio-cast`
+  // miss at 21/23 (the generic "what are the … " skeleton mis-ranked it). Pinned
+  // so a regression is visible as a delta. The same row also moves q18 ("for each
+  // agent, how many times … most recalled first") off `join-aggregate` (a SUM,
+  // the wrong aggregate) onto the grouped-COUNT demo.
+  it("the group-count-top-n row lands q8 ('5 most-recalled … and how many times') off `ratio-cast`", () => {
     const q8 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 8);
     const [top] = retrievePlanExemplars(q8?.question ?? "", ddlFor(q8?.db_id ?? "agent_memory"), 1);
-    expect(EXPECTED[8]).not.toContain(top?.bucket);
+    expect(top?.bucket).toBe("group-count-top-n");
+    // …while the unfiltered grouped count (q7, "how many facts does each agent
+    // have? show the agent name and the count") must NOT be pulled to the ranked
+    // top-N — it stays `group-by-count` (no ORDER BY/LIMIT in the goal).
+    const q7 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 7);
+    const [g] = retrievePlanExemplars(q7?.question ?? "", ddlFor(q7?.db_id ?? "agent_memory"), 1);
+    expect(g?.bucket).toBe("group-by-count");
   });
 
   // q10 ("which predicates does the agent named 'support-bot' use, and how

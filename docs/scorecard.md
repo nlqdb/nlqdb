@@ -25,7 +25,7 @@ retrieval, #3 self-consistency) — both **built end-to-end**, both dispatch-gat
 | | **Engine** — BIRD 06-19 (**9d, stale**) · Spider 06-17 (**11d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Re-dispatch carries to the cron `/daily` lane** — interactive dispatch 403; bun `fetch` can't tunnel proxy-MITM TLS so local eval is blocked too |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Flat within variance (McNemar p=0.50) — directive levers saturated; reasoning levers (§4 #1/#3) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number.** Self-consistency (`SK-QUAL-017`) end-to-end bar the CI dispatch input; EX delta on next dispatch |
-| 8 | persona-bench free-chain EX | 0.90 (18/20) | full-chain ICP EX (run 58/63). **1.7× BIRD, 4.9× Spider** — the GLOBAL-026 bet. N=20 runs ±1 noisy. Retrieval precision@1 **21/23** (run 99: +filtered-group-by-count row lands q10); 2 misses q8/q22 need query-skeleton similarity (dispatch-gated) — selector tweak rejected (run 52), pool-curation lane live |
+| 8 | persona-bench free-chain EX | 0.90 (18/20) | full-chain ICP EX (run 58/63). **1.7× BIRD, 4.9× Spider** — the GLOBAL-026 bet. N=20 runs ±1 noisy. Retrieval precision@1 **22/23** (run 100: +group-count-top-n row lands q8); 1 miss q22 needs query-skeleton similarity (dispatch-gated) — selector tweak rejected (run 52), pool-curation lane live |
 | 9 | free-vs-frontier delta | null *(secret-blocked)* | `OPENROUTER_FRONTIER_API_KEY` empty in CI (filed in `blocked-by-human.md`); dispatch path proven, delta lands when founder sets the secret |
 | | **Ops** — 7d, CF Workers analytics (06-22 pull) | | wall-time, all routes |
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err |
@@ -43,12 +43,12 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-28 (run 99)** — **engine lever, offline-measured**: added a
-`filtered-group-by-count` DAIL-SQL pool row (named-entity grouped count through a
-JOIN) closing persona-bench ICP-retrieval miss **q10** ("which predicates does the
-agent named 'support-bot' use, and how often"), which retrieved the `having` demo —
-teaching a `HAVING COUNT(*)` filter the gold lacks. **ICP retrieval precision@1
-20/23 → 21/23**; held-out cross-domain probe **14/14 → 15/15**; q7/q5/q11 stay
-pinned. Pool curation, not the run-52-falsified selector tweak; q8/q22 stay
-dispatch-gated. Prod byte-identical (`buildPlanSystem` off ⇒ SK-LLM-024 untouched).
-**KPI:** GLOBAL-025 engine quality; others untouched.
+**2026-06-28 (run 100)** — **engine lever, offline-measured**: added a
+`group-count-top-n` DAIL-SQL pool row (top-N groups WITH their count) closing
+persona-bench ICP-retrieval miss **q8** ("the 5 most-recalled facts … and how many
+times"), which masked to `ratio-cast` — a shape neither `group-order-limit` (top
+key only) nor `group-by-count` (no ranking) demonstrated; also moves **q18** off
+`join-aggregate` (a SUM) onto the grouped-COUNT demo. **ICP retrieval precision@1
+21/23 → 22/23**; held-out probe **15/15 → 16/16**; q7/q5/q11 pinned; q22
+dispatch-gated. Prod byte-identical (`buildPlanSystem` off). **KPI:** GLOBAL-025
+engine quality; others untouched.
