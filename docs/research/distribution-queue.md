@@ -11,52 +11,53 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-28 (run 96) — dev.to / lobste.rs / r/ExperiencedDevs: "Your status doc keeps its own history. That's why nobody reads it."
+## 2026-06-28 (run 97) — dev.to / r/LLMDevs / r/AI_Agents: "Your multi-tenant agent memory is one forgotten WHERE clause from a leak."
 
-**Where:** dev.to + lobste.rs + r/ExperiencedDevs; a build-in-public lesson in the
-run-77/86 "audit the rendered artifact" family — here the artifact is the dashboard our
-own automation reads first every day. nlqdb is the worked example, mentioned once.
+**Where:** dev.to + r/LLMDevs + r/AI_Agents; the run-92/93 agent-memory-in-production
+family — here the failure mode is cross-tenant leakage. Anchors
+`/solve/isolate-ai-agent-memory-per-tenant`; nlqdb mentioned once.
 
-**Title:** Your status doc keeps its own history. That's why nobody reads it.
+**Title:** Your multi-tenant agent memory is one forgotten WHERE clause from a leak.
 
 **Body:**
 
-> We have a scorecard — one file an automated daily job regenerates and reads *first*,
-> before it decides what to work on. It had a rule written at the top of it: "current
-> state only — no run-by-run changelog accretes here." It also had a 5 KB size cap, for
-> exactly one reason: the thing gets read every single run, so every stray kilobyte is
-> tax on every future decision.
+> Your agent remembers things for a thousand customers, and they all live in one
+> database. The only thing standing between customer A's memory and customer B's answer
+> is a `WHERE tenant_id = ?` somewhere in your code. That clause is scope you can forget —
+> and the layer that's supposed to remember it is the same layer writing the query.
 >
-> It was 15 KB. Three times its cap. Every row had grown a paragraph of "was X on the
-> 12th, then Y on the 19th, here's the p-value, here's why we tried Z and reverted" — a
-> narrated history glued to the one document whose whole job was to *not* be a history.
-> Each run honestly meant to "just add today's number," each run it got a little longer,
-> and nobody noticed because no single edit looked like the problem.
+> It gets worse when an LLM writes the SQL. Now the tenant filter isn't a constant in a
+> reviewed function; it's a thing you're hoping the model includes in every query it
+> generates, across every CTE, JOIN, and subquery, forever. One query that drops it
+> doesn't leak one row — it leaks every tenant at once. The blast radius of a single
+> miss is the whole table.
 >
-> The failure isn't laziness. It's that **a status doc and a changelog feel like the
-> same document while you're writing them, and they are opposites.** A status doc answers
-> "what is true now"; its value is inversely proportional to its length. A changelog
-> answers "what happened"; it only works by accreting. Put them in one file and the
-> changelog instinct always wins, because adding is easier than deciding what to delete —
-> and the status doc quietly dies of bloat.
+> The fix is to stop treating isolation as something the query carries. Move the boundary
+> below the SQL, into the database: Postgres row-level security attaches a predicate to
+> the *table*, keyed on a per-request setting (`current_setting('app.tenant_id')`). The
+> engine then applies it to every read and write, no matter what SQL runs on top — a query
+> with no tenant filter at all still only sees the current tenant's rows, because the
+> filter isn't in the query, it's in the engine.
 >
-> The fix is structural, not disciplinary ("be more concise" never holds across a
-> hundred edits). History already had a home — `git log` plus a dedicated append-only
-> log. So the scorecard's job is *only* the current snapshot, and the cap is the forcing
-> function: a new number goes in, an old narration comes out, or the file won't save.
-> Reset to 5 KB it lost nothing — every live number is still there; what left was prose
-> `git log` already held, better.
+> And it fails the right way. If the request forgets to set the tenant id, the setting is
+> empty, the predicate matches nothing, and the query returns *no* rows — not someone
+> else's. A forgotten `WHERE` leaks everything; a forgotten RLS scope leaks nothing. Same
+> mistake, opposite blast radius.
 >
-> The transferable rule: **if a document has a freshness cap, give it a sibling that
-> doesn't, and route every "what happened" sentence there.** A file that's allowed to
-> remember everything will, and then it answers nothing. ([nlqdb](https://nlqdb.com).)
+> The transferable rule: **isolation belongs in the layer that can't forget it.** If the
+> code generating your queries is also the code enforcing tenant boundaries, you don't
+> have isolation — you have a convention. Push it down to where the engine enforces it on
+> every statement, and make the failure mode "see nothing," never "see everything." (At
+> [nlqdb](https://nlqdb.com) every provisioned database ships with this RLS by default.)
 
-**Why this advances the north-star:** this run's lever was exactly this reset (the daily
-scorecard, 15 KB → under its 5 KB cap), so the post is its lesson. Keeps the daily
-instrument lean (GLOBAL-025); one nlqdb mention; no KPI degrades.
+**Why this advances the north-star:** ships the 15th solve page
+(`/solve/isolate-ai-agent-memory-per-tenant`), a P2 agent-builder on-ramp for the
+multi-tenant-isolation search; GLOBAL-025 onboarding/UX surface +1 (solve pages 14 → 15),
+engine + performance untouched.
 
 ## Collapsed — full drafts in git history
 
+- run 96 — dev.to / lobste.rs / r/ExperiencedDevs: "Your status doc keeps its own history. That's why nobody reads it." (a freshness-capped, daily-read status doc bloated to 3× its cap because each run glued a changelog line onto it; status answers "what's true now" and dies of length, changelog only works by accreting — in one file the accretion instinct always wins; fix is structural, give the capped doc a sibling that remembers and route "what happened" there).
 - run 95 — dev.to / lobste.rs / r/MachineLearning: "Your eval harness will report 0% when the problem is your Wi-Fi" (an NL→SQL eval printed `EA=0.00%` from a sandbox that couldn't reach any provider — every attempt failed `network`, scored "no SQL," averaged to a meaningless 0 that would re-seed the baseline; "couldn't measure" and "measured zero" were the same outcome; fix makes non-measurement a loud distinct state — if *every* row failed for an infra reason it's an outage not a result, so refuse to compare/emit and exit non-zero; one-sided, never hides a regression; `isTransportCollapse`, SK-QUAL-020).
 
 - run 94 — dev.to / lobste.rs: "We made share cards for half our buyer's journey and forgot the other half" (two page clusters serve one buyer — comparison `/vs` + solve pages; bespoke OG cards shipped for `/vs` months earlier, solve pages silently fell back to the generic card; each cluster internally consistent so nothing looked broken — the gap lived *between* them; coverage audits keyed on a template miss gaps between parallel clusters — diff instrumentation cluster-against-cluster; P2 solve-page OG cards 0 → 10).
@@ -95,9 +96,7 @@ instrument lean (GLOBAL-025); one nlqdb mention; no KPI degrades.
 - runs 43–44 — "Your benchmark should look like your users' database, not a research paper's" (persona-bench: NL→SQL on the schema shapes users actually build; sound-ruler invariant 12/12 before any accuracy number).
 - run 43 — "Ship your LLM lever as a default-off ablation — measure before you adopt" (`buildPlanSystem(goal, schema, k)`, `k=0` byte-identical; prove inert + token-negative before spending quota; closes runs 38–43 retrieval arc).
 - run 42 — "Don't hand-pick few-shot examples — size the pool from your benchmark's error classes" (one exemplar per mismatch class; precision@1 10/10, 3.5× closer skeleton; `packages/llm/plan-exemplar-pool.ts`).
-- run 41 — "Cross-schema few-shot retrieval: mask each example against *its own* schema" (`selectExemplarsForSchema`, per-row masking; `packages/llm/few-shot-select.ts`). Runs 37–42 value/identifier-masking + self-consistency stubs consolidated here.
-- run 39 — "How nlqdb expires agent memory (and why only facts get a TTL)" (facts-only `expires_at`, per-DB-isolated daily `DELETE` + RLS recency clause; `SK-PIVOT-011`, E-04).
-- runs 8–18, 33, 37 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
+- runs 8–18, 33, 37, 39, 41 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 
