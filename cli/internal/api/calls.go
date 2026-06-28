@@ -39,6 +39,18 @@ func (c *Client) Remember(ctx context.Context, req RememberRequest) (*RememberRe
 	return &out, nil
 }
 
+// Connect hits POST /v1/db/connect (SK-CLI-019) — register an existing
+// hosted engine by its connection URL. The URL is a credential carried in
+// the request body; the CLI never persists it and the server never echoes
+// it back (the 201 body carries only the registered DB's metadata).
+func (c *Client) Connect(ctx context.Context, req ConnectRequest) (*ConnectResponse, error) {
+	var out ConnectResponse
+	if err := c.do(ctx, http.MethodPost, "/v1/db/connect", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ListDatabases hits GET /v1/databases. Empty list means a fresh tenant
 // — the create-path will fire on the next `nlq ask` per SK-ASK-009.
 func (c *Client) ListDatabases(ctx context.Context) ([]DatabaseSummary, error) {
