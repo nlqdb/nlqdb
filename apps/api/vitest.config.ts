@@ -79,6 +79,7 @@ export default defineConfig(async () => {
               "src/ask/retry.test.ts",
               "src/ask/diff.test.ts",
               "src/ask/demand-signal.test.ts",
+              "src/ask/frontier-router.test.ts",
               "src/run/orchestrate.test.ts",
               "src/memory/remember.test.ts",
               "src/memory/expire.test.ts",

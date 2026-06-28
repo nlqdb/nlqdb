@@ -156,7 +156,7 @@ implemented"* mirrors this and stays at a very low score until **every** row is 
 - ⬜ Tiered key rotation + per-tier token budgets (`SK-FRONTIER-002`)
 - ⬜ KV `frontier:active_tier` pointer + advance/reset (`SK-FRONTIER-003`)
 - ⬜ `isFrontierEligible` exclusion predicate (`SK-FRONTIER-004`)
-- ⬜ Wire the lane into `apps/api/src/ask/model-picker.ts` (gated)
+- ✅ Wire the gated lane into `/v1/ask` (`apps/api/src/ask/frontier-router.ts`; dormant — mutates `routing.router` only on the non-BYOLLM/free path; dormancy test)
 - ⬜ Verify current OpenAI model IDs + Anthropic IDs before enabling (P2)
 - ⬜ Daily/cron budget-window reset of the KV pointer
 - ⬜ Enable in production (`HAS_FRONTIER_API_KEYS = true`) — the final, founder-only step

@@ -41,6 +41,7 @@ import {
   revokeKeyById,
 } from "./api-keys.ts";
 import { buildAskDeps, buildEventEmitter, buildMemoryExec } from "./ask/build-deps.ts";
+import { resolveFrontierAskRouter } from "./ask/frontier-router.ts";
 import {
   BYOLLM_HEADER,
   type ByollmCredential,
@@ -893,6 +894,21 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         },
         503,
       );
+    }
+
+    // SK-FRONTIER-001..004 — dormant founder-funded frontier lane. While
+    // HAS_FRONTIER_API_KEYS is false, `resolveFrontierAskRouter` returns null
+    // before any env/KV access, so this is a provable no-op and the
+    // free/BYOLLM router from `resolveAskRouter` stands unchanged. Only the
+    // FREE query path is upgraded — a selected BYOLLM lane (the user's own
+    // key) always wins, so we skip when that lane was chosen. Mutating
+    // `routing.router` matches how the BYOLLM router already propagates to the
+    // query path (the create/DDL branches keep the free router).
+    if (routing.attributes["llm.dispatch_lane"] !== "byollm") {
+      const frontierRouter = await resolveFrontierAskRouter(c.env, principal.kind, {
+        e2e: (c.req.header("x-nlqdb-e2e") ?? "") === "1",
+      });
+      if (frontierRouter) routing.router = frontierRouter;
     }
 
     // SK-ASK-009 + SK-ASK-014 prelude — routeAsk runs on every authed
