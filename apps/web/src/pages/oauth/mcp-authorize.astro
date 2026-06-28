@@ -1,0 +1,267 @@
+---
+// Hosted-MCP OAuth consent screen (`SK-MCP-013`). `apps/mcp`'s
+// `/authorize` redirects the browser here (on `app.nlqdb.com`, where the
+// Better Auth cookie lives) with a signed `flow` envelope, the OAuth
+// `client_name`, and the bridge `callback`. This page gates on a live
+// session, shows the user what they're connecting, and on Approve mints
+// a one-shot code via `POST /v1/oauth/mcp-callback` then bounces the
+// browser to the bridge callback so `apps/mcp` can complete the grant.
+//
+// Without this page the hosted-MCP OAuth flow 404s the moment a host
+// (Cursor, Claude Desktop) tries to connect — it is the user-facing half
+// of the SK-MCP-013 bridge.
+
+import Base from "../../layouts/Base.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
+---
+<Base
+  title="Connect to nlqdb"
+  description="Authorize an MCP client to query your nlqdb databases."
+>
+  <div class="page">
+    <main class="consent" data-api-base={apiBase}>
+      <!-- Consent prompt — revealed only after the session probe passes
+           and the request params validate. -->
+      <section id="consent-card" class="consent__card" aria-labelledby="consent-title" hidden>
+        <h1 id="consent-title" class="consent__title">Connect to nlqdb.</h1>
+        <p class="consent__lede">
+          <strong id="consent-client" class="consent__client"></strong> wants to connect to your
+          nlqdb account.
+        </p>
+        <ul class="consent__scopes">
+          <li>Create databases and run queries on your behalf.</li>
+          <li>A dedicated key is minted — revoke it anytime from <a class="consent__link" href="/app/keys">your keys</a>.</li>
+        </ul>
+        <div class="consent__actions">
+          <button type="button" id="consent-approve" class="btn btn--accent consent__approve">
+            Approve
+          </button>
+          <button type="button" id="consent-cancel" class="btn consent__cancel">
+            Cancel
+          </button>
+        </div>
+        <p id="consent-error" class="consent__error" hidden role="alert"></p>
+      </section>
+
+      <!-- Invalid / expired link. -->
+      <section id="consent-invalid" class="consent__card" hidden>
+        <h1 class="consent__title">This link isn't valid.</h1>
+        <p class="consent__lede">
+          The connection request is missing or malformed. Start the connection again from your MCP
+          client.
+        </p>
+        <a class="btn btn--accent consent__approve" href="/app">Go to nlqdb</a>
+      </section>
+
+      <!-- Cancelled. -->
+      <section id="consent-cancelled" class="consent__card" hidden>
+        <h1 class="consent__title">Connection cancelled.</h1>
+        <p class="consent__lede">No access was granted. You can close this tab.</p>
+        <a class="btn btn--accent consent__approve" href="/app">Go to nlqdb</a>
+      </section>
+    </main>
+  </div>
+</Base>
+
+<script>
+  // Auth-guarded consent glue (SK-MCP-013). Mirrors the `/app/keys`
+  // inline guard: the shell stays hidden until `fetchSession` resolves;
+  // an unauthenticated probe bounces to sign-in with a `return_to` so
+  // the user lands back on this exact consent URL (params intact) after
+  // signing in.
+  import { fetchSession } from "../../lib/session";
+  import {
+    buildBridgeRedirect,
+    decodeFlowPayload,
+    deriveMcpHost,
+    genDeviceId,
+    validateCallback,
+  } from "../../lib/mcp-consent";
+
+  const root = document.querySelector<HTMLElement>(".consent");
+  if (root) {
+    const apiBase = (root.dataset["apiBase"] ?? "").replace(/\/$/, "");
+
+    const show = (id: string) => {
+      document.getElementById(id)?.removeAttribute("hidden");
+    };
+
+    const params = new URLSearchParams(location.search);
+    const flow = params.get("flow") ?? "";
+    const clientName = params.get("client_name") ?? "";
+    const callbackParam = params.get("callback") ?? "";
+
+    // Validate the request before touching the session. `callback` is the
+    // security boundary — it's where the one-shot code (which redeems to
+    // an `sk_mcp_*` bearer) gets sent, so it must point at the trusted MCP
+    // origin. `flow` must carry a decodable OAuth payload.
+    const callback = validateCallback(callbackParam);
+    const payload = flow ? decodeFlowPayload(flow) : null;
+    if (!flow || !callback || !payload) {
+      show("consent-invalid");
+    } else {
+      void run(callback, payload);
+    }
+
+    async function run(
+      callback: string,
+      payload: NonNullable<ReturnType<typeof decodeFlowPayload>>,
+    ) {
+      const user = await fetchSession(apiBase);
+      if (!user) {
+        const returnTo = `${location.pathname}${location.search}${location.hash}`;
+        const signInUrl = new URL("/auth/sign-in", location.origin);
+        signInUrl.searchParams.set("return_to", returnTo);
+        location.replace(signInUrl.toString());
+        return;
+      }
+
+      // Client name is attacker-controllable (any registered OAuth
+      // client) — render as text, never markup.
+      const clientEl = document.getElementById("consent-client");
+      if (clientEl) clientEl.textContent = clientName || "An MCP client";
+      show("consent-card");
+
+      const approveBtn = document.getElementById("consent-approve") as HTMLButtonElement | null;
+      const cancelBtn = document.getElementById("consent-cancel") as HTMLButtonElement | null;
+      const errorEl = document.getElementById("consent-error");
+
+      // One Idempotency-Key per page load (GLOBAL-005): a double-click or
+      // network retry returns the already-minted code instead of minting a
+      // second `sk_mcp_*` key.
+      const idempotencyKey = crypto.randomUUID();
+      const mcpHost = deriveMcpHost(clientName);
+      const deviceId = genDeviceId();
+
+      cancelBtn?.addEventListener("click", () => {
+        document.getElementById("consent-card")?.setAttribute("hidden", "");
+        show("consent-cancelled");
+      });
+
+      approveBtn?.addEventListener("click", async () => {
+        approveBtn.disabled = true;
+        if (cancelBtn) cancelBtn.disabled = true;
+        const original = approveBtn.textContent;
+        approveBtn.textContent = "Connecting…";
+        if (errorEl) errorEl.hidden = true;
+        try {
+          const res = await fetch(`${apiBase}/v1/oauth/mcp-callback`, {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "content-type": "application/json",
+              accept: "application/json",
+              "idempotency-key": idempotencyKey,
+            },
+            body: JSON.stringify({
+              client_id: payload.ci,
+              redirect_uri: payload.ru,
+              state: payload.st,
+              mcp_host: mcpHost,
+              device_id: deviceId,
+            }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const { code } = (await res.json()) as { code: string };
+          // Hand the one-shot code back to the bridge; `apps/mcp`
+          // re-verifies `flow`, redeems the code, and completes the grant.
+          location.replace(buildBridgeRedirect(callback, code, flow));
+        } catch {
+          approveBtn.disabled = false;
+          if (cancelBtn) cancelBtn.disabled = false;
+          approveBtn.textContent = original;
+          if (errorEl) {
+            errorEl.textContent = "Couldn't complete the connection — try again.";
+            errorEl.hidden = false;
+          }
+        }
+      });
+    }
+  }
+</script>
+
+<style is:global>
+  .consent {
+    min-height: 70vh;
+    display: grid;
+    place-items: center;
+    padding: clamp(48px, 8vw, 96px) 24px;
+  }
+
+  .consent__card {
+    width: 100%;
+    max-width: 440px;
+    padding: clamp(28px, 5vw, 48px);
+    background: var(--bg-elev);
+    border: 2px solid var(--border-strong);
+    box-shadow: var(--shadow-hard);
+  }
+
+  .consent__title {
+    font-family: var(--mono);
+    font-size: clamp(22px, 3.2vw, 28px);
+    letter-spacing: -0.02em;
+    margin: 0 0 12px;
+  }
+
+  .consent__lede {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--fg);
+    margin: 0 0 20px;
+    line-height: 1.5;
+  }
+
+  .consent__client {
+    color: var(--accent);
+  }
+
+  .consent__scopes {
+    margin: 0 0 28px;
+    padding-left: 18px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg-dim);
+    line-height: 1.6;
+  }
+
+  .consent__link {
+    color: var(--accent);
+  }
+
+  .consent__actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .consent__approve {
+    justify-content: center;
+  }
+
+  .consent__cancel {
+    border: 2px solid var(--border-strong);
+    background: transparent;
+    color: var(--fg);
+  }
+
+  .consent__cancel:hover:not(:disabled) {
+    border-color: var(--fg);
+  }
+
+  .consent__approve:disabled,
+  .consent__cancel:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+
+  .consent__error {
+    margin: 16px 0 0;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #ff8a8a;
+    background: #2a1212;
+    border: 2px solid #ff8a8a;
+  }
+</style>
