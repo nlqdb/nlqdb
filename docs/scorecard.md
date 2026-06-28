@@ -1,109 +1,55 @@
 # Scorecard — current state
 
 Point-in-time **progress tracker**, regenerated each
-[`/daily`](../.claude/commands/daily.md) run from live sources (D1, KV, CF
-GraphQL, GH Actions runs, `tools/eval/baseline-2026-06-15.json`). **Current state only — no
-run-by-run changelog accretes here** (that is what kept this file growing past
-its cap). Full per-run history lives in `git log` +
-[`progress/quality-score-verification-log.md`](progress/quality-score-verification-log.md)
-(engine) + the WS-*/E-* worksheets. The 20-row Pivot section mirrors
-[`agent-memory-pivot/worksheets/INDEX.md`](features/agent-memory-pivot/worksheets/INDEX.md)
-and collapses to a one-line summary once the pivot completes (GLOBAL-036).
+[`/daily`](../.claude/commands/daily.md) run. **Current state only — no changelog
+accretes here** (that bloated this file 3× past its ≤5 KB cap; reset 2026-06-28).
+History: `git log` + `progress/quality-score-verification-log.md` (engine) + the
+WS-*/E-* worksheets. Pivot rows mirror `agent-memory-pivot/worksheets/INDEX.md`.
 
-**Weekly focus number:** *(none set — founder picks at the weekly session;
-until then the daily lever targets the worst number below)*
+**Weekly focus number:** *(none set — founder picks at the weekly session; until
+then the daily lever targets the worst number below.)*
 
 **Worst number today:** real strangers reaching a first answer = **0**
-(funnel/distribution lane) — the product is open, so the engine-side worst,
-**Spider 0.1852 vs 0.75**, owns it. Bottleneck = **SQL reasoning** (mismatches),
-not provider availability (Gemini healed 06-17, `SK-LLM-039`) nor literal
-grounding (`SK-QUAL-014`: `literal_only` = 0). BIRD re-run 06-19 **flat**
-(0.522 → 0.520, McNemar p=0.50) ⇒ directive levers (T13–T22) **saturated**; the
-path to target is the §4 **reasoning** levers (#1 DAIL-SQL retrieval, #3
-self-consistency), both **built end-to-end** but **dispatch-gated today** (both
-evals < 7 d, §5). The DAIL-SQL **selector** half is at its **offline ceiling**
-(run 52; held-out precision@1 **14/14**) and **pool curation is now exhausted
-too** (run 81: the 3 residual persona-bench misses q8/q10/q22 are *not*
-phrasing leaks — own-ICP precision@1 **20/23**, held-out 14/14). The only
-remaining offline #1 gain is SQL-skeleton similarity (an LLM round-trip, not a
-daily lever) or the gated dispatch. Free chain scores **0.90 EX (18/20) on the
-ICP shape** (row 8, run 58) — **1.7× BIRD, 4.9× Spider** — the GLOBAL-026 bet
-that clean product-shaped schemas are already solved on free LLMs. The
-**frontier** delta (row 9, headline) is **secret-blocked, not dispatch-blocked**:
-`OPENROUTER_FRONTIER_API_KEY` empty in CI (filed in `blocked-by-human.md`);
-lands the instant the founder sets it.
+(funnel/distribution). Product is open, so the engine-side worst — **Spider
+0.1852 vs 0.75** — owns it. Bottleneck = **SQL reasoning**. Directive levers
+(T13–T22) **saturated**; path to target is the §4 reasoning levers (#1 DAIL-SQL
+retrieval, #3 self-consistency) — both **built end-to-end**, both dispatch-gated.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel — 2026-06-25 (live re-pull)** | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF Web Analytics) | 83 visits / 139 pageloads (raw, incl. walker) | was 62/98 bot-filtered (06-22); account-level RUM here can't split per-path so this is unfiltered — genuine-stranger signal lives in rows #2/#3, not here |
-| 2 | Waitlist rows, real | 1 of 81 | 80 walker/test/probe; the 1 is the founder → ~0 genuine strangers (+2 since 06-22, both flow004 walker) |
-| 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev accounts (unchanged from 06-22) |
-| 4 | Anon DBs with a recorded first answer | **130 of 130** | every DB has a first query; +11 since 06-22 (130 total, 92 anon-adoptions). Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
-| | **Engine — BIRD 2026-06-19 (< 7d) · Spider 2026-06-17 (crosses 7d on 06-25) · persona-bench 2026-06-22** | | `tools/eval/baseline-2026-06-15.json` (BIRD/Spider only; persona-bench never overwrites the canonical baseline, `SK-QUAL-018`). Spider re-dispatch is due 06-25 on a run that does **not** merge a PR (a merge moves `main` and misses the SHA-keyed multi-window checkpoint); last run completed clean on main (no resumable checkpoint), so it will be a fresh windowed run, not a resume |
-| 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
-| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Now crosses 7d (06-17 → 06-25): stale.** Run 92 attempted the canonical re-dispatch on main (515a033) but the GitHub-workflow API is **blocked in this session** (proxy: "org admin must connect the Claude GitHub App") — `GH_TOKEN_WORKFLOW` present but the proxy gates the dispatch; the cron `/daily` lane is unaffected, so the re-dispatch carries to the next cron run. Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half (run 40) + **runner `--self-consistency N` / `--sc-temperature T` main-loop wiring (run 41)** — `samples>=2` branch in `runOneQuestion` (separate from `withExecRetry`): `samplePlans`→`voteOverSamples` over `executeRows`→score-the-winner; folds into checkpoint/budget-stop/`attempts`, `.scN` checkpoint variant. The lever is now end-to-end bar the CI `workflow_dispatch` input. EX delta next dispatch** |
-| 8 | persona-bench free-chain EX | **0.90 (18/20)** | full-chain ICP EX (run 58 GHA 27983818047; **run 63 reproduced it locally**). **1.7× BIRD, 4.9× Spider** — GLOBAL-026 bet. **Single N=20 runs are ±1 noisy** — misses flake across legs/runs (q8/q11/q18) as failover assigns models per run — so canonical N=500 BIRD/Spider (dispatch-gated <7d) stay the only *powered* engine levers. Run 63 root-caused the one **stable** miss q8: a **tie-fragile gold**, not an engine gap — `score.ts` is sequence-strict on `ORDER BY` golds and q8 tied two facts at count 2, so the weak llama leg (`GROUP BY object`) false-mismatched gold (`GROUP BY f.id`); fixed tie-free (`SK-QUAL-019`, fixture-only). Batch 3 (run 68) 20 → 23 q, gold-exec 23/23 (GHA 0.90 was on 20 q; local throttled 21/23); retrieval precision@1 18/20 → 18/23 (run 68) → 19/23 (run 74) → **20/23** (run 76: q20 landed by reframing the `scalar-subquery` demo to the natural "Which products are priced above the average price? List the product names"; both q21+q20 were exemplar-phrasing leaks, not selector gaps; held-out still 14/14; 3 residual misses q8/q10/q22 stay selector-side) |
-| 9 | free-vs-frontier delta | null *(secret-blocked, not dispatch-blocked)* | run 58 dispatched persona-bench with `include_frontier=true`, but the job log shows `OPENROUTER_FRONTIER_API_KEY:` resolves **empty** → only the free lane built, `free_vs_frontier_delta=null`. Root-caused + filed in `blocked-by-human.md` (founder sets the repo secret). The dispatch path itself is proven working; the delta lands the moment the key is set. Agentic lane also not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
-| | **Ops — 7d, CF Workers analytics (06-22 re-pull)** | | wall-time, all routes (not `/ask`-only) |
-| 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err; 7d totals lower as walker traffic ages out |
-| 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s (06-22) | `workersInvocationsAdaptive` wallTime; p50 trivial routes (static/CORS/health), p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
-| 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **E2E — manual suites (not in CI), 2026-06-25 live (GH Actions)** | | mean(`pass × freshness`) over the 4 `workflow_dispatch`-only suites (`e2e-sdk`/`e2e-mcp`/`e2e-examples`/`e2e-opencheck`); freshness decays 1.0→0 over the 7 d since each suite's last green. Regen rule: `/daily` §1. CLI excluded — it auto-runs on `cli/**` PRs |
-| 13 | E2E manual-suite freshness | **0.00** | target > 0 (1.0 = all 4 green & run today). **3/4 latest-green** (sdk ✅, examples ✅, opencheck ✅; **mcp ❌ failed 06-24**) — but **all 4 last-green ≥ 7 d** ⇒ every freshness = 0 ⇒ score 0. Last green: opencheck 06-12 (13 d), sdk/examples/mcp 05-31 (25 d; mcp now red). Re-dispatch the 4 `e2e-*.yml` to lift it |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 14 / 20 + 10 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md`; run 53 +`/vs/pinecone` (P2 cluster 4→5); run 56 +`/vs/chroma` (OSS-first vector wing — P2 cluster 5→6); run 59 +`/vs/weaviate` (enterprise/hybrid-search wing — P2 cluster 6→7); run 61 +`/vs/qdrant` (Rust/quantization wing — P2 cluster 7→8, closes the top-tier vector-DB brand cluster); run 79 +`/vs/cognee` (knowledge-graph wing — P2 cluster 8→9, the "not a vector store" memory framework); run 84 +`/vs/milvus` (open-source billion-scale ANN wing — P2 cluster 9→10) |
-| | *Messaging track — WS-\** | 12 / 13 (WS-07 ✅ 3/3, WS-09 ✅ 2/2, WS-12 ✅ 2/2, WS-13 ✅) | pick when worst number is funnel / distribution |
-| WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
-| WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
-| WS-03 | solve pages — sharpen + sibling | ✅ 2/2 | run 23 — **sharpen ✅**; run 25 — **analytical sibling ✅** (`analytical-queries-over-agent-memory`, the read-side report-over-memory wedge) |
-| WS-04 | MCP tool + package + docs framing | ✅ | run 24 — three tool descriptions + `package.json` desc + `mcp.mdx` intro now lead with "analytical memory" (copy only; SK-PIVOT-003) |
-| WS-05 | carousel analytics-over-memory slides | ✅ | run 26 — 2 analytics-over-memory slides (`GROUP BY category` + top-N `ORDER BY … LIMIT 5`), MCP surface; data-only `showcase-examples.ts` |
-| WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | ✅ | run 27 — **data ✅** (`agentMemoryMatrix.ts`, 9 honest rows + test); run 28 — **render ✅** (`AgentMemoryMatrix.astro`, four-up glyph grid, nlqdb accent column, no `<img>`) |
-| WS-07 | `/agents` landing | ✅ 3/3 | run 30 — **skeleton + hero ✅**; run 31 — **matrix + moat ✅** (WS-06 matrix + typed-plan trust-boundary pipeline + FSL/BYO-key band); run 35 — **CTA + demand-signal ✅** (memory-shaped "try this query" → `agents.try_query_clicked` GLOBAL-024 → `/app/new`; Topnav `Agents` link; P2-keyed `/vs` cross-link). WS-07 closed → **unblocks E-06** |
-| WS-08 | on-brand OG / social images | ✅ | run 42 — `scripts/og/gen-og.mjs` SVG→PNG generator + 5 committed `public/og/*.png` cards (`/agents` + the 4 P2 memory `/vs`); `ogImage` wired; generator stays out of `astro build` (SK-PIVOT-012) |
-| WS-09 | "database, not a vector store" blog + live demo | ✅ 2/2 | run 30 — **blog draft ✅** (launch post in `distribution-queue.md`); run 41 — **live `/agents` demo ✅** — fixture round-trip (`agent_memory` rows → English goal → compiled `GROUP BY` SQL → result table, server-rendered for AEO/no-JS per SK-PIVOT-004; "Run this query" button → `agents.demo_run_clicked` GLOBAL-024 signal; no open `/v1/ask`). WS-07 page existing cleared the #430 collision |
-| WS-10 | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix shipped) | ✅ | run 28 — pricing self-host band + README "Models & plans" self-host line (FSL-accurate; no turnkey-image claim per WS-11 note) |
-| WS-11 | pull `ghcr.io/nlqdb/api` self-host container forward | ⬜ | high · multi · WS-10 · infra-gated |
-| WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ✅ 2/2 | run 43 band; run 44 `AlsoWorksFor` fold before CodePanel + Replaces (composition-only, nothing deleted, hero untouched) |
-| WS-13 | headline reposition (hero / README / llms.txt / JSON-LD) | ✅ | **founder tripped the gate 2026-06-24** (SK-PIVOT-013); 4 lead strings → "Analytical memory for AI agents" + `/agents` connect-via-MCP CTA |
-| | *Engine track — E-\** | 2 / 7 | pick when worst number is engine quality / agent on-ramp |
-| E-01 | `agent_memory_v1` schema preset for `db.create` | ✅ | run 29 module + run 30 wiring (SK-HDC-020): `db.create { preset: "agent_memory_v1" }` provisions the 4 tables deterministically, no LLM; gated behind `MEMORY_PRESET`. One follow-on: quality-eval ablation row (Neon-branch gated) |
-| E-02 | additive MCP tool `nlqdb_remember` (no rename) | ✅ | run 31 (SK-PIVOT-008): server-built deterministic parameterised INSERT via `POST /v1/memory/remember` (never `/v1/run` — trust boundary), `wrong_preset` guard, SDK `remember()`, `nlqdb_remember` tool. Follow-ons: e2e Neon smoke (infra) + CLI `nlq remember` (Go) |
-| E-03 | per-agent / end-user / thread scoping — **RLS, not query-rewriting** (SK-PIVOT-009, mechanism corrected run 32) | ⬜ | **high · security-critical** · ~2 runs · E-01 · Neon-gated |
-| E-04 | TTL + cron sweep (`expires_at`) | ⬜ | low · 1 run · E-01 |
-| E-05 | hybrid recall — pgvector + `nlqdb_recall` | ⬜ | high · multi · E-01 · infra-gated |
-| E-06 | preset on-ramp — **authed** create surface (`MEMORY_PRESET`-gated) | ⬜ redirected | run 37 (SK-PIVOT-010): anon `/agents` CreateForm path infeasible (3 auth boundaries); blocked on `MEMORY_PRESET=1` in prod (dark) |
-| E-07 | workload-analyzer rule: memory DBs → ClickHouse (Phase 3) | ⬜ | med · multi · E-01 + Phase-3 multi-engine |
+| | **Funnel** (06-25 pull; carried — analytics/D1 re-pull blocked this run) | | exclude synthetic stranger-test walker traffic |
+| 1 | Visits, 7d (CF Web Analytics) | 83 / 139 pageloads (raw, incl. walker) | account-level RUM can't split per-path; genuine-stranger signal is rows #2/#3 |
+| 2 | Waitlist rows, real | 1 of 81 | 80 walker/test/probe; the 1 is the founder → ~0 genuine strangers |
+| 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev |
+| 4 | Anon DBs with a first answer | 130 of 130 | every DB has a first query; genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
+| | **Engine** — BIRD 06-19 (**9d, stale**) · Spider 06-17 (**11d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Re-dispatch carries to the cron `/daily` lane** — interactive dispatch 403; bun `fetch` can't tunnel proxy-MITM TLS so local eval is blocked too |
+| 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Flat within variance (McNemar p=0.50) — directive levers saturated; reasoning levers (§4 #1/#3) next |
+| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number.** Self-consistency (`SK-QUAL-017`) end-to-end bar the CI dispatch input; EX delta on next dispatch |
+| 8 | persona-bench free-chain EX | 0.90 (18/20) | full-chain ICP EX (run 58/63). **1.7× BIRD, 4.9× Spider** — the GLOBAL-026 bet. N=20 runs ±1 noisy. Retrieval precision@1 **20/23** (run 76); 3 residual misses q8/q10/q22 need query-skeleton similarity (LLM round-trip) — lexical avenue rejected (run 52) |
+| 9 | free-vs-frontier delta | null *(secret-blocked)* | `OPENROUTER_FRONTIER_API_KEY` empty in CI (filed in `blocked-by-human.md`); dispatch path proven, delta lands when founder sets the secret |
+| | **Ops** — 7d, CF Workers analytics (06-22 pull) | | wall-time, all routes |
+| 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err |
+| 11 | nlqdb-api wall-time p50 / p95 | 0.94 ms / 2.62 s | p50 trivial routes, p95 LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` |
+| 12 | $ spend | ~$0 | free tiers (CF / Neon / LLM chain) |
+| | **E2E** — 4 manual `workflow_dispatch` suites (06-25 pull) | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d since last green |
+| 13 | E2E manual-suite freshness | 0.00 | target > 0. 3/4 latest-green (sdk/examples/opencheck ✅, mcp ❌ 06-24) but all last-green ≥ 7d ⇒ every freshness 0. Re-dispatch the 4 `e2e-*.yml` to lift (dispatch-gated) |
+| | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 10 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md`. `/vs`: zep·letta·langmem·pinecone·chroma·weaviate·qdrant·cognee·milvus (+mem0/zep/letta matrix) |
+| | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
+| | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03 (RLS scoping, security-critical) · E-04 (TTL sweep) · E-05 (hybrid recall) · E-06 (authed on-ramp, redirected) · E-07 (ClickHouse routing) — all Neon/infra-gated |
 
 ## Shipped distribution (live URLs)
 
-Published artifacts from [`distribution-queue.md`](research/distribution-queue.md), current state — newest first. *(none yet — drafts await the founder's weekly review.)*
+From `research/distribution-queue.md` — *(none live yet; drafts await review.)*
 
 ## Last change
 
-**2026-06-25 (run 95)** — **measurement-integrity fix: eval transport-collapse
-guard (SK-QUAL-020)**. Engine + funnel measurement was **triple-blocked this
-session** — every dispatch/measurement tool fails to traverse the egress proxy:
-MCP **and** direct-`curl` `workflow_dispatch` → 403 ("org admin must connect the
-Claude GitHub App"); **bun `fetch`** to LLM providers → socket-closed (MITM CA not
-applied to the tunnel); **chromium** (stranger-test) → `ERR_CONNECTION_CLOSED`
-even to example.com. Only `curl` + node-22 `fetch` (`NODE_USE_ENV_PROXY=1`) egress;
-the eval runner is bun/`bun:sqlite`-coupled, so local BIRD/Spider/persona-bench
-can't run here either. The finding *became* the lever: a local persona-bench smoke
-reported **`EA=0.00% (match=0/1)`** with `no_sql reasons: *:network` — an outage the
-runner would have compared to the baseline / emitted as a regression. Added
-`isTransportCollapse` (sibling to the SK-QUAL-013 capacity stop): when every ran
-lane is all-`no_sql` with only `network`/`timeout`/`not_configured`/`auth_denied`
-reasons, set `transport_failed`, **drop** the poisoned checkpoint, skip
-baseline-diff + emit, exit non-zero. Conservative — any answered question or
-`parse`/`http_*` reason scores normally, so a real regression is never suppressed.
-9 unit + e2e tests; 274/274 eval tests green, typecheck + biome clean. D4: trimmed
-SK-QUAL-014/016/017/018/019 glosses so quality-eval `FEATURE.md` **net-shrank**
-(21729 → 21710 B) despite the new SK-QUAL-020 block. **KPI:** engine-quality
-measurement integrity (GLOBAL-025) — protects the BIRD/Spider/persona-bench
-baseline from a false 0.00; none degraded (runtime untouched, eval-only). Revert =
-one commit. **Engine numbers:** unchanged — Spider re-dispatch carries to cron
-`/daily` (blocked here); BIRD 06-19 <7d (crosses 06-26); persona-bench 06-22.
-
-*Full per-run history: `git log`, `progress/quality-score-verification-log.md`,
-and the WS-*/E-* worksheets — not this file.*
+**2026-06-28 (run 96)** — **scorecard reset to its ≤5 KB cap** (15554 → this; a
+~10 KB D4/D5 net-shrink of the instrument every run reads first; accreted prose
+stripped — history lives in `git log` + the verification log). Engine + funnel
+live measurement **triple-blocked again** (interactive `workflow_dispatch` 403;
+bun `fetch` can't tunnel proxy-MITM TLS so local eval is out; chromium walkers
+can't egress) — confirmed, not assumed. BIRD (9d) + Spider (11d) crossed 7d
+staleness; **engine re-dispatch carries to the cron `/daily` lane**. No engine
+offline lever remains (directive levers saturated, selector at ceiling +
+lexical tweaks rejected run 52, value/date falsified run 31). **KPI:** keeps the
+daily instrument lean — docs-only, no pillar degraded; revert = one commit.
