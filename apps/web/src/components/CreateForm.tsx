@@ -359,9 +359,10 @@ function McpHostCell({
 
   // Manual-fallback panel revealed in place on any host click.
   const panel = open ? (
-    <div
+    // A <section> with an accessible name carries the implicit "region"
+    // role — semantic equivalent of role="region" (biome useSemanticElements).
+    <section
       id={panelId}
-      role="region"
       aria-label={`${host.name} manual install`}
       style={{
         marginTop: 8,
@@ -391,7 +392,7 @@ function McpHostCell({
       >
         <code>{copyText}</code>
       </pre>
-    </div>
+    </section>
   ) : null;
 
   if (host.status === "deep-link" && host.href) {
