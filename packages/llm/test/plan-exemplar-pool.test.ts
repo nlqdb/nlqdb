@@ -63,6 +63,17 @@ const PROBES: readonly Probe[] = [
       "CREATE TABLE members (id INTEGER, name TEXT);\nCREATE TABLE payments (id INTEGER, member_id INTEGER, amount REAL)",
   },
   {
+    // Grouped count scoped to one named entity through a JOIN, over a different
+    // schema + word order than the pool row ("How often does each tag appear for
+    // the project named …" vs "Which roles appear for the department named …") —
+    // proves the filtered-grouped-count skeleton retrieves across domains and is
+    // not pulled to the unfiltered `group-by-count` / `join-aggregate` near-twins.
+    bucket: "filtered-group-by-count",
+    goal: "How often does each tag appear for the project named 'Apollo'?",
+    schema:
+      "CREATE TABLE projects (id INTEGER, name TEXT);\nCREATE TABLE issues (id INTEGER, project_id INTEGER, tag TEXT)",
+  },
+  {
     bucket: "group-max",
     goal: "What is the highest score in each class?",
     schema: "CREATE TABLE students (id INTEGER, name TEXT, class TEXT, score REAL)",
@@ -144,7 +155,7 @@ describe("plan-exemplar-pool", () => {
   it("covers one row per structural bucket, all distinct", () => {
     const buckets = PLAN_EXEMPLAR_POOL.map((r) => r.bucket);
     expect(new Set(buckets).size).toBe(buckets.length);
-    expect(PLAN_EXEMPLAR_POOL.length).toBe(14);
+    expect(PLAN_EXEMPLAR_POOL.length).toBe(15);
   });
 
   it("renders each payload in the static-prefix Question→JSON shape", () => {
@@ -281,6 +292,46 @@ describe("plan-exemplar-pool", () => {
     const grouped = PROBES.find((p) => p.bucket === "group-order-limit");
     const [gTop] = retrievePlanExemplars(grouped?.goal ?? "", grouped?.schema ?? "", 1);
     expect(gTop?.bucket).toBe("group-order-limit");
+  });
+
+  // The filtered-group-by-count row's measured coverage delta: a grouped count
+  // scoped to one named entity through a JOIN ("which X does the Y named '<val>'
+  // use, and how often") must retrieve the filtered demo. Without the row the
+  // nearest demo is `join-aggregate` (a SUM over a join, no GROUP-BY-COUNT and no
+  // named-entity filter) — the wrong skeleton. Meanwhile an *unfiltered* grouped
+  // count ("how many X in each Y") stays group-by-count. Same SK-LLM-036/037
+  // before/after pattern; this is the shape persona-bench q10 ("which predicates
+  // does the agent named 'support-bot' use, and how often") needs (ICP retrieval
+  // probe in `tools/eval`); on q10 itself the displaced demo is `having`.
+  it("filtered-group-by-count row flips a named-entity grouped count off the nearest unfiltered demo", () => {
+    const probe = PROBES.find((p) => p.bucket === "filtered-group-by-count");
+    expect(probe).toBeDefined();
+    const goal = probe?.goal ?? "";
+    const schema = probe?.schema ?? "";
+
+    // Before: rank against the pool with the filtered row removed — the nearest
+    // demo is `join-aggregate`, an unfiltered SUM-over-join (wrong skeleton).
+    const before = selectExemplarsForSchema(
+      goal,
+      schema,
+      PLAN_EXEMPLAR_POOL.filter((r) => r.bucket !== "filtered-group-by-count"),
+      1,
+    ) as PlanExemplar[];
+    expect(before[0]?.bucket).toBe("join-aggregate");
+
+    // After: the full pool retrieves the filtered demonstration top-1.
+    const [after] = retrievePlanExemplars(goal, schema, 1);
+    expect(after?.bucket).toBe("filtered-group-by-count");
+    expect(after?.payload).toContain("WHERE");
+    expect(after?.payload).toContain("GROUP BY");
+    expect(after?.payload).not.toContain("HAVING");
+
+    // The guard: an *unfiltered* grouped count ("how many X in each Y") must still
+    // retrieve group-by-count — the named-entity WHERE filter, not just GROUP BY,
+    // is the discriminator.
+    const plain = PROBES.find((p) => p.bucket === "group-by-count");
+    const [pTop] = retrievePlanExemplars(plain?.goal ?? "", plain?.schema ?? "", 1);
+    expect(pTop?.bucket).toBe("group-by-count");
   });
 });
 

@@ -49,6 +49,7 @@ export type PlanBucket =
   | "in-subquery"
   | "anti-join"
   | "join-aggregate"
+  | "filtered-group-by-count"
   | "group-max"
   | "group-order-limit"
   | "order-by-limit"
@@ -155,6 +156,24 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
     "CREATE TABLE customers (id INTEGER, name TEXT);\nCREATE TABLE orders (id INTEGER, customer_id INTEGER, amount REAL)",
     "What is the total order amount for each customer? Return the customer name and total.",
     "SELECT T2.name, SUM(T1.amount) FROM orders AS T1 JOIN customers AS T2 ON T1.customer_id = T2.id GROUP BY T2.name",
+  ),
+  ex(
+    // Grouped COUNT scoped to ONE named entity resolved through a JOIN — "how
+    // many <X> of each kind does the <Y> named '<val>' have". The shape is a
+    // JOIN (to resolve the name) + WHERE name = <val> + GROUP BY + COUNT, which
+    // neither `group-by-count` (no join, no filter) nor `join-aggregate` (SUM
+    // over a join, no named-entity filter) demonstrates. Without it, nlqdb's own
+    // "which predicates does the agent named 'support-bot' use, and how often"
+    // ICP query (persona-bench q10) retrieved the `having` demo — teaching a
+    // `HAVING COUNT(*)` filter the gold doesn't have (ICP retrieval precision@1
+    // 20/23 → 21/23, the `tools/eval` persona-retrieval probe). Ordered after
+    // `join-aggregate` so an unfiltered grouped count still breaks an exact
+    // masked-Jaccard tie toward the more general demo (earliest pool index wins).
+    "filtered-group-by-count",
+    "sqlite",
+    "CREATE TABLE departments (id INTEGER, name TEXT);\nCREATE TABLE employees (id INTEGER, dept_id INTEGER, role TEXT)",
+    "Which roles appear for the department named 'Sales', and how often?",
+    "SELECT T1.role, COUNT(*) FROM employees AS T1 JOIN departments AS T2 ON T1.dept_id = T2.id WHERE T2.name = 'Sales' GROUP BY T1.role",
   ),
   ex(
     "group-max",

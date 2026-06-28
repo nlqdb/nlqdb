@@ -22,7 +22,7 @@
 // closing the gap where `maskWithSchema` had no selector that consumed it. Pure
 // + zero-dep so production `buildPlanUser` and the eval harness can share it
 // byte-for-byte, exactly like schema-prune.ts. The exemplar *pool rows* now ship
-// in `plan-exemplar-pool.ts` (14 curated {question, schema, SQL} rows, proven
+// in `plan-exemplar-pool.ts` (15 curated {question, schema, SQL} rows, proven
 // offline). Two halves are still staged (not built here):
 //   (a) for the hot `plan` path, an embedding index over a larger pool;
 //       masked-token Jaccard is the offline, key-free stand-in DAIL's embedding

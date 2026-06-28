@@ -11,51 +11,54 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-28 (run 98) — dev.to / lobste.rs / r/webdev: "Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed."
+## 2026-06-28 (run 99) — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for."
 
-**Where:** dev.to + lobste.rs + r/webdev; a short, transferable web-infra lesson (the
-run-95/96 "self-inflicted measurement bug" family). nlqdb mentioned once, as the place
-the lesson came from.
+**Where:** dev.to + r/LLMDevs + lobste.rs; a transferable lesson on dynamic-few-shot
+(RAG-for-exemplars) retrieval for text-to-SQL agents. nlqdb mentioned once, as the
+place the lesson came from.
 
-**Title:** Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed.
+**Title:** Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for.
 
 **Body:**
 
-> A site now has three machine-readable indexes of itself, and they're maintained by
-> three different reflexes. `robots.txt` says who may crawl. `sitemap.xml` says what
-> exists. `llms.txt` says what an LLM should read first. They overlap almost entirely —
-> which is exactly why they drift: nothing forces them to agree, and three lists that
-> *mostly* match are the easiest kind to stop checking.
+> Dynamic few-shot is the cheap, real win in text-to-SQL: instead of a fixed prompt
+> prefix, retrieve the demonstrations whose *question* is closest to the user's, so the
+> model sees examples that match what's being asked. The standard trick (DAIL-SQL) is to
+> **mask** the question first — replace literal values and table/column names with
+> placeholders — so you match the question's *skeleton* ("how many X of each Y, for the
+> Z named ‹val›") and not its domain words. It works startlingly well from a tiny pool.
 >
-> We found ours disagreeing. A real, indexable marketing page was advertised in
-> `llms.txt` and allowed in `robots.txt`, but it had never been added to the hand-rolled
-> `sitemap.xml`. So a human or an LLM following links found it fine — and a crawler that
-> trusts the sitemap as the canonical "what exists" list never knew it was there. For a
-> site whose primary acquisition channel is *being cited by Perplexity / ChatGPT /
-> Claude*, an indexable page missing from the sitemap isn't cosmetic; it's a page that
-> doesn't exist as far as half your discovery surface is concerned.
+> Then we measured it on our own users' questions and found a quiet failure. "Which
+> predicates does the agent named 'support-bot' use, and how often?" — a grouped count
+> over a join, no threshold — retrieved a `HAVING COUNT(*) > n` example as its closest
+> demonstration. The masked skeletons genuinely overlapped, so a word-overlap score
+> ranked the threshold example top, and the model would have been shown a filter the
+> question never asked for.
 >
-> The root cause is the usual one: the dynamic routes (`/vs/*`, `/solve/*`) were derived
-> from a data file, so they could never drift — but the *static* top-level pages were a
-> hand-kept array, and a hand-kept list is a list someone will forget. The fix wasn't
-> "add the page" (that's the symptom). It was a test that re-derives the set of real
-> top-level pages and asserts every one appears in the sitemap, so the next forgotten
-> page fails CI instead of search.
+> The instinct is to fix the *ranker* — stopwords, phrase normalisation, similarity
+> tuning. We'd measured that and it lost: it shuffles which question breaks without
+> raising the hit rate, because flat token overlap can't tell a real structural token
+> from a coincidental one. The actual bug was the *pool*: it had no example of "grouped
+> count scoped to one named entity through a join." Every demonstration is a teacher, and
+> we had no teacher for that shape — so the question fell to the nearest wrong one. One
+> correct example for the missing skeleton fixed it.
 >
-> The transferable rule: **if two lists must agree, don't maintain two lists — derive
-> one from the other, or write the test that fails when they diverge.** Drift between
-> machine-readable indexes is invisible to humans (we navigate by links) and total to
-> crawlers (they navigate by the index). The cheapest moment to catch it is the commit
-> that creates it. (At [nlqdb](https://nlqdb.com) the sitemap, `llms.txt`, and
-> `robots.txt` are now parity-tested against the actual page set.)
+> Two transferable rules: **(1) a retrieval pool is a curriculum — a missing shape
+> doesn't return "no match," it returns the closest wrong thing, confidently. (2)
+> Measure retrieval offline before you spend a model call on it:** hold out a probe per
+> shape, phrased over a *different* domain than the example, and assert each retrieves
+> its intended skeleton — a cross-domain hit proves the masking generalises, not lexical
+> luck. We run it as a unit test; this fix moved the score 20/23 → 21/23 with the
+> held-out probes still perfect. (At [nlqdb](https://nlqdb.com) the exemplar pool and its
+> retrieval precision are both under test.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding on-ramp — the post drives a
-genuinely-useful read to the site and the underlying fix makes more of the site
-discoverable by the AI/search crawlers that are the primary acquisition channel; engine +
-performance untouched.
+**Why this advances the north-star:** GLOBAL-025 engine quality — a genuinely useful,
+specific lesson for anyone building a text-to-SQL or tool-calling agent, anchored to a
+real measured engine improvement; the post earns a citation without a pitch.
 
 ## Collapsed — full drafts in git history
 
+- run 98 — dev.to / lobste.rs / r/webdev: "Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed." (a site has three machine-readable indexes of itself — `robots.txt`/`sitemap.xml`/`llms.txt` — maintained by three reflexes that drift because nothing forces them to agree; a real indexable page advertised in `llms.txt` + allowed in `robots.txt` was never in the hand-rolled `sitemap.xml`, so link-followers found it and sitemap-trusting crawlers never knew it existed; fix re-derives the real top-level-page set and asserts every one is in the sitemap so the next forgotten page fails CI not search — if two lists must agree, don't maintain two, derive one or test the divergence).
 - run 97 — dev.to / r/LLMDevs / r/AI_Agents: "Your multi-tenant agent memory is one forgotten WHERE clause from a leak." (one DB holds a thousand customers' agent memory; the only thing between tenant A's rows and tenant B's answer is a `WHERE tenant_id = ?` the LLM has to remember in every query forever, and one miss leaks every tenant at once; fix moves isolation below the SQL into Postgres RLS keyed on `current_setting('app.tenant_id')` so a query with no filter sees nothing, not everything — isolation belongs in the layer that can't forget it; anchors `/solve/isolate-ai-agent-memory-per-tenant`).
 
 - run 96 — dev.to / lobste.rs / r/ExperiencedDevs: "Your status doc keeps its own history. That's why nobody reads it." (a freshness-capped, daily-read status doc bloated to 3× its cap because each run glued a changelog line onto it; status answers "what's true now" and dies of length, changelog only works by accreting — in one file the accretion instinct always wins; fix is structural, give the capped doc a sibling that remembers and route "what happened" there).
@@ -75,10 +78,7 @@ performance untouched.
 - run 83 — dev.to / lobste.rs: "I skipped the rich result Google was begging me to add" (the most-recommended structured-data win — the `WebSite` `SearchAction` sitelinks search box — is the one I deliberately *didn't* ship: a `SearchAction` is a promise that a URL template runs a query, but the homepage submits over JS with no `GET /search?q=…` route, so the schema would *validate* and be a *lie*; kept the honest half — `Organization` + `WebSite` with stable `@id`s and every page's `SoftwareApplication` naming that Organization as `publisher`; "would this validate?" is the wrong test, "is this true?" is; brand-entity nodes 1 → 3).
 - run 82 — dev.to / lobste.rs: "Your AI app tells sighted users the query failed. Screen readers get silence." (the AI-feature text box swaps *loading*/*result*/*error* async with two quiet a11y misses: the result region isn't a live region (`aria-live`/`role="status"` once on the container), and the *input* never says it's invalid — add `aria-invalid` + `aria-describedby` pointing at one error `id`, collapsing the structured + network error branches into a single `role="alert"` region; test the error path with the reader on; anchored to this run's CreateForm fix, ARIA associations 0 → 2).
 - run 81 — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections" (leaf `/vs` + `/solve` pages emit `FAQPage`/`BreadcrumbList`, but the hubs listing them carried only the site-wide `SoftwareApplication`; `ItemList` declares "an ordered, complete set" — build it from the same array the `<ul>` renders so it can't drift, item URLs at the trailing-slash 200; hub collection signal 0 → 2).
-- run 80 — dev.to / r/LLMDevs / lobste.rs: "Your chatbot's memory and your chatbot's metrics are two different databases" (a vector store answers *what is most similar* — top-k, no query planner; the moment the question is an aggregate ("how many conversations this week?") you either make the LLM count rows (hallucination) or bolt on a real DB; retrieval and analytics are different jobs — store turns as typed rows and the engagement questions become trustworthy `GROUP BY`s; anchors `/solve/store-query-chatbot-conversation-history`).
-- run 79 — dev.to / r/LLMDevs / lobste.rs: "Your agent's memory can recall anything and count nothing" (vector stores, Mem0/Zep/Letta/LangMem, and knowledge graphs like Cognee all converge on *recall* — top-k relevant — but counting/aggregation (GROUP BY/COUNT/JOIN/HAVING over the rows the agent stored) is a different job that needs a query planner; recall and analytics want two stores that compose, not one doing both; anchors `/vs/cognee`).
-- run 78 — dev.to / lobste.rs: "Your pages can win the FAQ rich result and still be invisible to AI search" (FAQPage earns the rich result but says nothing about where a page sits; `BreadcrumbList` declares a page's position in a hierarchy — match the visible trail from one source of truth so they can't drift, and point `item` URLs at the canonical 200 not the bare-path redirect; `/vs` + `/solve` pages 0 → 24 BreadcrumbList).
-*(runs 75–77 moved to git history under D4 — `git log -p` recovers the bodies.)*
+*(runs 75–80 moved to git history under D4 — `git log -p` recovers the bodies.)*
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).

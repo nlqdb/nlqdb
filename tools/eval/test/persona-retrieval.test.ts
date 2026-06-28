@@ -44,7 +44,8 @@ const EXPECTED: Record<number, readonly string[]> = {
   7: ["group-by-count", "join-aggregate"],
   8: ["group-order-limit", "group-max"], // known miss: masks to ratio-cast (see below)
   9: ["date-range"],
-  10: ["group-by-count", "join-aggregate"], // known miss: filtered GROUP-BY-COUNT, NO HAVING; top-1 is the `having` demo (see below)
+  10: ["filtered-group-by-count", "group-by-count", "join-aggregate"], // landed by the `filtered-group-by-count` pool row (named-entity grouped count through a JOIN); was the `having` demo at 20/23
+
   11: ["having"],
   12: ["anti-join"],
   13: ["group-order-limit", "join-aggregate"],
@@ -84,23 +85,25 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  it("retrieves a structurally-appropriate demo for ≥ 20/23 ICP queries", () => {
+  it("retrieves a structurally-appropriate demo for ≥ 21/23 ICP queries", () => {
     const m = measure();
     // Surface the numbers in the run log for the verification record.
     console.info("[persona-retrieval] measure:", JSON.stringify(m));
-    // 20/23: the null-filter row lands q3 ("who never logged in") on IS-NULL, the
+    // 21/23: the null-filter row lands q3 ("who never logged in") on IS-NULL, the
     // order-by-limit row lands q0 ("the 10 most recent signups") on the plain
     // ORDER BY … LIMIT demo, the count-distinct row's "how many different"
     // phrasing lands q21 ("how many different referral sources") instead of
-    // `group-by-count`, and the scalar-subquery row's "Which … ? List the …"
-    // framing lands q20 ("which plans cost more than the average plan price")
-    // instead of `having` (was a miss at 19/23 when the exemplar read as a bare
-    // "List the names of products priced above…", sharing none of q20's
-    // which/list/names tokens). Both were exemplar-phrasing leaks fixed by
-    // pool curation, not selector tweaks (run-52-falsified). The three pinned,
-    // documented misses are q8, q10, q22 (see below) — all selector-side (the
-    // right buckets exist in the pool).
-    expect(m.hits).toBeGreaterThanOrEqual(20);
+    // `group-by-count`, the scalar-subquery row's "Which … ? List the …" framing
+    // lands q20 ("which plans cost more than the average plan price") instead of
+    // `having`, and the new `filtered-group-by-count` row (a named-entity grouped
+    // count through a JOIN) lands q10 ("which predicates does the agent named
+    // 'support-bot' use, and how often") instead of `having` (was a miss at 20/23
+    // — the `having` demo would teach a HAVING COUNT filter the gold doesn't have).
+    // All four were structural pool gaps closed by pool curation (adding/rephrasing
+    // a row), not selector tweaks (run-52-falsified). The two remaining pinned,
+    // documented misses are q8, q22 (see below) — both selector-side (the right
+    // buckets exist in the pool; the masked skeleton mis-ranks them).
+    expect(m.hits).toBeGreaterThanOrEqual(21);
   });
 
   it("the null-filter row lands q3 ('never logged in') on the IS-NULL demo, not anti-join", () => {
@@ -131,28 +134,29 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  // The three remaining misses (q8, q10, q22) are documented, not silently
-  // accepted. All are selector-side (the right buckets exist in the pool), so the
+  // The two remaining misses (q8, q22) are documented, not silently accepted.
+  // Both are selector-side (the right buckets exist in the pool), so the
   // fix is query-skeleton similarity (DAIL §4.1's second variant) — out of scope
   // for a pool-row add. These tests pin the known state so a future selector
-  // change that fixes any of them is visible as a delta.
+  // change that fixes either of them is visible as a delta.
   //
-  // NOTE: q21 (run 68) and q20 (run 76) were both NOT selector-unfixable — each
-  // was an exemplar-phrasing leak. The count-distinct pool row echoed the SQL
-  // keyword "distinct" while q21 (and most real users) say "how many different";
+  // NOTE: q21 (run 68), q20 (run 76) and q10 (run 99) were all NOT
+  // selector-unfixable — q21/q20 were exemplar-phrasing leaks (the count-distinct
+  // row echoed the SQL keyword "distinct" while users say "how many different";
   // the scalar-subquery row read as a bare "List the names of products priced
-  // above…" while q20 (and most users) ask "Which … cost … the average …? List
-  // the … names". Rephrasing each exemplar to match how users phrase it (a
-  // pool-curation lever, not a selector tweak) landed q21 then q20 and held the
-  // held-out probe at 14/14 both times (each probe keeps the original phrasing).
-  // So the run-52 "lexical avenue is dead" verdict is scoped to SELECTOR-code
-  // tweaks (stopwords / phrase normalisation in few-shot-select.ts), not to
-  // pool-exemplar curation.
+  // above…" while users ask "Which … cost … the average …? List the … names"),
+  // and q10 was a missing structural bucket (a named-entity grouped count through
+  // a JOIN, which neither `group-by-count` nor `join-aggregate` demonstrated; the
+  // new `filtered-group-by-count` row closed it). Each was fixed by pool curation
+  // — rephrasing or adding a row to match how users phrase the shape — holding the
+  // held-out probe at full precision@1 each time. So the run-52 "lexical avenue is
+  // dead" verdict is scoped to SELECTOR-code tweaks (stopwords / phrase
+  // normalisation in few-shot-select.ts), NOT to pool-exemplar curation.
   //
   // The cheaper LEXICAL-selector avenue is measured-and-rejected (2026-06-22,
   // run 52 — quality-score-verification-log.md): a stopword filter regresses ICP
   // precision@1 and phrase normalisation leaves it flat, both keeping held-out
-  // 14/14. Root cause: q10's top-1 `having` wins on generic filler plus a
+  // 14/14. Root cause: q22's top-1 `date-range` wins on generic filler plus a
   // coincidental masked literal slot (`val` — both questions happen to contain a
   // literal), which flat masked-token Jaccard cannot separate from a real
   // structural token. Do NOT re-attempt a lexical selector tweak here; the only
@@ -166,19 +170,28 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     expect(EXPECTED[8]).not.toContain(top?.bucket);
   });
 
-  // q10 ("which predicates does 'support-bot' use, and how often") is a filtered
-  // GROUP-BY-COUNT with NO HAVING clause, yet its top-1 is the `having` demo — a
-  // structurally-wrong skeleton (it would teach the model a `HAVING COUNT(*)`
-  // filter the gold doesn't have). `having` was dropped from EXPECTED[10] so this
-  // counts as the miss it is, not a false hit.
-  it("documents the q10 known miss (top-1 `having` for a no-HAVING grouped count)", () => {
+  // q10 ("which predicates does the agent named 'support-bot' use, and how
+  // often") is a filtered GROUP-BY-COUNT (JOIN to resolve the name + WHERE +
+  // GROUP BY + COUNT, NO HAVING). The `filtered-group-by-count` pool row (run 99)
+  // now lands it top-1 — was the `having` demo at 20/23, a structurally-wrong
+  // skeleton that would teach a `HAVING COUNT(*)` filter the gold doesn't have.
+  // Pinned so a regression is visible as a delta.
+  it("the filtered-group-by-count row lands q10 ('named agent … and how often') off the `having` demo", () => {
     const q10 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 10);
     const [top] = retrievePlanExemplars(
       q10?.question ?? "",
       ddlFor(q10?.db_id ?? "agent_memory"),
       1,
     );
-    expect(EXPECTED[10]).not.toContain(top?.bucket);
+    expect(top?.bucket).toBe("filtered-group-by-count");
+    // …while the genuine HAVING queries (q5/q11, "more than N") must NOT be pulled
+    // to the filtered grouped count — the COUNT threshold, not the GROUP BY, is
+    // the discriminator.
+    for (const id of [5, 11]) {
+      const q = PERSONA_BENCH_QUESTIONS.find((x) => x.question_id === id);
+      const [h] = retrievePlanExemplars(q?.question ?? "", ddlFor(q?.db_id ?? "agent_memory"), 1);
+      expect(h?.bucket).toBe("having");
+    }
   });
 
   // q20 ("which plans cost more than the average plan price") now retrieves the
