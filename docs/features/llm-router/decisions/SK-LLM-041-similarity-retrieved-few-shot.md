@@ -51,11 +51,14 @@ identifiers identically.
   `plan-exemplar-pool.ts`: `PLAN_EXEMPLAR_POOL`, hand-authored
   `{question, schema, SQL}` `PlanExemplar`s (one per `SK-QUAL-014` structural
   mismatch bucket — group-by-count, HAVING, COUNT(DISTINCT), scalar/IN subquery,
-  **anti-join (NOT IN, NULL-guarded)**, join-aggregate, group-max,
+  **anti-join (NOT IN, NULL-guarded)**, join-aggregate,
+  **filtered-group-by-count (named-entity grouped count through a JOIN)**,
+  group-max,
   **group-order-limit (top-N of an aggregate)**, **order-by-limit (plain top-N,
   no aggregation)**, NULL-safe-min,
   **null-filter (plain `WHERE col IS NULL`)**, REAL-cast ratio,
-  date-range — **14 rows, grown 2026-06-22** from the initial 10: +anti-join and
+  date-range — **15 rows, grown 2026-06-22 → 2026-06-28** from the initial 10:
+  +anti-join and
   +group-order-limit (two high-mass `SK-QUAL-014` shapes the pool could not
   demonstrate at all — negation, order-by-aggregate-limit), then +null-filter and
   +order-by-limit on a **second** evidence source — the persona-bench
@@ -64,7 +67,11 @@ identifiers identically.
   wrong shape for a plain `IS NULL` filter; and the most common ICP dashboard
   shape — plain top-N ("the 10 most recent signups") — retrieved
   `group-order-limit`, teaching a spurious `GROUP BY` a plain `ORDER BY … LIMIT`
-  doesn't have), each
+  doesn't have; then +filtered-group-by-count (run 99) on the same persona-bench
+  source — "which predicates does the agent named 'support-bot' use, and how
+  often" (q10) retrieved the `having` demo, teaching a `HAVING COUNT(*)` filter
+  the gold doesn't have, a shape neither `group-by-count` nor `join-aggregate`
+  demonstrated), each
   `payload` rendered through the now-exported `prompts.ts::planExample` so a
   retrieved demonstration is byte-identical in shape to a static `SK-LLM-026`
   one, plus `retrievePlanExemplars(goal, schema, k)` (thin wrapper over
@@ -122,11 +129,12 @@ identifiers identically.
   inside the selector, no hand-masking). Plus `plan-exemplar-pool.ts` +
   `plan-exemplar-pool.test.ts`: an **offline retrieval measurement**
   over a held-out probe set (each probe a paraphrase of one bucket over a
-  *different* schema) records **precision@1 = 14/14** (every probe retrieves its
+  *different* schema) records **precision@1 = 15/15** (every probe retrieves its
   intended structural bucket across domains — **held at 1.0 across the 2026-06-22
-  pool growth to four near-neighbour buckets** — anti-join, group-order-limit,
-  null-filter, order-by-limit — the harder regime) and **lift = +0.576** — masked
-  skeleton-similarity of the top-1 retrieved exemplar **0.818** vs **0.242** for
+  → 06-28 pool growth to five near-neighbour buckets** — anti-join,
+  group-order-limit, null-filter, order-by-limit, filtered-group-by-count — the
+  harder regime) and **lift = +0.543** — masked
+  skeleton-similarity of the top-1 retrieved exemplar **0.778** vs **0.235** for
   an uninformed pool-average pick, the offline analog of DAIL's measured
   retrieval win, proving the pool+selector is worth a dispatch before paying for
   one. The 2026-06-22 growth records two **same-probe before/after coverage
@@ -142,35 +150,38 @@ identifiers identically.
   **Second evidence source — persona-bench ICP retrieval** (`tools/eval/test/persona-retrieval.test.ts`,
   the `SK-LLM-041 × SK-QUAL-018` bridge): running `retrievePlanExemplars` over
   the **23 persona-bench (`SK-QUAL-018`) ICP questions** — nlqdb's OWN target
-  distribution, not synthetic probes — scores **precision@1 20/23**
+  distribution, not synthetic probes — scores **precision@1 21/23**
   against a per-question expected-bucket map: the null-filter row flips q3 ("who
   never logged in") off the misleading anti-join demo, the order-by-limit row
   lands q0 ("the 10 most recent signups") on the plain `ORDER BY … LIMIT` demo,
-  and the count-distinct + scalar-subquery rows' phrasing land q21 + q20 (see
-  next). The 3 remaining misses (q8, "the 5 most-recalled facts …"; q10, "which
-  predicates does 'support-bot' use, and how often" — a filtered GROUP-BY-COUNT
-  with NO HAVING whose top-1 is the `having` demo; q22, a filtered join-aggregate
-  whose top-1 is `date-range`) are **documented, not absorbed**: all are
-  *selector*-side artifacts (the right buckets exist), so the fix is
-  query-skeleton similarity (DAIL §4.1's second variant), out of scope for a
-  pool-row add. **q21 + q20 were the exceptions that scope the run-52 verdict**
-  (2026-06-23): two of run 68's "new shape" misses were *not* selector-unfixable
-  — each was an exemplar-phrasing leak. The count-distinct exemplar echoed the
+  the count-distinct + scalar-subquery rows' phrasing land q21 + q20, and the
+  filtered-group-by-count row lands q10 (see next). The 2 remaining misses (q8,
+  "the 5 most-recalled facts …"; q22, a filtered join-aggregate whose top-1 is
+  `date-range`) are **documented, not absorbed**: both are *selector*-side
+  artifacts (the right buckets exist), so the fix is query-skeleton similarity
+  (DAIL §4.1's second variant), out of scope for a pool-row add. **q21, q20 + q10
+  scope the run-52 verdict** (2026-06-23 → 06-28): three of run 68's "new shape"
+  misses were *not* selector-unfixable — q21/q20 were exemplar-phrasing leaks and
+  q10 was a missing structural bucket. The count-distinct exemplar echoed the
   SQL keyword "distinct" while q21 (and most users) say "how many *different* X";
   the scalar-subquery exemplar read as the stilted bare "List the names of
   products priced above…" while q20 (and most users) ask "*Which* … ? *List* the
-  … *names*". Rephrasing each demonstration the way users phrase it — "how many
+  … *names*"; and q10's named-entity grouped count (JOIN + WHERE + GROUP BY +
+  COUNT) had no demonstrating bucket, so it fell to the generic-filler `having`
+  demo. Rephrasing each demonstration the way users phrase it — "how many
   different cities" (q21) and "Which products are priced above the average price?
   List the product names" (q20, keeping "above" not "more than" so q5/q11's
-  genuine HAVING queries stay pinned) — a **pool-curation** lever, not a selector
-  tweak — landed q21 (18/23 → 19/23) then q20 (→ 20/23) and held the held-out
-  probe at 14/14 both times (each probe keeps the original phrasing; the masked
-  skeleton matches across both triggers, so it is generalisation, not a tune).
+  genuine HAVING queries stay pinned) — plus **adding** the filtered-group-by-count
+  row "Which roles appear for the department named 'Sales', and how often?" (q10,
+  run 99) — all **pool-curation** levers, not selector
+  tweaks — landed q21 (18/23 → 19/23), q20 (→ 20/23), then q10 (→ 21/23) and held
+  the held-out probe at full precision@1 each time (each probe is a cross-domain
+  paraphrase; the masked skeleton matches, so it is generalisation, not a tune).
   **The
   cheaper lexical-*selector* avenue was measured and falsified** (2026-06-22): a
   stopword filter regresses ICP precision@1 and phrase normalisation leaves it
-  flat, both holding held-out 14/14 — q10's top-1 `having` wins on generic filler
-  plus a *coincidental masked literal slot* (`val`), which flat masked-token
+  flat, both holding held-out 14/14 — q22's top-1 `date-range` wins on generic
+  filler plus a *coincidental masked literal slot* (`val`), which flat masked-token
   Jaccard cannot separate from a real structural token. So the **only** remaining
   offline gain on §4 #1 is query-skeleton similarity (needs an LLM round-trip —
   not an offline lever) or the gated canonical dispatch of `--retrieve-exemplars`;
