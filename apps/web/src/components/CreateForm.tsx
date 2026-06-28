@@ -248,6 +248,10 @@ function CreateResultView({ result }: { result: CreateResult }) {
 // burned by the create call itself), so the sign-in nudge always shows.
 function McpInstallView() {
   const hosts = buildMcpHosts(MCP_ENDPOINT_URL);
+  // Founder request (SK-WEB-016): clicking ANY host reveals that host's
+  // manual instructions in place, on top of its primary action. One panel
+  // open at a time keeps the one-motion-moment budget (SK-WEB-015).
+  const [openHostId, setOpenHostId] = useState<McpHostEntry["id"] | null>(null);
   return (
     <section
       className="createresult__mcp"
@@ -279,7 +283,12 @@ function McpInstallView() {
         }}
       >
         {hosts.map((host) => (
-          <McpHostCell key={host.id} host={host} />
+          <McpHostCell
+            key={host.id}
+            host={host}
+            open={openHostId === host.id}
+            onReveal={() => setOpenHostId(host.id)}
+          />
         ))}
       </ul>
       <p
@@ -313,10 +322,21 @@ function McpInstallView() {
   );
 }
 
-function McpHostCell({ host }: { host: McpHostEntry }) {
+function McpHostCell({
+  host,
+  open,
+  onReveal,
+}: {
+  host: McpHostEntry;
+  open: boolean;
+  onReveal: () => void;
+}) {
   const [copied, setCopied] = useState(false);
   const promoted = host.id === PROMOTED_HOST;
   const ctaClass = promoted ? "cta" : "cta cta--ghost";
+  // Command hosts copy the command (or the config block, e.g. Codex's TOML).
+  const copyText = host.command ?? host.config ?? "";
+  const panelId = `mcpinstall-panel-${host.id}`;
   const btnStyle: React.CSSProperties = {
     width: "100%",
     padding: "11px 16px",
@@ -337,6 +357,43 @@ function McpHostCell({ host }: { host: McpHostEntry }) {
     minWidth: 0,
   };
 
+  // Manual-fallback panel revealed in place on any host click.
+  const panel = open ? (
+    <div
+      id={panelId}
+      role="region"
+      aria-label={`${host.name} manual install`}
+      style={{
+        marginTop: 8,
+        padding: "10px 12px",
+        border: "1px solid var(--rule)",
+        borderRadius: 8,
+        background: "var(--raised)",
+      }}
+    >
+      <p style={subStyle}>
+        {host.status === "deep-link"
+          ? `If ${host.name} didn't open, paste this config manually:`
+          : (host.pasteHint ?? `Use this in ${host.name}:`)}
+      </p>
+      <pre
+        style={{
+          margin: "6px 0 0",
+          padding: "8px 10px",
+          overflowX: "auto",
+          borderRadius: 6,
+          background: "var(--ground)",
+          fontFamily: "var(--mono)",
+          fontSize: 12,
+          color: "var(--body)",
+          whiteSpace: "pre",
+        }}
+      >
+        <code>{copyText}</code>
+      </pre>
+    </div>
+  ) : null;
+
   if (host.status === "deep-link" && host.href) {
     return (
       <li style={cellStyle}>
@@ -346,39 +403,53 @@ function McpHostCell({ host }: { host: McpHostEntry }) {
           target="_self"
           title={host.versionHint}
           style={btnStyle}
-          onClick={() => emit("home.snippet_copied", { surface: `mcp_install_${host.id}` })}
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => {
+            // The OS handoff still fires (no preventDefault); the reveal is
+            // the added behaviour for when the host doesn't open.
+            onReveal();
+            emit("home.snippet_copied", { surface: `mcp_install_${host.id}` });
+          }}
         >
           Add to {host.name}
         </a>
         <p style={subStyle}>Opens {host.name} and asks you to confirm before writing the config.</p>
+        {panel}
       </li>
     );
   }
-  // fallback-only — copy-to-clipboard.
+  // command + fallback-only — copy-to-clipboard, and reveal the panel.
   async function onCopy() {
-    if (!host.config) return;
-    try {
-      await navigator.clipboard.writeText(host.config);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      // Non-secure context / extension lockdown — the /integrations
-      // page shows the same configs; not fatal.
+    onReveal();
+    if (copyText) {
+      try {
+        await navigator.clipboard.writeText(copyText);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1600);
+      } catch {
+        // Non-secure context / extension lockdown — the revealed panel
+        // still shows the text for a manual copy.
+      }
     }
     emit("home.snippet_copied", { surface: `mcp_install_${host.id}` });
   }
+  const label = host.command ? `Copy ${host.name} command` : `Copy ${host.name} config`;
   return (
     <li style={cellStyle}>
       <button
         type="button"
         className={ctaClass}
         title={host.versionHint}
+        aria-expanded={open}
+        aria-controls={panelId}
         onClick={() => void onCopy()}
         style={btnStyle}
       >
-        {copied ? "Copied ✓" : `Copy ${host.name} config`}
+        {copied ? "Copied ✓" : label}
       </button>
       {host.pasteHint && <p style={subStyle}>{host.pasteHint}</p>}
+      {panel}
     </li>
   );
 }

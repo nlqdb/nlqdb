@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildCursorHref,
   buildMcpHosts,
+  buildVscodeHref,
   MCP_ENDPOINT_URL,
   MCP_SERVER_ROUTE,
 } from "./mcp-install.ts";
@@ -30,10 +31,15 @@ function pathOf(url: string): string {
 
 /** Every `http(s)://` string value anywhere in a parsed config object. */
 function collectUrls(value: unknown): string[] {
-  if (typeof value === "string") return value.startsWith("http") ? [value] : [];
+  if (typeof value === "string") return /^https?:\/\//.test(value) ? [value] : [];
   if (Array.isArray(value)) return value.flatMap(collectUrls);
   if (value && typeof value === "object") return Object.values(value).flatMap(collectUrls);
   return [];
+}
+
+/** Every `https://…` token in a raw command / TOML string. */
+function urlsInText(text: string): string[] {
+  return text.match(/https?:\/\/[^\s"]+/g) ?? [];
 }
 
 describe("MCP endpoint contract", () => {
@@ -51,20 +57,41 @@ describe("MCP endpoint contract", () => {
     expect(pathOf(inner.url)).toBe(MCP_SERVER_ROUTE);
   });
 
-  test("every host config connects at the server route — not root, not doubled", () => {
+  test("the VS Code deep-link decodes to {name,type:http,url} at the server route", () => {
+    const href = buildVscodeHref(MCP_ENDPOINT_URL);
+    // `vscode:mcp/install?<encodeURIComponent(JSON)>` — the whole query is the
+    // URL-encoded JSON (no named param), NOT base64. Slice off the scheme+path.
+    expect(href.startsWith("vscode:mcp/install?")).toBe(true);
+    const payload = href.slice("vscode:mcp/install?".length);
+    const obj = JSON.parse(decodeURIComponent(payload));
+    expect(obj).toMatchObject({ name: "nlqdb", type: "http" });
+    expect(pathOf(obj.url)).toBe(MCP_SERVER_ROUTE);
+    // It is URL-encoded JSON, not base64 — base64-decoding wouldn't be JSON.
+    expect(payload).not.toMatch(/^[A-Za-z0-9+/=]+$/);
+  });
+
+  test("every host's connection URL points at the server route — not root, not doubled", () => {
     for (const host of buildMcpHosts(MCP_ENDPOINT_URL)) {
-      const urls =
-        host.status === "deep-link"
-          ? // decode the deep-link's config payload
-            collectUrls(
-              JSON.parse(
-                Buffer.from(
-                  new URL(host.href as string).searchParams.get("config") as string,
-                  "base64",
-                ).toString("utf8"),
-              ),
-            )
-          : collectUrls(JSON.parse(host.config as string));
+      let urls: string[];
+      if (host.status === "deep-link") {
+        const query = host.href!.includes("?") ? host.href!.split("?")[1]! : "";
+        if (host.id === "cursor") {
+          // base64(JSON) in the `config` query param.
+          const b64 = new URLSearchParams(query).get("config") as string;
+          urls = collectUrls(JSON.parse(Buffer.from(b64, "base64").toString("utf8")));
+        } else {
+          // VS Code: the whole query is url-encoded JSON.
+          urls = collectUrls(JSON.parse(decodeURIComponent(query)));
+        }
+      } else if (host.status === "command") {
+        // The shell command and/or the TOML/JSON config block carry the URL.
+        urls = [
+          ...(host.command ? urlsInText(host.command) : []),
+          ...(host.config ? urlsInText(host.config) : []),
+        ];
+      } else {
+        urls = collectUrls(JSON.parse(host.config as string));
+      }
 
       // Each host advertises at least one connection URL, and all of them
       // resolve to the server's route. Catches root ("/"), a doubled
@@ -73,6 +100,15 @@ describe("MCP endpoint contract", () => {
       for (const url of urls) {
         expect(pathOf(url)).toBe(MCP_SERVER_ROUTE);
       }
+    }
+  });
+
+  test("command hosts carry the full endpoint URL", () => {
+    const hosts = buildMcpHosts(MCP_ENDPOINT_URL).filter((h) => h.status === "command");
+    expect(hosts.map((h) => h.id).sort()).toEqual(["claude-code", "codex"]);
+    for (const host of hosts) {
+      const text = `${host.command ?? ""}\n${host.config ?? ""}`;
+      expect(text).toContain(MCP_ENDPOINT_URL);
     }
   });
 });

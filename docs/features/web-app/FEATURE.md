@@ -104,14 +104,8 @@ when-to-load:
 
 ### SK-WEB-010 — Marketing-page Copy-snippet shows the embed shape; key inlining stays in the chat
 
-- **Decision:** The marketing-page create result (`CreateResultView` in `apps/web/src/components/CreateForm.tsx`) renders an embed-snippet block alongside the schema preview. The snippet shows the `<nlq-data>` shape with a goal derived from the primary table and `api-key="pk_live_REPLACE_ME"` as a literal placeholder. A "Copy" button writes the placeholder snippet to the clipboard; a "Sign in to continue →" CTA routes to `/auth/sign-in?return_to=/app`. The real `pk_live_` inlining still happens in one place only — the chat's per-answer Copy snippet (`SK-WEB-007`).
-- **Core value:** Goal-first, Effortless UX, Bullet-proof
-- **Why:** After the schema-render wow moment the natural follow-through is "how do I use this from my own page?" Without a snippet affordance the user faces five steps (*Open chat →* → sign in → ask → find Copy snippet) before any HTML lands; snippet-shape-first closes that to one — paste the structure now, sign in to fill in the key. A working key can't be inlined here (the create call consumed the `SK-ANON-012` device cap, so the embed would 401 — see Alternatives), so the CTA is honest about the seam and points at the chat's Copy snippet (`SK-WEB-007`).
-- **Consequence in code:** `CreateForm.tsx` adds a `CreateSnippetView` inside `CreateResultView`; snippet text is built client-side from `result.sampleRows[0].table` so the example goal references the just-created table. Clipboard failures are swallowed silently (users can triple-click the `<pre>`). `SK-WEB-007` is **not** modified — the chat stays the only surface that inlines a working `pk_live_`. Two `GLOBAL-024` events fire via `lib/logsnag.ts` — `home.snippet_copied` (`{ surface: "create_result" }`) and `home.snippet_signin_cta_clicked` — so the funnel reads *snippet-engaged → signed-in* directly.
-- **Alternatives rejected:**
-  - **Inline the real anon `pk_live_` on the marketing page.** Per `SK-ANON-012` the device cap is consumed by the create call, so any `<nlq-data>` element embedded with the anon key would 401 on first fetch — silent-broken-embed is the worst possible UX after the wow moment.
-  - **Don't show a snippet at all; only show "Open chat →".** Drops to five clicks before the user sees their first HTML; loses the chance to teach the embed shape during the most-engaged moment of the session.
-  - **Show a snippet with a working key gated behind a Turnstile.** Doubles the bot-defense surface area and still doesn't let the embed render against the just-created DB (the cap is per-device, not per-IP, and Turnstile doesn't reset it).
+**Body:** [`decisions/SK-WEB-010-marketing-copy-snippet-shape.md`](./decisions/SK-WEB-010-marketing-copy-snippet-shape.md).
+The marketing create result (`CreateResultView`) renders an embed snippet with `api-key="pk_live_REPLACE_ME"` placeholder + a "Sign in to continue →" CTA; the real `pk_live_` inlining stays in one place only — the chat's per-answer Copy snippet (`SK-WEB-007`) — because the anon device cap (`SK-ANON-012`) is consumed by the create call, so a live anon key would 401. Two `GLOBAL-024` events fire so the funnel reads *snippet-engaged → signed-in*.
 
 ### SK-WEB-011 — Post-checkout confirmation banner on `/app`, honest about pending subscription state
 
@@ -146,6 +140,8 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 
 ### SK-WEB-015 — Three-beat homepage + quiet-brutalism token system
 
+**Status:** superseded in part by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) — the three-beat IA on `/` is replaced by the two-door home; the quiet-brutalism **token system is retained** in full.
+
 **Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md).
 One quiet-brutalism token system in `global.css` (neutrals + one accent gated to three lime moments per fold, three faces, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero) → HOW (`Demo.astro` live `/v1/ask` + snippet) → WHY (`Replaces.astro` + one CTA). Off-`/` blocks (`AgentMemoryBand`, `Waitlist`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt`) removed; `/vs/*` and `/solve/*` collapse to one what-we-replace template; one motion moment per page, `prefers-reduced-motion`-gated.
 
@@ -156,8 +152,20 @@ A shared `<McpInstall>` (host descriptors in `lib/mcp-install.ts`) renders four 
 
 ### SK-WEB-017 — Connect-first hero on the agent-memory home; goal input retained as secondary
 
+**Status:** superseded in part by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) — the connect-first vertical hero on `/` is replaced by the two-door chooser; SK-WEB-017's `<McpInstall>`-primacy is **absorbed into Door A**.
+
 **Body:** [`decisions/SK-WEB-017-connect-first-hero.md`](./decisions/SK-WEB-017-connect-first-hero.md).
 The home hero leads with the SK-WEB-016 `<McpInstall compact>` row of host buttons ("Connect it to your agent.") as the **primary** affordance; the goal text input (`<CreateForm>`) is retained below it as a quieter secondary ("Or spin one up yourself —") separated by a `--rule` line. The form still posts to `/v1/ask` (SK-ANON-008), still morphs to chat, still requires no sign-in (GLOBAL-007) — only its visual primacy demotes. Supersedes SK-WEB-002's "one input IS the hero" claim in place (no-signup-wall floor + morph-to-chat retained). Closes the gap WS-13 / SK-PIVOT-013 left — the headline strings now match the hero's primary action.
+
+### SK-WEB-018 — Two-door home: agent-memory door + question-your-ClickHouse door
+
+**Body:** [`decisions/SK-WEB-018-two-door-home.md`](./decisions/SK-WEB-018-two-door-home.md).
+The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked narrow): **Door A** "Use as agent memory" (the SK-WEB-016 `<McpInstall>` host row, click→reveal-fallback-in-place, plus a quiet *"or just describe your data →"* link to `/app/new`) and **Door B** "Question your ClickHouse" (CTA → sign-in → `/app/connect`). Replaces the SK-WEB-015 / SK-WEB-017 three-beat-on-`/` IA (token system kept; SK-WEB-017's McpInstall primacy absorbed into Door A); the literal expression of GLOBAL-036's dual front door; GLOBAL-007 preserved via the `/app/new` link.
+
+### SK-WEB-019 — `/app/connect`: auth-guarded BYO-connect page + `ConnectForm.tsx`
+
+**Body:** [`decisions/SK-WEB-019-connect-page.md`](./decisions/SK-WEB-019-connect-page.md).
+`/app/connect` is auth-guarded (anon → `/auth/sign-in?return_to=/app/connect`) and mounts `ConnectForm.tsx`: an engine select (default ClickHouse), a `type="password"` connection-URL field **never persisted** client-side, posting `{ engine, connection_url, name? }` to `/v1/db/connect` with `credentials:"include"`. On success it renders the schema preview then a "Question it now →" CTA to `/app?db=<dbId>`. The product-side landing for Door B (`SK-WEB-018`); backend is [`SK-DBCONN-001`](../byo-connect/FEATURE.md).
 
 ## GLOBALs governing this feature
 
