@@ -43,13 +43,13 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-28 (run 97)** — **funnel/distribution lever** (engine worst-number
-blocked): shipped the 15th solve page `/solve/isolate-ai-agent-memory-per-tenant`
-(P2 agent-builder, multi-tenant-isolation search) — **solve pages 14 → 15**, +1
-LLM-crawler/sitemap/`/solve` index surface. Claims verified in code: provisioner's
-`tenant_isolation` RLS (`app.tenant_id`, fail-closed) shipped; honest that within-DB
-`app.agent_id` scoping (E-03) is roadmap. Engine re-dispatch **re-verified blocked**
-— both paths 403 (`GH_TOKEN_WORKFLOW` curl → proxy "GitHub App not connected"; MCP
-`run_workflow` → "not accessible by integration"); BIRD (9d) + Spider (11d) stay
-stale, carries to the cron lane. **KPI:** GLOBAL-025 onboarding/UX
-surface +1; engine + performance untouched, none degrade.
+**2026-06-28 (run 98)** — **distribution-defect fix** (engine worst-number
+blocked): `/integrations` was a live, indexable page advertised in `llms.txt` +
+`robots.txt` but **absent from `sitemap.xml`** — undiscoverable by the sitemap-driven
+AI/search crawlers that are the primary acquisition channel (DESIGN §3.1). Added it +
+a parity guard test (`sitemap.xml.test.ts`) so no real top-level page silently drops
+again. **Sitemap-indexable top-level pages 8 → 9** (total URLs 42 → 43). Engine
+re-dispatch **re-verified blocked** — both paths 403 (`GH_TOKEN_WORKFLOW` curl + MCP
+`run_workflow`); BIRD (9d) + Spider (11d) stay stale, carries to the cron lane.
+**KPI:** GLOBAL-025 onboarding on-ramp (more of the site crawlable); engine +
+performance untouched, none degrade.

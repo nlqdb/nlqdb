@@ -11,51 +11,52 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-28 (run 97) — dev.to / r/LLMDevs / r/AI_Agents: "Your multi-tenant agent memory is one forgotten WHERE clause from a leak."
+## 2026-06-28 (run 98) — dev.to / lobste.rs / r/webdev: "Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed."
 
-**Where:** dev.to + r/LLMDevs + r/AI_Agents; the run-92/93 agent-memory-in-production
-family — here the failure mode is cross-tenant leakage. Anchors
-`/solve/isolate-ai-agent-memory-per-tenant`; nlqdb mentioned once.
+**Where:** dev.to + lobste.rs + r/webdev; a short, transferable web-infra lesson (the
+run-95/96 "self-inflicted measurement bug" family). nlqdb mentioned once, as the place
+the lesson came from.
 
-**Title:** Your multi-tenant agent memory is one forgotten WHERE clause from a leak.
+**Title:** Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed.
 
 **Body:**
 
-> Your agent remembers things for a thousand customers, and they all live in one
-> database. The only thing standing between customer A's memory and customer B's answer
-> is a `WHERE tenant_id = ?` somewhere in your code. That clause is scope you can forget —
-> and the layer that's supposed to remember it is the same layer writing the query.
+> A site now has three machine-readable indexes of itself, and they're maintained by
+> three different reflexes. `robots.txt` says who may crawl. `sitemap.xml` says what
+> exists. `llms.txt` says what an LLM should read first. They overlap almost entirely —
+> which is exactly why they drift: nothing forces them to agree, and three lists that
+> *mostly* match are the easiest kind to stop checking.
 >
-> It gets worse when an LLM writes the SQL. Now the tenant filter isn't a constant in a
-> reviewed function; it's a thing you're hoping the model includes in every query it
-> generates, across every CTE, JOIN, and subquery, forever. One query that drops it
-> doesn't leak one row — it leaks every tenant at once. The blast radius of a single
-> miss is the whole table.
+> We found ours disagreeing. A real, indexable marketing page was advertised in
+> `llms.txt` and allowed in `robots.txt`, but it had never been added to the hand-rolled
+> `sitemap.xml`. So a human or an LLM following links found it fine — and a crawler that
+> trusts the sitemap as the canonical "what exists" list never knew it was there. For a
+> site whose primary acquisition channel is *being cited by Perplexity / ChatGPT /
+> Claude*, an indexable page missing from the sitemap isn't cosmetic; it's a page that
+> doesn't exist as far as half your discovery surface is concerned.
 >
-> The fix is to stop treating isolation as something the query carries. Move the boundary
-> below the SQL, into the database: Postgres row-level security attaches a predicate to
-> the *table*, keyed on a per-request setting (`current_setting('app.tenant_id')`). The
-> engine then applies it to every read and write, no matter what SQL runs on top — a query
-> with no tenant filter at all still only sees the current tenant's rows, because the
-> filter isn't in the query, it's in the engine.
+> The root cause is the usual one: the dynamic routes (`/vs/*`, `/solve/*`) were derived
+> from a data file, so they could never drift — but the *static* top-level pages were a
+> hand-kept array, and a hand-kept list is a list someone will forget. The fix wasn't
+> "add the page" (that's the symptom). It was a test that re-derives the set of real
+> top-level pages and asserts every one appears in the sitemap, so the next forgotten
+> page fails CI instead of search.
 >
-> And it fails the right way. If the request forgets to set the tenant id, the setting is
-> empty, the predicate matches nothing, and the query returns *no* rows — not someone
-> else's. A forgotten `WHERE` leaks everything; a forgotten RLS scope leaks nothing. Same
-> mistake, opposite blast radius.
->
-> The transferable rule: **isolation belongs in the layer that can't forget it.** If the
-> code generating your queries is also the code enforcing tenant boundaries, you don't
-> have isolation — you have a convention. Push it down to where the engine enforces it on
-> every statement, and make the failure mode "see nothing," never "see everything." (At
-> [nlqdb](https://nlqdb.com) every provisioned database ships with this RLS by default.)
+> The transferable rule: **if two lists must agree, don't maintain two lists — derive
+> one from the other, or write the test that fails when they diverge.** Drift between
+> machine-readable indexes is invisible to humans (we navigate by links) and total to
+> crawlers (they navigate by the index). The cheapest moment to catch it is the commit
+> that creates it. (At [nlqdb](https://nlqdb.com) the sitemap, `llms.txt`, and
+> `robots.txt` are now parity-tested against the actual page set.)
 
-**Why this advances the north-star:** ships the 15th solve page
-(`/solve/isolate-ai-agent-memory-per-tenant`), a P2 agent-builder on-ramp for the
-multi-tenant-isolation search; GLOBAL-025 onboarding/UX surface +1 (solve pages 14 → 15),
-engine + performance untouched.
+**Why this advances the north-star:** GLOBAL-025 onboarding on-ramp — the post drives a
+genuinely-useful read to the site and the underlying fix makes more of the site
+discoverable by the AI/search crawlers that are the primary acquisition channel; engine +
+performance untouched.
 
 ## Collapsed — full drafts in git history
+
+- run 97 — dev.to / r/LLMDevs / r/AI_Agents: "Your multi-tenant agent memory is one forgotten WHERE clause from a leak." (one DB holds a thousand customers' agent memory; the only thing between tenant A's rows and tenant B's answer is a `WHERE tenant_id = ?` the LLM has to remember in every query forever, and one miss leaks every tenant at once; fix moves isolation below the SQL into Postgres RLS keyed on `current_setting('app.tenant_id')` so a query with no filter sees nothing, not everything — isolation belongs in the layer that can't forget it; anchors `/solve/isolate-ai-agent-memory-per-tenant`).
 
 - run 96 — dev.to / lobste.rs / r/ExperiencedDevs: "Your status doc keeps its own history. That's why nobody reads it." (a freshness-capped, daily-read status doc bloated to 3× its cap because each run glued a changelog line onto it; status answers "what's true now" and dies of length, changelog only works by accreting — in one file the accretion instinct always wins; fix is structural, give the capped doc a sibling that remembers and route "what happened" there).
 - run 95 — dev.to / lobste.rs / r/MachineLearning: "Your eval harness will report 0% when the problem is your Wi-Fi" (an NL→SQL eval printed `EA=0.00%` from a sandbox that couldn't reach any provider — every attempt failed `network`, scored "no SQL," averaged to a meaningless 0 that would re-seed the baseline; "couldn't measure" and "measured zero" were the same outcome; fix makes non-measurement a loud distinct state — if *every* row failed for an infra reason it's an outage not a result, so refuse to compare/emit and exit non-zero; one-sided, never hides a regression; `isTransportCollapse`, SK-QUAL-020).
@@ -93,10 +94,7 @@ engine + performance untouched.
 - run 51 — "The most common query in your product has no row in your benchmark" (error-class taxonomies omit easy high-frequency shapes; "show the 10 most recent signups" retrieved a `GROUP BY` demo; +plain `ORDER BY … LIMIT` row, held-out 13/13 → 14/14, own-query 18/20 held).
 - run 48 — "Test your few-shot retrieval against your *own* users' queries — not just the benchmark" (a held-out probe set that paraphrases your own examples reports green while real-user queries silently retrieve the wrong shape; "never logged in" → anti-join not `IS NULL`; own-query precision 17/20 → 18/20, held-out 13/13 unmoved).
 - run 46 — "Your few-shot examples might be teaching the model the wrong shape" (retrieval quality is bounded by pool *coverage*, not the ranker; a one-word negation retrieves its own opposite if the pool can't represent the shape; +anti-join/+top-N-of-aggregate, precision held 12/12).
-- runs 43–44 — "Your benchmark should look like your users' database, not a research paper's" (persona-bench: NL→SQL on the schema shapes users actually build; sound-ruler invariant 12/12 before any accuracy number).
-- run 43 — "Ship your LLM lever as a default-off ablation — measure before you adopt" (`buildPlanSystem(goal, schema, k)`, `k=0` byte-identical; prove inert + token-negative before spending quota; closes runs 38–43 retrieval arc).
-- run 42 — "Don't hand-pick few-shot examples — size the pool from your benchmark's error classes" (one exemplar per mismatch class; precision@1 10/10, 3.5× closer skeleton; `packages/llm/plan-exemplar-pool.ts`).
-- runs 8–18, 33, 37, 39, 41 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
+- runs 8–18, 33, 37, 39, 41–44 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 
