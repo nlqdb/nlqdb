@@ -22,9 +22,9 @@ import type { LLMRouter } from "@nlqdb/llm";
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { resolveDb } from "../db-registry.ts";
-import { kekFromEnv, openSecret } from "../secret-envelope.ts";
 import { buildEventEmitter } from "../events-emitter.ts";
 import { getLLMRouter } from "../llm-router.ts";
+import { kekFromEnv, openSecret } from "../secret-envelope.ts";
 import { makeFirstQueryTracker } from "./first-query.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
 import { makePlanCache } from "./plan-cache.ts";
@@ -220,11 +220,7 @@ async function runHostedPgQuery(
 // the user's DB has no tenant schema or RLS, so those would error. Tenant
 // isolation is at the row level — the `databases` row was already scoped
 // to the tenant by `resolveDb`.
-async function runByoPgQuery(
-  url: string,
-  sql: string,
-  signal?: AbortSignal,
-): Promise<QueryResult> {
+async function runByoPgQuery(url: string, sql: string, signal?: AbortSignal): Promise<QueryResult> {
   const neonSql = neon(url, { fullResults: true });
   const operation = detectSqlOperation(sql);
   const tracer = trace.getTracer("@nlqdb/api");

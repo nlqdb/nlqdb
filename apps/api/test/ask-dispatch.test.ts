@@ -4,8 +4,8 @@
 // side-effecting runners and the BYO-URL opener are injected as fakes.
 
 import { describe, expect, it, vi } from "vitest";
-import { dispatchExec } from "../src/ask/build-deps.ts";
 import type { ExecRunners } from "../src/ask/build-deps.ts";
+import { dispatchExec } from "../src/ask/build-deps.ts";
 import type { DbRecord, QueryResult } from "../src/ask/types.ts";
 
 const EMPTY: QueryResult = { rows: [], rowCount: 0 };

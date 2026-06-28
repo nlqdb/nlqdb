@@ -30,7 +30,14 @@
 //     https://developers.openai.com/codex/mcp
 //     https://developers.openai.com/codex/config-reference
 
-export type McpHostId = "claude" | "cursor" | "windsurf" | "zed" | "vscode" | "claude-code" | "codex";
+export type McpHostId =
+  | "claude"
+  | "cursor"
+  | "windsurf"
+  | "zed"
+  | "vscode"
+  | "claude-code"
+  | "codex";
 
 export interface McpHostEntry {
   id: McpHostId;

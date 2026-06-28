@@ -41,7 +41,6 @@ import {
   revokeKeyById,
 } from "./api-keys.ts";
 import { buildAskDeps, buildEventEmitter, buildMemoryExec } from "./ask/build-deps.ts";
-import { resolveFrontierAskRouter } from "./ask/frontier-router.ts";
 import {
   BYOLLM_HEADER,
   type ByollmCredential,
@@ -49,6 +48,7 @@ import {
   resolveAskRouter,
 } from "./ask/byollm.ts";
 import { emitFeatureSignal } from "./ask/demand-signal.ts";
+import { resolveFrontierAskRouter } from "./ask/frontier-router.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "./ask/prelude.ts";
 import { makeRecentTablesStore } from "./ask/recent-tables.ts";
@@ -2554,7 +2554,10 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
     if (!raw.ok) {
       span.setAttribute("nlqdb.db.connect.outcome", "invalid_json");
       span.end();
-      return c.json({ error: { status: "invalid_request" as const, message: "Body must be JSON." } }, 400);
+      return c.json(
+        { error: { status: "invalid_request" as const, message: "Body must be JSON." } },
+        400,
+      );
     }
 
     const engine = raw.body.engine;

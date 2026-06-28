@@ -24,20 +24,11 @@ export {
   selectExemplars,
   selectExemplarsForSchema,
 } from "./few-shot-select.ts";
-// Curated retrieval pool + the per-lever T9 ablation that wires it into the
-// planner system prompt (SK-LLM-041 half (b), DAIL §4.1).
-export {
-  buildPlanSystem,
-  PLAN_EXEMPLAR_POOL,
-  type PlanBucket,
-  type PlanExemplar,
-  retrievePlanExemplars,
-} from "./plan-exemplar-pool.ts";
 // Founder-funded frontier lane (SK-FRONTIER-001..004) — DORMANT: the
 // shipped `HAS_FRONTIER_API_KEYS` is `false`, so `selectFrontierLane`
 // returns `null` before touching any key/env/KV. apps/api wires these
 // primitives behind the gate later.
-export { isFrontierEligible, type FrontierEligibilityCtx } from "./frontier/eligibility.ts";
+export { type FrontierEligibilityCtx, isFrontierEligible } from "./frontier/eligibility.ts";
 export { HAS_FRONTIER_API_KEYS } from "./frontier/gate.ts";
 export {
   ACTIVE_TIER_KEY,
@@ -60,6 +51,15 @@ export {
   type FrontierTier,
   frontierTiers,
 } from "./frontier/tiers.ts";
+// Curated retrieval pool + the per-lever T9 ablation that wires it into the
+// planner system prompt (SK-LLM-041 half (b), DAIL §4.1).
+export {
+  buildPlanSystem,
+  PLAN_EXEMPLAR_POOL,
+  type PlanBucket,
+  type PlanExemplar,
+  retrievePlanExemplars,
+} from "./plan-exemplar-pool.ts";
 export type { ByollmProviderOptions } from "./providers/byollm.ts";
 export { createByollmProvider } from "./providers/byollm.ts";
 export type { CerebrasProviderOptions } from "./providers/cerebras.ts";

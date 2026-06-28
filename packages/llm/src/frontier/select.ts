@@ -11,12 +11,7 @@ import { createLLMRouter, type LLMRouter } from "../router.ts";
 import type { LLMOperation, ProviderName } from "../types.ts";
 import { type FrontierEligibilityCtx, isFrontierEligible } from "./eligibility.ts";
 import { HAS_FRONTIER_API_KEYS } from "./gate.ts";
-import {
-  advanceActiveTier,
-  type FrontierKv,
-  NO_ACTIVE_TIER,
-  readActiveTier,
-} from "./pointer.ts";
+import { advanceActiveTier, type FrontierKv, NO_ACTIVE_TIER, readActiveTier } from "./pointer.ts";
 import type { FrontierProvider, FrontierTier } from "./tiers.ts";
 
 export type SelectFrontierArgs = {

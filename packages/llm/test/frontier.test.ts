@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  type FrontierEligibilityCtx,
-  isFrontierEligible,
-} from "../src/frontier/eligibility.ts";
+import { type FrontierEligibilityCtx, isFrontierEligible } from "../src/frontier/eligibility.ts";
 import { HAS_FRONTIER_API_KEYS } from "../src/frontier/gate.ts";
 import {
   ACTIVE_TIER_KEY,
@@ -29,7 +26,11 @@ function fakeKv(initial?: Record<string, string>) {
       store.set(k, v);
     }),
     _store: store,
-  } satisfies FrontierKv & { get: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn>; _store: Map<string, string> };
+  } satisfies FrontierKv & {
+    get: ReturnType<typeof vi.fn>;
+    put: ReturnType<typeof vi.fn>;
+    _store: Map<string, string>;
+  };
 }
 
 // A fully-populated env so `frontierTiers` returns all six tiers.
@@ -226,10 +227,13 @@ describe("buildFrontierRouter", () => {
       const req = input instanceof Request ? input : new Request(input.toString(), init);
       const body = (await req.clone().json()) as { model: string };
       seen.push({ url: req.url, auth: req.headers.get("authorization"), model: body.model });
-      return new Response(JSON.stringify({ choices: [{ message: { content: '{"sql":"SELECT 1"}' } }] }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ choices: [{ message: { content: '{"sql":"SELECT 1"}' } }] }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
     };
     const router = buildFrontierRouter(topTier(), "k-a1");
     await router.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
