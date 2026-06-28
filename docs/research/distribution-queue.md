@@ -11,66 +11,58 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-25 (run 95) — dev.to / lobste.rs / r/MachineLearning: "Your eval harness will report 0% when the problem is your Wi-Fi"
+## 2026-06-28 (run 96) — dev.to / lobste.rs / r/ExperiencedDevs: "Your status doc keeps its own history. That's why nobody reads it."
 
-**Where:** dev.to + lobste.rs + r/MachineLearning (`machinelearning` / `llmops` /
-`testing`); a build-in-public anti-self-deception lesson in the run-77/86 family
-("audit the artifact, not the template" → here: "audit the *measurement*, not just
-the model"). nlqdb is the worked example, mentioned once. The hook: a number from a
-broken pipe looks exactly like a number from a broken model — and only one of them
-should ever touch your baseline.
+**Where:** dev.to + lobste.rs + r/ExperiencedDevs; a build-in-public lesson in the
+run-77/86 "audit the rendered artifact" family — here the artifact is the dashboard our
+own automation reads first every day. nlqdb is the worked example, mentioned once.
 
-**Title:** Your eval harness will report 0% when the problem is your Wi-Fi
+**Title:** Your status doc keeps its own history. That's why nobody reads it.
 
 **Body:**
 
-> We run an NL→SQL eval: ask a model to write SQL for a question, execute it, compare
-> the rows to a gold answer, report execution accuracy. The whole point is to catch the
-> day a prompt or model change makes the engine *worse*. So a regression has teeth — a
-> bad number can re-seed the baseline and fire an alert.
+> We have a scorecard — one file an automated daily job regenerates and reads *first*,
+> before it decides what to work on. It had a rule written at the top of it: "current
+> state only — no run-by-run changelog accretes here." It also had a 5 KB size cap, for
+> exactly one reason: the thing gets read every single run, so every stray kilobyte is
+> tax on every future decision.
 >
-> Running it from a new sandbox, it printed `EA=0.00% (match=0/1)`. A total collapse —
-> except the model was fine. Every single attempt had failed with `network` errors: the
-> sandbox couldn't reach any provider. The harness had dutifully scored each unanswered
-> question as "no SQL produced," averaged them, and reported a clean, catastrophic,
-> completely meaningless **0%**. One config flip and that 0% would have overwritten a
-> real baseline and paged someone about an engine regression that never happened.
+> It was 15 KB. Three times its cap. Every row had grown a paragraph of "was X on the
+> 12th, then Y on the 19th, here's the p-value, here's why we tried Z and reverted" — a
+> narrated history glued to the one document whose whole job was to *not* be a history.
+> Each run honestly meant to "just add today's number," each run it got a little longer,
+> and nobody noticed because no single edit looked like the problem.
 >
-> The bug isn't the network. It's that **"I couldn't measure" and "I measured zero" were
-> the same outcome.** A timeout, a revoked API key, a DNS failure — none of those are
-> signal about the thing under test, but they all collapse into the same 0 as a genuine
-> failure if you let them.
+> The failure isn't laziness. It's that **a status doc and a changelog feel like the
+> same document while you're writing them, and they are opposites.** A status doc answers
+> "what is true now"; its value is inversely proportional to its length. A changelog
+> answers "what happened"; it only works by accreting. Put them in one file and the
+> changelog instinct always wins, because adding is easier than deciding what to delete —
+> and the status doc quietly dies of bloat.
 >
-> The fix is to make non-measurement a distinct, loud state. We already classify *why*
-> each attempt failed (network / timeout / rate-limit / the model returned non-SQL).
-> So: if **every** scored row failed for an infrastructure reason — and not one question
-> got a real answer — the run is an *outage*, not a result. It refuses to compare to the
-> baseline, refuses to emit, throws away its partial state, and exits non-zero so it
-> re-runs clean. The guard is deliberately one-sided: the moment *any* question gets an
-> answer, or any failure is "the model wrote garbage" (real signal), it scores the run
-> normally. It can suppress an outage; it can never hide a regression.
+> The fix is structural, not disciplinary ("be more concise" never holds across a
+> hundred edits). History already had a home — `git log` plus a dedicated append-only
+> log. So the scorecard's job is *only* the current snapshot, and the cap is the forcing
+> function: a new number goes in, an old narration comes out, or the file won't save.
+> Reset to 5 KB it lost nothing — every live number is still there; what left was prose
+> `git log` already held, better.
 >
-> The transferable rule: **every metric needs a third value besides good and bad —
-> "didn't run."** If your dashboard can't tell a 0 from a 0/0, some day it will treat a
-> dead pipe as a dead model, and you'll debug the wrong one.
-> ([nlqdb](https://nlqdb.com); the guard is `isTransportCollapse` in our eval runner.)
+> The transferable rule: **if a document has a freshness cap, give it a sibling that
+> doesn't, and route every "what happened" sentence there.** A file that's allowed to
+> remember everything will, and then it answers nothing. ([nlqdb](https://nlqdb.com).)
 
-**Why this advances the north-star:** engine quality (GLOBAL-025) — the lesson post for
-this run's lever (the SK-QUAL-020 transport-collapse guard that protects the
-BIRD/Spider/persona-bench baseline from a false 0.00). One nlqdb mention. No
-engine/funnel/ops KPI degrades.
+**Why this advances the north-star:** this run's lever was exactly this reset (the daily
+scorecard, 15 KB → under its 5 KB cap), so the post is its lesson. Keeps the daily
+instrument lean (GLOBAL-025); one nlqdb mention; no KPI degrades.
 
 ## Collapsed — full drafts in git history
+
+- run 95 — dev.to / lobste.rs / r/MachineLearning: "Your eval harness will report 0% when the problem is your Wi-Fi" (an NL→SQL eval printed `EA=0.00%` from a sandbox that couldn't reach any provider — every attempt failed `network`, scored "no SQL," averaged to a meaningless 0 that would re-seed the baseline; "couldn't measure" and "measured zero" were the same outcome; fix makes non-measurement a loud distinct state — if *every* row failed for an infra reason it's an outage not a result, so refuse to compare/emit and exit non-zero; one-sided, never hides a regression; `isTransportCollapse`, SK-QUAL-020).
 
 - run 94 — dev.to / lobste.rs: "We made share cards for half our buyer's journey and forgot the other half" (two page clusters serve one buyer — comparison `/vs` + solve pages; bespoke OG cards shipped for `/vs` months earlier, solve pages silently fell back to the generic card; each cluster internally consistent so nothing looked broken — the gap lived *between* them; coverage audits keyed on a template miss gaps between parallel clusters — diff instrumentation cluster-against-cluster; P2 solve-page OG cards 0 → 10).
 - run 93 — dev.to / r/LLMDevs / r/AI_Agents: "Your agents each have their own memory. That's why they keep redoing each other's work." (a crew breaks memory a new way — one agent's facts are invisible to another; "shared vector store" fixes recall only, but "what did each agent decide / tasks each closed / latest fact" is `GROUP BY`/`COUNT`/most-recent; one shared store where each row carries `agent_id` lets any agent read another's and roll the crew up per agent; honest limits — no per-agent access control, no vector recall; anchors `/solve/share-memory-across-multiple-ai-agents`).
 - run 92 — dev.to / r/LLMDevs / r/AI_Agents: "Your 'read-only' AI agent is one SQL comment away from a write." (a read-only role + connection string leaks via a write in a SQL comment, a `DROP` in a CTE, a `JOIN` onto `oauth_tokens`, a pool-draining query; root cause is the agent holding credentials *and* authoring SQL — take authorship away: server-built parameterised writes + fail-closed read validator + engine RLS, not a regex; anchors `/solve/safely-give-ai-agent-database-access`).
 - run 91 — dev.to / r/LLMDevs / r/LangChain: "Your eval results live in a spreadsheet. The question 'which version regressed' lives in SQL." (an eval run is scored cases, but "pass rate per version, which regressed, trend per model" are aggregations across every run — a pivot rots, asking the LLM to tally hallucinates; scoring and tracking are different machines — log each case as a typed row; anchors `/solve/track-llm-eval-scores-across-prompt-versions`).
-
-Newest first; collapsed once past the single inline draft above (the latest draft
-has grown enough that even two no longer fit under the D4 20 KB cap). Each line is
-title + venue + one-line gist; `git log -p docs/research/distribution-queue.md`
-recovers any body.
 
 - run 90 — dev.to / r/LangChain / r/LLMDevs: "Your vector store found the chunk. It can't tell you which source you keep retrieving and never use." (RAG retrieval is *recall*; "which source retrieved most / never surfaces / avg relevance" is an aggregation over the retrieval log — a vector store is the wrong shape to `GROUP BY`; log each retrieval as a typed row; anchors `/solve/analyze-rag-retrieval-logs`).
 - run 88 — dev.to / r/LLMDevs / lobste.rs: "You're grepping your agent's trace logs to count which tool fails. That's a GROUP BY." (which tool fails most, p95 per tool, calls per session are aggregations, and a span-tree trace log is the wrong shape to `GROUP BY` across runs; *capture* (OTel/AgentOps/Langfuse) and *query* are different machines — log each tool call as a typed row; anchors `/solve/analyze-agent-tool-call-logs`).
