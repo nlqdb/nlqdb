@@ -1,0 +1,319 @@
+---
+// `/app/connect` — auth-guarded BYO-connect page (SK-WEB-019). The
+// product-side landing for Door B of the two-door home (SK-WEB-018):
+// "Question your ClickHouse". The home CTA points at
+// `/auth/sign-in?return_to=/app/connect`, so by the time a user reaches
+// this page they're signed in; the inline guard below mirrors
+// `/app/keys.astro` so a direct hit / expired cookie bounces to sign-in
+// rather than rendering a broken 401 shell.
+//
+// `ConnectForm` is the only island on the page (SSR shell, one
+// `client:load` island) — the cookie session is the principal for its
+// `POST /v1/db/connect` (credentials:"include").
+
+import ConnectForm from "../../components/ConnectForm.tsx";
+import Footer from "../../components/Footer.astro";
+import Topnav from "../../components/Topnav.astro";
+import Base from "../../layouts/Base.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
+---
+<Base
+  title="Connect your ClickHouse — nlqdb"
+  description="Connect your own ClickHouse or Postgres database and query it in English. nlqdb reads your schema; your connection string is sealed server-side and never stored in your browser."
+>
+  <div class="page page--connect" id="connect-shell" data-api-base={apiBase} hidden>
+    <Topnav current="chat" />
+    <main class="page__main page__main--connect">
+      <ConnectForm client:load apiBase={apiBase} />
+    </main>
+    <Footer />
+  </div>
+</Base>
+
+<script>
+  // Inline auth guard — mirrors `/app/keys.astro` (SK-AUTH-016 /
+  // SK-WEB-009). The shell stays `hidden` until `fetchSession` resolves;
+  // an unauthenticated probe redirects to sign-in with a `return_to` so
+  // post-signin lands back here.
+  import { fetchSession, invalidateSession } from "../../lib/session";
+
+  const shell = document.getElementById("connect-shell");
+  if (shell) {
+    const apiBase = (shell as HTMLElement).dataset["apiBase"];
+
+    async function requireSession(): Promise<boolean> {
+      const user = await fetchSession(apiBase);
+      if (!user) {
+        const returnTo = `${location.pathname}${location.search}${location.hash}`;
+        const signInUrl = new URL("/auth/sign-in", location.origin);
+        signInUrl.searchParams.set("return_to", returnTo);
+        location.replace(signInUrl.toString());
+        return false;
+      }
+      return true;
+    }
+
+    // Re-probe on bfcache restore so a signed-out cookie can't leave the
+    // connect shell visible (mirrors /app/keys.astro).
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) {
+        invalidateSession();
+        void requireSession();
+      }
+    });
+
+    void (async () => {
+      if (!(await requireSession())) return;
+      shell.hidden = false;
+    })();
+  }
+</script>
+
+<style is:global>
+  /* `/app/connect` — composes the same shell padding as `/app/keys`,
+   * and scopes the `ConnectForm` island's styles here (the island is
+   * rendered only from this page, so its CSS lives with it). Tokens
+   * only (SK-WEB-015); one promoted lime moment = the submit CTA →
+   * "Question it now →" CTA after success. */
+  .page--connect {
+    max-width: 960px;
+    padding: 0 clamp(16px, 3vw, 32px);
+  }
+
+  .page__main--connect {
+    padding: 32px 0 64px;
+  }
+
+  .connect {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(24px, 4vw, 36px);
+    max-width: var(--col);
+  }
+
+  .connect__title {
+    margin: 0 0 12px;
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+
+  .connect__lede {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-large);
+    color: var(--body);
+    line-height: 1.45;
+    max-width: 56ch;
+  }
+
+  .connect__form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .connect__field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .connect__label {
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .connect__optional {
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--muted);
+  }
+
+  .connect__select,
+  .connect__input {
+    width: 100%;
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: var(--t-body);
+    color: var(--ink);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    outline: none;
+    transition: border-color 80ms ease-out;
+  }
+
+  .connect__select:focus,
+  .connect__input:focus {
+    border-color: var(--accent);
+  }
+
+  .connect__select:disabled,
+  .connect__input:disabled {
+    opacity: 0.6;
+  }
+
+  .connect__url-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .connect__url-row .connect__input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .connect__toggle {
+    flex: 0 0 auto;
+    padding: 0 16px;
+    font-size: 13px;
+  }
+
+  .connect__hint {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .connect__submit {
+    align-self: flex-start;
+    min-width: 220px;
+  }
+
+  .connect__submit:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .connect__error-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .connect__error {
+    margin: 0;
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #ff8a8a;
+    background: #2a1212;
+    border: 1px solid #ff8a8a;
+    line-height: 1.5;
+  }
+
+  /* Success — schema preview + the one promoted "Question it now →" CTA. */
+  .connect-result {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: clamp(20px, 3vw, 28px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+  }
+
+  .connect-result__id {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+
+  .connect-result__id-label {
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+
+  .connect-result__id code {
+    color: var(--ink);
+    background: var(--ground);
+    padding: 2px 6px;
+    border: 1px solid var(--rule);
+  }
+
+  .connect-result__engine {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+  }
+
+  .connect-result__schema-label {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .connect-result__schema {
+    margin: 0;
+    padding: 14px 16px;
+    max-height: 360px;
+    overflow: auto;
+    overflow-x: auto;
+    background: var(--ground);
+    border: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--body);
+    white-space: pre;
+  }
+
+  .connect-result__key {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .connect-result__key-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+
+  .connect-result__key-value {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 10px;
+    background: var(--ground);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    word-break: break-all;
+    /* Keyboard-copy fallback if the clipboard API is blocked. */
+    user-select: all;
+  }
+
+  .connect-result__key-copy {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .connect-result__cta {
+    align-self: flex-start;
+  }
+</style>
