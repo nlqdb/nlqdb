@@ -197,6 +197,31 @@ export type CreateDatabaseResult = {
   connectionString?: string;
 };
 
+// SK-DBCONN-001 — body for `client.databases.connect()`. Connect a
+// bring-your-own Postgres / ClickHouse: the server seals the
+// `connection_url` (`GLOBAL-031`), introspects the schema, and returns a
+// live, queryable DB. `connectionUrl` is the same trust class as a
+// BYOLLM key — HTTPS-only, sent ONLY in the request body, never logged.
+export type ConnectDatabaseRequest = {
+  engine: Engine;
+  // The full DSN to the user's own database. Sealed at rest server-side
+  // (`GLOBAL-031`); the SDK transmits it once, in the JSON body, and
+  // never embeds it in a URL / log / telemetry value.
+  connectionUrl: string;
+  name?: string;
+};
+
+// SK-DBCONN-001 — response from `client.databases.connect()`. `pkLive`
+// is the freshly-minted publishable per-DB key; `schemaPreview` is the
+// rendered schema text the surface shows as the connect confirmation.
+export type ConnectDatabaseResult = {
+  dbId: string;
+  name: string;
+  engine: string;
+  schemaPreview: string;
+  pkLive: string | null;
+};
+
 // `SK-SDK-009` — raw-SQL escape hatch (`GLOBAL-015`); same allow-list as `ask()`, DDL still rejected.
 export type RunSqlRequest = {
   db: string;
@@ -297,6 +322,17 @@ export type ApiErrorCode =
   // E-02: `client.remember()` rejected because the target DB isn't an
   // `agent_memory_v1` preset (409).
   | "wrong_preset"
+  // SK-DBCONN-001 — `POST /v1/db/connect` rejections. `connect_requires_account`
+  // (403) when the caller isn't signed in (connect is account-only).
+  // `invalid_request` (400) covers a mis-shaped body, a bad / non-HTTPS
+  // connection URL, or an egress-blocked host (`GLOBAL-035`).
+  // `introspection_failed` (502) when the BYO DB couldn't be reached /
+  // read; `sealing_unconfigured` (503) when the deployment can't seal
+  // secrets (`GLOBAL-031` KEK unset).
+  | "connect_requires_account"
+  | "invalid_request"
+  | "introspection_failed"
+  | "sealing_unconfigured"
   // SDK-only sentinels — never sent by the API.
   | "unknown_error"
   | "non_json_response"
@@ -610,6 +646,28 @@ export type NlqClient = {
     dbId: string,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<void>;
+  /**
+   * Bring-your-own-database verbs (`SK-DBCONN-001`). Namespaced because
+   * `GLOBAL-003` parity names the surface `client.databases.connect`.
+   */
+  databases: {
+    /**
+     * `POST /v1/db/connect` — connect a bring-your-own Postgres / ClickHouse
+     * (`SK-DBCONN-001`). The server validates + egress-guards the host
+     * (`GLOBAL-035`), seals the `connectionUrl` at rest (`GLOBAL-031`),
+     * introspects the schema, and returns a live, queryable DB. Account-only:
+     * an anonymous call rejects with `connect_requires_account` (403). The
+     * `connectionUrl` rides the request body only — it is never placed in a
+     * URL, log, or telemetry value (same trust class as a BYOLLM key). Other
+     * errors worth a branch: `invalid_request` (400, mis-shaped body / bad URL
+     * / egress-blocked), `introspection_failed` (502), `sealing_unconfigured`
+     * (503). Mutating: auto-keyed (`SK-SDK-006`).
+     */
+    connect(
+      req: ConnectDatabaseRequest,
+      opts?: { signal?: AbortSignal; idempotencyKey?: string },
+    ): Promise<ConnectDatabaseResult>;
+  };
   /**
    * `POST /v1/run` — raw-SQL escape hatch (`SK-SDK-009` / `GLOBAL-015`). Same
    * allow-list and `trace` block as {@link ask}; DDL is rejected. Errors worth
@@ -1070,6 +1128,25 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
           ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
           : {}),
       });
+    },
+    databases: {
+      connect: (req, callOpts) =>
+        // SK-DBCONN-001 — the `connectionUrl` travels only in the JSON
+        // body, never a query string / header / log line (same trust
+        // class as the BYOLLM key). `call()` never echoes a request body
+        // into the thrown error, so a failure can't leak the URL either.
+        call<ConnectDatabaseResult>("/v1/db/connect", {
+          method: "POST",
+          body: JSON.stringify({
+            engine: req.engine,
+            connection_url: req.connectionUrl,
+            ...(req.name !== undefined ? { name: req.name } : {}),
+          }),
+          signal: callOpts?.signal,
+          ...(callOpts?.idempotencyKey
+            ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+            : {}),
+        }),
     },
     getKeyStatus: (keyHash, callOpts) =>
       call<KeyStatus>(`/v1/keys/${encodeURIComponent(keyHash)}/status`, {

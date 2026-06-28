@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { type NlqClient, NlqdbApiError } from "@nlqdb/sdk";
 import { describe, expect, it, vi } from "vitest";
 import {
+  connectDatabaseInputShape,
   createListDatabasesCache,
   formatError,
   formatQueryResult,
   formatResult,
+  handleConnectDatabase,
   handleDescribe,
   handleListDatabases,
   handleQuery,
@@ -16,7 +18,9 @@ import {
   queryOutputShape,
 } from "../src/index.ts";
 
-function stubClient(overrides: Partial<NlqClient> = {}): NlqClient {
+type ConnectFn = NlqClient["databases"]["connect"];
+
+function stubClient(overrides: Partial<NlqClient> & { connect?: ConnectFn } = {}): NlqClient {
   const base: NlqClient = {
     ask: async () => {
       throw new Error("ask not stubbed");
@@ -43,6 +47,11 @@ function stubClient(overrides: Partial<NlqClient> = {}): NlqClient {
       // the stub is here only so the mock satisfies the NlqClient
       // interface that the SDK now exports.
       throw new Error("deleteDatabase not stubbed");
+    },
+    databases: {
+      connect: async () => {
+        throw new Error("databases.connect not stubbed");
+      },
     },
     getKeyStatus: async () => ({ revoked: false }),
     redeemOAuthBridgeCode: async () => {
@@ -73,7 +82,12 @@ function stubClient(overrides: Partial<NlqClient> = {}): NlqClient {
       throw new Error("remember not stubbed");
     },
   };
-  return { ...base, ...overrides };
+  const { connect, ...rest } = overrides;
+  return {
+    ...base,
+    ...rest,
+    ...(connect ? { databases: { connect } } : {}),
+  };
 }
 
 describe("handleQuery", () => {
@@ -429,6 +443,100 @@ describe("handleRemember", () => {
   });
 });
 
+describe("handleConnectDatabase", () => {
+  it("connects and returns dbId + schema preview without echoing the secret", async () => {
+    const client = stubClient({
+      connect: async (req) => {
+        expect(req.engine).toBe("postgres");
+        expect(req.connectionUrl).toBe("postgres://u:secret@host:5432/db");
+        expect(req.name).toBe("Prod orders");
+        return {
+          dbId: "db_conn_abc",
+          name: "Prod orders",
+          engine: "postgres",
+          schemaPreview: "table orders(id, total)\ntable customers(id, name)",
+          pkLive: "pk_live_should_not_leak",
+        };
+      },
+    });
+
+    const result = await handleConnectDatabase(client, {
+      engine: "postgres",
+      connection_url: "postgres://u:secret@host:5432/db",
+      name: "Prod orders",
+    });
+
+    expect(result).toEqual({
+      ok: {
+        dbId: "db_conn_abc",
+        name: "Prod orders",
+        engine: "postgres",
+        schemaPreview: "table orders(id, total)\ntable customers(id, name)",
+        credential: "stored_sealed",
+      },
+    });
+
+    // SECURITY — neither the URL/password nor the pkLive may appear anywhere
+    // in the serialised result the host LLM sees.
+    const formatted = formatResult(result);
+    const blob = JSON.stringify(formatted);
+    expect(blob).not.toContain("secret");
+    expect(blob).not.toContain("postgres://");
+    expect(blob).not.toContain("pk_live_should_not_leak");
+  });
+
+  it("passes the server's connect-failure message through verbatim", async () => {
+    const client = stubClient({
+      connect: async () => {
+        throw new NlqdbApiError(
+          "connect failed",
+          502,
+          "introspection_failed",
+          "/v1/db/connect",
+          // The server message must not contain the URL; it doesn't here.
+          {
+            status: "introspection_failed",
+            message: "Could not reach the database host within 5s.",
+          },
+        );
+      },
+    });
+
+    const result = await handleConnectDatabase(client, {
+      engine: "clickhouse",
+      connection_url: "https://u:secret@ch.example:8443",
+    });
+
+    expect("err" in result && result.err.code).toBe("introspection_failed");
+    expect("err" in result && result.err.message).toBe(
+      "Could not reach the database host within 5s.",
+    );
+    // Redaction holds on the error path too.
+    expect(JSON.stringify(result)).not.toContain("secret");
+  });
+
+  it("maps connect_requires_account to a sign-in hint", async () => {
+    const client = stubClient({
+      connect: async () => {
+        throw new NlqdbApiError(
+          "account required",
+          403,
+          "connect_requires_account",
+          "/v1/db/connect",
+          null,
+        );
+      },
+    });
+    const result = await handleConnectDatabase(client, {
+      engine: "postgres",
+      connection_url: "postgres://u:secret@host/db",
+    });
+    expect("err" in result && result.err.code).toBe("connect_requires_account");
+    expect("err" in result && result.err.action).toMatch(/sk_live_|sign in/i);
+    expect(JSON.stringify(result)).not.toContain("secret");
+  });
+});
+
 describe("handleDescribe", () => {
   it("finds a DB by slug", async () => {
     const client = stubClient({
@@ -655,6 +763,12 @@ describe("tool descriptions carry the contract (WS04-T1)", () => {
   it("rows documents the 200-row cap and the recovery", () => {
     expect(queryOutputShape.rows.description).toMatch(/200/);
     expect(queryOutputShape.rows.description).toMatch(/rowsTruncated/);
+  });
+
+  it("connect_database describes the engines and the sealed-credential handling", () => {
+    expect(connectDatabaseInputShape.engine.description).toMatch(/clickhouse/i);
+    expect(connectDatabaseInputShape.engine.description).toMatch(/postgres/i);
+    expect(connectDatabaseInputShape.connection_url.description).toMatch(/sealed|never echoed/i);
   });
 });
 

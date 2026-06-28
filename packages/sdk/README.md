@@ -70,6 +70,7 @@ unless the client was built with `withCredentials: true`.
 ```ts
 client.ask({ goal, dbId }, { signal? })           // POST /v1/ask
 client.runSql({ db, sql }, { signal?, idempotencyKey? }) // POST /v1/run
+client.databases.connect({ engine, connectionUrl, name? }) // POST /v1/db/connect
 client.listChat({ signal? })                       // GET  /v1/chat/messages
 client.postChat({ goal, dbId }, { signal? })       // POST /v1/chat/messages
 client.setByollm({ provider, model, key })         // POST   /v1/keys/byollm
@@ -82,6 +83,22 @@ client.clearByollm()                               // DELETE /v1/keys/byollm
 rejected. Use it when the LLM-emitted SQL is the wrong shape and you
 want to hand-write the query — the response carries the same `trace`
 block as `ask()`.
+
+`databases.connect` is the bring-your-own-database verb
+(`SK-DBCONN-001`): connect your own Postgres or ClickHouse and query it
+in plain English. The `connectionUrl` is the same trust class as a
+provider key — it rides the request body only, is sealed at rest
+server-side, and never appears in a URL, log, or thrown-error message.
+Account-only: an anonymous call rejects with `connect_requires_account`.
+
+```ts
+const db = await client.databases.connect({
+  engine: "postgres",
+  connectionUrl: "postgresql://user:pass@db.example.com:5432/app",
+  name: "prod replica",
+});
+// { dbId, name, engine, schemaPreview, pkLive }
+```
 
 `AbortSignal` is plumbed end-to-end. SSE consumer for `/v1/ask` is
 not yet shipped — `ask()` calls the buffered JSON path.

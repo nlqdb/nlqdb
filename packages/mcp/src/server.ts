@@ -4,10 +4,14 @@ import type { NlqClient } from "@nlqdb/sdk";
 import { trace } from "@opentelemetry/api";
 import type { z } from "zod";
 import {
+  type ConnectDatabaseInput,
+  type ConnectDatabaseOutput,
+  connectDatabaseInputShape,
   type DescribeInput,
   type DescribeOutput,
   describeInputShape,
   type HandlerContext,
+  handleConnectDatabase,
   handleDescribe,
   handleListDatabases,
   handleQuery,
@@ -145,6 +149,25 @@ export function createServer(opts: ServerOptions): McpServer {
       return runTool("nlqdb_remember", extra.signal, async (ctx) => {
         const result = await handleRemember(client, args, ctx);
         return formatResult<RememberOutput>(result);
+      });
+    },
+  );
+
+  registerTool(
+    "nlqdb_connect_database",
+    {
+      title: "Connect an existing database so the agent can query it in English",
+      description:
+        "Connect an existing ClickHouse or Postgres database so the agent can query it in natural language with nlqdb_query — no migration, no schema upload. Pass the engine and a connection URL; the credential is stored sealed server-side and never echoed back. Returns the new dbId and a preview of the discovered schema.",
+      inputSchema: connectDatabaseInputShape,
+      // Reads schema + stores a credential; it creates a registry row but
+      // doesn't mutate the connected database's data.
+      annotations: { destructiveHint: false },
+    },
+    async (args: ConnectDatabaseInput, extra: ToolExtra) => {
+      return runTool("nlqdb_connect_database", extra.signal, async (ctx) => {
+        const result = await handleConnectDatabase(client, args, ctx);
+        return formatResult<ConnectDatabaseOutput>(result);
       });
     },
   );
