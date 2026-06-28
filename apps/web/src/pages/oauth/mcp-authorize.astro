@@ -61,10 +61,8 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
         <a class="btn btn--accent consent__approve" href="/app">Go to nlqdb</a>
       </section>
 
-      <!-- Connected. Shown once the code is minted and the bridge redirect
-           is kicked off. For hosts whose redirect_uri is a custom-scheme
-           deep link (e.g. cursor://…) the browser hands off to the OS
-           without rendering a new page, so this stays as the final view. -->
+      <!-- Connected — the final view for custom-scheme hosts (see the
+           success swap in the script for why). -->
       <section id="consent-success" class="consent__card" hidden>
         <h1 class="consent__title">You're connected.</h1>
         <p class="consent__lede">
