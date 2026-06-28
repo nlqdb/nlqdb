@@ -174,7 +174,9 @@ and shares the link — in under 60 seconds, no card, no config.
 
 ### Phase 4 — Beyond v1
 
-- ~ Bring-your-own Postgres / ClickHouse (`POST /v1/db/connect`)
+- ~ Bring-your-own Postgres / ClickHouse — connect path live end-to-end
+  (`POST /v1/db/connect` + web UI, CLI, SDK, query dispatch); prod-gated on
+  the `BYO_SECRET_KEK` secret
 - ◯ SSO (SAML / OIDC), audit-log export, per-org quotas
 - ◯ EU data residency, VPC peering, SOC 2
 
