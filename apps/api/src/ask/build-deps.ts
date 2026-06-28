@@ -13,7 +13,9 @@ import {
   buildClickhouseByoQuery,
   type ClickhouseConnSpec,
   createDohResolver,
+  guardEgressHostResolved,
   parseClickhouseUrl,
+  parseConnectionUrl,
   type Row,
 } from "@nlqdb/db";
 import type { LLMRouter } from "@nlqdb/llm";
@@ -234,6 +236,19 @@ async function runByoPgQuery(
       const startedAt = performance.now();
       try {
         signal?.throwIfAborted();
+        // Re-guard the host before the fetch — the same DNS-rebind TOCTOU
+        // narrowing the ClickHouse path does (GLOBAL-035, byo-connect Open
+        // question (c)). The connect-time check ran once; DNS can re-point a
+        // name at a private/metadata address before this query, so re-resolve
+        // and re-classify here. Fails closed on a private/reserved verdict.
+        const parsed = parseConnectionUrl(url);
+        if (parsed.ok) {
+          const verdict = await guardEgressHostResolved(
+            parsed.parsed.host,
+            createDohResolver(),
+          );
+          if (!verdict.ok) throw new DbConfigError(verdict.message);
+        }
         const result = await neonSql.query(sql, []);
         return {
           rows: (result.rows ?? []) as Row[],

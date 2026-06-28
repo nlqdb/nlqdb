@@ -3,8 +3,8 @@ name: byo-connect
 description: The end-to-end BYO-database connect verb — POST /v1/db/connect — that turns the landed connect-path primitives into a live, queryable BYO Postgres / ClickHouse.
 when-to-load:
   globs:
-    - apps/api/src/db-create/connect.ts
-    - apps/api/src/run/**
+    - apps/api/src/db-connect/**
+    - apps/api/src/ask/build-deps.ts
     - packages/db/src/clickhouse-byo.ts
   topics: [byo, connect, clickhouse, postgres, db-connect, sealed-blob]
 ---
@@ -20,9 +20,10 @@ that runs the user's own engine on the `/v1/ask` path.
 the "primitives landed, `connect.ts` wiring remains" gap that `db-adapter` and
 `multi-engine-adapter` carried. Open gaps (ClickHouse SQL dialect, validator,
 TOCTOU residual) tracked under *Open questions* below.
-**Owners (code):** `apps/api/src/db-create/connect.ts`,
-`packages/db/src/clickhouse-byo.ts`, `apps/api/src/ask/orchestrate.ts`
-(engine dispatch), `apps/api/migrations/*_byo_connection_blob.sql`
+**Owners (code):** `apps/api/src/db-connect/connect.ts` (orchestrator) +
+the `POST /v1/db/connect` route handler in `apps/api/src/index.ts`,
+`packages/db/src/clickhouse-byo.ts`, `apps/api/src/ask/build-deps.ts`
+(`dispatchExec` engine dispatch), `apps/api/migrations/*_byo_connection_blob.sql`
 **Cross-refs:** [`db-adapter/FEATURE.md`](../db-adapter/FEATURE.md)
 (`SK-DB-011` BYO Postgres, `SK-DB-013` validation pipeline, `SK-DB-014`
 introspection, `SK-DB-015` schema render) · [`multi-engine-adapter/FEATURE.md`](../multi-engine-adapter/FEATURE.md)
@@ -32,9 +33,9 @@ introspection, `SK-DB-015` schema render) · [`multi-engine-adapter/FEATURE.md`]
 
 ## Touchpoints — read this feature doc before editing
 
-- `apps/api/src/db-create/connect.ts` — the `POST /v1/db/connect` route + orchestrator
+- `apps/api/src/db-connect/connect.ts` — the standalone `POST /v1/db/connect` orchestrator (route handler is inline in `apps/api/src/index.ts`)
 - `packages/db/src/clickhouse-byo.ts` — the BYO ClickHouse HTTP exec adapter
-- `apps/api/src/ask/orchestrate.ts` — query-time engine dispatch (PG vs ClickHouse-BYO)
+- `apps/api/src/ask/build-deps.ts` — query-time engine dispatch (`dispatchExec`: PG hosted / PG BYO / ClickHouse-BYO)
 
 ## Decisions
 
@@ -42,9 +43,10 @@ introspection, `SK-DB-015` schema render) · [`multi-engine-adapter/FEATURE.md`]
 
 - **Decision:** `POST /v1/db/connect { engine, connection_url, name? }`
   (signed-in only) is the single verb that turns the landed connect-path
-  primitives into a live, queryable BYO database. The route handler in
-  `apps/api/src/db-create/connect.ts` is a thin shell over a **standalone
-  orchestrator** that runs one fixed pipeline for both engines:
+  primitives into a live, queryable BYO database. The route handler
+  (inline in `apps/api/src/index.ts`) is a thin shell over a **standalone
+  orchestrator** (`apps/api/src/db-connect/connect.ts`) that runs one fixed
+  pipeline for both engines:
   1. `validateByoConnection(engine, connection_url, createDohResolver())`
      ([`SK-DB-013`](../db-adapter/decisions/SK-DB-013-byo-connect-validation-pipeline.md))
      — parse-then-egress-resolve-recheck, fail-loud
@@ -71,9 +73,10 @@ introspection, `SK-DB-015` schema render) · [`multi-engine-adapter/FEATURE.md`]
   **`packages/db/src/clickhouse-byo.ts`** exec adapter runs ClickHouse over its
   native HTTP interface (Workers `fetch`, no TCP socket — per `SK-MULTIENG-005`)
   with one `db.query` span (`db.system=other_sql`, `SK-MULTIENG-004`).
-  **Query-time engine dispatch** in `apps/api/src/ask/orchestrate.ts` reads the
-  `DbRecord.engine` and routes the compiled SQL to the Postgres adapter or the
-  `clickhouse-byo` adapter — the same dispatch-by-DB-engine the cross-engine
+  **Query-time engine dispatch** (`dispatchExec` in
+  `apps/api/src/ask/build-deps.ts`) reads the `DbRecord.engine` (+ presence of a
+  sealed `connectionBlob`) and routes the compiled SQL to the hosted-PG, BYO-PG,
+  or `clickhouse-byo` runner — the same dispatch-by-DB-engine the cross-engine
   `nlq run` semantics already assume (`multi-engine-adapter` Open questions).
   Surface parity per [`GLOBAL-003`](../../decisions/GLOBAL-003-all-surfaces-one-pr.md):
   SDK `client.databases.connect`, CLI `nlq db connect`, MCP
@@ -101,12 +104,13 @@ introspection, `SK-DB-015` schema render) · [`multi-engine-adapter/FEATURE.md`]
   artifact holding a read-scoped `pk_live`; handing it a connect verb would put
   a credential-accepting endpoint behind a key designed to be pasted into HTML.
 
-- **Consequence in code:** New `apps/api/src/db-create/connect.ts` (route +
-  orchestrator) and `packages/db/src/clickhouse-byo.ts` (HTTP exec). New
-  `databases.connection_blob` column via an additive migration; `db-registry.ts`
-  returns the blob when `connection_secret_ref === "__byo_blob__"` and
-  `orchestrate.ts` opens it (`secret-envelope.ts`) to a plaintext DSN at execute
-  time. `orchestrate.ts` dispatches on `DbRecord.engine`. The connect handler
+- **Consequence in code:** New `apps/api/src/db-connect/connect.ts`
+  (orchestrator) + the `POST /v1/db/connect` route handler inline in
+  `apps/api/src/index.ts`, and `packages/db/src/clickhouse-byo.ts` (HTTP exec).
+  New `databases.connection_blob` column via an additive migration;
+  `db-registry.ts` returns the blob when `connection_secret_ref === "__byo_blob__"`
+  and `dispatchExec` (`ask/build-deps.ts`) opens it (`secret-envelope.ts`) to a
+  plaintext DSN at execute time and dispatches on `DbRecord.engine`. The connect handler
   returns the `GLOBAL-012` message as the 4xx body on any pipeline failure,
   never echoing the URL. SDK/CLI/MCP carry the verb in the same PR; the
   `<nlq-data>` element does **not** (N/A, recorded under Open questions per
@@ -180,10 +184,14 @@ the rule.
   `validateByoConnection` resolves-and-rechecks at connect time
   (`GLOBAL-035`), but a name resolved safe then can re-point to a private
   address before a later query. Mitigated by a **query-time egress re-guard**
-  on the resolved address before each exec; a **documented residual sub-TTL
-  window** remains (an attacker controlling DNS with a TTL shorter than the
-  re-guard→connect gap). Acceptable for BYO (the user supplied their own host);
-  revisit if a non-BYO outbound path is added.
+  before each exec on **both** engines: the ClickHouse adapter re-runs
+  `guardEgressHostResolved` inside `buildClickhouseByoQuery`, and the BYO-PG
+  runner (`runByoPgQuery` in `ask/build-deps.ts`) re-resolves + re-classifies
+  the host before issuing the query. A **residual sub-TTL window** remains
+  (an attacker controlling DNS with a TTL shorter than the re-guard→connect
+  gap; neither adapter can pin the resolved IP into the underlying `fetch`).
+  Acceptable for BYO (the user supplied their own host); revisit if a non-BYO
+  outbound path is added.
 - **(d) `connection_secret_ref` kept NOT NULL via the `__byo_blob__` sentinel.**
   The sentinel keeps the migration additive (one nullable column, no constraint
   relaxation). If a future schema rev makes the column nullable, the sentinel
