@@ -25,7 +25,7 @@ function makeFlow(payload: unknown): string {
 }
 
 describe("decodeFlowPayload", () => {
-  test("decodes the real Cursor envelope shape", () => {
+  test("reads ci/ru/st out of the real Cursor envelope, ignoring the rest", () => {
     const flow = makeFlow({
       rt: "code",
       ci: "1VoEOuC_9mN4OyYj",
@@ -35,20 +35,11 @@ describe("decodeFlowPayload", () => {
       cc: "XAWoQAcqOEjmFehCpE0PvY4gkFbpzrKWtKah3F7OdKk",
       cm: "S256",
     });
-    const payload = decodeFlowPayload(flow);
-    expect(payload).not.toBeNull();
-    expect(payload?.ci).toBe("1VoEOuC_9mN4OyYj");
-    expect(payload?.ru).toBe("cursor://anysphere.cursor-mcp/oauth/callback");
-    expect(payload?.st).toBe("opaque-state");
-    expect(payload?.cc).toBe("XAWoQAcqOEjmFehCpE0PvY4gkFbpzrKWtKah3F7OdKk");
-    expect(payload?.cm).toBe("S256");
-  });
-
-  test("defaults scope to [] and rt to 'code' when absent", () => {
-    const payload = decodeFlowPayload(makeFlow({ ci: "c", ru: "https://x/cb", st: "s" }));
-    expect(payload?.sc).toEqual([]);
-    expect(payload?.rt).toBe("code");
-    expect(payload?.cc).toBeUndefined();
+    expect(decodeFlowPayload(flow)).toEqual({
+      ci: "1VoEOuC_9mN4OyYj",
+      ru: "cursor://anysphere.cursor-mcp/oauth/callback",
+      st: "opaque-state",
+    });
   });
 
   test("rejects payloads missing required fields", () => {

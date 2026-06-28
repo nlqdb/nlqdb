@@ -24,22 +24,18 @@ export function mcpOrigin(): string {
 }
 
 export type FlowPayload = {
-  /** response_type */ rt: string;
   /** client_id */ ci: string;
   /** redirect_uri */ ru: string;
-  /** scope */ sc: string[];
   /** state */ st: string;
-  /** code_challenge */ cc?: string;
-  /** code_challenge_method */ cm?: string;
 };
 
 // Decode the *payload* half of `apps/mcp`'s signed envelope
 // (`<base64url(json)>.<hmac>`, see `apps/mcp/src/crypto.ts`). We can't
 // verify the HMAC client-side (no secret) and we don't need to — the
 // bridge callback re-verifies on `mcp.nlqdb.com` and a tampered blob
-// fails there. We read only `ci/ru/st` to fill the mint body; those
-// fields are stored with the one-shot code but the grant itself is
-// rebuilt from the verified envelope, so a forged value can't escalate.
+// fails there. We read only `ci/ru/st` to fill the mint body; the grant
+// itself is rebuilt from the verified envelope (which carries the other
+// OAuth fields through opaquely in `flow`), so a forged value can't escalate.
 export function decodeFlowPayload(flow: string): FlowPayload | null {
   const dot = flow.indexOf(".");
   const payload = dot < 0 ? flow : flow.slice(0, dot);
@@ -53,17 +49,7 @@ export function decodeFlowPayload(flow: string): FlowPayload | null {
     ) {
       return null;
     }
-    return {
-      rt: typeof parsed.rt === "string" ? parsed.rt : "code",
-      ci: parsed.ci,
-      ru: parsed.ru,
-      sc: Array.isArray(parsed.sc)
-        ? parsed.sc.filter((s): s is string => typeof s === "string")
-        : [],
-      st: parsed.st,
-      ...(typeof parsed.cc === "string" ? { cc: parsed.cc } : {}),
-      ...(typeof parsed.cm === "string" ? { cm: parsed.cm } : {}),
-    };
+    return { ci: parsed.ci, ru: parsed.ru, st: parsed.st };
   } catch {
     return null;
   }
