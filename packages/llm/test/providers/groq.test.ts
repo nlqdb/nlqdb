@@ -86,15 +86,17 @@ describe("createGroqProvider", () => {
 
   it("model() reflects per-operation defaults", () => {
     const provider = createGroqProvider({ apiKey });
-    expect(provider.model("route")).toBe("llama-3.1-8b-instant");
-    expect(provider.model("plan")).toBe("llama-3.3-70b-versatile");
-    expect(provider.model("summarize")).toBe("llama-3.3-70b-versatile");
+    expect(provider.model("route")).toBe("openai/gpt-oss-20b");
+    expect(provider.model("plan")).toBe("openai/gpt-oss-120b");
+    expect(provider.model("summarize")).toBe("openai/gpt-oss-120b");
+    expect(provider.model("schema_infer")).toBe("openai/gpt-oss-120b");
+    expect(provider.model("engine_classify")).toBe("openai/gpt-oss-20b");
   });
 
   it("custom models override the defaults per operation", () => {
-    const provider = createGroqProvider({ apiKey, models: { route: "qwen3-32b" } });
-    expect(provider.model("route")).toBe("qwen3-32b");
-    expect(provider.model("plan")).toBe("llama-3.3-70b-versatile");
+    const provider = createGroqProvider({ apiKey, models: { route: "qwen/qwen3-32b" } });
+    expect(provider.model("route")).toBe("qwen/qwen3-32b");
+    expect(provider.model("plan")).toBe("openai/gpt-oss-120b");
   });
 
   it("non-429 4xx becomes ProviderError reason=http_4xx with status", async () => {

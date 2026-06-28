@@ -85,7 +85,7 @@ export function getLLMRouter(): LLMRouter {
     providers,
     chains: {
       // SK-ASK-009 — merged routeAsk rides the cheap-tier chain (Groq
-      // 8B first; the prompt is short and the budget is 1500 ms).
+      // GPT OSS 20B first; the prompt is short and the budget is 1500 ms).
       route: ["groq", "gemini", "workers-ai", "openrouter"],
       // SK-LLM-023 — Cerebras (gpt-oss-120b) leads the planner tier; on a
       // 429 (free-tier per-minute token/request quota) it fails over to the

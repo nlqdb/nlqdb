@@ -195,7 +195,7 @@ async function callGroqCluster(
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
+      model: "openai/gpt-oss-20b",
       messages: [
         { role: "system", content: CLUSTER_SYSTEM },
         { role: "user", content: itemsToMsg(persona, items) },
