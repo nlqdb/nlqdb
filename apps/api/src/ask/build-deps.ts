@@ -242,13 +242,14 @@ async function runByoPgQuery(
         // name at a private/metadata address before this query, so re-resolve
         // and re-classify here. Fails closed on a private/reserved verdict.
         const parsed = parseConnectionUrl(url);
-        if (parsed.ok) {
-          const verdict = await guardEgressHostResolved(
-            parsed.parsed.host,
-            createDohResolver(),
-          );
-          if (!verdict.ok) throw new DbConfigError(verdict.message);
+        // Fail closed if the stored URL no longer parses — symmetric with
+        // runClickhouseQuery, which rejects an unparseable URL rather than
+        // skipping the guard and dialling an unvalidated host.
+        if (!parsed.ok) {
+          throw new DbConfigError("stored Postgres URL failed to parse");
         }
+        const verdict = await guardEgressHostResolved(parsed.parsed.host, createDohResolver());
+        if (!verdict.ok) throw new DbConfigError(verdict.message);
         const result = await neonSql.query(sql, []);
         return {
           rows: (result.rows ?? []) as Row[],
