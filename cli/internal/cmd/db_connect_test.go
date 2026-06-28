@@ -21,7 +21,7 @@ func grepDir(t *testing.T, dir, needle string) string {
 		if err != nil || d.IsDir() || hit != "" {
 			return nil
 		}
-		b, readErr := os.ReadFile(path)
+		b, readErr := os.ReadFile(path) //nolint:gosec // test walks files under t.TempDir
 		if readErr == nil && strings.Contains(string(b), needle) {
 			hit = path
 		}
@@ -149,7 +149,7 @@ func TestDBConnectURLNotPersisted(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	const secret = "postgres://admin:supersecret@db.internal:5432/prod"
+	const secret = "postgres://admin:supersecret@db.internal:5432/prod" //nolint:gosec // G101: test fixture, not a real credential
 	root := New()
 	var out, errBuf bytes.Buffer
 	root.SetOut(&out)
