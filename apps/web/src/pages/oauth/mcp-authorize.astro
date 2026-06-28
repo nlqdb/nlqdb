@@ -60,6 +60,19 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
         <p class="consent__lede">No access was granted. You can close this tab.</p>
         <a class="btn btn--accent consent__approve" href="/app">Go to nlqdb</a>
       </section>
+
+      <!-- Connected. Shown once the code is minted and the bridge redirect
+           is kicked off. For hosts whose redirect_uri is a custom-scheme
+           deep link (e.g. cursor://…) the browser hands off to the OS
+           without rendering a new page, so this stays as the final view. -->
+      <section id="consent-success" class="consent__card" hidden>
+        <h1 class="consent__title">You're connected.</h1>
+        <p class="consent__lede">
+          Thanks for connecting nlqdb to <strong id="consent-success-client" class="consent__client"></strong>.
+          You can close this tab and head back to your MCP client.
+        </p>
+        <a class="btn btn--accent consent__approve" href="/app">Go to nlqdb</a>
+      </section>
     </main>
   </div>
 </Base>
@@ -164,6 +177,16 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const { code } = (await res.json()) as { code: string };
+          // Swap to the success view *before* navigating. The bridge
+          // completes the grant by 302-ing to the host's redirect_uri,
+          // which for hosts like Cursor is a custom-scheme deep link
+          // (cursor://…) the browser hands to the OS without rendering a
+          // new document — so whatever is on screen now is the final view.
+          // Without this swap the page would sit on "Connecting…" forever.
+          const successClient = document.getElementById("consent-success-client");
+          if (successClient) successClient.textContent = clientName || "your MCP client";
+          document.getElementById("consent-card")?.setAttribute("hidden", "");
+          show("consent-success");
           // Hand the one-shot code back to the bridge; `apps/mcp`
           // re-verifies `flow`, redeems the code, and completes the grant.
           location.replace(buildBridgeRedirect(callback, code, flow));
