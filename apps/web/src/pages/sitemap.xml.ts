@@ -16,6 +16,7 @@ const withSlash = (p: string) => (p.endsWith("/") ? p : `${p}/`);
 const STATIC_ROUTES = [
   "/",
   "/agents",
+  "/integrations",
   "/manifesto",
   "/pricing",
   "/vs",
