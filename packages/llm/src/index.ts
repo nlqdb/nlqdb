@@ -24,6 +24,33 @@ export {
   selectExemplars,
   selectExemplarsForSchema,
 } from "./few-shot-select.ts";
+// Founder-funded frontier lane (SK-FRONTIER-001..004) — DORMANT: the
+// shipped `HAS_FRONTIER_API_KEYS` is `false`, so `selectFrontierLane`
+// returns `null` before touching any key/env/KV. apps/api wires these
+// primitives behind the gate later.
+export { type FrontierEligibilityCtx, isFrontierEligible } from "./frontier/eligibility.ts";
+export { HAS_FRONTIER_API_KEYS } from "./frontier/gate.ts";
+export {
+  ACTIVE_TIER_KEY,
+  advanceActiveTier,
+  type FrontierKv,
+  NO_ACTIVE_TIER,
+  readActiveTier,
+  resetActiveTier,
+} from "./frontier/pointer.ts";
+export {
+  buildFrontierRouter,
+  frontierLaneAttributes,
+  onTierExhausted,
+  type SelectFrontierArgs,
+  selectFrontierLane,
+} from "./frontier/select.ts";
+export {
+  type FrontierEnv,
+  type FrontierProvider,
+  type FrontierTier,
+  frontierTiers,
+} from "./frontier/tiers.ts";
 // Curated retrieval pool + the per-lever T9 ablation that wires it into the
 // planner system prompt (SK-LLM-041 half (b), DAIL §4.1).
 export {

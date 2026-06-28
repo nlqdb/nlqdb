@@ -72,6 +72,7 @@ describe("seedFromPinnedDb (SK-ASK-018)", () => {
     schemaText:
       'CREATE TABLE "factory_a1"."employees" (id int);\n' +
       'CREATE TABLE "factory_a1"."shifts" (id int);',
+    connectionBlob: null,
   };
 
   it("synthesizes RecentTable entries for every table in the pinned DB's schema_text", () => {

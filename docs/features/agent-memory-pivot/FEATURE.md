@@ -19,7 +19,7 @@ memory — delivered as a sequence of small, reversible, daily-loop-sized
 slices rather than a relaunch. **Two tracks ship in parallel:** messaging
 (WS-01..WS-13 — how users discover the wedge) and **engine** (E-01..E-07 —
 the memory-shaped primitives that make the wedge claims durable).
-**Status:** in progress (Phase 2 distribution) — **WS-13 headline reposition shipped 2026-06-24** (SK-PIVOT-013; founder tripped the GLOBAL-036 gate, the site now leads with the wedge sitewide); **WS-14 home-flow reposition shipped same session** (SK-PIVOT-014 + SK-WEB-017; the home's proof and primary action now match the headline, closing the WS-13 head-only gap); E-04 TTL-sweep core shipped (SK-PIVOT-011; cron + RLS clause pending).
+**Status:** in progress (Phase 2 distribution) — **WS-13 headline reposition shipped 2026-06-24** (SK-PIVOT-013; the site leads with the wedge sitewide); **WS-14 home-flow reposition** (SK-PIVOT-014 + SK-WEB-017), since superseded on `/` by the two-door home (SK-WEB-018); E-04 TTL-sweep core shipped (SK-PIVOT-011; cron + RLS clause pending).
 **Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/db-create/neon-provision.ts` + `ask/build-deps.ts` (agent-scope RLS, SK-PIVOT-009), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
 **Cross-refs:** `docs/research/deepseek-moat-framing.md` (the thesis) · `docs/competitors.md §4` (agent-memory landscape) · `docs/research/personas.md §P2` · GLOBAL-036 (canonical text in `docs/decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md`; index in `docs/decisions.md`).
 
@@ -48,7 +48,7 @@ the memory-shaped primitives that make the wedge claims durable).
 | **Scorecard / daily loop** | A **Pivot — agent-memory wedge** section in `docs/scorecard.md` carries one row per worksheet (13 WS + 7 E), ticked ⬜→✅ on merge. The weekly focus number stays founder-set. | this PR (`scorecard.md`) |
 | **Architecture** | `architecture.md §0` "Apache-2.0" corrected to FSL-1.1; `§2.1` gains the `/agents` route (a path on `nlqdb.com`, **no new domain**). | this PR (§0); WS-07 (§2.1 route) |
 | **Phase plan** | Phase 2 already targets "1 agent product publicly uses nlqdb as memory" — the wedge content folds into Phase 2 distribution. Self-host container pulled forward from Phase 3 (SK-PIVOT-005). | WS-11 |
-| **Home page & product/APIs** | Home reweights to agent-memory-primary with a demoted "also works for…" fold; new `/agents` landing; Mem0+Zep+Letta+LangMem matrix; sharpened solve pages; MCP tool + package descriptions carry the framing; on-brand demo + OG images. Headline/README/llms.txt swap shipped 2026-06-24 (SK-PIVOT-013). | WS-01…WS-09, WS-12, WS-13 |
+| **Home page & product/APIs** | Home is now a two-door chooser (SK-WEB-018: agent-memory door + question-your-ClickHouse door), superseding the earlier wedge-led reweight; `/agents` is the deep door (matrix, demo, OG); MCP tool + package descriptions carry the framing. Headline/README/llms.txt swap shipped 2026-06-24 (SK-PIVOT-013). | WS-01…WS-13, SK-WEB-018 |
 | **Engine / actual architecture** | Canonical `agent_memory_v1` preset (`facts`/`episodes`/`entities`/`entity_facts`) as a `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (SK-MCP-002). Per-agent scope via row-level RLS (SK-PIVOT-009). TTL + cron sweep, `facts`-only (SK-PIVOT-011). pgvector hybrid recall. Preset on-ramp on the **authed** surface (SK-PIVOT-010). Workload-analyzer routes large memory DBs to ClickHouse (Phase 3). | E-01…E-07 |
 
 ## Decisions
@@ -282,11 +282,13 @@ the memory-shaped primitives that make the wedge claims durable).
 
 ### SK-PIVOT-013 — The lead string is "Analytical memory for AI agents"; the WS-13 founder gate tripped 2026-06-24
 
-**Body:** [`decisions/SK-PIVOT-013-headline-reposition.md`](./decisions/SK-PIVOT-013-headline-reposition.md). Founder tripped the GLOBAL-036 headline gate 2026-06-24: the four gated lead strings (Hero lede, `README` H1+tagline, `llms.txt` lede, `package.json` desc + homepage `<title>`/JSON-LD) now lead with **"Analytical memory for AI agents."**; homepage OG → `/og/agents.png`; the `/agents` CTA is rebuilt connect-via-MCP. The dual front door survives (hero `<CreateForm>`, `AlsoWorksFor` fold, off-wedge `/vs`/`/solve`). Reverts in one commit. **Head-only** — the home's primary action and `Demo.astro` were intentionally out of scope; the proof follow-on lands in **SK-PIVOT-014** (WS-14).
+**Body:** [`decisions/SK-PIVOT-013-headline-reposition.md`](./decisions/SK-PIVOT-013-headline-reposition.md). Founder tripped the GLOBAL-036 headline gate 2026-06-24: the four gated lead strings (Hero lede, `README` H1+tagline, `llms.txt` lede, `package.json` desc + homepage `<title>`/JSON-LD) now lead with **"Analytical memory for AI agents."**; homepage OG → `/og/agents.png`; the `/agents` CTA rebuilt connect-via-MCP. Reverts in one commit. **Head-only** — the proof follow-on landed in **SK-PIVOT-014** (WS-14), itself since superseded on `/` by SK-WEB-018.
 
 ### SK-PIVOT-014 — Home-flow reposition: the home's proof leads the wedge (WS-14 follow-on to WS-13)
 
-**Body:** [`decisions/SK-PIVOT-014-home-flow-reposition.md`](./decisions/SK-PIVOT-014-home-flow-reposition.md). The follow-on WS-13 deferred. Hero's primary action becomes the SK-WEB-016 `<McpInstall>` row (SK-WEB-017 supersedes SK-WEB-002's "one input IS the hero" in place; no-signup-wall + morph-to-chat retained); `Demo.astro` shows the agent loop (`nlqdb_remember` → `nlqdb_recall` → GROUP BY SQL + answer rows) instead of the orders-table generalist demo; `Replaces.astro` swaps to the agent-memory list collapsing into `nlqdb_recall(…)`; the generalist describe→table→embed flow demotes to one quiet `.alsoworks` line linking `/app/new` (GLOBAL-036 dual-front-door seam). Closes the founder-named "the title talks about agent memory and then there is a hero with input box… and html tags" incoherence.
+**Status:** superseded on `/` by [`SK-WEB-018`](../web-app/decisions/SK-WEB-018-two-door-home.md) — the home is now a two-door chooser; the agent-loop proof relocates to `/agents`.
+
+**Body:** [`decisions/SK-PIVOT-014-home-flow-reposition.md`](./decisions/SK-PIVOT-014-home-flow-reposition.md). The WS-13 follow-on: hero's primary action became the SK-WEB-016 `<McpInstall>` row, `Demo.astro` the agent loop, `Replaces.astro` the agent-memory list collapsing into `nlqdb_recall(…)`, the generalist flow a `.alsoworks` link to `/app/new`.
 
 ## GLOBALs governing this feature
 
@@ -295,6 +297,7 @@ index in [`docs/decisions.md`](../../decisions.md)).
 
 - **GLOBAL-036** — Lead positioning: analytical memory for AI agents (dual front door).
   - *In this feature:* the canonical positioning decision; every worksheet implements a slice of it.
+  - *Dual front door, literal expression:* the two-door home ([`SK-WEB-018`](../web-app/decisions/SK-WEB-018-two-door-home.md)) is the literal dual front door — **Door A** = agent-memory wedge (MCP install), **Door B** = generalist/analytics (BYO ClickHouse via `/app/connect`, `SK-WEB-019` / `SK-DBCONN-001`). The generalist seam is now Door A's *"or just describe your data →"* link to `/app/new` (replacing the SK-WEB-017 secondary hero input; SK-WEB-018 supersedes the three-beat-on-`/` IA).
 - **GLOBAL-019** — Free + Open Source core.
   - *In this feature:* the anti-VC angle leans on it; its stale "Apache-2.0 today" wording (and `architecture.md §0`) is corrected to FSL-1.1→Apache in this PR. The FSL-accurate self-host *marketing copy* is WS-10.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.

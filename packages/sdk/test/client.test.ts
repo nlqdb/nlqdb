@@ -1106,4 +1106,204 @@ describe("createClient", () => {
       expect(e.path).toBe("/v1/keys/byollm");
     }
   });
+
+  // SK-DBCONN-001 — bring-your-own-database connect verb. The
+  // connectionUrl is the same trust class as a provider key: body-only,
+  // never a URL / log / telemetry value.
+  it("databases.connect: POSTs /v1/db/connect with the snake_case body + auto Idempotency-Key (PG)", async () => {
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          dbId: "db_byo_a1",
+          name: "prod replica",
+          engine: "postgres",
+          schemaPreview: "table users (id int, email text)",
+          pkLive: "pk_live_byo_a1",
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({
+      apiKey: "sk_live_test",
+      baseUrl: "https://api.example.com/",
+      fetch: fakeFetch,
+    });
+    const out = await client.databases.connect({
+      engine: "postgres",
+      connectionUrl: "postgresql://u:p@db.example.com:5432/app",
+      name: "prod replica",
+    });
+
+    expect(capturedUrl).toBe("https://api.example.com/v1/db/connect");
+    expect(capturedInit?.method).toBe("POST");
+    const headers = (capturedInit?.headers ?? {}) as Record<string, string>;
+    expect(headers["authorization"]).toBe("Bearer sk_live_test");
+    expect(headers["idempotency-key"]).toMatch(/^[0-9a-f]{32}$/);
+    // Wire shape: snake_case `connection_url`, URL only in the body.
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({
+      engine: "postgres",
+      connection_url: "postgresql://u:p@db.example.com:5432/app",
+      name: "prod replica",
+    });
+    expect(out).toEqual({
+      dbId: "db_byo_a1",
+      name: "prod replica",
+      engine: "postgres",
+      schemaPreview: "table users (id int, email text)",
+      pkLive: "pk_live_byo_a1",
+    });
+  });
+
+  it("databases.connect: omits name when not supplied, supports ClickHouse (CH)", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return new Response(
+        JSON.stringify({
+          dbId: "db_byo_ch",
+          name: "events",
+          engine: "clickhouse",
+          schemaPreview: "events (ts DateTime, kind String)",
+          pkLive: null,
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ apiKey: "sk_live_test", fetch: fakeFetch });
+    const out = await client.databases.connect({
+      engine: "clickhouse",
+      connectionUrl: "https://ch.company.com:8443",
+    });
+    expect(capturedBody).toEqual({
+      engine: "clickhouse",
+      connection_url: "https://ch.company.com:8443",
+    });
+    expect(out.engine).toBe("clickhouse");
+    // pkLive may be null — surface falls back to the anon device key.
+    expect(out.pkLive).toBeNull();
+  });
+
+  it("databases.connect: works on a withCredentials (cookie) client too", async () => {
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          dbId: "db_x",
+          name: "x",
+          engine: "postgres",
+          schemaPreview: "",
+          pkLive: "pk_live_x",
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ withCredentials: true, fetch: fakeFetch });
+    await client.databases.connect({
+      engine: "postgres",
+      connectionUrl: "postgresql://u:p@h/db",
+    });
+    expect(capturedInit?.credentials).toBe("include");
+  });
+
+  it("databases.connect: maps 403 connect_requires_account", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(
+        JSON.stringify({
+          error: { status: "connect_requires_account", message: "Sign in to connect a database." },
+        }),
+        { status: 403, headers: { "content-type": "application/json" } },
+      );
+    const client = createClient({ fetch: fakeFetch });
+    try {
+      await client.databases.connect({
+        engine: "postgres",
+        connectionUrl: "postgresql://u:p@h/db",
+      });
+      expect.fail("should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(NlqdbApiError);
+      const e = err as NlqdbApiError;
+      expect(e.httpStatus).toBe(403);
+      expect(e.code).toBe("connect_requires_account");
+      expect(e.path).toBe("/v1/db/connect");
+    }
+  });
+
+  it("databases.connect: maps 400 invalid_request (bad url / egress-blocked)", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(
+        JSON.stringify({
+          error: { status: "invalid_request", message: "Connection host is not reachable." },
+        }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      );
+    const client = createClient({ apiKey: "sk_live_test", fetch: fakeFetch });
+    await expect(
+      client.databases.connect({
+        engine: "postgres",
+        connectionUrl: "postgresql://u:p@127.0.0.1/x",
+      }),
+    ).rejects.toMatchObject({
+      name: "NlqdbApiError",
+      code: "invalid_request",
+      httpStatus: 400,
+    });
+  });
+
+  it("databases.connect: maps 502 introspection_failed and 503 sealing_unconfigured", async () => {
+    const make = (status: number, code: string) => {
+      const fakeFetch: FetchLike = async () =>
+        new Response(JSON.stringify({ error: { status: code, message: "x" } }), {
+          status,
+          headers: { "content-type": "application/json" },
+        });
+      return createClient({ apiKey: "sk_live_test", fetch: fakeFetch });
+    };
+    await expect(
+      make(502, "introspection_failed").databases.connect({
+        engine: "postgres",
+        connectionUrl: "postgresql://u:p@h/db",
+      }),
+    ).rejects.toMatchObject({ code: "introspection_failed", httpStatus: 502 });
+    await expect(
+      make(503, "sealing_unconfigured").databases.connect({
+        engine: "postgres",
+        connectionUrl: "postgresql://u:p@h/db",
+      }),
+    ).rejects.toMatchObject({ code: "sealing_unconfigured", httpStatus: 503 });
+  });
+
+  // Trust contract: the connection URL is a secret. It must never reach
+  // the request URL, headers, or the thrown error — only the body.
+  it("databases.connect: the connection URL never leaks into the URL, headers, or thrown error", async () => {
+    const SECRET = "postgresql://admin:SUPERSECRET@db.internal:5432/prod";
+    let seenUrl = "";
+    let seenHeaders: Record<string, string> = {};
+    const fakeFetch: FetchLike = async (url, init) => {
+      seenUrl = String(url);
+      seenHeaders = (init?.headers ?? {}) as Record<string, string>;
+      // The body the SDK sent is the only place the secret may appear.
+      const body = String(init?.body ?? "");
+      expect(body).toContain(SECRET);
+      // Server misbehaves with an HTML 503 — assert no leak even then.
+      return new Response("<html>proxy error</html>", { status: 503 });
+    };
+    const client = createClient({ apiKey: "sk_live_test", fetch: fakeFetch });
+    try {
+      await client.databases.connect({ engine: "postgres", connectionUrl: SECRET });
+      expect.fail("should have thrown");
+    } catch (err) {
+      const e = err as NlqdbApiError;
+      expect(seenUrl).not.toContain(SECRET);
+      for (const v of Object.values(seenHeaders)) expect(v).not.toContain(SECRET);
+      expect(e.message).not.toContain(SECRET);
+      expect(e.path).not.toContain(SECRET);
+      expect(JSON.stringify(e.body ?? {})).not.toContain(SECRET);
+    }
+  });
 });

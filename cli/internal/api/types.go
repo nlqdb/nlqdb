@@ -108,6 +108,25 @@ func (r *RememberResult) IDString() string {
 	return s
 }
 
+// ConnectRequest mirrors the SDK's connect shape for POST /v1/db/connect.
+// `ConnectionURL` is a credential — it rides the request body and is never
+// persisted by the CLI (sent and discarded; see cmd/db.go).
+type ConnectRequest struct {
+	Engine        string `json:"engine"`
+	ConnectionURL string `json:"connection_url"`
+	Name          string `json:"name,omitempty"`
+}
+
+// ConnectResponse mirrors the 201 body of POST /v1/db/connect. None of these
+// fields echo the connection URL back — the server never returns it.
+type ConnectResponse struct {
+	DBID          string  `json:"dbId"`
+	Name          string  `json:"name"`
+	Engine        string  `json:"engine"`
+	SchemaPreview string  `json:"schemaPreview"`
+	PKLive        *string `json:"pkLive,omitempty"`
+}
+
 type DatabaseSummary struct {
 	ID            string  `json:"id"`
 	Slug          string  `json:"slug"`

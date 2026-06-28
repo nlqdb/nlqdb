@@ -13,6 +13,7 @@ function makeDb(overrides: Partial<DbRecord> = {}): DbRecord {
     connectionSecretRef: "NEON_DB_TEST",
     schemaHash: "abc123",
     schemaText: "CREATE TABLE orders (id int);",
+    connectionBlob: null,
     ...overrides,
   };
 }

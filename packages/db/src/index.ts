@@ -4,6 +4,8 @@ export type {
   ValidatedByoConnection,
 } from "./byo-connect.ts";
 export { validateByoConnection } from "./byo-connect.ts";
+export type { ClickhouseByoOptions, ClickhouseConnSpec } from "./clickhouse-byo.ts";
+export { buildClickhouseByoQuery, ClickhouseByoError } from "./clickhouse-byo.ts";
 export type {
   ParseClickhouseUrlResult,
   ParsedClickhouseUrl,
@@ -91,6 +93,7 @@ export type {
 export { introspectPostgres } from "./introspect-postgres.ts";
 export type { PostgresAdapterOptions, PostgresQueryFn } from "./postgres.ts";
 export { createPostgresAdapter } from "./postgres.ts";
+export { renderByoClickhouseSchema } from "./render-byo-clickhouse.ts";
 export type { RenderedSchema } from "./render-byo-postgres.ts";
 export { renderByoPostgresSchema } from "./render-byo-postgres.ts";
 export { fingerprintSchema } from "./schema-fingerprint.ts";

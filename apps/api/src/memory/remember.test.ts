@@ -24,6 +24,7 @@ function makeDb(overrides: Partial<DbRecord> = {}): DbRecord {
     connectionSecretRef: "NEON_DB_MEM",
     schemaHash: "agent_memory_v1",
     schemaText: null,
+    connectionBlob: null,
     ...overrides,
   };
 }

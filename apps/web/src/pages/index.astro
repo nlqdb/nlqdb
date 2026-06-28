@@ -1,18 +1,16 @@
 ---
-// Homepage — three beats (redesign-plan §5, SK-WEB-015 foundation):
-// hero → demo → replaces, with one quiet "also works for app devs →"
-// demotion link below (GLOBAL-036 dual front door: the wedge leads,
-// the generalist describe→table→embed story is one click away at
-// /app/new, never on the main canvas). Everything else moved off `/`
-// in SK-WEB-015. The home now tells the agent-memory story end to
-// end — headline, demo, and CTA all align (closes WS-13's
-// headline-only gap; recorded in the SK-PIVOT follow-on).
+// Homepage — two-door chooser (SK-WEB-018, the literal expression of
+// GLOBAL-036's dual front door). Replaces the SK-WEB-015/017 three-beat
+// hero→demo→replaces scroll with one headline + two side-by-side doors:
+// Door A "Use as agent memory" (the <McpInstall> host row + a quiet
+// /app/new link preserving GLOBAL-007's no-login-wall first value), and
+// Door B "Question your ClickHouse" (CTA → sign-in → /app/connect,
+// SK-WEB-019). Hero/Demo/Replaces stay in the repo — only `/agents`
+// still uses them.
 
 import AuthedHomeBanner from "../components/AuthedHomeBanner.astro";
-import Demo from "../components/Demo.astro";
 import Footer from "../components/Footer.astro";
-import Hero from "../components/Hero.astro";
-import Replaces from "../components/Replaces.astro";
+import HomeDoors from "../components/HomeDoors.astro";
 import Topnav from "../components/Topnav.astro";
 import Base from "../layouts/Base.astro";
 ---
@@ -27,57 +25,12 @@ import Base from "../layouts/Base.astro";
 
     <main>
       <AuthedHomeBanner />
-      <Hero />
-      <Demo />
-      <Replaces />
-
-      <section class="alsoworks" aria-label="Other use cases">
-        <p class="alsoworks__line">
-          Not building an agent? nlqdb is also a natural-language database you
-          embed in any app —
-          <a class="alsoworks__link" href="/app/new">
-            describe data, drop one tag &rarr;
-          </a>
-        </p>
-      </section>
+      <HomeDoors />
     </main>
 
     <Footer />
   </div>
 </Base>
-
-<style is:global>
-  .alsoworks {
-    /* GLOBAL-036's demotion: the generalist describe→table→embed
-       story is one quiet line below the three beats, never on the
-       main canvas. No accent, no card chrome — visually subordinate. */
-    max-width: var(--col);
-    padding: clamp(28px, 4vw, 40px) 0 clamp(40px, 6vw, 64px);
-    border-top: 1px solid var(--rule);
-    margin-top: clamp(24px, 3vw, 32px);
-  }
-
-  .alsoworks__line {
-    margin: 0;
-    font-family: var(--sans);
-    font-size: var(--t-small);
-    color: var(--muted);
-    line-height: 1.6;
-    max-width: 60ch;
-  }
-
-  .alsoworks__link {
-    color: var(--body);
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 2px;
-  }
-
-  .alsoworks__link:hover,
-  .alsoworks__link:focus-visible {
-    color: var(--ink);
-  }
-</style>
 
 <script>
   // Provision the anonymous-mode token on first visit (SK-ANON-001).

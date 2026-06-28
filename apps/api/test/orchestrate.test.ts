@@ -22,6 +22,7 @@ function stubDb(overrides: Partial<DbRecord> = {}): DbRecord {
     connectionSecretRef: "DATABASE_URL",
     schemaHash: "schema_v1",
     schemaText: 'CREATE TABLE "schema_v1"."orders" (id integer);',
+    connectionBlob: null,
     ...overrides,
   };
 }

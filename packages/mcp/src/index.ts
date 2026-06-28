@@ -9,11 +9,16 @@ export {
 } from "./server.ts";
 export { PACKAGE_VERSION, runStdio, type StdioOptions } from "./stdio.ts";
 export {
+  type ConnectDatabaseInput,
+  type ConnectDatabaseOutput,
+  connectDatabaseInputShape,
+  connectDatabaseOutputShape,
   type DescribeInput,
   type DescribeOutput,
   describeInputShape,
   describeOutputShape,
   type HandlerContext,
+  handleConnectDatabase,
   handleDescribe,
   handleListDatabases,
   handleQuery,

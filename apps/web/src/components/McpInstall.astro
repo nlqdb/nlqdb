@@ -9,12 +9,15 @@
 // URI handler); where no scheme exists, the button copies the host's
 // JSON config block and points the user at the one place to paste it.
 //
-// Research outputs (canonical, fetched Phase 1 — DO NOT mutate without
-// re-running the research):
-//   - Claude Desktop: fallback-only (Custom Connectors via Settings).
-//   - Cursor:         deep-link `cursor://anysphere.cursor-deeplink/mcp/install`.
-//   - Windsurf:       fallback-only (no payload-accepting scheme).
-//   - Zed:            fallback-only (no scheme shipped as of Jun 2026).
+// Research outputs (canonical) live in `lib/mcp-install.ts` — see its header
+// for the per-host deep-link / command syntax and the source URLs. Hosts:
+// Cursor + VS Code (deep-link), Claude Code + Codex (command), Claude +
+// Windsurf + Zed (fallback-only config).
+//
+// Founder request: clicking ANY host button ALSO reveals that host's manual
+// fallback instructions in place (an inline panel under the row), on top of
+// its primary action (deep-link nav / copy). One reveal region per component;
+// the clicked host's panel opens, others collapse.
 //
 // Per `SK-WEB-010` / `SK-ANON-012`: any anon-side caller passes the
 // `pk_live_REPLACE_ME` placeholder (the marketing surface burned its
@@ -34,9 +37,33 @@
 import {
   buildMcpHosts,
   MCP_ENDPOINT_URL,
+  type McpHostEntry,
   PLACEHOLDER_KEY,
   PROMOTED_HOST,
 } from "../lib/mcp-install.ts";
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// The manual-fallback panel revealed in place on any host click. Hidden by
+// default (`hidden` attribute); the inline script toggles it. Shows the one
+// manual step (the host's pasteHint) plus the command / config text so the
+// user can copy it by hand if the deep-link / clipboard path failed.
+function renderPanel(host: McpHostEntry, panelId: string): string {
+  const text = host.command ?? host.config ?? "";
+  const step =
+    host.status === "deep-link"
+      ? `If ${escapeHtml(host.name)} didn't open, paste this config manually:`
+      : host.pasteHint
+        ? escapeHtml(host.pasteHint)
+        : `Use this in ${escapeHtml(host.name)}:`;
+  return `<div class="mcpinstall__panel" id="${panelId}" role="region" aria-label="${escapeHtml(host.name)} manual install" hidden><p class="mcpinstall__panel-step">${step}</p><pre class="mcpinstall__panel-code"><code>${escapeHtml(text)}</code></pre></div>`;
+}
 
 interface Props {
   /** The per-DB `pk_live_…` key, or `"pk_live_REPLACE_ME"` for anon. */
@@ -65,6 +92,11 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
     {HOSTS.map((host) => {
       const promoted = host.id === PROMOTED_HOST;
       const ctaClass = promoted ? "cta mcpinstall__btn" : "cta cta--ghost mcpinstall__btn";
+      const panelId = `mcpinstall-panel-${host.id}`;
+      // The text the manual-fallback panel shows + the copy buttons grab.
+      // Command hosts copy the command (or the config block, e.g. Codex's
+      // TOML); deep-link + fallback hosts copy/show the config block.
+      const copyText = host.command ?? host.config ?? "";
       if (host.status === "deep-link" && host.href) {
         return (
           <li class="mcpinstall__cell">
@@ -73,6 +105,9 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
               href={host.href}
               data-mcp-host={host.id}
               data-mcp-mode="deeplink"
+              data-mcp-panel={panelId}
+              aria-expanded="false"
+              aria-controls={panelId}
               target="_self"
               title={host.versionHint}
             >
@@ -83,10 +118,12 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
                 Opens {host.name} and asks you to confirm before writing the config.
               </p>
             )}
+            <Fragment set:html={renderPanel(host, panelId)} />
           </li>
         );
       }
-      // fallback-only — copy-to-clipboard button.
+      // command + fallback-only — both copy text and reveal the panel.
+      const label = host.command ? `Copy ${host.name} command` : `Copy ${host.name} config`;
       return (
         <li class="mcpinstall__cell">
           <button
@@ -94,14 +131,18 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
             class={ctaClass}
             data-mcp-host={host.id}
             data-mcp-mode="copy"
-            data-mcp-config={host.config}
+            data-mcp-config={copyText}
+            data-mcp-panel={panelId}
+            aria-expanded="false"
+            aria-controls={panelId}
             title={host.versionHint}
           >
-            <span data-mcp-label>Copy {host.name} config</span>
+            <span data-mcp-label>{label}</span>
           </button>
           {!compact && host.pasteHint && (
             <p class="mcpinstall__sub">{host.pasteHint}</p>
           )}
+          <Fragment set:html={renderPanel(host, panelId)} />
         </li>
       );
     })}
@@ -111,7 +152,7 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
       duplicating the row's vertical rhythm. */}
   {compact && (
     <ul class="mcpinstall__hints" aria-label="Where to paste the config">
-      {HOSTS.filter((h) => h.status === "fallback-only" && h.pasteHint).map((host) => (
+      {HOSTS.filter((h) => h.status !== "deep-link" && h.pasteHint).map((host) => (
         <li class="mcpinstall__hint">
           <span class="mcpinstall__hint-host">{host.name}:</span> {host.pasteHint}
         </li>
@@ -131,22 +172,56 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
 </section>
 
 <script>
-  // One inline handler for every copy button on the page. The button
-  // carries `data-mcp-config` (the paste-ready JSON) and
-  // `data-mcp-host` (the demand-signal label). Clipboard failure is
-  // swallowed silently — the user can still triple-click the configs
-  // we point at in the docs. We gate the success animation on the
-  // reduced-motion preference (one motion moment per page,
+  // One inline handler for every host button on the page. Each button
+  // carries `data-mcp-host` (demand-signal label), `data-mcp-panel` (the
+  // id of its manual-fallback panel), and — for copy buttons —
+  // `data-mcp-config` (the command/config to copy). Founder request:
+  // EVERY click reveals the clicked host's manual instructions in place,
+  // on top of its primary action (deep-link nav / copy). Clipboard
+  // failure is swallowed silently (the panel still shows the text). We
+  // gate the success animation on reduced-motion (one motion moment,
   // SK-WEB-015).
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const COPY_RESET_MS = 1600;
 
+  function emitSignal(host: string) {
+    void (async () => {
+      try {
+        const { emit } = await import("../lib/logsnag");
+        emit("home.snippet_copied", { surface: `mcp_install_${host}` });
+      } catch {
+        /* logsnag stub absent — no-op */
+      }
+    })();
+  }
+
+  // Reveal the clicked host's panel in place; collapse every other panel
+  // so only one set of manual instructions is open at a time (keeps the
+  // one-motion-moment budget honest). The trigger's aria-expanded tracks
+  // its own panel's state.
+  const triggers = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-mcp-panel]"),
+  );
+  function revealPanel(trigger: HTMLElement) {
+    const targetId = trigger.dataset["mcpPanel"];
+    if (!targetId) return;
+    for (const t of triggers) {
+      const id = t.dataset["mcpPanel"];
+      const panel = id ? document.getElementById(id) : null;
+      const open = id === targetId;
+      if (panel) panel.hidden = !open;
+      t.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+  }
+
+  // Copy buttons (command + fallback-only hosts).
   document.querySelectorAll<HTMLButtonElement>('[data-mcp-mode="copy"]').forEach((btn) => {
     btn.addEventListener("click", async () => {
       const config = btn.dataset["mcpConfig"] ?? "";
       const host = btn.dataset["mcpHost"] ?? "unknown";
       const label = btn.querySelector<HTMLSpanElement>("[data-mcp-label]");
       const original = label?.textContent ?? "";
+      revealPanel(btn);
       try {
         await navigator.clipboard.writeText(config);
         if (label) label.textContent = "Copied ✓";
@@ -156,34 +231,21 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
           btn.classList.remove("is-copied");
         }, COPY_RESET_MS);
       } catch {
-        // Non-secure context / locked-down extension — leave the
-        // config visible (host JSON shows up on /integrations too).
+        // Non-secure context / locked-down extension — the revealed
+        // panel still shows the text for a manual copy.
       }
-      // Demand signal — same `home.snippet_copied` envelope the other
-      // copy buttons use, with a `surface` that scopes to this affordance.
-      // The emit module is dynamically imported because this script
-      // is inline-included; bundling pulls the singleton.
-      try {
-        const { emit } = await import("../lib/logsnag");
-        emit("home.snippet_copied", { surface: `mcp_install_${host}` });
-      } catch {
-        /* logsnag stub absent — no-op */
-      }
+      emitSignal(host);
     });
   });
 
-  // Demand signal for the deep-link buttons too — the click means the
-  // user picked an install path, so we want it counted alongside the
-  // copy outcomes.
+  // Deep-link anchors (Cursor + VS Code). The OS handoff still happens on
+  // the same click (we don't preventDefault); the panel reveal is the
+  // added behaviour so the user sees the manual fallback if the host
+  // didn't open.
   document.querySelectorAll<HTMLAnchorElement>('[data-mcp-mode="deeplink"]').forEach((a) => {
-    a.addEventListener("click", async () => {
-      const host = a.dataset["mcpHost"] ?? "unknown";
-      try {
-        const { emit } = await import("../lib/logsnag");
-        emit("home.snippet_copied", { surface: `mcp_install_${host}` });
-      } catch {
-        /* logsnag stub absent — no-op */
-      }
+    a.addEventListener("click", () => {
+      revealPanel(a);
+      emitSignal(a.dataset["mcpHost"] ?? "unknown");
     });
   });
 </script>
@@ -320,6 +382,40 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
   .mcpinstall__btn.is-copied {
     border-color: var(--accent);
     color: var(--accent);
+  }
+
+  /* Manual-fallback panel, revealed in place on any host click. Hidden
+   * via the `hidden` attribute until the script opens it. */
+  .mcpinstall__panel[hidden] {
+    display: none;
+  }
+
+  .mcpinstall__panel {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--raised);
+  }
+
+  .mcpinstall__panel-step {
+    margin: 0 0 6px;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.45;
+  }
+
+  .mcpinstall__panel-code {
+    margin: 0;
+    padding: 8px 10px;
+    overflow-x: auto;
+    border-radius: 6px;
+    background: var(--ground);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--body);
+    white-space: pre;
   }
 
   @media (prefers-reduced-motion: no-preference) {

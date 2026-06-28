@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Multi Engine Adapter
 
 **One-liner:** Adapters beyond Postgres — Phase 3 expansion to ClickHouse via Tinybird (next), with Redis / D1 evaluated and deferred.
-**Status:** decisions firm (`SK-MULTIENG-001..007`); ClickHouse/Tinybird adapter pending. `SK-MULTIENG-005` promotes BYO ClickHouse from Phase 4+ to active. BYO connect-path primitives landed: the connection-URL parser (`SK-MULTIENG-006` — `clickhouse-connection-url.ts`, parallel to Postgres `SK-DB-012`), the shared egress guard (`GLOBAL-035` — `egress-guard.ts`), and `system.columns` introspection (`SK-MULTIENG-007` — `introspect-clickhouse.ts`, parallel to Postgres `SK-DB-014`). Adapter (`clickhouse-byo.ts`) + `connect.ts` wiring remain.
+**Status:** decisions firm (`SK-MULTIENG-001..007`); managed ClickHouse/Tinybird adapter pending. `SK-MULTIENG-005` promotes BYO ClickHouse from Phase 4+ to active. **BYO ClickHouse: connect route + query path implemented** — the connect-path primitives (parser `SK-MULTIENG-006`, egress guard `GLOBAL-035`, `system.columns` introspection `SK-MULTIENG-007`) are now composed behind `POST /v1/db/connect`, with the `clickhouse-byo.ts` HTTP exec adapter + query-time engine dispatch, in `SK-DBCONN-001` ([`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md)).
 **Owners (code):** `packages/db/**`
 **Cross-refs:** `db-adapter/FEATURE.md` (PG adapter; `SK-DB-009/010` evolve the contract) · `engine-migration/FEATURE.md` (auto-migration decoupled, `SK-MULTIENG-002`) · `docs/phase-plan.md` §11
 
@@ -87,7 +87,10 @@ deflects abuse until per-prefix isolation is hardened. New-adapter PR template:
 
 **Body:** [`decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md`](./decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md).
 BYO ClickHouse ships active, not Phase 4+; the `phase-plan.md §7`
-P6-persona-inbound gate is superseded. Same `registerByoDb` path as
+P6-persona-inbound gate is superseded. **Now wired end-to-end** — the
+`clickhouse-byo.ts` HTTP exec adapter, the `/v1/db/connect` composition, and
+query-time engine dispatch land in `SK-DBCONN-001`
+([`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md)). Same `registerByoDb` path as
 [`SK-DB-011`](../db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md),
 with two engine-specific differences: native HTTP (no Hyperdrive / TCP
 socket — Workers `fetch` directly) and `system.columns` introspection
@@ -164,7 +167,7 @@ The workload analyser + migration orchestrator are owned by [`engine-migration/F
 
 - **Per-prefix anon isolation on Tinybird — Parked until anon-on-Tinybird is asked for.** Sign-in-only at adapter launch; the per-prefix validator that enables anon-mode (`GLOBAL-007` parity) and its table-prefix scoping schema land only when a user wants anonymous Tinybird DBs — not on spec (`GLOBAL-033`, speculative-scope).
 - **Rate-limit dimensions — let-through-then-error** (resolved per `GLOBAL-033`, Simple/reuse + non-destructive read → bias to availability). A free-tier user can hit Tinybird's 1 k reads/day before our per-account limiter; we don't pre-emptively model each engine's quota — the adapter surfaces the provider 429 as our structured envelope (`GLOBAL-012`) and the existing limiter stays the single throttle.
-- **Egress / SSRF guard on the BYO ClickHouse host (`GLOBAL-035`).** Landed: `guardEgressHost` + `guardEgressHostResolved` (fail-closed), `createDohResolver` (`doh-resolver.ts`), and the shared composition `validateByoConnection` (`SK-DB-013` in `db-adapter`, with an `engine: "clickhouse"` branch). **Still open:** the `connect.ts` ClickHouse-branch wiring that calls `validateByoConnection` with `createDohResolver()`, plus the resolve→connect TOCTOU backstop. Shared with `db-adapter`.
+- **Egress / SSRF guard on the BYO ClickHouse host (`GLOBAL-035`).** Landed: `guardEgressHost` + `guardEgressHostResolved` (fail-closed), `createDohResolver` (`doh-resolver.ts`), the shared composition `validateByoConnection` (`SK-DB-013`), and now the `connect.ts` ClickHouse-branch wiring (`SK-DBCONN-001`). **Residual:** the resolve→connect/query TOCTOU sub-TTL window — mitigated by a query-time egress re-guard, documented in [`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md) Open question (c).
 - **Cross-engine `nlq run` semantics — Resolved** (`GLOBAL-033`, Simple → one way): single `{db, sql}` payload — no discriminated shape, no engine tag on the wire. The DB record already carries the engine (`db-registry`), so the server dispatches the raw string to PG SQL / Tinybird Pipe SQL / (later) Redis by the DB's engine.
 
 ## Phase-3 entry checklist

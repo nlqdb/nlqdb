@@ -11,7 +11,7 @@ when-to-load:
 # Feature: DB Adapter
 
 **One-liner:** Engine-agnostic DB interface; Phase 0 ships Postgres via Neon.
-**Status:** implemented (Phase 0 / Slice 3 — single Postgres adapter via Neon HTTP)
+**Status:** implemented (Phase 0 / Slice 3 — single Postgres adapter via Neon HTTP). BYO Postgres: connect route + query path implemented (`SK-DBCONN-001` in [`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md)) — the `SK-DB-011..015` connect primitives are now composed behind `POST /v1/db/connect`.
 **Owners (code):** `packages/db/**`, `apps/api/src/db-registry.ts`
 **Cross-refs:** docs/architecture.md §3.6.5–§3.6.7 (validator + tenancy + BYO) · docs/phase-plan.md §1 · docs/runbook.md §3/§6 · docs/performance.md §2.1 row 6 + §3.1 (`db.query` span) · governing GLOBALs below · `docs/features/hosted-db-create/FEATURE.md` (create-path consumer; SK-HDC-007 splits the provisioner into `provisionDb` / `registerByoDb` over this adapter)
 
@@ -127,7 +127,8 @@ without a second endpoint (`GLOBAL-017`).
 
 **Body:** [`decisions/SK-DB-011-byo-postgres-promoted.md`](./decisions/SK-DB-011-byo-postgres-promoted.md).
 BYO Postgres ships active; the `phase-plan.md §7` signal-gate is
-superseded. Shape unchanged from
+superseded. **Now wired end-to-end** in `SK-DBCONN-001`
+([`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md)). Shape unchanged from
 [`architecture.md §3.6.7`](../../architecture.md#367-byo-postgres-phase-4-decided-shape):
 `/v1/db/connect`, `provisionDb` vs `registerByoDb` split (already
 done per `SK-HDC-007`), AES-GCM blob + Workers-held KEK,
@@ -205,6 +206,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **`engine?` surface parity gap (W3, GLOBAL-003)** — `SK-DB-010` lands `engine?` on the TS SDK, the HTTP API, and `<nlq-data>` (auto-bound). The Go CLI, MCP, and Rust/Ruby SDKs don't yet expose `db.create` (scaffolds), so per `GLOBAL-003`'s "tracked gap" clause they inherit `engine?` via a one-line addition when their `db.create` first lands.
 - **Parked until the per-tenant adapter-wrapper slice:** role + RLS wiring. `SK-DB-007` describes the model but the adapter doesn't yet emit `SET LOCAL search_path` / `SET LOCAL ROLE`; consumers wrap calls themselves. A thin per-tenant wrapper closes that "forgot the SET LOCAL" risk.
 - **Parked until the paid tier exists:** Phase 2b dedicated-branch upgrade — a `branch_id` column on `databases` + a provisioner branch-create path. Decision shape locked (DESIGN §3.6.6).
-- **BYO Postgres `connect.ts` + `registerByoDb` wiring.** The connect primitives have all landed — validation (`validateByoConnection`, `SK-DB-013`), introspection (`introspectPostgres`, `SK-DB-014`), schema rendering (`renderByoPostgresSchema`, `SK-DB-015`), the egress DoH resolver (`createDohResolver`, `GLOBAL-035`). **Parked until** `connect.ts` + `registerByoDb` compose them (validate → open → introspect → render `schema_text`/`schema_hash` → seal per `GLOBAL-031` → D1 row) behind the `/v1/db/connect` verb + its `GLOBAL-003` surface set; shared with `multi-engine-adapter`.
+- **BYO Postgres `connect.ts` wiring — resolved** in `SK-DBCONN-001` ([`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md)); the `SK-DB-013/014/015` + `GLOBAL-035` primitives are composed behind `POST /v1/db/connect` + its `GLOBAL-003` surface set.
 - **Parked until the first prod BYO connection:** BYO Postgres KEK rotation. Envelope + KEK resolved by `SK-DB-011` / `GLOBAL-031`; the rotation procedure (unwrap + re-wrap, key-version column on `databases`) is not yet designed.
 - **Statement timeout / cost cap.** Shape per `GLOBAL-033`: the adapter accepts `timeout_ms` / `max_rows` and the executor sets them. **Parked until** the statement-timeout slice lands; a resource-fairness gap, not a security one (the `pg_sleep` DoS is rejected upstream, `SK-SQLAL-008`).

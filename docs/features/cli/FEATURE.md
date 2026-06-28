@@ -11,7 +11,7 @@ when-to-load:
 
 **One-liner:** `nlq` command-line tool — verbs, OS-keychain credentials, device-flow auth.
 **Status:** partial (Phase 2) — bootstrap PR landed:
-- `cli/go.mod` + the goal-first data verbs: `ask`, `run`, `remember`, `new`, bare `nlq "<goal>"`, `db list`, `db create`, `query`, `use`, `whoami`, `logout`, `mcp detect`, `update`, `--json`, `--version`.
+- `cli/go.mod` + the goal-first data verbs: `ask`, `run`, `remember`, `new`, bare `nlq "<goal>"`, `db list`, `db create`, `db connect`, `query`, `use`, `whoami`, `logout`, `mcp detect`, `update`, `--json`, `--version`.
 - Credential store (keychain + AES-GCM fallback with per-user salt) per `SK-CLI-009`.
 - State (`SK-CLI-013`, file-locked load-mutate-save) + config (`SK-CLI-010`).
 - Background update check (`SK-CLI-015`).
@@ -22,6 +22,8 @@ when-to-load:
 **BYOLLM verbs:** `nlq byollm set|status|clear` ship ([`SK-CLI-016`](decisions/SK-CLI-016-byollm-keychain.md)) — store your own provider key in the keychain so `nlq ask` dispatches through it at 0% markup ([`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)). Signed-in only (the `x-nlq-byollm-key` lane, [`SK-LLM-021`](../llm-router/decisions/SK-LLM-021-byollm-header-wiring.md)); the CLI half of the `GLOBAL-003` surface-parity gap, SDK sibling of [`SK-SDK-010`](../sdk/decisions/SK-SDK-010-byollm-client-option.md).
 
 **Raw-SQL escape hatch:** `nlq run [--db <id>] <sql>` ships — backed by `POST /v1/run` ([`SK-SDK-009`](../sdk/FEATURE.md), [`GLOBAL-015`](../../decisions/GLOBAL-015-power-user-escape-hatch.md)). Same allow-list as `/v1/ask` (SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW); DDL still rejected. SQL can ride positional args or stdin (`cat schema.sql | nlq run --db finance`). `--db` resolution mirrors `nlq ask`: explicit flag wins, else the active DB from `state.json`.
+
+**Connect-an-engine verb:** `nlq db connect --engine <clickhouse|postgres> [--name <n>]` ships ([`SK-CLI-019`](decisions/SK-CLI-019-db-connect-verb.md)) — backed by `POST /v1/db/connect`, the CLI half of the `GLOBAL-003` surface-parity gap. Registers an existing hosted engine by its connection URL so `nlq ask` can query it. The URL is a credential: read via `--url`, stdin, or a no-echo interactive prompt (mirrors `SK-CLI-016`'s key handling), sent to the API, and **never** printed back or written to `config.toml` / `state.json` / the credstore. On 201 the returned `dbId` becomes the active DB and a one-line confirmation (`dbId`, engine, name, schema preview, `pkLive`) prints the next step. API errors surface the server `message` verbatim ([`GLOBAL-012`](../../decisions/GLOBAL-012-one-sentence-errors.md)).
 
 **Agent-memory write verb:** `nlq remember [--db <id>] [--kind fact|episode|entity] <text>` ships — backed by `POST /v1/memory/remember` ([`SK-CLI-018`](decisions/SK-CLI-018-remember-verb.md), wire/SDK/MCP counterpart [`SK-PIVOT-008`](../agent-memory-pivot/FEATURE.md)). The CLI half of the `GLOBAL-003` parity gap the agent-memory E-02 worksheet tracked. Positional `<text>` is the row's primary content; `--kind` selects the table (default `fact`); `--type` (fact category / entity type), `--role` (episode), `--tag` (repeatable, fact), `--ttl 7d` (fact expiry), `--end-user` / `--thread` (scope). The target must be an `agent_memory_v1` preset DB or the call returns `wrong_preset`. **Third data verb** — admitted under `GLOBAL-017` because it mirrors an already-justified third *endpoint* (SK-PIVOT-008's typed-plan trust boundary forbids routing memory writes through `nlq run`).
 

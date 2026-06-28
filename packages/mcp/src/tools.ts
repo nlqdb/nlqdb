@@ -100,6 +100,40 @@ export const rememberOutputShape = {
 
 export type RememberOutput = z.infer<z.ZodObject<typeof rememberOutputShape>>;
 
+export const connectDatabaseInputShape = {
+  engine: z
+    .enum(["clickhouse", "postgres"])
+    .describe("Which engine the existing database runs — 'clickhouse' or 'postgres'."),
+  connection_url: z
+    .string()
+    .min(1)
+    .describe(
+      "The full connection URL for the database, including credentials (e.g. postgres://user:pass@host:5432/db or https://host:8443?user=…). Stored sealed server-side and never echoed back.",
+    ),
+  name: z
+    .string()
+    .optional()
+    .describe("Optional display name for the connection; defaults to the database/host name."),
+};
+
+export type ConnectDatabaseInput = z.infer<z.ZodObject<typeof connectDatabaseInputShape>>;
+
+// SECURITY — the result deliberately omits `connection_url` / pkLive so the
+// secret a host just passed in is never reflected back into the transcript.
+export const connectDatabaseOutputShape = {
+  dbId: z.string().describe("Id of the newly connected database; pass it as `db` to nlqdb_query."),
+  name: z.string().describe("Resolved display name for the connection."),
+  engine: z.enum(["clickhouse", "postgres"]).describe("The engine that was connected."),
+  schemaPreview: z
+    .string()
+    .describe("A preview of the discovered schema (tables/columns) the agent can now query."),
+  credential: z
+    .literal("stored_sealed")
+    .describe("The connection URL was stored sealed server-side; it is never returned."),
+};
+
+export type ConnectDatabaseOutput = z.infer<z.ZodObject<typeof connectDatabaseOutputShape>>;
+
 export const queryOutputShape = {
   rows: z
     .array(z.record(z.string(), z.unknown()))
@@ -311,6 +345,40 @@ export async function handleRemember(
   }
 }
 
+export async function handleConnectDatabase(
+  client: NlqClient,
+  input: ConnectDatabaseInput,
+  ctx: HandlerContext = {},
+): Promise<ToolResult<ConnectDatabaseOutput>> {
+  try {
+    const opts: { signal?: AbortSignal } = {};
+    if (ctx.signal) opts.signal = ctx.signal;
+    // The SDK transmits `connectionUrl` only in the JSON body and never
+    // echoes it into a thrown error (`SK-DBCONN-001`).
+    const res = await client.databases.connect(
+      {
+        engine: input.engine,
+        connectionUrl: input.connection_url,
+        ...(input.name !== undefined ? { name: input.name } : {}),
+      },
+      opts,
+    );
+    // SECURITY — return only non-secret fields; the connection URL and the
+    // freshly-minted pkLive are dropped so neither re-enters the transcript.
+    return {
+      ok: {
+        dbId: res.dbId,
+        name: res.name,
+        engine: res.engine === "clickhouse" ? "clickhouse" : "postgres",
+        schemaPreview: res.schemaPreview,
+        credential: "stored_sealed",
+      },
+    };
+  } catch (err) {
+    return { err: mapSdkError(err) };
+  }
+}
+
 function traceOf(trace: { sql: string; confidence: number; cache_hit: boolean }) {
   return { sql: trace.sql, confidence: trace.confidence, cache_hit: trace.cache_hit };
 }
@@ -358,6 +426,16 @@ export function mapSdkError(err: unknown): ToolError {
       message: "This key is read-only, so it can't write memory.",
       action:
         "Use a user-scoped key (sk_live_ or sk_mcp_) to write; pk_live_ embeds can only query.",
+    };
+  }
+  // SK-DBCONN-001 — connect on an anonymous session. Checked before the
+  // generic 403 so the action names the real fix (sign in), not a key swap.
+  if (code === "connect_requires_account") {
+    return {
+      code: "connect_requires_account",
+      message: "Connecting a database needs an account; this is an anonymous session.",
+      action:
+        "Sign in at https://app.nlqdb.com and re-launch this host with an account-scoped key (sk_live_ or sk_mcp_).",
     };
   }
   if (code === "account_required" || httpStatus === 403) {
@@ -420,6 +498,24 @@ export function mapSdkError(err: unknown): ToolError {
       code: "aborted",
       message: "The tool call was cancelled.",
       action: "Re-call when you're ready.",
+    };
+  }
+  // SK-DBCONN-001 connect failures carry an actionable, server-authored
+  // `message` worth surfacing verbatim. The server never echoes the
+  // connection URL into the message, so this is safe.
+  if (code === "invalid_request" || code === "introspection_failed") {
+    return {
+      code: String(code),
+      message: body?.message ?? "Could not connect to the database.",
+      action:
+        "Check the engine and connection URL are correct (HTTPS, reachable host, valid credentials), then re-call.",
+    };
+  }
+  if (code === "sealing_unconfigured") {
+    return {
+      code: "sealing_unconfigured",
+      message: "This deployment can't seal database credentials right now.",
+      action: "Retry shortly; if it persists email support@nlqdb.com.",
     };
   }
   return {
