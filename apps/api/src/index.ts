@@ -219,6 +219,7 @@ app.use("/v1/ask", (c, next) => {
 app.use("/v1/chat/*", credentialedCors);
 app.use("/v1/databases", credentialedCors);
 app.use("/v1/databases/*", credentialedCors);
+app.use("/v1/db/*", credentialedCors);
 
 // Session gate for `/v1/*` routes. Captures `auth.api.getSession`
 // (cookieCache fast path → secondaryStorage → D1) + the KV revocation
@@ -2482,6 +2483,170 @@ app.post("/v1/databases", requireSession, async (c) => {
       );
     } catch (err) {
       span.recordException(err as Error);
+      span.end();
+      throw err;
+    }
+  });
+});
+
+// `POST /v1/db/connect` — bring-your-own ClickHouse / Postgres. The
+// caller posts `{ engine, connection_url, name? }`; we validate +
+// egress-guard the URL (GLOBAL-035), introspect the live schema, seal
+// the URL (GLOBAL-031), and register a BYO `databases` row. The schema
+// is read out of the user's DB — there is no authored plan, so this does
+// NOT route through the typed-plan create pipeline.
+//
+// Auth (GLOBAL-003 surface parity): `requirePrincipal`, then accept only
+// account-scoped kinds — `user` (web ConnectForm) and `sk_live`
+// (SDK / CLI / MCP). `anon`, `pk_live` (db-scoped), and `sk_mcp` are
+// rejected 403 `connect_requires_account`: connecting a DB is an account
+// action, not a per-DB embed action.
+//
+// Idempotency (GLOBAL-005): an `Idempotency-Key` header dedupes via KV
+// `byo_connect:<tenantId>:<key>` so a client retry returns the same dbId
+// instead of connecting (and minting a key for) a duplicate row.
+//
+// Secrets: the `connection_url` and any password never enter a span or
+// log. Only `nlqdb.engine` and (on success) `nlqdb.db.connect.db_id`.
+app.post("/v1/db/connect", requirePrincipal, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.db.connect", async (span) => {
+    const principal = c.var.principal as Principal;
+    span.setAttribute("nlqdb.principal.kind", principal.kind);
+    span.setAttribute("nlqdb.principal.id", principal.id);
+
+    // Only account-scoped principals may connect a database.
+    const tenantId = accountTenantIdFromPrincipal(principal);
+    if (!tenantId || (principal.kind !== "user" && principal.kind !== "sk_live")) {
+      span.setAttribute("nlqdb.db.connect.outcome", "connect_requires_account");
+      span.end();
+      return c.json(
+        {
+          error: {
+            status: "connect_requires_account" as const,
+            message: "Connecting a database needs an account session or an sk_live key.",
+          },
+        },
+        403,
+      );
+    }
+    span.setAttribute("nlqdb.user.id", tenantId);
+
+    const raw = await parseJsonBody<{ engine?: unknown; connection_url?: unknown; name?: unknown }>(
+      c,
+    );
+    if (!raw.ok) {
+      span.setAttribute("nlqdb.db.connect.outcome", "invalid_json");
+      span.end();
+      return c.json({ error: { status: "invalid_request" as const, message: "Body must be JSON." } }, 400);
+    }
+
+    const engine = raw.body.engine;
+    if (engine !== "clickhouse" && engine !== "postgres") {
+      span.setAttribute("nlqdb.db.connect.outcome", "invalid_engine");
+      span.end();
+      return c.json(
+        {
+          error: {
+            status: "invalid_request" as const,
+            message: 'engine must be "clickhouse" or "postgres".',
+          },
+        },
+        400,
+      );
+    }
+    span.setAttribute("nlqdb.engine", engine);
+
+    const connectionUrl =
+      typeof raw.body.connection_url === "string" ? raw.body.connection_url.trim() : "";
+    if (connectionUrl === "") {
+      span.setAttribute("nlqdb.db.connect.outcome", "missing_connection_url");
+      span.end();
+      return c.json(
+        { error: { status: "invalid_request" as const, message: "connection_url is required." } },
+        400,
+      );
+    }
+    const name =
+      typeof raw.body.name === "string" && raw.body.name.trim().length > 0
+        ? raw.body.name.trim()
+        : undefined;
+
+    // GLOBAL-005 — Idempotency-Key replay. A prior success stored the
+    // minted dbId under this key; return it verbatim so the retry is a
+    // no-op (no second connect, no second pk_live key).
+    const idemKey = c.req.header("Idempotency-Key");
+    const kvKey = idemKey ? `byo_connect:${tenantId}:${idemKey}` : null;
+    if (kvKey) {
+      const prior = await c.env.KV.get(kvKey);
+      if (prior) {
+        span.setAttribute("nlqdb.db.connect.outcome", "idempotent_replay");
+        span.setAttribute("nlqdb.db.connect.db_id", prior);
+        span.end();
+        return c.json({ dbId: prior, name: name ?? null, engine, replayed: true }, 201);
+      }
+    }
+
+    // Same WASM polyfill dodge as the create/delete handlers — the
+    // dynamic import path can transitively pull `sql-validate-ddl.ts`'s
+    // top-level `loadModule()`.
+    const g = globalThis as unknown as { __filename?: string; __dirname?: string };
+    if (typeof g.__filename === "undefined") g.__filename = "worker";
+    if (typeof g.__dirname === "undefined") g.__dirname = "/";
+
+    const { buildConnectByoDeps } = await import("./db-connect/build-deps.ts");
+    const { connectByoDb } = await import("./db-connect/connect.ts");
+
+    try {
+      const deps = buildConnectByoDeps(c.env);
+      const result = await connectByoDb(deps, {
+        engine,
+        connectionUrl,
+        ...(name !== undefined ? { name } : {}),
+        tenantId,
+      });
+      if (!result.ok) {
+        // Map the orchestrator's HTTP status to the string error code the
+        // SDK/CLI/MCP switch on (GLOBAL-003 parity): the typed
+        // `introspection_failed` / `sealing_unconfigured` / `invalid_request`
+        // codes only fire if the body carries the string, not the number.
+        const code =
+          result.status === 503
+            ? ("sealing_unconfigured" as const)
+            : result.status === 502
+              ? ("introspection_failed" as const)
+              : ("invalid_request" as const);
+        span.setAttribute("nlqdb.db.connect.outcome", code);
+        span.end();
+        return c.json(
+          { error: { status: code, message: result.message } },
+          result.status as 400 | 502 | 503,
+        );
+      }
+      span.setAttribute("nlqdb.db.connect.outcome", "ok");
+      span.setAttribute("nlqdb.db.connect.db_id", result.dbId);
+      if (kvKey) {
+        // Store the dbId for 24h so a retry within the client's window
+        // dedupes. Fire-and-forget — a KV write failure must not fail an
+        // already-committed connect.
+        c.executionCtx.waitUntil(
+          c.env.KV.put(kvKey, result.dbId, { expirationTtl: 86_400 }).catch(() => {}),
+        );
+      }
+      span.end();
+      return c.json(
+        {
+          dbId: result.dbId,
+          name: result.name,
+          engine: result.engine,
+          schemaPreview: result.schemaPreview,
+          pkLive: result.pkLive,
+        },
+        201,
+      );
+    } catch (err) {
+      span.recordException(err as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR });
       span.end();
       throw err;
     }

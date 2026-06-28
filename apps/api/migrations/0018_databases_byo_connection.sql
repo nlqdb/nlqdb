@@ -1,0 +1,19 @@
+-- Migration 0018 — BYO connection blob on the `databases` registry.
+--
+-- Two distinct connection-resolution paths now share one table:
+--
+--   - Hosted rows (Phase 1 db.create on the shared Neon): leave
+--     `connection_blob` NULL and resolve `connection_secret_ref`
+--     against the Worker env (build-deps `DATABASE_URL`). Unchanged.
+--
+--   - BYO rows ("connect your own ClickHouse/Postgres", db-connect/
+--     connect.ts): store the AES-256-GCM sealed connection URL here
+--     (the GLOBAL-031 secret-envelope blob, AAD `dbconn:<dbId>`) and
+--     set `connection_secret_ref` to the sentinel `'__byo_blob__'`.
+--     There is no env var to resolve — the live query path opens this
+--     blob with `BYO_SECRET_KEK` to reconstruct the connection.
+--
+-- The sentinel keeps `connection_secret_ref` NOT NULL (migration 0001)
+-- without overloading it to mean "look in env": readers branch on a
+-- non-null `connection_blob` (or the sentinel) to pick the BYO path.
+ALTER TABLE databases ADD COLUMN connection_blob TEXT;

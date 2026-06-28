@@ -6,7 +6,7 @@ import type { QueryResult } from "@nlqdb/db";
 export type DbRecord = {
   id: string;
   tenantId: string;
-  engine: "postgres";
+  engine: "postgres" | "clickhouse";
   connectionSecretRef: string;
   schemaHash: string | null;
   // Compiled DDL written at provision time (`db-create/neon-provision.ts`).
@@ -16,6 +16,13 @@ export type DbRecord = {
   // back to the schema hash in that case (degraded prompt quality but
   // no 500).
   schemaText: string | null;
+  // BYO ("connect your own") connection blob — the AES-GCM sealed
+  // connection URL (GLOBAL-031, AAD `dbconn:<id>`). Non-null only for
+  // BYO rows (`db-connect/connect.ts`); hosted rows leave it null and
+  // resolve `connectionSecretRef` against env. The query-time dispatcher
+  // (`ask/build-deps.ts`) branches on this: non-null ⇒ open the blob and
+  // run the user SQL directly (no tenant schema / RLS).
+  connectionBlob: string | null;
 };
 
 // SK-TRUST-002 — `model` + `confidence` ride alongside the cached SQL

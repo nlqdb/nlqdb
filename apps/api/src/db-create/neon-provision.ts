@@ -248,11 +248,14 @@ export async function provisionDb(
   return { ok: true, dbId: args.dbId, schemaName };
 }
 
-// SK-HDC-007 — split the provisioner abstraction from day one. Phase 4
-// wires `registerByoDb` for the BYO `POST /v1/db/connect` endpoint
-// (docs/architecture.md §3.6.7). Today it throws so the orchestrator's
-// injection seam is real, not theoretical, and so a Phase 4 PR is a
-// function-body fill-in rather than a rebuild.
+// SK-HDC-007 — split the provisioner abstraction from day one. The BYO
+// connect path does NOT use this slot: it lands as a standalone
+// orchestrator in `apps/api/src/db-connect/connect.ts` (validate →
+// introspect → seal → register), because a BYO connection has no authored
+// SchemaPlan / compiled DDL for `orchestrateDbCreate` to run. This stub
+// stays unused (and throwing) — kept only so the `ProvisionFn` seam in the
+// create pipeline remains a real, swappable abstraction rather than a
+// hard-wired `provisionDb` call.
 export async function registerByoDb(
   _deps: ProvisionDeps,
   _args: ProvisionArgs,
