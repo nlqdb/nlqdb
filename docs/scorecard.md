@@ -43,13 +43,13 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-28 (run 96)** — **scorecard reset to its ≤5 KB cap** (15554 → this; a
-~10 KB D4/D5 net-shrink of the instrument every run reads first; accreted prose
-stripped — history lives in `git log` + the verification log). Engine + funnel
-live measurement **triple-blocked again** (interactive `workflow_dispatch` 403;
-bun `fetch` can't tunnel proxy-MITM TLS so local eval is out; chromium walkers
-can't egress) — confirmed, not assumed. BIRD (9d) + Spider (11d) crossed 7d
-staleness; **engine re-dispatch carries to the cron `/daily` lane**. No engine
-offline lever remains (directive levers saturated, selector at ceiling +
-lexical tweaks rejected run 52, value/date falsified run 31). **KPI:** keeps the
-daily instrument lean — docs-only, no pillar degraded; revert = one commit.
+**2026-06-28 (run 97)** — **funnel/distribution lever** (engine worst-number
+blocked): shipped the 15th solve page `/solve/isolate-ai-agent-memory-per-tenant`
+(P2 agent-builder, multi-tenant-isolation search) — **solve pages 14 → 15**, +1
+LLM-crawler/sitemap/`/solve` index surface. Claims verified in code: provisioner's
+`tenant_isolation` RLS (`app.tenant_id`, fail-closed) shipped; honest that within-DB
+`app.agent_id` scoping (E-03) is roadmap. Engine re-dispatch **re-verified blocked**
+— both paths 403 (`GH_TOKEN_WORKFLOW` curl → proxy "GitHub App not connected"; MCP
+`run_workflow` → "not accessible by integration"); BIRD (9d) + Spider (11d) stay
+stale, carries to the cron lane. **KPI:** GLOBAL-025 onboarding/UX
+surface +1; engine + performance untouched, none degrade.

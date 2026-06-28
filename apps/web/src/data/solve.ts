@@ -886,6 +886,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "isolate-ai-agent-memory-per-tenant",
+    persona: "P2 agent builder",
+    searchTitle: "How do I isolate AI agent memory per tenant so accounts can't read each other?",
+    oneLiner:
+      "If your agent stores memory for many customers and one tenant's rows must stay invisible to another, nlqdb enforces it in the database: every provisioned Postgres carries a row-level-security policy keyed on the tenant, set per request, and fails closed — a missing scope returns no rows, never someone else's.",
+    painContext:
+      "The moment agent memory goes multi-tenant in production, the fear is a cross-tenant leak: one customer's facts surfacing in another's answer. The usual defence is a `WHERE tenant_id = ?` filter in application code, but it lives in the same layer that writes the query — one forgotten predicate, one LLM-generated statement that drops it, and every tenant's memory is exposed at once. Scope you can forget isn't isolation.",
+    demoGoal: "memories grouped by user with a count of each",
+    demoWhy:
+      "The per-user breakdown an agent runs over its own memory — group by user, count each — is the same grain the engine isolates at the row level, below whatever SQL the model writes.",
+    howNlqdbAnswers: [
+      "Every provisioned Postgres gets a `tenant_isolation` row-level-security policy keyed on `app.tenant_id`, set per request — the engine filters every read and write, whatever SQL the LLM emits (`neon-provision.ts`).",
+      "RLS fails closed: if the tenant id is unset, `current_setting('app.tenant_id')` is empty and the policy blocks all rows — a missing scope returns nothing, it never falls through to another tenant's data.",
+      "Per-`(mcp_host, device_id)` `sk_mcp_*` keys scope access per agent and device, so one tenant can share memory across an agent fleet without exposing another tenant's rows.",
+      "Want hard physical isolation? Give each customer their own database — `nlqdb_query` with no `db` set provisions a fresh Postgres from the first English goal, no schema to design.",
+    ],
+    whatItDoesnt: [
+      "No per-end-user row scoping *within one shared database* yet — agent-scope RLS keyed on `app.agent_id` is in progress (E-03, `SK-PIVOT-009`); today sub-tenant isolation is one key or one database per agent, not a single-DB row policy.",
+      "No role hierarchy or app-level RBAC — isolation is tenant-grained RLS plus per-device keys, not a permissions matrix; model roles and grants in your own app.",
+      "No applying this to a database you already run — nlqdb provisions and owns the Postgres it isolates; bring-your-own-Postgres is roadmap, not shipped.",
+    ],
+    faqs: [
+      {
+        q: "How does nlqdb isolate AI agent memory between tenants?",
+        a: "Every table in a provisioned database has a `tenant_isolation` row-level-security policy keyed on `current_setting('app.tenant_id')`, and the read/write path sets that value transaction-locally on every request. Postgres applies the predicate to each statement, so isolation lives in the engine, not in application code you have to remember to write.",
+      },
+      {
+        q: "What stops the LLM's SQL from reading another tenant's rows?",
+        a: "Row-level security runs below the SQL. The policy predicate is enforced on every read regardless of the CTEs, JOINs, or aliases the model writes — the compiled SQL can't widen its own scope. Even a query with no tenant filter at all only sees the current tenant's rows, because the engine adds the boundary, not the query.",
+      },
+      {
+        q: "Can I isolate AI agent memory per end-user, not just per account?",
+        a: "Within a single shared database, per-user / per-agent row scoping (`app.agent_id`) is in progress (E-03, `SK-PIVOT-009`) — not shipped yet. Today the shipped boundaries are per-tenant RLS and per-device API keys; for hard per-user isolation now, give each end-user their own provisioned database.",
+      },
+      {
+        q: "How is this multi-tenant isolation different from a WHERE clause?",
+        a: "A `WHERE tenant_id = ?` filter lives in application code, so one forgotten predicate — or one LLM-generated query that omits it — leaks every tenant. RLS lives in the database and applies to every statement, and it fails closed: a missing scope returns no rows instead of someone else's. The blast radius of a mistake is nothing, not everything.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.postgresql.org/docs/current/ddl-rowsecurity.html",
+        label:
+          "Postgres Row Security Policies — the engine-level mechanism nlqdb's tenant isolation is built on.",
+      },
+      {
+        url: "https://hn.algolia.com/?q=multi-tenant%20row%20level%20security",
+        label:
+          'HN search: "multi-tenant row level security" — recurring threads on isolating tenants in one Postgres.',
+      },
+      {
+        url: "https://www.reddit.com/r/LLMDevs/search/?q=multi-tenant%20memory",
+        label:
+          "r/LLMDevs — recurring threads on multi-tenant / per-user isolation for agent memory.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
