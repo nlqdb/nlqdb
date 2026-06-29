@@ -34,7 +34,7 @@ next engine gain needs the gated EX dispatch, not another offline lever.
 | 12 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites (06-25 pull) | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d since last green |
 | 13 | E2E manual-suite freshness | 0.00 | target > 0. 3/4 latest-green but all last-green ≥ 7d ⇒ freshness 0. Re-dispatch the 4 `e2e-*.yml` to lift (dispatch-gated) |
-| | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 10 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
+| | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 11 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03 (RLS scoping, security-critical) · E-04 (TTL sweep) · E-05 (hybrid recall) · E-06 (authed on-ramp, redirected) · E-07 (ClickHouse routing) — all Neon/infra-gated |
 
@@ -44,14 +44,15 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-29 (run 106)** — hard numbers gated (eval dispatch 403 + engine
-retrieval lane just landed by run 105 / PR #537; funnel re-pull network-blocked) → per
-daily rule 2, a measured **onboarding/UX** lever on a non-conflicting surface:
-a `/solve` page for the under-covered **P1 solo builder** persona (2 of 16) —
-`store-form-submissions-without-backend`, answering the recurring indie search
-"store form submissions without a backend" (honest read-embed-is-not-a-write
-limit). **Solve pages 16 → 17** (P1 2 → 3); apps/web tests 175 → 176 green,
-lint clean, all AEO invariants pass. Artifact: a dev.to/r/webdev draft. **KPI:**
-GLOBAL-025 onboarding/UX; none degraded (prod untouched). *(Prior run 105 —
-offline DAIL-SQL retrieval probe: ICP precision@1 22/23 → 23/23, the last miss
-q22 fixed by pool bucket #17 `join-aggregate-filter`; prod byte-identical.)*
+**2026-06-29 (run 107)** — engine + funnel hard numbers still gated (eval dispatch
+re-confirmed 403; funnel re-pull network-blocked) → per daily rule 2, a measured
+**onboarding/UX** lever on the pivot's worst-number lane (funnel/distribution):
+a `/vs/supermemory` page — the prominent, uncovered 2026 agent-memory recall API
+(#1 on LongMemEval/LoCoMo/ConvoMem, MIT, self-hostable), facts web-verified
+2026-06-29; clean wedge: best-in-class recall vs nlqdb's GROUP BY over remembered
+rows. **Memory `/vs` pages 10 → 11; comparison pages 20 → 21**; OG card generated,
+all 14 competitor invariants pass, web check 0 errors, 176 web tests green, lint
+clean; `competitors.md` anchored net-neutral (offset by 7 redundant-bullet trims).
+Artifact: a Show-HN / r/LocalLLaMA comparison draft. **KPI:** GLOBAL-025
+onboarding/UX; none degraded (prod untouched). *(Prior run 106 — `/solve`
+store-form-submissions P1 page, solve 16 → 17.)*
