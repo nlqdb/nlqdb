@@ -11,60 +11,56 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-29 (run 108) — dev.to / r/analytics / r/BusinessIntelligence: "Half your data-team tickets aren't analysis. They're a SELECT someone's afraid to write."
+## 2026-06-29 (run 110) — dev.to / r/dataengineering / r/BusinessIntelligence: "Your BI tool got acquired. Your data layer shouldn't have to care."
 
-**Where:** dev.to + r/analytics + r/BusinessIntelligence; a transferable framing for
-data leads buried under a one-off-question backlog, and the PMs/ops who file those
-tickets. nlqdb mentioned once, as the shape that drains the queue without surrendering
-governance.
+**Where:** dev.to + r/dataengineering + r/BusinessIntelligence; a transferable framing for
+teams whose analyst notebook (Mode → ThoughtSpot, Looker → Google, Periscope → Sisense) keeps
+changing hands, and the engineers deciding what their *product* should depend on. nlqdb
+mentioned once, as the runtime data layer that sits below the BI churn.
 
-**Title:** Half your data-team tickets aren't analysis. They're a SELECT someone's afraid to write.
+**Title:** Your BI tool got acquired. Your data layer shouldn't have to care.
 
 **Body:**
 
-> Look at a week of your data team's ticket queue and sort by how long each answer took
-> *once someone actually read it*. A big share of them — "how many open tickets by status
-> this week," "signups per day since the campaign," "top 5 accounts by usage" — are a
-> single `GROUP BY` that took thirty seconds to write and three days to reach. The wait
-> wasn't the work. The wait was the queue.
+> Mode got bought by ThoughtSpot. Looker by Google. Periscope by Sisense. The notebook your
+> analysts live in is a roll-up target, and every acquisition rewrites the AI story on top of
+> it — Mode's NL search now arrives as ThoughtSpot Sage, on someone else's roadmap and someone
+> else's price sheet. That's fine for the analyst: the notebook is a *destination* they log
+> into to explore and publish, and a better owner can be an upgrade.
 >
-> Self-service BI was supposed to fix this, and partly did — but it moved the bottleneck
-> rather than removing it. Before a PM can self-serve in Looker or Metabase, *someone*
-> models the data, defines the metrics, and builds the dashboard. That modelling is itself
-> a ticket, and it's the expensive one. So the routine questions still queue behind it, and
-> the data team still spends its afternoons being a SQL vending machine instead of doing
-> the modelling only it can do.
+> It is not fine when you've wired that same tool into your *product*. The two jobs look
+> adjacent and aren't. "An analyst explores our warehouse and ships a dashboard" wants a
+> collaborative SQL + Python notebook with charts and scheduled reports — exactly what Mode,
+> Hex, and the rest are excellent at. "Our product answers a user's question in plain English
+> at runtime" wants something that reads *and writes* the database your app owns, returns typed
+> rows you render in your own UI, and exposes a handle an agent can call — not a report a human
+> publishes. Buying a notebook for the second job means your runtime now inherits whatever the
+> next acquisition does to that notebook's API, pricing, and AI direction.
 >
-> The split worth naming: there are **governed questions** and **throwaway questions**, and
-> they want opposite things. A board metric needs a certified definition, a semantic layer,
-> a single source of truth — that's real data-team work and should stay there. "Did anyone
-> sign up today" needs none of that; it needs to not be a ticket. Routing both through the
-> same human queue means the cheap question pays the expensive question's latency.
->
-> The fix is to give the throwaway question a path that doesn't touch the queue. Let the PM
-> ask it in plain English against the live schema and get rows back with the compiled SQL
-> shown, so it's auditable but not required reading. (We built ours as [nlqdb](https://nlqdb.com) —
-> an `<nlq-data goal="…">` tag or a chat box that compiles the English to SQL you can see;
-> the point isn't the tool, it's pulling the thirty-second questions out of the three-day
-> queue.) The honest caveat that applies to *any* version of this: it answers from the
-> schema as it is, so it is **not** a governed semantic layer — certified, company-wide
-> metric definitions still belong with your data team. That's the line. Below it, stop
-> filing tickets; above it, the queue was always the right place.
+> The split worth naming: a **destination analytics app** and a **runtime data layer** are
+> different altitudes. The first is where humans go to look; the second is what your software
+> calls. When you confuse them, BI-vendor M&A becomes your product's problem. (We built the
+> second kind as [nlqdb](https://nlqdb.com) — it provisions the Postgres your app owns, compiles
+> English to SQL you can see, diff-previews every write, and ships an `<nlq-data goal="…">`
+> element plus an MCP server an agent can call. The point isn't the tool; the layer your product
+> depends on shouldn't be a BI seat that changes hands.) Honest caveat: nlqdb is *not* a notebook
+> or a BI suite — if collaborative analysis, charts, and dashboards are the job, a Mode or a Hex
+> is the right shape, and the two compose fine.
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — answers a real, recurring
-PM/ops/data-lead search ("answer ad-hoc data questions without waiting on the data team")
-with a genuinely useful framing (governed vs throwaway questions), drawn from the `/solve`
-page shipped this run; earns a citation without a pitch and concedes the governed-metrics
-line honestly, seeding the search-intent on-ramp.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the recurring
+"Mode alternative / BI tool got acquired" search intent surfaced by the `/vs/mode` page shipped
+this run, with a genuinely useful framing (destination app vs runtime data layer) that earns a
+citation without a pitch and concedes the BI-suite line honestly.
 
 ## Collapsed — full drafts in git history
 
+- run 108 — dev.to / r/analytics / r/BusinessIntelligence: "Half your data-team tickets aren't analysis. They're a SELECT someone's afraid to write." (most of a data team's queue is throwaway `GROUP BY`s that took 30s to write and 3 days to reach; self-service BI moved the bottleneck to the modelling ticket; governed questions stay with the data team, throwaway ones just need to not be a ticket — a plain-English path against the live schema with the SQL shown; honest limit — not a governed semantic layer; anchors `/solve/answer-data-questions-without-the-data-team`).
 - run 107 — Show HN / r/LocalLLaMA / dev.to: "Your agent's memory tops LongMemEval. Can it answer 'how many'?" (agent-memory tools are in a real recall arms race — LongMemEval/LoCoMo/ConvoMem all measure "given a question, surface the right past fact," and Supermemory tops all three; but a second question those benchmarks never ask bites later — "how many X this month grouped by Y for users who did Z" is `GROUP BY`/`JOIN`/threshold, and ranking the nearest k embeddings is the wrong primitive for it; the two shapes compose if you stop expecting one tool to do both — a recall layer for "what was said," a relational layer for "how many" over the rows the agent writes; honest limit — nlqdb is not a recall engine, for "most similar past conversation" you still want Supermemory or pgvector; anchors `/vs/supermemory`).
 - run 106 — dev.to / r/webdev / r/sideproject: "You don't need a backend to store form submissions. You need a place to ask 'how many'." (a landing-page waitlist form is two problems wearing one coat — *capture* is a tiny write that genuinely doesn't need a server (an insert from the page's own `fetch` behind a key the browser never sees), *reporting* is a read that actually wants a database because "signups per day," "top referrer this week" are aggregations a query planner answers and a CSV pivot doesn't; the mistake is a tool great at the write that leaves you alone with the read; pick storage you can also interrogate; honest limit — the public read widget isn't a write endpoint; anchors `/solve/store-form-submissions-without-backend`).
 - run 105 — dev.to / r/LLMDevs / lobste.rs: "COUNT(*) is three different questions. Your few-shot pool probably teaches one." (`COUNT(*)` isn't one shape — scalar count, `GROUP BY` count, and filtered count over a join are three answers sharing a keyword; a masked few-shot pool with a teacher for two of them retrieves the confidently-wrong neighbor for the third, so when retrieval returns the wrong example suspect a missing shape before a smarter ranker; label shapes by the answer they produce, not the operators, and pin each with a held-out probe; `join-aggregate-filter` pool row, ICP retrieval 22/23 → 23/23).
 - run 104 — dev.to / lobste.rs / r/SEO: "The '25 words max' rule in your style guide is a lie your CMS can't catch." (content style-guide rules — "bullets ≤25 words" — are soft, so they decay the way unenforced rules do; measured our own `/solve` bullets and found 25 of ~50 over budget with no single bad edit; the fix moves the rule from a code comment into a six-line test that names offenders, because a constraint enforced by attention decays at the rate attention does — if you can write it as "for all X, P(X)," write the predicate, not the guideline).
 - run 102 — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them." (by 2026 "has an MCP server" is the new "has an API" — universal and uninformative; two MCP shapes look identical in a feature matrix but aren't — one wraps a *destination app* (ask my notebook, answer from my dashboard: read-only over a human's workflow), the other exposes *infrastructure the agent owns* (provision a DB, write rows, migrate schema); the tell is what the agent *owns* after the call returns — a view it can read but not accumulate into is a calculator, not a coworker; ask "what does it let the agent own," not "does it exist").
-- run 103 — dev.to / lobste.rs / r/ExperiencedDevs: "Your style rule lives in a code comment. That's why it's already broken." (the SK-CMP-001 `/vs` "≤16 words per when-to-choose bullet" rule lived only as a TypeScript comment and had silently drifted — one competitor entry held seven over-budget bullets because the diff that broke it touched a different file than the comment; a doc-comment *reads* like enforcement but is not load-bearing, so it decays at the rate attention does; the fix moves the rule into a six-line test that names offenders and fails the next over-long bullet in its own PR — a constraint you can state as "for all X, P(X)" belongs in a predicate, not prose).
+- run 103 — dev.to / lobste.rs / r/ExperiencedDevs: "Your style rule lives in a code comment. That's why it's already broken." (the SK-CMP-001 `/vs` "≤16 words per bullet" rule lived only as a TS comment and silently drifted to seven over-budget bullets; moved into a six-line test that names offenders — same lesson as run 104, applied to `/vs` instead of `/solve`).
 - run 100 — dev.to / r/LLMDevs / lobste.rs: "Two SQL examples that use the same clauses are not the same example — and your few-shot retriever can't tell." (a ranked grouped count — `GROUP BY x, COUNT(*) … ORDER BY COUNT(*) DESC LIMIT n` — retrieved a percentage/`CAST … REAL` example on generic word overlap; the deeper bug was a pool that conflated "return the top group's *key*" with "return the top groups *and their count*" — same clauses, different answer, so one teacher taught the other shape wrong; rule: a few-shot pool needs a teacher for every *output shape*, not every SQL operation; verify offline with a held-out cross-domain probe per shape; 21/23 → 22/23).
 - run 99 — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for." (dynamic few-shot for text-to-SQL masks the question to match its *skeleton*; a grouped-count-over-join with no threshold retrieved a `HAVING COUNT(*) > n` example because flat token overlap can't tell a structural token from a coincidental one; the bug wasn't the ranker — measured, it just shuffles which question breaks — it was the *pool* having no teacher for that shape, so the question fell to the nearest wrong one; a retrieval pool is a curriculum, a missing shape returns the closest wrong thing confidently; hold out a cross-domain probe per shape as a unit test; 20/23 → 21/23).
 - run 98 — dev.to / lobste.rs / r/webdev: "Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed." (a site has three machine-readable indexes of itself — `robots.txt`/`sitemap.xml`/`llms.txt` — maintained by three reflexes that drift because nothing forces them to agree; a real indexable page advertised in `llms.txt` + allowed in `robots.txt` was never in the hand-rolled `sitemap.xml`, so link-followers found it and sitemap-trusting crawlers never knew it existed; fix re-derives the real top-level-page set and asserts every one is in the sitemap so the next forgotten page fails CI not search — if two lists must agree, don't maintain two, derive one or test the divergence).

@@ -13,8 +13,8 @@ then the daily lever targets the worst number below.)*
 0.1852 vs 0.75** — owns it. Bottleneck = **SQL reasoning**. Directive levers
 (T13–T22) **saturated**; path to target is the §4 reasoning levers (#1 DAIL-SQL
 retrieval, #3 self-consistency) — both **built end-to-end**, both dispatch-gated.
-The offline retrieval-quality probe (row #8) is now **saturated at 23/23** — the
-next engine gain needs the gated EX dispatch, not another offline lever.
+Offline retrieval probe (row #8) **saturated at 23/23** — next engine gain needs
+the gated EX dispatch, not another offline lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -26,7 +26,7 @@ next engine gain needs the gated EX dispatch, not another offline lever.
 | | **Engine** — BIRD 06-19 (**9d, stale**) · Spider 06-17 (**11d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Re-dispatch carries to the cron `/daily` lane** — interactive + MCP dispatch 403; local eval proxy-MITM-TLS blocked |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Flat within variance (McNemar p=0.50) — directive levers saturated; reasoning levers (§4 #1/#3) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number.** Self-consistency (`SK-QUAL-017`) end-to-end bar the CI dispatch input; EX delta on next dispatch |
-| 8 | persona-bench free-chain EX | 0.90 (18/20) | full-chain ICP EX (run 58/63). **1.7× BIRD, 4.9× Spider** — the GLOBAL-026 bet. N=20 ±1 noisy. Retrieval precision@1 **23/23** (run 105: +`join-aggregate-filter` lands the last miss q22) — **offline retrieval saturated**, held-out 17/17. EX delta = gated dispatch |
+| 8 | persona-bench free-chain EX | 0.90 (18/20) | full-chain ICP EX (run 58/63). **1.7× BIRD, 4.9× Spider** — the GLOBAL-026 bet. N=20 ±1 noisy. Retrieval precision@1 **23/23** (run 105, +`join-aggregate-filter`) — **offline retrieval saturated**, held-out 17/17. EX delta = gated dispatch |
 | 9 | free-vs-frontier delta | null *(secret-blocked)* | `OPENROUTER_FRONTIER_API_KEY` empty in CI (filed in `blocked-by-human.md`); dispatch path proven, delta lands when founder sets the secret |
 | | **Ops** — 7d, CF Workers analytics (06-22 pull) | | wall-time, all routes |
 | 10 | nlqdb-api requests / errors | 990 / 0 (0.00%) | mcp 314 req, events-worker 37 req, both 0 err |
@@ -36,7 +36,7 @@ next engine gain needs the gated EX dispatch, not another offline lever.
 | 13 | E2E manual-suite freshness | 0.00 | target > 0. 3/4 latest-green but all last-green ≥ 7d ⇒ freshness 0. Re-dispatch the 4 `e2e-*.yml` to lift (dispatch-gated) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 11 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
-| | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03 (RLS scoping, security-critical) · E-04 (TTL sweep) · E-05 (hybrid recall) · E-06 (authed on-ramp, redirected) · E-07 (ClickHouse routing) — all Neon/infra-gated |
+| | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03 (RLS scoping) · E-04 (TTL sweep) · E-05 (hybrid recall) · E-06 (authed on-ramp) · E-07 (ClickHouse routing) — all Neon/infra-gated |
 
 ## Shipped distribution (live URLs)
 
@@ -44,17 +44,16 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-29 (run 108)** — hard numbers stay gated (eval dispatch 403; funnel
-re-pull network-blocked) and the `/vs` comparison lane was held by concurrent
-PR #539 (run 107, `/vs/supermemory`, now merged) → per daily rule 2, a measured
-**onboarding/UX** lever on a non-conflicting surface: a `/solve` page for the
-under-covered **P3 analyst** persona (2 of 17) —
-`answer-data-questions-without-the-data-team`, answering the recurring
-PM/ops/CS search "answer ad-hoc data questions without waiting on the data
-team" (honest "no governed semantic layer; certified metrics stay the data
-team's job" limit). **Solve pages 17 → 18** (P3 2 → 3); apps/web tests 176
-green, `astro check` 0 errors, lint exit 0, all AEO invariants pass. Artifact:
-a dev.to / r/analytics draft. **KPI:** GLOBAL-025 onboarding/UX; none degraded
-(prod untouched). *(Prior run 107 — `/vs/supermemory` P2 memory page,
-memory `/vs` 10 → 11; run 106 — `/solve` P1
-`store-form-submissions-without-backend`, solve 16 → 17.)*
+**2026-06-29 (run 110)** — hard numbers stay gated (eval dispatch 403; funnel
+re-pull network-blocked) and both in-session AEO lanes were held by concurrent
+PRs (#541 `/solve`, #542 docs/security) → per daily rule 2, a measured
+**onboarding/UX** lever on the free `/vs` lane: a comparison page for **Mode**
+(P3 analyst), the SQL-IDE-first member of the notebook-AI BI cluster named as
+the next slice after Hex — SQL editor + Python/R notebooks + scheduled reports
+over a warehouse, now part of ThoughtSpot (2023 $200M; AI via ThoughtSpot Sage).
+Honest: notebooks/charts/reports `them: shipped`, MCP `them: no`; wedge = nlqdb
+owns the DB + embeds an answer element / agent-callable API. **Comparison pages
+21 → 22**; apps/web 176 tests green, `astro check` 0 errors, lint 0, all 14
+`competitors.test.ts` invariants pass. Artifact: a dev.to / r/dataengineering
+draft ("Your BI tool got acquired. Your data layer shouldn't have to care.").
+**KPI:** GLOBAL-025 onboarding/UX; none degraded (prod untouched).
