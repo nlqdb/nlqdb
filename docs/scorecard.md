@@ -44,15 +44,17 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-29 (run 107)** — engine + funnel hard numbers still gated (eval dispatch
-re-confirmed 403; funnel re-pull network-blocked) → per daily rule 2, a measured
-**onboarding/UX** lever on the pivot's worst-number lane (funnel/distribution):
-a `/vs/supermemory` page — the prominent, uncovered 2026 agent-memory recall API
-(#1 on LongMemEval/LoCoMo/ConvoMem, MIT, self-hostable), facts web-verified
-2026-06-29; clean wedge: best-in-class recall vs nlqdb's GROUP BY over remembered
-rows. **Memory `/vs` pages 10 → 11; comparison pages 20 → 21**; OG card generated,
-all 14 competitor invariants pass, web check 0 errors, 176 web tests green, lint
-clean; `competitors.md` anchored net-neutral (offset by 7 redundant-bullet trims).
-Artifact: a Show-HN / r/LocalLLaMA comparison draft. **KPI:** GLOBAL-025
-onboarding/UX; none degraded (prod untouched). *(Prior run 106 — `/solve`
-store-form-submissions P1 page, solve 16 → 17.)*
+**2026-06-29 (run 108)** — hard numbers stay gated (eval dispatch 403; funnel
+re-pull network-blocked) and the `/vs` comparison lane was held by concurrent
+PR #539 (run 107, `/vs/supermemory`, now merged) → per daily rule 2, a measured
+**onboarding/UX** lever on a non-conflicting surface: a `/solve` page for the
+under-covered **P3 analyst** persona (2 of 17) —
+`answer-data-questions-without-the-data-team`, answering the recurring
+PM/ops/CS search "answer ad-hoc data questions without waiting on the data
+team" (honest "no governed semantic layer; certified metrics stay the data
+team's job" limit). **Solve pages 17 → 18** (P3 2 → 3); apps/web tests 176
+green, `astro check` 0 errors, lint exit 0, all AEO invariants pass. Artifact:
+a dev.to / r/analytics draft. **KPI:** GLOBAL-025 onboarding/UX; none degraded
+(prod untouched). *(Prior run 107 — `/vs/supermemory` P2 memory page,
+memory `/vs` 10 → 11; run 106 — `/solve` P1
+`store-form-submissions-without-backend`, solve 16 → 17.)*

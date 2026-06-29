@@ -1056,6 +1056,62 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "answer-data-questions-without-the-data-team",
+    persona: "P3 analyst",
+    searchTitle: "How do I answer ad-hoc data questions without waiting on the data team?",
+    oneLiner:
+      "If a simple number means filing a data ticket and waiting days, ask the question in English instead — drop an `<nlq-data>` tag in any page or open the chat, and nlqdb compiles the SQL, runs it, and returns the rows plus the query to audit. No ticket, no analyst in the loop.",
+    painContext:
+      "PMs, ops, and customer-success leads who can write SQL but resent it live in a data-ticket queue: every one-off 'what's the count by status this week' becomes a request that sits behind the data team's backlog for days. Self-service BI (Metabase, Looker, ThoughtSpot) helps, but only after someone models the data and builds the dashboard — the modelling step is itself a ticket. The question is simple; the wait is the problem.",
+    demoGoal: "open tickets grouped by status this week, highest first",
+    demoWhy:
+      "The exact 'how many by status this week' rollup that would otherwise be a data-ticket is answered here from one English goal — no analyst, no dashboard build.",
+    howNlqdbAnswers: [
+      'Ask in plain English — an `<nlq-data goal="...">` tag in any page, or the hosted chat — and the answer returns with the SQL shown.',
+      "Point it at a Postgres you already run via the signed-in BYO connect verb, or let nlqdb provision a fresh one — no ETL.",
+      "Every answer shows the compiled SQL under a `Show trace` toggle, so a curious teammate can audit the grain before trusting the number.",
+      "Free chain (Groq → Gemini) is free forever and never per-seat; occasional viewers cost nothing, unlike per-viewer BI licensing.",
+    ],
+    whatItDoesnt: [
+      "No governed semantic layer or certified-metric catalog — nlqdb answers from the schema as it is; centrally curated metric definitions stay your data team's job.",
+      "No drag-and-drop charts or dashboard builder — answers come back as tables plus a one-sentence summary; visualisation is the consumer's choice.",
+      "BYO connect to a Postgres you already run is signed-in only (not the public embed), and the ClickHouse dialect isn't covered yet (`SK-DBCONN-001`).",
+    ],
+    faqs: [
+      {
+        q: "How is this different from self-service BI like Metabase or Looker?",
+        a: "Those still need someone to model the data, define metrics, and build the dashboard before a non-analyst can self-serve — and that modelling is itself a ticket. nlqdb skips it: you ask in English and it compiles SQL against the live schema. The honest trade-off is there's no governed semantic layer, so certified company-wide metric definitions still belong with your data team.",
+      },
+      {
+        q: "Can a non-technical teammate answer a data question without writing SQL?",
+        a: "Yes — that's the point. The question stays in English; the compiled SQL is collapsed under a `Show trace` toggle so it's there to audit but never required. A PM or ops lead reads three numbers a day without filing a data ticket or learning the schema.",
+      },
+      {
+        q: "Do I have to move our data into nlqdb first?",
+        a: "No. Connect a Postgres you already run with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and query it in place — no ETL, no separate store. If you don't have a database yet, nlqdb can provision a fresh Postgres instead. Either path answers the same English question.",
+      },
+      {
+        q: "Does this replace our data team?",
+        a: "No — it removes the data-ticket queue for routine one-off questions, not the data team. Complex modelling, governed metrics, and pipeline work still belong with them. nlqdb handles the 'what's the count by status this week' asks that would otherwise sit in a backlog for days.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/analytics/search/?q=data%20team%20backlog",
+        label: 'r/analytics — recurring "waiting on the data team / ticket backlog" threads.',
+      },
+      {
+        url: "https://www.reddit.com/r/BusinessIntelligence/search/?q=self-service",
+        label: "r/BusinessIntelligence — self-service-analytics discussion hub.",
+      },
+      {
+        url: "https://hn.algolia.com/?q=self-serve%20analytics",
+        label:
+          'HN search: "self-serve analytics" — recurring threads on the data-ticket bottleneck.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
