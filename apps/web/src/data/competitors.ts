@@ -2300,6 +2300,88 @@ export const COMPETITORS: Competitor[] = [
     },
   },
   {
+    slug: "honcho",
+    name: "Honcho",
+    url: "https://honcho.dev",
+    tagline:
+      "Reasoning-first memory infrastructure that models how each user thinks — theory-of-mind context for stateful agents.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Honcho if you want a memory layer that models how each user reasons — communication style, decision patterns — for personalization. Pick nlqdb if your agent also needs to run analytical queries (counts, group-bys, reports) over the structured rows it remembers.",
+    whenChooseUs: [
+      "Your agent stores structured rows it later counts, groups, and reports over in SQL.",
+      "You want one MCP server that provisions Postgres, stores rows, and answers aggregations.",
+      "The schema must evolve as the agent learns — 'add a `tier` column'.",
+      "You need exact, typed answers — not a probabilistic model of how a user thinks.",
+    ],
+    whenChooseThem: [
+      "You want a theory-of-mind user model — how someone reasons, not just facts.",
+      "Personalization across sessions matters more than SQL aggregation over stored rows.",
+      "Your memory is conversational — sessions, peers, and evolving representations of people.",
+      "An AGPL-3.0, self-hostable memory server is on your shortlist.",
+    ],
+    features: [
+      {
+        feature: "Structured rows + typed columns",
+        us: "shipped",
+        them: "partial",
+        note: "Honcho stores messages + peer representations in pgvector; nlqdb stores typed rows in Postgres.",
+      },
+      { feature: "Natural-language recall / queries", us: "shipped", them: "shipped" },
+      {
+        feature: "Aggregations + reporting (COUNT, GROUP BY, JOIN)",
+        us: "shipped",
+        them: "no",
+        note: "Honcho's `peer.chat()` reasons over context; it has no SQL aggregation over stored facts.",
+      },
+      {
+        feature: "Theory-of-mind / dialectic user modeling",
+        us: "no",
+        them: "shipped",
+        note: "Honcho builds a model of how each peer reasons; nlqdb stores and queries what they did.",
+      },
+      { feature: "Hybrid search (BM25 + vector) over messages", us: "no", them: "shipped" },
+      { feature: "MCP server (agent-callable)", us: "shipped", them: "shipped" },
+      {
+        feature: "Auto-migration via NL ('add a `tier` column')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "no",
+        them: "shipped",
+        note: "Honcho is AGPL-3.0 with a self-hostable FastAPI server; nlqdb is FSL 1.1 (source-available) with no GA self-host container yet.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Honcho for user modeling and nlqdb for analytics over the same agent?",
+        a: "Yes — they're complementary. Honcho answers 'how does this user prefer to be addressed and what do they tend to decide'; nlqdb answers 'how many tasks did each user complete per week this quarter'. Both sit behind one MCP-aware agent; nlqdb's MCP server exposes `nlqdb_query`, which materialises Postgres on first reference, so the structured side self-provisions.",
+      },
+      {
+        q: "Does nlqdb model how a user thinks the way Honcho does?",
+        a: "No, and it doesn't try to. Honcho's dialectic user modeling builds an evolving theory-of-mind representation of each peer — reasoning style, communication patterns — for personalization. nlqdb's lane is exact, aggregate SQL over the structured rows an agent stores, which a user model doesn't give you.",
+      },
+      {
+        q: "Is nlqdb a vector database like the pgvector store under Honcho?",
+        a: "No. nlqdb is Postgres-first for relational SQL over typed rows (ClickHouse for analytical engines in Phase 2). Honcho keeps vector-embedded collections per observer/observed peer pair for hybrid recall; nlqdb's contract is COUNT, GROUP BY, and JOIN over rows, not similarity search.",
+      },
+      {
+        q: "How does my agent provision an nlqdb database autonomously?",
+        a: "The MCP server exposes `nlqdb_query` — your agent calls it with a goal in English, the server materialises Postgres plus schema on first reference, and returns the answer bound to the agent's tenant. There's no separate create-DB verb to call first.",
+      },
+      {
+        q: "Is nlqdb open source like Honcho?",
+        a: "Not in the same way. Honcho is AGPL-3.0 with a self-hostable FastAPI server you can run via Docker. nlqdb's source is available under FSL 1.1, but there's no GA self-host container yet — the platform is hosted-only for now.",
+      },
+    ],
+    demo: {
+      goal: "users by plan tier who completed onboarding this month, most recent first",
+      why: "The aggregate slice over remembered rows is nlqdb's lane; Honcho's lane is modelling how each user reasons, not GROUP BY over what they did.",
+    },
+  },
+  {
     slug: "mode",
     name: "Mode",
     url: "https://mode.com",

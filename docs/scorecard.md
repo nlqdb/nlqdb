@@ -34,7 +34,7 @@ the gated EX dispatch, not another offline lever.
 | 12 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites (06-25 pull) | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d since last green |
 | 13 | E2E manual-suite freshness | 0.00 | target > 0. 3/4 latest-green but all last-green ≥ 7d ⇒ freshness 0. Re-dispatch the 4 `e2e-*.yml` to lift (dispatch-gated) |
-| | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 11 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
+| | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03 (RLS scoping) · E-04 (TTL sweep) · E-05 (hybrid recall) · E-06 (authed on-ramp) · E-07 (ClickHouse routing) — all Neon/infra-gated |
 
@@ -44,18 +44,16 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-29 (run 110)** — hard numbers stay gated (eval dispatch 403; funnel
-re-pull network-blocked) and both in-session AEO lanes were held by concurrent
-PRs (#541 `/solve`, #542 docs/security) → per daily rule 2, a measured
-**onboarding/UX** lever on the free `/vs` lane: a comparison page for **Mode**
-(P3 analyst), the SQL-IDE-first member of the notebook-AI BI cluster after Hex —
-SQL editor + Python/R notebooks + scheduled reports over a warehouse, now part
-of ThoughtSpot (AI via ThoughtSpot Sage). Honest: notebooks/charts/reports
-`them: shipped`, MCP `them: no`; wedge = nlqdb owns the DB + embeds an answer
-element / agent-callable API. **Comparison pages
-21 → 22**; apps/web 176 tests green, `astro check` 0 errors, lint 0, all 14
-`competitors.test.ts` invariants pass. Artifact: a dev.to / r/dataengineering
-draft. **KPI:** GLOBAL-025 onboarding/UX; none degraded (prod untouched).
-*(Prior run 109 — `/solve` P4
-`add-ask-your-data-feature-without-building-text-to-sql` (build-vs-buy
-text-to-SQL wedge), solve 18 → 19, P4 1 → 2.)*
+**2026-06-29 (run 111)** — hard numbers stay gated (eval dispatch 403; funnel
+re-pull network-blocked) and no open PR holds either AEO lane → a measured
+**onboarding/UX + GLOBAL-036 pivot** lever on the free `/vs` lane: a comparison
+page for **Honcho** (P2 agent builder), the theory-of-mind user-modeling
+member of the agent-memory cluster (AGPL-3.0, Postgres+pgvector).
+Honest split: Honcho models *how* a user reasons (`them: shipped`, `us: no`),
+nlqdb runs SQL aggregation over *what* the agent stored (`us: shipped`,
+`them: no`); both expose MCP, they compose. **Comparison pages 22 → 23 · memory
+`/vs` pages 11 → 12**; OG card `vs-honcho.png` (WS-08), apps/web 176 tests green,
+`astro check` 0 errors, all 14 `competitors.test.ts` invariants pass. Artifact:
+a dev.to / r/AI_Agents draft (model-a-person vs aggregate-a-population).
+**KPI:** GLOBAL-025 onboarding/UX; none degraded (prod untouched).
+*(Prior run 110 — `/vs/mode` BI page, comparison pages 21 → 22.)*

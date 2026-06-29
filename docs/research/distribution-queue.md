@@ -11,49 +11,47 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-29 (run 110) — dev.to / r/dataengineering / r/BusinessIntelligence: "Your BI tool got acquired. Your data layer shouldn't have to care."
+## 2026-06-29 (run 111) — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned."
 
-**Where:** dev.to + r/dataengineering + r/BusinessIntelligence; a transferable framing for
-teams whose analyst notebook (Mode → ThoughtSpot, Looker → Google, Periscope → Sisense) keeps
-changing hands, and the engineers deciding what their *product* should depend on. nlqdb
-mentioned once, as the runtime data layer that sits below the BI churn.
+**Where:** dev.to + r/AI_Agents + r/LLMDevs; for builders evaluating an agent-memory layer
+(Honcho, Mem0, Zep) who quietly need a second, relational answer the memory layer was never
+built to give. nlqdb mentioned once, as the relational half that composes with the memory half.
 
-**Title:** Your BI tool got acquired. Your data layer shouldn't have to care.
+**Title:** Your agent knows how the user thinks. It still can't tell you how many of them churned.
 
 **Body:**
 
-> Mode got bought by ThoughtSpot. Looker by Google. Periscope by Sisense. The notebook your
-> analysts live in is a roll-up target, and every acquisition rewrites the AI story on top of
-> it — Mode's NL search now arrives as ThoughtSpot Sage, on someone else's roadmap and someone
-> else's price sheet. That's fine for the analyst: the notebook is a *destination* they log
-> into to explore and publish, and a better owner can be an upgrade.
+> The interesting frontier in agent memory right now isn't recall — it's *modelling*. Honcho's
+> bet is the sharpest version: instead of storing facts you told it, it runs a dialectic,
+> theory-of-mind process that builds a model of *how each user reasons* — their communication
+> style, their decision tendencies — and deepens it across sessions. For "should this agent
+> explain or just do, for this person, today," that's the right primitive, and a vector store of
+> past messages isn't.
 >
-> It is not fine when you've wired that same tool into your *product*. The two jobs look
-> adjacent and aren't. "An analyst explores our warehouse and ships a dashboard" wants a
-> collaborative SQL + Python notebook with charts and scheduled reports — exactly what Mode,
-> Hex, and the rest are excellent at. "Our product answers a user's question in plain English
-> at runtime" wants something that reads *and writes* the database your app owns, returns typed
-> rows you render in your own UI, and exposes a handle an agent can call — not a report a human
-> publishes. Buying a notebook for the second job means your runtime now inherits whatever the
-> next acquisition does to that notebook's API, pricing, and AI direction.
+> But there's a second question that arrives the week after launch, and it has a different shape:
+> "how many users on the pro tier completed onboarding this month, grouped by signup week?" That's
+> not a fact about one person and it's not a model of how they think — it's `COUNT`, `GROUP BY`,
+> `JOIN`, a threshold, an order. A user model answers *what will this person probably prefer*; it
+> cannot answer *how many of them did X*. Asking your memory layer for the second is like asking a
+> psychologist for your churn rate — right expert, wrong question.
 >
-> The split worth naming: a **destination analytics app** and a **runtime data layer** are
-> different altitudes. The first is where humans go to look; the second is what your software
-> calls. When you confuse them, BI-vendor M&A becomes your product's problem. (We built the
-> second kind as [nlqdb](https://nlqdb.com) — it provisions the Postgres your app owns, compiles
-> English to SQL you can see, diff-previews every write, and ships an `<nlq-data goal="…">`
-> element plus an MCP server an agent can call. The point isn't the tool; the layer your product
-> depends on shouldn't be a BI seat that changes hands.) Honest caveat: nlqdb is *not* a notebook
-> or a BI suite — if collaborative analysis, charts, and dashboards are the job, a Mode or a Hex
-> is the right shape, and the two compose fine.
+> The mistake isn't picking Honcho; it's expecting one store to do both. Modelling a person and
+> aggregating a population are different altitudes, and they compose cleanly once you stop
+> conflating them: a user-modelling layer for *how someone reasons*, a relational layer for *how
+> many did what*, the agent picking the right tool per question. (We built the second half as
+> [nlqdb](https://nlqdb.com) — it provisions the Postgres the agent writes structured rows into,
+> compiles English to SQL you can see, and exposes an MCP server so the agent can ask "how many,
+> grouped by what" itself. Honest split: nlqdb has no user model and no theory-of-mind — for "how
+> does this person think," Honcho is the right shape; for `GROUP BY` over what they did, it isn't.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the recurring
-"Mode alternative / BI tool got acquired" search intent surfaced by the `/vs/mode` page shipped
-this run, with a genuinely useful framing (destination app vs runtime data layer) that earns a
-citation without a pitch and concedes the BI-suite line honestly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX + the GLOBAL-036 agent-memory
+pivot — rides "Honcho alternative / agent memory" search intent surfaced by the `/vs/honcho` page
+shipped this run, with a framing (model-a-person vs aggregate-a-population) that earns a citation
+without a pitch and concedes the user-modelling line honestly.
 
 ## Collapsed — full drafts in git history
 
+- run 110 — dev.to / r/dataengineering / r/BusinessIntelligence: "Your BI tool got acquired. Your data layer shouldn't have to care." (the analyst notebook (Mode → ThoughtSpot, Looker → Google, Periscope → Sisense) is a roll-up target and each acquisition rewrites the AI story on top of it — fine when it's a *destination* humans log into to explore and publish; not fine when you've wired it into your *product*, because your runtime then inherits whatever the next buyer does to that notebook's API/pricing/AI direction; name the split — a destination analytics app and a runtime data layer are different altitudes, the first is where humans look, the second is what your software calls; honest caveat — nlqdb is not a notebook or BI suite, for collaborative analysis/charts/dashboards a Mode or Hex is right and the two compose; anchors `/vs/mode`).
 - run 109 — dev.to / r/SaaS / r/ExperiencedDevs: "The text-to-SQL demo takes an afternoon. The other 90% is why you should buy it." (the obvious "ask your data" build — prompt + schema + model + run the SQL — is 10% of the job; production adds a fail-closed verb-allowlist validator, a plan cache keyed on question + schema version, and an eval harness watching a labelled set, all yours to maintain forever for a non-core feature; the honest buy-vs-build test isn't "can I generate SQL from English" but "do I want to own that stack" — if it's a reporting tab / search box / in-app assistant, buy and embed; honest caveat — hosted pipeline you embed, not a vendored library, and many users over their own rows still means a DB or isolation scope per tenant; anchors `/solve/add-ask-your-data-feature-without-building-text-to-sql`).
 - run 108 — dev.to / r/analytics / r/BusinessIntelligence: "Half your data-team tickets aren't analysis. They're a SELECT someone's afraid to write." (most of a data team's queue is throwaway `GROUP BY`s that took 30s to write and 3 days to reach; self-service BI moved the bottleneck to the modelling ticket; governed questions stay with the data team, throwaway ones just need to not be a ticket — a plain-English path against the live schema with the SQL shown; honest limit — not a governed semantic layer; anchors `/solve/answer-data-questions-without-the-data-team`).
 - run 107 — Show HN / r/LocalLLaMA / dev.to: "Your agent's memory tops LongMemEval. Can it answer 'how many'?" (agent-memory tools are in a real recall arms race — LongMemEval/LoCoMo/ConvoMem all measure "given a question, surface the right past fact," and Supermemory tops all three; but a second question those benchmarks never ask bites later — "how many X this month grouped by Y for users who did Z" is `GROUP BY`/`JOIN`/threshold, and ranking the nearest k embeddings is the wrong primitive for it; the two shapes compose if you stop expecting one tool to do both — a recall layer for "what was said," a relational layer for "how many" over the rows the agent writes; honest limit — nlqdb is not a recall engine, for "most similar past conversation" you still want Supermemory or pgvector; anchors `/vs/supermemory`).
@@ -64,8 +62,6 @@ citation without a pitch and concedes the BI-suite line honestly.
 - run 103 — dev.to / lobste.rs / r/ExperiencedDevs: "Your style rule lives in a code comment. That's why it's already broken." (the SK-CMP-001 `/vs` "≤16 words per bullet" rule lived only as a TS comment and silently drifted to seven over-budget bullets; moved into a six-line test that names offenders — same lesson as run 104, applied to `/vs` instead of `/solve`).
 - run 100 — dev.to / r/LLMDevs / lobste.rs: "Two SQL examples that use the same clauses are not the same example — and your few-shot retriever can't tell." (a ranked grouped count — `GROUP BY x, COUNT(*) … ORDER BY COUNT(*) DESC LIMIT n` — retrieved a percentage/`CAST … REAL` example on generic word overlap; the deeper bug was a pool that conflated "return the top group's *key*" with "return the top groups *and their count*" — same clauses, different answer, so one teacher taught the other shape wrong; rule: a few-shot pool needs a teacher for every *output shape*, not every SQL operation; verify offline with a held-out cross-domain probe per shape; 21/23 → 22/23).
 - run 99 — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for." (dynamic few-shot for text-to-SQL masks the question to match its *skeleton*; a grouped-count-over-join with no threshold retrieved a `HAVING COUNT(*) > n` example because flat token overlap can't tell a structural token from a coincidental one; the bug wasn't the ranker — measured, it just shuffles which question breaks — it was the *pool* having no teacher for that shape, so the question fell to the nearest wrong one; a retrieval pool is a curriculum, a missing shape returns the closest wrong thing confidently; hold out a cross-domain probe per shape as a unit test; 20/23 → 21/23).
-- run 98 — dev.to / lobste.rs / r/webdev: "Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed." (a site has three machine-readable indexes of itself — `robots.txt`/`sitemap.xml`/`llms.txt` — maintained by three reflexes that drift because nothing forces them to agree; a real indexable page advertised in `llms.txt` + allowed in `robots.txt` was never in the hand-rolled `sitemap.xml`, so link-followers found it and sitemap-trusting crawlers never knew it existed; fix re-derives the real top-level-page set and asserts every one is in the sitemap so the next forgotten page fails CI not search — if two lists must agree, don't maintain two, derive one or test the divergence).
-- run 97 — dev.to / r/LLMDevs / r/AI_Agents: "Your multi-tenant agent memory is one forgotten WHERE clause from a leak." (one DB holds a thousand customers' agent memory; the only thing between tenant A's rows and tenant B's answer is a `WHERE tenant_id = ?` the LLM has to remember in every query forever, and one miss leaks every tenant at once; fix moves isolation below the SQL into Postgres RLS keyed on `current_setting('app.tenant_id')` so a query with no filter sees nothing, not everything — isolation belongs in the layer that can't forget it; anchors `/solve/isolate-ai-agent-memory-per-tenant`).
 
 - run 96 — dev.to / lobste.rs / r/ExperiencedDevs: "Your status doc keeps its own history. That's why nobody reads it." (a freshness-capped, daily-read status doc bloated to 3× its cap because each run glued a changelog line onto it; status answers "what's true now" and dies of length, changelog only works by accreting — in one file the accretion instinct always wins; fix is structural, give the capped doc a sibling that remembers and route "what happened" there).
 - run 95 — dev.to / lobste.rs / r/MachineLearning: "Your eval harness will report 0% when the problem is your Wi-Fi" (an NL→SQL eval printed `EA=0.00%` from a sandbox that couldn't reach any provider — every attempt failed `network`, scored "no SQL," averaged to a meaningless 0 that would re-seed the baseline; "couldn't measure" and "measured zero" were the same outcome; fix makes non-measurement a loud distinct state — if *every* row failed for an infra reason it's an outage not a result, so refuse to compare/emit and exit non-zero; one-sided, never hides a regression; `isTransportCollapse`, SK-QUAL-020).

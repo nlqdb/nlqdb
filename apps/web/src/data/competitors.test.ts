@@ -143,6 +143,7 @@ describe("COMPETITORS data integrity", () => {
         "milvus",
         "cognee",
         "supermemory",
+        "honcho",
       ]),
     );
   });
