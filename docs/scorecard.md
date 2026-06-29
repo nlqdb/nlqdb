@@ -46,9 +46,10 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 **2026-06-29 (run 102)** — **onboarding lever**: shipped the **Hex** `/vs`
 comparison page (P3 — the notebook-AI lead the comparison-pages FEATURE named as
 the next slice). **Comparison pages 19 → 20**; first P3 notebook-AI on-ramp.
-Honest side-by-side (wedge = nlqdb owns the DB + embeds an answer
+Honest side-by-side (wedge = nlqdb owns the DB + an answer
 element/agent-callable API). Facts web-verified 2026-06-29 (hex.tech). Data-only
-edit (`competitors.ts`); 13/13 integrity tests pass. Net-shrank
-`comparison-pages/FEATURE.md` 15.5 → 9.0 KB (D5 trim). **KPI:** GLOBAL-025
-onboarding; others untouched. *(Prior run 100 — `group-count-top-n` DAIL-SQL pool
-row, ICP retrieval 22/23 — folded into row #8 + the engine verification log.)*
+edit (`competitors.ts`); 13/13 integrity tests pass. **KPI:** GLOBAL-025
+onboarding; others untouched. *(Prior run 101 — BYO-connect (`SK-DBCONN-001`)
+unblocked the P4 backend-engineer solve page
+`/solve/query-existing-postgres-in-natural-language` + corrected 9 now-false
+"BYO-Postgres is roadmap" honest-limit lines: **solve pages 15 → 16, P4 0 → 1**.)*

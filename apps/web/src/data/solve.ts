@@ -132,7 +132,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Per-`(mcp_host, device_id)` `sk_mcp_*` keys scope access per agent and device; revocation is per-device and shown in the dashboard.",
     ],
     whatItDoesnt: [
-      "No connecting to a database you already run — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped. To query an existing DB over MCP, a Postgres-MCP server is the right shape.",
+      "This page is about nlqdb provisioning a fresh database for the agent — no connection string. To point nlqdb at a Postgres you already run instead, use the signed-in BYO connect verb (`SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language), not the zero-config provisioning path shown here.",
       "No native vector search — nlqdb is Postgres-first; unstructured similarity recall over text strings is Mem0 or pgvector's job.",
       "No public `nlqdb_create_database` verb — provisioning is implicit in `nlqdb_query` by design (`SK-MCP-002`, trust boundary).",
     ],
@@ -201,7 +201,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Do I have to migrate my existing database?",
-        a: "Today, yes — nlqdb provisions and owns the Postgres it queries (Phase 2 adds ClickHouse). Bring-your-own-Postgres is tracked in the roadmap; for an existing DB today, Vanna AI is the right shape.",
+        a: "No — you have two paths. nlqdb can provision a fresh Postgres for the dashboard (no migration), or you can connect a Postgres you already run with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and query it in place. Either way there's no ETL into a separate store.",
       },
       {
         q: "What happens when the dashboard hits a paid LLM?",
@@ -407,7 +407,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     ],
     whatItDoesnt: [
       "No retrieval-augmented training corpus — if you have years of curated query examples and want a tool that exploits them, Vanna AI's training loop is the right shape.",
-      "No support today for bring-your-own-Postgres — nlqdb owns the Postgres it queries; existing databases are not yet a supported input.",
+      "Connecting an existing database is a signed-in account verb (SDK / CLI / MCP), not the public `<nlq-data>` embed — the embed holds a read-scoped key, never a connection credential. To query a Postgres you already own, use the BYO connect path (see /solve/query-existing-postgres-in-natural-language), not the zero-config embed shown here.",
     ],
     faqs: [
       {
@@ -510,7 +510,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     ],
     whatItDoesnt: [
       "No semantic search over message text — finding the most similar past message is a vector store's job (Mem0, pgvector); nlqdb answers the counting questions, not the similarity ones.",
-      "No connecting to your existing logging store — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped.",
+      "No ingesting your existing logging pipeline — nlqdb stores the conversation rows you write to it. If your transcripts already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb (`SK-DBCONN-001`) and query it in place.",
       "No built-in PII redaction or retention policy on message text — you choose what to write; anonymous DBs auto-sweep at 72h, authed rows persist until deleted.",
     ],
     faqs: [
@@ -565,7 +565,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     ],
     whatItDoesnt: [
       "No automatic token metering — nlqdb stores and aggregates the usage rows you write; counting tokens and computing cost per call is your app's job (or your provider SDK's).",
-      "No connecting to your existing logging or billing store — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped.",
+      "No ingesting your existing logging or billing pipeline — nlqdb stores the usage rows you write to it. If those rows already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb (`SK-DBCONN-001`) and query it in place.",
       "No live streaming cost meter — the table refreshes on query, not via websocket push; realtime dashboards are roadmap, not shipped.",
     ],
     faqs: [
@@ -621,7 +621,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     whatItDoesnt: [
       "No automatic tracing — nlqdb stores and aggregates the call rows you write; capturing each tool invocation, its status, and its latency is your agent framework's job (or an OTel/tracing SDK's).",
       "No nested trace-tree UI — nlqdb answers tabular 'per tool / per session' aggregations, not the multi-step span waterfall a dedicated agent-observability tool draws.",
-      "No connecting to your existing log store — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped.",
+      "No ingesting your existing tracing pipeline — nlqdb stores the call rows you write to it. If those rows already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb (`SK-DBCONN-001`) and query it in place.",
     ],
     faqs: [
       {
@@ -678,7 +678,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     whatItDoesnt: [
       "No vector search or embedding — nlqdb stores and aggregates the retrieval rows you write; the similarity search that picks the chunks stays in your vector store (Pinecone, pgvector, Chroma).",
       "No automatic capture — logging each retrieval, its source, and its relevance score is your RAG pipeline's job (or your framework's callback hook).",
-      "No connecting to your existing log or vector store — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped.",
+      "No ingesting your existing log or vector store — nlqdb stores the retrieval rows you write to it. If those rows already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb (`SK-DBCONN-001`); the vector similarity search stays in your vector store regardless.",
     ],
     faqs: [
       {
@@ -736,7 +736,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     whatItDoesnt: [
       "No running the evals or scoring outputs — your eval harness (promptfoo, Braintrust, LangSmith, or a custom judge) produces the scores; nlqdb stores and aggregates them.",
       "No LLM-as-judge built in — you bring the score per case; nlqdb is the query planner over the scored results, not the grader.",
-      "No connecting to your existing eval store or LangSmith project — nlqdb provisions and owns the Postgres it queries; bring-your-own-Postgres is roadmap, not shipped.",
+      "No ingesting your existing eval store or LangSmith project — nlqdb stores the scored rows you write to it. If those scores already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb (`SK-DBCONN-001`) and query it in place.",
     ],
     faqs: [
       {
@@ -791,7 +791,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Every answer returns the compiled SQL under a trace toggle, and destructive operations show a row-count diff that needs a second confirmation before applying (`SK-ONBOARD-004`).",
     ],
     whatItDoesnt: [
-      "No pointing nlqdb at a database you already run — it provisions and owns its Postgres, so it's the safe store an agent writes to and reads from, not a guard layer over your prod DB. Bring-your-own-Postgres is roadmap, not shipped.",
+      "nlqdb can connect to a Postgres you already run (the signed-in BYO connect verb), but connecting one does not import these guardrails onto it — the server-built-write boundary and per-tenant RLS apply to databases nlqdb provisions, so the safe-store model on this page is the provisioned database, not a connected prod DB. On a connected database, scope safety with a least-privilege role.",
       "No per-query statement-timeout or cost cap yet — a heavy SELECT can still run long; resource-exhaustion guards are tracked in the db-adapter, not wired.",
       "No per-agent (sub-tenant) row scoping yet — `app.agent_id` RLS is roadmap (E-03); today isolation is per-tenant / per-database, not per-agent-within-a-tenant.",
     ],
@@ -810,7 +810,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I point nlqdb at my existing production database to make it agent-safe?",
-        a: "Not today — nlqdb provisions and owns the Postgres it queries, so it's the safe store an agent writes to and reads from, not a guard layer over a database you already run. If your goal is protecting an existing prod DB, a read replica plus a policy proxy is the right shape; bring-your-own-Postgres is on the roadmap.",
+        a: "You can connect an existing database (the signed-in BYO connect verb), but that doesn't make it agent-safe — the server-built writes and per-tenant RLS on this page apply to databases nlqdb provisions, not one you connect. On a connected prod DB, scope a least-privilege role; for hard isolation, a read replica plus the validated read path is the safer shape.",
       },
     ],
     sources: [
@@ -850,7 +850,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     whatItDoesnt: [
       "No per-agent access control yet — every agent sharing one nlqdb database sees the same rows. Engine-enforced private-vs-shared scoping (`app.agent_id` RLS) is roadmap (E-03), not shipped; today the boundary is per-database / per-tenant.",
       "No semantic / vector recall — recall is structured SQL (filter, `GROUP BY`, aggregate), not embedding similarity. Keep embeddings in your vector store; nlqdb is the structured shared memory beside it, not a replacement for it.",
-      "No pointing nlqdb at a store you already run — it provisions and owns its Postgres, so it's the shared memory your agents write to, not a layer over an existing database.",
+      "This shared memory is a database nlqdb provisions for the crew — not a layer over a store you already run. You can connect an existing Postgres with the signed-in BYO connect verb instead, but the shared-memory model here assumes nlqdb owns the database all agents write to.",
     ],
     faqs: [
       {
@@ -906,7 +906,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     whatItDoesnt: [
       "No per-end-user row scoping *within one shared database* yet — agent-scope RLS keyed on `app.agent_id` is in progress (E-03, `SK-PIVOT-009`); today sub-tenant isolation is one key or one database per agent, not a single-DB row policy.",
       "No role hierarchy or app-level RBAC — isolation is tenant-grained RLS plus per-device keys, not a permissions matrix; model roles and grants in your own app.",
-      "No applying this to a database you already run — nlqdb provisions and owns the Postgres it isolates; bring-your-own-Postgres is roadmap, not shipped.",
+      "No applying this RLS isolation onto a database you already run — the tenant-isolation policy is set up on databases nlqdb provisions. You can connect an existing Postgres with the signed-in BYO connect verb, but nlqdb does not add its row-level-security policy to a database you bring; isolation there stays your schema's responsibility.",
     ],
     faqs: [
       {
@@ -941,6 +941,63 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         url: "https://www.reddit.com/r/LLMDevs/search/?q=multi-tenant%20memory",
         label:
           "r/LLMDevs — recurring threads on multi-tenant / per-user isolation for agent memory.",
+      },
+    ],
+  },
+  {
+    slug: "query-existing-postgres-in-natural-language",
+    persona: "P4 backend engineer",
+    searchTitle: "How do I add a natural-language query layer over my existing Postgres?",
+    oneLiner:
+      "If you already run Postgres and want to ask it questions in English — without building or training a text-to-SQL stack — connect it to nlqdb with `nlq db connect` (or `POST /v1/db/connect`). nlqdb introspects your live schema, compiles English to SQL, runs it on your own database, and shows the SQL every time. Your data never leaves your Postgres.",
+    painContext:
+      "Backend engineers at small startups already own a Postgres and don't want a second store — they want a natural-language admin layer over the one they run, so a teammate (or an agent) can ask 'how many signups per plan this month?' without filing a SQL ticket. Most text-to-SQL tooling assumes you'll curate a training corpus, embed schema docs, or stand up a RAG layer first. The simple want — point it at the database I already have and let me ask — has had no clean shape.",
+    demoGoal: "users grouped by signup month with a count of each",
+    demoWhy:
+      "The kind of ad-hoc admin question you'd otherwise hand-write SQL for — a grouped count over your own schema — answered from one English goal.",
+    howNlqdbAnswers: [
+      "Connect your database once with `POST /v1/db/connect { engine, connection_url }` — or `nlq db connect`, the SDK `client.databases.connect`, or the MCP `nlqdb_connect_database` tool (`SK-DBCONN-001`); nlqdb introspects the live schema, so there's no training corpus to maintain.",
+      "Your connection URL is sealed at rest (AES-256-GCM, `GLOBAL-031`) and the host is egress-guarded at connect and re-checked before every query (`GLOBAL-035`); only a redacted connection pill is stored unsealed.",
+      "English compiles to SQL and runs on your own engine — query-time dispatch routes to your Postgres — and every answer returns rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you audit the grain before trusting it.",
+      "The data never moves — nlqdb queries your database in place over its own connection; there's no copy, no ETL, no second store to keep in sync.",
+    ],
+    whatItDoesnt: [
+      "No anonymous connect — pointing nlqdb at a database you run is a signed-in account verb on the SDK, CLI, and MCP; the public `<nlq-data>` embed holds a read-scoped key, never a connection credential, so the connect step isn't an embed (`GLOBAL-003`).",
+      "No engine-side guardrails imported onto your database — the per-tenant RLS and server-built-write trust boundary nlqdb applies to databases it provisions are not added to a database you already run; nlqdb executes the compiled SQL with whatever privileges your connection role has, so scope it with a least-privilege (read-only) role.",
+      "ClickHouse can be connected too, but the planner emits Postgres-flavored SQL and the validator is Postgres-dialect today (a known correctness gap, not a security one) — Postgres is the smooth path; ClickHouse-only syntax may mis-compile until the engine-aware planner lands.",
+    ],
+    faqs: [
+      {
+        q: "How do I connect my existing Postgres to nlqdb?",
+        a: 'Once, with the connect verb: `POST /v1/db/connect { engine: "postgres", connection_url }`, or `nlq db connect`, the SDK `client.databases.connect`, or the MCP `nlqdb_connect_database` tool. nlqdb validates the connection, introspects your schema, seals the URL at rest, and mints a per-database key. After that you ask in English over your own database.',
+      },
+      {
+        q: "Does my data leave my database when I use natural-language queries?",
+        a: "No. nlqdb queries your Postgres in place over its own connection — there's no copy, no ETL, no analytics mirror. Your connection URL is sealed with AES-256-GCM at rest (`GLOBAL-031`); only a redacted connection pill is stored unsealed for the dashboard. The rows stay in your database.",
+      },
+      {
+        q: "How is this different from Vanna AI or training a text-to-SQL model on my schema?",
+        a: "There's no training corpus or per-tenant fine-tune to maintain. nlqdb prompts directly from your live schema fingerprint plus a recent-tables hint, caches the plan on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), and shows the compiled SQL every time. The equivalent of training is the automatic plan cache, not a curated example set you keep alive.",
+      },
+      {
+        q: "Can I limit what nlqdb is allowed to do on my database?",
+        a: "Yes — connect with a least-privilege role. nlqdb runs the compiled SQL with exactly the privileges your connection URL's role has, so a read-only role keeps it read-only at the engine. On top of that, the SQL validator allowlists verbs and the trace toggle shows every statement before you trust the answer.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/PostgreSQL/search/?q=natural+language",
+        label:
+          "r/PostgreSQL — recurring threads on natural-language / English querying over an existing Postgres.",
+      },
+      {
+        url: "https://hn.algolia.com/?q=text+to+sql",
+        label:
+          'HN search: "text to sql" — discussion on querying your own database in English without a training loop.',
+      },
+      {
+        url: "https://www.reddit.com/r/dataengineering/search/?q=text+to+sql",
+        label: "r/dataengineering — practitioner threads on text-to-SQL over production databases.",
       },
     ],
   },
