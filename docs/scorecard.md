@@ -43,12 +43,12 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-28 (run 99)** — **engine lever, offline-measured**: added a
-`filtered-group-by-count` DAIL-SQL pool row (named-entity grouped count through a
-JOIN) closing persona-bench ICP-retrieval miss **q10** ("which predicates does the
-agent named 'support-bot' use, and how often"), which retrieved the `having` demo —
-teaching a `HAVING COUNT(*)` filter the gold lacks. **ICP retrieval precision@1
-20/23 → 21/23**; held-out cross-domain probe **14/14 → 15/15**; q7/q5/q11 stay
-pinned. Pool curation, not the run-52-falsified selector tweak; q8/q22 stay
-dispatch-gated. Prod byte-identical (`buildPlanSystem` off ⇒ SK-LLM-024 untouched).
-**KPI:** GLOBAL-025 engine quality; others untouched.
+**2026-06-29 (run 102)** — **onboarding lever**: shipped the **Hex** `/vs`
+comparison page (P3 — the notebook-AI lead the comparison-pages FEATURE named as
+the next slice). **Comparison pages 19 → 20**; first P3 notebook-AI on-ramp.
+Honest side-by-side (charts/notebook/published-apps/collaboration + Hex's own
+MCP-Threads conceded `them: shipped`; wedge = nlqdb owns the DB + embeds an answer
+element/agent-callable API). Facts web-verified 2026-06-29 (hex.tech). Data-only
+edit (`competitors.ts`); 13/13 integrity tests pass. Net-shrank
+`comparison-pages/FEATURE.md` 15.5 → 9.0 KB (D5 trim). **KPI:** GLOBAL-025
+onboarding; others untouched.
