@@ -1112,6 +1112,63 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "add-ask-your-data-feature-without-building-text-to-sql",
+    persona: "P4 backend engineer",
+    searchTitle: "How do I add an ask-your-data feature to my app without building text-to-SQL?",
+    oneLiner:
+      "If you want to ship an 'ask your data' feature in your app but don't want to build and maintain a text-to-SQL pipeline, embed nlqdb: drop the `<nlq-data>` element (or call `POST /v1/ask` from your backend), and it compiles English to SQL, runs it, and returns rows plus the SQL — buy the pipeline, don't build it.",
+    painContext:
+      "Backend engineers at small SaaS teams keep getting the same request: let our users ask questions of their own data in plain English — a search box, a reporting tab, an in-app assistant. Building it yourself means owning a text-to-SQL stack: prompt construction, schema injection, a SQL validator so the model can't drop a table, a plan cache, and an eval harness to keep accuracy from regressing. That's a quarter of work to maintain forever for a feature that isn't your core product. The build-vs-buy question has had no obvious buy answer.",
+    demoGoal: "orders grouped by month with total revenue for each",
+    demoWhy:
+      "The kind of in-app report your users would ask for — a grouped revenue rollup — answered from one English goal, no SQL pipeline of your own.",
+    howNlqdbAnswers: [
+      'Embed `<nlq-data goal="...">` in your UI, or call `POST /v1/ask` from your backend — the text-to-SQL pipeline is the API, not your code.',
+      "The SQL validator allowlists the verbs the model may emit, so a generated query can't drop a table or escape its scope.",
+      "Every answer returns rows plus the compiled SQL (`SK-WEB-005`) for users to audit; plans cache on `(goal, schema-hash)` (`GLOBAL-006`).",
+      "Quality is measured against BIRD Mini-Dev + Spider 2.0-lite and published — the accuracy is visible, not a marketing claim.",
+    ],
+    whatItDoesnt: [
+      "It's a hosted pipeline you embed, not a library you vendor into your codebase — there's no self-hosted text-to-SQL container yet (roadmap, infra-gated). If the SQL generation must run inside your own infrastructure, nlqdb isn't that today.",
+      "Serving many end-users each over their own data means a database (or per-tenant RLS scope) per tenant — per-user/agent row scoping within one shared database is in progress (E-03, `SK-PIVOT-009`), not shipped. Today isolation is one database or one key per tenant.",
+      "The public `<nlq-data>` embed holds a read-scoped key — it reads, it doesn't write, and a write or connection credential must never sit in client HTML. Writes go through the SDK or `POST /v1/run` from your backend.",
+    ],
+    faqs: [
+      {
+        q: "Should I build or buy a text-to-SQL feature for my app?",
+        a: "Building it means owning the whole stack — prompt construction, schema injection, a SQL validator so the model can't mutate data, a plan cache, and an eval harness to keep accuracy from regressing — forever, for a non-core feature. nlqdb is the buy answer: embed `<nlq-data>` or call `POST /v1/ask` and the pipeline is the API. The honest trade-off: it's hosted, not a library you vendor in.",
+      },
+      {
+        q: "How do I add a natural-language query feature without writing the SQL generation myself?",
+        a: "Embed the `<nlq-data goal=\"...\">` web component in your UI, or call `POST /v1/ask` from your backend with the user's English question. nlqdb introspects the schema, compiles the goal to SQL, runs it, and returns the rows plus the SQL it ran. You write no prompt, no schema-injection glue, and no validator — that's all behind the endpoint.",
+      },
+      {
+        q: "What stops the LLM from generating SQL that drops or corrupts a table?",
+        a: "Two guardrails. The SQL validator allowlists the verbs the orchestrator may emit (`docs/features/sql-allowlist`), so destructive statements are rejected before execution; and every answer surfaces the compiled SQL under a trace toggle (`SK-WEB-005`) so you and your users can audit the grain before trusting it. Destructive DDL also requires a row-count diff and second confirmation (`SK-ONBOARD-004`).",
+      },
+      {
+        q: "Can my users each query only their own data?",
+        a: "For a handful of tenants, give each its own provisioned database — clean physical isolation. For many users in one shared database, per-user/agent row scoping (`app.agent_id` RLS) is in progress (E-03), not shipped; per-tenant RLS keyed on `app.tenant_id` is the shipped boundary today. So plan on a database or an RLS-scoped key per tenant, not one open database for everyone.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://hn.algolia.com/?q=natural%20language%20query",
+        label:
+          'HN search: "natural language query" — recurring threads on adding an English-query feature to a product.',
+      },
+      {
+        url: "https://www.reddit.com/r/SaaS/search/?q=text%20to%20sql",
+        label: 'r/SaaS — "text to sql / ask your data" build-vs-buy discussion hub.',
+      },
+      {
+        url: "https://www.reddit.com/r/dataengineering/search/?q=text+to+sql",
+        label:
+          "r/dataengineering — practitioner threads on building vs buying a text-to-SQL layer.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
