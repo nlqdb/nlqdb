@@ -35,6 +35,24 @@ describe("COMPETITORS data integrity", () => {
     }
   });
 
+  // SK-CMP-001: each "when to choose" bullet is capped at 16 words (the type
+  // comment on `whenChooseUs`/`whenChooseThem`). AI search engines lift these
+  // verbatim and the /vs card renders them as scannable bullets, so an
+  // over-long bullet reads as a paragraph and degrades both. The Outerbase
+  // entry once drifted to 7 over-budget bullets without surfacing in CI — this
+  // guard fails loudly so a future entry can't repeat that.
+  test("SK-CMP-001: every 'when to choose' bullet is ≤16 words", () => {
+    const wordCount = (s: string) => s.trim().split(/\s+/).length;
+    const over: string[] = [];
+    for (const c of COMPETITORS) {
+      for (const bullet of [...c.whenChooseUs, ...c.whenChooseThem]) {
+        const n = wordCount(bullet);
+        if (n > 16) over.push(`${c.slug} (${n}w): ${bullet}`);
+      }
+    }
+    expect(over).toEqual([]);
+  });
+
   test("SK-CMP-003: every competitor has ≥4 FAQs", () => {
     for (const c of COMPETITORS) {
       expect(c.faqs.length).toBeGreaterThanOrEqual(4);
