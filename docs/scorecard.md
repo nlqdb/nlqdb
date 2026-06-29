@@ -48,12 +48,14 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 re-pull network-blocked) and both in-session AEO lanes were held by concurrent
 PRs (#541 `/solve`, #542 docs/security) → per daily rule 2, a measured
 **onboarding/UX** lever on the free `/vs` lane: a comparison page for **Mode**
-(P3 analyst), the SQL-IDE-first member of the notebook-AI BI cluster named as
-the next slice after Hex — SQL editor + Python/R notebooks + scheduled reports
-over a warehouse, now part of ThoughtSpot (2023 $200M; AI via ThoughtSpot Sage).
-Honest: notebooks/charts/reports `them: shipped`, MCP `them: no`; wedge = nlqdb
-owns the DB + embeds an answer element / agent-callable API. **Comparison pages
+(P3 analyst), the SQL-IDE-first member of the notebook-AI BI cluster after Hex —
+SQL editor + Python/R notebooks + scheduled reports over a warehouse, now part
+of ThoughtSpot (AI via ThoughtSpot Sage). Honest: notebooks/charts/reports
+`them: shipped`, MCP `them: no`; wedge = nlqdb owns the DB + embeds an answer
+element / agent-callable API. **Comparison pages
 21 → 22**; apps/web 176 tests green, `astro check` 0 errors, lint 0, all 14
 `competitors.test.ts` invariants pass. Artifact: a dev.to / r/dataengineering
-draft ("Your BI tool got acquired. Your data layer shouldn't have to care.").
-**KPI:** GLOBAL-025 onboarding/UX; none degraded (prod untouched).
+draft. **KPI:** GLOBAL-025 onboarding/UX; none degraded (prod untouched).
+*(Prior run 109 — `/solve` P4
+`add-ask-your-data-feature-without-building-text-to-sql` (build-vs-buy
+text-to-SQL wedge), solve 18 → 19, P4 1 → 2.)*
