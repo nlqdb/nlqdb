@@ -11,48 +11,52 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-29 (run 102) — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them."
+## 2026-06-29 (run 104) — dev.to / lobste.rs / r/SEO: "The '25 words max' rule in your style guide is a lie your CMS can't catch."
 
-**Where:** dev.to + r/LLMDevs + r/AI_Agents; a transferable lesson on evaluating
-"agent-ready" claims when every tool now advertises MCP. nlqdb mentioned once, as the
-contrast that made the distinction obvious.
+**Where:** dev.to + lobste.rs + r/SEO; a transferable lesson on enforcing soft
+content constraints, for anyone shipping marketing/AEO copy as code. nlqdb mentioned
+once, as where the lesson came from.
 
-**Title:** Every data tool shipped an MCP server this year. Your agent still can't build on most of them.
+**Title:** The "25 words max" rule in your style guide is a lie your CMS can't catch.
 
 **Body:**
 
-> MCP is the new "we have an API." Writing a competitor comparison this week, I went to
-> mark "agent-callable" as our differentiator against an AI data-notebook tool — and
-> stopped, because they'd shipped an MCP server too. So had the BI tool two rows up. The
-> honest move was to concede the checkbox. But conceding it surfaced the real axis, and
-> it's one worth naming.
+> Every content style guide has rules like "keep answer bullets under 25 words" or "the
+> meta description is one sentence." They exist for a real reason: a card bullet that runs
+> 37 words isn't scannable, and an AI search engine lifting it into a citation panel will
+> truncate or skip it. But these rules are *soft* — no compiler rejects a 37-word bullet —
+> so they decay the way all unenforced rules decay: one careful writer holds the line, the
+> next adds a clause, and six months later half the pages violate the rule nobody deleted.
 >
-> There are two shapes of MCP server, and they look identical in a feature matrix. The
-> first wraps a **destination app**: "ask my published notebook a question," "answer from
-> my dashboard in Slack." The human's workflow, now reachable by an agent. The second
-> exposes **infrastructure the agent owns**: provision a database, write rows, query
-> them, migrate the schema. Both speak MCP. Only the second lets an agent build something
-> that outlives the conversation.
+> I found this in our own copy. We store every landing page as a typed object — title,
+> answer bullets, FAQ — and a comment on the bullets field said `Each ≤25 words`. I
+> measured: **25 of ~50 bullets were over, several past 35 words.** Nothing had gone
+> wrong on any single edit. Each PR added a few honest words to one bullet, every diff
+> looked fine in review, and the rule lived in a place — a code comment — that reviewers
+> read once and then stopped seeing. The constraint was real; the enforcement was a human
+> remembering, and humans regress to the mean.
 >
-> The tell is to ask what the agent *owns* after the call returns. If the answer is "a
-> view into a human's analysis," that's a genuinely useful human-in-the-loop surface — and
-> a dead end for an autonomous agent, because the agent can read but can't accumulate. It
-> has nowhere to put the row it just computed. An agent that can query but not persist is
-> a calculator, not a coworker.
+> The fix isn't "try harder in review." It's to move the rule into the one layer that
+> can't forget: a test. Six lines — split each bullet on whitespace, collect anything over
+> 25 words, assert the list is empty, and print the offenders on failure. Now the next
+> over-long bullet fails in the PR that writes it, with its own slug named in the error.
+> The style guide stops being aspirational and starts being load-bearing.
 >
-> So the question to ask a tool's MCP server isn't "does it exist" — by 2026 it always
-> does. It's **"what does it let the agent own?"** Read-only over someone else's app, or
-> a substrate the agent can write to and come back to. The matrix can't tell them apart;
-> you have to read what the verbs *do*. (At [nlqdb](https://nlqdb.com) the MCP verb
-> `nlqdb_query` materialises a Postgres on first reference — the agent gets a database it
-> owns, not a window into ours.)
+> The general rule: **a constraint enforced by attention decays at the rate attention
+> does.** If you can express it as a predicate over your content — word counts, required
+> sections, "no TODO in published copy," every page cites ≥2 sources — write the predicate,
+> not the guideline. Prose rules are for things you genuinely can't measure. Most of them,
+> it turns out, you can. (This came out of [nlqdb](https://nlqdb.com)'s `/solve` pages,
+> where the bullets feed AI-search citation panels; the guard now ships beside the data.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding — a genuinely useful
-evaluation lens for anyone wiring agents to tools, drawn from a real comparison-page
-build (the Hex `/vs` page this run); the post earns a citation without a pitch.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — a genuinely useful
+lesson for anyone shipping content-as-code, drawn from a real fix this run (the
+howNlqdbAnswers ≤25-word CI guard, 25 over-budget bullets → 0); the post earns a
+citation without a pitch.
 
 ## Collapsed — full drafts in git history
 
+- run 102 — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them." (by 2026 "has an MCP server" is the new "has an API" — universal and uninformative; two MCP shapes look identical in a feature matrix but aren't — one wraps a *destination app* (ask my notebook, answer from my dashboard: read-only over a human's workflow), the other exposes *infrastructure the agent owns* (provision a DB, write rows, migrate schema); the tell is what the agent *owns* after the call returns — a view it can read but not accumulate into is a calculator, not a coworker; ask "what does it let the agent own," not "does it exist").
 - run 101 — dev.to / lobste.rs / r/ExperiencedDevs: "We shipped the feature. Nine pages still told users we hadn't." (honest "what this doesn't do" copy has a silent failure mode — a "not yet / on the roadmap" line is a dated assertion with nothing watching it, so the day a feature ships the most honest sentence on the site becomes the most dishonest, and no CI job notices because the PR touched `src/` not the marketing copy; two rules — store capability claims in typed/structured data and grep every "roadmap / not shipped" string for a feature's name as part of the same change; the trigger isn't the doc, it's the feature shipping; the fix here deleted nine expired BYO-Postgres promises and wrote the one page the shipped `connect` verb finally made honest).
 - run 100 — dev.to / r/LLMDevs / lobste.rs: "Two SQL examples that use the same clauses are not the same example — and your few-shot retriever can't tell." (a ranked grouped count — `GROUP BY x, COUNT(*) … ORDER BY COUNT(*) DESC LIMIT n` — retrieved a percentage/`CAST … REAL` example on generic word overlap; the deeper bug was a pool that conflated "return the top group's *key*" with "return the top groups *and their count*" — same clauses, different answer, so one teacher taught the other shape wrong; rule: a few-shot pool needs a teacher for every *output shape*, not every SQL operation; verify offline with a held-out cross-domain probe per shape; 21/23 → 22/23).
 - run 99 — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for." (dynamic few-shot for text-to-SQL masks the question to match its *skeleton*; a grouped-count-over-join with no threshold retrieved a `HAVING COUNT(*) > n` example because flat token overlap can't tell a structural token from a coincidental one; the bug wasn't the ranker — measured, it just shuffles which question breaks — it was the *pool* having no teacher for that shape, so the question fell to the nearest wrong one; a retrieval pool is a curriculum, a missing shape returns the closest wrong thing confidently; hold out a cross-domain probe per shape as a unit test; 20/23 → 21/23).

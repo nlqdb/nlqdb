@@ -235,8 +235,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The query an agent runs to summarise its own memory — `GROUP BY` + count + top-N — is exactly what a vector store can't answer and a real database can.",
     howNlqdbAnswers: [
-      "MCP `nlqdb_query` provisions Postgres from the agent's first English goal (no `db` set → creates one when the agent has none) and answers in English — plus `nlqdb_list_databases` / `nlqdb_describe`, no human in the loop.",
-      "Memory is typed rows in real Postgres, so the agent can `GROUP BY`, rank top-N, and aggregate per-period over what it stored — not just recall a single fact by similarity.",
+      "MCP `nlqdb_query` provisions Postgres from the agent's first English goal and answers in English — plus `nlqdb_list_databases` / `nlqdb_describe`, no human in the loop.",
+      "Memory is typed rows in Postgres, so the agent can `GROUP BY`, rank top-N, and aggregate over what it stored — not just similarity recall.",
       'Schema evolves via English: `"add a priority column"` migrates the table; the diff is shown before apply (`SK-ONBOARD-004`).',
       "Per-(mcp_host, device_id) keys (`sk_mcp_*`) let one tenant share memory across an agent fleet without leaking other tenants' rows.",
     ],
@@ -293,8 +293,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The query an agent runs to summarise its own memory — `GROUP BY` category + count + order — is exactly what retrieval can't do and a real database can.",
     howNlqdbAnswers: [
-      "The agent's memory is typed rows in real Postgres, so `GROUP BY`, top-N, and per-period rollups run as actual SQL — not arithmetic over a list of search hits.",
-      "Ask the report in English via MCP `nlqdb_query`; the answer returns as rows plus the compiled SQL under a trace toggle, so you audit the grain before trusting it.",
+      "The agent's memory is typed rows in Postgres, so `GROUP BY`, top-N, and per-period rollups run as actual SQL — not arithmetic over search hits.",
+      "Ask the report in English via MCP `nlqdb_query`; the answer returns rows plus the compiled SQL under a trace toggle, so you audit the grain.",
       "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — a repeated weekly rollup hits the cache and returns in single-digit ms.",
       "Same database the agent writes to and reports over — no ETL into a separate analytics store, no second connection string to keep in sync.",
     ],
@@ -503,9 +503,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The first engagement question a chatbot team asks — volume over time — is one English goal here, not a hand-written GROUP BY over a transcript table.",
     howNlqdbAnswers: [
-      "Conversation turns live as typed rows in real Postgres, so 'messages per day', 'most active users', and 'average turns per session' run as actual SQL GROUP BY — not arithmetic over a list of search hits.",
-      "Ask the engagement question in English via MCP `nlqdb_query` or the `@nlqdb/sdk`; every answer returns rows plus the compiled SQL under a trace toggle so you can audit the grain.",
-      "Write turns with the deterministic `nlqdb_remember` tool (or a `POST /v1/run` parameterised INSERT) and report over the same database — no second analytics store, no ETL.",
+      "Conversation turns are typed rows in Postgres, so 'messages per day' and 'average turns per session' run as SQL GROUP BY — not log math.",
+      "Ask the engagement question in English via MCP `nlqdb_query` or the `@nlqdb/sdk`; every answer returns rows plus the compiled SQL to audit.",
+      "Write turns with the deterministic `nlqdb_remember` tool (or a `POST /v1/run` INSERT) and report over the same database — no second store, no ETL.",
       'Schema evolves in English: `"add a sentiment column to messages"` migrates the table; the diff is shown before apply (`SK-ONBOARD-004`).',
     ],
     whatItDoesnt: [
@@ -558,9 +558,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The first cost question an LLM team asks — spend broken down by model — is one English goal here, not a hand-written GROUP BY over a usage log.",
     howNlqdbAnswers: [
-      "Log each call as a typed row — user, model, prompt/completion tokens, cost, timestamp — so cost-per-user and tokens-per-model run as real SQL GROUP BY, not log math.",
-      "Ask the cost question in English via the `<nlq-data>` element, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL under a trace toggle.",
-      "Write usage rows with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, and report over the same database — no separate analytics store, no ETL.",
+      "Log each call as a row — user, model, tokens, cost, timestamp — so cost-per-user and tokens-per-model run as SQL GROUP BY, not log math.",
+      "Ask the cost question in English via the `<nlq-data>` element, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
+      "Write usage rows with the deterministic `nlqdb_remember` tool or a `POST /v1/run` INSERT, and report over the same database — no separate store, no ETL.",
       "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly cost rollup hits the cache and returns in single-digit ms.",
     ],
     whatItDoesnt: [
@@ -613,7 +613,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The first reliability question an agent team asks — which tool is failing and how slow — is one English goal here, not a hand-written GROUP BY over a trace log.",
     howNlqdbAnswers: [
-      "Log each tool call as a typed row — tool name, session id, status, latency_ms, timestamp — so error-rate-per-tool and p95-latency run as real SQL GROUP BY.",
+      "Log each tool call as a typed row — tool, session id, status, latency_ms, timestamp — so error-rate-per-tool and p95-latency run as SQL GROUP BY.",
       "Ask the reliability question in English via `<nlq-data>`, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
       "Write call records with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, then report over the same database — no separate analytics store.",
       "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly reliability rollup hits the cache and returns in single-digit ms.",
@@ -670,7 +670,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The first retrieval-quality question a RAG team asks — which sources get pulled most and how relevant they score — is one English goal here, not a hand-written GROUP BY over a retrieval log.",
     howNlqdbAnswers: [
-      "Log each retrieval as a typed row — query id, source document, relevance score, timestamp — so retrievals-per-source and avg-score run as real SQL GROUP BY.",
+      "Log each retrieval as a typed row — query id, source doc, relevance score, timestamp — so retrievals-per-source and avg-score run as SQL GROUP BY.",
       "Ask the retrieval-quality question in English via `<nlq-data>`, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
       "Write retrieval records with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, then report over the same database — no separate analytics store.",
       "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly retrieval rollup hits the cache and returns in single-digit ms.",
@@ -728,7 +728,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The first eval-tracking question a team asks — did pass rate go up or down across prompt versions — is one English goal here, not a hand-built pivot over a run log.",
     howNlqdbAnswers: [
-      "Log each scored eval case as a typed row — prompt version, test case, model, score, pass/fail, timestamp — so pass-rate-per-version runs as real SQL GROUP BY.",
+      "Log each scored eval case as a typed row — prompt version, test case, model, score, pass/fail — so pass-rate-per-version runs as SQL GROUP BY.",
       "Ask the regression question in English via `<nlq-data>`, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
       "Write eval records with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, then trend over the same database — no separate analytics store.",
       "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly pass-rate rollup hits the cache and returns in single-digit ms.",
@@ -786,8 +786,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "The agent asks in English; nlqdb compiles and shows the exact SELECT, so you audit the grain — and the validator would have rejected anything that wasn't a read before it ran.",
     howNlqdbAnswers: [
       "Agent writes go through `nlqdb_remember`: the server builds a parameterised INSERT from a fixed column allow-list, so the agent supplies data, never SQL (`SK-PIVOT-008`).",
-      "Read SQL passes a three-stage validator — leading-verb gate, `node-sql-parser` AST parse, embedded-verb/function walk — that fails closed, so a CTE-hidden DROP or a `pg_sleep` is rejected, not run (`SK-SQLAL-001`).",
-      "Postgres row-level security isolates each tenant's rows at the engine, enforced on every read and write regardless of the SQL shape — not a guard living in app code.",
+      "Read SQL passes a three-stage validator — leading-verb gate, `node-sql-parser` AST parse, embedded-verb walk — that fails closed, so a CTE-hidden DROP is rejected (`SK-SQLAL-001`).",
+      "Postgres row-level security isolates tenant rows at the engine, enforced on reads and writes regardless of SQL shape — not a guard in app code.",
       "Every answer returns the compiled SQL under a trace toggle, and destructive operations show a row-count diff that needs a second confirmation before applying (`SK-ONBOARD-004`).",
     ],
     whatItDoesnt: [
@@ -843,9 +843,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Each agent's writes carry an `agent_id`, so one English question rolls the shared memory up per agent — the cross-team view a per-agent store can't give you.",
     howNlqdbAnswers: [
       "Every agent writes to one shared Postgres via `nlqdb_remember`: the server builds a parameterised insert, so each agent supplies data, never SQL (`SK-PIVOT-008`).",
-      "Every row carries `agent_id`, and facts and episodes also carry `end_user_id` and `thread_id`, so you attribute and filter shared memory by which agent (and, for facts and episodes, which user or thread) wrote it.",
-      "Any agent recalls in English via `nlqdb_query` — nlqdb compiles the NL→SQL over the shared tables, so one agent reads what another wrote, and the compiled SQL is always shown.",
-      "It's one Postgres, so concurrent writes from many agents are handled by the engine; entities upsert on `(agent_id, kind, canonical_name)` so two agents recording the same thing don't duplicate it.",
+      "Every row carries `agent_id`; facts and episodes also carry `end_user_id` and `thread_id`, so you attribute shared memory by which agent, user, or thread wrote it.",
+      "Any agent recalls in English via `nlqdb_query` — nlqdb compiles NL→SQL over shared tables, so one agent reads what another wrote, with the SQL shown.",
+      "It's one Postgres, so the engine handles concurrent writes; entities upsert on `(agent_id, kind, canonical_name)` so two agents recording the same thing don't duplicate.",
     ],
     whatItDoesnt: [
       "No per-agent access control yet — every agent sharing one nlqdb database sees the same rows. Engine-enforced private-vs-shared scoping (`app.agent_id` RLS) is roadmap (E-03), not shipped; today the boundary is per-database / per-tenant.",
@@ -898,10 +898,10 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The per-user breakdown an agent runs over its own memory — group by user, count each — is the same grain the engine isolates at the row level, below whatever SQL the model writes.",
     howNlqdbAnswers: [
-      "Every provisioned Postgres gets a `tenant_isolation` row-level-security policy keyed on `app.tenant_id`, set per request — the engine filters every read and write, whatever SQL the LLM emits (`neon-provision.ts`).",
-      "RLS fails closed: if the tenant id is unset, `current_setting('app.tenant_id')` is empty and the policy blocks all rows — a missing scope returns nothing, it never falls through to another tenant's data.",
+      "Every Postgres gets a `tenant_isolation` RLS policy keyed on `app.tenant_id`, set per request — the engine filters reads and writes, whatever SQL the LLM emits.",
+      "RLS fails closed: if tenant id is unset, the policy blocks all rows — a missing scope returns nothing, not another tenant's data.",
       "Per-`(mcp_host, device_id)` `sk_mcp_*` keys scope access per agent and device, so one tenant can share memory across an agent fleet without exposing another tenant's rows.",
-      "Want hard physical isolation? Give each customer their own database — `nlqdb_query` with no `db` set provisions a fresh Postgres from the first English goal, no schema to design.",
+      "Want hard physical isolation? Give each customer their own database — `nlqdb_query` with no `db` set provisions a fresh Postgres from the first English goal.",
     ],
     whatItDoesnt: [
       "No per-end-user row scoping *within one shared database* yet — agent-scope RLS keyed on `app.agent_id` is in progress (E-03, `SK-PIVOT-009`); today sub-tenant isolation is one key or one database per agent, not a single-DB row policy.",
@@ -956,10 +956,10 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The kind of ad-hoc admin question you'd otherwise hand-write SQL for — a grouped count over your own schema — answered from one English goal.",
     howNlqdbAnswers: [
-      "Connect your database once with `POST /v1/db/connect { engine, connection_url }` — or `nlq db connect`, the SDK `client.databases.connect`, or the MCP `nlqdb_connect_database` tool (`SK-DBCONN-001`); nlqdb introspects the live schema, so there's no training corpus to maintain.",
-      "Your connection URL is sealed at rest (AES-256-GCM, `GLOBAL-031`) and the host is egress-guarded at connect and re-checked before every query (`GLOBAL-035`); only a redacted connection pill is stored unsealed.",
-      "English compiles to SQL and runs on your own engine — query-time dispatch routes to your Postgres — and every answer returns rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you audit the grain before trusting it.",
-      "The data never moves — nlqdb queries your database in place over its own connection; there's no copy, no ETL, no second store to keep in sync.",
+      "Connect your database once with `POST /v1/db/connect` (or `nlq db connect`, the SDK, or `nlqdb_connect_database`, `SK-DBCONN-001`); nlqdb introspects the live schema — no training corpus.",
+      "Your connection URL is sealed at rest (AES-256-GCM, `GLOBAL-031`); the host is egress-guarded and re-checked before every query (`GLOBAL-035`); only a redacted pill stays unsealed.",
+      "English compiles to SQL and runs on your own Postgres — every answer returns rows plus the compiled SQL (`SK-WEB-005`) to audit.",
+      "The data never moves — nlqdb queries your database in place over its own connection; no copy, no ETL, no second store to sync.",
     ],
     whatItDoesnt: [
       "No anonymous connect — pointing nlqdb at a database you run is a signed-in account verb on the SDK, CLI, and MCP; the public `<nlq-data>` embed holds a read-scoped key, never a connection credential, so the connect step isn't an embed (`GLOBAL-003`).",

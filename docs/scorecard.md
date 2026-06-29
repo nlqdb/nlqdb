@@ -43,13 +43,13 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-29 (run 102)** — **onboarding lever**: shipped the **Hex** `/vs`
-comparison page (P3 — the notebook-AI lead the comparison-pages FEATURE named as
-the next slice). **Comparison pages 19 → 20**; first P3 notebook-AI on-ramp.
-Honest side-by-side (wedge = nlqdb owns the DB + an answer
-element/agent-callable API). Facts web-verified 2026-06-29 (hex.tech). Data-only
-edit (`competitors.ts`); 13/13 integrity tests pass. **KPI:** GLOBAL-025
-onboarding; others untouched. *(Prior run 101 — BYO-connect (`SK-DBCONN-001`)
-unblocked the P4 backend-engineer solve page
-`/solve/query-existing-postgres-in-natural-language` + corrected 9 now-false
-"BYO-Postgres is roadmap" honest-limit lines: **solve pages 15 → 16, P4 0 → 1**.)*
+**2026-06-29 (run 104)** — hard numbers gated this run (eval dispatch 403,
+funnel re-pull network-blocked, retrieval saturated 22/23, comparison-pages
+owned by open PR #534) → per daily rule 2, a measured **onboarding/UX hygiene**
+lever: the documented `/solve` "≤25 words per howNlqdbAnswers bullet" AEO rule
+lived only in a code comment and had silently drifted — **25 of ~50 bullets over
+budget**. Tightened all 25 to ≤25w (facts preserved) + added a
+CI guard (`solve.test.ts`) naming offenders on failure — the silent-drift fix
+#534 shipped for `/vs` SK-CMP-001, in a non-conflicting file. **Over-budget
+`/solve` bullets 25 → 0**; apps/web 175/175 green, check + lint clean. **KPI:**
+GLOBAL-025 onboarding/UX; none degraded.

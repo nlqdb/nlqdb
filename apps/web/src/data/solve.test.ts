@@ -50,6 +50,24 @@ describe("SOLVE_ENTRIES data integrity", () => {
     }
   });
 
+  // The howNlqdbAnswers "Each ≤25 words" rule (solve.ts) is an AEO scannability
+  // invariant — these bullets are lifted onto the card and into LLM citation
+  // panels, where a 35-word "bullet" reads as a paragraph and gets demoted. It
+  // lived only in a code comment and had silently drifted (25 of ~50 bullets
+  // over budget); this guard moves it into the one layer that can't forget, and
+  // names the offenders on failure so the next over-long bullet fails in the PR
+  // that writes it (mirrors the /vs SK-CMP-001 bullet guard).
+  test("every howNlqdbAnswers bullet stays under the 25-word AEO scannability ceiling", () => {
+    const over: string[] = [];
+    for (const s of SOLVE_ENTRIES) {
+      s.howNlqdbAnswers.forEach((b, i) => {
+        const words = b.trim().split(/\s+/).length;
+        if (words > 25) over.push(`${s.slug} [bullet ${i}] (${words}w): ${b}`);
+      });
+    }
+    expect(over).toEqual([]);
+  });
+
   test("SK-SOLVE-002: every entry has ≥2 honest 'whatItDoesnt' bullets", () => {
     for (const s of SOLVE_ENTRIES) {
       expect(s.whatItDoesnt.length).toBeGreaterThanOrEqual(2);
