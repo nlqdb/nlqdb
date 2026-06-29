@@ -1164,7 +1164,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         url: "https://www.reddit.com/r/dataengineering/search/?q=text+to+sql",
-        label: "r/dataengineering — practitioner threads on building vs buying a text-to-SQL layer.",
+        label:
+          "r/dataengineering — practitioner threads on building vs buying a text-to-SQL layer.",
       },
     ],
   },
