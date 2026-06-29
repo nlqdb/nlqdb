@@ -2299,6 +2299,133 @@ export const COMPETITORS: Competitor[] = [
       why: "The aggregate slice over remembered rows is nlqdb's lane; Supermemory's lane is fuzzy recall of what was said, not GROUP BY over what was done.",
     },
   },
+  {
+    slug: "mode",
+    name: "Mode",
+    url: "https://mode.com",
+    // P3 analyst slot — the next entry in the notebook-first AI BI cluster the
+    // comparison-pages FEATURE named as the slice after Hex (2026-06-29):
+    // Hex / Mode AI / Fabi.ai / Count (docs/competitors.md §"notebook-first AI
+    // BI"). Mode is the SQL-IDE-first member of that group and the highest-
+    // brand-recognition one after Hex. Anchored in docs/competitors.md §88.
+    // Facts web-verified 2026-06-29 (mode.com + ThoughtSpot press releases +
+    // G2/Capterra): Mode is a BI/analytics platform — a cloud SQL editor plus
+    // connected Python & R notebooks, interactive visualizations, and
+    // shareable live reports & dashboards; query results auto-load into the
+    // notebook for further analysis. It connects to existing warehouses
+    // (Snowflake, BigQuery, Redshift, Postgres, SQL Server, MySQL, Oracle,
+    // Azure, …) — it does NOT provision or own a database. Scheduled query
+    // runs + webhook/threshold alerts. Acquired by ThoughtSpot (July 2023,
+    // $200M); AI now arrives through the ThoughtSpot suite (ThoughtSpot Sage,
+    // LLM-powered NL search over Mode Datasets). Best suited to data teams /
+    // analysts comfortable with SQL. Like Hex it is a destination notebook +
+    // reporting app analysts log into, not an embeddable answer-element /
+    // agent-callable backend a product or agent queries at runtime.
+    tagline:
+      "SQL-first analytics platform — a cloud SQL editor with connected Python & R notebooks, interactive charts, and shareable reports over your warehouse, now part of ThoughtSpot.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Mode if you're a data team that wants a SQL editor with connected Python/R notebooks and shareable reports over your existing warehouse. Pick nlqdb if you're building a product or agent that needs English-to-SQL over a database it provisions — embeddable, API-first, with every write diff-previewed.",
+    whenChooseUs: [
+      "You're embedding data answers in your product or agent, not authoring reports.",
+      "An AI agent must provision and query its own database, callable over MCP.",
+      "You ship one HTML element or an API, not a notebook an analyst drives.",
+      "Writes and schema changes should be diff-previewed before they apply.",
+    ],
+    whenChooseThem: [
+      "You're an analyst or data team building reports and dashboards over a warehouse.",
+      "You want a SQL IDE plus connected Python/R notebooks in one workspace.",
+      "You connect existing warehouses (Snowflake, BigQuery, Redshift), not provision a new database.",
+      "You want scheduled report delivery and threshold alerts to your team.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Mode connects to your existing warehouse; it doesn't provision or own a database your app writes to.",
+      },
+      {
+        feature: "Natural-language data questions",
+        us: "shipped",
+        them: "partial",
+        note: "Mode's AI now arrives via ThoughtSpot Sage (NL search over Mode Datasets) post-acquisition; nlqdb compiles SQL from English against a Postgres it owns.",
+      },
+      {
+        feature: "Embeddable answer element + SDK + API",
+        us: "shipped",
+        them: "partial",
+        note: "Mode embeds published reports/dashboards; nlqdb ships `<nlq-data>`, an SDK, and an HTTP API to query a database your product owns.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "no",
+        note: "Mode is a notebook + reporting surface analysts log into, not an agent-callable MCP backend; nlqdb's `nlqdb_query` materialises Postgres on first reference.",
+      },
+      {
+        feature: "Charts, dashboards + shareable reports",
+        us: "no",
+        them: "shipped",
+        note: "Mode builds charts, dashboards, and scheduled live reports; nlqdb returns typed result rows you render in your own UI.",
+      },
+      {
+        feature: "Python / R notebook cells",
+        us: "no",
+        them: "shipped",
+        note: "Mode is a SQL editor plus connected Python + R notebooks; nlqdb's output contract is SQL plus rows, not a notebook runtime.",
+      },
+      {
+        feature: "Scheduled runs + threshold alerts",
+        us: "no",
+        them: "shipped",
+        note: "Mode schedules query runs and fires webhook/threshold alerts; nlqdb answers a query per request, not on a recurring report schedule.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "Mode queries and reports; it doesn't manage your schema. nlqdb previews writes and DDL before applying.",
+      },
+      {
+        feature: "Connects to many existing warehouses",
+        us: "partial",
+        them: "shipped",
+        note: "Mode reads Snowflake/BigQuery/Redshift/Postgres and more; nlqdb provisions and queries its own Postgres rather than connecting to many warehouses.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Mode and nlqdb together?",
+        a: "Yes — they serve different stages. Mode is where an analyst explores a warehouse and publishes a report or dashboard; nlqdb is the database your product or agent queries in plain English at runtime. Use Mode for analysis and reporting, nlqdb for the data layer your app ships on.",
+      },
+      {
+        q: "Does nlqdb build reports and notebooks like Mode?",
+        a: "No. nlqdb returns typed result rows from SQL it compiles; it doesn't ship a SQL IDE, Python/R notebooks, charts, or scheduled reports. If a collaborative SQL + notebook workspace and shareable dashboards are the goal, Mode is the right shape; nlqdb's contract is the data, which you render in your own UI.",
+      },
+      {
+        q: "Is Mode's AI the same as nlqdb's natural-language querying?",
+        a: "Different jobs. Since the ThoughtSpot acquisition, Mode's AI surfaces as ThoughtSpot Sage — LLM-powered search over Mode Datasets for analysts. nlqdb compiles English into SQL against a Postgres it provisions and owns, returns typed rows, and diff-previews any write — built to be embedded in a product or called by an agent, not driven in a notebook.",
+      },
+      {
+        q: "Mode connects to my warehouse — why provision a new database with nlqdb?",
+        a: "Mode reads your existing Snowflake/BigQuery/Redshift/Postgres for analysis and reporting. nlqdb owns the database your app writes to: it provisions Postgres, migrates the schema via English, and diff-previews destructive writes. Connecting-to-read and owning-the-write-path are different jobs.",
+      },
+      {
+        q: "Does Mode have an MCP server like nlqdb?",
+        a: "No. Mode is a notebook and reporting platform analysts log into, not an agent-callable backend. nlqdb's MCP is database-shaped: `nlqdb_query` materialises a Postgres on first reference, so an agent can provision and query its own database rather than read an analyst's report.",
+      },
+    ],
+    demo: {
+      goal: "weekly active users by signup cohort for the last 6 months",
+      why: "A grouped, time-bucketed query nlqdb answers as SQL over the database your app owns — the live data layer your product queries, not a report an analyst schedules.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
