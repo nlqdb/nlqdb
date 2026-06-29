@@ -50,5 +50,5 @@ Honest side-by-side (charts/notebook/published-apps/collaboration + Hex's own
 MCP-Threads conceded `them: shipped`; wedge = nlqdb owns the DB + embeds an answer
 element/agent-callable API). Facts web-verified 2026-06-29 (hex.tech). Data-only
 edit (`competitors.ts`); 13/13 integrity tests pass. Net-shrank
-`comparison-pages/FEATURE.md` 21.7 → 9.0 KB (D4/D5). **KPI:** GLOBAL-025
+`comparison-pages/FEATURE.md` 15.5 → 9.0 KB (D5 trim). **KPI:** GLOBAL-025
 onboarding; others untouched.
