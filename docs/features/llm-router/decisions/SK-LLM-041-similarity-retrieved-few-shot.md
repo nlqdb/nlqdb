@@ -137,7 +137,7 @@ identifiers identically.
   intended structural bucket across domains — **held at 1.0 across the 2026-06-22
   → 06-28 pool growth to six near-neighbour buckets** — anti-join,
   group-order-limit, null-filter, order-by-limit, filtered-group-by-count,
-  group-count-top-n — the harder regime) and **lift = +0.543** — masked
+  group-count-top-n — the harder regime) and **lift = +0.548** — masked
   skeleton-similarity of the top-1 retrieved exemplar **0.778** vs **0.235** for
   an uninformed pool-average pick, the offline analog of DAIL's measured
   retrieval win, proving the pool+selector is worth a dispatch before paying for
