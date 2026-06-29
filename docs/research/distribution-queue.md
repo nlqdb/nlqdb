@@ -11,55 +11,51 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-29 (run 101) — dev.to / lobste.rs / r/ExperiencedDevs: "We shipped the feature. Nine pages still told users we hadn't."
+## 2026-06-29 (run 102) — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them."
 
-**Where:** dev.to + lobste.rs + r/ExperiencedDevs; a transferable lesson on how
-"not yet" copy rots the day a feature ships, and how to make the rot fail loud.
-nlqdb mentioned once, as the place the lesson came from.
+**Where:** dev.to + r/LLMDevs + r/AI_Agents; a transferable lesson on evaluating
+"agent-ready" claims when every tool now advertises MCP. nlqdb mentioned once, as the
+contrast that made the distinction obvious.
 
-**Title:** We shipped the feature. Nine pages still told users we hadn't.
+**Title:** Every data tool shipped an MCP server this year. Your agent still can't build on most of them.
 
 **Body:**
 
-> Honest marketing has a failure mode nobody warns you about. We're disciplined about it:
-> every product page carries a "what this doesn't do" section, because hiding limits gets
-> you demoted by the cited-source heuristics in Perplexity and ChatGPT — and because it's
-> the right thing to do. So across a few dozen landing pages, the same honest line
-> appeared again and again: *"connecting to a database you already run is on the roadmap,
-> not shipped."* True when we wrote it.
+> MCP is the new "we have an API." Writing a competitor comparison this week, I went to
+> mark "agent-callable" as our differentiator against an AI data-notebook tool — and
+> stopped, because they'd shipped an MCP server too. So had the BI tool two rows up. The
+> honest move was to concede the checkbox. But conceding it surfaced the real axis, and
+> it's one worth naming.
 >
-> Then we shipped it. A `connect` verb that points the product at a Postgres you already
-> own. And nine pages kept saying we hadn't. The most honest sentence on the site had
-> quietly become the most dishonest one — because "not yet" is a claim with an expiry
-> date, and nothing in the build fails when it expires. A new feature has a test suite; a
-> *negative* claim about a feature has nothing watching it. The moment the code crossed
-> from false to true, the copy crossed from true to false, and no CI job noticed.
+> There are two shapes of MCP server, and they look identical in a feature matrix. The
+> first wraps a **destination app**: "ask my published notebook a question," "answer from
+> my dashboard in Slack." The human's workflow, now reachable by an agent. The second
+> exposes **infrastructure the agent owns**: provision a database, write rows, query
+> them, migrate the schema. Both speak MCP. Only the second lets an agent build something
+> that outlives the conversation.
 >
-> The deeper trap: a roadmap promise reads as humility, so reviewers wave it through.
-> Nobody re-greps the marketing copy when a PR lands — the PR touched `src/`, not the
-> nine `.md`/data files that mention the thing it just shipped. The honest-limits
-> discipline that protects you from over-claiming quietly sets you up to *under*-claim,
-> which is its own kind of lying to a buyer ("they don't do X" — so they bounce to a
-> competitor who does, who you actually tie).
+> The tell is to ask what the agent *owns* after the call returns. If the answer is "a
+> view into a human's analysis," that's a genuinely useful human-in-the-loop surface — and
+> a dead end for an autonomous agent, because the agent can read but can't accumulate. It
+> has nowhere to put the row it just computed. An agent that can query but not persist is
+> a calculator, not a coworker.
 >
-> Two transferable rules. **(1) A "not yet" is a dated assertion — store it where it can
-> be checked, not just where it reads well.** Keep capability claims in typed/structured
-> data, and when you ship a capability, grep every "roadmap / not shipped / coming soon"
-> string for its name as part of the same change. **(2) The trigger isn't the doc, it's
-> the feature.** A shipped-feature checklist should include "what did we previously say we
-> *couldn't* do that we now can?" — the same way you'd update the changelog. We caught
-> ours by reading the new page against its siblings; the fix was deleting nine expired
-> promises and writing the one page the shipped feature finally made honest. (At
-> [nlqdb](https://nlqdb.com) the page claims live in typed data with integrity tests.)
+> So the question to ask a tool's MCP server isn't "does it exist" — by 2026 it always
+> does. It's **"what does it let the agent own?"** Read-only over someone else's app, or
+> a substrate the agent can write to and come back to. The matrix can't tell them apart;
+> you have to read what the verbs *do*. (At [nlqdb](https://nlqdb.com) the MCP verb
+> `nlqdb_query` materialises a Postgres on first reference — the agent gets a database it
+> owns, not a window into ours.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding — a specific, transferable
-lesson for anyone maintaining honest product/AEO copy, anchored to a real fix (a new
-search-intent page + nine corrected limit lines); the post earns a citation without a
-pitch.
+**Why this advances the north-star:** GLOBAL-025 onboarding — a genuinely useful
+evaluation lens for anyone wiring agents to tools, drawn from a real comparison-page
+build (the Hex `/vs` page this run); the post earns a citation without a pitch.
 
 ## Collapsed — full drafts in git history
 
-- run 99 — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for." (dynamic few-shot / DAIL-SQL masks the question to its skeleton and retrieves the closest demonstration; measured on real user questions, a grouped count over a join retrieved a `HAVING COUNT(*) > n` example — the masked skeletons overlapped so word-overlap ranked the threshold example top, teaching a filter the question never asked for; the bug was the *pool* (a missing shape returns the closest wrong thing, confidently), not the ranker (measured, lost); hold out a cross-domain probe per shape as a unit test; ICP retrieval 20/23 → 21/23).
+- run 101 — dev.to / lobste.rs / r/ExperiencedDevs: "We shipped the feature. Nine pages still told users we hadn't." (honest "what this doesn't do" copy has a silent failure mode — a "not yet / on the roadmap" line is a dated assertion with nothing watching it, so the day a feature ships the most honest sentence on the site becomes the most dishonest, and no CI job notices because the PR touched `src/` not the marketing copy; two rules — store capability claims in typed/structured data and grep every "roadmap / not shipped" string for a feature's name as part of the same change; the trigger isn't the doc, it's the feature shipping; the fix here deleted nine expired BYO-Postgres promises and wrote the one page the shipped `connect` verb finally made honest).
+- run 100 — dev.to / r/LLMDevs / lobste.rs: "Two SQL examples that use the same clauses are not the same example — and your few-shot retriever can't tell." (a ranked grouped count — `GROUP BY x, COUNT(*) … ORDER BY COUNT(*) DESC LIMIT n` — retrieved a percentage/`CAST … REAL` example on generic word overlap; the deeper bug was a pool that conflated "return the top group's *key*" with "return the top groups *and their count*" — same clauses, different answer, so one teacher taught the other shape wrong; rule: a few-shot pool needs a teacher for every *output shape*, not every SQL operation; verify offline with a held-out cross-domain probe per shape; 21/23 → 22/23).
+- run 99 — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for." (dynamic few-shot for text-to-SQL masks the question to match its *skeleton*; a grouped-count-over-join with no threshold retrieved a `HAVING COUNT(*) > n` example because flat token overlap can't tell a structural token from a coincidental one; the bug wasn't the ranker — measured, it just shuffles which question breaks — it was the *pool* having no teacher for that shape, so the question fell to the nearest wrong one; a retrieval pool is a curriculum, a missing shape returns the closest wrong thing confidently; hold out a cross-domain probe per shape as a unit test; 20/23 → 21/23).
 - run 98 — dev.to / lobste.rs / r/webdev: "Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed." (a site has three machine-readable indexes of itself — `robots.txt`/`sitemap.xml`/`llms.txt` — maintained by three reflexes that drift because nothing forces them to agree; a real indexable page advertised in `llms.txt` + allowed in `robots.txt` was never in the hand-rolled `sitemap.xml`, so link-followers found it and sitemap-trusting crawlers never knew it existed; fix re-derives the real top-level-page set and asserts every one is in the sitemap so the next forgotten page fails CI not search — if two lists must agree, don't maintain two, derive one or test the divergence).
 - run 97 — dev.to / r/LLMDevs / r/AI_Agents: "Your multi-tenant agent memory is one forgotten WHERE clause from a leak." (one DB holds a thousand customers' agent memory; the only thing between tenant A's rows and tenant B's answer is a `WHERE tenant_id = ?` the LLM has to remember in every query forever, and one miss leaks every tenant at once; fix moves isolation below the SQL into Postgres RLS keyed on `current_setting('app.tenant_id')` so a query with no filter sees nothing, not everything — isolation belongs in the layer that can't forget it; anchors `/solve/isolate-ai-agent-memory-per-tenant`).
 
@@ -76,11 +72,7 @@ pitch.
 - run 87 — dev.to / lobste.rs: "Your Cmd+K palette is invisible to screen readers — one attribute fixes it" (the palette every app ships is perfect for people who can *see* the highlight move; under a screen reader it's silent because the highlight is just a CSS class and focus never leaves the input; the fix tutorials skip is `aria-activedescendant` letting the focused input point at a *different* "active" option, with `combobox`/`listbox`/`option` + `aria-selected`; keep option ids in one helper and clamp the index in pure logic; palette ARIA associations 0 → 3).
 - run 86 — dev.to / lobste.rs / r/LLMDevs: "Your llms.txt is a sitemap for robots that read — and mine was missing the page I care about most" (the LLM-crawler index was hand-curated *before* the flagship landing page existed, so it was silently absent; data-driven lists stayed in sync, the bespoke array nobody revisited rotted — audit the *rendered* artifact, pin bespoke entries with a test; `llms.txt` primary routes 4 → 6).
 - run 85 — dev.to / r/LLMDevs / lobste.rs: "Your token-cost dashboard is doing arithmetic in your app code" (LLM token/cost numbers land in a JSON log, but "spend per customer this month, which model is expensive?" is an aggregation — `SUM(cost) GROUP BY user`/`model` — and a log isn't a thing you aggregate, so you total rows in app code or ask the LLM to add them (a confident-wrong-total generator); *capture* (provider SDK / Langfuse / Helicone) and *query* (a planner) are different machines — the moment a dashboard sums a column in app code it wanted a database; anchors `/solve/track-ai-token-usage-and-cost`).
-- run 84 — dev.to / r/LocalLLaMA / lobste.rs: "Scaling your vector store to a billion rows doesn't give it a GROUP BY" (teams reach for Milvus/Qdrant for *scale*, but ANN throughput and a query planner are orthogonal — a vector index finds the K nearest embeddings at any scale, `JOIN`/`GROUP BY`/`HAVING` need a relational planner; keep the vector engine for recall, put rows you count+group in something that speaks SQL; anchors `/vs/milvus`).
-- run 83 — dev.to / lobste.rs: "I skipped the rich result Google was begging me to add" (the most-recommended structured-data win — the `WebSite` `SearchAction` sitelinks search box — is the one I deliberately *didn't* ship: a `SearchAction` is a promise that a URL template runs a query, but the homepage submits over JS with no `GET /search?q=…` route, so the schema would *validate* and be a *lie*; kept the honest half — `Organization` + `WebSite` with stable `@id`s and every page's `SoftwareApplication` naming that Organization as `publisher`; "would this validate?" is the wrong test, "is this true?" is; brand-entity nodes 1 → 3).
-- run 82 — dev.to / lobste.rs: "Your AI app tells sighted users the query failed. Screen readers get silence." (the AI-feature text box swaps *loading*/*result*/*error* async with two quiet a11y misses: the result region isn't a live region (`aria-live`/`role="status"` once on the container), and the *input* never says it's invalid — add `aria-invalid` + `aria-describedby` pointing at one error `id`, collapsing the structured + network error branches into a single `role="alert"` region; test the error path with the reader on; anchored to this run's CreateForm fix, ARIA associations 0 → 2).
-- run 81 — dev.to / lobste.rs: "Your collection pages don't tell answer engines they're collections" (leaf `/vs` + `/solve` pages emit `FAQPage`/`BreadcrumbList`, but the hubs listing them carried only the site-wide `SoftwareApplication`; `ItemList` declares "an ordered, complete set" — build it from the same array the `<ul>` renders so it can't drift, item URLs at the trailing-slash 200; hub collection signal 0 → 2).
-*(runs 75–80 moved to git history under D4 — `git log -p` recovers the bodies.)*
+*(runs 75–84 moved to git history under D4 — `git log -p` recovers the bodies.)*
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).

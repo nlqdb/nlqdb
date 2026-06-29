@@ -1967,6 +1967,135 @@ export const COMPETITORS: Competitor[] = [
     },
   },
   {
+    slug: "hex",
+    name: "Hex",
+    url: "https://hex.tech",
+    // P3 analyst slot — the notebook-AI cluster the comparison-pages FEATURE
+    // named as the next slice after the P2 agent-memory wing closed (Cognee,
+    // 2026-06-24). Hex is the highest-keyword brand of the notebook-first AI BI
+    // group (Hex / Mode AI / Fabi.ai / Count per docs/competitors.md §"notebook-
+    // first AI BI"). Anchored in docs/competitors.md.
+    // Facts web-verified 2026-06-29 (hex.tech homepage + /pricing +
+    // /product/magic-ai + /product/notebooks + G2): a collaborative,
+    // multi-cell data notebook (SQL + Python + R + no-code cells) over your
+    // existing warehouse (Snowflake, BigQuery, Redshift, Databricks, Postgres,
+    // …). "Magic AI" / the "Notebook Agent" write SQL & Python from English,
+    // debug, build charts, and generate analysis sections; published notebooks
+    // become interactive data apps stakeholders can use without coding. Hex
+    // also ships "Threads" (an MCP/agent surface in Slack/Claude/Cursor/Codex),
+    // a CLI, embedded analytics (Enterprise), and real-time Google-Docs-style
+    // collaboration. Pricing: Community (free — ≤5 notebooks, ≤5 published
+    // apps, small compute, Notebook-Agent trial) · Professional $36/editor/mo ·
+    // Team $75/editor/mo (14-day trial) · Enterprise (custom). It connects to
+    // existing warehouses — it does NOT provision or own a database — and it is
+    // a destination notebook app data teams log into, not an embeddable
+    // answer-element/agent-callable backend.
+    tagline:
+      "AI-powered analytics notebook — a collaborative SQL + Python + no-code workspace over your warehouse, with Magic AI and a Notebook Agent that write code, build charts, and publish interactive data apps.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Hex if you're an analyst or data team that wants a collaborative SQL + Python notebook over your existing warehouse, with AI-written code, charts, and published data apps. Pick nlqdb if you're building a product or agent that needs English-to-SQL over a database it provisions — embeddable, API-first, with every write diff-previewed.",
+    whenChooseUs: [
+      "You're embedding data answers in your product or agent, not exploring in a notebook.",
+      "An AI agent must provision and query its own database, callable over MCP.",
+      "You ship one HTML element or an API, not a notebook a human drives.",
+      "Writes and schema changes should be diff-previewed before they apply.",
+    ],
+    whenChooseThem: [
+      "You're an analyst or data team exploring a warehouse in a collaborative notebook.",
+      "You want SQL + Python + charts in one document, published as an interactive app.",
+      "You connect existing warehouses (Snowflake, BigQuery, Databricks), not provision a new database.",
+      "Real-time multi-user collaboration on the analysis is core to your workflow.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Hex connects to your existing warehouse; it doesn't provision or own a database your app writes to.",
+      },
+      {
+        feature: "Natural-language data questions",
+        us: "shipped",
+        them: "shipped",
+        note: "Both take English — Hex's Magic / Notebook Agent writes SQL & Python in a notebook, nlqdb compiles SQL against a Postgres it owns.",
+      },
+      {
+        feature: "Embeddable answer element + SDK + API",
+        us: "shipped",
+        them: "partial",
+        note: "Hex embeds published dashboards/apps (Enterprise); nlqdb ships `<nlq-data>`, an SDK, and an HTTP API to query a database your product owns.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Both expose MCP: Hex's Threads answers from a notebook/warehouse in Slack/Claude/Cursor; nlqdb's `nlqdb_query` materialises Postgres on first reference.",
+      },
+      {
+        feature: "Charts, dashboards + published data apps",
+        us: "no",
+        them: "shipped",
+        note: "Hex builds charts, dashboards, and interactive published apps; nlqdb returns typed result rows you render in your own UI.",
+      },
+      {
+        feature: "Python / R notebook cells",
+        us: "no",
+        them: "shipped",
+        note: "Hex is a mixed SQL + Python + R notebook; nlqdb's output contract is SQL plus rows, not a notebook runtime.",
+      },
+      {
+        feature: "Real-time multi-user collaboration",
+        us: "no",
+        them: "shipped",
+        note: "Hex is Google-Docs-style collaborative editing; nlqdb is a backend data layer, not a shared editing surface.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "Hex queries and analyses; it doesn't manage your schema. nlqdb previews writes and DDL before applying.",
+      },
+      {
+        feature: "Connects to many existing warehouses",
+        us: "partial",
+        them: "shipped",
+        note: "Hex reads Snowflake/BigQuery/Databricks/Postgres and more; nlqdb provisions and queries its own Postgres rather than connecting to many warehouses.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Hex and nlqdb together?",
+        a: "Yes — they serve different stages. Hex is where an analyst or data team explores a warehouse and publishes a report or dashboard; nlqdb is the database your product or agent queries in plain English at runtime. Use Hex for collaborative analysis, nlqdb for the data layer your app ships on.",
+      },
+      {
+        q: "Does nlqdb build dashboards and notebooks like Hex?",
+        a: "No. nlqdb returns typed result rows from SQL it compiles; it doesn't ship a notebook runtime, charts, or published dashboards. If a collaborative SQL + Python workspace and interactive data apps are the goal, Hex is the right shape; nlqdb's contract is the data, which you render in your own UI.",
+      },
+      {
+        q: "Is nlqdb embeddable in my product like Hex's embedded analytics?",
+        a: "Differently. Hex's embedded analytics (Enterprise) embeds Hex apps and dashboards into your product. nlqdb ships `<nlq-data>`, an SDK, and an HTTP API that query a Postgres nlqdb provisions and owns — you embed the answer, and your app owns the write path, not just a read-only dashboard.",
+      },
+      {
+        q: "Hex connects to my warehouse — why provision a new database with nlqdb?",
+        a: "Hex reads your existing Snowflake/BigQuery/Databricks/Postgres for analysis. nlqdb owns the database your app writes to: it provisions Postgres, migrates the schema via English, and diff-previews destructive writes. Connecting-to-read and owning-the-write-path are different jobs.",
+      },
+      {
+        q: "Does Hex have an MCP server like nlqdb?",
+        a: "Yes — Hex's Threads work as an MCP/agent surface in Slack, Claude, Cursor, and Codex, answering from a notebook or warehouse. nlqdb's MCP is database-shaped: `nlqdb_query` materialises a Postgres on first reference, so an agent can provision and query its own database, not just read an analyst's notebook.",
+      },
+    ],
+    demo: {
+      goal: "monthly active users by signup cohort for the last 6 months",
+      why: "A grouped, time-bucketed query nlqdb answers as SQL over the database your app owns — the live data layer your product queries, not a notebook an analyst publishes.",
+    },
+  },
+  {
     slug: "milvus",
     name: "Milvus",
     url: "https://milvus.io",
