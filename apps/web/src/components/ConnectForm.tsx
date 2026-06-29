@@ -130,7 +130,15 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
             </button>
           </div>
           <p className="connect__hint">
-            Sealed server-side and never written to your browser. Use a read-only credential.
+            Sealed server-side and never written to your browser. Use a read-only credential.{" "}
+            <a
+              className="connect__hint-link"
+              href="https://docs.nlqdb.com/security/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Read more
+            </a>
           </p>
         </div>
 
