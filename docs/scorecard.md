@@ -43,12 +43,12 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-28 (run 100)** — **engine lever, offline-measured**: added a
-`group-count-top-n` DAIL-SQL pool row (top-N groups WITH their count) closing
-persona-bench ICP-retrieval miss **q8** ("the 5 most-recalled facts … and how many
-times"), which masked to `ratio-cast` — a shape neither `group-order-limit` (top
-key only) nor `group-by-count` (no ranking) demonstrated; also moves **q18** off
-`join-aggregate` (a SUM) onto the grouped-COUNT demo. **ICP retrieval precision@1
-21/23 → 22/23**; held-out probe **15/15 → 16/16**; q7/q5/q11 pinned; q22
-dispatch-gated. Prod byte-identical (`buildPlanSystem` off). **KPI:** GLOBAL-025
-engine quality; others untouched.
+**2026-06-29 (run 102)** — **onboarding lever**: shipped the **Hex** `/vs`
+comparison page (P3 — the notebook-AI lead the comparison-pages FEATURE named as
+the next slice). **Comparison pages 19 → 20**; first P3 notebook-AI on-ramp.
+Honest side-by-side (wedge = nlqdb owns the DB + embeds an answer
+element/agent-callable API). Facts web-verified 2026-06-29 (hex.tech). Data-only
+edit (`competitors.ts`); 13/13 integrity tests pass. Net-shrank
+`comparison-pages/FEATURE.md` 15.5 → 9.0 KB (D5 trim). **KPI:** GLOBAL-025
+onboarding; others untouched. *(Prior run 100 — `group-count-top-n` DAIL-SQL pool
+row, ICP retrieval 22/23 — folded into row #8 + the engine verification log.)*

@@ -11,57 +11,50 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-28 (run 100) — dev.to / r/LLMDevs / lobste.rs: "Two SQL examples that use the same clauses are not the same example — and your few-shot retriever can't tell."
+## 2026-06-29 (run 102) — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them."
 
-**Where:** dev.to + r/LLMDevs + lobste.rs; a transferable lesson on dynamic-few-shot
-(RAG-for-exemplars) retrieval for text-to-SQL agents — the *output shape* gap, distinct
-from last week's *missing skeleton* lesson. nlqdb mentioned once, as the place the
-lesson came from.
+**Where:** dev.to + r/LLMDevs + r/AI_Agents; a transferable lesson on evaluating
+"agent-ready" claims when every tool now advertises MCP. nlqdb mentioned once, as the
+contrast that made the distinction obvious.
 
-**Title:** Two SQL examples that use the same clauses are not the same example — and your few-shot retriever can't tell.
+**Title:** Every data tool shipped an MCP server this year. Your agent still can't build on most of them.
 
 **Body:**
 
-> If you build a text-to-SQL agent, the cheapest real win is dynamic few-shot: retrieve
-> the example whose *question* is closest to the user's (mask the literals and
-> table/column names first, so you match the question's skeleton, not its domain words)
-> and show the model that. It punches far above its weight from a tiny hand-curated pool.
+> MCP is the new "we have an API." Writing a competitor comparison this week, I went to
+> mark "agent-callable" as our differentiator against an AI data-notebook tool — and
+> stopped, because they'd shipped an MCP server too. So had the BI tool two rows up. The
+> honest move was to concede the checkbox. But conceding it surfaced the real axis, and
+> it's one worth naming.
 >
-> Here's the failure we caught measuring it on our own users' questions. "What are the 5
-> most-recalled facts? Show the fact and how many times it was recalled." That's a
-> textbook ranked grouped count: `GROUP BY fact, COUNT(*) … ORDER BY COUNT(*) DESC LIMIT
-> 5`. The retriever handed it a *percentage* example — `CAST(x AS REAL) / y`. Nothing
-> about the masked skeleton said "ratio"; it just shared the most generic words ("what
-> are the…", a number) with the wrong row and there was no better match to beat it.
+> There are two shapes of MCP server, and they look identical in a feature matrix. The
+> first wraps a **destination app**: "ask my published notebook a question," "answer from
+> my dashboard in Slack." The human's workflow, now reachable by an agent. The second
+> exposes **infrastructure the agent owns**: provision a database, write rows, query
+> them, migrate the schema. Both speak MCP. Only the second lets an agent build something
+> that outlives the conversation.
 >
-> The deeper bug wasn't the ranker — it was that our pool conflated two examples we
-> *thought* were close enough. We had "which department has the most employees?" — same
-> `GROUP BY … ORDER BY … LIMIT` clauses — and assumed it covered ranked counts. But that
-> example returns *only the winning key*; the user asked for the key **and its count**.
-> Same clauses, different answer. An example that drops the count teaches the model to
-> drop the count. Adding one example that returns both — phrased the way users actually
-> ask ("what are the N most-X? show the X and how many times") — landed the question, and
-> as a bonus fixed a second one our pool had been quietly answering with `SUM` instead of
-> `COUNT`.
+> The tell is to ask what the agent *owns* after the call returns. If the answer is "a
+> view into a human's analysis," that's a genuinely useful human-in-the-loop surface — and
+> a dead end for an autonomous agent, because the agent can read but can't accumulate. It
+> has nowhere to put the row it just computed. An agent that can query but not persist is
+> a calculator, not a coworker.
 >
-> The transferable rule: **a few-shot pool needs a teacher for every *output shape*, not
-> every *SQL operation*.** "Return the top group" and "return the top groups with their
-> counts" share every keyword and are different answers; if your pool has one, the
-> retriever will confidently teach the other. And measure it offline before you spend a
-> model call: hold out one probe per shape, phrased over a *different* domain than the
-> example, and assert each retrieves its intended skeleton — a cross-domain hit proves
-> the masking generalises, not lexical luck. We run it as a unit test; this fix moved the
-> score 21/23 → 22/23 with the held-out probes still perfect. (At
-> [nlqdb](https://nlqdb.com) the exemplar pool and its retrieval precision are both under
-> test.)
+> So the question to ask a tool's MCP server isn't "does it exist" — by 2026 it always
+> does. It's **"what does it let the agent own?"** Read-only over someone else's app, or
+> a substrate the agent can write to and come back to. The matrix can't tell them apart;
+> you have to read what the verbs *do*. (At [nlqdb](https://nlqdb.com) the MCP verb
+> `nlqdb_query` materialises a Postgres on first reference — the agent gets a database it
+> owns, not a window into ours.)
 
-**Why this advances the north-star:** GLOBAL-025 engine quality — a specific, useful
-lesson for anyone building a text-to-SQL or tool-calling agent, anchored to a real
-measured engine improvement; earns a citation without a pitch.
+**Why this advances the north-star:** GLOBAL-025 onboarding — a genuinely useful
+evaluation lens for anyone wiring agents to tools, drawn from a real comparison-page
+build (the Hex `/vs` page this run); the post earns a citation without a pitch.
 
 ## Collapsed — full drafts in git history
 
-- run 99 — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for." (a grouped count over a join with no threshold retrieved a `HAVING COUNT(*) > n` example because the masked skeletons genuinely overlapped; fixing the *ranker* lost — flat token overlap can't tell a real structural token from a coincidental one — the bug was the *pool* had no "grouped count scoped to one named entity through a join" teacher, so the question fell to the nearest wrong one; a retrieval pool is a curriculum and a missing shape returns the closest wrong thing confidently; measure retrieval offline with a held-out cross-domain probe per shape; 20/23 → 21/23).
+- run 100 — dev.to / r/LLMDevs / lobste.rs: "Two SQL examples that use the same clauses are not the same example — and your few-shot retriever can't tell." (a ranked grouped count — `GROUP BY x, COUNT(*) … ORDER BY COUNT(*) DESC LIMIT n` — retrieved a percentage/`CAST … REAL` example on generic word overlap; the deeper bug was a pool that conflated "return the top group's *key*" with "return the top groups *and their count*" — same clauses, different answer, so one teacher taught the other shape wrong; rule: a few-shot pool needs a teacher for every *output shape*, not every SQL operation; verify offline with a held-out cross-domain probe per shape; 21/23 → 22/23).
+- run 99 — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for." (dynamic few-shot for text-to-SQL masks the question to match its *skeleton*; a grouped-count-over-join with no threshold retrieved a `HAVING COUNT(*) > n` example because flat token overlap can't tell a structural token from a coincidental one; the bug wasn't the ranker — measured, it just shuffles which question breaks — it was the *pool* having no teacher for that shape, so the question fell to the nearest wrong one; a retrieval pool is a curriculum, a missing shape returns the closest wrong thing confidently; hold out a cross-domain probe per shape as a unit test; 20/23 → 21/23).
 - run 98 — dev.to / lobste.rs / r/webdev: "Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed." (a site has three machine-readable indexes of itself — `robots.txt`/`sitemap.xml`/`llms.txt` — maintained by three reflexes that drift because nothing forces them to agree; a real indexable page advertised in `llms.txt` + allowed in `robots.txt` was never in the hand-rolled `sitemap.xml`, so link-followers found it and sitemap-trusting crawlers never knew it existed; fix re-derives the real top-level-page set and asserts every one is in the sitemap so the next forgotten page fails CI not search — if two lists must agree, don't maintain two, derive one or test the divergence).
 - run 97 — dev.to / r/LLMDevs / r/AI_Agents: "Your multi-tenant agent memory is one forgotten WHERE clause from a leak." (one DB holds a thousand customers' agent memory; the only thing between tenant A's rows and tenant B's answer is a `WHERE tenant_id = ?` the LLM has to remember in every query forever, and one miss leaks every tenant at once; fix moves isolation below the SQL into Postgres RLS keyed on `current_setting('app.tenant_id')` so a query with no filter sees nothing, not everything — isolation belongs in the layer that can't forget it; anchors `/solve/isolate-ai-agent-memory-per-tenant`).
 

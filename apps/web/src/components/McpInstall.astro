@@ -255,9 +255,17 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
    * only `--ground` / `--raised` / `--rule` / `--muted` / `--body`
    * / `--ink` / `--accent` and the type steps. The component sits
    * on whatever ground its parent renders against and reuses the
-   * `.cta` / `.cta--ghost` primitives for its buttons. */
+   * `.cta` / `.cta--ghost` primitives for its buttons.
+   *
+   * `container-type: inline-size` so the row grid below can pick its
+   * column count from the COMPONENT's own width, not the viewport's.
+   * Door A on `/` renders this inside a half-viewport card; a
+   * viewport media query would jump to 4 cols at ≥1024px and overflow
+   * the ~470px container, crushing the buttons into each other. */
   .mcpinstall {
     margin: clamp(20px, 3vw, 28px) 0 0;
+    container-type: inline-size;
+    container-name: mcpinstall;
   }
 
   .mcpinstall__eyebrow {
@@ -278,13 +286,13 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
     grid-template-columns: 1fr;
   }
 
-  @media (min-width: 720px) {
+  @container mcpinstall (min-width: 480px) {
     .mcpinstall__row {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
-  @media (min-width: 1024px) {
+  @container mcpinstall (min-width: 800px) {
     .mcpinstall__row {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
