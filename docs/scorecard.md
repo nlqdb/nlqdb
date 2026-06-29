@@ -43,13 +43,11 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-29 (run 102)** — **onboarding lever**: shipped the **Hex** `/vs`
-comparison page (P3 — the notebook-AI lead the comparison-pages FEATURE named as
-the next slice). **Comparison pages 19 → 20**; first P3 notebook-AI on-ramp.
-Honest side-by-side (wedge = nlqdb owns the DB + an answer
-element/agent-callable API). Facts web-verified 2026-06-29 (hex.tech). Data-only
-edit (`competitors.ts`); 13/13 integrity tests pass. **KPI:** GLOBAL-025
-onboarding; others untouched. *(Prior run 101 — BYO-connect (`SK-DBCONN-001`)
-unblocked the P4 backend-engineer solve page
-`/solve/query-existing-postgres-in-natural-language` + corrected 9 now-false
-"BYO-Postgres is roadmap" honest-limit lines: **solve pages 15 → 16, P4 0 → 1**.)*
+**2026-06-29 (run 103)** — **UX/onboarding lever (quality guard)**: enforced the
+SK-CMP-001 **"≤16 words per comparison bullet"** rule in CI. It lived only in a
+TypeScript comment and had drifted — the Outerbase entry held **7 over-budget
+bullets** (one 26 words). Added a 6-line `competitors.test.ts` guard (fails with the
+`slug (Nw): …` offender list) and tightened all 7 to ≤16 words, verified facts
+preserved. **Over-budget bullets 7 → 0** across all 20 pages; integrity tests **13
+→ 14**, 175/175 apps/web green. **KPI:** GLOBAL-025 onboarding/UX; engine /
+performance untouched. *(Run 102 — Hex `/vs`: comparison pages 19 → 20.)*

@@ -11,47 +11,57 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-29 (run 102) — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them."
+## 2026-06-29 (run 103) — dev.to / lobste.rs / r/ExperiencedDevs: "Your style rule lives in a code comment. That's why it's already broken."
 
-**Where:** dev.to + r/LLMDevs + r/AI_Agents; a transferable lesson on evaluating
-"agent-ready" claims when every tool now advertises MCP. nlqdb mentioned once, as the
-contrast that made the distinction obvious.
+**Where:** dev.to + lobste.rs + r/ExperiencedDevs; a transferable engineering lesson on
+where a constraint has to live to actually hold. nlqdb mentioned once, as the codebase
+the example is drawn from.
 
-**Title:** Every data tool shipped an MCP server this year. Your agent still can't build on most of them.
+**Title:** Your style rule lives in a code comment. That's why it's already broken.
 
 **Body:**
 
-> MCP is the new "we have an API." Writing a competitor comparison this week, I went to
-> mark "agent-callable" as our differentiator against an AI data-notebook tool — and
-> stopped, because they'd shipped an MCP server too. So had the BI tool two rows up. The
-> honest move was to concede the checkbox. But conceding it surfaced the real axis, and
-> it's one worth naming.
+> We have a rule for our comparison pages: each "when to choose them" bullet is capped at
+> 16 words. Long bullets read as paragraphs, and AI search engines lift them verbatim, so
+> a 26-word "bullet" shows up as a wall of text in someone's answer. Good rule. It lived,
+> for months, as a comment on a TypeScript field: `// Each ≤16 words`.
 >
-> There are two shapes of MCP server, and they look identical in a feature matrix. The
-> first wraps a **destination app**: "ask my published notebook a question," "answer from
-> my dashboard in Slack." The human's workflow, now reachable by an agent. The second
-> exposes **infrastructure the agent owns**: provision a database, write rows, query
-> them, migrate the schema. Both speak MCP. Only the second lets an agent build something
-> that outlives the conversation.
+> I went to add a new page and decided to first check the old ones. One competitor entry
+> had **seven** bullets over budget — one of them 26 words. Nothing had failed. No
+> reviewer caught it, because the rule was a sentence a human had to remember to apply,
+> and the diff that broke it touched a different file than the comment. A constraint
+> enforced by attention decays at exactly the rate attention does.
 >
-> The tell is to ask what the agent *owns* after the call returns. If the answer is "a
-> view into a human's analysis," that's a genuinely useful human-in-the-loop surface — and
-> a dead end for an autonomous agent, because the agent can read but can't accumulate. It
-> has nowhere to put the row it just computed. An agent that can query but not persist is
-> a calculator, not a coworker.
+> This is the quiet failure mode of the doc-comment: it reads like enforcement. It sits
+> right next to the thing it governs, it's written in the imperative, and it is *not load-
+> bearing* — nothing reads it but you. The comment and the code can disagree forever and
+> the build stays green. The longer the comment has been right, the more you trust it, and
+> the less anyone re-checks. So the drift is invisible precisely where the rule mattered
+> most.
 >
-> So the question to ask a tool's MCP server isn't "does it exist" — by 2026 it always
-> does. It's **"what does it let the agent own?"** Read-only over someone else's app, or
-> a substrate the agent can write to and come back to. The matrix can't tell them apart;
-> you have to read what the verbs *do*. (At [nlqdb](https://nlqdb.com) the MCP verb
-> `nlqdb_query` materialises a Postgres on first reference — the agent gets a database it
-> owns, not a window into ours.)
+> The fix isn't "be more careful." It's to move the rule into the one layer that can't
+> forget: a test. Ours is six lines — split each bullet on whitespace, collect anything
+> over 16 words, assert the list is empty, and print the offenders (`slug (Nw): …`) when
+> it isn't. It failed on the seven legacy bullets immediately, which is the point: the
+> test's first job was to surface the drift the comment had been hiding. We tightened the
+> seven, the test went green, and now the *next* over-long bullet fails CI in the same PR
+> that writes it — not months later when someone happens to look.
+>
+> The general rule: a constraint you can state as a predicate over your data does not
+> belong in prose. Prose constraints are honored by memory; predicate constraints are
+> honored by the machine. If you can write "for all X, P(X)" — word counts, naming
+> conventions, "every public endpoint has a span," "no two routes share a slug" — then a
+> comment saying so is a TODO to write the test. At [nlqdb](https://nlqdb.com) the
+> comparison-page data file now carries the rule as an assertion; the comment just points
+> at it.
 
-**Why this advances the north-star:** GLOBAL-025 onboarding — a genuinely useful
-evaluation lens for anyone wiring agents to tools, drawn from a real comparison-page
-build (the Hex `/vs` page this run); the post earns a citation without a pitch.
+**Why this advances the north-star:** GLOBAL-025 onboarding — a transferable lesson drawn
+from a real CI-guard slice this run (the SK-CMP-001 ≤16-word bullet enforcement); earns a
+citation without a pitch, and the linked comparison pages are the on-ramp.
 
 ## Collapsed — full drafts in git history
+
+- run 102 — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them." (MCP is the new "we have an API"; two shapes of MCP server look identical in a feature matrix — one wraps a destination app a human operates so an agent can *read* it, the other exposes infrastructure the agent *owns* and can write to and come back to; the tell is what the agent owns after the call returns — a view into someone's analysis is a dead end for an autonomous agent because it can query but can't accumulate; ask "what does it let the agent own," not "does it have MCP"; drawn from the Hex `/vs` build).
 
 - run 101 — dev.to / lobste.rs / r/ExperiencedDevs: "We shipped the feature. Nine pages still told users we hadn't." (honest "what this doesn't do" copy has a silent failure mode — a "not yet / on the roadmap" line is a dated assertion with nothing watching it, so the day a feature ships the most honest sentence on the site becomes the most dishonest, and no CI job notices because the PR touched `src/` not the marketing copy; two rules — store capability claims in typed/structured data and grep every "roadmap / not shipped" string for a feature's name as part of the same change; the trigger isn't the doc, it's the feature shipping; the fix here deleted nine expired BYO-Postgres promises and wrote the one page the shipped `connect` verb finally made honest).
 - run 100 — dev.to / r/LLMDevs / lobste.rs: "Two SQL examples that use the same clauses are not the same example — and your few-shot retriever can't tell." (a ranked grouped count — `GROUP BY x, COUNT(*) … ORDER BY COUNT(*) DESC LIMIT n` — retrieved a percentage/`CAST … REAL` example on generic word overlap; the deeper bug was a pool that conflated "return the top group's *key*" with "return the top groups *and their count*" — same clauses, different answer, so one teacher taught the other shape wrong; rule: a few-shot pool needs a teacher for every *output shape*, not every SQL operation; verify offline with a held-out cross-domain probe per shape; 21/23 → 22/23).
