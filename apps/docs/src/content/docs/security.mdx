@@ -18,9 +18,9 @@ Each sealed credential is **bound to your account**: the encryption is tied to
 your database's identity, so a stored credential cannot be lifted and replayed
 against anyone else's account.
 
-The only part of the connection string we keep unencrypted is a **redacted
-label** — the host name with the username and password stripped out — so we can
-show you which database is connected without ever displaying the secret.
+The connection string is sealed in full — nothing of it is stored unencrypted.
+The name you see for a connected database comes from the database name in the
+string (or a label you supply), never from displaying the secret itself.
 
 ## It is never stored in your browser
 
