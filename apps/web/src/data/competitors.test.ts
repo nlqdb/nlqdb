@@ -127,7 +127,7 @@ describe("COMPETITORS data integrity", () => {
   // layers + the vector-store wing — Pinecone (hosted), Chroma (OSS-first),
   // Weaviate (enterprise/hybrid-search), Qdrant (Rust/quantization,
   // Apache-2.0), and Milvus (open-source ANN at billion-vector scale) — plus
-  // the knowledge-graph wing, Cognee).
+  // the knowledge-graph wing (Cognee) and the recall-API wing (Supermemory).
   test("WS-07: the agent-memory cluster is the P2-agent-builder persona", () => {
     const p2 = COMPETITORS.filter((c) => c.persona === "P2 agent builder").map((c) => c.slug);
     expect(new Set(p2)).toEqual(
@@ -142,6 +142,7 @@ describe("COMPETITORS data integrity", () => {
         "qdrant",
         "milvus",
         "cognee",
+        "supermemory",
       ]),
     );
   });

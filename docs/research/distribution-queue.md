@@ -11,56 +11,54 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-29 (run 106) — dev.to / r/webdev / r/sideproject: "You don't need a backend to store form submissions. You need a place to ask 'how many'."
+## 2026-06-29 (run 107) — Show HN / r/LocalLLaMA / dev.to: "Your agent's memory tops LongMemEval. Can it answer 'how many'?"
 
-**Where:** dev.to + r/webdev + r/sideproject; a transferable how-to for indie builders
-shipping a landing page who hit the "where do the signups go?" wall. nlqdb mentioned
-once, as the shape that answered the second half of the problem.
+**Where:** Show HN + r/LocalLLaMA + dev.to; for people choosing an agent-memory layer
+(Mem0 / Zep / Letta / Supermemory / a vector store) who are comparing on recall accuracy
+and haven't noticed the second axis. nlqdb mentioned once, as the tool built for that axis.
 
-**Title:** You don't need a backend to store form submissions. You need a place to ask "how many."
+**Title:** Your agent's memory tops LongMemEval. Can it answer "how many"?
 
 **Body:**
 
-> Every landing page hits the same wall around hour three: the waitlist form works, but
-> where do the emails *go*? The reflex is to stand up a server and a database for what is,
-> honestly, an `INSERT` and an occasional `COUNT`. So most people reach for a form SaaS
-> instead — and that solves storage, but quietly splits your data from your questions.
-> The submissions live in someone's dashboard; the moment you want "signups per day since
-> launch" or "which referrer actually converted," you're exporting a CSV and pivoting it
-> by hand.
+> Agent-memory tools are in a recall arms race, and it's a real one: LongMemEval, LoCoMo,
+> ConvoMem all measure the same thing — given a question, does the system surface the
+> right past fact? Supermemory currently tops all three; Mem0, Zep, and Letta are close
+> behind. If your bottleneck is "the agent forgot what the user told it last week," pick
+> the benchmark leader and move on. That problem is being solved well.
 >
-> There are two problems hiding in one, and they have different shapes. **Capture** is a
-> write — a small one, and it genuinely doesn't need a server: an insert call from the
-> page's own `fetch`, or a ten-line serverless function, is enough, as long as the write
-> key isn't sitting in your client HTML. **Reporting** is a read, and it's the part that
-> actually wants a database — because "how many per day," "top source this week," "what's
-> the conversion by campaign" are aggregations, and aggregations want a query planner, not
-> a spreadsheet and a human.
+> But there's a second question those benchmarks don't ask, and it's the one that bites
+> later: not "what did the user say about X," but "how many X this month, grouped by Y,
+> for users who did Z." Counts. Group-bys. Joins. Thresholds. Every memory tool I've tried
+> answers the first beautifully and the second not at all — because under the hood they
+> store memories as embeddings in a vector graph and *rank* them by similarity. Ranking
+> the nearest k facts is the wrong primitive for "how many," and no amount of recall
+> accuracy fixes it: `GROUP BY` is not a retrieval operation.
 >
-> The mistake is picking a tool that's great at the write and leaves you alone with the
-> read. A form service nails capture and hands you a list. A spreadsheet-via-webhook nails
-> capture and hands you a tab you pivot manually. What you want is for the place the rows
-> land to also be a place you can *ask questions of* — ideally in plain English, so the
-> day-one launch question ("did anyone sign up?") and the week-two question ("which tweet
-> drove it?") are the same two-second action, not a data chore.
+> You notice the day your agent needs to *report* on itself rather than remember: tool
+> calls per category this week, average deal size per pipeline stage, which RAG source
+> actually gets cited. Those are SQL questions. The usual workaround is to bolt a second
+> store onto the agent and hand-sync rows into it — which works, and is also exactly the
+> seam where agent data goes stale.
 >
-> That's the shape worth looking for, whatever you build it on: storage you can also
-> interrogate. I wired ours so each submission is a row in a real Postgres and the
-> reporting question is one English goal — `signups grouped by day with a count` — that
-> compiles to SQL I can see. (We do this with [nlqdb](https://nlqdb.com); the point isn't
-> the tool, it's refusing to let your form data land somewhere you can't ask it anything.)
-> The honest caveat that applies to *any* version of this: the public read widget isn't a
-> write endpoint — capture still goes through a key the browser never sees, and email
-> delivery + spam filtering stay your ESP's and your front-end's job. Storage isn't the
-> hard part. Not being able to ask your own data a question is.
+> The two shapes compose cleanly if you stop expecting one tool to do both: a recall
+> layer for "what was said" (vector/graph, benchmark-tuned) and a relational layer for
+> "how many / grouped by / joined" over the rows the agent writes. I've been building the
+> second half — [nlqdb](https://nlqdb.com) is Postgres an agent provisions and queries in
+> plain English over MCP, so "tasks each user finished per week" is one call that compiles
+> to SQL, not a vector search. The honest line, which I put on the comparison page too:
+> it is *not* a recall engine — no semantic search over fuzzy text, so for "find the most
+> similar past conversation" you still want Supermemory or pgvector. Different question,
+> different primitive. The mistake is benchmarking only the half you happened to hit first.
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — answers a real, recurring
-indie-builder search ("store form submissions without a backend") with a genuinely useful
-framing (split capture from reporting), drawn from the `/solve` page shipped this run; the
-post earns a citation without a pitch and seeds the search-intent on-ramp.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — meets P2 agent builders at
+the exact decision moment (choosing a memory layer on recall benchmarks) with the honest
+second-axis framing the GLOBAL-036 wedge is built on; earns the citation without a pitch and
+mirrors the `/vs/supermemory` page shipped this run, seeding the comparison-keyword on-ramp.
 
 ## Collapsed — full drafts in git history
 
+- run 106 — dev.to / r/webdev / r/sideproject: "You don't need a backend to store form submissions. You need a place to ask 'how many'." (a landing-page waitlist hides two problems with different shapes — *capture* is a small write that genuinely needs no server, behind a key the browser never sees; *reporting* is a read that wants a query planner because "signups per day," "which referrer converted" are aggregations; form SaaS and spreadsheet-webhooks nail capture and leave you alone with the read, splitting your data from your questions; pick storage you can also interrogate in plain English so the day-one and week-two questions are the same action; honest caveat — a public read widget isn't a write endpoint, capture + email delivery stay your ESP's job).
 - run 105 — dev.to / r/LLMDevs / lobste.rs: "COUNT(*) is three different questions. Your few-shot pool probably teaches one." (`COUNT(*)` isn't one shape — scalar count, `GROUP BY` count, and filtered count over a join are three answers sharing a keyword; a masked few-shot pool with a teacher for two of them retrieves the confidently-wrong neighbor for the third, so when retrieval returns the wrong example suspect a missing shape before a smarter ranker; label shapes by the answer they produce, not the operators, and pin each with a held-out probe; `join-aggregate-filter` pool row, ICP retrieval 22/23 → 23/23).
 - run 104 — dev.to / lobste.rs / r/SEO: "The '25 words max' rule in your style guide is a lie your CMS can't catch." (content style-guide rules — "bullets ≤25 words" — are soft, so they decay the way unenforced rules do; measured our own `/solve` bullets and found 25 of ~50 over budget with no single bad edit; the fix moves the rule from a code comment into a six-line test that names offenders, because a constraint enforced by attention decays at the rate attention does — if you can write it as "for all X, P(X)," write the predicate, not the guideline).
 - run 102 — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them." (by 2026 "has an MCP server" is the new "has an API" — universal and uninformative; two MCP shapes look identical in a feature matrix but aren't — one wraps a *destination app* (ask my notebook, answer from my dashboard: read-only over a human's workflow), the other exposes *infrastructure the agent owns* (provision a DB, write rows, migrate schema); the tell is what the agent *owns* after the call returns — a view it can read but not accumulate into is a calculator, not a coworker; ask "what does it let the agent own," not "does it exist").
@@ -81,8 +79,7 @@ post earns a citation without a pitch and seeds the search-intent on-ramp.
 - run 90 — dev.to / r/LangChain / r/LLMDevs: "Your vector store found the chunk. It can't tell you which source you keep retrieving and never use." (RAG retrieval is *recall*; "which source retrieved most / never surfaces / avg relevance" is an aggregation over the retrieval log — a vector store is the wrong shape to `GROUP BY`; log each retrieval as a typed row; anchors `/solve/analyze-rag-retrieval-logs`).
 - run 88 — dev.to / r/LLMDevs / lobste.rs: "You're grepping your agent's trace logs to count which tool fails. That's a GROUP BY." (which tool fails most, p95 per tool, calls per session are aggregations, and a span-tree trace log is the wrong shape to `GROUP BY` across runs; *capture* (OTel/AgentOps/Langfuse) and *query* are different machines — log each tool call as a typed row; anchors `/solve/analyze-agent-tool-call-logs`).
 - run 87 — dev.to / lobste.rs: "Your Cmd+K palette is invisible to screen readers — one attribute fixes it" (the palette every app ships is perfect for people who can *see* the highlight move; under a screen reader it's silent because the highlight is just a CSS class and focus never leaves the input; the fix tutorials skip is `aria-activedescendant` letting the focused input point at a *different* "active" option, with `combobox`/`listbox`/`option` + `aria-selected`; keep option ids in one helper and clamp the index in pure logic; palette ARIA associations 0 → 3).
-- run 86 — dev.to / lobste.rs / r/LLMDevs: "Your llms.txt is a sitemap for robots that read — and mine was missing the page I care about most" (the LLM-crawler index was hand-curated *before* the flagship landing page existed, so it was silently absent; data-driven lists stayed in sync, the bespoke array nobody revisited rotted — audit the *rendered* artifact, pin bespoke entries with a test; `llms.txt` primary routes 4 → 6).
-*(runs 75–85 moved to git history under D4 — `git log -p` recovers the bodies.)*
+*(runs 75–86 moved to git history under D4 — `git log -p` recovers the bodies.)*
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).

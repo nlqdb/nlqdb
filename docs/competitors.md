@@ -38,17 +38,14 @@ Open-source context layer — an MDL semantic model + row/column access controls
 
 ### Vanna AI — https://vanna.ai
 OSS + cloud text-to-SQL trained on your schema and prior queries. Free OSS, commercial tiers above.
-- **Overlaps with:** P3 (chat over existing DB), partially P4.
 - **Gap nlqdb exploits:** Vanna needs a DB to translate against; it doesn't provision or migrate, and trusts the user to pick the LLM, train, and curate examples. **Threat vector:** Medium for P4; low for P1/P2 (wrong shape).
 
 ### Defog.ai / SQLCoder — https://defog.ai
 Fine-tuned open-weights SQL model + commercial product layer.
-- **Overlaps with:** P3, P4; adjacent for P2 (embeddable SQLCoder weights).
 - **Gap nlqdb exploits:** Same as Vanna — translator layer only. **Threat vector:** Medium — credible OSS baseline tech for self-hosters.
 
 ### AskYourDatabase — https://askyourdatabase.com
 Chat-style AI Data Analyst over your existing DB, in two products: a local-creds Desktop App and a cloud Website Chatbot (embeddable, with a Dashboard Builder). Engines: BigQuery, MSSQL, MySQL, PostgreSQL, Snowflake. Paid from ~$49/mo (Desktop) / ~$149/mo (Chatbot) + Enterprise on-prem. (Plans/models/SOC 2 in [`comparison-pages/FEATURE.md`](../features/comparison-pages/FEATURE.md).)
-- **Overlaps with:** P3, P4 ("chat with my DB" angle).
 - **Gap nlqdb exploits:** Connects to an already-existing warehouse — no provisioning verb, no English-driven DDL, no in-product `<nlq-data>` element (chat widget is the only embed shape).
 - **Threat vector:** Medium for P3 — the "one-off question" vector; the Dashboard Builder + embeddable chatbot extends into customer-facing BI nlqdb doesn't target. `/vs/askyourdatabase` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is canonical.
 
@@ -80,13 +77,11 @@ Repositioned from "admin UI with AI" to an **AI-native BI platform**: NL → das
 
 ### Retool AI — https://retool.com
 Retool's NL query + app-generation add-ons on top of the Retool platform. Team from $10/user/mo + AI usage.
-- **Overlaps with:** **P4 exactly.** This is the incumbent P4 is paying for today.
 - **Gap nlqdb exploits:** Retool is a low-code builder; nlqdb's "skip building the admin UI entirely" is a stronger message for small teams.
 - **Threat vector:** **Very high for P4.** Distribution + inertia.
 
 ### Metabase Metabot — https://www.metabase.com
 OSS (AGPL self-host) + cloud BI (Starter ~$85/mo). Metabot is the AI layer: NL questions, chart-building, SQL generation + "fix it" repair, viz analysis, Slack answers. Full Metabot = paid Cloud + $100/mo add-on; OSS edition is single-shot SQL gen only. (Detail in `/vs/metabase`.)
-- **Overlaps with:** P3.
 - **Gap nlqdb exploits:** BI-dashboard shaped, read-only over an existing warehouse; doesn't provision/own the DB, no NL writes/migrations with diff-preview, no embeddable answer element or agent-callable API.
 - **Threat vector:** Medium for P3 — strong OSS-distribution moat, but Metabase users want dashboards/charts, not an embedded queryable data layer.
 
@@ -100,28 +95,25 @@ AI inside collaborative analyst notebooks (Hex from ~$24/user/mo; others similar
 P2's home territory. These solve "agent needs to remember things" but generally don't give the agent a real DB.
 
 ### Mem0 — https://mem0.ai
-"Long-term memory" SDK for agents. OSS + hosted. Memory-graph shaped.
-- **Overlaps with:** **P2 directly.**
-- **Gap nlqdb exploits:** Mem0 is memory-shaped (facts, entities, time decay); nlqdb is DB-shaped (full tables + SQL semantics + schema the agent can design). Different mental model: "remember this" vs. "here's a DB, do what you want."
-- **Threat vector:** **High for P2.** If an agent builder just wants memory, Mem0 is lighter-weight.
+"Long-term memory" SDK for agents (OSS + hosted, memory-graph shaped). **Gap nlqdb exploits:** memory-shaped (facts, entities, time decay) vs. DB-shaped (full tables + SQL + agent-designed schema) — "remember this" vs. "here's a DB, do what you want." **Threat:** high for P2 — lighter-weight if the builder just wants memory.
 
 ### Zep — https://getzep.com
 Agent-memory platform built on **Graphiti**, a temporal knowledge-graph engine (facts as graph nodes with validity windows + entity resolution). Positions as "the Context Lake for AI agents"; Graphiti is OSS (27k+ stars, Q2 2026) with a hosted cloud — free tier, paid from ~$125/mo. (Full architecture in `/vs/zep`.)
-- **Overlaps with:** **P2 directly** — the same "agent needs to remember things" job as Mem0.
 - **Gap nlqdb exploits:** Zep is a *retrieval* graph — it returns the facts most relevant to a query, but it has no query planner: an agent can't `GROUP BY` / `JOIN` / `HAVING` / aggregate over its own memory. The temporal validity windows are point-in-time fact recall, not analytics. nlqdb is a real database the agent designs and aggregates over in NL.
 - **Threat vector:** **High for P2** — well-funded, benchmark-led, same lane as Mem0; the knowledge-graph framing is more structured than a flat vector store, but it stops short of SQL semantics.
 
 ### Letta (formerly MemGPT) — https://letta.com
 Open-source (Apache-2.0) agent runtime with persistent memory built in — out of the 2023 Berkeley MemGPT paper. OS-style memory tiers (core/recall/archival); self-host or hosted. (Full architecture in `/vs/letta`.)
-- **Overlaps with:** P2 — the stateful-agent builder.
 - **Gap nlqdb exploits:** Letta is an agent *framework* whose memory is self-edited prose blocks + a searchable archive; nlqdb is a DB primitive that framework can use. Letta can recall "Alice has a $50k deal"; it can't answer "average deal size per stage for enterprise customers" — there is no relational query layer over the memory. The two compose: Letta the runtime, nlqdb the analytical store.
 - **Threat vector:** Medium — they want to be the runtime, not the storage layer, so the overlap is the default built-in memory rather than a head-to-head store.
 
 ### LangMem (LangChain) — https://langchain.com
 Open-source Python SDK that adds long-term memory (semantic / episodic / procedural) to LangGraph agents — extract, consolidate, dedup from live interactions; storage-backend-agnostic. (Full architecture in `/vs/langmem`.)
-- **Overlaps with:** P2 — agent builders already inside the LangChain ecosystem.
 - **Gap nlqdb exploits:** Extraction-and-recall logic over a key-value store, not a database — no SQL, no aggregation, no analytically-queryable schema. Its win is *distribution* (ships where LangGraph already is), not the analytical shape.
 - **Threat vector:** **High for P2 on distribution** — LangChain's mass adoption makes LangMem the default a builder meets first; low on capability for the analytical wedge.
+
+### Supermemory — https://supermemory.ai
+"The memory + context API for the AI era" — fact extraction, hybrid recall (RAG + personalised memory), user profiles, and connectors (Drive / Gmail / Notion / GitHub) over a custom vector-graph engine; MIT-licensed with a one-binary local mode plus an MCP server. Benchmark leader (#1 on LongMemEval / LoCoMo / ConvoMem, sub-300ms recall). **Gap nlqdb exploits:** it ranks and returns memories — no SQL, no `GROUP BY` / `JOIN` / `HAVING` over what the agent stored; nlqdb is the analytical store the agent aggregates. **Threat:** high for P2 — strongest recall benchmarks today, but recall-only. `/vs/supermemory`.
 
 **Vector stores (P2 retrieval).** All share one gap: they rank the nearest embeddings but have no SQL layer — an agent can't `GROUP BY` / `JOIN` / `HAVING` over what it stored. This is the "database, not a vector store" wedge (Gap analysis §4). Each has a canonical `/vs` page ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)); per-vendor distinctives below.
 
@@ -145,8 +137,7 @@ Open-source AI memory framework (Apache-2.0, ~20k stars) — builds a self-hoste
 
 ### Postgres MCP servers (community + vendor) — e.g. `@modelcontextprotocol/server-postgres`, Supabase MCP
 Let an agent run read (and sometimes write) SQL against a *pre-provisioned* Postgres.
-- **Overlaps with:** P2.
-- **Gap nlqdb exploits:** **This is the specific gap nlqdb attacks.** Existing MCP Postgres servers require the human to provision, credential, and schema-design first; nlqdb's `nlqdb_query` materialises a tenant-scoped Postgres + schema on first reference (no separate create verb — SK-MCP-002).
+- **Gap nlqdb exploits:** existing MCP Postgres servers need the human to provision, credential, and schema-design first; nlqdb's `nlqdb_query` materialises a tenant-scoped Postgres + schema on first reference (no create verb — SK-MCP-002).
 - **Threat vector:** Medium, rising — if the MCP ecosystem adds provisioning primitives, this gap narrows.
 
 ---
@@ -157,7 +148,6 @@ The tools P4 is paying for today. Displacement is a distribution fight, not a fe
 
 ### Retool — https://retool.com
 The canonical internal-tools platform. $10–$50/user/mo depending on tier.
-- **Overlaps with:** **P4 exactly.**
 - **Gap nlqdb exploits:** Retool requires a human to build forms; nlqdb's pitch is "skip the form, just ask."
 - **Threat vector:** **Very high** for P4.
 
@@ -202,6 +192,7 @@ Adjacent DIY components: LlamaIndex's SQL query engine (like LangChain's), Defog
 | Zep | Agent memory | P2 | Graphiti temporal knowledge graph; benchmark-led, well-funded |
 | Letta | Agent memory | P2 | Self-editing OS-style memory inside an agent runtime (Apache-2.0) |
 | LangMem | Agent memory | P2 | LangChain-ecosystem distribution; default memory for LangGraph agents |
+| Supermemory | Agent memory | P2 | Benchmark-leading recall API (MIT, self-hostable); recall-only, no SQL |
 | Julius AI | NL analytics | P3 | Cheap, consumer-grade CSV + NL workflow |
 | Vanna AI | Text-to-SQL | P3, P4 | OSS + flexible layer on existing DB |
 | Wren AI | Text-to-SQL (semantic-layer) | P3, P2 | MDL semantic model + RLAC/CLAC + SOC 2 (paid) + 22 engines; OSS-core self-host moat |

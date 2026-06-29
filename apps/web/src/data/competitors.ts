@@ -2215,6 +2215,90 @@ export const COMPETITORS: Competitor[] = [
       why: "The HAVING-filtered aggregation Milvus has no operator for — its vector search ranks the nearest embeddings with a metadata filter, and even its scalar group-by has no HAVING threshold; nlqdb answers it as SQL over the agent's own memory.",
     },
   },
+  {
+    // Facts web-verified 2026-06-29: MIT-licensed, self-hostable as one
+    // local binary (localhost:6767); custom vector-graph engine with
+    // ontology-aware edges; hybrid recall (RAG + personalised memory) plus
+    // connectors (Google Drive / Gmail / Notion / GitHub); MCP server at
+    // mcp.supermemory.ai/mcp; TS + Python SDKs. Ranks #1 on LongMemEval /
+    // LoCoMo / ConvoMem with sub-300ms recall. No SQL / aggregation surface
+    // over stored memories — semantic recall only (the nlqdb wedge).
+    slug: "supermemory",
+    name: "Supermemory",
+    url: "https://supermemory.ai",
+    tagline:
+      "The memory + context API for the AI era — recall, RAG, and user profiles in one graph.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Supermemory if you want a best-in-class memory API — fact extraction, hybrid recall, and connectors that top the memory benchmarks. Pick nlqdb if your agent also needs to run analytical queries (counts, group-bys, reports) over the structured rows it remembers.",
+    whenChooseUs: [
+      "Your agent remembers structured rows it later counts, groups, and reports over in SQL.",
+      "You want one MCP server that provisions Postgres, stores rows, and answers aggregations.",
+      "The schema must evolve as the agent learns — 'add a `tier` column'.",
+      "You need typed columns and exact answers, not similarity-ranked text snippets.",
+    ],
+    whenChooseThem: [
+      "You need best-in-class semantic recall — Supermemory tops LongMemEval, LoCoMo, and ConvoMem.",
+      "Your memory is unstructured — documents, chat history, user facts as free text.",
+      "You want connectors for Google Drive, Gmail, Notion, and GitHub out of the box.",
+      "An MIT-licensed, self-hostable memory binary is on your shortlist.",
+    ],
+    features: [
+      {
+        feature: "Structured rows + typed columns",
+        us: "shipped",
+        them: "partial",
+        note: "Supermemory stores memories in a vector graph; nlqdb stores typed rows in Postgres.",
+      },
+      { feature: "Natural-language recall / queries", us: "shipped", them: "shipped" },
+      {
+        feature: "Aggregations + reporting (COUNT, GROUP BY, JOIN)",
+        us: "shipped",
+        them: "no",
+        note: "Supermemory ranks and returns memories; it has no SQL aggregation over them.",
+      },
+      { feature: "Hybrid / semantic recall over unstructured text", us: "no", them: "shipped" },
+      { feature: "Connectors (Drive / Gmail / Notion / GitHub)", us: "no", them: "shipped" },
+      { feature: "MCP server (agent-callable)", us: "shipped", them: "shipped" },
+      {
+        feature: "Auto-migration via NL ('add a `tier` column')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "no",
+        them: "shipped",
+        note: "Supermemory is MIT + a one-binary local mode; nlqdb is FSL 1.1 (source-available) with no GA self-host container yet.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Supermemory for recall and nlqdb for analytics over the same agent memory?",
+        a: "Yes — they're complementary. Supermemory answers 'what did the user tell me about their project'; nlqdb answers 'how many tasks did the user complete each week this quarter'. Both sit behind one MCP-aware agent; nlqdb's MCP server exposes `nlqdb_query`, which materialises Postgres on first reference, so the structured side self-provisions.",
+      },
+      {
+        q: "Does nlqdb beat Supermemory on memory benchmarks like LongMemEval?",
+        a: "No, and it doesn't try to. Supermemory is purpose-built for semantic recall and leads LongMemEval, LoCoMo, and ConvoMem. nlqdb's lane is exact, aggregate queries — counts, group-bys, joins, reports — over the structured rows an agent stores, which those benchmarks don't measure.",
+      },
+      {
+        q: "Is nlqdb a vector database?",
+        a: "No. nlqdb is Postgres-first (ClickHouse for analytical engines in Phase 2). For semantic recall over unstructured text, Supermemory, Mem0, or pgvector are the right shape; nlqdb's contract is relational SQL over typed rows.",
+      },
+      {
+        q: "How does my agent provision an nlqdb database autonomously?",
+        a: "The MCP server exposes `nlqdb_query` — your agent calls it with a goal in English, the server materialises Postgres plus schema on first reference, and returns the answer bound to the agent's tenant. There's no separate create-DB verb to call first.",
+      },
+      {
+        q: "Can nlqdb and Supermemory serve the same agent at once?",
+        a: "Yes. Wire Supermemory's MCP server for fuzzy recall and nlqdb's for structured queries; the agent picks the right tool per question. Tenant-scoped `sk_live_*` keys keep each agent's nlqdb data isolated.",
+      },
+    ],
+    demo: {
+      goal: "tasks each user completed per week this quarter, most recent first",
+      why: "The aggregate slice over remembered rows is nlqdb's lane; Supermemory's lane is fuzzy recall of what was said, not GROUP BY over what was done.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
