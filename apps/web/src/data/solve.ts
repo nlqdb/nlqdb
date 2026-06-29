@@ -1001,6 +1001,61 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "store-form-submissions-without-backend",
+    persona: "P1 solo builder",
+    searchTitle: "How do I store and query form submissions without a backend?",
+    oneLiner:
+      "If your landing page needs to capture form submissions — a waitlist, contact form, or survey — without running a backend, give nlqdb a database: write each submission with the SDK or a `POST /v1/run` insert, then ask 'signups per day' or 'replies by source' in plain English.",
+    painContext:
+      "Indie builders shipping a landing page or static site need somewhere to put form submissions — waitlist emails, contact-form messages, early-access signups — and the options all feel heavy: stand up a server and a database, pay a form SaaS that charges per submission, or glue a spreadsheet to a webhook. Then the moment you want 'how many signups this week?' or 'which referrer drove the most?', a pile of rows in a spreadsheet is the wrong shape for the question.",
+    demoGoal: "signups grouped by day with a count of each",
+    demoWhy:
+      "The first question you ask after a launch — how many signups came in and when — is one English goal here, not a hand-written GROUP BY over a submissions table.",
+    howNlqdbAnswers: [
+      "Write each submission as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert (`GLOBAL-015`) — no server of your own to run.",
+      "Anonymous mode provisions a Postgres in seconds on the free chain — no signup before your first submission lands (`SK-ANON-001`).",
+      "Ask 'signups per day' or 'submissions by source' in English via `<nlq-data>` or the SDK; every answer shows the compiled SQL.",
+      "Adopt the anonymous database into your account within 72 hours to keep submissions past the trial window — no re-import (`SK-ANON-002`).",
+    ],
+    whatItDoesnt: [
+      "The public `<nlq-data>` embed is read-scoped — it renders answers, it is not a write endpoint. Submissions go in through the SDK or `POST /v1/run`, run from your page's own fetch or a tiny serverless function, never from a write key exposed in client HTML.",
+      "No email sending, double-opt-in, or autoresponders — nlqdb stores and queries the rows; delivering the welcome email is your ESP's job (Resend, Postmark, Mailchimp).",
+      "No built-in spam or CAPTCHA protection — nlqdb stores whatever you write to it; bot-filtering the form is your front-end's responsibility (honeypot, Turnstile, rate-limit).",
+    ],
+    faqs: [
+      {
+        q: "Can I collect form submissions without running a backend server?",
+        a: "Yes — provision an nlqdb database (anonymous mode mints one in seconds) and write each submission as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert (`GLOBAL-015`). The insert call runs from your page's fetch or a small serverless function, so there's no server of your own to maintain. Then query the submissions in English. The honest limit: the public `<nlq-data>` embed reads, it doesn't write.",
+      },
+      {
+        q: "How do I see how many signups I got per day or per source?",
+        a: "Ask in English — 'signups grouped by day with a count' or 'submissions by referrer this week'. nlqdb compiles it to SQL over your submissions table, runs it, and returns the ranked rows with the compiled SQL under a trace toggle (`SK-WEB-005`) so you can verify the grain before trusting the number.",
+      },
+      {
+        q: "Is this a replacement for a form service like Formspree or Tally?",
+        a: "No — those render the form, capture the POST, and email you the entry, with spam filtering built in. nlqdb is the database half: you decide what to store and you get a SQL query planner over it for ad-hoc 'how many / by source' questions, without a per-submission fee or a spreadsheet pivot. They compose — point your form's handler at an nlqdb insert.",
+      },
+      {
+        q: "How do I keep the data if I started in anonymous mode?",
+        a: "Sign in within the 72-hour anonymous window and click 'Adopt this database' (`SK-ANON-002`). The database is re-keyed to your account, every submission row persists, and there's no re-import. Anonymous databases that aren't adopted sweep at 72h, so adopt before launch traffic piles up if you want to keep it.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/webdev/search/?q=form%20without%20backend",
+        label: 'r/webdev — recurring "store form submissions without a backend" threads.',
+      },
+      {
+        url: "https://www.reddit.com/r/sideproject/search/?q=waitlist",
+        label: 'r/sideproject — "waitlist / signup collection" recurring discussion hub.',
+      },
+      {
+        url: "https://hn.algolia.com/?q=form%20backend",
+        label: 'HN search: "form backend" — discussion on capturing form data without a server.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {

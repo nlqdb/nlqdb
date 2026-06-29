@@ -44,15 +44,14 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-29 (run 105)** — eval dispatch still 403, local LLM eval TLS-blocked,
-funnel re-pull network-blocked → per daily rule 2 the measured **engine-quality**
-lever was the offline DAIL-SQL retrieval probe (`SK-LLM-041 × SK-QUAL-018`), the
-#1 reasoning lever. The last ICP miss **q22** is a scalar COUNT over a JOIN with a
-name + NULL filter; the pool's only scalar-COUNT demo was `date-range`
-(single-table) so q22 masked to it — **not** selector-unfixable as prior runs
-pinned, but a missing structural bucket (same class as q10/q8). Added pool bucket
-#17 `join-aggregate-filter` (appended last ⇒ wins q22 only on a strictly higher
-score, 0.6 vs 0.4); same-probe before/after only q22 flips, q7/q5/q11/q10 pinned.
-**ICP retrieval precision@1 22/23 → 23/23 (zero misses)**; held-out 16/16 → 17/17;
-238 llm + 274 eval green; prod byte-identical (`buildPlanSystem` default-off).
-**KPI:** GLOBAL-025 engine quality; none degraded.
+**2026-06-29 (run 106)** — hard numbers gated (eval dispatch 403 + engine
+retrieval lane just landed by run 105 / PR #537; funnel re-pull network-blocked) → per
+daily rule 2, a measured **onboarding/UX** lever on a non-conflicting surface:
+a `/solve` page for the under-covered **P1 solo builder** persona (2 of 16) —
+`store-form-submissions-without-backend`, answering the recurring indie search
+"store form submissions without a backend" (honest read-embed-is-not-a-write
+limit). **Solve pages 16 → 17** (P1 2 → 3); apps/web tests 175 → 176 green,
+lint clean, all AEO invariants pass. Artifact: a dev.to/r/webdev draft. **KPI:**
+GLOBAL-025 onboarding/UX; none degraded (prod untouched). *(Prior run 105 —
+offline DAIL-SQL retrieval probe: ICP precision@1 22/23 → 23/23, the last miss
+q22 fixed by pool bucket #17 `join-aggregate-filter`; prod byte-identical.)*
