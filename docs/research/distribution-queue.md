@@ -11,56 +11,60 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-29 (run 105) — dev.to / r/LLMDevs / lobste.rs: "COUNT(*) is three different questions. Your few-shot pool probably teaches one."
+## 2026-06-29 (run 106) — dev.to / r/webdev / r/sideproject: "You don't need a backend to store form submissions. You need a place to ask 'how many'."
 
-**Where:** dev.to + r/LLMDevs + lobste.rs; an engine-lesson post for anyone building
-dynamic few-shot retrieval for text-to-SQL. nlqdb mentioned once.
+**Where:** dev.to + r/webdev + r/sideproject; a transferable how-to for indie builders
+shipping a landing page who hit the "where do the signups go?" wall. nlqdb mentioned
+once, as the shape that answered the second half of the problem.
 
-**Title:** COUNT(*) is three different questions. Your few-shot pool probably teaches one.
+**Title:** You don't need a backend to store form submissions. You need a place to ask "how many."
 
 **Body:**
 
-> If you do dynamic few-shot for text-to-SQL, you keep a pool of `{question, SQL}`
-> examples and, for each incoming question, retrieve the most similar one to show the
-> model. The trick that makes it work across schemas is *masking*: you replace literal
-> values and table/column names with placeholders before scoring similarity, so
-> "how many users signed up in 2024" and "how many orders shipped in Q3" read as the same
-> skeleton. Cheap, no embedding model, no API key — just masked-token overlap.
+> Every landing page hits the same wall around hour three: the waitlist form works, but
+> where do the emails *go*? The reflex is to stand up a server and a database for what is,
+> honestly, an `INSERT` and an occasional `COUNT`. So most people reach for a form SaaS
+> instead — and that solves storage, but quietly splits your data from your questions.
+> The submissions live in someone's dashboard; the moment you want "signups per day since
+> launch" or "which referrer actually converted," you're exporting a CSV and pivoting it
+> by hand.
 >
-> Here's the failure I hit. The benchmark question was *"how many of the agent
-> 'support-bot' facts have no expiry date?"* — gold SQL is a scalar
-> `SELECT COUNT(*) FROM facts JOIN agents … WHERE name = 'support-bot' AND expires_at IS NULL`.
-> The retriever confidently returned a *date-range* example: `COUNT(*) FROM orders WHERE
-> order_date >= … AND order_date < …`. Single table, no join, no NULL filter — the wrong
-> shape to teach. I'd had this miss pinned for weeks, labeled "needs a fancier similarity
-> algorithm." That label was wrong.
+> There are two problems hiding in one, and they have different shapes. **Capture** is a
+> write — a small one, and it genuinely doesn't need a server: an insert call from the
+> page's own `fetch`, or a ten-line serverless function, is enough, as long as the write
+> key isn't sitting in your client HTML. **Reporting** is a read, and it's the part that
+> actually wants a database — because "how many per day," "top source this week," "what's
+> the conversion by campaign" are aggregations, and aggregations want a query planner, not
+> a spreadsheet and a human.
 >
-> The real problem: **`COUNT(*)` is not one shape.** A scalar count that returns one
-> number, a `GROUP BY` count that returns a breakdown, and a filtered count over a join
-> are three different answers that share a keyword. My pool had a teacher for the grouped
-> count and one for the single-table range count — but *none* for "one number, through a
-> join, with a NULL predicate." So the question fell to the nearest keyword match. The
-> masking was fine; the *curriculum* had a hole.
+> The mistake is picking a tool that's great at the write and leaves you alone with the
+> read. A form service nails capture and hands you a list. A spreadsheet-via-webhook nails
+> capture and hands you a tab you pivot manually. What you want is for the place the rows
+> land to also be a place you can *ask questions of* — ideally in plain English, so the
+> day-one launch question ("did anyone sign up?") and the week-two question ("which tweet
+> drove it?") are the same two-second action, not a data chore.
 >
-> Adding one example for that shape moved retrieval from 22/23 to 23/23 — and killed the
-> belief that the miss needed a smarter ranker. The lesson generalizes past SQL: **when a
-> retrieval pool returns the confidently-wrong neighbor, suspect a missing shape before
-> the algorithm.** A pool is a curriculum; a question with no teacher gets taught by
-> whoever's closest. Label your shapes by the *answer* they produce (one row? a breakdown?
-> a join?), not the operators they use — operators collide, answers don't. We pin each
-> shape with a held-out cross-domain probe as a unit test, so a regression shows up in CI.
-> (Came out of [nlqdb](https://nlqdb.com)'s text-to-SQL engine; the example pool is in the repo.)
+> That's the shape worth looking for, whatever you build it on: storage you can also
+> interrogate. I wired ours so each submission is a row in a real Postgres and the
+> reporting question is one English goal — `signups grouped by day with a count` — that
+> compiles to SQL I can see. (We do this with [nlqdb](https://nlqdb.com); the point isn't
+> the tool, it's refusing to let your form data land somewhere you can't ask it anything.)
+> The honest caveat that applies to *any* version of this: the public read widget isn't a
+> write endpoint — capture still goes through a key the browser never sees, and email
+> delivery + spam filtering stay your ESP's and your front-end's job. Storage isn't the
+> hard part. Not being able to ask your own data a question is.
 
-**Why this advances the north-star:** GLOBAL-025 engine quality — a reproducible lesson
-on dynamic few-shot retrieval from this run's fix (`join-aggregate-filter` pool row, ICP
-retrieval 22/23 → 23/23); earns a citation from practitioners, no pitch.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — answers a real, recurring
+indie-builder search ("store form submissions without a backend") with a genuinely useful
+framing (split capture from reporting), drawn from the `/solve` page shipped this run; the
+post earns a citation without a pitch and seeds the search-intent on-ramp.
 
 ## Collapsed — full drafts in git history
 
-- run 104 — dev.to / lobste.rs / r/SEO: "The '25 words max' rule in your style guide is a lie your CMS can't catch." (soft content constraints decay at the rate attention does; ours lived in a code comment and 25 of ~50 bullets had silently drifted over; a six-line test that names offenders on failure makes the rule load-bearing — a predicate over your content belongs in a test, not prose).
+- run 105 — dev.to / r/LLMDevs / lobste.rs: "COUNT(*) is three different questions. Your few-shot pool probably teaches one." (`COUNT(*)` isn't one shape — scalar count, `GROUP BY` count, and filtered count over a join are three answers sharing a keyword; a masked few-shot pool with a teacher for two of them retrieves the confidently-wrong neighbor for the third, so when retrieval returns the wrong example suspect a missing shape before a smarter ranker; label shapes by the answer they produce, not the operators, and pin each with a held-out probe; `join-aggregate-filter` pool row, ICP retrieval 22/23 → 23/23).
+- run 104 — dev.to / lobste.rs / r/SEO: "The '25 words max' rule in your style guide is a lie your CMS can't catch." (content style-guide rules — "bullets ≤25 words" — are soft, so they decay the way unenforced rules do; measured our own `/solve` bullets and found 25 of ~50 over budget with no single bad edit; the fix moves the rule from a code comment into a six-line test that names offenders, because a constraint enforced by attention decays at the rate attention does — if you can write it as "for all X, P(X)," write the predicate, not the guideline).
 - run 102 — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them." (by 2026 "has an MCP server" is the new "has an API" — universal and uninformative; two MCP shapes look identical in a feature matrix but aren't — one wraps a *destination app* (ask my notebook, answer from my dashboard: read-only over a human's workflow), the other exposes *infrastructure the agent owns* (provision a DB, write rows, migrate schema); the tell is what the agent *owns* after the call returns — a view it can read but not accumulate into is a calculator, not a coworker; ask "what does it let the agent own," not "does it exist").
 - run 103 — dev.to / lobste.rs / r/ExperiencedDevs: "Your style rule lives in a code comment. That's why it's already broken." (the SK-CMP-001 `/vs` "≤16 words per when-to-choose bullet" rule lived only as a TypeScript comment and had silently drifted — one competitor entry held seven over-budget bullets because the diff that broke it touched a different file than the comment; a doc-comment *reads* like enforcement but is not load-bearing, so it decays at the rate attention does; the fix moves the rule into a six-line test that names offenders and fails the next over-long bullet in its own PR — a constraint you can state as "for all X, P(X)" belongs in a predicate, not prose).
-- run 101 — dev.to / lobste.rs / r/ExperiencedDevs: "We shipped the feature. Nine pages still told users we hadn't." (honest "what this doesn't do" copy has a silent failure mode — a "not yet / on the roadmap" line is a dated assertion with nothing watching it, so the day a feature ships the most honest sentence on the site becomes the most dishonest, and no CI job notices because the PR touched `src/` not the marketing copy; two rules — store capability claims in typed/structured data and grep every "roadmap / not shipped" string for a feature's name as part of the same change; the trigger isn't the doc, it's the feature shipping; the fix here deleted nine expired BYO-Postgres promises and wrote the one page the shipped `connect` verb finally made honest).
 - run 100 — dev.to / r/LLMDevs / lobste.rs: "Two SQL examples that use the same clauses are not the same example — and your few-shot retriever can't tell." (a ranked grouped count — `GROUP BY x, COUNT(*) … ORDER BY COUNT(*) DESC LIMIT n` — retrieved a percentage/`CAST … REAL` example on generic word overlap; the deeper bug was a pool that conflated "return the top group's *key*" with "return the top groups *and their count*" — same clauses, different answer, so one teacher taught the other shape wrong; rule: a few-shot pool needs a teacher for every *output shape*, not every SQL operation; verify offline with a held-out cross-domain probe per shape; 21/23 → 22/23).
 - run 99 — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for." (dynamic few-shot for text-to-SQL masks the question to match its *skeleton*; a grouped-count-over-join with no threshold retrieved a `HAVING COUNT(*) > n` example because flat token overlap can't tell a structural token from a coincidental one; the bug wasn't the ranker — measured, it just shuffles which question breaks — it was the *pool* having no teacher for that shape, so the question fell to the nearest wrong one; a retrieval pool is a curriculum, a missing shape returns the closest wrong thing confidently; hold out a cross-domain probe per shape as a unit test; 20/23 → 21/23).
 - run 98 — dev.to / lobste.rs / r/webdev: "Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed." (a site has three machine-readable indexes of itself — `robots.txt`/`sitemap.xml`/`llms.txt` — maintained by three reflexes that drift because nothing forces them to agree; a real indexable page advertised in `llms.txt` + allowed in `robots.txt` was never in the hand-rolled `sitemap.xml`, so link-followers found it and sitemap-trusting crawlers never knew it existed; fix re-derives the real top-level-page set and asserts every one is in the sitemap so the next forgotten page fails CI not search — if two lists must agree, don't maintain two, derive one or test the divergence).
@@ -78,8 +82,7 @@ retrieval 22/23 → 23/23); earns a citation from practitioners, no pitch.
 - run 88 — dev.to / r/LLMDevs / lobste.rs: "You're grepping your agent's trace logs to count which tool fails. That's a GROUP BY." (which tool fails most, p95 per tool, calls per session are aggregations, and a span-tree trace log is the wrong shape to `GROUP BY` across runs; *capture* (OTel/AgentOps/Langfuse) and *query* are different machines — log each tool call as a typed row; anchors `/solve/analyze-agent-tool-call-logs`).
 - run 87 — dev.to / lobste.rs: "Your Cmd+K palette is invisible to screen readers — one attribute fixes it" (the palette every app ships is perfect for people who can *see* the highlight move; under a screen reader it's silent because the highlight is just a CSS class and focus never leaves the input; the fix tutorials skip is `aria-activedescendant` letting the focused input point at a *different* "active" option, with `combobox`/`listbox`/`option` + `aria-selected`; keep option ids in one helper and clamp the index in pure logic; palette ARIA associations 0 → 3).
 - run 86 — dev.to / lobste.rs / r/LLMDevs: "Your llms.txt is a sitemap for robots that read — and mine was missing the page I care about most" (the LLM-crawler index was hand-curated *before* the flagship landing page existed, so it was silently absent; data-driven lists stayed in sync, the bespoke array nobody revisited rotted — audit the *rendered* artifact, pin bespoke entries with a test; `llms.txt` primary routes 4 → 6).
-- run 85 — dev.to / r/LLMDevs / lobste.rs: "Your token-cost dashboard is doing arithmetic in your app code" (LLM token/cost numbers land in a JSON log, but "spend per customer this month, which model is expensive?" is an aggregation — `SUM(cost) GROUP BY user`/`model` — and a log isn't a thing you aggregate, so you total rows in app code or ask the LLM to add them (a confident-wrong-total generator); *capture* (provider SDK / Langfuse / Helicone) and *query* (a planner) are different machines — the moment a dashboard sums a column in app code it wanted a database; anchors `/solve/track-ai-token-usage-and-cost`).
-*(runs 75–84 moved to git history under D4 — `git log -p` recovers the bodies.)*
+*(runs 75–85 moved to git history under D4 — `git log -p` recovers the bodies.)*
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).
