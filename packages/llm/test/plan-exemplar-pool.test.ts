@@ -125,6 +125,18 @@ const PROBES: readonly Probe[] = [
     goal: "How many payments were made in 2022?",
     schema: "CREATE TABLE payments (id INTEGER, pay_date TEXT, amount REAL)",
   },
+  {
+    // Scalar COUNT(*) over a JOIN with a named-entity filter AND a NULL
+    // predicate, over a different schema + phrasing than the pool row
+    // ("invoices for the vendor 'Globex' … no paid date" vs "orders for customer
+    // 'Acme' … no delivery date") — proves the scalar-filtered-count skeleton
+    // retrieves across domains and is not pulled to the single-table
+    // `date-range` or the grouped `filtered-group-by-count` near-twins.
+    bucket: "join-aggregate-filter",
+    goal: "How many invoices for the vendor 'Globex' have no paid date?",
+    schema:
+      "CREATE TABLE vendors (id INTEGER, name TEXT);\nCREATE TABLE invoices (id INTEGER, vendor_id INTEGER, paid_at TEXT)",
+  },
 ];
 
 // Masked-skeleton similarity of a probe to a pool row, each masked against its
@@ -165,7 +177,7 @@ describe("plan-exemplar-pool", () => {
   it("covers one row per structural bucket, all distinct", () => {
     const buckets = PLAN_EXEMPLAR_POOL.map((r) => r.bucket);
     expect(new Set(buckets).size).toBe(buckets.length);
-    expect(PLAN_EXEMPLAR_POOL.length).toBe(16);
+    expect(PLAN_EXEMPLAR_POOL.length).toBe(17);
   });
 
   it("renders each payload in the static-prefix Question→JSON shape", () => {

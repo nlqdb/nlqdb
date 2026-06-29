@@ -58,7 +58,7 @@ const EXPECTED: Record<number, readonly string[]> = {
   // Batch 3 (SK-QUAL-018) — authored from each gold's structure.
   20: ["scalar-subquery"], // landed by the "Which … ? List the …" exemplar framing (no longer a miss)
   21: ["count-distinct"], // COUNT(DISTINCT referrer_id) — landed by the "different cities" exemplar phrasing (no longer a miss)
-  22: ["join-aggregate", "group-by-count"], // known miss: top-1 is `date-range` (see below)
+  22: ["join-aggregate-filter"], // landed by the `join-aggregate-filter` pool row (a scalar COUNT over a JOIN with a name + NULL filter); was a `date-range` miss at 22/23
 };
 
 function measure() {
@@ -85,11 +85,11 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  it("retrieves a structurally-appropriate demo for ≥ 22/23 ICP queries", () => {
+  it("retrieves a structurally-appropriate demo for 23/23 ICP queries", () => {
     const m = measure();
     // Surface the numbers in the run log for the verification record.
     console.info("[persona-retrieval] measure:", JSON.stringify(m));
-    // 22/23: the null-filter row lands q3 ("who never logged in") on IS-NULL, the
+    // 23/23: the null-filter row lands q3 ("who never logged in") on IS-NULL, the
     // order-by-limit row lands q0 ("the 10 most recent signups") on the plain
     // ORDER BY … LIMIT demo, the count-distinct row's "how many different"
     // phrasing lands q21 ("how many different referral sources") instead of
@@ -97,16 +97,18 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     // lands q20 ("which plans cost more than the average plan price") instead of
     // `having`, the `filtered-group-by-count` row (a named-entity grouped count
     // through a JOIN) lands q10 ("which predicates does the agent named
-    // 'support-bot' use, and how often") instead of `having`, and the new
+    // 'support-bot' use, and how often") instead of `having`, the
     // `group-count-top-n` row (top-N groups WITH their count) lands q8 ("the 5
     // most-recalled facts … and how many times") off `ratio-cast` AND improves
     // q18 ("for each agent, how many times … most recalled first") from
-    // `join-aggregate` (a SUM, the wrong aggregate) to the grouped-COUNT demo.
-    // All were structural pool gaps closed by pool curation (adding/rephrasing a
-    // row), not selector tweaks (run-52-falsified). The one remaining pinned,
-    // documented miss is q22 (see below) — selector-side (the right buckets exist
-    // in the pool; the masked skeleton mis-ranks it).
-    expect(m.hits).toBeGreaterThanOrEqual(22);
+    // `join-aggregate` (a SUM, the wrong aggregate) to the grouped-COUNT demo,
+    // and the new `join-aggregate-filter` row (a scalar COUNT over a JOIN with a
+    // name + NULL filter) lands q22 ("how many of 'support-bot' facts have no
+    // expiry date") off `date-range`. All were structural pool gaps closed by
+    // pool curation (adding/rephrasing a row), not selector tweaks
+    // (run-52-falsified — that verdict is scoped to selector-code tweaks, NOT
+    // pool curation; see the q22 note below).
+    expect(m.hits).toBeGreaterThanOrEqual(23);
   });
 
   it("the null-filter row lands q3 ('never logged in') on the IS-NULL demo, not anti-join", () => {
@@ -137,11 +139,14 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  // The one remaining miss (q22) is documented, not silently accepted. It is
-  // selector-side (the right buckets exist in the pool), so the fix is
-  // query-skeleton similarity (DAIL §4.1's second variant) — out of scope for a
-  // pool-row add. This test pins the known state so a future selector change that
-  // fixes it is visible as a delta.
+  // q22 was the last miss; it is now landed by the `join-aggregate-filter` pool
+  // row (run 105) — see the dedicated test below. It was NOT selector-unfixable:
+  // the earlier "out of scope for a pool-row add / needs query-skeleton
+  // similarity" read mistook a missing structural bucket for a selector limit.
+  // q22's gold is a *scalar* COUNT(*) over a JOIN with a name + NULL filter, and
+  // the pool's only scalar-COUNT demo was `date-range` (single-table), so q22
+  // masked to it — the same missing-bucket class as q10/q8, closed the same
+  // pool-curation way.
   //
   // NOTE: q21 (run 68), q20 (run 76), q10 (run 99) and q8 (run 100) were all NOT
   // selector-unfixable — q21/q20 were exemplar-phrasing leaks (the count-distinct
@@ -165,8 +170,9 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
   // 14/14. Root cause: q22's top-1 `date-range` wins on generic filler plus a
   // coincidental masked literal slot (`val` — both questions happen to contain a
   // literal), which flat masked-token Jaccard cannot separate from a real
-  // structural token. Do NOT re-attempt a lexical selector tweak here; the only
-  // remaining offline gain needs query-skeleton (predicted-SQL) similarity.
+  // structural token. Do NOT re-attempt a lexical SELECTOR-code tweak here — but
+  // that verdict never blocked adding the missing scalar-filtered-count bucket,
+  // which is what landed q22 (run 105) and is pool curation, not a selector tweak.
   //
   // q8 ("the 5 most-recalled facts … and how many times") is a top-N-groups-with-
   // count (GROUP BY object, COUNT(*), ORDER BY COUNT(*) DESC, LIMIT 5). The
@@ -230,17 +236,26 @@ describe("persona-bench retrieval precision (SK-LLM-041 × SK-QUAL-018)", () => 
     }
   });
 
-  // q22 ("how many of 'support-bot' facts have no expiry date") is a COUNT(*) over
-  // a filtered JOIN, but "how many … no expiry date" masks toward the `date-range`
-  // demo (the "how many … date" tokens dominate the JOIN/aggregate signal).
-  // Selector-side; the right buckets (join-aggregate / group-by-count) exist.
-  it("documents the q22 known miss (top-1 `date-range` for a filtered join-aggregate)", () => {
+  // q22 ("how many of 'support-bot' facts have no expiry date") is a scalar
+  // COUNT(*) over a filtered JOIN (JOIN to resolve the name + WHERE name = <val>
+  // + WHERE expires_at IS NULL, NO GROUP BY). The `join-aggregate-filter` pool
+  // row (run 105) now lands it top-1 — was a `date-range` miss at 22/23 (the
+  // "how many … date" tokens pulled it to the single-table range scan, teaching
+  // no join and no NULL filter). Pinned so a regression is visible as a delta.
+  it("the join-aggregate-filter row lands q22 ('… have no expiry date') off `date-range`", () => {
     const q22 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 22);
     const [top] = retrievePlanExemplars(
       q22?.question ?? "",
       ddlFor(q22?.db_id ?? "agent_memory"),
       1,
     );
-    expect(EXPECTED[22]).not.toContain(top?.bucket);
+    expect(top?.bucket).toBe("join-aggregate-filter");
+    // …while the unfiltered grouped count (q7, "how many facts does each agent
+    // have? show the agent name and the count") must NOT be pulled to the scalar
+    // filtered count — it stays `group-by-count` (a per-key breakdown, not one
+    // number, and no NULL filter).
+    const q7 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 7);
+    const [g] = retrievePlanExemplars(q7?.question ?? "", ddlFor(q7?.db_id ?? "agent_memory"), 1);
+    expect(g?.bucket).toBe("group-by-count");
   });
 });
