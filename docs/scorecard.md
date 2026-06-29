@@ -43,12 +43,13 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-28 (run 99)** — **engine lever, offline-measured**: added a
-`filtered-group-by-count` DAIL-SQL pool row (named-entity grouped count through a
-JOIN) closing persona-bench ICP-retrieval miss **q10** ("which predicates does the
-agent named 'support-bot' use, and how often"), which retrieved the `having` demo —
-teaching a `HAVING COUNT(*)` filter the gold lacks. **ICP retrieval precision@1
-20/23 → 21/23**; held-out cross-domain probe **14/14 → 15/15**; q7/q5/q11 stay
-pinned. Pool curation, not the run-52-falsified selector tweak; q8/q22 stay
-dispatch-gated. Prod byte-identical (`buildPlanSystem` off ⇒ SK-LLM-024 untouched).
-**KPI:** GLOBAL-025 engine quality; others untouched.
+**2026-06-29 (run 101)** — **onboarding/AEO lever, offline-measured**: closed the
+last empty solve-page persona slot. BYO-connect shipped on main (#526,
+`SK-DBCONN-001`: signed-in `POST /v1/db/connect` for Postgres/ClickHouse), which
+unblocked the **P4 backend-engineer** page the feature had marked gap-blocked.
+Added `/solve/query-existing-postgres-in-natural-language` (NL admin layer over a
+Postgres you already run) and corrected **9 now-false "bring-your-own-Postgres is
+roadmap, not shipped" honest-limit lines** across sibling pages that the same
+shipped feature falsified. **Solve pages 15 → 16; persona coverage P4 0 → 1**
+(P1×2 / P2×11 / P3×2 / P4×1). Data-integrity tests 17/17 pass. **KPI:** GLOBAL-025
+onboarding (new search-intent on-ramp + restored AEO honesty); others untouched.

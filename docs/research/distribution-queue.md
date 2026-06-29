@@ -11,53 +11,55 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-28 (run 99) — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for."
+## 2026-06-29 (run 101) — dev.to / lobste.rs / r/ExperiencedDevs: "We shipped the feature. Nine pages still told users we hadn't."
 
-**Where:** dev.to + r/LLMDevs + lobste.rs; a transferable lesson on dynamic-few-shot
-(RAG-for-exemplars) retrieval for text-to-SQL agents. nlqdb mentioned once, as the
-place the lesson came from.
+**Where:** dev.to + lobste.rs + r/ExperiencedDevs; a transferable lesson on how
+"not yet" copy rots the day a feature ships, and how to make the rot fail loud.
+nlqdb mentioned once, as the place the lesson came from.
 
-**Title:** Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for.
+**Title:** We shipped the feature. Nine pages still told users we hadn't.
 
 **Body:**
 
-> Dynamic few-shot is the cheap, real win in text-to-SQL: instead of a fixed prompt
-> prefix, retrieve the demonstrations whose *question* is closest to the user's, so the
-> model sees examples that match what's being asked. The standard trick (DAIL-SQL) is to
-> **mask** the question first — replace literal values and table/column names with
-> placeholders — so you match the question's *skeleton* ("how many X of each Y, for the
-> Z named ‹val›") and not its domain words. It works startlingly well from a tiny pool.
+> Honest marketing has a failure mode nobody warns you about. We're disciplined about it:
+> every product page carries a "what this doesn't do" section, because hiding limits gets
+> you demoted by the cited-source heuristics in Perplexity and ChatGPT — and because it's
+> the right thing to do. So across a few dozen landing pages, the same honest line
+> appeared again and again: *"connecting to a database you already run is on the roadmap,
+> not shipped."* True when we wrote it.
 >
-> Then we measured it on our own users' questions and found a quiet failure. "Which
-> predicates does the agent named 'support-bot' use, and how often?" — a grouped count
-> over a join, no threshold — retrieved a `HAVING COUNT(*) > n` example as its closest
-> demonstration. The masked skeletons genuinely overlapped, so a word-overlap score
-> ranked the threshold example top, and the model would have been shown a filter the
-> question never asked for.
+> Then we shipped it. A `connect` verb that points the product at a Postgres you already
+> own. And nine pages kept saying we hadn't. The most honest sentence on the site had
+> quietly become the most dishonest one — because "not yet" is a claim with an expiry
+> date, and nothing in the build fails when it expires. A new feature has a test suite; a
+> *negative* claim about a feature has nothing watching it. The moment the code crossed
+> from false to true, the copy crossed from true to false, and no CI job noticed.
 >
-> The instinct is to fix the *ranker* — stopwords, phrase normalisation, similarity
-> tuning. We'd measured that and it lost: it shuffles which question breaks without
-> raising the hit rate, because flat token overlap can't tell a real structural token
-> from a coincidental one. The actual bug was the *pool*: it had no example of "grouped
-> count scoped to one named entity through a join." Every demonstration is a teacher, and
-> we had no teacher for that shape — so the question fell to the nearest wrong one. One
-> correct example for the missing skeleton fixed it.
+> The deeper trap: a roadmap promise reads as humility, so reviewers wave it through.
+> Nobody re-greps the marketing copy when a PR lands — the PR touched `src/`, not the
+> nine `.md`/data files that mention the thing it just shipped. The honest-limits
+> discipline that protects you from over-claiming quietly sets you up to *under*-claim,
+> which is its own kind of lying to a buyer ("they don't do X" — so they bounce to a
+> competitor who does, who you actually tie).
 >
-> Two transferable rules: **(1) a retrieval pool is a curriculum — a missing shape
-> doesn't return "no match," it returns the closest wrong thing, confidently. (2)
-> Measure retrieval offline before you spend a model call on it:** hold out a probe per
-> shape, phrased over a *different* domain than the example, and assert each retrieves
-> its intended skeleton — a cross-domain hit proves the masking generalises, not lexical
-> luck. We run it as a unit test; this fix moved the score 20/23 → 21/23 with the
-> held-out probes still perfect. (At [nlqdb](https://nlqdb.com) the exemplar pool and its
-> retrieval precision are both under test.)
+> Two transferable rules. **(1) A "not yet" is a dated assertion — store it where it can
+> be checked, not just where it reads well.** Keep capability claims in typed/structured
+> data, and when you ship a capability, grep every "roadmap / not shipped / coming soon"
+> string for its name as part of the same change. **(2) The trigger isn't the doc, it's
+> the feature.** A shipped-feature checklist should include "what did we previously say we
+> *couldn't* do that we now can?" — the same way you'd update the changelog. We caught
+> ours by reading the new page against its siblings; the fix was deleting nine expired
+> promises and writing the one page the shipped feature finally made honest. (At
+> [nlqdb](https://nlqdb.com) the page claims live in typed data with integrity tests.)
 
-**Why this advances the north-star:** GLOBAL-025 engine quality — a genuinely useful,
-specific lesson for anyone building a text-to-SQL or tool-calling agent, anchored to a
-real measured engine improvement; the post earns a citation without a pitch.
+**Why this advances the north-star:** GLOBAL-025 onboarding — a specific, transferable
+lesson for anyone maintaining honest product/AEO copy, anchored to a real fix (a new
+search-intent page + nine corrected limit lines); the post earns a citation without a
+pitch.
 
 ## Collapsed — full drafts in git history
 
+- run 99 — dev.to / r/LLMDevs / lobste.rs: "Your few-shot retriever ranked by word overlap and taught the model a filter the question never asked for." (dynamic few-shot / DAIL-SQL masks the question to its skeleton and retrieves the closest demonstration; measured on real user questions, a grouped count over a join retrieved a `HAVING COUNT(*) > n` example — the masked skeletons overlapped so word-overlap ranked the threshold example top, teaching a filter the question never asked for; the bug was the *pool* (a missing shape returns the closest wrong thing, confidently), not the ranker (measured, lost); hold out a cross-domain probe per shape as a unit test; ICP retrieval 20/23 → 21/23).
 - run 98 — dev.to / lobste.rs / r/webdev: "Your AI crawlers read llms.txt. Your sitemap forgot a page. They disagreed." (a site has three machine-readable indexes of itself — `robots.txt`/`sitemap.xml`/`llms.txt` — maintained by three reflexes that drift because nothing forces them to agree; a real indexable page advertised in `llms.txt` + allowed in `robots.txt` was never in the hand-rolled `sitemap.xml`, so link-followers found it and sitemap-trusting crawlers never knew it existed; fix re-derives the real top-level-page set and asserts every one is in the sitemap so the next forgotten page fails CI not search — if two lists must agree, don't maintain two, derive one or test the divergence).
 - run 97 — dev.to / r/LLMDevs / r/AI_Agents: "Your multi-tenant agent memory is one forgotten WHERE clause from a leak." (one DB holds a thousand customers' agent memory; the only thing between tenant A's rows and tenant B's answer is a `WHERE tenant_id = ?` the LLM has to remember in every query forever, and one miss leaks every tenant at once; fix moves isolation below the SQL into Postgres RLS keyed on `current_setting('app.tenant_id')` so a query with no filter sees nothing, not everything — isolation belongs in the layer that can't forget it; anchors `/solve/isolate-ai-agent-memory-per-tenant`).
 
@@ -98,8 +100,6 @@ real measured engine improvement; the post earns a citation without a pitch.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 
-- run 57 — "Your 'instrumentation plan' is lying to you — the catalog already shipped" (once the work ships, delete the forward-looking plan table or it quietly becomes a worse copy of your live span/metric catalog + test suite; document the standing rule, not the rollout; observability-docs discipline).
-- run 54 — "Your status table is drifting because it answers 'why', not just 'what'" (single-source-of-truth: a status table holds status + one-line essence + a link; the "why" lives once in the feature doc — two homes for one fact is drift with extra steps).
 - run 46 — "We cap every doc at 20 KB — even the marketing backlog" (autonomous-agent context discipline; an over-cap edit must net-shrink; rolling two-draft window over the queue itself).
 - run 45 — "Our waitlist has 79 rows. The honest count is 1." (honest funnel pull: 78/79 waitlist rows are us, genuine-stranger count is 1; the real bottleneck is engine accuracy).
 - runs 43–44 — "We moved agent memory above the fold and demoted three of our four personas. On purpose." (additive/reversible home reweight; agent-memory wedge + Mem0·Zep·Letta·nlqdb matrix above the fold, other personas folded under a quiet divider; GLOBAL-036 + WS-12).
