@@ -11,51 +11,53 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-29 (run 104) — dev.to / lobste.rs / r/SEO: "The '25 words max' rule in your style guide is a lie your CMS can't catch."
+## 2026-06-29 (run 105) — dev.to / r/LLMDevs / lobste.rs: "COUNT(*) is three different questions. Your few-shot pool probably teaches one."
 
-**Where:** dev.to + lobste.rs + r/SEO; a transferable lesson on enforcing soft
-content constraints, for anyone shipping marketing/AEO copy as code. nlqdb mentioned
-once, as where the lesson came from.
+**Where:** dev.to + r/LLMDevs + lobste.rs; an engine-lesson post for anyone building
+dynamic few-shot retrieval for text-to-SQL. nlqdb mentioned once.
 
-**Title:** The "25 words max" rule in your style guide is a lie your CMS can't catch.
+**Title:** COUNT(*) is three different questions. Your few-shot pool probably teaches one.
 
 **Body:**
 
-> Every content style guide has rules like "keep answer bullets under 25 words" or "the
-> meta description is one sentence." They exist for a real reason: a card bullet that runs
-> 37 words isn't scannable, and an AI search engine lifting it into a citation panel will
-> truncate or skip it. But these rules are *soft* — no compiler rejects a 37-word bullet —
-> so they decay the way all unenforced rules decay: one careful writer holds the line, the
-> next adds a clause, and six months later half the pages violate the rule nobody deleted.
+> If you do dynamic few-shot for text-to-SQL, you keep a pool of `{question, SQL}`
+> examples and, for each incoming question, retrieve the most similar one to show the
+> model. The trick that makes it work across schemas is *masking*: you replace literal
+> values and table/column names with placeholders before scoring similarity, so
+> "how many users signed up in 2024" and "how many orders shipped in Q3" read as the same
+> skeleton. Cheap, no embedding model, no API key — just masked-token overlap.
 >
-> I found this in our own copy. We store every landing page as a typed object — title,
-> answer bullets, FAQ — and a comment on the bullets field said `Each ≤25 words`. I
-> measured: **25 of ~50 bullets were over, several past 35 words.** Nothing had gone
-> wrong on any single edit. Each PR added a few honest words to one bullet, every diff
-> looked fine in review, and the rule lived in a place — a code comment — that reviewers
-> read once and then stopped seeing. The constraint was real; the enforcement was a human
-> remembering, and humans regress to the mean.
+> Here's the failure I hit. The benchmark question was *"how many of the agent
+> 'support-bot' facts have no expiry date?"* — gold SQL is a scalar
+> `SELECT COUNT(*) FROM facts JOIN agents … WHERE name = 'support-bot' AND expires_at IS NULL`.
+> The retriever confidently returned a *date-range* example: `COUNT(*) FROM orders WHERE
+> order_date >= … AND order_date < …`. Single table, no join, no NULL filter — the wrong
+> shape to teach. I'd had this miss pinned for weeks, labeled "needs a fancier similarity
+> algorithm." That label was wrong.
 >
-> The fix isn't "try harder in review." It's to move the rule into the one layer that
-> can't forget: a test. Six lines — split each bullet on whitespace, collect anything over
-> 25 words, assert the list is empty, and print the offenders on failure. Now the next
-> over-long bullet fails in the PR that writes it, with its own slug named in the error.
-> The style guide stops being aspirational and starts being load-bearing.
+> The real problem: **`COUNT(*)` is not one shape.** A scalar count that returns one
+> number, a `GROUP BY` count that returns a breakdown, and a filtered count over a join
+> are three different answers that share a keyword. My pool had a teacher for the grouped
+> count and one for the single-table range count — but *none* for "one number, through a
+> join, with a NULL predicate." So the question fell to the nearest keyword match. The
+> masking was fine; the *curriculum* had a hole.
 >
-> The general rule: **a constraint enforced by attention decays at the rate attention
-> does.** If you can express it as a predicate over your content — word counts, required
-> sections, "no TODO in published copy," every page cites ≥2 sources — write the predicate,
-> not the guideline. Prose rules are for things you genuinely can't measure. Most of them,
-> it turns out, you can. (This came out of [nlqdb](https://nlqdb.com)'s `/solve` pages,
-> where the bullets feed AI-search citation panels; the guard now ships beside the data.)
+> Adding one example for that shape moved retrieval from 22/23 to 23/23 — and killed the
+> belief that the miss needed a smarter ranker. The lesson generalizes past SQL: **when a
+> retrieval pool returns the confidently-wrong neighbor, suspect a missing shape before
+> the algorithm.** A pool is a curriculum; a question with no teacher gets taught by
+> whoever's closest. Label your shapes by the *answer* they produce (one row? a breakdown?
+> a join?), not the operators they use — operators collide, answers don't. We pin each
+> shape with a held-out cross-domain probe as a unit test, so a regression shows up in CI.
+> (Came out of [nlqdb](https://nlqdb.com)'s text-to-SQL engine; the example pool is in the repo.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — a genuinely useful
-lesson for anyone shipping content-as-code, drawn from a real fix this run (the
-howNlqdbAnswers ≤25-word CI guard, 25 over-budget bullets → 0); the post earns a
-citation without a pitch.
+**Why this advances the north-star:** GLOBAL-025 engine quality — a reproducible lesson
+on dynamic few-shot retrieval from this run's fix (`join-aggregate-filter` pool row, ICP
+retrieval 22/23 → 23/23); earns a citation from practitioners, no pitch.
 
 ## Collapsed — full drafts in git history
 
+- run 104 — dev.to / lobste.rs / r/SEO: "The '25 words max' rule in your style guide is a lie your CMS can't catch." (soft content constraints decay at the rate attention does; ours lived in a code comment and 25 of ~50 bullets had silently drifted over; a six-line test that names offenders on failure makes the rule load-bearing — a predicate over your content belongs in a test, not prose).
 - run 102 — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them." (by 2026 "has an MCP server" is the new "has an API" — universal and uninformative; two MCP shapes look identical in a feature matrix but aren't — one wraps a *destination app* (ask my notebook, answer from my dashboard: read-only over a human's workflow), the other exposes *infrastructure the agent owns* (provision a DB, write rows, migrate schema); the tell is what the agent *owns* after the call returns — a view it can read but not accumulate into is a calculator, not a coworker; ask "what does it let the agent own," not "does it exist").
 - run 103 — dev.to / lobste.rs / r/ExperiencedDevs: "Your style rule lives in a code comment. That's why it's already broken." (the SK-CMP-001 `/vs` "≤16 words per when-to-choose bullet" rule lived only as a TypeScript comment and had silently drifted — one competitor entry held seven over-budget bullets because the diff that broke it touched a different file than the comment; a doc-comment *reads* like enforcement but is not load-bearing, so it decays at the rate attention does; the fix moves the rule into a six-line test that names offenders and fails the next over-long bullet in its own PR — a constraint you can state as "for all X, P(X)" belongs in a predicate, not prose).
 - run 101 — dev.to / lobste.rs / r/ExperiencedDevs: "We shipped the feature. Nine pages still told users we hadn't." (honest "what this doesn't do" copy has a silent failure mode — a "not yet / on the roadmap" line is a dated assertion with nothing watching it, so the day a feature ships the most honest sentence on the site becomes the most dishonest, and no CI job notices because the PR touched `src/` not the marketing copy; two rules — store capability claims in typed/structured data and grep every "roadmap / not shipped" string for a feature's name as part of the same change; the trigger isn't the doc, it's the feature shipping; the fix here deleted nine expired BYO-Postgres promises and wrote the one page the shipped `connect` verb finally made honest).

@@ -50,6 +50,7 @@ export type PlanBucket =
   | "anti-join"
   | "join-aggregate"
   | "filtered-group-by-count"
+  | "join-aggregate-filter"
   | "group-max"
   | "group-order-limit"
   | "group-count-top-n"
@@ -272,6 +273,31 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
     "CREATE TABLE orders (id INTEGER, order_date TEXT, amount REAL)",
     "How many orders were placed in 2023?",
     "SELECT COUNT(*) FROM orders WHERE order_date >= '2023-01-01' AND order_date < '2024-01-01'",
+  ),
+  ex(
+    // A *scalar* COUNT(*) over a JOIN, scoped to one named entity AND a NULL
+    // predicate — "how many <X> for <Y> '<val>' have no <attr>". The shape is
+    // JOIN (to resolve the name) + WHERE name = <val> + WHERE <col> IS NULL +
+    // COUNT(*) with NO GROUP BY: a single number, not a grouped breakdown. The
+    // pool's only other scalar-COUNT demo is `date-range` (a single-table
+    // COUNT(*) … WHERE), so without this row nlqdb's own "how many of the agent
+    // 'support-bot' facts have no expiry date" ICP query (persona-bench q22)
+    // masked to `date-range` — the "how many … date" tokens dominated the
+    // JOIN/NULL signal and taught a single-table range scan with no join or NULL
+    // filter (the last persona-retrieval miss, ICP precision@1 22/23 → 23/23, the
+    // `tools/eval` probe). Distinct from `filtered-group-by-count` (which GROUPs
+    // and returns a per-key breakdown, the wrong grain for a scalar count) and
+    // from `join-aggregate` (a SUM over a join, no named-entity filter, no NULL).
+    // Phrased "have no <attr>" (not "named", not "and how often") so it doesn't
+    // collide with q10's filtered grouped count or q7's plain grouped count.
+    // Ordered last so an unfiltered or grouped count still breaks an exact
+    // masked-Jaccard tie toward an earlier demo — it only wins on a strictly
+    // higher score (q22: 0.6 vs `date-range` 0.4).
+    "join-aggregate-filter",
+    "sqlite",
+    "CREATE TABLE customers (id INTEGER, name TEXT);\nCREATE TABLE orders (id INTEGER, customer_id INTEGER, delivered_at TEXT)",
+    "How many orders for customer 'Acme' have no delivery date?",
+    "SELECT COUNT(*) FROM orders AS T1 JOIN customers AS T2 ON T1.customer_id = T2.id WHERE T2.name = 'Acme' AND T1.delivered_at IS NULL",
   ),
 ];
 
