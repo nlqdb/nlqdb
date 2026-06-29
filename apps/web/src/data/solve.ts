@@ -969,7 +969,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     faqs: [
       {
         q: "How do I connect my existing Postgres to nlqdb?",
-        a: "Once, with the connect verb: `POST /v1/db/connect { engine: \"postgres\", connection_url }`, or `nlq db connect`, the SDK `client.databases.connect`, or the MCP `nlqdb_connect_database` tool. nlqdb validates the connection, introspects your schema, seals the URL at rest, and mints a per-database key. After that you ask in English over your own database.",
+        a: 'Once, with the connect verb: `POST /v1/db/connect { engine: "postgres", connection_url }`, or `nlq db connect`, the SDK `client.databases.connect`, or the MCP `nlqdb_connect_database` tool. nlqdb validates the connection, introspects your schema, seals the URL at rest, and mints a per-database key. After that you ask in English over your own database.',
       },
       {
         q: "Does my data leave my database when I use natural-language queries?",
@@ -987,11 +987,13 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     sources: [
       {
         url: "https://www.reddit.com/r/PostgreSQL/search/?q=natural+language",
-        label: "r/PostgreSQL — recurring threads on natural-language / English querying over an existing Postgres.",
+        label:
+          "r/PostgreSQL — recurring threads on natural-language / English querying over an existing Postgres.",
       },
       {
         url: "https://hn.algolia.com/?q=text+to+sql",
-        label: 'HN search: "text to sql" — discussion on querying your own database in English without a training loop.',
+        label:
+          'HN search: "text to sql" — discussion on querying your own database in English without a training loop.',
       },
       {
         url: "https://www.reddit.com/r/dataengineering/search/?q=text+to+sql",
