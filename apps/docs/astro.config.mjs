@@ -44,6 +44,7 @@ export default defineConfig({
         },
         { label: "MCP", link: "/mcp/" },
         { label: "CLI", link: "/cli/" },
+        { label: "Security", link: "/security/" },
       ],
     }),
   ],

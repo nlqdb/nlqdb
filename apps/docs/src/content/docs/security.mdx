@@ -1,0 +1,66 @@
+---
+title: Security
+description: How nlqdb handles the connection string for your own Postgres or ClickHouse database — encrypted at rest, never stored in your browser, and guarded against internal-network access.
+---
+
+When you connect your own Postgres or ClickHouse database, you hand nlqdb a
+connection string. That string is the most sensitive thing we hold, so it gets
+the strongest handling we have. Here is exactly what happens to it.
+
+## Your connection string is encrypted at rest
+
+The moment your connection string reaches our server it is sealed with
+**AES-256-GCM** authenticated encryption before it is written anywhere. The
+encryption key lives in our infrastructure, never in the database alongside the
+data, so a snapshot of the database alone reveals nothing.
+
+Each sealed credential is **bound to your account**: the encryption is tied to
+your database's identity, so a stored credential cannot be lifted and replayed
+against anyone else's account.
+
+The connection string is sealed in full — nothing of it is stored unencrypted.
+The name you see for a connected database comes from the database name in the
+string (or a label you supply), never from displaying the secret itself.
+
+## It is never stored in your browser
+
+On the connect screen the connection-string field is a masked password input.
+Its value is held only long enough to send the single request that connects your
+database. It is **never** written to `localStorage`, `sessionStorage`, the page
+URL, or browser autofill. Refreshing the page clears it — there is nothing to
+leak from your device.
+
+If a connection fails, the error we show you is a single sentence about the next
+step. We never echo your connection string back into the page.
+
+## We block connections to internal addresses
+
+Because you supply the host we connect to, we run every host through an **egress
+guard** before opening a connection. The guard rejects any address that points
+at a private or internal network — loopback (`127.0.0.1`), private ranges
+(`10.x`, `192.168.x`, …), and the cloud metadata endpoint
+(`169.254.169.254`) — including the encoding tricks (alternate IP notations,
+IPv6-mapped addresses) commonly used to slip past such checks. Host names are
+resolved and re-checked against the same rules, and the check runs again at
+query time to catch a name that changes where it points after connecting.
+
+This protects both you and us from a connection string being used to reach
+somewhere it shouldn't.
+
+## Use a read-only credential
+
+nlqdb only needs to read your schema and run the queries you ask for. We
+recommend connecting with a **read-only database user** scoped to just the
+tables you want to query. That way the credential you hand us can do nothing
+beyond what you intend, no matter what.
+
+## In short
+
+- **Encrypted at rest** with AES-256-GCM, the key held separately from the data, and bound to your account.
+- **Never stored in your browser** — masked input, single use, nothing persisted on your device.
+- **Internal-network access blocked** at connect time and again at query time.
+- **Bring a read-only credential** scoped to the tables you query.
+
+Questions about how we handle your data? See our
+[privacy policy](https://nlqdb.com/privacy), or read the code — nlqdb is
+[open source](https://github.com/nlqdb/nlqdb).

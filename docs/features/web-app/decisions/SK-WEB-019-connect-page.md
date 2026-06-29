@@ -48,7 +48,9 @@ The product-side landing for Door B of the two-door home
   `credentials: "include"`, and on `200` renders the schema-preview card list +
   the "Question it now →" link to `/app?db=<dbId>`. The connection URL is never
   written to `localStorage` / `sessionStorage` / the query string and the field
-  carries `autocomplete="off"`. A `GLOBAL-024` event fires on successful connect
+  carries `autocomplete="off"`. The field hint links "Read more" to the
+  user-facing security page (`docs.nlqdb.com/security/`) so the secrets-handling
+  promise has a destination, not just an inline claim. A `GLOBAL-024` event fires on successful connect
   (`db.connected`, `{ engine }`) so the Door-B funnel reads. PRs that persist
   the connection URL client-side, drop the auth guard, or POST without
   `credentials: "include"` are rejected.
