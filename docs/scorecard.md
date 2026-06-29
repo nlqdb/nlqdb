@@ -52,4 +52,7 @@ budget**. Tightened all 25 to ≤25w (facts preserved) + added a
 CI guard (`solve.test.ts`) naming offenders on failure — the silent-drift fix
 #534 shipped for `/vs` SK-CMP-001, in a non-conflicting file. **Over-budget
 `/solve` bullets 25 → 0**; apps/web 175/175 green, check + lint clean. **KPI:**
-GLOBAL-025 onboarding/UX; none degraded.
+GLOBAL-025 onboarding/UX; none degraded. *(Prior run 103 — the same silent-drift
+fix for `/vs` SK-CMP-001 "≤16 words per comparison bullet": added a
+`competitors.test.ts` guard naming offenders + tightened the Outerbase entry's 7
+over-budget bullets; **over-budget `/vs` bullets 7 → 0**, integrity tests 13 → 14.)*

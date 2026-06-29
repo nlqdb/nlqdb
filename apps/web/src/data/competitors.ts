@@ -293,16 +293,16 @@ export const COMPETITORS: Competitor[] = [
     oneLiner:
       "Pick Outerbase if you already run a production database and want an AI-assisted admin UI — spreadsheet edits, EZQL natural-language queries, dashboards — sitting on top of it. Pick nlqdb if you want the database itself provisioned, schema evolved via English, and one HTML element rendering answers in your own app.",
     whenChooseUs: [
-      "You want destructive operations and schema changes diff-previewed before they apply, even when an English request triggered them.",
-      "You want to embed the answer inside your own product via one HTML element, not link out to a hosted admin UI.",
-      "You're spinning up a new feature or service that needs its own database — nlqdb provisions Postgres on the first query.",
-      "An AI agent needs to provision its own database via MCP — `nlqdb_query` materialises Postgres on first reference, the on-ramp Outerbase doesn't ship.",
+      "Destructive ops and schema changes get a diff preview before they apply, even from English.",
+      "Embed the answer in your own product via one HTML element, not a hosted admin UI.",
+      "A new feature or service needs its own database; nlqdb provisions Postgres on the first query.",
+      "Via MCP, an AI agent provisions its own database: `nlqdb_query` materialises Postgres on first reference.",
     ],
     whenChooseThem: [
       "You already run a production Postgres / MySQL / Snowflake / BigQuery you can't migrate.",
-      "You want a spreadsheet-style editor + dashboards + data catalog UI — admin-tool shape, not a chat box.",
-      "Your engine isn't Postgres today (MySQL, MongoDB, Snowflake, BigQuery, ClickHouse, Redshift, MSSQL) — Outerbase ships across all of them now; nlqdb is Postgres-first (ClickHouse Phase 2).",
-      "HIPAA or SOC 2 Type 2 certification is a hard requirement today — Outerbase's Enterprise tier carries both; nlqdb is pre-alpha and carries neither yet.",
+      "You want a spreadsheet editor, dashboards, and a data-catalog UI: admin-tool shape, not a chat box.",
+      "Your engine isn't Postgres (MySQL, Mongo, Snowflake, BigQuery, Redshift, MSSQL); Outerbase covers all, nlqdb is Postgres-first.",
+      "HIPAA or SOC 2 Type 2 is required: Outerbase's Enterprise tier carries both, nlqdb neither.",
     ],
     features: [
       { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
