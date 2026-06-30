@@ -11,48 +11,49 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-30 (run 116) — dev.to / r/mcp / r/LLMDevs: "A federated query engine connects your agent to the data you have. Some agents need data they don't have yet."
+## 2026-06-30 (run 117) — dev.to / r/devops / r/sysadmin: "Your cron jobs already write run history. You just can't query it."
 
-**Where:** dev.to + r/mcp + r/LLMDevs; for agent/backend builders evaluating "the MCP server for
-my data" — MindsDB's federated-query lane — who haven't separated *connecting to existing sources*
-from *provisioning a store the agent owns*. nlqdb mentioned once, as the provision-and-own half.
+**Where:** dev.to + r/devops + r/sysadmin; for backend engineers and ops who run scheduled work
+(cron, queue workers, ETL, cleanup scripts) and answer "which job fails most" by grepping logs.
+nlqdb mentioned once, as the queryable-store-plus-English-query half — not a scheduler or monitor.
 
-**Title:** A federated query engine connects your agent to the data you have. Some agents need data they don't have yet.
+**Title:** Your cron jobs already write run history. You just can't query it.
 
 **Body:**
 
-> The cleanest idea in the "give my agent data" space right now is federation: stand up one endpoint
-> that speaks SQL over the 200+ sources you already run — Postgres, Snowflake, Slack, Gmail, a pile
-> of files — and let the agent query across all of them without juggling a connection per source.
-> MindsDB does this well, and wrapping it in an MCP server ("the only MCP server you'll ever need")
-> is the right packaging: the agent reads your whole data estate through one door, and you can train
-> ML models in SQL and index unstructured docs as knowledge bases on top.
+> Every team running scheduled work — nightly cron, queue workers, ETL, cleanup scripts —
+> eventually asks the same three questions: which job fails most, how long does each take, how many
+> ran today. And every team answers them the same bad way: SSH in and grep the scheduler logs,
+> scroll a JSON column, or eyeball stdout nobody reads. Those are aggregations — failures per job,
+> p95 duration, runs per day — and a flat log is the wrong shape for an aggregation. You're
+> hand-counting what a `GROUP BY` should count.
 >
-> But "connect the agent to data you have" quietly assumes the data already exists, lives in a system
-> you administer, and is modelled well enough to query. A lot of agent work isn't that. An agent that
-> logs what it did, remembers structured facts, and later answers "how many of those this week,
-> grouped by type" needs a place to *write* — a database it provisions and owns, not a read-mostly
-> view federated across systems someone else set up. Those are two different jobs. Federation is a
-> universal adapter over existing sources; provisioning is standing up a fresh queryable store from
-> nothing. Reaching for the adapter when you needed the store means modelling and connecting sources
-> that don't exist yet.
+> Two honest halves here, like every "store events" problem. *Capture* is trivial: one row per run
+> — `{job, status, duration_ms, started_at}` — written from your job's exit hook. *Reporting* is the
+> part that quietly eats an afternoon: the windowed query, the schema, the place to put it. Even
+> Postgres's own `pg_cron` keeps a `cron.job_run_details` table precisely because run history is
+> worth querying — and then leaves you to write the rollups (and a second job to prune it).
 >
-> (The provision-and-own half is what we built [nlqdb](https://nlqdb.com) for: an agent calls one MCP
-> tool with an English goal, nlqdb materialises a Postgres on first reference — no connection string,
-> no schema authored by hand — and answers in English with the compiled SQL shown so you can audit
-> the grain, every write diff-previewed before it applies. Honest split — there's no 200-source
-> federation, no in-database ML training, no unstructured RAG; if querying across many systems you
-> already run is the job, MindsDB is the right shape, and the two compose — federate the existing
-> estate, provision the agent's own working store.)
+> A dedicated monitor (Healthchecks.io, Cronitor) is the right tool for the *other* question — "did
+> this job run at all?" — the dead-man's-switch heartbeat that pages you when a job goes silent.
+> That's genuinely different from "which job fails most over the runs that did happen." One watches
+> for absence; the other reports over presence. They compose; neither replaces the other.
+>
+> (The reporting half is what we built [nlqdb](https://nlqdb.com) for: provision a Postgres, write
+> each run with `POST /v1/run` from your exit hook, then ask "failure rate per job this week" in
+> English with the compiled SQL shown so you can audit the grain. Honest split — nlqdb is not a
+> scheduler and does no heartbeat alerting; it stores the run records you write and gives you a
+> query planner over them.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides "MindsDB / MCP server for my
-data / federated query engine for AI" search intent surfaced by the `/vs/mindsdb` page shipped this
-run, with a connect-vs-provision framing that earns a citation without a pitch and concedes the
-no-federation/no-ML/no-RAG line honestly (the GLOBAL-036 "a database, not just an adapter" wedge).
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides "monitor cron / background
+job failures" search intent surfaced by the `/solve/track-background-job-run-history` page shipped
+this run, with a capture-vs-reporting + presence-vs-absence framing that earns a citation without a
+pitch and concedes the no-scheduler/no-heartbeat line honestly.
 
 ## Collapsed — full drafts in git history
 
-- run 115 — dev.to / r/SaaS / Indie Hackers: "Product analytics is two problems. Only one of them needs a warehouse." (the most upvoted "just store events in Postgres" reply is right and hides the work — product analytics is *capture* (a tiny `{user,event,ts,props}` insert) and *reporting* (DAU / top-features / funnel aggregations that want a query planner); per-event SaaS prices you out exactly when a side project can least pay and a warehouse+pipeline is wildly oversized for 40k events and one question a week, so the honest middle is a Postgres you own with events as rows — the only missing piece being that every question is a hand-written windowed `GROUP BY`; honest split — nlqdb has no autocapture SDK / session replay / funnel dashboard, for those PostHog is the right shape and the two compose; anchors `/solve/track-product-usage-without-a-data-warehouse`).
+- run 116 — dev.to / r/mcp / r/LLMDevs: "A federated query engine connects your agent to the data you have. Some agents need data they don't have yet." (the cleanest "give my agent data" idea is federation — one SQL endpoint over the 200+ sources you already run, which MindsDB does well and wraps in an MCP server; but "connect to data you have" assumes the data already exists in a system you administer, while a lot of agent work — logging what it did, remembering structured facts, then "how many of those this week grouped by type" — needs a store the agent *provisions and owns*, not a read-mostly federated view; federation is a universal adapter over existing sources, provisioning stands up a fresh queryable store from nothing; honest split — nlqdb has no 200-source federation, no in-database ML training, no unstructured RAG, for querying across many systems you already run MindsDB is the right shape and the two compose; anchors `/vs/mindsdb`, the GLOBAL-036 "a database, not just an adapter" wedge).
+- run 115 — dev.to / r/SaaS / Indie Hackers: "Product analytics is two problems. Only one of them needs a warehouse." (the most-upvoted "what do you use for product analytics" answer is "just store events in Postgres and query them" — right, and it hides the work; product analytics is *capture* (a tiny `{user, event, ts, props}` insert) vs *reporting* (windowed `GROUP BY` that wants a planner); per-event SaaS prices you off a tier exactly when a side project can least pay and a warehouse is oversized for 40k events; honest split — no autocapture/replay/funnel UI, PostHog is right for those and the two compose; anchors `/solve/track-product-usage-without-a-data-warehouse`).
 - run 114 — dev.to / r/dataengineering / r/analytics: "Your analytics canvas is where humans look. Your product runs where no one's looking." (the new agentic-analytics canvases — Count put SQL+Python+visuals on one freeform whiteboard and dropped the notebook metaphor ("Bye-bye notebooks. Hello, canvas."), an AI agent exploring your warehouse alongside you — are genuinely good *for a data team watching the cell*; the trouble starts when someone wires that agent into the product (its MCP endpoint behind an in-app "ask your data" box, a 3am refresh, an agent answering mid-conversation), because a canvas assumes a human reads the SQL and eyeballs the chart and a runtime has none of that; the two aren't competitors, they're different altitudes — interactive analysis wants a fast forgiving human-in-the-loop, headless runtime wants the SQL inspectable *before* it runs and any write diff-previewed *before* it applies; honest split — nlqdb has no canvas/Python/charts, for collaborative exploration over a warehouse you run Count/Hex/Mode/Fabi.ai is right and the two compose; anchors `/vs/count`).
 - run 113 — dev.to / r/webdev / r/node: "The webhook receiver is the easy half. The database behind it is the part nobody wants to own." (the receiver is a 20-minute job — accept the POST, verify the signature, return 200; the skipped part is the queryable store behind it, where "how many `checkout.session` events failed yesterday by error code" means standing up Postgres, schema-ing a payload the provider mutates without warning, and hand-writing reporting `GROUP BY`s; patterns — JSONB payload beside extracted columns for idempotency, and separate *capture* from *reporting*; honest split — nlqdb is not the receiver and does no signature verification; anchors `/solve/store-and-query-webhook-events`).
 - run 112 — dev.to / r/dataengineering / r/LLMDevs: "Your notebook's AI analyst assumes someone's watching the cell. Your product runs when no one is." (the AI-notebook tools — Fabi.ai's "Smartbooks," Hex, Mode — are genuinely good at interactive exploration where a human watches each cell, accepts the agent's suggestion, and iterates; the loop bakes in a human-in-the-loop assumption that breaks when you wire that same agent or its MCP endpoint onto an unattended product path — a 3am dashboard refresh, an in-app "ask your data" box, an agent answering mid-conversation — where the SQL must be inspectable *before* it runs and a write diff-previewed *before* it applies; the fix isn't distrusting the notebook, it's not conflating two altitudes — interactive analysis vs headless runtime want different guarantees and compose; honest split — nlqdb has no notebook/Python/charts, for interactive exploration Fabi.ai or Hex is right; anchors `/vs/fabi`).
@@ -75,11 +76,9 @@ no-federation/no-ML/no-RAG line honestly (the GLOBAL-036 "a database, not just a
 - run 68 — "Your offline LLM eval isn't measuring your model — it's measuring your rate limits" (a tiny NL→SQL bench on a free multi-provider chain scored 17/20 then 6/20 ninety seconds later; the engine didn't regress, the providers got tired — `circuit_open`/`rate_limited` errors with p50=0ms are availability, not accuracy; throttle to measure reasoning, pause-and-resume on exhaustion, keep the smoke test apart from the powered windowed run).
 - run 67 — "AI made the internal-tool builder faster. It didn't ask whether you needed the tool." (low-code AI — AppGen / Ask AI / agents — scaffolds the admin tool faster, but the output is still a destination a human builds and operates; often the answer belongs inline in the product you already ship, or the asker is an agent that wants a backend primitive, not a built tool — check whether the AI sped up the workflow or the outcome; anchors `/vs/retool`).
 
-*(runs 56–66 moved to [`distribution-queue-archive.md`](./distribution-queue-archive.md) under D4.)*
+*(runs 51–52, 56–66 moved to [`distribution-queue-archive.md`](./distribution-queue-archive.md) under D4.)*
 - run 55 — "Your text-to-SQL accuracy is measured on schemas your users will never build" (BIRD/Spider run over messy 20–100-table academic schemas, not the small clean ones your users build; we added a third benchmark — hand-authored gold NL→SQL over the ICP shape, same EX scorer, literal-date gold so it never drifts with the clock; anchors persona-bench, SK-QUAL-018).
 - run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no GROUP BY/COUNT/JOIN/HAVING; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
-- run 52 — "Some few-shot retrieval misses can't be fixed with lexical *selector* tricks — and measuring *why* is the win" (stopword filter regressed 18/20 → 17/20, phrase-normalisation flat, held-out 14/14; the verdict was later narrowed by runs 74/76 to selector-*code* tweaks — pool-exemplar phrasing turned out to be the live lever; both selector experiments reverted).
-- run 51 — "The most common query in your product has no row in your benchmark" (error-class taxonomies omit easy high-frequency shapes; "show the 10 most recent signups" retrieved a `GROUP BY` demo; +plain `ORDER BY … LIMIT` row, held-out 13/13 → 14/14, own-query 18/20 held).
 - runs 8–18, 33, 37, 39, 41–44, 46, 48 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)

@@ -43,18 +43,18 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-30 (run 116)** — hard numbers stay gated (eval `run_workflow` dispatch
-re-confirmed **403 "not accessible by integration"** — carries to the cron lane;
-funnel re-pull network-blocked) → a measured **onboarding/UX** lever on the
-**`/vs`** lane (no open PR): a comparison page for **MindsDB** (`/vs/mindsdb`),
-the open-source "Federated Query Engine for AI" / "only MCP server you'll ever
-need". Honest connect-vs-provision split: MindsDB federates 200+ existing sources
-behind one PostgreSQL-wire/MCP endpoint + in-DB ML + knowledge bases; nlqdb
-provisions and owns a Postgres from English, SQL shown, writes diff-previewed —
-conceding no federation / ML-training / RAG. Classified **P4** (not P2): the P2
-path hardwires the agent-memory OG card + cross-link, false for a query engine.
-**Comparison pages 25 → 26**; facts web-verified, 176 web tests green (incl. 14
-competitor invariants), `astro check` 0 errors. Artifact: a dev.to / r/mcp /
-r/LLMDevs draft ("a federated query engine connects your agent to the data you
-have; some agents need data they don't have yet"). **KPI:** GLOBAL-025
-onboarding/UX; none degraded.
+**2026-06-30 (run 117)** — hard numbers stay gated (eval dispatch 403; funnel
+re-pull network-blocked) and the `/vs` lane was busy (merged PR #549, run 116
+`/vs/mindsdb`) → a measured **onboarding/UX** lever on the parallel **`/solve`**
+lane (no collision): a pain page for **logging background-job / cron run history
+and querying which job fails most** (`track-background-job-run-history`, P4
+backend engineer). Honest split: log each run via SDK / `POST /v1/run`, ask
+"failure rate per job this week" in English with the SQL shown; nlqdb is not a
+scheduler and does no heartbeat alerting — Healthchecks.io/Cronitor's job, the
+two compose. **Solve pages 21 → 22 · P4 coverage 3 → 4**; web-verified demand
+(r/devops cron-monitoring threads; `pg_cron` keeps a queryable run-history
+table), 176 web tests green, solve invariants pass, biome clean. Artifact: a
+dev.to / r/devops / r/sysadmin draft ("your cron jobs already write run history;
+you just can't query it"). **KPI:** GLOBAL-025 onboarding/UX; none degraded.
+*(Prior run 116 — `/vs/mindsdb`, comparison pages 25 → 26, P4 federated-query
+connect-vs-provision wedge.)*
