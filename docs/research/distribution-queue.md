@@ -11,49 +11,48 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-30 (run 121) — dev.to / r/SQL / r/dataengineering: "The top-N-per-group query everyone re-Googles."
+## 2026-06-30 (run 122) — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead."
 
-**Where:** dev.to + r/SQL + r/dataengineering; for analysts and PMs who can read SQL but reach for
-help every time they need the top rows *within each group*. nlqdb mentioned once, as the "ask in
-English, see the SQL" half — not a BI tool.
+**Where:** dev.to + r/SQL + r/PostgreSQL; for analysts and PMs who want a pivot table — rows turned
+into columns — and find that the answer in Postgres isn't a keyword. nlqdb mentioned once, as the
+"ask in English, read the SQL" half — not a BI tool.
 
-**Title:** The top-N-per-group query everyone re-Googles.
+**Title:** Postgres has no PIVOT keyword. Here's the query you write instead.
 
 **Body:**
 
-> There's a question every analyst asks and almost nobody writes from memory: the top *N* rows in
-> each group. Top 3 products per category. The most recent order per customer. The highest-scoring
-> attempt per user. It even has a name on Stack Overflow — `greatest-n-per-group` — because it comes
-> up that often.
+> Every reporting cycle someone needs the same shape: rows turned into columns. Revenue per product
+> with months across the top. Signups per plan, one column per week. Counts per status, side by
+> side. It's the pivot — or crosstab — and SQL Server even has a `PIVOT` keyword for it.
 >
-> The trap is that the obvious tool is the wrong one. `GROUP BY category` with `MAX(revenue)` gives
-> you the top *value* per group, but it throws away the rest of the row — you learn the number, not
-> *which* product. To keep the whole row you need a window function — `ROW_NUMBER() OVER (PARTITION
-> BY category ORDER BY revenue DESC)` in a subquery, filtered to rank ≤ 3 — or a lateral join.
-> That's a different query than the one you started typing, and it's just unusual enough to look up
-> every single time.
+> Postgres doesn't. So you reach for it, find nothing, and re-learn the two real answers each time.
+> The portable one is conditional aggregation: one `SUM(amount) FILTER (WHERE month = 'Jan')` per
+> column you want, repeated for every bucket — readable, but tedious and easy to mis-bucket. The
+> other is `crosstab()` from the `tablefunc` extension, which most people don't have enabled and
+> whose column-definition list trips everyone the first few times.
 >
-> And the details bite quietly. Partition by the wrong column and your groups are wrong. Forget the
-> tiebreak and `ROW_NUMBER` picks arbitrarily when two rows tie — when you wanted `RANK` or
-> `DENSE_RANK` to keep both. It's a ranking question wearing window-function clothes.
+> Either way a plain `GROUP BY` gives you tall rows — month, product, total, stacked vertically —
+> when the spreadsheet wanted them wide. Reshaping that into columns is the part that gets Googled.
 >
-> This is exactly the case for asking in plain English and *reading the SQL it generates*. "Top 3
-> products per category by revenue" should hand back both the ranked rows and the `ROW_NUMBER() OVER
-> (PARTITION BY ...)` it ran, so you can confirm it partitioned on the right column and broke ties
-> the way you meant before you trust it.
+> This is a good case for asking in plain English and *reading the SQL it generates*. "Revenue per
+> product, one column per month" should hand back both the wide table and the `SUM(...) FILTER
+> (WHERE ...)` it ran, so you can confirm each column maps to the bucket you meant before you trust
+> the report.
 >
-> (That's the half we built [nlqdb](https://nlqdb.com) for: ask the ranked question in English over
-> a Postgres it provisions, or one you already run via a signed-in connect, and get the rows plus
-> the compiled SQL. Honest split — it's a one-off read-only ranked answer, not a live "top sellers"
-> dashboard or a rank-change alert; ranking is exact SQL ordering on the columns you name, not fuzzy
-> or learned relevance.)
+> (That's the half we built [nlqdb](https://nlqdb.com) for: ask the wide report in English over a
+> Postgres it provisions, or one you already run via a signed-in connect, and get the rows plus the
+> compiled SQL. Honest split — the pivot columns have to be ones you can name, it's a one-off
+> read-only answer rather than a live crosstab dashboard, and it's exact SQL over current rows, not
+> a cached spreadsheet paste.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the perennial
-`greatest-n-per-group` search intent surfaced by the `/solve/find-top-n-rows-per-group` page shipped
-this run; the read-the-SQL / verify-the-partition framing earns a citation without a pitch and
-concedes the read-only and exact-ordering lines honestly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the perennial pivot/crosstab
+search intent surfaced by the `/solve/pivot-rows-into-columns` page shipped this run; the
+no-PIVOT-keyword-in-Postgres hook plus read-the-SQL framing earns a citation without a pitch and
+concedes the named-columns and read-only limits honestly.
 
 ## Collapsed — full drafts in git history
+
+- run 121 — dev.to / r/SQL / r/dataengineering: "The top-N-per-group query everyone re-Googles." (the top *N* rows per group has a Stack Overflow tag — `greatest-n-per-group` — because it comes up constantly; the obvious `GROUP BY` + `MAX` gives the top *value* but throws away the rest of the row, so keeping the whole row needs `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` filtered to rank ≤ N or a lateral join — a different query than you started typing, and the partition/tiebreak bite quietly; ask in English and read the SQL so you verify the partition and whether ties wanted `RANK`/`DENSE_RANK`; honest split — one-off read-only ranked answer, not a live dashboard or rank-change alert, exact ordering not fuzzy; anchors `/solve/find-top-n-rows-per-group`).
 
 - run 120 — dev.to / r/dataengineering / r/LLMDevs: "Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest." (Dataherald/Vanna/Wren open-sourced the whole NL→SQL engine — the model half is now an MIT-licensed commodity you wire up in an afternoon — but ship it to people who don't know your schema and demo accuracy evaporates; the fix every engine reaches for is *golden SQL*, hand-curated question→query training pairs plus business context tuned to your tables, a standing maintenance job on whoever owns the data model, not a flaw but the part the README undersells; honest evaluation isn't "can it generate SQL" but "who keeps it accurate as the schema moves, and do I already run the warehouse it assumes" — if you run a real warehouse + data team that wants that control an OSS engine is exactly right; honest split — nlqdb *owns* the Postgres it answers and skips golden SQL by prompting from the live schema fingerprint, so no warehouse federation / no golden-SQL knobs, query Snowflake/BigQuery in place and the OSS engine wins; anchors `/vs/dataherald`).
 - run 119 — dev.to / r/SQL / r/analytics: "The duplicate-rows query you re-Google every six weeks." (the find-duplicates answer hasn't changed in thirty years — `GROUP BY` the suspect columns, `HAVING COUNT(*) > 1` — yet non-daily-SQL folks look it up every time, and wanting the *whole* duplicate row not just the key pushes you into a `ROW_NUMBER()` window function, a different query than you Googled; ask in English and read the SQL so you verify the grain; honest split — nlqdb reports duplicates read-only, which row to keep/merge is a deliberate write, matching is exact not fuzzy; anchors `/solve/find-duplicate-rows-in-my-data`).
@@ -61,9 +60,9 @@ concedes the read-only and exact-ordering lines honestly.
 - run 117 — dev.to / r/devops / r/sysadmin: "Your cron jobs already write run history. You just can't query it." (which-job-fails-most / how-long / how-many-ran are aggregations grepped out of scheduler logs the wrong way; capture is one row per run, reporting is the windowed `GROUP BY`, and even `pg_cron` keeps a `cron.job_run_details` table because run history is worth querying; a heartbeat monitor like Healthchecks.io/Cronitor answers the *other* question — did it run at all, the dead-man's-switch — presence-vs-absence, not which-fails-most; honest split — nlqdb is no scheduler and does no alerting, it stores the runs you write and gives a planner over them; anchors `/solve/track-background-job-run-history`).
 - run 116 — dev.to / r/mcp / r/LLMDevs: "A federated query engine connects your agent to the data you have. Some agents need data they don't have yet." (federation — one SQL endpoint over the 200+ sources you already run, which MindsDB does well and wraps in an MCP server — assumes the data already exists in a system you administer; but much agent work (logging what it did, remembering structured facts, then "how many this week by type") needs a store the agent *provisions and owns*, not a read-mostly federated view; honest split — nlqdb has no 200-source federation / in-database ML / unstructured RAG, for querying across systems you run MindsDB is right and the two compose; anchors `/vs/mindsdb`, the GLOBAL-036 "a database, not just an adapter" wedge).
 - run 115 — dev.to / r/SaaS / Indie Hackers: "Product analytics is two problems. Only one of them needs a warehouse." (the most-upvoted "what do you use for product analytics" answer is "just store events in Postgres and query them" — right, and it hides the work; product analytics is *capture* (a tiny `{user, event, ts, props}` insert) vs *reporting* (windowed `GROUP BY` that wants a planner); per-event SaaS prices you off a tier exactly when a side project can least pay and a warehouse is oversized for 40k events; honest split — no autocapture/replay/funnel UI, PostHog is right for those and the two compose; anchors `/solve/track-product-usage-without-a-data-warehouse`).
-- run 114 — dev.to / r/dataengineering / r/analytics: "Your analytics canvas is where humans look. Your product runs where no one's looking." (the new agentic-analytics canvases — Count put SQL+Python+visuals on one freeform whiteboard and dropped the notebook metaphor ("Bye-bye notebooks. Hello, canvas."), an AI agent exploring your warehouse alongside you — are genuinely good *for a data team watching the cell*; the trouble starts when someone wires that agent into the product (its MCP endpoint behind an in-app "ask your data" box, a 3am refresh, an agent answering mid-conversation), because a canvas assumes a human reads the SQL and eyeballs the chart and a runtime has none of that; the two aren't competitors, they're different altitudes — interactive analysis wants a fast forgiving human-in-the-loop, headless runtime wants the SQL inspectable *before* it runs and any write diff-previewed *before* it applies; honest split — nlqdb has no canvas/Python/charts, for collaborative exploration over a warehouse you run Count/Hex/Mode/Fabi.ai is right and the two compose; anchors `/vs/count`).
+- run 114 — dev.to / r/dataengineering / r/analytics: "Your analytics canvas is where humans look. Your product runs where no one's looking." (agentic-analytics canvases like Count are great for a data team watching the cell, but wiring that agent into the product — MCP endpoint behind an "ask your data" box, a 3am refresh — breaks the human-in-the-loop a canvas assumes; interactive analysis vs headless runtime are different altitudes and compose; honest split — nlqdb has no canvas/Python/charts; anchors `/vs/count`).
 - run 113 — dev.to / r/webdev / r/node: "The webhook receiver is the easy half. The database behind it is the part nobody wants to own." (the receiver is a 20-minute job — accept the POST, verify the signature, return 200; the skipped part is the queryable store behind it, where "how many `checkout.session` events failed yesterday by error code" means standing up Postgres, schema-ing a payload the provider mutates without warning, and hand-writing reporting `GROUP BY`s; patterns — JSONB payload beside extracted columns for idempotency, and separate *capture* from *reporting*; honest split — nlqdb is not the receiver and does no signature verification; anchors `/solve/store-and-query-webhook-events`).
-- run 112 — dev.to / r/dataengineering / r/LLMDevs: "Your notebook's AI analyst assumes someone's watching the cell. Your product runs when no one is." (the AI-notebook tools — Fabi.ai's "Smartbooks," Hex, Mode — are genuinely good at interactive exploration where a human watches each cell, accepts the agent's suggestion, and iterates; the loop bakes in a human-in-the-loop assumption that breaks when you wire that same agent or its MCP endpoint onto an unattended product path — a 3am dashboard refresh, an in-app "ask your data" box, an agent answering mid-conversation — where the SQL must be inspectable *before* it runs and a write diff-previewed *before* it applies; the fix isn't distrusting the notebook, it's not conflating two altitudes — interactive analysis vs headless runtime want different guarantees and compose; honest split — nlqdb has no notebook/Python/charts, for interactive exploration Fabi.ai or Hex is right; anchors `/vs/fabi`).
+- run 112 — dev.to / r/dataengineering / r/LLMDevs: "Your notebook's AI analyst assumes someone's watching the cell. Your product runs when no one is." (AI-notebook tools — Fabi.ai, Hex, Mode — shine at interactive exploration with a human watching each cell, but the same agent on an unattended product path (3am refresh, in-app "ask your data") needs the SQL inspectable and writes diff-previewed *before* they run; two altitudes, not competitors; honest split — nlqdb has no notebook/Python/charts; anchors `/vs/fabi`).
 - run 111 — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned." (the agent-memory frontier is *modelling* not recall — Honcho's dialectic theory-of-mind builds a model of *how each user reasons*, the right primitive for "explain or just do for this person"; but a different-shaped question arrives the week after launch — "how many pro-tier users completed onboarding this month, grouped by signup week" is `COUNT`/`GROUP BY`/`JOIN`/threshold, and a user model can't answer *how many of them did X*; the two compose once you stop expecting one store to do both — a user-modelling layer for how someone reasons, a relational layer for how many did what; honest limit — nlqdb has no user model or theory-of-mind, for "how does this person think" Honcho is the right shape; anchors `/vs/honcho`).
 - run 110 — dev.to / r/dataengineering / r/BusinessIntelligence: "Your BI tool got acquired. Your data layer shouldn't have to care." (the analyst notebook (Mode → ThoughtSpot, Looker → Google, Periscope → Sisense) is a roll-up target and each acquisition rewrites the AI story on top of it — fine when it's a *destination* humans log into to explore and publish; not fine when you've wired it into your *product*, because your runtime then inherits whatever the next buyer does to that notebook's API/pricing/AI direction; name the split — a destination analytics app and a runtime data layer are different altitudes, the first is where humans look, the second is what your software calls; honest caveat — nlqdb is not a notebook or BI suite, for collaborative analysis/charts/dashboards a Mode or Hex is right and the two compose; anchors `/vs/mode`).
 - run 109 — dev.to / r/SaaS / r/ExperiencedDevs: "The text-to-SQL demo takes an afternoon. The other 90% is why you should buy it." (the obvious "ask your data" build — prompt + schema + model + run the SQL — is 10% of the job; production adds a fail-closed verb-allowlist validator, a plan cache keyed on question + schema version, and an eval harness watching a labelled set, all yours to maintain forever for a non-core feature; the honest buy-vs-build test isn't "can I generate SQL from English" but "do I want to own that stack" — if it's a reporting tab / search box / in-app assistant, buy and embed; honest caveat — hosted pipeline you embed, not a vendored library, and many users over their own rows still means a DB or isolation scope per tenant; anchors `/solve/add-ask-your-data-feature-without-building-text-to-sql`).

@@ -1456,6 +1456,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "pivot-rows-into-columns",
+    persona: "P3 analyst",
+    searchTitle: "How do I pivot rows into columns in SQL without writing a crosstab query?",
+    oneLiner:
+      "If you need a pivot table — rows turned into columns, like revenue per product with one column per month — ask in plain English instead of hand-writing a crosstab. nlqdb compiles the conditional aggregation, runs it in Postgres, and shows the SQL so you can verify the buckets.",
+    painContext:
+      "PMs, ops, and analysts hit this every reporting cycle — revenue per product with months across the top, signups per plan by week, counts per status as columns. It's the pivot / crosstab problem, and the SQL is fiddly: Postgres has no `PIVOT` keyword, so the answer is conditional aggregation (`SUM(...) FILTER (WHERE ...)` or `SUM(CASE WHEN ... THEN ...)`) — one expression per output column — or the `crosstab()` function from the `tablefunc` extension. Either way it gets re-Googled every time or filed as a data ticket, and a plain `GROUP BY` gives you tall rows, not the wide table the spreadsheet wants.",
+    demoGoal: "total revenue per product with one column for each month this year",
+    demoWhy:
+      "The exact wide report you'd otherwise hand-write with one CASE expression per month is one English goal here, with the SQL shown so you can check each bucket.",
+    howNlqdbAnswers: [
+      "Ask 'revenue per product, one column per month'; nlqdb compiles the conditional aggregation (`SUM(...) FILTER (WHERE month = ...)`) and runs it in Postgres.",
+      "Every answer returns the pivoted table plus the compiled SQL under a trace toggle (`SK-WEB-005`) — confirm each column's bucket before trusting it.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to pivot your real data.",
+      "Repeated pivots hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same wide report returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "The pivot columns must be ones you can name — 'months this year', 'these three statuses'. A fully dynamic crosstab over a category set unknown until query time needs that list resolved first; nlqdb doesn't generate columns from values it hasn't seen.",
+      "nlqdb returns the pivoted table with a read-only SELECT — it's not a BI tool maintaining a live crosstab dashboard or refreshing the wide report on a schedule. That's a scheduled job's work.",
+      "The public `<nlq-data>` embed is read-scoped — it reshapes and surfaces rows, it doesn't write. No write key belongs in client HTML; loading the data goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I pivot rows into columns without writing a crosstab query?",
+        a: "Ask in plain English — 'revenue per product, one column per month.' nlqdb compiles the conditional aggregation (one `SUM(...) FILTER (WHERE ...)` per output column), runs it in Postgres, and returns the wide table plus the SQL it ran. You get the pivot without hand-writing a CASE expression per column or wiring the `tablefunc` extension. The honest limit: the columns must be ones you can name.",
+      },
+      {
+        q: "Does nlqdb use SQL Server's PIVOT keyword or Postgres crosstab?",
+        a: "Neither by default — nlqdb is Postgres-first, and the portable pivot pattern there is conditional aggregation: `SUM(amount) FILTER (WHERE month = 'Jan')` as one column, repeated per bucket. That needs no `PIVOT` keyword (Postgres has none) and no `tablefunc` extension. The compiled SQL shows under the trace toggle so you can confirm each column maps to the bucket you meant.",
+      },
+      {
+        q: "Can I pivot a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the wide report in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the pivot with a read-only query — it doesn't persist a materialized crosstab for you.",
+      },
+      {
+        q: "Why not just pivot in Excel or a spreadsheet?",
+        a: "A spreadsheet pivot table works once you've exported the rows — but it's a manual copy each refresh, capped by row count, and detached from the live data. Asking nlqdb runs the aggregation in the database against current rows and shows the SQL, so the wide report is reproducible and auditable rather than a stale paste. Export the result to a sheet afterward if you like.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/pivot",
+        label:
+          "Stack Overflow — the `pivot` tag, the perennial 'turn rows into columns' hub across SQL dialects.",
+      },
+      {
+        url: "https://wiki.postgresql.org/wiki/Pivot_Tables",
+        label:
+          "PostgreSQL Wiki — evergreen 'Pivot Tables' page (conditional aggregation + `crosstab()` methods).",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/tablefunc.html",
+        label:
+          "PostgreSQL docs — the `tablefunc` extension `crosstab()` reference, the canonical Postgres pivot primitive.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
