@@ -33,26 +33,28 @@
 
 .keys__title {
   margin: 0 0 8px;
-  font-family: var(--mono);
+  font-family: var(--sans);
+  font-weight: 600;
   font-size: clamp(22px, 3vw, 28px);
   letter-spacing: -0.02em;
 }
 
 .keys__lede {
   margin: 0;
-  font-family: var(--mono);
-  font-size: 13px;
+  font-family: var(--sans);
+  font-size: 14px;
   color: var(--fg-dim);
   max-width: 56ch;
   line-height: 1.5;
 }
 
 .keys__status {
-  font-family: var(--mono);
-  font-size: 13px;
+  font-family: var(--sans);
+  font-size: 14px;
   color: var(--fg-dim);
   padding: 16px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--rule-2);
+  border-radius: var(--r-md);
 }
 
 .keys__status--error {
@@ -66,10 +68,11 @@
   align-items: flex-start;
   gap: 16px;
   padding: 24px;
-  border: 2px dashed var(--border);
+  border: 1px dashed var(--rule-2);
+  border-radius: var(--r-lg);
   background: var(--bg-elev);
-  font-family: var(--mono);
-  font-size: 13px;
+  font-family: var(--sans);
+  font-size: 14px;
   color: var(--fg-dim);
 }
 
@@ -129,7 +132,8 @@
   gap: 16px;
   align-items: center;
   padding: 14px 16px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
   background: var(--bg-elev);
 }
 
@@ -202,8 +206,9 @@
 .keys-list__type {
   font-family: var(--mono);
   font-size: 11px;
-  padding: 2px 6px;
-  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-pill);
   color: var(--fg-dim);
   background: var(--bg);
 }
@@ -259,23 +264,28 @@
 }
 
 .keys-list__revoke {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 12px;
-  padding: 6px 12px;
+  font-weight: 600;
+  padding: 6px 14px;
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-pill);
   color: var(--fg);
   cursor: pointer;
+  transition:
+    border-color var(--dur-1) var(--ease-std),
+    color var(--dur-1) var(--ease-std);
 }
 
 .keys-list__revoke:hover {
-  border-color: #ff8a8a;
-  color: #ff8a8a;
+  border-color: #e26d6d;
+  color: #e26d6d;
 }
 
 .keys-list__revoke:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--ring);
 }
 
 /* ---------- Mint / revoke dialogs ---------- */
@@ -284,6 +294,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -296,20 +307,23 @@
 
 .keys-dialog {
   background: var(--bg-elev);
-  border: 2px solid var(--border-strong);
-  box-shadow: 6px 6px 0 0 var(--border-strong);
-  padding: 20px;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  padding: 22px;
   width: min(520px, 100%);
   display: flex;
   flex-direction: column;
   gap: 14px;
-  font-family: var(--mono);
+  font-family: var(--sans);
 }
 
 .keys-dialog__title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
+  font-family: var(--sans);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--fg);
 }
 
@@ -326,7 +340,8 @@
 
 .keys-dialog__body code {
   font-family: var(--mono);
-  padding: 1px 4px;
+  padding: 1px 5px;
+  border-radius: var(--r-xs);
   background: var(--bg);
   border: 1px solid var(--border);
 }
@@ -355,17 +370,22 @@
 }
 
 .keys-dialog__label input {
-  padding: 10px 12px;
+  padding: 11px 13px;
   font-family: var(--mono);
   font-size: 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-md);
   background: var(--bg);
   color: var(--fg);
+  transition:
+    border-color var(--dur-1) var(--ease-std),
+    box-shadow var(--dur-1) var(--ease-std);
 }
 
 .keys-dialog__label input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline: none;
+  border-color: var(--accent-line);
+  box-shadow: var(--ring);
 }
 
 .keys-dialog__plaintext-row {
@@ -378,9 +398,10 @@
   flex: 1;
   font-family: var(--mono);
   font-size: 13px;
-  padding: 10px 12px;
-  background: var(--bg);
-  border: 1px solid var(--accent);
+  padding: 11px 13px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-md);
   color: var(--accent);
   word-break: break-all;
   /* Allow native text-selection so users who prefer keyboard copy

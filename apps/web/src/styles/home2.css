@@ -1,308 +1,13 @@
-/* home2 — calm redesign preview (modern-ai-ui-redesign).
- *
- * SCOPED on purpose. Every rule is nested under `.home2` so this file
- * can ship the new design language on `/` ALONE while every other page
- * keeps the quiet-brutalism system in global.css untouched. The full
- * rollout (pending approval) promotes these tokens into global.css and
- * deletes the brutalism ladder + this scope wrapper.
- *
- * Direction (researched 2026-06): move OFF acid-lime brutalism (high
- * saturation, 0 radius, hard offset shadows) and TOWARD the modern
- * dev-tool trust formula — near-black low-chroma neutrals, ONE restrained
- * accent used at ~10% (60-30-10), generous whitespace, soft *layered*
- * shadows (key + ambient), ~12px radius, system fonts (fast, no webfont
- * fetch), restrained motion. Sources: Vercel Geist (mono + one accent),
- * Supabase (#3ecf8e green at ~1% of surface), Linear (LCH neutral/timeless),
- * NN/G + Stanford (visual craft IS the trust signal), Radix 12-step scale,
- * Tailwind/Material easing + duration tokens, calm-UX (low saturation,
- * motion restraint).
- */
+/* Home page layout — the SK-WEB-018 two-door home, in the SK-WEB-020 calm
+ * system. Tokens + shared primitives (.cta/.btn/topnav/footer) live in
+ * global.css now; this file holds only the home-unique layout (hero,
+ * proof card, the two doors, trust strip) plus the reveal-on-scroll
+ * enhancement. Scoped under `.home2` so these class names don't leak. */
 
-.home2 {
-  /* ---- Neutrals — near-black, very low chroma, a whisper of warmth so
-   * it reads calm rather than clinical (Radix-style 12-step roles). ---- */
-  --bg: #0b0c0b; /* app background (step 1) */
-  --bg-2: #0f110f; /* ambient / subtle background (step 2) */
-  --surface: #141613; /* card / raised (step 3) */
-  --surface-2: #1b1e1a; /* hover / inset (step 4) */
-  --rule: #232622; /* subtle border / separator (step 6) */
-  --rule-2: #30342f; /* stronger border / focus base (step 7) */
-  --muted: #8b908a; /* low-contrast text (step 11) */
-  --body: #c6c9c3; /* body text */
-  --ink: #f2f4f1; /* high-contrast headings (step 12) */
-
-  /* ---- Accent — one calm jade-emerald, brand-green DNA without the acid.
-   * Used sparingly: one solid CTA per band, links-on-hover, small glyphs. */
-  --accent: #3ecf8e;
-  --accent-2: #57dca0; /* hover / lighter */
-  --accent-ink: #04210f; /* dark text on the accent solid */
-  --accent-soft: rgba(62, 207, 142, 0.12); /* tints, glows, focus ring */
-  --accent-line: rgba(62, 207, 142, 0.34);
-
-  /* Legacy aliases used by reused components (McpInstall, banner) so they
-   * inherit the calm palette inside this scope with zero edits. */
-  --ground: var(--bg);
-  --raised: var(--surface);
-  --accent-fg: var(--accent-ink);
-  --fg: var(--ink);
-  --fg-dim: var(--body);
-  --fg-muted: var(--muted);
-  --border: var(--rule);
-  --border-strong: var(--rule-2);
-
-  /* ---- Faces — system stacks (modern + fast: no webfont fetch). ---- */
-  --sans:
-    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter,
-    "Helvetica Neue", Arial, sans-serif;
-  --mono:
-    ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Monaco, Consolas, "Liberation Mono",
-    monospace;
-
-  /* ---- Type scale — calmer than the 88px brutalist display. ---- */
-  --t-display: clamp(38px, 5.4vw, 60px);
-  --t-h2: clamp(24px, 3.1vw, 34px);
-  --t-h3: 20px;
-  --t-large: 18px;
-  --t-body: 16px;
-  --t-small: 14px;
-  --t-xs: 13px;
-
-  /* ---- Radius — soft, off the 0px brutalism (12px balanced middle). ---- */
-  --r-xs: 6px;
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 24px;
-  --r-pill: 999px;
-  --radius: var(--r-md);
-
-  /* ---- Shadows — two-layer key + ambient (imply elevation, don't shout). */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
-  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.34), 0 8px 24px -6px rgba(0, 0, 0, 0.55);
-  --shadow-3: 0 4px 10px rgba(0, 0, 0, 0.34), 0 24px 60px -14px rgba(0, 0, 0, 0.62);
-  --ring: 0 0 0 3px var(--accent-soft);
-
-  /* ---- Motion — restrained; expo-out glide for entrances. ---- */
-  --ease: cubic-bezier(0.19, 1, 0.22, 1);
-  --ease-std: cubic-bezier(0.2, 0, 0, 1);
-  --dur-1: 140ms;
-  --dur-2: 240ms;
-  --dur-3: 480ms;
-
-  /* ---- Rhythm ---- */
-  --col: 680px;
-  --bleed: 1080px;
-
-  background: var(--bg);
-  color: var(--body);
-  font-family: var(--sans);
-  /* The page grid already centres; widen the readable band a touch. */
-  max-width: 1180px;
-}
-
-/* Soft ambient backdrop for the whole page — a single low-opacity wash so
- * the dark ground has depth instead of a flat void. */
-.home2 {
-  background:
-    radial-gradient(120% 60% at 50% -10%, rgba(62, 207, 142, 0.05), transparent 60%), var(--bg);
-}
-
-/* ---- Typography base in scope ---- */
-.home2 h1,
-.home2 h2,
-.home2 h3 {
-  font-family: var(--sans);
-  color: var(--ink);
-  letter-spacing: -0.02em;
-  line-height: 1.08;
-  margin: 0;
-}
-
-.home2 a {
-  color: var(--body);
-  text-decoration: none;
-}
-
-.home2 a:hover {
-  color: var(--ink);
-}
-
-.home2 a:focus-visible {
-  outline: none;
-  border-radius: var(--r-xs);
-  box-shadow: var(--ring);
-}
-
-/* =====================================================================
- * Topnav — calm, quiet, sans (re-skins the global .topnav in scope).
- * =================================================================== */
-.home2 .topnav {
-  font-family: var(--sans);
-  font-size: var(--t-small);
-  padding: 22px 0;
-}
-
-.home2 .topnav__brand {
-  font-family: var(--sans);
-  font-weight: 600;
-  font-size: 16px;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.home2 .topnav__brand::before {
-  content: "";
-  width: 9px;
-  height: 9px;
-  border-radius: var(--r-pill);
-  background: var(--accent);
-  box-shadow: 0 0 12px var(--accent-line);
-}
-
-.home2 .topnav__links {
-  gap: 26px;
-}
-
-.home2 .topnav__links a {
-  color: var(--muted);
-  font-size: var(--t-small);
-  transition: color var(--dur-1) var(--ease-std);
-}
-
-.home2 .topnav__links a:hover,
-.home2 .topnav__links a[aria-current="page"] {
-  color: var(--ink);
-}
-
-.home2 #topnav-signin a {
-  color: var(--ink);
-  padding: 7px 15px;
-  border: 1px solid var(--rule-2);
-  border-radius: var(--r-pill);
-  transition:
-    border-color var(--dur-1) var(--ease-std),
-    background var(--dur-1) var(--ease-std);
-}
-
-.home2 #topnav-signin a:hover {
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
-}
-
-.home2 .topnav__authed:not([hidden]) {
-  border-left: 1px solid var(--rule);
-}
-
-.home2 .topnav__chat-link {
-  color: var(--accent);
-}
-
-.home2 .topnav__chat-link:hover {
-  color: var(--accent-2);
-}
-
-.home2 .topnav__signout {
-  font-family: var(--sans);
-  border: 1px solid var(--rule-2);
-  border-radius: var(--r-pill);
-  color: var(--muted);
-  padding: 5px 13px;
-  transition: all var(--dur-1) var(--ease-std);
-}
-
-.home2 .topnav__signout:hover {
-  border-color: var(--accent-line);
-  color: var(--ink);
-}
-
-/* =====================================================================
- * CTA primitives — re-skin the global .cta / .btn vocabulary in scope so
- * reused components (McpInstall) inherit the calm look with no edits.
- * Soft pill, layered shadow, gentle lift — never the hard 4px offset.
- * =================================================================== */
-.home2 .cta {
-  font-family: var(--sans);
-  font-weight: 600;
-  font-size: var(--t-small);
-  letter-spacing: 0;
-  padding: 12px 20px;
-  border-radius: var(--r-pill);
-  background: var(--accent);
-  color: var(--accent-ink);
-  border: 1px solid transparent;
-  box-shadow:
-    var(--shadow-1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
-}
-
-.home2 .cta:hover {
-  background: var(--accent-2);
-  color: var(--accent-ink);
-}
-
-.home2 .cta--ghost {
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--rule-2);
-  box-shadow: var(--shadow-1);
-}
-
-.home2 .cta--ghost:hover {
-  background: var(--surface-2);
-  color: var(--ink);
-  border-color: var(--accent-line);
-}
-
-.home2 .cta:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
-}
-
-.home2 .btn {
-  font-family: var(--sans);
-  border-radius: var(--r-pill);
-  border: 1px solid var(--rule-2);
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow-1);
-}
-
-.home2 .btn--accent {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: transparent;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .home2 .cta,
-  .home2 .btn {
-    transition:
-      transform var(--dur-1) var(--ease-std),
-      box-shadow var(--dur-2) var(--ease-std),
-      background var(--dur-1) var(--ease-std),
-      border-color var(--dur-1) var(--ease-std);
-  }
-  .home2 .cta:hover,
-  .home2 .btn:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-2);
-  }
-  .home2 .cta:active,
-  .home2 .btn:active {
-    transform: translateY(0);
-    box-shadow: var(--shadow-1);
-  }
-}
-
-/* =====================================================================
- * Reveal-on-scroll — progressive enhancement. Content is visible by
- * default (works JS-off, SK-WEB-001); the inline script adds `.motion`
- * to the page only when JS runs AND motion is allowed, which arms the
- * hidden→reveal transition. prefers-reduced-motion never arms it.
- * =================================================================== */
+/* Reveal-on-scroll — progressive enhancement (SK-WEB-001). Content is
+ * visible by default; the inline script adds `.motion` only when JS runs
+ * AND motion is allowed, which arms the hidden→reveal transition. JS-off
+ * or prefers-reduced-motion → everything stays visible. */
 .home2.motion .reveal {
   opacity: 0;
   transform: translateY(16px);
@@ -316,9 +21,7 @@
   transform: none;
 }
 
-/* =====================================================================
- * Hero
- * =================================================================== */
+/* ===================================================================== Hero */
 .home2 .hero2 {
   position: relative;
   display: grid;
@@ -392,18 +95,11 @@
 .home2 .hero2__jump {
   font-size: var(--t-small);
   color: var(--muted);
+  margin: clamp(16px, 2vw, 20px) 0 0;
 }
 
 .home2 .hero2__jump a {
   color: var(--body);
-  text-decoration: underline;
-  text-decoration-color: var(--rule-2);
-  text-underline-offset: 3px;
-}
-
-.home2 .hero2__jump a:hover {
-  color: var(--accent);
-  text-decoration-color: var(--accent-line);
 }
 
 /* ---- Proof card — honest "what a reply looks like" (SK-WEB-003 / -005). */
@@ -411,14 +107,13 @@
   position: relative;
   border: 1px solid var(--rule);
   border-radius: var(--r-lg);
-  background: linear-gradient(180deg, var(--surface), var(--bg-2));
+  background: linear-gradient(180deg, var(--raised), var(--bg-2));
   box-shadow: var(--shadow-3);
   padding: clamp(16px, 2vw, 22px);
   overflow: hidden;
 }
 
 .home2 .proof::before {
-  /* faint top sheen — the "expensive" ambient-light read */
   content: "";
   position: absolute;
   inset: 0 0 auto;
@@ -433,7 +128,7 @@
   padding: 11px 14px;
   border-radius: var(--r-md);
   border: 1px solid var(--rule-2);
-  background: var(--bg);
+  background: var(--ground);
   font-family: var(--mono);
   font-size: var(--t-small);
   color: var(--ink);
@@ -518,9 +213,7 @@
   line-height: 1.5;
 }
 
-/* =====================================================================
- * "Two ways to start" — the SK-WEB-018 dual front door, re-skinned.
- * =================================================================== */
+/* ===================================================== Two ways to start */
 .home2 .ways {
   padding: clamp(28px, 5vw, 56px) 0 clamp(20px, 3vw, 40px);
 }
@@ -540,7 +233,7 @@
 }
 
 .home2 .ways__title {
-  font-size: var(--t-h2);
+  font-size: var(--t-section);
   font-weight: 600;
   color: var(--ink);
 }
@@ -567,7 +260,7 @@
   padding: clamp(22px, 3vw, 32px);
   border: 1px solid var(--rule);
   border-radius: var(--r-lg);
-  background: linear-gradient(180deg, var(--surface), var(--bg-2));
+  background: linear-gradient(180deg, var(--raised), var(--bg-2));
   box-shadow: var(--shadow-2);
   transition:
     border-color var(--dur-2) var(--ease-std),
@@ -622,14 +315,6 @@
 
 .home2 .door__quiet a {
   color: var(--body);
-  text-decoration: underline;
-  text-decoration-color: var(--rule-2);
-  text-underline-offset: 3px;
-}
-
-.home2 .door__quiet a:hover {
-  color: var(--accent);
-  text-decoration-color: var(--accent-line);
 }
 
 .home2 .door__cta {
@@ -643,8 +328,7 @@
   }
 }
 
-/* Security reassurance line — lock glyph + honest microcopy AT the CTA
- * (trust research: place the security signal next to the action). */
+/* Security reassurance line — lock glyph + honest microcopy AT the CTA. */
 .home2 .secure {
   display: flex;
   align-items: flex-start;
@@ -667,8 +351,8 @@
   font-weight: 500;
 }
 
-/* Masked connection-string mock — illustrative, balances Door B's height
- * and reinforces the "sealed server-side" message visually. */
+/* Masked connection-string mock — illustrative; balances Door B and
+ * reinforces the "sealed server-side" message. */
 .home2 .connmock {
   position: relative;
   display: flex;
@@ -677,7 +361,7 @@
   padding: 13px 14px;
   border: 1px solid var(--rule-2);
   border-radius: var(--r-md);
-  background: var(--bg);
+  background: var(--ground);
 }
 
 .home2 .connmock__label {
@@ -717,9 +401,7 @@
   height: 11px;
 }
 
-/* =====================================================================
- * Trust strip — three quiet, honest reassurances.
- * =================================================================== */
+/* ===================================================== Trust strip */
 .home2 .trust {
   display: grid;
   grid-template-columns: 1fr;
@@ -727,6 +409,7 @@
   padding: clamp(24px, 4vw, 40px) 0 clamp(40px, 6vw, 72px);
   margin-top: clamp(8px, 2vw, 16px);
   border-top: 1px solid var(--rule);
+  list-style: none;
 }
 
 @media (min-width: 720px) {
@@ -772,32 +455,4 @@
   font-size: var(--t-small);
   color: var(--muted);
   line-height: 1.5;
-}
-
-/* =====================================================================
- * Footer — calm sans (re-skins global .foot in scope).
- * =================================================================== */
-.home2 .foot {
-  font-family: var(--sans);
-  font-size: var(--t-small);
-  color: var(--muted);
-  border-top: 1px solid var(--rule);
-  padding: 28px 0 40px;
-}
-
-.home2 .foot a {
-  color: var(--body);
-}
-
-.home2 .foot a:hover {
-  color: var(--accent);
-}
-
-/* Authed banner re-skin (extra specificity to win over the component's
- * Astro-scoped hard-coded lime tint). Home-only banner. */
-.home2 main .authed-home-banner:not([hidden]) {
-  font-family: var(--sans);
-  border: 1px solid var(--accent-line);
-  border-radius: var(--r-md);
-  background: var(--accent-soft);
 }

@@ -1,12 +1,8 @@
 ---
-// Homepage — calm redesign preview (modern-ai-ui-redesign).
-//
-// Re-skins the SK-WEB-018 two-door home in a new, self-contained design
-// language (apps/web/src/styles/home2.css) WITHOUT touching global.css or
-// any other page — this PR previews the direction on `/` alone before the
-// full-site rollout. The quiet-brutalism token system (SK-WEB-015) is
-// superseded here in scope only; the rollout promotes home2's tokens into
-// global.css and removes the brutalism ladder. See the PR body.
+// Homepage — the SK-WEB-018 two-door home in the SK-WEB-020 calm token
+// system. Tokens + shared primitives live in global.css; this page's
+// layout (hero, proof card, the two doors, trust strip) lives in
+// apps/web/src/styles/home2.css, scoped under `.home2`.
 //
 // Decisions preserved verbatim:
 //  - GLOBAL-036 / SK-WEB-018 — dual front door (Door A agent-memory via MCP,

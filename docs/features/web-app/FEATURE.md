@@ -140,7 +140,7 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 
 ### SK-WEB-015 — Three-beat homepage + quiet-brutalism token system
 
-**Status:** superseded in part by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) — the three-beat IA on `/` is replaced by the two-door home; the quiet-brutalism **token system is retained** in full.
+**Status:** superseded — the three-beat IA on `/` by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) (two-door home), and the quiet-brutalism **token system by [`SK-WEB-020`](./decisions/SK-WEB-020-calm-token-system.md)** (the calm system), site-wide.
 
 **Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md).
 One quiet-brutalism token system in `global.css` (neutrals + one accent gated to three lime moments per fold, three faces, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero) → HOW (`Demo.astro` live `/v1/ask` + snippet) → WHY (`Replaces.astro` + one CTA). Off-`/` blocks (`AgentMemoryBand`, `Waitlist`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt`) removed; `/vs/*` and `/solve/*` collapse to one what-we-replace template; one motion moment per page, `prefers-reduced-motion`-gated.
@@ -160,12 +160,17 @@ The home hero leads with the SK-WEB-016 `<McpInstall compact>` row of host butto
 ### SK-WEB-018 — Two-door home: agent-memory door + question-your-ClickHouse door
 
 **Body:** [`decisions/SK-WEB-018-two-door-home.md`](./decisions/SK-WEB-018-two-door-home.md).
-The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked narrow): **Door A** "Use as agent memory" (the SK-WEB-016 `<McpInstall>` host row, click→reveal-fallback-in-place, plus a quiet *"or just describe your data →"* link to `/app/new`) and **Door B** "Question your ClickHouse" (CTA → sign-in → `/app/connect`). Replaces the SK-WEB-015 / SK-WEB-017 three-beat-on-`/` IA (token system kept; SK-WEB-017's McpInstall primacy absorbed into Door A); the literal expression of GLOBAL-036's dual front door; GLOBAL-007 preserved via the `/app/new` link.
+The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked narrow): **Door A** "Use as agent memory" (the SK-WEB-016 `<McpInstall>` host row, click→reveal-fallback-in-place, plus a quiet *"or just describe your data →"* link to `/app/new`) and **Door B** "Question your ClickHouse" (CTA → sign-in → `/app/connect`). Replaces the SK-WEB-015 / SK-WEB-017 three-beat-on-`/` IA (now rendered in the SK-WEB-020 calm token system; SK-WEB-017's McpInstall primacy absorbed into Door A); the literal expression of GLOBAL-036's dual front door; GLOBAL-007 preserved via the `/app/new` link.
 
 ### SK-WEB-019 — `/app/connect`: auth-guarded BYO-connect page + `ConnectForm.tsx`
 
 **Body:** [`decisions/SK-WEB-019-connect-page.md`](./decisions/SK-WEB-019-connect-page.md).
 `/app/connect` is auth-guarded (anon → `/auth/sign-in?return_to=/app/connect`) and mounts `ConnectForm.tsx`: an engine select (default ClickHouse), a `type="password"` connection-URL field **never persisted** client-side, posting `{ engine, connection_url, name? }` to `/v1/db/connect` with `credentials:"include"`. On success it renders the schema preview then a "Question it now →" CTA to `/app?db=<dbId>`. The product-side landing for Door B (`SK-WEB-018`); backend is [`SK-DBCONN-001`](../byo-connect/FEATURE.md).
+
+### SK-WEB-020 — Calm token system (supersedes SK-WEB-015's quiet-brutalism tokens)
+
+**Body:** [`decisions/SK-WEB-020-calm-token-system.md`](./decisions/SK-WEB-020-calm-token-system.md).
+`global.css` is re-based from quiet-brutalism to a **calm** system site-wide: near-black low-chroma neutrals, ONE jade accent (`#3ecf8e`, ~10% / 60-30-10) replacing acid lime, system fonts for body + display (Source Serif 4 dropped; `--display` aliases `--sans`; `--mono` kept for code/data), ~12px radius, two-layer soft shadows (`--shadow-1/2/3`, `--ring`), and expo-out reduced-motion-gated entrances. Legacy aliases (`--shadow-hard`, `--border-strong`, `--bg-elev`, …) remap to the calm ladder so un-swept `<style>` blocks render calm automatically. The home layout is `styles/home2.css` (scoped `.home2`); `styles/chat.css` + `styles/keys.css` and every marketing page are swept (1px rules, radius, `--ring` focus, `--accent-soft` tints). Retains SK-WEB-015's spirit (one accent moment per band, mono demoted, one token source, one-motion-moment budget) and all SK-WEB-018 IA + GLOBAL-007 / SK-WEB-003 invariants.
 
 ## GLOBALs governing this feature
 

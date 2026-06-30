@@ -475,9 +475,10 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
   }
   .carousel__frame {
     position: relative;
-    border: 3px solid var(--border-strong);
-    background: var(--bg-elev);
-    box-shadow: var(--shadow-hard);
+    border: 1px solid var(--rule-2);
+    border-radius: var(--r-lg);
+    background: var(--raised);
+    box-shadow: var(--shadow-2);
     overflow: hidden;
   }
   .carousel__slides {
@@ -514,7 +515,8 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
     letter-spacing: 0.06em;
     text-transform: uppercase;
     padding: 3px 8px;
-    border: 2px solid currentColor;
+    border: 1px solid var(--rule-2);
+    border-radius: var(--r-xs);
     color: var(--accent);
   }
   .card__cat[data-cat="write"],
@@ -536,17 +538,18 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
     flex-direction: column;
     gap: 10px;
     padding: 12px 14px;
-    border: 2px solid var(--border);
-    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    background: var(--raised);
     opacity: 0.45;
     transition: opacity 320ms ease, border-color 320ms ease,
                 background 320ms ease, box-shadow 320ms ease;
   }
   .carousel__slide[data-phase="ignited"] .card__result {
     opacity: 1;
-    border-color: var(--accent);
-    background: var(--bg);
-    box-shadow: 0 0 0 2px var(--accent), 4px 4px 0 0 var(--border-strong);
+    border-color: var(--accent-line);
+    background: var(--ground);
+    box-shadow: var(--shadow-2);
   }
 
   /* Embed code block — the only typewriter target on each slide.
@@ -567,21 +570,21 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
   .card__embed-label {
     /* Chip-style surface tag — sits above the pre block, slightly
        overlapping its top border so it reads as "this code's
-       language is X". Acid-on-near-black matches the carousel's
-       neo-brutalist palette. */
+       language is X". */
     align-self: flex-start;
     font-family: var(--mono);
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.12em;
     padding: 3px 10px;
-    color: var(--bg);
+    color: var(--accent-ink);
     background: var(--accent);
-    border: 2px solid var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--r-xs) var(--r-xs) 0 0;
     /* Tuck flush against the pre's top border. Negative margin
-       overlaps by 2px so the chip's bottom edge becomes the pre's
+       overlaps by 1px so the chip's bottom edge becomes the pre's
        top edge — no double-line. */
-    margin-bottom: -2px;
+    margin-bottom: -1px;
     position: relative;
     z-index: 1;
   }
@@ -591,10 +594,11 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
     font-family: var(--mono);
     font-size: clamp(12px, 1.4vw, 14px);
     line-height: 1.55;
-    color: var(--fg);
-    background: var(--bg);
-    border: 3px solid var(--border-strong);
-    box-shadow: 4px 4px 0 0 var(--border-strong);
+    color: var(--ink);
+    background: var(--ground);
+    border: 1px solid var(--rule-2);
+    border-radius: 0 var(--r-md) var(--r-md) var(--r-md);
+    box-shadow: var(--shadow-1);
     overflow-x: auto;
     /* Preserve template whitespace exactly — embed snippets have
        intentional spacing inside attributes / multi-line REST
@@ -608,8 +612,8 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
      story arc without needing a separate input mock. */
   .carousel__slide[data-phase="submitted"] .card__embed-pre,
   .carousel__slide[data-phase="ignited"] .card__embed-pre {
-    border-color: var(--accent);
-    box-shadow: 4px 4px 0 0 var(--accent);
+    border-color: var(--accent-line);
+    box-shadow: var(--shadow-2);
   }
   .card__embed-goal {
     /* Highlight the typewriter slot so the eye tracks the live-
@@ -662,7 +666,7 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
   }
   .card__sql-summary {
     cursor: pointer;
-    color: var(--fg-muted);
+    color: var(--muted);
     letter-spacing: 0.04em;
     text-transform: uppercase;
     list-style: none;
@@ -677,7 +681,7 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
   .card__sql-details[open] .card__sql-summary::before {
     transform: rotate(90deg);
   }
-  .card__sql-summary:hover { color: var(--fg); }
+  .card__sql-summary:hover { color: var(--ink); }
 
   .card__sql {
     margin: 8px 0 0;
@@ -685,9 +689,10 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
     font-family: var(--mono);
     font-size: 13px;
     line-height: 1.5;
-    color: var(--fg-dim);
-    background: var(--bg);
-    border: 1px solid var(--border);
+    color: var(--body);
+    background: var(--ground);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
     overflow-x: auto;
   }
   .card__status {
@@ -696,8 +701,9 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
     font-family: var(--mono);
     font-size: 14px;
     color: var(--accent);
-    background: var(--bg);
-    border: 2px dashed currentColor;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+    border-radius: var(--r-sm);
   }
   .card__rows {
     overflow-x: auto;
@@ -712,7 +718,7 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
   .card__table td {
     text-align: left;
     padding: 6px 12px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--rule);
   }
   .card__table th {
     color: var(--accent);
@@ -740,7 +746,7 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
     margin: 0;
     font-family: var(--mono);
     font-size: 12px;
-    color: var(--fg-muted);
+    color: var(--muted);
   }
 
   .carousel__nav {
@@ -749,22 +755,28 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
     justify-content: center;
     gap: 12px;
     padding: 12px 16px;
-    border-top: 2px solid var(--border-strong);
-    background: var(--bg);
+    border-top: 1px solid var(--rule);
+    background: var(--ground);
   }
   .carousel__btn {
     background: none;
-    border: 2px solid var(--border-strong);
-    color: var(--fg);
+    border: 1px solid var(--rule-2);
+    border-radius: var(--r-sm);
+    color: var(--ink);
     width: 32px;
     height: 32px;
     font-size: 18px;
     cursor: pointer;
     line-height: 1;
+    transition: border-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
   }
   .carousel__btn:hover {
-    border-color: var(--accent);
+    border-color: var(--accent-line);
     color: var(--accent);
+  }
+  .carousel__btn:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
   }
   .carousel__dots {
     list-style: none;
@@ -779,15 +791,19 @@ const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    border: 2px solid var(--border-strong);
+    border: 1px solid var(--rule-2);
     background: transparent;
     padding: 0;
     cursor: pointer;
-    transition: background 150ms ease;
+    transition: background 150ms ease, border-color 150ms ease;
   }
   .carousel__dot[data-active] {
     background: var(--accent);
     border-color: var(--accent);
+  }
+  .carousel__dot:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
   }
 
   /* Reduced motion — keep states meaningful but kill the kinetic

@@ -154,17 +154,18 @@ import Base from "../../layouts/Base.astro";
   }
 
   .post-signin__card {
-    border: 2px solid var(--border-strong);
-    background: var(--bg-elev);
+    border: 1px solid var(--rule-2);
+    border-radius: var(--r-lg);
+    background: var(--raised);
     padding: clamp(28px, 5vw, 48px);
     max-width: 520px;
     width: 100%;
-    box-shadow: var(--shadow-hard);
+    box-shadow: var(--shadow-3);
     text-align: center;
   }
 
   .post-signin__title {
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: clamp(22px, 3.2vw, 28px);
     letter-spacing: -0.02em;
     margin: 0 0 16px;
@@ -173,6 +174,6 @@ import Base from "../../layouts/Base.astro";
   .post-signin__lede {
     margin: 0;
     font-size: clamp(14px, 1.6vw, 15px);
-    color: var(--fg-dim);
+    color: var(--body);
   }
 </style>

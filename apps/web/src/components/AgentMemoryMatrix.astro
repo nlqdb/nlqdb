@@ -104,7 +104,7 @@ const columns: {
     max-width: 880px;
   }
   .amm__title {
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: clamp(20px, 2.6vw, 28px);
     letter-spacing: -0.01em;
     line-height: 1.15;
@@ -122,16 +122,16 @@ const columns: {
   .amm__table th,
   .amm__table td {
     padding: 14px 10px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--rule);
     vertical-align: top;
   }
   .amm__table thead th {
     font-family: var(--mono);
-    color: var(--fg-dim);
+    color: var(--body);
     text-transform: uppercase;
     font-size: 12px;
     letter-spacing: 0.06em;
-    border-bottom: 2px solid var(--border-strong);
+    border-bottom: 1px solid var(--rule-2);
     text-align: center;
   }
   .amm__cap-head {
@@ -143,9 +143,9 @@ const columns: {
   /* The wedge: nlqdb is the column the eye lands on. */
   .amm__col--us {
     color: var(--accent);
-    border-bottom-color: var(--accent);
-    border-left: 2px solid var(--accent);
-    border-right: 2px solid var(--accent);
+    border-bottom-color: var(--accent-line);
+    border-left: 1px solid var(--accent-line);
+    border-right: 1px solid var(--accent-line);
   }
   .amm__cap {
     text-align: left;
@@ -156,10 +156,10 @@ const columns: {
   }
   .amm__cap-name {
     font-weight: 500;
-    color: var(--fg);
+    color: var(--ink);
   }
   .amm__note {
-    color: var(--fg-dim);
+    color: var(--body);
     font-size: 12px;
     line-height: 1.45;
   }
@@ -172,21 +172,21 @@ const columns: {
     color: var(--accent);
   }
   .amm__claim--partial {
-    color: var(--fg-dim);
+    color: var(--body);
   }
   .amm__claim--no {
-    color: var(--fg-dim);
+    color: var(--body);
     opacity: 0.45;
   }
   /* nlqdb body cells carry the accent rails + a faint tint so the
-     all-✓ wedge reads as a single bright column. */
+     all-✓ wedge reads as a single calm column. */
   .amm__claim--us {
-    border-left: 2px solid var(--accent);
-    border-right: 2px solid var(--accent);
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border-left: 1px solid var(--accent-line);
+    border-right: 1px solid var(--accent-line);
+    background: var(--accent-soft);
   }
   .amm__table tbody tr:last-child .amm__claim--us {
-    border-bottom: 2px solid var(--accent);
+    border-bottom: 1px solid var(--accent-line);
   }
   .amm__footer {
     margin-top: 16px;
@@ -197,7 +197,7 @@ const columns: {
   .amm__legend,
   .amm__verified {
     font-size: 12px;
-    color: var(--fg-dim);
+    color: var(--body);
     margin: 0;
   }
   .amm__legend .amm__claim {

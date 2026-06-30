@@ -128,8 +128,8 @@
 }
 
 .left-rail__item[data-active] {
-  border-color: var(--accent);
-  background: rgba(198, 244, 50, 0.06);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
 }
 
 .left-rail__item-button {
@@ -216,7 +216,7 @@
   font-size: 11px;
   padding: 1px 5px;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--r-xs);
   background: var(--bg);
   margin: 0 2px;
 }
@@ -231,8 +231,9 @@
   margin: 8px 18px 0;
   padding: 10px 14px;
   border: 1px solid var(--border);
+  border-radius: var(--r-md);
   background: var(--bg-elev);
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 13px;
 }
 
@@ -274,7 +275,7 @@
   font-size: 11px;
   padding: 5px 14px;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--r-pill);
   letter-spacing: 0.04em;
 }
 
@@ -624,8 +625,9 @@
 /* ---------- Diff chip ---------- */
 
 .diff-chip {
-  border: 2px solid var(--accent);
-  background: rgba(198, 244, 50, 0.06);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -751,18 +753,19 @@
 }
 
 .palette__scrim:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -4px;
+  outline: none;
 }
 
 .palette__panel {
   position: relative;
   width: min(560px, 92vw);
   background: var(--bg-elev);
-  border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-hard);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .palette__input {
@@ -807,13 +810,13 @@
 }
 
 .palette__item[data-highlight] {
-  background: rgba(198, 244, 50, 0.08);
+  background: var(--accent-soft);
   color: var(--accent);
 }
 
 .palette__item:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent-line);
 }
 
 .palette__item-hint {
@@ -827,6 +830,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -839,21 +843,24 @@
 
 .delete-db-dialog {
   background: var(--bg-elev);
-  border: 2px solid var(--border-strong);
-  box-shadow: 6px 6px 0 0 var(--border-strong);
-  padding: 20px;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  padding: 22px;
   width: min(480px, 100%);
   display: flex;
   flex-direction: column;
   gap: 14px;
-  font-family: var(--mono);
+  font-family: var(--sans);
 }
 
 .delete-db-dialog__title {
   margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: #ff7b7b;
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #e26d6d;
 }
 
 .delete-db-dialog__body {
@@ -884,38 +891,47 @@
 .delete-db-dialog__name {
   font-family: var(--mono);
   font-size: 13px;
-  padding: 4px 8px;
+  padding: 4px 9px;
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-xs);
   color: var(--fg);
 }
 
 .delete-db-dialog__copy {
   background: transparent;
-  border: 1px solid var(--border);
-  padding: 4px 10px;
-  font-family: var(--mono);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-pill);
+  padding: 4px 12px;
+  font-family: var(--sans);
   font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
   color: var(--fg);
+  transition: border-color var(--dur-1) var(--ease-std);
 }
 
 .delete-db-dialog__copy:hover {
-  border-color: var(--border-strong);
+  border-color: var(--accent-line);
 }
 
 .delete-db-dialog__label input {
-  padding: 8px 10px;
+  padding: 10px 12px;
   font-family: var(--mono);
   font-size: 13px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-md);
   background: var(--bg);
   color: var(--fg);
+  transition:
+    border-color var(--dur-1) var(--ease-std),
+    box-shadow var(--dur-1) var(--ease-std);
 }
 
 .delete-db-dialog__label input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline: none;
+  border-color: var(--accent-line);
+  box-shadow: var(--ring);
 }
 
 .delete-db-dialog__status {
