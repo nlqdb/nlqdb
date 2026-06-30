@@ -2529,9 +2529,10 @@ export const COMPETITORS: Competitor[] = [
     // Supabase, Google Sheets) — it does NOT provision or own a database.
     // Crucially it ships an "Analyst Agent MCP Server" exposing its notebook
     // agent to external LLM interfaces (so MCP is them:partial, not them:no).
-    // Pricing: Starter free (25 AI requests/mo, 5 Smartbooks, 10 viewers),
-    // Builder $39/seat/mo (300 AI requests, scheduled dashboards/workflows),
-    // Team $50/seat/mo; SOC 2 claimed. Like Hex/Mode it is a destination
+    // Pricing (snapshots vary; verified 2026-06-30): Starter free (a few
+    // Smartbooks + a daily AI-request cap), Builder ~$39/seat/mo (scheduled
+    // dashboards/workflows, a higher monthly AI-request allowance), a Team
+    // tier above that; SOC 2 Type II claimed. Like Hex/Mode it is a destination
     // notebook a data team logs into, not an embeddable answer-element /
     // agent-callable backend a product queries at runtime.
     tagline:
