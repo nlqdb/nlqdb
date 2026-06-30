@@ -11,45 +11,45 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-29 (run 111) — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned."
+## 2026-06-30 (run 113) — dev.to / r/webdev / r/node: "The webhook receiver is the easy half. The database behind it is the part nobody wants to own."
 
-**Where:** dev.to + r/AI_Agents + r/LLMDevs; for builders evaluating an agent-memory layer
-(Honcho, Mem0, Zep) who quietly need a second, relational answer the memory layer was never
-built to give. nlqdb mentioned once, as the relational half that composes with the memory half.
+**Where:** dev.to + r/webdev + r/node; for backend engineers wiring up Stripe / GitHub / Twilio
+webhooks who hit the same wall — the endpoint is trivial, the queryable store behind it is the
+side-quest. nlqdb mentioned once, as the store-and-report half that composes with their receiver.
 
-**Title:** Your agent knows how the user thinks. It still can't tell you how many of them churned.
+**Title:** The webhook receiver is the easy half. The database behind it is the part nobody wants to own.
 
 **Body:**
 
-> The interesting frontier in agent memory right now isn't recall — it's *modelling*. Honcho's
-> bet is the sharpest version: instead of storing facts you told it, it runs a dialectic,
-> theory-of-mind process that builds a model of *how each user reasons* — their communication
-> style, their decision tendencies — and deepens it across sessions. For "should this agent
-> explain or just do, for this person, today," that's the right primitive, and a vector store of
-> past messages isn't.
+> Wiring up a webhook receiver is a 20-minute job: a route that accepts the POST, verifies the
+> provider's signature, returns `200`. Then comes the part the tutorials skip — you have a stream
+> of payloads and nowhere to put them, and a week later someone asks "how many `checkout.session`
+> events failed yesterday, grouped by error code?" Now you're standing up Postgres, designing a
+> schema for a payload whose shape the provider changes without telling you, and hand-writing the
+> reporting `GROUP BY`s. None of that is the feature. It's plumbing for the feature.
 >
-> But there's a second question that arrives the week after launch, and it has a different shape:
-> "how many users on the pro tier completed onboarding this month, grouped by signup week?" That's
-> not a fact about one person and it's not a model of how they think — it's `COUNT`, `GROUP BY`,
-> `JOIN`, a threshold, an order. A user model answers *what will this person probably prefer*; it
-> cannot answer *how many of them did X*. Asking your memory layer for the second is like asking a
-> psychologist for your churn rate — right expert, wrong question.
+> Two patterns make this bearable. First, store the raw payload as JSONB next to a few extracted
+> columns (event id, type, received-at) — you get a unique index for idempotency and you can still
+> query fields you never promoted to columns. Second, separate *capture* from *reporting*: the
+> write is a tiny insert from your receiver; the read is an aggregation that genuinely wants a
+> query planner, not a CSV pivot. The mistake is reaching for a tool that's great at the write and
+> leaves you alone with the read.
 >
-> The mistake isn't picking Honcho; it's expecting one store to do both. Modelling a person and
-> aggregating a population are different altitudes, and they compose cleanly once you stop
-> conflating them: a user-modelling layer for *how someone reasons*, a relational layer for *how
-> many did what*, the agent picking the right tool per question. (We built the second half as
-> [nlqdb](https://nlqdb.com) — it provisions the Postgres the agent writes structured rows into,
-> compiles English to SQL you can see, and exposes an MCP server so the agent can ask "how many,
-> grouped by what" itself. Honest split: nlqdb has no user model and no theory-of-mind — for "how
-> does this person think," Honcho is the right shape; for `GROUP BY` over what they did, it isn't.)
+> (We built the read half as [nlqdb](https://nlqdb.com): it provisions the Postgres, takes each
+> verified payload from your receiver via an SDK call or `POST /v1/run`, and answers "how many
+> events per type this week" in English with the compiled SQL shown so you can audit the grain.
+> Honest split — nlqdb is *not* the webhook receiver and does no signature verification; you keep
+> the tiny endpoint that accepts and verifies the POST. It's the queryable store and the
+> plain-English reporting layer, not the HTTP listener.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX + the GLOBAL-036 agent-memory
-pivot — rides "Honcho alternative / agent memory" search intent surfaced by the `/vs/honcho` page
-shipped this run, with a framing (model-a-person vs aggregate-a-population) that earns a citation
-without a pitch and concedes the user-modelling line honestly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides "store webhook events /
+log webhooks to database" search intent surfaced by the `/solve/store-and-query-webhook-events`
+page shipped this run, with a capture-vs-reporting framing that earns a citation without a pitch
+and concedes the receiver/signature line honestly.
 
 ## Collapsed — full drafts in git history
+
+- run 111 — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned." (the agent-memory frontier is *modelling* not recall — Honcho's dialectic theory-of-mind builds a model of *how each user reasons*, the right primitive for "explain or just do for this person"; but a different-shaped question arrives the week after launch — "how many pro-tier users completed onboarding this month, grouped by signup week" is `COUNT`/`GROUP BY`/`JOIN`/threshold, and a user model can't answer *how many of them did X*; the two compose once you stop expecting one store to do both — a user-modelling layer for how someone reasons, a relational layer for how many did what; honest limit — nlqdb has no user model or theory-of-mind, for "how does this person think" Honcho is the right shape; anchors `/vs/honcho`).
 
 - run 110 — dev.to / r/dataengineering / r/BusinessIntelligence: "Your BI tool got acquired. Your data layer shouldn't have to care." (the analyst notebook (Mode → ThoughtSpot, Looker → Google, Periscope → Sisense) is a roll-up target and each acquisition rewrites the AI story on top of it — fine when it's a *destination* humans log into to explore and publish; not fine when you've wired it into your *product*, because your runtime then inherits whatever the next buyer does to that notebook's API/pricing/AI direction; name the split — a destination analytics app and a runtime data layer are different altitudes, the first is where humans look, the second is what your software calls; honest caveat — nlqdb is not a notebook or BI suite, for collaborative analysis/charts/dashboards a Mode or Hex is right and the two compose; anchors `/vs/mode`).
 - run 109 — dev.to / r/SaaS / r/ExperiencedDevs: "The text-to-SQL demo takes an afternoon. The other 90% is why you should buy it." (the obvious "ask your data" build — prompt + schema + model + run the SQL — is 10% of the job; production adds a fail-closed verb-allowlist validator, a plan cache keyed on question + schema version, and an eval harness watching a labelled set, all yours to maintain forever for a non-core feature; the honest buy-vs-build test isn't "can I generate SQL from English" but "do I want to own that stack" — if it's a reporting tab / search box / in-app assistant, buy and embed; honest caveat — hosted pipeline you embed, not a vendored library, and many users over their own rows still means a DB or isolation scope per tenant; anchors `/solve/add-ask-your-data-feature-without-building-text-to-sql`).

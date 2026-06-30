@@ -1169,6 +1169,63 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "store-and-query-webhook-events",
+    persona: "P4 backend engineer",
+    searchTitle: "How do I store webhook events in a database I can query in plain English?",
+    oneLiner:
+      "If you receive webhooks from Stripe, GitHub, or Twilio and want to ask 'how many events per type this week' without standing up a database first, write each verified payload to an nlqdb-provisioned Postgres and ask the report in English — the compiled SQL is shown underneath.",
+    painContext:
+      "A webhook receiver is easy; the database behind it is the part nobody wants to own. You wire up a tiny endpoint to accept the POST, and then you need somewhere to put the payloads and a way to ask 'how many checkout events failed yesterday' later. Standing up Postgres, designing a schema for an evolving payload, and writing the reporting queries is a side-quest for what should be an afternoon's plumbing.",
+    demoGoal: "webhook events grouped by event type with a count of each",
+    demoWhy:
+      "The first question you ask of a webhook log — how many of each event type arrived — is one English goal here, not a schema design plus a GROUP BY you hand-write.",
+    howNlqdbAnswers: [
+      "Provision a Postgres in seconds, then write each webhook payload from your receiver via the `@nlqdb/sdk` client or `POST /v1/run`.",
+      "Ask 'how many events per type this week' in English — nlqdb compiles the `GROUP BY` and shows the SQL it ran.",
+      "Postgres JSONB stores the raw payload, so you query nested fields later without designing every column up front.",
+      "Mutating writes accept an `Idempotency-Key` (`GLOBAL-005`), so a retried delivery isn't processed twice into your store.",
+    ],
+    whatItDoesnt: [
+      "nlqdb is not the webhook receiver — you still need a tiny endpoint (a Cloudflare Worker or serverless function) to accept the provider's POST and verify its signature. nlqdb is where you store and query, not the HTTP listener.",
+      "The public `<nlq-data>` embed reads; writes go through the authenticated SDK or `POST /v1/run` with an API key the browser never sees.",
+      "No built-in signature verification or dead-letter queue — that stays in your receiver; nlqdb stores the verified payloads and answers questions over them.",
+    ],
+    faqs: [
+      {
+        q: "How do I store webhook events without standing up my own Postgres?",
+        a: "Point your webhook receiver at nlqdb: it provisions a Postgres for you, and each verified payload is written via the `@nlqdb/sdk` client or `POST /v1/run`. There's no connection string to manage or migration to run before the first event lands. The trade-off is honest — nlqdb owns the database it provisions, so it isn't a connector over a warehouse you already run.",
+      },
+      {
+        q: "Can I query the stored webhook events in plain English?",
+        a: "Yes. Ask 'how many checkout events this week, grouped by day' and nlqdb compiles the SQL, runs it, and shows the query alongside the rows so you can audit the grain. The raw payload is kept as JSONB, so you can also filter on nested fields you never promoted to columns.",
+      },
+      {
+        q: "Does nlqdb receive the webhook and verify the signature for me?",
+        a: "No — you keep a small receiver (a serverless function or Worker) that accepts the provider's POST and verifies its signature, then writes the payload to nlqdb. nlqdb is the queryable store and natural-language reporting layer, not the HTTP listener. Mutating writes accept an `Idempotency-Key` so a retried delivery isn't double-processed.",
+      },
+      {
+        q: "How is this different from storing form submissions without a backend?",
+        a: "Form capture is browser-side — the page's own `fetch` writes a submission behind a key. Webhooks are server-to-server: a provider like Stripe or GitHub POSTs to your endpoint, you verify, then write. Both end at the same place — a Postgres you ask 'how many' over in English — but the write path differs. See /solve/store-form-submissions-without-backend for the form case.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://hn.algolia.com/?q=webhook+database",
+        label:
+          'HN search: "webhook database" — recurring threads on where to store and query incoming webhook events.',
+      },
+      {
+        url: "https://www.reddit.com/r/webdev/search/?q=store%20webhooks",
+        label: "r/webdev — recurring 'where do I store webhook payloads' threads.",
+      },
+      {
+        url: "https://stackoverflow.com/questions/tagged/webhooks",
+        label:
+          "Stack Overflow [webhooks] tag — the enduring Q&A hub for receiving and persisting webhook events.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
