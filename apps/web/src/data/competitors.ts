@@ -2758,6 +2758,136 @@ export const COMPETITORS: Competitor[] = [
       why: "A grouped, time-bucketed query nlqdb answers as SQL over the database your app owns — the live data layer your product queries, not a canvas an analyst explores.",
     },
   },
+  {
+    slug: "mindsdb",
+    name: "MindsDB",
+    url: "https://mindsdb.com",
+    // P4 backend-engineer slot — the federated-query-engine member of the §4
+    // "MCP DB servers" cluster (docs/competitors.md §4), distinct from the
+    // recall-shaped memory tools. Persona is P4, not P2: the P2 path hardwires
+    // the agent-memory OG card + "analytical memory for agents" cross-link
+    // ("GROUP BY over your agent's memory"), which is false for a federated
+    // query engine; the honest MindsDB-vs-nlqdb buyer is the engineer wiring
+    // data infrastructure. Facts web-verified 2026-06-30 (mindsdb.com +
+    // github.com/mindsdb/mindsdb + mindsdb.com/blog/introducing-mindsdb-v26.0.0):
+    // MindsDB is the open-source "Federated Query Engine for AI" — it federates
+    // 200+ existing data sources (Postgres, Snowflake, Slack, Gmail, files, …)
+    // behind ONE endpoint speaking the PostgreSQL wire protocol, so agents query
+    // many sources with one SQL dialect. It is positioned as a universal MCP
+    // server ("the only MCP Server you'll ever need") exposing that federated
+    // layer to agents (read + write). It also ships knowledge bases (index +
+    // RAG-retrieve unstructured data), in-database ML models (CREATE MODEL /
+    // predictions — the original "AI Tables"), and agents (v26.0.0 rebuilt on
+    // Pydantic AI, replacing LangChain). Self-host (open source) or cloud. The
+    // honest split: MindsDB CONNECTS to data you already have and adds ML +
+    // federation on top; nlqdb PROVISIONS and owns a Postgres from English,
+    // compiles NL → SQL with the SQL shown, and diff-previews writes — no sources
+    // to connect, no ML training, no unstructured RAG.
+    tagline:
+      "Open-source federated query engine for AI — one MCP/SQL endpoint over 200+ existing data sources, plus knowledge bases and in-database ML.",
+    persona: "P4 backend engineer",
+    oneLiner:
+      "Pick MindsDB if you need one endpoint to query across many existing data sources — and to train ML models in SQL — self-hosted and open source. Pick nlqdb if you want a Postgres provisioned from plain English, queried in English with the compiled SQL shown, no sources to connect first.",
+    whenChooseUs: [
+      "You want a Postgres provisioned from plain English — no data sources to connect first.",
+      "You want every answer to show the compiled SQL so you can audit the grain.",
+      "You want destructive writes and migrations diff-previewed before they apply.",
+      "You want to embed an answer in HTML, or try it before signing up.",
+    ],
+    whenChooseThem: [
+      "You need one endpoint federating many existing sources (Postgres, Snowflake, Slack, files).",
+      "You want a self-hosted, open-source query engine you run and extend yourself.",
+      "You need to train and serve ML models in SQL (CREATE MODEL, predictions).",
+      "You want knowledge bases / RAG retrieval over unstructured enterprise data.",
+    ],
+    features: [
+      {
+        feature: "Provisions + owns the database (from English)",
+        us: "shipped",
+        them: "no",
+        note: "MindsDB federates databases you already run; it doesn't provision a fresh Postgres your app writes to. nlqdb materialises one from the first English goal.",
+      },
+      {
+        feature: "Federates many existing data sources (200+)",
+        us: "partial",
+        them: "shipped",
+        note: "MindsDB's whole shape is one endpoint over 200+ sources; nlqdb owns one Postgres, or connects a single Postgres you run (BYO connect) — no 200-source federation.",
+      },
+      {
+        feature: "Natural-language → SQL with compiled SQL shown",
+        us: "shipped",
+        them: "partial",
+        note: "MindsDB is primarily its own SQL dialect; NL arrives via its agents. nlqdb compiles English to SQL and returns the SQL with every answer so you can audit the grain.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "MindsDB's MCP federates your connected sources to an agent; nlqdb's `nlqdb_query` materialises a tenant Postgres on first reference (no separate create verb).",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "MindsDB queries and federates; it doesn't gate writes to your sources with a preview. nlqdb diff-previews writes and DDL before applying.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "HTML embed element + anonymous try",
+        us: "shipped",
+        them: "no",
+        note: "nlqdb ships `<nlq-data>` and anonymous mode (first answer before sign-in); MindsDB is an engine you deploy or sign up for, not an embeddable element.",
+      },
+      {
+        feature: "In-database ML model training + predictions",
+        us: "no",
+        them: "shipped",
+        note: "MindsDB's `CREATE MODEL` trains and serves ML/forecasts in SQL (its original 'AI Tables'); nlqdb is NL→SQL over relational data, with no model training.",
+      },
+      {
+        feature: "Knowledge bases / RAG over unstructured data",
+        us: "no",
+        them: "shipped",
+        note: "MindsDB indexes and retrieves unstructured data (docs, Slack, Gmail) as knowledge bases; nlqdb is Postgres-first and ships no unstructured-retrieval layer.",
+      },
+      {
+        feature: "Self-host / open source",
+        us: "no",
+        them: "shipped",
+        note: "MindsDB is open source and self-hostable; nlqdb's platform is hosted-only during pre-alpha (SDKs/CLI/elements open at GA).",
+      },
+    ],
+    faqs: [
+      {
+        q: "Is nlqdb a replacement for MindsDB?",
+        a: "No — they're different shapes. MindsDB federates 200+ existing data sources behind one endpoint and adds in-database ML and knowledge bases on top of data you already have. nlqdb provisions and owns a single Postgres, compiles English to SQL with the SQL shown, and diff-previews writes. One connects-and-augments; the other provisions-and-owns.",
+      },
+      {
+        q: "Can MindsDB and nlqdb work together?",
+        a: "Yes. MindsDB is the federated layer when you already have many sources to query under one roof; nlqdb is the provisioned analytical store an agent or app writes to and aggregates in English. An agent could read across sources via MindsDB and keep its own structured working data in nlqdb.",
+      },
+      {
+        q: "Does nlqdb connect to my existing databases like MindsDB's 200+ integrations?",
+        a: "Not as a federation. nlqdb provisions its own Postgres, or you connect a single Postgres you already run with the signed-in BYO connect verb. There's no 200-source federation layer — if querying across Snowflake, Slack, Gmail and files behind one endpoint is the job, MindsDB is the right shape.",
+      },
+      {
+        q: "Does nlqdb train ML models in SQL the way MindsDB does?",
+        a: "No. MindsDB's `CREATE MODEL` trains and serves ML models and forecasts inside the query layer. nlqdb compiles natural language into SQL over your relational data and returns rows plus the SQL — it does no model training or prediction.",
+      },
+      {
+        q: "Both expose an MCP server — what's the difference?",
+        a: "MindsDB's MCP server exposes its federated view of the sources you connected, so an agent can read and write across them. nlqdb's `nlqdb_query` materialises a tenant-scoped Postgres on first reference and returns the compiled SQL — the agent provisions and queries its own database rather than reaching into pre-connected sources.",
+      },
+    ],
+    demo: {
+      goal: "top 5 products by total revenue this quarter",
+      why: "A federated engine assumes you've connected and modelled the sources first; nlqdb answers the same aggregate from one English goal over a Postgres it provisioned.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {

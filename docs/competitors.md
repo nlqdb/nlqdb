@@ -135,6 +135,11 @@ Cloud-native open-source vector DB for scalable ANN (Go, Apache-2.0, ~45k stars,
 ### Cognee — https://www.cognee.ai
 Open-source AI memory framework (Apache-2.0, ~20k stars) — builds a self-hosted **knowledge graph** (Extract → Cognify → Load) fusing vector embeddings + graph reasoning + ontology generation; pluggable backends, official `cognee-mcp`. A *recall* engine via hybrid vector + graph traversal (graph wing of the wedge). **Threat:** high for P2 — well-funded, MCP-native, the most credible "not just a vector store" framing; stops short of relational analytics. `/vs/cognee`.
 
+### MindsDB — https://mindsdb.com (OSS: https://github.com/mindsdb/mindsdb)
+The open-source **"Federated Query Engine for AI"** — federates 200+ existing data sources (Postgres, Snowflake, Slack, Gmail, files, …) behind one endpoint speaking the PostgreSQL wire protocol, positioned as a universal MCP server ("the only MCP Server you'll ever need"). Also ships knowledge bases (RAG over unstructured data), in-database ML models (`CREATE MODEL` / predictions — the original "AI Tables"), and agents (v26.0.0 rebuilt on Pydantic AI). Self-host or cloud. (Full table in `/vs/mindsdb`.)
+- **Gap nlqdb exploits:** MindsDB *connects to* data you already have and adds federation + ML on top; nlqdb *provisions and owns* a Postgres from English, compiles NL → SQL with the SQL shown, and diff-previews writes. No sources to connect, no ML training, no unstructured RAG.
+- **Threat vector:** **High for P2** — the most prominent "MCP server for your data" play, open-source and broadly connected; but federation assumes the sources (and modelling) already exist, which is exactly the setup nlqdb removes.
+
 ### Postgres MCP servers (community + vendor) — e.g. `@modelcontextprotocol/server-postgres`, Supabase MCP
 Let an agent run read (and sometimes write) SQL against a *pre-provisioned* Postgres.
 - **Gap nlqdb exploits:** existing MCP Postgres servers need the human to provision, credential, and schema-design first; nlqdb's `nlqdb_query` materialises a tenant-scoped Postgres + schema on first reference (no create verb — SK-MCP-002).
@@ -197,6 +202,7 @@ Adjacent DIY components: LlamaIndex's SQL query engine (like LangChain's), Defog
 | Vanna AI | Text-to-SQL | P3, P4 | OSS + flexible layer on existing DB |
 | Wren AI | Text-to-SQL (semantic-layer) | P3, P2 | MDL semantic model + RLAC/CLAC + SOC 2 (paid) + 22 engines; OSS-core self-host moat |
 | AskYourDatabase | Text-to-SQL | P3, P4 | Low-friction "chat with my DB" + Dashboard Builder + embeddable chatbot; Enterprise on-prem |
+| MindsDB | Federated query engine / MCP | P4, P2 | OSS federation over 200+ sources + in-DB ML; "only MCP server you'll need" |
 | MCP Postgres servers | Agent tooling | P2 | Free + standard; gap narrows if they add provisioning |
 | Basedash | AI-native BI | P3 | NL dashboards + semantic layer over 750+ sources; $1,000/mo floor |
 | Metabase Metabot | BI + NL | P3 | OSS distribution + familiar BI UX |
@@ -219,4 +225,4 @@ The scariest threats: (a) Supabase adding a first-class NL + agent story, and (b
 
 ---
 
-*Last verified: 2026-06-19 (§4 agent-memory cluster). Pricing, URLs, and acquisitions change — re-check quarterly, especially §1 (Managed Postgres), §3 (AI admin), §4 (Agent memory), where consolidation and funding move fastest.*
+*Last verified: 2026-06-30 (§4 MindsDB; agent-memory cluster 2026-06-19). Pricing, URLs, and acquisitions change — re-check quarterly, especially §1 (Managed Postgres), §3 (AI admin), §4 (Agent memory), where consolidation and funding move fastest.*
