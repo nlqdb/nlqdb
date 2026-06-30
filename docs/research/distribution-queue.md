@@ -11,47 +11,52 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-30 (run 119) — dev.to / r/SQL / r/analytics: "The duplicate-rows query you re-Google every six weeks."
+## 2026-06-30 (run 120) — dev.to / r/dataengineering / r/LLMDevs: "Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest."
 
-**Where:** dev.to + r/SQL + r/analytics; for analysts, ops, and support leads who can read SQL but
-don't write it daily and keep re-looking-up how to find duplicates. nlqdb mentioned once, as the
-"ask in English, see the SQL" half — not a data-cleaning pipeline.
+**Where:** dev.to + r/dataengineering + r/LLMDevs; for engineers and data teams evaluating an
+open-source NL→SQL engine (Dataherald, Vanna, Wren) over a warehouse they already run. nlqdb
+mentioned once, as the other-end-of-the-trade option — not the headline.
 
-**Title:** The duplicate-rows query you re-Google every six weeks.
+**Title:** Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest.
 
 **Body:**
 
-> There's a query nobody memorises and everybody needs: find the rows that are duplicated. A
-> customer signed up twice, an import ran twice, a join fanned out and doubled every row. The answer
-> has been the same for thirty years — `GROUP BY` the suspect columns, `HAVING COUNT(*) > 1` — and
-> yet if you're not writing SQL daily you look it up *every single time*, because the shape is just
-> unusual enough to not stick.
+> Dataherald did the genuinely generous thing and open-sourced their entire text-to-SQL product —
+> engine, API, the lot. So did Vanna. So did a half-dozen others. If you've ever wanted "ask my
+> warehouse a question in English," the model half is now a solved, MIT-licensed commodity. Clone it,
+> point it at Postgres or Snowflake, ask "revenue by region last quarter," get SQL back. An
+> afternoon.
 >
-> The trap isn't that it's hard. It's that it's fiddly in ways that bite quietly. Group by the wrong
-> columns and you under- or over-count. Want the *whole duplicate row* and not just the duplicated
-> key, and you're suddenly reaching for a window function (`ROW_NUMBER() OVER (PARTITION BY ...)`) —
-> a different query than the one you Googled. It's a yes/no question wearing a SQL costume, and the
-> costume changes every time.
+> Then you ship it to people who don't know your schema, and the accuracy you saw in the demo
+> evaporates. The fix every one of these engines reaches for is the same: *golden SQL* — curated
+> question→query training pairs, plus written business context ("'active' means a login in the last
+> 28 days"), tuned against your specific tables. That's not a flaw; it's how you get a generic model
+> to speak *your* schema. But it's also the part the README undersells. Golden SQL is a dataset you
+> author by hand, and then maintain — every renamed column, every new join path, every metric whose
+> definition shifts is a training pair to add or fix. The engine is free. The curation is a standing
+> job that lands on whoever owns the data model.
 >
-> This is exactly the case for asking in plain English and *reading the SQL it generates*. Not
-> because SQL is beneath you — because the grain matters here and you want to verify it. "Which
-> customers appear more than once by email?" should hand you back both the rows and the
-> `GROUP BY email HAVING COUNT(*) > 1` it ran, so you can confirm it grouped on the right column
-> before you trust the count. A chat model can write you that query; it can't run it against your
-> data, and if you paste rows in and ask it to count, it hallucinates the tally.
+> So the honest evaluation isn't "can this generate SQL from English" (they all can). It's "who's on
+> the hook for keeping it accurate as the schema moves, and do I already have the warehouse it
+> assumes." If you run a real warehouse and a data team that *wants* that control — golden SQL, your
+> own LLM stack, self-hosted for compliance — an OSS engine like Dataherald is exactly right, and the
+> curation is worth it.
 >
-> (That's the half we built [nlqdb](https://nlqdb.com) for: ask the duplicate question in English
-> over a Postgres it provisions, or one you already run via a signed-in connect, and get the rows
-> plus the compiled SQL. Honest split — it *reports* duplicates with a read-only query; which row to
-> keep and how to merge is a write you run deliberately, and matching is exact, not fuzzy.)
+> (The other end of that trade is the one we took with [nlqdb](https://nlqdb.com): it *owns* the
+> Postgres it answers — provisioned from English — and skips the golden-SQL set entirely, prompting
+> from the live schema fingerprint with the compiled SQL shown on every answer and writes
+> diff-previewed. Honest split — that means no warehouse federation and no golden-SQL knobs; if you
+> need to query Snowflake or BigQuery in place, or want to hand-curate the training pairs, the OSS
+> engine is the better fit, not this.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the perennial "find duplicate
-rows in SQL" search intent surfaced by the `/solve/find-duplicate-rows-in-my-data` page shipped this
-run; the read-the-SQL / verify-the-grain framing earns a citation without a pitch and concedes the
-read-only and exact-match lines honestly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the "open-source text-to-SQL"
+evaluation intent the `/vs/dataherald` page shipped this run anchors; the golden-SQL-maintenance
+framing earns a citation by being useful to someone *choosing the competitor*, and concedes the
+warehouse-federation and training-control gaps honestly.
 
 ## Collapsed — full drafts in git history
 
+- run 119 — dev.to / r/SQL / r/analytics: "The duplicate-rows query you re-Google every six weeks." (find-the-duplicates is the query nobody memorises and everybody needs — `GROUP BY` the suspect columns `HAVING COUNT(*) > 1`, but it's fiddly in quiet ways: group on the wrong columns and you mis-count, want the *whole* duplicate row not just the key and you're suddenly in `ROW_NUMBER() OVER (PARTITION BY …)`, a different query than the one you Googled; the case for asking in English and *reading the SQL it generates* is that the grain matters and you want to verify it before trusting the count, and a chat model can write the query but can't run it against your data; honest split — nlqdb *reports* duplicates with a read-only query, which row to keep/merge is a deliberate write and matching is exact not fuzzy; anchors `/solve/find-duplicate-rows-in-my-data`).
 - run 118 — dev.to / r/LangChain / lobste.rs: "You don't need to build a SQL agent. Here's when you should anyway." (the `create_sql_agent` + `SQLDatabaseToolkit` demo (now assembled directly in LangGraph) gets the happy path working in an afternoon — the 10%; the other 90% is a `DELETE` guardrail (the default toolkit runs whatever SQL the model emits), bounded retries, a question cache, somewhere to *show* the SQL, a deployment, and an eval harness, all yours to own forever for a non-core feature; the honest build-vs-buy test isn't "can I generate SQL from English" but "do I want to own that stack" — build with LangChain if you're building an agent framework / need the reasoning graph / want self-hosted-free; buy if it's a feature inside your product; honest split — nlqdb is a hosted pipeline you embed, not a vendored library, and a LangChain agent can just *call* it as one tool; anchors `/vs/langchain-sql-agent`).
 - run 117 — dev.to / r/devops / r/sysadmin: "Your cron jobs already write run history. You just can't query it." (which-job-fails-most / how-long / how-many-ran are aggregations grepped out of scheduler logs the wrong way; capture is one row per run, reporting is the windowed `GROUP BY`, and even `pg_cron` keeps a `cron.job_run_details` table because run history is worth querying; a heartbeat monitor like Healthchecks.io/Cronitor answers the *other* question — did it run at all, the dead-man's-switch — presence-vs-absence, not which-fails-most; honest split — nlqdb is no scheduler and does no alerting, it stores the runs you write and gives a planner over them; anchors `/solve/track-background-job-run-history`).
 - run 116 — dev.to / r/mcp / r/LLMDevs: "A federated query engine connects your agent to the data you have. Some agents need data they don't have yet." (federation — one SQL endpoint over the 200+ sources you already run, which MindsDB does well and wraps in an MCP server — assumes the data already exists in a system you administer; but much agent work (logging what it did, remembering structured facts, then "how many this week by type") needs a store the agent *provisions and owns*, not a read-mostly federated view; honest split — nlqdb has no 200-source federation / in-database ML / unstructured RAG, for querying across systems you run MindsDB is right and the two compose; anchors `/vs/mindsdb`, the GLOBAL-036 "a database, not just an adapter" wedge).
@@ -63,8 +68,8 @@ read-only and exact-match lines honestly.
 - run 110 — dev.to / r/dataengineering / r/BusinessIntelligence: "Your BI tool got acquired. Your data layer shouldn't have to care." (the analyst notebook (Mode → ThoughtSpot, Looker → Google, Periscope → Sisense) is a roll-up target and each acquisition rewrites the AI story on top of it — fine when it's a *destination* humans log into to explore and publish; not fine when you've wired it into your *product*, because your runtime then inherits whatever the next buyer does to that notebook's API/pricing/AI direction; name the split — a destination analytics app and a runtime data layer are different altitudes, the first is where humans look, the second is what your software calls; honest caveat — nlqdb is not a notebook or BI suite, for collaborative analysis/charts/dashboards a Mode or Hex is right and the two compose; anchors `/vs/mode`).
 - run 109 — dev.to / r/SaaS / r/ExperiencedDevs: "The text-to-SQL demo takes an afternoon. The other 90% is why you should buy it." (the obvious "ask your data" build — prompt + schema + model + run the SQL — is 10% of the job; production adds a fail-closed verb-allowlist validator, a plan cache keyed on question + schema version, and an eval harness watching a labelled set, all yours to maintain forever for a non-core feature; the honest buy-vs-build test isn't "can I generate SQL from English" but "do I want to own that stack" — if it's a reporting tab / search box / in-app assistant, buy and embed; honest caveat — hosted pipeline you embed, not a vendored library, and many users over their own rows still means a DB or isolation scope per tenant; anchors `/solve/add-ask-your-data-feature-without-building-text-to-sql`).
 - run 108 — dev.to / r/analytics / r/BusinessIntelligence: "Half your data-team tickets aren't analysis. They're a SELECT someone's afraid to write." (most of a data team's queue is throwaway `GROUP BY`s that took 30s to write and 3 days to reach; self-service BI moved the bottleneck to the modelling ticket; governed questions stay with the data team, throwaway ones just need to not be a ticket — a plain-English path against the live schema with the SQL shown; honest limit — not a governed semantic layer; anchors `/solve/answer-data-questions-without-the-data-team`).
-- run 107 — Show HN / r/LocalLLaMA / dev.to: "Your agent's memory tops LongMemEval. Can it answer 'how many'?" (agent-memory tools are in a real recall arms race — LongMemEval/LoCoMo/ConvoMem all measure "given a question, surface the right past fact," and Supermemory tops all three; but a second question those benchmarks never ask bites later — "how many X this month grouped by Y for users who did Z" is `GROUP BY`/`JOIN`/threshold, and ranking the nearest k embeddings is the wrong primitive for it; the two shapes compose if you stop expecting one tool to do both — a recall layer for "what was said," a relational layer for "how many" over the rows the agent writes; honest limit — nlqdb is not a recall engine, for "most similar past conversation" you still want Supermemory or pgvector; anchors `/vs/supermemory`).
-- run 106 — dev.to / r/webdev / r/sideproject: "You don't need a backend to store form submissions. You need a place to ask 'how many'." (a landing-page waitlist form is two problems wearing one coat — *capture* is a tiny write that genuinely doesn't need a server (an insert from the page's own `fetch` behind a key the browser never sees), *reporting* is a read that actually wants a database because "signups per day," "top referrer this week" are aggregations a query planner answers and a CSV pivot doesn't; the mistake is a tool great at the write that leaves you alone with the read; pick storage you can also interrogate; honest limit — the public read widget isn't a write endpoint; anchors `/solve/store-form-submissions-without-backend`).
+- run 107 — Show HN / r/LocalLLaMA / dev.to: "Your agent's memory tops LongMemEval. Can it answer 'how many'?" (anchors `/vs/supermemory`).
+- run 106 — dev.to / r/webdev / r/sideproject: "You don't need a backend to store form submissions. You need a place to ask 'how many'." (anchors `/solve/store-form-submissions-without-backend`).
 - run 105 — dev.to / r/LLMDevs / lobste.rs: "COUNT(*) is three different questions. Your few-shot pool probably teaches one."
 - run 104 — dev.to / lobste.rs / r/SEO: "The '25 words max' rule in your style guide is a lie your CMS can't catch."
 - run 103 — dev.to / lobste.rs / r/ExperiencedDevs: "Your style rule lives in a code comment. That's why it's already broken."

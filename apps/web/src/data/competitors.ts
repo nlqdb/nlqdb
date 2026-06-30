@@ -3014,6 +3014,118 @@ export const COMPETITORS: Competitor[] = [
       why: "A from-scratch SQL agent needs a wired DB, model, prompt, and guardrails before this works; nlqdb answers it from one English goal over a Postgres it provisioned, SQL shown.",
     },
   },
+  {
+    slug: "dataherald",
+    name: "Dataherald",
+    url: "https://www.dataherald.com",
+    // P3-analyst slot, the OSS NL→SQL-engine twin of Vanna (also P3): a data
+    // team serving self-serve analytics over a warehouse they already run is
+    // the honest buyer, NOT the raw-framework P4 buyer (that is the LangChain
+    // SQL agent, which Dataherald is itself built on). Same §6 build-it-yourself
+    // cluster as langchain-sql-agent / mindsdb, but persona stays P3 to match
+    // the OSS-engine analog Vanna and avoid forcing the P4 build-vs-buy frame
+    // onto a tool whose pitch is "empower business users to self-serve."
+    // Facts web-verified 2026-06-30 (github.com/Dataherald/dataherald +
+    // dataherald.readthedocs.io + langchain.com/blog/dataherald): open-source
+    // NL-to-SQL engine (also a hosted API), built on LangChain; you point it at
+    // a warehouse you already run (Postgres, Snowflake, BigQuery, Redshift,
+    // Databricks, Athena, MariaDB, ClickHouse), then add business context and
+    // curated "golden SQL" training pairs and optionally fine-tune to your
+    // schema; the agent can ask follow-up questions. Honest split: Dataherald
+    // *connects to + answers over* a warehouse you stood up, tuned with context
+    // you curate; nlqdb *provisions + owns* a Postgres from English, shows the
+    // compiled SQL, validates fail-closed, and diff-previews writes — no engine
+    // to host and no training set to curate.
+    tagline:
+      "Open-source natural-language-to-SQL engine over your existing data warehouse — add business context and golden SQL, self-host or call the hosted API.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Dataherald if you have a data warehouse and want an open-source engine that answers it in English, tuned with business context and golden-SQL pairs you curate. Pick nlqdb if you want the database itself — a Postgres provisioned from English, the compiled SQL shown, and writes diff-previewed, with nothing to host.",
+    whenChooseUs: [
+      "You want NL→SQL working today without standing up and training an engine first.",
+      "You want a Postgres provisioned from English — no warehouse to connect first.",
+      "You want destructive writes and migrations diff-previewed before they apply.",
+      "You want one embed and an MCP server, not an engine to host.",
+    ],
+    whenChooseThem: [
+      "You already run a data warehouse and want NL queries over it.",
+      "You want to add business context and golden-SQL training pairs yourself.",
+      "Open source and self-hosting matter for compliance or data residency.",
+      "You need Snowflake, BigQuery, Redshift, or Databricks dialects today.",
+    ],
+    features: [
+      {
+        feature: "Provisions + owns the database (from English)",
+        us: "shipped",
+        them: "no",
+        note: "Dataherald connects to a warehouse you already run; it provisions nothing. nlqdb materialises a Postgres from the first English goal.",
+      },
+      { feature: "Natural-language → SQL", us: "shipped", them: "shipped" },
+      {
+        feature: "Compiled SQL shown with every answer",
+        us: "shipped",
+        them: "shipped",
+        note: "Both return the SQL — it's the output. nlqdb shows it inline with the answer; Dataherald returns it from the engine API.",
+      },
+      {
+        feature: "Connects to an existing warehouse (Snowflake / BigQuery / …)",
+        us: "no",
+        them: "shipped",
+        note: "Bring-your-own-warehouse is Dataherald's whole shape; nlqdb provisions + owns a Postgres instead (ClickHouse is Phase 2).",
+      },
+      {
+        feature: "Golden-SQL / training-pair tuning to your schema",
+        us: "partial",
+        them: "shipped",
+        note: "nlqdb's plan cache + schema fingerprint are automatic; Dataherald's golden-SQL + fine-tune loop is explicit and curated.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "Dataherald answers (reads); nlqdb diff-previews writes and DDL before they apply.",
+      },
+      { feature: "HTML embed element + anonymous try", us: "shipped", them: "no" },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "no",
+        note: "Dataherald exposes a REST engine API and a LangChain integration; it ships no dedicated MCP server.",
+      },
+      { feature: "Open source / self-hostable", us: "no", them: "shipped" },
+    ],
+    faqs: [
+      {
+        q: "Is nlqdb a replacement for Dataherald?",
+        a: "Only for the NL→SQL job, and from the other end. Dataherald is an open-source engine you self-host (or call as a hosted API) over a warehouse you already run, tuned with business context and golden SQL you curate. nlqdb is the hosted pipeline that owns the Postgres, compiles NL→SQL with the SQL shown, and diff-previews writes — nothing to host or train.",
+      },
+      {
+        q: "Can I point Dataherald at an nlqdb database?",
+        a: "Not the supported shape. nlqdb's API speaks `/v1/ask` (English) and `/v1/run` (raw SQL with an allow-list); Dataherald expects a warehouse connection string and its own context store. The honest split is nlqdb for a new data feature, Dataherald over a warehouse you can't migrate.",
+      },
+      {
+        q: "Do I have to curate golden SQL like in Dataherald?",
+        a: "No. Dataherald lifts accuracy by curating golden-SQL training pairs and business context against your schema. nlqdb prompts directly from the live schema fingerprint plus a recent-tables hint, and its plan cache fills automatically — there's no training set to author or maintain.",
+      },
+      {
+        q: "Dataherald connects to my warehouse — does nlqdb?",
+        a: "Not yet. nlqdb provisions and owns a Postgres rather than federating an existing warehouse; ClickHouse is Phase 2 and bring-your-own-connection is roadmap. If you must query Snowflake, BigQuery, or Redshift in place today, Dataherald is the better fit.",
+      },
+      {
+        q: "Which one is better for an AI agent?",
+        a: "nlqdb ships an MCP server with `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe`, where `nlqdb_query` materialises Postgres on first reference — so an agent stands up and queries its own data with no separate create-DB step. Dataherald exposes a REST API and a LangChain integration, so an agent wraps that API itself.",
+      },
+    ],
+    demo: {
+      goal: "revenue by product category last quarter",
+      why: "A warehouse-reporting question Dataherald answers over a warehouse you run; nlqdb answers it over a Postgres it provisioned, SQL shown.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {

@@ -43,18 +43,18 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-30 (run 119)** — hard numbers stay gated (eval dispatch 403; funnel
-re-pull network-blocked) and the `/vs` lane was busy (PR #551, run 118
-`/vs/langchain-sql-agent`) → a measured **onboarding/UX** lever on the parallel
-**`/solve`** lane (no collision): a **data-quality / dedup** pain page,
-`find-duplicate-rows-in-my-data` (P3 analyst). Distinct in *query shape* — ask
-"which rows are duplicated by email?" in English and nlqdb compiles the
-`GROUP BY ... HAVING COUNT(*) > 1`, runs it in Postgres, and shows the SQL so you
-can verify the grain. Honest split: it reports duplicates read-only — it doesn't
-delete/merge them; matching is exact, not fuzzy. **Solve pages 22 → 23 · P3
-coverage 3 → 4**; web-verified demand (r/SQL + SO `sql+duplicates` tag; LearnSQL
-GROUP-BY-HAVING guide), 176 web tests green, solve invariants pass, biome clean.
-Artifact: a dev.to / r/SQL / r/analytics draft ("the duplicate-rows query you
-re-Google every six weeks"). **KPI:** GLOBAL-025 onboarding/UX; none degraded.
-*(Prior run 118 — `/vs/langchain-sql-agent`, comparison pages 26 → 27, the first
-P4 build-vs-buy page in the §6 OSS text2sql-framework cluster.)*
+**2026-06-30 (run 120)** — hard numbers stay gated (eval dispatch 403; funnel
+re-pull network-blocked) → a measured **engine-quality/UX** lever on the **`/vs`**
+lane (no open PR): `/vs/dataherald`, the OSS NL→SQL-engine
+twin of Vanna in the §6 build-it-yourself cluster. Honest split: Dataherald
+*connects to + answers over* a warehouse you already run and tune with curated
+"golden SQL"; nlqdb *provisions + owns* a Postgres from English, shows the
+compiled SQL, diff-previews writes — no warehouse federation / golden-SQL loop on
+our side, no embed/MCP on theirs. Persona P3 (matches the OSS-engine analog Vanna,
+not the P4 raw-framework frame). **Comparison pages 27 → 28**; web-verified facts
+(GitHub `Dataherald/dataherald` + readthedocs + langchain.com/blog/dataherald),
+176 web tests green, tsc + biome clean. Artifact: a
+dev.to / r/dataengineering / r/LLMDevs draft ("open-source text-to-SQL is the easy
+10%; the golden SQL you maintain forever is the rest"). **KPI:** GLOBAL-025
+engine-quality + onboarding/UX; none degraded.
+*(Prior run 119 — `/solve/find-duplicate-rows-in-my-data`, solve pages 22 → 23.)*
