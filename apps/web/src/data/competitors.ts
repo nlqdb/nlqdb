@@ -2634,6 +2634,130 @@ export const COMPETITORS: Competitor[] = [
       why: "A grouped, time-bucketed query nlqdb answers as SQL over the database your app owns — the live data layer your product queries, not a notebook an analyst schedules.",
     },
   },
+  {
+    slug: "count",
+    name: "Count",
+    url: "https://count.co",
+    // P3 analyst slot — the last uncovered member of the notebook-first AI
+    // BI cluster the comparison-pages FEATURE named after Hex + Mode + Fabi.ai
+    // (docs/competitors.md §"notebook-first AI BI"). Facts web-verified
+    // 2026-06-30 (count.co + count.co/blog/bye-bye-notebooks-hello-canvas +
+    // count.co/comparison/count-vs-bi + learn.count.co/docs/count-ai):
+    // Count is a "collaborative agentic analytics platform" whose core surface
+    // is a freeform **canvas** (a whiteboard, explicitly *not* a notebook — see
+    // their "Bye-bye notebooks. Hello, canvas." post) where humans and AI
+    // agents work SQL, Python and visualizations side by side. Its agent is
+    // powered by leading Anthropic/OpenAI/Google models and runs queries across
+    // connected sources to explore questions and generate analyses. Queries run
+    // in three places: directly on your warehouse/connected sources, on Count's
+    // servers, and in the browser — so it connects to existing data (Snowflake,
+    // BigQuery, Postgres, a BI tool's semantic layer, or any business app via
+    // MCP) and does NOT provision or own a database. MCP is bidirectional: a
+    // Count MCP client pulls connected sources in, and Count's data is exposed
+    // to agents (e.g. Slack) — so MCP is them:partial. It also ships a Public
+    // API to control the workspace. Reports render live data as metric trees,
+    // user journeys and process-flow maps. Like Hex/Mode/Fabi it is a
+    // destination canvas a data team logs into, not an embeddable
+    // answer-element / agent-callable backend a product queries at runtime.
+    tagline:
+      "A collaborative agentic-analytics canvas where humans and AI agents explore SQL, Python and visuals over your existing warehouse.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Count if you're a data team that wants a collaborative AI canvas for SQL, Python and visuals over a warehouse you already run. Pick nlqdb if you're building a product or agent that needs English-to-SQL over a database it provisions — embeddable, API-first, every write diff-previewed.",
+    whenChooseUs: [
+      "You're embedding data answers in your product or agent, not exploring a canvas.",
+      "An AI agent must provision and query its own database, callable over MCP.",
+      "You ship one HTML element or an API, not a canvas analysts drive.",
+      "Writes and schema changes should be diff-previewed before they apply.",
+    ],
+    whenChooseThem: [
+      "You're a data team exploring a warehouse in a collaborative AI canvas.",
+      "You want SQL, Python and visualizations side by side on one whiteboard.",
+      "You connect Snowflake, BigQuery or Postgres, not provision a new database.",
+      "You want reports as metric trees, user journeys and process-flow maps.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Count connects to your existing warehouse or Postgres; it doesn't provision or own a database your app writes to.",
+      },
+      {
+        feature: "Natural-language data questions",
+        us: "shipped",
+        them: "shipped",
+        note: "Count's agent explores connected sources and writes SQL/Python on the canvas; nlqdb compiles SQL from English against a Postgres it owns and returns typed rows.",
+      },
+      {
+        feature: "Embeddable answer element + SDK + API",
+        us: "shipped",
+        them: "partial",
+        note: "Count exposes a Public API to control the workspace; nlqdb ships `<nlq-data>`, an SDK, and an HTTP API to query a database your product owns.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "partial",
+        note: "Count's MCP is bidirectional — a client that pulls sources in and exposes its data to agents; nlqdb's `nlqdb_query` materialises a tenant Postgres on first reference.",
+      },
+      {
+        feature: "Canvas, charts + reports",
+        us: "no",
+        them: "shipped",
+        note: "Count renders live data as charts, metric trees and process-flow maps on a collaborative canvas; nlqdb returns typed result rows you render in your own UI.",
+      },
+      {
+        feature: "Python cells + in-browser compute",
+        us: "no",
+        them: "shipped",
+        note: "Count mixes SQL and Python on the canvas and runs queries in the browser, on its servers, and on your warehouse; nlqdb's output contract is SQL plus rows.",
+      },
+      {
+        feature: "Real-time collaborative whiteboard",
+        us: "no",
+        them: "shipped",
+        note: "Count is a shared canvas where teammates and agents work together; nlqdb is a data layer your app and agents call, not a place people gather to analyse.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "Count reads and analyses connected sources; it doesn't manage your schema. nlqdb previews writes and DDL before applying.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Count and nlqdb together?",
+        a: "Yes — they serve different stages. Count is where a data team explores a warehouse on a collaborative AI canvas; nlqdb is the database your product or agent queries in plain English at runtime. Use Count for analysis and reporting, nlqdb for the data layer your app ships on.",
+      },
+      {
+        q: "Does nlqdb have a collaborative canvas like Count?",
+        a: "No. nlqdb returns typed result rows from SQL it compiles; it doesn't ship a canvas, Python cells, charts, or metric trees. If a collaborative whiteboard with an AI analyst is the goal, Count is the right shape; nlqdb's contract is the data, which you render in your own UI.",
+      },
+      {
+        q: "Count connects to my warehouse — why provision a new database with nlqdb?",
+        a: "Count runs queries across your existing Snowflake/BigQuery/Postgres and connected apps for analysis. nlqdb owns the database your app writes to: it provisions Postgres, migrates the schema via English, and diff-previews destructive writes. Connecting-to-read and owning-the-write-path are different jobs.",
+      },
+      {
+        q: "Does Count have an MCP server like nlqdb?",
+        a: "Yes, but a different shape. Count's MCP is bidirectional — a client that pulls connected sources onto the canvas and exposes Count's data to agents like Slack. nlqdb's MCP is database-shaped: `nlqdb_query` materialises a Postgres on first reference, so an agent provisions and queries its own database rather than driving an analyst's canvas.",
+      },
+      {
+        q: "Is Count's AI agent the same as nlqdb's natural-language querying?",
+        a: "Both compile English to queries, but for different users. Count's agent helps a data team explore and visualize a warehouse on a shared canvas. nlqdb compiles English into SQL against a Postgres it provisions and owns, returns typed rows, and diff-previews any write — built to be embedded in a product or called by an agent.",
+      },
+    ],
+    demo: {
+      goal: "monthly revenue by plan tier for the last 12 months",
+      why: "A grouped, time-bucketed query nlqdb answers as SQL over the database your app owns — the live data layer your product queries, not a canvas an analyst explores.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
