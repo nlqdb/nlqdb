@@ -2508,6 +2508,132 @@ export const COMPETITORS: Competitor[] = [
       why: "A grouped, time-bucketed query nlqdb answers as SQL over the database your app owns — the live data layer your product queries, not a report an analyst schedules.",
     },
   },
+  {
+    slug: "fabi",
+    name: "Fabi.ai",
+    url: "https://www.fabi.ai",
+    // P3 analyst slot — completes the notebook-first AI BI cluster the
+    // comparison-pages FEATURE named after Hex + Mode (2026-06-29):
+    // Hex / Mode AI / Fabi.ai / Count (docs/competitors.md §"notebook-first AI
+    // BI"). Fabi.ai is the AI-notebook-native member of that group. Anchored
+    // in docs/competitors.md §88. Facts web-verified 2026-06-30 (fabi.ai +
+    // fabi.ai/product/smartbooks + pricing snapshots): Fabi.ai is an
+    // AI-powered data-analysis platform whose core surface is "Smartbooks" —
+    // AI-native, reactive Python + SQL notebooks (a Jupyter/Colab alternative)
+    // with an embedded DuckDB engine for in-notebook compute over millions of
+    // rows. An "AI Analyst Agent" writes, debugs and explains SQL/Python and
+    // generates dashboards from natural language. Workflows schedule refreshes
+    // and deliver results to Slack/email/spreadsheets. It connects to existing
+    // warehouses + apps (Snowflake, BigQuery, Redshift, Postgres, Databricks,
+    // MotherDuck/DuckDB; Stripe, HubSpot, Salesforce, PostHog, GA, Airtable,
+    // Supabase, Google Sheets) — it does NOT provision or own a database.
+    // Crucially it ships an "Analyst Agent MCP Server" exposing its notebook
+    // agent to external LLM interfaces (so MCP is them:partial, not them:no).
+    // Pricing (snapshots vary; verified 2026-06-30): Starter free (a few
+    // Smartbooks + a daily AI-request cap), Builder ~$39/seat/mo (scheduled
+    // dashboards/workflows, a higher monthly AI-request allowance), a Team
+    // tier above that; SOC 2 Type II claimed. Like Hex/Mode it is a destination
+    // notebook a data team logs into, not an embeddable answer-element /
+    // agent-callable backend a product queries at runtime.
+    tagline:
+      "AI-native Python + SQL notebooks ('Smartbooks') with an AI Analyst Agent, dashboards, and scheduled workflows over your existing warehouse.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Fabi.ai if you're a data team that wants AI-assisted Python + SQL notebooks and scheduled dashboards over a warehouse you already run. Pick nlqdb if you're building a product or agent that needs English-to-SQL over a database it provisions — embeddable, API-first, every write diff-previewed.",
+    whenChooseUs: [
+      "You're embedding data answers in your product or agent, not authoring notebooks.",
+      "An AI agent must provision and query its own database, callable over MCP.",
+      "You ship one HTML element or an API, not a notebook analysts drive.",
+      "Writes and schema changes should be diff-previewed before they apply.",
+    ],
+    whenChooseThem: [
+      "You're a data team exploring a warehouse in collaborative Python + SQL notebooks.",
+      "You want an AI analyst agent that suggests, writes, and debugs your queries.",
+      "You connect Snowflake, BigQuery, Redshift or Postgres, not provision a new database.",
+      "You want scheduled dashboards and Slack/email delivery of recurring analyses.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "Fabi.ai connects to your existing warehouse or Postgres; it doesn't provision or own a database your app writes to.",
+      },
+      {
+        feature: "Natural-language data questions",
+        us: "shipped",
+        them: "shipped",
+        note: "Fabi.ai's AI Analyst Agent writes and debugs SQL/Python in the notebook; nlqdb compiles SQL from English against a Postgres it owns and returns typed rows.",
+      },
+      {
+        feature: "Embeddable answer element + SDK + API",
+        us: "shipped",
+        them: "partial",
+        note: "Fabi.ai publishes dashboards and shares Smartbooks; nlqdb ships `<nlq-data>`, an SDK, and an HTTP API to query a database your product owns.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "partial",
+        note: "Fabi.ai's Analyst Agent MCP server exposes its notebook agent to external LLMs; nlqdb's `nlqdb_query` materialises a tenant Postgres on first reference.",
+      },
+      {
+        feature: "Charts, dashboards + scheduled workflows",
+        us: "no",
+        them: "shipped",
+        note: "Fabi.ai builds dashboards and schedules workflows with Slack/email delivery; nlqdb returns typed result rows you render in your own UI.",
+      },
+      {
+        feature: "Python notebook cells + DuckDB compute",
+        us: "no",
+        them: "shipped",
+        note: "Fabi.ai's Smartbooks mix Python and SQL with an embedded DuckDB engine; nlqdb's output contract is SQL plus rows, not a notebook runtime.",
+      },
+      {
+        feature: "App connectors (Stripe, HubSpot, Salesforce…)",
+        us: "no",
+        them: "shipped",
+        note: "Fabi.ai pulls from Stripe/HubSpot/Salesforce/GA for analysis; nlqdb is the Postgres your app writes to, not a connector hub.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "Fabi.ai reads and analyses; it doesn't manage your schema. nlqdb previews writes and DDL before applying.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Fabi.ai and nlqdb together?",
+        a: "Yes — they serve different stages. Fabi.ai is where a data team explores a warehouse and publishes dashboards; nlqdb is the database your product or agent queries in plain English at runtime. Use Fabi.ai for analysis and reporting, nlqdb for the data layer your app ships on.",
+      },
+      {
+        q: "Does nlqdb have Python notebooks like Fabi.ai's Smartbooks?",
+        a: "No. nlqdb returns typed result rows from SQL it compiles; it doesn't ship Python/SQL notebooks, DuckDB cells, or dashboards. If a collaborative notebook with an AI analyst is the goal, Fabi.ai is the right shape; nlqdb's contract is the data, which you render in your own UI.",
+      },
+      {
+        q: "Fabi.ai connects to my warehouse — why provision a new database with nlqdb?",
+        a: "Fabi.ai reads your existing Snowflake/BigQuery/Redshift/Postgres for analysis. nlqdb owns the database your app writes to: it provisions Postgres, migrates the schema via English, and diff-previews destructive writes. Connecting-to-read and owning-the-write-path are different jobs.",
+      },
+      {
+        q: "Does Fabi.ai have an MCP server like nlqdb?",
+        a: "Yes, but a different shape. Fabi.ai ships an Analyst Agent MCP server that exposes its notebook agent to external LLM interfaces. nlqdb's MCP is database-shaped: `nlqdb_query` materialises a Postgres on first reference, so an agent provisions and queries its own database rather than driving an analyst's notebook.",
+      },
+      {
+        q: "Is Fabi.ai's AI Analyst Agent the same as nlqdb's natural-language querying?",
+        a: "Both compile English to queries, but for different users. Fabi.ai's Analyst Agent helps a data team write and debug SQL/Python inside a notebook. nlqdb compiles English into SQL against a Postgres it provisions and owns, returns typed rows, and diff-previews any write — built to be embedded in a product or called by an agent.",
+      },
+    ],
+    demo: {
+      goal: "monthly revenue by plan tier for the last 12 months",
+      why: "A grouped, time-bucketed query nlqdb answers as SQL over the database your app owns — the live data layer your product queries, not a notebook an analyst schedules.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {

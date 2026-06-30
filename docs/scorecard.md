@@ -45,7 +45,7 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 ## Last change
 
 **2026-06-30 (run 113)** — hard numbers stay gated (eval dispatch 403; funnel
-re-pull network-blocked) and the open PR #545 holds the `/vs` comparison lane →
+re-pull network-blocked) and the `/vs` comparison lane was busy (run 112) →
 a measured **onboarding/UX** lever on the parallel **`/solve` AEO lane** (no
 collision): a pain page for **storing and querying webhook events**
 (`store-and-query-webhook-events`, P4 backend engineer). Honest split:
@@ -57,5 +57,5 @@ landing-table pattern), apps/web 176 tests green, `astro check` 0 errors, all
 solve `data integrity` invariants pass, biome clean. Artifact: a dev.to /
 r/webdev / r/node draft (the receiver is the easy half; the queryable store is
 the part nobody wants to own). **KPI:** GLOBAL-025 onboarding/UX; none degraded
-(prod untouched). *(Prior run 111 — `/vs/honcho` page, comparison pages 22 → 23;
-run 112 = open PR #545 `/vs/fabi`.)*
+(prod untouched). *(Prior run 112 — `/vs/fabi` P3 AI-notebook comparison page,
+comparison pages 23 → 24; run 111 — `/vs/honcho` page, comparison pages 22 → 23.)*
