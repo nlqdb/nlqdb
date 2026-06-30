@@ -14,7 +14,7 @@ then the daily lever targets the worst number below.)*
 (T13–T22) **saturated**; path to target is the §4 reasoning levers (#1 DAIL-SQL
 retrieval, #3 self-consistency) — both **built end-to-end**, both dispatch-gated.
 Offline retrieval probe (row #8) **saturated at 23/23** — next engine gain needs
-the gated EX dispatch, not another offline lever.
+the gated EX dispatch.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -44,18 +44,17 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-30 (run 113)** — hard numbers stay gated (eval dispatch 403; funnel
-re-pull network-blocked) and the `/vs` comparison lane was busy (run 112) →
-a measured **onboarding/UX** lever on the parallel **`/solve` AEO lane** (no
-collision): a pain page for **storing and querying webhook events**
-(`store-and-query-webhook-events`, P4 backend engineer). Honest split:
-you keep your own tiny receiver and signature check (`us: no`), nlqdb provisions
-the Postgres, takes the verified payload via SDK / `POST /v1/run`, and answers
-"how many events per type this week" in English with the SQL shown (`us: shipped`).
-**Solve pages 19 → 20 · P4 coverage 2 → 3**; web-verified facts (Postgres+JSONB
-landing-table pattern), apps/web 176 tests green, `astro check` 0 errors, all
-solve `data integrity` invariants pass, biome clean. Artifact: a dev.to /
-r/webdev / r/node draft (the receiver is the easy half; the queryable store is
-the part nobody wants to own). **KPI:** GLOBAL-025 onboarding/UX; none degraded
-(prod untouched). *(Prior run 112 — `/vs/fabi` P3 AI-notebook comparison page,
-comparison pages 23 → 24; run 111 — `/vs/honcho` page, comparison pages 22 → 23.)*
+**2026-06-30 (run 115)** — hard numbers stay gated (eval dispatch 403; funnel
+re-pull network-blocked) and the `/vs` lane was busy (open PR #547, run 114
+`/vs/count`) → a measured **onboarding/UX** lever on the parallel **`/solve`**
+lane (no collision): a pain page for **tracking product usage events without a
+data warehouse** (`track-product-usage-without-a-data-warehouse`, P1 solo
+builder). Honest split: nlqdb provisions the Postgres, you emit events via SDK /
+`POST /v1/run`, then ask "active users this week" in English with the SQL shown;
+no autocapture/session-replay/funnel UI — PostHog's shape, and the two compose.
+**Solve pages 20 → 21 · P1 coverage 3 → 4**; web-verified pain (Indie Hackers
+"just store events in Postgres" is the standing fallback), 176 web tests green,
+`astro check` 0 errors, solve invariants pass, biome clean. Artifact: a dev.to /
+r/SaaS / Indie Hackers draft ("product analytics is two problems; only one needs
+a warehouse"). **KPI:** GLOBAL-025 onboarding/UX; none degraded. *(Prior run 113
+— `/solve/store-and-query-webhook-events`, solve 19 → 20.)*
