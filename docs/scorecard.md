@@ -44,16 +44,18 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-29 (run 111)** — hard numbers stay gated (eval dispatch 403; funnel
-re-pull network-blocked) and no open PR holds either AEO lane → a measured
-**onboarding/UX + GLOBAL-036 pivot** lever on the free `/vs` lane: a comparison
-page for **Honcho** (P2 agent builder), the theory-of-mind user-modeling
-member of the agent-memory cluster (AGPL-3.0, Postgres+pgvector).
-Honest split: Honcho models *how* a user reasons (`them: shipped`, `us: no`),
-nlqdb runs SQL aggregation over *what* the agent stored (`us: shipped`,
-`them: no`); both expose MCP, they compose. **Comparison pages 22 → 23 · memory
-`/vs` pages 11 → 12**; OG card `vs-honcho.png` (WS-08), apps/web 176 tests green,
-`astro check` 0 errors, all 14 `competitors.test.ts` invariants pass. Artifact:
-a dev.to / r/AI_Agents draft (model-a-person vs aggregate-a-population).
-**KPI:** GLOBAL-025 onboarding/UX; none degraded (prod untouched).
-*(Prior run 110 — `/vs/mode` BI page, comparison pages 21 → 22.)*
+**2026-06-30 (run 113)** — hard numbers stay gated (eval dispatch 403; funnel
+re-pull network-blocked) and the open PR #545 holds the `/vs` comparison lane →
+a measured **onboarding/UX** lever on the parallel **`/solve` AEO lane** (no
+collision): a pain page for **storing and querying webhook events**
+(`store-and-query-webhook-events`, P4 backend engineer). Honest split:
+you keep your own tiny receiver and signature check (`us: no`), nlqdb provisions
+the Postgres, takes the verified payload via SDK / `POST /v1/run`, and answers
+"how many events per type this week" in English with the SQL shown (`us: shipped`).
+**Solve pages 19 → 20 · P4 coverage 2 → 3**; web-verified facts (Postgres+JSONB
+landing-table pattern), apps/web 176 tests green, `astro check` 0 errors, all
+solve `data integrity` invariants pass, biome clean. Artifact: a dev.to /
+r/webdev / r/node draft (the receiver is the easy half; the queryable store is
+the part nobody wants to own). **KPI:** GLOBAL-025 onboarding/UX; none degraded
+(prod untouched). *(Prior run 111 — `/vs/honcho` page, comparison pages 22 → 23;
+run 112 = open PR #545 `/vs/fabi`.)*
