@@ -11,48 +11,50 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-30 (run 117) — dev.to / r/devops / r/sysadmin: "Your cron jobs already write run history. You just can't query it."
+## 2026-06-30 (run 119) — dev.to / r/SQL / r/analytics: "The duplicate-rows query you re-Google every six weeks."
 
-**Where:** dev.to + r/devops + r/sysadmin; for backend engineers and ops who run scheduled work
-(cron, queue workers, ETL, cleanup scripts) and answer "which job fails most" by grepping logs.
-nlqdb mentioned once, as the queryable-store-plus-English-query half — not a scheduler or monitor.
+**Where:** dev.to + r/SQL + r/analytics; for analysts, ops, and support leads who can read SQL but
+don't write it daily and keep re-looking-up how to find duplicates. nlqdb mentioned once, as the
+"ask in English, see the SQL" half — not a data-cleaning pipeline.
 
-**Title:** Your cron jobs already write run history. You just can't query it.
+**Title:** The duplicate-rows query you re-Google every six weeks.
 
 **Body:**
 
-> Every team running scheduled work — nightly cron, queue workers, ETL, cleanup scripts —
-> eventually asks the same three questions: which job fails most, how long does each take, how many
-> ran today. And every team answers them the same bad way: SSH in and grep the scheduler logs,
-> scroll a JSON column, or eyeball stdout nobody reads. Those are aggregations — failures per job,
-> p95 duration, runs per day — and a flat log is the wrong shape for an aggregation. You're
-> hand-counting what a `GROUP BY` should count.
+> There's a query nobody memorises and everybody needs: find the rows that are duplicated. A
+> customer signed up twice, an import ran twice, a join fanned out and doubled every row. The answer
+> has been the same for thirty years — `GROUP BY` the suspect columns, `HAVING COUNT(*) > 1` — and
+> yet if you're not writing SQL daily you look it up *every single time*, because the shape is just
+> unusual enough to not stick.
 >
-> Two honest halves here, like every "store events" problem. *Capture* is trivial: one row per run
-> — `{job, status, duration_ms, started_at}` — written from your job's exit hook. *Reporting* is the
-> part that quietly eats an afternoon: the windowed query, the schema, the place to put it. Even
-> Postgres's own `pg_cron` keeps a `cron.job_run_details` table precisely because run history is
-> worth querying — and then leaves you to write the rollups (and a second job to prune it).
+> The trap isn't that it's hard. It's that it's fiddly in ways that bite quietly. Group by the wrong
+> columns and you under- or over-count. Want the *whole duplicate row* and not just the duplicated
+> key, and you're suddenly reaching for a window function (`ROW_NUMBER() OVER (PARTITION BY ...)`) —
+> a different query than the one you Googled. It's a yes/no question wearing a SQL costume, and the
+> costume changes every time.
 >
-> A dedicated monitor (Healthchecks.io, Cronitor) is the right tool for the *other* question — "did
-> this job run at all?" — the dead-man's-switch heartbeat that pages you when a job goes silent.
-> That's genuinely different from "which job fails most over the runs that did happen." One watches
-> for absence; the other reports over presence. They compose; neither replaces the other.
+> This is exactly the case for asking in plain English and *reading the SQL it generates*. Not
+> because SQL is beneath you — because the grain matters here and you want to verify it. "Which
+> customers appear more than once by email?" should hand you back both the rows and the
+> `GROUP BY email HAVING COUNT(*) > 1` it ran, so you can confirm it grouped on the right column
+> before you trust the count. A chat model can write you that query; it can't run it against your
+> data, and if you paste rows in and ask it to count, it hallucinates the tally.
 >
-> (The reporting half is what we built [nlqdb](https://nlqdb.com) for: provision a Postgres, write
-> each run with `POST /v1/run` from your exit hook, then ask "failure rate per job this week" in
-> English with the compiled SQL shown so you can audit the grain. Honest split — nlqdb is not a
-> scheduler and does no heartbeat alerting; it stores the run records you write and gives you a
-> query planner over them.)
+> (That's the half we built [nlqdb](https://nlqdb.com) for: ask the duplicate question in English
+> over a Postgres it provisions, or one you already run via a signed-in connect, and get the rows
+> plus the compiled SQL. Honest split — it *reports* duplicates with a read-only query; which row to
+> keep and how to merge is a write you run deliberately, and matching is exact, not fuzzy.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides "monitor cron / background
-job failures" search intent surfaced by the `/solve/track-background-job-run-history` page shipped
-this run, with a capture-vs-reporting + presence-vs-absence framing that earns a citation without a
-pitch and concedes the no-scheduler/no-heartbeat line honestly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the perennial "find duplicate
+rows in SQL" search intent surfaced by the `/solve/find-duplicate-rows-in-my-data` page shipped this
+run; the read-the-SQL / verify-the-grain framing earns a citation without a pitch and concedes the
+read-only and exact-match lines honestly.
 
 ## Collapsed — full drafts in git history
 
-- run 116 — dev.to / r/mcp / r/LLMDevs: "A federated query engine connects your agent to the data you have. Some agents need data they don't have yet." (the cleanest "give my agent data" idea is federation — one SQL endpoint over the 200+ sources you already run, which MindsDB does well and wraps in an MCP server; but "connect to data you have" assumes the data already exists in a system you administer, while a lot of agent work — logging what it did, remembering structured facts, then "how many of those this week grouped by type" — needs a store the agent *provisions and owns*, not a read-mostly federated view; federation is a universal adapter over existing sources, provisioning stands up a fresh queryable store from nothing; honest split — nlqdb has no 200-source federation, no in-database ML training, no unstructured RAG, for querying across many systems you already run MindsDB is the right shape and the two compose; anchors `/vs/mindsdb`, the GLOBAL-036 "a database, not just an adapter" wedge).
+- run 117 — dev.to / r/devops / r/sysadmin: "Your cron jobs already write run history. You just can't query it." (which-job-fails-most / how-long / how-many-ran are aggregations grepped out of scheduler logs the wrong way; capture is one row per run, reporting is the windowed `GROUP BY`, and even `pg_cron` keeps a `cron.job_run_details` table because run history is worth querying; a heartbeat monitor like Healthchecks.io/Cronitor answers the *other* question — did it run at all, the dead-man's-switch — presence-vs-absence, not which-fails-most; honest split — nlqdb is no scheduler and does no alerting, it stores the runs you write and gives a planner over them; anchors `/solve/track-background-job-run-history`).
+
+- run 116 — dev.to / r/mcp / r/LLMDevs: "A federated query engine connects your agent to the data you have. Some agents need data they don't have yet." (federation — one SQL endpoint over the 200+ sources you already run, which MindsDB does well and wraps in an MCP server — assumes the data already exists in a system you administer; but much agent work (logging what it did, remembering structured facts, then "how many this week by type") needs a store the agent *provisions and owns*, not a read-mostly federated view; honest split — nlqdb has no 200-source federation / in-database ML / unstructured RAG, for querying across systems you run MindsDB is right and the two compose; anchors `/vs/mindsdb`, the GLOBAL-036 "a database, not just an adapter" wedge).
 - run 115 — dev.to / r/SaaS / Indie Hackers: "Product analytics is two problems. Only one of them needs a warehouse." (the most-upvoted "what do you use for product analytics" answer is "just store events in Postgres and query them" — right, and it hides the work; product analytics is *capture* (a tiny `{user, event, ts, props}` insert) vs *reporting* (windowed `GROUP BY` that wants a planner); per-event SaaS prices you off a tier exactly when a side project can least pay and a warehouse is oversized for 40k events; honest split — no autocapture/replay/funnel UI, PostHog is right for those and the two compose; anchors `/solve/track-product-usage-without-a-data-warehouse`).
 - run 114 — dev.to / r/dataengineering / r/analytics: "Your analytics canvas is where humans look. Your product runs where no one's looking." (the new agentic-analytics canvases — Count put SQL+Python+visuals on one freeform whiteboard and dropped the notebook metaphor ("Bye-bye notebooks. Hello, canvas."), an AI agent exploring your warehouse alongside you — are genuinely good *for a data team watching the cell*; the trouble starts when someone wires that agent into the product (its MCP endpoint behind an in-app "ask your data" box, a 3am refresh, an agent answering mid-conversation), because a canvas assumes a human reads the SQL and eyeballs the chart and a runtime has none of that; the two aren't competitors, they're different altitudes — interactive analysis wants a fast forgiving human-in-the-loop, headless runtime wants the SQL inspectable *before* it runs and any write diff-previewed *before* it applies; honest split — nlqdb has no canvas/Python/charts, for collaborative exploration over a warehouse you run Count/Hex/Mode/Fabi.ai is right and the two compose; anchors `/vs/count`).
 - run 113 — dev.to / r/webdev / r/node: "The webhook receiver is the easy half. The database behind it is the part nobody wants to own." (the receiver is a 20-minute job — accept the POST, verify the signature, return 200; the skipped part is the queryable store behind it, where "how many `checkout.session` events failed yesterday by error code" means standing up Postgres, schema-ing a payload the provider mutates without warning, and hand-writing reporting `GROUP BY`s; patterns — JSONB payload beside extracted columns for idempotency, and separate *capture* from *reporting*; honest split — nlqdb is not the receiver and does no signature verification; anchors `/solve/store-and-query-webhook-events`).

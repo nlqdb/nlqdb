@@ -43,18 +43,16 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-30 (run 117)** — hard numbers stay gated (eval dispatch 403; funnel
-re-pull network-blocked) and the `/vs` lane was busy (merged PR #549, run 116
-`/vs/mindsdb`) → a measured **onboarding/UX** lever on the parallel **`/solve`**
-lane (no collision): a pain page for **logging background-job / cron run history
-and querying which job fails most** (`track-background-job-run-history`, P4
-backend engineer). Honest split: log each run via SDK / `POST /v1/run`, ask
-"failure rate per job this week" in English with the SQL shown; nlqdb is not a
-scheduler and does no heartbeat alerting — Healthchecks.io/Cronitor's job, the
-two compose. **Solve pages 21 → 22 · P4 coverage 3 → 4**; web-verified demand
-(r/devops cron-monitoring threads; `pg_cron` keeps a queryable run-history
-table), 176 web tests green, solve invariants pass, biome clean. Artifact: a
-dev.to / r/devops / r/sysadmin draft ("your cron jobs already write run history;
-you just can't query it"). **KPI:** GLOBAL-025 onboarding/UX; none degraded.
-*(Prior run 116 — `/vs/mindsdb`, comparison pages 25 → 26, P4 federated-query
-connect-vs-provision wedge.)*
+**2026-06-30 (run 119)** — hard numbers stay gated (eval dispatch 403; funnel
+re-pull network-blocked) and the `/vs` lane was busy (open PR #551, run 118
+`/vs/langchain-sql-agent`) → a measured **onboarding/UX** lever on the parallel
+**`/solve`** lane (no collision): a **data-quality / dedup** pain page,
+`find-duplicate-rows-in-my-data` (P3 analyst). Distinct in *query shape* — ask
+"which rows are duplicated by email?" in English and nlqdb compiles the
+`GROUP BY ... HAVING COUNT(*) > 1`, runs it in Postgres, and shows the SQL so you
+can verify the grain. Honest split: it reports duplicates read-only — it doesn't
+delete/merge them; matching is exact, not fuzzy. **Solve pages 22 → 23 · P3
+coverage 3 → 4**; web-verified demand (r/SQL + SO `sql+duplicates` tag; LearnSQL
+GROUP-BY-HAVING guide), 176 web tests green, solve invariants pass, biome clean.
+Artifact: a dev.to / r/SQL / r/analytics draft ("the duplicate-rows query you
+re-Google every six weeks"). **KPI:** GLOBAL-025 onboarding/UX; none degraded.

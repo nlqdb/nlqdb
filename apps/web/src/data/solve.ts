@@ -1340,6 +1340,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "find-duplicate-rows-in-my-data",
+    persona: "P3 analyst",
+    searchTitle: "How do I find duplicate rows in my data without writing SQL?",
+    oneLiner:
+      "If you need to find duplicate rows — the same email twice, an import that ran twice, a customer entered three times — ask in plain English instead of hand-writing GROUP BY ... HAVING. nlqdb compiles the dedup query, runs it in Postgres, and shows the SQL, so you see exactly which rows repeat and how many times.",
+    painContext:
+      "Analysts, ops, and support leads hit duplicate data constantly — a customer signed up twice, an import ran twice, a join fanned out and doubled every row. The canonical fix is `GROUP BY` the suspect columns and `HAVING COUNT(*) > 1`, but if you don't write SQL every day that's exactly the kind of query you re-Google each time, get subtly wrong (counting the wrong grain), or file a data ticket for. The pain isn't that it's hard SQL — it's that it's recurring, fiddly SQL for a yes/no question.",
+    demoGoal:
+      "customers that appear more than once by email address, showing how many times each one appears",
+    demoWhy:
+      "The exact query you'd otherwise hand-write — GROUP BY the column, HAVING count greater than one — is one English goal here, with the SQL shown so you can trust the grain.",
+    howNlqdbAnswers: [
+      "Ask 'which rows are duplicated by email?' in plain English; nlqdb compiles the `GROUP BY ... HAVING COUNT(*) > 1` and runs it in Postgres.",
+      "Every answer returns the duplicate rows plus the compiled SQL under a trace toggle (`SK-WEB-005`) — check the grain before trusting a count.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to dedupe your real data.",
+      "Repeated checks hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same dedup question returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "nlqdb finds and reports duplicates with a read-only SELECT — it doesn't delete or merge them for you. Which row to keep and how to merge stays a deliberate write you run yourself.",
+      "The public `<nlq-data>` embed is read-scoped — it surfaces duplicates, it isn't a data-cleaning pipeline. Bulk fixes go through the SDK or `POST /v1/run`, never a write key in client HTML.",
+      "No fuzzy / approximate matching out of the box — 'duplicate' means exact equality on the columns you name. Near-duplicates ('Jon' vs 'John', trailing spaces) need a normalising expression you specify in the question.",
+    ],
+    faqs: [
+      {
+        q: "How do I find duplicate rows in my data without writing SQL?",
+        a: "Ask in plain English — 'which customers appear more than once by email?' nlqdb compiles the canonical `GROUP BY email HAVING COUNT(*) > 1`, runs it in Postgres, and returns the repeated rows plus the SQL it ran. You see which values duplicate and how many times, without hand-writing the query or filing a data ticket. The honest limit: it reports duplicates; it doesn't delete or merge them.",
+      },
+      {
+        q: "What SQL does nlqdb use to find duplicates?",
+        a: "The standard pattern: `GROUP BY` the columns you're checking and `HAVING COUNT(*) > 1` to keep only the groups that repeat. nlqdb writes and runs that query for you and shows it under a trace toggle, so you can confirm it grouped by the right columns. If you need the full duplicate rows (not just the duplicated keys), ask for the rows and it wraps that in a window-function or self-join.",
+      },
+      {
+        q: "Can I dedupe a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask the duplicate question in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb reports the duplicates with a read-only query — deleting or merging them is a write you run deliberately.",
+      },
+      {
+        q: "Why not just ask ChatGPT to find the duplicates in my data?",
+        a: "A chat model can write you a `GROUP BY ... HAVING` query, but it can't run it against your data — and if you paste rows in and ask it to count, it hallucinates the tally. nlqdb runs the actual SQL in Postgres and returns real rows plus the query it ran, so the duplicate count is computed, not guessed.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/sql+duplicates",
+        label:
+          "Stack Overflow — the 'sql + duplicates' tag intersection, a perennial 'how do I find duplicate rows' hub.",
+      },
+      {
+        url: "https://www.reddit.com/r/SQL/search/?q=duplicates",
+        label: "r/SQL — recurring 'find / remove duplicate rows' threads.",
+      },
+      {
+        url: "https://learnsql.com/blog/how-to-find-duplicate-values-in-sql/",
+        label:
+          "LearnSQL — evergreen 'How to Find Duplicate Values in SQL' guide (the GROUP BY ... HAVING canonical method).",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
