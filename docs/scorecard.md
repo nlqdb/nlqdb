@@ -44,7 +44,7 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 ## Last change
 
 **2026-06-30 (run 119)** — hard numbers stay gated (eval dispatch 403; funnel
-re-pull network-blocked) and the `/vs` lane was busy (open PR #551, run 118
+re-pull network-blocked) and the `/vs` lane was busy (PR #551, run 118
 `/vs/langchain-sql-agent`) → a measured **onboarding/UX** lever on the parallel
 **`/solve`** lane (no collision): a **data-quality / dedup** pain page,
 `find-duplicate-rows-in-my-data` (P3 analyst). Distinct in *query shape* — ask
@@ -56,3 +56,5 @@ coverage 3 → 4**; web-verified demand (r/SQL + SO `sql+duplicates` tag; LearnS
 GROUP-BY-HAVING guide), 176 web tests green, solve invariants pass, biome clean.
 Artifact: a dev.to / r/SQL / r/analytics draft ("the duplicate-rows query you
 re-Google every six weeks"). **KPI:** GLOBAL-025 onboarding/UX; none degraded.
+*(Prior run 118 — `/vs/langchain-sql-agent`, comparison pages 26 → 27, the first
+P4 build-vs-buy page in the §6 OSS text2sql-framework cluster.)*

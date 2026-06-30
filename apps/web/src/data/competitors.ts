@@ -2888,6 +2888,132 @@ export const COMPETITORS: Competitor[] = [
       why: "A federated engine assumes you've connected and modelled the sources first; nlqdb answers the same aggregate from one English goal over a Postgres it provisioned.",
     },
   },
+  {
+    slug: "langchain-sql-agent",
+    name: "LangChain SQL agent",
+    url: "https://python.langchain.com",
+    // P4 backend-engineer slot — the OSS text2sql-framework cluster
+    // (docs/competitors.md §6, "the build-it-yourself alternative for P2 and
+    // technically-inclined P4s"). Persona is P4, NOT P2: like MindsDB, the P2
+    // path hardwires the agent-memory OG card + "analytical memory for agents"
+    // cross-link, which is false for a generic NL→SQL framework. The honest
+    // buyer is the engineer weighing "build my own SQL agent" vs "embed a
+    // hosted pipeline" — the same build-vs-buy axis as the
+    // /solve/add-ask-your-data-feature-without-building-text-to-sql page.
+    // Facts web-verified 2026-06-30 (docs.langchain.com/oss/python/langgraph/
+    // sql-agent + reference.langchain.com SQLDatabaseToolkit / create_sql_agent):
+    // LangChain ships agent PRIMITIVES, not a product. `create_sql_agent`
+    // (langchain_community) builds a ReAct-style agent around SQLDatabaseToolkit,
+    // whose tools list tables, fetch column info, and run arbitrary SQL against a
+    // DB you already stood up; the current recommendation is to assemble the
+    // agent directly in LangGraph (tool-calling loop + optional human-in-the-loop
+    // interrupt before a query + a persistence layer). You bring the database,
+    // the model, the prompt, retries, guardrails, deployment, and eval
+    // (LangSmith, separate). Free + open source + flexible. Honest split: the
+    // LangChain SQL agent is a toolkit you wire to a DB you run; nlqdb is the
+    // hosted pipeline you embed — it provisions + owns a Postgres, compiles
+    // NL → SQL with the SQL shown, validates fail-closed, and diff-previews
+    // writes, so there is no agent loop to build, tune, or host.
+    tagline:
+      "Open-source framework primitives for building a database-querying agent — bring your own model, database, tools, and deployment.",
+    persona: "P4 backend engineer",
+    oneLiner:
+      "Pick the LangChain SQL agent if you want to build and own the agent loop — its prompts, tools, retries, and deployment — over a database you already run. Pick nlqdb if you want NL→SQL working today as a hosted pipeline you embed, with the SQL shown, writes diff-previewed, and a Postgres provisioned for you.",
+    whenChooseUs: [
+      "You want NL→SQL working today without building a prompt, validator, retry, and eval stack.",
+      "You want the compiled SQL shown with every answer so you can audit the grain.",
+      "You want a Postgres provisioned from English — no database to stand up first.",
+      "You want destructive writes and migrations diff-previewed before they apply.",
+    ],
+    whenChooseThem: [
+      "You want full control of the agent loop, prompts, tools, and retrieval.",
+      "You're already in the LangChain / LangGraph ecosystem with other agents.",
+      "You need it free, open source, and self-hosted against a database you run.",
+      "You want to wire your own few-shot examples, tools, and reasoning graph.",
+    ],
+    features: [
+      {
+        feature: "Provisions + owns the database (from English)",
+        us: "shipped",
+        them: "no",
+        note: "The LangChain SQL agent connects to a database you already stood up; it provisions nothing. nlqdb materialises a Postgres from the first English goal.",
+      },
+      {
+        feature: "NL→SQL without building or tuning the agent yourself",
+        us: "shipped",
+        them: "partial",
+        note: "LangChain gives you the toolkit and a ReAct loop; you assemble, prompt, and tune the agent. nlqdb ships the pipeline — nothing to wire.",
+      },
+      {
+        feature: "Compiled SQL shown with every answer",
+        us: "shipped",
+        them: "partial",
+        note: "You can log the agent's intermediate SQL, but surfacing it to a user is your wiring. nlqdb returns the compiled SQL with every answer by default.",
+      },
+      {
+        feature: "Fail-closed read-only SQL validation",
+        us: "shipped",
+        them: "no",
+        note: "SQLDatabaseToolkit's query tool runs whatever SQL the model emits; guardrails are yours to add. nlqdb validates against an allowlist and fails closed.",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "LangGraph can pause for human approval before a tool call, but it computes no before/after diff of a write. nlqdb diff-previews writes and DDL.",
+      },
+      {
+        feature: "Plan cache (repeat questions skip the LLM)",
+        us: "shipped",
+        them: "no",
+        note: "Caching identical questions is yours to build in LangChain. nlqdb caches the compiled plan so a repeated question returns without another model call.",
+      },
+      {
+        feature: "HTML embed element + anonymous try",
+        us: "shipped",
+        them: "no",
+        note: "nlqdb ships `<nlq-data>` and anonymous mode (a first answer before sign-in); a LangChain agent is code you deploy and host yourself.",
+      },
+      {
+        feature: "Self-host / open source",
+        us: "no",
+        them: "shipped",
+        note: "LangChain is open source and self-hostable; nlqdb's platform is hosted-only during pre-alpha (SDKs / CLI / elements open at GA).",
+      },
+      {
+        feature: "100s of framework integrations (models, stores, loaders)",
+        us: "no",
+        them: "shipped",
+        note: "LangChain's reach across models, vector stores, and loaders is its moat; nlqdb is Postgres-first NL→SQL, not a general agent framework.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Is nlqdb a replacement for the LangChain SQL agent?",
+        a: "Only for the NL→SQL job. The LangChain SQL agent is a framework you assemble — toolkit, model, prompt, retries, deployment — over a database you already run. nlqdb is the hosted pipeline that does NL→SQL for you, provisions the Postgres, shows the SQL, and diff-previews writes. One is build-it-yourself; the other is embed-and-go.",
+      },
+      {
+        q: "Can I use the LangChain SQL agent and nlqdb together?",
+        a: "Yes. A LangChain agent can call nlqdb as one of its tools — letting nlqdb own the database and the NL→SQL step while LangChain orchestrates the wider reasoning, retrieval, and other tools. You get nlqdb's validated, SQL-shown answers without hand-building the SQL sub-agent.",
+      },
+      {
+        q: "Does the LangChain SQL agent provision a database for me?",
+        a: "No. SQLDatabaseToolkit connects to a database you've already created and configured; it lists tables, reads columns, and runs SQL against it. nlqdb materialises a Postgres from your first English goal, so there's nothing to stand up before the first question.",
+      },
+      {
+        q: "What do I have to build myself with the LangChain SQL agent?",
+        a: "The model choice, the prompt, the tool loop (or LangGraph graph), SQL guardrails, retries, caching, deployment, and evaluation (LangSmith, separate). That flexibility is the point. nlqdb ships those as a managed pipeline, so you trade tunability for not maintaining the stack.",
+      },
+      {
+        q: "Does nlqdb show the SQL the way a LangChain SQL agent logs it?",
+        a: "nlqdb returns the compiled SQL with every answer by default, so a user or auditor can check the grain. A LangChain agent's intermediate SQL is in its trace, but surfacing it cleanly to an end user is wiring you write yourself.",
+      },
+    ],
+    demo: {
+      goal: "monthly active users for the last 6 months",
+      why: "A from-scratch SQL agent needs a wired DB, model, prompt, and guardrails before this works; nlqdb answers it from one English goal over a Postgres it provisioned, SQL shown.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
