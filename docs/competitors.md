@@ -86,7 +86,7 @@ OSS (AGPL self-host) + cloud BI (Starter ~$85/mo). Metabot is the AI layer: NL q
 - **Threat vector:** Medium for P3 — strong OSS-distribution moat, but Metabase users want dashboards/charts, not an embedded queryable data layer.
 
 ### Hex Magic / Mode AI / Fabi.ai / Count — notebook-first AI BI
-AI inside collaborative analyst notebooks (Hex from ~$24/user/mo; others similar). Different DNA — analyst notebooks, not PM chat. **Threat vector:** Low-medium — adjacent to P3, not a head-to-head shape. Canonical `/vs` pages: Hex, Mode, **Fabi.ai** (landed 2026-06-30 — Smartbooks Python+SQL notebooks + AI Analyst Agent + DuckDB over a warehouse; free Starter / Builder ~$39/seat + a Team tier, SOC 2 Type II; unlike Hex/Mode ships an *Analyst Agent MCP server* → `MCP them: partial`). Count is the last uncovered.
+AI inside collaborative analyst notebooks (Hex from ~$24/user/mo; others similar). Different DNA — analyst notebooks, not PM chat. **Threat vector:** Low-medium — adjacent to P3, not a head-to-head shape. Canonical `/vs` pages: Hex, Mode, **Fabi.ai** (landed 2026-06-30 — Smartbooks notebooks + AI Analyst Agent + DuckDB over an existing warehouse; unlike Hex/Mode it ships an *Analyst Agent MCP server*, so `MCP them: partial` — full facts in `competitors.ts`). Count remains the last uncovered member.
 
 ---
 
