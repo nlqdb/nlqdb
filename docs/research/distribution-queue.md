@@ -11,52 +11,52 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-30 (run 120) — dev.to / r/dataengineering / r/LLMDevs: "Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest."
+## 2026-06-30 (run 121) — dev.to / r/SQL / r/dataengineering: "The top-N-per-group query everyone re-Googles."
 
-**Where:** dev.to + r/dataengineering + r/LLMDevs; for engineers and data teams evaluating an
-open-source NL→SQL engine (Dataherald, Vanna, Wren) over a warehouse they already run. nlqdb
-mentioned once, as the other-end-of-the-trade option — not the headline.
+**Where:** dev.to + r/SQL + r/dataengineering; for analysts and PMs who can read SQL but reach for
+help every time they need the top rows *within each group*. nlqdb mentioned once, as the "ask in
+English, see the SQL" half — not a BI tool.
 
-**Title:** Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest.
+**Title:** The top-N-per-group query everyone re-Googles.
 
 **Body:**
 
-> Dataherald did the genuinely generous thing and open-sourced their entire text-to-SQL product —
-> engine, API, the lot. So did Vanna. So did a half-dozen others. If you've ever wanted "ask my
-> warehouse a question in English," the model half is now a solved, MIT-licensed commodity. Clone it,
-> point it at Postgres or Snowflake, ask "revenue by region last quarter," get SQL back. An
-> afternoon.
+> There's a question every analyst asks and almost nobody writes from memory: the top *N* rows in
+> each group. Top 3 products per category. The most recent order per customer. The highest-scoring
+> attempt per user. It even has a name on Stack Overflow — `greatest-n-per-group` — because it comes
+> up that often.
 >
-> Then you ship it to people who don't know your schema, and the accuracy you saw in the demo
-> evaporates. The fix every one of these engines reaches for is the same: *golden SQL* — curated
-> question→query training pairs, plus written business context ("'active' means a login in the last
-> 28 days"), tuned against your specific tables. That's not a flaw; it's how you get a generic model
-> to speak *your* schema. But it's also the part the README undersells. Golden SQL is a dataset you
-> author by hand, and then maintain — every renamed column, every new join path, every metric whose
-> definition shifts is a training pair to add or fix. The engine is free. The curation is a standing
-> job that lands on whoever owns the data model.
+> The trap is that the obvious tool is the wrong one. `GROUP BY category` with `MAX(revenue)` gives
+> you the top *value* per group, but it throws away the rest of the row — you learn the number, not
+> *which* product. To keep the whole row you need a window function — `ROW_NUMBER() OVER (PARTITION
+> BY category ORDER BY revenue DESC)` in a subquery, filtered to rank ≤ 3 — or a lateral join.
+> That's a different query than the one you started typing, and it's just unusual enough to look up
+> every single time.
 >
-> So the honest evaluation isn't "can this generate SQL from English" (they all can). It's "who's on
-> the hook for keeping it accurate as the schema moves, and do I already have the warehouse it
-> assumes." If you run a real warehouse and a data team that *wants* that control — golden SQL, your
-> own LLM stack, self-hosted for compliance — an OSS engine like Dataherald is exactly right, and the
-> curation is worth it.
+> And the details bite quietly. Partition by the wrong column and your groups are wrong. Forget the
+> tiebreak and `ROW_NUMBER` picks arbitrarily when two rows tie — when you wanted `RANK` or
+> `DENSE_RANK` to keep both. It's a ranking question wearing window-function clothes.
 >
-> (The other end of that trade is the one we took with [nlqdb](https://nlqdb.com): it *owns* the
-> Postgres it answers — provisioned from English — and skips the golden-SQL set entirely, prompting
-> from the live schema fingerprint with the compiled SQL shown on every answer and writes
-> diff-previewed. Honest split — that means no warehouse federation and no golden-SQL knobs; if you
-> need to query Snowflake or BigQuery in place, or want to hand-curate the training pairs, the OSS
-> engine is the better fit, not this.)
+> This is exactly the case for asking in plain English and *reading the SQL it generates*. "Top 3
+> products per category by revenue" should hand back both the ranked rows and the `ROW_NUMBER() OVER
+> (PARTITION BY ...)` it ran, so you can confirm it partitioned on the right column and broke ties
+> the way you meant before you trust it.
+>
+> (That's the half we built [nlqdb](https://nlqdb.com) for: ask the ranked question in English over
+> a Postgres it provisions, or one you already run via a signed-in connect, and get the rows plus
+> the compiled SQL. Honest split — it's a one-off read-only ranked answer, not a live "top sellers"
+> dashboard or a rank-change alert; ranking is exact SQL ordering on the columns you name, not fuzzy
+> or learned relevance.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the "open-source text-to-SQL"
-evaluation intent the `/vs/dataherald` page shipped this run anchors; the golden-SQL-maintenance
-framing earns a citation by being useful to someone *choosing the competitor*, and concedes the
-warehouse-federation and training-control gaps honestly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the perennial
+`greatest-n-per-group` search intent surfaced by the `/solve/find-top-n-rows-per-group` page shipped
+this run; the read-the-SQL / verify-the-partition framing earns a citation without a pitch and
+concedes the read-only and exact-ordering lines honestly.
 
 ## Collapsed — full drafts in git history
 
-- run 119 — dev.to / r/SQL / r/analytics: "The duplicate-rows query you re-Google every six weeks." (find-the-duplicates is the query nobody memorises and everybody needs — `GROUP BY` the suspect columns `HAVING COUNT(*) > 1`, but it's fiddly in quiet ways: group on the wrong columns and you mis-count, want the *whole* duplicate row not just the key and you're suddenly in `ROW_NUMBER() OVER (PARTITION BY …)`, a different query than the one you Googled; the case for asking in English and *reading the SQL it generates* is that the grain matters and you want to verify it before trusting the count, and a chat model can write the query but can't run it against your data; honest split — nlqdb *reports* duplicates with a read-only query, which row to keep/merge is a deliberate write and matching is exact not fuzzy; anchors `/solve/find-duplicate-rows-in-my-data`).
+- run 120 — dev.to / r/dataengineering / r/LLMDevs: "Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest." (Dataherald/Vanna/Wren open-sourced the whole NL→SQL engine — the model half is now an MIT-licensed commodity you wire up in an afternoon — but ship it to people who don't know your schema and demo accuracy evaporates; the fix every engine reaches for is *golden SQL*, hand-curated question→query training pairs plus business context tuned to your tables, a standing maintenance job on whoever owns the data model, not a flaw but the part the README undersells; honest evaluation isn't "can it generate SQL" but "who keeps it accurate as the schema moves, and do I already run the warehouse it assumes" — if you run a real warehouse + data team that wants that control an OSS engine is exactly right; honest split — nlqdb *owns* the Postgres it answers and skips golden SQL by prompting from the live schema fingerprint, so no warehouse federation / no golden-SQL knobs, query Snowflake/BigQuery in place and the OSS engine wins; anchors `/vs/dataherald`).
+- run 119 — dev.to / r/SQL / r/analytics: "The duplicate-rows query you re-Google every six weeks." (the find-duplicates answer hasn't changed in thirty years — `GROUP BY` the suspect columns, `HAVING COUNT(*) > 1` — yet non-daily-SQL folks look it up every time, and wanting the *whole* duplicate row not just the key pushes you into a `ROW_NUMBER()` window function, a different query than you Googled; ask in English and read the SQL so you verify the grain; honest split — nlqdb reports duplicates read-only, which row to keep/merge is a deliberate write, matching is exact not fuzzy; anchors `/solve/find-duplicate-rows-in-my-data`).
 - run 118 — dev.to / r/LangChain / lobste.rs: "You don't need to build a SQL agent. Here's when you should anyway." (the `create_sql_agent` + `SQLDatabaseToolkit` demo (now assembled directly in LangGraph) gets the happy path working in an afternoon — the 10%; the other 90% is a `DELETE` guardrail (the default toolkit runs whatever SQL the model emits), bounded retries, a question cache, somewhere to *show* the SQL, a deployment, and an eval harness, all yours to own forever for a non-core feature; the honest build-vs-buy test isn't "can I generate SQL from English" but "do I want to own that stack" — build with LangChain if you're building an agent framework / need the reasoning graph / want self-hosted-free; buy if it's a feature inside your product; honest split — nlqdb is a hosted pipeline you embed, not a vendored library, and a LangChain agent can just *call* it as one tool; anchors `/vs/langchain-sql-agent`).
 - run 117 — dev.to / r/devops / r/sysadmin: "Your cron jobs already write run history. You just can't query it." (which-job-fails-most / how-long / how-many-ran are aggregations grepped out of scheduler logs the wrong way; capture is one row per run, reporting is the windowed `GROUP BY`, and even `pg_cron` keeps a `cron.job_run_details` table because run history is worth querying; a heartbeat monitor like Healthchecks.io/Cronitor answers the *other* question — did it run at all, the dead-man's-switch — presence-vs-absence, not which-fails-most; honest split — nlqdb is no scheduler and does no alerting, it stores the runs you write and gives a planner over them; anchors `/solve/track-background-job-run-history`).
 - run 116 — dev.to / r/mcp / r/LLMDevs: "A federated query engine connects your agent to the data you have. Some agents need data they don't have yet." (federation — one SQL endpoint over the 200+ sources you already run, which MindsDB does well and wraps in an MCP server — assumes the data already exists in a system you administer; but much agent work (logging what it did, remembering structured facts, then "how many this week by type") needs a store the agent *provisions and owns*, not a read-mostly federated view; honest split — nlqdb has no 200-source federation / in-database ML / unstructured RAG, for querying across systems you run MindsDB is right and the two compose; anchors `/vs/mindsdb`, the GLOBAL-036 "a database, not just an adapter" wedge).

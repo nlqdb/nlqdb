@@ -1398,6 +1398,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "find-top-n-rows-per-group",
+    persona: "P3 analyst",
+    searchTitle: "How do I get the top N rows per category without window-function SQL?",
+    oneLiner:
+      "If you need the top N rows in each group — the 3 best-selling products per category, or the latest order per customer — ask in plain English instead of hand-writing a window function. nlqdb compiles the ranked query, runs it in Postgres, and shows the SQL so you trust the partition and tiebreak.",
+    painContext:
+      "Analysts and PMs hit this constantly — top 3 products per region, the most recent order per customer, the highest-scoring attempt per user. It's the classic 'greatest-n-per-group' problem, and the correct answer is a window function (`ROW_NUMBER() OVER (PARTITION BY ...)`) or a lateral join — exactly the SQL that trips people up, gets re-Googled every time, or turns into a data ticket. A plain `GROUP BY` gives you the max value but loses the rest of the row; the pain is getting the whole top-N rows, per group, right.",
+    demoGoal: "the top 3 best-selling products in each category, by total revenue",
+    demoWhy:
+      "The exact query you'd otherwise reach for a window function or lateral join — ranked within each group — is one English goal here, with the SQL shown so you can check the partition and the tiebreak.",
+    howNlqdbAnswers: [
+      "Ask 'top 3 products per category by revenue'; nlqdb compiles the `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...)` and runs it in Postgres.",
+      "Every answer returns the ranked rows plus the compiled SQL under a trace toggle (`SK-WEB-005`) — confirm the partition and tiebreak before trusting it.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to rank your real data.",
+      "Repeated rankings hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same top-N question returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "nlqdb answers the top-N question with a read-only SELECT — it's not a BI tool that maintains a live 'top sellers' dashboard or alerts you when the ranking shifts. That's a scheduled job's work.",
+      "The public `<nlq-data>` embed is read-scoped — it ranks and surfaces rows, it doesn't write. No write key belongs in client HTML; bulk changes go through the SDK or `POST /v1/run`.",
+      "Ranking is exact SQL ordering on the columns you name — ties break by those columns (or `RANK()` / `DENSE_RANK()` if you ask). There's no fuzzy or learned relevance ranking.",
+    ],
+    faqs: [
+      {
+        q: "How do I get the top N rows per group without writing window-function SQL?",
+        a: "Ask in plain English — 'top 3 products per category by revenue.' nlqdb compiles the canonical `ROW_NUMBER() OVER (PARTITION BY category ORDER BY revenue DESC)` filtered to rank ≤ 3, runs it in Postgres, and returns the ranked rows plus the SQL it ran. You get the per-group top-N without hand-writing a window function or a correlated subquery. The honest limit: it's a one-off ranked answer, not a saved dashboard.",
+      },
+      {
+        q: "What SQL does nlqdb use to rank rows within each group?",
+        a: "The modern pattern: a window function — `ROW_NUMBER() OVER (PARTITION BY <group> ORDER BY <metric> DESC)` in a subquery, then keep rows where the rank is ≤ N. nlqdb writes and runs that for you and shows it under a trace toggle, so you can confirm it partitioned by the right column. Ask for ties-included ranking and it switches `ROW_NUMBER` to `RANK` or `DENSE_RANK`.",
+      },
+      {
+        q: "Can I rank rows in a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask the top-N question in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the ranking with a read-only query — it doesn't persist a materialized leaderboard for you.",
+      },
+      {
+        q: "Why not just ask ChatGPT for the top N per group?",
+        a: "A chat model can write you a window-function query, but it can't run it against your data — and if you paste rows in and ask it to rank, it miscounts or invents rows. nlqdb runs the actual SQL in Postgres and returns the real ranked rows plus the query it ran, so the top-N is computed, not guessed.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/greatest-n-per-group",
+        label:
+          "Stack Overflow — the canonical `greatest-n-per-group` tag, the perennial 'top N rows per group' hub.",
+      },
+      {
+        url: "https://en.wikibooks.org/wiki/Structured_Query_Language/Retrieve_Top_N_Rows_per_Group",
+        label:
+          "Wikibooks SQL — evergreen 'Retrieve Top N Rows per Group' chapter (window-function + join methods).",
+      },
+      {
+        url: "https://blogs.oracle.com/sql/how-to-select-the-top-n-rows-per-group-with-sql-in-oracle-database",
+        label:
+          "Oracle SQL blog — 'How to select the top-N rows per group with SQL' (window functions as the method of choice).",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
