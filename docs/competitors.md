@@ -86,7 +86,7 @@ OSS (AGPL self-host) + cloud BI (Starter ~$85/mo). Metabot is the AI layer: NL q
 - **Threat vector:** Medium for P3 — strong OSS-distribution moat, but Metabase users want dashboards/charts, not an embedded queryable data layer.
 
 ### Hex Magic / Mode AI / Fabi.ai / Count — notebook-first AI BI
-AI inside collaborative analyst notebooks (Hex from ~$24/user/mo; others similar). Different DNA — analyst notebooks, not PM chat. **Threat vector:** Low-medium — adjacent to P3, not a head-to-head shape. Canonical `/vs` pages: Hex, Mode, **Fabi.ai** (landed 2026-06-30 — Smartbooks notebooks + AI Analyst Agent + DuckDB over an existing warehouse; unlike Hex/Mode it ships an *Analyst Agent MCP server*, so `MCP them: partial` — full facts in `competitors.ts`), **Count** (landed 2026-06-30 — a collaborative *agentic canvas*, explicitly not a notebook ("Bye-bye notebooks. Hello, canvas."), SQL+Python+visuals over connected warehouses; bidirectional MCP + Public API, so `MCP them: partial` — full facts in `competitors.ts`). **Cluster complete** — all four notebook-first AI BI tools now have `/vs` pages.
+AI inside collaborative analyst notebooks (Hex from ~$24/user/mo; others similar). Different DNA — analyst notebooks, not PM chat. **Threat vector:** Low-medium — adjacent to P3, not a head-to-head shape. **Cluster complete** — all four have canonical `/vs` pages (Hex, Mode, Fabi.ai, Count; per-tool facts + landing dates in `competitors.ts`). Wedge: nlqdb owns+provisions the DB and embeds an answer element/agent-callable API; they layer a notebook/canvas over a warehouse you already run.
 
 ---
 
@@ -175,7 +175,7 @@ OSS low-code platforms.
 The build-it-yourself alternative for P2 and technically-inclined P4s.
 
 ### LangChain SQL agent — https://python.langchain.com
-Part of the LangChain ecosystem; the "I'll just build it myself" route for P2.
+Part of the LangChain ecosystem; the "I'll just build it myself" route for P2. Canonical `/vs` page: **langchain-sql-agent** (landed 2026-06-30; page persona **P4** build-vs-buy, not P2 — rationale + facts in `competitors.ts`).
 - **Gap nlqdb exploits:** Framework, not a product — requires gluing a DB, a model, retries, and a deployment, all of which nlqdb replaces.
 - **Threat vector:** Medium — free and flexible.
 
