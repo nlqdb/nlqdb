@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Comparison Pages
 
 **One-liner:** `/vs/<competitor>` AEO/SEO pages — honest side-by-sides driving acquisition from buyers who already named the alternative.
-**Status:** implemented (Phase 1) — 22 comparison pages shipped: Supabase (P1), Vanna AI (P3), Mem0 (P2), Outerbase (P4), Wren AI (P3), AskYourDatabase (P3), Zep (P2), Letta (P2), LangMem (P2), Pinecone (P2), Chroma (P2), Weaviate (P2), Qdrant (P2), Cognee (P2), Julius AI (P3), Retool (P4), Basedash (P3), Metabase (P3), Milvus (P2), Hex (P3), Supermemory (P2), Mode (P3). Single template + typed data file; adding a new comparison is a one-file edit.
+**Status:** implemented (Phase 1) — 23 comparison pages shipped: Supabase (P1), Vanna AI (P3), Mem0 (P2), Outerbase (P4), Wren AI (P3), AskYourDatabase (P3), Zep (P2), Letta (P2), LangMem (P2), Pinecone (P2), Chroma (P2), Weaviate (P2), Qdrant (P2), Cognee (P2), Julius AI (P3), Retool (P4), Basedash (P3), Metabase (P3), Milvus (P2), Hex (P3), Supermemory (P2), Mode (P3), Honcho (P2, theory-of-mind / dialectic user-modeling wedge — honest split: Honcho models *how* a user reasons for personalization, nlqdb runs SQL aggregation over *what* the agent stored; nlqdb has no user model, Honcho has no GROUP BY/JOIN). Single template + typed data file; adding a new comparison is a one-file edit.
 **Owners (code):** `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts`, `apps/web/src/pages/sitemap.xml.ts`
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §3.5`](../../research/automated-icp-validation-plan.md) · [`docs/competitors.md`](../../competitors.md) · [`docs/features/web-app/FEATURE.md`](../web-app/FEATURE.md)
 

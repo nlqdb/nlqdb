@@ -124,6 +124,7 @@ const vsCompetitors = [
   { slug: "milvus", name: "Milvus" },
   { slug: "cognee", name: "Cognee" },
   { slug: "supermemory", name: "Supermemory" },
+  { slug: "honcho", name: "Honcho" },
 ];
 for (const { slug, name } of vsCompetitors) {
   cards[`vs-${slug}`] = card({
