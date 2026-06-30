@@ -136,7 +136,7 @@ dev.to (#sql #postgres #debugging) or lobste.rs (`databases`, `practices`).*
 *Reviewer notes: numbers sourced from `tools/eval/baseline-2026-06-15.json`
 (2026-06-12 canonical run). Best posted weekday morning US-East.*
 
-## One-line gists (runs 56–66) — bodies in git history
+## One-line gists (runs 51–52, 56–66) — bodies in git history
 
 Moved from the queue's collapsed list to hold that doc under the 20 KB cap (D4).
 
@@ -149,6 +149,8 @@ Moved from the queue's collapsed list to hold that doc under the 20 KB cap (D4).
 - run 59 — "Hybrid search made your recall smarter. It still can't count." (hybrid search optimises *which* items rank, not what you can compute over them; BM25+vector fusion is still a relevance score, not a `GROUP BY`/`COUNT`/`HAVING` — recall and reporting are two jobs; anchors `/vs/weaviate`).
 - run 58 — "Your text-to-SQL eval is failing the wrong schema" (BIRD 0.52 / Spider 0.19 are academic-schema scores; the same free chain scores 0.90 EX on the ICP shape — score against your product's schema, and the two misses it surfaces are the ones users actually hit; persona-bench, SK-QUAL-018).
 - run 56 — "'Self-hosted' fixes lock-in, not the query model — your open-source vector store still can't GROUP BY" (self-hosting answers vendor lock-in but not the query model; an OSS vector store still has no GROUP BY/JOIN/COUNT/HAVING — deployment and capability are orthogonal axes; anchors `/vs/chroma`).
+- run 52 — "Some few-shot retrieval misses can't be fixed with lexical *selector* tricks — and measuring *why* is the win" (stopword filter regressed 18/20 → 17/20, phrase-normalisation flat, held-out 14/14; later narrowed by runs 74/76 to selector-*code* tweaks — pool-exemplar phrasing was the live lever; both selector experiments reverted).
+- run 51 — "The most common query in your product has no row in your benchmark" (error-class taxonomies omit easy high-frequency shapes; "show the 10 most recent signups" retrieved a `GROUP BY` demo; +plain `ORDER BY … LIMIT` row, held-out 13/13 → 14/14, own-query 18/20 held).
 
 ## One-line engine-lesson gists (runs 8–18, 33, 37, 39, 41, 46, 48) — bodies in git history
 

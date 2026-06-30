@@ -1283,6 +1283,63 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "track-background-job-run-history",
+    persona: "P4 backend engineer",
+    searchTitle: "How do I log my background jobs and query which one fails most?",
+    oneLiner:
+      "If your cron and background jobs fail silently and you need to know which one fails most — log every run as a row and ask in English. nlqdb provisions Postgres from your first goal and runs the GROUP BY in SQL, so 'failure rate per job this week' is a real query, not a grep over scheduler logs.",
+    painContext:
+      "Teams running scheduled work — nightly cron, queue workers, ETL tasks, cleanup scripts — usually find out a job broke only when something downstream is already wrong. The run history lives in scattered scheduler logs, a JSON column, or stdout nobody reads, so the questions that matter — which job fails most, how long each takes, how many ran today — mean grepping log files instead of a GROUP BY. Counting failures by hand doesn't scale; these are queries, and queries want a planner.",
+    demoGoal:
+      "job runs grouped by job name this week with a failure count and average duration for each",
+    demoWhy:
+      "The first reliability question after a job breaks — which job fails most and how slow it runs — is one English goal here, not a grep over scheduler logs.",
+    howNlqdbAnswers: [
+      "Log each run as a typed row — job name, status, duration_ms, started_at — so failures-per-job and average-duration run as SQL GROUP BY.",
+      "Ask the reliability question in English via `<nlq-data>`, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
+      "Write run records with a `POST /v1/run` parameterised insert (`GLOBAL-015`) from your job's exit hook, then report over the same database.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly reliability rollup hits the cache and returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "nlqdb is not a scheduler or cron runner — it doesn't run your jobs or trigger them on a schedule; it stores and queries the run records you write after each job finishes.",
+      "No dead-man's-switch alerting — nlqdb won't notice a job that never ran and page you; heartbeat monitoring is Healthchecks.io or Cronitor's job. nlqdb answers questions over the runs you did record.",
+      "The public `<nlq-data>` embed is read-scoped — it renders answers, it isn't a write endpoint. Run records go in through the SDK or `POST /v1/run` from your job, never a write key in client HTML.",
+    ],
+    faqs: [
+      {
+        q: "How do I track which background job fails most without a monitoring service?",
+        a: "Log one row per run — job name, status, duration, timestamp — with a `POST /v1/run` parameterised insert (`GLOBAL-015`) from your job's exit hook, then ask 'failure rate per job this week' in English. nlqdb compiles the GROUP BY, runs it in Postgres, and shows the SQL. The honest limit: you write the run records; nlqdb stores and queries them, it doesn't run or watch your jobs.",
+      },
+      {
+        q: "Why not just grep my scheduler or cron logs?",
+        a: "Because the questions are aggregations — failures per job, p95 duration, runs per day — and grepping flat logs to tally them by hand is fragile and slow as run volume grows. Asking an LLM to count a log hallucinates. nlqdb runs the GROUP BY in Postgres and shows you the SQL it ran, so you can trust the grain.",
+      },
+      {
+        q: "Is this a replacement for a cron-monitoring tool like Healthchecks.io or Cronitor?",
+        a: "No — those ping a heartbeat URL and alert you when a job *doesn't* run, with dead-man's-switch logic built for it. nlqdb is the database half: you log each run that did happen and get a SQL query planner over it for 'per job / per week' reliability questions. They compose; nlqdb doesn't watch for missing runs or page you.",
+      },
+      {
+        q: "Can I see the SQL behind a job's failure rate?",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can check the grain (per run vs per job) before trusting a failure rate. nlqdb never hides the SQL behind the answer.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/devops/search/?q=cron+monitoring",
+        label: "r/devops — recurring 'how do you monitor cron / scheduled jobs' threads.",
+      },
+      {
+        url: "https://hn.algolia.com/?q=cron+monitoring",
+        label:
+          'HN search: "cron monitoring" — discussion on tracking scheduled-job failures and run history.',
+      },
+      {
+        url: "https://www.reddit.com/r/sysadmin/search/?q=cron+job+failures",
+        label: "r/sysadmin — 'cron job failures / run history' recurring discussion hub.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
