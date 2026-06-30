@@ -1226,6 +1226,63 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "track-product-usage-without-a-data-warehouse",
+    persona: "P1 solo builder",
+    searchTitle: "How do I track product usage events and query them without a data warehouse?",
+    oneLiner:
+      "If you want to track product usage — signups, feature clicks, retention — and ask 'active users this week' without standing up Snowflake or paying Mixpanel per event, give nlqdb a database: emit each event with the SDK or a `POST /v1/run` insert, then ask the rollup in plain English with the SQL shown.",
+    painContext:
+      "Indie builders and small teams who want to know what their product is doing — daily active users, which feature got used, how a funnel converts — face two heavy options: pay Mixpanel/Amplitude per event and outgrow the free tier fast, or run a warehouse (Snowflake, BigQuery) plus an ingestion pipeline and learn SQL to query it. The recurring fallback on Indie Hackers and HN is 'just store events in Postgres and query them' — which is right, but then every 'active users this week' is a hand-written GROUP BY you'd rather not own.",
+    demoGoal: "active users grouped by day this week, with an event count for each",
+    demoWhy:
+      "The first question after wiring up event tracking — how many active users per day — is one English goal here, not a windowed GROUP BY over an events table.",
+    howNlqdbAnswers: [
+      "Emit each event as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert (`GLOBAL-015`) — no warehouse or pipeline to run.",
+      "Anonymous mode provisions a Postgres in seconds on the free chain — start logging events before you sign up (`SK-ANON-001`).",
+      "Ask 'active users per day' or 'top features this week' in English via `<nlq-data>` or the SDK; every answer shows the compiled SQL.",
+      "Free chain (Groq → Gemini) is free forever and never priced per event, so growing event volume never pushes you off a billing tier.",
+    ],
+    whatItDoesnt: [
+      "No autocapture SDK, no session replay, no funnel/retention UI — nlqdb stores the events you write and answers SQL questions over them; product-analytics dashboards (PostHog, Mixpanel, Amplitude) are a different shape.",
+      "You emit the events yourself — nlqdb doesn't instrument your app or pick which events matter; it's the queryable store and the English-to-SQL layer, not a tracking client.",
+      "The public `<nlq-data>` embed is read-scoped — it renders answers, it isn't a write endpoint. Events go in through the SDK or `POST /v1/run`, run from your backend or a serverless function, never a write key in client HTML.",
+    ],
+    faqs: [
+      {
+        q: "Can I track product usage events without a data warehouse?",
+        a: "Yes — provision an nlqdb database (anonymous mode mints one in seconds) and write each usage event as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert (`GLOBAL-015`). There's no Snowflake/BigQuery to stand up and no ingestion pipeline to run. Then ask 'active users this week' in English. The honest limit: you emit the events; nlqdb stores and queries them, it doesn't autocapture.",
+      },
+      {
+        q: "How do I query product analytics events in plain English instead of SQL?",
+        a: "Ask the question — 'active users grouped by day this week' or 'top 10 features by event count'. nlqdb compiles it to SQL over your events table, runs it, and returns the ranked rows plus the compiled SQL under a `Show trace` toggle (`SK-WEB-005`) so you can audit the grain before trusting the number.",
+      },
+      {
+        q: "Is this a replacement for Mixpanel, Amplitude, or PostHog?",
+        a: "No — those autocapture events, render funnel/retention dashboards, and do session replay. nlqdb is the database-plus-English-query half: you choose what to log and get a SQL planner over it for ad-hoc 'how many / by feature' questions, without per-event billing or a warehouse. They compose — point your tracking client's sink at an nlqdb insert.",
+      },
+      {
+        q: "How do I keep the events if I started in anonymous mode?",
+        a: "Sign in within the 72-hour anonymous window and click 'Adopt this database' (`SK-ANON-002`). The database is re-keyed to your account, every event row persists, and there's no re-import. Anonymous databases that aren't adopted sweep at 72h, so adopt before real traffic piles up if you want to keep the history.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.indiehackers.com/search?q=product%20analytics",
+        label:
+          "Indie Hackers — recurring 'what do you use for product analytics' threads where 'just store events in Postgres' is the standing fallback.",
+      },
+      {
+        url: "https://www.reddit.com/r/SaaS/search/?q=product%20analytics",
+        label: "r/SaaS — recurring 'product analytics without paying per event' discussion hub.",
+      },
+      {
+        url: "https://hn.algolia.com/?q=product%20analytics%20self-hosted",
+        label:
+          'HN search: "product analytics self-hosted" — discussion on querying usage events without a warehouse.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {

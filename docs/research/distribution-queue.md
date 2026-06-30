@@ -11,43 +11,46 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-30 (run 113) — dev.to / r/webdev / r/node: "The webhook receiver is the easy half. The database behind it is the part nobody wants to own."
+## 2026-06-30 (run 115) — dev.to / r/SaaS / Indie Hackers: "Product analytics is two problems. Only one of them needs a warehouse."
 
-**Where:** dev.to + r/webdev + r/node; for backend engineers wiring up Stripe / GitHub / Twilio
-webhooks who hit the same wall — the endpoint is trivial, the queryable store behind it is the
-side-quest. nlqdb mentioned once, as the store-and-report half that composes with their receiver.
+**Where:** dev.to + r/SaaS + Indie Hackers; for solo builders and small teams who want DAU /
+feature-usage numbers but balk at Mixpanel's per-event pricing and don't want to run Snowflake.
+nlqdb mentioned once, as the queryable-store-plus-English-query half — not a tracking client.
 
-**Title:** The webhook receiver is the easy half. The database behind it is the part nobody wants to own.
+**Title:** Product analytics is two problems. Only one of them needs a warehouse.
 
 **Body:**
 
-> Wiring up a webhook receiver is a 20-minute job: a route that accepts the POST, verifies the
-> provider's signature, returns `200`. Then comes the part the tutorials skip — you have a stream
-> of payloads and nowhere to put them, and a week later someone asks "how many `checkout.session`
-> events failed yesterday, grouped by error code?" Now you're standing up Postgres, designing a
-> schema for a payload whose shape the provider changes without telling you, and hand-writing the
-> reporting `GROUP BY`s. None of that is the feature. It's plumbing for the feature.
+> Every time "what do you use for product analytics?" comes up on Indie Hackers, the most upvoted
+> reply is some version of "just store the events in Postgres and query them." It's right, and it
+> hides the actual work. Product analytics is two problems wearing one name. *Capture* is a tiny
+> write — an insert with `{user, event, ts, props}` from your backend. *Reporting* is the hard
+> half: "active users per day this week," "top features by event count," "funnel from signup to
+> first action" are aggregations that genuinely want a query planner, not a CSV pivot.
 >
-> Two patterns make this bearable. First, store the raw payload as JSONB next to a few extracted
-> columns (event id, type, received-at) — you get a unique index for idempotency and you can still
-> query fields you never promoted to columns. Second, separate *capture* from *reporting*: the
-> write is a tiny insert from your receiver; the read is an aggregation that genuinely wants a
-> query planner, not a CSV pivot. The mistake is reaching for a tool that's great at the write and
-> leaves you alone with the read.
+> Per-event SaaS (Mixpanel, Amplitude) is great at both until your event volume crosses a tier and
+> the bill does too — for a side project that's exactly when you're least able to pay. A warehouse
+> (Snowflake, BigQuery) plus an ingestion pipeline solves the read but is wildly oversized for "I
+> have 40k events and one question a week." The honest middle is the upvoted reply: a Postgres you
+> own, with the events as rows. The only thing it's missing is that every question is a
+> hand-written windowed `GROUP BY`.
 >
-> (We built the read half as [nlqdb](https://nlqdb.com): it provisions the Postgres, takes each
-> verified payload from your receiver via an SDK call or `POST /v1/run`, and answers "how many
-> events per type this week" in English with the compiled SQL shown so you can audit the grain.
-> Honest split — nlqdb is *not* the webhook receiver and does no signature verification; you keep
-> the tiny endpoint that accepts and verifies the POST. It's the queryable store and the
-> plain-English reporting layer, not the HTTP listener.)
+> (That last gap is what we built [nlqdb](https://nlqdb.com) for: it provisions the Postgres, you
+> emit each event with an SDK call or `POST /v1/run`, and you ask "active users this week" in
+> English with the compiled SQL shown so you can audit the grain. Honest split — there's no
+> autocapture SDK, no session replay, no funnel/retention dashboard; you emit the events and nlqdb
+> stores and queries them. For autocapture and replay, PostHog is the right shape; the two compose
+> — point its sink at an nlqdb insert.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides "store webhook events /
-log webhooks to database" search intent surfaced by the `/solve/store-and-query-webhook-events`
-page shipped this run, with a capture-vs-reporting framing that earns a citation without a pitch
-and concedes the receiver/signature line honestly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides "track product usage /
+product analytics without a warehouse" search intent surfaced by the
+`/solve/track-product-usage-without-a-data-warehouse` page shipped this run, with a
+capture-vs-reporting framing that earns a citation without a pitch and concedes the
+no-autocapture/no-replay line honestly.
 
 ## Collapsed — full drafts in git history
+
+- run 113 — dev.to / r/webdev / r/node: "The webhook receiver is the easy half. The database behind it is the part nobody wants to own." (the receiver is a 20-minute job — accept the POST, verify the signature, return 200; the skipped part is the queryable store behind it, where "how many `checkout.session` events failed yesterday by error code" means standing up Postgres, schema-ing a payload the provider mutates without warning, and hand-writing reporting `GROUP BY`s; patterns — JSONB payload beside extracted columns for idempotency, and separate *capture* from *reporting*; honest split — nlqdb is not the receiver and does no signature verification; anchors `/solve/store-and-query-webhook-events`).
 
 - run 112 — dev.to / r/dataengineering / r/LLMDevs: "Your notebook's AI analyst assumes someone's watching the cell. Your product runs when no one is." (the AI-notebook tools — Fabi.ai's "Smartbooks," Hex, Mode — are genuinely good at interactive exploration where a human watches each cell, accepts the agent's suggestion, and iterates; the loop bakes in a human-in-the-loop assumption that breaks when you wire that same agent or its MCP endpoint onto an unattended product path — a 3am dashboard refresh, an in-app "ask your data" box, an agent answering mid-conversation — where the SQL must be inspectable *before* it runs and a write diff-previewed *before* it applies; the fix isn't distrusting the notebook, it's not conflating two altitudes — interactive analysis vs headless runtime want different guarantees and compose; honest split — nlqdb has no notebook/Python/charts, for interactive exploration Fabi.ai or Hex is right; anchors `/vs/fabi`).
 - run 111 — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned." (the agent-memory frontier is *modelling* not recall — Honcho's dialectic theory-of-mind builds a model of *how each user reasons*, the right primitive for "explain or just do for this person"; but a different-shaped question arrives the week after launch — "how many pro-tier users completed onboarding this month, grouped by signup week" is `COUNT`/`GROUP BY`/`JOIN`/threshold, and a user model can't answer *how many of them did X*; the two compose once you stop expecting one store to do both — a user-modelling layer for how someone reasons, a relational layer for how many did what; honest limit — nlqdb has no user model or theory-of-mind, for "how does this person think" Honcho is the right shape; anchors `/vs/honcho`).
