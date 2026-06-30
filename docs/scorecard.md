@@ -22,7 +22,7 @@ probe (row #8) **saturated 23/23** — next engine gain needs the gated EX dispa
 | 2 | Waitlist rows, real | 1 of 81 | 80 walker/test/probe; the 1 is the founder → ~0 genuine strangers |
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev |
 | 4 | Anon DBs with a first answer | 130 of 130 | every DB has a first query; genuine-stranger subset still ~0 (rows #2/#3) |
-| | **Engine** — BIRD 06-19 (**9d, stale**) · Spider 06-17 (**11d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Re-dispatch carries to the cron `/daily` lane** — interactive + MCP dispatch 403; local eval proxy-MITM-TLS blocked |
+| | **Engine** — BIRD 06-19 (**11d, stale**) · Spider 06-17 (**13d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Re-dispatch carries to the cron `/daily` lane** — interactive + MCP dispatch re-confirmed 403 (run 121); local eval proxy-MITM-TLS blocked |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Flat within variance (McNemar p=0.50) — directive levers saturated; reasoning levers (§4 #1/#3) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number.** Self-consistency (`SK-QUAL-017`) end-to-end bar the CI dispatch; EX delta next dispatch |
 | 8 | persona-bench free-chain EX | 0.90 (18/20) | full-chain ICP EX (run 58/63). **1.7× BIRD, 4.9× Spider** — the GLOBAL-026 bet. N=20 ±1 noisy. Retrieval precision@1 **23/23** (run 105) — **offline retrieval saturated**, held-out 17/17. EX delta = gated dispatch |
@@ -43,18 +43,17 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-30 (run 120)** — hard numbers stay gated (eval dispatch 403; funnel
-re-pull network-blocked) → a measured **engine-quality/UX** lever on the **`/vs`**
-lane (no open PR): `/vs/dataherald`, the OSS NL→SQL-engine
-twin of Vanna in the §6 build-it-yourself cluster. Honest split: Dataherald
-*connects to + answers over* a warehouse you already run and tune with curated
-"golden SQL"; nlqdb *provisions + owns* a Postgres from English, shows the
-compiled SQL, diff-previews writes — no warehouse federation / golden-SQL loop on
-our side, no embed/MCP on theirs. Persona P3 (matches the OSS-engine analog Vanna,
-not the P4 raw-framework frame). **Comparison pages 27 → 28**; web-verified facts
-(GitHub `Dataherald/dataherald` + readthedocs + langchain.com/blog/dataherald),
-176 web tests green, tsc + biome clean. Artifact: a
-dev.to / r/dataengineering / r/LLMDevs draft ("open-source text-to-SQL is the easy
-10%; the golden SQL you maintain forever is the rest"). **KPI:** GLOBAL-025
-engine-quality + onboarding/UX; none degraded.
-*(Prior run 119 — `/solve/find-duplicate-rows-in-my-data`, solve pages 22 → 23.)*
+**2026-06-30 (run 121)** — hard numbers stay gated (eval dispatch re-confirmed
+403; funnel re-pull network-blocked) and the `/vs` lane was busy (PR #553, run
+120 `/vs/dataherald`) → a measured **onboarding/UX** lever on the parallel
+**`/solve`** lane (no collision): a **greatest-n-per-group** pain page,
+`find-top-n-rows-per-group` (P3 analyst). Distinct in *query shape* — ask "top 3
+products per category by revenue" in English and nlqdb compiles the
+`ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` window function, runs it
+in Postgres, and shows the SQL so you verify the partition + tiebreak. Honest
+split: a one-off read-only ranked answer — not a live "top sellers" dashboard or
+rank-change alert; ranking is exact SQL ordering, not fuzzy. **Solve pages 23 →
+24 · P3 coverage 4 → 5**; web-verified demand (SO `greatest-n-per-group` tag;
+Wikibooks "Retrieve Top N Rows per Group"; Oracle SQL blog), 176 web tests green,
+solve invariants pass, biome + tsc clean. **KPI:** GLOBAL-025 onboarding/UX; none
+degraded. *(Prior run 120 — `/vs/dataherald`, comparison pages 27 → 28.)*
