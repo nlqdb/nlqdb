@@ -151,8 +151,8 @@ export const COMPETITORS: Competitor[] = [
     // 2026-07-01 (neon.com/pricing + neon.com/docs/ai/neon-mcp-server +
     // github.com/neondatabase/mcp-server-neon): serverless Postgres with
     // instant copy-on-write branching + scale-to-zero; free plan = 100
-    // compute-hours/mo, 0.5 GB/project (5 GB aggregate across up to 10
-    // projects), no card; Launch tier pay-as-you-go, no minimum (the $5 min
+    // CU-hours/project/mo, 0.5 GB/project, up to 100 projects, no card;
+    // Launch tier pay-as-you-go, no minimum (the $5 min
     // was removed), autoscale to 16 CU, 10 branches included ($1.50/extra
     // branch-month), storage $0.35/GB-mo. IMPORTANT honesty correction:
     // Neon ships a very capable OFFICIAL MCP server (remote mcp.neon.tech,
@@ -252,7 +252,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "What's the pricing model versus Neon's free and Launch tiers?",
-        a: "Neon's free plan gives 100 compute-hours per month and 0.5 GB per project (5 GB across up to 10 projects); its Launch tier is pay-as-you-go with no minimum. nlqdb's free chain (Groq → Gemini) is rate-limited per principal with BYO-LLM at 0% markup; hosted premium adds a flat sub with an allowance. Until monetization ships, everything is free.",
+        a: "Neon's free plan gives 100 CU-hours per project per month and 0.5 GB per project across up to 100 projects, no card; its Launch tier is pay-as-you-go with no minimum. nlqdb's free chain (Groq → Gemini) is rate-limited per principal with BYO-LLM at 0% markup; hosted premium adds a flat sub with an allowance. Until monetization ships, everything is free.",
       },
       {
         q: "Can my AI agent provision a database with nlqdb the way it can with Neon's MCP?",
