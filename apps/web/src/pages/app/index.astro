@@ -195,15 +195,16 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     gap: 16px;
     margin: 8px 16px 0;
     padding: 14px 18px;
-    border: 1px solid var(--accent);
-    background: rgba(198, 244, 50, 0.06);
-    font-family: var(--mono);
+    border: 1px solid var(--accent-line);
+    border-radius: var(--r-md);
+    background: var(--accent-soft);
+    font-family: var(--sans);
     font-size: 14px;
   }
 
   .checkout-banner__text {
     margin: 0;
-    color: var(--fg);
+    color: var(--ink);
   }
 
   .checkout-banner__dismiss {
@@ -211,20 +212,18 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     padding: 0 4px;
     border: none;
     background: none;
-    color: var(--fg-dim);
+    color: var(--body);
     font-size: 20px;
     line-height: 1;
     cursor: pointer;
   }
 
   .checkout-banner__dismiss:hover {
-    color: var(--fg);
+    color: var(--ink);
   }
 
   /* Same empty-until-shown live-region trick as the checkout banner, but
-   * danger-tinted (#ff7b7b is the project's destructive colour, see
-   * global.css .btn--danger) so a payment failure reads as urgent, not a
-   * success. */
+   * danger-tinted so a payment failure reads as urgent, not a success. */
   .dunning-banner--shown {
     display: flex;
     align-items: center;
@@ -232,31 +231,33 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     gap: 16px;
     margin: 8px 16px 0;
     padding: 14px 18px;
-    border: 1px solid #ff7b7b;
-    background: rgba(255, 123, 123, 0.08);
-    font-family: var(--mono);
+    border: 1px solid rgba(226, 109, 109, 0.4);
+    border-radius: var(--r-md);
+    background: rgba(226, 109, 109, 0.1);
+    font-family: var(--sans);
     font-size: 14px;
   }
 
   .dunning-banner__text {
     margin: 0;
-    color: var(--fg);
+    color: var(--ink);
   }
 
   .dunning-banner__action {
     flex-shrink: 0;
     padding: 8px 14px;
-    border: 1px solid #ff7b7b;
+    border: 1px solid rgba(226, 109, 109, 0.4);
+    border-radius: var(--r-sm);
     background: transparent;
-    color: var(--fg);
-    font-family: var(--mono);
+    color: var(--ink);
+    font-family: var(--sans);
     font-size: 13px;
     cursor: pointer;
   }
 
   .dunning-banner__action:hover {
-    background: #ff7b7b;
-    color: #1a0d0d;
+    background: rgba(226, 109, 109, 0.18);
+    color: var(--ink);
   }
 
   .dunning-banner__action:disabled {

@@ -1,0 +1,458 @@
+/* Home page layout — the SK-WEB-018 two-door home, in the SK-WEB-020 calm
+ * system. Tokens + shared primitives (.cta/.btn/topnav/footer) live in
+ * global.css now; this file holds only the home-unique layout (hero,
+ * proof card, the two doors, trust strip) plus the reveal-on-scroll
+ * enhancement. Scoped under `.home2` so these class names don't leak. */
+
+/* Reveal-on-scroll — progressive enhancement (SK-WEB-001). Content is
+ * visible by default; the inline script adds `.motion` only when JS runs
+ * AND motion is allowed, which arms the hidden→reveal transition. JS-off
+ * or prefers-reduced-motion → everything stays visible. */
+.home2.motion .reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity var(--dur-3) var(--ease),
+    transform var(--dur-3) var(--ease);
+}
+
+.home2.motion .reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ===================================================================== Hero */
+.home2 .hero2 {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(32px, 5vw, 56px);
+  align-items: center;
+  padding: clamp(48px, 8vw, 104px) 0 clamp(36px, 6vw, 72px);
+}
+
+@media (min-width: 940px) {
+  .home2 .hero2 {
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: clamp(40px, 5vw, 72px);
+  }
+}
+
+.home2 .hero2__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: start;
+  padding: 6px 13px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--rule-2);
+  background: var(--bg-2);
+  font-size: var(--t-xs);
+  color: var(--muted);
+  margin: 0 0 clamp(18px, 2.4vw, 26px);
+}
+
+.home2 .hero2__pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-line);
+}
+
+.home2 .hero2__title {
+  font-size: var(--t-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  color: var(--ink);
+  text-wrap: balance;
+  margin: 0 0 clamp(16px, 2.2vw, 22px);
+  max-width: 15ch;
+}
+
+.home2 .hero2__title em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.home2 .hero2__say {
+  font-size: var(--t-large);
+  color: var(--body);
+  line-height: 1.55;
+  max-width: 46ch;
+  text-wrap: balance;
+  margin: 0 0 clamp(24px, 3vw, 32px);
+}
+
+.home2 .hero2__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.home2 .hero2__jump {
+  font-size: var(--t-small);
+  color: var(--muted);
+  margin: clamp(16px, 2vw, 20px) 0 0;
+}
+
+.home2 .hero2__jump a {
+  color: var(--body);
+}
+
+/* ---- Proof card — honest "what a reply looks like" (SK-WEB-003 / -005). */
+.home2 .proof {
+  position: relative;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--raised), var(--bg-2));
+  box-shadow: var(--shadow-3);
+  padding: clamp(16px, 2vw, 22px);
+  overflow: hidden;
+}
+
+.home2 .proof::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-line), transparent);
+}
+
+.home2 .proof__ask {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--rule-2);
+  background: var(--ground);
+  font-family: var(--mono);
+  font-size: var(--t-small);
+  color: var(--ink);
+}
+
+.home2 .proof__ask .prompt {
+  color: var(--accent);
+}
+
+.home2 .proof__answer {
+  margin: 16px 0 12px;
+  font-size: var(--t-body);
+  color: var(--body);
+  line-height: 1.5;
+}
+
+.home2 .proof__answer strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.home2 .proof__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: var(--t-small);
+}
+
+.home2 .proof__table th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.home2 .proof__table td {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--body);
+}
+
+.home2 .proof__table td:last-child {
+  text-align: right;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.home2 .proof__table tr:last-child td {
+  border-bottom: none;
+}
+
+.home2 .proof__trace {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--rule-2);
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+  color: var(--muted);
+}
+
+.home2 .proof__trace .step {
+  color: var(--body);
+}
+
+.home2 .proof__trace .ms {
+  margin-left: auto;
+  color: var(--accent);
+}
+
+.home2 .proof__cap {
+  margin: 12px 2px 0;
+  font-size: var(--t-xs);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ===================================================== Two ways to start */
+.home2 .ways {
+  padding: clamp(28px, 5vw, 56px) 0 clamp(20px, 3vw, 40px);
+}
+
+.home2 .ways__head {
+  max-width: var(--col);
+  margin: 0 0 clamp(24px, 3.5vw, 40px);
+}
+
+.home2 .ways__eyebrow {
+  margin: 0 0 10px;
+  font-size: var(--t-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-family: var(--mono);
+}
+
+.home2 .ways__title {
+  font-size: var(--t-section);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.home2 .ways__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(16px, 2.4vw, 24px);
+  align-items: stretch;
+}
+
+@media (min-width: 900px) {
+  .home2 .ways__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.home2 .door {
+  position: relative;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(22px, 3vw, 32px);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--raised), var(--bg-2));
+  box-shadow: var(--shadow-2);
+  transition:
+    border-color var(--dur-2) var(--ease-std),
+    transform var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .home2 .door:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent-line);
+    box-shadow: var(--shadow-3);
+  }
+}
+
+.home2 .door__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: var(--t-small);
+  font-weight: 600;
+}
+
+.home2 .door__title {
+  font-size: var(--t-h3);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.home2 .door__lede {
+  margin: 0;
+  font-size: var(--t-body);
+  color: var(--body);
+  line-height: 1.55;
+  max-width: 46ch;
+}
+
+.home2 .door__quiet {
+  margin: auto 0 0;
+  padding-top: 6px;
+  font-size: var(--t-small);
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.home2 .door__quiet a {
+  color: var(--body);
+}
+
+.home2 .door__cta {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (min-width: 560px) {
+  .home2 .door__cta {
+    width: auto;
+  }
+}
+
+/* Security reassurance line — lock glyph + honest microcopy AT the CTA. */
+.home2 .secure {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: var(--t-small);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.home2 .secure svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  color: var(--accent);
+}
+
+.home2 .secure strong {
+  color: var(--body);
+  font-weight: 500;
+}
+
+/* Masked connection-string mock — illustrative; balances Door B and
+ * reinforces the "sealed server-side" message. */
+.home2 .connmock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 13px 14px;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-md);
+  background: var(--ground);
+}
+
+.home2 .connmock__label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.home2 .connmock__field {
+  font-family: var(--mono);
+  font-size: var(--t-small);
+  color: var(--body);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.home2 .connmock__seal {
+  position: absolute;
+  top: 11px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.home2 .connmock__seal svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* ===================================================== Trust strip */
+.home2 .trust {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  padding: clamp(24px, 4vw, 40px) 0 clamp(40px, 6vw, 72px);
+  margin-top: clamp(8px, 2vw, 16px);
+  border-top: 1px solid var(--rule);
+  list-style: none;
+}
+
+@media (min-width: 720px) {
+  .home2 .trust {
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(20px, 3vw, 36px);
+  }
+}
+
+.home2 .trust__item {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+}
+
+.home2 .trust__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--rule-2);
+  background: var(--bg-2);
+  color: var(--accent);
+}
+
+.home2 .trust__icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.home2 .trust__title {
+  margin: 1px 0 3px;
+  font-size: var(--t-small);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.home2 .trust__body {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--muted);
+  line-height: 1.5;
+}

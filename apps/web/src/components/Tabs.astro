@@ -70,7 +70,7 @@ const panels = await Promise.all(tabs.map((t) => Astro.slots.render(t.id)));
     /* No-JS: stack every panel under the tab strip; hide the strip. */
     .tabs[data-tabs] [data-tab-panel] {
       display: block !important;
-      border-top: 2px solid var(--border-strong);
+      border-top: 1px solid var(--rule);
     }
     .tabs[data-tabs] > [data-tab-panel]:first-of-type {
       border-top: 0;
@@ -150,16 +150,18 @@ const panels = await Promise.all(tabs.map((t) => Astro.slots.render(t.id)));
   }
 
   .tabs {
-    border: 2px solid var(--border-strong);
-    background: var(--bg-elev);
-    box-shadow: var(--shadow-hard);
+    border: 1px solid var(--rule-2);
+    border-radius: var(--r-md);
+    background: var(--raised);
+    box-shadow: var(--shadow-2);
+    overflow: hidden;
   }
 
   .tabs__list {
     display: flex;
     overflow-x: auto;
-    border-bottom: 2px solid var(--border-strong);
-    background: var(--bg);
+    border-bottom: 1px solid var(--rule);
+    background: var(--ground);
   }
 
   .tabs__tab {
@@ -170,10 +172,10 @@ const panels = await Promise.all(tabs.map((t) => Astro.slots.render(t.id)));
     padding: 14px 20px;
     font-family: var(--mono);
     font-size: 13px;
-    color: var(--fg-dim);
+    color: var(--body);
     background: transparent;
     border: 0;
-    border-right: 2px solid var(--border-strong);
+    border-right: 1px solid var(--rule);
     cursor: pointer;
     text-align: left;
     min-width: 0;
@@ -185,17 +187,19 @@ const panels = await Promise.all(tabs.map((t) => Astro.slots.render(t.id)));
   }
 
   .tabs__tab:hover {
-    color: var(--fg);
+    color: var(--ink);
   }
 
   .tabs__tab[aria-selected="true"] {
-    background: var(--bg-elev);
+    background: var(--raised);
     color: var(--accent);
+    box-shadow: inset 0 -2px 0 0 var(--accent-line);
   }
 
   .tabs__tab:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: -4px;
+    outline: none;
+    box-shadow: var(--ring);
+    border-radius: var(--r-xs);
   }
 
   .tabs__label {
@@ -205,12 +209,12 @@ const panels = await Promise.all(tabs.map((t) => Astro.slots.render(t.id)));
 
   .tabs__sub {
     font-size: 11px;
-    color: var(--fg-muted);
+    color: var(--muted);
     letter-spacing: 0;
   }
 
   .tabs__tab[aria-selected="true"] .tabs__sub {
-    color: var(--fg-dim);
+    color: var(--body);
   }
 
   .tabs__panel {

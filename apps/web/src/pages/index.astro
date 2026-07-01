@@ -1,31 +1,207 @@
 ---
-// Homepage — two-door chooser (SK-WEB-018, the literal expression of
-// GLOBAL-036's dual front door). Replaces the SK-WEB-015/017 three-beat
-// hero→demo→replaces scroll with one headline + two side-by-side doors:
-// Door A "Use as agent memory" (the <McpInstall> host row + a quiet
-// /app/new link preserving GLOBAL-007's no-login-wall first value), and
-// Door B "Question your ClickHouse" (CTA → sign-in → /app/connect,
-// SK-WEB-019). Hero/Demo/Replaces stay in the repo — only `/agents`
-// still uses them.
+// Homepage — the SK-WEB-018 two-door home in the SK-WEB-020 calm token
+// system. Tokens + shared primitives live in global.css; this page's
+// layout (hero, proof card, the two doors, trust strip) lives in
+// apps/web/src/styles/home2.css, scoped under `.home2`.
+//
+// Decisions preserved verbatim:
+//  - GLOBAL-036 / SK-WEB-018 — dual front door (Door A agent-memory via MCP,
+//    Door B connect-your-ClickHouse). Same two paths, same destinations.
+//  - GLOBAL-007 — no login wall before first value (Door A keeps the quiet
+//    `/app/new` link; the trust strip states it plainly).
+//  - SK-WEB-003 — runnable proof above the fold, not feature bullets (the
+//    hero proof card shows a representative answer + data + trace).
+//  - SK-WEB-005 — answer + data + trace shape echoed in the proof card.
+//  - SK-WEB-016 — the shared <McpInstall> stays the single source of truth
+//    for Door A; it inherits the calm palette via scoped token overrides.
 
 import AuthedHomeBanner from "../components/AuthedHomeBanner.astro";
 import Footer from "../components/Footer.astro";
-import HomeDoors from "../components/HomeDoors.astro";
+import McpInstall from "../components/McpInstall.astro";
 import Topnav from "../components/Topnav.astro";
 import Base from "../layouts/Base.astro";
+import "../styles/home2.css";
 ---
+
 <Base
   title="nlqdb — analytical memory for AI agents"
   description="Give your AI agent a real Postgres database as memory — typed rows it writes as it learns, queried in English. Connect it over MCP to Claude, Cursor, Windsurf, or Zed; aggregate over what it remembered, not just the top-k a vector store recalls."
   ogImage="/og/agents.png"
   ogImageAlt="GROUP BY your agent's memory — analytical memory for AI agents."
 >
-  <div class="page">
+  <div class="page home2">
     <Topnav />
 
     <main>
       <AuthedHomeBanner />
-      <HomeDoors />
+
+      {/* ---- Hero: statement + honest proof (SK-WEB-003 / SK-WEB-005) ---- */}
+      <section class="hero2" aria-labelledby="hero-title">
+        <div class="hero2__col reveal">
+          <span class="hero2__pill"><span class="dot"></span>Pre-alpha · free while we build</span>
+          <h1 class="hero2__title" id="hero-title">
+            Analytical memory for <em>AI agents</em>.
+          </h1>
+          <p class="hero2__say">
+            A real database your agent writes to and you query in plain English — or connect the
+            ClickHouse you already run. Aggregate over everything it remembered, not just the
+            top-k a vector store recalls.
+          </p>
+          <div class="hero2__actions">
+            <a class="cta" href="/auth/sign-in?return_to=/app/connect">Connect your warehouse &rarr;</a>
+            <a class="cta cta--ghost" href="#ways">See both ways in</a>
+          </div>
+          <p class="hero2__jump">
+            No account needed to try — <a href="/app/new">just describe your data &rarr;</a>
+          </p>
+        </div>
+
+        {/* Proof: a representative reply. Answer + data + trace, the three
+            parts every nlqdb reply has. Numbers are an honest example. */}
+        <figure class="proof reveal" aria-label="Example nlqdb reply">
+          <div class="proof__ask">
+            <span class="prompt">&rsaquo;</span>
+            how many orders today, by drink
+          </div>
+          <p class="proof__answer">
+            <strong>91 orders</strong> today across three drinks.
+          </p>
+          <table class="proof__table">
+            <thead>
+              <tr><th>Drink</th><th>Orders</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Latte</td><td>42</td></tr>
+              <tr><td>Cappuccino</td><td>31</td></tr>
+              <tr><td>Cold brew</td><td>18</td></tr>
+            </tbody>
+          </table>
+          <div class="proof__trace">
+            <span class="step">cache</span>&middot;
+            <span class="step">plan</span>&middot;
+            <span class="step">validate</span>&middot;
+            <span class="step">exec</span>&middot;
+            <span class="step">summarize</span>
+            <span class="ms">240 ms</span>
+          </div>
+          <figcaption class="proof__cap">
+            A representative reply — every answer comes back as plain English, the data, and a
+            trace you can open.
+          </figcaption>
+        </figure>
+      </section>
+
+      {/* ---- Two ways to start (SK-WEB-018 dual front door) ---- */}
+      <section class="ways" id="ways" aria-labelledby="ways-title">
+        <header class="ways__head reveal">
+          <p class="ways__eyebrow">Two ways to start</p>
+          <h2 class="ways__title" id="ways-title">Pick the door that fits.</h2>
+        </header>
+
+        <div class="ways__grid">
+          {/* Door A — agent memory. McpInstall is the source of truth. */}
+          <article class="door reveal" aria-labelledby="door-a-title">
+            <span class="door__num">A</span>
+            <h3 class="door__title" id="door-a-title">Use it as agent memory</h3>
+            <p class="door__lede">
+              Give your agent a real Postgres database to write to as it learns — typed rows,
+              queried in English. Install it in your host over MCP.
+            </p>
+
+            <McpInstall compact={false} />
+
+            <p class="door__quiet">
+              Not building an agent?
+              <a href="/app/new">just describe your data &rarr;</a>
+            </p>
+          </article>
+
+          {/* Door B — connect your ClickHouse. One primary CTA + security line. */}
+          <article class="door reveal" aria-labelledby="door-b-title">
+            <span class="door__num">B</span>
+            <h3 class="door__title" id="door-b-title">Question your ClickHouse</h3>
+            <p class="door__lede">
+              Point nlqdb at the warehouse you already run — ClickHouse or Postgres. It reads your
+              schema; you ask in English.
+            </p>
+
+            <div class="connmock" aria-hidden="true">
+              <span class="connmock__label">connection string</span>
+              <code class="connmock__field"
+                >clickhouse://reader:&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;@warehouse:9440/analytics</code
+              >
+              <span class="connmock__seal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="4" y="11" width="16" height="9" rx="2"></rect>
+                  <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+                </svg>
+                sealed
+              </span>
+            </div>
+
+            <p class="secure">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="4" y="11" width="16" height="9" rx="2"></rect>
+                <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+              </svg>
+              <span>
+                <strong>Your connection string is sealed server-side</strong> — never stored in
+                your browser.
+              </span>
+            </p>
+
+            <div class="door__cta-row">
+              <a class="cta door__cta" href="/auth/sign-in?return_to=/app/connect">
+                Connect your ClickHouse &rarr;
+              </a>
+            </div>
+            <p class="door__quiet">Sign in (always free), then paste a read-only connection string.</p>
+          </article>
+        </div>
+
+        {/* ---- Trust strip — quiet, honest reassurances ---- */}
+        <ul class="trust reveal" aria-label="What you can count on">
+          <li class="trust__item">
+            <span class="trust__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 13l4 4L19 7"></path>
+              </svg>
+            </span>
+            <div>
+              <p class="trust__title">No login wall</p>
+              <p class="trust__body">Describe your data and get a working answer before you ever sign in.</p>
+            </div>
+          </li>
+          <li class="trust__item">
+            <span class="trust__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"></path>
+              </svg>
+            </span>
+            <div>
+              <p class="trust__title">Read-only by default</p>
+              <p class="trust__body">Connect with a read-only string; writes are previewed before they run.</p>
+            </div>
+          </li>
+          <li class="trust__item">
+            <span class="trust__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6l8 4 8-4"></path>
+                <path d="M4 6v12l8 4 8-4V6l-8-4z"></path>
+              </svg>
+            </span>
+            <div>
+              <p class="trust__title">Every answer shows its work</p>
+              <p class="trust__body">A trace with timings sits under each reply — honest latency, no spinner-lies.</p>
+            </div>
+          </li>
+        </ul>
+      </section>
     </main>
 
     <Footer />
@@ -33,9 +209,34 @@ import Base from "../layouts/Base.astro";
 </Base>
 
 <script>
-  // Provision the anonymous-mode token on first visit (SK-ANON-001).
-  // Mint the anon token up front — no cost; useful when the
-  // visitor crosses to /app/new from the footer / replaces CTA.
+  // Provision the anonymous-mode token on first visit (SK-ANON-001) — no
+  // cost; useful when the visitor crosses to /app/new.
   import { getOrMintAnonToken } from "../lib/anon";
   getOrMintAnonToken();
+</script>
+
+{/* Reveal-on-scroll — progressive enhancement (SK-WEB-001). Content is
+    visible by default; this arms the hidden→reveal transition only when
+    JS runs AND motion is allowed. No JS / reduced-motion → everything
+    stays visible, no transition. Compositor-free, tiny, no island. */}
+<script is:inline>
+  (function () {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var page = document.querySelector(".home2");
+    if (!page || !("IntersectionObserver" in window)) return;
+    page.classList.add("motion");
+    var io = new IntersectionObserver(
+      function (entries) {
+        for (var i = 0; i < entries.length; i++) {
+          if (entries[i].isIntersecting) {
+            entries[i].target.classList.add("is-in");
+            io.unobserve(entries[i].target);
+          }
+        }
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.08 },
+    );
+    var nodes = page.querySelectorAll(".reveal");
+    for (var i = 0; i < nodes.length; i++) io.observe(nodes[i]);
+  })();
 </script>

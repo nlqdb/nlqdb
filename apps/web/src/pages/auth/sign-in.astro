@@ -408,22 +408,23 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     width: 100%;
     max-width: 440px;
     padding: clamp(28px, 5vw, 48px);
-    background: var(--bg-elev);
-    border: 2px solid var(--border-strong);
-    box-shadow: var(--shadow-hard);
+    background: var(--raised);
+    border: 1px solid var(--rule-2);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-3);
   }
 
   .signin__title {
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: clamp(22px, 3.2vw, 28px);
     letter-spacing: -0.02em;
     margin: 0 0 12px;
   }
 
   .signin__lede {
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: 13px;
-    color: var(--fg-dim);
+    color: var(--body);
     margin: 0 0 28px;
   }
 
@@ -488,11 +489,11 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     align-items: center;
     gap: 12px;
     margin: 0 0 20px;
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--fg-muted);
+    color: var(--muted);
   }
 
   .signin__divider::before,
@@ -500,7 +501,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     content: "";
     flex: 1;
     height: 1px;
-    background: var(--border);
+    background: var(--rule);
   }
 
   .signin__form {
@@ -509,7 +510,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   }
 
   .signin__label {
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -519,16 +520,18 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   .signin__field {
     width: 100%;
     padding: 12px 14px;
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: 15px;
-    color: var(--fg);
-    background: var(--bg);
-    border: 2px solid var(--border-strong);
+    color: var(--ink);
+    background: var(--bg-2);
+    border: 1px solid var(--rule-2);
+    border-radius: var(--r-md);
     outline: none;
   }
 
   .signin__field:focus {
-    border-color: var(--accent);
+    border-color: var(--accent-line);
+    box-shadow: var(--ring);
   }
 
   .signin__submit {
@@ -539,37 +542,39 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   .signin__error {
     margin: 4px 0 0;
     padding: 8px 10px;
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: 13px;
     color: #ff8a8a;
-    background: #2a1212;
-    border: 2px solid #ff8a8a;
+    background: rgba(226, 109, 109, 0.1);
+    border: 1px solid rgba(226, 109, 109, 0.4);
+    border-radius: var(--r-md);
   }
 
   .signin__sent {
     padding: 20px;
-    border: 2px solid var(--accent);
-    background: var(--bg);
+    border: 1px solid var(--accent-line);
+    border-radius: var(--r-md);
+    background: var(--accent-soft);
   }
 
   .signin__sent-title {
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: 18px;
     margin: 0 0 10px;
   }
 
   .signin__sent-body {
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: 13px;
-    color: var(--fg);
+    color: var(--ink);
     margin: 0 0 14px;
     line-height: 1.5;
   }
 
   .signin__sent-meta {
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: 12px;
-    color: var(--fg-dim);
+    color: var(--body);
     margin: 0;
   }
 
