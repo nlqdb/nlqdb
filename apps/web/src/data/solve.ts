@@ -1800,9 +1800,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "PostgreSQL docs — subquery expressions, the canonical reference for `EXISTS` / `NOT EXISTS` / `NOT IN` and the NULL semantics that make `NOT IN` collapse.",
       },
       {
-        url: "https://modern-sql.com/use-case/pivot-vs-not-in",
+        url: "https://modern-sql.com/concept/three-valued-logic",
         label:
-          "Modern SQL — Markus Winand's evergreen write-up on why `NOT IN` with NULLs returns nothing and how anti-joins avoid it.",
+          "Modern SQL — Markus Winand's evergreen write-up on three-valued logic, with the dedicated section on why `not in (null, …)` is never true and how `not exists` avoids it.",
       },
     ],
   },
