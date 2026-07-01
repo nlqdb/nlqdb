@@ -68,7 +68,12 @@ progress tables + one "Last change" entry, no changelog; create it if missing
 ### 2 — One lever, measured
 
 Pick the smallest change that moves the weekly focus number (or, if none is
-set, the worst number). State the before-value, make the change, re-measure
+set, the worst **agent-movable** number). Skip metrics blocked on the founder or
+on infra/dispatch when *choosing the lever* — still report them, but never pick a
+target no single run can move. A lagging metric (e.g. real strangers = 0) is
+moved through its agent-controllable input — **indexable distribution surfaces**
+(`/vs`, `/solve`, `llms.txt`): shipping one is the lever, not a step-3 side
+artifact. State the before-value, make the change, re-measure
 the same way, then **overwrite the scorecard's single "Last change" entry**
 with this run's delta (and any revert note) — the scorecard is a current-state
 tracker, so per-run history lives in `git log` +

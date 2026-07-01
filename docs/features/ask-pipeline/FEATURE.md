@@ -201,9 +201,11 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
   - *In this feature:* `SK-ASK-013` (per-stage `withStageRetry` with error feedback) is the canonical implementation; `SK-ASK-022` extends the executor with one execution-guided re-plan.
 - **GLOBAL-023** — Trust UX baseline.
-  - *In this feature:* SK-TRUST-002 shipped — `AskResult` carries the `trace: { sql, plan_id, confidence, model, cache_hit }` block on every successful response; top-level `sql` / `cached` were removed (cleaner-shape > backwards compat per CLAUDE.md P5). The SSE `plan` event is the streaming form of the same record. Writes/DDL responses carry the `diff` block for [`SK-TRUST-001`](../trust-ux/FEATURE.md) (planned); the orchestrator short-circuits to `low_confidence` per [`SK-TRUST-003`](../trust-ux/FEATURE.md) (planned) before `db.execute`.
+  - *In this feature:* SK-TRUST-002 shipped — `AskResult` carries the `trace: { sql, plan_id, confidence, model, cache_hit }` block on every successful response (top-level `sql` / `cached` removed); the SSE `plan` event is its streaming form. Writes/DDL carry the `diff` block ([`SK-TRUST-001`](../trust-ux/FEATURE.md), planned); the orchestrator short-circuits to `low_confidence` ([`SK-TRUST-003`](../trust-ux/FEATURE.md), planned) before `db.execute`.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this feature:* 4xx `unsupported_verb` rejections (DDL via `/v1/ask`) emit `feature.requested.ddl_via_ask`; `low_confidence` refusals emit `feature.requested.ambiguous_goal`; `db_full` write-cap hits emit `feature.requested.larger_db`.
+  - *In this feature:* `unsupported_verb` (DDL via `/v1/ask`), `low_confidence`, and `db_full` rejections each emit a `feature.requested.*` event.
+- **GLOBAL-037** — Schema-only egress to third-party LLMs; never send user cell-values.
+  - *In this feature:* `orchestrate.ts` passes `db.schemaText` (DDL + evidence) only; no cell-values enter the prompt.
 
 ## Open questions / known unknowns
 

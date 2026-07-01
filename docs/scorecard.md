@@ -6,14 +6,16 @@ accretes here** (≤5 KB cap; reset 2026-06-28). History: `git log` +
 `progress/quality-score-verification-log.md` (engine).
 
 **Weekly focus number:** *(none set — founder picks at the weekly session; until
-then the daily lever targets the worst number below.)*
+then the daily lever targets the worst **agent-movable** number below.)*
 
-**Worst number today:** real strangers reaching a first answer = **0**
-(funnel/distribution). Product is open, so the engine-side worst — **Spider
-0.1852 vs 0.75** — owns it; bottleneck = **SQL reasoning**. Directive levers
-(T13–T22) **saturated**; the §4 reasoning levers (#1 DAIL-SQL retrieval, #3
-self-consistency) are **built end-to-end** but dispatch-gated. Offline retrieval
-probe (row #8) **saturated 23/23** — next engine gain needs the gated EX dispatch.
+**Worst number today:** real strangers reaching a first answer = **0** — a
+*lagging* metric, moved only by compounding surfaces over time, not by any single
+run. The daily **lever** therefore targets its agent-movable input: **indexable
+distribution surfaces** (`/vs` + `/solve` + `llms.txt`, row #14), shipped every
+run. The worst *engine* number — **Spider 0.1852 vs 0.75** (bottleneck: SQL
+reasoning) — is real but dispatch-gated: reasoning levers (§4 #1 retrieval, #3
+self-consistency) **built end-to-end**; directive levers (T13–T22) + offline
+retrieval (row #8, 23/23) **saturated**; next engine gain needs the gated EX dispatch.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -22,6 +24,7 @@ probe (row #8) **saturated 23/23** — next engine gain needs the gated EX dispa
 | 2 | Waitlist rows, real | 1 of 81 | 80 walker/test/probe; the 1 is the founder → ~0 genuine strangers |
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev |
 | 4 | Anon DBs with a first answer | 130 of 130 | every DB has a first query; genuine-stranger subset still ~0 (rows #2/#3) |
+| 14 | Indexable distribution surfaces | 60 (`/vs` 31 + `/solve` 29) | **agent-movable daily lever** — leading input to rows #1–#4; `llms.txt` auto-aggregates both. Grow every run |
 | | **Engine** — BIRD 06-19 (**12d, stale**) · Spider 06-17 (**14d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Dispatch gated** — MCP `workflow_dispatch` 403 + `GH_TOKEN_WORKFLOW` PAT proxy-blocked (run 126); see Last change |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Flat within variance (McNemar p=0.50) — directive levers saturated; reasoning levers (§4 #1/#3) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number.** Self-consistency (`SK-QUAL-017`) end-to-end bar the CI dispatch; EX delta next dispatch |
@@ -43,16 +46,13 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-07-01 (run 129)** — engine dispatch stays gated and the funnel needs real
-strangers (both re-confirmed same-day run 128, un-forceable), so the measured
-lever stayed on the **`/solve`** onboarding/UX lane, non-colliding with run 128's
-`/vs/neon`: a page for **"calculate percentage of total in SQL"** — a high-volume
-P3-analyst search with **no page**. Distinct window primitive from the existing
-cluster (running-total / MoM / median): `SUM(x) OVER ()` broadcasts the *grand
-total* onto every row as a denominator (vs. running-total's ordered accumulate),
-with the two real traps named honestly — integer division flooring the share to 0
-(needs `100.0 *`) and `OVER ()` grand-total vs. `OVER (PARTITION BY …)` per-group
-denominator. **Solve pages 28 → 29 · P3 coverage 9 → 10**; every SQL claim is
-standard Postgres behavior (window-functions docs). 18 solve data-integrity + 176
-web tests green, biome clean, queue net-shrank to 20.2 KB < 20.5 KB cap (D4).
+**2026-07-01 (framing fix)** — disambiguated who owns distribution. Dropped the
+unsourced "un-forceable" narrative (contradicted `GLOBAL-033` + the
+autonomous-distribution design in `fable-recommendation.md`) and repointed the
+daily lever at the **agent-movable** surfaces count (row #14, now 60 incl. run
+129's `/solve` share-of-total page) rather than the lagging strangers metric.
+Trimmed `blocked-by-human.md` to genuine human actions: Stripe auto-deploys on
+merge (not a click); `OPENROUTER_FRONTIER_API_KEY` + `BYO_SECRET_KEK` flow via the
+secret mirror (one `mirror-secrets-gha.sh` run); legal → free Termly path.
+`MEMORY_PRESET` is a plain var gated on E-03 shipping, not a founder click.
 **KPI:** GLOBAL-025 onboarding/UX; none degraded.
