@@ -16,7 +16,7 @@
 // shared view still points at inlining a per-DB `pk_live_` for element
 // embeds, matching Door A / `/integrations`.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFocusTrap, useRestoreFocusOnUnmount } from "../../lib/dialog";
 import McpInstallView from "../McpInstallView";
 
@@ -40,12 +40,18 @@ export default function McpInstallPopover() {
 
 function McpInstallDialog({ onClose }: { onClose: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
   useRestoreFocusOnUnmount(() =>
     typeof document === "undefined"
       ? null
       : document.querySelector<HTMLElement>(".left-rail__mcp-trigger"),
   );
   useFocusTrap(dialogRef, { onEscape: onClose });
+  // Move focus inside the modal on open (the trigger it covers is no
+  // longer reachable) so keyboard + screen-reader users start in-dialog.
+  useEffect(() => {
+    closeRef.current?.focus();
+  }, []);
 
   return (
     <div className="mcp-popover__backdrop">
@@ -70,7 +76,13 @@ function McpInstallDialog({ onClose }: { onClose: () => void }) {
           <h2 className="mcp-popover__title" id="mcp-popover-title">
             Install nlqdb MCP
           </h2>
-          <button type="button" className="mcp-popover__close" aria-label="Close" onClick={onClose}>
+          <button
+            ref={closeRef}
+            type="button"
+            className="mcp-popover__close"
+            aria-label="Close"
+            onClick={onClose}
+          >
             &times;
           </button>
         </header>
