@@ -43,18 +43,16 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-07-01 (run 128)** — engine dispatch stays gated (both paths re-confirmed
-run 126–127 same day) and the funnel needs real strangers (un-forceable); PR
-#563 shipped the `/solve` lane (median/percentile) → measured **onboarding/UX** lever on the
-non-colliding **`/vs`** comparison lane: a page for **Neon** — the marquee P1
-serverless-Postgres competitor (scariest alongside Supabase, per §1/Gap-analysis)
-that had **no page** while Supabase did. **Honesty correction baked in:** Neon
-ships a very capable *official* MCP server (`mcp.neon.tech`, OAuth, ~20 tools)
-managing Postgres from a coding agent — the stale "no MCP / no NL" framing was
-dropped in `competitors.md §1` too. Real wedge = **job, not
-capability**: Neon's NL is *dev-time DB administration*; nlqdb's is a *product
-runtime answer* (`<nlq-data>`, compiled SQL shown, fail-closed, writes
-diff-previewed, anonymous try). **Comparison pages 30 → 31 · P1 coverage 1 → 2**;
-facts web-verified (`neon.com/pricing` + `neon.com/docs/ai/neon-mcp-server`), 176
-web tests green, astro check 0 errors, biome clean, queue < 20 KB (D4).
+**2026-07-01 (run 129)** — engine dispatch stays gated and the funnel needs real
+strangers (both re-confirmed same-day run 128, un-forceable), so the measured
+lever stayed on the **`/solve`** onboarding/UX lane, non-colliding with run 128's
+`/vs/neon`: a page for **"calculate percentage of total in SQL"** — a high-volume
+P3-analyst search with **no page**. Distinct window primitive from the existing
+cluster (running-total / MoM / median): `SUM(x) OVER ()` broadcasts the *grand
+total* onto every row as a denominator (vs. running-total's ordered accumulate),
+with the two real traps named honestly — integer division flooring the share to 0
+(needs `100.0 *`) and `OVER ()` grand-total vs. `OVER (PARTITION BY …)` per-group
+denominator. **Solve pages 28 → 29 · P3 coverage 9 → 10**; every SQL claim is
+standard Postgres behavior (window-functions docs). 18 solve data-integrity + 176
+web tests green, biome clean, queue net-shrank to 20.2 KB < 20.5 KB cap (D4).
 **KPI:** GLOBAL-025 onboarding/UX; none degraded.

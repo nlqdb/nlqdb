@@ -11,59 +11,55 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-07-01 (run 128) — dev.to / r/PostgreSQL / r/SaaS: "Neon's MCP server lets your coding agent run your database. That's not the same as your app answering a question."
+## 2026-07-01 (run 129) — dev.to / r/SQL / r/PostgreSQL: "The 'percent of total' query has a denominator problem. Two, actually."
 
-**Where:** dev.to + r/PostgreSQL + r/SaaS; for builders on Neon (or weighing it) placing its MCP
-demo against "let my product answer questions in English." nlqdb mentioned once, as the runtime
-alternative — not a knock on Neon, whose MCP is genuinely good.
+**Where:** dev.to + r/SQL + r/PostgreSQL; for anyone who's written `revenue / SUM(revenue)` and got
+0, or got shares that summed to way past 100%. nlqdb mentioned once, as the ask-in-English path.
 
-**Title:** Neon's MCP server lets your coding agent run your database. That's not the same as your app answering a question.
+**Title:** The 'percent of total' query has a denominator problem. Two, actually.
 
 **Body:**
 
-> Neon's official MCP server is one of the better database MCP integrations shipping right now.
-> Connect it to Cursor or Claude Code and your coding agent can spin up a project, branch the
-> database copy-on-write, run a migration on that branch, verify it, and merge it — all from English.
-> The `prepare_database_migration` → verify → `complete` flow is a smart use of Neon's branching: the
-> migration lands on a throwaway copy before it touches main. If you live in an editor, it's a real
-> quality-of-life jump.
+> "What percent of revenue is each product?" sounds like the simplest analytics question there is,
+> and it's the one people get subtly wrong most. Two traps, both quiet — no error, no warning.
 >
-> One distinction is worth drawing before you assume it covers "natural-language database": that
-> whole loop is *dev-time database administration*. The caller is you, in your IDE, managing schema
-> and infra. It's not your **product** answering an end-user's question at runtime — two jobs that
-> just happen to share the words "natural language" and "SQL":
+> **Trap 1 — integer division floors your share to 0.** The clean way to get a share is a window
+> aggregate that broadcasts the total onto every row without a self-join:
 >
-> - **Manage the database (dev time).** Create, branch, migrate, tune. Audience: the engineer. Neon's
->   MCP is excellent here.
-> - **Answer a question (run time).** A user or agent asks "signups per week for the last 8 weeks"
->   and something turns that into SQL, runs it safely, and renders the answer inside your app. This is
->   the part a raw Postgres — even a great serverless one — leaves to you.
+> ```sql
+> SELECT product, revenue,
+>        revenue / SUM(revenue) OVER () AS share   -- looks right, returns 0
+> FROM sales;
+> ```
 >
-> The second job has requirements the first doesn't: the compiled SQL shown to the asker so they can
-> check it, every query validated against a read-only allow-list and failing closed (the caller isn't
-> a trusted engineer anymore), writes diff-previewed before they apply, and ideally a stranger able to
-> try it before signing in. None of that is a knock on Neon — it's just not what a database platform
-> is for. Neon owns branching, scale-to-zero, pooling, replicas, and PITR, and owns them well; the
-> runtime answer surface is a layer above the DB.
+> If `revenue` is an integer column, `revenue / SUM(...)` is integer division: every share rounds down
+> to 0 before you ever multiply by 100. Force floating-point — `100.0 * revenue / SUM(revenue) OVER
+> ()`, or cast one side to `numeric`. You just get a column of zeros that looks like a data problem
+> and isn't.
 >
-> So if you're on Neon and happy, stay — and turn its MCP server on, it's worth it for the migration
-> flow alone. The narrower question is: *when a user of my app asks a question in English, what turns
-> that into a safe answer on the page?* If the honest answer is "haven't built that," that's the layer
-> to think about, separate from where the bytes live.
+> **Trap 2 — the wrong denominator.** `SUM(x) OVER ()` — empty parentheses — is the *grand* total, so
+> shares across all rows sum to 100%. `SUM(x) OVER (PARTITION BY region)` is the *per-group* total, so
+> each region's rows sum to 100% on their own. Same rows, different question, and it's easy to reach
+> for one when you meant the other. The `OVER (...)` clause is the whole spec — read it and you know
+> which denominator you got.
 >
-> (That runtime layer is what we built [nlqdb](https://nlqdb.com) for: a Postgres provisioned from
-> English, NL→SQL with the compiled SQL shown and validated fail-closed on every query, an embeddable
-> `<nlq-data>` answer element, writes diff-previewed, and a try-before-sign-in mode. Honest limits —
-> nlqdb doesn't expose Neon-grade branching or scale-to-zero, and bring-your-own-Postgres isn't
-> shipped yet, so today it owns the DB it answers.)
+> Why `OVER ()` beats the old self-join-to-a-totals-subquery: it keeps every row while carrying the
+> aggregate alongside — the same window trick behind running totals and ranking, pointed at a
+> denominator instead of an accumulation.
+>
+> (If you'd rather not re-derive this every quarter: [nlqdb](https://nlqdb.com) takes "each product's
+> revenue as a percent of total" in English, compiles the `100.0 * … / SUM(…) OVER ()` form, runs it
+> read-only, and shows the SQL so you can check the denominator. Honest limit — it owns the Postgres
+> it answers; bring-your-own-Postgres is signed-in only, not the public embed.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides "Neon MCP server" search
-intent surfaced by the `/vs/neon` page shipped this run; the dev-time-vs-runtime framing is sourced
-to Neon's own MCP docs (concedes Neon's strengths, so it earns a citation not a takedown) and states
-nlqdb's no-branching / no-BYO-Postgres limits plainly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — anchors the new
+`/solve/calculate-percentage-of-total-in-sql` page (P3 analyst), rides evergreen "percent of total
+SQL" / "SQL percentage returns 0" search intent, and every claim (integer division, `OVER ()` vs
+`PARTITION BY`) is standard Postgres behavior verifiable in the window-functions docs. None degraded.
 
 ## Collapsed — full drafts in git history
 
+- run 128 — dev.to / r/PostgreSQL / r/SaaS: "Neon's MCP server lets your coding agent run your database. That's not the same as your app answering a question." (Neon's official MCP is one of the better DB MCP integrations — spin up a project, branch copy-on-write, run+verify+merge a migration all from your IDE — but that whole loop is *dev-time database administration* with you as the caller, not your *product* answering an end-user's question at runtime; the runtime job has requirements the admin one doesn't — compiled SQL shown, read-only allow-list failing closed, writes diff-previewed, try-before-sign-in — none a knock on Neon, just a layer above the DB; honest split — nlqdb has no Neon-grade branching/scale-to-zero and no BYO-Postgres yet, so it owns the DB it answers; anchors `/vs/neon`).
 - run 127 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no MEDIAN(). Here's the query you write instead — and the choice that changes the answer." (no `MEDIAN()` in Postgres; the answer is the ordered-set aggregate `percentile_cont(0.5) WITHIN GROUP (ORDER BY revenue)`, and swapping `0.5` gives any percentile; the trap is `percentile_cont` interpolates between the two middle rows while `percentile_disc` returns a real row, so they disagree on even/categorical sets — `cont` for continuous quantities, `disc` when it must be an observed value; order lives inside `WITHIN GROUP`; honest split — read-only, not a live p95 dashboard; anchors `/solve/calculate-median-or-percentile-in-sql`).
 
 - run 126 — dev.to / r/LLMDevs / r/LangChain: "LlamaIndex's text-to-SQL runs the SQL the model wrote. The docs tell you that; the demo doesn't." (`NLSQLTableQueryEngine` writes + *executes* the generated SQL — LlamaIndex's own docs call arbitrary SQL a security risk and leave restricted roles / read-only DB / sandboxing to you — and it assumes the DB already exists; same English prompt, two different jobs; honest split — LlamaIndex wins for SQL-as-one-retriever-among-docs+vectors and can call nlqdb as a tool, nlqdb is not a RAG framework; anchors `/vs/llamaindex`).
