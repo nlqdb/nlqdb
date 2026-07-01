@@ -1748,6 +1748,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "find-rows-with-no-match-in-another-table",
+    persona: "P3 analyst",
+    searchTitle: "How do I find rows in one table with no match in another (anti-join) in SQL?",
+    oneLiner:
+      "If you need the rows in one table with no match in another — customers who never placed an order — ask in plain English instead of hand-writing an anti-join. nlqdb compiles the `LEFT JOIN ... WHERE b.id IS NULL` (or `NOT EXISTS`), runs it in Postgres, and shows the SQL so you can dodge the `NOT IN` NULL trap.",
+    painContext:
+      "Analysts ask 'who's missing' all the time — customers who never ordered, products never sold, users with no login this month, invoices with no payment. It's a set difference, and it's the query people get silently wrong. The tempting `WHERE id NOT IN (SELECT customer_id FROM orders)` returns zero rows the instant that subquery contains a single NULL, because `NOT IN` compares against NULL as unknown and the whole predicate collapses. The two correct shapes are a `LEFT JOIN` with `WHERE b.key IS NULL` (keep the left rows that found no partner) or `NOT EXISTS` (a correlated anti-join that's NULL-safe by construction) — and knowing which one, and why `NOT IN` betrayed you, is the whole difficulty.",
+    demoGoal: "customers who have never placed an order",
+    demoWhy:
+      "The canonical 'who's missing' anti-join you'd otherwise hand-write — and get bitten by `NOT IN` on — is one English goal here, with the SQL shown so you can confirm it's the NULL-safe shape.",
+    howNlqdbAnswers: [
+      "Ask 'customers who never placed an order'; nlqdb compiles the NULL-safe anti-join `LEFT JOIN orders WHERE orders.id IS NULL` and runs it.",
+      "The compiled SQL avoids the `NOT IN (subquery)` shape, so a NULL in the inner table can't silently collapse the result to zero rows.",
+      "Every answer returns the missing rows plus the SQL under a trace toggle (`SK-WEB-005`) — confirm it's `IS NULL` / `NOT EXISTS`, not `NOT IN`.",
+      "Repeated 'who's missing' checks hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same query returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "`LEFT JOIN ... IS NULL` and `NOT EXISTS` are equivalent for a plain anti-join, but a `LEFT JOIN` can multiply rows if the join key isn't unique. nlqdb picks one from your English and shows it — it doesn't guarantee your keys are unique.",
+      "It reports the missing rows with a read-only SELECT — it's not a monitor that alerts you when a new row goes unmatched. A scheduled job or your own alerting owns that.",
+      "The public `<nlq-data>` embed is read-scoped — it finds the unmatched rows, it doesn't write. No write key belongs in client HTML; loading data goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I find rows in one table with no match in another in SQL?",
+        a: "Ask in plain English — 'customers who have never placed an order.' nlqdb compiles an anti-join: `LEFT JOIN orders ON ... WHERE orders.id IS NULL` keeps the customers that found no matching order, or the equivalent `NOT EXISTS (SELECT 1 FROM orders WHERE ...)`. It runs the query and shows the SQL, so you can confirm it used a NULL-safe shape rather than `NOT IN`.",
+      },
+      {
+        q: "Why does NOT IN return no rows in SQL?",
+        a: "Because of a NULL in the subquery. `id NOT IN (SELECT customer_id FROM orders)` is true only when `id` differs from every returned value — but if one `customer_id` is NULL, the comparison is 'unknown', so the predicate is never true and you get zero rows. Use `NOT EXISTS` or a `LEFT JOIN ... IS NULL` instead; nlqdb compiles the NULL-safe form and shows it in the SQL.",
+      },
+      {
+        q: "What's the difference between LEFT JOIN IS NULL and NOT EXISTS?",
+        a: "For a plain anti-join they return the same rows. `NOT EXISTS` is a correlated subquery that stops at the first match and is NULL-safe by construction. `LEFT JOIN ... WHERE b.key IS NULL` keeps every left row that found no partner — but if the join key isn't unique it can multiply rows before the filter. nlqdb picks one from your phrasing and shows the clause in the SQL.",
+      },
+      {
+        q: "Can I run an anti-join on a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask 'rows with no match' in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the unmatched rows read-only — it doesn't persist the result set for you.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/anti-join+sql",
+        label:
+          "Stack Overflow — the `anti-join` tag, the standing hub for 'rows with no match', `LEFT JOIN ... IS NULL` vs `NOT EXISTS`, and the recurring `NOT IN` NULL-trap questions across dialects.",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/functions-subquery.html",
+        label:
+          "PostgreSQL docs — subquery expressions, the canonical reference for `EXISTS` / `NOT EXISTS` / `NOT IN` and the NULL semantics that make `NOT IN` collapse.",
+      },
+      {
+        url: "https://modern-sql.com/use-case/pivot-vs-not-in",
+        label:
+          "Modern SQL — Markus Winand's evergreen write-up on why `NOT IN` with NULLs returns nothing and how anti-joins avoid it.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
