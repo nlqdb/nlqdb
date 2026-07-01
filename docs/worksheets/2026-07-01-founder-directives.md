@@ -61,8 +61,15 @@ Still live in code (verified 2026-07-01):
   `apps/events-worker/src/sinks/logsnag.ts` (+ its test) handling.
 - `apps/web/src/lib/email.ts` and any residual web references.
 - Docs: scorecard funnel rows (#2 waitlist, invite-valve mentions),
-  `docs/features/**` (anonymous-mode, web-app, rate-limit, onboarding),
-  architecture/phase-plan prose. Same append-only-tracker exemption as W1.
+  `docs/features/**` (verified hits: agent-memory-pivot, events-pipeline,
+  idempotency, web-app FEATURE.md), architecture/phase-plan prose. Same
+  append-only-tracker exemption as W1. Two canonical decisions conflict
+  and must be edited, not just swept:
+  - `GLOBAL-021` table inventory: drop the `waitlist` row/caller mentions.
+  - `GLOBAL-036` names the waitlist as the wedge's conversion (3 places).
+    Replace with the successor metric — **wedge conversion = registered
+    user reaching a first answer** (decided here per GLOBAL-033; don't
+    leave the pivot without a conversion definition).
 - **Accept:** `grep -rni 'waitlist' apps/ packages/ cli/ scripts/ docs/
   --include='*.ts' --include='*.tsx' --include='*.astro' --include='*.sql'
   --include='*.md'` → only migration history (0007/0015 stay as applied
@@ -89,8 +96,11 @@ Living copy still saying "pre-alpha" (verified): `apps/web/src/`
   the "First-query success rate … ≥ 70% / ≥ 85%" row with **"First-10-queries
   success rate (per new user/DB, share of their first 10 `/v1/ask` calls
   answered successfully) — floor ≥ 95% (both phases)"**. Update the prose
-  mention in the pillar-2 bullet and any copies
-  (`grep -rn 'first-query success' docs/`).
+  mention in the pillar-2 bullet and every copy — verified hits:
+  `docs/phase-plan.md` (Phase 2 + Phase 3 exit-gate lines),
+  `docs/features/onboarding/FEATURE.md`,
+  `docs/features/stranger-test/FEATURE.md`,
+  `docs/research/fable-recommendation.md`.
 - `docs/features/onboarding/FEATURE.md`: update its KPI reference; add an
   SK block only if the instrument decision is non-obvious (P4/D5).
 - Instrument: define the measurement from the existing events pipeline
@@ -176,3 +186,16 @@ The founder wants a motion that runs without them.
 - **Accept:** `grep -rn 'invite-valve\|invite valve\|GATE_OPEN' docs/
   .claude/` → append-only-tracker history only; scorecard reflects the new
   rows; §8 gates green.
+
+## Final conflict sweep (run after the last item, before deleting this file)
+
+No two canonical decisions may disagree once the worksheet is done:
+
+```
+grep -rni 'waitlist|invite valve|first-query success|pre-alpha|GLOBAL-027' \
+  docs/decisions/ docs/features/ docs/*.md .claude/
+```
+
+Every hit must be either the GLOBAL-027 superseded record (+ its index
+row) or an append-only-tracker history row. Anything else is a live
+conflict — fix it before closing the worksheet.
