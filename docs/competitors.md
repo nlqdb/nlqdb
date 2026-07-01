@@ -1,6 +1,6 @@
 # Competitor Landscape
 
-A scan of the products nlqdb competes with, directly or adjacently — organized by category (the summary table at the bottom ranks threat vectors). Pricing/features are from each vendor's public positioning and change often; treat numbers as order-of-magnitude. nlqdb's one-line positioning, for context: *"Postgres that an LLM and a non-expert can actually operate — auto-migrations, NL chat, MCP server, one command to provision"* — intentionally sitting between four adjacent categories, each of which this doc explains.
+A scan of the products nlqdb competes with, directly or adjacently, organized by category (the summary table at the bottom ranks threat vectors). Pricing/features are from each vendor's public positioning and change often; treat numbers as order-of-magnitude. nlqdb sits intentionally between four adjacent categories — managed Postgres, text-to-SQL, AI BI, and agent memory — each explained below.
 
 ---
 
@@ -18,17 +18,14 @@ Postgres + auth + storage + edge functions + a Studio UI. Free tier + Pro at $25
 - **Overlaps with:** P1 (DB + admin UI in one), somewhat P3 (Studio is a reasonable query UI).
 - **Gap nlqdb exploits:** Studio is a SQL IDE, not a chat interface; no NL auto-migration; MCP server is query-only against a pre-provisioned DB. **Threat vector:** The scariest direct P1 competitor — momentum + a full BaaS story nlqdb doesn't match.
 
-### Railway, Xata, Turso, PlanetScale (low-threat hosts)
-Railway (PaaS Postgres), Xata (serverless Postgres + branching), Turso (distributed libSQL/SQLite), PlanetScale (Vitess/MySQL). All overlap on P1 hosting ergonomics; none has an NL / agent / MCP layer or conversational migrations. **Threat vector:** Low-to-medium — Xata is closest in mindshare but still infra-only; the others bet on a different architecture or ecosystem.
-
-### Render Postgres, Fly Postgres, Aiven
-Commodity managed Postgres, no NL / agent layer. Low threat individually, but collectively they set the "cheap, boring Postgres" baseline nlqdb prices against.
+### Railway, Xata, Turso, PlanetScale, Render, Fly, Aiven (low-threat hosts)
+Commodity managed Postgres/DB hosts (Railway PaaS, Xata + branching, Turso libSQL/SQLite, PlanetScale Vitess/MySQL, Render/Fly/Aiven). All overlap on P1 hosting ergonomics; none has an NL / agent / MCP layer or conversational migrations. **Threat vector:** Low-to-medium — Xata is closest in mindshare but still infra-only; collectively they set the "cheap, boring Postgres" baseline nlqdb prices against.
 
 ---
 
 ## 2. Text-to-SQL / NL-over-DB tools
 
-These translate natural language into SQL against *your existing database*. They don't own the data layer — they're a translator. nlqdb's answer: owning the DB lets us do auto-migration and destructive-op diff preview that a pure translator can't.
+These translate natural language into SQL against *your existing database* — a translator, not the data layer. Owning the DB lets nlqdb do auto-migration and destructive-op diff preview a pure translator can't.
 
 ### Wren AI — https://getwren.ai (OSS: https://github.com/Canner/WrenAI)
 Open-source context layer — an MDL semantic model + row/column access controls on an existing warehouse (22+ sources). 15k+ stars; cloud + self-host; SOC 2 Type II on paid plans only.
@@ -55,7 +52,7 @@ NL data analysis over uploaded CSVs and connected DBs. ~$20/mo individual plans.
 - **Gap nlqdb exploits:** Analysis-only; no durable data layer, no app-backing DB. **Threat vector:** **High for P3** if our CSV-upload story isn't tight.
 
 ### SQLChat / AI2SQL / Text2SQL.ai / Seek AI / ThoughtSpot Sage
-The low-threat tail: OSS web chat (SQLChat) and one-shot consumer generators (AI2SQL / Text2SQL, ~$10/mo) have no persistence or DB; Seek AI and ThoughtSpot Sage are enterprise NL analytics with the wrong GTM for our personas. **Threat vector:** Low — utilities or enterprise-only, not in nlqdb's lane.
+The low-threat tail: OSS web chat and one-shot consumer generators (~$10/mo) with no persistence or DB; Seek AI / ThoughtSpot Sage are enterprise NL analytics with the wrong GTM for our personas. **Threat vector:** Low — utilities or enterprise-only, not in nlqdb's lane.
 
 ---
 
@@ -67,26 +64,24 @@ These layer NL on top of admin or BI UIs. The ones with strong distribution (Ret
 AI-assisted database interface: EZQL natural-language queries, spreadsheet-like editor, dashboards, data catalog. Multi-engine (Postgres / MySQL / SQLite / MongoDB / ClickHouse / Snowflake / BigQuery / Redshift / MSSQL). Acquired by **Cloudflare** 2025-04-07.
 - **Overlaps with:** P1 admin-chat, P3, P4 NL-over-existing-DB.
 - **Gap nlqdb exploits:** Outerbase sits on top of *your* DB; nlqdb is the DB + chat + MCP-provisioning in one. The `/vs/outerbase` page ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is canonical.
-- **Threat vector:** **High.** The single product most in nlqdb's lane today; the Cloudflare acquisition puts it on the same infra (Workers / D1 / Agents SDK), narrowing the infra-differentiation lane.
+- **Threat vector:** **High.** The single product most in nlqdb's lane today; the Cloudflare acquisition puts it on the same infra (Workers / D1), narrowing the infra-differentiation lane.
 
 ### Basedash — https://www.basedash.com
 Repositioned from "admin UI with AI" to an **AI-native BI platform**: NL → dashboards, an AI data analyst, a semantic layer, chart embedding, MCP server, 750+ read-only sources. No write/edit, no DB provisioning. 14-day trial → $1,000/mo; SOC 2 Type II. (Detail in `/vs/basedash`.)
-- **Overlaps with:** P3 (analyst BI); P4/P1 only via legacy admin-panel heritage.
-- **Gap nlqdb exploits:** read-only BI over *your existing* data; nlqdb owns the DB (provisions Postgres + NL writes/migrations with diff-preview) and embeds an answer element, not a dashboard.
+- **Gap nlqdb exploits:** read-only BI over *your existing* data (P3); nlqdb owns the DB (provisions Postgres + NL writes/migrations with diff-preview) and embeds an answer element, not a dashboard.
 - **Threat vector:** Medium for P3; the $1,000/mo floor (no free tier) cedes the small-team / anonymous-mode lane.
 
 ### Retool AI — https://retool.com
-Retool's NL query + app-generation add-ons on top of the Retool platform. Team from $10/user/mo + AI usage.
-- **Gap nlqdb exploits:** Retool is a low-code builder; nlqdb's "skip building the admin UI entirely" is a stronger message for small teams.
-- **Threat vector:** **Very high for P4.** Distribution + inertia.
+Retool's NL query + app-generation add-ons on the Retool platform. Team from $10/user/mo + AI usage.
+- **Gap nlqdb exploits:** Retool is a low-code builder; nlqdb's "skip building the admin UI entirely" is stronger for small teams. **Threat vector:** **Very high for P4** — distribution + inertia.
 
 ### Metabase Metabot — https://www.metabase.com
-OSS (AGPL self-host) + cloud BI (Starter ~$85/mo). Metabot is the AI layer: NL questions, chart-building, SQL generation + "fix it" repair, viz analysis, Slack answers. Full Metabot = paid Cloud + $100/mo add-on; OSS edition is single-shot SQL gen only. (Detail in `/vs/metabase`.)
+OSS (AGPL self-host) + cloud BI (Starter ~$85/mo). Metabot is the AI layer: NL questions, chart-building, SQL gen + "fix it" repair, Slack answers. Full Metabot = paid Cloud + $100/mo add-on; OSS is single-shot SQL gen only. (Detail in `/vs/metabase`.)
 - **Gap nlqdb exploits:** BI-dashboard shaped, read-only over an existing warehouse; doesn't provision/own the DB, no NL writes/migrations with diff-preview, no embeddable answer element or agent-callable API.
 - **Threat vector:** Medium for P3 — strong OSS-distribution moat, but Metabase users want dashboards/charts, not an embedded queryable data layer.
 
 ### Hex Magic / Mode AI / Fabi.ai / Count — notebook-first AI BI
-AI inside collaborative analyst notebooks (Hex from ~$24/user/mo; others similar). Different DNA — analyst notebooks, not PM chat. **Threat vector:** Low-medium — adjacent to P3, not a head-to-head shape. **Cluster complete** — all four have canonical `/vs` pages (Hex, Mode, Fabi.ai, Count; per-tool facts + landing dates in `competitors.ts`). Wedge: nlqdb owns+provisions the DB and embeds an answer element/agent-callable API; they layer a notebook/canvas over a warehouse you already run.
+AI inside collaborative analyst notebooks (Hex from ~$24/user/mo; others similar). Different DNA — analyst notebooks, not PM chat. **Threat vector:** Low-medium — adjacent to P3, not head-to-head. **Cluster complete** — all four have canonical `/vs` pages (per-tool facts + landing dates in `competitors.ts`). Wedge: nlqdb owns+provisions the DB and embeds an answer element/agent-callable API; they layer a notebook/canvas over a warehouse you already run.
 
 ---
 
@@ -127,10 +122,10 @@ OSS + managed vector DB. **Threat:** medium — same shape as Pinecone.
 OSS-first vector DB with a new managed cloud. **Threat:** medium — OSS-first devs.
 
 ### Qdrant — https://qdrant.tech
-High-performance Rust vector DB, Apache-2.0; managed Qdrant Cloud. HNSW + scalar/binary/product quantization, native hybrid search, REST + gRPC, official `mcp-server-qdrant`. Quantization makes recall cheaper but adds no aggregation. `/vs/qdrant`.
+High-performance Rust vector DB, Apache-2.0; managed Qdrant Cloud. Quantization + native hybrid search, official `mcp-server-qdrant`. Cheaper recall, but adds no aggregation. `/vs/qdrant`.
 
 ### Milvus — https://milvus.io
-Cloud-native open-source vector DB for scalable ANN (Go, Apache-2.0, ~45k stars, LF AI & Data graduated; Zilliz is creator). HNSW / IVF / DiskANN / GPU indexes, hybrid dense + sparse / BM25 at billion-vector scale; deploy Lite / Standalone / Distributed or managed Zilliz Cloud (free 5 GB). Official `zilliztech/mcp-server-milvus`. Single-collection scalar group-by (`count`/sum/avg) is new in Milvus 3.0-beta (2.6 GA: vector-search GroupBy only) — still no cross-collection JOIN or HAVING. `/vs/milvus`.
+Cloud-native open-source vector DB for scalable ANN (Go, Apache-2.0, ~45k stars, LF AI & Data graduated; Zilliz is creator). Billion-vector scale; managed Zilliz Cloud (free 5 GB), official `zilliztech/mcp-server-milvus`. Single-collection scalar group-by is new in Milvus 3.0-beta — still no cross-collection JOIN or HAVING. `/vs/milvus`.
 
 ### Cognee — https://www.cognee.ai
 Open-source AI memory framework (Apache-2.0, ~20k stars) — builds a self-hosted **knowledge graph** (Extract → Cognify → Load) fusing vector embeddings + graph reasoning + ontology generation; pluggable backends, official `cognee-mcp`. A *recall* engine via hybrid vector + graph traversal (graph wing of the wedge). **Threat:** high for P2 — well-funded, MCP-native, the most credible "not just a vector store" framing; stops short of relational analytics. `/vs/cognee`.
@@ -180,7 +175,8 @@ Part of the LangChain ecosystem; the "I'll just build it myself" route for P2. C
 - **Threat vector:** Medium — free and flexible.
 
 ### LlamaIndex query engine / sqlcoder / PremSQL
-Adjacent DIY components: LlamaIndex's SQL query engine (like LangChain's), Defog's `sqlcoder` fine-tuned weights, and the OSS PremSQL toolkit.
+Adjacent DIY components: LlamaIndex's SQL query engine (like LangChain's), Defog's `sqlcoder` fine-tuned weights, and the OSS PremSQL toolkit. LlamaIndex (MIT) ships `NLSQLTableQueryEngine` (synthesise + run SQL over a `SQLDatabase` wrapping a SQLAlchemy engine you already run) and `SQLTableRetrieverQueryEngine` (a `TableIndex` for query-time schema retrieval when the schema overflows context); the docs explicitly warn that running arbitrary generated SQL is a security risk. Canonical `/vs` page: **llamaindex** (landed 2026-07-01; persona **P4** build-vs-buy, matching langchain-sql-agent — web-verified facts in `competitors.ts`).
+- **Gap nlqdb exploits:** A framework component you wire over a DB you run — no provisioning, no SQL-shown, no fail-closed validation, no diff-previewed writes, no embed element.
 - **Threat vector:** Low–medium — commodity components anyone can embed, not products.
 
 ---
@@ -208,6 +204,7 @@ Adjacent DIY components: LlamaIndex's SQL query engine (like LangChain's), Defog
 | Metabase Metabot | BI + NL | P3 | OSS distribution + familiar BI UX |
 | Turso | Managed DB | P1, P5 | Cheap + edge-distributed |
 | LangChain SQL agent | OSS framework | P2 | Free DIY path |
+| LlamaIndex | OSS framework | P4 | Free DIY text-to-SQL component; runs generated SQL by default |
 
 ---
 
@@ -218,11 +215,11 @@ The competitive set is crowded but fragmented; nobody fully occupies the interse
 1. **"Agent provisions its own DB" is whitespace** — every MCP Postgres server, Vanna/Defog, and Retool assumes a human already stood the database up.
 2. **DB + NL chat + auto-migration in one product** — Supabase has the DB, Outerbase the chat, Defog the SQL; nobody stitches all three into one install.
 3. **Conversational destructive-op preview** (diff-before-apply for updates/deletes/migrations) is rare — Retool gates human button-clicks, nothing gates NL requests. A trust differentiator for P1/P4.
-4. **Analytical memory for agents** (§4) — Mem0 / Zep / Letta / LangMem *retrieve* facts; only nlqdb lets the agent `GROUP BY` / `JOIN` / `HAVING` over its own memory. Adding SQL semantics to a vector store or knowledge graph is a storage-layer rewrite, not a feature (the GLOBAL-036 wedge).
+4. **Analytical memory for agents** (§4) — Mem0 / Zep / Letta / LangMem *retrieve* facts; only nlqdb lets the agent `GROUP BY` / `JOIN` / `HAVING` over its own memory. Adding SQL semantics to a vector store is a storage-layer rewrite, not a feature (the GLOBAL-036 wedge).
 5. **Cross-persona coverage with one product** — most rivals aim at one persona (Mem0 → P2, Retool → P4, Julius → P3); nlqdb's bet that one chat+DB primitive serves a dev, an agent, and a PM is unoccupied territory (moat or focus risk).
 
-The scariest threats: (a) Supabase adding a first-class NL + agent story, and (b) the MCP Postgres ecosystem closing the provisioning gap — both plausible within 12 months. The cross-persona and auto-migration-via-NL planks are harder to copy (product bets, not feature additions).
+The scariest threats: (a) Supabase adding a first-class NL + agent story, and (b) the MCP Postgres ecosystem closing the provisioning gap — both plausible within 12 months. The cross-persona and NL-migration planks are harder to copy (product bets, not features).
 
 ---
 
-*Last verified: 2026-06-30 (§4 MindsDB; agent-memory cluster 2026-06-19). Pricing, URLs, and acquisitions change — re-check quarterly, especially §1 (Managed Postgres), §3 (AI admin), §4 (Agent memory), where consolidation and funding move fastest.*
+*Last verified: 2026-07-01 (§6 LlamaIndex; §4 MindsDB 2026-06-30). Pricing, URLs, and acquisitions change — re-check quarterly, especially §1/§3/§4 where consolidation and funding move fastest.*
