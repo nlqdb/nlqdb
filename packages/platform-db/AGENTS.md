@@ -1,7 +1,7 @@
 # Packages · Platform DB — Agents Guide
 
 Owner module for Cloudflare D1 (platform DB: auth, billing, rate-limit,
-registry, waitlist, idempotency). Per `GLOBAL-021`, all D1 access from
+registry, idempotency). Per `GLOBAL-021`, all D1 access from
 runtime code routes through this package.
 
 > This is the local guide. Read root [`AGENTS.md`](../../AGENTS.md) first
@@ -35,8 +35,8 @@ PRs (tracker: `GLOBAL-021` "Migration backlog").
   setup (`apps/api/test/apply-migrations.ts`, `cloudflare:test`
   helpers) is exempt.
 - Expose typed, intent-named functions to the rest of the codebase
-  (e.g. `getRateLimitCounter(env, key)`, `recordWaitlistSignup(env,
-  email)`); never re-export the D1 client itself.
+  (e.g. `getRateLimitCounter(env, key)`); never re-export the D1
+  client itself.
 - A new external call (DB / LLM / HTTP / queue) needs an OTel span
   (`GLOBAL-014`).
 - If a request is ambiguous or an error is unfamiliar — web-research

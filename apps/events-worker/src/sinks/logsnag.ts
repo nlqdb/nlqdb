@@ -206,24 +206,6 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
           trigger: event.trigger,
         },
       };
-    case "user.waitlist_joined":
-      // SK-EVENTS-006 amendment — pre-alpha volume is well below the 2,500/mo quota; null persona degrades to `unspecified` (form lets you skip).
-      return {
-        project,
-        channel: "users",
-        event: "Waitlist Joined",
-        description: event.persona
-          ? `Waitlist signup: ${event.email} (${event.persona})`
-          : `Waitlist signup: ${event.email}`,
-        icon: "📝",
-        notify: true,
-        user_id: event.emailHash,
-        tags: {
-          email: event.email,
-          persona: event.persona ?? "unspecified",
-          source: event.source,
-        },
-      };
     case "ask.completed":
       // Not LogSnag-routed — flows to Tinybird `query_log`
       // (`SK-EVENTS-009`). The dispatcher in

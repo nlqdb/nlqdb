@@ -110,7 +110,6 @@ import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { createPortalSession } from "./stripe/portal.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { verifyTurnstile } from "./turnstile.ts";
-import { joinWaitlist } from "./waitlist.ts";
 import { runWorkloadAnalyser } from "./workload-analyser/index.ts";
 
 const SERVICE_VERSION = "0.1.0";
@@ -1507,45 +1506,12 @@ app.post("/v1/memory/remember", requirePrincipal, async (c) => {
   });
 });
 
-// `POST /v1/waitlist` — public, unauthenticated, idempotent. Backs
-// the homepage waitlist form while the chat surface is tabled.
-// Returns 200 for any well-formed email (privacy: never reveal
-// list membership). Per-IP throttle (5/min) defends against abuse.
-//
-// CORS: tightened to the same allow-list as `/api/auth/*` — the form
-// only ever loads from nlqdb.com / pages.dev previews / localhost dev.
-// (Earlier slice used reflect-any-origin in line with /v1/demo/* but
-// there's no third-party-embed contract here, so the narrower posture
-// keeps random sites from probing the rate-limit / abuse path from
-// the browser.)
-app.use("/v1/waitlist", credentialedCors);
+// CORS: tightened to the same allow-list as `/api/auth/*` — these
+// endpoints only ever load from nlqdb.com / pages.dev previews /
+// localhost dev; the narrower posture keeps random sites from probing
+// the rate-limit / abuse path from the browser.
 app.use("/v1/events/*", credentialedCors);
 app.use("/v1/billing/*", credentialedCors);
-
-app.post("/v1/waitlist", async (c) => {
-  const body = await parseJsonBody<{ email?: unknown; persona?: unknown }>(c);
-  if (!body.ok) return c.json({ error: { status: "invalid_email" } }, 400);
-  const result = await joinWaitlist(
-    {
-      db: c.env.DB,
-      kv: c.env.KV,
-      events: buildEventEmitter(c.env.EVENTS_QUEUE),
-    },
-    body.body.email,
-    c.req.header("cf-connecting-ip") ?? null,
-    "web",
-    body.body.persona,
-  );
-  // Fire-and-forget: 200 ships before the queue producer resolves.
-  // Nested guards so a future 200-shaped variant without `pendingEmit`
-  // can't silently end up unhandled.
-  if (result.status === 200) {
-    if (result.pendingEmit) {
-      c.executionCtx.waitUntil(result.pendingEmit);
-    }
-  }
-  return c.json(result.body, result.status);
-});
 
 app.post("/v1/events/wishlist", async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");

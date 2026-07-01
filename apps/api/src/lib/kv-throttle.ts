@@ -1,7 +1,7 @@
 // Per-key fixed-window throttle backed by Cloudflare KV.
 //
 // Used by every defensive limiter that doesn't go through Better Auth's
-// rate-limit plumbing — magic-link send (per-email), waitlist signup
+// rate-limit plumbing — magic-link send (per-email), wishlist clicks
 // (per-IP), and any future low-traffic endpoint that needs a counter
 // without wiring a Durable Object.
 //
@@ -24,7 +24,7 @@
 // (roughly tens, not hundreds in practice). The breach for a
 // 3-per-window limiter under colo-spread abuse is therefore closer
 // to 3×colo-count than 3×2. For low-traffic defensive limiters
-// (waitlist signup, magic-link send) that's still well below an
+// (wishlist clicks, magic-link send) that's still well below an
 // abuse-relevant threshold; for anything where exact-count matters,
 // use a Durable Object.
 

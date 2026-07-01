@@ -56,7 +56,6 @@ export default defineConfig(async () => {
               "test/email.test.ts",
               "test/demo.test.ts",
               "test/chat-demo-shortcut.test.ts",
-              "test/waitlist.test.ts",
               "test/icp-scrape.test.ts",
               "test/icp-score.test.ts",
               "test/icp-cluster.test.ts",

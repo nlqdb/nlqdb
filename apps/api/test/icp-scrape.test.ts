@@ -5,7 +5,7 @@ import type { Span } from "@opentelemetry/api";
 import { describe, expect, it, vi } from "vitest";
 import { type IcpScrapeDeps, runIcpScrape } from "../src/icp-scrape.ts";
 
-// Map-backed KV stub mirroring the pattern in waitlist.test.ts.
+// Map-backed KV stub.
 function stubKv(initial: Record<string, string> = {}): KVNamespace {
   const store = new Map(Object.entries(initial));
   return {

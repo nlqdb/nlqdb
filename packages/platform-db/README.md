@@ -1,7 +1,7 @@
 # @nlqdb/platform-db
 
 Owner module for **Cloudflare D1** — the platform database that holds
-auth, billing, rate-limit, registry, waitlist, and idempotency tables.
+auth, billing, rate-limit, registry, and idempotency tables.
 Per `GLOBAL-021` (each external system has one canonical owning module),
 all D1 access from runtime code routes through this package.
 
@@ -10,7 +10,7 @@ Distinct from `@nlqdb/db`: that package owns the **user-data** engine
 **platform-data** engine (Cloudflare D1).
 
 Phase 0 / Slice 1. Planned — not yet implemented. Current direct-D1
-callers in `apps/api/src/` (`db-registry.ts`, `waitlist.ts`,
+callers in `apps/api/src/` (`db-registry.ts`,
 `ask/rate-limit.ts`, `anon-adopt.ts`, `db-create/neon-provision.ts`,
 `principal.ts`, `anon-rate-limit.ts`, `anon-global-cap.ts`) migrate
 into this package in follow-up PRs. See

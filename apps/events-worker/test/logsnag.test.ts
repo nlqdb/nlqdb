@@ -17,37 +17,6 @@ describe("buildPayload", () => {
     });
   });
 
-  it("maps user.waitlist_joined into the LogSnag shape with persona tag", () => {
-    const out = buildPayload("nlqdb", {
-      name: "user.waitlist_joined",
-      emailHash: "abc123",
-      email: "x@y.com",
-      persona: "solo-builder",
-      source: "web",
-    });
-    expect(out).toMatchObject({
-      project: "nlqdb",
-      channel: "users",
-      event: "Waitlist Joined",
-      notify: true,
-      user_id: "abc123",
-      tags: { email: "x@y.com", persona: "solo-builder", source: "web" },
-    });
-    expect(out.description).toContain("solo-builder");
-  });
-
-  it("falls back to 'unspecified' persona tag when null", () => {
-    const out = buildPayload("nlqdb", {
-      name: "user.waitlist_joined",
-      emailHash: "abc123",
-      email: "x@y.com",
-      persona: null,
-      source: "web",
-    });
-    expect((out.tags as Record<string, string>)["persona"]).toBe("unspecified");
-    expect(out.description).not.toContain("(");
-  });
-
   it("maps user.registered into the LogSnag shape", () => {
     const out = buildPayload("nlqdb", {
       name: "user.registered",
