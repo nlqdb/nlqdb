@@ -1572,6 +1572,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "month-over-month-growth-in-sql",
+    persona: "P3 analyst",
+    searchTitle: "How do I calculate month-over-month growth or period-over-period change in SQL?",
+    oneLiner:
+      "If you need month-over-month growth — this period's value versus the previous one, as a percentage — ask in plain English instead of hand-writing a LAG window function. nlqdb compiles the `LAG(...) OVER (ORDER BY ...)` and the growth formula, runs it in Postgres, and shows the SQL so you can verify the order and the divide-by-zero guard.",
+    painContext:
+      "Analysts, PMs, and finance leads report this every cycle — MoM revenue growth, week-over-week signups, quarter-over-quarter churn, year-over-year change. It's the period-over-period problem, and the SQL is easy to get subtly wrong: you need `LAG(value) OVER (ORDER BY period)` to reach the previous row, then `(current - previous) / previous` for the percentage — with a `NULLIF` guard so the first period (no prior row) and any zero-baseline row don't divide by zero. It gets re-Googled every reporting cycle, and the ORDER BY plus the zero-guard are exactly where the number silently comes out wrong.",
+    demoGoal: "month-over-month revenue growth as a percentage this year",
+    demoWhy:
+      "The growth-versus-last-period column you'd otherwise hand-write with a LAG window function and a careful divide-by-zero guard is one English goal here, with the SQL shown so you can check the order and the baseline.",
+    howNlqdbAnswers: [
+      "Ask 'month-over-month revenue growth'; nlqdb compiles the `LAG(...) OVER (ORDER BY month)` window function and the growth formula, then runs it in Postgres.",
+      "Every answer returns the per-period rows plus the compiled SQL under a trace toggle (`SK-WEB-005`) — verify the ORDER BY and the zero-baseline guard.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to compare your real periods.",
+      "Repeated growth reports hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same comparison returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "The period ordering must be one you can name — 'by month', 'by week'. Period-over-period needs an explicit, gap-free sort; if a period has no rows, LAG reaches the previous present row, not a zero — nlqdb won't invent the missing period for you.",
+      "nlqdb returns the growth rows with a read-only SELECT — it's not a BI tool maintaining a live MoM chart or refreshing the comparison on a schedule. That's a scheduled job's work.",
+      "The public `<nlq-data>` embed is read-scoped — it computes and surfaces the change over existing rows, it doesn't write. No write key belongs in client HTML; loading the data goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I calculate month-over-month growth in SQL?",
+        a: "Ask in plain English — 'month-over-month revenue growth as a percentage.' nlqdb compiles the window function (`LAG(value) OVER (ORDER BY month)` to reach last month, then `(current - previous) / previous`), runs it in Postgres, and returns the per-period rows plus the SQL it ran. You get the growth column without hand-writing LAG or the zero-baseline guard. The honest limit: you have to name the period order it compares along.",
+      },
+      {
+        q: "What's the difference between LAG and a self-join for period-over-period change?",
+        a: "Both reach the previous period's value, but `LAG(value) OVER (ORDER BY period)` is one pass over ordered rows — no join, no off-by-one on the period key. A self-join on `period = period - 1` breaks on gaps and calendar boundaries (December to January). nlqdb picks the window form and shows the compiled SQL so you can confirm the order it walked.",
+      },
+      {
+        q: "Can I compute year-over-year or week-over-week change too?",
+        a: "Yes — they're the same window family with a different order and offset: `LAG(value, 12) OVER (ORDER BY month)` reaches the same month last year, `LAG(value) OVER (ORDER BY week)` the prior week. Ask for 'year-over-year' or 'week-over-week' and nlqdb compiles the offset, then shows the SQL so you can confirm the period and the step. The honest limit: name the period and how far back to look.",
+      },
+      {
+        q: "Can I run period-over-period growth on a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the growth report in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the comparison with a read-only query — it doesn't persist a materialized growth column for you.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/window-functions",
+        label:
+          "Stack Overflow — the `window-functions` tag, the perennial hub for `LAG`-based period-over-period and growth-rate questions across SQL dialects.",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/functions-window.html",
+        label:
+          "PostgreSQL docs — the built-in window-function reference (`lag()`, `lead()`, offset + default), the canonical source for the previous-row primitive.",
+      },
+      {
+        url: "https://www.citusdata.com/blog/2016/09/12/fun-with-sql-computing-run-rate-and-growth-with-ctes-and-window-functions/",
+        label:
+          "Citus Data — evergreen 'Computing run rate and month-over-month growth in Postgres' walkthrough (CTEs + window functions).",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {

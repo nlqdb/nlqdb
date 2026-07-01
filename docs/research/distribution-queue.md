@@ -11,56 +11,59 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-07-01 (run 124) — dev.to / r/Python / r/dataengineering: "PandasAI runs generated Python to answer your question. That's the feature and the footgun."
+## 2026-07-01 (run 125) — dev.to / r/SQL / r/PostgreSQL: "LAG() is the whole month-over-month growth query. The self-join you were about to write is the bug."
 
-**Where:** dev.to + r/Python + r/dataengineering; for data-literate builders evaluating "chat with
-your data" tools who've seen the PandasAI demo and are deciding whether to ship it. nlqdb mentioned
-once, as the "owns the DB, runs only validated SQL" alternative — not a knock on PandasAI.
+**Where:** dev.to + r/SQL + r/PostgreSQL; for analysts, PMs, and engineers who re-Google
+month-over-month / period-over-period growth every reporting cycle. nlqdb mentioned once — the post
+stands on the SQL lesson alone.
 
-**Title:** PandasAI runs generated Python to answer your question. That's the feature and the footgun.
+**Title:** LAG() is the whole month-over-month growth query. The self-join you were about to write is the bug.
 
 **Body:**
 
-> PandasAI is a genuinely nice library. Point it at a DataFrame, a CSV, or a Postgres you already
-> run, ask a question in English, and it translates that into Python and SQL, *executes it*, and
-> hands back the answer — plus a matplotlib chart, cleaned columns, generated features. For
-> exploratory work in a notebook, that loop is hard to beat.
+> "Month-over-month growth" sounds like a two-table problem: this month's total, last month's total,
+> divide. So the instinct is a self-join on `month = month - 1`. It works on toy data and then breaks
+> the first time a month has no rows, you cross a December boundary, or the "previous month" key isn't
+> contiguous — and you're debugging calendar math, not reporting a number.
 >
-> Two things about that loop are worth saying out loud before you put it on a product path, because
-> the demo hides both.
+> The one-pass answer is a window function. `LAG(value) OVER (ORDER BY month)` reaches back to the
+> previous row in an explicit order — no join, no off-by-one on the period key:
 >
-> First: it runs generated code. Translating a question into pandas and executing it *is* the
-> mechanism — that's how you get a chart from "plot revenue by month." It's also a code-execution
-> surface. In a notebook you're the only caller and that's fine. Behind an "ask your data" box that
-> strangers type into, "generate Python and run it" is a very different security posture than
-> "generate SQL, validate it against an allow-list, run only that." Sandboxing helps; it's still a
-> bigger blast radius than a read-only `SELECT`.
+>     SELECT month,
+>            revenue,
+>            (revenue - LAG(revenue) OVER (ORDER BY month))
+>              / NULLIF(LAG(revenue) OVER (ORDER BY month), 0) AS mom_growth
+>     FROM monthly_revenue
+>     ORDER BY month;
 >
-> Second: it assumes the data's already loaded. PandasAI reads a DataFrame or a DB you stood up and
-> credentialed. That's the right assumption for a data scientist who already has the data in hand,
-> and the wrong one for a builder who's really asking "where does the data even live." Those are two
-> different jobs that the same English prompt papers over.
+> Two details are where the number silently goes wrong:
 >
-> So the honest split isn't "which is better" — it's which job you're in. If you have the data and
-> want charts, cleaning, and feature engineering in Python, PandasAI is exactly the tool and I'd
-> reach for it. If what you actually need is a *place for the data to live* that answers in English
-> on a product path — where the store is provisioned for you, the compiled SQL is shown so you can
-> read it, only that validated SQL runs, and writes are diff-previewed before they apply — that's a
-> database's job, not a library's.
+> - **The `NULLIF` guard.** The first month has no prior row, so `LAG` is NULL and the division is
+>   NULL — correct. But a zero-baseline month would divide by zero; `NULLIF(prev, 0)` makes that NULL
+>   instead of an error. Drop it and one zero-revenue month blows up the query.
+> - **The `ORDER BY` is the definition.** `LAG` doesn't know what "previous" means — the ORDER BY
+>   tells it. Wrong order or unbroken ties, and "last period" points at the wrong row, no error.
 >
-> (That second half is what we built [nlqdb](https://nlqdb.com) for: a Postgres provisioned from
-> English, NL→SQL with the SQL shown and validated fail-closed, an embeddable answer element, and an
-> MCP server so an agent can query without hosting a Python runtime. Honest limits — no chart
-> generation, no data cleansing, no feature engineering; if a plotted figure is the deliverable,
-> PandasAI wins and the two compose fine.)
+> Year-over-year and week-over-week are the *same* query with a different offset:
+> `LAG(value, 12) OVER (ORDER BY month)` for the same month last year, `ORDER BY week` for the prior
+> week. Once you see it as "reach the previous row in an order I name," the whole family collapses to
+> one shape — distinct from a running total (`SUM() OVER (ORDER BY ...)` accumulates *down* the order)
+> or a top-N-per-group (`ROW_NUMBER()` ranks *within* a partition).
+>
+> (If you'd rather not hand-write the window clause each cycle, that's the itch we built
+> [nlqdb](https://nlqdb.com) for: ask "month-over-month revenue growth as a percentage" in English and
+> it compiles the `LAG(...) OVER (ORDER BY ...)` plus the `NULLIF` guard, runs it in Postgres, and
+> shows the SQL so you check the order and baseline. Honest limits — a one-off read-only
+> answer, not a live MoM chart, and you still name the period order it compares along.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the high-volume "PandasAI"
-search/eval intent surfaced by the `/vs/pandasai` page shipped this run; the code-execution-vs-
-validated-SQL framing and the "data already loaded" observation earn a citation on the merits and
-concede nlqdb's missing chart/cleansing/feature story honestly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the perennial "month over
+month growth SQL" search intent anchored by the new `/solve/month-over-month-growth-in-sql` page; the
+LAG-vs-self-join framing and divide-by-zero guard earn a citation on the merits and concede nlqdb's
+read-only, name-the-order limits honestly.
 
 ## Collapsed — full drafts in git history
 
+- run 124 — dev.to / r/Python / r/dataengineering: "PandasAI runs generated Python to answer your question. That's the feature and the footgun." (PandasAI *executes* generated pandas + SQL — great for notebook exploration, but on a product path it runs generated code (bigger blast radius than "validate SQL against an allow-list, run only that") and assumes the data is already loaded; honest split — Python charts/cleaning go to PandasAI, a *place the data lives* answering in English with the SQL shown is a database's job; anchors `/vs/pandasai`).
 - run 123 — dev.to / r/SQL / r/PostgreSQL: "The running-total query keeps every row. That's the part GROUP BY can't do." (a running total — revenue-to-date, running headcount, a rolling 7-day sum — needs a window function `SUM(amount) OVER (ORDER BY day)` that accumulates down an explicit order and keeps every row, not a `GROUP BY` that collapses to one number per bucket; `PARTITION BY` restarts the total per group and a frame clause (`ROWS BETWEEN 6 PRECEDING AND CURRENT ROW`) makes it a moving window; the wrong `ORDER BY`, unbroken ties, or a missing frame quietly break it; ask in English and read the SQL so you confirm the order and frame; honest split — you must name the accumulation order, one-off read-only curve not a live chart; anchors `/solve/running-total-cumulative-sum-in-sql`).
 - run 122 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead." (SQL Server has a `PIVOT` keyword; Postgres doesn't, so every reporting cycle you re-learn the two real answers — portable conditional aggregation (`SUM(...) FILTER (WHERE ...)` per column, tedious and easy to mis-bucket) or `crosstab()` from the `tablefunc` extension nobody has enabled; either way a plain `GROUP BY` gives tall rows when the spreadsheet wanted wide, and reshaping is the Googled part; ask in English and read the SQL so each column maps to the bucket you meant; honest split — pivot columns must be ones you can name, one-off read-only answer not a live crosstab dashboard, exact SQL over current rows; anchors `/solve/pivot-rows-into-columns`).
 - run 121 — dev.to / r/SQL / r/dataengineering: "The top-N-per-group query everyone re-Googles." (the top *N* rows per group has a Stack Overflow tag — `greatest-n-per-group` — because it comes up constantly; the obvious `GROUP BY` + `MAX` gives the top *value* but throws away the rest of the row, so keeping the whole row needs `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` filtered to rank ≤ N or a lateral join — a different query than you started typing, and the partition/tiebreak bite quietly; ask in English and read the SQL so you verify the partition and whether ties wanted `RANK`/`DENSE_RANK`; honest split — one-off read-only ranked answer, not a live dashboard or rank-change alert, exact ordering not fuzzy; anchors `/solve/find-top-n-rows-per-group`).
