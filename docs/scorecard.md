@@ -49,11 +49,10 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 **2026-07-01 (framing fix)** — disambiguated who owns distribution. Dropped the
 unsourced "un-forceable" narrative (contradicted `GLOBAL-033` + the
 autonomous-distribution design in `fable-recommendation.md`) and repointed the
-daily lever at the **agent-movable** surfaces count (row #14, now 60 after run
-129's `/solve/calculate-percentage-of-total-in-sql`) rather than the lagging
-strangers metric no single run can move. Trimmed
-`blocked-by-human.md` to genuine human actions: Stripe auto-deploys on merge (not
-a click); `OPENROUTER_FRONTIER_API_KEY` + `BYO_SECRET_KEK` flow through the secret
-mirror (one `mirror-secrets-gha.sh` run); legal → free Termly path. `MEMORY_PRESET`
-is a plain var gated on E-03 shipping, not a founder click (tracked in worksheets).
+daily lever at the **agent-movable** surfaces count (row #14, now 60 incl. run
+129's `/solve` share-of-total page) rather than the lagging strangers metric.
+Trimmed `blocked-by-human.md` to genuine human actions: Stripe auto-deploys on
+merge (not a click); `OPENROUTER_FRONTIER_API_KEY` + `BYO_SECRET_KEK` flow via the
+secret mirror (one `mirror-secrets-gha.sh` run); legal → free Termly path.
+`MEMORY_PRESET` is a plain var gated on E-03 shipping, not a founder click.
 **KPI:** GLOBAL-025 onboarding/UX; none degraded.

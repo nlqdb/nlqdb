@@ -117,11 +117,10 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
    ceiling (`SK-QUAL-015`: 12.8% of needed columns named by *value*) implied
    value-retrieval was the additive, do-first top lever; the literal-diff
    measurement on the *real* 06-19 baseline (§2: `literal_only` = 0) overturns
-   that — a sample-value prompt flips ~0 rows standalone. So value-retrieval is
-   re-ranked **below** the reasoning levers (#3/#1); revisit only *coupled* with
-   a structural lever. The prod side is additionally blocked on an unresolved
-   privacy decision — feeding user cell-values to the free third-party chain —
-   see `quality-eval/FEATURE.md` Open questions.
+   that — a sample-value prompt flips ~0 rows standalone. **Closed, not parked**
+   by [`GLOBAL-037`](../decisions/GLOBAL-037-schema-only-llm-egress.md): egress
+   stays schema-only, so cell-value sampling is off the lever list (~0 gain for a
+   real exposure increase).
    - **2b. Column pruning (recall-gated).** Token-only pruning drops 40% of
      needed columns ⇒ unsafe without the key-protection rule, and even then
      ~87%-capped; its win is mainly Spider distractor removal (T19:
@@ -195,4 +194,4 @@ view of the same levers.
 > (`SK-LLM-041`: core + mask + pool + the **T9 ablation `buildPlanSystem` +
 > `--retrieve-exemplars` flag shipped 2026-06-21**; only the hot-path embedding
 > index remains). Both EX deltas = the next canonical dispatch. value-retrieval
-> (#2a) demoted + privacy-gated; T19 per-lever ablation still pending.
+> (#2a) closed (`GLOBAL-037`); T19 per-lever ablation still pending.
