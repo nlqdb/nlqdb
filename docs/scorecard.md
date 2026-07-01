@@ -43,17 +43,16 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-07-01 (run 124)** — hard numbers stay gated (MCP eval `workflow_dispatch`
-re-confirmed 403; funnel re-pull network-blocked) and the `/solve` run-123 work
-(PR #558, now merged) owned that lane → a measured **onboarding/UX** lever on the
-non-colliding **`/vs`** comparison lane: a new page for **PandasAI**, the OSS
-"chat with data you already have" Python library (P3 analyst; §6
-build-it-yourself cluster). Honest split: PandasAI *reads + analyses*
-data you already loaded and runs generated Python to do it, nlqdb *provisions +
-owns* a Postgres, compiles NL→SQL with the SQL shown, validates fail-closed
-(never runs generated code), and diff-previews writes; nlqdb has no
-chart/cleansing/feature generation (Phase 2). **Comparison pages 28 → 29 · P3
-coverage 6 → 7**; facts web-verified (`github.com/sinaptik-ai/pandas-ai`,
-`docs.pandas-ai.com/v3`), 176 web tests green, astro check 0 errors, biome clean.
-**KPI:** GLOBAL-025 onboarding/UX; none degraded. *(Prior run 123 (PR #558) —
-`/solve/running-total-cumulative-sum-in-sql`, solve 25 → 26.)*
+**2026-07-01 (run 125)** — hard numbers stay gated (MCP eval `workflow_dispatch`
+re-confirmed 403 this run on `quality-eval-spider2-lite.yml`; funnel/analytics
+re-pull network-blocked) → a measured **onboarding/UX** lever on the `/solve`
+SQL-query-shape series: a new page **`/solve/month-over-month-growth-in-sql`**
+(P3 analyst) for the perennial month-over-month / period-over-period / YoY /
+WoW growth question. Distinct query shape from its siblings — reach-the-previous-row
+`LAG(...) OVER (ORDER BY period)` + `(cur - prev) / NULLIF(prev, 0)`, vs
+running-total's `SUM() OVER` accumulate-down and top-N's `ROW_NUMBER()`
+rank-within. Names the LAG-vs-self-join trap and the divide-by-zero guard; honest
+read-only + name-the-order limits. **Solve pages 26 → 27 · P3 coverage 7 → 8**;
+SQL web-verified (Citus, PostgreSQL window-function docs), 176 web tests green,
+astro check 0 errors, biome clean. **KPI:** GLOBAL-025 onboarding/UX; none
+degraded. *(Prior run 124 (PR #559) — `/vs/pandasai`, comparison 28 → 29.)*
