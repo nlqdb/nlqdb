@@ -21,18 +21,15 @@
 // The real key still inlines only via the chat's Copy snippet
 // (SK-WEB-007) — the marketing-page anon key is gone after the create
 // call consumes the SK-ANON-012 1-call cap.
+//
+// The post-create MCP install affordance (SK-WEB-016) is the shared
+// `<McpInstallView>` (`./McpInstallView.tsx`), reused by the `/app`
+// chat-window install popover so the two React venues can't drift.
 
 import { useEffect, useId, useState } from "react";
 import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
 import { messageFor } from "../lib/create-errors";
 import { emit } from "../lib/logsnag";
-import {
-  buildMcpHosts,
-  MCP_ENDPOINT_URL,
-  type McpHostEntry,
-  PLACEHOLDER_KEY,
-  PROMOTED_HOST,
-} from "../lib/mcp-install";
 import {
   appendHistory,
   clearDraft,
@@ -43,6 +40,7 @@ import {
 import { prettifyHeader } from "../lib/text";
 import { solveChallenge } from "../lib/turnstile";
 import ErrorBoundary from "./ErrorBoundary";
+import McpInstallView from "./McpInstallView";
 
 interface CreateFormProps {
   apiBase: string;
@@ -233,225 +231,6 @@ function CreateResultView({ result }: { result: CreateResult }) {
       <McpInstallView />
       <CreateSnippetView primaryTable={grouped[0]?.table} />
     </section>
-  );
-}
-
-// SK-WEB-016 — Post-create MCP install affordance. React mirror of
-// `McpInstall.astro` (the Astro component scopes its styles, so a React
-// island next to it can't borrow them; we render an equivalent surface
-// inline). Both venues source their URI + JSON shapes from
-// `lib/mcp-install.ts` so the host descriptors stay in lockstep.
-//
-// `compact={false}` equivalent — this is the wow→action handoff after a
-// successful create, worth the descriptive sublines. The apiKey at this
-// point is always the SK-ANON-012 placeholder (the anon 1-call cap was
-// burned by the create call itself), so the sign-in nudge always shows.
-function McpInstallView() {
-  const hosts = buildMcpHosts(MCP_ENDPOINT_URL);
-  // Founder request (SK-WEB-016): clicking ANY host reveals that host's
-  // manual instructions in place, on top of its primary action. One panel
-  // open at a time keeps the one-motion-moment budget (SK-WEB-015).
-  const [openHostId, setOpenHostId] = useState<McpHostEntry["id"] | null>(null);
-  return (
-    <section
-      className="createresult__mcp"
-      aria-label="Install in your agent"
-      style={{
-        marginTop: "clamp(20px, 3vw, 28px)",
-      }}
-    >
-      <p
-        style={{
-          margin: "0 0 clamp(10px, 1.6vw, 14px)",
-          fontFamily: "var(--mono)",
-          fontSize: "var(--t-small)",
-          color: "var(--muted)",
-          textTransform: "uppercase",
-          letterSpacing: "0.16em",
-        }}
-      >
-        Install in your agent.
-      </p>
-      <ul
-        style={{
-          listStyle: "none",
-          margin: 0,
-          padding: 0,
-          display: "grid",
-          gap: "clamp(14px, 2vw, 20px)",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-        }}
-      >
-        {hosts.map((host) => (
-          <McpHostCell
-            key={host.id}
-            host={host}
-            open={openHostId === host.id}
-            onReveal={() => setOpenHostId(host.id)}
-          />
-        ))}
-      </ul>
-      <p
-        style={{
-          margin: "clamp(14px, 2vw, 18px) 0 0",
-          fontFamily: "var(--sans)",
-          fontSize: "var(--t-small)",
-          color: "var(--muted)",
-          lineHeight: 1.5,
-        }}
-      >
-        Anonymous — the configs ship with the{" "}
-        <code style={{ fontFamily: "var(--mono)", fontSize: "0.92em", color: "var(--body)" }}>
-          {PLACEHOLDER_KEY}
-        </code>{" "}
-        placeholder.{" "}
-        <a
-          href="/auth/sign-in?return_to=/app"
-          style={{
-            marginLeft: 6,
-            color: "var(--ink)",
-            textDecoration: "underline",
-            textDecorationColor: "var(--rule)",
-            textUnderlineOffset: 3,
-          }}
-        >
-          Sign in (free) to inline your live key →
-        </a>
-      </p>
-    </section>
-  );
-}
-
-function McpHostCell({
-  host,
-  open,
-  onReveal,
-}: {
-  host: McpHostEntry;
-  open: boolean;
-  onReveal: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-  const promoted = host.id === PROMOTED_HOST;
-  const ctaClass = promoted ? "cta" : "cta cta--ghost";
-  // Command hosts copy the command (or the config block, e.g. Codex's TOML).
-  const copyText = host.command ?? host.config ?? "";
-  const panelId = `mcpinstall-panel-${host.id}`;
-  const btnStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "11px 16px",
-    fontSize: 13,
-    whiteSpace: "nowrap",
-  };
-  const subStyle: React.CSSProperties = {
-    margin: 0,
-    fontFamily: "var(--sans)",
-    fontSize: "var(--t-small)",
-    color: "var(--muted)",
-    lineHeight: 1.45,
-  };
-  const cellStyle: React.CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-    minWidth: 0,
-  };
-
-  // Manual-fallback panel revealed in place on any host click.
-  const panel = open ? (
-    // A <section> with an accessible name carries the implicit "region"
-    // role — semantic equivalent of role="region" (biome useSemanticElements).
-    <section
-      id={panelId}
-      aria-label={`${host.name} manual install`}
-      style={{
-        marginTop: 8,
-        padding: "10px 12px",
-        border: "1px solid var(--rule)",
-        borderRadius: 8,
-        background: "var(--raised)",
-      }}
-    >
-      <p style={subStyle}>
-        {host.status === "deep-link"
-          ? `If ${host.name} didn't open, paste this config manually:`
-          : (host.pasteHint ?? `Use this in ${host.name}:`)}
-      </p>
-      <pre
-        style={{
-          margin: "6px 0 0",
-          padding: "8px 10px",
-          overflowX: "auto",
-          borderRadius: 6,
-          background: "var(--ground)",
-          fontFamily: "var(--mono)",
-          fontSize: 12,
-          color: "var(--body)",
-          whiteSpace: "pre",
-        }}
-      >
-        <code>{copyText}</code>
-      </pre>
-    </section>
-  ) : null;
-
-  if (host.status === "deep-link" && host.href) {
-    return (
-      <li style={cellStyle}>
-        <a
-          className={ctaClass}
-          href={host.href}
-          target="_self"
-          title={host.versionHint}
-          style={btnStyle}
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={() => {
-            // The OS handoff still fires (no preventDefault); the reveal is
-            // the added behaviour for when the host doesn't open.
-            onReveal();
-            emit("home.snippet_copied", { surface: `mcp_install_${host.id}` });
-          }}
-        >
-          Add to {host.name}
-        </a>
-        <p style={subStyle}>Opens {host.name} and asks you to confirm before writing the config.</p>
-        {panel}
-      </li>
-    );
-  }
-  // command + fallback-only — copy-to-clipboard, and reveal the panel.
-  async function onCopy() {
-    onReveal();
-    if (copyText) {
-      try {
-        await navigator.clipboard.writeText(copyText);
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 1600);
-      } catch {
-        // Non-secure context / extension lockdown — the revealed panel
-        // still shows the text for a manual copy.
-      }
-    }
-    emit("home.snippet_copied", { surface: `mcp_install_${host.id}` });
-  }
-  const label = host.command ? `Copy ${host.name} command` : `Copy ${host.name} config`;
-  return (
-    <li style={cellStyle}>
-      <button
-        type="button"
-        className={ctaClass}
-        title={host.versionHint}
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => void onCopy()}
-        style={btnStyle}
-      >
-        {copied ? "Copied ✓" : label}
-      </button>
-      {host.pasteHint && <p style={subStyle}>{host.pasteHint}</p>}
-      {panel}
-    </li>
   );
 }
 

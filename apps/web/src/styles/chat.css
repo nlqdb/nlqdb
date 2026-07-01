@@ -7,6 +7,11 @@
 .page--chat {
   max-width: 1400px;
   padding: 0 clamp(16px, 3vw, 32px);
+  /* The base `.page` grid column defaults to `minmax(auto, 1fr)`; its
+   * `auto` min-track is the widest child's min-content, which the footer's
+   * nowrap nav can push past a 375px viewport. Pin the min to 0 so the
+   * chat shell shrinks to the viewport instead of forcing a page scroll. */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .page__main--chat {
@@ -67,6 +72,80 @@
 .left-rail__new:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ---------- Install MCP trigger (SK-WEB-016) ---------- */
+
+.left-rail__mcp-trigger {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-md);
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-std);
+}
+
+.left-rail__mcp-trigger:hover {
+  border-color: var(--accent);
+}
+
+.left-rail__mcp-trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* ---------- Connect an existing DB (SK-WEB-019) ---------- */
+
+.left-rail__connect {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.left-rail__connect-label {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-dim);
+}
+
+.left-rail__connect-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.left-rail__connect-chip {
+  flex: 1 1 auto;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.left-rail__connect-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.left-rail__connect-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 
 .left-rail__new-form {
@@ -957,4 +1036,157 @@
   font-family: var(--mono);
   font-size: 13px;
   color: var(--fg-muted);
+}
+
+/* ---------- MCP install popover (SK-WEB-016) ----------
+ * Centered modal on desktop; a bottom sheet on phones. Reuses the
+ * shared `<McpInstallView>` (styled in global.css). The backdrop scrim
+ * dismisses on click-outside; the dialog is focus-trapped in React. */
+
+.mcp-popover__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 60;
+}
+
+.mcp-popover__scrim {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.mcp-popover__scrim:focus-visible {
+  outline: none;
+}
+
+.mcp-popover {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(80vh, 640px);
+  overflow-y: auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mcp-popover__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mcp-popover__title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.mcp-popover__close {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.mcp-popover__close:hover {
+  color: var(--fg);
+}
+
+.mcp-popover__close:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--r-xs);
+}
+
+.mcp-popover__lede {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--body);
+  line-height: 1.5;
+}
+
+/* ---------- Mobile (≤720px): stack the rail above the chat ----------
+ * The chat-shell grid already collapses to one column at ≤720px; keep
+ * the rail from eating vertical space by capping its DB list height and
+ * letting the composer/messages own the viewport. The MCP popover
+ * becomes a bottom sheet so it fits a 375px screen with no h-scroll. */
+@media (max-width: 720px) {
+  .page--chat {
+    padding: 0 12px;
+  }
+
+  /* The shared Topnav has no mobile treatment; when authed it adds a
+     "Sign out" (and "Open chat") slot that overruns 375px in one nowrap
+     row. Scoped to this app page only (not the marketing site): let the
+     nav wrap + tighten its gap so every link stays visible and the page
+     never scrolls sideways. */
+  .page--chat .topnav {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+
+  .page--chat .topnav__links {
+    flex-wrap: wrap;
+    gap: 12px 16px;
+  }
+
+  .chat-shell {
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .left-rail {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  /* Cap the DB list so a long list doesn't push the chat off-screen. */
+  .left-rail__list {
+    max-height: 34vh;
+  }
+
+  .chat-main {
+    min-height: 60vh;
+  }
+
+  .chat-main__hint {
+    display: none;
+  }
+
+  .mcp-popover__backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .mcp-popover {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+  }
 }

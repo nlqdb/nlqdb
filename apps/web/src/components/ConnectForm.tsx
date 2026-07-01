@@ -12,7 +12,7 @@
 // validate → introspect → seal → register) → success (render the schema
 // preview + a "Question it now →" CTA) / error (one sentence, GLOBAL-012).
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { type ConnectEngine, type ConnectSuccess, postConnect } from "../lib/connect";
 import ErrorBoundary from "./ErrorBoundary";
 
@@ -43,6 +43,17 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ConnectSuccess | null>(null);
+
+  // SK-WEB-019 — honor a `?engine=` deep link (from the LeftRail connect
+  // chips) so Postgres / ClickHouse preselects; default ClickHouse (Door B).
+  // Applied in an effect rather than a lazy initializer because the island
+  // renders SSR-side (no `window` → the initializer would compute the
+  // default and hydration reuses it, ignoring the URL); the effect runs
+  // only on the client, after `window.location` exists.
+  useEffect(() => {
+    const fromUrl = readEngineFromUrl();
+    if (fromUrl !== "clickhouse") setEngine(fromUrl);
+  }, []);
 
   const placeholder =
     engine === "clickhouse"
@@ -178,6 +189,14 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
       {result && <ConnectResultView result={result} />}
     </section>
   );
+}
+
+// A `?engine=postgres` / `?engine=clickhouse` deep link preselects the
+// engine; anything else falls back to the Door-B default (ClickHouse).
+function readEngineFromUrl(): ConnectEngine {
+  if (typeof window === "undefined") return "clickhouse";
+  const value = new URLSearchParams(window.location.search).get("engine");
+  return value === "postgres" ? "postgres" : "clickhouse";
 }
 
 function ConnectResultView({ result }: { result: ConnectSuccess }) {
