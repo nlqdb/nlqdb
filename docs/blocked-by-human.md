@@ -9,6 +9,7 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
 
 ## Human actions (clicks, secrets, legal)
 
+- **Engine baselines are stale and agents can no longer dispatch the eval to refresh them.** `workflow_dispatch` on the three `quality-eval-*.yml` fails for the daily agent — the Claude GitHub App returns `403 Resource not accessible by integration` (lacks `actions:write`) and the `GH_TOKEN_WORKFLOW` PAT is egress-proxy-blocked. **Fix (either):** grant the Claude GitHub App **Actions: write** on `nlqdb/nlqdb` so agents auto-dispatch per `/daily`, *or* run the three workflows yourself from the Actions tab on the current `main` SHA. Blocks the engine north-star (Spider EX 0.1852 vs 0.75, scorecard row 7); BIRD/Spider baselines now 12–14 d stale.
 - **Run `scripts/mirror-secrets-gha.sh` once** (from your machine — needs your `gh` repo-admin auth, which agents don't have). This is the only remaining step for two now-wired secrets:
   - `OPENROUTER_FRONTIER_API_KEY` — eval-CI only (never a Worker secret); the mirror now defaults it to your `OPENROUTER_API_KEY` (same paid OpenRouter account), so the **free-vs-frontier delta** (GLOBAL-025 headline KPI, scorecard row 9) lands on the next `include_frontier=true` eval dispatch. No separate key to buy.
   - `BYO_SECRET_KEK` — the BYO-connect envelope key (GLOBAL-031). Ensure it's in `.envrc` first (generate: `openssl rand -base64 32`); it then mirrors to the prod Worker on the next merge to `main`, and `/v1/db/connect` stops returning 503 `sealing_unconfigured`.
