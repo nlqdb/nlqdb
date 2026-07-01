@@ -43,17 +43,18 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-30 (run 121)** — hard numbers stay gated (eval dispatch re-confirmed
-403; funnel re-pull network-blocked) and the `/vs` lane was busy (PR #553, run
-120 `/vs/dataherald`) → a measured **onboarding/UX** lever on the parallel
-**`/solve`** lane (no collision): a **greatest-n-per-group** pain page,
-`find-top-n-rows-per-group` (P3 analyst). Distinct in *query shape* — ask "top 3
-products per category by revenue" in English and nlqdb compiles the
-`ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` window function, runs it
-in Postgres, and shows the SQL so you verify the partition + tiebreak. Honest
-split: a one-off read-only ranked answer — not a live "top sellers" dashboard or
-rank-change alert; ranking is exact SQL ordering, not fuzzy. **Solve pages 23 →
-24 · P3 coverage 4 → 5**; web-verified demand (SO `greatest-n-per-group` tag;
-Wikibooks "Retrieve Top N Rows per Group"; Oracle SQL blog), 176 web tests green,
-solve invariants pass, biome + tsc clean. **KPI:** GLOBAL-025 onboarding/UX; none
-degraded. *(Prior run 120 — `/vs/dataherald`, comparison pages 27 → 28.)*
+**2026-06-30 (run 122)** — hard numbers stay gated (eval dispatch 403; funnel
+re-pull network-blocked) and the home-page redesign PR #556 owns the `/` web
+lane → a measured **onboarding/UX** lever on the non-colliding **`/solve`** lane:
+a **pivot / crosstab / rows-to-columns** pain page, `pivot-rows-into-columns`
+(P3 analyst). Distinct in *query shape* from the run-121 window-function page —
+ask "revenue per product, one column per month" in English and nlqdb compiles
+the conditional aggregation (`SUM(...) FILTER (WHERE ...)`; Postgres has no
+`PIVOT` keyword), runs it in Postgres, and shows the SQL so you verify each
+column's bucket. Honest split: pivot columns must be ones you can name (no
+dynamic crosstab over an unknown category set), a one-off read-only report.
+**Solve pages 24 → 25 · P3 coverage 5 → 6**;
+web-verified demand (SO `pivot` tag; PostgreSQL Wiki "Pivot Tables"; PG
+`crosstab()` docs), 176 web tests green, astro check 0 errors, biome clean.
+**KPI:** GLOBAL-025 onboarding/UX; none degraded. *(Prior run 121 —
+`find-top-n-rows-per-group`, solve 23 → 24.)*
