@@ -1689,6 +1689,65 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "calculate-percentage-of-total-in-sql",
+    persona: "P3 analyst",
+    searchTitle: "How do I calculate each row's percentage of the total in SQL?",
+    oneLiner:
+      "If you want each row as a share of the whole — a product's revenue as a percent of all revenue — ask in plain English instead of self-joining to a total. nlqdb compiles the window aggregate `100.0 * revenue / SUM(revenue) OVER ()`, runs it in Postgres, and shows the SQL so you can check the denominator.",
+    painContext:
+      "Analysts and PMs reach for 'percent of total' constantly — share of revenue per product, share of signups per channel, share of tickets per status — and it's the query people get subtly wrong. The naive path is a second query or a self-join just to get the grand total, then dividing. The clean path is a window aggregate, `SUM(x) OVER ()`, that broadcasts the total onto every row without collapsing them — but two traps bite: integer division silently floors the share to 0 (`revenue / SUM(...)` with integer columns), so you need `100.0 *` or a cast, and 'percent of total' vs. 'percent of my group' is the empty `OVER ()` vs. `OVER (PARTITION BY region)` choice that quietly changes the denominator.",
+    demoGoal: "each product's revenue as a percentage of total revenue",
+    demoWhy:
+      "The share-of-whole breakdown you'd otherwise get with a self-join to the grand total is one English goal here, with the SQL shown so you can check the denominator and that it didn't integer-divide to zero.",
+    howNlqdbAnswers: [
+      "Ask 'each product's revenue as a percent of total'; nlqdb compiles the window aggregate `100.0 * revenue / SUM(revenue) OVER ()` and runs it.",
+      "The `OVER ()` broadcasts the grand total onto every row without a self-join or a second query — the rows stay, the denominator rides along.",
+      "Every answer returns the shares plus the compiled SQL under a trace toggle (`SK-WEB-005`) — verify the denominator and the integer-division guard.",
+      "Repeated share breakdowns hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same query returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "Percent-of-grand-total (`OVER ()`) and percent-within-a-group (`OVER (PARTITION BY ...)`) are different denominators. nlqdb picks one from your English and shows it in the SQL — it doesn't guess which you meant when you don't name the grouping.",
+      "It reports the shares with a read-only SELECT — it's not a BI tool maintaining a live share-of-revenue pie chart or refreshing it on a schedule. That's a scheduled job's work.",
+      "A zero total makes the share undefined; nlqdb guards the divide with `NULLIF` so an empty denominator returns null, not a crash — but null is what you get, it won't invent a share.",
+      "The public `<nlq-data>` embed is read-scoped — it summarises existing rows, it doesn't write. No write key belongs in client HTML; loading data goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I calculate a percentage of the total in SQL?",
+        a: "Ask in plain English — 'each product's revenue as a percent of total.' nlqdb compiles the window aggregate `100.0 * revenue / SUM(revenue) OVER ()`, runs it, and returns each row's share plus the SQL. The `OVER ()` broadcasts the grand total onto every row so you divide without a self-join. The honest limit: the `100.0 *` (or a cast) is what stops integer division flooring the share to 0.",
+      },
+      {
+        q: "Why does my percentage come out as 0 in SQL?",
+        a: "Integer division. If both the value and the total are integer columns, `revenue / SUM(revenue) OVER ()` computes an integer quotient — almost always 0 — before any percentage. Multiply by `100.0` (or cast one side to numeric) so the division happens in floating point. nlqdb compiles the `100.0 *` form and shows it in the SQL so you can confirm the share isn't silently floored.",
+      },
+      {
+        q: "What's the difference between percent of total and percent of a group?",
+        a: "The denominator. Percent of the grand total uses an empty window, `SUM(x) OVER ()`; percent within each group uses `SUM(x) OVER (PARTITION BY region)`, so each region's rows sum to 100%. They answer different questions from the same rows. nlqdb picks one from how you phrase it and shows the `OVER (...)` clause in the SQL so you can confirm the denominator.",
+      },
+      {
+        q: "Can I calculate percentage of total on a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the share breakdown in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the shares with a read-only query — it doesn't persist a materialized breakdown for you.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/window-functions+sql",
+        label:
+          "Stack Overflow — the `window-functions` tag, the standing hub for 'percent of total', `SUM() OVER ()`, and the integer-division-floors-to-zero traps across dialects.",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/tutorial-window.html",
+        label:
+          "PostgreSQL docs — the window-functions tutorial, canonical source for `SUM(...) OVER ()` broadcasting an aggregate across rows without collapsing them.",
+      },
+      {
+        url: "https://mode.com/sql-tutorial/sql-window-functions/",
+        label:
+          "Mode — evergreen SQL window-functions tutorial widely cited for 'percent of total' / running-share patterns.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
