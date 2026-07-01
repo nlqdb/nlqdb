@@ -22,7 +22,7 @@ probe (row #8) **saturated 23/23** — next engine gain needs the gated EX dispa
 | 2 | Waitlist rows, real | 1 of 81 | 80 walker/test/probe; the 1 is the founder → ~0 genuine strangers |
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev |
 | 4 | Anon DBs with a first answer | 130 of 130 | every DB has a first query; genuine-stranger subset still ~0 (rows #2/#3) |
-| | **Engine** — BIRD 06-19 (**11d, stale**) · Spider 06-17 (**13d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Re-dispatch carries to the cron `/daily` lane** — interactive + MCP dispatch re-confirmed 403 (run 121); local eval proxy-MITM-TLS blocked |
+| | **Engine** — BIRD 06-19 (**12d, stale**) · Spider 06-17 (**14d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Re-dispatch carries to the cron `/daily` lane** — interactive dispatch re-confirmed 403 (run 123, Spider `workflow_dispatch` → "Resource not accessible by integration"); local eval proxy-MITM-TLS blocked |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Flat within variance (McNemar p=0.50) — directive levers saturated; reasoning levers (§4 #1/#3) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number.** Self-consistency (`SK-QUAL-017`) end-to-end bar the CI dispatch; EX delta next dispatch |
 | 8 | persona-bench free-chain EX | 0.90 (18/20) | full-chain ICP EX (run 58/63). **1.7× BIRD, 4.9× Spider** — the GLOBAL-026 bet. N=20 ±1 noisy. Retrieval precision@1 **23/23** (run 105) — **offline retrieval saturated**, held-out 17/17. EX delta = gated dispatch |
@@ -43,18 +43,16 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-06-30 (run 122)** — hard numbers stay gated (eval dispatch 403; funnel
-re-pull network-blocked) and the home-page redesign PR #556 owns the `/` web
-lane → a measured **onboarding/UX** lever on the non-colliding **`/solve`** lane:
-a **pivot / crosstab / rows-to-columns** pain page, `pivot-rows-into-columns`
-(P3 analyst). Distinct in *query shape* from the run-121 window-function page —
-ask "revenue per product, one column per month" in English and nlqdb compiles
-the conditional aggregation (`SUM(...) FILTER (WHERE ...)`; Postgres has no
-`PIVOT` keyword), runs it in Postgres, and shows the SQL so you verify each
-column's bucket. Honest split: pivot columns must be ones you can name (no
-dynamic crosstab over an unknown category set), a one-off read-only report.
-**Solve pages 24 → 25 · P3 coverage 5 → 6**;
-web-verified demand (SO `pivot` tag; PostgreSQL Wiki "Pivot Tables"; PG
-`crosstab()` docs), 176 web tests green, astro check 0 errors, biome clean.
-**KPI:** GLOBAL-025 onboarding/UX; none degraded. *(Prior run 121 —
-`find-top-n-rows-per-group`, solve 23 → 24.)*
+**2026-07-01 (run 123)** — hard numbers stay gated (Spider `workflow_dispatch`
+re-confirmed 403; funnel re-pull network-blocked) → a measured **onboarding/UX**
+lever on the **`/solve`** lane: a **running-total / cumulative-sum** pain page,
+`running-total-cumulative-sum-in-sql` (P3 analyst). Distinct in *query shape*
+from the run-121 ranking window (`ROW_NUMBER` partition) — this one accumulates
+down an explicit order: ask "running total of revenue by day" in English and
+nlqdb compiles `SUM(...) OVER (ORDER BY ...)`, runs it in Postgres, and shows the
+SQL so you verify the order + frame. Honest split: you must name the accumulation
+order (no well-defined running total over unordered rows / ties), a one-off
+read-only curve, not a live chart. **Solve pages 25 → 26 · P3 coverage 6 → 7**;
+web-verified demand (SO `window-functions` tag; PG window-function tutorial;
+LearnSQL explainer), 176 web tests green, biome clean. **KPI:** GLOBAL-025
+onboarding/UX; none degraded. *(Prior run 122 — pivot, solve 24 → 25.)*
