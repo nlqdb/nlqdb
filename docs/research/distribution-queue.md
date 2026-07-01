@@ -11,53 +11,64 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-07-01 (run 129) — dev.to / r/SQL / r/PostgreSQL: "The 'percent of total' query has a denominator problem. Two, actually."
+## 2026-07-01 (run 130) — dev.to / r/SQL / r/PostgreSQL: "NOT IN returned zero rows. It wasn't your data — it was one NULL."
 
-**Where:** dev.to + r/SQL + r/PostgreSQL; for anyone who's written `revenue / SUM(revenue)` and got
-0, or got shares that summed to way past 100%. nlqdb mentioned once, as the ask-in-English path.
+**Where:** dev.to + r/SQL + r/PostgreSQL; for anyone who wrote `WHERE id NOT IN (SELECT ...)` to find
+"who's missing" and got back nothing. nlqdb mentioned once, as the ask-in-English path.
 
-**Title:** The 'percent of total' query has a denominator problem. Two, actually.
+**Title:** NOT IN returned zero rows. It wasn't your data — it was one NULL.
 
 **Body:**
 
-> "What percent of revenue is each product?" sounds like the simplest analytics question there is,
-> and it's the one people get subtly wrong most. Two traps, both quiet — no error, no warning.
->
-> **Trap 1 — integer division floors your share to 0.** The clean way to get a share is a window
-> aggregate that broadcasts the total onto every row without a self-join:
+> "Which customers never placed an order?" is a question you ask constantly — products never sold,
+> users with no login this month, invoices with no payment. It's a set difference, and the obvious
+> query is a quiet trap:
 >
 > ```sql
-> SELECT product, revenue,
->        revenue / SUM(revenue) OVER () AS share   -- looks right, returns 0
-> FROM sales;
+> SELECT * FROM customers
+> WHERE id NOT IN (SELECT customer_id FROM orders);   -- returns nothing. why?
 > ```
 >
-> If `revenue` is an integer column, `revenue / SUM(...)` is integer division: every share rounds down
-> to 0 before you ever multiply by 100. Force floating-point — `100.0 * revenue / SUM(revenue) OVER
-> ()`, or cast one side to `numeric`. You just get a column of zeros that looks like a data problem
-> and isn't.
+> If a single `customer_id` in that subquery is NULL, you get **zero rows** — no error, no warning.
+> Here's why: `NOT IN (a, b, NULL)` expands to `id <> a AND id <> b AND id <> NULL`. That last
+> comparison is never `true` — comparing anything to NULL is `unknown` — so the whole `AND` chain can
+> never be `true`, and every row is rejected. One NULL in the inner table silently empties your result.
 >
-> **Trap 2 — the wrong denominator.** `SUM(x) OVER ()` — empty parentheses — is the *grand* total, so
-> shares across all rows sum to 100%. `SUM(x) OVER (PARTITION BY region)` is the *per-group* total, so
-> each region's rows sum to 100% on their own. Same rows, different question, and it's easy to reach
-> for one when you meant the other. The `OVER (...)` clause is the whole spec — read it and you know
-> which denominator you got.
+> **The two shapes that actually work:**
 >
-> Why `OVER ()` beats the old self-join-to-a-totals-subquery: it keeps every row while carrying the
-> aggregate alongside — the same window trick behind running totals and ranking, pointed at a
-> denominator instead of an accumulation.
+> ```sql
+> -- LEFT JOIN ... IS NULL: keep the customers that found no matching order
+> SELECT c.* FROM customers c
+> LEFT JOIN orders o ON o.customer_id = c.id
+> WHERE o.id IS NULL;
 >
-> (If you'd rather not re-derive this every quarter: [nlqdb](https://nlqdb.com) takes "each product's
-> revenue as a percent of total" in English, compiles the `100.0 * … / SUM(…) OVER ()` form, runs it
-> read-only, and shows the SQL so you can check the denominator. Honest limit — it owns the Postgres
-> it answers; bring-your-own-Postgres is signed-in only, not the public embed.)
+> -- NOT EXISTS: a correlated anti-join, NULL-safe by construction
+> SELECT * FROM customers c
+> WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id);
+> ```
+>
+> Both return the same rows for a plain anti-join. `NOT EXISTS` stops at the first match and never
+> trips over NULLs. The `LEFT JOIN ... IS NULL` form is just as correct — but if the join key isn't
+> unique it can multiply rows *before* the filter, so know your grain. What neither of them does is
+> silently lie to you the way `NOT IN` does.
+>
+> The rule worth keeping: reach for `NOT EXISTS` (or `LEFT JOIN ... IS NULL`) for "rows with no match,"
+> and treat `NOT IN (subquery)` as a smell unless you're certain the subquery is NULL-free.
+>
+> (If you'd rather not re-derive which shape is safe every time: [nlqdb](https://nlqdb.com) takes
+> "customers who never placed an order" in English, compiles the NULL-safe anti-join, runs it
+> read-only, and shows the SQL so you can confirm it isn't a `NOT IN`. Honest limit — it owns the
+> Postgres it answers; bring-your-own-Postgres is signed-in only, not the public embed.)
 
 **Why this advances the north-star:** GLOBAL-025 onboarding/UX — anchors the new
-`/solve/calculate-percentage-of-total-in-sql` page (P3 analyst), rides evergreen "percent of total
-SQL" / "SQL percentage returns 0" search intent, and every claim (integer division, `OVER ()` vs
-`PARTITION BY`) is standard Postgres behavior verifiable in the window-functions docs. None degraded.
+`/solve/find-rows-with-no-match-in-another-table` page (P3 analyst), rides evergreen "NOT IN returns
+no rows" / "find rows with no match" / "SQL anti-join" search intent, and every claim (NULL
+three-valued logic, `NOT EXISTS` vs `LEFT JOIN ... IS NULL`) is standard SQL behavior verifiable in
+the PostgreSQL subquery-expression docs. None degraded.
 
 ## Collapsed — full drafts in git history
+
+- run 129 — dev.to / r/SQL / r/PostgreSQL: "The 'percent of total' query has a denominator problem. Two, actually." (two quiet traps: integer division floors `revenue / SUM(revenue) OVER ()` to 0 unless you write `100.0 *`; empty `OVER ()` grand-total vs `OVER (PARTITION BY region)` per-group total is a denominator choice the clause spells out; anchors `/solve/calculate-percentage-of-total-in-sql`).
 
 - run 128 — dev.to / r/PostgreSQL / r/SaaS: "Neon's MCP server lets your coding agent run your database. That's not the same as your app answering a question." (Neon's official MCP is one of the better DB MCP integrations — spin up a project, branch copy-on-write, run+verify+merge a migration all from your IDE — but that whole loop is *dev-time database administration* with you as the caller, not your *product* answering an end-user's question at runtime; the runtime job has requirements the admin one doesn't — compiled SQL shown, read-only allow-list failing closed, writes diff-previewed, try-before-sign-in — none a knock on Neon, just a layer above the DB; honest split — nlqdb has no Neon-grade branching/scale-to-zero and no BYO-Postgres yet, so it owns the DB it answers; anchors `/vs/neon`).
 - run 127 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no MEDIAN(). Here's the query you write instead — and the choice that changes the answer." (no `MEDIAN()` in Postgres; the answer is the ordered-set aggregate `percentile_cont(0.5) WITHIN GROUP (ORDER BY revenue)`, and swapping `0.5` gives any percentile; the trap is `percentile_cont` interpolates between the two middle rows while `percentile_disc` returns a real row, so they disagree on even/categorical sets — `cont` for continuous quantities, `disc` when it must be an observed value; order lives inside `WITHIN GROUP`; honest split — read-only, not a live p95 dashboard; anchors `/solve/calculate-median-or-percentile-in-sql`).
@@ -69,7 +80,7 @@ SQL" / "SQL percentage returns 0" search intent, and every claim (integer divisi
 - run 122 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead." (SQL Server has a `PIVOT` keyword; Postgres doesn't, so every reporting cycle you re-learn the two real answers — portable conditional aggregation (`SUM(...) FILTER (WHERE ...)` per column, tedious and easy to mis-bucket) or `crosstab()` from the `tablefunc` extension nobody has enabled; either way a plain `GROUP BY` gives tall rows when the spreadsheet wanted wide, and reshaping is the Googled part; ask in English and read the SQL so each column maps to the bucket you meant; honest split — pivot columns must be ones you can name, one-off read-only answer not a live crosstab dashboard, exact SQL over current rows; anchors `/solve/pivot-rows-into-columns`).
 - run 121 — dev.to / r/SQL / r/dataengineering: "The top-N-per-group query everyone re-Googles." (`greatest-n-per-group`: keeping the whole row per group needs `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` filtered to rank ≤ N, not `GROUP BY`+`MAX`; anchors `/solve/find-top-n-rows-per-group`).
 
-- run 120 — dev.to / r/dataengineering / r/LLMDevs: "Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest." (Dataherald/Vanna/Wren open-sourced the whole NL→SQL engine — the model half is now an MIT-licensed commodity you wire up in an afternoon — but ship it to people who don't know your schema and demo accuracy evaporates; the fix every engine reaches for is *golden SQL*, hand-curated question→query training pairs plus business context tuned to your tables, a standing maintenance job on whoever owns the data model, not a flaw but the part the README undersells; honest evaluation isn't "can it generate SQL" but "who keeps it accurate as the schema moves, and do I already run the warehouse it assumes" — if you run a real warehouse + data team that wants that control an OSS engine is exactly right; honest split — nlqdb *owns* the Postgres it answers and skips golden SQL by prompting from the live schema fingerprint, so no warehouse federation / no golden-SQL knobs, query Snowflake/BigQuery in place and the OSS engine wins; anchors `/vs/dataherald`).
+- run 120 — dev.to / r/dataengineering / r/LLMDevs: "Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest." (Dataherald/Vanna/Wren open-sourced the NL→SQL engine — a commodity you wire up in an afternoon — but ship it to people who don't know your schema and accuracy evaporates; the fix is *golden SQL*, hand-curated question→query pairs, a standing maintenance job the README undersells; honest split — nlqdb owns the Postgres it answers and skips golden SQL by prompting from the live schema fingerprint, no warehouse federation; anchors `/vs/dataherald`).
 - run 119 — dev.to / r/SQL / r/analytics: "The duplicate-rows query you re-Google every six weeks." (the find-duplicates answer hasn't changed in thirty years — `GROUP BY` the suspect columns, `HAVING COUNT(*) > 1` — yet non-daily-SQL folks look it up every time, and wanting the *whole* duplicate row not just the key pushes you into a `ROW_NUMBER()` window function, a different query than you Googled; ask in English and read the SQL so you verify the grain; honest split — nlqdb reports duplicates read-only, which row to keep/merge is a deliberate write, matching is exact not fuzzy; anchors `/solve/find-duplicate-rows-in-my-data`).
 - run 118 — dev.to / r/LangChain / lobste.rs: "You don't need to build a SQL agent. Here's when you should anyway." (the `create_sql_agent` + `SQLDatabaseToolkit` demo (now assembled directly in LangGraph) gets the happy path working in an afternoon — the 10%; the other 90% is a `DELETE` guardrail (the default toolkit runs whatever SQL the model emits), bounded retries, a question cache, somewhere to *show* the SQL, a deployment, and an eval harness, all yours to own forever for a non-core feature; the honest build-vs-buy test isn't "can I generate SQL from English" but "do I want to own that stack" — build with LangChain if you're building an agent framework / need the reasoning graph / want self-hosted-free; buy if it's a feature inside your product; honest split — nlqdb is a hosted pipeline you embed, not a vendored library, and a LangChain agent can just *call* it as one tool; anchors `/vs/langchain-sql-agent`).
 - run 117 — dev.to / r/devops / r/sysadmin: "Your cron jobs already write run history. You just can't query it." (which-job-fails-most / how-long / how-many-ran are aggregations grepped out of scheduler logs the wrong way; capture is one row per run, reporting is the windowed `GROUP BY`, and even `pg_cron` keeps a `cron.job_run_details` table because run history is worth querying; a heartbeat monitor like Healthchecks.io/Cronitor answers the *other* question — did it run at all, the dead-man's-switch — presence-vs-absence, not which-fails-most; honest split — nlqdb is no scheduler and does no alerting, it stores the runs you write and gives a planner over them; anchors `/solve/track-background-job-run-history`).

@@ -24,7 +24,7 @@ retrieval (row #8, 23/23) **saturated**; next engine gain needs the gated EX dis
 | 2 | Waitlist rows, real | 1 of 81 | 80 walker/test/probe; the 1 is the founder → ~0 genuine strangers |
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev |
 | 4 | Anon DBs with a first answer | 130 of 130 | every DB has a first query; genuine-stranger subset still ~0 (rows #2/#3) |
-| 14 | Indexable distribution surfaces | 60 (`/vs` 31 + `/solve` 29) | **agent-movable daily lever** — leading input to rows #1–#4; `llms.txt` auto-aggregates both. Grow every run |
+| 14 | Indexable distribution surfaces | 61 (`/vs` 31 + `/solve` 30) | **agent-movable daily lever** — leading input to rows #1–#4; `llms.txt` auto-aggregates both. Grow every run |
 | | **Engine** — BIRD 06-19 (**12d, stale**) · Spider 06-17 (**14d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Dispatch gated** — MCP `workflow_dispatch` 403 + `GH_TOKEN_WORKFLOW` PAT proxy-blocked (run 126); see Last change |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Flat within variance (McNemar p=0.50) — directive levers saturated; reasoning levers (§4 #1/#3) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number.** Self-consistency (`SK-QUAL-017`) end-to-end bar the CI dispatch; EX delta next dispatch |
@@ -46,13 +46,11 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-07-01 (framing fix)** — disambiguated who owns distribution. Dropped the
-unsourced "un-forceable" narrative (contradicted `GLOBAL-033` + the
-autonomous-distribution design in `fable-recommendation.md`) and repointed the
-daily lever at the **agent-movable** surfaces count (row #14, now 60 incl. run
-129's `/solve` share-of-total page) rather than the lagging strangers metric.
-Trimmed `blocked-by-human.md` to genuine human actions: Stripe auto-deploys on
-merge (not a click); `OPENROUTER_FRONTIER_API_KEY` + `BYO_SECRET_KEK` flow via the
-secret mirror (one `mirror-secrets-gha.sh` run); legal → free Termly path.
-`MEMORY_PRESET` is a plain var gated on E-03 shipping, not a founder click.
-**KPI:** GLOBAL-025 onboarding/UX; none degraded.
+**2026-07-01 (surface +1)** — shipped `/solve/find-rows-with-no-match-in-another-table`
+(P3 analyst, anti-join / "who's missing" wedge). Row #14 **60 → 61** (`/solve`
+29 → 30); `llms.txt` + sitemap auto-aggregate it. Distinct SQL primitive from the
+window-function/aggregate cluster — a set difference across two tables — with the
+`NOT IN`-with-NULLs trap as the honest hook. 176 web tests + astro-check (0 errors)
+green. Prior run repointed the daily lever at this agent-movable surfaces count
+(row #14) rather than the lagging strangers metric. **KPI:** GLOBAL-025
+onboarding/UX; none degraded.
