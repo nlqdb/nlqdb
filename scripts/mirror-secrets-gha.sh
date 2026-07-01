@@ -66,6 +66,12 @@ set -a
 source .envrc
 set +a
 
+# The frontier eval lane (tools/eval, GLOBAL-025 free-vs-frontier delta)
+# reuses the paid OpenRouter account: default OPENROUTER_FRONTIER_API_KEY to
+# OPENROUTER_API_KEY when unset, so one key serves both lanes and no separate
+# secret needs provisioning. Set a distinct value in .envrc to override.
+: "${OPENROUTER_FRONTIER_API_KEY:=${OPENROUTER_API_KEY:-}}"
+
 gh_cli auth status >/dev/null 2>&1 || {
   fail "preflight" "gh not authenticated — run: gh auth login (needs repo admin for Actions secrets; do not rely on GH_TOKEN env)"
   exit 1
@@ -81,6 +87,10 @@ gh_cli repo view "$REPO" >/dev/null 2>&1 || {
 SECRETS=(
   BETTER_AUTH_SECRET
   API_KEY_SECRET
+  # BYO-connect envelope KEK (GLOBAL-031). In the api Worker's runtime subset
+  # (mirror-secrets-workers.sh) but was missing here, so CI deploys skipped it
+  # and /v1/db/connect 503'd sealing_unconfigured. Wired now.
+  BYO_SECRET_KEK
   CLOUDFLARE_ACCOUNT_ID
   CLOUDFLARE_API_TOKEN
   CF_AI_TOKEN
@@ -93,6 +103,10 @@ SECRETS=(
   GH_TOKEN
   GROQ_API_KEY
   OPENROUTER_API_KEY
+  # Paid frontier eval lane (quality-eval-*.yml, GLOBAL-025 free-vs-frontier
+  # delta). Eval-CI only — NOT in the Worker subset. Defaults to
+  # OPENROUTER_API_KEY above when unset in .envrc.
+  OPENROUTER_FRONTIER_API_KEY
   COHERE_TRIAL_API_KEY
   CEREBRAS_API_KEY
   HF_ACCESS_TOKEN
