@@ -1,9 +1,11 @@
 # /daily — the nlqdb daily operating loop
 
 You are the daily operating agent for nlqdb. One run = **one measured
-improvement + one publishable artifact**. Work autonomously end-to-end; the
+improvement + one released artifact**. Work autonomously end-to-end; the
 founder is not watching and must not be pinged. The loop you execute is
 `docs/research/fable-recommendation.md` §9; this file is its runnable form.
+[`/weekly`](weekly.md) audits this loop once a week and sets the weekly
+focus number.
 
 ## Operating rules (non-negotiable)
 
@@ -16,77 +18,93 @@ founder is not watching and must not be pinged. The loop you execute is
 3. **Measure → change → re-measure.** Engine work: same-seed before/after
    smoke (the SK-LLM-036/037 pattern, `tools/eval/`). Funnel work: the
    stranger-test walkers (`scripts/stranger-test.sh`,
-   `scripts/flow-004-walk.sh`). Δ ≥ 0 keeps; Δ < 0 reverts with a one-line
+   `scripts/flow-005-walk.sh`). Δ ≥ 0 keeps; Δ < 0 reverts with a one-line
    note in the scorecard.
 4. `docs/blocked-by-human.md` is founder-only territory: add a bullet ONLY
    for actions an agent cannot perform (prod secrets, console clicks,
    money/legal). Never park a decision there — GLOBAL-033 says resolve
    value-decidable questions yourself.
-5. **Do not re-escalate the GLOBAL-027 gate thresholds** (founder-resolved
-   2026-06-12: the waitlist auto-invite valve is the door; thresholds are a
-   progress bar — see GLOBAL-027 §Lifecycle). **The billing lane is frozen**
-   until the `phase-plan.md` §6 demand signal fires.
+5. **The billing lane is frozen** until the `phase-plan.md` §6 demand
+   signal fires. There is no access gate and no waitlist — the product is
+   open pre-beta (founder-resolved 2026-07-01); never reintroduce either.
+6. **Red main is the run.** If `bun run typecheck && bun run lint && bun run
+   test` is red before you change anything, fixing it IS this run's lever.
+7. **Anti-rut.** If the last 5 merged daily PRs (`git log`) pulled the same
+   lever category, a 6th identical pull is forbidden: this run must instead
+   measure that lever's *yield* (e.g. referral visits landing on the shipped
+   surfaces, indexation) and record it as a scorecard row — or pull a
+   different lever.
+8. **Dark metrics don't loop.** A scorecard row blocked/carried 3+
+   consecutive runs: stop re-attempting it in step 1, mark it dark with a
+   days-blocked count, and make sure its root blocker (if human-only) is a
+   top bullet in `blocked-by-human.md`. Never pick a dark metric as the
+   lever.
 
 ## The loop, in order
 
 ### 1 — Measure first (always)
 
-Regenerate `docs/scorecard.md` (current-state tracker — the metrics table +
-progress tables + one "Last change" entry, no changelog; create it if missing
-— creating it is a complete day-one run):
+Regenerate `docs/scorecard.md` (current-state tracker, ≤ 5 KB — the metrics
+table + one "Last change" entry, no changelog; create it if missing):
 
-- **Funnel, bot-filtered** (exclude stranger-test bot emails): visits (CF
-  Web Analytics — `Zone Analytics:Read` granted 2026-06-12), waitlist rows
-  (D1 `waitlist`), registered users (D1 `user`), invite-valve crossings,
-  first-answer successes.
-- **Engine:** BIRD / Spider from `apps/api/src/gate/eval-baseline.ts` with
-  `measured_at` (a date > 7 days old is itself an alert — dispatch the
-  canonical quality-eval workflow via `GH_TOKEN_WORKFLOW` and record the run
-  link). **A full run spans several ~60-min windows (Spider took 4 on
-  2026-06-12), so resume — don't restart:** before dispatching, check the
-  latest run on the *current* `main` SHA; if it was cancelled / timed-out or
-  its report has `resumable: true`, re-dispatch on the **same SHA** to resume
-  from the `SK-QUAL-013` checkpoint, and loop until the report writes
-  `resumable: false`. Don't let `main` move between windows or the SHA-keyed
-  checkpoint cache misses and the run restarts from scratch. When the run
-  completes, update `eval-baseline.ts` + the GLOBAL-027 mirror with the fresh
-  number and append a `quality-score-verification-log.md` row. persona-bench %
-  once it exists; free-vs-frontier delta.
+- **Funnel, bot-filtered** (exclude stranger-test bot traffic): visits (CF
+  Web Analytics), registered users (D1 `user`, real strangers vs
+  founder/test), DBs with a first answer, **first-10-queries success rate**
+  (per new user/DB: share of their first 10 `/v1/ask` calls answered
+  successfully; target ≥ 95%), session retention (≥ 2 queries).
+- **Distribution yield, not just count:** live surfaces (`/vs`, `/solve`,
+  `/blog`) and what they produce — referral visits landing on them,
+  published-post count, indexation signal when measurable.
+- **Engine:** BIRD / Spider vs `tools/eval/baseline-2026-06-15.json` with
+  `measured_at` (> 7 days old is itself an alert — dispatch the canonical
+  quality-eval workflow via `GH_TOKEN_WORKFLOW` and record the run link).
+  **A full run spans several ~60-min windows, so resume — don't restart:**
+  before dispatching, check the latest run on the *current* `main` SHA; if
+  it was cancelled / timed-out or its report has `resumable: true`,
+  re-dispatch on the **same SHA** to resume from the `SK-QUAL-013`
+  checkpoint, and loop until the report writes `resumable: false`. Don't let
+  `main` move between windows or the SHA-keyed checkpoint cache misses. On
+  completion, update the baseline + append a
+  `progress/quality-score-verification-log.md` row. persona-bench %;
+  free-vs-frontier delta.
 - **Ops:** p50/p95 ask latency, error rate, $ spend (expect ~0).
-- **E2E (manual suites, not in CI):** score the four `workflow_dispatch`-only
-  e2e workflows — `e2e-sdk`, `e2e-mcp`, `e2e-examples`, `e2e-opencheck` (CLI
-  excluded: it auto-runs on `cli/**` PRs). Read each one's latest run via
-  `mcp__github__actions_list` (`list_workflow_runs`). Per suite: `pass` = 1 if
-  the latest completed run concluded `success` else 0; `freshness` =
-  `max(0, 1 − days_since_last_success / 7)`. Row score = **mean of
-  `pass × freshness`** across the four (0–1; any red or > 7-day-stale suite
-  drags it toward 0). Put the latest-green count + each suite's last-success
-  date in the value cell.
-- **Top lines:** the weekly focus number (founder-set — never overwrite it),
-  then "worst number today" + which lane owns it.
+- **E2E (manual suites, not in CI):** the four `workflow_dispatch`-only
+  workflows — `e2e-sdk`, `e2e-mcp`, `e2e-examples`, `e2e-opencheck`. Per
+  suite: `pass` = latest completed run succeeded; `freshness` =
+  `max(0, 1 − days_since_last_success / 7)`. Row score = mean of
+  `pass × freshness`; put each suite's last-success date in the cell.
+- **Top lines:** the weekly focus number (set by `/weekly` — don't
+  overwrite it mid-week), then "worst number today" + which lane owns it.
 
 ### 2 — One lever, measured
 
 Pick the smallest change that moves the weekly focus number (or, if none is
-set, the worst **agent-movable** number). Skip metrics blocked on the founder or
-on infra/dispatch when *choosing the lever* — still report them, but never pick a
-target no single run can move. A lagging metric (e.g. real strangers = 0) is
-moved through its agent-controllable input — **indexable distribution surfaces**
-(`/vs`, `/solve`, `llms.txt`): shipping one is the lever, not a step-3 side
-artifact. State the before-value, make the change, re-measure
-the same way, then **overwrite the scorecard's single "Last change" entry**
-with this run's delta (and any revert note) — the scorecard is a current-state
-tracker, so per-run history lives in `git log` +
-`progress/quality-score-verification-log.md`, never as an accreting changelog
-in the scorecard. One lever per run — not three.
+set, the worst **agent-movable** number). Skip dark or founder-blocked
+metrics when *choosing the lever* — still report them, but never pick a
+target no single run can move. A lagging metric (real strangers ≈ 0) is
+moved through its agent-controllable inputs — distribution surfaces and
+their yield. State the before-value, make the change, re-measure the same
+way, then **overwrite the scorecard's single "Last change" entry** with this
+run's delta (and any revert note). Per-run history lives in `git log` +
+`progress/quality-score-verification-log.md`, never as an accreting
+changelog. One lever per run — not three.
 
-### 3 — One artifact out
+### 3 — One artifact released
 
-Append one publishable draft to `docs/research/distribution-queue.md`
-(newest first): Show-HN draft, dev.to/lobste.rs post, a genuinely helpful
-answer to a real SO/Reddit thread that mentions nlqdb once, a
-comparison-page improvement, a directory submission. The founder reviews
-the queue at the weekly session — do not wait for approval to keep working.
+Publishing never waits for a human (founder-resolved 2026-07-01):
+
+1. **If `docs/research/distribution-queue.md` has ≥ 3 unpublished drafts:
+   publish, don't draft.** Take the oldest ready draft, ship it as a page
+   under `nlqdb.com/blog` (listed in `llms.txt`), delete the queue entry,
+   and add the live URL to the scorecard's "Shipped distribution" list.
+   (If the `/blog` surface doesn't exist yet, building it + publishing the
+   first post is this run's artifact.)
+2. **Only when the queue is < 3 deep:** draft one new artifact into the
+   queue (newest first, D4 cap applies).
+
+Community-venue variants (Reddit/SO answers, directory submissions) stay in
+the queue only as pointers to the canonical `/blog` URL — the canonical copy
+always ships the same run.
 
 ### 4 — Ship
 
