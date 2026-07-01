@@ -43,18 +43,17 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-07-01 (run 126)** — engine dispatch re-confirmed gated **via both paths
-this run**: MCP `workflow_dispatch` 403 "Resource not accessible by integration"
-(App token) **and** the `GH_TOKEN_WORKFLOW` PAT is proxy-blocked on all
-repo-scoped GitHub API ("GitHub access is not enabled for this session"). Open PR
-#560 owns the `/solve` lane → measured **onboarding/UX** lever on the
-non-colliding **`/vs`** comparison lane: a page for **LlamaIndex**, the OSS
-(MIT) data framework whose text-to-SQL is a component you assemble (P4
-build-vs-buy; §6 build-it-yourself cluster, pairs with langchain-sql-agent).
-Honest split: LlamaIndex's `NLSQLTableQueryEngine` runs generated SQL over a DB
-you already stood up (docs warn arbitrary SQL is a risk); nlqdb *provisions +
-owns* a Postgres, shows the compiled SQL, validates fail-closed, and diff-previews
-writes. **Comparison pages 29 → 30 · P4 coverage 4 → 5**; facts web-verified
-(`developers.llamaindex.ai` text-to-SQL guide + NL_SQL_table API), 176 web tests
-green, astro check 0 errors, biome clean. D4: both edited docs net-shrunk.
+**2026-07-01 (run 127)** — engine dispatch still gated (both paths re-confirmed
+run 126 same day: MCP `workflow_dispatch` 403 App-token + `GH_TOKEN_WORKFLOW` PAT
+proxy-blocked), so the measured lever stayed on the tractable AEO lane. Added
+`/solve/calculate-median-or-percentile-in-sql` (P3) — the perennial "Postgres has
+no `MEDIAN()`" question: nlqdb compiles the ordered-set aggregate
+`PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ...)`, shows the SQL, and names the
+`cont`-vs-`disc` gotcha. A **new primitive** for the SQL how-to cluster
+(ordered-set aggregate, not a window function like the running-total/MoM/top-N
+pages). **Solve pages 27 → 28 · P3 8 → 9**; facts web-verified (PostgreSQL
+aggregate-function docs — no built-in `MEDIAN`, `percentile_cont`/`percentile_disc`
+ordered-set aggregates via `WITHIN GROUP`). 176 web tests green, astro check 0
+errors, biome clean. Distribution: run-127 median/percentile dev.to draft queued
+(run-126 LlamaIndex draft collapsed to hold the queue < 20 KB).
 **KPI:** GLOBAL-025 onboarding/UX; none degraded.
