@@ -11,46 +11,50 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-06-30 (run 122) — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead."
+## 2026-07-01 (run 123) — dev.to / r/SQL / r/PostgreSQL: "The running-total query keeps every row. That's the part GROUP BY can't do."
 
-**Where:** dev.to + r/SQL + r/PostgreSQL; for analysts and PMs who want a pivot table — rows turned
-into columns — and find that the answer in Postgres isn't a keyword. nlqdb mentioned once, as the
-"ask in English, read the SQL" half — not a BI tool.
+**Where:** dev.to + r/SQL + r/PostgreSQL; for analysts and PMs who want a cumulative curve —
+revenue-to-date, running headcount, a rolling 7-day sum — and keep reaching for `GROUP BY`. nlqdb
+mentioned once, as the "ask in English, read the SQL" half — not a BI tool.
 
-**Title:** Postgres has no PIVOT keyword. Here's the query you write instead.
+**Title:** The running-total query keeps every row. That's the part GROUP BY can't do.
 
 **Body:**
 
-> Every reporting cycle someone needs the same shape: rows turned into columns. Revenue per product
-> with months across the top. Signups per plan, one column per week. Counts per status, side by
-> side. It's the pivot — or crosstab — and SQL Server even has a `PIVOT` keyword for it.
+> Sooner or later every dashboard needs a line that only goes up: revenue to date, a running
+> headcount, cumulative signups, an account balance after each transaction. So you write
+> `SUM(amount)` with a `GROUP BY` and get one number per bucket — the rows collapsed. That's the
+> total, not the *running* total.
 >
-> Postgres doesn't. So you reach for it, find nothing, and re-learn the two real answers each time.
-> The portable one is conditional aggregation: one `SUM(amount) FILTER (WHERE month = 'Jan')` per
-> column you want, repeated for every bucket — readable, but tedious and easy to mis-bucket. The
-> other is `crosstab()` from the `tablefunc` extension, which most people don't have enabled and
-> whose column-definition list trips everyone the first few times.
+> A running total has to keep every row and show the sum accumulated *up to* that row. That's a
+> window function: `SUM(amount) OVER (ORDER BY day)`. The `OVER (ORDER BY ...)` is the whole trick —
+> it computes down an explicit order without collapsing anything. Add `PARTITION BY` to restart the
+> total per group (a running total per customer), or a frame clause — `ROWS BETWEEN 6 PRECEDING AND
+> CURRENT ROW` — for a rolling 7-day sum instead of an all-time one.
 >
-> Either way a plain `GROUP BY` gives you tall rows — month, product, total, stacked vertically —
-> when the spreadsheet wanted them wide. Reshaping that into columns is the part that gets Googled.
+> The details are where it quietly breaks. The wrong `ORDER BY` accumulates in the wrong sequence
+> and still *looks* plausible. Unbroken ties make the running value ambiguous. A missing frame
+> clause silently gives you an all-time total when you wanted a moving window.
 >
-> This is a good case for asking in plain English and *reading the SQL it generates*. "Revenue per
-> product, one column per month" should hand back both the wide table and the `SUM(...) FILTER
-> (WHERE ...)` it ran, so you can confirm each column maps to the bucket you meant before you trust
-> the report.
+> This is a good case for asking in plain English and *reading the SQL it generates*. "Running total
+> of revenue by day" should hand back both the accumulating rows and the `SUM(...) OVER (ORDER BY
+> ...)` it ran, so you can confirm the order and the frame before you trust the curve.
 >
-> (That's the half we built [nlqdb](https://nlqdb.com) for: ask the wide report in English over a
-> Postgres it provisions, or one you already run via a signed-in connect, and get the rows plus the
-> compiled SQL. Honest split — the pivot columns have to be ones you can name, it's a one-off
-> read-only answer rather than a live crosstab dashboard, and it's exact SQL over current rows, not
-> a cached spreadsheet paste.)
+> (That's the half we built [nlqdb](https://nlqdb.com) for: ask the cumulative curve in English over
+> a Postgres it provisions, or one you already run via a signed-in connect, and get the rows plus the
+> compiled SQL. Honest split — you have to name the order it accumulates in, it's a one-off read-only
+> answer rather than a live running-total chart, and it's exact SQL over current rows, not a cached
+> dashboard.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the perennial pivot/crosstab
-search intent surfaced by the `/solve/pivot-rows-into-columns` page shipped this run; the
-no-PIVOT-keyword-in-Postgres hook plus read-the-SQL framing earns a citation without a pitch and
-concedes the named-columns and read-only limits honestly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the perennial
+running-total / cumulative-sum search intent surfaced by the
+`/solve/running-total-cumulative-sum-in-sql` page shipped this run; the "`GROUP BY` collapses, the
+window function keeps every row" hook plus read-the-SQL framing earns a citation without a pitch and
+concedes the named-order and read-only limits honestly.
 
 ## Collapsed — full drafts in git history
+
+- run 122 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead." (rows-into-columns comes up every reporting cycle and SQL Server has a `PIVOT` keyword, but Postgres doesn't — the portable answer is conditional aggregation, one `SUM(...) FILTER (WHERE ...)` per column, or `crosstab()` from the `tablefunc` extension most people don't have enabled; a plain `GROUP BY` gives tall rows when the spreadsheet wanted them wide; ask in English and read the SQL so you confirm each column's bucket; honest split — pivot columns must be ones you can name, one-off read-only wide report not a live crosstab dashboard, exact SQL over current rows; anchors `/solve/pivot-rows-into-columns`).
 
 - run 121 — dev.to / r/SQL / r/dataengineering: "The top-N-per-group query everyone re-Googles." (the top *N* rows per group has a Stack Overflow tag — `greatest-n-per-group` — because it comes up constantly; the obvious `GROUP BY` + `MAX` gives the top *value* but throws away the rest of the row, so keeping the whole row needs `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` filtered to rank ≤ N or a lateral join — a different query than you started typing, and the partition/tiebreak bite quietly; ask in English and read the SQL so you verify the partition and whether ties wanted `RANK`/`DENSE_RANK`; honest split — one-off read-only ranked answer, not a live dashboard or rank-change alert, exact ordering not fuzzy; anchors `/solve/find-top-n-rows-per-group`).
 
@@ -66,8 +70,6 @@ concedes the named-columns and read-only limits honestly.
 - run 111 — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned." (the agent-memory frontier is *modelling* not recall — Honcho's dialectic theory-of-mind builds a model of *how each user reasons*, the right primitive for "explain or just do for this person"; but a different-shaped question arrives the week after launch — "how many pro-tier users completed onboarding this month, grouped by signup week" is `COUNT`/`GROUP BY`/`JOIN`/threshold, and a user model can't answer *how many of them did X*; the two compose once you stop expecting one store to do both — a user-modelling layer for how someone reasons, a relational layer for how many did what; honest limit — nlqdb has no user model or theory-of-mind, for "how does this person think" Honcho is the right shape; anchors `/vs/honcho`).
 - run 110 — dev.to / r/dataengineering / r/BusinessIntelligence: "Your BI tool got acquired. Your data layer shouldn't have to care." (the analyst notebook (Mode → ThoughtSpot, Looker → Google, Periscope → Sisense) is a roll-up target and each acquisition rewrites the AI story on top of it — fine when it's a *destination* humans log into to explore and publish; not fine when you've wired it into your *product*, because your runtime then inherits whatever the next buyer does to that notebook's API/pricing/AI direction; name the split — a destination analytics app and a runtime data layer are different altitudes, the first is where humans look, the second is what your software calls; honest caveat — nlqdb is not a notebook or BI suite, for collaborative analysis/charts/dashboards a Mode or Hex is right and the two compose; anchors `/vs/mode`).
 - run 109 — dev.to / r/SaaS / r/ExperiencedDevs: "The text-to-SQL demo takes an afternoon. The other 90% is why you should buy it." (the obvious "ask your data" build — prompt + schema + model + run the SQL — is 10% of the job; production adds a fail-closed verb-allowlist validator, a plan cache keyed on question + schema version, and an eval harness watching a labelled set, all yours to maintain forever for a non-core feature; the honest buy-vs-build test isn't "can I generate SQL from English" but "do I want to own that stack" — if it's a reporting tab / search box / in-app assistant, buy and embed; honest caveat — hosted pipeline you embed, not a vendored library, and many users over their own rows still means a DB or isolation scope per tenant; anchors `/solve/add-ask-your-data-feature-without-building-text-to-sql`).
-- run 108 — dev.to / r/analytics / r/BusinessIntelligence: "Half your data-team tickets aren't analysis. They're a SELECT someone's afraid to write." (most of a data team's queue is throwaway `GROUP BY`s that took 30s to write and 3 days to reach; self-service BI moved the bottleneck to the modelling ticket; governed questions stay with the data team, throwaway ones just need to not be a ticket — a plain-English path against the live schema with the SQL shown; honest limit — not a governed semantic layer; anchors `/solve/answer-data-questions-without-the-data-team`).
-- run 107 — Show HN / r/LocalLLaMA / dev.to: "Your agent's memory tops LongMemEval. Can it answer 'how many'?" (anchors `/vs/supermemory`).
 - run 106 — dev.to / r/webdev / r/sideproject: "You don't need a backend to store form submissions. You need a place to ask 'how many'." (anchors `/solve/store-form-submissions-without-backend`).
 - run 105 — dev.to / r/LLMDevs / lobste.rs: "COUNT(*) is three different questions. Your few-shot pool probably teaches one."
 - run 104 — dev.to / lobste.rs / r/SEO: "The '25 words max' rule in your style guide is a lie your CMS can't catch."

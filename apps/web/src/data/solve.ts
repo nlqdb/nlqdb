@@ -1514,6 +1514,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "running-total-cumulative-sum-in-sql",
+    persona: "P3 analyst",
+    searchTitle: "How do I calculate a running total or cumulative sum in SQL?",
+    oneLiner:
+      "If you need a running total — a cumulative sum that grows row by row, like revenue-to-date by day — ask in plain English instead of hand-writing a window function. nlqdb compiles the `SUM(...) OVER (ORDER BY ...)`, runs it in Postgres, and shows the SQL so you can verify the ordering and frame.",
+    painContext:
+      "Analysts, PMs, and ops leads hit this every reporting cycle — cumulative revenue to date, a running headcount, running balance on an account, a 7-day moving sum. It's the running-total problem, and the SQL trips people up: a plain `SUM() ... GROUP BY` collapses your rows into one number per bucket, but a running total has to keep every row and accumulate down an explicit order — that's a window function, `SUM(amount) OVER (ORDER BY day ROWS UNBOUNDED PRECEDING)`, with `PARTITION BY` to restart the total per group and a frame clause for moving windows. It gets re-Googled every time, and the ORDER BY / frame details are exactly where the result silently goes wrong.",
+    demoGoal: "running total of revenue by day so far this year",
+    demoWhy:
+      "The cumulative curve you'd otherwise hand-write with a window function and a careful ORDER BY is one English goal here, with the SQL shown so you can check the order and frame.",
+    howNlqdbAnswers: [
+      "Ask 'running total of revenue by day'; nlqdb compiles the window function (`SUM(...) OVER (ORDER BY day)`) and runs it in Postgres.",
+      "Every answer returns the accumulating rows plus the compiled SQL under a trace toggle (`SK-WEB-005`) — verify the ORDER BY and frame.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to accumulate your real data.",
+      "Repeated running totals hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same curve returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "The ordering must be one you can name — 'by day', 'by order date'. A running total needs an explicit, unambiguous sort; over rows with no meaningful order, or ties you haven't broken, the cumulative sequence isn't well-defined and nlqdb won't invent one.",
+      "nlqdb returns the accumulating rows with a read-only SELECT — it's not a BI tool maintaining a live running-total chart or refreshing the cumulative curve on a schedule. That's a scheduled job's work.",
+      "The public `<nlq-data>` embed is read-scoped — it accumulates and surfaces existing rows, it doesn't write. No write key belongs in client HTML; loading the data goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I calculate a running total or cumulative sum in SQL?",
+        a: "Ask in plain English — 'running total of revenue by day.' nlqdb compiles the window function (`SUM(amount) OVER (ORDER BY day)`), runs it in Postgres, and returns the accumulating rows plus the SQL it ran. You get the cumulative curve without hand-writing the `OVER (ORDER BY ...)` clause or debugging the frame. The honest limit: you have to name the order it accumulates in.",
+      },
+      {
+        q: "What's the difference between SUM with GROUP BY and a running total?",
+        a: "A plain `SUM() ... GROUP BY` collapses each group to one total row — you lose the per-row detail. A running total keeps every row and shows the sum accumulated up to that row, using a window function: `SUM(amount) OVER (ORDER BY day)`. nlqdb picks the window form when you ask for a 'running' or 'cumulative' total, and shows the compiled SQL so you can confirm which one you got.",
+      },
+      {
+        q: "Can I compute a running total on a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the cumulative curve in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the running total with a read-only query — it doesn't persist a materialized cumulative column for you.",
+      },
+      {
+        q: "Can nlqdb do a moving average or 7-day rolling sum too?",
+        a: "Yes — those are the same window-function family with a frame clause: `SUM(...) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)` for a 7-day rolling sum. Ask for a 'moving' or 'rolling' total and nlqdb compiles the frame, then shows the SQL so you can confirm the window width. The honest limit: name the window size and the order it slides over.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/window-functions",
+        label:
+          "Stack Overflow — the `window-functions` tag, the perennial 'running total / cumulative sum' hub across SQL dialects.",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/tutorial-window.html",
+        label:
+          "PostgreSQL docs — the canonical window-function tutorial (`SUM(...) OVER (ORDER BY ...)`, frames, `PARTITION BY`).",
+      },
+      {
+        url: "https://learnsql.com/blog/what-is-a-running-total-and-how-to-compute-it-in-sql/",
+        label:
+          "LearnSQL — evergreen 'What is a running total and how to compute it in SQL' explainer.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
