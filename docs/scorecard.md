@@ -43,17 +43,18 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-07-01 (run 127)** — engine dispatch still gated (both paths re-confirmed
-run 126 same day: MCP `workflow_dispatch` 403 App-token + `GH_TOKEN_WORKFLOW` PAT
-proxy-blocked), so the measured lever stayed on the tractable AEO lane. Added
-`/solve/calculate-median-or-percentile-in-sql` (P3) — the perennial "Postgres has
-no `MEDIAN()`" question: nlqdb compiles the ordered-set aggregate
-`PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ...)`, shows the SQL, and names the
-`cont`-vs-`disc` gotcha. A **new primitive** for the SQL how-to cluster
-(ordered-set aggregate, not a window function like the running-total/MoM/top-N
-pages). **Solve pages 27 → 28 · P3 8 → 9**; facts web-verified (PostgreSQL
-aggregate-function docs — no built-in `MEDIAN`, `percentile_cont`/`percentile_disc`
-ordered-set aggregates via `WITHIN GROUP`). 176 web tests green, astro check 0
-errors, biome clean. Distribution: run-127 median/percentile dev.to draft queued
-(run-126 LlamaIndex draft collapsed to hold the queue < 20 KB).
+**2026-07-01 (run 128)** — engine dispatch stays gated (both paths re-confirmed
+run 126–127 same day) and the funnel needs real strangers (un-forceable); PR
+#563 shipped the `/solve` lane (median/percentile) → measured **onboarding/UX** lever on the
+non-colliding **`/vs`** comparison lane: a page for **Neon** — the marquee P1
+serverless-Postgres competitor (scariest alongside Supabase, per §1/Gap-analysis)
+that had **no page** while Supabase did. **Honesty correction baked in:** Neon
+ships a very capable *official* MCP server (`mcp.neon.tech`, OAuth, ~20 tools)
+managing Postgres from a coding agent — the stale "no MCP / no NL" framing was
+dropped in `competitors.md §1` too. Real wedge = **job, not
+capability**: Neon's NL is *dev-time DB administration*; nlqdb's is a *product
+runtime answer* (`<nlq-data>`, compiled SQL shown, fail-closed, writes
+diff-previewed, anonymous try). **Comparison pages 30 → 31 · P1 coverage 1 → 2**;
+facts web-verified (`neon.com/pricing` + `neon.com/docs/ai/neon-mcp-server`), 176
+web tests green, astro check 0 errors, biome clean, queue < 20 KB (D4).
 **KPI:** GLOBAL-025 onboarding/UX; none degraded.

@@ -11,64 +11,62 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-07-01 (run 127) — dev.to / r/SQL / r/PostgreSQL: "Postgres has no MEDIAN(). Here's the query you write instead — and the choice that changes the answer."
+## 2026-07-01 (run 128) — dev.to / r/PostgreSQL / r/SaaS: "Neon's MCP server lets your coding agent run your database. That's not the same as your app answering a question."
 
-**Where:** dev.to + r/SQL + r/PostgreSQL; for the analyst/engineer who typed `MEDIAN(revenue)`,
-got a syntax error, and is now re-Googling how to do it. nlqdb mentioned once, at the end, as the
-"ask in English, read the SQL" option — the post stands on its own as a straight SQL answer.
+**Where:** dev.to + r/PostgreSQL + r/SaaS; for builders on Neon (or weighing it) placing its MCP
+demo against "let my product answer questions in English." nlqdb mentioned once, as the runtime
+alternative — not a knock on Neon, whose MCP is genuinely good.
 
-**Title:** Postgres has no MEDIAN(). Here's the query you write instead — and the choice that changes the answer.
+**Title:** Neon's MCP server lets your coding agent run your database. That's not the same as your app answering a question.
 
 **Body:**
 
-> Every dialect gives you `AVG()`. Almost none give you `MEDIAN()` — and Postgres is one of the ones
-> that doesn't. So the moment the mean lies to you (one whale order, one stalled request dragging the
-> average off the typical row) and you reach for the median, you hit a syntax error and go looking.
+> Neon's official MCP server is one of the better database MCP integrations shipping right now.
+> Connect it to Cursor or Claude Code and your coding agent can spin up a project, branch the
+> database copy-on-write, run a migration on that branch, verify it, and merge it — all from English.
+> The `prepare_database_migration` → verify → `complete` flow is a smart use of Neon's branching: the
+> migration lands on a throwaway copy before it touches main. If you live in an editor, it's a real
+> quality-of-life jump.
 >
-> The answer isn't a function, it's an *ordered-set aggregate*:
+> One distinction is worth drawing before you assume it covers "natural-language database": that
+> whole loop is *dev-time database administration*. The caller is you, in your IDE, managing schema
+> and infra. It's not your **product** answering an end-user's question at runtime — two jobs that
+> just happen to share the words "natural language" and "SQL":
 >
-> ```sql
-> SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY revenue) AS median_revenue
-> FROM orders;
-> ```
+> - **Manage the database (dev time).** Create, branch, migrate, tune. Audience: the engineer. Neon's
+>   MCP is excellent here.
+> - **Answer a question (run time).** A user or agent asks "signups per week for the last 8 weeks"
+>   and something turns that into SQL, runs it safely, and renders the answer inside your app. This is
+>   the part a raw Postgres — even a great serverless one — leaves to you.
 >
-> That `WITHIN GROUP (ORDER BY ...)` clause is the part that looks nothing like a normal aggregate,
-> and it's the part people forget. It's also how you get any percentile, not just the middle: swap
-> `0.5` for `0.9` and you have p90; `0.95` for the p95 tail everyone quotes for latency. One shape,
-> every percentile.
+> The second job has requirements the first doesn't: the compiled SQL shown to the asker so they can
+> check it, every query validated against a read-only allow-list and failing closed (the caller isn't
+> a trusted engineer anymore), writes diff-previewed before they apply, and ideally a stranger able to
+> try it before signing in. None of that is a knock on Neon — it's just not what a database platform
+> is for. Neon owns branching, scale-to-zero, pooling, replicas, and PITR, and owns them well; the
+> runtime answer surface is a layer above the DB.
 >
-> Here's the bit that quietly changes your answer, though — there are *two* of these functions:
+> So if you're on Neon and happy, stay — and turn its MCP server on, it's worth it for the migration
+> flow alone. The narrower question is: *when a user of my app asks a question in English, what turns
+> that into a safe answer on the page?* If the honest answer is "haven't built that," that's the layer
+> to think about, separate from where the bytes live.
 >
-> - `percentile_cont(0.5)` **interpolates** between the two middle rows. The median of `[1, 2]` is
->   `1.5` — a value that isn't in your data.
-> - `percentile_disc(0.5)` returns an **actual row** from the set. The median of `[1, 2]` is `1`.
->
-> On an even-sized set, or on ordered-but-categorical data, those disagree. If two people report "the
-> median" and one used `cont` and the other `disc`, they'll get two numbers from the same table and
-> spend an afternoon arguing about it. Pick deliberately: `cont` for a continuous quantity where an
-> interpolated value is meaningful (revenue, latency), `disc` when the answer must be a real observed
-> value.
->
-> (One more trap: the ordering lives inside `WITHIN GROUP`, not in a trailing `ORDER BY`, so a
-> per-category median is `percentile_cont(0.5) WITHIN GROUP (ORDER BY revenue)` with `GROUP BY
-> category` on the outside — the aggregate carries its own sort.)
->
-> That's the whole answer. If you'd rather not remember the clause every reporting cycle, the tool I
-> work on — [nlqdb](https://nlqdb.com) — lets you ask "median revenue per order" in English, compiles
-> exactly this ordered-set aggregate, runs it in Postgres, and *shows you the compiled SQL* so you can
-> see which of `cont`/`disc` it used and the order it ran over. Honest limits: it answers with a
-> read-only query (not a live p95 dashboard), and the median needs a column it can actually order —
-> it won't invent a sort where none exists.
+> (That runtime layer is what we built [nlqdb](https://nlqdb.com) for: a Postgres provisioned from
+> English, NL→SQL with the compiled SQL shown and validated fail-closed on every query, an embeddable
+> `<nlq-data>` answer element, writes diff-previewed, and a try-before-sign-in mode. Honest limits —
+> nlqdb doesn't expose Neon-grade branching or scale-to-zero, and bring-your-own-Postgres isn't
+> shipped yet, so today it owns the DB it answers.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the perennial "median in SQL /
-Postgres has no MEDIAN" search intent anchored by the `/solve/calculate-median-or-percentile-in-sql`
-page shipped this run; the query and the `cont`-vs-`disc` gotcha are sourced to the PostgreSQL
-aggregate-function docs (earns the citation on the merits), and it concedes nlqdb's read-only /
-needs-an-order limits honestly rather than pitching.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides "Neon MCP server" search
+intent surfaced by the `/vs/neon` page shipped this run; the dev-time-vs-runtime framing is sourced
+to Neon's own MCP docs (concedes Neon's strengths, so it earns a citation not a takedown) and states
+nlqdb's no-branching / no-BYO-Postgres limits plainly.
 
 ## Collapsed — full drafts in git history
 
-- run 126 — dev.to / r/LLMDevs / r/LangChain: "LlamaIndex's text-to-SQL runs the SQL the model wrote. The docs tell you that; the demo doesn't." (LlamaIndex's `NLSQLTableQueryEngine` writes SQL from an English question and *executes it* over a DB you already stood up — great in a notebook/RAG pipeline, but the docs themselves warn "executing arbitrary SQL can be a security risk," and on a product path "generate SQL and run it" is a different posture than "generate SQL, validate against a read-only allow-list, run only that"; it also assumes the DB already exists rather than answering "where does the data live"; honest split — if you need documents+vectors+SQL in one graph LlamaIndex wins and can call nlqdb as one tool, while nlqdb provisions+owns the Postgres, shows the SQL, runs only validated SQL, and diff-previews writes; anchors `/vs/llamaindex`).
+- run 127 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no MEDIAN(). Here's the query you write instead — and the choice that changes the answer." (no `MEDIAN()` in Postgres; the answer is the ordered-set aggregate `percentile_cont(0.5) WITHIN GROUP (ORDER BY revenue)`, and swapping `0.5` gives any percentile; the trap is `percentile_cont` interpolates between the two middle rows while `percentile_disc` returns a real row, so they disagree on even/categorical sets — `cont` for continuous quantities, `disc` when it must be an observed value; order lives inside `WITHIN GROUP`; honest split — read-only, not a live p95 dashboard; anchors `/solve/calculate-median-or-percentile-in-sql`).
+
+- run 126 — dev.to / r/LLMDevs / r/LangChain: "LlamaIndex's text-to-SQL runs the SQL the model wrote. The docs tell you that; the demo doesn't." (`NLSQLTableQueryEngine` writes + *executes* the generated SQL — LlamaIndex's own docs call arbitrary SQL a security risk and leave restricted roles / read-only DB / sandboxing to you — and it assumes the DB already exists; same English prompt, two different jobs; honest split — LlamaIndex wins for SQL-as-one-retriever-among-docs+vectors and can call nlqdb as a tool, nlqdb is not a RAG framework; anchors `/vs/llamaindex`).
 - run 125 — dev.to / r/SQL / r/PostgreSQL: "LAG() is the whole month-over-month growth query. The self-join you were about to write is the bug." (month-over-month / period-over-period / YoY / WoW growth is one window-function shape, not a self-join on `month = month - 1` that breaks on missing months and December boundaries: `LAG(value) OVER (ORDER BY month)` reaches the previous row in an order you name, with a `NULLIF(prev, 0)` divide-by-zero guard and the `ORDER BY` as the definition of "previous"; YoY/WoW are the same query with a different offset, distinct from running-total's accumulate-down and top-N's rank-within; ask in English and read the SQL so you check the order and baseline; honest split — one-off read-only answer not a live MoM chart, you still name the period order; anchors `/solve/month-over-month-growth-in-sql`).
 - run 124 — dev.to / r/Python / r/dataengineering: "PandasAI runs generated Python to answer your question. That's the feature and the footgun." (PandasAI reads a DataFrame/CSV/Postgres you already loaded and translates the question into Python+SQL and *executes it* to return answers, charts, cleaned columns, generated features — great in a notebook, but on a product path "generate Python and run it" is a bigger blast radius than "generate SQL, validate against an allow-list, run only that," and it assumes the data's already loaded rather than answering "where does the data live"; honest split — if a plotted figure is the deliverable PandasAI wins and the two compose, nlqdb owns+provisions the Postgres, shows the SQL, runs only validated SQL, diff-previews writes, and has no chart/cleansing/feature generation; anchors `/vs/pandasai`).
 - run 123 — dev.to / r/SQL / r/PostgreSQL: "The running-total query keeps every row. That's the part GROUP BY can't do." (a running total — revenue-to-date, running headcount, a rolling 7-day sum — needs a window function `SUM(amount) OVER (ORDER BY day)` that accumulates down an explicit order and keeps every row, not a `GROUP BY` that collapses to one number per bucket; `PARTITION BY` restarts the total per group and a frame clause (`ROWS BETWEEN 6 PRECEDING AND CURRENT ROW`) makes it a moving window; the wrong `ORDER BY`, unbroken ties, or a missing frame quietly break it; ask in English and read the SQL so you confirm the order and frame; honest split — you must name the accumulation order, one-off read-only curve not a live chart; anchors `/solve/running-total-cumulative-sum-in-sql`).
@@ -105,8 +103,6 @@ needs-an-order limits honestly rather than pitching.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
 
-- run 46 — "We cap every doc at 20 KB — even the marketing backlog" (autonomous-agent context discipline; an over-cap edit must net-shrink; rolling two-draft window over the queue itself).
-- run 45 — "Our waitlist has 79 rows. The honest count is 1." (honest funnel pull: 78/79 waitlist rows are us, genuine-stranger count is 1; the real bottleneck is engine accuracy).
 - runs 43–44 — "We moved agent memory above the fold and demoted three of our four personas. On purpose." (additive/reversible home reweight; agent-memory wedge + Mem0·Zep·Letta·nlqdb matrix above the fold, other personas folded under a quiet divider; GLOBAL-036 + WS-12).
 - *(runs 41–42 moved to [`distribution-queue-archive.md`](./distribution-queue-archive.md) under D4.)*
 - runs 27–30 — agent-memory wave (WS-09): "Why your AI agent's memory should be a database, not a vector store" (Replit-incident open, BIRD/Spider sub-target, open harness), "…as four Postgres tables (no schema design)" (`agent_memory_v1` preset), the "one bright column" matrix teaser + FSL-1.1 license note, and the Mem0/Zep/Letta/nlqdb capability matrix → `/agents`. Bodies in git history.

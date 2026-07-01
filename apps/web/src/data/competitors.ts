@@ -143,6 +143,128 @@ export const COMPETITORS: Competitor[] = [
     },
   },
   {
+    slug: "neon",
+    name: "Neon",
+    url: "https://neon.com",
+    // P1 marquee — the other "scariest direct P1 competitor" alongside
+    // Supabase (docs/competitors.md §1 + Gap analysis). Facts web-verified
+    // 2026-07-01 (neon.com/pricing + neon.com/docs/ai/neon-mcp-server +
+    // github.com/neondatabase/mcp-server-neon): serverless Postgres with
+    // instant copy-on-write branching + scale-to-zero; free plan = 100
+    // CU-hours/project/mo, 0.5 GB/project, up to 100 projects, no card;
+    // Launch tier pay-as-you-go, no minimum (the $5 min
+    // was removed), autoscale to 16 CU, 10 branches included ($1.50/extra
+    // branch-month), storage $0.35/GB-mo. IMPORTANT honesty correction:
+    // Neon ships a very capable OFFICIAL MCP server (remote mcp.neon.tech,
+    // OAuth 2.0, ~20 tools; the npm stdio CLI was deprecated Feb 2026) that
+    // lets an AI coding agent create projects, branch, run + verify
+    // migrations (prepare_database_migration → copy-on-write branch → verify
+    // → complete_database_migration), tune queries, and execute SQL in plain
+    // English. So the stale "no MCP server / no NL" framing is wrong — the
+    // real wedge is JOB, not capability: Neon's NL is DEV-TIME database
+    // administration driven by a coding agent; nlqdb's NL is a PRODUCT
+    // RUNTIME answer surface — one `<nlq-data>` element / `/v1/ask` that
+    // answers an end-user's English question inline, with the compiled SQL
+    // shown, fail-closed allow-list validation on every query, writes
+    // diff-previewed, and an anonymous try-before-sign-in. Neon owns the
+    // best-in-class Postgres platform (branching, scale-to-zero, pooling,
+    // replicas, PITR); nlqdb owns the query runtime on top of Postgres.
+    tagline:
+      "Serverless Postgres with instant Git-like branching, scale-to-zero compute, and an official MCP server for AI coding agents.",
+    persona: "P1 solo builder",
+    oneLiner:
+      "Pick Neon if you want best-in-class serverless Postgres — instant branching, scale-to-zero, and an AI coding agent that manages the database for you. Pick nlqdb if you want the answer itself: one HTML element that turns an English question into validated SQL, in your product, for your users.",
+    whenChooseUs: [
+      "You want one HTML element (`<nlq-data>`) that answers an English question inside your product.",
+      "You want the compiled SQL shown and validated fail-closed on every runtime query.",
+      "You want destructive writes and migrations diff-previewed before they apply.",
+      "Anonymous visitors should try a query before signing in, no setup needed.",
+    ],
+    whenChooseThem: [
+      "You want raw serverless Postgres with instant branching and scale-to-zero.",
+      "Your team writes its own SQL and prefers a console over a chat box.",
+      "You need Git-like database branches for CI, previews, and safe migrations.",
+      "An AI coding agent should manage your database at dev time (projects, branches, tuning).",
+    ],
+    features: [
+      {
+        feature: "In-product NL answer element (`<nlq-data>`)",
+        us: "shipped",
+        them: "no",
+        note: "Neon's natural language lives in an AI coding agent via MCP (dev-time DB management); it ships no runtime element answering an end-user question inside your app.",
+      },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "shipped",
+        note: "Neon's MCP server executes SQL + migrations from English inside a coding agent; nlqdb compiles NL→SQL as a product runtime with the compiled SQL shown.",
+      },
+      {
+        feature: "Compiled SQL shown + fail-closed allow-list on every query",
+        us: "shipped",
+        them: "partial",
+        note: "Neon verifies migrations on a copy-on-write branch before merge; nlqdb validates every runtime query against an allow-list fail-closed and shows the compiled SQL.",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "partial",
+        note: "Neon's prepare/complete-migration flow verifies on a branch first; nlqdb diff-previews the write or DDL itself before it applies.",
+      },
+      {
+        feature: "Git-like database branching (copy-on-write)",
+        us: "no",
+        them: "shipped",
+        note: "Instant branching + scale-to-zero are Neon's core primitive; nlqdb provisions a single Postgres per database and exposes no branching today.",
+      },
+      {
+        feature: "Scale-to-zero serverless compute + autoscaling",
+        us: "partial",
+        them: "shipped",
+        note: "Neon separates storage from compute and scales to zero; nlqdb runs on managed Postgres without exposing autoscaling knobs.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "shipped",
+        note: "Neon's remote MCP (mcp.neon.tech, OAuth) exposes ~20 DB-management tools; nlqdb's `nlqdb_query` materialises Postgres on first reference and answers in SQL.",
+      },
+      { feature: "Anonymous mode (try before sign-in)", us: "shipped", them: "no" },
+      {
+        feature: "Connection pooling, read replicas, point-in-time restore",
+        us: "no",
+        them: "shipped",
+        note: "Neon is a mature managed-Postgres platform; nlqdb is a natural-language query runtime on top of Postgres, not a DB-ops console.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Neon has an official MCP server too — how is nlqdb's different?",
+        a: "Neon's MCP server (mcp.neon.tech) drives an AI coding agent to manage the database at dev time — create projects, branch, run and verify migrations, tune queries. nlqdb's MCP exposes `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe`; `nlqdb_query` materialises Postgres on first reference and returns the answer in SQL, so the tool answers a question rather than administering the database.",
+      },
+      {
+        q: "Can I keep my Neon database and use nlqdb just for the NL queries?",
+        a: "Not yet — nlqdb provisions and owns the Postgres it queries, and bring-your-own-connection is on the roadmap, not shipped. If you already run Neon and want NL over it today, Neon's own MCP server or a text-to-SQL layer like Vanna is the right shape. Use nlqdb when you want the answer element embedded in your product.",
+      },
+      {
+        q: "Does nlqdb give me database branching like Neon?",
+        a: "No. Instant copy-on-write branching and scale-to-zero are Neon's core primitives, and nlqdb exposes neither today. nlqdb provisions a single Postgres per database and focuses on the query runtime — the compiled SQL shown, fail-closed validation, and diff-previewed writes. If Git-like branches for CI and previews are central, Neon wins.",
+      },
+      {
+        q: "What's the pricing model versus Neon's free and Launch tiers?",
+        a: "Neon's free plan gives 100 CU-hours per project per month and 0.5 GB per project across up to 100 projects, no card; its Launch tier is pay-as-you-go with no minimum. nlqdb's free chain (Groq → Gemini) is rate-limited per principal with BYO-LLM at 0% markup; hosted premium adds a flat sub with an allowance. Until monetization ships, everything is free.",
+      },
+      {
+        q: "Can my AI agent provision a database with nlqdb the way it can with Neon's MCP?",
+        a: "Both can. Neon's MCP stands up a Neon project from your coding agent; nlqdb's `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, with no separate create step. The difference is what happens next — Neon's tools manage the database, while nlqdb's answer an English question in SQL and diff-preview any write.",
+      },
+    ],
+    demo: {
+      goal: "signups per week for the last 8 weeks",
+      why: "The dashboard query you'd hand-write in Neon's SQL editor; nlqdb answers the English goal inline in one `<nlq-data>` element, SQL shown.",
+    },
+  },
+  {
     slug: "vanna",
     name: "Vanna AI",
     url: "https://vanna.ai",
