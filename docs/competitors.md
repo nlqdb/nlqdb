@@ -8,10 +8,10 @@ A scan of the products nlqdb competes with, directly or adjacently, organized by
 
 These are what a solo builder (P1) reaches for today. They solve provisioning and ops but leave the NL / admin-UI / agent layer as an exercise for the user.
 
-### Neon — https://neon.tech
-Serverless Postgres with Git-like branching and scale-to-zero. Generous free tier; Launch tier ~$19/mo. Strong developer brand.
+### Neon — https://neon.com
+Serverless Postgres with instant copy-on-write branching and scale-to-zero. Free plan: 100 compute-hours/mo, 0.5 GB/project (5 GB aggregate across up to 10 projects), no card. Launch tier is pay-as-you-go with no minimum (the $5 min was removed). Strong developer brand; ships an **official MCP server** (remote `mcp.neon.tech`, OAuth, ~20 tools) that manages Postgres from an AI coding agent in English. The `/vs/neon` page ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is canonical.
 - **Overlaps with:** P1 (the DB URL), P2 (per-agent branches as ephemeral DBs).
-- **Gap nlqdb exploits:** No native NL layer, no MCP server, no conversational migrations; branching is for humans in CI, not agents at runtime. **Threat vector:** Brand + serverless economics — swapping is friction for a dev already on Neon.
+- **Gap nlqdb exploits:** Neon's NL/MCP is *dev-time database administration* — a coding agent creates projects, branches, and prepares/verifies/completes migrations against the DB. It ships no *runtime* answer element for end users: no `<nlq-data>` embed, no compiled SQL shown to the asker, no fail-closed allow-list on every query, no anonymous try. **Threat vector:** **High** — the scariest direct P1 competitor alongside Supabase; brand + serverless economics + a genuinely strong dev-time MCP mean swapping is friction for a dev already on Neon.
 
 ### Supabase — https://supabase.com
 Postgres + auth + storage + edge functions + a Studio UI. Free tier + Pro at $25/mo. The default "batteries-included" pick for solo builders.
@@ -186,7 +186,7 @@ Adjacent DIY components: LlamaIndex's SQL query engine (like LangChain's), Defog
 | Competitor | Category | Closest nlqdb persona | Primary threat vector |
 |---|---|---|---|
 | Supabase | Managed PG | P1 | Full BaaS with Studio UI + brand inertia |
-| Neon | Managed PG | P1, P2 | Serverless scale + branching for ephemeral agent DBs |
+| Neon | Managed PG | P1, P2 | Serverless scale + branching + official dev-time MCP; scariest P1 alongside Supabase |
 | Outerbase | AI admin | P1, P4 | AI-native admin UI on Cloudflare's stack (2025-04-07 acquisition) |
 | Retool (+ Retool AI) | Internal tools | P4 | Already installed; distribution moat |
 | Mem0 | Agent memory | P2 | Purpose-built agent memory; lighter weight |
@@ -222,4 +222,4 @@ The scariest threats: (a) Supabase adding a first-class NL + agent story, and (b
 
 ---
 
-*Last verified: 2026-07-01 (§6 LlamaIndex; §4 MindsDB 2026-06-30). Pricing, URLs, and acquisitions change — re-check quarterly, especially §1/§3/§4 where consolidation and funding move fastest.*
+*Last verified: 2026-07-01 (§1 Neon — pricing + official MCP server; §6 LlamaIndex; §4 MindsDB 2026-06-30). Pricing, URLs, and acquisitions change — re-check quarterly, especially §1/§3/§4 where consolidation and funding move fastest.*
