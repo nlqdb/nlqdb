@@ -54,6 +54,6 @@ now 60 after run 129's `/solve/calculate-percentage-of-total-in-sql`) rather tha
 the lagging strangers metric no single run can move. Trimmed
 `blocked-by-human.md` to genuine human actions: Stripe auto-deploys on merge (not
 a click); `OPENROUTER_FRONTIER_API_KEY` + `BYO_SECRET_KEK` now flow through the
-secret mirror (one `mirror-secrets-gha.sh` run); `MEMORY_PRESET` is an E-03
-sequencing gate, not a founder click; legal → free Termly path.
+secret mirror (one `mirror-secrets-gha.sh` run); legal → free Termly path.
+`MEMORY_PRESET=1` prod flip kept (E-06's named founder prerequisite).
 **KPI:** GLOBAL-025 onboarding/UX; none degraded.

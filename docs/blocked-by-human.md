@@ -9,9 +9,10 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
 
 ## Human actions (clicks, secrets, legal)
 
-- **Run `scripts/mirror-secrets-gha.sh` once** (from your machine — needs your `gh` repo-admin auth, which agents don't have). This is the only remaining step for two now-wired secrets; deploys then mirror them to the prod Worker on the next merge to `main`:
-  - `OPENROUTER_FRONTIER_API_KEY` — the mirror now defaults it to your `OPENROUTER_API_KEY` (same paid OpenRouter account), so the **free-vs-frontier delta** (GLOBAL-025 headline KPI, scorecard row 9) lands on the next `include_frontier=true` eval dispatch. No separate key to buy.
-  - `BYO_SECRET_KEK` — the BYO-connect envelope key (GLOBAL-031). Ensure it's in `.envrc` first (generate: `openssl rand -base64 32`); once mirrored, `/v1/db/connect` stops returning 503 `sealing_unconfigured`.
+- **Run `scripts/mirror-secrets-gha.sh` once** (from your machine — needs your `gh` repo-admin auth, which agents don't have). This is the only remaining step for two now-wired secrets:
+  - `OPENROUTER_FRONTIER_API_KEY` — eval-CI only (never a Worker secret); the mirror now defaults it to your `OPENROUTER_API_KEY` (same paid OpenRouter account), so the **free-vs-frontier delta** (GLOBAL-025 headline KPI, scorecard row 9) lands on the next `include_frontier=true` eval dispatch. No separate key to buy.
+  - `BYO_SECRET_KEK` — the BYO-connect envelope key (GLOBAL-031). Ensure it's in `.envrc` first (generate: `openssl rand -base64 32`); it then mirrors to the prod Worker on the next merge to `main`, and `/v1/db/connect` stops returning 503 `sealing_unconfigured`.
+- **Enable `MEMORY_PRESET=1` on the prod API Worker to unblock E-06.** The preset create path (`POST /v1/databases { preset: "agent_memory_v1" }`) is flag-gated and **dark in prod** — every preset call 400s `preset_disabled`. E-06's authed on-ramp names this flag flip as its founder prerequisite (`worksheets/engine/E-06-*.md`). Flip it (then `deploy-api.yml`), roll back by clearing the var.
 - **Final legal copy for `/privacy` + `/terms` — free, no lawyer, no subscription.** The live pages (`apps/web/src/pages/{privacy,terms}.astro`) are **pre-alpha drafts**. Use **Termly's free tier** (`termly.io`) — a short-form questionnaire that outputs a GDPR + CCPA privacy policy and **discloses our LLM/cloud subprocessors** (built-in vendor checklist + a custom-vendor field) at $0; generate the Terms of Service free from **TermsFeed's** base T&C. You decide only: real legal entity name, jurisdiction / governing law, and retention period — then an agent wires the generated copy + subprocessor list into the two pages.
 
 ## Suggestions needing approval (to amend the guidelines)
