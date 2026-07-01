@@ -26,9 +26,8 @@
   tagline, `README` H1, `llms.txt` lede, `SoftwareApplication` JSON-LD
   description) was sequenced **last and founder-gated**; the founder
   **tripped that gate on 2026-06-24** (SK-PIVOT-013 in the feature doc), so
-  all four lead strings now lead with the wedge. Every prior slice shipped
-  **additively**, so the reposition reverts in a single `git revert` if the
-  funnel doesn't follow.
+  all four lead strings now lead with the wedge. **Founder-resolved
+  2026-07-01: the reposition is permanent** — forward iteration only.
 
 - **Core value:** Goal-first, Creative, Free, Open source, Honest latency
 
@@ -62,7 +61,8 @@
     (`SK-SOLVE-*`), demand-signal on every CTA (`GLOBAL-024`), analytics via
     `GLOBAL-034`. New competitors are anchored in `docs/competitors.md`
     before their page ships.
-  - The wedge feeds the **waitlist** as a demand signal alongside the open
+  - Wedge conversion = **a registered user reaching a first answer**; wedge
+    CTAs emit typed demand-signal events (`GLOBAL-024`) alongside the open
     product. Messaging ships; the engine bar is not re-escalated.
   - The headline reposition (WS-13) was the single founder-gated worksheet
     (last in the sequence). **Tripped 2026-06-24 — see SK-PIVOT-013.** The
@@ -109,9 +109,10 @@
   core. This GLOBAL leans on it for the anti-VC angle, and corrects its
   stale "Apache-2.0 today" wording to the accurate FSL-1.1→Apache shape.
 - [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md) — every new wedge
-  CTA emits the typed demand-signal event (the waitlist is the conversion).
+  CTA emits the typed demand-signal event (wedge conversion = a registered
+  user reaching a first answer).
 - [`GLOBAL-025`](./GLOBAL-025-north-star.md) — KPI advanced is **onboarding**
-  (a sharper wedge lifts landing→waitlist conversion) and **UX** (clearer
+  (a sharper wedge lifts landing→first-answer conversion) and **UX** (clearer
   story); **engine quality and performance are untouched** by messaging work.
 - [`GLOBAL-033`](./GLOBAL-033-resolution-defaults.md) — the three strategy
   bets this GLOBAL encodes (pivot intensity, open/free framing, fate of the

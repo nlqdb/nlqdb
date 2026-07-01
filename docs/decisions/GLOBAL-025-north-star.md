@@ -24,7 +24,7 @@
      came back wrong" — so they share the pillar even though the
      subsystems are different. KPIs for both live in the table below.
   2. **Seamless onboarding** — a stranger reaches first answer in
-     ≤ 60 s with no config. Measured by TTFV p50/p95, first-query
+     ≤ 60 s with no config. Measured by TTFV p50/p95, first-10-queries
      success rate, and the unguided user-test pass-rate already in
      [`phase-plan.md` §2 exit gate](../phase-plan.md).
   3. **Seamless UX** — once on-ramp lands, every subsequent
@@ -176,7 +176,7 @@ complete and the docs commit to measuring them when the slices land.
 |---|---|---|---|---|---|
 | TTFV — median seconds, landing → first answer | tbd-by-2026-06-01 | ≤ 60 s | ≤ 30 s | +10 s wk/wk | `onboarding` |
 | TTFV — p95 seconds, landing → first answer | tbd | ≤ 120 s | ≤ 60 s | +20 s wk/wk | `onboarding` |
-| First-query success rate (correct answer to first NL question) | tbd | ≥ 70% | ≥ 85% | −5 pts wk/wk | `onboarding` |
+| First-10-queries success rate (per new user/DB, share of their first 10 `/v1/ask` calls answered successfully — 2xx, non-refused) | unmeasured — instrument shipped 2026-07-01, awaiting data | ≥ 95% | ≥ 95% | −5 pts wk/wk | `onboarding` |
 | Unguided user-test pass rate (4/5 strangers complete the 60s flow) | per Phase 1 gate | 4/5 | 5/5 | regression blocks rollover | `onboarding` |
 | Drop-off rate landing → first query | tbd | ≤ 25% | ≤ 15% | +5 pts wk/wk | `onboarding` |
 
@@ -211,7 +211,9 @@ headline user-visible numbers from `architecture.md §0`.
   and UX KPIs come from the existing event pipeline (`packages/events`,
   see [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md)) plus
   the `nlqdb.surface` label introduced in
-  [`phase-plan.md` §3](../phase-plan.md). Sean-Ellis is a manual
+  [`phase-plan.md` §3](../phase-plan.md); the first-10-queries KPI
+  reads from the D1 `first10_*` counters
+  (`SK-ONBOARD-006` in [`onboarding`](../features/onboarding/FEATURE.md)). Sean-Ellis is a manual
   monthly cadence per
   [`founder-playbook.md` §2](../founder-playbook.md).
 - **Where the dashboard lives.** Grafana board

@@ -1145,6 +1145,31 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       );
     };
 
+    // SK-ONBOARD-006 — first-10-queries success counter (the GLOBAL-025
+    // onboarding KPI). Every routed /v1/ask completion — ok or error —
+    // bumps the DB row's saturating `first10_asks` counter until it
+    // reaches 10; `first10_ok` counts the successful subset
+    // (orchestrator ok = 2xx, non-refused; confirm previews included).
+    // Fire-and-forget like the last-queried touch — never on the
+    // user-visible latency path.
+    const bumpFirst10 = (ok: boolean): void => {
+      c.executionCtx.waitUntil(
+        c.env.DB.prepare(
+          "UPDATE databases SET first10_asks = first10_asks + 1, first10_ok = first10_ok + ? WHERE id = ? AND tenant_id = ? AND first10_asks < 10",
+        )
+          .bind(ok ? 1 : 0, resolvedDbId, principal.id)
+          .run()
+          .catch((err: unknown) => {
+            console.error(
+              JSON.stringify({
+                msg: "first10_bump_failed",
+                message: err instanceof Error ? err.message : String(err),
+              }),
+            );
+          }),
+      );
+    };
+
     if (wantsSse) {
       return streamSSE(c, async (stream) => {
         try {
@@ -1174,12 +1199,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               surface,
               outcome.error,
             );
+            bumpFirst10(false);
           } else {
             // Detach the ask.completed producer so the queue.send
             // round-trip runs after the SSE stream closes (PERFORMANCE
             // §3.1 — the emit is `ctx.waitUntil`-wrapped, never on the
             // user-visible path).
             c.executionCtx.waitUntil(outcome.pendingAskCompleted);
+            bumpFirst10(true);
             // SK-TRUST-001 — preview hop didn't exec; skip the anon
             // cap commit (SK-ANON-012) and `last_queried_at` bump so
             // the confirm hop can still land. The cap commits when
@@ -1221,12 +1248,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           surface,
           outcome.error,
         );
+        bumpFirst10(false);
         return c.json({ error: outcome.error }, httpStatus);
       }
       // Detach the ask.completed producer so queue.send runs in
       // ctx.waitUntil after the response flushes — keeps /v1/ask p99
       // off the queue producer round-trip (PERFORMANCE §3.1).
       c.executionCtx.waitUntil(outcome.pendingAskCompleted);
+      bumpFirst10(true);
       // SK-TRUST-001 — preview hop didn't exec; skip the anon cap
       // commit + `last_queried_at` bump so the confirm hop can still
       // land. Same logic as the SSE branch above.

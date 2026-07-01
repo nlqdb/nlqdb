@@ -40,7 +40,8 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 6. **Prompt drift.** Dangling references (decision IDs with no canonical
    file, paths that no longer exist), dead rules, and contradictions in
    `daily.md` and this file — the GLOBAL-027 case (cited everywhere,
-   canonical file missing) is the archetype.
+   canonical file missing until its superseded record landed 2026-07-01)
+   is the archetype.
 
 ## Outputs (one PR)
 

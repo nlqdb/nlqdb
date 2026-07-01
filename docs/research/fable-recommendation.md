@@ -13,8 +13,7 @@ Your machine works. Your compass is broken — in one specific, fixable place.
    BIRD/Spider thresholds stay as a public progress bar, not a lock. The
    bottleneck is traffic and engine quality, not access.
 2. **The company has zero external contact, measured.** Production D1 today:
-   7 users (you ×3 + 4 test accounts), 66 waitlist rows of which 62 are your own
-   stranger-test bots, 3 are probes, and 1 is you. Web analytics are unreadable
+   7 users (you ×3 + 4 test accounts), 0 external. Web analytics are unreadable
    (the API token lacks the analytics scope). The only feedback nlqdb has ever
    received is from itself.
 3. **The quality loop is open, not closed.** 12 planner levers (SK-LLM-023…035)
@@ -36,7 +35,6 @@ and distributing*. Status checklist in §8; the operating loop in §9.
 |---|---|---|
 | Company age | ~7 weeks (CF account 2026-04-24) | Cloudflare API |
 | Real registered users | **0 external** (7 rows: founder + tests) | D1 `user` table |
-| Real waitlist signups | **0 external** (66 rows: 62 bots, 3 probes, founder) | D1 `waitlist` table |
 | BIRD-dev EX (free chain) | 0.35 (lower bound, 1 run, 2026-06-09; re-seeded **0.522** by the 2026-06-12 canonical 6-provider run) | `tools/eval/baseline-2026-06-15.json` |
 | Spider 2.0-lite EX (free chain) | 0.12 (re-seeded **0.1704**, 2026-06-12 — still far below the 0.75 target) | same |
 | Engine-quality thresholds | BIRD ≥ 0.65 AND Spider ≥ 0.75 | GLOBAL-025 |
@@ -100,10 +98,10 @@ Three problems:
 |---|---|---|---|
 | 1 | **Scorecard** | Pull eval results, D1 counts, CF analytics, LogSnag → regenerate `docs/scorecard.md` (current-state tracker, no changelog) → flag the worst number | all (read-only) |
 | 2 | **Eval loop** | Pick ONE lever → run mini-eval (fixed 60-q slice) before/after → merge only if Δ ≥ 0, else revert + record | persona-bench %, BIRD % |
-| 3 | **Distribution** | Produce one publishable artifact/day: Show-HN draft, dev.to post, answer to a real SO/Reddit thread, comparison-page improvement, directory submission. Queue in `docs/research/distribution-queue.md`; founder reviews weekly | external visits, real waitlist rows |
+| 3 | **Distribution** | Produce one publishable artifact/day: Show-HN draft, dev.to post, answer to a real SO/Reddit thread, comparison-page improvement, directory submission. Queue in `docs/research/distribution-queue.md`; founder reviews weekly | external visits, registered strangers |
 | 4 | **User evidence** | ICP mining toward the ≥30-quote bar; draft (not send) outreach to authors of mined pain-quotes; in-product Sean Ellis survey slice | scored quotes, survey responses |
 | 5 | **Stranger test** | Keep as-is — it's genuinely good — plus: alert when a *real* (non-bot) email enters the funnel | funnel pass-rate |
-| 6 | **Feature** | One lane, demand-ordered: finish BYO Postgres end-to-end before ClickHouse/OTel; billing lane frozen until first "how do I pay" | TTFV, first-query success |
+| 6 | **Feature** | One lane, demand-ordered: finish BYO Postgres end-to-end before ClickHouse/OTel; billing lane frozen until first "how do I pay" | TTFV, first-10-queries success |
 | 7 | **Review/merge** | Keep, plus enforce: a PR that names no measured KPI delta in its body doesn't merge | gate on all of the above |
 
 **Prompt pattern for every lane** (this is the rethink you asked about):
@@ -147,9 +145,9 @@ tracker, a quality source-of-truth, and now.md. Nothing aggregates.
 **Recommendation R3 — `docs/scorecard.md`, regenerated daily by agent #1:**
 one page, one table, committed (so trends live in git history):
 
-- Funnel: visits → query attempts → first-answer successes → real waitlist
-  rows → activated users → returning users (all *bot-excluded*; the synthetic
-  stranger-test traffic must be filtered or it poisons every number).
+- Funnel: visits → query attempts → first-answer successes → registered
+  strangers → activated users → returning users (all *bot-excluded*; the
+  synthetic stranger-test traffic must be filtered or it poisons every number).
 - Engine: persona-bench %, BIRD %, Spider %, free-vs-frontier delta, with the
   date last measured (a stale date is itself an alert).
 - Ops: p50/p95 ask latency, error rate, $ spend (should be ~0).
@@ -202,8 +200,6 @@ the missing half.
 
 Cheap techniques you haven't used (all async, $0, agent-runnable):
 
-- **Fake-door / smoke tests:** the waitlist already is one — but it has never
-  been exposed to traffic. Publishing (§4) is the missing half.
 - **Launch-platform comments as interviews:** every Show-HN reply is a free
   user interview; agents can cluster and grade them like ICP quotes.
 - **Public-repo signal:** GLOBAL-019 says Apache-2 open core — if the repo

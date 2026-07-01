@@ -143,7 +143,7 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 **Status:** superseded — the three-beat IA on `/` by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) (two-door home), and the quiet-brutalism **token system by [`SK-WEB-020`](./decisions/SK-WEB-020-calm-token-system.md)** (the calm system), site-wide.
 
 **Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md).
-One quiet-brutalism token system in `global.css` (neutrals + one accent gated to three lime moments per fold, three faces, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero) → HOW (`Demo.astro` live `/v1/ask` + snippet) → WHY (`Replaces.astro` + one CTA). Off-`/` blocks (`AgentMemoryBand`, `Waitlist`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt`) removed; `/vs/*` and `/solve/*` collapse to one what-we-replace template; one motion moment per page, `prefers-reduced-motion`-gated.
+One quiet-brutalism token system in `global.css` (neutrals + one accent gated to three lime moments per fold, three faces, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero) → HOW (`Demo.astro` live `/v1/ask` + snippet) → WHY (`Replaces.astro` + one CTA). Off-`/` blocks (`AgentMemoryBand`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt`) removed; `/vs/*` and `/solve/*` collapse to one what-we-replace template; one motion moment per page, `prefers-reduced-motion`-gated.
 
 ### SK-WEB-016 — One-click MCP install affordance: shared `<McpInstall>` at five venues, deep-link where supported
 

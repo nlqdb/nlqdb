@@ -12,7 +12,7 @@ do I run reports over what my agent remembered").
 
 ## Scorecard number it moves
 
-Funnel / distribution: sharper AEO pain pages → landing → waitlist. `Pivot:`
+Funnel / distribution: sharper AEO pain pages → landing → first answer. `Pivot:`
 line `+1 solve page`.
 
 ## Read first

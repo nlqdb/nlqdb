@@ -109,7 +109,7 @@ export const GET: APIRoute = () => {
     `\n\n## Optional\n\n` +
     OPTIONAL_LINKS.map((l) => `- [${l.title}](${url(l.path)}): ${l.desc}`).join("\n") +
     `\n\n## Status\n\n` +
-    `Pre-alpha, open — start anonymously, no invite needed. Phase 0 shipped; Phase 1 onboarding in progress.\n` +
+    `Pre-beta, open — start anonymously. Phase 0 shipped; Phase 1 onboarding in progress.\n` +
     `Free chain forever (BYO-LLM at 0% markup). Source is private until general\n` +
     `availability; SDKs and elements will be open source.\n\n` +
     `## Contact\n\n` +

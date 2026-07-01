@@ -15,8 +15,7 @@
 - **Why:** WS-13 was the founder-gated final slice. The founder tripped the
   gate on 2026-06-24: the wedge content (`/agents`, the capability matrix, 10
   memory `/vs` pages, the live demo) is all live, so the brand bet is backed by
-  real surface and reverts in a single `git revert` because every prior slice
-  shipped additively. Leading on the true moat — analytical SQL over structured
+  real surface. Leading on the true moat — analytical SQL over structured
   memory + the typed-plan trust boundary, reached over MCP — focuses the brand
   on the one adjacent category the funded incumbents can't enter without
   rebuilding their storage layer.
@@ -29,9 +28,8 @@
   `nlq mcp install`, naming Claude / Cursor / Codex), demoting the generalist
   `/app/new` "try a goal" path to a secondary link — the agent-builder's real
   next action is connecting a host, not typing into a web form.
-- **Alternatives rejected:** Keep the gate closed until wedge-sourced waitlist
-  rows are non-zero (the open-question default) — founder overrode it
-  2026-06-24, judging the built wedge surface sufficient and the revert cost one
-  commit. · Swap only the hero, leave README/llms.txt/JSON-LD generalist —
+- **Alternatives rejected:** Keep the gate closed until the wedge showed
+  non-zero conversions (the open-question default) — founder overrode it
+  2026-06-24, judging the built wedge surface sufficient. · Swap only the hero, leave README/llms.txt/JSON-LD generalist —
   leaves the brand half-repositioned and inconsistent across the very surfaces
   crawlers and agents read.

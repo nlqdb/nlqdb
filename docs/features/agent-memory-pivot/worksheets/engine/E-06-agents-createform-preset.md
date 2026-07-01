@@ -23,7 +23,7 @@ is infeasible across **three independent authentication boundaries**:
 
 Reworking CreateForm to ride the session cookie would break SK-ANON-008; an
 anon preset endpoint would "open the product" against the pivot's
-waitlist-feed rule. So the on-ramp belongs on the **authed** create surface.
+authed-on-ramp rule. So the on-ramp belongs on the **authed** create surface.
 
 ## Goal (redirected)
 

@@ -20,7 +20,7 @@ live code, never an image of a UI. (SK-PIVOT-004.)
 | Surface | File:line | Current (verbatim) | Target direction | WS | Lead-string? |
 |---|---|---|---|---|---|
 | Home hero lede | `apps/web/src/components/Hero.astro:24-28` | "Natural-language databases. Create one in a word. Query it in English…" | Unchanged until WS-13. Agent-memory enters via a reweighted section order + a new band, not the wordmark. | 12 | ⚠️ lead — gated to 13 |
-| Home section order | `apps/web/src/pages/index.astro:22-31` | Hero → Carousel → Waitlist → CodePanel → Replaces → Receipts → Manifesto | Insert an agent-memory band (matrix teaser + `/agents` CTA) high; demote multi-persona content into an "also works for…" fold. | 12 | no |
+| Home section order | `apps/web/src/pages/index.astro:22-31` | Hero → Carousel → CodePanel → Replaces → Receipts → Manifesto | Insert an agent-memory band (matrix teaser + `/agents` CTA) high; demote multi-persona content into an "also works for…" fold. | 12 | no |
 | Carousel slides | `apps/web/src/data/showcase-examples.ts` (20 slides; agent-memory at L325) | 1 of 20 is agent-memory ("last 6 turns across all my agent threads") | Add 1–2 slides showing **analytics over** agent memory (`GROUP BY`, aggregation) — the wedge, not just recall. | 05 | no |
 | Create form | `apps/web/src/components/CreateForm.tsx:149,167` | H1 "Spin up a database from a sentence." · placeholder "an orders tracker" | On `/agents`, an agent-memory variant placeholder (e.g. "what my agent remembered about each user, this week"). Home unchanged. | 07 | no |
 | `/vs` pages | `apps/web/src/data/competitors.ts` (6: supabase, vanna, **mem0**, outerbase, wrenai, askyourdatabase) | Only Mem0 is a memory competitor | Add Zep, Letta, LangMem (P2). Keep the rest (demoted in nav, not deleted). | 01, 02 | no |
@@ -71,4 +71,4 @@ worksheet allowed to change them. **The founder tripped the gate on
 
 The generalist umbrella stays one click away (hero `<CreateForm>` input,
 `AlsoWorksFor` fold, off-wedge `/vs`/`/solve` pages) — the GLOBAL-036 dual
-front door survives. Revert = `git revert` the lead-string commit.
+front door survives.

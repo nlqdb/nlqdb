@@ -1,8 +1,7 @@
 # Agents Guide — nlqdb
 
-Index for any agent (Claude Code, cold subagents, or human) editing this repo.
-Read fully **before** the first edit. Per-area `AGENTS.md` files
-narrow this guide to the directory you're working in.
+Index for any agent editing this repo. Read fully **before** the first
+edit. Per-area `AGENTS.md` files narrow this guide to their directory.
 
 ## 1. What nlqdb is
 
@@ -10,8 +9,7 @@ narrow this guide to the directory you're working in.
 
 You write HTML. Each component asks for what it wants in plain English.
 nlqdb answers. The full pitch and architecture are in
-[`docs/architecture.md`](docs/architecture.md). Design-partner research is in
-[`docs/runbook.md §10`](docs/runbook.md).
+[`docs/architecture.md`](docs/architecture.md).
 
 **Active focus → [`docs/scorecard.md`](docs/scorecard.md)** — current priorities
 (worst number + weekly focus), regenerated daily by [`/daily`](.claude/commands/daily.md); read first.
@@ -23,16 +21,14 @@ Four pillars per
 quality** (NL→SQL + multi-engine), **onboarding**, **UX**,
 **performance**. Every PR advances ≥ 1 AND degrades 0 — name the
 KPI in the PR body. The bet: **great on free LLMs ⇒ invincible on
-frontier LLMs** — scaffolding compounds with the model. LLM strategy per
-[`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md):
-free chain forever · BYOLLM every tier (0% markup) · hosted premium
-on paid (flat sub + allowance + overage; §6-gated).
-[`quality-eval`](docs/features/quality-eval/FEATURE.md) → Phase 2;
-free-vs-frontier delta = headline KPI.
+frontier LLMs** — scaffolding compounds with the model; LLM strategy per
+[`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
+Free-vs-frontier delta = headline KPI
+([`quality-eval`](docs/features/quality-eval/FEATURE.md)).
 
 ## 2. Five behavioral principles (non-negotiable)
 
-Apply these to every edit, regardless of what the user has asked for.
+Apply to every edit, whatever the user asked for.
 
 ### P1. Never contradict documented decisions silently
 
@@ -75,10 +71,6 @@ When a decision changes:
 - New GLOBALs / SK-IDs land in their canonical home before any code
   change that depends on them. New GLOBALs also add a row to the
   `docs/decisions.md` index.
-
-To find every feature affected by a GLOBAL:
-`grep -rn 'GLOBAL-NNN' docs/features/`. To find every doc that
-references it: `grep -rn 'GLOBAL-NNN' docs/`.
 
 ### P4. Four documentation rules
 
@@ -261,10 +253,9 @@ Per-package commands are in each area's `AGENTS.md`.
 
 ## 9. When in doubt
 
-- Read the relevant `FEATURE.md` first.
-- Then the per-GLOBAL file under `docs/decisions/` for any cited
-  `GLOBAL-NNN` (the index in `docs/decisions.md` links to each).
-- Then ask the user. Don't guess across a documented decision.
+Read the relevant `FEATURE.md` first, then the cited `GLOBAL-NNN` file
+under `docs/decisions/` (indexed in `docs/decisions.md`), then ask the
+user. Don't guess across a documented decision.
 
 ## 10. Workflow — features and bug fixes
 
@@ -275,9 +266,8 @@ Touch path X
   → §5 path map → the FEATURE.md name; read it fully (incl. its GLOBALs)
   → do the work
   → new decision? apply P4, then add SK-<PREFIX>-NNN (or promote to GLOBAL)
-  → changed a GLOBAL? edit its docs/decisions/ file + affected features (P3)
   → ambiguity / unfamiliar error? web-search, cite sources (P2)
-  → contradicts a decision? STOP, raise with the ID (P1)
+  → contradicts a decision? STOP, raise with the ID (P1); supersede per P3
   → run the §8 quality gates before the PR
 ```
 
@@ -289,22 +279,24 @@ Touch path X
 | Crosses several features | Add SK-* blocks in each affected feature, with cross-refs between them. |
 | Genuinely new (no feature covers it) | Create `docs/features/<feature>/FEATURE.md` from the [`docs/feature-conventions.md`](docs/feature-conventions.md) §3 template. Add the path-glob row to §5 above. Reserve the `SK-<PREFIX>-NNN` prefix (kebab-case → `<PREFIX>` is upper-snake, e.g. `auth` → `SK-AUTH-NNN`). |
 | Touches all surfaces (HTTP / SDK / CLI / MCP / elements) | Per `GLOBAL-003`, ship to all surfaces in the same PR or annotate the gap explicitly in the affected features under *Open questions*. |
-| Introduces a cross-cutting rule (multiple features must obey) | Promote to a new `GLOBAL-NNN`: create `docs/decisions/GLOBAL-NNN-<slug>.md` with the five-field block, then add a row to `docs/decisions.md` linking to it. Then add a reference line in each affected feature's `## GLOBALs governing this feature` section (`- **GLOBAL-NNN** — Title.`), with feature-local commentary nested under it only when the GLOBAL has a feature-specific implication worth calling out. |
+| Introduces a cross-cutting rule (multiple features must obey) | Promote to a new `GLOBAL-NNN` per `docs/decisions.md` §"Adding a new GLOBAL" (canonical file + index row + a reference line in each affected feature's `## GLOBALs governing this feature`). |
 
-Every SK-* and GLOBAL-* decision must have all five fields
-(Decision / Core value / Why / Consequence / Alternatives) — see
-[`docs/feature-conventions.md`](docs/feature-conventions.md) §4.
-Per P4 (D1–D3), if you can't fill all five, don't document it yet.
+Every SK-*/GLOBAL-* block carries the five fields of
+[`docs/feature-conventions.md`](docs/feature-conventions.md) §4; per P4,
+if you can't fill all five, don't document it yet.
 
 ### 10.2 Fixing a bug
 
 1. Reproduce + isolate. Find the file. §5 → feature. Read the feature.
-2. **Does the bug contradict a documented decision?**
-   - **Code wrong, decision right** → fix the code so it conforms. Normal bug fix.
-   - **Decision wrong** (the bug is intended behaviour, but the behaviour is wrong) → **STOP.** Don't silently change behaviour. Per `P1`, raise it with the user, citing the specific `SK-*` or `GLOBAL-NNN` ID. The user decides whether to supersede.
-3. If you supersede a decision: change the decision in its place - preferably by simplifying it, and fix all references to it.
-4. If your fix touches a `GLOBAL-NNN`, per `P3` update every place it's copied in the same PR (`grep -rn 'GLOBAL-NNN' docs/features/ docs/`).
-5. If the fix raises a question that's not yet decided, add it to that feature's `## Open questions / known unknowns`. Don't decide for the user.
+2. **Does the bug contradict a documented decision?** Code wrong,
+   decision right → fix the code (normal bug fix). Decision wrong →
+   **STOP**; per `P1` raise it with the specific `SK-*`/`GLOBAL-NNN` ID —
+   the user decides whether to supersede.
+3. Superseding? Change the decision in its canonical place (prefer
+   simplifying it) and fix every reference in the same PR (`P3`;
+   `grep -rn 'GLOBAL-NNN' docs/`).
+4. A question the fix raises but doesn't decide goes to that feature's
+   `## Open questions / known unknowns`. Don't decide for the user.
 
 ### 10.3 Tie-breakers when sources disagree
 

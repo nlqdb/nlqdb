@@ -20,10 +20,10 @@ retrieval (row #8, 23/23) **saturated**; next engine gain needs the gated EX dis
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
 | | **Funnel** (06-25 pull; carried — analytics/D1 re-pull blocked this run) | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF Web Analytics) | 83 / 139 pageloads (raw, incl. walker) | account-level RUM can't split per-path; genuine-stranger signal is rows #2/#3 |
-| 2 | Waitlist rows, real | 1 of 81 | 80 walker/test/probe; the 1 is the founder → ~0 genuine strangers |
+| 1 | Visits, 7d (CF Web Analytics) | 83 / 139 pageloads (raw, incl. walker) | account-level RUM can't split per-path; genuine-stranger signal is row #3 |
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev |
-| 4 | Anon DBs with a first answer | 130 of 130 | every DB has a first query; genuine-stranger subset still ~0 (rows #2/#3) |
+| 4 | Anon DBs with a first answer | 130 of 130 | every DB has a first query; genuine-stranger subset still ~0 (row #3) |
+| 5 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | unmeasured — instrument shipped 2026-07-01, awaiting data | target ≥ 95%; D1 `first10_*` counters (migration 0020, `SK-ONBOARD-006`); read = one D1 query on the next pull |
 | 14 | Indexable distribution surfaces | 61 (`/vs` 31 + `/solve` 30) | **agent-movable daily lever** — leading input to rows #1–#4; `llms.txt` auto-aggregates both. Grow every run |
 | | **Engine** — BIRD 06-19 (**12d, stale**) · Spider 06-17 (**14d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Dispatch gated** — MCP `workflow_dispatch` 403 + `GH_TOKEN_WORKFLOW` PAT proxy-blocked (run 126); see Last change |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Flat within variance (McNemar p=0.50) — directive levers saturated; reasoning levers (§4 #1/#3) next |

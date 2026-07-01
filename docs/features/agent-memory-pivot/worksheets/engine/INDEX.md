@@ -20,7 +20,7 @@ workload-analyzer hook that motivates Phase-3 multi-engine.
 
 | If the daily worst number is… | Pick from |
 |---|---|
-| Funnel / distribution / waitlist conversion | `WS-*` (messaging) |
+| Funnel / distribution / wedge conversion | `WS-*` (messaging) |
 | Engine quality / agent on-ramp / "wedge claims true" | `E-*` (this folder) |
 
 **E-01 is a prerequisite for several `WS-*` worksheets** (WS-07's CreateForm

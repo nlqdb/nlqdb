@@ -17,8 +17,8 @@
   anon-only by contract — it always sends `credentials:"omit"` + an anon
   bearer so the device-cap → sign-in handoff works (SK-ANON-008), so it
   structurally cannot call a `requireSession` endpoint. The memory wedge is
-  authed by design ("the wedge feeds the waitlist, it does not open the
-  product" — pivot hard rule), so the on-ramp belongs where a principal exists.
+  authed by design ("the wedge does not open the product
+  anonymously" — pivot hard rule), so the on-ramp belongs where a principal exists.
 - **Consequence in code:** E-06 is resized from "low · 1 run · anon
   CreateForm" to "authed surface · `MEMORY_PRESET`-gated · flag enabled in
   prod first." The anon `/agents` CTA stays as shipped (run 36); the
@@ -30,5 +30,5 @@
   — breaks SK-ANON-008 (a signed-in hero submit skips the device cap, the
   anon→sign-in handoff regresses). · **Add an anonymous preset-create
   endpoint** — opens the product to anon memory DBs, violating the pivot's
-  waitlist-feed rule. · **Ship the `/agents` preset UI now against the dark
+  authed-on-ramp rule. · **Ship the `/agents` preset UI now against the dark
   flag** — every visitor hits `preset_disabled` 400; a broken on-ramp.

@@ -15,8 +15,9 @@ additive; this one rewrites identity.
 - The founder has explicitly said "do the headline swap" **at a weekly
   session** (not inferred from a chat aside), AND
 - `/agents` (WS-07) + the matrix (WS-06) are live, AND
-- The funnel `Pivot:` line shows **non-zero wedge-sourced waitlist rows**
-  (evidence the wedge converts before betting the brand on it).
+- The funnel `Pivot:` line shows **non-zero wedge-sourced conversions**
+  (registered users reaching a first answer — evidence the wedge converts
+  before betting the brand on it).
 
 If any is unmet: leave `⬜`, do a lower-numbered or non-pivot lever instead.
 
@@ -60,6 +61,5 @@ The relaunch announcement (HN/X/blog) → `distribution-queue.md`.
 
 ## Rollback
 
-`git revert` the lead-string commit. Because every prior slice was additive,
-reverting *only* this commit returns the brand to the generalist headline
-with the full wedge (matrix, `/agents`, memory `/vs` pages) still intact.
+None — the reposition is permanent (GLOBAL-036, founder-resolved
+2026-07-01); iterate forward.

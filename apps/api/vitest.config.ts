@@ -131,6 +131,7 @@ export default defineConfig(async () => {
               "test/databases-delete.test.ts",
               "test/db-connect.test.ts",
               "test/ask-dispatch.test.ts",
+              "test/first10.test.ts",
               "test/run.test.ts",
             ],
             setupFiles: ["./test/apply-migrations.ts"],

@@ -119,7 +119,7 @@ and across every existing feature.
 **Exit gate:** every Phase 1 surface emits a `surface` label and a
 demand-signal event on the documented failure paths; trust-UX diff
 preview measurably reduces the destructive-op retry rate in user
-tests; **north-star baselines measured** — TTFV, first-query success,
+tests; **north-star baselines measured** — TTFV, first-10-queries success,
 destructive-op retry rate, and BIRD-dev/Spider 2.0-lite EM on the
 free chain all have a recorded `2026-05` value per the
 [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md) KPI table.
@@ -190,8 +190,8 @@ user. **North-star floors cleared** per
 ≥ 60% on the free chain, ≥ 80% on agentic-frontier (free-vs-agentic
 delta ≤ 25 pp; single-model frontier reported informationally per
 [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md)); TTFV p50 ≤ 60 s,
-first-query success ≥ 70%; destructive-op retry rate measurably below
-the no-preview baseline.
+first-10-queries success ≥ 95%; destructive-op retry rate measurably
+below the no-preview baseline.
 
 **Status (2026-05):**
 **Item 1 — MCP server** — `SK-MCP-010` slices 1–3c shipped: `sk_live_`/`sk_mcp_*` mint, `packages/mcp/` stdio with three tools, `apps/mcp/` Cloudflare Worker on `mcp.nlqdb.com` (Streamable-HTTP at `/mcp`), `workers-oauth-provider` + `McpAgent` Durable Object sessions per `SK-MCP-011..014` (cross-Worker callback bridge mints `sk_mcp_*` server-side, DO revalidation cache for 1 s revocation), per-bucket rate-limit (all `sk_*` keyed by `rl:${api_keys.id}` per `SK-MCP-009`; migration 0014 renames `user_id` → `bucket_key`), auth-failure observability (`nlqdb.mcp.http.request` span + `nlqdb.mcp.auth.failures.total{error_code,status}`). Remaining: slice 4 (`nlq mcp install` host-detect) — see [`mcp-server/FEATURE.md`](./features/mcp-server/FEATURE.md) + [`cli/FEATURE.md`](./features/cli/FEATURE.md).
@@ -232,7 +232,7 @@ otherwise ≥200 weekly-active users. **North-star floors per
 ≥ 72% on free chain, ≥ 88% on agentic-frontier (free-vs-agentic
 delta ≤ 16 pp); Spider 2.0-lite EM ≥ 15% on free chain, ≥ 25% on
 frontier (SQLite subset only — Spider 2.0-lite ships no PG rows);
-TTFV p50 ≤ 30 s; first-query success ≥ 85%; Sean-Ellis "very
+TTFV p50 ≤ 30 s; first-10-queries success ≥ 95%; Sean-Ellis "very
 disappointed" ≥ 40% (PMF) — measured monthly per
 [`founder-playbook.md` §2](./founder-playbook.md).
 

@@ -62,7 +62,7 @@ Body: [`decisions/SK-STRG-009-flow-005-stdio-walker.md`](./decisions/SK-STRG-009
 - **GLOBAL-014** — OTel span on every external call.
   - *In this feature:* the deployed surface is the system under test; the walker itself is not a Worker, so no OTel spans land here. The walker exercises the spans the Worker emits (`nlqdb.ask.*`).
 - **GLOBAL-025** — Quartet north-star.
-  - *In this feature:* the §1.1 anti-self-deception primitive directly serves the "onboarding" pillar — TTFV / first-query success / stranger-test passes are the three KPIs the impl plan's `Current status` table calls out as "not measured" without this walker.
+  - *In this feature:* the §1.1 anti-self-deception primitive directly serves the "onboarding" pillar — TTFV / first-10-queries success / stranger-test passes are the three KPIs the impl plan's `Current status` table calls out as "not measured" without this walker.
 - **GLOBAL-028** — Acquisition progress tracker.
   - *In this feature:* every walk that lands a §1.1 deliverable appends a row to `automated-icp-validation-plan.md` `## Progress log`; per-flow outcome rows go to the verification mirror.
 - **GLOBAL-029** — Acquisition verification tracker.
