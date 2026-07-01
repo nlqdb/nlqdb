@@ -22,7 +22,7 @@ probe (row #8) **saturated 23/23** — next engine gain needs the gated EX dispa
 | 2 | Waitlist rows, real | 1 of 81 | 80 walker/test/probe; the 1 is the founder → ~0 genuine strangers |
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev |
 | 4 | Anon DBs with a first answer | 130 of 130 | every DB has a first query; genuine-stranger subset still ~0 (rows #2/#3) |
-| | **Engine** — BIRD 06-19 (**12d, stale**) · Spider 06-17 (**14d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Re-dispatch carries to the cron `/daily` lane** — MCP `workflow_dispatch` re-confirmed **403 "Resource not accessible by integration"** (run 124, spider2-lite); local eval proxy-MITM-TLS blocked |
+| | **Engine** — BIRD 06-19 (**12d, stale**) · Spider 06-17 (**14d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Dispatch gated** — MCP `workflow_dispatch` 403 + `GH_TOKEN_WORKFLOW` PAT proxy-blocked (run 126); see Last change |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Flat within variance (McNemar p=0.50) — directive levers saturated; reasoning levers (§4 #1/#3) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number.** Self-consistency (`SK-QUAL-017`) end-to-end bar the CI dispatch; EX delta next dispatch |
 | 8 | persona-bench free-chain EX | 0.90 (18/20) | full-chain ICP EX (run 58/63). **1.7× BIRD, 4.9× Spider** — the GLOBAL-026 bet. N=20 ±1 noisy. Retrieval precision@1 **23/23** (run 105) — **offline retrieval saturated**, held-out 17/17. EX delta = gated dispatch |
@@ -43,16 +43,18 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 
 ## Last change
 
-**2026-07-01 (run 125)** — hard numbers stay gated (MCP eval `workflow_dispatch`
-re-confirmed 403 this run on `quality-eval-spider2-lite.yml`; funnel/analytics
-re-pull network-blocked) → a measured **onboarding/UX** lever on the `/solve`
-SQL-query-shape series: a new page **`/solve/month-over-month-growth-in-sql`**
-(P3 analyst) for the perennial month-over-month / period-over-period / YoY /
-WoW growth question. Distinct query shape from its siblings — reach-the-previous-row
-`LAG(...) OVER (ORDER BY period)` + `(cur - prev) / NULLIF(prev, 0)`, vs
-running-total's `SUM() OVER` accumulate-down and top-N's `ROW_NUMBER()`
-rank-within. Names the LAG-vs-self-join trap and the divide-by-zero guard; honest
-read-only + name-the-order limits. **Solve pages 26 → 27 · P3 coverage 7 → 8**;
-SQL web-verified (Citus, PostgreSQL window-function docs), 176 web tests green,
-astro check 0 errors, biome clean. **KPI:** GLOBAL-025 onboarding/UX; none
-degraded. *(Prior run 124 (PR #559) — `/vs/pandasai`, comparison 28 → 29.)*
+**2026-07-01 (run 126)** — engine dispatch re-confirmed gated **via both paths
+this run**: MCP `workflow_dispatch` 403 "Resource not accessible by integration"
+(App token) **and** the `GH_TOKEN_WORKFLOW` PAT is proxy-blocked on all
+repo-scoped GitHub API ("GitHub access is not enabled for this session"). Open PR
+#560 owns the `/solve` lane → measured **onboarding/UX** lever on the
+non-colliding **`/vs`** comparison lane: a page for **LlamaIndex**, the OSS
+(MIT) data framework whose text-to-SQL is a component you assemble (P4
+build-vs-buy; §6 build-it-yourself cluster, pairs with langchain-sql-agent).
+Honest split: LlamaIndex's `NLSQLTableQueryEngine` runs generated SQL over a DB
+you already stood up (docs warn arbitrary SQL is a risk); nlqdb *provisions +
+owns* a Postgres, shows the compiled SQL, validates fail-closed, and diff-previews
+writes. **Comparison pages 29 → 30 · P4 coverage 4 → 5**; facts web-verified
+(`developers.llamaindex.ai` text-to-SQL guide + NL_SQL_table API), 176 web tests
+green, astro check 0 errors, biome clean. D4: both edited docs net-shrunk.
+**KPI:** GLOBAL-025 onboarding/UX; none degraded.

@@ -3015,6 +3015,129 @@ export const COMPETITORS: Competitor[] = [
     },
   },
   {
+    slug: "llamaindex",
+    name: "LlamaIndex",
+    url: "https://www.llamaindex.ai",
+    // P4 backend-engineer slot — the OSS text2sql-framework cluster
+    // (docs/competitors.md §6, the LlamaIndex wing of "build-it-yourself").
+    // Persona P4 like langchain-sql-agent, NOT P2: LlamaIndex is a general
+    // data framework whose text-to-SQL is one component you assemble, so the
+    // P2 agent-memory OG card + "analytical memory for agents" cross-link
+    // would be false. The honest buyer is the engineer weighing "wire up
+    // LlamaIndex's SQL query engine over my DB" vs "embed a hosted pipeline"
+    // — the same build-vs-buy axis as langchain-sql-agent and
+    // /solve/add-ask-your-data-feature-without-building-text-to-sql.
+    // Facts web-verified 2026-07-01 (developers.llamaindex.ai text-to-SQL
+    // guide + NL_SQL_table API reference): LlamaIndex ships text-to-SQL
+    // PRIMITIVES, not a product. `NLSQLTableQueryEngine` takes a `SQLDatabase`
+    // wrapping a SQLAlchemy engine over a DB you already run, synthesises a
+    // SQL query from English, executes it, and synthesises a response;
+    // `SQLTableRetrieverQueryEngine` adds a TableIndex so schemas are
+    // retrieved at query time when they overflow the context window. You bring
+    // the database, the model, the prompt, retrieval, guardrails, deployment,
+    // and eval. The docs carry an explicit security disclaimer that executing
+    // arbitrary generated SQL is a risk (use restricted roles / read-only DBs
+    // / sandboxing) — i.e. the query tool runs whatever SQL the LLM emits;
+    // guardrails are yours. MIT-licensed, open source. Honest split: LlamaIndex
+    // is a framework component you wire to a DB you run; nlqdb is the hosted
+    // pipeline you embed — it provisions + owns a Postgres, compiles NL → SQL
+    // with the SQL shown, validates fail-closed, and diff-previews writes, so
+    // there is no query engine to assemble, tune, or host.
+    tagline:
+      "Open-source data framework whose text-to-SQL query engine turns English into SQL over a database you already run.",
+    persona: "P4 backend engineer",
+    oneLiner:
+      "Pick LlamaIndex if you want to assemble your own text-to-SQL query engine — its schema retrieval, prompt, and guardrails — over a database you already run. Pick nlqdb if you want NL→SQL working today as a hosted pipeline you embed, with the SQL shown, writes diff-previewed, and a Postgres provisioned for you.",
+    whenChooseUs: [
+      "You want NL→SQL working today without assembling a query engine, validator, and eval stack.",
+      "You want the compiled SQL shown with every answer so you can audit the grain.",
+      "You want a Postgres provisioned from English — no database to stand up first.",
+      "You want destructive writes and migrations diff-previewed before they apply.",
+    ],
+    whenChooseThem: [
+      "You want full control of the retrieval, prompt, and query-engine internals.",
+      "You're already in the LlamaIndex ecosystem building RAG over other data.",
+      "You need it free, open source, and self-hosted against a database you run.",
+      "You want to combine SQL with vector/document retrieval in one framework.",
+    ],
+    features: [
+      {
+        feature: "Provisions + owns the database (from English)",
+        us: "shipped",
+        them: "no",
+        note: "LlamaIndex wraps a SQLAlchemy engine over a database you already stood up; it provisions nothing. nlqdb materialises a Postgres from the first English goal.",
+      },
+      {
+        feature: "NL→SQL without building or tuning the engine yourself",
+        us: "shipped",
+        them: "partial",
+        note: "LlamaIndex gives you the query-engine classes; you assemble, prompt, and tune them. nlqdb ships the pipeline — nothing to wire.",
+      },
+      {
+        feature: "Compiled SQL shown with every answer",
+        us: "shipped",
+        them: "partial",
+        note: "The query engine exposes the generated SQL in its metadata, but surfacing it to a user is your wiring. nlqdb returns the compiled SQL with every answer by default.",
+      },
+      {
+        feature: "Fail-closed read-only SQL validation",
+        us: "shipped",
+        them: "no",
+        note: "The docs warn the query tool runs whatever SQL the model emits; restricted roles and sandboxing are yours to add. nlqdb validates against an allowlist and fails closed.",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "LlamaIndex synthesises read queries; it computes no before/after diff of a write. nlqdb diff-previews writes and DDL before they apply.",
+      },
+      {
+        feature: "Plan cache (repeat questions skip the LLM)",
+        us: "shipped",
+        them: "no",
+        note: "Caching identical questions is yours to build in LlamaIndex. nlqdb caches the compiled plan so a repeated question returns without another model call.",
+      },
+      {
+        feature: "HTML embed element + anonymous try",
+        us: "shipped",
+        them: "no",
+        note: "nlqdb ships `<nlq-data>` and anonymous mode (a first answer before sign-in); a LlamaIndex query engine is Python you deploy and host yourself.",
+      },
+      {
+        feature: "Broad RAG / retrieval framework (documents, vectors, agents)",
+        us: "no",
+        them: "shipped",
+        note: "LlamaIndex's reach across loaders, indexes, and retrievers is its moat; nlqdb is Postgres-first NL→SQL, not a general data framework.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Is nlqdb a replacement for LlamaIndex?",
+        a: "Only for the NL→SQL job. LlamaIndex's text-to-SQL is a query engine you assemble — schema retrieval, model, prompt, guardrails — over a database you already run. nlqdb is the hosted pipeline that does NL→SQL for you, provisions the Postgres, shows the SQL, and diff-previews writes. One is build-it-yourself; the other is embed-and-go.",
+      },
+      {
+        q: "Can I use LlamaIndex and nlqdb together?",
+        a: "Yes. A LlamaIndex agent or pipeline can call nlqdb as one tool — letting nlqdb own the database and the NL→SQL step while LlamaIndex handles document retrieval, vectors, and wider orchestration. You get nlqdb's validated, SQL-shown answers without hand-building the SQL query engine.",
+      },
+      {
+        q: "Does LlamaIndex provision a database for me?",
+        a: "No. `NLSQLTableQueryEngine` wraps a SQLAlchemy engine over a database you've already created and configured; it reads schema and runs SQL against it. nlqdb materialises a Postgres from your first English goal, so there's nothing to stand up before the first question.",
+      },
+      {
+        q: "What do I have to build myself with LlamaIndex's text-to-SQL?",
+        a: "The model choice, the prompt, schema retrieval (a TableIndex when the schema overflows context), SQL guardrails, caching, deployment, and evaluation. That flexibility is the point. nlqdb ships those as a managed pipeline, so you trade tunability for not maintaining the stack.",
+      },
+      {
+        q: "Is running LlamaIndex's generated SQL safe by default?",
+        a: "The LlamaIndex docs explicitly warn that executing arbitrary generated SQL is a security risk and recommend restricted roles, read-only databases, and sandboxing — the query tool runs whatever the model emits. nlqdb validates every query against a read-only allowlist and fails closed, and diff-previews any write before it applies.",
+      },
+    ],
+    demo: {
+      goal: "monthly active users for the last 6 months",
+      why: "A from-scratch LlamaIndex query engine needs a wired DB, model, prompt, and schema retrieval before this works; nlqdb answers it from one English goal over a Postgres it provisioned, SQL shown.",
+    },
+  },
+  {
     slug: "dataherald",
     name: "Dataherald",
     url: "https://www.dataherald.com",
