@@ -11,51 +11,58 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-07-01 (run 123) — dev.to / r/SQL / r/PostgreSQL: "The running-total query keeps every row. That's the part GROUP BY can't do."
+## 2026-07-01 (run 124) — dev.to / r/Python / r/dataengineering: "PandasAI runs generated Python to answer your question. That's the feature and the footgun."
 
-**Where:** dev.to + r/SQL + r/PostgreSQL; for analysts and PMs who want a cumulative curve —
-revenue-to-date, running headcount, a rolling 7-day sum — and keep reaching for `GROUP BY`. nlqdb
-mentioned once, as the "ask in English, read the SQL" half — not a BI tool.
+**Where:** dev.to + r/Python + r/dataengineering; for data-literate builders evaluating "chat with
+your data" tools who've seen the PandasAI demo and are deciding whether to ship it. nlqdb mentioned
+once, as the "owns the DB, runs only validated SQL" alternative — not a knock on PandasAI.
 
-**Title:** The running-total query keeps every row. That's the part GROUP BY can't do.
+**Title:** PandasAI runs generated Python to answer your question. That's the feature and the footgun.
 
 **Body:**
 
-> Sooner or later every dashboard needs a line that only goes up: revenue to date, a running
-> headcount, cumulative signups, an account balance after each transaction. So you write
-> `SUM(amount)` with a `GROUP BY` and get one number per bucket — the rows collapsed. That's the
-> total, not the *running* total.
+> PandasAI is a genuinely nice library. Point it at a DataFrame, a CSV, or a Postgres you already
+> run, ask a question in English, and it translates that into Python and SQL, *executes it*, and
+> hands back the answer — plus a matplotlib chart, cleaned columns, generated features. For
+> exploratory work in a notebook, that loop is hard to beat.
 >
-> A running total has to keep every row and show the sum accumulated *up to* that row. That's a
-> window function: `SUM(amount) OVER (ORDER BY day)`. The `OVER (ORDER BY ...)` is the whole trick —
-> it computes down an explicit order without collapsing anything. Add `PARTITION BY` to restart the
-> total per group (a running total per customer), or a frame clause — `ROWS BETWEEN 6 PRECEDING AND
-> CURRENT ROW` — for a rolling 7-day sum instead of an all-time one.
+> Two things about that loop are worth saying out loud before you put it on a product path, because
+> the demo hides both.
 >
-> The details are where it quietly breaks. The wrong `ORDER BY` accumulates in the wrong sequence
-> and still *looks* plausible. Unbroken ties make the running value ambiguous. A missing frame
-> clause silently gives you an all-time total when you wanted a moving window.
+> First: it runs generated code. Translating a question into pandas and executing it *is* the
+> mechanism — that's how you get a chart from "plot revenue by month." It's also a code-execution
+> surface. In a notebook you're the only caller and that's fine. Behind an "ask your data" box that
+> strangers type into, "generate Python and run it" is a very different security posture than
+> "generate SQL, validate it against an allow-list, run only that." Sandboxing helps; it's still a
+> bigger blast radius than a read-only `SELECT`.
 >
-> This is a good case for asking in plain English and *reading the SQL it generates*. "Running total
-> of revenue by day" should hand back both the accumulating rows and the `SUM(...) OVER (ORDER BY
-> ...)` it ran, so you can confirm the order and the frame before you trust the curve.
+> Second: it assumes the data's already loaded. PandasAI reads a DataFrame or a DB you stood up and
+> credentialed. That's the right assumption for a data scientist who already has the data in hand,
+> and the wrong one for a builder who's really asking "where does the data even live." Those are two
+> different jobs that the same English prompt papers over.
 >
-> (That's the half we built [nlqdb](https://nlqdb.com) for: ask the cumulative curve in English over
-> a Postgres it provisions, or one you already run via a signed-in connect, and get the rows plus the
-> compiled SQL. Honest split — you have to name the order it accumulates in, it's a one-off read-only
-> answer rather than a live running-total chart, and it's exact SQL over current rows, not a cached
-> dashboard.)
+> So the honest split isn't "which is better" — it's which job you're in. If you have the data and
+> want charts, cleaning, and feature engineering in Python, PandasAI is exactly the tool and I'd
+> reach for it. If what you actually need is a *place for the data to live* that answers in English
+> on a product path — where the store is provisioned for you, the compiled SQL is shown so you can
+> read it, only that validated SQL runs, and writes are diff-previewed before they apply — that's a
+> database's job, not a library's.
+>
+> (That second half is what we built [nlqdb](https://nlqdb.com) for: a Postgres provisioned from
+> English, NL→SQL with the SQL shown and validated fail-closed, an embeddable answer element, and an
+> MCP server so an agent can query without hosting a Python runtime. Honest limits — no chart
+> generation, no data cleansing, no feature engineering; if a plotted figure is the deliverable,
+> PandasAI wins and the two compose fine.)
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the perennial
-running-total / cumulative-sum search intent surfaced by the
-`/solve/running-total-cumulative-sum-in-sql` page shipped this run; the "`GROUP BY` collapses, the
-window function keeps every row" hook plus read-the-SQL framing earns a citation without a pitch and
-concedes the named-order and read-only limits honestly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the high-volume "PandasAI"
+search/eval intent surfaced by the `/vs/pandasai` page shipped this run; the code-execution-vs-
+validated-SQL framing and the "data already loaded" observation earn a citation on the merits and
+concede nlqdb's missing chart/cleansing/feature story honestly.
 
 ## Collapsed — full drafts in git history
 
-- run 122 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead." (rows-into-columns comes up every reporting cycle and SQL Server has a `PIVOT` keyword, but Postgres doesn't — the portable answer is conditional aggregation, one `SUM(...) FILTER (WHERE ...)` per column, or `crosstab()` from the `tablefunc` extension most people don't have enabled; a plain `GROUP BY` gives tall rows when the spreadsheet wanted them wide; ask in English and read the SQL so you confirm each column's bucket; honest split — pivot columns must be ones you can name, one-off read-only wide report not a live crosstab dashboard, exact SQL over current rows; anchors `/solve/pivot-rows-into-columns`).
-
+- run 123 — dev.to / r/SQL / r/PostgreSQL: "The running-total query keeps every row. That's the part GROUP BY can't do." (a running total — revenue-to-date, running headcount, a rolling 7-day sum — needs a window function `SUM(amount) OVER (ORDER BY day)` that accumulates down an explicit order and keeps every row, not a `GROUP BY` that collapses to one number per bucket; `PARTITION BY` restarts the total per group and a frame clause (`ROWS BETWEEN 6 PRECEDING AND CURRENT ROW`) makes it a moving window; the wrong `ORDER BY`, unbroken ties, or a missing frame quietly break it; ask in English and read the SQL so you confirm the order and frame; honest split — you must name the accumulation order, one-off read-only curve not a live chart; anchors `/solve/running-total-cumulative-sum-in-sql`).
+- run 122 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead." (SQL Server has a `PIVOT` keyword; Postgres doesn't, so every reporting cycle you re-learn the two real answers — portable conditional aggregation (`SUM(...) FILTER (WHERE ...)` per column, tedious and easy to mis-bucket) or `crosstab()` from the `tablefunc` extension nobody has enabled; either way a plain `GROUP BY` gives tall rows when the spreadsheet wanted wide, and reshaping is the Googled part; ask in English and read the SQL so each column maps to the bucket you meant; honest split — pivot columns must be ones you can name, one-off read-only answer not a live crosstab dashboard, exact SQL over current rows; anchors `/solve/pivot-rows-into-columns`).
 - run 121 — dev.to / r/SQL / r/dataengineering: "The top-N-per-group query everyone re-Googles." (the top *N* rows per group has a Stack Overflow tag — `greatest-n-per-group` — because it comes up constantly; the obvious `GROUP BY` + `MAX` gives the top *value* but throws away the rest of the row, so keeping the whole row needs `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` filtered to rank ≤ N or a lateral join — a different query than you started typing, and the partition/tiebreak bite quietly; ask in English and read the SQL so you verify the partition and whether ties wanted `RANK`/`DENSE_RANK`; honest split — one-off read-only ranked answer, not a live dashboard or rank-change alert, exact ordering not fuzzy; anchors `/solve/find-top-n-rows-per-group`).
 
 - run 120 — dev.to / r/dataengineering / r/LLMDevs: "Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest." (Dataherald/Vanna/Wren open-sourced the whole NL→SQL engine — the model half is now an MIT-licensed commodity you wire up in an afternoon — but ship it to people who don't know your schema and demo accuracy evaporates; the fix every engine reaches for is *golden SQL*, hand-curated question→query training pairs plus business context tuned to your tables, a standing maintenance job on whoever owns the data model, not a flaw but the part the README undersells; honest evaluation isn't "can it generate SQL" but "who keeps it accurate as the schema moves, and do I already run the warehouse it assumes" — if you run a real warehouse + data team that wants that control an OSS engine is exactly right; honest split — nlqdb *owns* the Postgres it answers and skips golden SQL by prompting from the live schema fingerprint, so no warehouse federation / no golden-SQL knobs, query Snowflake/BigQuery in place and the OSS engine wins; anchors `/vs/dataherald`).
@@ -65,15 +72,12 @@ concedes the named-order and read-only limits honestly.
 - run 116 — dev.to / r/mcp / r/LLMDevs: "A federated query engine connects your agent to the data you have. Some agents need data they don't have yet." (federation — one SQL endpoint over the 200+ sources you already run, which MindsDB does well and wraps in an MCP server — assumes the data already exists in a system you administer; but much agent work (logging what it did, remembering structured facts, then "how many this week by type") needs a store the agent *provisions and owns*, not a read-mostly federated view; honest split — nlqdb has no 200-source federation / in-database ML / unstructured RAG, for querying across systems you run MindsDB is right and the two compose; anchors `/vs/mindsdb`, the GLOBAL-036 "a database, not just an adapter" wedge).
 - run 115 — dev.to / r/SaaS / Indie Hackers: "Product analytics is two problems. Only one of them needs a warehouse." (the most-upvoted "what do you use for product analytics" answer is "just store events in Postgres and query them" — right, and it hides the work; product analytics is *capture* (a tiny `{user, event, ts, props}` insert) vs *reporting* (windowed `GROUP BY` that wants a planner); per-event SaaS prices you off a tier exactly when a side project can least pay and a warehouse is oversized for 40k events; honest split — no autocapture/replay/funnel UI, PostHog is right for those and the two compose; anchors `/solve/track-product-usage-without-a-data-warehouse`).
 - run 114 — dev.to / r/dataengineering / r/analytics: "Your analytics canvas is where humans look. Your product runs where no one's looking." (agentic-analytics canvases like Count are great for a data team watching the cell, but wiring that agent into the product — MCP endpoint behind an "ask your data" box, a 3am refresh — breaks the human-in-the-loop a canvas assumes; interactive analysis vs headless runtime are different altitudes and compose; honest split — nlqdb has no canvas/Python/charts; anchors `/vs/count`).
-- run 113 — dev.to / r/webdev / r/node: "The webhook receiver is the easy half. The database behind it is the part nobody wants to own." (the receiver is a 20-minute job — accept the POST, verify the signature, return 200; the skipped part is the queryable store behind it, where "how many `checkout.session` events failed yesterday by error code" means standing up Postgres, schema-ing a payload the provider mutates without warning, and hand-writing reporting `GROUP BY`s; patterns — JSONB payload beside extracted columns for idempotency, and separate *capture* from *reporting*; honest split — nlqdb is not the receiver and does no signature verification; anchors `/solve/store-and-query-webhook-events`).
-- run 112 — dev.to / r/dataengineering / r/LLMDevs: "Your notebook's AI analyst assumes someone's watching the cell. Your product runs when no one is." (AI-notebook tools — Fabi.ai, Hex, Mode — shine at interactive exploration with a human watching each cell, but the same agent on an unattended product path (3am refresh, in-app "ask your data") needs the SQL inspectable and writes diff-previewed *before* they run; two altitudes, not competitors; honest split — nlqdb has no notebook/Python/charts; anchors `/vs/fabi`).
+- run 113 — dev.to / r/webdev / r/node: "The webhook receiver is the easy half. The database behind it is the part nobody wants to own." (anchors `/solve/store-and-query-webhook-events`).
+- run 112 — dev.to / r/dataengineering / r/LLMDevs: "Your notebook's AI analyst assumes someone's watching the cell. Your product runs when no one is." (anchors `/vs/fabi`).
 - run 111 — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned." (the agent-memory frontier is *modelling* not recall — Honcho's dialectic theory-of-mind builds a model of *how each user reasons*, the right primitive for "explain or just do for this person"; but a different-shaped question arrives the week after launch — "how many pro-tier users completed onboarding this month, grouped by signup week" is `COUNT`/`GROUP BY`/`JOIN`/threshold, and a user model can't answer *how many of them did X*; the two compose once you stop expecting one store to do both — a user-modelling layer for how someone reasons, a relational layer for how many did what; honest limit — nlqdb has no user model or theory-of-mind, for "how does this person think" Honcho is the right shape; anchors `/vs/honcho`).
 - run 110 — dev.to / r/dataengineering / r/BusinessIntelligence: "Your BI tool got acquired. Your data layer shouldn't have to care." (the analyst notebook (Mode → ThoughtSpot, Looker → Google, Periscope → Sisense) is a roll-up target and each acquisition rewrites the AI story on top of it — fine when it's a *destination* humans log into to explore and publish; not fine when you've wired it into your *product*, because your runtime then inherits whatever the next buyer does to that notebook's API/pricing/AI direction; name the split — a destination analytics app and a runtime data layer are different altitudes, the first is where humans look, the second is what your software calls; honest caveat — nlqdb is not a notebook or BI suite, for collaborative analysis/charts/dashboards a Mode or Hex is right and the two compose; anchors `/vs/mode`).
 - run 109 — dev.to / r/SaaS / r/ExperiencedDevs: "The text-to-SQL demo takes an afternoon. The other 90% is why you should buy it." (the obvious "ask your data" build — prompt + schema + model + run the SQL — is 10% of the job; production adds a fail-closed verb-allowlist validator, a plan cache keyed on question + schema version, and an eval harness watching a labelled set, all yours to maintain forever for a non-core feature; the honest buy-vs-build test isn't "can I generate SQL from English" but "do I want to own that stack" — if it's a reporting tab / search box / in-app assistant, buy and embed; honest caveat — hosted pipeline you embed, not a vendored library, and many users over their own rows still means a DB or isolation scope per tenant; anchors `/solve/add-ask-your-data-feature-without-building-text-to-sql`).
 - run 106 — dev.to / r/webdev / r/sideproject: "You don't need a backend to store form submissions. You need a place to ask 'how many'." (anchors `/solve/store-form-submissions-without-backend`).
-- run 105 — dev.to / r/LLMDevs / lobste.rs: "COUNT(*) is three different questions. Your few-shot pool probably teaches one."
-- run 104 — dev.to / lobste.rs / r/SEO: "The '25 words max' rule in your style guide is a lie your CMS can't catch."
-- run 103 — dev.to / lobste.rs / r/ExperiencedDevs: "Your style rule lives in a code comment. That's why it's already broken."
 - run 102 — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them."
 *(runs 75–100 moved to git history under D4; full gists for runs 102–105 also collapsed to titles — `git log -p` recovers all bodies.)*
 

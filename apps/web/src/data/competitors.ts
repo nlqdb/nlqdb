@@ -3126,6 +3126,128 @@ export const COMPETITORS: Competitor[] = [
       why: "A warehouse-reporting question Dataherald answers over a warehouse you run; nlqdb answers it over a Postgres it provisioned, SQL shown.",
     },
   },
+  {
+    slug: "pandasai",
+    name: "PandasAI",
+    url: "https://pandas-ai.com",
+    // P3-analyst slot, the "chat with data you already have" member of the §6
+    // build-it-yourself / OSS cluster (Vanna, Dataherald, langchain-sql-agent).
+    // Persona stays P3 to match the OSS-engine analogs: PandasAI is
+    // batteries-included and pitched at data analysts / scientists who want to
+    // converse with DataFrames and CSVs, NOT the raw-framework P4 buyer (that
+    // is langchain-sql-agent) and NOT the P2 agent-memory buyer (no OG card /
+    // /agents cross-link). Facts web-verified 2026-07-01 (github.com/sinaptik-ai
+    // /pandas-ai + docs.pandas-ai.com/v3/introduction): open-source Python
+    // library (MIT, except the `pandasai/ee` enterprise dir), "chat with your
+    // database or your datalake" over data you already have — DataFrames, CSV,
+    // XLSX, Parquet, PostgreSQL, MySQL, BigQuery, Databricks, Snowflake; it
+    // translates the question into Python + SQL, executes it (a code-execution
+    // surface it sandboxes), and returns answers, matplotlib charts, cleaned
+    // data, and generated features via RAG over your data's structure. Honest
+    // split: PandasAI *reads + analyses* data you already loaded and runs
+    // generated code to do it; nlqdb *provisions + owns* a Postgres from
+    // English, compiles NL → SQL with the SQL shown, validates fail-closed
+    // (never runs generated code), and diff-previews writes — nothing to load
+    // and no Python runtime to host.
+    tagline:
+      "Open-source Python library to chat with data you already have — DataFrames, CSVs, Parquet, or a SQL database — generating Python + SQL, charts, and cleaned data.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick PandasAI if you already have DataFrames, CSVs, or a warehouse and want to chat with them in Python — generating code, charts, and cleaned data. Pick nlqdb if you want the database itself: a Postgres provisioned from English, the compiled SQL shown and validated, and writes diff-previewed — no code to run and nothing to load first.",
+    whenChooseUs: [
+      "You want a Postgres provisioned from English — no dataframe or CSV to load first.",
+      "You want the compiled SQL shown and validated, not generated Python run on your data.",
+      "You want destructive writes and migrations diff-previewed before they apply.",
+      "You want one HTML embed and an MCP server, not a Python library to wire up.",
+    ],
+    whenChooseThem: [
+      "You already have DataFrames, CSVs, or Parquet and want to chat with them.",
+      "You want generated charts, data cleaning, and feature engineering, not just SQL.",
+      "You want to run everything locally in Python with your own LLM.",
+      "Open source and MIT licensing matter for your stack.",
+    ],
+    features: [
+      {
+        feature: "Provisions + owns the database (from English)",
+        us: "shipped",
+        them: "no",
+        note: "PandasAI reads data you already loaded — a DataFrame, CSV, or a DB you stood up; it provisions nothing. nlqdb materialises a Postgres from the first English goal.",
+      },
+      {
+        feature: "Natural-language question → answer over your data",
+        us: "shipped",
+        them: "shipped",
+      },
+      {
+        feature: "Compiled SQL shown with every answer",
+        us: "shipped",
+        them: "partial",
+        note: "For SQL sources PandasAI generates SQL; for a DataFrame or CSV it generates pandas Python — the artifact shown is code, not always SQL. nlqdb always shows the compiled SQL.",
+      },
+      {
+        feature: "Generates charts / cleans data / engineers features",
+        us: "no",
+        them: "shipped",
+        note: "PandasAI plots matplotlib figures, cleanses datasets, and generates features. nlqdb returns the tabular answer + the SQL; built-in charting is Phase 2.",
+      },
+      {
+        feature: "Runs only validated SQL — no arbitrary code execution",
+        us: "shipped",
+        them: "no",
+        note: "PandasAI generates and executes Python — a code-execution surface it sandboxes. nlqdb never runs generated code: it validates NL→SQL fail-closed and runs only that.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "PandasAI analyses (reads); nlqdb diff-previews writes and DDL before they apply.",
+      },
+      {
+        feature: "HTML embed element + anonymous try",
+        us: "shipped",
+        them: "no",
+        note: "PandasAI is a Python library; you embed it in your own app or notebook. nlqdb ships an `<nlq-data>` element and an in-browser anonymous try.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "no",
+        note: "PandasAI is called from Python; it ships no dedicated MCP server. An agent using PandasAI must host a Python process itself.",
+      },
+      { feature: "Open source / self-hostable", us: "no", them: "shipped" },
+    ],
+    faqs: [
+      {
+        q: "Is nlqdb a replacement for PandasAI?",
+        a: "Only for the NL→answer job, and from the other end. PandasAI is a Python library that chats with data you already have — a DataFrame, CSV, or a SQL database you stood up — generating and running Python + SQL to answer, chart, and clean it. nlqdb is a hosted pipeline that owns the Postgres, compiles NL→SQL with the SQL shown and validated, and diff-previews writes — nothing to load or run.",
+      },
+      {
+        q: "Does PandasAI provision a database?",
+        a: "No. PandasAI reads data you already have — a DataFrame, CSV/Parquet, or a SQL database you credentialed — and generates code to analyse it. nlqdb provisions and owns a Postgres from your first English goal, so there is no data to load before you can ask a question.",
+      },
+      {
+        q: "PandasAI runs generated Python — does nlqdb?",
+        a: "No. PandasAI translates your question into Python (and SQL) and executes it, which is a code-execution surface it sandboxes. nlqdb never runs generated code: it compiles NL to SQL, validates it against an allow-list fail-closed, and runs only that — the compiled SQL is shown with every answer.",
+      },
+      {
+        q: "Which one is better for an AI agent?",
+        a: "nlqdb ships an MCP server with `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe`, where `nlqdb_query` materialises Postgres on first reference — so an agent stands up and queries its own data with no Python runtime. PandasAI is a Python library, so an agent has to host a Python process and wrap it itself.",
+      },
+      {
+        q: "Can PandasAI make charts that nlqdb can't?",
+        a: "Yes, today. PandasAI generates matplotlib charts, cleans data, and engineers features from your question. nlqdb returns the tabular answer plus the compiled SQL you can verify; built-in chart generation is Phase 2. If a plotted figure is the deliverable, PandasAI is the better fit right now.",
+      },
+    ],
+    demo: {
+      goal: "top 10 customers by total revenue this year",
+      why: "A chat-with-data question PandasAI answers over a DataFrame or DB you loaded; nlqdb answers it over a Postgres it provisioned, SQL shown.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
