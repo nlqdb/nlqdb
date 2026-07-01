@@ -41,6 +41,14 @@ not the model level, so "we only call `gemini-2.5-flash`" did not protect us.
   (it is an authorization state, not a quota).
 - **Watch:** the free key is hammered from CI (datacenter IPs) during evals;
   keep the eval throttle and never link billing to "raise limits".
+- **Settled posture (2026-07-01):** always use a free-tier AI Studio key on a
+  project with **no billing account** — we do not verify billing state as a
+  human task, we simply never link it. Free-tier rate limits (`429`) are
+  **expected** and handled by the cost-ordered chain: a 429 maps to
+  `rate_limited` (`packages/llm/src/providers/_shared.ts`) and opens Gemini's
+  breaker so the router fails over to the next provider (`router.ts` `SK-LLM-030`)
+  — never a hard failure. Never link billing (a billed project bills even
+  free-model calls, per the 2026-06-15 suspension above).
 
 ## References
 

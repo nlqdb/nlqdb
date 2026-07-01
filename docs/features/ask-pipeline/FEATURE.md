@@ -204,6 +204,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* SK-TRUST-002 shipped — `AskResult` carries the `trace: { sql, plan_id, confidence, model, cache_hit }` block on every successful response; top-level `sql` / `cached` were removed (cleaner-shape > backwards compat per CLAUDE.md P5). The SSE `plan` event is the streaming form of the same record. Writes/DDL responses carry the `diff` block for [`SK-TRUST-001`](../trust-ux/FEATURE.md) (planned); the orchestrator short-circuits to `low_confidence` per [`SK-TRUST-003`](../trust-ux/FEATURE.md) (planned) before `db.execute`.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* 4xx `unsupported_verb` rejections (DDL via `/v1/ask`) emit `feature.requested.ddl_via_ask`; `low_confidence` refusals emit `feature.requested.ambiguous_goal`; `db_full` write-cap hits emit `feature.requested.larger_db`.
+- **GLOBAL-037** — Schema-only egress to third-party LLMs; never send user cell-values.
+  - *In this feature:* `orchestrate.ts` passes `db.schemaText` (DDL + evidence) only; no row-level cell-values enter the free / BYOLLM prompt.
 
 ## Open questions / known unknowns
 
