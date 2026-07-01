@@ -11,63 +11,69 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-07-01 (run 126) — dev.to / r/LLMDevs / r/LangChain: "LlamaIndex's text-to-SQL runs the SQL the model wrote. The docs tell you that; the demo doesn't."
+## 2026-07-01 (run 127) — dev.to / r/SQL / r/PostgreSQL: "Postgres has no MEDIAN(). Here's the query you write instead — and the choice that changes the answer."
 
-**Where:** dev.to + r/LLMDevs + r/LangChain; for engineers who've wired up `NLSQLTableQueryEngine`
-in a notebook and are weighing whether to put it on a product path. nlqdb mentioned once, as the
-"owns the DB, runs only validated SQL" alternative — not a knock on LlamaIndex.
+**Where:** dev.to + r/SQL + r/PostgreSQL; for the analyst/engineer who typed `MEDIAN(revenue)`,
+got a syntax error, and is now re-Googling how to do it. nlqdb mentioned once, at the end, as the
+"ask in English, read the SQL" option — the post stands on its own as a straight SQL answer.
 
-**Title:** LlamaIndex's text-to-SQL runs the SQL the model wrote. The docs tell you that; the demo doesn't.
+**Title:** Postgres has no MEDIAN(). Here's the query you write instead — and the choice that changes the answer.
 
 **Body:**
 
-> LlamaIndex's text-to-SQL is genuinely good. Wrap a SQLAlchemy engine in a `SQLDatabase`, hand it to
-> `NLSQLTableQueryEngine`, ask a question in English, and it writes the SQL, runs it, and synthesises
-> an answer. When the schema's too big for the context window you reach for
-> `SQLTableRetrieverQueryEngine` and a `TableIndex` so the right tables get retrieved at query time.
-> In a RAG pipeline or a notebook, that loop is hard to beat.
+> Every dialect gives you `AVG()`. Almost none give you `MEDIAN()` — and Postgres is one of the ones
+> that doesn't. So the moment the mean lies to you (one whale order, one stalled request dragging the
+> average off the typical row) and you reach for the median, you hit a syntax error and go looking.
 >
-> Two things about it are worth saying out loud before it goes on a product path, and to LlamaIndex's
-> credit, one of them is right there in the docs.
+> The answer isn't a function, it's an *ordered-set aggregate*:
 >
-> First: it executes the SQL the model generated. The LlamaIndex docs say it plainly — "executing
-> arbitrary SQL queries can be a security risk," and recommend restricted roles, read-only databases,
-> and sandboxing. That's honest, and it's also the whole point: the query tool runs whatever the LLM
-> emits. In a notebook you're the only caller and that's fine. Behind an "ask your data" box that
-> strangers type into, "generate SQL and run it" is a different posture than "generate SQL, validate
-> it against a read-only allow-list, run only that." The guardrail isn't off by default — it's yours
-> to build.
+> ```sql
+> SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY revenue) AS median_revenue
+> FROM orders;
+> ```
 >
-> Second: it assumes the database already exists. `NLSQLTableQueryEngine` connects to a DB you stood
-> up and credentialed. That's the right assumption for someone who already runs the warehouse, and
-> the wrong one for a builder whose real question is "where does the data even live." Same English
-> prompt, two different jobs.
+> That `WITHIN GROUP (ORDER BY ...)` clause is the part that looks nothing like a normal aggregate,
+> and it's the part people forget. It's also how you get any percentile, not just the middle: swap
+> `0.5` for `0.9` and you have p90; `0.95` for the p95 tail everyone quotes for latency. One shape,
+> every percentile.
 >
-> So the honest split isn't "which is better" — it's which job you're in. If you're assembling a RAG
-> system and want SQL as one retriever among documents and vectors, LlamaIndex is exactly the tool
-> and I'd reach for it. If what you actually need is a *place for the data to live* that answers in
-> English on a product path — provisioned for you, the compiled SQL shown so you can read it, only
-> validated SQL run, writes diff-previewed before they apply — that's a database's job, not a
-> framework component's.
+> Here's the bit that quietly changes your answer, though — there are *two* of these functions:
 >
-> (That second half is what we built [nlqdb](https://nlqdb.com) for: a Postgres provisioned from
-> English, NL→SQL with the SQL shown and validated fail-closed, an embeddable answer element, and an
-> MCP server so an agent can query it directly. Honest limits — nlqdb is not a general RAG framework;
-> if you need documents + vectors + SQL in one graph, LlamaIndex wins and a LlamaIndex pipeline can
-> just call nlqdb as one tool.)
+> - `percentile_cont(0.5)` **interpolates** between the two middle rows. The median of `[1, 2]` is
+>   `1.5` — a value that isn't in your data.
+> - `percentile_disc(0.5)` returns an **actual row** from the set. The median of `[1, 2]` is `1`.
+>
+> On an even-sized set, or on ordered-but-categorical data, those disagree. If two people report "the
+> median" and one used `cont` and the other `disc`, they'll get two numbers from the same table and
+> spend an afternoon arguing about it. Pick deliberately: `cont` for a continuous quantity where an
+> interpolated value is meaningful (revenue, latency), `disc` when the answer must be a real observed
+> value.
+>
+> (One more trap: the ordering lives inside `WITHIN GROUP`, not in a trailing `ORDER BY`, so a
+> per-category median is `percentile_cont(0.5) WITHIN GROUP (ORDER BY revenue)` with `GROUP BY
+> category` on the outside — the aggregate carries its own sort.)
+>
+> That's the whole answer. If you'd rather not remember the clause every reporting cycle, the tool I
+> work on — [nlqdb](https://nlqdb.com) — lets you ask "median revenue per order" in English, compiles
+> exactly this ordered-set aggregate, runs it in Postgres, and *shows you the compiled SQL* so you can
+> see which of `cont`/`disc` it used and the order it ran over. Honest limits: it answers with a
+> read-only query (not a live p95 dashboard), and the median needs a column it can actually order —
+> it won't invent a sort where none exists.
 
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the high-volume "LlamaIndex
-text-to-SQL" build intent surfaced by the `/vs/llamaindex` page shipped this run; the
-runs-generated-SQL-by-default framing is sourced to LlamaIndex's own docs (earns a citation on the
-merits) and concedes nlqdb's not-a-RAG-framework limit honestly.
+**Why this advances the north-star:** GLOBAL-025 onboarding/UX — rides the perennial "median in SQL /
+Postgres has no MEDIAN" search intent anchored by the `/solve/calculate-median-or-percentile-in-sql`
+page shipped this run; the query and the `cont`-vs-`disc` gotcha are sourced to the PostgreSQL
+aggregate-function docs (earns the citation on the merits), and it concedes nlqdb's read-only /
+needs-an-order limits honestly rather than pitching.
 
 ## Collapsed — full drafts in git history
 
+- run 126 — dev.to / r/LLMDevs / r/LangChain: "LlamaIndex's text-to-SQL runs the SQL the model wrote. The docs tell you that; the demo doesn't." (LlamaIndex's `NLSQLTableQueryEngine` writes SQL from an English question and *executes it* over a DB you already stood up — great in a notebook/RAG pipeline, but the docs themselves warn "executing arbitrary SQL can be a security risk," and on a product path "generate SQL and run it" is a different posture than "generate SQL, validate against a read-only allow-list, run only that"; it also assumes the DB already exists rather than answering "where does the data live"; honest split — if you need documents+vectors+SQL in one graph LlamaIndex wins and can call nlqdb as one tool, while nlqdb provisions+owns the Postgres, shows the SQL, runs only validated SQL, and diff-previews writes; anchors `/vs/llamaindex`).
 - run 125 — dev.to / r/SQL / r/PostgreSQL: "LAG() is the whole month-over-month growth query. The self-join you were about to write is the bug." (month-over-month / period-over-period / YoY / WoW growth is one window-function shape, not a self-join on `month = month - 1` that breaks on missing months and December boundaries: `LAG(value) OVER (ORDER BY month)` reaches the previous row in an order you name, with a `NULLIF(prev, 0)` divide-by-zero guard and the `ORDER BY` as the definition of "previous"; YoY/WoW are the same query with a different offset, distinct from running-total's accumulate-down and top-N's rank-within; ask in English and read the SQL so you check the order and baseline; honest split — one-off read-only answer not a live MoM chart, you still name the period order; anchors `/solve/month-over-month-growth-in-sql`).
 - run 124 — dev.to / r/Python / r/dataengineering: "PandasAI runs generated Python to answer your question. That's the feature and the footgun." (PandasAI reads a DataFrame/CSV/Postgres you already loaded and translates the question into Python+SQL and *executes it* to return answers, charts, cleaned columns, generated features — great in a notebook, but on a product path "generate Python and run it" is a bigger blast radius than "generate SQL, validate against an allow-list, run only that," and it assumes the data's already loaded rather than answering "where does the data live"; honest split — if a plotted figure is the deliverable PandasAI wins and the two compose, nlqdb owns+provisions the Postgres, shows the SQL, runs only validated SQL, diff-previews writes, and has no chart/cleansing/feature generation; anchors `/vs/pandasai`).
 - run 123 — dev.to / r/SQL / r/PostgreSQL: "The running-total query keeps every row. That's the part GROUP BY can't do." (a running total — revenue-to-date, running headcount, a rolling 7-day sum — needs a window function `SUM(amount) OVER (ORDER BY day)` that accumulates down an explicit order and keeps every row, not a `GROUP BY` that collapses to one number per bucket; `PARTITION BY` restarts the total per group and a frame clause (`ROWS BETWEEN 6 PRECEDING AND CURRENT ROW`) makes it a moving window; the wrong `ORDER BY`, unbroken ties, or a missing frame quietly break it; ask in English and read the SQL so you confirm the order and frame; honest split — you must name the accumulation order, one-off read-only curve not a live chart; anchors `/solve/running-total-cumulative-sum-in-sql`).
 - run 122 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead." (SQL Server has a `PIVOT` keyword; Postgres doesn't, so every reporting cycle you re-learn the two real answers — portable conditional aggregation (`SUM(...) FILTER (WHERE ...)` per column, tedious and easy to mis-bucket) or `crosstab()` from the `tablefunc` extension nobody has enabled; either way a plain `GROUP BY` gives tall rows when the spreadsheet wanted wide, and reshaping is the Googled part; ask in English and read the SQL so each column maps to the bucket you meant; honest split — pivot columns must be ones you can name, one-off read-only answer not a live crosstab dashboard, exact SQL over current rows; anchors `/solve/pivot-rows-into-columns`).
-- run 121 — dev.to / r/SQL / r/dataengineering: "The top-N-per-group query everyone re-Googles." (the top *N* rows per group has a Stack Overflow tag — `greatest-n-per-group` — because it comes up constantly; the obvious `GROUP BY` + `MAX` gives the top *value* but throws away the rest of the row, so keeping the whole row needs `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` filtered to rank ≤ N or a lateral join — a different query than you started typing, and the partition/tiebreak bite quietly; ask in English and read the SQL so you verify the partition and whether ties wanted `RANK`/`DENSE_RANK`; honest split — one-off read-only ranked answer, not a live dashboard or rank-change alert, exact ordering not fuzzy; anchors `/solve/find-top-n-rows-per-group`).
+- run 121 — dev.to / r/SQL / r/dataengineering: "The top-N-per-group query everyone re-Googles." (`greatest-n-per-group`: keeping the whole row per group needs `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` filtered to rank ≤ N, not `GROUP BY`+`MAX`; anchors `/solve/find-top-n-rows-per-group`).
 
 - run 120 — dev.to / r/dataengineering / r/LLMDevs: "Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest." (Dataherald/Vanna/Wren open-sourced the whole NL→SQL engine — the model half is now an MIT-licensed commodity you wire up in an afternoon — but ship it to people who don't know your schema and demo accuracy evaporates; the fix every engine reaches for is *golden SQL*, hand-curated question→query training pairs plus business context tuned to your tables, a standing maintenance job on whoever owns the data model, not a flaw but the part the README undersells; honest evaluation isn't "can it generate SQL" but "who keeps it accurate as the schema moves, and do I already run the warehouse it assumes" — if you run a real warehouse + data team that wants that control an OSS engine is exactly right; honest split — nlqdb *owns* the Postgres it answers and skips golden SQL by prompting from the live schema fingerprint, so no warehouse federation / no golden-SQL knobs, query Snowflake/BigQuery in place and the OSS engine wins; anchors `/vs/dataherald`).
 - run 119 — dev.to / r/SQL / r/analytics: "The duplicate-rows query you re-Google every six weeks." (the find-duplicates answer hasn't changed in thirty years — `GROUP BY` the suspect columns, `HAVING COUNT(*) > 1` — yet non-daily-SQL folks look it up every time, and wanting the *whole* duplicate row not just the key pushes you into a `ROW_NUMBER()` window function, a different query than you Googled; ask in English and read the SQL so you verify the grain; honest split — nlqdb reports duplicates read-only, which row to keep/merge is a deliberate write, matching is exact not fuzzy; anchors `/solve/find-duplicate-rows-in-my-data`).

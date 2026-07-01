@@ -1630,6 +1630,65 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "calculate-median-or-percentile-in-sql",
+    persona: "P3 analyst",
+    searchTitle: "How do I calculate a median or percentile in SQL?",
+    oneLiner:
+      "If you need a median or a percentile — the middle value, or the p90 of response times — ask in plain English instead of remembering Postgres has no `MEDIAN` function. nlqdb compiles the ordered-set aggregate `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY value)`, runs it in Postgres, and shows the SQL so you can check the order.",
+    painContext:
+      "Analysts, PMs, and ops leads reach for the median when the mean lies — one whale order or a stalled request drags the average away from the typical row, so you want the middle value or a p90/p95 tail instead. But Postgres has no `MEDIAN()` function the way it has `AVG()`, and this is the trap: median is an ordered-set aggregate, `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY value)`, with a `WITHIN GROUP (ORDER BY ...)` clause that looks nothing like a normal aggregate. It gets re-Googled every time, and the `PERCENTILE_CONT` (interpolate between the two middle rows) vs. `PERCENTILE_DISC` (return an actual row from the set) choice is exactly where two people get two different 'medians' from the same data.",
+    demoGoal: "the median and 90th-percentile revenue per order",
+    demoWhy:
+      "The middle-value-and-tail summary you'd otherwise hand-write with an ordered-set aggregate and the right `WITHIN GROUP` clause is one English goal here, with the SQL shown so you can check the order and whether it interpolated.",
+    howNlqdbAnswers: [
+      "Ask 'median revenue per order'; nlqdb compiles the ordered-set aggregate (`PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY revenue)`) and runs it in Postgres.",
+      "Every answer returns the value plus the compiled SQL under a trace toggle (`SK-WEB-005`) — verify the order and whether it used `PERCENTILE_CONT` or `PERCENTILE_DISC`.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to summarise your real rows.",
+      "Repeated percentile summaries hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same statistic returns in single-digit ms.",
+    ],
+    whatItDoesnt: [
+      "The median needs a column it can order — a number, date, or duration. Over values with no meaningful sort, or a mix nlqdb can't rank, the 'middle' isn't defined and it won't invent one.",
+      "Continuous vs. discrete is a real choice: `PERCENTILE_CONT` interpolates between the two middle rows (median of [1, 2] is 1.5), `PERCENTILE_DISC` returns an actual value from the set (1). nlqdb picks one and shows it in the SQL — it doesn't guess which you meant when you don't say.",
+      "nlqdb returns the percentile with a read-only SELECT — it's not a BI tool maintaining a live p95-latency chart or refreshing the summary on a schedule. That's a scheduled job's work.",
+      "The public `<nlq-data>` embed is read-scoped — it summarises existing rows, it doesn't write. No write key belongs in client HTML; loading the data goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I calculate a median in SQL?",
+        a: "Ask in plain English — 'median revenue per order.' Postgres has no `MEDIAN()` function, so nlqdb compiles the ordered-set aggregate `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY revenue)`, runs it, and returns the value plus the SQL it ran. You get the middle value without remembering the `WITHIN GROUP` syntax. The honest limit: you have to name a column it can order by.",
+      },
+      {
+        q: "What's the difference between PERCENTILE_CONT and PERCENTILE_DISC?",
+        a: "`PERCENTILE_CONT` interpolates between the two middle rows — the continuous median of [1, 2] is 1.5. `PERCENTILE_DISC` returns an actual value present in the data — the discrete median of [1, 2] is 1. They diverge on even-sized sets and on categorical-but-ordered data. nlqdb shows which one the compiled SQL used so you can confirm you got the one you meant.",
+      },
+      {
+        q: "Can I get a p90, p95, or p99 percentile too?",
+        a: "Yes — they're the same ordered-set aggregate with a different fraction: `PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY latency)` for p90, `0.95` for p95. Ask for 'the 95th percentile of response time' and nlqdb compiles the fraction, then shows the SQL. The honest limit: name the column and the percentile you want.",
+      },
+      {
+        q: "Can I compute a median or percentile on a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the summary in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the percentile with a read-only query — it doesn't persist a materialized summary for you.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/median",
+        label:
+          "Stack Overflow — the `median` tag, the perennial 'how do I get a median in SQL' hub across dialects (Postgres has no `MEDIAN`).",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/functions-aggregate.html",
+        label:
+          "PostgreSQL docs — the aggregate-function reference, canonical source for the `percentile_cont` / `percentile_disc` ordered-set aggregates and the `WITHIN GROUP` clause.",
+      },
+      {
+        url: "https://leafo.net/guides/postgresql-calculating-percentile.html",
+        label:
+          "leafo.net — evergreen 'Calculating Percentile (and Median) in PostgreSQL' walkthrough (`PERCENTILE_CONT` vs `PERCENTILE_DISC`).",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
