@@ -47,13 +47,13 @@ From `research/distribution-queue.md` — *(none live yet; drafts await review.)
 ## Last change
 
 **2026-07-01 (framing fix)** — disambiguated who owns distribution. Dropped the
-unsourced "un-forceable" narrative (its only occurrence; it contradicted
-`GLOBAL-033` + the autonomous-distribution design in `fable-recommendation.md`)
-and repointed the daily lever at the **agent-movable** surfaces count (row #14,
-now 60 after run 129's `/solve/calculate-percentage-of-total-in-sql`) rather than
-the lagging strangers metric no single run can move. Trimmed
+unsourced "un-forceable" narrative (contradicted `GLOBAL-033` + the
+autonomous-distribution design in `fable-recommendation.md`) and repointed the
+daily lever at the **agent-movable** surfaces count (row #14, now 60 after run
+129's `/solve/calculate-percentage-of-total-in-sql`) rather than the lagging
+strangers metric no single run can move. Trimmed
 `blocked-by-human.md` to genuine human actions: Stripe auto-deploys on merge (not
-a click); `OPENROUTER_FRONTIER_API_KEY` + `BYO_SECRET_KEK` now flow through the
-secret mirror (one `mirror-secrets-gha.sh` run); legal → free Termly path.
-`MEMORY_PRESET=1` prod flip kept (E-06's named founder prerequisite).
+a click); `OPENROUTER_FRONTIER_API_KEY` + `BYO_SECRET_KEK` flow through the secret
+mirror (one `mirror-secrets-gha.sh` run); legal → free Termly path. `MEMORY_PRESET`
+is a plain var gated on E-03 shipping, not a founder click (tracked in worksheets).
 **KPI:** GLOBAL-025 onboarding/UX; none degraded.

@@ -267,7 +267,7 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 
 - **Privacy** — Decided: no user data ever enters the harness; public benchmark + hand-authored persona-bench data only.
 - **Deferred:** a `feature.eval.smoke` event; a hard token-budget counter (`SK-QUAL-011`/`012` cover it reactively).
-- **Still open** (agentic lane shipped, [`SK-QUAL-009`](#sk-qual-009)): multi-model frontier until the Sonnet 4.6 baseline lands; BYOLLM lane depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA next Spider baseline.
-- **Canonical raw EX — BIRD 0.520 (2026-06-19, flat) / Spider 0.1852 (2026-06-17)**, 6-provider GHA runs (`SK-QUAL-013`). Breakdown: `quality-score-source-of-truth.md` §2.
+- **Still open** ([`SK-QUAL-009`](#sk-qual-009)): multi-model frontier until the Sonnet 4.6 baseline lands; BYOLLM lane depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA next Spider baseline.
+- **Canonical raw EX** — see the scorecard + `quality-score-source-of-truth.md` §2 (single source of truth; `SK-QUAL-013`).
 - **Value retrieval (§4 #2a) — closed, not parked** (`SK-QUAL-014` run 18: `literal_only` = 0 ⇒ ~0 mismatches flipped). Egress stays schema-only per [`GLOBAL-037`](../../decisions/GLOBAL-037-schema-only-llm-egress.md).
 - **Corrected-set evaluation — parked until the next BIRD refresh** (`GLOBAL-033`). UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% BIRD annotation errors. **Adopt iff** license permits bundling **and** it's a ~50-LOC scorer-reuse patch; else skip.

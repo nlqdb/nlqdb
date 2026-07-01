@@ -2,7 +2,7 @@
 
 **Status:** ⬜ not started — **redirected** (SK-PIVOT-010, run 37): the anon
 `/agents` CreateForm path is infeasible; the on-ramp is authed-only.
-**Sequence:** Engine 6 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** E-01 ✅, WS-07 ✅, **`MEMORY_PRESET=1` enabled in prod** (currently dark — `docs/blocked-by-human.md`) · **Gate:** none
+**Sequence:** Engine 6 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** E-01 ✅, WS-07 ✅, **`MEMORY_PRESET=1` enabled in prod** (currently dark — a plain non-secret var, gated on E-03 security scoping shipping first) · **Gate:** none
 
 ## Finding (run 37, SK-PIVOT-010) — why the original mechanism was dropped
 
@@ -50,8 +50,11 @@ row "memory-preset DBs created" if the boolean isn't enough.
 
 ## Steps (redirected — authed surface, after `MEMORY_PRESET=1` is on in prod)
 
-1. **Prerequisite (founder):** enable `MEMORY_PRESET=1` on the prod Worker.
-   Until then this slice ships nothing — preset calls 400 `preset_disabled`.
+1. **Prerequisite:** enable `MEMORY_PRESET=1` in prod (a plain non-secret var —
+   agent-settable via PR to `apps/api/wrangler.toml` `[vars]`, or founder via the
+   CF dashboard). Do this only after E-03 (per-agent isolation) ships; enabling it
+   earlier exposes memory with no cross-agent scoping. Until then this slice ships
+   nothing — preset calls 400 `preset_disabled`.
 2. On the **authed** create surface (chat left-rail "+ New" / `/app/new` for a
    signed-in session — the surface that already calls `POST /v1/databases`
    with the session cookie, **not** the anon `CreateForm`), add an opt-in
