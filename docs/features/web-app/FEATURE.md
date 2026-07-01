@@ -145,10 +145,10 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 **Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md).
 One quiet-brutalism token system in `global.css` (neutrals + one accent gated to three lime moments per fold, three faces, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero) → HOW (`Demo.astro` live `/v1/ask` + snippet) → WHY (`Replaces.astro` + one CTA). Off-`/` blocks (`AgentMemoryBand`, `Waitlist`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt`) removed; `/vs/*` and `/solve/*` collapse to one what-we-replace template; one motion moment per page, `prefers-reduced-motion`-gated.
 
-### SK-WEB-016 — One-click MCP install affordance: shared `<McpInstall>` at three venues, deep-link where supported
+### SK-WEB-016 — One-click MCP install affordance: shared `<McpInstall>` at five venues, deep-link where supported
 
 **Body:** [`decisions/SK-WEB-016-mcp-install-affordance.md`](./decisions/SK-WEB-016-mcp-install-affordance.md).
-A shared `<McpInstall>` (host descriptors in `lib/mcp-install.ts`) renders four host buttons — Cursor via its deep-link scheme, Claude/Windsurf/Zed via paste-ready per-host JSON — at three venues: `/agents` hero (under the form), post-create `CreateResultView`, `/integrations`. One promoted lime button per row (`SK-WEB-015`); `pk_live_REPLACE_ME` placeholder + sign-in nudge on anon surfaces (`SK-ANON-012` / `SK-WEB-010`); `SK-WEB-002` kept (install only after the CTA, never on the homepage hero).
+A shared MCP-install surface (host descriptors in `lib/mcp-install.ts`) renders host buttons — Cursor/VS Code via deep-link, Claude Code/Codex via command, Claude/Windsurf/Zed via paste-ready per-host JSON — at five venues: Door A of the two-door home, `/agents` hero (under the form), post-create `CreateResultView`, `/integrations`, and the **`/app` chat window** ("Install MCP" trigger in the `LeftRail` → focus-trapped popover). Rendered by `McpInstall.astro` (marketing SSR) and the shared React `McpInstallView` (`components/McpInstallView.tsx`, imported by the post-create view + the chat popover so the React venues can't drift). One promoted button per row (`SK-WEB-015`/`SK-WEB-020`); `pk_live_REPLACE_ME` placeholder + sign-in nudge on anon surfaces (`SK-ANON-012` / `SK-WEB-010`); `SK-WEB-002` kept (install only after the CTA, never on the homepage hero).
 
 ### SK-WEB-017 — Connect-first hero on the agent-memory home; goal input retained as secondary
 
@@ -165,7 +165,7 @@ The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked
 ### SK-WEB-019 — `/app/connect`: auth-guarded BYO-connect page + `ConnectForm.tsx`
 
 **Body:** [`decisions/SK-WEB-019-connect-page.md`](./decisions/SK-WEB-019-connect-page.md).
-`/app/connect` is auth-guarded (anon → `/auth/sign-in?return_to=/app/connect`) and mounts `ConnectForm.tsx`: an engine select (default ClickHouse), a `type="password"` connection-URL field **never persisted** client-side, posting `{ engine, connection_url, name? }` to `/v1/db/connect` with `credentials:"include"`. On success it renders the schema preview then a "Question it now →" CTA to `/app?db=<dbId>`. The product-side landing for Door B (`SK-WEB-018`); backend is [`SK-DBCONN-001`](../byo-connect/FEATURE.md).
+`/app/connect` is auth-guarded (anon → `/auth/sign-in?return_to=/app/connect`) and mounts `ConnectForm.tsx`: an engine select (default ClickHouse), a `type="password"` connection-URL field **never persisted** client-side, posting `{ engine, connection_url, name? }` to `/v1/db/connect` with `credentials:"include"`. On success it renders the schema preview then a "Question it now →" CTA to `/app?db=<dbId>`. The product-side landing for Door B (`SK-WEB-018`); backend is [`SK-DBCONN-001`](../byo-connect/FEATURE.md). Reached from Door B and from a "Connect existing DB" affordance in the `/app` chat-window `LeftRail` (Postgres / ClickHouse chips that deep-link `?engine=` so `ConnectForm` preselects the engine) — one connect page, no second flow (`GLOBAL-017`).
 
 ### SK-WEB-020 — Calm token system (supersedes SK-WEB-015's quiet-brutalism tokens)
 

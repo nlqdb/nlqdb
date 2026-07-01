@@ -1,10 +1,14 @@
 ---
-// SK-WEB-016 — One-click MCP install affordance.
+// SK-WEB-016 — One-click MCP install affordance (marketing SSR venues).
 //
-// One component, three venues: `/agents` final connect card, the
-// post-create CreateResultView, and `/integrations` MCP-hosts section.
-// Four hosts: Claude, Cursor, Windsurf, Zed. Where the host ships a
-// documented deep-link install scheme, the button is an `<a>` whose
+// This Astro component covers the marketing venues: `/agents` final
+// connect card, the two-door home Door A, and `/integrations` MCP-hosts
+// section. The product-side React venues (post-create CreateResultView +
+// the `/app` chat-window install popover) render the shared React mirror
+// `components/McpInstallView.tsx` instead — five venues total, all
+// sourcing host descriptors from `lib/mcp-install.ts` so none can drift.
+// Where the host ships a documented deep-link install scheme, the button
+// is an `<a>` whose
 // `href` is the resolved URI (the OS hands the click to the host's
 // URI handler); where no scheme exists, the button copies the host's
 // JSON config block and points the user at the one place to paste it.

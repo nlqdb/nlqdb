@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { getChatClient } from "../../lib/chat-client";
 import { useFocusTrap, useRestoreFocusOnUnmount } from "../../lib/dialog";
 import { displayName } from "../../lib/names";
+import McpInstallPopover from "./McpInstallPopover";
 
 interface LeftRailProps {
   apiBase: string;
@@ -123,6 +124,10 @@ export default function LeftRail({
         </button>
       </header>
 
+      {/* SK-WEB-016 — one-click MCP install for the chat window; the
+          first thing to notice in the rail chrome. Prominent, calm. */}
+      <McpInstallPopover />
+
       {creating ? (
         <NewDbForm
           apiBase={apiBase}
@@ -130,6 +135,23 @@ export default function LeftRail({
           onCancel={() => setCreating(false)}
         />
       ) : null}
+
+      {/* SK-WEB-019 / GLOBAL-017 — route to the one BYO-connect page
+          rather than build a second connect flow. Distinct from "+ New"
+          (which mints a hosted DB): this connects an EXISTING Postgres /
+          ClickHouse. The engine chips deep-link `?engine=` so the page
+          preselects the right engine. */}
+      <section className="left-rail__connect" aria-label="Connect an existing database">
+        <p className="left-rail__connect-label">Have a database already?</p>
+        <div className="left-rail__connect-chips">
+          <a className="left-rail__connect-chip" href="/app/connect?engine=postgres">
+            Connect Postgres
+          </a>
+          <a className="left-rail__connect-chip" href="/app/connect?engine=clickhouse">
+            Connect ClickHouse
+          </a>
+        </div>
+      </section>
 
       {state.kind === "loading" ? <p className="left-rail__status">Loading…</p> : null}
       {state.kind === "error" ? (

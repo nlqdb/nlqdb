@@ -79,10 +79,29 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   .page--connect {
     max-width: 960px;
     padding: 0 clamp(16px, 3vw, 32px);
+    /* The base `.page` grid column defaults to `minmax(auto, 1fr)`, whose
+     * `auto` min-track equals the widest child's min-content — the footer's
+     * nowrap nav then blows the column past a 375px viewport, dragging the
+     * form inputs (width:100%) wide with it. Pin the column min to 0 so the
+     * grid can shrink to the viewport; children scroll internally instead. */
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .page__main--connect {
     padding: 32px 0 64px;
+    min-width: 0;
+  }
+
+  /* The shared Topnav has no mobile treatment; authed it adds a "Sign out"
+   * slot that overruns 375px in one nowrap row. Scoped to this app page
+   * only: wrap the nav so every link stays visible and the page never
+   * scrolls sideways. */
+  @media (max-width: 720px) {
+    .page--connect .topnav,
+    .page--connect .topnav__links {
+      flex-wrap: wrap;
+      gap: 8px 16px;
+    }
   }
 
   .connect {
