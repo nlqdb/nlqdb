@@ -1,6 +1,6 @@
 ---
 name: quality-eval
-description: NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite + internal `db.create` eval) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-frontier delta** is the headline KPI for the engine north-star.
+description: NL→SQL accuracy benchmarking (BIRD-dev + Spider 2.0-lite + persona-bench) across the router's free / BYOLLM / hosted-premium lanes; the free-vs-frontier delta is the engine headline KPI.
 when-to-load:
   globs:
     - packages/llm/**
@@ -11,8 +11,8 @@ when-to-load:
 
 # Feature: Quality Eval
 
-**One-liner:** NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite SQLite subset + internal `db.create` eval per [`SK-QUAL-003`](#sk-qual-003)) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-agentic-frontier delta** (`SK-QUAL-004`) is the headline KPI for [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine north-star.
-**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** BIRD Mini-Dev + Spider 2.0-lite runners + EX scorers; free / single-model-frontier / `agentic-frontier` lanes; baseline diff vs `tools/eval/baseline-2026-06-15.json` + McNemar (`SK-QUAL-006`); `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`. The runner is **resumable** (`SK-QUAL-011`/`SK-QUAL-013`), refuses to score a chain-unreachable outage as 0% (`SK-QUAL-020`), and runs **manually on demand** (`SK-QUAL-002`); canonical 6-provider runs seed the baseline `tools/eval/baseline-2026-06-15.json`. **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export). Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
+**One-liner:** NL→SQL accuracy benchmarking across the three-dataset canon ([`SK-QUAL-003`](#sk-qual-003)) + persona-bench ([`SK-QUAL-018`](#sk-qual-018)); the **free-vs-agentic-frontier delta** ([`SK-QUAL-004`](#sk-qual-004)) is [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine headline KPI.
+**Status:** **Phase 2 — slices 1–3c shipped.** BIRD Mini-Dev + Spider 2.0-lite runners + EX scorers; free / single-model-frontier / `agentic-frontier` lanes; baseline diff vs `tools/eval/baseline-2026-06-15.json` + McNemar (`SK-QUAL-006`); `feature.eval.{weekly,regression}` → `POST /v1/events/eval` → Queues → LogSnag `#north-star`. Runner is resumable (`SK-QUAL-011`/`013`), refuses to score a chain-unreachable outage as 0% (`SK-QUAL-020`), runs manually on demand (`SK-QUAL-002`). **Phase 2 exit gate — remaining:** internal `db.create` accepted-answer eval (blocked on a privacy-stripped R2 export). Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) depends on this harness.
 
 **Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument; the on-demand run (`SK-QUAL-002`) is the alert-and-decision input.
 **Owners (code):** `tools/eval/**`, `packages/llm/**`, `.github/workflows/quality-eval-bird-mini.yml`
@@ -20,8 +20,8 @@ when-to-load:
 
 ## Touchpoints — read this feature before editing
 
-- `tools/eval/` — benchmark runner (slices 1 + 2 + 3a + 3b + 3c shipped):
-  - `src/runner.ts` — multi-dataset driver, CLI, lane loop, baseline + emit; `withExecRetry`-wraps scaffolded lanes; `--throttle-ms` (`SK-QUAL-012`), `--capacity-wait-ms` + budget-stop (`SK-QUAL-013`); transport-collapse guard `isTransportCollapse` (`SK-QUAL-020`); `--self-consistency N` / `--sc-temperature T` → `samplePlans`→`voteOverSamples`→score-the-winner (`SK-QUAL-017`)
+- `tools/eval/` — benchmark runner:
+  - `src/runner.ts` — multi-dataset driver, CLI, lane loop, baseline + emit; `withExecRetry`-wraps scaffolded lanes; `--throttle-ms` (`SK-QUAL-012`), `--capacity-wait-ms` + budget-stop (`SK-QUAL-013`); transport-collapse guard `isTransportCollapse` (`SK-QUAL-020`); `--self-consistency N` / `--sc-temperature T` (`SK-QUAL-017`)
   - `src/exec-retry.ts` — `withExecRetry` bounded retry on `exec_error` only (`SK-QUAL-009`)
   - `src/score.ts` — BIRD multiset/sequence-strict EX scorer + the Spider 2.0 multi-CSV port + `scoreOneSpider2` (`SK-QUAL-008`)
   - `src/csv.ts` — minimal RFC-4180 CSV parser + type inference for gold CSVs (`SK-QUAL-008`)
@@ -42,7 +42,6 @@ when-to-load:
 - `packages/llm/src/router.ts` — the system under test (calls `plan()` with `dialect: "sqlite"`)
 - `packages/llm/src/types.ts` — `PlanRequest.dialect` was widened to `"postgres" | "sqlite"` for SK-QUAL-001
 - `apps/api/src/ask/sql-validate.ts` — schema-fit checks the harness exercises
-- The Postgres / ClickHouse adapter test fixtures — repurposed as eval fixtures
 
 ## Decisions
 
@@ -59,25 +58,21 @@ to published research. The harness is a tool, not a CI gate
 ### SK-QUAL-003 — Three-dataset canon: BIRD-dev + Spider 2.0-lite (SQLite subset) + internal `db.create` eval (the third dataset is the one that matters most)
 
 **Body:** [`decisions/SK-QUAL-003-three-dataset-canon.md`](./decisions/SK-QUAL-003-three-dataset-canon.md).
-Three datasets in weighted order: (1) internal `db.create` accepted-answer
-eval (production-shape, internal-wins on disagreement); (2) BIRD-dev Mini-Dev
-(500 SQLite — public, comparable; ~52.8% annotation errors per
+Three datasets in weighted order: (1) internal `db.create` accepted-answer eval
+(production-shape, internal-wins on disagreement); (2) BIRD-dev Mini-Dev (500
+SQLite — public, comparable; ~52.8% annotation errors per
 [arXiv:2601.08778](https://arxiv.org/abs/2601.08778)); (3) Spider 2.0-lite
-**SQLite subset only** — upstream ships 547 rows (135 `local###` SQLite;
-zero Postgres). All 135 score via the canonical multi-CSV evaluator per
-[`SK-QUAL-008`](#sk-qual-008); the loader pins to GitHub raw (HF mirror was
-stale 2026-05-19).
+**SQLite subset only** — 135 `local###` rows, all scored via the
+[`SK-QUAL-008`](#sk-qual-008) multi-CSV evaluator.
 
 ### SK-QUAL-004 — Free-vs-agentic-frontier delta is the headline KPI; single-model frontier reports informationally
 
 **Body:** [`decisions/SK-QUAL-004-free-vs-frontier-delta.md`](./decisions/SK-QUAL-004-free-vs-frontier-delta.md).
 Three lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md):
-**free**, **single-model frontier** (informational, ~73% canonical
-BIRD-dev), **agentic-frontier** (~77-82% canonical SOTA). Headline KPI is
-the **free-vs-agentic-frontier delta** — Phase 2 ≤ 25 pp, Phase 3 ≤ 16 pp
-per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Slice 1 + 2
-shipped free + single-model-frontier; agentic lane lands in slice 3c with
-`SK-LLM-017`.
+**free**, **single-model frontier** (informational, ~73% BIRD-dev),
+**agentic-frontier** (~77-82% SOTA). Headline KPI is the
+**free-vs-agentic-frontier delta** — Phase 2 ≤ 25 pp, Phase 3 ≤ 16 pp per
+[`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md).
 
 ### SK-QUAL-005 — Baseline by 2026-06-15; Phase 2 floor enforced from first measurement
 
@@ -102,15 +97,13 @@ it. Resilience via [`SK-QUAL-011`](#sk-qual-011).
 ### SK-QUAL-011 — Resumable runner: checkpoint + budget-stop so a run survives a free-tier daily token cap
 
 **Body:** [`decisions/SK-QUAL-011-resumable-runner.md`](./decisions/SK-QUAL-011-resumable-runner.md).
-`tools/eval/src/checkpoint.ts` writes one JSONL line per scored
-`(question_id, lane)` pair; `runEval` skips done pairs and appends as it
-goes (deterministic `--sample-seed` order). When the whole chain is
-rate-limited (`AllProvidersFailedError` all-`rate_limited`, the
-[`SK-LLM-030`](../llm-router/decisions/SK-LLM-030-rate-limit-aware-failover.md)
-contract) the run **budget-stops**: keeps the checkpoint, marks the report
-`resumable: true`, doesn't emit, exits 0 — a daily-cap hit reads as a
-pause, not a wall of `no_sql`. The operator re-dispatches once the cap
-resets (smoke checkpoint persists via `actions/cache`).
+`checkpoint.ts` writes one JSONL line per scored `(question_id, lane)` pair;
+`runEval` skips done pairs and appends as it goes (deterministic `--sample-seed`
+order). When the whole chain is rate-limited
+([`SK-LLM-030`](../llm-router/decisions/SK-LLM-030-rate-limit-aware-failover.md))
+the run **budget-stops**: keeps the checkpoint, marks the report
+`resumable: true`, doesn't emit, exits 0 — a daily-cap hit reads as a pause, not
+a wall of `no_sql`. Smoke checkpoint persists via `actions/cache`.
 
 ### SK-QUAL-006 — McNemar's paired-binary test as a parallel regression trigger
 
@@ -130,17 +123,12 @@ file-layout / `local###` filter / path-traversal contracts still apply.
 ### SK-QUAL-008 — Spider 2.0-lite multi-CSV scorer (slice 3b) ports the canonical pandas comparator to TypeScript
 
 **Body:** [`decisions/SK-QUAL-008-spider2-lite-multi-csv-scorer.md`](./decisions/SK-QUAL-008-spider2-lite-multi-csv-scorer.md).
-Slice 3b lifts all 135 `local###` rows to scoreable: TypeScript port of
-`compare_pandas_table` + `compare_multi_pandas_table`
-(`tools/eval/src/score.ts::comparePandasTable` /
-`compareMultiPandasTable` / `scoreOneSpider2`), a minimal
-pandas-CSV parser (`tools/eval/src/csv.ts`), and a refit loader that
-fetches per-instance gold CSV(s) + `condition_cols` / `ignore_order`
-from `evaluation_suite/gold/`. Two invariants pinned by tests so the
-port can't drift: `abs_tol = 1e-2` matches `math.isclose`, and the
-`ignore_order` sort key `(x is None, str(x), is-numeric)` byte-matches
-Python. The Spider workflow sparse-clones `evaluation_suite/gold/` into the
-cached `spider2_data/` for off-disk CI resolution.
+Lifts all 135 `local###` rows to scoreable: TypeScript port of
+`compare_pandas_table` / `compare_multi_pandas_table` + a minimal pandas-CSV
+parser (`score.ts` / `csv.ts`), plus a loader that fetches per-instance gold
+CSV(s) from `evaluation_suite/gold/`. Two invariants pinned by tests so the
+port can't drift from Python: `abs_tol = 1e-2` (`math.isclose`) and the
+`ignore_order` sort key `(x is None, str(x), is-numeric)`.
 
 ### SK-QUAL-009 — Agentic exec-retry scaffold + `agentic-frontier` lane (slice 3c)
 
@@ -172,31 +160,27 @@ only — production is untouched. Complements the `SK-QUAL-011` budget-stop.
 ### SK-QUAL-013 — Capacity-honest budget stop: a rate-limit breaker wall pauses the run, never scores `no_sql`
 
 **Body:** [`decisions/SK-QUAL-013-capacity-honest-budget-stop.md`](./decisions/SK-QUAL-013-capacity-honest-budget-stop.md).
-Budget-stop fires on **capacity exhaustion** (every attempt `rate_limited`
-**or** `circuit_open` — a 429 opens the breaker for its `Retry-After`
-window, so the wall after the first 429 reads `circuit_open`), after one
-bounded `--capacity-wait-ms` wait-and-retry (workflows: 65 s; default 0).
-Full-mode workflows cache the checkpoint by commit SHA so a re-dispatch
-resumes. Fixes the 2026-06-11 500-q run scoring 246 breaker-wall rows as
-`no_sql` without a single LLM call.
+Budget-stop fires on **capacity exhaustion** (every attempt `rate_limited` or
+`circuit_open`), after one bounded `--capacity-wait-ms` wait-and-retry
+(workflows 65 s; default 0). Full-mode workflows cache the checkpoint by commit
+SHA so a re-dispatch resumes. Fixes the 2026-06-11 run that scored 246
+breaker-wall rows as `no_sql` without a single LLM call.
 
 ### SK-QUAL-014 — Offline mismatch error-class classifier: bucket a run's loss mass so the §4 backlog is picked from evidence
 
 **Body:** [`decisions/SK-QUAL-014-mismatch-error-class-classifier.md`](./decisions/SK-QUAL-014-mismatch-error-class-classifier.md).
 Pure `classifyMismatch` + `histogram()` + a `bun analyze-mismatches` CLI tag the
-structural diffs of every `mismatch` row in a saved `EvalReport`, read-only over
-the committed baseline (no keys/quota/chain change). Picks the §4 backlog from
-evidence: on BIRD 2026-06 aggregation/DISTINCT grain + value-grounding, not
-schema-link recall, is the dominant loss mass.
+structural diffs of every `mismatch` row in a saved `EvalReport`, read-only (no
+keys/quota/chain change). Evidence on BIRD 2026-06: aggregation/DISTINCT grain +
+value-grounding, not schema-link recall, is the dominant loss mass.
 
 ### SK-QUAL-015 — Offline column-coverage harness: measure the recall ceiling of goal-token column pruning before building it
 
 **Body:** [`decisions/SK-QUAL-015-column-coverage-harness.md`](./decisions/SK-QUAL-015-column-coverage-harness.md).
 Pure `coverage(gold)` + `bun column-coverage <gold.json>` measure what fraction
-of qualified gold columns share a `wordTokens` token (the pruner's tokenizer)
-with the goal — the recall ceiling of the §4 #2 column-pruning sub-lever.
-BIRD-dev 2026-06: **59.8%** covered, **+27.4%** key-like (→ ~87%), **12.8%**
-value/measure. Read-only, no keys/quota/chain change.
+of qualified gold columns share a `wordTokens` token with the goal — the recall
+ceiling of the §4 #2 column-pruning sub-lever. BIRD-dev 2026-06: **59.8%**
+covered, **+27.4%** key-like (→ ~87%), **12.8%** value/measure. Read-only.
 
 ### SK-QUAL-016 — Inject Spider 2.0-lite external-knowledge docs into the prompt, the way BIRD `evidence` already is
 
@@ -204,7 +188,6 @@ value/measure. Read-only, no keys/quota/chain change.
 `loadSpider2Lite` rides each instance's `external_knowledge` doc through
 `EvalQuestion.evidence` into `enrichedGoal` — the channel BIRD always used,
 closing the `SK-QUAL-007` deferral (**13 of 135 (9.6%)** carried a dropped doc).
-EX delta next Spider dispatch.
 
 ### SK-QUAL-017 — Self-consistency majority vote: cluster N sampled plans by the result set, vote the answer
 
@@ -220,13 +203,11 @@ gap on the first N≥2 dispatch.
 **Body:** [`decisions/SK-QUAL-018-persona-bench.md`](./decisions/SK-QUAL-018-persona-bench.md).
 The third quality number alongside BIRD/Spider: NL→gold-SQL over the schemas
 `personas.md` builds — `saas_app` (§P1) + `agent_memory` (§P2), now **23
-questions** with time-stable literal-date gold + a **gold-executability
-invariant** (23/23 execute, non-empty). `loadPersonaBench` materialises each
-schema to SQLite on demand (`--dataset persona-bench [--persona P1|P2]`),
-additive (BIRD/Spider untouched); `quality-eval-persona-bench.yml` dispatches it
-baseline-safe (no fixture/baseline/emit), so ungated by `SK-QUAL-002`'s < 7-day
-rule. Free-chain EX + ICP free-vs-frontier delta land per dispatch; growth
-toward the 50–100-q target continues per run.
+questions** with time-stable gold + a **gold-executability invariant** (23/23
+execute, non-empty). `loadPersonaBench` materialises each schema to SQLite on
+demand (`--dataset persona-bench [--persona P1|P2]`), additive;
+`quality-eval-persona-bench.yml` dispatches it baseline-safe, ungated by
+`SK-QUAL-002`'s < 7-day rule. Growth toward the 50–100-q target continues.
 
 ### SK-QUAL-019 — persona-bench ranked golds must be tie-free (no false-negative under sequence-strict scoring)
 
@@ -240,17 +221,14 @@ unaffected).
 ### SK-QUAL-020 — Transport-collapse guard: a chain unreachable end-to-end is an outage, not a scored 0%
 
 **Body:** [`decisions/SK-QUAL-020-transport-collapse-guard.md`](./decisions/SK-QUAL-020-transport-collapse-guard.md).
-The connectivity sibling of the `SK-QUAL-013` capacity stop: when **every**
-lane that ran produced zero engine signal (no match/mismatch/exec_error) and
-every `no_sql` row failed for a non-engine reason (`network`/`timeout`/
-`not_configured`/`auth_denied`), the chain was unreachable end-to-end — the
-run measured an outage, not SQL quality. The runner sets
-`report.transport_failed`, **drops** the poisoned all-`no_sql` checkpoint
-(opposite of the capacity stop, which keeps it), skips baseline-diff + emit,
-and the CLI exits non-zero so the dispatch re-runs fresh. Conservative: any
-answered question or any `parse`/`http_*` reason scores the run normally, so a
-real regression is never suppressed. Prevents a 0.00 from a network/key
-outage re-seeding the baseline or firing `feature.eval.regression`.
+Connectivity sibling of the `SK-QUAL-013` capacity stop: when **every** lane
+that ran produced zero engine signal and every `no_sql` failed for a non-engine
+reason (`network`/`timeout`/`not_configured`/`auth_denied`), the run measured an
+outage, not SQL quality. The runner sets `report.transport_failed`, **drops**
+the poisoned checkpoint (opposite of the capacity stop), skips baseline-diff +
+emit, and exits non-zero so the dispatch re-runs fresh. Any answered question or
+`parse`/`http_*` reason scores normally, so a real regression is never
+suppressed — prevents an outage 0.00 from re-seeding the baseline.
 
 ## GLOBALs governing this feature
 
@@ -265,7 +243,6 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 
 ## Open questions / known unknowns
 
-- **Privacy** — Decided: no user data ever enters the harness; public benchmark + hand-authored persona-bench data only.
 - **Deferred:** a `feature.eval.smoke` event; a hard token-budget counter (`SK-QUAL-011`/`012` cover it reactively).
 - **Still open** ([`SK-QUAL-009`](#sk-qual-009)): multi-model frontier until the Sonnet 4.6 baseline lands; BYOLLM lane depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA next Spider baseline.
 - **Canonical raw EX** — see the scorecard + `quality-score-source-of-truth.md` §2 (single source of truth; `SK-QUAL-013`).
