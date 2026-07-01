@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Glob } from "bun";
+import { BLOG_POSTS } from "../../data/blog.ts";
 import { COMPETITORS } from "../../data/competitors.ts";
 import { SOLVE_ENTRIES } from "../../data/solve.ts";
 import { GET } from "../sitemap.xml.ts";
@@ -43,12 +44,15 @@ describe("sitemap.xml", () => {
     }
   });
 
-  test("includes every competitor and solve slug from the data files", () => {
+  test("includes every competitor, solve, and blog slug from the data files", () => {
     for (const c of COMPETITORS) {
       expect(body).toContain(`<loc>https://nlqdb.com/vs/${c.slug}/</loc>`);
     }
     for (const s of SOLVE_ENTRIES) {
       expect(body).toContain(`<loc>https://nlqdb.com/solve/${s.slug}/</loc>`);
+    }
+    for (const p of BLOG_POSTS) {
+      expect(body).toContain(`<loc>https://nlqdb.com/blog/${p.slug}/</loc>`);
     }
   });
 });

@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { BLOG_POSTS } from "../data/blog";
 import { COMPETITORS } from "../data/competitors";
 import { SOLVE_ENTRIES } from "../data/solve";
 
@@ -16,6 +17,7 @@ const withSlash = (p: string) => (p.endsWith("/") ? p : `${p}/`);
 const STATIC_ROUTES = [
   "/",
   "/agents",
+  "/blog",
   "/integrations",
   "/manifesto",
   "/pricing",
@@ -30,6 +32,7 @@ export const GET: APIRoute = () => {
     ...STATIC_ROUTES,
     ...COMPETITORS.map((c) => `/vs/${c.slug}`),
     ...SOLVE_ENTRIES.map((s) => `/solve/${s.slug}`),
+    ...BLOG_POSTS.map((p) => `/blog/${p.slug}`),
   ];
   const body =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +

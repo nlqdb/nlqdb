@@ -19,6 +19,14 @@ describe("llms.txt index", () => {
     expect(body).toContain("(https://nlqdb.com/pricing/)");
   });
 
+  test("advertises the /blog hub and every published post", async () => {
+    const { BLOG_POSTS } = await import("../../data/blog.ts");
+    expect(body).toContain("(https://nlqdb.com/blog/)");
+    for (const p of BLOG_POSTS) {
+      expect(body).toContain(`(https://nlqdb.com/blog/${p.slug}/)`);
+    }
+  });
+
   test("status reflects the open product, not a closed beta", () => {
     expect(body).not.toContain("closed beta");
     expect(body).toContain("start anonymously");

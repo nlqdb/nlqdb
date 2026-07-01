@@ -42,7 +42,13 @@ retrieval (row #8, 23/23) **saturated**; next engine gain needs the gated EX dis
 
 ## Shipped distribution (live URLs)
 
-From `research/distribution-queue.md` — *(none live yet; drafts await review.)*
+From `research/distribution-queue.md` — canonical copies on the `/blog` surface
+(shipped 2026-07-01 with the surface itself, per `SK-BLOG-001` autonomous
+publishing; community-venue variants pending, tracked as queue pointers):
+
+- https://nlqdb.com/blog/not-in-subquery-null-trap/ (run 130 — anchors `/solve/find-rows-with-no-match-in-another-table`)
+- https://nlqdb.com/blog/zep-recall-vs-analytical-agent-memory/ (run 20 — anchors `/vs/zep`)
+- https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/ (run 2 — engine lesson)
 
 ## Last change
 

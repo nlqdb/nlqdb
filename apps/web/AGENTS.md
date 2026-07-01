@@ -13,6 +13,7 @@ Marketing + product web app. Onboarding, anonymous-mode default, demo dataset.
 - [`anonymous-mode`](../../docs/features/anonymous-mode/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`sdk`](../../docs/features/sdk/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`api-keys`](../../docs/features/api-keys/FEATURE.md) — mandatory pre-read for changes under `src/pages/app/keys.astro` or `src/components/keys/**`.
+- [`blog`](../../docs/features/blog/FEATURE.md) — mandatory pre-read for changes under `src/data/blog.ts`, `src/pages/blog/**`, or `src/lib/inline-md.ts`.
 
 ## Commands
 

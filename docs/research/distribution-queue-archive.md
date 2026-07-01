@@ -2,43 +2,13 @@
 
 Older [`distribution-queue.md`](./distribution-queue.md) drafts, split off to keep the active queue under the 20 KB doc cap (CLAUDE.md D4). Same rule: delete an entry once published (the live URL goes into `docs/scorecard.md`).
 
-## 2026-06-20 (run 20) — comparison-page draft: nlqdb vs Zep (r/AI_Agents / Show HN)
+## Published from this archive (canonical `/blog` copies live 2026-07-01)
 
-**Title:** Zep gives my agent perfect recall. It still can't answer "average per group" about its own memory.
+Venue variants pending — post each as a pointer to the canonical URL (tracked in
+[`distribution-queue.md`](./distribution-queue.md) § Published):
 
-**Body:**
-
-> If you've wired up [Zep](https://www.getzep.com) you know the pitch: it's the
-> Context Lake — a temporal knowledge graph (Graphiti, 27k+ ⭐) that stores every
-> fact your agent learns as a node with a validity window, resolves entities, and
-> hands back the most relevant facts at query time. For *recall* it's genuinely
-> good, and it publishes benchmarks (LongMemEval, DMR) to prove it.
->
-> But I kept hitting the same wall. Once the agent had logged a few hundred
-> things, I wanted to ask questions *about* the memory, not retrieve from it:
->
-> > "Top 10 topics I logged this month, ranked by count."
-> > "Average deal size per stage for enterprise customers."
->
-> A knowledge graph has no query planner. It returns relevant facts and hopes the
-> LLM does the arithmetic — which is a hallucination generator, not a `GROUP BY`.
->
-> The honest split (I wrote the full side-by-side at nlqdb.com/vs/zep): Zep wins
-> on temporal validity, entity resolution, and vector recall over conversation.
-> nlqdb wins when the agent needs to **aggregate** its memory — it's a real
-> Postgres the agent provisions and queries in English, so `GROUP BY / JOIN /
-> HAVING` actually work. They compose: Zep the recall layer, nlqdb the analytical
-> store. Pick the one that matches the question you actually need answered.
->
-> (Landscape facts verified 2026-06-19; both products' weaknesses are in the
-> comparison, not just ours.)
-
-**Why this is publishable:** "X alternative" / "X vs Y" is the decision-moment
-keyword and the honest-trade-off format converts ~13.8% (vs 2–5% generic) while
-getting lifted verbatim by Perplexity/ChatGPT. Names Zep once, in context, and
-leads with a genuine architectural distinction (retrieval vs analytics) that the
-r/AI_Agents crowd respects. Sourced from the shipped `/vs/zep` page +
-`docs/competitors.md §4`. First of the WS-02 trio (Letta + LangMem to follow).
+- run 20 (2026-06-20, nlqdb vs Zep) → https://nlqdb.com/blog/zep-recall-vs-analytical-agent-memory/
+- run 2 (2026-06-13, NULL timestamp / TTL sweep) → https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/
 
 ## 2026-06-13/15 (runs 3–7) — engine-lesson dev.to / lobste.rs posts (titles only; full drafts in git history)
 
@@ -49,59 +19,6 @@ The Gemini-lockout / failover-legibility arc — falsify the assumed cause, make
 - run 5 — "Our most reliable fallback model was dying on a 0.6-second blip" (transient `mistral:network` at the chain tail; failover ≠ retry).
 - run 4 — "The error reason was in our logs the whole time — we just never counted it" (we persist per-provider reasons but never aggregated them; counting beats more logging).
 - run 3 — "We blamed a 7 KB schema for an LLM 4xx — then we actually measured it" (max schema ~1.9 K tokens vs 1 M context; an unmeasured root cause is a hypothesis in a lab coat).
-
-## 2026-06-13 (run 2) — dev.to / lobste.rs post
-
-**Title:** The NULL timestamp that broke a TTL sweep and a funnel metric at
-the same time
-
-**Body:**
-
-> A row in our `databases` registry has a `last_queried_at` column. Two
-> unrelated systems read it: a daily sweep that evicts anonymous DBs whose
-> `last_queried_at` is older than 90 days, and a funnel metric that counts
-> "DBs that have ever returned an answer." Both quietly broke for the same
-> reason, and the bug is worth sharing because it's a whole *class* of
-> mistake, not a one-off.
->
-> We added the column in a migration that backfilled existing rows
-> (`UPDATE … SET last_queried_at = updated_at WHERE last_queried_at IS
-> NULL`) — textbook. What we forgot: the `INSERT` on the create path never
-> set the column. So every row created *after* the migration was `NULL`.
->
-> Now watch both readers fail, differently:
->
-> - **The sweep silently keeps everything.** `WHERE last_queried_at <
->   :cutoff` looks like it evicts old rows. But in SQL, `NULL < anything`
->   is `NULL`, which is not `TRUE`, so a `NULL` row never matches a
->   `<` predicate. The age-based eviction became a no-op for every new
->   row. No error, no log — the table just grows.
-> - **The metric silently reads zero.** "DBs that returned an answer" was
->   `COUNT(*) WHERE last_queried_at IS NOT NULL`. Every new row is `NULL`,
->   so the metric is pinned at 0 regardless of what users actually did. We
->   nearly shipped a "fix" for a conversion problem that didn't exist —
->   the *instrument* was broken, not the funnel.
->
-> Three takeaways:
->
-> 1. **A backfill is not a default.** If a column needs a value, set it at
->    write time (a `DEFAULT`, or in every `INSERT`). A one-time backfill
->    fixes the past and nothing else.
-> 2. **`NULL` is not "old" or "zero" — it's "unknown," and it poisons
->    comparisons.** Any `<`/`>`/`!=` against a nullable column has a third
->    outcome you have to design for. `COALESCE` at the read, or forbid the
->    `NULL`.
-> 3. **Before "fixing" a metric that reads 0, prove the instrument can
->    ever read non-zero.** Ours structurally couldn't.
->
-> (Context: this was in [nlqdb](https://nlqdb.com), a service that turns
-> plain-English HTML components into SQL — the anonymous-DB sweep is how we
-> keep the free tier's storage bounded. The fix was two lines: seed the
-> column at create, re-run the backfill once.)
-
-*Reviewer notes: pure engineering-story post, one product mention. Sourced
-from this run's fix (`neon-provision.ts` + migration `0017`). Good fit for
-dev.to (#sql #postgres #debugging) or lobste.rs (`databases`, `practices`).*
 
 ## 2026-06-13 — Show HN draft
 
