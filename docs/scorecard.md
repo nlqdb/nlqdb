@@ -61,9 +61,13 @@ between `EXPLAIN` and `ANALYZE` (`EXPLAIN /*c*/ ANALYZE DELETE …`, `EXPLAIN --
 ANALYZE …`, `EXPLAIN /*c*/ (ANALYZE) …`) is whitespace to Postgres, but the
 comment-blind `EXPLAIN_ANALYZE` regex missed it and the `explain` short-circuit
 then **returned `ok:true`, letting the wrapped DML execute** — same class as the
-prior SK-TRUST-001 smuggle. **Before → after:** 3 comment-wedged
-`EXPLAIN ANALYZE <DML>` cases `ok:true → rejected` (gate now tests a
-comment-collapsed view); plain `EXPLAIN /*c*/ SELECT` still passes. 5 regression
-tests added; full api suite **828 pass / 6 skip**, tsc + biome clean.
+prior SK-TRUST-001 smuggle. Also closed the **nested-block-comment** variant
+(`EXPLAIN /* /* */ */ ANALYZE DELETE …`): Postgres block comments nest (docs
+§4.1.5), so a non-greedy `/\*…*?\*/` collapse left a dangling `*/` and still
+false-passed — replaced with a depth-counting comment scanner. **Before →
+after:** 6 comment-wedged `EXPLAIN ANALYZE <DML>` cases `ok:true → rejected`
+(gate now tests a nesting-aware comment-collapsed view); plain
+`EXPLAIN /*c*/ SELECT` and `EXPLAIN /* analyze the plan */ SELECT` still pass. 9
+regression tests added; full api suite **832 pass / 6 skip**, tsc + biome clean.
 **KPI:** GLOBAL-025 engine-quality/trust (write-safety guardrail integrity);
 none degraded.

@@ -139,10 +139,42 @@ const EXPLAIN_ANALYZE = /^explain\s*(?:\(\s*[^)]*\banalyze\b|analyze\b)/i;
 // so `EXPLAIN /*c*/ ANALYZE DELETE …` still executes the DELETE — but the
 // regex above sees the comment token and misses it, and the `explain`
 // short-circuit then allows the write (same comment-smuggle class as the
-// leading-verb gate). Collapse comments to a space first. Anchored to
-// `^explain`, this can only ever *add* a reject, never mask a legit query.
-const collapseComments = (s: string): string =>
-  s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+// leading-verb gate). Block comments *nest* in Postgres (docs §4.1.5), so
+// a non-greedy `/\*…*?\*/` would stop at the first `*/` and leave a
+// dangling `*/` that hides `EXPLAIN /* /* */ */ ANALYZE …`; scan with a
+// depth counter instead. Anchored to `^explain`, this only ever *adds* a
+// reject, never masks a legit query.
+const collapseComments = (s: string): string => {
+  let out = "";
+  let depth = 0;
+  let line = false;
+  for (let i = 0; i < s.length; i++) {
+    if (line) {
+      if (s[i] === "\n") line = false;
+      out += s[i] === "\n" ? "\n" : " ";
+      continue;
+    }
+    const two = s.slice(i, i + 2);
+    if (depth > 0) {
+      if (two === "/*") depth++;
+      else if (two === "*/") depth--;
+      if (two === "/*" || two === "*/") i++;
+      out += " ";
+      continue;
+    }
+    if (two === "/*") {
+      depth++;
+      i++;
+      out += " ";
+    } else if (two === "--") {
+      line = true;
+      out += " ";
+    } else {
+      out += s[i];
+    }
+  }
+  return out;
+};
 
 // Embedded-verb mapping for the AST walk. Same buckets as the
 // leading-verb reject map but keyed by the AST `type` string

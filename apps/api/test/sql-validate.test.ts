@@ -89,8 +89,15 @@ describe("validateSql", () => {
       ["EXPLAIN --c\n ANALYZE DELETE FROM users", false],
       ["EXPLAIN /*c*/ (ANALYZE) UPDATE users SET name = 'x'", false],
       ["EXPLAIN/*c*/ANALYZE INSERT INTO users VALUES (1)", false],
+      // Postgres block comments nest (docs §4.1.5), so a non-greedy
+      // regex would leave a dangling `*/` and miss these — the gate
+      // collapses comments with a depth counter, so they must reject.
+      ["EXPLAIN /* /* */ */ ANALYZE DELETE FROM users", false],
+      ["EXPLAIN /*/**/*/ ANALYZE DELETE FROM users", false],
+      ["EXPLAIN (/* /* */ */ ANALYZE) DELETE FROM users", false],
       // A comment that is NOT wedging ANALYZE must still pass.
       ["EXPLAIN /*c*/ SELECT * FROM users", true],
+      ["EXPLAIN /* analyze the plan */ SELECT * FROM users", true],
       ["--c\nSELECT 1", true],
       ["/* leading */ SELECT 1", true],
       ["WITH/*c*/x AS (SELECT 1) SELECT * FROM x", true],
