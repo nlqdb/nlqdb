@@ -26,6 +26,8 @@ database (and fails if the DB doesn't exist); without --db it resolves
 the active DB from ~/.config/nlqdb/state.json, creating a new one
 from the goal if there is none (SK-CLI-012).
 
+Pass --json for machine-readable output.
+
 ### Flags
 
 | Flag | Type | Default | Description |
@@ -34,13 +36,93 @@ from the goal if there is none (SK-CLI-012).
 | `--db` | `string` | — | pin the call to this database id (errors if missing) |
 | `--engine` | `string` | — | engine override on the create branch (postgres\|clickhouse) |
 
+## nlq byollm
+
+_Bring your own LLM provider key (0% markup)_
+
+```bash
+nlq byollm 
+```
+
+Route `nlq ask` through your own LLM provider key at 0% markup.
+The key is stored in your OS keychain (never config.toml) and sent only
+on `nlq ask` — never on `nlq run`, `nlq keys`, or any other call.
+The lane is signed-in only, so it activates once you run `nlq login`.
+
+### nlq byollm clear
+
+_Remove the stored BYOLLM credential_
+
+```bash
+nlq byollm clear 
+```
+
+### nlq byollm set
+
+_Store a provider key (openai|anthropic|google-ai-studio)_
+
+```bash
+nlq byollm set <provider> <model>
+```
+
+Store a BYOLLM credential. The key is read from --key, else from
+stdin — prefer stdin so the secret never lands in your shell history:
+
+  echo "$OPENAI_API_KEY" | nlq byollm set openai gpt-5.2
+
+Run interactively, the key is prompted for without echo. Provider is one
+of openai, anthropic, or google-ai-studio; model is the raw upstream id
+(e.g. gpt-5.2, claude-sonnet-4-6).
+
+#### Flags
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--key` | `string` | — | provider API key (omit to read from stdin / prompt) |
+
+### nlq byollm status
+
+_Show the stored BYOLLM credential (key redacted)_
+
+```bash
+nlq byollm status 
+```
+
 ## nlq db
 
-_Database management (list, create)_
+_Database management (list, create, connect)_
 
 ```bash
 nlq db 
 ```
+
+### nlq db connect
+
+_Register an existing engine by its connection URL_
+
+```bash
+nlq db connect 
+```
+
+Connect registers an existing ClickHouse or Postgres database with
+nlqdb via POST /v1/db/connect, so `nlq ask` can query it.
+
+The connection URL is a credential. Provide it via --url, pipe it on
+stdin, or let the interactive prompt read it without echo — prefer the
+latter two so the URL never lands in your shell history:
+
+  echo "$DATABASE_URL" | nlq db connect --engine postgres
+
+The URL is sent to the API and discarded; it is never printed back and
+never written to config.toml or state.json.
+
+#### Flags
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--engine` | `string` | `clickhouse` | engine of the database to connect (clickhouse\|postgres) |
+| `--name` | `string` | — | optional display name for the connected database |
+| `--url` | `string` | — | connection URL (omit to read from stdin / prompt — keeps it out of shell history) |
 
 ### nlq db create
 
@@ -199,7 +281,51 @@ nlq query <db> <goal>
 
 Pinned ask: `nlq query <db> "<goal>"` is the explicit form
 that errors when the database doesn't exist. Same wire shape as
-`nlq ask --db=<id>` (SK-CLI-003).
+`nlq ask --db=<id>`.
+
+## nlq remember
+
+_Write a typed memory row into an agent_memory_v1 database (no LLM)_
+
+```bash
+nlq remember [--db <id>] <text>
+```
+
+Remember materialises a structured memory row via POST /v1/memory/remember.
+The server composes a deterministic parameterised INSERT — the LLM is never
+in the loop and you never write SQL. The target must be an `agent_memory_v1`
+preset database (provisioned via the SDK/MCP `db.create` preset path);
+a normal DB is rejected with a wrong_preset error.
+
+The positional \<text> is the row's primary content:
+  • fact     — the thing to remember (default kind)
+  • episode  — the message content (use --role to set the speaker)
+  • entity   — the entity's canonical name (use --type to set its type)
+
+DB resolution mirrors `nlq ask`: --db pins one, else the active DB from
+~/.config/nlqdb/state.json (`nlq use <db>` switches it).
+
+Examples:
+  nlq remember "user prefers dark mode"
+  nlq remember --type preference --tag ui "user prefers dark mode"
+  nlq remember --ttl 7d "promo code expires next week"
+  nlq remember --kind episode --role user "what's my deal pipeline?"
+  nlq remember --kind entity --type person "Alice Chen"
+
+Pass --json for machine-readable output.
+
+### Flags
+
+| Flag | Type | Default | Description |
+| --- | --- | --- | --- |
+| `--db` | `string` | — | database id to write to (default: active DB) |
+| `--end-user` | `string` | — | scope the row to an end-user id |
+| `--kind` | `string` | `fact` | row kind: fact, episode, or entity |
+| `--role` | `string` | — | episode speaker role, e.g. user/assistant (episode only) |
+| `--tag` | `stringArray` | — | fact tag (repeatable; fact only) |
+| `--thread` | `string` | — | scope the row to a thread id |
+| `--ttl` | `string` | — | fact expiry, e.g. 7d / 24h / 30m (fact only) |
+| `--type` | `string` | — | fact category or entity type (payload.kind) |
 
 ## nlq run
 
@@ -220,6 +346,8 @@ DB resolution mirrors `nlq ask`:
     used. `nlq use <db>` switches it.
   • Pipe SQL on stdin to skip the positional argument:
       cat schema.sql | nlq run --db finance
+
+Pass --json for machine-readable output.
 
 ### Flags
 

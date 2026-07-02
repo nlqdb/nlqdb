@@ -29,6 +29,10 @@ focus number.
    open pre-beta (founder-resolved 2026-07-01); never reintroduce either.
 6. **Red main is the run.** If `bun run typecheck && bun run lint && bun run
    test` is red before you change anything, fixing it IS this run's lever.
+   Same for the `deploy-*` workflows: check each one's latest run on `main`
+   — a failing deploy means production silently serves a stale build (the
+   2026-07-02 docs-site 404 shipped this way, 5 failed deploys unnoticed
+   since 06-20), and fixing it outranks every other lever.
 7. **Anti-rut.** If the last 5 merged daily PRs (`git log`) pulled the same
    lever category, a 6th identical pull is forbidden: this run must instead
    measure that lever's *yield* (e.g. referral visits landing on the shipped
@@ -42,9 +46,18 @@ focus number.
 
 ## The loop, in order
 
+### 0 — Don't step on an open PR
+
+Before anything else, list the repo's open PRs — a previous daily run may
+still be unmerged. (If the listing fails, say so in the scorecard and
+continue.) If your intended lever, artifact, or files overlap an open PR,
+choose something else — never duplicate its work or touch the files it
+changes. The step-1 scorecard regeneration is exempt: every run updates
+`docs/scorecard.md` even when an open PR also touches it.
+
 ### 1 — Measure first (always)
 
-Regenerate `docs/scorecard.md` (current-state tracker, ≤ 5 KB — the metrics
+Regenerate `docs/scorecard.md` (current-state tracker, ≤ 20 KB — the metrics
 table + one "Last change" entry, no changelog; create it if missing):
 
 - **Funnel, bot-filtered** (exclude stranger-test bot traffic): visits (CF
@@ -73,6 +86,21 @@ table + one "Last change" entry, no changelog; create it if missing):
   suite: `pass` = latest completed run succeeded; `freshness` =
   `max(0, 1 − days_since_last_success / 7)`. Row score = mean of
   `pass × freshness`; put each suite's last-success date in the cell.
+- **Phase gate:** name the current phase per `docs/phase-plan.md` and its
+  exit-gate status — pass/fail per criterion. A failing criterion is a
+  worst-number candidate like any other row.
+- **Docs ambiguity:** count of unresolved open-question bullets across
+  `docs/features/*/FEATURE.md` (top-level `- ` lines under `## Open
+  questions`, up to the next `## `; a "Parked until `<trigger>`" line is a
+  resolved decision-to-defer per GLOBAL-033 and doesn't count). Driving it
+  down is a first-class lever: research the answer (P2, GLOBAL-033),
+  document the resolution (P4), then delete or park the bullet. A question
+  only a founder can answer (rule 4 territory: secrets, console,
+  money/legal) moves to `blocked-by-human.md` and off this count.
+- **Surface integrity:** dead links on the deployed user-facing surfaces —
+  including cross-app hrefs (nlqdb.com → docs.nlqdb.com) — counted by
+  sweeping built output; target 0. Until an automated sweep exists,
+  building it is itself a lever.
 - **Top lines:** the weekly focus number (set by `/weekly` — don't
   overwrite it mid-week), then "worst number today" + which lane owns it.
 
@@ -113,4 +141,4 @@ test` green before pushing. The PR body must name: the number moved,
 before → after values, the GLOBAL-025 KPI advanced, and that none degrade.
 **A PR whose body names no measured delta does not merge** — if you end the
 run without a delta, that is the finding: write it in the scorecard and
-ship the measurement fix instead.
+ship the measurement fix instead. Open the PR without asking for permissions.

@@ -17,18 +17,23 @@ const SDK_ENTRY = join(REPO_ROOT, "packages/sdk/src/index.ts");
 const MDX = join(REPO_ROOT, "apps/docs/src/content/docs/reference/http-api.mdx");
 
 // Pull the body of `export type ApiErrorCode = … ;` and collect every
-// double-quoted string-literal member. Comments are stripped first so a
-// quoted word in a `//` note (e.g. "Cancel") isn't mistaken for a member;
-// the open-ended `(string & {})` tail has no literal, so it's skipped.
+// double-quoted string-literal member. Comments are stripped BEFORE the
+// match — a `;` inside a member comment would otherwise terminate the
+// lazy `([\s\S]*?);` early and silently drop the trailing members (this
+// happened: the SK-DBCONN-001 comment's "read; `sealing_unconfigured`"
+// truncated the union and broke the docs deploy). Stripping also keeps a
+// quoted word in a note (e.g. "Cancel") from being read as a member; the
+// open-ended `(string & {})` tail has no literal, so it's skipped.
 function unionCodes(): Set<string> {
-  const src = readFileSync(SDK_ENTRY, "utf8");
+  const src = readFileSync(SDK_ENTRY, "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
   const m = src.match(/export type ApiErrorCode\s*=([\s\S]*?);/);
   if (!m) {
     console.error("✗ check-error-codes: could not locate `export type ApiErrorCode` in the SDK");
     process.exit(1);
   }
-  const body = m[1].replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-  return new Set([...body.matchAll(/"([A-Za-z0-9_]+)"/g)].map((x) => x[1]));
+  return new Set([...m[1].matchAll(/"([A-Za-z0-9_]+)"/g)].map((x) => x[1]));
 }
 
 // Codes the doc table documents: the first cell of each row, `| `code` |`.

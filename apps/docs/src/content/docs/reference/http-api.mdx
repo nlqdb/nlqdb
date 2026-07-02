@@ -58,6 +58,11 @@ retryable and which need a human. `status` is the discriminant the SDK exposes a
 | `invalid_byollm_key` | 400 | The BYOLLM credential is mis-shaped. | No | Fix `provider` / `model` / `key`. |
 | `byollm_unavailable` | 503 | The server can't seal keys (KEK unset). | Yes | Retry; if persistent it's an operator action. |
 | `secret_unconfigured` | 503 | The server is missing a required secret. | No | Operator action — not caller-fixable. |
+| `wrong_preset` | 409 | `remember()` target DB isn't an `agent_memory_v1` preset. | No | Point at an agent-memory database, or create one. |
+| `connect_requires_account` | 403 | `/v1/db/connect` called without a signed-in session. | No | Sign in, then reconnect. |
+| `invalid_request` | 400 | Malformed body, or a bad / non-HTTPS / egress-blocked connection URL (`body.message`). | No | Fix the field named in `body.message`. |
+| `introspection_failed` | 502 | The connected database couldn't be reached or read. | Yes | Check the host and credential, then retry. |
+| `sealing_unconfigured` | 503 | The server can't seal secrets (KEK unset). | No | Operator action — not caller-fixable. |
 | `unknown_error` | 5xx | A 5xx with no parseable envelope. | Yes | Retry; if persistent, report it. |
 | `non_json_response` | — | A proxy/CDN returned non-JSON (SDK sentinel). | Maybe | Retry; check the network path. |
 | `network_error` | — | Transport failure, no response (SDK sentinel, `httpStatus === 0`). | Yes | Retry with backoff. |
