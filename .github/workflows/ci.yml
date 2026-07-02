@@ -252,6 +252,7 @@ jobs:
             cli-shim,
             db,
             elements,
+            events,
             llm,
             mcp,
             next,
