@@ -131,8 +131,10 @@ const DISALLOWED_FUNCTIONS = new Set([
 // EXPLAIN ANALYZE actually executes the wrapped statement on Postgres
 // (and unlike plain EXPLAIN, has destructive side-effects when the
 // inner statement is DML). Rejected outright; plain EXPLAIN passes.
-// Matches `EXPLAIN ANALYZE …` and `EXPLAIN (ANALYZE …) …`.
-const EXPLAIN_ANALYZE = /^explain\s*(?:\(\s*[^)]*\banalyze\b|analyze\b)/i;
+// Matches `EXPLAIN ANALYZE …` and `EXPLAIN (ANALYZE …) …`. Postgres accepts
+// the British spelling `ANALYSE` as a keyword synonym (gram.y
+// `analyze_keyword: ANALYZE | ANALYSE`), so match both `analy[sz]e`.
+const EXPLAIN_ANALYZE = /^explain\s*(?:\(\s*[^)]*\banaly[sz]e\b|analy[sz]e\b)/i;
 
 // Comment-blind view for the EXPLAIN_ANALYZE gate. Postgres treats a
 // `/* … */` or `-- …` comment between EXPLAIN and ANALYZE as whitespace,

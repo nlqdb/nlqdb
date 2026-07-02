@@ -53,21 +53,9 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-02 (SQL-allowlist bypass fix)** — distribution lane (surfaces row #6)
-owned by open PR #576 this run + over-pulled (anti-rut); engine EX levers
-dispatch-gated (§rows 8–10). Different lever: closed a verified **SK-SQLAL-003
-`EXPLAIN ANALYZE` comment-smuggle bypass** in `sql-validate.ts`. A comment wedged
-between `EXPLAIN` and `ANALYZE` (`EXPLAIN /*c*/ ANALYZE DELETE …`, `EXPLAIN --c\n
-ANALYZE …`, `EXPLAIN /*c*/ (ANALYZE) …`) is whitespace to Postgres, but the
-comment-blind `EXPLAIN_ANALYZE` regex missed it and the `explain` short-circuit
-then **returned `ok:true`, letting the wrapped DML execute** — same class as the
-prior SK-TRUST-001 smuggle. Also closed the **nested-block-comment** variant
-(`EXPLAIN /* /* */ */ ANALYZE DELETE …`): Postgres block comments nest (docs
-§4.1.5), so a non-greedy `/\*…*?\*/` collapse left a dangling `*/` and still
-false-passed — replaced with a depth-counting comment scanner. **Before →
-after:** 6 comment-wedged `EXPLAIN ANALYZE <DML>` cases `ok:true → rejected`
-(gate now tests a nesting-aware comment-collapsed view); plain
-`EXPLAIN /*c*/ SELECT` and `EXPLAIN /* analyze the plan */ SELECT` still pass. 9
-regression tests added; full api suite **832 pass / 6 skip**, tsc + biome clean.
-**KPI:** GLOBAL-025 engine-quality/trust (write-safety guardrail integrity);
+**2026-07-02 (SQL-allowlist bypass fix)** — closed a verified **SK-SQLAL-003
+`EXPLAIN ANALYZE` write-smuggle** in `sql-validate.ts`: comments wedged between
+`EXPLAIN` and `ANALYZE` (incl. nested `/* */`) and the British `ANALYSE` synonym
+let the wrapped DML run past the gate. All variants now rejected; benign
+`EXPLAIN /*c*/ SELECT` still passes. **KPI:** GLOBAL-025 engine-quality/trust;
 none degraded.

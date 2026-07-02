@@ -95,6 +95,13 @@ describe("validateSql", () => {
       ["EXPLAIN /* /* */ */ ANALYZE DELETE FROM users", false],
       ["EXPLAIN /*/**/*/ ANALYZE DELETE FROM users", false],
       ["EXPLAIN (/* /* */ */ ANALYZE) DELETE FROM users", false],
+      // Postgres accepts the British spelling `ANALYSE` as a keyword
+      // synonym (gram.y `analyze_keyword: ANALYZE | ANALYSE`), so it
+      // executes the wrapped DML just like `ANALYZE` — the gate must
+      // reject both spellings, incl. comment-wedged and paren forms.
+      ["EXPLAIN ANALYSE DELETE FROM users", false],
+      ["EXPLAIN (ANALYSE) UPDATE users SET name = 'x'", false],
+      ["EXPLAIN /*c*/ ANALYSE DELETE FROM users", false],
       // A comment that is NOT wedging ANALYZE must still pass.
       ["EXPLAIN /*c*/ SELECT * FROM users", true],
       ["EXPLAIN /* analyze the plan */ SELECT * FROM users", true],
