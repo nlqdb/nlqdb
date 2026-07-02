@@ -8,7 +8,7 @@
 // `nlqdb.com` because the session cookie is host-only on
 // `app.nlqdb.com` — authed visitors see the "Sign in" link.
 interface Props {
-  current?: "manifesto" | "agents" | "chat" | "vs" | "pricing";
+  current?: "manifesto" | "agents" | "chat" | "vs" | "solve" | "blog" | "pricing";
 }
 const { current } = Astro.props;
 const inChat = current === "chat";
@@ -34,6 +34,18 @@ const inChat = current === "chat";
       aria-current={current === "vs" ? "page" : undefined}
     >
       Compare
+    </a>
+    <a
+      href="/solve"
+      aria-current={current === "solve" ? "page" : undefined}
+    >
+      Solve
+    </a>
+    <a
+      href="/blog"
+      aria-current={current === "blog" ? "page" : undefined}
+    >
+      Blog
     </a>
     <a
       href="/pricing"
@@ -67,22 +79,12 @@ const inChat = current === "chat";
 <script>
   import { fetchSession } from "../lib/session";
 
-  // Hop the "Sign in" link from the marketing origin to the merged
-  // app worker (`app.nlqdb.com`) so the sign-in page loads on the
-  // same origin as the API (SK-AUTH-015 / SK-AUTH-016). The Astro
-  // build is shared by both workers, so the link is a relative
-  // path on disk and rewritten here for the marketing surface only;
-  // dev (`localhost`), the merged app worker, and PR previews keep
-  // the relative path.
-  const signinAnchor = document.querySelector<HTMLAnchorElement>(
-    "#topnav-signin a",
-  );
-  if (
-    signinAnchor &&
-    (location.hostname === "nlqdb.com" || location.hostname === "www.nlqdb.com")
-  ) {
-    signinAnchor.href = "https://app.nlqdb.com/auth/sign-in";
-  }
+  // The "Sign in" link stays a relative path on every origin. On the
+  // marketing origin, `/auth/sign-in` itself hops to the merged app
+  // worker (SK-AUTH-015 / SK-AUTH-016) carrying the visitor's draft /
+  // pending prompt / anon token in the URL fragment (SK-ANON-015) —
+  // a direct cross-origin href here would strand that localStorage
+  // state on `nlqdb.com`.
 
   // ---- Auth-aware swap ---------------------------------------------
   const signinSlot = document.getElementById("topnav-signin");

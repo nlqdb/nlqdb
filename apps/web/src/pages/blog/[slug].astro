@@ -66,7 +66,7 @@ const displayDate = new Date(`${post.date}T00:00:00Z`).toLocaleDateString("en-US
 ---
 <Base title={pageTitle} description={post.description} canonical={canonical}>
   <div class="page">
-    <Topnav />
+    <Topnav current="blog" />
 
     <main class="blg">
       <nav class="blg__crumbs" aria-label="Breadcrumb">

@@ -164,7 +164,7 @@ supported; else read manually before editing.)
 | `apps/events-worker/**`, `packages/events/**`, `apps/api/src/events-feature.ts`, `apps/api/src/ask/demand-signal.ts` | `docs/features/events-pipeline/FEATURE.md` |
 | `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` |
 | rate-limit middleware (`apps/api/src/ask/rate-limit.ts`, `apps/api/src/principal.ts` `rateLimitBucketKey`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`) | `docs/features/rate-limit/FEATURE.md` |
-| `apps/api/src/principal.ts`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`, `apps/api/src/turnstile.ts`, `apps/web/src/lib/{anon,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | `docs/features/anonymous-mode/FEATURE.md` |
+| `apps/api/src/principal.ts`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`, `apps/api/src/turnstile.ts`, `apps/web/src/lib/{anon,anon-adopt,handoff,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | `docs/features/anonymous-mode/FEATURE.md` |
 | `cli/**` | `docs/features/cli/FEATURE.md` |
 | `packages/elements/**` | `docs/features/elements/FEATURE.md` |
 | `packages/sdk/**` | `docs/features/sdk/FEATURE.md` |
