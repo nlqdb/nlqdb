@@ -80,6 +80,9 @@ table + one "Last change" entry, no changelog; create it if missing):
   suite: `pass` = latest completed run succeeded; `freshness` =
   `max(0, 1 − days_since_last_success / 7)`. Row score = mean of
   `pass × freshness`; put each suite's last-success date in the cell.
+- **Phase gate:** name the current phase per `docs/phase-plan.md` and its
+  exit-gate status — pass/fail per criterion. A failing criterion is a
+  worst-number candidate like any other row.
 - **Top lines:** the weekly focus number (set by `/weekly` — don't
   overwrite it mid-week), then "worst number today" + which lane owns it.
 

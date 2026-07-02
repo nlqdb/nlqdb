@@ -37,6 +37,8 @@ vs 0.75** — is **dark** (rule 8): dispatch blocked since run 126 (GitHub App
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites (fresh 07-02 pull) | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
 | 15 | E2E manual-suite freshness | 0.00 | sdk ✅05-31 · **mcp ❌06-24 (failed)** · examples ✅05-31 · opencheck ✅06-12 — all ≥7d ⇒ 0; re-run dispatch-gated |
+| | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
+| 16 | Current phase exit-gate status | unmeasured — row added 2026-07-02 | next `/daily` run names the current phase + pass/fail per gate criterion; a failing criterion is a worst-number candidate |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
