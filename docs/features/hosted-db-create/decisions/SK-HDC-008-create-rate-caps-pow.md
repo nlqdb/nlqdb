@@ -1,0 +1,10 @@
+# SK-HDC-008 — Per-IP and per-account rate caps on create; PoW on signup if abused
+
+- **Decision:** Hosted db.create is rate-limited at two layers: **per-IP** at 5 creates/hour for anonymous/un-authed callers; **per-account** at 20 creates/day for authed callers. If a wave of anonymous creates hits the per-IP bucket, signup adds a [hashcash-style](https://en.wikipedia.org/wiki/Hashcash) Proof-of-Work challenge before the create proceeds. These caps live in the rate-limit middleware (`SK-RL-*` ownership) but are surfaced here because their values are tuned to the create cost (Neon DDL + LLM call ≈ 800ms + $0.0005 to us at the classifier tier).
+- **Core value:** Bullet-proof, Free
+- **Why:** Without caps, a single botnet can exhaust our Neon DDL budget and our classifier-tier credits in minutes. The numbers come from `docs/phase-plan.md §8`'s free-tier abuse rules, which budget 200 launch-day signups against the DDL execution rate. PoW on signup is the [Hashcash](https://en.wikipedia.org/wiki/Hashcash) tradition: it costs an attacker N×CPU per request while costing legitimate users 200ms. Card-on-file would be cheaper to enforce but contradicts `GLOBAL-013` (free tier, no card).
+- **Consequence in code:** `apps/api/src/ask/classifier.ts` checks `kind=create` against the per-IP/per-account limiter before calling `db-create/orchestrate.ts`. Limit values are configured in `apps/api/wrangler.toml` (so they can be tuned without code change). On 429, the response includes the standard `X-RateLimit-*` headers (`SK-RL-*`). PoW is wired only when the per-IP bucket trips system-wide for >5min — not on every signup.
+- **Alternatives rejected:**
+  - Card-on-file gate before create — kills `GLOBAL-013` ("$0/month for the free tier"); kills the `<nlq-data>` anonymous flow.
+  - Single global rate limit — mis-incentivises one abuser to cap everyone; per-IP isolation is the standard pattern.
+  - Captcha — bad UX (anonymous embed flow has no place to put it); PoW is invisible to the user when off, transparent when on.

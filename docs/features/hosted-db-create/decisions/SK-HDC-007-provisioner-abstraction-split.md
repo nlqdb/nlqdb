@@ -1,0 +1,9 @@
+# SK-HDC-007 — Provisioner abstraction split now: `provisionDb(plan)` vs `registerByoDb(connection_url, plan)`
+
+- **Decision:** The Phase 1 provisioner is split into two functions from day one: `provisionDb(plan)` creates a Postgres schema on the shared Neon branch (Phase 1 default per `SK-DB-007`); `registerByoDb(connection_url, plan)` is a stub (throws `NotImplementedError`) until the BYO Postgres workstream lands per [`SK-DB-011`](../../db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md). Both share the same executor + validator path. The split lives in code from the first commit even though only `provisionDb` is wired.
+- **Core value:** Simple, Bullet-proof
+- **Why:** BYO Postgres (`docs/architecture.md §3.6.7`) is decided shape — separate endpoint, introspect via `pg_catalog`, secret-at-rest as encrypted blob, validator inheritance. If we don't split now, BYO work becomes "rebuild the pipeline." Splitting day one means BYO is a single function-body fill-in. The cost today is two function names and an unused export.
+- **Consequence in code:** `orchestrate.ts` accepts an injected `provision: ProvisionFn` (Phase 1 wires `provisionDb`; the BYO PR wires `registerByoDb` for `POST /v1/db/connect`), so tests inject fakes through the seam. PRs folding the two functions back into one are rejected. The `PgClient` seam carries `query` + `transaction` (latter added by `SK-HDC-012`); `registerByoDb` inherits both when the BYO PR lands.
+- **Alternatives rejected:**
+  - Single `provision(plan, opts)` with `byo: true` flag — same conditional-as-audit-risk problem as SK-HDC-006; the BYO path needs a different role grant model and a different secret-handling path that don't belong behind a flag.
+  - Defer the split — proven pattern: deferred splits never get done before the PR becomes a rewrite.

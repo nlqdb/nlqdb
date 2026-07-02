@@ -1,0 +1,9 @@
+# SK-HDC-006 — Two validator paths: read/write (allowlist) vs DDL (allowlist + libpg_query parse)
+
+- **Decision:** Two distinct SQL validators, exhaustively tested, non-overlapping. The **read/write** path (`apps/api/src/ask/sql-validate.ts`, `sql-allowlist` feature) allows `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW`, rejects `CREATE / ALTER / DROP / TRUNCATE / GRANT / REVOKE / VACUUM` + `EXPLAIN ANALYZE`. The **DDL** path (`apps/api/src/ask/sql-validate-ddl.ts`, this feature) allows the compiler's `CREATE TABLE / CREATE INDEX / FK constraints`, rejects the same destructive verbs (`DROP / TRUNCATE / GRANT / REVOKE / pg_catalog / information_schema`).
+- **Core value:** Bullet-proof, Simple
+- **Why:** The LLM never has DDL rights through `/v1/ask`'s read/write path. The only legitimate `CREATE` comes from this feature's typed-plan compiler — which is our code, not the LLM. Two validators (instead of one with conditional verb sets) make each one trivially auditable: every line of the read/write validator says "no DDL"; every line of the DDL validator says "compiler-shaped DDL only." A reviewer asking "could the LLM ever execute `DROP`?" reads one short file and is done.
+- **Consequence in code:** The two validator files share the libpg_query primitives but ship as separate exports. PRs that try to "merge them for DRY" are rejected — duplication is the point. Both validators are called from the orchestrators (read/write from `ask/orchestrate.ts`, DDL from `db-create/orchestrate.ts`); neither orchestrator ever calls the other's validator. Cross-link enforced in `sql-allowlist/FEATURE.md` SK-SQLAL-*.
+- **Alternatives rejected:**
+  - One validator with verb-set parameter — the conditional becomes the audit risk; "trust me, in DDL mode it allows CREATE" is exactly the kind of branch we're trying to remove.
+  - Drop the DDL validator (compiler is trusted) — defeats `SK-HDC-003`'s defense-in-depth lesson. Compiler bugs happen.

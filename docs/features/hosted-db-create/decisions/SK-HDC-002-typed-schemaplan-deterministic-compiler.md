@@ -1,0 +1,9 @@
+# SK-HDC-002 — LLM emits a typed `SchemaPlan`; our deterministic compiler emits SQL
+
+- **Decision:** The schema-inference LLM call returns a typed JSON object (`SchemaPlan { tables[], columns[], foreign_keys[], metrics[], dimensions[], sample_rows[] }`) with structured-output enforced. The LLM **never emits raw DDL**. A deterministic compiler (our code, not the LLM) emits `CREATE TABLE` / `CREATE INDEX` / FK constraint statements from the validated plan.
+- **Core value:** Bullet-proof, Simple
+- **Why:** This collapses the prompt-injection surface from "what SQL string can the LLM compose" to "what shape can the LLM force into a plan" — much smaller, much easier to enumerate. It matches the [Cortex Analyst](https://www.snowflake.com/en/engineering-blog/cortex-analyst-text-to-sql-accuracy-bi/) and [SchemaAgent](https://arxiv.org/html/2503.23886) lessons in `docs/research-receipts.md §2`. It is also a hard precondition for the layered-guardrails posture (`docs/research-receipts.md §1`, the Replit-incident lesson): no LLM-authored DDL ever reaches the executor.
+- **Consequence in code:** `apps/api/src/db-create/infer-schema.ts` returns a `SchemaPlan` validated by Zod (`packages/db/src/types.ts`). `apps/api/src/db-create/compile-ddl.ts` is the only file that emits DDL strings; PRs that add LLM-authored SQL anywhere on the create path fail review. New `SchemaPlan` fields require a Zod schema update first — the compiler refuses to consume fields the validator doesn't know about.
+- **Alternatives rejected:**
+  - LLM emits SQL directly — every prompt-injection vector becomes "compose SQL." Replit's incident is the named example; we don't replicate it.
+  - LLM emits an intermediate SQL-like DSL — same surface area as SQL, just less testable. Typed JSON has a finite, validated grammar.
