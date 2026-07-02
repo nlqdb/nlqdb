@@ -46,7 +46,7 @@ vs 0.75** — is dispatch-gated: reasoning + directive levers built/saturated
 Canonical copies on `/blog` (`SK-BLOG-001` autonomous publishing;
 community-venue variants stay in `research/distribution-queue.md` as pointers):
 
-- https://nlqdb.com/blog/store-form-submissions-without-a-backend/ (run 131 — anchors `/solve/store-form-submissions-without-backend`)
+- https://nlqdb.com/blog/store-form-submissions-without-a-backend/ (run 106 — anchors `/solve/store-form-submissions-without-backend`)
 - https://nlqdb.com/blog/not-in-subquery-null-trap/ (run 130 — anchors `/solve/find-rows-with-no-match-in-another-table`)
 - https://nlqdb.com/blog/zep-recall-vs-analytical-agent-memory/ (run 20 — anchors `/vs/zep`)
 - https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/ (run 2 — engine lesson)
