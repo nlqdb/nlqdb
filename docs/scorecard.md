@@ -11,9 +11,10 @@ number below.)*
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric; the daily **lever** targets its agent-movable input,
-**indexable surfaces** (row #6). The worst *engine* number — **Spider 0.1852
-vs 0.75** — is **dark** (rule 8): dispatch blocked since run 126 (GitHub App
-+ PAT both 403, retested 07-02); top bullet in `blocked-by-human.md`.
+**indexable surfaces** (row #6). Engine numbers are **dark** (rule 8):
+dispatch blocked (run 126; 403 retested 07-02; `blocked-by-human.md`). Vs
+GLOBAL-025 floors, Spider free (0.1852) clears ≥0.15; **BIRD 0.520 is below
+its ≥0.60 Phase 2 floor**.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -28,7 +29,7 @@ vs 0.75** — is **dark** (rule 8): dispatch blocked since run 126 (GitHub App
 | 7 | Surface yield | posts 5; 7d external referrals = 2 (1 `google.com` organic — first — + 1 `aisearchindex.space`) | CF `refererHost` pull unblocked 07-02 — measured every run |
 | | **Engine** — BIRD 06-19 (**13d, stale**) · Spider 06-17 (**15d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`); **dark** — dispatch 403 (retested 07-02) |
 | 8 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12) — flat (McNemar p=0.50) |
-| 9 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number, dark.** `SK-QUAL-017` built bar the dispatch |
+| 9 | Spider raw EX | 0.1852 | floor free ≥0.15 (clears); dark. `SK-QUAL-017` built bar dispatch |
 | 10 | persona-bench free-chain EX | 0.90 (18/20) | full-chain ICP EX; 1.7× BIRD, 4.9× Spider — the GLOBAL-026 bet; N=20 ±1 noisy. Retrieval precision@1 saturated (23/23 + 17/17 held-out) |
 | 11 | free-vs-frontier delta | null *(secret-blocked)* | `OPENROUTER_FRONTIER_API_KEY` empty in CI (`blocked-by-human.md`); lands when the founder sets it |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-02 pull) | | wall-time, all routes |
@@ -39,7 +40,7 @@ vs 0.75** — is **dark** (rule 8): dispatch blocked since run 126 (GitHub App
 | 15 | E2E manual-suite freshness | 0.00 | sdk ✅05-31 · **mcp ❌06-24 (failed)** · examples ✅05-31 · opencheck ✅06-12 — all ≥7d ⇒ 0; re-run dispatch-gated |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
-| | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
+| | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (per-agent RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
 
 ## Shipped distribution (live URLs)
 

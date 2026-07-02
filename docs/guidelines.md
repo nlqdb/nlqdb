@@ -190,7 +190,7 @@ We make bad states unreachable, not caught. Before shipping any user-visible fea
 | Cache invalidation | Plan cache keyed by `(schema_hash, query_hash)`. Old keys LRU. |
 | Signup race | Idempotent on email. Second signup = sign-in. |
 | Double-charge | `Idempotency-Key` required on mutations; Stripe webhooks deduped. |
-| Wrong-tenant leak | Enforced at the connection pool, not app code. No branch to take. |
+| Wrong-tenant leak | Provisioned DBs get per-tenant `tenant_isolation` RLS; the BYO path runs against the user's own single-tenant DB (bounded — no shared surface to cross). |
 | SQL injection | No SQL strings; planner emits typed plan, executor binds. |
 | Cold-start timeout | Workers cold-start <5ms; Neon resume <1s; 2s first-byte ceiling. |
 | LLM column hallucination | Post-plan schema validation; re-prompt with the error. |
