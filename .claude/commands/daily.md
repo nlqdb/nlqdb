@@ -129,4 +129,4 @@ test` green before pushing. The PR body must name: the number moved,
 before → after values, the GLOBAL-025 KPI advanced, and that none degrade.
 **A PR whose body names no measured delta does not merge** — if you end the
 run without a delta, that is the finding: write it in the scorecard and
-ship the measurement fix instead.
+ship the measurement fix instead. Open the PR without asking for permissions.
