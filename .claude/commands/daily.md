@@ -29,6 +29,10 @@ focus number.
    open pre-beta (founder-resolved 2026-07-01); never reintroduce either.
 6. **Red main is the run.** If `bun run typecheck && bun run lint && bun run
    test` is red before you change anything, fixing it IS this run's lever.
+   Same for the `deploy-*` workflows: check each one's latest run on `main`
+   — a failing deploy means production silently serves a stale build (the
+   2026-07-02 docs-site 404 shipped this way, 5 failed deploys unnoticed
+   since 06-20), and fixing it outranks every other lever.
 7. **Anti-rut.** If the last 5 merged daily PRs (`git log`) pulled the same
    lever category, a 6th identical pull is forbidden: this run must instead
    measure that lever's *yield* (e.g. referral visits landing on the shipped
