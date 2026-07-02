@@ -12,8 +12,8 @@ number below.)*
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric; the daily **lever** targets its agent-movable input,
 **indexable surfaces** (row #6). The worst *engine* number — **Spider 0.1852
-vs 0.75** — is **dark** (rule 8): dispatch blocked since run 126 (GitHub App
-+ PAT both 403, retested 07-02); top bullet in `blocked-by-human.md`.
+vs 0.75** — has a fresh eval in flight; reasoning + directive levers
+built/saturated (row #10 note), next gain reads off the landing EX.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -26,11 +26,11 @@ vs 0.75** — is **dark** (rule 8): dispatch blocked since run 126 (GitHub App
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | 66 (`/vs` 31 + `/solve` 30 + `/blog` 5) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
 | 7 | Surface yield | posts 5; 7d external referrals = 2 (1 `google.com` organic — first — + 1 `aisearchindex.space`) | CF `refererHost` pull unblocked 07-02 — measured every run |
-| | **Engine** — BIRD 06-19 (**13d, stale**) · Spider 06-17 (**15d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`); **dark** — dispatch 403 (retested 07-02) |
-| 8 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12) — flat (McNemar p=0.50) |
-| 9 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number, dark.** `SK-QUAL-017` built bar the dispatch |
-| 10 | persona-bench free-chain EX | 0.90 (18/20) | full-chain ICP EX; 1.7× BIRD, 4.9× Spider — the GLOBAL-026 bet; N=20 ±1 noisy. Retrieval precision@1 saturated (23/23 + 17/17 held-out) |
-| 11 | free-vs-frontier delta | null *(secret-blocked)* | `OPENROUTER_FRONTIER_API_KEY` empty in CI (`blocked-by-human.md`); lands when the founder sets it |
+| | **Engine** — BIRD 06-19 · Spider 06-17 · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Dispatch unblocked** — Actions:write granted; all three re-dispatched this cycle (`include_frontier=true`) |
+| 8 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12) — flat (McNemar p=0.50); reasoning levers next |
+| 9 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number.** Self-consistency (`SK-QUAL-017`) built, now dispatched |
+| 10 | persona-bench free-chain EX | 0.90 (18/20) | full-chain ICP EX (run 58/63); 1.7× BIRD, 4.9× Spider — the GLOBAL-026 bet; N=20 ±1 noisy. Retrieval precision@1 23/23 (run 105), held-out 17/17 — saturated |
+| 11 | free-vs-frontier delta | null *(landing)* | `OPENROUTER_FRONTIER_API_KEY` now wired in CI; delta lands on this cycle's frontier eval dispatch |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-02 pull) | | wall-time, all routes |
 | 12 | nlqdb-api requests / errors | 2,125 / 0 (0.00%) | mcp-server 858 req / 1 err, events-worker 0 req |
 | 13 | nlqdb-api wall-time p50 / p95 | 0.88 ms / 0.87 s | p95 down from 2.62 s (06-22); `/ask`-only split needs Grafana `metrics:read` |
