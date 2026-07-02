@@ -280,6 +280,9 @@ describe("provisionDb — happy path", () => {
     expect(sqls[i++]).toBe('CREATE SCHEMA "orders_tracker_a4f3b2"');
     expect(sqls[i++]).toMatch(/CREATE ROLE/);
     expect(sqls[i++]).toMatch(/GRANT USAGE ON SCHEMA "orders_tracker_a4f3b2"/);
+    // Least-privilege exec: the connecting owner must be a member of the
+    // tenant role WITH SET so the exec path can `SET LOCAL ROLE` into it.
+    expect(sqls[i++]).toMatch(/GRANT "tenant_[0-9a-f]+" TO CURRENT_USER WITH SET TRUE/);
     // DDL is included in the caller-supplied order. CREATE TABLEs
     // run under the 30s default; CREATE INDEX is bracketed by 600s
     // bumps per SK-HDC-010, all within the same batch transaction
@@ -297,6 +300,14 @@ describe("provisionDb — happy path", () => {
     );
     expect(sqls[i++]).toMatch(/ALTER TABLE "orders_tracker_a4f3b2"\."items" ENABLE ROW LEVEL/);
     expect(sqls[i++]).toMatch(/CREATE POLICY tenant_isolation ON "orders_tracker_a4f3b2"\."items"/);
+    // Least-privilege exec: the tenant role gets DML on the tables +
+    // USAGE on their sequences so `SET LOCAL ROLE` queries aren't denied.
+    expect(sqls[i++]).toMatch(
+      /GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "orders_tracker_a4f3b2" TO "tenant_[0-9a-f]+"/,
+    );
+    expect(sqls[i++]).toMatch(
+      /GRANT USAGE ON ALL SEQUENCES IN SCHEMA "orders_tracker_a4f3b2" TO "tenant_[0-9a-f]+"/,
+    );
     // Sample-row inserts are parameterised.
     expect(sqls[i++]).toMatch(/INSERT INTO "orders_tracker_a4f3b2"\."orders"/);
     expect(sqls[i++]).toMatch(/INSERT INTO "orders_tracker_a4f3b2"\."orders"/);
@@ -618,10 +629,11 @@ describe("provisionDb — observability (GLOBAL-014, SK-OBS-005, SK-HDC-012)", (
     const txSpan = txSpans[0];
     expect(txSpan?.attributes["db.system"]).toBe("postgresql");
     expect(txSpan?.attributes["db.transaction.batch_call"]).toBe(true);
-    // Batch size: 1 SET LOCAL + CREATE SCHEMA + DO role + GRANT +
-    // 3 CREATE TABLE + (SET 600s + CREATE INDEX + SET 30s) +
-    // 4 RLS rows (2×ALTER+POLICY) + 2 INSERTs = 16 statements.
-    expect(txSpan?.attributes["db.transaction.statement_count"]).toBe(16);
+    // Batch size: 1 SET LOCAL + CREATE SCHEMA + DO role + GRANT USAGE +
+    // GRANT role-to-owner + 3 CREATE TABLE + (SET 600s + CREATE INDEX +
+    // SET 30s) + 4 RLS rows (2×ALTER+POLICY) + 2 table/seq DML grants +
+    // 2 INSERTs = 19 statements.
+    expect(txSpan?.attributes["db.transaction.statement_count"]).toBe(19);
   });
 
   it("emits NO per-statement `db.query` spans on the happy path (SK-HDC-012)", async () => {

@@ -5,7 +5,7 @@
 // rule.
 
 import { describe, expect, it } from "vitest";
-import { validateSql } from "../src/ask/sql-validate.ts";
+import { containsWriteVerb, validateSql } from "../src/ask/sql-validate.ts";
 
 describe("validateSql", () => {
   describe("rejects", () => {
@@ -18,6 +18,9 @@ describe("validateSql", () => {
       ["TRUNCATE orders", "truncate_statement"],
       ["DELETE FROM orders", "delete_without_where"],
       ["delete from orders;", "delete_without_where"],
+      // UPDATE-without-WHERE — symmetric with DELETE (mass mutation).
+      ["UPDATE orders SET paid = true", "update_without_where"],
+      ["update orders set paid = true;", "update_without_where"],
       ["ALTER TABLE orders DROP COLUMN total", "alter_statement"],
       ["GRANT SELECT ON users TO public", "grant_or_revoke"],
       ["REVOKE ALL ON users FROM public", "grant_or_revoke"],
@@ -46,6 +49,15 @@ describe("validateSql", () => {
       ["SELECT pg_read_file('/etc/passwd')", "disallowed_function"],
       ["SELECT dblink('host=evil', 'select 1')", "disallowed_function"],
       ["SELECT lo_import('/etc/passwd')", "disallowed_function"],
+      // RLS-tenancy GUC primitives — defense-in-depth so a CTE can't
+      // re-arm `app.tenant_id` from inside a validated query (the exec
+      // wrapper sets it OUTSIDE the user SQL).
+      ["SELECT set_config('app.tenant_id', 'other', false)", "disallowed_function"],
+      ["SELECT current_setting('app.tenant_id')", "disallowed_function"],
+      [
+        "WITH x AS (SELECT set_config('app.tenant_id', 'other', true)) SELECT * FROM users",
+        "disallowed_function",
+      ],
     ])("rejects %j with reason %s", (sql, reason) => {
       const result = validateSql(sql);
       expect(result.ok).toBe(false);
@@ -155,5 +167,33 @@ describe("validateSql", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.reason).toBe("parse_failed");
     });
+  });
+});
+
+// Embedded-write detector shared by the /v1/run read-only gate and the
+// /v1/ask render-before-commit gate. A leading-verb-only check false-
+// negatives on a data-modifying CTE (`WITH … (INSERT …) SELECT …`), so
+// this must catch writes at any nesting.
+describe("containsWriteVerb", () => {
+  it.each([
+    "INSERT INTO users (name) VALUES ('a')",
+    "UPDATE users SET name = 'b' WHERE id = 1",
+    "DELETE FROM users WHERE id = 1",
+    "/* c */ INSERT INTO users (name) VALUES ('a')",
+    "WITH x AS (INSERT INTO users (id) VALUES (1) RETURNING id) SELECT * FROM x",
+    "WITH x AS (UPDATE users SET name='b' WHERE id=1 RETURNING id) SELECT * FROM x",
+    "WITH x AS (DELETE FROM users WHERE id=1 RETURNING id) SELECT * FROM x",
+  ])("detects a write in %j", (sql) => {
+    expect(containsWriteVerb(sql)).toBe(true);
+  });
+
+  it.each([
+    "SELECT * FROM users",
+    "WITH x AS (SELECT id FROM users) SELECT * FROM x",
+    "EXPLAIN SELECT * FROM users",
+    "SHOW search_path",
+    "",
+  ])("returns false for the read %j", (sql) => {
+    expect(containsWriteVerb(sql)).toBe(false);
   });
 });

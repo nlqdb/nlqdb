@@ -25,6 +25,7 @@ import { resolveDb } from "../db-registry.ts";
 import { buildEventEmitter } from "../events-emitter.ts";
 import { getLLMRouter } from "../llm-router.ts";
 import { kekFromEnv, openSecret } from "../secret-envelope.ts";
+import { assertTenantRoleName, tenantRoleName } from "../tenant-role.ts";
 import { makeFirstQueryTracker } from "./first-query.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
 import { makePlanCache } from "./plan-cache.ts";
@@ -157,19 +158,53 @@ const DEFAULT_RUNNERS: ExecRunners = {
   runClickhouse: runClickhouseQuery,
 };
 
-// Hosted Postgres (shared Neon). Three statements batched in one HTTP
-// round-trip:
-//   1. set_config('search_path', schemaName, true) — routes unqualified
-//      table names to the tenant's schema instead of public.
-//   2. set_config('app.tenant_id', tenantId, true) — satisfies the RLS
-//      USING clause the provisioner set on every table; without this,
-//      current_setting('app.tenant_id', true) = '' and all rows are blocked.
-//   3. The user's SQL.
-//
-// set_config(..., true) is transaction-local (equivalent to SET LOCAL) and
-// accepts parameterised values — no identifier injection risk. Schema name
-// is derived from db.id by stripping the "db_" prefix, mirroring
-// neon-provision.ts's stripDbPrefix.
+// Per-statement wall-clock cap on every request-path exec. DDL already
+// caps at 30s (SK-HDC-010); the read/write exec path had NO cap, so a
+// pathological query (or a `pg_sleep` that slipped a guard) could hold a
+// Worker + Neon connection open indefinitely. 10s is well above the p99
+// budget (docs/performance.md §2.1) yet bounds the worst case. Applied to
+// hosted, BYO, and memory Postgres exec transactions.
+const EXEC_STATEMENT_TIMEOUT = "10s";
+
+export type HostedExecStep = { text: string; params: unknown[] };
+
+// The ordered statement list run in one hosted-Postgres exec transaction.
+// Order is load-bearing:
+//   1. search_path      → unqualified names resolve to the tenant schema.
+//   2. app.tenant_id    → satisfies the RLS USING clause.
+//   3. statement_timeout→ bounds a runaway query (resource guard).
+//   4. SET LOCAL ROLE tenant_<hash> → LEAST PRIVILEGE, the load-bearing
+//      cross-tenant isolation control. The shared `neondb_owner` OWNS the
+//      tables, so it BYPASSES RLS and can read any tenant's schema by
+//      qualifying it (`other_schema.tbl`). Dropping to the per-tenant role
+//      — which has USAGE only on its own schemas and, being a non-owner,
+//      has RLS actually enforced — makes a cross-schema read fail closed
+//      and makes any in-query `set_config('app.tenant_id', …)` GUC
+//      re-arming useless. Verified against Neon PG17.
+//   5. the user statement (raw SQL, or parameterised for memory writes).
+// `set_config(…, true)` is transaction-local (= SET LOCAL) and takes
+// params. `SET LOCAL ROLE` / `SET LOCAL statement_timeout` cannot be
+// parameterised, so the role name (a validated `tenant_<hex>` identifier)
+// and the constant timeout are interpolated.
+export function buildHostedExecSteps(
+  schemaName: string,
+  tenantId: string,
+  roleName: string,
+  userStep: HostedExecStep,
+): HostedExecStep[] {
+  assertTenantRoleName(roleName);
+  return [
+    { text: "SELECT set_config('search_path', $1, true)", params: [schemaName] },
+    { text: "SELECT set_config('app.tenant_id', $1, true)", params: [tenantId] },
+    { text: `SET LOCAL statement_timeout = '${EXEC_STATEMENT_TIMEOUT}'`, params: [] },
+    { text: `SET LOCAL ROLE "${roleName}"`, params: [] },
+    userStep,
+  ];
+}
+
+// Hosted Postgres (shared Neon). Runs the user SQL under least privilege
+// (`SET LOCAL ROLE tenant_<hash>`) + a statement timeout, batched in one
+// HTTP round-trip. See `buildHostedExecSteps` for the statement order.
 async function runHostedPgQuery(
   url: string,
   schemaName: string,
@@ -180,6 +215,8 @@ async function runHostedPgQuery(
   const neonSql = neon(url, { fullResults: true });
   const operation = detectSqlOperation(sql);
   const tracer = trace.getTracer("@nlqdb/api");
+  const roleName = await tenantRoleName(tenantId);
+  const steps = buildHostedExecSteps(schemaName, tenantId, roleName, { text: sql, params: [] });
 
   return tracer.startActiveSpan(
     "db.query",
@@ -189,14 +226,10 @@ async function runHostedPgQuery(
       try {
         signal?.throwIfAborted();
         const results = await neonSql.transaction(
-          [
-            neonSql`SELECT set_config('search_path', ${schemaName}, true)`,
-            neonSql`SELECT set_config('app.tenant_id', ${tenantId}, true)`,
-            neonSql`${neonSql.unsafe(sql)}`,
-          ],
+          steps.map((s) => neonSql.query(s.text, s.params)),
           signal ? { fetchOptions: { signal } } : {},
         );
-        const userResult = results[2];
+        const userResult = results[results.length - 1];
         return {
           rows: (userResult?.rows ?? []) as Row[],
           rowCount: userResult?.rowCount ?? userResult?.rows?.length ?? 0,
@@ -246,10 +279,19 @@ async function runByoPgQuery(url: string, sql: string, signal?: AbortSignal): Pr
         }
         const verdict = await guardEgressHostResolved(parsed.parsed.host, createDohResolver());
         if (!verdict.ok) throw new DbConfigError(verdict.message);
-        const result = await neonSql.query(sql, []);
+        // Bound the query wall-clock the same as the hosted path. No
+        // search_path / RLS / SET ROLE here — this is the user's own DB
+        // with no tenant schema; a statement timeout is the only exec
+        // guard that applies. Batched so `SET LOCAL` scopes the timeout to
+        // the user statement in the same transaction.
+        const results = await neonSql.transaction([
+          neonSql.query(`SET LOCAL statement_timeout = '${EXEC_STATEMENT_TIMEOUT}'`, []),
+          neonSql.query(sql, []),
+        ]);
+        const result = results[results.length - 1];
         return {
-          rows: (result.rows ?? []) as Row[],
-          rowCount: result.rowCount ?? result.rows?.length ?? 0,
+          rows: (result?.rows ?? []) as Row[],
+          rowCount: result?.rowCount ?? result?.rows?.length ?? 0,
         };
       } catch (err) {
         span.recordException(err as Error);
@@ -372,6 +414,15 @@ export async function buildMemoryExec(
   const schemaName = db.id.startsWith("db_") ? db.id.slice(3) : db.id;
   const neonSql = neon(url, { fullResults: true });
   const tracer = trace.getTracer("@nlqdb/api");
+  // Same least-privilege + timeout wrapper as the read/write hosted path
+  // (`buildHostedExecSteps`): SET LOCAL ROLE tenant_<hash> so the memory
+  // INSERT runs as the tenant role (RLS enforced, no cross-schema reach),
+  // not the shared owner. The INSERT itself stays parameterised.
+  const roleName = await tenantRoleName(db.tenantId);
+  const steps = buildHostedExecSteps(schemaName, db.tenantId, roleName, {
+    text: plan.text,
+    params: plan.params,
+  });
 
   return tracer.startActiveSpan(
     "nlqdb.memory.remember",
@@ -387,14 +438,10 @@ export async function buildMemoryExec(
       try {
         signal?.throwIfAborted();
         const results = await neonSql.transaction(
-          [
-            neonSql`SELECT set_config('search_path', ${schemaName}, true)`,
-            neonSql`SELECT set_config('app.tenant_id', ${db.tenantId}, true)`,
-            neonSql.query(plan.text, plan.params),
-          ],
+          steps.map((s) => neonSql.query(s.text, s.params)),
           signal ? { fetchOptions: { signal } } : {},
         );
-        const userResult = results[2];
+        const userResult = results[results.length - 1];
         return {
           rows: (userResult?.rows ?? []) as Row[],
           rowCount: userResult?.rowCount ?? userResult?.rows?.length ?? 0,

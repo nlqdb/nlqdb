@@ -6,7 +6,7 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { hashGoal } from "../ask/plan-cache.ts";
 import type { RateLimiter } from "../ask/rate-limit.ts";
-import { leadingVerb, stripLeadingComments, validateSql } from "../ask/sql-validate.ts";
+import { containsWriteVerb, validateSql } from "../ask/sql-validate.ts";
 import {
   type AskError,
   DbConfigError,
@@ -44,8 +44,6 @@ export type RunDeps = {
   exec: (db: DbRecord, sql: string, signal?: AbortSignal) => Promise<QueryResult>;
   rateLimiter: RateLimiter;
 };
-
-const WRITE_VERBS: ReadonlySet<string> = new Set(["insert", "update", "delete"]);
 
 export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<RunOutcome> {
   const tracer = trace.getTracer("@nlqdb/api");
@@ -85,12 +83,12 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
     return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
   }
 
-  // Reuses the validator's normalization so `/* x */ INSERT ...` can't smuggle past this gate.
-  if (req.readOnly) {
-    const normalized = leadingVerb(stripLeadingComments(req.sql.trim()));
-    if (WRITE_VERBS.has(normalized)) {
-      return { ok: false, error: { status: "forbidden", reason: "read_only_principal" } };
-    }
+  // Read-only principals (pk_live, anon) may not write. `containsWriteVerb`
+  // detects a write ANYWHERE in the statement — not just the leading verb —
+  // so a data-modifying CTE (`WITH x AS (INSERT … RETURNING *) SELECT …`,
+  // leading verb `with`) can't smuggle a write past this gate.
+  if (req.readOnly && containsWriteVerb(req.sql)) {
+    return { ok: false, error: { status: "forbidden", reason: "read_only_principal" } };
   }
 
   const db = await deps.resolveDb(req.dbId, req.userId);
