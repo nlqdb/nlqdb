@@ -9,6 +9,7 @@
 // Best-effort by design: the caller's redirect must never block on it.
 
 import { ANON_PREV_KEY } from "./handoff";
+import { emit } from "./logsnag";
 
 const ANON_KEY = "nlqdb_anon";
 const TIMEOUT_MS = 3000;
@@ -49,23 +50,27 @@ async function adoptOne(
 
 // Returns the adopted dbId of the active token (falling back to the
 // displaced one) so post-signin can pin it via `?db=<id>` (SK-ANON-014).
+// The two POSTs are independent and run in parallel so the worst case
+// stays one TIMEOUT_MS, not two, on the post-signin loading page.
 export async function adoptAnonNow(apiBase: string): Promise<string | null> {
   if (typeof window === "undefined") return null;
   const current = readToken(ANON_KEY);
   const prev = readToken(ANON_PREV_KEY);
-  let prevDbId: string | null = null;
-  if (prev && prev !== current) {
-    const res = await adoptOne(apiBase, prev);
-    prevDbId = res.dbId;
-    if (res.ok) {
-      try {
-        window.localStorage.removeItem(ANON_PREV_KEY);
-      } catch {
-        // storage unavailable — the retry stays idempotent
-      }
+  const distinctPrev = prev && prev !== current ? prev : null;
+  const [prevRes, res] = await Promise.all([
+    distinctPrev ? adoptOne(apiBase, distinctPrev) : null,
+    current ? adoptOne(apiBase, current) : null,
+  ]);
+  // Clear the prev slot once it's adopted — or redundant (=== current).
+  if (prev && (prevRes ? prevRes.ok : res?.ok)) {
+    try {
+      window.localStorage.removeItem(ANON_PREV_KEY);
+    } catch {
+      // storage unavailable — the retry stays idempotent
     }
   }
-  if (!current) return prevDbId;
-  const res = await adoptOne(apiBase, current);
-  return res.dbId ?? prevDbId;
+  // At-most-one funnel signal per sign-in; adoption failures are
+  // otherwise invisible client-side (the redirect proceeds anyway).
+  if ((res && !res.ok) || (prevRes && !prevRes.ok)) emit("anon.adopt_failed");
+  return res?.dbId ?? prevRes?.dbId ?? null;
 }

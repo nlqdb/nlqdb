@@ -56,13 +56,29 @@ import Base from "../../layouts/Base.astro";
   import { fetchSession } from "../../lib/session";
 
   const params = new URLSearchParams(location.search);
-  const next = params.get("next") ?? "/app";
+  // `next` comes from the query string, which anyone can craft — pin it
+  // to a same-origin path so `location.replace(next)` can never be an
+  // open redirect or a `javascript:` URI.
+  const next = sanitizeNext(params.get("next"));
   const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
+  function sanitizeNext(raw: string | null): string {
+    if (!raw) return "/app";
+    try {
+      const url = new URL(raw, location.origin);
+      if (url.origin !== location.origin) return "/app";
+      // A pathname of `//host` would re-parse as scheme-relative in
+      // `location.replace` — reject it too.
+      if (url.pathname.startsWith("//")) return "/app";
+      return url.pathname + url.search + url.hash;
+    } catch {
+      return "/app";
+    }
+  }
+
   // Append `?db=<dbId>` to `next` (SK-ANON-014). `next` may already
-  // carry query params; URL parsing preserves them. The redirect base
-  // matters — `next` is always same-origin (set server-side by
-  // sign-in.astro from `return_to`), so we resolve against the current
+  // carry query params; URL parsing preserves them. `next` is already
+  // pinned same-origin above, so we resolve against the current
   // origin. The `URL` constructor throws on malformed input; a guarded
   // fallback drops the param rather than failing the redirect entirely.
   //

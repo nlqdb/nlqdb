@@ -71,6 +71,14 @@ describe("adoptAnonNow", () => {
     expect(store.get("nlqdb_anon_prev")).toBe("anon_old");
   });
 
+  test("a prev slot equal to the active token adopts once and still clears", async () => {
+    store.set("nlqdb_anon", "anon_same");
+    store.set("nlqdb_anon_prev", "anon_same");
+    expect(await adoptAnonNow("")).toBe("db_for_anon_same");
+    expect(posted).toEqual(["anon_same"]);
+    expect(store.has("nlqdb_anon_prev")).toBe(false);
+  });
+
   test("no tokens → no requests", async () => {
     expect(await adoptAnonNow("")).toBeNull();
     expect(posted).toEqual([]);
