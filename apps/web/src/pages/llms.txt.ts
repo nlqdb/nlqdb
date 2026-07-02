@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { BLOG_POSTS_BY_DATE } from "../data/blog";
 import { COMPETITORS } from "../data/competitors";
 import { INTEGRATE } from "../data/integrate";
 import { SOLVE_ENTRIES } from "../data/solve";
@@ -44,6 +45,11 @@ const PRIMARY_LINKS = [
     title: "Solve pages",
     path: "/solve",
     desc: "One page per recurring search query; each answers the question with a working snippet and names what nlqdb doesn't do.",
+  },
+  {
+    title: "Blog",
+    path: "/blog",
+    desc: "Evergreen SQL and data-layer lessons — the query traps worth remembering and where a natural-language database fits.",
   },
   {
     title: "Pricing",
@@ -94,6 +100,10 @@ export const GET: APIRoute = () => {
     `\n\n## Solve pages\n\n` +
     SOLVE_ENTRIES.map(
       (s) => `- [${s.searchTitle}](${url(`/solve/${s.slug}`)}): ${s.oneLiner}`,
+    ).join("\n") +
+    `\n\n## Blog\n\n` +
+    BLOG_POSTS_BY_DATE.map(
+      (p) => `- [${p.title}](${url(`/blog/${p.slug}`)}): ${p.description}`,
     ).join("\n") +
     `\n\n## Optional\n\n` +
     OPTIONAL_LINKS.map((l) => `- [${l.title}](${url(l.path)}): ${l.desc}`).join("\n") +

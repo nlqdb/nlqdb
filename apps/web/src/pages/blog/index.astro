@@ -1,0 +1,174 @@
+---
+// Index of `/blog/<slug>` posts — the canonical home for the evergreen
+// SQL / data-layer lessons the daily loop drafts. Same token system as
+// `/solve/index` and `/vs/index`: display serif header, mono eyebrow,
+// quiet sans body. ItemList JSON-LD enumerates the full set for answer
+// engines (mirrors SK-SOLVE-005).
+
+import Footer from "../../components/Footer.astro";
+import Topnav from "../../components/Topnav.astro";
+import { BLOG_POSTS_BY_DATE } from "../../data/blog";
+import Base from "../../layouts/Base.astro";
+import { itemListJsonLd } from "../../lib/itemlist-jsonld";
+
+const itemListLd = itemListJsonLd(
+  "The nlqdb blog — evergreen SQL and data-layer lessons",
+  BLOG_POSTS_BY_DATE.map((p) => ({ name: p.title, path: `/blog/${p.slug}` })),
+  Astro.site,
+);
+---
+<Base
+  title="Blog — nlqdb"
+  description="Evergreen SQL and data-layer lessons: the query traps worth remembering, and where a natural-language database fits. Honest about limits."
+  canonical="/blog"
+>
+  <div class="page">
+    <Topnav />
+
+    <main class="blogidx">
+      <header class="blogidx__head">
+        <p class="blogidx__eyebrow">Blog</p>
+        <h1 class="blogidx__title">The query traps worth remembering</h1>
+        <p class="blogidx__lede">
+          Evergreen SQL and data-layer lessons — the shapes you re-Google every
+          few weeks, why the obvious query is sometimes a quiet trap, and where a
+          natural-language database fits. Every post names what nlqdb doesn't do.
+        </p>
+      </header>
+
+      <ul class="blogidx__list">
+        {
+          BLOG_POSTS_BY_DATE.map((p) => (
+            <li class="blogidx__item">
+              <a href={`/blog/${p.slug}`} class="blogidx__link">
+                <time class="blogidx__date" datetime={p.date}>{p.date}</time>
+                <h2 class="blogidx__name">{p.title}</h2>
+                <p class="blogidx__blurb">{p.description}</p>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <section class="blogidx__cta">
+        <h2 class="blogidx__cta-title">Prefer the answer to the essay?</h2>
+        <p>
+          Browse the <a href="/solve">solve pages</a> — one page per recurring
+          search query, each with a working snippet — or the{" "}
+          <a href="/vs">competitor comparisons</a>.
+        </p>
+      </section>
+    </main>
+
+    <Footer />
+  </div>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(itemListLd)} />
+</Base>
+
+<style>
+  .blogidx {
+    max-width: var(--col);
+    margin: 0 auto;
+    padding: clamp(32px, 5vw, 64px) 0;
+  }
+
+  .blogidx__head {
+    margin: 0 0 clamp(40px, 6vw, 64px);
+  }
+  .blogidx__eyebrow {
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-size: var(--t-small);
+    margin: 0 0 16px;
+  }
+  .blogidx__title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    color: var(--ink);
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+  .blogidx__lede {
+    font-family: var(--sans);
+    font-size: var(--t-large);
+    color: var(--body);
+    line-height: 1.5;
+    max-width: 60ch;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .blogidx__list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 clamp(40px, 6vw, 64px);
+    display: grid;
+    gap: 12px;
+  }
+  .blogidx__link {
+    display: block;
+    padding: 24px;
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    text-decoration: none;
+    color: inherit;
+  }
+  .blogidx__link:hover {
+    border-color: var(--ink);
+    color: inherit;
+    text-decoration: none;
+  }
+  .blogidx__date {
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    display: block;
+    margin: 0 0 10px;
+  }
+  .blogidx__name {
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 10px;
+    color: var(--ink);
+    line-height: 1.25;
+  }
+  .blogidx__blurb {
+    font-family: var(--sans);
+    color: var(--body);
+    font-size: var(--t-body);
+    line-height: 1.55;
+    margin: 0;
+    max-width: 68ch;
+  }
+
+  .blogidx__cta {
+    padding: clamp(24px, 4vw, 32px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+  }
+  .blogidx__cta-title {
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 10px;
+  }
+  .blogidx__cta p {
+    font-family: var(--sans);
+    margin: 0;
+    color: var(--body);
+    font-size: var(--t-body);
+    line-height: 1.55;
+  }
+  .blogidx__cta a {
+    color: var(--ink);
+  }
+</style>

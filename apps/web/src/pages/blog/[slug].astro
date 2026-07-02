@@ -1,0 +1,327 @@
+---
+// One template, N posts — generated at build via `getStaticPaths()` from
+// `data/blog.ts`. Editorial article layout: display-serif title, dateline,
+// lede takeaway, then the typed body blocks (paragraph / h2 / code / note).
+// Emits BlogPosting + BreadcrumbList JSON-LD so answer engines place the post
+// and can lift the abstract. Paragraph inline code is rendered via
+// lib/blog-inline.ts — escaped spans, no set:html on user prose.
+
+import Footer from "../../components/Footer.astro";
+import Topnav from "../../components/Topnav.astro";
+import { BLOG_POSTS, blogBySlug } from "../../data/blog";
+import Base from "../../layouts/Base.astro";
+import { parseInline } from "../../lib/blog-inline";
+import { breadcrumbJsonLd } from "../../lib/breadcrumb";
+
+export function getStaticPaths() {
+  return BLOG_POSTS.map((p) => ({ params: { slug: p.slug } }));
+}
+
+const { slug } = Astro.params;
+const post = blogBySlug(slug as string);
+if (!post) {
+  return Astro.redirect("/blog");
+}
+
+const pageTitle = `${post.title} — nlqdb blog`;
+const canonical = `/blog/${post.slug}`;
+
+const blogPostingLd = {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  headline: post.title,
+  description: post.description,
+  abstract: post.takeaway,
+  datePublished: post.date,
+  dateModified: post.date,
+  author: { "@type": "Organization", name: "nlqdb" },
+  publisher: { "@type": "Organization", name: "nlqdb" },
+  keywords: post.tags.join(", "),
+  mainEntityOfPage: Astro.site ? new URL(`${canonical}/`, Astro.site).toString() : canonical,
+};
+
+const breadcrumbLd = breadcrumbJsonLd(
+  [
+    { name: "Home", path: "/" },
+    { name: "Blog", path: "/blog" },
+    { name: post.title, path: canonical },
+  ],
+  Astro.site,
+);
+---
+<Base title={pageTitle} description={post.description} canonical={canonical}>
+  <div class="page">
+    <Topnav />
+
+    <main class="post">
+      <nav class="post__crumbs" aria-label="Breadcrumb">
+        <ol>
+          <li><a href="/">Home</a></li>
+          <li><a href="/blog">Blog</a></li>
+          <li aria-current="page">{post.title}</li>
+        </ol>
+      </nav>
+
+      <header class="post__head">
+        <time class="post__date" datetime={post.date}>{post.date}</time>
+        <h1 class="post__title">{post.title}</h1>
+        <p class="post__lede">{post.takeaway}</p>
+      </header>
+
+      <article class="post__body">
+        {
+          post.body.map((block) => {
+            if (block.kind === "h2") return <h2 class="post__h2">{block.text}</h2>;
+            if (block.kind === "code") {
+              return (
+                <pre class="post__code"><code>{block.code}</code></pre>
+              );
+            }
+            const spans = parseInline(block.text);
+            const cls = block.kind === "note" ? "post__note" : "post__p";
+            return (
+              <p class={cls}>
+                {spans.map((s) => (s.code ? <code>{s.text}</code> : s.text))}
+              </p>
+            );
+          })
+        }
+      </article>
+
+      {
+        post.anchors && (
+          <p class="post__anchor">
+            Read next: <a href={post.anchors.path}>{post.anchors.label}</a>
+          </p>
+        )
+      }
+
+      <section class="post__sources" aria-labelledby="post-sources-title">
+        <h2 class="post__sources-title" id="post-sources-title">Sources</h2>
+        <ul class="post__sources-list">
+          {
+            post.sources.map((src) => (
+              <li>
+                <a href={src.url} rel="nofollow noopener noreferrer" target="_blank">
+                  {src.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <section class="post__cta">
+        <h2 class="post__cta-title">Try nlqdb in 30 seconds</h2>
+        <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
+        <a class="cta post__cta-btn" href="/app/new">Start with a goal &rarr;</a>
+        <p class="post__cta-meta">
+          <a href="/blog">← All posts</a>
+          {" "}·{" "}
+          <a href="/solve">Solve pages</a>
+          {" "}·{" "}
+          <a href="/vs">Comparisons</a>
+        </p>
+      </section>
+    </main>
+
+    <Footer />
+  </div>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(blogPostingLd)} />
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
+</Base>
+
+<style>
+  .post {
+    max-width: var(--col);
+    margin: 0 auto;
+    padding: clamp(32px, 5vw, 64px) 0;
+  }
+
+  .post__crumbs {
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    margin: 0 0 var(--gap-block);
+  }
+  .post__crumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    color: var(--muted);
+  }
+  .post__crumbs li + li::before {
+    content: "/";
+    margin-right: 8px;
+    opacity: 0.6;
+  }
+  .post__crumbs a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .post__crumbs a:hover {
+    color: var(--ink);
+  }
+  .post__crumbs [aria-current="page"] {
+    color: var(--ink);
+  }
+
+  .post__head {
+    margin: 0 0 var(--gap-beat);
+  }
+  .post__date {
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    display: block;
+    margin: 0 0 16px;
+  }
+  .post__title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    color: var(--ink);
+    margin: 0 0 24px;
+    text-wrap: balance;
+  }
+  .post__lede {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-large);
+    color: var(--body);
+    line-height: 1.5;
+    max-width: 60ch;
+    text-wrap: balance;
+  }
+
+  .post__body {
+    max-width: 68ch;
+  }
+  .post__p {
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.7;
+    margin: 0 0 24px;
+  }
+  .post__p code,
+  .post__note code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    color: var(--ink);
+    background: var(--raised);
+    padding: 1px 5px;
+    border: 1px solid var(--rule);
+  }
+  .post__h2 {
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin: clamp(28px, 4vw, 40px) 0 20px;
+    line-height: 1.2;
+  }
+  .post__code {
+    margin: 0 0 24px;
+    padding: 18px;
+    background: var(--ground);
+    border: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--body);
+    overflow-x: auto;
+  }
+  .post__code code {
+    font-family: inherit;
+  }
+  .post__note {
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.6;
+    margin: 0 0 24px;
+    padding: 18px 20px;
+    background: var(--raised);
+    border-left: 2px solid var(--rule);
+  }
+
+  .post__anchor {
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    margin: 0 0 var(--gap-beat);
+  }
+  .post__anchor a {
+    color: var(--ink);
+  }
+
+  .post__sources {
+    margin: 0 0 var(--gap-beat);
+  }
+  .post__sources-title {
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 12px;
+  }
+  .post__sources-list {
+    margin: 0;
+    padding-left: 20px;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--body);
+    line-height: 1.55;
+  }
+  .post__sources-list li + li {
+    margin-top: 8px;
+  }
+  .post__sources-list a {
+    color: var(--body);
+  }
+  .post__sources-list a:hover {
+    color: var(--ink);
+  }
+
+  .post__cta {
+    padding: clamp(28px, 4vw, 40px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+  }
+  .post__cta-title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: 0 0 12px;
+  }
+  .post__cta p {
+    font-family: var(--sans);
+    color: var(--body);
+    margin: 0 0 20px;
+    font-size: var(--t-body);
+  }
+  .post__cta-btn {
+    padding: 16px 28px;
+  }
+  .post__cta-meta {
+    margin: 20px 0 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+  .post__cta-meta a {
+    color: var(--body);
+  }
+  .post__cta-meta a:hover {
+    color: var(--ink);
+  }
+</style>

@@ -10,12 +10,11 @@ then the daily lever targets the worst **agent-movable** number below.)*
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 *lagging* metric, moved only by compounding surfaces over time, not by any single
-run. The daily **lever** therefore targets its agent-movable input: **indexable
-distribution surfaces** (`/vs` + `/solve` + `llms.txt`, row #14), shipped every
-run. The worst *engine* number — **Spider 0.1852 vs 0.75** (bottleneck: SQL
-reasoning) — is real but dispatch-gated: reasoning levers (§4 #1 retrieval, #3
-self-consistency) **built end-to-end**; directive levers (T13–T22) + offline
-retrieval (row #8, 23/23) **saturated**; next engine gain needs the gated EX dispatch.
+run. The daily **lever** targets its agent-movable input: **indexable distribution
+surfaces** (`/vs` + `/solve` + `/blog`, row #14), shipped every run. The worst
+*engine* number — **Spider 0.1852 vs 0.75** (SQL reasoning) — is dispatch-gated:
+reasoning levers (§4 #1/#3) built end-to-end; directive levers + offline retrieval
+(row #8) saturated; next engine gain needs the gated EX dispatch.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -24,7 +23,7 @@ retrieval (row #8, 23/23) **saturated**; next engine gain needs the gated EX dis
 | 2 | Waitlist rows, real | 1 of 81 | 80 walker/test/probe; the 1 is the founder → ~0 genuine strangers |
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder/company + 4 test/dev |
 | 4 | Anon DBs with a first answer | 130 of 130 | every DB has a first query; genuine-stranger subset still ~0 (rows #2/#3) |
-| 14 | Indexable distribution surfaces | 61 (`/vs` 31 + `/solve` 30) | **agent-movable daily lever** — leading input to rows #1–#4; `llms.txt` auto-aggregates both. Grow every run |
+| 14 | Indexable distribution surfaces | 62 (`/vs` 31 + `/solve` 30 + `/blog` 1) | **agent-movable daily lever** — leading input to rows #1–#4; `llms.txt` + sitemap auto-aggregate all. `/blog` is a **new owned-canonical surface** (SK-BLOG-001) vs. rented venues. Grow every run |
 | | **Engine** — BIRD 06-19 (**12d, stale**) · Spider 06-17 (**14d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Dispatch gated** — MCP `workflow_dispatch` 403 + `GH_TOKEN_WORKFLOW` PAT proxy-blocked (run 126); see Last change |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Flat within variance (McNemar p=0.50) — directive levers saturated; reasoning levers (§4 #1/#3) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number.** Self-consistency (`SK-QUAL-017`) end-to-end bar the CI dispatch; EX delta next dispatch |
@@ -42,15 +41,16 @@ retrieval (row #8, 23/23) **saturated**; next engine gain needs the gated EX dis
 
 ## Shipped distribution (live URLs)
 
-From `research/distribution-queue.md` — *(none live yet; drafts await review.)*
+From `research/distribution-queue.md`:
+- [`/blog/not-in-returned-zero-rows-it-was-one-null`](https://nlqdb.com/blog/not-in-returned-zero-rows-it-was-one-null/) — first `/blog` post (anti-join / NULL trap), 2026-07-01.
 
 ## Last change
 
-**2026-07-01 (surface +1)** — shipped `/solve/find-rows-with-no-match-in-another-table`
-(P3 analyst, anti-join / "who's missing" wedge). Row #14 **60 → 61** (`/solve`
-29 → 30); `llms.txt` + sitemap auto-aggregate it. Distinct SQL primitive from the
-window-function/aggregate cluster — a set difference across two tables — with the
-`NOT IN`-with-NULLs trap as the honest hook. 176 web tests + astro-check (0 errors)
-green. Prior run repointed the daily lever at this agent-movable surfaces count
-(row #14) rather than the lagging strangers metric. **KPI:** GLOBAL-025
-onboarding/UX; none degraded.
+**2026-07-01 (new surface: `/blog`)** — **anti-rut break** (rule 7): the last 7 daily
+PRs all pulled `/solve` + `/vs`, so this run built a different surface — `/blog` (index
++ post template + `BlogPosting`/`BreadcrumbList` JSON-LD + typed block body,
+SK-BLOG-001/002) — and **published** the oldest ready queue draft (run 130) as post 1.
+Real delta: *shipped distribution 0 → 1* live post
+on a URL we own (prior drafts only pointed at rented venues); row #14 61 → 62. Verified
+by full `astro build` (81 pages, 0 errors) + 194 web tests. **KPI:** GLOBAL-025
+distribution/onboarding; none degraded.

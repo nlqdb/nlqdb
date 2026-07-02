@@ -11,62 +11,9 @@ everything older collapses to a one-line title + venue + gist, with the full bod
 recoverable from git history. The earliest drafts live in the
 [archive](./distribution-queue-archive.md).
 
-## 2026-07-01 (run 130) — dev.to / r/SQL / r/PostgreSQL: "NOT IN returned zero rows. It wasn't your data — it was one NULL."
-
-**Where:** dev.to + r/SQL + r/PostgreSQL; for anyone who wrote `WHERE id NOT IN (SELECT ...)` to find
-"who's missing" and got back nothing. nlqdb mentioned once, as the ask-in-English path.
-
-**Title:** NOT IN returned zero rows. It wasn't your data — it was one NULL.
-
-**Body:**
-
-> "Which customers never placed an order?" is a question you ask constantly — products never sold,
-> users with no login this month, invoices with no payment. It's a set difference, and the obvious
-> query is a quiet trap:
->
-> ```sql
-> SELECT * FROM customers
-> WHERE id NOT IN (SELECT customer_id FROM orders);   -- returns nothing. why?
-> ```
->
-> If a single `customer_id` in that subquery is NULL, you get **zero rows** — no error, no warning.
-> Here's why: `NOT IN (a, b, NULL)` expands to `id <> a AND id <> b AND id <> NULL`. That last
-> comparison is never `true` — comparing anything to NULL is `unknown` — so the whole `AND` chain can
-> never be `true`, and every row is rejected. One NULL in the inner table silently empties your result.
->
-> **The two shapes that actually work:**
->
-> ```sql
-> -- LEFT JOIN ... IS NULL: keep the customers that found no matching order
-> SELECT c.* FROM customers c
-> LEFT JOIN orders o ON o.customer_id = c.id
-> WHERE o.id IS NULL;
->
-> -- NOT EXISTS: a correlated anti-join, NULL-safe by construction
-> SELECT * FROM customers c
-> WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id);
-> ```
->
-> Both return the same rows for a plain anti-join. `NOT EXISTS` stops at the first match and never
-> trips over NULLs. The `LEFT JOIN ... IS NULL` form is just as correct — but if the join key isn't
-> unique it can multiply rows *before* the filter, so know your grain. What neither of them does is
-> silently lie to you the way `NOT IN` does.
->
-> The rule worth keeping: reach for `NOT EXISTS` (or `LEFT JOIN ... IS NULL`) for "rows with no match,"
-> and treat `NOT IN (subquery)` as a smell unless you're certain the subquery is NULL-free.
->
-> (If you'd rather not re-derive which shape is safe every time: [nlqdb](https://nlqdb.com) takes
-> "customers who never placed an order" in English, compiles the NULL-safe anti-join, runs it
-> read-only, and shows the SQL so you can confirm it isn't a `NOT IN`. Honest limit — it owns the
-> Postgres it answers; bring-your-own-Postgres is signed-in only, not the public embed.)
-
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — anchors the new
-`/solve/find-rows-with-no-match-in-another-table` page (P3 analyst), rides evergreen "NOT IN returns
-no rows" / "find rows with no match" / "SQL anti-join" search intent, and every claim (NULL
-three-valued logic, `NOT EXISTS` vs `LEFT JOIN ... IS NULL`) is standard SQL behavior verifiable in
-the PostgreSQL subquery-expression docs. None degraded.
-
 ## Collapsed — full drafts in git history
+
+- **run 130 — PUBLISHED 2026-07-01** as the first `/blog` post: [`/blog/not-in-returned-zero-rows-it-was-one-null`](https://nlqdb.com/blog/not-in-returned-zero-rows-it-was-one-null/) (SK-BLOG-001 — the canonical copy now lives on a URL we own). dev.to / r/SQL / r/PostgreSQL variants remain to-post as pointers to that canonical URL. Full body in git history + the live page.
 
 - run 129 — dev.to / r/SQL / r/PostgreSQL: "The 'percent of total' query has a denominator problem. Two, actually." (two quiet traps: integer division floors `revenue / SUM(revenue) OVER ()` to 0 unless you write `100.0 *`; empty `OVER ()` grand-total vs `OVER (PARTITION BY region)` per-group total is a denominator choice the clause spells out; anchors `/solve/calculate-percentage-of-total-in-sql`).
 
