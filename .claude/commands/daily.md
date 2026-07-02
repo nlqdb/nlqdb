@@ -83,6 +83,12 @@ table + one "Last change" entry, no changelog; create it if missing):
 - **Phase gate:** name the current phase per `docs/phase-plan.md` and its
   exit-gate status — pass/fail per criterion. A failing criterion is a
   worst-number candidate like any other row.
+- **Docs ambiguity:** count of open-question bullets across
+  `docs/features/*/FEATURE.md` (`- ` lines under `## Open questions`).
+  Driving it down is a first-class lever: research the answer (P2,
+  GLOBAL-033), document the resolution (P4), delete the bullet. A
+  question only a founder can answer (rule 4 territory: secrets, console,
+  money/legal) moves to `blocked-by-human.md` and off this count.
 - **Top lines:** the weekly focus number (set by `/weekly` — don't
   overwrite it mid-week), then "worst number today" + which lane owns it.
 
