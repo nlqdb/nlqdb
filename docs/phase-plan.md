@@ -304,7 +304,7 @@ capacity-driven).
   and [`docs/founder-playbook.md`](./founder-playbook.md) for the
   channel + recruitment + interview cadence.
 - Security hygiene: Trivy + CodeQL on every PR; secret rotation
-  quarterly; Dependabot monthly.
+  quarterly; Renovate (`renovate.json5`) for dependency updates.
 - Inference cost monitoring: weekly Grafana; if any free provider hits
   70% of daily quota for 3 days → light up paid tier.
 - Free-tier abuse: per-IP + per-account rate limits day 1; PoW on

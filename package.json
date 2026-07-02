@@ -15,6 +15,9 @@
     "tools/*"
   ],
   "scripts": {
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun run --filter '*' test",
+    "build": "bun run --filter '*' build",
     "format": "biome format --write",
     "lint": "biome lint",
     "check": "biome check",
