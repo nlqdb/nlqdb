@@ -1806,6 +1806,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "count-rows-per-day-including-missing-dates",
+    persona: "P3 analyst",
+    searchTitle: "How do I count rows per day in SQL, including days with zero rows?",
+    oneLiner:
+      "If your per-day counts skip the days with no rows — a signup chart with holes where the zeros should be — ask in plain English. nlqdb compiles the `generate_series` calendar spine, LEFT JOINs your rows onto it, runs it in Postgres, and shows the SQL, so quiet days come back as 0 instead of vanishing.",
+    painContext:
+      "Per-day counts are the first chart anyone builds — signups per day, orders per day, errors per day — and the obvious `GROUP BY created_at::date` gets it quietly wrong: days with no rows aren't in the table, so they aren't in the result, and the chart connects straight across the gap as if the quiet day never happened. The fix is a row-generating calendar spine — `generate_series(start, end, interval '1 day')` — with your table LEFT JOINed onto it. Then the second trap: after the outer join, `COUNT(*)` counts the spine row itself, so the 'zero' day reads 1 unless you count a column from your table instead.",
+    demoGoal: "signups per day for the last 14 days, including days with zero",
+    demoWhy:
+      "The gap-fill query you'd otherwise hand-write — the spine, the outer join, and the COUNT(*) trap — is one English goal here, with the SQL shown so you can check all three.",
+    howNlqdbAnswers: [
+      "Ask 'signups per day for the last 14 days, including days with zero'; nlqdb compiles a `generate_series` date spine and runs it in Postgres.",
+      "Your rows LEFT JOIN onto the spine, so a day with no matches comes back as 0 instead of vanishing from the result.",
+      "The compiled SQL counts a table column — `COUNT(s.id)`, not `COUNT(*)` — so an empty day can't count its own spine row as 1.",
+      "Every answer shows the SQL under a trace toggle (`SK-WEB-005`) — confirm the spine's range and the join key.",
+    ],
+    whatItDoesnt: [
+      "The date range is one you name — 'last 14 days', a start and an end. nlqdb picks the spine's bounds from your English and shows them; it won't invent a reporting window.",
+      "A one-off read-only answer, not a live chart that refreshes itself — your dashboard or embed re-asks on its own schedule.",
+      "The public `<nlq-data>` embed is read-scoped — it reports the per-day counts, it doesn't write. Loading the rows goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I count rows per day in SQL, including days with zero?",
+        a: "Ask in plain English — 'signups per day for the last 14 days, including days with zero.' nlqdb compiles a calendar spine with `generate_series`, LEFT JOINs your table onto it, and counts a table column so empty days return 0. It runs the query in Postgres and shows the SQL, so you can confirm the range and the join key.",
+      },
+      {
+        q: "Why does GROUP BY date skip days with no rows?",
+        a: "Because `GROUP BY` can only group rows that exist — a day with no rows contributes no group, so it silently disappears from the result rather than showing 0. The fix is to generate the full calendar first (`generate_series` in Postgres) and LEFT JOIN your data onto it, so every day is a row before the count happens.",
+      },
+      {
+        q: "Why does my empty day show a count of 1 instead of 0?",
+        a: "You counted `COUNT(*)` after the outer join. The LEFT JOIN keeps one spine row for an empty day, and `COUNT(*)` counts rows — including that one — so the day reads 1. `COUNT(t.id)` counts only non-NULL matches from your table and returns 0. nlqdb compiles the column-counting shape and shows it in the SQL.",
+      },
+      {
+        q: "Can I fill missing dates on a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for per-day counts in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and the answer is read-only — nlqdb doesn't materialise the filled series into a table for you.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/generate-series",
+        label:
+          "Stack Overflow — the `generate-series` tag, the standing hub for calendar-spine questions: filling missing dates, zero-count days, and joining data onto a generated range.",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/functions-srf.html",
+        label:
+          "PostgreSQL docs — set-returning functions, the canonical reference for `generate_series` over timestamps and intervals.",
+      },
+      {
+        url: "https://stackoverflow.com/questions/tagged/gaps-and-islands",
+        label:
+          "Stack Overflow — the `gaps-and-islands` tag, the broader standing hub for missing-ranges-in-sequences problems, of which the missing-dates count is the everyday case.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
