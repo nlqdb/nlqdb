@@ -40,6 +40,7 @@ vs 0.75** — is **dark** (rule 8): dispatch blocked since run 126 (GitHub App
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Current phase exit-gate status | unmeasured — row added 2026-07-02 | next `/daily` run names the current phase + pass/fail per gate criterion; a failing criterion is a worst-number candidate |
 | 17 | Open-question bullets, `docs/features/*/FEATURE.md` | 167 across 40 features (07-02) | target ↓ 0 — **agent-movable**: research (P2/GLOBAL-033) → document (P4) → delete the bullet; founder-only ones move to `blocked-by-human.md` and off this count |
+| 18 | Dead links, deployed surfaces (incl. nlqdb.com → docs.nlqdb.com) | ≥ 1 (07-02, founder-found: ConnectForm → docs.nlqdb.com/security 404; fix in PR #581) | target 0 — no automated sweep exists yet; **building the built-output href sweep is a lever**. BYO-connect page is walked by no GLOBAL-032 flow — canonical-flow gap raised with founder |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |

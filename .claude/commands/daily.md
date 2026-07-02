@@ -89,6 +89,11 @@ table + one "Last change" entry, no changelog; create it if missing):
   GLOBAL-033), document the resolution (P4), delete the bullet. A
   question only a founder can answer (rule 4 territory: secrets, console,
   money/legal) moves to `blocked-by-human.md` and off this count.
+- **Surface integrity:** dead links on the deployed user-facing surfaces —
+  including cross-app hrefs (nlqdb.com → docs.nlqdb.com) — counted by
+  sweeping built output; target 0. Until an automated sweep exists,
+  building it is itself a lever. Any new user-facing page must map to a
+  GLOBAL-032 canonical flow or state in its PR why it is non-canonical.
 - **Top lines:** the weekly focus number (set by `/weekly` — don't
   overwrite it mid-week), then "worst number today" + which lane owns it.
 
