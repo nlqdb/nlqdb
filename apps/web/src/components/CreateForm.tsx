@@ -29,6 +29,7 @@
 import { useEffect, useId, useState } from "react";
 import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
 import { messageFor } from "../lib/create-errors";
+import { attachHandoff } from "../lib/handoff";
 import { emit } from "../lib/logsnag";
 import {
   appendHistory,
@@ -111,7 +112,11 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
       // SK-ANON-010 + SK-ANON-011: stash the prompt and redirect.
       // The user lands on /sign-in?return=<here>; post-OAuth, the
       // landing page reads `nlqdb_pending` and replays the call
-      // against the now-authed cookie session.
+      // against the now-authed cookie session. `signInUrl` points at
+      // the app origin, which may differ from this page's (marketing)
+      // origin — attachHandoff carries the pending prompt, draft, and
+      // anon token across in the URL fragment (SK-ANON-015) so the
+      // app-origin localStorage can rehydrate them.
       if (!outcome.ok && outcome.error.kind === "auth_required") {
         savePending({
           goal: trimmed,
@@ -119,7 +124,7 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
           origin: typeof window !== "undefined" ? window.location.pathname : "/",
         });
         if (typeof window !== "undefined") {
-          window.location.assign(withReplayFlag(outcome.error.signInUrl));
+          window.location.assign(attachHandoff(withReplayFlag(outcome.error.signInUrl)));
         }
         return;
       }
