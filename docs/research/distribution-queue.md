@@ -33,6 +33,10 @@ delete its line.
 - run 2 — **https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/** —
   venue variant pending: dev.to (#sql #postgres #debugging) / lobste.rs (NULL
   timestamp broke a TTL sweep + funnel metric).
+- run 53 — **https://nlqdb.com/blog/agent-memory-vector-store-aggregation-gap/**
+  — venue variant pending: dev.to / r/AI_Agents / r/LLMDevs (the aggregation
+  gap: similarity search has no GROUP BY/COUNT/JOIN/HAVING; anchors
+  `/vs/pinecone`).
 
 ## Collapsed — full drafts in git history
 
@@ -72,7 +76,6 @@ delete its line.
 
 *(runs 51–52, 56–66 moved to [`distribution-queue-archive.md`](./distribution-queue-archive.md) under D4.)*
 - run 55 — "Your text-to-SQL accuracy is measured on schemas your users will never build" (BIRD/Spider run over messy 20–100-table academic schemas, not the small clean ones your users build; we added a third benchmark — hand-authored gold NL→SQL over the ICP shape, same EX scorer, literal-date gold so it never drifts with the clock; anchors persona-bench, SK-QUAL-018).
-- run 53 — "Your agent's memory is a vector store. Ask it 'how many' and watch it fall over." (the aggregation gap: similarity search has no GROUP BY/COUNT/JOIN/HAVING; recall is similarity, reporting is aggregation — pick the store per job; anchors `/vs/pinecone`).
 - runs 8–18, 33, 37, 39, 41–44, 46, 48 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
