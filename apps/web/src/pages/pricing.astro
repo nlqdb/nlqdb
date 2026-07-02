@@ -198,11 +198,9 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
       const user = await fetchSession();
       if (!user) {
-        const signinUrl =
-          location.hostname === "nlqdb.com" || location.hostname === "www.nlqdb.com"
-            ? `https://app.nlqdb.com/auth/sign-in?return_to=/pricing`
-            : `/auth/sign-in?return_to=/pricing`;
-        window.location.assign(signinUrl);
+        // Relative on purpose — the local sign-in page hops to the app
+        // origin itself, carrying localStorage state (SK-ANON-015).
+        window.location.assign("/auth/sign-in?return_to=/pricing");
         return;
       }
 

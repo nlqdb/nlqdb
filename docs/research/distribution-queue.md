@@ -37,6 +37,10 @@ delete its line.
   — venue variant pending: dev.to / r/AI_Agents / r/LLMDevs (the aggregation
   gap: similarity search has no GROUP BY/COUNT/JOIN/HAVING; anchors
   `/vs/pinecone`).
+- run 102 — **https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/** —
+  venue variant pending: dev.to + r/LLMDevs + r/AI_Agents (two shapes of MCP
+  server — destination-app wrapper vs. infrastructure the agent owns; the tell
+  is what the agent owns after the call returns; anchors `/vs/hex`).
 
 ## Collapsed — full drafts in git history
 
@@ -64,8 +68,7 @@ delete its line.
 - run 111 — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned." (user-modelling (Honcho's theory-of-mind) vs. relational aggregation over what the agent stored; anchors `/vs/honcho`).
 - run 110 — dev.to / r/dataengineering / r/BusinessIntelligence: "Your BI tool got acquired. Your data layer shouldn't have to care." (the analyst notebook is a roll-up target; a destination humans log into vs. a runtime your software calls; anchors `/vs/mode`).
 - run 109 — dev.to / r/SaaS / r/ExperiencedDevs: "The text-to-SQL demo takes an afternoon. The other 90% is why you should buy it." (the buy-vs-build test isn't "can I generate SQL" but "do I want to own the validator/cache/eval stack forever"; anchors `/solve/add-ask-your-data-feature-without-building-text-to-sql`).
-- run 102 — dev.to / r/LLMDevs / r/AI_Agents: "Every data tool shipped an MCP server this year. Your agent still can't build on most of them."
-*(runs 75–100 moved to git history under D4; full gists for runs 102–105 also collapsed to titles — `git log -p` recovers all bodies.)*
+*(runs 75–100 moved to git history under D4; full gists for runs 103–105 also collapsed to titles — `git log -p` recovers all bodies.)*
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).
