@@ -51,7 +51,7 @@ files it changes.
 
 ### 1 — Measure first (always)
 
-Regenerate `docs/scorecard.md` (current-state tracker, ≤ 5 KB — the metrics
+Regenerate `docs/scorecard.md` (current-state tracker, ≤ 20 KB — the metrics
 table + one "Last change" entry, no changelog; create it if missing):
 
 - **Funnel, bot-filtered** (exclude stranger-test bot traffic): visits (CF

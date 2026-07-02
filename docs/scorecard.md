@@ -2,7 +2,7 @@
 
 Point-in-time tracker, regenerated each
 [`/daily`](../.claude/commands/daily.md) run. Current state only — no changelog
-(≤5 KB cap). History: `git log` +
+(≤20 KB cap). History: `git log` +
 `progress/quality-score-verification-log.md` (engine).
 
 **Weekly focus number:** *(none set — [`/weekly`](../.claude/commands/weekly.md)
