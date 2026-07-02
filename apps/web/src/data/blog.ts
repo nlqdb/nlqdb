@@ -41,6 +41,42 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "mcp-server-what-does-the-agent-own",
+    title:
+      "Every data tool shipped an MCP server this year. Your agent still can't build on most of them.",
+    description:
+      "Two shapes of MCP server look identical in a feature matrix: a window into a human's app, or infrastructure the agent owns. The tell is what the agent owns after the call returns.",
+    date: "2026-07-02",
+    anchor: {
+      label: "nlqdb vs Hex — the full side-by-side",
+      path: "/vs/hex",
+    },
+    body: [
+      {
+        kind: "p",
+        text: 'MCP is the new "we have an API." Writing a competitor comparison recently, I went to mark "agent-callable" as our differentiator against an AI data-notebook tool — and stopped, because they\'d shipped an MCP server too. So had the BI tool two rows up. The honest move was to concede the checkbox. But conceding it surfaced the real axis, and it\'s one worth naming.',
+      },
+      { kind: "h2", text: "Two shapes of MCP server" },
+      {
+        kind: "p",
+        text: 'There are two shapes of MCP server, and they look identical in a feature matrix. The first wraps a **destination app**: "ask my published notebook a question," "answer from my dashboard in Slack." The human\'s workflow, now reachable by an agent. The second exposes **infrastructure the agent owns**: provision a database, write rows, query them, migrate the schema. Both speak MCP. Only the second lets an agent build something that outlives the conversation.',
+      },
+      {
+        kind: "p",
+        text: "The tell is to ask what the agent *owns* after the call returns. If the answer is \"a view into a human's analysis,\" that's a genuinely useful human-in-the-loop surface — and a dead end for an autonomous agent, because the agent can read but can't accumulate. It has nowhere to put the row it just computed. An agent that can query but not persist is a calculator, not a coworker.",
+      },
+      { kind: "h2", text: '"Does it have MCP" is the wrong question' },
+      {
+        kind: "p",
+        text: "So the question to ask a tool's MCP server isn't \"does it exist\" — by 2026 it always does. It's **\"what does it let the agent own?\"** Read-only over someone else's app, or a substrate the agent can write to and come back to. The matrix can't tell them apart; you have to read what the verbs actually do.",
+      },
+      {
+        kind: "p",
+        text: "(At [nlqdb](https://nlqdb.com) the MCP verb `nlqdb_query` materialises a Postgres on first reference — omit the database id with none provisioned and it creates one from the goal, so the agent gets a database it owns, not a window into ours. The comparison that prompted this is at [nlqdb vs Hex](/vs/hex/).)",
+      },
+    ],
+  },
+  {
     slug: "agent-memory-vector-store-aggregation-gap",
     title: 'Your agent\'s memory is a vector store. Ask it "how many" and watch it fall over.',
     description:
