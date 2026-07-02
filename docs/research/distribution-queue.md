@@ -41,6 +41,10 @@ delete its line.
   venue variant pending: dev.to + r/LLMDevs + r/AI_Agents (two shapes of MCP
   server — destination-app wrapper vs. infrastructure the agent owns; the tell
   is what the agent owns after the call returns; anchors `/vs/hex`).
+- run 55 — **https://nlqdb.com/blog/text-to-sql-accuracy-schemas-your-users-never-build/**
+  — venue variant pending: dev.to + lobste.rs + r/LLMDevs (BIRD/Spider measure
+  academic schemas, not the ICP shape; persona-bench = 23 gold pairs, same EX
+  scorer, literal-date gold, executability invariant; keep both numbers).
 
 ## Collapsed — full drafts in git history
 
@@ -78,7 +82,6 @@ delete its line.
 - run 67 — "AI made the internal-tool builder faster. It didn't ask whether you needed the tool." (low-code AI — AppGen / Ask AI / agents — scaffolds the admin tool faster, but the output is still a destination a human builds and operates; often the answer belongs inline in the product you already ship, or the asker is an agent that wants a backend primitive, not a built tool — check whether the AI sped up the workflow or the outcome; anchors `/vs/retool`).
 
 *(runs 51–52, 56–66 moved to [`distribution-queue-archive.md`](./distribution-queue-archive.md) under D4.)*
-- run 55 — "Your text-to-SQL accuracy is measured on schemas your users will never build" (BIRD/Spider run over messy 20–100-table academic schemas, not the small clean ones your users build; we added a third benchmark — hand-authored gold NL→SQL over the ICP shape, same EX scorer, literal-date gold so it never drifts with the clock; anchors persona-bench, SK-QUAL-018).
 - runs 8–18, 33, 37, 39, 41–44, 46, 48 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
 
 ### Launch + build-in-public posts (X / Bluesky / HN / dev.to)
