@@ -42,6 +42,13 @@ focus number.
 
 ## The loop, in order
 
+### 0 — Don't step on an open PR
+
+Before anything else, list the repo's open PRs (a previous daily run may
+still be unmerged). If your intended lever, artifact, or files overlap an
+open PR, choose something else — never duplicate its work or touch the
+files it changes.
+
 ### 1 — Measure first (always)
 
 Regenerate `docs/scorecard.md` (current-state tracker, ≤ 5 KB — the metrics
