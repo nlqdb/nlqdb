@@ -53,9 +53,9 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-02 (run 131 — publish, don't draft)** — step 3 rule 1 (queue ≫ 3
-unpublished drafts): published the run-106 draft as the canonical `/blog` post
-`store-form-submissions-without-a-backend`; queue entry → venue-pointer.
-Row #6 **64 → 65** (`/blog` 3 → 4); row #7 **3 → 4**. apps/web **189 pass**,
-biome clean. **KPI:** GLOBAL-025 onboarding/UX (the row #6 lever); none
-degraded.
+**2026-07-02 (SQL-allowlist bypass fix)** — closed a verified **SK-SQLAL-003
+`EXPLAIN ANALYZE` write-smuggle** in `sql-validate.ts`: comments wedged between
+`EXPLAIN` and `ANALYZE` (incl. nested `/* */`) and the British `ANALYSE` synonym
+let the wrapped DML run past the gate. All variants now rejected; benign
+`EXPLAIN /*c*/ SELECT` still passes. **KPI:** GLOBAL-025 engine-quality/trust;
+none degraded.

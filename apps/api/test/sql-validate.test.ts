@@ -82,6 +82,29 @@ describe("validateSql", () => {
       ["EXPLAIN (ANALYZE) UPDATE users SET name = 'x'", false],
       ["EXPLAIN ANALYZE DELETE FROM users", false],
       ["EXPLAIN (ANALYZE, VERBOSE) SELECT * FROM users", false],
+      // Comment-smuggle: a comment between EXPLAIN and ANALYZE is
+      // whitespace to Postgres, so the wrapped DML still runs. The gate
+      // must be comment-blind — these must reject, not silently allow.
+      ["EXPLAIN /*c*/ ANALYZE DELETE FROM users", false],
+      ["EXPLAIN --c\n ANALYZE DELETE FROM users", false],
+      ["EXPLAIN /*c*/ (ANALYZE) UPDATE users SET name = 'x'", false],
+      ["EXPLAIN/*c*/ANALYZE INSERT INTO users VALUES (1)", false],
+      // Postgres block comments nest (docs §4.1.5), so a non-greedy
+      // regex would leave a dangling `*/` and miss these — the gate
+      // collapses comments with a depth counter, so they must reject.
+      ["EXPLAIN /* /* */ */ ANALYZE DELETE FROM users", false],
+      ["EXPLAIN /*/**/*/ ANALYZE DELETE FROM users", false],
+      ["EXPLAIN (/* /* */ */ ANALYZE) DELETE FROM users", false],
+      // Postgres accepts the British spelling `ANALYSE` as a keyword
+      // synonym (gram.y `analyze_keyword: ANALYZE | ANALYSE`), so it
+      // executes the wrapped DML just like `ANALYZE` — the gate must
+      // reject both spellings, incl. comment-wedged and paren forms.
+      ["EXPLAIN ANALYSE DELETE FROM users", false],
+      ["EXPLAIN (ANALYSE) UPDATE users SET name = 'x'", false],
+      ["EXPLAIN /*c*/ ANALYSE DELETE FROM users", false],
+      // A comment that is NOT wedging ANALYZE must still pass.
+      ["EXPLAIN /*c*/ SELECT * FROM users", true],
+      ["EXPLAIN /* analyze the plan */ SELECT * FROM users", true],
       ["--c\nSELECT 1", true],
       ["/* leading */ SELECT 1", true],
       ["WITH/*c*/x AS (SELECT 1) SELECT * FROM x", true],

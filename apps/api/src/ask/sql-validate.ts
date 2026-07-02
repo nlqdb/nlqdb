@@ -131,8 +131,52 @@ const DISALLOWED_FUNCTIONS = new Set([
 // EXPLAIN ANALYZE actually executes the wrapped statement on Postgres
 // (and unlike plain EXPLAIN, has destructive side-effects when the
 // inner statement is DML). Rejected outright; plain EXPLAIN passes.
-// Matches `EXPLAIN ANALYZE …` and `EXPLAIN (ANALYZE …) …`.
-const EXPLAIN_ANALYZE = /^explain\s*(?:\(\s*[^)]*\banalyze\b|analyze\b)/i;
+// Matches `EXPLAIN ANALYZE …` and `EXPLAIN (ANALYZE …) …`. Postgres accepts
+// the British spelling `ANALYSE` as a keyword synonym (gram.y
+// `analyze_keyword: ANALYZE | ANALYSE`), so match both `analy[sz]e`.
+const EXPLAIN_ANALYZE = /^explain\s*(?:\(\s*[^)]*\banaly[sz]e\b|analy[sz]e\b)/i;
+
+// Comment-blind view for the EXPLAIN_ANALYZE gate. Postgres treats a
+// `/* … */` or `-- …` comment between EXPLAIN and ANALYZE as whitespace,
+// so `EXPLAIN /*c*/ ANALYZE DELETE …` still executes the DELETE — but the
+// regex above sees the comment token and misses it, and the `explain`
+// short-circuit then allows the write (same comment-smuggle class as the
+// leading-verb gate). Block comments *nest* in Postgres (docs §4.1.5), so
+// a non-greedy `/\*…*?\*/` would stop at the first `*/` and leave a
+// dangling `*/` that hides `EXPLAIN /* /* */ */ ANALYZE …`; scan with a
+// depth counter instead. Anchored to `^explain`, this only ever *adds* a
+// reject, never masks a legit query.
+const collapseComments = (s: string): string => {
+  let out = "";
+  let depth = 0;
+  let line = false;
+  for (let i = 0; i < s.length; i++) {
+    if (line) {
+      if (s[i] === "\n") line = false;
+      out += s[i] === "\n" ? "\n" : " ";
+      continue;
+    }
+    const two = s.slice(i, i + 2);
+    if (depth > 0) {
+      if (two === "/*") depth++;
+      else if (two === "*/") depth--;
+      if (two === "/*" || two === "*/") i++;
+      out += " ";
+      continue;
+    }
+    if (two === "/*") {
+      depth++;
+      i++;
+      out += " ";
+    } else if (two === "--") {
+      line = true;
+      out += " ";
+    } else {
+      out += s[i];
+    }
+  }
+  return out;
+};
 
 // Embedded-verb mapping for the AST walk. Same buckets as the
 // leading-verb reject map but keyed by the AST `type` string
@@ -201,7 +245,9 @@ export function validateSql(rawSql: string): SqlValidationResult {
 
   // EXPLAIN ANALYZE / EXPLAIN (ANALYZE) execute the wrapped statement.
   // Reject before the SHOW/EXPLAIN short-circuit; plain EXPLAIN is fine.
-  if (EXPLAIN_ANALYZE.test(sql)) {
+  // Test the comment-collapsed view so a comment wedged between EXPLAIN
+  // and ANALYZE can't smuggle the destructive form past the regex.
+  if (EXPLAIN_ANALYZE.test(collapseComments(sql))) {
     return { ok: false, reason: "disallowed_verb", matched: "explain_analyze" };
   }
 
