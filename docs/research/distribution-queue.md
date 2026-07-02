@@ -20,7 +20,7 @@ delete its line.
 
 - run 106 — **https://nlqdb.com/blog/store-form-submissions-without-a-backend/**
   — venue variant pending: dev.to + r/webdev + r/sideproject ("You don't need a
-  backend to store form submissions — you need a place to ask 'how many'";
+  backend to store form submissions. You need a place to ask 'how many.'";
   capture-vs-reporting split; anchors
   `/solve/store-form-submissions-without-backend`).
 - run 130 — **https://nlqdb.com/blog/not-in-subquery-null-trap/** — venue

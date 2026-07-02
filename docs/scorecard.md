@@ -43,8 +43,8 @@ vs 0.75** — is dispatch-gated: reasoning + directive levers built/saturated
 
 ## Shipped distribution (live URLs)
 
-Canonical copies on `/blog` (`SK-BLOG-001` autonomous publishing;
-community-venue variants stay in `research/distribution-queue.md` as pointers):
+Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
+`research/distribution-queue.md` as pointers:
 
 - https://nlqdb.com/blog/store-form-submissions-without-a-backend/ (run 106 — anchors `/solve/store-form-submissions-without-backend`)
 - https://nlqdb.com/blog/not-in-subquery-null-trap/ (run 130 — anchors `/solve/find-rows-with-no-match-in-another-table`)
@@ -53,13 +53,9 @@ community-venue variants stay in `research/distribution-queue.md` as pointers):
 
 ## Last change
 
-**2026-07-02 (run 131 — publish, don't draft)** — step 3 rule 1 (queue held
-≫ 3 unpublished drafts): **published** the run-106 draft ("You don't need a
-backend to store form submissions — you need a place to ask 'how many'") as the
-canonical `/blog` post `store-form-submissions-without-a-backend`, anchoring the
-live `/solve/store-form-submissions-without-backend` page. **Before → after:**
-indexable surfaces (row #6) **64 → 65** (`/blog` 3 → 4); published posts (row #7)
-**3 → 4**; `llms.txt` + `sitemap.xml` auto-aggregate the new page. Queue entry
-moved to a venue-pointer under Published. apps/web **189 pass / 0 fail**, biome
-clean. **KPI:** GLOBAL-025 onboarding/UX — grows the search-intent on-ramp
-(leading input to rows #1–#3); no KPI degraded.
+**2026-07-02 (run 131 — publish, don't draft)** — step 3 rule 1 (queue ≫ 3
+unpublished drafts): published the run-106 draft as the canonical `/blog` post
+`store-form-submissions-without-a-backend`; queue entry → venue-pointer.
+Row #6 **64 → 65** (`/blog` 3 → 4); row #7 **3 → 4**. apps/web **189 pass**,
+biome clean. **KPI:** GLOBAL-025 onboarding/UX (the row #6 lever); none
+degraded.
