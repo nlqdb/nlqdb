@@ -135,7 +135,15 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 </Base>
 
 <script>
+  import { adoptAnonNow } from "../../lib/anon-adopt";
   import { isValidEmail } from "../../lib/email";
+  import { attachHandoff, importHandoffFromLocation } from "../../lib/handoff";
+
+  // SK-ANON-015 — a cross-origin arrival (hero auth-redirect, marketing
+  // sign-in hop) may carry the pending prompt, draft, and anon token in
+  // the URL fragment. Import them into THIS origin's localStorage and
+  // strip the fragment before anything below reads `nlqdb_anon`.
+  importHandoffFromLocation();
 
   type ButtonState = {
     el: HTMLButtonElement;
@@ -148,7 +156,9 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   };
 
   const root = document.querySelector<HTMLElement>(".signin");
-  if (root) {
+  if (root) initSignIn(root);
+
+  function initSignIn(root: HTMLElement) {
     // apiBase resolution: build-time PUBLIC_API_BASE wins; otherwise
     // hop to `app.nlqdb.com` whenever the page is served from the
     // marketing origin (the marketing worker shares `apps/web/dist`
@@ -162,6 +172,25 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       location.hostname === "nlqdb.com" || location.hostname === "www.nlqdb.com";
     const apiBase =
       fromEnv || (isMarketingHost ? "https://app.nlqdb.com" : location.origin);
+
+    // SK-ANON-015 — when this page is served from the marketing origin,
+    // hop to the app-origin copy instead of running the form here. The
+    // form's localStorage reads (`nlqdb_anon`, `nlqdb_pending`,
+    // `nlqdb_draft`) and cookie hops (`anon-stash`) are only reliable
+    // first-party on the app origin; the fragment carries this origin's
+    // prompt/identity state across so nothing typed here is lost.
+    const crossOrigin = (() => {
+      try {
+        return new URL(apiBase, location.origin).origin !== location.origin;
+      } catch {
+        return false;
+      }
+    })();
+    if (crossOrigin) {
+      const target = new URL(location.pathname + location.search, apiBase);
+      location.replace(attachHandoff(target.toString()));
+      return;
+    }
 
     const form = document.getElementById("signin-form") as HTMLFormElement;
     const emailInput = document.getElementById("email") as HTMLInputElement;
@@ -237,36 +266,14 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       }
     }
 
-    // Already-signed-in short-circuit. The hero (SK-ANON-001) runs
-    // anon unconditionally — when its `/v1/ask` hits the SK-ANON-012
-    // per-device cap, it redirects to `/auth/sign-in` even when the
-    // user already has a live session in this browser. The Better
-    // Auth `after` hook only fires on fresh sign-ins, so adoption
-    // wouldn't run on its own. Probe `/api/auth/get-session`; if a
-    // session exists, eagerly POST `/api/auth/anon-adopt-now` (which
-    // re-runs `recordAnonAdoption` against the live session), then
-    // navigate to the post-signin landing where ChatPanel rehydrates
-    // `nlqdb_pending` and the user reviews their queued prompt.
-    // Best-effort: an adoption failure still lets us forward to /app.
-    async function adoptInPlace(): Promise<void> {
-      const anon = readAnonBearer();
-      if (!anon) return;
-      try {
-        await fetch(`${apiBase}/api/auth/anon-adopt-now`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "x-anon-bearer": anon },
-        });
-      } catch {
-        // best-effort — adoption misses but the redirect proceeds.
-      }
-    }
-
     // Same-origin probe for an existing session. The hero
     // (SK-ANON-001) runs anon unconditionally; when its `/v1/ask` hits
     // the SK-ANON-012 device cap, the user lands here even though
-    // they're already signed in. Run adoption in-place and forward to
-    // the post-signin landing so they never see the form.
+    // they're already signed in. The Better Auth `after` hook only
+    // fires on fresh sign-ins, so run adoption in-place (adoptAnonNow
+    // covers the handoff-displaced token too) and forward to the
+    // post-signin landing so they never see the form. Best-effort: an
+    // adoption failure still forwards to /app.
     (async () => {
       let hasSession = false;
       try {
@@ -285,7 +292,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
         // Network error — fall through to the form.
       }
       if (!hasSession) return;
-      await adoptInPlace();
+      await adoptAnonNow(apiBase);
       location.replace(callbackURL);
     })();
 
