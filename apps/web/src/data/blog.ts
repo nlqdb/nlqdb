@@ -41,6 +41,46 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "store-form-submissions-without-a-backend",
+    title:
+      'You don\'t need a backend to store form submissions. You need a place to ask "how many."',
+    description:
+      "Storing a signup is a trivial insert — no server needed. The part that wants a database is the reporting: \"signups per day,\" \"which referrer converted\" — aggregations that want a query planner.",
+    date: "2026-07-02",
+    anchor: {
+      label: "Store form submissions without a backend",
+      path: "/solve/store-form-submissions-without-backend",
+    },
+    body: [
+      {
+        kind: "p",
+        text: 'Every landing page hits the same wall around hour three: the signup form works, but where do the emails actually *go*? The reflex is to stand up a server and a database for what is, honestly, an `INSERT` and an occasional `COUNT`. So most people reach for a form service instead — and that solves storage, but quietly splits your data from your questions. The submissions live in someone else\'s dashboard; the moment you want "signups per day since launch" or "which referrer actually converted," you\'re exporting a CSV and pivoting it by hand.',
+      },
+      { kind: "h2", text: "Two problems hiding in one, with different shapes" },
+      {
+        kind: "p",
+        text: '**Capture** is a write — a small one, and it genuinely doesn\'t need a server: an insert call from the page\'s own `fetch`, or a ten-line serverless function, is enough, as long as the write key isn\'t sitting in your client HTML. **Reporting** is a read, and it\'s the part that actually wants a database — because "how many per day," "top source this week," and "conversion by campaign" are aggregations, and aggregations want a query planner, not a spreadsheet and a human.',
+      },
+      {
+        kind: "code",
+        lang: "sql",
+        code: "-- capture: one small insert per submission (no server required)\nINSERT INTO signups (email, referrer, created_at)\nVALUES ($1, $2, now());\n\n-- reporting: the part that actually wants a query planner\nSELECT date_trunc('day', created_at) AS day, count(*) AS signups\nFROM signups\nGROUP BY day\nORDER BY day;",
+      },
+      {
+        kind: "p",
+        text: 'The mistake is picking a tool that\'s great at the write and leaves you alone with the read. A form service nails capture and hands you a list. A spreadsheet-via-webhook nails capture and hands you a tab you pivot by hand. What you want is for the place the rows land to also be a place you can *ask questions of* — ideally in plain English, so the day-one question ("did anyone sign up?") and the week-two question ("which tweet drove it?") are the same two-second action, not a data chore.',
+      },
+      {
+        kind: "p",
+        text: "That's the shape worth looking for, whatever you build it on: **storage you can also interrogate.** Each submission is a row in a real Postgres, and the reporting question is one English goal — `signups grouped by day with a count` — that compiles to SQL you can read before you trust it.",
+      },
+      {
+        kind: "p",
+        text: "That's how [nlqdb](https://nlqdb.com) works, but the point isn't the tool — it's refusing to let your form data land somewhere you can't ask it anything. The honest caveat that applies to *any* version of this: the public read widget isn't a write endpoint, so capture still goes through a key the browser never sees, and email delivery plus spam filtering stay your front-end's and your ESP's job. Storage isn't the hard part. Not being able to ask your own data a question is.",
+      },
+    ],
+  },
+  {
     slug: "not-in-subquery-null-trap",
     title: "NOT IN returned zero rows. It wasn't your data — it was one NULL.",
     description:

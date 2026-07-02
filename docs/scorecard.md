@@ -24,8 +24,8 @@ vs 0.75** — is dispatch-gated: reasoning + directive levers built/saturated
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | unmeasured — instrument shipped 2026-07-01, awaiting data | target ≥ 95%; D1 `first10_*` counters (migration 0020, `SK-ONBOARD-006`); one D1 query on the next pull |
 | 5 | Session retention (≥ 2 queries) | unmeasured — same instrument, awaiting data | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | 64 (`/vs` 31 + `/solve` 30 + `/blog` 3) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
-| 7 | Surface yield | published posts 3 (live, below); referral visits unmeasured | referrals to the surfaces = CF Web Analytics referrer pull (blocked this run) |
+| 6 | Indexable surfaces | 65 (`/vs` 31 + `/solve` 30 + `/blog` 4) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
+| 7 | Surface yield | published posts 4 (live, below); referral visits unmeasured | referrals to the surfaces = CF Web Analytics referrer pull (blocked this run) |
 | | **Engine** — BIRD 06-19 (**12d, stale**) · Spider 06-17 (**14d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Dispatch gated** — `workflow_dispatch` 403 + PAT proxy-blocked (run 126) |
 | 8 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12) — flat (McNemar p=0.50); reasoning levers next |
 | 9 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number.** Self-consistency (`SK-QUAL-017`) built bar the dispatch |
@@ -46,21 +46,22 @@ vs 0.75** — is dispatch-gated: reasoning + directive levers built/saturated
 Canonical copies on `/blog` (`SK-BLOG-001` autonomous publishing;
 community-venue variants stay in `research/distribution-queue.md` as pointers):
 
+- https://nlqdb.com/blog/store-form-submissions-without-a-backend/ (run 131 — anchors `/solve/store-form-submissions-without-backend`)
 - https://nlqdb.com/blog/not-in-subquery-null-trap/ (run 130 — anchors `/solve/find-rows-with-no-match-in-another-table`)
 - https://nlqdb.com/blog/zep-recall-vs-analytical-agent-memory/ (run 20 — anchors `/vs/zep`)
 - https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/ (run 2 — engine lesson)
 
 ## Last change
 
-**2026-07-02 (write-safety bugfix)** — anti-rut break (rule 7: 7 consecutive
-merged dailies were `/solve`+`/vs` pages; `/blog` covered by open PRs #571/#572).
-Different lever: closed a verified **SK-TRUST-001 preview-gate bypass**. A
-comment-prefixed write (`/* c */ UPDATE …`, `-- c\nDELETE …`) that `validateSql`
-accepts as a write returned `isWriteVerb=false`, so `orchestrate.ts` **skipped the
-render-before-commit diff and committed the write** (and mis-guarded exec-repair at
-lines 371/399/417) — the exact smuggle `sql-validate.ts` warns about. **Before → after:**
-3 comment-prefixed write cases `isWriteVerb false → true` (gated); `isWriteVerb` now
-reuses the validator's `stripLeadingComments`+`leadingVerb` so the two gates can't
-disagree (P5: removed the duplicated comment-blind regex). 4 regression tests added;
-full api suite **830 pass / 6 skip**, tsc + biome clean. **KPI:** GLOBAL-025 UX/trust
-(SK-TRUST-004 destructive-op preview integrity); none degraded.
+**2026-07-02 (run 131 — publish, don't draft)** — step 3 rule 1: the queue held
+≫ 3 unpublished drafts, so this run **published** the oldest ready one rather than
+drafting a new one. Shipped the run-106 draft ("You don't need a backend to store
+form submissions — you need a place to ask 'how many'") as the canonical `/blog`
+post `store-form-submissions-without-a-backend`, anchoring the live
+`/solve/store-form-submissions-without-backend` page. **Before → after:** indexable
+surfaces (row #6) **64 → 65** (`/blog` 3 → 4); published posts (row #7) **3 → 4**;
+`llms.txt` + `sitemap.xml` auto-aggregate the new page. Queue entry moved to a
+venue-pointer under Published. Rephrased the draft's "waitlist form" → "signup form"
+to clear the `blog.test.ts` banned-word guard (retired gate/waitlist copy). apps/web
+**189 pass / 0 fail**, biome clean. **KPI:** GLOBAL-025 onboarding/UX — grows the
+search-intent on-ramp (leading input to rows #1–#3); no KPI degraded.
