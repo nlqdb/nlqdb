@@ -29,7 +29,7 @@ pass** (row #16).
 | 6 | Indexable surfaces | 69 (`/vs` 31 + `/solve` 31 + `/blog` 7) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
 | 7 | Surface yield | posts 7; 7d external referrals = 2 (1 `www.google.com` organic + 1 `aisearchindex.space`) | CF `refererHost` — measured every run |
 | | **Engine** — BIRD 06-19 · Spider 07-02 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
-| 8 | BIRD raw EX | 0.520 (06-19) — **resume in flight**: [run 28621959802](https://github.com/nlqdb/nlqdb/actions/runs/28621959802) re-dispatched 07-02 on pinned SHA `0e67e64` (branch `eval/bird-resume-0e67e64`), SK-QUAL-013 checkpoint restored | target 0.65 / Phase 2 floor 0.60; next `/daily` reads the report, updates baseline + verification log, deletes the pin branch |
+| 8 | BIRD raw EX | 0.520 (06-19) — **resume loop running** on pinned SHA `0e67e64` (branch `eval/bird-resume-0e67e64`): [run 28621959802](https://github.com/nlqdb/nlqdb/actions/runs/28621959802) checkpoint-restored (cache-hit confirmed), reached ~270/500 (partial attempted-only free EA 53.5%, chain rate-limited), budget-stopped `resumable: true`, next window re-dispatched 07-02 | target 0.65 / Phase 2 floor 0.60; loop until report says `resumable: false`, then update baseline + verification log + delete the pin branch. Don't score partial EA as the number |
 | 9 | Spider raw EX | 0.1926 (26/135, 07-02) | target 0.75; was 0.1852 (06-17). **Worst engine number.** 07-02 free lane capacity-throttled ⇒ undercounts; `SK-QUAL-017` SC smoke undispatched |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-02) | full-chain ICP EX; 1.8× BIRD, 5× Spider — the GLOBAL-026 bet; N=23 ±1 noisy. Retrieval precision@1 saturated |
 | 11 | free-vs-frontier delta | 0.00 pts (persona-bench 07-02) | frontier key wired; agentic lane (`SK-QUAL-004` headline) unrun |
@@ -38,7 +38,7 @@ pass** (row #16).
 | 13 | nlqdb-api wall-time p50 / p95 | 0.9 ms / 872 ms | mcp-server p95 331.8 s = long-lived SSE, expected; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites (re-run 07-02, the day's lever) | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.75** (was 0.00) — sdk ✅ 07-02 · mcp ✅ 07-02 (fixture fixed after 8d red) · examples ✅ 07-02 · opencheck ⏳ retry [in flight](https://github.com/nlqdb/nlqdb/actions/runs/28622593340) | mcp suite was red since 06-24 on a stale `NlqClient` stub + tool-order pin — fixed this run; opencheck's first try hit an OpenRouter free-tier 429 preflight abort (infra, not product) — retry dispatched 07-02 |
+| 15 | E2E manual-suite freshness | **0.75** (was 0.00) — sdk ✅ 07-02 · mcp ✅ 07-02 (fixture fixed after 8d red) · examples ✅ 07-02 · opencheck ❌ (last ✅ 06-12 ⇒ freshness 0) | mcp was red since 06-24 on a stale `NlqClient` stub + tool-order pin — fixed this run. opencheck failed twice 07-02 on OpenRouter free-tier 429 (driver LLM throttled; suite B's 8 tests all rate-limited — infra, not product). Note: opencheck's driver shares the free-LLM capacity the eval lanes burned today — dispatch it on a day without full eval runs |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.520); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (lane unrun); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (no data, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: BIRD floor (row #8 resume), agentic lane dispatch, first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
 | 17 | Unresolved open-question bullets, `docs/features/*/FEATURE.md` | 78 across 29 features (07-02; 89 parked per GLOBAL-033, excluded) | target ↓ 0 — **agent-movable**: research (P2/GLOBAL-033) → document (P4) → delete or park; was 88 on 07-02 am (#588 resolved 10) |
@@ -66,10 +66,11 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 (row #15): all four suites re-dispatched; e2e-mcp was red since 06-24 on a
 stale `NlqClient` stub (missing `databases.connect` + BYOLLM verbs) and a
 tool-order pin missing `nlqdb_connect_database` — fixture fixed, suite green;
-opencheck's first try hit an OpenRouter free-tier 429 preflight abort — retry
-in flight (→ 1.00 if green). Also: BIRD resume dispatched on pinned SHA with
-checkpoint restore
-(row #8), Phase 2 exit gate measured for the first time — 1/9 pass (row #16),
-artifact = run-55 blog post (surfaces 68 → 69, row #6).
+opencheck failed twice on an upstream OpenRouter free-tier 429 (its driver LLM
+shares the capacity today's eval runs burned — retry on an eval-free day).
+Also: BIRD resume loop started on the pinned SHA — checkpoint restore
+confirmed, ~270/500 done, next window dispatched (row #8); Phase 2 exit gate
+measured for the first time — 1/9 pass (row #16); artifact = run-55 blog post
+(surfaces 68 → 69, row #6).
 **KPI:** GLOBAL-025 engine-quality measurement + onboarding/UX (distribution);
 none degraded.
