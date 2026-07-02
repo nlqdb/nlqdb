@@ -45,7 +45,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title:
       'You don\'t need a backend to store form submissions. You need a place to ask "how many."',
     description:
-      "Storing a signup is a trivial insert — no server needed. The part that wants a database is the reporting: \"signups per day,\" \"which referrer converted\" — aggregations that want a query planner.",
+      'Storing a signup is a trivial insert — no server needed. The part that wants a database is the reporting: "signups per day," "which referrer converted" — aggregations that want a query planner.',
     date: "2026-07-02",
     anchor: {
       label: "Store form submissions without a backend",
