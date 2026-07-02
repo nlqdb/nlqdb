@@ -24,8 +24,8 @@ vs 0.75** — is **dark** (rule 8): dispatch blocked since run 126 (GitHub App
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | no data yet — instrument **live in prod since 07-02**, counters verified | target ≥ 95%; 0 asks since deploy — reads on next pull with traffic |
 | 5 | Session retention (≥ 2 queries) | no data yet — same instrument, awaiting traffic | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | 66 (`/vs` 31 + `/solve` 30 + `/blog` 5) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
-| 7 | Surface yield | posts 5; 7d external referrals = 2 (1 `google.com` organic — first — + 1 `aisearchindex.space`) | CF `refererHost` pull unblocked 07-02 — measured every run |
+| 6 | Indexable surfaces | 67 (`/vs` 31 + `/solve` 30 + `/blog` 6) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
+| 7 | Surface yield | posts 6; 7d external referrals = 2 (1 `google.com` organic — first — + 1 `aisearchindex.space`) | CF `refererHost` pull unblocked 07-02 — measured every run |
 | | **Engine** — BIRD 06-19 (**13d, stale**) · Spider 06-17 (**15d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`); **dark** — dispatch 403 (retested 07-02) |
 | 8 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12) — flat (McNemar p=0.50) |
 | 9 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). **Worst engine number, dark.** `SK-QUAL-017` built bar the dispatch |
@@ -51,11 +51,11 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 - https://nlqdb.com/blog/not-in-subquery-null-trap/ (run 130 — anchors `/solve/find-rows-with-no-match-in-another-table`)
 - https://nlqdb.com/blog/zep-recall-vs-analytical-agent-memory/ (run 20 — anchors `/vs/zep`)
 - https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/ (run 2 — engine lesson)
+- https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/ (run 102 — anchors `/vs/hex`)
 
 ## Last change
 
-**2026-07-02 (blog publish + measurement unblock)** — published the run-53
-draft as **/blog/agent-memory-vector-store-aggregation-gap**: surfaces
-**65 → 66**, posts 4 → 5. Funnel/ops re-pull unblocked — rows #1–#5, #7,
-#12–#13, #15 fresh, incl. first external referrals (2); dispatch retested →
-still 403, rows #8–#9 dark. **KPI:** GLOBAL-025 onboarding/UX; none degraded.
+**2026-07-02 pm (blog publish)** — run-102 draft (oldest unpublished) →
+**/blog/mcp-server-what-does-the-agent-own**: surfaces **66 → 67**, posts
+5 → 6. Funnel/ops rows keep today's am pull; engine rows untouched —
+open PR #580 owns them. **KPI:** GLOBAL-025 onboarding/UX; none degraded.
