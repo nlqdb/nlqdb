@@ -44,10 +44,12 @@ focus number.
 
 ### 0 — Don't step on an open PR
 
-Before anything else, list the repo's open PRs (a previous daily run may
-still be unmerged). If your intended lever, artifact, or files overlap an
-open PR, choose something else — never duplicate its work or touch the
-files it changes.
+Before anything else, list the repo's open PRs — a previous daily run may
+still be unmerged. (If the listing fails, say so in the scorecard and
+continue.) If your intended lever, artifact, or files overlap an open PR,
+choose something else — never duplicate its work or touch the files it
+changes. The step-1 scorecard regeneration is exempt: every run updates
+`docs/scorecard.md` even when an open PR also touches it.
 
 ### 1 — Measure first (always)
 
@@ -83,17 +85,18 @@ table + one "Last change" entry, no changelog; create it if missing):
 - **Phase gate:** name the current phase per `docs/phase-plan.md` and its
   exit-gate status — pass/fail per criterion. A failing criterion is a
   worst-number candidate like any other row.
-- **Docs ambiguity:** count of open-question bullets across
-  `docs/features/*/FEATURE.md` (`- ` lines under `## Open questions`).
-  Driving it down is a first-class lever: research the answer (P2,
-  GLOBAL-033), document the resolution (P4), delete the bullet. A
-  question only a founder can answer (rule 4 territory: secrets, console,
+- **Docs ambiguity:** count of unresolved open-question bullets across
+  `docs/features/*/FEATURE.md` (top-level `- ` lines under `## Open
+  questions`, up to the next `## `; a "Parked until `<trigger>`" line is a
+  resolved decision-to-defer per GLOBAL-033 and doesn't count). Driving it
+  down is a first-class lever: research the answer (P2, GLOBAL-033),
+  document the resolution (P4), then delete or park the bullet. A question
+  only a founder can answer (rule 4 territory: secrets, console,
   money/legal) moves to `blocked-by-human.md` and off this count.
 - **Surface integrity:** dead links on the deployed user-facing surfaces —
   including cross-app hrefs (nlqdb.com → docs.nlqdb.com) — counted by
   sweeping built output; target 0. Until an automated sweep exists,
-  building it is itself a lever. Any new user-facing page must map to a
-  GLOBAL-032 canonical flow or state in its PR why it is non-canonical.
+  building it is itself a lever.
 - **Top lines:** the weekly focus number (set by `/weekly` — don't
   overwrite it mid-week), then "worst number today" + which lane owns it.
 
