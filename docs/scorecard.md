@@ -52,8 +52,15 @@ community-venue variants stay in `research/distribution-queue.md` as pointers):
 
 ## Last change
 
-**2026-07-01 (scorecard reshape — founder-directives W8)** — post-directive
-shape: funnel = visits / registered / first answer / first-10-queries /
-retention; distribution = count **and yield**. New rows #5/#7 unmeasured with
-instrument named; measured values carried from the 06-25/06-22 pulls. Surfaces
-61 → 64 (`/blog` now counted). **KPI:** GLOBAL-025 onboarding; none degraded.
+**2026-07-02 (write-safety bugfix)** — anti-rut break (rule 7: 7 consecutive
+merged dailies were `/solve`+`/vs` pages; `/blog` covered by open PRs #571/#572).
+Different lever: closed a verified **SK-TRUST-001 preview-gate bypass**. A
+comment-prefixed write (`/* c */ UPDATE …`, `-- c\nDELETE …`) that `validateSql`
+accepts as a write returned `isWriteVerb=false`, so `orchestrate.ts` **skipped the
+render-before-commit diff and committed the write** (and mis-guarded exec-repair at
+lines 371/399/417) — the exact smuggle `sql-validate.ts` warns about. **Before → after:**
+3 comment-prefixed write cases `isWriteVerb false → true` (gated); `isWriteVerb` now
+reuses the validator's `stripLeadingComments`+`leadingVerb` so the two gates can't
+disagree (P5: removed the duplicated comment-blind regex). 4 regression tests added;
+full api suite **830 pass / 6 skip**, tsc + biome clean. **KPI:** GLOBAL-025 UX/trust
+(SK-TRUST-004 destructive-op preview integrity); none degraded.

@@ -22,6 +22,22 @@ describe("isWriteVerb", () => {
     expect(isWriteVerb("")).toBe(false);
     expect(isWriteVerb("   ")).toBe(false);
   });
+
+  // Regression: a comment-prefixed write that `validateSql` accepts (it
+  // strips comments before reading the verb) must NOT slip past the
+  // SK-TRUST-001 preview gate as a "non-write". Before the fix,
+  // `isWriteVerb` read the verb off the raw string and returned false
+  // here, committing the write with no render-before-commit diff.
+  it("sees through leading SQL comments (block + line), matching the validator", () => {
+    expect(isWriteVerb("/* ensure fresh */ UPDATE users SET active = false")).toBe(true);
+    expect(isWriteVerb("-- cleanup\nDELETE FROM orders WHERE id = 1")).toBe(true);
+    expect(isWriteVerb("/* c */ INSERT INTO t VALUES (1)")).toBe(true);
+    // Leading whitespace before the comment, and mixed line+block comments.
+    expect(isWriteVerb("  \n /* c */ UPDATE t SET a = 1")).toBe(true);
+    expect(isWriteVerb("-- a\n/* b */ DELETE FROM t WHERE id = 1")).toBe(true);
+    // A commented read still reads as a non-write.
+    expect(isWriteVerb("/* c */ SELECT 1")).toBe(false);
+  });
 });
 
 describe("buildDiff", () => {
