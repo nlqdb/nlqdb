@@ -53,15 +53,13 @@ community-venue variants stay in `research/distribution-queue.md` as pointers):
 
 ## Last change
 
-**2026-07-02 (run 131 — publish, don't draft)** — step 3 rule 1: the queue held
-≫ 3 unpublished drafts, so this run **published** the oldest ready one rather than
-drafting a new one. Shipped the run-106 draft ("You don't need a backend to store
-form submissions — you need a place to ask 'how many'") as the canonical `/blog`
-post `store-form-submissions-without-a-backend`, anchoring the live
-`/solve/store-form-submissions-without-backend` page. **Before → after:** indexable
-surfaces (row #6) **64 → 65** (`/blog` 3 → 4); published posts (row #7) **3 → 4**;
-`llms.txt` + `sitemap.xml` auto-aggregate the new page. Queue entry moved to a
-venue-pointer under Published. Rephrased the draft's "waitlist form" → "signup form"
-to clear the `blog.test.ts` banned-word guard (retired gate/waitlist copy). apps/web
-**189 pass / 0 fail**, biome clean. **KPI:** GLOBAL-025 onboarding/UX — grows the
-search-intent on-ramp (leading input to rows #1–#3); no KPI degraded.
+**2026-07-02 (run 131 — publish, don't draft)** — step 3 rule 1 (queue held
+≫ 3 unpublished drafts): **published** the run-106 draft ("You don't need a
+backend to store form submissions — you need a place to ask 'how many'") as the
+canonical `/blog` post `store-form-submissions-without-a-backend`, anchoring the
+live `/solve/store-form-submissions-without-backend` page. **Before → after:**
+indexable surfaces (row #6) **64 → 65** (`/blog` 3 → 4); published posts (row #7)
+**3 → 4**; `llms.txt` + `sitemap.xml` auto-aggregate the new page. Queue entry
+moved to a venue-pointer under Published. apps/web **189 pass / 0 fail**, biome
+clean. **KPI:** GLOBAL-025 onboarding/UX — grows the search-intent on-ramp
+(leading input to rows #1–#3); no KPI degraded.
