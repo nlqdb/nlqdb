@@ -37,7 +37,7 @@ numbers live in `tools/eval/baseline-2026-06-15.json`.
 |---|---|---|---|
 | **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **0.521** (was 0.354 on 2026-05-18) | — | canonical 500-q run 2026-06-19 (260/499); was 0.525 (261/497) on 2026-06-12 |
 | BIRD-dev EX (raw — the headline metric) | **0.520** (was 0.522 on 2026-06-12; 0.318 on 2026-05-18) | ≥ 0.60 | canonical 500-q 6-provider GHA run 2026-06-19 (260/500, `no_sql` 1; 3 windows, `SK-QUAL-013`); flat vs 0.522 — McNemar b=38/c=37, p=0.50 |
-| Spider 2.0-lite EX (raw) | **0.1852** (was 0.1704 on 2026-06-12; 0.12 on 2026-06-09) | report only (Phase-3 ≥ 0.15) | canonical 135-q GHA run 2026-06-17 after the Gemini free-tier key heal (25/135; reasoning EX 0.198; `no_sql` 36 → 9, now capacity-only); same-seed smoke 0.15 → 0.25 |
+| Spider 2.0-lite EX (raw) | **0.1926** (was 0.1852 on 2026-06-17; 0.1704 on 2026-06-12) | report only (Phase-3 ≥ 0.15) | canonical 135-q GHA run 2026-07-02 (26/135); free lane capacity-throttled ⇒ undercounts; frontier lane invalid (`openrouter:parse` 96/135) |
 | free-vs-agentic-frontier delta | **null** (lane not yet run) | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
 
 **How to read the two BIRD rows.** Raw EX (the headline metric) also pays
@@ -184,9 +184,9 @@ view of the same levers.
 
 > **Measurement state.** Canonical numbers + sourcing are in §2 (seeded into
 > `tools/eval/baseline-2026-06-15.json`); full runs are sequential per §5, resumed across quota
-> windows (`SK-QUAL-013`), dispatched via the `GH_TOKEN_WORKFLOW` PAT (no human
-> click). The flat 06-19 BIRD re-run **confirms the directive levers have
-> saturated**, and the `SK-QUAL-014` literal + date axes (`literal_only` /
+> windows (`SK-QUAL-013`), dispatched via the Claude GitHub App
+> (`actions:write` since 2026-07-02). The flat 06-19 BIRD re-run **confirms
+> the directive levers have saturated**, and the `SK-QUAL-014` literal + date axes (`literal_only` /
 > `date_literal_only` standalone both 0, §2) **falsify value-retrieval as the
 > top lever**. **Next:** both reasoning levers are now built end-to-end bar the
 > canonical dispatch — §4 **#3 self-consistency** (`SK-QUAL-017`: vote + sampling
