@@ -76,9 +76,41 @@ Documentation / process (this agent):
   `/daily`) — errored "script not found." Verified: `bun run typecheck` now
   invokes all 22 per-package typechecks; `test` dispatches identically.
 
-Backend / CI (sibling agents, same pass): dead path-map rows corroborated
-against real code; tenant-isolation hardening; idempotency coverage;
-CI coverage added for `auth-internal` / `platform-db`; SDK tests.
+Backend security (sibling agent, same pass) — all **live-verified** against
+the app's own Neon HTTPS SQL API, full `apps/api` suite green (864 passed):
+
+- **CRIT cross-tenant isolation — breach reproduced live, fix verified
+  closed.** Hosted queries ran as the shared `neondb_owner`, which *owns the
+  tenant tables and so bypassed RLS entirely* (no `FORCE`) — isolation rested
+  on nothing but schema-qualification, and a `set_config` CTE or
+  `pg_policies` read defeated even that. Fix runs every user query under
+  `SET LOCAL ROLE tenant_<hash>` (least privilege; cross-schema reads now
+  fail closed, spoofed `app.tenant_id` returns 0 rows), plus `set_config` /
+  `current_setting` / `set` added to the validator denylist as
+  defense-in-depth. **⚠ Deploy caveat:** breaking on the ~151 existing prod
+  DBs until a one-time role backfill (`GRANT tenant_<h> TO neondb_owner WITH
+  SET TRUE` + table/sequence privileges) runs — must land before/with the
+  deploy. New DBs are covered by the provisioner fix.
+- **Write-CTE bypasses closed** — `WITH x AS (INSERT/UPDATE/DELETE …) SELECT`
+  now counts as a write for both the read-only gate *and* the SK-TRUST-001
+  confirm/preview gate; `/v1/run` forces anon principals read-only;
+  `UPDATE`-without-`WHERE` rejected (symmetric with the existing `DELETE`
+  guard); 10s `statement_timeout` on hosted/BYO/memory exec paths.
+- **Idempotency-Key** added to `POST /v1/keys` and `POST /v1/databases`
+  (GLOBAL-005), reusing the `/v1/db/connect` KV-dedupe pattern.
+- **Fail-closed guards** — Turnstile now fails closed in prod when
+  unconfigured (open only in dev); the Stripe `MOCK_STRIPE` signature bypass
+  is hard-guarded off in prod; `adoptApiKeys` re-keys only `pk_live` rows.
+
+CI / tests (sibling agent): **`events` added to the CI matrix** (11 tests
+that never ran in CI now do); **19 SDK tests** added to the single sanctioned
+HTTP client (was 1) — stream assembly, idempotency-key generation, error
+envelope, no-body-leak. **Correction to the original audit:** `auth-internal`
+and `platform-db` are docs-only *placeholders* (no `src/`, no `package.json`,
+marked "not yet implemented"), not untested code — the real auth logic lives
+in `apps/api/src/auth.ts`, which is covered. They were correctly **not** wired
+into CI (would fail on a missing `package.json`); they become CI gaps only
+once implemented.
 
 ## Deferred — needs design (track as GH issues)
 
@@ -101,6 +133,18 @@ decision or a design**, not a doc edit. None is safe to silently implement.
   honor end-to-end.
 - **`/privacy` + `/terms`** are still pre-beta drafts — must be real before
   live-mode billing and public signup.
+- **SDK silent-refresh (GLOBAL-009 / SK-SDK-005) is documented but not built.**
+  The SDK feature doc points at a `packages/sdk/src/fetch.ts` refresh path that
+  does not exist; a 401 surfaces straight through instead of a silent
+  `POST /v1/auth/refresh` + retry. A `// TODO(bug):` test documents the current
+  behavior. Fixing it needs the `/v1/auth/refresh` contract — a behavior change,
+  not a test.
+- **Duplicate migration ordinal `0012`.** `0012_anon_adoption_db_id.sql` and
+  `0012_api_keys_sk_columns.sql` share a prefix; D1 applies in filename order,
+  so a tie risks divergent apply order across envs. Both are near-certainly
+  already applied to prod (repo is at 0020), so renaming is unsafe — instead
+  add a CI check that fails on duplicate ordinal prefixes and use zero-padded
+  unique ordinals going forward.
 
 ## How to prompt agents better
 
