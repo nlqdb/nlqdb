@@ -24,7 +24,7 @@ vs 0.75** — is **dark** (rule 8): dispatch blocked since run 126 (GitHub App
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | no data yet — instrument **live in prod since 07-02**, counters verified | target ≥ 95%; 0 asks since deploy — reads on next pull with traffic |
 | 5 | Session retention (≥ 2 queries) | no data yet — same instrument, awaiting traffic | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | 66 (`/vs` 31 + `/solve` 30 + `/blog` 5) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
+| 6 | Indexable surfaces | 67 (`/vs` 31 + `/solve` 31 + `/blog` 5) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
 | 7 | Surface yield | posts 5; 7d external referrals = 2 (1 `google.com` organic — first — + 1 `aisearchindex.space`) | CF `refererHost` pull unblocked 07-02 — measured every run |
 | | **Engine** — BIRD 06-19 (**13d, stale**) · Spider 06-17 (**15d, stale**) · persona-bench 06-22 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`); **dark** — dispatch 403 (retested 07-02) |
 | 8 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12) — flat (McNemar p=0.50) |
@@ -54,8 +54,8 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-02 (blog publish + measurement unblock)** — published the run-53
-draft as **/blog/agent-memory-vector-store-aggregation-gap**: surfaces
-**65 → 66**, posts 4 → 5. Funnel/ops re-pull unblocked — rows #1–#5, #7,
-#12–#13, #15 fresh, incl. first external referrals (2); dispatch retested →
-still 403, rows #8–#9 dark. **KPI:** GLOBAL-025 onboarding/UX; none degraded.
+**2026-07-02 pm (solve page)** — published
+**/solve/count-rows-per-day-including-missing-dates** (missing-dates
+gap-fill): surfaces **66 → 67** (`/solve` 30 → 31). Blog lane + engine rows
+untouched — open PRs #582/#580 own them; funnel/ops rows keep today's am
+pull. **KPI:** GLOBAL-025 onboarding/UX; none degraded.
