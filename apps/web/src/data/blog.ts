@@ -41,6 +41,49 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "agent-memory-vector-store-aggregation-gap",
+    title: 'Your agent\'s memory is a vector store. Ask it "how many" and watch it fall over.',
+    description:
+      "A vector store returns the top-k most similar memories — there is no GROUP BY, COUNT, or JOIN. Recall is similarity; reporting is aggregation. Agent memory needs both machines, not one.",
+    date: "2026-07-02",
+    anchor: {
+      label: "nlqdb vs Pinecone — the full side-by-side",
+      path: "/vs/pinecone",
+    },
+    body: [
+      {
+        kind: "p",
+        text: 'The standard agent-memory build is an afternoon of work: embed every fact worth keeping, upsert it into a vector store, and before each reply pull the top-k most similar memories back into context. And for what it\'s built for, it works. Ask "what did this user say about the Berlin migration" and the right snippets come back, ranked by cosine distance. Recall is solved enough that it feels like *memory* is solved.',
+      },
+      {
+        kind: "p",
+        text: 'Then the agent has been running for a month, and you ask its memory a different kind of question: "how many users asked about pricing this month?" "Average deal size per stage?" "Top 10 topics I logged, ranked by count?" The store dutifully returns the twenty memories most *similar to the question text*, the LLM eyeballs them, and you get a confident, specific, wrong number.',
+      },
+      { kind: "h2", text: "Recall is similarity. Reporting is aggregation." },
+      {
+        kind: "p",
+        text: "Nothing malfunctioned — the two questions want different machines. A vector store's primitive is nearest-neighbour search: embed the query, rank stored vectors by distance, return the top-k, optionally narrowed by a metadata filter. That is the whole contract. There is no `COUNT`, no `GROUP BY`, no `JOIN`, no `HAVING` — a similarity engine ships no query planner, and even the metadata filter only narrows candidates *around* the approximate search, so what comes back is still a ranking of similar items, never a computed result set.",
+      },
+      {
+        kind: "p",
+        text: '"How many" has to touch **every matching row**. If the agent logged 4,000 memories and top-k is 20, the context the LLM sees is structurally incapable of producing the count — and an LLM doing arithmetic over a retrieved sample is a hallucination generator, not a query engine. The failure is quiet, too: the answer arrives fluent and plausible, and nothing flags that it was computed from half a percent of the data.',
+      },
+      {
+        kind: "code",
+        lang: "sql",
+        code: "-- \"top topics this month, ranked by count\" is not a similarity query.\n-- It's this — and it must scan every matching row, not the top-k:\nSELECT topic, count(*) AS mentions\nFROM memories\nWHERE created_at >= date_trunc('month', now())\nGROUP BY topic\nORDER BY mentions DESC\nLIMIT 10;",
+      },
+      {
+        kind: "p",
+        text: 'So the split worth keeping: when the question is **"find what\'s like this"** — RAG context, related-document lookup, fuzzy recall over conversation — a vector store is exactly the right machine, and a managed one like Pinecone is genuinely good at it. When the question is **"count, group, or rank what I stored"**, the memory needs to be typed rows behind a real query planner. Neither machine substitutes for the other, and bolting a bigger LLM onto the first one doesn\'t turn it into the second.',
+      },
+      {
+        kind: "p",
+        text: "They compose cleanly: vector store as the recall layer, relational store as the analytical one. That second layer is what [nlqdb](https://nlqdb.com) is — a real Postgres the agent provisions itself over MCP and queries in plain English, with the compiled SQL shown so you can read exactly what ran. The honest caveat cuts the other way too: nlqdb ships no embedding search, so it is not your recall layer. Pick the store per question shape — the full side-by-side is at [nlqdb vs Pinecone](/vs/pinecone/).",
+      },
+    ],
+  },
+  {
     slug: "store-form-submissions-without-a-backend",
     title:
       'You don\'t need a backend to store form submissions. You need a place to ask "how many."',
