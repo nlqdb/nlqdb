@@ -24,8 +24,8 @@ built/saturated (row #10 note).
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | no data yet — instrument **live in prod since 07-02**, counters verified | target ≥ 95%; 0 asks since deploy — reads on next pull with traffic |
 | 5 | Session retention (≥ 2 queries) | no data yet — same instrument, awaiting traffic | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | 66 (`/vs` 31 + `/solve` 30 + `/blog` 5) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
-| 7 | Surface yield | posts 5; 7d external referrals = 2 (1 `google.com` organic — first — + 1 `aisearchindex.space`) | CF `refererHost` pull unblocked 07-02 — measured every run |
+| 6 | Indexable surfaces | 68 (`/vs` 31 + `/solve` 31 + `/blog` 6) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
+| 7 | Surface yield | posts 6; 7d external referrals = 2 (1 `google.com` organic — first — + 1 `aisearchindex.space`) | CF `refererHost` pull unblocked 07-02 — measured every run |
 | | **Engine** — BIRD 06-19 · Spider 07-02 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Dispatch unblocked** — Actions:write granted; all three dispatched 07-02; Spider + persona-bench landed, BIRD cancelled (resumable) |
 | 8 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12) — flat (McNemar p=0.50); 07-02 re-run cancelled (resumable) |
 | 9 | Spider raw EX | 0.1926 (26/135) | target 0.75; was 0.1852 (06-17). **Worst engine number.** 07-02 free lane capacity-throttled ⇒ undercounts; `SK-QUAL-017` SC smoke undispatched |
@@ -51,9 +51,11 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 - https://nlqdb.com/blog/not-in-subquery-null-trap/ (run 130 — anchors `/solve/find-rows-with-no-match-in-another-table`)
 - https://nlqdb.com/blog/zep-recall-vs-analytical-agent-memory/ (run 20 — anchors `/vs/zep`)
 - https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/ (run 2 — engine lesson)
+- https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/ (run 102 — anchors `/vs/hex`)
 
 ## Last change
 
-**2026-07-02 (eval dispatch unblocked, runs landed)** — Spider + persona-bench
-full runs landed (rows #9–#11); BIRD re-run cancelled mid-flight. **KPI:**
-GLOBAL-025 engine-quality measurement; none degraded.
+**2026-07-02 pm** — eval dispatch unblocked: Spider + persona-bench full runs
+landed (rows #9–#11; BIRD re-run cancelled, resumable). Same day the
+distribution lever moved surfaces to **68** (`/solve` + `/blog` publishes).
+**KPI:** GLOBAL-025 engine-quality measurement + onboarding/UX; none degraded.

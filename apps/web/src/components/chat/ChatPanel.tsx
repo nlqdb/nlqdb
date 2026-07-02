@@ -189,6 +189,11 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLInputElement>(null);
   const loadedForRef = useRef<string | null>(null);
+  // Set when the mount rehydrated a pending prompt from the auth
+  // redirect (SK-ANON-015) — the rail's onLoaded skips the newest-DB
+  // auto-pin so the replayed goal lands on "All databases" and the
+  // classifier routes it (create vs query) instead of forcing one DB.
+  const replayArrivalRef = useRef(false);
 
   // Focus the composer once on mount so the user lands ready to
   // type. Imperative — `autoFocus` trips a11y rules that don't
@@ -203,6 +208,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
     if (pending?.goal) {
       setComposer(pending.goal);
       clearPending();
+      replayArrivalRef.current = true;
     } else if (readReplayExpected()) {
       // WS02-T3: the auth wall set `?replay=1` and promised "your prompt
       // is saved" (SK-ANON-012), but `nlqdb_pending` is gone (privacy
@@ -679,7 +685,11 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
           // inside the DB they just made instead of the "All databases"
           // pseudo-state. `listDatabasesForTenant` returns rows
           // ORDER BY created_at DESC, so `databases[0]` is the newest.
-          // Leave the selection empty when the user has zero DBs.
+          // Leave the selection empty when the user has zero DBs — or
+          // when a replayed prompt just rehydrated (SK-ANON-015): the
+          // user's goal predates any pin, so "All databases" is the
+          // honest scope and the classifier picks the route.
+          if (replayArrivalRef.current) return;
           const newest = databases[0];
           if (newest) selectDb(newest);
         }}
