@@ -1,0 +1,182 @@
+---
+// Index of `/blog/<slug>` posts — the canonical home for the engineering
+// notes the distribution queue drafts (SK-BLOG-001; published autonomously
+// by the /daily loop). Newest first, straight from `data/blog.ts`.
+// ItemList JSON-LD mirrors the visible list (shared lib/itemlist-jsonld.ts,
+// same shape as the /vs + /solve hubs).
+
+import Footer from "../../components/Footer.astro";
+import Topnav from "../../components/Topnav.astro";
+import { BLOG_POSTS } from "../../data/blog";
+import Base from "../../layouts/Base.astro";
+import { itemListJsonLd } from "../../lib/itemlist-jsonld";
+
+const itemListLd = itemListJsonLd(
+  "nlqdb engineering blog",
+  BLOG_POSTS.map((p) => ({ name: p.title, path: `/blog/${p.slug}` })),
+  Astro.site,
+);
+
+const displayDate = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+---
+<Base
+  title="Blog — engineering notes from building nlqdb"
+  description="SQL traps, LLM-pipeline debugging, and honest comparisons — engineering lessons from building a natural-language database. Every post names what nlqdb doesn't do."
+  canonical="/blog"
+>
+  <div class="page">
+    <Topnav />
+
+    <main class="blgidx">
+      <header class="blgidx__head">
+        <p class="blgidx__eyebrow">Blog</p>
+        <h1 class="blgidx__title">Engineering notes from building nlqdb</h1>
+        <p class="blgidx__lede">
+          SQL traps, LLM-pipeline debugging, and honest comparisons — lessons from
+          building a natural-language database, written up as we hit them. Every claim
+          is verifiable, and every post names what nlqdb doesn't do.
+        </p>
+      </header>
+
+      <ul class="blgidx__list">
+        {
+          BLOG_POSTS.map((p) => (
+            <li class="blgidx__item">
+              <a href={`/blog/${p.slug}`} class="blgidx__link">
+                <p class="blgidx__date">
+                  <time datetime={p.date}>{displayDate(p.date)}</time>
+                </p>
+                <h2 class="blgidx__name">{p.title}</h2>
+                <p class="blgidx__one-liner">{p.description}</p>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <section class="blgidx__cta">
+        <h2 class="blgidx__cta-title">Prefer the answers to the war stories?</h2>
+        <p>
+          The <a href="/solve">solve pages</a> answer one recurring search query each with
+          a working snippet, and the <a href="/vs">comparisons</a> are honest side-by-sides
+          against adjacent tools.
+        </p>
+      </section>
+    </main>
+
+    <Footer />
+  </div>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(itemListLd)} />
+</Base>
+
+<style>
+  .blgidx {
+    max-width: var(--col);
+    margin: 0 auto;
+    padding: clamp(32px, 5vw, 64px) 0;
+  }
+
+  .blgidx__head {
+    margin: 0 0 clamp(40px, 6vw, 64px);
+  }
+  .blgidx__eyebrow {
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-size: var(--t-small);
+    margin: 0 0 16px;
+  }
+  .blgidx__title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    color: var(--ink);
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+  .blgidx__lede {
+    font-family: var(--sans);
+    font-size: var(--t-large);
+    color: var(--body);
+    line-height: 1.5;
+    max-width: 60ch;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .blgidx__list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 clamp(40px, 6vw, 64px);
+    display: grid;
+    gap: 12px;
+  }
+  .blgidx__link {
+    display: block;
+    padding: 20px;
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    text-decoration: none;
+    color: inherit;
+  }
+  .blgidx__link:hover {
+    border-color: var(--ink);
+    color: inherit;
+    text-decoration: none;
+  }
+  .blgidx__date {
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    margin: 0 0 8px;
+  }
+  .blgidx__name {
+    font-family: var(--display);
+    font-size: var(--t-body);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+  .blgidx__one-liner {
+    font-family: var(--sans);
+    color: var(--body);
+    font-size: var(--t-small);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .blgidx__cta {
+    padding: clamp(24px, 4vw, 32px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+  }
+  .blgidx__cta-title {
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 10px;
+  }
+  .blgidx__cta p {
+    font-family: var(--sans);
+    margin: 0;
+    color: var(--body);
+    font-size: var(--t-body);
+    line-height: 1.55;
+  }
+  .blgidx__cta a {
+    color: var(--ink);
+  }
+</style>

@@ -15,7 +15,7 @@ when-to-load:
 
 **One-liner:** Reweight nlqdb's go-to-market so "analytical memory for AI
 agents" is the lead wedge — a real, queryable database an agent uses as
-memory — delivered as a sequence of small, reversible, daily-loop-sized
+memory — delivered as a sequence of small, daily-loop-sized
 slices rather than a relaunch. **Two tracks ship in parallel:** messaging
 (WS-01..WS-13 — how users discover the wedge) and **engine** (E-01..E-07 —
 the memory-shaped primitives that make the wedge claims durable).
@@ -266,7 +266,7 @@ the memory-shaped primitives that make the wedge claims durable).
 
 ### SK-PIVOT-010 — E-06's preset on-ramp lives on the authed create surface, never the anonymous `/agents` CreateForm
 
-**Body:** [`decisions/SK-PIVOT-010-authed-onramp.md`](./decisions/SK-PIVOT-010-authed-onramp.md). E-06's `agent_memory_v1` preset on-ramp targets the **authenticated** create surface (`POST /v1/databases { preset }`, `MEMORY_PRESET`-gated), not the anonymous `/agents` CreateForm — the path is authed across three boundaries (`requireSession` create, anon-rejecting `remember` verb, `credentials:"omit"` CreateForm). The wedge feeds the waitlist, not the product.
+**Body:** [`decisions/SK-PIVOT-010-authed-onramp.md`](./decisions/SK-PIVOT-010-authed-onramp.md). E-06's `agent_memory_v1` preset on-ramp targets the **authenticated** create surface (`POST /v1/databases { preset }`, `MEMORY_PRESET`-gated), not the anonymous `/agents` CreateForm — the path is authed across three boundaries (`requireSession` create, anon-rejecting `remember` verb, `credentials:"omit"` CreateForm). The wedge on-ramp funnels to sign-in; it does not open the product anonymously.
 
 ### SK-PIVOT-011 — The TTL sweep is a server-built constant `DELETE`, `facts`-only, with per-DB failure isolation
 
@@ -282,7 +282,7 @@ the memory-shaped primitives that make the wedge claims durable).
 
 ### SK-PIVOT-013 — The lead string is "Analytical memory for AI agents"; the WS-13 founder gate tripped 2026-06-24
 
-**Body:** [`decisions/SK-PIVOT-013-headline-reposition.md`](./decisions/SK-PIVOT-013-headline-reposition.md). Founder tripped the GLOBAL-036 headline gate 2026-06-24: the four gated lead strings (Hero lede, `README` H1+tagline, `llms.txt` lede, `package.json` desc + homepage `<title>`/JSON-LD) now lead with **"Analytical memory for AI agents."**; homepage OG → `/og/agents.png`; the `/agents` CTA rebuilt connect-via-MCP. Reverts in one commit. **Head-only** — the proof follow-on landed in **SK-PIVOT-014** (WS-14), itself since superseded on `/` by SK-WEB-018.
+**Body:** [`decisions/SK-PIVOT-013-headline-reposition.md`](./decisions/SK-PIVOT-013-headline-reposition.md). Founder tripped the GLOBAL-036 headline gate 2026-06-24: the four gated lead strings (Hero lede, `README` H1+tagline, `llms.txt` lede, `package.json` desc + homepage `<title>`/JSON-LD) now lead with **"Analytical memory for AI agents."**; homepage OG → `/og/agents.png`; the `/agents` CTA rebuilt connect-via-MCP. **Head-only** — the proof follow-on landed in **SK-PIVOT-014** (WS-14), itself since superseded on `/` by SK-WEB-018.
 
 ### SK-PIVOT-014 — Home-flow reposition: the home's proof leads the wedge (WS-14 follow-on to WS-13)
 
@@ -301,16 +301,13 @@ index in [`docs/decisions.md`](../../decisions.md)).
 - **GLOBAL-019** — Free + Open Source core.
   - *In this feature:* the anti-VC angle leans on it; its stale "Apache-2.0 today" wording (and `architecture.md §0`) is corrected to FSL-1.1→Apache in this PR. The FSL-accurate self-host *marketing copy* is WS-10.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this feature:* every new wedge CTA (matrix "try this", `/agents` waitlist) emits the typed event; the waitlist is a conversion signal alongside the open product.
+  - *In this feature:* every new wedge CTA (matrix "try this", the `/agents` connect CTA) emits the typed event; wedge conversion = a registered user reaching a first answer (GLOBAL-036).
 - **GLOBAL-025** — North-star KPIs (advance ≥ 1, degrade 0).
 - **GLOBAL-033** — Resolution defaults.
 - **GLOBAL-034** — Analytics stack.
 
 ## Open questions / known unknowns
 
-- **`/agents` vs `/memory` slug** — defaulting to `/agents` (matches the P2
-  persona name and the MCP-directory audience). Revisit if keyword research
-  favours `/memory`.
 - **Capability-matrix freshness** — competitors ship fast; a stale `✓/—` is
   worse than none. WS-06 sets a "verified-on" date on the matrix; the daily
   loop treats a date > 60 days old as an alert (mirrors the engine-row rule).

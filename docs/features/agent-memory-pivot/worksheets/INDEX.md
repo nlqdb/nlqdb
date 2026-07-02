@@ -1,6 +1,6 @@
 # Agent-Memory Pivot — worksheet backlog
 
-The pivot ships **slowly**: one small, reversible slice at a time, each sized
+The pivot ships **slowly**: one small slice at a time, each sized
 to a single `/daily` run. This is the canonical backlog. Governed by
 **GLOBAL-036**; the per-surface copy inventory is
 [`messaging-surface-map.md`](messaging-surface-map.md).
@@ -13,7 +13,7 @@ worksheet:
 
 | Worst-number lane today | Pick from |
 |---|---|
-| Funnel / distribution / waitlist conversion | this file (WS-*) |
+| Funnel / distribution / wedge conversion | this file (WS-*) |
 | Engine quality / agent on-ramp / "wedge claims true" | [`engine/INDEX.md`](engine/INDEX.md) (E-*) |
 
 Several `WS-*` worksheets sharpen once an `E-*` lands (E-01 unblocks
@@ -46,7 +46,8 @@ You are the 6×/day operating agent (`.claude/commands/daily.md`). When the
 
 **Hard rules inherited from the loop:** do **not** re-escalate the
 engine-quality (BIRD/Spider) thresholds; the billing lane stays frozen; the
-wedge feeds the **waitlist** as a demand signal. Every slice is **additive**
+wedge conversion = **a registered user reaching a first answer**
+(GLOBAL-036). Every slice is **additive**
 until WS-13 — nothing irreversible ships before the founder-gated headline
 swap.
 

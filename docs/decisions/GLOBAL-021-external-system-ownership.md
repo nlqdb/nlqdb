@@ -50,7 +50,7 @@ here in the same PR that introduces them.
 | External system | Canonical owner | Notes |
 |---|---|---|
 | Neon Postgres (user data) | `packages/db/` via `DatabaseAdapter` | Documented exception: `apps/api/src/db-create/build-deps.ts` imports `@neondatabase/serverless` directly for the control-plane provisioner (CREATE SCHEMA / role / RLS); see `SK-HDC-*`. |
-| Cloudflare D1 (platform DB) | `packages/platform-db/` | Holds auth, billing, rate-limit, registry, waitlist, idempotency tables. **Migration in progress** — current direct-D1 callers (`apps/api/src/db-registry.ts`, `waitlist.ts`, `ask/rate-limit.ts`, `anon-adopt.ts`, `db-create/neon-provision.ts`, `principal.ts`, `anon-rate-limit.ts`, `anon-global-cap.ts`) move to `@nlqdb/platform-db` in follow-up PRs. |
+| Cloudflare D1 (platform DB) | `packages/platform-db/` | Holds auth, billing, rate-limit, registry, idempotency tables. **Migration in progress** — current direct-D1 callers (`apps/api/src/db-registry.ts`, `ask/rate-limit.ts`, `anon-adopt.ts`, `db-create/neon-provision.ts`, `principal.ts`, `anon-rate-limit.ts`, `anon-global-cap.ts`) move to `@nlqdb/platform-db` in follow-up PRs. |
 | Better Auth | `apps/api/src/auth.ts` (today); planned consolidation in `packages/auth-internal/` | The auth feature (`docs/features/auth/FEATURE.md`) tracks the consolidation. Better Auth's `kysely-d1` reach into D1 is a documented owner-to-owner library dependency, not a violation. |
 | LLM providers | `packages/llm/` | All `@anthropic-ai/sdk`, `openai`, `@google/genai` imports live here. |
 | OpenTelemetry exporter / SDK | `packages/otel/` | All `@opentelemetry/*` imports for instrumentation wrappers live here; consumers import from `@nlqdb/otel`. |

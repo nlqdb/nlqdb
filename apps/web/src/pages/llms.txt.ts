@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { BLOG_POSTS } from "../data/blog";
 import { COMPETITORS } from "../data/competitors";
 import { INTEGRATE } from "../data/integrate";
 import { SOLVE_ENTRIES } from "../data/solve";
@@ -7,8 +8,9 @@ import { SOLVE_ENTRIES } from "../data/solve";
 // ecosystem (Claude Desktop, Perplexity, Cursor, Windsurf, Cline,
 // Aider, GitHub Copilot) routinely fetches as a markdown index. We
 // serve it via an endpoint so the comparison-page list + solve-page
-// list stay in sync with their data files — adding a `/vs/<slug>` or
-// `/solve/<slug>` is a one-file edit, not a multi-file edit.
+// list + blog-post list stay in sync with their data files — adding a
+// `/vs/<slug>`, `/solve/<slug>`, or `/blog/<slug>` is a one-file edit,
+// not a multi-file edit.
 
 const SITE = "https://nlqdb.com";
 const DOCS_SITE = "https://docs.nlqdb.com";
@@ -44,6 +46,11 @@ const PRIMARY_LINKS = [
     title: "Solve pages",
     path: "/solve",
     desc: "One page per recurring search query; each answers the question with a working snippet and names what nlqdb doesn't do.",
+  },
+  {
+    title: "Blog",
+    path: "/blog",
+    desc: "Engineering notes from building nlqdb — SQL traps, LLM-pipeline debugging, honest comparisons.",
   },
   {
     title: "Pricing",
@@ -95,10 +102,14 @@ export const GET: APIRoute = () => {
     SOLVE_ENTRIES.map(
       (s) => `- [${s.searchTitle}](${url(`/solve/${s.slug}`)}): ${s.oneLiner}`,
     ).join("\n") +
+    `\n\n## Blog\n\n` +
+    BLOG_POSTS.map((p) => `- [${p.title}](${url(`/blog/${p.slug}`)}): ${p.description}`).join(
+      "\n",
+    ) +
     `\n\n## Optional\n\n` +
     OPTIONAL_LINKS.map((l) => `- [${l.title}](${url(l.path)}): ${l.desc}`).join("\n") +
     `\n\n## Status\n\n` +
-    `Pre-alpha, open — start anonymously, no invite needed. Phase 0 shipped; Phase 1 onboarding in progress.\n` +
+    `Pre-beta, open — start anonymously. Phase 0 shipped; Phase 1 onboarding in progress.\n` +
     `Free chain forever (BYO-LLM at 0% markup). Source is private until general\n` +
     `availability; SDKs and elements will be open source.\n\n` +
     `## Contact\n\n` +

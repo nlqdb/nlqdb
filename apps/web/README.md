@@ -6,9 +6,7 @@ docs/architecture.md §3.1).
 
 Currently shipping:
 
-- `/` — wordmark + lede + 20-slide capability carousel + waitlist form
-  (POST `/v1/waitlist`). Waitlist is a holding pattern; removed when
-  sign-in UI + chat surface ship.
+- `/` — wordmark + lede + 20-slide capability carousel.
 - `/manifesto` — long-form philosophy.
 - `robots.txt`, `llms.txt`, hand-rolled `sitemap.xml`.
 - JSON-LD `SoftwareApplication` on every page via `Base.astro`.

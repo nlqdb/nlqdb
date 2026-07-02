@@ -1,6 +1,6 @@
 ---
 // Shared shell for the legal pages (/privacy, /terms). Plain Astro,
-// zero JS (SK-WEB-001). Holds the prose styling + the pre-alpha-draft
+// zero JS (SK-WEB-001). Holds the prose styling + the pre-beta-draft
 // banner in one place so the two pages stay thin. The final
 // lawyer-reviewed copy is a founder action (docs/blocked-by-human.md).
 import Footer from "../components/Footer.astro";
@@ -24,11 +24,11 @@ const { title, description, heading, canonical, updated } = Astro.props;
 
     <main class="legal">
       <header class="legal__head">
-        <p class="legal__kicker">Legal &middot; Pre-alpha draft</p>
+        <p class="legal__kicker">Legal &middot; Pre-beta draft</p>
         <h1 class="legal__title">{heading}</h1>
         <p class="legal__updated">Last updated: {updated}</p>
         <p class="legal__note">
-          nlqdb is in pre-alpha. This is a plain-English draft describing what
+          nlqdb is in pre-beta. This is a plain-English draft describing what
           we actually do today &mdash; final, lawyer-reviewed text will replace
           it before general availability. Questions:
           <a href="mailto:hello@nlqdb.com">hello@nlqdb.com</a>.

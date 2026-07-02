@@ -13,7 +13,8 @@ real `GROUP BY` over an `agent_memory` table.
 ## Scorecard number it moves
 
 Distribution: the post is the HN/lobste.rs/dev.to artifact; the demo lifts
-`/agents` comprehension → waitlist. `Pivot:` "launch post drafted".
+`/agents` comprehension → conversion (registered first answer). `Pivot:`
+"launch post drafted".
 
 ## Read first
 

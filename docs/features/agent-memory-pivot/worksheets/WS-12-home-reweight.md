@@ -12,7 +12,7 @@ band; do NOT change the wordmark/hero lede** — that lead string is WS-13.
 
 ## Scorecard number it moves
 
-Onboarding: home → waitlist conversion for the agent-builder reader, and the
+Onboarding: home → first-answer conversion for the agent-builder reader, and the
 home → `/agents` click-through. `Pivot:` "home reweighted".
 
 ## Read first

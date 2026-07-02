@@ -110,7 +110,6 @@ import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { createPortalSession } from "./stripe/portal.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { verifyTurnstile } from "./turnstile.ts";
-import { joinWaitlist } from "./waitlist.ts";
 import { runWorkloadAnalyser } from "./workload-analyser/index.ts";
 
 const SERVICE_VERSION = "0.1.0";
@@ -1146,6 +1145,31 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       );
     };
 
+    // SK-ONBOARD-006 — first-10-queries success counter (the GLOBAL-025
+    // onboarding KPI). Every routed /v1/ask completion — ok or error —
+    // bumps the DB row's saturating `first10_asks` counter until it
+    // reaches 10; `first10_ok` counts the successful subset
+    // (orchestrator ok = 2xx, non-refused; confirm previews included).
+    // Fire-and-forget like the last-queried touch — never on the
+    // user-visible latency path.
+    const bumpFirst10 = (ok: boolean): void => {
+      c.executionCtx.waitUntil(
+        c.env.DB.prepare(
+          "UPDATE databases SET first10_asks = first10_asks + 1, first10_ok = first10_ok + ? WHERE id = ? AND tenant_id = ? AND first10_asks < 10",
+        )
+          .bind(ok ? 1 : 0, resolvedDbId, principal.id)
+          .run()
+          .catch((err: unknown) => {
+            console.error(
+              JSON.stringify({
+                msg: "first10_bump_failed",
+                message: err instanceof Error ? err.message : String(err),
+              }),
+            );
+          }),
+      );
+    };
+
     if (wantsSse) {
       return streamSSE(c, async (stream) => {
         try {
@@ -1175,12 +1199,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               surface,
               outcome.error,
             );
+            bumpFirst10(false);
           } else {
             // Detach the ask.completed producer so the queue.send
             // round-trip runs after the SSE stream closes (PERFORMANCE
             // §3.1 — the emit is `ctx.waitUntil`-wrapped, never on the
             // user-visible path).
             c.executionCtx.waitUntil(outcome.pendingAskCompleted);
+            bumpFirst10(true);
             // SK-TRUST-001 — preview hop didn't exec; skip the anon
             // cap commit (SK-ANON-012) and `last_queried_at` bump so
             // the confirm hop can still land. The cap commits when
@@ -1222,12 +1248,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           surface,
           outcome.error,
         );
+        bumpFirst10(false);
         return c.json({ error: outcome.error }, httpStatus);
       }
       // Detach the ask.completed producer so queue.send runs in
       // ctx.waitUntil after the response flushes — keeps /v1/ask p99
       // off the queue producer round-trip (PERFORMANCE §3.1).
       c.executionCtx.waitUntil(outcome.pendingAskCompleted);
+      bumpFirst10(true);
       // SK-TRUST-001 — preview hop didn't exec; skip the anon cap
       // commit + `last_queried_at` bump so the confirm hop can still
       // land. Same logic as the SSE branch above.
@@ -1507,45 +1535,12 @@ app.post("/v1/memory/remember", requirePrincipal, async (c) => {
   });
 });
 
-// `POST /v1/waitlist` — public, unauthenticated, idempotent. Backs
-// the homepage waitlist form while the chat surface is tabled.
-// Returns 200 for any well-formed email (privacy: never reveal
-// list membership). Per-IP throttle (5/min) defends against abuse.
-//
-// CORS: tightened to the same allow-list as `/api/auth/*` — the form
-// only ever loads from nlqdb.com / pages.dev previews / localhost dev.
-// (Earlier slice used reflect-any-origin in line with /v1/demo/* but
-// there's no third-party-embed contract here, so the narrower posture
-// keeps random sites from probing the rate-limit / abuse path from
-// the browser.)
-app.use("/v1/waitlist", credentialedCors);
+// CORS: tightened to the same allow-list as `/api/auth/*` — these
+// endpoints only ever load from nlqdb.com / pages.dev previews /
+// localhost dev; the narrower posture keeps random sites from probing
+// the rate-limit / abuse path from the browser.
 app.use("/v1/events/*", credentialedCors);
 app.use("/v1/billing/*", credentialedCors);
-
-app.post("/v1/waitlist", async (c) => {
-  const body = await parseJsonBody<{ email?: unknown; persona?: unknown }>(c);
-  if (!body.ok) return c.json({ error: { status: "invalid_email" } }, 400);
-  const result = await joinWaitlist(
-    {
-      db: c.env.DB,
-      kv: c.env.KV,
-      events: buildEventEmitter(c.env.EVENTS_QUEUE),
-    },
-    body.body.email,
-    c.req.header("cf-connecting-ip") ?? null,
-    "web",
-    body.body.persona,
-  );
-  // Fire-and-forget: 200 ships before the queue producer resolves.
-  // Nested guards so a future 200-shaped variant without `pendingEmit`
-  // can't silently end up unhandled.
-  if (result.status === 200) {
-    if (result.pendingEmit) {
-      c.executionCtx.waitUntil(result.pendingEmit);
-    }
-  }
-  return c.json(result.body, result.status);
-});
 
 app.post("/v1/events/wishlist", async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");

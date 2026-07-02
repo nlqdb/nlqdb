@@ -126,7 +126,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb open source like Supabase?",
-        a: "The source is private during pre-alpha. The SDKs, CLI, framework wrappers, and the `<nlq-data>` web component will be open source at general availability; the platform itself is hosted-only for now.",
+        a: "The source is private during pre-beta. The SDKs, CLI, framework wrappers, and the `<nlq-data>` web component will be open source at general availability; the platform itself is hosted-only for now.",
       },
       {
         q: "What's the pricing model vs Supabase's $25/mo Pro?",
@@ -473,7 +473,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "HIPAA + SOC 2 Type 2 compliance",
         us: "no",
         them: "partial",
-        note: "Outerbase's Enterprise tier carries both certifications; lower tiers don't surface them. nlqdb is pre-alpha and carries neither.",
+        note: "Outerbase's Enterprise tier carries both certifications; lower tiers don't surface them. nlqdb is pre-beta and carries neither.",
       },
       {
         feature: "Unlimited free-tier natural-language queries",
@@ -505,7 +505,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb HIPAA or SOC 2 compliant like Outerbase?",
-        a: "No. nlqdb is pre-alpha; neither certification is in place yet. If you're shipping a regulated product today, Outerbase's Enterprise tier (HIPAA + SOC 2 Type 2) is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
+        a: "No. nlqdb is pre-beta; neither certification is in place yet. If you're shipping a regulated product today, Outerbase's Enterprise tier (HIPAA + SOC 2 Type 2) is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
       },
     ],
     demo: {
@@ -579,7 +579,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "SOC 2 Type II certification",
         us: "no",
         them: "partial",
-        note: "Wren AI's public pricing page lists SOC 2 Type II on the Essential and Enterprise plans only; the Free plan lists no compliance bullets. nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA yet.",
+        note: "Wren AI's public pricing page lists SOC 2 Type II on the Essential and Enterprise plans only; the Free plan lists no compliance bullets. nlqdb is pre-beta and carries neither SOC 2 nor HIPAA yet.",
       },
       {
         feature: "Unlimited free-tier natural-language queries",
@@ -609,7 +609,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb SOC 2 certified like Wren AI?",
-        a: "No. nlqdb is pre-alpha; SOC 2 Type II is not in place yet. As of May 2026, Wren AI's public pricing page lists SOC 2 Type II on the Essential and Enterprise plans only — the Free plan does not carry it. If you're shipping a regulated product on a Wren AI paid tier today, that compliance posture is honest; nlqdb's compliance roadmap is downstream of GA.",
+        a: "No. nlqdb is pre-beta; SOC 2 Type II is not in place yet. As of May 2026, Wren AI's public pricing page lists SOC 2 Type II on the Essential and Enterprise plans only — the Free plan does not carry it. If you're shipping a regulated product on a Wren AI paid tier today, that compliance posture is honest; nlqdb's compliance roadmap is downstream of GA.",
       },
       {
         q: "Can my AI agent provision a Wren-AI-managed warehouse the way it provisions an nlqdb database?",
@@ -695,7 +695,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "SOC 2 Type 2 certification",
         us: "no",
         them: "partial",
-        note: "AskYourDatabase's public security portal documents an in-progress SOC 2 Type 2 audit, originally anticipated to complete December 2025 — check their current security page for the live status. nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA today.",
+        note: "AskYourDatabase's public security portal documents an in-progress SOC 2 Type 2 audit, originally anticipated to complete December 2025 — check their current security page for the live status. nlqdb is pre-beta and carries neither SOC 2 nor HIPAA today.",
       },
       {
         feature: "On-premise / self-hosted deployment",
@@ -715,7 +715,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is AskYourDatabase SOC 2 certified?",
-        a: "AskYourDatabase's public security portal (verified June 2026) documents an in-progress SOC 2 Type 2 audit, originally anticipated to complete December 2025 — the certification is not yet attested on the free product, and the live security page is the source of truth for the current status. nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA today. If a documented compliance posture is required, their Enterprise on-premise deployment may also be relevant — it keeps the data inside your network perimeter.",
+        a: "AskYourDatabase's public security portal (verified June 2026) documents an in-progress SOC 2 Type 2 audit, originally anticipated to complete December 2025 — the certification is not yet attested on the free product, and the live security page is the source of truth for the current status. nlqdb is pre-beta and carries neither SOC 2 nor HIPAA today. If a documented compliance posture is required, their Enterprise on-premise deployment may also be relevant — it keeps the data inside your network perimeter.",
       },
       {
         q: "Can an AI agent provision its own database with AskYourDatabase the way it can with nlqdb's MCP server?",
@@ -1814,7 +1814,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "SOC 2 Type II + ISO 27001 + enterprise SSO",
         us: "no",
         them: "shipped",
-        note: "Retool carries SOC 2 Type II / ISO 27001:2022 / GDPR with SSO on Enterprise (HIPAA via self-host). nlqdb is pre-alpha and carries none yet.",
+        note: "Retool carries SOC 2 Type II / ISO 27001:2022 / GDPR with SSO on Enterprise (HIPAA via self-host). nlqdb is pre-beta and carries none yet.",
       },
       {
         feature: "Anonymous mode (try before sign-in)",
@@ -1837,7 +1837,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb SOC 2 or HIPAA compliant like Retool?",
-        a: "No. nlqdb is pre-alpha and carries no certifications yet. Retool holds SOC 2 Type II, ISO 27001:2022, and GDPR, with enterprise SSO and HIPAA-capable self-hosting. If a documented compliance posture is required today, Retool is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
+        a: "No. nlqdb is pre-beta and carries no certifications yet. Retool holds SOC 2 Type II, ISO 27001:2022, and GDPR, with enterprise SSO and HIPAA-capable self-hosting. If a documented compliance posture is required today, Retool is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
       },
       {
         q: "Why pick nlqdb over Retool if I just need an internal dashboard?",
@@ -1932,7 +1932,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "SOC 2 Type II + SSO + audit logs",
         us: "no",
         them: "shipped",
-        note: "Basedash carries SOC 2 Type II with SSO / SCIM / audit logs on Enterprise; nlqdb is pre-alpha and carries none yet.",
+        note: "Basedash carries SOC 2 Type II with SSO / SCIM / audit logs on Enterprise; nlqdb is pre-beta and carries none yet.",
       },
       {
         feature: "Free / anonymous tier (try before sign-in)",
@@ -1960,7 +1960,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb SOC 2 compliant like Basedash?",
-        a: "No. Basedash carries SOC 2 Type II with encryption in transit and at rest, plus SSO, SCIM, and audit logs on Enterprise. nlqdb is pre-alpha and holds no certifications yet. If a documented compliance posture is required today, Basedash is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
+        a: "No. Basedash carries SOC 2 Type II with encryption in transit and at rest, plus SSO, SCIM, and audit logs on Enterprise. nlqdb is pre-beta and holds no certifications yet. If a documented compliance posture is required today, Basedash is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
       },
     ],
     demo: {
@@ -2980,7 +2980,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "Self-host / open source",
         us: "no",
         them: "shipped",
-        note: "MindsDB is open source and self-hostable; nlqdb's platform is hosted-only during pre-alpha (SDKs/CLI/elements open at GA).",
+        note: "MindsDB is open source and self-hostable; nlqdb's platform is hosted-only during pre-beta (SDKs/CLI/elements open at GA).",
       },
     ],
     faqs: [
@@ -3100,7 +3100,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "Self-host / open source",
         us: "no",
         them: "shipped",
-        note: "LangChain is open source and self-hostable; nlqdb's platform is hosted-only during pre-alpha (SDKs / CLI / elements open at GA).",
+        note: "LangChain is open source and self-hostable; nlqdb's platform is hosted-only during pre-beta (SDKs / CLI / elements open at GA).",
       },
       {
         feature: "100s of framework integrations (models, stores, loaders)",

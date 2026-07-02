@@ -1,70 +1,33 @@
 # Distribution queue
 
 One publishable artifact drafted per day by the daily agent
-([`/daily`](../../.claude/commands/daily.md) step 3); the founder reviews and
-publishes at the weekly session. Newest first. Delete an entry once published
-(the live URL goes into `docs/scorecard.md`).
+([`/daily`](../../.claude/commands/daily.md) step 3); publishing is autonomous —
+drafts ship as canonical posts under `nlqdb.com/blog` with no founder review
+(founder-resolved 2026-07-01; `SK-BLOG-001`). Newest first. Delete an entry once
+published: the live URL goes into `docs/scorecard.md` § Shipped distribution, and
+the entry survives here only as a venue pointer to the canonical `/blog` URL
+until the community-venue variant is posted.
 
 **Retention (D4, 20 KB cap):** keep the most recent full draft(s) below inline —
-as many as fit under the cap (drafts have grown, so that is currently **one**);
-everything older collapses to a one-line title + venue + gist, with the full body
-recoverable from git history. The earliest drafts live in the
-[archive](./distribution-queue-archive.md).
+as many as fit under the cap; everything older collapses to a one-line title +
+venue + gist, with the full body recoverable from git history. The earliest
+drafts live in the [archive](./distribution-queue-archive.md).
 
-## 2026-07-01 (run 130) — dev.to / r/SQL / r/PostgreSQL: "NOT IN returned zero rows. It wasn't your data — it was one NULL."
+## Published — canonical `/blog` copies live; venue variants pending
 
-**Where:** dev.to + r/SQL + r/PostgreSQL; for anyone who wrote `WHERE id NOT IN (SELECT ...)` to find
-"who's missing" and got back nothing. nlqdb mentioned once, as the ask-in-English path.
+Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
+delete its line.
 
-**Title:** NOT IN returned zero rows. It wasn't your data — it was one NULL.
-
-**Body:**
-
-> "Which customers never placed an order?" is a question you ask constantly — products never sold,
-> users with no login this month, invoices with no payment. It's a set difference, and the obvious
-> query is a quiet trap:
->
-> ```sql
-> SELECT * FROM customers
-> WHERE id NOT IN (SELECT customer_id FROM orders);   -- returns nothing. why?
-> ```
->
-> If a single `customer_id` in that subquery is NULL, you get **zero rows** — no error, no warning.
-> Here's why: `NOT IN (a, b, NULL)` expands to `id <> a AND id <> b AND id <> NULL`. That last
-> comparison is never `true` — comparing anything to NULL is `unknown` — so the whole `AND` chain can
-> never be `true`, and every row is rejected. One NULL in the inner table silently empties your result.
->
-> **The two shapes that actually work:**
->
-> ```sql
-> -- LEFT JOIN ... IS NULL: keep the customers that found no matching order
-> SELECT c.* FROM customers c
-> LEFT JOIN orders o ON o.customer_id = c.id
-> WHERE o.id IS NULL;
->
-> -- NOT EXISTS: a correlated anti-join, NULL-safe by construction
-> SELECT * FROM customers c
-> WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id);
-> ```
->
-> Both return the same rows for a plain anti-join. `NOT EXISTS` stops at the first match and never
-> trips over NULLs. The `LEFT JOIN ... IS NULL` form is just as correct — but if the join key isn't
-> unique it can multiply rows *before* the filter, so know your grain. What neither of them does is
-> silently lie to you the way `NOT IN` does.
->
-> The rule worth keeping: reach for `NOT EXISTS` (or `LEFT JOIN ... IS NULL`) for "rows with no match,"
-> and treat `NOT IN (subquery)` as a smell unless you're certain the subquery is NULL-free.
->
-> (If you'd rather not re-derive which shape is safe every time: [nlqdb](https://nlqdb.com) takes
-> "customers who never placed an order" in English, compiles the NULL-safe anti-join, runs it
-> read-only, and shows the SQL so you can confirm it isn't a `NOT IN`. Honest limit — it owns the
-> Postgres it answers; bring-your-own-Postgres is signed-in only, not the public embed.)
-
-**Why this advances the north-star:** GLOBAL-025 onboarding/UX — anchors the new
-`/solve/find-rows-with-no-match-in-another-table` page (P3 analyst), rides evergreen "NOT IN returns
-no rows" / "find rows with no match" / "SQL anti-join" search intent, and every claim (NULL
-three-valued logic, `NOT EXISTS` vs `LEFT JOIN ... IS NULL`) is standard SQL behavior verifiable in
-the PostgreSQL subquery-expression docs. None degraded.
+- run 130 — **https://nlqdb.com/blog/not-in-subquery-null-trap/** — venue
+  variant pending: dev.to + r/SQL + r/PostgreSQL ("NOT IN returned zero rows.
+  It wasn't your data — it was one NULL."; anchors
+  `/solve/find-rows-with-no-match-in-another-table`).
+- run 20 — **https://nlqdb.com/blog/zep-recall-vs-analytical-agent-memory/** —
+  venue variant pending: r/AI_Agents / Show HN (Zep recall vs. aggregation;
+  anchors `/vs/zep`).
+- run 2 — **https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/** —
+  venue variant pending: dev.to (#sql #postgres #debugging) / lobste.rs (NULL
+  timestamp broke a TTL sweep + funnel metric).
 
 ## Collapsed — full drafts in git history
 

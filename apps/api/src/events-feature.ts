@@ -57,9 +57,9 @@ export async function recordWishlist(
   if (!isWishlistSurface(surface)) {
     return { status: 400, reason: "invalid_surface" };
   }
-  // Mirror waitlist.ts: null `cf-connecting-ip` collapses to a shared
-  // "unknown" bucket. Production behind Cloudflare always has the
-  // header; null means local dev / a non-CF preview path.
+  // Null `cf-connecting-ip` collapses to a shared "unknown" bucket.
+  // Production behind Cloudflare always has the header; null means
+  // local dev / a non-CF preview path.
   const ip = clientIp ?? "unknown";
   const throttle = makeKvThrottle(deps.kv, {
     prefix: "wl-surf:rate:",

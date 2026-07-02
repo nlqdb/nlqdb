@@ -11,7 +11,8 @@ directories link to. **A new route on `nlqdb.com`, not a new domain.**
 
 ## Scorecard number it moves
 
-Onboarding (landing → waitlist for the agent-builder persona). Add a
+Onboarding (landing → registered first answer for the agent-builder
+persona). Add a
 dedicated `/agents` row to the funnel once traffic lands. `Pivot:` boolean
 "/agents live".
 

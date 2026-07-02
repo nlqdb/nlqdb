@@ -4,7 +4,6 @@ description: Idempotency-Key on every mutation; (user_id, key) dedupe store; byt
 when-to-load:
   globs:
     - apps/api/src/stripe/webhook.ts
-    - apps/api/src/waitlist.ts
     - apps/api/src/middleware.ts
     - apps/api/src/index.ts
     - packages/sdk/**
@@ -14,14 +13,13 @@ when-to-load:
 # Feature: Idempotency
 
 **One-liner:** `Idempotency-Key` on every mutation; `(user_id, key)` dedupe store; byte-exact retry response.
-**Status:** partial — natural-key dedupe shipped (Stripe webhook via `stripe_events`, waitlist via email-hash PK). The general-purpose `Idempotency-Key` middleware on `/v1/ask` writes and the SDK's auto-generated retry keys are open work — the contract is locked (DESIGN §14.6 + GLOBAL-005), implementation is not.
-**Owners (code):** `apps/api/src/stripe/webhook.ts`, `apps/api/src/waitlist.ts`, `apps/api/src/middleware.ts` (target for the general middleware), `packages/sdk/**` (target for retry-key auto-generation).
+**Status:** partial — natural-key dedupe shipped (Stripe webhook via `stripe_events`). The general-purpose `Idempotency-Key` middleware on `/v1/ask` writes and the SDK's auto-generated retry keys are open work — the contract is locked (DESIGN §14.6 + GLOBAL-005), implementation is not.
+**Owners (code):** `apps/api/src/stripe/webhook.ts`, `apps/api/src/middleware.ts` (target for the general middleware), `packages/sdk/**` (target for retry-key auto-generation).
 **Cross-refs:** docs/architecture.md §9 line 938–939 (bullet-proof checklist) · §14.6 line 1255–1297 (HTTP API mutation contract) · [GLOBAL-005](../../decisions/GLOBAL-005-idempotency-key.md)
 
 ## Touchpoints — read this feature before editing
 
 - `apps/api/src/stripe/webhook.ts` — natural-key dedupe (`event_id` PK in D1 `stripe_events`).
-- `apps/api/src/waitlist.ts` — natural-key dedupe (SHA-256 of email is PK; `ON CONFLICT` collapses).
 - `apps/api/src/middleware.ts` — current location for cross-cutting middleware; the general-purpose Idempotency-Key middleware lands here when implemented.
 - `apps/api/src/index.ts` — request routing; the auto-classifier (read vs write) lives here.
 - `packages/sdk/**` — the SDK auto-generates keys for retried mutations; not yet implemented.
@@ -60,10 +58,10 @@ when-to-load:
 
 ### SK-IDEMP-004 — Two coexisting patterns: natural-key dedupe + header-key dedupe
 
-- **Decision:** Endpoints with semantic identity in the request itself (Stripe events keyed by `event_id`, waitlist keyed by email hash) dedupe via that natural key — no `Idempotency-Key` header required. Endpoints without a natural key (`/v1/ask` writes, `/v1/db/connect`, future mutations) use the `Idempotency-Key` header path. Both go through D1 with `ON CONFLICT` semantics for write atomicity.
+- **Decision:** Endpoints with semantic identity in the request itself (e.g. Stripe events keyed by `event_id`) dedupe via that natural key — no `Idempotency-Key` header required. Endpoints without a natural key (`/v1/ask` writes, `/v1/db/connect`, future mutations) use the `Idempotency-Key` header path. Both go through D1 with `ON CONFLICT` semantics for write atomicity.
 - **Core value:** Simple, Bullet-proof
-- **Why:** Demanding a header on Stripe webhooks would force Stripe (the upstream) to send one, which they don't; demanding one on the waitlist would force a public unauthenticated endpoint to invent client-side keying. The natural-key path is what's actually shipped today and is correct for those endpoints. The header path is the general primitive for everything else; `SK-IDEMP-001`'s auto-classifier routes between them.
-- **Consequence in code:** Stripe webhook: `INSERT INTO stripe_events (event_id, ...) ON CONFLICT(event_id) DO NOTHING RETURNING 1`. Waitlist: SHA-256 of email is the PK, `ON CONFLICT DO NOTHING`. Header path (when implemented): `INSERT INTO idempotency_keys (user_id, key, ...) ON CONFLICT(user_id, key) DO NOTHING RETURNING 1`. The shared pattern is "insert-or-detect-existing in one D1 round-trip."
+- **Why:** Demanding a header on Stripe webhooks would force Stripe (the upstream) to send one, which they don't. The natural-key path is what's actually shipped today and is correct for such endpoints. The header path is the general primitive for everything else; `SK-IDEMP-001`'s auto-classifier routes between them.
+- **Consequence in code:** Stripe webhook: `INSERT INTO stripe_events (event_id, ...) ON CONFLICT(event_id) DO NOTHING RETURNING 1`. Header path (when implemented): `INSERT INTO idempotency_keys (user_id, key, ...) ON CONFLICT(user_id, key) DO NOTHING RETURNING 1`. The shared pattern is "insert-or-detect-existing in one D1 round-trip."
 - **Alternatives rejected:**
   - Force every endpoint to use the header — public endpoints can't do that without breaking their unauth posture.
   - Per-endpoint custom dedupe code — the `ON CONFLICT` pattern is small enough to repeat; abstracting prematurely hides the tenant of each endpoint's identity.
@@ -131,13 +129,13 @@ when-to-load:
 
 ### SK-IDEMP-011 — Per-route idempotency mode (`natural-key` | `header-key` | `exempt`)
 
-- **Decision:** The middleware reads an explicit per-route idempotency mode instead of inferring read-vs-write. `/v1/waitlist` declares `natural-key` (dedup on email, `SK-IDEMP-004`); unauth idempotent reads declare `exempt`; everything mutating defaults to `header-key` (the `GLOBAL-005` write rule).
+- **Decision:** The middleware reads an explicit per-route idempotency mode instead of inferring read-vs-write. Natural-key routes (`SK-IDEMP-004`, e.g. the Stripe webhook) declare `natural-key`; unauth idempotent reads declare `exempt`; everything mutating defaults to `header-key` (the `GLOBAL-005` write rule).
 - **Core value:** Simple, Bullet-proof
-- **Why:** The interim hack classified `/v1/waitlist` as a "read" so the write-needs-a-key 400 wouldn't fire — which is a lie that the next person debugging the classifier trips over. An explicit per-route mode states the intent at the route definition, where it's visible. Resolved per `GLOBAL-033` (Simple → state intent, don't infer).
+- **Why:** Inferring read-vs-write mislabels natural-key writes as "reads" so the write-needs-a-key 400 won't fire — a lie the next person debugging the classifier trips over. An explicit per-route mode states the intent at the route definition, where it's visible. Resolved per `GLOBAL-033` (Simple → state intent, don't infer).
 - **Consequence in code:** Routes carry an idempotency mode in their registration; the middleware switches on it. A new mutating route with no mode declared fails closed to `header-key` (the safe default).
 - **Alternatives rejected:**
   - **Keep the classify-as-read hack** — mislabels a write, surprises the next reader.
-  - **Infer from HTTP method** — `POST /v1/waitlist` is a write by method but idempotent by natural key; method alone can't express that.
+  - **Infer from HTTP method** — a natural-key endpoint is a write by method but idempotent by its key; method alone can't express that.
 
 ## GLOBALs governing this feature
 
@@ -154,4 +152,4 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **SSE / streaming replay** — Resolved per `GLOBAL-033`: an SSE stream is not byte-idempotent (timestamps interleave), so a retried streaming request falls through to a **fresh stream** and the client reconciles. `SK-IDEMP-003` byte-exact replay applies to the buffered JSON path only. Wire the carve-out alongside the middleware (the `header-key` mode skips replay when the response is `text/event-stream`).
 
-> The dedupe-store TTL, body-mismatch behaviour, anonymous identity, and the waitlist/read carve-out were open here; they are now `SK-IDEMP-008..011` above. The middleware itself is still unbuilt — these pin its contract before it lands.
+> The dedupe-store TTL, body-mismatch behaviour, anonymous identity, and the natural-key/read carve-out were open here; they are now `SK-IDEMP-008..011` above. The middleware itself is still unbuilt — these pin its contract before it lands.

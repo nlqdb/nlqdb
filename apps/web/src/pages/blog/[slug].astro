@@ -1,0 +1,314 @@
+---
+// One template, N blog posts — generated at build via `getStaticPaths()`
+// from `data/blog.ts` (same one-file-edit pattern as `/vs` + `/solve`).
+// Each post is the canonical copy of a distribution-queue draft
+// (SK-BLOG-001); community-venue variants point back at this URL.
+// JSON-LD: BlogPosting (author/publisher = the SK-WEB-014 Organization
+// by stable @id) + BreadcrumbList (shared lib/breadcrumb.ts).
+
+import Footer from "../../components/Footer.astro";
+import Topnav from "../../components/Topnav.astro";
+import { BLOG_POSTS, blogBySlug } from "../../data/blog";
+import Base from "../../layouts/Base.astro";
+import { breadcrumbJsonLd } from "../../lib/breadcrumb";
+import { renderInline } from "../../lib/inline-md";
+import { ORGANIZATION_ID_FRAGMENT } from "../../lib/site-jsonld";
+
+export function getStaticPaths() {
+  return BLOG_POSTS.map((p) => ({ params: { slug: p.slug } }));
+}
+
+const { slug } = Astro.params;
+const post = blogBySlug(slug as string);
+if (!post) {
+  return Astro.redirect("/blog");
+}
+
+const pageTitle = `${post.title} — nlqdb blog`;
+const canonical = `/blog/${post.slug}`;
+const canonicalAbs = new URL(`${canonical}/`, Astro.site).toString();
+const organizationId = Astro.site
+  ? new URL(ORGANIZATION_ID_FRAGMENT, Astro.site).toString()
+  : undefined;
+
+const postJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  headline: post.title,
+  description: post.description,
+  datePublished: post.date,
+  dateModified: post.date,
+  url: canonicalAbs,
+  mainEntityOfPage: canonicalAbs,
+  ...(organizationId
+    ? {
+        author: { "@id": organizationId },
+        publisher: { "@id": organizationId },
+      }
+    : {}),
+};
+
+const breadcrumbLd = breadcrumbJsonLd(
+  [
+    { name: "Home", path: "/" },
+    { name: "Blog", path: "/blog" },
+    { name: post.title, path: canonical },
+  ],
+  Astro.site,
+);
+
+const displayDate = new Date(`${post.date}T00:00:00Z`).toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
+---
+<Base title={pageTitle} description={post.description} canonical={canonical}>
+  <div class="page">
+    <Topnav />
+
+    <main class="blg">
+      <nav class="blg__crumbs" aria-label="Breadcrumb">
+        <ol>
+          <li><a href="/">Home</a></li>
+          <li><a href="/blog">Blog</a></li>
+          <li aria-current="page">{post.title}</li>
+        </ol>
+      </nav>
+
+      <article>
+        <header class="blg__head">
+          <p class="blg__eyebrow">
+            Blog · <time datetime={post.date}>{displayDate}</time>
+          </p>
+          <h1 class="blg__title">{post.title}</h1>
+          <p class="blg__lede">{post.description}</p>
+        </header>
+
+        <div class="blg__body">
+          {
+            post.body.map((b) => {
+              if (b.kind === "p") return <p set:html={renderInline(b.text)} />;
+              if (b.kind === "h2") return <h2>{b.text}</h2>;
+              if (b.kind === "code")
+                return (
+                  <pre data-lang={b.lang}><code>{b.code}</code></pre>
+                );
+              if (b.kind === "ul")
+                return (
+                  <ul>
+                    {b.items.map((item) => (
+                      <li set:html={renderInline(item)} />
+                    ))}
+                  </ul>
+                );
+              return (
+                <ol>
+                  {b.items.map((item) => (
+                    <li set:html={renderInline(item)} />
+                  ))}
+                </ol>
+              );
+            })
+          }
+        </div>
+      </article>
+
+      <section class="blg__cta">
+        <h2 class="blg__cta-title">Try nlqdb in 30 seconds</h2>
+        <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
+        <a class="cta blg__cta-btn" href="/app/new" data-blog-slug={post.slug}>
+          Start with a goal &rarr;
+        </a>
+        <p class="blg__cta-meta">
+          {post.anchor && (
+            <>
+              Full guide: <a href={`${post.anchor.path}/`}>{post.anchor.label}</a>.{" "}
+            </>
+          )}
+          More posts: <a href="/blog">browse the blog</a>.
+        </p>
+      </section>
+    </main>
+
+    <Footer />
+  </div>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(postJsonLd)} />
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
+  <script>
+    // Per-post demand signal on the CTA (GLOBAL-024) — same late-bound
+    // LogSnag hook the /vs + /solve "Try this query" buttons use. The
+    // click still navigates normally; the emit never blocks it.
+    import { emit } from "../../lib/logsnag";
+    document.querySelectorAll<HTMLAnchorElement>(".blg__cta-btn").forEach((a) => {
+      a.addEventListener("click", () => {
+        emit("blog.cta_clicked", { slug: a.dataset["blogSlug"] ?? "" });
+      });
+    });
+  </script>
+</Base>
+
+<style>
+  .blg {
+    max-width: var(--col);
+    margin: 0 auto;
+    padding: clamp(32px, 5vw, 64px) 0;
+  }
+
+  .blg__crumbs {
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    margin: 0 0 var(--gap-block);
+  }
+  .blg__crumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    color: var(--muted);
+  }
+  .blg__crumbs li + li::before {
+    content: "/";
+    margin-right: 8px;
+    opacity: 0.6;
+  }
+  .blg__crumbs a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .blg__crumbs a:hover {
+    color: var(--ink);
+  }
+  .blg__crumbs [aria-current="page"] {
+    color: var(--ink);
+  }
+
+  .blg__head {
+    margin: 0 0 var(--gap-block);
+  }
+  .blg__eyebrow {
+    margin: 0 0 16px;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .blg__title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--ink);
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+  .blg__lede {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--t-large);
+    color: var(--body);
+    line-height: 1.5;
+    max-width: 60ch;
+    text-wrap: balance;
+  }
+
+  .blg__body {
+    margin: 0 0 var(--gap-beat);
+  }
+  .blg__body :global(p) {
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.65;
+    margin: 0 0 18px;
+    max-width: 68ch;
+  }
+  .blg__body :global(h2) {
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: clamp(24px, 4vw, 36px) 0 14px;
+  }
+  .blg__body :global(ul),
+  .blg__body :global(ol) {
+    margin: 0 0 18px;
+    padding-left: 22px;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.65;
+    max-width: 68ch;
+  }
+  .blg__body :global(li + li) {
+    margin-top: 10px;
+  }
+  .blg__body :global(pre) {
+    margin: 0 0 18px;
+    padding: 18px;
+    background: var(--ground);
+    border: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--body);
+    overflow-x: auto;
+  }
+  .blg__body :global(code) {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--ink);
+  }
+  .blg__body :global(pre code) {
+    font-size: inherit;
+    color: inherit;
+  }
+  .blg__body :global(a) {
+    color: var(--ink);
+  }
+  .blg__body :global(strong) {
+    color: var(--ink);
+  }
+
+  .blg__cta {
+    padding: clamp(28px, 4vw, 40px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+  }
+  .blg__cta-title {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: 0 0 12px;
+  }
+  .blg__cta p {
+    font-family: var(--sans);
+    color: var(--body);
+    margin: 0 0 20px;
+    font-size: var(--t-body);
+  }
+  .blg__cta-btn {
+    padding: 16px 28px;
+  }
+  .blg__cta-meta {
+    margin: 20px 0 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+  .blg__cta-meta a {
+    color: var(--body);
+  }
+  .blg__cta-meta a:hover {
+    color: var(--ink);
+  }
+</style>

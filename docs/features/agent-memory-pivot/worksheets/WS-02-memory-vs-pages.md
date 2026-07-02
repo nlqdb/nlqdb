@@ -12,7 +12,8 @@ competitor per run** (SK-PIVOT-002) — Zep first, then Letta, then LangMem.
 ## Scorecard number it moves
 
 Funnel / distribution lane: each page is a new AEO entry point and a
-distribution artifact → feeds **waitlist rows** (the worst number). Add to
+distribution artifact → feeds **registered strangers reaching a first
+answer** (the worst number). Add to
 the `Pivot:` progress line: `+1 memory /vs page`.
 
 ## Read first

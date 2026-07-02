@@ -13,8 +13,7 @@ Your machine works. Your compass is broken — in one specific, fixable place.
    BIRD/Spider thresholds stay as a public progress bar, not a lock. The
    bottleneck is traffic and engine quality, not access.
 2. **The company has zero external contact, measured.** Production D1 today:
-   7 users (you ×3 + 4 test accounts), 66 waitlist rows of which 62 are your own
-   stranger-test bots, 3 are probes, and 1 is you. Web analytics are unreadable
+   7 users (you ×3 + 4 test accounts), 0 external. Web analytics are unreadable
    (the API token lacks the analytics scope). The only feedback nlqdb has ever
    received is from itself.
 3. **The quality loop is open, not closed.** 12 planner levers (SK-LLM-023…035)
@@ -36,7 +35,6 @@ and distributing*. Status checklist in §8; the operating loop in §9.
 |---|---|---|
 | Company age | ~7 weeks (CF account 2026-04-24) | Cloudflare API |
 | Real registered users | **0 external** (7 rows: founder + tests) | D1 `user` table |
-| Real waitlist signups | **0 external** (66 rows: 62 bots, 3 probes, founder) | D1 `waitlist` table |
 | BIRD-dev EX (free chain) | 0.35 (lower bound, 1 run, 2026-06-09; re-seeded **0.522** by the 2026-06-12 canonical 6-provider run) | `tools/eval/baseline-2026-06-15.json` |
 | Spider 2.0-lite EX (free chain) | 0.12 (re-seeded **0.1704**, 2026-06-12 — still far below the 0.75 target) | same |
 | Engine-quality thresholds | BIRD ≥ 0.65 AND Spider ≥ 0.75 | GLOBAL-025 |
@@ -100,10 +98,10 @@ Three problems:
 |---|---|---|---|
 | 1 | **Scorecard** | Pull eval results, D1 counts, CF analytics, LogSnag → regenerate `docs/scorecard.md` (current-state tracker, no changelog) → flag the worst number | all (read-only) |
 | 2 | **Eval loop** | Pick ONE lever → run mini-eval (fixed 60-q slice) before/after → merge only if Δ ≥ 0, else revert + record | persona-bench %, BIRD % |
-| 3 | **Distribution** | Produce one publishable artifact/day: Show-HN draft, dev.to post, answer to a real SO/Reddit thread, comparison-page improvement, directory submission. Queue in `docs/research/distribution-queue.md`; founder reviews weekly | external visits, real waitlist rows |
+| 3 | **Distribution** | Produce one publishable artifact/day: Show-HN draft, dev.to post, answer to a real SO/Reddit thread, comparison-page improvement, directory submission. Queue in `docs/research/distribution-queue.md`; published autonomously (daily step 3) | external visits, registered strangers |
 | 4 | **User evidence** | ICP mining toward the ≥30-quote bar; draft (not send) outreach to authors of mined pain-quotes; in-product Sean Ellis survey slice | scored quotes, survey responses |
 | 5 | **Stranger test** | Keep as-is — it's genuinely good — plus: alert when a *real* (non-bot) email enters the funnel | funnel pass-rate |
-| 6 | **Feature** | One lane, demand-ordered: finish BYO Postgres end-to-end before ClickHouse/OTel; billing lane frozen until first "how do I pay" | TTFV, first-query success |
+| 6 | **Feature** | One lane, demand-ordered: finish BYO Postgres end-to-end before ClickHouse/OTel; billing lane frozen until first "how do I pay" | TTFV, first-10-queries success |
 | 7 | **Review/merge** | Keep, plus enforce: a PR that names no measured KPI delta in its body doesn't merge | gate on all of the above |
 
 **Prompt pattern for every lane** (this is the rethink you asked about):
@@ -115,8 +113,8 @@ number does docs cleanup instead of shipping code.
 ## 4. Growth, within your real constraints ($0, no calls, Claude-run)
 
 You don't need sales or calls. You need **published artifacts + an open door +
-honest measurement**. All async, all free, all agent-draftable with you as the
-one-click approver:
+honest measurement**. All async, all free, all agent-run (published
+autonomously since 2026-07-01; only Show-HN stays founder-only):
 
 1. **Open the door — done.** The product is fully public; any stranger can
    reach a first answer with no gate and no invite code.
@@ -147,9 +145,9 @@ tracker, a quality source-of-truth, and now.md. Nothing aggregates.
 **Recommendation R3 — `docs/scorecard.md`, regenerated daily by agent #1:**
 one page, one table, committed (so trends live in git history):
 
-- Funnel: visits → query attempts → first-answer successes → real waitlist
-  rows → activated users → returning users (all *bot-excluded*; the synthetic
-  stranger-test traffic must be filtered or it poisons every number).
+- Funnel: visits → query attempts → first-answer successes → registered
+  strangers → activated users → returning users (all *bot-excluded*; the
+  synthetic stranger-test traffic must be filtered or it poisons every number).
 - Engine: persona-bench %, BIRD %, Spider %, free-vs-frontier delta, with the
   date last measured (a stale date is itself an alert).
 - Ops: p50/p95 ask latency, error rate, $ spend (should be ~0).
@@ -202,8 +200,6 @@ the missing half.
 
 Cheap techniques you haven't used (all async, $0, agent-runnable):
 
-- **Fake-door / smoke tests:** the waitlist already is one — but it has never
-  been exposed to traffic. Publishing (§4) is the missing half.
 - **Launch-platform comments as interviews:** every Show-HN reply is a free
   user interview; agents can cluster and grade them like ICP quotes.
 - **Public-repo signal:** GLOBAL-019 says Apache-2 open core — if the repo
@@ -235,7 +231,7 @@ Done same day this doc was written:
 - ✅ **Daily agent prompt** codified — `.claude/commands/daily.md` (§9 as one
   executable loop).
 
-Left — all agent-side; the founder's only standing job is the §9 weekly session:
+Left — all agent-side; nothing waits on the founder (§9):
 
 - ☐ **Persona-bench** (§2) — the user-relevant quality number.
 - ☐ **`docs/scorecard.md` + daily regenerator** (bot-filtered funnel + engine
@@ -263,23 +259,22 @@ tooling. Runnable form: [`.claude/commands/daily.md`](../../.claude/commands/dai
    proven), funnel lanes via the stranger-test walkers. Δ ≥ 0 merges; Δ < 0
    reverts with a one-line note. An agent that can't name its number does
    deletion/cleanup (D5) instead of building.
-3. **One artifact out.** Distribution agent drafts one publishable thing
-   (post, answer, submission) into `docs/research/distribution-queue.md`;
-   the founder approves at the weekly session. Publishing is a daily
-   output, not a launch event. `blocked-by-human.md` stays reserved for
-   true human-only blockers.
+3. **One artifact out.** Distribution agent publishes one thing — queue
+   drafts ship to `nlqdb.com/blog` autonomously (founder-resolved
+   2026-07-01; `/daily` step 3); nothing waits for review. Publishing is
+   a daily output, not a launch event. `blocked-by-human.md` stays
+   reserved for true human-only blockers.
 4. **Review gate.** The merge agent rejects any PR whose body names no
    measured delta — the existing CLAUDE.md §8 quality gates plus one line.
 
-**Weekly (one founder session, ~30 min, the only meeting the company has):**
-
-1. Read `docs/scorecard.md` — the trend, not the day.
-2. Clear `blocked-by-human.md` — every bullet gets decided, clicked, or
-   explicitly deferred with a trigger. Nothing sits twice.
-3. Dispatch (or let the agent dispatch) the canonical eval; the weekly delta
-   is the company's heartbeat.
-4. Pick next week's single focus number and write it at the top of the
-   scorecard. Lanes that don't serve it run at half effort.
+**Weekly (an agent run, not a founder session):** runnable form
+[`/weekly`](../../.claude/commands/weekly.md). The agent audits the week's
+dailies (trend, monoculture, yield, dark metrics, delta integrity, prompt
+drift), dispatches or verifies the canonical eval, and sets the weekly focus
+number at the top of the scorecard. Publishing is autonomous (daily step 3).
+The founder may override the focus number — a founder-written number is never
+overwritten — and clears `blocked-by-human.md` on their own cadence, but
+nothing waits on them.
 
 **The invariant** behind both cadences: *no change without a number, no number
 without a next change.* Measure → pick the worst number → smallest change →
