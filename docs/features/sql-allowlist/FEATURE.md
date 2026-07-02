@@ -48,7 +48,7 @@ when-to-load:
 - **Decision:** `EXPLAIN ANALYZE …` and `EXPLAIN (ANALYZE …) …` are rejected (matched by `EXPLAIN_ANALYZE` regex) because they execute the wrapped statement on Postgres. Plain `EXPLAIN` and `SHOW` skip AST parsing entirely — they are read-only by definition.
 - **Core value:** Bullet-proof, Simple
 - **Why:** `EXPLAIN ANALYZE` over a DML inner statement runs the DML — that is exactly the destructive-side-effect surface we are guarding. Conversely, `node-sql-parser` returns "not supported" for plain `EXPLAIN`/`SHOW`, so demanding a parse for them would force false-rejects on safe statements.
-- **Consequence in code:** The `EXPLAIN_ANALYZE` regex must match before the SHOW/EXPLAIN short-circuit, in that order. Future short-circuits for other leading verbs require the same "is this read-only by definition" justification.
+- **Consequence in code:** The `EXPLAIN_ANALYZE` regex must match before the SHOW/EXPLAIN short-circuit, in that order, and must be tested against a **comment-collapsed** view of the SQL — a comment wedged between `EXPLAIN` and `ANALYZE` (`EXPLAIN /*c*/ ANALYZE DELETE …`) is whitespace to Postgres, so a comment-blind regex lets the destructive form smuggle past into the `explain` short-circuit (same class as `SK-TRUST-001`). Future short-circuits for other leading verbs require the same "is this read-only by definition" justification.
 - **Alternatives rejected:**
   - Treat `EXPLAIN` like any other DML — false-rejects safe debug queries and forces users into raw-SQL escape (`GLOBAL-015`) for read-only introspection.
   - Allow `EXPLAIN ANALYZE` because "advanced users want it" — same destructive surface as the underlying DML; counterexamples in the wild include `EXPLAIN ANALYZE DELETE …`.

@@ -53,9 +53,17 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-02 (run 131 — publish, don't draft)** — step 3 rule 1 (queue ≫ 3
-unpublished drafts): published the run-106 draft as the canonical `/blog` post
-`store-form-submissions-without-a-backend`; queue entry → venue-pointer.
-Row #6 **64 → 65** (`/blog` 3 → 4); row #7 **3 → 4**. apps/web **189 pass**,
-biome clean. **KPI:** GLOBAL-025 onboarding/UX (the row #6 lever); none
-degraded.
+**2026-07-02 (SQL-allowlist bypass fix)** — distribution lane (surfaces row #6)
+owned by open PR #576 this run + over-pulled (anti-rut); engine EX levers
+dispatch-gated (§rows 8–10). Different lever: closed a verified **SK-SQLAL-003
+`EXPLAIN ANALYZE` comment-smuggle bypass** in `sql-validate.ts`. A comment wedged
+between `EXPLAIN` and `ANALYZE` (`EXPLAIN /*c*/ ANALYZE DELETE …`, `EXPLAIN --c\n
+ANALYZE …`, `EXPLAIN /*c*/ (ANALYZE) …`) is whitespace to Postgres, but the
+comment-blind `EXPLAIN_ANALYZE` regex missed it and the `explain` short-circuit
+then **returned `ok:true`, letting the wrapped DML execute** — same class as the
+prior SK-TRUST-001 smuggle. **Before → after:** 3 comment-wedged
+`EXPLAIN ANALYZE <DML>` cases `ok:true → rejected` (gate now tests a
+comment-collapsed view); plain `EXPLAIN /*c*/ SELECT` still passes. 5 regression
+tests added; full api suite **828 pass / 6 skip**, tsc + biome clean.
+**KPI:** GLOBAL-025 engine-quality/trust (write-safety guardrail integrity);
+none degraded.

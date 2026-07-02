@@ -134,6 +134,16 @@ const DISALLOWED_FUNCTIONS = new Set([
 // Matches `EXPLAIN ANALYZE …` and `EXPLAIN (ANALYZE …) …`.
 const EXPLAIN_ANALYZE = /^explain\s*(?:\(\s*[^)]*\banalyze\b|analyze\b)/i;
 
+// Comment-blind view for the EXPLAIN_ANALYZE gate. Postgres treats a
+// `/* … */` or `-- …` comment between EXPLAIN and ANALYZE as whitespace,
+// so `EXPLAIN /*c*/ ANALYZE DELETE …` still executes the DELETE — but the
+// regex above sees the comment token and misses it, and the `explain`
+// short-circuit then allows the write (same comment-smuggle class as the
+// leading-verb gate). Collapse comments to a space first. Anchored to
+// `^explain`, this can only ever *add* a reject, never mask a legit query.
+const collapseComments = (s: string): string =>
+  s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+
 // Embedded-verb mapping for the AST walk. Same buckets as the
 // leading-verb reject map but keyed by the AST `type` string
 // node-sql-parser produces.
@@ -201,7 +211,9 @@ export function validateSql(rawSql: string): SqlValidationResult {
 
   // EXPLAIN ANALYZE / EXPLAIN (ANALYZE) execute the wrapped statement.
   // Reject before the SHOW/EXPLAIN short-circuit; plain EXPLAIN is fine.
-  if (EXPLAIN_ANALYZE.test(sql)) {
+  // Test the comment-collapsed view so a comment wedged between EXPLAIN
+  // and ANALYZE can't smuggle the destructive form past the regex.
+  if (EXPLAIN_ANALYZE.test(collapseComments(sql))) {
     return { ok: false, reason: "disallowed_verb", matched: "explain_analyze" };
   }
 

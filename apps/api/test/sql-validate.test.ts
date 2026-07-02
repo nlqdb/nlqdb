@@ -82,6 +82,15 @@ describe("validateSql", () => {
       ["EXPLAIN (ANALYZE) UPDATE users SET name = 'x'", false],
       ["EXPLAIN ANALYZE DELETE FROM users", false],
       ["EXPLAIN (ANALYZE, VERBOSE) SELECT * FROM users", false],
+      // Comment-smuggle: a comment between EXPLAIN and ANALYZE is
+      // whitespace to Postgres, so the wrapped DML still runs. The gate
+      // must be comment-blind — these must reject, not silently allow.
+      ["EXPLAIN /*c*/ ANALYZE DELETE FROM users", false],
+      ["EXPLAIN --c\n ANALYZE DELETE FROM users", false],
+      ["EXPLAIN /*c*/ (ANALYZE) UPDATE users SET name = 'x'", false],
+      ["EXPLAIN/*c*/ANALYZE INSERT INTO users VALUES (1)", false],
+      // A comment that is NOT wedging ANALYZE must still pass.
+      ["EXPLAIN /*c*/ SELECT * FROM users", true],
       ["--c\nSELECT 1", true],
       ["/* leading */ SELECT 1", true],
       ["WITH/*c*/x AS (SELECT 1) SELECT * FROM x", true],
