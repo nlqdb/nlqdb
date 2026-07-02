@@ -126,6 +126,52 @@ describe("orchestrateRun", () => {
     expect(exec).not.toHaveBeenCalled();
   });
 
+  it("read-only gate rejects a data-modifying CTE (leading verb is `with`, not a write)", async () => {
+    // Regression: the gate previously checked only the leading verb, so a
+    // write hidden in a CTE (`WITH … (INSERT …) SELECT …`) slipped through
+    // as a read. `containsWriteVerb` detects the embedded write.
+    const exec = vi.fn();
+    const out = await orchestrateRun(makeDeps({ exec }), {
+      sql: "WITH x AS (INSERT INTO orders (id) VALUES (1) RETURNING id) SELECT * FROM x",
+      dbId: "db_test",
+      userId: "user_1",
+      readOnly: true,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error.status).toBe("forbidden");
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it("read-only gate rejects an UPDATE/DELETE hidden in a CTE too", async () => {
+    for (const sql of [
+      "WITH x AS (UPDATE orders SET paid = true WHERE id = 1 RETURNING id) SELECT * FROM x",
+      "WITH x AS (DELETE FROM orders WHERE id = 1 RETURNING id) SELECT * FROM x",
+    ]) {
+      const exec = vi.fn();
+      const out = await orchestrateRun(makeDeps({ exec }), {
+        sql,
+        dbId: "db_test",
+        userId: "user_1",
+        readOnly: true,
+      });
+      expect(out.ok).toBe(false);
+      if (out.ok) continue;
+      expect(out.error.status).toBe("forbidden");
+      expect(exec).not.toHaveBeenCalled();
+    }
+  });
+
+  it("read-only gate allows a read-only CTE", async () => {
+    const out = await orchestrateRun(makeDeps(), {
+      sql: "WITH x AS (SELECT id FROM orders) SELECT * FROM x",
+      dbId: "db_test",
+      userId: "user_1",
+      readOnly: true,
+    });
+    expect(out.ok).toBe(true);
+  });
+
   it("returns db_not_found when resolveDb returns null", async () => {
     const out = await orchestrateRun(makeDeps({ resolveDb: async () => null }), {
       sql: "SELECT 1",
