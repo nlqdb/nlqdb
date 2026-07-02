@@ -125,6 +125,17 @@ export async function provisionDb(
   statements.push({
     sql: `GRANT USAGE ON SCHEMA "${schemaName}" TO "${roleName}"`,
   });
+  // Least-privilege exec: the read/write + memory exec paths run
+  // `SET LOCAL ROLE "${roleName}"` before the user SQL (ask/build-deps.ts
+  // `buildHostedExecSteps`) so a query can't reach another tenant's
+  // schema and RLS is actually enforced (the shared owner bypasses RLS as
+  // table owner). For that role-switch to succeed the connecting owner
+  // must be a member of the role WITH SET — PG16+ split SET from ADMIN,
+  // and the CREATEROLE auto-grant gives ADMIN but not SET, so `SET ROLE`
+  // is denied without this explicit grant (verified against Neon PG17).
+  statements.push({
+    sql: `GRANT "${roleName}" TO CURRENT_USER WITH SET TRUE`,
+  });
 
   for (const stmt of args.ddl) {
     // CREATE INDEX on a populated table can run well past 30 s
@@ -155,6 +166,18 @@ export async function provisionDb(
         `USING (current_setting('app.tenant_id', true) = '${tenantLiteral}')`,
     });
   }
+
+  // Grant the tenant role DML on the tables + USAGE on their sequences
+  // (serial/identity PKs need it for INSERT). Runs after the DDL so the
+  // tables/sequences exist. Without these the `SET LOCAL ROLE` exec path
+  // would hit "permission denied for table" — the role previously had
+  // only schema USAGE because queries always ran as the owner.
+  statements.push({
+    sql: `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "${schemaName}" TO "${roleName}"`,
+  });
+  statements.push({
+    sql: `GRANT USAGE ON ALL SEQUENCES IN SCHEMA "${schemaName}" TO "${roleName}"`,
+  });
 
   // Sample-row inserts STAY parameterized (SK-HDC-009 point 2) — only
   // pre-validated identifiers use double-quote interpolation; values
