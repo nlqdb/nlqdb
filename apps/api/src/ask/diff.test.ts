@@ -38,6 +38,22 @@ describe("isWriteVerb", () => {
     // A commented read still reads as a non-write.
     expect(isWriteVerb("/* c */ SELECT 1")).toBe(false);
   });
+
+  // Regression (write-CTE bypass): a data-modifying CTE has leading verb
+  // `with`, so a leading-verb-only check reads it as a non-write and the
+  // preview gate is skipped, committing silently. `isWriteVerb` now walks
+  // the AST via `containsWriteVerb`.
+  it("detects a data-modifying CTE (leading verb `with`)", () => {
+    expect(
+      isWriteVerb("WITH x AS (INSERT INTO t (id) VALUES (1) RETURNING id) SELECT * FROM x"),
+    ).toBe(true);
+    expect(
+      isWriteVerb("WITH x AS (UPDATE t SET a = 1 WHERE id = 1 RETURNING id) SELECT * FROM x"),
+    ).toBe(true);
+    expect(isWriteVerb("WITH x AS (DELETE FROM t WHERE id = 1 RETURNING id) SELECT * FROM x")).toBe(
+      true,
+    );
+  });
 });
 
 describe("buildDiff", () => {
@@ -81,6 +97,25 @@ describe("buildDiff", () => {
       table: "orders",
       affectedRows: 1,
       summary: "This will delete 1 row in orders.",
+    });
+  });
+
+  it("previews an UPDATE hidden in a data-modifying CTE (SK-TRUST-001 gate)", async () => {
+    const exec = vi.fn(async (sql: string) => {
+      expect(sql).toMatch(/COUNT\(\*\)/i);
+      expect(sql).toMatch(/orders/i);
+      expect(sql).toMatch(/WHERE/i);
+      return 3;
+    });
+    const diff = await buildDiff(
+      "WITH x AS (UPDATE orders SET status = 'paid' WHERE id = 1 RETURNING id) SELECT * FROM x",
+      exec,
+    );
+    expect(diff).toEqual({
+      verb: "UPDATE",
+      table: "orders",
+      affectedRows: 3,
+      summary: "This will update 3 rows in orders.",
     });
   });
 

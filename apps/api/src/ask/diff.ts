@@ -9,7 +9,7 @@
 // avoids a second WASM dep on the eager startup graph.
 
 import { Parser } from "node-sql-parser";
-import { leadingVerb, stripLeadingComments } from "./sql-validate.ts";
+import { containsWriteVerb } from "./sql-validate.ts";
 import type { AskDiff } from "./types.ts";
 
 const parser = new Parser();
@@ -36,12 +36,19 @@ export async function buildDiff(planSql: string, exec: CountExec): Promise<AskDi
   }
   const root = asts[0];
   if (!root || typeof root !== "object") return null;
-  const type = root.type;
+  // The write statement may be the root, or nested inside a
+  // data-modifying CTE (`WITH x AS (UPDATE … RETURNING *) SELECT …`,
+  // whose outer `type` is `select`). Preview the inner write so the
+  // CTE form goes through the same render-before-commit gate as a
+  // top-level write (SK-TRUST-001) instead of silently committing.
+  const stmt = findWriteStmt(root);
+  if (!stmt) return null;
+  const type = stmt.type;
 
   if (type === "update" || type === "delete") {
-    const tableRef = pickTableRef(root, type);
+    const tableRef = pickTableRef(stmt, type);
     if (!tableRef) return null;
-    const where = (root["where"] ?? null) as AnyAst | null;
+    const where = (stmt["where"] ?? null) as AnyAst | null;
     const count = await runCount(tableRef, where, exec);
     const verb = type === "update" ? "UPDATE" : "DELETE";
     return {
@@ -53,9 +60,9 @@ export async function buildDiff(planSql: string, exec: CountExec): Promise<AskDi
   }
 
   if (type === "insert") {
-    const tableRef = pickTableRef(root, "insert");
+    const tableRef = pickTableRef(stmt, "insert");
     if (!tableRef) return null;
-    const count = await countInsert(root, exec);
+    const count = await countInsert(stmt, exec);
     return {
       verb: "INSERT",
       table: tableRef.table,
@@ -64,6 +71,25 @@ export async function buildDiff(planSql: string, exec: CountExec): Promise<AskDi
     };
   }
 
+  return null;
+}
+
+// Returns the INSERT/UPDATE/DELETE statement node — the root itself for a
+// top-level write, or the data-modifying statement inside a CTE
+// (`with:[{ stmt }]`, recursing for nested WITHs). Null for a pure read.
+function findWriteStmt(root: AnyAst): AnyAst | null {
+  const type = typeof root.type === "string" ? root.type : null;
+  if (type === "update" || type === "delete" || type === "insert") return root;
+  const withList = root["with"];
+  if (Array.isArray(withList)) {
+    for (const cte of withList) {
+      const inner = cte && typeof cte === "object" ? (cte as AnyAst)["stmt"] : null;
+      if (inner && typeof inner === "object") {
+        const found = findWriteStmt(inner as AnyAst);
+        if (found) return found;
+      }
+    }
+  }
   return null;
 }
 
@@ -175,16 +201,13 @@ function buildSummary(verb: AskDiff["verb"], count: number, table: string): stri
   return `This will modify ${count.toLocaleString()} ${rows} in ${table}.`;
 }
 
-// Leading-verb helper for the orchestrator's preview gate (SK-TRUST-001).
-// MUST share the validator's exact normalization — `stripLeadingComments`
-// then `leadingVerb` — so the write-preview gate and `validateSql` can
-// never disagree on the leading verb. A comment-prefixed write
-// (`/* x */ UPDATE …`, `-- c\nDELETE …`) that the validator accepts as a
-// write would otherwise slip past this gate and commit without the
-// render-before-commit diff (the same smuggle sql-validate.ts guards
-// `/v1/run` against). Single token, lowercased; empty when the SQL
-// starts with something unparseable.
+// Write-detection helper for the orchestrator's preview gate
+// (SK-TRUST-001). Delegates to the validator's `containsWriteVerb` so the
+// gate and `validateSql` share one definition of "is this a write" — a
+// comment-prefixed write (`/* x */ UPDATE …`) AND a data-modifying CTE
+// (`WITH x AS (INSERT … RETURNING *) SELECT …`, leading verb `with`) both
+// count as writes, so neither can slip past the render-before-commit diff
+// (the same smuggle `/v1/run`'s read-only gate guards against).
 export function isWriteVerb(sql: string): boolean {
-  const head = leadingVerb(stripLeadingComments(sql.trim()));
-  return head === "insert" || head === "update" || head === "delete";
+  return containsWriteVerb(sql);
 }

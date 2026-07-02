@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import type { ExecRunners } from "../src/ask/build-deps.ts";
-import { dispatchExec } from "../src/ask/build-deps.ts";
+import { buildHostedExecSteps, dispatchExec } from "../src/ask/build-deps.ts";
 import type { DbRecord, QueryResult } from "../src/ask/types.ts";
 
 const EMPTY: QueryResult = { rows: [], rowCount: 0 };
@@ -87,5 +87,49 @@ describe("dispatchExec", () => {
     );
     expect(runners.runHostedPg).not.toHaveBeenCalled();
     expect(runners.runByoPg).not.toHaveBeenCalled();
+  });
+});
+
+// The hosted exec statement plan — least privilege + resource guard.
+describe("buildHostedExecSteps", () => {
+  const ROLE = "tenant_0123456789abcdef";
+
+  it("runs search_path, app.tenant_id, statement_timeout, SET LOCAL ROLE, then the user SQL — in that order", () => {
+    const steps = buildHostedExecSteps("myschema", "user_1", ROLE, {
+      text: "SELECT * FROM t",
+      params: [],
+    });
+    expect(steps.map((s) => s.text)).toEqual([
+      "SELECT set_config('search_path', $1, true)",
+      "SELECT set_config('app.tenant_id', $1, true)",
+      "SET LOCAL statement_timeout = '10s'",
+      `SET LOCAL ROLE "${ROLE}"`,
+      "SELECT * FROM t",
+    ]);
+    // schema + tenant are parameterised (no identifier injection).
+    expect(steps[0]?.params).toEqual(["myschema"]);
+    expect(steps[1]?.params).toEqual(["user_1"]);
+    // SET LOCAL ROLE lands before the user statement so the query runs as
+    // the least-privilege tenant role, not the shared owner.
+    const roleIdx = steps.findIndex((s) => s.text.startsWith("SET LOCAL ROLE"));
+    const userIdx = steps.length - 1;
+    expect(roleIdx).toBeLessThan(userIdx);
+  });
+
+  it("carries a parameterised user step verbatim (memory-write path)", () => {
+    const steps = buildHostedExecSteps("s", "t", ROLE, {
+      text: "INSERT INTO m (v) VALUES ($1)",
+      params: ["hello"],
+    });
+    expect(steps[steps.length - 1]).toEqual({
+      text: "INSERT INTO m (v) VALUES ($1)",
+      params: ["hello"],
+    });
+  });
+
+  it("rejects a malformed role name before it can be interpolated", () => {
+    expect(() =>
+      buildHostedExecSteps("s", "t", 'evil"; DROP ROLE x; --', { text: "SELECT 1", params: [] }),
+    ).toThrow(/unsafe tenant role/);
   });
 });

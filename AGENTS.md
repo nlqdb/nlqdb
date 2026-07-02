@@ -116,55 +116,51 @@ nlqdb/
 ├── packages/
 │   ├── sdk/             # @nlqdb/sdk — the only HTTP client (GLOBAL-001)
 │   ├── elements/        # <nlq-data> web component
-│   ├── react/           # @nlqdb/react — typed React 19 wrapper
-│   ├── next/            # @nlqdb/next — Next 15 helpers + RSC server factory
-│   ├── vue/             # @nlqdb/vue — Vue 3.5 component
-│   ├── nuxt/            # @nlqdb/nuxt — Nuxt 4 module
-│   ├── svelte/          # @nlqdb/svelte — Svelte 5 component
-│   ├── sveltekit/       # @nlqdb/sveltekit — load() + <NlqHead>
-│   ├── astro/           # @nlqdb/astro — Astro 6 integration
-│   ├── solid/           # @nlqdb/solid — SolidJS component
-│   ├── nlqdb-swift/     # Swift 6 Package (iOS / macOS / Linux)
+│   ├── react/ next/ vue/ nuxt/ svelte/ sveltekit/ astro/ solid/  # framework wrappers
+│   ├── nlqdb-swift/ nlqdb-rb/ nlqdb-rs/  # Swift / Ruby / Rust SDKs
+│   ├── cli-shim/        # @nlqdb/cli — npm shim for the `nlq` binary
 │   ├── db/              # engine-agnostic DB adapter
+│   ├── platform-db/     # control-plane DB (not user DBs)
 │   ├── llm/             # LLM router + providers
 │   ├── mcp/             # MCP server + host detection
 │   ├── otel/            # OpenTelemetry helpers
 │   ├── auth-internal/   # Better Auth wrapper
+│   ├── email/           # transactional email templates
 │   └── events/          # event-pipeline producer types
+├── tools/               # workspace tooling (eval, stranger-test)
 ├── docs/                # long-form reference docs (see §6)
 │   └── features/        # per-feature decision records (mandatory pre-read)
 ├── examples/            # working samples (HTML, frameworks)
 └── AGENTS.md, CLAUDE.md # this file (CLAUDE.md → AGENTS.md symlink)
 ```
 
-Each `apps/<x>/`, `packages/<x>/`, and `cli/` has its own `AGENTS.md`
-with the local subset of the before-editing path map and any
-package-specific commands.
-
 ## 5. Before-editing path map
 
 When your change touches any of these paths, the listed feature is
-**mandatory pre-reading**. (Features auto-load via `when-to-load.globs`
-in editors that support it; otherwise read manually before editing.)
+**mandatory pre-reading**. (Auto-load via `when-to-load.globs` where
+supported; else read manually before editing.)
 
 | If you touch… | Read first |
 |---|---|
-| `apps/api/src/routes/auth/**`, `packages/auth-internal/**` | `docs/features/auth/FEATURE.md` |
+| `apps/api/src/auth/**`, `packages/auth-internal/**` | `docs/features/auth/FEATURE.md` |
 | `apps/api/src/api-keys.ts`, `apps/web/src/pages/app/keys.astro`, `apps/web/src/components/keys/**` | `docs/features/api-keys/FEATURE.md` |
 | `apps/api/src/ask/**`, the `/v1/ask` pipeline | `docs/features/ask-pipeline/FEATURE.md` |
 | `apps/api/src/run/**`, the `POST /v1/run` raw-SQL escape hatch (`GLOBAL-015`) | `docs/features/sdk/FEATURE.md` (`SK-SDK-009`) + `docs/features/cli/FEATURE.md` + `docs/features/sql-allowlist/FEATURE.md` |
 | write/DDL diff preview, `confidence`, response `trace` block | `docs/features/trust-ux/FEATURE.md` |
-| `apps/api/src/db-create/**`, `apps/api/src/ask/classifier.ts`, `apps/api/src/ask/sql-validate-ddl.ts` | `docs/features/hosted-db-create/FEATURE.md` |
-| `apps/api/src/plan-cache/**`, plan storage | `docs/features/plan-cache/FEATURE.md` |
+| `apps/api/src/db-create/**`, `apps/api/src/ask/sql-validate-ddl.ts` | `docs/features/hosted-db-create/FEATURE.md` |
+| `apps/api/src/ask/plan-cache.ts`, plan storage | `docs/features/plan-cache/FEATURE.md` |
 | `packages/llm/**`, model routing, prompts | `docs/features/llm-router/FEATURE.md` |
 | `tools/eval/**`, `.github/workflows/quality-eval-*.yml` (BIRD/Spider NL-accuracy harness) | `docs/features/quality-eval/FEATURE.md` |
 | `apps/api/src/ask/sql-validate.ts`, SQL allowlist | `docs/features/sql-allowlist/FEATURE.md` |
 | `packages/db/**` | `docs/features/db-adapter/FEATURE.md` |
+| `apps/api/src/db-connect/**`, `apps/api/src/ask/build-deps.ts`, `packages/db/src/clickhouse-byo.ts` (BYO — egress + sealed-secret; security-sensitive) | `docs/features/byo-connect/FEATURE.md` |
+| `packages/db/src/clickhouse-tinybird/**`, `packages/db/src/introspect-clickhouse.ts` (non-Postgres engines) | `docs/features/multi-engine-adapter/FEATURE.md` |
 | anything touching `schema_hash`, schema fingerprinting | `docs/features/schema-widening/FEATURE.md` |
 | any `POST`/`PATCH`/`DELETE` handler | `docs/features/idempotency/FEATURE.md` |
 | `packages/otel/**`, new spans / metrics | `docs/features/observability/FEATURE.md` · `docs/features/byo-otel/FEATURE.md` |
-| `apps/api/src/billing/**`, Stripe webhooks | `docs/features/stripe-billing/FEATURE.md` |
-| `apps/api/src/billing/premium/**`, `apps/api/src/ask/model-picker.ts`, `packages/llm/src/chains/{paid,premium}.ts`, `model` preset / BYOLLM / spend-cap / hosted-premium meter | `docs/features/premium-tier/FEATURE.md` |
+| `apps/api/src/stripe/**`, Stripe webhooks | `docs/features/stripe-billing/FEATURE.md` |
+| `apps/api/src/byollm-account.ts`, `apps/api/src/ask/byollm.ts`, `apps/api/src/llm-router.ts`, `model` preset / BYOLLM / hosted-premium meter | `docs/features/premium-tier/FEATURE.md` |
+| `packages/llm/src/frontier/**` (founder-funded lane) | `docs/features/frontier-keys/FEATURE.md` |
 | `apps/events-worker/**`, `packages/events/**`, `apps/api/src/events-feature.ts`, `apps/api/src/ask/demand-signal.ts` | `docs/features/events-pipeline/FEATURE.md` |
 | `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` |
 | rate-limit middleware (`apps/api/src/ask/rate-limit.ts`, `apps/api/src/principal.ts` `rateLimitBucketKey`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`) | `docs/features/rate-limit/FEATURE.md` |
@@ -179,7 +175,7 @@ in editors that support it; otherwise read manually before editing.)
 | `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts` | `docs/features/comparison-pages/FEATURE.md` |
 | `apps/web/src/data/solve.ts`, `apps/web/src/pages/solve/**` | `docs/features/solve-pages/FEATURE.md` |
 | `apps/web/src/data/blog.ts`, `apps/web/src/pages/blog/**`, `apps/web/src/lib/inline-md.ts` | `docs/features/blog/FEATURE.md` |
-| anything in the agent-memory pivot: `apps/web/src/pages/agents/**`, `apps/api/src/db-create/presets/agent-memory-v1.ts`, `apps/api/src/memory/**`, the `agent_memory_v1` schema, `nlqdb_remember`/`nlqdb_recall` MCP tools, the agent-scope RLS policy (`app.agent_id` GUC), agent-memory positioning copy | `docs/features/agent-memory-pivot/FEATURE.md` (also touches `hosted-db-create`, `mcp-server`, `ask-pipeline`) |
+| agent-memory pivot: `apps/web/src/pages/agents/**`, `apps/api/src/db-create/presets/agent-memory-v1.ts`, `apps/api/src/memory/**`, `agent_memory_v1` schema + `app.agent_id` RLS + `nlqdb_remember`/`nlqdb_recall` MCP tools | `docs/features/agent-memory-pivot/FEATURE.md` (also touches `hosted-db-create`, `mcp-server`, `ask-pipeline`) |
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/FEATURE.md` |
 | `apps/docs/**`, `docs.nlqdb.com` Starlight site | `docs/features/docs-site/FEATURE.md` |
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |
@@ -187,9 +183,8 @@ in editors that support it; otherwise read manually before editing.)
 | `apps/api/src/icp-*.ts`, `docs/research/automated-icp-validation-plan*.md`, `docs/research/icp-evidence-*.md` | `docs/features/icp-mining/FEATURE.md` |
 | `tools/stranger-test/**`, `scripts/stranger-test.sh`, `scripts/flow-005-walk.sh`, `scripts/flow-005-stdio-walk.sh` | `docs/features/stranger-test/FEATURE.md` |
 
-Per-area `AGENTS.md` files (e.g. `packages/db/AGENTS.md`) repeat just
-their slice of this table, so you don't need the full root view when
-working in one directory.
+Per-area `AGENTS.md` files repeat just their slice of this table, so you
+don't need the full root view when working in one directory.
 
 ## 6. Long-form reference docs (load on demand, not by default)
 
@@ -208,6 +203,7 @@ working in one directory.
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — threat matrix + gap analysis. |
 | [`docs/history/`](docs/history/) | Lessons learnt — one doc per topic. |
+| [`docs/blindspot-analysis.md`](docs/blindspot-analysis.md) | Adversarial audit findings + deferred-design tracker. |
 | [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits, marketing, Phase 1 exit, open questions. |
 | [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature (e.g. semantic-layer). Promote once decisions are firm. |
 

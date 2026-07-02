@@ -332,15 +332,17 @@ export async function bumpKeyLastUsed(d1: D1Database, keyId: string): Promise<vo
 // post sign-in. Idempotent: the WHERE clause is a no-op on a replay.
 //
 // Only pk_live_ rows exist on anon tenants (anon users can't mint sk_*
-// keys), so the WHERE filter is implicit — an anon tenant never has a
-// row with key_type IN ('sk_live', 'sk_mcp') to re-key.
+// keys). The `AND key_type = 'pk_live'` filter makes that assumption
+// explicit and defensive: if an sk_live/sk_mcp row ever landed on an anon
+// tenant (a bug, or a future code path), adoption must not silently
+// re-key an account-scoped secret onto the signing-in user.
 export async function adoptApiKeys(
   d1: D1Database,
   anonTenantId: string,
   userId: string,
 ): Promise<void> {
   await d1
-    .prepare("UPDATE api_keys SET tenant_id = ? WHERE tenant_id = ?")
+    .prepare("UPDATE api_keys SET tenant_id = ? WHERE tenant_id = ? AND key_type = 'pk_live'")
     .bind(userId, anonTenantId)
     .run();
 }

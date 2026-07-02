@@ -57,6 +57,7 @@ export type SqlRejectReason =
   | "drop_statement"
   | "truncate_statement"
   | "delete_without_where"
+  | "update_without_where"
   | "grant_or_revoke"
   | "alter_statement"
   | "disallowed_verb"
@@ -70,8 +71,9 @@ export type SqlRejectReason =
 // with `SqlRejectReason` so the demand-signal set cannot drift from the
 // validator: a new DDL-class reason MUST be added here at the same time
 // it's added to the union above. Non-DDL reasons (`parse_failed`,
-// `empty`, `delete_without_where`) are LLM-quality or write-safety
-// signals, not feature requests — they're deliberately excluded.
+// `empty`, `delete_without_where`, `update_without_where`) are
+// LLM-quality or write-safety signals, not feature requests — they're
+// deliberately excluded.
 //
 // Internally typed as `Set<SqlRejectReason>` so the array literal is
 // exhaustiveness-checked; exposed as `ReadonlySet<string>` so callers
@@ -112,6 +114,15 @@ const ALLOWED_LEADING = new Set([
 // already blocks at the PG level — listed here as defense-in-depth so
 // the reject is attributed (`disallowed_function`) rather than surfacing
 // as a raw Postgres permission error.
+//
+// `set_config` / `current_setting` are the RLS-tenancy GUC primitives.
+// The exec wrapper sets `search_path` / `app.tenant_id` and `SET LOCAL
+// ROLE tenant_<hash>` OUTSIDE the validated user SQL (separate
+// transaction statements). The least-privilege `SET LOCAL ROLE` is the
+// load-bearing isolation control; denying these functions inside user
+// SQL is defense-in-depth so a `WITH x AS (SELECT set_config('app.
+// tenant_id', …)) …` CTE can never re-arm the RLS GUC from within a
+// query. The LLM has zero legitimate reason to call either on `/v1/ask`.
 const DISALLOWED_FUNCTIONS = new Set([
   "pg_sleep",
   "pg_sleep_for",
@@ -126,6 +137,8 @@ const DISALLOWED_FUNCTIONS = new Set([
   "pg_ls_dir",
   "pg_stat_file",
   "pg_logical_emit_message",
+  "set_config",
+  "current_setting",
 ]);
 
 // EXPLAIN ANALYZE actually executes the wrapped statement on Postgres
@@ -316,6 +329,15 @@ function walkForRejected(node: unknown): SqlRejectReason | null {
   if (type === "delete" && !obj["where"] && ("from" in obj || "table" in obj || "name" in obj)) {
     return "delete_without_where";
   }
+  // UPDATE-without-WHERE — symmetric with the DELETE guard above. An
+  // UPDATE with no WHERE rewrites every row (a mass mutation, the same
+  // highest-impact accident class as a bare DELETE), including the
+  // CTE-embedded `WITH x AS (UPDATE foo SET … RETURNING *) SELECT 1`
+  // form PG executes destructively. `set`/`table` presence marks a real
+  // statement node vs an expression sharing `type:"update"`.
+  if (type === "update" && !obj["where"] && ("set" in obj || "table" in obj)) {
+    return "update_without_where";
+  }
   // Side-effecting function calls (SK-SQLAL-008). node-sql-parser tags a
   // call as type:"function"/"aggr_func"; the name lives under `name` as
   // either a bare string or a `{name:[{value}]}` node depending on
@@ -337,4 +359,50 @@ function containsDisallowedFunction(nameNode: unknown): boolean {
     return Object.values(nameNode as Record<string, unknown>).some(containsDisallowedFunction);
   }
   return false;
+}
+
+const WRITE_TYPES: ReadonlySet<string> = new Set(["insert", "update", "delete"]);
+
+// True when the SQL contains a data-modifying statement ANYWHERE in the
+// tree — a top-level INSERT/UPDATE/DELETE, or a data-modifying CTE
+// (`WITH x AS (INSERT/UPDATE/DELETE … RETURNING …) SELECT …`, which
+// Postgres executes as a write while node-sql-parser reports the outer
+// statement's `type` as `select`). The leading verb of such a CTE is
+// `with`, so any "is this a write?" gate that inspects only the leading
+// verb false-negatives and lets the write slip through. Both the
+// `/v1/run` read-only gate (`SK-APIKEYS-003`) and the `/v1/ask`
+// render-before-commit gate (`SK-TRUST-001`) MUST use this, not
+// `leadingVerb`, or an embedded write bypasses them.
+export function containsWriteVerb(rawSql: string): boolean {
+  const sql = stripLeadingComments(rawSql.trim());
+  if (!sql) return false;
+  const leading = leadingVerb(sql);
+  if (WRITE_TYPES.has(leading)) return true;
+  // Only `WITH` can hide a write behind a non-write leading verb: SELECT
+  // subqueries can't contain a data-modifying statement in PG, and
+  // SHOW/EXPLAIN are read-only. So only the WITH case needs the AST walk.
+  if (leading !== "with") return false;
+  let asts: AstNode[];
+  try {
+    const parsed = parser.astify(sql, { database: "PostgreSQL" }) as unknown as AstNode | AstNode[];
+    asts = Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    // Unparseable → `validateSql` rejects it with `parse_failed` before
+    // exec, so it never commits. Report "not a write" (fail-safe: the
+    // statement is already blocked upstream).
+    return false;
+  }
+  return asts.some(containsWriteNode);
+}
+
+// Statement-shape gate mirrors `walkForRejected`: an INSERT/UPDATE/DELETE
+// statement node carries `table`/`from`, distinguishing it from an
+// expression that merely shares the type string.
+function containsWriteNode(node: unknown): boolean {
+  if (node === null || typeof node !== "object") return false;
+  if (Array.isArray(node)) return node.some(containsWriteNode);
+  const obj = node as Record<string, unknown>;
+  const type = typeof obj["type"] === "string" ? (obj["type"] as string).toLowerCase() : null;
+  if (type && WRITE_TYPES.has(type) && ("table" in obj || "from" in obj)) return true;
+  return Object.values(obj).some(containsWriteNode);
 }

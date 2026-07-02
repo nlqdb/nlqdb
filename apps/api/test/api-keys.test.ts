@@ -9,6 +9,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import {
+  adoptApiKeys,
   apiKeyHmacSecret,
   bumpKeyLastUsed,
   listKeysByTenant,
@@ -439,5 +440,19 @@ describe("revokeKeyById", () => {
     ]);
     expect(outA).toBe("revoked");
     expect(outB).toBe("already_revoked");
+  });
+});
+
+describe("adoptApiKeys", () => {
+  it("re-keys only pk_live rows (defense-in-depth key_type guard)", async () => {
+    const { db, updates } = stubDb();
+    await adoptApiKeys(db, "anon:abc", "u_alice");
+    expect(updates).toHaveLength(1);
+    expect(updates[0]?.sql).toContain("UPDATE api_keys SET tenant_id = ?");
+    expect(updates[0]?.sql).toContain("WHERE tenant_id = ?");
+    // An sk_live/sk_mcp row that somehow landed on the anon tenant must
+    // NOT be re-keyed onto the signing-in user.
+    expect(updates[0]?.sql).toContain("key_type = 'pk_live'");
+    expect(updates[0]?.params).toEqual(["u_alice", "anon:abc"]);
   });
 });

@@ -66,9 +66,12 @@ export type StripeWebhookDeps = {
   events: EventEmitter;
   // Preview-only signature bypass (SK-AUTH-018). When true the body
   // is parsed as JSON and trusted as a Stripe.Event without HMAC
-  // verification. Set by the route handler when env.MOCK_STRIPE === "1";
-  // never true in production.
+  // verification. Set by the route handler when env.MOCK_STRIPE === "1".
   bypassSignatureVerification?: boolean;
+  // True in production/canary. Hard guard: when set, the signature bypass
+  // is IGNORED (signature is always verified) so a prod/preview env that
+  // somehow has MOCK_STRIPE set can't be fed a forged, unsigned event.
+  isProd?: boolean;
 };
 
 export type StripeWebhookResult =
@@ -92,8 +95,16 @@ export async function processWebhook(
 
   return tracer.startActiveSpan("nlqdb.webhook.stripe", async (span) => {
     try {
+      // Hard guard: the signature bypass is NEVER honoured in production.
+      // Even if MOCK_STRIPE leaked into a prod/canary env, an unsigned
+      // (forgeable) body must not be trusted — fall through to real HMAC
+      // verification instead.
+      const bypass = deps.bypassSignatureVerification === true && deps.isProd !== true;
+      if (deps.bypassSignatureVerification === true && deps.isProd === true) {
+        span.setAttribute("nlqdb.webhook.bypass_refused_in_prod", true);
+      }
       let event: Stripe.Event;
-      if (deps.bypassSignatureVerification) {
+      if (bypass) {
         // SK-AUTH-018 mock-Stripe path. JSON body is trusted; the rest
         // of the pipeline (idempotency insert, dispatch, R2 archive,
         // events emit) runs identically to the real path.

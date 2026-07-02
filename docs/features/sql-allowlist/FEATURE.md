@@ -53,12 +53,12 @@ when-to-load:
   - Treat `EXPLAIN` like any other DML — false-rejects safe debug queries and forces users into raw-SQL escape (`GLOBAL-015`) for read-only introspection.
   - Allow `EXPLAIN ANALYZE` because "advanced users want it" — same destructive surface as the underlying DML; counterexamples in the wild include `EXPLAIN ANALYZE DELETE …`.
 
-### SK-SQLAL-004 — DELETE without WHERE rejected at AST walk
+### SK-SQLAL-004 — DELETE / UPDATE without WHERE rejected at AST walk
 
-- **Decision:** `DELETE` without a `where` clause is rejected with `delete_without_where` — both at the top level and inside CTEs (`WITH x AS (DELETE FROM foo) SELECT 1`, which Postgres happily executes as a destructive DELETE).
+- **Decision:** `DELETE` without a `where` clause is rejected with `delete_without_where`, and `UPDATE` without a `where` clause with `update_without_where` — both at the top level and inside CTEs (`WITH x AS (DELETE FROM foo) SELECT 1` / `WITH x AS (UPDATE foo SET … RETURNING *) SELECT 1`, which Postgres happily executes as a destructive mass mutation).
 - **Core value:** Bullet-proof
-- **Why:** Mass deletes are the highest-impact accident the LLM could produce. The CTE-embedded form is non-obvious — operators reading the SQL miss it; the validator is the one place that won't.
-- **Consequence in code:** `walkForRejected()` in `sql-validate.ts` flags `type === "delete"` nodes without `where`, gated on `from`/`table`/`name` presence to distinguish a real statement from a hypothetical expression node sharing the type string.
+- **Why:** Mass deletes/updates are the highest-impact accident the LLM could produce. A bare `UPDATE` rewrites every row just as a bare `DELETE` removes every row — the same mass-mutation class. The CTE-embedded form is non-obvious — operators reading the SQL miss it; the validator is the one place that won't.
+- **Consequence in code:** `walkForRejected()` in `sql-validate.ts` flags `type === "delete"` nodes without `where` (gated on `from`/`table`/`name` presence) and `type === "update"` nodes without `where` (gated on `set`/`table` presence) — the gate distinguishes a real statement from a hypothetical expression node sharing the type string.
 - **Alternatives rejected:**
   - Allow DELETE without WHERE if the table is "small" — we don't know table sizes at validate time, and "small now, big tomorrow" makes the rule meaningless.
   - Confirm-then-delete UX prompt — fine for the surface UX (DESIGN §9: "Destructive plans show a diff, require second Enter"), but doesn't replace a server-side validator. Both layers must hold.
@@ -95,7 +95,7 @@ when-to-load:
 
 ### SK-SQLAL-008 — Side-effecting functions rejected at the AST walk
 
-- **Decision:** `validateSql()` rejects a closed set of side-effecting functions anywhere in the AST with reason `disallowed_function`: the `pg_sleep*` family (connection-pinning DoS), `dblink*` (network egress), `lo_import` / `lo_export` / `pg_read_file` / `pg_read_binary_file` / `pg_ls_dir` / `pg_stat_file` (server-side file IO), and `pg_logical_emit_message`. `COPY ... FROM PROGRAM` is already rejected one layer earlier — `copy` is not in `ALLOWED_LEADING`.
+- **Decision:** `validateSql()` rejects a closed set of side-effecting functions anywhere in the AST with reason `disallowed_function`: the `pg_sleep*` family (connection-pinning DoS), `dblink*` (network egress), `lo_import` / `lo_export` / `pg_read_file` / `pg_read_binary_file` / `pg_ls_dir` / `pg_stat_file` (server-side file IO), `pg_logical_emit_message`, and `set_config` / `current_setting` (the RLS-tenancy GUC primitives). `COPY ... FROM PROGRAM` is already rejected one layer earlier — `copy` is not in `ALLOWED_LEADING`. The GUC pair is denied so a `WITH x AS (SELECT set_config('app.tenant_id', …)) …` CTE can't re-arm the tenant GUC from inside user SQL; this is defense-in-depth behind the load-bearing least-privilege `SET LOCAL ROLE tenant_<hash>` the executor sets outside the validated SQL (`db-adapter` role/RLS wiring).
 - **Core value:** Bullet-proof
 - **Why:** `pg_sleep(3600)` is callable by *any* role and pins a connection for the duration — a trivial DoS — and the statement-timeout layer that was supposed to bound it is still unwired (`db-adapter` open question). The file-IO functions are blocked at the PG level by Neon's non-superuser role, but listing them here makes the reject *attributed* (`disallowed_function`) rather than surfacing as an opaque Postgres permission error, and holds the layered-guardrails line (`SK-SQLAL-001`) if a future engine or BYO connection runs as a more privileged role. Resolved per `GLOBAL-033` (security trade-off → layered guardrails) — was previously an open question relying on a single control.
 - **Consequence in code:** `DISALLOWED_FUNCTIONS` is a closed set in `sql-validate.ts`; `walkForRejected()` tests every `type:"function"`/`"aggr_func"` node's name against it via `containsDisallowedFunction` (recurses string leaves under `name` so it's robust to node-sql-parser's version-dependent name shape). Adding a dangerous function = one line in the set + a test row.
@@ -119,7 +119,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **GLOBAL-015** — Power users always have an escape hatch.
   - *In this feature:*
-    **Interaction note:** `/v1/run` ships in Phase 2 (`apps/api/src/run/orchestrate.ts`, backing CLI `nlq run` + SDK `client.runSql()`). It reuses this validator unchanged — `/v1/run` skips the LLM, not the validator. The orchestrator calls `validateSql()` at the same point `/v1/ask` does; pk_live keys reject writes one step earlier at the leading-verb gate (`SK-APIKEYS-003`). Future work that loosens this needs to update both this feature and `GLOBAL-015` in the same PR.
+    **Interaction note:** `/v1/run` ships in Phase 2 (`apps/api/src/run/orchestrate.ts`, backing CLI `nlq run` + SDK `client.runSql()`). It reuses this validator unchanged — `/v1/run` skips the LLM, not the validator. The orchestrator calls `validateSql()` at the same point `/v1/ask` does; read-only principals (pk_live + anon) then reject writes via `containsWriteVerb` — a write-anywhere check (exported from `sql-validate.ts`) that catches data-modifying CTEs (`WITH x AS (INSERT …) SELECT …`, leading verb `with`), not just the leading verb (`SK-APIKEYS-003`). The `/v1/ask` render-before-commit gate (`SK-TRUST-001`) shares the same `containsWriteVerb` so neither gate can be smuggled past by a write hidden in a CTE. Future work that loosens this needs to update both this feature and `GLOBAL-015` in the same PR.
 - **GLOBAL-033** — Resolution defaults (close open questions from the values).
 
 ## Open questions / known unknowns

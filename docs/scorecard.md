@@ -13,7 +13,8 @@ number below.)*
 lagging metric; the daily **lever** targets its agent-movable input,
 **indexable surfaces** (row #6). The worst *engine* number — **Spider 0.1926
 vs 0.75** — moved +0.74 pp on the 07-02 re-dispatch; reasoning levers
-built/saturated (row #10 note).
+built/saturated (row #10 note). Vs GLOBAL-025 floors, Spider free (0.1926)
+clears ≥0.15; **BIRD 0.520 is below its ≥0.60 Phase 2 floor**.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -43,7 +44,7 @@ built/saturated (row #10 note).
 | 18 | Dead links, deployed surfaces (incl. nlqdb.com → docs.nlqdb.com) | 4 found + fixed 07-02 (`/integrations`: `/tutorials/next/` → `nextjs` + 3 never-built `/sdk/{swift,ruby,rust}/` pages, PR #581); full sweep unmeasured | target 0 — no automated sweep exists yet; **building the built-output href sweep is a lever** |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
-| | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
+| | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (per-agent RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
 
 ## Shipped distribution (live URLs)
 
