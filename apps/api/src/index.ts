@@ -719,6 +719,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         ip,
         turnstileSecret: c.env.TURNSTILE_SECRET,
         turnstileToken: c.req.header("cf-turnstile-response") ?? null,
+        // An unconfigured Turnstile secret fails CLOSED in prod/canary
+        // (bot floor stays up), open only in dev/test.
+        isProd: c.env.NODE_ENV === "production" || c.env.NODE_ENV === "canary",
       });
       return decisionToResponse(c, span, decision);
     };
@@ -1386,7 +1389,14 @@ app.post("/v1/run", requirePrincipal, async (c) => {
           dbId: parsed.body.db,
           userId: principal.id,
           rateLimitBucketKey: rateLimitBucketKey(principal),
-          ...(principal.kind === "pk_live" ? { readOnly: true } : {}),
+          // pk_live keys are db-scoped read-only (SK-APIKEYS-003). Anon
+          // (unauthenticated) callers get the raw-SQL escape hatch for
+          // READS only — arbitrary writes without an account are not a
+          // power-user escape hatch, they're an abuse surface (GLOBAL-015
+          // is about power users). Both are forced read-only; the gate in
+          // `orchestrateRun` also rejects write CTEs, not just the leading
+          // verb.
+          ...(principal.kind === "pk_live" || principal.kind === "anon" ? { readOnly: true } : {}),
         },
       );
 
@@ -1653,7 +1663,12 @@ app.post("/v1/events/eval", async (c) => {
 //
 // R2 archive runs in `ctx.waitUntil` so 200 ships before the put completes.
 app.post("/v1/stripe/webhook", async (c) => {
-  const mockStripe = c.env.MOCK_STRIPE === "1";
+  // The MOCK_STRIPE signature bypass is preview/dev only — neutralised in
+  // production/canary at the route AND, defense-in-depth, inside
+  // `processWebhook` (isProd hard guard). A prod env therefore always
+  // requires a real webhook secret (503 if missing) + a valid signature.
+  const isProd = c.env.NODE_ENV === "production" || c.env.NODE_ENV === "canary";
+  const mockStripe = c.env.MOCK_STRIPE === "1" && !isProd;
   if (!mockStripe && !c.env.STRIPE_WEBHOOK_SECRET) {
     return c.json({ error: "secret_unconfigured" }, 503);
   }
@@ -1669,6 +1684,7 @@ app.post("/v1/stripe/webhook", async (c) => {
       r2: c.env.ASSETS,
       events: buildEventEmitter(c.env.EVENTS_QUEUE),
       bypassSignatureVerification: mockStripe,
+      isProd,
     },
     rawBody,
     signature,
@@ -1890,6 +1906,39 @@ app.get("/v1/chat/messages", requireSession, async (c) => {
 //
 // Response carries the plaintext exactly once (SK-APIKEYS-002 +
 // SK-APIKEYS-007); subsequent reads return `last4` only.
+// GLOBAL-005 — KV idempotency dedupe for resource-minting endpoints, same
+// shape as `POST /v1/db/connect` (`byo_connect:<tenant>:<key>`, 24h TTL =
+// SK-IDEMP-008). The `Idempotency-Key` header is optional; when present, a
+// prior success is replayed and no second resource is minted/provisioned.
+// The stored body is redacted of any one-time secret (SK-APIKEYS-013) —
+// the plaintext key is returned on the first response only.
+async function idempotencyLookup(
+  kv: KVNamespace,
+  scope: string,
+  tenantId: string,
+  key: string | undefined,
+): Promise<Record<string, unknown> | null> {
+  if (!key) return null;
+  return (await kv.get(`${scope}:${tenantId}:${key}`, "json")) as Record<string, unknown> | null;
+}
+function idempotencyStore(
+  ctx: ExecutionContext,
+  kv: KVNamespace,
+  scope: string,
+  tenantId: string,
+  key: string | undefined,
+  body: Record<string, unknown>,
+): void {
+  if (!key) return;
+  // Fire-and-forget: a KV write failure must not fail an already-committed
+  // mint/provision (mirrors the /v1/db/connect store).
+  ctx.waitUntil(
+    kv
+      .put(`${scope}:${tenantId}:${key}`, JSON.stringify(body), { expirationTtl: 86_400 })
+      .catch(() => {}),
+  );
+}
+
 const KEY_NAME_MAX = 80;
 const MCP_HOST_MAX = 32;
 const DEVICE_ID_MAX = 64;
@@ -1919,6 +1968,16 @@ app.post("/v1/keys", requireSession, async (c) => {
       }
       span.setAttribute("nlqdb.keys.mint.type", type);
 
+      // GLOBAL-005 — replay a prior mint under the same Idempotency-Key
+      // instead of minting a second key. Plaintext is not re-returned
+      // (stored body is redacted — SK-APIKEYS-013).
+      const idemKey = c.req.header("Idempotency-Key") ?? undefined;
+      const prior = await idempotencyLookup(c.env.KV, "keys_mint", session.user.id, idemKey);
+      if (prior) {
+        span.setAttribute("nlqdb.keys.mint.outcome", "idempotent_replay");
+        return c.json({ ...prior, replayed: true });
+      }
+
       if (type === "sk_live") {
         const trimmedName = typeof raw.body.name === "string" ? raw.body.name.trim() : "";
         if (trimmedName.length > KEY_NAME_MAX) {
@@ -1933,6 +1992,13 @@ app.post("/v1/keys", requireSession, async (c) => {
           name,
         );
         span.setAttribute("nlqdb.keys.mint.outcome", "ok");
+        // Store redacted (no plaintext `key`) for replay.
+        idempotencyStore(c.executionCtx, c.env.KV, "keys_mint", session.user.id, idemKey, {
+          id,
+          type,
+          last4: plaintext.slice(-4),
+          ...(name ? { name } : {}),
+        });
         return c.json({
           id,
           type,
@@ -1966,6 +2032,13 @@ app.post("/v1/keys", requireSession, async (c) => {
       );
       span.setAttribute("nlqdb.keys.mint.outcome", "ok");
       span.setAttribute("nlqdb.mcp.host", host);
+      idempotencyStore(c.executionCtx, c.env.KV, "keys_mint", session.user.id, idemKey, {
+        id,
+        type,
+        last4: plaintext.slice(-4),
+        host,
+        device,
+      });
       return c.json({
         id,
         type,
@@ -2446,6 +2519,18 @@ app.post("/v1/databases", requireSession, async (c) => {
       engine = raw.body.engine;
     }
 
+    // GLOBAL-005 — a retried create under the same Idempotency-Key must
+    // not provision a SECOND Neon schema (each burns the free-tier
+    // ceiling). Replay the prior result; `pkLive` is minted-once so it is
+    // not stored/re-returned (SK-APIKEYS-013), same as /v1/db/connect.
+    const idemKey = c.req.header("Idempotency-Key") ?? undefined;
+    const prior = await idempotencyLookup(c.env.KV, "db_create", session.user.id, idemKey);
+    if (prior) {
+      span.setAttribute("nlqdb.databases.create.outcome", "idempotent_replay");
+      span.end();
+      return c.json({ ...prior, replayed: true }, 201);
+    }
+
     // Same WASM polyfill as the /v1/ask runCreatePath — see that
     // block's comment for the full rationale. `sql-validate-ddl.ts`
     // gracefully degrades if loadModule() still fails on Workers.
@@ -2482,6 +2567,12 @@ app.post("/v1/databases", requireSession, async (c) => {
       }
       span.setAttribute("nlqdb.databases.create.db_id", result.dbId);
       span.setAttribute("nlqdb.databases.create.engine", result.engine);
+      // Store redacted (no one-time `pkLive`) for Idempotency-Key replay.
+      idempotencyStore(c.executionCtx, c.env.KV, "db_create", session.user.id, idemKey, {
+        dbId: result.dbId,
+        slug: deriveSlug(result.dbId),
+        engine: result.engine,
+      });
       span.end();
       return c.json(
         {

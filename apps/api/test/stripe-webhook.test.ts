@@ -357,6 +357,28 @@ describe("processWebhook — signature verification", () => {
       body: { error: "invalid_signature" },
     });
   });
+
+  // Hard guard: in production the MOCK_STRIPE bypass is IGNORED, so an
+  // unsigned (forgeable) body can't be trusted even if the flag leaked in.
+  it("isProd hard-guard: bypass is refused in production; unsigned body → 400", async () => {
+    const event = makeEventStub({
+      id: "evt_forged_prod",
+      type: "customer.subscription.updated",
+      object: makeSubscription({ customer: "cus_x" }),
+    });
+    const signer: WebhookSigner = {
+      constructEventAsync: vi.fn().mockRejectedValue(new Error("bad sig")),
+    };
+    const { deps, db } = makeDeps({ signer });
+    const result = await processWebhook(
+      { ...deps, bypassSignatureVerification: true, isProd: true },
+      JSON.stringify(event),
+      null, // no signature → real path returns 400 (bypass refused)
+    );
+    expect(result).toEqual({ status: 400, body: { error: "invalid_signature" } });
+    // The forged event must NOT have been recorded/dispatched.
+    expect(db.stripeEvents.get("evt_forged_prod")).toBeUndefined();
+  });
 });
 
 describe("processWebhook — idempotency", () => {
