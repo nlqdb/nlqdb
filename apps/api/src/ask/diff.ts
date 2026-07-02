@@ -9,6 +9,7 @@
 // avoids a second WASM dep on the eager startup graph.
 
 import { Parser } from "node-sql-parser";
+import { leadingVerb, stripLeadingComments } from "./sql-validate.ts";
 import type { AskDiff } from "./types.ts";
 
 const parser = new Parser();
@@ -174,15 +175,16 @@ function buildSummary(verb: AskDiff["verb"], count: number, table: string): stri
   return `This will modify ${count.toLocaleString()} ${rows} in ${table}.`;
 }
 
-// Leading-verb helper for the orchestrator's preview gate — duplicated
-// from `sql-validate.ts` so the orchestrator stays decoupled from the
-// validator internals. Single token, lowercased; empty when the SQL
+// Leading-verb helper for the orchestrator's preview gate (SK-TRUST-001).
+// MUST share the validator's exact normalization — `stripLeadingComments`
+// then `leadingVerb` — so the write-preview gate and `validateSql` can
+// never disagree on the leading verb. A comment-prefixed write
+// (`/* x */ UPDATE …`, `-- c\nDELETE …`) that the validator accepts as a
+// write would otherwise slip past this gate and commit without the
+// render-before-commit diff (the same smuggle sql-validate.ts guards
+// `/v1/run` against). Single token, lowercased; empty when the SQL
 // starts with something unparseable.
 export function isWriteVerb(sql: string): boolean {
-  const head =
-    sql
-      .replace(/^[\s(]+/, "")
-      .match(/^[a-z_][a-z_0-9]*/i)?.[0]
-      ?.toLowerCase() ?? "";
+  const head = leadingVerb(stripLeadingComments(sql.trim()));
   return head === "insert" || head === "update" || head === "delete";
 }
