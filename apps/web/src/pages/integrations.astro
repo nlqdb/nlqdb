@@ -25,6 +25,7 @@ interface Surface {
 }
 
 const DOCS = "https://docs.nlqdb.com";
+const REPO = "https://github.com/nlqdb/nlqdb/tree/main";
 
 const FRAMEWORKS: readonly Surface[] = [
   { id: "@nlqdb/react", name: "React", note: "React 19 wrapper", href: `${DOCS}/tutorials/react/` },
@@ -32,7 +33,7 @@ const FRAMEWORKS: readonly Surface[] = [
     id: "@nlqdb/next",
     name: "Next.js",
     note: "Next 15 helpers + RSC server factory",
-    href: `${DOCS}/tutorials/next/`,
+    href: `${DOCS}/tutorials/nextjs/`,
   },
   { id: "@nlqdb/vue", name: "Vue", note: "Vue 3.5 component", href: `${DOCS}/tutorials/vue/` },
   { id: "@nlqdb/nuxt", name: "Nuxt", note: "Nuxt 4 module", href: `${DOCS}/tutorials/nuxt/` },
@@ -91,14 +92,16 @@ const UNIVERSAL: readonly Surface[] = [
 ];
 
 const OTHER_LANGS: readonly Surface[] = [
+  // No docs.nlqdb.com pages exist for these yet — link the package
+  // READMEs (the `href` contract is "docs/repo") rather than 404.
   {
     id: "nlqdb-swift",
     name: "Swift",
     note: "Swift 6 package — iOS / macOS / Linux",
-    href: `${DOCS}/sdk/swift/`,
+    href: `${REPO}/packages/nlqdb-swift`,
   },
-  { id: "nlqdb-rb", name: "Ruby", note: "Ruby gem", href: `${DOCS}/sdk/ruby/` },
-  { id: "nlqdb-rs", name: "Rust", note: "Rust crate", href: `${DOCS}/sdk/rust/` },
+  { id: "nlqdb-rb", name: "Ruby", note: "Ruby gem", href: `${REPO}/packages/nlqdb-rb` },
+  { id: "nlqdb-rs", name: "Rust", note: "Rust crate", href: `${REPO}/packages/nlqdb-rs` },
 ];
 ---
 

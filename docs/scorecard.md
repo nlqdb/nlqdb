@@ -2,7 +2,7 @@
 
 Point-in-time tracker, regenerated each
 [`/daily`](../.claude/commands/daily.md) run. Current state only — no changelog
-(≤5 KB cap). History: `git log` +
+(≤20 KB cap). History: `git log` +
 `progress/quality-score-verification-log.md` (engine).
 
 **Weekly focus number:** *(none set — [`/weekly`](../.claude/commands/weekly.md)
@@ -37,6 +37,10 @@ vs 0.75** — is **dark** (rule 8): dispatch blocked since run 126 (GitHub App
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites (fresh 07-02 pull) | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
 | 15 | E2E manual-suite freshness | 0.00 | sdk ✅05-31 · **mcp ❌06-24 (failed)** · examples ✅05-31 · opencheck ✅06-12 — all ≥7d ⇒ 0; re-run dispatch-gated |
+| | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
+| 16 | Current phase exit-gate status | unmeasured — row added 2026-07-02 | next `/daily` run names the current phase + pass/fail per gate criterion; a failing criterion is a worst-number candidate |
+| 17 | Unresolved open-question bullets, `docs/features/*/FEATURE.md` | 88 across 29 features (07-02; 89 more are "Parked until `<trigger>`" = resolved per GLOBAL-033, excluded) | target ↓ 0 — **agent-movable**: research (P2/GLOBAL-033) → document (P4) → delete or park the bullet; founder-only ones move to `blocked-by-human.md` and off this count |
+| 18 | Dead links, deployed surfaces (incl. nlqdb.com → docs.nlqdb.com) | 4 found + fixed 07-02 (`/integrations`: `/tutorials/next/` → `nextjs` + 3 never-built `/sdk/{swift,ruby,rust}/` pages, PR #581); full sweep unmeasured | target 0 — no automated sweep exists yet; **building the built-output href sweep is a lever** |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
