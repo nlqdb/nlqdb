@@ -56,6 +56,11 @@ delete its line.
   `circuit_open`/`rate_limited` fast-fails with p50=0ms are availability, not
   accuracy; throttle, budget-stop + SHA-keyed resume, keep smoke apart from
   powered runs).
+- run 69 — **https://nlqdb.com/blog/sitemap-advertising-redirects/** — venue
+  variant pending: dev.to + lobste.rs (`seo` / `webdev`) (a static host 307s
+  the bare path; canonical/og:url/sitemap/llms.txt all advertised the
+  redirect; `trailingSlash: "always"` + one path-normalize helper, audit with
+  `curl -sI` over every sitemap URL).
 
 ## Collapsed — full drafts in git history
 
@@ -88,7 +93,6 @@ delete its line.
 ### Engine-lesson posts (dev.to / lobste.rs)
 - run 72 — "Your BI tool got an AI assistant. Your agent still can't call it." (open-source BI tools shipped genuinely good in-app AI assistants — NL answers, prompt-to-chart, a "fix it" button, Slack replies — but the assistant is a feature inside a destination app that helps a logged-in human; there's no handle an autonomous agent can grab, no "provision a database, write rows, query it" primitive; "who the AI helps" vs. "whether software can call it" are different axes; anchors `/vs/metabase`).
 - run 70 — "Your AI BI tool reads your data. It doesn't own it — and can't write to it" (a wave of AI-native BI tools converge on "describe what to track, AI builds the dashboard" — great at it, but "your data" is a read-only connection to a warehouse you already run; they don't own a DB or write to yours; the data layer that provisions the store and takes English for the write *and* the read is a different altitude; anchors `/vs/basedash`).
-- run 69 — "Your sitemap is advertising redirects — and your canonical tag points at one" (a static host serving `route/index.html` makes the bare path a 307, but `canonical`/`og:url`/sitemap/llms.txt all emitted the bare path — 27 redirecting sitemap URLs + a self-referential redirecting canonical; `trailingSlash: "always"` plus a one-place path-normalize in the head layout + URL generators, audit with `curl -sI` over every sitemap URL).
 
 *(runs 51–52, 56–66 moved to [`distribution-queue-archive.md`](./distribution-queue-archive.md) under D4.)*
 - runs 8–18, 33, 37, 39, 41–44, 46, 48 — earliest engine-lesson gists archived to keep this doc under the 20 KB cap (CLAUDE.md D4); titles + IDs in [`distribution-queue-archive.md`](./distribution-queue-archive.md), bodies in git history.
