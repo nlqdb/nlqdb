@@ -295,7 +295,7 @@ function CreateSnippetView({ primaryTable }: { primaryTable: string | undefined 
       </p>
       <a
         className="btn btn--accent createresult__snippet-cta"
-        href="/auth/sign-in?return_to=/app"
+        href="/auth/sign-in/?return_to=/app/"
         onClick={() => emit("home.snippet_signin_cta_clicked", { surface: "create_result" })}
       >
         Sign in (free) to continue →

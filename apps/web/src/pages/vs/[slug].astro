@@ -86,7 +86,7 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
       <nav class="vs__crumbs" aria-label="Breadcrumb">
         <ol>
           <li><a href="/">Home</a></li>
-          <li><a href="/vs">Compare</a></li>
+          <li><a href="/vs/">Compare</a></li>
           <li aria-current="page">nlqdb vs {c.name}</li>
         </ol>
       </nav>
@@ -234,11 +234,11 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
       <section class="vs__cta">
         <h2 class="vs__cta-title">Try nlqdb in 30 seconds</h2>
         <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
-        <a class="cta vs__cta-btn" href="/app/new">Start with a goal &rarr;</a>
+        <a class="cta vs__cta-btn" href="/app/new/">Start with a goal &rarr;</a>
         <p class="vs__cta-meta">
           Want a comparison against another tool?{" "}
           <a href="mailto:hello@nlqdb.com?subject=Comparison request">Email us</a> or browse
-          <a href="/vs"> all comparisons</a>.
+          <a href="/vs/"> all comparisons</a>.
         </p>
         {
           /* Agent-memory cluster (P2) → cross-link the dedicated front door
@@ -248,7 +248,7 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
           c.persona === "P2 agent builder" && (
             <p class="vs__cta-meta">
               Building an AI agent?{" "}
-              <a href="/agents">See analytical memory for agents &rarr;</a>
+              <a href="/agents/">See analytical memory for agents &rarr;</a>
             </p>
           )
         }

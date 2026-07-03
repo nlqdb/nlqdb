@@ -144,10 +144,10 @@ export default function LeftRail({
       <section className="left-rail__connect" aria-label="Connect an existing database">
         <p className="left-rail__connect-label">Have a database already?</p>
         <div className="left-rail__connect-chips">
-          <a className="left-rail__connect-chip" href="/app/connect?engine=postgres">
+          <a className="left-rail__connect-chip" href="/app/connect/?engine=postgres">
             Connect Postgres
           </a>
-          <a className="left-rail__connect-chip" href="/app/connect?engine=clickhouse">
+          <a className="left-rail__connect-chip" href="/app/connect/?engine=clickhouse">
             Connect ClickHouse
           </a>
         </div>

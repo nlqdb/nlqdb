@@ -41,6 +41,41 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "ai-internal-tool-builder-faster",
+    title: "AI made the internal-tool builder faster. It didn't ask whether you needed the tool.",
+    description:
+      "Low-code AI scaffolds the admin tool in a prompt. But the output is still a destination a human operates — and often the answer belongs inline in your product, or the asker is an agent.",
+    date: "2026-07-03",
+    anchor: {
+      label: "nlqdb vs Retool — the full side-by-side",
+      path: "/vs/retool",
+    },
+    body: [
+      {
+        kind: "p",
+        text: "Every low-code platform now has an AI layer. Describe the app, it scaffolds the screens against your schema. Ask in English, it writes the SQL. Point an agent at it and it plans, calls tools, and queries your data with guardrails. This is real and it's good — the thing that used to take an afternoon of dragging components and wiring queries takes a prompt.",
+      },
+      { kind: "h2", text: "What got faster is building the tool" },
+      {
+        kind: "p",
+        text: 'But notice what got faster: *building the tool*. The output is still a destination — an internal app a human opens, logs into, and reads. AI shortened the path from "I need a dashboard" to "I have a dashboard." It didn\'t question the premise that the answer to a data question is a dashboard you build.',
+      },
+      {
+        kind: "p",
+        text: "A lot of the time it isn't. The data question lives *inside* a product you're already shipping — \"show this customer their last five orders,\" \"what did this account spend this quarter\" — and the honest deliverable isn't a separate admin app, it's an answer rendered inline, on the page the user is already on. Or the asker isn't a human at all: it's an agent that needs to provision a database, write to it, and query it programmatically on every request, with no UI in the loop ever. Neither of those wants a built tool. They want a backend primitive.",
+      },
+      { kind: "h2", text: "Builder or backend primitive" },
+      {
+        kind: "p",
+        text: "That's the fork. A builder — even an AI-supercharged one — assumes a human will assemble and operate the result. A backend primitive assumes nobody will: you embed one element or call one API, pass an English goal, and get typed rows back. (At [nlqdb](https://nlqdb.com) we took the second side on purpose — English compiles to SQL over a Postgres the product or agent *provisions and owns*, writes diff-previewed, no app to assemble first — which is exactly why we don't ship a drag-drop canvas. Different job.) The builder wins when the deliverable genuinely is a standalone tool a team will run; the primitive wins when the answer belongs in the product, or the asker is code.",
+      },
+      {
+        kind: "p",
+        text: "Lesson: when an AI feature makes an old workflow 10× faster, check whether it made the *workflow* faster or the *outcome* faster. Scaffolding an internal tool faster is a real win — but if what you actually needed was the answer in your own app, or a database your agent stands up itself, the fastest builder is still building something you didn't need.",
+      },
+    ],
+  },
+  {
     slug: "text-to-sql-accuracy-schemas-your-users-never-build",
     title: "Your text-to-SQL accuracy is measured on schemas your users will never build",
     description:

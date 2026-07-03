@@ -72,7 +72,7 @@ const displayDate = new Date(`${post.date}T00:00:00Z`).toLocaleDateString("en-US
       <nav class="blg__crumbs" aria-label="Breadcrumb">
         <ol>
           <li><a href="/">Home</a></li>
-          <li><a href="/blog">Blog</a></li>
+          <li><a href="/blog/">Blog</a></li>
           <li aria-current="page">{post.title}</li>
         </ol>
       </nav>
@@ -118,7 +118,7 @@ const displayDate = new Date(`${post.date}T00:00:00Z`).toLocaleDateString("en-US
       <section class="blg__cta">
         <h2 class="blg__cta-title">Try nlqdb in 30 seconds</h2>
         <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
-        <a class="cta blg__cta-btn" href="/app/new" data-blog-slug={post.slug}>
+        <a class="cta blg__cta-btn" href="/app/new/" data-blog-slug={post.slug}>
           Start with a goal &rarr;
         </a>
         <p class="blg__cta-meta">
@@ -127,7 +127,7 @@ const displayDate = new Date(`${post.date}T00:00:00Z`).toLocaleDateString("en-US
               Full guide: <a href={`${post.anchor.path}/`}>{post.anchor.label}</a>.{" "}
             </>
           )}
-          More posts: <a href="/blog">browse the blog</a>.
+          More posts: <a href="/blog/">browse the blog</a>.
         </p>
       </section>
     </main>
