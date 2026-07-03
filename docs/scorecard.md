@@ -34,7 +34,7 @@ stays below its ≥ 0.60 Phase 2 floor** — engine work ships until cleared
 | 8 | BIRD raw EX | **0.512** (256/500, 07-03 — first completed 500q canonical since 06-19; Δ −0.8 pp vs 0.520, McNemar p=0.36 statistically flat, 0 flagged regressions; [run 28640034273](https://github.com/nlqdb/nlqdb/actions/runs/28640034273)) | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Resume loop closed (4 checkpointed windows), baseline re-seeded 07-03; pin-branch delete blocked by session push scope — any session with branch-delete rights can drop `eval/bird-resume-0e67e64` |
 | 9 | Spider raw EX | 0.1926 (26/135, 07-02) | target 0.75; was 0.1852 (06-17). **Worst engine number.** 07-02 free lane capacity-throttled ⇒ undercounts; `SK-QUAL-017` SC smoke undispatched |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-02) | full-chain ICP EX; 1.8× BIRD, 5× Spider — the GLOBAL-026 bet; N=23 ±1 noisy. Retrieval precision@1 saturated |
-| 11 | free-vs-frontier delta | 0.00 pts (persona-bench 07-02); **BIRD agentic lane: first dispatch in flight** (07-03) | the `SK-QUAL-004` headline lane is now dispatchable any day: smoke mode runs it baseline-safe (was full-mode-only ⇒ blocked 7 days after every re-seed). Windows 1–2 ceiling-cancelled with checkpoint persisted — free chain drained by the same-day 500q canonical run (the run-68 lesson); **resume: re-dispatch `quality-eval-bird-mini.yml` `mode: smoke` + `include_agentic_frontier` after quota reset** (rolling `eval-state-bird-` cache key) |
+| 11 | free-vs-frontier delta | 0.00 pts (persona-bench 07-02); **BIRD agentic lane: first dispatch in flight** (07-03) | the `SK-QUAL-004` headline lane is now dispatchable any day: smoke mode runs it baseline-safe (was full-mode-only ⇒ blocked 7 days after every re-seed). Windows 1–3 ceiling-cancelled with checkpoint persisted — free chain drained by the same-day 500q canonical run (the run-68 lesson); **resume: re-dispatch `quality-eval-bird-mini.yml` `mode: smoke` + `include_agentic_frontier` after quota reset** (rolling `eval-state-bird-` cache key) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-03 pull) | | wall-time, all routes |
 | 12 | nlqdb-api requests / errors | 1,956 / 0 (0.00%) | mcp-server 819 req / 0 err; events-worker 2 req |
 | 13 | nlqdb-api wall-time p50 / p95 | 1.0 ms / 911 ms | mcp-server p95 331.8 s = long-lived SSE, expected; `/ask`-only split needs Grafana `metrics:read` |
@@ -73,7 +73,7 @@ baseline re-seed, so the headline delta was structurally unmeasurable exactly
 when the baseline is freshest. The smoke job (sampled, no-emit,
 baseline-never-touched) now takes the `include_agentic_frontier` toggle:
 **headline-KPI measurement windows/year ≈ 52 → 365**. First dispatch ran
-free + frontier + agentic-frontier on the fixed 150q slice; windows 1–2 hit
+free + frontier + agentic-frontier on the fixed 150q slice; windows 1–3 hit
 the 45-min ceiling with the checkpoint persisted — the free chain was drained
 by the same-day 500q canonical run (the run-68 lesson measured live), so the
 delta lands on the next resume dispatch after quota reset (row #11 has the
