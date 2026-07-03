@@ -4,21 +4,54 @@
 import type { GoldCell, GoldTable } from "./csv.ts";
 import type { ScoreOutcome } from "./types.ts";
 
-type SqliteDatabase = {
-  query: (sql: string) => { all: () => unknown[]; values: () => unknown[][] };
-  close: () => void;
-};
+// SK-QUAL-021 — every gold/predicted statement executes inside a killable
+// subprocess (`sql-exec-child.ts`) with a hard deadline. In-process
+// bun:sqlite `.values()` is synchronous and uninterruptible, so one
+// runaway predicted query (cartesian join over BIRD's larger fixtures)
+// froze the whole runner until the CI ceiling — no budget-stop, no
+// checkpoint growth, and a deterministic resume order replayed the same
+// poison pair every window. SIGKILL at the deadline turns that into a
+// scored timeout, matching canonical BIRD `evaluation.py`'s `func_timeout`.
+const SQL_EXEC_CHILD = new URL("./sql-exec-child.ts", import.meta.url).pathname;
+// Spawn/parse overhead lives outside the query budget so a query that
+// finishes just under `timeoutMs` isn't killed by process startup cost.
+const KILL_GRACE_MS = 500;
 
-type SqliteCtor = new (filename: string, opts?: { readonly?: boolean }) => SqliteDatabase;
+type BoundedExec = { rows: unknown[][] } | { error: string; timedOut?: true };
 
-let cachedSqlite: SqliteCtor | undefined;
+function reviveCell(v: unknown): unknown {
+  if (v !== null && typeof v === "object" && "__b64" in (v as Record<string, unknown>)) {
+    return new Uint8Array(Buffer.from((v as { __b64: string }).__b64, "base64"));
+  }
+  return v;
+}
 
-// Dynamic specifier so tsc (which doesn't know bun:* schemes) still resolves the module.
-async function loadSqlite(): Promise<SqliteCtor> {
-  if (cachedSqlite) return cachedSqlite;
-  const mod = (await import(/* @vite-ignore */ "bun:sqlite")) as { Database: SqliteCtor };
-  cachedSqlite = mod.Database;
-  return cachedSqlite;
+async function runSqlBounded(dbPath: string, sql: string, timeoutMs: number): Promise<BoundedExec> {
+  const proc = Bun.spawn([process.execPath, SQL_EXEC_CHILD, dbPath, String(timeoutMs)], {
+    stdin: new TextEncoder().encode(sql),
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  let killed = false;
+  const timer = setTimeout(() => {
+    killed = true;
+    proc.kill(9);
+  }, timeoutMs + KILL_GRACE_MS);
+  const [text, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  clearTimeout(timer);
+  if (killed) {
+    return { error: `sql execution exceeded ${timeoutMs}ms — killed (SK-QUAL-021)`, timedOut: true };
+  }
+  if (exitCode !== 0) return { error: `sql exec child exited with code ${exitCode}` };
+  try {
+    const parsed = JSON.parse(text) as
+      | { ok: true; rows: unknown[][] }
+      | { ok: false; error: string };
+    if (!parsed.ok) return { error: parsed.error };
+    return { rows: parsed.rows.map((row) => (row as unknown[]).map(reviveCell)) };
+  } catch (err) {
+    return { error: `sql exec child produced invalid output: ${trimError(err)}` };
+  }
 }
 
 export type ScoreInput = {
@@ -280,7 +313,6 @@ function rowsToColumnMajor(rows: unknown[][]): GoldCell[][] {
 }
 
 export async function scoreOneSpider2(input: Spider2ScoreInput): Promise<ScoreResult> {
-  const Database = await loadSqlite();
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const predictedSql = normalizeSql(input.predictedSql);
   if (predictedSql.length === 0) {
@@ -289,26 +321,16 @@ export async function scoreOneSpider2(input: Spider2ScoreInput): Promise<ScoreRe
   if (input.goldTables.length === 0) {
     return { outcome: "gold_error", error: "no gold CSV(s) for this Spider 2.0 instance" };
   }
-  const db = new Database(input.dbPath, { readonly: true });
-  try {
-    db.query(`PRAGMA busy_timeout = ${Math.max(1, Math.floor(timeoutMs))}`).all();
-    let predictedRows: unknown[][];
-    try {
-      predictedRows = db.query(predictedSql).values();
-    } catch (err) {
-      return { outcome: "exec_error", error: trimError(err) };
-    }
-    const predColumns = rowsToColumnMajor(predictedRows);
-    const match = compareMultiPandasTable(
-      predColumns,
-      input.goldTables,
-      input.conditionCols,
-      input.ignoreOrder,
-    );
-    return match ? { outcome: "match" } : { outcome: "mismatch" };
-  } finally {
-    db.close();
-  }
+  const predicted = await runSqlBounded(input.dbPath, predictedSql, timeoutMs);
+  if ("error" in predicted) return { outcome: "exec_error", error: predicted.error };
+  const predColumns = rowsToColumnMajor(predicted.rows);
+  const match = compareMultiPandasTable(
+    predColumns,
+    input.goldTables,
+    input.conditionCols,
+    input.ignoreOrder,
+  );
+  return match ? { outcome: "match" } : { outcome: "mismatch" };
 }
 
 // SK-QUAL-017 — execute a predicted SQL read-only and return its
@@ -327,53 +349,30 @@ export async function executeRows(
 ): Promise<unknown[][] | null> {
   const normalized = normalizeSql(sql);
   if (normalized.length === 0) return null;
-  const Database = await loadSqlite();
-  const db = new Database(dbPath, { readonly: true });
-  try {
-    db.query(`PRAGMA busy_timeout = ${Math.max(1, Math.floor(timeoutMs))}`).all();
-    try {
-      return db.query(normalized).values();
-    } catch {
-      return null;
-    }
-  } finally {
-    db.close();
-  }
+  const result = await runSqlBounded(dbPath, normalized, timeoutMs);
+  return "error" in result ? null : result.rows;
 }
 
 export async function scoreOne(input: ScoreInput): Promise<ScoreResult> {
-  const Database = await loadSqlite();
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const predictedSql = normalizeSql(input.predictedSql);
   if (predictedSql.length === 0) {
     return { outcome: "no_sql", error: "router returned empty SQL" };
   }
   const goldSql = normalizeSql(input.goldSql);
-  const db = new Database(input.dbPath, { readonly: true });
-  try {
-    db.query(`PRAGMA busy_timeout = ${Math.max(1, Math.floor(timeoutMs))}`).all();
-    // `.values()` (positional tuples), not `.all()` (name-keyed objects):
-    // canonical BIRD compares `set(cursor.fetchall())` over tuples, so output
-    // column names / aliases / function casing are ignored. `.all()` folded
-    // them into the row identity, false-mismatching correct answers whose
-    // aliases differed from gold (SK-QUAL-010).
-    let gold: unknown[][];
-    try {
-      gold = db.query(goldSql).values();
-    } catch (err) {
-      return { outcome: "gold_error", error: trimError(err) };
-    }
-    let predicted: unknown[][];
-    try {
-      predicted = db.query(predictedSql).values();
-    } catch (err) {
-      return { outcome: "exec_error", error: trimError(err) };
-    }
-    const ordered = hasOrderBy(goldSql);
-    return rowsMatch(gold, predicted, ordered) ? { outcome: "match" } : { outcome: "mismatch" };
-  } finally {
-    db.close();
-  }
+  // `.values()` (positional tuples), not `.all()` (name-keyed objects):
+  // canonical BIRD compares `set(cursor.fetchall())` over tuples, so output
+  // column names / aliases / function casing are ignored. `.all()` folded
+  // them into the row identity, false-mismatching correct answers whose
+  // aliases differed from gold (SK-QUAL-010).
+  const gold = await runSqlBounded(input.dbPath, goldSql, timeoutMs);
+  if ("error" in gold) return { outcome: "gold_error", error: gold.error };
+  const predicted = await runSqlBounded(input.dbPath, predictedSql, timeoutMs);
+  if ("error" in predicted) return { outcome: "exec_error", error: predicted.error };
+  const ordered = hasOrderBy(goldSql);
+  return rowsMatch(gold.rows, predicted.rows, ordered)
+    ? { outcome: "match" }
+    : { outcome: "mismatch" };
 }
 
 export const _testing = {

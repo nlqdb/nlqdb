@@ -35,6 +35,7 @@ tools/eval/
 ├── src/
 │   ├── runner.ts          # main entry — accepts --baseline + --emit-url/--emit-token
 │   ├── score.ts           # BIRD EX scorer + Spider 2.0 multi-CSV pandas-comparator port (SK-QUAL-008)
+│   ├── sql-exec-child.ts  # killable SQL-exec subprocess — deadline-bound scoring (SK-QUAL-021)
 │   ├── csv.ts             # minimal RFC-4180 CSV parser + column type inference (SK-QUAL-008)
 │   ├── lanes.ts           # free / frontier router builders
 │   ├── baseline.ts        # read baseline JSON, per-lane diff, McNemar trigger
