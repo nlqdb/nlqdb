@@ -41,6 +41,50 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "sitemap-advertising-redirects",
+    title: "Your sitemap is advertising redirects — and your canonical tag points at one",
+    description:
+      "A static host that serves route/index.html 307-redirects the bare path. Our sitemap advertised 27 redirecting URLs and every canonical tag pointed at one. The fix is one path-normalize helper.",
+    date: "2026-07-03",
+    body: [
+      {
+        kind: "p",
+        text: "Run `curl -sI` over the URLs in your own sitemap. We did, and 27 of ours answered **307 Temporary Redirect** — every route on the site. The canonical tag was worse: each page declared a canonical URL that redirected to the page itself. We were telling crawlers, on every single page, that the authoritative copy lives one hop away.",
+      },
+      { kind: "h2", text: "How a static host quietly forks every URL in two" },
+      {
+        kind: "p",
+        text: "The mechanics are mundane, which is why this survives review. A static build writes each route as `route/index.html`. The host serves `/route/` directly — and answers the bare `/route` with a 307 to the slash form. So every route on the site has two URLs: one real, one a redirect. Which one your HTML advertises depends on whoever typed the link.",
+      },
+      {
+        kind: "p",
+        text: "Our templates typed the bare form everywhere it matters most: the `canonical` tag, `og:url`, the sitemap generator, and `llms.txt` — the four surfaces whose entire job is to name the authoritative URL. All four advertised the redirect.",
+      },
+      { kind: "h2", text: "Why a self-referential redirecting canonical is worth fixing" },
+      {
+        kind: "ul",
+        items: [
+          "**A canonical pointing at a redirect is a mixed signal.** The tag exists to end URL ambiguity; making crawlers resolve a hop to find the 'canonical' copy reintroduces exactly the ambiguity it was meant to close.",
+          "**Sitemap URLs are supposed to be final.** Search engines tolerate redirects there, but every hop is a chance for a URL to get indexed in the form you didn't pick — and split whatever authority the page earns across two spellings.",
+          "**AI crawlers fetch exactly what you wrote.** `llms.txt` consumers and answer-engine bots are literal; an extra 307 on every fetch is latency you chose, on the surface built for machines.",
+        ],
+      },
+      { kind: "h2", text: "The fix is a policy plus one helper, not a link hunt" },
+      {
+        kind: "p",
+        text: 'Chasing individual links is the wrong altitude. The durable fix was three moves: pick the slash form as policy (`trailingSlash: "always"`, so the build itself rejects the other spelling); route every emitted URL — canonical, `og:url`, sitemap, `llms.txt` — through one path-normalize helper in the head layout and URL generators; and re-audit with `curl -sI` over every sitemap URL, expecting nothing but 200s.',
+      },
+      {
+        kind: "p",
+        text: "The one-helper rule is what made the follow-up cheap: once advertised URLs were normalized in one place, sweeping the remaining 1,100+ bare-path hrefs inside page bodies was a mechanical pass, and a link check in the build now fails on any regression. ([nlqdb](https://nlqdb.com) is the database you talk to; this is one of the engineering notes from building it in the open.)",
+      },
+      {
+        kind: "p",
+        text: "The general lesson: every surface that names a URL — canonical, `og:url`, sitemap, `llms.txt`, internal hrefs — should call the same normalize function. If two of them can disagree about your own address, they eventually will, and you'll advertise the disagreement to every crawler that visits.",
+      },
+    ],
+  },
+  {
     slug: "offline-llm-eval-rate-limits",
     title: "Your offline LLM eval isn't measuring your model — it's measuring your rate limits",
     description:

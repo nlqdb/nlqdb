@@ -28,7 +28,7 @@ on:
         type: boolean
         default: false
       include_agentic_frontier:
-        description: "Run the SK-QUAL-009 agentic-frontier lane (exec-retry; ~3x provider RPS); full mode only"
+        description: "Run the SK-QUAL-009 agentic-frontier lane (exec-retry; ~3x provider RPS). Smoke mode measures the free-vs-agentic delta on the sampled slice without touching the <7-day canonical baseline (SK-QUAL-002)"
         type: boolean
         default: false
       skip_emit:
@@ -338,6 +338,12 @@ jobs:
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          # SK-QUAL-009 — agentic-frontier on the smoke slice: the sampled,
+          # no-emit, baseline-never-touched vehicle (same reasoning as the
+          # SK-QUAL-017 SC toggle above). Key gated on the explicit toggle so
+          # a plain smoke can never bill the founder-funded frontier budget.
+          OPENROUTER_FRONTIER_API_KEY: ${{ inputs.include_agentic_frontier == true && secrets.OPENROUTER_FRONTIER_API_KEY || '' }}
+          RUN_AGENTIC_FRONTIER: ${{ inputs.include_agentic_frontier == true && '1' || '' }}
         run: |
           set -euo pipefail
           mkdir -p eval-state
@@ -381,7 +387,8 @@ jobs:
                 "",
                 "| Lane | Match | Attempted | Smoke EX |",
                 "|---|---|---|---|",
-                (.lanes[] | "| " + .lane + " | " + (.match | tostring) + " | " + (.attempted | tostring) + " | " + ((.execution_accuracy * 100 | tostring) + "%") + " |")
+                (.lanes[] | "| " + .lane + " | " + (.match | tostring) + " | " + (.attempted | tostring) + " | " + ((.execution_accuracy * 100 | tostring) + "%") + " |"),
+                (if .free_vs_agentic_frontier_delta != null then "", ("Free-vs-agentic-frontier delta (GLOBAL-025 headline): " + (.free_vs_agentic_frontier_delta * 100 | tostring) + " pts") else empty end)
               ' "$latest"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
