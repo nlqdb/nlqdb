@@ -72,7 +72,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The fix is a policy plus one helper, not a link hunt" },
       {
         kind: "p",
-        text: "Chasing individual links is the wrong altitude. The durable fix was three moves: pick the slash form as policy (`trailingSlash: \"always\"`, so the build itself rejects the other spelling); route every emitted URL — canonical, `og:url`, sitemap, `llms.txt` — through one path-normalize helper in the head layout and URL generators; and re-audit with `curl -sI` over every sitemap URL, expecting nothing but 200s.",
+        text: 'Chasing individual links is the wrong altitude. The durable fix was three moves: pick the slash form as policy (`trailingSlash: "always"`, so the build itself rejects the other spelling); route every emitted URL — canonical, `og:url`, sitemap, `llms.txt` — through one path-normalize helper in the head layout and URL generators; and re-audit with `curl -sI` over every sitemap URL, expecting nothing but 200s.',
       },
       {
         kind: "p",
