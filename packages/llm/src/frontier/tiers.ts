@@ -66,10 +66,10 @@ const ANTHROPIC_MODEL_DEFAULTS = [
   "claude-haiku-4-5",
 ] as const;
 
-// TODO(P2): verify current OpenAI model IDs before enabling the lane
-// (docs/features/frontier-keys/FEATURE.md Open question). Defaulted to
-// empty placeholders on purpose so a stale guessed id can't ship silently
-// — the founder must set FRONTIER_OPENAI_MODEL_1..3 explicitly.
+// OpenAI IDs P2-verified 2026-07-03 (gpt-5.5 / gpt-5.4 / gpt-5.4-mini — see
+// docs/features/frontier-keys/FEATURE.md). Still defaulted to empty placeholders
+// on purpose so a stale id can't ship silently — the founder sets
+// FRONTIER_OPENAI_MODEL_1..3 explicitly against the verified list at enable time.
 const OPENAI_MODEL_DEFAULTS = ["", "", ""] as const;
 
 function parseBudget(raw: string | undefined): number {

@@ -167,10 +167,17 @@ implemented"* mirrors this and stays at a very low score until **every** row is 
   key-value store (`GLOBAL-013`: no extra paid infra). This feature implements the
   founder's "Redis key" on KV. If a true Redis is ever introduced, `pointer.ts`'s
   injected interface swaps with no lane-logic change. **Defaulting to KV.**
-- **Exact frontier model IDs.** Anthropic tiers default to Opus/Sonnet/Haiku
-  (`claude-opus-4-8` / `claude-sonnet-4-6` / `claude-haiku-4-5`); OpenAI tier IDs are
-  env-configured and **must be P2-verified against the current OpenAI model list**
-  before the lane is enabled — recorded here so a stale ID can't ship silently.
+- **Exact frontier model IDs — resolved (OpenAI list P2-verified 2026-07-03).** Anthropic
+  tiers default to Opus/Sonnet/Haiku (`claude-opus-4-8` / `claude-sonnet-4-6` /
+  `claude-haiku-4-5`) — the founder's quality ladder, pinned by `SK-QUAL-009`
+  (`claude-sonnet-4-6` is the eval baseline lane; do not bump silently). OpenAI
+  defaults stay **empty** on purpose (`tiers.ts` `OPENAI_MODEL_DEFAULTS`) so a
+  guessed ID can't ship silently — the founder sets `FRONTIER_OPENAI_MODEL_1..3`
+  explicitly against this verified list ([OpenAI API models](https://developers.openai.com/api/docs/models),
+  fetched 2026-07-03): tier 1 (quality) **`gpt-5.5`** (recommended for complex
+  reasoning/coding, $5/$30 per M tok), tier 2 **`gpt-5.4`** ($2.50/$15), tier 3
+  **`gpt-5.4-mini`** ($0.75/$4.50) — `gpt-5.4-nano` is the lower bound if a fourth
+  rung is ever wanted. Re-verify on the next lane-enable (model IDs churn ~monthly).
 - **Budget accounting granularity.** Initial caps are coarse per-tier token counters
   in KV; precise per-request cost accounting folds into the Lago wiring tracked in
   `llm-router` Open questions (Phase 2).

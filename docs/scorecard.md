@@ -44,7 +44,7 @@ cleared (`SK-QUAL-005`). Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | 15 | E2E manual-suite freshness | **0.64** (natural 1-day decay from 0.75) — sdk ✅ 07-02 · mcp ✅ 07-02 · examples ✅ 07-02 · opencheck ❌ (last ✅ 06-12 ⇒ freshness 0) | opencheck failed twice 07-02 on OpenRouter free-tier 429 (driver LLM throttled — infra, not product); its driver shares free-LLM capacity with the eval lanes (BIRD burned it again 07-03) — dispatch opencheck on an eval-free day |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.512, fresh 07-03); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**runner hang fixed, first post-fix dispatch pending, row #11**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (no data, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: finish the row #11 agentic smoke resume, first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
-| 17 | Unresolved open-question bullets, `docs/features/*/FEATURE.md` | 85 (07-03, method now pinned: top-level `- ` bullets under `## Open questions`, minus the 92 containing "parked" per GLOBAL-033; bullets unchanged since yesterday's unpinned 75 — Δ is method, not new ambiguity) | target ↓ 0 — **agent-movable**: research (P2/GLOBAL-033) → document (P4) → delete or park |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **38** (07-03, was 39; 166 total bullets, 128 resolved/parked/decided) | target ↓ 0 — **method now pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — lowercase `resolved`/all-caps `RESOLVED` mark done bullets; a case-sensitive grep over-counts to 53). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved/delete |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-03 4th-run sweep: 92 pages, 2,063 internal links) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
@@ -82,7 +82,11 @@ subprocess with a hard deadline; measured before → after: the runaway repro
 **hung indefinitely → scores `exec_error` in 0.3 s** (regression tests added;
 277 eval tests green). Also measured this run: surfaces 72 → 73, visits
 84 → 93, link sweep clean over 92 pages / 2,063 links, docs-ambiguity count
-method pinned (85). Artifact = run-109 blog post
-`/blog/text-to-sql-build-vs-buy/`. **KPI:** GLOBAL-025 engine-quality (the
-headline-delta instrument can now finish a window) + onboarding/UX
-(distribution +1); none degraded.
+method pinned + made reproducible (case-insensitive exclusion; **38**
+genuinely-open of 166, row #17 — supersedes the earlier 85; one bullet
+resolved via P2 = frontier OpenAI IDs, one resolved-cruft cli bullet deleted).
+Artifact = run-109 blog post `/blog/text-to-sql-build-vs-buy/` (+ run-131
+distribution-queue draft on fail-loud model-ID defaults). **KPI:** GLOBAL-025
+engine-quality (the headline-delta instrument can now finish a window) +
+onboarding/UX (distribution +1, docs clarity); none degraded — no code
+behavior changed (frontier defaults still empty; `tiers.ts` comment-only).
