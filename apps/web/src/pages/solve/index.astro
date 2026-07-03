@@ -61,7 +61,7 @@ const groupedByPersona = SOLVE_PERSONA_ORDER.map((persona) => ({
             <ul class="slvidx__list">
               {g.entries.map((s) => (
                 <li class="slvidx__item">
-                  <a href={`/solve/${s.slug}`} class="slvidx__link">
+                  <a href={`/solve/${s.slug}/`} class="slvidx__link">
                     <h3 class="slvidx__name">{s.searchTitle}</h3>
                     <p class="slvidx__one-liner">{s.oneLiner}</p>
                   </a>
@@ -78,7 +78,7 @@ const groupedByPersona = SOLVE_PERSONA_ORDER.map((persona) => ({
           <a href="mailto:hello@nlqdb.com?subject=Solve page request">Email the search query</a>
           {' '}you typed; if it matches a recurring theme in our ICP-mining cluster file,
           {' '}the page ships the same week. See also{' '}
-          <a href="/vs">competitor comparisons</a>.
+          <a href="/vs/">competitor comparisons</a>.
         </p>
       </section>
     </main>

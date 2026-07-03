@@ -9,6 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
+    "check:links": "node scripts/check-links.mjs",
     "test": "bun test src",
     "og:gen": "node scripts/og/gen-og.mjs",
     "deploy": "astro build && wrangler deploy"

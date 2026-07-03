@@ -54,7 +54,7 @@ export default function McpInstallView({
       {isPlaceholder ? (
         <p className="mcpinstall-r__placeholder">
           Anonymous — the configs ship with the <code>{PLACEHOLDER_KEY}</code> placeholder.{" "}
-          <a className="mcpinstall-r__signin" href="/auth/sign-in?return_to=/app">
+          <a className="mcpinstall-r__signin" href="/auth/sign-in/?return_to=/app/">
             Sign in (free) to inline your live key →
           </a>
         </p>
