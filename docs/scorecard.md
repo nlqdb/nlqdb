@@ -11,12 +11,13 @@ number below.)*
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric; the daily **lever** targets its agent-movable inputs. Today's
-pick: **the BIRD baseline was 14 days stale with the resume loop open (row
-#8)** — loop closed: first completed 500q canonical pass since 06-19, free EX
-0.512 (statistically flat vs 0.520, p=0.36), baseline re-seeded. Vs GLOBAL-025
-floors, Spider free (0.1926) clears ≥ 0.15; **BIRD 0.512 stays below its
-≥ 0.60 Phase 2 floor** — engine work ships until cleared (`SK-QUAL-005`).
-Phase 2 exit gate: **1/9 criteria pass** (row #16).
+pick: **the GLOBAL-025 headline KPI (free-vs-agentic-frontier delta) was
+structurally unmeasurable** — the agentic lane was full-mode-only, and
+SK-QUAL-002 blocks a canonical dispatch for 7 days after every baseline
+re-seed (one happened yesterday). Fixed: smoke mode now runs the lane
+baseline-safe; first dispatch checkpointed mid-flight (row #11). **BIRD 0.512
+stays below its ≥ 0.60 Phase 2 floor** — engine work ships until cleared
+(`SK-QUAL-005`). Phase 2 exit gate: **1/9 criteria pass** (row #16).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -33,7 +34,7 @@ Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | 8 | BIRD raw EX | **0.512** (256/500, 07-03 — first completed 500q canonical since 06-19; Δ −0.8 pp vs 0.520, McNemar p=0.36 statistically flat, 0 flagged regressions; [run 28640034273](https://github.com/nlqdb/nlqdb/actions/runs/28640034273)) | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Resume loop closed (4 checkpointed windows), baseline re-seeded 07-03; pin-branch delete blocked by session push scope — any session with branch-delete rights can drop `eval/bird-resume-0e67e64` |
 | 9 | Spider raw EX | 0.1926 (26/135, 07-02) | target 0.75; was 0.1852 (06-17). **Worst engine number.** 07-02 free lane capacity-throttled ⇒ undercounts; `SK-QUAL-017` SC smoke undispatched |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-02) | full-chain ICP EX; 1.8× BIRD, 5× Spider — the GLOBAL-026 bet; N=23 ±1 noisy. Retrieval precision@1 saturated |
-| 11 | free-vs-frontier delta | 0.00 pts (persona-bench 07-02) | frontier key wired; agentic lane (`SK-QUAL-004` headline) unrun |
+| 11 | free-vs-frontier delta | 0.00 pts (persona-bench 07-02); **BIRD agentic lane: first dispatch in flight** (07-03) | the `SK-QUAL-004` headline lane is now dispatchable any day: smoke mode runs it baseline-safe (was full-mode-only ⇒ blocked 7 days after every re-seed). Windows 1–2 ceiling-cancelled with checkpoint persisted — free chain drained by the same-day 500q canonical run (the run-68 lesson); **resume: re-dispatch `quality-eval-bird-mini.yml` `mode: smoke` + `include_agentic_frontier` after quota reset** (rolling `eval-state-bird-` cache key) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-03 pull) | | wall-time, all routes |
 | 12 | nlqdb-api requests / errors | 1,956 / 0 (0.00%) | mcp-server 819 req / 0 err; events-worker 2 req |
 | 13 | nlqdb-api wall-time p50 / p95 | 1.0 ms / 911 ms | mcp-server p95 331.8 s = long-lived SSE, expected; `/ask`-only split needs Grafana `metrics:read` |
@@ -41,7 +42,7 @@ Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
 | 15 | E2E manual-suite freshness | **0.64** (natural 1-day decay from 0.75) — sdk ✅ 07-02 · mcp ✅ 07-02 · examples ✅ 07-02 · opencheck ❌ (last ✅ 06-12 ⇒ freshness 0) | opencheck failed twice 07-02 on OpenRouter free-tier 429 (driver LLM throttled — infra, not product); its driver shares free-LLM capacity with the eval lanes (BIRD burned it again 07-03) — dispatch opencheck on an eval-free day |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
-| 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.512, fresh 07-03); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (lane unrun); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (no data, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: BIRD floor (row #8 resume), agentic lane dispatch, first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
+| 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.512, fresh 07-03); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**first dispatch in flight, row #11**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (no data, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: finish the row #11 agentic smoke resume, first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
 | 17 | Unresolved open-question bullets, `docs/features/*/FEATURE.md` | 75 (07-03; 92 parked per GLOBAL-033, excluded) | target ↓ 0 — **agent-movable**: research (P2/GLOBAL-033) → document (P4) → delete or park |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-03 re-sweep: 91 pages, 2,039 internal links) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
@@ -65,15 +66,19 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-03 (2nd run)** — lever: **BIRD baseline staleness cleared (row #8):
-resume loop closed** — windows 3–4 dispatched on the pinned SHA, run completed
-500/500 attempted; free EX **0.520 (06-19) → 0.512 (07-03)**, McNemar p=0.36
-(statistically flat, 0 flagged regressions), baseline re-seeded + verification
-log appended (pin-branch delete blocked by session push scope). BIRD stays
-below the 0.60 Phase 2 floor, so
-engine work remains the standing priority. Also un-redded the prior daily PR
-(#593 failed only Biome format on its new script) and merged it. Artifact =
-run-68 blog post `/blog/offline-llm-eval-rate-limits/` (surfaces 70 → 71,
-row #6) — the eval-capacity lesson this same loop demonstrated today.
-**KPI:** GLOBAL-025 engine-quality (measurement integrity: baseline fresh,
-loop closed) + onboarding/UX (distribution +1); none degraded.
+**2026-07-03 (3rd run)** — lever: **the GLOBAL-025 headline KPI became
+dispatchable any day (row #11)** — the agentic-frontier lane was wired only
+into the full canonical job, which SK-QUAL-002 blocks for 7 days after every
+baseline re-seed, so the headline delta was structurally unmeasurable exactly
+when the baseline is freshest. The smoke job (sampled, no-emit,
+baseline-never-touched) now takes the `include_agentic_frontier` toggle:
+**headline-KPI measurement windows/year ≈ 52 → 365**. First dispatch ran
+free + frontier + agentic-frontier on the fixed 150q slice; windows 1–2 hit
+the 45-min ceiling with the checkpoint persisted — the free chain was drained
+by the same-day 500q canonical run (the run-68 lesson measured live), so the
+delta lands on the next resume dispatch after quota reset (row #11 has the
+exact command). Measured this run: surfaces 71 → 72, external referrals
+2 → 3 (bing new), link sweep clean over 91 pages / 2,039 links. Artifact =
+run-69 blog post `/blog/sitemap-advertising-redirects/`. **KPI:** GLOBAL-025
+engine-quality (headline-KPI measurement unblocked) + onboarding/UX
+(distribution +1); none degraded.
