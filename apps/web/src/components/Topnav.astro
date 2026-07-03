@@ -18,37 +18,37 @@ const inChat = current === "chat";
   <a class="topnav__brand" href="/">nlqdb</a>
   <nav class="topnav__links" aria-label="Primary">
     <a
-      href="/manifesto"
+      href="/manifesto/"
       aria-current={current === "manifesto" ? "page" : undefined}
     >
       Manifesto
     </a>
     <a
-      href="/agents"
+      href="/agents/"
       aria-current={current === "agents" ? "page" : undefined}
     >
       Agents
     </a>
     <a
-      href="/vs"
+      href="/vs/"
       aria-current={current === "vs" ? "page" : undefined}
     >
       Compare
     </a>
     <a
-      href="/solve"
+      href="/solve/"
       aria-current={current === "solve" ? "page" : undefined}
     >
       Solve
     </a>
     <a
-      href="/blog"
+      href="/blog/"
       aria-current={current === "blog" ? "page" : undefined}
     >
       Blog
     </a>
     <a
-      href="/pricing"
+      href="/pricing/"
       aria-current={current === "pricing" ? "page" : undefined}
     >
       Pricing
@@ -57,7 +57,7 @@ const inChat = current === "chat";
 
     {/* Sign-in link — suppressed once the auth probe resolves authed. */}
     <span id="topnav-signin">
-      <a href="/auth/sign-in">Sign in</a>
+      <a href="/auth/sign-in/">Sign in</a>
     </span>
 
     {/* Authed slot — hidden by default; revealed only after the
@@ -67,7 +67,7 @@ const inChat = current === "chat";
         a jump to the page they're on. */}
     <span id="topnav-authed" class="topnav__authed" hidden>
       {!inChat && (
-        <a href="/app" class="topnav__chat-link">Open chat &rarr;</a>
+        <a href="/app/" class="topnav__chat-link">Open chat &rarr;</a>
       )}
       <button type="button" id="topnav-signout" class="topnav__signout">
         Sign out

@@ -46,7 +46,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
               <li>7-day backups</li>
               <li class="pricing__feature--quiet">Sleeps after 7 days idle · wakes in &lt;2s</li>
             </ul>
-            <a href="/app" class="cta cta--ghost pricing__cta">Start free &rarr;</a>
+            <a href="/app/" class="cta cta--ghost pricing__cta">Start free &rarr;</a>
           </div>
         </article>
 
@@ -148,7 +148,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       <section class="pricing__notes">
         <div class="pricing__note">
           <h3 class="pricing__note-title">Bring your own LLM</h3>
-          <p>Anthropic, OpenAI, Gemini, or OpenRouter key at <strong>0% markup</strong> — every tier. <a href="/app/keys">Settings &rarr; Keys</a>.</p>
+          <p>Anthropic, OpenAI, Gemini, or OpenRouter key at <strong>0% markup</strong> — every tier. <a href="/app/keys/">Settings &rarr; Keys</a>.</p>
         </div>
         <div class="pricing__note">
           <h3 class="pricing__note-title">Self-host the source</h3>
@@ -200,7 +200,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       if (!user) {
         // Relative on purpose — the local sign-in page hops to the app
         // origin itself, carrying localStorage state (SK-ANON-015).
-        window.location.assign("/auth/sign-in?return_to=/pricing");
+        window.location.assign("/auth/sign-in/?return_to=/pricing/");
         return;
       }
 

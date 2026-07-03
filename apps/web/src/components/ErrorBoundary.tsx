@@ -62,7 +62,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
             >
               Reload
             </button>
-            <a className="btn" href="/auth/sign-out">
+            <a className="btn" href="/auth/sign-out/">
               Sign out
             </a>
           </div>
