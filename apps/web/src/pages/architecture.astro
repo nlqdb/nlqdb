@@ -139,13 +139,6 @@ import Base from "../layouts/Base.astro";
     cursor: grabbing;
   }
 
-  .arch3d-labels {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-  }
-
   .arch3d-loading,
   .arch3d-fallback {
     position: absolute;
@@ -162,90 +155,6 @@ import Base from "../layouts/Base.astro";
     position: static;
     padding: clamp(40px, 8vw, 80px) 24px;
     text-align: center;
-  }
-
-  /* Scene labels (CSS2DRenderer). Visibility follows the zoom level via
-     data-view on the stage; the transition does the crossfade. */
-
-  .arch3d-grouplabel,
-  .arch3d-nodelabel,
-  .arch3d-edgelabel {
-    pointer-events: none;
-    white-space: nowrap;
-    transition: opacity var(--dur-2) var(--ease-std);
-  }
-
-  .arch3d-grouplabel {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    font-family: var(--display);
-    font-weight: 600;
-    font-size: clamp(17px, 2.2vw, 22px);
-    letter-spacing: -0.01em;
-    color: var(--ink);
-    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
-  }
-
-  .arch3d-grouplabel span {
-    font-family: var(--mono);
-    font-weight: 400;
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .arch3d-stage[data-view="detail"] .arch3d-grouplabel {
-    opacity: 0.55;
-    font-size: 14px;
-  }
-
-  .arch3d-nodelabel {
-    font-family: var(--sans);
-    font-weight: 600;
-    font-size: 12.5px;
-    color: var(--ink);
-    opacity: 0;
-    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.85);
-  }
-
-  .arch3d-nodelabel em {
-    font-style: normal;
-    font-family: var(--mono);
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--accent);
-    margin-left: 6px;
-    vertical-align: middle;
-  }
-
-  .arch3d-stage[data-view="detail"] .arch3d-nodelabel {
-    opacity: 1;
-  }
-
-  .arch3d-edgelabel {
-    font-family: var(--mono);
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
-    color: var(--accent);
-    opacity: 0;
-    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
-  }
-
-  .arch3d-stage[data-view="detail"] .arch3d-edgelabel {
-    opacity: 0.9;
-  }
-
-  .arch3d-edgelabel--agg {
-    font-size: 12px;
-    opacity: 0.9;
-  }
-
-  .arch3d-stage[data-view="detail"] .arch3d-edgelabel--agg {
-    opacity: 0;
   }
 
   /* ---- Overlay chrome ---- */
@@ -428,11 +337,4 @@ import Base from "../layouts/Base.astro";
     flex-wrap: wrap;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .arch3d-grouplabel,
-    .arch3d-nodelabel,
-    .arch3d-edgelabel {
-      transition: none;
-    }
-  }
 </style>

@@ -5,10 +5,15 @@
 // island is the no-JS / no-WebGL / crawler fallback — this component may
 // fail without losing the page's content.
 //
-// Zoom levels: far = three group cards (You ask → engine → your data);
-// near = the full node graph. Camera distance drives a continuous blend
-// between the two, so "zoom in from the simple high level to the depth"
-// is literally the camera dolly.
+// The scene is a lit diorama: labelled card slabs standing on a fogged
+// floor, casting real shadows. All text is baked into canvas textures on
+// the meshes themselves — it scales with distance, occludes correctly,
+// and always sits on its own surface (no screen-space DOM labels).
+//
+// Zoom levels: far = three floor zones with title chips (You ask → the
+// engine → your data); near = the full node graph. Camera distance drives
+// a continuous blend between the two, so "zoom in from the simple high
+// level to the depth" is literally the camera dolly.
 
 import { useEffect, useRef, useState } from "react";
 import type { ArchGroupId, ArchNode } from "../data/architecture";
@@ -23,27 +28,47 @@ import {
 import ErrorBoundary from "./ErrorBoundary";
 
 type ThreeModule = typeof import("three");
-type Css2dModule = typeof import("three/addons/renderers/CSS2DRenderer.js");
 type Object3D = import("three").Object3D;
+type Group = import("three").Group;
 type Mesh = import("three").Mesh;
-type MeshBasicMaterial = import("three").MeshBasicMaterial;
+type Material = import("three").Material;
+type Texture = import("three").Texture;
 type Vector3 = import("three").Vector3;
 type QuadraticBezierCurve3 = import("three").QuadraticBezierCurve3;
 
 // Calm-token palette (SK-WEB-020), as scene colors.
 const C = {
-  cardFront: 0x191c19,
-  cardSide: 0x2e332e,
-  groupCard: 0x181c17,
-  groupSide: 0x2c302b,
-  edge: 0x565c56,
+  bg: 0x0d0f0c,
+  floor: 0x111310,
+  cardFront: 0x232823,
+  cardSide: 0x161a16,
+  zoneFill: "rgba(32, 37, 31, 0.78)",
+  zoneLine: "rgba(70, 76, 69, 0.9)",
+  chipFill: "rgba(15, 18, 15, 0.88)",
+  chipLine: "rgba(62, 207, 142, 0.35)",
+  ink: "#f2f4f1",
+  muted: "#9aa099",
+  accentCss: "#3ecf8e",
+  edge: 0x6a716a,
   accent: 0x3ecf8e,
 } as const;
 
+const SANS =
+  'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const MONO = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+
+// Node cards: world size + texture resolution (px per world unit).
+const NODE_W = 3.2;
+const NODE_H = 1.5;
+const NODE_D = 0.34;
+const CARD_TILT = -0.17; // lean back toward the raised camera
+const PPU = 256;
+
 // Camera distances that map to the two levels of detail.
-const DETAIL_DIST = 18;
-const OVERVIEW_DIST = 30;
-const START_POS: [number, number, number] = [0, 4, 34];
+const DETAIL_DIST = 15;
+const OVERVIEW_DIST = 26;
+const START_POS: [number, number, number] = [0, 13.5, 24];
+const TARGET: [number, number, number] = [0, 0, -0.5];
 
 interface SceneCallbacks {
   onReady(): void;
@@ -58,6 +83,160 @@ interface SceneHandle {
   zoomBy(factor: number): void;
   clearSelection(): void;
   dispose(): void;
+}
+
+// Layout coords in the data module are (x, row) on a flat plan; the scene
+// lays that plan onto the floor: x stays x, the row becomes depth (-z).
+function toWorld(three: ThreeModule, pos: [number, number, number], y: number) {
+  return new three.Vector3(pos[0], y, -pos[1]);
+}
+
+function roundedRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/** Shrink font size until `text` fits `maxWidth` at the given weight/family. */
+function fitFont(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  px: number,
+  maxWidth: number,
+  weight: string,
+  family: string,
+) {
+  let size = px;
+  do {
+    ctx.font = `${weight} ${size}px ${family}`;
+    if (ctx.measureText(text).width <= maxWidth) return size;
+    size -= 4;
+  } while (size > 18);
+  return size;
+}
+
+function makeTexture(
+  three: ThreeModule,
+  maxAniso: number,
+  w: number,
+  h: number,
+  draw: (ctx: CanvasRenderingContext2D) => void,
+): Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (ctx) draw(ctx);
+  const tex = new three.CanvasTexture(canvas);
+  tex.colorSpace = three.SRGBColorSpace;
+  tex.anisotropy = maxAniso;
+  return tex;
+}
+
+/** Node-card face: label (auto-fit), plus a small accent "roadmap" tag. */
+function nodeFaceTexture(three: ThreeModule, maxAniso: number, node: ArchNode): Texture {
+  const w = NODE_W * PPU;
+  const h = NODE_H * PPU;
+  return makeTexture(three, maxAniso, w, h, (ctx) => {
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const size = fitFont(ctx, node.label, 60, w - 90, "600", SANS);
+    ctx.font = `600 ${size}px ${SANS}`;
+    ctx.fillStyle = C.ink;
+    ctx.fillText(node.label, w / 2, node.roadmap ? h * 0.42 : h / 2);
+    if (node.roadmap) {
+      ctx.font = `500 26px ${MONO}`;
+      ctx.fillStyle = C.accentCss;
+      const tag = "R O A D M A P";
+      const tw = ctx.measureText(tag).width;
+      ctx.strokeStyle = C.chipLine;
+      ctx.lineWidth = 2;
+      roundedRectPath(ctx, w / 2 - tw / 2 - 22, h * 0.62, tw + 44, 52, 26);
+      ctx.stroke();
+      ctx.fillText(tag, w / 2, h * 0.62 + 28);
+    }
+  });
+}
+
+/** Free-standing chip: rounded pill background so it reads over anything. */
+function chipTexture(
+  three: ThreeModule,
+  maxAniso: number,
+  w: number,
+  h: number,
+  draw: (ctx: CanvasRenderingContext2D) => void,
+): Texture {
+  return makeTexture(three, maxAniso, w, h, (ctx) => {
+    ctx.fillStyle = C.chipFill;
+    ctx.strokeStyle = C.zoneLine;
+    ctx.lineWidth = 3;
+    roundedRectPath(ctx, 3, 3, w - 6, h - 6, Math.min(48, h / 2 - 3));
+    ctx.fill();
+    ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    draw(ctx);
+  });
+}
+
+function zoneChipTexture(
+  three: ThreeModule,
+  maxAniso: number,
+  title: string,
+  sub: string,
+): Texture {
+  const w = 1152;
+  const h = 320;
+  return chipTexture(three, maxAniso, w, h, (ctx) => {
+    const size = fitFont(ctx, title, 108, w - 140, "600", SANS);
+    ctx.font = `600 ${size}px ${SANS}`;
+    ctx.fillStyle = C.ink;
+    ctx.fillText(title, w / 2, h * 0.38);
+    ctx.font = `500 40px ${MONO}`;
+    ctx.fillStyle = C.muted;
+    ctx.fillText(sub.toUpperCase(), w / 2, h * 0.74);
+  });
+}
+
+function edgeChipTexture(
+  three: ThreeModule,
+  maxAniso: number,
+  text: string,
+  big: boolean,
+): Texture {
+  const w = big ? 896 : 512;
+  const h = big ? 176 : 128;
+  return chipTexture(three, maxAniso, w, h, (ctx) => {
+    const size = fitFont(ctx, text, big ? 68 : 52, w - 90, "500", MONO);
+    ctx.font = `500 ${size}px ${MONO}`;
+    ctx.fillStyle = C.accentCss;
+    ctx.fillText(text, w / 2, h / 2 + 2);
+  });
+}
+
+/** Floor zone: rounded region with a hairline border, drawn as a texture. */
+function zoneTexture(three: ThreeModule, maxAniso: number, w: number, d: number): Texture {
+  const tw = Math.round(w * 64);
+  const th = Math.round(d * 64);
+  return makeTexture(three, maxAniso, tw, th, (ctx) => {
+    ctx.fillStyle = C.zoneFill;
+    ctx.strokeStyle = C.zoneLine;
+    ctx.lineWidth = 3;
+    roundedRectPath(ctx, 3, 3, tw - 6, th - 6, 56);
+    ctx.fill();
+    ctx.stroke();
+  });
 }
 
 function roundedRectShape(three: ThreeModule, w: number, h: number, r: number) {
@@ -76,35 +255,6 @@ function roundedRectShape(three: ThreeModule, w: number, h: number, r: number) {
   return s;
 }
 
-function cardMesh(
-  three: ThreeModule,
-  w: number,
-  h: number,
-  depth: number,
-  front: number,
-  side: number,
-) {
-  const geo = new three.ExtrudeGeometry(roundedRectShape(three, w, h, Math.min(0.35, h / 4)), {
-    depth,
-    bevelEnabled: false,
-  });
-  geo.translate(0, 0, -depth / 2);
-  const frontMat = new three.MeshBasicMaterial({ color: front, transparent: true });
-  const sideMat = new three.MeshBasicMaterial({ color: side, transparent: true });
-  return new three.Mesh(geo, [frontMat, sideMat]);
-}
-
-function labelObject(css2d: Css2dModule, className: string, html: string) {
-  const el = document.createElement("div");
-  el.className = className;
-  el.innerHTML = html;
-  return new css2d.CSS2DObject(el);
-}
-
-function escapeHtml(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 function easeOut(t: number) {
   return 1 - (1 - t) ** 3;
 }
@@ -119,47 +269,75 @@ async function createArchScene(
   cb: SceneCallbacks,
 ): Promise<SceneHandle | null> {
   const three = await import("three");
-  const [{ OrbitControls }, css2d] = await Promise.all([
-    import("three/addons/controls/OrbitControls.js"),
-    import("three/addons/renderers/CSS2DRenderer.js"),
-  ]);
+  const { OrbitControls } = await import("three/addons/controls/OrbitControls.js");
 
   let renderer: import("three").WebGLRenderer;
   try {
-    renderer = new three.WebGLRenderer({ antialias: true, alpha: true });
+    renderer = new three.WebGLRenderer({ antialias: true });
   } catch {
     cb.onFail();
     return null;
   }
 
   const motionOk = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = three.PCFSoftShadowMap;
   renderer.domElement.className = "arch3d-canvas";
   container.appendChild(renderer.domElement);
 
-  const labelRenderer = new css2d.CSS2DRenderer();
-  labelRenderer.setSize(container.clientWidth, container.clientHeight);
-  labelRenderer.domElement.className = "arch3d-labels";
-  container.appendChild(labelRenderer.domElement);
-
   const scene = new three.Scene();
+  scene.background = new three.Color(C.bg);
+  scene.fog = new three.Fog(C.bg, 40, 92);
+
   const camera = new three.PerspectiveCamera(
     45,
     container.clientWidth / container.clientHeight,
     0.1,
-    200,
+    220,
   );
   camera.position.set(...START_POS);
 
+  // ---- Light rig: soft hemisphere fill + one shadow-casting key. ----
+  scene.add(new three.HemisphereLight(0x3a403a, 0x0b0c0b, 1.6));
+  const key = new three.DirectionalLight(0xffffff, 2.2);
+  key.position.set(14, 26, 16);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -24;
+  key.shadow.camera.right = 24;
+  key.shadow.camera.top = 24;
+  key.shadow.camera.bottom = -24;
+  key.shadow.bias = -0.0004;
+  scene.add(key);
+  const rim = new three.DirectionalLight(0x3ecf8e, 0.35);
+  rim.position.set(-18, 8, -14);
+  scene.add(rim);
+
+  // ---- Floor + grid ----
+  const floor = new three.Mesh(
+    new three.CircleGeometry(60, 64).rotateX(-Math.PI / 2),
+    new three.MeshStandardMaterial({ color: C.floor, roughness: 0.96, metalness: 0 }),
+  );
+  floor.receiveShadow = true;
+  scene.add(floor);
+  const grid = new three.GridHelper(120, 60, 0x20241f, 0x171a16);
+  grid.position.y = 0.02;
+  (grid.material as Material).transparent = true;
+  (grid.material as Material).opacity = 0.4;
+  scene.add(grid);
+
   const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(...TARGET);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
-  controls.minDistance = 11;
+  controls.minDistance = 10;
   controls.maxDistance = 46;
-  controls.maxPolarAngle = Math.PI * 0.78;
-  controls.minPolarAngle = Math.PI * 0.18;
+  controls.maxPolarAngle = Math.PI * 0.46; // never under the floor
+  controls.minPolarAngle = Math.PI * 0.1;
   // Scroll-trap guard: the wheel zooms the scene only after the visitor
   // opts in with a first click/tap; until then the page keeps scrolling.
   controls.enableZoom = false;
@@ -172,56 +350,122 @@ async function createArchScene(
   controls.autoRotate = motionOk;
   controls.autoRotateSpeed = 0.45;
 
-  // ---- Group cards (the overview level) ----
-  const groupMeshes: Mesh[] = [];
-  for (const g of ARCH_GROUPS) {
-    const mesh = cardMesh(three, g.size[0], g.size[1], 0.5, C.groupCard, C.groupSide);
-    mesh.position.set(g.center[0], g.center[1], -1.1);
-    mesh.renderOrder = 0;
-    mesh.userData = { kind: "group", id: g.id };
-    scene.add(mesh);
-    groupMeshes.push(mesh);
-
-    const label = labelObject(
-      css2d,
-      "arch3d-grouplabel",
-      `<strong>${escapeHtml(g.label)}</strong><span>${escapeHtml(g.sub)}</span>`,
-    );
-    label.position.set(g.center[0], g.center[1] + g.size[1] / 2 + 0.6, 0);
-    scene.add(label);
+  // Anything whose opacity the render loop drives.
+  interface Fadeable {
+    mesh: Mesh;
+    mats: Material[];
+    base: number; // opacity at full visibility
+  }
+  function fadeable(mesh: Mesh, base = 1): Fadeable {
+    const mats = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as Material[];
+    for (const m of mats) m.transparent = true;
+    return { mesh, mats, base };
+  }
+  function applyFade(f: Fadeable, k: number) {
+    const v = f.base * k;
+    for (const m of f.mats) {
+      (m as Material & { opacity: number }).opacity = v;
+    }
+    f.mesh.visible = v > 0.02;
+    f.mesh.castShadow = f.mesh.castShadow && v > 0.3;
   }
 
-  // ---- Node cards (the detail level) ----
-  const NODE_W = 3.2;
-  const NODE_H = 1.5;
-  const nodeMeshes = new Map<string, Mesh>();
-  const nodeOutlines = new Map<string, Mesh>();
+  // ---- Floor zones + standing title chips (the overview level) ----
+  const zoneMeshes: Mesh[] = [];
+  const zoneFades: Fadeable[] = [];
+  const chipFades: Fadeable[] = [];
+  for (const g of ARCH_GROUPS) {
+    const zone = new three.Mesh(
+      new three.PlaneGeometry(g.size[0], g.size[1]).rotateX(-Math.PI / 2),
+      new three.MeshBasicMaterial({
+        map: zoneTexture(three, maxAniso, g.size[0], g.size[1]),
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    zone.position.set(g.center[0], 0.04, -g.center[1]);
+    zone.userData = { kind: "group", id: g.id };
+    scene.add(zone);
+    zoneMeshes.push(zone);
+    zoneFades.push(fadeable(zone));
+
+    // Title chip standing at the back edge of the zone.
+    const chipW = 6.6;
+    const chip = new three.Mesh(
+      new three.PlaneGeometry(chipW, chipW * (320 / 1152)),
+      new three.MeshBasicMaterial({
+        map: zoneChipTexture(three, maxAniso, g.label, g.sub),
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    chip.position.set(g.center[0], 1.5, -(g.center[1] + g.size[1] / 2) - 1.1);
+    chip.rotation.x = CARD_TILT;
+    chip.renderOrder = 4;
+    scene.add(chip);
+    chipFades.push(fadeable(chip));
+  }
+
+  // ---- Node cards: lit slab + baked text face + accent halo ----
+  const cardGroups = new Map<string, Group>();
+  const cardFades = new Map<string, Fadeable[]>();
+  const nodeHalos = new Map<string, Mesh>();
+  const pickMeshes: Mesh[] = [];
+  const bodyGeo = new three.ExtrudeGeometry(roundedRectShape(three, NODE_W, NODE_H, 0.26), {
+    depth: NODE_D,
+    bevelEnabled: false,
+  });
+  bodyGeo.translate(0, 0, -NODE_D / 2);
+  const haloGeo = new three.ExtrudeGeometry(
+    roundedRectShape(three, NODE_W + 0.24, NODE_H + 0.24, 0.32),
+    { depth: 0.06, bevelEnabled: false },
+  );
+
   for (const n of ARCH_NODES) {
-    const mesh = cardMesh(three, NODE_W, NODE_H, 0.35, C.cardFront, C.cardSide);
-    mesh.position.set(...n.pos);
-    mesh.renderOrder = 2;
-    mesh.userData = { kind: "node", id: n.id };
-    scene.add(mesh);
-    nodeMeshes.set(n.id, mesh);
+    const group = new three.Group();
+    group.position.copy(toWorld(three, n.pos, 0.95));
+    group.rotation.x = CARD_TILT;
 
-    // Accent halo, revealed on hover/selection.
-    const outline = cardMesh(three, NODE_W + 0.22, NODE_H + 0.22, 0.1, C.accent, C.accent);
-    outline.position.set(n.pos[0], n.pos[1], n.pos[2] - 0.3);
-    outline.renderOrder = 1;
-    outline.visible = false;
-    scene.add(outline);
-    nodeOutlines.set(n.id, outline);
+    const body = new three.Mesh(bodyGeo, [
+      new three.MeshStandardMaterial({ color: C.cardFront, roughness: 0.72, metalness: 0.08 }),
+      new three.MeshStandardMaterial({ color: C.cardSide, roughness: 0.85, metalness: 0.05 }),
+    ]);
+    body.castShadow = true;
+    body.userData = { kind: "node", id: n.id };
+    group.add(body);
 
-    const roadmap = n.roadmap ? "<em>roadmap</em>" : "";
-    const label = labelObject(css2d, "arch3d-nodelabel", `${escapeHtml(n.label)}${roadmap}`);
-    label.position.set(n.pos[0], n.pos[1], n.pos[2] + 0.4);
-    scene.add(label);
+    const face = new three.Mesh(
+      new three.PlaneGeometry(NODE_W, NODE_H),
+      new three.MeshBasicMaterial({
+        map: nodeFaceTexture(three, maxAniso, n),
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    face.position.z = NODE_D / 2 + 0.012;
+    face.renderOrder = 2;
+    face.userData = { kind: "node", id: n.id };
+    group.add(face);
+
+    const halo = new three.Mesh(
+      haloGeo,
+      new three.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.9 }),
+    );
+    halo.position.z = -0.1;
+    halo.visible = false;
+    group.add(halo);
+
+    scene.add(group);
+    cardGroups.set(n.id, group);
+    cardFades.set(n.id, [fadeable(body), fadeable(face)]);
+    nodeHalos.set(n.id, halo);
+    pickMeshes.push(body, face);
   }
 
   // ---- Edges ----
   interface EdgeVisual {
-    mesh: Mesh;
-    arrow: Mesh;
+    fades: Fadeable[];
+    accentables: Material[];
     curve: QuadraticBezierCurve3;
     pulse: Mesh | null;
     phase: number;
@@ -231,7 +475,7 @@ async function createArchScene(
   }
   const edgeVisuals: EdgeVisual[] = [];
   const pulseGeo = new three.SphereGeometry(0.11, 10, 10);
-  const arrowGeo = new three.ConeGeometry(0.16, 0.4, 10);
+  const arrowGeo = new three.ConeGeometry(0.15, 0.4, 10);
   const up = new three.Vector3(0, 1, 0);
 
   function addEdge(
@@ -240,45 +484,56 @@ async function createArchScene(
     opts: { aggregate: boolean; fromId: string; toId: string; label?: string; phase: number },
   ) {
     const mid = from.clone().add(to).multiplyScalar(0.5);
-    mid.z += opts.aggregate ? 1.6 : 0.9;
+    mid.y += opts.aggregate ? 2.1 : 1.05;
     const curve = new three.QuadraticBezierCurve3(from, mid, to);
     const tube = new three.TubeGeometry(curve, 32, opts.aggregate ? 0.07 : 0.04, 8, false);
-    const mat = new three.MeshBasicMaterial({ color: C.edge, transparent: true });
+    const mat = new three.MeshBasicMaterial({ color: C.edge });
     const mesh = new three.Mesh(tube, mat);
-    mesh.renderOrder = 1;
     scene.add(mesh);
 
     // Arrowhead just short of the target card, so direction reads at a glance.
     const len = curve.getLength();
     const tArrow = Math.max(0.55, 1 - 2.1 / len);
-    const arrowMat = new three.MeshBasicMaterial({ color: C.edge, transparent: true });
+    const arrowMat = new three.MeshBasicMaterial({ color: C.edge });
     const arrow = new three.Mesh(arrowGeo, arrowMat);
     arrow.position.copy(curve.getPointAt(tArrow));
     arrow.quaternion.setFromUnitVectors(up, curve.getTangentAt(tArrow).normalize());
-    arrow.renderOrder = 1;
     scene.add(arrow);
+
+    const fades = [fadeable(mesh, 0.85), fadeable(arrow, 0.95)];
 
     let pulse: Mesh | null = null;
     if (motionOk) {
-      const pulseMat = new three.MeshBasicMaterial({ color: C.accent, transparent: true });
-      pulse = new three.Mesh(pulseGeo, pulseMat);
+      pulse = new three.Mesh(
+        pulseGeo,
+        new three.MeshBasicMaterial({ color: C.accent, transparent: true }),
+      );
       pulse.renderOrder = 3;
       scene.add(pulse);
+      fades.push(fadeable(pulse));
     }
 
     if (opts.label) {
-      const label = labelObject(
-        css2d,
-        `arch3d-edgelabel${opts.aggregate ? " arch3d-edgelabel--agg" : ""}`,
-        escapeHtml(opts.label),
+      const big = opts.aggregate;
+      const w = big ? 3.4 : 1.7;
+      const chip = new three.Mesh(
+        new three.PlaneGeometry(w, w * (big ? 176 / 896 : 128 / 512)),
+        new three.MeshBasicMaterial({
+          map: edgeChipTexture(three, maxAniso, opts.label, big),
+          transparent: true,
+          depthWrite: false,
+        }),
       );
-      label.position.copy(curve.getPointAt(0.5)).add(new three.Vector3(0, 0.35, 0.4));
-      scene.add(label);
+      chip.position.copy(curve.getPointAt(0.5)).add(new three.Vector3(0, big ? 0.75 : 0.5, 0));
+      chip.rotation.x = CARD_TILT;
+      chip.renderOrder = 4;
+      scene.add(chip);
+      fades.push(fadeable(chip));
     }
 
     edgeVisuals.push({
-      mesh,
-      arrow,
+      fades,
+      accentables: [mat, arrowMat],
       curve,
       pulse,
       phase: opts.phase,
@@ -292,7 +547,7 @@ async function createArchScene(
     const a = archNodeById(e.from);
     const b = archNodeById(e.to);
     if (!a || !b) return;
-    addEdge(new three.Vector3(...a.pos), new three.Vector3(...b.pos), {
+    addEdge(toWorld(three, a.pos, 0.95), toWorld(three, b.pos, 0.95), {
       aggregate: false,
       fromId: e.from,
       toId: e.to,
@@ -303,7 +558,7 @@ async function createArchScene(
 
   const groupCenter = (id: ArchGroupId) => {
     const g = ARCH_GROUPS.find((x) => x.id === id);
-    return new three.Vector3(g ? g.center[0] : 0, g ? g.center[1] : 0, 0);
+    return g ? toWorld(three, [g.center[0], g.center[1], 0], 1.1) : new three.Vector3();
   };
   ARCH_GROUP_EDGES.forEach((e, i) => {
     addEdge(groupCenter(e.from), groupCenter(e.to), {
@@ -326,19 +581,14 @@ async function createArchScene(
   let disposed = false;
   let unlocked = false;
 
-  function setPointerFromEvent(ev: PointerEvent | MouseEvent) {
+  function pick(ev: PointerEvent | MouseEvent): { kind: string; id: string } | null {
     const rect = renderer.domElement.getBoundingClientRect();
     pointer.set(
       ((ev.clientX - rect.left) / rect.width) * 2 - 1,
       -((ev.clientY - rect.top) / rect.height) * 2 + 1,
     );
-  }
-
-  function pick(ev: PointerEvent | MouseEvent): { kind: string; id: string } | null {
-    setPointerFromEvent(ev);
     raycaster.setFromCamera(pointer, camera);
-    const targets: Object3D[] =
-      detailBlend > 0.45 ? [...nodeMeshes.values()] : (groupMeshes as Object3D[]);
+    const targets: Object3D[] = detailBlend > 0.45 ? pickMeshes : (zoneMeshes as Object3D[]);
     const hit = raycaster.intersectObjects(targets, false)[0];
     if (!hit) return null;
     return hit.object.userData as { kind: string; id: string };
@@ -357,9 +607,11 @@ async function createArchScene(
   }
 
   // Camera fly-to (used for group focus + the overview/zoom buttons).
+  // Time-based, not frame-based — slow devices get the same 850 ms glide.
+  const FLIGHT_MS = 850;
   const flight = {
     active: false,
-    t: 0,
+    startedAt: 0,
     fromPos: new three.Vector3(),
     toPos: new three.Vector3(),
     fromTarget: new three.Vector3(),
@@ -367,7 +619,7 @@ async function createArchScene(
   };
   function flyTo(pos: Vector3, target: Vector3) {
     flight.active = true;
-    flight.t = 0;
+    flight.startedAt = performance.now();
     flight.fromPos.copy(camera.position);
     flight.toPos.copy(pos);
     flight.fromTarget.copy(controls.target);
@@ -376,7 +628,7 @@ async function createArchScene(
 
   function focusGroup(id: ArchGroupId) {
     const c = groupCenter(id);
-    flyTo(new three.Vector3(c.x * 0.82, c.y + 2.2, 15.5), new three.Vector3(c.x * 0.82, c.y, 0));
+    flyTo(new three.Vector3(c.x * 0.82, 9, 12.5), new three.Vector3(c.x * 0.82, 0.6, 0));
   }
 
   function unlock() {
@@ -425,7 +677,6 @@ async function createArchScene(
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
-    labelRenderer.setSize(w, h);
   });
   resizeObserver.observe(container);
 
@@ -433,18 +684,10 @@ async function createArchScene(
   const t0 = performance.now();
   let raf = 0;
 
-  function setOpacity(mesh: Mesh, value: number) {
-    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    for (const m of mats) {
-      (m as MeshBasicMaterial).opacity = value;
-    }
-    mesh.visible = value > 0.02;
-  }
-
   function dimFactor(id: string) {
     if (!selectedId) return 1;
     if (id === selectedId || neighborIds.has(id)) return 1;
-    return 0.15;
+    return 0.12;
   }
 
   function frame() {
@@ -459,11 +702,11 @@ async function createArchScene(
     }
 
     if (flight.active) {
-      flight.t = Math.min(1, flight.t + 0.022);
-      const k = easeOut(flight.t);
+      const ft = Math.min(1, (performance.now() - flight.startedAt) / FLIGHT_MS);
+      const k = easeOut(ft);
       camera.position.lerpVectors(flight.fromPos, flight.toPos, k);
       controls.target.lerpVectors(flight.fromTarget, flight.toTarget, k);
-      if (flight.t >= 1) flight.active = false;
+      if (ft >= 1) flight.active = false;
     }
     controls.update();
 
@@ -477,19 +720,29 @@ async function createArchScene(
       cb.onView(view);
     }
 
-    // Overview ↔ detail crossfade.
-    for (const mesh of groupMeshes) {
-      const backdrop = 0.24; // stays as a faint plate behind the nodes
-      setOpacity(mesh, backdrop + (1 - detailBlend) * (0.92 - backdrop));
-    }
+    // Overview ↔ detail crossfade. Zones stay as faint floor regions in
+    // detail; title chips recede; cards + detail edges rise.
+    for (const f of zoneFades) applyFade(f, 0.4 + (1 - detailBlend) * 0.6);
+    for (const f of chipFades) applyFade(f, 0.15 + (1 - detailBlend) * 0.85);
+
     for (const n of ARCH_NODES) {
-      const mesh = nodeMeshes.get(n.id);
-      if (mesh) setOpacity(mesh, detailBlend * dimFactor(n.id));
-      const outline = nodeOutlines.get(n.id);
-      if (outline) {
-        const on = detailBlend > 0.45 && (n.id === selectedId || n.id === hoveredId);
-        outline.visible = on;
-        if (on) setOpacity(outline, 0.85);
+      const group = cardGroups.get(n.id);
+      const fades = cardFades.get(n.id);
+      const k = detailBlend * dimFactor(n.id);
+      if (fades) {
+        for (const f of fades) {
+          applyFade(f, k);
+          if (f.mesh.castShadow !== undefined) f.mesh.castShadow = k > 0.3;
+        }
+      }
+      // Tactile hover: the card leans up a touch.
+      if (group) {
+        const targetScale = n.id === hoveredId || n.id === selectedId ? 1.06 : 1;
+        group.scale.lerp(new three.Vector3(targetScale, targetScale, targetScale), 0.18);
+      }
+      const halo = nodeHalos.get(n.id);
+      if (halo) {
+        halo.visible = detailBlend > 0.45 && (n.id === selectedId || n.id === hoveredId);
       }
     }
 
@@ -499,23 +752,19 @@ async function createArchScene(
         : detailBlend * Math.min(dimFactor(e.fromId), dimFactor(e.toId));
       const isSelectedEdge =
         selectedId !== null && !e.aggregate && (e.fromId === selectedId || e.toId === selectedId);
-      const mats = [e.mesh.material, e.arrow.material] as MeshBasicMaterial[];
-      for (const m of mats) {
-        m.color.setHex(isSelectedEdge ? C.accent : C.edge);
-        m.opacity = vis * (isSelectedEdge ? 1 : 0.8);
+      for (const m of e.accentables) {
+        (m as Material & { color: import("three").Color }).color.setHex(
+          isSelectedEdge ? C.accent : C.edge,
+        );
       }
-      e.mesh.visible = vis > 0.03;
-      e.arrow.visible = vis > 0.03;
+      for (const f of e.fades) applyFade(f, vis * (isSelectedEdge ? 1.18 : 1));
       if (e.pulse) {
         const u = (t * (e.aggregate ? 0.16 : 0.12) + e.phase) % 1;
         e.pulse.position.copy(e.curve.getPointAt(u));
-        (e.pulse.material as MeshBasicMaterial).opacity = vis;
-        e.pulse.visible = vis > 0.03;
       }
     }
 
     renderer.render(scene, camera);
-    labelRenderer.render(scene, camera);
   }
 
   container.dataset.view = "overview";
@@ -525,12 +774,12 @@ async function createArchScene(
   return {
     focusOverview() {
       applySelection(null);
-      flyTo(new three.Vector3(...START_POS), new three.Vector3(0, 0, 0));
+      flyTo(new three.Vector3(...START_POS), new three.Vector3(...TARGET));
     },
     zoomBy(factor: number) {
       unlock();
       const dir = camera.position.clone().sub(controls.target);
-      const len = Math.min(46, Math.max(11, dir.length() * factor));
+      const len = Math.min(46, Math.max(10, dir.length() * factor));
       flyTo(
         controls.target.clone().add(dir.normalize().multiplyScalar(len)),
         controls.target.clone(),
@@ -552,7 +801,11 @@ async function createArchScene(
         if (mesh.geometry) mesh.geometry.dispose();
         if (mesh.material) {
           const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-          for (const m of mats) m.dispose();
+          for (const m of mats) {
+            const tex = (m as Material & { map?: Texture | null }).map;
+            if (tex) tex.dispose();
+            m.dispose();
+          }
         }
       });
       renderer.dispose();
@@ -668,9 +921,9 @@ function ArchitectureMapInner() {
 
           <p className="arch3d-hint">
             {locked
-              ? "Click the map to explore — zoom into a card to see inside."
+              ? "Click the map to explore — zoom into a zone to see inside."
               : view === "overview"
-                ? "Scroll to zoom in · drag to orbit · click a card to fly into it."
+                ? "Scroll to zoom in · drag to orbit · click a zone to fly into it."
                 : "Click a piece to see what it does · zoom out for the big picture."}
           </p>
 
