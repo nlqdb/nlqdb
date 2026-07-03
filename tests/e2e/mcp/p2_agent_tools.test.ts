@@ -48,7 +48,7 @@ async function connect(client: NlqClient) {
 }
 
 describe("P2 — Agent Builder · MCP protocol contract", () => {
-  it("exposes the SK-MCP-002 tools in order (+ additive nlqdb_remember, E-02)", async () => {
+  it("exposes the SK-MCP-002 tools in order (+ additive nlqdb_remember, nlqdb_connect_database)", async () => {
     const { mcpClient, teardown } = await connect(stubClient({}));
     try {
       const { tools } = await mcpClient.listTools();
