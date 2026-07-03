@@ -26,10 +26,7 @@ type SqliteDatabase = {
 // Dynamic specifier so tsc (which doesn't know bun:* schemes) still
 // resolves the module — same trick as the parent's loader.
 const { Database } = (await import(/* @vite-ignore */ "bun:sqlite")) as {
-  Database: new (
-    filename: string,
-    opts?: { readonly?: boolean },
-  ) => SqliteDatabase;
+  Database: new (filename: string, opts?: { readonly?: boolean }) => SqliteDatabase;
 };
 
 const [dbPath, busyTimeoutMsRaw] = process.argv.slice(2);

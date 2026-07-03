@@ -17,7 +17,7 @@ const SQL_EXEC_CHILD = new URL("./sql-exec-child.ts", import.meta.url).pathname;
 // finishes just under `timeoutMs` isn't killed by process startup cost.
 const KILL_GRACE_MS = 500;
 
-type BoundedExec = { rows: unknown[][] } | { error: string; timedOut?: true };
+type BoundedExec = { rows: unknown[][] } | { error: string };
 
 function reviveCell(v: unknown): unknown {
   if (v !== null && typeof v === "object" && "__b64" in (v as Record<string, unknown>)) {
@@ -37,12 +37,21 @@ async function runSqlBounded(dbPath: string, sql: string, timeoutMs: number): Pr
     killed = true;
     proc.kill(9);
   }, timeoutMs + KILL_GRACE_MS);
-  const [text, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  // Drain stderr alongside stdout: an unread pipe blocks the child once its
+  // OS buffer fills, which would itself hang the run this fix exists to prevent.
+  const [text, stderrText, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
   clearTimeout(timer);
   if (killed) {
-    return { error: `sql execution exceeded ${timeoutMs}ms — killed (SK-QUAL-021)`, timedOut: true };
+    return { error: `sql execution exceeded ${timeoutMs}ms — killed (SK-QUAL-021)` };
   }
-  if (exitCode !== 0) return { error: `sql exec child exited with code ${exitCode}` };
+  if (exitCode !== 0) {
+    const detail = trimError(stderrText);
+    return { error: `sql exec child exited with code ${exitCode}${detail ? `: ${detail}` : ""}` };
+  }
   try {
     const parsed = JSON.parse(text) as
       | { ok: true; rows: unknown[][] }
