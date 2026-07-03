@@ -1,0 +1,13 @@
+diff --git a/package.json b/package.json
+index 134e27ae6ba29caad90185269e7faf3039038cc2..2d3539b77f05f13947dbdb8e31f449216eebc9a7 100644
+--- a/package.json
++++ b/package.json
+@@ -41,7 +41,7 @@
+   "module": "./dist/js-yaml.mjs",
+   "exports": {
+     ".": {
+-      "import": "./dist/js-yaml.mjs",
++      "import": "./index.js",
+       "require": "./index.js"
+     },
+     "./package.json": "./package.json"
