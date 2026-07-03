@@ -109,24 +109,13 @@ The marketing create result (`CreateResultView`) renders an embed snippet with `
 
 ### SK-WEB-011 — Post-checkout confirmation banner on `/app`, honest about pending subscription state
 
-- **Decision:** Stripe Checkout's `success_url` is `${origin}/app?checkout=success` (set in `apps/api/src/index.ts`). The `/app` auth-guard script, *after* the session probe passes, reads `?checkout=success`, reveals a dismissible one-time banner, and strips the param via `history.replaceState` so a refresh or shared link never replays it. Copy is exactly *"Payment received — thanks for upgrading. Your new plan is being activated."* — it does **not** claim the plan is already active, nor promise an email receipt (Stripe receipt emails are Dashboard-config-dependent and fire on `invoice.payment_succeeded`, not the checkout redirect), because the `customers` row is `incomplete` until `customer.subscription.created` lands (SK-STRIPE-004). The banner is a `role="status"` live region present (and empty) from page load; the message is **injected** as text on the success branch (not un-hidden pre-filled), which is the path screen readers reliably announce.
-- **Core value:** Honest latency, Effortless UX, Seamless auth
-- **Why:** A user who just paid lands back on the chat with zero acknowledgement otherwise — the wow-moment equivalent of a slammed door. But overclaiming ("You're on Hobby!") before the subscription confirms would lie on the exact surface where trust is most fragile. Revealing only after the auth guard passes avoids a flash for anon visitors; stripping the param keeps the success state non-permalinkable and non-replayable.
-- **Consequence in code:** Markup + scoped styles + reveal live in `apps/web/src/pages/app/index.astro` — no new island, no API call (the webhook drives state). The empty `<aside role="status">` stays in the DOM and the message is injected on reveal (deferred one frame) so screen readers announce it. No analytics event yet; the §6 funnel reads completion from Stripe (`checkout.session.completed`), not a client ping.
-- **Alternatives rejected:**
-  - Fetch the live subscription status on landing to tailor the copy — adds a round-trip and a new endpoint for a banner; the webhook is the source of truth and "being activated" is honest for both the pending and just-confirmed cases.
-  - Leave `?checkout=success` in the URL — a refresh or a shared/bookmarked link would replay the banner, and the success state isn't meaningfully permalinkable.
-  - Render the banner server-side / unconditionally and hide with JS — flashes for anon visitors before the auth guard resolves.
+**Body:** [`decisions/SK-WEB-011-checkout-success-banner.md`](./decisions/SK-WEB-011-checkout-success-banner.md).
+`/app?checkout=success` reveals a dismissible one-time `role="status"` banner after the auth guard passes — copy claims payment received, **not** plan-active (the subscription may still be `incomplete` per SK-STRIPE-004) — and strips the param via `history.replaceState` so it never replays.
 
 ### SK-WEB-012 — In-app dunning banner on `/app`, driven by the live `past_due`/`unpaid` status
 
-- **Decision:** After the `/app` auth guard passes, the page reads `GET /v1/billing/status` (SK-STRIPE-009) in the background — off the render path, after the shell paints — and, only when `status` is `past_due` or `unpaid`, reveals a danger-tinted banner: *"Your last payment didn't go through. Update your payment method to keep your plan active."* with an "Update payment method" button that opens the hosted Billing Portal via `openBillingPortal` (SK-STRIPE-008). It is a `role="alert"` live region, empty from load with its text injected on reveal (same announce-on-injection trick as SK-WEB-011). Unlike the checkout banner it is **not dismissible** — the unpaid state is live, so hiding it would only mask an unfixed problem; it clears once a status read comes back healthy. The status fetch + portal open are shared with `/pricing` through `apps/web/src/lib/billing.ts`.
-- **Core value:** Honest latency, Effortless UX, Bullet-proof
-- **Why:** A failed renewal silently flips the subscription to `past_due`; Stripe retries on its dunning schedule but never redirects the user, so without an in-app signal the first thing a paying customer learns is that their plan stopped working. One cheap indexed read on a page they already open surfaces the one action that fixes it — update the card in the portal — turning an involuntary-churn event into a one-click recovery. This is the in-app half of the stripe-billing dunning open question; the email half stays open.
-- **Consequence in code:** Markup + scoped danger-tinted styles + reveal live in `apps/web/src/pages/app/index.astro`; the fetch (`fetchBillingStatus`) and portal open (`openBillingPortal`, 404/503/error outcomes) move to `apps/web/src/lib/billing.ts` and are reused by `/pricing` so neither path duplicates the fetch+redirect. The read is non-blocking (`void fetchBillingStatus(...).then(...)`) so the healthy/free majority pays nothing on the chat's critical render path. (SK-WEB-011's "don't fetch status for a banner" applies only to checkout-success, where a URL param already carries the signal; a payment failure has no redirect, so the live read is the only signal.)
-- **Alternatives rejected:**
-  - Block the shell reveal on the read — adds a round-trip to every chat load for a banner almost no one sees; the background fire keeps the page instant.
-  - Email only, no in-app banner — the user acts fastest where they already work; email deliverability is config-dependent and unproven (it stays the open other half).
+**Body:** [`decisions/SK-WEB-012-dunning-banner.md`](./decisions/SK-WEB-012-dunning-banner.md).
+After the `/app` auth guard passes, a non-blocking `GET /v1/billing/status` read reveals a **non-dismissible** `role="alert"` banner on `past_due`/`unpaid` with an "Update payment method" Billing-Portal button (`lib/billing.ts`, shared with `/pricing`); it clears once a status read comes back healthy.
 
 ### SK-WEB-013 — `/pricing` surfaces a scheduled cancellation; the current-tier CTA becomes one-click "Resubscribe"
 
@@ -171,6 +160,11 @@ The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked
 
 **Body:** [`decisions/SK-WEB-020-calm-token-system.md`](./decisions/SK-WEB-020-calm-token-system.md).
 `global.css` is re-based from quiet-brutalism to a **calm** system site-wide: near-black low-chroma neutrals, ONE jade accent (`#3ecf8e`, ~10% / 60-30-10) replacing acid lime, system fonts for body + display (Source Serif 4 dropped; `--display` aliases `--sans`; `--mono` kept for code/data), ~12px radius, two-layer soft shadows (`--shadow-1/2/3`, `--ring`), and expo-out reduced-motion-gated entrances. Legacy aliases (`--shadow-hard`, `--border-strong`, `--bg-elev`, …) remap to the calm ladder so un-swept `<style>` blocks render calm automatically. The home layout is `styles/home2.css` (scoped `.home2`); `styles/chat.css` + `styles/keys.css` and every marketing page are swept (1px rules, radius, `--ring` focus, `--accent-soft` tints). Retains SK-WEB-015's spirit (one accent moment per band, mono demoted, one token source, one-motion-moment budget) and all SK-WEB-018 IA + GLOBAL-007 / SK-WEB-003 invariants.
+
+### SK-WEB-021 — `/architecture`: interactive 3D system map on its own route, never on `/`
+
+**Body:** [`decisions/SK-WEB-021-architecture-3d-map.md`](./decisions/SK-WEB-021-architecture-3d-map.md).
+One route (`/architecture/`) renders the system as a three.js zoom-to-detail map (island `ArchitectureMap.tsx`) above a prose walkthrough, both from `src/data/architecture.ts` (mirrors `docs/architecture.md` §2). three.js is dynamic-imported on this route only; wheel-zoom is click-to-activate and one-finger touch keeps scrolling (scroll-trap guards); motion is reduced-motion-gated. Never a homepage background — that would contradict SK-WEB-018 / SK-WEB-020 / SK-WEB-001 at once; the home page gets only the 0-JS "Under the hood" poster band linking to the route.
 
 ## GLOBALs governing this feature
 

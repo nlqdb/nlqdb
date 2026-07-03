@@ -20,12 +20,14 @@
     "@nlqdb/sdk": "workspace:*",
     "astro": "^6.4.4",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "three": "^0.185.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
     "@resvg/resvg-js": "^2.6.2",
     "@types/react": "^19",
+    "@types/three": "^0.185.0",
     "@types/react-dom": "^19",
     "typescript": "^5.6.0",
     "wrangler": "^4.0.0"

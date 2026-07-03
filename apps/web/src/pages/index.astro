@@ -202,6 +202,34 @@ import "../styles/home2.css";
           </li>
         </ul>
       </section>
+
+      {/* ---- Under the hood — a poster portal to the 3D architecture map.
+          SK-WEB-021: the map itself never ships on `/` (static-first,
+          Lighthouse, one-motion budget) — this band is a 0-JS image of the
+          real scene linking to /architecture/, so the home page pays
+          nothing and never lies about what the click delivers. */}
+      <section class="undermap reveal" aria-labelledby="undermap-title">
+        <a class="undermap__link" href="/architecture/">
+          <img
+            class="undermap__img"
+            src="/architecture-poster.jpg"
+            width="2172"
+            height="1362"
+            loading="lazy"
+            decoding="async"
+            alt="A 3D map of the nlqdb engine: three lit zones — you ask, the engine, your data — connected by flowing jade request paths."
+          />
+          <span class="undermap__copy">
+            <span class="undermap__eyebrow">Under the hood</span>
+            <h2 class="undermap__title" id="undermap-title">One engine, seen from above.</h2>
+            <span class="undermap__lede">
+              Fly through the request path — five surfaces, one engine, your data — and click
+              every moving piece.
+            </span>
+            <span class="undermap__cta">Explore the 3D map &rarr;</span>
+          </span>
+        </a>
+      </section>
     </main>
 
     <Footer />
