@@ -1,0 +1,438 @@
+---
+import ArchitectureMap from "../components/ArchitectureMap.tsx";
+import Footer from "../components/Footer.astro";
+import Topnav from "../components/Topnav.astro";
+import { ARCH_FLOW_STEPS, ARCH_GROUPS, ARCH_NODES } from "../data/architecture";
+import Base from "../layouts/Base.astro";
+
+// /architecture — the system, explained as an interactive 3D map
+// (SK-WEB-021). The island is the page's one motion moment; everything
+// below it is the same content server-rendered from the same data module,
+// so no-JS visitors, crawlers, and screen readers lose nothing. three.js
+// loads only on this route, after hydration.
+---
+
+<Base
+  title="Architecture — nlqdb"
+  description="How nlqdb works, as an interactive 3D map: five surfaces, one edge-routed engine, and the right data engine per workload. Zoom from the big picture into every moving piece."
+  canonical="/architecture"
+>
+  <div class="page archpage">
+    <Topnav />
+
+    <main class="arch">
+      <header class="arch-head">
+        <p class="arch-kicker">Architecture</p>
+        <h1 class="arch-title">One engine, seen from above.</h1>
+        <p class="arch-lede">
+          Five ways to ask, one request path, and the right engine for your data. Zoom into a
+          card to see inside it; click a piece to see what it does and what it talks to.
+        </p>
+      </header>
+
+      <ArchitectureMap client:load />
+
+      {/* ---- The same map, in prose — from the same data module. ---- */}
+      <section class="arch-flow" aria-labelledby="flow-title">
+        <h2 class="arch-h2" id="flow-title">How a question travels.</h2>
+        <ol class="arch-steps">
+          {ARCH_FLOW_STEPS.map((step) => <li>{step}</li>)}
+        </ol>
+      </section>
+
+      {
+        ARCH_GROUPS.map((g) => (
+          <section class="arch-group" aria-labelledby={`group-${g.id}`}>
+            <h2 class="arch-h2" id={`group-${g.id}`}>
+              {g.label} <span class="arch-h2-sub">— {g.sub}.</span>
+            </h2>
+            <p class="arch-group-blurb">{g.blurb}</p>
+            <dl class="arch-nodes">
+              {ARCH_NODES.filter((n) => n.group === g.id).map((n) => (
+                <div class="arch-node">
+                  <dt>
+                    {n.label}
+                    {n.roadmap && <span class="arch-roadmap">roadmap</span>}
+                  </dt>
+                  <dd>{n.blurb}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ))
+      }
+
+      <p class="arch-cta-wrap">
+        <a class="cta" href="/app/new/">Ask it something yourself &rarr;</a>
+        <a class="cta cta--ghost" href="/manifesto/">Why it's built this way</a>
+      </p>
+    </main>
+
+    <Footer />
+  </div>
+</Base>
+
+<style is:global>
+  /* /architecture — page layout + the island's overlay chrome. The island
+     renders into light DOM, so its classes (arch3d-*) are styled here with
+     calm tokens (SK-WEB-020) rather than inside the component. */
+
+  .arch {
+    max-width: var(--bleed);
+    margin: 0 auto;
+    width: 100%;
+    padding: clamp(40px, 7vw, 72px) 0 clamp(56px, 8vw, 96px);
+  }
+
+  .arch-head {
+    max-width: var(--col);
+    margin-bottom: clamp(28px, 4vw, 40px);
+  }
+
+  .arch-kicker {
+    margin: 0 0 16px;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .arch-title {
+    font-size: var(--t-display);
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+
+  .arch-lede {
+    margin: 0;
+    font-size: var(--t-large);
+    line-height: 1.55;
+    color: var(--body);
+    max-width: 52ch;
+    text-wrap: balance;
+  }
+
+  /* ---- The map ---- */
+
+  .arch3d {
+    position: relative;
+    margin: 0 0 clamp(48px, 7vw, 72px);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-lg);
+    background:
+      radial-gradient(90% 80% at 50% 0%, rgba(62, 207, 142, 0.05), transparent 65%), var(--bg-2);
+    box-shadow: var(--shadow-2);
+    overflow: hidden;
+  }
+
+  .arch3d-stage {
+    height: clamp(420px, 68vh, 680px);
+  }
+
+  .arch3d-canvas {
+    display: block;
+    cursor: grab;
+  }
+
+  .arch3d-canvas:active {
+    cursor: grabbing;
+  }
+
+  .arch3d-labels {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .arch3d-loading,
+  .arch3d-fallback {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+
+  .arch3d-fallback {
+    position: static;
+    padding: clamp(40px, 8vw, 80px) 24px;
+    text-align: center;
+  }
+
+  /* Scene labels (CSS2DRenderer). Visibility follows the zoom level via
+     data-view on the stage; the transition does the crossfade. */
+
+  .arch3d-grouplabel,
+  .arch3d-nodelabel,
+  .arch3d-edgelabel {
+    pointer-events: none;
+    white-space: nowrap;
+    transition: opacity var(--dur-2) var(--ease-std);
+  }
+
+  .arch3d-grouplabel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(17px, 2.2vw, 22px);
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+  }
+
+  .arch3d-grouplabel span {
+    font-family: var(--mono);
+    font-weight: 400;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .arch3d-stage[data-view="detail"] .arch3d-grouplabel {
+    opacity: 0.55;
+    font-size: 14px;
+  }
+
+  .arch3d-nodelabel {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 12.5px;
+    color: var(--ink);
+    opacity: 0;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.85);
+  }
+
+  .arch3d-nodelabel em {
+    font-style: normal;
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .arch3d-stage[data-view="detail"] .arch3d-nodelabel {
+    opacity: 1;
+  }
+
+  .arch3d-edgelabel {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    opacity: 0;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+  }
+
+  .arch3d-stage[data-view="detail"] .arch3d-edgelabel {
+    opacity: 0.9;
+  }
+
+  .arch3d-edgelabel--agg {
+    font-size: 12px;
+    opacity: 0.9;
+  }
+
+  .arch3d-stage[data-view="detail"] .arch3d-edgelabel--agg {
+    opacity: 0;
+  }
+
+  /* ---- Overlay chrome ---- */
+
+  .arch3d-hud {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .arch3d-hud-btn {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+
+  .arch3d-hud-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .arch3d-hint {
+    position: absolute;
+    left: 14px;
+    bottom: 12px;
+    margin: 0;
+    padding: 6px 12px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    background: rgba(11, 12, 11, 0.72);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-pill);
+    backdrop-filter: blur(4px);
+    max-width: min(75%, 480px);
+  }
+
+  .arch3d-card {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    max-width: min(340px, calc(100% - 28px));
+    padding: 16px 18px;
+    background: rgba(20, 22, 19, 0.92);
+    border: 1px solid var(--rule-2);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-3);
+    backdrop-filter: blur(6px);
+  }
+
+  .arch3d-card-kicker {
+    margin: 0 0 6px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+  }
+
+  .arch3d-card-roadmap,
+  .arch-roadmap {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent-line);
+    border-radius: var(--r-pill);
+    padding: 1px 8px;
+  }
+
+  .arch3d-card-title {
+    margin: 0 0 8px;
+    font-size: var(--t-h3);
+  }
+
+  .arch3d-card-blurb {
+    margin: 0 0 10px;
+    font-size: var(--t-small);
+    line-height: 1.55;
+    color: var(--body);
+  }
+
+  .arch3d-card-links {
+    margin: 0 0 12px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .arch3d-card-close {
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+
+  /* ---- Prose fallback ---- */
+
+  .arch-h2 {
+    font-size: var(--t-section);
+    margin: 0 0 14px;
+  }
+
+  .arch-h2-sub {
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .arch-flow,
+  .arch-group {
+    max-width: var(--col);
+    margin: 0 0 clamp(40px, 6vw, 56px);
+  }
+
+  .arch-steps {
+    margin: 0;
+    padding-left: 1.3em;
+    display: grid;
+    gap: 12px;
+    font-size: var(--t-body);
+    line-height: 1.6;
+    color: var(--body);
+  }
+
+  .arch-steps li::marker {
+    font-family: var(--mono);
+    color: var(--accent);
+  }
+
+  .arch-group-blurb {
+    margin: 0 0 clamp(18px, 3vw, 24px);
+    font-size: var(--t-large);
+    line-height: 1.55;
+    color: var(--body);
+  }
+
+  .arch-nodes {
+    margin: 0;
+    display: grid;
+    gap: 0;
+  }
+
+  .arch-node {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .arch-node:last-child {
+    border-bottom: none;
+  }
+
+  .arch-node dt {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: var(--t-body);
+    color: var(--ink);
+    margin: 0 0 4px;
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+  }
+
+  .arch-node dd {
+    margin: 0;
+    font-size: var(--t-small);
+    line-height: 1.6;
+    color: var(--body);
+  }
+
+  .arch-cta-wrap {
+    margin: clamp(48px, 7vw, 72px) 0 0;
+    padding-top: clamp(24px, 4vw, 36px);
+    border-top: 1px solid var(--rule);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .arch3d-grouplabel,
+    .arch3d-nodelabel,
+    .arch3d-edgelabel {
+      transition: none;
+    }
+  }
+</style>

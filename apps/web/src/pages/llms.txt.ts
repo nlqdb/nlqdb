@@ -33,6 +33,11 @@ const PRIMARY_LINKS = [
     desc: "Nine non-negotiables that decide every nlqdb design choice.",
   },
   {
+    title: "Architecture",
+    path: "/architecture",
+    desc: "How nlqdb works — five surfaces, one edge-routed engine, the right data engine per workload — as an interactive 3D map with a full prose walkthrough.",
+  },
+  {
     title: "Integrations",
     path: "/integrations",
     desc: "Frameworks, MCP hosts, and surfaces nlqdb already plugs into.",
