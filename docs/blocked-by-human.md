@@ -9,6 +9,8 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
 
 ## Human actions (clicks, secrets, legal)
 
+- **Stripe Dashboard: bump the webhook endpoint API version to `2026-06-24.dahlia`.** The deps PR unpinned the SDK apiVersion per SK-STRIPE-007 (SDK is source of truth, now `2026-06-24.dahlia`); the webhook endpoint version is set in the Dashboard (Developers → Webhooks → endpoint → API version) and should match. Dashboard-only click; delete once done.
+
 - **Final legal copy for `/privacy` + `/terms` — free, no lawyer, no subscription.** The live pages (`apps/web/src/pages/{privacy,terms}.astro`) are **pre-beta drafts**. Use **Termly's free tier** (`termly.io`) — a short-form questionnaire that outputs a GDPR + CCPA privacy policy and **discloses our LLM/cloud subprocessors** (built-in vendor checklist + a custom-vendor field) at $0; generate the Terms of Service free from **TermsFeed's** base T&C. You decide only: real legal entity name, jurisdiction / governing law, and retention period — then an agent wires the generated copy + subprocessor list into the two pages.
 
 ## Suggestions needing approval (to amend the guidelines)
