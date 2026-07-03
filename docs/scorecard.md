@@ -30,7 +30,7 @@ below its ≥ 0.60 Phase 2 floor** — engine work ships until cleared
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | no data — instrument live (migration 0020 applied), counters all zero | target ≥ 95%; still zero `/v1/ask` since the 07-02 deploy (latest `last_queried_at` = 07-02 09:25 UTC, 28h+ quiet) — reads on next pull with traffic |
 | 5 | Session retention (≥ 2 queries) | no data yet — same instrument, awaiting traffic | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | 73 (`/vs` 31 + `/solve` 31 + `/blog` 11) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
+| 6 | Indexable surfaces | **74** (`/vs` 31 + `/solve` 31 + `/blog` 12) — was 73 | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run. This run: +1 blog (run 119 published, distribution-queue draft → canonical `/blog`) |
 | 7 | Surface yield | posts 11; 7d external referrals = 3 (`www.google.com` + `aisearchindex.space` + `bing.com`, 1 pageload each) | CF `refererHost` — measured every run |
 | | **Engine** — BIRD 07-03 · Spider 07-02 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.512** (256/500, 07-03 — first completed 500q canonical since 06-19; Δ −0.8 pp vs 0.520, McNemar p=0.36 statistically flat, 0 flagged regressions; [run 28640034273](https://github.com/nlqdb/nlqdb/actions/runs/28640034273)) | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Resume loop closed (4 checkpointed windows), baseline re-seeded 07-03; pin-branch delete blocked by session push scope — any session with branch-delete rights can drop `eval/bird-resume-0e67e64` |
@@ -46,7 +46,7 @@ below its ≥ 0.60 Phase 2 floor** — engine work ships until cleared
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.512, fresh 07-03); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**measured 07-03, row #11: Δ 19.3 pp ✓ ≤ 25, but agentic 0.667 ✗ < 0.80 — 7 `openrouter:parse` no_sql suppress the frontier lanes; criterion still fails on the absolute floor**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (no data, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: close the 7 `openrouter:parse` no_sql capping the frontier lanes (row #11), first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **38** (07-03, was 39; 166 total bullets, 128 resolved/parked/decided) | target ↓ 0 — **method now pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — lowercase `resolved`/all-caps `RESOLVED` mark done bullets; a case-sensitive grep over-counts to 53). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved/delete |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-03 4th-run sweep: 92 pages, 2,063 internal links) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-03 5th-run sweep: 94 pages, 2,197 internal links — new blog post included) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (per-agent RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
@@ -67,6 +67,7 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 - https://nlqdb.com/blog/offline-llm-eval-rate-limits/ (run 68 — engine lesson, SK-QUAL-013 capacity honesty)
 - https://nlqdb.com/blog/sitemap-advertising-redirects/ (run 69 — engine lesson, trailing-slash canonical/sitemap hygiene)
 - https://nlqdb.com/blog/text-to-sql-build-vs-buy/ (run 109 — anchors `/solve/add-ask-your-data-feature-without-building-text-to-sql`)
+- https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/ (run 119 — anchors `/solve/find-duplicate-rows-in-my-data`)
 
 ## Last change
 
@@ -85,8 +86,7 @@ absolute agentic ≥ 0.80 still fails (0.667; 7 `openrouter:parse` no_sql
 suppress the frontier lanes). Smoke never touches the baseline — BIRD
 canonical stays 0.512 (row #8), still below the 0.60 floor. Artifact = this
 measurement record (row #11 +
-[run 28685576019](https://github.com/nlqdb/nlqdb/actions/runs/28685576019));
-distribution untouched this run (open PR #599 owns the blog lane). **KPI:**
-GLOBAL-025 engine-quality — the headline free-vs-frontier delta is now a live
-number, not a blocked instrument. None degraded — no code changed (a
+[run 28685576019](https://github.com/nlqdb/nlqdb/actions/runs/28685576019)).
+**KPI:** GLOBAL-025 engine-quality — the headline free-vs-frontier delta is now
+a live number, not a blocked instrument. None degraded — no code changed (a
 workflow dispatch + docs only).
