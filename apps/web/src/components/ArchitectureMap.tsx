@@ -34,17 +34,15 @@ type Mesh = import("three").Mesh;
 type Material = import("three").Material;
 type Texture = import("three").Texture;
 type Vector3 = import("three").Vector3;
-type QuadraticBezierCurve3 = import("three").QuadraticBezierCurve3;
 
 // Calm-token palette (SK-WEB-020), as scene colors.
 const C = {
   bg: 0x0d0f0c,
-  floor: 0x111310,
   cardFront: 0x232823,
-  cardSide: 0x161a16,
-  zoneFill: "rgba(32, 37, 31, 0.78)",
-  zoneLine: "rgba(70, 76, 69, 0.9)",
-  chipFill: "rgba(15, 18, 15, 0.88)",
+  cardSide: 0x2b302a,
+  zoneFill: "rgba(37, 43, 36, 0.85)",
+  zoneLine: "rgba(86, 93, 84, 1)",
+  chipFill: "rgba(15, 18, 15, 0.97)",
   chipLine: "rgba(62, 207, 142, 0.35)",
   ink: "#f2f4f1",
   muted: "#9aa099",
@@ -67,8 +65,10 @@ const PPU = 256;
 // Camera distances that map to the two levels of detail.
 const DETAIL_DIST = 15;
 const OVERVIEW_DIST = 26;
-const START_POS: [number, number, number] = [0, 13.5, 24];
-const TARGET: [number, number, number] = [0, 0, -0.5];
+// Aimed slightly behind the zones so the content band sits centered in the
+// frame instead of stacking in the top half over empty foreground floor.
+const START_POS: [number, number, number] = [0, 12, 22];
+const TARGET: [number, number, number] = [0, 0, -2.5];
 
 interface SceneCallbacks {
   onReady(): void;
@@ -199,13 +199,14 @@ function zoneChipTexture(
   const w = 1152;
   const h = 320;
   return chipTexture(three, maxAniso, w, h, (ctx) => {
-    const size = fitFont(ctx, title, 108, w - 140, "600", SANS);
+    const size = fitFont(ctx, title, 116, w - 140, "600", SANS);
     ctx.font = `600 ${size}px ${SANS}`;
     ctx.fillStyle = C.ink;
-    ctx.fillText(title, w / 2, h * 0.38);
-    ctx.font = `500 40px ${MONO}`;
-    ctx.fillStyle = C.muted;
-    ctx.fillText(sub.toUpperCase(), w / 2, h * 0.74);
+    ctx.fillText(title, w / 2, h * 0.36);
+    const subSize = fitFont(ctx, sub.toUpperCase(), 52, w - 160, "600", MONO);
+    ctx.font = `600 ${subSize}px ${MONO}`;
+    ctx.fillStyle = "#c6c9c3";
+    ctx.fillText(sub.toUpperCase(), w / 2, h * 0.75);
   });
 }
 
@@ -223,6 +224,55 @@ function edgeChipTexture(
     ctx.fillStyle = C.accentCss;
     ctx.fillText(text, w / 2, h / 2 + 2);
   });
+}
+
+/** Floor: base tone + radial rim fade + per-pixel grain. The grain is the
+    banding fix — a dark 8-bit gradient alone shows visible hue rings; baked
+    noise breaks them up (material.dithering handles the lit side). */
+function floorTexture(three: ThreeModule, maxAniso: number): Texture {
+  const S = 1024;
+  return makeTexture(three, maxAniso, S, S, (ctx) => {
+    ctx.fillStyle = "#141613";
+    ctx.fillRect(0, 0, S, S);
+    const rim = ctx.createRadialGradient(S / 2, S / 2, S * 0.16, S / 2, S / 2, S * 0.5);
+    rim.addColorStop(0, "rgba(13, 15, 12, 0)");
+    rim.addColorStop(0.7, "rgba(13, 15, 12, 0.45)");
+    rim.addColorStop(1, "rgba(13, 15, 12, 1)");
+    ctx.fillStyle = rim;
+    ctx.fillRect(0, 0, S, S);
+    const img = ctx.getImageData(0, 0, S, S);
+    const px = img.data;
+    for (let i = 0; i < px.length; i += 4) {
+      const n = (Math.random() - 0.5) * 9;
+      px[i] += n;
+      px[i + 1] += n;
+      px[i + 2] += n;
+    }
+    ctx.putImageData(img, 0, 0);
+  });
+}
+
+/** One comet streak, tiled and UV-scrolled along each edge tube — replaces
+    the old pulse spheres, whose loop restart read as a visible teleport. */
+function streakTexture(three: ThreeModule): Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 8;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    const g = ctx.createLinearGradient(0, 0, 512, 0);
+    g.addColorStop(0, "rgba(62, 207, 142, 0)");
+    g.addColorStop(0.5, "rgba(62, 207, 142, 0)");
+    g.addColorStop(0.86, "rgba(62, 207, 142, 0.75)");
+    g.addColorStop(0.96, "rgba(190, 255, 224, 1)");
+    g.addColorStop(1, "rgba(62, 207, 142, 0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 512, 8);
+  }
+  const tex = new three.CanvasTexture(canvas);
+  tex.colorSpace = three.SRGBColorSpace;
+  tex.wrapS = three.RepeatWrapping;
+  return tex;
 }
 
 /** Floor zone: rounded region with a hairline border, drawn as a texture. */
@@ -302,8 +352,8 @@ async function createArchScene(
   camera.position.set(...START_POS);
 
   // ---- Light rig: soft hemisphere fill + one shadow-casting key. ----
-  scene.add(new three.HemisphereLight(0x3a403a, 0x0b0c0b, 1.6));
-  const key = new three.DirectionalLight(0xffffff, 2.2);
+  scene.add(new three.HemisphereLight(0x3a403a, 0x10120f, 1.9));
+  const key = new three.DirectionalLight(0xffffff, 2.0);
   key.position.set(14, 26, 16);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -312,6 +362,7 @@ async function createArchScene(
   key.shadow.camera.top = 24;
   key.shadow.camera.bottom = -24;
   key.shadow.bias = -0.0004;
+  key.shadow.radius = 6; // feathered contact shadows, not hard black wedges
   scene.add(key);
   const rim = new three.DirectionalLight(0x3ecf8e, 0.35);
   rim.position.set(-18, 8, -14);
@@ -320,14 +371,19 @@ async function createArchScene(
   // ---- Floor + grid ----
   const floor = new three.Mesh(
     new three.CircleGeometry(60, 64).rotateX(-Math.PI / 2),
-    new three.MeshStandardMaterial({ color: C.floor, roughness: 0.96, metalness: 0 }),
+    new three.MeshStandardMaterial({
+      map: floorTexture(three, maxAniso),
+      roughness: 0.96,
+      metalness: 0,
+      dithering: true,
+    }),
   );
   floor.receiveShadow = true;
   scene.add(floor);
   const grid = new three.GridHelper(120, 60, 0x20241f, 0x171a16);
   grid.position.y = 0.02;
   (grid.material as Material).transparent = true;
-  (grid.material as Material).opacity = 0.4;
+  (grid.material as Material).opacity = 0.45;
   scene.add(grid);
 
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -372,8 +428,10 @@ async function createArchScene(
 
   // ---- Floor zones + standing title chips (the overview level) ----
   const zoneMeshes: Mesh[] = [];
+  const zoneIds: ArchGroupId[] = [];
   const zoneFades: Fadeable[] = [];
   const chipFades: Fadeable[] = [];
+  const billboards: Mesh[] = [];
   for (const g of ARCH_GROUPS) {
     const zone = new three.Mesh(
       new three.PlaneGeometry(g.size[0], g.size[1]).rotateX(-Math.PI / 2),
@@ -387,10 +445,13 @@ async function createArchScene(
     zone.userData = { kind: "group", id: g.id };
     scene.add(zone);
     zoneMeshes.push(zone);
+    zoneIds.push(g.id);
     zoneFades.push(fadeable(zone));
 
-    // Title chip standing at the back edge of the zone.
-    const chipW = 6.6;
+    // Title chip standing at the back edge of the zone. Billboarded every
+    // frame: text planes at an oblique angle mip-blur into mush; facing the
+    // camera keeps them sharp while still scaling with distance.
+    const chipW = 7.2;
     const chip = new three.Mesh(
       new three.PlaneGeometry(chipW, chipW * (320 / 1152)),
       new three.MeshBasicMaterial({
@@ -399,11 +460,11 @@ async function createArchScene(
         depthWrite: false,
       }),
     );
-    chip.position.set(g.center[0], 1.5, -(g.center[1] + g.size[1] / 2) - 1.1);
-    chip.rotation.x = CARD_TILT;
+    chip.position.set(g.center[0], 1.6, -(g.center[1] + g.size[1] / 2) - 1.1);
     chip.renderOrder = 4;
     scene.add(chip);
     chipFades.push(fadeable(chip));
+    billboards.push(chip);
   }
 
   // ---- Node cards: lit slab + baked text face + accent halo ----
@@ -427,8 +488,18 @@ async function createArchScene(
     group.rotation.x = CARD_TILT;
 
     const body = new three.Mesh(bodyGeo, [
-      new three.MeshStandardMaterial({ color: C.cardFront, roughness: 0.72, metalness: 0.08 }),
-      new three.MeshStandardMaterial({ color: C.cardSide, roughness: 0.85, metalness: 0.05 }),
+      new three.MeshStandardMaterial({
+        color: C.cardFront,
+        roughness: 0.72,
+        metalness: 0.08,
+        dithering: true,
+      }),
+      new three.MeshStandardMaterial({
+        color: C.cardSide,
+        roughness: 0.85,
+        metalness: 0.05,
+        dithering: true,
+      }),
     ]);
     body.castShadow = true;
     body.userData = { kind: "node", id: n.id };
@@ -466,17 +537,18 @@ async function createArchScene(
   interface EdgeVisual {
     fades: Fadeable[];
     accentables: Material[];
-    curve: QuadraticBezierCurve3;
-    pulse: Mesh | null;
+    streak: Texture | null;
+    speed: number;
     phase: number;
     fromId: string;
     toId: string;
     aggregate: boolean;
   }
   const edgeVisuals: EdgeVisual[] = [];
-  const pulseGeo = new three.SphereGeometry(0.11, 10, 10);
-  const arrowGeo = new three.ConeGeometry(0.15, 0.4, 10);
+  const arrowGeo = new three.ConeGeometry(0.11, 0.3, 10);
+  const puckGeo = new three.SphereGeometry(0.14, 12, 12);
   const up = new three.Vector3(0, 1, 0);
+  const streakBase = motionOk ? streakTexture(three) : null;
 
   function addEdge(
     from: Vector3,
@@ -486,36 +558,63 @@ async function createArchScene(
     const mid = from.clone().add(to).multiplyScalar(0.5);
     mid.y += opts.aggregate ? 2.1 : 1.05;
     const curve = new three.QuadraticBezierCurve3(from, mid, to);
-    const tube = new three.TubeGeometry(curve, 32, opts.aggregate ? 0.07 : 0.04, 8, false);
+    const r = opts.aggregate ? 0.07 : 0.04;
+    const tube = new three.TubeGeometry(curve, 32, r, 8, false);
     const mat = new three.MeshBasicMaterial({ color: C.edge });
     const mesh = new three.Mesh(tube, mat);
     scene.add(mesh);
 
-    // Arrowhead just short of the target card, so direction reads at a glance.
+    // Small, quiet arrowhead near the target — the streaks carry the flow
+    // story; this is only the reduced-motion / at-a-glance direction cue.
+    // Staggered per edge so fan-ins don't clump their cones in one spot.
     const len = curve.getLength();
-    const tArrow = Math.max(0.55, 1 - 2.1 / len);
-    const arrowMat = new three.MeshBasicMaterial({ color: C.edge });
+    const tArrow = Math.max(0.5, 1 - (1.8 + opts.phase * 1.1) / len);
+    const arrowMat = new three.MeshBasicMaterial({
+      color: opts.aggregate ? C.accent : C.edge,
+    });
     const arrow = new three.Mesh(arrowGeo, arrowMat);
+    if (opts.aggregate) arrow.scale.setScalar(1.25);
     arrow.position.copy(curve.getPointAt(tArrow));
     arrow.quaternion.setFromUnitVectors(up, curve.getTangentAt(tArrow).normalize());
     scene.add(arrow);
 
-    const fades = [fadeable(mesh, 0.85), fadeable(arrow, 0.95)];
+    const fades = [fadeable(mesh, 0.85), fadeable(arrow, 0.6)];
 
-    let pulse: Mesh | null = null;
-    if (motionOk) {
-      pulse = new three.Mesh(
-        pulseGeo,
-        new three.MeshBasicMaterial({ color: C.accent, transparent: true }),
+    // Aggregate routes get endpoint pucks so the line reads as a route
+    // between places, not a wire dead-ending in mid-air.
+    if (opts.aggregate) {
+      for (const p of [from, to]) {
+        const puck = new three.Mesh(puckGeo, new three.MeshBasicMaterial({ color: C.accent }));
+        puck.position.copy(p);
+        scene.add(puck);
+        fades.push(fadeable(puck, 0.9));
+      }
+    }
+
+    // Flow: a comet streak scrolled along the tube's length-wise UVs —
+    // continuous motion with no loop seam anywhere on the curve.
+    let streak: Texture | null = null;
+    if (streakBase) {
+      streak = streakBase.clone();
+      streak.repeat.x = Math.max(1, Math.round(len / 7));
+      streak.needsUpdate = true;
+      const streakMesh = new three.Mesh(
+        new three.TubeGeometry(curve, 32, r * 2.1, 8, false),
+        new three.MeshBasicMaterial({
+          map: streak,
+          transparent: true,
+          depthWrite: false,
+          blending: three.AdditiveBlending,
+        }),
       );
-      pulse.renderOrder = 3;
-      scene.add(pulse);
-      fades.push(fadeable(pulse));
+      streakMesh.renderOrder = 3;
+      scene.add(streakMesh);
+      fades.push(fadeable(streakMesh));
     }
 
     if (opts.label) {
       const big = opts.aggregate;
-      const w = big ? 3.4 : 1.7;
+      const w = big ? 3.4 : 1.55;
       const chip = new three.Mesh(
         new three.PlaneGeometry(w, w * (big ? 176 / 896 : 128 / 512)),
         new three.MeshBasicMaterial({
@@ -524,18 +623,28 @@ async function createArchScene(
           depthWrite: false,
         }),
       );
-      chip.position.copy(curve.getPointAt(0.5)).add(new three.Vector3(0, big ? 0.75 : 0.5, 0));
-      chip.rotation.x = CARD_TILT;
+      // Big chips float above the flow. Small ones clear both the tube and
+      // any card title behind them: same-row edges lean well forward into
+      // the row gap; cross-row edges sit low over their diagonal.
+      const sameRow = Math.abs(from.z - to.z) < 0.5;
+      chip.position
+        .copy(curve.getPointAt(0.5))
+        .add(
+          new three.Vector3(0, big ? 0.75 : sameRow ? 0.35 : 0.28, big ? 0 : sameRow ? 0.75 : 0.45),
+        );
       chip.renderOrder = 4;
       scene.add(chip);
       fades.push(fadeable(chip));
+      billboards.push(chip);
     }
 
     edgeVisuals.push({
       fades,
       accentables: [mat, arrowMat],
-      curve,
-      pulse,
+      streak,
+      // Per-edge speed jitter (±~30%) so the streaks never phase-lock into
+      // one synchronized metronome loop across the whole scene.
+      speed: (opts.aggregate ? 0.45 : 0.3) * (0.72 + ((opts.phase * 7.3) % 1) * 0.6),
       phase: opts.phase,
       fromId: opts.fromId,
       toId: opts.toId,
@@ -543,11 +652,13 @@ async function createArchScene(
     });
   }
 
+  // Detail edges dock LOW on the cards (y 0.5, bottom third) so tubes and
+  // arrowheads never cross the label text baked at card-center height.
   ARCH_EDGES.forEach((e, i) => {
     const a = archNodeById(e.from);
     const b = archNodeById(e.to);
     if (!a || !b) return;
-    addEdge(toWorld(three, a.pos, 0.95), toWorld(three, b.pos, 0.95), {
+    addEdge(toWorld(three, a.pos, 0.5), toWorld(three, b.pos, 0.5), {
       aggregate: false,
       fromId: e.from,
       toId: e.to,
@@ -574,6 +685,7 @@ async function createArchScene(
   const raycaster = new three.Raycaster();
   const pointer = new three.Vector2();
   let hoveredId: string | null = null;
+  let hoveredZoneId: string | null = null;
   let selectedId: string | null = null;
   let neighborIds = new Set<string>();
   let detailBlend = 0; // 0 = overview, 1 = detail
@@ -628,7 +740,7 @@ async function createArchScene(
 
   function focusGroup(id: ArchGroupId) {
     const c = groupCenter(id);
-    flyTo(new three.Vector3(c.x * 0.82, 9, 12.5), new three.Vector3(c.x * 0.82, 0.6, 0));
+    flyTo(new three.Vector3(c.x * 0.82, 8.5, 11), new three.Vector3(c.x * 0.82, 0.5, -1));
   }
 
   function unlock() {
@@ -663,6 +775,7 @@ async function createArchScene(
   function onPointerMove(ev: PointerEvent) {
     const hit = pick(ev);
     hoveredId = hit && hit.kind === "node" ? hit.id : null;
+    hoveredZoneId = hit && hit.kind === "group" ? hit.id : null;
     renderer.domElement.style.cursor = hit ? "pointer" : "grab";
   }
   renderer.domElement.addEventListener("pointerdown", onPointerDown);
@@ -697,8 +810,10 @@ async function createArchScene(
 
     // Idle life before the first interaction: a gentle sway, not a full
     // orbit — a full revolution would show the map mirrored from behind.
+    // cos, not sin: sin's integral is one-sided, drifting the camera off
+    // to the left; cos oscillates the azimuth symmetrically around start.
     if (controls.autoRotate) {
-      controls.autoRotateSpeed = Math.sin(t * 0.4) * 0.9;
+      controls.autoRotateSpeed = Math.cos(t * 0.4) * 0.9;
     }
 
     if (flight.active) {
@@ -721,14 +836,26 @@ async function createArchScene(
     }
 
     // Overview ↔ detail crossfade. Zones stay as faint floor regions in
-    // detail; title chips recede; cards + detail edges rise.
-    for (const f of zoneFades) applyFade(f, 0.4 + (1 - detailBlend) * 0.6);
+    // detail; title chips recede; cards + detail edges rise. A hovered
+    // zone brightens so the click affordance is felt before the click.
+    for (let i = 0; i < zoneFades.length; i++) {
+      const hover = hoveredZoneId === zoneIds[i] && detailBlend < 0.45 ? 0.25 : 0;
+      applyFade(zoneFades[i], Math.min(1, 0.4 + (1 - detailBlend) * 0.6 + hover));
+    }
     for (const f of chipFades) applyFade(f, 0.15 + (1 - detailBlend) * 0.85);
 
     for (const n of ARCH_NODES) {
       const group = cardGroups.get(n.id);
       const fades = cardFades.get(n.id);
-      const k = detailBlend * dimFactor(n.id);
+      // Cards stay faintly present at overview (the zones visibly contain
+      // things worth zooming into). In detail view they also fade with
+      // distance from the focus point, so cards outside the zone being
+      // explored never leave half-cropped labels at the frame edges.
+      const raw = group
+        ? Math.min(1, Math.max(0.2, 1.45 - group.position.distanceTo(controls.target) / 16))
+        : 1;
+      const distFade = 1 - detailBlend * (1 - raw);
+      const k = (0.16 + 0.84 * detailBlend) * dimFactor(n.id) * distFade;
       if (fades) {
         for (const f of fades) {
           applyFade(f, k);
@@ -752,17 +879,23 @@ async function createArchScene(
         : detailBlend * Math.min(dimFactor(e.fromId), dimFactor(e.toId));
       const isSelectedEdge =
         selectedId !== null && !e.aggregate && (e.fromId === selectedId || e.toId === selectedId);
-      for (const m of e.accentables) {
-        (m as Material & { color: import("three").Color }).color.setHex(
-          isSelectedEdge ? C.accent : C.edge,
-        );
+      if (!e.aggregate) {
+        for (const m of e.accentables) {
+          (m as Material & { color: import("three").Color }).color.setHex(
+            isSelectedEdge ? C.accent : C.edge,
+          );
+        }
       }
       for (const f of e.fades) applyFade(f, vis * (isSelectedEdge ? 1.18 : 1));
-      if (e.pulse) {
-        const u = (t * (e.aggregate ? 0.16 : 0.12) + e.phase) % 1;
-        e.pulse.position.copy(e.curve.getPointAt(u));
+      if (e.streak) {
+        e.streak.offset.x = -(t * e.speed + e.phase);
       }
     }
+
+    // Text chips face the camera every frame — oblique text planes
+    // mip-blur into mush; billboarding keeps them sharp while they still
+    // scale and occlude like everything else.
+    for (const b of billboards) b.quaternion.copy(camera.quaternion);
 
     renderer.render(scene, camera);
   }
