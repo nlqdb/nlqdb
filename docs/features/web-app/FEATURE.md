@@ -164,7 +164,7 @@ The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked
 ### SK-WEB-021 — `/architecture`: interactive 3D system map on its own route, never on `/`
 
 **Body:** [`decisions/SK-WEB-021-architecture-3d-map.md`](./decisions/SK-WEB-021-architecture-3d-map.md).
-One route (`/architecture/`) renders the system as a three.js zoom-to-detail map (island `ArchitectureMap.tsx`) above a prose walkthrough, both from `src/data/architecture.ts` (mirrors `docs/architecture.md` §2). three.js is dynamic-imported on this route only; wheel-zoom is click-to-activate and one-finger touch keeps scrolling (scroll-trap guards); motion is reduced-motion-gated. Never a homepage background — that would contradict SK-WEB-018 / SK-WEB-020 / SK-WEB-001 at once.
+One route (`/architecture/`) renders the system as a three.js zoom-to-detail map (island `ArchitectureMap.tsx`) above a prose walkthrough, both from `src/data/architecture.ts` (mirrors `docs/architecture.md` §2). three.js is dynamic-imported on this route only; wheel-zoom is click-to-activate and one-finger touch keeps scrolling (scroll-trap guards); motion is reduced-motion-gated. Never a homepage background — that would contradict SK-WEB-018 / SK-WEB-020 / SK-WEB-001 at once; the home page gets only the 0-JS "Under the hood" poster band linking to the route.
 
 ## GLOBALs governing this feature
 

@@ -456,3 +456,101 @@
   color: var(--muted);
   line-height: 1.5;
 }
+
+/* ================================== Under the hood — poster portal band.
+ * SK-WEB-021: the 3D map never ships on `/`; this is a 0-JS image of the
+ * real scene linking to /architecture/. Hover treatment mirrors `.door`
+ * (lift + accent border), so the band reads as a third, quieter door. */
+.home2 .undermap {
+  padding: clamp(20px, 3vw, 40px) 0 clamp(28px, 5vw, 56px);
+}
+
+.home2 .undermap__link {
+  position: relative;
+  display: block;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-2);
+  text-decoration: none;
+  transition:
+    border-color var(--dur-2) var(--ease-std),
+    transform var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .home2 .undermap__link:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent-line);
+    box-shadow: var(--shadow-3);
+  }
+}
+
+.home2 .undermap__link:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.home2 .undermap__img {
+  display: block;
+  width: 100%;
+  /* The width/height attrs (kept for layout-shift hints) map to a
+     presentational height that would beat aspect-ratio — release it. */
+  height: auto;
+  aspect-ratio: 2.3 / 1;
+  object-fit: cover;
+  object-position: 50% 32%;
+}
+
+@media (max-width: 640px) {
+  .home2 .undermap__img {
+    aspect-ratio: 4 / 3;
+    object-position: 42% 32%;
+  }
+}
+
+.home2 .undermap__copy {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: clamp(48px, 7vw, 88px) clamp(18px, 3vw, 32px) clamp(16px, 2.6vw, 26px);
+  background: linear-gradient(180deg, transparent, rgba(11, 12, 11, 0.9) 62%);
+  pointer-events: none;
+}
+
+.home2 .undermap__eyebrow {
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.home2 .undermap__title {
+  margin: 0;
+  font-size: var(--t-h3);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.home2 .undermap__lede {
+  font-size: var(--t-small);
+  color: var(--body);
+  line-height: 1.55;
+  max-width: 58ch;
+}
+
+.home2 .undermap__cta {
+  margin-top: 6px;
+  font-size: var(--t-small);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.home2 .undermap__link:hover .undermap__cta {
+  color: var(--accent);
+}
