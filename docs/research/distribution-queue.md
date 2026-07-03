@@ -61,6 +61,12 @@ delete its line.
   the bare path; canonical/og:url/sitemap/llms.txt all advertised the
   redirect; `trailingSlash: "always"` + one path-normalize helper, audit with
   `curl -sI` over every sitemap URL).
+- run 109 — **https://nlqdb.com/blog/text-to-sql-build-vs-buy/** — venue
+  variant pending: dev.to + r/SaaS + r/ExperiencedDevs (the prompt+model demo
+  is 10% of an "ask your data" feature; the fail-closed validator, plan cache,
+  and eval harness are the 90% you maintain forever; buy when it's a feature,
+  build when it's the product; anchors
+  `/solve/add-ask-your-data-feature-without-building-text-to-sql`).
 
 ## Collapsed — full drafts in git history
 
@@ -87,7 +93,6 @@ delete its line.
 - run 112 — dev.to / r/dataengineering / r/LLMDevs: "Your notebook's AI analyst assumes someone's watching the cell. Your product runs when no one is." (anchors `/vs/fabi`).
 - run 111 — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned." (user-modelling (Honcho's theory-of-mind) vs. relational aggregation over what the agent stored; anchors `/vs/honcho`).
 - run 110 — dev.to / r/dataengineering / r/BusinessIntelligence: "Your BI tool got acquired. Your data layer shouldn't have to care." (the analyst notebook is a roll-up target; a destination humans log into vs. a runtime your software calls; anchors `/vs/mode`).
-- run 109 — dev.to / r/SaaS / r/ExperiencedDevs: "The text-to-SQL demo takes an afternoon. The other 90% is why you should buy it." (the buy-vs-build test isn't "can I generate SQL" but "do I want to own the validator/cache/eval stack forever"; anchors `/solve/add-ask-your-data-feature-without-building-text-to-sql`).
 *(runs 75–100 moved to git history under D4; full gists for runs 103–105 also collapsed to titles — `git log -p` recovers all bodies.)*
 
 ### Engine-lesson posts (dev.to / lobste.rs)

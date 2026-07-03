@@ -182,6 +182,43 @@ describe("scoreOne — against an on-disk SQLite fixture", () => {
     });
     expect(r.outcome).toBe("mismatch");
   });
+
+  // SK-QUAL-021 — a runaway predicted query (unbounded recursive CTE here;
+  // a cartesian join over BIRD's larger fixtures in the field) must come
+  // back as a scored exec_error at the deadline, never hang the runner:
+  // in-process bun:sqlite is synchronous and uninterruptible, which froze
+  // four consecutive 45-min smoke windows with a flat checkpoint.
+  it("kills a runaway predicted query at the deadline and scores exec_error", async () => {
+    const r = await scoreOne({
+      dbPath,
+      goldSql: "SELECT 1",
+      predictedSql:
+        "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c) SELECT count(*) FROM c",
+      timeoutMs: 300,
+    });
+    expect(r.outcome).toBe("exec_error");
+    expect(r.error).toContain("SK-QUAL-021");
+  });
+
+  it("kills a runaway gold query at the deadline and scores gold_error", async () => {
+    const r = await scoreOne({
+      dbPath,
+      goldSql:
+        "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c) SELECT count(*) FROM c",
+      predictedSql: "SELECT 1",
+      timeoutMs: 300,
+    });
+    expect(r.outcome).toBe("gold_error");
+  });
+
+  it("round-trips blob and bigint cells through the exec subprocess", async () => {
+    const r = await scoreOne({
+      dbPath,
+      goldSql: "SELECT CAST('abc' AS BLOB), 9007199254740991",
+      predictedSql: "SELECT CAST('abc' AS BLOB), 9007199254740991",
+    });
+    expect(r.outcome).toBe("match");
+  });
 });
 
 // SK-QUAL-008 — canonical pandas-comparator port. Tests verify the three

@@ -41,6 +41,53 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "text-to-sql-build-vs-buy",
+    title: "The text-to-SQL demo takes an afternoon. The other 90% is why you should buy it.",
+    description:
+      "Prompt + model + run the SQL is 10% of an 'ask your data' feature. The fail-closed validator, plan cache, and eval harness are the rest — yours forever. The real question: do you want that stack?",
+    date: "2026-07-03",
+    anchor: {
+      label: "Add 'ask your data' without building text-to-SQL — the full guide",
+      path: "/solve/add-ask-your-data-feature-without-building-text-to-sql",
+    },
+    body: [
+      {
+        kind: "p",
+        text: "The demo really is an afternoon. Pull the table definitions out of `information_schema`, template them into a prompt with the user's question, call a model, run whatever SQL comes back, render the rows. Every stack has a tutorial for this now, and they all work — \"let our users ask their data in English\" goes from ticket to working prototype before the day ends. That's the 10%.",
+      },
+      { kind: "h2", text: "The other 90% shows up after the first real user" },
+      {
+        kind: "p",
+        text: "The prototype's job was to produce SQL. The feature's job is to run model-authored SQL against your production database, on your users' behalf, unattended. Those are different jobs, and the gap between them is a stack of infrastructure the tutorial never mentions:",
+      },
+      {
+        kind: "ul",
+        items: [
+          "**A validator that fails closed.** The model will eventually emit a write — a `DELETE` inside a CTE, a `DROP` behind a comment, a join onto a table the asker should never see. You need a parser-level allow-list that rejects everything except the reads you meant to permit, and rejects anything it can't parse. A regex denylist is the bug report you haven't received yet.",
+          "**A plan cache keyed on question + schema version.** The same question shouldn't cost a model call twice, so you cache compiled plans — but a cached plan is only valid until the schema moves, so the key has to carry a schema fingerprint and invalidation becomes your problem. Skip this and every dashboard load bills you fresh tokens at p95 model latency.",
+          "**An eval harness over a labelled set.** Prompts get edited, models get swapped or silently updated, and NL→SQL accuracy moves when either happens. Without a scored question→gold-answer set you find the regression when a customer does. Building the harness is a project; keeping the labelled set honest as your schema evolves is a chore with no finish line.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "None of this is exotic — every piece is buildable. The catch is that every piece is *maintainable*: production infrastructure with your on-call rotation's name on it, in service of a feature that probably isn't your product.",
+      },
+      { kind: "h2", text: "The honest build-vs-buy test" },
+      {
+        kind: "p",
+        text: "The wrong question is \"can I generate SQL from English?\" Yes — in an afternoon, that's the point. The right question is \"do I want to own that stack?\" If natural-language querying *is* your product — you're building a BI tool, a data platform, an agent framework — own it; the validator and the eval harness are your moat. If it's a reporting tab, a search box over each user's own rows, an in-app assistant — a feature inside a product that's about something else — buy the pipeline and embed it, the way you'd buy auth or email instead of running an SMTP server.",
+      },
+      {
+        kind: "p",
+        text: "(That second case is the one [nlqdb](https://nlqdb.com) exists for: drop in one element or one `POST /v1/ask`, the English compiles against the live schema, the compiled SQL is shown before anyone trusts it, reads pass a fail-closed allow-list, and the validator/cache/eval stack is our maintenance burden instead of yours. Honest limits: it's a hosted pipeline you embed, not a library you vendor — and \"many users over their own rows\" still means a database or an isolation scope per tenant, because per-user row-level security inside one shared database isn't shipped.)",
+      },
+      {
+        kind: "p",
+        text: "The general lesson: a demo prices the first afternoon; a feature prices the years after it. When an AI capability collapses the demo cost to nearly zero — and text-to-SQL has — the build-vs-buy decision doesn't disappear. It just moves to the part of the stack the demo never showed you.",
+      },
+    ],
+  },
+  {
     slug: "sitemap-advertising-redirects",
     title: "Your sitemap is advertising redirects — and your canonical tag points at one",
     description:

@@ -23,7 +23,7 @@ when-to-load:
 - `tools/eval/` — benchmark runner:
   - `src/runner.ts` — multi-dataset driver, CLI, lane loop, baseline + emit; `withExecRetry`-wraps scaffolded lanes; `--throttle-ms` (`SK-QUAL-012`), `--capacity-wait-ms` + budget-stop (`SK-QUAL-013`); transport-collapse guard `isTransportCollapse` (`SK-QUAL-020`); `--self-consistency N` / `--sc-temperature T` (`SK-QUAL-017`)
   - `src/exec-retry.ts` — `withExecRetry` bounded retry on `exec_error` only (`SK-QUAL-009`)
-  - `src/score.ts` — BIRD multiset/sequence-strict EX scorer + the Spider 2.0 multi-CSV port + `scoreOneSpider2` (`SK-QUAL-008`)
+  - `src/score.ts` — BIRD multiset/sequence-strict EX scorer + the Spider 2.0 multi-CSV port + `scoreOneSpider2` (`SK-QUAL-008`); executes all SQL via `src/sql-exec-child.ts`, a killable subprocess with a hard deadline (`SK-QUAL-021`)
   - `src/csv.ts` — minimal RFC-4180 CSV parser + type inference for gold CSVs (`SK-QUAL-008`)
   - `src/lanes.ts` — `free` / `frontier` (`SK-QUAL-004`) / `agentic-frontier` (`RUN_AGENTIC_FRONTIER=1`) lane builders (`SK-QUAL-009`)
   - `src/baseline.ts` + `src/significance.ts` — baseline diff + McNemar exact-binomial / Edwards' χ² (`SK-QUAL-006`)
@@ -217,6 +217,16 @@ false-mismatches a correct prediction that orders the tie differently (q8 tied
 two facts at `recall_count = 2`). The `recalls` seed now gives distinct counts
 so every ranked gold is tie-free; a unit test asserts it (fixture-only, EX
 unaffected).
+
+### SK-QUAL-021 — Scoring SQL executes in a killable subprocess; a runaway query is a scored timeout, never a hung run
+
+- **Decision:** `score.ts` never executes gold/predicted SQL in-process. Every statement runs in a spawned child (`sql-exec-child.ts`, SQL via stdin, rows as tagged JSON) that the parent SIGKILLs at `timeoutMs` (+500 ms spawn grace). A killed predicted query scores `exec_error`, a killed gold scores `gold_error` — canonical BIRD `evaluation.py` does the same via `func_timeout` (timeouts count against EX).
+- **Core value:** Bullet-proof
+- **Why:** bun:sqlite's synchronous `.values()` is uninterruptible (no `sqlite3_interrupt`/progress-handler binding; `busy_timeout` only bounds lock waits), so one runaway predicted query — a cartesian join over BIRD's larger fixtures — froze the runner's whole event loop: no throttle, no capacity wait, no checkpoint append, no budget-stop. Four consecutive 2026-07-03 smoke windows ceiling-cancelled at 44 min with a byte-flat checkpoint because the deterministic resume order replayed the same poison pair every window — the run could never progress.
+- **Alternatives rejected:**
+  - In-process `Worker` + `terminate()` — Bun's worker termination of a synchronously-blocked thread is experimental with documented hangs (oven-sh/bun #8816, #13091); a kill that can itself hang re-creates the bug.
+  - Row-iteration deadline checks — regains control only between yielded rows; an aggregate over a cartesian product yields nothing until done.
+  - Statement rewriting (injected `LIMIT`) — changes the semantics being scored.
 
 ### SK-QUAL-020 — Transport-collapse guard: a chain unreachable end-to-end is an outage, not a scored 0%
 
