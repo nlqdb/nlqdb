@@ -42,8 +42,7 @@ export type BlogPost = {
 export const BLOG_POSTS: BlogPost[] = [
   {
     slug: "ai-internal-tool-builder-faster",
-    title:
-      "AI made the internal-tool builder faster. It didn't ask whether you needed the tool.",
+    title: "AI made the internal-tool builder faster. It didn't ask whether you needed the tool.",
     description:
       "Low-code AI scaffolds the admin tool in a prompt. But the output is still a destination a human operates — and often the answer belongs inline in your product, or the asker is an agent.",
     date: "2026-07-03",
@@ -59,7 +58,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "What got faster is building the tool" },
       {
         kind: "p",
-        text: "But notice what got faster: *building the tool*. The output is still a destination — an internal app a human opens, logs into, and reads. AI shortened the path from \"I need a dashboard\" to \"I have a dashboard.\" It didn't question the premise that the answer to a data question is a dashboard you build.",
+        text: 'But notice what got faster: *building the tool*. The output is still a destination — an internal app a human opens, logs into, and reads. AI shortened the path from "I need a dashboard" to "I have a dashboard." It didn\'t question the premise that the answer to a data question is a dashboard you build.',
       },
       {
         kind: "p",

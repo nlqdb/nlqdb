@@ -10,7 +10,7 @@
 //
 // Exit code: 1 when any dead link exists, else 0.
 
-import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const DIST = new URL("../dist", import.meta.url).pathname;
@@ -35,9 +35,7 @@ function resolves(path) {
   const clean = decodeURIComponent(path.split("#")[0].split("?")[0]);
   if (clean === "" || clean === "/") return true;
   const rel = clean.replace(/^\//, "").replace(/\/$/, "");
-  return (
-    existsSync(join(DIST, rel)) || existsSync(join(DIST, rel, "index.html"))
-  );
+  return existsSync(join(DIST, rel)) || existsSync(join(DIST, rel, "index.html"));
 }
 
 function isInternal(url) {
@@ -62,12 +60,7 @@ function check(url, source, { deadOnly = false } = {}) {
   const clean = path.split("#")[0].split("?")[0];
   if (!resolves(path)) {
     dead.push(key);
-  } else if (
-    !deadOnly &&
-    !clean.endsWith("/") &&
-    !/\.[a-z0-9]+$/i.test(clean) &&
-    clean !== ""
-  ) {
+  } else if (!deadOnly && !clean.endsWith("/") && !/\.[a-z0-9]+$/i.test(clean) && clean !== "") {
     redirects.push(key); // bare path: serves as a 307 to the slashed URL
   }
 }
