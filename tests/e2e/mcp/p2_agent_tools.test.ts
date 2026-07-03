@@ -18,12 +18,16 @@ function stubClient(overrides: Partial<NlqClient>): NlqClient {
     listDatabases: async () => ({ databases: [] }),
     createDatabase: notStubbed("createDatabase"),
     deleteDatabase: notStubbed("deleteDatabase"),
+    databases: { connect: notStubbed("databases.connect") },
     getKeyStatus: async () => ({ revoked: false }),
     listKeys: async () => ({ keys: [] }),
     mintKey: notStubbed("mintKey"),
     revokeKey: notStubbed("revokeKey"),
     redeemOAuthBridgeCode: notStubbed("redeemOAuthBridgeCode"),
     remember: notStubbed("remember"),
+    setByollm: notStubbed("setByollm"),
+    getByollmStatus: notStubbed("getByollmStatus"),
+    clearByollm: notStubbed("clearByollm"),
     ...overrides,
   };
 }
@@ -44,18 +48,20 @@ async function connect(client: NlqClient) {
 }
 
 describe("P2 — Agent Builder · MCP protocol contract", () => {
-  it("exposes the SK-MCP-002 tools in order (+ additive nlqdb_remember, E-02)", async () => {
+  it("exposes the SK-MCP-002 tools in order (+ additive nlqdb_remember, nlqdb_connect_database)", async () => {
     const { mcpClient, teardown } = await connect(stubClient({}));
     try {
       const { tools } = await mcpClient.listTools();
       const names = tools.map((t) => t.name);
       // Tool order is part of the contract — some agent clients discover by index.
-      // `nlqdb_remember` is appended (SK-PIVOT-008), never reordering the stable three.
+      // New tools are appended (`nlqdb_remember` per SK-PIVOT-008,
+      // `nlqdb_connect_database` per SK-DBCONN-001), never reordering the stable three.
       expect(names).toEqual([
         "nlqdb_query",
         "nlqdb_list_databases",
         "nlqdb_describe",
         "nlqdb_remember",
+        "nlqdb_connect_database",
       ]);
       for (const t of tools) {
         expect(t.description).toBeTruthy();

@@ -41,6 +41,54 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "text-to-sql-accuracy-schemas-your-users-never-build",
+    title: "Your text-to-SQL accuracy is measured on schemas your users will never build",
+    description:
+      "BIRD and Spider score NL-to-SQL over messy academic schemas. The same free-model chain that scores 0.52 on BIRD scores 0.96 on the schema shapes our users actually build — so we report both.",
+    date: "2026-07-02",
+    body: [
+      {
+        kind: "p",
+        text: "Every text-to-SQL engine publishes the same two numbers: BIRD and Spider. Ours are not flattering — the strict-$0 free-model chain behind nlqdb currently scores **0.52** on BIRD Mini-Dev and **0.19** on the Spider 2.0-lite SQLite subset. We track both weekly, against a pinned baseline, with a paired significance test, because those benchmarks are the honesty instrument of this field: hard, public, and comparable to every research paper.",
+      },
+      {
+        kind: "p",
+        text: "But look at what they actually measure. BIRD's databases are real-world dumps — dozens of tables, cryptic column names, dirty values, questions that hinge on external knowledge notes. Spider 2.0 is enterprise-analytics scale on purpose; its authors built it because models had gotten too good at the small clean stuff. Both are the right kind of hard for a research leaderboard. Neither looks anything like the database a user of a product like ours ever touches.",
+      },
+      { kind: "h2", text: "The schema your users build is the one you never scored" },
+      {
+        kind: "p",
+        text: "Our users describe a goal in plain English and get a small, freshly-provisioned Postgres: a form-submissions table, a four-table agent-memory schema, a webhook event log. Five tables, honest column names, no fifteen-year accretion of legacy views. That shape — the one 100% of production queries actually run against — had zero rows in either benchmark. Which means the headline accuracy number described a workload we don't serve, in both directions: it undercounts what users experience, and it can hide regressions on the queries they really ask.",
+      },
+      { kind: "h2", text: "persona-bench: gold queries over the ICP shape, same scorer" },
+      {
+        kind: "p",
+        text: "So we added a third benchmark and open-sourced it into the repo: **persona-bench**, 23 hand-authored question/gold-SQL pairs over the two schema shapes our personas actually build (a SaaS app DB and the agent-memory preset). Three rules kept it honest:",
+      },
+      {
+        kind: "ul",
+        items: [
+          "**Same execution-accuracy scorer as BIRD/Spider.** A result-set match against gold, not an LLM judge — the number is comparable across all three datasets.",
+          "**Gold is literal-date, never relative.** No `now()` in gold SQL, so a question's answer never drifts with the clock and a run today reproduces a run in March.",
+          "**A gold-executability invariant runs first.** Every gold query must execute against the fixture and return non-degenerate rows before any model is scored. A benchmark with broken gold measures nothing — the ruler gets checked before the thing it measures.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "The result: the same free chain that scores 0.52 on BIRD and 0.19 on Spider scores **0.96 (22/23)** on persona-bench. That is not a brag — small clean schemas are exactly where NL-to-SQL is easy, which is the point: the difficulty distribution of a benchmark is a product decision, and defaulting to the academic one silently pins your roadmap to someone else's workload. The one persona-bench miss told us more about our planner than fifty BIRD misses over schemas we will never host.",
+      },
+      { kind: "h2", text: "Keep both numbers" },
+      {
+        kind: "p",
+        text: "The failure mode to avoid is swapping the hard public benchmark for your flattering private one. We report all three: BIRD and Spider for comparability and as the hard floor that keeps us honest, persona-bench for the workload users hit. Two caveats we attach every time: 23 questions is small — one flipped answer moves the score about 4 points — and a benchmark you author yourself has an obvious conflict of interest, which the executability invariant and publishing the fixture mitigate but do not remove.",
+      },
+      {
+        kind: "p",
+        text: "If you ship an NL-to-data feature, the take-away is one afternoon of work: write twenty gold queries over the schema shape your users actually have, score them with the same execution-accuracy check the papers use, and run it beside the public benchmarks — not instead of them. ([nlqdb](https://nlqdb.com) is the database you talk to; the harness, fixture, and all three scores live in the open repo.)",
+      },
+    ],
+  },
+  {
     slug: "mcp-server-what-does-the-agent-own",
     title:
       "Every data tool shipped an MCP server this year. Your agent still can't build on most of them.",

@@ -10,38 +10,39 @@ sets it; until then the daily lever targets the worst **agent-movable**
 number below.)*
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
-lagging metric; the daily **lever** targets its agent-movable input,
-**indexable surfaces** (row #6). The worst *engine* number — **Spider 0.1926
-vs 0.75** — moved +0.74 pp on the 07-02 re-dispatch; reasoning levers
-built/saturated (row #10 note). Vs GLOBAL-025 floors, Spider free (0.1926)
-clears ≥0.15; **BIRD 0.520 is below its ≥0.60 Phase 2 floor**.
+lagging metric; the daily **lever** targets its agent-movable inputs. Today's
+pick: **E2E manual-suite freshness (row #15) was 0.00** — all four suites ≥ 7d
+stale and one red since 06-24. Vs GLOBAL-025 floors, Spider free (0.1926)
+clears ≥ 0.15; **BIRD 0.520 is below its ≥ 0.60 Phase 2 floor** (resume run in
+flight, row #8). Phase 2 exit gate measured for the first time: **1/9 criteria
+pass** (row #16).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel** (fresh 07-02 pull — CF GraphQL + remote D1) | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF Web Analytics) | 79 / 104 pageloads (raw, incl. walker) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
-| 2 | Registered users, real strangers | 0 | 8 total = 4 founder/company (06-28 signup = founder's work email) + 4 test/dev |
-| 3 | DBs with a first answer | 157 of 157 (anon) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | no data yet — instrument **live in prod since 07-02**, counters verified | target ≥ 95%; 0 asks since deploy — reads on next pull with traffic |
+| | **Funnel** (fresh 07-02 pm pull — CF GraphQL + remote D1) | | exclude synthetic stranger-test walker traffic |
+| 1 | Visits, 7d (CF Web Analytics) | 80 / 102 pageloads (raw, incl. walker) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
+| 2 | Registered users, real strangers | 0 | 8 total = 4 founder/company + 4 test/dev (unchanged) |
+| 3 | DBs total | 160, all with `last_queried_at` (anon + walker) | stranger subset still ~0 (row #2) |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | no data — instrument live (migration 0020 applied), counters all zero | target ≥ 95%; zero `/v1/ask` has bumped the counters since the 07-02 deploy — reads on next pull with traffic |
 | 5 | Session retention (≥ 2 queries) | no data yet — same instrument, awaiting traffic | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | 68 (`/vs` 31 + `/solve` 31 + `/blog` 6) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
-| 7 | Surface yield | posts 6; 7d external referrals = 2 (1 `google.com` organic — first — + 1 `aisearchindex.space`) | CF `refererHost` pull unblocked 07-02 — measured every run |
-| | **Engine** — BIRD 06-19 · Spider 07-02 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`). **Dispatch unblocked** — Actions:write granted; all three dispatched 07-02; Spider + persona-bench landed, BIRD cancelled (resumable) |
-| 8 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12) — flat (McNemar p=0.50); 07-02 re-run cancelled (resumable) |
-| 9 | Spider raw EX | 0.1926 (26/135) | target 0.75; was 0.1852 (06-17). **Worst engine number.** 07-02 free lane capacity-throttled ⇒ undercounts; `SK-QUAL-017` SC smoke undispatched |
-| 10 | persona-bench free-chain EX | 0.9565 (22/23) | full-chain ICP EX (07-02); 1.8× BIRD, 5× Spider — the GLOBAL-026 bet; N=23 ±1 noisy. Retrieval precision@1 saturated (23/23 + 17/17 held-out) |
-| 11 | free-vs-frontier delta | 0.00 pts (persona-bench 07-02) | frontier key wired. Spider single delta −5.19 pts invalid (frontier `openrouter:parse` 96/135); agentic lane (`SK-QUAL-004` headline) unrun |
-| | **Ops** — 7d, CF Workers analytics (fresh 07-02 pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 2,125 / 0 (0.00%) | mcp-server 858 req / 1 err, events-worker 0 req |
-| 13 | nlqdb-api wall-time p50 / p95 | 0.88 ms / 0.87 s | p95 down from 2.62 s (06-22); `/ask`-only split needs Grafana `metrics:read` |
+| 6 | Indexable surfaces | 69 (`/vs` 31 + `/solve` 31 + `/blog` 7) | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run |
+| 7 | Surface yield | posts 7; 7d external referrals = 2 (1 `www.google.com` organic + 1 `aisearchindex.space`) | CF `refererHost` — measured every run |
+| | **Engine** — BIRD 06-19 · Spider 07-02 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
+| 8 | BIRD raw EX | 0.520 (06-19) — **resume loop running** on pinned SHA `0e67e64` (branch `eval/bird-resume-0e67e64`): [run 28621959802](https://github.com/nlqdb/nlqdb/actions/runs/28621959802) checkpoint-restored (cache-hit confirmed), reached ~270/500 (partial attempted-only free EA 53.5%, chain rate-limited), budget-stopped `resumable: true`, next window re-dispatched 07-02 | target 0.65 / Phase 2 floor 0.60; loop until report says `resumable: false`, then update baseline + verification log + delete the pin branch. Don't score partial EA as the number |
+| 9 | Spider raw EX | 0.1926 (26/135, 07-02) | target 0.75; was 0.1852 (06-17). **Worst engine number.** 07-02 free lane capacity-throttled ⇒ undercounts; `SK-QUAL-017` SC smoke undispatched |
+| 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-02) | full-chain ICP EX; 1.8× BIRD, 5× Spider — the GLOBAL-026 bet; N=23 ±1 noisy. Retrieval precision@1 saturated |
+| 11 | free-vs-frontier delta | 0.00 pts (persona-bench 07-02) | frontier key wired; agentic lane (`SK-QUAL-004` headline) unrun |
+| | **Ops** — 7d, CF Workers analytics (fresh 07-02 pm pull) | | wall-time, all routes |
+| 12 | nlqdb-api requests / errors | 2,086 / 0 (0.00%) | mcp-server 819 req / 0 err; events-worker 1 req |
+| 13 | nlqdb-api wall-time p50 / p95 | 0.9 ms / 872 ms | mcp-server p95 331.8 s = long-lived SSE, expected; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
-| | **E2E** — 4 manual `workflow_dispatch` suites (fresh 07-02 pull) | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | 0.00 | sdk ✅05-31 · **mcp ❌06-24 (failed)** · examples ✅05-31 · opencheck ✅06-12 — all ≥7d ⇒ 0; re-run unblocked, not yet run |
+| | **E2E** — 4 manual `workflow_dispatch` suites (re-run 07-02, the day's lever) | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
+| 15 | E2E manual-suite freshness | **0.75** (was 0.00) — sdk ✅ 07-02 · mcp ✅ 07-02 (fixture fixed after 8d red) · examples ✅ 07-02 · opencheck ❌ (last ✅ 06-12 ⇒ freshness 0) | mcp was red since 06-24 on a stale `NlqClient` stub + tool-order pin — fixed this run. opencheck failed twice 07-02 on OpenRouter free-tier 429 (driver LLM throttled; suite B's 8 tests all rate-limited — infra, not product). Note: opencheck's driver shares the free-LLM capacity the eval lanes burned today — dispatch it on a day without full eval runs |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
-| 16 | Current phase exit-gate status | unmeasured — row added 2026-07-02 | next `/daily` run names the current phase + pass/fail per gate criterion; a failing criterion is a worst-number candidate |
-| 17 | Unresolved open-question bullets, `docs/features/*/FEATURE.md` | 88 across 29 features (07-02; 89 more are "Parked until `<trigger>`" = resolved per GLOBAL-033, excluded) | target ↓ 0 — **agent-movable**: research (P2/GLOBAL-033) → document (P4) → delete or park the bullet; founder-only ones move to `blocked-by-human.md` and off this count |
-| 18 | Dead links, deployed surfaces (incl. nlqdb.com → docs.nlqdb.com) | 4 found + fixed 07-02 (`/integrations`: `/tutorials/next/` → `nextjs` + 3 never-built `/sdk/{swift,ruby,rust}/` pages, PR #581); full sweep unmeasured | target 0 — no automated sweep exists yet; **building the built-output href sweep is a lever** |
+| 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.520); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (lane unrun); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (no data, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: BIRD floor (row #8 resume), agentic lane dispatch, first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
+| 17 | Unresolved open-question bullets, `docs/features/*/FEATURE.md` | 78 across 29 features (07-02; 89 parked per GLOBAL-033, excluded) | target ↓ 0 — **agent-movable**: research (P2/GLOBAL-033) → document (P4) → delete or park; was 88 on 07-02 am (#588 resolved 10) |
+| 18 | Dead links, deployed surfaces | 4 found + fixed 07-02 (PR #581); full sweep unmeasured | target 0 — no automated sweep exists yet; **building the built-output href sweep is a lever** |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (per-agent RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
@@ -57,10 +58,19 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 - https://nlqdb.com/blog/zep-recall-vs-analytical-agent-memory/ (run 20 — anchors `/vs/zep`)
 - https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/ (run 2 — engine lesson)
 - https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/ (run 102 — anchors `/vs/hex`)
+- https://nlqdb.com/blog/text-to-sql-accuracy-schemas-your-users-never-build/ (run 55 — engine lesson, persona-bench/SK-QUAL-018)
 
 ## Last change
 
-**2026-07-02 pm** — eval dispatch unblocked: Spider + persona-bench full runs
-landed (rows #9–#11; BIRD re-run cancelled, resumable). Same day the
-distribution lever moved surfaces to **68** (`/solve` + `/blog` publishes).
-**KPI:** GLOBAL-025 engine-quality measurement + onboarding/UX; none degraded.
+**2026-07-02 pm (2nd run)** — lever: **E2E manual-suite freshness 0.00 → 0.75**
+(row #15): all four suites re-dispatched; e2e-mcp was red since 06-24 on a
+stale `NlqClient` stub (missing `databases.connect` + BYOLLM verbs) and a
+tool-order pin missing `nlqdb_connect_database` — fixture fixed, suite green;
+opencheck failed twice on an upstream OpenRouter free-tier 429 (its driver LLM
+shares the capacity today's eval runs burned — retry on an eval-free day).
+Also: BIRD resume loop started on the pinned SHA — checkpoint restore
+confirmed, ~270/500 done, next window dispatched (row #8); Phase 2 exit gate
+measured for the first time — 1/9 pass (row #16); artifact = run-55 blog post
+(surfaces 68 → 69, row #6).
+**KPI:** GLOBAL-025 engine-quality measurement + onboarding/UX (distribution);
+none degraded.
