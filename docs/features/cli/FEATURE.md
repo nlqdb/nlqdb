@@ -91,7 +91,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 ## Open questions / known unknowns
 
 - **Device-flow server endpoints.** `nlq login` / `nlq logout` / `nlq mcp install` are stubbed (return a "ships in the next slice" error) until `POST /v1/auth/device` + `POST /v1/auth/device/token` land per `SK-AUTH-004`. The credential storage layer is already in place — the missing piece is the wire endpoints. The CLI's `auth.Resolve` already returns `KindSignedIn` when a refresh token exists in the keychain, so the rollout is "land the endpoints, wire the device-flow polling loop, done."
-- ~~**`nlq run` (raw SQL escape hatch).**~~ Shipped — `POST /v1/run` lives in `apps/api/src/run/orchestrate.ts`; the CLI verb in `cli/internal/cmd/run.go`; the TS SDK's `client.runSql()` in `packages/sdk/src/index.ts`. All three landed in one slice per `GLOBAL-002` / `GLOBAL-003`.
 - **`nlq chat` REPL.** A separate slice; intentionally deferred because the typed-line UX is non-trivial and the bootstrap focuses on the goal-first single-command path.
 - **`nlq keys rotate`.** `list` + `revoke` ship. Rotation needs `POST /v1/keys/:id/rotate` plus the 60-day grace + webhook + events-pipeline rotation event per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md). Lands as one slice with those.
 - **`nlq connection <db>` for hosted Postgres.** Wants a raw `postgres://…` URL on `GET /v1/databases` rows. Today the SDK returns it on the create response only. The unblock is one API field; the CLI verb is one cobra command.
