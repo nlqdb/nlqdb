@@ -578,7 +578,7 @@ type SubscriptionFields = {
 // Pulls fields we persist to `customers` from a Subscription.
 // `current_period_end` lives on `SubscriptionItem` (moved off the
 // Subscription object in 2025-09 and still there in
-// 2026-04-22.dahlia, the version pinned in src/stripe/client.ts).
+// 2026-06-24.dahlia, the SDK's default version — see SK-STRIPE-007).
 function extractSubscriptionFields(sub: Stripe.Subscription): SubscriptionFields {
   const item = sub.items.data[0];
   return {

@@ -42,7 +42,7 @@ Enable users to upgrade from Free → Hobby ($10/mo) or Pro ($25/mo) via Stripe 
 | `STRIPE_PRICE_HOBBY` | Stripe price ID for Hobby $10/mo | Live price — env + GHA; Worker on next deploy |
 | `STRIPE_PRICE_PRO` | Stripe price ID for Pro $25/mo | Live price — env + GHA; Worker on next deploy |
 
-API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRIPE-007`).
+API version pinned to `2026-06-24.dahlia` via the `stripe` npm SDK (see `SK-STRIPE-007`).
 
 ---
 

@@ -31,11 +31,11 @@ period.
 ### Registering the webhook in the Stripe Dashboard
 
 - **Endpoint URL:** `https://app.nlqdb.com/v1/stripe/webhook`
-- **API version:** `2026-04-22.dahlia` — pinned by
-  [`STRIPE_API_VERSION`](./src/stripe/client.ts) and the
-  `stripe@22.1.0` SDK; both must move together. Pinning the dashboard
-  endpoint to the same version is what guarantees payload shapes
-  match the SDK types we read in `extractSubscriptionFields`
+- **API version:** `2026-06-24.dahlia` — the compiled-in default of the
+  `stripe@22.3` SDK (SK-STRIPE-007: the SDK is the source of truth; no
+  hard-coded string in [`client.ts`](./src/stripe/client.ts)). Pinning
+  the dashboard endpoint to the same version is what guarantees payload
+  shapes match the SDK types we read in `extractSubscriptionFields`
   (`current_period_end` lives on `SubscriptionItem`, not Subscription).
 - **Events to subscribe to** — exactly these four (anything else lands
   in `stripe_events` for audit but isn't dispatched, so subscribing

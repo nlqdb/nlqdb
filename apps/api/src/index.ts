@@ -47,7 +47,7 @@ import {
   parseByollmHeader,
   resolveAskRouter,
 } from "./ask/byollm.ts";
-import { emitFeatureSignal } from "./ask/demand-signal.ts";
+import { emitFeatureSignal, type WaitUntilCtx } from "./ask/demand-signal.ts";
 import { resolveFrontierAskRouter } from "./ask/frontier-router.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "./ask/prelude.ts";
@@ -1922,7 +1922,7 @@ async function idempotencyLookup(
   return (await kv.get(`${scope}:${tenantId}:${key}`, "json")) as Record<string, unknown> | null;
 }
 function idempotencyStore(
-  ctx: ExecutionContext,
+  ctx: WaitUntilCtx,
   kv: KVNamespace,
   scope: string,
   tenantId: string,

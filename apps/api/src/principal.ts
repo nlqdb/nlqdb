@@ -32,6 +32,7 @@
 import type { NlqSurface } from "@nlqdb/events";
 import type { Context, MiddlewareHandler } from "hono";
 import type { SkKeyLookup } from "./api-keys.ts";
+import type { WaitUntilCtx } from "./ask/demand-signal.ts";
 import type { Session } from "./middleware.ts";
 
 export type Principal =
@@ -251,7 +252,7 @@ export async function sha256Hex(input: string, hexChars = 64): Promise<string> {
 // Hono throws on `c.executionCtx` when the app is invoked without an
 // env+ctx pair (i.e. `app.request()` in unit tests). Tolerating that
 // path keeps the middleware testable without injecting a fake ctx.
-function tryGetExecutionCtx(c: Context): ExecutionContext | null {
+function tryGetExecutionCtx(c: Context): WaitUntilCtx | null {
   try {
     return c.executionCtx;
   } catch {
