@@ -41,6 +41,45 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "offline-llm-eval-rate-limits",
+    title: "Your offline LLM eval isn't measuring your model — it's measuring your rate limits",
+    description:
+      "A free-model NL-to-SQL bench scored 17/20, then 6/20 ninety seconds later. The model didn't change — the providers got tired. How to keep availability out of your accuracy number.",
+    date: "2026-07-03",
+    body: [
+      {
+        kind: "p",
+        text: "Our small NL-to-SQL benchmark — twenty questions, one gold query each, scored by executing the SQL and comparing result sets — came back **17/20** on a greedy pass. An immediate second run on the same commit, drawing three samples per question instead of one, came back **6/20**, with 14 of the 20 questions returning no SQL at all. Ninety seconds apart, same engine, same prompts, an eleven-answer collapse.",
+      },
+      {
+        kind: "p",
+        text: "Nothing regressed. The engine behind [nlqdb](https://nlqdb.com) runs on a chain of free-tier LLM providers, and the second run tripled the request volume the first run had already spent. The providers got tired. The score didn't measure the model's reasoning — it measured the moment the free quota ran out.",
+      },
+      { kind: "h2", text: "The failure signature: instant, empty, off the books" },
+      {
+        kind: "p",
+        text: "The tell is in the error tally, not the score. Those 14 no-SQL answers were `circuit_open` fast-fails: an earlier 429 had opened the provider's circuit breaker for its `Retry-After` window, so the call failed before any tokens were generated — the p50 latency of a failing question was ~0 ms. A model that reasons badly takes seconds to be wrong; a rate limit is wrong instantly. When your failures are instant, you are measuring availability, not accuracy.",
+      },
+      {
+        kind: "p",
+        text: "On a multi-provider chain the collapse compounds: the 429 opens one breaker, the chain falls through to the next provider (also cooling down), and within a few questions every attempt fails without reaching a model. We hit the same wall at scale — our first full 500-question BIRD dispatch scored a dismal 0.214, and 246 of its 283 no-SQL failures were breaker fast-fails. We discarded the number. It measured the wall, not the engine.",
+      },
+      { kind: "h2", text: "Three rules that keep availability out of the accuracy number" },
+      {
+        kind: "ul",
+        items: [
+          "**Throttle to measure reasoning.** Spacing questions ~4 s apart keeps the run inside the free tiers' request rates. Our first clean throttled pass scored 21/23 — consistent with the healthy 17/20, nowhere near the starved 6/20. Slower, but the number means what it claims to mean.",
+          "**Budget-stop and resume; don't push through.** When every attempt in a stretch fails with `rate_limited` or `circuit_open` after one bounded capacity wait, stop scoring and write a checkpoint keyed on the commit SHA. A full 500-question pass now runs as a handful of ~15-minute windows resumed across the day, instead of one starved marathon that scores the outage.",
+          "**Keep the smoke test away from the powered run.** The quick greedy smoke and the windowed canonical run drain the same shared quota; back-to-back, the second one measures the first one's exhaust. Anything else that borrows the free chain — for us, an e2e suite whose driver is an LLM — belongs on a different day than a full eval.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "The general lesson: if a benchmark number moves more between 9:00 and 9:02 than it does between two commits, read the error tally before the diff. An execution-accuracy score is only meaningful over questions that actually reached a model, so report attempted-versus-total next to the headline number — and treat instant failures as a capacity problem to engineer around (throttles, breakers, resumable windows), not a reasoning regression to bisect.",
+      },
+    ],
+  },
+  {
     slug: "ai-internal-tool-builder-faster",
     title: "AI made the internal-tool builder faster. It didn't ask whether you needed the tool.",
     description:
