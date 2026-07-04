@@ -1872,8 +1872,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "If you want a count per range — orders under $50, $50–$200, over $200 — instead of one row per exact value, ask in plain English. nlqdb compiles the bucket expression, GROUP BYs the bucket, orders the ranges by their lower bound, and shows the SQL, so 5–10 sorts before 10–20 instead of after.",
     painContext:
       "Bucketing a continuous column into ranges — a revenue histogram, orders by price band, users by age group — is the analyst's everyday question that plain `GROUP BY amount` gets wrong: it returns one row per exact value, not per band. You reach for a `CASE WHEN amount < 50 THEN ... END` label (or `width_bucket` for even bins) and group by that. Then two traps bite: the boundaries have to tile without a gap or overlap (`< 50` then `>= 50`, never `<= 50` then `>= 50`), and the bucket labels are text, so `ORDER BY bucket` sorts them alphabetically — '10-20' lands before '5-10' unless you order by the numeric lower bound.",
-    demoGoal:
-      "count of orders bucketed by amount: under 50, 50 to 200, and over 200",
+    demoGoal: "count of orders bucketed by amount: under 50, 50 to 200, and over 200",
     demoWhy:
       "The histogram query you'd otherwise hand-write — the CASE bands, the group-by-the-band, and the sort-by-lower-bound — is one English goal here, with the SQL shown so you can check the boundaries tile cleanly.",
     howNlqdbAnswers: [
