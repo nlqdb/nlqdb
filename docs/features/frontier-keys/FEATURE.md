@@ -163,10 +163,10 @@ implemented"* mirrors this and stays at a very low score until **every** row is 
 
 ## Open questions / known unknowns
 
-- **"Redis" vs Cloudflare KV.** nlqdb runs on Cloudflare Workers with **KV** as its
+- **"Redis" vs Cloudflare KV — Decided: KV.** nlqdb runs on Cloudflare Workers with **KV** as its
   key-value store (`GLOBAL-013`: no extra paid infra). This feature implements the
   founder's "Redis key" on KV. If a true Redis is ever introduced, `pointer.ts`'s
-  injected interface swaps with no lane-logic change. **Defaulting to KV.**
+  injected interface swaps with no lane-logic change.
 - **Exact frontier model IDs — resolved (OpenAI list P2-verified 2026-07-03).** Anthropic
   tiers default to Opus/Sonnet/Haiku (`claude-opus-4-8` / `claude-sonnet-4-6` /
   `claude-haiku-4-5`) — the founder's quality ladder, pinned by `SK-QUAL-009`
@@ -178,13 +178,9 @@ implemented"* mirrors this and stays at a very low score until **every** row is 
   reasoning/coding, $5/$30 per M tok), tier 2 **`gpt-5.4`** ($2.50/$15), tier 3
   **`gpt-5.4-mini`** ($0.75/$4.50) — `gpt-5.4-nano` is the lower bound if a fourth
   rung is ever wanted. Re-verify on the next lane-enable (model IDs churn ~monthly).
-- **Budget accounting granularity.** Initial caps are coarse per-tier token counters
-  in KV; precise per-request cost accounting folds into the Lago wiring tracked in
-  `llm-router` Open questions (Phase 2).
-- **AGENTS.md §5 path row.** This feature's globs
-  (`packages/llm/src/frontier/**`) should be added to root `AGENTS.md` §5; deferred
-  with the `byo-connect` row until `AGENTS.md` is next trimmed (it is over the D4
-  20 KB cap; adding a row requires an offsetting net-shrink).
+- **Budget accounting granularity — Deferred to Lago (Phase 2).** Initial caps are coarse
+  per-tier token counters in KV; precise per-request cost accounting folds into the Lago
+  wiring tracked in `llm-router` Open questions.
 
 ## GLOBALs governing this feature
 
