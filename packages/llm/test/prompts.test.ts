@@ -48,6 +48,14 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     expect(PLAN_SYSTEM).toContain("CAST(x AS REAL) / y");
   });
 
+  it("carries the SK-LLM-043 single-column projection directive (no accidental concatenation)", () => {
+    // Each requested attribute is its own column — the collapse mechanism.
+    expect(PLAN_SYSTEM).toMatch(/Return each attribute the goal names as its own column/);
+    expect(PLAN_SYSTEM).toMatch(/collapses the requested columns into one/);
+    // The load-bearing regression bound — a genuine combined-string goal is allowed.
+    expect(PLAN_SYSTEM).toMatch(/unless the goal explicitly asks for a single combined string/);
+  });
+
   it("carries the SK-LLM-029 NULL-safe extremum directive (false-minimum guard)", () => {
     // ORDER BY ... LIMIT extremum selection must filter NULLs on the ranked column.
     expect(PLAN_SYSTEM).toMatch(/exclude NULLs in the ordered column/);

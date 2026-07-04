@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..041`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on `/v1/ask` (`SK-LLM-021`), and the account-stored lane resolves via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -158,7 +158,7 @@ Adds Cerebras (`gpt-oss-120b`, OpenAI-compatible, card-free) at the head of the 
 
 ### SK-LLM-030 — Rate-limit-aware failover + cooldown (a 429 honors the server's Retry-After window)
 
-**Body:** [`decisions/SK-LLM-030-rate-limit-aware-failover.md`](./decisions/SK-LLM-030-rate-limit-aware-failover.md). New `FailoverReason "rate_limited"` + `retryAfterMs` mapped once in `httpError` (`_shared.ts`); the router opens the breaker for `min(max(retryAfterMs, cooldownMs), maxRateLimitCooldownMs)` (5-min cap). Refines [`SK-LLM-005`](#sk-llm-005).
+**Body:** [`decisions/SK-LLM-030-rate-limit-aware-failover.md`](./decisions/SK-LLM-030-rate-limit-aware-failover.md). New `FailoverReason "rate_limited"` + `retryAfterMs` mapped once in `httpError`; the router opens the breaker for the server's Retry-After window (5-min cap). Refines [`SK-LLM-005`](#sk-llm-005).
 
 ### SK-LLM-029 — NULL-safe extremum ordering directive in the planner prompt
 
@@ -170,7 +170,7 @@ Adds Cerebras (`gpt-oss-120b`, OpenAI-compatible, card-free) at the head of the 
 
 ### SK-LLM-034 — Group-by-grain directive in the planner prompt (per-group GROUP BY alignment)
 
-**Body:** [`decisions/SK-LLM-034-group-by-grain-directive.md`](./decisions/SK-LLM-034-group-by-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Unaligned Aggregation Structure** (E5, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)): a "per/each/by `<category>`" goal needs a `GROUP BY` on that column; a guard bounds the inverse regression.
+**Body:** [`decisions/SK-LLM-034-group-by-grain-directive.md`](./decisions/SK-LLM-034-group-by-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Unaligned Aggregation Structure** (E5, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)): a "per/each/by `<category>`" goal needs a `GROUP BY` on that column.
 
 ### SK-LLM-035 — Numeric-text-cast directive in the planner prompt (cast TEXT-declared columns used numerically)
 
@@ -205,7 +205,7 @@ added latency on any succeeding call.
 
 ### SK-LLM-039 — Classify 401/403 as `auth_denied` and park the provider for a long cooldown
 
-**Body:** [`decisions/SK-LLM-039-auth-denied-reason.md`](./decisions/SK-LLM-039-auth-denied-reason.md). `httpError` maps 401/403 to a distinct `auth_denied` reason (not an opaque `http_4xx`); the first denial opens the breaker for `AUTH_DENIED_COOLDOWN_MS` (30 min — the denial is human-gated) so a dead key isn't re-hit and its hedge slot rotates to a live provider.
+**Body:** [`decisions/SK-LLM-039-auth-denied-reason.md`](./decisions/SK-LLM-039-auth-denied-reason.md). `httpError` maps 401/403 to a distinct `auth_denied` reason; the first denial opens the breaker for 30 min (the denial is human-gated) so a dead key isn't re-hit and its hedge slot rotates to a live one.
 
 ### SK-LLM-040 — Aggregate-filter directive in the planner prompt (filter groups by an aggregate in HAVING, not WHERE)
 
@@ -213,11 +213,15 @@ added latency on any succeeding call.
 
 ### SK-LLM-041 — Similarity-retrieved few-shot exemplar selection (DAIL-SQL retrieval half — deterministic core)
 
-**Body:** [`decisions/SK-LLM-041-similarity-retrieved-few-shot.md`](./decisions/SK-LLM-041-similarity-retrieved-few-shot.md). The *retrieval* half of DAIL-SQL ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) that [`SK-LLM-026`](#sk-llm-026) left — the top reasoning lever after the directives saturated. Pure `few-shot-select.ts` (question masking + masked-token Jaccard + top-k) over a 17-row curated `plan-exemplar-pool.ts` (one per ICP structural bucket; offline precision@1 = 17/17, persona-bench ICP retrieval 23/23) + the per-lever ablation `buildPlanSystem(goal, schema, k)` (default off ⇒ static `PLAN_SYSTEM` byte-for-byte; `k > 0` swaps in retrieved exemplars for the eval `--retrieve-exemplars` A/B). EX delta next dispatch ([`SK-QUAL-002`](../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md)).
+**Body:** [`decisions/SK-LLM-041-similarity-retrieved-few-shot.md`](./decisions/SK-LLM-041-similarity-retrieved-few-shot.md). The *retrieval* half of DAIL-SQL ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) that [`SK-LLM-026`](#sk-llm-026) left — pure `few-shot-select.ts` (masked-token Jaccard top-k) over a 17-row curated `plan-exemplar-pool.ts` + the `buildPlanSystem(goal, schema, k)` ablation (default off ⇒ static `PLAN_SYSTEM` byte-for-byte). EX delta next dispatch ([`SK-QUAL-002`](../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md)).
 
 ### SK-LLM-042 — Classify a gateway's 200-body error envelope as infra, not `parse`
 
-**Body:** [`decisions/SK-LLM-042-openrouter-200-error-classify.md`](./decisions/SK-LLM-042-openrouter-200-error-classify.md). A 200 response whose body carries a top-level `error` (OpenRouter commits the 200, then reports an upstream mid-request failure) fell through to the generic `parse` reason — an *engine answer-signal* that scores a spurious `no_sql`. `classifyBodyError` now maps it to `rate_limited` (429-shaped → capacity pause) or `provider_error` (retryable failover/tail-retry, which [`SK-LLM-038`](#sk-llm-038) now covers), closing the 7 `openrouter:parse` no_sql capping the frontier lanes.
+**Body:** [`decisions/SK-LLM-042-openrouter-200-error-classify.md`](./decisions/SK-LLM-042-openrouter-200-error-classify.md). A 200 response whose body carries a top-level `error` (a gateway commits the 200, then reports an upstream mid-request failure) fell through to the generic `parse` reason — an *engine answer-signal* that scores a spurious `no_sql`. `classifyBodyError` now maps it to `rate_limited` or `provider_error` (retryable, [`SK-LLM-038`](#sk-llm-038)-covered), closing the 7 `openrouter:parse` no_sql capping the frontier lanes.
+
+### SK-LLM-043 — Single-column projection directive in the planner prompt (don't concatenate requested columns into one value)
+
+**Body:** [`decisions/SK-LLM-043-single-column-projection-directive.md`](./decisions/SK-LLM-043-single-column-projection-directive.md). One `PLAN_DIRECTIVES` bullet, the projection sibling of [`SK-LLM-027`](#sk-llm-027): return each requested attribute as its own column, don't fuse them with `||` unless the goal explicitly asks for a combined string. Evidence-picked (`SK-QUAL-014` analyzer on BIRD baseline), zero regression floor; prompt-only.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
@@ -239,7 +243,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 
 ## Open questions / known unknowns
 
-- **Failover when every provider in a chain fails** — Decided shape (per `GLOBAL-033` → `GLOBAL-012`): throw a structured `provider_chain_exhausted` envelope (one-sentence, actionable); **no** head-retry with backoff (a fresh `/v1/ask` re-enters the chain). **Parked until** the surfaces render it — the typed envelope isn't emitted in `packages/llm` yet.
+- **Failover when every provider in a chain fails** — Decided shape (per `GLOBAL-033` → `GLOBAL-012`): throw a structured `provider_chain_exhausted` envelope; **no** head-retry (a fresh `/v1/ask` re-enters the chain). **Parked until** the surfaces render it — not emitted in `packages/llm` yet.
 - **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram shape + LLM-as-judge prompt + "provider silently degrading" alert threshold — depends on the judge harness.
 - **Parked until Lago wiring (Phase 2):** per-user credit accounting (`architecture.md §6`); provider-level cost already covered.
 - **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter (`nlqdb.llm.json_recovered.total{op}` at the `router.ts` boundary); the eval run already surfaces the aggregate `no_sql` → `match` shift.

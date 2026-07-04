@@ -10,20 +10,22 @@ sets it; until then the daily lever targets the worst **agent-movable**
 number below.)*
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
-lagging metric; the daily **lever** targets its agent-movable inputs. Today's
-(07-04, run 2) pick: **indexable surfaces (row #6), 75 → 76** — the
-agent-movable leading input to rows #1–#3. The three other reliable levers were
-all occupied: docs-ambiguity landed on `main` via #601 (row #17 38 → 34),
-distribution-via-blog via #602 (row #6 74 → 75), and the engine-signal lever
-(the 7 `openrouter:parse` no_sql capping the frontier lanes) landed on `main`
-via **#603** (`SK-LLM-042`, rows #11 + #16) — so this run took the one
-non-overlapping distribution sub-surface: a new `/solve` page (the blog queue
-was being mutated by #603, so a blog-publish would have conflicted). Added
-`/solve/group-numbers-into-ranges-in-sql` (P3-analyst histogram / group-by-range
-wedge — the last uncovered core SQL primitive: derive a discrete band from a
-continuous column and collapse rows into it). **BIRD 0.512 stays below its ≥
-0.60 Phase 2 floor** — engine work ships until cleared (`SK-QUAL-005`). Phase 2
-exit gate: **1/9 criteria pass** (row #16).
+lagging metric. But **BIRD 0.512 stays below its ≥ 0.60 Phase 2 floor**, and
+`SK-QUAL-005` is explicit: below-floor ⇒ **engine work ships until cleared**. So
+today's (07-04, run 3) lever is engine, not distribution (the last 3 daily PRs
+— #604/#602/#599 — all pulled distribution; #603 was the only engine pull).
+Pick: **ship an evidence-picked planner directive that moves BIRD EX (row #8)**.
+The `SK-QUAL-014` offline analyzer on the pinned baseline finds a clean,
+zero-risk loss bucket — **7 of 238 free-lane mismatches concatenate requested
+columns** (`first_name || ' ' || last_name`) into one value where gold returns
+them separately, while **0 of 256 matches** use `||` and gold uses it in only
+**1 of 500** queries. Shipped **`SK-LLM-043`** — one `PLAN_DIRECTIVES` bullet:
+return each requested attribute as its own column unless the goal explicitly
+asks for a combined string. **Measured on the real BIRD SQLite DBs with the
+canonical scorer** (de-concatenate the 7 cases, re-score): **3 flip
+mismatch→match** (qid 1381/898/1002), EX ceiling 0.512 → 0.518 (+0.6 pp), with a
+**zero regression floor** (no passing row uses `||`). Phase 2 exit gate:
+**1/9 criteria pass** (row #16); the canonical CI run re-measures the live EX.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -37,7 +39,7 @@ exit gate: **1/9 criteria pass** (row #16).
 | 6 | Indexable surfaces | **76** (`/vs` 31 + `/solve` 32 + `/blog` 13) — was 75 | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run. This run: +1 `/solve` (`group-numbers-into-ranges-in-sql`, P3-analyst histogram / group-by-range wedge — distinct from the window/aggregate/set-difference cluster; blog queue is occupied by open PR #603, so a `/solve` surface avoids the conflict) |
 | 7 | Surface yield | posts 11; 7d external referrals = 3 (`www.google.com` + `aisearchindex.space` + `bing.com`, 1 pageload each) | CF `refererHost` — measured every run |
 | | **Engine** — BIRD 07-03 · Spider 07-02 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
-| 8 | BIRD raw EX | **0.512** (256/500, 07-03 — first completed 500q canonical since 06-19; Δ −0.8 pp vs 0.520, McNemar p=0.36 statistically flat, 0 flagged regressions; [run 28640034273](https://github.com/nlqdb/nlqdb/actions/runs/28640034273)) | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Resume loop closed (4 checkpointed windows), baseline re-seeded 07-03; pin-branch delete blocked by session push scope — any session with branch-delete rights can drop `eval/bird-resume-0e67e64` |
+| 8 | BIRD raw EX | **0.512** (256/500, 07-03 — first completed 500q canonical since 06-19; Δ −0.8 pp vs 0.520, McNemar p=0.36 statistically flat, 0 flagged regressions; [run 28640034273](https://github.com/nlqdb/nlqdb/actions/runs/28640034273)) | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Resume loop closed (4 checkpointed windows), baseline re-seeded 07-03; pin-branch delete blocked by session push scope — any session with branch-delete rights can drop `eval/bird-resume-0e67e64`. **07-04 run 3: `SK-LLM-043` projection directive shipped** — de-concat ceiling on the real DBs flips 3/7 concat-mismatches (EX 0.512→0.518), 0/256 matches at risk; live EX re-measures on the next canonical CI run |
 | 9 | Spider raw EX | 0.1926 (26/135, 07-02) | target 0.75; was 0.1852 (06-17). **Worst engine number.** 07-02 free lane capacity-throttled ⇒ undercounts; `SK-QUAL-017` SC smoke undispatched |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-02) | full-chain ICP EX; 1.8× BIRD, 5× Spider — the GLOBAL-026 bet; N=23 ±1 noisy. Retrieval precision@1 saturated |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 19.3 pts** (free 47.33% → agentic-frontier 66.67%, 150-q smoke seed 20260607, 07-03; single-frontier lane 20.0 pts). persona-bench 0.00 pts (07-02) | **First clean agentic smoke since the `SK-QUAL-021` hang fix (#596)** — ran the full 150-q slice end-to-end in ~15 min, status `completed`, not resumable (windows 1–4 earlier 07-03 all ceiling-cancelled at 44 min on the runaway-SQL freeze the fix removed). Lanes: free 71/150, frontier 101/150, agentic-frontier 100/150 (both frontier lanes carry 7 `openrouter:parse` no_sql ⇒ their ceiling is higher). Smoke — no baseline touch; BIRD canonical stays 0.512 (row #8). [run 28685576019](https://github.com/nlqdb/nlqdb/actions/runs/28685576019). **07-04: the 7 `openrouter:parse` root cause fixed at the source (`SK-LLM-042`)** — OpenRouter's 200-body error envelope was misclassified as engine `parse`; now `rate_limited` (capacity pause) / `provider_error` (retryable, tail-retry-covered). Deterministic proof shipped (unit tests); frontier-lane ceiling re-measures on the next agentic-frontier smoke window |
@@ -76,24 +78,28 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-04 (run 2)** — lever: **indexable surfaces (row #6), 75 → 76**. All
-three other reliable agent-movable levers were occupied: docs-ambiguity landed
-on `main` via #601 (row #17 38 → 34), distribution-via-blog via #602 (row #6 74
-→ 75), and the engine-signal lever (the 7 `openrouter:parse` no_sql capping the
-frontier lanes, rows #11/#16) landed on `main` via **#603** (`SK-LLM-042` —
-`classifyBodyError` maps a gateway's 200-body `error` to `rate_limited` /
-`provider_error` instead of a spurious engine `parse`), which also mutated
-`distribution-queue.md` + `blog.ts`, so a same-run blog-publish would have
-conflicted (step 0). This run took the one non-overlapping distribution
-sub-surface: a new `/solve` page. Added `/solve/group-numbers-into-ranges-in-sql`
-— the P3-analyst histogram / group-by-range / bucketing wedge, the last
-uncovered *core* SQL primitive next to the shipped window/aggregate/set-difference
-cluster (derive a discrete band from a continuous column via `CASE`/`width_bucket`
-and collapse rows into it; names the two everyday traps — boundary tiling and
-alphabetical-vs-numeric band ordering). Before → after: **row #6 75 → 76**
-(`/solve` 31 → 32); row #18 re-swept **0 dead / 0 redirecting** across 96 pages
-/ 2,247 internal links (was 95 / 2,222). Gates green: `@nlqdb/web` test 220/220,
-astro-check 0 errors, biome lint clean. **KPI:** GLOBAL-025 onboarding/UX via
-distribution yield — +1 indexable, AEO-shaped, auto-listed in `llms.txt` +
-sitemap. None degraded — one typed `SolveEntry` + docs; no code paths touched,
-engine/funnel/ops numbers carry from the < 24 h-old 07-03 pull.
+**2026-07-04 (run 3)** — lever: **BIRD EX engine directive (row #8)**, breaking
+the 3-run distribution streak because `SK-QUAL-005` mandates engine work while
+BIRD 0.512 < the 0.60 Phase 2 floor. Local eval was unblocked this run
+(downloaded the 800 MB BIRD Mini-Dev DB fixtures + questions JSON; the free LLM
+chain itself can't run here — bun's `fetch` won't traverse the MITM proxy, a
+README-flagged limitation — so scoring is done offline against the real SQLite
+DBs, no LLM). The `SK-QUAL-014` analyzer surfaced a clean loss bucket: **7 of
+238 free-lane mismatches** concatenate requested columns
+(`first_name || ' ' || last_name`) into one value where gold returns them
+separately; **0 of 256 matches** use `||`; gold uses `||` in **1 of 500** —
+near-pure upside. Shipped **`SK-LLM-043`**: one `PLAN_DIRECTIVES` bullet
+(projection sibling of `SK-LLM-027`) telling the planner to return each
+requested attribute as its own column unless a combined string is explicitly
+asked for. **Before → after (deterministic ceiling on the real DBs +
+canonical scorer):** de-concatenating the 7 cases and re-scoring flips **3
+mismatch→match** (qid 1381/898/1002) — EX 0.512 → **0.518** (+0.6 pp) — with a
+**zero regression floor** (no passing row concatenates). Artifact (step 3, queue
+< 3 deep ⇒ draft): queued the `llm-concatenates-columns-text-to-sql` engine-lesson
+post. D4 hygiene: net-shrank `llm-router/FEATURE.md` (−3 B, verbose reference
+lines trimmed to offset the `SK-LLM-043` row) and `distribution-queue.md` (−576 B,
+Published venue-variant gists condensed to URL+venue+anchor — back under 20 KB).
+Gates green: `@nlqdb/llm` 249/249 tests, typecheck + lint clean. **KPI:**
+GLOBAL-025 engine quality (NL→SQL free lane). None degraded — prompt-only ≈45
+tokens, `PLAN_SYSTEM` byte-stable under `buildPlanSystem(k≤0)`; funnel/ops carry
+from the < 24 h-old 07-03 pull. Live EX re-measures on the next canonical CI run.
