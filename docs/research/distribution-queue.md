@@ -15,6 +15,28 @@ drafts live in the [archive](./distribution-queue-archive.md).
 
 ## Drafts — unpublished, newest first
 
+- **"Your LLM fused the two columns you asked for — and the eval marked it
+  wrong."** slug `llm-concatenates-columns-text-to-sql` · venue dev.to (#sql
+  #llm #ai) + r/SQL · engine lesson · anchors the projection half of the
+  planner prompt.
+  Angle: you ask "list the members' names"; BIRD gold returns `first_name,
+  last_name` as **two** columns; the model helpfully returns
+  `first_name || ' ' || last_name` as **one** "full name" column. Every
+  execution-accuracy scorer compares *positional value tuples*
+  (`set(fetchall())`), so a 1-column result can never equal a 2-column gold —
+  a semantically-right answer scores as a miss and your engine number reads
+  lower than the engine is. It's the mirror of the "extra columns" bug:
+  fusing columns is as fatal as adding them. Real numbers on BIRD-dev
+  (500 q): **7 of 238 losses** concatenate where gold doesn't, **0 of 256
+  wins** use `||` at all, and gold itself uses `||` in **1 of 500** — so
+  discouraging it is near-pure upside. Fix: one planner directive — *return
+  each requested attribute as its own column unless the goal explicitly asks
+  for a single combined string*. Deterministic ceiling (de-concatenate the 7
+  cases, re-score against the real SQLite DBs): **+3** flip wrong→right, zero
+  regressions. Close on the rule — **the model's job is to match the shape of
+  the answer, not to make it pretty**; a helpful concatenation is a wrong
+  result set.
+
 - **"Your text-to-SQL eval is lying: OpenRouter returns HTTP 200 with the
   error in the body."** slug `http-200-error-in-body` · venue dev.to (#llm
   #api #debugging) + r/LocalLLaMA + lobste.rs · engine lesson.
@@ -45,54 +67,18 @@ drafts live in the [archive](./distribution-queue-archive.md).
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
 delete its line.
 
-- run 106 — **https://nlqdb.com/blog/store-form-submissions-without-a-backend/**
-  — venue variant pending: dev.to + r/webdev + r/sideproject (capture-vs-
-  reporting split; anchors `/solve/store-form-submissions-without-backend`).
-- run 130 — **https://nlqdb.com/blog/not-in-subquery-null-trap/** — venue
-  variant pending: dev.to + r/SQL + r/PostgreSQL ("NOT IN returned zero rows.
-  It wasn't your data — it was one NULL."; anchors
-  `/solve/find-rows-with-no-match-in-another-table`).
-- run 102 — **https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/** —
-  venue variant pending: dev.to + r/LLMDevs + r/AI_Agents (two shapes of MCP
-  server — destination-app wrapper vs. infrastructure the agent owns; the tell
-  is what the agent owns after the call returns; anchors `/vs/hex`).
-- run 55 — **https://nlqdb.com/blog/text-to-sql-accuracy-schemas-your-users-never-build/**
-  — venue variant pending: dev.to + lobste.rs + r/LLMDevs (BIRD/Spider measure
-  academic schemas, not the ICP shape; persona-bench = 23 gold pairs, same EX
-  scorer, literal-date gold, executability invariant; keep both numbers).
-- run 67 — **https://nlqdb.com/blog/ai-internal-tool-builder-faster/** — venue
-  variant pending: dev.to + lobste.rs (`ai` / `databases` / `lowcode`) (low-code
-  AI scaffolds the admin tool faster, but the output is still a destination a
-  human operates; often the answer belongs inline in the product, or the asker
-  is an agent wanting a backend primitive; anchors `/vs/retool`).
-- run 68 — **https://nlqdb.com/blog/offline-llm-eval-rate-limits/** — venue
-  variant pending: dev.to + lobste.rs (`llm` / `testing` / `benchmarks`) (a
-  free-chain NL→SQL bench scored 17/20 then 6/20 ninety seconds later;
-  `circuit_open`/`rate_limited` fast-fails with p50=0ms are availability, not
-  accuracy; throttle, budget-stop + SHA-keyed resume, keep smoke apart from
-  powered runs).
-- run 69 — **https://nlqdb.com/blog/sitemap-advertising-redirects/** — venue
-  variant pending: dev.to + lobste.rs (`seo` / `webdev`) (a static host 307s
-  the bare path; canonical/og:url/sitemap/llms.txt all advertised the
-  redirect; `trailingSlash: "always"` + one path-normalize helper, audit with
-  `curl -sI` over every sitemap URL).
-- run 109 — **https://nlqdb.com/blog/text-to-sql-build-vs-buy/** — venue
-  variant pending: dev.to + r/SaaS + r/ExperiencedDevs (the prompt+model demo
-  is 10% of an "ask your data" feature; the fail-closed validator, plan cache,
-  and eval harness are the 90% you maintain forever; buy when it's a feature,
-  build when it's the product; anchors
-  `/solve/add-ask-your-data-feature-without-building-text-to-sql`).
-- run 119 — **https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/**
-  — venue variant pending: dev.to + r/SQL + r/analytics (the find-duplicates
-  answer hasn't changed in thirty years — `GROUP BY` + `HAVING COUNT(*) > 1` —
-  but wanting the whole row not just the key pushes you to a `ROW_NUMBER()`
-  window function, a different query than you Googled; anchors
-  `/solve/find-duplicate-rows-in-my-data`).
-- run 110 — **https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/** —
-  venue variant pending: dev.to + r/dataengineering + r/BusinessIntelligence
-  (BI notebooks are a roll-up; an acquisition transfers the roadmap — bounded
-  for a destination humans log into, inherited by any runtime that calls its
-  API/AI; anchors `/vs/mode`).
+Venue variant = venue list + anchor; the gist lives in the linked post.
+
+- run 106 — **https://nlqdb.com/blog/store-form-submissions-without-a-backend/** — dev.to + r/webdev + r/sideproject · `/solve/store-form-submissions-without-backend`
+- run 130 — **https://nlqdb.com/blog/not-in-subquery-null-trap/** — dev.to + r/SQL + r/PostgreSQL · `/solve/find-rows-with-no-match-in-another-table`
+- run 102 — **https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/** — dev.to + r/LLMDevs + r/AI_Agents · `/vs/hex`
+- run 55 — **https://nlqdb.com/blog/text-to-sql-accuracy-schemas-your-users-never-build/** — dev.to + lobste.rs + r/LLMDevs
+- run 67 — **https://nlqdb.com/blog/ai-internal-tool-builder-faster/** — dev.to + lobste.rs · `/vs/retool`
+- run 68 — **https://nlqdb.com/blog/offline-llm-eval-rate-limits/** — dev.to + lobste.rs
+- run 69 — **https://nlqdb.com/blog/sitemap-advertising-redirects/** — dev.to + lobste.rs
+- run 109 — **https://nlqdb.com/blog/text-to-sql-build-vs-buy/** — dev.to + r/SaaS + r/ExperiencedDevs · `/solve/add-ask-your-data-feature-without-building-text-to-sql`
+- run 119 — **https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/** — dev.to + r/SQL + r/analytics · `/solve/find-duplicate-rows-in-my-data`
+- run 110 — **https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/** — dev.to + r/dataengineering + r/BusinessIntelligence · `/vs/mode`
 
 ## Collapsed — full drafts in git history
 

@@ -82,6 +82,7 @@ export const PLAN_DIRECTIVES = [
   "Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly.",
   "When the goal includes an `Evidence:` block, treat it as authoritative annotator context — apply the formulas and column hints it names.",
   "Select exactly the columns the goal asks for, and only those — extra id/name/descriptive columns change the result set and fail execution-accuracy.",
+  "Return each attribute the goal names as its own column — do not concatenate columns into one value (e.g. first_name || ' ' || last_name) unless the goal explicitly asks for a single combined string; concatenation collapses the requested columns into one and fails the per-column result set.",
   "For a ratio or percentage of two integer columns, cast one operand to REAL (e.g. CAST(x AS REAL) / y) so the division is not integer-truncated.",
   "When the schema declares a column as TEXT but the goal compares, orders, or takes the min/max of it numerically, cast it to a number (CAST(<col> AS REAL)) — a TEXT column is compared lexicographically (so '100' sorts before '9' and a plain ORDER BY, >, or MIN/MAX mis-ranks); the cast is harmless when the values are already numeric.",
   "When selecting a single extreme row by ordering (ORDER BY <col> ... LIMIT), exclude NULLs in the ordered column (WHERE <col> IS NOT NULL) — a NULL is never the intended extreme value, and in SQLite a NULL sorts before every value, so an ascending LIMIT would return one as a false minimum.",
