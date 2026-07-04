@@ -258,7 +258,9 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
                     ) : (
                       <div className="model-picker__form">
                         <label className="model-picker__form-label" htmlFor="model-picker-key">
-                          Paste your {providerName(m.provider ?? "")} API key
+                          {status?.configured && status.credential.provider === m.provider
+                            ? `Re-enter your ${providerName(m.provider ?? "")} key to switch to this model`
+                            : `Paste your ${providerName(m.provider ?? "")} API key`}
                         </label>
                         <input
                           id="model-picker-key"

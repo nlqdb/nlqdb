@@ -2094,8 +2094,12 @@ app.get("/v1/keys", requireSession, async (c) => {
 // so no session and no OTel span — it just serves the `@nlqdb/llm` constant so
 // the model *strings* live server-side and never in a surface bundle
 // (SK-PREMIUM-003). Which entry is active per account is a separate read
-// (`GET /v1/keys/byollm`); this endpoint is the same for everyone and cacheable.
-app.get("/v1/models", (c) => c.json(MODEL_CATALOG));
+// (`GET /v1/keys/byollm`); this endpoint is the same for everyone, so a short
+// public cache spares a round-trip on every chat load (a catalog bump lands
+// within 5 min).
+app.get("/v1/models", (c) =>
+  c.json(MODEL_CATALOG, 200, { "cache-control": "public, max-age=300" }),
+);
 
 // `/v1/keys/byollm` — account-stored BYOLLM credential (SK-PREMIUM-008,
 // SK-PREMIUM-012). Session-only (a decryptable key must ride a first-party
