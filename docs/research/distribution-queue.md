@@ -97,6 +97,13 @@ delete its line.
   but wanting the whole row not just the key pushes you to a `ROW_NUMBER()`
   window function, a different query than you Googled; anchors
   `/solve/find-duplicate-rows-in-my-data`).
+- run 110 — **https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/** —
+  venue variant pending: dev.to + r/dataengineering + r/BusinessIntelligence
+  (BI notebooks are a roll-up — Mode → ThoughtSpot, Looker → Google, Periscope
+  → Sisense; an acquisition transfers the roadmap, which is bounded for a
+  destination humans log into but inherited by any product runtime that calls
+  its API/AI; name the altitude split — where humans look vs. what your
+  software calls; anchors `/vs/mode`).
 
 ## Collapsed — full drafts in git history
 
@@ -121,7 +128,6 @@ delete its line.
 - run 113 — dev.to / r/webdev / r/node: "The webhook receiver is the easy half. The database behind it is the part nobody wants to own." (anchors `/solve/store-and-query-webhook-events`).
 - run 112 — dev.to / r/dataengineering / r/LLMDevs: "Your notebook's AI analyst assumes someone's watching the cell. Your product runs when no one is." (anchors `/vs/fabi`).
 - run 111 — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned." (user-modelling (Honcho's theory-of-mind) vs. relational aggregation over what the agent stored; anchors `/vs/honcho`).
-- run 110 — dev.to / r/dataengineering / r/BusinessIntelligence: "Your BI tool got acquired. Your data layer shouldn't have to care." (the analyst notebook is a roll-up target; a destination humans log into vs. a runtime your software calls; anchors `/vs/mode`).
 *(runs 75–100 moved to git history under D4; full gists for runs 103–105 also collapsed to titles — `git log -p` recovers all bodies.)*
 
 ### Engine-lesson posts (dev.to / lobste.rs)

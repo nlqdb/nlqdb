@@ -11,17 +11,16 @@ number below.)*
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric; the daily **lever** targets its agent-movable inputs. Today's
-(07-04) pick: **docs-ambiguity (row #17) — genuinely-open question bullets
-38 → 34.** Four bullets were already resolved/decided in their own body text
-but unmarked, so the pinned regex over-counted them: `auth` magic-link domain
-verification (Done → **Resolved**), `frontier-keys` Redis-vs-KV (**Decided:
-KV**) and budget-accounting granularity (**Deferred** to Lago/Phase 2), and
-the stale `frontier-keys` "add AGENTS.md §5 path row" bullet (the
-`packages/llm/src/frontier/**` row already lives at `AGENTS.md:163` — deleted).
-No decision invented; this is measurement fidelity per the row #17 lever.
-Engine/funnel/ops numbers below carry from the 07-03 pull (< 24 h old). **BIRD
-0.512 stays below its ≥ 0.60 Phase 2 floor** — engine work ships until cleared
-(`SK-QUAL-005`). Phase 2 exit gate: **1/9 criteria pass** (row #16).
+(07-04) pick: **indexable surfaces (row #6), 74 → 75** — the agent-movable
+leading input to rows #1–#3. (The other reliable daily lever, docs-ambiguity,
+already landed on `main` this morning via #601 — row #17 38 → 34.) Published
+the oldest ready collapsed-queue draft (run 110,
+`/blog/your-bi-tool-got-acquired-data-layer`, anchors `/vs/mode`) — step 3.1
+mandates *publish, don't draft* while the queue holds ≥ 3 unpublished gists,
+and the blog FEATURE.md sanctions recovering one on merit as a `/daily`
+artifact. **BIRD 0.512 stays below its ≥ 0.60 Phase 2 floor** — engine work
+ships until cleared (`SK-QUAL-005`). Phase 2 exit gate: **1/9 criteria pass**
+(row #16).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -32,7 +31,7 @@ Engine/funnel/ops numbers below carry from the 07-03 pull (< 24 h old). **BIRD
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | no data — instrument live (migration 0020 applied), counters all zero | target ≥ 95%; still zero `/v1/ask` since the 07-02 deploy (latest `last_queried_at` = 07-02 09:25 UTC, 28h+ quiet) — reads on next pull with traffic |
 | 5 | Session retention (≥ 2 queries) | no data yet — same instrument, awaiting traffic | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **74** (`/vs` 31 + `/solve` 31 + `/blog` 12) — unchanged | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. This run's artifact was a *draft* (queue was 0-deep of unpublished drafts, so step 3.2 = draft not publish): "top-N-per-group" (anchors `/solve/find-top-n-rows-per-group`) queued newest-first; ships to `/blog` on a future publish run |
+| 6 | Indexable surfaces | **75** (`/vs` 31 + `/solve` 31 + `/blog` 13) — was 74 | **agent-movable daily lever** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Grow every run. This run: +1 blog (run 110 published, oldest ready collapsed-queue gist recovered on merit per blog FEATURE.md — `/blog/your-bi-tool-got-acquired-data-layer`, anchors `/vs/mode`) |
 | 7 | Surface yield | posts 11; 7d external referrals = 3 (`www.google.com` + `aisearchindex.space` + `bing.com`, 1 pageload each) | CF `refererHost` — measured every run |
 | | **Engine** — BIRD 07-03 · Spider 07-02 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.512** (256/500, 07-03 — first completed 500q canonical since 06-19; Δ −0.8 pp vs 0.520, McNemar p=0.36 statistically flat, 0 flagged regressions; [run 28640034273](https://github.com/nlqdb/nlqdb/actions/runs/28640034273)) | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Resume loop closed (4 checkpointed windows), baseline re-seeded 07-03; pin-branch delete blocked by session push scope — any session with branch-delete rights can drop `eval/bird-resume-0e67e64` |
@@ -48,7 +47,7 @@ Engine/funnel/ops numbers below carry from the 07-03 pull (< 24 h old). **BIRD
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.512, fresh 07-03); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**measured 07-03, row #11: Δ 19.3 pp ✓ ≤ 25, but agentic 0.667 ✗ < 0.80 — 7 `openrouter:parse` no_sql suppress the frontier lanes; criterion still fails on the absolute floor**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (no data, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: close the 7 `openrouter:parse` no_sql capping the frontier lanes (row #11), first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **34** (07-04, was 38; 165 total bullets, 131 resolved/parked/decided) | target ↓ 0. **This run's lever: −4** — `auth` domain-verify (Done → Resolved), `frontier-keys` Redis-vs-KV (Decided: KV) + budget-accounting (Deferred to Lago), and the stale `frontier-keys` AGENTS.md-§5-row bullet deleted (row already at `AGENTS.md:163`). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts to 53). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved/delete |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-03 5th-run sweep: 94 pages, 2,197 internal links — new blog post included) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-04 sweep: 95 pages, 2,222 internal links — new blog post included) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (per-agent RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
@@ -70,24 +69,25 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 - https://nlqdb.com/blog/sitemap-advertising-redirects/ (run 69 — engine lesson, trailing-slash canonical/sitemap hygiene)
 - https://nlqdb.com/blog/text-to-sql-build-vs-buy/ (run 109 — anchors `/solve/add-ask-your-data-feature-without-building-text-to-sql`)
 - https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/ (run 119 — anchors `/solve/find-duplicate-rows-in-my-data`)
+- https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/ (run 110 — anchors `/vs/mode`)
 
 ## Last change
 
-**2026-07-04** — lever: **docs-ambiguity (row #17), genuinely-open question
-bullets 38 → 34.** Four bullets under `## Open questions` were already
-resolved/decided in their own body text but carried no keyword the pinned
-regex catches, so the count over-stated the real ambiguity by 4. Fixed with
-no invented decisions — each resolution already existed: `auth` magic-link
-domain verification (Done → **Resolved**; `nlqdb.com` verified in Resend,
-residual is UI polish); `frontier-keys` "Redis" vs Cloudflare KV
-(**Decided: KV**, per `GLOBAL-013`); `frontier-keys` budget-accounting
-granularity (**Deferred** to the Lago wiring, Phase 2); and the stale
-`frontier-keys` "add the AGENTS.md §5 path row" bullet **deleted** — the
-`packages/llm/src/frontier/**` row already lives at `AGENTS.md:163`, so the
-deferral was obsolete. Before → after: row #17 **38 → 34** (165 total bullets,
-131 resolved/parked/decided). Artifact = step 3.2 draft (queue was 0-deep of
-unpublished drafts): **"Top N per group is the query `LIMIT` can't write"**
-(anchors `/solve/find-top-n-rows-per-group`) queued newest-first, within the
-D4 20 KB cap. **KPI:** GLOBAL-025 onboarding/UX — sharper feature docs are the
-scaffolding the model builds on. None degraded — docs-only, `main` green
-(`typecheck && lint && test`), no code paths touched, surfaces held at 74.
+**2026-07-04** — lever: **indexable surfaces (row #6), 74 → 75**. The other
+reliable agent-movable lever, docs-ambiguity, already landed on `main` this
+morning (#601, row #17 38 → 34), so this run pulled distribution surfaces: the
+leading input to the lagging stranger funnel (rows #1–#3). Step 3.1 mandates
+*publish, don't draft* while the queue carries ≥ 3 unpublished collapsed gists
+(runs 110–129), and the blog FEATURE.md open-question explicitly sanctions
+recovering one on merit as a `/daily` artifact. Published the **oldest** ready
+draft — run 110, `/blog/your-bi-tool-got-acquired-data-layer` (BI notebooks are
+a roll-up; an acquisition transfers the roadmap — bounded for a destination
+humans log into, inherited by any product runtime that calls its API/AI; names
+the altitude split, anchors `/vs/mode`). Before → after: **row #6 74 → 75**
+(`/blog` 12 → 13); row #18 re-swept **0 dead / 0 redirecting** across 95 pages
+/ 2,222 internal links (was 94 / 2,197). Queue entry moved from draft to a
+venue pointer. Gates green: `typecheck` + `lint` + `test` (blog 6/6; api 864
+passed / 6 skipped). **KPI:** GLOBAL-025 onboarding/UX via distribution yield
+— +1 indexable, AEO-shaped, auto-listed in `llms.txt` + sitemap. None degraded
+— docs + one typed blog object; no code paths touched, engine/funnel/ops
+numbers carry from the < 24 h-old 07-03 pull.
