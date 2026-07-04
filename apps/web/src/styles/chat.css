@@ -300,6 +300,232 @@
   margin: 0 2px;
 }
 
+/* ---------- Model picker (SK-PREMIUM-013) ---------- */
+
+.chat-main__meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.model-picker {
+  position: relative;
+}
+
+.model-picker__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--bg-elev);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-std);
+}
+
+.model-picker__pill:hover {
+  border-color: var(--accent);
+}
+
+.model-picker__pill:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.model-picker__pill-label {
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+}
+
+.model-picker__pill-value {
+  font-weight: 600;
+}
+
+.model-picker__pill-caret {
+  color: var(--fg-muted);
+  font-size: 10px;
+}
+
+.model-picker__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: min(340px, calc(100vw - 32px));
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg, 0 12px 32px rgba(0, 0, 0, 0.28));
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.model-picker__section {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+  margin: 8px 4px 2px;
+}
+
+.model-picker__section:first-child {
+  margin-top: 0;
+}
+
+.model-picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-picker__option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-std);
+}
+
+.model-picker__option:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.model-picker__option:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.model-picker__option:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.model-picker__option-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.model-picker__option-label {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.model-picker__option-note {
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.model-picker__active {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.model-picker__byok-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  padding: 1px 5px;
+}
+
+.model-picker__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px 4px;
+}
+
+.model-picker__form-label {
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+
+.model-picker__key-input {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  padding: 7px 9px;
+}
+
+.model-picker__key-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+}
+
+.model-picker__form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.model-picker__save {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.model-picker__form-hint,
+.model-picker__form-note {
+  font-size: 10px;
+  color: var(--fg-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.model-picker__error {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--danger, #d64545);
+  margin: 4px 4px 0;
+}
+
+.model-picker__subscribe {
+  font-size: 11px;
+  color: var(--fg-muted);
+  line-height: 1.45;
+  border-top: 1px solid var(--border);
+  margin: 8px 0 0;
+  padding: 8px 4px 0;
+}
+
+.model-picker__last {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-muted);
+  margin: 4px 4px 0;
+}
+
 /* ---------- One-time notice (WS02-T3 / WS02-T5) ---------- */
 
 .chat-notice {

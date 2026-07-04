@@ -360,6 +360,11 @@ export type ApiErrorBody = {
   // SK-ASK-014 — only present on `clarify_required` envelopes.
   clarification?: "create_or_query_pinned";
   pinned_db?: PinnedDb | null;
+  // SK-PREMIUM-013 — a deep link to the page that resolves the error, when
+  // one exists (e.g. the add-your-key page on a BYOLLM misconfiguration).
+  // Non-interactive surfaces render it verbatim so a user isn't stranded on
+  // an error with no next click (GLOBAL-012, "one sentence + next action").
+  link?: string;
 };
 
 // Mirrors apps/api/src/chat/types.ts. Keep these definitions in sync
@@ -426,6 +431,26 @@ export type ByollmCredential = {
   model: string;
   key: string;
 };
+
+// SK-PREMIUM-013 — the model catalog served by `GET /v1/models`. Shape
+// only: the actual model *strings* live in `@nlqdb/llm` and arrive over the
+// wire, so no surface (this SDK included) hardcodes them (SK-PREMIUM-003).
+// `presets` is the goal-first `auto|fast|best` knob; `models` is the named
+// picker — `free` (built-in chain) plus BYOLLM frontier entries carrying the
+// `provider`/`model` the `byollm` option / `setByollm` need.
+export type ModelPreset = "auto" | "fast" | "best";
+export type ModelLane = "free" | "byollm" | "premium";
+export type CatalogPreset = { id: ModelPreset; label: string; description: string };
+export type CatalogModel = {
+  id: string;
+  label: string;
+  lane: ModelLane;
+  provider?: string;
+  model?: string;
+  needsKey: boolean;
+  note?: string;
+};
+export type ModelCatalog = { presets: CatalogPreset[]; models: CatalogModel[] };
 
 // Discriminated so the type system rejects callers that pass both
 // auth modes — sending a server-side bearer over a browser cookie is
@@ -603,6 +628,14 @@ export type NlqClient = {
    * cover the create branch — call {@link ask} when you need `AskCreateResult`.
    */
   askStream(req: AskRequest, opts: AskStreamOptions): Promise<AskOk>;
+  /**
+   * `GET /v1/models` — the model catalog (`SK-PREMIUM-013`): goal-first
+   * presets plus the named frontier picker. Public (no auth), static, and the
+   * same for everyone — which entry is active for the account is a separate
+   * read ({@link getByollmStatus}). Read-only. Model strings live server-side
+   * (`SK-PREMIUM-003`); this returns them so surfaces never hardcode them.
+   */
+  getModels(opts?: { signal?: AbortSignal }): Promise<ModelCatalog>;
   /**
    * `GET /v1/chat/messages` — the caller's persisted chat turns, oldest first.
    * Each row's `role` discriminates user prompt vs assistant result. Read-only;
@@ -1101,6 +1134,7 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
           ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
           : {}),
       }),
+    getModels: (callOpts) => call<ModelCatalog>("/v1/models", { signal: callOpts?.signal }),
     listChat: (callOpts) =>
       call<{ messages: ChatMessage[] }>("/v1/chat/messages", { signal: callOpts?.signal }),
     postChat: (req, callOpts) =>

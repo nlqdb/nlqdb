@@ -128,6 +128,7 @@ export default defineConfig(async () => {
               "test/keys-mint.test.ts",
               "test/byollm-account.test.ts",
               "test/byollm-endpoints.test.ts",
+              "test/models.test.ts",
               "test/databases-delete.test.ts",
               "test/db-connect.test.ts",
               "test/ask-dispatch.test.ts",

@@ -45,6 +45,7 @@ import { matchesValidMessageShape } from "./chat-validate";
 import Data from "./Data";
 import DiffChip from "./DiffChip";
 import LeftRail from "./LeftRail";
+import ModelPicker from "./ModelPicker";
 import Palette, { type PaletteAction } from "./Palette";
 import Trace, { type TraceStepName, type TraceStepRecord } from "./Trace";
 
@@ -655,6 +656,17 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
   const visibleMessages = messages.slice(-visibleCount);
   const hasOlder = messages.length > visibleCount;
 
+  // SK-PREMIUM-013 — the model that answered the most recent reply
+  // (trace.model, SK-TRUST-002), shown in the picker as the honest
+  // "which model am I on" signal. Null until a reply's plan event lands.
+  const lastModel = useMemo<string | null>(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m?.role === "assistant" && m.reply.trace?.model) return m.reply.trace.model;
+    }
+    return null;
+  }, [messages]);
+
   return (
     <div className="chat-shell">
       <LeftRail
@@ -700,9 +712,12 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
           <h1 className="chat-main__title">
             {activeDb?.displayName ?? (activeDbId ? displayName(activeDbId) : "All databases")}
           </h1>
-          <span className="chat-main__hint">
-            <kbd>Cmd</kbd>+<kbd>K</kbd> commands · <kbd>Cmd</kbd>+<kbd>/</kbd> trace
-          </span>
+          <div className="chat-main__meta">
+            <ModelPicker apiBase={apiBase} lastModel={lastModel} />
+            <span className="chat-main__hint">
+              <kbd>Cmd</kbd>+<kbd>K</kbd> commands · <kbd>Cmd</kbd>+<kbd>/</kbd> trace
+            </span>
+          </div>
         </header>
 
         {notice ? (
