@@ -41,6 +41,51 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "find-duplicate-rows-you-re-google-every-time",
+    title: "The duplicate-rows query you re-Google every six weeks",
+    description:
+      "Find duplicates hasn't changed in thirty years: GROUP BY the suspect columns, HAVING COUNT(*) > 1. Wanting the whole row, not just the key, quietly changes it to a window function.",
+    date: "2026-07-03",
+    anchor: {
+      label: "Find duplicate rows in my data — the full guide",
+      path: "/solve/find-duplicate-rows-in-my-data",
+    },
+    body: [
+      {
+        kind: "p",
+        text: "There is a query nobody memorises and everybody needs: find the rows that are duplicated. A customer signed up twice, an import ran twice, a join fanned out and doubled every row. The answer has been the same for thirty years — `GROUP BY` the suspect columns, `HAVING COUNT(*) > 1` — and yet if you are not writing SQL daily you look it up *every single time*, because the shape is just unusual enough to not stick.",
+      },
+      {
+        kind: "code",
+        lang: "sql",
+        code: "-- Which emails appear more than once?\nSELECT email, COUNT(*) AS n\nFROM customers\nGROUP BY email\nHAVING COUNT(*) > 1;",
+      },
+      { kind: "h2", text: "The trap is not difficulty — it is that the shape changes under you" },
+      {
+        kind: "p",
+        text: 'It bites in quiet ways. Group by the wrong columns and you under- or over-count — the grain of the query *is* the definition of "duplicate," and it is easy to pick the wrong one. And the moment you want the *whole duplicate row* rather than just the duplicated key, the query you Googled stops being the query you need. `GROUP BY` collapses each group to one summary row; to keep every offending row you reach for a window function instead:',
+      },
+      {
+        kind: "code",
+        lang: "sql",
+        code: "-- Keep the full rows, tag the extras\nSELECT *\nFROM (\n  SELECT *,\n         ROW_NUMBER() OVER (\n           PARTITION BY email\n           ORDER BY created_at\n         ) AS rn\n  FROM customers\n) t\nWHERE rn > 1;",
+      },
+      {
+        kind: "p",
+        text: 'Same question — "where are my duplicates?" — two structurally different queries, and which one you want depends on whether you need the *count* or the *rows*. It is a yes/no question wearing a SQL costume, and the costume changes every time.',
+      },
+      { kind: "h2", text: "Ask in English — then read the SQL it ran" },
+      {
+        kind: "p",
+        text: 'This is exactly the case for asking in plain English and *reading the SQL it generates*. Not because SQL is beneath you — because the grain matters here and you want to verify it. "Which customers appear more than once by email?" should hand you back both the rows and the `GROUP BY email HAVING COUNT(*) > 1` it ran, so you can confirm it grouped on the column you meant before you trust the count. A chat model can write you that query; it cannot run it against your data, and if you paste rows into a prompt and ask it to count, it will confidently hallucinate the tally.',
+      },
+      {
+        kind: "p",
+        text: "(That is the half we built [nlqdb](https://nlqdb.com) for: ask the duplicate question in English over a Postgres it provisions, or one you already run via a signed-in connect, and get the rows plus the compiled SQL. Honest split — it *reports* duplicates with a read-only query; which row to keep and how to merge is a write you run deliberately, and matching is exact, not fuzzy.)",
+      },
+    ],
+  },
+  {
     slug: "text-to-sql-build-vs-buy",
     title: "The text-to-SQL demo takes an afternoon. The other 90% is why you should buy it.",
     description:
