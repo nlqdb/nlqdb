@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Blog
 
 **One-liner:** `/blog/<slug>` engineering posts — the canonical copies of `docs/research/distribution-queue.md` drafts, published autonomously by the daily loop; community-venue posts point back here.
-**Status:** implemented (Phase 1) — 13 posts live (runs 106 / 130 / 20 / 2 / 53 / 102 / 55 / 67 / 68 / 69 / 109 / 119 / 110 from the queue + archive).
+**Status:** implemented (Phase 1) — 14 posts live (runs 106 / 130 / 20 / 2 / 53 / 102 / 55 / 67 / 68 / 69 / 109 / 119 / 110 / 131 from the queue + archive).
 **Owners (code):** `apps/web/src/data/blog.ts`, `apps/web/src/pages/blog/**`, `apps/web/src/lib/inline-md.ts`, `apps/web/src/pages/llms.txt.ts`, `apps/web/src/pages/sitemap.xml.ts`
 **Cross-refs:** [`.claude/commands/daily.md`](../../../.claude/commands/daily.md) step 3 (the publishing loop) · [`docs/research/distribution-queue.md`](../../research/distribution-queue.md) (draft source) · [`comparison-pages/FEATURE.md`](../comparison-pages/FEATURE.md) + [`solve-pages/FEATURE.md`](../solve-pages/FEATURE.md) (sibling AEO surfaces) · [`web-app/FEATURE.md`](../web-app/FEATURE.md)
 

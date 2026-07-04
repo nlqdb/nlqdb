@@ -41,6 +41,68 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "top-n-rows-per-group",
+    title: "Top N per group is the query `LIMIT` can't write",
+    description:
+      '"Top 3 per category" reads like ORDER BY … LIMIT 3, but LIMIT caps the whole result set, not each group. The fix is ROW_NUMBER() OVER (PARTITION BY …) — and the hidden decision is how ties break.',
+    date: "2026-07-04",
+    anchor: {
+      label: "Find the top N rows per group — the full guide",
+      path: "/solve/find-top-n-rows-per-group",
+    },
+    body: [
+      {
+        kind: "p",
+        text: 'You want the top 3 best-selling products *in each category*. Or the most recent order *per customer*. Or the highest-scoring attempt *per user*. The English is so plain it feels like it should compile to something you already know — `ORDER BY revenue DESC LIMIT 3` — and that is exactly the trap. `LIMIT` caps the *whole result set*. Ask it for the top 3 and it hands you the 3 best rows across every category combined, not 3 per category. The word "per" quietly moved the query somewhere `LIMIT` cannot follow.',
+      },
+      {
+        kind: "code",
+        lang: "sql",
+        code: "-- What you wrote (wrong): 3 rows total, not 3 per category\nSELECT category, name, revenue\nFROM products\nORDER BY revenue DESC\nLIMIT 3;",
+      },
+      { kind: "h2", text: '"Per group" is a partition, not a limit' },
+      {
+        kind: "p",
+        text: 'This is the classic "greatest-N-per-group" problem, and the reason it gets re-Googled every time is that the correct shape looks nothing like the question. You are not limiting rows — you are *ranking within each group and keeping the top of each rank*. That is a window function: number the rows inside each partition, then filter to the rank you want.',
+      },
+      {
+        kind: "code",
+        lang: "sql",
+        code: "-- Rank inside each category, then keep the top 3 of each\nSELECT category, name, revenue\nFROM (\n  SELECT category, name, revenue,\n         ROW_NUMBER() OVER (\n           PARTITION BY category\n           ORDER BY revenue DESC\n         ) AS rn\n  FROM products\n) t\nWHERE rn <= 3;",
+      },
+      {
+        kind: "p",
+        text: 'The `PARTITION BY` is the "per category" the English asked for; the `ORDER BY` inside the window is the "best-selling"; the outer `WHERE rn <= 3` is the "top 3." You cannot filter on `rn` in the same SELECT that computes it — window functions are evaluated after `WHERE` — so it has to be a subquery (or a CTE). That structural jump, from a flat query to a nested ranked one, is the whole difficulty. Nothing here is hard; it just doesn\'t resemble the sentence you started with.',
+      },
+      { kind: "h2", text: 'The decision hiding in "top 3": what happens to ties' },
+      {
+        kind: "p",
+        text: 'There is a second choice buried in that query, and it is the one that bites in production. If two products tie for third place by revenue, do you want exactly 3 rows, or all the rows tied at rank 3? `ROW_NUMBER()` breaks ties arbitrarily and gives you exactly 3 — but which of the tied rows it drops is undefined unless your `ORDER BY` is fully deterministic. `RANK()` keeps every tied row (so "top 3" might return 4). `DENSE_RANK()` keeps ties but doesn\'t skip rank numbers. Same English, three different answers, and the query never tells you which one you picked — you have to have decided.',
+      },
+      {
+        kind: "ul",
+        items: [
+          "`ROW_NUMBER()` — **exactly N rows** per group; ties broken by the `ORDER BY` (add a tiebreak column, or the drop is nondeterministic).",
+          "`RANK()` — **every tied row** at the cutoff is included, and rank numbers skip after a tie (1, 2, 2, 4).",
+          "`DENSE_RANK()` — **ties included, no gaps** in the numbering (1, 2, 2, 3).",
+        ],
+      },
+      { kind: "h2", text: "Ask in English — then read the SQL it ran" },
+      {
+        kind: "p",
+        text: 'This is a good case for asking in plain English and *reading the query back*, precisely because the failure mode is silent: the wrong-`LIMIT` version runs fine and returns rows — just the wrong ones — and the tie behaviour never announces itself. "Top 3 products per category by revenue" should hand you back both the ranked rows and the `ROW_NUMBER() OVER (PARTITION BY category ORDER BY revenue DESC)` it compiled, so you can confirm it partitioned by the column you meant and see how ties resolve before you trust the numbers in a deck.',
+      },
+      {
+        kind: "p",
+        text: "(That is the half we built [nlqdb](https://nlqdb.com) for: ask the top-N question in English over a Postgres it provisions, or one you already run via a signed-in connect, and get the ranked rows plus the compiled window-function SQL. Honest split — it returns a read-only ranked answer, not a live leaderboard that updates on its own; and if you want ties included, say so and it switches `ROW_NUMBER` to `RANK` or `DENSE_RANK`.)",
+      },
+      {
+        kind: "p",
+        text: 'The general lesson: when a question says "per" or "in each," the grain moved from the result set to a group inside it, and set-level tools like `LIMIT` stop applying. Reach for a window function — and decide the tie rule on purpose, because the query will pick one for you whether or not you meant to.',
+      },
+    ],
+  },
+  {
     slug: "your-bi-tool-got-acquired-data-layer",
     title: "Your BI tool got acquired. Your data layer shouldn't have to care.",
     description:
