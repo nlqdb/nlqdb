@@ -1922,6 +1922,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "count-consecutive-days-streak-in-sql",
+    persona: "P3 analyst",
+    searchTitle: "How do I count a streak of consecutive days in SQL?",
+    oneLiner:
+      "If you want each user's longest run of consecutive active days — not just their total active days — ask in plain English. nlqdb compiles the gaps-and-islands query (the date-minus-row-number trick that turns each unbroken run into one group), counts the days per run, and shows the SQL.",
+    painContext:
+      "Streaks, retention runs, uptime windows, longest consecutive-login stretches — every product-metrics team eventually needs to count consecutive days, and it's the SQL question that a plain `GROUP BY user` can't touch. `COUNT(DISTINCT day)` gives total active days, not the length of the longest unbroken run; the answer is the classic 'gaps and islands' pattern, where you subtract a per-user `ROW_NUMBER()` from the date so every consecutive run collapses to a single constant, then group by that constant. It's a two-window-function move that LLMs and hand-writers routinely get wrong — off by the gap, or counting total days instead of the run.",
+    demoGoal: "each user's longest streak of consecutive days with at least one order",
+    demoWhy:
+      "The streak query you'd otherwise hand-write — the date-minus-row-number island key, the group-by-the-island, the max run length per user — is one English goal here, with the SQL shown so you can check that a one-day gap actually breaks the run.",
+    howNlqdbAnswers: [
+      "Ask 'each user's longest streak of consecutive days with an order'; nlqdb compiles the gaps-and-islands query and runs it in Postgres.",
+      "It subtracts a per-user `ROW_NUMBER()` from the date — an unbroken run maps to one constant, a gap starts a new one.",
+      "It groups by that island key and returns the longest run per user — the streak length, not the total number of active days.",
+      "Every answer shows the SQL under a trace toggle (`SK-WEB-005`) so you can confirm a single missing day breaks the streak the way you expect.",
+    ],
+    whatItDoesnt: [
+      "'Consecutive' means the grain you name — consecutive calendar days by default. If your run should ignore weekends or count consecutive weeks, say so in the goal; nlqdb won't guess a business-calendar rule for you.",
+      "A one-off read-only answer, not a live streak counter that ticks over at midnight — your dashboard or embed re-asks on its own schedule.",
+      "The public `<nlq-data>` embed is read-scoped — it reports the streak, it doesn't write a `current_streak` column back. Persisting it goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I count a streak of consecutive days in SQL?",
+        a: "Ask in plain English — 'each user's longest streak of consecutive days with an order.' nlqdb compiles the gaps-and-islands query: it subtracts a per-user `ROW_NUMBER()` ordered by day from the date, which turns every unbroken run into one constant, then groups by that constant and counts the days. It runs the query in Postgres and shows the SQL so you can confirm a gap breaks the run.",
+      },
+      {
+        q: "Why doesn't COUNT(DISTINCT day) give me the streak?",
+        a: "Because `COUNT(DISTINCT day)` counts total active days, not the length of the longest unbroken run. A user active on the 1st, 2nd, and 5th has three active days but a longest streak of two. The streak needs the gaps-and-islands trick — grouping consecutive days into runs — not a plain distinct count.",
+      },
+      {
+        q: "What is the gaps-and-islands pattern?",
+        a: "It's the standard SQL technique for finding runs of consecutive rows. You subtract a `ROW_NUMBER()` (ordered by the sequence column) from that column: within a consecutive run the difference is constant, and any gap shifts it, so each run — each 'island' — gets a unique key you can group by. It answers streaks, uptime windows, and consecutive-number ranges.",
+      },
+      {
+        q: "Can I compute a streak on a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the streak in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and the answer is read-only — nlqdb reports the streak, it doesn't materialise it into a column.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/gaps-and-islands",
+        label:
+          "Stack Overflow — the `gaps-and-islands` tag, the standing hub for consecutive-run questions: streak length, the row-number island trick, and where a gap should break a run.",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/functions-window.html",
+        label:
+          "PostgreSQL docs — window functions, the canonical reference for `ROW_NUMBER() OVER (PARTITION BY … ORDER BY …)` that builds the per-run island key.",
+      },
+      {
+        url: "https://hn.algolia.com/?q=gaps+and+islands",
+        label:
+          'Hacker News search: "gaps and islands" — recurring discussion of the consecutive-run pattern and why streak queries trip people up.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
