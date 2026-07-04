@@ -28,6 +28,39 @@ export type ChatRequest = {
   headers?: Record<string, string>;
 };
 
+// Top-level `error` object shape in an OpenAI-compat 200 body. Every field
+// is optional/unknown — providers vary (`{message,code}` vs `{message,type}`
+// vs OpenRouter's `{message,metadata:{error_type}}`) — so we read defensively.
+type BodyError = {
+  message?: unknown;
+  code?: unknown;
+  type?: unknown;
+  metadata?: { error_type?: unknown };
+};
+
+// A rate-limit surfaced inside a 200 body (no `Retry-After` header to read,
+// since the status was already 200) → `rate_limited` so the router backs off
+// and the eval treats it as a capacity pause (checkpoint + resume), never a
+// scored `no_sql`. Everything else is an upstream provider failure →
+// `provider_error`: a failover/tail-retry signal, not the model's fault.
+function classifyBodyError(err: BodyError, label: string): ProviderError {
+  const code = typeof err.code === "number" ? err.code : undefined;
+  const text = [err.message, err.type, err.metadata?.error_type]
+    .filter((v): v is string => typeof v === "string")
+    .join(" ")
+    .toLowerCase();
+  const detail = typeof err.message === "string" ? err.message : JSON.stringify(err);
+  const message = `${label} → 200 with error body: ${truncate(detail, 160)}`;
+  // Word-scoped rate-limit match: a 429 code, a "rate limit" phrase (covers
+  // OpenRouter's `rate_limit_exceeded` error_type), or a standalone 429 token.
+  // A bare `.includes("rate")` would false-match "generate"/"accurate", tripping
+  // a needless breaker pause on a plain provider failure.
+  if (code === 429 || /rate[\s_-]?limit/.test(text) || /\b429\b/.test(text)) {
+    return new ProviderError(message, "rate_limited", { status: 429 });
+  }
+  return new ProviderError(message, "provider_error");
+}
+
 export async function openAICompatibleChat(req: ChatRequest, opts?: CallOpts): Promise<string> {
   const fetchFn = opts?.fetch ?? globalThis.fetch;
   const body = {
@@ -57,12 +90,22 @@ export async function openAICompatibleChat(req: ChatRequest, opts?: CallOpts): P
 
   if (!res.ok) throw await httpError(`POST ${req.url}`, res);
 
-  let parsed: { choices?: Array<{ message?: { content?: string } }> };
+  let parsed: { choices?: Array<{ message?: { content?: string } }>; error?: BodyError };
   try {
     parsed = (await res.json()) as typeof parsed;
   } catch {
     throw new ProviderError(`POST ${req.url} → 200 but body not JSON`, "parse");
   }
+  // OpenRouter (and other OpenAI-compat gateways) can commit an HTTP 200 +
+  // headers, then have the upstream provider fail mid-request — the status
+  // can no longer change, so the failure comes back as a top-level `error`
+  // envelope in a 200 body (OpenRouter docs, "Errors and debugging"). Left
+  // unhandled it falls through to the generic `parse` branch below and is
+  // misread as the model emitting junk (an engine answer-signal), when it is
+  // really an infra failure. Classify it by its real nature so a 429-shaped
+  // 200 backs off (`rate_limited`) and the rest fail over / tail-retry
+  // (`provider_error`) instead of scoring a spurious engine `no_sql`.
+  if (parsed.error) throw classifyBodyError(parsed.error, `POST ${req.url}`);
   const content = parsed.choices?.[0]?.message?.content;
   if (typeof content !== "string") {
     throw new ProviderError(

@@ -9,6 +9,7 @@ Venue variants pending — post each as a pointer to the canonical URL (tracked 
 
 - run 20 (2026-06-20, nlqdb vs Zep) → https://nlqdb.com/blog/zep-recall-vs-analytical-agent-memory/
 - run 2 (2026-06-13, NULL timestamp / TTL sweep) → https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/
+- run 53 (nlqdb vs Pinecone, vector-store aggregation gap) → https://nlqdb.com/blog/agent-memory-vector-store-aggregation-gap/
 
 ## 2026-06-13/15 (runs 3–7) — engine-lesson dev.to / lobste.rs posts (titles only; full drafts in git history)
 

@@ -15,27 +15,30 @@ drafts live in the [archive](./distribution-queue-archive.md).
 
 ## Drafts — unpublished, newest first
 
+- **"Your text-to-SQL eval is lying: OpenRouter returns HTTP 200 with the
+  error in the body."** slug `http-200-error-in-body` · venue dev.to (#llm
+  #api #debugging) + r/LocalLLaMA + lobste.rs · engine lesson.
+  Angle: a gateway commits the `200 OK` + headers, *then* the upstream provider
+  fails mid-request — the status can't change, so the failure comes back as a
+  top-level `error` object in a **200** body ([OpenRouter, "Errors and
+  debugging"](https://openrouter.ai/docs/api/reference/errors-and-debugging)). A
+  client that only branches on `res.ok` sails past it, finds `choices[0].message
+  .content` missing, and files it under "the model returned junk." In an accuracy
+  harness that misread is poison: a rate-limit or provider outage scores as a
+  wrong answer, so your engine number reads lower than the engine is. Fix:
+  before you touch `choices`, inspect the body for a top-level `error` and
+  classify it — 429-shaped → back off; else → retry / fail over. It's infra,
+  not the model. Real numbers: this bug silently capped our frontier lane with 7
+  mislabeled `no_sql` losses per 150-q smoke. Close on the rule — **`res.ok` is
+  necessary, not sufficient; a 200 can still carry a failure** — so any
+  retry/failover layer keyed off status alone has a blind spot.
+
 - **"Top N per group is the query `LIMIT` can't write."** slug
   `top-n-rows-per-group` · venue dev.to + r/SQL + r/PostgreSQL · anchors
-  `/solve/find-top-n-rows-per-group`.
-  Angle: "give me the top 3 products **per category**" reads like `ORDER BY … LIMIT
-  3`, but `LIMIT` caps the *whole result set*, not each group — it silently returns
-  3 rows total. The fix is a window function: number rows *within* each partition and
-  filter.
-  ```sql
-  SELECT category, product, revenue
-  FROM (
-    SELECT category, product, revenue,
-           ROW_NUMBER() OVER (PARTITION BY category ORDER BY revenue DESC) AS rn
-    FROM sales
-  ) ranked
-  WHERE rn <= 3;
-  ```
-  The one decision the phrasing hides: **ties.** `ROW_NUMBER()` picks an arbitrary 3
-  when the 3rd and 4th tie; `RANK()`/`DENSE_RANK()` keep the ties (can return > 3).
-  "Top 3" is three different queries and the asker rarely says which — nlqdb picks a
-  lane and shows it in the trace so the human can correct it. Close on why "just add a
-  LIMIT" is the classic wrong answer to the greatest-n-per-group problem.
+  `/solve/find-top-n-rows-per-group` · gist: "top 3 **per category**" reads
+  like `ORDER BY … LIMIT 3` but `LIMIT` caps the whole result set — the fix is
+  `ROW_NUMBER() OVER (PARTITION BY …)` filtered to `rn <= 3`; the hidden
+  decision is ties (`ROW_NUMBER` vs `RANK`/`DENSE_RANK`).
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
@@ -49,16 +52,6 @@ delete its line.
   variant pending: dev.to + r/SQL + r/PostgreSQL ("NOT IN returned zero rows.
   It wasn't your data — it was one NULL."; anchors
   `/solve/find-rows-with-no-match-in-another-table`).
-- run 20 — **https://nlqdb.com/blog/zep-recall-vs-analytical-agent-memory/** —
-  venue variant pending: r/AI_Agents / Show HN (Zep recall vs. aggregation;
-  anchors `/vs/zep`).
-- run 2 — **https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/** —
-  venue variant pending: dev.to (#sql #postgres #debugging) / lobste.rs (NULL
-  timestamp broke a TTL sweep + funnel metric).
-- run 53 — **https://nlqdb.com/blog/agent-memory-vector-store-aggregation-gap/**
-  — venue variant pending: dev.to / r/AI_Agents / r/LLMDevs (the aggregation
-  gap: similarity search has no GROUP BY/COUNT/JOIN/HAVING; anchors
-  `/vs/pinecone`).
 - run 102 — **https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/** —
   venue variant pending: dev.to + r/LLMDevs + r/AI_Agents (two shapes of MCP
   server — destination-app wrapper vs. infrastructure the agent owns; the tell

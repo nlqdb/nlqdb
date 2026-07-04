@@ -108,13 +108,18 @@ const DEFAULT_MAX_RATE_LIMIT_COOLDOWN_MS = 5 * 60_000;
 const AUTH_DENIED_COOLDOWN_MS = 30 * 60_000;
 
 // SK-LLM-038 — transient reasons worth a single same-provider retry at
-// the chain tail. `network` (fetch threw) and `http_5xx` (upstream
-// temporarily unavailable) are transient and fast-failing; a retry is
-// the textbook recovery. `rate_limited` / `circuit_open` are capacity
-// (failover, not retry), `http_4xx` / `parse` are request-shaped (a
-// retry reproduces them), and `timeout` already burned the full budget
-// so a retry would likely time out again — all excluded.
-const TAIL_RETRY_REASONS: ReadonlySet<FailoverReason> = new Set(["network", "http_5xx"]);
+// the chain tail. `network` (fetch threw), `http_5xx` (upstream
+// temporarily unavailable) and `provider_error` (a gateway committed a 200
+// then reported an upstream failure in the body — SK-LLM-042) are transient
+// and fast-failing; a retry is the textbook recovery. `rate_limited` /
+// `circuit_open` are capacity (failover, not retry), `http_4xx` / `parse`
+// are request-shaped (a retry reproduces them), and `timeout` already burned
+// the full budget so a retry would likely time out again — all excluded.
+const TAIL_RETRY_REASONS: ReadonlySet<FailoverReason> = new Set([
+  "network",
+  "http_5xx",
+  "provider_error",
+]);
 
 // Short fixed backoff before the tail retry. Best practice is not to
 // retry a transient failure instantly (it hammers a recovering
