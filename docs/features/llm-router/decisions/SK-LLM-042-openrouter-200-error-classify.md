@@ -9,9 +9,10 @@ generic reason.
 - **Decision:** In `openAICompatibleChat`, when a **200** response body
   carries a top-level `error` object, throw a classified `ProviderError`
   from `classifyBodyError` **before** the missing-`content` check —
-  `rate_limited` when the envelope is 429-shaped (`code === 429`, or
-  `message`/`type`/`metadata.error_type` mentions "rate"/"429"),
-  `provider_error` otherwise. To let the frontier lane's single tail
+  `rate_limited` when the envelope is 429-shaped (`code === 429`, or a
+  word-scoped `rate limit` / standalone `429` match on
+  `message`/`type`/`metadata.error_type` — narrow so "generate"/"accurate"
+  don't false-match a bare "rate" substring), `provider_error` otherwise. To let the frontier lane's single tail
   provider actually recover a transient one, `provider_error` joins
   `TAIL_RETRY_REASONS` ([`SK-LLM-038`](./SK-LLM-038-tail-transient-retry.md)).
 - **Core value:** Free, Bullet-proof

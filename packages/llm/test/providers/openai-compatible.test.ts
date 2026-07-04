@@ -88,6 +88,14 @@ describe("openAICompatibleChat 200-body error envelope (SK-LLM-042)", () => {
     );
   });
 
+  it("a 'rate' substring inside a word (e.g. 'generate') is NOT a rate limit", async () => {
+    // Guards against a bare `.includes("rate")` — "generate" / "accurate"
+    // must classify as provider_error, not a spurious rate_limited pause.
+    expect(await reasonOf({ error: { message: "model failed to generate output" } })).toBe(
+      "provider_error",
+    );
+  });
+
   it("an error body with no message still classifies (no throw on JSON.stringify path)", async () => {
     expect(await reasonOf({ error: { code: 500 } })).toBe("provider_error");
   });
@@ -99,5 +107,15 @@ describe("openAICompatibleChat 200-body error envelope (SK-LLM-042)", () => {
 
   it("a 200 missing content and with no error field stays parse (genuinely malformed)", async () => {
     expect(await reasonOf({ id: "x", choices: [] })).toBe("parse");
+  });
+
+  it("a valid 200 carrying an explicit `error: null` is untouched — content wins", async () => {
+    // Gateways that always include the field send `null` on success; the
+    // truthiness guard must let a good answer through, not throw.
+    const fetch = () =>
+      Promise.resolve(
+        jsonResponse({ error: null, choices: [{ message: { content: "SELECT 1" } }] }),
+      );
+    await expect(openAICompatibleChat(chatArgs, { fetch })).resolves.toBe("SELECT 1");
   });
 });

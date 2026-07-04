@@ -51,7 +51,11 @@ function classifyBodyError(err: BodyError, label: string): ProviderError {
     .toLowerCase();
   const detail = typeof err.message === "string" ? err.message : JSON.stringify(err);
   const message = `${label} → 200 with error body: ${truncate(detail, 160)}`;
-  if (code === 429 || text.includes("rate") || text.includes("429")) {
+  // Word-scoped rate-limit match: a 429 code, a "rate limit" phrase (covers
+  // OpenRouter's `rate_limit_exceeded` error_type), or a standalone 429 token.
+  // A bare `.includes("rate")` would false-match "generate"/"accurate", tripping
+  // a needless breaker pause on a plain provider failure.
+  if (code === 429 || /rate[\s_-]?limit/.test(text) || /\b429\b/.test(text)) {
     return new ProviderError(message, "rate_limited", { status: 429 });
   }
   return new ProviderError(message, "provider_error");
