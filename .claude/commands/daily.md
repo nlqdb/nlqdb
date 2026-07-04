@@ -24,9 +24,17 @@ focus number.
    for actions an agent cannot perform (prod secrets, console clicks,
    money/legal). Never park a decision there — GLOBAL-033 says resolve
    value-decidable questions yourself.
-5. **The billing lane is frozen** until the `phase-plan.md` §6 demand
-   signal fires. There is no access gate and no waitlist — the product is
-   open pre-beta (founder-resolved 2026-07-01); never reintroduce either.
+5. **Only the billing *meter* is frozen** until the `phase-plan.md` §6
+   demand signal fires — *not* the paid plan. Per §6 + `GLOBAL-026`,
+   **building** the paid plan is never gated: the hosted-premium dispatch
+   slot, model picker (`auto|fast|best`), premium chain, per-key spend cap,
+   upgrade CTA, and SDK/CLI/MCP/elements parity should be driven toward
+   ready *before* the signal — lighting it is then a flag flip, not a
+   refactor (scorecard row #20 tracks this). What stays dark until §6 is the
+   **meter firing** (Lago usage records → Stripe) and the cost-incurring
+   infra (Cloudflare Pro, Neon Launch, Listmonk). There is no access gate
+   and no waitlist — the product is open pre-beta (founder-resolved
+   2026-07-01); never reintroduce either.
 6. **Red main is the run.** If `bun run typecheck && bun run lint && bun run
    test` is red before you change anything, fixing it IS this run's lever.
    Same for the `deploy-*` workflows: check each one's latest run on `main`

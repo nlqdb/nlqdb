@@ -101,7 +101,7 @@ Three problems:
 | 3 | **Distribution** | Produce one publishable artifact/day: Show-HN draft, dev.to post, answer to a real SO/Reddit thread, comparison-page improvement, directory submission. Queue in `docs/research/distribution-queue.md`; published autonomously (daily step 3) | external visits, registered strangers |
 | 4 | **User evidence** | ICP mining toward the ≥30-quote bar; draft (not send) outreach to authors of mined pain-quotes; in-product Sean Ellis survey slice | scored quotes, survey responses |
 | 5 | **Stranger test** | Keep as-is — it's genuinely good — plus: alert when a *real* (non-bot) email enters the funnel | funnel pass-rate |
-| 6 | **Feature** | One lane, demand-ordered: finish BYO Postgres end-to-end before ClickHouse/OTel; billing lane frozen until first "how do I pay" | TTFV, first-10-queries success |
+| 6 | **Feature** | One lane, demand-ordered: finish BYO Postgres end-to-end before ClickHouse/OTel; billing *meter* frozen until first "how do I pay" (build the paid plan before the signal — only the meter waits, per phase-plan §6 + GLOBAL-026) | TTFV, first-10-queries success |
 | 7 | **Review/merge** | Keep, plus enforce: a PR that names no measured KPI delta in its body doesn't merge | gate on all of the above |
 
 **Prompt pattern for every lane** (this is the rethink you asked about):
