@@ -55,6 +55,9 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
     if (fromUrl !== "clickhouse") setEngine(fromUrl);
   }, []);
 
+  // Copy tracks the selected engine (deep-link `?engine=` or manual switch)
+  // so a Postgres visitor never reads "ClickHouse" in the title/CTA.
+  const engineLabel = engine === "postgres" ? "Postgres" : "ClickHouse";
   const placeholder =
     engine === "clickhouse"
       ? "https://user:pass@host:8443/?database=analytics"
@@ -79,7 +82,7 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
   return (
     <section className="connect">
       <header className="connect__head">
-        <h1 className="connect__title">Question your ClickHouse.</h1>
+        <h1 className="connect__title">Question your {engineLabel}.</h1>
         <p className="connect__lede">
           Paste a read connection string. nlqdb reads your schema, then you ask in English — the URL
           is sealed and never stored in your browser.
@@ -176,7 +179,7 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
           className="cta connect__submit"
           disabled={loading || connectionUrl.trim().length === 0}
         >
-          {loading ? "Reading your schema…" : "Connect your ClickHouse →"}
+          {loading ? "Reading your schema…" : `Connect your ${engineLabel} →`}
         </button>
 
         {error && (
