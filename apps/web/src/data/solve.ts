@@ -1864,6 +1864,65 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "group-numbers-into-ranges-in-sql",
+    persona: "P3 analyst",
+    searchTitle: "How do I group numbers into ranges (buckets) in SQL?",
+    oneLiner:
+      "If you want a count per range — orders under $50, $50–$200, over $200 — instead of one row per exact value, ask in plain English. nlqdb compiles the bucket expression, GROUP BYs the bucket, orders the ranges by their lower bound, and shows the SQL, so 5–10 sorts before 10–20 instead of after.",
+    painContext:
+      "Bucketing a continuous column into ranges — a revenue histogram, orders by price band, users by age group — is the analyst's everyday question that plain `GROUP BY amount` gets wrong: it returns one row per exact value, not per band. You reach for a `CASE WHEN amount < 50 THEN ... END` label (or `width_bucket` for even bins) and group by that. Then two traps bite: the boundaries have to tile without a gap or overlap (`< 50` then `>= 50`, never `<= 50` then `>= 50`), and the bucket labels are text, so `ORDER BY bucket` sorts them alphabetically — '10-20' lands before '5-10' unless you order by the numeric lower bound.",
+    demoGoal:
+      "count of orders bucketed by amount: under 50, 50 to 200, and over 200",
+    demoWhy:
+      "The histogram query you'd otherwise hand-write — the CASE bands, the group-by-the-band, and the sort-by-lower-bound — is one English goal here, with the SQL shown so you can check the boundaries tile cleanly.",
+    howNlqdbAnswers: [
+      "Ask 'count of orders bucketed by amount: under 50, 50 to 200, over 200'; nlqdb compiles the `CASE`-band bucket expression and runs it in Postgres.",
+      "It groups by the bucket, not the raw value, so you get one row per range instead of one per exact amount.",
+      "The compiled bands tile without a gap or overlap at the boundaries, so no row is dropped or double-counted between adjacent ranges.",
+      "Ranges come back ordered by their lower bound, not alphabetically, and every answer shows the SQL under a trace toggle (`SK-WEB-005`) to confirm the boundaries.",
+    ],
+    whatItDoesnt: [
+      "The bucket edges are ones you name — 'under 50, 50 to 200, over 200'. nlqdb compiles the bands from your English and shows them; it won't pick a 'good' bin width for you.",
+      "A one-off read-only histogram, not a live chart that refreshes itself — your dashboard or embed re-asks on its own schedule.",
+      "The public `<nlq-data>` embed is read-scoped — it reports the bucketed counts, it doesn't write. Loading the rows goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I group numbers into ranges (buckets) in SQL?",
+        a: "Ask in plain English — 'count of orders bucketed by amount: under 50, 50 to 200, over 200.' nlqdb compiles a `CASE WHEN amount < 50 THEN ... END` bucket label, groups by that label instead of the raw amount, and orders the ranges by their lower bound. It runs the query in Postgres and shows the SQL, so you can confirm the bands tile without a gap.",
+      },
+      {
+        q: "Why does GROUP BY give me one row per value instead of per range?",
+        a: "Because `GROUP BY amount` groups by the exact value, so every distinct amount is its own group. To get bands you group by a derived bucket — a `CASE` expression that maps each amount to a range label (or `width_bucket` for even-width bins) — so all amounts in the same band collapse into one row.",
+      },
+      {
+        q: "Why do my range buckets sort 10-20 before 5-10?",
+        a: "Because the bucket labels are text, and `ORDER BY bucket` sorts text alphabetically — '1' sorts before '5', so '10-20' lands before '5-10'. Order by the numeric lower bound of each band (or by the `CASE`/`width_bucket` index) instead of the label. nlqdb compiles the numeric ordering and shows it in the SQL.",
+      },
+      {
+        q: "Can I bucket numbers on a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the histogram in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and the answer is read-only — nlqdb reports the buckets, it doesn't materialise them into a table.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.postgresql.org/docs/current/functions-math.html",
+        label:
+          "PostgreSQL docs — mathematical functions, the canonical reference for `width_bucket`, which assigns a value to one of N even-width buckets over a range.",
+      },
+      {
+        url: "https://stackoverflow.com/questions/tagged/histogram+sql",
+        label:
+          "Stack Overflow — the `histogram` + `sql` tags, the standing hub for range-bucketing questions: CASE-band vs. width_bucket, boundary inclusivity, and ordering the bands numerically.",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/functions-conditional.html",
+        label:
+          "PostgreSQL docs — conditional expressions, the canonical reference for the `CASE WHEN` form used to compile named, non-even range bands.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
