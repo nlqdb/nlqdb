@@ -11,6 +11,16 @@ export {
   dispatchLaneAttributes,
   selectDispatchLane,
 } from "./byollm-dispatch.ts";
+// SK-PREMIUM-013 — canonical model catalog (the only home for user-facing
+// model strings; surfaces receive it over the wire via `GET /v1/models`).
+export {
+  type CatalogModel,
+  type CatalogPreset,
+  MODEL_CATALOG,
+  type ModelCatalog,
+  type ModelLane,
+  type ModelPreset,
+} from "./catalog.ts";
 // Similarity-retrieved few-shot exemplar selection (SK-LLM-041, DAIL §4.1).
 export {
   type Exemplar,

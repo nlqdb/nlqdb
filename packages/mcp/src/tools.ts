@@ -154,10 +154,13 @@ export const queryOutputShape = {
   trace: z
     .object({
       sql: z.string(),
+      // SK-PREMIUM-013 — surface which model answered so an MCP host can tell
+      // "which model am I using?" (was previously stripped at this boundary).
+      model: z.string(),
       confidence: z.number(),
       cache_hit: z.boolean(),
     })
-    .describe("Compiled SQL and plan metadata (SK-TRUST-002)."),
+    .describe("Compiled SQL, the model that answered, and plan metadata (SK-TRUST-002)."),
   requires_confirm: z
     .boolean()
     .optional()
@@ -227,7 +230,7 @@ export async function handleQuery(
         ok: {
           rows: [],
           rowCount: 0,
-          trace: { sql: "", confidence: 0, cache_hit: false },
+          trace: { sql: "", model: "", confidence: 0, cache_hit: false },
           db_created: true,
           dbId: response.db,
           displayName: response.displayName,
@@ -379,8 +382,13 @@ export async function handleConnectDatabase(
   }
 }
 
-function traceOf(trace: { sql: string; confidence: number; cache_hit: boolean }) {
-  return { sql: trace.sql, confidence: trace.confidence, cache_hit: trace.cache_hit };
+function traceOf(trace: { sql: string; model: string; confidence: number; cache_hit: boolean }) {
+  return {
+    sql: trace.sql,
+    model: trace.model,
+    confidence: trace.confidence,
+    cache_hit: trace.cache_hit,
+  };
 }
 
 function diffOf(diff: AskDiff) {
@@ -395,7 +403,7 @@ function diffOf(diff: AskDiff) {
 function buildQueryOutput(
   rows: Record<string, unknown>[],
   rowCount: number,
-  trace: { sql: string; confidence: number; cache_hit: boolean },
+  trace: { sql: string; model: string; confidence: number; cache_hit: boolean },
 ): QueryOutput {
   return { rows, rowCount, trace: traceOf(trace) };
 }

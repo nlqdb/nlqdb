@@ -34,6 +34,7 @@ function stubClient(overrides: Partial<NlqClient> & { connect?: ConnectFn } = {}
       // interface but throws if a future path accidentally wires it.
       throw new Error("runSql not stubbed");
     },
+    getModels: async () => ({ presets: [], models: [] }),
     listChat: async () => ({ messages: [] }),
     postChat: async () => {
       throw new Error("postChat not stubbed");
@@ -117,7 +118,12 @@ describe("handleQuery", () => {
       ok: {
         rows: [{ count: 42 }],
         rowCount: 1,
-        trace: { sql: "SELECT COUNT(*) FROM users", confidence: 0.92, cache_hit: false },
+        trace: {
+          sql: "SELECT COUNT(*) FROM users",
+          model: "stub",
+          confidence: 0.92,
+          cache_hit: false,
+        },
       },
     });
   });
@@ -700,7 +706,7 @@ describe("formatResult / formatQueryResult / formatError", () => {
         ok: {
           rows,
           rowCount: 300,
-          trace: { sql: "SELECT …", confidence: 1, cache_hit: false },
+          trace: { sql: "SELECT …", model: "stub", confidence: 1, cache_hit: false },
         },
       },
       200,
@@ -721,7 +727,7 @@ describe("formatResult / formatQueryResult / formatError", () => {
         ok: {
           rows: [{ a: 1 }],
           rowCount: 1,
-          trace: { sql: "SELECT …", confidence: 1, cache_hit: false },
+          trace: { sql: "SELECT …", model: "stub", confidence: 1, cache_hit: false },
         },
       },
       200,

@@ -5,6 +5,7 @@ import {
   createTinybirdAdapter,
   type Engine,
 } from "@nlqdb/db";
+import { MODEL_CATALOG } from "@nlqdb/llm";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import {
   isValidSpanId,
@@ -2086,6 +2087,15 @@ app.get("/v1/keys", requireSession, async (c) => {
     }
   });
 });
+
+// `GET /v1/models` — the canonical model catalog (SK-PREMIUM-013): the
+// goal-first presets plus the named frontier picker. Public + unauthenticated
+// (anonymous users see the picker before signing in, GLOBAL-007) and static,
+// so no session and no OTel span — it just serves the `@nlqdb/llm` constant so
+// the model *strings* live server-side and never in a surface bundle
+// (SK-PREMIUM-003). Which entry is active per account is a separate read
+// (`GET /v1/keys/byollm`); this endpoint is the same for everyone and cacheable.
+app.get("/v1/models", (c) => c.json(MODEL_CATALOG));
 
 // `/v1/keys/byollm` — account-stored BYOLLM credential (SK-PREMIUM-008,
 // SK-PREMIUM-012). Session-only (a decryptable key must ride a first-party

@@ -6,6 +6,8 @@ when-to-load:
     - apps/api/src/billing/premium/**
     - apps/api/src/ask/model-picker.ts
     - apps/web/src/components/PremiumCta*
+    - apps/web/src/components/chat/ModelPicker.tsx
+    - packages/llm/src/catalog.ts
     - packages/llm/src/chains/paid.ts
     - packages/llm/src/chains/premium.ts
     - packages/sdk/src/options/model.ts
@@ -59,17 +61,10 @@ when-to-load:
   - 10–30% markup — defensible eventually, but the open-source / FSL self-host positioning (`GLOBAL-019`) means we explicitly compete with self-hosting; +0% is the price floor that matches the value claim ("we route, you don't have to").
 - **Source:** docs/architecture.md §5 · docs/architecture.md §6 · docs/features/llm-router/FEATURE.md ("How credits flow into the product without breaking UX")
 
-### SK-PREMIUM-003 — The user-facing knob is goal-first presets, not raw model names
+### SK-PREMIUM-003 — The user-facing knob is goal-first presets, plus an advanced catalog-served named picker
 
-- **Decision:** Every surface exposes the choice as `model: "auto" | "fast" | "best"` (and an Enterprise-only `"custom"`), not as `claude-sonnet-4-6` / `gpt-5` strings. `auto` (default) lets the classifier route — frontier model only when the request crosses the hard-plan confidence threshold; `fast` pins the strict-$0 chain even if premium is enabled; `best` pins the frontier-model chain regardless of confidence (with a per-call cost confirmation chip on the chat surface, no chip on programmatic surfaces). `custom` is reserved for Enterprise contracts that pin a specific provider.
-- **Core value:** Goal-first, Simple, Effortless UX
-- **Why:** Users don't wake up wanting "Sonnet 4.6" — they want "answer this hard question right" or "stay cheap." Exposing model strings leaks a moving decision (`docs/architecture.md §8`'s table updates every quarter as providers ship new models) into customer code, where the wrong model name on the wrong day becomes a 4xx. Presets let us re-wire the underlying chain (`SK-LLM-007`) without a customer-facing breaking change. The `auto` default is the goal-first promise: the user states what they want, we pick.
-- **Consequence in code:** SDK option type is `model: "auto" | "fast" | "best"` (Enterprise build adds `"custom"`). CLI flag is `--model <preset>` and persistent setting is `nlq model set <preset>`. MCP tool descriptors carry a `model` parameter with the same enum. `<nlq-data model="best">` on the elements surface. The HTTP API accepts the same enum on `/v1/ask`. Provider+model strings live only in `packages/llm/src/chains/{free,paid}.ts`; no other package imports them. Tests assert that no `apps/web/**`, `cli/**`, `packages/sdk/**`, or `packages/mcp/**` file references a model string.
-- **Alternatives rejected:**
-  - Expose raw model names — leaks our routing decision into customer code; every new frontier model is a customer-side change.
-  - Single boolean (`premium: true`) — loses the `fast` use case (a premium-enabled DB still wants the strict-$0 chain on a CI run). Two booleans (`premium`, `force_free`) is two flags doing what one enum does.
-  - Per-call temperature / max-tokens knobs — leaks LLM-API-shape into our API surface; we can revisit if Pro customers ask, but the day-1 surface is the preset.
-- **Source:** docs/architecture.md §0 (Goal-first) · docs/architecture.md §8 (model catalog) · GLOBAL-002 (parity) · GLOBAL-017 (one way to do each thing)
+**Body:** [`decisions/SK-PREMIUM-003-model-knob.md`](./decisions/SK-PREMIUM-003-model-knob.md).
+The primary knob is presets `model: "auto"|"fast"|"best"` (+Enterprise `"custom"`), never raw model strings in customer code. Amended by `SK-PREMIUM-013` ("Both"): surfaces may also offer an **advanced named picker** — but model strings still never live in a surface file; the catalog is served from `@nlqdb/llm` over the wire (`GET /v1/models`), so a new frontier model is a one-line `catalog.ts` edit, not a customer-code change.
 
 ### SK-PREMIUM-004 — In-context upgrade CTA fires on classifier "hard plan" verdict, never on cost surprise
 
@@ -125,6 +120,11 @@ At allowance exhaustion, the per-account `users.overflow_policy` decides behavio
 **Body:** [`decisions/SK-PREMIUM-012-account-stored-byollm-storage.md`](./decisions/SK-PREMIUM-012-account-stored-byollm-storage.md).
 Pins SK-PREMIUM-008's storage mechanics: the account-stored key is an `api_keys` row (`scope = "byollm"`, `key_type = "byollm"`) holding the GLOBAL-031 sealed envelope in `key_hash` (reversible blob, not the HMAC), one row/account, hard-DELETE clear. Session-only `POST/GET/DELETE /v1/keys/byollm` + the `/v1/ask` step-2 lane (`resolveAskRouter` `accountCredential`, fail-loud) ship here; `llm.byollm_source ∈ {header, account}` labels the lane.
 
+### SK-PREMIUM-013 — Model catalog endpoint + the two-door frontier picker
+
+**Body:** [`decisions/SK-PREMIUM-013-model-catalog-and-picker.md`](./decisions/SK-PREMIUM-013-model-catalog-and-picker.md).
+`GET /v1/models` serves the canonical `@nlqdb/llm` catalog (presets + `free` + named frontier BYOLLM entries) so surfaces render the picker without hardcoding model strings (resolves SK-PREMIUM-003's "Both"). Selecting a frontier model routes **two doors**: **BYOLLM** (live — gentle inline key form) or **subscribe** (hosted-premium credits, SK-PREMIUM-009 — §6-dark, shown "coming soon"). The web ships a header **model pill** (active model = "which model am I on") + popover; `trace.model` now rides MCP too (was stripped). Preset param routing, SDK `model` option, CLI/`<nlq-data>`/MCP preset params, per-provider key storage, and the SK-PREMIUM-004 CTA remain tracked gaps.
+
 ### SK-PREMIUM-007 — Plan cache stays product-funded; cap accounting starts at the LLM call site
 
 - **Decision:** Plan-cache hits (per `SK-LLM-010` / `GLOBAL-006`) cost the customer **zero LLM tokens** even when premium is enabled — the plan-cache lookup short-circuits before any LLM call site. The metering hook is wired at the LLM router span boundary, not at the `/v1/ask` request boundary, so a cached plan that runs against a premium-enabled DB never appears on the LLM-tokens invoice line. The customer's per-DB queries-over-the-included-50k counter still ticks (Pro pricing line, `docs/architecture.md §6`); only the LLM-tokens add-on line is gated behind a real LLM call.
@@ -172,7 +172,7 @@ The 8-point BYOK decision tree that previously lived here is resolved by [`SK-PR
 
 - **Add-on payment-fail routing** — Resolved per `GLOBAL-033` (cost → `GLOBAL-026` free chain forever): on `invoice.payment_failed` for the metered LLM-tokens line, route premium-enabled DBs back to the strict-$0 free chain — never block the product — and re-enable the add-on on a successful charge. `stripe-billing` owns the dunning mechanics (`SK-STRIPE-011`/`SK-STRIPE-013` + `SK-STRIPE-005` `past_due` sync); this bullet owns only the chain-selection consequence.
 - **Anonymous-mode interaction** — Resolved per `GLOBAL-033` (UX): anon principals have no Stripe customer, so the `SK-PREMIUM-004` premium CTA does **not** render for them; the create-an-account cross-sell takes its place on that surface.
-- **Parked until the surface-parity PR (GLOBAL-003 tracked gap):** BYOLLM surfaces still unbuilt — MCP `byollm` param, `<nlq-data byollm>` (cookie-session), CLI account-store verbs, `/app/keys` UI. Header lane (`SK-LLM-021`, `SK-SDK-010`, `SK-CLI-016`) + account lane (`SK-PREMIUM-012`, `SK-SDK-011`) already shipped.
+- **Parked until the surface-parity PR (GLOBAL-003 tracked gap):** the `model` preset param on `/v1/ask` + its routing, SDK `model` option, CLI `--model`/`nlq model set`, `<nlq-data model>`, MCP `model` param, and per-provider key storage (SK-PREMIUM-012 is one row/account, so switching frontier models re-enters the key). BYOLLM header lane (`SK-LLM-021`, `SK-SDK-010`, `SK-CLI-016`) + account lane (`SK-PREMIUM-012`, `SK-SDK-011`), the web model picker + `GET /v1/models` catalog + `trace.model` on MCP (`SK-PREMIUM-013`) already shipped.
 - **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram (shape + judge prompt + CI) — the CTA's quality-delta pull depends on it.
 - **Parked until Lago wiring (Phase 2, blocks `SK-PREMIUM-002`):** the LLM-router → Lago usage-metering path (`phase-plan.md §6`); and the per-key spend-cap **UI** (`SK-PREMIUM-006` has the data model; dashboard lives on the API-keys + DB-settings pages).
 - **Parked to Enterprise:** reseller / agency consolidated billing — v1 is per-account only.
