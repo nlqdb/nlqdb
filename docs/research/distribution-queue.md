@@ -55,13 +55,6 @@ drafts live in the [archive](./distribution-queue-archive.md).
   necessary, not sufficient; a 200 can still carry a failure** — so any
   retry/failover layer keyed off status alone has a blind spot.
 
-- **"Top N per group is the query `LIMIT` can't write."** slug
-  `top-n-rows-per-group` · venue dev.to + r/SQL + r/PostgreSQL · anchors
-  `/solve/find-top-n-rows-per-group` · gist: "top 3 **per category**" reads
-  like `ORDER BY … LIMIT 3` but `LIMIT` caps the whole result set — the fix is
-  `ROW_NUMBER() OVER (PARTITION BY …)` filtered to `rn <= 3`; the hidden
-  decision is ties (`ROW_NUMBER` vs `RANK`/`DENSE_RANK`).
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -79,6 +72,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 109 — **https://nlqdb.com/blog/text-to-sql-build-vs-buy/** — dev.to + r/SaaS + r/ExperiencedDevs · `/solve/add-ask-your-data-feature-without-building-text-to-sql`
 - run 119 — **https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/** — dev.to + r/SQL + r/analytics · `/solve/find-duplicate-rows-in-my-data`
 - run 110 — **https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/** — dev.to + r/dataengineering + r/BusinessIntelligence · `/vs/mode`
+- run 131 — **https://nlqdb.com/blog/top-n-rows-per-group/** — dev.to + r/SQL + r/PostgreSQL · `/solve/find-top-n-rows-per-group`
 
 ## Collapsed — full drafts in git history
 
