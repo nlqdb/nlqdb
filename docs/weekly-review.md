@@ -42,8 +42,8 @@ Nothing is improperly parked.
 ## Delta integrity (check 5) — sampled 3, all verify
 
 Re-measured **row #17 docs-ambiguity = 30** with the pinned case-insensitive
-method (matches #606 exactly). Surface sub-counts /solve 32 + /blog 13 match the
-data files exactly. Engine deltas #600 (19.3 pp) and #594 (0.512) cite real CI
+method (matches #606 exactly). Surface sub-counts /solve 33 + /blog 13 match the
+data files exactly (31 `/vs` + 33 + 13 = 77, row #6). Engine deltas #600 (19.3 pp) and #594 (0.512) cite real CI
 run IDs. **One caveat, disclosed:** #605 (`SK-LLM-043`) shipped an *offline
 deterministic ceiling* (+0.6 pp), not a live re-measured EX — legitimate (the
 free LLM chain can't run in-env behind the MITM proxy) and honestly flagged, but
