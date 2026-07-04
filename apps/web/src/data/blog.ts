@@ -41,6 +41,49 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "your-bi-tool-got-acquired-data-layer",
+    title: "Your BI tool got acquired. Your data layer shouldn't have to care.",
+    description:
+      "BI notebooks get rolled up — Mode → ThoughtSpot, Looker → Google, Periscope → Sisense. Fine when it's a destination humans log into; a liability when your product's runtime calls its API.",
+    date: "2026-07-04",
+    anchor: {
+      label: "nlqdb vs Mode — the full side-by-side",
+      path: "/vs/mode",
+    },
+    body: [
+      {
+        kind: "p",
+        text: "The analytics-notebook category is a roll-up. Mode went to ThoughtSpot in 2023 for a reported $200M. Looker went to Google. Periscope Data went to Sisense. This is normal — good analytics companies get bought, and the tool keeps working the morning after. The question that decides whether the acquisition is *news* or a *problem* for you is where you put the tool: a place your people log into, or a dependency inside your product's runtime.",
+      },
+      { kind: "h2", text: "A destination survives an acquisition. A dependency inherits it." },
+      {
+        kind: "p",
+        text: "When a BI tool is a **destination** — a workspace analysts open to write SQL, build a notebook, publish a dashboard — an acquisition is somebody else's roadmap. You get a new login screen, an eventual migration email, maybe a repriced tier. Annoying, bounded, and it happens on your analysts' time, not your users'. The tool is where humans go to look; the acquirer changing it is a thing humans notice and adapt to.",
+      },
+      {
+        kind: "p",
+        text: "When that same tool is a **dependency** — you wired its API, its embed, or its AI endpoint into the thing your product does at runtime — the acquisition is now your roadmap too. Whatever the buyer decides about that API's shape, its pricing, its rate limits, and especially its AI direction, your runtime inherits. Mode is a clean example: post-acquisition its AI arrives as ThoughtSpot Sage — LLM search over Mode Datasets, aimed at analysts. That's a reasonable direction for a destination analytics suite. It is a *different* direction than pre-acquisition Mode, and if your product had leaned on Mode's AI answering a specific way, the acquisition rewrote that for you, on the acquirer's schedule.",
+      },
+      { kind: "h2", text: "Two altitudes: where humans look vs. what your software calls" },
+      {
+        kind: "p",
+        text: "The split worth naming is altitude, not vendor. A **destination analytics app** is a SQL IDE plus notebooks plus shareable reports — a surface an analyst drives to explore and publish. A **runtime data layer** is the thing your product or agent calls per request to turn a question into an answer, unattended, in the hot path. The first is where humans look; the second is what your software calls. A destination can be acquired and rebranded and your users never feel it; a runtime dependency's ownership *is* felt, because it's on the critical path of a request your app is making right now.",
+      },
+      {
+        kind: "p",
+        text: "So the durable move isn't \"pick the vendor least likely to be acquired\" — you can't predict that, and the good ones get bought. It's to keep the acquisition-exposed thing at the altitude where an acquisition is bounded. Use the destination as a destination. If a capability has to live in your runtime, own that layer or buy it from something whose entire contract *is* the runtime call — English in, compiled SQL and typed rows out — so there's no notebook, embed surface, or analyst-facing AI story for an acquirer to redirect underneath you.",
+      },
+      {
+        kind: "p",
+        text: "(That runtime layer is what [nlqdb](https://nlqdb.com) is: ask in English over a Postgres it provisions, or one you already run via a signed-in connect, and get the compiled SQL plus typed rows back over an SDK, an HTML element, or MCP. Honest caveat — it is *not* a notebook or a BI suite. For collaborative SQL, Python/R cells, charts, and shareable dashboards, a Mode or a Hex is the right tool, and the two compose cleanly: the notebook is where your analysts explore, nlqdb is the data layer your product calls at runtime.)",
+      },
+      {
+        kind: "p",
+        text: "The general lesson: an acquisition doesn't break a tool — it transfers the roadmap. Whether that matters to you is a function of altitude. Anything a human logs into can change hands quietly; anything your runtime calls should be owned, or bought as a runtime, so a deal you didn't sign can't rewrite a request your product is already making.",
+      },
+    ],
+  },
+  {
     slug: "find-duplicate-rows-you-re-google-every-time",
     title: "The duplicate-rows query you re-Google every six weeks",
     description:
