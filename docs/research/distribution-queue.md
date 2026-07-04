@@ -43,10 +43,8 @@ Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
 delete its line.
 
 - run 106 — **https://nlqdb.com/blog/store-form-submissions-without-a-backend/**
-  — venue variant pending: dev.to + r/webdev + r/sideproject ("You don't need a
-  backend to store form submissions. You need a place to ask 'how many.'";
-  capture-vs-reporting split; anchors
-  `/solve/store-form-submissions-without-backend`).
+  — venue variant pending: dev.to + r/webdev + r/sideproject (capture-vs-
+  reporting split; anchors `/solve/store-form-submissions-without-backend`).
 - run 130 — **https://nlqdb.com/blog/not-in-subquery-null-trap/** — venue
   variant pending: dev.to + r/SQL + r/PostgreSQL ("NOT IN returned zero rows.
   It wasn't your data — it was one NULL."; anchors
@@ -99,11 +97,9 @@ delete its line.
   `/solve/find-duplicate-rows-in-my-data`).
 - run 110 — **https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/** —
   venue variant pending: dev.to + r/dataengineering + r/BusinessIntelligence
-  (BI notebooks are a roll-up — Mode → ThoughtSpot, Looker → Google, Periscope
-  → Sisense; an acquisition transfers the roadmap, which is bounded for a
-  destination humans log into but inherited by any product runtime that calls
-  its API/AI; name the altitude split — where humans look vs. what your
-  software calls; anchors `/vs/mode`).
+  (BI notebooks are a roll-up; an acquisition transfers the roadmap — bounded
+  for a destination humans log into, inherited by any runtime that calls its
+  API/AI; anchors `/vs/mode`).
 
 ## Collapsed — full drafts in git history
 
