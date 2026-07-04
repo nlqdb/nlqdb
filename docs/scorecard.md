@@ -84,7 +84,7 @@ row #11 **unmeasured (hung) → free-vs-agentic-frontier delta 19.3 pts** (free
 absolute agentic ≥ 0.80 still fails (0.667; 7 `openrouter:parse` no_sql
 suppress the frontier lanes). Smoke never touches the baseline — BIRD
 canonical stays 0.512 (row #8), still below the 0.60 floor. Artifact = this
-measurement record (verification-log row +
+measurement record (row #11 +
 [run 28685576019](https://github.com/nlqdb/nlqdb/actions/runs/28685576019));
 distribution untouched this run (open PR #599 owns the blog lane). **KPI:**
 GLOBAL-025 engine-quality — the headline free-vs-frontier delta is now a live
