@@ -13,6 +13,30 @@ as many as fit under the cap; everything older collapses to a one-line title +
 venue + gist, with the full body recoverable from git history. The earliest
 drafts live in the [archive](./distribution-queue-archive.md).
 
+## Drafts — unpublished, newest first
+
+- **"Top N per group is the query `LIMIT` can't write."** slug
+  `top-n-rows-per-group` · venue dev.to + r/SQL + r/PostgreSQL · anchors
+  `/solve/find-top-n-rows-per-group`.
+  Angle: "give me the top 3 products **per category**" reads like `ORDER BY … LIMIT
+  3`, but `LIMIT` caps the *whole result set*, not each group — it silently returns
+  3 rows total. The fix is a window function: number rows *within* each partition and
+  filter.
+  ```sql
+  SELECT category, product, revenue
+  FROM (
+    SELECT category, product, revenue,
+           ROW_NUMBER() OVER (PARTITION BY category ORDER BY revenue DESC) AS rn
+    FROM sales
+  ) ranked
+  WHERE rn <= 3;
+  ```
+  The one decision the phrasing hides: **ties.** `ROW_NUMBER()` picks an arbitrary 3
+  when the 3rd and 4th tie; `RANK()`/`DENSE_RANK()` keep the ties (can return > 3).
+  "Top 3" is three different queries and the asker rarely says which — nlqdb picks a
+  lane and shows it in the trace so the human can correct it. Close on why "just add a
+  LIMIT" is the classic wrong answer to the greatest-n-per-group problem.
+
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
