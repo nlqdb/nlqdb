@@ -5,9 +5,15 @@ Point-in-time tracker, regenerated each
 (≤20 KB cap). History: `git log` +
 `progress/quality-score-verification-log.md` (engine).
 
-**Weekly focus number:** *(none set — [`/weekly`](../.claude/commands/weekly.md)
-sets it; until then the daily lever targets the worst **agent-movable**
-number below.)*
+**Weekly focus number (2026-07-04 → 07-11):** **BIRD raw EX 0.512 → ≥ 0.60**
+(row #8). The only pillar below a hard [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md)
+Phase-2 floor, and `SK-QUAL-005` mandates engine work until it clears — so it
+outranks the distribution lever this week regardless of anti-rut. Agent-movable
+via `SK-QUAL-014` loss-bucket → planner-directive mining (`SK-LLM-043` shipped a
++0.6 pp offline ceiling this cycle). **Rider:** land the *live* CI re-measure of
+each directive, not just offline de-concat ceilings — the loop is accruing
+unverified-live deltas. Distribution volume holds (yield near-zero; see
+`weekly-review.md`).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric; the daily **lever** targets its agent-movable inputs. Today's
