@@ -255,6 +255,5 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 
 - **Deferred:** a `feature.eval.smoke` event; a hard token-budget counter (`SK-QUAL-011`/`012` cover it reactively).
 - **Still open** ([`SK-QUAL-009`](#sk-qual-009)): multi-model frontier until the Sonnet 4.6 baseline lands; BYOLLM lane depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA next Spider baseline.
-- **Canonical raw EX — Resolved** (single source of truth is `quality-score-source-of-truth.md` §2 + the scorecard; `SK-QUAL-013`). Not an open question — kept only as the where-to-look pointer.
 - **Value retrieval (§4 #2a) — closed, not parked** (`SK-QUAL-014` run 18: `literal_only` = 0 ⇒ ~0 mismatches flipped). Egress stays schema-only per [`GLOBAL-037`](../../decisions/GLOBAL-037-schema-only-llm-egress.md).
-- **Corrected-set evaluation — parked until the next BIRD refresh** (`GLOBAL-033`). UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% BIRD annotation errors. **Adopt iff** license permits bundling **and** it's a ~50-LOC scorer-reuse patch; else skip.
+- **Corrected-set evaluation — parked on license** (`GLOBAL-033`). Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% BIRD annotation errors + released **Arcwise-Plat-SQL** (git JSON our loader parses ⇒ ~50-LOC scorer re-point). **Blocker: repo states no license** (P2 2026-07-04); unblock = a license issue upstream. Material: this run's 46/238 `extra_DISTINCT` losses are often the model being *more* right than gold ⇒ 0.512 is a floor.

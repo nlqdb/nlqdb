@@ -192,10 +192,11 @@ the rule.
   gap; neither adapter can pin the resolved IP into the underlying `fetch`).
   Acceptable for BYO (the user supplied their own host); revisit if a non-BYO
   outbound path is added.
-- **(d) `connection_secret_ref` kept NOT NULL via the `__byo_blob__` sentinel.**
+- **(d) `connection_secret_ref` kept NOT NULL via the `__byo_blob__` sentinel — Resolved (additive design).**
   The sentinel keeps the migration additive (one nullable column, no constraint
-  relaxation). If a future schema rev makes the column nullable, the sentinel
-  read-path in `db-registry.ts` must be retired in the same change.
+  relaxation). Conditional follow-up only: if a future schema rev makes the column
+  nullable, the sentinel read-path in `db-registry.ts` must be retired in the same
+  change.
 - **KEK rotation for the BYO blob** — inherited from `SK-DB-011` /
   `GLOBAL-031`; the unwrap+re-wrap procedure + key-version column is still
   unscoped.
