@@ -1,6 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { openAICompatibleChat } from "../../src/providers/openai-compatible.ts";
-import { openAIChatResponse } from "../_fixtures.ts";
+import { ProviderError } from "../../src/types.ts";
+import { jsonResponse, openAIChatResponse } from "../_fixtures.ts";
+
+const chatArgs = {
+  url: "https://openrouter.ai/api/v1/chat/completions",
+  apiKey: "k",
+  model: "m",
+  messages: [],
+};
+
+async function reasonOf(body: unknown): Promise<string> {
+  const fetch = () => Promise.resolve(jsonResponse(body));
+  try {
+    await openAICompatibleChat(chatArgs, { fetch });
+  } catch (err) {
+    return err instanceof ProviderError ? err.reason : `not-a-ProviderError:${String(err)}`;
+  }
+  throw new Error("expected openAICompatibleChat to throw");
+}
 
 describe("openAICompatibleChat header merge", () => {
   it("forwards caller headers (e.g. AI Gateway control headers)", async () => {
@@ -42,5 +60,44 @@ describe("openAICompatibleChat header merge", () => {
       { fetch },
     );
     expect(auth).toBe("Bearer real-key");
+  });
+});
+
+describe("openAICompatibleChat 200-body error envelope (SK-LLM-042)", () => {
+  it("a 429-shaped error body → rate_limited (capacity, not a scored no_sql)", async () => {
+    expect(await reasonOf({ error: { message: "Provider returned error", code: 429 } })).toBe(
+      "rate_limited",
+    );
+  });
+
+  it("a 'rate limit' message with no numeric code → rate_limited", async () => {
+    expect(await reasonOf({ error: { message: "upstream rate limit exceeded" } })).toBe(
+      "rate_limited",
+    );
+  });
+
+  it("OpenRouter metadata.error_type mentioning rate → rate_limited", async () => {
+    expect(
+      await reasonOf({ error: { message: "boom", metadata: { error_type: "rate_limited" } } }),
+    ).toBe("rate_limited");
+  });
+
+  it("a generic upstream error body → provider_error (retryable, not parse)", async () => {
+    expect(await reasonOf({ error: { message: "upstream model crashed", code: 502 } })).toBe(
+      "provider_error",
+    );
+  });
+
+  it("an error body with no message still classifies (no throw on JSON.stringify path)", async () => {
+    expect(await reasonOf({ error: { code: 500 } })).toBe("provider_error");
+  });
+
+  it("a well-formed 200 with content is untouched — no regression", async () => {
+    const fetch = () => Promise.resolve(openAIChatResponse("SELECT 1"));
+    await expect(openAICompatibleChat(chatArgs, { fetch })).resolves.toBe("SELECT 1");
+  });
+
+  it("a 200 missing content and with no error field stays parse (genuinely malformed)", async () => {
+    expect(await reasonOf({ id: "x", choices: [] })).toBe("parse");
   });
 });

@@ -338,6 +338,21 @@ describe("createLLMRouter — failover", () => {
       expect(tail.calls).toHaveLength(2);
     });
 
+    it("retries the tail once on `provider_error` (SK-LLM-042 — gateway 200-body upstream blip)", async () => {
+      let n = 0;
+      const tail = fakeProvider("openrouter", {
+        plan: async () => {
+          n += 1;
+          if (n === 1) throw new ProviderError("200 with error body", "provider_error");
+          return { sql: "SELECT 42" };
+        },
+      });
+      const router = createLLMRouter({ providers: [tail], chains: { plan: ["openrouter"] } });
+      const res = await router.plan(PLAN_REQ);
+      expect(res.sql).toBe("SELECT 42");
+      expect(tail.calls).toHaveLength(2);
+    });
+
     it("retries at most once — a persistently failing tail still throws", async () => {
       const tail = fakeProvider("mistral", { plan: new ProviderError("down", "network") });
       const router = createLLMRouter({ providers: [tail], chains: { plan: ["mistral"] } });

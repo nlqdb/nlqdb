@@ -36,7 +36,10 @@ it has nowhere to fail over to.
   *retries handle transient glitches; fallbacks handle persistent
   failures* (Portkey / Bifrost production guides, 2026).
 - **Consequence in code:** `router.ts` gains `TAIL_RETRY_REASONS`
-  (`{network, http_5xx}`), `TAIL_RETRY_BACKOFF_MS`, and an abort-aware
+  (`{network, http_5xx, provider_error}` — `provider_error` added by
+  [`SK-LLM-042`](./SK-LLM-042-openrouter-200-error-classify.md) for the same
+  reason: a gateway's 200-body upstream failure is transient and fast-failing),
+  `TAIL_RETRY_BACKOFF_MS`, and an abort-aware
   `sleep`. The retry reuses the existing `attempt()` path, so it emits
   its own `llm.<op>` span — a tail retry is visible in traces as a
   second span for the tail provider, no new metric/label
