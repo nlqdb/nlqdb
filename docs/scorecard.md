@@ -110,8 +110,9 @@ shipped — `MATRIX_VERIFIED_ON` + a 60-day staleness test — but that test had
 real hole: `ageDays < 60` also passes for a *future* date (negative age), so a
 fat-fingered `MATRIX_VERIFIED_ON` would silently disable the alert for months,
 and a regex-shaped-but-impossible date (`2026-13-45` → NaN) slipped through too.
-`agentMemoryMatrix.test.ts` now rejects both (`>= 0` + `!Number.isNaN`), with an
-actionable message. Proof: `f("2026-09-19")` passed the old check, fails the new
+`agentMemoryMatrix.test.ts` now rejects both (`ageDays >= -1` — 1-day tolerance
+for UTC-midnight timezone skew on a "today" date — + `!Number.isNaN`), with an
+actionable comment. Proof: `f("2026-09-19")` passed the old check, fails the new
 one; the real `2026-06-19` (16 d) still passes. The matrix is a live persuasion
 asset (`/agents`, home, blog), so a defeatable freshness check risked shipping
 stale competitor claims. Bullet marked Resolved (26 → 25). **Distribution (step
