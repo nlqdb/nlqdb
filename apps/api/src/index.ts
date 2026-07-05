@@ -880,11 +880,31 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const routing = resolveAskRouter({
       headerCredential: byollmCredential,
       accountCredential,
+      ...(parsed.body.model !== undefined ? { preset: parsed.body.model } : {}),
       freeRouter: getLLMRouter(),
       gateway: { accountId: c.env.AI_GATEWAY_ACCOUNT_ID, gatewayId: c.env.AI_GATEWAY_ID },
       userId: principal.id,
     });
     if (!routing.ok) {
+      // SK-PREMIUM-014 — `model: "best"` with no frontier lane to honour
+      // it (no BYOLLM key; hosted premium is §6-dark). 409, not 5xx: the
+      // request is well-formed and the caller can resolve it through
+      // either GLOBAL-026 door. Never silently serve the free chain here.
+      if (routing.reason === "frontier_unavailable") {
+        span.setAttribute("nlqdb.ask.outcome", "model_unavailable");
+        span.end();
+        return c.json(
+          {
+            error: {
+              status: "model_unavailable" as const,
+              message:
+                'model "best" needs a frontier model: add your own provider key (BYOLLM) or a paid plan — pick one under /app/keys.',
+              link: "https://nlqdb.com/app/keys",
+            },
+          },
+          409,
+        );
+      }
       span.setAttribute("nlqdb.ask.outcome", "byollm_gateway_unconfigured");
       span.end();
       return c.json(
@@ -907,7 +927,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // key) always wins, so we skip when that lane was chosen. Mutating
     // `routing.router` matches how the BYOLLM router already propagates to the
     // query path (the create/DDL branches keep the free router).
-    if (routing.attributes["llm.dispatch_lane"] !== "byollm") {
+    // SK-PREMIUM-014 — `model: "fast"` pins the strict-$0 chain, so the
+    // founder-funded frontier upgrade is skipped too, not just BYOLLM.
+    if (routing.attributes["llm.dispatch_lane"] !== "byollm" && parsed.body.model !== "fast") {
       const frontierRouter = await resolveFrontierAskRouter(c.env, principal.kind, {
         e2e: (c.req.header("x-nlqdb-e2e") ?? "") === "1",
       });

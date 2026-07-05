@@ -4,7 +4,7 @@
 // rather than as a broken picker.
 
 import { describe, expect, it } from "vitest";
-import { MODEL_CATALOG } from "../src/catalog.ts";
+import { isModelPreset, MODEL_CATALOG, MODEL_PRESETS } from "../src/catalog.ts";
 
 describe("MODEL_CATALOG (SK-PREMIUM-013)", () => {
   it("exposes exactly the auto|fast|best presets, in order", () => {
@@ -13,6 +13,16 @@ describe("MODEL_CATALOG (SK-PREMIUM-013)", () => {
       expect(p.label.length).toBeGreaterThan(0);
       expect(p.description.length).toBeGreaterThan(0);
     }
+  });
+
+  // SK-PREMIUM-014 — the wire validator and the picker render from the
+  // same list; a preset added to one without the other fails here.
+  it("MODEL_PRESETS mirrors the catalog presets (validator lockstep)", () => {
+    expect(MODEL_CATALOG.presets.map((p) => p.id)).toEqual([...MODEL_PRESETS]);
+    for (const id of MODEL_PRESETS) expect(isModelPreset(id)).toBe(true);
+    expect(isModelPreset("gpt-5.5")).toBe(false);
+    expect(isModelPreset("")).toBe(false);
+    expect(isModelPreset(undefined)).toBe(false);
   });
 
   it("leads with the keyless free entry", () => {

@@ -156,4 +156,69 @@ describe("resolveAskRouter", () => {
     });
     expect(res).toEqual({ ok: false, reason: "gateway_unconfigured" });
   });
+
+  // SK-PREMIUM-014 — the `model` preset knob.
+  it('preset "fast" pins the free router even when a credential is stored', () => {
+    const res = resolveAskRouter({
+      headerCredential: null,
+      accountCredential: { upstream: "anthropic", model: "claude-4-5-sonnet", apiKey: "sk-acct" },
+      preset: "fast",
+      freeRouter: FREE,
+      gateway,
+      userId: "u1",
+    });
+    expect(res).toEqual({
+      ok: true,
+      router: FREE,
+      attributes: {
+        "llm.dispatch_lane": "free",
+        "llm.billed_to": "platform",
+        "llm.model_preset": "fast",
+      },
+    });
+  });
+
+  it('preset "best" rides the stored BYOLLM credential when one exists', () => {
+    const res = resolveAskRouter({
+      headerCredential: null,
+      accountCredential: { upstream: "anthropic", model: "claude-4-5-sonnet", apiKey: "sk-acct" },
+      preset: "best",
+      freeRouter: FREE,
+      gateway,
+      userId: "u1",
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.router).not.toBe(FREE);
+      expect(res.attributes["llm.dispatch_lane"]).toBe("byollm");
+      expect(res.attributes["llm.model_preset"]).toBe("best");
+    }
+  });
+
+  it('preset "best" with no frontier lane reports frontier_unavailable — never a silent free downgrade', () => {
+    const res = resolveAskRouter({
+      headerCredential: null,
+      accountCredential: null,
+      preset: "best",
+      freeRouter: FREE,
+      gateway,
+      userId: "u1",
+    });
+    expect(res).toEqual({ ok: false, reason: "frontier_unavailable" });
+  });
+
+  it('preset "auto" keeps the plain precedence (free with no credential)', () => {
+    const res = resolveAskRouter({
+      headerCredential: null,
+      preset: "auto",
+      freeRouter: FREE,
+      gateway,
+      userId: "u1",
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.router).toBe(FREE);
+      expect(res.attributes["llm.model_preset"]).toBe("auto");
+    }
+  });
 });

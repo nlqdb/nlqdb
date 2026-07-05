@@ -193,6 +193,23 @@ describe("handleQuery", () => {
     );
   });
 
+  it("passes the model preset through to the SDK request (SK-PREMIUM-014)", async () => {
+    const ask = vi.fn(async () => ({
+      status: "ok" as const,
+      rows: [],
+      rowCount: 0,
+      trace: { sql: "", plan_id: "", confidence: 0, model: "", cache_hit: false },
+    }));
+    const client = stubClient({ ask });
+
+    await handleQuery(client, { db: "users", q: "count users", model: "fast" });
+
+    expect(ask).toHaveBeenCalledWith(
+      expect.objectContaining({ goal: "count users", dbId: "users", model: "fast" }),
+      expect.any(Object),
+    );
+  });
+
   it("omits dbId when db is not provided (SK-ASK-009 goal-first auto-target)", async () => {
     const ask = vi.fn(async () => ({
       status: "ok" as const,

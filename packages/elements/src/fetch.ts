@@ -59,6 +59,10 @@ export type AskParams = {
   // `true` on the second hop to commit the diffed write. Reads ignore
   // it server-side.
   confirm?: boolean;
+  // SK-PREMIUM-014 — the goal-first model preset (`auto|fast|best`).
+  // Typed loose: the server validates and 400s `invalid_model`, so the
+  // CDN bundle doesn't need a type bump when presets evolve.
+  model?: string;
   signal?: AbortSignal;
   // Override the default `fetch` — used in tests so they don't have
   // to monkey-patch a global.
@@ -88,9 +92,12 @@ export async function fetchAsk(p: AskParams): Promise<AskOutcome> {
     response = await fetchImpl(p.endpoint, {
       method: "POST",
       headers,
-      body: JSON.stringify(
-        p.confirm ? { goal: p.goal, dbId: p.dbId, confirm: true } : { goal: p.goal, dbId: p.dbId },
-      ),
+      body: JSON.stringify({
+        goal: p.goal,
+        dbId: p.dbId,
+        ...(p.confirm ? { confirm: true } : {}),
+        ...(p.model !== undefined ? { model: p.model } : {}),
+      }),
       // Same-origin cookie session (Better Auth `__Host-session`)
       // only — host-only cookies are not sent cross-origin even with
       // `include`. Harmless when no cookie is set.

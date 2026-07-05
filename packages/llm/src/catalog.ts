@@ -7,10 +7,12 @@
 // "no model string in a surface file" test stays green.
 //
 // Two knobs, per GLOBAL-026 + SK-PREMIUM-003 ("Both"):
-//   • presets — the goal-first `auto | fast | best` knob wired to the
-//     free / hosted-premium lanes. Hosted premium is §6-gated (dark), so
-//     the preset routing is documented here but not yet enforced on
-//     `/v1/ask` (tracked gap in premium-tier/FEATURE.md).
+//   • presets — the goal-first `auto | fast | best` knob, accepted as the
+//     `model` param on `/v1/ask` and routed by `selectDispatchLane`
+//     (SK-PREMIUM-014): `fast` pins the free chain, `best` demands a
+//     frontier lane (BYOLLM today; hosted premium stays §6-dark) and
+//     fails loud when none exists, `auto`/absent keeps the default
+//     precedence.
 //   • models  — the "advanced" named picker. `free` is the strict-$0 chain;
 //     each frontier entry is a BYOLLM (bring-your-own-key) model pinned to
 //     an AI-Gateway compat provider. Selecting one with no stored key drives
@@ -18,6 +20,15 @@
 //     (hosted-premium credits) is surfaced by the picker as "coming soon".
 
 export type ModelPreset = "auto" | "fast" | "best";
+
+// Runtime mirror of `ModelPreset` for wire-input validation (the `model`
+// param on `/v1/ask`); kept in lockstep with `MODEL_CATALOG.presets` by a
+// unit test so the validator and the picker can't drift.
+export const MODEL_PRESETS = ["auto", "fast", "best"] as const satisfies readonly ModelPreset[];
+
+export function isModelPreset(value: unknown): value is ModelPreset {
+  return typeof value === "string" && (MODEL_PRESETS as readonly string[]).includes(value);
+}
 
 // Which dispatch lane an entry resolves to (mirrors DispatchLane in
 // byollm-dispatch.ts; `premium` entries are §6-dark today so none ship).

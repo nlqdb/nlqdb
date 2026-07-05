@@ -4,6 +4,7 @@
 // apps/api) and this applies the precedence, so the ordering can't drift
 // between surfaces. See decisions/SK-LLM-020-byollm-lane-selector.md.
 
+import type { ModelPreset } from "./catalog.ts";
 import { createByollmProvider } from "./providers/byollm.ts";
 import { createLLMRouter, type LLMRouter } from "./router.ts";
 import type { ProviderName } from "./types.ts";
@@ -40,22 +41,36 @@ export type DispatchInputs = {
   // AND the §6 meter is live (SK-LLM-017). The caller resolves this; the
   // premium chain itself stays dark pre-§6.
   premiumEligible?: boolean;
+  // SK-PREMIUM-003 goal-first knob (`SK-PREMIUM-014` wire semantics):
+  // `fast` pins the strict-$0 free chain even when a credential is
+  // attached; `best` demands a frontier lane and resolves `unavailable`
+  // when none exists (the caller fails loud — never a silent downgrade);
+  // `auto` / absent applies the plain four-step precedence.
+  preset?: ModelPreset;
 };
 
 export type DispatchSelection =
   | { lane: "byollm"; credential: ByollmCredential; source: ByollmSource }
   | { lane: "premium" }
-  | { lane: "free" };
+  | { lane: "free" }
+  // `model="best"` with no frontier lane to honour it. Terminal: the
+  // caller returns a one-sentence error (GLOBAL-012) instead of
+  // dispatching — routing "best" to the free chain would be the silent
+  // downgrade SK-LLM-016 forbids in the other direction.
+  | { lane: "unavailable"; requested: "best" };
 
-// Pure four-step dispatch precedence (SK-LLM-016, GLOBAL-026):
+// Pure dispatch precedence (SK-LLM-016 + the SK-PREMIUM-003 preset):
+//   0. preset "fast"           → free (pins the strict-$0 chain)
 //   1. per-request header key  → byollm
 //   2. account-stored key      → byollm
 //   3. premium-eligible        → premium
-//   4. otherwise               → free
+//   4. preset "best"           → unavailable (no frontier lane to honour it)
+//   5. otherwise               → free
 // No I/O — the caller resolves credentials + premium eligibility, this
 // just applies the precedence. Keeping it pure makes the ordering a
 // single, testable source of truth across every surface.
 export function selectDispatchLane(inputs: DispatchInputs): DispatchSelection {
+  if (inputs.preset === "fast") return { lane: "free" };
   if (inputs.headerCredential) {
     return { lane: "byollm", credential: inputs.headerCredential, source: "header" };
   }
@@ -63,6 +78,7 @@ export function selectDispatchLane(inputs: DispatchInputs): DispatchSelection {
     return { lane: "byollm", credential: inputs.accountCredential, source: "account" };
   }
   if (inputs.premiumEligible) return { lane: "premium" };
+  if (inputs.preset === "best") return { lane: "unavailable", requested: "best" };
   return { lane: "free" };
 }
 
@@ -132,6 +148,10 @@ export function dispatchLaneAttributes(sel: DispatchSelection): Record<string, s
       return { "llm.dispatch_lane": "premium", "llm.billed_to": "metered" };
     case "free":
       return { "llm.dispatch_lane": "free", "llm.billed_to": "platform" };
+    case "unavailable":
+      // Never stamped on a served ask — the caller fails loud before any
+      // dispatch. Present so the switch stays exhaustive.
+      return { "llm.dispatch_lane": "unavailable" };
     default: {
       // Exhaustiveness guard — a new lane must add its mapping here.
       const _never: never = sel;

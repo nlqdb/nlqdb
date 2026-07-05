@@ -29,11 +29,11 @@ declare global {
 // Fetch-relevant attributes — a change to any of these triggers a
 // new `update()`. `refresh` is observed too but only re-arms the
 // polling timer (handled in `attributeChangedCallback`).
-const FETCH_ATTRS = new Set(["goal", "db", "query", "api-key", "endpoint", "template"]);
+const FETCH_ATTRS = new Set(["goal", "db", "query", "api-key", "endpoint", "template", "model"]);
 
 export class NlqDataElement extends HTMLElement {
   static get observedAttributes(): string[] {
-    return ["goal", "db", "query", "api-key", "endpoint", "template", "refresh"];
+    return ["goal", "db", "query", "api-key", "endpoint", "template", "refresh", "model"];
   }
 
   private refreshHandle: number | null = null;
@@ -103,6 +103,9 @@ export class NlqDataElement extends HTMLElement {
     const apiKey = this.getAttribute("api-key") ?? undefined;
     const endpoint = this.getAttribute("endpoint") ?? DEFAULT_ENDPOINT;
     const template = this.getAttribute("template") ?? "table";
+    // SK-PREMIUM-014 — preset passthrough; the server validates the
+    // value (`invalid_model` renders through the normal error path).
+    const model = (this.getAttribute("model") ?? "").trim() || undefined;
 
     if (!goal) {
       this.cancelInflight();
@@ -128,7 +131,7 @@ export class NlqDataElement extends HTMLElement {
 
     let outcome: Awaited<ReturnType<typeof fetchAsk>>;
     try {
-      outcome = await fetchAsk({ endpoint, goal, dbId, apiKey, signal: controller.signal });
+      outcome = await fetchAsk({ endpoint, goal, dbId, apiKey, model, signal: controller.signal });
     } catch (err) {
       // AbortError = our own `cancelInflight()` raced this fetch. Drop
       // the result silently; the new request owns the next render.

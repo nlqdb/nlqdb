@@ -15,31 +15,38 @@ drafts live in the [archive](./distribution-queue-archive.md).
 
 ## Drafts — unpublished, newest first
 
+- **"Your 'best model' toggle quietly serves the cheap model. Ship a 409
+  instead."** slug `model-preset-fail-loud` · venue dev.to (#llm #api #ux) +
+  r/LLMDevs · engine/product lesson · anchors the honest-knob theme
+  (`SK-PREMIUM-014`, premium-tier FEATURE; GLOBAL-012 fail-loud). Angle:
+  every AI product now has a model picker, and the tempting branch when the
+  premium lane isn't available (no key, no plan, meter dark) is to silently
+  serve the default chain — the user asked for *best*, got *cheapest*, and
+  the only signal is quality variance they'll eventually blame on you. A
+  placebo knob is worse than no knob. The honest contract has three lines:
+  `fast` always pins the cheap chain, even when a stored provider key would
+  auto-upgrade (an explicit per-request instruction beats an ambient
+  credential — the CI-job case); `best` either gets a real frontier lane or
+  fails loud with a 409 + a machine-branchable code + a fix-it link (an
+  error the caller can `switch` on beats a trace-note nobody reads);
+  `auto`/absent stays the default. Bonus: the refusal *is* your demand
+  signal — counting `model_unavailable` tells you exactly how many users
+  want the paid lane you haven't lit, with an honest denominator. Implement
+  the precedence as one pure function the surfaces share (nlqdb:
+  `selectDispatchLane`, five surfaces, one test file) so SDK/CLI/MCP/web
+  can't drift. Honest split — this is contract design, not capability: the
+  free chain still answers most asks fine; the knob just never lies about
+  which chain answered.
+
 - **"Your text-to-SQL model isn't as wrong as your benchmark says. The gold
   SQL is."** slug `bird-gold-noise-distinct` · venue dev.to (#sql #llm #ai) +
-  r/LLMDevs + lobste.rs (`llm`) · engine lesson · anchors the "engine number is
-  a floor, not a ceiling" honesty theme (`SK-QUAL-014`, quality-eval FEATURE).
-  Angle: you run BIRD-dev, read 0.512 EX, and start writing planner directives
-  to close the gap. Before you do, *bucket the losses*. On the pinned 500-q
-  baseline we tagged all 238 mismatches structurally: **46 of them (19%) differ
-  from gold only by a `DISTINCT` the model added and gold didn't** —
-  `COUNT(DISTINCT customer_id)` vs gold's `COUNT(*)`, `SELECT DISTINCT x` vs a
-  plain `SELECT x`. Read the pairs and a chunk are the model being *more*
-  correct than the annotation: counting patients after a one-to-many join to a
-  lab table, `COUNT(DISTINCT T1.ID)` is the right grain and gold's
-  `COUNT(T1.ID)` over-counts the fan-out. EX scores the model *wrong* for being
-  right. This isn't a nlqdb quirk — UIUC's Kang lab
-  ([VLDB 2026, arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found
-  **52.8% of BIRD instances carry annotation errors** and released a corrected
-  set. The trap: chase the noisy buckets with prompt directives and you *overfit
-  to wrong gold* — you teach the model to drop a `DISTINCT` it should keep,
-  degrading real-world answers to win a benchmark point. Fix: classify your loss
-  mass before you touch the prompt (a ~100-line structural differ, no LLM
-  needed); only write a directive for a bucket where gold is *right* and the
-  model is *wrong* (we did this for column-concatenation — 7 clean losses, 0
-  gold-noise). Close on the rule — **a benchmark number is a floor bounded by
-  its gold quality, not a measure of your engine; before optimizing a metric,
-  audit what it's actually counting.**
+  r/LLMDevs + lobste.rs (`llm`) · engine lesson (full body in git history,
+  D4-collapsed): 46/238 BIRD-dev losses differ from gold only by a `DISTINCT`
+  the model *rightly* added post-fan-out-join — EX marks the more-correct
+  answer wrong; Kang lab (VLDB 2026, arXiv:2601.08778) puts BIRD annotation
+  errors at 52.8%. Rule: bucket your loss mass with a structural differ before
+  writing prompt directives, or you overfit to wrong gold — a benchmark number
+  is a floor bounded by its gold quality (`SK-QUAL-014`).
 
 - **"Your LLM fused the two columns you asked for — and the eval marked it
   wrong."** slug `llm-concatenates-columns-text-to-sql` · dev.to (#sql #llm #ai)

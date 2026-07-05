@@ -16,7 +16,9 @@ export {
 export {
   type CatalogModel,
   type CatalogPreset,
+  isModelPreset,
   MODEL_CATALOG,
+  MODEL_PRESETS,
   type ModelCatalog,
   type ModelLane,
   type ModelPreset,

@@ -13,6 +13,7 @@
 // dbId being optional.
 
 import { ALLOWED_ENGINES, type Engine, isAllowedEngine } from "@nlqdb/db";
+import { isModelPreset, MODEL_PRESETS, type ModelPreset } from "@nlqdb/llm";
 import type { Context } from "hono";
 
 export { ALLOWED_ENGINES, isAllowedEngine };
@@ -30,7 +31,16 @@ export type GoalDbBody = { goal: string; dbId: string };
 // picks. Validated at parse time against the `Engine` literal in
 // `@nlqdb/db`; an unknown string returns `invalid_engine` rather than
 // silently coercing to a default.
-export type AskBody = { goal: string; dbId?: string; engine?: Engine; confirm?: boolean };
+// SK-PREMIUM-014 — `model` is the goal-first preset knob (SK-PREMIUM-003),
+// validated at parse time against `MODEL_PRESETS`; an unknown string
+// returns `invalid_model` rather than silently coercing to `auto`.
+export type AskBody = {
+  goal: string;
+  dbId?: string;
+  engine?: Engine;
+  confirm?: boolean;
+  model?: ModelPreset;
+};
 
 // `invalid_engine` carries the offending value + the allowed list so
 // SDK / CLI consumers can render a precise message ("`mysql` is not a
@@ -41,6 +51,15 @@ export type InvalidEngineBody = {
   error: "invalid_engine";
   value: unknown;
   allowed: Engine[];
+};
+
+// `invalid_model` mirrors `invalid_engine` for the SK-PREMIUM-003 preset
+// knob — offending value + allowed presets, renderable as one sentence
+// (GLOBAL-012).
+export type InvalidModelBody = {
+  error: "invalid_model";
+  value: unknown;
+  allowed: ModelPreset[];
 };
 
 // `goal_too_long` carries maxLength so SDK / CLI consumers can render
@@ -56,7 +75,8 @@ export type ParseErrorBody =
     }
   | GoalTooLongBody
   | SqlTooLongBody
-  | InvalidEngineBody;
+  | InvalidEngineBody
+  | InvalidModelBody;
 
 export type ParseError = {
   status: 400;
@@ -109,6 +129,7 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
     dbId?: unknown;
     engine?: unknown;
     confirm?: unknown;
+    model?: unknown;
   }>(c);
   if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
   if (typeof raw.body.goal !== "string" || raw.body.goal.trim().length === 0) {
@@ -134,6 +155,20 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
   // as preview-mode so a malformed client can't bypass the gate.
   if (raw.body.confirm === true) {
     body.confirm = true;
+  }
+  // SK-PREMIUM-014 — preset knob. An empty string is treated as omitted
+  // (same client convenience as dbId); unknown strings reject.
+  if (raw.body.model !== undefined && raw.body.model !== "") {
+    if (!isModelPreset(raw.body.model)) {
+      return {
+        ok: false,
+        error: {
+          status: 400,
+          body: { error: "invalid_model", value: raw.body.model, allowed: [...MODEL_PRESETS] },
+        },
+      };
+    }
+    body.model = raw.body.model;
   }
   return { ok: true, body };
 }

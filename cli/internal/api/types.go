@@ -12,6 +12,10 @@ type AskRequest struct {
 	DBID    string `json:"dbId,omitempty"`
 	Engine  string `json:"engine,omitempty"`
 	Confirm bool   `json:"confirm,omitempty"`
+	// SK-PREMIUM-014 — goal-first preset (auto|fast|best); the server
+	// validates (invalid_model) and errors model_unavailable when "best"
+	// has no frontier lane to honour it.
+	Model string `json:"model,omitempty"`
 }
 
 type Trace struct {
