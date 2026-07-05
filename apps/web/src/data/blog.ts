@@ -42,7 +42,8 @@ export type BlogPost = {
 export const BLOG_POSTS: BlogPost[] = [
   {
     slug: "http-200-error-in-body",
-    title: "Your text-to-SQL eval is lying: the gateway returns HTTP 200 with the error in the body",
+    title:
+      "Your text-to-SQL eval is lying: the gateway returns HTTP 200 with the error in the body",
     description:
       "A gateway commits 200 OK before the upstream model fails, so the error rides in the 200 body. A res.ok-only client counts it as a wrong answer, not an outage. res.ok is necessary, not sufficient.",
     date: "2026-07-05",
@@ -63,12 +64,12 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         kind: "code",
         lang: "json",
-        code: "// HTTP/1.1 200 OK  ← the status lies\n{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"Provider returned error\",\n    \"metadata\": { \"provider_name\": \"...\" }\n  }\n}\n// no \"choices\" — the completion never happened",
+        code: '// HTTP/1.1 200 OK  ← the status lies\n{\n  "error": {\n    "code": 429,\n    "message": "Provider returned error",\n    "metadata": { "provider_name": "..." }\n  }\n}\n// no "choices" — the completion never happened',
       },
       { kind: "h2", text: "Why `res.ok` quietly corrupts an eval" },
       {
         kind: "p",
-        text: "The natural client is a two-branch one: if `res.ok`, parse the completion; otherwise, it's an infrastructure error — pause, back off, retry. That branch is where the damage happens. A `200` with an error body takes the *success* branch. Your parser reaches for `choices[0].message.content`, finds nothing, and hands back an empty string. Downstream, an empty completion is indistinguishable from \"the model answered but produced no SQL\" — so it gets scored as a **wrong answer**.",
+        text: 'The natural client is a two-branch one: if `res.ok`, parse the completion; otherwise, it\'s an infrastructure error — pause, back off, retry. That branch is where the damage happens. A `200` with an error body takes the *success* branch. Your parser reaches for `choices[0].message.content`, finds nothing, and hands back an empty string. Downstream, an empty completion is indistinguishable from "the model answered but produced no SQL" — so it gets scored as a **wrong answer**.',
       },
       {
         kind: "p",
@@ -82,11 +83,11 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         kind: "code",
         lang: "ts",
-        code: "const body = await res.json();\n\n// A 200 is not enough — the error can ride inside it.\nif (!res.ok || body?.error) {\n  const status = body?.error?.code ?? res.status;\n  // 429 → capacity: pause + retry, don't score it\n  // 5xx → provider error: retryable, still not a quality loss\n  throw new UpstreamError(status, body?.error?.message);\n}\n\nconst sql = body.choices?.[0]?.message?.content;\nif (!sql) throw new UpstreamError(200, \"empty completion\");",
+        code: 'const body = await res.json();\n\n// A 200 is not enough — the error can ride inside it.\nif (!res.ok || body?.error) {\n  const status = body?.error?.code ?? res.status;\n  // 429 → capacity: pause + retry, don\'t score it\n  // 5xx → provider error: retryable, still not a quality loss\n  throw new UpstreamError(status, body?.error?.message);\n}\n\nconst sql = body.choices?.[0]?.message?.content;\nif (!sql) throw new UpstreamError(200, "empty completion");',
       },
       {
         kind: "p",
-        text: "In our own eval harness this was a seven-line change to the response classifier, and it moved the frontier lane's ceiling immediately: seven `no_sql` \"losses\" per 150-question run reclassified from *engine failure* to *capacity pause*, which the tail-retry already covers. The accuracy number stopped lying, and the retry logic started catching the failures it was written for.",
+        text: 'In our own eval harness this was a seven-line change to the response classifier, and it moved the frontier lane\'s ceiling immediately: seven `no_sql` "losses" per 150-question run reclassified from *engine failure* to *capacity pause*, which the tail-retry already covers. The accuracy number stopped lying, and the retry logic started catching the failures it was written for.',
       },
       { kind: "h2", text: "The general rule" },
       {
