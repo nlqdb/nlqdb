@@ -49,14 +49,6 @@ drafts live in the [archive](./distribution-queue-archive.md).
   semantically-right answer wrong. 7/238 losses concatenate, 0/256 wins use
   `||` — one planner directive discourages it (de-concat ceiling +3, zero
   regressions); anchors the projection half of the planner prompt.
-- **"Your text-to-SQL eval is lying: OpenRouter returns HTTP 200 with the error
-  in the body."** slug `http-200-error-in-body` · dev.to (#llm #api #debugging)
-  + r/LocalLLaMA + lobste.rs · engine lesson (full body in git history,
-  D4-collapsed): a gateway commits `200 OK`, then the upstream fails, so the
-  error rides in a 200 body ([OpenRouter docs](https://openrouter.ai/docs/api/reference/errors-and-debugging));
-  a `res.ok`-only client scores it as a wrong answer — 7 mislabeled `no_sql`
-  losses per 150-q frontier smoke. Fix: inspect the body for a top-level
-  `error` before `choices`; `res.ok` is necessary, not sufficient.
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
@@ -76,6 +68,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 119 — **https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/** — dev.to + r/SQL + r/analytics · `/solve/find-duplicate-rows-in-my-data`
 - run 110 — **https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/** — dev.to + r/dataengineering + r/BusinessIntelligence · `/vs/mode`
 - run 131 — **https://nlqdb.com/blog/top-n-rows-per-group/** — dev.to + r/SQL + r/PostgreSQL · `/solve/find-top-n-rows-per-group`
+- run 7 — **https://nlqdb.com/blog/http-200-error-in-body/** — dev.to (#llm #api #debugging) + r/LocalLLaMA + lobste.rs · engine lesson (res.ok necessary not sufficient)
 
 ## Collapsed — full drafts in git history
 

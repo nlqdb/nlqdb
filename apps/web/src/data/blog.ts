@@ -41,6 +41,65 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "http-200-error-in-body",
+    title: "Your text-to-SQL eval is lying: the gateway returns HTTP 200 with the error in the body",
+    description:
+      "A gateway commits 200 OK before the upstream model fails, so the error rides in the 200 body. A res.ok-only client counts it as a wrong answer, not an outage. res.ok is necessary, not sufficient.",
+    date: "2026-07-05",
+    body: [
+      {
+        kind: "p",
+        text: "We were reading a text-to-SQL benchmark score that looked too low. Seven questions per 150-question run came back tagged `no_sql` — the model, we thought, had simply failed to produce a query. On a frontier lane that is a jarring number. So we opened the raw responses, and the model had failed to produce *nothing*. The HTTP status was `200 OK`. The body was an error.",
+      },
+      { kind: "h2", text: "A 200 is a promise the gateway makes before it knows the answer" },
+      {
+        kind: "p",
+        text: "This is a property of gateways, not a bug in one vendor. When you call an LLM through an aggregator like OpenRouter, two machines are involved: the gateway you connect to, and the upstream provider it routes your request to. The gateway has to decide its HTTP status *when it starts streaming a response to you* — and at that moment the upstream request may still be in flight. So it commits to `200 OK`, opens the stream, and then the upstream call rate-limits, times out, or errors. The status line already went out. The only place left to report the failure is the response body.",
+      },
+      {
+        kind: "p",
+        text: "OpenRouter documents exactly this: an error can arrive with a `200` status and a top-level `error` object *instead of* `choices` ([errors reference](https://openrouter.ai/docs/api/reference/errors-and-debugging)). The shape looks like a normal completion envelope right up until you go looking for the content that isn't there.",
+      },
+      {
+        kind: "code",
+        lang: "json",
+        code: "// HTTP/1.1 200 OK  ← the status lies\n{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"Provider returned error\",\n    \"metadata\": { \"provider_name\": \"...\" }\n  }\n}\n// no \"choices\" — the completion never happened",
+      },
+      { kind: "h2", text: "Why `res.ok` quietly corrupts an eval" },
+      {
+        kind: "p",
+        text: "The natural client is a two-branch one: if `res.ok`, parse the completion; otherwise, it's an infrastructure error — pause, back off, retry. That branch is where the damage happens. A `200` with an error body takes the *success* branch. Your parser reaches for `choices[0].message.content`, finds nothing, and hands back an empty string. Downstream, an empty completion is indistinguishable from \"the model answered but produced no SQL\" — so it gets scored as a **wrong answer**.",
+      },
+      {
+        kind: "p",
+        text: "That single misclassification does two bad things to a benchmark. It undercounts your engine's true accuracy — the model was never given a chance to answer, yet it eats the loss. And it hides a real capacity problem — those seven failures were rate-limits the harness should have paused and retried, not quality losses to investigate. You end up staring at planner prompts trying to fix an accuracy gap that is actually an outage in disguise.",
+      },
+      { kind: "h2", text: "The fix: `res.ok` is necessary, not sufficient" },
+      {
+        kind: "p",
+        text: "Inspect the body for a top-level `error` before you trust the `choices`. A response is only a real completion if the transport succeeded *and* the payload carries content. Everything else is infrastructure — classify it as such so your retry logic and your metrics both see it correctly.",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: "const body = await res.json();\n\n// A 200 is not enough — the error can ride inside it.\nif (!res.ok || body?.error) {\n  const status = body?.error?.code ?? res.status;\n  // 429 → capacity: pause + retry, don't score it\n  // 5xx → provider error: retryable, still not a quality loss\n  throw new UpstreamError(status, body?.error?.message);\n}\n\nconst sql = body.choices?.[0]?.message?.content;\nif (!sql) throw new UpstreamError(200, \"empty completion\");",
+      },
+      {
+        kind: "p",
+        text: "In our own eval harness this was a seven-line change to the response classifier, and it moved the frontier lane's ceiling immediately: seven `no_sql` \"losses\" per 150-question run reclassified from *engine failure* to *capacity pause*, which the tail-retry already covers. The accuracy number stopped lying, and the retry logic started catching the failures it was written for.",
+      },
+      { kind: "h2", text: "The general rule" },
+      {
+        kind: "p",
+        text: "Any time you talk to a model through a gateway — an aggregator, a proxy, a load balancer, your own edge worker — the HTTP status describes the *hop you completed*, not the *work you asked for*. The two can disagree, and they disagree exactly when things are going wrong, which is the worst time to be blind. Read the body before you believe the status. If you're building an eval or an agent on top of a routed LLM, this one check is the difference between a metric you can trust and a metric that flatters your infrastructure by blaming your model.",
+      },
+      {
+        kind: "p",
+        text: "(This is one of the classifier rules behind [nlqdb](https://nlqdb.com), the data layer you ask in English: a rate-limited upstream is paused and retried, not counted as a query the engine couldn't answer — so the accuracy we report is the engine's, not the gateway's.)",
+      },
+    ],
+  },
+  {
     slug: "top-n-rows-per-group",
     title: "Top N per group is the query `LIMIT` can't write",
     description:

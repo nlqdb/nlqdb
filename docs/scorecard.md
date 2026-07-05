@@ -17,15 +17,18 @@ unverified-live deltas. Distribution volume holds (yield near-zero; see
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric; the daily **lever** targets its agent-movable inputs. Today's
-(07-04, run 6) lever: **docs-ambiguity `30 → 26`** (row #17) — resolved 4
-open-questions whose bodies already settled/parked them but whose first line
-didn't say so (mcp-server directory-submission → engineering-done/external-review;
-trust-ux SK-TRUST-001 + SK-TRUST-002 → parked-with-interim; byo-connect (d)
-sentinel → resolved-additive). Artifact (step 3, queue < 3 ⇒ *draft*, not
-publish): queued the **`bird-gold-noise-distinct`** engine lesson, straight from
-this run's measurement. Engine (weekly focus) was **not** the lever — its only
-live sub-lever needs a dedicated eval-free day (see below), incompatible with
-shipping any PR today.
+(07-05, run 7) lever: **indexable surfaces `78 → 79`** (row #6) — the queue held
+**3** unpublished drafts, hitting step 3's ≥ 3 → *publish* threshold, so this run
+published the oldest ready draft as a canonical `/blog` post:
+[`/blog/http-200-error-in-body`](https://nlqdb.com/blog/http-200-error-in-body/)
+(engine-lesson honesty post: a gateway commits `200 OK` before the upstream model
+fails, so the error rides in the 200 body; a `res.ok`-only client miscounts it as
+a wrong answer — the `SK-LLM-042` classifier finding, generalized). Web build now
+99 pages (was 98), link-check 0 dead / 0 redirecting, new slug auto-included in
+`llms.txt` + sitemap. Engine (weekly focus) was **not** the lever — its only live
+sub-lever needs a dedicated eval-free day (see below), incompatible with shipping
+any PR today (merging moves main's SHA + breaks the SHA-keyed multi-window
+resume).
 **Engine finding (row #8), re-confirmed independently this run:** BIRD 0.512 is
 below the ≥ 0.60 Phase 2 floor and the **offline deterministic-ceiling lever is
 exhausted** — `SK-LLM-043` (#605) took the last mechanically-provable bucket.
@@ -52,8 +55,8 @@ eval-free day, not this run. Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | no data — instrument live (migration 0020 applied), counters all zero | target ≥ 95%; still zero `/v1/ask` since the 07-02 deploy (latest `last_queried_at` = 07-02 09:25 UTC, 28h+ quiet) — reads on next pull with traffic |
 | 5 | Session retention (≥ 2 queries) | no data yet — same instrument, awaiting traffic | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **78** (`/vs` 31 + `/solve` 33 + `/blog` 14) — unchanged this run | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. **Run 6 did not publish** — the queue held **2** unpublished drafts (< 3), so step 3 was *draft*, not publish: queued `bird-gold-noise-distinct` (queue 2 → 3). Next run hits the ≥ 3 → publish threshold |
-| 7 | Surface yield | posts 11; 7d external referrals = 3 (`www.google.com` + `aisearchindex.space` + `bing.com`, 1 pageload each) | CF `refererHost` — measured every run |
+| 6 | Indexable surfaces | **79** (`/vs` 31 + `/solve` 33 + `/blog` 15) — **+1 this run** | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. **Run 7 published** — queue held **3** drafts (≥ 3 ⇒ step-3 *publish*): shipped `/blog/http-200-error-in-body` (oldest ready draft), queue 3 → 2. Web build 99 pages (was 98); link-check 0 dead |
+| 7 | Surface yield | posts 12; 7d external referrals = 3 (`www.google.com` + `aisearchindex.space` + `bing.com`, 1 pageload each) | CF `refererHost` — measured every run. Yield still near-zero — the standing weekly-review finding (distribution *volume* without *yield*); count grows, referrals flat |
 | | **Engine** — BIRD 07-03 · Spider 07-02 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.512** (256/500, 07-03 — first completed 500q canonical since 06-19; Δ −0.8 pp vs 0.520, McNemar p=0.36 statistically flat, 0 flagged regressions; [run 28640034273](https://github.com/nlqdb/nlqdb/actions/runs/28640034273)) | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Resume loop closed (4 checkpointed windows), baseline re-seeded 07-03; pin-branch delete blocked by session push scope — any session with branch-delete rights can drop `eval/bird-resume-0e67e64`. **07-04 run 3: `SK-LLM-043` projection directive shipped** — de-concat ceiling on the real DBs flips 3/7 concat-mismatches (EX 0.512→0.518), 0/256 matches at risk; live EX re-measures on the next canonical CI run. **07-04 run 5: offline deterministic-ceiling lever exhausted** — `SK-QUAL-014` re-run vs gold shows the remaining 238 mismatches need execution/live-chain to score (join-direction/alias/DISTINCT/subquery diffs, not one deterministic transform: `drop_distinct` 0 flips, `strip_trailing_limit` 0); next engine move is a batched live re-measure on an eval-free day |
 | 9 | Spider raw EX | 0.1926 (26/135, 07-02) | target 0.75; was 0.1852 (06-17). **Worst engine number.** 07-02 free lane capacity-throttled ⇒ undercounts; `SK-QUAL-017` SC smoke undispatched |
@@ -68,10 +71,13 @@ eval-free day, not this run. Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.512, fresh 07-03); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**measured 07-03, row #11: Δ 19.3 pp ✓ ≤ 25, but agentic 0.667 ✗ < 0.80 — 7 `openrouter:parse` no_sql suppress the frontier lanes; criterion still fails on the absolute floor**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (no data, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: **the 7 `openrouter:parse` root cause is now fixed at the source (`SK-LLM-042`, 07-04)** — re-measure agentic-frontier vs the 0.80 floor on the next smoke window; first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **26** (07-04 run 6, was 30) | target ↓ 0. **This run's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-04 run-5 sweep: 98 pages, 2,297 internal links — new `/blog/top-n-rows-per-group` page included) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-05 run-7 sweep: 99 pages, 2,321 internal links — new `/blog/http-200-error-in-body` page included) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
 | 19 | Live-surface claim integrity | **4 gaps** (07-04, first count) | claim-vs-reality on shipped user-facing surfaces; target 0. (a) `/pricing` sells "7-/30-day backups" — none exist, only `.envrc` is backed up (`blindspot-analysis.md:120`); (b) `/pricing` "Export anytime, free" — no export endpoint in `apps/api`; (c) `progress.md §0` labels 8 framework wrappers + Swift "Shipped" — all `private:true`/`0.0.0`, 404 on npm/SPM; (d) `docs.nlqdb.com/mcp` walks `nlq mcp install` as working — the CLI flow is stubbed (contradicts the live `/cli` page). Fix = ship the backing or soften the claim; sweep candidate: extend `check:links` to assert each priced/advertised capability has shipped code |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | **schema ✅ · BYOLLM lanes ✅ · picker: web ✅ (`SK-PREMIUM-013`, #610: ModelPicker + `GET /v1/models` + SDK `getModels()`) · picker parity ⬜ (preset param on `/v1/ask`, SDK `model` option, CLI/elements/MCP) · premium chain ⬜ · CTA (`SK-PREMIUM-004`) ⬜ · spend-cap UI ⬜** | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is **built before** the signal (lighting it is a flag flip); only the *meter firing* (Lago→Stripe) + cost-incurring infra stay dark. The meter staying off is not a reason to leave the slot unbuilt; drive ⬜→✅ each run (first slice #610 landed 07-04) |
+=======
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-05 run-7 sweep: 99 pages, 2,321 internal links — new `/blog/http-200-error-in-body` page included) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
+>>>>>>> 80aef90 (daily: publish /blog/http-200-error-in-body — surfaces 78 → 79 (run 7))
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (per-agent RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
@@ -95,30 +101,30 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 - https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/ (run 119 — anchors `/solve/find-duplicate-rows-in-my-data`)
 - https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/ (run 110 — anchors `/vs/mode`)
 - https://nlqdb.com/blog/top-n-rows-per-group/ (run 131 — anchors `/solve/find-top-n-rows-per-group`)
+- https://nlqdb.com/blog/http-200-error-in-body/ (run 7 — engine lesson, SK-LLM-042 gateway-200-error-body classifier)
 
 ## Last change
 
-**2026-07-04 (run 6)** — lever: **docs-ambiguity `30 → 26`** (row #17).
-Resolved 4 open-questions whose body already settled/parked the question but
-whose first line (the pinned method's key) didn't say so: `mcp-server`
-Anthropic-directory-submission (engineering done, no pending human action —
-only Anthropic's external review remains, not a question we can answer);
-`trust-ux` SK-TRUST-001 (parked until a P3-persona destructive-DDL test; interim
-= the trace block's compiled DDL is the create preview) + SK-TRUST-002
-(GLOBAL-003 tracked ship-gap, parked per surface); `byo-connect` (d)
-`__byo_blob__` sentinel (Resolved — additive-migration design). Also upgraded
-the `quality-eval` corrected-set OQ with the P2 finding (Kang VLDB-2026 set is
-git-JSON our loader parses ⇒ ~50-LOC scorer, but **repo states no license** ⇒
-stays parked; no count change — already excluded). **Engine (weekly focus) was
-not the lever:** re-downloaded the real BIRD gold + re-ran `SK-QUAL-014` here to
-independently re-confirm the offline lever is exhausted — 0 `literal_only` / 0
-`date_literal_only` clean buckets; `extra_DISTINCT` (46/238) is dominated by
-gold-noise (model often *more* correct than gold post-fan-out-join), so a
-directive there overfits wrong gold. **0.512 is a floor, not a ceiling.** The
-only live engine sub-lever needs a dedicated eval-free day (merging any PR moves
-main's SHA and breaks the SHA-keyed multi-window resume), incompatible with
-shipping today. Artifact (step 3, queue **2 < 3** ⇒ *draft*, not publish):
-queued `bird-gold-noise-distinct` (queue 2 → 3; older 2 full drafts D4-collapsed
-to one-liners, bodies in git). **KPI:** GLOBAL-025 onboarding/clarity — docs
-ambiguity −4; engine finding recorded, none degraded (docs-only, no code paths;
-engine/funnel/ops numbers carry from the < 48 h-old 07-03 pull).
+**2026-07-05 (run 7)** — lever: **indexable surfaces `78 → 79`** (row #6). The
+distribution queue held **3** unpublished drafts, hitting step 3's ≥ 3 →
+*publish* threshold, so this run published the oldest ready draft as a canonical
+`/blog` post rather than drafting a fourth:
+[`/blog/http-200-error-in-body`](https://nlqdb.com/blog/http-200-error-in-body/)
+— the engine-lesson honesty post generalizing the `SK-LLM-042` finding: an LLM
+gateway commits `200 OK` before the upstream provider fails, so the real error
+rides in the 200 body; a `res.ok`-only client scores it as a wrong answer,
+inflating an eval's error rate and hiding a capacity problem. Fix = inspect the
+body for a top-level `error` before trusting `choices`; `res.ok` is necessary,
+not sufficient. Queue 3 → 2; draft deleted, venue variant (dev.to + r/LocalLLaMA
++ lobste.rs) kept as a pointer to the canonical URL. **Verification:** web build
+99 pages (was 98), `check:links` 0 dead / 0 redirecting over 2,321 internal
+links, `blog.test.ts` 6/6 pass (slug/date/length/copy-rule/renderer guards), new
+slug auto-included in `llms.txt` + sitemap; full gates green (typecheck ✓, lint ✓
+exit 0, test ✓ 872 API + all packages). **Engine (weekly focus) was not the
+lever:** its only live sub-lever needs a dedicated eval-free day — merging any PR
+moves main's SHA and breaks the SHA-keyed multi-window resume — incompatible with
+shipping today; 0.512 remains a floor, not a ceiling (offline deterministic lever
+exhausted, run 5). **KPI:** GLOBAL-025 distribution-yield / onboarding — one live
+indexable surface added (78 → 79), engine-honesty narrative advanced; no KPI
+degrades (funnel/engine/ops numbers carry from the < 72 h-old 07-03 pull; the new
+page adds a surface without touching any engine or product code path).
