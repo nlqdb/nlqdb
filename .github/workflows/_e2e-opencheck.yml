@@ -239,6 +239,9 @@ jobs:
       # but can't emit tool_calls would pass a plain probe and then fail every test), and it inspects
       # the BODY, not just the status code: OpenRouter returns HTTP 200 with an `error` envelope when
       # the model's free pool is saturated (same gateway trap the engine fixed as SK-LLM-042).
+      # THREE consecutive probes ~2s apart, all healthy: saturated free pools FLAP — run 28756818845's
+      # Suite A watched gpt-oss-120b:free pass a single probe at :55 and then 429 every agent call
+      # from :00 to :19. One lucky 200 is not health; three in a row over ~5s almost always is.
       - name: Pre-flight — pick the first healthy agent model
         id: pick
         shell: bash
@@ -246,30 +249,47 @@ jobs:
           CANDIDATE_MODELS: ${{ inputs.candidate_models }}
         run: |
           set -euo pipefail
-          IFS=',' read -ra models <<< "${CANDIDATE_MODELS// /}"
-          for m in "${models[@]}"; do
-            echo "Probing ${m} on ${OPENAI_BASE_URL} (tool-call probe, 15s timeout)..."
+          probe() {
+            local model="$1"
+            local http_code
             http_code=$(curl -s -o /tmp/llm-preflight.json -w "%{http_code}" \
               --max-time 15 \
               -H "Authorization: Bearer ${OPENAI_API_KEY}" \
               -H "Content-Type: application/json" \
-              -d "{\"model\":\"${m}\",\"messages\":[{\"role\":\"user\",\"content\":\"Click the button with ref b1 using the click tool.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"click\",\"description\":\"Click an element\",\"parameters\":{\"type\":\"object\",\"properties\":{\"ref\":{\"type\":\"string\"}},\"required\":[\"ref\"]}}}],\"max_tokens\":2000}" \
-              "${OPENAI_BASE_URL}/chat/completions") || { echo "  curl failed/timed out — trying next candidate"; continue; }
+              -d "{\"model\":\"${model}\",\"messages\":[{\"role\":\"user\",\"content\":\"Click the button with ref b1 using the click tool.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"click\",\"description\":\"Click an element\",\"parameters\":{\"type\":\"object\",\"properties\":{\"ref\":{\"type\":\"string\"}},\"required\":[\"ref\"]}}}],\"max_tokens\":2000}" \
+              "${OPENAI_BASE_URL}/chat/completions") || { echo "  curl failed/timed out"; return 1; }
             if [ "$http_code" != "200" ]; then
-              echo "  HTTP ${http_code} — trying next candidate"
-              continue
+              echo "  HTTP ${http_code}"
+              return 1
             fi
             if jq -e '.error' /tmp/llm-preflight.json > /dev/null 2>&1; then
-              echo "  HTTP 200 but error envelope in body (SK-LLM-042 trap): $(jq -c '.error | {code, message}' /tmp/llm-preflight.json) — trying next candidate"
-              continue
+              echo "  HTTP 200 but error envelope in body (SK-LLM-042 trap): $(jq -c '.error | {code, message}' /tmp/llm-preflight.json)"
+              return 1
             fi
             if ! jq -e '.choices[0].message.tool_calls[0].function.name == "click"' /tmp/llm-preflight.json > /dev/null 2>&1; then
-              echo "  no well-formed tool call in reply — trying next candidate"
-              continue
+              echo "  no well-formed tool call in reply"
+              return 1
             fi
-            echo "Selected agent model: ${m}"
-            echo "model=${m}" >> "$GITHUB_OUTPUT"
-            exit 0
+            return 0
+          }
+          IFS=',' read -ra models <<< "${CANDIDATE_MODELS// /}"
+          for m in "${models[@]}"; do
+            echo "Probing ${m} on ${OPENAI_BASE_URL} (3 consecutive tool-call probes, 15s timeout each)..."
+            healthy=true
+            for i in 1 2 3; do
+              if ! probe "$m"; then
+                echo "  probe ${i}/3 failed — trying next candidate"
+                healthy=false
+                break
+              fi
+              echo "  probe ${i}/3 ok"
+              [ "$i" -lt 3 ] && sleep 2
+            done
+            if [ "$healthy" = true ]; then
+              echo "Selected agent model: ${m}"
+              echo "model=${m}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
           done
           echo "ERROR: no candidate agent model is healthy right now (${CANDIDATE_MODELS}) — aborting before burning the opencheck budget"
           exit 1
