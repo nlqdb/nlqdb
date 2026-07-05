@@ -17,18 +17,19 @@ unverified-live deltas. Distribution volume holds (yield near-zero; see
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric; the daily **lever** targets its agent-movable inputs. Today's
-(07-05, run 7) lever: **indexable surfaces `78 → 79`** (row #6) — the queue held
-**3** unpublished drafts, hitting step 3's ≥ 3 → *publish* threshold, so this run
-published the oldest ready draft as a canonical `/blog` post:
-[`/blog/http-200-error-in-body`](https://nlqdb.com/blog/http-200-error-in-body/)
-(engine-lesson honesty post: a gateway commits `200 OK` before the upstream model
-fails, so the error rides in the 200 body; a `res.ok`-only client miscounts it as
-a wrong answer — the `SK-LLM-042` classifier finding, generalized). Web build now
-99 pages (was 98), link-check 0 dead / 0 redirecting, new slug auto-included in
-`llms.txt` + sitemap. Engine (weekly focus) was **not** the lever — its only live
-sub-lever needs a dedicated eval-free day (see below), incompatible with shipping
-any PR today (merging moves main's SHA + breaks the SHA-keyed multi-window
-resume).
+(07-05, run 8) lever: **docs-ambiguity `26 → 25`** (row #17) — resolved the
+`agent-memory` *Capability-matrix freshness* open-question **by hardening its
+guard, not relabeling**: `agentMemoryMatrix.test.ts`'s staleness alert accepted
+a *future* `MATRIX_VERIFIED_ON` (a negative age silently passed `< 60`,
+disabling the alert for months) and a regex-shaped-but-impossible date; both are
+now rejected, so a stale/typo'd matrix reddens CI and forces a re-verify. The
+matrix is a live persuasion asset (`/agents`, home, blog), so a defeatable
+freshness check risked shipping stale competitor claims. **Distribution (step 3)
+was owned by concurrent PR #612 (run 7)** — publishing `/blog/http-200-error-in-body`
+(surfaces 78 → 79); per step-0 non-overlap this run did **not** also touch the
+distribution queue/blog. Engine (weekly focus) was **not** the lever — its only
+live sub-lever needs a dedicated eval-free day (below), and #612 being open means
+main's SHA moves regardless, so today is not eval-free.
 **Engine finding (row #8), re-confirmed independently this run:** BIRD 0.512 is
 below the ≥ 0.60 Phase 2 floor and the **offline deterministic-ceiling lever is
 exhausted** — `SK-LLM-043` (#605) took the last mechanically-provable bucket.
@@ -70,7 +71,7 @@ eval-free day, not this run. Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | 15 | E2E manual-suite freshness | **0.64** (natural 1-day decay from 0.75) — sdk ✅ 07-02 · mcp ✅ 07-02 · examples ✅ 07-02 · opencheck ❌ (last ✅ 06-12 ⇒ freshness 0) | opencheck failed twice 07-02 on OpenRouter free-tier 429 (driver LLM throttled — infra, not product); its driver shares free-LLM capacity with the eval lanes (BIRD burned it again 07-03) — dispatch opencheck on an eval-free day |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.512, fresh 07-03); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**measured 07-03, row #11: Δ 19.3 pp ✓ ≤ 25, but agentic 0.667 ✗ < 0.80 — 7 `openrouter:parse` no_sql suppress the frontier lanes; criterion still fails on the absolute floor**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (no data, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: **the 7 `openrouter:parse` root cause is now fixed at the source (`SK-LLM-042`, 07-04)** — re-measure agentic-frontier vs the 0.80 floor on the next smoke window; first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **26** (07-04 run 6, was 30) | target ↓ 0. **This run's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **25** (07-05 run 8, was 26) | target ↓ 0. **Run 8's lever: −1** — resolved `agent-memory` *Capability-matrix freshness* by hardening the guard (`agentMemoryMatrix.test.ts` now rejects a future/invalid `MATRIX_VERIFIED_ON`; a negative age had silently passed `< 60`), not by relabeling. **Run 6's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-05 run-7 sweep: 99 pages, 2,321 internal links — new `/blog/http-200-error-in-body` page included) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
 | 19 | Live-surface claim integrity | **4 gaps** (07-04, first count) | claim-vs-reality on shipped user-facing surfaces; target 0. (a) `/pricing` sells "7-/30-day backups" — none exist, only `.envrc` is backed up (`blindspot-analysis.md:120`); (b) `/pricing` "Export anytime, free" — no export endpoint in `apps/api`; (c) `progress.md §0` labels 8 framework wrappers + Swift "Shipped" — all `private:true`/`0.0.0`, 404 on npm/SPM; (d) `docs.nlqdb.com/mcp` walks `nlq mcp install` as working — the CLI flow is stubbed (contradicts the live `/cli` page). Fix = ship the backing or soften the claim; sweep candidate: extend `check:links` to assert each priced/advertised capability has shipped code |
@@ -102,26 +103,27 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-05 (run 7)** — lever: **indexable surfaces `78 → 79`** (row #6). The
-distribution queue held **3** unpublished drafts, hitting step 3's ≥ 3 →
-*publish* threshold, so this run published the oldest ready draft as a canonical
-`/blog` post rather than drafting a fourth:
-[`/blog/http-200-error-in-body`](https://nlqdb.com/blog/http-200-error-in-body/)
-— the engine-lesson honesty post generalizing the `SK-LLM-042` finding: an LLM
-gateway commits `200 OK` before the upstream provider fails, so the real error
-rides in the 200 body; a `res.ok`-only client scores it as a wrong answer,
-inflating an eval's error rate and hiding a capacity problem. Fix = inspect the
-body for a top-level `error` before trusting `choices`; `res.ok` is necessary,
-not sufficient. Queue 3 → 2; draft deleted, venue variant (dev.to + r/LocalLLaMA
-+ lobste.rs) kept as a pointer to the canonical URL. **Verification:** web build
-99 pages (was 98), `check:links` 0 dead / 0 redirecting over 2,321 internal
-links, `blog.test.ts` 6/6 pass (slug/date/length/copy-rule/renderer guards), new
-slug auto-included in `llms.txt` + sitemap; full gates green (typecheck ✓, lint ✓
-exit 0, test ✓ 872 API + all packages). **Engine (weekly focus) was not the
-lever:** its only live sub-lever needs a dedicated eval-free day — merging any PR
-moves main's SHA and breaks the SHA-keyed multi-window resume — incompatible with
-shipping today; 0.512 remains a floor, not a ceiling (offline deterministic lever
-exhausted, run 5). **KPI:** GLOBAL-025 distribution-yield / onboarding — one live
-indexable surface added (78 → 79), engine-honesty narrative advanced; no KPI
-degrades (funnel/engine/ops numbers carry from the < 72 h-old 07-03 pull; the new
-page adds a surface without touching any engine or product code path).
+**2026-07-05 (run 8)** — lever: **docs-ambiguity `26 → 25`** (row #17),
+resolved by **hardening a guard, not relabeling**. The `agent-memory`
+*Capability-matrix freshness* open-question described a mechanism WS-06 already
+shipped — `MATRIX_VERIFIED_ON` + a 60-day staleness test — but that test had a
+real hole: `ageDays < 60` also passes for a *future* date (negative age), so a
+fat-fingered `MATRIX_VERIFIED_ON` would silently disable the alert for months,
+and a regex-shaped-but-impossible date (`2026-13-45` → NaN) slipped through too.
+`agentMemoryMatrix.test.ts` now rejects both (`>= 0` + `!Number.isNaN`), with an
+actionable message. Proof: `f("2026-09-19")` passed the old check, fails the new
+one; the real `2026-06-19` (16 d) still passes. The matrix is a live persuasion
+asset (`/agents`, home, blog), so a defeatable freshness check risked shipping
+stale competitor claims. Bullet marked Resolved (26 → 25). **Distribution (step
+3) owned by concurrent PR #612 (run 7)** — it publishes `/blog/http-200-error-in-body`
+(surfaces 78 → 79) and edits the queue/blog data; per **step-0 non-overlap** run
+8 did not touch those files. **Engine (weekly focus) not the lever:** offline
+deterministic-ceiling is exhausted (would overfit BIRD gold-noise), the live
+re-measure needs a dedicated eval-free day, and #612 being open moves main's SHA
+regardless — today is not eval-free. Independently re-confirmed the eval scorer
+already excludes capacity failures from EX (SK-QUAL-013/020 budget-stop +
+transport-collapse; SK-LLM-042 200-body fix), so the Spider/opencheck
+"undercount" awaits a re-measure, not a code fix. **KPI:** GLOBAL-025
+onboarding/clarity — docs ambiguity −1 + a live-asset integrity guard hardened;
+none degraded (web test-only + docs; engine/funnel/ops numbers carry from the
+< 72 h-old 07-03 pull).

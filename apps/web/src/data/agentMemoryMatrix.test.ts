@@ -36,9 +36,17 @@ describe("AGENT_MEMORY_MATRIX integrity", () => {
     expect(recall.length).toBeGreaterThanOrEqual(2);
   });
 
-  test("verifiedOn is an ISO date < 60 days old (staleness alert)", () => {
+  test("verifiedOn is a valid, non-future ISO date < 60 days old (staleness alert)", () => {
     expect(MATRIX_VERIFIED_ON).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    const ageDays = (Date.now() - Date.parse(MATRIX_VERIFIED_ON)) / 86_400_000;
+    const parsed = Date.parse(MATRIX_VERIFIED_ON);
+    // A regex-shaped but impossible date (e.g. "2026-13-45") parses to NaN.
+    expect(Number.isNaN(parsed)).toBe(false);
+    const ageDays = (Date.now() - parsed) / 86_400_000;
+    // A future date has a *negative* age, which silently passes `< 60` and
+    // disables the staleness alert for months. Reject it — re-verify the
+    // cells against docs/competitors.md §4 and set MATRIX_VERIFIED_ON to the
+    // reconciliation date (today or earlier), never ahead of it.
+    expect(ageDays).toBeGreaterThanOrEqual(0);
     expect(ageDays).toBeLessThan(60);
   });
 });

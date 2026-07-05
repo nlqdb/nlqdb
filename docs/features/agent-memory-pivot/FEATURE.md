@@ -308,9 +308,13 @@ index in [`docs/decisions.md`](../../decisions.md)).
 
 ## Open questions / known unknowns
 
-- **Capability-matrix freshness** — competitors ship fast; a stale `✓/—` is
-  worse than none. WS-06 sets a "verified-on" date on the matrix; the daily
-  loop treats a date > 60 days old as an alert (mirrors the engine-row rule).
+- **Capability-matrix freshness — Resolved.** WS-06 shipped
+  `MATRIX_VERIFIED_ON` on the matrix data and `agentMemoryMatrix.test.ts`
+  enforces it: the suite fails once the date is > 60 days old (and, as of
+  2026-07-05, if it is invalid or in the future — a negative age silently
+  passed `< 60` and disabled the alert). So a stale matrix reddens CI, forcing
+  a re-verify against `docs/competitors.md §4` + a date bump. Currently 16 days
+  fresh (2026-06-19).
 - **Self-host container scope** — pulling `ghcr.io/nlqdb/api` forward (WS-11)
   may exceed one daily run and touches infra; the worksheet flags the
   founder/infra gate rather than assuming a copy-only diff.
