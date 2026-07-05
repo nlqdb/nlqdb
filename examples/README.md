@@ -22,8 +22,7 @@ Two flavours: **raw custom-element** examples (`html`, `nextjs`, `nuxt`, `svelte
 
 ## Status
 
-> Phase 0 (Slice 4) — `apps/api` ships in Slices 6–7 and `@nlqdb/elements` ships in Phase 1.
-> Until then these examples document the call shapes the slices are building toward — they parse, type-check, and embed in the listed framework, but the live runtime is not wired yet. Once Phase 1 lands, every example will run end-to-end with no edits.
+> The API (`/v1/ask`) and the CDN elements runtime (`elements.nlqdb.com/v1.js`) are live, so the raw custom-element examples run end-to-end. The wrapper examples (`react`, `vue`, `svelte`, `solid`) build against workspace packages **not yet published to npm** — run them inside the monorepo until they publish (each README carries the note).
 
 Each folder's `README.md` includes:
 
@@ -35,14 +34,7 @@ Each folder's `README.md` includes:
 
 Every example uses a publishable key (`pk_live_…`) inlined into the HTML/JSX/template. That's by design: publishable keys are read-only, origin-pinned, and meant for client-side embed (`docs/architecture.md §4.1`). For server-side usage where a `sk_live_…` is required, see `examples/cli/` and the (forthcoming) `@nlqdb/sdk` snippets.
 
-To get a key, after Phase 1 lands:
-
-```bash
-nlq login          # one click in browser
-nlq keys create pk # prints pk_live_…
-```
-
-Or use anonymous mode (`docs/architecture.md §3.3`): no sign-in, DB lives 72 h, adopt later via `nlq login`.
+To get a key: sign in at [`nlqdb.com/app`](https://nlqdb.com/app) and mint one in the dashboard — CLI key-minting arrives with the device-flow `nlq login` (not shipped yet). Or use anonymous mode (`docs/architecture.md §3.3`): no sign-in, DB lives 72 h, adopt it when you sign in later.
 
 ## Contributing a new example
 

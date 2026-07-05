@@ -8,6 +8,15 @@ Each wrapper is a thin, typed adapter over the `<nlq-data>` element and
 else (no second network layer, `SK-FW-001`). Install the one for your framework; the
 full runnable walkthrough lives in each [tutorial](/tutorials/html/).
 
+:::caution[Not on npm yet]
+The wrapper packages are built and tested on `main` but **not yet published to
+npm** — the `npm i @nlqdb/…` commands below will work once they publish. Until
+then, use the universal `<nlq-data>` element straight from the CDN
+(`https://elements.nlqdb.com/v1.js`, no install — see the
+[HTML tutorial](/tutorials/html/)): the wrappers add typing and idiom, not
+capability.
+:::
+
 ## Conventions
 
 Every wrapper exports the same two components — `<NlqData>` (read) and `<NlqAction>`

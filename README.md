@@ -107,7 +107,7 @@ Paid plans aren't live yet. The full model strategy is in
 | `@nlqdb/sdk` (TypeScript) | ✓ shipped (incl. `runSql`) | `packages/sdk/**` |
 | Framework wrappers (React / Next / Vue / Nuxt / Svelte / SvelteKit / Astro / Solid + Swift) | ~ built + CI-tested; npm / SPM publish pending | `packages/{react,next,…}/**` |
 | Chat app `nlqdb.com/app` | ✓ shipped | `apps/web/**` |
-| Hosted MCP server `mcp.nlqdb.com` | ✓ shipped (host auto-detect pending) | `apps/mcp/**`, `packages/mcp/**` |
+| Hosted MCP server `mcp.nlqdb.com/mcp` | ✓ shipped (host auto-detect pending) | `apps/mcp/**`, `packages/mcp/**` |
 | `nlq` CLI (Go) | ✓ shipped (core verbs; device-login pending) | `cli/**` |
 
 Full integration matrix in [`docs/progress.md`](./docs/progress.md).
@@ -149,8 +149,8 @@ and shares the link — in under 60 seconds, no card, no config.
 
 ### Phase 2 — Distribution (agent + developer surfaces)
 
-- ✓ Hosted MCP server (`mcp.nlqdb.com` + local stdio `@nlqdb/mcp`) —
-  host auto-detect pending
+- ✓ Hosted MCP server (`mcp.nlqdb.com/mcp`) — host auto-detect pending;
+  local stdio `@nlqdb/mcp` built, npm publish pending
 - ✓ CLI `nlq` (Go) — core verbs + raw-SQL escape hatch; device-login +
   chat REPL pending
 - ✓ `@nlqdb/sdk` — basic methods + `runSql`

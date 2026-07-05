@@ -10,6 +10,8 @@ cd nlqdb-meals
 npm install @nlqdb/react @nlqdb/elements
 ```
 
+> **Not on npm yet** — `@nlqdb/react` and `@nlqdb/elements` are built on `main` but unpublished (`docs/progress.md §0`), so the install above 404s today. Until they publish, run this example inside the monorepo (`bun install` links the workspace packages) or use the CDN `<nlq-data>` element per the [HTML example](../html/).
+
 Replace `src/App.tsx` with the file in this folder, then:
 
 ```bash

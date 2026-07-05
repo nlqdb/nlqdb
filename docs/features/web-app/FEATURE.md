@@ -44,10 +44,10 @@ when-to-load:
 
 ### SK-WEB-003 — Above-the-fold is runnable code, not feature bullets
 
-- **Decision:** Above the fold on `nlqdb.com/` is either a working snippet or proof that snippets work — never feature bullets, logo grids, or "trusted by" strips. The tabbed code-example panel renders against the same demo DB; switching tabs swaps the surface.
+- **Decision:** Above the fold on `nlqdb.com/` is either a working snippet or proof that snippets work — never feature bullets, logo grids, or "trusted by" strips.
 - **Core value:** Honest latency, Creative, Goal-first
 - **Why:** "The contrast IS the message" — every snippet is the entire backend. Marketing copy that we can't back up with a working snippet is a smell. Working snippets above the fold also do double duty for AEO/GEO (LLM crawlers cite working examples preferentially) and for our own conversion data (which surface visitors copy first is leading signal for framework-wrapper investment).
-- **Consequence in code:** `apps/web/src/components/CodePanel.astro` carries one snippet per surface — currently CLI · HTML · React · Vue · SDK · curl · MCP · Swift (canonical list lives in [`apps/web/src/data/snippets.ts`](../../../apps/web/src/data/snippets.ts)). Each has a copy button that emits `home.snippet_copied` to LogSnag with `surface = <snippet id>`. New surfaces add a `Snippet` entry plus one matching `<Fragment slot="…">` in `CodePanel.astro`; surfaces not yet shipped carry an honest Phase 1/2 badge in the matrix below the panel — no fake working claims. Mirror the snippets in `/code-samples.txt` so non-JS crawlers see the same proof.
+- **Consequence in code:** Under the `SK-WEB-018` two-door home the proof is Door A's `<McpInstall>` row plus the real-`/v1/ask` demo (`SK-WEB-008`) — live, never canned. The tabbed snippet panel (`CodePanel.astro`, one snippet per surface from [`snippets.ts`](../../../apps/web/src/data/snippets.ts), copy → `home.snippet_copied`) is currently **unmounted** from `/`; its status matrix stays synced to [`progress.md §0`](../../progress.md) against a remount, and unshipped surfaces always carry an honest phase badge — no fake working claims.
 - **Alternatives rejected:**
   - Hero video / animated explainer — opaque to crawlers, slow to first paint, ages badly.
   - Logo wall — irrelevant in pre-PMF, dilutes the "code is the proof" message.

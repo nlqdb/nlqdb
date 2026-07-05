@@ -40,9 +40,11 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-MCP-NNN
 
 ## Install paths
 
-User-facing install flow (connector URL, `nlq mcp install`, website
-one-click, `NLQDB_API_KEY` env var) lives at
-[`docs.nlqdb.com/mcp/`](https://docs.nlqdb.com/mcp/). The internal
+User-facing install flow lives at
+[`docs.nlqdb.com/mcp/`](https://docs.nlqdb.com/mcp/) and documents only
+the live paths (hosted connector URL, nlqdb.com one-click buttons,
+`NLQDB_API_KEY` env var); `nlq mcp install` + the `app.nlqdb.com/mcp`
+one-click join it when Slice 4 ships. The internal
 contract — four paths terminate at the same `/v1/ask` orchestration and
 the same fixed tool set (+ the additive `nlqdb_remember` write verb on
 `/v1/memory/remember`, E-02) — is canonical in [`SK-MCP-002`](decisions/SK-MCP-002-three-tools.md)
@@ -72,7 +74,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Happy path walkthrough
 
-End-user flow (`nlq mcp install` output, in-LLM tool calls, preferences-DB
+End-user flow (install paths, in-LLM tool calls, preferences-DB
 example) lives at [`docs.nlqdb.com/mcp/`](https://docs.nlqdb.com/mcp/).
 The Jordan-the-Agent-Builder narrative is in
 [`docs/research/personas.md` §P2](../../research/personas.md).

@@ -122,15 +122,13 @@ Canonical: **`nlqdb.com`** (`.ai` is held defensively and 301s to `.com`).
 
 Canonical: `web-app/FEATURE.md` (`SK-WEB-001..007`). Cloudflare Pages, Lighthouse 100/100/100/100.
 
-Above the fold: goal-first input ("What are you building?"), tabbed code-example panel (CLI · HTML · React · Vue · SDK · curl · MCP · Swift against the same demo DB — full list in [`apps/web/src/data/snippets.ts`](../apps/web/src/data/snippets.ts)), "what this replaces" strip, live anonymized query ticker.
-
-**Creative direction:** neo-brutalist + terminal — thick borders, hard shadows, JetBrains Mono headlines, Acid Lime `#C6F432` on near-black `#0B0F0A`. No stock photos, no cookie banner.
+Above the fold: the `SK-WEB-018` two-door hero (agent-memory door with one-click MCP install; question-your-ClickHouse door) plus the real-`/v1/ask` demo (`SK-WEB-008`) — layout and the `SK-WEB-020` calm token system are canonical in `web-app/FEATURE.md`. No stock photos, no cookie banner.
 
 Surfaces promised on the home page live in [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth) — the canonical status table, mirrored into [`apps/web/src/components/CodePanel.astro`](../apps/web/src/components/CodePanel.astro). When a status flips, edit progress.md §0 first; this prose intentionally does not duplicate the table (per `AGENTS.md` P3).
 
 ### 3.2 Platform web app — `nlqdb.com/app`
 
-Canonical feature: `web-app/FEATURE.md`. Served at `nlqdb.com/app` (the API Worker owns `app.nlqdb.com`). Session cookie `__Secure-session` (HttpOnly, `Domain=.nlqdb.com`) read server-side via Astro frontmatter or a client-side `/api/auth/get-session` call.
+Canonical feature: `web-app/FEATURE.md`. Served at `nlqdb.com/app` (the API Worker owns `app.nlqdb.com`). Session cookie is host-only `__Secure-…session` (HttpOnly, no `Domain=` per `SK-WEB-009`), read server-side via Astro frontmatter or a client-side `/api/auth/get-session` call.
 
 Pages: **Chat** (answer/data/trace, Cmd+K palette, Cmd+/ trace toggle), **DB list** (left rail), **Settings** (API keys, billing, live $-counter), **Embed snippets** (copy `<nlq-data>` HTML with `pk_live_` pre-inlined).
 
@@ -139,18 +137,17 @@ Pages: **Chat** (answer/data/trace, Cmd+K palette, Cmd+/ trace toggle), **DB lis
 Canonical feature: `cli/FEATURE.md` (`SK-CLI-001..015`). Static Go binary.
 
 ```
-nlq                          # interactive REPL, creates DB silently
 nlq new "an orders tracker"  # creates DB from goal, opens chat
 nlq "how many signups today" # bare query against current DB
-nlq login                    # device-code flow (browser)
-nlq mcp install              # auto-detects MCP hosts and sets them up
+nlq login                    # device-code flow (browser) — next slice
+nlq mcp install              # auto-detect + set up MCP hosts — next slice
 ```
 
-Power-user: `nlq db create|list`, `nlq query <db> "…"`, `nlq use <db>`, `nlq connection <db>` (raw Postgres URL).
+Power-user: `nlq db create|list|connect`, `nlq query <db> "…"`, `nlq use <db>`, `nlq run "<sql>"`.
 
 ### 3.4 MCP server — `@nlqdb/mcp`
 
-Canonical feature: `mcp-server/FEATURE.md` (`SK-MCP-001..007`). Two transports: **hosted** (`mcp.nlqdb.com`, paste-URL into host config, OAuth) and **local stdio** (`@nlqdb/mcp` via `nlq mcp install`). Three tools: `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` — no `nlqdb_create_database` (DB materializes on first `nlqdb_query` per §0.1).
+Canonical feature: `mcp-server/FEATURE.md` (`SK-MCP-001..014`). Two transports: **hosted** (`mcp.nlqdb.com/mcp`, paste-URL into host config, OAuth) and **local stdio** (`@nlqdb/mcp`; npm publish pending). Tool set per `SK-MCP-002` — no `nlqdb_create_database` (DB materializes on first `nlqdb_query` per §0.1).
 
 ### 3.5 `<nlq-data>` + `<nlq-action>` elements
 
@@ -314,14 +311,14 @@ Canonical: `GLOBAL-013` (strict-$0 free tier) + [`GLOBAL-026`](./decisions/GLOBA
 
 | Tier | Price | Limits | Card |
 |---|---|---|---|
-| **Free** | $0 forever | 1k queries/mo, 500MB/DB, pause after 7d idle (resume <2s), 7-day backups. Free LLM chain forever per `GLOBAL-026`. | No |
-| **Hobby** | $10/mo | 50k queries/mo, 5GB/DB, no pausing, 30-day backups, email support | Yes |
+| **Free** | $0 forever | 1k queries/mo, 500MB/DB, pause after 7d idle (resume <2s). Free LLM chain forever per `GLOBAL-026`. | No |
+| **Hobby** | $10/mo | 50k queries/mo, 5GB/DB, no pausing, email support | Yes |
 | **Pro** | $25/mo min + usage | $0.0005/query over 50k, $0.10/GB-mo over 5GB; hard cap opt-in. LLM tokens **not** metered — Pro uses the strict-$0 chain same as Free (retention-off providers per `SK-LLM-008`). | Yes |
-| **Premium models** (add-on, Hobby+) | Flat sub + included monthly request allowance + soft-meter overage | Frontier routing (Claude Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro). Hobby ≈ 200 included premium requests/mo, Pro ≈ 600 (no carryover); overage at provider list + 0% markup per [`SK-PREMIUM-009`](./features/premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md); opt-in to fall back to the free chain at exhaustion per [`SK-PREMIUM-011`](./features/premium-tier/decisions/SK-PREMIUM-011-overflow-policy.md). §6-gated meter. | Yes |
+| **Premium models** (add-on, Hobby+) | Flat sub + allowance + soft-meter overage | Frontier routing (Claude Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro); allowances + 0%-markup overage per [`SK-PREMIUM-009`](./features/premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md); free-chain fallback opt-in per [`SK-PREMIUM-011`](./features/premium-tier/decisions/SK-PREMIUM-011-overflow-policy.md). §6-gated meter. | Yes |
 | **BYOLLM** (any tier including Free) | $0 from us | Paste an Anthropic / OpenAI / Gemini / OpenRouter key in `/app/keys`; the router dispatches through your key at 0% markup. Per [`SK-PREMIUM-008`](./features/premium-tier/decisions/SK-PREMIUM-008-byollm.md). | No |
 | **Enterprise** | Custom | VPC peering, SAML SSO, audit-log export, on-prem | Annual |
 
-**Honest billing rules:** no card for free tier, ever. Hitting a limit rate-limits — never silently upgrades. Soft cap email at 80%; hard cap default at 100%. Export always free. Cancellation is one click, no call, no exit survey.
+**Honest billing rules:** no card for free tier, ever. Hitting a limit rate-limits — never silently upgrades. Soft cap email at 80%; hard cap default at 100%. Your data is always readable out with plain SQL, free — no export endpoint or backups exist yet (`blindspot-analysis.md` tracks both), so no tier advertises them. Cancellation is one click, no call, no exit survey.
 
 **Unit economics:** free user at 100 queries/mo costs ~$0.15–$0.40. Hobby margin target: 60–80% at target plan-cache hit rate. Pro margin target: 75%+ once self-hosted classifier is online.
 

@@ -19,7 +19,7 @@ export async function runStdio(opts: StdioOptions = {}): Promise<void> {
 
   if (!apiKey) {
     process.stderr.write(
-      "@nlqdb/mcp: NLQDB_API_KEY is not set. Easiest: point your host at the hosted server (mcp.nlqdb.com — OAuth, no key needed). For local stdio, set env NLQDB_API_KEY=sk_mcp_… in the host config.\n",
+      "@nlqdb/mcp: NLQDB_API_KEY is not set. Easiest: point your host at the hosted server (https://mcp.nlqdb.com/mcp — OAuth, no key needed). For local stdio, set env NLQDB_API_KEY=sk_mcp_… in the host config.\n",
     );
     process.exit(1);
   }
