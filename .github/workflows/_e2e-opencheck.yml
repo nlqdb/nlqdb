@@ -27,10 +27,10 @@ on:
         type: string
         default: https://openrouter.ai/api/v1
       candidate_models:
-        description: "Ordered comma-separated agent-model ids on provider_base_url, ALL free per GLOBAL-013 (`:free` suffix on OpenRouter). Pre-flight picks the first one that answers a tool-call probe; tool-call support verified live 2026-07-05 for each default entry."
+        description: "Ordered comma-separated agent-model ids on provider_base_url, ALL free per GLOBAL-013 (`:free` suffix on OpenRouter). Pre-flight picks the first one that answers a tool-call probe. Order is by AGENT STRENGTH, not size alone: run 28757212934's Suite B showed gpt-oss-20b times out / derails on the heavy multi-step suites, so the 120B-class nemotron ranks above it."
         required: false
         type: string
-        default: "openai/gpt-oss-120b:free,openai/gpt-oss-20b:free,nvidia/nemotron-3-super-120b-a12b:free,qwen/qwen3-next-80b-a3b-instruct:free,qwen/qwen3-coder:free"
+        default: "openai/gpt-oss-120b:free,nvidia/nemotron-3-super-120b-a12b:free,qwen/qwen3-next-80b-a3b-instruct:free,qwen/qwen3-coder:free,openai/gpt-oss-20b:free"
     secrets:
       LLM_API_KEY:
         description: "LLM API key for the active provider. Surfaced via OPENAI_API_KEY + provider-specific OPENAI_BASE_URL."

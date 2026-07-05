@@ -26,21 +26,23 @@ tests:
     case: |
       Navigate to the base URL. Call browser_snapshot immediately
       after the page loads — do NOT press Control+G or any other
-      key first (the hero form is unconditionally visible; there is
-      no Cmd+G chord). Use browser_snapshot to
-      verify (do NOT use browser_evaluate or DOM queries).
-      In the snapshot the hero input appears as:
-        textbox "What are you building?" with /placeholder: an orders tracker
-      Any snapshot line containing "an orders tracker" confirms it
-      is present. Once you see it, respond with TEST_PASSED
-      immediately — do NOT take any further browser actions.
-      If the text "an orders tracker" is absent from the snapshot,
-      the test fails.
+      key first. Use browser_snapshot to verify (do NOT use
+      browser_evaluate or DOM queries). The homepage is the two-door
+      hero (SK-WEB-003): the snapshot must contain BOTH
+        (a) a heading line containing "Analytical memory"
+        (b) a link whose text contains "describe your data"
+          (the anonymous door, pointing at /app/new/)
+      Once you see both, respond with TEST_PASSED immediately — do
+      NOT take any further browser actions. If either is absent from
+      the snapshot, the test fails.
 
   - name: "#create-table-anon"
     case: |
-      Navigate to the base URL. Call browser_snapshot. Find the input
-      with placeholder "an orders tracker". Click it and type:
+      Navigate to "/app/new/" (the anonymous-door target the homepage
+      links as "just describe your data"). Call browser_snapshot. Find
+      the input with placeholder "an orders tracker" — it hydrates
+      client-side, so if it is not in the first snapshot wait 3 seconds
+      and snapshot again (up to 3 times). Click it and type:
         create a users table with id, name, email
       Press Enter as a SEPARATE browser_key_down call (do NOT use submit: true).
       The form calls the API — DB creation (LLM inference + schema provision)
