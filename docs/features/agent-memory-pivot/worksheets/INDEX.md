@@ -45,7 +45,8 @@ You are the 6×/day operating agent (`.claude/commands/daily.md`). When the
    performance untouched.
 
 **Hard rules inherited from the loop:** do **not** re-escalate the
-engine-quality (BIRD/Spider) thresholds; the billing lane stays frozen; the
+engine-quality (BIRD/Spider) thresholds; the billing *meter* stays frozen
+(build the paid plan before the signal, per phase-plan §6 + GLOBAL-026); the
 wedge conversion = **a registered user reaching a first answer**
 (GLOBAL-036). Every slice is **additive**
 until WS-13 — nothing irreversible ships before the founder-gated headline
