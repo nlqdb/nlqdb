@@ -17,23 +17,31 @@ unverified-live deltas. Distribution volume holds (yield near-zero; see
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric; the daily **lever** targets its agent-movable inputs. Today's
-(07-04, run 5) lever+artifact: **publish `top-n-rows-per-group` to `/blog`**
-⇒ **row #6 77 → 78** (`/blog` 13 → 14). Step-3 was *mandated*, not chosen: the
-queue held exactly **3 unpublished drafts** (the ≥ 3 → publish rule), so the
-oldest ready draft ships as the canonical post.
-**Engine finding (row #8):** BIRD 0.512 stays below the ≥ 0.60 Phase 2 floor,
-but the **offline deterministic-ceiling engine lever is exhausted** — `SK-LLM-043`
-(#605) took the last mechanically-provable loss bucket (column concatenation).
-Re-ran the `SK-QUAL-014` analyzer on the pinned baseline against the real gold
-SQL: the remaining 238 mismatches differ from gold by join-direction / alias /
-DISTINCT / subquery-shape changes that need **execution or the live LLM chain**
-to score a flip (the chain can't run here — MITM-proxy limitation), and no single
-deterministic transform yields a clean provable flip (measured: `drop_distinct`
-0 flips / 25 matches altered; `strip_trailing_limit` 0 / 40). The `SK-LLM-043`
-ceiling was +0.6 pp — a full live re-measure to detect that is within McNemar
-noise (p=0.36) and would re-throttle the shared free-LLM capacity (row #15). So
-the next engine lever waits for a batched live re-measure on an eval-free day,
-not this run. Phase 2 exit gate: **1/9 criteria pass** (row #16).
+(07-04, run 6) lever: **docs-ambiguity `30 → 26`** (row #17) — resolved 4
+open-questions whose bodies already settled/parked them but whose first line
+didn't say so (mcp-server directory-submission → engineering-done/external-review;
+trust-ux SK-TRUST-001 + SK-TRUST-002 → parked-with-interim; byo-connect (d)
+sentinel → resolved-additive). Artifact (step 3, queue < 3 ⇒ *draft*, not
+publish): queued the **`bird-gold-noise-distinct`** engine lesson, straight from
+this run's measurement. Engine (weekly focus) was **not** the lever — its only
+live sub-lever needs a dedicated eval-free day (see below), incompatible with
+shipping any PR today.
+**Engine finding (row #8), re-confirmed independently this run:** BIRD 0.512 is
+below the ≥ 0.60 Phase 2 floor and the **offline deterministic-ceiling lever is
+exhausted** — `SK-LLM-043` (#605) took the last mechanically-provable bucket.
+Re-downloaded the real BIRD gold + re-ran the `SK-QUAL-014` analyzer here: 0
+`literal_only` / 0 `date_literal_only` clean directive-recoverable buckets
+remain; the largest single-tag buckets are **`extra_DISTINCT` (46/238) and
+`other_predicate_or_value` (21)** — the DISTINCT mass is dominated by BIRD
+gold-annotation noise / semantic-equivalence (several cases the model is *more*
+correct than gold, e.g. `COUNT(DISTINCT id)` after a fan-out join), so a
+directive there would **overfit to wrong gold** and degrade real-world quality.
+This corroborates the parked **corrected-set** lever (quality-eval OQ): the Kang
+VLDB-2026 corrected set (52.8% BIRD annotation errors) exists as git-JSON our
+loader parses — a ~50-LOC scorer patch — but **the repo states no license**
+(P2), so it stays parked pending a license issue upstream. Net: **0.512 is a
+floor, not a ceiling**; the next engine move is a batched live re-measure on an
+eval-free day, not this run. Phase 2 exit gate: **1/9 criteria pass** (row #16).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -44,7 +52,7 @@ not this run. Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | no data — instrument live (migration 0020 applied), counters all zero | target ≥ 95%; still zero `/v1/ask` since the 07-02 deploy (latest `last_queried_at` = 07-02 09:25 UTC, 28h+ quiet) — reads on next pull with traffic |
 | 5 | Session retention (≥ 2 queries) | no data yet — same instrument, awaiting traffic | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **78** (`/vs` 31 + `/solve` 33 + `/blog` 14) — was 77 | **this run's lever+artifact** — leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. This run: +1 `/blog` (`top-n-rows-per-group`, the greatest-N-per-group / `LIMIT`-can't-write-it wedge — anchors `/solve/find-top-n-rows-per-group`; queue was at the 3-draft publish threshold, so the oldest draft shipped as canonical) |
+| 6 | Indexable surfaces | **78** (`/vs` 31 + `/solve` 33 + `/blog` 14) — unchanged this run | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. **Run 6 did not publish** — the queue held **2** unpublished drafts (< 3), so step 3 was *draft*, not publish: queued `bird-gold-noise-distinct` (queue 2 → 3). Next run hits the ≥ 3 → publish threshold |
 | 7 | Surface yield | posts 11; 7d external referrals = 3 (`www.google.com` + `aisearchindex.space` + `bing.com`, 1 pageload each) | CF `refererHost` — measured every run |
 | | **Engine** — BIRD 07-03 · Spider 07-02 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.512** (256/500, 07-03 — first completed 500q canonical since 06-19; Δ −0.8 pp vs 0.520, McNemar p=0.36 statistically flat, 0 flagged regressions; [run 28640034273](https://github.com/nlqdb/nlqdb/actions/runs/28640034273)) | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Resume loop closed (4 checkpointed windows), baseline re-seeded 07-03; pin-branch delete blocked by session push scope — any session with branch-delete rights can drop `eval/bird-resume-0e67e64`. **07-04 run 3: `SK-LLM-043` projection directive shipped** — de-concat ceiling on the real DBs flips 3/7 concat-mismatches (EX 0.512→0.518), 0/256 matches at risk; live EX re-measures on the next canonical CI run. **07-04 run 5: offline deterministic-ceiling lever exhausted** — `SK-QUAL-014` re-run vs gold shows the remaining 238 mismatches need execution/live-chain to score (join-direction/alias/DISTINCT/subquery diffs, not one deterministic transform: `drop_distinct` 0 flips, `strip_trailing_limit` 0); next engine move is a batched live re-measure on an eval-free day |
@@ -59,7 +67,7 @@ not this run. Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | 15 | E2E manual-suite freshness | **0.64** (natural 1-day decay from 0.75) — sdk ✅ 07-02 · mcp ✅ 07-02 · examples ✅ 07-02 · opencheck ❌ (last ✅ 06-12 ⇒ freshness 0) | opencheck failed twice 07-02 on OpenRouter free-tier 429 (driver LLM throttled — infra, not product); its driver shares free-LLM capacity with the eval lanes (BIRD burned it again 07-03) — dispatch opencheck on an eval-free day |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.512, fresh 07-03); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**measured 07-03, row #11: Δ 19.3 pp ✓ ≤ 25, but agentic 0.667 ✗ < 0.80 — 7 `openrouter:parse` no_sql suppress the frontier lanes; criterion still fails on the absolute floor**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (no data, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: **the 7 `openrouter:parse` root cause is now fixed at the source (`SK-LLM-042`, 07-04)** — re-measure agentic-frontier vs the 0.80 floor on the next smoke window; first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **30** (07-04 run 4, was 34; 165 total bullets, 135 resolved/parked/decided) | target ↓ 0. **This run's lever: −4** — `stranger-test` `@cloudflare/playwright` (Resolved via P2: GA on Workers **Paid**, but §1.1 stranger-IP rule bars a Worker-as-stranger ⇒ keep `bun`+Chromium), `framework-wrappers` `@nlqdb/qwik` (Deferred to Phase 2 P2; dropped a dead `/tmp/…` research-path ref), `sdk-swift` Kotlin/Flutter (Deferred to Phase 2), `quality-eval` canonical-raw-EX (Resolved — a SoT pointer, not a question). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts to 53). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved/delete |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **26** (07-04 run 6, was 30) | target ↓ 0. **This run's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-04 run-5 sweep: 98 pages, 2,297 internal links — new `/blog/top-n-rows-per-group` page included) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
@@ -87,25 +95,27 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-04 (run 5)** — lever+artifact: **publish `top-n-rows-per-group` to
-`/blog`** ⇒ **row #6 77 → 78** (`/blog` 13 → 14). Step-3 was mandated: the queue
-held exactly **3 unpublished drafts** (the ≥ 3 → publish rule), so the oldest
-ready draft — the greatest-N-per-group / "`LIMIT` can't write per-group" wedge
-(the `ROW_NUMBER() OVER (PARTITION BY …)` filtered to `rn ≤ N` pattern, with the
-`ROW_NUMBER`/`RANK`/`DENSE_RANK` tie decision) — ships as the canonical post
-anchoring `/solve/find-top-n-rows-per-group`, auto-listed in `llms.txt` + sitemap.
-**Engine (row #8):** BIRD 0.512 < the 0.60 floor, but the offline
-deterministic-ceiling lever is exhausted — `SK-LLM-043` (#605) took the last
-mechanically-provable bucket. Re-ran the `SK-QUAL-014` analyzer vs the real gold
-SQL: the remaining 238 mismatches differ by join-direction / alias / DISTINCT /
-subquery-shape changes that need execution or the live chain (proxy-blocked here)
-to score; no single deterministic transform gives a clean flip (`drop_distinct`
-0 flips / 25 matches altered; `strip_trailing_limit` 0 / 40). `SK-LLM-043`'s
-+0.6 pp ceiling is within McNemar noise (p=0.36) and a live re-measure re-throttles
-the shared free-LLM capacity (row #15) — deferred to a batched eval-free window.
-Row #18 re-swept **0 dead / 0 redirecting** across 98 pages / 2,297 internal
-links (was 97 / 2,272). Gates green: `@nlqdb/web` test 220/220, astro-check
-0 errors, biome lint exit 0, `grep -rn '^### GLOBAL-' docs/features/` empty.
-**KPI:** GLOBAL-025 distribution/onboarding — +1 canonical indexable surface.
-None degraded — one typed `BlogPost` + docs; no code paths touched, engine/
-funnel/ops numbers carry from the < 24 h-old 07-03 pull.
+**2026-07-04 (run 6)** — lever: **docs-ambiguity `30 → 26`** (row #17).
+Resolved 4 open-questions whose body already settled/parked the question but
+whose first line (the pinned method's key) didn't say so: `mcp-server`
+Anthropic-directory-submission (engineering done, no pending human action —
+only Anthropic's external review remains, not a question we can answer);
+`trust-ux` SK-TRUST-001 (parked until a P3-persona destructive-DDL test; interim
+= the trace block's compiled DDL is the create preview) + SK-TRUST-002
+(GLOBAL-003 tracked ship-gap, parked per surface); `byo-connect` (d)
+`__byo_blob__` sentinel (Resolved — additive-migration design). Also upgraded
+the `quality-eval` corrected-set OQ with the P2 finding (Kang VLDB-2026 set is
+git-JSON our loader parses ⇒ ~50-LOC scorer, but **repo states no license** ⇒
+stays parked; no count change — already excluded). **Engine (weekly focus) was
+not the lever:** re-downloaded the real BIRD gold + re-ran `SK-QUAL-014` here to
+independently re-confirm the offline lever is exhausted — 0 `literal_only` / 0
+`date_literal_only` clean buckets; `extra_DISTINCT` (46/238) is dominated by
+gold-noise (model often *more* correct than gold post-fan-out-join), so a
+directive there overfits wrong gold. **0.512 is a floor, not a ceiling.** The
+only live engine sub-lever needs a dedicated eval-free day (merging any PR moves
+main's SHA and breaks the SHA-keyed multi-window resume), incompatible with
+shipping today. Artifact (step 3, queue **2 < 3** ⇒ *draft*, not publish):
+queued `bird-gold-noise-distinct` (queue 2 → 3; older 2 full drafts D4-collapsed
+to one-liners, bodies in git). **KPI:** GLOBAL-025 onboarding/clarity — docs
+ambiguity −4; engine finding recorded, none degraded (docs-only, no code paths;
+engine/funnel/ops numbers carry from the < 48 h-old 07-03 pull).

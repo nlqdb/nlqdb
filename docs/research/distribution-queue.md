@@ -15,45 +15,48 @@ drafts live in the [archive](./distribution-queue-archive.md).
 
 ## Drafts — unpublished, newest first
 
-- **"Your LLM fused the two columns you asked for — and the eval marked it
-  wrong."** slug `llm-concatenates-columns-text-to-sql` · venue dev.to (#sql
-  #llm #ai) + r/SQL · engine lesson · anchors the projection half of the
-  planner prompt.
-  Angle: you ask "list the members' names"; BIRD gold returns `first_name,
-  last_name` as **two** columns; the model helpfully returns
-  `first_name || ' ' || last_name` as **one** "full name" column. Every
-  execution-accuracy scorer compares *positional value tuples*
-  (`set(fetchall())`), so a 1-column result can never equal a 2-column gold —
-  a semantically-right answer scores as a miss and your engine number reads
-  lower than the engine is. It's the mirror of the "extra columns" bug:
-  fusing columns is as fatal as adding them. Real numbers on BIRD-dev
-  (500 q): **7 of 238 losses** concatenate where gold doesn't, **0 of 256
-  wins** use `||` at all, and gold itself uses `||` in **1 of 500** — so
-  discouraging it is near-pure upside. Fix: one planner directive — *return
-  each requested attribute as its own column unless the goal explicitly asks
-  for a single combined string*. Deterministic ceiling (de-concatenate the 7
-  cases, re-score against the real SQLite DBs): **+3** flip wrong→right, zero
-  regressions. Close on the rule — **the model's job is to match the shape of
-  the answer, not to make it pretty**; a helpful concatenation is a wrong
-  result set.
+- **"Your text-to-SQL model isn't as wrong as your benchmark says. The gold
+  SQL is."** slug `bird-gold-noise-distinct` · venue dev.to (#sql #llm #ai) +
+  r/LLMDevs + lobste.rs (`llm`) · engine lesson · anchors the "engine number is
+  a floor, not a ceiling" honesty theme (`SK-QUAL-014`, quality-eval FEATURE).
+  Angle: you run BIRD-dev, read 0.512 EX, and start writing planner directives
+  to close the gap. Before you do, *bucket the losses*. On the pinned 500-q
+  baseline we tagged all 238 mismatches structurally: **46 of them (19%) differ
+  from gold only by a `DISTINCT` the model added and gold didn't** —
+  `COUNT(DISTINCT customer_id)` vs gold's `COUNT(*)`, `SELECT DISTINCT x` vs a
+  plain `SELECT x`. Read the pairs and a chunk are the model being *more*
+  correct than the annotation: counting patients after a one-to-many join to a
+  lab table, `COUNT(DISTINCT T1.ID)` is the right grain and gold's
+  `COUNT(T1.ID)` over-counts the fan-out. EX scores the model *wrong* for being
+  right. This isn't a nlqdb quirk — UIUC's Kang lab
+  ([VLDB 2026, arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found
+  **52.8% of BIRD instances carry annotation errors** and released a corrected
+  set. The trap: chase the noisy buckets with prompt directives and you *overfit
+  to wrong gold* — you teach the model to drop a `DISTINCT` it should keep,
+  degrading real-world answers to win a benchmark point. Fix: classify your loss
+  mass before you touch the prompt (a ~100-line structural differ, no LLM
+  needed); only write a directive for a bucket where gold is *right* and the
+  model is *wrong* (we did this for column-concatenation — 7 clean losses, 0
+  gold-noise). Close on the rule — **a benchmark number is a floor bounded by
+  its gold quality, not a measure of your engine; before optimizing a metric,
+  audit what it's actually counting.**
 
-- **"Your text-to-SQL eval is lying: OpenRouter returns HTTP 200 with the
-  error in the body."** slug `http-200-error-in-body` · venue dev.to (#llm
-  #api #debugging) + r/LocalLLaMA + lobste.rs · engine lesson.
-  Angle: a gateway commits the `200 OK` + headers, *then* the upstream provider
-  fails mid-request — the status can't change, so the failure comes back as a
-  top-level `error` object in a **200** body ([OpenRouter, "Errors and
-  debugging"](https://openrouter.ai/docs/api/reference/errors-and-debugging)). A
-  client that only branches on `res.ok` sails past it, finds `choices[0].message
-  .content` missing, and files it under "the model returned junk." In an accuracy
-  harness that misread is poison: a rate-limit or provider outage scores as a
-  wrong answer, so your engine number reads lower than the engine is. Fix:
-  before you touch `choices`, inspect the body for a top-level `error` and
-  classify it — 429-shaped → back off; else → retry / fail over. It's infra,
-  not the model. Real numbers: this bug silently capped our frontier lane with 7
-  mislabeled `no_sql` losses per 150-q smoke. Close on the rule — **`res.ok` is
-  necessary, not sufficient; a 200 can still carry a failure** — so any
-  retry/failover layer keyed off status alone has a blind spot.
+- **"Your LLM fused the two columns you asked for — and the eval marked it
+  wrong."** slug `llm-concatenates-columns-text-to-sql` · dev.to (#sql #llm #ai)
+  + r/SQL · engine lesson (full body in git history, D4-collapsed): BIRD gold
+  returns `first_name, last_name` as two columns; the model returns
+  `first_name || ' ' || last_name` as one, and positional-tuple EX marks the
+  semantically-right answer wrong. 7/238 losses concatenate, 0/256 wins use
+  `||` — one planner directive discourages it (de-concat ceiling +3, zero
+  regressions); anchors the projection half of the planner prompt.
+- **"Your text-to-SQL eval is lying: OpenRouter returns HTTP 200 with the error
+  in the body."** slug `http-200-error-in-body` · dev.to (#llm #api #debugging)
+  + r/LocalLLaMA + lobste.rs · engine lesson (full body in git history,
+  D4-collapsed): a gateway commits `200 OK`, then the upstream fails, so the
+  error rides in a 200 body ([OpenRouter docs](https://openrouter.ai/docs/api/reference/errors-and-debugging));
+  a `res.ok`-only client scores it as a wrong answer — 7 mislabeled `no_sql`
+  losses per 150-q frontier smoke. Fix: inspect the body for a top-level
+  `error` before `choices`; `res.ok` is necessary, not sufficient.
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
