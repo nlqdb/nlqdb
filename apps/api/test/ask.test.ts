@@ -64,6 +64,44 @@ describe("POST /v1/ask — principal gate", () => {
     expect(await res.json()).toEqual({ error: "goal_required" });
   });
 
+  it('anon + model "best" is 409 model_unavailable — never rides the free create path (SK-PREMIUM-014)', async () => {
+    // Anon principals can never hold a frontier lane (BYOLLM is
+    // signed-in-only, paid plans need an account), so the fail-loud
+    // 409 fires before the SK-ANON-013 create short-circuit — no
+    // create-gate peek, no LLM/Neon work.
+    const res = await SELF.fetch("https://example.com/v1/ask", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer anon_modelbestnolane",
+      },
+      body: JSON.stringify({ goal: "count the orders", model: "best" }),
+    });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({
+      error: {
+        status: "model_unavailable",
+        link: "https://app.nlqdb.com/app/keys",
+      },
+    });
+  });
+
+  it('anon + unknown model is 400 invalid_model with the allowed presets (SK-PREMIUM-014)', async () => {
+    const res = await SELF.fetch("https://example.com/v1/ask", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer anon_modelinvalidparse",
+      },
+      body: JSON.stringify({ goal: "count the orders", model: "claude-opus-4-8" }),
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({
+      error: "invalid_model",
+      allowed: ["auto", "fast", "best"],
+    });
+  });
+
   it("rejects x-nlq-byollm-key from a non-signed-in (anon) principal — signed-in only", async () => {
     // SK-LLM-016 step 1 — the per-request BYOLLM key carries a raw
     // provider secret, so it is accepted only on a first-party cookie

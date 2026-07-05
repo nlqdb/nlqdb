@@ -851,7 +851,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             status: "model_unavailable" as const,
             message:
               'model "best" needs a frontier model: add your own provider key (BYOLLM) or a paid plan — pick one under /app/keys.',
-            link: "https://nlqdb.com/app/keys",
+            link: "https://app.nlqdb.com/app/keys",
           },
         },
         409,
