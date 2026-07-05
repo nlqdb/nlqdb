@@ -66,7 +66,7 @@ export const BLOG_POSTS: BlogPost[] = [
         lang: "json",
         code: '// HTTP/1.1 200 OK  ← the status lies\n{\n  "error": {\n    "code": 429,\n    "message": "Provider returned error",\n    "metadata": { "provider_name": "..." }\n  }\n}\n// no "choices" — the completion never happened',
       },
-      { kind: "h2", text: "Why `res.ok` quietly corrupts an eval" },
+      { kind: "h2", text: "Why res.ok quietly corrupts an eval" },
       {
         kind: "p",
         text: 'The natural client is a two-branch one: if `res.ok`, parse the completion; otherwise, it\'s an infrastructure error — pause, back off, retry. That branch is where the damage happens. A `200` with an error body takes the *success* branch. Your parser reaches for `choices[0].message.content`, finds nothing, and hands back an empty string. Downstream, an empty completion is indistinguishable from "the model answered but produced no SQL" — so it gets scored as a **wrong answer**.',
@@ -75,7 +75,7 @@ export const BLOG_POSTS: BlogPost[] = [
         kind: "p",
         text: "That single misclassification does two bad things to a benchmark. It undercounts your engine's true accuracy — the model was never given a chance to answer, yet it eats the loss. And it hides a real capacity problem — those seven failures were rate-limits the harness should have paused and retried, not quality losses to investigate. You end up staring at planner prompts trying to fix an accuracy gap that is actually an outage in disguise.",
       },
-      { kind: "h2", text: "The fix: `res.ok` is necessary, not sufficient" },
+      { kind: "h2", text: "The fix: res.ok is necessary, not sufficient" },
       {
         kind: "p",
         text: "Inspect the body for a top-level `error` before you trust the `choices`. A response is only a real completion if the transport succeeded *and* the payload carries content. Everything else is infrastructure — classify it as such so your retry logic and your metrics both see it correctly.",
