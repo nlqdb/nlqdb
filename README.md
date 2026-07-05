@@ -149,8 +149,8 @@ and shares the link — in under 60 seconds, no card, no config.
 
 ### Phase 2 — Distribution (agent + developer surfaces)
 
-- ✓ Hosted MCP server (`mcp.nlqdb.com` + local stdio `@nlqdb/mcp`) —
-  host auto-detect pending
+- ✓ Hosted MCP server (`mcp.nlqdb.com/mcp`) — host auto-detect pending;
+  local stdio `@nlqdb/mcp` built, npm publish pending
 - ✓ CLI `nlq` (Go) — core verbs + raw-SQL escape hatch; device-login +
   chat REPL pending
 - ✓ `@nlqdb/sdk` — basic methods + `runSql`

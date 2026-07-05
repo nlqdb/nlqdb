@@ -11,6 +11,8 @@ nlq "how many orders today, by drink"
 
 See [`walkthrough.sh`](./walkthrough.sh) for the same flow with annotated expected output.
 
+> **`nlq login` is not shipped yet** — device-flow sign-in (and the adopt-anonymous flow below) lands with the next CLI slice; today the command prints a deferral hint. Until then, anonymous mode is the default, or mint an `sk_live_*` key in the dashboard and export `NLQDB_API_KEY`.
+
 ## Install
 
 > **Phase 2 — channels not yet live.** Install paths are decided ([`SK-CLI-002`](../../docs/features/cli/decisions/SK-CLI-002-distribution-channels.md)) and ship with the Phase 2 CLI surface ([`docs/phase-plan.md`](../../docs/phase-plan.md)). Until then build from source — see *Build from source today* below.
@@ -68,23 +70,22 @@ latte    ████████████  12
 flat-white ██████      6
 mocha    ██            2
 
-$ nlq "export today's orders as csv > today.csv"
-✓ Wrote 20 rows to today.csv
+$ nlq "today's orders" --json > today.json
 ```
 
 ## When to use the CLI
 
 - Quick analysis on a CSV or live DB without writing a query.
 - Cron jobs that ingest events (no client code required, just `nlq …`).
-- Pipelines: `nlq "orders this week" --csv | duckdb …`.
+- Pipelines: `nlq "orders this week" --json | jq …`.
 - CI: `NLQDB_API_KEY=sk_live_… nlq "regression rows since last release"`.
 
 ## Power-user paths
 
 ```bash
-nlq db create finance --engine postgres --region us-east  # explicit form
-nlq connection finance                                     # raw Postgres URL
-nlq export finance --csv > finance.csv
+nlq db create finance --engine postgres              # explicit create
+nlq use finance                                      # set the active database
+nlq run "SELECT * FROM orders" --json > orders.json  # raw SQL out — no LLM
 ```
 
 docs/features/cli/FEATURE.md covers all of them.

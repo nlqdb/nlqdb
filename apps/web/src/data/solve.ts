@@ -126,7 +126,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The first thing an MCP host does with a fresh database — provision it, then ask an aggregate over it — is one English goal here, not a connection string plus a CREATE TABLE.",
     howNlqdbAnswers: [
-      "Point Claude Desktop, Cursor, Cline, or Claude Code at `mcp.nlqdb.com` — the `nlqdb_query` tool needs no connection string and no schema setup.",
+      "Point Claude Desktop, Cursor, Cline, or Claude Code at `mcp.nlqdb.com/mcp` — the `nlqdb_query` tool needs no connection string and no schema setup.",
       "Calling `nlqdb_query` with no `db` set provisions Postgres from the agent's first English goal — create and query are one call, no separate create tool.",
       "`nlqdb_list_databases` and `nlqdb_describe` let the host enumerate and inspect schemas; every answer returns rows plus the compiled SQL to audit.",
       "Per-`(mcp_host, device_id)` `sk_mcp_*` keys scope access per agent and device; revocation is per-device and shown in the dashboard.",
@@ -143,7 +143,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Which MCP hosts can use the nlqdb database?",
-        a: "Any host that speaks MCP — Claude Desktop, Cursor, Cline, Claude Code. Point it at the hosted server `mcp.nlqdb.com` (no local install), or run the `@nlqdb/mcp` npm binary for local stdio. The `@nlqdb/sdk` TypeScript client is the typed fallback for non-MCP integrations.",
+        a: "Any host that speaks MCP — Claude Desktop, Cursor, Cline, Claude Code. Point it at the hosted server `mcp.nlqdb.com/mcp` (no local install). The `@nlqdb/sdk` TypeScript client is the typed fallback for non-MCP integrations.",
       },
       {
         q: "How does the agent create the database — is there a create tool?",
@@ -259,7 +259,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "What about agent frameworks like LangChain or AutoGen?",
-        a: "Any framework that speaks MCP can connect; the `@nlqdb/sdk` (TypeScript) is the typed fallback for non-MCP integrations. The `mcp` surface is the no-glue path — point the host (Claude Desktop, Cursor, Cline) at `mcp.nlqdb.com`.",
+        a: "Any framework that speaks MCP can connect; the `@nlqdb/sdk` (TypeScript) is the typed fallback for non-MCP integrations. The `mcp` surface is the no-glue path — point the host (Claude Desktop, Cursor, Cline) at `mcp.nlqdb.com/mcp`.",
       },
       {
         q: "Does the agent need its own credentials?",
