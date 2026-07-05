@@ -105,7 +105,7 @@ Paid plans aren't live yet. The full model strategy is in
 | HTTP API (`POST /v1/ask`, `POST /v1/run`) | ✓ shipped | `apps/api/src/ask/**` |
 | `<nlq-data>` + `<nlq-action>` elements | ✓ shipped (v0.1) | `packages/elements/**` |
 | `@nlqdb/sdk` (TypeScript) | ✓ shipped (incl. `runSql`) | `packages/sdk/**` |
-| Framework wrappers (React / Next / Vue / Nuxt / Svelte / SvelteKit / Astro / Solid + Swift) | ✓ shipped | `packages/{react,next,…}/**` |
+| Framework wrappers (React / Next / Vue / Nuxt / Svelte / SvelteKit / Astro / Solid + Swift) | ~ built + CI-tested; npm / SPM publish pending | `packages/{react,next,…}/**` |
 | Chat app `nlqdb.com/app` | ✓ shipped | `apps/web/**` |
 | Hosted MCP server `mcp.nlqdb.com` | ✓ shipped (host auto-detect pending) | `apps/mcp/**`, `packages/mcp/**` |
 | `nlq` CLI (Go) | ✓ shipped (core verbs; device-login pending) | `cli/**` |
@@ -154,7 +154,8 @@ and shares the link — in under 60 seconds, no card, no config.
 - ✓ CLI `nlq` (Go) — core verbs + raw-SQL escape hatch; device-login +
   chat REPL pending
 - ✓ `@nlqdb/sdk` — basic methods + `runSql`
-- ✓ Framework wrappers + native Swift package
+- ~ Framework wrappers + native Swift package — built + CI-tested; npm /
+  SPM publish pending
 - ✓ Quality-eval harness (BIRD + Spider 2.0, manual on-demand) — the
   free-vs-frontier accuracy delta is the headline KPI
 - ~ Bring-your-own-LLM dispatch — HTTP lane live; remaining surfaces in
