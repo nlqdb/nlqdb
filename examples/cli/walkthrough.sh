@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-# nlqdb — minimal CLI walkthrough. Four commands, no frontend at all.
+# nlqdb — minimal CLI walkthrough. Three commands, no frontend at all.
 #
 # Maps to DESIGN §14.3 — every block is what the user types.
 # Lines starting with `#` are output you'll see; not part of the input.
 
 set -euo pipefail
 
-# 1. Sign in. Opens the browser; one click; refresh token written to the
-#    OS keychain. From this point every `nlq` call works.
-nlq login
-# → Opening browser to approve this device… (fallback code: ABCD-1234)
-# ✓ Signed in as you@example.com.
+# 1. No sign-in needed — anonymous mode is the default (SK-CLI-005).
+#    Device-flow `nlq login` ships in the next CLI slice; until then,
+#    export NLQDB_API_KEY=sk_live_… (minted in the dashboard) to keep
+#    your data past the 72 h anonymous window.
 
 # 2. Create the DB. The natural-language description IS the schema spec —
 #    nlqdb infers `customer`, `drink`, `total` from the prose.
