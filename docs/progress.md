@@ -14,8 +14,8 @@ Progress tracker — platform integrations. Each row is a P0/P1/P2/P3 commitment
 | **Phase 1**  | curl recipes              | `docs.nlqdb.com/curl/` (markdown, no code surface)                                       | One-liner HTTP-API reference.                                           |
 | **Phase 2**  | `nlq` CLI                 | Static Go binary; `curl \| sh`, Homebrew tap, npm shim `@nlqdb/cli` — `cli/`             | Bootstrap landed (`ask`, `new`, `db`, `query`, `keys`, `run`); device-flow `nlq login` deferred. See [`cli/FEATURE.md`](./features/cli/FEATURE.md). |
 | **Shipped**  | MCP server                | Hosted at `mcp.nlqdb.com` (default) + local stdio fallback `@nlqdb/mcp` — `packages/mcp` | Hosted end-to-end with per-key rate-limit + auth-failure observability. `nlq mcp install` host-detect tracked in CLI. See [`mcp-server/FEATURE.md`](./features/mcp-server/FEATURE.md). |
-| **Shipped**  | Frontend framework modules | `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` — `packages/{…}`              | Typed components, SSR-safe lazy CE registration, `/server` `sk_live_*` factories. See [`framework-wrappers/FEATURE.md`](./features/framework-wrappers/FEATURE.md). |
-| **Shipped**  | Swift Package             | `Nlqdb` — `packages/nlqdb-swift`                                                         | Swift 6 actor, async/await; `NlqDataView` SwiftUI helper. See [`sdk-swift/FEATURE.md`](./features/sdk-swift/FEATURE.md). |
+| **Built**  | Frontend framework modules | `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` — `packages/{…}`              | Typed components, SSR-safe lazy CE registration, `/server` `sk_live_*` factories. All `private: true` — not on npm yet (publish gate per `.changeset/README.md`). See [`framework-wrappers/FEATURE.md`](./features/framework-wrappers/FEATURE.md). |
+| **Built**  | Swift Package             | `Nlqdb` — `packages/nlqdb-swift`                                                         | Swift 6 actor, async/await; `NlqDataView` SwiftUI helper. Not SPM-resolvable yet (lives in the monorepo, no package mirror/tag). See [`sdk-swift/FEATURE.md`](./features/sdk-swift/FEATURE.md). |
 | **Phase 2**  | Python SDK                | `pip install nlqdb`                                                                      | Sync + async; first user is the Jupyter magic.                          |
 | **Phase 2**  | Go SDK                    | `github.com/nlqdb/nlqdb-go`                                                              | First user is the CLI itself.                                           |
 | **Phase 2**  | BYOLLM ([`SK-PREMIUM-008`](./features/premium-tier/decisions/SK-PREMIUM-008-byollm.md)) | `api_keys.scope = "byollm"` — every tier (free included); through-Gateway dispatch; 0% markup | Paste a provider key in `/app/keys`; fail-loud on key error (`GLOBAL-012`). |
@@ -26,7 +26,7 @@ Progress tracker — platform integrations. Each row is a P0/P1/P2/P3 commitment
 | **Wishlist** | Slack bot                 | (clicks → `home.surface_wishlist`)                                                       | `/nlq <goal>` in any channel; per-workspace API key.                    |
 | **Wishlist** | Discord bot               | (clicks → `home.surface_wishlist`)                                                       | Same shape as Slack.                                                    |
 
-**Conventions:** **Shipped** = usable on `main`. **Phase 1** = on-ramp slice (before public alpha). **Phase 2** = developer-surfaces slice (before GA). **Wishlist** = not committed; homepage clicks fire `home.surface_wishlist` (`SK-EVENTS-011`).
+**Conventions:** **Shipped** = a stranger can use it through its advertised install path (npm / CDN / hosted URL) — merged-on-`main` alone doesn't qualify. **Built** = code + tests complete on `main` but the install path isn't public yet (registry publish gated). **Phase 1** = on-ramp slice (before public alpha). **Phase 2** = developer-surfaces slice (before GA). **Wishlist** = not committed; homepage clicks fire `home.surface_wishlist` (`SK-EVENTS-011`).
 
 The §1–§4 matrix below is finer-grained — one P0–P3 tier per package.
 
@@ -51,20 +51,20 @@ An "official" module adds typed props, auto script injection, SSR prefetch, and 
 
 | Package                  | Stack                          | Tier             | Why this wraps the element                                                                  |
 | :----------------------- | :----------------------------- | :--------------- | :------------------------------------------------------------------------------------------ |
-| `@nlqdb/react`           | React 19                       | **P1 · Shipped** | Foundation for `@nlqdb/next`.                                                              |
-| `@nlqdb/next`            | Next.js 15 App Router          | **P1 · Shipped** | Same. `/server` factory keeps `sk_live_*` off the bundle.                                  |
-| `@nlqdb/vue`             | Vue 3.5                        | **P1 · Shipped** | Foundation for `@nlqdb/nuxt`.                                                              |
-| `@nlqdb/nuxt`            | Nuxt 4 module                  | **P1 · Shipped** | Module + `useNlq()`; injects elements CDN.                                                 |
-| `@nlqdb/svelte`          | Svelte 5 (runes)               | **P1 · Shipped** | Foundation for `@nlqdb/sveltekit`.                                                         |
-| `@nlqdb/sveltekit`       | SvelteKit                      | **P1 · Shipped** | `<NlqHead>` + `/server` `nlqdbLoad()`.                                                     |
-| `@nlqdb/astro`           | Astro 6 integration            | **P1 · Shipped** | `astro:config:setup` injects the script.                                                   |
-| `@nlqdb/solid`           | SolidJS                        | **P1 · Shipped** | Attribute pass-through; lazy CE registration.                                              |
+| `@nlqdb/react`           | React 19                       | **P1 · Built** | Foundation for `@nlqdb/next`.                                                              |
+| `@nlqdb/next`            | Next.js 15 App Router          | **P1 · Built** | Same. `/server` factory keeps `sk_live_*` off the bundle.                                  |
+| `@nlqdb/vue`             | Vue 3.5                        | **P1 · Built** | Foundation for `@nlqdb/nuxt`.                                                              |
+| `@nlqdb/nuxt`            | Nuxt 4 module                  | **P1 · Built** | Module + `useNlq()`; injects elements CDN.                                                 |
+| `@nlqdb/svelte`          | Svelte 5 (runes)               | **P1 · Built** | Foundation for `@nlqdb/sveltekit`.                                                         |
+| `@nlqdb/sveltekit`       | SvelteKit                      | **P1 · Built** | `<NlqHead>` + `/server` `nlqdbLoad()`.                                                     |
+| `@nlqdb/astro`           | Astro 6 integration            | **P1 · Built** | `astro:config:setup` injects the script.                                                   |
+| `@nlqdb/solid`           | SolidJS                        | **P1 · Built** | Attribute pass-through; lazy CE registration.                                              |
 
 ### Mobile + desktop
 
 | Package                 | Distribution                  | Tier             | Notes                                                                                  |
 | :---------------------- | :---------------------------- | :--------------- | :------------------------------------------------------------------------------------- |
-| `Nlqdb` (Swift Package) | Swift Package Manager         | **P1 · Shipped** | Swift 6 actor + SwiftUI view. See [`sdk-swift/FEATURE.md`](./features/sdk-swift/FEATURE.md). |
+| `Nlqdb` (Swift Package) | Swift Package Manager         | **P1 · Built** | Swift 6 actor + SwiftUI view. See [`sdk-swift/FEATURE.md`](./features/sdk-swift/FEATURE.md). |
 | `@nlqdb/react-native`   | npm                           | **P1**           | Hooks (`useNlqQuery`); native fetch; secure-storage refresh tokens.                     |
 | `@nlqdb/expo`           | Expo Modules                  | **P1**           | `expo-config-plugin` for the keychain entitlement; pairs with the RN package.           |
 

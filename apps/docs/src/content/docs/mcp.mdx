@@ -12,35 +12,43 @@ Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline — can call
 
 ## Install paths
 
-Four paths, all terminating at the same `/v1/ask` orchestration and the same
-three tools:
+Three paths, all terminating at the same `/v1/ask` orchestration and the
+same tools:
 
-1. **Connector URL** (hosted, default) — paste `mcp.nlqdb.com` into the
-   host's MCP-connector config; OAuth opens in your browser on first tool
-   call. Zero local setup.
-2. **`nlq mcp install`** (local stdio) — the CLI auto-detects every
-   installed host, opens the browser once for OAuth, mints a scoped
-   `sk_mcp_<host>_<device>_…` key per host, and patches each host's
-   config file in place.
-3. **Website one-click** (`app.nlqdb.com/mcp`) — mints the key server-side,
-   opens an `nlqdb://install?…` deep link the CLI handles.
-4. **`NLQDB_API_KEY` env var** — `sk_…` precedence over any config; the
-   CI / Docker / air-gapped escape hatch.
+1. **Hosted connector URL** (default) — point your host's MCP config at
+   `https://mcp.nlqdb.com/mcp` (the protocol lives at `/mcp`, not the bare
+   domain); OAuth opens in your browser on first tool call. Zero local
+   setup.
+2. **One-click buttons on [nlqdb.com](https://nlqdb.com)** (also on
+   [/integrations](https://nlqdb.com/integrations/)) — deep-link installs
+   for Cursor and VS Code, a copy-paste `claude mcp add` command for
+   Claude Code, and paste-ready config blocks for Claude, Windsurf, Zed,
+   and Codex.
+3. **`NLQDB_API_KEY` env var** — an `sk_…` key takes precedence over any
+   config; the CI / Docker / air-gapped escape hatch for the local stdio
+   server.
 
-## `nlq mcp install` walkthrough
+## Add it to your host
+
+Claude Code, from a terminal:
 
 ```bash
-$ nlq mcp install
-🔎 Scanning: Claude Desktop, Cursor, Zed, Windsurf, VS Code, Continue
-✓ Found: Claude Desktop, Cursor
-→ Opening browser to approve this device… (fallback code: AB12-CD34)
-✓ Signed in as jordan@example.com.
-✓ Claude Desktop  — wrote config; restart? [Y/n] y → relaunched. Self-check: ok.
-✓ Cursor          — wrote config; hot-reloaded. Self-check: ok.
+claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp
 ```
 
-Escape hatches: `nlq mcp install <host>` (explicit), `--all`, `--dry-run`,
-`NLQDB_API_KEY=sk_…` (CI / air-gapped).
+Hosts that take a JSON config block (Claude Desktop custom connectors,
+Windsurf, Zed — exact key names vary by host; the
+[/integrations](https://nlqdb.com/integrations/) page renders the verified
+per-host block to copy):
+
+```json
+{ "url": "https://mcp.nlqdb.com/mcp" }
+```
+
+The CLI can list which supported hosts are installed on your machine with
+`nlq mcp detect`. A one-command config writer (`nlq mcp install`) is **not
+shipped yet** — it lands together with CLI sign-in (device flow); today the
+command exits with a pointer to the paths above.
 
 ## Usage from inside the host LLM
 

@@ -10,6 +10,8 @@ cd nlqdb-meals
 npm install @nlqdb/vue @nlqdb/elements
 ```
 
+> **Not on npm yet** — `@nlqdb/vue` and `@nlqdb/elements` are built on `main` but unpublished (`docs/progress.md §0`), so the install above 404s today. Until they publish, run this example inside the monorepo (`bun install` links the workspace packages) or use the CDN `<nlq-data>` element per the [HTML example](../html/).
+
 Replace `src/main.ts` and `src/App.vue` with the files in this folder, then:
 
 ```bash
