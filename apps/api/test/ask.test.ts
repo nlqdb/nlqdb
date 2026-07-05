@@ -86,7 +86,7 @@ describe("POST /v1/ask — principal gate", () => {
     });
   });
 
-  it('anon + unknown model is 400 invalid_model with the allowed presets (SK-PREMIUM-014)', async () => {
+  it("anon + unknown model is 400 invalid_model with the allowed presets (SK-PREMIUM-014)", async () => {
     const res = await SELF.fetch("https://example.com/v1/ask", {
       method: "POST",
       headers: {
