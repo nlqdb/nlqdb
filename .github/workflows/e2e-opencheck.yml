@@ -13,11 +13,12 @@
 #   for the staging app's /v1/ask + NL db-create only (~20-40K/run — fits comfortably).
 #
 # FREE MODELS ONLY (GLOBAL-013). On OpenRouter ONLY a `:free` slug is $0 — a bare slug is PAID
-# (2026-05-21: a paid Mistral slug burned ~$14). Agent model (all suites): OpenRouter
-# openai/gpt-oss-120b:free — tool-call verified 2026-06-12 (usage.cost:0; OpenRouter $20.21/$40, >$10).
+# (2026-05-21: a paid Mistral slug burned ~$14). Agent model (all suites): picked at run time by
+# _e2e-opencheck.yml's pre-flight from its ordered `candidate_models` OpenRouter `:free` list —
+# one saturated free pool no longer zeroes the run (it cost 4 consecutive runs, 06-12 → 07-05).
 # Engine (app-side /v1/ask) = the cerebras-led free chain (SK-LLM-023), NOT Groq; check the DAILY
 # (TPD/RPD) budget of the head before triggering — per-minute headers lie (opencheck-operations.md).
-# Top-5 free models + switching guide: docs/features/e2e-coverage/opencheck-operations.md
+# Free-model table + switching guide: docs/features/e2e-coverage/opencheck-operations.md
 
 name: E2E (opencheck)
 
@@ -69,8 +70,6 @@ jobs:
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
       config_file: tests-a-bootstrap.yaml
-      provider_base_url: https://openrouter.ai/api/v1
-      preflight_model: openai/gpt-oss-120b:free
     secrets:
       LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
@@ -93,8 +92,6 @@ jobs:
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
       config_file: tests-b-write.yaml
-      provider_base_url: https://openrouter.ai/api/v1
-      preflight_model: openai/gpt-oss-120b:free
     secrets:
       LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
@@ -115,8 +112,6 @@ jobs:
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
       config_file: tests-c-cleanup.yaml
-      provider_base_url: https://openrouter.ai/api/v1
-      preflight_model: openai/gpt-oss-120b:free
     secrets:
       LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
