@@ -1,9 +1,8 @@
 # CLI-only
 
-No frontend at all. Four commands ship a working data tool.
+No frontend at all. Three commands ship a working data tool — no sign-in needed (anonymous mode is the default).
 
 ```bash
-nlq login                                              # one click, browser, done
 nlq new "an orders tracker — customer, drink, total"
 nlq "add an order: alice, latte, 5.50, just now"
 nlq "how many orders today, by drink"
