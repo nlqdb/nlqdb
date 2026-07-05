@@ -22,7 +22,8 @@ lagging metric; the daily **lever** targets its agent-movable inputs. Today's
 guard, not relabeling**: `agentMemoryMatrix.test.ts`'s staleness alert accepted
 a *future* `MATRIX_VERIFIED_ON` (a negative age silently passed `< 60`,
 disabling the alert for months) and a regex-shaped-but-impossible date; both are
-now rejected, so a stale/typo'd matrix reddens CI and forces a re-verify. The
+now rejected, so a stale/typo'd matrix fails the §8 `bun run test` gate (GitHub
+CI doesn't run the web bun tests) and forces a re-verify. The
 matrix is a live persuasion asset (`/agents`, home, blog), so a defeatable
 freshness check risked shipping stale competitor claims. **Distribution (step 3)
 was owned by concurrent PR #612 (run 7)** — publishing `/blog/http-200-error-in-body`

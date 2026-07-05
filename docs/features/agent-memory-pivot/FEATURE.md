@@ -309,8 +309,9 @@ index in [`docs/decisions.md`](../../decisions.md)).
 ## Open questions / known unknowns
 
 - **Capability-matrix freshness — Resolved.** WS-06's `MATRIX_VERIFIED_ON` +
-  `agentMemoryMatrix.test.ts` redden CI once the date is > 60 days old,
-  invalid, or future, forcing a re-verify against `docs/competitors.md` §4.
+  `agentMemoryMatrix.test.ts` fail the §8 `bun run test` gate once the date is
+  > 60 days old, invalid, or future, forcing a re-verify against
+  `docs/competitors.md` §4 (GitHub CI doesn't run the web bun tests).
 - **Self-host container scope** — pulling `ghcr.io/nlqdb/api` forward (WS-11)
   may exceed one daily run and touches infra; the worksheet flags the
   founder/infra gate rather than assuming a copy-only diff.
