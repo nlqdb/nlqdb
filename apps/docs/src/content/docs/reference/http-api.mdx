@@ -47,6 +47,8 @@ retryable and which need a human. `status` is the discriminant the SDK exposes a
 | `ambiguous_db` | 409 | 2+ databases match; confidence below the floor. | No | Pick from `body.candidate_dbs`, resend with `dbId`. |
 | `clarify_required` | 409 | Pinned `dbId` but the goal looks like a create (`body.pinned_db`). | No | Resend without `dbId` to create, or cancel. |
 | `invalid_engine` | 400 | `engine` isn't in the allowed set. | No | Use `postgres` or `clickhouse`. |
+| `invalid_model` | 400 | `model` isn't in the preset set (`body.allowed`). | No | Use `auto`, `fast`, or `best`. |
+| `model_unavailable` | 409 | `model: "best"` but the account has no frontier lane (no BYOLLM key, no paid plan). | No | Add a provider key at `body.link`, or drop `model`. |
 | `goal_required` | 400 | `goal` missing or empty. | No | Supply a non-empty `goal`. |
 | `dbId_required` | 400 | `dbId` required for this call. | No | Supply `dbId`. |
 | `sql_required` | 400 | `/v1/run` called without `sql`. | No | Supply `sql`. |
@@ -80,3 +82,4 @@ Some codes carry extra fields an agent should branch on:
 - `pinned_db` — on `clarify_required`: the DB that was pinned when the goal looked like a create.
 - `requires_confirm` + `diff` — on a write preview (`dryRun` / destructive op): apply only after the human approves the diff (`GLOBAL-023`).
 - `limit` + `count` — on `rate_limited`: the window cap and how many you've used.
+- `link` — on `model_unavailable`: deep-link to add a BYOLLM key or plan.

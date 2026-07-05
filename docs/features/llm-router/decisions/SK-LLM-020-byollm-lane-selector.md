@@ -16,6 +16,10 @@ Parent GLOBAL:
     and premium eligibility and passes them in; this function only
     applies the ordering, returning a discriminated
     `{ lane: "byollm", credential, source } | { lane: "premium" } | { lane: "free" }`.
+    Extended by [`SK-PREMIUM-014`](../../premium-tier/decisions/SK-PREMIUM-014-model-preset-wire.md):
+    a `preset` input pins `fast` → free ahead of everything, and keyless
+    `best` returns a terminal `{ lane: "unavailable" }` the caller fails
+    loud on.
   - **`buildByollmRouter(opts)`** — wraps `createByollmProvider`
     (`SK-LLM-019`) in a single-provider `LLMRouter` whose every operation
     chains to just `["byollm"]`. **No failover to the free chain**:

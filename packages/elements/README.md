@@ -9,7 +9,7 @@
 ### `<nlq-data>` (Slice 10)
 
 - Attributes: `goal`, `db`, `query`, `api-key`, `endpoint`, `template`,
-  `refresh`.
+  `refresh`, `model` (preset `auto|fast|best`, SK-PREMIUM-014).
 - Live `POST /v1/ask` integration. Default endpoint
   `https://app.nlqdb.com/v1/ask`; override with `endpoint=` for
   self-hosted / preview deploys.
