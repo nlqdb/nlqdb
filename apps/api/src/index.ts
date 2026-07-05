@@ -838,6 +838,33 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // as `kind=query` against a stale DB, 502 `db_unreachable` after
     // 21 s). SDK users who pin a dbId still flow through the query
     // path — a pinned bearer + dbId is a legitimate follow-up.
+    // SK-PREMIUM-014 — `model: "best"` with no frontier lane to honour it
+    // fails loud as 409, not 5xx: the request is well-formed and the caller
+    // can resolve it through either GLOBAL-026 door. Never silently serve
+    // the free chain.
+    const modelUnavailable = () => {
+      span.setAttribute("nlqdb.ask.outcome", "model_unavailable");
+      span.end();
+      return c.json(
+        {
+          error: {
+            status: "model_unavailable" as const,
+            message:
+              'model "best" needs a frontier model: add your own provider key (BYOLLM) or a paid plan — pick one under /app/keys.',
+            link: "https://nlqdb.com/app/keys",
+          },
+        },
+        409,
+      );
+    };
+    // Anon principals can never hold a frontier lane (BYOLLM is
+    // signed-in-only, paid plans need an account), so `best` fails loud
+    // here too — the create short-circuit below would otherwise ride the
+    // free chain silently.
+    if (parsed.body.model === "best" && principal.kind === "anon") {
+      return modelUnavailable();
+    }
+
     if (principal.kind === "anon" && !parsed.body.dbId) {
       return runCreatePath();
     }
@@ -886,24 +913,8 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       userId: principal.id,
     });
     if (!routing.ok) {
-      // SK-PREMIUM-014 — `model: "best"` with no frontier lane to honour
-      // it (no BYOLLM key; hosted premium is §6-dark). 409, not 5xx: the
-      // request is well-formed and the caller can resolve it through
-      // either GLOBAL-026 door. Never silently serve the free chain here.
       if (routing.reason === "frontier_unavailable") {
-        span.setAttribute("nlqdb.ask.outcome", "model_unavailable");
-        span.end();
-        return c.json(
-          {
-            error: {
-              status: "model_unavailable" as const,
-              message:
-                'model "best" needs a frontier model: add your own provider key (BYOLLM) or a paid plan — pick one under /app/keys.',
-              link: "https://nlqdb.com/app/keys",
-            },
-          },
-          409,
-        );
+        return modelUnavailable();
       }
       span.setAttribute("nlqdb.ask.outcome", "byollm_gateway_unconfigured");
       span.end();
