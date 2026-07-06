@@ -61,7 +61,8 @@ is *not* the bottleneck either**
 (`fewer_tables` 33/238, pre-T21); the dominant mass is structural **reasoning**
 (grain, subquery shape), now **saturated** on directives (06-19 re-run flat,
 McNemar p=0.50) ⇒ the path to the floor is the *reasoning* levers (§4 #1
-similarity-retrieved few-shot, §4 #3 self-consistency). Spider's
+similarity-retrieved few-shot; §4 #3 self-consistency measured flat
+07-06). Spider's
 residual `no_sql` is **9** (capacity-only post-Gemini-heal, §6); its
 newly-answered questions mostly produced *wrong* SQL ⇒ SQL reasoning too —
 column pruning (§4 #2b) helps it via *distractor* removal (T19: 0.15 → 0.25).
