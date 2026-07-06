@@ -3,19 +3,13 @@
 #
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER set a paid model here, even on OpenRouter.
 # On OpenRouter, ONLY slugs ending in :free are $0 — the bare slug (no :free) is PAID (2026-05-21 burned ~$14).
-# Top-5 free LLM models for opencheck (researched 2026-06-12T01:25Z via live API: gpt-oss-120b:free tool-call usage.cost:0; OpenRouter $20.21/$40 ⇒ 1000 req/day free tier; engine-chain head Cerebras 921K tok/DAY free. ⚠ check the DAILY budget (TPD/RPD) not per-minute — at run time today Groq TPD was spent (99,677/100,000) and Gemini quota exhausted):
-#   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
-#   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
-#   3. Groq openai/gpt-oss-20b             — 8K TPM; lighter/faster; ~100K tokens/DAY ACCOUNT cap (shared across ALL Groq models; llama-3.3-70b-versatile decommissioned 2026-08-16).
-#   4. Groq openai/gpt-oss-120b            — 8K TPM; reasoning-tuned; shares the same Groq daily account cap.
-#   5. Cerebras gpt-oss-120b               — 30K TPM / 1M TPD; tool-use verified; BUT only 5 RPM (too slow for agent loops).
-# NOT usable: qwen/qwen3-32b (tool-call fails on Groq), llama-4-scout (type coercion error on number params).
+# __MODEL__ is substituted at run time by _e2e-opencheck.yml's pre-flight from its ordered `candidate_models` list.
 # Production runs use the split files (tests-a/b/c-*.yaml); this combined file is the reference index for persona docs.
-# Switch provider: edit model: below + provider_base_url/preflight_model in e2e-opencheck.yml + LLM_API_KEY source.
+# Free-model table + switching guide: docs/features/e2e-coverage/opencheck-operations.md
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "openai/gpt-oss-120b:free"
+model: "__MODEL__"
 
 # Persistent mode: auth cookie + localStorage persist across tests; page resets to about:blank each test (wrapper kills/restarts playwright-mcp).
 sessionMode: "persistent"
@@ -32,27 +26,29 @@ tests:
     case: |
       Navigate to the base URL. Call browser_snapshot immediately
       after the page loads — do NOT press Control+G or any other
-      key first (the hero form is unconditionally visible; there is
-      no Cmd+G chord). Use browser_snapshot to
-      verify (do NOT use browser_evaluate or DOM queries).
-      In the snapshot the hero input appears as:
-        textbox "What are you building?" with /placeholder: an orders tracker
-      Any snapshot line containing "an orders tracker" confirms it
-      is present. Once you see it, respond with TEST_PASSED
-      immediately — do NOT take any further browser actions.
-      If the text "an orders tracker" is absent from the snapshot,
-      the test fails.
+      key first. Use browser_snapshot to verify (do NOT use
+      browser_evaluate or DOM queries). The homepage is the two-door
+      hero (SK-WEB-003): the snapshot must contain BOTH
+        (a) a heading line containing "Analytical memory"
+        (b) a link whose text contains "describe your data"
+          (the anonymous door, pointing at /app/new/)
+      Once you see both, respond with TEST_PASSED immediately — do
+      NOT take any further browser actions. If either is absent from
+      the snapshot, the test fails.
 
   - name: "#create-table-anon"
     case: |
-      Navigate to the base URL. Call browser_snapshot. Find the input
-      with placeholder "an orders tracker". Click it and type:
+      Navigate to "/app/new/" (the anonymous-door target the homepage
+      links as "just describe your data"). Call browser_snapshot. Find
+      the input with placeholder "an orders tracker" — it hydrates
+      client-side, so if it is not in the first snapshot wait 3 seconds
+      and snapshot again (up to 3 times). Click it and type:
         create a users table with id, name, email
       Press Enter as a SEPARATE browser_key_down call (do NOT use submit: true).
       The form calls the API — DB creation (LLM inference + schema provision)
       takes 15-60 s. The page does NOT redirect (SK-ANON-012: the anonymous
-      device's 1st /v1/ask call provisions the DB in place). Stay on the base
-      URL and poll: call browser_snapshot every 5 seconds up to 12 times (60 s)
+      device's 1st /v1/ask call provisions the DB in place). Stay on
+      "/app/new/" and poll: call browser_snapshot every 5 seconds up to 12 times (60 s)
       until "Provisioned with" is visible anywhere on the page. If after 12
       polls "Provisioned with" is still absent, TEST_FAILED — DB creation timed
       out. Once "Provisioned with" is visible, TEST_PASSED immediately — do NOT
@@ -66,19 +62,23 @@ tests:
       used the device's one free call (SK-ANON-012), so a 2nd anonymous
       submission must hit the per-device cap and redirect to sign-in. Do NOT
       sign in before this test — it must run while still anonymous.
-      Step 1 — Navigate to the base URL (the marketing page).
-      Step 2 — Call browser_snapshot and confirm the hero input
-      with placeholder "an orders tracker" is visible. Do NOT
-      re-create the users table — a previous session provisioned
-      one already.
+      Step 1 — Navigate to "/app/new/" (the same create form the
+      previous test used — the two-door homepage has NO input).
+      Step 2 — Call browser_snapshot and find the input with
+      placeholder "an orders tracker" — it hydrates client-side, so
+      if it is not in the first snapshot wait 3 seconds and snapshot
+      again (up to 3 times). Use browser_snapshot ONLY — do NOT use
+      browser_evaluate or DOM queries. Do NOT re-create the users
+      table — the previous test provisioned one already.
       Step 3 — Click the text input (placeholder "an orders
       tracker") and type
         add a new row: name='Alice', email='alice@example.com'
       Step 4 — Press Enter as a SEPARATE tool call (do NOT use
       the submit parameter on browser_type).
-      Step 5 — Wait for the page to navigate AWAY from the base
-      URL. The destination URL must contain "/auth/sign-in".
-      Verify the URL contains "/auth/sign-in".
+      Step 5 — Wait for the page to navigate AWAY from "/app/new/":
+      call browser_snapshot every 5 seconds (up to 6 times) until
+      the URL changes. The destination URL must contain
+      "/auth/sign-in". Verify the URL contains "/auth/sign-in".
       Do not submit the sign-in form yet.
 
   - name: "#mock-sign-in"
@@ -106,10 +106,30 @@ tests:
       If the sidebar shows "Loading…", wait 5 seconds and call
       browser_snapshot one more time. Then check: does the left
       sidebar show at least one entry whose visible text contains
-      "users" (any casing)?
-      If yes — TEST_PASSED immediately.
-      If no — TEST_FAILED immediately. A missing "users" entry
-      means the anon DB was not adopted into this account.
+      "users" (any casing)? If no — TEST_FAILED immediately (the anon
+      DB was not adopted into this account).
+      If yes, verify the adopted users table is actually QUERYABLE — a
+      sidebar entry alone does NOT prove a queryable table, and this is
+      the real precondition Suite B depends on. Poll: call browser_snapshot,
+      and if "?db=" is not yet in the URL wait 3 seconds and snapshot again,
+      up to 5 times (the app auto-pins the newest DB). Then find the chat
+      textarea (placeholder "Ask about your data…") and IMMEDIATELY click
+      its ref (no other tool between snapshot and click). Type:
+        how many users are there?
+      Press Enter as a SEPARATE browser_key_down call. Wait 5 seconds and
+      call browser_snapshot. If the reply is a table-missing or error
+      message ("references a table this database doesn't have", "no such
+      table", or "Something went wrong") — TEST_FAILED: the bootstrap flow
+      did not leave a queryable users table. If the reply is a valid count
+      or data response — TEST_PASSED (a count of 0 is valid: the table
+      exists but stays empty until Suite B seeds Alice).
+      ONE special case: "Couldn't reach the database" is a TRANSIENT
+      cold-start error (the staging DB scales to zero when idle), not a
+      table-missing failure. If you see it, wait 5 seconds, click the chat
+      textarea, type the same question again, press Enter, wait 5 seconds
+      and snapshot. Judge that second reply by the same rules — and if it
+      is "Couldn't reach the database" again, TEST_FAILED (do not retry a
+      third time).
       Use browser_snapshot ONLY — do NOT use browser_evaluate or any
       DOM query tool (browser_evaluate errors in this context).
 

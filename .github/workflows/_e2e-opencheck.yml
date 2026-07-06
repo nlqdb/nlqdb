@@ -2,15 +2,11 @@
 # OpenAI-compat: opencheck pins @langchain/core ^1.1.24 (v1 ecosystem); @langchain/openai v1.4.5 matches; Groq + OpenRouter :free all expose compatible endpoints.
 #
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER wire a paid model here, even via OpenRouter — :free suffix required on OpenRouter slugs.
-# Provider is caller-supplied (provider_base_url + preflight_model inputs); the suite YAML's `model:` must match.
-# Top-5 free LLM models for opencheck (researched 2026-06-12T01:25Z via live API: gpt-oss-120b:free tool-call usage.cost:0; OpenRouter $20.21/$40 ⇒ 1000 req/day free tier; engine-chain head Cerebras 921K tok/DAY free. ⚠ check the DAILY budget (TPD/RPD) not per-minute — at run time today Groq TPD was spent (99,677/100,000) and Gemini quota exhausted):
-#   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
-#   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
-#   3. Groq openai/gpt-oss-20b             — 8K TPM; lighter/faster; shares the same Groq daily account cap (llama-3.3-70b-versatile decommissioned 2026-08-16).
-#   4. Groq openai/gpt-oss-120b            — 8K TPM; reasoning-tuned; shares the same Groq daily account cap.
-#   5. Cerebras gpt-oss-120b               — 30K TPM / 1M TPD; tool-use verified; BUT only 5 RPM (too slow for agent loops).
-# NOT usable: qwen/qwen3-32b (tool-call fails on Groq), llama-4-scout (type coercion error on number params).
-# Switch provider: edit `model:` in the suite YAML + provider_base_url/preflight_model inputs + LLM_API_KEY source in the caller workflow.
+# The agent model is NOT hard-coded: the pre-flight walks `candidate_models` in order and the first
+# model that answers a real tool-call probe is substituted into the suite YAML (`model: "__MODEL__"`).
+# One saturated free pool (OpenRouter's per-model "temporarily rate-limited upstream" 429) therefore
+# no longer zeroes the whole suite — it cost 4 consecutive runs between 2026-06-12 and 07-05.
+# Canonical free-model table + switching guide: docs/features/e2e-coverage/opencheck-operations.md
 
 name: E2E opencheck (reusable)
 
@@ -29,12 +25,12 @@ on:
         description: "OpenAI-compatible base URL for the agent LLM provider (must be free per GLOBAL-013)."
         required: false
         type: string
-        default: https://api.groq.com/openai/v1
-      preflight_model:
-        description: "Model id used by the pre-flight connectivity curl; must match the suite YAML's `model:` and exist on provider_base_url."
+        default: https://openrouter.ai/api/v1
+      candidate_models:
+        description: "Ordered comma-separated agent-model ids on provider_base_url, ALL free per GLOBAL-013 (`:free` suffix on OpenRouter). Pre-flight picks the first one that answers 3 consecutive tool-call probes. Order = proven agent competence first; nemotron-3-super is BANNED (probe-healthy but collapses to text-format tool calls mid-loop). Per-model evidence + run ids: docs/features/e2e-coverage/opencheck-operations.md."
         required: false
         type: string
-        default: openai/gpt-oss-120b
+        default: "openai/gpt-oss-120b:free,qwen/qwen3-coder:free,qwen/qwen3-next-80b-a3b-instruct:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-20b:free"
     secrets:
       LLM_API_KEY:
         description: "LLM API key for the active provider. Surfaced via OPENAI_API_KEY + provider-specific OPENAI_BASE_URL."
@@ -56,10 +52,10 @@ jobs:
       contents: read
     env:
       BASE_URL: ${{ inputs.base_url }}
-      # ChatOpenAI reads OPENAI_API_KEY + OPENAI_BASE_URL; update both + the suite's `model:` to swap provider.
+      # ChatOpenAI reads OPENAI_API_KEY + OPENAI_BASE_URL; update both to swap provider.
       OPENAI_API_KEY: ${{ secrets.LLM_API_KEY }}
       # Provider endpoint — caller-supplied so each suite can use an independent free-tier budget (GLOBAL-013).
-      # Must match the `model:` in the active config file (inputs.config_file).
+      # Every id in `candidate_models` must exist on this endpoint.
       OPENAI_BASE_URL: ${{ inputs.provider_base_url }}
       # Opt-in debug: flip to "true" to dump the full agent loop (~5-10x log
       # volume) when triaging a stuck case. Off by default — keeps job logs readable.
@@ -216,10 +212,13 @@ jobs:
             "$agent_ts"
           echo "patched $agent_ts"
 
-      # Add 30s per-call HTTP timeout to the LLM client. Without this, a hung provider response burns the
-      # entire 240s test budget silently — no error, no recording, just a timeout at the test level.
-      # 30s is plenty for any real LLM response; if the provider doesn't reply in 30s it's effectively down.
-      - name: Patch opencheck — add 30s per-call LLM timeout
+      # Add 30s per-call HTTP timeout + retry-with-backoff to the LLM client. Without the timeout, a hung
+      # provider response burns the entire 240s test budget silently — no error, no recording, just a
+      # timeout at the test level. 30s is plenty for any real LLM response; if the provider doesn't reply
+      # in 30s it's effectively down. maxRetries 6 (LangChain exponential backoff) absorbs the BRIEF
+      # saturation blips of OpenRouter free pools — run 28759073164 lost 10 tests to mid-run 429s that a
+      # pre-flight can't predict (default maxRetries is 2, which the flapping pool outlasted).
+      - name: Patch opencheck — add 30s per-call LLM timeout + 429 backoff
         working-directory: tests/opencheck
         run: |
           model_ts="node_modules/opencheck/src/agent/model-factory.ts"
@@ -229,48 +228,86 @@ jobs:
           with open(path) as f:
               src = f.read()
           old = '...(config.modelProvider ? { modelProvider: config.modelProvider } : {}),'
-          new = '...(config.modelProvider ? { modelProvider: config.modelProvider } : {}),\n    timeout: 30000,'
+          new = '...(config.modelProvider ? { modelProvider: config.modelProvider } : {}),\n    timeout: 30000,\n    maxRetries: 6,'
           if old not in src:
               print(f"WARNING: target string not found in {path} — skipping patch")
           else:
               with open(path, 'w') as f:
                   f.write(src.replace(old, new, 1))
-              print(f"patched {path} (added timeout: 30000)")
+              print(f"patched {path} (added timeout: 30000, maxRetries: 6)")
           PYEOF
 
+      # Fail-fast: pick the first HEALTHY candidate model before burning 20+ min on opencheck.
+      # The probe is tool-call shaped (the agent loop is all tool calls — a model that answers "ping"
+      # but can't emit tool_calls would pass a plain probe and then fail every test), and it inspects
+      # the BODY, not just the status code: OpenRouter returns HTTP 200 with an `error` envelope when
+      # the model's free pool is saturated (same gateway trap the engine fixed as SK-LLM-042).
+      # THREE consecutive probes ~2s apart, all healthy: saturated free pools FLAP — run 28756818845's
+      # Suite A watched gpt-oss-120b:free pass a single probe at :55 and then 429 every agent call
+      # from :00 to :19. One lucky 200 is not health; three in a row over ~5s almost always is.
+      - name: Pre-flight — pick the first healthy agent model
+        id: pick
+        shell: bash
+        env:
+          CANDIDATE_MODELS: ${{ inputs.candidate_models }}
+        run: |
+          set -euo pipefail
+          probe() {
+            local model="$1"
+            local http_code
+            http_code=$(curl -s -o /tmp/llm-preflight.json -w "%{http_code}" \
+              --max-time 15 \
+              -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "{\"model\":\"${model}\",\"messages\":[{\"role\":\"user\",\"content\":\"Click the button with ref b1 using the click tool.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"click\",\"description\":\"Click an element\",\"parameters\":{\"type\":\"object\",\"properties\":{\"ref\":{\"type\":\"string\"}},\"required\":[\"ref\"]}}}],\"max_tokens\":2000}" \
+              "${OPENAI_BASE_URL}/chat/completions") || { echo "  curl failed/timed out"; return 1; }
+            if [ "$http_code" != "200" ]; then
+              echo "  HTTP ${http_code}"
+              return 1
+            fi
+            if jq -e '.error' /tmp/llm-preflight.json > /dev/null 2>&1; then
+              echo "  HTTP 200 but error envelope in body (SK-LLM-042 trap): $(jq -c '.error | {code, message}' /tmp/llm-preflight.json)"
+              return 1
+            fi
+            if ! jq -e '.choices[0].message.tool_calls[0].function.name == "click"' /tmp/llm-preflight.json > /dev/null 2>&1; then
+              echo "  no well-formed tool call in reply"
+              return 1
+            fi
+            return 0
+          }
+          IFS=',' read -ra models <<< "${CANDIDATE_MODELS// /}"
+          for m in "${models[@]}"; do
+            echo "Probing ${m} on ${OPENAI_BASE_URL} (3 consecutive tool-call probes, 15s timeout each)..."
+            healthy=true
+            for i in 1 2 3; do
+              if ! probe "$m"; then
+                echo "  probe ${i}/3 failed — trying next candidate"
+                healthy=false
+                break
+              fi
+              echo "  probe ${i}/3 ok"
+              [ "$i" -lt 3 ] && sleep 2
+            done
+            if [ "$healthy" = true ]; then
+              echo "Selected agent model: ${m}"
+              echo "model=${m}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "ERROR: no candidate agent model is healthy right now (${CANDIDATE_MODELS}) — aborting before burning the opencheck budget"
+          exit 1
+
       # opencheck's YAML parser doesn't interpolate env vars — substitute at invocation time into a temp file (keeps working tree clean).
-      - name: Render config with runtime baseUrl
+      - name: Render config with runtime baseUrl + selected model
         working-directory: tests/opencheck
         env:
           CONFIG_FILE: ${{ inputs.config_file }}
+          AGENT_MODEL: ${{ steps.pick.outputs.model }}
         run: |
-          sed "s|__BASE_URL__|${BASE_URL}|g" "${CONFIG_FILE}" > tests-runtime.yaml
+          sed -e "s|__BASE_URL__|${BASE_URL}|g" -e "s|__MODEL__|${AGENT_MODEL}|g" "${CONFIG_FILE}" > tests-runtime.yaml
           echo "::group::rendered ${CONFIG_FILE} → tests-runtime.yaml"
           cat tests-runtime.yaml
           echo "::endgroup::"
-
-      # Fail-fast: confirm the LLM API responds before burning 20+ min on opencheck. Without this, a silent
-      # provider outage or an empty/expired LLM_API_KEY causes every test to hang for 240s with zero output.
-      - name: Pre-flight — verify LLM API connectivity
-        shell: bash
-        env:
-          PREFLIGHT_MODEL: ${{ inputs.preflight_model }}
-        run: |
-          set -euo pipefail
-          echo "Testing ${OPENAI_BASE_URL}/chat/completions with ${PREFLIGHT_MODEL} (10s timeout)..."
-          http_code=$(curl -s -o /tmp/llm-preflight.json -w "%{http_code}" \
-            --max-time 10 \
-            -H "Authorization: Bearer ${OPENAI_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "{\"model\":\"${PREFLIGHT_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"max_tokens\":1}" \
-            "${OPENAI_BASE_URL}/chat/completions")
-          echo "HTTP $http_code"
-          cat /tmp/llm-preflight.json
-          if [ "$http_code" != "200" ]; then
-            echo "ERROR: LLM API returned HTTP $http_code — aborting opencheck to avoid 20 min of silent timeouts"
-            exit 1
-          fi
-          echo "LLM API: OK"
 
       - name: Run opencheck
         id: oc
@@ -320,11 +357,15 @@ jobs:
             echo
             echo "### Run log (last 800 KB)"
             echo '```'
-            tail -c 800000 /tmp/opencheck-output.txt
+            # Missing file = the job aborted before opencheck ran (e.g. no healthy agent model).
+            tail -c 800000 /tmp/opencheck-output.txt 2>/dev/null || echo "(no opencheck output — job aborted before the opencheck step)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Propagate opencheck exit code
         if: always()
         shell: bash
-        run: exit "${{ steps.oc.outputs.exit_code }}"
+        env:
+          EXIT_CODE: ${{ steps.oc.outputs.exit_code }}
+        # Empty when opencheck never ran (pre-flight abort) — `exit ""` is a shell error, so default to 1.
+        run: exit "${EXIT_CODE:-1}"

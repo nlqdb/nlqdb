@@ -54,7 +54,7 @@ Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | 13 | nlqdb-api wall-time p50 / p95 | 1.0 ms / 983 ms | mcp-server p95 331.9 s = long-lived SSE, expected; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.49** — sdk ✅ 07-02 (0.65) · mcp ✅ 07-02 (0.65) · examples ✅ 07-02 (0.65) · opencheck ❌ (last ✅ 06-12 ⇒ 0) | opencheck's 07-02 failures were OpenRouter free-tier 429 (infra, not product); run 9's 07-05 re-dispatch on `main` **failed a 4th consecutive time** on the same root cause — the single hard-coded free driver model (`openai/gpt-oss-120b:free`) 429s upstream; next fix (preflight over an ordered free-model list) belongs to a run that owns this row (Last change, run 11) |
+| 15 | E2E manual-suite freshness | **0.75** — sdk ✅ 07-06 (1.00) · mcp ✅ 07-06 (1.00) · examples ✅ 07-06 (1.00) · opencheck ❌ (**Suite A 4/5, best since the 06-12 green** — [run 28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)) | run 13 owns this row: the named fix (pre-flight over an ordered free-model list) shipped + trace-triaged suite fixes; sdk/mcp/examples re-dispatched same run (were staring at a 07-09 freshness cliff). Suite A's sole failure = app-side cold-start `db_unreachable` (2× trace-verified ⇒ e2e-coverage open question, **next lever for whichever run owns this row**); Suite B 0/8 = weakest-candidate capacity (4 stronger pools simultaneously 429 at pick time), not a fix regression. Full triage: `e2e-coverage/opencheck-operations.md` 2026-07-06 rows |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**measured 07-03, row #11: Δ 19.3 pp ✓ ≤ 25, but agentic 0.667 ✗ < 0.80 — 7 `openrouter:parse` no_sql suppress the frontier lanes; criterion still fails on the absolute floor**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (N=1 only, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: **the 7 `openrouter:parse` root cause is now fixed at the source (`SK-LLM-042`, 07-04)** — re-measure agentic-frontier vs the 0.80 floor on the next smoke window; first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **25** (07-05 run 8, was 26) | target ↓ 0. **Run 8's lever: −1** — resolved `agent-memory` *Capability-matrix freshness* by hardening the guard (`agentMemoryMatrix.test.ts` now rejects a future/invalid `MATRIX_VERIFIED_ON`; a negative age had silently passed `< 60`), not by relabeling. **Run 6's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
@@ -89,43 +89,47 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-05 (run 10)** — lever: **hosted-premium readiness, picker parity
-`⬜ → ✅`** (row #20, its standing "drive ⬜→✅ each run" directive; #614
-unfroze the build lane). **`SK-PREMIUM-014`** ships the `model` preset as one
-GLOBAL-003 parity PR: `/v1/ask` accepts `model: auto|fast|best` (unknown → 400
-`invalid_model` with the allowed list) and every surface passes the same enum —
-SDK `AskRequest.model`, CLI `nlq ask --model`, MCP `nlqdb_query.model`,
-`<nlq-data model>` (+ the framework-wrapper `model` prop from the review
-pass). The semantics pin the honest contract: `fast` pins the
-strict-$0 chain even over a stored BYOLLM credential (explicit instruction
-beats ambient key — the CI case SK-PREMIUM-003 names); `best` requires a
-frontier lane (BYOLLM today; hosted premium §6-dark) and 409s
-`model_unavailable` + fix-it `link` when none exists — never a silent
-downgrade (the placebo-knob alternative rejected in the SK), including for
-anonymous principals (review-hardened: the 409 fires before the anon create
-short-circuit, with handler-level tests) and on MCP (mapped to the two real
-doors, not generic retry advice); `fast` also skips the founder-funded
-frontier upgrade. Routing is one pure `selectDispatchLane` (new `preset` input
-+ terminal `unavailable` lane) so surfaces can't drift; `llm.model_preset`
-(bounded, 3 values) + the `model_unavailable` outcome give the §6 demand
-signal an honest denominator. 23+ new/updated tests across llm / api / mcp /
-elements / wrappers; `model` never enters the plan-cache key (GLOBAL-006).
-Docs per P3/P4/D4: SK-PREMIUM-014 canonical body under `decisions/`,
-SK-PREMIUM-007 extracted there too so the over-cap FEATURE.md **net-shrinks
-28.0 → 27.1 KB** (two new one-line OQs included); `performance.md` also
-net-shrinks (24.1 → 23.9 KB) around the new `llm.model_preset` row.
-docs-ambiguity count: +2 genuinely-open bullets added by this run's review
-pass (row #17 re-counts next run). Bundle ~1,473.6 KiB gzip < 3 MiB
-(GLOBAL-013). **Step-3 artifact:** queue held 2 (< 3 ⇒ draft) — queued
-`model-preset-fail-loud` (queue 2 → 3), the honest-knob lesson straight
-from this lever. **Engine (weekly focus) not the lever:** run 11 (merged
-earlier today) owned it — BIRD raw EX 0.512 → 0.526 by resuming the founder's
-canonical dispatch (row #8); this run touched no eval surface, and run 9
-(#616) took the eval-free LLM capacity for the opencheck re-arm. **Step-0
-non-overlap:** #616 owned claim-integrity (row #19) + the 07-05 funnel/ops
-pulls; run 11 owned rows #8/#15 and the baseline/log — this run touched
-none of them. **KPI:** GLOBAL-025 UX + engine-quality readiness (frontier
-access is one honest knob away on every surface); none degraded — `model`
-absent ⇒ byte-identical dispatch behavior (auto = old precedence, proven by
-the unchanged SK-LLM-016 tests), funnel/ops/engine numbers carry from the
-< 24 h 07-05 (#616, run 11) pulls.
+**2026-07-06 (run 13)** — lever: **row #15, the opencheck E2E root-cause fix
+this row has named since run 9 — E2E freshness 0.49 → 0.75** (0.32 by open
+PR #619's same-day decay recompute; either basis, Δ > 0). Adopted the
+abandoned 07-05 iteration branch (`claude/keen-turing-425eac`: ordered
+`candidate_models` pre-flight — 3× tool-call probes, SK-LLM-042 HTTP-200
+error-envelope body check, `__MODEL__` substitution, `maxRetries: 6` backoff;
+4 dispatches, session died before opening a PR) and finished it with a
+Playwright-trace triage of its last run
+([28760320317](https://github.com/nlqdb/nlqdb/actions/runs/28760320317)),
+which split the residual 2/5 Suite-A failures into three distinct causes:
+**(a)** a deterministic test bug — `#add-row-redirects-to-auth` still hunted
+the hero input on the two-door homepage after the 07-05 wave moved the create
+form to `/app/new/` (agent looped null DOM queries for 240s) → repointed;
+**(b)** app-side Neon cold-start — `/v1/ask` planned at confidence 1 then SSE
+`db_unreachable` after ~5.7 min staging idle → the test absorbs exactly one
+retry (second failure still fails) and the product-side question is logged in
+e2e-coverage's Open questions; **(c)** nemotron-3-super is probe-healthy but
+agent-broken — across two runs it collapsed to text-format tool calls
+(`<function=…></tool_call>` as plain text, read as a final answer) → banned
+from the list, replacements re-verified live against OpenRouter `/models`
+`supported_parameters` (P2, 2026-07-06): gpt-oss-120b leads (only model with
+a full green run; flap double-covered by probe gate + backoff), then
+qwen3-coder / qwen3-next-80b / llama-3.3-70b / gpt-oss-20b. Verification:
+sdk ✅ + mcp ✅ + examples ✅ re-dispatched and green 07-06 (killing the 07-09
+freshness cliff); opencheck verification run
+([28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)):
+**Suite A 4/5, the best since the last full green (06-12)** — achieved on the
+WEAKEST candidate (`gpt-oss-20b`, after the pre-flight honestly walked past
+four simultaneously-saturated stronger pools), with the `#add-row` repoint
+passing live and the sole failure being the 2×-reproduced app-side cold-start;
+Suite B 0/8 on the same weak model is its documented capacity class, so the
+run stays red at workflow level — opencheck pass flips when either a
+120b-class pool is healthy at dispatch or the cold-start fix lands. **Step-0
+non-overlap:** open PR #619 (run 12) owns the SC verdict (row #8), the blog
+publish (row #6), and the 07-06 funnel/ops pulls — this run touched none of
+them; funnel/ops/engine numbers carry. **Step-3 artifact:** the queue ≥ 3
+publish action is #619's this cycle ⇒ this run drafted
+`llm-preflight-probe-health` into the queue (the probe-vs-agent-health lesson,
+straight from the lever; queue net unchanged after #619's publish). **KPI:**
+GLOBAL-025 onboarding + UX — the opencheck suites are the only automated
+proof of the stranger journey (anon create → auth wall → adoption →
+queryable table), dark since 06-12; engine-quality measurement integrity
+advanced via the honest capacity-vs-competence split. None degrade: zero
+prod code touched (workflows + test specs + docs only).
