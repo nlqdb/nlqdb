@@ -61,7 +61,8 @@ is *not* the bottleneck either**
 (`fewer_tables` 33/238, pre-T21); the dominant mass is structural **reasoning**
 (grain, subquery shape), now **saturated** on directives (06-19 re-run flat,
 McNemar p=0.50) ⇒ the path to the floor is the *reasoning* levers (§4 #1
-similarity-retrieved few-shot, §4 #3 self-consistency). Spider's
+similarity-retrieved few-shot; §4 #3 self-consistency measured flat
+07-06). Spider's
 residual `no_sql` is **9** (capacity-only post-Gemini-heal, §6); its
 newly-answered questions mostly produced *wrong* SQL ⇒ SQL reasoning too —
 column pruning (§4 #2b) helps it via *distractor* removal (T19: 0.15 → 0.25).
@@ -130,15 +131,12 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
      2026-06-20.** `SK-QUAL-014` date sub-axis: `date_literal_only` = 2 total,
      **0 standalone** (every date diff also carries a structural error) ⇒ parked,
      same verdict as #2a. Rationale: `SK-QUAL-014` body.
-3. **Self-consistency majority vote (N=3, free tokens) — the top reasoning
-   lever; built end-to-end bar dispatch, SHIPPED 2026-06-20/21 (`SK-QUAL-017`).**
-   Sample N plans at temperature > 0 on a separate code path, execute,
-   majority-vote the **result set** (the answer, not the SQL string) — attacks
-   the dominant *structural-reasoning* mass (grain/shape) §2 isolated. Vote core
-   + execution half + `PlanRequest.temperature` sampling + runner
-   `--self-consistency N`/`--sc-temperature T` + the smoke `workflow_dispatch`
-   vehicle (no-emit, baseline-safe) all shipped + offline-proven; only the EX
-   dispatch remains. Free-chain cost is quota.
+3. **Self-consistency majority vote (N=3, free tokens) — MEASURED FLAT
+   2026-07-06, falsified as a free-chain lever (`SK-QUAL-017` body).**
+   First N=3 @ temp 0.7 dispatch: EX exactly flat vs the same-directive-set
+   greedy comparator (79/150 both; b=8/c=8, McNemar p=1.0) at 3× quota ⇒
+   lever closed; the machinery (vote core + sampling + runner flags + smoke
+   vehicle) stays for a frontier-lane re-measure.
 4. **A second card-free tail backstop beyond Mistral (T11).** `NVIDIA_API_KEY`
    is a finite ~5,000-credit pool — a `GLOBAL-013` failure; re-rank only if
    post-T18 runs still show chain-exhaustion `no_sql`.
@@ -188,10 +186,10 @@ view of the same levers.
 > (`actions:write` since 2026-07-02). The flat 06-19 BIRD re-run **confirms
 > the directive levers have saturated**, and the `SK-QUAL-014` literal + date axes (`literal_only` /
 > `date_literal_only` standalone both 0, §2) **falsify value-retrieval as the
-> top lever**. **Next:** both reasoning levers are now built end-to-end bar the
-> canonical dispatch — §4 **#3 self-consistency** (`SK-QUAL-017`: vote + sampling
-> + runner + smoke dispatch vehicle) and §4 **#1 similarity-retrieved few-shot**
-> (`SK-LLM-041`: core + mask + pool + the **T9 ablation `buildPlanSystem` +
-> `--retrieve-exemplars` flag shipped 2026-06-21**; only the hot-path embedding
-> index remains). Both EX deltas = the next canonical dispatch. value-retrieval
-> (#2a) closed (`GLOBAL-037`); T19 per-lever ablation still pending.
+> top lever**, and the 2026-07-06 N=3 dispatch **measured §4 #3
+> self-consistency flat** (`SK-QUAL-017` — lever closed). **Next:** §4 **#1
+> similarity-retrieved few-shot** (`SK-LLM-041`: core + mask + pool + the **T9
+> ablation `buildPlanSystem` + `--retrieve-exemplars` flag shipped
+> 2026-06-21**; only the hot-path embedding index remains) — its EX delta =
+> the next canonical dispatch. value-retrieval (#2a) closed (`GLOBAL-037`);
+> T19 per-lever ablation still pending.

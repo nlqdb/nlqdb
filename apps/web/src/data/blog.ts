@@ -41,6 +41,68 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "llm-concatenates-columns-text-to-sql",
+    title: "Your LLM fused the two columns you asked for — and the eval marked it wrong",
+    description:
+      "Gold SQL returns first_name, last_name as two columns; the model returns one concatenated full name. Positional-tuple EX scoring can never match them, so a semantically right answer scores as a miss.",
+    date: "2026-07-06",
+    body: [
+      {
+        kind: "p",
+        text: "You ask a text-to-SQL model to \"list the members' names\". The benchmark's gold query returns `first_name, last_name` — two columns. The model returns one: a helpfully assembled full name. Read side by side, the model's answer is arguably the better one. The scorer marks it wrong, every single time, and your engine number reads lower than the engine is.",
+      },
+      {
+        kind: "code",
+        lang: "sql",
+        code: "-- gold: two columns\nSELECT first_name, last_name FROM member WHERE ...;\n\n-- model: one column, same information\nSELECT first_name || ' ' || last_name FROM member WHERE ...;",
+      },
+      { kind: "h2", text: "Why every execution-accuracy scorer does this" },
+      {
+        kind: "p",
+        text: "Execution accuracy — the metric behind BIRD, Spider, and most private text-to-SQL evals — runs both queries and compares *positional value tuples*: canonical BIRD literally compares `set(fetchall())`. Column names are ignored on purpose (aliases shouldn't matter), which means the *shape* of each row is all that's left. A one-column result can never equal a two-column gold, no matter how right the content is.",
+      },
+      {
+        kind: "p",
+        text: 'This is the mirror image of the extra-columns failure everyone already knows about — where the model SELECTs a helpful extra field and the added column breaks tuple equality. Fusing two requested columns into one is exactly as fatal as adding one nobody asked for. The scorer has no notion of "close": the tuple matches or it doesn\'t.',
+      },
+      { kind: "h2", text: "The loss is real, measurable, and lopsided" },
+      {
+        kind: "p",
+        text: "We bucketed a full 500-question BIRD-dev run of our free-lane engine with a structural differ before touching the prompt. The concatenation signature was unambiguous:",
+      },
+      {
+        kind: "ul",
+        items: [
+          "**7 of 238 losses** concatenated columns where the gold query kept them separate.",
+          "**0 of 256 wins** used `||` at all — the operator appeared only in losing answers.",
+          "Gold itself used `||` in **1 of 500** questions.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "That last line is the decision. When a construct shows up in 3% of your losses, none of your wins, and almost none of the gold answers, discouraging it is near-pure upside — there is essentially nothing on the other side of the trade to regress.",
+      },
+      { kind: "h2", text: "The fix is one sentence in the planner prompt" },
+      {
+        kind: "p",
+        text: "No fine-tune, no reranker: one projection directive — *return each requested attribute as its own column unless the question explicitly asks for a single combined string*. Before shipping it we de-concatenated the 7 flagged predictions by hand and re-executed them against the real SQLite databases to get a deterministic ceiling: **+3 questions** flip wrong-to-right, zero regressions. The live re-measure confirmed the direction: run-wide `||` concatenations dropped from 7 to 3, and 2 of the 3 ceiling questions flipped to matches.",
+      },
+      {
+        kind: "p",
+        text: "The general method matters more than this one directive: bucket your loss mass with a structural differ *first*, compute the deterministic ceiling of a candidate fix *second*, and only then edit the prompt. Prompt directives written from vibes overfit; directives written from a 7-losses/0-wins histogram are as close to a free lunch as engine work gets.",
+      },
+      { kind: "h2", text: "The rule" },
+      {
+        kind: "p",
+        text: "The model's job is to match the shape of the answer, not to make it pretty. A helpful concatenation is still a wrong result set — and unless you bucket your losses, you'll never notice that some of your \"wrong\" answers were the model being more helpful than your gold.",
+      },
+      {
+        kind: "p",
+        text: "(This directive now ships in [nlqdb](https://nlqdb.com), the data layer you ask in English. The eval harness that found it — structural mismatch classifier, deterministic-ceiling re-scorer — runs against public BIRD/Spider plus our own ICP-shaped persona benchmark, so prompt changes land with a measured delta, not a hunch.)",
+      },
+    ],
+  },
+  {
     slug: "http-200-error-in-body",
     title:
       "Your text-to-SQL eval is lying: the gateway returns HTTP 200 with the error in the body",

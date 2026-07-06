@@ -51,15 +51,6 @@ drafts live in the [archive](./distribution-queue-archive.md).
   writing prompt directives, or you overfit to wrong gold — a benchmark number
   is a floor bounded by its gold quality (`SK-QUAL-014`).
 
-- **"Your LLM fused the two columns you asked for — and the eval marked it
-  wrong."** slug `llm-concatenates-columns-text-to-sql` · dev.to (#sql #llm #ai)
-  + r/SQL · engine lesson (full body in git history, D4-collapsed): BIRD gold
-  returns `first_name, last_name` as two columns; the model returns
-  `first_name || ' ' || last_name` as one, and positional-tuple EX marks the
-  semantically-right answer wrong. 7/238 losses concatenate, 0/256 wins use
-  `||` — one planner directive discourages it (de-concat ceiling +3, zero
-  regressions); anchors the projection half of the planner prompt.
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -79,6 +70,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 110 — **https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/** — dev.to + r/dataengineering + r/BusinessIntelligence · `/vs/mode`
 - run 131 — **https://nlqdb.com/blog/top-n-rows-per-group/** — dev.to + r/SQL + r/PostgreSQL · `/solve/find-top-n-rows-per-group`
 - run 7 — **https://nlqdb.com/blog/http-200-error-in-body/** — dev.to (#llm #api #debugging) + r/LocalLLaMA + lobste.rs · engine lesson (res.ok necessary not sufficient)
+- run 12 — **https://nlqdb.com/blog/llm-concatenates-columns-text-to-sql/** — dev.to (#sql #llm #ai) + r/SQL · engine lesson (positional-tuple EX vs fused columns; SK-LLM-043 projection directive)
 
 ## Collapsed — full drafts in git history
 
