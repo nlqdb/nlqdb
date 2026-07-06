@@ -5,7 +5,13 @@ import { NlqAction, NlqData } from "../src/index.ts";
 describe("<NlqData> (vue)", () => {
   it("renders <nlq-data> with the camelCase → kebab-case attribute mapping", () => {
     const wrapper = mount(NlqData, {
-      props: { goal: "top users", apiKey: "pk_live_abc", template: "list", refresh: "10s" },
+      props: {
+        goal: "top users",
+        apiKey: "pk_live_abc",
+        template: "list",
+        refresh: "10s",
+        model: "fast",
+      },
     });
     const el = wrapper.element as HTMLElement;
     expect(el.tagName.toLowerCase()).toBe("nlq-data");
@@ -13,6 +19,7 @@ describe("<NlqData> (vue)", () => {
     expect(el.getAttribute("api-key")).toBe("pk_live_abc");
     expect(el.getAttribute("template")).toBe("list");
     expect(el.getAttribute("refresh")).toBe("10s");
+    expect(el.getAttribute("model")).toBe("fast");
   });
 
   it("emits 'load' when nlq-data:load fires", async () => {

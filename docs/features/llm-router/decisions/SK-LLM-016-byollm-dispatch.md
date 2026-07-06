@@ -4,6 +4,9 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
 [`GLOBAL-026`](../../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
 BYOLLM key-handling + tier policy lives in
 [`premium-tier/decisions/SK-PREMIUM-008-byollm.md`](../../premium-tier/decisions/SK-PREMIUM-008-byollm.md).
+The `model` preset extends this precedence (`fast` pins free ahead of all;
+keyless `best` is terminal, never free) — canonical in
+[`SK-PREMIUM-014`](../../premium-tier/decisions/SK-PREMIUM-014-model-preset-wire.md).
 
 - **Decision:** The router gains a four-step dispatch precedence per
   [`GLOBAL-026`](../../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md):

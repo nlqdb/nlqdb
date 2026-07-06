@@ -31,7 +31,7 @@ when-to-load:
 Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-ELEM-NNN`. The list below is the index; open the linked file for the full five-field block.
 
 - [**SK-ELEM-001**](decisions/SK-ELEM-001-one-name-idempotent-register.md) — One element name per type (`<nlq-data>` + `<nlq-action>`), idempotent registration.
-- [**SK-ELEM-002**](decisions/SK-ELEM-002-attribute-driven.md) — Attribute-driven; observed attributes are `goal`, `db`, `query`, `api-key`, `endpoint`, `template`, `refresh`.
+- [**SK-ELEM-002**](decisions/SK-ELEM-002-attribute-driven.md) — Attribute-driven; observed attributes are `goal`, `db`, `query`, `api-key`, `endpoint`, `template`, `refresh`, `model`.
 - [**SK-ELEM-003**](decisions/SK-ELEM-003-single-network-call.md) — `POST /v1/ask` is the only network call.
 - [**SK-ELEM-004**](decisions/SK-ELEM-004-safe-template-registry.md) — Safe template registry; LLM never returns raw HTML.
 - [**SK-ELEM-005**](decisions/SK-ELEM-005-pk-live-readonly.md) — `pk_live_*` keys: read-only, per-DB, origin-pinned, rate-limited.

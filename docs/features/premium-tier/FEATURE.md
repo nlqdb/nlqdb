@@ -27,13 +27,13 @@ when-to-load:
 ## Touchpoints — read this feature before editing
 
 - `apps/api/src/billing/premium/**` (planned — pricing, metering, spend-cap)
-- `apps/api/src/ask/model-picker.ts` (planned — request → chain selector)
+- `packages/llm/src/byollm-dispatch.ts` + `apps/api/src/ask/byollm.ts` (preset → lane routing, `SK-PREMIUM-014`)
 - `apps/web/src/components/PremiumCta*` (planned — in-context CTA)
 - `packages/llm/src/chains/paid.ts` (planned — premium chain)
-- `packages/sdk/src/options/model.ts` (planned — `model` option)
-- `cli/cmd/model.go` (planned — `nlq model set` + `--model`)
-- `packages/mcp/src/tools/model.ts` (planned — MCP surface)
-- `packages/elements/src/attributes.ts` (planned — `<nlq-data model>`)
+- `packages/sdk/src/index.ts` (`AskRequest.model` + `getModels()`)
+- `cli/internal/cmd/ask.go` (`--model`; `nlq model set` planned)
+- `packages/mcp/src/tools.ts` (`nlqdb_query.model`)
+- `packages/elements/src/{element,fetch}.ts` (`<nlq-data model>`)
 
 ## Decisions
 
@@ -123,19 +123,17 @@ Pins SK-PREMIUM-008's storage mechanics: the account-stored key is an `api_keys`
 ### SK-PREMIUM-013 — Model catalog endpoint + the two-door frontier picker
 
 **Body:** [`decisions/SK-PREMIUM-013-model-catalog-and-picker.md`](./decisions/SK-PREMIUM-013-model-catalog-and-picker.md).
-`GET /v1/models` serves the canonical `@nlqdb/llm` catalog (presets + `free` + named frontier BYOLLM entries) so surfaces render the picker without hardcoding model strings (resolves SK-PREMIUM-003's "Both"). Selecting a frontier model routes **two doors**: **BYOLLM** (live — gentle inline key form) or **subscribe** (hosted-premium credits, SK-PREMIUM-009 — §6-dark, shown "coming soon"). The web ships a header **model pill** (active model = "which model am I on") + popover; `trace.model` now rides MCP too (was stripped). Preset param routing, SDK `model` option, CLI/`<nlq-data>`/MCP preset params, per-provider key storage, and the SK-PREMIUM-004 CTA remain tracked gaps.
+`GET /v1/models` serves the canonical `@nlqdb/llm` catalog (presets + `free` + named frontier BYOLLM entries) so surfaces render the picker without hardcoding model strings (resolves SK-PREMIUM-003's "Both"). Selecting a frontier model routes **two doors**: **BYOLLM** (live — gentle inline key form) or **subscribe** (hosted-premium credits, SK-PREMIUM-009 — §6-dark, shown "coming soon"). The web ships a header **model pill** (active model = "which model am I on") + popover; `trace.model` now rides MCP too (was stripped). The preset params landed in `SK-PREMIUM-014`; per-provider key storage and the SK-PREMIUM-004 CTA remain tracked gaps.
+
+### SK-PREMIUM-014 — The `model` preset rides `/v1/ask` on every surface; `fast` pins free, `best` fails loud without a frontier lane
+
+**Body:** [`decisions/SK-PREMIUM-014-model-preset-wire.md`](./decisions/SK-PREMIUM-014-model-preset-wire.md).
+`/v1/ask` accepts `model: "auto"|"fast"|"best"` (unknown → 400 `invalid_model`); `selectDispatchLane` owns the routing: `fast` pins the strict-$0 chain even over stored credentials, `best` requires a frontier lane and 409s `model_unavailable` (with `link`) when none exists — never a silent downgrade. SDK `model`, CLI `--model`, MCP `model`, `<nlq-data model>` are passthroughs of the same enum (GLOBAL-002).
 
 ### SK-PREMIUM-007 — Plan cache stays product-funded; cap accounting starts at the LLM call site
 
-- **Decision:** Plan-cache hits (per `SK-LLM-010` / `GLOBAL-006`) cost the customer **zero LLM tokens** even when premium is enabled — the plan-cache lookup short-circuits before any LLM call site. The metering hook is wired at the LLM router span boundary, not at the `/v1/ask` request boundary, so a cached plan that runs against a premium-enabled DB never appears on the LLM-tokens invoice line. The customer's per-DB queries-over-the-included-50k counter still ticks (Pro pricing line, `docs/architecture.md §6`); only the LLM-tokens add-on line is gated behind a real LLM call.
-- **Core value:** Free, Honest latency, Bullet-proof
-- **Why:** Charging for cached plans would invert the cost incentive — users would avoid asking the same useful question twice. The plan cache exists *because* repeat patterns are the cheap case; passing the savings through to the customer is the only honest framing. Wiring the meter at the router span boundary (instead of the request boundary) is the structural fix that makes the right thing the easy thing — the meter literally cannot fire without an LLM call to attach to. This is also a precondition for `SK-PREMIUM-006`'s cap accuracy: cap math in token-USD only counts real upstream calls.
-- **Consequence in code:** The metering call site lives in `packages/llm/src/router.ts` inside the per-provider try/finally that already emits `gen_ai.*` attributes (`SK-LLM-006`); a cache-hit path in `apps/api/src/ask/` never enters that span. Tests assert that a second identical premium-enabled `/v1/ask` request emits no `nlqdb.premium.spend_usd_cents` increment. The customer-facing invoice line item shows `LLM tokens — Sonnet 4.6 (123,456 input / 45,678 output)`; cached plans are invisible on the invoice by construction.
-- **Alternatives rejected:**
-  - Charge a small "cache lookup" fee — re-introduces the "avoid repeating useful queries" disincentive; the cache-hit cost to us is sub-ms KV reads, not a profit center.
-  - Bill cached plans at the original miss's price — same disincentive, plus accounting complexity (the original plan's price ages out as model prices change).
-  - Bill at the request boundary, refund cache hits — accounting churn; the structural fix (meter at the call site) makes the refund unnecessary.
-- **Source:** SK-LLM-010 (plan cache first) · GLOBAL-006 (content-addressed plans) · docs/architecture.md §6 (Premium models row)
+**Body:** [`decisions/SK-PREMIUM-007-plan-cache-zero-cost.md`](./decisions/SK-PREMIUM-007-plan-cache-zero-cost.md).
+Plan-cache hits cost the customer zero LLM tokens even with premium enabled: the meter is wired at the LLM router span boundary (not the `/v1/ask` request boundary), so a cached plan structurally cannot produce an LLM-tokens invoice line — and cap math (`SK-PREMIUM-006`) only counts real upstream calls.
 
 ## GLOBALs governing this feature
 
@@ -172,7 +170,9 @@ The 8-point BYOK decision tree that previously lived here is resolved by [`SK-PR
 
 - **Add-on payment-fail routing** — Resolved per `GLOBAL-033` (cost → `GLOBAL-026` free chain forever): on `invoice.payment_failed` for the metered LLM-tokens line, route premium-enabled DBs back to the strict-$0 free chain — never block the product — and re-enable the add-on on a successful charge. `stripe-billing` owns the dunning mechanics (`SK-STRIPE-011`/`SK-STRIPE-013` + `SK-STRIPE-005` `past_due` sync); this bullet owns only the chain-selection consequence.
 - **Anonymous-mode interaction** — Resolved per `GLOBAL-033` (UX): anon principals have no Stripe customer, so the `SK-PREMIUM-004` premium CTA does **not** render for them; the create-an-account cross-sell takes its place on that surface.
-- **Parked until the surface-parity PR (GLOBAL-003 tracked gap):** the `model` preset param on `/v1/ask` + its routing, SDK `model` option, CLI `--model`/`nlq model set`, `<nlq-data model>`, MCP `model` param, and per-provider key storage (SK-PREMIUM-012 is one row/account, so switching frontier models re-enters the key). BYOLLM header lane (`SK-LLM-021`, `SK-SDK-010`, `SK-CLI-016`) + account lane (`SK-PREMIUM-012`, `SK-SDK-011`), the web model picker + `GET /v1/models` catalog + `trace.model` on MCP (`SK-PREMIUM-013`) already shipped.
+- **Parked (GLOBAL-003 tracked gaps, post-`SK-PREMIUM-014`):** per-provider BYOLLM key storage (SK-PREMIUM-012 is one row/account, so switching frontier models re-enters the key), the `nlq model set` persistence verb (the CLI ships `--model` per call), and `<nlq-action model>` (the read element has the attribute; add the write element's when a persona test asks). Everything else in the preset-parity set shipped: the `model` param + routing on `/v1/ask`, SDK `model`, CLI `--model`, `<nlq-data model>`, MCP `model` (`SK-PREMIUM-014`); BYOLLM lanes + picker/catalog per `SK-PREMIUM-008`/`012`/`013`.
+- Should `SK-PREMIUM-014`'s "never a silent downgrade" extend to the create/DDL router, which deliberately keeps the free chain even under `model: "best"` with a stored BYOLLM key?
+- Should the founder-funded frontier lane (`SK-FRONTIER-001`) count as a frontier lane for `best`, instead of 409ing keyless users it would have upgraded anyway?
 - **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram (shape + judge prompt + CI) — the CTA's quality-delta pull depends on it.
 - **Parked until Lago wiring (Phase 2, blocks `SK-PREMIUM-002`):** the LLM-router → Lago usage-metering path (`phase-plan.md §6`); and the per-key spend-cap **UI** (`SK-PREMIUM-006` has the data model; dashboard lives on the API-keys + DB-settings pages).
 - **Parked to Enterprise:** reseller / agency consolidated billing — v1 is per-account only.

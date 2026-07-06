@@ -193,6 +193,23 @@ describe("handleQuery", () => {
     );
   });
 
+  it("passes the model preset through to the SDK request (SK-PREMIUM-014)", async () => {
+    const ask = vi.fn(async () => ({
+      status: "ok" as const,
+      rows: [],
+      rowCount: 0,
+      trace: { sql: "", plan_id: "", confidence: 0, model: "", cache_hit: false },
+    }));
+    const client = stubClient({ ask });
+
+    await handleQuery(client, { db: "users", q: "count users", model: "fast" });
+
+    expect(ask).toHaveBeenCalledWith(
+      expect.objectContaining({ goal: "count users", dbId: "users", model: "fast" }),
+      expect.any(Object),
+    );
+  });
+
   it("omits dbId when db is not provided (SK-ASK-009 goal-first auto-target)", async () => {
     const ask = vi.fn(async () => ({
       status: "ok" as const,
@@ -668,6 +685,14 @@ describe("mapSdkError", () => {
     const apiErr = new NlqdbApiError("aborted", 0, "aborted", "/v1/ask", null);
     const err = mapSdkError(apiErr);
     expect(err.code).toBe("aborted");
+  });
+
+  it("maps model_unavailable to the two real doors, not generic retry advice (SK-PREMIUM-014)", () => {
+    const apiErr = new NlqdbApiError("no frontier lane", 409, "model_unavailable", "/v1/ask", null);
+    const err = mapSdkError(apiErr);
+    expect(err.code).toBe("model_unavailable");
+    expect(err.message).toMatch(/frontier model/);
+    expect(err.action).toMatch(/app\.nlqdb\.com\/app\/keys/);
   });
 
   it("forwards candidate_dbs on ambiguous_db", () => {

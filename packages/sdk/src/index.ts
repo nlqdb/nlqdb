@@ -38,6 +38,13 @@ export type AskRequest = {
   // with `confirm: true`. The orchestrator skips its confidence
   // gate on the second hop and runs the SQL.
   confirm?: boolean;
+  // SK-PREMIUM-014 — the goal-first model preset (SK-PREMIUM-003):
+  // `fast` pins the free chain, `best` demands a frontier lane (throws
+  // `model_unavailable` when the account has no BYOLLM key and no paid
+  // plan), `auto`/absent lets the server pick. Named frontier models are
+  // not chosen per-request — store a key via `setByollm()` or pass
+  // `byollm` in `ClientOptions`.
+  model?: ModelPreset;
 };
 
 // SK-ASK-009: response echo when the API auto-targeted a DB on the
@@ -315,6 +322,12 @@ export type ApiErrorCode =
   // SK-DB-010: 400 returned when `engine` is set to a string that's
   // not in the allowed engine set on `/v1/ask` or `/v1/databases`.
   | "invalid_engine"
+  // SK-PREMIUM-014: the `model` preset knob on `/v1/ask`. `invalid_model`
+  // (400) — `model` isn't one of `auto | fast | best`; `model_unavailable`
+  // (409) — `model: "best"` but the account has no frontier lane (no
+  // BYOLLM key, no paid plan); `body.link` deep-links the fix.
+  | "invalid_model"
+  | "model_unavailable"
   // SK-SDK-011: the account-stored BYOLLM verbs — 400 on a mis-shaped
   // credential, 503 when the deployment can't seal keys (KEK unset).
   | "invalid_byollm_key"

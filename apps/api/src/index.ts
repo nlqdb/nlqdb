@@ -838,6 +838,33 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // as `kind=query` against a stale DB, 502 `db_unreachable` after
     // 21 s). SDK users who pin a dbId still flow through the query
     // path — a pinned bearer + dbId is a legitimate follow-up.
+    // SK-PREMIUM-014 — `model: "best"` with no frontier lane to honour it
+    // fails loud as 409, not 5xx: the request is well-formed and the caller
+    // can resolve it through either GLOBAL-026 door. Never silently serve
+    // the free chain.
+    const modelUnavailable = () => {
+      span.setAttribute("nlqdb.ask.outcome", "model_unavailable");
+      span.end();
+      return c.json(
+        {
+          error: {
+            status: "model_unavailable" as const,
+            message:
+              'model "best" needs a frontier model: add your own provider key (BYOLLM) or a paid plan — pick one under /app/keys.',
+            link: "https://app.nlqdb.com/app/keys",
+          },
+        },
+        409,
+      );
+    };
+    // Anon principals can never hold a frontier lane (BYOLLM is
+    // signed-in-only, paid plans need an account), so `best` fails loud
+    // here too — the create short-circuit below would otherwise ride the
+    // free chain silently.
+    if (parsed.body.model === "best" && principal.kind === "anon") {
+      return modelUnavailable();
+    }
+
     if (principal.kind === "anon" && !parsed.body.dbId) {
       return runCreatePath();
     }
@@ -880,11 +907,15 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const routing = resolveAskRouter({
       headerCredential: byollmCredential,
       accountCredential,
+      ...(parsed.body.model !== undefined ? { preset: parsed.body.model } : {}),
       freeRouter: getLLMRouter(),
       gateway: { accountId: c.env.AI_GATEWAY_ACCOUNT_ID, gatewayId: c.env.AI_GATEWAY_ID },
       userId: principal.id,
     });
     if (!routing.ok) {
+      if (routing.reason === "frontier_unavailable") {
+        return modelUnavailable();
+      }
       span.setAttribute("nlqdb.ask.outcome", "byollm_gateway_unconfigured");
       span.end();
       return c.json(
@@ -907,7 +938,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // key) always wins, so we skip when that lane was chosen. Mutating
     // `routing.router` matches how the BYOLLM router already propagates to the
     // query path (the create/DDL branches keep the free router).
-    if (routing.attributes["llm.dispatch_lane"] !== "byollm") {
+    // SK-PREMIUM-014 — `model: "fast"` pins the strict-$0 chain, so the
+    // founder-funded frontier upgrade is skipped too, not just BYOLLM.
+    if (routing.attributes["llm.dispatch_lane"] !== "byollm" && parsed.body.model !== "fast") {
       const frontierRouter = await resolveFrontierAskRouter(c.env, principal.kind, {
         e2e: (c.req.header("x-nlqdb-e2e") ?? "") === "1",
       });

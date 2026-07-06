@@ -5,7 +5,7 @@ import { NlqAction, NlqData, NlqScript } from "../src/index.ts";
 describe("<NlqData>", () => {
   it("renders <nlq-data> with the camelCase → kebab-case attribute mapping", () => {
     const { container } = render(
-      <NlqData goal="top users" apiKey="pk_live_abc" template="table" refresh="30s" />,
+      <NlqData goal="top users" apiKey="pk_live_abc" template="table" refresh="30s" model="fast" />,
     );
     const el = container.querySelector("nlq-data");
     expect(el).not.toBeNull();
@@ -13,6 +13,7 @@ describe("<NlqData>", () => {
     expect(el!.getAttribute("api-key")).toBe("pk_live_abc");
     expect(el!.getAttribute("template")).toBe("table");
     expect(el!.getAttribute("refresh")).toBe("30s");
+    expect(el!.getAttribute("model")).toBe("fast");
   });
 
   it("invokes onLoad on nlq-data:load CustomEvent", () => {

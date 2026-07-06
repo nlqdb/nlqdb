@@ -13,6 +13,7 @@ type Props = {
   endpoint?: string;
   template?: string;
   refresh?: string;
+  model?: string;
 };
 const {
   goal,
@@ -23,6 +24,7 @@ const {
   endpoint,
   template,
   refresh,
+  model,
 } = Astro.props;
 ---
 
@@ -34,6 +36,7 @@ const {
   endpoint={endpoint}
   template={template}
   refresh={refresh}
+  model={model}
 >
   <slot />
 </nlq-data>

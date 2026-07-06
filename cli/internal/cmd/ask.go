@@ -19,6 +19,7 @@ func registerAsk(root *cobra.Command, g *globalFlags) {
 	var (
 		db      string
 		engine  string
+		model   string
 		confirm bool
 	)
 	cmd := &cobra.Command{
@@ -38,12 +39,14 @@ Pass --json for machine-readable output.`,
 				goal:    joinArgs(args),
 				dbID:    db,
 				engine:  engine,
+				model:   model,
 				confirm: confirm,
 			})
 		},
 	}
 	cmd.Flags().StringVar(&db, "db", "", "pin the call to this database id (errors if missing)")
 	cmd.Flags().StringVar(&engine, "engine", "", "engine override on the create branch (postgres|clickhouse)")
+	cmd.Flags().StringVar(&model, "model", "", "model preset (auto|fast|best); best needs a BYOLLM key (`nlq byollm set`) or a paid plan")
 	cmd.Flags().BoolVar(&confirm, "confirm", false, "approve a destructive plan returned by an earlier call")
 	root.AddCommand(cmd)
 }
@@ -52,6 +55,7 @@ type askParams struct {
 	goal    string
 	dbID    string
 	engine  string
+	model   string
 	confirm bool
 	// alwaysCreate bypasses active-DB resolution; `nlq new` sets it.
 	alwaysCreate bool
@@ -81,6 +85,7 @@ func doAsk(ctx context.Context, cmd *cobra.Command, g *globalFlags, p askParams)
 	req := api.AskRequest{
 		Goal:    p.goal,
 		Engine:  p.engine,
+		Model:   p.model,
 		Confirm: p.confirm,
 	}
 
@@ -151,6 +156,10 @@ func renderAPIError(cmd *cobra.Command, err error) error {
 		printErr(cmd, "stored BYOLLM key was rejected — re-set it with `nlq byollm set`, or `nlq byollm clear` to use the built-in models.")
 	case "byollm_unavailable":
 		printErr(cmd, "BYOLLM isn't configured on this deployment — run `nlq byollm clear` to use the built-in models.")
+	case "invalid_model":
+		printErr(cmd, "--model must be auto, fast, or best.")
+	case "model_unavailable":
+		printErr(cmd, "--model=best needs a frontier model — add your own key with `nlq byollm set`, or drop the flag to use the built-in models.")
 	case "auth_required", "unauthorized":
 		renderAuthRequired(cmd, apiErr)
 	default:

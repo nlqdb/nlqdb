@@ -48,13 +48,14 @@ lanes a user-facing home.
     model) + popover (Free + named frontier) + inline masked-key form via
     `setByollm`, wired into `ChatPanel`. No model string in the file — all
     from the wire catalog.
-- **Surface-parity gaps (GLOBAL-003 — tracked, land with the hosted-premium lane):**
-  - The `model` preset param on `/v1/ask` + its free/premium routing — premium
-    is §6-dark, so the web slice ships the **functional named picker** only;
-    interactive `auto|fast|best` buttons wait for the lane they'd route to
-    (shipping a dead knob would be dishonest UX).
-  - SDK `model` option, CLI `--model` / `nlq model set`, `<nlq-data model>`,
-    MCP `model` param — the preset-knob parity.
+- **Surface-parity gaps (GLOBAL-003 — tracked):**
+  - ~~The `model` preset param on `/v1/ask` + its routing; SDK `model`, CLI
+    `--model`, `<nlq-data model>`, MCP `model`~~ — shipped per
+    `SK-PREMIUM-014` (parent feature): `fast` pins free, `best` fails loud
+    (`model_unavailable`) until a frontier lane exists. Interactive
+    `auto|fast|best` buttons in the web picker still wait on the
+    hosted-premium lane (a knob routing to a §6-dark lane alone would be
+    dishonest UX for keyless users).
   - Per-provider key storage + keyless model-switch within a provider
     (SK-PREMIUM-012 is one row/account today, so switching models re-enters
     the key).

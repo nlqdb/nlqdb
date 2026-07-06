@@ -45,6 +45,15 @@ export const queryInputShape = {
     .describe(
       "Destructive writes are two calls: the first (confirm absent) returns requires_confirm: true plus a diff preview; show the diff, then re-call with confirm: true to commit. Read-only queries ignore this.",
     ),
+  // SK-PREMIUM-014 — goal-first preset knob (SK-PREMIUM-003); the enum
+  // never names a concrete model, so the no-model-string-in-surfaces
+  // rule holds.
+  model: z
+    .enum(["auto", "fast", "best"])
+    .optional()
+    .describe(
+      "Model preset: 'fast' pins the free built-in chain, 'best' requires a frontier model (errors model_unavailable unless the account stored a BYOLLM key or has a paid plan), omit/'auto' lets nlqdb pick.",
+    ),
 };
 
 export type QueryInput = z.infer<z.ZodObject<typeof queryInputShape>>;
@@ -222,6 +231,7 @@ export async function handleQuery(
     const askReq: Parameters<NlqClient["ask"]>[0] = { goal: input.q };
     if (input.db !== undefined) askReq.dbId = input.db;
     if (input.confirm !== undefined) askReq.confirm = input.confirm;
+    if (input.model !== undefined) askReq.model = input.model;
 
     const response = await client.ask(askReq, askOpts);
 
@@ -524,6 +534,16 @@ export function mapSdkError(err: unknown): ToolError {
       code: "sealing_unconfigured",
       message: "This deployment can't seal database credentials right now.",
       action: "Retry shortly; if it persists email support@nlqdb.com.",
+    };
+  }
+  // SK-PREMIUM-014 — `model: "best"` with no frontier lane. Deterministic
+  // and user-fixable, so never the generic retry advice.
+  if (code === "model_unavailable") {
+    return {
+      code: "model_unavailable",
+      message:
+        'model "best" needs a frontier model, and this account has no BYOLLM key or paid plan.',
+      action: "Add a provider key at https://app.nlqdb.com/app/keys, or omit `model`.",
     };
   }
   return {

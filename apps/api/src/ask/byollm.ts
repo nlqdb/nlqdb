@@ -18,6 +18,7 @@ import {
   buildByollmRouter,
   dispatchLaneAttributes,
   type LLMRouter,
+  type ModelPreset,
   selectDispatchLane,
 } from "@nlqdb/llm";
 
@@ -82,20 +83,28 @@ export type ResolveAskRouterResult =
   // The deployment has a BYOLLM key inbound but no AI Gateway configured
   // — an operator-config gap, surfaced as 503 by the caller (not 4xx: the
   // request is well-formed, the platform just can't serve the lane).
-  | { ok: false; reason: "gateway_unconfigured" };
+  | { ok: false; reason: "gateway_unconfigured" }
+  // `model="best"` with no frontier lane (no BYOLLM key; hosted premium
+  // §6-dark) — SK-PREMIUM-014. The caller returns 409 `model_unavailable`
+  // with the two real doors (bring a key / paid plan) rather than
+  // silently serving the free chain.
+  | { ok: false; reason: "frontier_unavailable" };
 
-// Resolve the ask-pipeline router from the resolved credentials.
-// Precedence (SK-LLM-016, applied by `selectDispatchLane`): per-request
-// header key → account-stored key → free router. A BYOLLM lane (either
-// source) dispatches through the user's own key; otherwise the free
-// router. (The premium lane isn't wired this slice; `selectDispatchLane`
-// still owns the full precedence.) Returns the redacted `llm.dispatch_lane`
-// span attributes alongside, so the caller annotates the existing ask span
-// without a second source of truth. Pure + I/O-free — the caller resolves
-// and decrypts the account credential before calling.
+// Resolve the ask-pipeline router from the resolved credentials + the
+// SK-PREMIUM-014 `model` preset. Precedence (SK-LLM-016, applied by
+// `selectDispatchLane`): preset `fast` pins the free router; else header
+// key → account-stored key → free router; preset `best` with no frontier
+// lane resolves `frontier_unavailable`. A BYOLLM lane (either source)
+// dispatches through the user's own key. (The premium lane isn't wired
+// this slice; `selectDispatchLane` still owns the full precedence.)
+// Returns the redacted `llm.dispatch_lane` span attributes alongside, so
+// the caller annotates the existing ask span without a second source of
+// truth. Pure + I/O-free — the caller resolves and decrypts the account
+// credential before calling.
 export function resolveAskRouter(args: {
   headerCredential: ByollmCredential | null;
   accountCredential?: ByollmCredential | null;
+  preset?: ModelPreset;
   freeRouter: LLMRouter;
   gateway: { accountId?: string; gatewayId?: string };
   userId: string;
@@ -103,8 +112,17 @@ export function resolveAskRouter(args: {
   const selection = selectDispatchLane({
     headerCredential: args.headerCredential,
     accountCredential: args.accountCredential ?? null,
+    ...(args.preset !== undefined ? { preset: args.preset } : {}),
   });
-  const attributes = dispatchLaneAttributes(selection);
+  if (selection.lane === "unavailable") {
+    return { ok: false, reason: "frontier_unavailable" };
+  }
+  const attributes = {
+    ...dispatchLaneAttributes(selection),
+    // Bounded (3 values) — "which preset do callers send" is the demand
+    // signal the §6 trigger reads (performance.md §3.3 cardinality rules).
+    ...(args.preset !== undefined ? { "llm.model_preset": args.preset } : {}),
+  };
   if (selection.lane !== "byollm") {
     return { ok: true, router: args.freeRouter, attributes };
   }

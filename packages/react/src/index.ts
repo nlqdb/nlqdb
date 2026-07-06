@@ -38,6 +38,7 @@ export type NlqDataProps = {
   endpoint?: string;
   template?: NlqDataTemplate;
   refresh?: string;
+  model?: "auto" | "fast" | "best" | (string & {});
   onLoad?: (detail: NlqDataLoadDetail) => void;
   onError?: (detail: NlqDataErrorDetail) => void;
   children?: ReactNode;
@@ -63,6 +64,7 @@ export function NlqData(props: NlqDataProps) {
     endpoint,
     template,
     refresh,
+    model,
     onLoad,
     onError,
     children,
@@ -107,6 +109,7 @@ export function NlqData(props: NlqDataProps) {
       endpoint,
       template,
       refresh,
+      model,
       class: className,
       style,
       id,
@@ -222,6 +225,7 @@ declare module "react" {
         endpoint?: string;
         template?: string;
         refresh?: string;
+        model?: string;
       };
       "nlq-action": DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & {
         goal?: string;

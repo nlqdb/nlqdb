@@ -27,6 +27,7 @@ export type NlqDataProps = {
   endpoint?: string;
   template?: NlqDataTemplate;
   refresh?: string;
+  model?: "auto" | "fast" | "best" | (string & {});
   onLoad?: (detail: NlqDataLoadDetail) => void;
   onError?: (detail: NlqDataErrorDetail) => void;
   children?: JSX.Element;
@@ -66,6 +67,7 @@ export function NlqData(props: NlqDataProps): JSX.Element {
       endpoint={props.endpoint}
       template={props.template}
       refresh={props.refresh}
+      model={props.model}
     >
       {props.children}
     </nlq-data>
@@ -134,6 +136,7 @@ declare module "solid-js" {
         endpoint?: string;
         template?: string;
         refresh?: string;
+        model?: string;
       };
       "nlq-action": JSX.HTMLAttributes<HTMLElement> & {
         goal?: string;

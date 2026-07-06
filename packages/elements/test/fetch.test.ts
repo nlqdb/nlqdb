@@ -323,6 +323,32 @@ describe("fetchAsk", () => {
       });
     });
 
+    // SK-PREMIUM-014 — `<nlq-data model>` preset passthrough.
+    it("sends `model` in the body when set, omits it otherwise", async () => {
+      const fetchImpl = vi.fn<FetchLike>(async () => jsonResponse(successBody));
+      await fetchAsk({
+        endpoint: "https://api.example/v1/ask",
+        goal: "count users",
+        dbId: "orders",
+        model: "fast",
+        fetchImpl,
+      });
+      expect(JSON.parse(call(fetchImpl).init.body as string)).toEqual({
+        goal: "count users",
+        dbId: "orders",
+        model: "fast",
+      });
+
+      const bare = vi.fn<FetchLike>(async () => jsonResponse(successBody));
+      await fetchAsk({
+        endpoint: "https://api.example/v1/ask",
+        goal: "count users",
+        dbId: "orders",
+        fetchImpl: bare,
+      });
+      expect("model" in (JSON.parse(call(bare).init.body as string) as object)).toBe(false);
+    });
+
     it("surfaces a preview hop response with requires_confirm + diff", async () => {
       const fetchImpl = vi.fn<FetchLike>(async () =>
         jsonResponse({

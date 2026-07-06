@@ -42,6 +42,48 @@ describe("selectDispatchLane (SK-LLM-016 precedence)", () => {
   });
 });
 
+describe("selectDispatchLane — model preset (SK-PREMIUM-014)", () => {
+  it('"fast" pins the free lane even over credentials and premium eligibility', () => {
+    const sel = selectDispatchLane({
+      headerCredential: header,
+      accountCredential: account,
+      premiumEligible: true,
+      preset: "fast",
+    });
+    expect(sel).toEqual({ lane: "free" });
+  });
+
+  it('"best" rides a BYOLLM credential when one exists', () => {
+    expect(selectDispatchLane({ accountCredential: account, preset: "best" })).toEqual({
+      lane: "byollm",
+      credential: account,
+      source: "account",
+    });
+  });
+
+  it('"best" resolves premium when eligible and keyless', () => {
+    expect(selectDispatchLane({ premiumEligible: true, preset: "best" })).toEqual({
+      lane: "premium",
+    });
+  });
+
+  it('"best" with no frontier lane is unavailable — never a silent free downgrade', () => {
+    expect(selectDispatchLane({ preset: "best" })).toEqual({
+      lane: "unavailable",
+      requested: "best",
+    });
+  });
+
+  it('"auto" matches the plain precedence', () => {
+    expect(selectDispatchLane({ preset: "auto" })).toEqual({ lane: "free" });
+    expect(selectDispatchLane({ headerCredential: header, preset: "auto" })).toEqual({
+      lane: "byollm",
+      credential: header,
+      source: "header",
+    });
+  });
+});
+
 describe("dispatchLaneAttributes", () => {
   it("byollm: lane + billed_to=byollm + upstream slug + source, never the key", () => {
     const attrs = dispatchLaneAttributes({ lane: "byollm", credential: header, source: "header" });
@@ -71,6 +113,12 @@ describe("dispatchLaneAttributes", () => {
     expect(dispatchLaneAttributes({ lane: "free" })).toEqual({
       "llm.dispatch_lane": "free",
       "llm.billed_to": "platform",
+    });
+  });
+
+  it("unavailable → lane only (never stamped on a served ask; nothing is billed)", () => {
+    expect(dispatchLaneAttributes({ lane: "unavailable", requested: "best" })).toEqual({
+      "llm.dispatch_lane": "unavailable",
     });
   });
 });

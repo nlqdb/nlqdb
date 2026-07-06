@@ -94,3 +94,43 @@ describe("parseAskBody — engine validation (SK-DB-010)", () => {
     }
   });
 });
+
+describe("parseAskBody — model preset validation (SK-PREMIUM-014)", () => {
+  it("accepts each preset and carries it on the body", async () => {
+    for (const model of ["auto", "fast", "best"]) {
+      const out = await parseAskBody(fakeCtx({ goal: "g", model }));
+      expect(out.ok).toBe(true);
+      if (!out.ok) throw new Error("expected ok");
+      expect(out.body.model).toBe(model);
+    }
+  });
+
+  it("treats an absent or empty model as omitted", async () => {
+    for (const body of [{ goal: "g" }, { goal: "g", model: "" }]) {
+      const out = await parseAskBody(fakeCtx(body));
+      expect(out.ok).toBe(true);
+      if (!out.ok) throw new Error("expected ok");
+      expect(out.body.model).toBeUndefined();
+    }
+  });
+
+  it("rejects a named model string with invalid_model 400 — presets only on the wire", async () => {
+    const out = await parseAskBody(fakeCtx({ goal: "g", model: "claude-opus-4-8" }));
+    expect(out.ok).toBe(false);
+    if (out.ok) throw new Error("expected error");
+    expect(out.error.status).toBe(400);
+    expect(out.error.body.error).toBe("invalid_model");
+    if (out.error.body.error !== "invalid_model") throw new Error("narrow");
+    expect(out.error.body.value).toBe("claude-opus-4-8");
+    expect(out.error.body.allowed).toEqual(["auto", "fast", "best"]);
+  });
+
+  it("rejects non-string model values (number / object / null)", async () => {
+    for (const model of [42, { id: "fast" }, null]) {
+      const out = await parseAskBody(fakeCtx({ goal: "g", model }));
+      expect(out.ok).toBe(false);
+      if (out.ok) throw new Error("expected error");
+      expect(out.error.body.error).toBe("invalid_model");
+    }
+  });
+});
