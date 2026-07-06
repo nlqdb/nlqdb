@@ -27,7 +27,7 @@ on:
         type: string
         default: https://openrouter.ai/api/v1
       candidate_models:
-        description: "Ordered comma-separated agent-model ids on provider_base_url, ALL free per GLOBAL-013 (`:free` suffix on OpenRouter). Pre-flight picks the first one that answers a tool-call probe. Order = proven agent competence first: gpt-oss-120b drove every historically green run, and its pool-flap risk is double-covered (3x probe gate + maxRetries 6 backoff). nemotron-3-super is BANNED from this list: it aces 1-shot probes but collapses to text-format tool calls (<function=...></tool_call>) mid-loop, failing 2/5 tests in two consecutive runs (28760320317, 28767705937). gpt-oss-20b is last (times out / derails on the heavy suites, run 28757212934); the middle candidates are tool-capable per OpenRouter /models (live-checked 2026-07-06) but unproven as agents here."
+        description: "Ordered comma-separated agent-model ids on provider_base_url, ALL free per GLOBAL-013 (`:free` suffix on OpenRouter). Pre-flight picks the first one that answers 3 consecutive tool-call probes. Order = proven agent competence first; nemotron-3-super is BANNED (probe-healthy but collapses to text-format tool calls mid-loop). Per-model evidence + run ids: docs/features/e2e-coverage/opencheck-operations.md."
         required: false
         type: string
         default: "openai/gpt-oss-120b:free,qwen/qwen3-coder:free,qwen/qwen3-next-80b-a3b-instruct:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-20b:free"
@@ -52,10 +52,10 @@ jobs:
       contents: read
     env:
       BASE_URL: ${{ inputs.base_url }}
-      # ChatOpenAI reads OPENAI_API_KEY + OPENAI_BASE_URL; update both + the suite's `model:` to swap provider.
+      # ChatOpenAI reads OPENAI_API_KEY + OPENAI_BASE_URL; update both to swap provider.
       OPENAI_API_KEY: ${{ secrets.LLM_API_KEY }}
       # Provider endpoint — caller-supplied so each suite can use an independent free-tier budget (GLOBAL-013).
-      # Must match the `model:` in the active config file (inputs.config_file).
+      # Every id in `candidate_models` must exist on this endpoint.
       OPENAI_BASE_URL: ${{ inputs.provider_base_url }}
       # Opt-in debug: flip to "true" to dump the full agent loop (~5-10x log
       # volume) when triaging a stuck case. Off by default — keeps job logs readable.

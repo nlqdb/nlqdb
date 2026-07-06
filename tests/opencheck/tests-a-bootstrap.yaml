@@ -47,8 +47,8 @@ tests:
       Press Enter as a SEPARATE browser_key_down call (do NOT use submit: true).
       The form calls the API — DB creation (LLM inference + schema provision)
       takes 15-60 s. The page does NOT redirect (SK-ANON-012: the anonymous
-      device's 1st /v1/ask call provisions the DB in place). Stay on the base
-      URL and poll: call browser_snapshot every 5 seconds up to 12 times (60 s)
+      device's 1st /v1/ask call provisions the DB in place). Stay on
+      "/app/new/" and poll: call browser_snapshot every 5 seconds up to 12 times (60 s)
       until "Provisioned with" is visible anywhere on the page. If after 12
       polls "Provisioned with" is still absent, TEST_FAILED — DB creation timed
       out. Once "Provisioned with" is visible, TEST_PASSED immediately — do NOT
