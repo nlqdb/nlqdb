@@ -92,46 +92,34 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 ## Last change
 
 **2026-07-06 (run 13)** — lever: **row #15, the opencheck E2E root-cause fix
-this row has named since run 9 — E2E freshness 0.49 → 0.75** (0.32 by open
-PR #619's same-day decay recompute; either basis, Δ > 0). Adopted the
-abandoned 07-05 iteration branch (`claude/keen-turing-425eac`: ordered
+this row has named since run 9 — E2E freshness 0.49 → 0.75**. Adopted the
+abandoned 07-05 iteration branch (`claude/keen-turing-425eac`): ordered
 `candidate_models` pre-flight — 3× tool-call probes, SK-LLM-042 HTTP-200
-error-envelope body check, `__MODEL__` substitution, `maxRetries: 6` backoff;
-4 dispatches, session died before opening a PR) and finished it with a
-Playwright-trace triage of its last run
-([28760320317](https://github.com/nlqdb/nlqdb/actions/runs/28760320317)),
-which split the residual 2/5 Suite-A failures into three distinct causes:
-**(a)** a deterministic test bug — `#add-row-redirects-to-auth` still hunted
-the hero input on the two-door homepage after the 07-05 wave moved the create
-form to `/app/new/` (agent looped null DOM queries for 240s) → repointed;
-**(b)** app-side Neon cold-start — `/v1/ask` planned at confidence 1 then SSE
+error-envelope body check, `__MODEL__` substitution, `maxRetries: 6` backoff —
+then Playwright-trace-triaged the residual 2/5 Suite-A failures
+([28760320317](https://github.com/nlqdb/nlqdb/actions/runs/28760320317)) into
+three causes, all fixed: **(a)** `#add-row-redirects-to-auth` still hunted the
+hero input after the create form moved to `/app/new/` → repointed; **(b)**
+app-side Neon cold-start — `/v1/ask` plans at confidence 1 then SSE
 `db_unreachable` after ~5.7 min staging idle → the test absorbs exactly one
-retry (second failure still fails) and the product-side question is logged in
-e2e-coverage's Open questions; **(c)** nemotron-3-super is probe-healthy but
-agent-broken — across two runs it collapsed to text-format tool calls
-(`<function=…></tool_call>` as plain text, read as a final answer) → banned
-from the list, replacements re-verified live against OpenRouter `/models`
-`supported_parameters` (P2, 2026-07-06): gpt-oss-120b leads (only model with
-a full green run; flap double-covered by probe gate + backoff), then
-qwen3-coder / qwen3-next-80b / llama-3.3-70b / gpt-oss-20b. Verification:
-sdk ✅ + mcp ✅ + examples ✅ re-dispatched and green 07-06 (killing the 07-09
-freshness cliff); opencheck verification run
+retry, product-side question filed in e2e-coverage's Open questions; **(c)**
+nemotron-3-super probe-healthy but agent-broken (collapses to text-format
+tool calls mid-loop) → banned, replacements re-verified live against
+OpenRouter `/models` `supported_parameters` (P2, 2026-07-06). Verification:
+sdk ✅ + mcp ✅ + examples ✅ re-dispatched green 07-06 (07-09 freshness cliff
+killed); opencheck run
 ([28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)):
-**Suite A 4/5, the best since the last full green (06-12)** — achieved on the
-WEAKEST candidate (`gpt-oss-20b`, after the pre-flight honestly walked past
-four simultaneously-saturated stronger pools), with the `#add-row` repoint
-passing live and the sole failure being the 2×-reproduced app-side cold-start;
-Suite B 0/8 on the same weak model is its documented capacity class, so the
-run stays red at workflow level — opencheck pass flips when either a
-120b-class pool is healthy at dispatch or the cold-start fix lands. **Step-0
-non-overlap:** open PR #619 (run 12) owns the SC verdict (row #8), the blog
-publish (row #6), and the 07-06 funnel/ops pulls — this run touched none of
-them; funnel/ops/engine numbers carry. **Step-3 artifact:** the queue ≥ 3
-publish action is #619's this cycle ⇒ this run drafted
-`llm-preflight-probe-health` into the queue (the probe-vs-agent-health lesson,
-straight from the lever; queue net unchanged after #619's publish). **KPI:**
-GLOBAL-025 onboarding + UX — the opencheck suites are the only automated
-proof of the stranger journey (anon create → auth wall → adoption →
-queryable table), dark since 06-12; engine-quality measurement integrity
-advanced via the honest capacity-vs-competence split. None degrade: zero
-prod code touched (workflows + test specs + docs only).
+**Suite A 4/5, best since the 06-12 green** — on the WEAKEST candidate
+(`gpt-oss-20b`, after the pre-flight honestly walked past four
+simultaneously-saturated stronger pools), sole failure = the 2×-reproduced
+cold-start; Suite B 0/8 is that model's documented capacity class, so the
+workflow stays red until a 120b-class pool is healthy at dispatch or the
+cold-start fix lands (full triage: `e2e-coverage/opencheck-operations.md`
+2026-07-06 rows). Same-day run 12 (PR #619) owned the SC verdict (row #8),
+the blog publish (row #6), and the 07-06 funnel/ops pulls; this run drafted
+`llm-preflight-probe-health` into the queue (probe-health ≠ agent-health).
+**KPI:** GLOBAL-025 onboarding + UX — the opencheck suites are the only
+automated proof of the stranger journey (anon create → auth wall → adoption
+→ queryable table), dark since 06-12; engine-quality measurement integrity
+advanced via the capacity-vs-competence split. None degrade: zero prod code
+touched (workflows + test specs + docs only).
