@@ -6,32 +6,33 @@ Point-in-time tracker, regenerated each
 `progress/quality-score-verification-log.md` (engine).
 
 **Weekly focus number (2026-07-04 → 07-11):** **BIRD raw EX → ≥ 0.60**
-(row #8) — **0.512 → 0.526 this run (07-05)**, still the only pillar below a
+(row #8) — **0.526, unmoved this run (07-06)**, still the only pillar below a
 hard [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) Phase-2 floor;
-`SK-QUAL-005` mandates engine work until it clears. **Rider (landed for
-`SK-LLM-043`, run 11):** the live CI re-measure confirmed the directive
-directionally (`||` concats 7 → 3; 2/3 offline targets flipped) inside a
-statistically-flat run. Remaining live sub-levers: `SK-QUAL-017` SC N≥2 smoke +
-the post-`SK-LLM-042` agentic-frontier re-measure. Distribution volume holds
-(yield near-zero; see `weekly-review.md`).
+`SK-QUAL-005` mandates engine work until it clears. **Run 12 killed a
+sub-lever honestly:** the first `SK-QUAL-017` self-consistency N≥2 dispatch
+(N=3, temp 0.7, seed-20260607 150q smoke) is **exactly flat vs greedy on the
+same-directive-set paired comparator** — 79/150 both, discordant b=8/c=8,
+McNemar p=1.0 — at 3× quota cost; SC stays an eval-harness knob, never a
+live-chain promotion. Remaining live sub-lever: the post-`SK-LLM-042`
+agentic-frontier re-measure. Distribution volume holds (yield near-zero; see
+`weekly-review.md`).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric; the daily **lever** targets its agent-movable inputs. Today's
-(07-05, run 11) lever: **the weekly focus itself — BIRD raw EX `0.512 → 0.526`**
-(row #8). The founder's 07-04 canonical dispatch had budget-stopped at 487/500
-(`resumable: true`); run 11 resumed it per the `SK-QUAL-013` loop (pin branch
-`eval/bird-resume-8d3d7c5`, one 2-min window) to completion, re-seeded the
-baseline, and live-verified `SK-LLM-043` (details row #8 + verification log).
-**Distribution (step 3) is owned by concurrent PR #617 (run 10)** — it holds the
-queue action for this cycle (queued `model-preset-fail-loud`, queue → 3); per
-step-0 non-overlap run 11 touched neither queue nor blog.
+(07-06, run 12) lever: **the weekly focus's named `SK-QUAL-017` sub-lever,
+measured to a verdict** (details row #8 + verification log). Attribution
+trap avoided: vs the 07-03 greedy slice (71/150, pre-`SK-LLM-043` SHA) the SC
+run reads +5.33 pp — but restricted to the 07-05 canonical run's same 150
+questions (same directive set) the delta is exactly 0.0; naive cross-SHA
+smoke comparison would have shipped a 3×-cost placebo.
 **Engine finding (row #8), standing:** the **offline deterministic-ceiling
 lever is exhausted** — `SK-LLM-043` (#605) took the last mechanically-provable
 bucket; the dominant residual bucket (`extra_DISTINCT`) is BIRD gold-annotation
 noise a directive would overfit to, corroborating the parked **corrected-set**
-lever (Kang VLDB-2026; repo states no license, P2). Net: **0.526 is a floor, not
-a ceiling**; next engine moves are the live sub-levers in the weekly-focus line.
-Phase 2 exit gate: **1/9 criteria pass** (row #16).
+lever (Kang VLDB-2026; repo states no license, P2). With SC also dead (this
+run), **0.526 is a floor whose next live moves are the agentic-frontier
+re-measure + the parked corrected-set**. Phase 2 exit gate: **1/9 criteria
+pass** (row #16).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -45,8 +46,8 @@ Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | 6 | Indexable surfaces | **80** (`/vs` 31 + `/solve` 33 + `/blog` 16) — +1 this run: published `/blog/llm-concatenates-columns-text-to-sql` (queue was 3 ≥ 3 ⇒ publish; oldest draft) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Queue back to 2 (< 3 ⇒ next run drafts) |
 | 7 | Surface yield | posts 16; 7d external referrals = **1** (`bing.com`, 1 pageload; google + aisearchindex.space fell out of the window) | CF `refererHost` — measured every run. Yield still near-zero — the standing weekly-review finding (distribution *volume* without *yield*); count grows, referrals flat |
 | | **Engine** — BIRD 07-05 · Spider 07-02 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
-| 8 | BIRD raw EX | **0.526** (262/498 EA, 2 `gold_error`, 07-05 — canonical 500q completed by resuming the founder's 07-04 dispatch on pinned SHA `8d3d7c5`; Δ +1.41 pp vs 0.512, McNemar b=32/c=38 statistically flat, 0 flagged regressions; [runs 28716772086](https://github.com/nlqdb/nlqdb/actions/runs/28716772086) → [28742006051](https://github.com/nlqdb/nlqdb/actions/runs/28742006051)) | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Baseline re-seeded 07-05. **`SK-LLM-043` live-verified (run 11):** predicted-SQL `\|\|` concats 7 → 3 run-wide; offline-ceiling targets qid 1381 + 898 flipped mismatch→match live (1002 residual). Offline deterministic-ceiling lever stays exhausted (07-04 run-5 finding; residual mismatches 233 need execution/live-chain to score). Pin-branch delete still 403-blocked — any session with branch-delete rights can drop `eval/bird-resume-0e67e64` + `eval/bird-resume-8d3d7c5` |
-| 9 | Spider raw EX | 0.1926 (26/135, 07-02) | target 0.75; was 0.1852 (06-17). **Worst engine number.** 07-02 free lane capacity-throttled ⇒ undercounts; `SK-QUAL-017` SC smoke undispatched |
+| 8 | BIRD raw EX | **0.526** (262/498 EA, 2 `gold_error`, 07-05 canonical, [run 28742006051](https://github.com/nlqdb/nlqdb/actions/runs/28742006051)). **`SK-QUAL-017` SC verdict (run 12, 07-06):** first N≥2 dispatch (N=3, temp 0.7, 150q smoke, [run 28761582097](https://github.com/nlqdb/nlqdb/actions/runs/28761582097)) = **79/150 = 0.5267, exactly flat vs the same-directive-set greedy comparator** (canonical run restricted to the identical 150 qids: 79/150; b=8/c=8, p=1.0; SC `no_sql` 1/150) — majority-vote at 3× quota buys 0 on the free chain; the 8↔8 swaps are provider-mix noise | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Baseline re-seeded 07-05. `SK-LLM-043` live-verified (run 11): `\|\|` concats 7 → 3 run-wide. Offline deterministic-ceiling lever exhausted (07-04); **SC lever dead (this run)** — remaining: agentic-frontier re-measure + parked corrected-set. Pin-branch delete still 403-blocked (`eval/bird-resume-0e67e64` + `-8d3d7c5`) |
+| 9 | Spider raw EX | 0.1926 (26/135, 07-02) | target 0.75; was 0.1852 (06-17). **Worst engine number.** 07-02 free lane capacity-throttled ⇒ undercounts; Spider SC smoke now presumptively skippable — BIRD's SC verdict (row #8) came back flat, so re-measuring Spider capacity-honestly matters more than SC |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-02) | full-chain ICP EX; 1.8× BIRD, 5× Spider — the GLOBAL-026 bet; N=23 ±1 noisy. Retrieval precision@1 saturated |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 19.3 pts** (free 47.33% → agentic-frontier 66.67%, 150-q smoke seed 20260607, 07-03; single-frontier lane 20.0 pts). persona-bench 0.00 pts (07-02) | **First clean agentic smoke since the `SK-QUAL-021` hang fix (#596)** — ran the full 150-q slice end-to-end in ~15 min, status `completed`, not resumable (windows 1–4 earlier 07-03 all ceiling-cancelled at 44 min on the runaway-SQL freeze the fix removed). Lanes: free 71/150, frontier 101/150, agentic-frontier 100/150 (both frontier lanes carry 7 `openrouter:parse` no_sql ⇒ their ceiling is higher). Smoke — no baseline touch; canonical BIRD is row #8. [run 28685576019](https://github.com/nlqdb/nlqdb/actions/runs/28685576019). **07-04: the 7 `openrouter:parse` root cause fixed at the source (`SK-LLM-042`)** — OpenRouter's 200-body error envelope was misclassified as engine `parse`; now `rate_limited` (capacity pause) / `provider_error` (retryable, tail-retry-covered). Deterministic proof shipped (unit tests); frontier-lane ceiling re-measures on the next agentic-frontier smoke window |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-06 pull) | | wall-time, all routes |

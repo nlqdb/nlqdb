@@ -194,9 +194,11 @@ closing the `SK-QUAL-007` deferral (**13 of 135 (9.6%)** carried a dropped doc).
 **Body:** [`decisions/SK-QUAL-017-self-consistency-majority-vote.md`](./decisions/SK-QUAL-017-self-consistency-majority-vote.md).
 `majorityVote` clusters N executed plans by their **result set** (the answer, not
 the SQL string), returning the modal cluster's SQL — the §4 #3 reasoning lever,
-now end-to-end (`--self-consistency N` / `--sc-temperature T`) and baseline-safe
-(N=1 default = greedy, `SK-LLM-024` byte-identical). EX delta is the greedy-vs-SC
-gap on the first N≥2 dispatch.
+end-to-end (`--self-consistency N` / `--sc-temperature T`) and baseline-safe
+(N=1 default = greedy, `SK-LLM-024` byte-identical). **Measured 2026-07-06
+(first N≥2 dispatch): flat** — BIRD smoke N=3 @ 0.7 = 79/150, identical to the
+same-directive-set greedy on the paired 150 qids (b=8/c=8, p=1.0) at 3× quota
+⇒ SC stays eval-only, never a live-chain promotion (details in the body).
 
 ### SK-QUAL-018 — persona-bench: nlqdb's own ICP-shaped NL→SQL benchmark, gold-executable fixture first
 

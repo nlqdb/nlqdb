@@ -101,6 +101,22 @@ literal/date axes falsified value-retrieval standalone.
   greedy-smoke-vs-SC-smoke gap on the fixed (seed, slice), measured on the
   first N>=2 smoke dispatch.
 
+- **Measured verdict (2026-07-06, first N≥2 dispatch —
+  [run 28761582097](https://github.com/nlqdb/nlqdb/actions/runs/28761582097)):**
+  BIRD smoke (seed 20260607, 150q), N=3 @ temp 0.7, completed in 21 min, not
+  resumable, `no_sql` 1/150: free-lane EX **79/150 = 0.5267 — exactly flat**
+  against the same-directive-set greedy comparator (the 07-05 canonical 500q
+  run restricted to the identical 150 question IDs: also 79/150; discordant
+  b=8/c=8, McNemar p=1.0 — provider-mix noise, no signal). Attribution
+  caution that made this honest: the *naive* comparator (the 07-03 greedy
+  smoke, 71/150) reads +5.33 pp, but that SHA predates `SK-LLM-043` — a
+  cross-SHA smoke delta is a directive-set diff, not an SC effect. **Verdict:
+  majority-vote at 3× quota buys ~0 on the free chain; SC stays an
+  eval-harness knob (this measurement instrument), and is not a candidate for
+  live-chain promotion.** Reopen only if the chain's sampling diversity
+  changes materially (e.g. a new head model) — re-measure with one smoke
+  dispatch before believing anything.
+
 - **Alternatives rejected:**
   - **Vote on the SQL string (exact or normalised).** Equivalent queries
     differ textually; the vote would never converge. Rejected — vote on the
