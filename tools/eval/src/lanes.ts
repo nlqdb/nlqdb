@@ -48,6 +48,18 @@ export const DEFAULT_FRONTIER_MODEL = "anthropic/claude-sonnet-4.6";
 // The eval matches it so the harness measures what production ships.
 const AGENTIC_MAX_ATTEMPTS = 3;
 
+// Production hot-path `plan` budget (DEFAULT_TIMEOUTS_MS.plan, SK-ASK-009).
+// The free lane keeps it so it measures what ships.
+const PROD_PLAN_TIMEOUT_MS = 5_000;
+
+// SK-QUAL-022 — the frontier lanes measure model *capability* (SK-QUAL-004's
+// ~77-82% SOTA intent), not the production hot-path budget. A reasoning
+// frontier model needs > 5 s on hard BIRD questions; the prod clamp aborted
+// Sonnet 4.6 mid-body-read (run 14 diagnosis — tagged `openrouter:parse`,
+// scored as an engine miss). A generous ablation budget lets it finish so the
+// lane reads competence, not the clamp.
+const FRONTIER_PLAN_TIMEOUT_MS = 30_000;
+
 export type Lane = {
   lane: DispatchLane;
   router: LLMRouter;
@@ -56,6 +68,11 @@ export type Lane = {
   // retry. The runner threads this into `withExecRetry`; only lanes
   // with `> 1` actually loop.
   maxAttempts: number;
+  // SK-QUAL-022 — per-attempt `plan` timeout wired into this lane's router.
+  // Free = prod clamp; frontier lanes = capability budget. Diagnostic
+  // metadata (the runner reads the timeout off the router, not here), so
+  // optional — a mock lane needn't set it.
+  planTimeoutMs?: number;
 };
 
 function buildFreeLane(env: EvalEnv): Lane | null {
@@ -88,7 +105,13 @@ function buildFreeLane(env: EvalEnv): Lane | null {
   });
   // Free chain is scaffolded per SK-QUAL-009 so the "scaffolding compounds with the model"
   // bet is testable end-to-end.
-  return { lane: "free", router, modelHint: "free-chain", maxAttempts: AGENTIC_MAX_ATTEMPTS };
+  return {
+    lane: "free",
+    router,
+    modelHint: "free-chain",
+    maxAttempts: AGENTIC_MAX_ATTEMPTS,
+    planTimeoutMs: PROD_PLAN_TIMEOUT_MS,
+  };
 }
 
 function frontierProvider(env: EvalEnv, model: string) {
@@ -105,9 +128,17 @@ function buildFrontierLane(env: EvalEnv): Lane | null {
   const router = createLLMRouter({
     providers: [frontierProvider(env, model)],
     chains: { plan: ["openrouter"] },
+    // SK-QUAL-022 — capability budget, not the prod hot-path clamp.
+    timeouts: { plan: FRONTIER_PLAN_TIMEOUT_MS },
   });
   // Unscaffolded — preserves the single-model ablation reference per SK-QUAL-004.
-  return { lane: "frontier", router, modelHint: model, maxAttempts: 1 };
+  return {
+    lane: "frontier",
+    router,
+    modelHint: model,
+    maxAttempts: 1,
+    planTimeoutMs: FRONTIER_PLAN_TIMEOUT_MS,
+  };
 }
 
 function buildAgenticFrontierLane(env: EvalEnv): Lane | null {
@@ -121,12 +152,15 @@ function buildAgenticFrontierLane(env: EvalEnv): Lane | null {
   const router = createLLMRouter({
     providers: [frontierProvider(env, model)],
     chains: { plan: ["openrouter"] },
+    // SK-QUAL-022 — capability budget, not the prod hot-path clamp.
+    timeouts: { plan: FRONTIER_PLAN_TIMEOUT_MS },
   });
   return {
     lane: "agentic-frontier",
     router,
     modelHint: model,
     maxAttempts: AGENTIC_MAX_ATTEMPTS,
+    planTimeoutMs: FRONTIER_PLAN_TIMEOUT_MS,
   };
 }
 
@@ -146,4 +180,6 @@ export const _testing = {
   buildFrontierLane,
   buildAgenticFrontierLane,
   AGENTIC_MAX_ATTEMPTS,
+  PROD_PLAN_TIMEOUT_MS,
+  FRONTIER_PLAN_TIMEOUT_MS,
 };

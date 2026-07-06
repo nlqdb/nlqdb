@@ -2,8 +2,14 @@ import { describe, expect, it } from "bun:test";
 
 import { _testing, buildLanes, DEFAULT_FRONTIER_MODEL } from "../src/lanes.ts";
 
-const { buildFreeLane, buildFrontierLane, buildAgenticFrontierLane, AGENTIC_MAX_ATTEMPTS } =
-  _testing;
+const {
+  buildFreeLane,
+  buildFrontierLane,
+  buildAgenticFrontierLane,
+  AGENTIC_MAX_ATTEMPTS,
+  PROD_PLAN_TIMEOUT_MS,
+  FRONTIER_PLAN_TIMEOUT_MS,
+} = _testing;
 
 describe("buildFreeLane", () => {
   it("returns null when no free-tier provider key is set", () => {
@@ -20,6 +26,11 @@ describe("buildFreeLane", () => {
   it("SK-QUAL-009: free lane carries the production retry budget so scaffolding parity holds", () => {
     const lane = buildFreeLane({ GEMINI_API_KEY: "k" });
     expect(lane?.maxAttempts).toBe(AGENTIC_MAX_ATTEMPTS);
+  });
+
+  it("SK-QUAL-022: free lane keeps the prod 5 s plan clamp (measures what ships)", () => {
+    const lane = buildFreeLane({ GEMINI_API_KEY: "k" });
+    expect(lane?.planTimeoutMs).toBe(PROD_PLAN_TIMEOUT_MS);
   });
 
   it("SK-LLM-023: CEREBRAS_API_KEY alone builds the free lane (Cerebras leads the chain)", () => {
@@ -57,6 +68,12 @@ describe("buildFrontierLane", () => {
     const lane = buildFrontierLane({ OPENROUTER_FRONTIER_API_KEY: "k" });
     expect(lane?.maxAttempts).toBe(1);
   });
+
+  it("SK-QUAL-022: frontier lane runs the capability budget, not the prod 5 s clamp", () => {
+    const lane = buildFrontierLane({ OPENROUTER_FRONTIER_API_KEY: "k" });
+    expect(lane?.planTimeoutMs).toBe(FRONTIER_PLAN_TIMEOUT_MS);
+    expect(lane?.planTimeoutMs).toBeGreaterThan(PROD_PLAN_TIMEOUT_MS);
+  });
 });
 
 describe("buildAgenticFrontierLane", () => {
@@ -86,6 +103,8 @@ describe("buildAgenticFrontierLane", () => {
     expect(lane?.modelHint).toBe(DEFAULT_FRONTIER_MODEL);
     // The whole point of slice 3c is exec-retry — guard the budget.
     expect(lane?.maxAttempts).toBe(AGENTIC_MAX_ATTEMPTS);
+    // SK-QUAL-022 — same capability budget as the single-model frontier lane.
+    expect(lane?.planTimeoutMs).toBe(FRONTIER_PLAN_TIMEOUT_MS);
   });
 
   it("accepts the common truthy variants without falling back to silent off", () => {

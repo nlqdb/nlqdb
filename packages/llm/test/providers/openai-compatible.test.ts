@@ -119,3 +119,40 @@ describe("openAICompatibleChat 200-body error envelope (SK-LLM-042)", () => {
     await expect(openAICompatibleChat(chatArgs, { fetch })).resolves.toBe("SELECT 1");
   });
 });
+
+describe("openAICompatibleChat aborted body read (SK-QUAL-020: timeout, not parse)", () => {
+  // The router aborts the body read when the per-op `plan` timeout fires
+  // after the 200 + headers commit; `res.json()` rejects with an AbortError,
+  // NOT a syntax error. It must classify as `timeout` (a NON_ENGINE_REASON
+  // the eval excludes from the engine signal), never `parse` (an
+  // answer-signal scored as a spurious `no_sql`). Run-14 diagnosis.
+  const bodyThrows = (err: unknown, opts?: Parameters<typeof openAICompatibleChat>[1]) => {
+    const fetch = () =>
+      Promise.resolve({ ok: true, json: () => Promise.reject(err) } as unknown as Response);
+    return openAICompatibleChat(chatArgs, { fetch, ...opts }).then(
+      () => {
+        throw new Error("expected openAICompatibleChat to throw");
+      },
+      (e) => (e instanceof ProviderError ? e.reason : `not-a-ProviderError:${String(e)}`),
+    );
+  };
+
+  it("an AbortError reading the 200 body → timeout", async () => {
+    const abortErr = Object.assign(new Error("aborted"), { name: "AbortError" });
+    expect(await bodyThrows(abortErr)).toBe("timeout");
+  });
+
+  it("a genuine JSON syntax error (not aborted) stays parse", async () => {
+    expect(await bodyThrows(new SyntaxError("Unexpected token"))).toBe("parse");
+  });
+
+  it("an already-aborted signal → timeout even when the thrown error isn't named AbortError", async () => {
+    // Some runtimes reject a cancelled body read with a generic TypeError
+    // ("body stream cancelled"); the signal state is the reliable tell.
+    const controller = new AbortController();
+    controller.abort();
+    expect(
+      await bodyThrows(new TypeError("body stream was aborted"), { signal: controller.signal }),
+    ).toBe("timeout");
+  });
+});

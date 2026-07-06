@@ -241,6 +241,18 @@ emit, and exits non-zero so the dispatch re-runs fresh. Any answered question or
 `parse`/`http_*` reason scores normally, so a real regression is never
 suppressed — prevents an outage 0.00 from re-seeding the baseline.
 
+### SK-QUAL-022 — Frontier eval lanes run a capability `plan` budget, not the production hot-path clamp
+
+**Body:** [`decisions/SK-QUAL-022-frontier-lane-capability-budget.md`](./decisions/SK-QUAL-022-frontier-lane-capability-budget.md).
+The `frontier` / `agentic-frontier` lanes build their router with
+`plan: 30_000` (`FRONTIER_PLAN_TIMEOUT_MS`), not the 5 s production hot-path
+clamp the free lane keeps — the clamp aborted Sonnet 4.6 mid-body-read (run
+14, tagged `openrouter:parse` `no_sql`), measuring the clamp not the model
+([`SK-QUAL-004`](#sk-qual-004)'s ~77-82% SOTA intent). Paired with the
+`openai-compatible.ts` abort→`timeout` reclassification so any residual
+timeout lands in [`SK-QUAL-020`](#sk-qual-020)'s `NON_ENGINE_REASONS` instead
+of a spurious `no_sql`.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/).

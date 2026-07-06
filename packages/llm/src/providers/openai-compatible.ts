@@ -93,7 +93,17 @@ export async function openAICompatibleChat(req: ChatRequest, opts?: CallOpts): P
   let parsed: { choices?: Array<{ message?: { content?: string } }>; error?: BodyError };
   try {
     parsed = (await res.json()) as typeof parsed;
-  } catch {
+  } catch (err) {
+    // The 200 + headers committed, then the router aborted the body read
+    // (per-op `plan` timeout / hedge loss) mid-stream — `res.json()` rejects
+    // with an AbortError, not a syntax error. Classify it as `timeout` so the
+    // eval's NON_ENGINE_REASONS set (SK-QUAL-020) excludes it from the engine
+    // signal, instead of misreading an aborted read as the model emitting junk
+    // (a spurious `no_sql`). Diagnosed run 14: the frontier lane's 5 s `plan`
+    // clamp aborted Sonnet 4.6 here at 5000–5004 ms, tagged `openrouter:parse`.
+    if ((err as Error).name === "AbortError" || opts?.signal?.aborted) {
+      throw new ProviderError(`POST ${req.url} aborted reading response body`, "timeout");
+    }
     throw new ProviderError(`POST ${req.url} → 200 but body not JSON`, "parse");
   }
   // OpenRouter (and other OpenAI-compat gateways) can commit an HTTP 200 +
