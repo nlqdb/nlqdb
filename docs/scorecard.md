@@ -16,20 +16,17 @@ unverified-live deltas. Distribution volume holds (yield near-zero; see
 `weekly-review.md`).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
-lagging metric; the daily **lever** targets its agent-movable inputs. Today's
-(07-05, run 9) lever: **live-surface claim integrity `4 → 0`** (row #19) — all
-four tracked claim-vs-reality gaps fixed by softening the claim to what
-shipped (details in the row). Engine (weekly focus) was **not** the lever —
-the canonical BIRD re-dispatch is decision-blocked until the baseline turns
-7 days old (`SK-QUAL-002`, re-seeded 07-03 ⇒ window opens **07-10**), and the
-offline deterministic lever is exhausted (see below). Today's eval-free LLM
-capacity went to re-arming `e2e-opencheck` instead (row #15). Step-3 artifact:
-the queue action (3 drafts ⇒ publish) was owned by concurrent PR #612 (run 7,
-since merged — surfaces 79) per step-0 non-overlap; this run's released
-artifacts are the corrected live surfaces themselves (`/pricing`,
-`docs.nlqdb.com` MCP + frameworks pages, `progress.md §0`). Earlier today run 8
-(#613) took docs-ambiguity 26 → 25 (row #17) by hardening the
-`agentMemoryMatrix` freshness guard against future/invalid dates.
+lagging metric; the daily **lever** targets its agent-movable inputs. Latest
+(07-06, run 12) lever: **the e2e-opencheck 4-run infra zero, root-caused and
+fixed** (row #15 — the hand-off #618 named): ordered free-model pre-flight
+with flap detection + client backoff replaces the single hard-coded agent
+model; measured 0 → 22 tests executing / 0 → 12 passing / infra-failure share
+100% → 0% across 4 verification runs (details in the row + "Last change").
+Engine (weekly focus) was **not** the lever — the canonical BIRD lane is owned
+by open PR #618 (run 11: EX 0.512 → 0.526) and re-dispatch is decision-blocked
+until **07-10** (`SK-QUAL-002`); the offline deterministic lever is exhausted
+(see below). Earlier levers today: run 9 (#616) live-surface claim integrity
+4 → 0 (row #19); run 8 (#613) docs-ambiguity 26 → 25 (row #17).
 **Engine finding (row #8), re-confirmed independently this run:** BIRD 0.512 is
 below the ≥ 0.60 Phase 2 floor and the **offline deterministic-ceiling lever is
 exhausted** — `SK-LLM-043` (#605) took the last mechanically-provable bucket.
@@ -68,7 +65,7 @@ eval-free day, not this run. Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | 13 | nlqdb-api wall-time p50 / p95 | 1.0 ms / 983 ms | mcp-server p95 331.9 s = long-lived SSE, expected; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.49** — sdk ✅ 07-02 (0.65) · mcp ✅ 07-02 (0.65) · examples ✅ 07-02 (0.65) · opencheck ❌ (last ✅ 06-12 ⇒ 0) | opencheck's 07-02 failures were OpenRouter free-tier 429 (infra, not product); **07-05 is eval-free** (SK-QUAL-002 blocks a canonical BIRD dispatch until 07-10), so this run re-dispatched `e2e-opencheck` on `main` — result reads on the next pull |
+| 15 | E2E manual-suite freshness | **0.41** — sdk ✅ 07-02 (0.55) · mcp ✅ 07-02 (0.55) · examples ✅ 07-02 (0.55) · opencheck ❌ (last ✅ 06-12 ⇒ 0; component decline is freshness decay on the other 3 suites) | **Run 12 root-caused + fixed the opencheck 4-run zero** (07-02 ×2, 07-05 ×2): the agent model was hard-coded to `openai/gpt-oss-120b:free` in 5 places and that pool both saturates *and flaps* (passes a probe, 429s the sustained loop) — and the old pre-flight trusted the HTTP status code, missing OpenRouter's 200-body error envelope (`SK-LLM-042` class, now checked in CI too). Fix: ordered `candidate_models` + 3× tool-call probe + `maxRetries: 6` backoff + honest failure paths; stale pre-home2 `#hero-or-cmdg`/`#create-table-anon` assertions updated (verified green ×2). Measured across 4 verification runs on the PR branch: **tests executing per run 0 → 22, passing 0 → 12, infra share of failures 100% → 0%** (final run: zero 429s). Not green yet — residual is free-pool capacity (07-05/06 every strong `:free` pool saturated or slow ⇒ 240/300s test kills) + the pre-existing GLOBAL-027 app-side flake; next healthy-pool run flips the component (dispatch is one click, harness no longer the blocker). Details: `e2e-coverage/opencheck-operations.md` tracker 2026-07-05 row |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.512, fresh 07-03); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**measured 07-03, row #11: Δ 19.3 pp ✓ ≤ 25, but agentic 0.667 ✗ < 0.80 — 7 `openrouter:parse` no_sql suppress the frontier lanes; criterion still fails on the absolute floor**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (no data, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: **the 7 `openrouter:parse` root cause is now fixed at the source (`SK-LLM-042`, 07-04)** — re-measure agentic-frontier vs the 0.80 floor on the next smoke window; first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **25** (07-05 run 8, was 26) | target ↓ 0. **Run 8's lever: −1** — resolved `agent-memory` *Capability-matrix freshness* by hardening the guard (`agentMemoryMatrix.test.ts` now rejects a future/invalid `MATRIX_VERIFIED_ON`; a negative age had silently passed `< 60`), not by relabeling. **Run 6's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
@@ -103,30 +100,33 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-05 (run 9)** — lever: **live-surface claim integrity `4 → 0`**
-(row #19, first fix pass after the row landed in #614). All four tracked gaps
-closed by softening the claim to what shipped, never the reverse: `/pricing`
-stopped selling backups that don't exist and now promises SQL read-out instead
-of a nonexistent export endpoint (`architecture.md` tier table matched so the
-claim can't regenerate); `progress.md §0` + the `CodePanel` surface matrix
-(unmounted from the home2 homepage today, corrected against remount) moved
-the 8 framework wrappers + Swift from **Shipped** to a new honest **Built**
-status (npm/SPM publish gated per `.changeset/README.md`), with the same
-unpublished-note added to `frameworks.mdx` and the 4 `examples/*` READMEs whose
-`npm install @nlqdb/*` currently 404s; `docs.nlqdb.com/mcp` lost its fabricated
-`nlq mcp install` walkthrough and nonexistent `app.nlqdb.com/mcp` deep-link
-path — rewritten to the three real install paths, with the stub honestly
-labelled ("`nlq mcp detect` works; `install` ships with device-flow login",
-matching `cli/FEATURE.md`). **Engine (weekly focus) was not the lever:** the
-canonical BIRD dispatch is decision-blocked until the baseline turns 7 days old
-(`SK-QUAL-002`; window opens **07-10**) and the offline lever is exhausted, so
-the eval-free capacity went to re-dispatching `e2e-opencheck` (row #15's zero).
-Fresh 07-05 pulls landed the **first first-10 datapoint (1/1, N=1 — row #4)**.
-Step-3 artifact: queue publish owned by concurrent PR #612 (run 7, since
-merged; step-0 non-overlap); this run's released artifacts are the corrected
-live surfaces themselves. Same-day runs 7 (#612, `/blog/http-200-error-in-body`,
-surfaces 79) and 8 (#613, docs-ambiguity 26 → 25 via the `agentMemoryMatrix`
-future-date guard) merged before this one; their rows above carry their data.
-**KPI:** GLOBAL-025 onboarding — a stranger following any advertised path no
-longer hits a fabricated claim; none degraded (copy/docs-only diff, no runtime
-code path touched).
+**2026-07-06 (run 12)** — lever: **e2e-opencheck 4-run infra zero, root-caused
+and fixed** (row #15, the hand-off #618 named). One hard-coded agent model
+(`openai/gpt-oss-120b:free`, in 5 places) whose free pool saturates *and flaps*
+zeroed every run since 06-12 — the old pre-flight passed on one lucky 200
+(OpenRouter wraps 429s in an HTTP-200 error envelope, the `SK-LLM-042` gateway
+class, previously unchecked in CI) and the failure path then died on
+`exit ""`. Shipped: ordered `candidate_models` list (5 tool-verified OpenRouter
+`:free` slugs, ranked by sustained reliability × agent strength), 3× tool-call
+pre-flight probe with body inspection, `maxRetries: 6` client backoff, honest
+abort paths, and the `__MODEL__` substitution that de-duplicates the model
+table into `opencheck-operations.md`. The stale pre-home2 `#hero-or-cmdg` /
+`#create-table-anon` assertions (hero input moved to `/app/new/`) were updated
+and verified green twice. **Measured (4 verification runs on the PR branch):
+opencheck tests executing per run 0 → 22, passing 0 → 12, infra share of
+failures 100% → 0%** — the final run had zero rate-limit failures; remaining
+reds are free-pool capacity (every strong `:free` pool saturated or slow on
+07-05/06 ⇒ 240/300s kills) and the pre-existing GLOBAL-027 app-side flake,
+both now visible instead of masked. Row #15's headline number dipped 0.49 →
+0.41 purely from freshness decay on the sdk/mcp/examples suites (last ✅
+07-02) — no component regressed. **Engine (weekly focus) was not the lever:**
+the canonical BIRD lane is owned by open PR #618 (run 11 finished the
+founder's 500q run, EX 0.512 → 0.526) and re-dispatch is decision-blocked
+until 07-10 (`SK-QUAL-002`). Step-3 artifact: the distribution queue is owned
+by open PR #617 (run 10 queued `model-preset-fail-loud`, 3 deep ⇒ that PR's
+successor publishes); per the run-9/11 precedent this run's released artifact
+is the restored e2e signal itself (workflow + suite fixes live on the branch,
+4 runs of evidence in `opencheck-operations.md`). **KPI:** GLOBAL-025 engine
+quality (the e2e suite is the live-chain guard the engine lane depends on);
+none degraded — runtime code untouched, funnel/ops rows carry run 9's <24 h
+pulls, CI-only diff.
