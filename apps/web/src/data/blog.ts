@@ -42,8 +42,7 @@ export type BlogPost = {
 export const BLOG_POSTS: BlogPost[] = [
   {
     slug: "bird-gold-noise-distinct",
-    title:
-      "Your text-to-SQL model isn't as wrong as your benchmark says. The gold SQL is.",
+    title: "Your text-to-SQL model isn't as wrong as your benchmark says. The gold SQL is.",
     description:
       "We bucketed 238 BIRD-dev losses with a structural differ: 46 differ from gold only by a DISTINCT the model rightly added. Audit gold quality before writing prompt directives, or you overfit to noise.",
     date: "2026-07-06",
@@ -74,7 +73,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The trap: optimizing into the noise" },
       {
         kind: "p",
-        text: "Here is why this matters beyond bruised pride. If you chase the biggest loss bucket with a prompt directive — *\"avoid DISTINCT unless explicitly requested\"* — the benchmark number goes up. You will feel good about it. And you will have taught your model to drop a `DISTINCT` it should keep, silently degrading real-world answers over one-to-many joins, which are everywhere. That is overfitting to wrong gold: trading production correctness for benchmark points.",
+        text: 'Here is why this matters beyond bruised pride. If you chase the biggest loss bucket with a prompt directive — *"avoid DISTINCT unless explicitly requested"* — the benchmark number goes up. You will feel good about it. And you will have taught your model to drop a `DISTINCT` it should keep, silently degrading real-world answers over one-to-many joins, which are everywhere. That is overfitting to wrong gold: trading production correctness for benchmark points.',
       },
       { kind: "h2", text: "The fix: classify your loss mass before touching the prompt" },
       {
