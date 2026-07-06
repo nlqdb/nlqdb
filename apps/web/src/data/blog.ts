@@ -85,7 +85,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The fix is one sentence in the planner prompt" },
       {
         kind: "p",
-        text: "No fine-tune, no reranker: one projection directive — *return each requested attribute as its own column unless the question explicitly asks for a single combined string*. Before shipping it we de-concatenated the 7 flagged predictions by hand and re-executed them against the real SQLite databases to get a deterministic ceiling: **+3 questions** flip wrong-to-right, zero regressions. The live re-measure agreed with the offline ceiling: run-wide `||` concatenations dropped from 7 to 3, and the flagged questions flipped to matches.",
+        text: "No fine-tune, no reranker: one projection directive — *return each requested attribute as its own column unless the question explicitly asks for a single combined string*. Before shipping it we de-concatenated the 7 flagged predictions by hand and re-executed them against the real SQLite databases to get a deterministic ceiling: **+3 questions** flip wrong-to-right, zero regressions. The live re-measure confirmed the direction: run-wide `||` concatenations dropped from 7 to 3, and 2 of the 3 ceiling questions flipped to matches.",
       },
       {
         kind: "p",

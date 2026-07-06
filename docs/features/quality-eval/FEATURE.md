@@ -196,9 +196,8 @@ closing the `SK-QUAL-007` deferral (**13 of 135 (9.6%)** carried a dropped doc).
 the SQL string), returning the modal cluster's SQL — the §4 #3 reasoning lever,
 end-to-end (`--self-consistency N` / `--sc-temperature T`) and baseline-safe
 (N=1 default = greedy, `SK-LLM-024` byte-identical). **Measured 2026-07-06
-(first N≥2 dispatch): flat** — BIRD smoke N=3 @ 0.7 = 79/150, identical to the
-same-directive-set greedy on the paired 150 qids (b=8/c=8, p=1.0) at 3× quota
-⇒ SC stays eval-only, never a live-chain promotion (details in the body).
+(first N≥2 dispatch): exactly flat vs paired same-directive-set greedy at 3×
+quota ⇒ SC stays eval-only, never a live-chain promotion** (numbers in the body).
 
 ### SK-QUAL-018 — persona-bench: nlqdb's own ICP-shaped NL→SQL benchmark, gold-executable fixture first
 
@@ -257,5 +256,4 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 
 - **Deferred:** a `feature.eval.smoke` event; a hard token-budget counter (`SK-QUAL-011`/`012` cover it reactively).
 - **Still open** ([`SK-QUAL-009`](#sk-qual-009)): multi-model frontier until the Sonnet 4.6 baseline lands; BYOLLM lane depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA next Spider baseline.
-- **Value retrieval (§4 #2a) — closed, not parked** (`SK-QUAL-014` run 18: `literal_only` = 0 ⇒ ~0 mismatches flipped). Egress stays schema-only per [`GLOBAL-037`](../../decisions/GLOBAL-037-schema-only-llm-egress.md).
 - **Corrected-set evaluation — parked on license** (`GLOBAL-033`). Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% BIRD annotation errors + released **Arcwise-Plat-SQL** (git JSON our loader parses ⇒ ~50-LOC scorer re-point). **Blocker: repo states no license** (P2 2026-07-04); unblock = a license issue upstream. Material: this run's 46/238 `extra_DISTINCT` losses are often the model being *more* right than gold ⇒ 0.512 is a floor.
