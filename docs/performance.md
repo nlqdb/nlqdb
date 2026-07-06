@@ -266,11 +266,6 @@ in the same PR:
 3. A **budget assertion** in the same test — if measured p50 exceeds
    1.5× the §2 budget, fail.
 
-The OTel SDK + OTLP exporter is one-time infrastructure (landed with the
-Neon-adapter slice); later slices just call into it. The per-slice span/
-metric sets are not re-listed here — §3 is the single source of truth, and
-each slice's exact CI assertions live in its test file.
-
 ---
 
 ## 5. Sampling + cost discipline

@@ -536,6 +536,16 @@ export function mapSdkError(err: unknown): ToolError {
       action: "Retry shortly; if it persists email support@nlqdb.com.",
     };
   }
+  // SK-PREMIUM-014 — `model: "best"` with no frontier lane. Deterministic
+  // and user-fixable, so never the generic retry advice.
+  if (code === "model_unavailable") {
+    return {
+      code: "model_unavailable",
+      message:
+        'model "best" needs a frontier model, and this account has no BYOLLM key or paid plan.',
+      action: "Add a provider key at https://app.nlqdb.com/app/keys, or omit `model`.",
+    };
+  }
   return {
     code: String(code),
     message: "An unexpected error occurred.",

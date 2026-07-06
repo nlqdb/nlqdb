@@ -687,6 +687,14 @@ describe("mapSdkError", () => {
     expect(err.code).toBe("aborted");
   });
 
+  it("maps model_unavailable to the two real doors, not generic retry advice (SK-PREMIUM-014)", () => {
+    const apiErr = new NlqdbApiError("no frontier lane", 409, "model_unavailable", "/v1/ask", null);
+    const err = mapSdkError(apiErr);
+    expect(err.code).toBe("model_unavailable");
+    expect(err.message).toMatch(/frontier model/);
+    expect(err.action).toMatch(/app\.nlqdb\.com\/app\/keys/);
+  });
+
   it("forwards candidate_dbs on ambiguous_db", () => {
     const apiErr = new NlqdbApiError("ambiguous", 409, "ambiguous_db", "/v1/ask", {
       status: "ambiguous_db",
