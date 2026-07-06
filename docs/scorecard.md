@@ -119,8 +119,8 @@ oldest-draft publish, and the 07-06 funnel/ops/docs-ambiguity pulls — run
 14 touched none of them; those rows carry. **Step-3 artifact:** queue held
 4 unpublished ≥ 3 ⇒ published the next-oldest draft (the oldest is #619's) —
 **`/blog/bird-gold-noise-distinct`** (surfaces 79 → 80, row #6; 81 with
-#619's concurrent publish merged). Link sweep green: 100 pages, 2,345
-internal links, 0 dead / 0 redirecting. **KPI:** GLOBAL-025 engine quality —
+#619's concurrent publish merged). Link sweep green on the merged tree:
+101 pages, 2,369 internal links, 0 dead / 0 redirecting. **KPI:** GLOBAL-025 engine quality —
 the headline free-vs-agentic-frontier delta re-measured on the fixed
 classifier and its residual suppressor root-caused to a named, fixable
 clamp; onboarding/UX advanced via the published engine-lesson post. None
