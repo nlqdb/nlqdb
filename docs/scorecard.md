@@ -54,7 +54,7 @@ Phase 2 exit gate: **1/9 criteria pass** (row #16).
 | 13 | nlqdb-api wall-time p50 / p95 | 1.0 ms / 983 ms | mcp-server p95 331.9 s = long-lived SSE, expected; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **PENDING_ROW15** — sdk ✅ 07-06 (1.00) · mcp ✅ 07-06 (1.00) · examples ✅ 07-06 (1.00) · opencheck PENDING_OC | run 13 owns this row: the named fix (pre-flight over an ordered free-model list) shipped + two trace-triaged suite fixes on top; sdk/mcp/examples re-dispatched same run (were staring at a 07-09 freshness cliff). Full triage in `e2e-coverage/opencheck-operations.md` (2026-07-06 row); residual app-side finding = Neon cold-start `db_unreachable`, logged as an e2e-coverage open question |
+| 15 | E2E manual-suite freshness | **0.75** — sdk ✅ 07-06 (1.00) · mcp ✅ 07-06 (1.00) · examples ✅ 07-06 (1.00) · opencheck ❌ (**Suite A 4/5, best since the 06-12 green** — [run 28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)) | run 13 owns this row: the named fix (pre-flight over an ordered free-model list) shipped + trace-triaged suite fixes; sdk/mcp/examples re-dispatched same run (were staring at a 07-09 freshness cliff). Suite A's sole failure = app-side cold-start `db_unreachable` (2× trace-verified ⇒ e2e-coverage open question, **next lever for whichever run owns this row**); Suite B 0/8 = weakest-candidate capacity (4 stronger pools simultaneously 429 at pick time), not a fix regression. Full triage: `e2e-coverage/opencheck-operations.md` 2026-07-06 rows |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**measured 07-03, row #11: Δ 19.3 pp ✓ ≤ 25, but agentic 0.667 ✗ < 0.80 — 7 `openrouter:parse` no_sql suppress the frontier lanes; criterion still fails on the absolute floor**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (N=1 only, row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: **the 7 `openrouter:parse` root cause is now fixed at the source (`SK-LLM-042`, 07-04)** — re-measure agentic-frontier vs the 0.80 floor on the next smoke window; first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **25** (07-05 run 8, was 26) | target ↓ 0. **Run 8's lever: −1** — resolved `agent-memory` *Capability-matrix freshness* by hardening the guard (`agentMemoryMatrix.test.ts` now rejects a future/invalid `MATRIX_VERIFIED_ON`; a negative age had silently passed `< 60`), not by relabeling. **Run 6's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
@@ -90,7 +90,8 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 ## Last change
 
 **2026-07-06 (run 13)** — lever: **row #15, the opencheck E2E root-cause fix
-this row has named since run 9 — E2E freshness PENDING_DELTA.** Adopted the
+this row has named since run 9 — E2E freshness 0.49 → 0.75** (0.32 by open
+PR #619's same-day decay recompute; either basis, Δ > 0). Adopted the
 abandoned 07-05 iteration branch (`claude/keen-turing-425eac`: ordered
 `candidate_models` pre-flight — 3× tool-call probes, SK-LLM-042 HTTP-200
 error-envelope body check, `__MODEL__` substitution, `maxRetries: 6` backoff;
@@ -112,7 +113,15 @@ from the list, replacements re-verified live against OpenRouter `/models`
 a full green run; flap double-covered by probe gate + backoff), then
 qwen3-coder / qwen3-next-80b / llama-3.3-70b / gpt-oss-20b. Verification:
 sdk ✅ + mcp ✅ + examples ✅ re-dispatched and green 07-06 (killing the 07-09
-freshness cliff); opencheck verification run PENDING_VERDICT. **Step-0
+freshness cliff); opencheck verification run
+([28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)):
+**Suite A 4/5, the best since the last full green (06-12)** — achieved on the
+WEAKEST candidate (`gpt-oss-20b`, after the pre-flight honestly walked past
+four simultaneously-saturated stronger pools), with the `#add-row` repoint
+passing live and the sole failure being the 2×-reproduced app-side cold-start;
+Suite B 0/8 on the same weak model is its documented capacity class, so the
+run stays red at workflow level — opencheck pass flips when either a
+120b-class pool is healthy at dispatch or the cold-start fix lands. **Step-0
 non-overlap:** open PR #619 (run 12) owns the SC verdict (row #8), the blog
 publish (row #6), and the 07-06 funnel/ops pulls — this run touched none of
 them; funnel/ops/engine numbers carry. **Step-3 artifact:** the queue ≥ 3
