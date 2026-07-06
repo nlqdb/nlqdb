@@ -41,6 +41,61 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "bird-gold-noise-distinct",
+    title: "Your text-to-SQL model isn't as wrong as your benchmark says. The gold SQL is.",
+    description:
+      "We bucketed 238 BIRD-dev losses with a structural differ: 46 differ from gold only by a DISTINCT the model rightly added. Audit gold quality before writing prompt directives, or you overfit to noise.",
+    date: "2026-07-06",
+    body: [
+      {
+        kind: "p",
+        text: "You run BIRD-dev, read an execution accuracy of 0.512, and the instinct is immediate: start writing planner directives to close the gap. We had the same instinct. Before acting on it we did one thing that changed the whole plan — we bucketed the losses. Not skimmed a few failures; tagged all 238 mismatches with a structural differ and counted what actually went wrong in each.",
+      },
+      { kind: "h2", text: "19% of our losses were one DISTINCT — added correctly" },
+      {
+        kind: "p",
+        text: "The biggest bucket was startling: **46 of 238 mismatches (19%)** differ from the gold SQL only by a `DISTINCT` the model added and gold didn't. `COUNT(DISTINCT customer_id)` where gold wrote `COUNT(*)`. `SELECT DISTINCT x` where gold wrote a plain `SELECT x`. Read the pairs one by one and a large share of them are the model being *more* correct than the annotation.",
+      },
+      {
+        kind: "code",
+        lang: "sql",
+        code: "-- Question: how many patients had an abnormal lab result?\n-- Gold (BIRD annotation):\nSELECT COUNT(T1.ID)\nFROM Patient AS T1\nJOIN Laboratory AS T2 ON T1.ID = T2.ID\nWHERE T2.result = 'abnormal';\n-- one patient with 5 abnormal labs counts 5 times\n\n-- Model:\nSELECT COUNT(DISTINCT T1.ID)\nFROM Patient AS T1\nJOIN Laboratory AS T2 ON T1.ID = T2.ID\nWHERE T2.result = 'abnormal';\n-- counts patients — the thing the question asked for",
+      },
+      {
+        kind: "p",
+        text: "A patient-to-labs join is one-to-many. Counting *patients* after that join needs `COUNT(DISTINCT T1.ID)`; gold's bare `COUNT(T1.ID)` over-counts the fan-out. Execution accuracy compares result sets, gold's result set is wrong, so the scorer marks the model **wrong for being right**.",
+      },
+      { kind: "h2", text: "This is not one benchmark having a bad day" },
+      {
+        kind: "p",
+        text: "Independent measurement backs the pattern. The Kang lab at UIUC audited BIRD and found **52.8% of instances carry annotation errors** ([VLDB 2026, arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) — wrong gold SQL, ambiguous questions, schema mismatches — and released a corrected evaluation set. When half the answer key has errors, the number the leaderboard prints is not a measurement of your engine. It's a measurement of your engine *and* the answer key's noise, entangled.",
+      },
+      { kind: "h2", text: "The trap: optimizing into the noise" },
+      {
+        kind: "p",
+        text: 'Here is why this matters beyond bruised pride. If you chase the biggest loss bucket with a prompt directive — *"avoid DISTINCT unless explicitly requested"* — the benchmark number goes up. You will feel good about it. And you will have taught your model to drop a `DISTINCT` it should keep, silently degrading real-world answers over one-to-many joins, which are everywhere. That is overfitting to wrong gold: trading production correctness for benchmark points.',
+      },
+      { kind: "h2", text: "The fix: classify your loss mass before touching the prompt" },
+      {
+        kind: "p",
+        text: "The differ that buckets losses is about a hundred lines and needs no LLM — parse both queries, diff the structure, tag the difference class (`extra_DISTINCT`, extra column, wrong aggregate, wrong filter…), histogram the tags. Then apply one rule: **only write a directive for a bucket where gold is right and the model is wrong.**",
+      },
+      {
+        kind: "p",
+        text: "The same audit that disqualified the `DISTINCT` bucket qualified another: 7 losses where the model concatenated two requested columns into one (`first_name || ' ' || last_name`) against a gold that correctly returned two columns — 7 clean losses, zero gold-noise, and no winning query used the pattern. That bucket earned a directive, and re-scoring the de-concatenated predictions against the real databases confirmed it: wrong-to-right flips, zero regressions.",
+      },
+      { kind: "h2", text: "The rule" },
+      {
+        kind: "p",
+        text: "**A benchmark number is a floor bounded by its gold quality, not a measure of your engine.** Before you optimize any metric, audit what it's actually counting — because past a point, the returns on prompt engineering aren't limited by your model. They're limited by the answer key.",
+      },
+      {
+        kind: "p",
+        text: "(This audit is standing practice for [nlqdb](https://nlqdb.com), the data layer you ask in English: every eval run's losses are bucketed structurally before any planner change ships, so the directives we write target real engine mistakes — not annotation noise.)",
+      },
+    ],
+  },
+  {
     slug: "llm-concatenates-columns-text-to-sql",
     title: "Your LLM fused the two columns you asked for — and the eval marked it wrong",
     description:

@@ -41,16 +41,6 @@ drafts live in the [archive](./distribution-queue-archive.md).
   demand signal with an honest denominator — one pure `selectDispatchLane`
   shared by all five surfaces (`SK-PREMIUM-014`; GLOBAL-012 fail-loud).
 
-- **"Your text-to-SQL model isn't as wrong as your benchmark says. The gold
-  SQL is."** slug `bird-gold-noise-distinct` · venue dev.to (#sql #llm #ai) +
-  r/LLMDevs + lobste.rs (`llm`) · engine lesson (full body in git history,
-  D4-collapsed): 46/238 BIRD-dev losses differ from gold only by a `DISTINCT`
-  the model *rightly* added post-fan-out-join — EX marks the more-correct
-  answer wrong; Kang lab (VLDB 2026, arXiv:2601.08778) puts BIRD annotation
-  errors at 52.8%. Rule: bucket your loss mass with a structural differ before
-  writing prompt directives, or you overfit to wrong gold — a benchmark number
-  is a floor bounded by its gold quality (`SK-QUAL-014`).
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -71,6 +61,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 131 — **https://nlqdb.com/blog/top-n-rows-per-group/** — dev.to + r/SQL + r/PostgreSQL · `/solve/find-top-n-rows-per-group`
 - run 7 — **https://nlqdb.com/blog/http-200-error-in-body/** — dev.to (#llm #api #debugging) + r/LocalLLaMA + lobste.rs · engine lesson (res.ok necessary not sufficient)
 - run 12 — **https://nlqdb.com/blog/llm-concatenates-columns-text-to-sql/** — dev.to (#sql #llm #ai) + r/SQL · engine lesson (positional-tuple EX vs fused columns; SK-LLM-043 projection directive)
+- run 14 — **https://nlqdb.com/blog/bird-gold-noise-distinct/** — dev.to (#sql #llm #ai) + r/LLMDevs + lobste.rs (`llm`) · engine lesson (benchmark number = floor bounded by gold quality; `SK-QUAL-014`)
 
 ## Collapsed — full drafts in git history
 
