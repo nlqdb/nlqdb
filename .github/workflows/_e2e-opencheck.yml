@@ -27,10 +27,10 @@ on:
         type: string
         default: https://openrouter.ai/api/v1
       candidate_models:
-        description: "Ordered comma-separated agent-model ids on provider_base_url, ALL free per GLOBAL-013 (`:free` suffix on OpenRouter). Pre-flight picks the first one that answers a tool-call probe. Order is by AGENT STRENGTH, not size alone: run 28757212934's Suite B showed gpt-oss-20b times out / derails on the heavy multi-step suites, so the 120B-class nemotron ranks above it."
+        description: "Ordered comma-separated agent-model ids on provider_base_url, ALL free per GLOBAL-013 (`:free` suffix on OpenRouter). Pre-flight picks the first one that answers a tool-call probe. Order = sustained reliability x agent strength: gpt-oss-120b's pool flapped through 07-05 (passed a 3x probe at 00:01 then 429'd 10 tests mid-run, run 28759073164), so the equally-sized, all-day-healthy nemotron leads; gpt-oss-20b is last (times out / derails on the heavy suites, run 28757212934)."
         required: false
         type: string
-        default: "openai/gpt-oss-120b:free,nvidia/nemotron-3-super-120b-a12b:free,qwen/qwen3-next-80b-a3b-instruct:free,qwen/qwen3-coder:free,openai/gpt-oss-20b:free"
+        default: "nvidia/nemotron-3-super-120b-a12b:free,openai/gpt-oss-120b:free,qwen/qwen3-next-80b-a3b-instruct:free,qwen/qwen3-coder:free,openai/gpt-oss-20b:free"
     secrets:
       LLM_API_KEY:
         description: "LLM API key for the active provider. Surfaced via OPENAI_API_KEY + provider-specific OPENAI_BASE_URL."
@@ -212,10 +212,13 @@ jobs:
             "$agent_ts"
           echo "patched $agent_ts"
 
-      # Add 30s per-call HTTP timeout to the LLM client. Without this, a hung provider response burns the
-      # entire 240s test budget silently — no error, no recording, just a timeout at the test level.
-      # 30s is plenty for any real LLM response; if the provider doesn't reply in 30s it's effectively down.
-      - name: Patch opencheck — add 30s per-call LLM timeout
+      # Add 30s per-call HTTP timeout + retry-with-backoff to the LLM client. Without the timeout, a hung
+      # provider response burns the entire 240s test budget silently — no error, no recording, just a
+      # timeout at the test level. 30s is plenty for any real LLM response; if the provider doesn't reply
+      # in 30s it's effectively down. maxRetries 6 (LangChain exponential backoff) absorbs the BRIEF
+      # saturation blips of OpenRouter free pools — run 28759073164 lost 10 tests to mid-run 429s that a
+      # pre-flight can't predict (default maxRetries is 2, which the flapping pool outlasted).
+      - name: Patch opencheck — add 30s per-call LLM timeout + 429 backoff
         working-directory: tests/opencheck
         run: |
           model_ts="node_modules/opencheck/src/agent/model-factory.ts"
@@ -225,13 +228,13 @@ jobs:
           with open(path) as f:
               src = f.read()
           old = '...(config.modelProvider ? { modelProvider: config.modelProvider } : {}),'
-          new = '...(config.modelProvider ? { modelProvider: config.modelProvider } : {}),\n    timeout: 30000,'
+          new = '...(config.modelProvider ? { modelProvider: config.modelProvider } : {}),\n    timeout: 30000,\n    maxRetries: 6,'
           if old not in src:
               print(f"WARNING: target string not found in {path} — skipping patch")
           else:
               with open(path, 'w') as f:
                   f.write(src.replace(old, new, 1))
-              print(f"patched {path} (added timeout: 30000)")
+              print(f"patched {path} (added timeout: 30000, maxRetries: 6)")
           PYEOF
 
       # Fail-fast: pick the first HEALTHY candidate model before burning 20+ min on opencheck.
