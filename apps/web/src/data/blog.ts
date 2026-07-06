@@ -49,7 +49,7 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       {
         kind: "p",
-        text: 'You ask a text-to-SQL model to "list the members\' names". The benchmark\'s gold query returns `first_name, last_name` — two columns. The model returns one: a helpfully assembled full name. Read side by side, the model\'s answer is arguably the better one. The scorer marks it wrong, every single time, and your engine number reads lower than the engine is.',
+        text: "You ask a text-to-SQL model to \"list the members' names\". The benchmark's gold query returns `first_name, last_name` — two columns. The model returns one: a helpfully assembled full name. Read side by side, the model's answer is arguably the better one. The scorer marks it wrong, every single time, and your engine number reads lower than the engine is.",
       },
       {
         kind: "code",
@@ -63,7 +63,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         kind: "p",
-        text: "This is the mirror image of the extra-columns failure everyone already knows about — where the model SELECTs a helpful extra field and the added column breaks tuple equality. Fusing two requested columns into one is exactly as fatal as adding one nobody asked for. The scorer has no notion of \"close\": the tuple matches or it doesn't.",
+        text: 'This is the mirror image of the extra-columns failure everyone already knows about — where the model SELECTs a helpful extra field and the added column breaks tuple equality. Fusing two requested columns into one is exactly as fatal as adding one nobody asked for. The scorer has no notion of "close": the tuple matches or it doesn\'t.',
       },
       { kind: "h2", text: "The loss is real, measurable, and lopsided" },
       {
