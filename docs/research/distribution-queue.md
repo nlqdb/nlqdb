@@ -1,12 +1,10 @@
 # Distribution queue
 
 One publishable artifact drafted per day by the daily agent
-([`/daily`](../../.claude/commands/daily.md) step 3); publishing is autonomous —
-drafts ship as canonical posts under `nlqdb.com/blog` with no founder review
-(founder-resolved 2026-07-01; `SK-BLOG-001`). Newest first. Delete an entry once
-published: the live URL goes into `docs/scorecard.md` § Shipped distribution, and
-the entry survives here only as a venue pointer to the canonical `/blog` URL
-until the community-venue variant is posted.
+([`/daily`](../../.claude/commands/daily.md) step 3); publishing is autonomous
+(`SK-BLOG-001`, founder-resolved 2026-07-01). Newest first. Once published,
+the live URL goes into `docs/scorecard.md` § Shipped distribution and the
+entry survives here only as a venue pointer until the venue variant posts.
 
 **Retention (D4, 20 KB cap):** keep the most recent full draft(s) below inline —
 as many as fit under the cap; everything older collapses to a one-line title +
@@ -15,28 +13,33 @@ drafts live in the [archive](./distribution-queue-archive.md).
 
 ## Drafts — unpublished, newest first
 
+- **"Your LLM health probe passed. Your agent still starved."** slug
+  `llm-preflight-probe-health` · venue dev.to (#llm #ci #testing) +
+  r/LLMDevs · CI/engine lesson · anchors the capacity-honesty theme
+  (`SK-LLM-042` gateway trap; e2e-coverage `opencheck-operations.md`).
+  Angle: six consecutive LLM-agent E2E runs failed on one hard-coded free
+  model; the lessons generalize to anyone gating CI on an LLM provider.
+  (1) Probe the exact shape you'll use — a tool-call round trip, not a
+  1-token ping. (2) Check the *body*, not the status — gateways wrap
+  upstream 429s in HTTP-200 error envelopes. (3) Saturated free pools
+  *flap* — require 3 consecutive healthy probes. (4) Probe-time health
+  can't promise a 15-min window — pair the gate with client backoff.
+  (5) Never hard-code one model — walk an ordered candidate list.
+  (6) Probe-healthy ≠ agent-competent — a probe-acing model can still spam
+  forbidden tools, leak `<|tool_call_id|>` junk into args, and burn a 240s
+  budget without a verdict (trace-verified); rank by demonstrated
+  competence, gate by health. Honest split: CI reliability engineering,
+  not model quality.
+
 - **"Your 'best model' toggle quietly serves the cheap model. Ship a 409
   instead."** slug `model-preset-fail-loud` · venue dev.to (#llm #api #ux) +
-  r/LLMDevs · engine/product lesson · anchors the honest-knob theme
-  (`SK-PREMIUM-014`, premium-tier FEATURE; GLOBAL-012 fail-loud). Angle:
-  every AI product now has a model picker, and the tempting branch when the
-  premium lane isn't available (no key, no plan, meter dark) is to silently
-  serve the default chain — the user asked for *best*, got *cheapest*, and
-  the only signal is quality variance they'll eventually blame on you. A
-  placebo knob is worse than no knob. The honest contract has three lines:
-  `fast` always pins the cheap chain, even when a stored provider key would
-  auto-upgrade (an explicit per-request instruction beats an ambient
-  credential — the CI-job case); `best` either gets a real frontier lane or
-  fails loud with a 409 + a machine-branchable code + a fix-it link (an
-  error the caller can `switch` on beats a trace-note nobody reads);
-  `auto`/absent stays the default. Bonus: the refusal *is* your demand
-  signal — counting `model_unavailable` tells you exactly how many users
-  want the paid lane you haven't lit, with an honest denominator. Implement
-  the precedence as one pure function the surfaces share (nlqdb:
-  `selectDispatchLane`, five surfaces, one test file) so SDK/CLI/MCP/web
-  can't drift. Honest split — this is contract design, not capability: the
-  free chain still answers most asks fine; the knob just never lies about
-  which chain answered.
+  r/LLMDevs · engine/product lesson (full body in git history,
+  D4-collapsed): a placebo model knob silently downgrades when the premium
+  lane is dark; the honest contract is `fast` pins the cheap chain even
+  over an ambient key, `best` gets a real frontier lane or 409s
+  `model_unavailable` + fix-it link, and the refusal count is the paid-lane
+  demand signal with an honest denominator — one pure `selectDispatchLane`
+  shared by all five surfaces (`SK-PREMIUM-014`; GLOBAL-012 fail-loud).
 
 - **"Your text-to-SQL model isn't as wrong as your benchmark says. The gold
   SQL is."** slug `bird-gold-noise-distinct` · venue dev.to (#sql #llm #ai) +

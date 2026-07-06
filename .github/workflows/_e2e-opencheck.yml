@@ -27,10 +27,10 @@ on:
         type: string
         default: https://openrouter.ai/api/v1
       candidate_models:
-        description: "Ordered comma-separated agent-model ids on provider_base_url, ALL free per GLOBAL-013 (`:free` suffix on OpenRouter). Pre-flight picks the first one that answers a tool-call probe. Order = proven agent competence first: gpt-oss-120b drove every historically green run, and its pool-flap risk is double-covered (3x probe gate + maxRetries 6 backoff); nemotron passes probes but is weak as an agent (run 28760320317: spammed forbidden browser_evaluate, leaked <|tool_call_id|> junk into tool args, burned 165s with no verdict after the app returned an explicit error); gpt-oss-20b is last (times out / derails on the heavy suites, run 28757212934)."
+        description: "Ordered comma-separated agent-model ids on provider_base_url, ALL free per GLOBAL-013 (`:free` suffix on OpenRouter). Pre-flight picks the first one that answers a tool-call probe. Order = proven agent competence first: gpt-oss-120b drove every historically green run, and its pool-flap risk is double-covered (3x probe gate + maxRetries 6 backoff). nemotron-3-super is BANNED from this list: it aces 1-shot probes but collapses to text-format tool calls (<function=...></tool_call>) mid-loop, failing 2/5 tests in two consecutive runs (28760320317, 28767705937). gpt-oss-20b is last (times out / derails on the heavy suites, run 28757212934); the middle candidates are tool-capable per OpenRouter /models (live-checked 2026-07-06) but unproven as agents here."
         required: false
         type: string
-        default: "openai/gpt-oss-120b:free,nvidia/nemotron-3-super-120b-a12b:free,qwen/qwen3-next-80b-a3b-instruct:free,qwen/qwen3-coder:free,openai/gpt-oss-20b:free"
+        default: "openai/gpt-oss-120b:free,qwen/qwen3-coder:free,qwen/qwen3-next-80b-a3b-instruct:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-20b:free"
     secrets:
       LLM_API_KEY:
         description: "LLM API key for the active provider. Surfaced via OPENAI_API_KEY + provider-specific OPENAI_BASE_URL."
