@@ -36,6 +36,7 @@ export const NlqData = defineComponent({
     endpoint: String,
     template: String as PropType<NlqDataTemplate>,
     refresh: String,
+    model: String as PropType<"auto" | "fast" | "best" | (string & {})>,
   },
   emits: {
     // Vue's typed-emit validator must return truthy; the parameter shapes the template payload.
@@ -67,6 +68,7 @@ export const NlqData = defineComponent({
           endpoint: props.endpoint,
           template: props.template,
           refresh: props.refresh,
+          model: props.model,
         },
         slots["default"]?.(),
       );

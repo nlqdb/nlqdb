@@ -10,11 +10,13 @@ type Props = {
   endpoint?: string;
   template?: "table" | "list" | "kv" | "card-grid" | (string & {});
   refresh?: string;
+  model?: "auto" | "fast" | "best" | (string & {});
   onload?: (d: NlqDataLoadDetail) => void;
   onerror?: (d: NlqDataErrorDetail) => void;
 };
 
-let { goal, db, query, apiKey, endpoint, template, refresh, onload, onerror }: Props = $props();
+let { goal, db, query, apiKey, endpoint, template, refresh, model, onload, onerror }: Props =
+  $props();
 let el: HTMLElement;
 
 onMount(() => {
@@ -41,4 +43,5 @@ onMount(() => {
   {endpoint}
   {template}
   {refresh}
+  {model}
 ></nlq-data>
