@@ -9,6 +9,7 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
 
 ## Human actions (clicks, secrets, legal)
 
+- **Delete spent eval resume-pin branches** `eval/bird-resume-0e67e64` + `eval/bird-resume-8d3d7c5` (`git push origin --delete …` or GitHub UI). Their canonical runs completed and the 07-03/07-05 baselines are merged, so nothing depends on them; agent sessions 403 on non-`claude/*` branch pushes (re-confirmed 2026-07-06).
 - **Final legal copy for `/privacy` + `/terms` — free, no lawyer, no subscription.** The live pages (`apps/web/src/pages/{privacy,terms}.astro`) are **pre-beta drafts**. Use **Termly's free tier** (`termly.io`) — a short-form questionnaire that outputs a GDPR + CCPA privacy policy and **discloses our LLM/cloud subprocessors** (built-in vendor checklist + a custom-vendor field) at $0; generate the Terms of Service free from **TermsFeed's** base T&C. You decide only: real legal entity name, jurisdiction / governing law, and retention period — then an agent wires the generated copy + subprocessor list into the two pages.
 
 ## Suggestions needing approval (to amend the guidelines)
