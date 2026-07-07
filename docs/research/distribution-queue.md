@@ -13,32 +13,49 @@ drafts live in the [archive](./distribution-queue-archive.md).
 
 ## Drafts — unpublished, newest first
 
+- **"The timeout that looked like a hallucination"** slug
+  `llm-timeout-looks-like-hallucination` · venue dev.to
+  (#llm #benchmarking #eval) + r/LLMDevs + lobste.rs · engine lesson ·
+  anchors the capacity-honesty / measure-honestly theme (`SK-QUAL-022`;
+  sibling of `offline-llm-eval-rate-limits` + `http-200-error-in-body`).
+  Angle: our NL→SQL benchmark said a frontier model "emitted junk" on 5 of
+  150 hard questions — except it didn't. The request layer aborted the
+  model mid-response at a 5-second timeout **inherited from the production
+  hot path**, and the error handler blindly labeled the aborted body-read a
+  `parse` failure (model returned non-SQL) instead of a `timeout` (infra).
+  The benchmark scored an infra artifact as model incompetence, dragging
+  the frontier lane below a floor it never earned. Lessons: (1) A
+  benchmark's timeout budget is a measurement instrument — clamp the
+  frontier lane to your prod hot-path budget and you measure the clamp, not
+  the model; separate "what ships" from "what the model can do." (2) An
+  aborted read is not a parse error — `res.json()` rejects with an
+  AbortError when the signal fires mid-stream; classify by the signal
+  state, not by "the JSON didn't parse." (3) The tell was in the
+  latencies: every "hallucination" sat at exactly 5000–5004 ms. Log
+  per-attempt latency next to every failure or you'll never see it.
+  (4) Reasoning models need seconds, not milliseconds — a budget tuned for
+  cached fast models silently truncates a slow frontier model's
+  chain-of-thought. Honest split: eval-harness measurement integrity, not a
+  model-quality claim.
+
 - **"Your LLM health probe passed. Your agent still starved."** slug
   `llm-preflight-probe-health` · venue dev.to (#llm #ci #testing) +
-  r/LLMDevs · CI/engine lesson · anchors the capacity-honesty theme
-  (`SK-LLM-042` gateway trap; e2e-coverage `opencheck-operations.md`).
-  Angle: six consecutive LLM-agent E2E runs failed on one hard-coded free
-  model; the lessons generalize to anyone gating CI on an LLM provider.
-  (1) Probe the exact shape you'll use — a tool-call round trip, not a
-  1-token ping. (2) Check the *body*, not the status — gateways wrap
-  upstream 429s in HTTP-200 error envelopes. (3) Saturated free pools
-  *flap* — require 3 consecutive healthy probes. (4) Probe-time health
-  can't promise a 15-min window — pair the gate with client backoff.
-  (5) Never hard-code one model — walk an ordered candidate list.
-  (6) Probe-healthy ≠ agent-competent — a probe-acing model can still spam
-  forbidden tools, leak `<|tool_call_id|>` junk into args, and burn a 240s
-  budget without a verdict (trace-verified); rank by demonstrated
-  competence, gate by health. Honest split: CI reliability engineering,
-  not model quality.
+  r/LLMDevs · CI/engine lesson (full body in git history, D4-collapsed):
+  six consecutive LLM-agent E2E runs failed on one hard-coded free model;
+  probe the exact shape you'll use (a tool-call round trip), check the
+  *body* not the status (gateways wrap 429s in HTTP-200 envelopes), require
+  3 consecutive healthy probes (saturated free pools flap), pair the gate
+  with client backoff, walk an ordered candidate list, and rank by
+  demonstrated competence not probe health (`SK-LLM-042`; e2e-coverage
+  `opencheck-operations.md`).
 
 - **"Your 'best model' toggle quietly serves the cheap model. Ship a 409
   instead."** slug `model-preset-fail-loud` · venue dev.to (#llm #api #ux) +
-  r/LLMDevs · engine/product lesson (full body in git history,
-  D4-collapsed): a placebo model knob silently downgrades when the premium
-  lane is dark; the honest contract is `fast` pins the cheap chain even
-  over an ambient key, `best` gets a real frontier lane or 409s
-  `model_unavailable` + fix-it link, and the refusal count is the paid-lane
-  demand signal with an honest denominator — one pure `selectDispatchLane`
+  r/LLMDevs · engine/product lesson (full body in git history, D4-collapsed):
+  a placebo model knob silently downgrades when the premium lane is dark;
+  the honest contract is `fast` pins the cheap chain, `best` gets a real
+  frontier lane or 409s `model_unavailable` + fix-it link, and the refusal
+  count is the paid-lane demand signal — one pure `selectDispatchLane`
   shared by all five surfaces (`SK-PREMIUM-014`; GLOBAL-012 fail-loud).
 
 ## Published — canonical `/blog` copies live; venue variants pending
