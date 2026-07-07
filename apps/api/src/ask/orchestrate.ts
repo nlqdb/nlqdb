@@ -374,7 +374,15 @@ export async function orchestrateAsk(
             throw err;
           }
         },
-        { reasonOf: () => "db_unreachable" satisfies RetryReason },
+        {
+          reasonOf: () => "db_unreachable" satisfies RetryReason,
+          // SK-ASK-013 — a scale-to-zero Neon compute (free tier idles the
+          // branch after ~5 min) fails the first query back, then resumes in
+          // ~sub-second; instant retries replay the cold state and surface a
+          // spurious `db_unreachable`. Back off so attempts 2/3 land warm.
+          // ≤ 900 ms added worst case — GLOBAL-022 trades SLO for success.
+          backoffMs: (failedAttempt) => 300 * 2 ** (failedAttempt - 1),
+        },
       );
       break;
     } catch (err) {

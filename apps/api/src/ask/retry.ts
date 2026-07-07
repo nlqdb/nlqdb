@@ -54,7 +54,19 @@ export type WithStageRetryOpts = {
   // surface their own cardinality-bounded reasons (e.g. plan distinguishes
   // `sql_rejected` from `llm_failed`). Defaults to `classifyDefault`.
   reasonOf?: (err: unknown) => RetryReason;
+  // SK-ASK-013 — delay before the NEXT attempt, keyed by the attempt that
+  // just failed (1-based). Default (undefined) → instant retry, which is
+  // right for plan/route (their transient is an LLM provider that fails
+  // over to a sibling immediately). The exec stage opts in: its dominant
+  // transient is a scale-to-zero Neon compute (`db_unreachable`) that needs
+  // wall-time to resume — instant retries just replay the same cold state.
+  backoffMs?: (failedAttempt: number) => number;
+  // Injectable sleep so backoff is testable without real timers.
+  sleep?: (ms: number) => Promise<void>;
 };
+
+const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function withStageRetry<T>(
   stage: StageName,
@@ -62,6 +74,7 @@ export async function withStageRetry<T>(
   opts: WithStageRetryOpts = {},
 ): Promise<T> {
   const reasonOf = opts.reasonOf ?? classifyDefault;
+  const sleep = opts.sleep ?? defaultSleep;
   let prevError: Error | null = null;
   for (let attempt = 1; attempt <= RETRY_MAX_ATTEMPTS; attempt++) {
     try {
@@ -80,6 +93,8 @@ export async function withStageRetry<T>(
       // the max across stages, which is what matters for SLO.
       if (span) span.setAttribute("nlqdb.retry.attempt", attempt);
       if (attempt === RETRY_MAX_ATTEMPTS) throw wrapped;
+      const wait = opts.backoffMs?.(attempt) ?? 0;
+      if (wait > 0) await sleep(wait);
     }
   }
   // Unreachable — the loop either returns on success or throws on the

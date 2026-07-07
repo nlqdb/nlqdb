@@ -73,6 +73,73 @@ describe("withStageRetry", () => {
     expect(attempts).toBe(1);
   });
 
+  it("SK-ASK-013 — exec backoff gives a scale-to-zero DB time to warm; instant retries would miss it", async () => {
+    // Cold-start model: the DB is unreachable until virtual time `warmAt`,
+    // then resumes. A fake sleep advances a virtual clock so the test is
+    // deterministic and instant.
+    const warmAt = 700;
+    let now = 0;
+    const sleep = async (ms: number) => {
+      now += ms;
+    };
+    let attempts = 0;
+    const out = await withStageRetry(
+      "exec",
+      async () => {
+        attempts++;
+        if (now < warmAt) throw new Error("connect ECONNREFUSED");
+        return "rows";
+      },
+      { reasonOf: () => "db_unreachable", backoffMs: (n) => 300 * 2 ** (n - 1), sleep },
+    );
+    // attempt 1 (t=0) cold → wait 300 (t=300); attempt 2 cold → wait 600
+    // (t=900); attempt 3 warm → recovers. Backoff, not luck, is what lands it.
+    expect(out).toBe("rows");
+    expect(attempts).toBe(3);
+    expect(now).toBe(900);
+  });
+
+  it("without backoff, instant retries replay the cold state and surface db_unreachable", async () => {
+    // Same cold-start, no backoff (the plan/route default): the clock never
+    // advances, so all three attempts land in the cold window and fail —
+    // this is the pre-SK-ASK-013 behavior the exec stage suffered from.
+    const warmAt = 700;
+    const now = 0;
+    let attempts = 0;
+    await expect(
+      withStageRetry(
+        "exec",
+        async () => {
+          attempts++;
+          if (now < warmAt) throw new Error("connect ECONNREFUSED");
+          return "rows";
+        },
+        { reasonOf: () => "db_unreachable" },
+      ),
+    ).rejects.toThrow("ECONNREFUSED");
+    expect(attempts).toBe(RETRY_MAX_ATTEMPTS);
+  });
+
+  it("does not sleep when no backoff is configured (plan/route stay instant)", async () => {
+    let slept = 0;
+    const sleep = async (ms: number) => {
+      slept += ms;
+    };
+    let attempts = 0;
+    await expect(
+      withStageRetry(
+        "plan",
+        async () => {
+          attempts++;
+          throw new Error("boom");
+        },
+        { sleep },
+      ),
+    ).rejects.toThrow("boom");
+    expect(attempts).toBe(RETRY_MAX_ATTEMPTS);
+    expect(slept).toBe(0);
+  });
+
   it("emits nlqdb.retry.total per failed attempt with stage + reason labels", async () => {
     await expect(
       withStageRetry(
