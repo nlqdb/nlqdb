@@ -49,7 +49,7 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       {
         kind: "p",
-        text: "Our NL→SQL benchmark reported that a frontier model \"emitted junk\" — non-SQL, unparseable — on 5 of 150 hard questions, dragging its score below a floor a frontier model has no business sitting under. The number was real. The explanation was wrong. The model never hallucinated on those five. It was answering fine and we killed it mid-sentence, then filed the crime under the wrong charge.",
+        text: 'Our NL→SQL benchmark reported that a frontier model "emitted junk" — non-SQL, unparseable — on 5 of 150 hard questions, dragging its score below a floor a frontier model has no business sitting under. The number was real. The explanation was wrong. The model never hallucinated on those five. It was answering fine and we killed it mid-sentence, then filed the crime under the wrong charge.',
       },
       { kind: "h2", text: "The clamp you measure instead of the model" },
       {
@@ -58,7 +58,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         kind: "p",
-        text: "The rule that fell out of this: **a benchmark's timeout budget is a measurement instrument, not a config value to reuse.** Separate \"what ships\" (the prod hot-path budget) from \"what the model can do\" (the eval budget). Point the frontier eval lane at its own generous budget and the score jumps to reflect the model, not the SLA. That single change lifted the lane off its false floor.",
+        text: 'The rule that fell out of this: **a benchmark\'s timeout budget is a measurement instrument, not a config value to reuse.** Separate "what ships" (the prod hot-path budget) from "what the model can do" (the eval budget). Point the frontier eval lane at its own generous budget and the score jumps to reflect the model, not the SLA. That single change lifted the lane off its false floor.',
       },
       { kind: "h2", text: "An aborted read is not a parse error" },
       {
@@ -72,12 +72,12 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         kind: "p",
-        text: "Classify by the signal state, not by \"the JSON didn't parse.\" An `AbortError` when your own controller fired is a `timeout` — an infra event you own — not a model-quality datapoint. Conflate them and every timeout inflates your hallucination rate and deflates the model.",
+        text: 'Classify by the signal state, not by "the JSON didn\'t parse." An `AbortError` when your own controller fired is a `timeout` — an infra event you own — not a model-quality datapoint. Conflate them and every timeout inflates your hallucination rate and deflates the model.',
       },
       { kind: "h2", text: "The tell was in the latencies" },
       {
         kind: "p",
-        text: "We should have caught this without reading a line of code, because the evidence was sitting in the numbers. Every single \"hallucination\" had a latency of 5000–5004 ms. Real model failures scatter across the latency distribution; these were pinned to the wall, all five clustered at exactly the timeout. A failure mode that always takes the same round number of milliseconds is never the model — it's a clock. **Log per-attempt latency next to every failure**, or you will stare at a bogus quality regression and never see the fingerprint.",
+        text: 'We should have caught this without reading a line of code, because the evidence was sitting in the numbers. Every single "hallucination" had a latency of 5000–5004 ms. Real model failures scatter across the latency distribution; these were pinned to the wall, all five clustered at exactly the timeout. A failure mode that always takes the same round number of milliseconds is never the model — it\'s a clock. **Log per-attempt latency next to every failure**, or you will stare at a bogus quality regression and never see the fingerprint.',
       },
       { kind: "h2", text: "The honest split" },
       {
