@@ -26,30 +26,19 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   already uses — bidirectional for free, no new data. Lesson: publishing
   volume is not distribution. Measure the link *graph*, not the page *count*.
 
+- **"Your database scales to zero. Your retry loop doesn't know that."**
+  slug `serverless-db-cold-start-retry` · dev.to (#database #serverless #postgres)
+  + r/PostgreSQL + r/webdev + lobste.rs · engine/ops lesson (`SK-ASK-013`;
+  "the failure isn't what the error says" family) — a scale-to-zero Neon branch
+  fails the first query while its compute resumes, and instant retries replay
+  the cold connection; the exec stage backs off (≤900 ms) so attempts 2/3 land
+  warm while plan/route stay instant. **Full body in git history.**
 - **"The timeout that looked like a hallucination"** slug
-  `llm-timeout-looks-like-hallucination` · venue dev.to
-  (#llm #benchmarking #eval) + r/LLMDevs + lobste.rs · engine lesson ·
-  anchors the capacity-honesty / measure-honestly theme (`SK-QUAL-022`;
-  sibling of `offline-llm-eval-rate-limits` + `http-200-error-in-body`).
-  Angle: our NL→SQL benchmark said a frontier model "emitted junk" on 5 of
-  150 hard questions — except it didn't. The request layer aborted the
-  model mid-response at a 5-second timeout **inherited from the production
-  hot path**, and the error handler blindly labeled the aborted body-read a
-  `parse` failure (model returned non-SQL) instead of a `timeout` (infra).
-  The benchmark scored an infra artifact as model incompetence, dragging
-  the frontier lane below a floor it never earned. Lessons: (1) A
-  benchmark's timeout budget is a measurement instrument — clamp the
-  frontier lane to your prod hot-path budget and you measure the clamp, not
-  the model; separate "what ships" from "what the model can do." (2) An
-  aborted read is not a parse error — `res.json()` rejects with an
-  AbortError when the signal fires mid-stream; classify by the signal
-  state, not by "the JSON didn't parse." (3) The tell was in the
-  latencies: every "hallucination" sat at exactly 5000–5004 ms. Log
-  per-attempt latency next to every failure or you'll never see it.
-  (4) Reasoning models need seconds, not milliseconds — a budget tuned for
-  cached fast models silently truncates a slow frontier model's
-  chain-of-thought. Honest split: eval-harness measurement integrity, not a
-  model-quality claim.
+  `llm-timeout-looks-like-hallucination` · dev.to + r/LLMDevs + lobste.rs ·
+  measure-honestly theme (`SK-QUAL-022`) — a benchmark scored a 5 s
+  prod-hot-path timeout clamp as frontier "hallucination"; an aborted
+  `res.json()` read is a `timeout`, not a `parse` failure. **Full body in
+  git history.**
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
@@ -79,7 +68,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 
 - run 129 — dev.to / r/SQL / r/PostgreSQL: "The 'percent of total' query has a denominator problem. Two, actually." (two quiet traps: integer division floors `revenue / SUM(revenue) OVER ()` to 0 unless you write `100.0 *`; empty `OVER ()` grand-total vs `OVER (PARTITION BY region)` per-group total is a denominator choice the clause spells out; anchors `/solve/calculate-percentage-of-total-in-sql`).
 
-- run 128 — dev.to / r/PostgreSQL / r/SaaS: "Neon's MCP server lets your coding agent run your database. That's not the same as your app answering a question." (Neon's official MCP is one of the better DB MCP integrations — spin up a project, branch copy-on-write, run+verify+merge a migration all from your IDE — but that whole loop is *dev-time database administration* with you as the caller, not your *product* answering an end-user's question at runtime; the runtime job has requirements the admin one doesn't — compiled SQL shown, read-only allow-list failing closed, writes diff-previewed, try-before-sign-in — none a knock on Neon, just a layer above the DB; honest split — nlqdb has no Neon-grade branching/scale-to-zero and no BYO-Postgres yet, so it owns the DB it answers; anchors `/vs/neon`).
+- run 128 — dev.to / r/PostgreSQL / r/SaaS: "Neon's MCP server lets your coding agent run your database. That's not the same as your app answering a question." (Neon's MCP is dev-time DB *administration* with you as caller — branch, run+merge a migration from your IDE — not your *product* answering an end-user at runtime, which needs compiled-SQL shown, read-only allow-list, diff-previewed writes, try-before-sign-in; anchors `/vs/neon`).
 - run 127 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no MEDIAN(). Here's the query you write instead — and the choice that changes the answer." (no `MEDIAN()` in Postgres; the answer is the ordered-set aggregate `percentile_cont(0.5) WITHIN GROUP (ORDER BY revenue)`, and swapping `0.5` gives any percentile; the trap is `percentile_cont` interpolates between the two middle rows while `percentile_disc` returns a real row, so they disagree on even/categorical sets — `cont` for continuous quantities, `disc` when it must be an observed value; order lives inside `WITHIN GROUP`; honest split — read-only, not a live p95 dashboard; anchors `/solve/calculate-median-or-percentile-in-sql`).
 
 - run 126 — dev.to / r/LLMDevs / r/LangChain: "LlamaIndex's text-to-SQL runs the SQL the model wrote. The docs tell you that; the demo doesn't." (`NLSQLTableQueryEngine` writes + *executes* the generated SQL — LlamaIndex's own docs call arbitrary SQL a security risk and leave restricted roles / read-only DB / sandboxing to you — and it assumes the DB already exists; same English prompt, two different jobs; honest split — LlamaIndex wins for SQL-as-one-retriever-among-docs+vectors and can call nlqdb as a tool, nlqdb is not a RAG framework; anchors `/vs/llamaindex`).

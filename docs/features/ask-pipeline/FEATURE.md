@@ -109,8 +109,8 @@ when-to-load:
 - **Decision:** Each `/v1/ask` orchestrator stage wraps its work in `withStageRetry(stage, fn)` (3 attempts max): `route` (classifier), `plan` (LLM emit + validator allowlist), `exec` (DB query). When `validateSql` rejects, the next plan call receives the rejected SQL + reason in `PlanRequest.previousAttempt`. Non-recoverable cases (`DbConfigError`, billing-cap, 4xx) skip retries via the `Nonrecoverable` sentinel. Composes with the LLM provider chain's 3-hop failover (SK-LLM-006).
 - **Core value:** Bullet-proof, Effortless UX
 - **Why:** Without per-stage retries, a single Neon hiccup / provider 5xx / first-shot invalid SQL surfaces as `db_unreachable` / `llm_failed` / `sql_rejected`. Three attempts absorb transients; validator feedback closes the "LLM emits DROP, we 4xx, user retypes" loop.
-- **Consequence in code:** `withStageRetry` (3 attempts) wraps `route`, `plan`, and `exec`; `PlanRequest.previousAttempt` carries `{sql?, error}` into the next plan call; `Nonrecoverable` skips retries. Each retry stamps the `nlqdb.retry.*{stage, reason}` spans.
-- **Alternatives rejected:** Single attempt — surfaces every transient. Unbounded — request hangs. SDK-only — server recoveries need server context. Skip validator feedback — LLM repeats the same shape.
+- **Consequence in code:** `withStageRetry` (3 attempts) wraps `route`, `plan`, and `exec`; `PlanRequest.previousAttempt` carries `{sql?, error}` into the next plan call; `Nonrecoverable` skips retries. Each retry stamps the `nlqdb.retry.*{stage, reason}` spans. The **exec** stage additionally backs off between attempts (`300 ms × 2^(n−1)`, ≤900 ms total) so a scale-to-zero Neon compute — free-tier branches idle after ~5 min and fail the first query back — resumes before the retry lands; `plan`/`route` retry instantly (LLM failover to a sibling provider needs no wait).
+- **Alternatives rejected:** Single attempt — surfaces every transient. Unbounded — request hangs. SDK-only — server recoveries need server context. Skip validator feedback — LLM repeats the same shape. Instant exec retry — replays the cold connection before Neon resumes (the 07-06 failure).
 
 ### SK-ASK-014 — `routeAsk` runs on every `/v1/ask`, even when `dbId` is pinned
 
@@ -157,7 +157,6 @@ when-to-load:
 - **Decision:** The exec catch in `apps/api/src/ask/orchestrate.ts` matches PG SQLSTATE `3F000` (plus the `schema … does not exist` message fallback for Neon HTTP responses that drop `.code`) alongside the existing `42P01` (SK-ASK-016 Defense B) and wraps the error in `Nonrecoverable("schema_mismatch", new SchemaMismatchError([], []))` — `withStageRetry` then bails after attempt 1 (no retry on a deterministic missing-schema). Before throwing, the orchestrator stamps `nlqdb.ask.schema_mismatch.{reason,pg_code,db_id,sql,goal,pg_message,cache_hit}` on the active span and emits one structured `console.error` line with the same fields (each capped at 500 chars).
 - **Core value:** Bullet-proof, Honest latency, Effortless UX
 - **Why:** A D1 row pointed at a Neon schema that had been dropped (≈20 of 25 prod rows orphaned similarly). The INSERT hit `3F000`, which SK-ASK-016's `42P01`-only match missed; SK-ASK-013 retried 3× and surfaced a misleading `db_unreachable`. The structured log is the load-bearing piece — the `SchemaMismatchError` envelope only carries table lists, so without it there's no way to grep which (goal, dbId, sql) triples misfire.
-- **Consequence in code:** the exec catch in `orchestrate.ts` matches `42P01 | 3F000` (plus the message-regex fallbacks), wraps `Nonrecoverable` so retries bail after attempt 1, and emits one capped structured `console.error` (`event: schema_mismatch`, `reason: schema_missing | table_missing`) mirroring the span attributes above. No retry on either shape.
 - **Alternatives rejected:** Pre-flight `pg_namespace` check every `/v1/ask` — extra Neon round-trip for a < 5% cohort. Auto-drop the orphan D1 row — couples the orchestrator to registry mutation. Keep `db_unreachable` — burns 3 retries, no recovery CTA. Span attributes only — head-sampling loses the rare events.
 
 ### SK-ASK-020 — `summarize` failure returns rows + a summarize-error envelope, never 5xx
@@ -211,8 +210,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **SK-ASK-014 follow-ups.** **Parked until** a P3 user requests it: (a) typed-plan `kind=extend` pipeline so "Add it to *<slug>*" works (route + compiler + `sql-validate-ddl.ts` widening + table-card re-embed). (b) Latency audit — confirm classify-every-send's ~150 ms p50 still fits `performance.md §2.1/§2.2` once Phase 1 traffic lands.
 - **OpenAPI schema for `apps/api`.** **Parked until** the docs HTTP-API page (`SK-DOCS-003` slice d) is prioritised — the SDK reference is the canonical wire shape (`GLOBAL-001`) and `docs.nlqdb.com` links there in the interim, so the generator is a nice-to-have, not a blocker.
-
-> Partial-results and `/v1/ask` idempotency were open here; resolved as `SK-ASK-020` / `SK-ASK-021` above.
 
 ## Happy path walkthrough
 
