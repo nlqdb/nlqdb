@@ -38,15 +38,6 @@ drafts live in the [archive](./distribution-queue-archive.md).
   chain-of-thought. Honest split: eval-harness measurement integrity, not a
   model-quality claim.
 
-- **"Your 'best model' toggle quietly serves the cheap model. Ship a 409
-  instead."** slug `model-preset-fail-loud` · venue dev.to (#llm #api #ux) +
-  r/LLMDevs · engine/product lesson (full body in git history, D4-collapsed):
-  a placebo model knob silently downgrades when the premium lane is dark;
-  the honest contract is `fast` pins the cheap chain, `best` gets a real
-  frontier lane or 409s `model_unavailable` + fix-it link, and the refusal
-  count is the paid-lane demand signal — one pure `selectDispatchLane`
-  shared by all five surfaces (`SK-PREMIUM-014`; GLOBAL-012 fail-loud).
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -68,6 +59,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 7 — **https://nlqdb.com/blog/http-200-error-in-body/** — dev.to (#llm #api #debugging) + r/LocalLLaMA + lobste.rs · engine lesson (res.ok necessary not sufficient)
 - run 12 — **https://nlqdb.com/blog/llm-concatenates-columns-text-to-sql/** — dev.to (#sql #llm #ai) + r/SQL · engine lesson (positional-tuple EX vs fused columns; SK-LLM-043 projection directive)
 - run 14 — **https://nlqdb.com/blog/bird-gold-noise-distinct/** — dev.to (#sql #llm #ai) + r/LLMDevs + lobste.rs (`llm`) · engine lesson (benchmark number = floor bounded by gold quality; `SK-QUAL-014`)
+- run 16 — **https://nlqdb.com/blog/model-preset-fail-loud/** — dev.to (#llm #api #ux) + r/LLMDevs · engine/product lesson (a model knob is a contract not a capability: pin `fast` / upgrade `best` or 409 `model_unavailable` + fix-it link; refusal count = paid-lane demand signal; `SK-PREMIUM-014`, GLOBAL-012 fail-loud)
 - run 17 — **https://nlqdb.com/blog/llm-preflight-probe-health/** — dev.to (#llm #ci #testing) + r/LLMDevs · CI/engine lesson (health ≠ competence; probe the tool-call shape, read the body not the status; `SK-LLM-042`)
 
 ## Collapsed — full drafts in git history

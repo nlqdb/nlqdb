@@ -110,6 +110,7 @@ import { type CheckoutPlan, createCheckoutSession } from "./stripe/checkout.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { createPortalSession } from "./stripe/portal.ts";
 import { processWebhook } from "./stripe/webhook.ts";
+import { isSyntheticUserAgent } from "./synthetic-ua.ts";
 import { verifyTurnstile } from "./turnstile.ts";
 import { runWorkloadAnalyser } from "./workload-analyser/index.ts";
 
@@ -1189,7 +1190,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // (orchestrator ok = 2xx, non-refused; confirm previews included).
     // Fire-and-forget like the last-queried touch — never on the
     // user-visible latency path.
+    //
+    // SK-ONBOARD-007 — never count nlqdb's own stranger-test walker traffic
+    // toward the KPI. The walker drives the anonymous /v1/ask path with a
+    // fixed UA the read-side principal join (tenant_id → user.email) can't
+    // see, so the only place to exclude it is here, at the write.
+    const isSyntheticAsk = isSyntheticUserAgent(c.req.header("user-agent"));
     const bumpFirst10 = (ok: boolean): void => {
+      if (isSyntheticAsk) return;
       c.executionCtx.waitUntil(
         c.env.DB.prepare(
           "UPDATE databases SET first10_asks = first10_asks + 1, first10_ok = first10_ok + ? WHERE id = ? AND tenant_id = ? AND first10_asks < 10",
