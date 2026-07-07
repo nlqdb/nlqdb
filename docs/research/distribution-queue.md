@@ -38,17 +38,6 @@ drafts live in the [archive](./distribution-queue-archive.md).
   chain-of-thought. Honest split: eval-harness measurement integrity, not a
   model-quality claim.
 
-- **"Your LLM health probe passed. Your agent still starved."** slug
-  `llm-preflight-probe-health` · venue dev.to (#llm #ci #testing) +
-  r/LLMDevs · CI/engine lesson (full body in git history, D4-collapsed):
-  six consecutive LLM-agent E2E runs failed on one hard-coded free model;
-  probe the exact shape you'll use (a tool-call round trip), check the
-  *body* not the status (gateways wrap 429s in HTTP-200 envelopes), require
-  3 consecutive healthy probes (saturated free pools flap), pair the gate
-  with client backoff, walk an ordered candidate list, and rank by
-  demonstrated competence not probe health (`SK-LLM-042`; e2e-coverage
-  `opencheck-operations.md`).
-
 - **"Your 'best model' toggle quietly serves the cheap model. Ship a 409
   instead."** slug `model-preset-fail-loud` · venue dev.to (#llm #api #ux) +
   r/LLMDevs · engine/product lesson (full body in git history, D4-collapsed):
@@ -79,6 +68,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 7 — **https://nlqdb.com/blog/http-200-error-in-body/** — dev.to (#llm #api #debugging) + r/LocalLLaMA + lobste.rs · engine lesson (res.ok necessary not sufficient)
 - run 12 — **https://nlqdb.com/blog/llm-concatenates-columns-text-to-sql/** — dev.to (#sql #llm #ai) + r/SQL · engine lesson (positional-tuple EX vs fused columns; SK-LLM-043 projection directive)
 - run 14 — **https://nlqdb.com/blog/bird-gold-noise-distinct/** — dev.to (#sql #llm #ai) + r/LLMDevs + lobste.rs (`llm`) · engine lesson (benchmark number = floor bounded by gold quality; `SK-QUAL-014`)
+- run 17 — **https://nlqdb.com/blog/llm-preflight-probe-health/** — dev.to (#llm #ci #testing) + r/LLMDevs · CI/engine lesson (health ≠ competence; probe the tool-call shape, read the body not the status; `SK-LLM-042`)
 
 ## Collapsed — full drafts in git history
 
