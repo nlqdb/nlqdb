@@ -17,9 +17,7 @@ describe("isSyntheticUserAgent", () => {
 
   it("does not match a real browser UA", () => {
     expect(
-      isSyntheticUserAgent(
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-      ),
+      isSyntheticUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"),
     ).toBe(false);
   });
 
