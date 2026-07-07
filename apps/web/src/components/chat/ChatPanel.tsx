@@ -44,8 +44,10 @@ import CopySnippet from "./CopySnippet";
 import { matchesValidMessageShape } from "./chat-validate";
 import Data from "./Data";
 import DiffChip from "./DiffChip";
+import FreeModelNudge from "./FreeModelNudge";
+import { freeChainStruggled } from "./free-model-nudge-gate";
 import LeftRail from "./LeftRail";
-import ModelPicker from "./ModelPicker";
+import ModelPicker, { BYOLLM_STATUS_EVENT } from "./ModelPicker";
 import Palette, { type PaletteAction } from "./Palette";
 import Trace, { type TraceStepName, type TraceStepRecord } from "./Trace";
 
@@ -77,7 +79,10 @@ type ReplyState =
   // behaviour was a generic "That query was rejected" via the read/
   // write SQL allowlist's disallowed_verb path.
   | { kind: "clarify"; pinnedDb: { id: string; slug: string } | null }
-  | { kind: "error"; message: string };
+  // `code` is the NlqdbApiError.code (when the failure came from the API) so
+  // the free-model nudge can fire only on model-quality failures, not on
+  // rate-limit / network / auth noise (SK-PREMIUM-004).
+  | { kind: "error"; message: string; code?: string };
 
 type Reply = {
   id: string;
@@ -459,7 +464,11 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
         }
         updateReply(replyId, (reply) => ({
           ...reply,
-          state: { kind: "error", message: messageFor(err) },
+          state: {
+            kind: "error",
+            message: messageFor(err),
+            code: err instanceof NlqdbApiError ? err.code : undefined,
+          },
         }));
       }
     },
@@ -667,6 +676,21 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
     return null;
   }, [messages]);
 
+  // SK-PREMIUM-004 — whether the user is on the free chain, learned from the
+  // ModelPicker's BYOLLM status broadcast. Gates the free-model nudge below
+  // struggled replies. Defaults to false (assume frontier) so a BYOLLM user
+  // never sees the nudge during the brief status-load window; the picker
+  // broadcasts the real value on mount.
+  const [onFreeChain, setOnFreeChain] = useState(false);
+  useEffect(() => {
+    function onStatus(e: Event) {
+      const detail = (e as CustomEvent<{ configured: boolean }>).detail;
+      setOnFreeChain(!detail?.configured);
+    }
+    window.addEventListener(BYOLLM_STATUS_EVENT, onStatus);
+    return () => window.removeEventListener(BYOLLM_STATUS_EVENT, onStatus);
+  }, []);
+
   return (
     <div className="chat-shell">
       <LeftRail
@@ -758,6 +782,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
                   reply={msg.reply}
                   pkLive={activeDb?.pkLive ?? null}
                   tracesOpen={tracesOpen}
+                  onFreeChain={onFreeChain}
                   onApprove={approveDiff}
                   onCancel={cancelDiff}
                   onPickCandidate={(dbId) => pickCandidate(msg.reply.id, msg.reply.goal, dbId)}
@@ -822,6 +847,7 @@ function ReplyView({
   reply,
   pkLive,
   tracesOpen,
+  onFreeChain,
   onApprove,
   onCancel,
   onPickCandidate,
@@ -831,6 +857,9 @@ function ReplyView({
   reply: Reply;
   pkLive: string | null;
   tracesOpen: boolean;
+  // SK-PREMIUM-004: user is on the free chain — enables the free-model nudge
+  // when this reply is one the free model visibly struggled on.
+  onFreeChain: boolean;
   onApprove: () => void;
   onCancel: () => void;
   // SK-ASK-009: invoked when the user clicks one of the
@@ -944,6 +973,7 @@ function ReplyView({
         <DiffChip diff={needsConfirm} onApprove={onApprove} onCancel={onCancel} />
       ) : null}
       {error ? <p className="chat-reply__error">{error}</p> : null}
+      {onFreeChain && freeChainStruggled(reply) ? <FreeModelNudge /> : null}
       {ok && rows && rows.length > 0 ? (
         <div className="chat-reply__actions">
           <CopySnippet goal={reply.goal} pkLive={pkLive} />
