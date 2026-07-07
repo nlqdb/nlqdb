@@ -65,7 +65,8 @@ export type WithStageRetryOpts = {
   sleep?: (ms: number) => Promise<void>;
 };
 
-const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function withStageRetry<T>(
   stage: StageName,

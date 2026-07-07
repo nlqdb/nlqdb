@@ -102,7 +102,7 @@ describe("withStageRetry", () => {
   it("without backoff, instant retries replay the cold state and surface db_unreachable", async () => {
     // Same cold-start, no backoff (the plan/route default): the clock never
     // advances, so all three attempts land in the cold window and fail —
-    // this is the pre-SK-ASK-023 behavior the exec stage suffered from.
+    // this is the pre-SK-ASK-013 behavior the exec stage suffered from.
     const warmAt = 700;
     const now = 0;
     let attempts = 0;
