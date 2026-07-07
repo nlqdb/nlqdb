@@ -18,17 +18,20 @@ last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric moved through its agent-movable inputs (distribution
-surfaces/yield). **Today's lever (07-07, run 19): reciprocal internal links,
-0 → 10** — row #8 dark + engine anti-rut-blocked (above), E2E/onboarding owned
-by run 18 (#625, merged this cycle), so this run pulled row #7 (surface *yield*, the
-standing "volume-without-yield" finding): `/blog` posts forward-linked to their
-`/solve`/`/vs` anchor but those pages never linked back; added the reciprocal
-"Further reading" backlink (derived from the same `anchor` field), making the
-internal-link graph bidirectional (+10 inbound links to fresh blog URLs →
-indexation/session-depth). Detail in *Last change*.
-**Step-0 non-overlap:** run 18 (#625, merged this cycle) owns row #15/#4 +
-`ask/**` retry + `serverless-db-cold-start-retry` draft — this run touches none
-of them (web `/solve`+`/vs` templates + `blog.ts` helper + a different queue draft).
+surfaces/yield). **Today's lever (07-07, run 21): docs-ambiguity 26 → 25**
+(row #17) — row #8 dark + engine anti-rut-blocked (above); the distribution
+lane (surfaces/queue/`/blog`) is owned by the **open** PR #627 (run 20), so
+step-0 non-overlap rules out yield/publish this run. Pulled row #17: closed the
+`e2e-coverage` "First-query-after-idle `db_unreachable`" open question, whose
+posed question ("should the API retry / widen the connect timeout so real users
+never see the error") is now answered by shipped, tested code — run 18's
+`SK-ASK-013` exec-stage backoff (#625, merged this cycle). A keep-refs-in-sync
+resolution (P3), not a relabel. Detail in *Last change*.
+**Step-0 non-overlap:** open PR #627 (run 20) owns row #6 + `apps/web/src/data/blog.ts`
++ `research/distribution-queue.md` + publishing `llm-timeout-looks-like-hallucination`
+— this run touches none of them (one `docs/features/e2e-coverage/FEATURE.md` bullet
++ scorecard row #17/Last-change; zero code, zero web, zero queue). Runs 18–19 owned
+row #15/#4/#7 and are merged.
 **Engine finding (row #8), standing:** offline deterministic-ceiling lever
 exhausted (`SK-LLM-043` #605); SC dead (#619); frontier-lens levers closed
 (run 15, `SK-QUAL-022`). **0.526 is a floor whose only live move is the parked
@@ -59,7 +62,7 @@ pass** (row #16).
 | 15 | E2E manual-suite freshness | **0.75** — sdk ✅ 07-06 (1.00) · mcp ✅ 07-06 (1.00) · examples ✅ 07-06 (1.00) · opencheck ❌ (**Suite A 4/5, best since the 06-12 green** — [run 28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)) | run 13 owns this row: the named fix (pre-flight over an ordered free-model list) shipped + trace-triaged suite fixes; sdk/mcp/examples re-dispatched same run (were staring at a 07-09 freshness cliff). **Run 18 owns this row: fixed Suite A's sole failure** — the app-side cold-start `db_unreachable` (2× trace-verified) — via `SK-ASK-013` exec-stage backoff (`300 ms × 2^(n−1)`, ≤900 ms) so a scale-to-zero Neon resumes before the retry lands; `plan`/`route` still retry instantly (LLM failover needs no wait). **Measured before→after (deterministic, `retry.test.ts`):** the same cold-start model (DB unreachable until t=700 ms) — *without* backoff all 3 instant attempts land cold and surface `db_unreachable`; *with* the exec backoff attempt 3 lands at t=900 ms and recovers. Real-world re-measure dispatched: opencheck `depth=a` on the branch ([run 28849127856](https://github.com/nlqdb/nlqdb/actions/runs/28849127856)) — capacity-confounded (agent-pool dependent), so the test is the primary signal; next run reads the completed run. Suite B 0/8 = weakest-candidate capacity (4 stronger pools simultaneously 429 at pick time), not a fix regression. Full triage: `e2e-coverage/opencheck-operations.md` 2026-07-06 rows |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (35.3% walker-dominated, N=17 — row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: the agentic-frontier criterion is now **measurement-clean** (clamp fixed) — closing the remaining ~11 pp to 0.80 is a real engine-competence lift (multi-model frontier chain `SK-LLM-017`, or the parked corrected-set); first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **26** (07-07; run 17 lever: −2, resolved two `premium-tier` router-contract questions per GLOBAL-033 — create/DDL router scope + founder-frontier-lane vs `best`, both grounded in code + existing decisions, zero code change) | target ↓ 0. **Run 8's lever: −1** — resolved `agent-memory` *Capability-matrix freshness* by hardening the guard (`agentMemoryMatrix.test.ts` now rejects a future/invalid `MATRIX_VERIFIED_ON`; a negative age had silently passed `< 60`), not by relabeling. **Run 6's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **25** (07-07; run 21 lever: −1, closed `e2e-coverage`'s "First-query-after-idle `db_unreachable`" OQ — its posed question is now answered by run 18's shipped+tested `SK-ASK-013` exec-stage backoff, #625, so this is a keep-refs-in-sync resolution per P3, not a relabel). **Run 17 lever: −2** — resolved two `premium-tier` router-contract questions per GLOBAL-033 (create/DDL router scope + founder-frontier-lane vs `best`, both grounded in code + existing decisions, zero code change) | target ↓ 0. **Run 8's lever: −1** — resolved `agent-memory` *Capability-matrix freshness* by hardening the guard (`agentMemoryMatrix.test.ts` now rejects a future/invalid `MATRIX_VERIFIED_ON`; a negative age had silently passed `< 60`), not by relabeling. **Run 6's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-07 run-19 sweep: 103 pages, **2,427** internal links — +10 vs run 17 = the reciprocal blog backlinks, row #7) | target 0 — sweep is repeatable: `cd apps/web && bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
 | 19 | Live-surface claim integrity | **0 tracked gaps** (07-05, was 4) | claim-vs-reality on shipped user-facing surfaces; target 0. Run-9 swept `/pricing`, MCP paths, CLI verbs, wrapper-publish status, and `architecture.md` prose to match what actually ships (detail in git). Next count re-audits fresh (e.g. paid-tier limit claims while billing is dark); standing candidate: extend `check:links` to assert each advertised capability has shipped code |
@@ -95,26 +98,32 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-07 (run 19)** — lever: **reciprocal internal links (row #7), 0 → 10**.
+**2026-07-07 (run 21)** — lever: **docs-ambiguity (row #17), 26 → 25**.
 BIRD EX (row #8, weekly focus) is a floor this week — every agent-movable
 sub-lever is closed, the only live move (corrected-set) is license-blocked (P2)
-⇒ dark for the lever (rule 8); engine is also anti-rut-blocked (rule 7); and
-E2E/onboarding (rows #15/#4) is owned by run 18 (#625, merged this cycle). So this run
-pulled row #7 — surface *yield*, the standing "volume without yield" finding.
-**Root cause:** the internal-link graph was a tree, not a mesh — `/blog` posts
-forward-link to their `/solve`/`/vs` anchor (the `anchor` field), but those
-target pages never linked back, so every freshly-published post had **zero
-internal inbound links** (worst for the exact URLs that most need indexing) and
-a searcher landing on `/solve` from Google hit a dead end. **Fix:** one
-reciprocal "Further reading" backlink, derived from the same `anchor` field via
-a new `blogByAnchorPath` helper, rendered on all 10 anchored `/solve`+`/vs`
-pages — bidirectional linking with no new data to maintain. Measured: built
-`dist/` now has **10** "Further reading" backlinks (before: 0); internal links
-**2417 → 2427**, 0 dead / 0 redirecting (row #18). **Step-3 artifact:** queue
-< 3 (was 1) ⇒ drafted, didn't publish → **`one-way-internal-links-leak-yield`**
-(distribution lesson, on-theme with the lever); queue now 3 (`serverless-db-cold-start-retry`
-[run 18, #625] + `one-way-internal-links-leak-yield` + collapsed `llm-timeout`). **KPI:**
-GLOBAL-025 UX (next-hop for landing visitors) + performance/distribution (indexation of
-fresh URLs). **None degrade:** `typecheck` clean, changed-files `lint` clean, web **220**
-tests green, link sweep **103 pages / 0 dead**; zero prod/engine code touched (web
-templates + `blog.ts` helper + queue draft), engine baselines byte-untouched.
+⇒ dark for the lever (rule 8); engine is also anti-rut-blocked (rule 7). The
+distribution lane (surfaces/queue/`/blog`, rows #6/#7) is owned by the **open**
+PR #627 (run 20, publishing `llm-timeout-looks-like-hallucination`), so step-0
+non-overlap rules out a yield/publish lever this run. **Lever:** closed the
+`e2e-coverage` open question "First-query-after-idle `db_unreachable` (Neon
+scale-to-zero cold start)". **Why it's genuinely resolvable, not a relabel:**
+the bullet posed a real question — *should the API retry / widen the connect
+timeout on the first execution after idle so real users never see the error?* —
+and run 18 shipped the answer (`SK-ASK-013`, #625, merged this cycle): the exec
+stage now retries `db_unreachable` with backoff `300 × 2^(n−1)` ms (≤ 900 ms;
+GLOBAL-022 trades a little SLO for success) so a scale-to-zero Neon branch
+resumes warm before attempts 2/3 land, while `plan`/`route` keep instant retry
+(LLM failover needs no wait). The code (`apps/api/src/ask/orchestrate.ts:379`,
+`retry.ts`) and a deterministic before/after (`retry.test.ts` — "exec backoff
+gives a scale-to-zero DB time to warm") already exist; the bullet simply hadn't
+been closed. This is a P3 keep-refs-in-sync resolution. **Measured:** pinned
+grep (case-insensitive `Resolved|Shipped|~~|Parked|Deferred|Decided:|Closed`
+under `## Open questions`) = **26 → 25**. **Step-3 artifact:** the distribution
+queue + `/blog` are owned by open PR #627 this cycle (step-0), so this run's
+released artifact is the docs resolution itself, not a queue mutation — touching
+the queue would collide with #627. **KPI:** GLOBAL-025 onboarding/engine-quality
+(a resolved decision means the next agent applies the cold-start contract
+without re-deriving it; clarity increases, D3). **None degrade:** `typecheck`
+clean, `lint` clean on the changed doc, workspace `test` green; zero code, zero
+web, zero queue — one `e2e-coverage/FEATURE.md` bullet + scorecard rows #17 /
+Last-change. Engine baselines byte-untouched.
