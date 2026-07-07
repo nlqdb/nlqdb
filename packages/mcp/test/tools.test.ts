@@ -79,6 +79,9 @@ function stubClient(overrides: Partial<NlqClient> & { connect?: ConnectFn } = {}
     clearByollm: async () => {
       throw new Error("clearByollm not stubbed");
     },
+    registerPremiumInterest: async () => {
+      throw new Error("registerPremiumInterest not stubbed");
+    },
     remember: async () => {
       throw new Error("remember not stubbed");
     },

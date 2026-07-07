@@ -1050,6 +1050,34 @@ describe("createClient", () => {
     expect(() => bearer.clearByollm()).toThrow(/requires `withCredentials: true`/);
   });
 
+  it("registerPremiumInterest: POSTs /v1/premium/interest and auto-keys the mutation", async () => {
+    let capturedUrl: string | undefined;
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const client = createClient({ withCredentials: true, fetch: fakeFetch });
+    const out = await client.registerPremiumInterest();
+
+    expect(capturedUrl).toContain("/v1/premium/interest");
+    expect(capturedInit?.method).toBe("POST");
+    expect(capturedInit?.credentials).toBe("include");
+    // Mutations auto-generate an Idempotency-Key so the server dedups retries.
+    expect(new Headers(capturedInit?.headers).get("idempotency-key")).toBeTruthy();
+    expect(out).toEqual({ ok: true });
+  });
+
+  it("registerPremiumInterest: throws without withCredentials (session-only)", () => {
+    const noopFetch: FetchLike = async () => new Response("{}", { status: 200 });
+    const bearer = createClient({ apiKey: "sk_live_x", fetch: noopFetch });
+    expect(() => bearer.registerPremiumInterest()).toThrow(/requires `withCredentials: true`/);
+  });
+
   it("setByollm: throws when a part is empty before any request goes out", () => {
     let called = false;
     const fakeFetch: FetchLike = async () => {

@@ -29,6 +29,7 @@ function stubClient(overrides: Partial<NlqClient>): NlqClient {
     setByollm: notStubbed("setByollm"),
     getByollmStatus: notStubbed("getByollmStatus"),
     clearByollm: notStubbed("clearByollm"),
+    registerPremiumInterest: notStubbed("registerPremiumInterest"),
     ...overrides,
   };
 }

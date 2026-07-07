@@ -511,12 +511,22 @@
 }
 
 .model-picker__subscribe {
-  font-size: 11px;
-  color: var(--fg-muted);
-  line-height: 1.45;
   border-top: 1px solid var(--border);
   margin: 8px 0 0;
   padding: 8px 4px 0;
+}
+
+.model-picker__subscribe-text {
+  font-size: 11px;
+  color: var(--fg-muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.model-picker__countme {
+  font-size: 12px;
+  padding: 6px 12px;
+  margin-top: 8px;
 }
 
 .model-picker__last {

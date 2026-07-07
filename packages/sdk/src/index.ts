@@ -611,6 +611,11 @@ export type ByollmSetResult = {
 // nothing stored, so retrying scripts don't have to special-case it.
 export type ClearByollmResult = { ok: true; cleared: boolean };
 
+// `registerPremiumInterest()` result — a constant ack; the interest is
+// recorded server-side (founder notification), nothing to render beyond
+// a "you're counted" state.
+export type PremiumInterestResult = { ok: true };
+
 /**
  * The typed client returned by {@link createClient} — the only HTTP
  * surface per `GLOBAL-001`. Every method throws {@link NlqdbApiError} on
@@ -807,6 +812,17 @@ export type NlqClient = {
    * auto-keyed (`SK-SDK-006`).
    */
   clearByollm(opts?: { signal?: AbortSignal; idempotencyKey?: string }): Promise<ClearByollmResult>;
+  /**
+   * `POST /v1/premium/interest` — record a "count me in" for the hosted-premium
+   * plan (`SK-PREMIUM-013`'s subscribe door, shown "coming soon"). Notifies the
+   * founder with the caller's account identity; the server dedups per account,
+   * so repeat clicks don't re-notify. **Session-only**: throws unless
+   * `withCredentials: true`. Mutating: auto-keyed (`SK-SDK-006`).
+   */
+  registerPremiumInterest(opts?: {
+    signal?: AbortSignal;
+    idempotencyKey?: string;
+  }): Promise<PremiumInterestResult>;
 };
 
 const DEFAULT_BASE_URL = "https://app.nlqdb.com";
@@ -1251,6 +1267,16 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
       assertSession("clearByollm");
       return call<ClearByollmResult>("/v1/keys/byollm", {
         method: "DELETE",
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
+      });
+    },
+    registerPremiumInterest: (callOpts) => {
+      assertSession("registerPremiumInterest");
+      return call<PremiumInterestResult>("/v1/premium/interest", {
+        method: "POST",
         signal: callOpts?.signal,
         ...(callOpts?.idempotencyKey
           ? { headers: { "idempotency-key": callOpts.idempotencyKey } }

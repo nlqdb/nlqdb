@@ -5,6 +5,7 @@ import {
   createTinybirdAdapter,
   type Engine,
 } from "@nlqdb/db";
+import { DEFAULT_FROM, makeEmailSender } from "@nlqdb/email";
 import { MODEL_CATALOG } from "@nlqdb/llm";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import {
@@ -2272,6 +2273,63 @@ app.delete("/v1/keys/byollm", requireSession, async (c) => {
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.keys.byollm.clear.outcome", "internal_error");
       return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `POST /v1/premium/interest` — the "Count me in" door on the hosted-premium
+// lane (`SK-PREMIUM-013`'s subscribe door, §6-dark). Deliberately not a
+// waitlist table (GLOBAL-027 deleted that machinery): a click is a demand
+// signal for the founder, so it is exactly one email to FOUNDER_EMAIL through
+// the GLOBAL-021 Resend owner. Session-only — "whoever clicked" is the
+// session identity; the account email rides in the message body.
+//
+// `Idempotency-Key` (GLOBAL-005): idempotent by construction — the success
+// body is the constant `{ ok: true }`, and the send itself dedups per
+// account via Resend's 24h idempotency window, so repeat clicks and SDK
+// retries (GLOBAL-022) collapse to a single founder email.
+const FOUNDER_EMAIL = "omer@nlqdb.com";
+app.post("/v1/premium/interest", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.premium.interest", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const sendEmail = makeEmailSender({
+        apiKey: c.env.RESEND_API_KEY,
+        from: c.env.RESEND_FROM ?? DEFAULT_FROM,
+      });
+      const who = session.user.email ?? `user ${session.user.id}`;
+      await sendEmail({
+        to: FOUNDER_EMAIL,
+        subject: `Hosted-premium interest: ${who}`,
+        text: [
+          `${who} clicked "Count me in" on the hosted-premium plan in the chat model picker.`,
+          "",
+          `user id: ${session.user.id}`,
+        ].join("\n"),
+        idempotencyKey: `premium-interest:${session.user.id}`,
+      });
+      span.setAttribute("nlqdb.premium.interest.outcome", "ok");
+      return c.json({ ok: true });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.premium.interest.outcome", "send_failed");
+      // 502 (not 500) so the SDK's transient-5xx retry (GLOBAL-022) gets a
+      // shot at a flaky Resend region; the dedup key keeps retries single-send.
+      return c.json(
+        {
+          error: {
+            status: "premium_interest_failed" as const,
+            message: "Couldn't record your interest — try again.",
+          },
+        },
+        502,
+      );
     } finally {
       span.end();
     }
