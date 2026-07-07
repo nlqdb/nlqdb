@@ -2,16 +2,29 @@
 
 One publishable artifact drafted per day by the daily agent
 ([`/daily`](../../.claude/commands/daily.md) step 3); publishing is autonomous
-(`SK-BLOG-001`, founder-resolved 2026-07-01). Newest first. Once published,
-the live URL goes into `docs/scorecard.md` § Shipped distribution and the
-entry survives here only as a venue pointer until the venue variant posts.
+(`SK-BLOG-001`, founder-resolved 2026-07-01). Newest first. Once published, the
+live URL goes into `docs/scorecard.md` § Shipped distribution; the entry
+survives here only as a venue pointer until the venue variant posts.
 
-**Retention (D4, 20 KB cap):** keep the most recent full draft(s) below inline —
-as many as fit under the cap; everything older collapses to a one-line title +
-venue + gist, with the full body recoverable from git history. The earliest
-drafts live in the [archive](./distribution-queue-archive.md).
+**Retention (D4, 20 KB cap):** keep the most recent full draft(s) inline — as
+many as fit under the cap; older ones collapse to a one-line title + venue +
+gist (full body in git history). Earliest drafts: [archive](./distribution-queue-archive.md).
 
 ## Drafts — unpublished, newest first
+
+- **"We shipped 18 SEO pages and got 1 referral. The links only pointed one
+  way."** slug `one-way-internal-links-leak-yield` · venue dev.to
+  (#seo #webdev #contentmarketing) + r/SEO + r/webdev · distribution lesson ·
+  anchors the volume-vs-yield theme (scorecard rows #6/#7). Angle: the surface
+  count climbed while referrals stayed flat at ~1/week. The link graph was a
+  tree, not a mesh: `/blog → /solve` but never `/solve → /blog`. Two costs.
+  (1) SEO: links pass authority in the direction they point, so every link fed
+  the deep page and starved the *fresh* post that most needed indexing — the
+  new URLs had zero internal inbound links. (2) UX: a searcher landing on
+  `/solve` hit a dead end — no next hop, session ends at one page. The fix is
+  one reciprocal link, derived from the same `anchor` field the forward link
+  already uses — bidirectional for free, no new data. Lesson: publishing
+  volume is not distribution. Measure the link *graph*, not the page *count*.
 
 - **"The timeout that looked like a hallucination"** slug
   `llm-timeout-looks-like-hallucination` · venue dev.to

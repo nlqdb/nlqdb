@@ -940,3 +940,11 @@ export const BLOG_POSTS: BlogPost[] = [
 export function blogBySlug(slug: string): BlogPost | undefined {
   return BLOG_POSTS.find((p) => p.slug === slug);
 }
+
+// The blog post whose `anchor.path` points at a given `/solve/*` or `/vs/*`
+// page — the reciprocal of the forward `anchor` link. The `/solve` and `/vs`
+// templates render it as a "Further reading" backlink so the internal linking
+// is bidirectional (indexation + session-depth yield, scorecard rows #6/#7).
+export function blogByAnchorPath(path: string): BlogPost | undefined {
+  return BLOG_POSTS.find((p) => p.anchor?.path === path);
+}

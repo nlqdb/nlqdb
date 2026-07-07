@@ -15,6 +15,7 @@
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
+import { blogByAnchorPath } from "../../data/blog";
 import { SOLVE_ENTRIES, SOLVE_PERSONAS, solveBySlug } from "../../data/solve";
 import Base from "../../layouts/Base.astro";
 import { breadcrumbJsonLd } from "../../lib/breadcrumb";
@@ -32,6 +33,9 @@ if (!s) {
 
 const pageTitle = `${s.searchTitle} — nlqdb`;
 const description = s.oneLiner;
+// Reciprocal of the blog post's forward `anchor` link — the "Further reading"
+// backlink that makes the /blog ↔ /solve internal linking bidirectional.
+const relatedPost = blogByAnchorPath(`/solve/${s.slug}`);
 const canonical = `/solve/${s.slug}`;
 
 // Bespoke share card for the P2 agent-builder solve cluster (parity with the
@@ -189,6 +193,14 @@ const breadcrumbLd = breadcrumbJsonLd(
         <h2 class="slv__cta-title">Try nlqdb in 30 seconds</h2>
         <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
         <a class="cta slv__cta-btn" href="/app/new/">Start with a goal &rarr;</a>
+        {
+          relatedPost && (
+            <p class="slv__cta-meta">
+              Further reading:{" "}
+              <a href={`/blog/${relatedPost.slug}/`}>{relatedPost.title}</a>
+            </p>
+          )
+        }
         <p class="slv__cta-meta">
           Looking at this from a different angle?{" "}
           <a href="/solve/">Browse all solve pages</a>
