@@ -60,4 +60,4 @@ intent this budget serves),
     capability. The budget is what lets the model actually finish.
   - **Make the budget env-tunable.** Adds a knob no operator would set
     differently; a single generous ablation constant is simpler (P5) and the
-    per-lane `planTimeoutMs` already documents it in the report path.
+    per-lane `planTimeoutMs` keeps each lane's budget assertable in tests.

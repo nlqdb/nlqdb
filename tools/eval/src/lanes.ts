@@ -68,10 +68,10 @@ export type Lane = {
   // retry. The runner threads this into `withExecRetry`; only lanes
   // with `> 1` actually loop.
   maxAttempts: number;
-  // SK-QUAL-022 — per-attempt `plan` timeout wired into this lane's router.
-  // Free = prod clamp; frontier lanes = capability budget. Diagnostic
-  // metadata (the runner reads the timeout off the router, not here), so
-  // optional — a mock lane needn't set it.
+  // SK-QUAL-022 — per-attempt `plan` timeout. Free = prod clamp; frontier
+  // lanes = capability budget. The router enforces it (`timeouts.plan`); this
+  // field just mirrors it as an assertable surface, so it's optional — a mock
+  // lane needn't set it.
   planTimeoutMs?: number;
 };
 
