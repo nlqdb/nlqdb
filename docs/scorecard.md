@@ -8,29 +8,22 @@ Point-in-time tracker, regenerated each
 **Weekly focus number (2026-07-04 → 07-11):** **BIRD raw EX → ≥ 0.60**
 (row #8) — 0.526 (07-05 canonical), still the only pillar below a hard
 [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) Phase-2 floor;
-`SK-QUAL-005` mandates engine work until it clears. Named live sub-levers now
-all measured to verdicts: SC N≥2 flat at 3× quota (#619, merged); the
-post-`SK-LLM-042` agentic-frontier re-measure (run 14 — envelope hypothesis
-falsified, real suppressor = the 5 s `plan` clamp); and **run 15's
-`SK-QUAL-022`** (this PR) — the clamp fix, measured: unclamping the frontier
-lane lifted agentic-frontier **66.67% → 69.33%** (100 → 104/150, same seed),
-confirming run 14's ≤ 0.70-ceiling call — **still < the 0.80 floor, so row
-#16 fails on competence, not the clamp**. With the frontier-lens levers now
-exhausted, the only live BIRD-free move left is the parked **corrected-set**
-(license, P2) — free-EX row #8 is a floor this week.
+`SK-QUAL-005` mandates engine work until it clears. Every agent-movable
+sub-lever is now measured to a verdict (SC N≥2 flat #619; the run-15
+frontier-clamp fix lifted agentic-frontier to 0.693, still < the 0.80 floor,
+confirming run 14's ≤ 0.70 ceiling call); the only live BIRD-free move left is
+the parked **corrected-set** (license, P2) — so row #8 is a floor this week
+(**dark for the lever**, rule 8) and engine is also anti-rut-blocked (3 of the
+last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
-lagging metric; the daily **lever** targets its agent-movable inputs. Today's
-(07-06, run 15) lever: **ship + measure `SK-QUAL-022`** — the eval frontier-lane
-plan-timeout override (5 s → 30 s) + the `openai-compatible.ts`
-abort→`timeout` reclassification (run 14's named next sub-lever). Same-seed
-re-measure (150-q, seed 20260607, resumed to `resumable:false`): **frontier
-66.67% → 68.67%, agentic-frontier 66.67% → 69.33%** — the clamp was
-suppressing the frontier EA exactly as diagnosed; the lift is directly
-attributable (same model/seed/questions, only the frontier plan budget
-changed). **Step-0 non-overlap:** no open PRs at dispatch; run 14 (#621,
-merged) owns the row-#11 diagnosis this PR now *fixes*; funnel/ops/docs-
-ambiguity rows carry from run 12 (#619) unchanged.
+lagging metric moved through its agent-movable inputs (distribution
+surfaces/yield). **Today's lever (07-07, run 17): docs-ambiguity (row #17),
+28 → 26** — row #8 is dark + engine anti-rut-blocked (above), so this run
+pulled the worst *agent-movable + unblocked* number; detail in *Last change*.
+**Step-0:** avoids open PR #623 (run 16) entirely (row #4 / `index.ts` /
+onboarding / `model-preset-fail-loud`); funnel/ops/engine rows carry from run
+15 (#622, 07-06 fresh) unchanged.
 **Engine finding (row #8), standing:** the **offline deterministic-ceiling
 lever is exhausted** — `SK-LLM-043` (#605) took the last mechanically-provable
 bucket; the dominant residual bucket (`extra_DISTINCT`) is BIRD gold-annotation
@@ -49,7 +42,7 @@ gate: **1/9 criteria pass** (row #16).
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **6/17 = 35.3%** across 4 DBs with `first10_asks ≥ 1` (was 1/1) — but the late-night `db_users_*` creations look synthetic; counters carry no principal column, so walker vs stranger can't be split in-table | target ≥ 95%; attribution gap is the instrument's next fix (a principal/UA tag on the counters) — until then the rate is walker-dominated, not a stranger read |
 | 5 | Session retention (≥ 2 queries) | 3 DBs with `first10_asks ≥ 2` (same attribution caveat as row #4) | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **81** (`/vs` 31 + `/solve` 33 + `/blog` 17) — +2 this cycle: run 12 published `/blog/llm-concatenates-columns-text-to-sql`, run 14 published `/blog/bird-gold-noise-distinct` | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Queue now at **3** (run 15 drafted `llm-timeout-looks-like-hallucination` + `llm-preflight-probe-health` + `model-preset-fail-loud`) ⇒ **next run publishes the oldest, doesn't draft** |
+| 6 | Indexable surfaces | **82** (`/vs` 31 + `/solve` 33 + `/blog` 18) — +1 this run: run 17 published `/blog/llm-preflight-probe-health` (verified in built `dist/llms.txt` + `sitemap.xml`) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate. Queue now at **2** (run 17 published `llm-preflight-probe-health`; open PR #623 publishes `model-preset-fail-loud`; `llm-timeout-looks-like-hallucination` remains) ⇒ queue < 3, **next run drafts one** |
 | 7 | Surface yield | posts 16; 7d external referrals = **1** (`bing.com`, 1 pageload; google + aisearchindex.space fell out of the window) | CF `refererHost` — measured every run. Yield still near-zero — the standing weekly-review finding (distribution *volume* without *yield*); count grows, referrals flat |
 | | **Engine** — BIRD 07-05 · Spider 07-02 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.526** (262/498 EA, 2 `gold_error`, 07-05 canonical, [run 28742006051](https://github.com/nlqdb/nlqdb/actions/runs/28742006051)). **`SK-QUAL-017` SC verdict (run 12, 07-06):** first N≥2 dispatch (N=3, temp 0.7, 150q smoke, [run 28761582097](https://github.com/nlqdb/nlqdb/actions/runs/28761582097)) = **79/150 = 0.5267, exactly flat vs the same-directive-set greedy comparator** (canonical run restricted to the identical 150 qids: 79/150; b=8/c=8, p=1.0; SC `no_sql` 1/150) — majority-vote at 3× quota buys 0 on the free chain; the 8↔8 swaps are provider-mix noise | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Baseline re-seeded 07-05. `SK-LLM-043` live-verified (run 11): `\|\|` concats 7 → 3 run-wide. Offline deterministic-ceiling lever exhausted (07-04); **SC lever dead (#619); frontier-lens levers closed (run 15, `SK-QUAL-022`)** — only remaining live BIRD-free move is the parked corrected-set (license, P2). Pin-branch delete still 403-blocked (`eval/bird-resume-0e67e64` + `-8d3d7c5`) |
@@ -64,8 +57,8 @@ gate: **1/9 criteria pass** (row #16).
 | 15 | E2E manual-suite freshness | **0.75** — sdk ✅ 07-06 (1.00) · mcp ✅ 07-06 (1.00) · examples ✅ 07-06 (1.00) · opencheck ❌ (**Suite A 4/5, best since the 06-12 green** — [run 28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)) | run 13 owns this row: the named fix (pre-flight over an ordered free-model list) shipped + trace-triaged suite fixes; sdk/mcp/examples re-dispatched same run (were staring at a 07-09 freshness cliff). Suite A's sole failure = app-side cold-start `db_unreachable` (2× trace-verified ⇒ e2e-coverage open question, **next lever for whichever run owns this row**); Suite B 0/8 = weakest-candidate capacity (4 stronger pools simultaneously 429 at pick time), not a fix regression. Full triage: `e2e-coverage/opencheck-operations.md` 2026-07-06 rows |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (35.3% walker-dominated, N=17 — row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: the agentic-frontier criterion is now **measurement-clean** (clamp fixed) — closing the remaining ~11 pp to 0.80 is a real engine-competence lift (multi-model frontier chain `SK-LLM-017`, or the parked corrected-set); first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **28** (07-06; run 12 re-count 27 = 25 + run 10's 2 review-pass bullets, +1 run 13's e2e-coverage cold-start bullet) | target ↓ 0. **Run 8's lever: −1** — resolved `agent-memory` *Capability-matrix freshness* by hardening the guard (`agentMemoryMatrix.test.ts` now rejects a future/invalid `MATRIX_VERIFIED_ON`; a negative age had silently passed `< 60`), not by relabeling. **Run 6's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-06 run-12 sweep: 100 pages, 2,345 internal links — build incl. `/blog/llm-concatenates-columns-text-to-sql`) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **26** (07-07; run 17 lever: −2, resolved two `premium-tier` router-contract questions per GLOBAL-033 — create/DDL router scope + founder-frontier-lane vs `best`, both grounded in code + existing decisions, zero code change) | target ↓ 0. **Run 8's lever: −1** — resolved `agent-memory` *Capability-matrix freshness* by hardening the guard (`agentMemoryMatrix.test.ts` now rejects a future/invalid `MATRIX_VERIFIED_ON`; a negative age had silently passed `< 60`), not by relabeling. **Run 6's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-07 run-17 sweep: 102 pages, 2,393 internal links — build incl. `/blog/llm-preflight-probe-health`) | target 0 — sweep is repeatable: `bun run --filter @nlqdb/web build && bun run --filter @nlqdb/web check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
 | 19 | Live-surface claim integrity | **0 tracked gaps** (07-05, was 4) | claim-vs-reality on shipped user-facing surfaces; target 0. Run-9 fixes, all "soften to what shipped": (a)+(b) `/pricing` backup bullets deleted + "Export anytime" → "pull it out with plain SQL" (`architecture.md` tier table matched); (c) `progress.md §0` + the `CodePanel` surface matrix (component currently unmounted from the home2 homepage — kept honest anyway): wrappers + Swift → **Built** (npm/SPM publish gated per `.changeset/README.md`); same-family: `frameworks.mdx` caution + unpublished note in 4 `examples/*` READMEs whose `npm install @nlqdb/*` 404s; (d) `docs.nlqdb.com/mcp` rewritten to the 3 real paths (`https://mcp.nlqdb.com/mcp`, nlqdb.com buttons, env var) — fabricated `nlq mcp install` walkthrough + nonexistent `app.nlqdb.com/mcp` deep-link path removed, `nlq mcp detect` documented as-is. Review pass swept the same families further: `/agents` "one command" card `nlq mcp install` → `claude mcp add`; `examples/cli` fake verbs (`nlq export`/`connection`/`--csv`/`--region`) → real `run --json` forms + a `nlq login` not-shipped note; bare `mcp.nlqdb.com` paste-URLs → `/mcp` (docs index, `/integrations`, 3 solve pages); unpublished `@nlqdb/mcp` no longer sold as an npm binary (solve, `progress.md`, `mcp.mdx`). Second review pass, same families: root-README table + `stdio.ts` no-key hint paste-URLs → `/mcp`; `examples/README.md` fake `nlq keys create` verb + stale "runtime not wired yet" status → dashboard-mint path + live status; `walkthrough.sh` fabricated `nlq login` success output → anonymous-first (the stub exits non-zero, so the script also aborted under `set -e`); `architecture.md` §3.3/§3.4 stale `nlq connection` / `nlq mcp install` / three-tools prose → shipped verbs + `SK-MCP-002` ref; `SK-WEB-003` consequence re-pointed at the live two-door proof, `CodePanel` recorded as unmounted (GLOBAL-033 resolution of the feature-vs-code gap). Next count re-audits fresh (e.g. paid-tier limit claims while billing is dark); sweep candidate stands: extend `check:links` to assert each advertised capability has shipped code |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | **schema ✅ · BYOLLM lanes ✅ · picker: web ✅ (`SK-PREMIUM-013`, #610) · picker parity ✅ (`SK-PREMIUM-014`, run 10: `model` preset + routing on `/v1/ask` — `fast` pins free, `best` 409s `model_unavailable` sans frontier lane — + SDK `model`, CLI `--model`, MCP `model`, `<nlq-data model>`; residual gaps tracked: `nlq model set`, per-provider key storage) · premium chain ⬜ · CTA (`SK-PREMIUM-004`) ⬜ · spend-cap UI ⬜** | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is **built before** the signal (lighting it is a flag flip); only the *meter firing* (Lago→Stripe) + cost-incurring infra stay dark. The meter staying off is not a reason to leave the slot unbuilt; drive ⬜→✅ each run (#610 07-04, run 10 07-05); next slot: the premium chain (`SK-LLM-017`, flag-dark) or the CTA |
@@ -95,36 +88,38 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 - https://nlqdb.com/blog/http-200-error-in-body/ (run 7 — engine lesson, SK-LLM-042 gateway-200-error-body classifier)
 - https://nlqdb.com/blog/llm-concatenates-columns-text-to-sql/ (run 12 — engine lesson, SK-LLM-043 projection directive / positional-tuple EX)
 - https://nlqdb.com/blog/bird-gold-noise-distinct/ (run 14 — engine lesson, SK-QUAL-014 loss-bucketing before prompt directives)
+- https://nlqdb.com/blog/llm-preflight-probe-health/ (run 17 — CI/engine lesson, SK-LLM-042 probe-health ≠ agent-competence)
 
 ## Last change
 
-**2026-07-06 (run 15)** — lever: **ship + measure `SK-QUAL-022`** — run 14's
-named next engine sub-lever. Two coupled changes, one root cause (the 5 s
-`plan` clamp mislabeling frontier timeouts): (a) `tools/eval/src/lanes.ts` —
-frontier + agentic-frontier routers use `plan: 30_000`
-(`FRONTIER_PLAN_TIMEOUT_MS`); the free lane keeps the prod 5 s clamp so it
-still measures what ships; (b) `packages/llm/src/providers/openai-compatible.ts`
-bug fix — an abort during `res.json()` throws `timeout`, not `parse` (honors
-`SK-QUAL-020`'s non-engine intent). **Measured** (same 150-q smoke, seed
-20260607, resumed across 3 `SK-QUAL-013` windows to `resumable:false`,
-[run 28827203614](https://github.com/nlqdb/nlqdb/actions/runs/28827203614) →
-[28828073297](https://github.com/nlqdb/nlqdb/actions/runs/28828073297) →
-[28828961241](https://github.com/nlqdb/nlqdb/actions/runs/28828961241)):
-**frontier 66.67% → 68.67%** (100 → 103/150), **agentic-frontier 66.67% →
-69.33%** (100 → 104/150) — the clamp was suppressing the frontier EA exactly
-as run 14 diagnosed; the lift is directly attributable (same model/seed/
-questions, only the frontier plan budget moved; ~3–4 clamp-aborted questions
-recovered). Headline delta 13.34 → 18.66 pts — *wider* because the frontier
-lane rose to its honest value (the 13.34 was understated by the clamp) plus
-free-lane capacity noise (80 → 76/150, free code unchanged); still ≤ 25 pp.
-**Confirms run 14's ≤ 0.70 ceiling: agentic 0.693 < the 0.80 floor, so the
-Phase-2 criterion (row #16) now fails on a genuine competence gap, not the
-instrument.** **Step-0 non-overlap:** no open PRs at dispatch; run 14 (#621,
-merged) owns the row-#11 diagnosis this PR *fixes*; funnel/ops/docs-ambiguity
-rows carry from #619 unchanged. **Step-3 artifact:** queue was at 2 (< 3) ⇒
-drafted (not published) `llm-timeout-looks-like-hallucination` (this run's
-engine lesson); queue now 3 ⇒ next run publishes. **KPI:** GLOBAL-025 engine
-quality — frontier-lane EA measured honestly (clamp removed), row #16
-criterion now instrument-clean. None degrade: zero prod code touched (eval
-harness + a router error-classification bug fix + docs); canonical baselines
-byte-untouched (smoke never overwrites, `SK-QUAL-002`).
+**2026-07-07 (run 17)** — lever: **docs-ambiguity (row #17), 28 → 26**.
+BIRD EX (row #8, weekly focus) is a floor this week — every agent-movable
+sub-lever is closed and the only live move (the corrected-set) is
+license-blocked (P2) ⇒ dark for the lever (rule 8); and engine is
+anti-rut-blocked (3 of the last 5 merged daily PRs pulled it, rule 7). So this
+run pulled the worst *agent-movable + unblocked* number: the open-question
+count. Resolved two `premium-tier` router-contract questions via GLOBAL-033,
+each grounded in code + existing decisions with **zero code change** (the
+current behavior is already correct — the run pins the contract so a future
+reader can't misread it): **(1)** `SK-PREMIUM-014`'s "never a silent downgrade"
+does *not* extend to the create/DDL router — `db-create/build-deps.ts` wires
+`getLLMRouter()` (the strict-$0 chain) unconditionally, and the `model` preset
+is scoped to the `/v1/ask` query path, so create-on-free is out-of-scope, not a
+downgrade (no 409, no trace note); **(2)** the founder-funded frontier lane
+(`SK-FRONTIER-001`) does *not* satisfy `best` — `apps/api/src/ask/frontier-router.ts`
+only augments the `auto`/FREE path and its availability is non-deterministic
+(`SK-FRONTIER-004` exclusions + budget-tier exhaustion), so `best` stays the
+deterministic entitlement contract (409 when unentitled) and the founder lane
+lifts `auto` silently-*upward* (a documented upgrade, not the forbidden
+downgrade). **Step-3 artifact:** queue was at 3 (≥ 3) ⇒ published, didn't draft;
+took the next-oldest ready draft (open PR #623 owns the oldest,
+`model-preset-fail-loud`) → **`/blog/llm-preflight-probe-health`** (SK-LLM-042
+CI lesson: probe-health ≠ agent-competence). Indexable surfaces **81 → 82**
+(row #6, verified in built `dist/llms.txt` + `sitemap.xml`); queue → 2.
+**Step-0 non-overlap:** open PR #623 (run 16) owns row #4 + `apps/api/src/index.ts`
++ onboarding FEATURE + the `model-preset-fail-loud` publish — this run touches
+none of them. **KPI:** GLOBAL-025 UX/onboarding — clarity increases (two
+router contracts pinned) + a distribution surface shipped. **None degrade:**
+`typecheck` clean, `lint` exit 0, api **872** + web **220** tests green, link
+sweep **102 pages / 0 dead** (row #18); zero prod code touched (docs +
+`apps/web/src/data/blog.ts` data), engine baselines byte-untouched.

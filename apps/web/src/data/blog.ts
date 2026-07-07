@@ -41,6 +41,63 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "llm-preflight-probe-health",
+    title: "Your LLM health probe passed. Your agent still starved.",
+    description:
+      "Six straight LLM-agent CI runs failed while our pre-flight probe stayed green. Lessons on gating CI on an LLM provider: probe the real shape, read the body not the status, never trust one model.",
+    date: "2026-07-07",
+    body: [
+      {
+        kind: "p",
+        text: "We gate an end-to-end suite on a live free LLM: before the agent test runs, a pre-flight probe checks the model is up. The probe was green. The suite failed anyway — six runs in a row. Every failure was the agent starving mid-task on a model the probe had just certified healthy. Here is what a health probe in front of an LLM provider has to actually check, learned one red run at a time.",
+      },
+      { kind: "h2", text: "1. Probe the exact shape you'll use — not a 1-token ping" },
+      {
+        kind: "p",
+        text: "The cheap probe is a one-token completion: send \"hi\", get a token back, call it healthy. But your agent doesn't send \"hi\" — it does a tool-call round trip: system prompt, tool schemas, a turn that must emit a well-formed tool call. A model (or a saturated free pool) can return a token for \"hi\" and still fail to produce a valid tool call under load. Probe the shape you depend on. Ours now does a real tool-call round trip and asserts the response parses as a tool invocation, because that is the capability the suite needs — not liveness.",
+      },
+      { kind: "h2", text: "2. Check the body, not the status" },
+      {
+        kind: "p",
+        text: "This one cost us the most time. The probe checked `res.ok` and moved on. But an AI gateway in front of the provider wraps an upstream 429 in an HTTP 200 envelope — the transport succeeded, the body carries the error. `res.ok` is necessary, never sufficient, for anything behind a gateway.",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: "// Looks healthy. Isn't.\nconst res = await fetch(gatewayUrl, { ... });\nif (res.ok) return \"healthy\"; // 200 wrapping an upstream 429\n\n// The upstream status lives in the body.\nconst json = await res.json();\nif (json.error || json.choices?.[0]?.finish_reason === \"error\") {\n  return \"unhealthy\";\n}",
+      },
+      { kind: "h2", text: "3. Saturated free pools flap — require N consecutive healthy probes" },
+      {
+        kind: "p",
+        text: "A single healthy probe against a free model pool is a coin flip when the pool is busy: the next request lands on a different, throttled backend. One green probe means \"a backend was free 40 ms ago,\" not \"the pool is healthy.\" We now require three consecutive healthy probes before the gate opens — enough to distinguish a stable pool from a flapping one, cheap enough to stay fast.",
+      },
+      { kind: "h2", text: "4. Probe-time health can't promise a 15-minute window" },
+      {
+        kind: "p",
+        text: "Even three green probes only certify the moment they ran. A suite that takes fifteen minutes will outlive that certification — the pool that was healthy at minute zero can throttle at minute nine. A pre-flight gate reduces the odds of starting a doomed run; it cannot guarantee the run finishes. Pair the gate with client-side backoff and retry inside the run, so a mid-run throttle is absorbed instead of failing the suite. The gate and the backoff do different jobs; you need both.",
+      },
+      { kind: "h2", text: "5. Never hard-code one model — walk an ordered candidate list" },
+      {
+        kind: "p",
+        text: "Our six red runs all pointed at one hard-coded free model. When that single model's pool got busy, there was no fallback and no signal beyond a failed suite. The fix is an ordered candidate list: probe the first, fall through to the next on an unhealthy verdict, and run against the first that clears. One model is a single point of failure you control — so don't build one.",
+      },
+      { kind: "h2", text: "6. Probe-healthy is not agent-competent" },
+      {
+        kind: "p",
+        text: "The subtlest lesson: a model can ace the probe and still be useless to the agent. Trace-verified in our runs, a probe-healthy free model spammed forbidden tools, leaked raw `<|tool_call_id|>` framing tokens into its tool arguments, and burned a 240-second budget without ever reaching a verdict. Health and competence are different axes. Gate CI on health — is the pool up — but rank your candidate list by demonstrated competence — which model actually finishes the task. A model that flunks the task never earns the top slot no matter how green its probe.",
+      },
+      { kind: "h2", text: "The honest split" },
+      {
+        kind: "p",
+        text: "This is CI reliability engineering, not a claim about model quality. None of it makes a weak model strong; it stops a busy free pool from being scored as a broken product. If you gate any pipeline on a live LLM provider: probe the real shape, read the body not the status, require consecutive greens, pair the gate with in-run backoff, walk a candidate list, and rank that list by competence — not by whichever model answered your ping first.",
+      },
+      {
+        kind: "p",
+        text: "(These probes guard the agent E2E suite for [nlqdb](https://nlqdb.com), the data layer you ask in English — we run the free-model chain in CI on purpose, so the harness has to tell a saturated pool apart from a real regression.)",
+      },
+    ],
+  },
+  {
     slug: "bird-gold-noise-distinct",
     title: "Your text-to-SQL model isn't as wrong as your benchmark says. The gold SQL is.",
     description:
