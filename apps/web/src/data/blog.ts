@@ -54,7 +54,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "1. Probe the exact shape you'll use — not a 1-token ping" },
       {
         kind: "p",
-        text: "The cheap probe is a one-token completion: send \"hi\", get a token back, call it healthy. But your agent doesn't send \"hi\" — it does a tool-call round trip: system prompt, tool schemas, a turn that must emit a well-formed tool call. A model (or a saturated free pool) can return a token for \"hi\" and still fail to produce a valid tool call under load. Probe the shape you depend on. Ours now does a real tool-call round trip and asserts the response parses as a tool invocation, because that is the capability the suite needs — not liveness.",
+        text: 'The cheap probe is a one-token completion: send "hi", get a token back, call it healthy. But your agent doesn\'t send "hi" — it does a tool-call round trip: system prompt, tool schemas, a turn that must emit a well-formed tool call. A model (or a saturated free pool) can return a token for "hi" and still fail to produce a valid tool call under load. Probe the shape you depend on. Ours now does a real tool-call round trip and asserts the response parses as a tool invocation, because that is the capability the suite needs — not liveness.',
       },
       { kind: "h2", text: "2. Check the body, not the status" },
       {
@@ -64,12 +64,12 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         kind: "code",
         lang: "ts",
-        code: "// Looks healthy. Isn't.\nconst res = await fetch(gatewayUrl, { ... });\nif (res.ok) return \"healthy\"; // 200 wrapping an upstream 429\n\n// The upstream status lives in the body.\nconst json = await res.json();\nif (json.error || json.choices?.[0]?.finish_reason === \"error\") {\n  return \"unhealthy\";\n}",
+        code: '// Looks healthy. Isn\'t.\nconst res = await fetch(gatewayUrl, { ... });\nif (res.ok) return "healthy"; // 200 wrapping an upstream 429\n\n// The upstream status lives in the body.\nconst json = await res.json();\nif (json.error || json.choices?.[0]?.finish_reason === "error") {\n  return "unhealthy";\n}',
       },
       { kind: "h2", text: "3. Saturated free pools flap — require N consecutive healthy probes" },
       {
         kind: "p",
-        text: "A single healthy probe against a free model pool is a coin flip when the pool is busy: the next request lands on a different, throttled backend. One green probe means \"a backend was free 40 ms ago,\" not \"the pool is healthy.\" We now require three consecutive healthy probes before the gate opens — enough to distinguish a stable pool from a flapping one, cheap enough to stay fast.",
+        text: 'A single healthy probe against a free model pool is a coin flip when the pool is busy: the next request lands on a different, throttled backend. One green probe means "a backend was free 40 ms ago," not "the pool is healthy." We now require three consecutive healthy probes before the gate opens — enough to distinguish a stable pool from a flapping one, cheap enough to stay fast.',
       },
       { kind: "h2", text: "4. Probe-time health can't promise a 15-minute window" },
       {
