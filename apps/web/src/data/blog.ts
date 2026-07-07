@@ -41,6 +41,65 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "model-preset-fail-loud",
+    title: 'Your "best model" toggle quietly serves the cheap model. Ship a 409 instead.',
+    description:
+      "When the premium lane isn't available, the tempting branch is to silently serve the default chain. A placebo knob is worse than no knob. The honest contract: pin, upgrade, or fail loud.",
+    date: "2026-07-07",
+    body: [
+      {
+        kind: "p",
+        text: "Every AI product has a model picker now — Fast / Balanced / Best, or a dropdown of names. You add one to your app. Then you hit the branch that decides how good a knob it is: the user picked **Best**, but the premium lane isn't available right now. No API key on file, no paid plan, the metered lane is dark. What do you do?",
+      },
+      {
+        kind: "p",
+        text: "The tempting answer is to quietly serve the default chain. The request succeeds, an answer comes back, nobody sees an error. It feels graceful. It is the single worst thing you can do, and it took us a review pass to stop doing it ourselves.",
+      },
+      { kind: "h2", text: "A placebo knob is worse than no knob" },
+      {
+        kind: "p",
+        text: 'When "Best" silently downgrades to "cheapest", the user asked for one thing and got another, and the *only* signal they ever get is quality variance. Their answers are a little worse than they expected, intermittently, for reasons they can\'t see. They won\'t file a bug that says "the Best toggle is a no-op" — they\'ll conclude your product is unreliable and churn. You\'ve spent UI real estate and a database column building a control that lies, and the lie is expensive precisely because it\'s invisible.',
+      },
+      {
+        kind: "p",
+        text: "A product with no picker at all is more honest: it makes no promise it can't keep. So if you ship the knob, the knob has to never lie about which chain answered.",
+      },
+      { kind: "h2", text: "The honest contract is three lines" },
+      {
+        kind: "ol",
+        items: [
+          "`fast` **pins the cheap chain — always.** Even when a stored provider key *would* auto-upgrade the request. An explicit per-request instruction beats an ambient credential: the caller who wrote `model: fast` into a nightly CI job means it, and silently spending their premium budget because a key happens to be on file is the same betrayal in the other direction.",
+          "`best` **gets a real frontier lane, or it fails loud.** If the premium lane is live for this caller, route to it. If not, return a `409` with a machine-branchable error code (`model_unavailable`) and a fix-it link — not a 200 with a trace note nobody reads. An error the caller can branch on is a contract; a buried warning is a shrug.",
+          "`auto` / absent **stays the default chain.** No opinion expressed, no promise made, cheapest-that-works — the behavior you already had before the knob existed.",
+        ],
+      },
+      {
+        kind: "code",
+        lang: "typescript",
+        code: '// one pure function, shared by every surface\nfunction selectDispatchLane(preset, caller) {\n  if (preset === "fast") return { lane: "free" };        // pin, ignore stored keys\n  if (preset === "best") {\n    return caller.hasFrontierLane\n      ? { lane: "frontier" }\n      : { error: "model_unavailable", status: 409, link: FIX_IT_URL };\n  }\n  return { lane: caller.defaultLane };                    // auto / absent\n}',
+      },
+      { kind: "h2", text: "The refusal is your demand signal" },
+      {
+        kind: "p",
+        text: "Here's the bonus that makes failing loud strictly better than degrading quietly. Every `model_unavailable` you return is a user telling you, in the clearest possible terms, that they want a paid lane you haven't lit yet. Count them and you have a demand curve with an honest denominator — real requests for the upgrade, not survey wishes. A silent downgrade throws that signal away; a 409 files it for you.",
+      },
+      { kind: "h2", text: "Make it one function, or your surfaces will drift" },
+      {
+        kind: "p",
+        text: "The trap after you get the contract right is re-implementing it per surface. Your HTTP API, SDK, CLI, MCP server, and web app each resolve the preset, and the fourth one you write will subtly disagree with the first — one of them forgets the anonymous short-circuit and serves `best` off the free path before the lane check ever runs. Put the precedence in one pure function every surface calls, cover it with one test file, and the knob means the same thing everywhere by construction.",
+      },
+      { kind: "h2", text: "The rule" },
+      {
+        kind: "p",
+        text: "**A model knob is a contract, not a capability.** The free chain still answers most questions fine — this was never about having the best model. It's about the toggle never lying about which chain answered. Pin when told to pin, upgrade when you can, and fail loud with a code the caller can act on when you can't. Anything else is a placebo, and placebos cost you the trust you built the picker to earn.",
+      },
+      {
+        kind: "p",
+        text: "(This is how the model preset works on [nlqdb](https://nlqdb.com), the data layer you ask in English: `fast` pins the free chain, `best` gets a frontier lane or a `409 model_unavailable` with a fix-it link, and one shared function resolves it across the API, SDK, CLI, MCP server, and the `<nlq-data>` element — so the knob can't drift and can't lie.)",
+      },
+    ],
+  },
+  {
     slug: "llm-preflight-probe-health",
     title: "Your LLM health probe passed. Your agent still starved.",
     description:

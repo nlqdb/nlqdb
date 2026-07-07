@@ -71,11 +71,31 @@ when-to-load:
 
 ### SK-ONBOARD-006 — First-10-queries KPI measured by saturating D1 counters, not the events pipeline
 
-- **Decision:** The [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) first-10-queries success KPI (per new user/DB, share of the first 10 `/v1/ask` calls answered successfully; success = 2xx with a non-refused answer = the orchestrator's `ok` arm, confirm previews included) is instrumented as two saturating columns on the D1 `databases` row — `first10_asks`, `first10_ok` (migration `0020_first10_counters.sql`). The `/v1/ask` handler bumps them fire-and-forget via `ctx.waitUntil` on every routed completion; the `first10_asks < 10` SQL guard stops counting at the ordinal. The KPI read is one D1 query — `SELECT SUM(first10_ok) * 1.0 / SUM(first10_asks) FROM databases WHERE first10_asks > 0` — run by the `/daily` scorecard pull.
+- **Decision:** The [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) first-10-queries success KPI (per new user/DB, share of the first 10 `/v1/ask` calls answered successfully; success = 2xx with a non-refused answer = the orchestrator's `ok` arm, confirm previews included) is instrumented as two saturating columns on the D1 `databases` row — `first10_asks`, `first10_ok` (migration `0020_first10_counters.sql`). The `/v1/ask` handler bumps them fire-and-forget via `ctx.waitUntil` on every routed completion; the `first10_asks < 10` SQL guard stops counting at the ordinal. The KPI read is one D1 query — `SELECT SUM(first10_ok) * 1.0 / SUM(first10_asks) FROM databases WHERE first10_asks > 0` — run by the `/daily` scorecard pull (the *stranger-honest* form that excludes synthetic + founder/test traffic is `SK-ONBOARD-007`).
 - **Core value:** Simple, Free, Honest latency
 - **Why:** The obvious instrument is the events pipeline, but `ask.completed` is success-only by design (`SK-EVENTS-009`) and adding failure rows means widening the Tinybird `query_log` schema (documented "do not widen") plus new event/sink/wire/test surface — ~6 files for a number one UPDATE answers. D1 is already on the `/v1/ask` completion path (the `last_queried_at` touch), so the counter adds no new external system and needs no read-side ordinal windowing.
 - **Consequence in code:** `bumpFirst10()` in `apps/api/src/index.ts` next to `touchLastQueried()`; four call sites (SSE/JSON × ok/error). Calls that return before DB routing (creates, 409 `candidate_dbs`, anon pre-DB 429s) are not counted — the KPI is defined over asks routed to a DB, and per-DB is the unit ("per new user/DB").
 - **Alternatives rejected:** `ask.failed` event → Tinybird `query_log` — schema widening + multi-package surface, and the analyser doesn't need failure rows yet. OTel counter + KV ordinal — the number lands in Grafana, which the scorecard pull can't read today, and burns KV write budget per ask.
+
+### SK-ONBOARD-007 — First-10 KPI excludes synthetic (walker) traffic: UA-skip at the write, principal-join at the read
+
+- **Decision:** The [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) onboarding KPI is defined over **genuine strangers only** — the /daily loop mandates excluding nlqdb's own stranger-test bot traffic. Two coupled exclusions keep `SK-ONBOARD-006`'s counters honest: **(write)** `bumpFirst10()` in `apps/api/src/index.ts` skips the bump when the request User-Agent is nlqdb's walker UA (`isSyntheticUserAgent()`, `apps/api/src/synthetic-ua.ts`, matches the stable token `nlqdb-stranger-test` set in `tools/stranger-test/src/runner.ts`); **(read)** the scorecard KPI query joins `databases.tenant_id → user.email` and excludes the known founder/test principals (the roster maintained in `scorecard.md` row #2). The honest read:
+
+  ```sql
+  -- genuine-stranger first-10 success rate (0 rows ⇒ not yet measurable)
+  SELECT SUM(d.first10_ok) * 1.0 / NULLIF(SUM(d.first10_asks), 0)
+  FROM databases d
+  LEFT JOIN user u ON u.id = d.tenant_id
+  WHERE d.first10_asks > 0
+    AND (u.email IS NULL          -- anon (walker already excluded at write)
+         OR (u.email NOT LIKE '%@salfati.group'
+             AND u.email NOT IN ('omer.hochman@gmail.com', 'test@example.com')));
+  ```
+
+- **Core value:** Honest latency (the KPI reads what strangers experience, not what our bots do)
+- **Why:** The browser walkers (flows 001–003) drive the *real* anonymous `/v1/ask` path, so their asks bump the same counters a stranger's would. Anonymous walker DBs carry no `user` row, so the read-side principal join can't tell walker from stranger — only the request UA can. The write-side skip is the only place that distinction survives. Authed non-stranger traffic (founder + `test@example.com`) *is* recoverable by the read-side join, so it stays a read filter rather than a hardcoded allowlist on the hot path (P5).
+- **Consequence in code:** one pure exported helper `isSyntheticUserAgent()` + a single guard at the top of `bumpFirst10()` (covers all four SSE/JSON × ok/error call sites); the `last_queried_at` touch is deliberately left alone — TTL eviction (`SK-ANON-002`) is a separate mechanism. Measured 2026-07-07: pre-fix the counters read 3/8 = 37.5% but every row was founder+test (`omer.hochman@gmail.com`, `test@example.com`); genuine-stranger N = 0, so the true KPI is *not yet measurable* — the 35–37% previously reported was 100% non-stranger.
+- **Alternatives rejected:** a `synthetic` column on `databases` set at create-time from the creating UA — a migration + plumbing the UA into both INSERT sites (`neon-provision.ts`, `db-connect/connect.ts`, the latter security-sensitive) for a distinction the counter's own write already knows; and create-UA ≠ ask-UA in general. Skipping the bump is smaller and attributes the ask, not the create.
 
 ## GLOBALs governing this feature
 
