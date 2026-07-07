@@ -41,6 +41,56 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "llm-timeout-looks-like-hallucination",
+    title: "The timeout that looked like a hallucination",
+    description:
+      "Our NL→SQL benchmark scored a frontier model as junk on 5 hard questions. It never hallucinated — a 5s prod timeout aborted it mid-answer and the handler mislabeled the abort as a parse failure.",
+    date: "2026-07-07",
+    body: [
+      {
+        kind: "p",
+        text: "Our NL→SQL benchmark reported that a frontier model \"emitted junk\" — non-SQL, unparseable — on 5 of 150 hard questions, dragging its score below a floor a frontier model has no business sitting under. The number was real. The explanation was wrong. The model never hallucinated on those five. It was answering fine and we killed it mid-sentence, then filed the crime under the wrong charge.",
+      },
+      { kind: "h2", text: "The clamp you measure instead of the model" },
+      {
+        kind: "p",
+        text: "The request layer aborted every model call at a 5-second timeout — a budget **inherited from the production hot path**, where a user is staring at a spinner and 5 seconds is already too long. That budget is correct for what ships. It is exactly wrong for a benchmark, whose entire job is to measure what the model *can* do, not what fits in a latency SLA. A reasoning model on a hard schema wants seconds of chain-of-thought; a 5-second clamp truncates it. So the benchmark wasn't scoring the model. It was scoring the clamp — and reporting the clamp's verdict as the model's.",
+      },
+      {
+        kind: "p",
+        text: "The rule that fell out of this: **a benchmark's timeout budget is a measurement instrument, not a config value to reuse.** Separate \"what ships\" (the prod hot-path budget) from \"what the model can do\" (the eval budget). Point the frontier eval lane at its own generous budget and the score jumps to reflect the model, not the SLA. That single change lifted the lane off its false floor.",
+      },
+      { kind: "h2", text: "An aborted read is not a parse error" },
+      {
+        kind: "p",
+        text: "The second bug is why the truncation disguised itself. When the timeout fired, an `AbortController` cancelled the in-flight fetch. The code was mid-`res.json()`, so that read rejected — and the surrounding `catch` did the natural, wrong thing: no JSON, therefore the model returned something unparseable, therefore classify it `parse` (model emitted non-SQL). But the read didn't fail because the body was junk. It failed because *we* pulled the plug. The abort and the parse failure land in the same `catch`, and only one of them is the model's fault.",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: 'try {\n  const json = await res.json();\n  return classify(json);\n} catch (err) {\n  // WRONG: every failure here reads as "model returned non-SQL"\n  return { failure: "parse" };\n}\n\n// Right: the signal tells you who aborted the read.\ntry {\n  const json = await res.json();\n  return classify(json);\n} catch (err) {\n  if (controller.signal.aborted) return { failure: "timeout" }; // infra, not model\n  return { failure: "parse" };                                   // genuinely unparseable\n}',
+      },
+      {
+        kind: "p",
+        text: "Classify by the signal state, not by \"the JSON didn't parse.\" An `AbortError` when your own controller fired is a `timeout` — an infra event you own — not a model-quality datapoint. Conflate them and every timeout inflates your hallucination rate and deflates the model.",
+      },
+      { kind: "h2", text: "The tell was in the latencies" },
+      {
+        kind: "p",
+        text: "We should have caught this without reading a line of code, because the evidence was sitting in the numbers. Every single \"hallucination\" had a latency of 5000–5004 ms. Real model failures scatter across the latency distribution; these were pinned to the wall, all five clustered at exactly the timeout. A failure mode that always takes the same round number of milliseconds is never the model — it's a clock. **Log per-attempt latency next to every failure**, or you will stare at a bogus quality regression and never see the fingerprint.",
+      },
+      { kind: "h2", text: "The honest split" },
+      {
+        kind: "p",
+        text: "This is eval-harness measurement integrity, not a claim that the model is better than you thought — though in this case it was. None of it makes a weak model strong. It stops an infra artifact from being scored as incompetence. If you benchmark any model behind a timeout: give the eval its own budget separate from prod, classify aborts by the signal not the exception, and log the latency next to the verdict. Otherwise the first thing your benchmark measures is your own patience.",
+      },
+      {
+        kind: "p",
+        text: "(This is how we score the frontier lane for [nlqdb](https://nlqdb.com), the data layer you ask in English — the eval harness runs a separate capability budget from the production ask path, so the number reflects the model, not the SLA.)",
+      },
+    ],
+  },
+  {
     slug: "model-preset-fail-loud",
     title: 'Your "best model" toggle quietly serves the cheap model. Ship a 409 instead.',
     description:

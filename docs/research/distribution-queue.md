@@ -33,12 +33,6 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   fails the first query while its compute resumes, and instant retries replay
   the cold connection; the exec stage backs off (≤900 ms) so attempts 2/3 land
   warm while plan/route stay instant. **Full body in git history.**
-- **"The timeout that looked like a hallucination"** slug
-  `llm-timeout-looks-like-hallucination` · dev.to + r/LLMDevs + lobste.rs ·
-  measure-honestly theme (`SK-QUAL-022`) — a benchmark scored a 5 s
-  prod-hot-path timeout clamp as frontier "hallucination"; an aborted
-  `res.json()` read is a `timeout`, not a `parse` failure. **Full body in
-  git history.**
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
@@ -47,6 +41,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 20 — **https://nlqdb.com/blog/llm-timeout-looks-like-hallucination/** — dev.to (#llm #benchmarking #eval) + r/LLMDevs + lobste.rs · engine lesson (SK-QUAL-022 eval-budget ≠ prod SLA; abort ≠ parse failure; latency fingerprint)
 - run 106 — **https://nlqdb.com/blog/store-form-submissions-without-a-backend/** — dev.to + r/webdev + r/sideproject · `/solve/store-form-submissions-without-backend`
 - run 130 — **https://nlqdb.com/blog/not-in-subquery-null-trap/** — dev.to + r/SQL + r/PostgreSQL · `/solve/find-rows-with-no-match-in-another-table`
 - run 102 — **https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/** — dev.to + r/LLMDevs + r/AI_Agents · `/vs/hex`
