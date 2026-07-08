@@ -661,6 +661,31 @@
   color: #ff7b7b;
 }
 
+/* Free-model nudge (SK-PREMIUM-004) — short warning + switch CTA below a
+   reply the free chain struggled on. */
+.chat-reply__free-nudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-elev);
+}
+
+.chat-reply__free-nudge-text {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--fg);
+}
+
+.chat-reply__free-nudge-cta {
+  flex-shrink: 0;
+}
+
 .chat-reply__clarify {
   display: flex;
   flex-direction: column;

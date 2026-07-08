@@ -16,6 +16,14 @@ import { NlqdbApiError } from "@nlqdb/sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getChatClient } from "../../lib/chat-client";
 
+// Fired by the free-model nudge (FreeModelNudge, SK-PREMIUM-004) to ask this
+// picker to open + scroll into view. The picker owns its open state; the nudge
+// only requests it.
+export const MODEL_PICKER_OPEN_EVENT = "nlqdb:model-picker:open";
+// Fired whenever the BYOLLM status resolves or changes, so the chat panel
+// knows whether the user is on the free chain (gates the nudge).
+export const BYOLLM_STATUS_EVENT = "nlqdb:byollm-status";
+
 interface ModelPickerProps {
   apiBase: string;
   // The model that answered the most recent reply (from the trace, SK-TRUST-002).
@@ -94,6 +102,26 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
       live = false;
     };
   }, [client, refreshStatus]);
+
+  // Broadcast the resolved BYOLLM status so the chat panel can tell whether
+  // the user is on the free chain (SK-PREMIUM-004 nudge gating). Fires on the
+  // mount load and after every add/clear.
+  useEffect(() => {
+    if (!status) return;
+    window.dispatchEvent(
+      new CustomEvent(BYOLLM_STATUS_EVENT, { detail: { configured: status.configured } }),
+    );
+  }, [status]);
+
+  // Open (and scroll to) the picker when the free-model nudge requests it.
+  useEffect(() => {
+    function onOpen() {
+      setOpen(true);
+      rootRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    window.addEventListener(MODEL_PICKER_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(MODEL_PICKER_OPEN_EVENT, onOpen);
+  }, []);
 
   // Stable so the close-on-outside-click effect below doesn't re-subscribe
   // every render; only setState setters (stable) are captured.
