@@ -18,22 +18,17 @@ last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric moved through its agent-movable inputs (distribution
-surfaces/yield). Distribution-*publish* is gated this run by step-3's queue
-rule (queue < 3 ⇒ draft, don't publish). Engine (row #8, weekly focus) is dark
-for the lever (rule 8) + anti-rut-blocked (rule 7) — run 27 (merged just
-before this) already took this cycle's engine move (Spider row #9, git log has
-detail). **Today's lever
-(07-08, run 26): docs-ambiguity (row #17), 24 → 23** — resolved **byo-connect
-Open question (a)** (ClickHouse SQL validated by the Postgres read/write
-validator, `sql-validate.ts` = `node-sql-parser` not `libpg_query`): research
-(P2) found `node-sql-parser` has no ClickHouse dialect, so **Decided: no
-per-grammar CH validator** — the engine-agnostic leading-verb allowlist stays
-load-bearing (`SK-MULTIENG-004`); a scoped engine-aware `validateSql`
-follow-up ships in a dedicated PR. Fresh lever category, anti-rut-clear
-(docs-ambiguity was 2 of last 5 daily PRs); step-0 clean (no other open PRs).
-**Artifact (step 3):** queue < 3 ⇒ drafted one new engine/security post
-(`postgres-validator-rejects-valid-clickhouse-sql`, queue 2 → 3). Detail in
-*Last change*.
+surfaces/yield). Engine (row #8, weekly focus) is dark for the lever (rule 8) +
+anti-rut-blocked (rule 7). **Today's lever (07-08, run 28): distribution-publish
+— indexable surfaces (row #6), 85 → 86** — the queue held **3** drafts (≥ 3), so
+step 3 mandates *publish, don't draft*: shipped the oldest ready draft
+`one-way-internal-links-leak-yield` (run-19 distribution lesson — invert the
+existing `anchor` field into a reciprocal backlink; a tree link-graph starves
+fresh pages of inbound links and dead-ends readers). Fresh lever category
+(publish was 1 of last 5 merged daily PRs — run 24), anti-rut-clear; step-0
+non-overlap: only open PR #637 owns `packages/elements/**` + rows #19/#20 — this
+run touches only `data/blog.ts` + queue + scorecard rows #6/#7. Queue now **2**
+(< 3 ⇒ next run drafts). Detail in *Last change*.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -44,8 +39,8 @@ follow-up ships in a dedicated PR. Fresh lever category, anti-rut-clear
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (run 16, `SK-ONBOARD-007`, remote-D1 07-07). Unfiltered counters read 3/8 = **37.5%** but a `tenant_id → user.email` join shows all 3 rows are founder (`omer.hochman@gmail.com`) + `test@example.com` — the 35–37% previously reported was 100% non-stranger | target ≥ 95%. **Attribution gap fixed** (was "the instrument's next fix"): write-side skips the stranger-test walker UA (`isSyntheticUserAgent`, anon case the join can't see); read-side joins `user` + excludes founder/test. Honest read is now N=0 (matches row #2), not a placebo rate |
 | 5 | Session retention (≥ 2 queries) | 3 DBs with `first10_asks ≥ 2` (same attribution caveat as row #4) | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **85** (`/vs` 31 + `/solve` 33 + `/blog` 21) — run-24 lever: published `serverless-db-cold-start-retry` (SK-ASK-013 engine/ops lesson; build-verified `dist/blog/serverless-db-cold-start-retry/index.html`, in `llms.txt` + `sitemap.xml`, 104 → 105 built pages). Oldest ready draft drained (run 24, queue was ≥ 3). **Run 26: queue 2 → 3** — drafted `postgres-validator-rejects-valid-clickhouse-sql` (engine/security lesson); pending drafts now `postgres-validator-rejects-valid-clickhouse-sql` + `blog-without-a-feed-is-a-dead-end` [run 22] + `one-way-internal-links-leak-yield` [run 19]; ≥ 3 ⇒ next run publishes | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts 21 (run 24: +`serverless-db-cold-start-retry`); 7d external referrals = **1** (`bing.com`, 1 pageload). **Run 22: syndication feeds 0 → 1** — shipped `/rss.xml` (hand-rolled RSS 2.0 over `data/blog.ts`, site-wide autodiscovery; `rss.xml.test.ts` 5 invariants) so feed readers + dev.to/Medium/Hashnode can auto-import the canonical copy (`rel=canonical` back). **Run 19: internal-link reciprocity 0 → 10** — added the reciprocal "Further reading" backlink on all 10 anchored `/solve`+`/vs` pages so every post has ≥1 internal inbound link (internal links 2417 → 2427). | CF `refererHost` — measured every run. Attacks "volume without yield" at its SEO/UX input; external-referral re-measure lags indexation |
+| 6 | Indexable surfaces | **86** (`/vs` 31 + `/solve` 33 + `/blog` 22) — **run-28 lever: published `one-way-internal-links-leak-yield`** (run-19 distribution lesson; build-verified `dist/blog/one-way-internal-links-leak-yield/index.html`, in `llms.txt` + `sitemap.xml`, 105 → 106 built pages). Queue was ≥ 3 ⇒ published the oldest ready draft (step 3). Pending drafts now **2** (`postgres-validator-rejects-valid-clickhouse-sql` [run 26] + `blog-without-a-feed-is-a-dead-end` [run 22]); < 3 ⇒ next run drafts | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
+| 7 | Surface yield | posts 22 (run 28: +`one-way-internal-links-leak-yield`); 7d external referrals = **1** (`bing.com`, 1 pageload). **Run 22: syndication feeds 0 → 1** — shipped `/rss.xml` (hand-rolled RSS 2.0 over `data/blog.ts`, site-wide autodiscovery; `rss.xml.test.ts` 5 invariants) so feed readers + dev.to/Medium/Hashnode can auto-import the canonical copy (`rel=canonical` back). **Run 19: internal-link reciprocity 0 → 10** — reciprocal "Further reading" backlink on all 10 anchored `/solve`+`/vs` pages. Internal links 2580 → 2605 (run-28 build). | CF `refererHost` — measured every run. Attacks "volume without yield" at its SEO/UX input; external-referral re-measure lags indexation |
 | | **Engine** — BIRD 07-05 · Spider 07-08 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.526** (262/498 EA, 2 `gold_error`, 07-05 canonical, [run 28742006051](https://github.com/nlqdb/nlqdb/actions/runs/28742006051)). **`SK-QUAL-017` SC verdict (run 12, 07-06):** first N≥2 dispatch (N=3, temp 0.7, 150q smoke, [run 28761582097](https://github.com/nlqdb/nlqdb/actions/runs/28761582097)) = **79/150 = 0.5267, exactly flat vs the same-directive-set greedy comparator** (canonical run restricted to the identical 150 qids: 79/150; b=8/c=8, p=1.0; SC `no_sql` 1/150) — majority-vote at 3× quota buys 0 on the free chain; the 8↔8 swaps are provider-mix noise | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Baseline re-seeded 07-05. `SK-LLM-043` live-verified (run 11): `\|\|` concats 7 → 3 run-wide. Offline deterministic-ceiling lever exhausted; **SC lever dead (#619); frontier-lens levers closed (run 15, `SK-QUAL-022`)** — only live BIRD-free move is the parked corrected-set (license, P2) |
 | 9 | Spider raw EX | **0.2444** (33/135, 07-08 capacity-honest full run, [run 28959809497](https://github.com/nlqdb/nlqdb/actions/runs/28959809497), resumed from [28958045313](https://github.com/nlqdb/nlqdb/actions/runs/28958045313) per `SK-QUAL-013`, gold_error 0) | target 0.75; **run-27 lever: capacity-honest re-measure 0.1926 → 0.2444 (26 → 33/135, +7q / +5.19 pp).** The 07-02 0.1926 was free-lane capacity-throttled ⇒ undercount; this run waited out throttles (`--capacity-wait-ms 65000`, 2 windows to `resumable:false`) on `main` 6e6b486. Still worst engine number (target 0.75). Spider has no baseline file (BIRD-only, `SK-QUAL-018`) — this row is Spider's source of truth |
@@ -60,7 +55,7 @@ follow-up ships in a dedicated PR. Fresh lever category, anti-rut-clear
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (35.3% walker-dominated, N=17 — row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: the agentic-frontier criterion is now **measurement-clean** (clamp fixed) — closing the remaining ~11 pp to 0.80 is a real engine-competence lift (multi-model frontier chain `SK-LLM-017`, or the parked corrected-set); first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **23** (07-08; run 26 lever: −1, resolved `byo-connect` OQ **(a)** ClickHouse-SQL-on-the-PG-validator — Decided: no per-grammar CH validator (research: node-sql-parser has no CH dialect; ANTLR4 JS parsers bust the Workers budget), keep the dialect-agnostic leading-verb allowlist load-bearing + a scoped engine-aware-`validateSql` follow-up; also corrected the doc's `libpg_query`→`node-sql-parser` factual error — genuine resolution, not a relabel; detail in *Last change*). **Prior levers** (git preserves full detail): run 23 −1 (`byo-connect` OQ (c) DNS-rebind TOCTOU); run 21 −1 (`e2e-coverage` cold-start OQ → run 18 `SK-ASK-013`); run 17 −2 (`premium-tier` router contracts); run 6 −4 (body-already-settled relabels). | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-08 run-24 sweep: **105** pages, **2,580** internal links — +1 page / +25 links vs run 22 = the new `serverless-db-cold-start-retry` post + its inbound nav/index/sitemap/llms links) | target 0 — sweep is repeatable: `cd apps/web && bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-08 run-28 sweep: **106** pages, **2,605** internal links — +1 page / +25 links vs run 24 = the new `one-way-internal-links-leak-yield` post + its inbound nav/index/sitemap/llms links) | target 0 — sweep is repeatable: `cd apps/web && bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
 | 19 | Live-surface claim integrity | **0 tracked gaps** (07-08 re-audit; run 25 found + closed 1) | claim-vs-reality on shipped user-facing surfaces; target 0. **Run 25 lever:** `/pricing` free tier claimed *"Sleeps after 7 days idle"* — the same 7d claim sat on 3 surfaces (`/pricing` copy + `SK-RL-005` + `architecture.md` §5), implemented by no code, contradicting reality: free-tier Neon compute scales to zero at Neon's **~5-min auto-suspend** (`SK-ASK-013`; `index.ts:3446` keep-warm is *"strictly under Neon's 5-min auto-suspend"*), and `db-sweep` *"never touches authed user DBs"* (only anon 90-day deletion). No 7-day sleep exists. Fixed to *"Sleeps when idle · wakes in <2s"* (found+closed same run ⇒ net 0, the run-9 pattern). Run-9 swept `/pricing`, MCP paths, CLI verbs, wrapper-publish, `architecture.md`. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | **schema ✅ · BYOLLM lanes ✅ · picker: web ✅ (`SK-PREMIUM-013`, #610) · picker parity ✅ (`SK-PREMIUM-014`, run 10: `model` preset + routing on `/v1/ask` — `fast` pins free, `best` 409s `model_unavailable` sans frontier lane — + SDK `model`, CLI `--model`, MCP `model`, `<nlq-data model>`; residual gaps tracked: `nlq model set`, per-provider key storage) · premium chain ⬜ · CTA (`SK-PREMIUM-004`) ⬜ · spend-cap UI ⬜** | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is **built before** the signal (lighting it is a flag flip); only the *meter firing* (Lago→Stripe) + cost-incurring infra stay dark. The meter staying off is not a reason to leave the slot unbuilt; drive ⬜→✅ each run (#610 07-04, run 10 07-05); next slot: the premium chain (`SK-LLM-017`, flag-dark) or the CTA |
@@ -73,6 +68,7 @@ follow-up ships in a dedicated PR. Fresh lever category, anti-rut-clear
 Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 `research/distribution-queue.md` as pointers:
 
+- https://nlqdb.com/blog/one-way-internal-links-leak-yield/ (run 28 — distribution lesson: invert the `anchor` field into a reciprocal backlink; measure the link graph, not the page count)
 - https://nlqdb.com/blog/agent-memory-vector-store-aggregation-gap/ (run 53 — anchors `/vs/pinecone`)
 - https://nlqdb.com/blog/store-form-submissions-without-a-backend/ (run 106 — anchors `/solve/store-form-submissions-without-backend`)
 - https://nlqdb.com/blog/not-in-subquery-null-trap/ (run 130 — anchors `/solve/find-rows-with-no-match-in-another-table`)
@@ -97,42 +93,28 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-08 (run 26)** — lever: **docs-ambiguity (row #17), 24 → 23** — resolved
-`byo-connect` Open question **(a)** (ClickHouse SQL validated by the Postgres
-read/write validator). Row #8 (weekly focus) is dark for the lever (rule 8) +
-engine anti-rut-blocked (rule 7); run 27 (merged just before this) already
-took this cycle's engine move (Spider row #9 — git log +
-`progress/quality-score-verification-log.md`). The worst-number input
-(distribution) is publish-gated this run by step-3's queue-<3-⇒-draft rule;
-step-0 clean (no other open PRs). **Investigation:** the
-read/write validator (`sql-validate.ts`, applied upstream to CH per
-`build-deps.ts:119`) parses with `node-sql-parser`
-`database:"PostgreSQL"` (`sql-validate.ts:274`) — **not `libpg_query`** as the
-doc claimed (that's the DDL sibling). Research (P2, 2026-07-08): `node-sql-parser`
-v5.4.0 ships **no ClickHouse dialect** (PG/MySQL/BigQuery/Redshift/Snowflake/…
-only) so no config makes it parse CH; the JS CH parsers (`dt-sql-parser`,
-`clickhouse-ast-parser`) are ANTLR4-generated and bust the Workers/`GLOBAL-013`
-bundle. **Decision:** reject a per-grammar `sql-validate-clickhouse.ts` — the
-false-`parse_failed` on valid CH grammar (`LIMIT n BY`, `quantile(0.5)(x)`,
-`ARRAY JOIN`, `WITH ROLLUP`) is real but the **security-load-bearing guard is the
-engine-agnostic leading-verb allowlist** (`ALLOWED_LEADING`/`LEADING_VERB_REJECT`
-+ multi-statement reject, which run *before* the AST parse), exactly the
-`SK-MULTIENG-004` "allowlist load-bearing since CH `readonly=1` doesn't block DDL"
-posture. Scoped non-blocking follow-up: make `validateSql` engine-aware so a
-PG-dialect `parse_failed` is non-authoritative for CH (needs a live-CH query test
-⇒ dedicated PR, not this doc run). Revisit trigger: an observed CH-only
-false-reject or managed-Tinybird's Pipe/table allowlist landing. Genuine
-resolution (D2/D3 — mechanism corrected, approach chosen, trigger set), not a
-relabel. **Artifact (step 3):** queue was 2 (< 3) ⇒ drafted one new
-engine/security post `postgres-validator-rejects-valid-clickhouse-sql` (the very
-lesson above), queue **2 → 3**; D4 kept the queue file under 20 KB by trimming
-older entries (git-recoverable). **Measured:** pinned grep 24 → 23 (verified before/after);
-`byo-connect/FEATURE.md` 15.5 KB, queue 19.95 KB (both < 20 KB); gate #3
-(`grep '^### GLOBAL-' docs/features/`) clean. **KPI:** GLOBAL-025 **engine
-quality** (multi-engine) — the CH read/write validation posture is now a
-documented, research-backed decision instead of an "accepted gap". **None
-degrade:** `typecheck` clean; docs-only diff — zero code/engine/API/baseline
-touched.
+**2026-07-08 (run 28)** — lever: **distribution-publish → indexable surfaces
+(row #6), 85 → 86** (posts 21 → 22). The queue held **3** drafts (≥ 3), so step 3
+mandates *publish, don't draft*: shipped the oldest ready draft
+`one-way-internal-links-leak-yield` (run-19 distribution lesson) as
+`/blog/one-way-internal-links-leak-yield/`. Row #8 (weekly focus) is dark for the
+lever (rule 8) + engine anti-rut-blocked (rule 7); publish is anti-rut-clear (1
+of last 5 merged daily PRs — run 24). **Step-0 non-overlap:** only open PR #637
+(run 28-elements) owns `packages/elements/**` + rows #19/#20 — this run touches
+only `apps/web/src/data/blog.ts` + `distribution-queue.md` + scorecard rows
+#6/#7/#18. **Artifact:** the post itself (recovered the run-19 body from git,
+wrote it as typed `BlogBlock`s per `SK-BLOG-002`, one-file edit to `data/blog.ts`
+which `blog/[slug].astro` + `blog/index.astro` + `sitemap.xml.ts` + `llms.txt.ts`
+all read). Queue drained to **2** (< 3 ⇒ next run drafts); the published draft
+became a venue pointer under `distribution-queue.md` § Published. **Measured
+(build-verified):** `apps/web` build 105 → 106 pages;
+`dist/blog/one-way-internal-links-leak-yield/index.html` present, and in
+`dist/llms.txt` + `dist/sitemap.xml` (grep 1 each); `bun run check:links` = 106
+pages / 2,605 internal links / **0 dead, 0 redirecting** (row #18). **KPI:**
+GLOBAL-025 **UX / distribution** advanced — one more indexable, self-canonical
+surface feeding funnel rows #1–#3 (the agent-movable input to the worst number,
+real strangers = 0). **None degrade:** docs + one data-file diff, zero
+engine/API/baseline/eval touched; `typecheck` + `lint` + `test` green on entry.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
