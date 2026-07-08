@@ -5,7 +5,9 @@
 // (bring-your-own-key) per GLOBAL-026 — selecting one you have no key for
 // opens a gentle inline key form (never a wall), and storing it routes every
 // later ask through your key. The "subscribe for included credits" door is the
-// hosted-premium lane (SK-PREMIUM-009), surfaced as "coming soon" until §6.
+// hosted-premium lane (SK-PREMIUM-009), surfaced as "coming soon" until §6,
+// with a "Count me in" button that records interest (founder notification
+// via `POST /v1/premium/interest`; server dedups repeat clicks).
 //
 // The model *strings* never live here: the catalog arrives over the wire from
 // `GET /v1/models` (SK-PREMIUM-003), so this file only ever renders labels and
@@ -65,6 +67,10 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // "Count me in" on the hosted-premium teaser. Not persisted: the server
+  // dedups repeat clicks per account, so a reload re-showing the button is
+  // harmless (a second click won't re-notify).
+  const [interest, setInterest] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const rootRef = useRef<HTMLDivElement>(null);
 
   const client = getChatClient(apiBase);
@@ -210,6 +216,16 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
     }
   }
 
+  async function countMeIn() {
+    setInterest("sending");
+    try {
+      await client.registerPremiumInterest();
+      setInterest("sent");
+    } catch {
+      setInterest("error");
+    }
+  }
+
   // Catalog not loaded yet — don't render a half-built control.
   if (!catalog) return null;
 
@@ -347,9 +363,33 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
             </p>
           ) : null}
 
-          <p className="model-picker__subscribe">
-            Prefer not to bring a key? A paid plan with included frontier credits is coming soon.
-          </p>
+          <div className="model-picker__subscribe">
+            {interest === "sent" ? (
+              <p className="model-picker__subscribe-text">
+                You're counted — we'll email you when the paid plan ships.
+              </p>
+            ) : (
+              <>
+                <p className="model-picker__subscribe-text">
+                  Prefer not to bring a key? A paid plan with included frontier credits is coming
+                  soon.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn--accent model-picker__countme"
+                  onClick={() => void countMeIn()}
+                  disabled={interest === "sending"}
+                >
+                  {interest === "sending" ? "Counting…" : "Count me in"}
+                </button>
+                {interest === "error" ? (
+                  <p className="model-picker__error" role="alert">
+                    Couldn't record that — try again.
+                  </p>
+                ) : null}
+              </>
+            )}
+          </div>
           {lastModel ? <p className="model-picker__last">Last answer used {lastModel}.</p> : null}
         </div>
       ) : null}

@@ -5,6 +5,7 @@ import {
   createTinybirdAdapter,
   type Engine,
 } from "@nlqdb/db";
+import { DEFAULT_FROM, makeEmailSender } from "@nlqdb/email";
 import { MODEL_CATALOG } from "@nlqdb/llm";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import {
@@ -92,6 +93,7 @@ import {
 } from "./memory/remember.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
+import { recordPremiumInterest } from "./premium-interest.ts";
 import {
   accountTenantIdFromPrincipal,
   makeRequirePrincipal,
@@ -2271,6 +2273,69 @@ app.delete("/v1/keys/byollm", requireSession, async (c) => {
       span.recordException(e);
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.keys.byollm.clear.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `POST /v1/premium/interest` — the "Count me in" door on the hosted-premium
+// lane (`SK-PREMIUM-013`'s subscribe door, §6-dark). Records demand in the
+// `premium_interest` D1 table (one row per account — the durable, queryable
+// signal for the §6 go/no-go); this is a premium-tier demand capture, not a
+// waitlist / access gate (GLOBAL-027 stays intact — the product is open).
+// Session-only: "whoever clicked" is the session identity.
+//
+// Dispatch-after-insert (SK-IDEMP-006): the table dedups by construction, so
+// the founder is emailed exactly once per account — on the *first* insert.
+// A repeat click (or an SDK retry, GLOBAL-022) hits the ON CONFLICT path,
+// records nothing new, and skips the email. The email is best-effort: a
+// Resend blip must not lose the (already-persisted) signal, so it's caught,
+// not surfaced. `Idempotency-Key` (GLOBAL-005) is honoured by the constant
+// `{ ok: true }` body — idempotent by construction.
+const FOUNDER_EMAIL = "omer@nlqdb.com";
+app.post("/v1/premium/interest", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.premium.interest", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const email = session.user.email ?? null;
+      const { firstTime } = await recordPremiumInterest(c.env.DB, session.user.id, email);
+      span.setAttribute("nlqdb.premium.interest.first_time", firstTime);
+      if (firstTime) {
+        // Notify the founder once. Best-effort: the signal is already in D1,
+        // so a send failure is logged (in makeEmailSender) and swallowed —
+        // never a 5xx that would tell the user their click didn't land.
+        try {
+          const sendEmail = makeEmailSender({
+            apiKey: c.env.RESEND_API_KEY,
+            from: c.env.RESEND_FROM ?? DEFAULT_FROM,
+          });
+          const who = email ?? `user ${session.user.id}`;
+          await sendEmail({
+            to: FOUNDER_EMAIL,
+            subject: `Hosted-premium interest: ${who}`,
+            text: [
+              `${who} clicked "Count me in" on the hosted-premium plan in the chat model picker.`,
+              "",
+              `user id: ${session.user.id}`,
+            ].join("\n"),
+            idempotencyKey: `premium-interest:${session.user.id}`,
+          });
+        } catch (mailErr) {
+          span.setAttribute("nlqdb.premium.interest.notify_failed", true);
+          span.recordException(mailErr as Error);
+        }
+      }
+      span.setAttribute("nlqdb.premium.interest.outcome", "ok");
+      return c.json({ ok: true });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.premium.interest.outcome", "internal_error");
       return c.json({ error: "internal_error" }, 500);
     } finally {
       span.end();
