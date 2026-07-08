@@ -169,13 +169,33 @@ the rule.
 
 ## Open questions / known unknowns
 
-- **(a) ClickHouse SQL is validated by the Postgres-dialect validator for now —
-  false `parse_failed` risk.** `sql-validate.ts` is `libpg_query`-based; run on
-  ClickHouse SQL it can reject valid ClickHouse grammar as `parse_failed`.
-  Accepted as a known gap at launch (the validator allowlist per `SK-MULTIENG-004`
-  is the load-bearing destructive-verb guard regardless). **Follow-up:** a
-  `sql-validate-clickhouse.ts` per-grammar validator (the `SK-MULTIENG-004`
-  per-engine-validator obligation).
+- **(a) ClickHouse SQL is validated by the Postgres read/write validator — Decided: no per-grammar CH parser; keep the dialect-agnostic allowlist load-bearing, make the PG AST parse engine-aware (2026-07-08).**
+  Correction first: the read/write validator (`sql-validate.ts`, applied
+  upstream to CH per `build-deps.ts:119`) is **`node-sql-parser`-based**, not
+  `libpg_query` (that's the DDL sibling `sql-validate-ddl.ts`) — it parses with
+  `database: "PostgreSQL"` (`sql-validate.ts:274`). Research (P2, 2026-07-08):
+  `node-sql-parser` (v5.4.0) ships **no ClickHouse dialect** (PG/MySQL/BigQuery/
+  Redshift/Snowflake/… only), so there is no config that makes it parse CH; the
+  JS ClickHouse parsers that exist (`dt-sql-parser`, `clickhouse-ast-parser`) are
+  ANTLR4-generated and bust the Workers/`GLOBAL-013` bundle budget. So a
+  `sql-validate-clickhouse.ts` per-grammar validator is **rejected** — the false
+  `parse_failed` risk is real (valid CH-only grammar — `LIMIT n BY`, parametric
+  aggregates like `quantile(0.5)(x)`, `ARRAY JOIN`, `WITH ROLLUP` — fails the PG
+  parse), but the security-load-bearing guard is the **engine-agnostic
+  leading-verb allowlist** (`ALLOWED_LEADING` / `LEADING_VERB_REJECT`, which run
+  *before* the AST parse and are dialect-independent) plus the multi-statement
+  reject — exactly the `SK-MULTIENG-004` "allowlist is load-bearing since CH
+  `readonly=1` doesn't block DDL" posture. The PG-dialect AST embedded-verb walk
+  is best-effort defense-in-depth that cannot reliably run on CH grammar anyway.
+  **Scoped fix (non-blocking correctness follow-up, not a new open question):**
+  thread `engine` into `validateSql` so a PG-dialect `parse_failed` is **not
+  authoritative for CH** — enforce the leading-verb allowlist + multi-statement
+  guard on the raw string, and keep the embedded-verb walk only when the parse
+  succeeds. Needs a live-CH query test before it ships (no CH fixture in the unit
+  env this run), so it lands in a dedicated PR with a CH read/write test, not a
+  daily doc run. **Revisit trigger:** an observed CH-only false-reject in the
+  wild, or managed-Tinybird landing its Pipe/table allowlist (`SK-MULTIENG-004`),
+  whichever first.
 - **(b) The planner emits Postgres-flavored SQL.** Correct ClickHouse SQL
   generation (engine-aware planner prompt / compile layer) is a separate
   follow-up; until it lands, ClickHouse-BYO queries that need ClickHouse-only

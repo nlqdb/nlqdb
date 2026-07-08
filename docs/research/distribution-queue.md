@@ -12,24 +12,42 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"You added ClickHouse. Your Postgres SQL validator now rejects valid
+  queries — quietly."** slug `postgres-validator-rejects-valid-clickhouse-sql` ·
+  venue dev.to (#sql #clickhouse #security) + r/dataengineering + lobste.rs
+  (`sql`) · engine/security lesson (`SK-MULTIENG-004`; byo-connect OQ (a)
+  resolution). Angle: bolt a second SQL engine onto a product that validates
+  generated SQL and the tempting move is "reuse the validator" — ours is a
+  `node-sql-parser` AST parse pinned to `database: "PostgreSQL"`. Point it at
+  ClickHouse and valid analytical grammar (`LIMIT n BY`, `quantile(0.5)(x)`,
+  `ARRAY JOIN`, `WITH ROLLUP`) fails the parse and the user's correct question
+  comes back `parse_failed` — a quiet false reject, nothing in the logs saying
+  "wrong dialect." The fix isn't "find a ClickHouse parser" (`node-sql-parser`
+  has no CH dialect; the ANTLR4 JS parsers are too heavy for an edge/Workers
+  bundle). It's noticing the validator did *two* jobs — enforce a
+  destructive-verb allowlist, and walk the AST for a verb smuggled into a CTE —
+  and only the second needs a parser. The first is a leading-verb regex:
+  dialect-agnostic, already cross-engine. So the security-load-bearing layer
+  works on every engine; the dialect-locked part is only defense-in-depth. Rule:
+  in a multi-engine guardrail a parse failure from the wrong dialect means
+  "wrong parser," not "dangerous query" — never let it decide whether a valid
+  query runs. Keep the dialect-agnostic allowlist authoritative; make the AST
+  parse best-effort per engine. You don't lower the security bar; you stop the
+  wrong parser vetoing correct SQL. (Layered guardrails, not one rule — the
+  Replit incident had three and still lost data.) Honest split: an engineering
+  lesson, not a product feature.
+
 - **"We published 20 blog posts and never shipped a feed. Nothing could
   subscribe."** slug `blog-without-a-feed-is-a-dead-end` · venue dev.to
   (#webdev #seo #rss) + r/webdev + lobste.rs · distribution lesson · anchors
-  the volume-vs-yield theme (scorecard rows #6/#7). Angle: a blog with no
-  RSS/Atom feed is a one-way street — the pages render, humans who already
-  know the URL can read them, and that's the end of the reach. Everything that
-  *pulls* content needs a feed URL: feed readers (Feedly, Inoreader), and — the
-  part that actually moves the yield needle — dev.to / Medium / Hashnode
-  "import your posts from RSS", which auto-mirror the canonical copy to a
-  high-authority venue with a `rel=canonical` back-link. Without a feed, every
-  venue re-post is a manual copy-paste that quietly stops happening. The trap
-  is thinking "publishing" ends when the page is live; it ends when a *machine*
-  can subscribe. The fix here was ~40 lines: a hand-rolled RSS 2.0 endpoint
-  over the *same* typed data file the sitemap already reads (no `@astrojs/rss`
-  dependency, Workers-safe, XML-escaped because titles are free text), plus one
-  `<link rel="alternate" type="application/rss+xml">` in the base head so it's
-  autodiscovered from every page. Lesson: count the *doors into* your content,
-  not just the pages. A post nobody can subscribe to is a post nobody re-shares.
+  volume-vs-yield (scorecard rows #6/#7): a blog with no RSS/Atom feed is a
+  one-way street — feed readers and dev.to/Medium/Hashnode "import from RSS"
+  (auto-mirror the canonical copy with `rel=canonical`) all need a feed URL, so
+  without one every venue re-post is a manual copy-paste that quietly stops.
+  Fix was ~40 lines: a hand-rolled RSS 2.0 endpoint over the same typed data
+  file the sitemap reads + one autodiscovery `<link rel="alternate">`. Lesson:
+  count the *doors into* your content, not just the pages. **Full body in git
+  history.**
 
 - **"We shipped 18 SEO pages and got 1 referral. The links only pointed one
   way."** slug `one-way-internal-links-leak-yield` · dev.to
@@ -74,10 +92,10 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 127 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no MEDIAN(). Here's the query you write instead — and the choice that changes the answer." (no `MEDIAN()` in Postgres; the answer is the ordered-set aggregate `percentile_cont(0.5) WITHIN GROUP (ORDER BY revenue)`, and swapping `0.5` gives any percentile; the trap is `percentile_cont` interpolates between the two middle rows while `percentile_disc` returns a real row, so they disagree on even/categorical sets — `cont` for continuous quantities, `disc` when it must be an observed value; order lives inside `WITHIN GROUP`; honest split — read-only, not a live p95 dashboard; anchors `/solve/calculate-median-or-percentile-in-sql`).
 
 - run 126 — dev.to / r/LLMDevs / r/LangChain: "LlamaIndex's text-to-SQL runs the SQL the model wrote. The docs tell you that; the demo doesn't." (`NLSQLTableQueryEngine` writes + *executes* the generated SQL — LlamaIndex's own docs call arbitrary SQL a security risk and leave restricted roles / read-only DB / sandboxing to you — and it assumes the DB already exists; same English prompt, two different jobs; honest split — LlamaIndex wins for SQL-as-one-retriever-among-docs+vectors and can call nlqdb as a tool, nlqdb is not a RAG framework; anchors `/vs/llamaindex`).
-- run 125 — dev.to / r/SQL / r/PostgreSQL: "LAG() is the whole month-over-month growth query. The self-join you were about to write is the bug." (month-over-month / period-over-period / YoY / WoW growth is one window-function shape, not a self-join on `month = month - 1` that breaks on missing months and December boundaries: `LAG(value) OVER (ORDER BY month)` reaches the previous row in an order you name, with a `NULLIF(prev, 0)` divide-by-zero guard and the `ORDER BY` as the definition of "previous"; YoY/WoW are the same query with a different offset, distinct from running-total's accumulate-down and top-N's rank-within; ask in English and read the SQL so you check the order and baseline; honest split — one-off read-only answer not a live MoM chart, you still name the period order; anchors `/solve/month-over-month-growth-in-sql`).
+- run 125 — dev.to / r/SQL / r/PostgreSQL: "LAG() is the whole month-over-month growth query. The self-join you were about to write is the bug." (MoM/YoY/WoW growth is one window shape — `LAG(value) OVER (ORDER BY month)` with a `NULLIF(prev,0)` guard — not a self-join on `month = month-1` that breaks on gaps/boundaries; anchors `/solve/month-over-month-growth-in-sql`).
 - run 124 — dev.to / r/Python / r/dataengineering: "PandasAI runs generated Python to answer your question. That's the feature and the footgun." (PandasAI reads a DataFrame/CSV/Postgres you already loaded and translates the question into Python+SQL and *executes it* to return answers, charts, cleaned columns, generated features — great in a notebook, but on a product path "generate Python and run it" is a bigger blast radius than "generate SQL, validate against an allow-list, run only that," and it assumes the data's already loaded rather than answering "where does the data live"; honest split — if a plotted figure is the deliverable PandasAI wins and the two compose, nlqdb owns+provisions the Postgres, shows the SQL, runs only validated SQL, diff-previews writes, and has no chart/cleansing/feature generation; anchors `/vs/pandasai`).
-- run 123 — dev.to / r/SQL / r/PostgreSQL: "The running-total query keeps every row. That's the part GROUP BY can't do." (a running total — revenue-to-date, running headcount, a rolling 7-day sum — needs a window function `SUM(amount) OVER (ORDER BY day)` that accumulates down an explicit order and keeps every row, not a `GROUP BY` that collapses to one number per bucket; `PARTITION BY` restarts the total per group and a frame clause (`ROWS BETWEEN 6 PRECEDING AND CURRENT ROW`) makes it a moving window; the wrong `ORDER BY`, unbroken ties, or a missing frame quietly break it; ask in English and read the SQL so you confirm the order and frame; honest split — you must name the accumulation order, one-off read-only curve not a live chart; anchors `/solve/running-total-cumulative-sum-in-sql`).
-- run 122 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead." (SQL Server has a `PIVOT` keyword; Postgres doesn't, so every reporting cycle you re-learn the two real answers — portable conditional aggregation (`SUM(...) FILTER (WHERE ...)` per column, tedious and easy to mis-bucket) or `crosstab()` from the `tablefunc` extension nobody has enabled; either way a plain `GROUP BY` gives tall rows when the spreadsheet wanted wide, and reshaping is the Googled part; ask in English and read the SQL so each column maps to the bucket you meant; honest split — pivot columns must be ones you can name, one-off read-only answer not a live crosstab dashboard, exact SQL over current rows; anchors `/solve/pivot-rows-into-columns`).
+- run 123 — dev.to / r/SQL / r/PostgreSQL: "The running-total query keeps every row. That's the part GROUP BY can't do." (a running total needs `SUM(amount) OVER (ORDER BY day)` that accumulates down an order and keeps every row, not a `GROUP BY` that collapses to one per bucket; `PARTITION BY` restarts per group, a frame clause makes it a moving window; anchors `/solve/running-total-cumulative-sum-in-sql`).
+- run 122 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead." (Postgres lacks SQL Server's `PIVOT`, so the two real answers are portable conditional aggregation (`SUM(...) FILTER (WHERE ...)` per column) or `crosstab()` from the `tablefunc` extension; a plain `GROUP BY` gives tall rows when you wanted wide; anchors `/solve/pivot-rows-into-columns`).
 - run 121 — dev.to / r/SQL / r/dataengineering: "The top-N-per-group query everyone re-Googles." (`greatest-n-per-group`: keeping the whole row per group needs `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` filtered to rank ≤ N, not `GROUP BY`+`MAX`; anchors `/solve/find-top-n-rows-per-group`).
 
 - run 120 — dev.to / r/dataengineering / r/LLMDevs: "Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest." (Dataherald/Vanna/Wren open-sourced the NL→SQL engine — a commodity you wire up in an afternoon — but ship it to people who don't know your schema and accuracy evaporates; the fix is *golden SQL*, hand-curated question→query pairs, a standing maintenance job the README undersells; honest split — nlqdb owns the Postgres it answers and skips golden SQL by prompting from the live schema fingerprint, no warehouse federation; anchors `/vs/dataherald`).
