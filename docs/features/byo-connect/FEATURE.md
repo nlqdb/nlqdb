@@ -180,18 +180,28 @@ the rule.
   generation (engine-aware planner prompt / compile layer) is a separate
   follow-up; until it lands, ClickHouse-BYO queries that need ClickHouse-only
   syntax may be mis-compiled. Not a security gap — a correctness gap.
-- **(c) DNS-rebind TOCTOU between connect-time guard and query-time use.**
+- **(c) DNS-rebind TOCTOU between connect-time guard and query-time use — Decided: re-resolve-before-use on both engines; sub-TTL residual accepted for the BYO threat model (2026-07-08).**
   `validateByoConnection` resolves-and-rechecks at connect time
   (`GLOBAL-035`), but a name resolved safe then can re-point to a private
   address before a later query. Mitigated by a **query-time egress re-guard**
   before each exec on **both** engines: the ClickHouse adapter re-runs
-  `guardEgressHostResolved` inside `buildClickhouseByoQuery`, and the BYO-PG
-  runner (`runByoPgQuery` in `ask/build-deps.ts`) re-resolves + re-classifies
-  the host before issuing the query. A **residual sub-TTL window** remains
-  (an attacker controlling DNS with a TTL shorter than the re-guard→connect
-  gap; neither adapter can pin the resolved IP into the underlying `fetch`).
-  Acceptable for BYO (the user supplied their own host); revisit if a non-BYO
-  outbound path is added.
+  `guardEgressHostResolved` inside `buildClickhouseByoQuery`
+  (`packages/db/src/clickhouse-byo.ts:107`), and the BYO-PG runner
+  (`runByoPgQuery` in `apps/api/src/ask/build-deps.ts:280`) re-resolves +
+  re-classifies the host before issuing the query, failing closed on a
+  private/reserved verdict. This is the industry-standard TOCTOU mitigation for
+  server-side fetches — *re-validate the resolved IP immediately before use*
+  (OWASP SSRF guidance; the ragflow/thingsboard/postiz 2025–26 fixes take the
+  same shape). A **residual sub-TTL window** remains (an attacker controlling
+  DNS with a TTL shorter than the re-guard→fetch gap; neither adapter can pin
+  the resolved IP into the underlying `fetch`). **Full closure** is IP-pinning
+  at the connection layer — dial the validated IP with the hostname in the
+  `Host` header, or route egress through a pinning proxy (Stripe's Smokescreen)
+  — which neither `neon()` nor Workers `fetch` exposes today. **Accepted for
+  BYO**: the user supplied their own host, so the only reachable target is their
+  own infrastructure (self-attack). **Revisit trigger stands**: if a non-BYO
+  outbound path is ever added, the target is no longer user-owned and IP-pinning
+  becomes load-bearing.
 - **(d) `connection_secret_ref` kept NOT NULL via the `__byo_blob__` sentinel — Resolved (additive design).**
   The sentinel keeps the migration additive (one nullable column, no constraint
   relaxation). Conditional follow-up only: if a future schema rev makes the column
