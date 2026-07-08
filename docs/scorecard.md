@@ -24,20 +24,17 @@ surfaces/yield), **but the distribution lane was taken this cycle** by **PR
 steered this run off distribution. **Today's lever (07-08, run 25): live-surface
 claim integrity (row #19)** — found + closed **1 previously-blind
 claim-vs-reality gap** on the `/pricing` free tier: *"Sleeps after 7 days idle"*
-was ungoverned marketing copy (no SK, no code) contradicting the shipped
-reality — free-tier Neon compute **scales to zero at Neon's ~5-min
-auto-suspend** (`SK-ASK-013`; `index.ts:3446` keep-warm cron is *"strictly under
-Neon's 5-min auto-suspend"*) and `db-sweep` explicitly *"never touches authed
-user DBs"*, so no 7-day sleep exists anywhere. Fixed to *"Sleeps when idle ·
-wakes in <2s"* (a straight code-wrong/reality-right bug fix per §10.2; the
-web-app feature's core value is **Honest latency / no fake working claims** /
-`GLOBAL-011`). Fresh lever category (claim integrity last pulled run 9), so
-anti-rut-clear and off both the dark row #8 and the now-merged distribution
-lane. Detail in *Last change*.
-**Step-0 non-overlap:** #633 (run 24) merged this cycle — it owned `blog.ts` +
-`distribution-queue.md` + scorecard rows #6/#7/#18; this run touches only
-`apps/web/src/pages/pricing.astro` (one copy line) + scorecard row #19 /
-header / Last-change — zero blog, zero queue, zero engine, zero API.
+contradicted reality (no code; free-tier Neon compute scales to zero at Neon's
+~5-min auto-suspend, not 7 days — `SK-ASK-013`), and the same 7d claim also sat
+in `SK-RL-005` + `architecture.md` §5 — all synced to *"Sleeps when idle · wakes
+in <2s"*. A code-wrong/reality-right bug fix (§10.2) inside the web-app core
+value (**Honest latency / no fake working claims** / `GLOBAL-011`). Fresh lever
+category (claim integrity last pulled run 9), so anti-rut-clear and off both the
+dark row #8 and the now-merged distribution lane. Detail in *Last change*.
+**Step-0 non-overlap:** #633 (run 24) merged this cycle (it owned `blog.ts` +
+`distribution-queue.md` + rows #6/#7/#18); this run touches only `pricing.astro`
+(one copy line) + the two mirror docs (`architecture.md` §5, `SK-RL-005`) +
+scorecard row #19 / header / Last-change — zero blog/queue/engine/API.
 **Engine finding (row #8), standing:** offline deterministic-ceiling lever
 exhausted (`SK-LLM-043` #605); SC dead (#619); frontier-lens levers closed
 (run 15, `SK-QUAL-022`). **0.526 is a floor whose only live move is the parked
@@ -71,7 +68,7 @@ pass** (row #16).
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **24** (07-08; run 23 lever: −1, resolved `byo-connect` OQ **(c)** DNS-rebind TOCTOU — per-query egress re-guard shipped on both engines (verified in code), sub-TTL residual accepted for the BYO threat model, P2-grounded vs OWASP/industry re-resolve-before-use best practice; keep-refs-in-sync per P3, not a relabel — detail in *Last change*). **Prior levers** (git preserves full detail): run 21 −1 (`e2e-coverage` cold-start OQ → run 18 `SK-ASK-013`); run 17 −2 (`premium-tier` router contracts); run 8 −1 (`agent-memory` matrix-freshness guard hardened); run 6 −4 (4 body-already-settled bullets relabeled to match). | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-08 run-24 sweep: **105** pages, **2,580** internal links — +1 page / +25 links vs run 22 = the new `serverless-db-cold-start-retry` post + its inbound nav/index/sitemap/llms links) | target 0 — sweep is repeatable: `cd apps/web && bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
-| 19 | Live-surface claim integrity | **0 tracked gaps** (07-08 re-audit; run 25 found + closed 1) | claim-vs-reality on shipped user-facing surfaces; target 0. **Run 25 lever:** `/pricing` free tier claimed *"Sleeps after 7 days idle"* — ungoverned copy (only occurrence repo-wide; no SK, no code) contradicting reality: free-tier Neon compute scales to zero at Neon's **~5-min auto-suspend** (`SK-ASK-013`; `index.ts:3446` keep-warm is *"strictly under Neon's 5-min auto-suspend"*), and `db-sweep` *"never touches authed user DBs"* (only anon 90-day deletion). No 7-day sleep exists. Fixed to *"Sleeps when idle · wakes in <2s"* (found+closed same run ⇒ net 0, the run-9 pattern). Run-9 swept `/pricing`, MCP paths, CLI verbs, wrapper-publish, `architecture.md`. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
+| 19 | Live-surface claim integrity | **0 tracked gaps** (07-08 re-audit; run 25 found + closed 1) | claim-vs-reality on shipped user-facing surfaces; target 0. **Run 25 lever:** `/pricing` free tier claimed *"Sleeps after 7 days idle"* — the same 7d claim sat on 3 surfaces (`/pricing` copy + `SK-RL-005` + `architecture.md` §5), implemented by no code, contradicting reality: free-tier Neon compute scales to zero at Neon's **~5-min auto-suspend** (`SK-ASK-013`; `index.ts:3446` keep-warm is *"strictly under Neon's 5-min auto-suspend"*), and `db-sweep` *"never touches authed user DBs"* (only anon 90-day deletion). No 7-day sleep exists. Fixed to *"Sleeps when idle · wakes in <2s"* (found+closed same run ⇒ net 0, the run-9 pattern). Run-9 swept `/pricing`, MCP paths, CLI verbs, wrapper-publish, `architecture.md`. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | **schema ✅ · BYOLLM lanes ✅ · picker: web ✅ (`SK-PREMIUM-013`, #610) · picker parity ✅ (`SK-PREMIUM-014`, run 10: `model` preset + routing on `/v1/ask` — `fast` pins free, `best` 409s `model_unavailable` sans frontier lane — + SDK `model`, CLI `--model`, MCP `model`, `<nlq-data model>`; residual gaps tracked: `nlq model set`, per-provider key storage) · premium chain ⬜ · CTA (`SK-PREMIUM-004`) ⬜ · spend-cap UI ⬜** | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is **built before** the signal (lighting it is a flag flip); only the *meter firing* (Lago→Stripe) + cost-incurring infra stay dark. The meter staying off is not a reason to leave the slot unbuilt; drive ⬜→✅ each run (#610 07-04, run 10 07-05); next slot: the premium chain (`SK-LLM-017`, flag-dark) or the CTA |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
@@ -112,23 +109,25 @@ focus) is dark for the lever (rule 8) + engine anti-rut-blocked (rule 7); the
 worst-number input (distribution) was **taken this cycle** by PR #633 (run 24,
 merged this cycle), so step-0 non-overlap steered off it to the next
 agent-movable, non-dark, non-overlapping lever. **Gap:** `/pricing` Free tier
-claimed *"Sleeps after 7 days idle"* — the **only occurrence repo-wide**,
-governed by no SK/doc and implemented by no code. Reality: free-tier Neon
-compute **scales to zero at Neon's ~5-min auto-suspend** (`SK-ASK-013`; the
-keep-warm cron at `apps/api/src/index.ts:3446` is *"strictly under Neon's 5-min
-auto-suspend"* and pings only the platform `DATABASE_URL`, not user DBs), and
-`db-sweep` *"never touches authed user DBs"* (anon 90-day deletion only). No
-7-day sleep exists. **Fix:** one copy line → *"Sleeps when idle · wakes in
-<2s"* — a code-wrong / reality-right bug fix (§10.2) inside the web-app core
-value (**Honest latency / no fake claims** / `GLOBAL-011`); the honest `<2s`
-wake bound stays (Neon resume; `SK-ASK-013` ≤ 900 ms + query). P1 checked: no
-decision exists to contradict, so no supersede. **Measured:**
-found-and-closed-same-run (run-9 pattern) ⇒ tracked gaps **net 0**;
-`check:links` 105 pages / 2,580 links / **0 dead, 0 redirecting** (row #18
-unchanged). **KPI:** GLOBAL-025 **UX/trust** — a live pricing surface now
-matches shipped behavior. **None degrade:** `typecheck` + `lint` clean,
-`apps/web` `test` 233/233, build 105 pages clean; zero engine/API/blog/queue
-touched, baselines byte-untouched.
+claimed *"Sleeps after 7 days idle"* — the same 7d claim also sat in `SK-RL-005`
+(`rate-limit/FEATURE.md`) + `architecture.md` §5; implemented by no code.
+Reality: free-tier Neon compute **scales to zero at Neon's ~5-min auto-suspend**
+(`SK-ASK-013`; the keep-warm cron at `apps/api/src/index.ts:3446` is *"strictly
+under Neon's 5-min auto-suspend"* and pings only the platform `DATABASE_URL`, not
+user DBs), and `db-sweep` *"never touches authed user DBs"* (anon 90-day deletion
+only). No 7-day sleep exists. **Fix:** the copy line → *"Sleeps when idle · wakes
+in <2s"*, plus the two mirror docs synced to "when idle" (`SK-RL-005` +
+`architecture.md` §5) — a code-wrong / reality-right fix (§10.2) inside the
+web-app core value (**Honest latency / no fake claims** / `GLOBAL-011`); the
+honest `<2s` wake bound stays (Neon resume; `SK-ASK-013` ≤ 900 ms + query). P1:
+`SK-RL-005`'s "7d" contradicted reality (Neon suspends at ~5 min; its own
+*Consequence* line already said "paused on idle") — corrected in-sync per P3,
+substance untouched. **Measured:** found-and-closed same run ⇒
+tracked gaps **net 0**; `check:links` 105 pages / 2,580 links / **0 dead, 0
+redirecting** (row #18 unchanged). **KPI:** GLOBAL-025 **UX/trust** — a live
+pricing surface now matches shipped behavior. **None degrade:** `typecheck` +
+`lint` clean, `apps/web` `test` 233/233, build 105 pages clean; zero
+engine/API/blog/queue touched, baselines byte-untouched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
