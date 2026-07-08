@@ -311,7 +311,7 @@ Canonical: `GLOBAL-013` (strict-$0 free tier) + [`GLOBAL-026`](./decisions/GLOBA
 
 | Tier | Price | Limits | Card |
 |---|---|---|---|
-| **Free** | $0 forever | 1k queries/mo, 500MB/DB, pause after 7d idle (resume <2s). Free LLM chain forever per `GLOBAL-026`. | No |
+| **Free** | $0 forever | 1k queries/mo, 500MB/DB, pauses when idle (resume <2s). Free LLM chain forever per `GLOBAL-026`. | No |
 | **Hobby** | $10/mo | 50k queries/mo, 5GB/DB, no pausing, email support | Yes |
 | **Pro** | $25/mo min + usage | $0.0005/query over 50k, $0.10/GB-mo over 5GB; hard cap opt-in. LLM tokens **not** metered — Pro uses the strict-$0 chain same as Free (retention-off providers per `SK-LLM-008`). | Yes |
 | **Premium models** (add-on, Hobby+) | Flat sub + allowance + soft-meter overage | Frontier routing (Claude Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro); allowances + 0%-markup overage per [`SK-PREMIUM-009`](./features/premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md); free-chain fallback opt-in per [`SK-PREMIUM-011`](./features/premium-tier/decisions/SK-PREMIUM-011-overflow-policy.md). §6-gated meter. | Yes |
