@@ -83,6 +83,8 @@ const siteEntityJsonLd =
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {/* Blog RSS autodiscovery — feed readers + dev.to/Medium/Hashnode import find /rss.xml from any page. */}
+    <link rel="alternate" type="application/rss+xml" title="nlqdb blog" href="/rss.xml" />
 
     <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
     {siteEntityJsonLd.map((ld) => (

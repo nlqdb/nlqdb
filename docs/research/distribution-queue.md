@@ -12,19 +12,32 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"We published 20 blog posts and never shipped a feed. Nothing could
+  subscribe."** slug `blog-without-a-feed-is-a-dead-end` · venue dev.to
+  (#webdev #seo #rss) + r/webdev + lobste.rs · distribution lesson · anchors
+  the volume-vs-yield theme (scorecard rows #6/#7). Angle: a blog with no
+  RSS/Atom feed is a one-way street — the pages render, humans who already
+  know the URL can read them, and that's the end of the reach. Everything that
+  *pulls* content needs a feed URL: feed readers (Feedly, Inoreader), and — the
+  part that actually moves the yield needle — dev.to / Medium / Hashnode
+  "import your posts from RSS", which auto-mirror the canonical copy to a
+  high-authority venue with a `rel=canonical` back-link. Without a feed, every
+  venue re-post is a manual copy-paste that quietly stops happening. The trap
+  is thinking "publishing" ends when the page is live; it ends when a *machine*
+  can subscribe. The fix here was ~40 lines: a hand-rolled RSS 2.0 endpoint
+  over the *same* typed data file the sitemap already reads (no `@astrojs/rss`
+  dependency, Workers-safe, XML-escaped because titles are free text), plus one
+  `<link rel="alternate" type="application/rss+xml">` in the base head so it's
+  autodiscovered from every page. Lesson: count the *doors into* your content,
+  not just the pages. A post nobody can subscribe to is a post nobody re-shares.
+
 - **"We shipped 18 SEO pages and got 1 referral. The links only pointed one
-  way."** slug `one-way-internal-links-leak-yield` · venue dev.to
-  (#seo #webdev #contentmarketing) + r/SEO + r/webdev · distribution lesson ·
-  anchors the volume-vs-yield theme (scorecard rows #6/#7). Angle: the surface
-  count climbed while referrals stayed flat at ~1/week. The link graph was a
-  tree, not a mesh: `/blog → /solve` but never `/solve → /blog`. Two costs.
-  (1) SEO: links pass authority in the direction they point, so every link fed
-  the deep page and starved the *fresh* post that most needed indexing — the
-  new URLs had zero internal inbound links. (2) UX: a searcher landing on
-  `/solve` hit a dead end — no next hop, session ends at one page. The fix is
-  one reciprocal link, derived from the same `anchor` field the forward link
-  already uses — bidirectional for free, no new data. Lesson: publishing
-  volume is not distribution. Measure the link *graph*, not the page *count*.
+  way."** slug `one-way-internal-links-leak-yield` · dev.to
+  (#seo #webdev #contentmarketing) + r/SEO + r/webdev · distribution lesson
+  (volume-vs-yield: the internal link graph was a tree not a mesh — `/blog →
+  /solve` but never back — starving fresh posts of inbound links and dead-ending
+  searchers; one reciprocal link off the existing `anchor` field fixes both SEO
+  authority flow and the UX next-hop). **Full body in git history.**
 
 - **"Your database scales to zero. Your retry loop doesn't know that."**
   slug `serverless-db-cold-start-retry` · dev.to (#database #serverless #postgres)
