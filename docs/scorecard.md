@@ -26,7 +26,7 @@ is the parked corrected-set (Kang VLDB-2026, license, P2). Phase 2 exit gate:
 **1/9 pass** (row #16).
 
 **Today's lever (07-08, run 27): Spider capacity-honest re-measure (row #9)** —
-**0.1926 → 0.2444** (26 → 33/135, +7q / +5.18 pp). The 07-02 reading was
+**0.1926 → 0.2444** (26 → 33/135, +7q / +5.19 pp). The 07-02 reading was
 free-lane capacity-throttled ⇒ undercount; a fresh full run that waits out
 throttles (2 `SK-QUAL-013` windows to `resumable:false`) is the honest
 current-main number — the scorecard's own flagged priority ("re-measuring Spider
@@ -48,7 +48,7 @@ code / API / blog / queue / byo-connect. Detail in *Last change*.
 | 7 | Surface yield | posts 21 (run 24: +`serverless-db-cold-start-retry`); 7d external referrals = **1** (`bing.com`, 1 pageload). **Run 22 lever: syndication feeds 0 → 1** — shipped `/rss.xml` (hand-rolled RSS 2.0 over `data/blog.ts`, autodiscovered site-wide via `<link rel="alternate">`; build-verified `dist/rss.xml` = valid feed, all 20 posts, 5 passing invariants in `rss.xml.test.ts`). Closes the "un-subscribable blog" gap: feed readers can now subscribe and dev.to/Medium/Hashnode can auto-import the canonical copy (each re-post carries `rel=canonical` back). External-referral re-measure lags a window (indexation/syndication pickup). **Run 19 lever: internal-link reciprocity 0 → 10** — `/blog` posts forward-linked to their `/solve`/`/vs` anchor, but those pages never linked back (link graph a tree, not a mesh). Added the reciprocal "Further reading" backlink on all 10 anchored `/solve`+`/vs` pages (`blogByAnchorPath`, same `anchor` field), so every published post now has ≥1 internal inbound link + visitors get a next hop. Internal links 2417 → 2427 (row #18) | CF `refererHost` — measured every run. Attacks the standing "volume without yield" finding at its SEO/UX input; external-referral re-measure lands next window (indexation lags) |
 | | **Engine** — BIRD 07-05 · Spider 07-08 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.526** (262/498 EA, 2 `gold_error`, 07-05 canonical, [run 28742006051](https://github.com/nlqdb/nlqdb/actions/runs/28742006051)). **`SK-QUAL-017` SC verdict (run 12, 07-06):** first N≥2 dispatch (N=3, temp 0.7, 150q smoke, [run 28761582097](https://github.com/nlqdb/nlqdb/actions/runs/28761582097)) = **79/150 = 0.5267, exactly flat vs the same-directive-set greedy comparator** (canonical run restricted to the identical 150 qids: 79/150; b=8/c=8, p=1.0; SC `no_sql` 1/150) — majority-vote at 3× quota buys 0 on the free chain; the 8↔8 swaps are provider-mix noise | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Baseline re-seeded 07-05. `SK-LLM-043` live-verified (run 11): `\|\|` concats 7 → 3 run-wide. Offline deterministic-ceiling lever exhausted (07-04); **SC lever dead (#619); frontier-lens levers closed (run 15, `SK-QUAL-022`)** — only remaining live BIRD-free move is the parked corrected-set (license, P2). Pin-branch delete still 403-blocked (`eval/bird-resume-0e67e64` + `-8d3d7c5`) |
-| 9 | Spider raw EX | **0.2444** (33/135, 07-08 capacity-honest full run, [run 28959809497](https://github.com/nlqdb/nlqdb/actions/runs/28959809497), resumed from [28958045313](https://github.com/nlqdb/nlqdb/actions/runs/28958045313) per `SK-QUAL-013`, gold_error 0) | target 0.75; **run-27 lever: capacity-honest re-measure 0.1926 → 0.2444 (26 → 33/135, +7q / +5.18 pp).** The 07-02 0.1926 was free-lane capacity-throttled ⇒ undercount; this run waited out throttles (`--capacity-wait-ms 65000`, 2 windows to `resumable:false`) on `main` 6e6b486. Still worst engine number (target 0.75). Spider has no baseline file (BIRD-only, `SK-QUAL-018`) — this row is Spider's source of truth |
+| 9 | Spider raw EX | **0.2444** (33/135, 07-08 capacity-honest full run, [run 28959809497](https://github.com/nlqdb/nlqdb/actions/runs/28959809497), resumed from [28958045313](https://github.com/nlqdb/nlqdb/actions/runs/28958045313) per `SK-QUAL-013`, gold_error 0) | target 0.75; **run-27 lever: capacity-honest re-measure 0.1926 → 0.2444 (26 → 33/135, +7q / +5.19 pp).** The 07-02 0.1926 was free-lane capacity-throttled ⇒ undercount; this run waited out throttles (`--capacity-wait-ms 65000`, 2 windows to `resumable:false`) on `main` 6e6b486. Still worst engine number (target 0.75). Spider has no baseline file (BIRD-only, `SK-QUAL-018`) — this row is Spider's source of truth |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-02) | full-chain ICP EX; 1.8× BIRD, 5× Spider — the GLOBAL-026 bet; N=23 ±1 noisy. Retrieval precision@1 saturated |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic-frontier 69.33%, 150-q smoke seed 20260607, 07-06 run 15, `SK-QUAL-022`; single-frontier lane 18.00 pts). persona-bench 0.00 pts (07-02) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 unclamped < the 0.80 floor (row #16 fails on competence, not the instrument — run 15 `SK-QUAL-022` removed the 5 s frontier-plan clamp that had understated it). Smoke, no baseline touch; run history in git + `progress/quality-score-verification-log.md` |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-06 pull) | | wall-time, all routes |
@@ -99,7 +99,7 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 **2026-07-08 (run 27)** — lever: **Spider raw EX capacity-honest re-measure
 (row #9, worst engine number)** — **0.1926 → 0.2444** (26/135 → 33/135, +7
-questions / +5.18 pp). BIRD (row #8, weekly focus) is dark for the lever (rule
+questions / +5.19 pp). BIRD (row #8, weekly focus) is dark for the lever (rule
 8); the distribution + docs-ambiguity lanes were both taken this cycle by open
 **PR #635 (run 26)**, so step-0 non-overlap steered to the next agent-movable,
 non-dark, non-overlapping number — the scorecard's own flagged priority
@@ -111,7 +111,7 @@ windows — [28958045313](https://github.com/nlqdb/nlqdb/actions/runs/2895804531
 (128/135 partial, `resumable:true`) →
 [28959809497](https://github.com/nlqdb/nlqdb/actions/runs/28959809497) (135/135,
 `resumable:false`), gold_error 0. **KPI:** GLOBAL-025 **engine quality** — Spider
-now carries an honest current-main number, +5.18 pp over the throttled reading.
+now carries an honest current-main number, +5.19 pp over the throttled reading.
 **None degrade:** measurement-only PR (no product code touched); `typecheck` +
 `lint` + `apps/web test` (233/233) green pre-change; baselines byte-untouched
 (Spider has no baseline file — BIRD-only per `SK-QUAL-018`; row #9 is Spider's
