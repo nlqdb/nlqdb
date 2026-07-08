@@ -74,8 +74,11 @@ when-to-load:
 
 **Body:** [`decisions/SK-MULTIENG-004-per-engine-validator-otel-anon.md`](./decisions/SK-MULTIENG-004-per-engine-validator-otel-anon.md).
 Each adapter ships a sibling validator + OTel attribute mapping; anon-mode
-(`GLOBAL-007`) is opt-in per engine. Validators are per-grammar (PG `libpg_query`;
-ClickHouse/Tinybird Pipe + table allowlist; Redis command allowlist). OTel: every
+(`GLOBAL-007`) is opt-in per engine. Validators are per-grammar (PG read/write
+`sql-validate.ts` = `node-sql-parser`, PG DDL `sql-validate-ddl.ts` =
+`libpg_query`; ClickHouse/Tinybird Pipe + table allowlist; Redis command
+allowlist — CH read/write reuses the PG validator as-is for now, see
+`byo-connect/FEATURE.md` Open question (a)). OTel: every
 span is `db.query` with the canonical `db.system` per engine — `postgresql` /
 `redis` / `mongodb`, and `other_sql` for ClickHouse (no canonical semconv value).
 Anon-mode launches sign-in-only on the first non-PG engine; the global anon cap
