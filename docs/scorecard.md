@@ -18,12 +18,20 @@ last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric moved through its agent-movable inputs (distribution
-surfaces/yield). **Today's lever (07-08, run 22): surface yield (row #7) —
-ship the missing blog RSS feed, syndication feeds 0 → 1.** Row #8 dark + engine
-anti-rut-blocked (above); distribution lane is **free** (PRs #627–#630 merged,
-open-PR list empty — step 0 clear). 20 posts, zero RSS/Atom feed ⇒ un-subscribable
-+ un-importable by dev.to/Medium/Hashnode RSS import. Full detail + before→after
-in *Last change*.
+surfaces/yield). **Today's lever (07-08, run 23): docs-ambiguity 25 → 24**
+(row #17) — row #8 dark + engine anti-rut-blocked (above); the distribution
+lane (surfaces/queue/`/blog`, rows #6/#7) was just advanced by PR #631 (run 22,
+blog RSS feed), **merged this cycle**, so step-0 non-overlap steered this run to
+the next non-distribution lever. Pulled row #17: resolved `byo-connect` open
+question **(c)** DNS-rebind TOCTOU — the posed question ("is the
+connect-time→query-time re-point window a residual risk we accept?") is answered
+by shipped, verified code (per-query egress re-guard on **both** engines,
+fail-closed) plus a P2-grounded accept-with-revisit decision. A
+keep-refs-in-sync resolution (P3), not a relabel. Detail in *Last change*.
+**Step-0 non-overlap:** #631 (run 22) shipped row #7 + `apps/web/**` (blog RSS,
+`Base.astro`, `data/blog.ts`) + `research/distribution-queue.md` this cycle;
+this run touches none of them (one `docs/features/byo-connect/FEATURE.md` bullet
++ scorecard row #17/Last-change; zero code, zero web, zero queue).
 **Engine finding (row #8), standing:** offline deterministic-ceiling lever
 exhausted (`SK-LLM-043` #605); SC dead (#619); frontier-lens levers closed
 (run 15, `SK-QUAL-022`). **0.526 is a floor whose only live move is the parked
@@ -54,7 +62,7 @@ pass** (row #16).
 | 15 | E2E manual-suite freshness | **0.75** — sdk ✅ 07-06 (1.00) · mcp ✅ 07-06 (1.00) · examples ✅ 07-06 (1.00) · opencheck ❌ (**Suite A 4/5, best since the 06-12 green** — [run 28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)) | run 13 owns this row: the named fix (pre-flight over an ordered free-model list) shipped + trace-triaged suite fixes; sdk/mcp/examples re-dispatched same run (were staring at a 07-09 freshness cliff). **Run 18 owns this row: fixed Suite A's sole failure** — the app-side cold-start `db_unreachable` (2× trace-verified) — via `SK-ASK-013` exec-stage backoff (`300 ms × 2^(n−1)`, ≤900 ms) so a scale-to-zero Neon resumes before the retry lands; `plan`/`route` still retry instantly (LLM failover needs no wait). **Measured before→after (deterministic, `retry.test.ts`):** the same cold-start model (DB unreachable until t=700 ms) — *without* backoff all 3 instant attempts land cold and surface `db_unreachable`; *with* the exec backoff attempt 3 lands at t=900 ms and recovers. Real-world re-measure dispatched: opencheck `depth=a` on the branch ([run 28849127856](https://github.com/nlqdb/nlqdb/actions/runs/28849127856)) — capacity-confounded (agent-pool dependent), so the test is the primary signal; next run reads the completed run. Suite B 0/8 = weakest-candidate capacity (4 stronger pools simultaneously 429 at pick time), not a fix regression. Full triage: `e2e-coverage/opencheck-operations.md` 2026-07-06 rows |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (35.3% walker-dominated, N=17 — row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: the agentic-frontier criterion is now **measurement-clean** (clamp fixed) — closing the remaining ~11 pp to 0.80 is a real engine-competence lift (multi-model frontier chain `SK-LLM-017`, or the parked corrected-set); first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **25** (07-07; run 21 lever: −1, closed `e2e-coverage`'s "First-query-after-idle `db_unreachable`" OQ — its posed question is now answered by run 18's shipped+tested `SK-ASK-013` exec-stage backoff, #625, so this is a keep-refs-in-sync resolution per P3, not a relabel). **Run 17 lever: −2** — resolved two `premium-tier` router-contract questions per GLOBAL-033 (create/DDL router scope + founder-frontier-lane vs `best`, both grounded in code + existing decisions, zero code change) | target ↓ 0. **Run 8's lever: −1** — resolved `agent-memory` *Capability-matrix freshness* by hardening the guard (`agentMemoryMatrix.test.ts` now rejects a future/invalid `MATRIX_VERIFIED_ON`; a negative age had silently passed `< 60`), not by relabeling. **Run 6's lever: −4** — resolved 4 bullets whose body already settled/parked the question but whose first line didn't reflect it (the pinned method keys off the bullet's first line): `mcp-server` Anthropic-directory-submission (engineering done + no pending human action; only external review remains ⇒ not a question we can answer), `trust-ux` SK-TRUST-001 (Parked until a P3-persona destructive-DDL test; interim = the trace block's compiled DDL is the create preview) + SK-TRUST-002 (GLOBAL-003 tracked ship-gap, parked per surface), `byo-connect` (d) `__byo_blob__` sentinel (Resolved — additive migration design). Also upgraded `quality-eval` corrected-set OQ with the P2 license finding (no count change; already parked). **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **24** (07-08; run 23 lever: −1, resolved `byo-connect` OQ **(c)** DNS-rebind TOCTOU — per-query egress re-guard shipped on both engines (verified in code), sub-TTL residual accepted for the BYO threat model, P2-grounded vs OWASP/industry re-resolve-before-use best practice; keep-refs-in-sync per P3, not a relabel — detail in *Last change*). **Prior levers** (git preserves full detail): run 21 −1 (`e2e-coverage` cold-start OQ → run 18 `SK-ASK-013`); run 17 −2 (`premium-tier` router contracts); run 8 −1 (`agent-memory` matrix-freshness guard hardened); run 6 −4 (4 body-already-settled bullets relabeled to match). | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-08 run-22 sweep: 104 pages, **2,555** internal links — +104 vs run 20 = the one `<link rel="alternate">` RSS-autodiscovery tag now on every page; `/rss.xml` resolves as a real file, not flagged) | target 0 — sweep is repeatable: `cd apps/web && bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
 | 19 | Live-surface claim integrity | **0 tracked gaps** (07-05, was 4) | claim-vs-reality on shipped user-facing surfaces; target 0. Run-9 swept `/pricing`, MCP paths, CLI verbs, wrapper-publish status, and `architecture.md` prose to match what actually ships (detail in git). Next count re-audits fresh (e.g. paid-tier limit claims while billing is dark); standing candidate: extend `check:links` to assert each advertised capability has shipped code |
@@ -91,36 +99,42 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
+**2026-07-08 (run 23)** — lever: **docs-ambiguity (row #17), 25 → 24**.
+Row #8 (weekly focus) is a floor this week (rule 8) + engine anti-rut-blocked
+(rule 7); the distribution lane (rows #6/#7) was just advanced by PR #631 (run
+22, blog RSS feed), **merged this cycle**, so step-0 non-overlap steered this
+run to the next non-distribution lever. **Lever:** resolved `byo-connect` open
+question **(c)** "DNS-rebind TOCTOU between connect-time guard and query-time
+use" — a real security question (*is the connect→query re-point window a
+residual risk we accept, or must we close it?*) whose body already carried the
+answer its first line didn't reflect (the run-6 keep-refs-in-sync pattern, P3).
+**Verified in code:** a per-query egress re-guard on **both** engines —
+ClickHouse re-runs `guardEgressHostResolved` in `buildClickhouseByoQuery`
+(`packages/db/src/clickhouse-byo.ts:107`), BYO-PG's `runByoPgQuery` re-resolves
++ re-classifies before the fetch (`apps/api/src/ask/build-deps.ts:280`), both
+fail-closed. **P2 grounding** (web-searched current SSRF/DNS-rebinding
+practice): re-validate-the-resolved-IP-immediately-before-use is the
+industry-standard TOCTOU mitigation (OWASP; thingsboard/postiz 2025–26 fixes
+match); full closure is IP-pinning at the connection layer (dial the IP +
+`Host` header, or an egress proxy — Stripe's Smokescreen), which `neon()`/Workers
+`fetch` don't expose — so the documented sub-TTL residual is correct and
+**accepted for the BYO threat model** (user-supplied host ⇒ self-attack), with
+the revisit trigger (non-BYO outbound path) intact. **Measured:** pinned grep
+(case-insensitive `Resolved|Shipped|~~|Parked|Deferred|Decided:|Closed` under
+`## Open questions`) = **25 → 24**. **KPI:** GLOBAL-025 engine-quality/UX — a
+resolved security decision means the next agent applies the BYO egress contract
+without re-deriving it (clarity increases, D3). **None degrade:** `typecheck`
+clean, `lint` clean on the changed doc, workspace `test` green; docs-only (one
+`byo-connect/FEATURE.md` bullet + scorecard rows #17 / Last-change), zero
+code/web/queue. Engine baselines byte-untouched.
+
+**Sources (P2):** [OWASP SSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html) ·
+[thingsboard #15253 (allow-list + re-resolve fix)](https://github.com/thingsboard/thingsboard/pull/15253) ·
+[postiz GHSA-f7jj-p389-4w45 (TOCTOU DNS rebinding)](https://github.com/gitroomhq/postiz-app/security/advisories/GHSA-f7jj-p389-4w45)
+
 **2026-07-08 (run 22)** — lever: **surface yield (row #7) — syndication feeds
-0 → 1** (shipped the missing blog RSS feed). BIRD EX (row #8, weekly focus) is
-a floor this week — every agent-movable sub-lever is closed, the only live move
-(corrected-set) is license-blocked (P2) ⇒ dark for the lever (rule 8); engine is
-also anti-rut-blocked (rule 7). Distribution lane is **free** this run (PRs
-#627–#630 all merged; open-PR list empty — step 0 clear). **Lever:** the blog
-had 20 canonical posts and **no RSS/Atom feed at all**. That is a real yield
-leak at the exact bottleneck (rows #6/#7: high surface count, ~1 referral/week):
-feed readers (Feedly/Inoreader) couldn't subscribe, and — the part that moves
-the needle — dev.to/Medium/Hashnode's "import your posts from RSS" had no URL to
-pull, so every venue mirror was a manual copy-paste that quietly stops happening.
-**Change:** a hand-rolled RSS 2.0 endpoint `apps/web/src/pages/rss.xml.ts` over
-the same typed `data/blog.ts` the sitemap already reads (no `@astrojs/rss`
-dependency — GLOBAL-013 bundle budget; XML-escaped because titles are free text,
-unlike the URL-only sitemap) + one site-wide `<link rel="alternate"
-type="application/rss+xml">` in `Base.astro` for autodiscovery. **Measured
-before→after:** before, `/rss.xml` did not exist (no feed file, `curl` → 404);
-after, `bun run build` emits `dist/rss.xml` = a valid RSS 2.0 channel with one
-`<item>` per post (all 20), RFC-822 `pubDate`s, and a `rel=self` `atom:link`;
-`rss.xml.test.ts` pins 5 invariants (well-formed channel, content-type,
-one-item-per-post + trailing-slash permalink, valid RFC-822 dates, no unescaped
-`&`) — **5 pass**. `check:links`: **0 dead / 0 redirecting**, internal links
-2451 → 2555 (+104 = the per-page autodiscovery tag; `/rss.xml` resolves as a
-real file). External-referral re-measure lags a window (row #7). **Step-3
-artifact:** queue was at 2 drafts (< 3) ⇒ drafted one new post
-(`blog-without-a-feed-is-a-dead-end`, the syndication lesson from this run),
-collapsing the older `one-way-internal-links-leak-yield` full draft to its gist
-to stay under the D4 20 KB cap (queue now 3 deep, 20244 B). **KPI:** GLOBAL-025
-onboarding/UX via distribution yield — a new machine-readable door into the
-content the whole distribution lane depends on. **None degrade:** root
-`typecheck` green (all packages), `lint` exit 0, workspace `test` green (web
-suite 233 pass), `bun run build` clean. Engine baselines byte-untouched; zero
-API/engine code touched.
+0 → 1** (PR #631): shipped the blog's first RSS 2.0 feed (`rss.xml.ts` over
+`data/blog.ts`, no dep — GLOBAL-013; site-wide autodiscovery) to close the
+un-subscribable-blog yield leak (feed readers + dev.to/Medium/Hashnode import).
+Build-verified valid feed, 20 posts, `rss.xml.test.ts` 5/5; internal links
+2451 → 2555. Full detail in git (#631).
