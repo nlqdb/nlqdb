@@ -18,11 +18,7 @@ const withSlash = (p: string) => (p.endsWith("/") ? p : `${p}/`);
 // Post titles/descriptions are free text, so XML-escape before embedding —
 // unlike the sitemap, which only ever emits known-safe URL paths.
 const esc = (s: string) =>
-  s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 // ISO yyyy-mm-dd → RFC-822 (RSS pubDate), anchored at UTC midnight so the
 // date matches the <time> the post template renders.
