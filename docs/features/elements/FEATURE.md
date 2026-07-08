@@ -52,7 +52,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-002** — Behavior parity across surfaces.
 - **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
 - **GLOBAL-023** — Trust UX baseline.
-  - *In this feature:* `<nlq-action>` blocks `on-success` until the user clicks "Apply" on the rendered diff (per `SK-TRUST-001`; mechanism in [`SK-ELEM-012`](decisions/SK-ELEM-012-action-two-click-commit.md)). `<nlq-data>` exposes the trace via the `el.trace` JS property (per `SK-TRUST-002`). The trace pane lives outside the template render region — templates (`table`, `card-grid`, …) stay simple. See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
+  - *In this feature:* `<nlq-action>` blocks `on-success` until the user clicks "Apply" on the rendered diff (per `SK-TRUST-001`; mechanism in [`SK-ELEM-012`](decisions/SK-ELEM-012-action-two-click-commit.md)). `<nlq-data>` exposes the trace via the `el.trace` JS property **and** on the `nlq-data:load` event detail (per `SK-TRUST-002`; `element.ts` — the compiled SQL, `plan_id`, `confidence`, `model`, `cache_hit`), so an embedder can gate its own UI (e.g. a low-`confidence` free-model nudge per `SK-PREMIUM-004`) without re-parsing the response. The trace pane lives outside the template render region — templates (`table`, `card-grid`, …) stay simple. See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
 
 ## Open questions / known unknowns
 

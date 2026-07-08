@@ -19,13 +19,26 @@ export type AskDiff = {
   summary: string;
 };
 
+// SK-TRUST-002 — the always-present trace block. The compiled SQL +
+// cache state live here, not at the top level (mirrors the SDK `Trace`).
+// `<nlq-data>` re-exposes it as the `el.trace` JS property so embedders
+// can gate their own UI (e.g. a low-`confidence` free-model nudge per
+// SK-PREMIUM-004) without re-parsing the response.
+export type AskTrace = {
+  sql: string;
+  plan_id: string;
+  confidence: number;
+  model: string;
+  cache_hit: boolean;
+};
+
 export type AskSuccess = {
   status: "ok";
-  cached: boolean;
-  sql: string;
   rows: Record<string, unknown>[];
   rowCount: number;
   summary?: string;
+  // SK-TRUST-002 — present on every successful read/write response.
+  trace?: AskTrace;
   // SK-TRUST-001 — present on the preview hop of a write path
   // (`confirm` omitted/false). `rows` is empty and `rowCount` is 0;
   // the surface re-sends with `confirm: true` to commit.

@@ -118,11 +118,17 @@ To refresh the data pane after a successful write, use
 ```js
 const data = document.querySelector("nlq-data");
 data.addEventListener("nlq-data:load", (e) => {
-  // e.detail = { rows: number, cached: boolean }
+  // e.detail = { rows: number, cached: boolean, trace: Trace | null }
+  // trace (SK-TRUST-002) = { sql, plan_id, confidence, model, cache_hit }.
+  // Gate your own UI on it — e.g. nudge to a better model when
+  // trace.confidence is low.
 });
 data.addEventListener("nlq-data:error", (e) => {
   // e.detail.kind = "network" | "auth" | "api"
 });
+
+// The trace of the last successful load is also readable as a property:
+// data.trace  // Trace | null (null before the first load / after an error)
 
 const action = document.querySelector("nlq-action");
 action.addEventListener("nlq-action:confirm-required", (e) => {

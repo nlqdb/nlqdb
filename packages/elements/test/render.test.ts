@@ -4,8 +4,6 @@ import { errorHtml, renderState } from "../src/render.ts";
 
 const success: AskSuccess = {
   status: "ok",
-  cached: false,
-  sql: "SELECT * FROM orders",
   rows: [
     { customer: "Maya", drink: "latte" },
     { customer: "Jordan", drink: "flat white" },
