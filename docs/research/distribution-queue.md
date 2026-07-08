@@ -39,20 +39,14 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   searchers; one reciprocal link off the existing `anchor` field fixes both SEO
   authority flow and the UX next-hop). **Full body in git history.**
 
-- **"Your database scales to zero. Your retry loop doesn't know that."**
-  slug `serverless-db-cold-start-retry` · dev.to (#database #serverless #postgres)
-  + r/PostgreSQL + r/webdev + lobste.rs · engine/ops lesson (`SK-ASK-013`;
-  "the failure isn't what the error says" family) — a scale-to-zero Neon branch
-  fails the first query while its compute resumes, and instant retries replay
-  the cold connection; the exec stage backs off (≤900 ms) so attempts 2/3 land
-  warm while plan/route stay instant. **Full body in git history.**
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
 delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
+
+- run 24 — **https://nlqdb.com/blog/serverless-db-cold-start-retry/** — dev.to (#database #serverless #postgres) + r/PostgreSQL + r/webdev + lobste.rs · engine/ops lesson (SK-ASK-013 — a retry policy is one-per-failure-mode; back off the DB stage, fail over the LLM stages instantly)
 
 - run 20 — **https://nlqdb.com/blog/llm-timeout-looks-like-hallucination/** — dev.to (#llm #benchmarking #eval) + r/LLMDevs + lobste.rs · engine lesson (SK-QUAL-022 eval-budget ≠ prod SLA; abort ≠ parse failure; latency fingerprint)
 - run 106 — **https://nlqdb.com/blog/store-form-submissions-without-a-backend/** — dev.to + r/webdev + r/sideproject · `/solve/store-form-submissions-without-backend`
