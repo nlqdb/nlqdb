@@ -32,9 +32,9 @@ over-broad credentials, not model error
 ([MindStudio](https://www.mindstudio.ai/blog/ai-agent-database-wipe-disaster-lessons)).
 
 **Where applied:** every read/write on `/v1/ask` goes through the
-multi-stage validator at `apps/api/src/ask/sql-validate.ts`
-(libpg_query AST + verb allowlist + table allowlist + multi-statement
-reject + EXPLAIN cost gate + transaction wrapper) PLUS Postgres role
+validator at `apps/api/src/ask/sql-validate.ts` (`node-sql-parser`
+AST + verb allowlist + table allowlist + multi-statement reject +
+EXPLAIN cost gate + transaction wrapper) PLUS Postgres role
 isolation (`pg_read_all_data`, `default_transaction_read_only=on`)
 PLUS Row-Level Security as defense-in-depth. DDL goes through a
 separate typed-plan path (lesson #2) so the LLM never emits raw

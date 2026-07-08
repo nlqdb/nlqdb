@@ -74,12 +74,14 @@ when-to-load:
 
 **Body:** [`decisions/SK-MULTIENG-004-per-engine-validator-otel-anon.md`](./decisions/SK-MULTIENG-004-per-engine-validator-otel-anon.md).
 Each adapter ships a sibling validator + OTel attribute mapping; anon-mode
-(`GLOBAL-007`) is opt-in per engine. Validators are per-grammar (PG `libpg_query`;
-ClickHouse/Tinybird Pipe + table allowlist; Redis command allowlist). OTel: every
-span is `db.query` with the canonical `db.system` per engine — `postgresql` /
-`redis` / `mongodb`, and `other_sql` for ClickHouse (no canonical semconv value).
-Anon-mode launches sign-in-only on the first non-PG engine; the global anon cap
-deflects abuse until per-prefix isolation is hardened. New-adapter PR template:
+(`GLOBAL-007`) is opt-in per engine. Validators are per-grammar (PG read/write =
+`node-sql-parser`, PG DDL = `libpg_query`; ClickHouse/Tinybird Pipe + table
+allowlist; Redis command allowlist — CH read/write reuses the PG validator, no
+per-grammar CH parser, per `byo-connect/FEATURE.md` OQ (a)). OTel: every span
+is `db.query` with the canonical `db.system` — `postgresql` / `redis` /
+`mongodb`, and `other_sql` for ClickHouse (no canonical value). Anon-mode
+launches sign-in-only on the first non-PG engine; the global anon cap deflects
+abuse until per-prefix isolation lands. New-adapter PR template:
 `<engine>/{adapter,validator,otel-attrs}.ts` + an engine-fit-table row
 (`SK-MULTIENG-002`) + a one-line classifier-prompt edit.
 
@@ -168,7 +170,7 @@ The workload analyser + migration orchestrator are owned by [`engine-migration/F
 - **Per-prefix anon isolation on Tinybird — Parked until anon-on-Tinybird is asked for.** Sign-in-only at adapter launch; the per-prefix validator that enables anon-mode (`GLOBAL-007` parity) and its table-prefix scoping schema land only when a user wants anonymous Tinybird DBs — not on spec (`GLOBAL-033`, speculative-scope).
 - **Rate-limit dimensions — let-through-then-error** (resolved per `GLOBAL-033`, Simple/reuse + non-destructive read → bias to availability). A free-tier user can hit Tinybird's 1 k reads/day before our per-account limiter; we don't pre-emptively model each engine's quota — the adapter surfaces the provider 429 as our structured envelope (`GLOBAL-012`) and the existing limiter stays the single throttle.
 - **Egress / SSRF guard on the BYO ClickHouse host (`GLOBAL-035`).** Landed: `guardEgressHost` + `guardEgressHostResolved` (fail-closed), `createDohResolver` (`doh-resolver.ts`), the shared composition `validateByoConnection` (`SK-DB-013`), and now the `connect.ts` ClickHouse-branch wiring (`SK-DBCONN-001`). **Residual:** the resolve→connect/query TOCTOU sub-TTL window — mitigated by a query-time egress re-guard, documented in [`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md) Open question (c).
-- **Cross-engine `nlq run` semantics — Resolved** (`GLOBAL-033`, Simple → one way): single `{db, sql}` payload — no discriminated shape, no engine tag on the wire. The DB record already carries the engine (`db-registry`), so the server dispatches the raw string to PG SQL / Tinybird Pipe SQL / (later) Redis by the DB's engine.
+- **Cross-engine `nlq run` semantics — Resolved** (`GLOBAL-033`, Simple → one way): single `{db, sql}` payload, no engine tag on the wire — the DB record already carries the engine (`db-registry`), so the server dispatches by the DB's engine.
 
 ## Phase-3 entry checklist
 

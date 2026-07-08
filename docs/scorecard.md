@@ -16,24 +16,24 @@ the parked **corrected-set** (license, P2) — so row #8 is a floor this week
 (**dark for the lever**, rule 8) and engine is also anti-rut-blocked (3 of the
 last 5 merged daily PRs pulled it, rule 7).
 
-**Worst number today:** real strangers reaching a first answer = **0** (row #2,
-lagging — moved only through distribution, taken this cycle by open PR #635).
-Among **agent-movable** numbers the worst is the engine pillar: **Spider raw EX
-(row #9)** — this run's lever. BIRD (row #8, weekly focus) stays **dark for the
-lever** (rule 8): offline deterministic-ceiling exhausted (`SK-LLM-043` #605),
-SC dead (#619), frontier-lens closed (run 15 `SK-QUAL-022`); only live BIRD move
-is the parked corrected-set (Kang VLDB-2026, license, P2). Phase 2 exit gate:
-**1/9 pass** (row #16).
-
-**Today's lever (07-08, run 27): Spider capacity-honest re-measure (row #9)** —
-**0.1926 → 0.2444** (26 → 33/135, +7q / +5.19 pp). The 07-02 reading was
-free-lane capacity-throttled ⇒ undercount; a fresh full run that waits out
-throttles (2 `SK-QUAL-013` windows to `resumable:false`) is the honest
-current-main number — the scorecard's own flagged priority ("re-measuring Spider
-capacity-honestly matters more than SC"). **Step-0 non-overlap:** open PR #635
-(run 26) owns docs-ambiguity (row #17, `byo-connect`) + the distribution queue;
-this run touches only `scorecard.md` + the engine verification-log — zero
-code / API / blog / queue / byo-connect. Detail in *Last change*.
+**Worst number today:** real strangers reaching a first answer = **0** — a
+lagging metric moved through its agent-movable inputs (distribution
+surfaces/yield). Distribution-*publish* is gated this run by step-3's queue
+rule (queue < 3 ⇒ draft, don't publish). Engine (row #8, weekly focus) is dark
+for the lever (rule 8) + anti-rut-blocked (rule 7) — run 27 (merged just
+before this) already took this cycle's engine move (Spider row #9, git log has
+detail). **Today's lever
+(07-08, run 26): docs-ambiguity (row #17), 24 → 23** — resolved **byo-connect
+Open question (a)** (ClickHouse SQL validated by the Postgres read/write
+validator, `sql-validate.ts` = `node-sql-parser` not `libpg_query`): research
+(P2) found `node-sql-parser` has no ClickHouse dialect, so **Decided: no
+per-grammar CH validator** — the engine-agnostic leading-verb allowlist stays
+load-bearing (`SK-MULTIENG-004`); a scoped engine-aware `validateSql`
+follow-up ships in a dedicated PR. Fresh lever category, anti-rut-clear
+(docs-ambiguity was 2 of last 5 daily PRs); step-0 clean (no other open PRs).
+**Artifact (step 3):** queue < 3 ⇒ drafted one new engine/security post
+(`postgres-validator-rejects-valid-clickhouse-sql`, queue 2 → 3). Detail in
+*Last change*.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -44,10 +44,10 @@ code / API / blog / queue / byo-connect. Detail in *Last change*.
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (run 16, `SK-ONBOARD-007`, remote-D1 07-07). Unfiltered counters read 3/8 = **37.5%** but a `tenant_id → user.email` join shows all 3 rows are founder (`omer.hochman@gmail.com`) + `test@example.com` — the 35–37% previously reported was 100% non-stranger | target ≥ 95%. **Attribution gap fixed** (was "the instrument's next fix"): write-side skips the stranger-test walker UA (`isSyntheticUserAgent`, anon case the join can't see); read-side joins `user` + excludes founder/test. Honest read is now N=0 (matches row #2), not a placebo rate |
 | 5 | Session retention (≥ 2 queries) | 3 DBs with `first10_asks ≥ 2` (same attribution caveat as row #4) | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **85** (`/vs` 31 + `/solve` 33 + `/blog` 21) — run-24 lever: published `serverless-db-cold-start-retry` (SK-ASK-013 engine/ops lesson; build-verified `dist/blog/serverless-db-cold-start-retry/index.html`, in `llms.txt` + `sitemap.xml`, 104 → 105 built pages). Oldest ready draft drained (step 3, queue was ≥ 3). Queue drains **3 → 2** (`blog-without-a-feed-is-a-dead-end` [run 22] + `one-way-internal-links-leak-yield` [run 19] remain; < 3 ⇒ next run drafts) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts 21 (run 24: +`serverless-db-cold-start-retry`); 7d external referrals = **1** (`bing.com`, 1 pageload). **Run 22 lever: syndication feeds 0 → 1** — shipped `/rss.xml` (hand-rolled RSS 2.0 over `data/blog.ts`, autodiscovered site-wide via `<link rel="alternate">`; build-verified `dist/rss.xml` = valid feed, all 20 posts, 5 passing invariants in `rss.xml.test.ts`). Closes the "un-subscribable blog" gap: feed readers can now subscribe and dev.to/Medium/Hashnode can auto-import the canonical copy (each re-post carries `rel=canonical` back). External-referral re-measure lags a window (indexation/syndication pickup). **Run 19 lever: internal-link reciprocity 0 → 10** — `/blog` posts forward-linked to their `/solve`/`/vs` anchor, but those pages never linked back (link graph a tree, not a mesh). Added the reciprocal "Further reading" backlink on all 10 anchored `/solve`+`/vs` pages (`blogByAnchorPath`, same `anchor` field), so every published post now has ≥1 internal inbound link + visitors get a next hop. Internal links 2417 → 2427 (row #18) | CF `refererHost` — measured every run. Attacks the standing "volume without yield" finding at its SEO/UX input; external-referral re-measure lands next window (indexation lags) |
+| 6 | Indexable surfaces | **85** (`/vs` 31 + `/solve` 33 + `/blog` 21) — run-24 lever: published `serverless-db-cold-start-retry` (SK-ASK-013 engine/ops lesson; build-verified `dist/blog/serverless-db-cold-start-retry/index.html`, in `llms.txt` + `sitemap.xml`, 104 → 105 built pages). Oldest ready draft drained (run 24, queue was ≥ 3). **Run 26: queue 2 → 3** — drafted `postgres-validator-rejects-valid-clickhouse-sql` (engine/security lesson); pending drafts now `postgres-validator-rejects-valid-clickhouse-sql` + `blog-without-a-feed-is-a-dead-end` [run 22] + `one-way-internal-links-leak-yield` [run 19]; ≥ 3 ⇒ next run publishes | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
+| 7 | Surface yield | posts 21 (run 24: +`serverless-db-cold-start-retry`); 7d external referrals = **1** (`bing.com`, 1 pageload). **Run 22: syndication feeds 0 → 1** — shipped `/rss.xml` (hand-rolled RSS 2.0 over `data/blog.ts`, site-wide autodiscovery; `rss.xml.test.ts` 5 invariants) so feed readers + dev.to/Medium/Hashnode can auto-import the canonical copy (`rel=canonical` back). **Run 19: internal-link reciprocity 0 → 10** — added the reciprocal "Further reading" backlink on all 10 anchored `/solve`+`/vs` pages so every post has ≥1 internal inbound link (internal links 2417 → 2427). | CF `refererHost` — measured every run. Attacks "volume without yield" at its SEO/UX input; external-referral re-measure lags indexation |
 | | **Engine** — BIRD 07-05 · Spider 07-08 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
-| 8 | BIRD raw EX | **0.526** (262/498 EA, 2 `gold_error`, 07-05 canonical, [run 28742006051](https://github.com/nlqdb/nlqdb/actions/runs/28742006051)). **`SK-QUAL-017` SC verdict (run 12, 07-06):** first N≥2 dispatch (N=3, temp 0.7, 150q smoke, [run 28761582097](https://github.com/nlqdb/nlqdb/actions/runs/28761582097)) = **79/150 = 0.5267, exactly flat vs the same-directive-set greedy comparator** (canonical run restricted to the identical 150 qids: 79/150; b=8/c=8, p=1.0; SC `no_sql` 1/150) — majority-vote at 3× quota buys 0 on the free chain; the 8↔8 swaps are provider-mix noise | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Baseline re-seeded 07-05. `SK-LLM-043` live-verified (run 11): `\|\|` concats 7 → 3 run-wide. Offline deterministic-ceiling lever exhausted (07-04); **SC lever dead (#619); frontier-lens levers closed (run 15, `SK-QUAL-022`)** — only remaining live BIRD-free move is the parked corrected-set (license, P2). Pin-branch delete still 403-blocked (`eval/bird-resume-0e67e64` + `-8d3d7c5`) |
+| 8 | BIRD raw EX | **0.526** (262/498 EA, 2 `gold_error`, 07-05 canonical, [run 28742006051](https://github.com/nlqdb/nlqdb/actions/runs/28742006051)). **`SK-QUAL-017` SC verdict (run 12, 07-06):** first N≥2 dispatch (N=3, temp 0.7, 150q smoke, [run 28761582097](https://github.com/nlqdb/nlqdb/actions/runs/28761582097)) = **79/150 = 0.5267, exactly flat vs the same-directive-set greedy comparator** (canonical run restricted to the identical 150 qids: 79/150; b=8/c=8, p=1.0; SC `no_sql` 1/150) — majority-vote at 3× quota buys 0 on the free chain; the 8↔8 swaps are provider-mix noise | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Baseline re-seeded 07-05. `SK-LLM-043` live-verified (run 11): `\|\|` concats 7 → 3 run-wide. Offline deterministic-ceiling lever exhausted; **SC lever dead (#619); frontier-lens levers closed (run 15, `SK-QUAL-022`)** — only live BIRD-free move is the parked corrected-set (license, P2) |
 | 9 | Spider raw EX | **0.2444** (33/135, 07-08 capacity-honest full run, [run 28959809497](https://github.com/nlqdb/nlqdb/actions/runs/28959809497), resumed from [28958045313](https://github.com/nlqdb/nlqdb/actions/runs/28958045313) per `SK-QUAL-013`, gold_error 0) | target 0.75; **run-27 lever: capacity-honest re-measure 0.1926 → 0.2444 (26 → 33/135, +7q / +5.19 pp).** The 07-02 0.1926 was free-lane capacity-throttled ⇒ undercount; this run waited out throttles (`--capacity-wait-ms 65000`, 2 windows to `resumable:false`) on `main` 6e6b486. Still worst engine number (target 0.75). Spider has no baseline file (BIRD-only, `SK-QUAL-018`) — this row is Spider's source of truth |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-02) | full-chain ICP EX; 1.8× BIRD, 5× Spider — the GLOBAL-026 bet; N=23 ±1 noisy. Retrieval precision@1 saturated |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic-frontier 69.33%, 150-q smoke seed 20260607, 07-06 run 15, `SK-QUAL-022`; single-frontier lane 18.00 pts). persona-bench 0.00 pts (07-02) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 unclamped < the 0.80 floor (row #16 fails on competence, not the instrument — run 15 `SK-QUAL-022` removed the 5 s frontier-plan clamp that had understated it). Smoke, no baseline touch; run history in git + `progress/quality-score-verification-log.md` |
@@ -56,10 +56,10 @@ code / API / blog / queue / byo-connect. Detail in *Last change*.
 | 13 | nlqdb-api wall-time p50 / p95 | 10.1 ms / 1.35 s | mcp-server p95 331.5 s = long-lived SSE, expected; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.75** — sdk ✅ 07-06 (1.00) · mcp ✅ 07-06 (1.00) · examples ✅ 07-06 (1.00) · opencheck ❌ (**Suite A 4/5, best since the 06-12 green** — [run 28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)) | run 13 owns this row: the named fix (pre-flight over an ordered free-model list) shipped + trace-triaged suite fixes; sdk/mcp/examples re-dispatched same run (were staring at a 07-09 freshness cliff). **Run 18 owns this row: fixed Suite A's sole failure** — the app-side cold-start `db_unreachable` (2× trace-verified) — via `SK-ASK-013` exec-stage backoff (`300 ms × 2^(n−1)`, ≤900 ms) so a scale-to-zero Neon resumes before the retry lands; `plan`/`route` still retry instantly (LLM failover needs no wait). **Measured before→after (deterministic, `retry.test.ts`):** the same cold-start model (DB unreachable until t=700 ms) — *without* backoff all 3 instant attempts land cold and surface `db_unreachable`; *with* the exec backoff attempt 3 lands at t=900 ms and recovers. Real-world re-measure dispatched: opencheck `depth=a` on the branch ([run 28849127856](https://github.com/nlqdb/nlqdb/actions/runs/28849127856)) — capacity-confounded (agent-pool dependent), so the test is the primary signal; next run reads the completed run. Suite B 0/8 = weakest-candidate capacity (4 stronger pools simultaneously 429 at pick time), not a fix regression. Full triage: `e2e-coverage/opencheck-operations.md` 2026-07-06 rows |
+| 15 | E2E manual-suite freshness | **0.75** — sdk ✅ 07-06 (1.00) · mcp ✅ 07-06 (1.00) · examples ✅ 07-06 (1.00) · opencheck ❌ (**Suite A 4/5, best since the 06-12 green** — [run 28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)) | run 13 shipped the pre-flight-over-ordered-free-model-list fix + re-dispatched sdk/mcp/examples. Run 18 fixed Suite A's sole failure (cold-start `db_unreachable`, 2× trace-verified) via `SK-ASK-013` exec-stage backoff (`300 ms × 2^(n−1)`, ≤900 ms; verified in `retry.test.ts`). Suite B 0/8 = weakest-candidate capacity (4 stronger pools 429 at pick time), not a regression. Full triage: `e2e-coverage/opencheck-operations.md` (git preserves the run-13/18 detail) |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (35.3% walker-dominated, N=17 — row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: the agentic-frontier criterion is now **measurement-clean** (clamp fixed) — closing the remaining ~11 pp to 0.80 is a real engine-competence lift (multi-model frontier chain `SK-LLM-017`, or the parked corrected-set); first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **24** (07-08; run 23 lever: −1, resolved `byo-connect` OQ **(c)** DNS-rebind TOCTOU — per-query egress re-guard shipped on both engines (verified in code), sub-TTL residual accepted for the BYO threat model, P2-grounded vs OWASP/industry re-resolve-before-use best practice; keep-refs-in-sync per P3, not a relabel — detail in *Last change*). **Prior levers** (git preserves full detail): run 21 −1 (`e2e-coverage` cold-start OQ → run 18 `SK-ASK-013`); run 17 −2 (`premium-tier` router contracts); run 8 −1 (`agent-memory` matrix-freshness guard hardened); run 6 −4 (4 body-already-settled bullets relabeled to match). | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **23** (07-08; run 26 lever: −1, resolved `byo-connect` OQ **(a)** ClickHouse-SQL-on-the-PG-validator — Decided: no per-grammar CH validator (research: node-sql-parser has no CH dialect; ANTLR4 JS parsers bust the Workers budget), keep the dialect-agnostic leading-verb allowlist load-bearing + a scoped engine-aware-`validateSql` follow-up; also corrected the doc's `libpg_query`→`node-sql-parser` factual error — genuine resolution, not a relabel; detail in *Last change*). **Prior levers** (git preserves full detail): run 23 −1 (`byo-connect` OQ (c) DNS-rebind TOCTOU); run 21 −1 (`e2e-coverage` cold-start OQ → run 18 `SK-ASK-013`); run 17 −2 (`premium-tier` router contracts); run 6 −4 (body-already-settled relabels). | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-08 run-24 sweep: **105** pages, **2,580** internal links — +1 page / +25 links vs run 22 = the new `serverless-db-cold-start-retry` post + its inbound nav/index/sitemap/llms links) | target 0 — sweep is repeatable: `cd apps/web && bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
 | 19 | Live-surface claim integrity | **0 tracked gaps** (07-08 re-audit; run 25 found + closed 1) | claim-vs-reality on shipped user-facing surfaces; target 0. **Run 25 lever:** `/pricing` free tier claimed *"Sleeps after 7 days idle"* — the same 7d claim sat on 3 surfaces (`/pricing` copy + `SK-RL-005` + `architecture.md` §5), implemented by no code, contradicting reality: free-tier Neon compute scales to zero at Neon's **~5-min auto-suspend** (`SK-ASK-013`; `index.ts:3446` keep-warm is *"strictly under Neon's 5-min auto-suspend"*), and `db-sweep` *"never touches authed user DBs"* (only anon 90-day deletion). No 7-day sleep exists. Fixed to *"Sleeps when idle · wakes in <2s"* (found+closed same run ⇒ net 0, the run-9 pattern). Run-9 swept `/pricing`, MCP paths, CLI verbs, wrapper-publish, `architecture.md`. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
@@ -97,25 +97,42 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-08 (run 27)** — lever: **Spider raw EX capacity-honest re-measure
-(row #9, worst engine number)** — **0.1926 → 0.2444** (26/135 → 33/135, +7
-questions / +5.19 pp). BIRD (row #8, weekly focus) is dark for the lever (rule
-8); the distribution + docs-ambiguity lanes were both taken this cycle by open
-**PR #635 (run 26)**, so step-0 non-overlap steered to the next agent-movable,
-non-dark, non-overlapping number — the scorecard's own flagged priority
-("re-measuring Spider capacity-honestly matters more than SC"). **Method:** fresh
-full dispatch on `main` `6e6b486` (free lane only, `skip_emit=false`). The 07-02
-0.1926 was free-lane **capacity-throttled ⇒ undercount**; this run waited out
-throttles (`--capacity-wait-ms 65000`) and resumed across 2 `SK-QUAL-013`
-windows — [28958045313](https://github.com/nlqdb/nlqdb/actions/runs/28958045313)
-(128/135 partial, `resumable:true`) →
-[28959809497](https://github.com/nlqdb/nlqdb/actions/runs/28959809497) (135/135,
-`resumable:false`), gold_error 0. **KPI:** GLOBAL-025 **engine quality** — Spider
-now carries an honest current-main number, +5.19 pp over the throttled reading.
-**None degrade:** measurement-only PR (no product code touched); `typecheck` +
-`lint` + `apps/web test` (233/233) green pre-change; baselines byte-untouched
-(Spider has no baseline file — BIRD-only per `SK-QUAL-018`; row #9 is Spider's
-source of truth). Verification-log row appended.
+**2026-07-08 (run 26)** — lever: **docs-ambiguity (row #17), 24 → 23** — resolved
+`byo-connect` Open question **(a)** (ClickHouse SQL validated by the Postgres
+read/write validator). Row #8 (weekly focus) is dark for the lever (rule 8) +
+engine anti-rut-blocked (rule 7); run 27 (merged just before this) already
+took this cycle's engine move (Spider row #9 — git log +
+`progress/quality-score-verification-log.md`). The worst-number input
+(distribution) is publish-gated this run by step-3's queue-<3-⇒-draft rule;
+step-0 clean (no other open PRs). **Investigation:** the
+read/write validator (`sql-validate.ts`, applied upstream to CH per
+`build-deps.ts:119`) parses with `node-sql-parser`
+`database:"PostgreSQL"` (`sql-validate.ts:274`) — **not `libpg_query`** as the
+doc claimed (that's the DDL sibling). Research (P2, 2026-07-08): `node-sql-parser`
+v5.4.0 ships **no ClickHouse dialect** (PG/MySQL/BigQuery/Redshift/Snowflake/…
+only) so no config makes it parse CH; the JS CH parsers (`dt-sql-parser`,
+`clickhouse-ast-parser`) are ANTLR4-generated and bust the Workers/`GLOBAL-013`
+bundle. **Decision:** reject a per-grammar `sql-validate-clickhouse.ts` — the
+false-`parse_failed` on valid CH grammar (`LIMIT n BY`, `quantile(0.5)(x)`,
+`ARRAY JOIN`, `WITH ROLLUP`) is real but the **security-load-bearing guard is the
+engine-agnostic leading-verb allowlist** (`ALLOWED_LEADING`/`LEADING_VERB_REJECT`
++ multi-statement reject, which run *before* the AST parse), exactly the
+`SK-MULTIENG-004` "allowlist load-bearing since CH `readonly=1` doesn't block DDL"
+posture. Scoped non-blocking follow-up: make `validateSql` engine-aware so a
+PG-dialect `parse_failed` is non-authoritative for CH (needs a live-CH query test
+⇒ dedicated PR, not this doc run). Revisit trigger: an observed CH-only
+false-reject or managed-Tinybird's Pipe/table allowlist landing. Genuine
+resolution (D2/D3 — mechanism corrected, approach chosen, trigger set), not a
+relabel. **Artifact (step 3):** queue was 2 (< 3) ⇒ drafted one new
+engine/security post `postgres-validator-rejects-valid-clickhouse-sql` (the very
+lesson above), queue **2 → 3**; D4 kept the queue file under 20 KB by trimming
+older entries (git-recoverable). **Measured:** pinned grep 24 → 23 (verified before/after);
+`byo-connect/FEATURE.md` 15.5 KB, queue 19.95 KB (both < 20 KB); gate #3
+(`grep '^### GLOBAL-' docs/features/`) clean. **KPI:** GLOBAL-025 **engine
+quality** (multi-engine) — the CH read/write validation posture is now a
+documented, research-backed decision instead of an "accepted gap". **None
+degrade:** `typecheck` clean; docs-only diff — zero code/engine/API/baseline
+touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
