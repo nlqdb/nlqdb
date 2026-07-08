@@ -41,6 +41,61 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "serverless-db-cold-start-retry",
+    title: "Your database scales to zero. Your retry loop doesn't know that.",
+    description:
+      "A scale-to-zero Postgres branch fails the first query while its compute wakes. Instant retries replay the cold connection. The fix: back off the DB stage, not the LLM stages.",
+    date: "2026-07-08",
+    body: [
+      {
+        kind: "p",
+        text: "Serverless Postgres is wonderful until the first query after an idle spell. A free-tier Neon branch parks its compute after ~5 minutes of no traffic; the next query has to wake it, and that first connection can fail while the compute spins back up. We had a retry loop in front of it — three attempts, textbook. It made things worse. The retries fired so fast they all hit the same cold connection, and the user got a crisp `db_unreachable` about 40 ms after the database had already started waking up.",
+      },
+      { kind: "h2", text: "One retry loop, two completely different failures" },
+      {
+        kind: "p",
+        text: "Our `/v1/ask` pipeline has three stages that can each throw a transient: `route` (an LLM classifier call), `plan` (the LLM emits SQL), and `exec` (the query hits the database). We wrapped all three in the same helper — three attempts, then surface. The mistake was assuming a retry is a retry. It isn't. The *right delay between attempts depends on why the stage failed*, and the two failure modes here want opposite things.",
+      },
+      {
+        kind: "p",
+        text: "When an LLM call fails, it's usually one provider returning a 5xx or a rate-limit. The fix is to fail over to a sibling provider — and you want to do that **immediately**, because the sibling is a different machine that is already warm. Any delay is dead time on a spinner. But when `exec` fails on a cold serverless branch, the fix is the opposite: the *same* endpoint needs a moment of wall-clock time to become reachable. Retrying it instantly just re-dials a socket that isn't listening yet.",
+      },
+      { kind: "h2", text: "The bug: instant retries replay a cold connection" },
+      {
+        kind: "p",
+        text: "With a zero-delay loop, all three exec attempts land inside the same few tens of milliseconds — before the compute has finished resuming. Three cold dials, three failures, then a `502 db_unreachable` handed to the user. The surface then *lies*: it says we couldn't reach the database, when in truth we reached it three times in a row while it was mid-boot and gave up ~600 ms before it would have answered. The retries didn't absorb the transient. They burned through the budget the transient needed.",
+      },
+      { kind: "h2", text: "Back off the stage that needs wall-time, not the one that doesn't" },
+      {
+        kind: "p",
+        text: "The fix is one option on the retry helper: an optional per-stage backoff. `route` and `plan` keep retrying instantly — their transient is a provider that fails over to a warm sibling with no benefit to waiting. Only `exec` opts into a delay, and only because its dominant transient is a compute that needs to wake up.",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: '// route + plan: an LLM provider 5xx\'d. Fail over to a sibling\n// provider on the NEXT attempt, instantly — waiting buys nothing,\n// the sibling is a different machine and already warm.\nawait withStageRetry("plan", planOnce);\n\n// exec: the dominant transient is a scale-to-zero Postgres compute\n// that needs wall-time to resume. Back off so attempts 2/3 land warm.\nawait withStageRetry("exec", runQuery, {\n  backoffMs: (failedAttempt) => 300 * 2 ** (failedAttempt - 1), // 300ms, then 600ms\n});',
+      },
+      {
+        kind: "p",
+        text: "The timeline: attempt 1 at t=0 (cold, fails), wait 300 ms, attempt 2 at t=300 ms, wait 600 ms, attempt 3 at t=900 ms. A free-tier Neon compute resumes inside that ≤900 ms window, so attempt 3 lands warm and the query returns — the user never sees the cold start. The happy path is untouched: a database that's already awake answers on attempt 1 and never sleeps a millisecond. The backoff is pure failure-path cost, paid only by the request that would otherwise have failed outright.",
+      },
+      { kind: "h2", text: "Prove it without a flaky database" },
+      {
+        kind: "p",
+        text: "A cold-start bug you can only reproduce by waiting five minutes for a real branch to idle is a bug you will never keep fixed. So we made the delay injectable — the helper takes a `sleep` function, real timers in prod, a fake clock in the test. The test models a branch that stays unreachable until t=700 ms: **without** backoff, all three instant attempts land before 700 ms and the request surfaces `db_unreachable`; **with** the exec backoff, attempt 3 lands at t=900 ms and recovers. Same code path, deterministic, no real database, no five-minute wait. The regression can't silently come back.",
+      },
+      { kind: "h2", text: "The rule" },
+      {
+        kind: "p",
+        text: '**A retry policy is not one setting — it\'s one per failure mode.** Before you pick a backoff, ask what the retry is actually waiting *for*. Waiting for a different machine to answer? Don\'t wait — fail over now. Waiting for the *same* machine to wake up? The wait is the entire point, and retrying without it is just three ways to fail at the same instant. The error message that says "unreachable" is often really saying "you asked 600 ms too early."',
+      },
+      {
+        kind: "p",
+        text: "(This runs under every question you ask [nlqdb](https://nlqdb.com), the data layer you talk to in English: the LLM stages fail over between providers instantly, the database stage backs off just long enough for a scale-to-zero branch to wake, and a cold start turns into a slightly slower answer instead of an error.)",
+      },
+    ],
+  },
+  {
     slug: "llm-timeout-looks-like-hallucination",
     title: "The timeout that looked like a hallucination",
     description:
