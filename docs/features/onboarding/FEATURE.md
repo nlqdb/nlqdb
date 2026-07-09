@@ -11,7 +11,7 @@ when-to-load:
 # Feature: Onboarding
 
 **One-liner:** First-60-seconds experience — zero-friction signup, goal-first on-ramp, anti-patterns we refuse.
-**Status:** implemented (Phase 1); SK-ONBOARD-006 ships the first-10-queries KPI instrument (2026-07-01); SK-ONBOARD-005's remaining funnel events (TTFV / drop-off) are open.
+**Status:** implemented (Phase 1); SK-ONBOARD-006 ships the first-10-queries KPI instrument (2026-07-01); SK-ONBOARD-008 adds one-click starter goals to the anon create surface (2026-07-09); SK-ONBOARD-005's remaining funnel events (TTFV / drop-off) are open.
 
 **Contribution to north-star:** Seamless onboarding — this feature IS the second [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) pillar's surface. SK-ONBOARD-005/006 wire the TTFV / first-10-queries-success / drop-off / 4-of-5 unguided KPIs.
 
@@ -96,6 +96,14 @@ when-to-load:
 - **Why:** The browser walkers (flows 001–003) drive the *real* anonymous `/v1/ask` path, so their asks bump the same counters a stranger's would. Anonymous walker DBs carry no `user` row, so the read-side principal join can't tell walker from stranger — only the request UA can. The write-side skip is the only place that distinction survives. Authed non-stranger traffic (founder + `test@example.com`) *is* recoverable by the read-side join, so it stays a read filter rather than a hardcoded allowlist on the hot path (P5).
 - **Consequence in code:** one pure exported helper `isSyntheticUserAgent()` + a single guard at the top of `bumpFirst10()` (covers all four SSE/JSON × ok/error call sites); the `last_queried_at` touch is deliberately left alone — TTL eviction (`SK-ANON-002`) is a separate mechanism. Measured 2026-07-07: pre-fix the counters read 3/8 = 37.5% but every row was founder+test (`omer.hochman@gmail.com`, `test@example.com`); genuine-stranger N = 0, so the true KPI is *not yet measurable* — the 35–37% previously reported was 100% non-stranger.
 - **Alternatives rejected:** a `synthetic` column on `databases` set at create-time from the creating UA — a migration + plumbing the UA into both INSERT sites (`neon-provision.ts`, `db-connect/connect.ts`, the latter security-sensitive) for a distinction the counter's own write already knows; and create-UA ≠ ask-UA in general. Skipping the bump is smaller and attributes the ask, not the create.
+
+### SK-ONBOARD-008 — Starter goals on the anonymous create surface; fill, never auto-submit
+
+- **Decision:** The anonymous create form (`CreateForm`, live at `/app/new`, `/vs/*`, `/solve/*`, `/agents`) renders a short row of one-click **starter build goals** (`apps/web/src/data/create-starters.ts`) below the input. Clicking a chip only **fills** the goal input (via the same debounced `onGoalChange` draft path) and emits the `home.starter_clicked` [`GLOBAL-024`](../../decisions/GLOBAL-024-demand-signal-telemetry.md) funnel signal — it never auto-submits. Starters are hidden once a DB has been created (`!result`).
+- **Core value:** Goal-first, Effortless UX, Honest latency
+- **Why:** The device gets exactly **one** `/v1/ask` create call before the `SK-ANON-012` cap sends it to sign-in, so a stranger's *first* goal is their only shot — the single highest-leverage agent-controllable input to the `SK-ONBOARD-006` first-10-queries-success KPI. A blank "What are you building?" field is the classic first-query-paralysis point; a placeholder alone (`SK-WEB-002`) doesn't show what the field *accepts*. Curated, known-good build goals turn the one free call into a legible payoff instead of a weak schema. **Fill-not-submit is the load-bearing part:** auto-submitting on click would let a mis-tap silently spend the one-shot cap.
+- **Consequence in code:** `create-starters.ts` (typed `CreateStarter[]` + invariants test) is the single source of the list; `CreateForm.onStarter()` fills + emits; chip styles reuse the existing `--rule-2`/`--accent-line` tokens. No API/SDK/CLI/MCP surface — this is a pure web-form affordance (a query box, not a cross-surface capability), so [`GLOBAL-003`](../../decisions/GLOBAL-003-all-surfaces-one-pr.md) does not require propagation.
+- **Alternatives rejected:** auto-submit on click (fastest to value, but burns the `SK-ANON-012` one-shot on a mis-tap — rejected). Reusing `showcase-examples.ts` (those are *query* goals for the chat box; this field takes *build* goals — wrong shape). A long exhaustive list (every chip competes for the same fold; the strongest few win — `SK-WEB` carousel rationale).
 
 ## GLOBALs governing this feature
 
