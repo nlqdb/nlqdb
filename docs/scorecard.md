@@ -17,18 +17,23 @@ the parked **corrected-set** (license, P2) — so row #8 is a floor this week
 last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
-lagging metric moved through its agent-movable inputs (distribution
-surfaces/yield). Engine (row #8, weekly focus) is dark for the lever (rule 8) +
-anti-rut-blocked (rule 7). **Today's lever (07-08, run 28): distribution-publish
-— indexable surfaces (row #6), 85 → 86** — the queue held **3** drafts (≥ 3), so
-step 3 mandates *publish, don't draft*: shipped the oldest ready draft
-`one-way-internal-links-leak-yield` (run-19 distribution lesson — invert the
-existing `anchor` field into a reciprocal backlink; a tree link-graph starves
-fresh pages of inbound links and dead-ends readers). Fresh lever category
-(publish was 1 of last 5 merged daily PRs — run 24), anti-rut-clear; step-0
-non-overlap: only open PR #637 owns `packages/elements/**` + rows #19/#20 — this
-run touches only `data/blog.ts` + queue + scorecard rows #6/#7. Queue now **2**
-(< 3 ⇒ next run drafts). Detail in *Last change*.
+lagging metric, moved through its agent-movable inputs (distribution
+surfaces/yield). **Run 28 shipped two non-overlapping levers:** distribution-publish
+(row #6, 85 → 86 — published `one-way-internal-links-leak-yield`, queue 3 → 2, #638)
+and, as this run's lever, **closing the last `SK-TRUST-002`/`GLOBAL-003` trace-parity
+surface gap on `<nlq-data>` (rows #19/#20)**. The elements↔trust-ux docs *contradicted*
+each other — `elements/FEATURE.md` claimed `<nlq-data>` exposed `el.trace`, while
+`trust-ux/FEATURE.md` (and the code) said it did not. SDK + CLI + MCP + web already
+carry the trace/confidence signal; `<nlq-data>` was the **sole shipped surface**
+missing it, so embedders couldn't build their own `SK-PREMIUM-004` free-model nudge.
+Implemented `el.trace` (JS property) **+** `trace` on the `nlq-data:load` event, fixing
+a same-breath bug (the event's `cached` was sourced from a non-existent top-level
+field — always `undefined`; now from `trace.cache_hit`). Code-wrong/decision-right
+(§10.2), advancing GLOBAL-025 UX/trust; fresh lever category ⇒ anti-rut-clear. Detail
+in *Last change*.
+**Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine anti-rut-blocked
+(rule 7); 0.526 is a floor whose only live move is the parked corrected-set (license,
+P2). Phase 2 exit gate **1/9 pass** (row #16).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -57,8 +62,8 @@ run touches only `data/blog.ts` + queue + scorecard rows #6/#7. Queue now **2**
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **23** (07-08; run 26 lever: −1, resolved `byo-connect` OQ **(a)** ClickHouse-SQL-on-the-PG-validator — Decided: no per-grammar CH validator (research: node-sql-parser has no CH dialect; ANTLR4 JS parsers bust the Workers budget), keep the dialect-agnostic leading-verb allowlist load-bearing + a scoped engine-aware-`validateSql` follow-up; also corrected the doc's `libpg_query`→`node-sql-parser` factual error — genuine resolution, not a relabel; detail in *Last change*). **Prior levers** (git preserves full detail): run 23 −1 (`byo-connect` OQ (c) DNS-rebind TOCTOU); run 21 −1 (`e2e-coverage` cold-start OQ → run 18 `SK-ASK-013`); run 17 −2 (`premium-tier` router contracts); run 6 −4 (body-already-settled relabels). | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-08 run-28 sweep: **106** pages, **2,605** internal links — +1 page / +25 links vs run 24 = the new `one-way-internal-links-leak-yield` post + its inbound nav/index/sitemap/llms links) | target 0 — sweep is repeatable: `cd apps/web && bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
-| 19 | Live-surface claim integrity | **0 tracked gaps** (07-08 re-audit; run 25 found + closed 1) | claim-vs-reality on shipped user-facing surfaces; target 0. **Run 25 lever:** `/pricing` free tier claimed *"Sleeps after 7 days idle"* — the same 7d claim sat on 3 surfaces (`/pricing` copy + `SK-RL-005` + `architecture.md` §5), implemented by no code, contradicting reality: free-tier Neon compute scales to zero at Neon's **~5-min auto-suspend** (`SK-ASK-013`; `index.ts:3446` keep-warm is *"strictly under Neon's 5-min auto-suspend"*), and `db-sweep` *"never touches authed user DBs"* (only anon 90-day deletion). No 7-day sleep exists. Fixed to *"Sleeps when idle · wakes in <2s"* (found+closed same run ⇒ net 0, the run-9 pattern). Run-9 swept `/pricing`, MCP paths, CLI verbs, wrapper-publish, `architecture.md`. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
-| 20 | Hosted-premium readiness (§6 build-before-signal) | **schema ✅ · BYOLLM lanes ✅ · picker: web ✅ (`SK-PREMIUM-013`, #610) · picker parity ✅ (`SK-PREMIUM-014`, run 10: `model` preset + routing on `/v1/ask` — `fast` pins free, `best` 409s `model_unavailable` sans frontier lane — + SDK `model`, CLI `--model`, MCP `model`, `<nlq-data model>`; residual gaps tracked: `nlq model set`, per-provider key storage) · premium chain ⬜ · CTA (`SK-PREMIUM-004`) ⬜ · spend-cap UI ⬜** | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is **built before** the signal (lighting it is a flag flip); only the *meter firing* (Lago→Stripe) + cost-incurring infra stay dark. The meter staying off is not a reason to leave the slot unbuilt; drive ⬜→✅ each run (#610 07-04, run 10 07-05); next slot: the premium chain (`SK-LLM-017`, flag-dark) or the CTA |
+| 19 | Live-surface claim integrity | **0 tracked gaps** (run 28 found + closed 1) | claim-vs-reality on shipped surfaces + docs; target 0. **Run 28 lever:** `elements/FEATURE.md` advertised that `<nlq-data>` *"exposes the trace via the `el.trace` JS property"* — the code had **no such property** (verified: full `element.ts` read), and `trust-ux/FEATURE.md` correctly listed it as a not-yet-shipped `SK-TRUST-002` gap ⇒ the two features **contradicted** each other. Closed by *implementing* the missing feature (not just re-wording): `el.trace` + `trace` on the `nlq-data:load` event (`packages/elements`), making elements the 5th/5 shipped surface to carry the trace (SDK/CLI/MCP/web already did). Found+closed same run ⇒ net 0 (run-9/25 pattern), but this time by shipping code. Also fixed a same-breath bug: the load event's `cached` came from a phantom top-level field (always `undefined`) — now from `trace.cache_hit`. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
+| 20 | Hosted-premium readiness (§6 build-before-signal) | **schema ✅ · BYOLLM lanes ✅ · picker: web ✅ (`SK-PREMIUM-013`, #610) · picker parity ✅ (`SK-PREMIUM-014`, run 10) · CTA ✅ (`SK-PREMIUM-004` `FreeModelNudge`, #630 — was stale-⬜; corrected run 28, and its cross-surface signal now rides all surfaces incl. `<nlq-data>` `el.trace` per run 28) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked)** | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is **built before** the signal (lighting it is a flag flip); only the *meter firing* (Lago→Stripe) + cost-incurring infra stay dark. Drive ⬜→✅ each run; only genuine remaining slot is the premium chain (`SK-LLM-017`, flag-dark) — spend-cap UI is Lago-gated |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (per-agent RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
@@ -93,28 +98,27 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-08 (run 28)** — lever: **distribution-publish → indexable surfaces
-(row #6), 85 → 86** (posts 21 → 22). The queue held **3** drafts (≥ 3), so step 3
-mandates *publish, don't draft*: shipped the oldest ready draft
-`one-way-internal-links-leak-yield` (run-19 distribution lesson) as
-`/blog/one-way-internal-links-leak-yield/`. Row #8 (weekly focus) is dark for the
-lever (rule 8) + engine anti-rut-blocked (rule 7); publish is anti-rut-clear (1
-of last 5 merged daily PRs — run 24). **Step-0 non-overlap:** only open PR #637
-(run 28-elements) owns `packages/elements/**` + rows #19/#20 — this run touches
-only `apps/web/src/data/blog.ts` + `distribution-queue.md` + scorecard rows
-#6/#7/#18. **Artifact:** the post itself (recovered the run-19 body from git,
-wrote it as typed `BlogBlock`s per `SK-BLOG-002`, one-file edit to `data/blog.ts`
-which `blog/[slug].astro` + `blog/index.astro` + `sitemap.xml.ts` + `llms.txt.ts`
-all read). Queue drained to **2** (< 3 ⇒ next run drafts); the published draft
-became a venue pointer under `distribution-queue.md` § Published. **Measured
-(build-verified):** `apps/web` build 105 → 106 pages;
-`dist/blog/one-way-internal-links-leak-yield/index.html` present, and in
-`dist/llms.txt` + `dist/sitemap.xml` (grep 1 each); `bun run check:links` = 106
-pages / 2,605 internal links / **0 dead, 0 redirecting** (row #18). **KPI:**
-GLOBAL-025 **UX / distribution** advanced — one more indexable, self-canonical
-surface feeding funnel rows #1–#3 (the agent-movable input to the worst number,
-real strangers = 0). **None degrade:** docs + one data-file diff, zero
-engine/API/baseline/eval touched; `typecheck` + `lint` + `test` green on entry.
+**2026-07-08 (run 28)** — lever: **close the last `SK-TRUST-002`/`GLOBAL-003`
+trace-parity surface gap on `<nlq-data>` (rows #19/#20)**. Distribution-publish
+(row #6, #638) shipped alongside this run; row #8 dark (rule 8) + engine
+anti-rut-blocked (rule 7) — so the next agent-movable, non-dark, non-overlapping
+number. **Gap (doc↔doc contradiction):** `elements/FEATURE.md` asserted `<nlq-data>`
+exposed `el.trace`, but the code had **no such property** and `trust-ux/FEATURE.md`
+correctly listed it as a not-yet-shipped `SK-TRUST-002` ship-gap. SDK/CLI/MCP/web
+already surface the trace/confidence signal; elements was the sole shipped surface
+missing it, so embedders couldn't build their own `SK-PREMIUM-004` free-model nudge.
+**Fix (code, not re-wording):** implemented `el.trace` + `trace` on the `nlq-data:load`
+event (`packages/elements/src/{element,fetch}.ts`); typed the real nested `trace`
+block and dropped the phantom top-level `sql`/`cached` from `AskSuccess` (never
+returned — the event's `cached` was always `undefined`; now from
+`trace.cache_hit`). Reconciled both feature docs + README + row #20's stale
+CTA-⬜ (`FreeModelNudge` shipped #630). Code-wrong/decision-right (§10.2).
+**Measured:** trace-parity surfaces 4/5 → **5/5**; claim-integrity gap
+found+closed ⇒ tracked gaps **net 0** (row #19); +3 tests (elements 101→**104**);
+bundle **4527 B gz < 6144** (`SK-ELEM-007`). **KPI:** GLOBAL-025 **UX/trust**.
+**None degrade:** full gate green — `typecheck` + `lint` clean, **`bun run test`
+all pass** (api 880, elements 104, llm 264, db 268, web 233, wrappers green);
+zero engine/API/blog/queue touched, baselines byte-untouched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

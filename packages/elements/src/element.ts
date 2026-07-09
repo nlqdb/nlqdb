@@ -1,4 +1,4 @@
-import { type AskFailure, fetchAsk } from "./fetch.ts";
+import { type AskFailure, type AskTrace, fetchAsk } from "./fetch.ts";
 import { parseRefresh } from "./parse.ts";
 import { type NlqState, renderState } from "./render.ts";
 
@@ -14,6 +14,10 @@ const MIN_REFRESH_MS = 250;
 export type NlqDataLoadDetail = {
   rows: number;
   cached: boolean;
+  // SK-TRUST-002 — the compiled SQL + plan confidence + model ride the
+  // load event so a listener can react (e.g. a low-confidence nudge)
+  // without reaching for `el.trace`. `null` if the endpoint omitted it.
+  trace: AskTrace | null;
 };
 
 export type NlqDataErrorDetail = AskFailure;
@@ -45,6 +49,14 @@ export class NlqDataElement extends HTMLElement {
   // to render-class spelling.
   private lastKind: NlqState["kind"] | null = null;
   private lastHtml = "";
+  // SK-TRUST-002 — the trace of the last successful response, exposed
+  // as `el.trace` (per GLOBAL-023 / trust-ux). `null` before the first
+  // success and after any error. Read-only to consumers.
+  private lastTrace: AskTrace | null = null;
+
+  get trace(): AskTrace | null {
+    return this.lastTrace;
+  }
 
   connectedCallback(): void {
     // Status-region default: lets screen readers announce idle →
@@ -142,15 +154,21 @@ export class NlqDataElement extends HTMLElement {
     this.inflight = null;
 
     if (outcome.ok) {
+      this.lastTrace = outcome.data.trace ?? null;
       this.commit({ kind: "success", data: outcome.data }, template);
       this.dispatchEvent(
         new CustomEvent<NlqDataLoadDetail>("nlq-data:load", {
-          detail: { rows: outcome.data.rowCount, cached: outcome.data.cached },
+          detail: {
+            rows: outcome.data.rowCount,
+            cached: this.lastTrace?.cache_hit ?? false,
+            trace: this.lastTrace,
+          },
           bubbles: true,
           composed: true,
         }),
       );
     } else {
+      this.lastTrace = null;
       this.commit({ kind: "error", failure: outcome.failure }, template);
       this.dispatchEvent(
         new CustomEvent<NlqDataErrorDetail>("nlq-data:error", {

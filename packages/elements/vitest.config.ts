@@ -29,7 +29,7 @@ export default defineConfig({
         test: {
           name: "dom",
           environment: "happy-dom",
-          include: ["test/action-element.test.ts"],
+          include: ["test/action-element.test.ts", "test/element.test.ts"],
         },
       },
     ],
