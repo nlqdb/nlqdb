@@ -12,6 +12,29 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"You added a second SQL engine. Your text-to-SQL model is still being
+  told it's the first one."** slug `text-to-sql-planner-told-wrong-dialect` ·
+  venue dev.to (#sql #llm #database) + r/dataengineering + lobste.rs (`sql`) ·
+  engine/architecture lesson (byo-connect OQ (b) resolution). Angle: a
+  text-to-SQL planner is dialect-aware by design — you pass it `Dialect: postgres`
+  and it emits Postgres. Bolt on a second engine and the bug isn't in the model,
+  it's in the one line that fills that field: a hardcoded `dialect: "postgres"`,
+  or a type union (`"postgres" | "sqlite"`) that never grew a `clickhouse` member.
+  So a ClickHouse database gets a planner confidently writing Postgres SQL —
+  `LIMIT n BY`, `quantile(0.5)(x)`, `ARRAY JOIN` never appear, and analytical
+  queries that need them come back subtly wrong. It hides because everything
+  compiles and the happy-path PG queries still work; nothing logs "wrong dialect."
+  The fix is not a transpile layer (SQLGlot/ANTLR bust an edge/Workers bundle) —
+  it's threading the DB's real engine into the one field the prompt already reads,
+  and *adding the dialect member to the type* so the compiler flags every call
+  site that still hardcodes the first engine. Coupled lesson (the twin of the
+  validator post below): the generator and the validator both silently assume the
+  first engine — fix one without the other and you just move the false-reject (the
+  validator vetoes the CH SQL the planner now correctly emits). Rule: when you add
+  an engine, the dialect isn't config — it's a value that must flow from the row;
+  grep for every place the first engine's name is a literal. Honest split: an
+  architecture lesson, not a product feature.
+
 - **"You added ClickHouse. Your Postgres SQL validator now rejects valid
   queries — quietly."** slug `postgres-validator-rejects-valid-clickhouse-sql` ·
   venue dev.to (#sql #clickhouse #security) + r/dataengineering + lobste.rs
@@ -93,10 +116,10 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 
 - run 120 — dev.to / r/dataengineering / r/LLMDevs: "Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest." (Dataherald/Vanna/Wren open-sourced the NL→SQL engine — a commodity you wire up in an afternoon — but ship it to people who don't know your schema and accuracy evaporates; the fix is *golden SQL*, hand-curated question→query pairs, a standing maintenance job the README undersells; honest split — nlqdb owns the Postgres it answers and skips golden SQL by prompting from the live schema fingerprint, no warehouse federation; anchors `/vs/dataherald`).
 - run 118 — dev.to / r/LangChain / lobste.rs: "You don't need to build a SQL agent. Here's when you should anyway." (the `create_sql_agent` + `SQLDatabaseToolkit` demo (now assembled directly in LangGraph) gets the happy path working in an afternoon — the 10%; the other 90% is a `DELETE` guardrail (the default toolkit runs whatever SQL the model emits), bounded retries, a question cache, somewhere to *show* the SQL, a deployment, and an eval harness, all yours to own forever for a non-core feature; the honest build-vs-buy test isn't "can I generate SQL from English" but "do I want to own that stack" — build with LangChain if you're building an agent framework / need the reasoning graph / want self-hosted-free; buy if it's a feature inside your product; honest split — nlqdb is a hosted pipeline you embed, not a vendored library, and a LangChain agent can just *call* it as one tool; anchors `/vs/langchain-sql-agent`).
-- run 117 — dev.to / r/devops / r/sysadmin: "Your cron jobs already write run history. You just can't query it." (which-job-fails-most / how-long / how-many-ran are aggregations grepped out of scheduler logs the wrong way; capture is one row per run, reporting is the windowed `GROUP BY`, and even `pg_cron` keeps a `cron.job_run_details` table because run history is worth querying; a heartbeat monitor like Healthchecks.io/Cronitor answers the *other* question — did it run at all, the dead-man's-switch — presence-vs-absence, not which-fails-most; honest split — nlqdb is no scheduler and does no alerting, it stores the runs you write and gives a planner over them; anchors `/solve/track-background-job-run-history`).
-- run 116 — dev.to / r/mcp / r/LLMDevs: "A federated query engine connects your agent to the data you have. Some agents need data they don't have yet." (federation over sources you already run vs. a store the agent provisions and owns; anchors `/vs/mindsdb`).
-- run 115 — dev.to / r/SaaS / Indie Hackers: "Product analytics is two problems. Only one of them needs a warehouse." (the most-upvoted "what do you use for product analytics" answer is "just store events in Postgres and query them" — right, and it hides the work; product analytics is *capture* (a tiny `{user, event, ts, props}` insert) vs *reporting* (windowed `GROUP BY` that wants a planner); per-event SaaS prices you off a tier exactly when a side project can least pay and a warehouse is oversized for 40k events; honest split — no autocapture/replay/funnel UI, PostHog is right for those and the two compose; anchors `/solve/track-product-usage-without-a-data-warehouse`).
-- run 114 — dev.to / r/dataengineering / r/analytics: "Your analytics canvas is where humans look. Your product runs where no one's looking." (agentic-analytics canvases like Count are great for a data team watching the cell, but wiring that agent into the product — MCP endpoint behind an "ask your data" box, a 3am refresh — breaks the human-in-the-loop a canvas assumes; interactive analysis vs headless runtime are different altitudes and compose; honest split — nlqdb has no canvas/Python/charts; anchors `/vs/count`).
+- run 117 — dev.to / r/devops / r/sysadmin: "Your cron jobs already write run history. You just can't query it." (anchors `/solve/track-background-job-run-history`).
+- run 116 — dev.to / r/mcp / r/LLMDevs: "A federated query engine connects your agent to the data you have. Some agents need data they don't have yet." (anchors `/vs/mindsdb`).
+- run 115 — dev.to / r/SaaS / Indie Hackers: "Product analytics is two problems. Only one of them needs a warehouse." (anchors `/solve/track-product-usage-without-a-data-warehouse`).
+- run 114 — dev.to / r/dataengineering / r/analytics: "Your analytics canvas is where humans look. Your product runs where no one's looking." (anchors `/vs/count`).
 - run 113 — dev.to / r/webdev / r/node: "The webhook receiver is the easy half. The database behind it is the part nobody wants to own." (anchors `/solve/store-and-query-webhook-events`).
 - run 112 — dev.to / r/dataengineering / r/LLMDevs: "Your notebook's AI analyst assumes someone's watching the cell. Your product runs when no one is." (anchors `/vs/fabi`).
 - run 111 — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned." (user-modelling (Honcho's theory-of-mind) vs. relational aggregation over what the agent stored; anchors `/vs/honcho`).

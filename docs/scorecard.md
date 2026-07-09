@@ -18,19 +18,20 @@ last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric, moved through its agent-movable inputs (distribution
-surfaces/yield). **Run 28 shipped two non-overlapping levers:** distribution-publish
-(row #6, 85 → 86 — published `one-way-internal-links-leak-yield`, queue 3 → 2, #638)
-and, as this run's lever, **closing the last `SK-TRUST-002`/`GLOBAL-003` trace-parity
-surface gap on `<nlq-data>` (rows #19/#20)**. The elements↔trust-ux docs *contradicted*
-each other — `elements/FEATURE.md` claimed `<nlq-data>` exposed `el.trace`, while
-`trust-ux/FEATURE.md` (and the code) said it did not. SDK + CLI + MCP + web already
-carry the trace/confidence signal; `<nlq-data>` was the **sole shipped surface**
-missing it, so embedders couldn't build their own `SK-PREMIUM-004` free-model nudge.
-Implemented `el.trace` (JS property) **+** `trace` on the `nlq-data:load` event, fixing
-a same-breath bug (the event's `cached` was sourced from a non-existent top-level
-field — always `undefined`; now from `trace.cache_hit`). Code-wrong/decision-right
-(§10.2), advancing GLOBAL-025 UX/trust; fresh lever category ⇒ anti-rut-clear. Detail
-in *Last change*.
+surfaces/yield). **Run 29 lever: docs-ambiguity 23 → 22 (row #17)** — genuinely
+resolved `byo-connect` OQ **(b)** "the planner emits Postgres-flavored SQL for a
+ClickHouse DB." Code-grounded diagnosis: the planner is *already*
+dialect-parameterized (`PLAN_SYSTEM` + `Dialect:` exemplar, `SK-LLM-018`) but
+`PlanRequest.dialect` is typed `"postgres" | "sqlite"` (`types.ts:88`) and
+`orchestrate.ts` **hardcodes `dialect: "postgres"`** at both plan sites (`:242`,
+`:414`) — so a ClickHouse-BYO DB is told it's Postgres. Decided (P2):
+dialect-aware prompting (extend the `Dialect:` param to `clickhouse`), **not** a
+transpile layer (SQLGlot/ANTLR bust the `GLOBAL-013` Workers budget — same
+constraint as OQ (a)); the scoped code follow-up is **coupled with OQ (a)**'s
+engine-aware `validateSql` (emitting CH grammar requires the validator to stop
+vetoing it) and lands in a dedicated PR with a live-CH fixture. Genuine
+resolution (approach decided + rationale), not a relabel — same (a)/(c) pattern.
+Fresh lever category ⇒ anti-rut-clear. Detail in *Last change*.
 **Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine anti-rut-blocked
 (rule 7); 0.526 is a floor whose only live move is the parked corrected-set (license,
 P2). Phase 2 exit gate **1/9 pass** (row #16).
@@ -44,7 +45,7 @@ P2). Phase 2 exit gate **1/9 pass** (row #16).
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (run 16, `SK-ONBOARD-007`, remote-D1 07-07). Unfiltered counters read 3/8 = **37.5%** but a `tenant_id → user.email` join shows all 3 rows are founder (`omer.hochman@gmail.com`) + `test@example.com` — the 35–37% previously reported was 100% non-stranger | target ≥ 95%. **Attribution gap fixed** (was "the instrument's next fix"): write-side skips the stranger-test walker UA (`isSyntheticUserAgent`, anon case the join can't see); read-side joins `user` + excludes founder/test. Honest read is now N=0 (matches row #2), not a placebo rate |
 | 5 | Session retention (≥ 2 queries) | 3 DBs with `first10_asks ≥ 2` (same attribution caveat as row #4) | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **86** (`/vs` 31 + `/solve` 33 + `/blog` 22) — **run-28 lever: published `one-way-internal-links-leak-yield`** (run-19 distribution lesson; build-verified `dist/blog/one-way-internal-links-leak-yield/index.html`, in `llms.txt` + `sitemap.xml`, 105 → 106 built pages). Queue was ≥ 3 ⇒ published the oldest ready draft (step 3). Pending drafts now **2** (`postgres-validator-rejects-valid-clickhouse-sql` [run 26] + `blog-without-a-feed-is-a-dead-end` [run 22]); < 3 ⇒ next run drafts | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
+| 6 | Indexable surfaces | **86** (`/vs` 31 + `/solve` 33 + `/blog` 22) — **run-28 lever: published `one-way-internal-links-leak-yield`** (run-19 distribution lesson; build-verified `dist/blog/one-way-internal-links-leak-yield/index.html`, in `llms.txt` + `sitemap.xml`, 105 → 106 built pages). Queue was ≥ 3 ⇒ published the oldest ready draft (step 3). Pending drafts now **3** (run 29 drafted `text-to-sql-planner-told-wrong-dialect` — the generator-side twin of the run-26 validator draft — bringing the queue to `postgres-validator-rejects-valid-clickhouse-sql` [run 26] + `blog-without-a-feed-is-a-dead-end` [run 22] + this; queue ≥ 3 ⇒ **next run publishes** the oldest, per step 3. D4: held under 20 KB by collapsing runs 114–117 parentheticals to git history) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
 | 7 | Surface yield | posts 22 (run 28: +`one-way-internal-links-leak-yield`); 7d external referrals = **1** (`bing.com`, 1 pageload). **Run 22: syndication feeds 0 → 1** — shipped `/rss.xml` (hand-rolled RSS 2.0 over `data/blog.ts`, site-wide autodiscovery; `rss.xml.test.ts` 5 invariants) so feed readers + dev.to/Medium/Hashnode can auto-import the canonical copy (`rel=canonical` back). **Run 19: internal-link reciprocity 0 → 10** — reciprocal "Further reading" backlink on all 10 anchored `/solve`+`/vs` pages. Internal links 2580 → 2605 (run-28 build). | CF `refererHost` — measured every run. Attacks "volume without yield" at its SEO/UX input; external-referral re-measure lags indexation |
 | | **Engine** — BIRD 07-05 · Spider 07-08 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.526** (262/498 EA, 2 `gold_error`, 07-05 canonical, [run 28742006051](https://github.com/nlqdb/nlqdb/actions/runs/28742006051)). **`SK-QUAL-017` SC verdict (run 12, 07-06):** first N≥2 dispatch (N=3, temp 0.7, 150q smoke, [run 28761582097](https://github.com/nlqdb/nlqdb/actions/runs/28761582097)) = **79/150 = 0.5267, exactly flat vs the same-directive-set greedy comparator** (canonical run restricted to the identical 150 qids: 79/150; b=8/c=8, p=1.0; SC `no_sql` 1/150) — majority-vote at 3× quota buys 0 on the free chain; the 8↔8 swaps are provider-mix noise | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Baseline re-seeded 07-05. `SK-LLM-043` live-verified (run 11): `\|\|` concats 7 → 3 run-wide. Offline deterministic-ceiling lever exhausted; **SC lever dead (#619); frontier-lens levers closed (run 15, `SK-QUAL-022`)** — only live BIRD-free move is the parked corrected-set (license, P2) |
@@ -59,7 +60,7 @@ P2). Phase 2 exit gate **1/9 pass** (row #16).
 | 15 | E2E manual-suite freshness | **0.75** — sdk ✅ 07-06 (1.00) · mcp ✅ 07-06 (1.00) · examples ✅ 07-06 (1.00) · opencheck ❌ (**Suite A 4/5, best since the 06-12 green** — [run 28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)) | run 13 shipped the pre-flight-over-ordered-free-model-list fix + re-dispatched sdk/mcp/examples. Run 18 fixed Suite A's sole failure (cold-start `db_unreachable`, 2× trace-verified) via `SK-ASK-013` exec-stage backoff (`300 ms × 2^(n−1)`, ≤900 ms; verified in `retry.test.ts`). Suite B 0/8 = weakest-candidate capacity (4 stronger pools 429 at pick time), not a regression. Full triage: `e2e-coverage/opencheck-operations.md` (git preserves the run-13/18 detail) |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (35.3% walker-dominated, N=17 — row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: the agentic-frontier criterion is now **measurement-clean** (clamp fixed) — closing the remaining ~11 pp to 0.80 is a real engine-competence lift (multi-model frontier chain `SK-LLM-017`, or the parked corrected-set); first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **23** (07-08; run 26 lever: −1, resolved `byo-connect` OQ **(a)** ClickHouse-SQL-on-the-PG-validator — Decided: no per-grammar CH validator (research: node-sql-parser has no CH dialect; ANTLR4 JS parsers bust the Workers budget), keep the dialect-agnostic leading-verb allowlist load-bearing + a scoped engine-aware-`validateSql` follow-up; also corrected the doc's `libpg_query`→`node-sql-parser` factual error — genuine resolution, not a relabel; detail in *Last change*). **Prior levers** (git preserves full detail): run 23 −1 (`byo-connect` OQ (c) DNS-rebind TOCTOU); run 21 −1 (`e2e-coverage` cold-start OQ → run 18 `SK-ASK-013`); run 17 −2 (`premium-tier` router contracts); run 6 −4 (body-already-settled relabels). | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **22** (07-09; run 29 lever: −1, resolved `byo-connect` OQ **(b)** planner-emits-Postgres-SQL-for-a-CH-DB — Decided: dialect-aware prompting (extend the existing `Dialect:` planner param to `clickhouse`, `SK-LLM-018`), NOT a transpile layer (SQLGlot/ANTLR bust the `GLOBAL-013` Workers budget — same constraint as OQ (a)); scoped code fix — add `"clickhouse"` to `PlanRequest.dialect`, map `db.engine → dialect` at the two hardcoded `orchestrate.ts` plan sites — is **coupled with OQ (a)**'s engine-aware `validateSql` and ships in a dedicated live-CH-fixture PR; genuine resolution, not a relabel; detail in *Last change*). **Prior levers** (git preserves full detail): run 26 −1 (OQ (a) CH-SQL-on-PG-validator); run 23 −1 (OQ (c) DNS-rebind TOCTOU); run 21 −1 (`e2e-coverage` cold-start OQ → run 18 `SK-ASK-013`); run 17 −2 (`premium-tier` router contracts). | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-08 run-28 sweep: **106** pages, **2,605** internal links — +1 page / +25 links vs run 24 = the new `one-way-internal-links-leak-yield` post + its inbound nav/index/sitemap/llms links) | target 0 — sweep is repeatable: `cd apps/web && bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
 | 19 | Live-surface claim integrity | **0 tracked gaps** (run 28 found + closed 1) | claim-vs-reality on shipped surfaces + docs; target 0. **Run 28 lever:** `elements/FEATURE.md` advertised that `<nlq-data>` *"exposes the trace via the `el.trace` JS property"* — the code had **no such property** (verified: full `element.ts` read), and `trust-ux/FEATURE.md` correctly listed it as a not-yet-shipped `SK-TRUST-002` gap ⇒ the two features **contradicted** each other. Closed by *implementing* the missing feature (not just re-wording): `el.trace` + `trace` on the `nlq-data:load` event (`packages/elements`), making elements the 5th/5 shipped surface to carry the trace (SDK/CLI/MCP/web already did). Found+closed same run ⇒ net 0 (run-9/25 pattern), but this time by shipping code. Also fixed a same-breath bug: the load event's `cached` came from a phantom top-level field (always `undefined`) — now from `trace.cache_hit`. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
@@ -98,27 +99,37 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-08 (run 28)** — lever: **close the last `SK-TRUST-002`/`GLOBAL-003`
-trace-parity surface gap on `<nlq-data>` (rows #19/#20)**. Distribution-publish
-(row #6, #638) shipped alongside this run; row #8 dark (rule 8) + engine
-anti-rut-blocked (rule 7) — so the next agent-movable, non-dark, non-overlapping
-number. **Gap (doc↔doc contradiction):** `elements/FEATURE.md` asserted `<nlq-data>`
-exposed `el.trace`, but the code had **no such property** and `trust-ux/FEATURE.md`
-correctly listed it as a not-yet-shipped `SK-TRUST-002` ship-gap. SDK/CLI/MCP/web
-already surface the trace/confidence signal; elements was the sole shipped surface
-missing it, so embedders couldn't build their own `SK-PREMIUM-004` free-model nudge.
-**Fix (code, not re-wording):** implemented `el.trace` + `trace` on the `nlq-data:load`
-event (`packages/elements/src/{element,fetch}.ts`); typed the real nested `trace`
-block and dropped the phantom top-level `sql`/`cached` from `AskSuccess` (never
-returned — the event's `cached` was always `undefined`; now from
-`trace.cache_hit`). Reconciled both feature docs + README + row #20's stale
-CTA-⬜ (`FreeModelNudge` shipped #630). Code-wrong/decision-right (§10.2).
-**Measured:** trace-parity surfaces 4/5 → **5/5**; claim-integrity gap
-found+closed ⇒ tracked gaps **net 0** (row #19); +3 tests (elements 101→**104**);
-bundle **4527 B gz < 6144** (`SK-ELEM-007`). **KPI:** GLOBAL-025 **UX/trust**.
-**None degrade:** full gate green — `typecheck` + `lint` clean, **`bun run test`
-all pass** (api 880, elements 104, llm 264, db 268, web 233, wrappers green);
-zero engine/API/blog/queue touched, baselines byte-untouched.
+**2026-07-09 (run 29)** — lever: **docs-ambiguity 23 → 22 (row #17)** by
+genuinely resolving `byo-connect` OQ **(b)** "the planner emits Postgres-flavored
+SQL for a ClickHouse DB." Weekly-focus row #8 dark (rule 8) + engine
+anti-rut-blocked (rule 7) ⇒ picked the next agent-movable, non-dark,
+non-overlapping number. **Diagnosis (code, not assumption):** the planner is
+*already* dialect-parameterized (`PLAN_SYSTEM` "for the named dialect" + a
+`Dialect:` few-shot line, `SK-LLM-018`/`SK-LLM-026`), so the gap is upstream —
+`PlanRequest.dialect` is typed `"postgres" | "sqlite"` (`packages/llm/src/types.ts:88`)
+and `apps/api/src/ask/orchestrate.ts` **hardcodes `dialect: "postgres"`** at both
+plan sites (`:242` initial, `:414` exec-repair) while `db.engine` is already in
+scope (`:544`). **Decided (P2, 2026-07-09):** dialect-aware prompting (extend the
+`Dialect:` param to `clickhouse`), **not** a generate-then-transpile layer —
+SQLGlot/ANTLR have no in-Worker JS form under the `GLOBAL-013` bundle budget, the
+same constraint that killed OQ (a)'s CH parser. The scoped code fix (add
+`"clickhouse"` to the dialect union; map `db.engine → dialect` at the two plan
+sites; add a CH-syntax exemplar) is **load-bearingly coupled with OQ (a)**'s
+engine-aware `validateSql`: emitting CH-only grammar (`LIMIT n BY`,
+`quantile(0.5)(x)`, `ARRAY JOIN`) requires the validator to stop treating a
+PG-dialect `parse_failed` as authoritative for CH, so both land as one PR with a
+live-CH read/write fixture (none in the unit env). Genuine resolution (approach +
+rationale decided), not a relabel — the (a)/(c) pattern. **Artifact (step 3):**
+queue was 2 (< 3) ⇒ drafted `text-to-sql-planner-told-wrong-dialect` (the
+generator-side twin of the run-26 validator draft); queue **2 → 3**, so next run
+publishes. D4: queue held **20,015 B < 20,480** by collapsing runs 114–117
+parentheticals to git history. **Measured:** open-question bullets **23 → 22**
+(pinned grep); queue depth **2 → 3**. **KPI:** GLOBAL-025 **engine quality**
+(clears the ambiguity blocking a correct CH-BYO planner) + onboarding-doc clarity.
+**None degrade:** full gate green — `typecheck` clean, `lint` exit 0 (35
+pre-existing warnings), **`bun run test` all pass** (api 880 + workspace);
+docs-only diff — zero engine/API/prompt code, blog data, or eval baselines
+touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
