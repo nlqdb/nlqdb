@@ -786,7 +786,7 @@ h3 {
 
 .createform__starter {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--t-xs);
   color: var(--ink);
   background: var(--raised);
   border: 1px solid var(--rule-2);
