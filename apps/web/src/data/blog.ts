@@ -77,7 +77,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The fix was a field we already had" },
       {
         kind: "p",
-        text: "Each post already declared the guide it anchored — a typed `anchor` field with a label and a path, used to render the forward link. That field is bidirectional information; we were only reading it one way. The deep page knew nothing about the posts pointing at it, but the posts knew exactly which deep page they belonged to. So we inverted the same data: at build time, for each `/solve` and `/vs` page, collect the posts whose `anchor` names it and render a reciprocal \"Further reading\" link back. No new content, no new data model — one derived link per relationship, generated from the field that already drove the forward one.",
+        text: 'Each post already declared the guide it anchored — a typed `anchor` field with a label and a path, used to render the forward link. That field is bidirectional information; we were only reading it one way. The deep page knew nothing about the posts pointing at it, but the posts knew exactly which deep page they belonged to. So we inverted the same data: at build time, for each `/solve` and `/vs` page, collect the posts whose `anchor` names it and render a reciprocal "Further reading" link back. No new content, no new data model — one derived link per relationship, generated from the field that already drove the forward one.',
       },
       {
         kind: "code",
