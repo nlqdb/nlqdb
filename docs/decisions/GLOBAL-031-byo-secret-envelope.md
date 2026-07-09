@@ -33,10 +33,10 @@
   the envelope string, not a D1 column. A rotation bumps the format prefix
   to `nbe2.<v>.<payload>` where `<v>` is the KEK version; existing `nbe1.`
   blobs read as version `1`. Version-in-blob (like the IV) means no schema
-  migration and stale rows stay prefix-filterable
-  (`WHERE …_blob LIKE 'nbe2.1.%'`) without decrypting — a `key_version`
-  column would only earn its keep if the sweep had to find stale rows
-  blind, which it doesn't. During a rotation the env carries the active
+  migration and stale rows stay prefix-filterable without decrypting — the
+  un-migrated rows sit on the retiring prefix (`WHERE …_blob LIKE 'nbe1.%'`
+  on the first rotation) — a `key_version` column would only earn its keep
+  if the sweep had to find stale rows blind, which it doesn't. During a rotation the env carries the active
   KEK (`BYO_SECRET_KEK` + `BYO_SECRET_KEK_VERSION`) and the retiring one
   (`BYO_SECRET_KEK_PREV` + `_PREV_VERSION`); `openSecret` selects by the
   envelope's version tag (fail-loud per `GLOBAL-012` if it matches
