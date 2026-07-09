@@ -49,14 +49,6 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   count the *doors into* your content, not just the pages. **Full body in git
   history.**
 
-- **"We shipped 18 SEO pages and got 1 referral. The links only pointed one
-  way."** slug `one-way-internal-links-leak-yield` · dev.to
-  (#seo #webdev #contentmarketing) + r/SEO + r/webdev · distribution lesson
-  (volume-vs-yield: the internal link graph was a tree not a mesh — `/blog →
-  /solve` but never back — starving fresh posts of inbound links and dead-ending
-  searchers; one reciprocal link off the existing `anchor` field fixes both SEO
-  authority flow and the UX next-hop). **Full body in git history.**
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -64,6 +56,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 28 — **https://nlqdb.com/blog/one-way-internal-links-leak-yield/** — dev.to (#seo #webdev #contentmarketing) + r/SEO + r/webdev + lobste.rs · distribution lesson (volume-vs-yield: invert the existing `anchor` field into a reciprocal backlink; a tree link-graph starves fresh pages of inbound links and dead-ends readers — measure the graph, not the count)
 - run 24 — **https://nlqdb.com/blog/serverless-db-cold-start-retry/** — dev.to (#database #serverless #postgres) + r/PostgreSQL + r/webdev + lobste.rs · engine/ops lesson (SK-ASK-013 — a retry policy is one-per-failure-mode; back off the DB stage, fail over the LLM stages instantly)
 
 - run 20 — **https://nlqdb.com/blog/llm-timeout-looks-like-hallucination/** — dev.to (#llm #benchmarking #eval) + r/LLMDevs + lobste.rs · engine lesson (SK-QUAL-022 eval-budget ≠ prod SLA; abort ≠ parse failure; latency fingerprint)

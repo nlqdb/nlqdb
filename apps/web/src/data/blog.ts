@@ -41,6 +41,61 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "one-way-internal-links-leak-yield",
+    title: "We shipped 18 SEO pages and got 1 referral. The links only pointed one way.",
+    description:
+      "The page count climbed; referrals stayed flat at ~1/week. Our internal link graph was a tree, not a mesh. The fix was one reciprocal link, derived from a field we already had.",
+    date: "2026-07-08",
+    body: [
+      {
+        kind: "p",
+        text: "For a few weeks the surface count was the number that moved. Comparison pages, how-to pages, engineering posts — the sitemap kept growing. Referral traffic did not. It sat at roughly one external visit a week the whole time. More pages, same trickle. When volume climbs and yield doesn't, the pages aren't the problem; the graph connecting them is.",
+      },
+      { kind: "h2", text: "A tree, not a mesh" },
+      {
+        kind: "p",
+        text: "We drew our own internal links and the shape was obvious in hindsight. Every blog post linked *down* to the deep guide it anchored — a post about duplicate-row detection linked to `/solve/find-duplicate-rows-in-my-data`, a comparison post linked to `/vs/mode`. Nothing linked back up. `/blog → /solve`, never `/solve → /blog`. The graph was a tree with the deep pages as leaves, and the freshest content — the posts we most needed crawled and indexed — hung off the ends with zero internal inbound links.",
+      },
+      {
+        kind: "p",
+        text: "That one-way arrow costs you twice, once for machines and once for humans.",
+      },
+      { kind: "h2", text: "Cost one: authority flows the way the link points" },
+      {
+        kind: "ul",
+        items: [
+          "**Links pass authority in the direction they point.** Every forward link we shipped fed the deep evergreen page and starved the new post. The URL that most needed a crawl signal — the one published yesterday — was the one with no internal links pointing at it.",
+          "**A page with zero internal inbound links is nearly invisible to a crawler.** The sitemap tells a bot the URL *exists*; internal links tell it the URL *matters*. We were publishing pages that only the first told anyone about.",
+          "**Fresh pages have the shortest runway.** An evergreen guide accrues links over months. A post has days to prove it's worth indexing. Pointing all the authority the other way is exactly backwards.",
+        ],
+      },
+      { kind: "h2", text: "Cost two: a one-way link is a dead end for a reader" },
+      {
+        kind: "p",
+        text: "The human cost is simpler and you can feel it. A searcher lands on `/solve/find-top-n-rows-per-group` from Google, reads the answer, and… stops. There is no next hop. The session is one page long, the reader bounces, and the analytics tell you the page 'didn't engage' when really it just had nowhere to send anyone. A page that answers a question and then offers the obvious follow-up keeps the reader on the site; a page that answers and then goes quiet hands them back to the search results.",
+      },
+      { kind: "h2", text: "The fix was a field we already had" },
+      {
+        kind: "p",
+        text: 'Each post already declared the guide it anchored — a typed `anchor` field with a label and a path, used to render the forward link. That field is bidirectional information; we were only reading it one way. The deep page knew nothing about the posts pointing at it, but the posts knew exactly which deep page they belonged to. So we inverted the same data: at build time, for each `/solve` and `/vs` page, collect the posts whose `anchor` names it and render a reciprocal "Further reading" link back. No new content, no new data model — one derived link per relationship, generated from the field that already drove the forward one.',
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: "// The forward link already existed on each post:\n//   anchor: { label: 'Find top-N rows per group', path: '/solve/...' }\n//\n// Invert it once, at build time, to get every backlink for free:\nconst backlinks = new Map<string, BlogPost[]>();\nfor (const post of BLOG_POSTS) {\n  if (!post.anchor) continue;\n  const list = backlinks.get(post.anchor.path) ?? [];\n  list.push(post);\n  backlinks.set(post.anchor.path, list);\n}\n// /solve/[slug] and /vs/[slug] now render backlinks.get(currentPath)\n// as a 'Further reading' block — the mesh closes with zero new data.",
+      },
+      {
+        kind: "p",
+        text: "Every anchored deep page now has at least one internal inbound link, and every post has a two-way relationship with the guide it belongs to. The link count went up without a single new page; the graph went from a tree to a mesh. ([nlqdb](https://nlqdb.com) is the database you talk to; this is one of the notes from building it in the open.)",
+      },
+      { kind: "h2", text: "The lesson: measure the graph, not the count" },
+      {
+        kind: "p",
+        text: "Publishing volume is not distribution. A pile of pages that only link one direction is a stack of dead ends wearing a sitemap. The metric that actually predicts yield is the shape of the internal link graph — how many pages a reader (or a crawler) can reach from any starting point, and whether authority can flow to the pages that need it. Before you write the next page, check that the last one links both ways. The cheapest distribution win is usually a link you already have the data to draw.",
+      },
+    ],
+  },
+  {
     slug: "serverless-db-cold-start-retry",
     title: "Your database scales to zero. Your retry loop doesn't know that.",
     description:
