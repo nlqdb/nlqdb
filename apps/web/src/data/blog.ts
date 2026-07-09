@@ -150,6 +150,60 @@ export const BLOG_POSTS: BlogPost[] = [
     ],
   },
   {
+    slug: "agent-memory-benchmarks-measure-recall-not-analysis",
+    title: "We read the agent-memory benchmarks. Almost none measure analysis.",
+    description:
+      "Agent-memory benchmarks score end-to-end recall of facts on mostly self-reported numbers. Almost nobody measures analysis over memory — the gap we found reading the papers.",
+    date: "2026-07-09",
+    anchor: {
+      label: "Run analytical queries over agent memory",
+      path: "/solve/analytical-queries-over-agent-memory",
+    },
+    body: [
+      {
+        kind: "p",
+        text: "We're building nlqdb as analytical memory for AI agents — a real database an agent queries with `GROUP BY` and `JOIN`, not a fuzzy fact store. So before writing our own memory-quality benchmark, we read the ones the field already uses: LoCoMo, LongMemEval, and Mem0's and Zep's evaluations. The short version: almost none of them measure what we assumed, and almost every headline number is self-reported.",
+      },
+      { kind: "h2", text: "What the benchmarks actually score" },
+      {
+        kind: "p",
+        text: "The canonical benchmarks are end-to-end question-answering suites. LoCoMo (Snap Research, ACL 2024) builds very long multi-session dialogues — around 300 turns over up to 35 sessions — and asks single-hop, multi-hop, temporal, commonsense, and adversarial questions, graded by string-match F1. LongMemEval (ICLR 2025) embeds 500 questions across five separately-scored abilities: information extraction, multi-session reasoning, temporal reasoning, knowledge updates, and abstention. Both grade whether the final answer is right — not whether the right memory was retrieved.",
+      },
+      {
+        kind: "p",
+        text: "That distinction matters. In classic retrieval you measure `recall@k`, `precision@k`, `MRR`, and `nDCG` against labeled-relevant items. We went looking for those numbers in agent-memory evaluations and mostly didn't find them: the field grades QA accuracy (or an LLM-as-judge), not component-level retrieval. There is no agreed ground-truth-relevance standard for agent memory. If you want to measure retrieval quality directly, you have to label relevance yourself.",
+      },
+      { kind: "h2", text: "Almost every headline number is self-reported" },
+      {
+        kind: "p",
+        text: "Mem0 reports a 26% relative improvement over OpenAI's memory on LoCoMo; Zep reports 94.8% on Deep Memory Retrieval and up to 18.5% on LongMemEval. Read the author lists: these are the vendors' own papers. None has been cleanly reproduced by a neutral third party, and the two vendors publicly dispute each other's LoCoMo methodology. The benchmark itself is soft — an independent audit found roughly 6.4% of LoCoMo's answer key is simply wrong, and re-scoring with a corrected judge prompt swung one system from 84% to 58%. Treat every leaderboard number as directional, not settled.",
+      },
+      { kind: "h2", text: "The thing nobody measures: analysis over memory" },
+      {
+        kind: "p",
+        text: 'Here\'s the gap that matters for us. Every system in the field stores facts and retrieves them. A vector store can recall "Alice has a $50k deal." What none of them benchmark — and most structurally can\'t do — is analysis over that memory: "show the top 5 deals by value, grouped by stage, for enterprise accounts only." That\'s a `GROUP BY` with a `HAVING` and a `JOIN`, and a fuzzy fact store has no query planner to run it. We could not find a single benchmark that isolates analytical queries over episodic memory against vector or graph memory on identical data. The field measures recall of facts, not reasoning across them.',
+      },
+      {
+        kind: "p",
+        text: "There's even supporting evidence hiding in LoCoMo's own results: restructuring raw dialogue into a \"database of assertions\" lifted temporal-question F1 from 21.3 to 41.9. Structure helps most exactly where LLMs are weakest — temporal and multi-hop reasoning.",
+      },
+      { kind: "h2", text: "Where a database does not win (the honest part)" },
+      {
+        kind: "p",
+        text: 'A real database is not a free win everywhere, and pretending otherwise would be dishonest. For fuzzy semantic recall over unstructured text — "find the thing I said that\'s kind of like this" — embedding similarity still beats exact SQL. Every serious system relies on it, including the most database-native academic proposal we found, which is Postgres-based and still falls back to `pgvector` nearest-neighbor. Pure analytical SQL cannot replace vector search for unstructured recall. The honest wedge is analytical memory, not memory without embeddings — which is why hybrid recall is on our roadmap, not our marketing.',
+      },
+      { kind: "h2", text: "What we're building" },
+      {
+        kind: "p",
+        text: "We're adding an agent-memory-quality eval to the same benchmark harness we already run for text-to-SQL accuracy. It scores four axes: retrieval precision and recall (against relevance labels we define, since the field has none), temporal reasoning, forgetting and contradiction resolution, and consolidation. And it includes the analytical-memory task nobody else runs: aggregation and ordering over episodic memory, head-to-head against a vector-recall baseline on the same data — reported honestly, including the questions where a pure-SQL store loses. We'll publish the numbers here as they land, reproducible, not self-graded.",
+      },
+      {
+        kind: "p",
+        text: "If you're building an agent and you want its memory to answer questions, not just echo facts back, that's the whole idea. You can point an agent at a live nlqdb database and start asking in plain English.",
+      },
+    ],
+  },
+  {
     slug: "one-way-internal-links-leak-yield",
     title: "We shipped 18 SEO pages and got 1 referral. The links only pointed one way.",
     description:
