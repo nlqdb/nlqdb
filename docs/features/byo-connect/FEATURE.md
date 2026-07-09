@@ -196,10 +196,33 @@ the rule.
   daily doc run. **Revisit trigger:** an observed CH-only false-reject in the
   wild, or managed-Tinybird landing its Pipe/table allowlist (`SK-MULTIENG-004`),
   whichever first.
-- **(b) The planner emits Postgres-flavored SQL.** Correct ClickHouse SQL
-  generation (engine-aware planner prompt / compile layer) is a separate
-  follow-up; until it lands, ClickHouse-BYO queries that need ClickHouse-only
-  syntax may be mis-compiled. Not a security gap — a correctness gap.
+- **(b) The planner emits Postgres-flavored SQL for a ClickHouse DB — Decided: dialect-aware prompting (extend the existing `Dialect:` parameter to `clickhouse`), not a transpile layer; ships coupled with (a)'s engine-aware `validateSql` (2026-07-09).**
+  Diagnosis (code, 2026-07-09): the planner is *already* dialect-parameterized —
+  `PLAN_SYSTEM` says "translate … for the named dialect" + "Emit SQL valid for
+  the named dialect" and the few-shot exemplars carry a `Dialect:` line
+  (`packages/llm/src/prompts.ts`, `SK-LLM-018`/`SK-LLM-026`). The gap is upstream:
+  `PlanRequest.dialect` is typed `"postgres" | "sqlite"` (`types.ts:88`) and
+  `orchestrate.ts` **hardcodes `dialect: "postgres"`** at both plan sites
+  (`:242` initial, `:414` exec-repair), so a ClickHouse-BYO DB is told it is
+  Postgres and emits PG-flavored SQL. `db.engine` is already in scope in the same
+  function (`orchestrate.ts:544`). Research (P2, 2026-07-09): the two options are
+  (1) **dialect-aware prompting** — name the target dialect in the prompt, the
+  standard for LLM text-to-SQL and exactly the existing `Dialect:` mechanism; and
+  (2) **generate-then-transpile** (SQLGlot / ANTLR). (2) is **rejected** on the
+  same `GLOBAL-013` Workers-bundle constraint that killed the per-grammar CH
+  parser in (a) — no in-Worker JS transpiler fits the budget. So (1) is decided:
+  extend the existing parameterization, don't add a compile layer.
+  **Coupling with (a) is load-bearing:** emitting CH-only grammar (`LIMIT n BY`,
+  `quantile(0.5)(x)`, `ARRAY JOIN`) requires `validateSql` to stop treating a
+  PG-dialect `parse_failed` as authoritative for CH — (a)'s scoped fix. Ship (b)
+  without (a) and the validator would reject the very CH SQL (b) produces. So the
+  **scoped code follow-up lands as one PR with (a):** add `"clickhouse"` to
+  `PlanRequest.dialect`; map `db.engine → dialect` at the two `orchestrate.ts`
+  plan sites (replacing the hardcoded `"postgres"`); add a CH-syntax exemplar to
+  `PLAN_SYSTEM`; ship alongside (a)'s engine-aware `validateSql` + a live-CH
+  read/write fixture (no CH fixture in the unit env, per (a)). Not a security gap —
+  a correctness gap. **Revisit trigger:** managed-Tinybird landing
+  (`SK-MULTIENG-004`) or an observed CH-BYO mis-compile in the wild, whichever first.
 - **(c) DNS-rebind TOCTOU between connect-time guard and query-time use — Decided: re-resolve-before-use on both engines; sub-TTL residual accepted for the BYO threat model (2026-07-08).**
   `validateByoConnection` resolves-and-rechecks at connect time
   (`GLOBAL-035`), but a name resolved safe then can re-point to a private
