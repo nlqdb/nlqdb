@@ -250,6 +250,14 @@ the rule.
   relaxation). Conditional follow-up only: if a future schema rev makes the column
   nullable, the sentinel read-path in `db-registry.ts` must be retired in the same
   change.
-- **KEK rotation for the BYO blob** — inherited from `SK-DB-011` /
-  `GLOBAL-031`; the unwrap+re-wrap procedure + key-version column is still
-  unscoped.
+- **KEK rotation for the BYO blob — Resolved (2026-07-09), see
+  [`GLOBAL-031`](../../decisions/GLOBAL-031-byo-secret-envelope.md).**
+  The procedure is now scoped there for the shared envelope (BYO blob +
+  BYOLLM keys alike): the KEK version travels *in* the envelope (prefix
+  bump `nbe1.` → `nbe2.<v>.`), **not** a `key_version` D1 column; a
+  two-KEK overlap window (`BYO_SECRET_KEK` active + `BYO_SECRET_KEK_PREV`
+  retiring) lets `openSecret` pick by version while `sealSecret` always
+  seals under the active one; re-wrap is lazy-on-write + one operator
+  sweep (decrypt-then-reseal, no stored DEK). Implementation ships when a
+  rotation is first scheduled (`GLOBAL-033`); executing one needs prod key
+  material (runbook + `blocked-by-human.md`).

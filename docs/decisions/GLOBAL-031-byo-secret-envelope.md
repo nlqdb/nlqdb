@@ -27,9 +27,27 @@
   from the KEK so the operator sets any high-entropy string. The envelope
   is a versioned compact string (`nbe1.<base64url(iv ‖ ciphertext+tag)>`)
   for a D1 TEXT column. New BYO-secret callers import this module rather
-  than touching `crypto.subtle` directly. KEK rotation (re-seal under a
-  new KEK version) remains an open question tracked in the affected
-  features.
+  than touching `crypto.subtle` directly.
+- **KEK rotation — Decided (web-checked against GCP KMS / AWS KMS
+  envelope-rotation guidance, 2026-07-09):** the KEK version travels *in*
+  the envelope string, not a D1 column. A rotation bumps the format prefix
+  to `nbe2.<v>.<payload>` where `<v>` is the KEK version; existing `nbe1.`
+  blobs read as version `1`. Version-in-blob (like the IV) means no schema
+  migration and stale rows stay prefix-filterable without decrypting — the
+  un-migrated rows sit on the retiring prefix (`WHERE …_blob LIKE 'nbe1.%'`
+  on the first rotation) — a `key_version` column would only earn its keep
+  if the sweep had to find stale rows blind, which it doesn't. During a rotation the env carries the active
+  KEK (`BYO_SECRET_KEK` + `BYO_SECRET_KEK_VERSION`) and the retiring one
+  (`BYO_SECRET_KEK_PREV` + `_PREV_VERSION`); `openSecret` selects by the
+  envelope's version tag (fail-loud per `GLOBAL-012` if it matches
+  neither), `sealSecret` always uses the active version, and HKDF `info`
+  folds in the KEK version so a bump can't cross-derive. Re-wrap is
+  decrypt-then-reseal (no stored DEK — the content key is HKDF-derived, so
+  the tiny secret itself is re-sealed): writes migrate lazily under the
+  active version, one operator sweep re-seals rows still on the old prefix,
+  then the prev KEK is dropped. Implementation ships when a rotation is
+  first scheduled (`GLOBAL-033` — not built on spec); the sweep + setting
+  the new KEK need prod key material (runbook + `blocked-by-human.md`).
 - **Alternatives rejected:**
   - **A scheme per feature** — divergence risk on the most sensitive
     data; doubles the crypto-review surface.

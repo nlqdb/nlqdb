@@ -12,6 +12,29 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"You need to rotate an encryption key. You don't need a key-version
+  column."** slug `rotate-encryption-key-without-a-version-column` · venue
+  dev.to (#security #database #architecture) + r/programming + lobste.rs
+  (`security`) · security/architecture lesson (`GLOBAL-031` KEK-rotation
+  resolution). Angle: when you seal secrets at rest under a key-encryption
+  key (KEK) and later have to rotate it, the reflex is a `key_version`
+  column so you know which key sealed which row. Skip it. The ciphertext
+  already has to be self-describing — it carries its own IV in the blob —
+  so put the key version in that same string: a one-token prefix bump,
+  `v1.…` → `v2.…`. Now rotation needs zero schema migration. Stale rows are
+  prefix-filterable (`WHERE blob LIKE 'v1.%'`) *without decrypting*; a
+  two-key overlap window (active + retiring) lets reads pick the right key
+  by the tag while writes always seal under the new one; rows migrate
+  lazily on their next write, plus one sweep for the cold ones; drop the
+  old key when nothing carries its version. The column only earns its keep
+  if the sweep has to find stale rows *blind* — and the prefix already
+  finds them. One nuance: if your content key is HKDF-derived from the KEK
+  rather than a stored DEK, "re-wrap" means decrypt-then-reseal the secret
+  itself — trivial for the short secrets (a DSN, an API key) this pattern
+  guards. Rule: the encrypted blob is the source of truth for how to
+  decrypt it — key version included; a column is a second place the two can
+  drift. Honest split: a security-architecture lesson, not a product feature.
+
 - **"You added a second SQL engine. Your text-to-SQL model is still being
   told it's the first one."** slug `text-to-sql-planner-told-wrong-dialect` ·
   venue dev.to (#sql #llm #database) + r/dataengineering + lobste.rs (`sql`) ·
@@ -35,30 +58,18 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   grep for every place the first engine's name is a literal. Honest split: an
   architecture lesson, not a product feature.
 
-- **"You added ClickHouse. Your Postgres SQL validator now rejects valid
-  queries — quietly."** slug `postgres-validator-rejects-valid-clickhouse-sql` ·
-  venue dev.to (#sql #clickhouse #security) + r/dataengineering + lobste.rs
-  (`sql`) · engine/security lesson (`SK-MULTIENG-004`; byo-connect OQ (a)
-  resolution). Angle: bolt a second SQL engine onto a product that validates
-  generated SQL and the tempting move is "reuse the validator" — ours is a
-  `node-sql-parser` AST parse pinned to `database: "PostgreSQL"`. Point it at
-  ClickHouse and valid analytical grammar (`LIMIT n BY`, `quantile(0.5)(x)`,
-  `ARRAY JOIN`, `WITH ROLLUP`) fails the parse and the user's correct question
-  comes back `parse_failed` — a quiet false reject, nothing in the logs saying
-  "wrong dialect." The fix isn't "find a ClickHouse parser" (`node-sql-parser`
-  has no CH dialect; the ANTLR4 JS parsers are too heavy for an edge/Workers
-  bundle). It's noticing the validator did *two* jobs — enforce a
-  destructive-verb allowlist, and walk the AST for a verb smuggled into a CTE —
-  and only the second needs a parser. The first is a leading-verb regex:
-  dialect-agnostic, already cross-engine. So the security-load-bearing layer
-  works on every engine; the dialect-locked part is only defense-in-depth. Rule:
-  in a multi-engine guardrail a parse failure from the wrong dialect means
-  "wrong parser," not "dangerous query" — never let it decide whether a valid
-  query runs. Keep the dialect-agnostic allowlist authoritative; make the AST
-  parse best-effort per engine. You don't lower the security bar; you stop the
-  wrong parser vetoing correct SQL. (Layered guardrails, not one rule — the
-  Replit incident had three and still lost data.) Honest split: an engineering
-  lesson, not a product feature.
+- **[collapsed under D4 — full body in git history]** "You added ClickHouse.
+  Your Postgres SQL validator now rejects valid queries — quietly." slug
+  `postgres-validator-rejects-valid-clickhouse-sql` · venue dev.to
+  (#sql #clickhouse #security) + r/dataengineering + lobste.rs (`sql`) ·
+  engine/security lesson (`SK-MULTIENG-004`; byo-connect OQ (a) resolution).
+  Gist: a Postgres-pinned `node-sql-parser` AST validator false-rejects valid
+  ClickHouse grammar (`LIMIT n BY`, `quantile(0.5)(x)`, `ARRAY JOIN`) as
+  `parse_failed`; the fix is seeing the validator does *two* jobs — a
+  dialect-agnostic destructive-verb allowlist (security-load-bearing, stays
+  authoritative on every engine) and an AST walk for a verb smuggled into a CTE
+  (defense-in-depth, best-effort per engine) — so a wrong-dialect parse means
+  "wrong parser," never "dangerous query," and never vetoes a valid query.
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
