@@ -32,7 +32,6 @@ import { type CreateError, type CreateResult, type CreateRow, postAskCreate } fr
 import { messageFor } from "../lib/create-errors";
 import { attachHandoff } from "../lib/handoff";
 import { emit } from "../lib/logsnag";
-import { makeTtfvOnce } from "../lib/ttfv";
 import {
   appendHistory,
   clearDraft,
@@ -41,6 +40,7 @@ import {
   savePending,
 } from "../lib/prompt-storage";
 import { prettifyHeader } from "../lib/text";
+import { makeTtfvOnce } from "../lib/ttfv";
 import { solveChallenge } from "../lib/turnstile";
 import ErrorBoundary from "./ErrorBoundary";
 import McpInstallView from "./McpInstallView";
