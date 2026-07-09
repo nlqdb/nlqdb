@@ -41,6 +41,60 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "postgres-validator-rejects-valid-clickhouse-sql",
+    title: "You added ClickHouse. Your Postgres SQL validator now rejects valid queries — quietly.",
+    description:
+      "A Postgres-pinned AST validator false-rejects valid ClickHouse grammar as parse_failed — a silent veto of correct SQL. The fix: split the security allowlist from the dialect parser.",
+    date: "2026-07-09",
+    body: [
+      {
+        kind: "p",
+        text: "We generate SQL from plain English, and before any of it touches a database we validate it. So when we added a second engine — ClickHouse alongside Postgres — the tempting move was obvious: reuse the validator we already trust. It ran clean, the tests were green, and a class of real user questions started coming back `parse_failed` for no reason anyone could see. The validator wasn't broken. It was doing exactly what it was told, on the wrong engine.",
+      },
+      { kind: "h2", text: "One parser, pinned to one dialect" },
+      {
+        kind: "p",
+        text: 'Our validator is an AST parse — `node-sql-parser`, configured `database: "PostgreSQL"`. Point that at a ClickHouse database and valid analytical grammar the query planner correctly emits — `LIMIT n BY`, `quantile(0.5)(x)`, `ARRAY JOIN`, `WITH ROLLUP` — fails the parse. The user asked a perfectly good question, the model wrote perfectly good ClickHouse, and the guardrail in the middle rejected it. Nothing in the logs said "wrong dialect." It just said the query was invalid, which it wasn\'t.',
+      },
+      {
+        kind: "p",
+        text: "The seductive part is that it never looks like a dialect bug. Every Postgres query still validates. The happy path is green. The failure only shows up on the analytical grammar that is the entire reason you added ClickHouse in the first place — so the feature that motivated the second engine is precisely the feature the validator quietly vetoes.",
+      },
+      { kind: "h2", text: "The fix is not a second parser" },
+      {
+        kind: "p",
+        text: "The reflex is to go find a ClickHouse parser. Don't. `node-sql-parser` has no ClickHouse dialect, and the ANTLR4 grammars that do are far too heavy for an edge/Workers bundle. Chasing a per-engine parser is chasing the wrong problem — because the validator was never really one job.",
+      },
+      {
+        kind: "p",
+        text: "Look at what it actually does and it splits cleanly in two. First, it enforces a destructive-verb allowlist — no `DROP`, no `DELETE`, no `TRUNCATE` reaching a read path. Second, it walks the AST to catch a dangerous verb smuggled inside a CTE or subquery. Only the second job needs a parser. The first is a leading-verb check — dialect-agnostic, already correct on every engine, because `DROP` is `DROP` in ClickHouse and Postgres alike.",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: '// Security-load-bearing: dialect-agnostic, authoritative on EVERY engine.\n// A leading destructive verb is a hard reject regardless of parser support.\nconst DESTRUCTIVE = /^\\s*(drop|delete|truncate|alter|update|insert|grant|revoke)\\b/i;\nif (DESTRUCTIVE.test(sql)) return reject("destructive_verb");\n\n// Defense-in-depth: AST walk for a verb smuggled into a CTE/subquery.\n// Best-effort PER ENGINE — a parse failure here means "wrong parser for\n// this dialect", NOT "dangerous query". It must never veto a valid query.\ntry {\n  const ast = parse(sql, { database: dialectFor(engine) });\n  if (hasNestedDestructive(ast)) return reject("destructive_verb");\n} catch {\n  // ClickHouse grammar the PG parser can\'t read lands here. That is not\n  // a security signal. The allowlist above already made the safety call.\n}\nreturn allow();',
+      },
+      { kind: "h2", text: "Why the layering matters" },
+      {
+        kind: "p",
+        text: "Once the two jobs are separated, the security-load-bearing layer works on every engine and the dialect-locked layer degrades gracefully. A parse failure from the wrong dialect stops being a verdict on whether the query is safe and becomes what it always was: a statement about which parser you happened to load. The allowlist already made the safety call, up front, on grammar that never varies. So you lose nothing on security and you stop rejecting correct SQL.",
+      },
+      {
+        kind: "p",
+        text: "This is the same instinct behind layered guardrails everywhere: no single rule is trusted to be both complete and correct on every input. The widely-reported agent-that-dropped-a-production-database incident had multiple safeguards and still lost data — the lesson isn't \"add one perfect check,\" it's that the authoritative safety layer has to hold even when a best-effort layer above it can't run.",
+      },
+      { kind: "h2", text: "The rule" },
+      {
+        kind: "p",
+        text: "In a multi-engine guardrail, a parse failure from the wrong dialect means \"wrong parser,\" not \"dangerous query\" — never let it decide whether a valid query runs. Keep the dialect-agnostic allowlist authoritative on every engine; make the AST parse best-effort per engine. When you add a second dialect, the bug won't announce itself as a dialect bug — it'll look like a validator that's merely stricter than you remembered. Check what your guardrail is actually pinned to before you trust its rejections.",
+      },
+      {
+        kind: "p",
+        text: "(This is a build note from [nlqdb](https://nlqdb.com), the database you query in plain English — where the SQL is generated, validated, and shown to you before it runs. Honest split: this is an engineering lesson about multi-engine guardrails, not a product feature.)",
+      },
+    ],
+  },
+  {
     slug: "blog-without-a-feed-is-a-dead-end",
     title: "We published 20 blog posts and never shipped a feed. Nothing could subscribe.",
     description:
