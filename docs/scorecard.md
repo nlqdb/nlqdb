@@ -17,13 +17,15 @@ the parked **corrected-set** (license, P2) — so row #8 is a floor this week
 last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
-lagging metric whose two agent-movable inputs (distribution, onboarding) shipped
-this cycle (runs 31, 30), so run 32 took the next non-overlapping, non-dark
-number. **Run 32 lever: live-surface claim integrity — found + closed 1 gap by
-shipping code (row #19)** — a doc-vs-doc contradiction (§10.3) over the
-`feature.requested.larger_account` demand-signal, resolved by *implementing* the
-missing variant and superseding `SK-EVENTS-010` (P3), not rewording. Net 0
-tracked gaps (run-28 pattern). Detail in *Last change*.
+lagging metric moved only through its agent-movable inputs (distribution,
+onboarding). Run 34 took an onboarding **instrument** lever that neither open
+PR #644 (docs-ambiguity, row #17) nor the recent cycle owns. **Run 34 lever:
+ship the TTFV instrument (`SK-ONBOARD-005`) on the anon create surface — Phase 2
+gate (row #16) TTFV criterion: unmeasured (no instrument) → instrumented.** TTFV
+(landing → first answer) is browser-measured by necessity (the server never sees
+when the user landed), so it rides the client LogSnag funnel like the other
+`home.*` signals — the SK-ONBOARD-006 instrument-first pattern (ship the meter,
+read once traffic arrives). Detail in *Last change*.
 **Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine anti-rut-blocked
 (rule 7); 0.526 is a floor whose only live move is the parked corrected-set (license,
 P2). Phase 2 exit gate **1/9 pass** (row #16).
@@ -51,7 +53,7 @@ P2). Phase 2 exit gate **1/9 pass** (row #16).
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
 | 15 | E2E manual-suite freshness | **0.75** — sdk ✅ 07-06 (1.00) · mcp ✅ 07-06 (1.00) · examples ✅ 07-06 (1.00) · opencheck ❌ (**Suite A 4/5, best since the 06-12 green** — [run 28768099957](https://github.com/nlqdb/nlqdb/actions/runs/28768099957)) | run 13 shipped the pre-flight-over-ordered-free-model-list fix + re-dispatched sdk/mcp/examples. Run 18 fixed Suite A's sole failure (cold-start `db_unreachable`, 2× trace-verified) via `SK-ASK-013` exec-stage backoff (`300 ms × 2^(n−1)`, ≤900 ms; verified in `retry.test.ts`). Suite B 0/8 = weakest-candidate capacity (4 stronger pools 429 at pick time), not a regression. Full triage: `e2e-coverage/opencheck-operations.md` (git preserves the run-13/18 detail) |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
-| 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (unmeasured); first-10 ≥ 95% (35.3% walker-dominated, N=17 — row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: the agentic-frontier criterion is now **measurement-clean** (clamp fixed) — closing the remaining ~11 pp to 0.80 is a real engine-competence lift (multi-model frontier chain `SK-LLM-017`, or the parked corrected-set); first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
+| 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (**run 34: instrumented** — `onboarding.first_answer.ttfv_ms` emitted from the anon create surface, `SK-ONBOARD-005`; p50 reads from LogSnag, stranger N ~0 like row #4 so not yet strangerly-readable, but the meter now exists); first-10 ≥ 95% (35.3% walker-dominated, N=17 — row #4); destructive-op retry < baseline (unmeasured); MCP in 3+ host apps (no instrument); 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: the agentic-frontier criterion is now **measurement-clean** (clamp fixed) — closing the remaining ~11 pp to 0.80 is a real engine-competence lift (multi-model frontier chain `SK-LLM-017`, or the parked corrected-set); first-10 instrument reads with traffic; stranger-dependent criteria hang on rows #2/#6 |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **22** (07-09; run 29 lever: −1, resolved `byo-connect` OQ **(b)** planner-emits-Postgres-SQL-for-a-CH-DB — Decided: dialect-aware prompting (extend the existing `Dialect:` planner param to `clickhouse`, `SK-LLM-018`), NOT a transpile layer (SQLGlot/ANTLR bust the `GLOBAL-013` Workers budget — same constraint as OQ (a)); scoped code fix — add `"clickhouse"` to `PlanRequest.dialect`, map `db.engine → dialect` at the two hardcoded `orchestrate.ts` plan sites — is **coupled with OQ (a)**'s engine-aware `validateSql` and ships in a dedicated live-CH-fixture PR; genuine resolution, not a relabel; detail in *Last change*). **Prior levers** (git preserves full detail): run 26 −1 (OQ (a) CH-SQL-on-PG-validator); run 23 −1 (OQ (c) DNS-rebind TOCTOU); run 21 −1 (`e2e-coverage` cold-start OQ → run 18 `SK-ASK-013`); run 17 −2 (`premium-tier` router contracts). | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-09 run-31 sweep: **107** pages, **2,630** internal links — +1 page / +25 links vs run 28 = the new `blog-without-a-feed-is-a-dead-end` post + its inbound nav/index/sitemap/llms/rss links) | target 0 — sweep is repeatable: `bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
@@ -92,34 +94,37 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-09 (run 32)** — lever: **live-surface claim integrity — found + closed
-1 gap by shipping code (row #19)**. Distribution (#642) + onboarding (#641) owned
-this cycle by open PRs; row #8 (BIRD) dark (rule 8) + engine anti-rut-blocked
-(rule 7) ⇒ next non-overlapping, non-dark number. **Gap:** `rate-limit/FEATURE.md`
-claimed per-account 429s fire a distinct `feature.requested.larger_account`
-demand-signal, but the code emitted `heavier_tier` for **both** anon and authed
-429s, `larger_account` **did not exist** in `ProductEvent`, and the *canonical*
-`SK-EVENTS-010` said the opposite ("any /v1/ask 429 → heavier_tier") — a doc-vs-doc
-contradiction over a code-checkable claim (§10.3). **Fix (P3 supersede + ship, not
-reword):** GLOBAL-024 rejects coarse single-counter signal and the §6 trigger
-needs the authed-cap-hit (highest-intent paying signal) kept separate from anon
-"wants to sign up" — so I *implemented* the finer signal: added
-`FeatureRequestedLargerAccountEvent` (type + union + `defaultId()` dedup + logsnag
-sink), routed the authed per-account trips to it (`emitFeatureSignal` for
-`/v1/ask`+`/v1/chat`; inline `/v1/run`), left the anon per-IP gates on
-`heavier_tier`, and superseded `SK-EVENTS-010` + synced the `rate-limit`
-commentary so both docs agree and match code. **Measured:** claim-integrity gaps
-found 1 → closed 1 = **net 0** (by shipping code). **Verification:** unit tests
-pin producer→envelope-id→sink (`emit.test.ts` dedup, `logsnag.test.ts` payload,
-`demand-signal.test.ts` per-account→`larger_account`); telemetry is
-fire-and-forget with no user-facing runtime surface, so producer+sink coverage is
-the end-to-end check. **Artifact (step 3):** the shipped code + reconciled
-canonical decision is the released artifact; the distribution queue is owned by
-#642, untouched. **KPI:** GLOBAL-025 onboarding/UX + engine quality (restores §6
-demand-signal fidelity). **None degrade:** `typecheck`/`lint` exit 0 (35 pre-existing
-warnings, none added), **`bun run test` all pass** (api 880 + workspace). D4:
-`events-pipeline/FEATURE.md` was already > 20 KB ⇒ its edit **net-shrank** it
-(22,642 → 22,572 B) via D5 prose trims even after adding the variant's docs.
+**2026-07-09 (run 34)** — lever: **ship the TTFV instrument (`SK-ONBOARD-005`) —
+Phase 2 gate (row #16) TTFV criterion: unmeasured (no instrument) →
+instrumented.** Step 0: open PR #644 (run 33) owns docs-ambiguity (row #17) + the
+byo-connect files + the distribution queue; row #8 (BIRD) dark (rule 8) + engine
+anti-rut-blocked (rule 7); distribution (#642) / onboarding-chips (#641) shipped
+last cycle. ⇒ took onboarding's *other* unshipped instrument, non-overlapping with
+#644 and only 1 of the last 5 levers (not anti-rut). **Change:** `CreateForm` is
+the single-page anon on-ramp (landing = page load, first answer = `setResult` on
+`outcome.ok`), so `performance.now()` at the answer is the honest landing→answer
+ms. Added `apps/web/src/lib/ttfv.ts` (`makeTtfvOnce()`, a fire-once recorder +
+test — the load-bearing property is *don't double-count a landing*) and one call
+site in `CreateForm.submit()`'s `ok` arm that relays `onboarding.first_answer`
+`{ ttfv_ms, surface }` through the existing client `emit()` LogSnag funnel — the
+same channel as `home.starter_clicked` (`SK-ONBOARD-008`). **P3 supersede:**
+rewrote `SK-ONBOARD-005`'s consequence from "new `packages/events` `onboarding.*`
+events + CLI emission" to the lighter client-funnel instrument, citing
+`SK-ONBOARD-006` ("~6 files for a number") + the fact that TTFV is a single-page
+browser timing the server can't measure (so GLOBAL-003 needs no cross-surface
+propagation). Drop-off events (landing/attempted) stay open. **Measured:**
+TTFV-instrumented onboarding surfaces **0 → 1**; the Phase-2 TTFV criterion moves
+from unmeasured (no meter) to instrumented (p50 reads from LogSnag once stranger
+traffic arrives — N still ~0, row #2, the SK-ONBOARD-006 instrument-first
+pattern). **Verification:** `bun test src` (apps/web) **240 pass / 0 fail** incl.
+3 new `ttfv.test.ts` cases; `bun run --filter @nlqdb/web build` green (107 pages,
+CreateForm island bundles the new import). **Artifact (step 3):** the shipped
+instrument is the released artifact; the distribution queue is owned by #644,
+untouched (on `main` it is < 3 deep ⇒ next non-#644 run drafts). **KPI:**
+GLOBAL-025 onboarding — turns an aesthetic "under 60 s" claim into a live meter.
+**None degrade:** `typecheck`/`lint` exit 0 (35 pre-existing warnings, none
+added); web-only diff, no engine/API/prompt/eval-baseline touched. D4: `scorecard`
++ `onboarding/FEATURE.md` both < 20 KB.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

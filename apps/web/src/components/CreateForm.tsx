@@ -26,12 +26,13 @@
 // `<McpInstallView>` (`./McpInstallView.tsx`), reused by the `/app`
 // chat-window install popover so the two React venues can't drift.
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CREATE_STARTERS, type CreateStarter } from "../data/create-starters";
 import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
 import { messageFor } from "../lib/create-errors";
 import { attachHandoff } from "../lib/handoff";
 import { emit } from "../lib/logsnag";
+import { makeTtfvOnce } from "../lib/ttfv";
 import {
   appendHistory,
   clearDraft,
@@ -73,6 +74,9 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
   const [error, setError] = useState<CreateError | null>(null);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateResult | null>(null);
+  // SK-ONBOARD-005 — fire-once TTFV recorder, created per mount so a
+  // resubmit or re-render can't double-count this landing.
+  const ttfvOnce = useRef(makeTtfvOnce());
 
   // Rehydrate the draft on mount — the user may have refreshed
   // mid-typing, or come back from a sign-in redirect that didn't
@@ -148,6 +152,11 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
         clearDraft();
         setGoal("");
         setResult(outcome.result);
+        // SK-ONBOARD-005 — TTFV (landing → first answer). See lib/ttfv.ts:
+        // performance.now() here is ms since page load, the honest
+        // landing→answer span. Emits at most once per landing.
+        const ttfv = ttfvOnce.current("create");
+        if (ttfv) emit(ttfv.event, ttfv.props);
       } else {
         appendHistory({
           goal: trimmed,
