@@ -67,7 +67,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
-- run 30 — **https://nlqdb.com/blog/blog-without-a-feed-is-a-dead-end/** — dev.to (#webdev #seo #rss) + r/webdev + lobste.rs · distribution lesson (volume-vs-yield: a blog with no RSS feed is sealed to every machine that would redistribute it — feed readers + dev.to/Medium/Hashnode import-from-RSS with `rel=canonical`; fix is a ~40-line no-dependency RSS endpoint over the same typed data file; count the doors into your content, not the pages)
+- run 31 — **https://nlqdb.com/blog/blog-without-a-feed-is-a-dead-end/** — dev.to (#webdev #seo #rss) + r/webdev + lobste.rs · distribution lesson (volume-vs-yield: a blog with no RSS feed is sealed to every machine that would redistribute it — feed readers + dev.to/Medium/Hashnode import-from-RSS with `rel=canonical`; fix is a ~40-line no-dependency RSS endpoint over the same typed data file; count the doors into your content, not the pages)
 - run 28 — **https://nlqdb.com/blog/one-way-internal-links-leak-yield/** — dev.to (#seo #webdev #contentmarketing) + r/SEO + r/webdev + lobste.rs · distribution lesson (volume-vs-yield: invert the existing `anchor` field into a reciprocal backlink; a tree link-graph starves fresh pages of inbound links and dead-ends readers — measure the graph, not the count)
 - run 24 — **https://nlqdb.com/blog/serverless-db-cold-start-retry/** — dev.to (#database #serverless #postgres) + r/PostgreSQL + r/webdev + lobste.rs · engine/ops lesson (SK-ASK-013 — a retry policy is one-per-failure-mode; back off the DB stage, fail over the LLM stages instantly)
 
