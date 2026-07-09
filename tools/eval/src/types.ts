@@ -10,9 +10,15 @@ import type { GoldTable } from "./csv.ts";
 export type DispatchLane = "free" | "frontier" | "agentic-frontier";
 
 // Datasets the runner can dispatch — extend when SK-QUAL-007 follow-ups land.
-// `persona-bench` is nlqdb's own ICP-shaped fixture (SK-QUAL-018); its
-// schemas are materialised to SQLite on demand by `loadPersonaBench`.
-export type EvalDataset = "bird-mini-dev-sqlite" | "spider2-lite-sqlite" | "persona-bench";
+// `persona-bench` is nlqdb's own ICP-shaped fixture (SK-QUAL-018);
+// `memory-quality` is the agent-memory-quality benchmark (SK-QUAL-023). Both
+// materialise their schemas to SQLite on demand (`loadPersonaBench` /
+// `loadMemoryQuality`).
+export type EvalDataset =
+  | "bird-mini-dev-sqlite"
+  | "spider2-lite-sqlite"
+  | "persona-bench"
+  | "memory-quality";
 
 // SK-QUAL-008 — per-instance metadata from `evaluation_suite/gold/spider2lite_eval.jsonl`
 // drives the multi-CSV column-major comparator. `condition_cols` carries either

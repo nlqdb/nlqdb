@@ -8,6 +8,13 @@ sits alongside) · [`SK-QUAL-018`](./SK-QUAL-018-persona-bench.md) (the
 (the wedge this measures) · `GLOBAL-026` (the free-vs-frontier bet).
 Research: [`docs/research/agent-memory-quality-landscape.md`](../../../research/agent-memory-quality-landscape.md).
 
+**Status (2026-07-09):** offline four-axis dataset shipped —
+`tools/eval/src/datasets/memory-quality.ts` (15 gold-verified questions,
+3 per axis + analytical) + runner wiring (`--dataset memory-quality`) +
+gold-executability / tie-free / axis-semantics tests. **Deferred:** a scored
+free-chain dispatch to produce the EX number, and the analytical-vs-vector
+head-to-head (needs an embedding baseline — infra-gated, E-05).
+
 - **Decision:** Add an agent-memory-quality benchmark to `tools/eval` alongside
   the NL→SQL canon (`SK-QUAL-003`). It scores four axes — (a) **retrieval
   precision/recall** against relevance labels *we define* (the field has no

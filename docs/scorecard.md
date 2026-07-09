@@ -61,7 +61,7 @@ P2). Phase 2 exit gate **1/9 pass** (row #16).
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (per-agent RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
-| | Memory-quality eval (`SK-QUAL-023`) | not yet measured — in build | four axes (retrieval / temporal / forgetting+contradiction / consolidation) + an analytical-memory-vs-vector head-to-head; makes the wedge claims measurable. Becomes an Engine-lane lever once it scores |
+| | Memory-quality eval (`SK-QUAL-023`) | harness shipped — EX unmeasured | 15 gold-verified questions across 4 axes (retrieval / temporal / forgetting / consolidation) + analytical, wired as `--dataset memory-quality`; a scored dispatch + the vector head-to-head are the next slices |
 
 ## Shipped distribution (live URLs)
 
