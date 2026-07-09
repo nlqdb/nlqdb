@@ -41,6 +41,61 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "blog-without-a-feed-is-a-dead-end",
+    title: "We published 20 blog posts and never shipped a feed. Nothing could subscribe.",
+    description:
+      "A blog with no RSS feed is a one-way street: feed readers and dev.to/Medium 'import from RSS' both need a feed URL. Without one, every venue re-post is a manual copy-paste that quietly stops.",
+    date: "2026-07-09",
+    body: [
+      {
+        kind: "p",
+        text: "For weeks the blog grew and the reach didn't. We published post after post — engineering notes, SQL traps, honest comparisons — and every one rendered fine at its own URL. Anyone who already knew the URL could read it. That was the whole reach: people we'd already reached. The pages were live, and publishing felt done. It wasn't. Publishing a page and publishing a *feed* are two different acts, and we'd only done the first.",
+      },
+      { kind: "h2", text: "Publishing ends when a machine can subscribe, not when a page renders" },
+      {
+        kind: "p",
+        text: "A web page is something a human pulls up once. A feed is something a machine subscribes to and pulls forever. Everything that redistributes your writing — every reader, every aggregator, every cross-post integration — is a machine, and a machine needs a stable URL that lists your posts in a format it can parse. That URL is your RSS or Atom feed. Without it, your content has doors a human can walk through one at a time and no door a machine can automate. The blog isn't dead; it's just sealed to everything that would spread it.",
+      },
+      { kind: "h2", text: "What a feed unlocks that a page can't" },
+      {
+        kind: "ul",
+        items: [
+          "**Feed readers.** Feedly, Inoreader, NetNewsWire — the people most likely to follow an engineering blog live in a reader. No feed URL, no way to follow. You are invisible to your most loyal potential audience.",
+          "**Auto-import to high-authority venues.** dev.to, Medium, and Hashnode all have an 'import your posts from RSS' setting: point it at your feed and every new post auto-mirrors to a domain with far more indexing authority than yours — with a `rel=canonical` link pointing back, so the SEO credit still accrues to your copy. This is the part that actually moves the yield needle, and it is impossible without a feed URL.",
+          "**Everything else that speaks RSS.** Newsletter tools, Slack/Discord post bots, IFTTT/Zapier automations — the long tail of redistribution all keys off one feed URL. Ship it once and every one of these becomes a config field instead of a project.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "Without a feed, each of those becomes a manual copy-paste: open the venue, paste the title, paste the body, fix the formatting, set the canonical link by hand. It works for exactly as long as your discipline holds, and then it quietly stops — the third week you're busy, the re-posts don't happen, and nobody notices because there's no error, just silence.",
+      },
+      { kind: "h2", text: "The fix was about 40 lines and no dependency" },
+      {
+        kind: "p",
+        text: "The obvious move is to reach for a plugin — for us, `@astrojs/rss`. We didn't. Our posts already live in one typed data file that the sitemap and the `llms.txt` endpoint both read; a feed is a third reader of the same array. So it's a hand-rolled endpoint that maps each post to an RSS `<item>`, the exact no-dependency pattern the sitemap already uses, and it runs on Cloudflare Workers with nothing to bundle.",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: this is sample source shown to the reader — the ${…} are real template literals in the example, not a placeholder bug.
+        code: 'import type { APIRoute } from "astro";\nimport { BLOG_POSTS } from "../data/blog";\n\n// Titles/descriptions are free text → XML-escape before embedding.\nconst esc = (s: string) =>\n  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");\n\nexport const GET: APIRoute = () => {\n  const items = BLOG_POSTS.map((p) =>\n    `<item>\\n` +\n    `  <title>${esc(p.title)}</title>\\n` +\n    `  <link>https://nlqdb.com/blog/${p.slug}/</link>\\n` +\n    `  <pubDate>${new Date(`${p.date}T00:00:00Z`).toUTCString()}</pubDate>\\n` +\n    `  <description>${esc(p.description)}</description>\\n` +\n    `</item>`,\n  ).join("\\n");\n\n  const body = `<?xml version="1.0" encoding="UTF-8"?>\\n` +\n    `<rss version="2.0"><channel>\\n${items}\\n</channel></rss>`;\n\n  return new Response(body, {\n    headers: { "Content-Type": "application/rss+xml; charset=utf-8" },\n  });\n};',
+      },
+      {
+        kind: "p",
+        text: 'Two details earn their place. First, **XML-escape the free text** — titles and descriptions are prose, not known-safe URLs, so an unescaped `&` or `<` produces a feed that won\'t parse (this is the one thing the sitemap endpoint gets to skip, because it only ever emits URL paths). Second, add one `<link rel="alternate" type="application/rss+xml">` to the site\'s `<head>` so browsers and readers *autodiscover* the feed from any page — the endpoint exists, but this is what lets a reader find it by pasting your homepage instead of hunting for `/rss.xml`.',
+      },
+      { kind: "h2", text: "The rule" },
+      {
+        kind: "p",
+        text: "**Count the doors into your content, not the pages.** A page count measures how much you wrote; a feed measures how many ways that writing can leave your site without you lifting a finger. A post nobody can subscribe to is a post nobody re-shares — and the gap doesn't show up as an error, it shows up as a referral graph that stays flat while the sitemap keeps growing. If you've been publishing for weeks and the reach isn't compounding, check whether a machine can even subscribe.",
+      },
+      {
+        kind: "p",
+        text: "(This blog is the daily build log for [nlqdb](https://nlqdb.com), the data layer you query in plain English. The feed above is real — every post here is auto-importable, `rel=canonical` back to this domain, from the same typed file that renders the page you're reading.)",
+      },
+    ],
+  },
+  {
     slug: "one-way-internal-links-leak-yield",
     title: "We shipped 18 SEO pages and got 1 referral. The links only pointed one way.",
     description:
