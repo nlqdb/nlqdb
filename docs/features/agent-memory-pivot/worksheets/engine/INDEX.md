@@ -23,6 +23,14 @@ workload-analyzer hook that motivates Phase-3 multi-engine.
 | Funnel / distribution / wedge conversion | `WS-*` (messaging) |
 | Engine quality / agent on-ramp / "wedge claims true" | `E-*` (this folder) |
 
+> **Measurement:** whether the memory is actually *good* — all four quality
+> axes (retrieval / temporal / forgetting+contradiction / consolidation) plus
+> an analytical-memory-vs-vector head-to-head — is scored by the
+> agent-memory-quality eval, `SK-QUAL-023` in
+> [`quality-eval/FEATURE.md`](../../../quality-eval/FEATURE.md) (seeded by
+> persona-bench's `agent_memory` schema). Pick an `E-*` slice to build the
+> primitive; the eval says whether it worked.
+
 **E-01 is a prerequisite for several `WS-*` worksheets** (WS-07's CreateForm
 preset, WS-09's live demo over an `agent_memory` table). It does NOT block
 the early messaging worksheets (WS-01..WS-05). The interleave is the point:

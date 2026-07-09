@@ -63,7 +63,10 @@
     before their page ships.
   - Wedge conversion = **a registered user reaching a first answer**; wedge
     CTAs emit typed demand-signal events (`GLOBAL-024`) alongside the open
-    product. Messaging ships; the engine bar is not re-escalated.
+    product. Memory quality is a measured engine bar: the agent-memory-quality
+    eval (`SK-QUAL-023` — four axes plus an analytical-memory-vs-vector
+    head-to-head) scores how good the memory actually is, and the daily loop
+    drives it the way it drives BIRD/Spider.
   - The headline reposition (WS-13) was the single founder-gated worksheet
     (last in the sequence). **Tripped 2026-06-24 — see SK-PIVOT-013.** The
     follow-on home-flow reposition (the home's PROOF, not just its headline,
@@ -111,9 +114,11 @@
 - [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md) — every new wedge
   CTA emits the typed demand-signal event (wedge conversion = a registered
   user reaching a first answer).
-- [`GLOBAL-025`](./GLOBAL-025-north-star.md) — KPI advanced is **onboarding**
-  (a sharper wedge lifts landing→first-answer conversion) and **UX** (clearer
-  story); **engine quality and performance are untouched** by messaging work.
+- [`GLOBAL-025`](./GLOBAL-025-north-star.md) — KPIs advanced are **onboarding**
+  (a sharper wedge lifts landing→first-answer conversion), **UX** (clearer
+  story), and **engine quality** — the agent-memory-quality eval
+  (`SK-QUAL-023`) makes the wedge's memory claims measurable, so the wedge
+  advances the engine pillar, not just messaging.
 - [`GLOBAL-033`](./GLOBAL-033-resolution-defaults.md) — the three strategy
   bets this GLOBAL encodes (pivot intensity, open/free framing, fate of the
   off-wedge personas) were founder-resolved 2026-06-16; tactical follow-ons

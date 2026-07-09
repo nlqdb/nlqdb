@@ -221,13 +221,13 @@ unaffected).
 
 ### SK-QUAL-021 — Scoring SQL executes in a killable subprocess; a runaway query is a scored timeout, never a hung run
 
-- **Decision:** `score.ts` never executes gold/predicted SQL in-process. Every statement runs in a spawned child (`sql-exec-child.ts`, SQL via stdin, rows as tagged JSON) that the parent SIGKILLs at `timeoutMs` (+500 ms spawn grace). A killed predicted query scores `exec_error`, a killed gold scores `gold_error` — canonical BIRD `evaluation.py` does the same via `func_timeout` (timeouts count against EX).
-- **Core value:** Bullet-proof
-- **Why:** bun:sqlite's synchronous `.values()` is uninterruptible (no `sqlite3_interrupt`/progress-handler binding; `busy_timeout` only bounds lock waits), so one runaway predicted query — a cartesian join over BIRD's larger fixtures — froze the runner's whole event loop: no throttle, no capacity wait, no checkpoint append, no budget-stop. Four consecutive 2026-07-03 smoke windows ceiling-cancelled at 44 min with a byte-flat checkpoint because the deterministic resume order replayed the same poison pair every window — the run could never progress.
-- **Alternatives rejected:**
-  - In-process `Worker` + `terminate()` — Bun's worker termination of a synchronously-blocked thread is experimental with documented hangs (oven-sh/bun #8816, #13091); a kill that can itself hang re-creates the bug.
-  - Row-iteration deadline checks — regains control only between yielded rows; an aggregate over a cartesian product yields nothing until done.
-  - Statement rewriting (injected `LIMIT`) — changes the semantics being scored.
+**Body:** [`decisions/SK-QUAL-021-killable-scoring-subprocess.md`](./decisions/SK-QUAL-021-killable-scoring-subprocess.md).
+`score.ts` never runs gold/predicted SQL in-process — each statement runs in a
+spawned child (`sql-exec-child.ts`) the parent SIGKILLs at `timeoutMs`, so a
+runaway query (cartesian join over a large fixture) scores `exec_error` /
+`gold_error` instead of freezing the runner's event loop. bun:sqlite's
+synchronous `.values()` is uninterruptible, so an in-process kill can itself
+hang; the subprocess is the only reliable interrupt.
 
 ### SK-QUAL-020 — Transport-collapse guard: a chain unreachable end-to-end is an outage, not a scored 0%
 
@@ -253,6 +253,18 @@ clamp the free lane keeps — the clamp aborted Sonnet 4.6 mid-body-read (run
 timeout lands in [`SK-QUAL-020`](#sk-qual-020)'s `NON_ENGINE_REASONS` instead
 of a spurious `no_sql`.
 
+### SK-QUAL-023 — Agent-memory-quality eval: four axes + an analytical-memory-vs-vector head-to-head
+
+**Body:** [`decisions/SK-QUAL-023-agent-memory-quality-eval.md`](./decisions/SK-QUAL-023-agent-memory-quality-eval.md).
+Agent-memory-quality benchmark alongside the NL→SQL canon
+([`SK-QUAL-003`](#sk-qual-003)), seeded by persona-bench's `agent_memory`
+schema ([`SK-QUAL-018`](#sk-qual-018)): four axes (retrieval / temporal /
+forgetting+contradiction / consolidation) **plus** the task no benchmark runs
+— analytical queries over episodic memory head-to-head against a vector-recall
+baseline on identical data, reported honestly including where a pure-SQL store
+loses. Measures the [`GLOBAL-036`](../../decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md)
+wedge; a memory-quality row joins the scorecard Engine lane.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/).
@@ -260,7 +272,7 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 - **GLOBAL-013** — $0/month free tier. *The harness uses the same strict-$0 chain users hit; exceeding it on eval hides cost users will hit too.*
 - **GLOBAL-014** — OTel span on every external call. *Per-question spans so failures debug like production.*
 - **GLOBAL-024** — Demand-signal telemetry. *Eval results emit `feature.eval.*` events.*
-- **GLOBAL-025** — North-star KPIs. *This feature owns the engine-quality NL→SQL KPIs (BIRD/Spider EX, free-vs-frontier delta) + persona-bench (`SK-QUAL-018`); baseline per `SK-QUAL-005`.*
+- **GLOBAL-025** — North-star KPIs. *This feature owns the engine-quality KPIs: the NL→SQL canon (BIRD/Spider EX, free-vs-frontier delta) + persona-bench (`SK-QUAL-018`) + the agent-memory-quality eval (`SK-QUAL-023`); baseline per `SK-QUAL-005`.*
 - **GLOBAL-026** — LLM strategy. *Eval runs the free + hosted-premium chains (`SK-QUAL-004`); BYOLLM lane instrumented but never gates a floor.*
 - **GLOBAL-037** — Schema-only egress to third-party LLMs; never send user cell-values. *Settles the value-retrieval question: the cell-sampling lever is not built (`SK-QUAL-014` run 18 → ~0 BIRD rows standalone); the harness measures schema-only prompts.*
 
