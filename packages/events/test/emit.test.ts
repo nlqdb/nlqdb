@@ -100,10 +100,16 @@ describe("makeQueueEmitter", () => {
       principalId: "u_1",
       surface: "chat",
     });
+    await emitter.emit({
+      name: "feature.requested.larger_account",
+      principalId: "u_1",
+      surface: "chat",
+    });
 
     const today = new Date().toISOString().slice(0, 10);
     expect(queue.sent[0]?.id).toBe(`feature.requested.ddl_via_ask.anon:abc.${today}`);
     expect(queue.sent[1]?.id).toBe(`feature.requested.heavier_tier.u_1.${today}`);
+    expect(queue.sent[2]?.id).toBe(`feature.requested.larger_account.u_1.${today}`);
   });
 
   it("keys home.surface_wishlist by (name, principalId, surface, utcDay) so VSCode + Slack stay distinct (SK-EVENTS-011)", async () => {

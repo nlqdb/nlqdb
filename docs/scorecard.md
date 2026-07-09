@@ -17,16 +17,13 @@ the parked **corrected-set** (license, P2) — so row #8 is a floor this week
 last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
-lagging metric, moved through its agent-movable inputs (distribution
-surfaces/yield). **Run 31 lever: indexable surfaces 86 → 87 (rows #6/#7)** —
-published the oldest ready queue draft `blog-without-a-feed-is-a-dead-end`
-(distribution lesson: a blog with no RSS feed is sealed to every machine that
-would redistribute it — feed readers + dev.to/Medium/Hashnode import-from-RSS
-with `rel=canonical`; count the doors into your content, not the pages). Queue
-was **3 (≥ 3) ⇒ step 3 mandates publish, not draft**; posts 22 → 23, built
-pages 106 → 107, aggregated into `rss.xml`/`sitemap.xml`/`llms.txt` (build-verified).
-Onboarding row #4 / hosted-premium row #20 owned this cycle by open PR #641 (run 30)
-⇒ picked a non-overlapping surface lever (step 0). Detail in *Last change*.
+lagging metric whose two agent-movable inputs (distribution, onboarding) shipped
+this cycle (runs 31, 30), so run 32 took the next non-overlapping, non-dark
+number. **Run 32 lever: live-surface claim integrity — found + closed 1 gap by
+shipping code (row #19)** — a doc-vs-doc contradiction (§10.3) over the
+`feature.requested.larger_account` demand-signal, resolved by *implementing* the
+missing variant and superseding `SK-EVENTS-010` (P3), not rewording. Net 0
+tracked gaps (run-28 pattern). Detail in *Last change*.
 **Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine anti-rut-blocked
 (rule 7); 0.526 is a floor whose only live move is the parked corrected-set (license,
 P2). Phase 2 exit gate **1/9 pass** (row #16).
@@ -41,7 +38,7 @@ P2). Phase 2 exit gate **1/9 pass** (row #16).
 | 5 | Session retention (≥ 2 queries) | 3 DBs with `first10_asks ≥ 2` (same attribution caveat as row #4) | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **87** (`/vs` 31 + `/solve` 33 + `/blog` 23) — **run-31 lever: published `blog-without-a-feed-is-a-dead-end`** (run-22 distribution lesson; build-verified `dist/blog/blog-without-a-feed-is-a-dead-end/index.html`, in `rss.xml` + `llms.txt` + `sitemap.xml`, 106 → 107 built pages). Queue was 3 (≥ 3) ⇒ published the oldest ready draft, per step 3. Pending drafts now **2** (`text-to-sql-planner-told-wrong-dialect` [run 29] + `postgres-validator-rejects-valid-clickhouse-sql` [run 26]; queue < 3 ⇒ **next run drafts** one, per step 3) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts 23 (run 31: +`blog-without-a-feed-is-a-dead-end`, the canonical copy of the run-22 RSS lesson — now self-syndicating via `/rss.xml`); 7d external referrals = **1** (`bing.com`, 1 pageload). **Run 22: syndication feeds 0 → 1** — shipped `/rss.xml` (hand-rolled RSS 2.0 over `data/blog.ts`, site-wide autodiscovery; `rss.xml.test.ts` 5 invariants) so feed readers + dev.to/Medium/Hashnode can auto-import the canonical copy (`rel=canonical` back). **Run 19: internal-link reciprocity 0 → 10** — reciprocal "Further reading" backlink on all 10 anchored `/solve`+`/vs` pages. Internal links 2605 → 2630 (run-31 build). | CF `refererHost` — measured every run. Attacks "volume without yield" at its SEO/UX input; external-referral re-measure lags indexation |
+| 7 | Surface yield | posts 23 (run 31: +`blog-without-a-feed-is-a-dead-end`); 7d external referrals = **1** (`bing.com`). Syndication feeds = **1** (`/rss.xml`, run 22, auto-import via `rel=canonical`); internal-link reciprocity done (10 anchored `/solve`+`/vs` pages, run 19). Internal links **2,630** (run-31 build). | CF `refererHost` — measured every run. Attacks "volume without yield" at its SEO/UX input; external-referral re-measure lags indexation |
 | | **Engine** — BIRD 07-05 · Spider 07-08 · persona-bench 07-02 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.526** (262/498 EA, 2 `gold_error`, 07-05 canonical, [run 28742006051](https://github.com/nlqdb/nlqdb/actions/runs/28742006051)). **`SK-QUAL-017` SC verdict (run 12, 07-06):** first N≥2 dispatch (N=3, temp 0.7, 150q smoke, [run 28761582097](https://github.com/nlqdb/nlqdb/actions/runs/28761582097)) = **79/150 = 0.5267, exactly flat vs the same-directive-set greedy comparator** (canonical run restricted to the identical 150 qids: 79/150; b=8/c=8, p=1.0; SC `no_sql` 1/150) — majority-vote at 3× quota buys 0 on the free chain; the 8↔8 swaps are provider-mix noise | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Baseline re-seeded 07-05. `SK-LLM-043` live-verified (run 11): `\|\|` concats 7 → 3 run-wide. Offline deterministic-ceiling lever exhausted; **SC lever dead (#619); frontier-lens levers closed (run 15, `SK-QUAL-022`)** — only live BIRD-free move is the parked corrected-set (license, P2) |
 | 9 | Spider raw EX | **0.2444** (33/135, 07-08 capacity-honest full run, [run 28959809497](https://github.com/nlqdb/nlqdb/actions/runs/28959809497), resumed from [28958045313](https://github.com/nlqdb/nlqdb/actions/runs/28958045313) per `SK-QUAL-013`, gold_error 0) | target 0.75; **run-27 lever: capacity-honest re-measure 0.1926 → 0.2444 (26 → 33/135, +7q / +5.19 pp).** The 07-02 0.1926 was free-lane capacity-throttled ⇒ undercount; this run waited out throttles (`--capacity-wait-ms 65000`, 2 windows to `resumable:false`) on `main` 6e6b486. Still worst engine number (target 0.75). Spider has no baseline file (BIRD-only, `SK-QUAL-018`) — this row is Spider's source of truth |
@@ -58,7 +55,7 @@ P2). Phase 2 exit gate **1/9 pass** (row #16).
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **22** (07-09; run 29 lever: −1, resolved `byo-connect` OQ **(b)** planner-emits-Postgres-SQL-for-a-CH-DB — Decided: dialect-aware prompting (extend the existing `Dialect:` planner param to `clickhouse`, `SK-LLM-018`), NOT a transpile layer (SQLGlot/ANTLR bust the `GLOBAL-013` Workers budget — same constraint as OQ (a)); scoped code fix — add `"clickhouse"` to `PlanRequest.dialect`, map `db.engine → dialect` at the two hardcoded `orchestrate.ts` plan sites — is **coupled with OQ (a)**'s engine-aware `validateSql` and ships in a dedicated live-CH-fixture PR; genuine resolution, not a relabel; detail in *Last change*). **Prior levers** (git preserves full detail): run 26 −1 (OQ (a) CH-SQL-on-PG-validator); run 23 −1 (OQ (c) DNS-rebind TOCTOU); run 21 −1 (`e2e-coverage` cold-start OQ → run 18 `SK-ASK-013`); run 17 −2 (`premium-tier` router contracts). | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-09 run-31 sweep: **107** pages, **2,630** internal links — +1 page / +25 links vs run 28 = the new `blog-without-a-feed-is-a-dead-end` post + its inbound nav/index/sitemap/llms/rss links) | target 0 — sweep is repeatable: `bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
-| 19 | Live-surface claim integrity | **0 tracked gaps** (run 28 found + closed 1) | claim-vs-reality on shipped surfaces + docs; target 0. **Run 28 lever:** `elements/FEATURE.md` advertised that `<nlq-data>` *"exposes the trace via the `el.trace` JS property"* — the code had **no such property** (verified: full `element.ts` read), and `trust-ux/FEATURE.md` correctly listed it as a not-yet-shipped `SK-TRUST-002` gap ⇒ the two features **contradicted** each other. Closed by *implementing* the missing feature (not just re-wording): `el.trace` + `trace` on the `nlq-data:load` event (`packages/elements`), making elements the 5th/5 shipped surface to carry the trace (SDK/CLI/MCP/web already did). Found+closed same run ⇒ net 0 (run-9/25 pattern), but this time by shipping code. Also fixed a same-breath bug: the load event's `cached` came from a phantom top-level field (always `undefined`) — now from `trace.cache_hit`. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
+| 19 | Live-surface claim integrity | **0 tracked gaps** (run 32 found + closed 1) | claim-vs-reality on shipped surfaces + docs; target 0. **Run 32 lever:** `rate-limit/FEATURE.md` (GLOBAL-024 commentary) claimed per-account 429s fire a distinct `feature.requested.larger_account` demand-signal — but the code emitted `heavier_tier` for **both** anon and authed 429s, the named event **did not exist** in `ProductEvent`, and the *canonical* `SK-EVENTS-010` (events-pipeline) contradicted the claim ("any /v1/ask 429 → heavier_tier"). A doc-vs-doc contradiction (§10.3). Closed by *implementing* the missing variant (run-28 pattern, not a reword): added `feature.requested.larger_account` (`packages/events` type + `defaultId` dedup + logsnag sink), routed the authed per-account trips (`/v1/ask`+`/v1/chat` via `emitFeatureSignal`, `/v1/run` inline) to it, kept anon per-IP on `heavier_tier`, and superseded `SK-EVENTS-010` (P3) to define the two distinct signals — restoring the §6-trigger granularity GLOBAL-024 mandates. Found+closed same run ⇒ net 0. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | **schema ✅ · BYOLLM lanes ✅ · picker: web ✅ (`SK-PREMIUM-013`, #610) · picker parity ✅ (`SK-PREMIUM-014`, run 10) · CTA ✅ (`SK-PREMIUM-004` `FreeModelNudge`, #630 — was stale-⬜; corrected run 28, and its cross-surface signal now rides all surfaces incl. `<nlq-data>` `el.trace` per run 28) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked)** | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is **built before** the signal (lighting it is a flag flip); only the *meter firing* (Lago→Stripe) + cost-incurring infra stay dark. Drive ⬜→✅ each run; only genuine remaining slot is the premium chain (`SK-LLM-017`, flag-dark) — spend-cap UI is Lago-gated |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
@@ -95,28 +92,34 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-09 (run 31)** — lever: **indexable surfaces 86 → 87 (rows #6/#7)** by
-publishing the oldest ready queue draft as the canonical `/blog` post
-`blog-without-a-feed-is-a-dead-end`. Weekly-focus row #8 dark (rule 8) + engine
-anti-rut-blocked (rule 7); onboarding row #4 / hosted-premium row #20 owned by
-open PR #641 (run 30) ⇒ per step 0 picked a non-overlapping surface lever, and
-step 3 **mandated a publish (not a draft)** because the queue was at 3 (≥ 3).
-**Artifact:** the run-22 distribution lesson — a blog with no RSS feed is sealed
-to every machine that would redistribute it (feed readers + dev.to/Medium/Hashnode
-import-from-RSS with `rel=canonical`); the fix is a ~40-line no-dependency RSS
-endpoint over the same typed `data/blog.ts` the sitemap already reads; count the
-doors into your content, not the pages. This is the canonical copy of the feature
-run 22 actually shipped (`/rss.xml`), so the post now self-syndicates via that
-feed. **Measured (build-verified):** posts **22 → 23**, built pages **106 → 107**,
-`dist/blog/blog-without-a-feed-is-a-dead-end/index.html` present and auto-included
-in `rss.xml` (2 refs) + `sitemap.xml` + `llms.txt`; link sweep **0 dead / 0
-redirecting** over 107 pages / **2,605 → 2,630** internal links (row #18). Queue
-depth **3 → 2** (< 3 ⇒ next run drafts one); queue held **19,685 B < 20,480** (D4).
-**KPI:** GLOBAL-025 **onboarding/UX via distribution yield** — the daily loop's
-released artifact, adding one indexable+syndicatable surface. **None degrade:**
-web-only additive data edit — zero engine/API/prompt code or eval baselines
-touched; `bun test src/data/blog.test.ts` 17 pass, root `typecheck` green,
-`bun run build` clean (107 pages), `check:links` exit 0.
+**2026-07-09 (run 32)** — lever: **live-surface claim integrity — found + closed
+1 gap by shipping code (row #19)**. Distribution (#642) + onboarding (#641) owned
+this cycle by open PRs; row #8 (BIRD) dark (rule 8) + engine anti-rut-blocked
+(rule 7) ⇒ next non-overlapping, non-dark number. **Gap:** `rate-limit/FEATURE.md`
+claimed per-account 429s fire a distinct `feature.requested.larger_account`
+demand-signal, but the code emitted `heavier_tier` for **both** anon and authed
+429s, `larger_account` **did not exist** in `ProductEvent`, and the *canonical*
+`SK-EVENTS-010` said the opposite ("any /v1/ask 429 → heavier_tier") — a doc-vs-doc
+contradiction over a code-checkable claim (§10.3). **Fix (P3 supersede + ship, not
+reword):** GLOBAL-024 rejects coarse single-counter signal and the §6 trigger
+needs the authed-cap-hit (highest-intent paying signal) kept separate from anon
+"wants to sign up" — so I *implemented* the finer signal: added
+`FeatureRequestedLargerAccountEvent` (type + union + `defaultId()` dedup + logsnag
+sink), routed the authed per-account trips to it (`emitFeatureSignal` for
+`/v1/ask`+`/v1/chat`; inline `/v1/run`), left the anon per-IP gates on
+`heavier_tier`, and superseded `SK-EVENTS-010` + synced the `rate-limit`
+commentary so both docs agree and match code. **Measured:** claim-integrity gaps
+found 1 → closed 1 = **net 0** (by shipping code). **Verification:** unit tests
+pin producer→envelope-id→sink (`emit.test.ts` dedup, `logsnag.test.ts` payload,
+`demand-signal.test.ts` per-account→`larger_account`); telemetry is
+fire-and-forget with no user-facing runtime surface, so producer+sink coverage is
+the end-to-end check. **Artifact (step 3):** the shipped code + reconciled
+canonical decision is the released artifact; the distribution queue is owned by
+#642, untouched. **KPI:** GLOBAL-025 onboarding/UX + engine quality (restores §6
+demand-signal fidelity). **None degrade:** `typecheck`/`lint` exit 0 (35 pre-existing
+warnings, none added), **`bun run test` all pass** (api 880 + workspace). D4:
+`events-pipeline/FEATURE.md` was already > 20 KB ⇒ its edit **net-shrank** it
+(22,642 → 22,572 B) via D5 prose trims even after adding the variant's docs.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

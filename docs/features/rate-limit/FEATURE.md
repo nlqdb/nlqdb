@@ -112,7 +112,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-002** — Behavior parity across surfaces.
 - **GLOBAL-007** — No login wall before first value.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this feature:* every 429 emits a typed product event — anon-tier hits fire `feature.requested.heavier_tier`; per-account caps fire `feature.requested.larger_account`. These pair with the `X-RateLimit-*` headers (system-level signal) to give both machine-readable retry hints and product-level demand signal.
+  - *In this feature:* every 429 emits a typed product event — the **anon per-IP tier** gate fires `feature.requested.heavier_tier` (inline in the route, before orchestrate); the **authed per-account** D1-bucket trip fires `feature.requested.larger_account` (via `emitFeatureSignal` on `/v1/ask` + `/v1/chat`, inline on `/v1/run`). The two variants are canonically defined in [`events-pipeline/FEATURE.md`](../events-pipeline/FEATURE.md) `SK-EVENTS-010`; keeping them distinct preserves the highest-intent paying signal (an authed cap hit) for the §6 trigger. These pair with the `X-RateLimit-*` headers (system-level signal) to give both machine-readable retry hints and product-level demand signal.
 
 ## Open questions / known unknowns
 

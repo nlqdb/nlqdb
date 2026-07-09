@@ -86,6 +86,22 @@ describe("buildPayload", () => {
     });
   });
 
+  it("maps feature.requested.larger_account onto the demand-signal channel, distinct from heavier_tier (SK-EVENTS-010)", () => {
+    const out = buildPayload("nlqdb", {
+      name: "feature.requested.larger_account",
+      principalId: "u_9",
+      surface: "chat",
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "demand-signal",
+      event: "Larger account requested",
+      notify: false,
+      user_id: "u_9",
+      tags: { surface: "chat" },
+    });
+  });
+
   it("maps home.surface_wishlist onto the demand-signal channel with surface tag (SK-EVENTS-011)", () => {
     const out = buildPayload("nlqdb", {
       name: "home.surface_wishlist",
