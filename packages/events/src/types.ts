@@ -56,6 +56,13 @@ export type AskCompletedEvent = {
 // principals or the authed `userId` — same shape as the OTel
 // `nlqdb.user.id` attribute. Per-(principalId, day) dedup is applied
 // by `defaultId()` so the LogSnag 2,500/mo quota survives.
+//
+// The two rate-limit variants are deliberately distinct (SK-EVENTS-010):
+// `heavier_tier` = an anon per-IP tier trip (wants to sign up / a real
+// account); `larger_account` = an authed per-account D1-bucket trip
+// (already has an account, wants higher limits). Collapsing them would
+// erase exactly the granularity the §6 monetization trigger reasons
+// about — an authed cap hit is the highest-intent paying signal.
 export type FeatureRequestedDdlViaAskEvent = {
   name: "feature.requested.ddl_via_ask";
   principalId: string;
@@ -69,6 +76,16 @@ export type FeatureRequestedDdlViaAskEvent = {
 
 export type FeatureRequestedHeavierTierEvent = {
   name: "feature.requested.heavier_tier";
+  principalId: string;
+  surface: NlqSurface;
+};
+
+// Authed per-account rate-limit trip (the D1 60/min bucket in the
+// `/v1/ask` + `/v1/run` orchestrators, and `/v1/chat`). Distinct from
+// `heavier_tier` (anon per-IP tier) — this principal already has an
+// account and hit its ceiling, the closest-to-paying demand signal.
+export type FeatureRequestedLargerAccountEvent = {
+  name: "feature.requested.larger_account";
   principalId: string;
   surface: NlqSurface;
 };
@@ -177,6 +194,7 @@ export type ProductEvent =
   | AskCompletedEvent
   | FeatureRequestedDdlViaAskEvent
   | FeatureRequestedHeavierTierEvent
+  | FeatureRequestedLargerAccountEvent
   | HomeSurfaceWishlistEvent
   | FeatureEvalWeeklyEvent
   | FeatureEvalRegressionEvent;

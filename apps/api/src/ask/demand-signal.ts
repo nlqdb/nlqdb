@@ -1,10 +1,12 @@
 // SK-EVENTS-010 — emit the GLOBAL-024 demand-signal for the two
 // orchestrator failure shapes that map to typed `feature.*` variants.
 // Fire-and-forget through `ctx.waitUntil` so the 4xx isn't delayed.
-// `rate_limited` here covers the authed per-account D1 bucket trip
-// (the anon per-IP / per-device gates emit at the route top-level,
-// before `orchestrateAsk` runs). The DDL reject set lives in
-// `sql-validate.ts` next to `SqlRejectReason` so the two can't drift.
+// `rate_limited` here is the authed per-account D1 bucket trip, so it
+// fires `feature.requested.larger_account` — NOT `heavier_tier`, which
+// is reserved for the anon per-IP tier gates that emit at the route
+// top-level, before `orchestrateAsk` runs (SK-EVENTS-010's two distinct
+// rate-limit variants). The DDL reject set lives in `sql-validate.ts`
+// next to `SqlRejectReason` so the two can't drift.
 
 import type { EventEmitter, NlqSurface } from "@nlqdb/events";
 import { DDL_REJECT_REASONS } from "./sql-validate.ts";
@@ -37,7 +39,7 @@ export function emitFeatureSignal(
   if (error.status === "rate_limited") {
     ctx.waitUntil(
       emitter.emit({
-        name: "feature.requested.heavier_tier",
+        name: "feature.requested.larger_account",
         principalId,
         surface,
       }),

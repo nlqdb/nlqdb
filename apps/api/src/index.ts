@@ -1455,10 +1455,13 @@ app.post("/v1/run", requirePrincipal, async (c) => {
           c.header("Retry-After", String(Math.max(0, resetAt - now)));
         }
         // Inlined (not via `emitFeatureSignal`) because that helper also fires `ddl_via_ask` — wrong name for `/v1/run`.
+        // `orchestrateRun`'s trip is the per-account D1 bucket (keyed by
+        // `rateLimitBucketKey`), so it's `larger_account` — the anon
+        // per-IP gate above (`checkQuery`) is what fires `heavier_tier`.
         if (outcome.error.status === "rate_limited") {
           c.executionCtx.waitUntil(
             buildEventEmitter(c.env.EVENTS_QUEUE).emit({
-              name: "feature.requested.heavier_tier",
+              name: "feature.requested.larger_account",
               principalId: principal.id,
               surface,
             }),

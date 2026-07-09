@@ -142,6 +142,21 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
         user_id: event.principalId,
         tags: { surface: event.surface },
       };
+    case "feature.requested.larger_account":
+      // SK-EVENTS-010 — an authed account hit its per-account 60/min
+      // cap. Highest-intent demand signal (already has an account,
+      // wants more), so kept distinct from the anon `heavier_tier`
+      // trip on the same channel.
+      return {
+        project,
+        channel: "demand-signal",
+        event: "Larger account requested",
+        description: `${event.surface}: authed account hit its per-account rate-limit ceiling`,
+        icon: "🚀",
+        notify: false,
+        user_id: event.principalId,
+        tags: { surface: event.surface },
+      };
     case "home.surface_wishlist":
       // SK-EVENTS-011: wishlist click from the marketing CodePanel.
       // `notify: false` — wishlist counts matter in aggregate, not

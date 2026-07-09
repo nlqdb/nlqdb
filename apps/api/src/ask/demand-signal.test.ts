@@ -65,21 +65,24 @@ describe("emitFeatureSignal", () => {
     }
   });
 
-  it("emits feature.requested.heavier_tier on rate_limited", async () => {
+  it("emits feature.requested.larger_account on rate_limited (authed per-account trip, SK-EVENTS-010)", async () => {
     const { emitter, ctx, emitted } = makeRecorder();
     const error: AskError = {
       status: "rate_limited",
-      limit: 30,
-      count: 31,
+      limit: 60,
+      count: 61,
       resetAt: 1_700_000_000,
     };
 
     emitFeatureSignal(emitter, ctx, "u_5", "chat", error);
     await new Promise((r) => setTimeout(r, 0));
 
+    // The orchestrator rate_limited is the per-account D1 bucket — the
+    // anon per-IP gate fires `heavier_tier` at the route top-level, not
+    // through this helper. The two demand signals stay distinct.
     expect(emitted).toHaveLength(1);
     expect(emitted[0]).toEqual({
-      name: "feature.requested.heavier_tier",
+      name: "feature.requested.larger_account",
       principalId: "u_5",
       surface: "chat",
     });
