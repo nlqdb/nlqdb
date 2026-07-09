@@ -17,21 +17,20 @@ the parked **corrected-set** (license, P2) — so row #8 is a floor this week
 last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
-lagging metric, moved through its agent-movable inputs (distribution
-surfaces/yield). **Run 29 lever: docs-ambiguity 23 → 22 (row #17)** — genuinely
-resolved `byo-connect` OQ **(b)** "the planner emits Postgres-flavored SQL for a
-ClickHouse DB." Code-grounded diagnosis: the planner is *already*
-dialect-parameterized (`PLAN_SYSTEM` + `Dialect:` exemplar, `SK-LLM-018`) but
-`PlanRequest.dialect` is typed `"postgres" | "sqlite"` (`types.ts:88`) and
-`orchestrate.ts` **hardcodes `dialect: "postgres"`** at both plan sites (`:242`,
-`:414`) — so a ClickHouse-BYO DB is told it's Postgres. Decided (P2):
-dialect-aware prompting (extend the `Dialect:` param to `clickhouse`), **not** a
-transpile layer (SQLGlot/ANTLR bust the `GLOBAL-013` Workers budget — same
-constraint as OQ (a)); the scoped code follow-up is **coupled with OQ (a)**'s
-engine-aware `validateSql` (emitting CH grammar requires the validator to stop
-vetoing it) and lands in a dedicated PR with a live-CH fixture. Genuine
-resolution (approach decided + rationale), not a relabel — same (a)/(c) pattern.
-Fresh lever category ⇒ anti-rut-clear. Detail in *Last change*.
+lagging metric, moved through its agent-movable inputs. Distribution surfaces/yield
+(rows #6/#7) is one input and is **owned this cycle by open PR #640 (run 29)**
+(docs-ambiguity row #17 + a queue draft), so run 30 took the *other* input:
+**the quality of the one-shot first goal.** **Run 30 lever — onboarding UX
+(`SK-ONBOARD-008`, rows #4/#20):** the anonymous create surface (`CreateForm`,
+live at `/app/new`, `/vs/*`, `/solve/*`, `/agents`) offered only a placeholder.
+Because `SK-ANON-012` caps the anon device at **one** `/v1/ask` create call, a
+stranger's first goal is their only shot — a vague goal burns it on a weak schema.
+Added 6 one-click **starter build-goal chips** that fill the input (never
+auto-submit, so a mis-tap can't spend the one-shot cap) + a `home.starter_clicked`
+GLOBAL-024 funnel signal. Reduces first-query paralysis on the exact surface the
+first-10-success KPI (row #4) is defined over; fresh lever category (onboarding
+UX — last 5 were trust-parity/distribution/docs-ambiguity/engine/claim-integrity)
+⇒ anti-rut-clear; no overlap with #640. Detail in *Last change*.
 **Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine anti-rut-blocked
 (rule 7); 0.526 is a floor whose only live move is the parked corrected-set (license,
 P2). Phase 2 exit gate **1/9 pass** (row #16).
@@ -42,7 +41,7 @@ P2). Phase 2 exit gate **1/9 pass** (row #16).
 | 1 | Visits, 7d (CF Web Analytics) | 83 visits / 104 pageloads (06-29→07-06, raw). **New walker filter (run 12):** grouping by `userAgentBrowser` splits out the walker UA (parses as "Unknown": 70 visits) ⇒ **real-browser ≈ 13 visits** (12 excl. ChromeHeadless) | account-level RUM can't split per-path, but the browser-dimension cut is a usable walker filter going forward; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 8 total = 4 founder/company + 4 test/dev (unchanged) |
 | 3 | DBs total | 162, all with `last_queried_at`; latest 07-06 00:32 UTC | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (run 16, `SK-ONBOARD-007`, remote-D1 07-07). Unfiltered counters read 3/8 = **37.5%** but a `tenant_id → user.email` join shows all 3 rows are founder (`omer.hochman@gmail.com`) + `test@example.com` — the 35–37% previously reported was 100% non-stranger | target ≥ 95%. **Attribution gap fixed** (was "the instrument's next fix"): write-side skips the stranger-test walker UA (`isSyntheticUserAgent`, anon case the join can't see); read-side joins `user` + excludes founder/test. Honest read is now N=0 (matches row #2), not a placebo rate |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (run 16, `SK-ONBOARD-007`, remote-D1 07-07). Unfiltered counters read 3/8 = **37.5%** but a `tenant_id → user.email` join shows all 3 rows are founder (`omer.hochman@gmail.com`) + `test@example.com` — the 35–37% previously reported was 100% non-stranger | target ≥ 95%. **Attribution gap fixed** (was "the instrument's next fix"): write-side skips the stranger-test walker UA (`isSyntheticUserAgent`, anon case the join can't see); read-side joins `user` + excludes founder/test. Honest read is now N=0 (matches row #2), not a placebo rate. **Run 30 lever — agent-controllable input:** the anon create surface (`CreateForm`, live `/app/new` + `/vs`/`/solve`/`/agents`) previously offered only a placeholder; because `SK-ANON-012` caps the device at **one** create call, a vague first goal burns it. Added 6 one-click starter build-goal chips (`SK-ONBOARD-008`, `home.starter_clicked` GLOBAL-024 signal, fill-never-submit) — **starter examples on the one-shot surface 0 → 6** — the highest-leverage input to this KPI |
 | 5 | Session retention (≥ 2 queries) | 3 DBs with `first10_asks ≥ 2` (same attribution caveat as row #4) | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **86** (`/vs` 31 + `/solve` 33 + `/blog` 22) — **run-28 lever: published `one-way-internal-links-leak-yield`** (run-19 distribution lesson; build-verified `dist/blog/one-way-internal-links-leak-yield/index.html`, in `llms.txt` + `sitemap.xml`, 105 → 106 built pages). Queue was ≥ 3 ⇒ published the oldest ready draft (step 3). Pending drafts now **3** (run 29 drafted `text-to-sql-planner-told-wrong-dialect` — the generator-side twin of the run-26 validator draft — bringing the queue to `postgres-validator-rejects-valid-clickhouse-sql` [run 26] + `blog-without-a-feed-is-a-dead-end` [run 22] + this; queue ≥ 3 ⇒ **next run publishes** the oldest, per step 3. D4: held under 20 KB by collapsing runs 114–117 parentheticals to git history) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
@@ -99,37 +98,27 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-09 (run 29)** — lever: **docs-ambiguity 23 → 22 (row #17)** by
-genuinely resolving `byo-connect` OQ **(b)** "the planner emits Postgres-flavored
-SQL for a ClickHouse DB." Weekly-focus row #8 dark (rule 8) + engine
-anti-rut-blocked (rule 7) ⇒ picked the next agent-movable, non-dark,
-non-overlapping number. **Diagnosis (code, not assumption):** the planner is
-*already* dialect-parameterized (`PLAN_SYSTEM` "for the named dialect" + a
-`Dialect:` few-shot line, `SK-LLM-018`/`SK-LLM-026`), so the gap is upstream —
-`PlanRequest.dialect` is typed `"postgres" | "sqlite"` (`packages/llm/src/types.ts:88`)
-and `apps/api/src/ask/orchestrate.ts` **hardcodes `dialect: "postgres"`** at both
-plan sites (`:242` initial, `:414` exec-repair) while `db.engine` is already in
-scope (`:544`). **Decided (P2, 2026-07-09):** dialect-aware prompting (extend the
-`Dialect:` param to `clickhouse`), **not** a generate-then-transpile layer —
-SQLGlot/ANTLR have no in-Worker JS form under the `GLOBAL-013` bundle budget, the
-same constraint that killed OQ (a)'s CH parser. The scoped code fix (add
-`"clickhouse"` to the dialect union; map `db.engine → dialect` at the two plan
-sites; add a CH-syntax exemplar) is **load-bearingly coupled with OQ (a)**'s
-engine-aware `validateSql`: emitting CH-only grammar (`LIMIT n BY`,
-`quantile(0.5)(x)`, `ARRAY JOIN`) requires the validator to stop treating a
-PG-dialect `parse_failed` as authoritative for CH, so both land as one PR with a
-live-CH read/write fixture (none in the unit env). Genuine resolution (approach +
-rationale decided), not a relabel — the (a)/(c) pattern. **Artifact (step 3):**
-queue was 2 (< 3) ⇒ drafted `text-to-sql-planner-told-wrong-dialect` (the
-generator-side twin of the run-26 validator draft); queue **2 → 3**, so next run
-publishes. D4: queue held **20,015 B < 20,480** by collapsing runs 114–117
-parentheticals to git history. **Measured:** open-question bullets **23 → 22**
-(pinned grep); queue depth **2 → 3**. **KPI:** GLOBAL-025 **engine quality**
-(clears the ambiguity blocking a correct CH-BYO planner) + onboarding-doc clarity.
-**None degrade:** full gate green — `typecheck` clean, `lint` exit 0 (35
-pre-existing warnings), **`bun run test` all pass** (api 880 + workspace);
-docs-only diff — zero engine/API/prompt code, blog data, or eval baselines
-touched.
+**2026-07-09 (run 30)** — lever: **starter build-goals on the anonymous create
+surface (`SK-ONBOARD-008`, rows #4/#20)**. Concurrent with open PR #640 (run 29,
+docs-ambiguity + a queue draft): row #8 dark (rule 8), distribution/queue owned by
+#640 (step 0) — so the next agent-movable, non-dark, non-overlapping number. Chose
+the *other* input to the worst number (0 strangers to first answer): the quality of
+the one-shot first goal. **Gap:** `CreateForm` (live `/app/new`, `/vs/*`, `/solve/*`,
+`/agents`) offered only a placeholder, yet `SK-ANON-012` caps the anon device at
+**one** `/v1/ask` create call — a stranger's first goal is their only shot, so a
+vague goal burns it on a weak schema. **Fix:** `apps/web/src/data/create-starters.ts`
+(typed `CreateStarter[]` + invariants test) drives 6 one-click starter chips in
+`CreateForm`; `onStarter()` **fills** the input (never auto-submits — a mis-tap
+can't spend the one-shot cap) and emits the `home.starter_clicked` GLOBAL-024 funnel
+signal; chips reuse existing design tokens + hide once a DB exists. Also verified the
+"72h" retention claim is intentionally consistent everywhere (`sweep.ts`: promise
+72h / server keeps 90d) — no claim gap there. **Measured:** starter examples on the
+one-shot surface **0 → 6** (agent-controllable input to the row #4 first-10-success
+KPI, N=0 live); build 106 pages, chips SSR-verified in `dist/app/new` + `dist/agents`
+and in the `CreateForm` JS bundle; +4 web tests (web 233 → **237**). **KPI:** GLOBAL-025
+**onboarding + UX**. **None degrade:** `astro check` 0 errors, `lint` clean (35
+pre-existing warnings), **`bun test src` 237/237 pass**, root `typecheck` green; zero
+engine/API/blog/queue/baseline touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

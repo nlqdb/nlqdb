@@ -27,6 +27,7 @@
 // chat-window install popover so the two React venues can't drift.
 
 import { useEffect, useId, useState } from "react";
+import { CREATE_STARTERS, type CreateStarter } from "../data/create-starters";
 import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
 import { messageFor } from "../lib/create-errors";
 import { attachHandoff } from "../lib/handoff";
@@ -84,6 +85,15 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
   function onGoalChange(next: string) {
     setGoal(next);
     draftSaver(next);
+  }
+
+  // A starter only fills the input — it never auto-submits, so the
+  // SK-ANON-012 one-shot create call is never spent on a mis-click; the
+  // user still reviews and presses "Create the DB". `home.starter_clicked`
+  // is the GLOBAL-024 funnel signal for which first goal strangers pick.
+  function onStarter(starter: CreateStarter) {
+    onGoalChange(starter.goal);
+    emit("home.starter_clicked", { starter: starter.id });
   }
 
   async function submit() {
@@ -205,6 +215,25 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
             "Create the DB"
           )}
         </button>
+        {!result && (
+          <div className="createform__starters">
+            <span className="createform__starters-label">Not sure? Start from —</span>
+            <ul className="createform__starter-list">
+              {CREATE_STARTERS.map((starter) => (
+                <li key={starter.id}>
+                  <button
+                    type="button"
+                    className="createform__starter"
+                    onClick={() => onStarter(starter)}
+                    disabled={loading}
+                  >
+                    {starter.goal}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {shownError && (
           <div id={errorId} className="createform__error-wrap" role="alert">
             <p className="createform__error">{shownError}</p>
