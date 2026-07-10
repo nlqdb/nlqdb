@@ -61,6 +61,7 @@ P2). Phase 2 exit gate **1/9 pass** (row #16).
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 (per-agent RLS, TTL, hybrid recall, authed on-ramp, ClickHouse) all Neon/infra-gated |
+| | Memory-quality eval (`SK-QUAL-023`) | not yet measured — in build | four axes (retrieval / temporal / forgetting+contradiction / consolidation) + an analytical-memory-vs-vector head-to-head; makes the wedge claims measurable. Becomes an Engine-lane lever once it scores |
 
 ## Shipped distribution (live URLs)
 
@@ -68,6 +69,7 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 `research/distribution-queue.md` as pointers:
 
 - https://nlqdb.com/blog/postgres-validator-rejects-valid-clickhouse-sql/ (run 35 — engine/security lesson SK-MULTIENG-004: a Postgres-pinned AST validator silently false-rejects valid ClickHouse SQL as `parse_failed`; split the dialect-agnostic destructive-verb allowlist (authoritative on every engine) from the best-effort per-engine AST walk — a wrong-dialect parse means "wrong parser," not "dangerous query")
+- https://nlqdb.com/blog/agent-memory-benchmarks-measure-recall-not-analysis/ (agent-memory-quality initiative — `SK-QUAL-023` research finding; anchors `/solve/analytical-queries-over-agent-memory`)
 - https://nlqdb.com/blog/blog-without-a-feed-is-a-dead-end/ (run 31 — distribution lesson: a blog with no RSS feed is sealed to every machine that would redistribute it; count the doors into your content, not the pages)
 - https://nlqdb.com/blog/one-way-internal-links-leak-yield/ (run 28 — distribution lesson: invert the `anchor` field into a reciprocal backlink; measure the link graph, not the page count)
 - https://nlqdb.com/blog/agent-memory-vector-store-aggregation-gap/ (run 53 — anchors `/vs/pinecone`)
