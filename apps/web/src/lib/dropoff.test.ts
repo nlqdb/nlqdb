@@ -10,7 +10,10 @@ import { ATTEMPT_EVENT, LANDING_EVENT, makeDropoffFunnel } from "./dropoff.ts";
 describe("makeDropoffFunnel", () => {
   test("landing fires once, then null", () => {
     const funnel = makeDropoffFunnel();
-    expect(funnel.landing("create")).toEqual({ event: LANDING_EVENT, props: { surface: "create" } });
+    expect(funnel.landing("create")).toEqual({
+      event: LANDING_EVENT,
+      props: { surface: "create" },
+    });
     expect(funnel.landing("create")).toBeNull();
   });
 
