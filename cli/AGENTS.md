@@ -101,9 +101,15 @@ done
   `DO_NOT_TRACK` / `NLQDB_TELEMETRY` env reads — there is nothing to
   opt out of.
 - **Adding a new MCP host:** drop a file in `internal/mcphosts/`
-  implementing the `Host` interface, append it to `Registry()`, add
-  a test that round-trips a real-shape config file. No changes
-  elsewhere.
+  implementing the `Host` interface, append it to `Registry()`
+  (registry order is the `SK-CLI-011` prompt order on a multi-host
+  machine), add a test that round-trips a real-shape config file. No
+  changes elsewhere. Reuse the shared helpers: `writeMcpServersField`
+  when the host nests servers under `mcpServers` (atomic temp+rename,
+  preserves sibling fields, 0600 — all six current hosts use it);
+  `detectByDirExists` + `appSupport`/`userHome` for detection and
+  per-OS config paths. Hand-roll `Install` only when a host's config
+  shape genuinely differs.
 - **Adding a new verb:** new file under `internal/cmd/`, register it
   in `cmd.New()`, and add the verb name to the `known` map in
   `cmd/nlq/main.go` so the bare-form rewriter doesn't intercept it.
