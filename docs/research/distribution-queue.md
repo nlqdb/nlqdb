@@ -12,51 +12,53 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"Your metric is only as honest as the layer you emit it from."** slug
+  `emit-metrics-where-the-distinction-is-certain` · venue dev.to
+  (#programming #observability #architecture) + r/ExperiencedDevs +
+  lobste.rs (`practices`) · engineering lesson (`SK-TRUST-004`
+  destructive-op retry-rate instrument). Angle: we wanted the destructive-op
+  retry rate — the share of write previews a user abandons — as
+  `1 − committed / preview_rendered`. The obvious emit site is the HTTP
+  route: it already has the principal, surface, request. Wrong place. The
+  route sees a `confirm: true` flag and a 200; it does **not** know whether
+  the engine's plan was a write or a read. Emit `committed` there and a read
+  carrying `confirm: true` inflates the numerator — a `committed` with no
+  matching `preview_rendered` — and the rate goes *negative*, a number that
+  can't exist. The fix isn't more route validation; it's moving the emission
+  down to the orchestrator, where `isWriteVerb(sql)` and the
+  preview-vs-commit branch are already decided — there both events fire on
+  exactly the boundary they measure, and a stray-confirm read emits nothing.
+  Thread down the one thing the route knew that the orchestrator didn't (the
+  surface) rather than pulling the whole decision up. Rule: a metric's emit
+  point is the lowest layer where the distinction it encodes is *certain*;
+  above that you're guessing, and a guessed denominator is worse than no
+  metric because it looks precise. Dedup corollary: a per-request volume
+  event keys on a random id, not `(principal, day)` — day-bucketing collapses
+  the repeated previews that *are* the signal. Honest split: an
+  instrumentation-design lesson, not a product feature.
+
 - **"You need to rotate an encryption key. You don't need a key-version
   column."** slug `rotate-encryption-key-without-a-version-column` · venue
   dev.to (#security #database #architecture) + r/programming + lobste.rs
-  (`security`) · security/architecture lesson (`GLOBAL-031` KEK-rotation
-  resolution). Angle: when you seal secrets at rest under a key-encryption
-  key (KEK) and later have to rotate it, the reflex is a `key_version`
-  column so you know which key sealed which row. Skip it. The ciphertext
-  already has to be self-describing — it carries its own IV in the blob —
-  so put the key version in that same string: a one-token prefix bump,
-  `v1.…` → `v2.…`. Now rotation needs zero schema migration. Stale rows are
-  prefix-filterable (`WHERE blob LIKE 'v1.%'`) *without decrypting*; a
-  two-key overlap window (active + retiring) lets reads pick the right key
-  by the tag while writes always seal under the new one; rows migrate
-  lazily on their next write, plus one sweep for the cold ones; drop the
-  old key when nothing carries its version. The column only earns its keep
-  if the sweep has to find stale rows *blind* — and the prefix already
-  finds them. One nuance: if your content key is HKDF-derived from the KEK
-  rather than a stored DEK, "re-wrap" means decrypt-then-reseal the secret
-  itself — trivial for the short secrets (a DSN, an API key) this pattern
-  guards. Rule: the encrypted blob is the source of truth for how to
-  decrypt it — key version included; a column is a second place the two can
-  drift. Honest split: a security-architecture lesson, not a product feature.
+  (`security`) · security/architecture lesson (`GLOBAL-031` KEK-rotation).
+  Gist: put the KEK version in the self-describing ciphertext prefix
+  (`v1.…`→`v2.…`), not a `key_version` column — zero-migration rotation,
+  prefix-filterable stale rows without decrypting, two-key overlap window +
+  lazy re-wrap; the column only earns its keep if the sweep must find stale
+  rows blind, and the prefix already finds them. *(Full body in git history —
+  collapsed for the D4 20 KB cap; recover at publish time.)*
 
 - **"You added a second SQL engine. Your text-to-SQL model is still being
   told it's the first one."** slug `text-to-sql-planner-told-wrong-dialect` ·
   venue dev.to (#sql #llm #database) + r/dataengineering + lobste.rs (`sql`) ·
-  engine/architecture lesson (byo-connect OQ (b) resolution). Angle: a
-  text-to-SQL planner is dialect-aware by design — you pass it `Dialect: postgres`
-  and it emits Postgres. Bolt on a second engine and the bug isn't in the model,
-  it's in the one line that fills that field: a hardcoded `dialect: "postgres"`,
-  or a type union (`"postgres" | "sqlite"`) that never grew a `clickhouse` member.
-  So a ClickHouse database gets a planner confidently writing Postgres SQL —
-  `LIMIT n BY`, `quantile(0.5)(x)`, `ARRAY JOIN` never appear, and analytical
-  queries that need them come back subtly wrong. It hides because everything
-  compiles and the happy-path PG queries still work; nothing logs "wrong dialect."
-  The fix is not a transpile layer (SQLGlot/ANTLR bust an edge/Workers bundle) —
-  it's threading the DB's real engine into the one field the prompt already reads,
-  and *adding the dialect member to the type* so the compiler flags every call
-  site that still hardcodes the first engine. Coupled lesson (the twin of the
-  validator post below): the generator and the validator both silently assume the
-  first engine — fix one without the other and you just move the false-reject (the
-  validator vetoes the CH SQL the planner now correctly emits). Rule: when you add
-  an engine, the dialect isn't config — it's a value that must flow from the row;
-  grep for every place the first engine's name is a literal. Honest split: an
-  architecture lesson, not a product feature.
+  engine/architecture lesson (byo-connect OQ (b)). Gist: the wrong-dialect bug
+  isn't in the model, it's the one line filling `Dialect:` — a hardcoded
+  `"postgres"` or a `"postgres" | "sqlite"` union that never grew a
+  `clickhouse` member; fix is threading the DB's real engine into that field
+  *and* adding the dialect member to the type so the compiler flags every
+  hardcoded call site (not a transpile layer). Twin of the validator post —
+  generator + validator both silently assume engine #1. *(Full body in git
+  history — collapsed for the D4 20 KB cap; recover at publish time.)*
 
 ## Published — canonical `/blog` copies live; venue variants pending
 

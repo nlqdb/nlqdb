@@ -85,6 +85,32 @@ describe("makeQueueEmitter", () => {
     expect(second.id).toMatch(/^evt\./);
   });
 
+  it("generates a unique id per emission for feature.destructive.* (volume; every preview/commit counts, SK-TRUST-004)", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+    // Same principal + surface, two preview hops — must NOT collapse, or the
+    // retry rate (1 − committed/preview_rendered) undercounts the numerator.
+    await emitter.emit({
+      name: "feature.destructive.preview_rendered",
+      principalId: "u_1",
+      surface: "chat",
+    });
+    await emitter.emit({
+      name: "feature.destructive.preview_rendered",
+      principalId: "u_1",
+      surface: "chat",
+    });
+    await emitter.emit({
+      name: "feature.destructive.committed",
+      principalId: "u_1",
+      surface: "chat",
+    });
+    expect(queue.sent).toHaveLength(3);
+    const ids = queue.sent.map((e) => e.id);
+    expect(new Set(ids).size).toBe(3);
+    for (const id of ids) expect(id).toMatch(/^evt\./);
+  });
+
   it("keys feature.requested.* events by (name, principalId, utcDay) so daily dedup collapses (SK-EVENTS-010)", async () => {
     const queue = makeFakeQueue();
     const emitter = makeQueueEmitter(queue);

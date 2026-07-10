@@ -157,6 +157,31 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
         user_id: event.principalId,
         tags: { surface: event.surface },
       };
+    case "feature.destructive.preview_rendered":
+      // SK-TRUST-004 — the GLOBAL-025 UX pillar's retry-rate instrument.
+      // `#north-star` (KPI cadence, not pager): the dashboard divides
+      // committed by preview_rendered per `tags.surface` over a window.
+      return {
+        project,
+        channel: "north-star",
+        event: "Destructive preview",
+        description: `${event.surface}: rendered a write diff for confirm (SK-TRUST-001 preview hop)`,
+        icon: "🛡️",
+        notify: false,
+        user_id: event.principalId,
+        tags: { surface: event.surface },
+      };
+    case "feature.destructive.committed":
+      return {
+        project,
+        channel: "north-star",
+        event: "Destructive committed",
+        description: `${event.surface}: user confirmed the diff and the write executed`,
+        icon: "✅",
+        notify: false,
+        user_id: event.principalId,
+        tags: { surface: event.surface },
+      };
     case "home.surface_wishlist":
       // SK-EVENTS-011: wishlist click from the marketing CodePanel.
       // `notify: false` — wishlist counts matter in aggregate, not

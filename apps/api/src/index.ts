@@ -1157,6 +1157,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       dbId: resolvedDbId,
       userId: principal.id,
       rateLimitBucketKey: rateLimitBucketKey(principal),
+      // SK-TRUST-004 — thread the surface so the orchestrator can slice
+      // the destructive-op retry-rate instrument (`feature.destructive.*`).
+      surface,
       ...(parsed.body.confirm ? { confirm: true as const } : {}),
     };
 

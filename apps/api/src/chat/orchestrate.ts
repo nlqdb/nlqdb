@@ -83,6 +83,9 @@ export async function postChatMessage(
       userId: req.userId,
       goal: req.goal,
       dbId: req.dbId,
+      // SK-TRUST-004 — this orchestrator serves the chat surface; tag it so
+      // a write-preview here slices into the destructive-op retry rate.
+      surface: "chat",
     });
   } catch (err) {
     // Defensive: orchestrateAsk wraps every failure mode in

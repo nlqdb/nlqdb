@@ -90,6 +90,29 @@ export type FeatureRequestedLargerAccountEvent = {
   surface: NlqSurface;
 };
 
+// SK-TRUST-004 — the destructive-op retry-rate instrument (the GLOBAL-025
+// UX pillar). `feature.destructive.preview_rendered` fires on the
+// `SK-TRUST-001` preview hop (a write plan rendered as a diff, no exec);
+// `feature.destructive.committed` fires when the confirmed write actually
+// executes. Retry rate = `1 − (committed / preview_rendered)` over a window,
+// sliced by `surface`. Both are per-request volume events (random
+// `event_id`, see `defaultId`) so every preview and every commit counts —
+// writes are a small fraction of `/v1/ask`, so this never threatens the
+// LogSnag quota, and per-(principal, day) dedup would collapse exactly the
+// repeats the retry rate is meant to measure. `principalId` is the
+// authed `userId` / anon id (same shape as `nlqdb.user.id`), a facet only.
+export type FeatureDestructivePreviewRenderedEvent = {
+  name: "feature.destructive.preview_rendered";
+  principalId: string;
+  surface: NlqSurface;
+};
+
+export type FeatureDestructiveCommittedEvent = {
+  name: "feature.destructive.committed";
+  principalId: string;
+  surface: NlqSurface;
+};
+
 // Closed union of wishlist surface ids. Must match the `data-wishlist`
 // attributes in `apps/web/src/components/CodePanel.astro` AND the
 // `WISHLIST_SURFACES` validation set in `apps/api/src/events-feature.ts`.
@@ -195,6 +218,8 @@ export type ProductEvent =
   | FeatureRequestedDdlViaAskEvent
   | FeatureRequestedHeavierTierEvent
   | FeatureRequestedLargerAccountEvent
+  | FeatureDestructivePreviewRenderedEvent
+  | FeatureDestructiveCommittedEvent
   | HomeSurfaceWishlistEvent
   | FeatureEvalWeeklyEvent
   | FeatureEvalRegressionEvent;
