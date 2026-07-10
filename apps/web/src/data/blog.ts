@@ -41,6 +41,66 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "text-to-sql-planner-told-wrong-dialect",
+    title: "You added a second SQL engine. Your text-to-SQL model is still being told it's the first one.",
+    description:
+      "A text-to-SQL planner emits whatever dialect you name it. Add a second engine and the bug is one hardcoded dialect literal the type never forced you to fix — so ClickHouse gets Postgres SQL.",
+    date: "2026-07-10",
+    body: [
+      {
+        kind: "p",
+        text: "A text-to-SQL model is dialect-aware by design. You hand it a target dialect, and it obliges — name Postgres, get Postgres. So when we added a second engine, ClickHouse alongside Postgres, the model kept doing exactly what it does well: writing SQL for the dialect it was told. The trouble is what it was told. The happy path compiled, the Postgres queries still worked, and a class of analytical questions on the ClickHouse databases started coming back subtly wrong. The model wasn't confused. It was confidently writing Postgres for a database that speaks ClickHouse, because one line told it to.",
+      },
+      { kind: "h2", text: "The planner was never the problem" },
+      {
+        kind: "p",
+        text: 'The prompt already carries a `Dialect:` line — the system prompt says "emit SQL valid for the named dialect," the few-shot exemplars are tagged with theirs. The model reads that field and complies. So the bug isn\'t in the model or the prompt. It\'s in the one place that fills the field, and it looks like the most innocent line in the file:',
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: '// The request type — grew for the first two engines, then stopped.\ntype PlanRequest = {\n  goal: string;\n  dialect: "postgres" | "sqlite"; // never grew a "clickhouse" member\n};\n\n// The call site — a literal that was correct exactly once.\nconst plan = await llm.plan({\n  goal: req.goal,\n  dialect: "postgres", // hardcoded; db.engine is right there, unused\n});',
+      },
+      {
+        kind: "p",
+        text: "That `dialect: \"postgres\"` was true on the day it was written, when Postgres was the only engine. It is a fact frozen into a literal. The database row already knows its real engine — `db.engine` is sitting one field away — but nothing carries that value the few inches into the request. The model is downstream of a lie it has no way to detect.",
+      },
+      { kind: "h2", text: "Why it hides" },
+      {
+        kind: "p",
+        text: "Nothing logs \"wrong dialect,\" because from every layer's point of view nothing went wrong. The type-checker is happy — `\"postgres\"` is a valid member of the union. The planner is happy — it got a dialect and emitted valid SQL for it. Every Postgres database on the platform keeps working, so the whole happy path stays green. The failure only surfaces on the analytical grammar that is the entire reason you added the second engine — `LIMIT n BY`, `quantile(0.5)(x)`, `ARRAY JOIN`, `WITH ROLLUP` — none of which the model will ever reach for while it believes it's writing Postgres. The feature that justified the new engine is precisely the feature that silently degrades.",
+      },
+      { kind: "h2", text: "The fix is a value, not a transpile layer" },
+      {
+        kind: "p",
+        text: "The reflex is to reach for a translation layer — write Postgres, run it through SQLGlot or an ANTLR grammar, transpile to ClickHouse. Don't. Those pull a parser-and-grammar bundle that busts an edge/Workers deploy, and they solve a problem you don't have: the model can already write ClickHouse. It just has to be asked. The fix is to make the dialect flow from the row instead of a literal, and — this is the load-bearing half — to make the type refuse to compile until every call site does so.",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: '// 1. Widen the type. This is what turns the bug into a compile error:\n//    every hardcoded `dialect: "postgres"` call site now fails to build\n//    until it proves it handles the new member.\ntype Dialect = "postgres" | "sqlite" | "clickhouse";\n\n// 2. Map the engine the row already carries to its dialect — one place.\nconst dialectFor = (engine: DbEngine): Dialect =>\n  engine === "clickhouse" ? "clickhouse" : "postgres";\n\n// 3. Thread the value, not a literal.\nconst plan = await llm.plan({\n  goal: req.goal,\n  dialect: dialectFor(db.engine),\n});',
+      },
+      {
+        kind: "p",
+        text: "Widening the type first is the trick that makes this safe. Add `\"clickhouse\"` to the union and the compiler walks you to every call site that still hardcodes the first engine — the two plan sites, the retry-repair site, anywhere a literal slipped in. A runtime bug you'd have to catch with a live ClickHouse database and a discerning eye becomes a build error you can't merge past. You are not trusting yourself to remember every place; you are making the type remember for you.",
+      },
+      { kind: "h2", text: "The generator and the validator are twins" },
+      {
+        kind: "p",
+        text: "There's a matching bug one layer down, and it's worth fixing in the same breath. The [SQL validator makes the same first-engine assumption](/blog/postgres-validator-rejects-valid-clickhouse-sql/): a Postgres-pinned parser false-rejects valid ClickHouse grammar as a parse failure. Fix the generator alone and you've just relocated the damage — now the planner correctly emits ClickHouse SQL and the validator vetoes it as invalid. The generator and the validator both silently assume engine #1, and they have to stop assuming it together, or you trade a wrong-answer bug for a rejected-query bug.",
+      },
+      { kind: "h2", text: "The rule" },
+      {
+        kind: "p",
+        text: "When you add a second engine, the dialect stops being config you set once and becomes a value that must flow from the row on every request. Grep for every place the first engine's name appears as a literal — that list is your bug list. Then widen the dialect type before you touch anything else, so the compiler converts the ones you'd have missed from silent wrong answers into loud build failures. A frozen literal is a fact that was true once; the type is what keeps it from staying true after it isn't.",
+      },
+      {
+        kind: "p",
+        text: "(This is a build note from [nlqdb](https://nlqdb.com), the database you query in plain English — where the SQL is generated, validated, and shown to you before it runs. Honest split: this is an architecture lesson about multi-engine prompting, not a product feature.)",
+      },
+    ],
+  },
+  {
     slug: "postgres-validator-rejects-valid-clickhouse-sql",
     title: "You added ClickHouse. Your Postgres SQL validator now rejects valid queries — quietly.",
     description:
