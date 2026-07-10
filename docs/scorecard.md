@@ -36,7 +36,7 @@ instrument (destructive-op was the last gap); the remaining fails are competence
 | 1 | Visits, 7d (CF Web Analytics) | 100 visits / 123 pageloads (07-02→07-09, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" = 67 visits ⇒ **real-browser ≈ 33 visits** (32 excl. ChromeHeadless) — up from ≈ 13 on 07-06 | account-level RUM can't split per-path, but the browser-dimension cut is a usable walker filter; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev (+1 test `myuser@example.com`) |
 | 3 | DBs total | 160, all with `last_queried_at`; latest 07-07 20:49 UTC | −2 vs 07-06; stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (fresh 07-09 remote-D1; method `SK-ONBOARD-007`: write-side skips the walker UA, read-side joins `user` + excludes founder/test). Unfiltered counters 4/11 ok across 5 DBs — all founder/test per the email join | target ≥ 95%. Leading agent-controllable inputs shipped: run 30 = starter build-goal chips (`SK-ONBOARD-008`); **run 43 = drop-off funnel instrument (`SK-ONBOARD-005`): `onboarding.landing_viewed` + `onboarding.query_attempted` {ordinal 1/2} — completes the SK-ONBOARD-005 instrument set (TTFV + drop-off)** |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (fresh 07-09 remote-D1; method `SK-ONBOARD-007`: write-side skips the walker UA, read-side joins `user` + excludes founder/test). Unfiltered counters 4/11 ok across 5 DBs — all founder/test per the email join | target ≥ 95%. Leading agent-controllable inputs shipped: run 30 = starter build-goal chips (`SK-ONBOARD-008`); **run 43 = drop-off funnel (`SK-ONBOARD-005`): `onboarding.landing_viewed` + `onboarding.query_attempted` {ordinal 1/2} — completes the TTFV + drop-off instrument set** |
 | 5 | Session retention (≥ 2 queries) | 3 DBs with `first10_asks ≥ 2` (07-09, same attribution caveat as row #4) | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **90** (`/vs` 31 + `/solve` 33 + `/blog` 26) — **run-40 lever: published `text-to-sql-planner-told-wrong-dialect`** (engine/architecture lesson, byo-connect OQ (b), the run-35 validator twin; 110 built pages, in rss/llms/sitemap). Was recorded 88 but the true pre-run count was 89 (blog 25 not 24 — one prior post never bumped the row); +1 this run ⇒ 90. Pending drafts **2 → 3** (run 42 drafted `decided-questions-rot-in-your-decision-log`; `emit-metrics-where-the-distinction-is-certain` + `rotate-encryption-key-without-a-version-column` remain, both collapsed to gists under the D4 cap) ⇒ ≥ 3 ⇒ **next run publishes** the oldest ready draft, per step 3 | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -100,11 +100,9 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 **2026-07-10 (run 43)** — lever: **onboarding pillar — ship the drop-off funnel
 instrument (`SK-ONBOARD-005`): uninstrumented → instrumented.** Step 0: distribution +
-docs-ambiguity are owned this cycle (run 40 merged #653; run 42 merged #655 —
-`blog/FEATURE.md`/`distribution-queue.md`/`SK-BLOG-001`), engine row #8 is dark-for-the-lever
-(rule 8) + anti-rut-blocked (rule 7) — so this run picks the under-pulled onboarding pillar
-(worst number's agent-movable input, row #4), disjoint from #655 (`lib/dropoff.ts` +
-`CreateForm.tsx` + `onboarding/FEATURE.md`).
+docs-ambiguity are owned this cycle (run 40 merged #653; run 42 merged #655), engine row #8 is
+dark-for-the-lever (rule 8) + anti-rut-blocked (rule 7) — so this run picks the under-pulled
+onboarding pillar (worst number's agent-movable input, row #4), disjoint from #655.
 **Finding:** `SK-ONBOARD-005` shipped TTFV (run 34) but left its drop-off events
 (`landing.viewed` → `first_query.attempted` → `second_query.attempted`) open — the sole
 uninstrumented GLOBAL-025 onboarding signal. **Change:** new `apps/web/src/lib/dropoff.ts`
