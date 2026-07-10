@@ -12,30 +12,43 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"An 'open question' that's already decided is worse than one that's still
+  open."** slug `decided-questions-rot-in-your-decision-log` · venue dev.to
+  (#documentation #architecture #engineering) + r/ExperiencedDevs +
+  lobste.rs (`practices`) · engineering-process lesson (the `docs/scorecard.md`
+  row #17 docs-ambiguity method). Angle: every long-lived codebase grows a
+  decision log — ADRs, `DECISIONS.md`, per-feature records — and every one of
+  them grows an *"Open questions"* section. The failure mode isn't the open
+  questions; it's the entries that were quietly *answered* and never
+  re-labelled. A bullet that reads "we should probably cap the queue at 7 000
+  ops/day" is a decision wearing an open-question's clothes: a reader treats
+  it as unsettled and either re-litigates a closed call or builds around a
+  "maybe" that was actually a "yes." Two moves fix it. (1) Make *resolved* a
+  first-class, greppable state: a decided bullet carries a marker word
+  (`Resolved` / `Decided:` / `Parked` / a strikethrough) and a pointer to the
+  decision's canonical home, not the questions list. (2) Count the unmarked
+  ones as debt: a one-liner that greps `- ` bullets under `## Open questions`
+  and subtracts the marker set gives you a single ambiguity number to drive
+  to zero — and match case-*insensitively*, or a case-sensitive grep
+  over-counts `resolved` vs `Resolved` and the number drifts. The deeper rule
+  (D2 in our house style): a vague decision documented is worse than none,
+  because it looks authoritative while pointing nowhere. When you answer an
+  open question, the *same commit* moves the body to the canonical home and
+  leaves only a resolved pointer — never a second copy. Honest split: a
+  decision-hygiene lesson, not a product feature.
+
 - **"Your metric is only as honest as the layer you emit it from."** slug
   `emit-metrics-where-the-distinction-is-certain` · venue dev.to
   (#programming #observability #architecture) + r/ExperiencedDevs +
   lobste.rs (`practices`) · engineering lesson (`SK-TRUST-004`
-  destructive-op retry-rate instrument). Angle: we wanted the destructive-op
-  retry rate — the share of write previews a user abandons — as
-  `1 − committed / preview_rendered`. The obvious emit site is the HTTP
-  route: it already has the principal, surface, request. Wrong place. The
-  route sees a `confirm: true` flag and a 200; it does **not** know whether
-  the engine's plan was a write or a read. Emit `committed` there and a read
-  carrying `confirm: true` inflates the numerator — a `committed` with no
-  matching `preview_rendered` — and the rate goes *negative*, a number that
-  can't exist. The fix isn't more route validation; it's moving the emission
-  down to the orchestrator, where `isWriteVerb(sql)` and the
-  preview-vs-commit branch are already decided — there both events fire on
-  exactly the boundary they measure, and a stray-confirm read emits nothing.
-  Thread down the one thing the route knew that the orchestrator didn't (the
-  surface) rather than pulling the whole decision up. Rule: a metric's emit
-  point is the lowest layer where the distinction it encodes is *certain*;
-  above that you're guessing, and a guessed denominator is worse than no
-  metric because it looks precise. Dedup corollary: a per-request volume
-  event keys on a random id, not `(principal, day)` — day-bucketing collapses
-  the repeated previews that *are* the signal. Honest split: an
-  instrumentation-design lesson, not a product feature.
+  destructive-op retry-rate instrument). Gist: emit a metric at the lowest
+  layer where the distinction it encodes is *certain* — the destructive-op
+  retry rate (`1 − committed / preview_rendered`) belongs in the orchestrator
+  where `isWriteVerb(sql)` and the preview-vs-commit branch are decided, not
+  the HTTP route where a read carrying `confirm: true` inflates the numerator
+  and drives the rate negative; thread the surface down rather than pull the
+  decision up. *(Full body in git history — collapsed for the D4 20 KB cap;
+  recover at publish time.)*
 
 - **"You need to rotate an encryption key. You don't need a key-version
   column."** slug `rotate-encryption-key-without-a-version-column` · venue

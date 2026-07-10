@@ -20,11 +20,12 @@ last 5 merged daily PRs pulled it, rule 7).
 lagging metric moved only through its agent-movable inputs (distribution,
 onboarding). Distribution shipped this cycle in run 40 (#653, merged) —
 indexable surfaces 89 → 90 (row #6) — and engine (row #8) is
-dark-for-the-lever + anti-rut-blocked, so **run 41 lever: docs-ambiguity
-20 → 19 (row #17) — resolve the `cli/FEATURE.md` `nlq connection <db>` OQ by
-dropping it (`SK-CLI-020`): the connection URL is issued once at create;
-exposing it on the read-scoped `GET /v1/databases` would leak the live
-credential to `pk_live_`/MCP scopes.** Detail in *Last change*.
+dark-for-the-lever + anti-rut-blocked, so **run 42 lever: docs-ambiguity
+19 → 18 (row #17) — resolve the `blog/FEATURE.md` "Backfilling collapsed
+queue gists" OQ: it was a complete, load-bearing policy (never bulk-import
+stale drafts — they date old numbers as new claims) mis-filed as an open
+question, so I folded it into its canonical home `SK-BLOG-001` (rejected
+alternative) and removed the false open-question (D2).** Detail in *Last change*.
 **Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine anti-rut-blocked
 (rule 7); 0.526 is a floor whose only live move is the parked corrected-set (license,
 P2). Phase 2 exit gate **1/9 pass** (row #16) — but every criterion now has an
@@ -40,7 +41,7 @@ instrument (destructive-op was the last gap); the remaining fails are competence
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (fresh 07-09 remote-D1; method `SK-ONBOARD-007`: write-side skips the walker UA, read-side joins `user` + excludes founder/test). Unfiltered counters 4/11 ok across 5 DBs — all founder/test per the email join | target ≥ 95%. Leading agent-controllable input shipped run 30: 6 one-click starter build-goal chips on the one-shot anon create surface (`SK-ONBOARD-008`, `home.starter_clicked` signal) |
 | 5 | Session retention (≥ 2 queries) | 3 DBs with `first10_asks ≥ 2` (07-09, same attribution caveat as row #4) | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **90** (`/vs` 31 + `/solve` 33 + `/blog` 26) — **run-40 lever: published `text-to-sql-planner-told-wrong-dialect`** (engine/architecture lesson, byo-connect OQ (b), the run-35 validator twin; 110 built pages, in rss/llms/sitemap). Was recorded 88 but the true pre-run count was 89 (blog 25 not 24 — one prior post never bumped the row); +1 this run ⇒ 90. Pending drafts **3 → 2** (`emit-metrics-where-the-distinction-is-certain` + `rotate-encryption-key-without-a-version-column` remain) ⇒ < 3 ⇒ **next run drafts** one new artifact, per step 3 | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 6 | Indexable surfaces | **90** (`/vs` 31 + `/solve` 33 + `/blog` 26) — **run-40 lever: published `text-to-sql-planner-told-wrong-dialect`** (engine/architecture lesson, byo-connect OQ (b), the run-35 validator twin; 110 built pages, in rss/llms/sitemap). Was recorded 88 but the true pre-run count was 89 (blog 25 not 24 — one prior post never bumped the row); +1 this run ⇒ 90. Pending drafts **2 → 3** (run 42 drafted `decided-questions-rot-in-your-decision-log`; `emit-metrics-where-the-distinction-is-certain` + `rotate-encryption-key-without-a-version-column` remain, both collapsed to gists under the D4 cap) ⇒ ≥ 3 ⇒ **next run publishes** the oldest ready draft, per step 3 | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
 | 7 | Surface yield | posts 26 (run 40: +`text-to-sql-planner-told-wrong-dialect`); 7d external referrals = **6** (bing 5, github 1 — 07-09 pull; was 1 on 07-06). Syndication feeds = **1** (`/rss.xml`, run 22, auto-import via `rel=canonical`); internal-link reciprocity done (10 anchored `/solve`+`/vs` pages, run 19). Internal links **2,708** (run-40 build). | CF `refererHost` — measured every run. External-referral yield is finally ticking (bing 1 → 5) as indexation lands |
 | | **Engine** — BIRD 07-05 · Spider 07-08 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.526** (262/498 EA, 2 `gold_error`, 07-05 canonical, [run 28742006051](https://github.com/nlqdb/nlqdb/actions/runs/28742006051)). **`SK-QUAL-017` SC verdict (run 12, 07-06):** first N≥2 dispatch (N=3, temp 0.7, 150q smoke, [run 28761582097](https://github.com/nlqdb/nlqdb/actions/runs/28761582097)) = **79/150 = 0.5267, exactly flat vs the same-directive-set greedy comparator** (canonical run restricted to the identical 150 qids: 79/150; b=8/c=8, p=1.0; SC `no_sql` 1/150) — majority-vote at 3× quota buys 0 on the free chain; the 8↔8 swaps are provider-mix noise | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Baseline re-seeded 07-05. `SK-LLM-043` live-verified (run 11): `\|\|` concats 7 → 3 run-wide. Offline deterministic-ceiling lever exhausted; **SC lever dead (#619); frontier-lens levers closed (run 15, `SK-QUAL-022`)** — only live BIRD-free move is the parked corrected-set (license, P2) |
@@ -55,7 +56,7 @@ instrument (destructive-op was the last gap); the remaining fails are competence
 | 15 | E2E manual-suite freshness | **0.75** — sdk ✅ · mcp ✅ · examples ✅ 07-09 (1.00 each, re-dispatched run 39) · opencheck ❌ 0 ([29049928985](https://github.com/nlqdb/nlqdb/actions/runs/29049928985): OpenRouter free-pool 429 from same-key contention with the persona-bench dispatch) | freshness decays 1.0 → 0 over 7d by design — forces a re-dispatch cadence. **Sequencing rule: never dispatch opencheck alongside another OpenRouter-free consumer.** Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (instrumented run 34, `SK-ONBOARD-005`; reads once stranger traffic arrives); first-10 ≥ 95% (stranger N=0 — row #4); destructive-op retry < baseline (**instrumented run 38, `SK-TRUST-004`: `feature.destructive.preview_rendered`/`.committed` on the preview/commit boundary in `orchestrateAsk`, sliced by surface; reads once destructive-op traffic arrives, N≈0 today** — was the last criterion with no instrument); **MCP in 3+ host apps (measured 07-09 run 36, new instrument `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder-only host — cursor, 2 grants, 0 with a query — FAIL)**; 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: with every criterion now instrumented (destructive-op shipped run 38), the only agent-movable *pass* left is the agentic-frontier ~11 pp engine-competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); the rest are stranger-dependent (rows #2/#6) |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **19** (07-10 run 41: −1, `cli` `nlq connection <db>` OQ resolved by dropping it — `SK-CLI-020`: the connection URL is issued once at create, exposing it on the read-scoped `GET /v1/databases` would leak the live credential to `pk_live_`/MCP scopes (against `SK-APIKEYS-003`/`GLOBAL-031`). Prior levers in `git log`) | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **18** (07-10 run 42: −1, `blog` "Backfilling collapsed queue gists" OQ resolved — it was a decided, load-bearing policy (never bulk-import stale gists; they date old numbers as new claims) mis-filed as an open question, so it moved into its canonical home `SK-BLOG-001` as a rejected alternative and the false OQ was removed (D2). Prior levers in `git log`) | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-10 run-40 sweep: **110** pages, **2,708** internal links — +2 pages / +53 links vs run-35's 108/2,655 = the new `text-to-sql-planner-told-wrong-dialect` post + one prior post that never bumped this row, plus their inbound nav/index/sitemap/llms/rss links) | target 0 — sweep is repeatable: `bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
 | 19 | Live-surface claim integrity | **0 tracked gaps** (run 32 found + closed 1; run 37 found + closed 1) | claim-vs-reality on shipped surfaces + docs; target 0. **Run 37 lever (§10.3 doc-vs-canonical):** run 33 resolved BYO KEK rotation in the canonical `GLOBAL-031` (version in the `nbe1.`→`nbe2.<v>.` envelope prefix, **not** a `key_version` column) and updated byo-connect's copy, but its P3 cross-reference sweep missed `db-adapter/FEATURE.md`, whose OQ still asserted a "version column on `databases` … not yet designed" — a security-sensitive contradiction (it would steer an implementer to build the exact column `GLOBAL-031` rejected). Completed the sweep: rewrote that bullet to Resolved→`GLOBAL-031`. Found+closed same run ⇒ net 0. **Run 32 lever:** implemented the missing `feature.requested.larger_account` demand-signal (`packages/events` type + logsnag sink; authed per-account 429s → it, anon per-IP → `heavier_tier`) + superseded `SK-EVENTS-010`, closing a doc-vs-doc contradiction (full detail in git). Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
@@ -99,24 +100,22 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-10 (run 41)** — lever: **docs-ambiguity 20 → 19 (row #17) — resolve the
-`cli/FEATURE.md` `nlq connection <db>` open question.** Step 0: run 40 (#653, merged)
-owns the distribution/blog lever (`blog.ts`, `distribution-queue.md`); this run is
-disjoint (`cli` feature + a new decision file only), so I labelled it run 41 to keep
-history unambiguous. Row #8 (BIRD, weekly focus) stays dark for the lever (rule 8) +
-engine anti-rut-blocked (rule 7).
-**Finding:** the OQ framed the unblock as "one API field on `GET /v1/databases`", but
-that read-scoped endpoint (reached by `pk_live_` + the MCP list tool) would leak the
-live credential to the least-privileged scope (against `SK-APIKEYS-003`/`SK-CLI-019`/`GLOBAL-031`);
-recover via rotation, not a re-read — full rationale canonical in `SK-CLI-020`. **Change:** minted
-[`SK-CLI-020`](features/cli/decisions/SK-CLI-020-connection-url-issue-once.md); rewrote the OQ to
-Resolved, dropped the `nlq connection` deferred-verb line, back-filled the missing
-`SK-CLI-019`/`020` index rows. **Measured:** row #17 20 → 19 (same regex method).
-**Verification:** `bun run typecheck` / `lint` / `test` all exit 0 (884 pass, 35 pre-existing
-warnings); docs-only diff. **Artifact (step 3):** `SK-CLI-020` is the released artifact
-(the distribution lever shipped in the parallel run 40, #653). **KPI:** GLOBAL-025 UX — an
-unambiguous, non-contradictory decision record that also forecloses a latent credential
-leak; **none degrade** (no engine/API/prompt/eval-baseline touched).
+**2026-07-10 (run 42)** — lever: **docs-ambiguity 19 → 18 (row #17) — resolve the
+`blog/FEATURE.md` "Backfilling collapsed queue gists" open question.** Step 0: no open PRs (run
+41 merged #654; HEAD = origin/main). Engine (row #8, weekly focus) dark-for-lever (rule 8) +
+anti-rut-blocked (rule 7); row #6 can't move — queue was 2 < 3, so step 3 = draft. Anti-rut
+(rule 7): last 5 levers span docs-ambiguity/distribution/instrument/claim-integrity — not
+5-consecutive-same, so row #17 is permitted.
+**Finding:** the bullet stated a complete, load-bearing policy (recover a collapsed gist only on
+independent merit, one at a time; never a bulk flush — a stale draft published today date-stamps
+old numbers as *new* claims), not an open question. A decided rule under `## Open questions` is a
+D2 violation: it reads as unsettled and invites re-litigation (or bulk-publishing 60 gists to
+game row #6). **Change:** folded it into its canonical home `SK-BLOG-001` as a rejected
+alternative and removed the false OQ — one place, no second copy (P3/P5). **Measured:** row #17
+19 → 18 (case-insensitive regex; re-counted 19 pre-edit → 18 post). **Verification:** typecheck
+green (20 pkgs exit 0 after `bun install`); lint 0 errors; docs-only diff. **Artifact (step 3):** drafted `decided-questions-rot-in-your-decision-log` (decision-log
+hygiene lesson) into the queue → 3 drafts (`emit-metrics…` collapsed to a gist for the D4 cap);
+queue ≥ 3 ⇒ **next run publishes**. **KPI:** GLOBAL-025 UX; **none degrade**.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
