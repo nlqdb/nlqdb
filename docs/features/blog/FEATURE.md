@@ -36,6 +36,7 @@ when-to-load:
 - **Alternatives rejected:**
   - Founder-review-then-publish — the loop it replaces; empirically published nothing.
   - Publish only to third-party venues — no canonical URL to accrue authority; venue posts rot and can't be fixed.
+  - Bulk-recovering the ~60 collapsed queue gists (bodies survive only in `git log -p`) to inflate the post count — rejected: a stale draft published today date-stamps old numbers as *new* claims, poisoning the AEO surface with figures that were true months ago. A collapsed gist re-enters the queue only when its topic independently earns a slot on merit (a `/daily` artifact, one at a time), never as a batch import. Publishing is autonomous but per-artifact, not a backlog flush.
 
 ### SK-BLOG-002 — Typed data-file source + dependency-free inline renderer, not markdown files or a content collection
 
@@ -60,4 +61,3 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 ## Open questions / known unknowns
 
 - **Per-post OG images** — same deferral as the `/vs` + `/solve` per-slug OG open question (single generator when it lands); posts inherit the site default card today.
-- **Backfilling collapsed queue gists** — ~60 older drafts survive only as one-line gists (bodies in `git log -p`). Recover one as a post only when its topic earns a slot on merit (a `/daily` artifact), never as a bulk import — bulk-published stale drafts would date-stamp old numbers as new claims.
