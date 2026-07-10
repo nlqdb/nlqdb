@@ -42,7 +42,8 @@ export type BlogPost = {
 export const BLOG_POSTS: BlogPost[] = [
   {
     slug: "text-to-sql-planner-told-wrong-dialect",
-    title: "You added a second SQL engine. Your text-to-SQL model is still being told it's the first one.",
+    title:
+      "You added a second SQL engine. Your text-to-SQL model is still being told it's the first one.",
     description:
       "A text-to-SQL planner emits whatever dialect you name it. Add a second engine and the bug is one hardcoded dialect literal the type never forced you to fix — so ClickHouse gets Postgres SQL.",
     date: "2026-07-10",
@@ -54,7 +55,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The planner was never the problem" },
       {
         kind: "p",
-        text: 'The prompt already carries a `Dialect:` line — the system prompt says "emit SQL valid for the named dialect," the few-shot exemplars are tagged with theirs. The model reads that field and complies. So the bug isn\'t in the model or the prompt. It\'s in the one place that fills the field, and it looks like the most innocent line in the file:',
+        text: "The prompt already carries a `Dialect:` line — the system prompt says \"emit SQL valid for the named dialect,\" the few-shot exemplars are tagged with theirs. The model reads that field and complies. So the bug isn't in the model or the prompt. It's in the one place that fills the field, and it looks like the most innocent line in the file:",
       },
       {
         kind: "code",
@@ -63,12 +64,12 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         kind: "p",
-        text: "That `dialect: \"postgres\"` was true on the day it was written, when Postgres was the only engine. It is a fact frozen into a literal. The database row already knows its real engine — `db.engine` is sitting one field away — but nothing carries that value the few inches into the request. The model is downstream of a lie it has no way to detect.",
+        text: 'That `dialect: "postgres"` was true on the day it was written, when Postgres was the only engine. It is a fact frozen into a literal. The database row already knows its real engine — `db.engine` is sitting one field away — but nothing carries that value the few inches into the request. The model is downstream of a lie it has no way to detect.',
       },
       { kind: "h2", text: "Why it hides" },
       {
         kind: "p",
-        text: "Nothing logs \"wrong dialect,\" because from every layer's point of view nothing went wrong. The type-checker is happy — `\"postgres\"` is a valid member of the union. The planner is happy — it got a dialect and emitted valid SQL for it. Every Postgres database on the platform keeps working, so the whole happy path stays green. The failure only surfaces on the analytical grammar that is the entire reason you added the second engine — `LIMIT n BY`, `quantile(0.5)(x)`, `ARRAY JOIN`, `WITH ROLLUP` — none of which the model will ever reach for while it believes it's writing Postgres. The feature that justified the new engine is precisely the feature that silently degrades.",
+        text: 'Nothing logs "wrong dialect," because from every layer\'s point of view nothing went wrong. The type-checker is happy — `"postgres"` is a valid member of the union. The planner is happy — it got a dialect and emitted valid SQL for it. Every Postgres database on the platform keeps working, so the whole happy path stays green. The failure only surfaces on the analytical grammar that is the entire reason you added the second engine — `LIMIT n BY`, `quantile(0.5)(x)`, `ARRAY JOIN`, `WITH ROLLUP` — none of which the model will ever reach for while it believes it\'s writing Postgres. The feature that justified the new engine is precisely the feature that silently degrades.',
       },
       { kind: "h2", text: "The fix is a value, not a transpile layer" },
       {
