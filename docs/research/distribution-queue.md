@@ -58,19 +58,6 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   grep for every place the first engine's name is a literal. Honest split: an
   architecture lesson, not a product feature.
 
-- **[collapsed under D4 — full body in git history]** "You added ClickHouse.
-  Your Postgres SQL validator now rejects valid queries — quietly." slug
-  `postgres-validator-rejects-valid-clickhouse-sql` · venue dev.to
-  (#sql #clickhouse #security) + r/dataengineering + lobste.rs (`sql`) ·
-  engine/security lesson (`SK-MULTIENG-004`; byo-connect OQ (a) resolution).
-  Gist: a Postgres-pinned `node-sql-parser` AST validator false-rejects valid
-  ClickHouse grammar (`LIMIT n BY`, `quantile(0.5)(x)`, `ARRAY JOIN`) as
-  `parse_failed`; the fix is seeing the validator does *two* jobs — a
-  dialect-agnostic destructive-verb allowlist (security-load-bearing, stays
-  authoritative on every engine) and an AST walk for a verb smuggled into a CTE
-  (defense-in-depth, best-effort per engine) — so a wrong-dialect parse means
-  "wrong parser," never "dangerous query," and never vetoes a valid query.
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -78,6 +65,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 35 — **https://nlqdb.com/blog/postgres-validator-rejects-valid-clickhouse-sql/** — dev.to (#sql #clickhouse #security) + r/dataengineering + lobste.rs (`sql`) · engine/security lesson (`SK-MULTIENG-004` — a wrong-dialect parse failure means "wrong parser," not "dangerous query"; keep the dialect-agnostic destructive-verb allowlist authoritative, make the AST walk best-effort per engine)
 - run 31 — **https://nlqdb.com/blog/blog-without-a-feed-is-a-dead-end/** — dev.to (#webdev #seo #rss) + r/webdev + lobste.rs · distribution lesson (volume-vs-yield: a blog with no RSS feed is sealed to every machine that would redistribute it — feed readers + dev.to/Medium/Hashnode import-from-RSS with `rel=canonical`; fix is a ~40-line no-dependency RSS endpoint over the same typed data file; count the doors into your content, not the pages)
 - run 28 — **https://nlqdb.com/blog/one-way-internal-links-leak-yield/** — dev.to (#seo #webdev #contentmarketing) + r/SEO + r/webdev + lobste.rs · distribution lesson (volume-vs-yield: invert the existing `anchor` field into a reciprocal backlink; a tree link-graph starves fresh pages of inbound links and dead-ends readers — measure the graph, not the count)
 - run 24 — **https://nlqdb.com/blog/serverless-db-cold-start-retry/** — dev.to (#database #serverless #postgres) + r/PostgreSQL + r/webdev + lobste.rs · engine/ops lesson (SK-ASK-013 — a retry policy is one-per-failure-mode; back off the DB stage, fail over the LLM stages instantly)
