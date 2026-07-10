@@ -48,18 +48,6 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   rows blind, and the prefix already finds them. *(Full body in git history —
   collapsed for the D4 20 KB cap; recover at publish time.)*
 
-- **"You added a second SQL engine. Your text-to-SQL model is still being
-  told it's the first one."** slug `text-to-sql-planner-told-wrong-dialect` ·
-  venue dev.to (#sql #llm #database) + r/dataengineering + lobste.rs (`sql`) ·
-  engine/architecture lesson (byo-connect OQ (b)). Gist: the wrong-dialect bug
-  isn't in the model, it's the one line filling `Dialect:` — a hardcoded
-  `"postgres"` or a `"postgres" | "sqlite"` union that never grew a
-  `clickhouse` member; fix is threading the DB's real engine into that field
-  *and* adding the dialect member to the type so the compiler flags every
-  hardcoded call site (not a transpile layer). Twin of the validator post —
-  generator + validator both silently assume engine #1. *(Full body in git
-  history — collapsed for the D4 20 KB cap; recover at publish time.)*
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -67,6 +55,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 40 — **https://nlqdb.com/blog/text-to-sql-planner-told-wrong-dialect/** — dev.to (#sql #llm #database) + r/dataengineering + lobste.rs (`sql`) · engine/architecture lesson (byo-connect OQ (b) — the wrong-dialect bug is a hardcoded `dialect: "postgres"` literal + a union that never grew a `clickhouse` member; thread the row's engine into the field and widen the type so the compiler flags every hardcoded call site; twin of the validator post — generator + validator both assume engine #1, fix them together)
 - run 35 — **https://nlqdb.com/blog/postgres-validator-rejects-valid-clickhouse-sql/** — dev.to (#sql #clickhouse #security) + r/dataengineering + lobste.rs (`sql`) · engine/security lesson (`SK-MULTIENG-004` — a wrong-dialect parse failure means "wrong parser," not "dangerous query"; keep the dialect-agnostic destructive-verb allowlist authoritative, make the AST walk best-effort per engine)
 - run 31 — **https://nlqdb.com/blog/blog-without-a-feed-is-a-dead-end/** — dev.to (#webdev #seo #rss) + r/webdev + lobste.rs · distribution lesson (volume-vs-yield: a blog with no RSS feed is sealed to every machine that would redistribute it — feed readers + dev.to/Medium/Hashnode import-from-RSS with `rel=canonical`; fix is a ~40-line no-dependency RSS endpoint over the same typed data file; count the doors into your content, not the pages)
 - run 28 — **https://nlqdb.com/blog/one-way-internal-links-leak-yield/** — dev.to (#seo #webdev #contentmarketing) + r/SEO + r/webdev + lobste.rs · distribution lesson (volume-vs-yield: invert the existing `anchor` field into a reciprocal backlink; a tree link-graph starves fresh pages of inbound links and dead-ends readers — measure the graph, not the count)
