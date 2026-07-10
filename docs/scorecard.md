@@ -18,17 +18,18 @@ last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric moved only through its agent-movable inputs (distribution,
-onboarding). The distribution queue reached 3 unpublished drafts (run 38), so
-step 3 mandated **publish, don't draft**, and that is **run 40's lever:
-indexable surfaces 89 → 90 (row #6) — published the oldest ready draft,
-`text-to-sql-planner-told-wrong-dialect`** (byo-connect OQ (b), the run-35
-validator twin; lesson + honesty check in *Last change*). Reconciles a stale
-row-#6 count (was 88; true pre-run 89 = blog 25 not 24).
-**Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine
-anti-rut-blocked (rule 7); 0.526 is a floor, only live move the parked corrected-set
-(license, P2). Phase 2 exit gate **1/9 pass** (row #16) — every criterion is now
-instrumented; remaining fails are competence (BIRD/agentic-frontier) or
-stranger-dependent, not blind spots.
+onboarding). Distribution shipped this cycle in run 40 (#653, merged) —
+indexable surfaces 89 → 90 (row #6) — and engine (row #8) is
+dark-for-the-lever + anti-rut-blocked, so **run 41 lever: docs-ambiguity
+20 → 19 (row #17) — resolve the `cli/FEATURE.md` `nlq connection <db>` OQ by
+dropping it (`SK-CLI-020`): the connection URL is issued once at create;
+exposing it on the read-scoped `GET /v1/databases` would leak the live
+credential to `pk_live_`/MCP scopes.** Detail in *Last change*.
+**Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine anti-rut-blocked
+(rule 7); 0.526 is a floor whose only live move is the parked corrected-set (license,
+P2). Phase 2 exit gate **1/9 pass** (row #16) — but every criterion now has an
+instrument (destructive-op was the last gap); the remaining fails are competence
+(BIRD/agentic-frontier) or stranger-dependent, not blind spots.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -54,7 +55,7 @@ stranger-dependent, not blind spots.
 | 15 | E2E manual-suite freshness | **0.75** — sdk ✅ · mcp ✅ · examples ✅ 07-09 (1.00 each, re-dispatched run 39) · opencheck ❌ 0 ([29049928985](https://github.com/nlqdb/nlqdb/actions/runs/29049928985): OpenRouter free-pool 429 from same-key contention with the persona-bench dispatch) | freshness decays 1.0 → 0 over 7d by design — forces a re-dispatch cadence. **Sequencing rule: never dispatch opencheck alongside another OpenRouter-free consumer.** Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (instrumented run 34, `SK-ONBOARD-005`; reads once stranger traffic arrives); first-10 ≥ 95% (stranger N=0 — row #4); destructive-op retry < baseline (**instrumented run 38, `SK-TRUST-004`: `feature.destructive.preview_rendered`/`.committed` on the preview/commit boundary in `orchestrateAsk`, sliced by surface; reads once destructive-op traffic arrives, N≈0 today** — was the last criterion with no instrument); **MCP in 3+ host apps (measured 07-09 run 36, new instrument `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder-only host — cursor, 2 grants, 0 with a query — FAIL)**; 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: with every criterion now instrumented (destructive-op shipped run 38), the only agent-movable *pass* left is the agentic-frontier ~11 pp engine-competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); the rest are stranger-dependent (rows #2/#6) |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **20** (07-10 run 39: −1, `elements` `<nlq-data>`-vs-SDK `GLOBAL-001` debt resolved via a bounded inline-client exception; last moved run 33: −1, `byo-connect` KEK-rotation into `GLOBAL-031`. Prior levers in `git log`) | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **19** (07-10 run 41: −1, `cli` `nlq connection <db>` OQ resolved by dropping it — `SK-CLI-020`: the connection URL is issued once at create, exposing it on the read-scoped `GET /v1/databases` would leak the live credential to `pk_live_`/MCP scopes (against `SK-APIKEYS-003`/`GLOBAL-031`). Prior levers in `git log`) | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-10 run-40 sweep: **110** pages, **2,708** internal links — +2 pages / +53 links vs run-35's 108/2,655 = the new `text-to-sql-planner-told-wrong-dialect` post + one prior post that never bumped this row, plus their inbound nav/index/sitemap/llms/rss links) | target 0 — sweep is repeatable: `bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
 | 19 | Live-surface claim integrity | **0 tracked gaps** (run 32 found + closed 1; run 37 found + closed 1) | claim-vs-reality on shipped surfaces + docs; target 0. **Run 37 lever (§10.3 doc-vs-canonical):** run 33 resolved BYO KEK rotation in the canonical `GLOBAL-031` (version in the `nbe1.`→`nbe2.<v>.` envelope prefix, **not** a `key_version` column) and updated byo-connect's copy, but its P3 cross-reference sweep missed `db-adapter/FEATURE.md`, whose OQ still asserted a "version column on `databases` … not yet designed" — a security-sensitive contradiction (it would steer an implementer to build the exact column `GLOBAL-031` rejected). Completed the sweep: rewrote that bullet to Resolved→`GLOBAL-031`. Found+closed same run ⇒ net 0. **Run 32 lever:** implemented the missing `feature.requested.larger_account` demand-signal (`packages/events` type + logsnag sink; authed per-account 429s → it, anon per-IP → `heavier_tier`) + superseded `SK-EVENTS-010`, closing a doc-vs-doc contradiction (full detail in git). Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
@@ -98,29 +99,30 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-10 (run 40)** — lever: **indexable surfaces 89 → 90 (row #6) — publish the
-oldest ready distribution draft.** Step 0: no open PRs; branch was at merged run-39
-main (#652). Step 3 rule 1 fired — the queue held 3 unpublished drafts (run 38 drafted
-the 3rd), so this run **publishes, not drafts**. Took the oldest,
-`text-to-sql-planner-told-wrong-dialect` (byo-connect OQ (b), the run-35 validator
-twin). Row #8 (BIRD, weekly focus) stays dark for the lever (rule 8) + engine
-anti-rut-blocked (rule 7); anti-rut clear — of the last 5 merged daily PRs only run 35
-pulled distribution. **Honesty check (P2):** the lesson is real — `orchestrate.ts`
-hardcodes `dialect: "postgres"` at both plan sites (lines 242/428) while `db.engine`
-(clickhouse-capable) sits one field away, and `PlanRequest.dialect` is typed
-`"postgres" | "sqlite"`; byo-connect OQ (b) is *Decided* but the code fix "lands as one
-PR with (a)" (unshipped), so the post is framed as a general engineering lesson +
-"honest split: architecture lesson, not a product feature," never as shipped code.
-**Change:** prepended the post to `BLOG_POSTS` (one-file edit, `SK-BLOG-002`); deleted
-the queue draft; added the venue pointer + § Shipped distribution URL. **Measured:**
-built count 90 surfaces (`/vs` 31 + `/solve` 33 + `/blog` 26); reconciled a stale row-#6
-value (recorded 88, true pre-run 89 — a prior post never bumped it). Row #18 sweep 110
-pages / 2,708 links, 0 dead / 0 redirecting; new slug present in blog index + its page +
-sitemap + llms.txt + rss.xml. **Verification:** `bun test blog.test.ts` 6/6 pass;
-`bunx biome lint` clean on the changed files; `bun run build` + `check:links` green.
-**Artifact (step 3):** the published post is the released artifact. **KPI:** GLOBAL-025
-onboarding/UX via distribution yield (row #6/#7 leading input to rows #1–#3); **none
-degrade** (no engine/API/prompt/eval-baseline touched — data + docs only).
+**2026-07-10 (run 41)** — lever: **docs-ambiguity 20 → 19 (row #17) — resolve the
+`cli/FEATURE.md` `nlq connection <db>` open question.** Step 0: run 40 (#653, merged)
+owns the distribution/blog lever (`blog.ts`, `distribution-queue.md`); this run is
+disjoint (`cli` feature + a new decision file only), so I labelled it run 41 to keep
+history unambiguous. Row #8 (BIRD, weekly focus) stays dark for the lever (rule 8) +
+engine anti-rut-blocked (rule 7).
+**Finding:** the OQ framed the unblock as "one API field on `GET /v1/databases`". That
+field is a security regression — the list endpoint is reached by read-only `pk_live_`
+embed keys and the MCP `nlqdb_list_databases` tool (`requirePrincipal`), so it would
+hand the live DB credential to the least-privileged scope, against `SK-APIKEYS-003` and
+`SK-CLI-019` ("the URL is a credential … never printed back"); `GLOBAL-031` also seals
+the URL at rest (the row holds only `connection_secret_ref`, no plaintext to return).
+Standard practice (issue-once + rotate) confirmed by web search (P2). **Change:** minted
+[`SK-CLI-020`](features/cli/decisions/SK-CLI-020-connection-url-issue-once.md) (issue the
+URL once at create; never re-expose on the list; recover a lost URL via rotation,
+`SK-APIKEYS-005`); rewrote the OQ to Resolved, dropped the `nlq connection` deferred-verb
+line, and back-filled the missing `SK-CLI-019`/`020` index rows. **Measured:** row #17
+20 → 19 (same regex method). **Verification:** `bun run typecheck` / `lint` / `test` all
+exit 0 (884 api tests pass, 35 pre-existing warnings, none added); docs-only diff, no
+runtime surface. **Artifact (step 3):** the decision record `SK-CLI-020` is the released
+artifact (run-39/37/33 precedent; the distribution lever shipped in the parallel run 40,
+#653, merged). **KPI:** GLOBAL-025 UX — an unambiguous, non-contradictory decision record
+that also forecloses a latent credential leak; **none degrade** (no
+engine/API/prompt/eval-baseline touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

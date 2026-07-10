@@ -32,7 +32,8 @@ Deferred to follow-up slices — gated on server endpoints that don't exist yet:
 - `nlq mcp install` config-write (needs the device-flow session for `POST /v1/keys` to mint `sk_mcp_*`; the cobra command is wired to print the deferral hint).
 - `nlq chat` REPL (UX-only deferral; design intact).
 - `nlq keys rotate <id>` (needs `POST /v1/keys/:id/rotate` per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md)).
-- `nlq connection <db>` (needs API to expose `connection_url` on `GET /v1/databases` rows).
+
+(`nlq connection <db>` was considered and dropped — see [`SK-CLI-020`](decisions/SK-CLI-020-connection-url-issue-once.md): the connection URL is issued once at create, never re-exposed on the read-scoped list.)
 **Owners (code):** `cli/**`
 **Cross-refs:** docs/architecture.md §3.3 (CLI surface) · §4.3 (session lifecycle, device-flow) · §14.3 (happy-path) · docs/architecture.md §3 (matrix) · docs/phase-plan.md (Phase 2 CLI slice) · `cli/AGENTS.md` · `cli/README.md`
 
@@ -69,6 +70,8 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-CLI-NNN
 - [**SK-CLI-016**](decisions/SK-CLI-016-byollm-keychain.md) — `nlq byollm set|status|clear` stores the BYOLLM key in the keychain; `nlq ask` rides it signed-in only (SDK sibling of `SK-SDK-010`).
 - [**SK-CLI-017**](decisions/SK-CLI-017-run-dry-run.md) — `nlq run --dry-run` previews raw writes (reusing the `/v1/ask` diff) without executing; default `nlq run` stays immediate (`GLOBAL-015`). Wire/server/SDK counterpart of `SK-SDK-012`.
 - [**SK-CLI-018**](decisions/SK-CLI-018-remember-verb.md) — `nlq remember` is the CLI's third data verb (positional `<text>` is the row content, `--kind` selects the table), mirroring the already-justified `/v1/memory/remember` endpoint (`SK-PIVOT-008`) for `GLOBAL-003` parity; the third-verb justification `GLOBAL-017` requires.
+- [**SK-CLI-019**](decisions/SK-CLI-019-db-connect-verb.md) — `nlq db connect --engine …` registers an existing engine by its connection URL; the URL is read without echo and never printed back or persisted.
+- [**SK-CLI-020**](decisions/SK-CLI-020-connection-url-issue-once.md) — the hosted connection URL is issued once at create and never returned on `GET /v1/databases`; a `nlq connection <db>` re-print verb is not built (re-obtain via rotation).
 
 ## GLOBALs governing this feature
 
@@ -93,7 +96,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Device-flow server endpoints.** `nlq login` / `nlq logout` / `nlq mcp install` are stubbed (return a "ships in the next slice" error) until `POST /v1/auth/device` + `POST /v1/auth/device/token` land per `SK-AUTH-004`. The credential storage layer is already in place — the missing piece is the wire endpoints. The CLI's `auth.Resolve` already returns `KindSignedIn` when a refresh token exists in the keychain, so the rollout is "land the endpoints, wire the device-flow polling loop, done."
 - **`nlq chat` REPL.** A separate slice; intentionally deferred because the typed-line UX is non-trivial and the bootstrap focuses on the goal-first single-command path.
 - **`nlq keys rotate`.** `list` + `revoke` ship. Rotation needs `POST /v1/keys/:id/rotate` plus the 60-day grace + webhook + events-pipeline rotation event per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md). Lands as one slice with those.
-- **`nlq connection <db>` for hosted Postgres.** Wants a raw `postgres://…` URL on `GET /v1/databases` rows. Today the SDK returns it on the create response only. The unblock is one API field; the CLI verb is one cobra command.
+- **`nlq connection <db>` for hosted Postgres — Resolved ([`SK-CLI-020`](decisions/SK-CLI-020-connection-url-issue-once.md)): dropped.** The proposed unblock ("one API field on `GET /v1/databases`") is a security regression — that list endpoint is reached by read-only `pk_live_` embed keys and the MCP list tool, so it would leak the live DB credential to the least-privileged scope (against `SK-APIKEYS-003`/`SK-CLI-019`), and `GLOBAL-031` seals the URL at rest (the row holds only a `connection_secret_ref`, no plaintext to return). The connection URL is issued once on the create response; a lost URL is re-obtained via rotation (`SK-APIKEYS-005`), not a re-read verb.
 - **`nlq new --preset agent_memory_v1`.** `nlq remember` (SK-CLI-018) writes to a memory-preset DB, but `nlq new` routes through `/v1/ask`'s create branch, not the preset endpoint (`POST /v1/databases { preset }`, behind the `MEMORY_PRESET` flag — E-01/SK-HDC-020). Until the CLI calls that endpoint, a memory DB is created via the SDK/MCP `db.create` preset. The unblock is one API client call + a `--preset` flag; the natural companion slice to `remember`.
 - **Windows experience.** The bootstrap PR cross-compiled to windows/amd64 and the binary builds, but Windows shell quirks (cmd, PowerShell), the Credential Manager backend, and `~/.config` semantics under `APPDATA` need a manual round-trip on real hardware. Per-platform quirks land in `cli/AGENTS.md` once they're observed.
 - **`nlq mcp install` for hosts not yet covered by SK-CLI-011.** New MCP hosts emerge regularly. Add-a-host recipe in `cli/AGENTS.md` so the supported list grows without re-architecting `cli/internal/mcphosts/` — runbook concern, not a design decision.
