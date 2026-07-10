@@ -18,11 +18,15 @@ last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric moved only through its agent-movable inputs (distribution,
-onboarding, Phase-2 gate instruments). **Run 38 lever: ship the destructive-op
-retry-rate instrument (`SK-TRUST-004`) — the last Phase-2 exit-gate criterion
-with no instrument (row #16); unmeasured → instrumented, mirroring run 34's
-TTFV move.** Detail in *Last change*.
-**Row #8 (weekly focus) standing:** dark for the lever (rule 8) + anti-rut-blocked
+onboarding). Distribution (run 35, #646) and the Phase-2 MCP-hosts gate
+(run 36, #649) merged this cycle; run 38 (#651, merged) shipped the
+destructive-op-retry instrument + the distribution queue, so **run 39 lever:
+docs-ambiguity 21 → 20 (row #17) — resolve the `elements/FEATURE.md`
+`<nlq-data>`-vs-`@nlqdb/sdk` `GLOBAL-001` debt (flagged "resolve before
+v1-stable"): `SK-ELEM-007`'s zero-dep 6 KB budget makes importing the SDK
+infeasible, so amended `GLOBAL-001` with a bounded inline-client exception,
+parity held by `GLOBAL-002` tests.** Detail in *Last change*.
+**Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine anti-rut-blocked
 (rule 7); 0.526 is a floor whose only live move is the parked corrected-set (license,
 P2). Phase 2 exit gate **1/9 pass** (row #16) — but every criterion now has an
 instrument (destructive-op was the last gap); the remaining fails are competence
@@ -52,7 +56,7 @@ instrument (destructive-op was the last gap); the remaining fails are competence
 | 15 | E2E manual-suite freshness | **0.75** — sdk ✅ 07-09 ([29049916362](https://github.com/nlqdb/nlqdb/actions/runs/29049916362)) · mcp ✅ 07-09 ([29049918217](https://github.com/nlqdb/nlqdb/actions/runs/29049918217)) · examples ✅ 07-09 ([29049927201](https://github.com/nlqdb/nlqdb/actions/runs/29049927201)) — 1.00 each, re-dispatched this run (had decayed to 0.47) · opencheck ❌ 0 ([29049928985](https://github.com/nlqdb/nlqdb/actions/runs/29049928985): A/B died at *pre-flight model-pick*, 4/5 OpenRouter free pools 429 — self-inflicted contention with the simultaneous persona-bench dispatch on the same key; Suite C's pre-flight passed once it finished. Clean re-dispatch queued) | freshness decays 1.0 → 0 over 7d by design — the row forces a re-dispatch cadence. **Sequencing rule learned: never dispatch opencheck alongside another OpenRouter-free consumer.** Suite B 0/8 weakest-candidate capacity + Suite A 4/5 (best since 06-12) triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (instrumented run 34, `SK-ONBOARD-005`; reads once stranger traffic arrives); first-10 ≥ 95% (stranger N=0 — row #4); destructive-op retry < baseline (**instrumented run 38, `SK-TRUST-004`: `feature.destructive.preview_rendered`/`.committed` on the preview/commit boundary in `orchestrateAsk`, sliced by surface; reads once destructive-op traffic arrives, N≈0 today** — was the last criterion with no instrument); **MCP in 3+ host apps (measured 07-09 run 36, new instrument `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder-only host — cursor, 2 grants, 0 with a query — FAIL)**; 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: with every criterion now instrumented (destructive-op shipped run 38), the only agent-movable *pass* left is the agentic-frontier ~11 pp engine-competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); the rest are stranger-dependent (rows #2/#6) |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **21** (07-09, re-counted this run — unchanged; last moved run 33: −1, `byo-connect` KEK-rotation resolved into `GLOBAL-031`. Prior levers in `git log`) | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **20** (07-10 run 39: −1, `elements` `<nlq-data>`-vs-SDK `GLOBAL-001` debt resolved via a bounded inline-client exception; last moved run 33: −1, `byo-connect` KEK-rotation into `GLOBAL-031`. Prior levers in `git log`) | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-09 run-35 sweep: **108** pages, **2,655** internal links — +1 page / +25 links vs run 31 = the new `postgres-validator-rejects-valid-clickhouse-sql` post + its inbound nav/index/sitemap/llms/rss links) | target 0 — sweep is repeatable: `bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
 | 19 | Live-surface claim integrity | **0 tracked gaps** (run 32 found + closed 1; run 37 found + closed 1) | claim-vs-reality on shipped surfaces + docs; target 0. **Run 37 lever (§10.3 doc-vs-canonical):** run 33 resolved BYO KEK rotation in the canonical `GLOBAL-031` (version in the `nbe1.`→`nbe2.<v>.` envelope prefix, **not** a `key_version` column) and updated byo-connect's copy, but its P3 cross-reference sweep missed `db-adapter/FEATURE.md`, whose OQ still asserted a "version column on `databases` … not yet designed" — a security-sensitive contradiction (it would steer an implementer to build the exact column `GLOBAL-031` rejected). Completed the sweep: rewrote that bullet to Resolved→`GLOBAL-031`. Found+closed same run ⇒ net 0. **Run 32 lever:** implemented the missing `feature.requested.larger_account` demand-signal (`packages/events` type + logsnag sink; authed per-account 429s → it, anon per-IP → `heavier_tier`) + superseded `SK-EVENTS-010`, closing a doc-vs-doc contradiction (full detail in git). Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
@@ -95,28 +99,30 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-10 (run 38)** — lever: **ship the destructive-op retry-rate instrument
-(`SK-TRUST-004`) — the last Phase-2 exit-gate criterion (row #16) with no
-instrument.** Step 0: no open PRs; disjoint from merged runs 35–37 (ask pipeline +
-events + trust-ux only). Row #8 (weekly focus) stays dark/anti-rut-blocked; this
-lever is 1 instrument of the last 5 levers (anti-rut clear). **Change:** `SK-TRUST-004`
-*documented* two events never wired (grep: 0 emissions). Added
-`feature.destructive.preview_rendered` + `.committed` to `packages/events` (random
-`event_id` — volume events, so both sides of the ratio count; per-day dedup would
-collapse the repeats that *are* the signal), emitted from `orchestrateAsk` at the
-`SK-TRUST-001` preview hop + confirmed-write commit (from the orchestrator, not the
-route — only there is write-vs-read + preview-vs-commit certain via `isWriteVerb`;
-surface threaded onto `AskRequest`), routed both to LogSnag `#north-star`, tagged the
-chat orchestrator. **Measured:** row #16 destructive-op-retry **unmeasured →
-instrumented** (mirrors run 34 TTFV; reads once traffic arrives, N≈0). Gate still
-**1/9 pass**, but every criterion now has an instrument — this was the last gap.
-**Verification:** `bun run typecheck` (21 pkgs exit 0) + `lint` (exit 0, 35 pre-existing
-warnings, none added) + `test` (full workspace green; +7 cases: 4 orchestrate, 2 sink,
-1 dedup). **Artifact (step 3):** queue 2 (< 3) ⇒ drafted
-`emit-metrics-where-the-distinction-is-certain`; queue **2 → 3** ⇒ next run publishes.
-D4: collapsed two older full drafts to gists (queue 19905 → 19851 B). **KPI:**
-GLOBAL-025 **UX pillar** (retry rate is one of its three named KPIs); **none degrade**
-(fire-and-forget via `ctx.waitUntil`, off the p99; no engine/prompt/eval touched).
+**2026-07-10 (run 39)** — lever: **docs-ambiguity 21 → 20 (row #17) — resolve the
+`elements/FEATURE.md` `<nlq-data>`-vs-`@nlqdb/sdk` `GLOBAL-001` debt.** Step 0: run 38
+(#651, merged) shipped the destructive-op-retry instrument (`packages/events`,
+`orchestrateAsk`, `trust-ux/FEATURE.md`) + the distribution queue; this run is disjoint
+(GLOBAL-001 + elements FEATURE + scorecard only). Row #8 (BIRD,
+weekly focus) stays dark for the lever (rule 8) + engine anti-rut-blocked (rule 7).
+**Finding:** the OQ named two resolutions — a tree-shaken SDK subset or amending
+`GLOBAL-001`. The subset is infeasible: `SK-ELEM-007` hard-caps the CDN bundle at
+< 6 KB gzipped with **zero runtime dependencies** (load-bearing for the marketing-
+embed Lighthouse-100), which importing `@nlqdb/sdk` (even tree-shaken) would breach.
+The element's wire surface is one endpoint (`POST /v1/ask`), so `GLOBAL-001`'s drift
+concern is enforceable by `GLOBAL-002` parity tests, not shared code. **Change:**
+amended `GLOBAL-001` with a bounded exception (a CI-bundle-budgeted, zero-dep surface
+may inline a minimal single-endpoint client under the documented wire contract +
+`GLOBAL-002` parity); rewrote the elements OQ to Resolved + added feature-local
+commentary. P3 sweep clean — `framework-wrappers/FEATURE.md:94` already documented
+the element's own `fetch.ts`, so this removes a latent contradiction. **Measured:**
+row #17 21 → 20 (same regex method). **Verification:** `bun run typecheck` / `lint`
+/ `test` all exit 0 (880 api tests pass, 35 pre-existing warnings, none added);
+docs-only diff, no runtime surface. **Artifact (step 3):** the decision resolution
+is the released artifact (run-37/32 precedent; the distribution queue was shipped by
+run 38 (#651, merged) this cycle). **KPI:** GLOBAL-025 UX/onboarding — an unambiguous,
+non-contradictory decision record keeps `<nlq-data>` (the primary embed on-ramp)
+buildable to v1-stable; **none degrade** (no engine/API/prompt/eval-baseline touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
