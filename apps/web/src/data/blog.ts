@@ -41,6 +41,52 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "rotate-encryption-key-without-a-version-column",
+    title: "You need to rotate an encryption key. You don't need a key-version column.",
+    description:
+      "Rotating a key-encryption key feels like it needs a key_version column. It doesn't — the ciphertext already describes itself, so put the version in the blob prefix and rotate with zero migration.",
+    date: "2026-07-10",
+    body: [
+      {
+        kind: "p",
+        text: "We seal secrets at rest — a customer's database DSN, a stored API key — under a key-encryption key (KEK). Sooner or later you have to rotate that KEK: it's been in an env var too long, it might have leaked, or a policy just says every key expires. And the moment you plan the rotation, a reflex kicks in: add a `key_version` column so you know which key sealed which row. Skip it. That column is a second source of truth for something the ciphertext already has to tell you, and the two will drift.",
+      },
+      { kind: "h2", text: "The ciphertext is already self-describing" },
+      {
+        kind: "p",
+        text: "You cannot decrypt AES-GCM without the IV, so the IV was never a secret and it already lives inside the stored blob — every sealed value is a self-describing string, not opaque bytes. A key version is exactly the same kind of fact: metadata you need in hand before you can decrypt. So it belongs in the same place the IV does — the blob — not in a sibling column that a `JOIN` has to keep in sync. One token of prefix carries it:",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: "// The sealed blob already carries its IV. Give it a version tag too.\n//   nbe2.<v>.<iv>.<ciphertext>\n// Bumping the KEK is a one-token change: v1 -> v2. No schema migration,\n// no key_version column, no ALTER TABLE, no backfill job on write.\nfunction seal(plaintext: string, kek: Kek): string {\n  const iv = randomIv();\n  const ct = aesGcmSeal(plaintext, kek.material, iv);\n  return `nbe2.${kek.version}.${b64(iv)}.${b64(ct)}`; // version IS the tag\n}\n\nfunction open(blob: string, keyring: Keyring): string {\n  const [, version, iv, ct] = blob.split(\".\");\n  const kek = keyring.byVersion(version); // pick the key the blob names\n  return aesGcmOpen(fromB64(ct), kek.material, fromB64(iv));\n}",
+      },
+      { kind: "h2", text: "What the prefix buys you that a column doesn't" },
+      {
+        kind: "p",
+        text: "Rotation becomes a sequence of cheap, interruptible steps instead of a migration. You add the new key to the keyring alongside the old one — a two-key overlap window. Reads pick the right key by the tag the blob carries, so nothing breaks the instant you flip. Writes always seal under the newest version, so every row that gets touched migrates itself. Then you do one sweep for the cold rows that nobody wrote, and drop the old key when no blob still carries its version.",
+      },
+      {
+        kind: "p",
+        text: "The part people reach for the column to solve — \"find the rows still on the old key\" — the prefix already solves, and solves better: stale rows are filterable by their tag without decrypting a single one. A `WHERE blob LIKE 'nbe1.%'` finds every row that needs re-wrapping straight off the index. The `key_version` column only earns its keep if that sweep has to find stale rows blind — and it never does, because the tag is right there in the value.",
+      },
+      { kind: "h2", text: "The one nuance: derived keys vs. stored DEKs" },
+      {
+        kind: "p",
+        text: "If each row stores its own data-encryption key (DEK) wrapped by the KEK, \"re-wrap\" is cheap and never touches plaintext: decrypt the little DEK with the old KEK, re-encrypt it with the new one, leave the bulk ciphertext untouched. If instead your content key is HKDF-derived straight from the KEK — no stored DEK — then re-wrap means decrypt-then-reseal the secret itself. That sounds heavier, but for the short secrets this pattern guards (a DSN, an API key — tens of bytes, not gigabytes) it's trivial. Either way the version tag is what tells the sweep which branch a given row needs.",
+      },
+      { kind: "h2", text: "The rule" },
+      {
+        kind: "p",
+        text: "The encrypted blob is the source of truth for how to decrypt it — key version included. Anything you also store in a column is a second copy that can drift from the first, and the day it drifts is the day you can't decrypt a row you thought you could. Put the version where the IV already lives, rotate by bumping a prefix, and let the tag drive both the read path and the sweep. Reach for a column only when you have a query that genuinely can't be answered from the value itself — and key rotation isn't one of them.",
+      },
+      {
+        kind: "p",
+        text: "(This is a build note from [nlqdb](https://nlqdb.com), the database you query in plain English — where connection secrets are sealed at rest and the SQL is generated, validated, and shown to you before it runs. Honest split: this is a security-architecture lesson, not a product feature.)",
+      },
+    ],
+  },
+  {
     slug: "text-to-sql-planner-told-wrong-dialect",
     title:
       "You added a second SQL engine. Your text-to-SQL model is still being told it's the first one.",
