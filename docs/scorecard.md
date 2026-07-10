@@ -17,15 +17,14 @@ the parked **corrected-set** (license, P2) — so row #8 is a floor this week
 last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
-lagging metric moved only through its agent-movable inputs. Run 35 (#646,
-merged) took the distribution/`/blog` publish lever; #647 owns
-quality-eval/agent-memory docs. **Run 36 lever: first measurement of the
-Phase-2 gate's MCP-hosts criterion (row #16) — shipped
-`scripts/mcp-hosts.sh`; "MCP installed in 3+ host apps" moves unmeasured →
-measured (0 stranger hosts; 1 founder-only host).** Step-1 freshness
-restore rode along: e2e sdk/mcp/examples re-dispatched → all ✅ 07-09
-(row #15), persona-bench re-dispatched at its 7-day staleness edge.
-Detail in *Last change*.
+lagging metric moved only through its agent-movable inputs (distribution,
+onboarding). Distribution (run 35, #646) and the Phase-2 MCP-hosts gate
+(run 36, #649) merged this cycle; with those lanes taken, **run 37 lever:
+complete run 33's P3 cross-reference sweep — the BYO KEK-rotation OQ in
+`db-adapter/FEATURE.md` still asserted a `key_version` column "not yet
+designed", contradicting the canonical `GLOBAL-031` (envelope-prefix version,
+no column, designed) that run 33 landed; reconciled it.** §10.3
+doc-vs-canonical, security-sensitive (row #19). Detail in *Last change*.
 **Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine anti-rut-blocked
 (rule 7); 0.526 is a floor whose only live move is the parked corrected-set (license,
 P2). Phase 2 exit gate **1/9 pass** (row #16).
@@ -57,7 +56,7 @@ P2). Phase 2 exit gate **1/9 pass** (row #16).
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **21** (07-09, re-counted this run — unchanged; last moved run 33: −1, `byo-connect` KEK-rotation resolved into `GLOBAL-031`. Prior levers in `git log`) | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-09 run-35 sweep: **108** pages, **2,655** internal links — +1 page / +25 links vs run 31 = the new `postgres-validator-rejects-valid-clickhouse-sql` post + its inbound nav/index/sitemap/llms/rss links) | target 0 — sweep is repeatable: `bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
-| 19 | Live-surface claim integrity | **0 tracked gaps** (run 32 found + closed 1) | claim-vs-reality on shipped surfaces + docs; target 0. **Run 32 lever:** `rate-limit/FEATURE.md` (GLOBAL-024 commentary) claimed per-account 429s fire a distinct `feature.requested.larger_account` demand-signal — but the code emitted `heavier_tier` for **both** anon and authed 429s, the named event **did not exist** in `ProductEvent`, and the *canonical* `SK-EVENTS-010` (events-pipeline) contradicted the claim ("any /v1/ask 429 → heavier_tier"). A doc-vs-doc contradiction (§10.3). Closed by *implementing* the missing variant (run-28 pattern, not a reword): added `feature.requested.larger_account` (`packages/events` type + `defaultId` dedup + logsnag sink), routed the authed per-account trips (`/v1/ask`+`/v1/chat` via `emitFeatureSignal`, `/v1/run` inline) to it, kept anon per-IP on `heavier_tier`, and superseded `SK-EVENTS-010` (P3) to define the two distinct signals — restoring the §6-trigger granularity GLOBAL-024 mandates. Found+closed same run ⇒ net 0. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
+| 19 | Live-surface claim integrity | **0 tracked gaps** (run 32 found + closed 1; run 37 found + closed 1) | claim-vs-reality on shipped surfaces + docs; target 0. **Run 37 lever (§10.3 doc-vs-canonical):** run 33 resolved BYO KEK rotation in the canonical `GLOBAL-031` (version in the `nbe1.`→`nbe2.<v>.` envelope prefix, **not** a `key_version` column) and updated byo-connect's copy, but its P3 cross-reference sweep missed `db-adapter/FEATURE.md`, whose OQ still asserted a "version column on `databases` … not yet designed" — a security-sensitive contradiction (it would steer an implementer to build the exact column `GLOBAL-031` rejected). Completed the sweep: rewrote that bullet to Resolved→`GLOBAL-031`. Found+closed same run ⇒ net 0. **Run 32 lever:** implemented the missing `feature.requested.larger_account` demand-signal (`packages/events` type + logsnag sink; authed per-account 429s → it, anon per-IP → `heavier_tier`) + superseded `SK-EVENTS-010`, closing a doc-vs-doc contradiction (full detail in git). Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | **schema ✅ · BYOLLM lanes ✅ · picker: web ✅ (`SK-PREMIUM-013`, #610) · picker parity ✅ (`SK-PREMIUM-014`, run 10) · CTA ✅ (`SK-PREMIUM-004` `FreeModelNudge`, #630 — was stale-⬜; corrected run 28, and its cross-surface signal now rides all surfaces incl. `<nlq-data>` `el.trace` per run 28) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked)** | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is **built before** the signal (lighting it is a flag flip); only the *meter firing* (Lago→Stripe) + cost-incurring infra stay dark. Drive ⬜→✅ each run; only genuine remaining slot is the premium chain (`SK-LLM-017`, flag-dark) — spend-cap UI is Lago-gated |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
@@ -95,34 +94,28 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-09 (run 36)** — lever: **first measurement of the Phase-2 gate's
-"MCP installed in 3+ distinct host apps" criterion (row #16): unmeasured (no
-instrument) → measured — 0 stranger hosts.** Step 0: run 35 (#646, merged) took
-the distribution queue + `/blog`; #647 owns quality-eval/agent-memory docs; row #8
-dark (rule 8). **Change:** the data was in D1 all along — `sk_mcp` keys carry a
-per-host claim (`mcp_host`, `SK-MCP-004`) and the principal middleware stamps
-`last_used_at` on real calls — so the criterion needed a pinned query, not new
-telemetry (P5: no new events). Shipped `scripts/mcp-hosts.sh` (active grants
-per host; stranger vs founder/test via the row-#4 email-join method; installed
-vs used split): today's honest read = **1 host ever connected (cursor, 2
-founder OAuth grants, 2026-06-28), 0 grants ever used for a query, 0 stranger
-hosts ⇒ criterion FAILs but is now measured** — the gate stops carrying an
-unmeasurable cell, and the sharper finding (even the founder's own MCP installs
-never ran a query) is now on the record. **Step-1 freshness restore
-(measurement hygiene, not the lever):** e2e sdk/mcp/examples re-dispatched →
-all ✅ 07-09 (row #15 had silently decayed 0.75 → 0.35 since 07-06); opencheck
-A/B hit pre-flight 429s — contention with our own simultaneous persona-bench
-dispatch on the shared OpenRouter key (sequencing rule now in row #15) — clean
-re-dispatch queued; persona-bench re-run at its 7-day staleness edge with the
-frontier lane — free flat 22/23, frontier 21/23 ⇒ ICP delta 0.00 →
-**−4.35 pts** (row #11). Fresh funnel/ops pulls landed in
-rows #1–#5, #7, #12–#13; notable: real-browser visits ≈ 13 → 33 and external
-referrals 1 → 6 (bing 5) — the first visible yield from the indexation push.
-**Artifact (step 3):** the shipped instrument (run 35's distribution lever
-merged as #646; run-34 precedent). **KPI:** GLOBAL-025 onboarding — a gate
-criterion becomes a live meter. **None degrade:** script + docs diff only; no
-engine/API/prompt/eval-baseline touched; typecheck/lint/test green. D4:
-scorecard net-shrunk.
+**2026-07-09 (run 37)** — lever: **complete run 33's P3 cross-reference sweep —
+reconcile the stale BYO KEK-rotation open question in `db-adapter/FEATURE.md` with
+the canonical `GLOBAL-031` resolution (row #19, doc/claim integrity).** Step 0:
+runs 35/36 (#646/#649, merged — distribution queue + `/blog`, `scripts/mcp-hosts.sh`)
+and #647/#648 (quality-eval + agent-memory docs + `tools/eval`) own distribution,
+the MCP-hosts gate, and eval; this run touches none of their files (db-adapter
+FEATURE only). Row #8 (BIRD, weekly focus) stays dark for the lever (rule 8) +
+anti-rut-blocked (rule 7). **Finding:** run 33 resolved KEK rotation in
+`GLOBAL-031` (version travels in the `nbe1.`→`nbe2.<v>.` envelope prefix, **not** a
+`key_version` column; two-KEK overlap + lazy re-wrap) and fixed byo-connect's copy,
+but its P3 sweep missed db-adapter — whose OQ still asserted a "version column on
+`databases` … not yet designed", a §10.3 doc-vs-canonical contradiction that is
+security-sensitive (it would steer an implementer to build the exact column
+`GLOBAL-031` rejected). **Change:** rewrote that one bullet to point at
+`GLOBAL-031` (Resolved), mirroring byo-connect's wording from the adapter/storage
+angle. **Measured:** row #19 tracked doc/claim gaps — found 1, closed 1, **net 0**
+(run-32 pattern); row #17 unchanged at 21 (the bullet was Parked→Resolved, both
+excluded from the count). **Verification:** `bun run typecheck` / `bun run lint`
+exit 0 (35 pre-existing warnings, none added); docs-only diff, no runtime surface.
+**Artifact (step 3):** the reconciliation is the released artifact. **KPI:** GLOBAL-025
+engine-quality/onboarding — a correct security doc keeps the BYO-connect on-ramp
+buildable; **none degrade** (no engine/API/prompt/eval-baseline touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
