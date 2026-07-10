@@ -18,14 +18,12 @@ last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric moved only through its agent-movable inputs (distribution,
-onboarding). Distribution shipped this cycle in run 40 (#653, merged) —
-indexable surfaces 89 → 90 (row #6) — and engine (row #8) is
-dark-for-the-lever + anti-rut-blocked, so **run 42 lever: docs-ambiguity
-19 → 18 (row #17) — resolve the `blog/FEATURE.md` "Backfilling collapsed
-queue gists" OQ: it was a complete, load-bearing policy (never bulk-import
-stale drafts — they date old numbers as new claims) mis-filed as an open
-question, so I folded it into its canonical home `SK-BLOG-001` (rejected
-alternative) and removed the false open-question (D2).** Detail in *Last change*.
+onboarding). Distribution + docs-ambiguity are owned this cycle by run 40
+(#653, merged) and run 42 (#655, merged — docs-ambiguity 19 → 18 + queue
+draft), and engine (row #8) is dark-for-the-lever + anti-rut-blocked, so
+**run 43 lever: onboarding pillar — ship the drop-off funnel instrument
+(`SK-ONBOARD-005`), the last open GLOBAL-025 onboarding-KPI signal
+(uninstrumented → instrumented), disjoint from #655.** Detail in *Last change*.
 **Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine anti-rut-blocked
 (rule 7); 0.526 is a floor whose only live move is the parked corrected-set (license,
 P2). Phase 2 exit gate **1/9 pass** (row #16) — but every criterion now has an
@@ -38,7 +36,7 @@ instrument (destructive-op was the last gap); the remaining fails are competence
 | 1 | Visits, 7d (CF Web Analytics) | 100 visits / 123 pageloads (07-02→07-09, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" = 67 visits ⇒ **real-browser ≈ 33 visits** (32 excl. ChromeHeadless) — up from ≈ 13 on 07-06 | account-level RUM can't split per-path, but the browser-dimension cut is a usable walker filter; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev (+1 test `myuser@example.com`) |
 | 3 | DBs total | 160, all with `last_queried_at`; latest 07-07 20:49 UTC | −2 vs 07-06; stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (fresh 07-09 remote-D1; method `SK-ONBOARD-007`: write-side skips the walker UA, read-side joins `user` + excludes founder/test). Unfiltered counters 4/11 ok across 5 DBs — all founder/test per the email join | target ≥ 95%. Leading agent-controllable input shipped run 30: 6 one-click starter build-goal chips on the one-shot anon create surface (`SK-ONBOARD-008`, `home.starter_clicked` signal) |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (fresh 07-09 remote-D1; method `SK-ONBOARD-007`: write-side skips the walker UA, read-side joins `user` + excludes founder/test). Unfiltered counters 4/11 ok across 5 DBs — all founder/test per the email join | target ≥ 95%. Leading agent-controllable inputs shipped: run 30 = starter build-goal chips (`SK-ONBOARD-008`); **run 43 = drop-off funnel instrument (`SK-ONBOARD-005`): `onboarding.landing_viewed` + `onboarding.query_attempted` {ordinal 1/2} — completes the SK-ONBOARD-005 instrument set (TTFV + drop-off)** |
 | 5 | Session retention (≥ 2 queries) | 3 DBs with `first10_asks ≥ 2` (07-09, same attribution caveat as row #4) | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **90** (`/vs` 31 + `/solve` 33 + `/blog` 26) — **run-40 lever: published `text-to-sql-planner-told-wrong-dialect`** (engine/architecture lesson, byo-connect OQ (b), the run-35 validator twin; 110 built pages, in rss/llms/sitemap). Was recorded 88 but the true pre-run count was 89 (blog 25 not 24 — one prior post never bumped the row); +1 this run ⇒ 90. Pending drafts **2 → 3** (run 42 drafted `decided-questions-rot-in-your-decision-log`; `emit-metrics-where-the-distinction-is-certain` + `rotate-encryption-key-without-a-version-column` remain, both collapsed to gists under the D4 cap) ⇒ ≥ 3 ⇒ **next run publishes** the oldest ready draft, per step 3 | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -100,22 +98,26 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-10 (run 42)** — lever: **docs-ambiguity 19 → 18 (row #17) — resolve the
-`blog/FEATURE.md` "Backfilling collapsed queue gists" open question.** Step 0: no open PRs (run
-41 merged #654; HEAD = origin/main). Engine (row #8, weekly focus) dark-for-lever (rule 8) +
-anti-rut-blocked (rule 7); row #6 can't move — queue was 2 < 3, so step 3 = draft. Anti-rut
-(rule 7): last 5 levers span docs-ambiguity/distribution/instrument/claim-integrity — not
-5-consecutive-same, so row #17 is permitted.
-**Finding:** the bullet stated a complete, load-bearing policy (recover a collapsed gist only on
-independent merit, one at a time; never a bulk flush — a stale draft published today date-stamps
-old numbers as *new* claims), not an open question. A decided rule under `## Open questions` is a
-D2 violation: it reads as unsettled and invites re-litigation (or bulk-publishing 60 gists to
-game row #6). **Change:** folded it into its canonical home `SK-BLOG-001` as a rejected
-alternative and removed the false OQ — one place, no second copy (P3/P5). **Measured:** row #17
-19 → 18 (case-insensitive regex; re-counted 19 pre-edit → 18 post). **Verification:** typecheck
-green (20 pkgs exit 0 after `bun install`); lint 0 errors; docs-only diff. **Artifact (step 3):** drafted `decided-questions-rot-in-your-decision-log` (decision-log
-hygiene lesson) into the queue → 3 drafts (`emit-metrics…` collapsed to a gist for the D4 cap);
-queue ≥ 3 ⇒ **next run publishes**. **KPI:** GLOBAL-025 UX; **none degrade**.
+**2026-07-10 (run 43)** — lever: **onboarding pillar — ship the drop-off funnel
+instrument (`SK-ONBOARD-005`): uninstrumented → instrumented.** Step 0: distribution +
+docs-ambiguity are owned this cycle (run 40 merged #653; run 42 merged #655 —
+`blog/FEATURE.md`/`distribution-queue.md`/`SK-BLOG-001`), engine row #8 is dark-for-the-lever
+(rule 8) + anti-rut-blocked (rule 7) — so this run picks the under-pulled onboarding pillar
+(worst number's agent-movable input, row #4), disjoint from #655 (`lib/dropoff.ts` +
+`CreateForm.tsx` + `onboarding/FEATURE.md`).
+**Finding:** `SK-ONBOARD-005` shipped TTFV (run 34) but left its drop-off events
+(`landing.viewed` → `first_query.attempted` → `second_query.attempted`) open — the sole
+uninstrumented GLOBAL-025 onboarding signal. **Change:** new `apps/web/src/lib/dropoff.ts`
+(`makeDropoffFunnel()`, twin of `ttfv.ts`) + test; two `emit()` call sites in `CreateForm` —
+`landing` once on mount, `attempt` in `submit()` **before** the network call (catches a 2nd
+submit even when the `SK-ANON-012` one-shot cap redirects to sign-in), ordinal capped at 2.
+**Measured:** drop-off KPI uninstrumented → instrumented (run 34 TTFV / run 38 destructive-op
+lever shape); `dropoff.test.ts` 4 pass / 10 asserts pin the fire-once + ordinal-cap guards.
+**Verification:** `typecheck`/`lint`/`test` exit 0 (884 pass + 296 eval + 4 new; 1 pre-existing
+warning). **Artifact (step 3):** the instrument is this run's deliverable (queue artifact
+ships in parallel #655). **KPI:** GLOBAL-025 onboarding —
+separates "arrive and bounce" from "arrive, query, leave unanswered"; **none degrade**
+(client-only, analytics no-ops safely; no engine/API/prompt/eval-baseline touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

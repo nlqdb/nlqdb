@@ -30,6 +30,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { CREATE_STARTERS, type CreateStarter } from "../data/create-starters";
 import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
 import { messageFor } from "../lib/create-errors";
+import { makeDropoffFunnel } from "../lib/dropoff";
 import { attachHandoff } from "../lib/handoff";
 import { emit } from "../lib/logsnag";
 import {
@@ -77,6 +78,9 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
   // SK-ONBOARD-005 — fire-once TTFV recorder, created per mount so a
   // resubmit or re-render can't double-count this landing.
   const ttfvOnce = useRef(makeTtfvOnce());
+  // SK-ONBOARD-005 — the drop-off funnel (landing → 1st/2nd attempt),
+  // one per mount so its fire-guards track this single landing.
+  const dropoff = useRef(makeDropoffFunnel());
 
   // Rehydrate the draft on mount — the user may have refreshed
   // mid-typing, or come back from a sign-in redirect that didn't
@@ -84,6 +88,11 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
   useEffect(() => {
     const saved = loadDraft();
     if (saved) setGoal(saved);
+    // SK-ONBOARD-005 — top of the drop-off funnel: this render IS the
+    // landing. Fires once per mount (StrictMode double-invokes effects
+    // in dev, but the recorder's guard collapses that to one event).
+    const landing = dropoff.current.landing("create");
+    if (landing) emit(landing.event, landing.props);
   }, []);
 
   function onGoalChange(next: string) {
@@ -106,6 +115,12 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
     setLoading(true);
     setError(null);
     setNetworkError(null);
+    // SK-ONBOARD-005 — drop-off funnel: record the attempt before the
+    // network call, so a second submit is captured even when the
+    // SK-ANON-012 one-shot cap redirects it to sign-in (ordinal 1 =
+    // first_query.attempted, 2 = second_query.attempted, then silent).
+    const attempt = dropoff.current.attempt("create");
+    if (attempt) emit(attempt.event, attempt.props);
     // Keep the previous result visible during submission. On the
     // SK-ANON-012 auth_required path the redirect fires and the page
     // navigates away anyway; clearing here would just flash an empty
