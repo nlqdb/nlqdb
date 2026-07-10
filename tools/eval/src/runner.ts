@@ -2,6 +2,7 @@
 //   bun src/runner.ts --dataset bird-mini-dev-sqlite --data-dir ./bird_data --limit 500
 //   bun src/runner.ts --dataset spider2-lite-sqlite --data-dir ./spider2-lite
 //   bun src/runner.ts --dataset persona-bench [--persona P1|P2]   # SK-QUAL-018 ICP fixture
+//   bun src/runner.ts --dataset memory-quality                    # SK-QUAL-023 agent-memory quality
 // All real provider calls require env vars (see lanes.ts); no key → one-sentence error per GLOBAL-012.
 
 import { parseArgs } from "node:util";
@@ -17,6 +18,7 @@ import {
   loadCheckpoint,
 } from "./checkpoint.ts";
 import { loadBirdMini } from "./datasets/bird-mini.ts";
+import { loadMemoryQuality } from "./datasets/memory-quality.ts";
 import { loadPersonaBench, type Persona } from "./datasets/persona-bench.ts";
 import { loadSpider2Lite } from "./datasets/spider2-lite.ts";
 import { emitEvalReport } from "./emit.ts";
@@ -135,6 +137,11 @@ async function loadDatasetByName(opts: RunOptions): Promise<LoadedDataset> {
     // SK-QUAL-018 — ICP fixture; schemas materialise to SQLite under
     // `--data-dir` (or an OS temp dir). `--persona` narrows to P1/P2.
     return loadPersonaBench({ persona: opts.persona, limit: opts.limit, dbDir: opts.dataDir });
+  }
+  if (name === "memory-quality") {
+    // SK-QUAL-023 — agent-memory-quality benchmark; the `agent_memory_v1`
+    // corpus materialises to SQLite under `--data-dir` (or an OS temp dir).
+    return loadMemoryQuality({ limit: opts.limit, dbDir: opts.dataDir });
   }
   // BIRD Mini-Dev — the default.
   return loadBirdMini({
@@ -778,6 +785,7 @@ const KNOWN_DATASETS: readonly EvalDataset[] = [
   "bird-mini-dev-sqlite",
   "spider2-lite-sqlite",
   "persona-bench",
+  "memory-quality",
 ] as const;
 
 function parseDatasetFlag(raw: string | undefined): EvalDataset | undefined {
