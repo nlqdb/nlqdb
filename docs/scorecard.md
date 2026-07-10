@@ -105,24 +105,18 @@ owns the distribution/blog lever (`blog.ts`, `distribution-queue.md`); this run 
 disjoint (`cli` feature + a new decision file only), so I labelled it run 41 to keep
 history unambiguous. Row #8 (BIRD, weekly focus) stays dark for the lever (rule 8) +
 engine anti-rut-blocked (rule 7).
-**Finding:** the OQ framed the unblock as "one API field on `GET /v1/databases`". That
-field is a security regression — the list endpoint is reached by read-only `pk_live_`
-embed keys and the MCP `nlqdb_list_databases` tool (`requirePrincipal`), so it would
-hand the live DB credential to the least-privileged scope, against `SK-APIKEYS-003` and
-`SK-CLI-019` ("the URL is a credential … never printed back"); `GLOBAL-031` also seals
-the URL at rest (the row holds only `connection_secret_ref`, no plaintext to return).
-Standard practice (issue-once + rotate) confirmed by web search (P2). **Change:** minted
-[`SK-CLI-020`](features/cli/decisions/SK-CLI-020-connection-url-issue-once.md) (issue the
-URL once at create; never re-expose on the list; recover a lost URL via rotation,
-`SK-APIKEYS-005`); rewrote the OQ to Resolved, dropped the `nlq connection` deferred-verb
-line, and back-filled the missing `SK-CLI-019`/`020` index rows. **Measured:** row #17
-20 → 19 (same regex method). **Verification:** `bun run typecheck` / `lint` / `test` all
-exit 0 (884 api tests pass, 35 pre-existing warnings, none added); docs-only diff, no
-runtime surface. **Artifact (step 3):** the decision record `SK-CLI-020` is the released
-artifact (run-39/37/33 precedent; the distribution lever shipped in the parallel run 40,
-#653, merged). **KPI:** GLOBAL-025 UX — an unambiguous, non-contradictory decision record
-that also forecloses a latent credential leak; **none degrade** (no
-engine/API/prompt/eval-baseline touched).
+**Finding:** the OQ framed the unblock as "one API field on `GET /v1/databases`", but
+that read-scoped endpoint (reached by `pk_live_` + the MCP list tool) would leak the
+live credential to the least-privileged scope (against `SK-APIKEYS-003`/`SK-CLI-019`/`GLOBAL-031`);
+recover via rotation, not a re-read — full rationale canonical in `SK-CLI-020`. **Change:** minted
+[`SK-CLI-020`](features/cli/decisions/SK-CLI-020-connection-url-issue-once.md); rewrote the OQ to
+Resolved, dropped the `nlq connection` deferred-verb line, back-filled the missing
+`SK-CLI-019`/`020` index rows. **Measured:** row #17 20 → 19 (same regex method).
+**Verification:** `bun run typecheck` / `lint` / `test` all exit 0 (884 pass, 35 pre-existing
+warnings); docs-only diff. **Artifact (step 3):** `SK-CLI-020` is the released artifact
+(the distribution lever shipped in the parallel run 40, #653). **KPI:** GLOBAL-025 UX — an
+unambiguous, non-contradictory decision record that also forecloses a latent credential
+leak; **none degrade** (no engine/API/prompt/eval-baseline touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

@@ -7,7 +7,7 @@ credential-handling stance in
 (connection secrets sealed at rest — the row stores only a
 `connection_secret_ref`),
 `GLOBAL-017` (one way to do each thing). Cross-refs:
-[`SK-APIKEYS-003`](../../api-keys/FEATURE.md) (`pk_live_` keys are
+[`SK-APIKEYS-003`](../../api-keys/decisions/SK-APIKEYS-003-pk-live-readonly.md) (`pk_live_` keys are
 read-only) and the `nlq keys rotate` open question
 ([`SK-APIKEYS-005`](../../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md)).
 
