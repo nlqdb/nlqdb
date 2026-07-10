@@ -920,4 +920,89 @@ describe("orchestrateAsk", () => {
     expect(confirmEvt.diff.verb).toBe("UPDATE");
     expect(confirmEvt.diff.affectedRows).toBe(3);
   });
+
+  it("SK-TRUST-004: the preview hop emits feature.destructive.preview_rendered with the surface", async () => {
+    const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    const exec = vi.fn(async () => ({ rows: [{ c: 2 }], rowCount: 1 }));
+    const events = stubEmitter();
+    const out = await orchestrateAsk(makeDeps({ llm, exec, events }), {
+      goal: "delete order 1",
+      dbId: "db_1",
+      userId: "user_1",
+      surface: "chat",
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    expect(out.result.requires_confirm).toBe(true);
+    await out.pendingAskCompleted;
+    expect(events.emit).toHaveBeenCalledWith({
+      name: "feature.destructive.preview_rendered",
+      principalId: "user_1",
+      surface: "chat",
+    });
+    // Preview hop never execs, so no committed event fires.
+    expect(events.emit).not.toHaveBeenCalledWith(
+      expect.objectContaining({ name: "feature.destructive.committed" }),
+    );
+  });
+
+  it("SK-TRUST-004: a confirmed write emits feature.destructive.committed, not preview_rendered", async () => {
+    const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    const exec = vi.fn(async () => ({ rows: [], rowCount: 1 }));
+    const events = stubEmitter();
+    const out = await orchestrateAsk(makeDeps({ llm, exec, events }), {
+      goal: "delete order 1",
+      dbId: "db_1",
+      userId: "user_1",
+      surface: "cli",
+      confirm: true,
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    expect(out.result.requires_confirm).toBeUndefined();
+    await out.pendingAskCompleted;
+    expect(events.emit).toHaveBeenCalledWith({
+      name: "feature.destructive.committed",
+      principalId: "user_1",
+      surface: "cli",
+    });
+    expect(events.emit).not.toHaveBeenCalledWith(
+      expect.objectContaining({ name: "feature.destructive.preview_rendered" }),
+    );
+  });
+
+  it("SK-TRUST-004: no surface threaded → no destructive signal (never fabricate a surface)", async () => {
+    const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    const exec = vi.fn(async () => ({ rows: [{ c: 1 }], rowCount: 1 }));
+    const events = stubEmitter();
+    const out = await orchestrateAsk(makeDeps({ llm, exec, events }), {
+      goal: "delete order 1",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    await out.pendingAskCompleted;
+    expect(events.emit).not.toHaveBeenCalledWith(
+      expect.objectContaining({ name: "feature.destructive.preview_rendered" }),
+    );
+  });
+
+  it("SK-TRUST-004: a read never emits a destructive signal even with confirm:true", async () => {
+    const llm = stubLLM({ plan: { sql: "SELECT * FROM orders" } });
+    const events = stubEmitter();
+    const out = await orchestrateAsk(makeDeps({ llm, events }), {
+      goal: "list orders",
+      dbId: "db_1",
+      userId: "user_1",
+      surface: "chat",
+      confirm: true,
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    await out.pendingAskCompleted;
+    expect(events.emit).not.toHaveBeenCalledWith(
+      expect.objectContaining({ name: "feature.destructive.committed" }),
+    );
+  });
 });

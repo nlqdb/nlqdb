@@ -2,6 +2,7 @@
 // the surfaces tests + the handler need.
 
 import type { QueryResult } from "@nlqdb/db";
+import type { NlqSurface } from "@nlqdb/events";
 
 export type DbRecord = {
   id: string;
@@ -61,6 +62,12 @@ export type AskRequest = {
   // is no bypass on `/v1/ask` — the escape hatch for power users is
   // `/v1/run` (GLOBAL-015).
   confirm?: boolean;
+  // SK-TRUST-004 — originating surface, threaded from the route so the
+  // orchestrator can slice the destructive-op retry-rate instrument
+  // (`feature.destructive.*`) by surface. Optional: non-route callers
+  // (tests, internal helpers) omit it and the emit is skipped rather than
+  // fabricating a surface that would pollute the metric.
+  surface?: NlqSurface;
 };
 
 // SK-TRUST-001 — plain-English preview of a write plan. Values derived

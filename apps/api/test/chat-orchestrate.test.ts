@@ -98,6 +98,9 @@ describe("postChatMessage — persist path", () => {
       userId: "u_1",
       goal: "show me one",
       dbId: "db_a",
+      // SK-TRUST-004 — chat orchestrator tags the surface for the
+      // destructive-op retry-rate instrument.
+      surface: "chat",
     });
   });
 

@@ -118,6 +118,38 @@ describe("buildPayload", () => {
     });
   });
 
+  it("maps feature.destructive.preview_rendered onto north-star with surface tag (SK-TRUST-004)", () => {
+    const out = buildPayload("nlqdb", {
+      name: "feature.destructive.preview_rendered",
+      principalId: "u_42",
+      surface: "chat",
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "north-star",
+      event: "Destructive preview",
+      notify: false,
+      user_id: "u_42",
+      tags: { surface: "chat" },
+    });
+  });
+
+  it("maps feature.destructive.committed onto north-star, distinct from preview_rendered (SK-TRUST-004)", () => {
+    const out = buildPayload("nlqdb", {
+      name: "feature.destructive.committed",
+      principalId: "u_42",
+      surface: "cli",
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "north-star",
+      event: "Destructive committed",
+      notify: false,
+      user_id: "u_42",
+      tags: { surface: "cli" },
+    });
+  });
+
   it("maps feature.eval.weekly onto north-star with per-lane EA tags (SK-QUAL-002)", () => {
     const out = buildPayload("nlqdb", {
       name: "feature.eval.weekly",

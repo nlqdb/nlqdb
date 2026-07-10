@@ -120,6 +120,15 @@ function defaultId(event: ProductEvent): string {
       // 30 days") — finer-grained would burn the 2,500/mo LogSnag
       // quota without changing any decision the team makes.
       return `${event.name}.${event.principalId}.${utcDay()}`;
+    case "feature.destructive.preview_rendered":
+    case "feature.destructive.committed":
+      // SK-TRUST-004 — per-request volume events (like `ask.completed`).
+      // The retry rate `1 − committed/preview_rendered` needs every preview
+      // and every commit counted; a stable per-(principal, day) id would
+      // dedup exactly the repeats the metric measures. Random id lets the
+      // queue dedupe transport-level retries without collapsing legitimate
+      // repeats at the sink.
+      return `evt.${crypto.randomUUID()}`;
     case "home.surface_wishlist":
       // SK-EVENTS-011: per-(principal, surface, day). VSCode and Slack
       // wishlist clicks on the same day from the same visitor are two

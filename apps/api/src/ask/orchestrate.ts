@@ -317,6 +317,19 @@ export async function orchestrateAsk(
     );
     if (diff) {
       await safeEmit({ type: "confirm_required", diff });
+      // SK-TRUST-004 — the preview hop is the denominator of the
+      // destructive-op retry rate (`1 − committed/preview_rendered`). A
+      // write plan was rendered as a diff with no exec. Fire-and-forget
+      // through the returned promise so the route's `ctx.waitUntil` drains
+      // it off the user-visible path. Skipped when no `surface` was
+      // threaded (non-route callers) rather than fabricating one.
+      const previewEmit = req.surface
+        ? deps.events.emit({
+            name: "feature.destructive.preview_rendered",
+            principalId: req.userId,
+            surface: req.surface,
+          })
+        : Promise.resolve();
       return {
         ok: true,
         result: {
@@ -328,8 +341,9 @@ export async function orchestrateAsk(
           diff,
           trace: traceBlock,
         },
-        // Preview hop didn't exec; nothing for `ask.completed` to record.
-        pendingAskCompleted: Promise.resolve(),
+        // Preview hop didn't exec; nothing for `ask.completed` to record —
+        // just the preview-rendered signal.
+        pendingAskCompleted: previewEmit.then(() => undefined),
       };
     }
   }
@@ -547,11 +561,27 @@ export async function orchestrateAsk(
     ts: Date.now(),
   });
 
+  // SK-TRUST-004 — reaching the exec-success path on a `confirm: true`
+  // write means the user approved the diff and the write committed (writes
+  // bypass the preview hop only when `confirm` is set, and are never
+  // exec-repaired, so `isWriteVerb(planSql)` still holds here). This is the
+  // numerator of the retry rate. Skipped when no `surface` was threaded.
+  const committedEmit =
+    req.confirm && req.surface && isWriteVerb(planSql)
+      ? deps.events.emit({
+          name: "feature.destructive.committed",
+          principalId: req.userId,
+          surface: req.surface,
+        })
+      : Promise.resolve();
+
   // Both background promises are non-throwing by contract — combine so
   // the route handler hands a single promise to `ctx.waitUntil`.
-  const pendingAskCompleted = Promise.all([askCompletedEmit, pendingRecentTablesTouch]).then(
-    () => undefined,
-  );
+  const pendingAskCompleted = Promise.all([
+    askCompletedEmit,
+    pendingRecentTablesTouch,
+    committedEmit,
+  ]).then(() => undefined);
 
   return {
     ok: true,

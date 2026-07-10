@@ -18,16 +18,15 @@ last 5 merged daily PRs pulled it, rule 7).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric moved only through its agent-movable inputs (distribution,
-onboarding). Distribution (run 35, #646) and the Phase-2 MCP-hosts gate
-(run 36, #649) merged this cycle; with those lanes taken, **run 37 lever:
-complete run 33's P3 cross-reference sweep — the BYO KEK-rotation OQ in
-`db-adapter/FEATURE.md` still asserted a `key_version` column "not yet
-designed", contradicting the canonical `GLOBAL-031` (envelope-prefix version,
-no column, designed) that run 33 landed; reconciled it.** §10.3
-doc-vs-canonical, security-sensitive (row #19). Detail in *Last change*.
-**Row #8 (weekly focus) standing:** dark for the lever (rule 8) + engine anti-rut-blocked
+onboarding, Phase-2 gate instruments). **Run 38 lever: ship the destructive-op
+retry-rate instrument (`SK-TRUST-004`) — the last Phase-2 exit-gate criterion
+with no instrument (row #16); unmeasured → instrumented, mirroring run 34's
+TTFV move.** Detail in *Last change*.
+**Row #8 (weekly focus) standing:** dark for the lever (rule 8) + anti-rut-blocked
 (rule 7); 0.526 is a floor whose only live move is the parked corrected-set (license,
-P2). Phase 2 exit gate **1/9 pass** (row #16).
+P2). Phase 2 exit gate **1/9 pass** (row #16) — but every criterion now has an
+instrument (destructive-op was the last gap); the remaining fails are competence
+(BIRD/agentic-frontier) or stranger-dependent, not blind spots.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -38,7 +37,7 @@ P2). Phase 2 exit gate **1/9 pass** (row #16).
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (fresh 07-09 remote-D1; method `SK-ONBOARD-007`: write-side skips the walker UA, read-side joins `user` + excludes founder/test). Unfiltered counters 4/11 ok across 5 DBs — all founder/test per the email join | target ≥ 95%. Leading agent-controllable input shipped run 30: 6 one-click starter build-goal chips on the one-shot anon create surface (`SK-ONBOARD-008`, `home.starter_clicked` signal) |
 | 5 | Session retention (≥ 2 queries) | 3 DBs with `first10_asks ≥ 2` (07-09, same attribution caveat as row #4) | share of DBs with `first10_asks ≥ 2` (row #4 counters) |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **88** (`/vs` 31 + `/solve` 33 + `/blog` 24) — **run-35 lever: published `postgres-validator-rejects-valid-clickhouse-sql`** (engine/security lesson `SK-MULTIENG-004`, the run-26 draft; build-verified `dist/blog/postgres-validator-rejects-valid-clickhouse-sql/index.html`, in `rss.xml` + `llms.txt` + `sitemap.xml`, 107 → 108 built pages). Queue was 3 (≥ 3) ⇒ published the **oldest** ready draft per step 3 (recovered the run-26 collapsed gist body from git; its twin `text-to-sql-planner-told-wrong-dialect` explicitly pairs with it). Pending drafts **3 → 2** (KEK-rotation + planner-dialect remain) ⇒ < 3 ⇒ **next run drafts**, per step 3 | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 6 | Indexable surfaces | **88** (`/vs` 31 + `/solve` 33 + `/blog` 24) — **run-35 lever: published `postgres-validator-rejects-valid-clickhouse-sql`** (engine/security lesson `SK-MULTIENG-004`, the run-26 draft; 108 built pages, in rss/llms/sitemap). Pending drafts **2 → 3** (run 38 drafted `emit-metrics-where-the-distinction-is-certain`, the `SK-TRUST-004` instrumentation lesson, joining KEK-rotation + planner-dialect) ⇒ ≥ 3 ⇒ **next run publishes** the oldest, per step 3 | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
 | 7 | Surface yield | posts 24 (run 35: +`postgres-validator-rejects-valid-clickhouse-sql`); 7d external referrals = **6** (bing 5, github 1 — 07-09 pull; was 1 on 07-06). Syndication feeds = **1** (`/rss.xml`, run 22, auto-import via `rel=canonical`); internal-link reciprocity done (10 anchored `/solve`+`/vs` pages, run 19). Internal links **2,655** (run-35 build). | CF `refererHost` — measured every run. External-referral yield is finally ticking (bing 1 → 5) as indexation lands |
 | | **Engine** — BIRD 07-05 · Spider 07-08 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.526** (262/498 EA, 2 `gold_error`, 07-05 canonical, [run 28742006051](https://github.com/nlqdb/nlqdb/actions/runs/28742006051)). **`SK-QUAL-017` SC verdict (run 12, 07-06):** first N≥2 dispatch (N=3, temp 0.7, 150q smoke, [run 28761582097](https://github.com/nlqdb/nlqdb/actions/runs/28761582097)) = **79/150 = 0.5267, exactly flat vs the same-directive-set greedy comparator** (canonical run restricted to the identical 150 qids: 79/150; b=8/c=8, p=1.0; SC `no_sql` 1/150) — majority-vote at 3× quota buys 0 on the free chain; the 8↔8 swaps are provider-mix noise | target 0.65 / **Phase 2 floor 0.60 — below floor ⇒ engine work ships until cleared (`SK-QUAL-005`)**. Baseline re-seeded 07-05. `SK-LLM-043` live-verified (run 11): `\|\|` concats 7 → 3 run-wide. Offline deterministic-ceiling lever exhausted; **SC lever dead (#619); frontier-lens levers closed (run 15, `SK-QUAL-022`)** — only live BIRD-free move is the parked corrected-set (license, P2) |
@@ -52,7 +51,7 @@ P2). Phase 2 exit gate **1/9 pass** (row #16).
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
 | 15 | E2E manual-suite freshness | **0.75** — sdk ✅ 07-09 ([29049916362](https://github.com/nlqdb/nlqdb/actions/runs/29049916362)) · mcp ✅ 07-09 ([29049918217](https://github.com/nlqdb/nlqdb/actions/runs/29049918217)) · examples ✅ 07-09 ([29049927201](https://github.com/nlqdb/nlqdb/actions/runs/29049927201)) — 1.00 each, re-dispatched this run (had decayed to 0.47) · opencheck ❌ 0 ([29049928985](https://github.com/nlqdb/nlqdb/actions/runs/29049928985): A/B died at *pre-flight model-pick*, 4/5 OpenRouter free pools 429 — self-inflicted contention with the simultaneous persona-bench dispatch on the same key; Suite C's pre-flight passed once it finished. Clean re-dispatch queued) | freshness decays 1.0 → 0 over 7d by design — the row forces a re-dispatch cadence. **Sequencing rule learned: never dispatch opencheck alongside another OpenRouter-free consumer.** Suite B 0/8 weakest-candidate capacity + Suite A 4/5 (best since 06-12) triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
-| 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (instrumented run 34, `SK-ONBOARD-005`; reads once stranger traffic arrives); first-10 ≥ 95% (stranger N=0 — row #4); destructive-op retry < baseline (unmeasured — last criterion with no instrument); **MCP in 3+ host apps (measured 07-09 run 36, new instrument `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder-only host — cursor, 2 grants, 0 with a query — FAIL)**; 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: the destructive-op-retry instrument (only unmeasured criterion left); the agentic-frontier ~11 pp is a real engine-competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); stranger-dependent criteria hang on rows #2/#6 |
+| 16 | Phase 2 (Distribution) exit gate | **1/9 pass** (first measurement, 07-02) — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526, fresh 07-05); agentic-frontier ≥ 0.80 + Δ ≤ 25 pp (**honestly re-measured 07-06 run 15 post-`SK-QUAL-022` clamp fix, row #11: Δ 18.66 pp ✓ ≤ 25, agentic 0.693 ✗ < 0.80 — the clamp is removed, so this now fails on a genuine competence gap, not the instrument; confirms run 14's ≤ 0.70 ceiling**); TTFV p50 ≤ 60 s (instrumented run 34, `SK-ONBOARD-005`; reads once stranger traffic arrives); first-10 ≥ 95% (stranger N=0 — row #4); destructive-op retry < baseline (**instrumented run 38, `SK-TRUST-004`: `feature.destructive.preview_rendered`/`.committed` on the preview/commit boundary in `orchestrateAsk`, sliced by surface; reads once destructive-op traffic arrives, N≈0 today** — was the last criterion with no instrument); **MCP in 3+ host apps (measured 07-09 run 36, new instrument `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder-only host — cursor, 2 grants, 0 with a query — FAIL)**; 1 public agent product on nlqdb (0 strangers); 3 non-engineer CSV tests (CSV upload unshipped) | agent-movable next: with every criterion now instrumented (destructive-op shipped run 38), the only agent-movable *pass* left is the agentic-frontier ~11 pp engine-competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); the rest are stranger-dependent (rows #2/#6) |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **21** (07-09, re-counted this run — unchanged; last moved run 33: −1, `byo-connect` KEK-rotation resolved into `GLOBAL-031`. Prior levers in `git log`) | target ↓ 0. **Method pinned** (stops the 75↔85 drift): `- ` bullets under `## Open questions` whose text does **not** match, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed` (case-insensitive is load-bearing — a case-sensitive grep over-counts). Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-09 run-35 sweep: **108** pages, **2,655** internal links — +1 page / +25 links vs run 31 = the new `postgres-validator-rejects-valid-clickhouse-sql` post + its inbound nav/index/sitemap/llms/rss links) | target 0 — sweep is repeatable: `bun run build && bun run check:links` (checks hrefs + sitemap + llms.txt against dist; exits 1 on dead) |
 | | **Product-readiness** — client-blocking gaps the loop was blind to (added 07-04) | | non-deferral gaps that no prior row measured, so rule 2 ("no change without a number") could never select them; now agent-movable |
@@ -96,28 +95,28 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-09 (run 37)** — lever: **complete run 33's P3 cross-reference sweep —
-reconcile the stale BYO KEK-rotation open question in `db-adapter/FEATURE.md` with
-the canonical `GLOBAL-031` resolution (row #19, doc/claim integrity).** Step 0:
-runs 35/36 (#646/#649, merged — distribution queue + `/blog`, `scripts/mcp-hosts.sh`)
-and #647/#648 (quality-eval + agent-memory docs + `tools/eval`) own distribution,
-the MCP-hosts gate, and eval; this run touches none of their files (db-adapter
-FEATURE only). Row #8 (BIRD, weekly focus) stays dark for the lever (rule 8) +
-anti-rut-blocked (rule 7). **Finding:** run 33 resolved KEK rotation in
-`GLOBAL-031` (version travels in the `nbe1.`→`nbe2.<v>.` envelope prefix, **not** a
-`key_version` column; two-KEK overlap + lazy re-wrap) and fixed byo-connect's copy,
-but its P3 sweep missed db-adapter — whose OQ still asserted a "version column on
-`databases` … not yet designed", a §10.3 doc-vs-canonical contradiction that is
-security-sensitive (it would steer an implementer to build the exact column
-`GLOBAL-031` rejected). **Change:** rewrote that one bullet to point at
-`GLOBAL-031` (Resolved), mirroring byo-connect's wording from the adapter/storage
-angle. **Measured:** row #19 tracked doc/claim gaps — found 1, closed 1, **net 0**
-(run-32 pattern); row #17 unchanged at 21 (the bullet was Parked→Resolved, both
-excluded from the count). **Verification:** `bun run typecheck` / `bun run lint`
-exit 0 (35 pre-existing warnings, none added); docs-only diff, no runtime surface.
-**Artifact (step 3):** the reconciliation is the released artifact. **KPI:** GLOBAL-025
-engine-quality/onboarding — a correct security doc keeps the BYO-connect on-ramp
-buildable; **none degrade** (no engine/API/prompt/eval-baseline touched).
+**2026-07-10 (run 38)** — lever: **ship the destructive-op retry-rate instrument
+(`SK-TRUST-004`) — the last Phase-2 exit-gate criterion (row #16) with no
+instrument.** Step 0: no open PRs; disjoint from merged runs 35–37 (ask pipeline +
+events + trust-ux only). Row #8 (weekly focus) stays dark/anti-rut-blocked; this
+lever is 1 instrument of the last 5 levers (anti-rut clear). **Change:** `SK-TRUST-004`
+*documented* two events never wired (grep: 0 emissions). Added
+`feature.destructive.preview_rendered` + `.committed` to `packages/events` (random
+`event_id` — volume events, so both sides of the ratio count; per-day dedup would
+collapse the repeats that *are* the signal), emitted from `orchestrateAsk` at the
+`SK-TRUST-001` preview hop + confirmed-write commit (from the orchestrator, not the
+route — only there is write-vs-read + preview-vs-commit certain via `isWriteVerb`;
+surface threaded onto `AskRequest`), routed both to LogSnag `#north-star`, tagged the
+chat orchestrator. **Measured:** row #16 destructive-op-retry **unmeasured →
+instrumented** (mirrors run 34 TTFV; reads once traffic arrives, N≈0). Gate still
+**1/9 pass**, but every criterion now has an instrument — this was the last gap.
+**Verification:** `bun run typecheck` (21 pkgs exit 0) + `lint` (exit 0, 35 pre-existing
+warnings, none added) + `test` (full workspace green; +7 cases: 4 orchestrate, 2 sink,
+1 dedup). **Artifact (step 3):** queue 2 (< 3) ⇒ drafted
+`emit-metrics-where-the-distinction-is-certain`; queue **2 → 3** ⇒ next run publishes.
+D4: collapsed two older full drafts to gists (queue 19905 → 19851 B). **KPI:**
+GLOBAL-025 **UX pillar** (retry rate is one of its three named KPIs); **none degrade**
+(fire-and-forget via `ctx.waitUntil`, off the p99; no engine/prompt/eval touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
