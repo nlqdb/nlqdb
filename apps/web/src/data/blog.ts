@@ -86,7 +86,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The rule" },
       {
         kind: "p",
-        text: "In a multi-engine guardrail, a parse failure from the wrong dialect means \"wrong parser,\" not \"dangerous query\" — never let it decide whether a valid query runs. Keep the dialect-agnostic allowlist authoritative on every engine; make the AST parse best-effort per engine. When you add a second dialect, the bug won't announce itself as a dialect bug — it'll look like a validator that's merely stricter than you remembered. Check what your guardrail is actually pinned to before you trust its rejections.",
+        text: 'In a multi-engine guardrail, a parse failure from the wrong dialect means "wrong parser," not "dangerous query" — never let it decide whether a valid query runs. Keep the dialect-agnostic allowlist authoritative on every engine; make the AST parse best-effort per engine. When you add a second dialect, the bug won\'t announce itself as a dialect bug — it\'ll look like a validator that\'s merely stricter than you remembered. Check what your guardrail is actually pinned to before you trust its rejections.',
       },
       {
         kind: "p",
