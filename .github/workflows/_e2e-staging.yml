@@ -87,6 +87,22 @@ jobs:
           echo "::add-mask::$db_url"
           echo "database_url=$db_url" >> "$GITHUB_OUTPUT"
 
+      # The recreation above destroyed every schema the e2e fixture account's
+      # registry rows point at, but the control plane (prod D1, shared by
+      # previews) survives — so stale rows accumulate: same-name sidebar pins
+      # land on dead schemas ("Couldn't reach the database") and Suite C's
+      # cleanup walk grows unboundedly. Purge them here (SK-E2E-007).
+      - name: Purge stale fixture registry rows
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          bunx wrangler d1 execute nlqdb-app --remote --command "
+            DELETE FROM chat_message WHERE user_id IN (SELECT id FROM user WHERE email = 'test@example.com');
+            DELETE FROM databases WHERE tenant_id IN (SELECT id FROM user WHERE email = 'test@example.com');"
+
       - name: Upload preview version
         working-directory: apps/api
         env:

@@ -103,6 +103,16 @@ when-to-load:
   - Empty placeholder files — no contract; nothing for the implementer to satisfy.
   - Documentation-only contract (FEATURE.md describes it) — falls out of sync with code; the test is the spec.
 
+### SK-E2E-007 — Staging spin-up purges the fixture account's registry rows
+
+**Body:** [`decisions/SK-E2E-007-fixture-registry-purge-at-spinup.md`](./decisions/SK-E2E-007-fixture-registry-purge-at-spinup.md).
+Previews share prod's D1 control plane while the Neon `e2e` data plane is
+destroyed every run, so surviving fixture-account rows point at dead schemas
+(stale same-name pins fail as "Couldn't reach the database"; Suite C's
+cleanup walk grows unboundedly). `_e2e-staging.yml` purges the
+`test@example.com` rows right after the branch recreation; anon strays stay
+with the `SK-ANON-002` sweep.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per
@@ -129,7 +139,6 @@ out per D4 so the tracker can grow without breaching the 20 KB cap.
 ## Open questions / known unknowns
 
 - **Suite-A `#authed-state-preserved` reliability — delegated by founder to the measured-delta loop (2026-06-12; was a P1 user call).** The engine probe (`apps/api/scripts/global027-engine-probe.ts`, PR #377) showed the chain head is 8/8 self-consistent on this round-trip — the "references a table this database doesn't have" flake is **provider fallback under budget exhaustion + hedge amplification**, not lead-model NL→SQL quality (`opencheck-operations.md`). Agent-decidable behind a same-seed before/after smoke + an N-run Suite-A window (Δ < 0 reverts), though (a) touches [`llm-router`](../llm-router/FEATURE.md) (`SK-LLM-014`/`SK-LLM-023`): **(a)** drop the hedge on `schema_infer`/`plan` (2×-burns the scarce 5-RPM head) and/or widen the head budget; **(b)** gate CI on per-suite green over an N-run window.
-- **`#authed-state-preserved` `db_unreachable` — Resolved 2026-07-11: not cold start; the adoption ACL gap** ([`SK-ANON-003`](../anonymous-mode/FEATURE.md) amendment). Run-29134673858 traces: plan correct, exec failing deterministically for 2.5 min while creates succeeded — post-adoption the schema's grants + RLS literal still named the anon tenant, so `SET LOCAL ROLE` failed every query, mislabeled `db_unreachable` (now logged, `recordExecUnreachable`). True cold start stays covered by `SK-ASK-013`.
 - **Cassette staleness cron — Parked until a stale cassette masks a real wire-drift twice** (`GLOBAL-033` speculative-scope). Cassettes stay manually re-recorded; the weekly re-record cron lands only on the second masked drift.
 - **Per-PR e2e for high-risk paths — Parked until a regression escapes PR-time tests** (`GLOBAL-033` speculative-scope). A path-glob persona walk on `apps/api/src/ask/**` lands the first time a real regression reaches a manual e2e.
 - **Visual regression for elements — Parked until a CSS regression escapes** (`GLOBAL-033` speculative-scope; screenshot diffs are flaky). opencheck NL assertions cover rendering today; Playwright diffing waits for the first unnoticed CSS regression.
