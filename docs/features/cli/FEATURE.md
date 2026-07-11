@@ -29,7 +29,7 @@ when-to-load:
 
 Deferred to follow-up slices — gated on server endpoints that don't exist yet:
 - `nlq login` device-flow (needs `POST /v1/auth/device` per `SK-AUTH-004`).
-- `nlq mcp install` config-write (needs the device-flow session for `POST /v1/keys` to mint `sk_mcp_*`; the cobra command is wired to print the deferral hint).
+- `nlq mcp install` config-write (needs the device-flow session for `POST /v1/keys` to mint `sk_mcp_*`; the cobra command is wired to print the deferral hint). The wiring slice also fixes the config field key `zed.go` / `vscode.go` write: Zed reads `context_servers` and VS Code reads `servers`, not the `mcpServers` both writers emit today.
 - `nlq chat` REPL (UX-only deferral; design intact).
 - `nlq keys rotate <id>` (needs `POST /v1/keys/:id/rotate` per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md)).
 

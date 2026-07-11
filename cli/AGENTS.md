@@ -105,11 +105,14 @@ done
   (registry order is the `SK-CLI-011` prompt order on a multi-host
   machine), add a test that round-trips a real-shape config file. No
   changes elsewhere. Reuse the shared helpers: `writeMcpServersField`
-  when the host nests servers under `mcpServers` (atomic temp+rename,
-  preserves sibling fields, 0600 — all six current hosts use it);
-  `detectByDirExists` + `appSupport`/`userHome` for detection and
-  per-OS config paths. Hand-roll `Install` only when a host's config
-  shape genuinely differs.
+  when the host's docs confirm it nests servers under a top-level
+  `mcpServers` field (atomic temp+rename, preserves sibling fields,
+  0600); `detectByDirExists` + `appSupport`/`userHome` for detection
+  and per-OS config paths. Hand-roll `Install` when the config shape
+  genuinely differs — it does for two current hosts: Zed reads
+  `context_servers` and VS Code reads `servers`, so `zed.go` /
+  `vscode.go` writing `mcpServers` is a known gap that lands with the
+  `nlq mcp install` wiring slice.
 - **Adding a new verb:** new file under `internal/cmd/`, register it
   in `cmd.New()`, and add the verb name to the `known` map in
   `cmd/nlq/main.go` so the bare-form rewriter doesn't intercept it.
