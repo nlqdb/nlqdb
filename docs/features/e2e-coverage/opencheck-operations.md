@@ -19,17 +19,21 @@ exhaustion loop):
 
 - **opencheck agent** (`LLM_API_KEY`, the Playwright-MCP driver) → the first
   **healthy** model from `_e2e-opencheck.yml`'s ordered `candidate_models`
-  list (all OpenRouter `:free`; head `openai/gpt-oss-120b:free`). The
-  pre-flight gives each candidate **3 consecutive tool-call probes ~2s
-  apart** (saturated pools *flap* — one lucky 200 is not health) and
-  substitutes the winner into the suite YAML (`model: "__MODEL__"`) — a
-  single saturated free pool no longer zeroes the run (it cost 4 consecutive
-  failed runs 2026-06-12 → 07-05). The probe checks the **body**, not just
-  the status code: OpenRouter 429s arrive as an error envelope, sometimes
-  under HTTP 200 (the `SK-LLM-042` gateway trap). The agent loop is the
-  dominant consumer (~94K tokens/run); on OpenRouter `:free` those tokens
-  are $0 and the budget is the OpenRouter account's free-model request cap
-  (1000 req/day at ≥$10 balance, 20 RPM) — entirely separate from Groq.
+  list. **Primary lane since 2026-07-11: NVIDIA NIM `openai/gpt-oss-120b`**
+  ($0 dev-program tier, ~40 RPM key-level, independent of every other pool
+  here); the previous 5-candidate OpenRouter `:free` walk is the fallback
+  lane — its five models share ONE free pool that saturates as a unit *and
+  flaps past the probe gate* (13 consecutive failed runs 07-02 → 07-10,
+  then 216s agent starvation on a probe-healthy pick, run
+  [29144964531](https://github.com/nlqdb/nlqdb/actions/runs/29144964531),
+  while the NIM lane ran the same tests in 7.7–25s). The pre-flight gives
+  each candidate **3 consecutive tool-call probes ~2s apart** (saturated
+  pools *flap* — one lucky 200 is not health) and substitutes the winner
+  into the suite YAML (`model: "__MODEL__"`). The probe checks the
+  **body**, not just the status code: OpenRouter 429s arrive as an error
+  envelope, sometimes under HTTP 200 (the `SK-LLM-042` gateway trap). The
+  agent loop is the dominant consumer (~94K tokens/run); both lanes are $0
+  and entirely separate from the app's providers.
 - **staging app** (the preview's `/v1/ask` + NL db-create) → the **free
   planner chain** `cerebras → gemini → groq → workers-ai → openrouter → mistral`
   (`SK-LLM-023`/`SK-LLM-028`, `apps/api/src/llm-router.ts`), **hedged** on the
@@ -51,10 +55,10 @@ never bought independent budget.
 
 | Model | Provider | RPM | Daily budget | Role |
 |---|---|---|---|---|
-| `openai/gpt-oss-120b:free` | OpenRouter `:free` | 20 | 1000 req/day ($0 tokens) | **Agent candidate #1** — the only model that has driven a full green run (06-12). Its upstream pool saturates for hours AND **flaps** (passed a 3× probe then 429'd 10 tests mid-run, [28759073164](https://github.com/nlqdb/nlqdb/actions/runs/28759073164)) — both covered now: the 3-probe gate skips it when saturated, `maxRetries: 6` absorbs mid-run blips. |
-| `qwen/qwen3-coder:free`, `qwen/qwen3-next-80b-a3b-instruct:free`, `meta-llama/llama-3.3-70b-instruct:free` | OpenRouter `:free` | 20 | shared OpenRouter free req budget | Agent candidates #2–4; `tools` support re-verified live against OpenRouter `/models` `supported_parameters` 2026-07-06, but unproven as agents here. Mid-run blips are additionally absorbed by the client-level `maxRetries: 6` backoff patch (`_e2e-opencheck.yml`). |
-| `openai/gpt-oss-20b:free` | OpenRouter `:free` | 20 | shared OpenRouter free req budget | Agent candidate #5 (last resort). Tool-call verified, and it carried Suite A 4/5 (run [28757212934](https://github.com/nlqdb/nlqdb/actions/runs/28757212934)) — but on the heavier Suite B it times out (3 × 300s) and derails mid-reasoning, so it ranks below every 80B+ candidate. |
-| `openai/gpt-oss-120b` | NVIDIA NIM | ~40 (key-level) | $0 dev-program tier | **Fallback lane** (2026-07-11) — same weights as candidate #1 on an independent pool; walked only when every OpenRouter candidate fails the pre-flight (`fallback_*` inputs, `NVIDIA_API_KEY`). 3/3 CI-shape tool-call probes while OpenRouter 429'd. |
+| `openai/gpt-oss-120b` | NVIDIA NIM | ~40 (key-level) | $0 dev-program tier | **PRIMARY agent lane** (promoted from fallback 2026-07-11) — same weights as the only model with a full green run, on an independent pool. Agent per-test time 7.7–25.1s on both live firings ([29134673858](https://github.com/nlqdb/nlqdb/actions/runs/29134673858), [29144964531](https://github.com/nlqdb/nlqdb/actions/runs/29144964531) — 25s on the same test that starved 216s on OpenRouter). |
+| `openai/gpt-oss-120b:free` | OpenRouter `:free` | 20 | 1000 req/day ($0 tokens) | **Fallback candidate #1** (primary until 2026-07-11) — drove the 06-12 full green run, but its upstream pool saturates for hours AND **flaps past the 3-probe gate** (429'd 10 tests mid-run [28759073164](https://github.com/nlqdb/nlqdb/actions/runs/28759073164); 216s starvation on a probe-healthy pick [29144964531](https://github.com/nlqdb/nlqdb/actions/runs/29144964531)). `maxRetries: 6` absorbs brief blips only. |
+| `qwen/qwen3-coder:free`, `qwen/qwen3-next-80b-a3b-instruct:free`, `meta-llama/llama-3.3-70b-instruct:free` | OpenRouter `:free` | 20 | shared OpenRouter free req budget | Fallback candidates #2–4; `tools` support re-verified live against OpenRouter `/models` `supported_parameters` 2026-07-06, but unproven as agents here. Mid-run blips are additionally absorbed by the client-level `maxRetries: 6` backoff patch (`_e2e-opencheck.yml`). |
+| `openai/gpt-oss-20b:free` | OpenRouter `:free` | 20 | shared OpenRouter free req budget | Fallback candidate #5 (last resort). Tool-call verified, and it carried Suite A 4/5 (run [28757212934](https://github.com/nlqdb/nlqdb/actions/runs/28757212934)) — but on the heavier Suite B it times out (3 × 300s) and derails mid-reasoning, so it ranks below every 80B+ candidate. |
 | ~~`nvidia/nemotron-3-super-120b-a12b:free`~~ | OpenRouter `:free` | — | — | **Not usable as agent** — aces 1-shot tool-call probes but collapses to text-format tool calls (`<function=…></tool_call>` as plain text) mid-loop and spams forbidden `browser_evaluate`; failed 2/5 Suite-A tests in two consecutive runs ([28760320317](https://github.com/nlqdb/nlqdb/actions/runs/28760320317), [28767705937](https://github.com/nlqdb/nlqdb/actions/runs/28767705937), traces + raw `</tool_call>` in the FAIL output). |
 | `gpt-oss-120b` | Cerebras | 5 | 1M tokens/day | **Engine chain HEAD** (`SK-LLM-023`). 8/8 self-consistent on the Suite-A round-trip (probe, 2026-06-12). 5 RPM too slow for the *agent* loop but fine for the app's few engine calls — though it rate-limits under burst, forcing fallback. |
 | `gemini-2.5-flash` | Gemini | ~15 | tight free quota | Engine chain #2 + hedge partner. Free quota exhausts early in the UTC day → 429 forces fallback. |
@@ -65,9 +69,14 @@ never bought independent budget.
 **Switching / reordering agent models:** edit the `candidate_models`
 default in `_e2e-opencheck.yml` — one place; the suite YAMLs carry
 `model: "__MODEL__"` and receive the pre-flight's pick at render time.
-A second provider is built in: when every primary candidate fails, the pre-flight walks `fallback_candidate_models` on `fallback_provider_base_url` with `FALLBACK_LLM_API_KEY` (default NVIDIA NIM `gpt-oss-120b`). New candidates must be
-`:free` (GLOBAL-013) and tool-call capable — the pre-flight rejects a
-model that can't emit `tool_calls`, but verify once by hand
+A second provider is built in: when every primary candidate fails, the
+pre-flight walks `fallback_candidate_models` on
+`fallback_provider_base_url` with `FALLBACK_LLM_API_KEY` (primary =
+NVIDIA NIM `gpt-oss-120b`, fallback = the ordered OpenRouter `:free`
+walk; lanes swapped 2026-07-11 — a lane, not a model, is the failure
+domain). New candidates must be free (GLOBAL-013; on OpenRouter that
+means the `:free` suffix) and tool-call capable — the pre-flight rejects
+a model that can't emit `tool_calls`, but verify once by hand
 (`curl … /chat/completions` with a `tools` array) before trusting it in
 the order.
 
