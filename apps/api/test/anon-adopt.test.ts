@@ -304,7 +304,10 @@ describe("buildRetargetStatements", () => {
       "orders",
     ]);
     const sqls = stmts.map((s) => s.sql);
-    expect(sqls[0]).toContain('CREATE ROLE "tenant_0123456789abcdef"');
+    // Timeout bound first (ALTER POLICY takes ACCESS EXCLUSIVE — a held
+    // lock must not pin the sign-in path past 30 s), then role-if-missing.
+    expect(sqls[0]).toBe("SET LOCAL statement_timeout = '30s'");
+    expect(sqls[1]).toContain('CREATE ROLE "tenant_0123456789abcdef"');
     expect(sqls).toContainEqual(expect.stringContaining('GRANT USAGE ON SCHEMA "users_abc123"'));
     expect(sqls).toContainEqual(
       expect.stringContaining("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA"),

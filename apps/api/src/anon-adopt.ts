@@ -80,6 +80,10 @@ export function buildRetargetStatements(
   assertTenantRoleName(roleName);
   const tenantLiteral = escapeSqlLiteral(newTenantId);
   const statements: PgTransactionStatement[] = [
+    // ALTER POLICY takes an ACCESS EXCLUSIVE lock; bound the wait so a
+    // long-running query on the adopted DB can't hold the sign-in path
+    // open (same 30 s ceiling as the provision batch, SK-HDC-010).
+    { sql: "SET LOCAL statement_timeout = '30s'" },
     {
       sql: `DO $$ BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${roleName}') THEN

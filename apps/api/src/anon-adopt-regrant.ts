@@ -5,7 +5,7 @@
 // reaches the top-level graph (same reason `index.ts` dynamic-imports
 // `buildDbCreateDeps`).
 
-import { trace } from "@opentelemetry/api";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { type AclRetarget, retargetAdoptedDbAcl } from "./anon-adopt.ts";
 
 // Shared-Neon client from the same `DATABASE_URL` ref the provisioner
@@ -21,6 +21,18 @@ export function makeAclRetarget(envBindings: Cloudflare.Env): AclRetarget {
       span.setAttribute("nlqdb.anon.adopt.regrant_db_id", dbId);
       try {
         await retargetAdoptedDbAcl(pg, dbId, newTenantId);
+      } catch (err) {
+        // Same failure shape as the provision batch (SK-HDC-017): record
+        // + SQLSTATE on the span, then rethrow into the caller's
+        // best-effort per-DB catch.
+        span.recordException(err as Error);
+        span.setStatus({ code: SpanStatusCode.ERROR });
+        const code = (err as { code?: string } | null)?.code;
+        span.setAttribute(
+          "db.transaction.error_sqlstate",
+          typeof code === "string" ? code : "none",
+        );
+        throw err;
       } finally {
         span.end();
       }
