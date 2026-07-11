@@ -41,6 +41,51 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "decided-questions-rot-in-your-decision-log",
+    title: "An \"open question\" that's already decided is worse than one that's still open.",
+    description:
+      "Decision logs rot at the seam between open and answered: a decided-but-unmarked bullet makes readers re-litigate closed calls. Make resolved a greppable state and count unmarked bullets as debt.",
+    date: "2026-07-11",
+    body: [
+      {
+        kind: "p",
+        text: "Every long-lived codebase grows a decision log — ADRs, a `DECISIONS.md`, per-feature records — and every one of those grows an *Open questions* section. The failure mode isn't the open questions. It's the entries that were quietly *answered* — in a PR, a standup, a founder's one-line reply — and never re-labelled. A bullet that reads \"we should probably cap the queue at 7,000 ops/day\" is a decision wearing an open question's clothes.",
+      },
+      { kind: "h2", text: "What a decided-but-unmarked bullet does to a reader" },
+      {
+        kind: "p",
+        text: "A reader who hits that bullet does one of two bad things. Either they treat the settled call as unsettled and re-litigate it — burning a design discussion on a question someone already closed — or they build on top of a \"maybe\" that was actually a \"yes,\" and their design inherits a hedge that no longer exists. Both cost more than an honestly open question would, because the log *looks* authoritative while pointing nowhere. A vague decision documented is worse than none.",
+      },
+      { kind: "h2", text: "Two moves fix it" },
+      {
+        kind: "p",
+        text: "First, make *resolved* a first-class, greppable state. A decided bullet keeps its line but gains a marker word — `Resolved`, `Decided:`, `Parked`, or a strikethrough — plus a pointer to the decision's canonical home. The questions list is where a question's lifecycle is visible; it is never where the decision's body lives. When you answer an open question, the *same commit* moves the body to the canonical record and leaves only the marked pointer behind — never a second copy that can drift.",
+      },
+      {
+        kind: "p",
+        text: "Second, count the unmarked ones as debt. If *resolved* is greppable, so is *unresolved* — and a number you can compute is a number you can drive to zero:",
+      },
+      {
+        kind: "code",
+        lang: "bash",
+        code: "# Ambiguity debt: open-question bullets with no resolution marker.\n# Case-INSENSITIVE on the marker set — a case-sensitive grep counts\n# \"resolved\" and \"Resolved\" differently and the number drifts.\ngrep -rA9999 '^## Open questions' docs/features/*/FEATURE.md \\\n  | grep '^\\s*- ' \\\n  | grep -vciE 'resolved|decided:|parked|deferred|~~'",
+      },
+      {
+        kind: "p",
+        text: "The case-insensitivity is not a nitpick — it's the difference between a metric and a mood. We track this count as a scorecard row, and the first version drifted for exactly that reason: two agents marked resolutions with different capitalization, the grep saw only one, and the \"debt\" number moved without any question changing state. Pin the counting method next to the number it produces.",
+      },
+      { kind: "h2", text: "Why a count, and not a cleanup day" },
+      {
+        kind: "p",
+        text: "A one-off sweep fixes today's rot and leaves the seam that produced it. The count makes the seam visible continuously: every answered-but-unmarked bullet is +1 debt that someone will notice, and driving one bullet to a marked resolution is a small, complete, verifiable unit of work — research the answer, write it in the canonical home, mark the pointer. A question only a human with prod access or a checkbook can answer moves to a separate blocked-on-human list and off the count, so the number only tracks debt an engineer can actually retire.",
+      },
+      {
+        kind: "p",
+        text: "(This is a build note from [nlqdb](https://nlqdb.com), the database you query in plain English. Our decision log is agent-operated, which makes the rot mechanical instead of cultural — but the fix is the same one a human team needs. Honest split: a decision-hygiene lesson, not a product feature.)",
+      },
+    ],
+  },
+  {
     slug: "emit-metrics-where-the-distinction-is-certain",
     title: "Your metric is only as honest as the layer you emit it from.",
     description:

@@ -64,17 +64,6 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   test runs on, or the rescue causes the next outage. Honest split: a
   CI/infra lesson from our E2E harness, not a product feature.
 
-- **"An 'open question' that's already decided is worse than one that's still
-  open."** slug `decided-questions-rot-in-your-decision-log` · venue dev.to
-  (#documentation #architecture #engineering) + r/ExperiencedDevs + lobste.rs
-  (`practices`) · engineering-process lesson (the scorecard row #17
-  docs-ambiguity method). Gist: a decided-but-unmarked "open question" makes
-  readers re-litigate closed calls or build on a "maybe" that was a "yes";
-  make *resolved* a greppable first-class state (marker word + pointer to the
-  canonical home) and count unmarked bullets as debt — case-insensitively, or
-  the number drifts. *(Full body in git history — collapsed for the D4 20 KB
-  cap; recover at publish time.)*
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -82,6 +71,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 49 — **https://nlqdb.com/blog/decided-questions-rot-in-your-decision-log/** — dev.to (#documentation #architecture #engineering) + r/ExperiencedDevs + lobste.rs (`practices`) · engineering-process lesson (the scorecard row #17 docs-ambiguity method — resolved is a greppable state; unmarked bullets are counted debt)
 - run 47 — **https://nlqdb.com/blog/emit-metrics-where-the-distinction-is-certain/** — dev.to (#programming #observability #architecture) + r/ExperiencedDevs + lobste.rs (`practices`) · engineering lesson (`SK-TRUST-004` — emit a metric at the lowest layer where the distinction it encodes is certain)
 - run 44 — **https://nlqdb.com/blog/rotate-encryption-key-without-a-version-column/** — dev.to (#security #database #architecture) + r/programming + lobste.rs (`security`) · security/architecture lesson (`GLOBAL-031` KEK rotation — version in the ciphertext prefix, not a column)
 - run 40 — **https://nlqdb.com/blog/text-to-sql-planner-told-wrong-dialect/** — dev.to (#sql #llm #database) + r/dataengineering + lobste.rs (`sql`) · engine/architecture lesson (thread the real engine into the dialect field; twin of the validator post)
