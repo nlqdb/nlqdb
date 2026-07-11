@@ -157,14 +157,17 @@ sleeps between questions so the ~5-RPM Cerebras head (`SK-LLM-023`) doesn't
 cascade every breaker open into a `no_sql` wall. Measurement-harness knob
 only — production is untouched. Complements the `SK-QUAL-011` budget-stop.
 
-### SK-QUAL-013 — Capacity-honest budget stop: a rate-limit breaker wall pauses the run, never scores `no_sql`
+### SK-QUAL-013 — Capacity-honest budget stop: a transient wall pauses the run, never scores `no_sql`
 
 **Body:** [`decisions/SK-QUAL-013-capacity-honest-budget-stop.md`](./decisions/SK-QUAL-013-capacity-honest-budget-stop.md).
-Budget-stop fires on **capacity exhaustion** (every attempt `rate_limited` or
-`circuit_open`), after one bounded `--capacity-wait-ms` wait-and-retry
-(workflows 65 s; default 0). Full-mode workflows cache the checkpoint by commit
-SHA so a re-dispatch resumes. Fixes the 2026-06-11 run that scored 246
-breaker-wall rows as `no_sql` without a single LLM call.
+Budget-stop fires on a **transient wall** (every attempt `rate_limited`,
+`circuit_open`, `network`, or `timeout` — config reasons stay out so an
+all-config outage still fails loudly per `SK-QUAL-020`), after one bounded
+`--capacity-wait-ms` wait-and-retry (workflows 65 s; default 0). Full-mode
+workflows cache the checkpoint by commit SHA so a re-dispatch resumes. Fixes
+the 2026-06-11 run that scored 246 breaker-wall rows as `no_sql` without a
+single LLM call, and (2026-07-11) the Spider run that scored 26/135
+capacity+transport walls as engine failures.
 
 ### SK-QUAL-014 — Offline mismatch error-class classifier: bucket a run's loss mass so the §4 backlog is picked from evidence
 
@@ -232,10 +235,11 @@ hang; the subprocess is the only reliable interrupt.
 ### SK-QUAL-020 — Transport-collapse guard: a chain unreachable end-to-end is an outage, not a scored 0%
 
 **Body:** [`decisions/SK-QUAL-020-transport-collapse-guard.md`](./decisions/SK-QUAL-020-transport-collapse-guard.md).
-Connectivity sibling of the `SK-QUAL-013` capacity stop: when **every** lane
+Connectivity sibling of the `SK-QUAL-013` budget stop: when **every** lane
 that ran produced zero engine signal and every `no_sql` failed for a non-engine
 reason (`network`/`timeout`/`not_configured`/`auth_denied`), the run measured an
-outage, not SQL quality. The runner sets `report.transport_failed`, **drops**
+outage, not SQL quality. Transient transport now pauses per-question
+(`SK-QUAL-013`), so this guard's live catch is the config outage. The runner sets `report.transport_failed`, **drops**
 the poisoned checkpoint (opposite of the capacity stop), skips baseline-diff +
 emit, and exits non-zero so the dispatch re-runs fresh. Any answered question or
 `parse`/`http_*` reason scores normally, so a real regression is never

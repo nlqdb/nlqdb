@@ -7,10 +7,17 @@ pacing this backstops),
 [`SK-LLM-030`](../../llm-router/decisions/SK-LLM-030-rate-limit-aware-failover.md)
 (the breaker semantics that produce the `circuit_open` reason).
 
-- **Decision:** The budget-stop predicate is **capacity exhaustion** —
-  `AllProvidersFailedError` where every attempt is `rate_limited` **or**
-  `circuit_open` — not the literal all-`rate_limited` shape `SK-QUAL-011`
-  shipped. Before stopping, the runner waits once per question for
+- **Decision:** The budget-stop predicate is a **transient wall** —
+  `AllProvidersFailedError` where every attempt is `rate_limited`,
+  `circuit_open`, `network`, or `timeout` — not the literal
+  all-`rate_limited` shape `SK-QUAL-011` shipped, and (since 2026-07-11)
+  not the capacity-only pair either: a transient-transport attempt
+  (`network`/`timeout`, `SK-QUAL-020`'s zero-engine-signal reasons) mixed
+  into a breaker wall is the same pause, while the config reasons
+  (`not_configured`/`auth_denied`) never self-recover and stay **out** so
+  an all-config outage still fails loudly via `SK-QUAL-020`'s run-level
+  collapse instead of resume-looping forever. Before stopping, the runner
+  waits once per question for
   `--capacity-wait-ms` (`RunOptions.capacityWaitMs`, default **0** ⇒
   immediate stop, PR CI unchanged; workflows pass **65 000 ms** to outlast
   the 60 s breaker cooldown) and retries; waits are capped at **5 per
@@ -45,9 +52,18 @@ pacing this backstops),
     budget-stops, but the resumed dispatch starts with closed breakers, so
     the paused question gets real attempts and records a real outcome —
     every dispatch makes strict progress.
+  - **A capacity-only predicate misses the mixed wall it walks into.** A
+    saturated chain rarely fails *uniformly*: one provider 429s, the next
+    is breaker-open, another times out or drops the connection. Verified on
+    the 2026-07-08 Spider full run (28959809497): **26 of 30 `no_sql` rows
+    (19% of the dataset) failed with only capacity + `network`/`timeout`
+    attempts** — one transport attempt demoted each pause to a scored
+    engine failure, dragging raw EX to 0.2444 when the answered subset
+    scored 0.3143.
 
 - **Consequence in code:** `tools/eval/src/runner.ts` —
-  `isChainCapacityExhausted` replaces `isChainRateLimited`; the
+  `isChainTransientWall` (`TRANSIENT_WALL_REASONS`) replaces
+  `isChainCapacityExhausted`, which replaced `isChainRateLimited`; the
   `runOneQuestion` plan-throw path waits once (`capacityWaitMs`) then
   budget-stops; `--capacity-wait-ms` CLI flag. Both `quality-eval-*.yml`
   full jobs gain a `actions/cache` restore/save pair on
