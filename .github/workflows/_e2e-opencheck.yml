@@ -324,8 +324,11 @@ jobs:
           if [ -n "${FALLBACK_API_KEY}" ] && [ -n "${FALLBACK_CANDIDATE_MODELS}" ]; then
             echo "No primary candidate healthy — walking the fallback provider lane."
             walk_lane "${FALLBACK_BASE_URL}" "${FALLBACK_API_KEY}" "${FALLBACK_CANDIDATE_MODELS}" "true"
+            fallback_state="${FALLBACK_CANDIDATE_MODELS} also unhealthy"
+          else
+            fallback_state="lane disabled (FALLBACK_LLM_API_KEY unset)"
           fi
-          echo "ERROR: no candidate agent model is healthy right now (primary: ${CANDIDATE_MODELS}; fallback: ${FALLBACK_CANDIDATE_MODELS:-none}) — aborting before burning the opencheck budget"
+          echo "ERROR: no candidate agent model is healthy right now (primary: ${CANDIDATE_MODELS}; fallback: ${fallback_state}) — aborting before burning the opencheck budget"
           exit 1
 
       # opencheck's YAML parser doesn't interpolate env vars — substitute at invocation time into a temp file (keeps working tree clean).

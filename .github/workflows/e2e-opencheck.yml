@@ -75,8 +75,6 @@ jobs:
       config_file: tests-a-bootstrap.yaml
     secrets:
       LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      # Second-provider agent lane (NVIDIA NIM, $0 dev tier, outside the app chain) —
-      # walked only when every OpenRouter candidate fails the pre-flight.
       FALLBACK_LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
   # Suite B — Read/Write: sign-in → pin "users" DB by name → trace SQL → insert Alice → read/count/vague/mismatch → CMD+K.
@@ -100,8 +98,6 @@ jobs:
       config_file: tests-b-write.yaml
     secrets:
       LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      # Second-provider agent lane (NVIDIA NIM, $0 dev tier, outside the app chain) —
-      # walked only when every OpenRouter candidate fails the pre-flight.
       FALLBACK_LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
   # Suite C — UX/Cleanup: sign-in → pin "users" DB by name → delete-row → create 2nd DB → delete DB → API keys → sign-out → cleanup.
@@ -123,8 +119,6 @@ jobs:
       config_file: tests-c-cleanup.yaml
     secrets:
       LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      # Second-provider agent lane (NVIDIA NIM, $0 dev tier, outside the app chain) —
-      # walked only when every OpenRouter candidate fails the pre-flight.
       FALLBACK_LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
   cleanup:
