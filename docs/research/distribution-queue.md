@@ -12,6 +12,35 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"Ownership transfer was a one-row UPDATE. Then we added least-privilege."**
+  slug `ownership-transfer-outlives-least-privilege` · venue dev.to (#postgres
+  #security #database) + r/PostgreSQL + lobste.rs (`databases`, `security`) ·
+  product/security lesson (the adoption ACL gap, `SK-ANON-003` amendment,
+  2026-07-11). Angle: multi-tenant Postgres, one schema per tenant DB. Day 1:
+  queries run as the shared owner, so "transfer this DB to the user who just
+  signed in" is honestly a one-row registry UPDATE — flip `tenant_id`, done,
+  and we wrote that down as a design decision. Months later we hardened the
+  query path to least-privilege: every query now does `SET LOCAL ROLE
+  tenant_<hash(current tenant)>` against per-tenant grants and an RLS policy
+  whose USING clause bakes the tenant id as a literal. Nobody re-visited the
+  transfer path — and it kept working *in the registry* while every
+  transferred DB went permanently unqueryable: the role it now switches to
+  was never created, never granted USAGE, never made a `WITH SET` member,
+  and the RLS literal still named the old tenant. Three authorization layers;
+  the transfer updated one. Worse, the error was invisible: `SET ROLE`'s
+  deterministic 42704/42501 fell into our generic "couldn't reach the
+  database" catch-all — no SQLSTATE logged anywhere — so for nine e2e runs it
+  wore a cold-start costume (the tell that broke the costume: creates
+  succeeded while the transferred DB failed the same second, for minutes,
+  with the *correct* SQL planned every time). Two fixes, both general: (1)
+  every ownership-transfer path must retarget ALL the places authorization
+  state lives — role existence, grants, role membership, policy literals —
+  idempotently, in one batch; grep for every writer of your tenant column the
+  day you turn least-privilege on. (2) A catch-all error branch must log the
+  code it's swallowing; an error you re-label without recording is a bug you
+  will re-diagnose from scratch. Honest split: a Postgres/multi-tenancy
+  lesson from our adoption path, not a product feature.
+
 - **"Your five fallback models are one point of failure."** slug
   `five-fallback-models-one-provider` · venue dev.to (#llm #ci #testing) +
   r/LLMDevs + lobste.rs (`practices`) · CI/engine lesson (the opencheck
@@ -83,14 +112,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 
 - run 129 — dev.to / r/SQL / r/PostgreSQL: "The 'percent of total' query has a denominator problem. Two, actually." (two quiet traps: integer division floors `revenue / SUM(revenue) OVER ()` to 0 unless you write `100.0 *`; empty `OVER ()` grand-total vs `OVER (PARTITION BY region)` per-group total is a denominator choice the clause spells out; anchors `/solve/calculate-percentage-of-total-in-sql`).
 
-- run 128 — dev.to / r/PostgreSQL / r/SaaS: "Neon's MCP server lets your coding agent run your database. That's not the same as your app answering a question." (Neon's MCP is dev-time DB *administration* with you as caller — branch, run+merge a migration from your IDE — not your *product* answering an end-user at runtime, which needs compiled-SQL shown, read-only allow-list, diff-previewed writes, try-before-sign-in; anchors `/vs/neon`).
-- run 127 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no MEDIAN(). Here's the query you write instead — and the choice that changes the answer." (no `MEDIAN()` in Postgres; the answer is the ordered-set aggregate `percentile_cont(0.5) WITHIN GROUP (ORDER BY revenue)`, and swapping `0.5` gives any percentile; the trap is `percentile_cont` interpolates between the two middle rows while `percentile_disc` returns a real row, so they disagree on even/categorical sets — `cont` for continuous quantities, `disc` when it must be an observed value; order lives inside `WITHIN GROUP`; honest split — read-only, not a live p95 dashboard; anchors `/solve/calculate-median-or-percentile-in-sql`).
 
-- run 126 — dev.to / r/LLMDevs / r/LangChain: "LlamaIndex's text-to-SQL runs the SQL the model wrote. The docs tell you that; the demo doesn't." (`NLSQLTableQueryEngine` writes + *executes* the generated SQL — LlamaIndex's own docs call arbitrary SQL a security risk and leave restricted roles / read-only DB / sandboxing to you — and it assumes the DB already exists; same English prompt, two different jobs; honest split — LlamaIndex wins for SQL-as-one-retriever-among-docs+vectors and can call nlqdb as a tool, nlqdb is not a RAG framework; anchors `/vs/llamaindex`).
-- run 125 — dev.to / r/SQL / r/PostgreSQL: "LAG() is the whole month-over-month growth query. The self-join you were about to write is the bug." (MoM/YoY/WoW growth is one window shape — `LAG(value) OVER (ORDER BY month)` with a `NULLIF(prev,0)` guard — not a self-join on `month = month-1` that breaks on gaps/boundaries; anchors `/solve/month-over-month-growth-in-sql`).
-- run 124 — dev.to / r/Python / r/dataengineering: "PandasAI runs generated Python to answer your question. That's the feature and the footgun." (PandasAI reads a DataFrame/CSV/Postgres you already loaded and translates the question into Python+SQL and *executes it* to return answers, charts, cleaned columns, generated features — great in a notebook, but on a product path "generate Python and run it" is a bigger blast radius than "generate SQL, validate against an allow-list, run only that," and it assumes the data's already loaded rather than answering "where does the data live"; honest split — if a plotted figure is the deliverable PandasAI wins and the two compose, nlqdb owns+provisions the Postgres, shows the SQL, runs only validated SQL, diff-previews writes, and has no chart/cleansing/feature generation; anchors `/vs/pandasai`).
-- run 123 — dev.to / r/SQL / r/PostgreSQL: "The running-total query keeps every row. That's the part GROUP BY can't do." (a running total needs `SUM(amount) OVER (ORDER BY day)` that accumulates down an order and keeps every row, not a `GROUP BY` that collapses to one per bucket; `PARTITION BY` restarts per group, a frame clause makes it a moving window; anchors `/solve/running-total-cumulative-sum-in-sql`).
-- run 122 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead." (Postgres lacks SQL Server's `PIVOT`, so the two real answers are portable conditional aggregation (`SUM(...) FILTER (WHERE ...)` per column) or `crosstab()` from the `tablefunc` extension; a plain `GROUP BY` gives tall rows when you wanted wide; anchors `/solve/pivot-rows-into-columns`).
 - run 121 — dev.to / r/SQL / r/dataengineering: "The top-N-per-group query everyone re-Googles." (`greatest-n-per-group`: keeping the whole row per group needs `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` filtered to rank ≤ N, not `GROUP BY`+`MAX`; anchors `/solve/find-top-n-rows-per-group`).
 
 - run 120 — dev.to / r/dataengineering / r/LLMDevs: "Open-source text-to-SQL is the easy 10%. The golden SQL you maintain forever is the rest." (Dataherald/Vanna/Wren open-sourced the NL→SQL engine — a commodity you wire up in an afternoon — but ship it to people who don't know your schema and accuracy evaporates; the fix is *golden SQL*, hand-curated question→query pairs, a standing maintenance job the README undersells; honest split — nlqdb owns the Postgres it answers and skips golden SQL by prompting from the live schema fingerprint, no warehouse federation; anchors `/vs/dataherald`).
@@ -102,7 +124,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 113 — dev.to / r/webdev / r/node: "The webhook receiver is the easy half. The database behind it is the part nobody wants to own." (anchors `/solve/store-and-query-webhook-events`).
 - run 112 — dev.to / r/dataengineering / r/LLMDevs: "Your notebook's AI analyst assumes someone's watching the cell. Your product runs when no one is." (anchors `/vs/fabi`).
 - run 111 — dev.to / r/AI_Agents / r/LLMDevs: "Your agent knows how the user thinks. It still can't tell you how many of them churned." (user-modelling (Honcho's theory-of-mind) vs. relational aggregation over what the agent stored; anchors `/vs/honcho`).
-*(runs 75–100 moved to git history under D4; full gists for runs 103–105 also collapsed to titles — `git log -p` recovers all bodies.)*
+*(runs 75–100 moved to git history under D4; full gists for runs 103–105 collapsed to titles; runs 122–128 titles moved to the [archive](./distribution-queue-archive.md) — `git log -p` recovers all bodies.)*
 
 ### Engine-lesson posts (dev.to / lobste.rs)
 - run 131 — dev.to / r/LLMDevs / lobste.rs (`llm`): "Don't give your LLM provider's model ID a fallback default. Ship it empty." (the tempting line is `model: env.OPENAI_MODEL ?? "gpt-4o"` — a hardcoded default that *feels* safe but silently ships a stale guess the day the provider renames or retires it, and the failure is a quiet quality regression, not an error; provider model IDs churn ~monthly — `gpt-5.5`/`gpt-5.4-mini` today weren't the names last quarter; the safer pattern is a **fail-loud empty default** so an unset env var is a config error at boot, not a wrong model in prod, plus a **dated, sourced verified-IDs list in the doc** the operator sets against at enable time; nlqdb's multi-provider frontier lane does exactly this — Anthropic ladder pinned to the eval baseline, OpenAI defaults empty until the founder sets them against a P2-verified list, so a guessed ID can never ship silently — GLOBAL-026 BYOLLM/hosted-premium; honest split — this is a config-hygiene pattern, not a product feature, and it costs one boot-time error the first time you forget).
