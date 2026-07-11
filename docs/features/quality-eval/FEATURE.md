@@ -21,7 +21,7 @@ when-to-load:
 ## Touchpoints — read this feature before editing
 
 - `tools/eval/` — benchmark runner:
-  - `src/runner.ts` — multi-dataset driver, CLI, lane loop, baseline + emit; `withExecRetry`-wraps scaffolded lanes; `--throttle-ms` (`SK-QUAL-012`), `--capacity-wait-ms` + budget-stop (`SK-QUAL-013`); transport-collapse guard `isTransportCollapse` (`SK-QUAL-020`); `--self-consistency N` / `--sc-temperature T` (`SK-QUAL-017`)
+  - `src/runner.ts` — multi-dataset driver, CLI, lane loop, baseline + emit; `withExecRetry`-wraps scaffolded lanes; `--throttle-ms` (`SK-QUAL-012`), `--capacity-wait-ms` + transient-wall budget-stop `isChainTransientWall` (`SK-QUAL-013`); transport-collapse guard `isTransportCollapse` (`SK-QUAL-020`); `--self-consistency N` / `--sc-temperature T` (`SK-QUAL-017`)
   - `src/exec-retry.ts` — `withExecRetry` bounded retry on `exec_error` only (`SK-QUAL-009`)
   - `src/score.ts` — BIRD multiset/sequence-strict EX scorer + the Spider 2.0 multi-CSV port + `scoreOneSpider2` (`SK-QUAL-008`); executes all SQL via `src/sql-exec-child.ts`, a killable subprocess with a hard deadline (`SK-QUAL-021`)
   - `src/csv.ts` — minimal RFC-4180 CSV parser + type inference for gold CSVs (`SK-QUAL-008`)
@@ -40,7 +40,6 @@ when-to-load:
 - `packages/events/src/types.ts` — `FeatureEvalWeeklyEvent`, `FeatureEvalRegressionEvent`
 - `apps/events-worker/src/sinks/logsnag.ts` — `#north-star` channel mappings
 - `packages/llm/src/router.ts` — the system under test (calls `plan()` with `dialect: "sqlite"`)
-- `packages/llm/src/types.ts` — `PlanRequest.dialect` was widened to `"postgres" | "sqlite"` for SK-QUAL-001
 - `apps/api/src/ask/sql-validate.ts` — schema-fit checks the harness exercises
 
 ## Decisions
@@ -52,16 +51,15 @@ Two open benchmarks — BIRD Mini-Dev (500 SQLite questions, messy
 real-world schemas) and Spider 2.0-lite (SQLite subset only; the full-set
 BQ/Snowflake transpilation was rejected as a confound). Accuracy reports
 per router tier, never as one averaged number; results stay comparable
-to published research. The harness is a tool, not a CI gate
-(`SK-QUAL-002`).
+to published research. Cadence per [`SK-QUAL-002`](#sk-qual-002).
 
 ### SK-QUAL-003 — Three-dataset canon: BIRD-dev + Spider 2.0-lite (SQLite subset) + internal `db.create` eval (the third dataset is the one that matters most)
 
 **Body:** [`decisions/SK-QUAL-003-three-dataset-canon.md`](./decisions/SK-QUAL-003-three-dataset-canon.md).
 Three datasets in weighted order: (1) internal `db.create` accepted-answer eval
 (production-shape, internal-wins on disagreement); (2) BIRD-dev Mini-Dev (500
-SQLite — public, comparable; ~52.8% annotation errors per
-[arXiv:2601.08778](https://arxiv.org/abs/2601.08778)); (3) Spider 2.0-lite
+SQLite — public, comparable; ~52.8% annotation errors, see Open
+questions); (3) Spider 2.0-lite
 **SQLite subset only** — 135 `local###` rows, all scored via the
 [`SK-QUAL-008`](#sk-qual-008) multi-CSV evaluator.
 
@@ -164,10 +162,9 @@ Budget-stop fires on a **transient wall** (every attempt `rate_limited`,
 `circuit_open`, `network`, or `timeout` — config reasons stay out so an
 all-config outage still fails loudly per `SK-QUAL-020`), after one bounded
 `--capacity-wait-ms` wait-and-retry (workflows 65 s; default 0). Full-mode
-workflows cache the checkpoint by commit SHA so a re-dispatch resumes. Fixes
-the 2026-06-11 run that scored 246 breaker-wall rows as `no_sql` without a
-single LLM call, and (2026-07-11) the Spider run that scored 26/135
-capacity+transport walls as engine failures.
+workflows cache the checkpoint by commit SHA so a re-dispatch resumes.
+Evidence (the 2026-06-11 breaker wall + the 2026-07-08 Spider mixed wall)
+in the body.
 
 ### SK-QUAL-014 — Offline mismatch error-class classifier: bucket a run's loss mass so the §4 backlog is picked from evidence
 
@@ -211,14 +208,14 @@ questions** with time-stable gold + a **gold-executability invariant** (23/23
 execute, non-empty). `loadPersonaBench` materialises each schema to SQLite on
 demand (`--dataset persona-bench [--persona P1|P2]`), additive;
 `quality-eval-persona-bench.yml` dispatches it baseline-safe, ungated by
-`SK-QUAL-002`'s < 7-day rule. Growth toward the 50–100-q target continues.
+`SK-QUAL-002`'s < 7-day rule; 50–100-q growth target in the body.
 
 ### SK-QUAL-019 — persona-bench ranked golds must be tie-free (no false-negative under sequence-strict scoring)
 
 **Body:** [`decisions/SK-QUAL-019-tie-free-ranked-golds.md`](./decisions/SK-QUAL-019-tie-free-ranked-golds.md).
 `score.ts` is sequence-strict on `ORDER BY` golds, so an unbroken rank-key tie
-false-mismatches a correct prediction that orders the tie differently (q8 tied
-two facts at `recall_count = 2`). The `recalls` seed now gives distinct counts
+false-mismatches a correct prediction that orders the tie differently (q8, in
+the body). The `recalls` seed now gives distinct counts
 so every ranked gold is tie-free; a unit test asserts it (fixture-only, EX
 unaffected).
 
@@ -228,9 +225,8 @@ unaffected).
 `score.ts` never runs gold/predicted SQL in-process — each statement runs in a
 spawned child (`sql-exec-child.ts`) the parent SIGKILLs at `timeoutMs`, so a
 runaway query (cartesian join over a large fixture) scores `exec_error` /
-`gold_error` instead of freezing the runner's event loop. bun:sqlite's
-synchronous `.values()` is uninterruptible, so an in-process kill can itself
-hang; the subprocess is the only reliable interrupt.
+`gold_error` instead of freezing the runner's event loop — bun:sqlite's
+synchronous `.values()` is uninterruptible in-process (why in the body).
 
 ### SK-QUAL-020 — Transport-collapse guard: a chain unreachable end-to-end is an outage, not a scored 0%
 
@@ -250,12 +246,11 @@ suppressed — prevents an outage 0.00 from re-seeding the baseline.
 **Body:** [`decisions/SK-QUAL-022-frontier-lane-capability-budget.md`](./decisions/SK-QUAL-022-frontier-lane-capability-budget.md).
 The `frontier` / `agentic-frontier` lanes build their router with
 `plan: 30_000` (`FRONTIER_PLAN_TIMEOUT_MS`), not the 5 s production hot-path
-clamp the free lane keeps — the clamp aborted Sonnet 4.6 mid-body-read (run
-14, tagged `openrouter:parse` `no_sql`), measuring the clamp not the model
-([`SK-QUAL-004`](#sk-qual-004)'s ~77-82% SOTA intent). Paired with the
-`openai-compatible.ts` abort→`timeout` reclassification so any residual
-timeout lands in [`SK-QUAL-020`](#sk-qual-020)'s `NON_ENGINE_REASONS` instead
-of a spurious `no_sql`.
+clamp the free lane keeps — the clamp measured itself, not the model
+([`SK-QUAL-004`](#sk-qual-004)'s ~77-82% SOTA intent; run-14 evidence in the
+body). Paired with the `openai-compatible.ts` abort→`timeout`
+reclassification so a residual timeout lands in
+[`SK-QUAL-020`](#sk-qual-020)'s `NON_ENGINE_REASONS`, not a spurious `no_sql`.
 
 ### SK-QUAL-023 — Agent-memory-quality eval: four axes + an analytical-memory-vs-vector head-to-head
 

@@ -267,7 +267,7 @@ jobs:
     runs-on: ubuntu-latest
     # 150-question sample × free chain ≈ a few min; the ceiling absorbs a
     # fixture re-download + the bounded SK-QUAL-013 capacity waits. A
-    # budget stop (chain rate-limited) exits early.
+    # budget stop (transient wall) exits early.
     timeout-minutes: 45
     # Fixed smoke slice (SK-QUAL-011): same seed + limit every run so the
     # smoke EX is a stable run-to-run signal, not noise from a new slice.
@@ -383,7 +383,7 @@ jobs:
             if [ -n "$latest" ] && [ -f "$latest" ]; then
               jq -r '
                 "Run at: " + .run_at,
-                (if .resumable == true then "Resumable: true (chain rate-limited)" else "" end),
+                (if .resumable == true then "Resumable: true (transient wall)" else "" end),
                 "",
                 "| Lane | Match | Attempted | Smoke EX |",
                 "|---|---|---|---|",

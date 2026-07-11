@@ -168,13 +168,13 @@ function trimErr(err: unknown): string {
   return msg.slice(0, ERROR_MSG_CAP);
 }
 
-// SK-QUAL-011 — raised when a `plan()` throw means the whole provider
-// chain is rate-limited (free-tier daily cap), as opposed to a genuine
-// per-question failure. The runner catches it, checkpoints, and exits
-// resumable rather than recording a spurious `no_sql`.
+// SK-QUAL-011/SK-QUAL-013 — raised when a `plan()` throw means the whole
+// provider chain is transient-walled (capacity or transport), as opposed
+// to a genuine per-question failure. The runner catches it, checkpoints,
+// and exits resumable rather than recording a spurious `no_sql`.
 class BudgetStopError extends Error {
   constructor() {
-    super("budget stop: whole provider chain rate-limited");
+    super("budget stop: whole provider chain transient-walled");
     this.name = "BudgetStopError";
   }
 }
@@ -292,10 +292,10 @@ export function sampleQuestions(
 // gemini:http_4xx, …, mistral:network)`); here we lift each tag back out
 // and count it, so a run surfaces *why* the chain produced no SQL instead
 // of leaving 30+ raw strings for a reviewer to eyeball. A scored `no_sql`
-// always carries at least one answer-signal reason (`parse`/`http_*`/…) —
-// a chain exhausted purely by capacity/transport reasons budget-stops
-// (SK-QUAL-013) and never scores `no_sql` — so the buckets isolate the
-// genuine failures.
+// always carries at least one answer-signal (`parse`/`http_*`/…) or config
+// (`not_configured`/`auth_denied`) reason — a chain exhausted purely by
+// capacity/transport reasons budget-stops (SK-QUAL-013) and never scores
+// `no_sql` — so the buckets isolate the genuine failures.
 function noSqlReasons(rows: QuestionResult[]): Record<string, number> {
   const tally: Record<string, number> = {};
   for (const r of rows) {
@@ -741,8 +741,8 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
 
   const writer = opts.writeReport ?? writeReport;
 
-  // SK-QUAL-011/SK-QUAL-013 — budget stop: the chain is capacity-exhausted
-  // (rate-limited / breaker-walled). Keep the checkpoint, mark the report
+  // SK-QUAL-011/SK-QUAL-013 — budget stop: the chain is transient-walled
+  // (capacity or transport). Keep the checkpoint, mark the report
   // resumable, write it for inspection, and DON'T emit. The next dispatch
   // loads the checkpoint and finishes the remaining pairs.
   if (budgetStopped) {
@@ -916,7 +916,7 @@ if (import.meta.main) {
         // SK-QUAL-011 — budget stop. The workflow keys off this line (and
         // the report's `resumable: true`) to keep the checkpoint and
         // re-dispatch instead of treating the partial run as final.
-        console.info("  resumable           : true (chain rate-limited — checkpoint kept)");
+        console.info("  resumable           : true (transient wall — checkpoint kept)");
       }
       summarise(
         "free",
