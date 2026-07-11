@@ -50,17 +50,6 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   decision up. *(Full body in git history — collapsed for the D4 20 KB cap;
   recover at publish time.)*
 
-- **"You need to rotate an encryption key. You don't need a key-version
-  column."** slug `rotate-encryption-key-without-a-version-column` · venue
-  dev.to (#security #database #architecture) + r/programming + lobste.rs
-  (`security`) · security/architecture lesson (`GLOBAL-031` KEK-rotation).
-  Gist: put the KEK version in the self-describing ciphertext prefix
-  (`v1.…`→`v2.…`), not a `key_version` column — zero-migration rotation,
-  prefix-filterable stale rows without decrypting, two-key overlap window +
-  lazy re-wrap; the column only earns its keep if the sweep must find stale
-  rows blind, and the prefix already finds them. *(Full body in git history —
-  collapsed for the D4 20 KB cap; recover at publish time.)*
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -68,6 +57,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 44 — **https://nlqdb.com/blog/rotate-encryption-key-without-a-version-column/** — dev.to (#security #database #architecture) + r/programming + lobste.rs (`security`) · security/architecture lesson (`GLOBAL-031` KEK rotation — put the KEK version in the self-describing ciphertext prefix `nbe1.`→`nbe2.<v>.`, not a `key_version` column: zero-migration rotation, stale rows prefix-filterable without decrypting, two-key overlap + lazy re-wrap; the column only earns its keep if the sweep must find stale rows blind, and the prefix already finds them)
 - run 40 — **https://nlqdb.com/blog/text-to-sql-planner-told-wrong-dialect/** — dev.to (#sql #llm #database) + r/dataengineering + lobste.rs (`sql`) · engine/architecture lesson (byo-connect OQ (b) — the wrong-dialect bug is a hardcoded `dialect: "postgres"` literal + a union that never grew a `clickhouse` member; thread the row's engine into the field and widen the type so the compiler flags every hardcoded call site; twin of the validator post — generator + validator both assume engine #1, fix them together)
 - run 35 — **https://nlqdb.com/blog/postgres-validator-rejects-valid-clickhouse-sql/** — dev.to (#sql #clickhouse #security) + r/dataengineering + lobste.rs (`sql`) · engine/security lesson (`SK-MULTIENG-004` — a wrong-dialect parse failure means "wrong parser," not "dangerous query"; keep the dialect-agnostic destructive-verb allowlist authoritative, make the AST walk best-effort per engine)
 - run 31 — **https://nlqdb.com/blog/blog-without-a-feed-is-a-dead-end/** — dev.to (#webdev #seo #rss) + r/webdev + lobste.rs · distribution lesson (volume-vs-yield: a blog with no RSS feed is sealed to every machine that would redistribute it — feed readers + dev.to/Medium/Hashnode import-from-RSS with `rel=canonical`; fix is a ~40-line no-dependency RSS endpoint over the same typed data file; count the doors into your content, not the pages)
