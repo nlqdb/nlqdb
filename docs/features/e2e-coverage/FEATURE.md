@@ -100,18 +100,16 @@ when-to-load:
 - **Consequence in code:** Ruby tests use the standard `pending "…"` block; Rust tests carry `#[ignore = "ships with the SDK implementation"]`. Neither has a matching `e2e-*.yml` workflow today. The persona READMEs cross-link to these tests so contributors discover them when they pick up the SDK work; the SDK-landing PR adds the workflow alongside.
 - **Alternatives rejected:**
   - Wait until the SDK lands — repeats SK-E2E-005's drift problem at the surface level.
-  - Empty placeholder files — no contract; nothing for the implementer to satisfy.
-  - Documentation-only contract (FEATURE.md describes it) — falls out of sync with code; the test is the spec.
+  - Empty placeholder files or a docs-only contract — nothing executable for the implementer to satisfy; the test is the spec.
 
 ### SK-E2E-007 — Staging spin-up purges the fixture account's registry rows
 
 **Body:** [`decisions/SK-E2E-007-fixture-registry-purge-at-spinup.md`](./decisions/SK-E2E-007-fixture-registry-purge-at-spinup.md).
 Previews share prod's D1 control plane while the Neon `e2e` data plane is
-destroyed every run, so surviving fixture-account rows point at dead schemas
-(stale same-name pins fail as "Couldn't reach the database"; Suite C's
-cleanup walk grows unboundedly). `_e2e-staging.yml` purges the
-`test@example.com` rows right after the branch recreation; anon strays stay
-with the `SK-ANON-002` sweep.
+destroyed every run, so surviving fixture rows point at dead schemas —
+same-name pins fail as "Couldn't reach the database" and Suite C's cleanup
+walk grows unboundedly. `_e2e-staging.yml` purges the fixture account's rows
+right after the branch recreation.
 
 ## GLOBALs governing this feature
 
