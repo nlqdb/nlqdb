@@ -17,11 +17,11 @@ reverse.
   deterministic — `--sample-seed` picks a fixed slice from the full set
   via a seeded shuffle, sorted by id — so "skip done" is a set lookup and
   a resumed run produces the same scoring as a single-shot run. When the
-  whole provider chain is capacity-exhausted (`AllProvidersFailedError`
-  with every attempt `rate_limited` **or** `circuit_open` — the predicate
-  [`SK-QUAL-013`](./SK-QUAL-013-capacity-honest-budget-stop.md) widened
-  after the original all-`rate_limited` check missed the post-429 breaker
-  wall; breaker semantics per
+  whole provider chain is transient-walled (`AllProvidersFailedError`
+  where every attempt carries a transient reason — the predicate is
+  owned, and has twice been widened, by
+  [`SK-QUAL-013`](./SK-QUAL-013-capacity-honest-budget-stop.md); breaker
+  semantics per
   [`SK-LLM-030`](../../llm-router/decisions/SK-LLM-030-rate-limit-aware-failover.md)),
   the runner treats it as a **budget stop**: it keeps the
   checkpoint, marks the report `resumable: true`, **does not emit**, and
@@ -45,7 +45,7 @@ reverse.
 - **Consequence in code:** `tools/eval/src/checkpoint.ts` (load / append /
   complete / `checkpointKey` / `checkpointPath`); `runner.ts` gains
   `--sample-seed` + deterministic `sampleQuestions`, checkpoint
-  skip/append/complete, the `BudgetStopError` + `isChainCapacityExhausted`
+  skip/append/complete, the `BudgetStopError` + `isChainTransientWall`
   detector (`SK-QUAL-013`), a `resumable?: boolean` on `EvalReport`, and a `runAt`
   test-injection seam (so a resumed run and a single-shot run compare
   identically modulo wall-clock). Both workflow modes persist their

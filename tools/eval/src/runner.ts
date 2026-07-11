@@ -168,32 +168,15 @@ function trimErr(err: unknown): string {
   return msg.slice(0, ERROR_MSG_CAP);
 }
 
-// SK-QUAL-011 — raised when a `plan()` throw means the whole provider
-// chain is rate-limited (free-tier daily cap), as opposed to a genuine
-// per-question failure. The runner catches it, checkpoints, and exits
-// resumable rather than recording a spurious `no_sql`.
+// SK-QUAL-011/SK-QUAL-013 — raised when a `plan()` throw means the whole
+// provider chain is transient-walled (capacity or transport), as opposed
+// to a genuine per-question failure. The runner catches it, checkpoints,
+// and exits resumable rather than recording a spurious `no_sql`.
 class BudgetStopError extends Error {
   constructor() {
-    super("budget stop: whole provider chain rate-limited");
+    super("budget stop: whole provider chain transient-walled");
     this.name = "BudgetStopError";
   }
-}
-
-// SK-QUAL-013 / SK-LLM-030 — a chain exhausted purely by rate limits
-// surfaces as `AllProvidersFailedError` where every attempt is
-// `rate_limited` or `circuit_open` (a 429 opens the breaker for the
-// server's `Retry-After` window, so the questions *after* the first 429
-// see `circuit_open`, not `rate_limited` — the 2026-06-11 500-q run
-// recorded 246 all-`circuit_open` rows as `no_sql` without a single LLM
-// call). Capacity exhaustion is a pause (wait, then budget-stop +
-// resume), never a scored `no_sql`. Mixed reasons (some 5xx / network /
-// parse) are genuine failures, not a budget stop.
-function isChainCapacityExhausted(err: unknown): boolean {
-  return (
-    err instanceof AllProvidersFailedError &&
-    err.attempts.length > 0 &&
-    err.attempts.every((a) => a.reason === "rate_limited" || a.reason === "circuit_open")
-  );
 }
 
 // SK-QUAL-020 — `FailoverReason`s that mean the chain was never *reachable
@@ -201,12 +184,42 @@ function isChainCapacityExhausted(err: unknown): boolean {
 // engine signal: `network`/`timeout` (transport), `not_configured` (no key
 // registered), `auth_denied` (401/403 — key revoked/billing unlinked,
 // SK-LLM-039). The capacity pair (`rate_limited`/`circuit_open`) is
-// deliberately excluded — SK-QUAL-013's budget-stop owns it and it never
-// reaches a scored `no_sql`. The answer-signal reasons (`parse`,
-// `http_4xx`, `http_5xx`, `provider_error`, `unknown`) are NOT here, so a
-// run that fails because the model returned non-SQL is never misread as an
-// outage.
+// deliberately excluded — SK-QUAL-013's budget-stop owns it (and the
+// transient-transport subset, via `isChainTransientWall` below), so those
+// walls pause instead of reaching a scored `no_sql`. The answer-signal
+// reasons (`parse`, `http_4xx`, `http_5xx`, `provider_error`, `unknown`)
+// are NOT here, so a run that fails because the model returned non-SQL is
+// never misread as an outage.
 const NON_ENGINE_REASONS = new Set(["network", "timeout", "not_configured", "auth_denied"]);
+
+// SK-QUAL-013 / SK-LLM-030 — the reasons that make a whole-chain wall
+// *transient*: capacity (`rate_limited`, or `circuit_open` after a 429
+// opens the breaker for the server's `Retry-After` window — the
+// 2026-06-11 500-q run recorded 246 all-`circuit_open` rows as `no_sql`
+// without a single LLM call) plus transient transport (`network`,
+// `timeout` — a provider blip heals like a rate window does). The config
+// reasons (`not_configured`, `auth_denied`) are deliberately NOT here:
+// they never self-recover, so pausing on them would resume-loop forever —
+// they stay scored and the SK-QUAL-020 run-level collapse fails the run
+// loudly instead.
+const TRANSIENT_WALL_REASONS = new Set(["rate_limited", "circuit_open", "network", "timeout"]);
+
+// SK-QUAL-013 / SK-QUAL-020 — a chain exhausted purely by transient,
+// zero-engine-signal reasons. Such a wall is a pause (wait, then
+// budget-stop + resume), never a scored `no_sql`: the 2026-07-08 Spider
+// full run scored 26/135 rows `no_sql` where every attempt was
+// capacity-or-transport — one `network` attempt in an otherwise
+// breaker-walled chain demoted the pause to a scored engine failure. Any
+// answer-signal reason (`parse`, `http_4xx`, `http_5xx`, `provider_error`,
+// `unknown`) means a model was reached and failed — a genuine `no_sql`,
+// not a budget stop.
+function isChainTransientWall(err: unknown): boolean {
+  return (
+    err instanceof AllProvidersFailedError &&
+    err.attempts.length > 0 &&
+    err.attempts.every((a) => TRANSIENT_WALL_REASONS.has(a.reason))
+  );
+}
 
 // SK-QUAL-020 — a transport collapse: every lane that ran produced *zero*
 // engine signal (no match / mismatch / exec_error) and every one of its
@@ -279,9 +292,10 @@ export function sampleQuestions(
 // gemini:http_4xx, …, mistral:network)`); here we lift each tag back out
 // and count it, so a run surfaces *why* the chain produced no SQL instead
 // of leaving 30+ raw strings for a reviewer to eyeball. A scored `no_sql`
-// always carries at least one non-capacity reason — a chain exhausted
-// purely by rate-limit/circuit-open budget-stops (SK-QUAL-013) and never
-// scores `no_sql` — so the buckets isolate the genuine failures.
+// always carries at least one answer-signal (`parse`/`http_*`/…) or config
+// (`not_configured`/`auth_denied`) reason — a chain exhausted purely by
+// capacity/transport reasons budget-stops (SK-QUAL-013) and never scores
+// `no_sql` — so the buckets isolate the genuine failures.
 function noSqlReasons(rows: QuestionResult[]): Record<string, number> {
   const tally: Record<string, number> = {};
   for (const r of rows) {
@@ -465,19 +479,20 @@ async function runOneQuestion(
   if (selfConsistency && selfConsistency.samples >= 2) {
     // `samplePlans` swallows a per-draw throw into a no-vote empty sample so
     // N-1 good draws still reach consensus; we count the draws that failed
-    // because the *whole* chain is capacity-exhausted (SK-LLM-030). If every
-    // draw hit that, the chain is down — budget-stop + resume (SK-QUAL-013)
-    // rather than scoring a spurious no_sql.
+    // because the *whole* chain was capacity- or transport-walled
+    // (SK-LLM-030 / SK-QUAL-020). If every draw hit that, the chain is
+    // down — budget-stop + resume (SK-QUAL-013) rather than scoring a
+    // spurious no_sql.
     let samples: Awaited<ReturnType<typeof samplePlans>> = [];
     let waitedForCapacity = false;
     for (;;) {
-      let capacityFails = 0;
+      let transientWallFails = 0;
       samples = await samplePlans(
         async (req) => {
           try {
             return await lane.router.plan(req);
           } catch (err) {
-            if (isChainCapacityExhausted(err)) capacityFails++;
+            if (isChainTransientWall(err)) transientWallFails++;
             throw err;
           }
         },
@@ -489,10 +504,11 @@ async function runOneQuestion(
         },
         selfConsistency,
       );
-      if (capacityFails < selfConsistency.samples) break;
-      // Every draw hit a capacity-exhausted chain (SK-LLM-030). Honour the
-      // SK-QUAL-013 one bounded wait-and-retry, then budget-stop + resume —
-      // the same capacity-honest contract the greedy path uses below.
+      if (transientWallFails < selfConsistency.samples) break;
+      // Every draw hit a capacity-/transport-walled chain (SK-LLM-030 /
+      // SK-QUAL-020). Honour the SK-QUAL-013 one bounded wait-and-retry,
+      // then budget-stop + resume — the same capacity-honest contract the
+      // greedy path uses below.
       if (capacityWaitMs > 0 && !waitedForCapacity && waitBudget.remaining > 0) {
         waitedForCapacity = true;
         waitBudget.remaining--;
@@ -553,12 +569,12 @@ async function runOneQuestion(
       });
       break;
     } catch (err) {
-      // SK-QUAL-013 — a rate-limit-exhausted chain is a capacity pause,
-      // not a question failure: wait once (a per-minute window + the 60 s
-      // breaker cooldown recover), then budget-stop so the runner
-      // checkpoints and resumes on the next dispatch rather than
-      // recording a spurious no_sql.
-      if (isChainCapacityExhausted(err)) {
+      // SK-QUAL-013 — a chain exhausted purely by capacity/transport
+      // reasons is a pause, not a question failure: wait once (a
+      // per-minute window + the 60 s breaker cooldown recover), then
+      // budget-stop so the runner checkpoints and resumes on the next
+      // dispatch rather than recording a spurious no_sql.
+      if (isChainTransientWall(err)) {
         if (capacityWaitMs > 0 && !waitedForCapacity && waitBudget.remaining > 0) {
           waitedForCapacity = true;
           waitBudget.remaining--;
@@ -725,8 +741,8 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
 
   const writer = opts.writeReport ?? writeReport;
 
-  // SK-QUAL-011/SK-QUAL-013 — budget stop: the chain is capacity-exhausted
-  // (rate-limited / breaker-walled). Keep the checkpoint, mark the report
+  // SK-QUAL-011/SK-QUAL-013 — budget stop: the chain is transient-walled
+  // (capacity or transport). Keep the checkpoint, mark the report
   // resumable, write it for inspection, and DON'T emit. The next dispatch
   // loads the checkpoint and finishes the remaining pairs.
   if (budgetStopped) {
@@ -900,7 +916,7 @@ if (import.meta.main) {
         // SK-QUAL-011 — budget stop. The workflow keys off this line (and
         // the report's `resumable: true`) to keep the checkpoint and
         // re-dispatch instead of treating the partial run as final.
-        console.info("  resumable           : true (chain rate-limited — checkpoint kept)");
+        console.info("  resumable           : true (transient wall — checkpoint kept)");
       }
       summarise(
         "free",
@@ -944,6 +960,6 @@ export const _testing = {
   introspectSchema,
   parseDatasetFlag,
   sampleQuestions,
-  isChainCapacityExhausted,
+  isChainTransientWall,
   isTransportCollapse,
 };

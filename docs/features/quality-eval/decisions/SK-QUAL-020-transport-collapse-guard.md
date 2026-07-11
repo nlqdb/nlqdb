@@ -18,7 +18,11 @@ budget-stop this is the connectivity sibling of),
   checkpoint** (`completeCheckpoint`), and returns **before** the baseline
   diff and event emit; the CLI then exits non-zero. The capacity pair
   (`rate_limited` / `circuit_open`) is excluded — `SK-QUAL-013`'s budget-stop
-  owns it and it never reaches a scored `no_sql`.
+  owns it and it never reaches a scored `no_sql`. Since 2026-07-11 that
+  budget-stop also owns the *transient* transport pair (`network`/`timeout`
+  — `isChainTransientWall`), so this run-level guard's live catch is the
+  **config outage** (`not_configured`/`auth_denied` — the walls that never
+  self-recover and must fail loudly, not resume-loop).
 
 - **Core value:** Bullet-proof
 

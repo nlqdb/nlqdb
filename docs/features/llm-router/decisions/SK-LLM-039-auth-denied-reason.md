@@ -57,8 +57,8 @@ HTTP-status → `FailoverReason` mapping introduced by
   on `BreakerState`) and surfaces `state.openReason ?? "circuit_open"` on
   the skip. The eval's
   `no_sql_reasons` bucketing (`tools/eval/src/runner.ts`) lifts the tag
-  generically, so a run still surfaces `gemini:auth_denied`; it is neither
-  `rate_limited` nor `circuit_open`, so `isChainCapacityExhausted` still
+  generically, so a run still surfaces `gemini:auth_denied`; it is not
+  in `isChainTransientWall`'s transient union, so the eval still
   scores it as a genuine failure (never a budget-stop pause). The change
   is inert when a key works (a 200 never trips the breaker), so it is safe
   regardless of whether prod's runtime key matches the dead CI key.

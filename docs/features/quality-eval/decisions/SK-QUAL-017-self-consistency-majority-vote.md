@@ -82,7 +82,7 @@ literal/date axes falsified value-retrieval standalone.
   answers — it never mis-scores a winner, only potentially understates the
   Spider2 EX gain; revisit if Spider2 SC accuracy matters.) It folds into the existing machinery: an
   all-empty vote records `no_sql` (the greedy empty-plan outcome), a chain that
-  is capacity-exhausted (SK-LLM-030) on **every** draw honours the same one
+  is transient-walled (SK-LLM-030 / SK-QUAL-013) on **every** draw honours the same one
   bounded `--capacity-wait-ms` wait-and-retry then raises `BudgetStopError` →
   checkpoint + resume (SK-QUAL-013, the greedy path's contract), each row carries
   `attempts: N` so `total_attempts` reflects the N× quota cost, and the

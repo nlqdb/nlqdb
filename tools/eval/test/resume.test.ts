@@ -14,7 +14,7 @@ import type { Lane } from "../src/lanes.ts";
 import { _testing, runEval } from "../src/runner.ts";
 import type { EvalQuestion, EvalReport } from "../src/types.ts";
 
-const { sampleQuestions, isChainCapacityExhausted } = _testing;
+const { sampleQuestions, isChainTransientWall } = _testing;
 
 const QUESTIONS = [
   {
@@ -101,30 +101,67 @@ describe("SK-QUAL-011 — sampleQuestions", () => {
   });
 });
 
-describe("SK-QUAL-013 — isChainCapacityExhausted", () => {
+describe("SK-QUAL-013 — isChainTransientWall", () => {
   it("is true when every attempt is rate_limited or circuit_open", () => {
-    expect(isChainCapacityExhausted(RATE_LIMITED)).toBe(true);
+    expect(isChainTransientWall(RATE_LIMITED)).toBe(true);
     // The post-429 shape: the breaker opened on an earlier question, so
     // later questions see circuit_open — same capacity exhaustion.
     const breakerWall = new AllProvidersFailedError("wall", [
       { provider: "gemini", reason: "circuit_open", error: undefined },
       { provider: "groq", reason: "circuit_open", error: undefined },
     ]);
-    expect(isChainCapacityExhausted(breakerWall)).toBe(true);
+    expect(isChainTransientWall(breakerWall)).toBe(true);
     const mixedCapacity = new AllProvidersFailedError("mixed-capacity", [
       { provider: "gemini", reason: "rate_limited", error: new Error("429") },
       { provider: "groq", reason: "circuit_open", error: undefined },
     ]);
-    expect(isChainCapacityExhausted(mixedCapacity)).toBe(true);
+    expect(isChainTransientWall(mixedCapacity)).toBe(true);
   });
 
-  it("is false for genuine failures (any non-capacity reason) and non-chain errors", () => {
+  it("is true when transport reasons (SK-QUAL-020) mix into a capacity wall", () => {
+    // The 2026-07-08 Spider shape: breaker-walled chain with one provider
+    // failing on `network` — zero engine signal end-to-end, so it must
+    // pause, not score no_sql.
+    const capacityPlusTransport = new AllProvidersFailedError("wall+transport", [
+      { provider: "cerebras", reason: "circuit_open", error: undefined },
+      { provider: "gemini", reason: "rate_limited", error: new Error("429") },
+      { provider: "workers-ai", reason: "network", error: new Error("fetch failed") },
+      { provider: "mistral", reason: "timeout", error: new Error("timed out") },
+    ]);
+    expect(isChainTransientWall(capacityPlusTransport)).toBe(true);
+    const allTransport = new AllProvidersFailedError("transport-only", [
+      { provider: "gemini", reason: "network", error: new Error("fetch failed") },
+      { provider: "groq", reason: "timeout", error: new Error("timed out") },
+    ]);
+    expect(isChainTransientWall(allTransport)).toBe(true);
+  });
+
+  it("is false for config reasons (never self-recover — must stay loud, SK-QUAL-020)", () => {
+    const capacityPlusConfig = new AllProvidersFailedError("wall+config", [
+      { provider: "cerebras", reason: "circuit_open", error: undefined },
+      { provider: "groq", reason: "not_configured", error: undefined },
+    ]);
+    expect(isChainTransientWall(capacityPlusConfig)).toBe(false);
+    const authWall = new AllProvidersFailedError("auth-wall", [
+      { provider: "openrouter", reason: "auth_denied", error: new Error("401") },
+    ]);
+    expect(isChainTransientWall(authWall)).toBe(false);
+  });
+
+  it("is false for genuine failures (any answer-signal reason) and non-chain errors", () => {
     const mixed = new AllProvidersFailedError("mixed", [
       { provider: "gemini", reason: "rate_limited", error: new Error("429") },
       { provider: "groq", reason: "http_5xx", error: new Error("503") },
     ]);
-    expect(isChainCapacityExhausted(mixed)).toBe(false);
-    expect(isChainCapacityExhausted(new Error("plain"))).toBe(false);
+    expect(isChainTransientWall(mixed)).toBe(false);
+    // A `parse` attempt means a model was reached and answered non-SQL —
+    // engine signal, so the row scores no_sql instead of pausing.
+    const capacityPlusParse = new AllProvidersFailedError("wall+parse", [
+      { provider: "cerebras", reason: "circuit_open", error: undefined },
+      { provider: "workers-ai", reason: "parse", error: new Error("not SQL") },
+    ]);
+    expect(isChainTransientWall(capacityPlusParse)).toBe(false);
+    expect(isChainTransientWall(new Error("plain"))).toBe(false);
   });
 });
 

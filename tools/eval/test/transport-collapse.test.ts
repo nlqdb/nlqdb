@@ -143,15 +143,18 @@ const QUESTIONS = [
 
 // The real router stamps this exact message; `noSqlReasons` parses the tags
 // out of the trailing `(...)`, so the e2e path exercises the real parse.
+// A CONFIG outage (revoked keys), not a transient one — an all-`network`
+// wall now pauses per-question (isChainTransientWall, SK-QUAL-013) and
+// never reaches the run-level collapse.
 function unreachable(): AllProvidersFailedError {
   return new AllProvidersFailedError(
-    "llm.plan: all providers in chain failed (cerebras:network, gemini:network, groq:network, openrouter:network, mistral:network)",
+    "llm.plan: all providers in chain failed (cerebras:auth_denied, gemini:auth_denied, groq:not_configured, openrouter:auth_denied, mistral:auth_denied)",
     [
-      { provider: "cerebras", reason: "network", error: new Error("ECONNRESET") },
-      { provider: "gemini", reason: "network", error: new Error("ECONNRESET") },
-      { provider: "groq", reason: "network", error: new Error("ECONNRESET") },
-      { provider: "openrouter", reason: "network", error: new Error("ECONNRESET") },
-      { provider: "mistral", reason: "network", error: new Error("ECONNRESET") },
+      { provider: "cerebras", reason: "auth_denied", error: new Error("401") },
+      { provider: "gemini", reason: "auth_denied", error: new Error("401") },
+      { provider: "groq", reason: "not_configured", error: undefined },
+      { provider: "openrouter", reason: "auth_denied", error: new Error("401") },
+      { provider: "mistral", reason: "auth_denied", error: new Error("401") },
     ],
   );
 }
@@ -221,9 +224,37 @@ describe("SK-QUAL-020 — runEval transport collapse", () => {
     const free = report.lanes.find((l) => l.lane === "free");
     expect(free?.execution_accuracy).toBe(0);
     expect(free?.no_sql).toBe(2);
-    expect(free?.no_sql_reasons?.["gemini:network"]).toBe(2);
+    expect(free?.no_sql_reasons?.["gemini:auth_denied"]).toBe(2);
     // The poisoned all-no_sql checkpoint must be dropped so the re-run is fresh.
     expect(existsSync(checkpointPath(outDir, "bird-mini-dev-sqlite", "full"))).toBe(false);
+  });
+
+  it("an all-`network` wall pauses (SK-QUAL-013 budget-stop), never scoring no_sql", async () => {
+    // The transient-transport sibling of the capacity wall: the chain was
+    // unreachable for a moment, not misconfigured — resumable, checkpoint
+    // kept, no transport_failed flag, nothing scored.
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      buildLanes: () => [
+        freeLane(async () => {
+          throw new AllProvidersFailedError(
+            "llm.plan: all providers in chain failed (gemini:network, groq:network)",
+            [
+              { provider: "gemini", reason: "network", error: new Error("ECONNRESET") },
+              { provider: "groq", reason: "network", error: new Error("ECONNRESET") },
+            ],
+          );
+        }),
+      ],
+    });
+    expect(report.resumable).toBe(true);
+    expect(report.transport_failed).toBeUndefined();
+    const free = report.lanes.find((l) => l.lane === "free");
+    expect(free?.no_sql ?? 0).toBe(0);
+    // Nothing was scored, so there is no poisoned row to replay on resume.
+    expect(report.results).toHaveLength(0);
   });
 
   it("does NOT flag a run that produced engine signal (one real mismatch)", async () => {

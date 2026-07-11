@@ -342,7 +342,7 @@ jobs:
             if [ -n "$latest" ] && [ -f "$latest" ]; then
               jq -r '
                 "Run at: " + .run_at,
-                (if .resumable == true then "Resumable: true (chain rate-limited)" else "" end),
+                (if .resumable == true then "Resumable: true (transient wall)" else "" end),
                 "",
                 "| Lane | Match | Attempted | Smoke EX |",
                 "|---|---|---|---|",
