@@ -54,7 +54,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "What a decided-but-unmarked bullet does to a reader" },
       {
         kind: "p",
-        text: "A reader who hits that bullet does one of two bad things. Either they treat the settled call as unsettled and re-litigate it — burning a design discussion on a question someone already closed — or they build on top of a \"maybe\" that was actually a \"yes,\" and their design inherits a hedge that no longer exists. Both cost more than an honestly open question would, because the log *looks* authoritative while pointing nowhere. A vague decision documented is worse than none.",
+        text: 'A reader who hits that bullet does one of two bad things. Either they treat the settled call as unsettled and re-litigate it — burning a design discussion on a question someone already closed — or they build on top of a "maybe" that was actually a "yes," and their design inherits a hedge that no longer exists. Both cost more than an honestly open question would, because the log *looks* authoritative while pointing nowhere. A vague decision documented is worse than none.',
       },
       { kind: "h2", text: "Two moves fix it" },
       {
@@ -72,7 +72,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         kind: "p",
-        text: "The case-insensitivity is not a nitpick — it's the difference between a metric and a mood. We track this count as a scorecard row, and the first version drifted for exactly that reason: two agents marked resolutions with different capitalization, the grep saw only one, and the \"debt\" number moved without any question changing state. Pin the counting method next to the number it produces.",
+        text: 'The case-insensitivity is not a nitpick — it\'s the difference between a metric and a mood. We track this count as a scorecard row, and the first version drifted for exactly that reason: two agents marked resolutions with different capitalization, the grep saw only one, and the "debt" number moved without any question changing state. Pin the counting method next to the number it produces.',
       },
       { kind: "h2", text: "Why a count, and not a cleanup day" },
       {

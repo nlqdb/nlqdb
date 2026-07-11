@@ -239,10 +239,13 @@ describe("SK-QUAL-020 — runEval transport collapse", () => {
       outDir,
       buildLanes: () => [
         freeLane(async () => {
-          throw new AllProvidersFailedError("llm.plan: all providers in chain failed (gemini:network, groq:network)", [
-            { provider: "gemini", reason: "network", error: new Error("ECONNRESET") },
-            { provider: "groq", reason: "network", error: new Error("ECONNRESET") },
-          ]);
+          throw new AllProvidersFailedError(
+            "llm.plan: all providers in chain failed (gemini:network, groq:network)",
+            [
+              { provider: "gemini", reason: "network", error: new Error("ECONNRESET") },
+              { provider: "groq", reason: "network", error: new Error("ECONNRESET") },
+            ],
+          );
         }),
       ],
     });
