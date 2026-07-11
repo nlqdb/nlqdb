@@ -65,6 +65,21 @@ import type {
 // filters into HAVING (which would scan/aggregate more rows for the same
 // answer, a perf + correctness foothold).
 //
+// SK-LLM-044 — the entity-identification projection bullet targets the
+// dominant *recoverable* Spider 2.0-lite loss class (2026-07-11 canonical
+// run, offline result-shape bucketing over all 98 non-matches): 52 execute
+// to the exact gold row count but fail on column values, and the
+// directive-addressable core is projection identity — the model answers a
+// "which/top-N <entity>" goal with the surrogate id where gold carries the
+// human-readable name (local026: bowler id 294 vs gold "P Awana"), or
+// omits an explicitly requested attribute outright (local023: asked for
+// avg-runs-per-match AND batting average, returned one). Safe on both
+// scorers: Spider's comparator only needs every gold column to find a
+// matching predicted column, and BIRD's positional scorer follows the
+// goal's literal ask — the bullet ties projection to what the goal
+// requests and never licenses unrequested extras (the SK-LLM-027 bullet
+// still governs those).
+//
 // SK-LLM-035 — the numeric-text-cast bullet targets "Implicit Type Conversion"
 // (C1 in the same arXiv:2501.09310 taxonomy), orthogonal to the SK-LLM-027
 // REAL-cast-ratio rule: that rule casts an integer/integer *division* to avoid
@@ -83,6 +98,7 @@ export const PLAN_DIRECTIVES = [
   "When the goal includes an `Evidence:` block, treat it as authoritative annotator context — apply the formulas and column hints it names.",
   "Select exactly the columns the goal asks for, and only those — extra id/name/descriptive columns change the result set and fail execution-accuracy.",
   "Return each attribute the goal names as its own column — do not concatenate columns into one value (e.g. first_name || ' ' || last_name) unless the goal explicitly asks for a single combined string; concatenation collapses the requested columns into one and fails the per-column result set.",
+  "When the goal asks to identify, list, or rank entities (which/who/top N <entity>…), return the column that names the entity — the human-readable name, JOINing to its naming table when the queried table carries only a surrogate id/code — and add the id or other attributes only as the goal requests them; a metric-only or id-only answer omits the requested identity. Project every attribute a multi-part goal explicitly asks for — never a subset.",
   "For a ratio or percentage of two integer columns, cast one operand to REAL (e.g. CAST(x AS REAL) / y) so the division is not integer-truncated.",
   "When the schema declares a column as TEXT but the goal compares, orders, or takes the min/max of it numerically, cast it to a number (CAST(<col> AS REAL)) — a TEXT column is compared lexicographically (so '100' sorts before '9' and a plain ORDER BY, >, or MIN/MAX mis-ranks); the cast is harmless when the values are already numeric.",
   "When selecting a single extreme row by ordering (ORDER BY <col> ... LIMIT), exclude NULLs in the ordered column (WHERE <col> IS NOT NULL) — a NULL is never the intended extreme value, and in SQLite a NULL sorts before every value, so an ascending LIMIT would return one as a false minimum.",

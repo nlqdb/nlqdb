@@ -223,6 +223,10 @@ added latency on any succeeding call.
 
 **Body:** [`decisions/SK-LLM-043-single-column-projection-directive.md`](./decisions/SK-LLM-043-single-column-projection-directive.md). One `PLAN_DIRECTIVES` bullet, the projection sibling of [`SK-LLM-027`](#sk-llm-027): return each requested attribute as its own column, don't fuse them with `||` unless the goal explicitly asks for a combined string. Evidence-picked (`SK-QUAL-014` analyzer on BIRD baseline), zero regression floor; prompt-only.
 
+### SK-LLM-044 — Entity-identification projection directive in the planner prompt (name over surrogate id; no subset answers)
+
+**Body:** [`decisions/SK-LLM-044-entity-identification-projection-directive.md`](./decisions/SK-LLM-044-entity-identification-projection-directive.md). One `PLAN_DIRECTIVES` bullet after [`SK-LLM-043`](#sk-llm-043): an identify/list/rank-entities goal projects the entity's human-readable *name* column (JOIN to the naming table when the fact table carries only a surrogate id), ids/attributes only as the goal requests them, and a multi-part goal gets every requested attribute — never a subset. Evidence-picked on the 2026-07-11 canonical Spider run's offline result-shape bucketing (52/98 non-matches at exact gold row count; the id-for-name + omitted-attribute core ≈ 10–12 rows); prompt-only.
+
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
 **Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md). `SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows first, FK values present, NOT-NULL complete); deterministic no-500 floor is [`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md).
