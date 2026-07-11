@@ -54,6 +54,16 @@ The Gemini-lockout / failover-legibility arc — falsify the assumed cause, make
 *Reviewer notes: numbers sourced from `tools/eval/baseline-2026-06-15.json`
 (2026-06-12 canonical run). Best posted weekday morning US-East.*
 
+## One-line titles (runs 122–128) — bodies in git history
+
+- run 128 — dev.to / r/PostgreSQL / r/SaaS: "Neon's MCP server lets your coding agent run your database. That's not the same as your app answering a question."
+- run 127 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no MEDIAN(). Here's the query you write instead — and the choice that changes the answer."
+- run 126 — dev.to / r/LLMDevs / r/LangChain: "LlamaIndex's text-to-SQL runs the SQL the model wrote. The docs tell you that; the demo doesn't."
+- run 125 — dev.to / r/SQL / r/PostgreSQL: "LAG() is the whole month-over-month growth query. The self-join you were about to write is the bug."
+- run 124 — dev.to / r/Python / r/dataengineering: "PandasAI runs generated Python to answer your question. That's the feature and the footgun."
+- run 123 — dev.to / r/SQL / r/PostgreSQL: "The running-total query keeps every row. That's the part GROUP BY can't do."
+- run 122 — dev.to / r/SQL / r/PostgreSQL: "Postgres has no PIVOT keyword. Here's the query you write instead."
+
 ## One-line gists (runs 51–52, 56–66) — bodies in git history
 
 Moved from the queue's collapsed list to hold that doc under the 20 KB cap (D4).

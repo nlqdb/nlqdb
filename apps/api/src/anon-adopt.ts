@@ -32,8 +32,26 @@
 // reads it and pins the DB via `?db=<id>` so the chat lands on the
 // adopted DB without waiting for the LeftRail's `/v1/databases` fetch.
 
+// SK-ANON-003 (amended 2026-07-11) — since least-privilege exec landed
+// (`SET LOCAL ROLE tenant_<hash>` + a tenant-literal RLS predicate,
+// db-create provision), the D1 tenant flip alone leaves an adopted DB
+// permanently unqueryable: exec derives the role from the ADOPTING
+// tenant, but the schema's grants, the `WITH SET` role membership, and
+// the `tenant_isolation` USING literal all still name the anon creator.
+// Adoption therefore also runs a constant-size Postgres ACL retarget
+// per migrated hosted DB (`retargetAdoptedDbAcl`) — grants + policy
+// rewrite only, still no data move.
+
+import { trace } from "@opentelemetry/api";
 import { adoptApiKeys } from "./api-keys.ts";
+import {
+  assertSafeIdentifier,
+  escapeSqlLiteral,
+  stripDbPrefix,
+} from "./db-create/neon-provision.ts";
+import type { PgClient, PgTransactionStatement } from "./db-create/types.ts";
 import { sha256Hex } from "./principal.ts";
+import { assertTenantRoleName, tenantRoleName } from "./tenant-role.ts";
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
 
@@ -41,10 +59,79 @@ export type AdoptResult =
   | { ok: true; adopted: boolean; dbId: string | null }
   | { ok: false; reason: "invalid_token" | "token_taken" | "internal" };
 
+// The Postgres side of adoption for one hosted DB. Injectable so unit
+// tests stub it; production callers pass `makeAclRetarget(env)`.
+export type AclRetarget = (dbId: string, newTenantId: string) => Promise<void>;
+
+// Statement list that re-points a hosted schema's ACL at the adopting
+// tenant: role-if-missing + USAGE/DML/sequence grants + the `WITH SET`
+// membership exec needs for `SET LOCAL ROLE`, then an `ALTER POLICY`
+// per table so the RLS USING literal names the new tenant (it was
+// baked with the anon creator's id at provision time). Mirrors the
+// provision batch in `db-create/neon-provision.ts` — same identifier
+// guards, same role-name shape.
+export function buildRetargetStatements(
+  schemaName: string,
+  newTenantId: string,
+  roleName: string,
+  policyTables: string[],
+): PgTransactionStatement[] {
+  assertSafeIdentifier(schemaName, "schemaName");
+  assertTenantRoleName(roleName);
+  const tenantLiteral = escapeSqlLiteral(newTenantId);
+  const statements: PgTransactionStatement[] = [
+    // ALTER POLICY takes an ACCESS EXCLUSIVE lock; bound the wait so a
+    // long-running query on the adopted DB can't hold the sign-in path
+    // open (same 30 s ceiling as the provision batch, SK-HDC-010).
+    { sql: "SET LOCAL statement_timeout = '30s'" },
+    {
+      sql: `DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${roleName}') THEN
+              CREATE ROLE "${roleName}";
+            END IF;
+          END $$`,
+    },
+    { sql: `GRANT USAGE ON SCHEMA "${schemaName}" TO "${roleName}"` },
+    {
+      sql: `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "${schemaName}" TO "${roleName}"`,
+    },
+    { sql: `GRANT USAGE ON ALL SEQUENCES IN SCHEMA "${schemaName}" TO "${roleName}"` },
+    { sql: `GRANT "${roleName}" TO CURRENT_USER WITH SET TRUE` },
+  ];
+  for (const table of policyTables) {
+    assertSafeIdentifier(table, "policyTable");
+    statements.push({
+      sql:
+        `ALTER POLICY tenant_isolation ON "${schemaName}"."${table}" ` +
+        `USING (current_setting('app.tenant_id', true) = '${tenantLiteral}')`,
+    });
+  }
+  return statements;
+}
+
+// Runs the retarget for one adopted hosted DB: one catalog read (which
+// tables carry the `tenant_isolation` policy) + one transaction.
+// Idempotent — every statement re-applies cleanly on a replay.
+export async function retargetAdoptedDbAcl(
+  pg: PgClient,
+  dbId: string,
+  newTenantId: string,
+): Promise<void> {
+  const schemaName = stripDbPrefix(dbId);
+  const roleName = await tenantRoleName(newTenantId);
+  const policyRows = await pg.query<{ tablename: string }>(
+    "SELECT tablename FROM pg_policies WHERE schemaname = $1 AND policyname = 'tenant_isolation'",
+    [schemaName],
+  );
+  const tables = policyRows.rows.map((r) => r.tablename);
+  await pg.transaction(buildRetargetStatements(schemaName, newTenantId, roleName, tables));
+}
+
 export async function recordAnonAdoption(
   db: D1Database,
   userId: string,
   token: string,
+  retargetAcl?: AclRetarget,
 ): Promise<AdoptResult> {
   if (!TOKEN_PATTERN.test(token)) {
     return { ok: false, reason: "invalid_token" };
@@ -86,13 +173,36 @@ export async function recordAnonAdoption(
     const migrated = await db
       .prepare(
         "UPDATE databases SET tenant_id = ?, updated_at = unixepoch() " +
-          "WHERE tenant_id = ? RETURNING id",
+          "WHERE tenant_id = ? RETURNING id, engine, connection_blob",
       )
       .bind(userId, anonTenantId)
-      .first<{ id: string }>();
+      .all<{ id: string; engine: string; connection_blob: string | null }>();
     await adoptApiKeys(db, anonTenantId, userId);
 
-    const migratedDbId = migrated?.id ?? null;
+    // Re-point each migrated hosted schema's Postgres ACL at the new
+    // tenant (see module header). Best-effort per DB: a failed retarget
+    // leaves that DB unqueryable exactly as before this fix, so log it
+    // structurally rather than failing the sign-in that triggered the
+    // adoption.
+    for (const row of migrated.results ?? []) {
+      const isHosted = row.engine === "postgres" && row.connection_blob === null;
+      if (!isHosted || !retargetAcl) continue;
+      try {
+        await retargetAcl(row.id, userId);
+      } catch (err) {
+        trace.getActiveSpan()?.setAttribute("nlqdb.anon.adopt.regrant_failed", row.id);
+        console.error(
+          JSON.stringify({
+            event: "anon_adopt_regrant_failed",
+            db_id: row.id,
+            user_id: userId,
+            message: (err instanceof Error ? err.message : String(err)).slice(0, 500),
+          }),
+        );
+      }
+    }
+
+    const migratedDbId = migrated.results?.[0]?.id ?? null;
     const dbId = migratedDbId ?? existingDbId;
     // Persist the dbId on the adoption row on first-adoption (or
     // back-fill it when a legacy replay finally observes one — covers

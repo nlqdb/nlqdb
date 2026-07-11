@@ -22,7 +22,7 @@ import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import type { RateLimiter } from "./rate-limit.ts";
 import { extractTables, type RecentTablesStore, tablesFromSchemaText } from "./recent-tables.ts";
 import { Nonrecoverable, type RetryReason, withStageRetry } from "./retry.ts";
-import { classifySchemaError } from "./schema-mismatch.ts";
+import { classifySchemaError, recordExecUnreachable } from "./schema-mismatch.ts";
 import { validateSql } from "./sql-validate.ts";
 import {
   type AskError,
@@ -450,7 +450,16 @@ export async function orchestrateAsk(
         }
         continue;
       }
-      // Postgres errors include schema details; keep them server-side.
+      // Postgres errors include schema details; keep them server-side —
+      // but record the SQLSTATE structurally first, or a deterministic
+      // exec class masquerades as connectivity (SK-ASK-019's lesson).
+      recordExecUnreachable(err, {
+        dbId: req.dbId,
+        goal: req.goal,
+        planSql,
+        cacheHit,
+        planModel,
+      });
       return { ok: false, error: { status: "db_unreachable" } };
     }
   }

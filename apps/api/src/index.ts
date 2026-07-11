@@ -22,6 +22,7 @@ import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { recordAnonAdoption } from "./anon-adopt.ts";
+import { makeAclRetarget } from "./anon-adopt-regrant.ts";
 import {
   type AnonCreateGateDecision,
   commitAnonCreate as commitAnonCreateImpl,
@@ -1918,7 +1919,12 @@ app.post("/v1/anon/adopt", requireSession, async (c) => {
   if (!body.ok || typeof body.body.token !== "string") {
     return c.json({ error: { status: "invalid_body" } }, 400);
   }
-  const result = await recordAnonAdoption(c.env.DB, session.user.id, body.body.token);
+  const result = await recordAnonAdoption(
+    c.env.DB,
+    session.user.id,
+    body.body.token,
+    makeAclRetarget(c.env),
+  );
   if (!result.ok) {
     // Map internal-only reasons to a stable public string. The
     // `internal` reason describes a server-side failure mode the
@@ -3211,7 +3217,12 @@ app.post("/api/auth/anon-adopt-now", requireSession, async (c) => {
     span.setAttribute("nlqdb.user.id", session.user.id);
     span.setAttribute("nlqdb.anon.adopt.source", "adopt_now");
     try {
-      const result = await recordAnonAdoption(c.env.DB, session.user.id, bearer);
+      const result = await recordAnonAdoption(
+        c.env.DB,
+        session.user.id,
+        bearer,
+        makeAclRetarget(c.env),
+      );
       if (result.ok) {
         span.setAttribute("nlqdb.anon.adopt.outcome", result.adopted ? "adopted" : "replay");
         // SK-ANON-014 — surface the adopted dbId so `/auth/post-signin`

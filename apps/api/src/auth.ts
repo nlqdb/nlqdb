@@ -20,6 +20,7 @@ import { createAuthMiddleware } from "better-auth/api";
 import { magicLink } from "better-auth/plugins";
 import { D1Dialect } from "kysely-d1";
 import { recordAnonAdoption } from "./anon-adopt.ts";
+import { makeAclRetarget } from "./anon-adopt-regrant.ts";
 import { buildClearCookie, readStashCookie, verifyAnonStash } from "./anon-stash.ts";
 import { hashEmail, makeMagicLinkThrottle } from "./auth/magic-link-throttle.ts";
 import { sinkEmail } from "./auth/mock-email-sink.ts";
@@ -160,7 +161,12 @@ export const auth = betterAuth({
             return;
           }
           span.setAttribute("nlqdb.user.id", newSession.user.id);
-          const result = await recordAnonAdoption(env.DB, newSession.user.id, bearer);
+          const result = await recordAnonAdoption(
+            env.DB,
+            newSession.user.id,
+            bearer,
+            makeAclRetarget(env),
+          );
           if (result.ok) {
             span.setAttribute("nlqdb.anon.adopt.outcome", result.adopted ? "adopted" : "replay");
           } else {

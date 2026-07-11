@@ -5,7 +5,9 @@
 // function shape makes Miniflare unnecessary.
 
 import { describe, expect, it, vi } from "vitest";
-import { recordAnonAdoption } from "../src/anon-adopt.ts";
+import { buildRetargetStatements, recordAnonAdoption } from "../src/anon-adopt.ts";
+
+type MigratedRow = { id: string; engine: string; connection_blob: string | null };
 
 type StubOpts = {
   // Result of the INSERT anon_adoptions … RETURNING. `null` = ON
@@ -23,6 +25,10 @@ type StubOpts = {
   // Absent means the UPDATE matched zero rows (the typical replay path
   // after a prior adoption already migrated the row).
   migratedDbId?: string | null;
+  // Full RETURNING rows for the migrate UPDATE when a test needs to
+  // control engine / connection_blob (ACL-retarget gating). Defaults
+  // to one hosted-postgres row derived from `migratedDbId`.
+  migratedRows?: MigratedRow[];
   shouldThrow?: boolean;
 };
 
@@ -52,6 +58,19 @@ function stubDb(opts: StubOpts): { db: D1Database; updates: UpdateCall[] } {
           return opts.migratedDbId ? { id: opts.migratedDbId } : null;
         }
         return null;
+      }),
+      all: vi.fn().mockImplementation(async () => {
+        if (opts.shouldThrow) throw new Error("d1 down");
+        if (sql.startsWith("UPDATE databases")) {
+          updates.push({ sql, params: [...params] });
+          const results =
+            opts.migratedRows ??
+            (opts.migratedDbId
+              ? [{ id: opts.migratedDbId, engine: "postgres", connection_blob: null }]
+              : []);
+          return { results };
+        }
+        return { results: [] };
       }),
       run: vi.fn().mockImplementation(async () => {
         if (opts.shouldThrow) throw new Error("d1 down");
@@ -235,5 +254,86 @@ describe("recordAnonAdoption", () => {
     expect(out).toEqual({ ok: true, adopted: true, dbId: null });
     // Two UPDATEs (databases + api_keys); no back-fill since no dbId.
     expect(stub.updates).toHaveLength(2);
+  });
+
+  it("retargets the Postgres ACL for each migrated hosted DB (SK-ANON-003 amendment)", async () => {
+    const stub = stubDb({ insertResult: { ok: 1 }, migratedDbId: "db_users_abc123" });
+    const retarget = vi.fn().mockResolvedValue(undefined);
+    const out = await recordAnonAdoption(stub.db, "user_42", "abcdef1234567890", retarget);
+    expect(out).toEqual({ ok: true, adopted: true, dbId: "db_users_abc123" });
+    expect(retarget).toHaveBeenCalledExactlyOnceWith("db_users_abc123", "user_42");
+  });
+
+  it("skips the ACL retarget for BYO and non-postgres rows", async () => {
+    const stub = stubDb({
+      insertResult: { ok: 1 },
+      migratedRows: [
+        { id: "db_byo", engine: "postgres", connection_blob: "sealed…" },
+        { id: "db_ch", engine: "clickhouse", connection_blob: null },
+      ],
+    });
+    const retarget = vi.fn().mockResolvedValue(undefined);
+    const out = await recordAnonAdoption(stub.db, "user_42", "abcdef1234567890", retarget);
+    expect(out.ok).toBe(true);
+    expect(retarget).not.toHaveBeenCalled();
+  });
+
+  it("a failed ACL retarget is logged but never fails the adoption (sign-in must succeed)", async () => {
+    const stub = stubDb({ insertResult: { ok: 1 }, migratedDbId: "db_users_abc123" });
+    const retarget = vi.fn().mockRejectedValue(new Error("neon down"));
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await recordAnonAdoption(stub.db, "user_42", "abcdef1234567890", retarget);
+      expect(out).toEqual({ ok: true, adopted: true, dbId: "db_users_abc123" });
+      const logged = errSpy.mock.calls.map((c) => String(c[0])).find((s) => s.includes("regrant"));
+      expect(logged).toBeDefined();
+      expect(JSON.parse(logged ?? "{}")).toMatchObject({
+        event: "anon_adopt_regrant_failed",
+        db_id: "db_users_abc123",
+      });
+    } finally {
+      errSpy.mockRestore();
+    }
+  });
+});
+
+describe("buildRetargetStatements", () => {
+  it("emits role-if-missing, grants, WITH SET membership, and one ALTER POLICY per table", () => {
+    const stmts = buildRetargetStatements("users_abc123", "user_42", "tenant_0123456789abcdef", [
+      "users",
+      "orders",
+    ]);
+    const sqls = stmts.map((s) => s.sql);
+    // Timeout bound first (ALTER POLICY takes ACCESS EXCLUSIVE — a held
+    // lock must not pin the sign-in path past 30 s), then role-if-missing.
+    expect(sqls[0]).toBe("SET LOCAL statement_timeout = '30s'");
+    expect(sqls[1]).toContain('CREATE ROLE "tenant_0123456789abcdef"');
+    expect(sqls).toContainEqual(expect.stringContaining('GRANT USAGE ON SCHEMA "users_abc123"'));
+    expect(sqls).toContainEqual(
+      expect.stringContaining("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA"),
+    );
+    expect(sqls).toContainEqual(expect.stringContaining("GRANT USAGE ON ALL SEQUENCES IN SCHEMA"));
+    // PG16+ split SET from ADMIN — exec's `SET LOCAL ROLE` needs the
+    // explicit membership, same as the provision batch.
+    expect(sqls).toContainEqual(
+      expect.stringContaining('GRANT "tenant_0123456789abcdef" TO CURRENT_USER WITH SET TRUE'),
+    );
+    const policyStmts = sqls.filter((s) => s.startsWith("ALTER POLICY tenant_isolation"));
+    expect(policyStmts).toHaveLength(2);
+    expect(policyStmts[0]).toContain(
+      `ON "users_abc123"."users" USING (current_setting('app.tenant_id', true) = 'user_42')`,
+    );
+  });
+
+  it("escapes single quotes in the tenant literal (RLS predicate breakout guard)", () => {
+    const stmts = buildRetargetStatements("s1", "us'er", "tenant_0123456789abcdef", ["t1"]);
+    const policy = stmts.find((s) => s.sql.startsWith("ALTER POLICY"));
+    expect(policy?.sql).toContain("= 'us''er')");
+  });
+
+  it("rejects an unsafe policy-table identifier (defense in depth on catalog output)", () => {
+    expect(() =>
+      buildRetargetStatements("s1", "user_42", "tenant_0123456789abcdef", ['bad"name']),
+    ).toThrow(/unsafe policyTable/);
   });
 });

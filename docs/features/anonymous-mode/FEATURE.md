@@ -40,19 +40,19 @@ when-to-load:
 - **Consequence in code:** All user-facing copy says "72h". The sweep job at `apps/api/src/db-sweep/sweep.ts` runs daily, drops anonymous DBs whose `last_queried_at < now() - 90 days`, and pressure-sweeps the oldest if total bytes exceed 300 MB. CLI's first-run banner: *"Saved as anonymous. Run `nlq login` within 72h to keep it."* (`docs/features/cli/FEATURE.md`). Tests on `sweep-skips-adopted.test.ts` guarantee adopted DBs are never touched.
 - **Alternatives rejected:** promise-90d/limit-90d (no urgency to sign in) and promise-24h/limit-24h (strands weekend-only users like Maya in `docs/runbook.md §10`).
 
-### SK-ANON-003 — Adoption is a one-row update, never a data move
+### SK-ANON-003 — Adoption is a metadata retarget, never a data move (amended 2026-07-11)
 
-- **Decision:** Sign-in adopts an anonymous DB by updating `databases.adopted_at` and `databases.user_id` in the D1 row. The Postgres schema, the data, the `pk_live_` keys, and the plan cache are unchanged. The endpoint is `POST /v1/anon/adopt`.
+- **Decision:** Sign-in adopts anonymous DBs by re-keying `databases.tenant_id` in D1 to the user id **plus a constant-size Postgres ACL retarget per hosted DB**: role-if-missing + USAGE/DML/sequence grants + the `WITH SET` membership exec needs, and `ALTER POLICY tenant_isolation` to the new tenant literal (`anon-adopt.ts::retargetAdoptedDbAcl`). Schema and rows never move.
 - **Core value:** Bullet-proof, Effortless UX, Seamless auth
-- **Why:** A "data move" path is a migration path — every migration is a chance to lose data. By keeping adoption to one row update, we collapse the failure surface to "the row update either succeeded or did not"; either state is recoverable. It also means adoption is sub-second regardless of DB size, which keeps the seamless-auth promise (`GLOBAL-008`) honest at sign-in.
-- **Consequence in code:** `apps/api/src/routes/anon/adopt.ts` is a small handler that authenticates the new session, validates the bearer-anon token, and runs `UPDATE databases SET adopted_at = now(), user_id = ? WHERE anon_token_hash = ? AND adopted_at IS NULL`. The temporary `pk_live_` minted for the anonymous device is rotated to a permanent one in the same transaction (per `SK-WEB-007`). No row-level data migration; no pgvector re-embedding.
-- **Alternatives rejected:** copying data into a "real" schema on adoption (slow, fragile, double-storage) and deferring adoption to an explicit "keep this" click (adds a step to the seamless arc).
+- **Why:** A data move is a migration path — every migration can lose data; metadata-only adoption stays sub-second at any DB size (`GLOBAL-008`). The 2026-07-11 amendment: least-privilege exec (#614, 2026-07-05) made the querying tenant's role + RLS literal load-bearing, so the original D1-only flip left every adopted DB permanently unqueryable — exec's `SET LOCAL ROLE tenant_<hash(adopter)>` hit grants and a baked `tenant_isolation` literal that still named the anon creator (surfaced as opencheck `#authed-state-preserved` failing with `db_unreachable`).
+- **Consequence in code:** `recordAnonAdoption` flips D1 (`RETURNING` all migrated rows), then best-effort `retargetAdoptedDbAcl` per hosted-postgres row — a failed retarget logs `anon_adopt_regrant_failed` but never fails the sign-in. Statements mirror the provision batch (`neon-provision.ts`).
+- **Alternatives rejected:** data copy into a user schema (slow, fragile, double-storage); an explicit "keep this" click (adds a step to the seamless arc); exec-time self-heal on `SET ROLE` failure (hot-path complexity for a sign-in-time event).
 
 ### SK-ANON-004 — Anonymous tier has its own rate-limit bucket distinct from authenticated
 
 - **Decision:** The API has an explicit anonymous-mode rate-limit tier — a per-IP bucket, separate from per-(user_id, key) buckets used for authenticated calls. Limits are tighter than free-tier authenticated limits. Anonymous traffic is governed by a **per-device 1-call cap on `/v1/ask`** (`SK-ANON-012`, keyed on `sha256(anon_token)[:16]`) that returns `401 auth_required` on call #2 (any kind — superseding the per-IP 5/hour shape originally specified here). Layered above the per-device cap is the **global anon cap** (`SK-ANON-010`, 100/hr / 1000/day / 10k/month summed across all anon traffic) — when global trips, the user is soft-promoted to auth via 401 + sign-in URL rather than 429'd.
 - **Core value:** Free, Bullet-proof
-- **Why:** Anonymous traffic has no accountable identity behind it — abuse defenses can only key off IP. Sharing the authenticated bucket means one abuser exhausts the per-DB budget for legitimate users. A separate, tighter anonymous tier limits blast radius without inconveniencing real users (who graduate to the authenticated tier on sign-in).
+- **Why:** Anonymous traffic has no accountable identity — sharing the authenticated bucket lets one abuser exhaust legitimate users' budget; a separate, tighter tier bounds the blast radius.
 - **Consequence in code:** `apps/api/src/middleware/rate-limit.ts` selects bucket by auth shape: anonymous → IP bucket (smaller window, lower cap); authenticated → user/key bucket. The anonymous-create caps live alongside the rate-limit middleware. PoW on signup is the escape valve if a coordinated wave hits the IP bucket.
 - **Alternatives rejected:** one shared anon+authed bucket (abuse wins) and PoW-everywhere with no anon rate limit (PoW is friction; reserve it for active-abuse states).
 
@@ -60,7 +60,7 @@ when-to-load:
 
 - **Decision:** The CLI's `nlq login` device-code flow, on success, automatically adopts every anonymous DB associated with the device's anonymous token — not one at a time, not "ask the user which to keep." The session message names the count: *"Signed in as maya@example.com. Adopted 1 anonymous DB: orders-tracker-a4f."*
 - **Core value:** Seamless auth, Effortless UX, Goal-first
-- **Why:** Asking the user "which of these 3 anonymous DBs do you want to keep?" turns sign-in into a chore. The user's intent in running `nlq login` is "keep my work" — adopting all of it is the right default. If they want to drop one later, the dashboard supports that.
+- **Why:** The intent of `nlq login` is "keep my work" — adopting everything is the right default; the dashboard supports dropping one later.
 - **Consequence in code:** Device-code token endpoint, on a successful exchange, reads the device's anonymous-token hash and runs the adopt update for every matching `databases` row. CLI prints the count + slugs. Web mirror: post-OAuth callback runs the same adopt path against the browser's `localStorage` token.
 - **Alternatives rejected:** per-DB confirmation prompts (slow, out-of-character for a CLI) and explicit `nlq adopt <db>` (silently drops user work after 90 days).
 
