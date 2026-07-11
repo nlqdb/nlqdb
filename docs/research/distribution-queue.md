@@ -12,30 +12,39 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"Your five fallback models are one point of failure."** slug
+  `five-fallback-models-one-provider` · venue dev.to (#llm #ci #testing) +
+  r/LLMDevs + lobste.rs (`practices`) · CI/engine lesson (the opencheck
+  agent-lane fallback, `_e2e-opencheck.yml`, 2026-07-11). Angle: an agentic
+  CI suite drove the browser with an LLM picked from an ordered five-model
+  fallback list — health-probed with real tool-call probes, re-ranked by
+  measured agent competence. It still failed 13 dispatches in a row. The
+  list was model-diverse but provider-identical: all five slugs resolved to
+  one gateway's free pool, and that pool saturates as a unit — when model
+  #1 is rate-limited upstream, #2–#5 are too, at 04:37 UTC and at 22:14
+  alike. The tell in the Playwright traces: the product under test answered
+  its API call in 4 s with a 200 while three tests burned their entire
+  240 s budget — the *driver* starved, and the suite reported "product
+  red." Redundancy has to cross the failure-domain boundary, not the name
+  boundary: five models on one provider are five servers in one rack. The
+  fix is a lane, not a longer list — (base URL, key, candidate models) as
+  the fallback unit, walked only when the whole primary lane fails its
+  probes, with the same weights hosted by a different provider as the first
+  fallback candidate (same competence, independent pool). And keep the two
+  budgets separate: the fallback lane must not raid the quota the app under
+  test runs on, or the rescue causes the next outage. Honest split: a
+  CI/infra lesson from our E2E harness, not a product feature.
+
 - **"An 'open question' that's already decided is worse than one that's still
   open."** slug `decided-questions-rot-in-your-decision-log` · venue dev.to
-  (#documentation #architecture #engineering) + r/ExperiencedDevs +
-  lobste.rs (`practices`) · engineering-process lesson (the `docs/scorecard.md`
-  row #17 docs-ambiguity method). Angle: every long-lived codebase grows a
-  decision log — ADRs, `DECISIONS.md`, per-feature records — and every one of
-  them grows an *"Open questions"* section. The failure mode isn't the open
-  questions; it's the entries that were quietly *answered* and never
-  re-labelled. A bullet that reads "we should probably cap the queue at 7 000
-  ops/day" is a decision wearing an open-question's clothes: a reader treats
-  it as unsettled and either re-litigates a closed call or builds around a
-  "maybe" that was actually a "yes." Two moves fix it. (1) Make *resolved* a
-  first-class, greppable state: a decided bullet carries a marker word
-  (`Resolved` / `Decided:` / `Parked` / a strikethrough) and a pointer to the
-  decision's canonical home, not the questions list. (2) Count the unmarked
-  ones as debt: a one-liner that greps `- ` bullets under `## Open questions`
-  and subtracts the marker set gives you a single ambiguity number to drive
-  to zero — and match case-*insensitively*, or a case-sensitive grep
-  over-counts `resolved` vs `Resolved` and the number drifts. The deeper rule
-  (D2 in our house style): a vague decision documented is worse than none,
-  because it looks authoritative while pointing nowhere. When you answer an
-  open question, the *same commit* moves the body to the canonical home and
-  leaves only a resolved pointer — never a second copy. Honest split: a
-  decision-hygiene lesson, not a product feature.
+  (#documentation #architecture #engineering) + r/ExperiencedDevs + lobste.rs
+  (`practices`) · engineering-process lesson (the scorecard row #17
+  docs-ambiguity method). Gist: a decided-but-unmarked "open question" makes
+  readers re-litigate closed calls or build on a "maybe" that was a "yes";
+  make *resolved* a greppable first-class state (marker word + pointer to the
+  canonical home) and count unmarked bullets as debt — case-insensitively, or
+  the number drifts. *(Full body in git history — collapsed for the D4 20 KB
+  cap; recover at publish time.)*
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
@@ -44,12 +53,12 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
-- run 47 — **https://nlqdb.com/blog/emit-metrics-where-the-distinction-is-certain/** — dev.to (#programming #observability #architecture) + r/ExperiencedDevs + lobste.rs (`practices`) · engineering lesson (`SK-TRUST-004` destructive-op retry-rate instrument — emit a metric at the lowest layer where the distinction it encodes is certain: the retry rate `1 − committed / preview_rendered` belongs in the orchestrator where `isWriteVerb(sql)` and the preview-vs-commit branch are decided, not the HTTP route where a stray `confirm: true` read drives the rate negative; thread the surface down, don't pull the decision up)
-- run 44 — **https://nlqdb.com/blog/rotate-encryption-key-without-a-version-column/** — dev.to (#security #database #architecture) + r/programming + lobste.rs (`security`) · security/architecture lesson (`GLOBAL-031` KEK rotation — put the KEK version in the self-describing ciphertext prefix `nbe1.`→`nbe2.<v>.`, not a `key_version` column: zero-migration rotation, stale rows prefix-filterable without decrypting, two-key overlap + lazy re-wrap; the column only earns its keep if the sweep must find stale rows blind, and the prefix already finds them)
-- run 40 — **https://nlqdb.com/blog/text-to-sql-planner-told-wrong-dialect/** — dev.to (#sql #llm #database) + r/dataengineering + lobste.rs (`sql`) · engine/architecture lesson (byo-connect OQ (b) — the wrong-dialect bug is a hardcoded `dialect: "postgres"` literal + a union that never grew a `clickhouse` member; thread the row's engine into the field and widen the type so the compiler flags every hardcoded call site; twin of the validator post — generator + validator both assume engine #1, fix them together)
-- run 35 — **https://nlqdb.com/blog/postgres-validator-rejects-valid-clickhouse-sql/** — dev.to (#sql #clickhouse #security) + r/dataengineering + lobste.rs (`sql`) · engine/security lesson (`SK-MULTIENG-004` — a wrong-dialect parse failure means "wrong parser," not "dangerous query"; keep the dialect-agnostic destructive-verb allowlist authoritative, make the AST walk best-effort per engine)
-- run 31 — **https://nlqdb.com/blog/blog-without-a-feed-is-a-dead-end/** — dev.to (#webdev #seo #rss) + r/webdev + lobste.rs · distribution lesson (volume-vs-yield: a blog with no RSS feed is sealed to every machine that would redistribute it — feed readers + dev.to/Medium/Hashnode import-from-RSS with `rel=canonical`; fix is a ~40-line no-dependency RSS endpoint over the same typed data file; count the doors into your content, not the pages)
-- run 28 — **https://nlqdb.com/blog/one-way-internal-links-leak-yield/** — dev.to (#seo #webdev #contentmarketing) + r/SEO + r/webdev + lobste.rs · distribution lesson (volume-vs-yield: invert the existing `anchor` field into a reciprocal backlink; a tree link-graph starves fresh pages of inbound links and dead-ends readers — measure the graph, not the count)
+- run 47 — **https://nlqdb.com/blog/emit-metrics-where-the-distinction-is-certain/** — dev.to (#programming #observability #architecture) + r/ExperiencedDevs + lobste.rs (`practices`) · engineering lesson (`SK-TRUST-004` — emit a metric at the lowest layer where the distinction it encodes is certain)
+- run 44 — **https://nlqdb.com/blog/rotate-encryption-key-without-a-version-column/** — dev.to (#security #database #architecture) + r/programming + lobste.rs (`security`) · security/architecture lesson (`GLOBAL-031` KEK rotation — version in the ciphertext prefix, not a column)
+- run 40 — **https://nlqdb.com/blog/text-to-sql-planner-told-wrong-dialect/** — dev.to (#sql #llm #database) + r/dataengineering + lobste.rs (`sql`) · engine/architecture lesson (thread the real engine into the dialect field; twin of the validator post)
+- run 35 — **https://nlqdb.com/blog/postgres-validator-rejects-valid-clickhouse-sql/** — dev.to (#sql #clickhouse #security) + r/dataengineering + lobste.rs (`sql`) · engine/security lesson (`SK-MULTIENG-004` — wrong-dialect parse failure means "wrong parser," not "dangerous query")
+- run 31 — **https://nlqdb.com/blog/blog-without-a-feed-is-a-dead-end/** — dev.to (#webdev #seo #rss) + r/webdev + lobste.rs · distribution lesson (count the doors into your content, not the pages)
+- run 28 — **https://nlqdb.com/blog/one-way-internal-links-leak-yield/** — dev.to (#seo #webdev #contentmarketing) + r/SEO + r/webdev + lobste.rs · distribution lesson (measure the link graph, not the page count)
 - run 24 — **https://nlqdb.com/blog/serverless-db-cold-start-retry/** — dev.to (#database #serverless #postgres) + r/PostgreSQL + r/webdev + lobste.rs · engine/ops lesson (SK-ASK-013 — a retry policy is one-per-failure-mode; back off the DB stage, fail over the LLM stages instantly)
 
 - run 20 — **https://nlqdb.com/blog/llm-timeout-looks-like-hallucination/** — dev.to (#llm #benchmarking #eval) + r/LLMDevs + lobste.rs · engine lesson (SK-QUAL-022 eval-budget ≠ prod SLA; abort ≠ parse failure; latency fingerprint)
