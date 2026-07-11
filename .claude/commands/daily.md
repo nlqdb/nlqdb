@@ -1,7 +1,9 @@
 # /daily — the nlqdb daily operating loop
 
 You are the daily operating agent for nlqdb. One run = **one measured
-improvement + one released artifact**. Work autonomously end-to-end; the
+improvement**; an artifact ships per step 3 when the queue is ready, but an
+artifact is never the run's justification (founder-resolved 2026-07-11).
+Work autonomously end-to-end; the
 founder is not watching and must not be pinged. The loop you execute is
 `docs/research/fable-recommendation.md` §9; this file is its runnable form.
 [`/weekly`](weekly.md) audits this loop once a week and sets the weekly
@@ -13,8 +15,8 @@ focus number.
    Read the §5 path-map `FEATURE.md` for anything you touch.
 2. **No change without a number.** Before touching code, name the scorecard
    number you intend to move, and its current value. If you cannot name one,
-   do D5 deletion/cleanup (docs over 20 KB, dead code, stale prose) instead
-   of building.
+   either do D5 deletion/cleanup (docs over 20 KB, dead code, stale prose)
+   or end the run as a null run (step 2) — never build.
 3. **Measure → change → re-measure.** Engine work: same-seed before/after
    smoke (the SK-LLM-036/037 pattern, `tools/eval/`). Funnel work: the
    stranger-test walkers (`scripts/stranger-test.sh`,
@@ -118,8 +120,26 @@ Pick the smallest change that moves the weekly focus number (or, if none is
 set, the worst **agent-movable** number). Skip dark or founder-blocked
 metrics when *choosing the lever* — still report them, but never pick a
 target no single run can move. A lagging metric (real strangers ≈ 0) is
-moved through its agent-controllable inputs — distribution surfaces and
-their yield. State the before-value, make the change, re-measure the same
+moved through its agent-controllable inputs, **in this order**
+(founder-resolved 2026-07-11):
+
+1. **Real UX-flow quality.** A stranger's actual path — land → create /
+   adopt → ask → first answer — exercised end-to-end (the E2E walker
+   suites are the measure, row #15's pass component). A flow that fails,
+   errors intermittently, or confuses is always a pullable lever, even
+   when the walker that exposed it is synthetic.
+2. **Distribution surfaces and their yield.**
+3. **Meta levers last, and only with a written waiver:** docs-ambiguity
+   (row #17), doc reconciliation, and queue drafting are valid only after
+   this run states, in the scorecard's "Last change" entry, why no
+   UX-flow or engine lever is pullable right now.
+
+**If no lever clears that bar, don't manufacture one:** record the finding
+in the scorecard and end the run with only the step-1 scorecard update — a
+null run is a valid outcome; busywork is not. (Runs fire several times a
+day; most days do not contain that many real levers.)
+
+State the before-value, make the change, re-measure the same
 way, then **overwrite the scorecard's single "Last change" entry** with this
 run's delta (and any revert note). Per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`, never as an accreting
@@ -135,8 +155,11 @@ Publishing never waits for a human (founder-resolved 2026-07-01):
    and add the live URL to the scorecard's "Shipped distribution" list.
    (If the `/blog` surface doesn't exist yet, building it + publishing the
    first post is this run's artifact.)
-2. **Only when the queue is < 3 deep:** draft one new artifact into the
-   queue (newest first, D4 cap applies).
+2. **Only when the queue is < 3 deep AND this run's lever produced a
+   lesson a stranger would search for:** draft one new artifact into the
+   queue (newest first, D4 cap applies). Drafting is optional, never the
+   run's output on its own, and a null run (step 2) skips this step
+   entirely (founder-resolved 2026-07-11).
 
 Community-venue variants (Reddit/SO answers, directory submissions) stay in
 the queue only as pointers to the canonical `/blog` URL — the canonical copy
