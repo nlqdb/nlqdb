@@ -37,19 +37,6 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   leaves only a resolved pointer — never a second copy. Honest split: a
   decision-hygiene lesson, not a product feature.
 
-- **"Your metric is only as honest as the layer you emit it from."** slug
-  `emit-metrics-where-the-distinction-is-certain` · venue dev.to
-  (#programming #observability #architecture) + r/ExperiencedDevs +
-  lobste.rs (`practices`) · engineering lesson (`SK-TRUST-004`
-  destructive-op retry-rate instrument). Gist: emit a metric at the lowest
-  layer where the distinction it encodes is *certain* — the destructive-op
-  retry rate (`1 − committed / preview_rendered`) belongs in the orchestrator
-  where `isWriteVerb(sql)` and the preview-vs-commit branch are decided, not
-  the HTTP route where a read carrying `confirm: true` inflates the numerator
-  and drives the rate negative; thread the surface down rather than pull the
-  decision up. *(Full body in git history — collapsed for the D4 20 KB cap;
-  recover at publish time.)*
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -57,6 +44,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 47 — **https://nlqdb.com/blog/emit-metrics-where-the-distinction-is-certain/** — dev.to (#programming #observability #architecture) + r/ExperiencedDevs + lobste.rs (`practices`) · engineering lesson (`SK-TRUST-004` destructive-op retry-rate instrument — emit a metric at the lowest layer where the distinction it encodes is certain: the retry rate `1 − committed / preview_rendered` belongs in the orchestrator where `isWriteVerb(sql)` and the preview-vs-commit branch are decided, not the HTTP route where a stray `confirm: true` read drives the rate negative; thread the surface down, don't pull the decision up)
 - run 44 — **https://nlqdb.com/blog/rotate-encryption-key-without-a-version-column/** — dev.to (#security #database #architecture) + r/programming + lobste.rs (`security`) · security/architecture lesson (`GLOBAL-031` KEK rotation — put the KEK version in the self-describing ciphertext prefix `nbe1.`→`nbe2.<v>.`, not a `key_version` column: zero-migration rotation, stale rows prefix-filterable without decrypting, two-key overlap + lazy re-wrap; the column only earns its keep if the sweep must find stale rows blind, and the prefix already finds them)
 - run 40 — **https://nlqdb.com/blog/text-to-sql-planner-told-wrong-dialect/** — dev.to (#sql #llm #database) + r/dataengineering + lobste.rs (`sql`) · engine/architecture lesson (byo-connect OQ (b) — the wrong-dialect bug is a hardcoded `dialect: "postgres"` literal + a union that never grew a `clickhouse` member; thread the row's engine into the field and widen the type so the compiler flags every hardcoded call site; twin of the validator post — generator + validator both assume engine #1, fix them together)
 - run 35 — **https://nlqdb.com/blog/postgres-validator-rejects-valid-clickhouse-sql/** — dev.to (#sql #clickhouse #security) + r/dataengineering + lobste.rs (`sql`) · engine/security lesson (`SK-MULTIENG-004` — a wrong-dialect parse failure means "wrong parser," not "dangerous query"; keep the dialect-agnostic destructive-verb allowlist authoritative, make the AST walk best-effort per engine)
