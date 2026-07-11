@@ -18,19 +18,22 @@ lever** (rule 8).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric moved only through its agent-movable inputs. Worst
-**agent-movable** number: **row #9 Spider raw EX 0.2444** — and run-49
-triage of the 07-08 report proved **26/135 rows (19%) scored `no_sql`
-where every chain attempt was capacity/transport** (`circuit_open` /
-`rate_limited` / `network`) — zero engine signal by `SK-QUAL-020`'s own
-classification, scored as engine failure because one transport attempt
-demoted the `SK-QUAL-013` capacity pause. **Run 49 lever: the
-transient-wall budget stop** (per-question pause on capacity∪transport
-walls) + a post-fix canonical re-measure — **verdict: 0.2444 → 0.2741,
-`no_sql` 30 → 0, first fully-answered Spider run** (row #9 + *Last
-change*). Row #15's two named classes are both
-closed (run 46 capacity lane; PR #661 adoption-ACL fix). Engine lane, per
-the weekly focus; not anti-rut-blocked (last 5 merged = E2E, distribution
-×2, docs, onboarding).
+**agent-movable** number: **row #15 E2E freshness**, opencheck still 0.
+Runs 46/48/49 closed the capacity, adoption-ACL and Spider-`no_sql`
+classes; the one class left un-attacked was **agent-lane starvation on
+the OpenRouter primary** (13 failed dispatches 07-02→07-10; flaps past
+the 3-probe gate). **Run 50 lever: swap the lanes — NVIDIA NIM (same
+`gpt-oss-120b` weights, independent $0 pool, ~40 RPM) becomes the primary
+agent lane; the 5-candidate OpenRouter `:free` walk becomes the
+fallback.** Verdict on the first full-depth NIM dispatch
+([29154050866](https://github.com/nlqdb/nlqdb/actions/runs/29154050866)):
+starvation class closed — details in row #15 + *Last change*. The
+surviving red is app/env-side ("Couldn't reach the database" on the
+fixture account's `users` DBs + a cleanup timeout over ~27 stale fixture
+DBs whose Neon `e2e` branch is recreated under their D1 rows every run) —
+that stale-fixture class is the next lever candidate. Not
+anti-rut-blocked (last 5 merged = engine, onboarding, E2E, distribution
+×2).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -53,7 +56,7 @@ the weekly focus; not anti-rut-blocked (last 5 merged = E2E, distribution
 | 13 | nlqdb-api wall-time p50 / p95 | p95 ~1.35 s; p50 method-sensitive across adaptive-sample buckets (~24 ms min-bucket, ~0.3 s request-weighted) | mcp-server p95 ≈ 763 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.58** — sdk ✅ · mcp ✅ · examples ✅ 07-09 (0.77 each, freshness decay) · opencheck ❌ 0. **Both app-side blocker classes are now closed:** run 46 closed capacity (NVIDIA fallback lane); **run 48 closed the last app-side failure** — the "cold-start" `db_unreachable` was the adoption ACL gap, and on the fix's verification dispatch [29144964531](https://github.com/nlqdb/nlqdb/actions/runs/29144964531) `#authed-state-preserved` **passed in 38.4 s** (first pass since 07-05). Suite A 4/5; the residual fail is `#add-row-redirects-to-auth` agent-lane starvation (216 s, run-46 flap class on the OpenRouter primary — same test passed in 25 s on the NVIDIA lane 07-11). Remaining red is 100% driver-lane, 0% app | **Sequencing rule: never dispatch opencheck alongside another OpenRouter-free consumer.** Triage: `e2e-coverage/opencheck-operations.md` |
+| 15 | E2E manual-suite freshness | **0.57** — sdk ✅ · mcp ✅ · examples ✅ 07-09 (0.75 each after decay) · opencheck ❌ 0. **Run 50 closed the driver-starvation class** (agent-lane swap: NIM primary, OpenRouter fallback). First full-depth NIM dispatch [29154050866](https://github.com/nlqdb/nlqdb/actions/runs/29154050866): **A 4/5 · B 3/8 · C 8/9** (first B/C signal since the pool saturated 07-02) — NIM picked 3/3 in every suite, zero pre-flight aborts, zero starvation losses; `#add-row-redirects-to-auth` 216 s starved fail → **14.9 s PASS**. Surviving red is app/env-side: "Couldn't reach the database" on the fixture account's `users` DBs + `#delete-remaining-db` timing out over ~27 stale fixture DBs (D1 rows over a recreated Neon `e2e` branch — same-name pins can land on schemas that no longer exist) | Stale-fixture cleanup = next lever candidate. Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); **MCP in 3+ host apps (re-measured 07-11 `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder host — cursor, 2 grants, 0 used — FAIL)**; 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | every criterion instrumented; only agent-movable *pass* left is the agentic-frontier ~11 pp competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); rest are stranger-dependent |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-11 run 50 — count held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
@@ -103,37 +106,34 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-11 (run 49)** — lever: **engine — transient-wall budget stop
-(`SK-QUAL-013` rev) + first fully-answered canonical Spider run (row #9,
-worst agent-movable number, weekly-focus lane).** Step 0: open PR #661
-(run 48 — adoption-ACL fix + BIRD re-measure 0.546) noted; zero file/lever
-overlap chosen. **Diagnosis first:** downloaded the 07-08 Spider report
-([28959809497](https://github.com/nlqdb/nlqdb/actions/runs/28959809497)) —
-**26/30 `no_sql` rows (19% of the dataset) failed with only
-capacity/transport attempts** (`circuit_open`/`rate_limited`/`network`);
-one transport attempt demoted each `SK-QUAL-013` capacity pause to a
-scored engine failure (only 4 rows carried real `parse` signal). 0.2444
-measured availability, not SQL. **Change:** the per-question pause
-predicate widened to the transient union (`isChainTransientWall`:
-capacity + `network`/`timeout`); config reasons (`not_configured`/
-`auth_denied`) stay scored so an all-config outage still fails loudly via
-`SK-QUAL-020`'s run-level collapse. Both canonical decision bodies
-amended; 299 eval tests green. **Measured verdict:** post-fix canonical
-re-measure, five-window SHA-keyed resume (runs
-[29149841907](https://github.com/nlqdb/nlqdb/actions/runs/29149841907) →
-[29151548561](https://github.com/nlqdb/nlqdb/actions/runs/29151548561)) —
-**raw EX 0.2444 → 0.2741 (37/135), `no_sql` 30 → 0/135, gold_error 0** —
-the first Spider run where every row carries a real model answer; walls
-paused and resumed instead of scoring. Δ > 0 — keep. (One extra window was
-spent re-scoring 50 questions after mid-loop commits moved the branch SHA
-off the checkpoint key — freeze the branch during a multi-window resume.)
-**Artifact (step 3):** queue ≥ 3 counting PR #661's draft ⇒ published the
-oldest ready draft `decided-questions-rot-in-your-decision-log` (rows
-#6/#7/#18: 93 surfaces, 113 pages, 2,783 internal links, 0 dead).
-**KPI:** GLOBAL-025 engine quality (row #9 honest + up; harness now
-measures reasoning, not provider weather); **none degrade** (eval harness
-+ docs + one blog post; prompts, chains, scorer, and BIRD baseline
-untouched — BIRD's fresh 0.546 is PR #661's re-measure, reconciled here).
+**2026-07-11 (run 50)** — lever: **opencheck agent-lane swap — NVIDIA NIM
+promoted to primary, the OpenRouter `:free` walk demoted to fallback (row
+#15).** Step 0: PR #662 (run 49 — transient-wall stop, Spider 0.2741;
+published the oldest queue draft) merged first; this entry reconciled on
+top of it per the second-merge rule. **Diagnosis:** with runs 46/48's classes closed, the
+one un-attacked opencheck class was driver starvation on the OpenRouter
+primary — 13 failed dispatches 07-02→07-10, and the pool *flaps past the
+3-probe gate* (216 s starvation on a probe-healthy pick, 29144964531) while
+the NIM lane ran the same tests in 7.7–25 s. The failure domain is the
+provider pool, not the model. **Change:** `_e2e-opencheck.yml` lane defaults +
+caller secrets swapped (NIM `gpt-oss-120b` primary; the 5-candidate OpenRouter
+walk is now the fallback); probe logic + two-budget split untouched;
+`SK-E2E-003` amended in place. **Measured verdict** (first full-depth `abc`
+dispatch on NIM, [29154050866](https://github.com/nlqdb/nlqdb/actions/runs/29154050866)):
+**A 4/5 · B 3/8 · C 8/9** — first B/C signal since 07-02, NIM picked 3/3 in
+all suites, zero pre-flight aborts, **zero starvation losses**;
+`#add-row-redirects-to-auth` went 216 s starved fail → **14.9 s PASS**. Δ > 0
+— keep. Surviving red is app/env-side: "Couldn't reach the database" on the
+fixture account's `users` DBs + a C cleanup timeout over ~27 stale fixture
+DBs (D1 rows over a per-run-recreated Neon `e2e` branch) — logged in the
+opencheck tracker as the next lever candidate. **Step-1:** full funnel/ops
+re-pull 13:00Z (rows #1–#5, #12–#13); docs-ambiguity re-grep (17, held).
+**Artifact (step 3):** queue effectively 2 after #662's publish → drafted
+`most-active-user-is-your-test-suite` (queue back to 3 ⇒ next run publishes).
+**KPI:** GLOBAL-025 engine quality (the E2E signal now measures the app, not
+the driver's provider weather) + performance of the suite itself (A+C wall
+time 5m21s + 11m11s); **none degrade** (CI lane config + docs only; app code,
+prompts, eval baselines untouched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
