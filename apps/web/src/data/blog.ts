@@ -54,12 +54,13 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The ciphertext is already self-describing" },
       {
         kind: "p",
-        text: "You cannot decrypt AES-GCM without the IV, so the IV was never a secret and it already lives inside the stored blob — every sealed value is a self-describing string, not opaque bytes. A key version is exactly the same kind of fact: metadata you need in hand before you can decrypt. So it belongs in the same place the IV does — the blob — not in a sibling column that a `JOIN` has to keep in sync. One token of prefix carries it:",
+        text: "You cannot decrypt AES-GCM without the IV, so the IV was never a secret and it already lives inside the stored blob — every sealed value is a self-describing string, not opaque bytes. A key version is exactly the same kind of fact: metadata you need in hand before you can decrypt. So it belongs in the same place the IV does — the blob — not in a sibling column that every write path has to keep in sync. One token of prefix carries it:",
       },
       {
         kind: "code",
         lang: "ts",
-        code: "// The sealed blob already carries its IV. Give it a version tag too.\n//   nbe2.<v>.<iv>.<ciphertext>\n// Bumping the KEK is a one-token change: v1 -> v2. No schema migration,\n// no key_version column, no ALTER TABLE, no backfill job on write.\nfunction seal(plaintext: string, kek: Kek): string {\n  const iv = randomIv();\n  const ct = aesGcmSeal(plaintext, kek.material, iv);\n  return `nbe2.${kek.version}.${b64(iv)}.${b64(ct)}`; // version IS the tag\n}\n\nfunction open(blob: string, keyring: Keyring): string {\n  const [, version, iv, ct] = blob.split(\".\");\n  const kek = keyring.byVersion(version); // pick the key the blob names\n  return aesGcmOpen(fromB64(ct), kek.material, fromB64(iv));\n}",
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: this is sample source shown to the reader — the ${…} are real template literals in the example, not a placeholder bug.
+        code: '// The sealed blob already carries its IV. Give it a version tag too.\n//   nbe2.<v>.<iv>.<ciphertext>\n// Bumping the KEK is a one-token change: v1 -> v2. No schema migration,\n// no key_version column, no ALTER TABLE, no backfill job on write.\nfunction seal(plaintext: string, kek: Kek): string {\n  const iv = randomIv();\n  const ct = aesGcmSeal(plaintext, kek.material, iv);\n  return `nbe2.${kek.version}.${b64(iv)}.${b64(ct)}`; // version IS the tag\n}\n\nfunction open(blob: string, keyring: Keyring): string {\n  const [, version, iv, ct] = blob.split(".");\n  const kek = keyring.byVersion(version); // pick the key the blob names\n  return aesGcmOpen(fromB64(ct), kek.material, fromB64(iv));\n}',
       },
       { kind: "h2", text: "What the prefix buys you that a column doesn't" },
       {
@@ -73,7 +74,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The one nuance: derived keys vs. stored DEKs" },
       {
         kind: "p",
-        text: "If each row stores its own data-encryption key (DEK) wrapped by the KEK, \"re-wrap\" is cheap and never touches plaintext: decrypt the little DEK with the old KEK, re-encrypt it with the new one, leave the bulk ciphertext untouched. If instead your content key is HKDF-derived straight from the KEK — no stored DEK — then re-wrap means decrypt-then-reseal the secret itself. That sounds heavier, but for the short secrets this pattern guards (a DSN, an API key — tens of bytes, not gigabytes) it's trivial. Either way the version tag is what tells the sweep which branch a given row needs.",
+        text: 'If each row stores its own data-encryption key (DEK) wrapped by the KEK, "re-wrap" is cheap and never touches plaintext: decrypt the little DEK with the old KEK, re-encrypt it with the new one, leave the bulk ciphertext untouched. If instead your content key is HKDF-derived straight from the KEK — no stored DEK — then re-wrap means decrypt-then-reseal the secret itself. That sounds heavier, but for the short secrets this pattern guards (a DSN, an API key — tens of bytes, not gigabytes) it\'s trivial. Either way the version tag is what tells the sweep which branch a given row needs.',
       },
       { kind: "h2", text: "The rule" },
       {
