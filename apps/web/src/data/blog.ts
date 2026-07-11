@@ -41,6 +41,51 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "emit-metrics-where-the-distinction-is-certain",
+    title: "Your metric is only as honest as the layer you emit it from.",
+    description:
+      "A destructive-op retry rate emitted at the HTTP route can go negative — the route can't tell reads from writes. Emit metrics at the lowest layer where the distinction is certain.",
+    date: "2026-07-11",
+    body: [
+      {
+        kind: "p",
+        text: "We wanted one number: the destructive-op retry rate — the share of write previews a user abandons instead of confirming. Our pipeline renders every destructive statement as a diff first; the user re-sends with a confirm flag to commit. So the rate is `1 - committed / preview_rendered`, and it takes exactly two counter events to compute. The only real design decision is where those two events get emitted — and the obvious answer is wrong.",
+      },
+      { kind: "h2", text: "The route doesn't know what it's confirming" },
+      {
+        kind: "p",
+        text: "The obvious emit site is the HTTP route. It already has everything an event wants: the principal, the surface, the request, the response status. Emit `preview_rendered` when the response asks for confirmation, `committed` when a request carrying `confirm: true` returns 200. Done — except the route does not actually know whether the statement was a write. That fact is decided two layers down, where the generated SQL is inspected and the preview-vs-commit branch is taken. The route sees a flag and a status code.",
+      },
+      {
+        kind: "p",
+        text: "Here is the failure that makes it concrete: a client sends a read with a stray `confirm: true` — a retried request, an over-eager SDK default, a copy-pasted call. The read succeeds, the route emits `committed`, and there is no matching `preview_rendered` because reads never preview. The numerator now exceeds the denominator, and your retry rate goes negative — a number that cannot exist. Nothing errored. Every layer behaved correctly. The metric was simply emitted above the layer where its defining distinction is known.",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: '// Route layer — the tempting emit site. It has the principal, the\n// surface, the status. It does NOT know whether the plan was a write:\n// emit "committed" on any confirm:true 200 and a stray-confirm read\n// inflates the numerator. The rate goes negative.\n\n// Orchestrator — both facts are certain on exactly this boundary.\nif (!req.confirm && isWriteVerb(planSql)) {\n  // A write plan rendered as a diff, nothing executed: the denominator.\n  emit({ name: "feature.destructive.preview_rendered", surface: req.surface });\n  return { requires_confirm: true, diff };\n}\n// ...execution happens only past this point...\nif (req.confirm && isWriteVerb(planSql)) {\n  // Exec success on an approved diff: the numerator.\n  emit({ name: "feature.destructive.committed", surface: req.surface });\n}',
+      },
+      { kind: "h2", text: "Thread facts down, don't pull decisions up" },
+      {
+        kind: "p",
+        text: "The fix is not teaching the route to re-detect writes — that duplicates the write-detection logic in a second place, and the two copies will drift. The fix is moving the emission down to the layer where `isWriteVerb(sql)` and the preview-vs-commit branch are already decided. There, both events fire on exactly the boundary they measure, and a stray-confirm read emits nothing at all.",
+      },
+      {
+        kind: "p",
+        text: "Moving down costs you one thing: the lower layer didn't know the surface the request came from — web app, CLI, MCP — and the events are only useful sliced by surface. So thread that one field down through the request. Passing one known fact down is cheap and drift-free; hoisting a whole decision up is neither. And when a caller doesn't thread the field — an internal path with no surface — skip the emit rather than fabricating a value. A gap in the data is honest; a guessed label is not.",
+      },
+      { kind: "h2", text: "The rule" },
+      {
+        kind: "p",
+        text: "A metric's emit point is the lowest layer where the distinction it encodes is certain. Above that layer you are guessing, and a guessed metric is worse than no metric, because it looks precise while being structurally wrong — negative rates, inflated numerators, denominators that undercount. The same reasoning fixes the dedup key: a volume event like this one keys on the request, not on a per-principal-per-day bucket, because collapsing repeated previews from one user would erase exactly the retries the metric exists to count. Decide what distinction the number encodes, find the lowest layer where that distinction is a fact, and emit there.",
+      },
+      {
+        kind: "p",
+        text: "(This is a build note from [nlqdb](https://nlqdb.com), the database you query in plain English — where destructive statements render as a diff you approve before anything runs. Honest split: this is an instrumentation-design lesson, not a product feature.)",
+      },
+    ],
+  },
+  {
     slug: "rotate-encryption-key-without-a-version-column",
     title: "You need to rotate an encryption key. You don't need a key-version column.",
     description:
