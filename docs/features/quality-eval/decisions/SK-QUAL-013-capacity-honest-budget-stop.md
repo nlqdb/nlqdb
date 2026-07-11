@@ -1,4 +1,4 @@
-# SK-QUAL-013 — Capacity-honest budget stop: a rate-limit breaker wall pauses the run, it never scores `no_sql`
+# SK-QUAL-013 — Capacity-honest budget stop: a transient wall pauses the run, it never scores `no_sql`
 
 Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). Parent decisions:
 [`SK-QUAL-011`](./SK-QUAL-011-resumable-runner.md) (the budget-stop this

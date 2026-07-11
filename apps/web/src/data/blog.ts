@@ -68,7 +68,7 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         kind: "code",
         lang: "bash",
-        code: "# Ambiguity debt: open-question bullets with no resolution marker.\n# Case-INSENSITIVE on the marker set — a case-sensitive grep counts\n# \"resolved\" and \"Resolved\" differently and the number drifts.\ngrep -rA9999 '^## Open questions' docs/features/*/FEATURE.md \\\n  | grep '^\\s*- ' \\\n  | grep -vciE 'resolved|decided:|parked|deferred|~~'",
+        code: "# Ambiguity debt: open-question bullets with no resolution marker.\n# -h suppresses the filename prefix grep -A puts on context lines —\n# without it the bullet match never fires and the count is always 0.\n# Case-INSENSITIVE on the marker set — a case-sensitive grep counts\n# \"resolved\" and \"Resolved\" differently and the number drifts.\ngrep -hA9999 '^## Open questions' docs/features/*/FEATURE.md \\\n  | grep '^\\s*- ' \\\n  | grep -vciE 'resolved|decided:|parked|deferred|~~'",
       },
       {
         kind: "p",
