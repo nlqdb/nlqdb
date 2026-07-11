@@ -29,7 +29,7 @@ when-to-load:
 
 Deferred to follow-up slices — gated on server endpoints that don't exist yet:
 - `nlq login` device-flow (needs `POST /v1/auth/device` per `SK-AUTH-004`).
-- `nlq mcp install` config-write (needs the device-flow session for `POST /v1/keys` to mint `sk_mcp_*`; the cobra command is wired to print the deferral hint).
+- `nlq mcp install` config-write (needs the device-flow session for `POST /v1/keys` to mint `sk_mcp_*`; the cobra command is wired to print the deferral hint). The wiring slice also fixes the config field key `zed.go` / `vscode.go` write: Zed reads `context_servers` and VS Code reads `servers`, not the `mcpServers` both writers emit today.
 - `nlq chat` REPL (UX-only deferral; design intact).
 - `nlq keys rotate <id>` (needs `POST /v1/keys/:id/rotate` per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md)).
 
@@ -99,7 +99,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **`nlq connection <db>` for hosted Postgres — Resolved ([`SK-CLI-020`](decisions/SK-CLI-020-connection-url-issue-once.md)): dropped.** The proposed unblock ("one API field on `GET /v1/databases`") is a security regression — that list endpoint is reached by read-only `pk_live_` embed keys and the MCP list tool, so it would leak the live DB credential to the least-privileged scope (against `SK-APIKEYS-003`/`SK-CLI-019`), and `GLOBAL-031` seals the URL at rest (the row holds only a `connection_secret_ref`, no plaintext to return). The connection URL is issued once on the create response; a lost URL is re-obtained via rotation (`SK-APIKEYS-005`), not a re-read verb.
 - **`nlq new --preset agent_memory_v1`.** `nlq remember` (SK-CLI-018) writes to a memory-preset DB, but `nlq new` routes through `/v1/ask`'s create branch, not the preset endpoint (`POST /v1/databases { preset }`, behind the `MEMORY_PRESET` flag — E-01/SK-HDC-020). Until the CLI calls that endpoint, a memory DB is created via the SDK/MCP `db.create` preset. The unblock is one API client call + a `--preset` flag; the natural companion slice to `remember`.
 - **Windows experience.** The bootstrap PR cross-compiled to windows/amd64 and the binary builds, but Windows shell quirks (cmd, PowerShell), the Credential Manager backend, and `~/.config` semantics under `APPDATA` need a manual round-trip on real hardware. Per-platform quirks land in `cli/AGENTS.md` once they're observed.
-- **`nlq mcp install` for hosts not yet covered by SK-CLI-011.** New MCP hosts emerge regularly. Add-a-host recipe in `cli/AGENTS.md` so the supported list grows without re-architecting `cli/internal/mcphosts/` — runbook concern, not a design decision.
+- **`nlq mcp install` for hosts not yet covered by SK-CLI-011 — Resolved (2026-07-10): the add-a-host recipe ships.** It lives in `cli/AGENTS.md` § Local rules ("Adding a new MCP host") — one file implementing `Host`, a `Registry()` append (registry order = the `SK-CLI-011` prompt order), a round-trip config test; shared helpers (`writeMcpServersField`, `detectByDirExists`, `appSupport`) cover the standard `mcpServers` shape, so a new host is a follow-the-recipe runbook task, not a design question. Verified against `cli/internal/mcphosts/` (six hosts, one file each, all on the shared helpers).
 
 ## Happy path walkthrough
 

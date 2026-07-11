@@ -101,9 +101,18 @@ done
   `DO_NOT_TRACK` / `NLQDB_TELEMETRY` env reads — there is nothing to
   opt out of.
 - **Adding a new MCP host:** drop a file in `internal/mcphosts/`
-  implementing the `Host` interface, append it to `Registry()`, add
-  a test that round-trips a real-shape config file. No changes
-  elsewhere.
+  implementing the `Host` interface, append it to `Registry()`
+  (registry order is the `SK-CLI-011` prompt order on a multi-host
+  machine), add a test that round-trips a real-shape config file. No
+  changes elsewhere. Reuse the shared helpers: `writeMcpServersField`
+  when the host's docs confirm it nests servers under a top-level
+  `mcpServers` field (atomic temp+rename, preserves sibling fields,
+  0600); `detectByDirExists` + `appSupport`/`userHome` for detection
+  and per-OS config paths. Hand-roll `Install` when the config shape
+  genuinely differs — it does for two current hosts: Zed reads
+  `context_servers` and VS Code reads `servers`, so `zed.go` /
+  `vscode.go` writing `mcpServers` is a known gap that lands with the
+  `nlq mcp install` wiring slice.
 - **Adding a new verb:** new file under `internal/cmd/`, register it
   in `cmd.New()`, and add the verb name to the `known` map in
   `cmd/nlq/main.go` so the bare-form rewriter doesn't intercept it.
