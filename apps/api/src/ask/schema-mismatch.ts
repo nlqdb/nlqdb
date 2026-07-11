@@ -38,6 +38,38 @@ export function classifySchemaError(
   return new Nonrecoverable("schema_mismatch", new SchemaMismatchError([], []));
 }
 
+// The exec catch-all (`db_unreachable`) was a black hole: an exec error
+// that is neither missing-relation nor replannable was swallowed with no
+// SQLSTATE recorded anywhere — the 2026-07-11 adopted-DB ACL gap (SET
+// LOCAL ROLE failing deterministically) hid behind "Couldn't reach the
+// database" across nine e2e runs. Same load-bearing-log lesson as
+// SK-ASK-019: emit one structured line + span attributes so the next
+// mislabeled class is greppable in a single run.
+export function recordExecUnreachable(err: unknown, ctx: SchemaMismatchContext): void {
+  const truncate = (s: string) => s.slice(0, 500);
+  const code = (err as { code?: string }).code;
+  const pgCode = typeof code === "string" ? code : "none";
+  const message = truncate(err instanceof Error ? err.message : String(err));
+  const span = trace.getActiveSpan();
+  if (span) {
+    span.setAttribute("nlqdb.ask.db_unreachable.pg_code", pgCode);
+    span.setAttribute("nlqdb.ask.db_unreachable.pg_message", message);
+    span.setAttribute("nlqdb.ask.db_unreachable.db_id", ctx.dbId);
+  }
+  console.error(
+    JSON.stringify({
+      event: "exec_db_unreachable",
+      pg_code: pgCode,
+      pg_message: message,
+      db_id: ctx.dbId,
+      goal: truncate(ctx.goal),
+      sql: truncate(ctx.planSql),
+      cache_hit: ctx.cacheHit,
+      plan_model: ctx.planModel,
+    }),
+  );
+}
+
 function recordSchemaMismatch(
   detail: SchemaMismatchContext & {
     reason: "schema_missing" | "table_missing";

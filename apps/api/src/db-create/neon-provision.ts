@@ -304,8 +304,9 @@ export function stripDbPrefix(dbId: string): string {
 // compromised compiler or a hand-rolled caller. Postgres identifiers
 // in our world are `[a-zA-Z_][a-zA-Z0-9_]*`; reject anything else
 // before quoting so a malformed table name can't break out of the
-// double-quoted form.
-function assertSafeIdentifier(value: string, label: string): void {
+// double-quoted form. Exported for the adoption ACL-retarget path
+// (`anon-adopt.ts`), which quotes the same identifier classes.
+export function assertSafeIdentifier(value: string, label: string): void {
   if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value)) {
     throw new Error(`provisionDb: unsafe ${label} "${value}"`);
   }
@@ -318,8 +319,10 @@ function assertSafeIdentifier(value: string, label: string): void {
 // only where parameterisation isn't possible (DDL — `CREATE POLICY
 // USING (... = '<tenant_id>')`). Doubling single quotes is the
 // canonical Postgres escape; combined with the surrounding `'…'`
-// quotes it prevents literal-breakout.
-function escapeSqlLiteral(value: string): string {
+// quotes it prevents literal-breakout. Exported for the adoption
+// ACL-retarget path (`anon-adopt.ts`), which rewrites the same
+// tenant-literal RLS predicate.
+export function escapeSqlLiteral(value: string): string {
   return value.replace(/'/g, "''");
 }
 
