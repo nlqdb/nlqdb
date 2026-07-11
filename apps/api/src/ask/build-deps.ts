@@ -26,6 +26,7 @@ import { buildEventEmitter } from "../events-emitter.ts";
 import { getLLMRouter } from "../llm-router.ts";
 import { kekFromEnv, openSecret } from "../secret-envelope.ts";
 import { assertTenantRoleName, tenantRoleName } from "../tenant-role.ts";
+import { makeKvDiagSink } from "./diag.ts";
 import { makeFirstQueryTracker } from "./first-query.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
 import { makePlanCache } from "./plan-cache.ts";
@@ -47,6 +48,9 @@ export function buildAskDeps(envBindings: Cloudflare.Env, llm?: LLMRouter): Orch
     firstQuery: makeFirstQueryTracker(envBindings.KV),
     events: buildEventEmitter(envBindings.EVENTS_QUEUE),
     recentTables: makeRecentTablesStore(envBindings.KV),
+    // SK-ASK-023 — NODE_ENV distinguishes preview rows (e2e staging)
+    // from production rows at pull time.
+    diag: makeKvDiagSink(envBindings.KV, envBindings.NODE_ENV ?? "unknown"),
     lookupPipeAdvisory: (dbId, queryHash) =>
       lookupPipeAdvisory(envBindings.DB, dbId, queryHash, Date.now()),
   };

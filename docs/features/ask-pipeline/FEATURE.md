@@ -178,11 +178,21 @@ when-to-load:
 
 ### SK-ASK-022 — Execution-guided repair: a re-plannable PG exec error re-plans once with the error fed back
 
-- **Decision:** A Postgres exec error whose SQLSTATE marks the SQL deterministically malformed-but-fixable (undefined/ambiguous column or function, GROUP BY omission, type/cast mismatch, syntax — the set lives in `exec-repair.ts`) bails out of SK-ASK-013's transient retry after one attempt and is re-planned **once** with the PG error fed back via `previousAttempt`. Reads only — a repaired write verb is rejected (`sql_rejected:write_via_repair`), never executed, preserving the SK-TRUST-001 preview gate. Excludes 42P01/3F000 (those stay `schema_mismatch`, SK-ASK-016/019).
-- **Core value:** Engine quality, Bullet-proof, Performance
-- **Why:** Execution-guided repair is the highest-EX technique in text-to-SQL — a wrong column is fixable the instant the planner sees the DB's own error — yet before this the executor replayed identical SQL 3× and surfaced `db_unreachable`. The plan prompt already diagnoses `previousAttempt.error` against the full schema (SK-LLM-018/037); the only gap was routing the exec error to it. Bailing the doomed retry also cuts deterministic-error exec round-trips 3→1.
-- **Consequence in code:** `isReplannableExecError` (`exec-repair.ts`) gates a bounded repair loop in `orchestrate.ts` — replannable errors bail SK-ASK-013 after one exec, the outer catch re-plans once (with the PG error fed back), re-emits the `plan` event, then re-execs through the allowlist. Failure-path only → zero happy-path latency.
-- **Alternatives rejected:** Retry identical SQL (can't fix a deterministic error); unbounded repair (latency/cost runaway); repair writes too (bypasses the preview gate).
+**Body:** [`decisions/SK-ASK-022-execution-guided-repair.md`](./decisions/SK-ASK-022-execution-guided-repair.md).
+Deterministic-but-fixable SQLSTATEs (`exec-repair.ts`) bail the SK-ASK-013
+retry after one exec and re-plan **once** with the PG error fed back; reads
+only — a repaired write is rejected, preserving the SK-TRUST-001 gate.
+
+### SK-ASK-023 — Exec catch-all diagnostics persist to shared KV because preview invocations log nowhere
+
+**Body:** [`decisions/SK-ASK-023-preview-durable-exec-diagnostics.md`](./decisions/SK-ASK-023-preview-durable-exec-diagnostics.md).
+Workers preview versions (the e2e staging surface) emit no logs anywhere —
+Workers Logs, `wrangler tail`, and Logpush all skip preview-URL invocations —
+so the SK-ASK-019 structured line vanishes exactly where e2e failures happen.
+The catch-all now also writes `(pgCode, pgMessage, dbId, cacheHit, planModel)`
+to a 7-day-TTL `diag:exec_db_unreachable:*` row in the shared KV namespace
+(`makeKvDiagSink`, swallowed `nlqdb.diag.write` span), pullable offline via
+the CF REST API.
 
 ## The LLM loop
 

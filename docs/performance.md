@@ -166,13 +166,13 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.auth.verify`           | Internal JWT HMAC verify.                      |
 | `nlqdb.ratelimit.check`       | D1 UPSERT for the per-principal rate-limit window. `SK-MCP-009` keys buckets via `principal.ts::rateLimitBucketKey` — sk_live/sk_mcp get one bucket per `api_keys.id`; session/anon/pk_live key by `principal.id`. |
 | `nlqdb.ask`                   | Top-level wrapper for `/v1/ask` request.       |
-| `nlqdb.ask.hash`              | Schema-hash + query-hash compute.              |
 | `nlqdb.cache.plan.lookup`     | KV read for cached plan (label `hit=true/false`). |
 | `nlqdb.cache.plan.write`      | KV write of new plan.                          |
 | `nlqdb.cache.first_query.lookup` | KV read — has this user fired `user.first_query` yet? (`apps/api/src/ask/orchestrate.ts`; `onError`→false to avoid re-emit-forever). |
 | `nlqdb.cache.first_query.commit` | KV write marking `user.first_query` emitted (emit-then-commit; a failed commit re-emits next request, non-fatal). |
 | `nlqdb.recent_tables.lookup`  | KV read of principal's recent-tables MRU (`SK-ASK-012`). |
 | `nlqdb.recent_tables.touch`   | KV read-merge-write to push new tables onto the MRU (`SK-ASK-012`). `ctx.waitUntil` on `/v1/ask`; awaited inline on create. |
+| `nlqdb.diag.write`            | KV write persisting the exec catch-all's SQLSTATE (`SK-ASK-023`) — previews log nowhere, so KV is the durable channel. Swallowed; never blocks the 502. |
 | `llm.route`                   | Merged kind + dbId classification (SK-ASK-009). One cheap-tier call per cache-miss / dbId-absent send; replaces the older `llm.classify` + `llm.disambiguate` pair. |
 | `llm.plan`                    | NL → SQL generation.                           |
 | `llm.summarize`               | Result summarization (conditional).            |
@@ -304,19 +304,12 @@ stacks before paying.
 
 ## 6. Dashboards-as-code
 
-Live in `ops/grafana/dashboards/` as JSON, deployed via Grafana
-Cloud's `/api/dashboards/db` provisioning endpoint from CI on merge
-to `main`. Never edited in the Grafana UI — UI changes are detected
-on the next CI run and the JSON wins.
-
-Initial dashboards (deferred until Phase 1 traffic warrants a tuned view; spans + metrics are already exported via OTLP):
-
-| Dashboard            | What it shows                                                              |
-| :------------------- | :------------------------------------------------------------------------- |
-| `nlqdb-overview`     | All §1 SLOs at a glance, error rate, request rate. Single-pane oncall view. |
-| `nlqdb-ask-pipeline` | Per-stage p50/p99 from §2 budgets vs actual; cache hit ratio; LLM provider mix. |
-| `nlqdb-providers`    | LLM provider latency comparison, failover rate, error rate per provider.   |
-| `nlqdb-auth`         | Sign-in success rate, token refresh rate, OAuth callback p99.              |
+Deferred until Phase 1 traffic warrants a tuned view (tracked in
+`features/observability/FEATURE.md` Open questions); spans + metrics
+already export via OTLP. When they land: JSON in
+`ops/grafana/dashboards/`, provisioned from CI on merge to `main`,
+never edited in the Grafana UI — UI changes are detected on the next
+CI run and the JSON wins.
 
 Alerts (provisioned alongside dashboards):
 

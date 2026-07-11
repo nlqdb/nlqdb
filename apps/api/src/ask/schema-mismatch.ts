@@ -44,8 +44,13 @@ export function classifySchemaError(
 // LOCAL ROLE failing deterministically) hid behind "Couldn't reach the
 // database" across nine e2e runs. Same load-bearing-log lesson as
 // SK-ASK-019: emit one structured line + span attributes so the next
-// mislabeled class is greppable in a single run.
-export function recordExecUnreachable(err: unknown, ctx: SchemaMismatchContext): void {
+// mislabeled class is greppable in a single run. Returns the extracted
+// (pgCode, pgMessage) so the caller can persist them where preview
+// invocations — which log nowhere — still reach (SK-ASK-023).
+export function recordExecUnreachable(
+  err: unknown,
+  ctx: SchemaMismatchContext,
+): { pgCode: string; pgMessage: string } {
   const truncate = (s: string) => s.slice(0, 500);
   const code = (err as { code?: string }).code;
   const pgCode = typeof code === "string" ? code : "none";
@@ -68,6 +73,7 @@ export function recordExecUnreachable(err: unknown, ctx: SchemaMismatchContext):
       plan_model: ctx.planModel,
     }),
   );
+  return { pgCode, pgMessage: message };
 }
 
 function recordSchemaMismatch(
