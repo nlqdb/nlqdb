@@ -12,6 +12,29 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"Your most active user is your test suite."** slug
+  `most-active-user-is-your-test-suite` · venue dev.to (#analytics #testing
+  #startup) + r/ExperiencedDevs + lobste.rs (`practices`) ·
+  measurement-hygiene lesson (the scorecard funnel bot-filter, 2026-07-11).
+  Angle: pre-launch, synthetic traffic IS your traffic — e2e walkers
+  register fixture users, create DBs, and ask real queries through the
+  production pipeline, so every dashboard number quietly measures your
+  robots. Three places it bit us, three fixes. (1) RUM analytics: headless
+  walkers land as `userAgentBrowser: "Unknown"` — 76 of our 120 weekly
+  "visits" — so the funnel pins a client-class cut (named browsers only)
+  and reports both raw and filtered numbers side by side. (2) Product KPIs:
+  our first-10-queries success counter was decremented 8 points in one
+  night by a *failing e2e run* — the suite's asks incremented the same
+  saturating counters real users do; the fix is attribution at read time,
+  an explicit founder/test identity list joined against every user-scoped
+  metric (the write path stays clean — tests must exercise the real
+  pipeline, so filter at the query, not the insert). (3) The hardest one:
+  accepting that a filtered KPI can read "not yet measurable" (stranger
+  N=0) — reporting founder traffic as signal feels better and is worse
+  than no number. Rule of thumb: a metric that doesn't name its population
+  is measuring your robots. Honest split: a measurement-hygiene lesson
+  from running a pre-launch funnel, not a product feature.
+
 - **"Ownership transfer was a one-row UPDATE. Then we added least-privilege."**
   slug `ownership-transfer-outlives-least-privilege` · venue dev.to (#postgres
   #security #database) + r/PostgreSQL + lobste.rs (`databases`, `security`) ·

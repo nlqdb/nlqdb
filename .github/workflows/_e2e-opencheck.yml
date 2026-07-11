@@ -4,11 +4,12 @@
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER wire a paid model here, even via OpenRouter — :free suffix required on OpenRouter slugs.
 # The agent model is NOT hard-coded: the pre-flight walks `candidate_models` in order and the first
 # model that answers a real tool-call probe is substituted into the suite YAML (`model: "__MODEL__"`).
-# One saturated free pool (OpenRouter's per-model "temporarily rate-limited upstream" 429) therefore
-# no longer zeroes the whole suite — it cost 4 consecutive runs between 2026-06-12 and 07-05.
-# When EVERY primary candidate is unhealthy (all five share OpenRouter's free pool, which saturates
-# as a unit — 13 consecutive failed runs 07-02 → 07-10), the pre-flight walks a second-provider
-# fallback lane (`fallback_*` inputs; default NVIDIA NIM, $0 dev-program tier, outside the app chain).
+# PRIMARY lane = NVIDIA NIM gpt-oss-120b (2026-07-11 swap): OpenRouter's free pool saturates as a
+# unit and FLAPS past the 3-probe gate (13 consecutive failed runs 07-02 → 07-10, then 216s
+# agent-starvation on a probe-healthy pick, run 29144964531), while the NIM pool — same weights,
+# independent $0 dev-program tier, ~40 RPM — ran agent tests in 7.7–25s on both live firings.
+# When the primary lane is unhealthy the pre-flight walks the fallback lane (`fallback_*` inputs;
+# default = the previous 5-candidate OpenRouter `:free` walk).
 # Canonical free-model table + switching guide: docs/features/e2e-coverage/opencheck-operations.md
 
 name: E2E opencheck (reusable)
@@ -25,25 +26,25 @@ on:
         required: true
         type: string
       provider_base_url:
-        description: "OpenAI-compatible base URL for the agent LLM provider (must be free per GLOBAL-013)."
-        required: false
-        type: string
-        default: https://openrouter.ai/api/v1
-      candidate_models:
-        description: "Ordered comma-separated agent-model ids on provider_base_url, ALL free per GLOBAL-013 (`:free` suffix on OpenRouter). Pre-flight picks the first one that answers 3 consecutive tool-call probes. Order = proven agent competence first; nemotron-3-super is BANNED (probe-healthy but collapses to text-format tool calls mid-loop). Per-model evidence + run ids: docs/features/e2e-coverage/opencheck-operations.md."
-        required: false
-        type: string
-        default: "openai/gpt-oss-120b:free,qwen/qwen3-coder:free,qwen/qwen3-next-80b-a3b-instruct:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-20b:free"
-      fallback_provider_base_url:
-        description: "Second-provider lane walked only when EVERY primary candidate fails the pre-flight — all five primary candidates share ONE upstream (OpenRouter), and its free pools saturate together for hours (13 consecutive failed runs 07-02→07-10). NVIDIA NIM is $0 via the developer program (~40 RPM) and is NOT in the app's engine chain, so this lane raids no app budget (the invariant behind the two-budget split)."
+        description: "OpenAI-compatible base URL for the agent LLM provider (must be free per GLOBAL-013). Default NVIDIA NIM ($0 dev-program tier, ~40 RPM, NOT in the app's engine chain — the two-budget split invariant): promoted from fallback to primary 2026-07-11 after OpenRouter's shared free pool flapped past the 3-probe gate (216s agent starvation, run 29144964531) while NIM ran the same tests in 7.7–25s."
         required: false
         type: string
         default: https://integrate.api.nvidia.com/v1
-      fallback_candidate_models:
-        description: "Ordered agent-model ids on fallback_provider_base_url, free per GLOBAL-013. gpt-oss-120b = the only model with a full green run, on a fresh pool; probed 3/3 tool-calls 2026-07-11."
+      candidate_models:
+        description: "Ordered comma-separated agent-model ids on provider_base_url, ALL free per GLOBAL-013. Pre-flight picks the first one that answers 3 consecutive tool-call probes. gpt-oss-120b = the same weights as the only model with a full green run. Per-model evidence + run ids: docs/features/e2e-coverage/opencheck-operations.md."
         required: false
         type: string
         default: "openai/gpt-oss-120b"
+      fallback_provider_base_url:
+        description: "Second-provider lane walked only when EVERY primary candidate fails the pre-flight. Default OpenRouter (the pre-2026-07-11 primary): 5 `:free` candidates, model-diverse but pool-identical — its free pool saturates as a unit for hours (13 consecutive failed runs 07-02→07-10), so it now backs up the independent NIM pool instead of fronting it."
+        required: false
+        type: string
+        default: https://openrouter.ai/api/v1
+      fallback_candidate_models:
+        description: "Ordered agent-model ids on fallback_provider_base_url, ALL free per GLOBAL-013 — on OpenRouter the `:free` suffix is REQUIRED (a bare slug is PAID; 2026-05-21 a paid Mistral slug burned ~$14). Order = proven agent competence first; nemotron-3-super is BANNED (probe-healthy but collapses to text-format tool calls mid-loop)."
+        required: false
+        type: string
+        default: "openai/gpt-oss-120b:free,qwen/qwen3-coder:free,qwen/qwen3-next-80b-a3b-instruct:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-20b:free"
     secrets:
       LLM_API_KEY:
         description: "LLM API key for the active provider. Surfaced via OPENAI_API_KEY + provider-specific OPENAI_BASE_URL."
@@ -320,7 +321,7 @@ jobs:
             done
           }
           walk_lane "${OPENAI_BASE_URL}" "${OPENAI_API_KEY}" "${CANDIDATE_MODELS}" "false"
-          # All primary candidates share one upstream — walk the second provider before giving up.
+          # Each lane is one upstream pool — walk the second provider before giving up.
           if [ -n "${FALLBACK_API_KEY}" ] && [ -n "${FALLBACK_CANDIDATE_MODELS}" ]; then
             echo "No primary candidate healthy — walking the fallback provider lane."
             walk_lane "${FALLBACK_BASE_URL}" "${FALLBACK_API_KEY}" "${FALLBACK_CANDIDATE_MODELS}" "true"

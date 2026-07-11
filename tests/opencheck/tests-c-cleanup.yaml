@@ -5,8 +5,8 @@
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
 # On OpenRouter, ONLY slugs ending in :free are $0 — the bare slug (no :free) is PAID (2026-05-21 burned ~$14).
 # __MODEL__ is substituted at run time by _e2e-opencheck.yml's pre-flight, which walks its ordered
-# `candidate_models` list (all OpenRouter :free) and picks the first that answers a tool-call probe.
-# This suite's ~140K-token loop exceeds Groq's 100K/day cap on its own → must run on OpenRouter :free ($0 tokens).
+# `candidate_models` list (NVIDIA NIM primary; OpenRouter :free fallback lane) and picks the first that answers a tool-call probe.
+# This suite's ~140K-token loop exceeds Groq's 100K/day cap on its own → must run on its own $0 agent lane.
 # Free-model table + switching guide: docs/features/e2e-coverage/opencheck-operations.md
 
 baseUrl: "__BASE_URL__"

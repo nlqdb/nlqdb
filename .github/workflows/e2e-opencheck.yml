@@ -9,16 +9,15 @@
 #   Groq's free tier has a ~100K-tokens/DAY ACCOUNT-LEVEL cap, shared across every Groq model
 #   (per-model pools are per-MINUTE only). The opencheck AGENT loop alone burns ~94K/run, so when
 #   both the agent and the staging app drew from Groq the day's budget 429'd before tests finished.
-#   Fix: the AGENT runs on OpenRouter `:free` ($0, its own budget); Groq's daily cap is reserved
+#   Fix: the AGENT got its own $0 provider lane (today's lanes: header below); Groq's daily cap is reserved
 #   for the staging app's /v1/ask + NL db-create only (~20-40K/run — fits comfortably).
 #
-# FREE MODELS ONLY (GLOBAL-013). On OpenRouter ONLY a `:free` slug is $0 — a bare slug is PAID
-# (2026-05-21: a paid Mistral slug burned ~$14). Agent model (all suites): picked at run time by
-# _e2e-opencheck.yml's pre-flight from its ordered `candidate_models` OpenRouter `:free` list —
-# one saturated free pool no longer zeroes the run (it cost 4 consecutive runs, 06-12 → 07-05).
-# If ALL OpenRouter candidates are saturated (they share one upstream; 13 straight failures
-# 07-02 → 07-10), the pre-flight falls back to NVIDIA NIM (NVIDIA_API_KEY, $0 dev tier, ~40 RPM,
-# outside the app's engine chain — raids no app budget).
+# FREE MODELS ONLY (GLOBAL-013). Agent lanes (all suites), picked at run time by
+# _e2e-opencheck.yml's pre-flight: PRIMARY = NVIDIA NIM gpt-oss-120b (NVIDIA_API_KEY, $0 dev tier,
+# ~40 RPM, outside the app's engine chain — raids no app budget); FALLBACK = the ordered OpenRouter
+# `:free` candidate walk (the pre-2026-07-11 primary — its free pool saturates as a unit and flapped
+# past the probe gate: 13 straight failures 07-02 → 07-10, then 216s agent starvation on 07-11).
+# On OpenRouter ONLY a `:free` slug is $0 — a bare slug is PAID (2026-05-21: ~$14 burned).
 # Engine (app-side /v1/ask) = the cerebras-led free chain (SK-LLM-023), NOT Groq; check the DAILY
 # (TPD/RPD) budget of the head before triggering — per-minute headers lie (opencheck-operations.md).
 # Free-model table + switching guide: docs/features/e2e-coverage/opencheck-operations.md
@@ -59,8 +58,8 @@ jobs:
       # journey hangs on every LLM call (240s opencheck timeout). SK-E2E-003.
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
-  # Agent on OpenRouter :free (own budget); app-side on Groq (deploy-staging). All suites share
-  # the OpenRouter account's free-model request budget (1000 req/day @ ≥$10 balance) — $0 tokens.
+  # Agent on NVIDIA NIM (own $0 budget, OpenRouter :free as fallback); app-side LLM via
+  # deploy-staging (cerebras-led free chain). Neither agent lane touches the app's budget.
 
   # Suite A — Bootstrap: anonymous → create table → redirect → sign-in → verify adoption.
   # Creates the users DB suites B+C depend on. Always runs (depth a | ab | abc).
@@ -74,14 +73,14 @@ jobs:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
       config_file: tests-a-bootstrap.yaml
     secrets:
-      LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      FALLBACK_LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      FALLBACK_LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   # Suite B — Read/Write: sign-in → pin "users" DB by name → trace SQL → insert Alice → read/count/vague/mismatch → CMD+K.
   # Runs whenever the deploy is up and depth != 'a' — EVEN IF Suite A failed. `needs: opencheck-a` is
   # ORDER-ONLY here (keeps suites sequential so the shared Groq daily budget never spikes; the whole
   # A→B→C app-side draw is ~20-40K, well under the 100K/day cap — the ~94K consumer is the agent, on
-  # OpenRouter :free). It is NOT a success gate: A's dominant flake is the bootstrap (the db.create'd DB
+  # its own lane). It is NOT a success gate: A's dominant flake is the bootstrap (the db.create'd DB
   # exists but isn't queryable as "users"), so the DB is still present and B can pin it by name for an
   # independent read/write signal. Turning B's skip into a signal is the fix for the documented
   # "no sense of progress" trap — one A flake used to zero out all of B+C.
@@ -97,8 +96,8 @@ jobs:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
       config_file: tests-b-write.yaml
     secrets:
-      LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      FALLBACK_LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      FALLBACK_LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   # Suite C — UX/Cleanup: sign-in → pin "users" DB by name → delete-row → create 2nd DB → delete DB → API keys → sign-out → cleanup.
   # Runs at depth abc EVEN IF Suite A or B failed (same order-only `needs`, budget rationale, and
@@ -118,8 +117,8 @@ jobs:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
       config_file: tests-c-cleanup.yaml
     secrets:
-      LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      FALLBACK_LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      FALLBACK_LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   cleanup:
     name: Delete Neon branch
