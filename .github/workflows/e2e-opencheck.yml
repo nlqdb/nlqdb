@@ -16,6 +16,9 @@
 # (2026-05-21: a paid Mistral slug burned ~$14). Agent model (all suites): picked at run time by
 # _e2e-opencheck.yml's pre-flight from its ordered `candidate_models` OpenRouter `:free` list —
 # one saturated free pool no longer zeroes the run (it cost 4 consecutive runs, 06-12 → 07-05).
+# If ALL OpenRouter candidates are saturated (they share one upstream; 13 straight failures
+# 07-02 → 07-10), the pre-flight falls back to NVIDIA NIM (NVIDIA_API_KEY, $0 dev tier, ~40 RPM,
+# outside the app's engine chain — raids no app budget).
 # Engine (app-side /v1/ask) = the cerebras-led free chain (SK-LLM-023), NOT Groq; check the DAILY
 # (TPD/RPD) budget of the head before triggering — per-minute headers lie (opencheck-operations.md).
 # Free-model table + switching guide: docs/features/e2e-coverage/opencheck-operations.md
@@ -72,6 +75,7 @@ jobs:
       config_file: tests-a-bootstrap.yaml
     secrets:
       LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      FALLBACK_LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
   # Suite B — Read/Write: sign-in → pin "users" DB by name → trace SQL → insert Alice → read/count/vague/mismatch → CMD+K.
   # Runs whenever the deploy is up and depth != 'a' — EVEN IF Suite A failed. `needs: opencheck-a` is
@@ -94,6 +98,7 @@ jobs:
       config_file: tests-b-write.yaml
     secrets:
       LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      FALLBACK_LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
   # Suite C — UX/Cleanup: sign-in → pin "users" DB by name → delete-row → create 2nd DB → delete DB → API keys → sign-out → cleanup.
   # Runs at depth abc EVEN IF Suite A or B failed (same order-only `needs`, budget rationale, and
@@ -114,6 +119,7 @@ jobs:
       config_file: tests-c-cleanup.yaml
     secrets:
       LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      FALLBACK_LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
   cleanup:
     name: Delete Neon branch
