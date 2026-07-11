@@ -1,13 +1,15 @@
-# SK-ASK-023 — Exec catch-all diagnostics persist to shared KV because preview invocations log nowhere
+# SK-ASK-023 — Swallowed-failure diagnostics persist to shared KV because preview invocations log nowhere
 
-- **Decision:** The `/v1/ask` exec catch-all persists its extracted
-  `(pgCode, pgMessage, dbId, cacheHit, planModel)` as a 7-day-TTL row in
-  the shared `KV` namespace (`diag:exec_db_unreachable:<ts>:<rand>`,
-  `makeKvDiagSink` in `apps/api/src/ask/diag.ts`, stamped with `NODE_ENV`
-  as `source`) — because Cloudflare **preview-URL invocations emit no logs
-  anywhere** (Workers Logs, `wrangler tail`, and Logpush all exclude
-  them), and previews are exactly where the e2e suite's exec failures
-  happen.
+- **Decision:** Failure classes whose only record is a console line +
+  span attributes persist their extracted `(pgCode, pgMessage, dbId, …)`
+  as 7-day-TTL rows in the shared `KV` namespace
+  (`diag:<event>:<ts>:<rand>`, `makeKvDiagSink` in
+  `apps/api/src/ask/diag.ts`, stamped with `NODE_ENV` as `source`) —
+  because Cloudflare **preview-URL invocations emit no logs anywhere**
+  (Workers Logs, `wrangler tail`, and Logpush all exclude them), and
+  previews are exactly where the e2e suite's failures happen. Classes
+  today: the `/v1/ask` exec catch-all (`exec_db_unreachable`) and the
+  adoption ACL-retarget catch (`anon_adopt_regrant_failed`).
 - **Core value:** Bullet-proof, Free
 - **Why:** `SK-ASK-019` made the `db_unreachable` black hole "greppable in
   a single run" — but only where logs exist. The e2e staging surface runs

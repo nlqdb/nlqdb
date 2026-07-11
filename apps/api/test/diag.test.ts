@@ -20,6 +20,7 @@ function stubKv() {
 }
 
 const ENTRY = {
+  event: "exec_db_unreachable" as const,
   pgCode: "42501",
   pgMessage: "permission denied for schema x",
   dbId: "db_1",
@@ -28,12 +29,12 @@ const ENTRY = {
 };
 
 describe("makeKvDiagSink", () => {
-  it("writes a prefixed, TTL'd JSON row carrying the SQLSTATE + source", async () => {
+  it("writes a per-event prefixed, TTL'd JSON row carrying the SQLSTATE + source", async () => {
     const kv = stubKv();
     await makeKvDiagSink(kv.store, "preview").record(ENTRY);
     expect(kv.puts).toHaveLength(1);
     const put = kv.puts[0];
-    expect(put?.key.startsWith(DIAG_KEY_PREFIX)).toBe(true);
+    expect(put?.key.startsWith(`${DIAG_KEY_PREFIX}exec_db_unreachable:`)).toBe(true);
     expect(put?.opts).toEqual({ expirationTtl: DIAG_TTL_SECONDS });
     expect(JSON.parse(put?.value ?? "{}")).toMatchObject({ ...ENTRY, source: "preview" });
   });

@@ -172,7 +172,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.cache.first_query.commit` | KV write marking `user.first_query` emitted (emit-then-commit; a failed commit re-emits next request, non-fatal). |
 | `nlqdb.recent_tables.lookup`  | KV read of principal's recent-tables MRU (`SK-ASK-012`). |
 | `nlqdb.recent_tables.touch`   | KV read-merge-write to push new tables onto the MRU (`SK-ASK-012`). `ctx.waitUntil` on `/v1/ask`; awaited inline on create. |
-| `nlqdb.diag.write`            | KV write persisting the exec catch-all's SQLSTATE (`SK-ASK-023`) — previews log nowhere, so KV is the durable channel. Swallowed; never blocks the 502. |
+| `nlqdb.diag.write`            | KV write persisting a swallowed failure class's SQLSTATE (`SK-ASK-023`: exec catch-all, adopt-regrant catch) — previews log nowhere, so KV is the durable channel. Swallowed; never blocks the caller's error path. |
 | `llm.route`                   | Merged kind + dbId classification (SK-ASK-009). One cheap-tier call per cache-miss / dbId-absent send; replaces the older `llm.classify` + `llm.disambiguate` pair. |
 | `llm.plan`                    | NL → SQL generation.                           |
 | `llm.summarize`               | Result summarization (conditional).            |

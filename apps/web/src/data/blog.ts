@@ -41,6 +41,43 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "most-active-user-is-your-test-suite",
+    title: "Your most active user is your test suite.",
+    description:
+      "Pre-launch, synthetic traffic IS your traffic: e2e walkers register users and run real queries, so every dashboard quietly measures your robots. Three places it bit us, three fixes.",
+    date: "2026-07-11",
+    body: [
+      {
+        kind: "p",
+        text: "Before launch, your end-to-end suite is often the only thing exercising production. Ours registers fixture users, creates databases, and asks real natural-language queries through the exact pipeline a stranger would hit — which is the point of an e2e suite, and also the problem: every dashboard we built quietly measured our robots. Here are the three places it bit us, and the fix for each.",
+      },
+      { kind: "h2", text: "1. Your web analytics count headless browsers as visits" },
+      {
+        kind: "p",
+        text: 'Our weekly funnel said 120 visits. Real-browser visits were about 41. The rest were our own walkers: headless Chromium lands in RUM analytics with `userAgentBrowser: "Unknown"` — 76 of the 120 — plus one that identified as headless outright. The fix is a pinned client-class cut: count named browsers (Chrome, Mobile Safari, Edge…) as the filtered number, and report *both* numbers side by side. Raw tells you the instrument is alive; filtered tells you whether humans showed up. Reporting only one of them is how you lie to yourself in either direction.',
+      },
+      { kind: "h2", text: "2. Your product KPIs saturate on fixture accounts" },
+      {
+        kind: "p",
+        text: "Our headline onboarding KPI — the share of a new account's first ten queries that succeed — dropped 8 points in one night. No deploy, no incident. A *failing e2e run* had burned its asks against the same saturating counters real users increment; the suite's fixture account looked like our worst-onboarded user, because it was.",
+      },
+      {
+        kind: "p",
+        text: "The tempting fix is to skip the counters when the caller is a test account — and it's wrong. The write path is the thing under test; fork it for fixtures and your suite stops exercising the pipeline you ship. Filter at *read* time instead: keep an explicit founder/test identity list and join it against every user-scoped metric when you pull the number. Writes stay honest, reads stay clean, and the filter is one place to audit instead of a flag threaded through every emit site.",
+      },
+      { kind: "h2", text: "3. The hardest one: accepting “not yet measurable”" },
+      {
+        kind: "p",
+        text: "Once the joins were in place, our first-ten-queries KPI read: stranger sample size zero, not yet measurable. That's a worse-feeling number than the unfiltered 5/22 it replaced — and a strictly better one. A KPI computed over founder and fixture traffic isn't a pessimistic estimate of the real number; it's a number about a different population wearing the KPI's name. Shipping it to a scorecard anchors decisions to noise. An honest “N=0” at least tells you what the actual bottleneck is: distribution, not product.",
+      },
+      { kind: "h2", text: "The rule of thumb" },
+      {
+        kind: "p",
+        text: "A metric that doesn't name its population is measuring your robots. Every user-scoped number on a pre-launch dashboard should say which of three populations it covers — everyone, humans-only, or strangers-only — and the cut that produces it should be pinned in one greppable place (a UA class list, an identity list) rather than re-derived per query. Synthetic traffic through the production pipeline is a feature; synthetic traffic in your KPIs is a bug, and the boundary between them is attribution at read time.",
+      },
+    ],
+  },
+  {
     slug: "five-fallback-models-one-provider",
     title: "Your five fallback models are one point of failure.",
     description:

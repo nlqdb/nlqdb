@@ -14,23 +14,27 @@
 
 import type { KVStore } from "../kv-store.ts";
 
-export const DIAG_KEY_PREFIX = "diag:exec_db_unreachable:";
+export const DIAG_KEY_PREFIX = "diag:";
 
 // One week: long enough to pull after a weekend e2e run, short enough
 // that the shared namespace never accumulates (failure-path volume is
 // a handful of rows per bad run).
 export const DIAG_TTL_SECONDS = 7 * 24 * 60 * 60;
 
-export type ExecUnreachableDiag = {
+// One entry per swallowed-failure class whose console line a preview
+// drops. Adding a class = adding a union member + the `record` call in
+// its catch; the key prefix `diag:<event>:` keeps classes list-separable.
+export type DiagEntry = {
+  event: "exec_db_unreachable" | "anon_adopt_regrant_failed";
   pgCode: string;
   pgMessage: string;
   dbId: string;
-  cacheHit: boolean;
-  planModel: string;
+  cacheHit?: boolean;
+  planModel?: string;
 };
 
 export type DiagSink = {
-  record(entry: ExecUnreachableDiag): Promise<void>;
+  record(entry: DiagEntry): Promise<void>;
 };
 
 // `source` stamps which deployment wrote the row (`NODE_ENV`:
@@ -44,7 +48,7 @@ export function makeKvDiagSink(store: KVStore, source: string): DiagSink {
       // keeps two failures in the same millisecond from colliding.
       const rand = Math.random().toString(16).slice(2, 8);
       await store.put(
-        `${DIAG_KEY_PREFIX}${ts}:${rand}`,
+        `${DIAG_KEY_PREFIX}${entry.event}:${ts}:${rand}`,
         JSON.stringify({ ts, source, ...entry }),
         { expirationTtl: DIAG_TTL_SECONDS },
       );

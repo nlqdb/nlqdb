@@ -7,6 +7,7 @@
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { type AclRetarget, retargetAdoptedDbAcl } from "./anon-adopt.ts";
+import { makeKvDiagSink } from "./ask/diag.ts";
 
 // Shared-Neon client from the same `DATABASE_URL` ref the provisioner
 // uses, wrapped in a `db.transaction` span (GLOBAL-014) covering the
@@ -32,6 +33,26 @@ export function makeAclRetarget(envBindings: Cloudflare.Env): AclRetarget {
           "db.transaction.error_sqlstate",
           typeof code === "string" ? code : "none",
         );
+        // SK-ASK-023 — a failed retarget leaves the DB unqueryable, and
+        // both this span and the caller's console line vanish on preview
+        // invocations (where every e2e adoption runs). Persist the reason
+        // where it survives; never mask the original error.
+        await tracer.startActiveSpan("nlqdb.diag.write", async (diagSpan) => {
+          try {
+            await makeKvDiagSink(envBindings.KV, envBindings.NODE_ENV ?? "unknown").record({
+              event: "anon_adopt_regrant_failed",
+              pgCode: typeof code === "string" ? code : "none",
+              pgMessage: (err instanceof Error ? err.message : String(err)).slice(0, 500),
+              dbId,
+            });
+          } catch (diagErr) {
+            // Diagnostic write is best-effort by definition.
+            diagSpan.recordException(diagErr as Error);
+            diagSpan.setStatus({ code: SpanStatusCode.ERROR });
+          } finally {
+            diagSpan.end();
+          }
+        });
         throw err;
       } finally {
         span.end();

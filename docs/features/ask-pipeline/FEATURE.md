@@ -183,16 +183,16 @@ Deterministic-but-fixable SQLSTATEs (`exec-repair.ts`) bail the SK-ASK-013
 retry after one exec and re-plan **once** with the PG error fed back; reads
 only — a repaired write is rejected, preserving the SK-TRUST-001 gate.
 
-### SK-ASK-023 — Exec catch-all diagnostics persist to shared KV because preview invocations log nowhere
+### SK-ASK-023 — Swallowed-failure diagnostics persist to shared KV because preview invocations log nowhere
 
 **Body:** [`decisions/SK-ASK-023-preview-durable-exec-diagnostics.md`](./decisions/SK-ASK-023-preview-durable-exec-diagnostics.md).
 Workers preview versions (the e2e staging surface) emit no logs anywhere —
 Workers Logs, `wrangler tail`, and Logpush all skip preview-URL invocations —
-so the SK-ASK-019 structured line vanishes exactly where e2e failures happen.
-The catch-all now also writes `(pgCode, pgMessage, dbId, cacheHit, planModel)`
-to a 7-day-TTL `diag:exec_db_unreachable:*` row in the shared KV namespace
-(`makeKvDiagSink`, swallowed `nlqdb.diag.write` span), pullable offline via
-the CF REST API.
+so SK-ASK-019-style structured lines vanish exactly where e2e failures happen.
+Swallowed-failure catches now also write `(pgCode, pgMessage, dbId, …)` to
+7-day-TTL `diag:<event>:*` rows in the shared KV namespace (`makeKvDiagSink`,
+`nlqdb.diag.write` span, never blocks the error path), pullable offline via
+the CF REST API. Classes: `exec_db_unreachable`, `anon_adopt_regrant_failed`.
 
 ## The LLM loop
 

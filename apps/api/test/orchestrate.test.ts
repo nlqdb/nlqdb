@@ -228,6 +228,7 @@ describe("orchestrateAsk", () => {
     });
     expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
     expect(record).toHaveBeenCalledWith({
+      event: "exec_db_unreachable",
       pgCode: "42501",
       pgMessage: "permission denied for schema x",
       dbId: "db_1",

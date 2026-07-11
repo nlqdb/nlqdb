@@ -473,7 +473,15 @@ export async function orchestrateAsk(
       if (diag) {
         await withSpan(
           "nlqdb.diag.write",
-          () => diag.record({ pgCode, pgMessage, dbId: req.dbId, cacheHit, planModel }),
+          () =>
+            diag.record({
+              event: "exec_db_unreachable",
+              pgCode,
+              pgMessage,
+              dbId: req.dbId,
+              cacheHit,
+              planModel,
+            }),
           { onError: undefined },
         );
       }
