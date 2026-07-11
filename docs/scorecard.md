@@ -63,7 +63,7 @@ onboarding, E2E, distribution).
 | 13 | nlqdb-api wall-time p50 / p95 | p95 ~1.57 s (max adaptive bucket); p50 method-sensitive across adaptive-sample buckets (~request-weighted 0.3–0.6 s) | mcp-server p95 ≈ 762 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.53** — sdk ✅ · mcp ✅ · examples ✅ 07-09 21:00Z (0.70 each after 2.1d decay) · opencheck ❌ 0 (run 52's dispatch concluded red on the app-side classes). **Run 53 closed the *diagnosability* hole on the surviving red:** preview invocations log nowhere (CF-documented), so the intermittent `db_unreachable` class was undiagnosable by design; SK-ASK-023's KV diag rows now carry the SQLSTATE out of any dispatch — verdict in *Last change* | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
+| 15 | E2E manual-suite freshness | **0.53** — sdk ✅ · mcp ✅ · examples ✅ 07-09 21:00Z (0.70 each after 2.1d decay) · opencheck ❌ 0. **Run 53 closed the *diagnosability* hole on the surviving red:** preview invocations log nowhere (CF-documented), so the "intermittent" `db_unreachable` class was undiagnosable by design; SK-ASK-023's KV diag rows named it in one dispatch — **18/18 rows = PG 22023 missing tenant role on the adopted `users` DB ⇒ the adoption ACL retarget silently fails in e2e** (role absent + RLS literal still anon, verified live on the branch). Next lever: pull `diag:anon_adopt_regrant_failed:*` from one `depth=a` dispatch (the catch is now instrumented) and fix the retarget's e2e failure | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11 `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | every criterion instrumented; only agent-movable *pass* left is the agentic-frontier ~11 pp competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); rest are stranger-dependent |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-11 run 53 — count held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) || 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-11 run-53 sweep: **114** pages, **2,808** internal links — +1 page = the new `most-active-user…` post; #664's `five-fallback…` post landed after the sweep — next sweep re-counts) | target 0 — `bun run build && bun run check:links` in `apps/web` |
@@ -131,9 +131,11 @@ events arriving from the preview mid-dispatch proved it); `ask/diag.ts`,
 swallowed `nlqdb.diag.write` span, SK-ASK-023 canonical (ask-pipeline
 FEATURE sharded per D4, net-shrink). **Measured verdict** (first `ab`
 dispatch on the fix SHA, [29170696769](https://github.com/nlqdb/nlqdb/actions/runs/29170696769)):
-**channel live and the class named within one run** — 7 preview-source rows
-pulled mid-dispatch, all `pg_code 22023 · role "tenant_9047fe6e4d69026b"
-does not exist` on `db_users_2b6bb8`, the fixture user's *adopted* DB.
+**channel live and the class named within one run** — **18/18** preview-source
+rows pulled (7 mid-Suite-A, 11 more from Suite B; A ❌ · B ❌ · C skipped at
+`depth=ab`), every one identical: `pg_code 22023 · role
+"tenant_9047fe6e4d69026b" does not exist` on `db_users_2b6bb8`, the fixture
+user's *adopted* DB — fully deterministic, not intermittent.
 Cross-checked live on the still-running e2e branch (Neon SQL-over-HTTP): the
 tenant role **does not exist** and the RLS literal **still names the anon
 creator** ⇒ the run-48 adoption ACL retarget **silently fails in the e2e
