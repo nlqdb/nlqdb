@@ -8,7 +8,7 @@ Point-in-time tracker, regenerated each
 **Weekly focus number (2026-07-11 → 07-18):** **row #15 E2E freshness →
 1.0** — close the opencheck stale-fixture red and keep all four suites
 fresh. **Why:** it is the worst *agent-movable* number outside the daily
-engine lane, which already pulls row #9 Spider (next paragraph). BIRD
+engine lane, which already pulls row #9 Spider (run 51, #664). BIRD
 (row #8, 0.546 < the 0.60
 [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) floor) is
 **dark for the lever** — offline levers exhausted, SC dead (#619),
@@ -24,18 +24,24 @@ see [`weekly-review.md`](weekly-review.md).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric moved only through its agent-movable inputs. Worst
-**agent-movable** number: **row #9 Spider raw EX** — run 49 made it honest
-(0.2741, first fully-answered run); run 51 attacked its largest recoverable
-loss class: offline result-shape bucketing of all 98 non-matches (predicted
-SQL re-executed against the local fixtures, diffed vs gold CSVs with the
-canonical comparator) found **52/98 at the exact gold row count but failing
-on column values** — right grain, wrong projection — with a directive-
-addressable core of ~10–12 rows (surrogate id where gold wants the name,
-e.g. local026 bowler id `294` vs `"P Awana"`; omitted requested attributes,
-e.g. local023). **Run 51 lever: `SK-LLM-044` entity-identification
-projection directive** + canonical re-measure — verdict in row #9 / *Last
-change*. Engine lane; not anti-rut-blocked (last 5 merged = engine/eval,
-onboarding, E2E, distribution, docs).
+**agent-movable** number: **row #15 E2E freshness**, opencheck still 0.
+Run 50 closed the driver-starvation class (NIM primary lane); its
+surviving red named the stale-fixture class. **Run 52 lever: purge the
+fixture account's registry rows at staging spin-up (`SK-E2E-007`,
+`_e2e-staging.yml`)** — previews share prod's D1 control plane while the
+Neon `e2e` data plane is destroyed every run, so fixture rows outlived
+their schemas (same-name ghost pins; an unboundedly growing Suite-C
+cleanup walk). Verdict on the purged full-depth dispatch
+([29165068648](https://github.com/nlqdb/nlqdb/actions/runs/29165068648)):
+**stale-fixture class closed** — zero ghost DBs all run, fixture rows 0
+post-run (run 50: ~27-row cleanup timeout); details in row #15 + *Last
+change*. The purge also re-attributes the surviving red: intermittent
+exec `db_unreachable` on the *fresh* adopted `users` DB (passes
+interleaved between failures) — not ghosts, not the run-48 deterministic
+ACL gap. That isolated class is the next lever candidate (pull
+`recordExecUnreachable`'s SQLSTATE from staging logs). Not
+anti-rut-blocked (last 5 merged = E2E, engine, onboarding, distribution,
+E2E).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
