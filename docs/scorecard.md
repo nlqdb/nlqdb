@@ -64,7 +64,7 @@ E2E).
 | 13 | nlqdb-api wall-time p50 / p95 | p95 ~1.42 s (max adaptive bucket); p50 ~0.51 s request-weighted across buckets (method per run 51: request weight, not bucket weight) | mcp-server p95 ≈ 770 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.56** — sdk ✅ · mcp ✅ · examples ✅ 07-09 (≈0.74 each after decay) · opencheck ❌ 0 (latest completed dispatch [29154050866](https://github.com/nlqdb/nlqdb/actions/runs/29154050866), #663's lane swap (merged): starvation class closed — `#add-row` 216 s FAIL → 14.9 s PASS, A 4/5 · B 3/8 · C 8/9 — but suite conclusion red on app/env-side residuals: fixture account's stale D1 registry rows over recreated Neon `e2e` branches) | **Sequencing rule: never dispatch opencheck alongside another OpenRouter-free consumer.** Residual class tracked in `e2e-coverage/opencheck-operations.md` (PR #663) |
+| 15 | E2E manual-suite freshness | **0.54** — sdk ✅ · mcp ✅ · examples ✅ 07-09 (0.72 each after decay) · opencheck ❌ 0 (A/B jobs still red). **Run 52 closed the stale-fixture class** (`SK-E2E-007` spin-up purge). Purged dispatch [29165068648](https://github.com/nlqdb/nlqdb/actions/runs/29165068648): **A 4/5 · B 4/8 · C 9/9 ✅** — first fully-green Suite C on record (was 8/9); `#delete-remaining-db` finished a constant-size walk (fixture rows 0 post-run; run 50 timed out over ~27), C wall 11m11s → 6m06s, zero ghost DBs, whole run 36 min. Surviving red is ONE isolated class: intermittent exec `db_unreachable` on the *fresh* adopted `users` DB (A's `#authed-state-preserved` + all 4 B fails, passes interleaved between failures) — not ghosts (none existed), not the deterministic run-48 ACL gap | Next lever candidate: pull `recordExecUnreachable`'s SQLSTATE from staging logs during a `depth=a` run. Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); **MCP in 3+ host apps (re-measured 07-11 `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder host — cursor, 2 grants, 0 used — FAIL)**; 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | every criterion instrumented; only agent-movable *pass* left is the agentic-frontier ~11 pp competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); rest are stranger-dependent |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-11 run 52 — count held; run 52 also deleted the already-resolved `db_unreachable` bullet from e2e-coverage, not in this count) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. Lever: research (P2/GLOBAL-033) → document (P4) → delete the bullet |
@@ -115,37 +115,40 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-11 (run 51)** — lever: **engine — `SK-LLM-044`
-entity-identification projection directive (row #9 Spider, worst
-agent-movable number).** Step 0: PR #663 (run 50 — opencheck lane swap +
-drafted `most-active-user-is-your-test-suite`) merged first; this entry
-reconciled on top of it per the second-merge rule — zero file/lever
-overlap (this run touches prompts/eval docs/blog; #663 touches opencheck
-workflows). **Diagnosis first:** downloaded run 49's canonical Spider
-report and re-executed all 98 non-matches offline against the local
-SQLite fixtures with the canonical comparator — **52/98 fail at the exact
-gold row count** (grain right, projection wrong; buckets: 32 all-cols-wrong,
-20 some-cols-wrong, 20 empty-result, 21 row-count, 5 exec_error). The
-directive-addressable core: surrogate id projected where gold wants the
-human-readable name (local026, local020, local133) + omitted explicitly
-requested attributes (local023, local004, local194, local209, local220),
-~10–12 rows. **Change:** one `PLAN_DIRECTIVES` bullet (canonical decision
-`SK-LLM-044`, llm-router) — identification goals project the entity's name
-column, ids/attributes only as the goal requests them, never a subset of a
-multi-part ask; BIRD-safe by deferring to the goal's literal ask.
-**Measured verdict:** post-fix canonical Spider re-measure on `6e1725c`
-([run 29160009809](https://github.com/nlqdb/nlqdb/actions/runs/29160009809)):
-**raw EX 0.2741 → 0.2963** (37 → 40/135), `no_sql` 0/135, second consecutive fully-answered run. Paired per-question: gained c=13 / lost b=10, McNemar exact p≈0.68 — net positive, statistically flat (provider-mix churn swamps a ~10-row lever at N=135, the SK-LLM-043 precedent); **2 of the directive's named target instances flipped mismatch→match (local020, local133 — the id-for-name class)**, directional confirmation. Δ > 0 — keep. Row #8 note added: BIRD
-0.546 was measured pre-directive; next BIRD canonical re-verifies (bullet
-defers to the literal ask, so the regression bound is the directive's own
-scope). **Artifact (step 3):** queue ≥ 3 counting #663's draft ⇒ published
-the oldest ready draft `five-fallback-models-one-provider` (rows #6/#7/#18:
-94 surfaces, 114 pages, 2,808 internal links, 0 dead). Funnel reconcile:
-DBs 162 → 158 and first10 counters shrank — the e2e fixture cleanup deletes
-registry rows *with their counters* (stranger-only method unaffected).
-**KPI:** GLOBAL-025 engine quality (row #9); **none degrade** (prompt bullet +
-docs + one blog post; BIRD re-verify noted on row #8, chains/scorer/
-baselines untouched).
+**2026-07-11 (run 52)** — lever: **fixture-registry purge at staging
+spin-up (`SK-E2E-007`, row #15).** Step 0: PR #664 (run 51, Spider directive
++ publish) and #666 (weekly refocus → row #15) merged first; this entry
+reconciled on top of both per the second-merge rule. **Diagnosis:** run 50's surviving red
+was the stale-fixture class — previews share prod's D1 control plane
+(`wrangler versions upload` reuses `wrangler.toml`'s binding) while the
+Neon `e2e` data plane is destroyed at both ends of every run, so
+fixture-account registry rows outlive their schemas: same-name sidebar
+pins can land on dead schemas, and Suite C's one-modal-at-a-time cleanup
+walk grows unboundedly (its name-scoped walk also never removes
+non-`users*` leftovers — a `db_products_tracker_*` row had survived
+multiple runs). In-suite cleanup can't be the invariant: a crashed run
+leaks by definition. **Change:** `_e2e-staging.yml` purges the fixture
+account's `databases` + `chat_message` rows right after the branch
+recreation (both callers); initial live purge removed the 2 accumulated
+rows. **Measured verdict** (purged `abc` dispatch on the fix SHA,
+[29165068648](https://github.com/nlqdb/nlqdb/actions/runs/29165068648)):
+**A 4/5 · B 4/8 · C 9/9 ✅** — first fully-green Suite C on record,
+`#delete-remaining-db` completed a constant-size walk (fixture rows 0
+post-run vs run 50's ~27-row timeout), C wall 11m11s → 6m06s, zero ghost
+DBs. Δ > 0 vs run 50 (B +1, C +1) — keep. **Honest re-attribution:** B's
+4 fails + A's `#authed-state-preserved` are intermittent exec
+`db_unreachable` on the *fresh* adopted DB with passes interleaved — the
+purge removed the confounder and isolated a real app-side class (next
+lever: `recordExecUnreachable` SQLSTATE from staging logs). **Step-1:**
+full funnel/ops re-pull 19:30Z (rows #1–#5, #12–#13); docs-ambiguity
+re-grep (17, held). **Artifact (step 3):** queue effectively 2 pending
+after #664's publish → drafted
+`ephemeral-staging-persistent-registry` (this run's lesson; queue back to
+3 ⇒ next run publishes) + collapsed `ownership-transfer…` to a gist line
+(D4 retention). **KPI:** GLOBAL-025 engine quality (the E2E signal now
+measures the app, not fixture debris) + performance of the suite (C wall
+−45%, run 60 → 36 min); **none degrade** (CI staging config + docs only;
+app code, prompts, eval baselines untouched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
