@@ -50,7 +50,7 @@ distribution ×2 (runs 44/47), docs ×2, onboarding).
 | 13 | nlqdb-api wall-time p50 / p95 | ~24 ms / ~1.31 s (cross-bucket aggregation of adaptive samples) | mcp-server p95 ≈ 770 s = long-lived SSE, expected; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.62 at measure time** — sdk ✅ · mcp ✅ · examples ✅ 07-09 (0.83 each) · opencheck ❌ 0 (13 straight failures 07-02→07-10, ALL capacity-class: probe-abort or agent starvation on OpenRouter's single free pool). **Run 46 shipped the fallback lane (NVIDIA NIM) — verification run [29134673858](https://github.com/nlqdb/nlqdb/actions/runs/29134673858), verdict in *Last change*** | **Sequencing rule: never dispatch opencheck alongside another OpenRouter-free consumer.** Triage: `e2e-coverage/opencheck-operations.md` |
+| 15 | E2E manual-suite freshness | **0.62** — sdk ✅ · mcp ✅ · examples ✅ 07-09 (0.83 each) · opencheck ❌ 0 (14 straight failed runs since 07-02). **But the capacity class is now closed:** run-46 fallback lane fired live in [29134673858](https://github.com/nlqdb/nlqdb/actions/runs/29134673858) — 4 OpenRouter candidates 429'd, gate caught a flap, NVIDIA picked 3/3, **Suite A 4/5 (was 2/5 on 07-10) with agent per-test time 7.7–25.1 s (vs 72–240 s starved)**. Sole remaining blocker = app-side cold-start `db_unreachable` (the `e2e-coverage` FEATURE.md OQ) — next opencheck lever | **Sequencing rule: never dispatch opencheck alongside another OpenRouter-free consumer.** Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.526); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); **MCP in 3+ host apps (re-measured 07-11 `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder host — cursor, 2 grants, 0 used — FAIL)**; 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | every criterion instrumented; only agent-movable *pass* left is the agentic-frontier ~11 pp competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); rest are stranger-dependent |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (verified by fresh grep 07-11; run 45 resolved cli mcp-install add-a-host 18 → 17. Note: run 44 merged after run 45 and its scorecard showed the stale 18 — reconciled this run, the count itself never regressed) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. Lever: research (P2/GLOBAL-033) → document (P4) → mark resolved |
@@ -115,8 +115,12 @@ when every primary candidate fails the 3-probe gate; default NVIDIA NIM
 chain — the two-budget split holds). Hand-verified 3/3 CI-shape tool-call probes
 at 01:20 UTC while OpenRouter's pool was 429. **Measured verdict:** verification
 dispatch [29134673858](https://github.com/nlqdb/nlqdb/actions/runs/29134673858)
-(`depth=a`) — PENDING at scorecard-write time; result recorded in the PR body +
-ops-doc tracker. **Artifact (step 3):** queue was 2 deep → drafted
+(`depth=a`) — **the lane fired live**: 4 OpenRouter candidates instant-429, the
+3-probe gate caught gpt-oss-20b flapping, NVIDIA picked 3/3; **Suite A 2/5 → 4/5
+day-over-day, agent per-test time 7.7–25.1 s vs 72–240 s starved**. Δ > 0 — keep.
+Sole remaining failure is the pre-existing app-side cold-start class
+(`db_unreachable` ×2 on `#authed-state-preserved`), already the `e2e-coverage`
+FEATURE.md open question. **Artifact (step 3):** queue was 2 deep → drafted
 `five-fallback-models-one-provider` (queue now 3 ⇒ next run publishes).
 **KPI:** GLOBAL-025 engine quality/performance via honest E2E signal (row #15);
 **none degrade** (CI + docs only; no product code, prompts, or eval baselines
