@@ -111,6 +111,11 @@ export type AskCreateResult = {
   // (`packages/db/src/types.ts`). Surfaces that want a per-table
   // view group on `table` themselves.
   sampleRows: { table: string; values: Record<string, unknown> }[];
+  // SK-TRUST-002 — always present; `sql` carries the compiled DDL
+  // that provisioned the schema (the create-path analogue of the
+  // read path's compiled SQL). `cache_hit` is always false — creates
+  // are never plan-cached.
+  trace: Trace;
 };
 
 // Discriminator: `AskOk` carries `status: "ok"`, `AskCreateResult`

@@ -262,6 +262,13 @@ describe("handleQuery", () => {
         pkLive: null,
         plan: {},
         sampleRows: [],
+        trace: {
+          sql: 'CREATE TABLE "tenant_42"."preferences" (id bigint PRIMARY KEY);',
+          plan_id: "create:db_new",
+          confidence: 1,
+          model: "fake-model",
+          cache_hit: false,
+        },
       }),
     });
 
@@ -273,6 +280,10 @@ describe("handleQuery", () => {
       expect(result.ok.dbId).toBe("db_new");
       expect(result.ok.displayName).toBe("Preferences");
       expect(result.ok.rows).toEqual([]);
+      // SK-TRUST-002 — the create trace (compiled DDL) passes through
+      // instead of the pre-2026-07-12 fabricated empty trace.
+      expect(result.ok.trace.sql).toContain("CREATE TABLE");
+      expect(result.ok.trace.model).toBe("fake-model");
     }
   });
 

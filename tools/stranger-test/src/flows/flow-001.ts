@@ -175,19 +175,25 @@ async function doWalk(
       } else {
         await traceBtn.click().catch(() => {});
         const traceText = await page.locator("pre, code").allInnerTexts();
-        const sqlVisible = traceText.some((t) => /\bselect\b/i.test(t));
+        // The first answer on /app/new is the create path, whose trace
+        // carries the compiled DDL (SK-TRUST-002) — so the revealed SQL
+        // is CREATE TABLE, not SELECT. A post-create chat reply would
+        // reveal SELECT; accept either shape of "what ran".
+        const sqlVisible = traceText.some((t) => /\b(select|create table)\b/i.test(t));
         steps.push(
           step(
             6,
-            "trace reveals SQL with SELECT",
+            "trace reveals SQL (SELECT or CREATE TABLE)",
             sqlVisible ? "ok" : "fail",
-            sqlVisible ? undefined : "no SELECT in revealed text",
+            sqlVisible ? undefined : "no SELECT/CREATE TABLE in revealed text",
           ),
         );
         if (!sqlVisible) failedStep = 6;
       }
     } else {
-      steps.push(step(6, "trace reveals SQL with SELECT", "skip", "blocked by earlier step"));
+      steps.push(
+        step(6, "trace reveals SQL (SELECT or CREATE TABLE)", "skip", "blocked by earlier step"),
+      );
     }
 
     if (failedStep === null) {

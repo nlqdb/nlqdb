@@ -286,9 +286,31 @@ function CreateResultView({ result }: { result: CreateResult }) {
       {grouped.map((tbl) => (
         <SampleTable key={tbl.table} table={tbl.table} rows={tbl.rows} />
       ))}
+      {result.trace ? <CreateTraceView trace={result.trace} /> : null}
       <McpInstallView />
       <CreateSnippetView primaryTable={grouped[0]?.table} />
     </section>
+  );
+}
+
+// SK-TRUST-002 / SK-WEB-005 — the create reply's collapsed-by-default
+// trace pane. `sql` carries the compiled DDL that provisioned the
+// schema (the create-path analogue of the chat trace's compiled SQL);
+// FLOW-001 step 6 walks this affordance daily. Guarded at the call
+// site so a stale API response without `trace` degrades to no pane
+// rather than a render throw.
+function CreateTraceView({ trace }: { trace: CreateResult["trace"] }) {
+  return (
+    <details className="createresult__trace">
+      <summary className="createresult__trace-summary">trace</summary>
+      <pre className="createresult__trace-sql">
+        <code>{trace.sql}</code>
+      </pre>
+      <p className="createresult__trace-meta">
+        plan=<code>{trace.plan_id}</code> model=<code>{trace.model}</code> confidence=
+        {trace.confidence.toFixed(2)}
+      </p>
+    </details>
   );
 }
 

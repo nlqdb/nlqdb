@@ -108,8 +108,9 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
       return { summary: raw.trim() };
     },
     async schemaInfer(req, opts = {}) {
+      const model = impl.models.schema_infer;
       const raw = await impl.callChat({
-        model: impl.models.schema_infer,
+        model,
         messages: [
           { role: "system", content: SCHEMA_INFER_SYSTEM },
           { role: "user", content: buildSchemaInferUser(req) },
@@ -122,7 +123,9 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
       // wrapping in `{plan}` keeps the response shape uniform with
       // route/plan/summarize.
       const parsed = parseJsonResponse<Record<string, unknown>>(raw);
-      return { plan: parsed } satisfies SchemaInferResponse;
+      // SK-TRUST-002: model + placeholder confidence feed the create
+      // response's trace block, same posture as plan() above.
+      return { plan: parsed, model, confidence: 1.0 } satisfies SchemaInferResponse;
     },
     async engineClassify(req, opts = {}) {
       const raw = await impl.callChat({

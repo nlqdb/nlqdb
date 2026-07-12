@@ -35,6 +35,16 @@ export interface CreateResult {
   // entry, with `values` carrying the column → scalar map. The UI
   // groups by table at render time.
   sampleRows: { table: string; values: CreateRow }[];
+  // SK-TRUST-002 — always present; `sql` carries the compiled DDL
+  // that provisioned the schema. CreateResultView renders it as the
+  // collapsed-by-default trace pane (SK-WEB-005 / GLOBAL-023).
+  trace: {
+    sql: string;
+    plan_id: string;
+    confidence: number;
+    model: string;
+    cache_hit: boolean;
+  };
 }
 
 export type CreateError =

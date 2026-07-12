@@ -258,7 +258,10 @@ requires credentials, that itself is the failure.
    the timer; record TTFV in ms.
 6. Assert: a `Show trace` / `Cmd+/` affordance exists. Reveal it.
    Assert: the revealed SQL string is non-empty and includes a
-   `SELECT` token. See [`SK-WEB-005`](../features/web-app/FEATURE.md).
+   `SELECT` or `CREATE TABLE` token — the first answer on `/app/new`
+   is the create path, whose trace carries the compiled DDL per
+   [`SK-TRUST-002`](../features/trust-ux/FEATURE.md). See
+   [`SK-WEB-005`](../features/web-app/FEATURE.md).
 7. Click `Copy snippet` (or the equivalent affordance). Assert: the
    clipboard contains an `<nlq-data goal="...">` string. See
    [`SK-WEB-003`](../features/web-app/FEATURE.md).

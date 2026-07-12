@@ -86,7 +86,7 @@ const ORDERS_PLAN: SchemaPlan = {
 };
 
 function planResponse(plan: SchemaPlan | Record<string, unknown>): SchemaInferResponse {
-  return { plan: plan as Record<string, unknown> };
+  return { plan: plan as Record<string, unknown>, model: "fake-model", confidence: 1.0 };
 }
 
 describe("slugifyName", () => {

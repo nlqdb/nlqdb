@@ -24,24 +24,12 @@
 // `@nlqdb/db/types`.
 
 import { type SchemaPlan, SchemaPlanSchema } from "@nlqdb/db/types";
-import type { LLMRouter } from "@nlqdb/llm";
+// The Deps/Args/Result contract is canonical in `./types.ts` (the
+// orchestrator's single source of truth) — re-exported here so this
+// module's callers keep one import path.
+import type { InferSchemaArgs, InferSchemaDeps, InferSchemaResult } from "./types.ts";
 
-export type InferSchemaDeps = {
-  llm: LLMRouter;
-};
-
-export type InferSchemaArgs = {
-  // The user's natural-language description of what they want.
-  goal: string;
-  // Optional override for the generated slug. When set, replaces the
-  // LLM's `slug_hint` with a deterministic slugify of `name`.
-  name?: string;
-};
-
-export type InferSchemaResult =
-  | { ok: true; plan: SchemaPlan }
-  | { ok: false; reason: "ambiguous_goal" | "llm_failed" }
-  | { ok: false; reason: "plan_invalid"; details: { issue_count: number } };
+export type { InferSchemaArgs, InferSchemaDeps, InferSchemaResult };
 
 // Bound on the slug derived from `args.name`. The plan-level slug_hint
 // allows up to 63 chars (Postgres identifier limit) but the override
@@ -90,9 +78,13 @@ export async function inferSchema(
   //    `parseJsonResponse` handles JSON-mode + ```json fence stripping
   //    before returning.
   let candidate: Record<string, unknown>;
+  let model: string;
+  let confidence: number;
   try {
     const resp = await deps.llm.schemaInfer({ goal: args.goal });
     candidate = resp.plan;
+    model = resp.model;
+    confidence = resp.confidence;
   } catch {
     // LLM error details (provider messages, API keys in URLs, stack traces)
     // must not reach the client — GLOBAL-012. The OTel span on the LLM call
@@ -126,5 +118,5 @@ export async function inferSchema(
     return { ok: false, reason: "ambiguous_goal" };
   }
 
-  return { ok: true, plan: parsed.data };
+  return { ok: true, plan: parsed.data, model, confidence };
 }

@@ -126,7 +126,15 @@ export type SummarizeResponse = { summary: string };
 // lives at the call site (`packages/db/src/types.ts`) — keeping
 // `@nlqdb/llm` independent of the engine package avoids a cycle.
 export type SchemaInferRequest = { goal: string };
-export type SchemaInferResponse = { plan: Record<string, unknown> };
+// `model` + `confidence` mirror `PlanResponse` — they populate the
+// SK-TRUST-002 `trace` block on the create response (the create-path
+// analogue of the read-path plan trace). Same placeholder-1.0
+// confidence posture as `plan` until SK-TRUST-003 calibrates floors.
+export type SchemaInferResponse = {
+  plan: Record<string, unknown>;
+  model: string;
+  confidence: number;
+};
 
 // Engine classification (SK-DB-010 / SK-MULTIENG-002). Cheap-tier op
 // that maps a goal string to one of the engines in the engine-fit

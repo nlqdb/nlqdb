@@ -138,8 +138,16 @@ export async function orchestrateDbCreate(
   //    SK-HDC-002). Zod validation lives inside `inferSchema`; failures
   //    surface here as `infer_failed`.
   let plan: SchemaPlan;
+  // `model` + `confidence` feed the create response's SK-TRUST-002
+  // trace block. The preset path never calls an LLM — its DDL is
+  // hand-authored and deterministic, so the model slot names the
+  // preset instead.
+  let model: string;
+  let confidence: number;
   if (isPreset) {
     plan = agentMemoryV1Plan();
+    model = `preset:${args.preset}`;
+    confidence = 1.0;
   } else {
     const inferred = await deps.inferSchema(
       { llm: deps.llm },
@@ -152,6 +160,8 @@ export async function orchestrateDbCreate(
       return err({ kind: "infer_failed", reason: inferred.reason });
     }
     plan = inferred.plan;
+    model = inferred.model;
+    confidence = inferred.confidence;
   }
 
   // 2. Mint the dbId + schema name. Format from docs/architecture.md §3.6:
@@ -391,6 +401,12 @@ export async function orchestrateDbCreate(
     schemaName,
     engine,
     pkLive,
+    // The provisioned DDL + the model that inferred the plan — the
+    // route formats these into the SK-TRUST-002 trace block (the
+    // create-path analogue of the read path's compiled-SQL trace).
+    ddl,
+    model,
+    confidence,
     plan: {
       metrics: plan.metrics,
       dimensions: plan.dimensions,

@@ -79,7 +79,7 @@ function stubPlan(overrides: Partial<SchemaPlan> = {}): SchemaPlan {
 }
 
 function stubInferSchema(result?: InferSchemaResult) {
-  return vi.fn(async (): Promise<InferSchemaResult> => result ?? { ok: true, plan: stubPlan() });
+  return vi.fn(async (): Promise<InferSchemaResult> => result ?? { ok: true, plan: stubPlan(), model: "fake-model", confidence: 1.0 });
 }
 
 function stubCompileDdl(result?: CompileDdlResult) {
@@ -161,7 +161,7 @@ describe("orchestrateDbCreate", () => {
     const deps = makeDeps({
       inferSchema: vi.fn(async (): Promise<InferSchemaResult> => {
         calls.push("inferSchema");
-        return { ok: true, plan: stubPlan() };
+        return { ok: true, plan: stubPlan(), model: "fake-model", confidence: 1.0 };
       }),
       compileDdl: vi.fn((): CompileDdlResult => {
         calls.push("compileDdl");
@@ -188,6 +188,11 @@ describe("orchestrateDbCreate", () => {
       schemaName: `orders_tracker_${FIXED_SUFFIX}`,
       engine: "postgres",
       pkLive: null,
+      // SK-TRUST-002 — the DDL + inferring model surface on the ok
+      // result so the route can build the create trace block.
+      ddl: ["CREATE SCHEMA s", "CREATE TABLE s.orders ()"],
+      model: "fake-model",
+      confidence: 1.0,
       plan: {
         metrics: stubPlan().metrics,
         dimensions: stubPlan().dimensions,
@@ -667,6 +672,8 @@ describe("orchestrateDbCreate", () => {
 
       if (!out.ok) throw new Error("expected ok");
       expect(out.engine).toBe("postgres");
+      // SK-TRUST-002 — no LLM ran; the trace model slot names the preset.
+      expect(out.model).toBe("preset:agent_memory_v1");
       expect(out.dbId).toBe(`db_agent_memory_v1_${FIXED_SUFFIX}`);
       expect(out.schemaName).toBe(`agent_memory_v1_${FIXED_SUFFIX}`);
       // No seed/semantic data on the preset path.

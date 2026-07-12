@@ -74,6 +74,10 @@ func TestWriteAskCreateBranchHumanRendersDB(t *testing.T) {
 		SampleRows: []map[string]json.RawMessage{
 			{"id": json.RawMessage(`"sample-1"`)},
 		},
+		Trace: &api.Trace{
+			SQL: `CREATE TABLE "s"."orders" (id bigint);`, PlanID: "create:db_orders_tracker_a4f3",
+			Confidence: 1, Model: "m", CacheHit: false,
+		},
 	}
 	if err := w.WriteAsk(resp); err != nil {
 		t.Fatalf("WriteAsk: %v", err)
@@ -84,6 +88,11 @@ func TestWriteAskCreateBranchHumanRendersDB(t *testing.T) {
 	}
 	if !strings.Contains(s, "postgres") {
 		t.Errorf("engine missing: %q", s)
+	}
+	// SK-TRUST-002 — the create trace (compiled DDL) renders under the
+	// same separator as the ask/run paths.
+	if !strings.Contains(s, "─ trace ─") || !strings.Contains(s, "CREATE TABLE") {
+		t.Errorf("create trace missing: %q", s)
 	}
 }
 
