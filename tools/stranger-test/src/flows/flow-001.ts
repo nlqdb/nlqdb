@@ -319,22 +319,28 @@ async function doWalk(
         );
         failedStep = 8;
       } else {
-        // SK-ANON-012: the 2nd anon call returns 401 with the
-        // `anon_device_cap` envelope; the client stashes the prompt
-        // (SK-ANON-011) and redirects to sign-in. That wall IS the
-        // anonymous happy-path terminus (GLOBAL-007 lands it at #2, not
-        // #1). Accept the `auth_required` family too — the shape the
-        // marketing surface handles identically to the global cap.
+        // SK-ANON-012: the 2nd anon call returns 401; the client
+        // `savePending`s the prompt (SK-ANON-011) and redirects to
+        // sign-in. That wall IS the anonymous happy-path terminus
+        // (GLOBAL-007 lands it at #2, not #1). Assert on the status
+        // alone: the redirect tears the page down before we can read
+        // the response body (it comes back empty), and on a POST
+        // /v1/ask for an anon principal that just succeeded once a 401
+        // can only be the SK-ANON-010/012 cap wall — session-probe
+        // 401s are on /api/auth/get-session, Turnstile is 428. A 200
+        // here would mean the per-device cap regressed to unlimited
+        // free anon asks.
         const status = ask2.status();
         const body = await ask2.text().catch(() => "");
-        const capped = status === 401 && /anon_device_cap|auth_required/.test(body);
+        const capped = status === 401;
+        const cap = /anon_device_cap|anon_global_cap/.exec(body)?.[0] ?? "cap (body consumed by redirect)";
         steps.push(
           step(
             8,
-            "second anon /v1/ask hits the SK-ANON-012 sign-in wall (401 anon_device_cap)",
+            "second anon /v1/ask hits the SK-ANON-012 sign-in wall (401)",
             capped ? "ok" : "fail",
             capped
-              ? `status=401 anon_device_cap dt=${Date.now() - t1}`
+              ? `status=401 ${cap} dt=${Date.now() - t1}`
               : `status=${status} dt=${Date.now() - t1} body=${body.slice(0, 120)}`,
           ),
         );
