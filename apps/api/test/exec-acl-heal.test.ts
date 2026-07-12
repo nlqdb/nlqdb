@@ -7,10 +7,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { execWithTenantAclHeal } from "../src/ask/build-deps.ts";
 import type { DbRecord, QueryResult } from "../src/ask/types.ts";
-import { isTenantRoleMissingError } from "../src/tenant-role.ts";
+import { isTenantRoleMissingError, tenantRoleName } from "../src/tenant-role.ts";
 
 const OK: QueryResult = { rows: [{ n: 1 }], rowCount: 1 };
-const ROLE_MISSING = Object.assign(new Error('role "tenant_9047fe6e4d69026b" does not exist'), {
+// The fixture row's own role — the only shape the heal may fire on.
+const ROLE = await tenantRoleName("user_1");
+const ROLE_MISSING = Object.assign(new Error(`role "${ROLE}" does not exist`), {
   code: "22023",
 });
 
@@ -28,20 +30,23 @@ function db(overrides: Partial<DbRecord> = {}): DbRecord {
 }
 
 describe("isTenantRoleMissingError", () => {
-  it("matches the SET LOCAL ROLE 22023 shape", () => {
-    expect(isTenantRoleMissingError(ROLE_MISSING)).toBe(true);
+  it("matches the SET LOCAL ROLE 22023 shape for the row's own role", () => {
+    expect(isTenantRoleMissingError(ROLE_MISSING, ROLE)).toBe(true);
     // Neon HTTP responses sometimes drop `.code` — message alone suffices.
-    expect(
-      isTenantRoleMissingError(new Error('role "tenant_0123456789abcdef" does not exist')),
-    ).toBe(true);
+    expect(isTenantRoleMissingError(new Error(`role "${ROLE}" does not exist`), ROLE)).toBe(true);
   });
 
-  it("rejects non-tenant roles and unrelated errors", () => {
-    expect(isTenantRoleMissingError(new Error('role "postgres" does not exist'))).toBe(false);
-    expect(isTenantRoleMissingError(new Error('relation "users" does not exist'))).toBe(false);
-    expect(isTenantRoleMissingError(new Error("connection refused"))).toBe(false);
-    // Truncated / wrong-length hex must not match.
-    expect(isTenantRoleMissingError(new Error('role "tenant_9047" does not exist'))).toBe(false);
+  it("rejects other tenants' roles, non-tenant roles, and unrelated errors", () => {
+    // Another tenant_<16hex> role — the shape user SQL can smuggle into an
+    // error message via `SELECT 'tenant_…'::regrole` — must never match.
+    expect(
+      isTenantRoleMissingError(new Error('role "tenant_0123456789abcdef" does not exist'), ROLE),
+    ).toBe(false);
+    expect(isTenantRoleMissingError(new Error('role "postgres" does not exist'), ROLE)).toBe(false);
+    expect(isTenantRoleMissingError(new Error('relation "users" does not exist'), ROLE)).toBe(
+      false,
+    );
+    expect(isTenantRoleMissingError(new Error("connection refused"), ROLE)).toBe(false);
   });
 });
 

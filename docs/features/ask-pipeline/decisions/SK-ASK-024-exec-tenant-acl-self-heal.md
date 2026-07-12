@@ -4,8 +4,9 @@
   `apps/api/src/ask/build-deps.ts`) wraps every hosted-Postgres statement
   in `execWithTenantAclHeal`: when exec fails with the tenant-role-missing
   shape (`SET LOCAL ROLE` → SQLSTATE 22023, message
-  `role "tenant_<16hex>" does not exist`, `isTenantRoleMissingError` in
-  `tenant-role.ts`), it re-runs the SK-ANON-003 ACL retarget
+  `role "<the row's own tenant role>" does not exist` —
+  `isTenantRoleMissingError` in `tenant-role.ts`, checked against
+  `tenantRoleName(db.tenantId)`), it re-runs the SK-ANON-003 ACL retarget
   (`makeAclRetarget(env, "exec_acl_heal_failed")` — role-if-missing +
   grants + `WITH SET` + `ALTER POLICY`, idempotent, constant-size) for the
   row's own tenant and retries the statement once. BYO rows and every
@@ -43,8 +44,10 @@
   preview `count` probe) heals transparently, and each stage-retry attempt
   gives the heal another chance for free. Safety: `resolveDb` already
   scoped the row to the calling tenant, so the heal can only grant a
-  tenant its own schema; the matcher is pinned to the `tenant_<16hex>`
-  identifier so no other missing-role error can trigger a grant batch.
+  tenant its own schema; the matcher is pinned to the row's own role
+  (`tenantRoleName(db.tenantId)`), so neither a role string smuggled into
+  an error message via user SQL (`SELECT '…'::regrole`) nor any other
+  missing-role error can trigger a grant batch.
   Span attr `nlqdb.ask.acl_healed` marks healed requests. In
   `anon-adopt-regrant.ts`, client construction now sits INSIDE the
   instrumented try — nothing on the retarget path can fail without a

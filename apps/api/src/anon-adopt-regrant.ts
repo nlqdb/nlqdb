@@ -1,15 +1,9 @@
 // Production `AclRetarget` for adoption (SK-ANON-003 amendment — see
-// `anon-adopt.ts` module header). Imports the Neon client from
-// `db-create/pg-client.ts` — NOT `build-deps.ts`, whose static chain
-// pulls the libpg-query WASM init. That init fails Workers deploy-time
-// validation in the top-level graph, and (run 57) its Emscripten loader
-// also CRASHES at runtime module scope in any isolate where
-// `ensureLibpgWasmGlobals()` hasn't run — the previous `await
-// import("./db-create/build-deps.ts")` here rejected before the try
-// below, so the retarget silently no-oped on fresh isolates and every
-// adopted DB in them stayed bricked. pg-client's chain is WASM-free, so
-// the static import is safe and there is nothing left to fail
-// unobserved.
+// `anon-adopt.ts` module header). The Neon client MUST come from the
+// WASM-free `db-create/pg-client.ts`, never `build-deps.ts`: that
+// module's libpg-query chain crashes at module scope in cold isolates,
+// which silently no-oped the retarget and bricked adopted DBs
+// (SK-ASK-024 has the full story).
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { type AclRetarget, retargetAdoptedDbAcl } from "./anon-adopt.ts";
@@ -31,9 +25,8 @@ export function makeAclRetarget(
       span.setAttribute("db.system", "postgresql");
       span.setAttribute("nlqdb.anon.adopt.regrant_db_id", dbId);
       try {
-        // Client construction sits INSIDE the instrumented try — the
-        // run-57 lesson: anything that can fail on this path must
-        // reach the diag write, or a miss is invisible on previews.
+        // Construct the client INSIDE the instrumented try so nothing on
+        // this path can fail without reaching the diag write (SK-ASK-024).
         const pg = buildPgClient(resolveDatabaseUrl(envBindings));
         await retargetAdoptedDbAcl(pg, dbId, newTenantId);
       } catch (err) {

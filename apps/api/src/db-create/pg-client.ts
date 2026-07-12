@@ -1,12 +1,9 @@
 // Shared-Neon client + secret-ref resolution, in a module whose import
-// chain carries NO libpg-query. `db-create/build-deps.ts` (the historic
-// home) statically imports the WASM DDL-validator chain, whose
-// Emscripten loader crashes at module scope in workerd unless the
-// caller ran `ensureLibpgWasmGlobals()` first (`index.ts` create path)
-// or another request in the same isolate already had — the run-57 root
-// cause of the silently-failing adoption ACL retarget. Callers that
-// only need a Postgres client (`anon-adopt-regrant.ts`) import from
-// here and never touch the WASM graph.
+// chain carries NO libpg-query — `build-deps.ts` (the historic home)
+// statically pulls the WASM DDL-validator chain, which crashes at
+// module scope in cold isolates (SK-ASK-024 has the full story).
+// Callers that only need a Postgres client (`anon-adopt-regrant.ts`)
+// import from here; do not add imports that reach the WASM graph.
 //
 // GLOBAL-021 exception: the control-plane provisioner and the ACL
 // retarget need the raw Neon client for role/grant/RLS DDL that the

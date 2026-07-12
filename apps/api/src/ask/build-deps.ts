@@ -21,6 +21,7 @@ import {
 import type { LLMRouter } from "@nlqdb/llm";
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import type { AclRetarget } from "../anon-adopt.ts";
 import { makeAclRetarget } from "../anon-adopt-regrant.ts";
 import { resolveDb } from "../db-registry.ts";
 import { buildEventEmitter } from "../events-emitter.ts";
@@ -152,28 +153,26 @@ export async function dispatchExec(
 }
 
 // SK-ASK-024 — exec-time tenant-ACL self-heal. The adoption-time retarget
-// (SK-ANON-003) is best-effort and runs exactly once; a transient miss
-// used to leave the adopted DB permanently unqueryable — every later
-// query died at `SET LOCAL ROLE` (22023) in the db_unreachable catch-all
-// (the 2026-07-11 e2e brick). The retarget is idempotent and constant-
-// size, so the steady-state path repairs the drift: on the tenant-role-
-// missing error shape, re-point the schema's ACL at the row's own tenant
-// and re-run the statement once. Safe by construction: `resolveDb`
-// already scoped the row to the caller, so the heal can only ever grant
-// a tenant its own schema. A heal failure records its own diag row
-// (`exec_acl_heal_failed`) and the caller sees the ORIGINAL exec error.
+// (SK-ANON-003) is best-effort and one-shot, so a missed retarget used to
+// brick the adopted DB permanently (every query died at `SET LOCAL ROLE`,
+// 22023). The retarget is idempotent, so when exec fails because the
+// row's own tenant role is missing we re-run it and retry the statement
+// once. Safe by construction: `resolveDb` already scoped the row to the
+// caller, and both the matched role and the heal target derive from
+// `db.tenantId` — never from user input. A heal failure records its own
+// diag row (`exec_acl_heal_failed`) and surfaces the ORIGINAL exec error.
 export async function execWithTenantAclHeal(
   db: DbRecord,
   sql: string,
   run: (db: DbRecord, sql: string, signal?: AbortSignal) => Promise<QueryResult>,
-  heal: (dbId: string, tenantId: string) => Promise<void>,
+  heal: AclRetarget,
   signal?: AbortSignal,
 ): Promise<QueryResult> {
   try {
     return await run(db, sql, signal);
   } catch (err) {
     const isHosted = db.engine === "postgres" && !db.connectionBlob;
-    if (!isHosted || !isTenantRoleMissingError(err)) throw err;
+    if (!isHosted || !isTenantRoleMissingError(err, await tenantRoleName(db.tenantId))) throw err;
     try {
       await heal(db.id, db.tenantId);
     } catch {
