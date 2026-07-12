@@ -56,6 +56,17 @@ describe("makeKvDiagSink", () => {
     expect(kv.puts[0]?.key).not.toBe(kv.puts[1]?.key);
   });
 
+  it("redacts PII from pgMessage before the row is persisted (SK-OBS-008 posture)", async () => {
+    const kv = stubKv();
+    await makeKvDiagSink(kv.store, "preview").record({
+      ...ENTRY,
+      pgMessage: 'invalid input syntax for type integer: "maya@example.com"',
+    });
+    const value = kv.puts[0]?.value ?? "";
+    expect(value).not.toContain("maya@example.com");
+    expect(JSON.parse(value).pgMessage).toContain("[email]");
+  });
+
   it("caps writes per isolate window so a failure storm can't drain the shared KV write quota", async () => {
     const kv = stubKv();
     const sink = makeKvDiagSink(kv.store, "production");

@@ -13,6 +13,7 @@
 // span and swallows failures — a diagnostic write must never change
 // the error path.
 
+import { redactPii } from "@nlqdb/otel";
 import type { KVStore } from "../kv-store.ts";
 
 export const DIAG_KEY_PREFIX = "diag:";
@@ -68,9 +69,12 @@ export function makeKvDiagSink(store: KVStore, source: string): DiagSink {
       // Timestamp-prefixed keys list in time order; the random suffix
       // keeps two failures in the same millisecond from colliding.
       const rand = Math.random().toString(16).slice(2, 8);
+      // PG messages can echo user literals (unique-violation details,
+      // input-syntax errors) — redact before the row outlives the
+      // request, per the SK-OBS-008 posture on exported diagnostics.
       await store.put(
         `${DIAG_KEY_PREFIX}${entry.event}:${ts}:${rand}`,
-        JSON.stringify({ ts, source, ...entry }),
+        JSON.stringify({ ts, source, ...entry, pgMessage: redactPii(entry.pgMessage) }),
         { expirationTtl: DIAG_TTL_SECONDS },
       );
     },

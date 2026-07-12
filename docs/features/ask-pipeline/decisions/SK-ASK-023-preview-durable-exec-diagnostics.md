@@ -31,6 +31,8 @@
   `deps.diag.record` under a **swallowed** `nlqdb.diag.write` span — a
   diagnostic write must never alter the error path or delay the 502
   meaningfully. `build-deps.ts` wires `makeKvDiagSink(KV, NODE_ENV)`.
+  `pgMessage` passes `redactPii` inside the sink — PG errors can echo
+  user literals, and the KV row outlives any span (SK-OBS-008 posture).
   Pull: list `diag:` keys via wrangler / the CF KV REST API. Writes are
   capped per isolate per minute (`DIAG_MAX_WRITES_PER_WINDOW`) so an
   outage storm eats the namespace's shared 1 k/day free-tier write
