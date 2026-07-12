@@ -43,11 +43,6 @@ export type AnonCreateGateInput = {
   ip: string;
   turnstileSecret: string | undefined;
   turnstileToken: string | null;
-  // True in production/canary (`NODE_ENV`). Gates the fail-open path: an
-  // unconfigured Turnstile secret fails OPEN in dev but CLOSED in prod.
-  // Optional (defaults to dev/fail-open) so non-prod callers and tests
-  // keep the prior behaviour; the prod route always passes it.
-  isProd?: boolean;
 };
 
 export async function peekAnonCreateGate(
@@ -60,12 +55,14 @@ export async function peekAnonCreateGate(
   // (not gated on burst count, since the per-device cap auth-walls
   // call #2 anyway).
   const verify = await deps.verifyTurnstile(input.turnstileToken, input.turnstileSecret, input.ip);
-  // Fail-open on `unconfigured` (missing secret) ONLY outside production —
-  // useful in `wrangler dev`/tests where the secret is absent. In
-  // production/canary an unset secret must NOT silently disable the bot
-  // floor (that would let a bot flood anon creates), so it fails CLOSED to
-  // a challenge. A configured secret always requires a valid token.
-  const turnstileAllowed = verify.ok || (verify.reason === "unconfigured" && !input.isProd);
+  // `unconfigured` (missing secret) fails OPEN in every environment —
+  // SK-ANON-009. No client ships a Turnstile widget yet (`solveChallenge`
+  // is a stub), so a fail-closed branch turns every anon create into an
+  // unrecoverable 428; only set `TURNSTILE_SECRET` in the same release
+  // that ships the real widget. A configured secret always requires a
+  // valid token; abuse is bounded by the SK-ANON-012 per-device cap,
+  // SK-ANON-010 global caps, and the per-IP buckets underneath.
+  const turnstileAllowed = verify.ok || verify.reason === "unconfigured";
 
   if (!turnstileAllowed) return { kind: "challenge_required" };
   return { kind: "allow" };

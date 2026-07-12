@@ -41,6 +41,51 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "ephemeral-staging-persistent-registry",
+    title: "We rebuilt staging's database every run. The registry remembered everything.",
+    description:
+      "An environment is only as ephemeral as the most persistent store that references it. Enumerate every store that outlives the rebuild and reset it at spin-up — teardown can't be the invariant.",
+    date: "2026-07-12",
+    body: [
+      {
+        kind: "p",
+        text: "Our E2E staging is ephemeral by the book: every run creates a fresh Postgres branch, deploys a per-run preview of the API worker against it, and deletes the branch when the run ends. A crashed run leaves a stale branch? The next run deletes and recreates it by name. Clean slate, every time — we thought.",
+      },
+      { kind: "h2", text: "The store that never went away" },
+      {
+        kind: "p",
+        text: "The slate wasn't the only state. The preview worker binds its *control plane* — the registry that maps \"database\" rows to schemas, plus sessions and chat history — from the same configuration production uses, because per-run previews inherit the deployed config by default. So while the data plane (the Postgres branch) was destroyed at both ends of every run, the registry rows the suite created each run outlived it, quietly accreting in production's control store.",
+      },
+      {
+        kind: "p",
+        text: 'Rows that reference destroyed schemas are worse than junk — they\'re plausible. Three symptoms, none of which said "stale registry": the fixture account\'s sidebar filled with same-name ghosts, so tests that pin a database by name sometimes landed on a schema that no longer existed and failed with "couldn\'t reach the database" — which reads exactly like an infra flake. The cleanup test that deletes leftovers through the UI grew a backlog it could never finish: ~27 rows, one typed-confirm modal at a time, against a 300-second budget. And its name-scoped walk never matched leftovers with *other* names at all — one orphan survived every run for weeks. The suite reported "app red" for state no real user could ever reach.',
+      },
+      { kind: "h2", text: "Rule 1: enumerate what outlives the rebuild" },
+      {
+        kind: "p",
+        text: 'An environment is only as ephemeral as the most persistent store that references it. "Ephemeral staging" usually means *one* store is per-run — the big obvious database — while everything that points at it (registry, sessions, queues, caches, object storage) lives on a longer clock. The fix is an inventory, not a slogan: list every store the environment touches, mark each one\'s lifetime, and for every store that outlives the rebuild, reset the slice that references the rebuilt one.',
+      },
+      {
+        kind: "p",
+        text: "And do the reset at *spin-up*, not teardown. A crashed run skips teardown by definition — teardown-time cleanup guarantees exactly nothing about the state the next run starts from. Spin-up is the one step every run passes through:",
+      },
+      {
+        kind: "code",
+        lang: "yaml",
+        code: "# Staging spin-up — right after the data plane is recreated.\n# The control plane outlives the branch, so purge the slice of it\n# that points at the branch we just destroyed. Idempotent; runs\n# even when the previous run crashed before its own cleanup.\n- name: Purge fixture registry rows\n  run: |\n    db exec \"DELETE FROM chat_messages WHERE user = '$FIXTURE_USER';\n             DELETE FROM registry WHERE tenant = '$FIXTURE_USER';\"",
+      },
+      { kind: "h2", text: "Rule 2: in-band cleanup verifies the feature, not the invariant" },
+      {
+        kind: "p",
+        text: "We *had* cleanup — a test that deletes leftover databases through the real UI. Keep that test: it verifies the delete feature works. But it cannot be the invariant that staging starts clean, because it runs inside the thing it's supposed to guarantee — it inherits the suite's budget, its flakes, and its crashes. The invariant needs an out-of-band guarantee that runs before the suite, unconditionally. After we split the two, the UI cleanup test went from an unbounded backlog walk that timed out to a constant-size walk that passed for the first time on record — and the suite's wall time dropped 45%.",
+      },
+      {
+        kind: "p",
+        text: "The purge also sharpened every failure that remained: with the ghost class gone, the surviving red pointed at a real application bug instead of registry debris. Deleting confounders is diagnosis. (This is a build note from [nlqdb](https://nlqdb.com), the database you query in plain English. Honest split: a CI/test-infra lesson from our E2E harness, not a product feature.)",
+      },
+    ],
+  },
+  {
     slug: "ownership-transfer-outlives-least-privilege",
     title: "Ownership transfer was a one-row UPDATE. Then we added least-privilege.",
     description:

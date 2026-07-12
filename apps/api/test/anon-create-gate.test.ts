@@ -93,7 +93,7 @@ describe("peekAnonCreateGate (Turnstile-only post-SK-ANON-012)", () => {
     expect(recordDevice).not.toHaveBeenCalled();
   });
 
-  it("Turnstile unconfigured fails OPEN outside production (dev/test)", async () => {
+  it("Turnstile unconfigured fails OPEN in every environment (SK-ANON-009)", async () => {
     const { limiter, recordDevice } = stubLimiter();
     const decision = await peekAnonCreateGate(
       { limiter, verifyTurnstile: stubVerifyUnconfigured },
@@ -101,25 +101,6 @@ describe("peekAnonCreateGate (Turnstile-only post-SK-ANON-012)", () => {
     );
     expect(decision).toEqual({ kind: "allow" });
     expect(recordDevice).not.toHaveBeenCalled();
-  });
-
-  it("Turnstile unconfigured fails CLOSED in production (bot floor stays up)", async () => {
-    const { limiter, recordDevice } = stubLimiter();
-    const decision = await peekAnonCreateGate(
-      { limiter, verifyTurnstile: stubVerifyUnconfigured },
-      { ...ANON_INPUT, isProd: true },
-    );
-    expect(decision).toEqual({ kind: "challenge_required" });
-    expect(recordDevice).not.toHaveBeenCalled();
-  });
-
-  it("valid Turnstile still passes in production", async () => {
-    const { limiter } = stubLimiter();
-    const decision = await peekAnonCreateGate(
-      { limiter, verifyTurnstile: stubVerifyOk },
-      { ...ANON_INPUT, isProd: true },
-    );
-    expect(decision).toEqual({ kind: "allow" });
   });
 
   it("Turnstile verify receives the right args (token, secret, ip)", async () => {

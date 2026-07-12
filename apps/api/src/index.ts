@@ -724,9 +724,6 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         ip,
         turnstileSecret: c.env.TURNSTILE_SECRET,
         turnstileToken: c.req.header("cf-turnstile-response") ?? null,
-        // An unconfigured Turnstile secret fails CLOSED in prod/canary
-        // (bot floor stays up), open only in dev/test.
-        isProd: c.env.NODE_ENV === "production" || c.env.NODE_ENV === "canary",
       });
       return decisionToResponse(c, span, decision);
     };
