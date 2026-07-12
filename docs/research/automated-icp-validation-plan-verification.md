@@ -267,18 +267,26 @@ requires credentials, that itself is the failure.
    [`SK-WEB-003`](../features/web-app/FEATURE.md).
 8. Type a second goal: `"now group by week"` (or context-appropriate
    follow-up). Press Enter.
-9. Assert: a second table renders within 60 s and the same anonymous
-   database is reused (verify by inspecting the `dbId` either in a
-   visible UI element, a `data-db-id` attribute, or the `/v1/ask`
-   response body).
+9. Assert: the second anonymous `/v1/ask` returns `401` with the
+   `anon_device_cap` envelope per [`SK-ANON-012`](../features/anonymous-mode/FEATURE.md) —
+   message #1 answers free ([`GLOBAL-007`](../decisions/GLOBAL-007-no-login-wall.md)),
+   message #2 is the sign-in wall. **This wall IS the anonymous
+   happy-path terminus** (the designed conversion moment, not a
+   failure): a `200` here would mean the per-device cap regressed to
+   unlimited free anon asks. The client stashes the prompt
+   ([`SK-ANON-011`](../features/anonymous-mode/FEATURE.md)) and
+   redirects to sign-in, where adoption (`SK-ANON-003`) carries the
+   just-created DB forward.
 
 ### Pass criteria
 
 - Every assertion in steps 2-9 passes.
 - No `4xx` response in the DevTools network panel for `/v1/ask` /
-  `/v1/anon/*` / `/v1/databases/*` (`401 Unauthorized` IS expected
-  on session probes; treat only `400/403/404/405/409/410/415/422` as
-  failures — `429` would be a separate rate-limit story).
+  `/v1/anon/*` / `/v1/databases/*` (`401 Unauthorized` IS expected —
+  both on session probes and as the step-9 `SK-ANON-012` device-cap
+  wall on the *second* `/v1/ask`; treat only
+  `400/403/404/405/409/410/415/422` as failures — `429` would be a
+  separate rate-limit story).
 - TTFV (step 4 → step 5) under 60 s. Record `ttfvMs` in the outcome
   log even on failure.
 
