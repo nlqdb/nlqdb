@@ -24,7 +24,7 @@ when-to-load:
 Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-MCP-NNN`. The list below is the index; open the linked file for the full five-field block.
 
 - [**SK-MCP-001**](decisions/SK-MCP-001-two-transports.md) — Two transports: hosted (default) and local stdio (npm fallback).
-- [**SK-MCP-002**](decisions/SK-MCP-002-three-tools.md) — Fixed verb set: `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`, + additive `nlqdb_remember` (E-02 memory write); no public `nlqdb_create_database`.
+- [**SK-MCP-002**](decisions/SK-MCP-002-three-tools.md) — Fixed verb set: `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`, + additive `nlqdb_remember` (E-02 memory write) and `nlqdb_connect_database` (BYO-connect); no public `nlqdb_create_database`.
 - [**SK-MCP-003**](decisions/SK-MCP-003-install-autodetect.md) — `nlq mcp install` no-arg auto-detects hosts; explicit `<host>` is the power-user override.
 - [**SK-MCP-004**](decisions/SK-MCP-004-per-host-keys.md) — Per-host scoped keys: `sk_mcp_<host>_<device>_…`.
 - [**SK-MCP-005**](decisions/SK-MCP-005-zero-db-drivers.md) — Zero DB drivers in `@nlqdb/mcp`'s lockfile (CI-enforced).
@@ -46,8 +46,8 @@ the live paths (hosted connector URL, nlqdb.com one-click buttons,
 `NLQDB_API_KEY` env var); `nlq mcp install` + the `app.nlqdb.com/mcp`
 one-click join it when Slice 4 ships. The internal
 contract — four paths terminate at the same `/v1/ask` orchestration and
-the same fixed tool set (+ the additive `nlqdb_remember` write verb on
-`/v1/memory/remember`, E-02) — is canonical in [`SK-MCP-002`](decisions/SK-MCP-002-three-tools.md)
+the same fixed tool set (+ the additive `nlqdb_remember`, E-02, and
+`nlqdb_connect_database`, byo-connect, verbs) — is canonical in [`SK-MCP-002`](decisions/SK-MCP-002-three-tools.md)
 + [`SK-MCP-007`](decisions/SK-MCP-007-shared-orchestration.md). Host
 auto-detection lives in [`SK-MCP-003`](decisions/SK-MCP-003-install-autodetect.md).
 
@@ -63,7 +63,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* tools that mutate (writes / DDL) return `confirm_required` with the diff body (per `SK-TRUST-001`). Audit each host (Claude Desktop, Cursor, Zed) for diff-rendering ergonomics — hosts that hide the diff fail `SK-TRUST-001` on that surface. See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md) Open questions.
 - **GLOBAL-032** — Canonical user flows.
-  - *In this feature:* FLOW-005 (P2 agent builder) is one of the canonical flows and runs over both `SK-MCP-001` transports. The **hosted** transport (`mcp.nlqdb.com`) no-credential subset (RFC 9728 root + scoped resource-metadata, RFC 8414 AS metadata, unauthenticated `initialize` + `tools/list` returning 401 with `WWW-Authenticate: Bearer realm=*, resource_metadata=*` whose URL matches the scoped discovery) is covered by `bash scripts/flow-005-walk.sh` ([`SK-STRG-005`](../stranger-test/decisions/SK-STRG-005-flow-005-walker.md)). The **local-stdio** transport (the npm-fallback install path) is covered by `bash scripts/flow-005-stdio-walk.sh` ([`SK-STRG-009`](../stranger-test/decisions/SK-STRG-009-flow-005-stdio-walker.md)), which spawns the real `@nlqdb/mcp` binary and asserts the `initialize` + `tools/list` catalog — the `SK-MCP-002` tools (`nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe` / the additive `nlqdb_remember`, E-02), with **no public `create_database` tool** (create is implicit via `nlqdb_query`). Both walk daily under `.github/workflows/acquisition-health.yml`. The credentialed subset (authenticated tool *invocation* — `nlqdb_query` against a DB, `nlqdb_list_databases`, `nlqdb_describe`) still needs an `sk_mcp_*`/`sk_live_*` key and stays in the verification mirror. Changes to the discovery routes, the auth-wall response shape, the tool catalog, or the protocol handshake must keep the walkers green or surface a regression in the daily artifact within 24 h.
+  - *In this feature:* FLOW-005 (P2 agent builder) is one of the canonical flows and runs over both `SK-MCP-001` transports. The **hosted** transport (`mcp.nlqdb.com`) no-credential subset (RFC 9728 root + scoped resource-metadata, RFC 8414 AS metadata, unauthenticated `initialize` + `tools/list` returning 401 with `WWW-Authenticate: Bearer realm=*, resource_metadata=*` whose URL matches the scoped discovery) is covered by `bash scripts/flow-005-walk.sh` ([`SK-STRG-005`](../stranger-test/decisions/SK-STRG-005-flow-005-walker.md)). The **local-stdio** transport (the npm-fallback install path) is covered by `bash scripts/flow-005-stdio-walk.sh` ([`SK-STRG-009`](../stranger-test/decisions/SK-STRG-009-flow-005-stdio-walker.md)), which spawns the real `@nlqdb/mcp` binary and asserts the `initialize` + `tools/list` catalog — the `SK-MCP-002` tools (`nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe` / the additive `nlqdb_remember`, E-02, and `nlqdb_connect_database`, byo-connect), with **no public `create_database` tool** (create is implicit via `nlqdb_query`). Both walk daily under `.github/workflows/acquisition-health.yml`. The credentialed subset (authenticated tool *invocation* — `nlqdb_query` against a DB, `nlqdb_list_databases`, `nlqdb_describe`) still needs an `sk_mcp_*`/`sk_live_*` key and stays in the verification mirror. Changes to the discovery routes, the auth-wall response shape, the tool catalog, or the protocol handshake must keep the walkers green or surface a regression in the daily artifact within 24 h.
 
 ## Open questions / known unknowns
 

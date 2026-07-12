@@ -10,10 +10,10 @@
 # It spawns the real `@nlqdb/mcp` binary and drives a real MCP
 # `initialize` + `tools/list` handshake over OS pipes (no mocking, no
 # network — both methods are served from the in-memory tool registry),
-# then asserts the exact tool catalog an MCP host discovers before it
-# can call any tool: nlqdb_query (destructive) + nlqdb_list_databases +
-# nlqdb_describe (read-only), with no create_database/ask/run tool
-# (create is implicit via nlqdb_query). A regression here silently
+# then asserts the exact SK-MCP-002 tool catalog an MCP host discovers
+# before it can call any tool (EXPECTED_TOOLS in flow-005-stdio.ts is the
+# pinned contract; no create_database/ask/run tool — create is implicit
+# via nlqdb_query). A regression here silently
 # breaks every npm-fallback install. Tool *invocation* (which would
 # authenticate) stays in the credentialed verification mirror.
 #

@@ -90,11 +90,11 @@ stale beyond that bar is the next agent's priority #1.
 
 | # | Flow | Persona | Canonical walker | Last verified | Outcome |
 |---|---|---|---|---|---|
-| 1 | FLOW-001 | P1 Solo Builder | `bash scripts/stranger-test.sh` | 2026-07-12 | **failed step 2 — walker drift** (daily cron `acquisition-health-29185838512`; 0/9 since ≥ 07-05): the SK-WEB-018 two-door home moved the goal input to `/app/new/`, walker still asserts a hero input on `/`. The product step behind the drift (`/v1/ask` anon create) was 428-dead on prod — root-caused + fixed run 56 (see FLOW-003). Walker re-true = next lever |
-| 2 | FLOW-002 | P3 Data-Curious Analyst | `bash scripts/stranger-test.sh` | 2026-07-12 | **failed step 4 — walker drift** (same cron artifact; 0/9 since ≥ 07-05): walker greps "What nlqdb doesn't do here", shipped heading is "What nlqdb doesn't *try to* do here". Section renders fine; assertion stale in walker + `verify-flows.sh` |
-| 3 | FLOW-003 | P3 / P4 | `bash scripts/stranger-test.sh` | 2026-07-12 | **failed step 8 — REAL: prod anon create returned 428 on every walk since ≥ 07-05** (Turnstile fail-closed with no secret/widget, contradicting SK-ANON-009). Fixed run 56, A/B-verified (main → 428, fix → 200 full create); prod flips on merge, next 06:00Z cron re-walks |
+| 1 | FLOW-001 | P1 Solo Builder | `bash scripts/stranger-test.sh` | 2026-07-12 | **failed step 6 — trace affordance missing on the first-answer surface** (run-58 re-true dispatch [`acquisition-health-29200271657`](https://github.com/nlqdb/nlqdb/actions/runs/29200271657)): walker re-trued to the SK-WEB-018 two-door home this run — door → `/app/new/` → goal typed → **`/v1/ask` 200 + result table, TTFV 3.1–4.3 s** on 2/3 walks (3rd: no-ask flake). Both 200-walks then fail step 6: `/app/new` renders the first answer without the SK-WEB-005/GLOBAL-023 trace toggle (ChatPanel's `<details>` trace ships on `/app/`, not here) — the 2026-05-24 masked regression, now unmasked. Named next lever |
+| 2 | FLOW-002 | P3 Data-Curious Analyst | `bash scripts/stranger-test.sh` | 2026-07-12 | **passed 3/3** (run-58 re-true dispatch `acquisition-health-29200271657`): heading assertion re-trued to the shipped "doesn't try to do here" copy; full walk green — JSON-LD, honest-limits, CTA → draft → `/app/new` → event → **`/v1/ask` 200** (TTFV 2.5–12.2 s) |
+| 3 | FLOW-003 | P3 / P4 | `bash scripts/stranger-test.sh` | 2026-07-12 | **passed 3/3** (run-58 dispatch `acquisition-health-29200271657`): the run-56 SK-ANON-009 fail-open fix confirmed live end-to-end from a GH-runner stranger IP — anon create + first answer **200** on every walk (TTFV 2.9–14.1 s). Was 428-dead ≥ 07-05 → fixed run 56 (deploy-api `cba08af` 13:03Z) |
 | 4 | FLOW-004 | — | _retired_ | — | **Retired — the pre-alpha gate this flow crossed has been removed; the product is fully public, so there is no invite walk.** First-value seed *quality* on `create` goals lives on as an engine-quality concern (SK-HDC-018 / SK-LLM-033) under priority #1 |
-| 5 | FLOW-005 | P2 Agent Builder | `bash scripts/flow-005-walk.sh` (hosted, [`SK-STRG-005`](../features/stranger-test/FEATURE.md)) + `bash scripts/flow-005-stdio-walk.sh` (local-stdio, [`SK-STRG-009`](../features/stranger-test/FEATURE.md)) | 2026-07-12 | hosted **passed** 6/6 (daily cron). Stdio **failed — catalog drift**: `nlqdb_query` gained the SK-PREMIUM-014 `model` key and the tool count moved past the walker's "exactly 4"; protocol_ok:true, so server fine, SK-STRG-009 expectations stale |
+| 5 | FLOW-005 | P2 Agent Builder | `bash scripts/flow-005-walk.sh` (hosted, [`SK-STRG-005`](../features/stranger-test/FEATURE.md)) + `bash scripts/flow-005-stdio-walk.sh` (local-stdio, [`SK-STRG-009`](../features/stranger-test/decisions/SK-STRG-009-flow-005-stdio-walker.md)) | 2026-07-12 | **both transports passed** (run-58 dispatch `acquisition-health-29200271657`): hosted 6/6; stdio 22/22 after the run-58 catalog re-true (5 tools incl. `nlqdb_connect_database`; `nlqdb_query` carries the SK-PREMIUM-014 `model` key) |
 
 The daily [`acquisition-health.yml`](../../.github/workflows/acquisition-health.yml)
 cron re-runs each walker every 24 h so the seven-day freshness bar is
@@ -240,11 +240,13 @@ requires credentials, that itself is the failure.
 
 1. From a fresh browser context (no cookies, no localStorage), open
    `https://nlqdb.com/`.
-2. Assert: the hero `<CreateForm>` is visible. Snapshot the page;
-   look for an input with `placeholder` matching the pattern
-   `/orders|tracker|building/i`. Failing this = gate regression or
-   build regression. See [`SK-WEB-001`](../features/web-app/FEATURE.md) for
-   the hero contract.
+2. Assert: the SK-WEB-018 two-door home renders the GLOBAL-007
+   no-login-wall door — a "just describe your data →" link to
+   `/app/new/`. Click it; assert the browser lands on `/app/new/`
+   and the goal input is visible with `placeholder` matching the
+   pattern `/orders|tracker|building/i`. Failing this = the door or
+   the `/app/new/` hero regressed. See [`SK-WEB-001`](../features/web-app/FEATURE.md)
+   for the hero contract.
 3. Type a persona-seeded goal (rotate across runs, don't always send
    the same string so cache effects don't mask regressions):
    - `"a meal planner for couples"`
@@ -308,6 +310,7 @@ requires credentials, that itself is the failure.
 | 2026-06-10 | claude-code | failed step 5 (baseline) | 217 (p50) | GLOBAL-032 freshness re-walk: `bash scripts/stranger-test.sh --prompts 2` against `https://nlqdb.com` (Playwright `chromium` build 1223). Steps 1–4 ok on both seeded prompts (hero placeholder `"an orders tracker"`; goal typed; Create-the-DB clicked); step 5 fails per GLOBAL-027 — both prompts gate-blocked at `/v1/ask` (one explicit `403 gate=feature_gated`, one `no /v1/ask response` within 60s; both are gate outcomes, not a regression). `verify-flows.sh` preflight guard confirms `/v1/ask` `Access-Control-Allow-Headers` lists `x-invite-code` (EXIT=0). Artifact: `tools/stranger-test/results/walk-2026-06-10T01-38-39Z.json`. |
 | 2026-06-12 | claude-code | failed step 5 (baseline) | 206 (ttfv) | GLOBAL-032 freshness re-walk: `bash scripts/stranger-test.sh --prompts 1` against `https://nlqdb.com` (Playwright `chromium-headless-shell` build 1223). Steps 1–4 ok (hero placeholder `"an orders tracker"`; goal `"a meal planner for couples"` typed; Create-the-DB clicked); step 5 fails per GLOBAL-027 — `403 feature_gated` at `POST app.nlqdb.com/v1/ask`. The SK-GATE-007 CORS preflight fix holds (`verify-flows.sh` preflight guard green). Artifact: `tools/stranger-test/results/walk-2026-06-12T01-35-51Z.json`. |
 | 2026-07-12 | claude-code (run 56) | failed step 2 (walker drift) | — | Read from cron artifact `acquisition-health-29185838512`: all 3 runs fail step 2 `placeholder=null` — the SK-WEB-018 two-door home no longer renders a goal input on `/`; the anon input (placeholder "an orders tracker") lives at `/app/new/` behind the hero's "just describe your data →" link (confirmed live: `/app/new/` SSRs the input). The walker asserts the pre-redesign hero, so FLOW-001 has been walker-blind since the redesign — 0/9 in every artifact checked back to 07-05. ALSO product-dead behind the drift: the step the walker never reached (`/v1/ask` anon create) returned 428 on prod — root-caused + fixed this run, see the FLOW-003 2026-07-12 row. Walker re-true to the two-door home = named next lever (scorecard row #21). |
+| 2026-07-12 | claude-code (run 58) | **failed step 6 (trace missing on first-answer surface); steps 1-5 GREEN — first anon 200s ever recorded by this walker** | 4287 / 3138 | Walker re-trued to the two-door home this run and dispatched on the branch: [`acquisition-health-29200271657`](https://github.com/nlqdb/nlqdb/actions/runs/29200271657) (GH runner = stranger IP, 16:31Z). Steps 1-5 green on 2/3 prompts: `/` → door → `/app/new/` (placeholder `an orders tracker`) → goal typed → Create → **`/v1/ask` 200 + result table** (TTFV 4287 / 3138 ms — the first FLOW-001 anon 200s in this log; run 56's 428-wall fix confirmed from the browser path). Both 200-walks fail step 6 `no trace affordance found`: the `/app/new` first-answer surface renders answer + table but no SK-WEB-005/GLOBAL-023 trace toggle (ChatPanel's `<details>` trace ships on `/app/`, not here) — the regression the 2026-05-24 row flagged and every wall since masked. 3rd prompt: step 5 `no /v1/ask response observed` (submit-timing flake, same class as the 06-08/06-10 rows). Trace-on-first-answer = named next lever (scorecard row #21). Step 7 (Copy snippet) is an honest skip — the affordance is now the command-palette "Copy embed snippet". |
 
 ### Invite-bearing variant (retired)
 
@@ -354,8 +357,8 @@ None.
 3. Assert: a `<script type="application/ld+json">` block exists with
    `"@type": "FAQPage"` AND a second one with `"@type": "HowTo"` (per
    the `[slug].astro` template).
-4. Assert: a `<section>` labelled "What nlqdb doesn't do here" is
-   present and contains ≥2 `<li>` items (per [`SK-SOLVE-002`](../features/solve-pages/decisions/SK-SOLVE-002-honest-limits-mandatory.md)).
+4. Assert: a `<section>` labelled "What nlqdb doesn't try to do here"
+   is present and contains ≥2 `<li>` items (per [`SK-SOLVE-002`](../features/solve-pages/decisions/SK-SOLVE-002-honest-limits-mandatory.md)).
 5. Click the "Try this query →" button.
 6. Assert (immediately, before navigation): `localStorage["nlqdb_draft"]`
    equals `SolveEntry.demoGoal` for that slug.
@@ -402,6 +405,7 @@ None.
 | 2026-06-10 | claude-code | failed step 9 (baseline) | cheap-internal-dashboard, give-ai-agent-persistent-memory | GLOBAL-032 freshness re-walk: `bash scripts/stranger-test.sh --prompts 2` against `https://nlqdb.com`. Steps 1-8 ok on both walked slugs (h1, FAQPage + HowTo JSON-LD, honest-limits, CTA, `nlqdb_draft`, `/app/new`, `solve.try_query_clicked` sessionStorage spy); step 9 `403 feature_gated` per GLOBAL-027 (unchanged). `verify-flows.sh` solve-side assertions all green (EXIT=0, 5 solve slugs). Artifact: `tools/stranger-test/results/walk-2026-06-10T01-38-39Z.json`. |
 | 2026-06-12 | claude-code | failed step 9 (baseline) | cheap-internal-dashboard | GLOBAL-032 freshness re-walk: `bash scripts/stranger-test.sh --prompts 1` against `https://nlqdb.com`. Steps 1-8 ok on the walked slug (h1, FAQPage + HowTo JSON-LD, honest-limits, CTA, `nlqdb_draft`, `/app/new`, `solve.try_query_clicked` sessionStorage spy); step 9 `403 feature_gated` per GLOBAL-027 (unchanged). `verify-flows.sh` solve-side assertions all green (EXIT=0, 5 solve slugs). Artifact: `tools/stranger-test/results/walk-2026-06-12T01-35-51Z.json`. |
 | 2026-07-12 | claude-code (run 56) | failed step 4 (walker drift) | cheap-internal-dashboard, give-ai-agent-persistent-memory, analytical-queries-over-agent-memory | Read from cron artifact `acquisition-health-29185838512`: steps 1-3 green (h1, FAQPage + HowTo JSON-LD); step 4 fails `visible=false items=0` on every slug because the walker (and `verify-flows.sh` step 4) greps the literal "What nlqdb doesn't do here" while the shipped heading is **"What nlqdb doesn't try to do here"** (confirmed in the built page output). Pure assertion drift — the honest-limits section is present and rendered. 0/9 in every artifact checked back to 07-05. Walker re-true = named next lever (scorecard row #21). |
+| 2026-07-12 | claude-code (run 58) | **passed 3/3** | cheap-internal-dashboard, give-ai-agent-persistent-memory, analytical-queries-over-agent-memory | Walker heading assertion re-trued to the shipped "What nlqdb doesn't try to do here" copy (walker + `verify-flows.sh` + SK-SOLVE-002 title + this file's step 4). Re-walk via branch dispatch [`acquisition-health-29200271657`](https://github.com/nlqdb/nlqdb/actions/runs/29200271657): all 9 steps green on all 3 slugs — JSON-LD, honest-limits, CTA → `nlqdb_draft` → `/app/new` → `solve.try_query_clicked` → **`/v1/ask` 200** (TTFV 2503 / 12198 / 2498 ms). First fully-green FLOW-002 walk in this log. |
 
 ### Triage
 
@@ -487,6 +491,7 @@ None.
 | 2026-06-10 | claude-code | failed step 8 (baseline) | supabase, vanna | GLOBAL-032 freshness re-walk: `bash scripts/stranger-test.sh --prompts 2` against `https://nlqdb.com`. Steps 1-7 + 9 ok on both slugs (`<h1>` match, "When to choose <Name>" trade-offs, FAQPage JSON-LD, CTA, `nlqdb_draft`, `/app/new`, `/llms.txt` enumerates all 6 vs slugs); step 8 `403 feature_gated` per GLOBAL-027 (unchanged). All 6 deployed `/vs/<slug>` pages green under `verify-flows.sh` (EXIT=0). Artifact: `tools/stranger-test/results/walk-2026-06-10T01-38-39Z.json`. |
 | 2026-06-12 | claude-code | failed step 8 (baseline) | supabase | GLOBAL-032 freshness re-walk: `bash scripts/stranger-test.sh --prompts 1` against `https://nlqdb.com`. Steps 1-7 + 9 ok on the walked slug (`<h1>` match, "When to choose <Name>" trade-offs, FAQPage JSON-LD, CTA, `nlqdb_draft`, `/app/new`, `/llms.txt` enumerates all 6 vs slugs); step 8 `403 feature_gated` per GLOBAL-027 (unchanged). All 6 deployed `/vs/<slug>` pages green under `verify-flows.sh` (EXIT=0). Artifact: `tools/stranger-test/results/walk-2026-06-12T01-35-51Z.json`. |
 | 2026-07-12 | claude-code (run 56) | failed step 8 → root-caused + FIXED (pending deploy) | supabase, vanna, mem0 | Read from the daily cron artifact `acquisition-health-29185838512` (2026-07-12 06:00Z): steps 1-7 + 9 green on every slug; step 8 fails on every slug — `POST /v1/ask` as a fresh anon returns **428 challenge_required** in 0.4–1.4 s. Reproduced directly via curl against `https://app.nlqdb.com` (same 428). Root cause: `peekAnonCreateGate` failed CLOSED on Turnstile `unconfigured` under `NODE_ENV=production|canary` — contradicting SK-ANON-009 (`unconfigured` = allow-through; fail-closed explicitly rejected); `TURNSTILE_SECRET` was never provisioned (CF account has zero Turnstile widgets) and the client widget is a stub (`solveChallenge()` returns null), so EVERY prod anon create dead-ended — the 07-05 and 07-11 cron artifacts show the identical 428, so the funnel was product-dead ≥ a week while the exit-0 cron kept reporting workflow success. Fixed this run: fail-open restored per the canonical decision (isProd carve-out removed). Measured A/B on preview versions with identical env (`NODE_ENV=production`, no Turnstile secret): main baseline → 428; fix → **HTTP 200 full create** (LLM plan + schema provisioned + `pk_live` issued; probe rows cleaned up). Prod flips when the run-56 PR merges (deploy-api auto-fires); the next 06:00Z cron is the live re-walk. |
+| 2026-07-12 | claude-code (run 58) | **passed 3/3 — live confirmation of the run-56 fix** | supabase, vanna, mem0 | Branch dispatch [`acquisition-health-29200271657`](https://github.com/nlqdb/nlqdb/actions/runs/29200271657) (16:31Z, GH-runner stranger IP, post-deploy `cba08af`): every step green on every slug — `/vs/` page → CTA → anon create → **`/v1/ask` 200 + first answer** (TTFV 14119 / 4189 / 2918 ms). The 428 wall the 07-05→07-12 crons recorded is gone on the deployed surface. |
 
 ---
 
@@ -616,9 +621,11 @@ asserts `state == "passed"` in the JSON, NOT the individual HTTP calls.
 5b. The walker spawns the real `@nlqdb/mcp` binary, completes the MCP
     `initialize` handshake, calls `tools/list`, and asserts the catalog
     an npm-fallback install discovers: exactly `nlqdb_query`
-    (destructiveHint), `nlqdb_list_databases` (readOnlyHint), and
-    `nlqdb_describe` (readOnlyHint) with their input-schema keys, and
-    **no `create_database` / `ask` / `run` tool** (create is implicit
+    (destructiveHint; `model` key per SK-PREMIUM-014),
+    `nlqdb_list_databases` (readOnlyHint), `nlqdb_describe`
+    (readOnlyHint), `nlqdb_remember` (E-02 memory write), and
+    `nlqdb_connect_database` (BYO-connect) with their input-schema keys,
+    and **no `create_database` / `ask` / `run` tool** (create is implicit
     via `nlqdb_query` per [`SK-MCP-002`](../features/mcp-server/decisions/SK-MCP-002-three-tools.md)).
     Assert `state == "passed"` AND `protocol_ok` AND `catalog_ok`.
 
@@ -628,8 +635,9 @@ asserts `state == "passed"` in the JSON, NOT the individual HTTP calls.
    HTTP transport): `bunx @modelcontextprotocol/inspector https://mcp.nlqdb.com`,
    or the local-stdio transport with a key: `NLQDB_API_KEY=<sk_…> bunx @nlqdb/mcp`.
 7. Assert: `tools/list` returns exactly `nlqdb_query`,
-   `nlqdb_list_databases`, `nlqdb_describe` (no `create_database` / `ask` /
-   `run` — verified credential-free by `flow-005-stdio-walk.sh`). See
+   `nlqdb_list_databases`, `nlqdb_describe`, `nlqdb_remember`,
+   `nlqdb_connect_database` (no `create_database` / `ask` / `run` —
+   verified credential-free by `flow-005-stdio-walk.sh`). See
    [`docs/features/mcp-server/FEATURE.md`](../features/mcp-server/FEATURE.md).
 8. Call `nlqdb_query` with `{"db": "research-memory", "q": "create a
    place to store facts with a key and a value, then show me everything"}`
@@ -701,6 +709,7 @@ asserts `state == "passed"` in the JSON, NOT the individual HTTP calls.
 | 2026-06-12 | claude-code | **passed (hosted no-credential subset, SK-STRG-005)** | discovery endpoints + auth-wall challenge | GLOBAL-032 freshness re-walk: `bash scripts/flow-005-walk.sh` against `https://mcp.nlqdb.com` 6/6 in <1s — RFC 9728 root + scoped resource-metadata, RFC 8414 AS metadata, `initialize` + `tools/list` 401 with `WWW-Authenticate` challenge URL matching scoped discovery (all unchanged). Artifact: `tools/stranger-test/results/flow-005-2026-06-12T01-35-09Z.json`. |
 | 2026-06-12 | claude-code | **passed (stdio no-credential subset, SK-STRG-009)** | `initialize` + `tools/list` tool catalog | GLOBAL-032 freshness re-walk: `bash scripts/flow-005-stdio-walk.sh` spawned the real `@nlqdb/mcp` binary and drove a real `initialize` + `tools/list` handshake over OS pipes (no network): **16/16 checks in 0.2s**. Catalog unchanged = `nlqdb_query` (destructiveHint, `{db,q,confirm}`) + `nlqdb_list_databases` (readOnlyHint) + `nlqdb_describe` (readOnlyHint, `{db}`); no `create_database`/`ask`/`run` tool. JSON `state:"passed"`, `protocol_ok:true`, `catalog_ok:true`. Authenticated tool *invocation* still needs a key. Artifact: `tools/stranger-test/results/flow-005-stdio-2026-06-12T01-35-28-432Z.json`. |
 | 2026-07-12 | claude-code (run 56) | hosted **passed** 6/6 (SK-STRG-005); stdio **failed — catalog drift** (SK-STRG-009) | daily cron, both transports | From cron artifact `acquisition-health-29185838512`: hosted walk 6/6 green (`state:"passed"`, discovery + auth-wall + challenge URL). Stdio walk 17 checks passed / 2 failed — `state:"failed"`, notes: `exactly 4 tools listed` + `tool nlqdb_query input schema is { db, q, confirm }`. The shipped catalog moved under the walker: `nlqdb_query` gained the SK-PREMIUM-014 `model` preset key and the tool count changed (agent-memory tools), so the SK-STRG-009 expectations are stale. Assertion drift, not a server regression (protocol_ok:true). Walker re-true = named next lever (scorecard row #21). |
+| 2026-07-12 | claude-code (run 58) | hosted **passed** 6/6; stdio **passed** 22/22 (catalog re-trued) | branch dispatch, both transports | SK-STRG-009 expectations re-trued to the shipped catalog: 5 tools — `nlqdb_query` (destructiveHint, `{db,q,confirm,model}` per SK-PREMIUM-014) / `nlqdb_list_databases` / `nlqdb_describe` / `nlqdb_remember` / `nlqdb_connect_database` (`{engine,connection_url,name}`, byo-connect) — no `create_database`/`ask`/`run`. Local run 22/22 in 0.2s; CI re-run in [`acquisition-health-29200271657`](https://github.com/nlqdb/nlqdb/actions/runs/29200271657) both transports `state:"passed"`. |
 
 ---
 

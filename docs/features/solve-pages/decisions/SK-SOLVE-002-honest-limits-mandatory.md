@@ -1,4 +1,4 @@
-# SK-SOLVE-002 — Every solve page ships a "What nlqdb doesn't do here" section
+# SK-SOLVE-002 — Every solve page ships a "What nlqdb doesn't try to do here" section
 
 - **Decision:** Every `/solve/<slug>` page renders a `whatItDoesnt` block with ≥2 honest bullets naming the limits of nlqdb's answer for that specific search query. The block sits between "What nlqdb actually does" and the FAQ — visible above the fold on desktop, mandatory in the data shape, type-checked by the build. A page that ships without honest limits fails the data-integrity test and the build.
 - **Core value:** Bullet-proof, Honest latency

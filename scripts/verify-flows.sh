@@ -3,7 +3,7 @@
 # docs/research/automated-icp-validation-plan-verification.md.
 #
 # What this covers (curl-only, the static no-credential subset of each flow):
-#   FLOW-001 step 1+2 (homepage hero)
+#   FLOW-001 steps 1+2 (two-door home → /app/new/ hero)
 #   FLOW-002 step 1, 3, 4 (/solve/<slug> + FAQPage/HowTo JSON-LD + honest-limits)
 #   FLOW-003 step 1, 2, 4, 9 (/vs/<slug> + h1 + FAQPage JSON-LD + /llms.txt)
 #   FLOW-005 discovery (mcp.nlqdb.com OAuth metadata — precondition of
@@ -124,10 +124,19 @@ assert_trailing_slash_redirect() {
 
 # --- FLOW-001 — Anonymous-first happy path (steps 1+2) -------------------
 
-say "FLOW-001 — homepage hero (curl-observable subset)"
+say "FLOW-001 — two-door home → /app/new/ hero (curl-observable subset)"
 if fetch_body "FLOW-001 step 1: GET / returns 200" "$BASE_URL/"; then
+  # SK-WEB-018 two-door home: the goal input lives on /app/new/ behind the
+  # GLOBAL-007 no-login-wall door; `/` must render that door.
   assert_match \
-    "FLOW-001 step 2: hero <form> placeholder matches /orders|tracker|building/i" \
+    "FLOW-001 step 2a: no-login-wall door to /app/new/ on /" \
+    "$FETCH_BODY_PATH" \
+    'href="/app/new/"'
+  rm -f "$FETCH_BODY_PATH"
+fi
+if fetch_body "FLOW-001 step 2b: GET /app/new/ returns 200" "$BASE_URL/app/new/"; then
+  assert_match \
+    "FLOW-001 step 2c: /app/new/ hero placeholder matches /orders|tracker|building/i" \
     "$FETCH_BODY_PATH" \
     'placeholder="[^"]*(orders|tracker|building)[^"]*"'
   rm -f "$FETCH_BODY_PATH"
@@ -159,7 +168,7 @@ for slug in "${SOLVE_SLUGS[@]}"; do
   if fetch_body "FLOW-002 step 1 GET /solve/$slug/ returns 200" "$BASE_URL/solve/$slug/"; then
     assert_match "FLOW-002 step 3 FAQPage JSON-LD present ($slug)"  "$FETCH_BODY_PATH" '"@type":\s*"FAQPage"'
     assert_match "FLOW-002 step 3 HowTo JSON-LD present ($slug)"     "$FETCH_BODY_PATH" '"@type":\s*"HowTo"'
-    assert_match "FLOW-002 step 4 honest-limits section present ($slug)" "$FETCH_BODY_PATH" "What nlqdb doesn't do here"
+    assert_match "FLOW-002 step 4 honest-limits section present ($slug)" "$FETCH_BODY_PATH" "What nlqdb doesn(&#39;|')t try to do here"
     rm -f "$FETCH_BODY_PATH"
   fi
 done

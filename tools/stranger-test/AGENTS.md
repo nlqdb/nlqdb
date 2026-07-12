@@ -29,7 +29,7 @@ tools/stranger-test/
 │   ├── personas.ts           # 25 seeded prompts (P1×10, P2×8, P3×4, P6×3)
 │   ├── types.ts              # WalkResult / FlowResult / FlowRun / StepResult
 │   └── flows/
-│       ├── flow-001.ts       # anonymous-first happy path (homepage hero)
+│       ├── flow-001.ts       # anonymous-first happy path (two-door home → /app/new/ hero)
 │       ├── flow-002.ts       # /solve/<slug> → first query
 │       └── flow-003.ts       # /vs/<slug> → first query
 ├── test/                     # bun test, no browser launch

@@ -33,16 +33,23 @@ const HANDSHAKE_TIMEOUT_MS = 20_000;
 // The contract an MCP host discovers (packages/mcp/src/server.ts · SK-MCP-002).
 // `nlqdb_query` carries the implicit create ("materialised on first reference")
 // — there is no `create_database` / `ask` / `run` tool. `nlqdb_remember` is the
-// additive memory-write verb (E-02 / SK-PIVOT-008).
+// additive memory-write verb (E-02 / SK-PIVOT-008); `nlqdb_connect_database`
+// the additive BYO-connect verb (byo-connect, GLOBAL-003 parity); `model` on
+// `nlqdb_query` is the SK-PREMIUM-014 picker.
 type ToolSpec = { readOnly: boolean; destructive: boolean; inputKeys: string[] };
 const EXPECTED_TOOLS: Record<string, ToolSpec> = {
-  nlqdb_query: { readOnly: false, destructive: true, inputKeys: ["db", "q", "confirm"] },
+  nlqdb_query: { readOnly: false, destructive: true, inputKeys: ["db", "q", "confirm", "model"] },
   nlqdb_list_databases: { readOnly: true, destructive: false, inputKeys: [] },
   nlqdb_describe: { readOnly: true, destructive: false, inputKeys: ["db"] },
   nlqdb_remember: {
     readOnly: false,
     destructive: false,
     inputKeys: ["db", "kind", "payload", "endUserId", "threadId", "ttlSeconds"],
+  },
+  nlqdb_connect_database: {
+    readOnly: false,
+    destructive: false,
+    inputKeys: ["engine", "connection_url", "name"],
   },
 };
 // Names the tracker has mis-referenced as MCP tools — none may exist.
@@ -224,7 +231,7 @@ async function main(): Promise<number> {
       tools: hs.tools.map((t) => t.name),
       notes:
         state === "passed"
-          ? "stdio handshake green; catalog = nlqdb_query/list_databases/describe (no create_database tool)"
+          ? "stdio handshake green; catalog = nlqdb_query/list_databases/describe/remember/connect_database (no create_database tool)"
           : `failed: ${failed.map((c) => c.name).join("; ")}`,
     };
   } catch (e) {
