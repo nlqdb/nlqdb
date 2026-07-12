@@ -193,8 +193,9 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-021** — Each external system has one canonical owning module.
   - *In this feature:* `packages/db/` owns the user-data engines; all
     `@neondatabase/serverless` imports live in `@nlqdb/db`. Documented
-    exception: `apps/api/src/db-create/build-deps.ts` imports the Neon
-    client for the control-plane provisioner (`SK-HDC-*`). Cloudflare D1 is
+    exception: `apps/api/src/db-create/pg-client.ts` imports the Neon
+    client for the control-plane provisioner + ACL retarget (`SK-HDC-*`,
+    `SK-ASK-024`). Cloudflare D1 is
     a **separate** system owned by `packages/platform-db/` (the `D1Database`
     binding through `db-registry.ts` is platform-db consumer code).
 - **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret.

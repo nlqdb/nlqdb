@@ -2914,24 +2914,11 @@ app.delete("/v1/databases/:id", requireSession, async (c) => {
       return c.json({ error: { status: "db_not_found" as const } }, 404);
     }
 
-    // Same WASM polyfill as the POST handler above — `build-deps.ts`
-    // transitively pulls in `sql-validate-ddl.ts`'s top-level WASM
-    // `loadModule()` even though the delete path never invokes it.
-    // Keeping the dynamic import here matches POST's pattern and
-    // dodges the cold-start `loadModule()` hang risk on isolates that
-    // never hit a write path.
-    const g = globalThis as unknown as { __filename?: string; __dirname?: string };
-    if (typeof g.__filename === "undefined") g.__filename = "worker";
-    if (typeof g.__dirname === "undefined") g.__dirname = "/";
-
-    // Pull the lean `buildPgClient` + secret-ref resolver only — we
-    // don't need the LLM router, embed deps, or recent-tables store
-    // that `buildDbCreateDeps` wires up for the create path.
-    // `stripDbPrefix` is a pure helper (no WASM dependency); both are
-    // dynamic-imported through the same `neon-provision.ts` /
-    // `build-deps.ts` modules so the WASM polyfill above still gates
-    // the cold-start cost.
-    const { buildPgClient, resolveDatabaseUrl } = await import("./db-create/build-deps.ts");
+    // The lean client comes from the WASM-free `pg-client.ts`
+    // (SK-ASK-024) — the delete path never needs the LLM router, embed
+    // deps, or the libpg-query chain that `buildDbCreateDeps` wires up,
+    // so no WASM polyfill is required here.
+    const { buildPgClient, resolveDatabaseUrl } = await import("./db-create/pg-client.ts");
     const { dropSchemaAndRegistry, stripDbPrefix } = await import("./db-create/neon-provision.ts");
 
     try {
@@ -3477,7 +3464,10 @@ async function scheduled(
         );
         return;
       }
-      const { keepNeonWarm } = await import("./db-create/build-deps.ts");
+      // pg-client.ts is WASM-free, so this import cannot hit the
+      // module-scope libpg-query crash (SK-ASK-024) that build-deps.ts
+      // risks on the shim-less cron isolate.
+      const { keepNeonWarm } = await import("./db-create/pg-client.ts");
       try {
         // Span carries the elapsed_ms via `nlqdb.db.duration_ms` —
         // no console.info needed (would otherwise be ~210 lines/day

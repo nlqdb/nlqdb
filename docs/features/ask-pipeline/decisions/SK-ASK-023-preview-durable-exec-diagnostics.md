@@ -8,8 +8,9 @@
   because Cloudflare **preview-URL invocations emit no logs anywhere**
   (Workers Logs, `wrangler tail`, and Logpush all exclude them), and
   previews are exactly where the e2e suite's failures happen. Classes
-  today: the `/v1/ask` exec catch-all (`exec_db_unreachable`) and the
-  adoption ACL-retarget catch (`anon_adopt_regrant_failed`).
+  today: the `/v1/ask` exec catch-all (`exec_db_unreachable`), the
+  adoption ACL-retarget catch (`anon_adopt_regrant_failed`), and the
+  exec-time ACL-heal catch (`exec_acl_heal_failed`, SK-ASK-024).
 - **Core value:** Bullet-proof, Free
 - **Why:** `SK-ASK-019` made the `db_unreachable` black hole "greppable in
   a single run" — but only where logs exist. The e2e staging surface runs

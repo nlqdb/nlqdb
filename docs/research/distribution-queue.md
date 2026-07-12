@@ -36,33 +36,49 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   knowingly. Honest split: a testing-hygiene pattern for anyone whose
   e2e asserts real rendered copy, not a product feature.
 
+- **"Your recovery code runs once. Your failure doesn't."** slug
+  `one-shot-recovery-permanent-outage` · venue dev.to (#postgres
+  #reliability #architecture) + r/ExperiencedDevs + lobste.rs
+  (`practices`) · reliability lesson (`SK-ASK-024`, 2026-07-12). Angle:
+  sign-in "adopts" a database created before login — flip an owner column,
+  re-point Postgres grants + RLS at the new owner. The grant batch was
+  best-effort (never fail the sign-in) and ran exactly once. For four days
+  it looked "dispatch-intermittent": the identical code passed one CI run
+  and bricked the next. The eventual cause was deterministic all along — a
+  lazily-imported module crashed at init (a WASM loader dereferencing
+  `self.location.href`, undefined in the serverless runtime) in every
+  *fresh* isolate, and passed in every isolate another code path had
+  already warmed with a globals shim. The crash landed *before* the
+  instrumented try, so zero log lines existed; and because the repair ran
+  exactly once per adoption, one silent skip bricked the DB *forever*:
+  every query died at `SET LOCAL ROLE` inside a catch-all reading
+  "couldn't reach the database." Every retry mechanism in the pipeline was
+  request-scoped and none could help — the failure lived in state a
+  *previous* request failed to write, and the event that would re-run the
+  repair (an adoption replay) can never fire: a fresh browser mints a
+  fresh anon token. Fix shape: (1) fix the root (a dependency-free client
+  module, nothing left to fail outside the instrumented block); (2) keep
+  the repair idempotent — role-if-missing, grants, `ALTER POLICY` all
+  re-apply cleanly; (3) ALSO trigger it from the *symptom* in the
+  steady-state path — exec's role-missing error re-runs the grant batch
+  and retries once, pinned to an error shape only your own subsystem can
+  produce, surfacing the *original* error if the repair fails. Design
+  tests: "what re-runs this if it misses?" — if the answer is "the
+  event," check whether the event can recur; and "can anything on this
+  path fail before my error handler?" — an observability try that starts
+  after the imports observes nothing. Honest split: a state-repair
+  pattern for any system with grant/config fan-out at ownership transfer,
+  not a product feature.
+
 - **"A green checkmark has a half-life."** slug
   `green-checkmark-has-a-half-life` · venue dev.to (#ci #testing #devops) +
   r/ExperiencedDevs + lobste.rs (`practices`) · CI/measurement lesson (the
-  scorecard row #15 freshness method, 2026-07-12). Angle: our e2e suites
-  are manual-dispatch-only, on purpose — every run burns free-tier quota
-  (a Neon branch, a Workers preview, LLM tokens), so e2e is a deliberate
-  operator action and cron was explicitly rejected (failures landing at
-  3 a.m. have no triggering author). The consequence nobody writes down:
-  once e2e stops running on every push, "passing" stops being a *state*
-  and becomes an *event*. The API deploys daily; a suite that was green
-  Tuesday asserts nothing about Friday's build, but the dashboard still
-  shows the same reassuring checkmark. Fix: score each suite
-  `pass × freshness`, where freshness decays linearly 1 → 0 over a
-  fixed window (ours: 7 days) — the dashboard number itself rots until
-  an operator re-dispatches, so the metric replaces the cron instead of
-  the cron replacing judgement. Three design notes that mattered: (1) the
-  window is a compromise and should say so — the honest window is your
-  deploy cadence (a suite is stale the moment the thing it certifies
-  changes underneath it), but every dispatch costs quota, so our 7 days
-  against daily deploys makes the score an upper bound on confidence,
-  not a guarantee; (2) score
-  only the latest completed run, and a red run is 0 regardless of
-  freshness — averaging history lets an old green subsidize a current
-  red; (3) print the last-success date in the same cell as the score, or
-  "0.67" is a number nobody can audit. Honest split: a measurement-
-  hygiene pattern for anyone whose expensive test suites can't run on
-  every push, not a product feature.
+  scorecard row #15 freshness method, 2026-07-12). *(Collapsed under the
+  20 KB cap — full angle in git history.)* Gist: manual-dispatch e2e makes
+  "passing" an event, not a state — score suites `pass × freshness` with a
+  linear 7-day decay so the dashboard number itself rots until an operator
+  re-dispatches; a red run scores 0 regardless of freshness; print the
+  last-success date beside the score.
 
 ## Published — canonical `/blog` copies live; venue variants pending
 

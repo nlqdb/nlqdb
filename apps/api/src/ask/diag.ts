@@ -41,7 +41,7 @@ export function resetDiagWriteWindowForTest(): void {
 // drops. Adding a class = adding a union member + the `record` call in
 // its catch; the key prefix `diag:<event>:` keeps classes list-separable.
 export type DiagEntry = {
-  event: "exec_db_unreachable" | "anon_adopt_regrant_failed";
+  event: "exec_db_unreachable" | "anon_adopt_regrant_failed" | "exec_acl_heal_failed";
   pgCode: string;
   pgMessage: string;
   dbId: string;
