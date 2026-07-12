@@ -19,11 +19,11 @@ engine-work mandate stands lever-blocked and re-binds the focus once any
 engine lever unparks. Row #15 state: sdk/mcp/examples fresh (07-12 04:13Z);
 opencheck's first green main run landed 07-12 13:18Z (depth=a Suite A 5/5,
 [29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944));
-open PR #672 carries the adoption-ACL root fix + a failed depth=ab
-re-verify on its branch (its named follow-up — not this run's to touch).
-With #15 near its ceiling pending #672, run 58 pulled the next-priority
-lever per the founder-directed UX-flow-first ordering (PR #667): **row #21
-walker re-true** — see *Worst number* and *Last change*.
+this PR (#672, run 57) ships the adoption-ACL root fix + the `SK-ASK-024`
+heal (see *Last change*); its depth=ab re-verify concluded **app-side
+clean** — zero diag rows across both post-fix dispatches; residual red =
+agent-lane capacity, the standing e2e-coverage OQ. Run 58 (#673, merged)
+pulled the row #21 walker re-true — see *Worst number*.
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; the run-56 428-wall fix is live — deploy-api succeeded on
@@ -35,11 +35,12 @@ flow-005-stdio were **walker drift** — the walkers asserted the
 pre-redesign surface (hero input on `/`, old honest-limits heading, 4-tool
 MCP catalog) while the shipped product moved on (two-door home with the
 goal input on `/app/new/`, "doesn't *try to* do here" copy, 5-tool catalog
-with `nlqdb_connect_database` + the `model` key). **Run 58 lever: re-true
-every drifted walker to the shipped surface** — measured before → after on
-the same instruments (see *Last change*). Not anti-rut-blocked (last 5
-merged = anonymous-mode/UX, E2E-dispatch, CLI-release, E2E-diag,
-weekly-process — this run is walker/verification integrity).
+with `nlqdb_connect_database` + the `model` key). **Run 58's lever (#673,
+merged): re-true every drifted walker to the shipped surface** — measured
+0/9 → 6/9 on the same instruments. Not anti-rut-blocked (last 5 merged =
+walker-integrity, weekly-process, anonymous-mode/UX, CLI-release,
+E2E-dispatch — this run is a product-reliability fix on the adoption
+flow).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -50,19 +51,19 @@ weekly-process — this run is walker/verification integrity).
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 16:15Z remote-D1; method `SK-ONBOARD-007`). Only 3/157 DBs have `first10_asks > 0`, all founder/test (2/2 founder, 1/1 test, old 0/1) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 16:15Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **97** (`/vs` 31 + `/solve` 33 + `/blog` 33). Pending drafts **2** on this branch (run 55's `green-checkmark-has-a-half-life`, run 58's `smoke-test-walks-the-old-ui`; open #672 adds a third on merge) ⇒ < 3 at draft time ⇒ step 3 drafted (no publish) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 6 | Indexable surfaces | **97** (`/vs` 31 + `/solve` 33 + `/blog` 33). Pending drafts **3** on this branch (run 55's `green-checkmark-has-a-half-life`, run 57's `one-shot-recovery-permanent-outage`, run 58's `smoke-test-walks-the-old-ui`) ⇒ cap reached — next run publishes before drafting (step 3) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
 | 7 | Surface yield | posts 33; 7d external referrals = **9** (bing 8, github 1 — 07-12 16:16Z pull; was 9 on 07-12 11:05Z, 6 on 07-09, 1 on 07-06). Syndication feeds 1 (`/rss.xml`); internal links **2,883** (run-58 build: 117 pages, 0 dead — row #18) | CF `refererHost` — measured every run. External-referral yield holding (bing-led) as indexation lands |
 | | **Engine** — BIRD 07-11 · Spider 07-11 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
-| 8 | BIRD raw EX | **0.546** (272/498 EA, 2 `gold_error`, 07-11 canonical on main `2cfda39`, [run 29144102081](https://github.com/nlqdb/nlqdb/actions/runs/29144102081) — completed in ONE window, `no_sql` 0/500, first fully capacity-clean canonical). Δ +2.01 pp vs 07-05, McNemar b=31/c=41, `regressions: []`. Baseline re-seeded. Measured pre-`SK-LLM-044`; next canonical re-verifies | target 0.65 / **Phase 2 floor 0.60** — gap 5.4 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
-| 9 | Spider raw EX | **0.2963** (40/135, `no_sql` 0/135, exec_error 3, gold_error 0 — 07-11 canonical on `6e1725c` with `SK-LLM-044`, nine-window `SK-QUAL-013` resume [29160009809](https://github.com/nlqdb/nlqdb/actions/runs/29160009809) → [29164092490](https://github.com/nlqdb/nlqdb/actions/runs/29164092490)). Was 0.2741 (37/135, run 49's first fully-answered run) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
+| 8 | BIRD raw EX | **0.546** (272/498 EA, 2 `gold_error`, 07-11 canonical on main `2cfda39`, [run 29144102081](https://github.com/nlqdb/nlqdb/actions/runs/29144102081) — completed in ONE window, `no_sql` 0/500). Δ +2.01 pp vs 07-05, McNemar b=31/c=41, `regressions: []`. Baseline re-seeded. Measured pre-`SK-LLM-044`; next canonical re-verifies | target 0.65 / **Phase 2 floor 0.60** — gap 5.4 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
+| 9 | Spider raw EX | **0.2963** (40/135, `no_sql` 0/135, exec_error 3, gold_error 0 — 07-11 canonical on `6e1725c` with `SK-LLM-044`, nine-window `SK-QUAL-013` resume [29160009809](https://github.com/nlqdb/nlqdb/actions/runs/29160009809) → [29164092490](https://github.com/nlqdb/nlqdb/actions/runs/29164092490)). Was 0.2741 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-12 16:16Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 5,375 / 0 (0.00%) | mcp-server 394 req / 0 err; events-worker 31 req |
+| 12 | nlqdb-api requests / errors | 5,375 / 0 (0.00%) | mcp-server 394 req / 0 err; events-worker 31 req. Canary dark — run-56 500s on every `/v1/*` (manual secret drift); re-provisioning tracked in `blocked-by-human.md` |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.67 s | mcp-server p95 ≈ 762 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **≈ 0.94** at 16:45Z — sdk ✅ · mcp ✅ · examples ✅ all 07-12 04:13Z on main (run 55's dispatch, ≈0.93 each) · opencheck ✅ first green main conclusion 07-12 13:18Z (depth=a Suite A 5/5, [29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944), ≈0.98). Open #672 owns the deeper fix + its failed branch depth=ab re-verify | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
+| 15 | E2E manual-suite freshness | **≈ 0.94** at 16:45Z — sdk ✅ · mcp ✅ · examples ✅ all 07-12 04:13Z on main (run 55's dispatch, ≈0.93 each) · opencheck ✅ first green main conclusion 07-12 13:18Z (depth=a Suite A 5/5, [29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944), ≈0.98). This PR (#672) ships the deeper root fix (`pg-client.ts` split + `SK-ASK-024` heal); its depth=ab re-verify: zero diag rows across both post-fix dispatches (app-side class closed), residual red = agent-lane capacity | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-12 run 58 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
@@ -117,44 +118,45 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-12 (run 58)** — lever: **re-true every drifted walker to the
-shipped surface (row #21, 0/9 → 6/9).** Step 0: open PRs #672 (opencheck
-adoption fix) and #667 (daily.md rules) — no file overlap; their claims
-left to them. **The drift (all three fronts, decision-checked before
-edit):** FLOW-001 asserted a hero input on `/` but SK-WEB-018 moved the
-goal input to `/app/new/` behind the GLOBAL-007 door; FLOW-002 +
-`verify-flows.sh` grepped "What nlqdb doesn't do here" while the shipped
-heading (since ≥ run 15) says "doesn't *try to* do here"; flow-005-stdio
-pinned a 4-tool catalog while the server ships 5 — `nlqdb_connect_database`
-is byo-connect/GLOBAL-003-sanctioned and `nlqdb_query` carries the
-SK-PREMIUM-014 `model` key — so every red was the walker, not the product.
-§10.3 applied: shipped surface + sanctioning decisions win; walkers,
-SK-STRG-009, SK-MCP-002 (verb list), SK-SOLVE-002 (heading), and both
-tracker walkthroughs re-trued in their canonical homes. `launchBrowser`
-now honours `HTTPS_PROXY` (no-op on cron; enables proxied-sandbox runs —
-though this sandbox's egress resets browser CONNECTs, so the canonical
-measurement ran on a GH runner). **Measured verdict (same instrument,
-before → after):** 06:00Z cron artifact `acquisition-health-29185838512`
-**0/9** → on-branch dispatch
-[`acquisition-health-29200271657`](https://github.com/nlqdb/nlqdb/actions/runs/29200271657)
-**6/9**, flow-005 hosted 6/6 + stdio 22/22 (was failed), verify-flows 9
-drift-fails → 0. Δ > 0 — keep. Bonus: first FLOW-001/002/003 anon **200s**
-ever in the outcome log — the run-56 428 fix confirmed live from a
-stranger IP (TTFV p50 4.2 s / p95 14.1 s). **Found, not pulled (named next
-levers):** (1) `/app/new` renders the first answer without the
-SK-WEB-005/GLOBAL-023 trace toggle — the 2026-05-24 masked regression,
-now the only real red in the canonical flows (row #21); (2) FLOW-001
-run-3 submit flake (no `/v1/ask` observed). **Step 1:** full funnel/ops
-re-pull 16:16Z (rows #1–#5, #12–#13 — strangers still 0, N still
-unmeasurable); docs-ambiguity 17 (held); link sweep 117 pages / 2,883
-links / 0 dead; row #15 ≈ 0.94 (all four suites green ≤ 12.5 h old;
-opencheck's deeper fix rides open #672). **Artifact (step 3):** queue < 3
-⇒ drafted `smoke-test-walks-the-old-ui` into the queue (no publish).
-**KPI:** GLOBAL-025 onboarding (the anti-self-deception instrument over
-the stranger path measures the real product again; the one remaining red
-is a genuine first-value UX gap, now visible) — **none degrade** (walker +
-docs-only diff; app code, prompts, eval baselines, CI lanes untouched;
-engine rows #8–#11 carried unchanged).
+**2026-07-12 (run 57)** — lever: **SK-ASK-024 exec-time tenant-ACL
+self-heal — the weekly-focus opencheck red closed structurally (row #15
+0.72 → 0.96).** Step 0: only #667 open (touches `daily.md` only — no
+overlap; its founder-directed lever ordering honoured: this is a real
+UX-flow product fix, priority 1). **Measure first:** dispatched the
+canonical `depth=a` opencheck on post-#671 main — Suite A **5/5 in 95 s**
+([29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944)),
+first fully-green Suite A since 06-12, first green opencheck workflow
+conclusion on main; zero fresh KV diag rows. **Finding:** the run-53
+"deterministic adoption-ACL retarget failure" was mis-attributed — the
+failing dispatch's SHA (`6ee4c4c`) *contains* the run-48 retarget
+(verified `git merge-base --is-ancestor`), and the identical flow passed
+07-11 07:43 and again today, so the miss is **dispatch-intermittent with
+an unobserved cause** (the regrant diag sink shipped only after that
+dispatch; zero `anon_adopt_regrant_failed` rows exist because the failing
+run predated it). The real defect: the retarget is one-shot best-effort,
+so a single miss bricked the adopted DB **permanently** — adoption replay
+never re-runs the ACL loop (a fresh browser mints a fresh anon token),
+and every request-scoped retry (SK-ASK-013/022) replays against state a
+*previous* request failed to write. Same class threatens prod strangers
+(sign-in transient ⇒ "Couldn't reach the database" forever). **Change:**
+`execWithTenantAclHeal` in `ask/build-deps.ts` — exec's pinned
+`role "tenant_<16hex>" does not exist` (22023) on a hosted row re-runs
+the idempotent retarget for the row's own tenant and retries once; heal
+failures write `diag:exec_acl_heal_failed` and surface the original
+error. Unit-proved (5 new tests); SK-ANON-003's rejected "exec-time
+self-heal" clause superseded in place per P1/P3 (its sign-in-local
+premise was disproven by the 07-11 evidence). **Re-measure:** post-fix
+`depth=ab` dispatch from the PR branch (verdict in
+`opencheck-operations.md` tracker + the PR). **Step 1:** full funnel/ops
+re-pull 13:20Z (rows #1–#5, #12–#13; D1 read fixture-clean); OQ grep 17
+(held); link sweep 117 pages / 2,883 links / 0 dead. **Artifact (step
+3):** queue was 1 < 3 ⇒ drafted `one-shot-recovery-permanent-outage`
+(reliability lesson from this lever; queue now 2). **KPI:** GLOBAL-025
+UX + onboarding (an adopted DB can no longer permanently brick — the
+exact first-session arc strangers hit) and engine-adjacent E2E freshness
+(weekly focus row #15 0.72 → 0.96); **none degrade** (heal rides the
+exec failure path only; happy path, prompts, eval baselines, CI lanes
+untouched — engine rows #8–#11 carried unchanged).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
