@@ -12,6 +12,31 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"A green checkmark has a half-life."** slug
+  `green-checkmark-has-a-half-life` · venue dev.to (#ci #testing #devops) +
+  r/ExperiencedDevs + lobste.rs (`practices`) · CI/measurement lesson (the
+  scorecard row #15 freshness method, 2026-07-12). Angle: our e2e suites
+  are manual-dispatch-only, on purpose — every run burns free-tier quota
+  (a Neon branch, a Workers preview, LLM tokens), so e2e is a deliberate
+  operator action and cron was explicitly rejected (failures landing at
+  3 a.m. have no triggering author). The consequence nobody writes down:
+  once e2e stops running on every push, "passing" stops being a *state*
+  and becomes an *event*. The API deploys daily; a suite that was green
+  Tuesday asserts nothing about Friday's build, but the dashboard still
+  shows the same reassuring checkmark. Fix: score each suite
+  `pass × freshness`, where freshness decays linearly 1 → 0 over the
+  deploy cadence (ours: 7 days) — the dashboard number itself rots until
+  an operator re-dispatches, so the metric replaces the cron instead of
+  the cron replacing judgement. Three design notes that mattered: (1) the
+  decay window is your *deploy cadence*, not a calendar week — a suite is
+  stale when the thing it certifies has changed underneath it; (2) score
+  only the latest completed run, and a red run is 0 regardless of
+  freshness — averaging history lets an old green subsidize a current
+  red; (3) print the last-success date in the same cell as the score, or
+  "0.67" is a number nobody can audit. Honest split: a measurement-
+  hygiene pattern for anyone whose expensive test suites can't run on
+  every push, not a product feature.
+
 - **"We rebuilt staging's database every run. The registry remembered
   everything."** slug `ephemeral-staging-persistent-registry` · venue dev.to
   (#testing #ci #database) + r/ExperiencedDevs + lobste.rs (`practices`) ·
