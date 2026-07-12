@@ -63,3 +63,42 @@ export function buildPgClient(connectionString: string): PgClient {
     },
   };
 }
+
+// SK-HDC-014 — Neon keep-warm. Defers the Free-tier 5-min compute
+// auto-suspend by issuing a tiny `SELECT 1` on the cron interval, in the
+// canonical `db.query` span (GLOBAL-014) with `nlqdb.cron: "keep_warm"`
+// so dashboards can split pings from user queries. Throws on Neon
+// failure; the `scheduled()` handler catches + logs. Lives here (not
+// `build-deps.ts`) because the cron isolate never runs the create path's
+// WASM shim — importing through the libpg-query chain risked the same
+// module-scope crash SK-ASK-024 root-caused.
+//
+// OTel imports stay lazy: PR #171 post-merge review showed a
+// deterministic vitest-pool-workers deadlock when a request-path module
+// gains eager OTel imports (repro note in `test/ask.test.ts`
+// SK-ANON-013); two dynamic imports per ~4-min cron fire are negligible.
+export async function keepNeonWarm(connectionString: string): Promise<number> {
+  const { dbDurationMs } = await import("@nlqdb/otel");
+  const { SpanStatusCode, trace } = await import("@opentelemetry/api");
+  const tracer = trace.getTracer("@nlqdb/api/keep-warm");
+  return tracer.startActiveSpan("db.query", async (span) => {
+    span.setAttribute("db.system", "postgresql");
+    span.setAttribute("db.operation", "SELECT");
+    span.setAttribute("db.statement", "SELECT 1");
+    // SK-OBS-001 — bounded label (~3 cron expressions ever).
+    span.setAttribute("nlqdb.cron", "keep_warm");
+    const startedAt = performance.now();
+    try {
+      const sql = neon(connectionString, { fullResults: true });
+      await sql.query("SELECT 1");
+      return performance.now() - startedAt;
+    } catch (err) {
+      span.recordException(err as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      throw err;
+    } finally {
+      dbDurationMs().record(performance.now() - startedAt, { operation: "SELECT" });
+      span.end();
+    }
+  });
+}

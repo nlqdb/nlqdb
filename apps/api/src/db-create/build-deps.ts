@@ -14,12 +14,6 @@
 // - `docs/features/ask-pipeline/FEATURE.md` — the `kind=create`
 //   branch routes here from `/v1/ask` per SK-ASK-001.
 
-// GLOBAL-021 exception: the control-plane provisioner needs the raw
-// Neon client to issue CREATE SCHEMA / role / RLS DDL that the
-// `DatabaseAdapter.execute()` seam in `@nlqdb/db` does not expose.
-// Owner of `@neondatabase/serverless` remains `packages/db/`; this
-// import is the documented one-file carve-out.
-import { neon } from "@neondatabase/serverless";
 import { fingerprintSchema } from "@nlqdb/db";
 import { apiKeyHmacSecret, mintPkLiveKey } from "../api-keys.ts";
 import { makeRecentTablesStore } from "../ask/recent-tables.ts";
@@ -143,57 +137,7 @@ async function noopEmbedTableCards(
   _dbId: string,
 ): Promise<void> {}
 
-// SK-HDC-014 — Neon keep-warm. Defers the Free-tier 5-min compute
-// auto-suspend by issuing a tiny `SELECT 1` on the cron interval.
-// Part of the documented db-create `neon(...)` carve-out (GLOBAL-021)
-// whose client half moved to `pg-client.ts`.
-//
-// Wrapped in the canonical `db.query` span (GLOBAL-014 — every external
-// call gets a span) with `db.statement: "SELECT 1"` so dashboards /
-// Tempo can pull just the keep-warm pings via that filter. The
-// `nlqdb.db.duration_ms{operation:"SELECT"}` histogram lands here too,
-// matching the per-statement pattern from `packages/db`'s adapter so
-// keep-warm timings show up on the same chart as user queries — the
-// case we care about is "keep-warm itself is paying a cold-start tax"
-// (= interval too long; pings need to come more often). Throws on
-// Neon failure; the caller (`scheduled()` handler) catches + logs.
-//
-// OTel imports are lazy via dynamic `import()`. Confirmed in PR #171
-// post-merge review: hoisting `import { dbDurationMs, ... }` to the
-// top of this file causes a **100% deterministic** integration-test
-// hang in `apps/api/test/ask.test.ts > SK-ANON-013` (timeout 5 s).
-// The test's call path doesn't reach `keepNeonWarm` — yet adding the
-// eager OTel import to a module that the route handler dynamically
-// imports (`build-deps.ts`) is enough to deadlock vitest-pool-workers
-// (`singleWorker: true`). Repro: 3/3 fails with eager imports, 0/3
-// fails with lazy. Workaround stays until either Cloudflare narrows
-// down the workerd interaction or we move the keep-warm to its own
-// module that the request path never touches. The cost is two
-// `await import(...)` calls per cron fire (~once / 4 min) — negligible.
-export async function keepNeonWarm(connectionString: string): Promise<number> {
-  const { dbDurationMs } = await import("@nlqdb/otel");
-  const { SpanStatusCode, trace } = await import("@opentelemetry/api");
-  const tracer = trace.getTracer("@nlqdb/api/keep-warm");
-  return tracer.startActiveSpan("db.query", async (span) => {
-    span.setAttribute("db.system", "postgresql");
-    span.setAttribute("db.operation", "SELECT");
-    span.setAttribute("db.statement", "SELECT 1");
-    // SK-OBS-001 — distinguishes keep-warm pings from user-issued
-    // `SELECT 1`s in Tempo. Bounded label value (~3 cron expressions
-    // ever); no catalog cardinality impact.
-    span.setAttribute("nlqdb.cron", "keep_warm");
-    const startedAt = performance.now();
-    try {
-      const sql = neon(connectionString, { fullResults: true });
-      await sql.query("SELECT 1");
-      return performance.now() - startedAt;
-    } catch (err) {
-      span.recordException(err as Error);
-      span.setStatus({ code: SpanStatusCode.ERROR });
-      throw err;
-    } finally {
-      dbDurationMs().record(performance.now() - startedAt, { operation: "SELECT" });
-      span.end();
-    }
-  });
-}
+// SK-HDC-014 — `keepNeonWarm` lives in `pg-client.ts` with the rest of
+// the `neon(...)` carve-out: the cron isolate never runs the create
+// path's WASM shim, so importing it through this file's libpg-query
+// chain risked the same module-scope crash SK-ASK-024 root-caused.
