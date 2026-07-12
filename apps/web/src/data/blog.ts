@@ -58,12 +58,12 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         kind: "p",
-        text: "Rows that reference destroyed schemas are worse than junk — they're plausible. Three symptoms, none of which said \"stale registry\": the fixture account's sidebar filled with same-name ghosts, so tests that pin a database by name sometimes landed on a schema that no longer existed and failed with \"couldn't reach the database\" — which reads exactly like an infra flake. The cleanup test that deletes leftovers through the UI grew a backlog it could never finish: ~27 rows, one typed-confirm modal at a time, against a 300-second budget. And its name-scoped walk never matched leftovers with *other* names at all — one orphan survived every run for weeks. The suite reported \"app red\" for state no real user could ever reach.",
+        text: 'Rows that reference destroyed schemas are worse than junk — they\'re plausible. Three symptoms, none of which said "stale registry": the fixture account\'s sidebar filled with same-name ghosts, so tests that pin a database by name sometimes landed on a schema that no longer existed and failed with "couldn\'t reach the database" — which reads exactly like an infra flake. The cleanup test that deletes leftovers through the UI grew a backlog it could never finish: ~27 rows, one typed-confirm modal at a time, against a 300-second budget. And its name-scoped walk never matched leftovers with *other* names at all — one orphan survived every run for weeks. The suite reported "app red" for state no real user could ever reach.',
       },
       { kind: "h2", text: "Rule 1: enumerate what outlives the rebuild" },
       {
         kind: "p",
-        text: "An environment is only as ephemeral as the most persistent store that references it. \"Ephemeral staging\" usually means *one* store is per-run — the big obvious database — while everything that points at it (registry, sessions, queues, caches, object storage) lives on a longer clock. The fix is an inventory, not a slogan: list every store the environment touches, mark each one's lifetime, and for every store that outlives the rebuild, reset the slice that references the rebuilt one.",
+        text: 'An environment is only as ephemeral as the most persistent store that references it. "Ephemeral staging" usually means *one* store is per-run — the big obvious database — while everything that points at it (registry, sessions, queues, caches, object storage) lives on a longer clock. The fix is an inventory, not a slogan: list every store the environment touches, mark each one\'s lifetime, and for every store that outlives the rebuild, reset the slice that references the rebuilt one.',
       },
       {
         kind: "p",
