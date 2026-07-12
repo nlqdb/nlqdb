@@ -106,8 +106,8 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 **2026-07-11 (run 51)** — lever: **engine — `SK-LLM-044`
 entity-identification projection directive (row #9 Spider, worst
-agent-movable number).** Step 0: open PR #663 (run 50 — opencheck lane swap
-+ drafted `most-active-user-is-your-test-suite`) noted; zero file/lever
+agent-movable number).** Step 0: open PR #663 (run 50 — opencheck lane swap +
+drafted `most-active-user-is-your-test-suite`) noted; zero file/lever
 overlap (this run touches prompts/eval docs/blog; #663 touches opencheck
 workflows). **Diagnosis first:** downloaded run 49's canonical Spider
 report and re-executed all 98 non-matches offline against the local
@@ -131,8 +131,8 @@ the oldest ready draft `five-fallback-models-one-provider` (rows #6/#7/#18:
 94 surfaces, 114 pages, 2,808 internal links, 0 dead). Funnel reconcile:
 DBs 162 → 158 and first10 counters shrank — the e2e fixture cleanup deletes
 registry rows *with their counters* (stranger-only method unaffected).
-**KPI:** GLOBAL-025 engine quality (row #9); **none degrade** (prompt bullet
-+ docs + one blog post; BIRD re-verify noted on row #8, chains/scorer/
+**KPI:** GLOBAL-025 engine quality (row #9); **none degrade** (prompt bullet +
+docs + one blog post; BIRD re-verify noted on row #8, chains/scorer/
 baselines untouched).
 
 _(Single-entry by design — per-run history lives in `git log` +

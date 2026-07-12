@@ -63,7 +63,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The tell in the traces" },
       {
         kind: "p",
-        text: "What finally broke the diagnosis open was a latency split in the Playwright traces: the product under test answered its API call in 4 seconds with a 200 — while three tests burned their entire 240-second budget waiting for the *driver* to produce the next click. The app was green; the thing testing the app was starving; the suite reported \"product red.\" If your E2E harness and your product share a failure domain, a harness outage is indistinguishable from a product regression until you split them.",
+        text: 'What finally broke the diagnosis open was a latency split in the Playwright traces: the product under test answered its API call in 4 seconds with a 200 — while three tests burned their entire 240-second budget waiting for the *driver* to produce the next click. The app was green; the thing testing the app was starving; the suite reported "product red." If your E2E harness and your product share a failure domain, a harness outage is indistinguishable from a product regression until you split them.',
       },
       { kind: "h2", text: "Redundancy has to cross the failure-domain boundary" },
       {
