@@ -41,6 +41,58 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "ownership-transfer-outlives-least-privilege",
+    title: "Ownership transfer was a one-row UPDATE. Then we added least-privilege.",
+    description:
+      "Hardening queries to per-tenant roles and RLS quietly broke our ownership transfer: it retargeted one authorization store out of four. Transfer must move them all — idempotently, in one batch.",
+    date: "2026-07-12",
+    body: [
+      {
+        kind: "p",
+        text: "Multi-tenant Postgres, one schema per tenant database. On day one, every query ran as the shared owner role, so \"transfer this database to the user who just signed in\" was honestly a one-row registry UPDATE — flip `tenant_id`, done. We wrote that down as a design decision, and it was the right one at the time.",
+      },
+      { kind: "h2", text: "Least-privilege arrived; the transfer path didn't get the memo" },
+      {
+        kind: "p",
+        text: "Months later we hardened the query path. Every query now runs `SET LOCAL ROLE tenant_<hash>` against per-tenant grants, and a row-level-security policy whose `USING` clause bakes the tenant id in as a literal. Four places now store who owns this database: the role itself, its grants, the runner's role membership, and the policy literal. The transfer path still updated exactly one — the registry row.",
+      },
+      {
+        kind: "p",
+        text: "So transfers kept *working* in the registry — the sidebar showed the database under its new owner — while every transferred database went permanently unqueryable: the role the session now switches to was never created, never granted `USAGE`, never made a `WITH SET` member, and the RLS literal still named the old tenant. Three authorization layers said \"old owner\"; one row said \"new owner\"; the row lost.",
+      },
+      {
+        kind: "code",
+        lang: "sql",
+        code: "-- The transfer that \"worked\" — one of four authorization stores:\nUPDATE databases SET tenant_id = :new_tenant WHERE id = :db_id;\n\n-- What least-privilege actually requires, idempotently, in one batch:\nDO $$ BEGIN\n  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'tenant_9047fe') THEN\n    CREATE ROLE tenant_9047fe NOLOGIN;             -- 1. the role exists\n  END IF;\nEND $$;\nGRANT USAGE ON SCHEMA app TO tenant_9047fe;        -- 2. the grants\nGRANT tenant_9047fe TO query_runner WITH SET TRUE; -- 3. the membership\nALTER POLICY tenant_isolation ON app.facts         -- 4. the RLS literal\n  USING (tenant_id = 'tenant-9047fe');",
+      },
+      { kind: "h2", text: "The error wore a cold-start costume" },
+      {
+        kind: "p",
+        text: "Worse, the failure was invisible. `SET ROLE` to a missing role fails with a deterministic SQLSTATE — `42704` (undefined object) or `42501` (insufficient privilege) — and our generic error branch re-labelled both as \"couldn't reach the database,\" the same message a serverless cold start produces. No code was logged anywhere. For nine end-to-end runs we diagnosed retry timing on an error that was never transient.",
+      },
+      {
+        kind: "p",
+        text: "The tell that finally broke the costume: *creates* succeeded while the transferred database failed in the same second — for minutes on end — with the correct SQL planned every time. Cold starts don't select their victims by ownership history. Deterministic failures wearing a transient error's label do.",
+      },
+      { kind: "h2", text: "Two general fixes" },
+      {
+        kind: "ol",
+        items: [
+          "**An ownership transfer must retarget every place authorization state lives** — role existence, grants, role membership, policy literals — idempotently, in one batch. The day you turn least-privilege on, grep for every writer of your tenant column: each one is a transfer path that just silently broke.",
+          "**A catch-all error branch must log the code it swallows.** Re-labelling an error without recording the original SQLSTATE means you will re-diagnose the same bug from scratch, behind a message that actively points you at the wrong cause.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "The general shape: an invariant added in one subsystem (queries run least-privileged) creates an obligation in another (transfer must move authorization state), and nothing but a human's memory connects the two. When you add a security layer, walk every path that *writes* the identity it keys on — not just the paths that read it.",
+      },
+      {
+        kind: "p",
+        text: "(This is a build note from [nlqdb](https://nlqdb.com), the database you query in plain English. Honest split: this is a Postgres multi-tenancy lesson from our adoption path, not a product feature.)",
+      },
+    ],
+  },
+  {
     slug: "most-active-user-is-your-test-suite",
     title: "Your most active user is your test suite.",
     description:

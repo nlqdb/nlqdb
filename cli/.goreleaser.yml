@@ -57,10 +57,16 @@ changelog:
 
 brews:
   - name: nlq
+    # Runbook §"CLI releases": without HOMEBREW_TAP_GITHUB_TOKEN the GitHub
+    # Release still creates and only the tap bump skips (formula stays in
+    # dist/). An empty token otherwise 401s and fails the whole release —
+    # every deploy-cli run 2026-05-19 → 07-11 died here. `index` keeps local
+    # snapshot runs (env var absent entirely) from a template key error.
+    skip_upload: '{{ if index .Env "HOMEBREW_TAP_GITHUB_TOKEN" }}false{{ else }}true{{ end }}'
     repository:
       owner: nlqdb
       name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+      token: '{{ index .Env "HOMEBREW_TAP_GITHUB_TOKEN" }}'
     homepage: https://nlqdb.com
     description: "Natural-language databases — talk to your data, ship without a backend."
     license: MIT

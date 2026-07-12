@@ -65,18 +65,6 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   guarantee that runs before the suite. Honest split: a CI/test-infra lesson
   from our E2E harness, not a product feature.
 
-- **"Ownership transfer was a one-row UPDATE. Then we added least-privilege."**
-  slug `ownership-transfer-outlives-least-privilege` · venue dev.to (#postgres
-  #security #database) + r/PostgreSQL + lobste.rs (`databases`, `security`) ·
-  product/security lesson (the adoption ACL gap, `SK-ANON-003` amendment,
-  2026-07-11). Gist: transfer flipped `tenant_id` in the registry while
-  least-privilege exec (`SET LOCAL ROLE` + per-tenant grants + RLS literal)
-  still named the old tenant — every transferred DB unqueryable, masked as
-  "couldn't reach the database" with no SQLSTATE logged. Rules: retarget ALL
-  authorization layers idempotently on transfer; a catch-all error branch
-  must log the code it swallows. Full draft: git history (collapsed
-  2026-07-11 run 52, D4 retention).
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -84,6 +72,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 54 — **https://nlqdb.com/blog/ownership-transfer-outlives-least-privilege/** — dev.to (#postgres #security #database) + r/PostgreSQL + lobste.rs (`databases`, `security`) · product/security lesson (the adoption ACL gap, `SK-ANON-003` amendment — an ownership transfer must retarget every authorization store; a catch-all must log the code it swallows)
 - run 53 — **https://nlqdb.com/blog/most-active-user-is-your-test-suite/** — dev.to (#analytics #testing #startup) + r/ExperiencedDevs + lobste.rs (`practices`) · measurement-hygiene lesson (the scorecard funnel bot-filter — a metric that doesn't name its population is measuring your robots; filter at read time, not the write path)
 - run 51 — **https://nlqdb.com/blog/five-fallback-models-one-provider/** — dev.to (#llm #ci #testing) + r/LLMDevs + lobste.rs (`practices`) · CI/engine lesson (the opencheck agent-lane fallback — redundancy must cross the failure-domain boundary; the lane, not the model, is the fallback unit)
 - run 49 — **https://nlqdb.com/blog/decided-questions-rot-in-your-decision-log/** — dev.to (#documentation #architecture #engineering) + r/ExperiencedDevs + lobste.rs (`practices`) · engineering-process lesson (the scorecard row #17 docs-ambiguity method — resolved is a greppable state; unmarked bullets are counted debt)
