@@ -40,31 +40,6 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   hygiene pattern for anyone whose expensive test suites can't run on
   every push, not a product feature.
 
-- **"We rebuilt staging's database every run. The registry remembered
-  everything."** slug `ephemeral-staging-persistent-registry` · venue dev.to
-  (#testing #ci #database) + r/ExperiencedDevs + lobste.rs (`practices`) ·
-  CI/infra lesson (the stale-fixture purge, `SK-E2E-007`, 2026-07-11). Angle:
-  ephemeral e2e staging done by the book — a fresh Postgres branch per run,
-  deleted at run end, previews aliased per-run — except the control plane
-  (the registry mapping "database" rows to schemas, plus sessions and chat
-  history) is the production D1 the preview binds by default, and it survives
-  every teardown. So each run's fixture rows outlived their schemas: the
-  sidebar filled with same-name ghosts, tests that pin a DB by name landed on
-  schemas that no longer existed ("Couldn't reach the database" — reads
-  exactly like an infra flake), and the cleanup test that deletes leftovers
-  through the UI grew a backlog it could never finish (~27 rows, one
-  typed-confirm modal at a time, against a 300 s budget — and its name-scoped
-  walk never matched leftovers with other names at all). The suite reported
-  "app red" for state no real user could reach. Two rules fell out. (1) An
-  environment is only as ephemeral as the most persistent store that
-  references it — enumerate every store that outlives the rebuild (registry,
-  sessions, queues, caches) and reset the slice that points at the rebuilt
-  one at spin-up, not teardown (a crashed run skips teardown by definition).
-  (2) In-band cleanup — tests deleting through the UI — verifies the delete
-  *feature*; it cannot be the *invariant*: the invariant needs an out-of-band
-  guarantee that runs before the suite. Honest split: a CI/test-infra lesson
-  from our E2E harness, not a product feature.
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -72,6 +47,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 56 — **https://nlqdb.com/blog/ephemeral-staging-persistent-registry/** — dev.to (#testing #ci #database) + r/ExperiencedDevs + lobste.rs (`practices`) · CI/test-infra lesson (the `SK-E2E-007` spin-up purge — an environment is only as ephemeral as the most persistent store that references it; reset at spin-up, not teardown)
 - run 54 — **https://nlqdb.com/blog/ownership-transfer-outlives-least-privilege/** — dev.to (#postgres #security #database) + r/PostgreSQL + lobste.rs (`databases`, `security`) · product/security lesson (the adoption ACL gap, `SK-ANON-003` amendment — an ownership transfer must retarget every authorization store; a catch-all must log the code it swallows)
 - run 53 — **https://nlqdb.com/blog/most-active-user-is-your-test-suite/** — dev.to (#analytics #testing #startup) + r/ExperiencedDevs + lobste.rs (`practices`) · measurement-hygiene lesson (the scorecard funnel bot-filter — a metric that doesn't name its population is measuring your robots; filter at read time, not the write path)
 - run 51 — **https://nlqdb.com/blog/five-fallback-models-one-provider/** — dev.to (#llm #ci #testing) + r/LLMDevs + lobste.rs (`practices`) · CI/engine lesson (the opencheck agent-lane fallback — redundancy must cross the failure-domain boundary; the lane, not the model, is the fallback unit)

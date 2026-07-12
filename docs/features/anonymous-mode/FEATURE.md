@@ -74,7 +74,7 @@ when-to-load:
 
 ### SK-ANON-007 — PoW challenge: Cloudflare Turnstile; triggers at 3 creates / 5 min per IP
 
-- **Status:** superseded by SK-ANON-012 — see that block for the per-device 1-call cap. Turnstile is retained as the bot-floor on the create path; it runs unconditionally now (not gated on burst count). Historical body: per-IP rolling 3-in-5-min burst gate returning 428 `challenge_required`.
+- **Status:** superseded by SK-ANON-012. Turnstile is retained as the bot-floor on the create path, unconditional (not burst-gated); widget still unshipped (SK-ANON-009).
 
 ### SK-ANON-008 — Anon principal id is `anon:<sha256(token)[:16]>`; cookie session wins when both present
 
@@ -89,11 +89,11 @@ when-to-load:
 
 ### SK-ANON-009 — Turnstile verify fails open when `TURNSTILE_SECRET` is unset
 
-- **Decision:** `verifyTurnstile()` returns `{ ok: false, reason: "unconfigured" }` when no secret is configured. The `/v1/ask` route treats `unconfigured` as allow-through. Any other failure (`invalid` / `verify_failed`) returns 428 with the challenge envelope so the surface re-renders the widget.
+- **Decision:** `verifyTurnstile()` returns `{ ok: false, reason: "unconfigured" }` when no secret is configured, and `unconfigured` is allow-through in **every** environment. Any other failure (`invalid` / `verify_failed`) returns 428 with the challenge envelope. Set `TURNSTILE_SECRET` only in the release that ships the real widget — `solveChallenge()` (`apps/web/src/lib/turnstile.ts`) is a stub, so a configured secret with no widget makes every anon create an unrecoverable 428.
 - **Core value:** Bullet-proof, Effortless UX
-- **Why:** Local `wrangler dev` and integration tests run without Workers secrets — failing closed would force every contributor to provision a Turnstile keypair. Production ALWAYS has the secret set (`docs/runbook.md`), so it never hits the fail-open branch; the per-device cap (`SK-ANON-012`) still applies in dev, so a bypassed Turnstile can't burn unlimited calls from one bearer.
-- **Consequence in code:** `apps/api/src/turnstile.ts` returns the typed `unconfigured` reason (not a generic failure) so the route can branch on it. The route's `allowed = verify.ok || verify.reason === "unconfigured"` is the only place this fail-open branch exists; tests assert that the production-configured path NEVER fails open even when siteverify says success=false.
-- **Alternatives rejected:** fail-closed on a missing secret (every dev env + test fixture would need Turnstile credentials) and allowing `verify_failed` through (masks Cloudflare outages; hammering Turnstile would bypass the gate).
+- **Why:** Dev/tests run without Workers secrets — and no Turnstile keypair was ever provisioned in prod either. A 2026-07 hardening made `unconfigured` fail closed in prod on the false premise the secret was set; every prod anon create 428'd for ≥ a week (stranger walkers 0/9, caught run 56). Until the widget ships, the abuse bound is the SK-ANON-012 per-device cap + SK-ANON-010 global caps + per-IP buckets.
+- **Consequence in code:** `apps/api/src/turnstile.ts` returns the typed `unconfigured` reason; the only fail-open branch is `turnstileAllowed` in `apps/api/src/anon-create-gate.ts`. Tests assert a configured secret never fails open on an invalid token.
+- **Alternatives rejected:** fail-closed on a missing secret (re-creates the run-56 outage whenever secret and widget ship out of lockstep) and allowing `verify_failed` through (masks Cloudflare outages; hammering Turnstile would bypass the gate).
 
 ### SK-ANON-010 — Global anon cap (100/hr / 1000/day / 10k/month) → seamless auth redirect (401 `auth_required`)
 
