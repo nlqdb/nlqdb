@@ -18,7 +18,7 @@ when-to-load:
 
 **One-liner:** End-to-end test coverage across every surface (web, CLI, SDK, MCP, elements, examples) organized by persona, manually triggered, cache- and rate-limit-aware.
 **Status:** partial — harness + persona scaffolding shipped; per-surface coverage seeded; broader cases land as surfaces mature.
-**Owners (code):** `tests/personas/**`, `tests/opencheck/**`, `tests/e2e/**`, `examples/**/e2e/**`, `.github/workflows/e2e-*.yml`, `.github/workflows/_e2e-opencheck.yml`
+**Owners (code):** `tests/personas/**`, `tests/opencheck/**`, `tests/e2e/**`, `examples/**/e2e/**`, `.github/workflows/e2e-*.yml`, `.github/workflows/_e2e-{staging,opencheck}.yml`
 **Cross-refs:** [`docs/research/personas.md`](../../research/personas.md) (P1–P6 — the test organising principle) · [`quality-eval/FEATURE.md`](../quality-eval/FEATURE.md) (orthogonal — accuracy benchmark, not transactional e2e) · GLOBAL-002, GLOBAL-003, GLOBAL-013, GLOBAL-014 (canonical text in [`docs/decisions/`](../../decisions/); index in [`docs/decisions.md`](../../decisions.md))
 
 ## Touchpoints — read this feature before editing
