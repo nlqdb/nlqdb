@@ -38,8 +38,8 @@ You are the 6×/day operating agent (`.claude/commands/daily.md`). When the
 4. **Measure** the named scorecard number before/after where the slice can
    move it (most are funnel/conversion or "surface exists" booleans).
 5. **Tick** the status here (`⬜ → ✅` with the PR link) in the same PR.
-6. **Append one artifact** to `docs/research/distribution-queue.md` (daily
-   loop step 3) — the worksheet names the natural one.
+6. **Artifact per daily-loop step 3** (queue-gated; drafting is optional) —
+   when a draft is due, the worksheet names the natural one.
 7. **PR body** names: the number moved (or the boolean flipped), the
    GLOBAL-025 KPI advanced (**onboarding** or **UX**), and confirms engine /
    performance untouched.

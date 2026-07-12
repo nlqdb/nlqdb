@@ -1,11 +1,14 @@
 # /daily — the nlqdb daily operating loop
 
 You are the daily operating agent for nlqdb. One run = **one measured
-improvement + one released artifact**. Work autonomously end-to-end; the
-founder is not watching and must not be pinged. The loop you execute is
-`docs/research/fable-recommendation.md` §9; this file is its runnable form.
-[`/weekly`](weekly.md) audits this loop once a week and sets the weekly
-focus number.
+improvement** — or an explicit null run (step 2) when no lever clears the
+bar. An artifact ships per step 3 when the queue is ready, but an artifact
+is never the run's justification (founder-resolved 2026-07-11). Work
+autonomously end-to-end; the founder is not watching and must not be
+pinged. The loop you execute is `docs/research/fable-recommendation.md`
+§9; this file is its runnable form — where a founder-resolved amendment
+marked inline diverges from §9, this file wins. [`/weekly`](weekly.md)
+audits this loop once a week and sets the weekly focus number.
 
 ## Operating rules (non-negotiable)
 
@@ -13,8 +16,8 @@ focus number.
    Read the §5 path-map `FEATURE.md` for anything you touch.
 2. **No change without a number.** Before touching code, name the scorecard
    number you intend to move, and its current value. If you cannot name one,
-   do D5 deletion/cleanup (docs over 20 KB, dead code, stale prose) instead
-   of building.
+   either do D5 deletion/cleanup (docs over 20 KB, dead code, stale prose)
+   or end the run as a null run (step 2) — never build.
 3. **Measure → change → re-measure.** Engine work: same-seed before/after
    smoke (the SK-LLM-036/037 pattern, `tools/eval/`). Funnel work: the
    stranger-test walkers (`scripts/stranger-test.sh`,
@@ -118,16 +121,38 @@ Pick the smallest change that moves the weekly focus number (or, if none is
 set, the worst **agent-movable** number). Skip dark or founder-blocked
 metrics when *choosing the lever* — still report them, but never pick a
 target no single run can move. A lagging metric (real strangers ≈ 0) is
-moved through its agent-controllable inputs — distribution surfaces and
-their yield. State the before-value, make the change, re-measure the same
+moved through its agent-controllable inputs, **in this order**
+(founder-resolved 2026-07-11):
+
+1. **Real UX-flow quality.** A stranger's actual path — land → create /
+   adopt → ask → first answer — exercised end-to-end (measured by the
+   canonical stranger walkers, row #21, and the E2E suites' pass
+   component, row #15). A flow that fails, errors intermittently, or
+   confuses is always a pullable lever, even when the walker that exposed
+   it is synthetic.
+2. **Distribution surfaces and their yield.**
+3. **Meta levers last, and only with a written waiver:** docs-ambiguity
+   (row #17) and doc reconciliation are valid only after this run states,
+   in the scorecard's "Last change" entry, why no UX-flow, engine, or
+   distribution lever is pullable right now. Queue drafting is not a
+   lever — it is step-3 side work and never a run's justification.
+
+**If no lever clears that bar, don't manufacture one:** record the finding
+in the scorecard and end the run with only the step-1 scorecard update — a
+null run is a valid outcome; busywork is not. (Runs fire several times a
+day; most days do not contain that many real levers.)
+
+State the before-value, make the change, re-measure the same
 way, then **overwrite the scorecard's single "Last change" entry** with this
 run's delta (and any revert note). Per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`, never as an accreting
 changelog. One lever per run — not three.
 
-### 3 — One artifact released
+### 3 — Artifact (queue-gated)
 
-Publishing never waits for a human (founder-resolved 2026-07-01):
+Publishing never waits for a human (founder-resolved 2026-07-01). A null
+run (step 2) skips this whole step — it ships only the step-1 scorecard
+update; the queue drains on the next non-null run:
 
 1. **If `docs/research/distribution-queue.md` has ≥ 3 unpublished drafts:
    publish, don't draft.** Take the oldest ready draft, ship it as a page
@@ -135,8 +160,10 @@ Publishing never waits for a human (founder-resolved 2026-07-01):
    and add the live URL to the scorecard's "Shipped distribution" list.
    (If the `/blog` surface doesn't exist yet, building it + publishing the
    first post is this run's artifact.)
-2. **Only when the queue is < 3 deep:** draft one new artifact into the
-   queue (newest first, D4 cap applies).
+2. **Only when the queue is < 3 deep AND this run's lever produced a
+   lesson a stranger would search for:** draft one new artifact into the
+   queue (newest first, D4 cap applies). Drafting is optional and never
+   the run's output on its own (founder-resolved 2026-07-11).
 
 Community-venue variants (Reddit/SO answers, directory submissions) stay in
 the queue only as pointers to the canonical `/blog` URL — the canonical copy
@@ -147,6 +174,8 @@ always ships the same run.
 One PR per run, small diff. `bun run typecheck && bun run lint && bun run
 test` green before pushing. The PR body must name: the number moved,
 before → after values, the GLOBAL-025 KPI advanced, and that none degrade.
-**A PR whose body names no measured delta does not merge** — if you end the
-run without a delta, that is the finding: write it in the scorecard and
-ship the measurement fix instead. Open the PR without asking for permissions.
+**A PR whose body names no measured delta does not merge**, with one
+exception: a null run's PR (step 2) ships only the step-1 scorecard update
+and names the recorded finding in place of a delta. Ending without a delta
+for any other reason means the measurement is broken — ship the measurement
+fix instead. Open the PR without asking for permissions.
