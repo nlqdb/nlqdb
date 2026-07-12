@@ -3,7 +3,7 @@
 # docs/research/automated-icp-validation-plan-verification.md.
 #
 # What this covers (curl-only, the static no-credential subset of each flow):
-#   FLOW-001 step 1+2 (homepage hero)
+#   FLOW-001 steps 1+2 (two-door home → /app/new/ hero)
 #   FLOW-002 step 1, 3, 4 (/solve/<slug> + FAQPage/HowTo JSON-LD + honest-limits)
 #   FLOW-003 step 1, 2, 4, 9 (/vs/<slug> + h1 + FAQPage JSON-LD + /llms.txt)
 #   FLOW-005 discovery (mcp.nlqdb.com OAuth metadata — precondition of

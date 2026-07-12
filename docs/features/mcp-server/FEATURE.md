@@ -46,8 +46,8 @@ the live paths (hosted connector URL, nlqdb.com one-click buttons,
 `NLQDB_API_KEY` env var); `nlq mcp install` + the `app.nlqdb.com/mcp`
 one-click join it when Slice 4 ships. The internal
 contract — four paths terminate at the same `/v1/ask` orchestration and
-the same fixed tool set (+ the additive `nlqdb_remember` write verb on
-`/v1/memory/remember`, E-02) — is canonical in [`SK-MCP-002`](decisions/SK-MCP-002-three-tools.md)
+the same fixed tool set (+ the additive `nlqdb_remember`, E-02, and
+`nlqdb_connect_database`, byo-connect, verbs) — is canonical in [`SK-MCP-002`](decisions/SK-MCP-002-three-tools.md)
 + [`SK-MCP-007`](decisions/SK-MCP-007-shared-orchestration.md). Host
 auto-detection lives in [`SK-MCP-003`](decisions/SK-MCP-003-install-autodetect.md).
 
