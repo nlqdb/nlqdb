@@ -1,13 +1,20 @@
 // Production `AclRetarget` for adoption (SK-ANON-003 amendment — see
-// `anon-adopt.ts` module header). `db-create/build-deps.ts` is loaded
-// lazily: its static-import chain pulls the libpg-query WASM init at
-// module scope, which fails Workers deploy-time validation when it
-// reaches the top-level graph (same reason `index.ts` dynamic-imports
-// `buildDbCreateDeps`).
+// `anon-adopt.ts` module header). Imports the Neon client from
+// `db-create/pg-client.ts` — NOT `build-deps.ts`, whose static chain
+// pulls the libpg-query WASM init. That init fails Workers deploy-time
+// validation in the top-level graph, and (run 57) its Emscripten loader
+// also CRASHES at runtime module scope in any isolate where
+// `ensureLibpgWasmGlobals()` hasn't run — the previous `await
+// import("./db-create/build-deps.ts")` here rejected before the try
+// below, so the retarget silently no-oped on fresh isolates and every
+// adopted DB in them stayed bricked. pg-client's chain is WASM-free, so
+// the static import is safe and there is nothing left to fail
+// unobserved.
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { type AclRetarget, retargetAdoptedDbAcl } from "./anon-adopt.ts";
 import { makeKvDiagSink } from "./ask/diag.ts";
+import { buildPgClient, resolveDatabaseUrl } from "./db-create/pg-client.ts";
 
 // Shared-Neon client from the same `DATABASE_URL` ref the provisioner
 // uses, wrapped in a `db.transaction` span (GLOBAL-014) covering the
@@ -19,13 +26,15 @@ export function makeAclRetarget(
   event: "anon_adopt_regrant_failed" | "exec_acl_heal_failed" = "anon_adopt_regrant_failed",
 ): AclRetarget {
   return async (dbId, newTenantId) => {
-    const { buildPgClient, resolveDatabaseUrl } = await import("./db-create/build-deps.ts");
-    const pg = buildPgClient(resolveDatabaseUrl(envBindings));
     const tracer = trace.getTracer("@nlqdb/api");
     await tracer.startActiveSpan("db.transaction", async (span) => {
       span.setAttribute("db.system", "postgresql");
       span.setAttribute("nlqdb.anon.adopt.regrant_db_id", dbId);
       try {
+        // Client construction sits INSIDE the instrumented try — the
+        // run-57 lesson: anything that can fail on this path must
+        // reach the diag write, or a miss is invisible on previews.
+        const pg = buildPgClient(resolveDatabaseUrl(envBindings));
         await retargetAdoptedDbAcl(pg, dbId, newTenantId);
       } catch (err) {
         // Same failure shape as the provision batch (SK-HDC-017): record

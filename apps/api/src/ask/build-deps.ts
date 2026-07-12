@@ -26,11 +26,7 @@ import { resolveDb } from "../db-registry.ts";
 import { buildEventEmitter } from "../events-emitter.ts";
 import { getLLMRouter } from "../llm-router.ts";
 import { kekFromEnv, openSecret } from "../secret-envelope.ts";
-import {
-  assertTenantRoleName,
-  isTenantRoleMissingError,
-  tenantRoleName,
-} from "../tenant-role.ts";
+import { assertTenantRoleName, isTenantRoleMissingError, tenantRoleName } from "../tenant-role.ts";
 import { makeKvDiagSink } from "./diag.ts";
 import { makeFirstQueryTracker } from "./first-query.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";

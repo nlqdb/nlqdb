@@ -196,9 +196,11 @@ the CF REST API. Classes: `exec_db_unreachable`, `anon_adopt_regrant_failed`,
 ### SK-ASK-024 — Exec-time tenant-ACL self-heal: role-missing re-runs the idempotent retarget once
 
 **Body:** [`decisions/SK-ASK-024-exec-tenant-acl-self-heal.md`](./decisions/SK-ASK-024-exec-tenant-acl-self-heal.md).
-The SK-ANON-003 retarget is one-shot best-effort, so one transient miss at
-sign-in bricked the adopted DB forever; the production `exec` dep now
-re-runs the idempotent retarget and retries once on the
+The SK-ANON-003 retarget silently no-oped on fresh isolates (its dynamic
+import of `build-deps.ts` crashed on libpg-query's module-scope init) and
+is one-shot, so one miss bricked the adopted DB forever. Fixed at the root
+(WASM-free `db-create/pg-client.ts` import) AND backstopped: the production
+`exec` dep re-runs the idempotent retarget and retries once on the
 `role "tenant_<hash>" does not exist` shape (own DB only, by construction).
 
 ## The LLM loop

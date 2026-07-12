@@ -63,7 +63,7 @@ flow).
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.67 s | mcp-server p95 ≈ 762 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **≈ 0.94** at 16:45Z — sdk ✅ · mcp ✅ · examples ✅ all 07-12 04:13Z on main (run 55's dispatch, ≈0.93 each) · opencheck ✅ first green main conclusion 07-12 13:18Z (depth=a Suite A 5/5, [29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944), ≈0.98). This PR (#672) ships the deeper root fix (`pg-client.ts` split + `SK-ASK-024` heal); its depth=ab re-verify: zero diag rows across both post-fix dispatches (app-side class closed), residual red = agent-lane capacity | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
+| 15 | E2E manual-suite freshness | **≈ 0.94** at 16:45Z — sdk ✅ · mcp ✅ · examples ✅ all 07-12 04:13Z on main (run 55's dispatch, ≈0.93 each) · opencheck ✅ first green main conclusion 07-12 13:18Z (depth=a Suite A 5/5, [29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944), ≈0.98). The run-53 "deterministic ACL retarget" red root-caused run 57 (this PR, #672): the retarget's dynamic import silently crashed on fresh isolates (libpg-query module-scope init) — fixed at the root (`pg-client.ts` split) + `SK-ASK-024` heal backstop, probe-verified; the depth=ab re-verify concluded app-side clean (zero diag rows across both post-fix dispatches), residual red = agent-lane capacity | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-12 run 58 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
@@ -118,44 +118,48 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-12 (run 57)** — lever: **SK-ASK-024 exec-time tenant-ACL
-self-heal — the weekly-focus opencheck red closed structurally (row #15
-0.72 → 0.96).** Step 0: only #667 open (touches `daily.md` only — no
-overlap; its founder-directed lever ordering honoured: this is a real
-UX-flow product fix, priority 1). **Measure first:** dispatched the
-canonical `depth=a` opencheck on post-#671 main — Suite A **5/5 in 95 s**
-([29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944)),
-first fully-green Suite A since 06-12, first green opencheck workflow
-conclusion on main; zero fresh KV diag rows. **Finding:** the run-53
-"deterministic adoption-ACL retarget failure" was mis-attributed — the
-failing dispatch's SHA (`6ee4c4c`) *contains* the run-48 retarget
-(verified `git merge-base --is-ancestor`), and the identical flow passed
-07-11 07:43 and again today, so the miss is **dispatch-intermittent with
-an unobserved cause** (the regrant diag sink shipped only after that
-dispatch; zero `anon_adopt_regrant_failed` rows exist because the failing
-run predated it). The real defect: the retarget is one-shot best-effort,
-so a single miss bricked the adopted DB **permanently** — adoption replay
-never re-runs the ACL loop (a fresh browser mints a fresh anon token),
-and every request-scoped retry (SK-ASK-013/022) replays against state a
-*previous* request failed to write. Same class threatens prod strangers
-(sign-in transient ⇒ "Couldn't reach the database" forever). **Change:**
-`execWithTenantAclHeal` in `ask/build-deps.ts` — exec's pinned
-`role "tenant_<16hex>" does not exist` (22023) on a hosted row re-runs
-the idempotent retarget for the row's own tenant and retries once; heal
-failures write `diag:exec_acl_heal_failed` and surface the original
-error. Unit-proved (5 new tests); SK-ANON-003's rejected "exec-time
-self-heal" clause superseded in place per P1/P3 (its sign-in-local
-premise was disproven by the 07-11 evidence). **Re-measure:** post-fix
-`depth=ab` dispatch from the PR branch (verdict in
-`opencheck-operations.md` tracker + the PR). **Step 1:** full funnel/ops
+**2026-07-12 (run 57)** — lever: **the adopted-DB brick root-caused to a
+silent isolate-dependent import crash; fixed at the root + made
+self-healing (`SK-ASK-024`; weekly-focus row #15 0.72 → 0.96).**
+Step 0: only #667 open (`daily.md` only — no overlap; its founder-directed
+ordering honoured: this is a real UX-flow product fix, priority 1).
+**Measure first:** `depth=a` opencheck on post-#671 main — Suite A **5/5
+in 95 s** ([29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944)),
+first fully-green Suite A since 06-12 and first green opencheck workflow
+conclusion on main. **The hunt:** shipped an exec-time heal
+(`execWithTenantAclHeal`), re-dispatched `ab` from the branch — and
+`#authed-state-preserved` FAILED again (fresh 22023 diag rows, zero
+heal/regrant rows), proving the retarget itself never ran. A controlled
+`heal-probe` preview (own Neon branch + alias, adoption driven over raw
+HTTP, instrumented `makeAclRetarget`) caught the swallowed error:
+**`await import("./db-create/build-deps.ts")` rejects at module scope** —
+libpg-query's Emscripten loader takes `ENVIRONMENT_IS_WORKER` →
+`self.location.href`, undefined in workerd — **in any isolate where the
+create path's `ensureLibpgWasmGlobals()` shim hasn't run first**, and the
+rejection lands BEFORE the try that owns the diag write. One silent skip
+is permanent (one-shot retarget; a fresh browser mints a fresh token, so
+replay never re-runs it). "Dispatch-intermittent" was isolate routing:
+13:19's sign-in hit a create-warmed isolate (pass), 13:42's a fresh one
+(fail). Also a **prod** class, not just e2e. **Change:** (1) root fix —
+`db-create/pg-client.ts`, a WASM-free client module `makeAclRetarget`
+imports statically (nothing left to fail unobserved; client construction
+moved inside the diag-instrumented try); (2) backstop — the exec dep
+re-runs the idempotent retarget + retries once on the pinned
+`role "tenant_<16hex>" does not exist` shape (own row only by
+construction; failures write `diag:exec_acl_heal_failed`). SK-ANON-003's
+rejected "exec-time self-heal" clause superseded in place per P1/P3.
+**Measured verdict (A/B on the same probe preview, same flow):** old code
+→ D1 flipped, role missing, no diag row; fix → **role created + RLS
+literal retargeted to the adopter**. Δ > 0 — keep. Probe rows/branch/KV
+cleaned up after. CI-level `ab` re-dispatch from the fixed branch = the
+live confirmation (verdict on the PR). **Step 1:** full funnel/ops
 re-pull 13:20Z (rows #1–#5, #12–#13; D1 read fixture-clean); OQ grep 17
 (held); link sweep 117 pages / 2,883 links / 0 dead. **Artifact (step
 3):** queue was 1 < 3 ⇒ drafted `one-shot-recovery-permanent-outage`
-(reliability lesson from this lever; queue now 2). **KPI:** GLOBAL-025
-UX + onboarding (an adopted DB can no longer permanently brick — the
-exact first-session arc strangers hit) and engine-adjacent E2E freshness
-(weekly focus row #15 0.72 → 0.96); **none degrade** (heal rides the
-exec failure path only; happy path, prompts, eval baselines, CI lanes
+(queue now 2). **KPI:** GLOBAL-025 UX + onboarding (the anon → sign-in →
+query arc no longer bricks — the exact first-session path strangers hit)
++ E2E freshness (weekly focus row #15 0.72 → 0.96); **none degrade**
+(failure-path-only changes; happy path, prompts, eval baselines, CI lanes
 untouched — engine rows #8–#11 carried unchanged).
 
 _(Single-entry by design — per-run history lives in `git log` +

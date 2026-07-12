@@ -30,14 +30,16 @@ import { classifyEngine } from "./engine-classify.ts";
 import { inferSchema } from "./infer-schema.ts";
 import { provisionDb } from "./neon-provision.ts";
 import type { DbCreateDeps } from "./orchestrate.ts";
-import type { EmbedDeps, PgClient, SchemaPlan } from "./types.ts";
+import type { EmbedDeps, SchemaPlan } from "./types.ts";
 
-// `connection_secret_ref` lookup convention — Phase 1 ships one
-// shared Postgres on Neon (PLAN §1.6 / SK-DB-007), so every
-// `databases` row references the same env var "DATABASE_URL". The
-// route handler resolves this once when constructing deps; the
-// orchestrator forwards the resolved string to the provisioner.
-const DEFAULT_SECRET_REF = "DATABASE_URL";
+// Client construction + the `connection_secret_ref` convention live in
+// `pg-client.ts` — a module with NO libpg-query in its import chain, so
+// WASM-free callers (`anon-adopt-regrant.ts`) can import them without
+// tripping the Emscripten module-scope init this file's validator chain
+// drags in. Re-exported here for the existing importers.
+export { buildPgClient, DEFAULT_SECRET_REF, resolveDatabaseUrl } from "./pg-client.ts";
+
+import { buildPgClient, DEFAULT_SECRET_REF, resolveDatabaseUrl } from "./pg-client.ts";
 
 export type BuildDbCreateDepsResult = {
   deps: DbCreateDeps;
@@ -52,22 +54,6 @@ export type BuildDbCreateDepsResult = {
 // `c.executionCtx.waitUntil` from the route handler; the orchestrator
 // then fires the tail work into that lifetime so the response returns
 // without blocking on it.
-// Reads the canonical Phase-1 secret ref. Throws with a precise
-// message when unset so an operator-config bug surfaces clearly
-// instead of bubbling up as an opaque Neon-side error.
-export function resolveDatabaseUrl(envBindings: Cloudflare.Env): string {
-  const databaseUrl = (envBindings as unknown as Record<string, string | undefined>)[
-    DEFAULT_SECRET_REF
-  ];
-  if (!databaseUrl) {
-    throw new Error(
-      `nlqdb: env binding ${DEFAULT_SECRET_REF} is unset; ` +
-        "Phase 1 db.create / db.delete requires the shared Neon connection (see RUNBOOK §4 secrets).",
-    );
-  }
-  return databaseUrl;
-}
-
 export function buildDbCreateDeps(
   envBindings: Cloudflare.Env,
   waitUntil?: (p: Promise<unknown>) => void,
@@ -122,38 +108,9 @@ export function buildDbCreateDeps(
 // compiler does not emit CONCURRENTLY). `query` stays for the cleanup
 // path's `DROP SCHEMA` and the D1 idempotency `SELECT`.
 //
-// Exported so the user-delete route (SK-HDC-016) can build a PgClient
-// without paying for the LLM router, embed deps, and recent-tables
-// store the full `buildDbCreateDeps` wires up — none of which the
-// delete path touches. Pairs with `resolveDatabaseUrl(env)` below for
-// the secret-ref convention.
-export function buildPgClient(connectionString: string): PgClient {
-  const sql = neon(connectionString, { fullResults: true });
-  return {
-    async query<T = Record<string, unknown>>(sqlText: string, params?: unknown[]) {
-      const result = await sql.query(sqlText, params ?? []);
-      return {
-        rows: (result.rows as T[]) ?? [],
-        rowCount: result.rowCount ?? 0,
-      };
-    },
-    async transaction(statements) {
-      // Each `sql.query(text, params)` call returns a NeonQueryPromise;
-      // `sql.transaction([...])` consumes the array and emits a single
-      // HTTP request. `isolationLevel: "ReadCommitted"` matches Postgres
-      // default — no concurrent reader is racing the schema being
-      // created. `fetchOptions` is whole-batch (per CONFIG.md); the
-      // route handler's executionCtx already provides the lifetime
-      // guard so we don't wire one here.
-      const promises = statements.map((s) => sql.query(s.sql, s.params ?? []));
-      const results = await sql.transaction(promises, { isolationLevel: "ReadCommitted" });
-      return results.map((r) => ({
-        rows: (r.rows as Record<string, unknown>[]) ?? [],
-        rowCount: r.rowCount ?? 0,
-      }));
-    },
-  };
-}
+// `buildPgClient` (used by the provisioner batch above and the
+// user-delete route, SK-HDC-016) lives in `pg-client.ts` — see the
+// re-export at the top of this file.
 
 // 6-char random suffix for the dbId tail. Format from
 // docs/architecture.md §3.6: db_<slug>_<6 hex>. Uses crypto.randomUUID
@@ -188,9 +145,8 @@ async function noopEmbedTableCards(
 
 // SK-HDC-014 — Neon keep-warm. Defers the Free-tier 5-min compute
 // auto-suspend by issuing a tiny `SELECT 1` on the cron interval.
-// Lives next to `buildPgClient` so the documented one-file `neon(...)`
-// carve-out stays here (no second file imports `@neondatabase/serverless`
-// — GLOBAL-021).
+// Part of the documented db-create `neon(...)` carve-out (GLOBAL-021)
+// whose client half moved to `pg-client.ts`.
 //
 // Wrapped in the canonical `db.query` span (GLOBAL-014 — every external
 // call gets a span) with `db.statement: "SELECT 1"` so dashboards /

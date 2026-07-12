@@ -42,27 +42,33 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   (`practices`) · reliability lesson (`SK-ASK-024`, 2026-07-12). Angle:
   sign-in "adopts" a database created before login — flip an owner column,
   re-point Postgres grants + RLS at the new owner. The grant batch was
-  best-effort (never fail the sign-in) and ran exactly once. One run it
-  missed — cause never observed; the identical code was green hours before
-  and after — and the DB was bricked *forever*: every query died at
-  `SET LOCAL ROLE` inside a catch-all that read "couldn't reach the
-  database." Every retry mechanism in the pipeline was request-scoped
-  (three per-stage attempts, re-plan-on-error) and none could help,
-  because the failure wasn't in the request — it was in state a
-  *previous* request failed to write. And the event that would re-run the
+  best-effort (never fail the sign-in) and ran exactly once. For four days
+  it looked "dispatch-intermittent": the identical code passed one CI run
+  and bricked the next. The eventual cause was deterministic all along — a
+  lazily-imported module crashed at init (a WASM loader dereferencing
+  `self.location.href`, undefined in the serverless runtime) in every
+  *fresh* isolate, and passed in every isolate another code path had
+  already warmed with a globals shim. The crash landed *before* the
+  instrumented try, so zero log lines existed; and because the repair ran
+  exactly once per adoption, one silent skip bricked the DB *forever*:
+  every query died at `SET LOCAL ROLE` inside a catch-all reading
+  "couldn't reach the database." Every retry mechanism in the pipeline was
+  request-scoped and none could help — the failure lived in state a
+  *previous* request failed to write, and the event that would re-run the
   repair (an adoption replay) can never fire: a fresh browser mints a
-  fresh anon token, so the bricked DB's token is never replayed. Fix
-  shape: (1) make the repair idempotent — role-if-missing, grants, and
-  `ALTER POLICY` all re-apply cleanly; (2) trigger it from the *symptom*
-  in the steady-state path — exec's role-missing error re-runs the grant
-  batch and retries once; (3) pin the trigger to an error shape only your
-  own subsystem can produce (`role "tenant_<16hex>" does not exist`) so
-  no user input can aim it; (4) a failed repair surfaces the *original*
-  error, never its own. Design test: for every best-effort step at an
-  event boundary, ask "what re-runs this if it misses?" — if the answer
-  is "the event," check whether the event can actually recur. Honest
-  split: a state-repair pattern for any system with grant/config fan-out
-  at ownership transfer, not a product feature.
+  fresh anon token. Fix shape: (1) fix the root (a dependency-free client
+  module, nothing left to fail outside the instrumented block); (2) keep
+  the repair idempotent — role-if-missing, grants, `ALTER POLICY` all
+  re-apply cleanly; (3) ALSO trigger it from the *symptom* in the
+  steady-state path — exec's role-missing error re-runs the grant batch
+  and retries once, pinned to an error shape only your own subsystem can
+  produce, surfacing the *original* error if the repair fails. Design
+  tests: "what re-runs this if it misses?" — if the answer is "the
+  event," check whether the event can recur; and "can anything on this
+  path fail before my error handler?" — an observability try that starts
+  after the imports observes nothing. Honest split: a state-repair
+  pattern for any system with grant/config fan-out at ownership transfer,
+  not a product feature.
 
 - **"A green checkmark has a half-life."** slug
   `green-checkmark-has-a-half-life` · venue dev.to (#ci #testing #devops) +

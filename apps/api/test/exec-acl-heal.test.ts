@@ -5,15 +5,14 @@
 // fire for BYO rows or unrelated errors.
 
 import { describe, expect, it, vi } from "vitest";
-import { isTenantRoleMissingError } from "../src/tenant-role.ts";
 import { execWithTenantAclHeal } from "../src/ask/build-deps.ts";
 import type { DbRecord, QueryResult } from "../src/ask/types.ts";
+import { isTenantRoleMissingError } from "../src/tenant-role.ts";
 
 const OK: QueryResult = { rows: [{ n: 1 }], rowCount: 1 };
-const ROLE_MISSING = Object.assign(
-  new Error('role "tenant_9047fe6e4d69026b" does not exist'),
-  { code: "22023" },
-);
+const ROLE_MISSING = Object.assign(new Error('role "tenant_9047fe6e4d69026b" does not exist'), {
+  code: "22023",
+});
 
 function db(overrides: Partial<DbRecord> = {}): DbRecord {
   return {
