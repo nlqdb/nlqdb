@@ -123,7 +123,7 @@ column, ids/attributes only as the goal requests them, never a subset of a
 multi-part ask; BIRD-safe by deferring to the goal's literal ask.
 **Measured verdict:** post-fix canonical Spider re-measure on `6e1725c`
 ([run 29160009809](https://github.com/nlqdb/nlqdb/actions/runs/29160009809)):
-**raw EX **0.2741 → 0.2963** (37 → 40/135), `no_sql` 0/135, second consecutive fully-answered run. Paired per-question: gained c=13 / lost b=10, McNemar exact p≈0.68 — net positive, statistically flat (provider-mix churn swamps a ~10-row lever at N=135, the SK-LLM-043 precedent); **2 of the directive's named target instances flipped mismatch→match (local020, local133 — the id-for-name class)**, directional confirmation** vs 0.2741 before. Δ > 0 — keep. Row #8 note added: BIRD
+**raw EX 0.2741 → 0.2963** (37 → 40/135), `no_sql` 0/135, second consecutive fully-answered run. Paired per-question: gained c=13 / lost b=10, McNemar exact p≈0.68 — net positive, statistically flat (provider-mix churn swamps a ~10-row lever at N=135, the SK-LLM-043 precedent); **2 of the directive's named target instances flipped mismatch→match (local020, local133 — the id-for-name class)**, directional confirmation. Δ > 0 — keep. Row #8 note added: BIRD
 0.546 was measured pre-directive; next BIRD canonical re-verifies (bullet
 defers to the literal ask, so the regression bound is the directive's own
 scope). **Artifact (step 3):** queue ≥ 3 counting #663's draft ⇒ published

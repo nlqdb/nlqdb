@@ -36,6 +36,13 @@ superseded; one more bullet in the same block.
   literal ask, which the bullet defers to ("only as the goal requests
   them"), so the `SK-LLM-027` minimal-projection bound still governs
   unrequested extras.
+- **Consequence in code:** `packages/llm/src/prompts.ts` adds one string to
+  the `PLAN_DIRECTIVES` array (≈85 input tokens per `plan` call), placed
+  directly after the `SK-LLM-043` bullet. `PLAN_SYSTEM` and the per-provider
+  wiring are unchanged — `buildPlanSystem(k ≤ 0)` still returns the one
+  constant byte-for-byte ([`SK-LLM-041`](./SK-LLM-041-similarity-retrieved-few-shot.md)).
+  `packages/llm/test/prompts.test.ts` pins the bullet: the name-over-id rule,
+  the literal-ask regression bound, and the no-subset half.
 - **Alternatives rejected:** A Spider-only prompt fork in the eval harness
   (measures a harness, not the product — the planner the users hit must be
   the planner the benchmark scores); relaxing the `SK-LLM-027` bullet

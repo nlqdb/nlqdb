@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on `/v1/ask` (`SK-LLM-021`), and the account-stored lane resolves via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..044`). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) lands in Phase 2; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -41,17 +41,17 @@ Every LLM call routes through one `createLLMRouter()` adapter over a cost-ordere
 ### SK-LLM-004 — Cloudflare AI Gateway sits in front of every paid provider
 
 **Body:** [`decisions/SK-LLM-004-ai-gateway-paid.md`](./decisions/SK-LLM-004-ai-gateway-paid.md).
-Every paid-provider call routes through Cloudflare AI Gateway (`gateway.ai.cloudflare.com/v1/{acc}/{gw}/{provider}/…`) for sub-100 ms identical-prompt caching, per-provider quotas, and one observability surface. Providers accept a `baseUrl` override (`AI_GATEWAY_ACCOUNT_ID`/`AI_GATEWAY_ID` env-driven); gateway is $0 on the Free plan.
+Every paid-provider call routes through Cloudflare AI Gateway for sub-100 ms identical-prompt caching, per-provider quotas, and one observability surface. Providers accept a `baseUrl` override (`AI_GATEWAY_ACCOUNT_ID`/`AI_GATEWAY_ID` env-driven); gateway is $0 on the Free plan.
 
 ### SK-LLM-005 — Circuit breaker: skip flapping provider after 3 consecutive failures, 60 s cooldown
 
 **Body:** [`decisions/SK-LLM-005-circuit-breaker.md`](./decisions/SK-LLM-005-circuit-breaker.md).
-Per-provider failure state: 3 consecutive failures → skip for 60 s, then retry on the next eligible call (success resets). `createLLMRouter({circuitBreaker: {failureThreshold: 3, cooldownMs: 60_000}})`; a skip emits `nlqdb.llm.failover.total{…, reason: "circuit_open"}`. State is per-Worker-instance.
+Per-provider failure state: 3 consecutive failures → skip for 60 s, then retry on the next eligible call (success resets). A skip emits `nlqdb.llm.failover.total{…, reason: "circuit_open"}`. State is per-Worker-instance.
 
 ### SK-LLM-006 — `gen_ai.*` OTel semconv on every LLM span; spans use canonical names from the catalog
 
 **Body:** [`decisions/SK-LLM-006-otel-semconv.md`](./decisions/SK-LLM-006-otel-semconv.md).
-Every LLM call emits a canonical-named span (`llm.route`/`plan`/`summarize`/`schema_infer`/`engine_classify`) with `gen_ai.*` semconv 1.37 attributes; `router.ts` increments `nlqdb.llm.calls.total` / `duration_ms` / `failover.total`. Cardinality budgets in `docs/performance.md §3.3`; new providers wire emissions before merge (CI-asserted, `GLOBAL-014`).
+Every LLM call emits a canonical-named span (`llm.route`/`plan`/`summarize`/`schema_infer`/`engine_classify`) with `gen_ai.*` semconv 1.37 attributes; `router.ts` increments `nlqdb.llm.calls.total` / `duration_ms` / `failover.total`. Cardinality budgets in `docs/performance.md §3.3` (CI-asserted, `GLOBAL-014`).
 
 ### SK-LLM-007 — Tier-aware chain selector: `priority` + user plan picks `free` vs `paid` chain
 
@@ -86,7 +86,7 @@ At ~50 k queries/day, self-host cheap-tier `route` / `engine_classify` on a sing
 ### SK-LLM-014 — Hedged-request race on free-tier chains for planner-tier ops
 
 **Body:** [`decisions/SK-LLM-014-hedged-request-race.md`](./decisions/SK-LLM-014-hedged-request-race.md).
-`LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted with `HEDGE_LOST` so the breaker doesn't trip on the cancel. Free-tier chains only; prod wires `schema_infer` + `plan` at `afterMs: 800`. Rationale + trace in the sharded body.
+`LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted with `HEDGE_LOST` so the breaker doesn't trip on the cancel. Free-tier chains only; prod wires `schema_infer` + `plan` at `afterMs: 800`.
 
 ### SK-LLM-016 — BYOLLM dispatch lane: per-request override → account-stored → hosted-premium → free
 
@@ -101,7 +101,7 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 ### SK-LLM-020 — BYOLLM lane selector + single-provider lane router
 
 **Body:** [`decisions/SK-LLM-020-byollm-lane-selector.md`](./decisions/SK-LLM-020-byollm-lane-selector.md).
-`byollm-dispatch.ts` adds three pure primitives — `selectDispatchLane` (the source of truth for `SK-LLM-016`'s header→account→premium→free precedence), `buildByollmRouter` (single-provider, fail-loud per `GLOBAL-012`), `dispatchLaneAttributes` (bounded, key-redacted span attributes). The package stays free of header/DB/KEK access.
+`byollm-dispatch.ts` adds three pure primitives — `selectDispatchLane` (`SK-LLM-016`'s header→account→premium→free precedence), `buildByollmRouter` (single-provider, fail-loud per `GLOBAL-012`), `dispatchLaneAttributes` (bounded, key-redacted span attributes). The package stays free of header/DB/KEK access.
 
 ### SK-LLM-021 — BYOLLM header wiring on `/v1/ask`: signed-in-only `x-nlq-byollm-key`, fail-loud, free-router fallthrough
 
@@ -213,11 +213,11 @@ added latency on any succeeding call.
 
 ### SK-LLM-041 — Similarity-retrieved few-shot exemplar selection (DAIL-SQL retrieval half — deterministic core)
 
-**Body:** [`decisions/SK-LLM-041-similarity-retrieved-few-shot.md`](./decisions/SK-LLM-041-similarity-retrieved-few-shot.md). The *retrieval* half of DAIL-SQL ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) that [`SK-LLM-026`](#sk-llm-026) left — pure `few-shot-select.ts` (masked-token Jaccard top-k) over a 17-row curated `plan-exemplar-pool.ts` + the `buildPlanSystem(goal, schema, k)` ablation (default off ⇒ static `PLAN_SYSTEM` byte-for-byte). EX delta next dispatch ([`SK-QUAL-002`](../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md)).
+**Body:** [`decisions/SK-LLM-041-similarity-retrieved-few-shot.md`](./decisions/SK-LLM-041-similarity-retrieved-few-shot.md). The *retrieval* half of DAIL-SQL ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) that [`SK-LLM-026`](#sk-llm-026) left — `few-shot-select.ts` (masked-token Jaccard top-k) over the curated `plan-exemplar-pool.ts` + the `buildPlanSystem(goal, schema, k)` ablation (default off ⇒ static `PLAN_SYSTEM` byte-for-byte).
 
 ### SK-LLM-042 — Classify a gateway's 200-body error envelope as infra, not `parse`
 
-**Body:** [`decisions/SK-LLM-042-openrouter-200-error-classify.md`](./decisions/SK-LLM-042-openrouter-200-error-classify.md). A 200 response whose body carries a top-level `error` (a gateway commits the 200, then reports an upstream mid-request failure) fell through to the generic `parse` reason — an *engine answer-signal* that scores a spurious `no_sql`. `classifyBodyError` now maps it to `rate_limited` or `provider_error` (retryable, [`SK-LLM-038`](#sk-llm-038)-covered), closing the 7 `openrouter:parse` no_sql capping the frontier lanes.
+**Body:** [`decisions/SK-LLM-042-openrouter-200-error-classify.md`](./decisions/SK-LLM-042-openrouter-200-error-classify.md). `classifyBodyError` maps a 200 response whose body carries a top-level `error` (a gateway reporting an upstream mid-request failure) to `rate_limited` / `provider_error` (retryable, [`SK-LLM-038`](#sk-llm-038)-covered) instead of the engine-signal `parse` reason, which scored spurious `no_sql`.
 
 ### SK-LLM-043 — Single-column projection directive in the planner prompt (don't concatenate requested columns into one value)
 
@@ -225,7 +225,7 @@ added latency on any succeeding call.
 
 ### SK-LLM-044 — Entity-identification projection directive in the planner prompt (name over surrogate id; no subset answers)
 
-**Body:** [`decisions/SK-LLM-044-entity-identification-projection-directive.md`](./decisions/SK-LLM-044-entity-identification-projection-directive.md). One `PLAN_DIRECTIVES` bullet after [`SK-LLM-043`](#sk-llm-043): an identify/list/rank-entities goal projects the entity's human-readable *name* column (JOIN to the naming table when the fact table carries only a surrogate id), ids/attributes only as the goal requests them, and a multi-part goal gets every requested attribute — never a subset. Evidence-picked on the 2026-07-11 canonical Spider run's offline result-shape bucketing (52/98 non-matches at exact gold row count; the id-for-name + omitted-attribute core ≈ 10–12 rows); prompt-only.
+**Body:** [`decisions/SK-LLM-044-entity-identification-projection-directive.md`](./decisions/SK-LLM-044-entity-identification-projection-directive.md). One `PLAN_DIRECTIVES` bullet after [`SK-LLM-043`](#sk-llm-043): an identify/list/rank-entities goal projects the entity's human-readable *name* column (JOIN to the naming table over a surrogate id), ids/attributes only as the goal requests them, never a subset of a multi-part ask. Evidence-picked on the 2026-07-11 canonical Spider run's result-shape bucketing; prompt-only.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
