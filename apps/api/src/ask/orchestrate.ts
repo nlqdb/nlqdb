@@ -15,6 +15,7 @@ import type { LLMRouter } from "@nlqdb/llm";
 import { cachePlanHitsTotal, cachePlanMissesTotal } from "@nlqdb/otel";
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import { deriveSlug } from "../databases/list.ts";
+import type { DiagSink } from "./diag.ts";
 import { buildDiff, isWriteVerb } from "./diff.ts";
 import { isReplannableExecError } from "./exec-repair.ts";
 import type { FirstQueryTracker } from "./first-query.ts";
@@ -63,6 +64,11 @@ export type OrchestrateDeps = {
   // cache-hit and cache-miss paths converge there. Failures are
   // swallowed inside the store (never propagate to the response).
   recentTables?: RecentTablesStore;
+  // `SK-ASK-023`: durable sink for the exec catch-all's SQLSTATE.
+  // Preview invocations log nowhere, so the structured console line is
+  // lost exactly where e2e failures happen; the KV row survives.
+  // Optional in tests; production wires `makeKvDiagSink`.
+  diag?: DiagSink;
 };
 
 export type OrchestrateOptions = {
@@ -453,13 +459,32 @@ export async function orchestrateAsk(
       // Postgres errors include schema details; keep them server-side —
       // but record the SQLSTATE structurally first, or a deterministic
       // exec class masquerades as connectivity (SK-ASK-019's lesson).
-      recordExecUnreachable(err, {
+      const { pgCode, pgMessage } = recordExecUnreachable(err, {
         dbId: req.dbId,
         goal: req.goal,
         planSql,
         cacheHit,
         planModel,
       });
+      // SK-ASK-023 — the span + console line above are dropped for
+      // preview invocations (no logs exist for preview URLs); persist
+      // the SQLSTATE where it survives. Never blocks the error path.
+      const diag = deps.diag;
+      if (diag) {
+        await withSpan(
+          "nlqdb.diag.write",
+          () =>
+            diag.record({
+              event: "exec_db_unreachable",
+              pgCode,
+              pgMessage,
+              dbId: req.dbId,
+              cacheHit,
+              planModel,
+            }),
+          { onError: undefined },
+        );
+      }
       return { ok: false, error: { status: "db_unreachable" } };
     }
   }

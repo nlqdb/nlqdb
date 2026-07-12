@@ -217,6 +217,40 @@ describe("orchestrateAsk", () => {
     });
   });
 
+  it("SK-ASK-023: the exec catch-all persists the SQLSTATE via the diag sink", async () => {
+    const err = Object.assign(new Error("permission denied for schema x"), { code: "42501" });
+    const exec = stubExec(err);
+    const record = vi.fn(async () => {});
+    const out = await orchestrateAsk(makeDeps({ exec, diag: { record } }), {
+      goal: "select",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    expect(record).toHaveBeenCalledWith({
+      event: "exec_db_unreachable",
+      pgCode: "42501",
+      pgMessage: "permission denied for schema x",
+      dbId: "db_1",
+      cacheHit: false,
+      planModel: "stub-model",
+    });
+  });
+
+  it("SK-ASK-023: a throwing diag sink never changes the db_unreachable outcome", async () => {
+    const exec = stubExec(new Error("connection refused"));
+    const record = vi.fn(async () => {
+      throw new Error("kv down");
+    });
+    const out = await orchestrateAsk(makeDeps({ exec, diag: { record } }), {
+      goal: "select",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(record).toHaveBeenCalled();
+    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+  });
+
   it("SK-ASK-015: cache miss + exec failure → no plan.write", async () => {
     // Trace evidence from prod: an anon /v1/ask cached a SELECT against a
     // non-existent table; the next request 28 s later hit the bad cache
