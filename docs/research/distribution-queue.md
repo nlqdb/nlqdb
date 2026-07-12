@@ -1,7 +1,8 @@
 # Distribution queue
 
-One publishable artifact drafted per day by the daily agent
-([`/daily`](../../.claude/commands/daily.md) step 3); publishing is autonomous
+Drafts queued by the daily agent per
+[`/daily`](../../.claude/commands/daily.md) step 3 (queue-gated — drafting is
+optional, founder-resolved 2026-07-11); publishing is autonomous
 (`SK-BLOG-001`, founder-resolved 2026-07-01). Newest first. Once published, the
 live URL goes into `docs/scorecard.md` § Shipped distribution; the entry
 survives here only as a venue pointer until the venue variant posts.

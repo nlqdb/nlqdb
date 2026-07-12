@@ -16,9 +16,9 @@ digging into linked rows) goes to a sub-agent — keep the main thread lean.
   tracker. The founder cares about the worst number today + weekly-focus
   number, and any KPI that moved or degraded since last look.
 - [`docs/research/distribution-queue.md`](../../docs/research/distribution-queue.md)
-  — agent-drafted publishable artifacts awaiting the founder's weekly
-  PUBLISH click. Surface what's drafted and waiting on that click — the one
-  genuinely founder-gated distribution step.
+  — agent-drafted publishable artifacts. Canonical `/blog` publishing is
+  autonomous (`SK-BLOG-001` — no founder gate); surface queue depth and any
+  venue variants still waiting to post.
 - [`docs/blocked-by-human.md`](../../docs/blocked-by-human.md) — the
   canonical list of actions only the founder can do (prod secrets, console
   clicks, money/legal). Surface the outstanding human-only actions.
