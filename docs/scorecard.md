@@ -26,15 +26,17 @@ see [`weekly-review.md`](weekly-review.md).
 lagging metric moved only through its agent-movable inputs. Worst
 **agent-movable** number: **row #9 Spider raw EX** (0.2963) — but the
 engine lane's remaining offline loss classes need a fresh bucketing pass,
-and the opencheck residual is claimed by open PR #668 (run 52's
-`SK-E2E-007` purge, #665, merged and closed the stale-fixture class).
-**Run 55 lever: the weekly focus itself (row #15)** — its unclaimed
+and the opencheck residual is root-caused: run 52's `SK-E2E-007` purge
+(#665) closed the stale-fixture class, and run 53's `SK-ASK-023` diag
+sink (#668, merged) proved the adoption-ACL retarget silently fails in
+e2e — the retarget repair is the named next lever (row #15).
+**Run 55 lever: the weekly focus itself (row #15)** — its other unclaimed
 component was freshness decay: sdk/mcp/examples last dispatched 07-09, so
 at 07-12 04:12Z the row read **0.50** (3 × pass·freshness 0.67 +
 opencheck 0). Per `SK-E2E-004` e2e is `workflow_dispatch`-only by
 decision (cron rejected; the operator dispatch IS the mechanism), so the
 run dispatched all three on main `c4fc468` — all green ⇒ row #15
-**0.50 → 0.75**. Opencheck's red stays with open PR #668; not
+**0.50 → 0.75**. Opencheck's red stays with the ACL-retarget lever; not
 double-pulled here.
 
 | # | Metric | Value | Target / note |
@@ -42,12 +44,12 @@ double-pulled here.
 | | **Funnel** (fresh 07-12 04:15Z pull — CF GraphQL + remote D1) | | exclude synthetic stranger-test walker traffic |
 | 1 | Visits, 7d (CF Web Analytics) | 111 visits / 134 pageloads (07-05→07-12 04:15Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 67 + headless 1 ⇒ **real-browser ≈ 43 visits** — Chrome 35, ChromeMobile 3, Firefox 2, MobileSafari 2, Edge 1 | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev (re-verified 07-12 04:15Z) |
-| 3 | DBs total | **157** (+1 vs run 52's post-purge 156); latest activity 07-11 22:34 UTC (the #668 opencheck verification window) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (fresh 07-12 remote-D1; method `SK-ONBOARD-007`). Unfiltered counters 4/13 ok across 3 counted DBs — dominated by the e2e adoption-ACL failures diagnosed in open PR #668 | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. Deleted-row counters are a known caveat of DB-row-scoped counters (run 52's `SK-E2E-007` purge deletes fixture rows every run); stranger-only method unaffected (their DBs persist) |
+| 3 | DBs total | **157** (+1 vs run 52's post-purge 156); latest activity 07-11 22:34 UTC (run 53's #668 verification dispatch — fixture traffic) | stranger subset still ~0 (row #2) |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (fresh 07-12 remote-D1; method `SK-ONBOARD-007`). Unfiltered counters 4/13 ok across 3 counted DBs — dominated by the e2e adoption-ACL failures diagnosed by run 53's `SK-ASK-023` (#668, merged) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. Deleted-row counters are a known caveat of DB-row-scoped counters (run 52's `SK-E2E-007` purge deletes fixture rows every run); stranger-only method unaffected (their DBs persist) |
 | 5 | Session retention (≥ 2 queries) | 2 DBs with `first10_asks ≥ 2` (07-12, same fixture caveat as row #4) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **94** (`/vs` 31 + `/solve` 33 + `/blog` 30; 114 built pages, in rss/llms/sitemap). Pending drafts **4** — `most-active-user-is-your-test-suite` + `ownership-transfer-outlives-least-privilege` (collapsed gist; both claimed for publish by open PRs #668/#669) + run 52's `ephemeral-staging-persistent-registry` + run 55's `green-checkmark-has-a-half-life` ⇒ ≥ 3 ⇒ next run publishes the oldest unclaimed (run 52's), per step 3 | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts 30; 7d external referrals = **9** (bing 8, github 1 — 07-12 04:15Z pull; was 6 on 07-09, 1 on 07-06). Syndication feeds 1 (`/rss.xml`); internal links **2,808** (run-55 sweep, flat) | CF `refererHost` — measured every run. External-referral yield holding (bing-led, 1 → 6 → 9) as indexation lands |
+| 6 | Indexable surfaces | **95** (`/vs` 31 + `/solve` 33 + `/blog` 31) — run 53 (#668, merged) published `most-active-user-is-your-test-suite`; run-55's sweep built 114 pages pre-#668, 115 expected once #664's + #668's posts share one build. Pending drafts **3** — `ownership-transfer-outlives-least-privilege` (collapsed gist; claimed for publish by open PR #669) + run 52's `ephemeral-staging-persistent-registry` + run 55's `green-checkmark-has-a-half-life` ⇒ ≥ 3 ⇒ next run publishes the oldest unclaimed (run 52's), per step 3 | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 7 | Surface yield | posts 31 (run 53: +`most-active-user…`); 7d external referrals = **9** (bing 8, github 1 — 07-12 04:15Z pull; was 6 on 07-09, 1 on 07-06). Syndication feeds 1 (`/rss.xml`); internal links **2,808** (run-55 sweep, pre-#668's 31st post — next sweep re-counts) | CF `refererHost` — measured every run. External-referral yield holding (bing-led, 1 → 6 → 9) as indexation lands |
 | | **Engine** — BIRD 07-11 · Spider 07-11 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.546** (272/498 EA, 2 `gold_error`, 07-11 canonical on main `2cfda39`, [run 29144102081](https://github.com/nlqdb/nlqdb/actions/runs/29144102081) — completed in ONE window, `no_sql` 0/500, first fully capacity-clean canonical). Δ +2.01 pp vs 07-05, McNemar b=31/c=41, `regressions: []`. Baseline re-seeded. Measured pre-`SK-LLM-044`; next canonical re-verifies | target 0.65 / **Phase 2 floor 0.60** — gap 5.4 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2963** (40/135, `no_sql` 0/135, exec_error 3, gold_error 0 — 07-11 canonical on `6e1725c` with `SK-LLM-044`, nine-window `SK-QUAL-013` resume [29160009809](https://github.com/nlqdb/nlqdb/actions/runs/29160009809) → [29164092490](https://github.com/nlqdb/nlqdb/actions/runs/29164092490)). Was 0.2741 (37/135, run 49's first fully-answered run) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -58,11 +60,11 @@ double-pulled here.
 | 13 | nlqdb-api wall-time p50 / p95 | ~356 ms / ~1.52 s (request-weighted mean of per-day adaptive-sample quantiles — earlier "~24 ms" pulls weighted by bucket, not requests; this method pins to request weight) | mcp-server p50 ~6 ms / p95 ≈ 730 ms (SSE tails excluded by 7d window); `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.75** (was 0.50 at 07-12 04:12Z) — sdk ✅ · mcp ✅ · examples ✅ all re-dispatched + green 07-12 04:13Z on main `c4fc468` (runs [29179395303](https://github.com/nlqdb/nlqdb/actions/runs/29179395303) · [29179395870](https://github.com/nlqdb/nlqdb/actions/runs/29179395870) · [29179396550](https://github.com/nlqdb/nlqdb/actions/runs/29179396550)) · opencheck ❌ 0 — stale-fixture class closed by run 52's `SK-E2E-007` purge (#665, merged: A 4/5 · B 4/8 · C 9/9, first fully-green Suite C); latest completed dispatch [29170696769](https://github.com/nlqdb/nlqdb/actions/runs/29170696769) (open PR #668's verification run): adoption-ACL class named via the KV diag sink; #668 lands the diag channel and names the ACL-retarget repair as the next lever (the fix itself is not in #668) | **Sequencing rule: never dispatch opencheck alongside another OpenRouter-free consumer.** Residual class tracked in `e2e-coverage/opencheck-operations.md`; opencheck lever claimed by open PR #668 |
+| 15 | E2E manual-suite freshness | **0.75** (was 0.50 at 07-12 04:12Z) — sdk ✅ · mcp ✅ · examples ✅ all re-dispatched + green 07-12 04:13Z on main `c4fc468` (runs [29179395303](https://github.com/nlqdb/nlqdb/actions/runs/29179395303) · [29179395870](https://github.com/nlqdb/nlqdb/actions/runs/29179395870) · [29179396550](https://github.com/nlqdb/nlqdb/actions/runs/29179396550)) · opencheck ❌ 0 — stale-fixture class closed by run 52's `SK-E2E-007` purge (#665: A 4/5 · B 4/8 · C 9/9, first fully-green Suite C); run 53 (#668, merged) landed the `SK-ASK-023` diag channel and named the class in one dispatch ([29170696769](https://github.com/nlqdb/nlqdb/actions/runs/29170696769)): 18/18 diag rows `pg_code 22023`, missing tenant role on the adopted `users` DB ⇒ the run-48 adoption-ACL retarget silently fails in e2e — deterministic, not intermittent; the retarget fix itself did not land with #668 | **Sequencing rule: never dispatch opencheck alongside another OpenRouter-free consumer.** Residual class tracked in `e2e-coverage/opencheck-operations.md`; next lever: pull `diag:anon_adopt_regrant_failed:*` from a `depth=a` dispatch + fix the retarget |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
-| 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); **MCP in 3+ host apps (re-measured 07-11 `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder host — cursor, 2 grants, 0 used — FAIL)**; 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | every criterion instrumented; only agent-movable *pass* left is the agentic-frontier ~11 pp competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); rest are stranger-dependent |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-12 run 55 — count held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. Lever: research (P2/GLOBAL-033) → document (P4) → delete the bullet |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-12 run-55 sweep: **114** pages, **2,808** internal links — flat vs run 51) | target 0 — `bun run build && bun run check:links` in `apps/web` |
+| 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11 `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | every criterion instrumented; only agent-movable *pass* left is the agentic-frontier ~11 pp competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); rest are stranger-dependent |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-12 run 55 — count held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-12 run-55 sweep: **114** pages, **2,808** internal links — #668's `most-active-user…` post landed after the sweep; next sweep re-counts) | target 0 — `bun run build && bun run check:links` in `apps/web` |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 tracked gaps** (runs 32 + 37 each found + closed 1) | claim-vs-reality on shipped surfaces + docs; target 0. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
@@ -76,6 +78,7 @@ double-pulled here.
 Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 `research/distribution-queue.md` as pointers:
 
+- https://nlqdb.com/blog/most-active-user-is-your-test-suite/ (run 53 — measurement-hygiene lesson, the funnel bot-filter: a metric that doesn't name its population is measuring your robots; filter at read time)
 - https://nlqdb.com/blog/five-fallback-models-one-provider/ (run 51 — CI/engine lesson, the opencheck lane swap: redundancy must cross the failure-domain boundary; the lane, not the model, is the fallback unit)
 - https://nlqdb.com/blog/decided-questions-rot-in-your-decision-log/ (run 49 — decision-hygiene lesson, the row #17 docs-ambiguity method: resolved is a greppable state; unmarked decided bullets are counted debt)
 - https://nlqdb.com/blog/emit-metrics-where-the-distinction-is-certain/ (run 47 — instrumentation lesson, `SK-TRUST-004` retry-rate emit point: emit where the distinction is certain, thread facts down)
@@ -111,11 +114,13 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 **2026-07-12 (run 55)** — lever: **row #15 E2E freshness (the weekly
 focus number), unclaimed component: freshness decay on the three green
-suites.** Step 0: #665 (run 52, `SK-E2E-007` staging purge) merged first;
-this entry reconciled on top of it per the second-merge rule. Still open:
-#667 (daily.md rules), #668 (diag sink + adoption-ACL diagnosis), #669
-(CLI release gate) — the opencheck red and its fix path are claimed
-there, so this run pulled the focus row's *other* component. **Before:**
+suites.** Step 0: #665 (run 52, `SK-E2E-007` staging purge) and #668
+(run 53, `SK-ASK-023` diag sink + adoption-ACL root cause; published
+`most-active-user…`) merged first; this entry reconciled on top of both
+per the second-merge rule. Still open: #667 (daily.md rules), #669 (CLI
+release gate) — the opencheck red's diagnosis landed with #668 and its
+retarget fix is the named next lever, so this run pulled the focus row's
+*other* component. **Before:**
 at 07-12 04:12Z sdk/mcp/examples were last dispatched 07-09 21:00Z
 (pass·freshness ≈ 0.67 each)
 and opencheck 0 ⇒ row #15 = **0.50**. **Change:** per `SK-E2E-004`
@@ -130,11 +135,12 @@ open PR #669). Engine rows untouched (BIRD/Spider canonicals 07-11,
 persona 07-09 — all < 7d, no dispatch owed; BIRD post-`SK-LLM-044`
 re-verify stays queued for the engine lane). **Artifact (step 3):** at
 run time the queue had 0 *unclaimed* drafts (both existing claimed by
-#668/#669; run 52's `ephemeral-staging-persistent-registry` still on
-unmerged #665) ⇒ drafted `green-checkmark-has-a-half-life` (this run's
-lesson: a manual-dispatch e2e pass is an event, not a state — score it
-pass × freshness so the metric itself forces re-dispatch); post-#665 the
-queue holds 4 pending / 2 unclaimed ⇒ next run publishes (row #6).
+then-open #668/#669; run 52's `ephemeral-staging-persistent-registry`
+still on unmerged #665) ⇒ drafted `green-checkmark-has-a-half-life`
+(this run's lesson: a manual-dispatch e2e pass is an event, not a state —
+score it pass × freshness so the metric itself forces re-dispatch);
+post-#665/#668 (which published `most-active-user…`) the queue holds
+3 pending / 2 unclaimed ⇒ next run publishes (row #6).
 **KPI:** GLOBAL-025 engine quality
 (the E2E signal guards every engine/UX number this loop reports); **none
 degrade** (zero app-code diff: scorecard + queue draft only; suites ran
