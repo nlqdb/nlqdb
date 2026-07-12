@@ -12,6 +12,29 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"The redesign shipped. The smoke test kept walking the old UI."** slug
+  `smoke-test-walks-the-old-ui` · venue dev.to (#testing #e2e #frontend) +
+  r/ExperiencedDevs + lobste.rs (`testing`) · e2e/measurement lesson (the
+  run-58 walker re-true, 2026-07-12). Angle: our acceptance walkers pin
+  literal UI strings on purpose — "drift fails the walk loudly, which is
+  the regression detector we want." Then a homepage redesign moved the
+  goal input to another page, a copy edit reworded one heading, and the
+  MCP catalog additively grew two tools — and the walkers reported 0/9
+  for a week. The trap isn't the literal assertions; it's that a red
+  which mixes "product broke" and "test went stale" costs a full triage
+  to disentangle, and ours contained both at once: two flows red from
+  pure test-drift *and* one flow red from a real production wall, in the
+  same 0/9. Three design notes: (1) pinned literals are fine only if
+  reds are triaged within a bounded window — a detector nobody reads is
+  drift accumulating interest; (2) the fail detail must name the element
+  and the expectation (`placeholder=null` beats `failed step 2`) so
+  drift-vs-breakage is decidable from the artifact alone; (3) the rule
+  "a PR touching a walked surface re-runs the walker" already existed
+  and was skipped — a convention without a gate is a wish; wire the
+  walker into the surface's PR checks or accept the false-red debt
+  knowingly. Honest split: a testing-hygiene pattern for anyone whose
+  e2e asserts real rendered copy, not a product feature.
+
 - **"A green checkmark has a half-life."** slug
   `green-checkmark-has-a-half-life` · venue dev.to (#ci #testing #devops) +
   r/ExperiencedDevs + lobste.rs (`practices`) · CI/measurement lesson (the
