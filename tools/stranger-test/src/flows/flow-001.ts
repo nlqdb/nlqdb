@@ -117,17 +117,40 @@ async function doWalk(
       // goal), bounded at ~10 s.
       const submitBtn = page.getByRole("button", { name: /create/i }).first();
       let armed = false;
-      for (let i = 0; i < 20 && !armed; i++) {
-        await hero.fill(prompt).catch(() => {});
-        await page.waitForTimeout(500);
+      for (let i = 0; i < 10 && !armed; i++) {
+        if (i % 2 === 0) {
+          await hero.fill(prompt).catch(() => {});
+        } else {
+          // Real key events — some hydration states swallow fill()'s
+          // synthetic input event but accept trusted keystrokes.
+          await hero.click().catch(() => {});
+          await hero.clear().catch(() => {});
+          await hero.pressSequentially(prompt, { delay: 5 }).catch(() => {});
+        }
+        await page.waitForTimeout(1000);
         armed = await submitBtn.isEnabled().catch(() => false);
       }
+      // Self-diagnosing fail detail: the DOM value, the submit state,
+      // and whether the Astro island reports hydrated (the `ssr`
+      // attribute is removed on hydration).
+      const diag = armed
+        ? undefined
+        : await page
+            .evaluate(() => {
+              const island = document.querySelector("astro-island");
+              const input = document.querySelector<HTMLInputElement>("input[placeholder]");
+              const btn = Array.from(document.querySelectorAll("button")).find((b) =>
+                /create/i.test(b.textContent ?? ""),
+              );
+              return `value=${JSON.stringify(input?.value?.slice(0, 30))} btnDisabled=${btn?.disabled} islandSsrAttr=${island?.hasAttribute("ssr")} islandHydrated=${island?.hasAttribute("props") ? "props-present" : "no-props"}`;
+            })
+            .catch(() => "diag-failed");
       steps.push(
         step(
           3,
           "typed persona-seeded goal into hero",
           armed ? "ok" : "fail",
-          armed ? undefined : "submit never enabled — island hydration did not accept the goal",
+          armed ? undefined : `submit never enabled — ${diag}`,
         ),
       );
       if (!armed) failedStep = 3;
