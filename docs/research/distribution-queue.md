@@ -12,6 +12,31 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"We rebuilt staging's database every run. The registry remembered
+  everything."** slug `ephemeral-staging-persistent-registry` · venue dev.to
+  (#testing #ci #database) + r/ExperiencedDevs + lobste.rs (`practices`) ·
+  CI/infra lesson (the stale-fixture purge, `SK-E2E-007`, 2026-07-11). Angle:
+  ephemeral e2e staging done by the book — a fresh Postgres branch per run,
+  deleted at run end, previews aliased per-run — except the control plane
+  (the registry mapping "database" rows to schemas, plus sessions and chat
+  history) is the production D1 the preview binds by default, and it survives
+  every teardown. So each run's fixture rows outlived their schemas: the
+  sidebar filled with same-name ghosts, tests that pin a DB by name landed on
+  schemas that no longer existed ("Couldn't reach the database" — reads
+  exactly like an infra flake), and the cleanup test that deletes leftovers
+  through the UI grew a backlog it could never finish (~27 rows, one
+  typed-confirm modal at a time, against a 300 s budget — and its name-scoped
+  walk never matched leftovers with other names at all). The suite reported
+  "app red" for state no real user could reach. Two rules fell out. (1) An
+  environment is only as ephemeral as the most persistent store that
+  references it — enumerate every store that outlives the rebuild (registry,
+  sessions, queues, caches) and reset the slice that points at the rebuilt
+  one at spin-up, not teardown (a crashed run skips teardown by definition).
+  (2) In-band cleanup — tests deleting through the UI — verifies the delete
+  *feature*; it cannot be the *invariant*: the invariant needs an out-of-band
+  guarantee that runs before the suite. Honest split: a CI/test-infra lesson
+  from our E2E harness, not a product feature.
+
 - **"Your most active user is your test suite."** slug
   `most-active-user-is-your-test-suite` · venue dev.to (#analytics #testing
   #startup) + r/ExperiencedDevs + lobste.rs (`practices`) ·
@@ -39,30 +64,13 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   slug `ownership-transfer-outlives-least-privilege` · venue dev.to (#postgres
   #security #database) + r/PostgreSQL + lobste.rs (`databases`, `security`) ·
   product/security lesson (the adoption ACL gap, `SK-ANON-003` amendment,
-  2026-07-11). Angle: multi-tenant Postgres, one schema per tenant DB. Day 1:
-  queries run as the shared owner, so "transfer this DB to the user who just
-  signed in" is honestly a one-row registry UPDATE — flip `tenant_id`, done,
-  and we wrote that down as a design decision. Months later we hardened the
-  query path to least-privilege: every query now does `SET LOCAL ROLE
-  tenant_<hash(current tenant)>` against per-tenant grants and an RLS policy
-  whose USING clause bakes the tenant id as a literal. Nobody re-visited the
-  transfer path — and it kept working *in the registry* while every
-  transferred DB went permanently unqueryable: the role it now switches to
-  was never created, never granted USAGE, never made a `WITH SET` member,
-  and the RLS literal still named the old tenant. Three authorization layers;
-  the transfer updated one. Worse, the error was invisible: `SET ROLE`'s
-  deterministic 42704/42501 fell into our generic "couldn't reach the
-  database" catch-all — no SQLSTATE logged anywhere — so for nine e2e runs it
-  wore a cold-start costume (the tell that broke the costume: creates
-  succeeded while the transferred DB failed the same second, for minutes,
-  with the *correct* SQL planned every time). Two fixes, both general: (1)
-  every ownership-transfer path must retarget ALL the places authorization
-  state lives — role existence, grants, role membership, policy literals —
-  idempotently, in one batch; grep for every writer of your tenant column the
-  day you turn least-privilege on. (2) A catch-all error branch must log the
-  code it's swallowing; an error you re-label without recording is a bug you
-  will re-diagnose from scratch. Honest split: a Postgres/multi-tenancy
-  lesson from our adoption path, not a product feature.
+  2026-07-11). Gist: transfer flipped `tenant_id` in the registry while
+  least-privilege exec (`SET LOCAL ROLE` + per-tenant grants + RLS literal)
+  still named the old tenant — every transferred DB unqueryable, masked as
+  "couldn't reach the database" with no SQLSTATE logged. Rules: retarget ALL
+  authorization layers idempotently on transfer; a catch-all error branch
+  must log the code it swallows. Full draft: git history (collapsed
+  2026-07-11 run 52, D4 retention).
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
