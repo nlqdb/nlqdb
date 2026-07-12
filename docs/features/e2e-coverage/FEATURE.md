@@ -8,7 +8,7 @@ when-to-load:
     - tests/e2e/**
     - examples/**/e2e/**
     - .github/workflows/e2e-*.yml
-    - .github/workflows/_e2e-opencheck.yml
+    - .github/workflows/_e2e-*.yml
     - packages/nlqdb-rb/spec/e2e/**
     - packages/nlqdb-rs/tests/e2e/**
   topics: [e2e, end-to-end, integration, opencheck, playwright, testscript, msw, cassette, persona, workflow_dispatch]

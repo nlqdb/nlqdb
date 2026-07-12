@@ -87,11 +87,9 @@ jobs:
           echo "::add-mask::$db_url"
           echo "database_url=$db_url" >> "$GITHUB_OUTPUT"
 
-      # The recreation above destroyed every schema the e2e fixture account's
-      # registry rows point at, but the control plane (prod D1, shared by
-      # previews) survives — so stale rows accumulate: same-name sidebar pins
-      # land on dead schemas ("Couldn't reach the database") and Suite C's
-      # cleanup walk grows unboundedly. Purge them here (SK-E2E-007).
+      # The shared prod-D1 control plane outlives the branch recreation above, so
+      # fixture registry rows would point at destroyed schemas — purge them here,
+      # the one step every run passes through (SK-E2E-007).
       - name: Purge stale fixture registry rows
         working-directory: apps/api
         env:
