@@ -45,8 +45,9 @@ Re-measured **row #17 = 17** with the pinned method — matches #663 exactly.
 Engine deltas cite real CI run IDs (Spider 0.2741 #29151548561, BIRD 0.546
 #29144102081) and the Spider gain is honestly labelled capacity-honesty
 (`no_sql` 30 → 0), not an engine lift. Fourth sample: `BLOG_POSTS` in `blog.ts`
-holds **29** posts — matches the scorecard's "/blog 29" (rows #6/#7) exactly (a
-naive `slug:` grep reports 30 because it also hits the type definition).
+held **29** posts at the audit window — matching its scorecard's "/blog 29"
+(rows #6/#7) exactly; run 51 (#664) has since published the 30th. (A naive
+`slug:` grep over-counts by one via the type-definition line.)
 
 ## Prompt drift (check 6) — none
 
