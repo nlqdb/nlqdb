@@ -7,8 +7,10 @@ Point-in-time tracker, regenerated each
 
 **Weekly focus number (2026-07-11 → 07-18):** **row #15 E2E freshness →
 1.0** — close the opencheck stale-fixture red and keep all four suites
-fresh. **Why:** it is the worst *agent-movable* number. BIRD (row #8, 0.546
-< the 0.60 [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) floor) is
+fresh. **Why:** it is the worst *agent-movable* number outside the daily
+engine lane, which already pulls row #9 Spider (next paragraph). BIRD
+(row #8, 0.546 < the 0.60
+[`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) floor) is
 **dark for the lever** — offline levers exhausted, SC dead (#619),
 frontier-lens closed (run 15); the only remaining path, the corrected-set,
 is blocked on an external maintainer's license reply (uiuc-kang-lab #7,

@@ -47,7 +47,8 @@ Engine deltas cite real CI run IDs (Spider 0.2741 #29151548561, BIRD 0.546
 (`no_sql` 30 → 0), not an engine lift. Fourth sample: `BLOG_POSTS` in `blog.ts`
 held **29** posts at the audit window — matching its scorecard's "/blog 29"
 (rows #6/#7) exactly; run 51 (#664) has since published the 30th. (A naive
-`slug:` grep over-counts by one via the type-definition line.)
+`slug:` grep over-counts by two: the type-definition line + the
+`blogBySlug` signature.)
 
 ## Prompt drift (check 6) — none
 
