@@ -42,17 +42,18 @@ const ROUTE_REQ: RouteRequest = {
   recentTables: [],
 };
 
-// `plan` stubs accept a partial PlanResponse (just `sql`); the
-// SK-TRUST-002 `model` + `confidence` fields default to the fake's
-// name + 1.0 so existing tests stay terse.
+// `plan` / `schemaInfer` stubs accept a partial response (just `sql` /
+// `plan`); the SK-TRUST-002 `model` + `confidence` fields default to
+// the fake's name + 1.0 so existing tests stay terse.
 type PlanStubShape = Partial<PlanResponse> & Pick<PlanResponse, "sql">;
+type SchemaInferStubShape = Partial<SchemaInferResponse> & Pick<SchemaInferResponse, "plan">;
 function fakeProvider(
   name: ProviderName,
   stubs: {
     route?: Stub<RouteResponse>;
     plan?: Stub<PlanStubShape>;
     summarize?: Stub<SummarizeResponse>;
-    schemaInfer?: Stub<SchemaInferResponse>;
+    schemaInfer?: Stub<SchemaInferStubShape>;
     engineClassify?: Stub<EngineClassifyResponse>;
   } = {},
 ): Provider & { calls: { op: string; req: unknown; opts: CallOpts | undefined }[] } {
@@ -87,7 +88,13 @@ function fakeProvider(
     },
     async schemaInfer(req, opts) {
       calls.push({ op: "schemaInfer", req, opts });
-      return resolve(stubs.schemaInfer, { plan: { provider: name } }, req, opts);
+      const out = await resolve<SchemaInferStubShape>(
+        stubs.schemaInfer,
+        { plan: { provider: name } },
+        req,
+        opts,
+      );
+      return { model: `${name}-model`, confidence: 1.0, ...out };
     },
     async engineClassify(req, opts) {
       calls.push({ op: "engineClassify", req, opts });

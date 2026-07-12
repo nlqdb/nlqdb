@@ -107,9 +107,58 @@ async function doWalk(
 
     if (failedStep === null) {
       const hero = page.locator("input[placeholder],textarea[placeholder]").first();
-      await hero.fill(prompt);
-      steps.push(step(3, "typed persona-seeded goal into hero", "ok"));
+      // Hydration race (the run-58 "submit flake", deterministic on cold
+      // asset serves): fill() before the React island hydrates writes the
+      // pre-hydration DOM; hydration then resets the controlled input to
+      // "" and the submit button stays disabled, so the later click is
+      // silently swallowed and no /v1/ask ever fires. A real stranger
+      // types after the page is interactive — emulate that by re-filling
+      // until the submit button reports enabled (React state holds the
+      // goal), bounded at ~10 s.
+      const submitBtn = page.getByRole("button", { name: /create/i }).first();
+      let armed = false;
+      for (let i = 0; i < 10 && !armed; i++) {
+        if (i % 2 === 0) {
+          await hero.fill(prompt).catch(() => {});
+        } else {
+          // Real key events — some hydration states swallow fill()'s
+          // synthetic input event but accept trusted keystrokes.
+          await hero.click().catch(() => {});
+          await hero.clear().catch(() => {});
+          await hero.pressSequentially(prompt, { delay: 5 }).catch(() => {});
+        }
+        await page.waitForTimeout(1000);
+        armed = await submitBtn.isEnabled().catch(() => false);
+      }
+      // Self-diagnosing fail detail: the DOM value, the submit state,
+      // and whether the Astro island reports hydrated (the `ssr`
+      // attribute is removed on hydration).
+      const diag = armed
+        ? undefined
+        : await page
+            .evaluate(() => {
+              const island = document.querySelector("astro-island");
+              const input = document.querySelector<HTMLInputElement>("input[placeholder]");
+              const btn = Array.from(document.querySelectorAll("button")).find((b) =>
+                /create/i.test(b.textContent ?? ""),
+              );
+              return `value=${JSON.stringify(input?.value?.slice(0, 30))} btnDisabled=${btn?.disabled} islandSsrAttr=${island?.hasAttribute("ssr")} islandHydrated=${island?.hasAttribute("props") ? "props-present" : "no-props"}`;
+            })
+            .catch(() => "diag-failed");
+      steps.push(
+        step(
+          3,
+          "typed persona-seeded goal into hero",
+          armed ? "ok" : "fail",
+          armed ? undefined : `submit never enabled — ${diag}`,
+        ),
+      );
+      if (!armed) failedStep = 3;
+    } else {
+      steps.push(step(3, "typed persona-seeded goal into hero", "skip", "blocked by earlier step"));
+    }
 
+    if (failedStep === null) {
       // `.catch` attached at construction time — under Bun runtime an early
       // page-close rejection between waitForResponse() and `await` can land
       // as an unhandled rejection (the cron+CI Node runtime tolerates the
@@ -155,6 +204,9 @@ async function doWalk(
           failedStep = 5;
         }
       }
+    } else {
+      steps.push(step(4, "submit (clicked Create the DB)", "skip", "blocked by earlier step"));
+      steps.push(step(5, "/v1/ask responded within 60 s", "skip", "blocked by earlier step"));
     }
 
     // Remaining steps (trace toggle, snippet copy, second-query reuse) only
@@ -175,19 +227,25 @@ async function doWalk(
       } else {
         await traceBtn.click().catch(() => {});
         const traceText = await page.locator("pre, code").allInnerTexts();
-        const sqlVisible = traceText.some((t) => /\bselect\b/i.test(t));
+        // The first answer on /app/new is the create path, whose trace
+        // carries the compiled DDL (SK-TRUST-002) — so the revealed SQL
+        // is CREATE TABLE, not SELECT. A post-create chat reply would
+        // reveal SELECT; accept either shape of "what ran".
+        const sqlVisible = traceText.some((t) => /\b(select|create table)\b/i.test(t));
         steps.push(
           step(
             6,
-            "trace reveals SQL with SELECT",
+            "trace reveals SQL (SELECT or CREATE TABLE)",
             sqlVisible ? "ok" : "fail",
-            sqlVisible ? undefined : "no SELECT in revealed text",
+            sqlVisible ? undefined : "no SELECT/CREATE TABLE in revealed text",
           ),
         );
         if (!sqlVisible) failedStep = 6;
       }
     } else {
-      steps.push(step(6, "trace reveals SQL with SELECT", "skip", "blocked by earlier step"));
+      steps.push(
+        step(6, "trace reveals SQL (SELECT or CREATE TABLE)", "skip", "blocked by earlier step"),
+      );
     }
 
     if (failedStep === null) {

@@ -240,7 +240,9 @@ export async function handleQuery(
         ok: {
           rows: [],
           rowCount: 0,
-          trace: { sql: "", model: "", confidence: 0, cache_hit: false },
+          // SK-TRUST-002 — the create response's trace carries the
+          // compiled DDL that provisioned the schema.
+          trace: traceOf(response.trace),
           db_created: true,
           dbId: response.db,
           displayName: response.displayName,

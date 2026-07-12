@@ -977,6 +977,44 @@ h3 {
   color: var(--muted);
 }
 
+/* SK-TRUST-002 / SK-WEB-005 — collapsed-by-default create trace. */
+.createresult__trace {
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  background: var(--ground);
+}
+
+.createresult__trace-summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.createresult__trace-sql {
+  margin: 0 12px 10px;
+  padding: 12px;
+  background: var(--raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--body);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.createresult__trace-meta {
+  margin: 0 12px 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* SK-WEB-010 — Embed snippet on the marketing create result. */
 .createresult__snippet {
   display: flex;

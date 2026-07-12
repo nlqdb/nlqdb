@@ -761,6 +761,18 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         pkLive: result.pkLive,
         plan: result.plan,
         sampleRows: result.sampleRows,
+        // SK-TRUST-002 — the trace block ships on every /v1/ask
+        // response; on the create path `sql` carries the compiled DDL
+        // that actually provisioned the schema. Creates are never
+        // plan-cached, so there is no GLOBAL-006 content address —
+        // `create:<dbId>` names the one-shot plan instead.
+        trace: {
+          sql: result.ddl.join("\n\n"),
+          plan_id: `create:${result.dbId}`,
+          confidence: result.confidence,
+          model: result.model,
+          cache_hit: false,
+        },
       });
     };
 

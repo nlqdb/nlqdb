@@ -61,7 +61,9 @@ export type InferSchemaArgs = {
 export type InferFailureReason = "ambiguous_goal" | "llm_failed" | "plan_invalid";
 
 export type InferSchemaResult =
-  | { ok: true; plan: SchemaPlan }
+  // `model` + `confidence` ride through from the schemaInfer provider
+  // response — they populate the create response's SK-TRUST-002 trace.
+  | { ok: true; plan: SchemaPlan; model: string; confidence: number }
   | { ok: false; reason: Exclude<InferFailureReason, "plan_invalid"> }
   | { ok: false; reason: "plan_invalid"; details: { issue_count: number } };
 
@@ -262,6 +264,14 @@ export type DbCreateResult =
       // create response so callers see what was provisioned.
       engine: Engine;
       pkLive: string | null;
+      // SK-TRUST-002 — the provisioned DDL statements plus the model
+      // that inferred the plan (preset creates carry `preset:<id>`)
+      // and its placeholder confidence. The route joins these into
+      // the create response's `trace` block; compiled DDL is the
+      // create-path analogue of the read path's compiled SQL.
+      ddl: string[];
+      model: string;
+      confidence: number;
       plan: DbCreatePlanSummary;
       sampleRows: SampleRow[];
     }

@@ -187,6 +187,15 @@ func (w *Writer) writeCreateHuman(resp *api.AskResponse) error {
 		fmt.Fprintf(w.Out, "  Seeded with %d sample rows.\n", len(resp.SampleRows))
 	}
 	fmt.Fprintf(w.Out, "  Try: nlq \"<your question>\"\n")
+	// SK-TRUST-002 — the create trace carries the compiled DDL that
+	// provisioned the schema; render it under the same separator as
+	// the ask/run paths.
+	if resp.Trace != nil {
+		fmt.Fprintln(w.Out, "─ trace ─")
+		fmt.Fprintln(w.Out, indent(strings.TrimSpace(resp.Trace.SQL), "  "))
+		fmt.Fprintf(w.Out, "  plan=%s model=%s cache_hit=%v confidence=%.2f\n",
+			resp.Trace.PlanID, resp.Trace.Model, resp.Trace.CacheHit, resp.Trace.Confidence)
+	}
 	return nil
 }
 
