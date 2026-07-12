@@ -70,16 +70,6 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   pattern for any system with grant/config fan-out at ownership transfer,
   not a product feature.
 
-- **"A green checkmark has a half-life."** slug
-  `green-checkmark-has-a-half-life` · venue dev.to (#ci #testing #devops) +
-  r/ExperiencedDevs + lobste.rs (`practices`) · CI/measurement lesson (the
-  scorecard row #15 freshness method, 2026-07-12). *(Collapsed under the
-  20 KB cap — full angle in git history.)* Gist: manual-dispatch e2e makes
-  "passing" an event, not a state — score suites `pass × freshness` with a
-  linear 7-day decay so the dashboard number itself rots until an operator
-  re-dispatches; a red run scores 0 regardless of freshness; print the
-  last-success date beside the score.
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -87,6 +77,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 60 — **https://nlqdb.com/blog/green-checkmark-has-a-half-life/** — dev.to (#ci #testing #devops) + r/ExperiencedDevs + lobste.rs (`practices`) · CI/measurement lesson (the scorecard row #15 freshness method — manual-dispatch e2e makes "passing" an event not a state; score `pass × freshness` with a linear 7-day decay so the number rots until an operator re-runs it)
 - run 56 — **https://nlqdb.com/blog/ephemeral-staging-persistent-registry/** — dev.to (#testing #ci #database) + r/ExperiencedDevs + lobste.rs (`practices`) · CI/test-infra lesson (the `SK-E2E-007` spin-up purge — an environment is only as ephemeral as the most persistent store that references it; reset at spin-up, not teardown)
 - run 54 — **https://nlqdb.com/blog/ownership-transfer-outlives-least-privilege/** — dev.to (#postgres #security #database) + r/PostgreSQL + lobste.rs (`databases`, `security`) · product/security lesson (the adoption ACL gap, `SK-ANON-003` amendment — an ownership transfer must retarget every authorization store; a catch-all must log the code it swallows)
 - run 53 — **https://nlqdb.com/blog/most-active-user-is-your-test-suite/** — dev.to (#analytics #testing #startup) + r/ExperiencedDevs + lobste.rs (`practices`) · measurement-hygiene lesson (the scorecard funnel bot-filter — a metric that doesn't name its population is measuring your robots; filter at read time, not the write path)

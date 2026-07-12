@@ -41,6 +41,55 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "green-checkmark-has-a-half-life",
+    title: "A green checkmark has a half-life.",
+    description:
+      "When an expensive test suite can't run on every push, passing stops being a state and becomes an event. Score each suite pass × freshness with a linear decay so the dashboard number rots until someone re-runs it.",
+    date: "2026-07-12",
+    body: [
+      {
+        kind: "p",
+        text: "Our end-to-end suites are manual-dispatch-only, on purpose. Every run burns free-tier quota — a fresh Neon branch, a Workers preview deploy, LLM tokens — so running e2e is a deliberate operator action. We explicitly rejected a cron: a suite that fails at 3 a.m. has no triggering author to catch the red, and the bill still arrives.",
+      },
+      {
+        kind: "p",
+        text: "That trade-off is defensible. The consequence we hadn't written down is not: **once e2e stops running on every push, \"passing\" stops being a state and becomes an event.**",
+      },
+      { kind: "h2", text: "The checkmark that stopped meaning anything" },
+      {
+        kind: "p",
+        text: "The API deploys daily. A suite that went green on Tuesday asserts nothing about Friday's build — the thing it certified has changed underneath it three times. But the dashboard still shows the same reassuring checkmark from Tuesday, and nobody re-reads a green row. The signal decayed; the pixel didn't.",
+      },
+      {
+        kind: "p",
+        text: "A cron would paper over this by re-running constantly, but that just trades a stale-signal problem for a cost-and-nobody's-watching problem. We wanted the *metric itself* to admit when it had gone stale.",
+      },
+      { kind: "h2", text: "Score pass × freshness" },
+      {
+        kind: "p",
+        text: "So each suite scores `pass × freshness`, where `freshness` decays linearly from 1 to 0 over a fixed window. A suite that passed today scores ~1.0; the same green run a week later scores ~0. The dashboard number rots on its own until an operator re-dispatches — the score replaces the cron, instead of the cron replacing judgement.",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: "// latest completed run only; a red run scores 0 regardless of age.\nconst freshness = Math.max(0, 1 - daysSinceLastSuccess / WINDOW_DAYS);\nconst score = passed ? freshness : 0;",
+      },
+      { kind: "h2", text: "Three notes that made the number honest" },
+      {
+        kind: "ol",
+        items: [
+          "The window is a compromise, and the metric should say so. The honest window is your deploy cadence — a suite is stale the moment the thing it certifies changes underneath it. But every dispatch costs quota, so our 7-day window against daily deploys makes the score an **upper bound on confidence**, not a guarantee. Name that in the doc next to the number.",
+          "Score only the latest completed run, and a red run is 0 regardless of freshness. Averaging history lets an old green subsidize a current red — exactly the reassurance you're trying to remove.",
+          "Print the last-success date in the same cell as the score. `0.67` is a number nobody can audit; `0.67 (last green Jul 5)` tells the reader why, and whether to re-run.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "This is a measurement-hygiene pattern, not a product feature: it's for anyone whose test suites are too expensive to run on every push. If your CI is cheap enough to gate every merge, you don't need it — your freshness is always ~1. The moment it isn't, a bare checkmark is lying to you by omission, and a decaying score is the cheapest honesty you can buy.",
+      },
+    ],
+  },
+  {
     slug: "ephemeral-staging-persistent-registry",
     title: "We rebuilt staging's database every run. The registry remembered everything.",
     description:

@@ -16,27 +16,31 @@ frontier-lens closed (run 15); the only remaining path, the corrected-set,
 is blocked on an external maintainer's license reply (uiuc-kang-lab #7,
 filed 07-07, no response), so no single run can move it — `SK-QUAL-005`'s
 engine-work mandate stands lever-blocked and re-binds the focus once any
-engine lever unparks. Row #15 state at 19:45Z: all four suites green —
-sdk/mcp/examples 07-12 04:13Z, opencheck's first green main run 07-12
-13:18Z ([29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944));
-≈ 0.92 and decaying only with the calendar. #672 (run 57, merged) shipped
-the adoption-ACL root fix + `SK-ASK-024` heal; its depth=ab re-verify
-concluded app-side clean (zero diag rows across both post-fix dispatches;
-residual red = agent-lane capacity, the standing e2e-coverage OQ). With
-#15 near ceiling, run 59 pulled the next-priority lever per the
-UX-flow-first ordering (#667): **the FLOW-001 step-6 red run 58 named** —
+engine lever unparks. Row #15 state (carried from the 19:45Z pull): all
+four suites green — sdk/mcp/examples 07-12 04:13Z, opencheck's first
+green main run 07-12 13:18Z
+([29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944));
+≈ 0.91 and decaying only with the calendar (no new dispatch this run).
+With #15 near ceiling, run 60 pulled the next-priority lever per the
+UX-flow-first ordering (#667): **FLOW-001's last real red, step 8** —
 see *Worst number* and *Last change*.
 
 **Worst number today:** real strangers reaching a first answer = **0**
-(row #2; funnel open since run 56, unwalked by real strangers). The worst
-*agent-movable* number was **row #21's one real red**: FLOW-001 0/3 —
-`/app/new` renders the first answer with **no SK-TRUST-002/SK-WEB-005
-trace toggle** (the 2026-05-24 masked regression; the create response
-shipped no trace block on any surface). **Run 59 lever: ship the
-create-path trace block end-to-end** (API + web + SDK + MCP + CLI +
-walker true-up, GLOBAL-003 one-PR parity). Not anti-rut-blocked (last 5
-merged = opencheck-reliability, walker re-true, daily-process,
-anonymous-mode/UX, CLI-release — this run is a product trust-UX fix).
+(row #2; funnel open since run 56, lagging — moved only through its
+agent-controllable inputs, and the top UX-flow input is now maxed). The
+worst *agent-movable* number was **row #21's last real red**: FLOW-001
+0/3 — step 8 asserted a *second* anon `/v1/ask` returns 200, but
+`SK-ANON-012` gates message #2 behind sign-in (401 `anon_device_cap`);
+the walker encoded the stale pre-`SK-ANON-012` model, so FLOW-001 could
+never pass. **Run 60 lever: correct step 8 (+ the FLOW-001 verification
+mirror) to assert the SK-ANON-012 wall as the anonymous terminus** —
+§10.3 decision-beats-test, product already correct. Result: row #21
+**6/9 → 9/9 + both FLOW-005 transports** (walker-confirmed against prod).
+Not anti-rut-blocked (last 5 merged = create-trace, opencheck-fix,
+walker-re-true, anon-fail-open, CLI-release — this run is a
+walker-vs-decision correctness fix). With every canonical flow now
+green, the next agent-movable lever returns to distribution yield
+(rows #6/#7) or the engine lane (row #9 Spider).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -47,8 +51,8 @@ anonymous-mode/UX, CLI-release — this run is a product trust-UX fix).
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **97** (`/vs` 31 + `/solve` 33 + `/blog` 33). Pending drafts **3** on main (run 55's `green-checkmark-has-a-half-life`, run 57's `one-shot-recovery-permanent-outage`, run 58's `smoke-test-walks-the-old-ui`) ⇒ cap reached — next run publishes before drafting (step 3; #672 merged after this run's step-3 evaluation, so the publish lands next run) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts 33; 7d external referrals = **9** (bing 8, github 1 — 07-12 19:39Z pull; was 9 at 16:16Z, 6 on 07-09, 1 on 07-06). Syndication feeds 1 (`/rss.xml`); internal links **2,883** (run-59 build: 117 pages, 0 dead — row #18) | CF `refererHost` — measured every run. External-referral yield holding (bing-led) as indexation lands |
+| 6 | Indexable surfaces | **98** (`/vs` 31 + `/solve` 33 + `/blog` 34). Run 60 published the oldest queued draft (`green-checkmark-has-a-half-life`, step 3); pending drafts **3 → 2** (run 57's `one-shot-recovery-permanent-outage`, run 58's `smoke-test-walks-the-old-ui`) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 7 | Surface yield | posts **34**; 7d external referrals = 9 (bing 8, github 1 — 07-12 19:39Z pull; was 6 on 07-09, 1 on 07-06). Syndication feeds 1 (`/rss.xml`); internal links **2,908** (run-60 build: 118 pages, 0 dead — row #18) | CF `refererHost` — carried from 19:39Z (strangers unchanged). External-referral yield holding (bing-led) as indexation lands |
 | | **Engine** — BIRD 07-11 · Spider 07-11 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.546** (272/498 EA, 2 `gold_error`, 07-11 canonical on main `2cfda39`, [run 29144102081](https://github.com/nlqdb/nlqdb/actions/runs/29144102081) — completed in ONE window, `no_sql` 0/500). Δ +2.01 pp vs 07-05, McNemar b=31/c=41, `regressions: []`. Baseline re-seeded. Measured pre-`SK-LLM-044`; next canonical re-verifies | target 0.65 / **Phase 2 floor 0.60** — gap 5.4 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2963** (40/135, `no_sql` 0/135, exec_error 3, gold_error 0 — 07-11 canonical on `6e1725c` with `SK-LLM-044`, nine-window `SK-QUAL-013` resume [29160009809](https://github.com/nlqdb/nlqdb/actions/runs/29160009809) → [29164092490](https://github.com/nlqdb/nlqdb/actions/runs/29164092490)). Was 0.2741 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -63,11 +67,11 @@ anonymous-mode/UX, CLI-release — this run is a product trust-UX fix).
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-12 run 59 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-12 run-59 sweep: **117** pages, **2,883** internal links — unchanged vs run 58) | target 0 — `bun run build && bun run check:links` in `apps/web` |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-12 run-60 sweep: **118** pages, **2,908** internal links — +1 page / +25 links from the new `/blog` post) | target 0 — `bun run build && bun run check:links` in `apps/web` |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **1 open (founder-blocked)** — `brew install nlqdb/tap/nlq` advertised (`cli/README.md`, npm-shim fallback, SK-CLI-002) but the tap empty since 2026-05-19; blocked on the `HOMEBREW_TAP_GITHUB_TOKEN` PAT (top `blocked-by-human.md` bullet); releases no longer fail on it (run-54 fix, #669). Runs 32 + 37 + 56 each found + closed 1 | claim-vs-reality on shipped surfaces + docs; target 0. Standing candidate: extend `check:links` to assert each advertised capability has shipped code. Run 59 closed a cousin gap: trust-ux docs claimed create-path trace parity that the wire didn't ship |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
-| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **6/9 on prod** (run-58 dispatch [29200271657](https://github.com/nlqdb/nlqdb/actions/runs/29200271657)); on the PR #674 preview ([29207000909](https://github.com/nlqdb/nlqdb/actions/runs/29207000909)) FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 both ✅ and FLOW-001's **step-6 trace class is closed** (2/2 runs revealed the DDL trace; TTFV 2.9–3.6 s) + the step-3 submit-flake class closed (keystroke re-arm). FLOW-001 still 0/3: new deepest red at **step 8** — 2nd anon `/v1/ask` 401s (SK-ANON-012 cap vs unshipped SK-WEB-002/017 morph-to-chat — **named next lever**) + 1× transient provision 500 | target 9/9 + both FLOW-005 transports. Prod step-6 flip lands with #674's merge + deploy; next 06:00Z cron re-verifies |
+| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-60 branch dispatch [29211619838](https://github.com/nlqdb/nlqdb/actions/runs/29211619838) against prod: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). FLOW-001's step-8 red was the walker asserting a 2nd anon `/v1/ask` 200 — impossible under `SK-ANON-012`'s message-#2 wall; step 8 now asserts the 401 cap (dt 296–337 ms). Before: main dispatch [29211269726](https://github.com/nlqdb/nlqdb/actions/runs/29211269726) FLOW-001 0/3 step-8 `status=401`. The run-59 "morph-to-chat gap" is **decided, not a gap**: the anon terminus IS the sign-in redirect (SK-ANON-011 stash → SK-ANON-003 adopt); the SK-WEB-002 chat is the post-sign-in /app surface | target 9/9 + both FLOW-005 ✅ **met**. The corrected walker runs on main at the next 06:00Z cron; step-7 copy-affordance skip (button reads "Copy" not "Copy snippet") is a benign found-not-pulled |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -78,6 +82,7 @@ anonymous-mode/UX, CLI-release — this run is a product trust-UX fix).
 Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 `research/distribution-queue.md` as pointers:
 
+- https://nlqdb.com/blog/green-checkmark-has-a-half-life/ (run 60 — CI/measurement lesson, the row #15 freshness method: when an expensive suite can't run on every push, "passing" is an event not a state — score `pass × freshness` with a linear decay so the number rots until someone re-runs it)
 - https://nlqdb.com/blog/ephemeral-staging-persistent-registry/ (run 56 — CI/test-infra lesson, the SK-E2E-007 spin-up purge: an environment is only as ephemeral as the most persistent store that references it)
 - https://nlqdb.com/blog/ownership-transfer-outlives-least-privilege/ (run 54 — Postgres multi-tenancy lesson, the SK-ANON-003 adoption ACL gap: an ownership transfer must retarget every authorization store; a catch-all must log the code it swallows)
 - https://nlqdb.com/blog/most-active-user-is-your-test-suite/ (run 53 — measurement-hygiene lesson, the funnel bot-filter: a metric that doesn't name its population is measuring your robots; filter at read time)
@@ -114,49 +119,42 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-12 (run 59)** — lever: **ship the create-path SK-TRUST-002
-trace block (row #21, FLOW-001's only real red).** Step 0: one open PR,
-#672 (opencheck adoption fix) — no file overlap (queue file left to it;
-it merged mid-run and this branch rebased onto it). **The finding:** the `kind=create` `/v1/ask` response
-shipped **no trace block on any surface** — the 2026-05-24 masked
-regression run 58 unmasked (FLOW-001 step 6 "no trace affordance
-found"); trust-ux docs claimed parity closed, MCP fabricated an empty
-trace to paper over the wire gap. §10.3: feature wins → code fix, no
-decision superseded. **The change (GLOBAL-003, one PR #674):** API
-returns `trace: { sql: <provisioned DDL>, plan_id: create:<dbId>, model,
-confidence, cache_hit: false }` on create (SchemaInferResponse widened to
-mirror PlanResponse — SK-LLM-012 updated in place; duplicate
-InferSchemaResult type deleted per P5); web `CreateResultView` renders
-the collapsed `<details>` trace pane; SDK types it; MCP passes it
-through; CLI renders `─ trace ─`; FLOW-001 step 6 trued to the create
-surface (`SELECT|CREATE TABLE`) + verification mirror synced. **Measured
-(same instrument):** before = run-58 dispatch
-[`29200271657`](https://github.com/nlqdb/nlqdb/actions/runs/29200271657)
-FLOW-001 2/2 step-6 fails "no trace affordance found" → after = branch
-dispatch against the PR #674 preview
-([`29207000909`](https://github.com/nlqdb/nlqdb/actions/runs/29207000909)):
-**2/2 runs reaching step 6 revealed the compiled DDL** (TTFV 2.9–3.6 s;
-wire-verified too — anon curl create returned `trace.sql` = provisioned
-DDL, `model=gpt-oss-120b`). Δ > 0 — keep. Also closed en route: the
-step-3/5 submit-flake class (walker `fill()` raced island hydration —
-now types trusted keystrokes until the submit arms; 3/3 dead → 3/3
-armed on the same preview). **Found, not pulled (named next levers):**
-(1) step-8 red — the 2nd anon `/v1/ask` 401s: SK-ANON-012's one-create
-device cap vs the SK-WEB-002/017 "morphs into a chat" contract that
-steps 8–9 assert but `/app/new` doesn't ship (renders `CreateResultView`
-+ sign-in CTA) — decide ship-vs-supersede next run; (2) 1× transient
-`provision_failed` 500 (rolled back, not reproduced). Prod row flips on
-merge + deploy; next 06:00Z cron re-verifies.
-**Step 1:** full funnel/ops re-pull 19:39–19:41Z (rows #1–#5, #12–#13 —
-strangers still 0); docs-ambiguity 17 (held); link sweep 117 pages /
-2,883 links / 0 dead; row #15 ≈ 0.92 (all four suites green ≤ 15.5 h).
-**Artifact (step 3):** at evaluation time the queue was < 3 and the
-queue file sat inside open #672's diff ⇒ no draft, no publish this run;
-#672's merge later brought the queue to 3 ⇒ the **next** run opens with
-the step-3 publish (row #6). **KPI:** GLOBAL-025 UX + onboarding (the trust baseline holds
-on the first answer a stranger ever sees) — **none degrade** (additive
-response field; prompts, eval baselines, CI lanes, read-path trace
-untouched; engine rows #8–#11 carried unchanged).
+**2026-07-12 (run 60)** — lever: **correct FLOW-001 step 8 to assert the
+SK-ANON-012 sign-in wall (row #21, the last real canonical-flow red).**
+Step 0: no open PRs; rule-6 health clean (typecheck/lint/test green
+once the local toolchain was installed; all 7 push-deploys success on
+main `57fa680`). **The finding:** FLOW-001 (anonymous-first) step 8
+asserted a *second* anon `/v1/ask` returns 200 with the same dbId — but
+`SK-ANON-012` gates message #2 behind sign-in (401 `anon_device_cap`;
+GLOBAL-007 lands the wall at #2, not #1). The wall is the designed
+conversion moment, so the walker — and the FLOW-001 verification mirror's
+steps 8–9 — encoded the stale pre-`SK-ANON-012` model and could never
+pass. §10.3: decision beats the test/mirror prose; product already
+correct. **The change:** `flow-001.ts` step 8 now passes on the 401 cap
+(status-only — the `auth_required` redirect to sign-in empties the
+response body before the walker reads it, so a body-regex was unreadable;
+on a 2nd anon POST `/v1/ask` a 401 can only be the SK-ANON-010/012 cap);
+the mirror's steps 8–9 + pass criteria rewritten to the SK-ANON-012
+terminus. Resolves run-59's "morph-to-chat" open question: the anon
+terminus IS the sign-in redirect (SK-ANON-011 stash → SK-ANON-003
+adopt); SK-WEB-002's chat is the post-sign-in /app surface — no product
+gap. **Measured (same instrument, acquisition-health walker):** before =
+main dispatch
+[`29211269726`](https://github.com/nlqdb/nlqdb/actions/runs/29211269726)
+FLOW-001 **0/3** (all 3 step-8 `status=401`, steps 1–7 green) → after =
+branch dispatch against prod
+[`29211619838`](https://github.com/nlqdb/nlqdb/actions/runs/29211619838):
+FLOW-001 **3/3**, overall stranger-test **9/9** + both FLOW-005
+transports `passed`. **Row #21 6/9 → 9/9 — target met.** Δ > 0 — keep.
+**Artifact (step 3):** queue was 3-deep ⇒ published the oldest draft
+`green-checkmark-has-a-half-life` to `/blog` (row #6 33→34; queue 3→2;
+build 117→118 pages, 0 dead links). **Step 1:** funnel/ops carried from
+the 19:39–19:41Z pull (rows #1–#5, #12–#13 — strangers still 0, no
+acquisition event possible); docs-ambiguity 17 (held); row #15 ≈ 0.91
+(carried, no new e2e dispatch). **KPI:** GLOBAL-025 UX (every canonical
+stranger flow now green end-to-end) + onboarding + distribution yield —
+**none degrade** (walker/mirror + one additive blog post; no product,
+prompt, eval-baseline, or CI-lane change; engine rows #8–#11 carried).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
