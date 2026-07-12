@@ -24,12 +24,15 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   and becomes an *event*. The API deploys daily; a suite that was green
   Tuesday asserts nothing about Friday's build, but the dashboard still
   shows the same reassuring checkmark. Fix: score each suite
-  `pass × freshness`, where freshness decays linearly 1 → 0 over the
-  deploy cadence (ours: 7 days) — the dashboard number itself rots until
+  `pass × freshness`, where freshness decays linearly 1 → 0 over a
+  fixed window (ours: 7 days) — the dashboard number itself rots until
   an operator re-dispatches, so the metric replaces the cron instead of
   the cron replacing judgement. Three design notes that mattered: (1) the
-  decay window is your *deploy cadence*, not a calendar week — a suite is
-  stale when the thing it certifies has changed underneath it; (2) score
+  window is a compromise and should say so — the honest window is your
+  deploy cadence (a suite is stale the moment the thing it certifies
+  changes underneath it), but every dispatch costs quota, so our 7 days
+  against daily deploys makes the score an upper bound on confidence,
+  not a guarantee; (2) score
   only the latest completed run, and a red run is 0 regardless of
   freshness — averaging history lets an old green subsidize a current
   red; (3) print the last-success date in the same cell as the score, or
