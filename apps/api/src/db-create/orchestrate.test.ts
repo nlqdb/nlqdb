@@ -79,7 +79,10 @@ function stubPlan(overrides: Partial<SchemaPlan> = {}): SchemaPlan {
 }
 
 function stubInferSchema(result?: InferSchemaResult) {
-  return vi.fn(async (): Promise<InferSchemaResult> => result ?? { ok: true, plan: stubPlan(), model: "fake-model", confidence: 1.0 });
+  return vi.fn(
+    async (): Promise<InferSchemaResult> =>
+      result ?? { ok: true, plan: stubPlan(), model: "fake-model", confidence: 1.0 },
+  );
 }
 
 function stubCompileDdl(result?: CompileDdlResult) {
