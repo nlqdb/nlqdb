@@ -41,6 +41,51 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "five-fallback-models-one-provider",
+    title: "Your five fallback models are one point of failure.",
+    description:
+      "A model-diverse fallback list on one gateway saturates as a unit — five models, one rack. Make the fallback unit a lane (base URL, key, candidates), not a longer list on the same pool.",
+    date: "2026-07-11",
+    body: [
+      {
+        kind: "p",
+        text: "Our agentic CI suite drives a real browser with an LLM. The driver model comes from an ordered five-model fallback list — health-probed before each run with real tool-call probes, re-ranked by measured agent competence. Textbook redundancy. It still failed 13 dispatches in a row.",
+      },
+      { kind: "h2", text: "Model-diverse, provider-identical" },
+      {
+        kind: "p",
+        text: "The list was diverse in the dimension we could see — five different model families, five different weights — and identical in the dimension that failed: every slug resolved to the same gateway's free pool. That pool saturates as a unit. When model #1 came back `429`, models #2 through #5 were rate-limited too, at 04:37 UTC and at 22:14 alike, because the limit lives on the shared pool, not on any model. Five models on one provider are five servers in one rack.",
+      },
+      {
+        kind: "p",
+        text: "The probes made it worse, not better. A three-probe health gate picked whichever model answered its probes that minute — and then the pick starved 216 seconds into the run, because passing three probes measures a moment of pool weather, not a claim on future capacity. A flapping pool passes probes all day.",
+      },
+      { kind: "h2", text: "The tell in the traces" },
+      {
+        kind: "p",
+        text: 'What finally broke the diagnosis open was a latency split in the Playwright traces: the product under test answered its API call in 4 seconds with a 200 — while three tests burned their entire 240-second budget waiting for the *driver* to produce the next click. The app was green; the thing testing the app was starving; the suite reported "product red." If your E2E harness and your product share a failure domain, a harness outage is indistinguishable from a product regression until you split them.',
+      },
+      { kind: "h2", text: "Redundancy has to cross the failure-domain boundary" },
+      {
+        kind: "p",
+        text: "The fix is a *lane*, not a longer list. A lane is the real unit of failure: base URL + API key + candidate models. Fall back between lanes only when the whole primary lane fails its probes — and make the first fallback candidate the *same weights hosted by a different provider*, which keeps agent competence constant while moving to an independent pool:",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: '// The fallback unit is the lane, not the model. Walking candidates\n// inside one lane retries the same saturated pool with a new name.\ntype Lane = { baseUrl: string; apiKey: string; candidates: string[] };\n\nconst LANES: Lane[] = [\n  // Primary: an independent pool. Same weights as the old list’s best\n  // performer, hosted elsewhere — competence constant, failure domain new.\n  { baseUrl: NIM_URL, apiKey: NIM_KEY, candidates: ["openai/gpt-oss-120b"] },\n  // Fallback: the gateway’s free pool — five candidates, ONE domain.\n  { baseUrl: GW_URL, apiKey: GW_KEY, candidates: FREE_SLUGS },\n];\n\nfor (const lane of LANES) {\n  const model = await probeLane(lane); // 3 real tool-call probes\n  if (model) return { ...lane, model };\n  // Whole lane failed — only now is trying elsewhere informative.\n}',
+      },
+      {
+        kind: "p",
+        text: "One more boundary matters: budgets. The fallback lane must not raid the quota the application under test runs on — if the rescue driver and the product share a pool, the rescue *causes* the next outage. Keep the driver's spend and the product's spend on separate keys, and treat \"the driver ran out\" as a harness failure, never a product failure.",
+      },
+      {
+        kind: "p",
+        text: "On the first dispatch with the swapped lanes, the test that had starved at 216 seconds passed in 14.9 — same suite, same app, same weights. Nothing about the product changed; only the failure domain did. (This is a build note from [nlqdb](https://nlqdb.com), the database you query in plain English. Honest split: a CI/infra lesson from our E2E harness, not a product feature.)",
+      },
+    ],
+  },
+  {
     slug: "decided-questions-rot-in-your-decision-log",
     title: "An \"open question\" that's already decided is worse than one that's still open.",
     description:

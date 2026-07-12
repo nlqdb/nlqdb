@@ -64,29 +64,6 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   will re-diagnose from scratch. Honest split: a Postgres/multi-tenancy
   lesson from our adoption path, not a product feature.
 
-- **"Your five fallback models are one point of failure."** slug
-  `five-fallback-models-one-provider` · venue dev.to (#llm #ci #testing) +
-  r/LLMDevs + lobste.rs (`practices`) · CI/engine lesson (the opencheck
-  agent-lane fallback, `_e2e-opencheck.yml`, 2026-07-11). Angle: an agentic
-  CI suite drove the browser with an LLM picked from an ordered five-model
-  fallback list — health-probed with real tool-call probes, re-ranked by
-  measured agent competence. It still failed 13 dispatches in a row. The
-  list was model-diverse but provider-identical: all five slugs resolved to
-  one gateway's free pool, and that pool saturates as a unit — when model
-  #1 is rate-limited upstream, #2–#5 are too, at 04:37 UTC and at 22:14
-  alike. The tell in the Playwright traces: the product under test answered
-  its API call in 4 s with a 200 while three tests burned their entire
-  240 s budget — the *driver* starved, and the suite reported "product
-  red." Redundancy has to cross the failure-domain boundary, not the name
-  boundary: five models on one provider are five servers in one rack. The
-  fix is a lane, not a longer list — (base URL, key, candidate models) as
-  the fallback unit, walked only when the whole primary lane fails its
-  probes, with the same weights hosted by a different provider as the first
-  fallback candidate (same competence, independent pool). And keep the two
-  budgets separate: the fallback lane must not raid the quota the app under
-  test runs on, or the rescue causes the next outage. Honest split: a
-  CI/infra lesson from our E2E harness, not a product feature.
-
 ## Published — canonical `/blog` copies live; venue variants pending
 
 Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
@@ -94,6 +71,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 51 — **https://nlqdb.com/blog/five-fallback-models-one-provider/** — dev.to (#llm #ci #testing) + r/LLMDevs + lobste.rs (`practices`) · CI/engine lesson (the opencheck agent-lane fallback — redundancy must cross the failure-domain boundary; the lane, not the model, is the fallback unit)
 - run 49 — **https://nlqdb.com/blog/decided-questions-rot-in-your-decision-log/** — dev.to (#documentation #architecture #engineering) + r/ExperiencedDevs + lobste.rs (`practices`) · engineering-process lesson (the scorecard row #17 docs-ambiguity method — resolved is a greppable state; unmarked bullets are counted debt)
 - run 47 — **https://nlqdb.com/blog/emit-metrics-where-the-distinction-is-certain/** — dev.to (#programming #observability #architecture) + r/ExperiencedDevs + lobste.rs (`practices`) · engineering lesson (`SK-TRUST-004` — emit a metric at the lowest layer where the distinction it encodes is certain)
 - run 44 — **https://nlqdb.com/blog/rotate-encryption-key-without-a-version-column/** — dev.to (#security #database #architecture) + r/programming + lobste.rs (`security`) · security/architecture lesson (`GLOBAL-031` KEK rotation — version in the ciphertext prefix, not a column)
