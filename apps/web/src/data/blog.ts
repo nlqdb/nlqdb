@@ -49,7 +49,7 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       {
         kind: "p",
-        text: "Multi-tenant Postgres, one schema per tenant database. On day one, every query ran as the shared owner role, so \"transfer this database to the user who just signed in\" was honestly a one-row registry UPDATE — flip `tenant_id`, done. We wrote that down as a design decision, and it was the right one at the time.",
+        text: 'Multi-tenant Postgres, one schema per tenant database. On day one, every query ran as the shared owner role, so "transfer this database to the user who just signed in" was honestly a one-row registry UPDATE — flip `tenant_id`, done. We wrote that down as a design decision, and it was the right one at the time.',
       },
       { kind: "h2", text: "Least-privilege arrived; the transfer path didn't get the memo" },
       {
@@ -58,7 +58,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         kind: "p",
-        text: "So transfers kept *working* in the registry — the sidebar showed the database under its new owner — while every transferred database went permanently unqueryable: the role the session now switches to was never created, never granted `USAGE`, never made a `WITH SET` member, and the RLS literal still named the old tenant. Three authorization layers said \"old owner\"; one row said \"new owner\"; the row lost.",
+        text: 'So transfers kept *working* in the registry — the sidebar showed the database under its new owner — while every transferred database went permanently unqueryable: the role the session now switches to was never created, never granted `USAGE`, never made a `WITH SET` member, and the RLS literal still named the old tenant. Three authorization layers said "old owner"; one row said "new owner"; the row lost.',
       },
       {
         kind: "code",
@@ -68,7 +68,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The error wore a cold-start costume" },
       {
         kind: "p",
-        text: "Worse, the failure was invisible. `SET ROLE` to a missing role fails with a deterministic SQLSTATE — `42704` (undefined object) or `42501` (insufficient privilege) — and our generic error branch re-labelled both as \"couldn't reach the database,\" the same message a serverless cold start produces. No code was logged anywhere. For nine end-to-end runs we diagnosed retry timing on an error that was never transient.",
+        text: 'Worse, the failure was invisible. `SET ROLE` to a missing role fails with a deterministic SQLSTATE — `42704` (undefined object) or `42501` (insufficient privilege) — and our generic error branch re-labelled both as "couldn\'t reach the database," the same message a serverless cold start produces. No code was logged anywhere. For nine end-to-end runs we diagnosed retry timing on an error that was never transient.',
       },
       {
         kind: "p",
