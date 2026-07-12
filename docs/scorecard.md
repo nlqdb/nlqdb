@@ -121,8 +121,11 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 **2026-07-12 (run 57)** — lever: **the adopted-DB brick root-caused to a
 silent isolate-dependent import crash; fixed at the root + made
 self-healing (`SK-ASK-024`; weekly-focus row #15 0.72 → 0.96).**
-Step 0: only #667 open (`daily.md` only — no overlap; its founder-directed
-ordering honoured: this is a real UX-flow product fix, priority 1).
+Step 0: #667 (daily.md rules) and #673 (run 58, walker re-true) merged
+before this PR; reconciled on top per the second-merge rule — the table
+carries run 58's fresher 16:16Z pulls and row #21 6/9; this entry is the
+run-57 lever narrative. #667's founder-directed ordering honoured: this
+is a real UX-flow product fix, priority 1.
 **Measure first:** `depth=a` opencheck on post-#671 main — Suite A **5/5
 in 95 s** ([29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944)),
 first fully-green Suite A since 06-12 and first green opencheck workflow
@@ -151,12 +154,16 @@ rejected "exec-time self-heal" clause superseded in place per P1/P3.
 **Measured verdict (A/B on the same probe preview, same flow):** old code
 → D1 flipped, role missing, no diag row; fix → **role created + RLS
 literal retargeted to the adopter**. Δ > 0 — keep. Probe rows/branch/KV
-cleaned up after. CI-level `ab` re-dispatch from the fixed branch = the
-live confirmation (verdict on the PR). **Step 1:** full funnel/ops
+cleaned up after. The CI-level `ab` re-dispatches from the fixed branch
+concluded **zero diag rows across both** (create + adopt passing even on
+the starved lane); residual red = agent-lane capacity, the standing
+e2e-coverage OQ (verdict on the PR + tracker). **Step 1:** full funnel/ops
 re-pull 13:20Z (rows #1–#5, #12–#13; D1 read fixture-clean); OQ grep 17
 (held); link sweep 117 pages / 2,883 links / 0 dead. **Artifact (step
-3):** queue was 1 < 3 ⇒ drafted `one-shot-recovery-permanent-outage`
-(queue now 2). **KPI:** GLOBAL-025 UX + onboarding (the anon → sign-in →
+3):** queue was 1 < 3 at draft time ⇒ drafted
+`one-shot-recovery-permanent-outage` (reconciled queue 3 with run 58's
+draft — cap reached, run 55's collapsed to a gist line per the queue's
+retention rule; next run publishes before drafting). **KPI:** GLOBAL-025 UX + onboarding (the anon → sign-in →
 query arc no longer bricks — the exact first-session path strangers hit)
 + E2E freshness (weekly focus row #15 0.72 → 0.96); **none degrade**
 (failure-path-only changes; happy path, prompts, eval baselines, CI lanes
