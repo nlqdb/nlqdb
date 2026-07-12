@@ -11,8 +11,13 @@ import { makeKvDiagSink } from "./ask/diag.ts";
 
 // Shared-Neon client from the same `DATABASE_URL` ref the provisioner
 // uses, wrapped in a `db.transaction` span (GLOBAL-014) covering the
-// catalog read + grant batch.
-export function makeAclRetarget(envBindings: Cloudflare.Env): AclRetarget {
+// catalog read + grant batch. `event` names the diag class a failure is
+// recorded under — adoption-time callers keep the default; the SK-ASK-024
+// exec-time heal passes its own so a pull can tell the two apart.
+export function makeAclRetarget(
+  envBindings: Cloudflare.Env,
+  event: "anon_adopt_regrant_failed" | "exec_acl_heal_failed" = "anon_adopt_regrant_failed",
+): AclRetarget {
   return async (dbId, newTenantId) => {
     const { buildPgClient, resolveDatabaseUrl } = await import("./db-create/build-deps.ts");
     const pg = buildPgClient(resolveDatabaseUrl(envBindings));
@@ -40,7 +45,7 @@ export function makeAclRetarget(envBindings: Cloudflare.Env): AclRetarget {
         await tracer.startActiveSpan("nlqdb.diag.write", async (diagSpan) => {
           try {
             await makeKvDiagSink(envBindings.KV, envBindings.NODE_ENV ?? "unknown").record({
-              event: "anon_adopt_regrant_failed",
+              event,
               pgCode: typeof code === "string" ? code : "none",
               pgMessage: (err instanceof Error ? err.message : String(err)).slice(0, 500),
               dbId,

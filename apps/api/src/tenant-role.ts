@@ -30,3 +30,15 @@ export function assertTenantRoleName(role: string): void {
     throw new Error(`unsafe tenant role name "${role}"`);
   }
 }
+
+// SK-ASK-024 — the exec-time ACL heal keys off this exact shape:
+// `SET LOCAL ROLE` on a missing role raises SQLSTATE 22023 with this
+// message. Message-first (Neon HTTP responses sometimes drop `.code`),
+// pinned to the tenant-role identifier so no other missing-role error
+// can trigger a grant batch.
+const TENANT_ROLE_MISSING_MSG = /role "tenant_[0-9a-f]{16}" does not exist/i;
+
+export function isTenantRoleMissingError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return TENANT_ROLE_MISSING_MSG.test(msg);
+}

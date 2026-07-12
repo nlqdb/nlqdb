@@ -21,11 +21,16 @@ import {
 import type { LLMRouter } from "@nlqdb/llm";
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { makeAclRetarget } from "../anon-adopt-regrant.ts";
 import { resolveDb } from "../db-registry.ts";
 import { buildEventEmitter } from "../events-emitter.ts";
 import { getLLMRouter } from "../llm-router.ts";
 import { kekFromEnv, openSecret } from "../secret-envelope.ts";
-import { assertTenantRoleName, tenantRoleName } from "../tenant-role.ts";
+import {
+  assertTenantRoleName,
+  isTenantRoleMissingError,
+  tenantRoleName,
+} from "../tenant-role.ts";
 import { makeKvDiagSink } from "./diag.ts";
 import { makeFirstQueryTracker } from "./first-query.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
@@ -150,10 +155,49 @@ export async function dispatchExec(
   return runners.runHostedPg(url, schemaName, db.tenantId, sql, signal);
 }
 
+// SK-ASK-024 — exec-time tenant-ACL self-heal. The adoption-time retarget
+// (SK-ANON-003) is best-effort and runs exactly once; a transient miss
+// used to leave the adopted DB permanently unqueryable — every later
+// query died at `SET LOCAL ROLE` (22023) in the db_unreachable catch-all
+// (the 2026-07-11 e2e brick). The retarget is idempotent and constant-
+// size, so the steady-state path repairs the drift: on the tenant-role-
+// missing error shape, re-point the schema's ACL at the row's own tenant
+// and re-run the statement once. Safe by construction: `resolveDb`
+// already scoped the row to the caller, so the heal can only ever grant
+// a tenant its own schema. A heal failure records its own diag row
+// (`exec_acl_heal_failed`) and the caller sees the ORIGINAL exec error.
+export async function execWithTenantAclHeal(
+  db: DbRecord,
+  sql: string,
+  run: (db: DbRecord, sql: string, signal?: AbortSignal) => Promise<QueryResult>,
+  heal: (dbId: string, tenantId: string) => Promise<void>,
+  signal?: AbortSignal,
+): Promise<QueryResult> {
+  try {
+    return await run(db, sql, signal);
+  } catch (err) {
+    const isHosted = db.engine === "postgres" && !db.connectionBlob;
+    if (!isHosted || !isTenantRoleMissingError(err)) throw err;
+    try {
+      await heal(db.id, db.tenantId);
+    } catch {
+      throw err;
+    }
+    trace.getActiveSpan()?.setAttribute("nlqdb.ask.acl_healed", true);
+    return run(db, sql, signal);
+  }
+}
+
 // Production exec — wires the real Neon + BYO ClickHouse runners. This is
 // the `OrchestrateDeps.exec` callback `buildAskDeps` passes.
 function buildExec(db: DbRecord, sql: string, signal?: AbortSignal): Promise<QueryResult> {
-  return dispatchExec(db, sql, DEFAULT_RUNNERS, signal);
+  return execWithTenantAclHeal(
+    db,
+    sql,
+    (d, s, sig) => dispatchExec(d, s, DEFAULT_RUNNERS, sig),
+    makeAclRetarget(env, "exec_acl_heal_failed"),
+    signal,
+  );
 }
 
 const DEFAULT_RUNNERS: ExecRunners = {
