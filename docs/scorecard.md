@@ -53,7 +53,7 @@ refocus, engine).
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (fresh 07-12 remote-D1; method `SK-ONBOARD-007`). Unfiltered counters 4/13 ok across 3 counted DBs — dominated by the e2e adoption-ACL failures diagnosed by run 53's `SK-ASK-023` (#668, merged) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. Deleted-row counters are a known caveat of DB-row-scoped counters (run 52's `SK-E2E-007` purge deletes fixture rows every run); stranger-only method unaffected (their DBs persist) |
 | 5 | Session retention (≥ 2 queries) | 2 DBs with `first10_asks ≥ 2` (07-12, same fixture caveat as row #4) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **96** (`/vs` 31 + `/solve` 33 + `/blog` 32) — run 53 (#668) published `most-active-user-is-your-test-suite`, run 54 `ownership-transfer-outlives-least-privilege` (116 built pages, in rss/llms/sitemap). Pending drafts **2** (run 52's `ephemeral-staging-persistent-registry` + run 55's `green-checkmark-has-a-half-life`; only #667 remains open and claims neither) ⇒ < 3 ⇒ next run may draft (step 3) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 6 | Indexable surfaces | **96** (`/vs` 31 + `/solve` 33 + `/blog` 32) — run 53 (#668) published `most-active-user-is-your-test-suite`, run 54 `ownership-transfer-outlives-least-privilege` (116 built pages, in rss/llms/sitemap). Pending drafts **2** (run 52's `ephemeral-staging-persistent-registry` + run 55's `green-checkmark-has-a-half-life`; open #671 claims `ephemeral-staging…` for publish, #667 claims neither) ⇒ < 3 ⇒ next run may draft (step 3) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
 | 7 | Surface yield | posts 32 (run 53: +`most-active-user…`, run 54: +`ownership-transfer…`); 7d external referrals = **9** (bing 8, github 1 — 07-12 04:15Z pull; was 6 on 07-09, 1 on 07-06). Syndication feeds 1 (`/rss.xml`); internal links **2,858** (run-54 reconciled-tree build) | CF `refererHost` — measured every run. External-referral yield holding (bing-led, 1 → 6 → 9) as indexation lands |
 | | **Engine** — BIRD 07-11 · Spider 07-11 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.546** (272/498 EA, 2 `gold_error`, 07-11 canonical on main `2cfda39`, [run 29144102081](https://github.com/nlqdb/nlqdb/actions/runs/29144102081) — completed in ONE window, `no_sql` 0/500, first fully capacity-clean canonical). Δ +2.01 pp vs 07-05, McNemar b=31/c=41, `regressions: []`. Baseline re-seeded. Measured pre-`SK-LLM-044`; next canonical re-verifies | target 0.65 / **Phase 2 floor 0.60** — gap 5.4 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
@@ -122,8 +122,9 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 at the root.** Step 0: PRs #664–#666, #668 (run 53, `SK-ASK-023` diag sink
 + published `most-active-user…`) and #670 (run 55, suite re-dispatch →
 row #15 0.50 → 0.75) merged first; this entry reconciled on top per the
-second-merge rule (run 55's fresher funnel/ops/E2E numbers kept). Only
-#667 (daily.md rules) remains open — different lever. **Diagnosis:**
+second-merge rule (run 55's fresher funnel/ops/E2E numbers kept). Still
+open: #667 (daily.md rules) and #671 (run 56, anon-create fail-open;
+publishes `ephemeral-staging…`) — different levers. **Diagnosis:**
 deploy-cli had **never been
 green** — 10/10 runs failed 2026-05-19 → 07-11, every one *after* the GitHub
 Release published, at the Homebrew formula push to `nlqdb/homebrew-tap`
