@@ -17,6 +17,9 @@ canonical re-measure attributes to noise ("no attributable lever," #661). Per
 one guarantees the loop's energy scatters (see monoculture). The floor breach
 (0.546 < 0.60) is real but **no GLOBAL-025 alert tripped** (flat-to-positive, no
 regression), so the fix is to stop steering by it, not to keep chasing it.
+Flagged by ID per P1: `SK-QUAL-005`'s "engine work until cleared" mandate is
+**lever-blocked, not superseded** — it re-binds the focus the moment any engine
+lever unparks (first candidate: the license reply).
 
 ## Monoculture (check 2) — internal hygiene, no yield
 

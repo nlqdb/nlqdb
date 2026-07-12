@@ -12,7 +12,9 @@ fresh. **Why:** it is the worst *agent-movable* number. BIRD (row #8, 0.546
 **dark for the lever** — offline levers exhausted, SC dead (#619),
 frontier-lens closed (run 15); the only remaining path, the corrected-set,
 is blocked on an external maintainer's license reply (uiuc-kang-lab #7,
-filed 07-07, no response), so no single run can move it. Strangers (row #2)
+filed 07-07, no response), so no single run can move it — `SK-QUAL-005`'s
+engine-work mandate stands lever-blocked and re-binds the focus once any
+engine lever unparks. Strangers (row #2)
 lag. Row #15 responds to agent action (0 → live signal via runs 46/48/50)
 and guards the integrity of every engine/UX number this loop reports. Last
 week's focus (BIRD ≥ 0.60) was itself dark: 0 of ~43 runs could pull it —
