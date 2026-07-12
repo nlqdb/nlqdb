@@ -34,11 +34,13 @@
   Pull: list `diag:` keys via wrangler / the CF KV REST API. Writes are
   capped per isolate per minute (`DIAG_MAX_WRITES_PER_WINDOW`) so an
   outage storm eats the namespace's shared 1 k/day free-tier write
-  quota (GLOBAL-013) at a trickle, not at request rate — and a drained
-  quota only degrades plan-cache fills, whose writes already fail soft.
-  Reviewers
-  reject a diag write that can throw into the request path, and any new
-  `diag:*` row class without a TTL.
+  quota (GLOBAL-013) at a trickle, not at request rate. The cap is
+  load-bearing: the ask-pipeline's own KV writes (plan-cache fills,
+  first-query, recent-tables, diag itself) fail soft when the quota
+  drains, but the same namespace also backs writers that fail hard —
+  the anon per-IP limiter's counter put and Better Auth secondary
+  storage. Reviewers reject a diag write that can throw into the
+  request path, and any new `diag:*` row class without a TTL.
 - **Alternatives rejected:**
   - **Live `wrangler tail` during e2e runs** — previews don't reach tail
     either; CF excludes them from every log surface.
