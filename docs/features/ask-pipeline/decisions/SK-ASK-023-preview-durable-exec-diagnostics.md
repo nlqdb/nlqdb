@@ -31,7 +31,10 @@
   `deps.diag.record` under a **swallowed** `nlqdb.diag.write` span — a
   diagnostic write must never alter the error path or delay the 502
   meaningfully. `build-deps.ts` wires `makeKvDiagSink(KV, NODE_ENV)`.
-  Pull: list `diag:` keys via wrangler / the CF KV REST API. Reviewers
+  Pull: list `diag:` keys via wrangler / the CF KV REST API. Writes are
+  capped per isolate per minute (`DIAG_MAX_WRITES_PER_WINDOW`) so an
+  outage storm can't drain the namespace's shared 1 k/day free-tier
+  write quota (GLOBAL-013) out from under the plan cache. Reviewers
   reject a diag write that can throw into the request path, and any new
   `diag:*` row class without a TTL.
 - **Alternatives rejected:**

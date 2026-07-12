@@ -21,6 +21,20 @@ export const DIAG_KEY_PREFIX = "diag:";
 // a handful of rows per bad run).
 export const DIAG_TTL_SECONDS = 7 * 24 * 60 * 60;
 
+// Storm guard — a DB outage fires the exec catch-all on every failing
+// request, and the shared namespace's free-tier write quota (1 k/day,
+// also the plan cache's — GLOBAL-013) must survive one: cap rows per
+// isolate per minute. Excess failures still hit the span/console path.
+export const DIAG_MAX_WRITES_PER_WINDOW = 5;
+const WINDOW_MS = 60_000;
+let windowStartMs = 0;
+let writesInWindow = 0;
+
+export function resetDiagWriteWindowForTest(): void {
+  windowStartMs = 0;
+  writesInWindow = 0;
+}
+
 // One entry per swallowed-failure class whose console line a preview
 // drops. Adding a class = adding a union member + the `record` call in
 // its catch; the key prefix `diag:<event>:` keeps classes list-separable.
@@ -43,7 +57,13 @@ export type DiagSink = {
 export function makeKvDiagSink(store: KVStore, source: string): DiagSink {
   return {
     async record(entry) {
-      const ts = new Date().toISOString();
+      const now = Date.now();
+      if (now - windowStartMs >= WINDOW_MS) {
+        windowStartMs = now;
+        writesInWindow = 0;
+      }
+      if (++writesInWindow > DIAG_MAX_WRITES_PER_WINDOW) return;
+      const ts = new Date(now).toISOString();
       // Timestamp-prefixed keys list in time order; the random suffix
       // keeps two failures in the same millisecond from colliding.
       const rand = Math.random().toString(16).slice(2, 8);

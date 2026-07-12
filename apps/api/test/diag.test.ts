@@ -2,8 +2,14 @@
 // logs, so the exec catch-all's SQLSTATE is persisted to the shared KV
 // namespace where a post-run pull (CF REST API / wrangler) still sees it.
 
-import { describe, expect, it } from "vitest";
-import { DIAG_KEY_PREFIX, DIAG_TTL_SECONDS, makeKvDiagSink } from "../src/ask/diag.ts";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  DIAG_KEY_PREFIX,
+  DIAG_MAX_WRITES_PER_WINDOW,
+  DIAG_TTL_SECONDS,
+  makeKvDiagSink,
+  resetDiagWriteWindowForTest,
+} from "../src/ask/diag.ts";
 import type { KVPutOptions } from "../src/kv-store.ts";
 
 function stubKv() {
@@ -29,6 +35,8 @@ const ENTRY = {
 };
 
 describe("makeKvDiagSink", () => {
+  beforeEach(resetDiagWriteWindowForTest);
+
   it("writes a per-event prefixed, TTL'd JSON row carrying the SQLSTATE + source", async () => {
     const kv = stubKv();
     await makeKvDiagSink(kv.store, "preview").record(ENTRY);
@@ -46,5 +54,12 @@ describe("makeKvDiagSink", () => {
     await sink.record(ENTRY);
     expect(kv.puts).toHaveLength(2);
     expect(kv.puts[0]?.key).not.toBe(kv.puts[1]?.key);
+  });
+
+  it("caps writes per isolate window so a failure storm can't drain the shared KV write quota", async () => {
+    const kv = stubKv();
+    const sink = makeKvDiagSink(kv.store, "production");
+    for (let i = 0; i < DIAG_MAX_WRITES_PER_WINDOW + 3; i++) await sink.record(ENTRY);
+    expect(kv.puts).toHaveLength(DIAG_MAX_WRITES_PER_WINDOW);
   });
 });
