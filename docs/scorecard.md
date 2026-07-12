@@ -136,8 +136,8 @@ token presence (`skip_upload` template; `index .Env` keeps local snapshot
 runs safe) + SK-CLI-002 amended in its canonical file. **Verification:**
 goreleaser publish-pipe source confirms `skip_upload` is template-applied
 before the `== "true"` check and the formula still lands in `dist/`; local
-snapshot with the env var absent builds clean, and `goreleaser check`
-passes on the final config. The merge auto-fires
+snapshot with the env var absent builds clean (`goreleaser check`: config
+valid; flags only the pre-existing `brews` deprecation). The merge auto-fires
 deploy-cli (`cli/**` path) → the live green run is the post-merge
 re-measure; if it still 401s, the secret exists-but-revoked and the founder
 bullet covers rotation. The PAT is founder-only (rule 4) → top

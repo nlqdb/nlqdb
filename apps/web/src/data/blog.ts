@@ -68,7 +68,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The error wore a cold-start costume" },
       {
         kind: "p",
-        text: 'Worse, the failure was invisible. `SET ROLE` to a missing role fails with a deterministic SQLSTATE — `42704` (undefined object) or `42501` (insufficient privilege) — and our generic error branch re-labelled both as "couldn\'t reach the database," the same message a serverless cold start produces. No code was logged anywhere. For nine end-to-end runs we diagnosed retry timing on an error that was never transient.',
+        text: 'Worse, the failure was invisible. `SET ROLE` to a missing role fails with a deterministic SQLSTATE — `22023` (invalid parameter value: the role does not exist) or `42501` (insufficient privilege) — and our generic error branch re-labelled both as "couldn\'t reach the database," the same message a serverless cold start produces. No code was logged anywhere. For nine end-to-end runs we diagnosed retry timing on an error that was never transient.',
       },
       {
         kind: "p",
