@@ -57,10 +57,13 @@ changelog:
 
 brews:
   - name: nlq
+    # Skip (not 401-fail) the tap push when HOMEBREW_TAP_GITHUB_TOKEN is
+    # unset/empty; `index` avoids the missing-key template error (SK-CLI-002).
+    skip_upload: '{{ if index .Env "HOMEBREW_TAP_GITHUB_TOKEN" }}false{{ else }}true{{ end }}'
     repository:
       owner: nlqdb
       name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+      token: '{{ index .Env "HOMEBREW_TAP_GITHUB_TOKEN" }}'
     homepage: https://nlqdb.com
     description: "Natural-language databases — talk to your data, ship without a backend."
     license: MIT

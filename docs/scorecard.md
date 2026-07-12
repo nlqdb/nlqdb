@@ -23,21 +23,26 @@ week's focus (BIRD ≥ 0.60) was itself dark: 0 of ~43 runs could pull it —
 see [`weekly-review.md`](weekly-review.md).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
-lagging metric moved only through its agent-movable inputs. Worst
-**agent-movable** number: **row #9 Spider raw EX** (0.2963) — but the
-engine lane's remaining offline loss classes need a fresh bucketing pass,
-and the opencheck residual is root-caused: run 52's `SK-E2E-007` purge
-(#665) closed the stale-fixture class, and run 53's `SK-ASK-023` diag
+lagging metric moved only through its agent-movable inputs. On row #15,
+run 52 (#665) closed the stale-fixture class, run 53's `SK-ASK-023` diag
 sink (#668, merged) proved the adoption-ACL retarget silently fails in
-e2e — the retarget repair is the named next lever (row #15).
-**Run 55 lever: the weekly focus itself (row #15)** — its other unclaimed
-component was freshness decay: sdk/mcp/examples last dispatched 07-09, so
-at 07-12 04:12Z the row read **0.50** (3 × pass·freshness 0.67 +
-opencheck 0). Per `SK-E2E-004` e2e is `workflow_dispatch`-only by
-decision (cron rejected; the operator dispatch IS the mechanism), so the
-run dispatched all three on main `c4fc468` — all green ⇒ row #15
-**0.50 → 0.75**. Opencheck's red stays with the ACL-retarget lever; not
-double-pulled here.
+e2e (18/18 diag rows `pg_code 22023`; the retarget repair is the named
+next lever), and run 55 (#670, merged) re-dispatched the three green
+suites (row #15 0.50 → 0.75). **Run 54 lever (rule 6 — red deploy
+on main outranks everything): deploy-cli had NEVER been green — 10/10 runs
+failed 2026-05-19 → 07-11** at the Homebrew tap push
+(`HOMEBREW_TAP_GITHUB_TOKEN` never valid → 401 *after* the GitHub Release
+publishes), contradicting the
+runbook's documented behavior ("without it … only the tap bump silently
+skips"). Fixed by gating the tap push on token presence
+(`skip_upload` template, `cli/.goreleaser.yml`) — verified against the
+goreleaser publish pipe source + a local snapshot run with the env var
+absent; the merge itself auto-fires deploy-cli (`cli/**` path filter), which
+is the live green re-measure. The PAT itself is founder-only →
+top bullet in `blocked-by-human.md`; until set, `brew install
+nlqdb/tap/nlq` stays a tracked row #19 claim gap (tap empty). Not
+anti-rut-blocked (last 5 merged = E2E-dispatch, E2E-diag, E2E/CI, weekly
+refocus, engine).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -48,8 +53,8 @@ double-pulled here.
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (fresh 07-12 remote-D1; method `SK-ONBOARD-007`). Unfiltered counters 4/13 ok across 3 counted DBs — dominated by the e2e adoption-ACL failures diagnosed by run 53's `SK-ASK-023` (#668, merged) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. Deleted-row counters are a known caveat of DB-row-scoped counters (run 52's `SK-E2E-007` purge deletes fixture rows every run); stranger-only method unaffected (their DBs persist) |
 | 5 | Session retention (≥ 2 queries) | 2 DBs with `first10_asks ≥ 2` (07-12, same fixture caveat as row #4) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **95** (`/vs` 31 + `/solve` 33 + `/blog` 31) — run 53 (#668, merged) published `most-active-user-is-your-test-suite`; run-55's sweep built 114 pages pre-#668, 115 expected once #664's + #668's posts share one build. Pending drafts **3** — `ownership-transfer-outlives-least-privilege` (collapsed gist; claimed for publish by open PR #669) + run 52's `ephemeral-staging-persistent-registry` + run 55's `green-checkmark-has-a-half-life` ⇒ ≥ 3 ⇒ next run publishes the oldest unclaimed (run 52's), per step 3 | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts 31 (run 53: +`most-active-user…`); 7d external referrals = **9** (bing 8, github 1 — 07-12 04:15Z pull; was 6 on 07-09, 1 on 07-06). Syndication feeds 1 (`/rss.xml`); internal links **2,808** (run-55 sweep, pre-#668's 31st post — next sweep re-counts) | CF `refererHost` — measured every run. External-referral yield holding (bing-led, 1 → 6 → 9) as indexation lands |
+| 6 | Indexable surfaces | **96** (`/vs` 31 + `/solve` 33 + `/blog` 32) — run 53 (#668) published `most-active-user-is-your-test-suite`, run 54 `ownership-transfer-outlives-least-privilege` (116 built pages, in rss/llms/sitemap). Pending drafts **2** (run 52's `ephemeral-staging-persistent-registry` + run 55's `green-checkmark-has-a-half-life`; open #671 claims `ephemeral-staging…` for publish, #667 claims neither) ⇒ < 3 ⇒ next run may draft (step 3) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 7 | Surface yield | posts 32 (run 53: +`most-active-user…`, run 54: +`ownership-transfer…`); 7d external referrals = **9** (bing 8, github 1 — 07-12 04:15Z pull; was 6 on 07-09, 1 on 07-06). Syndication feeds 1 (`/rss.xml`); internal links **2,858** (run-54 reconciled-tree build) | CF `refererHost` — measured every run. External-referral yield holding (bing-led, 1 → 6 → 9) as indexation lands |
 | | **Engine** — BIRD 07-11 · Spider 07-11 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.546** (272/498 EA, 2 `gold_error`, 07-11 canonical on main `2cfda39`, [run 29144102081](https://github.com/nlqdb/nlqdb/actions/runs/29144102081) — completed in ONE window, `no_sql` 0/500, first fully capacity-clean canonical). Δ +2.01 pp vs 07-05, McNemar b=31/c=41, `regressions: []`. Baseline re-seeded. Measured pre-`SK-LLM-044`; next canonical re-verifies | target 0.65 / **Phase 2 floor 0.60** — gap 5.4 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2963** (40/135, `no_sql` 0/135, exec_error 3, gold_error 0 — 07-11 canonical on `6e1725c` with `SK-LLM-044`, nine-window `SK-QUAL-013` resume [29160009809](https://github.com/nlqdb/nlqdb/actions/runs/29160009809) → [29164092490](https://github.com/nlqdb/nlqdb/actions/runs/29164092490)). Was 0.2741 (37/135, run 49's first fully-answered run) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -64,9 +69,9 @@ double-pulled here.
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11 `scripts/mcp-hosts.sh`: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | every criterion instrumented; only agent-movable *pass* left is the agentic-frontier ~11 pp competence lift (`SK-LLM-017` premium chain, or the parked corrected-set); rest are stranger-dependent |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-12 run 55 — count held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-12 run-55 sweep: **114** pages, **2,808** internal links — #668's `most-active-user…` post landed after the sweep; next sweep re-counts) | target 0 — `bun run build && bun run check:links` in `apps/web` |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting** (07-12 run-54 reconciled-tree sweep: **116** pages, **2,858** internal links — +2 pages vs run 55's pre-#668 sweep = the `most-active-user…` + `ownership-transfer…` posts) | target 0 — `bun run build && bun run check:links` in `apps/web` |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
-| 19 | Live-surface claim integrity | **0 tracked gaps** (runs 32 + 37 each found + closed 1) | claim-vs-reality on shipped surfaces + docs; target 0. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
+| 19 | Live-surface claim integrity | **1 tracked gap** (run 54): `brew install nlqdb/tap/nlq` is advertised (`cli/README.md`, npm-shim fallback message, SK-CLI-002) but the tap has been empty since 2026-05-19 — the formula push 401'd on every release. Founder-blocked on the `HOMEBREW_TAP_GITHUB_TOKEN` PAT (top `blocked-by-human.md` bullet); releases no longer fail on it (run-54 fix) | claim-vs-reality on shipped surfaces + docs; target 0. Standing candidate: extend `check:links` to assert each advertised capability has shipped code |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
@@ -78,6 +83,7 @@ double-pulled here.
 Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 `research/distribution-queue.md` as pointers:
 
+- https://nlqdb.com/blog/ownership-transfer-outlives-least-privilege/ (run 54 — Postgres multi-tenancy lesson, the SK-ANON-003 adoption ACL gap: an ownership transfer must retarget every authorization store; a catch-all must log the code it swallows)
 - https://nlqdb.com/blog/most-active-user-is-your-test-suite/ (run 53 — measurement-hygiene lesson, the funnel bot-filter: a metric that doesn't name its population is measuring your robots; filter at read time)
 - https://nlqdb.com/blog/five-fallback-models-one-provider/ (run 51 — CI/engine lesson, the opencheck lane swap: redundancy must cross the failure-domain boundary; the lane, not the model, is the fallback unit)
 - https://nlqdb.com/blog/decided-questions-rot-in-your-decision-log/ (run 49 — decision-hygiene lesson, the row #17 docs-ambiguity method: resolved is a greppable state; unmarked decided bullets are counted debt)
@@ -112,39 +118,42 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-12 (run 55)** — lever: **row #15 E2E freshness (the weekly
-focus number), unclaimed component: freshness decay on the three green
-suites.** Step 0: #665 (run 52, `SK-E2E-007` staging purge) and #668
-(run 53, `SK-ASK-023` diag sink + adoption-ACL root cause; published
-`most-active-user…`) merged first; this entry reconciled on top of both
-per the second-merge rule. Still open: #667 (daily.md rules), #669 (CLI
-release gate) — the opencheck red's diagnosis landed with #668 and its
-retarget fix is the named next lever, so this run pulled the focus row's
-*other* component. **Before:**
-at 07-12 04:12Z sdk/mcp/examples were last dispatched 07-09 21:00Z
-(pass·freshness ≈ 0.67 each)
-and opencheck 0 ⇒ row #15 = **0.50**. **Change:** per `SK-E2E-004`
-(dispatch-only by decision; cron explicitly rejected — the deliberate
-operator action IS the mechanism, and the daily agent is the operator),
-dispatched e2e-sdk + e2e-mcp + e2e-examples together on main `c4fc468`
-(mirrors the 07-09 pattern; no other Actions consumer in flight —
-sequencing rule respected, opencheck NOT dispatched). **Re-measure:** all
-three green ⇒ row #15 = **0.75**. Δ +0.25 — keep. Rule-6 sweep: all
-deploy-* latest-main runs green except deploy-cli (10/10 red, claimed by
-open PR #669). Engine rows untouched (BIRD/Spider canonicals 07-11,
-persona 07-09 — all < 7d, no dispatch owed; BIRD post-`SK-LLM-044`
-re-verify stays queued for the engine lane). **Artifact (step 3):** at
-run time the queue had 0 *unclaimed* drafts (both existing claimed by
-then-open #668/#669; run 52's `ephemeral-staging-persistent-registry`
-still on unmerged #665) ⇒ drafted `green-checkmark-has-a-half-life`
-(this run's lesson: a manual-dispatch e2e pass is an event, not a state —
-score it pass × freshness so the metric itself forces re-dispatch);
-post-#665/#668 (which published `most-active-user…`) the queue holds
-3 pending / 2 unclaimed ⇒ next run publishes (row #6).
-**KPI:** GLOBAL-025 engine quality
-(the E2E signal guards every engine/UX number this loop reports); **none
-degrade** (zero app-code diff: scorecard + queue draft only; suites ran
-on unmodified main).
+**2026-07-12 (run 54)** — lever (rule 6): **deploy-cli red on main → fixed
+at the root.** Step 0: PRs #664–#666, #668 (run 53, `SK-ASK-023` diag sink
++ published `most-active-user…`) and #670 (run 55, suite re-dispatch →
+row #15 0.50 → 0.75) merged first; this entry reconciled on top per the
+second-merge rule (run 55's fresher funnel/ops/E2E numbers kept). Still
+open: #667 (daily.md rules) and #671 (run 56, anon-create fail-open;
+publishes `ephemeral-staging…`) — different levers. **Diagnosis:**
+deploy-cli had **never been
+green** — 10/10 runs failed 2026-05-19 → 07-11, every one *after* the GitHub
+Release published, at the Homebrew formula push to `nlqdb/homebrew-tap`
+(`401 Bad credentials`: `HOMEBREW_TAP_GITHUB_TOKEN` never valid, most likely
+never set — an empty env renders an empty template token). The runbook
+§"CLI releases" documents the intended behavior ("Without it the GitHub
+Release still creates; only the tap bump silently skips") — code wrong,
+docs right (§10.2). **Change:** `cli/.goreleaser.yml` gates the tap push on
+token presence (`skip_upload` template; `index .Env` keeps local snapshot
+runs safe) + SK-CLI-002 amended in its canonical file. **Verification:**
+goreleaser publish-pipe source confirms `skip_upload` is template-applied
+before the `== "true"` check and the formula still lands in `dist/`; local
+snapshot with the env var absent builds clean (`goreleaser check`: config
+valid; flags only the pre-existing `brews` deprecation). The merge auto-fires
+deploy-cli (`cli/**` path) → the live green run is the post-merge
+re-measure; if it still 401s, the secret exists-but-revoked and the founder
+bullet covers rotation. The PAT is founder-only (rule 4) → top
+`blocked-by-human.md` bullet; `brew install` claim gap tracked on row #19
+(0 → 1, founder-blocked). **Step-1:** funnel/ops rows keep run 55's
+07-12 04:15Z pulls; link sweep re-run on the reconciled tree: 116 pages /
+2,858 links / 0 dead (rows #7/#18); docs-ambiguity 17 (held, run 55 grep).
+**Artifact (step 3):** published
+**https://nlqdb.com/blog/ownership-transfer-outlives-least-privilege/**
+(rows #6/#7: 96 surfaces, 32 posts; queue entry → venue pointer; pending
+drafts 2 ⇒ < 3 ⇒ next run may draft). **KPI:**
+GLOBAL-025 onboarding (the CLI release pipeline now ships green and the
+dead brew install path is honestly tracked instead of silently red) +
+distribution; **none degrade** (release config + docs + one post; app code,
+prompts, eval baselines, CI lane config untouched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
