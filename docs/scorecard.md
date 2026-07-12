@@ -67,7 +67,7 @@ anonymous-mode/UX, CLI-release — this run is a product trust-UX fix).
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **1 open (founder-blocked)** — `brew install nlqdb/tap/nlq` advertised (`cli/README.md`, npm-shim fallback, SK-CLI-002) but the tap empty since 2026-05-19; blocked on the `HOMEBREW_TAP_GITHUB_TOKEN` PAT (top `blocked-by-human.md` bullet); releases no longer fail on it (run-54 fix, #669). Runs 32 + 37 + 56 each found + closed 1 | claim-vs-reality on shipped surfaces + docs; target 0. Standing candidate: extend `check:links` to assert each advertised capability has shipped code. Run 59 closed a cousin gap: trust-ux docs claimed create-path trace parity that the wire didn't ship |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
-| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **6/9** + both FLOW-005 transports ✅ on prod (run-58 dispatch [29200271657](https://github.com/nlqdb/nlqdb/actions/runs/29200271657)); FLOW-001 0/3 (2× no-trace-toggle — **run 59's lever**, fixed on PR #674; after-measure on the PR preview recorded in *Last change*), 1× submit flake. FLOW-002 3/3 · FLOW-003 3/3 · flow-005 hosted 6/6 + stdio 22/22 | target 9/9 + both FLOW-005 transports. Prod flips when #674 merges + deploys; next 06:00Z cron re-verifies on prod |
+| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **6/9 on prod** (run-58 dispatch [29200271657](https://github.com/nlqdb/nlqdb/actions/runs/29200271657)); on the PR #674 preview ([29207000909](https://github.com/nlqdb/nlqdb/actions/runs/29207000909)) FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 both ✅ and FLOW-001's **step-6 trace class is closed** (2/2 runs revealed the DDL trace; TTFV 2.9–3.6 s) + the step-3 submit-flake class closed (keystroke re-arm). FLOW-001 still 0/3: new deepest red at **step 8** — 2nd anon `/v1/ask` 401s (SK-ANON-012 cap vs unshipped SK-WEB-002/017 morph-to-chat — **named next lever**) + 1× transient provision 500 | target 9/9 + both FLOW-005 transports. Prod step-6 flip lands with #674's merge + deploy; next 06:00Z cron re-verifies |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -115,9 +115,9 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 ## Last change
 
 **2026-07-12 (run 59)** — lever: **ship the create-path SK-TRUST-002
-trace block (row #21, FLOW-001's only real red).** Step 0: open PRs #672
-(opencheck adoption fix) and none other — no file overlap (queue file
-left to #672). **The finding:** the `kind=create` `/v1/ask` response
+trace block (row #21, FLOW-001's only real red).** Step 0: one open PR,
+#672 (opencheck adoption fix) — no file overlap (queue file left to it;
+it merged mid-run and this branch rebased onto it). **The finding:** the `kind=create` `/v1/ask` response
 shipped **no trace block on any surface** — the 2026-05-24 masked
 regression run 58 unmasked (FLOW-001 step 6 "no trace affordance
 found"); trust-ux docs claimed parity closed, MCP fabricated an empty
@@ -132,15 +132,28 @@ through; CLI renders `─ trace ─`; FLOW-001 step 6 trued to the create
 surface (`SELECT|CREATE TABLE`) + verification mirror synced. **Measured
 (same instrument):** before = run-58 dispatch
 [`29200271657`](https://github.com/nlqdb/nlqdb/actions/runs/29200271657)
-FLOW-001 **0/3** (2× step-6 no-trace, row #21 6/9) → after = on-branch
-dispatch against the PR #674 preview — recorded in the PR before merge;
-prod row flips on merge + deploy, re-verified by the next 06:00Z cron.
+FLOW-001 2/2 step-6 fails "no trace affordance found" → after = branch
+dispatch against the PR #674 preview
+([`29207000909`](https://github.com/nlqdb/nlqdb/actions/runs/29207000909)):
+**2/2 runs reaching step 6 revealed the compiled DDL** (TTFV 2.9–3.6 s;
+wire-verified too — anon curl create returned `trace.sql` = provisioned
+DDL, `model=gpt-oss-120b`). Δ > 0 — keep. Also closed en route: the
+step-3/5 submit-flake class (walker `fill()` raced island hydration —
+now types trusted keystrokes until the submit arms; 3/3 dead → 3/3
+armed on the same preview). **Found, not pulled (named next levers):**
+(1) step-8 red — the 2nd anon `/v1/ask` 401s: SK-ANON-012's one-create
+device cap vs the SK-WEB-002/017 "morphs into a chat" contract that
+steps 8–9 assert but `/app/new` doesn't ship (renders `CreateResultView`
++ sign-in CTA) — decide ship-vs-supersede next run; (2) 1× transient
+`provision_failed` 500 (rolled back, not reproduced). Prod row flips on
+merge + deploy; next 06:00Z cron re-verifies.
 **Step 1:** full funnel/ops re-pull 19:39–19:41Z (rows #1–#5, #12–#13 —
 strangers still 0); docs-ambiguity 17 (held); link sweep 117 pages /
 2,883 links / 0 dead; row #15 ≈ 0.92 (all four suites green ≤ 15.5 h).
-**Artifact (step 3):** queue < 3 and the queue file is inside open
-#672's diff ⇒ no draft this run (step-0 no-touch beats optional
-drafting). **KPI:** GLOBAL-025 UX + onboarding (the trust baseline holds
+**Artifact (step 3):** at evaluation time the queue was < 3 and the
+queue file sat inside open #672's diff ⇒ no draft, no publish this run;
+#672's merge later brought the queue to 3 ⇒ the **next** run opens with
+the step-3 publish (row #6). **KPI:** GLOBAL-025 UX + onboarding (the trust baseline holds
 on the first answer a stranger ever sees) — **none degrade** (additive
 response field; prompts, eval baselines, CI lanes, read-path trace
 untouched; engine rows #8–#11 carried unchanged).
