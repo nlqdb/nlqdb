@@ -5,17 +5,22 @@ Point-in-time tracker, regenerated each
 (≤20 KB cap). History: `git log` +
 `progress/quality-score-verification-log.md` (engine).
 
-**Weekly focus number (2026-07-04 → 07-11):** **BIRD raw EX → ≥ 0.60**
-(row #8) — **0.546** (07-11 canonical re-measure, PR #661's dispatch
-[29144102081](https://github.com/nlqdb/nlqdb/actions/runs/29144102081);
-staleness cleared, baseline re-seeded), still the only pillar below a hard
-[`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) Phase-2 floor;
-`SK-QUAL-005` mandates engine work until it clears. Every agent-movable
-sub-lever is measured to a verdict (SC N≥2 flat #619; agentic-frontier 0.693
-< the 0.80 floor, run 15's ≤ 0.70 ceiling call); the only live BIRD-free move
-is the parked **corrected-set** (license, P2) — row #8 stays **dark for the
-lever** (rule 8). Run 51's `SK-LLM-044` directive touches the shared planner
-prompt post-measure — next BIRD canonical re-verifies the 0.546.
+**Weekly focus number (2026-07-11 → 07-18):** **row #15 E2E freshness →
+1.0** — close the opencheck stale-fixture red and keep all four suites
+fresh. **Why:** it is the worst *agent-movable* number outside the daily
+engine lane, which already pulls row #9 Spider (next paragraph). BIRD
+(row #8, 0.546 < the 0.60
+[`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) floor) is
+**dark for the lever** — offline levers exhausted, SC dead (#619),
+frontier-lens closed (run 15); the only remaining path, the corrected-set,
+is blocked on an external maintainer's license reply (uiuc-kang-lab #7,
+filed 07-07, no response), so no single run can move it — `SK-QUAL-005`'s
+engine-work mandate stands lever-blocked and re-binds the focus once any
+engine lever unparks. Strangers (row #2)
+lag. Row #15 responds to agent action (0 → live signal via runs 46/48/50)
+and guards the integrity of every engine/UX number this loop reports. Last
+week's focus (BIRD ≥ 0.60) was itself dark: 0 of ~43 runs could pull it —
+see [`weekly-review.md`](weekly-review.md).
 
 **Worst number today:** real strangers reaching a first answer = **0** — a
 lagging metric moved only through its agent-movable inputs. Worst
