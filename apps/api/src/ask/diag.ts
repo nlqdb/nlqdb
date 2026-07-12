@@ -8,9 +8,10 @@
 // TTL'd KV write per catch-all failure keeps the SQLSTATE pullable
 // offline (CF REST API / wrangler) for 7 days.
 //
-// Pure storage over `KVStore` (the plan-cache split): the consumer
-// (orchestrate.ts) owns the `nlqdb.diag.write` span and swallows
-// failures — a diagnostic write must never change the error path.
+// Pure storage over `KVStore` (the plan-cache split): each consumer
+// (orchestrate.ts, anon-adopt-regrant.ts) owns its `nlqdb.diag.write`
+// span and swallows failures — a diagnostic write must never change
+// the error path.
 
 import type { KVStore } from "../kv-store.ts";
 
