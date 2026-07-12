@@ -22,7 +22,14 @@ export type Session = {
 const IGNORED_STATUSES = new Set([401, 429]);
 
 export async function launchBrowser(): Promise<Browser> {
-  return chromium.launch({ headless: true });
+  // Chromium ignores HTTPS_PROXY by default; honour it so the walker runs
+  // from proxied agent sandboxes too (no-op on the cron/laptop path).
+  // openSession's ignoreHTTPSErrors already tolerates the proxy's CA.
+  const proxy = process.env.HTTPS_PROXY ?? process.env.https_proxy;
+  return chromium.launch({
+    headless: true,
+    ...(proxy ? { proxy: { server: proxy } } : {}),
+  });
 }
 
 export async function openSession(deps: SessionDeps): Promise<Session> {

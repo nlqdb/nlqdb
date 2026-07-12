@@ -60,35 +60,47 @@ async function doWalk(
     }
 
     if (failedStep === null) {
-      const hero = page.locator("input[placeholder],textarea[placeholder]").first();
-      const placeholder = await hero
-        .getAttribute("placeholder", { timeout: 5_000 })
-        .catch(() => null);
-      if (!placeholder || !HERO_PLACEHOLDER_RE.test(placeholder)) {
+      // SK-WEB-018 two-door home: the goal input lives on /app/new/ behind
+      // the GLOBAL-007 no-login-wall door ("just describe your data →").
+      // The walker takes the same door a stranger does.
+      const door = page
+        .locator('a[href="/app/new/"]', { hasText: /describe your data/i })
+        .first();
+      const doorVisible = await door.isVisible({ timeout: 5_000 }).catch(() => false);
+      if (!doorVisible) {
         steps.push(
           step(
             2,
-            "hero placeholder matches /orders|tracker|building/i",
+            "no-login-wall door → /app/new/ hero input matches /orders|tracker|building/i",
             "fail",
-            `placeholder=${JSON.stringify(placeholder)}`,
+            "no 'describe your data' link to /app/new/ on /",
           ),
         );
         failedStep = 2;
       } else {
+        await door.click().catch(() => {});
+        await page.waitForURL(/\/app\/new\/?$/, { timeout: 10_000 }).catch(() => {});
+        const onAppNew = /\/app\/new\/?($|[?#])/.test(page.url());
+        const hero = page.locator("input[placeholder],textarea[placeholder]").first();
+        const placeholder = onAppNew
+          ? await hero.getAttribute("placeholder", { timeout: 5_000 }).catch(() => null)
+          : null;
+        const stepOk = onAppNew && placeholder !== null && HERO_PLACEHOLDER_RE.test(placeholder);
         steps.push(
           step(
             2,
-            "hero placeholder matches /orders|tracker|building/i",
-            "ok",
-            `placeholder=${placeholder}`,
+            "no-login-wall door → /app/new/ hero input matches /orders|tracker|building/i",
+            stepOk ? "ok" : "fail",
+            `url=${page.url()} placeholder=${JSON.stringify(placeholder)}`,
           ),
         );
+        if (!stepOk) failedStep = 2;
       }
     } else {
       steps.push(
         step(
           2,
-          "hero placeholder matches /orders|tracker|building/i",
+          "no-login-wall door → /app/new/ hero input matches /orders|tracker|building/i",
           "skip",
           "blocked by earlier step",
         ),

@@ -240,11 +240,13 @@ requires credentials, that itself is the failure.
 
 1. From a fresh browser context (no cookies, no localStorage), open
    `https://nlqdb.com/`.
-2. Assert: the hero `<CreateForm>` is visible. Snapshot the page;
-   look for an input with `placeholder` matching the pattern
-   `/orders|tracker|building/i`. Failing this = gate regression or
-   build regression. See [`SK-WEB-001`](../features/web-app/FEATURE.md) for
-   the hero contract.
+2. Assert: the SK-WEB-018 two-door home renders the GLOBAL-007
+   no-login-wall door — a "just describe your data →" link to
+   `/app/new/`. Click it; assert the browser lands on `/app/new/`
+   and the goal input is visible with `placeholder` matching the
+   pattern `/orders|tracker|building/i`. Failing this = the door or
+   the `/app/new/` hero regressed. See [`SK-WEB-001`](../features/web-app/FEATURE.md)
+   for the hero contract.
 3. Type a persona-seeded goal (rotate across runs, don't always send
    the same string so cache effects don't mask regressions):
    - `"a meal planner for couples"`
@@ -354,8 +356,8 @@ None.
 3. Assert: a `<script type="application/ld+json">` block exists with
    `"@type": "FAQPage"` AND a second one with `"@type": "HowTo"` (per
    the `[slug].astro` template).
-4. Assert: a `<section>` labelled "What nlqdb doesn't do here" is
-   present and contains ≥2 `<li>` items (per [`SK-SOLVE-002`](../features/solve-pages/decisions/SK-SOLVE-002-honest-limits-mandatory.md)).
+4. Assert: a `<section>` labelled "What nlqdb doesn't try to do here"
+   is present and contains ≥2 `<li>` items (per [`SK-SOLVE-002`](../features/solve-pages/decisions/SK-SOLVE-002-honest-limits-mandatory.md)).
 5. Click the "Try this query →" button.
 6. Assert (immediately, before navigation): `localStorage["nlqdb_draft"]`
    equals `SolveEntry.demoGoal` for that slug.
@@ -616,9 +618,11 @@ asserts `state == "passed"` in the JSON, NOT the individual HTTP calls.
 5b. The walker spawns the real `@nlqdb/mcp` binary, completes the MCP
     `initialize` handshake, calls `tools/list`, and asserts the catalog
     an npm-fallback install discovers: exactly `nlqdb_query`
-    (destructiveHint), `nlqdb_list_databases` (readOnlyHint), and
-    `nlqdb_describe` (readOnlyHint) with their input-schema keys, and
-    **no `create_database` / `ask` / `run` tool** (create is implicit
+    (destructiveHint; `model` key per SK-PREMIUM-014),
+    `nlqdb_list_databases` (readOnlyHint), `nlqdb_describe`
+    (readOnlyHint), `nlqdb_remember` (E-02 memory write), and
+    `nlqdb_connect_database` (BYO-connect) with their input-schema keys,
+    and **no `create_database` / `ask` / `run` tool** (create is implicit
     via `nlqdb_query` per [`SK-MCP-002`](../features/mcp-server/decisions/SK-MCP-002-three-tools.md)).
     Assert `state == "passed"` AND `protocol_ok` AND `catalog_ok`.
 
@@ -628,8 +632,9 @@ asserts `state == "passed"` in the JSON, NOT the individual HTTP calls.
    HTTP transport): `bunx @modelcontextprotocol/inspector https://mcp.nlqdb.com`,
    or the local-stdio transport with a key: `NLQDB_API_KEY=<sk_…> bunx @nlqdb/mcp`.
 7. Assert: `tools/list` returns exactly `nlqdb_query`,
-   `nlqdb_list_databases`, `nlqdb_describe` (no `create_database` / `ask` /
-   `run` — verified credential-free by `flow-005-stdio-walk.sh`). See
+   `nlqdb_list_databases`, `nlqdb_describe`, `nlqdb_remember`,
+   `nlqdb_connect_database` (no `create_database` / `ask` / `run` —
+   verified credential-free by `flow-005-stdio-walk.sh`). See
    [`docs/features/mcp-server/FEATURE.md`](../features/mcp-server/FEATURE.md).
 8. Call `nlqdb_query` with `{"db": "research-memory", "q": "create a
    place to store facts with a key and a value, then show me everything"}`

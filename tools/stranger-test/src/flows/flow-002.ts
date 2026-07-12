@@ -123,12 +123,12 @@ async function doWalk(
     );
     if (!(hasFaq && hasHowTo) && failedStep === null) failedStep = 3;
 
-    const limitsHeading = page.getByText("What nlqdb doesn't do here").first();
+    const limitsHeading = page.getByText("What nlqdb doesn't try to do here").first();
     const limitsVisible = await limitsHeading.isVisible({ timeout: 5_000 }).catch(() => false);
     let limitItemCount = 0;
     if (limitsVisible) {
       limitItemCount = await page
-        .locator('section:has-text("What nlqdb doesn\'t do here") li')
+        .locator('section:has-text("What nlqdb doesn\'t try to do here") li')
         .count()
         .catch(() => 0);
     }

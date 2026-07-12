@@ -11,7 +11,7 @@ const GOOD: Handshake = {
     {
       name: "nlqdb_query",
       annotations: { destructiveHint: true },
-      inputSchema: { properties: { db: {}, q: {}, confirm: {} } },
+      inputSchema: { properties: { db: {}, q: {}, confirm: {}, model: {} } },
     },
     {
       name: "nlqdb_list_databases",
@@ -29,6 +29,11 @@ const GOOD: Handshake = {
       inputSchema: {
         properties: { db: {}, kind: {}, payload: {}, endUserId: {}, threadId: {}, ttlSeconds: {} },
       },
+    },
+    {
+      name: "nlqdb_connect_database",
+      annotations: { destructiveHint: false },
+      inputSchema: { properties: { engine: {}, connection_url: {}, name: {} } },
     },
   ],
 };
