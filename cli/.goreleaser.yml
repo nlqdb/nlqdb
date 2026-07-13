@@ -78,3 +78,8 @@ release:
     name: nlqdb
   name_template: "nlq {{ .Version }}"
   prerelease: auto
+  # A workflow_dispatch re-run of an already-published tag must be able
+  # to re-upload assets and reach the tap push — without this, goreleaser
+  # 422s on the existing assets and aborts before publishing the formula
+  # (observed re-seeding the tap once HOMEBREW_TAP_GITHUB_TOKEN was set).
+  replace_existing_artifacts: true
