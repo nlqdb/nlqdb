@@ -13,6 +13,38 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Drafts — unpublished, newest first
 
+- **"Your docs promised a tool your server never shipped."** slug
+  `guard-advertised-capabilities-against-code` · venue dev.to (#api #testing
+  #devrel) + r/ExperiencedDevs + lobste.rs (`practices`) · integrity/testing
+  lesson (the run-62→64 arc, 2026-07-13). Angle: an agent-facing product
+  advertises its tools by name in two unrelated places — the server that
+  *registers* them and the marketing/docs copy that *sells* them — and those
+  are hand-copied strings with no shared source of truth, so they drift. Ours
+  drifted to a verb (`nlqdb_recall`) that was designed but never built; it sat
+  on two live pages for a week. The cost isn't a broken build — it's the worst
+  possible first impression: a new user wires up the integration, tells their
+  agent to call the advertised tool, and the *very first call* returns "tool
+  not found." Copy that an LLM lifts verbatim into its own output makes this
+  worse — the phantom name propagates. The trap in the *existing* guard was
+  subtler and the real lesson: we already had a test asserting "every tool
+  named in copy is real," but it (1) scanned one of six surfaces — the two
+  pages the phantom actually reached were never swept — and (2) pinned a
+  hand-typed list of allowed tool names that had itself gone stale, missing a
+  tool we *did* ship. A guard that hard-codes the thing it's guarding is just a
+  second copy to drift. Fix shape: (1) derive the allow-set from the *shipped*
+  artifact — read the server's own registration sites, the same catalog the
+  runtime smoke test asserts — so the guard can't disagree with reality; (2)
+  make it closed-world — every capability-shaped token must resolve to either a
+  shipped capability or an *explicitly classified* non-capability (storage
+  keys, analytics channels, a deliberate "there is no such verb" foil), so a
+  brand-new phantom is neither and fails; (3) sweep every surface, not the one
+  you remember. Design test: "if I rename a tool in the server and forget the
+  docs, does anything go red?" — if the answer is "only if I also update the
+  test's copy of the tool list," your guard has the same bug as your docs.
+  Honest split: a claim-integrity pattern for any product whose surface area is
+  advertised as named verbs (MCP tools, SDK methods, CLI subcommands), not a
+  product feature.
+
 - **"The redesign shipped. The smoke test kept walking the old UI."** slug
   `smoke-test-walks-the-old-ui` · venue dev.to (#testing #e2e #frontend) +
   r/ExperiencedDevs + lobste.rs (`testing`) · e2e/measurement lesson (the
@@ -37,38 +69,17 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   e2e asserts real rendered copy, not a product feature.
 
 - **"Your recovery code runs once. Your failure doesn't."** slug
-  `one-shot-recovery-permanent-outage` · venue dev.to (#postgres
-  #reliability #architecture) + r/ExperiencedDevs + lobste.rs
-  (`practices`) · reliability lesson (`SK-ASK-024`, 2026-07-12). Angle:
-  sign-in "adopts" a database created before login — flip an owner column,
-  re-point Postgres grants + RLS at the new owner. The grant batch was
-  best-effort (never fail the sign-in) and ran exactly once. For four days
-  it looked "dispatch-intermittent": the identical code passed one CI run
-  and bricked the next. The eventual cause was deterministic all along — a
-  lazily-imported module crashed at init (a WASM loader dereferencing
-  `self.location.href`, undefined in the serverless runtime) in every
-  *fresh* isolate, and passed in every isolate another code path had
-  already warmed with a globals shim. The crash landed *before* the
-  instrumented try, so zero log lines existed; and because the repair ran
-  exactly once per adoption, one silent skip bricked the DB *forever*:
-  every query died at `SET LOCAL ROLE` inside a catch-all reading
-  "couldn't reach the database." Every retry mechanism in the pipeline was
-  request-scoped and none could help — the failure lived in state a
-  *previous* request failed to write, and the event that would re-run the
-  repair (an adoption replay) can never fire: a fresh browser mints a
-  fresh anon token. Fix shape: (1) fix the root (a dependency-free client
-  module, nothing left to fail outside the instrumented block); (2) keep
-  the repair idempotent — role-if-missing, grants, `ALTER POLICY` all
-  re-apply cleanly; (3) ALSO trigger it from the *symptom* in the
-  steady-state path — exec's role-missing error re-runs the grant batch
-  and retries once, pinned to an error shape only your own subsystem can
-  produce, surfacing the *original* error if the repair fails. Design
-  tests: "what re-runs this if it misses?" — if the answer is "the
-  event," check whether the event can recur; and "can anything on this
-  path fail before my error handler?" — an observability try that starts
-  after the imports observes nothing. Honest split: a state-repair
-  pattern for any system with grant/config fan-out at ownership transfer,
-  not a product feature.
+  `one-shot-recovery-permanent-outage` · venue dev.to (#postgres #reliability
+  #architecture) + r/ExperiencedDevs + lobste.rs (`practices`) · reliability
+  lesson (`SK-ASK-024`, 2026-07-12). Gist (full body in git history): a
+  best-effort, run-exactly-once repair (grant/RLS retarget at DB adoption)
+  looked "dispatch-intermittent" for four days but was deterministic — a
+  lazily-imported module crashed at init on *fresh* isolates *before* the
+  instrumented try, so one silent skip bricked the DB forever with no logs.
+  Fixes: root-cause the pre-handler crash; keep the repair idempotent; ALSO
+  re-trigger it from the steady-state *symptom* since the original event
+  (adoption replay) can never recur. Design tests: "what re-runs this if it
+  misses?" and "can anything fail before my error handler?"
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
