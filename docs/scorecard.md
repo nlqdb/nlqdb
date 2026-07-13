@@ -16,33 +16,32 @@ frontier-lens closed (run 15); the only remaining path, the corrected-set,
 is blocked on an external maintainer's license reply (uiuc-kang-lab #7,
 filed 07-07, no response), so no single run can move it — `SK-QUAL-005`'s
 engine-work mandate stands lever-blocked and re-binds the focus once any
-engine lever unparks. Row #15 state (07-13 02:58Z recompute): all four
-suites green — sdk/mcp/examples 07-12 04:13Z, opencheck's first green
-main run 07-12 13:18Z
-([29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944));
-**≈ 0.88** and decaying only with the calendar (no new dispatch this
-run). With #15 near ceiling and row #21 maxed (9/9), run 61 pulled the
-next-priority *distribution/surface-integrity* lever per the ordering:
-**the cross-app dead-link blind spot (row #18)** — see *Worst number*
-and *Last change*.
+engine lever unparks. Row #15 is being actively re-dispatched by **open
+PR #677** (run-61 sibling, scorecard-only) — this run avoided that lever
+and its files per step 0. With #15 owned by #677 and row #21 reporting
+9/9, run 62 pulled the **priority-1 UX-flow-quality** lever: a walker
+step that was **silently skipping the copy-snippet conversion action**
+(a false green inside the 9/9) — see *Worst number* and *Last change*.
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
-agent-controllable inputs; the top UX-flow input, row #21, is now maxed
-9/9). With every canonical flow green and #15 near ceiling, the live
-agent-movable lever is **distribution / surface integrity** (founder
-order priority 2). **Run 61 finding:** the `check:links` dead-link sweep
-(row #18) only classed `https://nlqdb.com` + relative paths as internal;
-every `href`/`src` to an owned subdomain (`docs./app./mcp.nlqdb.com`) was
-dropped by `isInternal` and **never checked** — exactly the class the
-2026-07-02 docs-site 404 shipped through (a marketing→docs link nobody
-swept). **Run 61 lever: extend the sweep to live-verify cross-app links
-— 14 `docs.nlqdb.com` funnel links now swept every build (0 → 14
-covered), 0 dead.** Not anti-rut-blocked (last 5 merged = walker-correct,
-create-trace, walker-re-true, e2e-fix, anon-fail-open — all
-flow/quality; this is the first distribution/integrity pull in the
-window). Next agent-movable lever stays distribution yield (rows #6/#7)
-or the engine lane (row #9 Spider).
+agent-controllable inputs, top priority the UX-flow the walkers measure).
+**Run 62 finding:** row #21 reported 9/9, but FLOW-001 **step 7 — "Copy
+snippet writes `<nlq-data>` to clipboard" (the SK-WEB-007 conversion
+action) — was silently skipping.** `getByRole("button", {name: /copy
+snippet/i})` matches the *accessible* name, which the button pinned via
+`aria-label="Copy embed snippet"`; `/copy snippet/i` is not a substring
+of "copy embed snippet", so the walker never found the button and emitted
+`skip "no copy affordance"` inside a flow that still scored *passed* (a
+false green). The same divergence is a **WCAG 2.5.3 Label-in-Name**
+defect: voice-control by the visible label "Copy snippet" can't activate
+it, and the pinned label suppressed the "Copied"/failure announcements.
+**Run 62 lever: drop the divergent aria-label so the accessible name is
+the visible "Copy snippet" (WCAG fixed), and widen the walker selector to
+exercise the conversion action across the deploy boundary.** Anti-rut
+clear (last 5 merged include run 61's distribution/integrity pull — not 5
+identical). Next agent-movable lever stays distribution yield (rows
+#6/#7) or the engine lane (row #9 Spider).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -65,7 +64,7 @@ or the engine lane (row #9 Spider).
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **≈ 0.88** at 07-13 02:58Z — sdk ✅ · mcp ✅ · examples ✅ all 07-12 04:13Z on main (≈0.86 each) · opencheck ✅ first green main conclusion 07-12 13:18Z ([29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944), ≈0.92). The run-53 "deterministic ACL retarget" red root-caused + fixed in #672 (run 57, merged): dynamic-import crash on fresh isolates (`pg-client.ts` split) + `SK-ASK-024` heal; depth=ab re-verify app-side clean, residual red = agent-lane capacity | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
+| 15 | E2E manual-suite freshness | **≈ 0.87** (calendar decay; **open PR #677** is re-dispatching all four suites on `cfbf291` → back toward 1.0 — this run avoided the lever per step 0). Was ≈0.88 at 07-13 02:58Z — sdk ✅ · mcp ✅ · examples ✅ all 07-12 04:13Z on main (≈0.86 each) · opencheck ✅ first green main conclusion 07-12 13:18Z ([29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944), ≈0.92). The run-53 "deterministic ACL retarget" red root-caused + fixed in #672 (run 57, merged): dynamic-import crash on fresh isolates (`pg-client.ts` split) + `SK-ASK-024` heal; depth=ab re-verify app-side clean, residual red = agent-lane capacity | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-13 run 61 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
@@ -73,7 +72,7 @@ or the engine lane (row #9 Spider).
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **1 open (founder-blocked)** — `brew install nlqdb/tap/nlq` advertised (`cli/README.md`, npm-shim fallback, SK-CLI-002) but the tap empty since 2026-05-19; blocked on the `HOMEBREW_TAP_GITHUB_TOKEN` PAT (top `blocked-by-human.md` bullet); releases no longer fail on it (run-54 fix, #669). Runs 32 + 37 + 56 each found + closed 1 | claim-vs-reality on shipped surfaces + docs; target 0. Standing candidate: extend `check:links` to assert each advertised capability has shipped code. Run 59 closed a cousin gap: trust-ux docs claimed create-path trace parity that the wire didn't ship |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
-| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-60 branch dispatch [29211619838](https://github.com/nlqdb/nlqdb/actions/runs/29211619838) against prod: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). FLOW-001's step-8 red was the walker asserting a 2nd anon `/v1/ask` 200 — impossible under `SK-ANON-012`'s message-#2 wall; step 8 now asserts the 401 cap (dt 296–337 ms). Before: main dispatch [29211269726](https://github.com/nlqdb/nlqdb/actions/runs/29211269726) FLOW-001 0/3 step-8 `status=401`. The run-59 "morph-to-chat gap" is **decided, not a gap**: the anon terminus IS the sign-in redirect (SK-ANON-011 stash → SK-ANON-003 adopt); the SK-WEB-002 chat is the post-sign-in /app surface | target 9/9 + both FLOW-005 ✅ **met**. The corrected walker runs on main at the next 06:00Z cron; step-7 copy-affordance skip (button reads "Copy" not "Copy snippet") is a benign found-not-pulled |
+| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-60 branch dispatch [29211619838](https://github.com/nlqdb/nlqdb/actions/runs/29211619838) against prod: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). FLOW-001's step-8 red was the walker asserting a 2nd anon `/v1/ask` 200 — impossible under `SK-ANON-012`'s message-#2 wall; step 8 now asserts the 401 cap (dt 296–337 ms). Before: main dispatch [29211269726](https://github.com/nlqdb/nlqdb/actions/runs/29211269726) FLOW-001 0/3 step-8 `status=401`. The run-59 "morph-to-chat gap" is **decided, not a gap**: the anon terminus IS the sign-in redirect (SK-ANON-011 stash → SK-ANON-003 adopt); the SK-WEB-002 chat is the post-sign-in /app surface. **Run 62 closed the step-7 false-green:** the copy-snippet conversion action was silently skipping (selector matched the accessible name, which the `aria-label` diverged from) — now the aria-label is dropped (accessible name = visible "Copy snippet", WCAG 2.5.3) and the selector widened; branch dispatch [29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660) walked prod **9/9 passed (exit 0)** with the new selector | target 9/9 + both FLOW-005 ✅ **met**. Per-step JSON artifact isn't downloadable from the agent container (proxy-gated); the selector→accessible-name defect is closed deterministically |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -98,67 +97,55 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 - https://nlqdb.com/blog/blog-without-a-feed-is-a-dead-end/ (run 31 — count the doors into your content, not the pages)
 - https://nlqdb.com/blog/one-way-internal-links-leak-yield/ (run 28 — measure the link graph, not the page count)
 - https://nlqdb.com/blog/agent-memory-vector-store-aggregation-gap/ (run 53 — anchors `/vs/pinecone`)
-- https://nlqdb.com/blog/store-form-submissions-without-a-backend/ (run 106 — anchors `/solve/store-form-submissions-without-backend`)
-- https://nlqdb.com/blog/not-in-subquery-null-trap/ (run 130 — anchors `/solve/find-rows-with-no-match-in-another-table`)
-- https://nlqdb.com/blog/zep-recall-vs-analytical-agent-memory/ (run 20 — anchors `/vs/zep`)
-- https://nlqdb.com/blog/null-timestamp-ttl-sweep-funnel-metric/ (run 2 — engine lesson)
-- https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/ (run 102 — anchors `/vs/hex`)
-- https://nlqdb.com/blog/text-to-sql-accuracy-schemas-your-users-never-build/ (run 55 — engine lesson, persona-bench/SK-QUAL-018)
-- https://nlqdb.com/blog/ai-internal-tool-builder-faster/ (run 67 — anchors `/vs/retool`)
-- https://nlqdb.com/blog/offline-llm-eval-rate-limits/ (run 68 — engine lesson, SK-QUAL-013 capacity honesty)
-- https://nlqdb.com/blog/sitemap-advertising-redirects/ (run 69 — engine lesson, trailing-slash canonical/sitemap hygiene)
-- https://nlqdb.com/blog/text-to-sql-build-vs-buy/ (run 109 — anchors `/solve/add-ask-your-data-feature-without-building-text-to-sql`)
-- https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/ (run 119 — anchors `/solve/find-duplicate-rows-in-my-data`)
-- https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/ (run 110 — anchors `/vs/mode`)
-- https://nlqdb.com/blog/top-n-rows-per-group/ (run 131 — anchors `/solve/find-top-n-rows-per-group`)
-- https://nlqdb.com/blog/http-200-error-in-body/ (run 7 — engine lesson, SK-LLM-042 gateway-200-error-body classifier)
-- https://nlqdb.com/blog/llm-concatenates-columns-text-to-sql/ (run 12 — engine lesson, SK-LLM-043 projection directive)
-- https://nlqdb.com/blog/bird-gold-noise-distinct/ (run 14 — engine lesson, SK-QUAL-014 loss-bucketing before prompt directives)
-- https://nlqdb.com/blog/model-preset-fail-loud/ (run 16 — engine/product lesson, SK-PREMIUM-014 honest model knob)
-- https://nlqdb.com/blog/llm-preflight-probe-health/ (run 17 — CI/engine lesson, SK-LLM-042 probe-health ≠ agent-competence)
-- https://nlqdb.com/blog/serverless-db-cold-start-retry/ (run 24 — engine/ops lesson, SK-ASK-013 per-stage retry backoff)
-- https://nlqdb.com/blog/llm-timeout-looks-like-hallucination/ (run 20 — engine lesson, SK-QUAL-022 eval-budget ≠ prod SLA)
+- `/vs` anchors (live): `/blog/zep-recall-vs-analytical-agent-memory/` · `/mcp-server-what-does-the-agent-own/` · `/ai-internal-tool-builder-faster/` · `/your-bi-tool-got-acquired-data-layer/`
+- `/solve` anchors (live): `/blog/store-form-submissions-without-a-backend/` · `/not-in-subquery-null-trap/` · `/text-to-sql-build-vs-buy/` · `/find-duplicate-rows-you-re-google-every-time/` · `/top-n-rows-per-group/`
+- earlier engine-lesson posts (live; gists in `research/distribution-queue.md` § Published + git): `/blog/null-timestamp-ttl-sweep-funnel-metric/` · `/text-to-sql-accuracy-schemas-your-users-never-build/` · `/offline-llm-eval-rate-limits/` · `/sitemap-advertising-redirects/` · `/http-200-error-in-body/` · `/llm-concatenates-columns-text-to-sql/` · `/bird-gold-noise-distinct/` · `/model-preset-fail-loud/` · `/llm-preflight-probe-health/` · `/serverless-db-cold-start-retry/` · `/llm-timeout-looks-like-hallucination/`
 
 ## Last change
 
-**2026-07-13 (run 61)** — lever: **extend the `check:links` dead-link
-sweep to cover cross-app links (row #18, surface integrity / distribution
-priority-2).** Step 0: no open PRs; rule-6 health clean — all 7
-push-deploys success on main `cfbf291` (deploy-api/web/docs all ✅);
-local `bun run typecheck` (12/12 workspaces) + `bun run lint` (exit 0) +
-`@nlqdb/web test` (244 pass / 0 fail) green. **Why this lever:** row #21
-maxed 9/9 and row #15 near ceiling ⇒ the UX-flow input is spent; per the
-founder order the live lever is distribution / surface integrity, and
-the last 5 merged dailies were all flow/quality (anti-rut clear).
-**The finding:** the sweep's `isInternal` classed only `https://nlqdb.com`
-+ relative paths as internal; every `href`/`src` to an owned subdomain
-(`https://docs./app./mcp.nlqdb.com`) fell through and was **never
-checked** — the exact blind spot the 2026-07-02 docs-site 404 shipped
-through (a marketing→docs link nobody swept, unnoticed for weeks).
-**The change:** `apps/web/scripts/check-links.mjs` now collects every
-cross-app `href`/`src` to an owned subdomain from built HTML and
-live-verifies each distinct one: a definitive 4xx/5xx is dead (hard
-fail, exit 1); an auth/method gate (401/403/405) counts as alive; a
-network error is reported "unverified" and never fails the sweep, so an
-offline run degrades to the internal-only result. API endpoints
-(`/v1/ask`, `/mcp`) and copy-paste code snippets (`elements.../v1.js`)
-appear only as code text, not `href`/`src`, so they stay correctly out
-of scope. **Measured (same instrument, `bun run build && check:links`):**
-before = 118 pages, 2,908 internal links checked, **0 cross-app links
-checked** (all silently dropped) → after = same 118 pages / 2,908
-internal, **14 `docs.nlqdb.com` funnel links now swept, 0 dead, 0
-unverified** (all 200). **Row #18 cross-app coverage 0 → 14 links —
-0 dead.** Δ > 0 — keep. **Artifact (step 3):** skipped — queue is 2-deep
-(< 3), no publish; no new draft (P4/founder-2026-07-11: drafting is not a
-run's output). **Step 1:** fresh 02:52–02:58Z pulls — visits 232
-pageloads (real-browser ≈ 49); users 9 (4 founder + 5 test), strangers
-**0**; DBs 165 → 223 (synthetic); nlqdb-api 4,974 req / 0 err;
-docs-ambiguity 17 (held); row #15 ≈ 0.92 → 0.88 (calendar decay, no new
-e2e dispatch). **KPI:** GLOBAL-025 UX + distribution (a dead
-marketing→docs link silently loses a stranger; the funnel's cross-app
-hops are now swept every build) — **none degrade** (one build-script
-change; no product, prompt, eval-baseline, CI-lane, or shipped-source
-change; engine rows #8–#11 and walker row #21 carried).
+**2026-07-13 (run 62)** — lever: **make FLOW-001 step 7 verify the
+copy-snippet conversion action (priority-1 UX-flow quality) by fixing the
+Label-in-Name divergence that silently skipped it.** Step 0: open PR
+#677 (run-61 sibling) re-dispatches row #15 (scorecard-only) — avoided
+that lever + its files. Rule-6 health clean: `bun install` then
+`typecheck` (12/12 workspaces) + `lint` (exit 0, warnings only) + `test`
+(@nlqdb/api 901 pass / 6 skip; @nlqdb/web 244 pass) green; deploy-api/web/docs
+all ✅ on main. **The finding:** the chat "Copy snippet" CTA (SK-WEB-007)
+carried `aria-label="Copy embed snippet"`, so its *accessible* name
+diverged from its visible label. The FLOW-001 walker matches the
+accessible name (`getByRole("button", {name: /copy snippet/i})`), and
+`/copy snippet/i` is not a substring of "copy embed snippet" — so the
+walker never found the button and emitted `skip "no copy affordance"`
+inside a flow that still scored *passed* (`state = passed` when
+`failedStep === null`, regardless of skips): a **false green** hiding the
+conversion action from row #21's 9/9. The same divergence is a **WCAG
+2.5.3 Label-in-Name** defect (voice-control by the visible label fails;
+"Copied"/failure states never announced). **The change:** (1)
+`CopySnippet.tsx` drops the aria-label → accessible name = visible "Copy
+snippet" (WCAG fixed, state changes announced); (2) `flow-001.ts` widens
+the step-7 selector to `/copy(?: embed)? snippet/i` so it exercises the
+action against both the live prod button and the post-deploy one.
+**Measured:** deterministic selector×accessible-name — before old
+`/copy snippet/i` vs live "Copy embed snippet" = **no match** (silent
+skip); after new regex matches both live and canonical names, and WCAG
+label-in-name goes **false → true**. End-to-end: branch dispatch of the
+canonical acquisition-health walker against prod
+([29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660))
+= **9/9 passed, stranger-test exit 0** with the new selector. **Row #21
+step-7 false-green closed** (per-step JSON is proxy-gated from the agent
+container, so the ok-vs-legit-skip sub-status on that prod reply isn't
+screen-read; the selector defect is closed deterministically). Δ ≥ 0 —
+keep. **Artifact (step 3):** skipped — queue 2-deep (< 3), no publish; no
+new draft (founder-2026-07-11: drafting is not a run's output). **Step
+1:** funnel/ops carried from the 07-13 02:52–02:58Z pulls (remote D1 + CF
+GraphQL unreachable from this container) — visits ≈ 49 real-browser;
+users 9 (4 founder + 5 test), strangers **0**; nlqdb-api 4,974 req / 0
+err; docs-ambiguity **17** (fresh grep, held); row #15 ≈ 0.87 (decay,
+#677 re-dispatching). **KPI:** GLOBAL-025 UX + onboarding (the walker now
+honestly covers the embed-handoff conversion; a real WCAG defect on that
+button is fixed) — **none degrade** (one 5-line component edit + one
+selector edit; no prompt, eval-baseline, or CI-lane change; engine rows
+#8–#11 carried).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
