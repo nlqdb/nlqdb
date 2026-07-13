@@ -8,13 +8,24 @@
 // so bare paths are reported as redirects — the sweep's hard failures are
 // targets with no file at all.
 //
-// Exit code: 1 when any dead link exists, else 0.
+// Cross-app coverage: hrefs/srcs pointing at an owned subdomain
+// (`https://<sub>.nlqdb.com/...`, e.g. docs./app./mcp./elements.) live on a
+// *different* deploy, so the dist file tree can't resolve them. They are the
+// class the 2026-07-02 docs-site 404 shipped through — a marketing→docs link
+// nobody swept. We fetch each distinct one live: a definitive 4xx/5xx is dead
+// (hard fail); an auth/method gate (401/403/405) counts as alive (the target
+// exists); a network error is reported "unverified" and never fails the sweep,
+// so an offline run degrades to the internal-only result instead of red.
+//
+// Exit code: 1 when any dead (internal or cross-app) link exists, else 0.
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const DIST = new URL("../dist", import.meta.url).pathname;
 const SITE = "https://nlqdb.com";
+// Owned subdomains that deploy separately from apps/web (`https://<sub>.nlqdb.com`).
+const CROSS_APP = /^https:\/\/[a-z0-9-]+\.nlqdb\.com(\/|$)/;
 
 if (!existsSync(DIST)) {
   console.error("check-links: dist/ not found — run `astro build` first");
@@ -51,6 +62,7 @@ function toPath(url) {
 const dead = [];
 const redirects = [];
 const seen = new Set();
+const crossApp = new Map(); // url → source (first sighting)
 
 function check(url, source, { deadOnly = false } = {}) {
   const path = toPath(url);
@@ -71,6 +83,7 @@ for (const file of htmlFiles) {
   for (const m of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
     const url = m[1];
     if (isInternal(url)) check(url, src);
+    else if (CROSS_APP.test(url) && !crossApp.has(url)) crossApp.set(url, src);
   }
 }
 
@@ -91,16 +104,55 @@ for (const [name, pattern, opts] of [
   }
 }
 
+// Live-verify each distinct cross-app link. Returns { deadCrossApp, unverified }.
+async function verifyCrossApp() {
+  const deadCrossApp = [];
+  const unverified = [];
+  const entries = [...crossApp.entries()];
+  const CONCURRENCY = 6;
+  for (let i = 0; i < entries.length; i += CONCURRENCY) {
+    await Promise.all(
+      entries.slice(i, i + CONCURRENCY).map(async ([url, source]) => {
+        const key = `${url} ← ${source}`;
+        let status = 0;
+        for (const method of ["HEAD", "GET"]) {
+          try {
+            const ctl = new AbortController();
+            const t = setTimeout(() => ctl.abort(), 15_000);
+            const res = await fetch(url, { method, redirect: "follow", signal: ctl.signal });
+            clearTimeout(t);
+            status = res.status;
+            if (status !== 405) break; // some hosts reject HEAD — retry as GET
+          } catch {
+            status = 0; // network/abort — leave for the unverified bucket
+          }
+        }
+        if (status === 0) unverified.push(key);
+        else if (status >= 400 && ![401, 403, 405].includes(status))
+          deadCrossApp.push(`${status} ${key}`);
+      }),
+    );
+  }
+  return { deadCrossApp, unverified };
+}
+
+const { deadCrossApp, unverified } = await verifyCrossApp();
+
 const links = seen.size;
 console.log(
-  `check-links: ${htmlFiles.length} pages, ${links} internal links — ${dead.length} dead, ${redirects.length} redirecting (bare path)`,
+  `check-links: ${htmlFiles.length} pages, ${links} internal links — ${dead.length} dead, ${redirects.length} redirecting (bare path); ${crossApp.size} cross-app links — ${deadCrossApp.length} dead, ${unverified.length} unverified`,
 );
 if (redirects.length) {
   console.log("\nRedirecting (link the trailing-slash URL instead):");
   for (const r of redirects.sort()) console.log(`  307 ${r}`);
 }
-if (dead.length) {
+if (unverified.length) {
+  console.log("\nCross-app unverified (network — not a failure):");
+  for (const u of unverified.sort()) console.log(`  ??? ${u}`);
+}
+if (dead.length || deadCrossApp.length) {
   console.log("\nDead:");
   for (const d of dead.sort()) console.log(`  404 ${d}`);
+  for (const d of deadCrossApp.sort()) console.log(`  ${d}`);
   process.exit(1);
 }
