@@ -312,7 +312,7 @@ async function doWalk(
         steps.push(
           step(
             8,
-            "second anon /v1/ask hits the SK-ANON-012 sign-in wall (401 anon_device_cap)",
+            "second anon /v1/ask hits the SK-ANON-012 sign-in wall (401 + redirect)",
             "fail",
             filled ? "no second /v1/ask observed" : "could not fill follow-up input",
           ),
@@ -322,27 +322,35 @@ async function doWalk(
         // SK-ANON-012: the 2nd anon call returns 401; the client
         // `savePending`s the prompt (SK-ANON-011) and redirects to
         // sign-in. That wall IS the anonymous happy-path terminus
-        // (GLOBAL-007 lands it at #2, not #1). Assert on the status
-        // alone: the redirect tears the page down before we can read
-        // the response body (it comes back empty), and on a POST
-        // /v1/ask for an anon principal that just succeeded once a 401
-        // can only be the SK-ANON-010/012 cap wall — session-probe
-        // 401s are on /api/auth/get-session, Turnstile is 428. A 200
-        // here would mean the per-device cap regressed to unlimited
-        // free anon asks.
+        // (GLOBAL-007 lands it at #2, not #1). A 200 here would mean
+        // the per-device cap regressed to unlimited free anon asks.
+        // Status alone can't tell the wall from an auth regression —
+        // a generic `unauthorized` 401 (e.g. the bearer dropped from
+        // the follow-up request) carries no auth_required envelope,
+        // so CreateForm never redirects. The redirect usually empties
+        // the response body before the walker reads it, so require
+        // the envelope's cap code when the body is readable, and the
+        // observed hop to /auth/sign-in when it isn't.
         const status = ask2.status();
         const body = await ask2.text().catch(() => "");
-        const capped = status === 401;
-        const cap =
-          /anon_device_cap|anon_global_cap/.exec(body)?.[0] ?? "cap (body consumed by redirect)";
+        const capCode = /anon_device_cap|anon_global_cap/.exec(body)?.[0];
+        const wall =
+          capCode ??
+          (status === 401
+            ? await page
+                .waitForURL(/\/auth\/sign-in/, { timeout: 10_000 })
+                .then(() => "sign-in redirect (body consumed by it)")
+                .catch(() => null)
+            : null);
+        const capped = status === 401 && wall !== null;
         steps.push(
           step(
             8,
-            "second anon /v1/ask hits the SK-ANON-012 sign-in wall (401)",
+            "second anon /v1/ask hits the SK-ANON-012 sign-in wall (401 + redirect)",
             capped ? "ok" : "fail",
             capped
-              ? `status=401 ${cap} dt=${Date.now() - t1}`
-              : `status=${status} dt=${Date.now() - t1} body=${body.slice(0, 120)}`,
+              ? `status=401 ${wall} dt=${Date.now() - t1}`
+              : `status=${status} wall=${wall ?? "none"} dt=${Date.now() - t1} body=${body.slice(0, 120)}`,
           ),
         );
         if (!capped) failedStep = 8;
@@ -351,7 +359,7 @@ async function doWalk(
       steps.push(
         step(
           8,
-          "second anon /v1/ask hits the SK-ANON-012 sign-in wall (401 anon_device_cap)",
+          "second anon /v1/ask hits the SK-ANON-012 sign-in wall (401 + redirect)",
           "skip",
           "blocked by earlier step",
         ),

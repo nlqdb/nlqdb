@@ -44,7 +44,7 @@ export const BLOG_POSTS: BlogPost[] = [
     slug: "green-checkmark-has-a-half-life",
     title: "A green checkmark has a half-life.",
     description:
-      "When an expensive test suite can't run on every push, passing stops being a state and becomes an event. Score each suite pass × freshness with a linear decay so the dashboard number rots until someone re-runs it.",
+      "When an expensive test suite can't run on every push, passing stops being a state and becomes an event. Score each suite pass × freshness with a linear decay so the number rots until it re-runs.",
     date: "2026-07-12",
     body: [
       {

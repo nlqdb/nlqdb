@@ -131,9 +131,10 @@ conversion moment, so the walker — and the FLOW-001 verification mirror's
 steps 8–9 — encoded the stale pre-`SK-ANON-012` model and could never
 pass. §10.3: decision beats the test/mirror prose; product already
 correct. **The change:** `flow-001.ts` step 8 now passes on the 401 cap
-(status-only — the `auth_required` redirect to sign-in empties the
-response body before the walker reads it, so a body-regex was unreadable;
-on a 2nd anon POST `/v1/ask` a 401 can only be the SK-ANON-010/012 cap);
+wall — the envelope's cap code when the body is readable, else the
+observed `/auth/sign-in` redirect (the `auth_required` redirect empties
+the body before the walker reads it; a generic 401 without the envelope
+never redirects, so status alone could mask an auth regression);
 the mirror's steps 8–9 + pass criteria rewritten to the SK-ANON-012
 terminus. Resolves run-59's "morph-to-chat" open question: the anon
 terminus IS the sign-in redirect (SK-ANON-011 stash → SK-ANON-003

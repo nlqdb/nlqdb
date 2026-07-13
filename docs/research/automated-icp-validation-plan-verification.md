@@ -275,8 +275,11 @@ requires credentials, that itself is the failure.
    failure): a `200` here would mean the per-device cap regressed to
    unlimited free anon asks. The client stashes the prompt
    ([`SK-ANON-011`](../features/anonymous-mode/FEATURE.md)) and
-   redirects to sign-in, where adoption (`SK-ANON-003`) carries the
-   just-created DB forward.
+   redirects to `/auth/sign-in`, where adoption (`SK-ANON-003`)
+   carries the just-created DB forward. Assert the redirect (or the
+   `anon_device_cap` code in the body) too, not the status alone — a
+   generic `401` without the `auth_required` envelope never redirects
+   and would be an auth regression, not the wall.
 
 ### Pass criteria
 
