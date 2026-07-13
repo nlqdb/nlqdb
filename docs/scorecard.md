@@ -16,41 +16,41 @@ frontier-lens closed (run 15); the only remaining path, the corrected-set,
 is blocked on an external maintainer's license reply (uiuc-kang-lab #7,
 filed 07-07, no response), so no single run can move it — `SK-QUAL-005`'s
 engine-work mandate stands lever-blocked and re-binds the focus once any
-engine lever unparks. Row #15 state (07-13 run 64): #677 (merged) re-dispatched
-sdk/mcp/examples green, but opencheck's latest main run FAILED
-`#authed-state-preserved` (`schema_mismatch`), zeroing its contribution ⇒
-mean **≈ 0.75**. **Open PR #681 (run 63) owns row #15** — it persists the
-`schema_mismatch` SQLSTATE to KV so the red is root-causeable, then
-re-dispatches. This run avoided that lever + its files
-(`apps/api/src/ask/**`). With #15 owned by PR #681 and row #21 maxed 9/9,
-run 64 pulled the next-priority *surface-integrity / product-readiness*
-lever: **systematise the row #19 phantom-tool guard** — see *Worst number*
-and *Last change*.
+engine lever unparks. Row #15 state (07-13 run 66): #681 (run 63) merged the
+KV diagnostic; **open PR #684 (run 65) now owns row #15** — it root-causes the
+`schema_mismatch` to a cross-DB plan-cache collision and normalises hosted plan
+SQL schema-relative (`apps/api/src/ask/**`), landing #15 = 1.0 on merge + one
+re-dispatch. Run 66 avoided that lever + its files per step 0. With #15 owned
+by PR #684 and row #21 maxed 9/9, run 66 pulled the **engine-lane / pivot**
+lever instead: **ship the missing memory-quality eval dispatch path**
+(`SK-QUAL-023`, the GLOBAL-036 wedge) — see *Worst number* and *Last change*.
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
 agent-controllable inputs; the top UX-flow input, row #21, is maxed 9/9).
-With row #21 maxed and row #15 owned by open PR #681, the live
-agent-movable lever is **surface integrity / product-readiness** (founder
-order priority 2 — and, for the MCP path, priority-1 UX-flow: a phantom
-tool name is a stranger's FLOW-005 first call returning "tool not
-found"). **Run 64 finding:** run 62 fixed the `nlqdb_recall` phantom *by
-hand*, but the guard meant to prevent recurrence (`competitors.test.ts`
-SK-MCP-002) was itself broken — it scanned **1 of ~6 marketing surfaces**
-(the two pages the phantom actually shipped to, `/agents` +
-`/integrations`, were never swept) and pinned a **hand-copied tool set
-that had already drifted** (4 of the 5 shipped verbs — missing
-`nlqdb_connect_database`). **Run 64 lever: replace it with a systemic
-guard (`mcp-tool-integrity.test.ts`)** that reads the shipped catalog from
-the MCP server's own `registerTool(...)` sites (can't drift) and sweeps
-**every** `apps/web/src` surface closed-world: every `nlqdb_*` token must
-be a shipped tool or an explicitly-classified non-tool, else CI fails
-naming the phantom + file. Row #19 systemic-guard gap 0 → closed. Not
-anti-rut-blocked (last 5 merged = claim-fix, walker-step-7, cross-app-links,
-walker-step-8, create-trace — this is a categorically different *systemic
-guard* move, and it fixes a latent drift bug in the old guard). Next
-agent-movable lever stays distribution yield (rows #6/#7) or the engine
-lane (row #9 Spider).
+With row #21 maxed, row #15 owned by open PR #684, and the two live UX bugs
+owned by open PRs (#684 first-query plan-cache 42P01; #683 model-picker
+CORS), run 66's agent-movable lever was the **engine lane on the active
+pivot**: the `SK-QUAL-023` agent-memory-quality eval (GLOBAL-036 wedge) had
+its dataset + runner wiring shipped but **no dispatch path** — the EX number
+was unmeasurable in CI ("harness shipped, EX unmeasured"). **Run 66 finding
++ lever:** the four free-chain axes are *not* infra-gated (only the
+analytical-vs-**vector** head-to-head needs pgvector, E-05) — the slice was
+purely a missing workflow. Shipped `.github/workflows/quality-eval-memory.yml`
+(`workflow_dispatch`, mirrors persona-bench: inline-DDL SQLite, no fixture
+download, no baseline/emit; free chain + optional frontier lane; per-axis EX
+breakdown in the run summary). Verified the harness end-to-end locally: 17/17
+dataset tests, 15/15 golds execute, runner `--dataset memory-quality` wired,
+YAML + jq validated. A local run **confirmed the free chain is unreachable
+from the daily-agent container** (all providers `network`/`circuit_open`,
+`workers-ai:not_configured`) — so the run is CI-only and the first EX lands
+on the next canonical dispatch once the workflow is on `main`. Memory-quality
+**dispatch capability: absent → present** (Phase-2-gate enabler). Not
+anti-rut-blocked (last 5 merged = KV-diag, systemic-guard, phantom-fix,
+walker-step-7, cross-app-links — this is a categorically different *engine /
+eval-infra* move). Next agent-movable lever: the memory EX dispatch itself
+(next run's step 1, once merged), then distribution yield (rows #6/#7) or
+row #9 Spider.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -85,7 +85,7 @@ lane (row #9 Spider).
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
-| | Memory-quality eval (`SK-QUAL-023`) | harness shipped — EX unmeasured | 15 gold-verified questions, 4 axes; a scored dispatch + the vector head-to-head are the next slices |
+| | Memory-quality eval (`SK-QUAL-023`) | **harness + dispatch path shipped** (run 66 `quality-eval-memory.yml`) — first EX pending next CI dispatch | 15 gold-verified questions, 4 axes; free-chain dispatch now wired (container can't reach the chain → CI-only); the analytical-vs-vector head-to-head is the next slice (E-05 infra-gated) |
 
 ## Shipped distribution (live URLs)
 
@@ -101,51 +101,47 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-13 (run 64)** — lever: **systematise the row #19 phantom-tool
-guard (surface integrity / product-readiness; for the MCP path, priority-1
-UX-flow).** Step 0: open PR #681 (run 63) owns row #15 (opencheck
-`schema_mismatch` measurement fix) + `apps/api/src/ask/**` — this run
-avoided that lever + its files. Rule-6 health clean — deploy-api/web/docs
-all ✅ on main; local `bun install` + `bun run typecheck` (all packages
-exit 0) + `bun run lint` (exit 0, 38 pre-existing warnings, none from my
-files) + `bun run test` (api 901 pass / 6 skip) + `@nlqdb/web test` (244
-pass / 0 fail) all green. **Why this lever:** row #21 maxed 9/9, row #15
-owned by PR #681; next founder-order lever is surface integrity — and a
-phantom MCP tool name is *itself* a priority-1 UX-flow failure (a
-stranger's FLOW-005 first tool call 404s). **The finding:** run 62 fixed
-the `nlqdb_recall` phantom *by hand*, but the guard meant to stop
-recurrence (`competitors.test.ts` SK-MCP-002) was broken two ways — it
-scanned **1 of ~6 marketing surfaces** (the two `nlqdb_recall` actually
-shipped to, `/agents` + `/integrations`, were never swept) and pinned a
-**hand-copied tool set already drifted** from the registry (4 of 5 verbs —
-missing the shipped `nlqdb_connect_database`, a latent false-fail). **The
-change:** removed the broken competitors-only tests + their stale
-hardcoded set (P5); added `apps/web/src/data/mcp-tool-integrity.test.ts`
-— reads the shipped catalog from the MCP server's own `registerTool(...)`
-sites (the same catalog the SK-STRG-009 FLOW-005 stdio walker asserts at
-runtime, so the guard can't disagree with reality) and sweeps **every**
-`apps/web/src` `.ts/.tsx/.astro` file closed-world: each `nlqdb_*` token
-must be a shipped tool or an explicitly-classified non-tool (7 storage/
-analytics keys + the manifesto `create_database` foil), else it fails
-naming the phantom + file. **Measured (deterministic test):** before =
-guard covers 1/6 surfaces, tool set stale (4/5) → after = guard covers
-all surfaces, tool set read from source-of-truth (5/5); **passes clean (0
-offenders); fails on the injected run-62 phantom** with
-`{ nlqdb_recall: "apps/web/src/pages/agents/index.astro" }`. **Row #19
-systemic-guard gap closed; net test-count 0 (−2 old, +2 new).** Δ > 0 —
-keep. **Artifact (step 3):** queue was 2-deep (< 3) so no publish; this
-run's lever produced a searchable lesson → drafted
-`guard-advertised-capabilities-against-code` (queue 2 → 3, drains next
-non-null run); collapsed the oldest full draft to keep the queue file
-under the D4 20 KB cap (20,058 B). **Step 1:** funnel carried from run-62
-02:52–02:58Z pulls (remote D1 / CF GraphQL unreachable from container) —
-strangers **0**; docs-ambiguity 17 (held); row #18 0 dead (no page/link
-touched, test-only change); row #15 dropped to ≈0.75 (opencheck red, PR
-#681 owns). **KPI:** GLOBAL-025 engine-quality + onboarding/UX (the
-stranger-facing MCP first-call is now guarded against phantom-tool
-recurrence on every surface) — **none degrade** (no engine/prompt/
-eval-baseline/CI-lane change; rows #8–#11 + walker #21 carried; test-only
-diff, no runtime/bundle change).
+**2026-07-13 (run 66)** — lever: **ship the missing memory-quality eval
+dispatch path (engine lane / GLOBAL-036 agent-memory pivot).** Step 0: two
+open PRs — #684 (run 65) owns row #15 + `apps/api/src/ask/**` (cross-DB
+plan-cache 42P01 fix); #683 owns the ModelPicker + `/v1/models,keys,premium`
+CORS. Run 66 avoided both levers + all their files. Rule-6 health clean —
+deploy-api/web/docs all ✅ on main (latest run = HEAD `09aba2d`); the initial
+`bun run typecheck` red was a fresh-container missing `node_modules`, green
+(exit 0) after `bun install`; `bun run lint` exit 0 (38 pre-existing
+warnings). **Why this lever:** row #21 maxed 9/9; row #15 + the two live UX
+bugs all owned by open PRs; CLI/SDK claim-integrity checked and found *clean*
+(no phantom — `nlq login`/`mcp install` are documented `not_implemented`
+stubs, README accurate), so a guard there would be busywork (P5). The one
+real, non-owned, non-monoculture, measurable lever was the engine lane on the
+active pivot: `SK-QUAL-023`'s memory-quality eval had dataset + runner wiring
+but **no dispatch path** — EX unmeasurable in CI. Confirmed the four
+free-chain axes are *not* infra-gated (only the vector head-to-head is, E-05);
+the slice was a missing workflow. **The change:** added
+`.github/workflows/quality-eval-memory.yml` (`workflow_dispatch`,
+`permissions: contents: read` per SK-CIPERM-002; mirrors persona-bench —
+inline-DDL SQLite, no fixture download, no baseline/emit; free chain + opt-in
+frontier lane; per-axis EX breakdown in the run summary), updated the
+SK-QUAL-023 status + this scorecard. **Measured:** memory-quality dispatch
+capability **absent → present** (Phase-2-gate enabler on the pivot).
+Verified: 17/17 dataset tests, 15/15 golds execute, runner `--dataset
+memory-quality` wired, YAML parses, jq per-axis + lane summary validated
+against a real report. A local eval run **confirmed the free chain is
+unreachable from this container** (all providers `network`/`circuit_open`,
+`workers-ai:not_configured` — an outage, not a 0%, correctly NOT recorded per
+SK-QUAL-020), so the first real EX lands on the **next run's step-1 canonical
+dispatch** once the workflow is on `main`. Δ > 0 — keep. **Artifact (step
+3):** null step — open PR #684 (run 65) already drained the queue (published
+`one-shot-recovery-permanent-outage`), so no publish overlap; no new draft
+(P5 — this run's lesson is eval-infra, thin for a stranger-facing post).
+**Step 1:** funnel carried from run-62 02:52–02:58Z pulls (remote D1 / CF
+GraphQL + LLM egress all unreachable from container, re-confirmed this run) —
+strangers **0**; docs-ambiguity 17 (held; SK-QUAL-023 edit isn't an
+open-question bullet); row #18 0 dead (no page/link touched); row #15 ≈0.75
+(opencheck red, PR #684 owns). **KPI:** GLOBAL-025 engine-quality (pillar #1)
+on the GLOBAL-036 wedge — **none degrade** (workflow + doc only; zero
+runtime/prompt/eval-baseline change to existing evals; rows #8–#11 + #15 +
+walker #21 all carried; no new consumer of opencheck's lanes).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

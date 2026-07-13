@@ -8,11 +8,16 @@ sits alongside) · [`SK-QUAL-018`](./SK-QUAL-018-persona-bench.md) (the
 (the wedge this measures) · `GLOBAL-026` (the free-vs-frontier bet).
 Research: [`docs/research/agent-memory-quality-landscape.md`](../../../research/agent-memory-quality-landscape.md).
 
-**Status (2026-07-09):** offline four-axis dataset shipped —
-`tools/eval/src/datasets/memory-quality.ts` (15 gold-verified questions,
-3 per axis + analytical) + runner wiring (`--dataset memory-quality`) +
-gold-executability / tie-free / axis-semantics tests. **Deferred:** a scored
-free-chain dispatch to produce the EX number, and the analytical-vs-vector
+**Status (2026-07-13):** offline four-axis dataset **and dispatchable
+workflow** shipped — `tools/eval/src/datasets/memory-quality.ts` (15
+gold-verified questions, 3 per axis + analytical) + runner wiring
+(`--dataset memory-quality`) + gold-executability / tie-free /
+axis-semantics tests + `.github/workflows/quality-eval-memory.yml`
+(`workflow_dispatch`, free chain + optional frontier lane, per-axis EX
+breakdown in the run summary; mirrors the persona-bench dispatch — no
+fixture download, no baseline, no emit). The first EX number lands on the
+next canonical dispatch (the free chain is unreachable from the daily-agent
+container; the run is CI-only). **Deferred:** the analytical-vs-vector
 head-to-head (needs an embedding baseline — infra-gated, E-05).
 
 - **Decision:** Add an agent-memory-quality benchmark to `tools/eval` alongside
