@@ -5,9 +5,10 @@
 # Mirrors `deploy-api.yml`'s shape (build apps/web → migrate D1 → deploy)
 # but points at `wrangler.canary.toml` so the canary D1, KV, Queue, and
 # R2 bindings are used. Secrets (`BETTER_AUTH_SECRET`, `OAUTH_GITHUB_*`,
-# `GOOGLE_CLIENT_*`, `NEON_DATABASE_URL`, `RESEND_API_KEY`) are set
-# manually with `wrangler secret put --config wrangler.canary.toml`
-# (H8 in the PR description) — same model as prod.
+# `GOOGLE_CLIENT_*`, `DATABASE_URL`, `RESEND_API_KEY` — names per
+# `apps/api/src/env.d.ts`; OAuth values must be the canary App pair,
+# SK-AUTH-008) are set manually with
+# `bun run --cwd apps/api secrets:canary <NAME>` — same model as prod.
 
 name: Deploy — Canary
 
