@@ -4,7 +4,7 @@
 // as `/`: HERO → DEMO → REPLACEMENT. The hero ships one input
 // pre-seeded with an agent-memory goal (SK-WEB-002 honored — one
 // input, no signup wall). The demo shows an MCP `nlqdb_remember` +
-// `nlqdb_recall` tool-call pair with the resulting SQL and answer,
+// `nlqdb_query` tool-call pair with the resulting SQL and answer,
 // side-by-side like the homepage's `<Demo>`. The replacement block
 // reuses the editorial-serif strikethrough vocabulary from
 // `<Replaces>` but lists what this kills for agent builders:
@@ -52,7 +52,7 @@ const mcpConfig = `{
   }
 }`;
 
-// The DEMO block — an `nlqdb_remember` / `nlqdb_recall` MCP tool call
+// The DEMO block — an `nlqdb_remember` / `nlqdb_query` MCP tool call
 // pair, the compiled SQL, and the answer rows. Rendered from a fixture
 // through the same typed-plan compile shape the product runs (NOT a
 // live `/v1/ask` call — the proof stays server-rendered so it's
@@ -64,8 +64,8 @@ const rememberCall = `nlqdb_remember({
 })`;
 const rememberResult = `→ { id: 4129, ok: true }`;
 
-const recallCall = `nlqdb_recall({
-  question: "feedback per user, ranked by count this month"
+const recallCall = `nlqdb_query({
+  q: "feedback per user, ranked by count this month"
 })`;
 
 const recallSql = `SELECT user_id, COUNT(*) AS feedback
@@ -164,7 +164,7 @@ const faqJsonLd = faqPageJsonLd(faqs);
       </section>
 
       {/* BEAT 2 — Demo. The MCP tool-call pair (nlqdb_remember +
-          nlqdb_recall), the compiled SQL, and the answer rows.
+          nlqdb_query), the compiled SQL, and the answer rows.
           Side-by-side at ≥880px like the homepage <Demo>. */}
       <section class="ag-demo" aria-labelledby="ag-demo-eyebrow">
         <p class="ag-demo__eyebrow" id="ag-demo-eyebrow">Two MCP tools. One database.</p>
@@ -175,7 +175,7 @@ const faqJsonLd = faqPageJsonLd(faqs);
           Over MCP your agent calls
           <code><span class="ag-demo__tag">nlqdb_remember</span></code> to write
           a typed row, then
-          <code><span class="ag-demo__tag">nlqdb_recall</span></code> to ask in
+          <code><span class="ag-demo__tag">nlqdb_query</span></code> to ask in
           English. nlqdb compiles the question to SQL through a typed-plan
           trust boundary and runs it on Postgres.
         </p>
@@ -244,7 +244,7 @@ const faqJsonLd = faqPageJsonLd(faqs);
 
         <div class="ag-replaces__final">
           <code class="ag-replaces__code">
-            <span class="ag-replaces__tag">nlqdb_recall</span>(…)
+            <span class="ag-replaces__tag">nlqdb_query</span>(…)
           </code>
         </div>
 
@@ -424,7 +424,7 @@ const faqJsonLd = faqPageJsonLd(faqs);
 
   /* Demo — beat 2. Side-by-side at ≥880px (matches the homepage
    * `<Demo>` breakpoint), stacked below. Lime is reserved for the
-   * `nlqdb_remember` / `nlqdb_recall` identifiers in the lede; the
+   * `nlqdb_remember` / `nlqdb_query` identifiers in the lede; the
    * code panels themselves stay ink-on-raised. */
   .ag-demo {
     padding: clamp(64px, 12vw, 120px) 0 clamp(40px, 6vw, 64px);
