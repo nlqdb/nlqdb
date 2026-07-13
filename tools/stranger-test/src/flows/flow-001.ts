@@ -7,6 +7,11 @@ import { openSession, step, withDeadline } from "../browser.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
 const HERO_PLACEHOLDER_RE = /orders|tracker|building/i;
+// SK-ANON-012 gates the *second* anon /v1/ask behind sign-in: message #1
+// answers free (GLOBAL-007), message #2 returns 401 `anon_device_cap`.
+// FLOW-001 is the anonymous-first path, so its terminus is that wall —
+// the designed conversion moment, not a failure. A 200 here would mean
+// the device cap regressed (unlimited free anon asks).
 const SECOND_PROMPT = "now group by week";
 const ASK_TIMEOUT_MS = 60_000;
 const WALK_DEADLINE_MS = 180_000;
@@ -287,8 +292,9 @@ async function doWalk(
     }
 
     if (failedStep === null) {
-      // The post-first-query input is the chat composer; selectors-by-role
-      // outlast placeholder-text drift better than a `last()` placeholder match.
+      // The follow-up input is the same create field (CreateForm stays
+      // mounted with the result appended below it); selectors-by-role
+      // outlast placeholder-text drift better than a `last()` match.
       const followInput = page.getByRole("textbox").last();
       const t1 = Date.now();
       const ask2Waiter = page
@@ -306,29 +312,57 @@ async function doWalk(
         steps.push(
           step(
             8,
-            "second /v1/ask within 60 s with same dbId",
+            "second anon /v1/ask hits the SK-ANON-012 sign-in wall (401 + redirect)",
             "fail",
             filled ? "no second /v1/ask observed" : "could not fill follow-up input",
           ),
         );
         failedStep = 8;
       } else {
+        // SK-ANON-012: the 2nd anon call returns 401; the client
+        // `savePending`s the prompt (SK-ANON-011) and redirects to
+        // sign-in. That wall IS the anonymous happy-path terminus
+        // (GLOBAL-007 lands it at #2, not #1). A 200 here would mean
+        // the per-device cap regressed to unlimited free anon asks.
+        // Status alone can't tell the wall from an auth regression —
+        // a generic `unauthorized` 401 (e.g. the bearer dropped from
+        // the follow-up request) carries no auth_required envelope,
+        // so CreateForm never redirects. The redirect usually empties
+        // the response body before the walker reads it, so require
+        // the envelope's cap code when the body is readable, and the
+        // observed hop to /auth/sign-in when it isn't.
         const status = ask2.status();
         const body = await ask2.text().catch(() => "");
-        const dbId = body.match(/"dbId":\s*"([^"]+)"/)?.[1];
+        const capCode = /anon_device_cap|anon_global_cap/.exec(body)?.[0];
+        const wall =
+          capCode ??
+          (status === 401
+            ? await page
+                .waitForURL(/\/auth\/sign-in/, { timeout: 10_000 })
+                .then(() => "sign-in redirect (body consumed by it)")
+                .catch(() => null)
+            : null);
+        const capped = status === 401 && wall !== null;
         steps.push(
           step(
             8,
-            "second /v1/ask within 60 s with same dbId",
-            status === 200 ? "ok" : "fail",
-            `status=${status} dt=${Date.now() - t1} dbId=${dbId ?? "<unparsed>"}`,
+            "second anon /v1/ask hits the SK-ANON-012 sign-in wall (401 + redirect)",
+            capped ? "ok" : "fail",
+            capped
+              ? `status=401 ${wall} dt=${Date.now() - t1}`
+              : `status=${status} wall=${wall ?? "none"} dt=${Date.now() - t1} body=${body.slice(0, 120)}`,
           ),
         );
-        if (status !== 200) failedStep = 8;
+        if (!capped) failedStep = 8;
       }
     } else {
       steps.push(
-        step(8, "second /v1/ask within 60 s with same dbId", "skip", "blocked by earlier step"),
+        step(
+          8,
+          "second anon /v1/ask hits the SK-ANON-012 sign-in wall (401 + redirect)",
+          "skip",
+          "blocked by earlier step",
+        ),
       );
     }
   } catch (e) {
