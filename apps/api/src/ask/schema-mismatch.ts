@@ -37,10 +37,12 @@ export function classifySchemaError(
   recordSchemaMismatch({ ...ctx, reason, pgCode, pgMessage: msg });
   // Carry the SQLSTATE onto the error so the orchestrator can persist it to
   // the KV diag sink (SK-ASK-023) — the span + console line above are the
-  // only record today, and both vanish on preview/e2e invocations.
+  // only record today, and both vanish on preview/e2e invocations. Cap the
+  // message to 500 chars like `recordExecUnreachable` so the durable KV row
+  // stays bounded (the sibling `db_unreachable` sink's posture).
   return new Nonrecoverable(
     "schema_mismatch",
-    new SchemaMismatchError([], [], { pgCode, pgMessage: msg }),
+    new SchemaMismatchError([], [], { pgCode, pgMessage: msg.slice(0, 500) }),
   );
 }
 
