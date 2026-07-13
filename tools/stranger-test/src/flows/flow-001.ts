@@ -254,7 +254,12 @@ async function doWalk(
     }
 
     if (failedStep === null) {
-      const copyBtn = page.getByRole("button", { name: /copy snippet/i }).first();
+      // getByRole matches the *accessible* name, not the visible text. The
+      // idle label is "Copy snippet" (SK-WEB-007); tolerate a legacy
+      // "Copy embed snippet" aria-label still deployed until this build
+      // ships, so the conversion action is exercised (not silently skipped)
+      // across the deploy boundary.
+      const copyBtn = page.getByRole("button", { name: /copy(?: embed)? snippet/i }).first();
       const copyVisible = await copyBtn.isVisible({ timeout: 5_000 }).catch(() => false);
       if (copyVisible) {
         await page

@@ -41,13 +41,7 @@ export default function CopySnippet({ goal, pkLive }: CopySnippetProps) {
   }
 
   return (
-    <button
-      type="button"
-      className="copy-snippet"
-      onClick={copy}
-      aria-label="Copy embed snippet"
-      data-state={state}
-    >
+    <button type="button" className="copy-snippet" onClick={copy} data-state={state}>
       {state === "copied"
         ? "Copied"
         : state === "failed"
