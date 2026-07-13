@@ -6,7 +6,7 @@ import { makeNoopEmitter, type ProductEvent } from "@nlqdb/events";
 import type { LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
 import { type OrchestrateDeps, orchestrateAsk } from "../src/ask/orchestrate.ts";
-import type { PlanCache } from "../src/ask/plan-cache.ts";
+import { hashGoal, type PlanCache } from "../src/ask/plan-cache.ts";
 import type { CachedPlan, DbRecord, OrchestrateEvent, QueryResult } from "../src/ask/types.ts";
 import { DbConfigError } from "../src/ask/types.ts";
 
@@ -273,6 +273,67 @@ describe("orchestrateAsk", () => {
     expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
     expect(cache.write).not.toHaveBeenCalled();
     expect(cache.lookup).toHaveBeenCalledTimes(1);
+  });
+
+  it("SK-ASK-025: a hosted miss caches schema-relative SQL (strips the DB's own schema)", async () => {
+    // The LLM echoes the physically-qualified name from the DDL prompt; the
+    // orchestrator must normalise it so the cached plan is portable to every
+    // DB sharing this (schema_hash, query_hash) key.
+    const db = stubDb({
+      id: "db_users_11d170",
+      schemaText: 'CREATE TABLE "users_11d170"."users" (id integer);',
+    });
+    const cache = stubPlanCache();
+    const llm = stubLLM({ plan: { sql: 'SELECT count(*) FROM "users_11d170"."users"' } });
+    let execSql = "";
+    const exec = vi.fn(async (_db: DbRecord, sql: string) => {
+      execSql = sql;
+      return { rows: [{ n: 3 }], rowCount: 1 } as QueryResult;
+    });
+    const out = await orchestrateAsk(
+      makeDeps({ resolveDb: vi.fn(async () => db), planCache: cache, llm, exec }),
+      { goal: "how many users are there?", dbId: "db_users_11d170", userId: "user_1" },
+    );
+    expect(out.ok).toBe(true);
+    // Exec + cache both see the schema-relative form.
+    expect(execSql).toBe('SELECT count(*) FROM "users"');
+    expect(cache.write).toHaveBeenCalledTimes(1);
+    expect(cache.write.mock.calls[0]?.[2]?.sql).toBe('SELECT count(*) FROM "users"');
+  });
+
+  it("SK-ASK-025: a cache hit baked against a FOREIGN schema is dropped and re-planned", async () => {
+    // Poisoned pre-normalisation entry: a different DB (users_d31c65) filled
+    // the shared logical-schema key with a physically-qualified plan. This DB
+    // (users_11d170) can't run it, so the hit is invalidated, the LLM
+    // re-plans, and the entry is overwritten schema-relative (self-heal).
+    const goal = "how many users are there?";
+    const db = stubDb({
+      id: "db_users_11d170",
+      schemaText: 'CREATE TABLE "users_11d170"."users" (id integer);',
+    });
+    const seed = new Map();
+    seed.set(`schema_v1:${await hashGoal(goal)}`, {
+      sql: "SELECT count(*) FROM users_d31c65.users",
+      schemaHash: "schema_v1",
+    });
+    const cache = stubPlanCache(seed);
+    const llm = stubLLM({ plan: { sql: 'SELECT count(*) FROM "users_11d170"."users"' } });
+    let execSql = "";
+    const exec = vi.fn(async (_db: DbRecord, sql: string) => {
+      execSql = sql;
+      return { rows: [{ n: 3 }], rowCount: 1 } as QueryResult;
+    });
+    const out = await orchestrateAsk(
+      makeDeps({ resolveDb: vi.fn(async () => db), planCache: cache, llm, exec }),
+      { goal, dbId: "db_users_11d170", userId: "user_1" },
+    );
+    expect(out.ok).toBe(true);
+    // The poisoned hit forced a re-plan (LLM was called) and the entry was
+    // overwritten with the schema-relative plan the current DB can run.
+    expect(llm.plan).toHaveBeenCalledTimes(1);
+    expect(execSql).toBe('SELECT count(*) FROM "users"');
+    expect(cache.write).toHaveBeenCalledTimes(1);
+    expect(cache.write.mock.calls[0]?.[2]?.sql).toBe('SELECT count(*) FROM "users"');
   });
 
   it("returns db_misconfigured when exec throws DbConfigError", async () => {
