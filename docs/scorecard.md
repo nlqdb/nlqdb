@@ -146,7 +146,10 @@ FLOW-001 **0/3** (all 3 step-8 `status=401`, steps 1–7 green) → after =
 branch dispatch against prod
 [`29211619838`](https://github.com/nlqdb/nlqdb/actions/runs/29211619838):
 FLOW-001 **3/3**, overall stranger-test **9/9** + both FLOW-005
-transports `passed`. **Row #21 6/9 → 9/9 — target met.** Δ > 0 — keep.
+transports `passed`; re-verified with the envelope-or-redirect assertion
+([`29215175556`](https://github.com/nlqdb/nlqdb/actions/runs/29215175556):
+9/9, step-8 `sign-in redirect`, dt 448–516 ms).
+**Row #21 6/9 → 9/9 — target met.** Δ > 0 — keep.
 **Artifact (step 3):** queue was 3-deep ⇒ published the oldest draft
 `green-checkmark-has-a-half-life` to `/blog` (row #6 33→34; queue 3→2;
 build 117→118 pages, 0 dead links). **Step 1:** funnel/ops carried from
