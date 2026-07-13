@@ -412,6 +412,30 @@ export async function orchestrateAsk(
         return { ok: false, error: { status: "db_misconfigured" } };
       }
       if (err instanceof SchemaMismatchError) {
+        // SK-ASK-023 — same preview/e2e log black hole as `db_unreachable`
+        // below: `recordSchemaMismatch`'s span + console line are dropped for
+        // preview URLs, so the deterministic missing-relation SQLSTATE (the
+        // one signal that disambiguates an orphaned-schema `#authed-state`
+        // e2e failure from a genuine wrong-table plan) vanishes exactly where
+        // e2e runs. Persist it where it survives. Only the exec-catch path
+        // carries `err.diag`; the pre-flight path leaves it undefined.
+        const d = err.diag;
+        if (d && deps.diag) {
+          const diag = deps.diag;
+          await withSpan(
+            "nlqdb.diag.write",
+            () =>
+              diag.record({
+                event: "schema_mismatch",
+                pgCode: d.pgCode,
+                pgMessage: d.pgMessage,
+                dbId: req.dbId,
+                cacheHit,
+                planModel,
+              }),
+            { onError: undefined },
+          );
+        }
         return {
           ok: false,
           error: {
