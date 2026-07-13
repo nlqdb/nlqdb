@@ -288,7 +288,7 @@ the memory-shaped primitives that make the wedge claims durable).
 
 **Status:** superseded on `/` by [`SK-WEB-018`](../web-app/decisions/SK-WEB-018-two-door-home.md) — the home is now a two-door chooser; the agent-loop proof relocates to `/agents`.
 
-**Body:** [`decisions/SK-PIVOT-014-home-flow-reposition.md`](./decisions/SK-PIVOT-014-home-flow-reposition.md). The WS-13 follow-on: hero's primary action became the SK-WEB-016 `<McpInstall>` row, `Demo.astro` the agent loop, `Replaces.astro` the agent-memory list collapsing into `nlqdb_recall(…)`, the generalist flow a `.alsoworks` link to `/app/new`.
+**Body:** [`decisions/SK-PIVOT-014-home-flow-reposition.md`](./decisions/SK-PIVOT-014-home-flow-reposition.md). The WS-13 follow-on: hero's primary action became the SK-WEB-016 `<McpInstall>` row, `Demo.astro` the agent loop, `Replaces.astro` the agent-memory list collapsing into `nlqdb_query(…)`, the generalist flow a `.alsoworks` link to `/app/new`.
 
 ## GLOBALs governing this feature
 
