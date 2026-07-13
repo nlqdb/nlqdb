@@ -333,7 +333,8 @@ async function doWalk(
         const status = ask2.status();
         const body = await ask2.text().catch(() => "");
         const capped = status === 401;
-        const cap = /anon_device_cap|anon_global_cap/.exec(body)?.[0] ?? "cap (body consumed by redirect)";
+        const cap =
+          /anon_device_cap|anon_global_cap/.exec(body)?.[0] ?? "cap (body consumed by redirect)";
         steps.push(
           step(
             8,

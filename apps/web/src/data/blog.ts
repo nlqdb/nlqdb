@@ -53,7 +53,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         kind: "p",
-        text: "That trade-off is defensible. The consequence we hadn't written down is not: **once e2e stops running on every push, \"passing\" stops being a state and becomes an event.**",
+        text: 'That trade-off is defensible. The consequence we hadn\'t written down is not: **once e2e stops running on every push, "passing" stops being a state and becomes an event.**',
       },
       { kind: "h2", text: "The checkmark that stopped meaning anything" },
       {
