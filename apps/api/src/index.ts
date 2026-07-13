@@ -147,11 +147,16 @@ app.onError((err, c) => {
   return c.text("Internal Server Error", 500);
 });
 
-// CORS allow-list. Post SK-AUTH-016 the product UI and API are
-// same-origin (`app.nlqdb.com`), so product fetches don't need CORS.
-// The marketing site (`nlqdb.com` / Pages) still calls `/v1/ask`
-// cross-origin with an anon bearer (SK-WEB-008); that needs an
-// explicit entry because `credentials: include` rejects `origin: *`.
+// CORS allow-list. SK-AUTH-016 merged the product UI + API onto one
+// worker at `app.nlqdb.com` (same-origin), but the marketing worker
+// serves the *same* Astro build at `nlqdb.com`, so `/app/*` is also
+// reachable there cross-origin. `nlqdb.com` and `app.nlqdb.com` are
+// same-site (shared eTLD+1), so the host-only session cookie still
+// travels — but a cross-origin fetch still needs the `Access-Control-
+// Allow-Origin` header + the credentials flag. Every product `/v1/*`
+// endpoint the UI hits therefore carries `credentialedCors` (below),
+// keyed to this allow-list; `credentials: include` rejects `origin: *`,
+// so the origins are explicit.
 //
 // Preview environments are same-origin too (single merged worker per
 // PR via `preview-app.yml`), so no preview-URL regexes are needed.
@@ -225,6 +230,17 @@ app.use("/v1/chat/*", credentialedCors);
 app.use("/v1/databases", credentialedCors);
 app.use("/v1/databases/*", credentialedCors);
 app.use("/v1/db/*", credentialedCors);
+// Product-UI endpoints the model picker + keys panel hit from
+// `nlqdb.com` cross-origin (SK-PREMIUM-013 / api-keys): the model
+// catalog, the BYOLLM + minted-key routes, and the hosted-premium
+// "Count me in" signal. Without these the picker's `GET /v1/models`
+// is CORS-blocked, `catalog` stays null, and the "Switch model" CTA
+// opens nothing. `/v1/keys` is listed bare + globbed so the mint/list
+// route is covered alongside `/byollm`, `/:id`, and `/:hash/status`.
+app.use("/v1/models", credentialedCors);
+app.use("/v1/keys", credentialedCors);
+app.use("/v1/keys/*", credentialedCors);
+app.use("/v1/premium/*", credentialedCors);
 
 // Session gate for `/v1/*` routes. Captures `auth.api.getSession`
 // (cookieCache fast path → secondaryStorage → D1) + the KV revocation
