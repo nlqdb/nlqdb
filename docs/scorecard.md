@@ -16,33 +16,36 @@ frontier-lens closed (run 15); the only remaining path, the corrected-set,
 is blocked on an external maintainer's license reply (uiuc-kang-lab #7,
 filed 07-07, no response), so no single run can move it — `SK-QUAL-005`'s
 engine-work mandate stands lever-blocked and re-binds the focus once any
-engine lever unparks. Row #15 state (07-13 02:58Z recompute): all four
-suites green — sdk/mcp/examples 07-12 04:13Z, opencheck's first green
-main run 07-12 13:18Z
-([29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944));
-**≈ 0.88** and decaying only with the calendar (no new dispatch this
-run). With #15 near ceiling and row #21 maxed (9/9), run 61 pulled the
-next-priority *distribution/surface-integrity* lever per the ordering:
-**the cross-app dead-link blind spot (row #18)** — see *Worst number*
+engine lever unparks. Row #15 state (07-13 05:00Z): all four suites
+re-dispatched on `cfbf291` this run — sdk/mcp/examples green 07-13
+04:19Z (freshness 1.0 each) but **opencheck came back RED**
+([29224081463](https://github.com/nlqdb/nlqdb/actions/runs/29224081463),
+`failure` 05:00Z), so the mean is **≈ 0.75** (three fresh passes + one
+fresh fail), DOWN from the stale ≈ 0.88 — **the weekly-focus 1.0 target
+is not met**; the re-dispatch turned a stale-green opencheck into a
+known fresh red (triage per `opencheck-operations.md`: agent-lane
+capacity vs product). Row #18's cross-app blind spot closed this window
+(#676). The live lever is now the opencheck red — see *Worst number*
 and *Last change*.
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
-agent-controllable inputs; the top UX-flow input, row #21, is now maxed
-9/9). With every canonical flow green and #15 near ceiling, the live
-agent-movable lever is **distribution / surface integrity** (founder
-order priority 2). **Run 61 finding:** the `check:links` dead-link sweep
-(row #18) only classed `https://nlqdb.com` + relative paths as internal;
-every `href`/`src` to an owned subdomain (`docs./app./mcp.nlqdb.com`) was
-dropped by `isInternal` and **never checked** — exactly the class the
-2026-07-02 docs-site 404 shipped through (a marketing→docs link nobody
-swept). **Run 61 lever: extend the sweep to live-verify cross-app links
-— 14 `docs.nlqdb.com` funnel links now swept every build (0 → 14
-covered), 0 dead.** Not anti-rut-blocked (last 5 merged = walker-correct,
-create-trace, walker-re-true, e2e-fix, anon-fail-open — all
-flow/quality; this is the first distribution/integrity pull in the
-window). Next agent-movable lever stays distribution yield (rows #6/#7)
-or the engine lane (row #9 Spider).
+agent-controllable inputs). The worst *agent-movable* number was the
+**weekly focus, row #15** (≈ 0.88, decayed off the 07-12 successes and
+unverified against `main`'s three newer daily PRs — runs 57/59/60).
+**Run-61 lever: re-dispatch all four E2E suites on `cfbf291`** — resets
+freshness and exercises those product changes end-to-end. Result:
+sdk/mcp/examples fresh-green (1.0 each, runs 57/59/60 now verified on
+those surfaces) but **opencheck re-dispatched RED**
+([29224081463](https://github.com/nlqdb/nlqdb/actions/runs/29224081463),
+`failure` 05:00Z), so row #15 **≈ 0.88 → ≈ 0.75** — the 1.0 target is
+**not met** and the number fell (a fresh red replaced a stale green).
+This is freshness working as designed: it surfaced a live opencheck red
+the stale-green had masked. The new agent-movable lever is that
+opencheck failure (triage per `opencheck-operations.md`). Engine-local
+smoke was ruled out (Spider/BIRD dataset hosts unreachable via the
+container network policy; engine rows fresh 07-11). Row #18's cross-app
+dead-link coverage also landed this window (#676).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -65,7 +68,7 @@ or the engine lane (row #9 Spider).
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **≈ 0.88** at 07-13 02:58Z — sdk ✅ · mcp ✅ · examples ✅ all 07-12 04:13Z on main (≈0.86 each) · opencheck ✅ first green main conclusion 07-12 13:18Z ([29194166944](https://github.com/nlqdb/nlqdb/actions/runs/29194166944), ≈0.92). The run-53 "deterministic ACL retarget" red root-caused + fixed in #672 (run 57, merged): dynamic-import crash on fresh isolates (`pg-client.ts` split) + `SK-ASK-024` heal; depth=ab re-verify app-side clean, residual red = agent-lane capacity | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
+| 15 | E2E manual-suite freshness | **≈ 0.75** (07-13 05:00Z) — all four re-dispatched on `cfbf291` this run: sdk ✅ ([29223618483](https://github.com/nlqdb/nlqdb/actions/runs/29223618483)) · mcp ✅ ([29223619210](https://github.com/nlqdb/nlqdb/actions/runs/29223619210)) · examples ✅ ([29223620120](https://github.com/nlqdb/nlqdb/actions/runs/29223620120)) all green 07-13 04:19Z (freshness 1.0 each) · opencheck ❌ ([29224081463](https://github.com/nlqdb/nlqdb/actions/runs/29224081463)) **`failure` 05:00Z**. Three fresh passes + one fresh fail ⇒ mean ≈ 0.75, DOWN from the stale ≈ 0.88: **the 1.0 weekly-focus target is not met** — the re-dispatch converted a stale-green opencheck into a known fresh red. Opencheck red needs triage (agent-lane capacity vs a real product regression) | Sequencing rule (unchanged): sdk/mcp/examples first, opencheck after they completed. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-13 run 61 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
@@ -121,44 +124,39 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-13 (run 61)** — lever: **extend the `check:links` dead-link
-sweep to cover cross-app links (row #18, surface integrity / distribution
-priority-2).** Step 0: no open PRs; rule-6 health clean — all 7
-push-deploys success on main `cfbf291` (deploy-api/web/docs all ✅);
-local `bun run typecheck` (12/12 workspaces) + `bun run lint` (exit 0) +
-`@nlqdb/web test` (244 pass / 0 fail) green. **Why this lever:** row #21
-maxed 9/9 and row #15 near ceiling ⇒ the UX-flow input is spent; per the
-founder order the live lever is distribution / surface integrity, and
-the last 5 merged dailies were all flow/quality (anti-rut clear).
-**The finding:** the sweep's `isInternal` classed only `https://nlqdb.com`
-+ relative paths as internal; every `href`/`src` to an owned subdomain
-(`https://docs./app./mcp.nlqdb.com`) fell through and was **never
-checked** — the exact blind spot the 2026-07-02 docs-site 404 shipped
-through (a marketing→docs link nobody swept, unnoticed for weeks).
-**The change:** `apps/web/scripts/check-links.mjs` now collects every
-cross-app `href`/`src` to an owned subdomain from built HTML and
-live-verifies each distinct one: a definitive 4xx/5xx is dead (hard
-fail, exit 1); an auth/method gate (401/403/405) counts as alive; a
-network error is reported "unverified" and never fails the sweep, so an
-offline run degrades to the internal-only result. API endpoints
-(`/v1/ask`, `/mcp`) and copy-paste code snippets (`elements.../v1.js`)
-appear only as code text, not `href`/`src`, so they stay correctly out
-of scope. **Measured (same instrument, `bun run build && check:links`):**
-before = 118 pages, 2,908 internal links checked, **0 cross-app links
-checked** (all silently dropped) → after = same 118 pages / 2,908
-internal, **14 `docs.nlqdb.com` funnel links now swept, 0 dead, 0
-unverified** (all 200). **Row #18 cross-app coverage 0 → 14 links —
-0 dead.** Δ > 0 — keep. **Artifact (step 3):** skipped — queue is 2-deep
-(< 3), no publish; no new draft (P4/founder-2026-07-11: drafting is not a
-run's output). **Step 1:** fresh 02:52–02:58Z pulls — visits 232
-pageloads (real-browser ≈ 49); users 9 (4 founder + 5 test), strangers
-**0**; DBs 165 → 223 (synthetic); nlqdb-api 4,974 req / 0 err;
-docs-ambiguity 17 (held); row #15 ≈ 0.92 → 0.88 (calendar decay, no new
-e2e dispatch). **KPI:** GLOBAL-025 UX + distribution (a dead
-marketing→docs link silently loses a stranger; the funnel's cross-app
-hops are now swept every build) — **none degrade** (one build-script
-change; no product, prompt, eval-baseline, CI-lane, or shipped-source
-change; engine rows #8–#11 and walker row #21 carried).
+**2026-07-13 (run 61)** — lever: **re-dispatch all four E2E suites on
+`cfbf291` (weekly focus, row #15).** Step 0: sibling run-61 PR #676
+pulled row #18 (cross-app link sweep) — avoided that lever + its files.
+Rule-6 health clean: typecheck/lint/test green once the pinned TS 5.9.3
+toolchain was installed (a floating TS 6.0.2 emitted a spurious `TS5101`
+locally; the lockfile pins 5.9.3, which CI uses — not a real red);
+deploy-api green on `cfbf291`. **The finding:** the four manual suites
+had last run on `c4fc468` (07-12), but `main` had advanced three daily
+PRs (runs 57/59/60), so row #15 had decayed to ≈ 0.88 **and** those
+product changes had never been exercised end-to-end. **The change:**
+dispatched sdk + mcp + examples together, then opencheck after they
+completed (sequencing rule), all on `cfbf291`. **Measured (same
+instrument, `pass × freshness` mean):** sdk
+[`29223618483`](https://github.com/nlqdb/nlqdb/actions/runs/29223618483),
+mcp [`29223619210`](https://github.com/nlqdb/nlqdb/actions/runs/29223619210),
+examples [`29223620120`](https://github.com/nlqdb/nlqdb/actions/runs/29223620120)
+all `success` 04:19Z (freshness 1.0 each), **but opencheck
+[`29224081463`](https://github.com/nlqdb/nlqdb/actions/runs/29224081463)
+concluded `failure` 05:00Z.** So row #15 = **≈ 0.88 → ≈ 0.75** (three
+fresh passes + one fresh fail) — **the 1.0 target is NOT met and the
+number fell**; the re-dispatch surfaced a live opencheck red the stale
+green had masked (freshness working as designed). **Next lever = triage
+the opencheck failure** (`opencheck-operations.md`: agent-lane capacity
+vs a real product red). Engine-local smoke was ruled out (Spider/BIRD
+hosts unreachable via the container network policy; engine rows fresh
+07-11). **Artifact (step 3):** skipped — queue 2-deep (< 3). **Step 1:**
+funnel/ops carried from the 02:52–02:58Z pulls (visits 232 pageloads,
+real-browser ≈ 49; users 9, strangers **0**; DBs 223 synthetic;
+nlqdb-api 4,974 req / 0 err); docs-ambiguity 17 (held). Row #18's
+cross-app link coverage (0 → 14) landed this window via #676. **KPI:**
+the intended GLOBAL-025 UX/onboarding win **did not land** — row #15
+degraded 0.88 → 0.75 (opencheck red); sdk/mcp/examples surfaces are
+verified against `main`, engine rows #8–#11 and walker row #21 carried.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
