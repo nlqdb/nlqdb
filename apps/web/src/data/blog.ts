@@ -41,6 +41,72 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "one-shot-recovery-permanent-outage",
+    title: "Your recovery code runs once. Your failure doesn't.",
+    description:
+      "A best-effort repair that runs once turns one silent skip into a permanent outage. Fix the root, keep it idempotent, and re-trigger from the steady-state symptom — the event never recurs.",
+    date: "2026-07-13",
+    body: [
+      {
+        kind: "p",
+        text: "Signing in to our product *adopts* a database you created before you had an account: we flip an owner column and re-point the Postgres grants and row-level-security policies at the new owner. That grant batch was best-effort by design — never fail a sign-in because a permission re-grant hiccuped — and it ran exactly once per adoption.",
+      },
+      {
+        kind: "p",
+        text: "For four days it looked *dispatch-intermittent*: the identical code passed one CI run and bricked the next. That phrasing is a tell. Identical code with a coin-flip outcome almost never means randomness — it means a hidden input you haven't named yet.",
+      },
+      { kind: "h2", text: "The hidden input was the isolate" },
+      {
+        kind: "p",
+        text: "The repair lazily imported a module that crashed at init: a WASM loader dereferencing `self.location.href`, which is undefined in our serverless runtime. It crashed in every *fresh* isolate — and passed in every isolate some other code path had already warmed with a globals shim. Whether a given sign-in landed on a warm or cold isolate was the coin flip.",
+      },
+      {
+        kind: "p",
+        text: "Two properties turned a transient crash into a permanent outage:",
+      },
+      {
+        kind: "ol",
+        items: [
+          "The crash landed *before* the instrumented `try`. The observability wrapper started after the imports, so it observed nothing — zero log lines for the failure that mattered.",
+          "The repair ran exactly once per adoption. One silent skip bricked the database *forever*: every subsequent query died at `SET LOCAL ROLE` inside a catch-all that read \"couldn't reach the database.\"",
+        ],
+      },
+      {
+        kind: "p",
+        text: "Every retry mechanism in the request pipeline was useless here, because the failure didn't live in *this* request. It lived in state a *previous* request failed to write. And the event that would re-run the repair — an adoption replay — can never fire again: a fresh browser mints a fresh anonymous token, so there is nothing left to adopt.",
+      },
+      { kind: "h2", text: "The fix has three layers" },
+      {
+        kind: "ol",
+        items: [
+          "Fix the root: a dependency-free client module with nothing left to fail outside the instrumented block.",
+          "Keep the repair idempotent: role-if-missing, grants, and `ALTER POLICY` all re-apply cleanly, so running it again is always safe.",
+          "Re-trigger it from the *symptom*, not the event: in the steady-state query path, a role-missing error re-runs the grant batch and retries once — pinned to an error shape only our own subsystem can produce, and surfacing the original error if the repair itself fails.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "Layer 3 is the one teams skip. When the triggering event can't recur, the only thing left that knows the repair is needed is the symptom the missed repair produces. Wire the recovery to *that*.",
+      },
+      { kind: "h2", text: "Two questions that would have caught it" },
+      {
+        kind: "p",
+        text: "Ask them of any state-mutating recovery you write — grant fan-out at ownership transfer, a one-time migration backfill, a provisioning side-effect:",
+      },
+      {
+        kind: "ul",
+        items: [
+          "**What re-runs this if it misses?** If the answer is \"the event,\" check whether the event can recur. Ours couldn't — so \"run once\" meant \"run zero times, permanently\" on any miss.",
+          "**Can anything on this path fail before my error handler?** An observability `try` that starts after the imports observes nothing. Move construction that can throw inside the instrumented block.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "This is a state-repair pattern, not a product feature — it applies to any system with grant or config fan-out at an ownership transfer. nlqdb is a database you query in plain English; this is one of the reliability lessons from building the adoption path that lets an anonymous first query survive your sign-up.",
+      },
+    ],
+  },
+  {
     slug: "green-checkmark-has-a-half-life",
     title: "A green checkmark has a half-life.",
     description:
