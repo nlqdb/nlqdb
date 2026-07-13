@@ -179,7 +179,19 @@ export class SchemaMismatchError extends Error {
   readonly code = "schema_mismatch" as const;
   readonly referencedTables: string[];
   readonly schemaTables: string[];
-  constructor(referencedTables: string[], schemaTables: string[]) {
+  // SK-ASK-023 — the exec-catch classifier (`classifySchemaError`) knows the
+  // SQLSTATE (`3F000` schema-missing vs `42P01` table-missing) that told a
+  // deterministic missing-relation apart from connectivity. The class-facing
+  // arrays are empty on that path, so carry the SQLSTATE here: the
+  // orchestrator persists it to the KV diag sink where preview/e2e logs
+  // vanish (same black hole SK-ASK-023 closed for `db_unreachable`). Absent
+  // on the pre-flight path, which populates the arrays instead.
+  readonly diag?: { pgCode: string; pgMessage: string };
+  constructor(
+    referencedTables: string[],
+    schemaTables: string[],
+    diag?: { pgCode: string; pgMessage: string },
+  ) {
     super(
       referencedTables.length > 0
         ? `SQL references table(s) not in schema: ${referencedTables.join(", ")}`
@@ -188,6 +200,7 @@ export class SchemaMismatchError extends Error {
     this.name = "SchemaMismatchError";
     this.referencedTables = referencedTables;
     this.schemaTables = schemaTables;
+    this.diag = diag;
   }
 }
 

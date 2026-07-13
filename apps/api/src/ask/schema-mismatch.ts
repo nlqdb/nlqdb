@@ -35,7 +35,13 @@ export function classifySchemaError(
     : "table_missing";
   const pgCode = code === "3F000" || code === "42P01" ? code : "msg_match";
   recordSchemaMismatch({ ...ctx, reason, pgCode, pgMessage: msg });
-  return new Nonrecoverable("schema_mismatch", new SchemaMismatchError([], []));
+  // Carry the SQLSTATE onto the error so the orchestrator can persist it to
+  // the KV diag sink (SK-ASK-023) — the span + console line above are the
+  // only record today, and both vanish on preview/e2e invocations.
+  return new Nonrecoverable(
+    "schema_mismatch",
+    new SchemaMismatchError([], [], { pgCode, pgMessage: msg }),
+  );
 }
 
 // The exec catch-all (`db_unreachable`) was a black hole: an exec error

@@ -491,6 +491,76 @@ describe("orchestrateAsk", () => {
     }
   });
 
+  it("SK-ASK-023: an exec-catch schema_mismatch (3F000) persists the SQLSTATE via the diag sink", async () => {
+    // The `#authed-state-preserved` e2e class: an orphaned adopted schema
+    // raises 3F000 at exec, which SK-ASK-019 maps to schema_mismatch. Before
+    // this, the reason/SQLSTATE reached only span + console — both dropped on
+    // the preview URLs where every e2e adoption runs — so a pull could not
+    // tell an orphaned schema (3F000) from a genuine wrong-table plan (42P01).
+    const orphanError = Object.assign(new Error('schema "orphan_x" does not exist'), {
+      code: "3F000",
+    });
+    const exec = stubExec(orphanError);
+    const record = vi.fn(async () => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await orchestrateAsk(
+        makeDeps({
+          resolveDb: vi.fn(async () => stubDb({ schemaText: null })),
+          llm: stubLLM({ plan: { sql: "SELECT 1 FROM orphan_x.t" } }),
+          exec,
+          diag: { record },
+        }),
+        { goal: "anything", dbId: "db_orphan_x", userId: "user_1" },
+      );
+      expect(out).toEqual({
+        ok: false,
+        error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+      });
+      // Measured delta: 0 durable diag rows on this path → exactly one, with
+      // the SQLSTATE that disambiguates orphaned-schema from wrong-table.
+      expect(record).toHaveBeenCalledWith({
+        event: "schema_mismatch",
+        pgCode: "3F000",
+        pgMessage: 'schema "orphan_x" does not exist',
+        dbId: "db_orphan_x",
+        cacheHit: false,
+        planModel: "stub-model",
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("SK-ASK-023: a throwing diag sink never changes the schema_mismatch outcome", async () => {
+    const orphanError = Object.assign(new Error('relation "ghost" does not exist'), {
+      code: "42P01",
+    });
+    const exec = stubExec(orphanError);
+    const record = vi.fn(async () => {
+      throw new Error("kv down");
+    });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await orchestrateAsk(
+        makeDeps({
+          resolveDb: vi.fn(async () => stubDb({ schemaText: null })),
+          llm: stubLLM({ plan: { sql: "SELECT * FROM ghost" } }),
+          exec,
+          diag: { record },
+        }),
+        { goal: "anything", dbId: "db_1", userId: "user_1" },
+      );
+      expect(record).toHaveBeenCalled();
+      expect(out).toEqual({
+        ok: false,
+        error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
   it("SK-ASK-016: pre-flight passes when all referenced tables exist", async () => {
     // Plan references a real table — orchestrator proceeds to exec.
     const llm = stubLLM({ plan: { sql: "SELECT * FROM orders" } });
