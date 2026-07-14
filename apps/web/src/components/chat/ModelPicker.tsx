@@ -281,7 +281,7 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
 
           <p className="model-picker__section">Frontier models</p>
           {!catalog ? (
-            <div className="model-picker__catalog-status">
+            <div className="model-picker__catalog-status" aria-live="polite">
               {catalogError ? (
                 <>
                   <p className="model-picker__form-note">Couldn't load the model list.</p>
