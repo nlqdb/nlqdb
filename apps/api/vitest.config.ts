@@ -38,6 +38,7 @@ export default defineConfig(async () => {
               "test/byollm.test.ts",
               "test/secret-envelope.test.ts",
               "test/orchestrate.test.ts",
+              "test/plan-normalize.test.ts",
               "test/diag.test.ts",
               "test/plan-cache.test.ts",
               "test/sql-validate.test.ts",

@@ -20,6 +20,7 @@ import { buildDiff, isWriteVerb } from "./diff.ts";
 import { isReplannableExecError } from "./exec-repair.ts";
 import type { FirstQueryTracker } from "./first-query.ts";
 import { hashGoal, type PlanCache } from "./plan-cache.ts";
+import { referencesQualifiedTable, schemaRelativeSql } from "./plan-normalize.ts";
 import type { RateLimiter } from "./rate-limit.ts";
 import { extractTables, type RecentTablesStore, tablesFromSchemaText } from "./recent-tables.ts";
 import { Nonrecoverable, type RetryReason, withStageRetry } from "./retry.ts";
@@ -165,6 +166,20 @@ export async function orchestrateAsk(
   // TS narrows db.schemaHash to string after the guard above.
   const schemaHash = db.schemaHash;
 
+  // SK-ASK-025 — hosted plan SQL is normalised to schema-relative form so
+  // the plan cache stays portable across the DBs that share a
+  // `(schema_hash, query_hash)` key (SK-PLAN-002). Only hosted Postgres has
+  // a per-DB physical schema minted from the dbId; BYO / ClickHouse (a
+  // `connectionBlob` row) run the plan verbatim. Schema name derived exactly
+  // as the hosted exec runner does (`build-deps.ts`): dbId minus the `db_`
+  // prefix.
+  const hostedSchema =
+    db.engine === "postgres" && !db.connectionBlob
+      ? db.id.startsWith("db_")
+        ? db.id.slice(3)
+        : db.id
+      : null;
+
   // SHA-256 over a short string is microseconds — folding into the
   // parent span instead of its own (the dedicated `nlqdb.ask.hash`
   // span emission cost more than the work it described).
@@ -191,9 +206,23 @@ export async function orchestrateAsk(
   // event lands immediately after; on a miss it covers the LLM latency.
   await safeEmit({ type: "plan_pending" });
 
-  const cached = await withSpan("nlqdb.cache.plan.lookup", () =>
+  let cached = await withSpan("nlqdb.cache.plan.lookup", () =>
     deps.planCache.lookup(schemaHash, queryHash),
   );
+  // SK-ASK-025 — self-heal a poisoned pre-normalisation entry: a cached plan
+  // that STILL names a schema after its own-schema qualifier is stripped was
+  // baked against a DIFFERENT DB's physical schema (the cross-DB collision
+  // this decision closes). It cannot run here, so drop the hit and re-plan;
+  // the miss-write below overwrites the entry with a schema-relative plan.
+  // Not a cache-version bump / manual flush (SK-PLAN-003) — an automatic,
+  // in-band correctness re-plan for an entry proven inapplicable.
+  if (
+    cached &&
+    hostedSchema &&
+    referencesQualifiedTable(schemaRelativeSql(cached.sql, hostedSchema))
+  ) {
+    cached = null;
+  }
 
   let planSql: string;
   let cacheHit: boolean;
@@ -210,7 +239,11 @@ export async function orchestrateAsk(
   let planConfidence: number;
   if (cached) {
     cachePlanHitsTotal().add(1);
-    planSql = cached.sql;
+    // SK-ASK-025 — strip this DB's own schema qualifier so the executed SQL
+    // resolves via `search_path` (a portable entry is already unqualified, so
+    // this is a no-op for those; it only bites a hit whose filler qualified
+    // with a schema equal to this DB's own).
+    planSql = hostedSchema ? schemaRelativeSql(cached.sql, hostedSchema) : cached.sql;
     planModel = cached.model ?? "cached";
     planConfidence = cached.confidence ?? 1.0;
     // Validate the cached plan once — caches don't lie often, but we
@@ -248,17 +281,21 @@ export async function orchestrateAsk(
             dialect: "postgres",
             ...(prev ? { previousAttempt: prevAttemptFromError(prev) } : {}),
           });
-          const validation = validateSql(plan.sql);
+          // SK-ASK-025 — normalise to schema-relative form BEFORE validate so
+          // the SQL we validate, exec, and cache is portable (search_path
+          // resolves it in any DB sharing this schema_hash).
+          const sql = hostedSchema ? schemaRelativeSql(plan.sql, hostedSchema) : plan.sql;
+          const validation = validateSql(sql);
           if (!validation.ok) {
             // Tag with the reject reason so the next attempt's prompt
             // can describe what to avoid; keep the rejected SQL on the
             // error so prevAttemptFromError can echo it back.
-            const reject = new PlanValidationError(plan.sql, validation.reason);
+            const reject = new PlanValidationError(sql, validation.reason);
             throw reject;
           }
           lastModel = plan.model;
           lastConfidence = plan.confidence;
-          return plan.sql;
+          return sql;
         },
         { reasonOf: planRetryReason },
       );
@@ -461,14 +498,19 @@ export async function orchestrateAsk(
               error: err instanceof Error ? err.message : String(err),
             },
           });
-          const validation = validateSql(repair.sql);
+          // SK-ASK-025 — normalise the repaired plan to schema-relative form
+          // too (same strip as the first-plan path): an exec-repair on a
+          // hosted DB otherwise re-caches a physical schema name, re-poisoning
+          // the shared cache key this decision exists to keep portable.
+          const repairSql = hostedSchema ? schemaRelativeSql(repair.sql, hostedSchema) : repair.sql;
+          const validation = validateSql(repairSql);
           // A repaired read must stay a read — never let repair smuggle a
           // write past the preview gate.
           if (!validation.ok)
             return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
-          if (isWriteVerb(repair.sql))
+          if (isWriteVerb(repairSql))
             return { ok: false, error: { status: "sql_rejected", reason: "write_via_repair" } };
-          planSql = repair.sql;
+          planSql = repairSql;
           planModel = repair.model;
           planConfidence = repair.confidence;
           traceBlock.sql = planSql;

@@ -184,14 +184,11 @@ only — a repaired write is rejected, preserving the SK-TRUST-001 gate.
 ### SK-ASK-023 — Swallowed-failure diagnostics persist to shared KV because preview invocations log nowhere
 
 **Body:** [`decisions/SK-ASK-023-preview-durable-exec-diagnostics.md`](./decisions/SK-ASK-023-preview-durable-exec-diagnostics.md).
-Workers preview versions (the e2e staging surface) emit no logs anywhere —
-Workers Logs, `wrangler tail`, and Logpush all skip preview-URL invocations —
-so SK-ASK-019-style structured lines vanish exactly where e2e failures happen.
-Swallowed-failure catches now also write `(pgCode, pgMessage, dbId, …)` to
-7-day-TTL `diag:<event>:*` rows in the shared KV namespace (`makeKvDiagSink`,
-`nlqdb.diag.write` span, never blocks the error path), pullable offline via
-the CF REST API. Classes: `exec_db_unreachable`, `anon_adopt_regrant_failed`,
-`exec_acl_heal_failed`.
+Workers preview versions (the e2e staging surface) log nowhere, so
+swallowed-failure catches also write `(pgCode, pgMessage, dbId, …)` to
+7-day-TTL `diag:<event>:*` rows in shared KV (`makeKvDiagSink`, never blocks
+the error path), pullable via the CF REST API. Classes: `exec_db_unreachable`,
+`anon_adopt_regrant_failed`, `exec_acl_heal_failed`, `schema_mismatch`.
 
 ### SK-ASK-024 — Exec-time tenant-ACL self-heal: role-missing re-runs the idempotent retarget once
 
@@ -203,9 +200,19 @@ is one-shot, so one miss bricked the adopted DB forever. Fixed at the root
 `exec` dep re-runs the idempotent retarget and retries once on the
 `role "tenant_<hash>" does not exist` shape (own DB only, by construction).
 
+### SK-ASK-025 — Hosted plan SQL is schema-relative (the plan cache stores no physical schema name)
+
+**Body:** [`decisions/SK-ASK-025-hosted-plan-sql-schema-relative.md`](./decisions/SK-ASK-025-hosted-plan-sql-schema-relative.md).
+The cache keys on the LOGICAL `schema_hash` (SK-PLAN-002) but the LLM baked
+the per-DB PHYSICAL schema into the SQL, so structurally-identical DBs collided
+while the cached plan named a foreign schema (`42P01`). `plan-normalize.ts`
+strips the DB's own schema qualifier before validate/exec/cache (search_path
+resolves the bare name); a hit still naming a schema self-heals via re-plan —
+no cache flush (SK-PLAN-003 stands).
+
 ## The LLM loop
 
-Canonical step order is SK-ASK-002 (edge → auth → rate-limit → hash → plan-cache → (hit: validate → exec) | (miss: route → plan → SQL-validate → exec → cache-write) → optional summarize). Intentional reinventions on this path — grammar-constrained SQL decoder, foreign-key-aware schema embedding, learned query-shape classifier — are catalogued in `docs/guidelines.md §7`.
+Canonical step order is SK-ASK-002. Intentional reinventions on this path are catalogued in `docs/guidelines.md §7`.
 
 ## GLOBALs governing this feature
 
@@ -220,7 +227,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
   - *In this feature:* `SK-ASK-013` (per-stage `withStageRetry` with error feedback) is the canonical implementation; `SK-ASK-022` extends the executor with one execution-guided re-plan.
 - **GLOBAL-023** — Trust UX baseline.
-  - *In this feature:* SK-TRUST-002 shipped — `AskResult` carries the `trace: { sql, plan_id, confidence, model, cache_hit }` block on every successful response (top-level `sql` / `cached` removed); the SSE `plan` event is its streaming form. Writes/DDL carry the `diff` block ([`SK-TRUST-001`](../trust-ux/FEATURE.md), planned); the orchestrator short-circuits to `low_confidence` ([`SK-TRUST-003`](../trust-ux/FEATURE.md), planned) before `db.execute`.
+  - *In this feature:* SK-TRUST-002 shipped — `AskResult` carries the `trace: { sql, plan_id, confidence, model, cache_hit }` block on every successful response; the SSE `plan` event is its streaming form. Writes/DDL `diff` ([`SK-TRUST-001`](../trust-ux/FEATURE.md)) and the `low_confidence` short-circuit ([`SK-TRUST-003`](../trust-ux/FEATURE.md)) are planned.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* `unsupported_verb` (DDL via `/v1/ask`), `low_confidence`, and `db_full` rejections each emit a `feature.requested.*` event.
 - **GLOBAL-037** — Schema-only egress to third-party LLMs; never send user cell-values.
@@ -233,4 +240,4 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Happy path walkthrough
 
-HTTP API cURL examples (default + writes with `Idempotency-Key` + anonymous-mode reuse) and the Priya persona walkthrough live in `docs/architecture.md` §14.6 / §15.3 — that's the canonical home for surface examples and persona stories so they don't drift out of sync with the architecture spec.
+HTTP API cURL examples and the Priya persona walkthrough live in `docs/architecture.md` §14.6 / §15.3 (canonical home for surface examples + persona stories).
