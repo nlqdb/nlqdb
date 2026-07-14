@@ -41,7 +41,7 @@ typecheck` fails *only in a fresh container run before `bun install`*
 (`TS2688 cannot find bun-types`/`@cloudflare/workers-types` + a `TS5101
 baseUrl`-deprecation cascade) — a missing-`node_modules` artifact, **not** a
 main red. After `bun install` (TS 5.9.3) typecheck is clean (0 errors) and CI
-[run 2437](https://github.com/nlqdb/nlqdb/actions/runs/29332589240-parent) on
+[run 2437](https://github.com/nlqdb/nlqdb/actions/runs/29333272332) on
 main `6f7f0bc` is green. Lever search (founder-resolved priority): (1) UX-flow
 — row #21 maxed 9/9; the freshest un-reviewed surface, the model-picker PR
 (#690, `b77f338`), was read (`models-dev.ts` mapper + `loadModelCatalog`
