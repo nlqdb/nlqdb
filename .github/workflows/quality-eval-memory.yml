@@ -190,4 +190,7 @@ jobs:
                         + " |" ) )
                 end
             ' "$latest"
-          } >> "$GITHUB_STEP_SUMMARY"
+          # tee, not `>>`: the summary (incl. the mismatch-SQL diagnostic
+          # above) must also hit stdout so the daily loop can read it via
+          # get_job_logs — no MCP tool exposes $GITHUB_STEP_SUMMARY, only logs.
+          } | tee -a "$GITHUB_STEP_SUMMARY"
