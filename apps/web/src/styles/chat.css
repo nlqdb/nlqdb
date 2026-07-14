@@ -390,6 +390,20 @@
   gap: 2px;
 }
 
+/* Shown in place of the frontier list while the catalog loads or after it
+   failed (with a Retry) — the popover stays usable instead of empty. */
+.model-picker__catalog-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px;
+}
+
+.model-picker__retry {
+  flex-shrink: 0;
+}
+
 .model-picker__option {
   width: 100%;
   display: flex;

@@ -57,6 +57,11 @@ function isActive(status: ByollmStatusResponse | null, m: CatalogModel): boolean
 export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
   const [open, setOpen] = useState(false);
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null);
+  // True when the last `GET /v1/models` attempt failed. Surfaced as an
+  // inline "Retry" affordance in the popover instead of being swallowed — a
+  // silently-null catalog used to hide the whole control (pill + popover) and
+  // turned the free-model nudge's "Switch model" CTA into a dead click.
+  const [catalogError, setCatalogError] = useState(false);
   const [status, setStatus] = useState<ByollmStatusResponse | null>(null);
   // True when the deployment can't store BYOLLM keys (KEK unset → 503). We
   // still show the picker (Free works) but disable the add-key affordance
@@ -90,24 +95,25 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
     }
   }, [client]);
 
-  // Load the catalog once and the current selection. Catalog is public;
+  // Catalog is public + static (`GET /v1/models`). Split out from mount so
+  // the picker can retry on demand: a transient failure used to leave
+  // `catalog` null for the whole page load with no retry, which hid the
+  // control entirely. Retrying when the picker is opened lets it self-heal.
+  const loadCatalog = useCallback(async () => {
+    setCatalogError(false);
+    try {
+      setCatalog(await client.getModels());
+    } catch {
+      setCatalogError(true);
+    }
+  }, [client]);
+
+  // Load the catalog and the current selection on mount. Catalog is public;
   // status needs the session (the chat is auth-guarded, so it resolves).
   useEffect(() => {
-    let live = true;
-    void (async () => {
-      try {
-        const cat = await client.getModels();
-        if (live) setCatalog(cat);
-      } catch {
-        // Catalog fetch failed — leave the pill hidden rather than render a
-        // broken control. The chat still works on the free chain.
-      }
-      if (live) await refreshStatus();
-    })();
-    return () => {
-      live = false;
-    };
-  }, [client, refreshStatus]);
+    void loadCatalog();
+    void refreshStatus();
+  }, [loadCatalog, refreshStatus]);
 
   // Broadcast the resolved BYOLLM status so the chat panel can tell whether
   // the user is on the free chain (SK-PREMIUM-004 nudge gating). Fires on the
@@ -120,14 +126,17 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
   }, [status]);
 
   // Open (and scroll to) the picker when the free-model nudge requests it.
+  // Retry the catalog here if it never loaded, so the CTA opens a populated
+  // picker instead of doing nothing.
   useEffect(() => {
     function onOpen() {
       setOpen(true);
+      if (!catalog) void loadCatalog();
       rootRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
     }
     window.addEventListener(MODEL_PICKER_OPEN_EVENT, onOpen);
     return () => window.removeEventListener(MODEL_PICKER_OPEN_EVENT, onOpen);
-  }, []);
+  }, [catalog, loadCatalog]);
 
   // Stable so the close-on-outside-click effect below doesn't re-subscribe
   // every render; only setState setters (stable) are captured.
@@ -226,10 +235,11 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
     }
   }
 
-  // Catalog not loaded yet — don't render a half-built control.
-  if (!catalog) return null;
-
-  const frontier = catalog.models.filter((m) => m.lane === "byollm");
+  // The pill always renders — `activeLabel` is honest without the catalog
+  // ("Free", or the raw provider·model for a configured BYOLLM user). Only
+  // the frontier list needs the catalog, so a null one degrades to a
+  // loading/retry state in the popover rather than hiding the whole control.
+  const frontier = catalog?.models.filter((m) => m.lane === "byollm") ?? [];
 
   return (
     <div className="model-picker" ref={rootRef}>
@@ -238,7 +248,10 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
         className="model-picker__pill"
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setOpen((o) => !o);
+          if (!catalog) void loadCatalog();
+        }}
         title="Choose which model answers your questions"
       >
         <span className="model-picker__pill-label">Model</span>
@@ -267,95 +280,115 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
           </button>
 
           <p className="model-picker__section">Frontier models</p>
-          <ul className="model-picker__list">
-            {frontier.map((m) => {
-              const active = isActive(status, m);
-              const keying = keyingFor?.id === m.id;
-              return (
-                <li key={m.id} className="model-picker__item">
+          {!catalog ? (
+            <div className="model-picker__catalog-status" aria-live="polite">
+              {catalogError ? (
+                <>
+                  <p className="model-picker__form-note">Couldn't load the model list.</p>
                   <button
                     type="button"
-                    role="menuitemradio"
-                    aria-checked={active}
-                    className="model-picker__option"
-                    onClick={() => onPickFrontier(m)}
-                    disabled={busy}
+                    className="btn btn--ghost model-picker__retry"
+                    onClick={() => void loadCatalog()}
                   >
-                    <span className="model-picker__option-main">
-                      <span className="model-picker__option-label">{m.label}</span>
-                      <span className="model-picker__option-note">
-                        {active ? "Using your own key" : m.note}
-                      </span>
-                    </span>
-                    {active ? (
-                      <span className="model-picker__active">● Active</span>
-                    ) : (
-                      <span className="model-picker__byok-tag">key</span>
-                    )}
+                    Retry
                   </button>
+                </>
+              ) : (
+                <p className="model-picker__form-note">Loading models…</p>
+              )}
+            </div>
+          ) : (
+            <ul className="model-picker__list">
+              {frontier.map((m) => {
+                const active = isActive(status, m);
+                const keying = keyingFor?.id === m.id;
+                return (
+                  <li key={m.id} className="model-picker__item">
+                    <button
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={active}
+                      className="model-picker__option"
+                      onClick={() => onPickFrontier(m)}
+                      disabled={busy}
+                    >
+                      <span className="model-picker__option-main">
+                        <span className="model-picker__option-label">{m.label}</span>
+                        <span className="model-picker__option-note">
+                          {active ? "Using your own key" : m.note}
+                        </span>
+                      </span>
+                      {active ? (
+                        <span className="model-picker__active">● Active</span>
+                      ) : (
+                        <span className="model-picker__byok-tag">key</span>
+                      )}
+                    </button>
 
-                  {keying ? (
-                    byollmDisabled ? (
-                      <p className="model-picker__form-note">
-                        Bring-your-own-key isn't configured on this deployment yet.
-                      </p>
-                    ) : (
-                      <div className="model-picker__form">
-                        <label className="model-picker__form-label" htmlFor="model-picker-key">
-                          {status?.configured && status.credential.provider === m.provider
-                            ? `Re-enter your ${providerName(m.provider ?? "")} key to switch to this model`
-                            : `Paste your ${providerName(m.provider ?? "")} API key`}
-                        </label>
-                        <input
-                          id="model-picker-key"
-                          type="password"
-                          className="model-picker__key-input"
-                          placeholder="sk-…"
-                          value={keyInput}
-                          onChange={(e) => setKeyInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              void submitKey();
-                            }
-                          }}
-                          spellCheck={false}
-                          autoComplete="off"
-                          // biome-ignore lint/a11y/noAutofocus: focus the key field the user just opened
-                          autoFocus
-                        />
-                        <div className="model-picker__form-actions">
-                          <button
-                            type="button"
-                            className="btn btn--accent model-picker__save"
-                            onClick={() => void submitKey()}
-                            disabled={submitting}
-                          >
-                            {submitting ? "Saving…" : "Save & use"}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn--ghost"
-                            onClick={() => {
-                              setKeyingFor(null);
-                              setKeyInput("");
-                              setFormError(null);
-                            }}
-                            disabled={submitting}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                        <p className="model-picker__form-hint">
-                          Dispatched at 0% markup — your key, your bill, never stored in plain text.
+                    {keying ? (
+                      byollmDisabled ? (
+                        <p className="model-picker__form-note">
+                          Bring-your-own-key isn't configured on this deployment yet.
                         </p>
-                      </div>
-                    )
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
+                      ) : (
+                        <div className="model-picker__form">
+                          <label className="model-picker__form-label" htmlFor="model-picker-key">
+                            {status?.configured && status.credential.provider === m.provider
+                              ? `Re-enter your ${providerName(m.provider ?? "")} key to switch to this model`
+                              : `Paste your ${providerName(m.provider ?? "")} API key`}
+                          </label>
+                          <input
+                            id="model-picker-key"
+                            type="password"
+                            className="model-picker__key-input"
+                            placeholder="sk-…"
+                            value={keyInput}
+                            onChange={(e) => setKeyInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                void submitKey();
+                              }
+                            }}
+                            spellCheck={false}
+                            autoComplete="off"
+                            // biome-ignore lint/a11y/noAutofocus: focus the key field the user just opened
+                            autoFocus
+                          />
+                          <div className="model-picker__form-actions">
+                            <button
+                              type="button"
+                              className="btn btn--accent model-picker__save"
+                              onClick={() => void submitKey()}
+                              disabled={submitting}
+                            >
+                              {submitting ? "Saving…" : "Save & use"}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn--ghost"
+                              onClick={() => {
+                                setKeyingFor(null);
+                                setKeyInput("");
+                                setFormError(null);
+                              }}
+                              disabled={submitting}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                          <p className="model-picker__form-hint">
+                            Dispatched at 0% markup — your key, your bill, never stored in plain
+                            text.
+                          </p>
+                        </div>
+                      )
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
 
           {formError ? (
             <p className="model-picker__error" role="alert">
