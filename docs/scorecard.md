@@ -35,24 +35,29 @@ should re-point the focus off #15 while that secret is unset.
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
 agent-controllable inputs; the top UX-flow input, row #21, is maxed 9/9).
-**Run 70 is a null run — no agent-movable lever cleared the bar.** Step 0:
-one open PR, #688 (run 69), which owns the memory temporal/consolidation
-**engine lever** + `quality-eval-memory.yml` + its docs — run 70 avoided all
-of those. That left, per the founder-resolved lever priority: (1) UX-flow —
-row #21 maxed 9/9, no open live-UX bug, and api.nlqdb.com is egress-blocked
-from this container (proxy allowlist, not an outage; ops row #12 shows 0
-errors) so no new flow bug is findable locally; (2) distribution — queue is 2
-drafts (< 3), so step 3.1 forces no publish and a 35th lesson-post has ~0
-single-run yield on row #2 (manufactured busywork, declined); (3) engine —
-memory lever owned by #688, BIRD dark, Spider (row #9) needs the 403'd report
-to avoid a blind prompt change that risks BIRD/persona. The one remaining
-agent-movable probe was **re-testing the weekly-focus row #15 in a clean
-free-lane window** — a zero-diff workflow re-dispatch. **Run 70 finding:**
-that probe (run [29324716801](https://github.com/nlqdb/nlqdb/actions/runs/29324716801))
-**failed all three suites with the 240 s agent-lane timeout despite the clean
-window**, confirming #15's block is the founder-only 3rd free pool, not
-contention (see *Weekly focus*). No number moved; the finding firmly darkens
-#15 (rule 8) and is this null run's recorded outcome.
+**Run 71 is a null run — no agent-movable lever cleared the bar.** Step 0:
+zero open PRs (run 70's #689 merged). Rule 6 checked and **cleared**: `bun run
+typecheck` fails *only in a fresh container run before `bun install`*
+(`TS2688 cannot find bun-types`/`@cloudflare/workers-types` + a `TS5101
+baseUrl`-deprecation cascade) — a missing-`node_modules` artifact, **not** a
+main red. After `bun install` (TS 5.9.3) typecheck is clean (0 errors) and CI
+[run 2437](https://github.com/nlqdb/nlqdb/actions/runs/29332589240-parent) on
+main `6f7f0bc` is green. Lever search (founder-resolved priority): (1) UX-flow
+— row #21 maxed 9/9; the freshest un-reviewed surface, the model-picker PR
+(#690, `b77f338`), was read (`models-dev.ts` mapper + `loadModelCatalog`
+timeout/fallback/OTel) and is solid + unit-tested; api.nlqdb.com egress-blocked
+(502 proxy) so no live-flow bug findable locally; (2) distribution — queue 2
+drafts (< 3) so no forced publish, and a model-name claim-integrity sweep of
+live surfaces came up **clean** (only a legit GPT-4o competitor citation), so
+no fresh lesson to draft and a new post ≈0 single-run yield on row #2; (3)
+engine — memory is the rule-7 rut (6th consecutive engine-memory pull
+forbidden) **and** unmeasurable here (eval egress blocked), BIRD license-dark,
+Spider needs the 403'd report. Row #20's premium chain (SK-LLM-017) is the one
+substantial remaining slot but has **no runtime path to re-measure** (flag
+dark, no paid principals, meter frozen) so a build fails step-3 measurement.
+**Finding:** the local pre-install typecheck red is an environment artifact,
+not rule-6 red main — recorded so a future run doesn't burn a lever "fixing" a
+non-issue. No number moved.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -78,7 +83,7 @@ contention (see *Weekly focus*). No number moved; the finding firmly darkens
 | 15 | E2E manual-suite freshness | **≈ 0.75** (sdk/mcp/examples ≈1.0 each; **opencheck's latest main run [29324716801](https://github.com/nlqdb/nlqdb/actions/runs/29324716801) (run 70) FAILED**, pass=0 zeroes it ⇒ mean 0.75). **Run 70 falsified the "clean window" hypothesis:** re-dispatched `abc` on `2b9f8a7` ~3 h after the last free-lane consumer (run 69 memory eval, 07:24Z) — all 3 suites still red, Suite A's anon 2nd `/v1/ask` 240 s-timed-out, **no product regression** (bootstrap recordings passed, no `schema_mismatch`). The free pools (NIM + OpenRouter `:free`) flap intrinsically on a minute timescale ⇒ contention timing was never the cause. **Now dark (rule 8):** only the founder-only independent 3rd free pool (top `blocked-by-human.md` bullet) lifts it | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-14 run 70 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-14 run 71 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-13 run-61 sweep: **118** pages, **2,908** internal + **14 cross-app** links). Run 61 **added cross-app coverage** — `href`/`src` to owned subdomains (`docs./app./mcp.nlqdb.com`) were dropped by `isInternal` and never checked; the sweep now live-verifies them (4xx/5xx = dead & hard-fail; auth/method gate = alive; network error = "unverified", never red). 14 `docs.nlqdb.com` funnel links now covered (0 → 14) | target 0 — `bun run build && bun run check:links` in `apps/web` |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **1 open (founder-blocked)** — `brew install nlqdb/tap/nlq` advertised (`cli/README.md`, npm-shim fallback, SK-CLI-002) but the tap empty since 2026-05-19; blocked on the `HOMEBREW_TAP_GITHUB_TOKEN` PAT (top `blocked-by-human.md` bullet); releases no longer fail on it (run-54 fix, #669). Runs 32 + 37 + 56 + 59 + 62 + **64** each found + closed 1 agent-movable gap | claim-vs-reality on shipped surfaces + docs; target 0. **Run 64 built the standing candidate** (assert each advertised capability has shipped code): run 62 fixed `nlqdb_recall` by hand but the recurrence guard (`competitors.test.ts` SK-MCP-002) scanned 1 of ~6 surfaces (the two the phantom shipped to were unguarded) + pinned a stale hand-copied tool set (missing `nlqdb_connect_database`). Replaced by `mcp-tool-integrity.test.ts`: reads the shipped catalog from the MCP server's `registerTool(...)` sites, sweeps every `apps/web/src` surface closed-world, fails naming any phantom + file. Verified: passes clean (0 offenders), fails on the injected run-62 phantom. Next candidate: extend the sweep to the CLI/SDK advertised-verb surfaces |
@@ -103,41 +108,38 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-14 (run 70)** — **null run** (valid outcome per step 2; no
-agent-movable lever cleared the bar). Step 0: one open PR, #688 (run 69),
-owning the memory temporal/consolidation **engine lever** +
-`quality-eval-memory.yml` + its docs — run 70 avoided that lever and those
-files (scorecard regen is step-0-exempt). Rule-6 health: main HEAD `2b9f8a7`
-(run 68) is docs-only; ops row #12 shows 4,974 req / 0 errors; recent daily
-runs verified deploys — main green. **Lever search (founder-resolved
-priority):** (1) UX-flow — row #21 maxed 9/9, no open live-UX bug,
-api.nlqdb.com egress-blocked from this container (proxy allowlist, not an
-outage) so no new flow bug findable locally; (2) distribution — queue 2
-drafts (< 3), no forced publish, a 35th lesson-post ≈0 single-run yield on
-row #2 (declined as busywork); (3) engine — memory lever owned by #688, BIRD
-license-dark, Spider needs the 403'd report (blind change would risk
-BIRD/persona). **The probe run:** the last agent-movable question was whether
-weekly-focus row #15's opencheck red is contention-timing or the founder
-3rd-pool block. Re-dispatched `abc` on `2b9f8a7` in a verified-clean free-lane
-window (~3 h after run 69's memory eval freed the lanes) →
-[29324716801](https://github.com/nlqdb/nlqdb/actions/runs/29324716801): **all
-3 suites failed, Suite A's anon 2nd `/v1/ask` 240 s-timed-out, no product
-regression** (bootstrap recordings passed, no `schema_mismatch`/`42P01`).
-**Finding:** falsifies "just needs a clean window" — the two $0 pools flap
-intrinsically, so #15 is genuinely founder-blocked on the independent 3rd
-free pool (top `blocked-by-human.md` bullet); #15 stays **0.75**, now dark
-(rule 8). Note: mid-run I briefly read a since-reverted commit (`6536029`)
-whose `blocked-by-human.md` had dropped that bullet, and wrongly inferred the
-block was mis-attributed — corrected against real main (`2b9f8a7`); the bullet
-exists. **No number moved** (the null-run finding above stands in for a Δ).
-**Artifact (step 3):** null run skips step 3; queue (2 drafts) drains on the
-next non-null run. **Step 1:** funnel carried from the 07-13 02:52–02:58Z
-pulls (remote D1 / CF GraphQL + LLM egress all unreachable from this
-container, re-confirmed) — strangers **0**; docs-ambiguity 17 (re-grepped,
-held); row #18 0 dead (no page/link touched). **KPI:** none advanced, **none
-degrade** (docs-only diff; zero runtime/prompt/eval-baseline change; a
-workflow re-dispatch, no code; BIRD/Spider/persona rows #8–#11 + walker #21
-all carried).
+**2026-07-14 (run 71)** — **null run** (valid outcome per step 2; no
+agent-movable lever cleared the bar). Step 0: **zero open PRs** (run 70's #689
+merged). **Rule 6 checked + cleared:** a fresh-container `bun run typecheck`
+before `bun install` fails with `TS2688` (missing `bun-types` /
+`@cloudflare/workers-types` defs) + a workspace-wide `TS5101 baseUrl`
+deprecation cascade — a **missing-`node_modules` artifact, not a main red**.
+After `bun install` (TS 5.9.3) typecheck is clean (0 errors); CI run 2437 on
+main `6f7f0bc` is green; latest deploy-api (run 397, `b77f338`) succeeded.
+This is the run's recorded **finding** — logged so a future run doesn't mistake
+the pre-install red for rule-6 red main and burn a lever on a non-issue.
+**Lever search (founder-resolved priority):** (1) UX-flow — row #21 maxed 9/9;
+read the freshest un-reviewed surface, the model-picker PR #690
+(`models-dev.ts` mapper + `loadModelCatalog` timeout/fallback/OTel span),
+found it solid + unit-tested; api.nlqdb.com egress-blocked (502 proxy) so no
+live-flow bug findable; (2) distribution — queue 2 drafts (< 3, no forced
+publish); a model-name claim-integrity sweep of `apps/web/src` + SDK/MCP/CLI
+came up **clean** (sole hit a legit GPT-4o competitor citation), so no fresh
+lesson and a new post ≈0 single-run yield on row #2; (3) engine — memory is
+the rule-7 rut (6th consecutive engine-memory pull forbidden) **and**
+unmeasurable here (eval egress blocked), BIRD license-dark, Spider needs the
+403'd report. Row #20 premium chain (SK-LLM-017) is real but has no runtime
+path to re-measure (flag dark, no paid principals, meter frozen) → a build
+fails step-3 measurement; docs-ambiguity (#17) bullets are all
+slice-/infra-/founder-gated, so forcing 17→16 would be metric-gaming (declined
+per /weekly de-prioritisation). **No number moved.** **Artifact (step 3):**
+null run skips step 3; queue (2 drafts) drains on the next non-null run.
+**Step 1:** funnel carried from the 07-13 02:52–02:58Z pulls (remote D1 / CF
+GraphQL + LLM egress unreachable from this container, re-confirmed) —
+strangers **0**; docs-ambiguity 17 (re-grepped, held); row #18 0 dead (no
+page/link touched). **KPI:** none advanced, **none degrade** (docs-only diff;
+zero runtime/prompt/eval-baseline change; BIRD/Spider/persona rows #8–#11 +
+walker #21 all carried).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
