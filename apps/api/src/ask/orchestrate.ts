@@ -216,7 +216,11 @@ export async function orchestrateAsk(
   // the miss-write below overwrites the entry with a schema-relative plan.
   // Not a cache-version bump / manual flush (SK-PLAN-003) — an automatic,
   // in-band correctness re-plan for an entry proven inapplicable.
-  if (cached && hostedSchema && referencesQualifiedTable(schemaRelativeSql(cached.sql, hostedSchema))) {
+  if (
+    cached &&
+    hostedSchema &&
+    referencesQualifiedTable(schemaRelativeSql(cached.sql, hostedSchema))
+  ) {
     cached = null;
   }
 

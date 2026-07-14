@@ -68,7 +68,7 @@ export const BLOG_POSTS: BlogPost[] = [
         kind: "ol",
         items: [
           "The crash landed *before* the instrumented `try`. The observability wrapper started after the imports, so it observed nothing — zero log lines for the failure that mattered.",
-          "The repair ran exactly once per adoption. One silent skip bricked the database *forever*: every subsequent query died at `SET LOCAL ROLE` inside a catch-all that read \"couldn't reach the database.\"",
+          'The repair ran exactly once per adoption. One silent skip bricked the database *forever*: every subsequent query died at `SET LOCAL ROLE` inside a catch-all that read "couldn\'t reach the database."',
         ],
       },
       {
@@ -96,7 +96,7 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         kind: "ul",
         items: [
-          "**What re-runs this if it misses?** If the answer is \"the event,\" check whether the event can recur. Ours couldn't — so \"run once\" meant \"run zero times, permanently\" on any miss.",
+          '**What re-runs this if it misses?** If the answer is "the event," check whether the event can recur. Ours couldn\'t — so "run once" meant "run zero times, permanently" on any miss.',
           "**Can anything on this path fail before my error handler?** An observability `try` that starts after the imports observes nothing. Move construction that can throw inside the instrumented block.",
         ],
       },
