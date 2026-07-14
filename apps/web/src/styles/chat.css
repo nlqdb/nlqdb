@@ -350,6 +350,7 @@
 .model-picker__pill-caret {
   color: var(--fg-muted);
   font-size: 10px;
+  flex-shrink: 0;
 }
 
 .model-picker__panel {
@@ -558,6 +559,11 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Grow to fill the row so the badge + caret pack against the right edge and
+     line up across providers, instead of drifting with each model name's
+     width (space-between would otherwise centre them). min-width:0 lets a long
+     model name truncate rather than shove the badge left. */
+  flex: 1;
   min-width: 0;
 }
 
@@ -571,6 +577,11 @@
 .model-picker__option-note {
   font-size: 11px;
   color: var(--fg-muted);
+  /* One line + ellipsis so a long model name truncates instead of wrapping
+     (keeps every provider row the same height and the badge on the right). */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .model-picker__active {
@@ -578,6 +589,7 @@
   font-size: 11px;
   color: var(--accent);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .model-picker__byok-tag {
@@ -589,6 +601,7 @@
   border: 1px solid var(--border);
   border-radius: var(--r-xs);
   padding: 1px 5px;
+  flex-shrink: 0;
 }
 
 .model-picker__form {
