@@ -29,8 +29,9 @@
 // integration shapes nlqdb covers — not just "it's a web embed":
 //   html → `<nlq-data>` / `<nlq-action>` (drop-in custom elements,
 //          best for read widgets and click-to-submit forms)
-//   bash → `nlq new` / `nlq schema`     (admin CLI for create +
-//          schema; the right shape when there's no embedding page)
+//   bash → `nlq new` / `nlq ask`        (admin CLI: `nlq new` creates,
+//          `nlq ask` runs /v1/ask for reads + schema edits against the
+//          active DB — the right shape when there's no embedding page)
 //   rest → `curl api.nlqdb.com/v1/ask`  (backend-triggered reads +
 //          writes — webhooks, cron, server code)
 //   mcp  → `nlqdb.ask({ goal })`        (AI-assistant tool call via
@@ -111,7 +112,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "schema",
     goal: "add an allergens column to the drinks table",
     sql: "ALTER TABLE drinks\n  ADD COLUMN allergens TEXT[] DEFAULT '{}';",
-    embed: { lang: "bash", template: 'nlq schema "{goal}"' },
+    embed: { lang: "bash", template: 'nlq ask "{goal}"' },
     status: "✓ column added · 47 rows backfilled to default",
   },
   // 4 — READ
@@ -224,7 +225,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "schema",
     goal: "add a birthday field to customers",
     sql: "ALTER TABLE customers\n  ADD COLUMN birthday DATE;",
-    embed: { lang: "bash", template: 'nlq schema "{goal}"' },
+    embed: { lang: "bash", template: 'nlq ask "{goal}"' },
     status: "✓ column added",
     summary: "1,247 rows · default NULL · backfill via /v1/ask later",
   },
