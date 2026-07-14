@@ -8,17 +8,21 @@ sits alongside) · [`SK-QUAL-018`](./SK-QUAL-018-persona-bench.md) (the
 (the wedge this measures) · `GLOBAL-026` (the free-vs-frontier bet).
 Research: [`docs/research/agent-memory-quality-landscape.md`](../../../research/agent-memory-quality-landscape.md).
 
-**Status (2026-07-13):** offline four-axis dataset **and dispatchable
-workflow** shipped — `tools/eval/src/datasets/memory-quality.ts` (15
-gold-verified questions, 3 per axis + analytical) + runner wiring
+**Status (2026-07-14):** offline four-axis dataset, dispatchable workflow,
+**and first canonical EX** shipped — `tools/eval/src/datasets/memory-quality.ts`
+(15 gold-verified questions, 3 per axis + analytical) + runner wiring
 (`--dataset memory-quality`) + gold-executability / tie-free /
 axis-semantics tests + `.github/workflows/quality-eval-memory.yml`
 (`workflow_dispatch`, free chain + optional frontier lane, per-axis EX
 breakdown in the run summary; mirrors the persona-bench dispatch — no
-fixture download, no baseline, no emit). The first EX number lands on the
-next canonical dispatch (the free chain is unreachable from the daily-agent
-container; the run is CI-only). **Deferred:** the analytical-vs-vector
-head-to-head (needs an embedding baseline — infra-gated, E-05).
+fixture download, no baseline, no emit). **First EX (run 68, 2026-07-14,
+main `a5e72e6`, GHA 29305503755): free-chain 86.67% (13/15)**, p50 949 ms /
+p95 1999 ms, `no_sql` 0 — a real measurement (`transport_failed:null`).
+Per-axis: retrieval / forgetting / analytical 3/3; **temporal + consolidation
+2/3** (the weakest axes, next-run lever). Confirms the free chain *is*
+reachable in CI (only the daily-agent container is egress-gated). **Deferred:**
+the analytical-vs-vector head-to-head (needs an embedding baseline —
+infra-gated, E-05).
 
 - **Decision:** Add an agent-memory-quality benchmark to `tools/eval` alongside
   the NL→SQL canon (`SK-QUAL-003`). It scores four axes — (a) **retrieval
