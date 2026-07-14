@@ -47,6 +47,16 @@
     "qs": "^6.15.2",
     "yaml": "^2.9.0",
     "cookie": "^0.7.2",
-    "postcss": "^8.5.14"
+    "postcss": "^8.5.14",
+    "tar": "^7.5.20",
+    "markdown-it": "^14.3.0",
+    "linkify-it": "^5.0.2",
+    "@babel/core": "^7.29.7",
+    "launch-editor": "^2.14.1",
+    "protobufjs": "^8.7.1",
+    "vite": "^7.3.6",
+    "@cloudflare/workers-types": "4.20260609.1",
+    "@cloudflare/vitest-pool-workers": "0.16.14",
+    "wrangler": "4.99.0"
   }
 }

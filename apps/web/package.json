@@ -18,7 +18,7 @@
     "@astrojs/react": "^5.0.7",
     "@nlqdb/elements": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
-    "astro": "^6.4.4",
+    "astro": "^6.4.6",
     "react": "^19",
     "react-dom": "^19",
     "three": "^0.185.0"
