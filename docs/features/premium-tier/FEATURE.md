@@ -98,7 +98,7 @@ Every `(DB, API key)` pair with premium enabled carries a monthly USD spend cap 
 ### SK-PREMIUM-008 — BYOLLM: every tier including free; server-side keys; 0% markup; fail-loud on key error
 
 **Body:** [`decisions/SK-PREMIUM-008-byollm.md`](./decisions/SK-PREMIUM-008-byollm.md).
-Any authenticated user (free, Hobby, Pro, Enterprise) may paste an Anthropic / OpenAI / Gemini / OpenRouter key. The router dispatches through their key at 0% markup per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md); keys live encrypted in `api_keys` with `scope = "byollm"` and a Workers-Secret KEK. Failures fail loud per [`GLOBAL-012`](../../decisions/GLOBAL-012-one-sentence-errors.md). Resolves the 8-point decision tree previously held Open here.
+Any authenticated user (free, Hobby, Pro, Enterprise) may paste an Anthropic / OpenAI / Gemini / xAI-Grok / OpenRouter key. The router dispatches through their key at 0% markup per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md); keys live encrypted in `api_keys` with `scope = "byollm"` and a Workers-Secret KEK. Failures fail loud per [`GLOBAL-012`](../../decisions/GLOBAL-012-one-sentence-errors.md). Resolves the 8-point decision tree previously held Open here. (Grok + OpenRouter added 2026-07 per `SK-PREMIUM-015`; OpenRouter rides its dedicated AI Gateway path.)
 
 ### SK-PREMIUM-009 — Hosted-premium meter (Shape B): flat sub + included monthly request allowance + soft-meter overage; §6-gated
 
@@ -123,7 +123,12 @@ Pins SK-PREMIUM-008's storage mechanics: the account-stored key is an `api_keys`
 ### SK-PREMIUM-013 — Model catalog endpoint + the two-door frontier picker
 
 **Body:** [`decisions/SK-PREMIUM-013-model-catalog-and-picker.md`](./decisions/SK-PREMIUM-013-model-catalog-and-picker.md).
-`GET /v1/models` serves the canonical `@nlqdb/llm` catalog (presets + `free` + named frontier BYOLLM entries) so surfaces render the picker without hardcoding model strings (resolves SK-PREMIUM-003's "Both"). Selecting a frontier model routes **two doors**: **BYOLLM** (live — gentle inline key form) or **subscribe** (hosted-premium credits, SK-PREMIUM-009 — §6-dark, shown "coming soon"). The web ships a header **model pill** (active model = "which model am I on") + popover; `trace.model` now rides MCP too (was stripped). The preset params landed in `SK-PREMIUM-014`; per-provider key storage and the SK-PREMIUM-004 CTA remain tracked gaps.
+`GET /v1/models` serves the canonical `@nlqdb/llm` catalog (presets + `free` + named frontier BYOLLM entries) so surfaces render the picker without hardcoding model strings (resolves SK-PREMIUM-003's "Both"). Selecting a frontier model routes **two doors**: **BYOLLM** (live — gentle inline key form) or **subscribe** (hosted-premium credits, SK-PREMIUM-009 — §6-dark, shown "coming soon"). The web ships a header **model pill** (active model = "which model am I on") + popover; `trace.model` now rides MCP too (was stripped). The preset params landed in `SK-PREMIUM-014`; the frontier list went dynamic + per-provider in `SK-PREMIUM-015`; the SK-PREMIUM-004 CTA remains a tracked gap.
+
+### SK-PREMIUM-015 — Frontier picker sourced live from models.dev, one row per provider
+
+**Body:** [`decisions/SK-PREMIUM-015-dynamic-catalog-models-dev.md`](./decisions/SK-PREMIUM-015-dynamic-catalog-models-dev.md).
+`GET /v1/models` builds the frontier rows live from [models.dev](https://models.dev) (MIT, keyless) instead of a hand-maintained list that silently went stale, grouped **one row per provider** (Claude / GPT / Gemini / Grok / OpenRouter) each with a searchable model list + flagship default. The mapper (`buildCatalogFromModelsDev`) is pure; the fetch carries its own span ([`GLOBAL-014`](../../decisions/GLOBAL-014-otel-on-external-calls.md)) + edge cache and degrades to a bundled snapshot ([`GLOBAL-013`](../../decisions/GLOBAL-013-free-tier-bundle-budget.md)). Wire shape moves from `{ presets, models[] }` to `{ presets, free, providers[] }`. **Leverage: invest** — a new model within a provider costs 0 (auto-pulled); a new compat provider is 3 config lines.
 
 ### SK-PREMIUM-014 — The `model` preset rides `/v1/ask` on every surface; `fast` pins free, `best` fails loud without a frontier lane
 

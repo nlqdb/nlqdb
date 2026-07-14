@@ -28,19 +28,25 @@ export type { ByollmCredential } from "@nlqdb/llm";
 // header lookups, but keeping the constant lower-case matches the wire.
 export const BYOLLM_HEADER = "x-nlq-byollm-key";
 
-// AI Gateway compat-endpoint provider slugs we accept for BYOLLM. Pinned
-// to the `<provider>/<model>` slugs the unified `/compat/chat/completions`
-// endpoint actually serves (verified against developers.cloudflare.com/
-// ai-gateway, 2026-05): `openai`, `anthropic`, `google-ai-studio`.
-// `SK-PREMIUM-008` also lists OpenRouter, but it is not a compat-endpoint
-// provider — tracked as a gap in `premium-tier/FEATURE.md`. An unknown
-// slug fails loud here (GLOBAL-012) rather than 404-ing at the gateway.
-export const SUPPORTED_BYOLLM_PROVIDERS = ["openai", "anthropic", "google-ai-studio"] as const;
+// AI Gateway provider slugs we accept for BYOLLM (SK-PREMIUM-008). `openai`,
+// `anthropic`, `google-ai-studio` and `grok` (xAI) ride the unified
+// `/compat/chat/completions` endpoint; `openrouter` rides its dedicated
+// `/openrouter/chat/completions` path, handled in `createByollmProvider`
+// (SK-LLM-019). Verified against developers.cloudflare.com/ai-gateway, 2026-07.
+// An unknown slug fails loud here (GLOBAL-012) rather than 404-ing at the
+// gateway. Kept in sync with the catalog by a test in apps/api/test/models.
+export const SUPPORTED_BYOLLM_PROVIDERS = [
+  "openai",
+  "anthropic",
+  "google-ai-studio",
+  "grok",
+  "openrouter",
+] as const;
 const SUPPORTED = new Set<string>(SUPPORTED_BYOLLM_PROVIDERS);
 
 // One-sentence header-shape message (GLOBAL-012), reused by the malformed
 // branches so the contract reads identically wherever it surfaces.
-const SHAPE_MESSAGE = `${BYOLLM_HEADER} must be "<provider>:<model>:<key>" (e.g. "openai:gpt-5.2:sk-…").`;
+const SHAPE_MESSAGE = `${BYOLLM_HEADER} must be "<provider>:<model>:<key>" (e.g. "anthropic:claude-sonnet-5:sk-…").`;
 
 export type ParseByollmResult =
   // `credential: null` means the header was absent or blank — no BYOLLM

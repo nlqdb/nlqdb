@@ -20,9 +20,10 @@ export type DispatchLane = "byollm" | "premium" | "free";
 // and is never placed in a span attribute (see `dispatchLaneAttributes`).
 export type ByollmCredential = {
   apiKey: string;
-  // AI Gateway upstream slug: `openai` | `anthropic` | `groq` | `google` | …
+  // AI Gateway upstream slug: `openai` | `anthropic` | `google-ai-studio` |
+  // `grok` | `openrouter` | …
   upstream: string;
-  // Upstream model id as the provider names it (e.g. `gpt-5.2`).
+  // Upstream model id as the provider names it (e.g. `claude-sonnet-5`).
   model: string;
 };
 

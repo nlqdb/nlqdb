@@ -1,7 +1,7 @@
-// SK-PREMIUM-013 — invariants for the canonical model catalog. These pin
-// the shape every surface relies on (the picker id format, the BYOLLM
-// provider/model presence) so a careless catalog edit fails loud here
-// rather than as a broken picker.
+// SK-PREMIUM-013 / SK-PREMIUM-015 — invariants for the canonical model catalog
+// snapshot. These pin the shape every surface relies on (the picker id format,
+// the per-provider rows, the BYOLLM provider/model presence) so a careless
+// snapshot edit fails loud here rather than as a broken picker.
 
 import { describe, expect, it } from "vitest";
 import { isModelPreset, MODEL_CATALOG, MODEL_PRESETS } from "../src/catalog.ts";
@@ -15,42 +15,49 @@ describe("MODEL_CATALOG (SK-PREMIUM-013)", () => {
     }
   });
 
-  // SK-PREMIUM-014 — the wire validator and the picker render from the
-  // same list; a preset added to one without the other fails here.
+  // SK-PREMIUM-014 — the wire validator and the picker render from the same
+  // list; a preset added to one without the other fails here.
   it("MODEL_PRESETS mirrors the catalog presets (validator lockstep)", () => {
     expect(MODEL_CATALOG.presets.map((p) => p.id)).toEqual([...MODEL_PRESETS]);
     for (const id of MODEL_PRESETS) expect(isModelPreset(id)).toBe(true);
-    expect(isModelPreset("gpt-5.5")).toBe(false);
+    expect(isModelPreset("gpt-5.6")).toBe(false);
     expect(isModelPreset("")).toBe(false);
     expect(isModelPreset(undefined)).toBe(false);
   });
 
-  it("leads with the keyless free entry", () => {
-    const first = MODEL_CATALOG.models[0];
-    expect(first?.id).toBe("free");
-    expect(first?.lane).toBe("free");
-    expect(first?.needsKey).toBe(false);
+  it("carries a keyless free row with copy", () => {
+    expect(MODEL_CATALOG.free.label.length).toBeGreaterThan(0);
+    expect(MODEL_CATALOG.free.note.length).toBeGreaterThan(0);
   });
 
-  it("has at least one named frontier option", () => {
-    const frontier = MODEL_CATALOG.models.filter((m) => m.lane === "byollm");
-    expect(frontier.length).toBeGreaterThanOrEqual(1);
+  it("has at least one frontier provider row", () => {
+    expect(MODEL_CATALOG.providers.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("gives every BYOLLM entry a provider+model, needsKey, and a matching id", () => {
-    for (const m of MODEL_CATALOG.models) {
-      if (m.lane !== "byollm") continue;
-      expect(m.provider, `${m.id} provider`).toBeTruthy();
-      expect(m.model, `${m.id} model`).toBeTruthy();
-      expect(m.needsKey, `${m.id} needsKey`).toBe(true);
-      // The picker splits the id back into provider+model for the
-      // account-store / header lane, so it must be exactly that join.
-      expect(m.id).toBe(`${m.provider}:${m.model}`);
+  it("gives every provider a brand, key copy, models, and a default in the list", () => {
+    for (const p of MODEL_CATALOG.providers) {
+      expect(p.provider, `${p.label} provider`).toBeTruthy();
+      expect(p.label.length, `${p.provider} label`).toBeGreaterThan(0);
+      expect(p.keyLabel.length, `${p.provider} keyLabel`).toBeGreaterThan(0);
+      expect(p.keyPlaceholder.length, `${p.provider} keyPlaceholder`).toBeGreaterThan(0);
+      expect(p.models.length, `${p.provider} models`).toBeGreaterThanOrEqual(1);
+      // The default must be one of the offered models.
+      expect(
+        p.models.some((m) => m.model === p.defaultModel),
+        `${p.provider} default`,
+      ).toBe(true);
+      for (const m of p.models) {
+        expect(m.model, `${m.id} model`).toBeTruthy();
+        expect(m.label.length, `${m.id} label`).toBeGreaterThan(0);
+        // The picker splits the id back into provider+model for the
+        // account-store / header lane, so it must be exactly that join.
+        expect(m.id).toBe(`${p.provider}:${m.model}`);
+      }
     }
   });
 
-  it("has unique picker ids", () => {
-    const ids = MODEL_CATALOG.models.map((m) => m.id);
+  it("has unique picker ids across all providers", () => {
+    const ids = MODEL_CATALOG.providers.flatMap((p) => p.models.map((m) => m.id));
     expect(new Set(ids).size).toBe(ids.length);
   });
 });

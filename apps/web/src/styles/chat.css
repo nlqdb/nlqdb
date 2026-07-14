@@ -366,6 +366,10 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* Five provider rows + an expanded combobox can grow tall; cap and scroll
+     the popover rather than overflow the viewport. */
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
 }
 
 .model-picker__section {
@@ -381,13 +385,130 @@
   margin-top: 0;
 }
 
-.model-picker__list {
+.model-picker__providers {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* A provider "row": a brand header (accordion toggle) that expands into a
+   searchable model list. */
+.model-picker__provider {
+  display: flex;
+  flex-direction: column;
+}
+
+.model-picker__provider-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-std);
+}
+
+.model-picker__provider-head:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.model-picker__provider-head:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.model-picker__provider-head:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.model-picker__provider-brand {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+/* The searchable model list revealed under an expanded provider row. */
+.model-picker__combobox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 6px 8px;
+}
+
+.model-picker__search {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  padding: 7px 9px;
+}
+
+.model-picker__search:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+}
+
+.model-picker__listbox {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 208px;
+  overflow-y: auto;
+}
+
+.model-picker__listbox-empty {
+  font-size: 11px;
+  color: var(--fg-muted);
+  padding: 8px 10px;
+}
+
+.model-picker__listbox-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.model-picker__listbox-option:hover {
+  background: var(--accent-soft);
+}
+
+.model-picker__listbox-option:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.model-picker__listbox-label {
+  font-size: 12px;
+  color: var(--fg);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Shown in place of the frontier list while the catalog loads or after it

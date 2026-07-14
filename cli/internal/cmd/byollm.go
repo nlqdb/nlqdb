@@ -41,15 +41,16 @@ func byollmSetCmd(g *globalFlags) *cobra.Command {
 	var key string
 	cmd := &cobra.Command{
 		Use:   "set <provider> <model>",
-		Short: "Store a provider key (openai|anthropic|google-ai-studio)",
+		Short: "Store a provider key (openai|anthropic|google-ai-studio|grok|openrouter)",
 		Long: `Store a BYOLLM credential. The key is read from --key, else from
 stdin — prefer stdin so the secret never lands in your shell history:
 
-  echo "$OPENAI_API_KEY" | nlq byollm set openai gpt-5.2
+  echo "$ANTHROPIC_API_KEY" | nlq byollm set anthropic claude-sonnet-5
 
 Run interactively, the key is prompted for without echo. Provider is one
-of openai, anthropic, or google-ai-studio; model is the raw upstream id
-(e.g. gpt-5.2, claude-sonnet-4-6).`,
+of openai, anthropic, google-ai-studio, grok, or openrouter; model is the
+raw upstream id (e.g. claude-sonnet-5, gpt-5.6, or an OpenRouter id like
+openai/gpt-5.6).`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			raw, err := readByollmKey(cmd, key)

@@ -54,8 +54,20 @@ describe("parseByollmHeader", () => {
     expect(parseByollmHeader("openai:gpt-5.2:")).toMatchObject({ ok: false });
   });
 
-  it("rejects an unsupported provider (not on the AI Gateway compat endpoint)", () => {
-    const res = parseByollmHeader("openrouter:qwen:sk-or-abc");
+  it("accepts Grok (compat) and OpenRouter (dedicated path) — SK-PREMIUM-008 superseded", () => {
+    expect(parseByollmHeader("grok:grok-4.5:xai-abc")).toEqual({
+      ok: true,
+      credential: { upstream: "grok", model: "grok-4.5", apiKey: "xai-abc" },
+    });
+    // OpenRouter model ids carry a `/` (no colon) so they survive the split.
+    expect(parseByollmHeader("openrouter:openai/gpt-5.6:sk-or-abc")).toEqual({
+      ok: true,
+      credential: { upstream: "openrouter", model: "openai/gpt-5.6", apiKey: "sk-or-abc" },
+    });
+  });
+
+  it("rejects a provider not on the allowlist", () => {
+    const res = parseByollmHeader("cohere:command-r:key-abc");
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.message).toContain("openai, anthropic, google-ai-studio");
   });

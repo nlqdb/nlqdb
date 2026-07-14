@@ -5,6 +5,13 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Resolves the
 the [`GLOBAL-026`](../../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)
 lanes a user-facing home.
 
+> **Extended by [`SK-PREMIUM-015`](./SK-PREMIUM-015-dynamic-catalog-models-dev.md):**
+> the frontier list is no longer curated by hand — it is built live from
+> models.dev and served **grouped one row per provider** (each with a searchable
+> model list). The wire shape is now `{ presets, free, providers[] }` (was
+> `{ presets, models[] }`), and "keep a few frontier models up to date" is a
+> zero-edit property rather than a `catalog.ts` chore.
+
 - **Decision:** A single `GET /v1/models` serves the canonical catalog
   (`@nlqdb/llm` `MODEL_CATALOG`): the `auto|fast|best` presets plus the named
   picker — `free` (built-in chain) and a curated set of frontier BYOLLM

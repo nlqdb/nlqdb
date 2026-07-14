@@ -96,7 +96,7 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 ### SK-LLM-019 — BYOLLM provider factory: AI Gateway unified endpoint + `cf-aig-cache-key` tenant namespace
 
 **Body:** [`decisions/SK-LLM-019-byollm-provider-factory.md`](./decisions/SK-LLM-019-byollm-provider-factory.md).
-`createByollmProvider` builds a `Provider` from the user's own key + model through AI Gateway's `compat/chat/completions` endpoint: key pass-through (0% markup), `<upstream>/<model>` qualifier, per-tenant `cf-aig-cache-key = BYOLLM_<userId>_<sha256(request)>` namespace.
+`createByollmProvider` builds a `Provider` from the user's own key + model through AI Gateway's `compat/chat/completions` endpoint: key pass-through (0% markup), `<upstream>/<model>` qualifier, per-tenant `cf-aig-cache-key = BYOLLM_<userId>_<sha256(request)>` namespace. `openrouter` is special-cased to its dedicated `/openrouter/chat/completions` path with a raw model id (added 2026-07, `SK-PREMIUM-008`/`SK-PREMIUM-015`).
 
 ### SK-LLM-020 — BYOLLM lane selector + single-provider lane router
 

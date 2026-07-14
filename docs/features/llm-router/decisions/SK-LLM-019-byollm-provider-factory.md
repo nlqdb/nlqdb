@@ -18,8 +18,13 @@ decision). Parent GLOBAL:
     `GLOBAL-026`. It is never persisted in a span/log (auth header
     only).
   - **Model qualifier.** The user's one chosen model is sent as
-    `<upstream>/<model>` (e.g. `openai/gpt-5.2`, `anthropic/claude-4-5-sonnet`)
-    for every operation, as the unified endpoint requires.
+    `<upstream>/<model>` (e.g. `openai/gpt-5.6`, `anthropic/claude-sonnet-5`)
+    for every operation, as the unified endpoint requires. **OpenRouter is the
+    exception** (added 2026-07, `SK-PREMIUM-008`): the AI Gateway serves it only
+    on a dedicated `/openrouter/chat/completions` path — not the compat
+    endpoint — and takes the raw OpenRouter model id (which already carries its
+    own `<vendor>/<model>` form), so the factory routes `upstream === "openrouter"`
+    to that path with the unprefixed model.
   - **Tenant cache namespace.** `SK-LLM-016`'s abstract
     "namespace `BYOLLM_<user_id>`" resolves to the
     **`cf-aig-cache-key` header** set to
