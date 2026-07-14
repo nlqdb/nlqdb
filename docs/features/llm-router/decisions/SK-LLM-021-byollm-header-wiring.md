@@ -18,9 +18,10 @@ selector). Key-handling parent: [`SK-PREMIUM-008`](../../premium-tier/decisions/
   get a one-sentence 400, never silent acceptance — a raw provider key must
   ride a first-party session, not a header an un-audited MCP host or embed
   could replay, per `SK-PREMIUM-008` point 8). Accepted providers are the AI
-  Gateway compat-endpoint slugs `openai` / `anthropic` / `google-ai-studio`
-  (verified 2026-05); an unknown slug fails loud at the edge rather than
-  404-ing at the gateway. The lane is resolved once, before `routeAsk`, and
+  Gateway compat-endpoint slugs `openai` / `anthropic` / `google-ai-studio` /
+  `grok`, plus `openrouter` on its dedicated path (`SK-LLM-019`); verified
+  2026-07. An unknown slug fails loud at the edge rather than 404-ing at the
+  gateway. The lane is resolved once, before `routeAsk`, and
   threaded through the **whole query path** — route classifier + plan +
   summarize — so a BYOLLM ask runs end-to-end on the user's key and fails
   loud as one unit if the key is bad, never half on their key and half on
@@ -59,6 +60,7 @@ selector). Key-handling parent: [`SK-PREMIUM-008`](../../premium-tier/decisions/
 - **Deferred (tracked):** Account-stored keys (`api_keys.scope="byollm"`,
   KEK-decrypt) and the hosted-premium lane (`SK-LLM-017`, dark pre-§6) stay on
   the free router. `GLOBAL-003` surface parity (SDK / CLI / MCP / elements +
-  the `/v1/keys/byollm` endpoints + `/app/keys` UI) and the OpenRouter-vs-compat
-  discrepancy are tracked in [`premium-tier/FEATURE.md`](../../premium-tier/FEATURE.md)
-  `## Open questions`.
+  the `/v1/keys/byollm` endpoints + `/app/keys` UI) is tracked in
+  [`premium-tier/FEATURE.md`](../../premium-tier/FEATURE.md) `## Open questions`.
+  (The OpenRouter-vs-compat discrepancy is resolved — OpenRouter now dispatches
+  via its dedicated AI Gateway path, `SK-LLM-019` / `SK-PREMIUM-008`.)

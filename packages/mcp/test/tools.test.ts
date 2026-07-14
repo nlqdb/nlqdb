@@ -34,7 +34,7 @@ function stubClient(overrides: Partial<NlqClient> & { connect?: ConnectFn } = {}
       // interface but throws if a future path accidentally wires it.
       throw new Error("runSql not stubbed");
     },
-    getModels: async () => ({ presets: [], models: [] }),
+    getModels: async () => ({ presets: [], free: { label: "Free", note: "" }, providers: [] }),
     listChat: async () => ({ messages: [] }),
     postChat: async () => {
       throw new Error("postChat not stubbed");

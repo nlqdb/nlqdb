@@ -26,10 +26,12 @@ export type ByollmProviderOptions = {
   apiKey: string;
   // Upstream provider slug as AI Gateway names it for the unified
   // endpoint's `<provider>/<model>` form: `openai`, `anthropic`,
-  // `groq`, `google`, … . Prefixed onto the model.
+  // `google-ai-studio`, `grok`, … . Prefixed onto the model. `openrouter`
+  // is special-cased below (dedicated path, raw model id).
   upstream: string;
-  // Model id as the upstream names it (e.g. `gpt-5.2`). The user picks
-  // one model; every operation uses it.
+  // Model id as the upstream names it (e.g. `claude-sonnet-5`, or an
+  // OpenRouter id like `openai/gpt-5.6`). The user picks one model; every
+  // operation uses it.
   model: string;
   // Cloudflare account id + AI Gateway id for the unified-endpoint URL.
   accountId: string;
@@ -90,8 +92,16 @@ export function createByollmProvider(opts: ByollmProviderOptions): Provider {
     );
   }
 
-  const qualifiedModel = `${opts.upstream}/${opts.model}`;
-  const url = `https://gateway.ai.cloudflare.com/v1/${opts.accountId}/${opts.gatewayId}/compat/chat/completions`;
+  // Most providers route through the unified OpenAI-compat endpoint with a
+  // `<provider>/<model>` model field. OpenRouter is the exception: the AI
+  // Gateway serves it only on a dedicated `/openrouter/chat/completions` path
+  // (not the compat endpoint) and takes the raw OpenRouter model id — which
+  // already carries its own `<vendor>/<model>` form (e.g. `openai/gpt-5.6`).
+  // Verified against developers.cloudflare.com/ai-gateway, 2026-07 (SK-LLM-019).
+  const isOpenRouter = opts.upstream === "openrouter";
+  const qualifiedModel = isOpenRouter ? opts.model : `${opts.upstream}/${opts.model}`;
+  const path = isOpenRouter ? "openrouter/chat/completions" : "compat/chat/completions";
+  const url = `https://gateway.ai.cloudflare.com/v1/${opts.accountId}/${opts.gatewayId}/${path}`;
   // One user-chosen model serves every operation.
   const models = {
     route: qualifiedModel,

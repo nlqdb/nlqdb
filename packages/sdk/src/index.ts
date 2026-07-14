@@ -433,7 +433,13 @@ export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promis
 // the trade-off is that an unrecognised slug surfaces as the server's
 // one-sentence 400, not at construction — the SDK validates shape, not
 // the evolving provider allowlist it would otherwise have to track.
-export type ByollmProvider = "openai" | "anthropic" | "google-ai-studio" | (string & {});
+export type ByollmProvider =
+  | "openai"
+  | "anthropic"
+  | "google-ai-studio"
+  | "grok"
+  | "openrouter"
+  | (string & {});
 
 // SK-SDK-010 — the caller's own provider key, dispatched at 0% markup
 // per `GLOBAL-026`. Server-side this is the `<provider>:<model>:<key>`
@@ -443,32 +449,38 @@ export type ByollmProvider = "openai" | "anthropic" | "google-ai-studio" | (stri
 // `/v1/ask`, and only when this is set.
 export type ByollmCredential = {
   provider: ByollmProvider;
-  // Raw upstream model id (e.g. `gpt-5.2`, `claude-sonnet-4-6`). BYOLLM
-  // is the escape hatch where the user owns the model choice, so unlike
-  // the hosted `model` preset (`SK-PREMIUM-003`) this is the literal id.
+  // Raw upstream model id (e.g. `claude-sonnet-5`, `gpt-5.6`, or an
+  // OpenRouter id like `openai/gpt-5.6`). BYOLLM is the escape hatch where
+  // the user owns the model choice, so unlike the hosted `model` preset
+  // (`SK-PREMIUM-003`) this is the literal id.
   model: string;
   key: string;
 };
 
-// SK-PREMIUM-013 — the model catalog served by `GET /v1/models`. Shape
-// only: the actual model *strings* live in `@nlqdb/llm` and arrive over the
-// wire, so no surface (this SDK included) hardcodes them (SK-PREMIUM-003).
-// `presets` is the goal-first `auto|fast|best` knob; `models` is the named
-// picker — `free` (built-in chain) plus BYOLLM frontier entries carrying the
-// `provider`/`model` the `byollm` option / `setByollm` need.
+// SK-PREMIUM-013 / SK-PREMIUM-015 — the model catalog served by
+// `GET /v1/models`. Shape only: the actual model *strings* live in `@nlqdb/llm`
+// (built live from models.dev) and arrive over the wire, so no surface (this
+// SDK included) hardcodes them (SK-PREMIUM-003). `presets` is the goal-first
+// `auto|fast|best` knob; `free` is the keyless built-in chain; `providers` is
+// the named picker — one row per frontier provider, each with a searchable
+// model list carrying the `provider`/`model` the `byollm` option / `setByollm`
+// need.
 export type ModelPreset = "auto" | "fast" | "best";
-export type ModelLane = "free" | "byollm" | "premium";
 export type CatalogPreset = { id: ModelPreset; label: string; description: string };
-export type CatalogModel = {
-  id: string;
+export type CatalogModelOption = { id: string; label: string; model: string };
+export type CatalogProvider = {
+  provider: string;
   label: string;
-  lane: ModelLane;
-  provider?: string;
-  model?: string;
-  needsKey: boolean;
-  note?: string;
+  keyLabel: string;
+  keyPlaceholder: string;
+  defaultModel: string;
+  models: CatalogModelOption[];
 };
-export type ModelCatalog = { presets: CatalogPreset[]; models: CatalogModel[] };
+export type ModelCatalog = {
+  presets: CatalogPreset[];
+  free: { label: string; note: string };
+  providers: CatalogProvider[];
+};
 
 // Discriminated so the type system rejects callers that pass both
 // auth modes — sending a server-side bearer over a browser cookie is

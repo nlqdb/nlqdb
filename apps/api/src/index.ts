@@ -6,7 +6,6 @@ import {
   type Engine,
 } from "@nlqdb/db";
 import { DEFAULT_FROM, makeEmailSender } from "@nlqdb/email";
-import { MODEL_CATALOG } from "@nlqdb/llm";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import {
   isValidSpanId,
@@ -93,6 +92,7 @@ import {
   validateRememberInput,
 } from "./memory/remember.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
+import { loadModelCatalog } from "./models-catalog.ts";
 import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
 import { recordPremiumInterest } from "./premium-interest.ts";
 import {
@@ -2169,16 +2169,17 @@ app.get("/v1/keys", requireSession, async (c) => {
 });
 
 // `GET /v1/models` — the canonical model catalog (SK-PREMIUM-013): the
-// goal-first presets plus the named frontier picker. Public + unauthenticated
-// (anonymous users see the picker before signing in, GLOBAL-007) and static,
-// so no session and no OTel span — it just serves the `@nlqdb/llm` constant so
-// the model *strings* live server-side and never in a surface bundle
-// (SK-PREMIUM-003). Which entry is active per account is a separate read
+// goal-first presets plus the named frontier picker, one row per provider.
+// Public + unauthenticated (anonymous users see the picker before signing in,
+// GLOBAL-007) so the model *strings* live server-side and never in a surface
+// bundle (SK-PREMIUM-003). Per SK-PREMIUM-015 the frontier rows are built live
+// from models.dev (`loadModelCatalog`, which owns the external call's span +
+// edge cache + snapshot fallback), so a new frontier model shows up without a
+// code change. Which entry is active per account is a separate read
 // (`GET /v1/keys/byollm`); this endpoint is the same for everyone, so a short
-// public cache spares a round-trip on every chat load (a catalog bump lands
-// within 5 min).
-app.get("/v1/models", (c) =>
-  c.json(MODEL_CATALOG, 200, { "cache-control": "public, max-age=300" }),
+// public cache spares a round-trip on every chat load.
+app.get("/v1/models", async (c) =>
+  c.json(await loadModelCatalog(), 200, { "cache-control": "public, max-age=300" }),
 );
 
 // `/v1/keys/byollm` — account-stored BYOLLM credential (SK-PREMIUM-008,

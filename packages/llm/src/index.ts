@@ -11,17 +11,24 @@ export {
   dispatchLaneAttributes,
   selectDispatchLane,
 } from "./byollm-dispatch.ts";
-// SK-PREMIUM-013 — canonical model catalog (the only home for user-facing
-// model strings; surfaces receive it over the wire via `GET /v1/models`).
+// SK-PREMIUM-013 / SK-PREMIUM-015 — canonical model catalog (the only home for
+// user-facing model strings; surfaces receive it over the wire via
+// `GET /v1/models`). `MODEL_CATALOG` is the bundled snapshot fallback;
+// `buildCatalogFromModelsDev` builds the live catalog from models.dev.
 export {
-  type CatalogModel,
+  CATALOG_FREE,
+  CATALOG_PRESETS,
+  type CatalogModelOption,
   type CatalogPreset,
+  type CatalogProvider,
   isModelPreset,
   MODEL_CATALOG,
   MODEL_PRESETS,
   type ModelCatalog,
-  type ModelLane,
   type ModelPreset,
+  PROVIDER_META,
+  type ProviderMeta,
+  toCatalogProvider,
 } from "./catalog.ts";
 // Similarity-retrieved few-shot exemplar selection (SK-LLM-041, DAIL §4.1).
 export {
@@ -63,6 +70,13 @@ export {
   type FrontierTier,
   frontierTiers,
 } from "./frontier/tiers.ts";
+export {
+  buildCatalogFromModelsDev,
+  MODELS_DEV_URL,
+  type ModelsDevApi,
+  type ModelsDevModel,
+  type ModelsDevProvider,
+} from "./models-dev.ts";
 // Curated retrieval pool + the per-lever T9 ablation that wires it into the
 // planner system prompt (SK-LLM-041 half (b), DAIL §4.1).
 export {

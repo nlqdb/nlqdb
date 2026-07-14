@@ -121,8 +121,8 @@ describe("storeByollmCredential", () => {
 
   it("rejects an unsupported provider with a one-sentence message (GLOBAL-012)", async () => {
     const res = await storeByollmCredential(env.DB, KEK, "t4", {
-      provider: "openrouter",
-      model: "qwen",
+      provider: "cohere",
+      model: "command-r",
       apiKey: KEY,
     });
     expect(res.ok).toBe(false);
