@@ -86,7 +86,7 @@ underneath.
 
 - **Free forever** on the built-in open-model chain — queries, embeds,
   and the elements, no card required.
-- **Bring your own LLM key** (Anthropic / OpenAI / Gemini / OpenRouter)
+- **Bring your own LLM key** (Anthropic / OpenAI / Gemini / Grok / OpenRouter)
   on any tier, at no markup.
 - **Hosted premium models** on paid plans, when you'd rather not manage a
   key of your own.
