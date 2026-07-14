@@ -431,6 +431,49 @@ describe("orchestrateAsk", () => {
     });
   });
 
+  it("SK-ASK-025: an exec-repair on a hosted DB caches the repaired plan schema-relative", async () => {
+    // The repair LLM call, like the first plan, echoes the physical schema from
+    // the DDL prompt. The orchestrator must strip it before exec + cache so the
+    // repair path doesn't re-poison the shared (schema_hash, query_hash) key.
+    const db = stubDb({
+      id: "db_users_11d170",
+      schemaText: 'CREATE TABLE "users_11d170"."users" (id integer);',
+    });
+    const plan = vi
+      .fn()
+      .mockResolvedValueOnce({
+        sql: 'SELECT total FROM "users_11d170"."users"',
+        model: "m1",
+        confidence: 0.4,
+      })
+      .mockResolvedValueOnce({
+        sql: 'SELECT id FROM "users_11d170"."users"',
+        model: "m2",
+        confidence: 0.9,
+      });
+    const llm = { ...stubLLM(), plan } as unknown as LLMRouter;
+    const cache = stubPlanCache();
+    const execSqls: string[] = [];
+    const exec = vi.fn(async (_db: DbRecord, sql: string) => {
+      execSqls.push(sql);
+      if (sql.includes("total")) {
+        throw Object.assign(new Error('column "total" does not exist'), { code: "42703" });
+      }
+      return { rows: [{ id: 1 }], rowCount: 1 } satisfies QueryResult;
+    });
+    const out = await orchestrateAsk(
+      makeDeps({ resolveDb: vi.fn(async () => db), planCache: cache, llm, exec }),
+      { goal: "order ids", dbId: "db_users_11d170", userId: "user_1" },
+    );
+    expect(out.ok).toBe(true);
+    expect(plan).toHaveBeenCalledTimes(2);
+    // Both the failed first exec and the repaired exec ran schema-relative SQL.
+    expect(execSqls).toEqual(['SELECT total FROM "users"', 'SELECT id FROM "users"']);
+    // The cached repaired plan carries no physical schema name (SK-ASK-025).
+    expect(cache.write).toHaveBeenCalledTimes(1);
+    expect(cache.write.mock.calls[0]?.[2]?.sql).toBe('SELECT id FROM "users"');
+  });
+
   it("SK-ASK-022: repair is attempted at most once — a still-broken re-plan returns db_unreachable", async () => {
     const plan = vi.fn(async () => ({
       sql: "SELECT total FROM orders",

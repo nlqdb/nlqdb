@@ -498,14 +498,19 @@ export async function orchestrateAsk(
               error: err instanceof Error ? err.message : String(err),
             },
           });
-          const validation = validateSql(repair.sql);
+          // SK-ASK-025 — normalise the repaired plan to schema-relative form
+          // too (same strip as the first-plan path): an exec-repair on a
+          // hosted DB otherwise re-caches a physical schema name, re-poisoning
+          // the shared cache key this decision exists to keep portable.
+          const repairSql = hostedSchema ? schemaRelativeSql(repair.sql, hostedSchema) : repair.sql;
+          const validation = validateSql(repairSql);
           // A repaired read must stay a read — never let repair smuggle a
           // write past the preview gate.
           if (!validation.ok)
             return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
-          if (isWriteVerb(repair.sql))
+          if (isWriteVerb(repairSql))
             return { ok: false, error: { status: "sql_rejected", reason: "write_via_repair" } };
-          planSql = repair.sql;
+          planSql = repairSql;
           planModel = repair.model;
           planConfidence = repair.confidence;
           traceBlock.sql = planSql;

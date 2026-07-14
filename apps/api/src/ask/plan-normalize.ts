@@ -20,10 +20,16 @@ const parser = new Parser();
 // Remove the DB's OWN schema qualifier (`"<schema>".` / `<schema>.`) from
 // table references, leaving the bare table name for `search_path` to resolve.
 // Deterministic string strip keyed on the exact, unique schema name (a
-// `<slug>_<6hex>` identifier that never collides with a table/alias/literal)
+// `<slug>_<6hex>` identifier that never collides with a table or alias name)
 // — no SQL rewrite, no parse. The lookahead requires the token after the dot
 // to start an identifier (quote or letter/underscore), so a numeric literal
 // like `1.5` is never touched even for a degenerate numeric schema name.
+// Accepted edge case: this DB's own `<schema>.<ident>` token *inside a
+// single-quoted string literal* is also stripped — SK-ASK-025 chose the
+// deterministic strip over an AST rewrite. It only ever removes characters
+// (no injection) and only ever matches this DB's own token (never a foreign
+// schema), so the worst case is a corrupted literal in a near-impossible
+// query, not a correctness or isolation risk.
 export function schemaRelativeSql(sql: string, schemaName: string): string {
   const esc = schemaName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const re = new RegExp(`(^|[^\\w"])"?${esc}"?\\s*\\.\\s*(?=["a-zA-Z_])`, "g");
