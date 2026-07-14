@@ -16,39 +16,44 @@ frontier-lens closed (run 15); the only remaining path, the corrected-set,
 is blocked on an external maintainer's license reply (uiuc-kang-lab #7,
 filed 07-07, no response), so no single run can move it — `SK-QUAL-005`'s
 engine-work mandate stands lever-blocked and re-binds the focus once any
-engine lever unparks. Row #15 state (07-14 run 68): the run-65 plan-cache fix
-(#684) merged; **open PR #686 (run 67) now owns row #15** — its re-dispatch
-[29298056709](https://github.com/nlqdb/nlqdb/actions/runs/29298056709) confirmed
-the fix holds (zero `schema_mismatch`) but the overall run failed on a standing
-**agent-lane-capacity flake** (no healthy free model on NIM *or* OpenRouter),
-so #15 stays 0.75 — now **dark for a single run** until the founder-only 3rd
-free-LLM secret lands (top `blocked-by-human.md` bullet). Run 68 avoided that
-lever + PR #686's files per step 0. With #15 owned + infra-blocked and row #21
-maxed 9/9, run 68 pulled the pre-named **engine-lane / pivot** lever: **land
-the first memory-quality EX** (`SK-QUAL-023`, the GLOBAL-036 wedge) — see
-*Worst number* and *Last change*.
+engine lever unparks. Row #15 state (07-14 run 69): the run-65 plan-cache fix
+(#684) + the run-67 re-dispatch finding (#686) + run 68's memory EX (#687) all
+merged; **no PR owns row #15 now.** It stays ≈0.75 (opencheck's latest main
+run failed on the standing **agent-lane-capacity flake** — no healthy free
+model on NIM *or* OpenRouter) — **dark for a single run** until the founder-only
+3rd free-LLM secret lands (top `blocked-by-human.md` bullet). With #15 dark and
+row #21 maxed 9/9, run 69 pulled the pre-named **engine-lane / pivot** lever's
+*unblocker*: **make the memory temporal/consolidation lever diagnosable** —
+run 68 named those axes as the next fix but the failing SQL was locked in the
+egress-gated artifact; run 69 surfaces it in the run log — see *Worst number*
+and *Last change*.
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
 agent-controllable inputs; the top UX-flow input, row #21, is maxed 9/9).
-With row #21 maxed, row #15 owned by open PR #686 *and* infra-blocked, and no
-open live-UX bug (the run-65 plan-cache 42P01 fix + run-65's #683 model-picker
-CORS both merged), run 68's agent-movable lever was the pre-named **engine
-lane on the active pivot**: the run-66 `SK-QUAL-023` workflow was now on
-`main`, so its first EX was measurable via `workflow_dispatch`. **Run 68
-finding + lever:** dispatched `quality-eval-memory.yml` on main `a5e72e6`
-([29305503755](https://github.com/nlqdb/nlqdb/actions/runs/29305503755)), free
-chain — **first-ever memory-quality EX = 86.67% (13/15)**, p50 949 ms,
-`no_sql` 0, a real measurement (`transport_failed:null`); this also
-**overturns run 66's read** that the free chain is CI-unreachable (it ran
-clean in Actions; only the daily container is egress-gated). Per-axis:
-retrieval/forgetting/analytical 3/3, **temporal 2/3 · consolidation 2/3**.
-Memory-quality EX **unmeasured → 86.67%** (GLOBAL-036 wedge headline now
-exists). Not anti-rut-blocked (last 5 merged = plan-cache, memory-dispatch,
-KV-diag, systemic-guard, phantom-fix — this is a *measurement* on the pivot,
-a distinct move). Next agent-movable lever: an engine run targeting the two
-weakest memory axes (temporal + consolidation), then distribution yield
-(rows #6/#7) or row #9 Spider.
+With row #21 maxed, row #15 dark (opencheck agent-lane-capacity flake,
+founder-only 3rd-lane secret), and no open live-UX bug, run 69's agent-movable
+lever was the *unblocker* for the pre-named engine lane on the pivot. Run 68
+named temporal (2/3) + consolidation (2/3) as the next memory-eval fix, but the
+failing SQL was locked in the report artifact JSON — **unreachable from the
+egress-gated daily container** (both `GH_TOKEN`/`GH_TOKEN_WORKFLOW` get 403 on
+the artifact zip; the offline SK-QUAL-014 classifier needs that same file), and
+the run summary showed only per-axis counts. **Run 69 finding + lever:** added
+a "Mismatched questions (free lane)" table to `quality-eval-memory.yml` — each
+non-match free-lane row with question_id, axis, outcome and its generated SQL —
+and `tee`'d the whole summary to stdout so `get_job_logs` (the loop's only
+reachable channel) carries it. Verified end-to-end by dispatch on branch SHA
+`4679180` ([29314389843](https://github.com/nlqdb/nlqdb/actions/runs/29314389843)):
+the log now shows the sole failing row —
+**Q3 temporal → `…WHERE f.predicate = 'current_city'`**: the model invents a
+non-existent predicate (gold `'city'`) *and* omits the recency
+`ORDER BY created_at DESC LIMIT 1`. That re-measure also read free EX
+**93.33% (14/15)**, temporal 2/3 the sole weak axis (consolidation recovered to
+3/3 — N=15 free-chain noise). Not anti-rut-blocked (last 5 merged = plan-cache,
+memory-dispatch, KV-diag, systemic-guard, memory-EX — this is eval *tooling*).
+Next agent-movable lever (now diagnosable): fix Q3's predicate hallucination +
+recency ordering in the memory ask path, then distribution yield (rows #6/#7)
+or row #9 Spider.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -74,7 +79,7 @@ weakest memory axes (temporal + consolidation), then distribution yield
 | 15 | E2E manual-suite freshness | **≈ 0.75** (sdk/mcp/examples ≈1.0 each; **opencheck's latest main run [29298056709](https://github.com/nlqdb/nlqdb/actions/runs/29298056709) FAILED**, pass=0 zeroes it ⇒ mean 0.75). **Run-67 re-dispatch measured the SK-ASK-025 fix holding** — zero `schema_mismatch` recurrence, Suite C green — but Suite A 240 s-timed-out (mid-run NIM flap) + Suite B aborted at pre-flight (both free agent pools saturated): the standing **agent-lane-capacity** flake, not the product. → 1.0 needs a clean A+B+C in a fresh free-pool window (or the 3rd-lane secret, `blocked-by-human.md`) | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-14 run 67 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (07-14 run 69 — held; no FEATURE open-question bullet touched) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-13 run-61 sweep: **118** pages, **2,908** internal + **14 cross-app** links). Run 61 **added cross-app coverage** — `href`/`src` to owned subdomains (`docs./app./mcp.nlqdb.com`) were dropped by `isInternal` and never checked; the sweep now live-verifies them (4xx/5xx = dead & hard-fail; auth/method gate = alive; network error = "unverified", never red). 14 `docs.nlqdb.com` funnel links now covered (0 → 14) | target 0 — `bun run build && bun run check:links` in `apps/web` |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **1 open (founder-blocked)** — `brew install nlqdb/tap/nlq` advertised (`cli/README.md`, npm-shim fallback, SK-CLI-002) but the tap empty since 2026-05-19; blocked on the `HOMEBREW_TAP_GITHUB_TOKEN` PAT (top `blocked-by-human.md` bullet); releases no longer fail on it (run-54 fix, #669). Runs 32 + 37 + 56 + 59 + 62 + **64** each found + closed 1 agent-movable gap | claim-vs-reality on shipped surfaces + docs; target 0. **Run 64 built the standing candidate** (assert each advertised capability has shipped code): run 62 fixed `nlqdb_recall` by hand but the recurrence guard (`competitors.test.ts` SK-MCP-002) scanned 1 of ~6 surfaces (the two the phantom shipped to were unguarded) + pinned a stale hand-copied tool set (missing `nlqdb_connect_database`). Replaced by `mcp-tool-integrity.test.ts`: reads the shipped catalog from the MCP server's `registerTool(...)` sites, sweeps every `apps/web/src` surface closed-world, fails naming any phantom + file. Verified: passes clean (0 offenders), fails on the injected run-62 phantom. Next candidate: extend the sweep to the CLI/SDK advertised-verb surfaces |
@@ -83,7 +88,7 @@ weakest memory axes (temporal + consolidation), then distribution yield
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
-| | Memory-quality eval (`SK-QUAL-023`) | **free-chain EX 86.67% (13/15)** — first canonical dispatch, run 68, main `a5e72e6`, [GHA 29305503755](https://github.com/nlqdb/nlqdb/actions/runs/29305503755); p50 949 ms / p95 1999 ms, `no_sql` 0, real measurement (`transport_failed:null`). Per-axis: retrieval/forgetting/analytical 3/3, **temporal 2/3 · consolidation 2/3** (weakest → next-run lever) | 15 gold-verified questions, 4 axes + analytical; free chain **is** reachable in CI (only the daily container is egress-gated); free-only (frontier lane opt-in); no baseline emitted (measurement, not canonical — SK-QUAL-023). Analytical-vs-vector head-to-head still E-05 infra-gated |
+| | Memory-quality eval (`SK-QUAL-023`) | **free-chain EX 93.33% (14/15)** — run 69 re-measure, branch `4679180`, [GHA 29314389843](https://github.com/nlqdb/nlqdb/actions/runs/29314389843); p50 1168 ms / p95 7036 ms, `no_sql` 0. Per-axis: retrieval/forgetting/analytical/**consolidation 3/3**, **temporal 2/3** (sole weak axis). Run 68 read 86.67% (13/15) w/ consolidation 2/3 — the extra miss was N=15 free-chain noise. **Now diagnosable:** run-69 mismatch table (in the run log via `tee`) pins the sole failure — **Q3 temporal, `f.predicate='current_city'`** (hallucinated predicate + missing recency `ORDER BY … LIMIT 1`) | 15 gold-verified questions, 4 axes + analytical; free chain **is** reachable in CI (only the daily container is egress-gated); free-only (frontier lane opt-in); no baseline emitted (measurement, not canonical — SK-QUAL-023). Analytical-vs-vector head-to-head still E-05 infra-gated |
 
 ## Shipped distribution (live URLs)
 
@@ -99,39 +104,43 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-14 (run 68)** — lever: **land the first-ever agent-memory-quality
-EX (engine lane / GLOBAL-036 agent-memory pivot).** Step 0: one open PR —
-#686 (run 67), a docs-only null run owning row #15's opencheck re-dispatch
-finding + `opencheck-operations.md` + `blocked-by-human.md`. Run 68 avoided
-that lever + those files (scorecard regen is step-0-exempt). Rule-6 health
-clean — deploy-api/web/docs all ✅ on main (HEAD `a5e72e6`); `bun run
-typecheck` exit 0 after `bun install`, `bun run lint` exit 0 (38 pre-existing
-warnings), `bun run test` 916 pass / 6 skip. **Why this lever:** row #21
-maxed 9/9; weekly-focus row #15 owned by open PR #686 and now infra-blocked
-(agent-lane capacity flake needing a founder-only 3rd free-LLM secret —
-dark for a single run); the run-66 scorecard pre-named "the memory EX
-dispatch itself" as the next agent-movable lever, and the run-66 workflow is
-now on `main`. **The change (measurement run):** dispatched
-`quality-eval-memory.yml` on main `a5e72e6` ([GHA 29305503755](https://github.com/nlqdb/nlqdb/actions/runs/29305503755)),
-free chain, and recorded the result. **Measured:** memory-quality EX
-**unmeasured → 86.67% (13/15)**, p50 949 ms / p95 1999 ms, `no_sql` 0,
-`transport_failed:null` / `resumable:null` — a real measurement (SK-QUAL-020),
-which also **falsifies the run-66 read that the free chain is CI-unreachable**
-(it ran clean in Actions; only the daily container is egress-gated). Per-axis
-(free): retrieval/forgetting/analytical 3/3, **temporal 2/3 · consolidation
-2/3** — the two weakest axes are the named lever for a future engine run. No
-baseline emitted (a measurement, never canonical — SK-QUAL-023). Δ > 0 (the
-pivot's headline quality number now exists) — keep. **Artifact (step 3):**
-null step — queue is 2 unpublished drafts (< 3), so no auto-publish; no new
-draft (P5 — this run's lesson is eval-measurement, thin for a stranger-facing
-post). **Step 1:** funnel carried from the run-62/66 02:52–02:58Z pulls
-(remote D1 / CF GraphQL + LLM egress all unreachable from this container,
-re-confirmed) — strangers **0**; docs-ambiguity 17 (held; SK-QUAL-023 edit
-isn't an open-question bullet); row #18 0 dead (no page/link touched); row
-#15 ≈0.75 (opencheck red, PR #686 owns). **KPI:** GLOBAL-025 engine-quality
-(pillar #1) on the GLOBAL-036 wedge — **none degrade** (docs-only diff; zero
-runtime/prompt/eval-baseline change; BIRD/Spider/persona rows #8–#11 + #15 +
-walker #21 all carried; no new consumer of opencheck's lanes).
+**2026-07-14 (run 69)** — lever: **make the memory temporal/consolidation
+engine lever diagnosable (engine-lane tooling / GLOBAL-036 pivot).** Step 0:
+**no open PRs** (run 67 #686 + run 68 #687 both merged). Rule-6 health clean —
+deploy-api/web/docs all ✅ on main (HEAD `2b9f8a7`); `bun run typecheck` exit 0
+after `bun install`, `bun run lint` exit 0 (38 pre-existing warnings), `bun run
+test` exit 0. **Why this lever:** row #21 maxed 9/9; weekly-focus row #15 dark
+(opencheck agent-lane-capacity flake, founder-only 3rd-lane secret); no open
+live-UX bug. Run 68 pre-named temporal (2/3) + consolidation (2/3) as the next
+engine lever, but I hit the blocker head-on: the failing SQL lives only in the
+report artifact JSON, **403 from this container on both tokens**, and the run
+summary showed only per-axis counts — so no daily run could pull that lever
+blind. **The change:** added a "Mismatched questions (free lane)" table to
+`quality-eval-memory.yml`'s summary (each non-match free row → question_id,
+axis, outcome, generated SQL / transport error) and switched the summary sink
+from `>>` to `tee -a` so `get_job_logs` (the loop's only reachable channel)
+carries it. jq verified locally (mismatch + all-match branches); YAML parses.
+**Re-measure (end-to-end):** dispatched on branch SHA `4679180`
+([GHA 29314389843](https://github.com/nlqdb/nlqdb/actions/runs/29314389843));
+the job log now shows the sole failing row —
+**Q3 temporal → `SELECT f.object … WHERE f.predicate = 'current_city'`**: the
+model invents a non-existent predicate (gold `'city'`) *and* omits the recency
+`ORDER BY created_at DESC LIMIT 1`. Same run read free EX **86.67% → 93.33%
+(14/15)**, temporal 2/3 the sole weak axis (consolidation recovered 2/3→3/3,
+N=15 noise). **Δ:** the pivot's weakest axis is now diagnosable from a
+container-reachable channel (was: locked in a 403'd artifact) — keep. Not
+anti-rut (last 5 merged: plan-cache, memory-dispatch, KV-diag, systemic-guard,
+memory-EX — this is eval tooling, distinct). **Artifact (step 3):** null step —
+queue is 2 unpublished drafts (< 3), so no auto-publish; no new draft (P5 — an
+eval-tooling lesson, thin for a stranger-facing post). **Step 1:** funnel
+carried (remote D1 / CF GraphQL / LLM egress all unreachable from this
+container, re-confirmed) — strangers **0**; docs-ambiguity 17 (held;
+SK-QUAL-023 status edit isn't an open-question bullet); row #18 0 dead (no
+page/link touched); row #15 ≈0.75 (opencheck red, no owner). **KPI:**
+GLOBAL-025 engine-quality (pillar #1) on the GLOBAL-036 wedge — **none
+degrade** (workflow-summary + doc diff only; zero runtime/prompt/eval-baseline
+change; BIRD/Spider/persona rows #8–#11 + #15 + walker #21 all carried; no new
+consumer of opencheck's lanes).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

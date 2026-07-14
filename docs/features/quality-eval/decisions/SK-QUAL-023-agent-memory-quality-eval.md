@@ -19,7 +19,10 @@ fixture download, no baseline, no emit). **First EX (run 68, 2026-07-14,
 main `a5e72e6`, GHA 29305503755): free-chain 86.67% (13/15)**, p50 949 ms /
 p95 1999 ms, `no_sql` 0 — a real measurement (`transport_failed:null`).
 Per-axis: retrieval / forgetting / analytical 3/3; **temporal + consolidation
-2/3** (the weakest axes, next-run lever). Confirms the free chain *is*
+2/3** (the weakest axes, next-run lever — the run summary now lists every
+non-match free-lane row with its generated SQL, so the lever is diagnosable
+from the reachable step summary without the egress-gated artifact JSON).
+Confirms the free chain *is*
 reachable in CI (only the daily-agent container is egress-gated). **Deferred:**
 the analytical-vs-vector head-to-head (needs an embedding baseline —
 infra-gated, E-05).
