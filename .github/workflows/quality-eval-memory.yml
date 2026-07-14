@@ -154,4 +154,40 @@ jobs:
                   + " |"
               )
             ' "$latest"
+            # The per-axis EX above says WHICH axis is weak; this says WHY.
+            # It surfaces every non-match free-lane row with its generated SQL
+            # so the next daily run can pull the engine lever without the
+            # report JSON — the artifact is unreachable from the egress-gated
+            # daily container (both tokens 403 on the artifact zip), and the
+            # offline SK-QUAL-014 classifier needs that same file. The run
+            # summary IS reachable, so the wrong SQL lands where the loop reads.
+            echo ""
+            echo "### Mismatched questions (free lane) — diagnostic for the next engine lever"
+            echo ""
+            jq -r '
+              def axis(id):
+                if id < 3 then "retrieval"
+                elif id < 6 then "temporal"
+                elif id < 9 then "forgetting"
+                elif id < 12 then "consolidation"
+                else "analytical" end;
+              [ .results[]
+                | select(.lane == "free")
+                | select(.outcome != "match" and .outcome != "gold_error") ] as $bad
+              | if ($bad | length) == 0
+                then "All scored free-lane questions matched — no diagnostic needed."
+                else
+                  ( "| Q | Axis | Outcome | Generated SQL / error |",
+                    "|---|---|---|---|",
+                    ( $bad[]
+                      | ( (if .predicted_sql == "" then (.error // "(no sql produced)") else .predicted_sql end)
+                          | gsub("\n"; " ") | gsub("[|]"; "\\|")
+                          | if (. | length) > 300 then (.[0:300] + " …") else . end ) as $detail
+                      | "| " + (.question_id | tostring)
+                        + " | " + axis(.question_id)
+                        + " | " + .outcome
+                        + " | " + $detail
+                        + " |" ) )
+                end
+            ' "$latest"
           } >> "$GITHUB_STEP_SUMMARY"
