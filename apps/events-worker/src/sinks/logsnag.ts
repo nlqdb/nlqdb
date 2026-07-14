@@ -196,6 +196,39 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
         user_id: event.principalId,
         tags: { surface: event.surface },
       };
+    case "pricing.page_viewed":
+      // SK-EVENTS-012 — dedicated `pricing` channel; aggregate signal,
+      // not a pager (notify: false). `user_id` is the identity facet the
+      // founder groups by to count unique users; `authed` + optional
+      // `email` let them split real visitors from their own account.
+      return {
+        project,
+        channel: "pricing",
+        event: "Pricing viewed",
+        description: `${event.email ?? "anon visitor"} viewed /pricing`,
+        icon: "🏷️",
+        notify: false,
+        user_id: event.principalId,
+        tags: {
+          authed: String(event.email !== null),
+          ...(event.email ? { email: event.email } : {}),
+        },
+      };
+    case "pricing.plan_selected":
+      return {
+        project,
+        channel: "pricing",
+        event: "Plan selected",
+        description: `${event.email ?? "anon visitor"} clicked "Choose ${event.plan}"`,
+        icon: "🧾",
+        notify: false,
+        user_id: event.principalId,
+        tags: {
+          plan: event.plan,
+          authed: String(event.email !== null),
+          ...(event.email ? { email: event.email } : {}),
+        },
+      };
     case "feature.eval.weekly": {
       // SK-QUAL-002: the eval run summary lands in `#north-star`. Lane EAs
       // are emitted as separate tags so the LogSnag dashboard can chart

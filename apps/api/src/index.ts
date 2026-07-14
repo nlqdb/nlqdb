@@ -73,7 +73,7 @@ import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/lis
 import { AGENT_MEMORY_V1_VERSION, type MemoryPreset } from "./db-create/presets/agent-memory-v1.ts";
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
-import { recordEvalReport, recordWishlist } from "./events-feature.ts";
+import { recordEvalReport, recordPricingEvent, recordWishlist } from "./events-feature.ts";
 import {
   isAllowedEngine,
   MAX_GOAL_LENGTH,
@@ -1657,6 +1657,53 @@ app.post("/v1/events/wishlist", async (c) => {
       }
       span.setAttribute("nlqdb.events.outcome", "accepted");
       span.setAttribute("nlqdb.events.surface", String(body.body.surface));
+      c.executionCtx.waitUntil(result.pendingEmit);
+      return c.json({ accepted: true }, 202);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// POST /v1/events/pricing — pricing-page funnel (SK-EVENTS-012). Public
+// like the wishlist endpoint, but resolves the session cookie server-side
+// so a signed-in visitor is attributed to their account (unique-user
+// count + self-exclusion). Session resolution is opportunistic: a failure
+// or absence degrades to anon attribution rather than 500ing a marketing
+// page-view.
+app.post("/v1/events/pricing", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.events.pricing", async (span) => {
+    try {
+      const body = await parseJsonBody<unknown>(c);
+      if (!body.ok) {
+        span.setAttribute("nlqdb.events.outcome", "invalid_body");
+        return c.json({ error: { status: "invalid_body" } }, 400);
+      }
+      let identity: { userId: string; email: string | null } | null = null;
+      try {
+        const session = await sessionResolver.getSession(c.req.raw);
+        if (session) identity = { userId: session.user.id, email: session.user.email ?? null };
+      } catch {
+        identity = null;
+      }
+      const result = await recordPricingEvent(
+        { kv: c.env.KV, events: buildEventEmitter(c.env.EVENTS_QUEUE) },
+        body.body,
+        identity,
+        c.req.header("cf-connecting-ip") ?? null,
+      );
+      if (result.status === 400) {
+        span.setAttribute("nlqdb.events.outcome", result.reason);
+        return c.json({ error: { status: result.reason } }, 400);
+      }
+      if (result.status === 429) {
+        span.setAttribute("nlqdb.events.outcome", "rate_limited");
+        c.header("Retry-After", "60");
+        return c.json({ error: { status: "rate_limited" } }, 429);
+      }
+      span.setAttribute("nlqdb.events.outcome", "accepted");
+      span.setAttribute("nlqdb.events.authed", String(identity !== null));
       c.executionCtx.waitUntil(result.pendingEmit);
       return c.json({ accepted: true }, 202);
     } finally {

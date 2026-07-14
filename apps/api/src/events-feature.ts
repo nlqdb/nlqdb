@@ -11,6 +11,7 @@ import type {
   EventEmitter,
   FeatureEvalRegressionEvent,
   FeatureEvalWeeklyEvent,
+  PricingPlan,
   WishlistSurface,
 } from "@nlqdb/events";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
@@ -89,6 +90,78 @@ async function deriveWishlistPrincipalId(ip: string): Promise<string> {
   // (`anon:<16hex>`); using a distinct `wl:` prefix keeps these from
   // colliding with real anon ids in the LogSnag user_id facet.
   return `wl:${await sha256Hex(`${ip}:${day}`, 16)}`;
+}
+
+// ---- POST /v1/events/pricing — pricing-page funnel (SK-EVENTS-012) ----
+
+const PRICING_PLANS: ReadonlySet<PricingPlan> = new Set<PricingPlan>(["hobby", "pro"]);
+
+// Same public-endpoint posture as the wishlist signal: KV-throttled per
+// IP. A refresh-happy visitor is already collapsed to one event/day by
+// the producer `defaultId` dedup (SK-EVENTS-012); the throttle only caps
+// abuse. 20/min is generous for a real reader clicking around the page.
+const PRICING_RATE_WINDOW_SECONDS = 60;
+const PRICING_RATE_MAX = 20;
+
+// The browser sends one of two shapes: a page-view, or a plan-CTA click.
+export type PricingEventInput = { event: "view" } | { event: "plan"; plan: PricingPlan };
+
+// Server-resolved identity for attribution — never client-supplied.
+// `null` when the visitor isn't signed in (falls back to an IP bucket).
+export type PricingIdentity = { userId: string; email: string | null } | null;
+
+export type PricingResult =
+  | { status: 202; pendingEmit: Promise<unknown> }
+  | { status: 400; reason: "invalid_body" }
+  | { status: 429 };
+
+export type PricingDeps = {
+  kv: KVNamespace;
+  events: EventEmitter;
+};
+
+function parsePricingInput(body: unknown): PricingEventInput | null {
+  if (!body || typeof body !== "object") return null;
+  const b = body as { event?: unknown; plan?: unknown };
+  if (b.event === "view") return { event: "view" };
+  if (b.event === "plan" && typeof b.plan === "string" && PRICING_PLANS.has(b.plan as PricingPlan)) {
+    return { event: "plan", plan: b.plan as PricingPlan };
+  }
+  return null;
+}
+
+export async function recordPricingEvent(
+  deps: PricingDeps,
+  body: unknown,
+  identity: PricingIdentity,
+  clientIp: string | null,
+): Promise<PricingResult> {
+  const input = parsePricingInput(body);
+  if (!input) return { status: 400, reason: "invalid_body" };
+
+  const ip = clientIp ?? "unknown";
+  const throttle = makeKvThrottle(deps.kv, {
+    prefix: "pricing-ev:rate:",
+    max: PRICING_RATE_MAX,
+    windowSeconds: PRICING_RATE_WINDOW_SECONDS,
+  });
+  if (!(await throttle.tryConsume(ip))) return { status: 429 };
+
+  // A signed-in visitor is attributed to their stable `userId` (+ email,
+  // so the founder can exclude their own account); a logged-out visitor
+  // falls back to a per-day IP-hash bucket. The `pv:` prefix keeps it out
+  // of the `anon:` / `wl:` facets in the LogSnag user_id column, and
+  // neither a raw IP nor a minted anon-bearer ever reaches the sink.
+  const day = new Date().toISOString().slice(0, 10);
+  const principalId = identity ? identity.userId : `pv:${await sha256Hex(`${ip}:${day}`, 16)}`;
+  const email = identity?.email ?? null;
+
+  const pendingEmit =
+    input.event === "view"
+      ? deps.events.emit({ name: "pricing.page_viewed", principalId, email })
+      : deps.events.emit({ name: "pricing.plan_selected", principalId, plan: input.plan, email });
+
+  return { status: 202, pendingEmit };
 }
 
 // ---- POST /v1/events/eval — quality-eval run ingestion (SK-QUAL-002) ----

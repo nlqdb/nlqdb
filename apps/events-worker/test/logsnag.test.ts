@@ -301,6 +301,52 @@ describe("buildPayload", () => {
     });
     expect(out.tags).not.toHaveProperty("invoice-url");
   });
+
+  it("maps pricing.page_viewed to the pricing channel with email tag (authed) — SK-EVENTS-012", () => {
+    const out = buildPayload("nlqdb", {
+      name: "pricing.page_viewed",
+      principalId: "u_9",
+      email: "founder@nlqdb.com",
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "pricing",
+      event: "Pricing viewed",
+      notify: false,
+      user_id: "u_9",
+      tags: { authed: "true", email: "founder@nlqdb.com" },
+    });
+  });
+
+  it("maps an anon pricing.page_viewed with no email tag", () => {
+    const out = buildPayload("nlqdb", {
+      name: "pricing.page_viewed",
+      principalId: "pv:0123456789abcdef",
+      email: null,
+    });
+    expect(out).toMatchObject({
+      channel: "pricing",
+      user_id: "pv:0123456789abcdef",
+      tags: { authed: "false" },
+    });
+    expect(out.tags).not.toHaveProperty("email");
+  });
+
+  it("maps pricing.plan_selected with plan + email tags — SK-EVENTS-012", () => {
+    const out = buildPayload("nlqdb", {
+      name: "pricing.plan_selected",
+      principalId: "u_9",
+      plan: "hobby",
+      email: "founder@nlqdb.com",
+    });
+    expect(out).toMatchObject({
+      channel: "pricing",
+      event: "Plan selected",
+      notify: false,
+      user_id: "u_9",
+      tags: { plan: "hobby", authed: "true", email: "founder@nlqdb.com" },
+    });
+  });
 });
 
 describe("publishToLogSnag", () => {

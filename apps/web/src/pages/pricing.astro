@@ -16,7 +16,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   <div class="page">
     <Topnav />
 
-    <main class="pricing">
+    <main class="pricing" data-api-base={apiBase}>
       <header class="pricing__head">
         <p class="pricing__eyebrow">Pricing</p>
         <h1 class="pricing__title">Simple pricing. No surprises.</h1>
@@ -171,11 +171,43 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   import { fetchSession } from "../lib/session";
   import { fetchBillingStatus, formatPlanEndDate, openBillingPortal } from "../lib/billing";
 
+  // Pricing funnel (SK-EVENTS-012). First-party, credentialed capture so a
+  // signed-in visitor is attributed to their account server-side — the
+  // founder can then count UNIQUE users and subtract their own account.
+  // Unlike the Cloudflare beacon this survives ad/privacy blockers.
+  // Fire-and-forget: a blocked or failed emit must never affect the page.
+  const pricingApiBase = (
+    document.querySelector<HTMLElement>("main.pricing")?.dataset.apiBase ?? ""
+  ).replace(/\/$/, "");
+  function emitPricing(payload: { event: "view" } | { event: "plan"; plan: "hobby" | "pro" }) {
+    // No `if (!base) return` guard: an empty base is the same-origin
+    // app.nlqdb.com deploy (relative URL is correct), and that's exactly
+    // where a signed-in visitor — the founder included — browses pricing.
+    // A dev/preview build with no API just gets a caught network error.
+    try {
+      void fetch(`${pricingApiBase}/v1/events/pricing`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        keepalive: true,
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      // Best-effort analytics — never surfaced to the user.
+    }
+  }
+  // Count the entrance as soon as the page script runs.
+  emitPricing({ event: "view" });
+
   const buttons = document.querySelectorAll<HTMLButtonElement>("button[data-plan]");
 
   for (const btn of buttons) {
     btn.addEventListener("click", async () => {
       const plan = btn.dataset.plan as "hobby" | "pro";
+      // Capture the plan-selection intent up front — before the auth check
+      // below — so a logged-out click (which redirects to sign-in) still
+      // counts as intent (SK-EVENTS-012).
+      emitPricing({ event: "plan", plan });
       const apiBase = (btn.dataset.apiBase ?? "").replace(/\/$/, "");
 
       // An existing subscriber changing tier goes through the Billing Portal
