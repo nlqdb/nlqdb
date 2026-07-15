@@ -35,27 +35,20 @@ should re-point the focus off #15 while that secret is unset.
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
 agent-controllable inputs; the top UX-flow input, row #21, is maxed 9/9).
-**Run 76 closed row #19's last open gap (1 → 0), not a null run.**
-Step 0: one open PR — #698 (run 75: connect→ask CTA trailing-slash, row #18
-class, `ConnectForm.tsx`; now merged); run 76 touched none of its files
-(scorecard regen is step-0-exempt). **Rule 6:** all `deploy-*` + `ci.yml` **green on `main`**
-(`80e4aa4`); `deploy-cli` recovered on `80e4aa44` after run 73's goreleaser
-fix. Local typecheck/lint/test green after `bun install`. **Lever:** run 73
-merged the `cli/.goreleaser.yml` token-format fix; the scorecard deferred the
-post-merge tap-verify. Run 76 performed it end-to-end: `nlqdb/homebrew-tap`
-now carries `nlq.rb` (root formula for `nlqdb/tap/nlq`, commit 07-15 02:42Z
-"Brew formula update for nlq version v0.1.12"; **empty since 2026-05-19** per
-row #19), the v0.1.12 linux_x86_64 release asset downloads HTTP 200 and its
-**sha256 matches the formula exactly** (`63a9266…814a`), and the tarball ships
-the `nlq` binary. So `brew install nlqdb/tap/nlq` (advertised in `cli/README.md`
-+ the npm-shim fallback, `SK-CLI-002`) is **now genuinely installable** — the
-claim is real. **Before → after: row #19 open gaps 1 → 0.** Secondary
-hardening (same run, same class): the run-74 CLI-verb guard swept `apps/web`
-only, leaving the docs-site prose (`apps/docs/src` `.md/.mdx`) — an identical
-copy-pasteable `nlq` surface — unguarded; run 76 extends the sweep to it
-(guarded surfaces web → web+docs), verified clean today (all 15 docs verbs
-shipped) and **fails naming `apps/docs/src/content/docs/cli.mdx`** on an
-injected `nlq schema` phantom.
+**Run 78 is a null run (step 2)** — no agent-movable lever cleared the bar,
+so it ships only this scorecard update (waiver detail in _Last change_).
+**Step 0: two open PRs** — #700 (run 77: client-side-nav trailing-slash
+redirects 4 → 0, row #18; owns `ChatPanel.tsx`, `Topnav.astro`,
+`client-nav-integrity.test.ts`, `web-app/FEATURE.md`, `distribution-queue.md`)
+and #701 (model-picker sub-label test; owns the model-picker files). Run 78
+touched **none** of their files (scorecard regen is step-0-exempt). **Rule 6:**
+all 11 workflows (CI + all `deploy-*` + canary + npm + security) **green on
+`main`** (`b82b122`; `deploy-cli`@`80e4aa4`). Local typecheck 0 / lint 38
+pre-existing warnings / test green after `bun install` (api 924 pass, 6
+skipped). Prod reachable via proxy for surface GETs (`nlqdb.com` 200,
+`app.nlqdb.com/app/new` 307 → `/app/new/`, confirming #700's finding);
+`api.nlqdb.com` proxy-blocked (502) — no live ask/LLM/D1 pull, so
+funnel/engine carry from the 07-13/07-11 pulls.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -74,7 +67,7 @@ injected `nlq schema` phantom.
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-15 run 76):** all 9 workflows (CI, all `deploy-*`, canary, npm, security) **green on `main`** (`80e4aa4`); `deploy-cli` recovered on `80e4aa44` after run 73's goreleaser fix and populated the Homebrew tap (row #19) |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-15 run 78):** all 11 workflows (CI, all `deploy-*`, canary, npm, security) **green on `main`** (`b82b122`; `deploy-cli`@`80e4aa4`) — re-verified this run |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
@@ -106,40 +99,46 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-15 (run 76)** — **closed row #19's last claim-integrity gap, 1 → 0**
-(not a null run). Step 0: one open PR — #698 (run 75: connect→ask CTA
-trailing-slash, `ConnectForm.tsx`, row #18 class); run 76 touched none of its
-files. **Rule 6:** all 9 workflows green on `main` (`80e4aa4`); `deploy-cli`
-recovered on `80e4aa44` after run 73's goreleaser fix. typecheck/lint/test
-green after `bun install`. **Lever:** run 73 merged the
-`cli/.goreleaser.yml` token-format fix and the scorecard deferred the
-post-merge tap-verify; run 76 performed it end-to-end. `nlqdb/homebrew-tap`
-now carries `nlq.rb` at root (formula for `nlqdb/tap/nlq`, commit 07-15
-02:42Z, v0.1.12; **empty since 2026-05-19** before), the v0.1.12
-linux_x86_64 release asset returns **HTTP 200** with a **sha256 matching the
-formula exactly** (`63a9266…814a`), and the tarball ships the `nlq` binary —
-so `brew install nlqdb/tap/nlq` (advertised in `cli/README.md` + npm-shim
-fallback, `SK-CLI-002`) is now **genuinely installable**. **Before → after:
-row #19 open gaps 1 → 0.** **Secondary hardening (same class):** the run-74
-CLI-verb guard swept `apps/web` only; run 76 extends
-`cli-verb-integrity.test.ts` to also sweep the docs-site prose
-`apps/docs/src` (`.md/.mdx`) — an identical copy-pasteable `nlq` surface,
-previously unguarded (guarded surfaces web → web+docs).
-**Measure→change→re-measure:** guard passes clean (all 15 docs verbs
-shipped, 0 offenders); injecting `nlq schema` into `cli.mdx` fails it naming
-`apps/docs/src/content/docs/cli.mdx`; revert passes again. Gates green:
-typecheck 0, lint 38 pre-existing warnings, **web 254 tests pass** (full
-suite green earlier this session). **Step 1:** funnel/engine carried from
-07-13/07-11 pulls (CF GraphQL / remote-D1 / LLM egress not reachable here) —
-strangers **0**, docs-ambiguity **17** (held), row #18 **0 dead**; queue
-**2** drafts (< 3). **Artifact (step 3):** queue < 3 → no forced publish;
-lesson (a deploy-config bug can silently empty an advertised install channel
-that no code guard sees) already adjacent to the queued
-`guard-advertised-capabilities-against-code` draft → no new draft.
-**KPI (GLOBAL-025):** advances **onboarding/UX** (the advertised install path
-works; docs prose can't ship a dead-end `nlq` snippet); **none degrade** —
-a verification + test-only diff, zero runtime/prompt/eval-baseline change;
-engine rows #8–#11 + walker row #21 carried.
+**2026-07-15 (run 78)** — **null run** (step 2): no agent-movable lever cleared
+the bar, so this ships only the step-1 scorecard update. **Step 0:** two open
+PRs — #700 (run 77: client-nav trailing-slash 4 → 0, row #18) and #701
+(model-picker sub-label test); run 78 touched none of their files (scorecard
+regen is step-0-exempt). **Rule 6:** all 11 workflows green on `main`
+(`b82b122`; `deploy-cli`@`80e4aa4`); local typecheck 0 / lint 38 pre-existing
+warnings / test green after `bun install` (api 924 pass, 6 skipped). **Why null
+— waiver for skipping each lever lane:**
+1. **UX-flow (priority 1):** the day's two web-UX levers are already in flight —
+   #700 (row #18 client-nav) + #701 (model-picker); a full read of the stranger
+   land→create→ask path (`lib/api.ts`, `CreateForm.tsx`,
+   `lib/{dropoff,ttfv,prompt-storage}.ts`) found it clean and well-tested — no
+   defect to fix; row #21 walkers maxed 9/9.
+2. **Engine:** BIRD/Spider canonical 07-11 (4 d < the 7-d stale-alert gate),
+   persona-bench 07-09 (6 d) — no forced re-measure; `api.nlqdb.com` is
+   proxy-blocked here (no LLM egress), so no offline smoke is verifiable either.
+3. **Distribution (priority 2):** `distribution-queue.md` is owned by open PR
+   #700 — publishing or drafting would touch a file it changes (step-0 forbids);
+   queue is 2 < 3 on `main`, so step 3.1 forced-publish does not trigger.
+4. **Row #19 claim-integrity (its named next candidate):** verified the SDK
+   method surface — every advertised `client.*` in web + docs prose
+   (`client.ask`, `client.runSql`, `createDatabase`, `mintKey`, …) resolves to a
+   real method on the shipped `@nlqdb/sdk` client. **No broken claim exists**, so
+   a preventive SDK guard would move no wrong number (fails rule 2).
+5. **Row #20 premium chain (`SK-LLM-017`):** the last ⬜ hosted-premium slot is a
+   large multi-surface build (`packages/llm/src/chains/` doesn't exist yet; needs
+   3 frontier provider modules + Stripe metered items + GLOBAL-003 SDK/CLI/MCP/
+   elements parity) — not a single-run lever, and unverifiable without LLM egress.
+6. **Row #17 docs-ambiguity (meta, priority 3):** all 17 open bullets are
+   "ships-when-slice/infra-lands" tracking notes or founder/infra-blocked (Lago,
+   Stripe live-mode, Reddit OAuth, Windows hardware, OpenAPI schema) — none is a
+   value-decidable ambiguity to research-resolve this run; re-labeling them to
+   match the resolved-regex would game the count, not add clarity.
+**Step 1:** funnel/engine carried from the 07-13/07-11 pulls (CF GraphQL /
+remote-D1 / LLM egress unreachable here) — strangers **0**, docs-ambiguity
+**17** (held), row #18 **0 dead** (client-nav redirects still live on `main`
+until #700 merges); queue **2** drafts (< 3). **Artifact (step 3):** skipped —
+null runs ship no artifact; the queue drains on the next non-null run.
+**KPI (GLOBAL-025):** none advanced, **none degraded** — scorecard-only diff,
+zero code/prompt/eval-baseline change; all engine + walker rows carried.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
