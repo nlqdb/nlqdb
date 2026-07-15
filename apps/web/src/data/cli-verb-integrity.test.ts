@@ -15,6 +15,12 @@ import { fileURLToPath } from "node:url";
 // Run 72 found it by hand; this automates that sweep so the next phantom
 // fails CI instead of shipping.
 //
+// The sweep spans every copy-pasteable stranger-facing surface, not just the
+// marketing site: `apps/web/src` (`.ts/.tsx/.astro`) *and* the docs-site prose
+// `apps/docs/src` (`.md/.mdx`). A phantom `nlq` verb in a docs code fence
+// breaks a stranger's first CLI call identically, and docs prose was the
+// unguarded blind-spot until now.
+//
 // Source of truth: the top-level verbs the shipped CLI actually registers.
 // Per cli/internal/cmd/root.go ("one verb per file"), each command file's
 // first `Use:` token is its top-level verb; root.go's is the `nlq` root
@@ -22,6 +28,7 @@ import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const WEB_SRC = join(REPO_ROOT, "apps", "web", "src");
+const DOCS_SRC = join(REPO_ROOT, "apps", "docs", "src");
 const CLI_CMD = join(REPO_ROOT, "cli", "internal", "cmd");
 
 // The shipped top-level verbs: first `Use:` token of every cmd file, minus
@@ -34,15 +41,20 @@ for (const name of readdirSync(CLI_CMD)) {
   if (first && first[1] !== "nlq") shippedVerbs.add(first[1]);
 }
 
-function tsFiles(dir: string, acc: string[] = []): string[] {
+// Collect files under `dir` whose name matches `ext`, skipping test files so
+// the guard's own fixtures never trip it.
+function sweepFiles(dir: string, ext: RegExp, acc: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
     if (name === "node_modules" || name === "dist") continue;
     const p = join(dir, name);
-    if (statSync(p).isDirectory()) tsFiles(p, acc);
-    else if (/\.(ts|tsx|astro)$/.test(name) && !name.endsWith(".test.ts")) acc.push(p);
+    if (statSync(p).isDirectory()) sweepFiles(p, ext, acc);
+    else if (ext.test(name) && !name.endsWith(".test.ts")) acc.push(p);
   }
   return acc;
 }
+
+// Every stranger-facing surface that renders copy-pasteable `nlq` snippets.
+const swept = [...sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/), ...sweepFiles(DOCS_SRC, /\.(md|mdx)$/)];
 
 describe("CLI-verb integrity (SK-WEB-008 / SK-CLI-002)", () => {
   test("the shipped verb set is derived from the cobra tree", () => {
@@ -68,14 +80,14 @@ describe("CLI-verb integrity (SK-WEB-008 / SK-CLI-002)", () => {
     ]);
   });
 
-  test("every `nlq <verb>` snippet in apps/web is a shipped verb", () => {
+  test("every `nlq <verb>` snippet in apps/web + apps/docs is a shipped verb", () => {
     // Maps the first unshipped verb → the file it appears in, so a failure
     // names the phantom and where to fix it (e.g. `{ schema:
     // "apps/web/src/data/showcase-examples.ts" }`). The leading token after
     // `nlq ` must be a top-level verb; flags (`nlq --json …`) don't match
     // `[a-z]` and are skipped, and `nlqdb` has no space so it never matches.
     const offenders: Record<string, string> = {};
-    for (const file of tsFiles(WEB_SRC)) {
+    for (const file of swept) {
       for (const m of readFileSync(file, "utf8").matchAll(/\bnlq ([a-z][a-z-]*)/g)) {
         const verb = m[1];
         if (shippedVerbs.has(verb)) continue;

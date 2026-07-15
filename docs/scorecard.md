@@ -34,26 +34,28 @@ should re-point the focus off #15 while that secret is unset.
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
-agent-controllable inputs, top priority being real UX-flow quality).
-**Run 75 pulled a UX-flow lever (row #18 "redirecting links" class), not a
-null run.** Step 0: **zero open PRs** (runs 73/74 + founder PRs #694/#696 all
-merged) — no overlap. **Rule 6:** `ci.yml` + all nine `deploy-*` workflows
-green on `main` (`deploy-cli` now green at `80e4aa4`, run-73 goreleaser fix
-landed); local `typecheck`/`lint`/`test` all green after `bun install`
-(api 924 + web 254 pass). **Lever:** the priority-1 stranger-connect audit
-(land → connect → **ask**) found `ConnectForm.tsx`'s terminal "Question it
-now →" CTA linking `/app?db=…` — the **only** navigational `/app` link in
-`apps/web/src` omitting the trailing slash the `trailingSlash: "always"`
-contract requires. On `nlqdb.com` the worker 301s `/app*` to `app.nlqdb.com`
-(search preserved), where the static server then 307s bare `/app?db=` →
-`/app/?db=`, so the highest-intent click of the connect funnel ate an **extra
-redirect hop** no sibling CTA does. `check-links.mjs` (row #18) is blind to it
-— it scans built `dist/` HTML, and this href lives in a client-rendered React
-island (never a literal in built HTML). A broad source-level guard is not
-viable (route-matchers/prose/comments false-positive — 38 dry-run hits), so
-per **P5** the lever is the one-char correction, not a flaky guard. Before →
-after: navigational `/app` links violating the contract **1 → 0**; the
-connect→ask CTA drops 301+**307** → 301 only.
+agent-controllable inputs; the top UX-flow input, row #21, is maxed 9/9).
+**Run 76 closed row #19's last open gap (1 → 0), not a null run.**
+Step 0: one open PR — #698 (run 75: connect→ask CTA trailing-slash, row #18
+class, `ConnectForm.tsx`; now merged); run 76 touched none of its files
+(scorecard regen is step-0-exempt). **Rule 6:** all `deploy-*` + `ci.yml` **green on `main`**
+(`80e4aa4`); `deploy-cli` recovered on `80e4aa44` after run 73's goreleaser
+fix. Local typecheck/lint/test green after `bun install`. **Lever:** run 73
+merged the `cli/.goreleaser.yml` token-format fix; the scorecard deferred the
+post-merge tap-verify. Run 76 performed it end-to-end: `nlqdb/homebrew-tap`
+now carries `nlq.rb` (root formula for `nlqdb/tap/nlq`, commit 07-15 02:42Z
+"Brew formula update for nlq version v0.1.12"; **empty since 2026-05-19** per
+row #19), the v0.1.12 linux_x86_64 release asset downloads HTTP 200 and its
+**sha256 matches the formula exactly** (`63a9266…814a`), and the tarball ships
+the `nlq` binary. So `brew install nlqdb/tap/nlq` (advertised in `cli/README.md`
++ the npm-shim fallback, `SK-CLI-002`) is **now genuinely installable** — the
+claim is real. **Before → after: row #19 open gaps 1 → 0.** Secondary
+hardening (same run, same class): the run-74 CLI-verb guard swept `apps/web`
+only, leaving the docs-site prose (`apps/docs/src` `.md/.mdx`) — an identical
+copy-pasteable `nlq` surface — unguarded; run 76 extends the sweep to it
+(guarded surfaces web → web+docs), verified clean today (all 15 docs verbs
+shipped) and **fails naming `apps/docs/src/content/docs/cli.mdx`** on an
+injected `nlq schema` phantom.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -72,7 +74,7 @@ connect→ask CTA drops 301+**307** → 301 only.
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-14 run 73):** all deploy-* + `ci.yml` green on `main` **except `deploy-cli.yml`** (was red on `b77f338`, goreleaser token-format bug) — **fixed this run**; every other workflow green |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-15 run 76):** all 9 workflows (CI, all `deploy-*`, canary, npm, security) **green on `main`** (`80e4aa4`); `deploy-cli` recovered on `80e4aa44` after run 73's goreleaser fix and populated the Homebrew tap (row #19) |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
@@ -82,7 +84,7 @@ connect→ask CTA drops 301+**307** → 301 only.
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-14 run 72 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-13 run-61 sweep: **118** pages, **2,908** internal + **14 cross-app** links). Run 61 **added cross-app coverage** — `href`/`src` to owned subdomains (`docs./app./mcp.nlqdb.com`) were dropped by `isInternal` and never checked; the sweep now live-verifies them (4xx/5xx = dead & hard-fail; auth/method gate = alive; network error = "unverified", never red). 14 `docs.nlqdb.com` funnel links now covered (0 → 14). **Run 72 prod-verified this live:** all 110 `sitemap.xml` URLs return 200 against deployed `nlqdb.com` (built-output sweep confirmed in production). **Run 75 named a coverage blind-spot:** the sweep scans built `dist/` HTML only, so `href`s rendered by client-side React islands never appear as literals and are unswept — that is how `ConnectForm.tsx`'s `/app?db=` redirecting CTA (the connect→ask terminus) lived undetected while this row read "0 redirecting"; run 75 fixed the link (`/app/?db=`). A source-level trailing-slash guard was rejected as false-positive-prone (route-matchers/prose/comments; P5) | target 0 — `bun run build && bun run check:links` in `apps/web` |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
-| 19 | Live-surface claim integrity | **1 open (agent-fixed, pending post-merge tap-verify)** — `brew install nlqdb/tap/nlq` advertised (`cli/README.md`, npm-shim fallback, SK-CLI-002) but the tap empty since 2026-05-19. Run 73 (#695, merged) fixed the root cause: a `cli/.goreleaser.yml` token-format bug that aborted every tap push (not a missing PAT). `deploy-cli` now runs `goreleaser release` with valid config → the tap should populate; **re-verify the tap repo populated post-merge**. Runs 32/37/56/59/62/64/72/73/74 each closed 1 agent-movable gap | claim-vs-reality on shipped surfaces + docs; target 0. **Standing guards:** `mcp-tool-integrity.test.ts` (run 64) reads the shipped MCP catalog from the server's `registerTool(...)` sites; `cli-verb-integrity.test.ts` (run 74) derives the 15 shipped verbs from the cobra tree — both sweep `apps/web/src` closed-world, failing on any phantom + file. Next candidate: extend to `apps/docs` prose + the SDK method surface; confirm the Homebrew tap populated |
+| 19 | Live-surface claim integrity | **0 open** — run 76 verified `brew install nlqdb/tap/nlq` (advertised in `cli/README.md` + npm-shim fallback, `SK-CLI-002`) is now real: `nlqdb/homebrew-tap` carries `nlq.rb` at root (commit 07-15 02:42Z, v0.1.12; **empty since 2026-05-19** before this), the linux_x86_64 asset returns HTTP 200 with a **sha256 matching the formula exactly** (`63a9266…814a`), tarball ships the `nlq` binary. Run 73's `cli/.goreleaser.yml` token-format fix (merged) populated the tap on `deploy-cli`@`80e4aa44`; run 76 is the post-merge tap-verify the scorecard deferred. Runs 32 + 37 + 56 + 59 + 62 + 64 + 72 + 73 + 74 + **76** each found/closed 1 agent-movable gap | claim-vs-reality on shipped surfaces + docs; target 0 **met**. **Standing guards:** `mcp-tool-integrity.test.ts` (run 64) sweeps the shipped MCP catalog closed-world; `cli-verb-integrity.test.ts` (run 74) derives the 15 shipped top-level verbs from the cobra tree (first `Use:` per `cli/internal/cmd/*.go` minus `nlq`) and — **as of run 76** — sweeps every `nlq <verb>` snippet across **both** `apps/web/src` (`.ts/.tsx/.astro`) and the docs-site prose `apps/docs/src` (`.md/.mdx`), naming the phantom + file on failure (verified: fails on an injected `nlq schema` in `cli.mdx`). Next candidate: the SDK method surface (`client.*`), and a docs-prose sweep of MCP-tool names |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-60 branch dispatch [29211619838](https://github.com/nlqdb/nlqdb/actions/runs/29211619838) against prod: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). FLOW-001's step-8 red was the walker asserting a 2nd anon `/v1/ask` 200 — impossible under `SK-ANON-012`'s message-#2 wall; step 8 now asserts the 401 cap (dt 296–337 ms). Before: main dispatch [29211269726](https://github.com/nlqdb/nlqdb/actions/runs/29211269726) FLOW-001 0/3 step-8 `status=401`. The run-59 "morph-to-chat gap" is **decided, not a gap**: the anon terminus IS the sign-in redirect (SK-ANON-011 stash → SK-ANON-003 adopt); the SK-WEB-002 chat is the post-sign-in /app surface. **Run 62 closed the step-7 false-green:** the copy-snippet conversion action was silently skipping (selector matched the accessible name, which the `aria-label` diverged from) — now the aria-label is dropped (accessible name = visible "Copy snippet", WCAG 2.5.3) and the selector widened; branch dispatch [29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660) walked prod **9/9 passed (exit 0)** with the new selector | target 9/9 + both FLOW-005 ✅ **met**. Per-step JSON artifact isn't downloadable from the agent container (proxy-gated); the selector→accessible-name defect is closed deterministically |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
@@ -104,39 +106,40 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-15 (run 75)** — **connect→ask CTA trailing-slash fix** (UX-flow lever,
-priority-1 per the 07-11 order; row #18 "redirecting links" class). Step 0:
-**zero open PRs** (runs 73/74 + both founder PRs #694/#696 all merged) — no
-overlap to avoid. **Rule 6:** `ci.yml` + all nine `deploy-*` workflows green on
-`main` (`deploy-cli` now green at `80e4aa4` — run-73 goreleaser fix landed);
-local `typecheck`/`lint`/`test` all green after `bun install` (api 924 + web
-254 pass, 6 skip). **Lever:** the priority-1 UX-flow audit of the stranger
-connect branch (land → connect → **ask**) found `ConnectForm.tsx`'s terminal
-"Question it now →" CTA linking `/app?db=…` — the **only** navigational `/app`
-link in `apps/web/src` omitting the trailing slash the site's
-`trailingSlash: "always"` contract requires (every other `/app` CTA already
-uses `/app/…`). On `nlqdb.com` the worker 301s `/app*` cross-origin to
-`app.nlqdb.com` (preserving `?search`), where the static server then 307s bare
-`/app?db=` → `/app/?db=` — so the highest-intent click of the connect funnel
-ate an **extra redirect hop** no other CTA does. **Why the sweep missed it:**
-`check-links.mjs` scans built `dist/` HTML only; this href lives in a
-client-rendered React island, so it never appears as a literal in built HTML —
-row #18's "0 redirecting" was blind to it (noted in the row). A broad
-source-level trailing-slash guard is **not** viable (route-matchers `/app/*`,
-prose `/app/new.`, and comments can't be cheaply told apart from hrefs — 38
-false hits in a dry run), so per **P5** the lever is the one-char correction,
-not a flaky guard. **Before → after:** `/app?db=` → `/app/?db=` — navigational
-`/app` links violating `trailingSlash: "always"` **1 → 0**; the connect→ask CTA
-drops from 301+**307** (2 hops) to 301 only, matching every sibling CTA.
-**Measure→change→re-measure:** closed-world grep for `href` `/app?…` offenders
-**1 → 0**; web suite 254 pass / 0 fail after the edit; no test pinned the old
-form. **Artifact (step 3):** queue **2** drafts (< 3) → no forced publish; the
-lesson (built-HTML link sweeps are blind to interactive-component hrefs) is a
-candidate future draft but drafting is not a run's justification, so none added.
-**KPI (GLOBAL-025):** advances **onboarding/UX** (a cleaner, redirect-free path
-to the first answer on the connect branch); **none degrade** — a one-char string
-change in one component, zero runtime/prompt/eval-baseline impact; rows
-#8–#11 + #21 carried.
+**2026-07-15 (run 76)** — **closed row #19's last claim-integrity gap, 1 → 0**
+(not a null run). Step 0: one open PR — #698 (run 75: connect→ask CTA
+trailing-slash, `ConnectForm.tsx`, row #18 class); run 76 touched none of its
+files. **Rule 6:** all 9 workflows green on `main` (`80e4aa4`); `deploy-cli`
+recovered on `80e4aa44` after run 73's goreleaser fix. typecheck/lint/test
+green after `bun install`. **Lever:** run 73 merged the
+`cli/.goreleaser.yml` token-format fix and the scorecard deferred the
+post-merge tap-verify; run 76 performed it end-to-end. `nlqdb/homebrew-tap`
+now carries `nlq.rb` at root (formula for `nlqdb/tap/nlq`, commit 07-15
+02:42Z, v0.1.12; **empty since 2026-05-19** before), the v0.1.12
+linux_x86_64 release asset returns **HTTP 200** with a **sha256 matching the
+formula exactly** (`63a9266…814a`), and the tarball ships the `nlq` binary —
+so `brew install nlqdb/tap/nlq` (advertised in `cli/README.md` + npm-shim
+fallback, `SK-CLI-002`) is now **genuinely installable**. **Before → after:
+row #19 open gaps 1 → 0.** **Secondary hardening (same class):** the run-74
+CLI-verb guard swept `apps/web` only; run 76 extends
+`cli-verb-integrity.test.ts` to also sweep the docs-site prose
+`apps/docs/src` (`.md/.mdx`) — an identical copy-pasteable `nlq` surface,
+previously unguarded (guarded surfaces web → web+docs).
+**Measure→change→re-measure:** guard passes clean (all 15 docs verbs
+shipped, 0 offenders); injecting `nlq schema` into `cli.mdx` fails it naming
+`apps/docs/src/content/docs/cli.mdx`; revert passes again. Gates green:
+typecheck 0, lint 38 pre-existing warnings, **web 254 tests pass** (full
+suite green earlier this session). **Step 1:** funnel/engine carried from
+07-13/07-11 pulls (CF GraphQL / remote-D1 / LLM egress not reachable here) —
+strangers **0**, docs-ambiguity **17** (held), row #18 **0 dead**; queue
+**2** drafts (< 3). **Artifact (step 3):** queue < 3 → no forced publish;
+lesson (a deploy-config bug can silently empty an advertised install channel
+that no code guard sees) already adjacent to the queued
+`guard-advertised-capabilities-against-code` draft → no new draft.
+**KPI (GLOBAL-025):** advances **onboarding/UX** (the advertised install path
+works; docs prose can't ship a dead-end `nlq` snippet); **none degrade** —
+a verification + test-only diff, zero runtime/prompt/eval-baseline change;
+engine rows #8–#11 + walker row #21 carried.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
