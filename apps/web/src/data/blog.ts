@@ -41,6 +41,41 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "smoke-test-walks-the-old-ui",
+    title: "The redesign shipped. The smoke test kept walking the old UI.",
+    description:
+      "Acceptance walkers that pin literal UI copy catch regressions — until a redesign turns them into a 0/9 that mixes real breakage with pure test-drift. The triage cost is the trap, not the literals.",
+    date: "2026-07-15",
+    body: [
+      {
+        kind: "p",
+        text: "Our acceptance walkers pin literal UI strings on purpose. A walker asserts the homepage placeholder reads *exactly* what we ship, that a heading says the words we wrote, that the query composer is where we put it. Drift fails the walk loudly — and a loud failure the moment the surface changes underneath you is precisely the regression detector you want. Silent tolerance is how a broken flow ships green.",
+      },
+      {
+        kind: "p",
+        text: "Then three things happened in one week. A homepage redesign moved the goal input to a different page. A copy edit reworded a heading. The MCP catalog *additively* grew two tools. None of these broke the product. All three broke the walkers — which dutifully reported **0/9**, and kept reporting it for a week.",
+      },
+      { kind: "h2", text: "The trap isn't the literal assertions" },
+      {
+        kind: "p",
+        text: 'The reflex is to blame the pinned strings and loosen them into fuzzy matches. That\'s the wrong lesson. The literals did their job: the surface changed, the walk went red. The actual cost is that a red which *mixes* "the product broke" with "the test went stale" takes a full manual triage to disentangle — and ours contained both at once. Two flows were red from pure test-drift. One flow was red from a real production wall. Same 0/9. You cannot tell which is which from the number, so every red costs you the same expensive human read regardless of whether anything is actually wrong.',
+      },
+      { kind: "h2", text: "Three notes that make pinned walkers pay off" },
+      {
+        kind: "ol",
+        items: [
+          "Pinned literals are fine **only if reds are triaged inside a bounded window**. A detector nobody reads within a day isn't a detector — it's drift accumulating interest until the next person can't tell a week-old copy edit from this-morning's outage.",
+          'The failure detail must name the element **and** the expectation. `placeholder was null, expected "Ask your data anything"` is decidable from the artifact alone — you know instantly it\'s drift, not breakage. `failed at step 2` forces you to re-run the whole walk by hand to find out.',
+          "\"A PR touching a walked surface re-runs the walker\" was already our rule — and it was skipped, because it was a convention, not a gate. A convention without an enforcing check is a wish. Wire the walker into the surface's required checks, or accept the false-red debt *knowingly* — but don't pretend a rule nobody enforces is protecting you.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "This is a testing-hygiene pattern, not a product feature: it's for anyone whose end-to-end suite asserts real rendered copy rather than test-ids. The literals are worth keeping — they catch the drift you'd otherwise ship. Just make the red *self-explaining* and triage it on a clock, or the detector quietly becomes a week of noise that hides the one failure that mattered. nlqdb is a database you query in plain English; this is one of the measurement lessons from keeping our stranger-walk honest as the product underneath it moved.",
+      },
+    ],
+  },
+  {
     slug: "one-shot-recovery-permanent-outage",
     title: "Your recovery code runs once. Your failure doesn't.",
     description:
