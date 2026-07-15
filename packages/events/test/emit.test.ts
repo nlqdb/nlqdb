@@ -158,6 +158,44 @@ describe("makeQueueEmitter", () => {
     expect(queue.sent[1]?.id).toBe(`home.surface_wishlist.wl:abcd1234.slack.${today}`);
   });
 
+  it("keys pricing.page_viewed by (name, principalId, utcDay) so unique-per-day is the unit (SK-EVENTS-012)", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+
+    await emitter.emit({ name: "pricing.page_viewed", principalId: "u_9", email: "f@nlqdb.com" });
+    await emitter.emit({
+      name: "pricing.page_viewed",
+      principalId: "pv:abcd1234abcd1234",
+      email: null,
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    expect(queue.sent[0]?.id).toBe(`pricing.page_viewed.u_9.${today}`);
+    expect(queue.sent[1]?.id).toBe(`pricing.page_viewed.pv:abcd1234abcd1234.${today}`);
+  });
+
+  it("keys pricing.plan_selected by (name, principalId, plan, utcDay) so Hobby + Pro stay distinct (SK-EVENTS-012)", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+
+    await emitter.emit({
+      name: "pricing.plan_selected",
+      principalId: "u_9",
+      plan: "hobby",
+      email: "f@nlqdb.com",
+    });
+    await emitter.emit({
+      name: "pricing.plan_selected",
+      principalId: "u_9",
+      plan: "pro",
+      email: "f@nlqdb.com",
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    expect(queue.sent[0]?.id).toBe(`pricing.plan_selected.u_9.hobby.${today}`);
+    expect(queue.sent[1]?.id).toBe(`pricing.plan_selected.u_9.pro.${today}`);
+  });
+
   it("keys feature.eval.weekly by (name, dataset, runId) so workflow retries dedupe (SK-QUAL-002)", async () => {
     const queue = makeFakeQueue();
     const emitter = makeQueueEmitter(queue);

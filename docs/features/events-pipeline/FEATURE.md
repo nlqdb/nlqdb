@@ -77,7 +77,7 @@ when-to-load:
 
 ### SK-EVENTS-006 — Canonical event-name schema: `<domain>.<verb_noun>`, snake_dot, lowercase
 
-- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `billing.subscription_created`). Domains today: `user`, `billing`, `ask`, `feature`, `home`. **No `trial.*`** — the free tier IS the trial (`docs/architecture.md §5`). Sign-ins are not emitted — would dominate the LogSnag 2,500/mo quota with no founder signal.
+- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `billing.subscription_created`). Domains today: `user`, `billing`, `ask`, `feature`, `home`, `pricing`. **No `trial.*`** — the free tier IS the trial (`docs/architecture.md §5`). Sign-ins are not emitted — would dominate the LogSnag 2,500/mo quota with no founder signal.
 - **Core value:** Free, Simple, Honest latency
 - **Why:** Consistent naming keeps LogSnag dashboards readable without a translation layer. The 2,500/mo quota is the hard constraint on what's worth routing; high-volume or noisy signals would burn it. Trial events would lie about a funnel that doesn't exist.
 - **Consequence in code:** Reviewers reject `userSignedIn` (camelCase), `signin` (no domain). New events firing more than once per user-lifecycle need an explicit cost analysis. Stripe billing event choices (omitted `subscription_updated`, per-invoice dedup on `payment_failed`) live in `SK-STRIPE-005`/`SK-STRIPE-011`.
@@ -146,6 +146,23 @@ when-to-load:
 - **Alternatives rejected:**
   - Mint an anon-bearer on marketing load — coerces every visitor into an auth artifact for one optional click.
   - Emit on render rather than click — destroys the intent signal; a render is not an opt-in.
+
+### SK-EVENTS-012 — `pricing.*` funnel: first-party, identity-bearing pricing-page events
+
+- **Decision:** Two events instrument the marketing pricing page. `pricing.page_viewed` (one per visitor per day) and `pricing.plan_selected` (`plan: "hobby" | "pro"`, one per visitor per plan per day) both carry `principalId` + `email: string | null`. `POST /v1/events/pricing` is public (KV-throttled 20/min/IP) and resolves the session cookie **server-side** to attribute a signed-in visitor to their `userId` + account email; a logged-out visitor falls back to a per-day IP-hash bucket `pv:<16hex>`. Both land on a dedicated LogSnag `pricing` channel (`notify: false`). Client capture is a `keepalive` fetch from `apps/web/src/pages/pricing.astro` (`credentials: "include"`), never the Cloudflare Web Analytics beacon.
+- **Core value:** Free, Bullet-proof, Honest latency
+- **Why:** Cloudflare Web Analytics ([`GLOBAL-034`](../../decisions/GLOBAL-034-analytics-stack.md)) is the wrong tool for the founder's actual question — "how many **unique** people looked at pricing / picked a paid plan, and which are me". Its beacon (`static.cloudflareinsights.com`) is on every ad/privacy blocklist, so the technical-founder ICP is exactly who it under-counts (a founder's own visits never registered at all); its free tier rounds page counts to buckets of 10 and drops sub-floor pages; and a pageview carries no identity to dedupe or self-exclude. A first-party POST to our own origin survives blockers, and a server-derived `principalId` makes unique-count + self-exclusion (`tags.email`) answerable on the existing LogSnag `user_id` facet — no new sink, no client SDK, so GLOBAL-034's Lighthouse / no-cookie-banner posture holds. Per-day `defaultId` dedup makes "unique" the default unit and keeps the 2,500/mo quota safe.
+- **Consequence in code:**
+  - `packages/events/src/types.ts`: `PricingPlan`, `PricingPageViewedEvent`, `PricingPlanSelectedEvent` join `ProductEvent`; `pricing` added to the domain list (`SK-EVENTS-006`). `defaultId()` keys page-view per-(principal, day) and plan-select per-(principal, plan, day).
+  - `apps/events-worker/src/sinks/logsnag.ts`: both variants route to the `pricing` channel; `user_id = principalId`, `tags` carry `authed` + optional `email` + (for select) `plan`.
+  - `apps/api/src/events-feature.ts`: `recordPricingEvent()` derives identity (authed `userId` + email, else `pv:` IP-hash bucket) and never trusts a client-supplied identifier.
+  - `apps/api/src/index.ts`: `POST /v1/events/pricing` rides the existing `/v1/events/*` credentialed CORS and resolves the session opportunistically (degrades to anon on resolver failure).
+  - `apps/web/src/pages/pricing.astro`: page-view emit on load; plan-select emit at the top of the CTA handler (fires for logged-out clicks too — the redirect-to-sign-in path is still intent).
+- **Alternatives rejected:**
+  - **Fix the Cloudflare beacon instead.** Can't — blockers, 10-rounding, and zero identity are inherent to the tool, not a wiring bug.
+  - **Client-supplied email / identifier.** Spoofable; a visitor could inflate or forge the unique-user count. Identity is server-derived from the session cookie.
+  - **Wire PostHog now (`SK-EVENTS-007` / `GLOBAL-034`).** The question is answerable on the existing LogSnag `user_id` facet + tags; PostHog stays reserved until a cohort/funnel question the pipeline genuinely can't answer.
+  - **Mint an anon-bearer for logged-out views.** Coerces every visitor into an auth artifact for a page load; the per-day IP bucket is the honest anon floor (`SK-EVENTS-011` precedent).
 
 ## GLOBALs governing this feature
 

@@ -8,7 +8,7 @@
 
 import type { EventEmitter } from "@nlqdb/events";
 import { describe, expect, it, vi } from "vitest";
-import { recordEvalReport, recordWishlist } from "../src/events-feature.ts";
+import { recordEvalReport, recordPricingEvent, recordWishlist } from "../src/events-feature.ts";
 
 function stubEvents() {
   return { emit: vi.fn().mockResolvedValue(undefined) };
@@ -90,6 +90,98 @@ describe("recordWishlist", () => {
     const first = events.emit.mock.calls[0]?.[0];
     const second = events.emit.mock.calls[1]?.[0];
     expect(first.principalId).not.toBe(second.principalId);
+  });
+});
+
+describe("recordPricingEvent — SK-EVENTS-012 pricing funnel", () => {
+  it("emits pricing.page_viewed attributed to the authed userId + email", async () => {
+    const events = stubEvents();
+    const result = await recordPricingEvent(
+      { kv: stubKv(), events },
+      { event: "view" },
+      { userId: "u_1", email: "founder@nlqdb.com" },
+      "1.2.3.4",
+    );
+    expect(result.status).toBe(202);
+    expect(events.emit).toHaveBeenCalledTimes(1);
+    expect(events.emit.mock.calls[0]?.[0]).toEqual({
+      name: "pricing.page_viewed",
+      principalId: "u_1",
+      email: "founder@nlqdb.com",
+    });
+  });
+
+  it("falls back to a pv: IP-hash bucket (no email) for a logged-out visitor", async () => {
+    const events = stubEvents();
+    const result = await recordPricingEvent(
+      { kv: stubKv(), events },
+      { event: "view" },
+      null,
+      "1.2.3.4",
+    );
+    expect(result.status).toBe(202);
+    const sent = events.emit.mock.calls[0]?.[0];
+    expect(sent.name).toBe("pricing.page_viewed");
+    expect(sent.email).toBeNull();
+    // `pv:` prefix keeps it out of the anon:/wl: facets; 16 hex suffix.
+    expect(sent.principalId).toMatch(/^pv:[0-9a-f]{16}$/);
+  });
+
+  it("emits pricing.plan_selected carrying the plan", async () => {
+    const events = stubEvents();
+    const result = await recordPricingEvent(
+      { kv: stubKv(), events },
+      { event: "plan", plan: "pro" },
+      { userId: "u_1", email: "founder@nlqdb.com" },
+      "1.2.3.4",
+    );
+    expect(result.status).toBe(202);
+    expect(events.emit.mock.calls[0]?.[0]).toMatchObject({
+      name: "pricing.plan_selected",
+      principalId: "u_1",
+      plan: "pro",
+    });
+  });
+
+  it("rejects an unknown event shape with 400 invalid_body", async () => {
+    const events = stubEvents();
+    const result = await recordPricingEvent(
+      { kv: stubKv(), events },
+      { event: "nope" },
+      null,
+      "1.2.3.4",
+    );
+    expect(result.status).toBe(400);
+    expect(events.emit).not.toHaveBeenCalled();
+  });
+
+  it("rejects a plan click with an invalid plan", async () => {
+    const events = stubEvents();
+    const result = await recordPricingEvent(
+      { kv: stubKv(), events },
+      { event: "plan", plan: "enterprise" },
+      null,
+      "1.2.3.4",
+    );
+    expect(result.status).toBe(400);
+    expect(events.emit).not.toHaveBeenCalled();
+  });
+
+  it("rate-limits at the 20th call within the window per IP", async () => {
+    const events = stubEvents();
+    const kv = stubKv({ "pricing-ev:rate:1.2.3.4": "20" });
+    const result = await recordPricingEvent({ kv, events }, { event: "view" }, null, "1.2.3.4");
+    expect(result.status).toBe(429);
+    expect(events.emit).not.toHaveBeenCalled();
+  });
+
+  it("derives the same pv: bucket for the same (ip, day) so unique-per-day collapses", async () => {
+    const events = stubEvents();
+    await recordPricingEvent({ kv: stubKv(), events }, { event: "view" }, null, "9.9.9.9");
+    await recordPricingEvent({ kv: stubKv(), events }, { event: "view" }, null, "9.9.9.9");
+    expect(events.emit.mock.calls[0]?.[0].principalId).toBe(
+      events.emit.mock.calls[1]?.[0].principalId,
+    );
   });
 });
 

@@ -10,7 +10,7 @@
 //
 // Convention: `name` is `<domain>.<verb_noun>` (e.g. `user.first_query`,
 // `billing.subscription_created`, `ask.completed`). Domains today:
-// `user`, `billing`, `ask`, `feature`.
+// `user`, `billing`, `ask`, `feature`, `home`, `pricing`.
 
 // Originating surface for a request. Single source of truth for both
 // the `nlqdb.surface` OTel attribute (performance.md §3.3) and the
@@ -133,6 +133,37 @@ export type HomeSurfaceWishlistEvent = {
   surface: WishlistSurface;
 };
 
+// `pricing.*` is the pricing-page conversion-funnel domain
+// (SK-EVENTS-012). Two events instrument `apps/web/src/pages/pricing.astro`
+// so the founder can answer "how many UNIQUE people looked at pricing,
+// how many picked a paid plan, and which of those are me". Both are
+// first-party — a `keepalive` fetch to `POST /v1/events/pricing`, not the
+// Cloudflare Web Analytics beacon (GLOBAL-034) — so they survive
+// ad/privacy blockers (the exact tool that hides the technical-founder
+// ICP), and unlike a pageview they carry a stable identity for
+// unique-count + self-exclusion.
+//
+// `principalId` is the authed `userId` when the visitor is signed in
+// (server-derived from the session cookie in `recordPricingEvent`, never
+// client-supplied), else a per-day IP-hash bucket `pv:<16hex>` — same
+// shape as the wishlist `wl:` bucket so raw IPs never reach the sink.
+// `email` is the authed account email (null for anon) so the founder can
+// subtract their own account from the unique-user count.
+export type PricingPlan = "hobby" | "pro";
+
+export type PricingPageViewedEvent = {
+  name: "pricing.page_viewed";
+  principalId: string;
+  email: string | null;
+};
+
+export type PricingPlanSelectedEvent = {
+  name: "pricing.plan_selected";
+  principalId: string;
+  plan: PricingPlan;
+  email: string | null;
+};
+
 // `feature.eval.*` is the quality-eval domain (SK-QUAL-002). Emitted by
 // the on-demand GH-Actions run after the BIRD Mini-Dev pass completes.
 // Per-run dedup is on `runId` (the ISO timestamp the eval started) so
@@ -221,6 +252,8 @@ export type ProductEvent =
   | FeatureDestructivePreviewRenderedEvent
   | FeatureDestructiveCommittedEvent
   | HomeSurfaceWishlistEvent
+  | PricingPageViewedEvent
+  | PricingPlanSelectedEvent
   | FeatureEvalWeeklyEvent
   | FeatureEvalRegressionEvent;
 

@@ -27,6 +27,9 @@ export type {
   FeatureRequestedHeavierTierEvent,
   HomeSurfaceWishlistEvent,
   NlqSurface,
+  PricingPageViewedEvent,
+  PricingPlan,
+  PricingPlanSelectedEvent,
   ProductEvent,
   WishlistSurface,
 } from "./types.ts";
@@ -136,6 +139,17 @@ function defaultId(event: ProductEvent): string {
       // ranks by surface, so collapsing to one event-per-visitor-per-day
       // would erase the comparison.
       return `${event.name}.${event.principalId}.${event.surface}.${utcDay()}`;
+    case "pricing.page_viewed":
+      // SK-EVENTS-012: per-(principal, day). The founder's question is
+      // "how many UNIQUE users", so one page-view per visitor per day is
+      // the unit — refreshes don't inflate the count and the LogSnag
+      // quota stays safe.
+      return `${event.name}.${event.principalId}.${utcDay()}`;
+    case "pricing.plan_selected":
+      // SK-EVENTS-012: per-(principal, plan, day). Picking Hobby then Pro
+      // on the same day is two distinct intent signals; a same-plan
+      // re-click on the same day is not.
+      return `${event.name}.${event.principalId}.${event.plan}.${utcDay()}`;
     case "feature.eval.weekly":
       // One summary per run; `runId` is the eval-start ISO
       // timestamp so workflow retries of the same run dedupe at the
