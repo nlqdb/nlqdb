@@ -35,27 +35,12 @@ should re-point the focus off #15 while that secret is unset.
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
 agent-controllable inputs; the top UX-flow input, row #21, is maxed 9/9).
-**Run 76 closed row #19's last open gap (1 → 0), not a null run.**
-Step 0: one open PR — #698 (run 75: connect→ask CTA trailing-slash, row #18
-class, `ConnectForm.tsx`; now merged); run 76 touched none of its files
-(scorecard regen is step-0-exempt). **Rule 6:** all `deploy-*` + `ci.yml` **green on `main`**
-(`80e4aa4`); `deploy-cli` recovered on `80e4aa44` after run 73's goreleaser
-fix. Local typecheck/lint/test green after `bun install`. **Lever:** run 73
-merged the `cli/.goreleaser.yml` token-format fix; the scorecard deferred the
-post-merge tap-verify. Run 76 performed it end-to-end: `nlqdb/homebrew-tap`
-now carries `nlq.rb` (root formula for `nlqdb/tap/nlq`, commit 07-15 02:42Z
-"Brew formula update for nlq version v0.1.12"; **empty since 2026-05-19** per
-row #19), the v0.1.12 linux_x86_64 release asset downloads HTTP 200 and its
-**sha256 matches the formula exactly** (`63a9266…814a`), and the tarball ships
-the `nlq` binary. So `brew install nlqdb/tap/nlq` (advertised in `cli/README.md`
-+ the npm-shim fallback, `SK-CLI-002`) is **now genuinely installable** — the
-claim is real. **Before → after: row #19 open gaps 1 → 0.** Secondary
-hardening (same run, same class): the run-74 CLI-verb guard swept `apps/web`
-only, leaving the docs-site prose (`apps/docs/src` `.md/.mdx`) — an identical
-copy-pasteable `nlq` surface — unguarded; run 76 extends the sweep to it
-(guarded surfaces web → web+docs), verified clean today (all 15 docs verbs
-shipped) and **fails naming `apps/docs/src/content/docs/cli.mdx`** on an
-injected `nlq schema` phantom.
+**Run 77 fixed 4 client-side-navigation trailing-slash redirects (row #18
+blind-spot), 4 → 0 — a real priority-1 UX-flow fix, not a null run** (detail in
+_Last change_). Step 0: **zero open PRs**. **Rule 6:** all 11 workflows green on
+`main` (`b82b122`; `deploy-cli`@`80e4aa44`). typecheck/lint/test green after
+`bun install` (typecheck 0, lint 38 pre-existing warnings, api 924 + web 255
+pass).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -66,7 +51,7 @@ injected `nlq schema` phantom.
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **98** (`/vs` 31 + `/solve` 33 + `/blog` 34). Queue holds **2** unpublished drafts (`guard-advertised-capabilities-against-code`, `smoke-test-walks-the-old-ui`) — **< 3, so step 3.1 forced-publish does not trigger** (row #6's prior "2 → 3 ⇒ publish" count was stale; the queue file has 2). Run 74's lesson is already the queued `guard-advertised-capabilities` draft (its honest-split names "CLI subcommands"), so no new draft either | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 6 | Indexable surfaces | **98** (`/vs` 31 + `/solve` 33 + `/blog` 34). Queue holds **3** unpublished drafts (`link-checker-cant-see-your-javascript` [run 77, newest], `guard-advertised-capabilities-against-code`, `smoke-test-walks-the-old-ui`) — **now = 3, so next non-null run's step 3.1 forced-publish triggers** (publish the oldest, `smoke-test-walks-the-old-ui`). Run 77's lesson (a static link checker can't see JS navigations) is distinct → drafted this run | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
 | 7 | Surface yield | posts **34**; 7d external referrals = 9 (bing 8, github 1 — carried 07-12 19:39Z pull; was 6 on 07-09, 1 on 07-06). Syndication feeds 1 (`/rss.xml`); internal links **2,908** + **14 cross-app** (run-61 build: 118 pages, 0 dead — row #18) | CF `refererHost` — carried from 19:39Z (strangers unchanged). External-referral yield holding (bing-led) as indexation lands |
 | | **Engine** — BIRD 07-11 · Spider 07-11 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.546** (272/498 EA, 2 `gold_error`, 07-11 canonical on main `2cfda39`, [run 29144102081](https://github.com/nlqdb/nlqdb/actions/runs/29144102081) — completed in ONE window, `no_sql` 0/500). Δ +2.01 pp vs 07-05, McNemar b=31/c=41, `regressions: []`. Baseline re-seeded. Measured pre-`SK-LLM-044`; next canonical re-verifies | target 0.65 / **Phase 2 floor 0.60** — gap 5.4 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
@@ -82,7 +67,7 @@ injected `nlq schema` phantom.
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-14 run 72 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-13 run-61 sweep: **118** pages, **2,908** internal + **14 cross-app** links). Run 61 **added cross-app coverage** — `href`/`src` to owned subdomains (`docs./app./mcp.nlqdb.com`) were dropped by `isInternal` and never checked; the sweep now live-verifies them (4xx/5xx = dead & hard-fail; auth/method gate = alive; network error = "unverified", never red). 14 `docs.nlqdb.com` funnel links now covered (0 → 14). **Run 72 prod-verified this live:** all 110 `sitemap.xml` URLs return 200 against deployed `nlqdb.com` (built-output sweep confirmed in production). **Run 75 named a coverage blind-spot:** the sweep scans built `dist/` HTML only, so `href`s rendered by client-side React islands never appear as literals and are unswept — that is how `ConnectForm.tsx`'s `/app?db=` redirecting CTA (the connect→ask terminus) lived undetected while this row read "0 redirecting"; run 75 fixed the link (`/app/?db=`). A source-level trailing-slash guard was rejected as false-positive-prone (route-matchers/prose/comments; P5) | target 0 — `bun run build && bun run check:links` in `apps/web` |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-13 run-61 sweep: **118** pages, **2,908** internal + **14 cross-app** links). Run 61 **added cross-app coverage** — `href`/`src` to owned subdomains (`docs./app./mcp.nlqdb.com`) were dropped by `isInternal` and never checked; the sweep now live-verifies them (4xx/5xx = dead & hard-fail; auth/method gate = alive; network error = "unverified", never red). 14 `docs.nlqdb.com` funnel links now covered (0 → 14). **Run 72 prod-verified this live:** all 110 `sitemap.xml` URLs return 200 against deployed `nlqdb.com` (built-output sweep confirmed in production). **Run 75 named a coverage blind-spot; run 77 closed it:** the sweep scans built `dist/` HTML only, so navigations rendered by client-side JS (`window.location.assign(...)` in React islands / Astro `<script>`) never appear as `href` literals and are unswept — that is how `ConnectForm.tsx`'s `/app?db=` redirecting CTA lived undetected while this row read "0 redirecting". Run 75 fixed one link by hand and deferred the guard. **Run 77 swept all `window.location.*` navigations in `apps/web/src` and found 4 more bare-path 307s** (`ChatPanel.tsx` new-db/keys/sign-out + `Topnav.astro` sign-out, all live-verified 307 on `app.nlqdb.com`), fixed them, and added the **standing guard** `client-nav-integrity.test.ts` (`SK-WEB-022`) — narrowly scoped to the string-literal argument of an actual `window.location.*` call, so no false positives (the breadth run 75 rejected). **Client-side-nav redirects 4 → 0** | target 0 — `bun run build && bun run check:links` (built-output `href`/`src`) + `client-nav-integrity.test.ts` (JS navigations) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** — run 76 verified `brew install nlqdb/tap/nlq` (advertised in `cli/README.md` + npm-shim fallback, `SK-CLI-002`) is now real: `nlqdb/homebrew-tap` carries `nlq.rb` at root (commit 07-15 02:42Z, v0.1.12; **empty since 2026-05-19** before this), the linux_x86_64 asset returns HTTP 200 with a **sha256 matching the formula exactly** (`63a9266…814a`), tarball ships the `nlq` binary. Run 73's `cli/.goreleaser.yml` token-format fix (merged) populated the tap on `deploy-cli`@`80e4aa44`; run 76 is the post-merge tap-verify the scorecard deferred. Runs 32 + 37 + 56 + 59 + 62 + 64 + 72 + 73 + 74 + **76** each found/closed 1 agent-movable gap | claim-vs-reality on shipped surfaces + docs; target 0 **met**. **Standing guards:** `mcp-tool-integrity.test.ts` (run 64) sweeps the shipped MCP catalog closed-world; `cli-verb-integrity.test.ts` (run 74) derives the 15 shipped top-level verbs from the cobra tree (first `Use:` per `cli/internal/cmd/*.go` minus `nlq`) and — **as of run 76** — sweeps every `nlq <verb>` snippet across **both** `apps/web/src` (`.ts/.tsx/.astro`) and the docs-site prose `apps/docs/src` (`.md/.mdx`), naming the phantom + file on failure (verified: fails on an injected `nlq schema` in `cli.mdx`). Next candidate: the SDK method surface (`client.*`), and a docs-prose sweep of MCP-tool names |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
@@ -106,40 +91,40 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-15 (run 76)** — **closed row #19's last claim-integrity gap, 1 → 0**
-(not a null run). Step 0: one open PR — #698 (run 75: connect→ask CTA
-trailing-slash, `ConnectForm.tsx`, row #18 class); run 76 touched none of its
-files. **Rule 6:** all 9 workflows green on `main` (`80e4aa4`); `deploy-cli`
-recovered on `80e4aa44` after run 73's goreleaser fix. typecheck/lint/test
-green after `bun install`. **Lever:** run 73 merged the
-`cli/.goreleaser.yml` token-format fix and the scorecard deferred the
-post-merge tap-verify; run 76 performed it end-to-end. `nlqdb/homebrew-tap`
-now carries `nlq.rb` at root (formula for `nlqdb/tap/nlq`, commit 07-15
-02:42Z, v0.1.12; **empty since 2026-05-19** before), the v0.1.12
-linux_x86_64 release asset returns **HTTP 200** with a **sha256 matching the
-formula exactly** (`63a9266…814a`), and the tarball ships the `nlq` binary —
-so `brew install nlqdb/tap/nlq` (advertised in `cli/README.md` + npm-shim
-fallback, `SK-CLI-002`) is now **genuinely installable**. **Before → after:
-row #19 open gaps 1 → 0.** **Secondary hardening (same class):** the run-74
-CLI-verb guard swept `apps/web` only; run 76 extends
-`cli-verb-integrity.test.ts` to also sweep the docs-site prose
-`apps/docs/src` (`.md/.mdx`) — an identical copy-pasteable `nlq` surface,
-previously unguarded (guarded surfaces web → web+docs).
-**Measure→change→re-measure:** guard passes clean (all 15 docs verbs
-shipped, 0 offenders); injecting `nlq schema` into `cli.mdx` fails it naming
-`apps/docs/src/content/docs/cli.mdx`; revert passes again. Gates green:
-typecheck 0, lint 38 pre-existing warnings, **web 254 tests pass** (full
-suite green earlier this session). **Step 1:** funnel/engine carried from
-07-13/07-11 pulls (CF GraphQL / remote-D1 / LLM egress not reachable here) —
-strangers **0**, docs-ambiguity **17** (held), row #18 **0 dead**; queue
-**2** drafts (< 3). **Artifact (step 3):** queue < 3 → no forced publish;
-lesson (a deploy-config bug can silently empty an advertised install channel
-that no code guard sees) already adjacent to the queued
-`guard-advertised-capabilities-against-code` draft → no new draft.
-**KPI (GLOBAL-025):** advances **onboarding/UX** (the advertised install path
-works; docs prose can't ship a dead-end `nlq` snippet); **none degrade** —
-a verification + test-only diff, zero runtime/prompt/eval-baseline change;
-engine rows #8–#11 + walker row #21 carried.
+**2026-07-15 (run 77)** — **fixed 4 client-side-navigation trailing-slash
+redirects (row #18 blind-spot), 4 → 0** (real UX-flow fix, not a null run).
+Step 0: **zero open PRs** (run 76 merged, `b82b122`). **Rule 6:** all 11
+workflows (CI + all `deploy-*` + canary + npm + security) green on `main`
+(`b82b122`; `deploy-cli`@`80e4aa44` recovered after run 73). typecheck/lint/test
+green after `bun install` (typecheck 0, lint 38 pre-existing warnings, api 924
+pass). **Lever (priority-1 UX-flow):** row #15 dark (rule 8), engine dark, rows
+#19/#21 met/maxed → pulled the row #18 blind-spot run 75 named:
+`check-links.mjs` sweeps built-output `href`/`src` literals only, so a
+`window.location.assign("/app/new")` in a React island / Astro `<script>`
+307-redirects **undetected** (how `ConnectForm.tsx`'s `/app?db=` lived a week).
+Swept every `window.location.assign/replace/href` in `apps/web/src`: **4
+bare-path navigations** — `ChatPanel.tsx` command-palette New-database→`/app/new`,
+API-keys→`/app/keys`, Sign-out→`/auth/sign-out`, and `Topnav.astro` sign-out —
+**each live-verified 307** on `app.nlqdb.com` (`/app/new` → `/app/new/` 200,
+etc.); all are post-first-answer CTAs a stranger clicks. Fixed all 4 to the
+trailing-slash form; added `client-nav-integrity.test.ts` (`SK-WEB-022`) as the
+standing guard for the JS-navigation blind-spot, narrowly scoped to the
+string-literal argument of an actual `window.location.*` call (no false
+positives on comments/JSX-`href`/route-matchers — the breadth run 75 rejected).
+**Measure→change→re-measure:** guard passes clean on the fixed code (web 255
+tests, +1 vs 254); injecting a bare `/app/new` back fails it naming
+`ChatPanel.tsx:626`; revert passes again. **Before → after: client-side-nav
+redirects 4 → 0.** **Step 1:** funnel/engine carried from 07-13/07-11 pulls (CF
+GraphQL / remote-D1 / LLM egress not reachable here) — strangers **0**,
+docs-ambiguity **17** (held), row #18 **0 dead / 0 redirecting** (now incl.
+JS navs). **Artifact (step 3):** queue 2 < 3 → no forced publish; the lesson
+(your link checker can't see your JavaScript's navigations) is distinct + a
+stranger would search for it → drafted `link-checker-cant-see-your-javascript`
+into the queue (queue 2 → 3). **KPI (GLOBAL-025):** advances **UX** (every
+post-first-answer CTA now navigates in one hop, no redirect round-trip) +
+**onboarding**; **none degrade** — a client-nav + test-only diff, zero
+runtime/prompt/eval-baseline change; engine rows #8–#11 + walker row #21
+carried.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
