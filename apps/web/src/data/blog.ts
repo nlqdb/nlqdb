@@ -58,14 +58,14 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The trap isn't the literal assertions" },
       {
         kind: "p",
-        text: "The reflex is to blame the pinned strings and loosen them into fuzzy matches. That's the wrong lesson. The literals did their job: the surface changed, the walk went red. The actual cost is that a red which *mixes* \"the product broke\" with \"the test went stale\" takes a full manual triage to disentangle — and ours contained both at once. Two flows were red from pure test-drift. One flow was red from a real production wall. Same 0/9. You cannot tell which is which from the number, so every red costs you the same expensive human read regardless of whether anything is actually wrong.",
+        text: 'The reflex is to blame the pinned strings and loosen them into fuzzy matches. That\'s the wrong lesson. The literals did their job: the surface changed, the walk went red. The actual cost is that a red which *mixes* "the product broke" with "the test went stale" takes a full manual triage to disentangle — and ours contained both at once. Two flows were red from pure test-drift. One flow was red from a real production wall. Same 0/9. You cannot tell which is which from the number, so every red costs you the same expensive human read regardless of whether anything is actually wrong.',
       },
       { kind: "h2", text: "Three notes that make pinned walkers pay off" },
       {
         kind: "ol",
         items: [
           "Pinned literals are fine **only if reds are triaged inside a bounded window**. A detector nobody reads within a day isn't a detector — it's drift accumulating interest until the next person can't tell a week-old copy edit from this-morning's outage.",
-          "The failure detail must name the element **and** the expectation. `placeholder was null, expected \"Ask your data anything\"` is decidable from the artifact alone — you know instantly it's drift, not breakage. `failed at step 2` forces you to re-run the whole walk by hand to find out.",
+          'The failure detail must name the element **and** the expectation. `placeholder was null, expected "Ask your data anything"` is decidable from the artifact alone — you know instantly it\'s drift, not breakage. `failed at step 2` forces you to re-run the whole walk by hand to find out.',
           "\"A PR touching a walked surface re-runs the walker\" was already our rule — and it was skipped, because it was a convention, not a gate. A convention without an enforcing check is a wish. Wire the walker into the surface's required checks, or accept the false-red debt *knowingly* — but don't pretend a rule nobody enforces is protecting you.",
         ],
       },
