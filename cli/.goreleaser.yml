@@ -63,7 +63,10 @@ brews:
     repository:
       owner: nlqdb
       name: homebrew-tap
-      token: '{{ index .Env "HOMEBREW_TAP_GITHUB_TOKEN" }}'
+      # goreleaser v2 validates this field with ApplySingleEnvOnly: it must be the
+      # bare `{{ .Env.VAR }}` form — the `index` form (fine for skip_upload above) is
+      # rejected here. Safe when the PAT is unset: skip_upload short-circuits first.
+      token: '{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}'
     homepage: https://nlqdb.com
     description: "Natural-language databases — talk to your data, ship without a backend."
     license: MIT
