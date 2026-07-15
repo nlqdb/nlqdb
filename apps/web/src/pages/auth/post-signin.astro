@@ -104,7 +104,7 @@ import Base from "../../layouts/Base.astro";
       // Sign-in didn't take — cookie blocked, third-party cookies
       // disabled in the IdP round-trip, or the user closed the tab
       // mid-flow. Send back to sign-in with a friendly hint.
-      location.replace("/auth/sign-in?error=session_lost");
+      location.replace("/auth/sign-in/?error=session_lost");
       return;
     }
     // SK-ANON-012 — defense-in-depth adoption retry: the Better Auth

@@ -26,12 +26,12 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   it's invisible precisely because the tool reports green. With
   `trailingSlash: "always"`, every bare-path JS navigation is a silent redirect
   round-trip on a real click. We found one by hand (a CTA that redirected for a
-  week), then swept every `window.location.*` call and found four more — all
-  post-first-answer CTAs (new query, API keys, sign out). Fix shape: fix the
-  paths, then add a guard the built-output checker structurally can't be — scan
-  source for the string-literal argument of an actual navigation call
-  (`window.location.assign/replace`, `location.href =`) and assert its path ends
-  in `/`. Keep it narrow to the call shape: every `/path` literal, comments, and
+  week), then swept every `location.*` navigation and found five more — CTAs
+  (new query, API keys, sign out) plus a comparison-page CTA and an auth-flow
+  redirect. Fix shape: fix the paths, then add a guard the built-output checker
+  structurally can't be — scan source for the string-literal argument of an
+  actual navigation call (`location.assign/replace`, `location.href =`, bare or
+  `window.`-prefixed) and assert its path ends in `/`. Keep it narrow to the call shape: every `/path` literal, comments, and
   JSX `href=` (already swept) drown you in false positives. Honest split: a
   coverage-gap pattern for any static-output link checker on a JS-heavy site —
   the green check measures the surface you serve, not the surface you script.

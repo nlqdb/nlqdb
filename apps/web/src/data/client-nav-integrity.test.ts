@@ -20,9 +20,11 @@ import { fileURLToPath } from "node:url";
 // Scope is deliberately narrow to avoid the false positives that sank the
 // broad source-scan idea (route-matchers/prose/comments): we match ONLY the
 // string-literal argument of an actual client navigation —
-// `window.location.assign(...)`, `.replace(...)`, or `window.location.href =
-// ...`. Comments, JSX `href=` attributes (swept by check-links), and route
-// matchers never take that shape, so they can't trip this.
+// `location.assign(...)`, `.replace(...)`, or `location.href = ...`, with or
+// without a `window.` prefix (bare `location.assign` in an Astro `<script>`
+// navigates just the same). Reads like `new URL(location.href)` lack the
+// `= "literal"` / `("literal")` shape; comments, JSX `href=` attributes (swept
+// by check-links), and route matchers never take it either — so none can trip.
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const WEB_SRC = join(REPO_ROOT, "apps", "web", "src");
@@ -37,8 +39,9 @@ function sweepFiles(dir: string, ext: RegExp, acc: string[] = []): string[] {
   return acc;
 }
 
-// `window.location.assign("…")` | `.replace("…")` | `window.location.href = "…"`.
-const NAV = /window\.location(?:\.href\s*=|\.(?:assign|replace)\s*\()\s*["'`]([^"'`]*)["'`]/g;
+// `location.assign("…")` | `.replace("…")` | `location.href = "…"` (bare or
+// `window.`/`document.`-prefixed — `\b` anchors the `location` token).
+const NAV = /\blocation(?:\.href\s*=|\.(?:assign|replace)\s*\()\s*["'`]([^"'`]*)["'`]/g;
 
 describe("client-nav trailing-slash integrity (SK-WEB-022)", () => {
   test("every client-side navigation to an internal page path ends in `/`", () => {

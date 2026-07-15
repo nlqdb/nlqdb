@@ -35,9 +35,9 @@ should re-point the focus off #15 while that secret is unset.
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
 agent-controllable inputs; the top UX-flow input, row #21, is maxed 9/9).
-**Run 77 fixed 4 client-side-navigation trailing-slash redirects (row #18
-blind-spot), 4 → 0 — a real priority-1 UX-flow fix, not a null run** (detail in
-_Last change_). Step 0: **zero open PRs**. **Rule 6:** all 11 workflows green on
+**Run 77 fixed 6 client-side-navigation trailing-slash redirects (row #18
+blind-spot), 6 → 0 — a real priority-1 UX-flow fix, not a null run** (detail in
+_Last change_). **Rule 6:** all 11 workflows green on
 `main` (`b82b122`; `deploy-cli`@`80e4aa44`). typecheck/lint/test green after
 `bun install` (typecheck 0, lint 38 pre-existing warnings, api 924 + web 255
 pass).
@@ -67,7 +67,7 @@ pass).
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-14 run 72 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-13 run-61 sweep: **118** pages, **2,908** internal + **14 cross-app** links). Run 61 **added cross-app coverage** — `href`/`src` to owned subdomains (`docs./app./mcp.nlqdb.com`) were dropped by `isInternal` and never checked; the sweep now live-verifies them (4xx/5xx = dead & hard-fail; auth/method gate = alive; network error = "unverified", never red). 14 `docs.nlqdb.com` funnel links now covered (0 → 14). **Run 72 prod-verified this live:** all 110 `sitemap.xml` URLs return 200 against deployed `nlqdb.com` (built-output sweep confirmed in production). **Run 75 named a coverage blind-spot; run 77 closed it:** the sweep scans built `dist/` HTML only, so navigations rendered by client-side JS (`window.location.assign(...)` in React islands / Astro `<script>`) never appear as `href` literals and are unswept — that is how `ConnectForm.tsx`'s `/app?db=` redirecting CTA lived undetected while this row read "0 redirecting". Run 75 fixed one link by hand and deferred the guard. **Run 77 swept all `window.location.*` navigations in `apps/web/src` and found 4 more bare-path 307s** (`ChatPanel.tsx` new-db/keys/sign-out + `Topnav.astro` sign-out, all live-verified 307 on `app.nlqdb.com`), fixed them, and added the **standing guard** `client-nav-integrity.test.ts` (`SK-WEB-022`) — narrowly scoped to the string-literal argument of an actual `window.location.*` call, so no false positives (the breadth run 75 rejected). **Client-side-nav redirects 4 → 0** | target 0 — `bun run build && bun run check:links` (built-output `href`/`src`) + `client-nav-integrity.test.ts` (JS navigations) |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-13 run-61 sweep: **118** pages, **2,908** internal + **14 cross-app** links). Run 61 **added cross-app coverage** — `href`/`src` to owned subdomains (`docs./app./mcp.nlqdb.com`) were dropped by `isInternal` and never checked; the sweep now live-verifies them (4xx/5xx = dead & hard-fail; auth/method gate = alive; network error = "unverified", never red). 14 `docs.nlqdb.com` funnel links now covered (0 → 14). **Run 72 prod-verified this live:** all 110 `sitemap.xml` URLs return 200 against deployed `nlqdb.com` (built-output sweep confirmed in production). **Run 75 named a coverage blind-spot; run 77 closed it:** the sweep scans built `dist/` HTML only, so navigations rendered by client-side JS (`window.location.assign(...)` in React islands / Astro `<script>`) never appear as `href` literals and are unswept — that is how `ConnectForm.tsx`'s `/app?db=` redirecting CTA lived undetected while this row read "0 redirecting". Run 75 fixed one link by hand and deferred the guard. **Run 77 swept all `location.*` navigations in `apps/web/src` and found 6 bare-path 307s** (`ChatPanel.tsx` new-db/keys/sign-out + `Topnav.astro` sign-out + the `/vs/*` try-CTA + `post-signin.astro`'s session-lost redirect), fixed them, and added the **standing guard** `client-nav-integrity.test.ts` (`SK-WEB-022`) — narrowly scoped to the string-literal argument of an actual `location.*` call (bare or `window.`-prefixed), so no false positives (the breadth run 75 rejected). **Client-side-nav redirects 6 → 0** | target 0 — `bun run build && bun run check:links` (built-output `href`/`src`) + `client-nav-integrity.test.ts` (JS navigations) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** — run 76 verified `brew install nlqdb/tap/nlq` (advertised in `cli/README.md` + npm-shim fallback, `SK-CLI-002`) is now real: `nlqdb/homebrew-tap` carries `nlq.rb` at root (commit 07-15 02:42Z, v0.1.12; **empty since 2026-05-19** before this), the linux_x86_64 asset returns HTTP 200 with a **sha256 matching the formula exactly** (`63a9266…814a`), tarball ships the `nlq` binary. Run 73's `cli/.goreleaser.yml` token-format fix (merged) populated the tap on `deploy-cli`@`80e4aa44`; run 76 is the post-merge tap-verify the scorecard deferred. Runs 32 + 37 + 56 + 59 + 62 + 64 + 72 + 73 + 74 + **76** each found/closed 1 agent-movable gap | claim-vs-reality on shipped surfaces + docs; target 0 **met**. **Standing guards:** `mcp-tool-integrity.test.ts` (run 64) sweeps the shipped MCP catalog closed-world; `cli-verb-integrity.test.ts` (run 74) derives the 15 shipped top-level verbs from the cobra tree (first `Use:` per `cli/internal/cmd/*.go` minus `nlq`) and — **as of run 76** — sweeps every `nlq <verb>` snippet across **both** `apps/web/src` (`.ts/.tsx/.astro`) and the docs-site prose `apps/docs/src` (`.md/.mdx`), naming the phantom + file on failure (verified: fails on an injected `nlq schema` in `cli.mdx`). Next candidate: the SDK method surface (`client.*`), and a docs-prose sweep of MCP-tool names |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
@@ -91,30 +91,29 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-15 (run 77)** — **fixed 4 client-side-navigation trailing-slash
-redirects (row #18 blind-spot), 4 → 0** (real UX-flow fix, not a null run).
-Step 0: **zero open PRs** (run 76 merged, `b82b122`). **Rule 6:** all 11
-workflows (CI + all `deploy-*` + canary + npm + security) green on `main`
-(`b82b122`; `deploy-cli`@`80e4aa44` recovered after run 73). typecheck/lint/test
-green after `bun install` (typecheck 0, lint 38 pre-existing warnings, api 924
-pass). **Lever (priority-1 UX-flow):** row #15 dark (rule 8), engine dark, rows
-#19/#21 met/maxed → pulled the row #18 blind-spot run 75 named:
-`check-links.mjs` sweeps built-output `href`/`src` literals only, so a
-`window.location.assign("/app/new")` in a React island / Astro `<script>`
+**2026-07-15 (run 77)** — **fixed 6 client-side-navigation trailing-slash
+redirects (row #18 blind-spot), 6 → 0** (real UX-flow fix, not a null run).
+**Rule 6:** all 11 workflows (CI + all `deploy-*` + canary + npm + security)
+green on `main` (`b82b122`; `deploy-cli`@`80e4aa44` recovered after run 73).
+typecheck/lint/test green after `bun install` (typecheck 0, lint 38 pre-existing
+warnings, api 924 pass). **Lever (priority-1 UX-flow):** row #15 dark (rule 8),
+engine dark, rows #19/#21 met/maxed → pulled the row #18 blind-spot run 75
+named: `check-links.mjs` sweeps built-output `href`/`src` literals only, so a
+`location.assign("/app/new")` in a React island / Astro `<script>`
 307-redirects **undetected** (how `ConnectForm.tsx`'s `/app?db=` lived a week).
-Swept every `window.location.assign/replace/href` in `apps/web/src`: **4
-bare-path navigations** — `ChatPanel.tsx` command-palette New-database→`/app/new`,
-API-keys→`/app/keys`, Sign-out→`/auth/sign-out`, and `Topnav.astro` sign-out —
-**each live-verified 307** on `app.nlqdb.com` (`/app/new` → `/app/new/` 200,
-etc.); all are post-first-answer CTAs a stranger clicks. Fixed all 4 to the
+Swept every `location.assign/replace/href` in `apps/web/src`: **6 bare-path
+navigations** — `ChatPanel.tsx` command-palette New-database→`/app/new`,
+API-keys→`/app/keys`, Sign-out→`/auth/sign-out`, `Topnav.astro` sign-out, the
+`/vs/*` try-CTA→`/app/new`, and `post-signin.astro`'s `/auth/sign-in` session-lost
+redirect; all are user-clicked/auth-flow paths. Fixed all 6 to the
 trailing-slash form; added `client-nav-integrity.test.ts` (`SK-WEB-022`) as the
 standing guard for the JS-navigation blind-spot, narrowly scoped to the
-string-literal argument of an actual `window.location.*` call (no false
-positives on comments/JSX-`href`/route-matchers — the breadth run 75 rejected).
-**Measure→change→re-measure:** guard passes clean on the fixed code (web 255
-tests, +1 vs 254); injecting a bare `/app/new` back fails it naming
-`ChatPanel.tsx:626`; revert passes again. **Before → after: client-side-nav
-redirects 4 → 0.** **Step 1:** funnel/engine carried from 07-13/07-11 pulls (CF
+string-literal argument of an actual `location.*` call, bare or `window.`-prefixed
+(no false positives on comments/JSX-`href`/route-matchers — the breadth run 75
+rejected). **Measure→change→re-measure:** guard passes clean on the fixed code
+(web 255 tests, +1 vs 254); injecting a bare `/app/new` back fails it naming the
+`file:line`; revert passes again. **Before → after: client-side-nav
+redirects 6 → 0.** **Step 1:** funnel/engine carried from 07-13/07-11 pulls (CF
 GraphQL / remote-D1 / LLM egress not reachable here) — strangers **0**,
 docs-ambiguity **17** (held), row #18 **0 dead / 0 redirecting** (now incl.
 JS navs). **Artifact (step 3):** queue 2 < 3 → no forced publish; the lesson
