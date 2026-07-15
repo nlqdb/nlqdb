@@ -218,7 +218,7 @@ function ConnectResultView({ result }: { result: ConnectSuccess }) {
 
       {result.pkLive && <PkLiveRow pkLive={result.pkLive} />}
 
-      <a className="cta connect-result__cta" href={`/app?db=${encodeURIComponent(result.dbId)}`}>
+      <a className="cta connect-result__cta" href={`/app/?db=${encodeURIComponent(result.dbId)}`}>
         Question it now →
       </a>
     </section>
