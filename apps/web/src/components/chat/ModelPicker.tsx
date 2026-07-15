@@ -29,6 +29,7 @@ import {
   useState,
 } from "react";
 import { getChatClient } from "../../lib/chat-client";
+import { resolveProviderRow } from "./model-picker-selection";
 
 // Fired by the free-model nudge (FreeModelNudge, SK-PREMIUM-004) to ask this
 // picker to open + scroll into view. The picker owns its open state; the nudge
@@ -431,14 +432,13 @@ function ProviderRow({
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // The model shown on the collapsed row: the one being keyed for if a pick is
-  // pending, else the active one if this provider is active, else the flagship
-  // default.
-  const shownModel = pendingModel ?? activeModel ?? provider.defaultModel;
-  const shownLabel =
-    provider.models.find((m) => m.model === shownModel)?.label ??
-    provider.models[0]?.label ??
-    provider.label;
+  // What this row shows (sub label) and whether it's the live model — a pending
+  // pick wins so the label follows the click. See resolveProviderRow.
+  const { shownModel, shownLabel, isActive } = resolveProviderRow(
+    provider,
+    activeModel,
+    pendingModel,
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -466,11 +466,6 @@ function ProviderRow({
       if (opt) onPick(provider, opt);
     }
   }
-
-  // "Active" only when the shown model is the live one. A pending pick (its key
-  // form is open) shows the "key" tag instead — the shown model isn't active
-  // until the key saves, so labelling it "Active" would contradict the form.
-  const isActive = pendingModel === null && activeModel !== null;
 
   return (
     <li className="model-picker__provider">
