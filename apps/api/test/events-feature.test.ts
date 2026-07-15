@@ -113,7 +113,12 @@ describe("recordPricingEvent — SK-EVENTS-012 pricing funnel", () => {
 
   it("falls back to a pv: IP-hash bucket (no email) for a logged-out visitor", async () => {
     const events = stubEvents();
-    const result = await recordPricingEvent({ kv: stubKv(), events }, { event: "view" }, null, "1.2.3.4");
+    const result = await recordPricingEvent(
+      { kv: stubKv(), events },
+      { event: "view" },
+      null,
+      "1.2.3.4",
+    );
     expect(result.status).toBe(202);
     const sent = events.emit.mock.calls[0]?.[0];
     expect(sent.name).toBe("pricing.page_viewed");
@@ -140,7 +145,12 @@ describe("recordPricingEvent — SK-EVENTS-012 pricing funnel", () => {
 
   it("rejects an unknown event shape with 400 invalid_body", async () => {
     const events = stubEvents();
-    const result = await recordPricingEvent({ kv: stubKv(), events }, { event: "nope" }, null, "1.2.3.4");
+    const result = await recordPricingEvent(
+      { kv: stubKv(), events },
+      { event: "nope" },
+      null,
+      "1.2.3.4",
+    );
     expect(result.status).toBe(400);
     expect(events.emit).not.toHaveBeenCalled();
   });
@@ -169,7 +179,9 @@ describe("recordPricingEvent — SK-EVENTS-012 pricing funnel", () => {
     const events = stubEvents();
     await recordPricingEvent({ kv: stubKv(), events }, { event: "view" }, null, "9.9.9.9");
     await recordPricingEvent({ kv: stubKv(), events }, { event: "view" }, null, "9.9.9.9");
-    expect(events.emit.mock.calls[0]?.[0].principalId).toBe(events.emit.mock.calls[1]?.[0].principalId);
+    expect(events.emit.mock.calls[0]?.[0].principalId).toBe(
+      events.emit.mock.calls[1]?.[0].principalId,
+    );
   });
 });
 

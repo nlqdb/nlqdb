@@ -124,7 +124,11 @@ function parsePricingInput(body: unknown): PricingEventInput | null {
   if (!body || typeof body !== "object") return null;
   const b = body as { event?: unknown; plan?: unknown };
   if (b.event === "view") return { event: "view" };
-  if (b.event === "plan" && typeof b.plan === "string" && PRICING_PLANS.has(b.plan as PricingPlan)) {
+  if (
+    b.event === "plan" &&
+    typeof b.plan === "string" &&
+    PRICING_PLANS.has(b.plan as PricingPlan)
+  ) {
     return { event: "plan", plan: b.plan as PricingPlan };
   }
   return null;

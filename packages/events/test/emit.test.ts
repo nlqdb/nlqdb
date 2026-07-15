@@ -163,7 +163,11 @@ describe("makeQueueEmitter", () => {
     const emitter = makeQueueEmitter(queue);
 
     await emitter.emit({ name: "pricing.page_viewed", principalId: "u_9", email: "f@nlqdb.com" });
-    await emitter.emit({ name: "pricing.page_viewed", principalId: "pv:abcd1234abcd1234", email: null });
+    await emitter.emit({
+      name: "pricing.page_viewed",
+      principalId: "pv:abcd1234abcd1234",
+      email: null,
+    });
 
     const today = new Date().toISOString().slice(0, 10);
     expect(queue.sent[0]?.id).toBe(`pricing.page_viewed.u_9.${today}`);
@@ -174,8 +178,18 @@ describe("makeQueueEmitter", () => {
     const queue = makeFakeQueue();
     const emitter = makeQueueEmitter(queue);
 
-    await emitter.emit({ name: "pricing.plan_selected", principalId: "u_9", plan: "hobby", email: "f@nlqdb.com" });
-    await emitter.emit({ name: "pricing.plan_selected", principalId: "u_9", plan: "pro", email: "f@nlqdb.com" });
+    await emitter.emit({
+      name: "pricing.plan_selected",
+      principalId: "u_9",
+      plan: "hobby",
+      email: "f@nlqdb.com",
+    });
+    await emitter.emit({
+      name: "pricing.plan_selected",
+      principalId: "u_9",
+      plan: "pro",
+      email: "f@nlqdb.com",
+    });
 
     const today = new Date().toISOString().slice(0, 10);
     expect(queue.sent[0]?.id).toBe(`pricing.plan_selected.u_9.hobby.${today}`);
