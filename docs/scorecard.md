@@ -35,23 +35,26 @@ should re-point the focus off #15 while that secret is unset.
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
 agent-controllable inputs; the top UX-flow input, row #21, is maxed 9/9).
-**Run 72 pulled a claim-integrity lever (row #19 class), not a null run.**
-Step 0: two open PRs — #691 (run 71 null-run scorecard) and #692 (founder
-model-picker CSS); run 72 touched neither's files (scorecard regen is
-step-0-exempt). With `nlqdb.com` reachable (only `api.nlqdb.com` is
-egress-blocked, 502 proxy), a **live-prod** sweep replaced the built-output
-proxy: all **110** sitemap URLs return 200 (row #18 confirmed in production,
-not just in build). Sweeping advertised `nlq <verb>` CLI claims vs the
-shipped cobra verbs surfaced a **phantom**: the `SK-WEB-008` canned-fixture
-carousel (`showcase-examples.ts`) rendered `nlq schema "{goal}"` on 2 slides,
-but `schema` is not a shipped verb — a copy-paste first-call "unknown command"
-waiting to fire. Fixed → `nlq ask` (the verb that runs `/v1/ask` incl.
-DDL/schema edits with a diff preview, `SK-TRUST-001`); every advertised web/docs
-`nlq` verb now maps to shipped code (1 phantom → **0**). **Drift surfaced
-(not a null-run finding):** `SK-WEB-008` + agent-memory-pivot WS-05 document
-the carousel as retained/reusable, but the `SK-WEB-018`/`SK-WEB-020`
-static-first homepage no longer renders it — so the fix was in-place (deleting
-would violate P1) and the revive-vs-retire decision is flagged for `/weekly`.
+**Run 74 pulled a claim-integrity lever (row #19 class), not a null run.**
+Step 0: three open PRs — #694 (founder model-picker sub-label), #695 (run 73:
+red `deploy-cli` goreleaser fix), #696 (founder pricing-page telemetry);
+run 74 touched none of their files (scorecard regen is step-0-exempt).
+**Rule 6:** `deploy-cli.yml` is red on `main` (`b77f338`, goreleaser v2
+homebrew-token form) — but that IS what in-flight #695 fixes, so it is not
+duplicated here; every other `deploy-*` and `ci.yml` are green on `main`.
+The local pre-`bun install` typecheck red is the run-71 env artifact (TS-7.0
+`baseUrl` deprecation); after `bun install` (TS 5.9.3 pinned) typecheck is
+green — main is green. **Lever:** run 72 found the `nlq schema` phantom by
+hand and deferred "automate this CLI/SDK-verb sweep as a guard"; run 74
+built it. New `apps/web/src/data/cli-verb-integrity.test.ts` (sibling of the
+run-64 `mcp-tool-integrity` guard) derives the shipped top-level verbs from
+the cobra tree (`cli/internal/cmd/*.go`, first `Use:` per file minus the
+`nlq` root — 15 verbs) and sweeps every `nlq <verb>` snippet under
+`apps/web/src` closed-world; an unshipped verb fails, naming the token +
+file. Verified: passes clean (0 offenders, 27 snippet occurrences guarded)
+and **fails on the re-injected run-72 `nlq schema` phantom**. Before → after:
+the run-72 phantom class now **fails CI instead of shipping** (guarded
+web CLI-verb snippets 0 → all).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -62,7 +65,7 @@ would violate P1) and the revive-vs-retire decision is flagged for `/weekly`.
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **98** (`/vs` 31 + `/solve` 33 + `/blog` 34). Run 60 published the oldest queued draft (`green-checkmark-has-a-half-life`, step 3); pending drafts **2 → 3** (run 64 added `guard-advertised-capabilities-against-code`; queue now ≥ 3 ⇒ next non-null run publishes) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 6 | Indexable surfaces | **98** (`/vs` 31 + `/solve` 33 + `/blog` 34). Queue holds **2** unpublished drafts (`guard-advertised-capabilities-against-code`, `smoke-test-walks-the-old-ui`) — **< 3, so step 3.1 forced-publish does not trigger** (row #6's prior "2 → 3 ⇒ publish" count was stale; the queue file has 2). Run 74's lesson is already the queued `guard-advertised-capabilities` draft (its honest-split names "CLI subcommands"), so no new draft either | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
 | 7 | Surface yield | posts **34**; 7d external referrals = 9 (bing 8, github 1 — carried 07-12 19:39Z pull; was 6 on 07-09, 1 on 07-06). Syndication feeds 1 (`/rss.xml`); internal links **2,908** + **14 cross-app** (run-61 build: 118 pages, 0 dead — row #18) | CF `refererHost` — carried from 19:39Z (strangers unchanged). External-referral yield holding (bing-led) as indexation lands |
 | | **Engine** — BIRD 07-11 · Spider 07-11 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.546** (272/498 EA, 2 `gold_error`, 07-11 canonical on main `2cfda39`, [run 29144102081](https://github.com/nlqdb/nlqdb/actions/runs/29144102081) — completed in ONE window, `no_sql` 0/500). Δ +2.01 pp vs 07-05, McNemar b=31/c=41, `regressions: []`. Baseline re-seeded. Measured pre-`SK-LLM-044`; next canonical re-verifies | target 0.65 / **Phase 2 floor 0.60** — gap 5.4 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
@@ -80,7 +83,7 @@ would violate P1) and the revive-vs-retire decision is flagged for `/weekly`.
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **17** (fresh grep 07-14 run 72 — held) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield) |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-13 run-61 sweep: **118** pages, **2,908** internal + **14 cross-app** links). Run 61 **added cross-app coverage** — `href`/`src` to owned subdomains (`docs./app./mcp.nlqdb.com`) were dropped by `isInternal` and never checked; the sweep now live-verifies them (4xx/5xx = dead & hard-fail; auth/method gate = alive; network error = "unverified", never red). 14 `docs.nlqdb.com` funnel links now covered (0 → 14). **Run 72 prod-verified this live:** all 110 `sitemap.xml` URLs return 200 against deployed `nlqdb.com` (built-output sweep confirmed in production) | target 0 — `bun run build && bun run check:links` in `apps/web` |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
-| 19 | Live-surface claim integrity | **1 open (founder-blocked)** — `brew install nlqdb/tap/nlq` advertised (`cli/README.md`, npm-shim fallback, SK-CLI-002) but the tap empty since 2026-05-19; blocked on the `HOMEBREW_TAP_GITHUB_TOKEN` PAT (top `blocked-by-human.md` bullet); releases no longer fail on it (run-54 fix, #669). Runs 32 + 37 + 56 + 59 + 62 + 64 + **72** each found + closed 1 agent-movable gap | claim-vs-reality on shipped surfaces + docs; target 0. **Run 64 built the standing candidate** (assert each advertised capability has shipped code): run 62 fixed `nlqdb_recall` by hand but the recurrence guard (`competitors.test.ts` SK-MCP-002) scanned 1 of ~6 surfaces (the two the phantom shipped to were unguarded) + pinned a stale hand-copied tool set (missing `nlqdb_connect_database`). Replaced by `mcp-tool-integrity.test.ts`: reads the shipped catalog from the MCP server's `registerTool(...)` sites, sweeps every `apps/web/src` surface closed-world, fails naming any phantom + file. Verified: passes clean (0 offenders), fails on the injected run-62 phantom. **Run 72 ran the CLI-verb sweep by hand** (advertised `nlq <verb>` vs shipped cobra `Use:`) and closed a latent phantom — `nlq schema` on 2 `SK-WEB-008` fixture slides → `nlq ask` (the README's deferred-verb list is honest; the fixture asset was not). Next candidate: automate this CLI/SDK-verb sweep as a guard, and resolve the carousel render-drift (`SK-WEB-008` vs `SK-WEB-018` homepage) |
+| 19 | Live-surface claim integrity | **1 open (founder-blocked)** — `brew install nlqdb/tap/nlq` advertised (`cli/README.md`, npm-shim fallback, SK-CLI-002) but the tap empty since 2026-05-19; blocked on the `HOMEBREW_TAP_GITHUB_TOKEN` PAT (top `blocked-by-human.md` bullet); releases no longer fail on it (run-54 fix, #669). Runs 32 + 37 + 56 + 59 + 62 + 64 + 72 + **74** each found + closed 1 agent-movable gap (run 74 automated the CLI-verb sweep as a standing guard) | claim-vs-reality on shipped surfaces + docs; target 0. **Run 64 built the standing candidate** (assert each advertised capability has shipped code): run 62 fixed `nlqdb_recall` by hand but the recurrence guard (`competitors.test.ts` SK-MCP-002) scanned 1 of ~6 surfaces (the two the phantom shipped to were unguarded) + pinned a stale hand-copied tool set (missing `nlqdb_connect_database`). Replaced by `mcp-tool-integrity.test.ts`: reads the shipped catalog from the MCP server's `registerTool(...)` sites, sweeps every `apps/web/src` surface closed-world, fails naming any phantom + file. Verified: passes clean (0 offenders), fails on the injected run-62 phantom. Run 72 ran the CLI-verb sweep by hand (advertised `nlq <verb>` vs shipped cobra `Use:`) and closed a latent phantom — `nlq schema` on 2 `SK-WEB-008` fixture slides → `nlq ask`. **Run 74 automated it:** `cli-verb-integrity.test.ts` derives the 15 shipped top-level verbs from the cobra tree (first `Use:` per `cli/internal/cmd/*.go` minus `nlq`) and sweeps every `nlq <verb>` snippet under `apps/web/src` closed-world (verified fails on the re-injected `nlq schema`). Next candidate: extend the guard to `apps/docs` prose and the SDK method surface, and resolve the carousel render-drift (`SK-WEB-008` vs `SK-WEB-018` homepage) |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-60 branch dispatch [29211619838](https://github.com/nlqdb/nlqdb/actions/runs/29211619838) against prod: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). FLOW-001's step-8 red was the walker asserting a 2nd anon `/v1/ask` 200 — impossible under `SK-ANON-012`'s message-#2 wall; step 8 now asserts the 401 cap (dt 296–337 ms). Before: main dispatch [29211269726](https://github.com/nlqdb/nlqdb/actions/runs/29211269726) FLOW-001 0/3 step-8 `status=401`. The run-59 "morph-to-chat gap" is **decided, not a gap**: the anon terminus IS the sign-in redirect (SK-ANON-011 stash → SK-ANON-003 adopt); the SK-WEB-002 chat is the post-sign-in /app surface. **Run 62 closed the step-7 false-green:** the copy-snippet conversion action was silently skipping (selector matched the accessible name, which the `aria-label` diverged from) — now the aria-label is dropped (accessible name = visible "Copy snippet", WCAG 2.5.3) and the selector widened; branch dispatch [29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660) walked prod **9/9 passed (exit 0)** with the new selector | target 9/9 + both FLOW-005 ✅ **met**. Per-step JSON artifact isn't downloadable from the agent container (proxy-gated); the selector→accessible-name defect is closed deterministically |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
@@ -102,39 +105,38 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-14 (run 72)** — **claim-integrity fix** (row #19 class; not a null
-run). Step 0: open PRs #691 (run 71 null scorecard) + #692 (founder
-model-picker CSS) — run 72 touched neither's files. Rule-6 health: main HEAD
-`6f7f0bc` (run 70) is docs-only; ops row #12 4,974 req / 0 err; CI/deploy
-green — main green. **Lever:** with `nlqdb.com` reachable (only
-`api.nlqdb.com` egress-blocked, 502 proxy), swept the **deployed** surface:
-110/110 sitemap URLs = 200 (row #18 confirmed in prod), and every advertised
-`nlq <verb>` claim vs the shipped cobra verbs. Found one **phantom** — the
-`SK-WEB-008` canned-fixture carousel (`apps/web/src/data/showcase-examples.ts`)
-rendered `nlq schema "{goal}"` on the two `category:"schema"` slides, but
-`schema` is not a shipped verb (README's deferred list is `nlq chat` / `keys
-rotate` / `connection` — not `schema`; that README is honest). A stranger
-copying the snippet would hit "unknown command" on the *first* call.
-**Before → after:** advertised-but-unshipped `nlq` verbs on web/docs = **1 →
-0**. Fixed to `nlq ask` (runs `/v1/ask`, which handles DDL/schema edits with a
-diff preview per `SK-TRUST-001` — `nlq new` *creates* a fresh DB, `nlq run`
-*rejects* DDL, so `ask` is the only correct verb for altering an existing
-table). Header comment updated to match. **Not deleted (P1):** `SK-WEB-008`
-and pivot WS-05 both document the carousel as the retained home for never-lie
-fixtures, so the in-place fix preserves them; the render-drift (carousel
-documented-live but the `SK-WEB-018`/`020` homepage no longer imports it) is
-surfaced for `/weekly` to decide revive-vs-retire, not silently deleted.
-**Measure→change→re-measure:** grep sweep 1 phantom → re-grep 0 (all 15
-web/docs verbs now shipped); gates green (typecheck 0, lint 0, 917 tests pass).
-**Step 1:** funnel carried from the 07-13 pulls (remote D1 / CF GraphQL + LLM
-egress unreachable here) — strangers **0**; docs-ambiguity **17** (held); row
-#18 **0 dead**, now prod-verified 110/110. **Artifact (step 3):** queue 2
-drafts (< 3) → no forced publish; this run's lesson (claim-vs-shipped drift in
-a fixture asset the redesign orphaned) overlaps the queued
-`guard-advertised-capabilities-against-code` draft, so no new draft. **KPI
-(GLOBAL-025):** advances **onboarding/UX** (no dead-end CLI snippet if the
-documented carousel is revived or copied); **none degrade** — data/comment-only
-diff, zero runtime/prompt/eval-baseline change; rows #8–#11 + #21 carried.
+**2026-07-14 (run 74)** — **claim-integrity guard** (row #19 class; not a null
+run). Step 0: three open PRs — #694 (founder model-picker sub-label), #695
+(run 73: red `deploy-cli` goreleaser fix), #696 (founder pricing telemetry);
+run 74 touched none of their files. **Rule 6:** `deploy-cli.yml` is red on
+`main` (`b77f338`, goreleaser v2 homebrew-token form) but that is exactly what
+in-flight #695 fixes — not duplicated; every other `deploy-*` + `ci.yml` green
+on `main`. Local pre-`bun install` typecheck red = the run-71 env artifact
+(TS-7.0 `baseUrl`); after `bun install` (TS 5.9.3 pinned) typecheck is green —
+main green. **Lever:** run 72 found the `nlq schema` phantom by hand and
+deferred "automate this CLI/SDK-verb sweep as a guard"; run 74 built it. New
+`apps/web/src/data/cli-verb-integrity.test.ts` (sibling of the run-64
+`mcp-tool-integrity` guard): derives the 15 shipped top-level verbs from the
+cobra tree (first `Use:` per `cli/internal/cmd/*.go` minus the `nlq` root — no
+hand-copied list to go stale) and sweeps every `nlq <verb>` snippet under
+`apps/web/src` closed-world; an unshipped verb fails, naming the token + file.
+**Before → after:** the run-72 phantom class goes from *hand-caught, could
+recur silently* → *fails CI* (guarded web CLI-verb snippets **0 → all**, 27
+occurrences / 3 distinct verbs). **Measure→change→re-measure:** guard passes
+clean (0 offenders); re-injecting `nlq schema` fails it, naming
+`__phantom.ts`; removing it passes again. Gates green: typecheck 0, lint 0
+(38 pre-existing warnings), **api 917 + web 254 tests pass**. No FEATURE.md
+block added — matches the run-64 MCP-guard precedent (self-documenting code
+enforcing `SK-WEB-008`/`SK-CLI-002`; D5/P5). **Step 1:** funnel carried from
+the 07-13 pulls (remote D1 / CF GraphQL + LLM egress unreachable here) —
+strangers **0**; docs-ambiguity **17** (held); row #18 **0 dead**. Row #6
+corrected: queue is **2** drafts (< 3), prior "≥ 3 ⇒ publish" count was stale.
+**Artifact (step 3):** queue 2 (< 3) → no forced publish; this run's lesson is
+already the queued `guard-advertised-capabilities-against-code` draft (its
+honest-split names "CLI subcommands"), so no new draft. **KPI (GLOBAL-025):**
+advances **onboarding/UX** (no dead-end CLI snippet can silently ship again);
+**none degrade** — a test-only diff, zero runtime/prompt/eval-baseline change;
+rows #8–#11 + #21 carried.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
