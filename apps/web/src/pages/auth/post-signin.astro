@@ -63,16 +63,16 @@ import Base from "../../layouts/Base.astro";
   const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
   function sanitizeNext(raw: string | null): string {
-    if (!raw) return "/app";
+    if (!raw) return "/app/";
     try {
       const url = new URL(raw, location.origin);
-      if (url.origin !== location.origin) return "/app";
+      if (url.origin !== location.origin) return "/app/";
       // A pathname of `//host` would re-parse as scheme-relative in
       // `location.replace` — reject it too.
-      if (url.pathname.startsWith("//")) return "/app";
+      if (url.pathname.startsWith("//")) return "/app/";
       return url.pathname + url.search + url.hash;
     } catch {
-      return "/app";
+      return "/app/";
     }
   }
 
@@ -104,7 +104,7 @@ import Base from "../../layouts/Base.astro";
       // Sign-in didn't take — cookie blocked, third-party cookies
       // disabled in the IdP round-trip, or the user closed the tab
       // mid-flow. Send back to sign-in with a friendly hint.
-      location.replace("/auth/sign-in?error=session_lost");
+      location.replace("/auth/sign-in/?error=session_lost");
       return;
     }
     // SK-ANON-012 — defense-in-depth adoption retry: the Better Auth

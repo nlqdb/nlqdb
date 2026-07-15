@@ -159,12 +159,16 @@ The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked
 ### SK-WEB-020 — Calm token system (supersedes SK-WEB-015's quiet-brutalism tokens)
 
 **Body:** [`decisions/SK-WEB-020-calm-token-system.md`](./decisions/SK-WEB-020-calm-token-system.md).
-`global.css` is re-based from quiet-brutalism to a **calm** system site-wide: near-black low-chroma neutrals, ONE jade accent (`#3ecf8e`, ~10% / 60-30-10) replacing acid lime, system fonts for body + display (Source Serif 4 dropped; `--display` aliases `--sans`; `--mono` kept for code/data), ~12px radius, two-layer soft shadows (`--shadow-1/2/3`, `--ring`), and expo-out reduced-motion-gated entrances. Legacy aliases (`--shadow-hard`, `--border-strong`, `--bg-elev`, …) remap to the calm ladder so un-swept `<style>` blocks render calm automatically. The home layout is `styles/home2.css` (scoped `.home2`); `styles/chat.css` + `styles/keys.css` and every marketing page are swept (1px rules, radius, `--ring` focus, `--accent-soft` tints). Retains SK-WEB-015's spirit (one accent moment per band, mono demoted, one token source, one-motion-moment budget) and all SK-WEB-018 IA + GLOBAL-007 / SK-WEB-003 invariants.
+`global.css` re-based to a **calm** system site-wide (details in the Body file); retains SK-WEB-015's one-accent/one-motion budget and SK-WEB-018 IA + GLOBAL-007 / SK-WEB-003 invariants.
 
 ### SK-WEB-021 — `/architecture`: interactive 3D system map on its own route, never on `/`
 
 **Body:** [`decisions/SK-WEB-021-architecture-3d-map.md`](./decisions/SK-WEB-021-architecture-3d-map.md).
-One route (`/architecture/`) renders the system as a three.js zoom-to-detail map (island `ArchitectureMap.tsx`) above a prose walkthrough, both from `src/data/architecture.ts` (mirrors `docs/architecture.md` §2). three.js is dynamic-imported on this route only; wheel-zoom is click-to-activate and one-finger touch keeps scrolling (scroll-trap guards); motion is reduced-motion-gated. Never a homepage background — that would contradict SK-WEB-018 / SK-WEB-020 / SK-WEB-001 at once; the home page gets only the 0-JS "Under the hood" poster band linking to the route.
+One route (`/architecture/`) renders the system as a three.js zoom-to-detail map (island `ArchitectureMap.tsx`) above a prose walkthrough, both from `src/data/architecture.ts` (mirrors `docs/architecture.md` §2); three.js is dynamic-imported on this route only, motion reduced-motion-gated. Never a homepage background (would contradict SK-WEB-018 / SK-WEB-020 / SK-WEB-001); the home page gets only the 0-JS "Under the hood" poster band linking to it.
+
+### SK-WEB-022 — Client-side navigations must carry the trailing slash (guarded)
+
+Under `trailingSlash: "always"`, a bare `window.location.assign("/app/new")` in a React island / Astro `<script>` 307-redirects — and `check-links.mjs` (built-output `href`/`src` only) can't see it (the class run 75 hand-fixed in `ConnectForm.tsx`). **Decision:** every client-side navigation to an internal page path ends its path (before `?`/`#`) in `/`, guarded by `src/data/client-nav-integrity.test.ts` — which scans only the string-literal argument of a `location.assign/replace(...)` / `.href =` call (bare or `window.`-prefixed; narrow → no false positives on comments/JSX-`href`/route-matchers) and names the offending `file:line`. Load-bearing: not redundant with check-links — it covers the JS-navigation blind-spot check-links cannot.
 
 ## GLOBALs governing this feature
 

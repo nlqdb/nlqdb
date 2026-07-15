@@ -286,7 +286,7 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
         const slug = btn.dataset["competitorSlug"] ?? "";
         if (goal) saveDraft(goal);
         emit("vs.try_query_clicked", { slug, goal });
-        location.assign("/app/new");
+        location.assign("/app/new/");
       });
     });
   </script>

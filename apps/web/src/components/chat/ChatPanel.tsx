@@ -623,7 +623,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
         label: "New database",
         hint: "create a fresh schema",
         run: () => {
-          if (typeof window !== "undefined") window.location.assign("/app/new");
+          if (typeof window !== "undefined") window.location.assign("/app/new/");
         },
       },
       {
@@ -645,14 +645,14 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
         label: "API keys",
         hint: "Mint, list, revoke",
         run: () => {
-          if (typeof window !== "undefined") window.location.assign("/app/keys");
+          if (typeof window !== "undefined") window.location.assign("/app/keys/");
         },
       },
       {
         id: "sign-out",
         label: "Sign out",
         run: () => {
-          if (typeof window !== "undefined") window.location.assign("/auth/sign-out");
+          if (typeof window !== "undefined") window.location.assign("/auth/sign-out/");
         },
       },
     ],
