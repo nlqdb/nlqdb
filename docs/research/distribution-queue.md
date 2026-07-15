@@ -51,19 +51,8 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
   "rename a tool and forget the docs — does anything go red without also editing
   the test's copy of the list?" Honest split: a claim-integrity pattern for any
   product whose surface is advertised as named verbs (MCP tools, SDK methods,
-  CLI subcommands). **(collapsed per D4; full body in git history.)**
-
-- **"The redesign shipped. The smoke test kept walking the old UI."** slug
-  `smoke-test-walks-the-old-ui` · venue dev.to (#testing #e2e #frontend) +
-  r/ExperiencedDevs + lobste.rs (`testing`) · e2e/measurement lesson (run-58
-  walker re-true, 2026-07-12). Gist: acceptance walkers that pin literal UI
-  copy are a regression detector until a redesign turns them into a 0/9 that
-  mixes real breakage with pure test-drift — the triage cost, not the literals,
-  is the trap. Design notes: triage reds within a bounded window; fail detail
-  must name element + expectation so drift-vs-breakage is decidable from the
-  artifact; a "re-run the walker on PRs touching a walked surface" convention
-  without a gate is a wish. **(oldest full draft — collapsed per D4; full body
-  in git history; next non-null run publishes this one, step 3.1.)**
+  CLI subcommands). **(oldest full draft — collapsed per D4; full body in git
+  history; next non-null run publishes this one, step 3.1.)**
 
 
 ## Published — canonical `/blog` copies live; venue variants pending
@@ -73,6 +62,7 @@ delete its line.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 78 — **https://nlqdb.com/blog/smoke-test-walks-the-old-ui/** — dev.to (#testing #e2e #frontend) + r/ExperiencedDevs + lobste.rs (`testing`) · e2e/measurement lesson (the run-58 walker re-true — pinned-literal acceptance walkers are a regression detector, but a red that mixes product-breakage with test-drift costs a full triage; make the fail detail name element + expectation, triage reds within a bounded window, and gate "re-run the walker on PRs touching a walked surface" instead of leaving it a convention)
 - run 65 — **https://nlqdb.com/blog/one-shot-recovery-permanent-outage/** — dev.to (#postgres #reliability #architecture) + r/ExperiencedDevs + lobste.rs (`practices`) · reliability lesson (`SK-ASK-024` — a run-exactly-once best-effort repair turns one silent skip into a permanent outage; fix the root, keep it idempotent, and re-trigger from the steady-state symptom because the original event never recurs)
 - run 60 — **https://nlqdb.com/blog/green-checkmark-has-a-half-life/** — dev.to (#ci #testing #devops) + r/ExperiencedDevs + lobste.rs (`practices`) · CI/measurement lesson (the scorecard row #15 freshness method — manual-dispatch e2e makes "passing" an event not a state; score `pass × freshness` with a linear 7-day decay so the number rots until an operator re-runs it)
 - run 56 — **https://nlqdb.com/blog/ephemeral-staging-persistent-registry/** — dev.to (#testing #ci #database) + r/ExperiencedDevs + lobste.rs (`practices`) · CI/test-infra lesson (the `SK-E2E-007` spin-up purge — an environment is only as ephemeral as the most persistent store that references it; reset at spin-up, not teardown)
