@@ -23,13 +23,18 @@ falsified the "clean window" hypothesis; full detail + run link in row #15).
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
-agent-controllable inputs; the top UX-flow input, row #21, is maxed 9/9).
-**Run 79 is a null run** (step 2): every agent-movable lever is dark, anti-rut,
-or already shipped by the just-merged **PR #703** (run 78) — see _Last change_.
-**Rule 6 (re-verified this run, new `main`):** CI + Deploy web/API/Canary +
-Release npm + Security all `success` on `main` `9424202` (#703's docs+blog change
-deployed cleanly — row #17 docs-ambiguity 15, row #6 surfaces 100 / queue 2 now
-live); no red-main / stale-deploy lever.
+agent-controllable inputs). **Run 81 pulls priority-1 (real UX-flow quality):**
+fixed a trust-UX defect on the stranger "Copy snippet" CTA (`SK-WEB-007`) — a
+clipboard-write failure told a user *with a valid key* to "sign in to load your
+key", misdiagnosing a browser clipboard/permission error as an auth wall (which
+`SK-WEB-007` explicitly forbids on Copy snippet). See _Last change_. **Step 0:**
+open **PR #705** (run 80) holds the sibling chat-trace lever; it touches
+`ChatPanel.tsx` + `trace-steps.*` only and **explicitly deferred** the
+`CopySnippet` fix (one lever/run) — this run takes that deferred, non-overlapping
+follow-up. **Rule 6 (re-verified this run):** CI + all deploy/release/security
+workflows `success` on `main` `2c49646` (#704); no red-main / stale-deploy lever
+(the local `@nlqdb/eval` reds were a missing-`@opentelemetry/api` install gap in
+the ephemeral container, cleared by `bun install`, not a code failure).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -81,41 +86,33 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-15 (run 79)** — **null run** (step 2): no agent-movable lever cleared
-the bar; only this scorecard update ships (plus a one-count correction, below).
-**Rule 6 (re-verified, new `main`):** CI + Deploy web/API/Canary + Release npm +
-Security all `success` on `main` `9424202` — #703's docs+blog change deployed
-cleanly, no red-main / stale-deploy lever. **Step 0:** the just-merged **PR #703**
-(run 78) already took today's two available levers — the docs-ambiguity meta
-lever (row #17, 17 → 15) and the step-3 forced-publish
-(`smoke-test-walks-the-old-ui`, row #6 → 99, queue 3 → 2); overlapping either was
-forbidden, so run 79 has nothing new to ship. **Why no other lever (priority
-order, founder-resolved 07-11):** ① _UX-flow_ — walkers 9/9 (row #21, maxed); the
-highest-traffic stranger path (`CreateForm` → `postAskCreate`) was re-audited this
-run: `messageFor` is exhaustive over all six `CreateError` kinds and every
-raw-status→kind mapping in `api.ts` is correct (428→challenge, 429→rate_limited,
-401 cap-envelope→auth_required vs bare→unauthorized, 400 `db_id_required`→goal_unclear);
-chat ask-error surface already reviewed by #703; a `grep` for TODO/FIXME/BUG across
-stranger-facing `apps/web/src` found only prose — no documented-but-unfixed UX gap.
-② _Distribution surfaces_ — verified complete by #703 (sitemap + rss + llms.txt +
-per-post JSON-LD); the publish was #703's. ③ _Meta (docs-ambiguity)_ — #703's,
-overlap forbidden. **Dark (rule 8), not picked:** engine BIRD/Spider
-(external-license-blocked; baselines 07-11/07-09 are 4–6 d old, < 7 d ⇒ no
-stale-dispatch obligation) and row #15 E2E freshness (founder-only 3rd free-LLM
-pool). **Count correction (folded into this rebase):** `/blog` is 36 published
-posts in `blog.ts` (36 `slug:` entries, all rendered into the sitemap 1:1 with no
-draft flag), not 35 — so #703's row #6 undercounted indexable surfaces by one.
-Corrected row #6 to **100** (`/vs` 31 + `/solve` 33 + `/blog` **36**) and row #7
-posts to **36**; arithmetic 31 + 33 + 36 = 100 verified against the real
-`COMPETITORS`/`SOLVE_ENTRIES`/`BLOG_POSTS` array lengths. **Step 1:** funnel/engine
-carried from 07-13/07-11 pulls (CF GraphQL / remote-D1 / LLM egress not reachable
-here) — strangers **0**, docs-ambiguity **15** (live on `main` via #703), row #18
-**0 dead / 0 redirecting**, row #6 surfaces **100** (corrected) / queue **2**.
-**Artifact (step 3):** skipped — null run ships only the step-1 update + the count
-fix; the queue (2) is below the 3-deep forced-publish threshold and drains on the
-next non-null run. **KPI (GLOBAL-025):** no code change ⇒ **none advance, none
-degrade**; the finding (no real lever today, plus a corrected surface count) is
-the recorded deliverable per the step-4 null-run exception.
+**2026-07-15 (run 81)** — **priority-1 UX-flow lever: killed a trust-UX
+misdiagnosis on the stranger "Copy snippet" CTA (`SK-WEB-007`).** **Before:**
+`CopySnippet` collapsed two unrelated failures into one `"failed"` state always
+labelled *"Couldn't copy — sign in to load your key."* — so a user with a valid
+`pk_live_` whose `navigator.clipboard.writeText` **threw** (permission denied,
+non-secure context, lost focus) was told to sign in. `SK-WEB-007` explicitly
+forbids a sign-in wall on Copy snippet ("breaks the no-login-wall promise"), so
+this lied about the cause and implied the exact wall the decision rejects.
+**Change:** split into `"no-key"` (the only case where signing in helps — no
+`pk_live_` resolvable) and `"copy-failed"` (valid key, clipboard threw →
+*"Couldn't copy to clipboard — try again."*, no sign-in mention); extracted the
+label map into pure resolver `copy-snippet-label.ts` (SK-WEB-005 pattern, mirrors
+`trace-steps.ts`) + updated the `.copy-snippet[data-state=…]` CSS for both states.
+No new decision ID — direct `SK-WEB-007` implementation (D5). **After:** guard
+`copy-snippet-label.test.ts` **4/4** — key assertion: `copySnippetLabel(
+"copy-failed")` no longer contains "sign in"; web suite **265/265**; workspace
+typecheck green; `astro check` 0 errors; lint clean. **Rule 6:** CI + all
+deploy/release/security workflows `success` on `main` `2c49646` (#704); the local
+`@nlqdb/eval` reds were a missing `@opentelemetry/api` (container install gap,
+cleared by `bun install`), not red main. **Step 0:** open **PR #705** (run 80)
+took the sibling chat-trace lever and **explicitly deferred** this fix (one
+lever/run); it touches `ChatPanel.tsx` + `trace-steps.*` only — zero overlap.
+**Artifact (step 3):** skipped — queue **2** (< 3-deep threshold). **Step 1
+(carried):** funnel/engine from 07-13/07-11 pulls (egress not reachable here) —
+strangers **0**, docs-ambiguity **15**, row #18 **0 dead / 0 redirecting**, row #6
+**100** / queue **2**. **KPI (GLOBAL-025):** advances **UX / trust** (`SK-WEB-007`
+no-login-wall promise); engine/onboarding/performance/distribution **unchanged**.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

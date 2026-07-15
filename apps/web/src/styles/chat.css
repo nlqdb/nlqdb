@@ -1181,7 +1181,8 @@
   color: var(--accent);
 }
 
-.copy-snippet[data-state="failed"] {
+.copy-snippet[data-state="no-key"],
+.copy-snippet[data-state="copy-failed"] {
   border-color: #ff7b7b;
   color: #ff7b7b;
 }
