@@ -22,9 +22,14 @@ import { fileURLToPath } from "node:url";
 // string-literal argument of an actual client navigation —
 // `location.assign(...)`, `.replace(...)`, or `location.href = ...`, with or
 // without a `window.` prefix (bare `location.assign` in an Astro `<script>`
-// navigates just the same). Reads like `new URL(location.href)` lack the
-// `= "literal"` / `("literal")` shape; comments, JSX `href=` attributes (swept
-// by check-links), and route matchers never take it either — so none can trip.
+// navigates just the same). Reads like `new URL(location.href)`, JSX `href=`
+// attributes (swept by check-links), and route matchers lack the
+// `= "literal"` / `("literal")` shape, so none trip. The one thing that would
+// is a comment literally spelling out the call — which is why the sweep skips
+// `.test.ts` files, where (as here) that shape gets documented.
+// Navs built via `new URL("/path", origin)` → `location.replace(...)` carry the
+// slash by convention/review, not here — matching them would false-positive on
+// asset (`/og.png`) and API (`/v1/…`) URLs that legitimately carry no slash.
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const WEB_SRC = join(REPO_ROOT, "apps", "web", "src");

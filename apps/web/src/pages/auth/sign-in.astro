@@ -228,7 +228,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     };
 
     const params = new URLSearchParams(location.search);
-    const returnTo = params.get("return_to") ?? "/app";
+    const returnTo = params.get("return_to") ?? "/app/";
     // callbackURL routes through `/auth/post-signin` (SK-ANON-012)
     // so the post-OAuth landing page can read `nlqdb_pending` and
     // replay the queued anon prompt against `/v1/ask` under the
@@ -236,7 +236,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     // destination (default `/app`). The whole URL is anchored on
     // `apiBase` so the user lands on the merged app worker
     // (SK-AUTH-016) which serves the static page.
-    const postSigninUrl = new URL("/auth/post-signin", apiBase);
+    const postSigninUrl = new URL("/auth/post-signin/", apiBase);
     postSigninUrl.searchParams.set("next", returnTo);
     const callbackURL = postSigninUrl.toString();
 

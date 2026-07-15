@@ -63,16 +63,16 @@ import Base from "../../layouts/Base.astro";
   const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
   function sanitizeNext(raw: string | null): string {
-    if (!raw) return "/app";
+    if (!raw) return "/app/";
     try {
       const url = new URL(raw, location.origin);
-      if (url.origin !== location.origin) return "/app";
+      if (url.origin !== location.origin) return "/app/";
       // A pathname of `//host` would re-parse as scheme-relative in
       // `location.replace` — reject it too.
-      if (url.pathname.startsWith("//")) return "/app";
+      if (url.pathname.startsWith("//")) return "/app/";
       return url.pathname + url.search + url.hash;
     } catch {
-      return "/app";
+      return "/app/";
     }
   }
 

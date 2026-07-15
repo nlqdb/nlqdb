@@ -46,7 +46,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       const user = await fetchSession(apiBase);
       if (!user) {
         const returnTo = `${location.pathname}${location.search}${location.hash}`;
-        const signInUrl = new URL("/auth/sign-in", location.origin);
+        const signInUrl = new URL("/auth/sign-in/", location.origin);
         signInUrl.searchParams.set("return_to", returnTo);
         location.replace(signInUrl.toString());
         return false;

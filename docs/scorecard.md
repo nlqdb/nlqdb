@@ -110,10 +110,12 @@ trailing-slash form; added `client-nav-integrity.test.ts` (`SK-WEB-022`) as the
 standing guard for the JS-navigation blind-spot, narrowly scoped to the
 string-literal argument of an actual `location.*` call, bare or `window.`-prefixed
 (no false positives on comments/JSX-`href`/route-matchers — the breadth run 75
-rejected). **Measure→change→re-measure:** guard passes clean on the fixed code
-(web 255 tests, +1 vs 254); injecting a bare `/app/new` back fails it naming the
-`file:line`; revert passes again. **Before → after: client-side-nav
-redirects 6 → 0.** **Step 1:** funnel/engine carried from 07-13/07-11 pulls (CF
+rejected). Re-review also fixed the sibling class the guard can't see — auth
+navs built via `new URL("/path")→location.replace`: the 3 `/app`-guard
+`/auth/sign-in` bounces, the `/auth/post-signin` callback, the `/app` default
+landing. **Measure→change→re-measure:** guard passes clean
+(web 255 tests, +1 vs 254); injecting a bare `/app/new` fails it naming the
+`file:line`; revert passes. **Before → after: client-side-nav redirects 6 → 0.** **Step 1:** funnel/engine carried from 07-13/07-11 pulls (CF
 GraphQL / remote-D1 / LLM egress not reachable here) — strangers **0**,
 docs-ambiguity **17** (held), row #18 **0 dead / 0 redirecting** (now incl.
 JS navs). **Artifact (step 3):** queue 2 < 3 → no forced publish; the lesson
