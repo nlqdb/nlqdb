@@ -291,6 +291,9 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
                   key={p.provider}
                   provider={p}
                   activeModel={credential?.provider === p.provider ? credential.model : null}
+                  pendingModel={
+                    keyTarget?.provider.provider === p.provider ? keyTarget.option.model : null
+                  }
                   expanded={openProvider === p.provider}
                   onToggle={() =>
                     setOpenProvider((cur) => (cur === p.provider ? null : p.provider))
@@ -407,6 +410,7 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
 function ProviderRow({
   provider,
   activeModel,
+  pendingModel,
   expanded,
   onToggle,
   onPick,
@@ -414,6 +418,11 @@ function ProviderRow({
 }: {
   provider: CatalogProvider;
   activeModel: string | null;
+  // The model the user just picked for this provider but hasn't yet activated
+  // (its key form is open). Reflected in the sub label + listbox tick so the
+  // collapsed row agrees with the "…to use X" key prompt instead of snapping
+  // back to the flagship default.
+  pendingModel: string | null;
   expanded: boolean;
   onToggle: () => void;
   onPick: (provider: CatalogProvider, option: CatalogModelOption) => void;
@@ -422,9 +431,10 @@ function ProviderRow({
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // The model shown on the collapsed row: the active one if this provider is
-  // active, else the flagship default.
-  const shownModel = activeModel ?? provider.defaultModel;
+  // The model shown on the collapsed row: the one being keyed for if a pick is
+  // pending, else the active one if this provider is active, else the flagship
+  // default.
+  const shownModel = pendingModel ?? activeModel ?? provider.defaultModel;
   const shownLabel =
     provider.models.find((m) => m.model === shownModel)?.label ??
     provider.models[0]?.label ??
@@ -457,7 +467,10 @@ function ProviderRow({
     }
   }
 
-  const isActive = activeModel !== null;
+  // "Active" only when the shown model is the live one. A pending pick (its key
+  // form is open) shows the "key" tag instead — the shown model isn't active
+  // until the key saves, so labelling it "Active" would contradict the form.
+  const isActive = pendingModel === null && activeModel !== null;
 
   return (
     <li className="model-picker__provider">
