@@ -1,6 +1,6 @@
 # nlqdb sub-processors
 
-**Last updated:** 2026-04-25.
+**Last updated:** 2026-07-16.
 
 This page lists the third-party service providers ("sub-processors")
 that may process personal data on our behalf in delivering nlqdb. We
@@ -22,6 +22,7 @@ the body) to receive updates.
 | Sub-processor | Purpose | Region of processing | DPA |
 | :--- | :--- | :--- | :--- |
 | Cloudflare, Inc. | Edge runtime (Workers), DNS, CDN, marketing site (Pages), API gateway, KV / D1 storage, R2 object storage, email routing | Global edge; data-at-rest in US (KV/D1/R2) | https://www.cloudflare.com/cloudflare-customer-dpa/ |
+| tawk.to inc. | In-app support chat widget on the `/app` product pages (chat messages, visitor metadata) | US | https://www.tawk.to/data-protection/dpa-data-processing-addendum/ |
 
 ## Planned sub-processors (not yet active)
 

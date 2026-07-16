@@ -58,14 +58,8 @@ when-to-load:
 
 ### SK-WEB-008 — Demo === real `/v1/ask` with anon bearer; canned fixtures live only in the static carousel
 
-- **Decision:** Supersedes `SK-WEB-004`. The marketing hero, `/app/new`, and any first-party `<nlq-data>` surface all hit `POST /v1/ask` with `Authorization: Bearer anon_<token>` (SK-ANON-008). The `/v1/demo/ask` route is deleted. Canned fixtures continue to exist only in `apps/web/src/components/Carousel.astro` (`SHOWCASE_EXAMPLES`) — pre-rendered HTML strings, no network call. Free-LLM-proxy abuse is prevented by the global anon cap (`SK-ANON-010`, 100/hr / 1000/day / 10k/month) layered on the per-IP buckets (`SK-ANON-004` / `SK-RL-007`).
-- **Core value:** Honest latency, Goal-first, Bullet-proof
-- **Why:** A canned-fixture demo lies by accident the moment a user types something the regex-matcher doesn't recognise — the opposite of SK-WEB-003's "above the fold is runnable proof". (Repro: "Create a new workspace named omer" fell through `demo.ts`'s regexes to the orders default under a *"matching '<your goal>'"* line.) The new posture pays a per-call LLM cost (capped) for the right to never lie. Carousel fixtures keep their place — visibly static "shapes the LLM produces", not "answers to your goal".
-- **Consequence in code:** `/v1/demo/ask` route + CORS rule deleted from `apps/api/src/index.ts`; `parseGoalBody` dropped from `apps/api/src/http.ts`; `apps/api/src/demo.ts` survives only as a library (`buildDemoResult`, imported by `chat/demo-shortcut.ts`, scheduled for retirement). Marketing hero and `/app/new` both render the shared `<CreateForm>` island; the element (`packages/elements`) keeps zero "isDemo" branches — its `endpoint` points at `/v1/ask` for marketing too.
-- **Alternatives rejected:**
-  - A thin `/v1/demo/ask` alias that auto-mints an anon bearer — still a round-trip and splits rate-limit accounting across two paths; cleaner to delete.
-  - Two endpoints with separate caps — two budgets, two SDK shapes, two test suites; the global cap solves abuse without forking surfaces.
-  - Keep canned fixtures but refuse fall-through — honest about limits, but teaches that nlqdb is fixture-bound.
+**Body:** [`decisions/SK-WEB-008-demo-is-real-ask.md`](./decisions/SK-WEB-008-demo-is-real-ask.md).
+Supersedes `SK-WEB-004`: the marketing hero, `/app/new`, and every first-party `<nlq-data>` surface hit real `POST /v1/ask` with an anon bearer (`SK-ANON-008`); `/v1/demo/ask` is deleted; canned fixtures live only in `Carousel.astro`. Abuse is bounded by the global anon cap (`SK-ANON-010`) over the per-IP buckets (`SK-ANON-004` / `SK-RL-007`).
 
 ### SK-WEB-005 — Three-part chat response: answer + data + trace
 
@@ -174,6 +168,11 @@ Every deploy pushes the live sitemap URL list to IndexNow via a `continue-on-err
 
 **Body:** [`decisions/SK-WEB-024-posthog-app-surfaces-only.md`](./decisions/SK-WEB-024-posthog-app-surfaces-only.md).
 posthog-js lazy-loads on `/app/*` only (`AppAnalytics.astro` + `lib/posthog.ts`); marketing stays SDK-free (`GLOBAL-034`). Session replay masks all inputs and the chat list (`data-ph-mask="true"`) so user DB contents are never recorded; the publishable key bakes in via `PUBLIC_POSTHOG_*` in `deploy-web.yml`. Client half of `SK-EVENTS-013`.
+
+### SK-WEB-025 — Tawk.to support chat on the product `/app` surfaces only
+
+**Body:** [`decisions/SK-WEB-025-tawk-support-chat-app-only.md`](./decisions/SK-WEB-025-tawk-support-chat-app-only.md).
+The Tawk.to widget (`SupportChat.astro`, official async snippet) mounts beside `<AppAnalytics />` on the four `/app` pages only — marketing/blog/vs/solve stay third-party-free, same posture as `SK-WEB-024` (`GLOBAL-034`). Tawk hosts are denylisted in `lib/boot-fallback.ts#EXTENSION_PREFIXES` (+ the `Base.astro` hand-copy, drift-pinned) so its throws never trip the boot panel or `/v1/errors/web`. Disclosed in `privacy.astro`, `SUPPORT.md`, and `SUBPROCESSORS.md`.
 
 ## GLOBALs governing this feature
 
