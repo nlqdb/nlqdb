@@ -9,7 +9,10 @@
 # agent-starvation on a probe-healthy pick, run 29144964531), while the NIM pool — same weights,
 # independent $0 dev-program tier, ~40 RPM — ran agent tests in 7.7–25s on both live firings.
 # When the primary lane is unhealthy the pre-flight walks the fallback lane (`fallback_*` inputs;
-# default = the previous 5-candidate OpenRouter `:free` walk).
+# default = the previous 5-candidate OpenRouter `:free` walk), and if THAT is also unhealthy a THIRD
+# independent lane (`fallback2_*` inputs; default = SambaNova Cloud's permanent $0 tier — a distinct
+# pool from NIM + OpenRouter, so it survives the dual-pool saturation that starved run 29298056709).
+# Each lane is a separate upstream free pool; a lane, not a model, is the failure domain.
 # Canonical free-model table + switching guide: docs/features/e2e-coverage/opencheck-operations.md
 
 name: E2E opencheck (reusable)
@@ -45,12 +48,25 @@ on:
         required: false
         type: string
         default: "openai/gpt-oss-120b:free,qwen/qwen3-coder:free,qwen/qwen3-next-80b-a3b-instruct:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-20b:free"
+      fallback2_provider_base_url:
+        description: "Third-provider lane walked only when EVERY primary AND fallback candidate fails the pre-flight. Default SambaNova Cloud ($0 permanent tier, no card, HARD-CAPS at the limit — 429s, never bills, so GLOBAL-013-safe; a pool independent of both NIM and OpenRouter). Caveat: free tier is 20 RPM / 20 RPD / 200K tokens-per-day PER MODEL — enough to run the pre-flight + the bootstrap suite in a dual-saturation window, not a full a→b→c run. See docs/features/e2e-coverage/opencheck-operations.md."
+        required: false
+        type: string
+        default: https://api.sambanova.ai/v1
+      fallback2_candidate_models:
+        description: "Ordered agent-model ids on fallback2_provider_base_url, ALL free per GLOBAL-013. SambaNova free-tier ids are BARE (no `openai/` prefix). Order = proven agent competence first: gpt-oss-120b is the same weights as the only full green run. All three are the SambaNova free production models (each with its own 20 RPD/200K TPD budget)."
+        required: false
+        type: string
+        default: "gpt-oss-120b,Meta-Llama-3.3-70B-Instruct,DeepSeek-V3.1"
     secrets:
       LLM_API_KEY:
         description: "LLM API key for the active provider. Surfaced via OPENAI_API_KEY + provider-specific OPENAI_BASE_URL."
         required: true
       FALLBACK_LLM_API_KEY:
         description: "API key for fallback_provider_base_url. Omit to disable the fallback lane."
+        required: false
+      FALLBACK2_LLM_API_KEY:
+        description: "API key for fallback2_provider_base_url (SambaNova by default). Omit to disable the third lane — it degrades to 'lane disabled', exactly like the fallback lane does when its key is unset."
         required: false
 
 # SK-CIPERM-001 — default-deny at workflow root.
@@ -270,6 +286,9 @@ jobs:
           FALLBACK_BASE_URL: ${{ inputs.fallback_provider_base_url }}
           FALLBACK_CANDIDATE_MODELS: ${{ inputs.fallback_candidate_models }}
           FALLBACK_API_KEY: ${{ secrets.FALLBACK_LLM_API_KEY }}
+          FALLBACK2_BASE_URL: ${{ inputs.fallback2_provider_base_url }}
+          FALLBACK2_CANDIDATE_MODELS: ${{ inputs.fallback2_candidate_models }}
+          FALLBACK2_API_KEY: ${{ secrets.FALLBACK2_LLM_API_KEY }}
         run: |
           set -euo pipefail
           probe() {
@@ -295,9 +314,10 @@ jobs:
             fi
             return 0
           }
-          # Walk one provider lane; on the first healthy model, emit outputs and exit 0.
+          # Walk one provider lane; on the first healthy model, emit outputs (incl. the lane id the
+          # Run step re-points OPENAI_BASE_URL/OPENAI_API_KEY to) and exit 0.
           walk_lane() {
-            local base_url="$1" api_key="$2" models_csv="$3" is_fallback="$4"
+            local base_url="$1" api_key="$2" models_csv="$3" lane="$4"
             local models m i healthy
             IFS=',' read -ra models <<< "${models_csv// /}"
             for m in "${models[@]}"; do
@@ -313,23 +333,31 @@ jobs:
                 [ "$i" -lt 3 ] && sleep 2
               done
               if [ "$healthy" = true ]; then
-                echo "Selected agent model: ${m} on ${base_url}"
+                echo "Selected agent model: ${m} on ${base_url} (lane: ${lane})"
                 echo "model=${m}" >> "$GITHUB_OUTPUT"
-                echo "use_fallback=${is_fallback}" >> "$GITHUB_OUTPUT"
+                echo "lane=${lane}" >> "$GITHUB_OUTPUT"
                 exit 0
               fi
             done
           }
-          walk_lane "${OPENAI_BASE_URL}" "${OPENAI_API_KEY}" "${CANDIDATE_MODELS}" "false"
-          # Each lane is one upstream pool — walk the second provider before giving up.
+          walk_lane "${OPENAI_BASE_URL}" "${OPENAI_API_KEY}" "${CANDIDATE_MODELS}" "primary"
+          # Each lane is one upstream pool — walk the next provider before giving up.
           if [ -n "${FALLBACK_API_KEY}" ] && [ -n "${FALLBACK_CANDIDATE_MODELS}" ]; then
             echo "No primary candidate healthy — walking the fallback provider lane."
-            walk_lane "${FALLBACK_BASE_URL}" "${FALLBACK_API_KEY}" "${FALLBACK_CANDIDATE_MODELS}" "true"
+            walk_lane "${FALLBACK_BASE_URL}" "${FALLBACK_API_KEY}" "${FALLBACK_CANDIDATE_MODELS}" "fallback"
             fallback_state="${FALLBACK_CANDIDATE_MODELS} also unhealthy"
           else
             fallback_state="lane disabled (FALLBACK_LLM_API_KEY unset)"
           fi
-          echo "ERROR: no candidate agent model is healthy right now (primary: ${CANDIDATE_MODELS}; fallback: ${fallback_state}) — aborting before burning the opencheck budget"
+          # Third pool — walked only when both lanes above are down (the run-29298056709 dual-saturation window).
+          if [ -n "${FALLBACK2_API_KEY}" ] && [ -n "${FALLBACK2_CANDIDATE_MODELS}" ]; then
+            echo "No fallback candidate healthy — walking the third provider lane."
+            walk_lane "${FALLBACK2_BASE_URL}" "${FALLBACK2_API_KEY}" "${FALLBACK2_CANDIDATE_MODELS}" "fallback2"
+            fallback2_state="${FALLBACK2_CANDIDATE_MODELS} also unhealthy"
+          else
+            fallback2_state="lane disabled (FALLBACK2_LLM_API_KEY unset)"
+          fi
+          echo "ERROR: no candidate agent model is healthy right now (primary: ${CANDIDATE_MODELS}; fallback: ${fallback_state}; fallback2: ${fallback2_state}) — aborting before burning the opencheck budget"
           exit 1
 
       # opencheck's YAML parser doesn't interpolate env vars — substitute at invocation time into a temp file (keeps working tree clean).
@@ -350,9 +378,11 @@ jobs:
         shell: bash
         # Step-level env re-points the agent at whichever provider lane the
         # pre-flight selected (step env overrides the job-level primary).
+        # GHA ternary chain: fallback2 wins, else fallback, else primary — the
+        # lane defaults are non-empty so each `&&` branch yields a usable value.
         env:
-          OPENAI_BASE_URL: ${{ steps.pick.outputs.use_fallback == 'true' && inputs.fallback_provider_base_url || inputs.provider_base_url }}
-          OPENAI_API_KEY: ${{ steps.pick.outputs.use_fallback == 'true' && secrets.FALLBACK_LLM_API_KEY || secrets.LLM_API_KEY }}
+          OPENAI_BASE_URL: ${{ steps.pick.outputs.lane == 'fallback2' && inputs.fallback2_provider_base_url || steps.pick.outputs.lane == 'fallback' && inputs.fallback_provider_base_url || inputs.provider_base_url }}
+          OPENAI_API_KEY: ${{ steps.pick.outputs.lane == 'fallback2' && secrets.FALLBACK2_LLM_API_KEY || steps.pick.outputs.lane == 'fallback' && secrets.FALLBACK_LLM_API_KEY || secrets.LLM_API_KEY }}
         # `set +e` + PIPESTATUS so a non-zero opencheck exit doesn't kill
         # the job before we can capture the log + upload recordings.
         run: |

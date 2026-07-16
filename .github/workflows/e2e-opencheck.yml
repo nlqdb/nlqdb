@@ -16,7 +16,9 @@
 # _e2e-opencheck.yml's pre-flight: PRIMARY = NVIDIA NIM gpt-oss-120b (NVIDIA_API_KEY, $0 dev tier,
 # ~40 RPM, outside the app's engine chain — raids no app budget); FALLBACK = the ordered OpenRouter
 # `:free` candidate walk (the pre-2026-07-11 primary — its free pool saturates as a unit and flapped
-# past the probe gate: 13 straight failures 07-02 → 07-10, then 216s agent starvation on 07-11).
+# past the probe gate: 13 straight failures 07-02 → 07-10, then 216s agent starvation on 07-11);
+# FALLBACK2 = a 3rd independent $0 pool (SambaNova by default, FALLBACK2_LLM_API_KEY) walked only when
+# BOTH lanes above flap simultaneously (the run-29298056709 dual-saturation window). Unset → disabled.
 # On OpenRouter ONLY a `:free` slug is $0 — a bare slug is PAID (2026-05-21: ~$14 burned).
 # Engine (app-side /v1/ask) = the cerebras-led free chain (SK-LLM-023), NOT Groq; check the DAILY
 # (TPD/RPD) budget of the head before triggering — per-minute headers lie (opencheck-operations.md).
@@ -75,6 +77,9 @@ jobs:
     secrets:
       LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
       FALLBACK_LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      # 3rd independent free pool (SambaNova by default), walked only when NIM + OpenRouter both flap.
+      # Unset today → the lane degrades to "disabled"; set FALLBACK2_LLM_API_KEY to arm it.
+      FALLBACK2_LLM_API_KEY: ${{ secrets.FALLBACK2_LLM_API_KEY }}
 
   # Suite B — Read/Write: sign-in → pin "users" DB by name → trace SQL → insert Alice → read/count/vague/mismatch → CMD+K.
   # Runs whenever the deploy is up and depth != 'a' — EVEN IF Suite A failed. `needs: opencheck-a` is
@@ -98,6 +103,9 @@ jobs:
     secrets:
       LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
       FALLBACK_LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      # 3rd independent free pool (SambaNova by default), walked only when NIM + OpenRouter both flap.
+      # Unset today → the lane degrades to "disabled"; set FALLBACK2_LLM_API_KEY to arm it.
+      FALLBACK2_LLM_API_KEY: ${{ secrets.FALLBACK2_LLM_API_KEY }}
 
   # Suite C — UX/Cleanup: sign-in → pin "users" DB by name → delete-row → create 2nd DB → delete DB → API keys → sign-out → cleanup.
   # Runs at depth abc EVEN IF Suite A or B failed (same order-only `needs`, budget rationale, and
@@ -119,6 +127,9 @@ jobs:
     secrets:
       LLM_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
       FALLBACK_LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      # 3rd independent free pool (SambaNova by default), walked only when NIM + OpenRouter both flap.
+      # Unset today → the lane degrades to "disabled"; set FALLBACK2_LLM_API_KEY to arm it.
+      FALLBACK2_LLM_API_KEY: ${{ secrets.FALLBACK2_LLM_API_KEY }}
 
   cleanup:
     name: Delete Neon branch
