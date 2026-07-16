@@ -50,6 +50,7 @@ import LeftRail from "./LeftRail";
 import ModelPicker, { BYOLLM_STATUS_EVENT } from "./ModelPicker";
 import Palette, { type PaletteAction } from "./Palette";
 import Trace, { type TraceStepName, type TraceStepRecord } from "./Trace";
+import { displayTraceSteps } from "./trace-steps";
 
 interface ChatPanelProps {
   apiBase: string;
@@ -980,7 +981,7 @@ function ReplyView({
         </div>
       ) : null}
       <Trace
-        steps={reply.steps}
+        steps={displayTraceSteps(reply.steps, reply.state.kind)}
         sql={sql}
         explain={null}
         defaultOpen={tracesOpen}
