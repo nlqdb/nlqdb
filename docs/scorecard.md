@@ -23,18 +23,18 @@ falsified the "clean window" hypothesis; full detail + run link in row #15).
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
-agent-controllable inputs). **Run 81 pulls priority-1 (real UX-flow quality):**
-fixed a trust-UX defect on the stranger "Copy snippet" CTA (`SK-WEB-007`) — a
-clipboard-write failure told a user *with a valid key* to "sign in to load your
-key", misdiagnosing a browser clipboard/permission error as an auth wall (which
-`SK-WEB-007` explicitly forbids on Copy snippet). See _Last change_. **Step 0:**
-open **PR #705** (run 80) holds the sibling chat-trace lever; it touches
-`ChatPanel.tsx` + `trace-steps.*` only and **explicitly deferred** the
-`CopySnippet` fix (one lever/run) — this run takes that deferred, non-overlapping
-follow-up. **Rule 6 (re-verified this run):** CI + all deploy/release/security
-workflows `success` on `main` `2c49646` (#704); no red-main / stale-deploy lever
-(the local `@nlqdb/eval` reds were a missing-`@opentelemetry/api` install gap in
-the ephemeral container, cleared by `bun install`, not a code failure).
+agent-controllable inputs). **Run 82 pulls priority-1 (real UX-flow quality):**
+killed the highest-stakes silent-copy failure in the app — the `/app/keys`
+minted-key dialog (`SK-APIKEYS-012`, display-once) swallowed a
+`navigator.clipboard.writeText` rejection, so a user could click "Done"
+(discarding the one-time plaintext **permanently**) believing they had copied
+their `sk_live_` key. Now the failure surfaces an actionable warning
+(`copy-key-feedback.ts`, the run-81 pure-resolver pattern). See _Last change_.
+**Step 0:** **no open PRs** (runs 80 #705 + 81 #706 both merged); branch reset to
+`origin/main` `8ec7eaf`, no overlap. **Rule 6 (re-verified this run):** CI + all
+`deploy-*` + security workflows `success` on `main` `8ec7eaf`; no red-main /
+stale-deploy lever. Live surfaces healthy this run: **all 111 sitemap URLs → 200**,
+cross-app docs links (`/security/`, `/mcp/`, `/llms.txt`) → 200 (row #18/#19).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -86,33 +86,35 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-15 (run 81)** — **priority-1 UX-flow lever: killed a trust-UX
-misdiagnosis on the stranger "Copy snippet" CTA (`SK-WEB-007`).** **Before:**
-`CopySnippet` collapsed two unrelated failures into one `"failed"` state always
-labelled *"Couldn't copy — sign in to load your key."* — so a user with a valid
-`pk_live_` whose `navigator.clipboard.writeText` **threw** (permission denied,
-non-secure context, lost focus) was told to sign in. `SK-WEB-007` explicitly
-forbids a sign-in wall on Copy snippet ("breaks the no-login-wall promise"), so
-this lied about the cause and implied the exact wall the decision rejects.
-**Change:** split into `"no-key"` (the only case where signing in helps — no
-`pk_live_` resolvable) and `"copy-failed"` (valid key, clipboard threw →
-*"Couldn't copy to clipboard — try again."*, no sign-in mention); extracted the
-label map into pure resolver `copy-snippet-label.ts` (SK-WEB-005 pattern, mirrors
-`trace-steps.ts`) + updated the `.copy-snippet[data-state=…]` CSS for both states.
-No new decision ID — direct `SK-WEB-007` implementation (D5). **After:** guard
-`copy-snippet-label.test.ts` **4/4** — key assertion: `copySnippetLabel(
-"copy-failed")` no longer contains "sign in"; web suite **265/265**; workspace
-typecheck green; `astro check` 0 errors; lint clean. **Rule 6:** CI + all
-deploy/release/security workflows `success` on `main` `2c49646` (#704); the local
-`@nlqdb/eval` reds were a missing `@opentelemetry/api` (container install gap,
-cleared by `bun install`), not red main. **Step 0:** open **PR #705** (run 80)
-took the sibling chat-trace lever and **explicitly deferred** this fix (one
-lever/run); it touches `ChatPanel.tsx` + `trace-steps.*` only — zero overlap.
+**2026-07-16 (run 82)** — **priority-1 UX-flow lever: killed the app's
+highest-stakes silent-copy failure — the `/app/keys` minted-key dialog
+(`SK-APIKEYS-012`, display-once).** **Before:** `NewKeyDialog.copyKey()` caught a
+`navigator.clipboard.writeText` rejection and **swallowed it silently** — the
+button stayed "Copy", no feedback. The dialog is display-once ("This is the only
+time the plaintext will appear… closing discards it permanently… no path to
+retrieve it later"), so a user whose clipboard write failed (permission/focus/
+non-secure) could click "Done" believing they had copied their `sk_live_` key and
+**lose it permanently**. `SK-APIKEYS-012`'s clipboard clause leans on the
+still-selectable plaintext as the fallback — but that only helps if the user
+*knows* the copy failed. **Change:** replaced the `copied` boolean with a
+`copyState` tri-state (`idle|copied|failed`); on catch → `"failed"` renders a
+visible `role="alert"` warning (*"Couldn't copy… select the key above and copy it
+manually before closing this dialog."*) and a "Retry copy" button. Extracted the
+state→UI map into pure resolver `copy-key-feedback.ts` (the run-81
+`copy-snippet-label.ts` pattern), reusing the existing `.keys-dialog__status--error`
+chrome. No new decision — direct `SK-APIKEYS-012` implementation, faithful to its
+"Bullet-proof / Honest" core value (D5). Distinct surface from runs 80/81 (chat) —
+not monoculture. **After:** guard `copy-key-feedback.test.ts` **3/3** (key
+assertion: `copyKeyFeedback("failed").warning` is non-null and names "manually"
++ "before closing"); web suite **275/275**; workspace typecheck green; `astro
+check` 0 errors; lint clean (exit 0, my files 0 warnings). **Rule 6:** CI + all
+`deploy-*` + security `success` on `main` `8ec7eaf`. **Step 0:** no open PRs.
 **Artifact (step 3):** skipped — queue **2** (< 3-deep threshold). **Step 1
-(carried):** funnel/engine from 07-13/07-11 pulls (egress not reachable here) —
-strangers **0**, docs-ambiguity **15**, row #18 **0 dead / 0 redirecting**, row #6
-**100** / queue **2**. **KPI (GLOBAL-025):** advances **UX / trust** (`SK-WEB-007`
-no-login-wall promise); engine/onboarding/performance/distribution **unchanged**.
+(carried, egress-gated):** funnel/engine from 07-13/07-11 (api.nlqdb.com 502
+policy-denied here) — strangers **0**, docs-ambiguity **15**, row #6 **100** /
+queue **2**; live-verified this run: **111/111 sitemap URLs → 200**, cross-app
+docs → 200. **KPI (GLOBAL-025):** advances **UX / trust** (honest failure on the
+credential-copy path); engine/onboarding/performance/distribution **unchanged**.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

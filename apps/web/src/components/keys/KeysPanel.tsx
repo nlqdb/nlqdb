@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getChatClient } from "../../lib/chat-client";
 import { useFocusTrap, useRestoreFocusOnUnmount } from "../../lib/dialog";
 import ErrorBoundary from "../ErrorBoundary";
+import { type CopyKeyState, copyKeyFeedback } from "./copy-key-feedback";
 import { groupKeys, summarizeKey } from "./group";
 
 interface KeysPanelProps {
@@ -260,7 +261,7 @@ function NewKeyDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [minted, setMinted] = useState<{ id: string; key: string; last4: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<CopyKeyState>("idle");
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -335,13 +336,18 @@ function NewKeyDialog({
     if (!minted) return;
     try {
       await navigator.clipboard.writeText(minted.key);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 1500);
     } catch {
-      // Clipboard rejection is recoverable — the plaintext is still
-      // visible and `user-select: all` lets the user keyboard-copy.
+      // Clipboard rejection is recoverable — the plaintext is still visible
+      // and `user-select: all` lets the user keyboard-copy. But the user only
+      // falls back if they KNOW the copy failed: surface it, or they close the
+      // dialog (discarding the one-time plaintext) believing they copied it.
+      setCopyState("failed");
     }
   }
+
+  const copyFb = copyKeyFeedback(copyState);
 
   return (
     <div
@@ -365,15 +371,19 @@ function NewKeyDialog({
               <code className="keys-dialog__plaintext" data-testid="keys-mint-plaintext">
                 {minted.key}
               </code>
-              <button
-                type="button"
-                className="btn"
-                onClick={copyKey}
-                aria-label={copied ? "Key copied to clipboard" : "Copy key to clipboard"}
-              >
-                {copied ? "Copied" : "Copy"}
+              <button type="button" className="btn" onClick={copyKey} aria-label={copyFb.ariaLabel}>
+                {copyFb.label}
               </button>
             </div>
+            {copyFb.warning && (
+              <p
+                className="keys-dialog__status keys-dialog__status--error"
+                role="alert"
+                data-testid="keys-mint-copy-warning"
+              >
+                {copyFb.warning}
+              </p>
+            )}
             <p className="keys-dialog__hint">
               Ends in <code>{minted.last4}</code>. If you lose it, mint a fresh one and revoke this
               row — there is no path to retrieve it later.
