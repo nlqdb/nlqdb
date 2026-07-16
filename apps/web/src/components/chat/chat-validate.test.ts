@@ -76,6 +76,24 @@ describe("isValidMessage — created state", () => {
       isValidMessage(withState({ kind: "created", displayName: "orders", dbId: "db_1" })),
     ).toBe(false);
   });
+
+  test("rejects created with malformed sampleRows element (would crash groupByTable)", () => {
+    expect(
+      isValidMessage(
+        withState({ kind: "created", displayName: "orders", dbId: "db_1", sampleRows: [null] }),
+      ),
+    ).toBe(false);
+    expect(
+      isValidMessage(
+        withState({
+          kind: "created",
+          displayName: "orders",
+          dbId: "db_1",
+          sampleRows: [{ table: "orders" }],
+        }),
+      ),
+    ).toBe(false);
+  });
 });
 
 describe("isValidMessage — ambiguous state", () => {
