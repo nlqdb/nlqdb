@@ -26,17 +26,17 @@ falsified the "clean window" hypothesis; full detail + run link in row #15).
 test/dev, newest registration 07-06, none since; lagging, moved only through
 agent-controllable inputs). **Run 86 is a NULL RUN (step 2):** no lever cleared
 the bar — rule 7 blocks a 7th UX-flow pull (runs 80–85), distribution is owned by
-open **PR #711**, engine is unmeasurable from this egress-gated container (row #70),
-and docs-ambiguity's 15 bullets are genuine deferrals. Full reasoning + step-1
-refresh in _Last change_. **Step 0:** PR #711
-(`claude/repo-build-icp-acquisition-3tlhj6`, draft) owns web-app / deploy-web /
+open **PR #711**, engine is unmeasurable from this egress-gated container
+(`SK-QUAL-023` row), and docs-ambiguity's 15 bullets are genuine deferrals. Full
+reasoning + step-1 refresh in _Last change_. **Step 0:** PR #711
+(`claude/repo-build-icp-acquisition-3tlhj6`) owns web-app / deploy-web /
 sitemap — this run touches only `docs/scorecard.md`, zero overlap. **Rule 6:** CI +
-all 9 deploy/publish/security workflows `success` on `main` `0d0abc9` (07-16); no
-red-main / stale-deploy lever.
+all 11 deploy/publish/security workflows' latest `main` runs `success` (07-16,
+head `0d0abc9`); no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel** (fresh 07-13 02:58Z pull — CF GraphQL + remote D1) | | exclude synthetic stranger-test walker traffic |
+| | **Funnel** (visits 07-13 02:58Z CF GraphQL; users/DBs 07-16 remote D1) | | exclude synthetic stranger-test walker traffic |
 | 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** (Chrome 41, ChromeMobile 3, MobileSafari 2, Firefox 2, Edge 1) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield (owned by PR #711) |
 | 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
@@ -51,7 +51,7 @@ red-main / stale-deploy lever.
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-16 run 86):** all 9 workflows (CI, all `deploy-*`, `deploy-canary`, `release-npm`, `security`) **green on `main`** (`0d0abc9`; deploy-mcp stalest at 07-14 but passing); no red-main / stale-deploy lever |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-16 run 86):** all 12 workflows (CI, the 9 `deploy-*`, `release-npm`, `security`) **green on `main`** (push-triggered six on `0d0abc9`; path-filtered rest older but passing, stalest `deploy-coming-soon` 07-02); no red-main / stale-deploy lever |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
@@ -91,18 +91,18 @@ priority-1 UX-flow frontend fixes (chat trace/sample-tables, keys clipboard,
 CopySnippet, sign-in hint), so **rule 7 forbids a 7th** identical pull, and the
 category's yield can't be measured either (its only external signal is the funnel,
 still stranger-N=0). **(2) Distribution is owned by open PR #711**
-(`claude/repo-build-icp-acquisition-3tlhj6`, draft — IndexNow push-on-deploy +
+(`claude/repo-build-icp-acquisition-3tlhj6` — IndexNow push-on-deploy +
 sitemap `lastmod`); overlapping its web-app/deploy files is forbidden by step 0.
 **(3) Engine — the worst absolute numbers (BIRD 0.546 < 0.60 floor, Spider
 0.2963) — is unmeasurable from this daily container:** it is egress-gated for the
-free LLM lanes (row #70), so the mandatory step-3 same-seed re-measure cannot run
-here; an engine change I couldn't measure would violate step 3. **(4)
+free LLM lanes (`SK-QUAL-023` row), so the mandatory rule-3 same-seed re-measure
+cannot run here; an engine change I couldn't measure would violate rule 3. **(4)
 Docs-ambiguity (15)** — the remaining bullets are all genuine parked-until-trigger
 or infra-/human-gated deferrals (Lago, Stripe live cutover, self-host container,
 device-flow endpoints, OpenAPI schema); resolving them means reclassifying
 phrasing, which run 78 already correctly called a miscount fix, not a resolved
 question — metric-gaming, not value. **Rule 6 clear:** main `0d0abc9` is green
-across CI + all 9 deploy/publish/security workflows (07-16). **Step-1 refresh
+across CI + all 11 deploy/publish/security workflows (07-16). **Step-1 refresh
 (genuine 07-16 remote-D1 pull via CF API):** registered users **9**, real
 strangers **0** (newest registration 07-06, none since); DBs total **223 → 251**
 (synthetic walker/preview traffic); docs-ambiguity **15** (fresh grep);
