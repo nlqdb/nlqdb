@@ -39,6 +39,8 @@ describe("isValidMessage — user role", () => {
 });
 
 describe("isValidMessage — created state", () => {
+  const createdTrace = { sql: "CREATE TABLE orders (id int)", plan_id: "p_create" };
+
   test("accepts created with all required fields", () => {
     expect(
       isValidMessage(
@@ -47,6 +49,7 @@ describe("isValidMessage — created state", () => {
           displayName: "orders tracker",
           dbId: "db_1",
           sampleRows: [{ table: "orders", values: { id: 1 } }],
+          trace: createdTrace,
         }),
       ),
     ).toBe(true);
@@ -58,6 +61,30 @@ describe("isValidMessage — created state", () => {
     );
   });
 
+  // SK-TRUST-002 — the trace pane renders `trace.plan_id`; a created
+  // reply persisted without a valid trace is dropped, not rendered blank.
+  test("rejects created missing trace", () => {
+    expect(
+      isValidMessage(
+        withState({ kind: "created", displayName: "orders", dbId: "db_1", sampleRows: [] }),
+      ),
+    ).toBe(false);
+  });
+
+  test("rejects created whose trace lacks plan_id", () => {
+    expect(
+      isValidMessage(
+        withState({
+          kind: "created",
+          displayName: "orders",
+          dbId: "db_1",
+          sampleRows: [],
+          trace: { sql: "CREATE TABLE orders (id int)" },
+        }),
+      ),
+    ).toBe(false);
+  });
+
   test("rejects created with non-array sampleRows", () => {
     expect(
       isValidMessage(
@@ -66,6 +93,7 @@ describe("isValidMessage — created state", () => {
           displayName: "orders",
           dbId: "db_1",
           sampleRows: 12,
+          trace: createdTrace,
         }),
       ),
     ).toBe(false);
@@ -73,14 +101,22 @@ describe("isValidMessage — created state", () => {
 
   test("rejects created missing sampleRows", () => {
     expect(
-      isValidMessage(withState({ kind: "created", displayName: "orders", dbId: "db_1" })),
+      isValidMessage(
+        withState({ kind: "created", displayName: "orders", dbId: "db_1", trace: createdTrace }),
+      ),
     ).toBe(false);
   });
 
   test("rejects created with malformed sampleRows element (would crash groupByTable)", () => {
     expect(
       isValidMessage(
-        withState({ kind: "created", displayName: "orders", dbId: "db_1", sampleRows: [null] }),
+        withState({
+          kind: "created",
+          displayName: "orders",
+          dbId: "db_1",
+          sampleRows: [null],
+          trace: createdTrace,
+        }),
       ),
     ).toBe(false);
     expect(
@@ -90,6 +126,7 @@ describe("isValidMessage — created state", () => {
           displayName: "orders",
           dbId: "db_1",
           sampleRows: [{ table: "orders" }],
+          trace: createdTrace,
         }),
       ),
     ).toBe(false);

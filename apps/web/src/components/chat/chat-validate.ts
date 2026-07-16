@@ -39,6 +39,14 @@ function isValidReplyState(s: Record<string, unknown>): boolean {
       // would crash `groupByTable`'s `row.table` access, so validate each
       // entry's shape like `ambiguous` below, not just the outer array.
       if (typeof s["displayName"] !== "string" || typeof s["dbId"] !== "string") return false;
+      // SK-TRUST-002 — the created reply's trace pane renders
+      // `trace.plan_id` directly (same as the `ok` gate above); drop an
+      // entry whose persisted trace is missing or lacks a string plan_id
+      // rather than print `undefined` into the pane.
+      {
+        const t = s["trace"] as Record<string, unknown> | undefined;
+        if (!t || typeof t !== "object" || typeof t["plan_id"] !== "string") return false;
+      }
       if (!Array.isArray(s["sampleRows"])) return false;
       return s["sampleRows"].every(
         (row) =>
