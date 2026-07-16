@@ -46,39 +46,51 @@ describe("isValidMessage — created state", () => {
           kind: "created",
           displayName: "orders tracker",
           dbId: "db_1",
-          tableCount: 3,
-          sampleRowCount: 12,
+          sampleRows: [{ table: "orders", values: { id: 1 } }],
         }),
       ),
     ).toBe(true);
   });
 
   test("rejects created missing displayName", () => {
-    expect(
-      isValidMessage(
-        withState({ kind: "created", dbId: "db_1", tableCount: 3, sampleRowCount: 12 }),
-      ),
-    ).toBe(false);
+    expect(isValidMessage(withState({ kind: "created", dbId: "db_1", sampleRows: [] }))).toBe(
+      false,
+    );
   });
 
-  test("rejects created with non-numeric tableCount", () => {
+  test("rejects created with non-array sampleRows", () => {
     expect(
       isValidMessage(
         withState({
           kind: "created",
           displayName: "orders",
           dbId: "db_1",
-          tableCount: "3",
-          sampleRowCount: 12,
+          sampleRows: 12,
         }),
       ),
     ).toBe(false);
   });
 
-  test("rejects created missing sampleRowCount", () => {
+  test("rejects created missing sampleRows", () => {
+    expect(
+      isValidMessage(withState({ kind: "created", displayName: "orders", dbId: "db_1" })),
+    ).toBe(false);
+  });
+
+  test("rejects created with malformed sampleRows element (would crash groupByTable)", () => {
     expect(
       isValidMessage(
-        withState({ kind: "created", displayName: "orders", dbId: "db_1", tableCount: 3 }),
+        withState({ kind: "created", displayName: "orders", dbId: "db_1", sampleRows: [null] }),
+      ),
+    ).toBe(false);
+    expect(
+      isValidMessage(
+        withState({
+          kind: "created",
+          displayName: "orders",
+          dbId: "db_1",
+          sampleRows: [{ table: "orders" }],
+        }),
       ),
     ).toBe(false);
   });

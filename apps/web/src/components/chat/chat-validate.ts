@@ -33,13 +33,22 @@ function isValidReplyState(s: Record<string, unknown>): boolean {
       // Same is true for `pending` / `clarify` / `ambiguous` below.
       // The check here just gates "well-formed enough to normalise".
       return !!s["diff"] && typeof s["diff"] === "object";
-    case "created":
-      return (
-        typeof s["displayName"] === "string" &&
-        typeof s["dbId"] === "string" &&
-        typeof s["tableCount"] === "number" &&
-        typeof s["sampleRowCount"] === "number"
+    case "created": {
+      // The `created` reply renders `groupByTable(sampleRows)` into sample
+      // tables — a non-array element (`null`, missing `table`/`values`)
+      // would crash `groupByTable`'s `row.table` access, so validate each
+      // entry's shape like `ambiguous` below, not just the outer array.
+      if (typeof s["displayName"] !== "string" || typeof s["dbId"] !== "string") return false;
+      if (!Array.isArray(s["sampleRows"])) return false;
+      return s["sampleRows"].every(
+        (row) =>
+          !!row &&
+          typeof row === "object" &&
+          typeof (row as Record<string, unknown>)["table"] === "string" &&
+          !!(row as Record<string, unknown>)["values"] &&
+          typeof (row as Record<string, unknown>)["values"] === "object",
       );
+    }
     case "ambiguous": {
       if (!Array.isArray(s["candidates"])) return false;
       if (typeof s["reason"] !== "string") return false;

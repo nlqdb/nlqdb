@@ -39,6 +39,7 @@ import { getChatClient } from "../../lib/chat-client";
 import { deriveSlug, displayName } from "../../lib/names";
 import { clearPending, loadPending } from "../../lib/prompt-storage";
 import ErrorBoundary from "../ErrorBoundary";
+import { groupByTable, SampleTable } from "../SampleTable";
 import Answer from "./Answer";
 import CopySnippet from "./CopySnippet";
 import { matchesValidMessageShape } from "./chat-validate";
@@ -61,14 +62,14 @@ type ReplyState =
   | { kind: "ok"; ok: AskOk }
   | { kind: "needs-confirm"; diff: AskDiff; pending: AskOk | null }
   // SK-HDC-001 + SK-ASK-009: kind=create response shape — surfaced
-  // as a distinct reply state so the user sees what got created
-  // (display name + sample rows hint) rather than an empty `AskOk`.
+  // as a distinct reply state carrying the real sample rows so the user
+  // sees what got created (display name + the actual seeded tables,
+  // matching the marketing CreateForm) rather than an empty `AskOk`.
   | {
       kind: "created";
       displayName: string;
       dbId: string;
-      tableCount: number;
-      sampleRowCount: number;
+      sampleRows: { table: string; values: Record<string, unknown> }[];
     }
   // SK-ASK-009: 2+ DBs and the disambiguator's confidence was below
   // the floor — render an explicit picker so the user can pin the
@@ -408,16 +409,13 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
           setActiveDbId(result.db);
           setNewlyCreatedDb(dbSummary);
           syncDbIdToUrl(result.db);
-          const tableCount = new Set(result.sampleRows.map((r) => r.table)).size;
-          const sampleRowCount = result.sampleRows.length;
           updateReply(replyId, (reply) => ({
             ...reply,
             state: {
               kind: "created",
               displayName: result.displayName,
               dbId: result.db,
-              tableCount,
-              sampleRowCount,
+              sampleRows: result.sampleRows,
             },
           }));
           return;
@@ -910,13 +908,24 @@ function ReplyView({
           </span>
         </p>
       ) : null}
-      {created ? (
-        <p className="chat-reply__created" role="status">
-          Created database <code>{created.displayName}</code> with {created.tableCount} table
-          {created.tableCount === 1 ? "" : "s"} and {created.sampleRowCount} sample row
-          {created.sampleRowCount === 1 ? "" : "s"}. Pinned to this conversation.
-        </p>
-      ) : null}
+      {created
+        ? (() => {
+            const grouped = groupByTable(created.sampleRows);
+            const rowCount = created.sampleRows.length;
+            return (
+              <div className="chat-reply__created">
+                <p className="chat-reply__created-line" role="status">
+                  Created database <code>{created.displayName}</code> with {grouped.length} table
+                  {grouped.length === 1 ? "" : "s"} and {rowCount} sample row
+                  {rowCount === 1 ? "" : "s"}. Pinned to this conversation.
+                </p>
+                {grouped.map((tbl) => (
+                  <SampleTable key={tbl.table} table={tbl.table} rows={tbl.rows} />
+                ))}
+              </div>
+            );
+          })()
+        : null}
       {ambiguous ? (
         <div className="chat-reply__ambiguous">
           <p className="chat-reply__ambiguous-prompt">

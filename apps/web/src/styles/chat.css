@@ -819,6 +819,19 @@
   color: #ff7b7b;
 }
 
+/* Create reply (SK-HDC-001) — the "Created X" line plus the reused
+   createresult__* sample tables so the in-chat create shows real seeded
+   data, matching the marketing CreateForm. */
+.chat-reply__created {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-reply__created-line {
+  margin: 0;
+}
+
 /* Free-model nudge (SK-PREMIUM-004) — short warning + switch CTA below a
    reply the free chain struggled on. */
 .chat-reply__free-nudge {
