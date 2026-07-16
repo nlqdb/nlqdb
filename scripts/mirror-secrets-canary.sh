@@ -22,11 +22,9 @@
 #   CANARY_OAUTH_GITHUB_CLIENT_ID    → OAUTH_GITHUB_CLIENT_ID
 #   CANARY_OAUTH_GITHUB_CLIENT_SECRET→ OAUTH_GITHUB_CLIENT_SECRET
 #
-# The GitHub OAuth App for canary isn't registered yet (docs/blocked-by-human.md
-# canary bullet), so the CANARY_OAUTH_GITHUB_* halves are usually unset — the
-# script skips unset names cleanly, so it works TODAY for Google and LATER for
-# GitHub with no edit: register the App, add the two CANARY_OAUTH_GITHUB_* to
-# .envrc, re-run.
+# Unset CANARY_* names are skipped cleanly, so the script works with whatever
+# subset of providers is registered; the live verification below only probes
+# providers whose pair was present.
 #
 # Run on the founder's machine after registering the canary OAuth client(s)
 # and adding the CANARY_* values to .envrc. See docs/runbook.md §4.
@@ -157,6 +155,20 @@ if echo "$social_body" | grep -q 'accounts\.google\.com'; then
 else
   fail "google sign-in" "no accounts.google.com URL in response — provider not configured on canary — FAIL"
   fail_count=$((fail_count + 1))
+fi
+
+# 3. GitHub sign-in leg — same probe, only when the pair was mirrored.
+if [[ -n "${CANARY_OAUTH_GITHUB_CLIENT_ID:-}" ]]; then
+  social_body=$(curl -s -m 15 \
+    -H "Content-Type: application/json" \
+    -d '{"provider":"github","callbackURL":"/"}' \
+    "$CANARY_HOST/api/auth/sign-in/social" 2>/dev/null || echo "")
+  if echo "$social_body" | grep -q 'github\.com/login/oauth'; then
+    ok "github sign-in: POST /api/auth/sign-in/social returns a github auth URL — PASS"
+  else
+    fail "github sign-in" "no github.com/login/oauth URL in response — provider not configured on canary — FAIL"
+    fail_count=$((fail_count + 1))
+  fi
 fi
 
 echo ""
