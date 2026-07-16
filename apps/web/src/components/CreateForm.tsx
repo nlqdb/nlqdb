@@ -28,7 +28,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { CREATE_STARTERS, type CreateStarter } from "../data/create-starters";
-import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
+import { type CreateError, type CreateResult, postAskCreate } from "../lib/api";
 import { messageFor } from "../lib/create-errors";
 import { makeDropoffFunnel } from "../lib/dropoff";
 import { attachHandoff } from "../lib/handoff";
@@ -40,17 +40,15 @@ import {
   makeDraftSaver,
   savePending,
 } from "../lib/prompt-storage";
-import { prettifyHeader } from "../lib/text";
 import { makeTtfvOnce } from "../lib/ttfv";
 import { solveChallenge } from "../lib/turnstile";
 import ErrorBoundary from "./ErrorBoundary";
 import McpInstallView from "./McpInstallView";
+import { groupByTable, SampleTable } from "./SampleTable";
 
 interface CreateFormProps {
   apiBase: string;
 }
-
-const MAX_ROWS_RENDERED = 5;
 
 const draftSaver = makeDraftSaver();
 
@@ -377,69 +375,6 @@ function CreateSnippetView({ primaryTable }: { primaryTable: string | undefined 
       </a>
     </section>
   );
-}
-
-function groupByTable(rows: CreateResult["sampleRows"]): { table: string; rows: CreateRow[] }[] {
-  const groups = new Map<string, CreateRow[]>();
-  for (const row of rows) {
-    const list = groups.get(row.table) ?? [];
-    list.push(row.values);
-    groups.set(row.table, list);
-  }
-  return Array.from(groups, ([table, rows]) => ({ table, rows }));
-}
-
-function SampleTable({
-  table,
-  rows,
-}: {
-  table: string;
-  rows: { [key: string]: string | number | boolean | null }[];
-}) {
-  const firstRow = rows[0];
-  if (!firstRow) {
-    return (
-      <div className="createresult__table-wrap">
-        <h3 className="createresult__table-name">{prettifyHeader(table)}</h3>
-        <p className="createresult__empty">No sample rows.</p>
-      </div>
-    );
-  }
-  const columns = Object.keys(firstRow);
-  const visible = rows.slice(0, MAX_ROWS_RENDERED);
-  return (
-    <div className="createresult__table-wrap">
-      <h3 className="createresult__table-name">{prettifyHeader(table)}</h3>
-      <div className="createresult__tablewrap">
-        <table className="createresult__table">
-          <thead>
-            <tr>
-              {columns.map((c) => (
-                <th key={c}>{prettifyHeader(c)}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((row) => (
-              <tr key={columns.map((c) => formatCell(row[c])).join("​")}>
-                {columns.map((c) => (
-                  <td key={c}>{formatCell(row[c])}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {rows.length > MAX_ROWS_RENDERED && (
-        <p className="createresult__more">+ {rows.length - MAX_ROWS_RENDERED} more rows</p>
-      )}
-    </div>
-  );
-}
-
-function formatCell(value: string | number | boolean | null | undefined): string {
-  if (value == null) return "—";
-  return String(value);
 }
 
 // SK-ANON-011 / WS02-T3: mark that a pending prompt is expected after

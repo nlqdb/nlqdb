@@ -23,18 +23,17 @@ falsified the "clean window" hypothesis; full detail + run link in row #15).
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
-agent-controllable inputs). **Run 82 pulls priority-1 (real UX-flow quality):**
-killed the highest-stakes silent-copy failure in the app — the `/app/keys`
-minted-key dialog (`SK-APIKEYS-012`, display-once) swallowed a
-`navigator.clipboard.writeText` rejection, so a user could click "Done"
-(discarding the one-time plaintext **permanently**) believing they had copied
-their `sk_live_` key. Now the failure surfaces an actionable warning
-(`copy-key-feedback.ts`, the run-81 pure-resolver pattern). See _Last change_.
-**Step 0:** **no open PRs** (runs 80 #705 + 81 #706 both merged); branch reset to
-`origin/main` `8ec7eaf`, no overlap. **Rule 6 (re-verified this run):** CI + all
-`deploy-*` + security workflows `success` on `main` `8ec7eaf`; no red-main /
-stale-deploy lever. Live surfaces healthy this run: **all 111 sitemap URLs → 200**,
-cross-app docs links (`/security/`, `/mcp/`, `/llms.txt`) → 200 (row #18/#19).
+agent-controllable inputs). **Run 83 pulls priority-1 (real UX-flow quality):**
+the in-chat create reply (`/app`, `kind=create`) showed only *counts* ("N tables
+and M sample rows") and **threw away the real seeded rows the API returns** — even
+though the marketing CreateForm renders them. A stranger who creates their first
+DB in chat saw no data at their first "did it work?" moment. Now the chat renders
+the actual sample tables, reusing CreateForm's `SampleTable` (extracted to shared
+`SampleTable.tsx` + pure `sample-rows.ts`, so the surfaces can't drift — P5).
+See _Last change_. **Step 0:** the run-82 `/app/keys` clipboard lever
+(`NewKeyDialog` only) merged as **PR #707** — zero overlap; this run stepped
+**off** the run-80/81/82 clipboard cluster (rule 7). **Rule 6:** CI +
+`deploy-web` `success` on `main` `8ec7eaf` (#705); no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -86,35 +85,32 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-16 (run 82)** — **priority-1 UX-flow lever: killed the app's
-highest-stakes silent-copy failure — the `/app/keys` minted-key dialog
-(`SK-APIKEYS-012`, display-once).** **Before:** `NewKeyDialog.copyKey()` caught a
-`navigator.clipboard.writeText` rejection and **swallowed it silently** — the
-button stayed "Copy", no feedback. The dialog is display-once ("This is the only
-time the plaintext will appear… closing discards it permanently… no path to
-retrieve it later"), so a user whose clipboard write failed (permission/focus/
-non-secure) could click "Done" believing they had copied their `sk_live_` key and
-**lose it permanently**. `SK-APIKEYS-012`'s clipboard clause leans on the
-still-selectable plaintext as the fallback — but that only helps if the user
-*knows* the copy failed. **Change:** replaced the `copied` boolean with a
-`copyState` tri-state (`idle|copied|failed`); on catch → `"failed"` renders a
-visible `role="alert"` warning (*"Couldn't copy… select the key above and copy it
-manually before closing this dialog."*) and a "Retry copy" button. Extracted the
-state→UI map into pure resolver `copy-key-feedback.ts` (the run-81
-`copy-snippet-label.ts` pattern), reusing the existing `.keys-dialog__status--error`
-chrome. No new decision — direct `SK-APIKEYS-012` implementation, faithful to its
-"Bullet-proof / Honest" core value (D5). Distinct surface from runs 80/81 (chat) —
-not monoculture. **After:** guard `copy-key-feedback.test.ts` **3/3** (key
-assertion: `copyKeyFeedback("failed").warning` is non-null and names "manually"
-+ "before closing"); web suite **275/275**; workspace typecheck green; `astro
-check` 0 errors; lint clean (exit 0, my files 0 warnings). **Rule 6:** CI + all
-`deploy-*` + security `success` on `main` `8ec7eaf`. **Step 0:** no open PRs.
-**Artifact (step 3):** skipped — queue **2** (< 3-deep threshold). **Step 1
-(carried, egress-gated):** funnel/engine from 07-13/07-11 (api.nlqdb.com 502
-policy-denied here) — strangers **0**, docs-ambiguity **15**, row #6 **100** /
-queue **2**; live-verified this run: **111/111 sitemap URLs → 200**, cross-app
-docs → 200. **KPI (GLOBAL-025):** advances **UX / trust** (honest failure on the
-credential-copy path); engine/onboarding/performance/distribution **unchanged**.
+**2026-07-16 (run 83)** — **priority-1 UX-flow lever: the in-chat create reply
+now shows the real seeded sample tables, not just counts.** **Before:** on the
+`/app` chat `kind=create` path, `ChatPanel` reduced the API's `sampleRows` to
+`tableCount`/`sampleRowCount` and rendered one line — *"Created database X with N
+tables and M sample rows. Pinned to this conversation."* — **discarding the actual
+rows the create response returns**. The marketing `CreateForm` already renders
+those rows (`SampleTable`), so the in-chat create — a stranger's real first "did
+it work?" moment — was strictly worse: counts, no data. No decision mandated the
+compact form (the "sample rows hint" comment was just the old implementation; no
+P1 conflict — SK-HDC-001/SK-ASK-009 don't constrain the reply body; rendering rows
+aligns with GLOBAL-020 "returns rows"). **Change (P5 reuse, no new decision — D5):**
+extracted `SampleTable`/`formatCell` into shared `SampleTable.tsx` + the pure
+`groupByTable` into `sample-rows.ts`; `CreateForm` and `ChatPanel` both import them
+(surfaces can't drift). The `created` ReplyState carries `sampleRows` (derives its
+own counts) instead of two scalar counts; updated the `chat-validate` gate
+(`sampleRows` array, not the old numeric fields) so rehydrated history still
+validates. **After:** web **275/275** (new `sample-rows.test.ts` 3/3; `chat-validate`
+created tests rewritten); workspace typecheck all-green; `astro check` 0 errors;
+biome clean; `bun run build` 120 pages OK. **Rule 6:** CI + `deploy-web` `success`
+on `main` `8ec7eaf` (#705). **Step 0:** the run-82 `/app/keys` clipboard lever
+(`NewKeyDialog`/`copy-key-feedback.*` only) merged as **PR #707** — zero overlap; this run
+steps **off** the run-80/81/82 clipboard cluster (rule 7). **Artifact (step 3):**
+skipped — queue **2** (< 3). **Step 1 (carried):** strangers **0**, docs-ambiguity
+**15** (fresh grep 07-16), row #18 **0 dead**, row #6 **100** / queue **2**.
+**KPI (GLOBAL-025):** advances **onboarding + UX** (first-answer clarity on create);
+engine/performance/distribution **unchanged**.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

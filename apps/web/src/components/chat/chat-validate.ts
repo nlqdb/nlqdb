@@ -34,11 +34,12 @@ function isValidReplyState(s: Record<string, unknown>): boolean {
       // The check here just gates "well-formed enough to normalise".
       return !!s["diff"] && typeof s["diff"] === "object";
     case "created":
+      // The `created` reply renders `groupByTable(sampleRows)` into sample
+      // tables — a non-array `sampleRows` would crash the render's `.map`.
       return (
         typeof s["displayName"] === "string" &&
         typeof s["dbId"] === "string" &&
-        typeof s["tableCount"] === "number" &&
-        typeof s["sampleRowCount"] === "number"
+        Array.isArray(s["sampleRows"])
       );
     case "ambiguous": {
       if (!Array.isArray(s["candidates"])) return false;
