@@ -65,11 +65,16 @@ type ReplyState =
   // as a distinct reply state carrying the real sample rows so the user
   // sees what got created (display name + the actual seeded tables,
   // matching the marketing CreateForm) rather than an empty `AskOk`.
+  // SK-TRUST-002: `trace` (always present) carries the compiled DDL +
+  // confidence so the create reply's trace pane isn't empty — the
+  // create-path analogue of `AskOk.trace`, matching CreateForm's
+  // `CreateTraceView`.
   | {
       kind: "created";
       displayName: string;
       dbId: string;
       sampleRows: { table: string; values: Record<string, unknown> }[];
+      trace: ApiTrace;
     }
   // SK-ASK-009: 2+ DBs and the disambiguator's confidence was below
   // the floor — render an explicit picker so the user can pin the
@@ -416,6 +421,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
               displayName: result.displayName,
               dbId: result.db,
               sampleRows: result.sampleRows,
+              trace: result.trace,
             },
           }));
           return;
@@ -879,13 +885,13 @@ function ReplyView({
   const error = reply.state.kind === "error" ? reply.state.message : null;
   const pending = reply.state.kind === "pending";
 
-  // SK-WEB-001 — explicit narrowing. `ok?.trace.sql` short-circuits
-  // only when `ok` itself is nullish; if `ok` exists but `ok.trace`
-  // is undefined (stale persisted state, partial response) the bare
-  // `.sql` access throws and unmounts the island. Type contract says
-  // `trace` is always present on `AskOk`; persisted-shape drift is
-  // why we still narrow defensively here.
-  const sql = ok?.trace?.sql ?? extractSqlFromSteps(reply.steps);
+  // SK-TRUST-002 — the trace pane is always present. Prefer the live
+  // streaming trace (`reply.trace`), then the settled reply's own trace:
+  // `ok.trace` on a query/write, `created.trace` (the compiled DDL) on a
+  // create. Optional chaining keeps a stale/partial persisted shape from
+  // throwing and unmounting the island (SK-WEB-001).
+  const trace = reply.trace ?? ok?.trace ?? created?.trace ?? null;
+  const sql = trace?.sql ?? extractSqlFromSteps(reply.steps);
   const rows = ok?.rows ?? null;
   const rowCount = ok?.rowCount ?? null;
   const summary = ok?.summary;
@@ -994,13 +1000,7 @@ function ReplyView({
         sql={sql}
         explain={null}
         defaultOpen={tracesOpen}
-        meta={
-          reply.trace
-            ? { plan_id: reply.trace.plan_id, confidence: reply.trace.confidence }
-            : ok?.trace
-              ? { plan_id: ok.trace.plan_id, confidence: ok.trace.confidence }
-              : null
-        }
+        meta={trace ? { plan_id: trace.plan_id, confidence: trace.confidence } : null}
       />
     </article>
   );

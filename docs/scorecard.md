@@ -23,17 +23,15 @@ falsified the "clean window" hypothesis; full detail + run link in row #15).
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; funnel open since run 56, lagging — moved only through its
-agent-controllable inputs). **Run 83 pulls priority-1 (real UX-flow quality):**
-the in-chat create reply (`/app`, `kind=create`) showed only *counts* ("N tables
-and M sample rows") and **threw away the real seeded rows the API returns** — even
-though the marketing CreateForm renders them. A stranger who creates their first
-DB in chat saw no data at their first "did it work?" moment. Now the chat renders
-the actual sample tables, reusing CreateForm's `SampleTable` (extracted to shared
-`SampleTable.tsx` + pure `sample-rows.ts`, so the surfaces can't drift — P5).
-See _Last change_. **Step 0:** the run-82 `/app/keys` clipboard lever
-(`NewKeyDialog` only) merged as **PR #707** — zero overlap; this run stepped
-**off** the run-80/81/82 clipboard cluster (rule 7). **Rule 6:** CI +
-`deploy-web` `success` on `main` `8ec7eaf` (#705); no red-main / stale-deploy lever.
+agent-controllable inputs). **Run 84 pulls priority-1 (real UX-flow quality):** the
+in-chat create reply (`/app`, `kind=create`) rendered its **trace pane empty** —
+the `created` state dropped the create response's `trace` (always present per
+`SK-TRUST-002`: compiled DDL + confidence), which the marketing `CreateForm` has
+always shown. Detail + fix in _Last change_. **Step 0:** no open PRs (run 83 =
+**PR #708**); distinct defect (trace pane vs run 83's sample rows), distinct
+decision (`SK-TRUST-002`); rule 7 not tripped (run 79 was null/dist). **Rule 6:**
+CI + `deploy-web` + `deploy-api` `success` on `main` `8c826df` (#708); no red-main /
+stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -59,7 +57,7 @@ See _Last change_. **Step 0:** the run-82 `/app/keys` clipboard lever
 | 15 | E2E manual-suite freshness | **≈ 0.75** (sdk/mcp/examples ≈1.0 each; **opencheck's latest main run [29324716801](https://github.com/nlqdb/nlqdb/actions/runs/29324716801) (run 70) FAILED**, pass=0 zeroes it ⇒ mean 0.75). **Run 70 falsified the "clean window" hypothesis:** re-dispatched `abc` on `2b9f8a7` ~3 h after the last free-lane consumer (run 69 memory eval, 07:24Z) — all 3 suites still red, Suite A's anon 2nd `/v1/ask` 240 s-timed-out, **no product regression** (bootstrap recordings passed, no `schema_mismatch`). The free pools (NIM + OpenRouter `:free`) flap intrinsically on a minute timescale ⇒ contention timing was never the cause. **Now dark (rule 8):** only the founder-only independent 3rd free pool (top `blocked-by-human.md` bullet) lifts it | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **15** (fresh grep 07-15 run 78; was 17). Run 78 reclassified 2 decided-deferral ICP bullets (`icp-mining`: Reddit disable [SK-ICP-011], 10th-source refactor pin [P5]) to the canonical "Parked until `<trigger>`" form their 4 siblings already use — honest miscount correction, not a genuinely-open question resolved | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); this run pulls it only under the step-2 priority-3 waiver (UX-flow maxed, engine + #15 dark, distribution surfaces verified complete) |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **15** (fresh grep 07-16 run 84; unchanged since run 78, was 17). Run 78 reclassified 2 decided-deferral ICP bullets (`icp-mining`: Reddit disable [SK-ICP-011], 10th-source refactor pin [P5]) to the canonical "Parked until `<trigger>`" form their 4 siblings already use — honest miscount correction, not a genuinely-open question resolved | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); this run pulls it only under the step-2 priority-3 waiver (UX-flow maxed, engine + #15 dark, distribution surfaces verified complete) |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-13 run-61 sweep: **118** pages, **2,908** internal + **14 cross-app** links). Run 61 **added cross-app coverage** — `href`/`src` to owned subdomains (`docs./app./mcp.nlqdb.com`) were dropped by `isInternal` and never checked; the sweep now live-verifies them (4xx/5xx = dead & hard-fail; auth/method gate = alive; network error = "unverified", never red). 14 `docs.nlqdb.com` funnel links now covered (0 → 14). **Run 72 prod-verified this live:** all 110 `sitemap.xml` URLs return 200 against deployed `nlqdb.com` (built-output sweep confirmed in production). **Run 75 named a coverage blind-spot; run 77 closed it:** the sweep scans built `dist/` HTML only, so navigations rendered by client-side JS (`window.location.assign(...)` in React islands / Astro `<script>`) never appear as `href` literals and are unswept — that is how `ConnectForm.tsx`'s `/app?db=` redirecting CTA lived undetected while this row read "0 redirecting". Run 75 fixed one link by hand and deferred the guard. **Run 77 swept all `location.*` navigations in `apps/web/src` and found 6 bare-path 307s** (`ChatPanel.tsx` new-db/keys/sign-out + `Topnav.astro` sign-out + the `/vs/*` try-CTA + `post-signin.astro`'s session-lost redirect), fixed them, and added the **standing guard** `client-nav-integrity.test.ts` (`SK-WEB-022`) — narrowly scoped to the string-literal argument of an actual `location.*` call (bare or `window.`-prefixed), so no false positives (the breadth run 75 rejected). **Client-side-nav redirects 6 → 0** | target 0 — `bun run build && bun run check:links` (built-output `href`/`src`) + `client-nav-integrity.test.ts` (JS navigations) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** — run 76 verified `brew install nlqdb/tap/nlq` (advertised in `cli/README.md` + npm-shim fallback, `SK-CLI-002`) is now real: `nlqdb/homebrew-tap` carries `nlq.rb` at root (commit 07-15 02:42Z, v0.1.12; **empty since 2026-05-19** before this), the linux_x86_64 asset returns HTTP 200 with a **sha256 matching the formula exactly** (`63a9266…814a`), tarball ships the `nlq` binary. Run 73's `cli/.goreleaser.yml` token-format fix (merged) populated the tap on `deploy-cli`@`80e4aa44`; run 76 is the post-merge tap-verify the scorecard deferred. Runs 32 + 37 + 56 + 59 + 62 + 64 + 72 + 73 + 74 + **76** each found/closed 1 agent-movable gap | claim-vs-reality on shipped surfaces + docs; target 0 **met**. **Standing guards:** `mcp-tool-integrity.test.ts` (run 64) sweeps the shipped MCP catalog closed-world; `cli-verb-integrity.test.ts` (run 74) derives the 15 shipped top-level verbs from the cobra tree (first `Use:` per `cli/internal/cmd/*.go` minus `nlq`) and — **as of run 76** — sweeps every `nlq <verb>` snippet across **both** `apps/web/src` (`.ts/.tsx/.astro`) and the docs-site prose `apps/docs/src` (`.md/.mdx`), naming the phantom + file on failure (verified: fails on an injected `nlq schema` in `cli.mdx`). Next candidate: the SDK method surface (`client.*`), and a docs-prose sweep of MCP-tool names |
@@ -85,32 +83,35 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-16 (run 83)** — **priority-1 UX-flow lever: the in-chat create reply
-now shows the real seeded sample tables, not just counts.** **Before:** on the
-`/app` chat `kind=create` path, `ChatPanel` reduced the API's `sampleRows` to
-`tableCount`/`sampleRowCount` and rendered one line — *"Created database X with N
-tables and M sample rows. Pinned to this conversation."* — **discarding the actual
-rows the create response returns**. The marketing `CreateForm` already renders
-those rows (`SampleTable`), so the in-chat create — a stranger's real first "did
-it work?" moment — was strictly worse: counts, no data. No decision mandated the
-compact form (the "sample rows hint" comment was just the old implementation; no
-P1 conflict — SK-HDC-001/SK-ASK-009 don't constrain the reply body; rendering rows
-aligns with GLOBAL-020 "returns rows"). **Change (P5 reuse, no new decision — D5):**
-extracted `SampleTable`/`formatCell` into shared `SampleTable.tsx` + the pure
-`groupByTable` into `sample-rows.ts`; `CreateForm` and `ChatPanel` both import them
-(surfaces can't drift). The `created` ReplyState carries `sampleRows` (derives its
-own counts) instead of two scalar counts; updated the `chat-validate` gate
-(`sampleRows` array, not the old numeric fields) so rehydrated history still
-validates. **After:** web **275/275** (new `sample-rows.test.ts` 3/3; `chat-validate`
-created tests rewritten); workspace typecheck all-green; `astro check` 0 errors;
-biome clean; `bun run build` 120 pages OK. **Rule 6:** CI + `deploy-web` `success`
-on `main` `8ec7eaf` (#705). **Step 0:** the run-82 `/app/keys` clipboard lever
-(`NewKeyDialog`/`copy-key-feedback.*` only) merged as **PR #707** — zero overlap; this run
-steps **off** the run-80/81/82 clipboard cluster (rule 7). **Artifact (step 3):**
-skipped — queue **2** (< 3). **Step 1 (carried):** strangers **0**, docs-ambiguity
-**15** (fresh grep 07-16), row #18 **0 dead**, row #6 **100** / queue **2**.
-**KPI (GLOBAL-025):** advances **onboarding + UX** (first-answer clarity on create);
-engine/performance/distribution **unchanged**.
+**2026-07-16 (run 84)** — **priority-1 UX-flow lever: the in-chat create reply's
+trace pane now shows the compiled DDL + confidence, not an empty pane.** **Before:**
+on the `/app` chat `kind=create` path, the `created` `ReplyState` carried only
+`displayName`/`dbId`/`sampleRows` — it **dropped the create response's `trace`**
+(always present per `SK-TRUST-002`, carrying the compiled DDL `sql` +
+`plan_id`/confidence). Consequences downstream: `reply.trace` stayed unset → `meta`
+null; the non-stream create path emits no per-step telemetry so its seeded-pending
+steps were all filtered out by `displayTraceSteps` (a settled reply drops pending
+steps); `sql` fell back to `extractSqlFromSteps([])` = null. Net: the trace pane
+rendered **empty**. The marketing `CreateForm` (`CreateTraceView`) has always shown
+this DDL + confidence; run 83's `ReplyState` comment claimed the reply was "matching
+the marketing CreateForm", but for the trace it never did. A stranger's first
+create in chat saw sample tables (run 83) but no proof of *what* was built. No P1
+conflict — `SK-TRUST-002` mandates the pane, so this restores the decision.
+**Change (P5, no new decision — D5):** the `created` state carries `trace: ApiTrace`
+(threaded from `result.trace` at the single create site); the `sql`/`meta`
+derivation collapsed to one `const trace = reply.trace ?? ok?.trace ?? created?.trace`
+(deleting the 3-deep meta ternary — a net simplification); the `chat-validate`
+gate now requires `created.trace.plan_id` (mirrors the `ok` gate) so a rehydrated
+created reply can't print `undefined` into the pane. **After:** web **281/281**
+(2 new `chat-validate` created-trace-gate tests; +6 vs the run-83 count on a clean
+main); workspace typecheck all-green; `astro check` 0 errors; biome clean;
+`bun run build` 120 pages OK. **Rule 6:** CI + `deploy-web` + `deploy-api`
+`success` on `main` `8c826df` (#708). **Step 0:** no open PRs; distinct defect from
+run 83 (trace pane vs sample rows), distinct decision (`SK-TRUST-002`). **Artifact
+(step 3):** skipped — queue **2** (< 3). **Step 1 (carried):** strangers **0**,
+docs-ambiguity **15** (fresh grep 07-16), row #18 **0 dead**, row #6 **100** /
+queue **2**. **KPI (GLOBAL-025):** advances **onboarding + UX** (trust: honest
+first-answer proof on create); engine/performance/distribution **unchanged**.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
