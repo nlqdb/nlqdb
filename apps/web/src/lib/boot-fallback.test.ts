@@ -34,6 +34,8 @@ describe("isExternalNoise", () => {
 
   test("flags Safari's webkit-masked-url scheme", () => {
     expect(isExternalNoise({ filename: "webkit-masked-url://hidden/" }, "x")).toBe(true);
+    expect(isExternalNoise({ filename: "https://embed.tawk.to/widget.js" }, "x")).toBe(true);
+    expect(isExternalNoise({ filename: "https://va.tawk.to/v1/x" }, "x")).toBe(true);
   });
 
   test("does NOT flag throws from our own bundles", () => {

@@ -1,0 +1,10 @@
+# SK-WEB-008 — Demo === real `/v1/ask` with anon bearer; canned fixtures live only in the static carousel
+
+- **Decision:** Supersedes `SK-WEB-004`. The marketing hero, `/app/new`, and any first-party `<nlq-data>` surface all hit `POST /v1/ask` with `Authorization: Bearer anon_<token>` (SK-ANON-008). The `/v1/demo/ask` route is deleted. Canned fixtures continue to exist only in `apps/web/src/components/Carousel.astro` (`SHOWCASE_EXAMPLES`) — pre-rendered HTML strings, no network call. Free-LLM-proxy abuse is prevented by the global anon cap (`SK-ANON-010`, 100/hr / 1000/day / 10k/month) layered on the per-IP buckets (`SK-ANON-004` / `SK-RL-007`).
+- **Core value:** Honest latency, Goal-first, Bullet-proof
+- **Why:** A canned-fixture demo lies by accident the moment a user types something the regex-matcher doesn't recognise — the opposite of SK-WEB-003's "above the fold is runnable proof". (Repro: "Create a new workspace named omer" fell through `demo.ts`'s regexes to the orders default under a *"matching '<your goal>'"* line.) The new posture pays a per-call LLM cost (capped) for the right to never lie. Carousel fixtures keep their place — visibly static "shapes the LLM produces", not "answers to your goal".
+- **Consequence in code:** `/v1/demo/ask` route + CORS rule deleted from `apps/api/src/index.ts`; `parseGoalBody` dropped from `apps/api/src/http.ts`; `apps/api/src/demo.ts` survives only as a library (`buildDemoResult`, imported by `chat/demo-shortcut.ts`, scheduled for retirement). Marketing hero and `/app/new` both render the shared `<CreateForm>` island; the element (`packages/elements`) keeps zero "isDemo" branches — its `endpoint` points at `/v1/ask` for marketing too.
+- **Alternatives rejected:**
+  - A thin `/v1/demo/ask` alias that auto-mints an anon bearer — still a round-trip and splits rate-limit accounting across two paths; cleaner to delete.
+  - Two endpoints with separate caps — two budgets, two SDK shapes, two test suites; the global cap solves abuse without forking surfaces.
+  - Keep canned fixtures but refuse fall-through — honest about limits, but teaches that nlqdb is fixture-bound.

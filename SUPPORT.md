@@ -17,6 +17,10 @@ doesn't work in my app, here's a screenshot" tends to bounce.
 
 ## Questions and discussion
 
+Chat with us from the app (`nlqdb.com/app`) via the in-app chat widget
+(Tawk.to) — best for quick product questions while you're signed in.
+Marketing pages stay widget-free.
+
 Open a discussion: https://github.com/nlqdb/nlqdb/discussions. Use
 this for "how do I…", "is this the right approach for…", or "what's
 the roadmap for…".
@@ -67,12 +71,12 @@ nlqdb is pre-PMF. We do **not** offer:
 - Paid support contracts.
 - SLAs of any kind.
 - Phone support.
-- Real-time chat (no Slack/Discord/Intercom).
+- Slack / Discord / Intercom community channels (in-app chat via Tawk.to is live).
 - Per-customer onboarding.
 
 When we add any of these, they will be announced here and on the
-[changelog](./CHANGELOG.md). Until then: GitHub issues and
-discussions are the channels, and we read every one.
+[changelog](./CHANGELOG.md). Until then: the in-app chat widget, GitHub
+issues, and discussions are the channels, and we read every one.
 
 ## Conduct
 

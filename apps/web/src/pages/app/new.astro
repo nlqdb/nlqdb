@@ -5,6 +5,7 @@
 import AppAnalytics from "../../components/AppAnalytics.astro";
 import CreateForm from "../../components/CreateForm.tsx";
 import Footer from "../../components/Footer.astro";
+import SupportChat from "../../components/SupportChat.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
 
@@ -22,6 +23,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     <Footer />
   </div>
   <AppAnalytics />
+  <SupportChat />
 </Base>
 
 <script>
