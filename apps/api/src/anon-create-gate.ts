@@ -56,10 +56,11 @@ export async function peekAnonCreateGate(
   // call #2 anyway).
   const verify = await deps.verifyTurnstile(input.turnstileToken, input.turnstileSecret, input.ip);
   // `unconfigured` (missing secret) fails OPEN in every environment —
-  // SK-ANON-009. No client ships a Turnstile widget yet (`solveChallenge`
-  // is a stub), so a fail-closed branch turns every anon create into an
-  // unrecoverable 428; only set `TURNSTILE_SECRET` in the same release
-  // that ships the real widget. A configured secret always requires a
+  // SK-ANON-009. A secret with no matching client sitekey
+  // (`PUBLIC_TURNSTILE_SITE_KEY` → `solveChallenge()`) turns every anon
+  // create into an unrecoverable 428, so arm `TURNSTILE_SECRET` only in
+  // lockstep with the web deploy that bakes the sitekey (run-56 outage
+  // otherwise). A configured secret always requires a
   // valid token; abuse is bounded by the SK-ANON-012 per-device cap,
   // SK-ANON-010 global caps, and the per-IP buckets underneath.
   const turnstileAllowed = verify.ok || verify.reason === "unconfigured";
