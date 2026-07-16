@@ -135,6 +135,9 @@ const siteEntityJsonLd =
           "safari-web-extension://",
           "safari-extension://",
           "webkit-masked-url://",
+          "https://embed.tawk.to/",
+          "https://va.tawk.to/",
+          "https://cdn.tawk.to/",
         ];
         function isExternalNoise(e, message) {
           if (message === "Script error.") return true;
@@ -218,6 +221,22 @@ const siteEntityJsonLd =
           var btn = document.getElementById("boot-fallback-reload");
           if (btn) btn.addEventListener("click", function () { location.reload(); });
         });
+      })();
+    </script>
+
+    {/* Site-wide support chat (Tawk.to). Loaded last so the boot-fallback
+        listeners above are registered before the third-party script can throw. */}
+    <script is:inline>
+      var Tawk_API = Tawk_API || {},
+        Tawk_LoadStart = new Date();
+      (function () {
+        var s1 = document.createElement("script"),
+          s0 = document.getElementsByTagName("script")[0];
+        s1.async = true;
+        s1.src = "https://embed.tawk.to/6a58f0cc096ab21d402a6b88/1jtlmp8d1";
+        s1.charset = "UTF-8";
+        s1.setAttribute("crossorigin", "*");
+        s0.parentNode.insertBefore(s1, s0);
       })();
     </script>
   </body>

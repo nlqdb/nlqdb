@@ -7,10 +7,10 @@ import Legal from "../layouts/Legal.astro";
 
 <Legal
   title="Privacy — nlqdb"
-  description="What nlqdb collects today: sign-in email, crash reports, no ad tracking and no analytics yet. A plain-English pre-beta draft."
+  description="What nlqdb collects today: sign-in email, crash reports, support chat via Tawk.to, cookieless page analytics. A plain-English pre-beta draft."
   heading="Privacy"
   canonical="/privacy"
-  updated="13 June 2026"
+  updated="16 July 2026"
 >
   <p>
     nlqdb collects as little as it can. This page lists everything we touch
@@ -31,9 +31,16 @@ import Legal from "../layouts/Legal.astro";
       not on our servers. Queries you run are sent to our API to be answered.
     </li>
     <li>
-      <strong>Web analytics.</strong> We don't run web analytics yet. When we
-      do it will be <strong>Cloudflare Web Analytics</strong> &mdash;
-      cookieless, no personal data, aggregates only, no cross-site tracking.
+      <strong>Web analytics.</strong> Public pageviews use
+      <strong>Cloudflare Web Analytics</strong> &mdash; cookieless, no personal
+      data, aggregates only, no cross-site tracking. Signed-in product surfaces
+      may also use PostHog for product analytics (session replay masks inputs).
+    </li>
+    <li>
+      <strong>Support chat.</strong> The site loads a
+      <a href="https://www.tawk.to/">Tawk.to</a> chat widget so you can message
+      us. Tawk.to may set its own cookies / process chat messages on their
+      infrastructure under their privacy policy.
     </li>
     <li>
       <strong>Error reports.</strong> If a page crashes, the browser sends us
@@ -46,7 +53,6 @@ import Legal from "../layouts/Legal.astro";
   <ul>
     <li>No advertising or marketing trackers, no third-party ad pixels.</li>
     <li>We don't sell or rent your data to anyone.</li>
-    <li>No cookie-consent wall, because we set no tracking cookies.</li>
   </ul>
 
   <h2>Email</h2>
