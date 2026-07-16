@@ -25,6 +25,16 @@ on:
       - "packages/otel/**"
       - ".github/workflows/deploy-canary.yml"
   workflow_dispatch:
+    inputs:
+      # TEMPORARY one-shot: create the anon-mode Turnstile widget with the
+      # write-scoped CF_TURNSTILE_EDIT_API_TOKEN (this repo's env-side
+      # CLOUDFLARE_API_TOKEN is Turnstile read-only). When true the normal
+      # canary deploy is skipped and only the widget job runs. Revert this
+      # input + job once the widget exists.
+      create_turnstile_widget:
+        description: "One-shot: create the nlqdb-anon Turnstile widget (skips the canary deploy)"
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-canary
@@ -35,8 +45,57 @@ permissions:
   deployments: write
 
 jobs:
+  # TEMPORARY one-shot job — see the create_turnstile_widget input above.
+  create-turnstile-widget:
+    name: Create nlqdb-anon Turnstile widget (one-shot)
+    if: ${{ inputs.create_turnstile_widget == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Create or fetch the invisible widget
+        env:
+          ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_TOKEN: ${{ secrets.CF_TURNSTILE_EDIT_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/challenges/widgets"
+
+          # Idempotency guard: if a widget named nlqdb-anon already exists,
+          # print its sitekey and skip creation. The list response can carry
+          # per-widget secrets, so we only ever extract .sitekey through jq —
+          # the raw body is never echoed.
+          existing="$(curl -sS -X GET "$api" \
+            -H "Authorization: Bearer ${CF_TOKEN}" \
+            -H "Content-Type: application/json" \
+            | jq -r '.result[]? | select(.name=="nlqdb-anon") | .sitekey' | head -n1)"
+
+          if [ -n "${existing}" ] && [ "${existing}" != "null" ]; then
+            echo "Widget nlqdb-anon already exists — not creating a duplicate."
+            echo "TURNSTILE_SITEKEY=${existing}"
+            exit 0
+          fi
+
+          # Create the widget. The response body contains the widget SECRET,
+          # so it is captured to a var and NEVER echoed raw — only piped
+          # through jq that strips everything but success/errors/sitekey.
+          resp="$(curl -sS -X POST "$api" \
+            -H "Authorization: Bearer ${CF_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data '{"name":"nlqdb-anon","mode":"invisible","domains":["nlqdb.com","app.nlqdb.com"]}')"
+
+          printf '%s' "$resp" | jq '{success, errors, sitekey: .result.sitekey}'
+
+          sitekey="$(printf '%s' "$resp" | jq -r '.result.sitekey // empty')"
+          if [ -z "${sitekey}" ]; then
+            echo "ERROR: no sitekey in response (see success/errors above)"
+            exit 1
+          fi
+          echo "TURNSTILE_SITEKEY=${sitekey}"
+
   deploy:
     name: D1 migrate + wrangler deploy (canary)
+    # Skip the normal deploy on the one-shot widget dispatch.
+    if: ${{ inputs.create_turnstile_widget != true }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
