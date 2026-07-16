@@ -68,7 +68,11 @@ function loadTurnstile(): Promise<TurnstileApi | null> {
     script.async = true;
     script.defer = true;
     script.onload = () => resolve(window.turnstile ?? null);
-    script.onerror = () => resolve(null);
+    script.onerror = () => {
+      scriptLoad = null; // a transient load failure shouldn't disable Turnstile for the session
+      script.remove();
+      resolve(null);
+    };
     document.head.appendChild(script);
   });
   return scriptLoad;
@@ -115,7 +119,10 @@ export async function solveChallenge(): Promise<string | null> {
             "error-callback": () => finish(null),
             "timeout-callback": () => finish(null),
           });
-          turnstile.execute(widgetId);
+          // Pass the container, not the widgetId — the documented
+          // execute() signature (developers.cloudflare.com/turnstile
+          // client-side rendering).
+          turnstile.execute(host);
         } catch {
           finish(null);
         }
