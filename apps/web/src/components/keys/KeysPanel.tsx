@@ -371,12 +371,7 @@ function NewKeyDialog({
               <code className="keys-dialog__plaintext" data-testid="keys-mint-plaintext">
                 {minted.key}
               </code>
-              <button
-                type="button"
-                className="btn"
-                onClick={copyKey}
-                aria-label={copyFb.ariaLabel}
-              >
+              <button type="button" className="btn" onClick={copyKey} aria-label={copyFb.ariaLabel}>
                 {copyFb.label}
               </button>
             </div>
