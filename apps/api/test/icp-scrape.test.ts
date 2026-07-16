@@ -126,6 +126,30 @@ describe("runIcpScrape", () => {
     expect(result.sources).toEqual({});
   });
 
+  // SK-ICP-014: every run snapshots per-source yield + self-skipped sources to
+  // icp:last_scrape_stats so a later starved cluster run can name the drought.
+  it("persists icp:last_scrape_stats with sources + skipped sources for missing keys", async () => {
+    const kv = stubKv();
+    // No ghToken, no Reddit creds → github/github_discussions/reddit self-skip.
+    await runIcpScrape({ kv, fetch: makeFetch(), tracer: stubTracer });
+
+    const raw = await kv.get("icp:last_scrape_stats");
+    expect(raw).not.toBeNull();
+    const stats = JSON.parse(raw as string) as {
+      ts: number;
+      newItems: number;
+      skipped: number;
+      sources: Record<string, number>;
+      skippedSources: string[];
+    };
+    expect(typeof stats.ts).toBe("number");
+    expect(stats.newItems).toBe(0);
+    expect(stats.sources).toEqual({});
+    expect(stats.skippedSources).toContain("reddit");
+    expect(stats.skippedSources).toContain("github");
+    expect(stats.skippedSources).toContain("github_discussions");
+  });
+
   it("stores new items in KV and counts them correctly", async () => {
     const kv = stubKv();
     // One HN story for the first query ("text+to+sql") + one Reddit post.
@@ -238,8 +262,15 @@ describe("runIcpScrape", () => {
     expect(result.newItems).toBe(0);
     expect(result.skipped).toBe(2);
     expect(result.sources).toEqual({});
-    // No new puts after construction.
-    expect((kv.put as ReturnType<typeof vi.fn>).mock.calls.length).toBe(initialPutCount);
+    // No new seen/item puts after construction — only the SK-ICP-014 stats snapshot.
+    const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+      [string, ...unknown[]]
+    >;
+    expect(putCalls.length).toBe(initialPutCount + 1);
+    expect(
+      putCalls.filter(([k]) => k.startsWith("icp:seen:") || k.startsWith("icp:item:")),
+    ).toHaveLength(0);
+    expect(putCalls.some(([k]) => k === "icp:last_scrape_stats")).toBe(true);
   });
 
   it("handles per-source fetch errors gracefully — one source fails, others succeed", async () => {

@@ -340,25 +340,21 @@ else
   skip "LOGSNAG_PROJECT"
 fi
 
-# PostHog — Phase 2 optional second sink, format-check only. Live
-# probe deferred until the sink is actually wired up; until then, a
-# present key just means "something was provisioned." Server-side
-# capture from the Worker is zero-user-facing-latency via ctx.waitUntil,
-# but that property is enforced in code, not here.
+# --- PostHog (SK-EVENTS-013 server sink; key is the publishable phc_ project key) ---
 if [[ -n "${POSTHOG_API_KEY:-}" ]]; then
-  if [[ "$POSTHOG_API_KEY" == phc_* ]]; then
-    ok "POSTHOG_API_KEY (format looks right, ${#POSTHOG_API_KEY} chars)"
+  if [[ "$POSTHOG_API_KEY" =~ ^phc_[A-Za-z0-9]{20,}$ ]]; then
+    ok "POSTHOG_API_KEY (phc_ project-key format, ${#POSTHOG_API_KEY} chars)"
   else
-    fail "POSTHOG_API_KEY" "doesn't start with phc_ — paste error?"
+    fail "POSTHOG_API_KEY" "expected the publishable project key (phc_…) — a phx_/personal key must never be used here"
   fi
 else
   skip "POSTHOG_API_KEY"
 fi
 if [[ -n "${POSTHOG_HOST:-}" ]]; then
-  if [[ "$POSTHOG_HOST" =~ ^https://[a-z0-9.-]+\.posthog\.com/?$ ]]; then
-    ok "POSTHOG_HOST (looks right: $POSTHOG_HOST)"
+  if [[ "$POSTHOG_HOST" =~ ^https://[a-z0-9.-]+$ ]]; then
+    ok "POSTHOG_HOST ($POSTHOG_HOST)"
   else
-    fail "POSTHOG_HOST" "expected https://us.posthog.com or https://eu.posthog.com"
+    fail "POSTHOG_HOST" "expected an https:// ingestion origin (e.g. https://eu.i.posthog.com), no trailing slash"
   fi
 else
   skip "POSTHOG_HOST"

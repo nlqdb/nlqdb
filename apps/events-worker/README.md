@@ -1,13 +1,19 @@
 # `apps/events-worker`
 
 Drains the `nlqdb-events` Cloudflare Queue and dispatches each event to
-its sink(s). Phase 0 has two sinks:
+its sink(s):
 
 - **LogSnag** — one-shot user/lifecycle events (`SK-EVENTS-006`).
 - **Tinybird `query_log`** — batched `ask.completed` fingerprints (W4 →
   W5 input). Per `GLOBAL-021`, the Tinybird HTTP boundary lives in
   `@nlqdb/db/clickhouse-tinybird/query-log.ts`; this worker imports
   `writeQueryLog` and never holds a Tinybird token of its own.
+- **PostHog** — server-side fan-out of **every** `ProductEvent` for
+  funnels / cohorts / retention (`SK-EVENTS-013`). One batched
+  `POST <POSTHOG_HOST>/batch/` per queue batch via plain `fetch` (no SDK).
+  Best-effort: it never throws and never touches a message's ack/retry —
+  LogSnag + query-log own delivery. Gated on `POSTHOG_API_KEY` +
+  `POSTHOG_HOST` (`src/sinks/posthog.ts`).
 - **Dunning email** — customer reminder on `billing.payment_failed`
   (`SK-STRIPE-013`), sent beside the LogSnag operator alert. Best-effort:
   its failure never retries the message. The Resend transport is the
@@ -85,6 +91,11 @@ bun run --cwd apps/events-worker test
   truth, so a Resend outage must not re-page it. The email is gated only on
   its own `RESEND_API_KEY`, independent of LogSnag config — it still fires
   if the operator alert is unconfigured.
+- **PostHog batch fails (non-2xx / network throw)** → swallowed (logged +
+  ERROR on the `nlqdb.events.sink.posthog` span); never retries the message.
+  The fan-out is best-effort — LogSnag + query-log own ack/retry, so a
+  PostHog outage can't re-drive them or re-page the operator. **PostHog env
+  (`POSTHOG_API_KEY` / `POSTHOG_HOST`) unset** → silent return, no fetch.
 
 When retry-exhaustion drops start showing in OTel, configure a DLQ:
 add a second queue, then in `wrangler.toml`:

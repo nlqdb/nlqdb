@@ -78,7 +78,11 @@ table + one "Last change" entry, no changelog; create it if missing):
   successfully; target ≥ 95%), session retention (≥ 2 queries).
 - **Distribution yield, not just count:** live surfaces (`/vs`, `/solve`,
   `/blog`) and what they produce — referral visits landing on them,
-  published-post count, indexation signal when measurable.
+  published-post count, indexation signal when measurable. When
+  `GSC_SERVICE_ACCOUNT_JSON` is set, `bun scripts/gsc-pull.ts` reads Google
+  clicks / impressions / position + top queries and pages — use it as the
+  rows #6–#7 Google-side yield input (and to pick which `/solve`/`/vs` page
+  to strengthen: highest impressions × worst position first).
 - **Engine:** BIRD / Spider vs `tools/eval/baseline-2026-06-15.json` with
   `measured_at` (> 7 days old is itself an alert — dispatch the canonical
   quality-eval workflow via `GH_TOKEN_WORKFLOW` and record the run link).
@@ -164,6 +168,18 @@ update; the queue drains on the next non-null run:
    lesson a stranger would search for:** draft one new artifact into the
    queue (newest first, D4 cap applies). Drafting is optional and never
    the run's output on its own (founder-resolved 2026-07-11).
+3. **Drain one dev.to venue variant — autonomous (`SK-BLOG-003`).** After the
+   canonical publish check above, run `bun scripts/syndicate-devto.ts --list`
+   and post the oldest pending variant with its queue-line tags:
+   `bun scripts/syndicate-devto.ts --post <slug> --tags a,b,c`. The script is
+   idempotent and self-throttles to one post/day: since /daily fires ~6×/day,
+   on all but the first run it prints `drip guard: … skipping` and exits 0 —
+   that is the expected no-op, not an error. Never pass `--force` (it exists
+   for the human operator only); skip the queue-line edit on a throttled run.
+   On success, edit that queue line: drop its `dev.to (#…)` venue and append
+   the live dev.to URL (run-12 entry style); delete the whole line once no
+   venues remain. Reddit/HN/lobste.rs stay human (platform norms) — leave their
+   pointers.
 
 Community-venue variants (Reddit/SO answers, directory submissions) stay in
 the queue only as pointers to the canonical `/blog` URL — the canonical copy

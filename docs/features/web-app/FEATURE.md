@@ -83,14 +83,8 @@ when-to-load:
 
 ### SK-WEB-009 — Host-only `__Secure-…session` cookie on `app.nlqdb.com` after the web/API merge
 
-- **Decision:** After `apps/web` is served from the same Cloudflare Worker as `apps/api` (Workers Static Assets `[assets]` binding pointing at `apps/web/dist`), Better Auth's `crossSubDomainCookies` block is removed. The session cookie has no `Domain=` attribute, making it host-only on `app.nlqdb.com`. Better Auth still hardcodes the `__Secure-` prefix in v1.6.9 (`node_modules/better-auth/dist/cookies/index.mjs:30`), so the literal cookie name is `__Secure-${cookiePrefix}.session_token` — the browser-prefix protection that matters in practice (Secure attribute required, no cross-subdomain travel) is enforced by `__Secure-` plus host-only.
-- **Core value:** Bullet-proof, Seamless auth, Effortless UX
-- **Why:** Pre-merge the cookie travelled across two eTLD+1s (`nlqdb.com` ↔ `app.nlqdb.com`) via the `Domain=.nlqdb.com` attribute, but Workers-Versions previews land on a third eTLD+1 (`*-nlqdb-web.omer-hochman.workers.dev`) that was never inside the cookie scope. Browser third-party-cookie partitioning then dropped the cookie on cross-eTLD+1 fetches into the API, surfacing as a 401 in preview branches and the `SK-AUTH-015` OAuth-state bug. Collapsing the product UI + API onto one origin makes every product-side request first-party, so the cookie no longer has to travel. Marketing on `nlqdb.com` loses the cross-subdomain UX (authed visitors see "Sign in") — accepted because the marketing-side authed signal was always best-effort and is now delivered by the product's own auth guard at `/app`.
-- **Consequence in code:** `apps/api/src/auth.ts` drops `crossSubDomainCookies`, keeps `cookiePrefix: "__Secure"` (Better Auth 1.6.9 limitation — see Open questions). `apps/api/wrangler.toml` adds `[assets]` pointing at `../web/dist`. `apps/web/src/lib/session.ts` and `chat-client.ts` default `apiBase` to `""` (same-origin). The OAuth-init wrapper at `/api/auth/oauth-init/:provider` (`SK-AUTH-015`) is retained — it is harmless when same-origin and still required for any future cross-origin entry. PRs that re-introduce a `Domain=` attribute (or any other cross-subdomain cookie shape) on the production session cookie are rejected.
-- **Alternatives rejected:**
-  - **Keep two workers and `Domain=.nlqdb.com` indefinitely** — cookie still travels cross-origin for previews; browser-partitioning trend widens.
-  - **Literal `__Host-…session` cookie now** — Better Auth 1.6.9 hardcodes the `__Secure-` prefix; tracked as an open question.
-  - **Set `Domain=app.nlqdb.com` explicitly** — equivalent in browser semantics, but a future `__Host-` promotion would also have to strip Domain.
+**Body:** [`decisions/SK-WEB-009-host-only-session-cookie.md`](./decisions/SK-WEB-009-host-only-session-cookie.md).
+With web + API on one origin, `crossSubDomainCookies` is removed — the session cookie is host-only (no `Domain=`) under the `__Secure-` prefix. PRs re-introducing any cross-subdomain cookie shape on the production session cookie are rejected.
 
 ### SK-WEB-007 — "Copy snippet" inlines the user's `pk_live_` so the key is never a separate errand
 
@@ -168,7 +162,18 @@ One route (`/architecture/`) renders the system as a three.js zoom-to-detail map
 
 ### SK-WEB-022 — Client-side navigations must carry the trailing slash (guarded)
 
-Under `trailingSlash: "always"`, a bare `window.location.assign("/app/new")` in a React island / Astro `<script>` 307-redirects — and `check-links.mjs` (built-output `href`/`src` only) can't see it (the class run 75 hand-fixed in `ConnectForm.tsx`). **Decision:** every client-side navigation to an internal page path ends its path (before `?`/`#`) in `/`, guarded by `src/data/client-nav-integrity.test.ts` — which scans only the string-literal argument of a `location.assign/replace(...)` / `.href =` call (bare or `window.`-prefixed; narrow → no false positives on comments/JSX-`href`/route-matchers) and names the offending `file:line`. Load-bearing: not redundant with check-links — it covers the JS-navigation blind-spot check-links cannot.
+**Body:** [`decisions/SK-WEB-022-client-nav-trailing-slash.md`](./decisions/SK-WEB-022-client-nav-trailing-slash.md).
+Every client-side navigation to an internal page path ends in `/` (`trailingSlash: "always"` otherwise 307s), guarded by `src/data/client-nav-integrity.test.ts` — the JS-navigation blind spot `check-links.mjs` cannot see.
+
+### SK-WEB-023 — IndexNow push on every web deploy; robots + sitemap stay index-open
+
+**Body:** [`decisions/SK-WEB-023-indexnow-push-on-deploy.md`](./decisions/SK-WEB-023-indexnow-push-on-deploy.md).
+Every deploy pushes the live sitemap URL list to IndexNow via a `continue-on-error` step in `deploy-web.yml` (`scripts/submit-indexnow.ts`; the public key file ships from `apps/web/public/`). Index-open posture: `Allow: /` robots, self-referential canonicals (only `/auth/*` is `noindex`), accurate `<lastmod>` for blog posts only.
+
+### SK-WEB-024 — PostHog client capture on the product `/app` surfaces only, with the conversation region masked
+
+**Body:** [`decisions/SK-WEB-024-posthog-app-surfaces-only.md`](./decisions/SK-WEB-024-posthog-app-surfaces-only.md).
+posthog-js lazy-loads on `/app/*` only (`AppAnalytics.astro` + `lib/posthog.ts`); marketing stays SDK-free (`GLOBAL-034`). Session replay masks all inputs and the chat list (`data-ph-mask="true"`) so user DB contents are never recorded; the publishable key bakes in via `PUBLIC_POSTHOG_*` in `deploy-web.yml`. Client half of `SK-EVENTS-013`.
 
 ## GLOBALs governing this feature
 
@@ -180,7 +185,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* the chat panel renders the diff inline before commit (per `SK-TRUST-001`), the trace pane sits below the answer with collapsed-by-default state (per `SK-TRUST-002`), and low-confidence refusals surface as click-to-disambiguate chips (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
-- **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for pageviews; PostHog Phase-2-optional).
+- **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for public pageviews; PostHog client SDK on the `/app` product surfaces only per `SK-WEB-024`; marketing stays SDK-free).
 - **GLOBAL-032** — Canonical user flows.
   - *In this feature:* the marketing site hosts three of the canonical inbound surfaces (FLOW-001 hero, FLOW-002 `/solve`, FLOW-003 `/vs`), each walked daily by `stranger-test.sh` under `acquisition-health.yml`, so a template regression surfaces within 24 h.
 

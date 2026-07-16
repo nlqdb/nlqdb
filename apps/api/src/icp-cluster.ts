@@ -2,6 +2,7 @@
 
 import { type Span, trace } from "@opentelemetry/api";
 import type { IcpScoredItem } from "./icp-score.ts";
+import { type IcpScrapeStats, LAST_SCRAPE_STATS_KEY } from "./icp-scrape.ts";
 
 const TOP_N = 100;
 const GH_API = "https://api.github.com";
@@ -41,6 +42,10 @@ export type IcpClusterResult = {
   // Undefined means "fewer than two personas with data" (no signal yet).
   primaryIcp?: string;
   primaryStatus: "primary_confirmed" | "directional" | "no_signal";
+  // SK-ICP-014: true when the scored set was empty — a starvation-marked
+  // evidence file is written instead of a normal one. Surfaced in the
+  // `icp_cluster_completed` log so an alert can tell starved from healthy-quiet.
+  starved?: boolean;
 };
 
 type PersonaKey = "p1" | "p2" | "p3" | "p6";
@@ -511,6 +516,114 @@ async function writeFile(
   await res.text().catch(() => {});
 }
 
+// Write `markdown` to `filePath` inside the `nlqdb.icp.github_write` span,
+// upserting via the file's current SHA. Returns whether the write landed;
+// failures are logged, never thrown (the cron must not crash on a GitHub blip).
+// Shared by the normal and the SK-ICP-014 starvation paths.
+async function writeEvidenceFile(
+  fetcher: typeof fetch,
+  ghToken: string,
+  repo: string,
+  filePath: string,
+  markdown: string,
+  message: string,
+  tracer: NonNullable<IcpClusterDeps["tracer"]>,
+): Promise<boolean> {
+  let written = false;
+  await tracer.startActiveSpan("nlqdb.icp.github_write", async (span: Span) => {
+    span.setAttribute("nlqdb.icp.file_path", filePath);
+    try {
+      const sha = await getFileSha(fetcher, ghToken, repo, filePath);
+      span.setAttribute("nlqdb.icp.file_exists", sha !== undefined);
+      await writeFile(fetcher, ghToken, repo, filePath, markdown, message, sha);
+      written = true;
+    } catch (err) {
+      span.recordException(err as Error);
+      console.error(
+        JSON.stringify({
+          msg: "icp_cluster_github_write_failed",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    } finally {
+      span.setAttribute("nlqdb.icp.written", written);
+      span.end();
+    }
+  });
+  return written;
+}
+
+// --- SK-ICP-014: starvation evidence ---
+
+async function readLastScrapeStats(kv: KVNamespace): Promise<IcpScrapeStats | null> {
+  const raw = await kv.get(LAST_SCRAPE_STATS_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as IcpScrapeStats;
+  } catch {
+    return null;
+  }
+}
+
+// SK-ICP-014: the scored set is empty, so there is no persona verdict to write.
+// We still write the monthly file — starvation-marked — so the drought is
+// visible to the founder and the daily agent instead of silently producing
+// nothing. Scoring/floor/source decisions are unchanged (parked per SK-ICP-011
+// and the Stack Exchange open question); this only makes the zero legible.
+function generateStarvationMarkdown(generatedAt: number, stats: IcpScrapeStats | null): string {
+  const month = yyyymm(generatedAt);
+  const dateStr = isoDate(generatedAt);
+  const lines: string[] = [
+    `# ICP Evidence — ${month}`,
+    "",
+    `> Auto-generated ${dateStr}. **PIPELINE STARVED** — 0 scored items in KV to cluster.`,
+    "",
+    "## Starvation notice",
+    "",
+    "No scored pain signals were available to cluster this run, so there is no persona",
+    "verdict. This file is written anyway (SK-ICP-014) so the drought is visible rather",
+    "than silent. An empty scored set means the scrape stored nothing new **or** every",
+    "scored item aged past its 30-day KV TTL (SK-ICP-002) before this run.",
+    "",
+  ];
+
+  if (stats) {
+    lines.push(
+      `### Most recent scrape — ${isoDate(stats.ts)}`,
+      "",
+      `${stats.newItems} new item(s) stored, ${stats.skipped} skipped as already-seen.`,
+      "",
+      "| Source | New items |",
+      "|---|---|",
+    );
+    const names = Object.keys(stats.sources).sort();
+    if (names.length === 0) {
+      lines.push("| _(no source returned a new item)_ | 0 |");
+    } else {
+      for (const name of names) lines.push(`| ${escMd(name)} | ${stats.sources[name]} |`);
+    }
+    lines.push("");
+    lines.push(
+      stats.skippedSources.length > 0
+        ? `Sources self-skipped for missing env keys: ${stats.skippedSources
+            .map(escMd)
+            .join(", ")}.`
+        : "No sources self-skipped for missing env keys.",
+      "",
+    );
+  } else {
+    lines.push(
+      "### Most recent scrape",
+      "",
+      "No scrape statistics recorded yet (`icp:last_scrape_stats` absent) — the scrape",
+      "either has not run since this instrumentation shipped or failed before persisting stats.",
+      "",
+    );
+  }
+
+  return lines.join("\n");
+}
+
 // --- LogSnag ---
 
 async function notifyLogSnag(
@@ -528,7 +641,9 @@ async function notifyLogSnag(
         project,
         channel: "icp-mining",
         event: "Evidence File Updated",
-        description: `${month}: ${result.clustered} clusters · ${result.primaryIcp ?? "no primary signal yet"}. Written: ${result.written}.`,
+        description: result.starved
+          ? `${month}: PIPELINE STARVED — 0 scored items to cluster. Written: ${result.written}.`
+          : `${month}: ${result.clustered} clusters · ${result.primaryIcp ?? "no primary signal yet"}. Written: ${result.written}.`,
       }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -560,12 +675,37 @@ export async function runIcpCluster(deps: IcpClusterDeps): Promise<IcpClusterRes
     })();
 
   const keys = await listAllScoredKeys(deps.kv);
-  if (keys.length === 0)
-    return { personaItems: {}, clustered: 0, written: false, primaryStatus: "no_signal" };
+  const allItems = keys.length === 0 ? [] : await readScoredItems(deps.kv, keys);
 
-  const allItems = await readScoredItems(deps.kv, keys);
-  if (allItems.length === 0)
-    return { personaItems: {}, clustered: 0, written: false, primaryStatus: "no_signal" };
+  // SK-ICP-014: no scored items (nothing scraped this run, or everything aged
+  // past the 30-day scored-key TTL). Instead of the old silent early-return,
+  // write a starvation-marked evidence file + emit the starved signal so the
+  // drought is visible to the founder and the daily agent.
+  if (allItems.length === 0) {
+    const now = Date.now();
+    const month = yyyymm(now);
+    const stats = await readLastScrapeStats(deps.kv);
+    const written = await writeEvidenceFile(
+      fetcher,
+      deps.ghToken,
+      repo,
+      `docs/research/icp-evidence-${month}.md`,
+      generateStarvationMarkdown(now, stats),
+      `chore(icp): starvation notice ${month}`,
+      tracer,
+    );
+    const result: IcpClusterResult = {
+      personaItems: {},
+      clustered: 0,
+      written,
+      primaryStatus: "no_signal",
+      starved: true,
+    };
+    if (deps.logsnagToken && deps.logsnagProject) {
+      await notifyLogSnag(fetcher, deps.logsnagToken, deps.logsnagProject, result, month);
+    }
+    return result;
+  }
 
   const groups = groupByBestPersona(allItems);
 
@@ -594,37 +734,16 @@ export async function runIcpCluster(deps: IcpClusterDeps): Promise<IcpClusterRes
   const now = Date.now();
   const month = yyyymm(now);
   const { markdown, verdict } = generateMarkdown(groups, clustersByPersona, now);
-  const filePath = `docs/research/icp-evidence-${month}.md`;
 
-  let written = false;
-  await tracer.startActiveSpan("nlqdb.icp.github_write", async (span: Span) => {
-    span.setAttribute("nlqdb.icp.file_path", filePath);
-    try {
-      const sha = await getFileSha(fetcher, deps.ghToken, repo, filePath);
-      span.setAttribute("nlqdb.icp.file_exists", sha !== undefined);
-      await writeFile(
-        fetcher,
-        deps.ghToken,
-        repo,
-        filePath,
-        markdown,
-        `chore(icp): update evidence file ${month}`,
-        sha,
-      );
-      written = true;
-    } catch (err) {
-      span.recordException(err as Error);
-      console.error(
-        JSON.stringify({
-          msg: "icp_cluster_github_write_failed",
-          message: err instanceof Error ? err.message : String(err),
-        }),
-      );
-    } finally {
-      span.setAttribute("nlqdb.icp.written", written);
-      span.end();
-    }
-  });
+  const written = await writeEvidenceFile(
+    fetcher,
+    deps.ghToken,
+    repo,
+    `docs/research/icp-evidence-${month}.md`,
+    markdown,
+    `chore(icp): update evidence file ${month}`,
+    tracer,
+  );
 
   const result: IcpClusterResult = {
     personaItems,

@@ -26,19 +26,32 @@ const STATIC_ROUTES = [
   "/solve",
   "/privacy",
   "/terms",
+  "/security/hall-of-fame",
 ];
 
+// `lastmod` is the one sitemap hint Google + Bing actually use as a crawl
+// signal — but only while it stays accurate; a value that's always "today"
+// gets the tag ignored site-wide. So we emit it only where we hold a real
+// date: blog posts (their publish date). Static / `/vs` / `/solve` pages
+// have no reliable per-page modification date, so they carry `<loc>` alone.
+type Entry = { path: string; lastmod?: string };
+
 export const GET: APIRoute = () => {
-  const routes = [
-    ...STATIC_ROUTES,
-    ...COMPETITORS.map((c) => `/vs/${c.slug}`),
-    ...SOLVE_ENTRIES.map((s) => `/solve/${s.slug}`),
-    ...BLOG_POSTS.map((p) => `/blog/${p.slug}`),
+  const entries: Entry[] = [
+    ...STATIC_ROUTES.map((path) => ({ path })),
+    ...COMPETITORS.map((c) => ({ path: `/vs/${c.slug}` })),
+    ...SOLVE_ENTRIES.map((s) => ({ path: `/solve/${s.slug}` })),
+    ...BLOG_POSTS.map((p) => ({ path: `/blog/${p.slug}`, lastmod: p.date })),
   ];
   const body =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
     `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    routes.map((path) => `  <url><loc>${SITE}${withSlash(path)}</loc></url>`).join("\n") +
+    entries
+      .map(({ path, lastmod }) => {
+        const loc = `<loc>${SITE}${withSlash(path)}</loc>`;
+        return `  <url>${loc}${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}</url>`;
+      })
+      .join("\n") +
     `\n</urlset>\n`;
 
   return new Response(body, {

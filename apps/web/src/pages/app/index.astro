@@ -3,6 +3,7 @@
 // than a path segment because the static build can't pre-render
 // `[dbId].astro` without an SSR adapter.
 
+import AppAnalytics from "../../components/AppAnalytics.astro";
 import ChatPanel from "../../components/chat/ChatPanel.tsx";
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
@@ -47,6 +48,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     </main>
     <Footer />
   </div>
+  <AppAnalytics />
 </Base>
 
 <script>

@@ -6,6 +6,7 @@
 // `auth_required` envelope points users at `app.nlqdb.com/app/keys` —
 // this is that page.
 
+import AppAnalytics from "../../components/AppAnalytics.astro";
 import Footer from "../../components/Footer.astro";
 import KeysPanel from "../../components/keys/KeysPanel.tsx";
 import Topnav from "../../components/Topnav.astro";
@@ -24,6 +25,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     </main>
     <Footer />
   </div>
+  <AppAnalytics />
 </Base>
 
 <script>

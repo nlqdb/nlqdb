@@ -4,8 +4,11 @@ Drafts queued by the daily agent per
 [`/daily`](../../.claude/commands/daily.md) step 3 (queue-gated — drafting is
 optional, founder-resolved 2026-07-11); publishing is autonomous
 (`SK-BLOG-001`, founder-resolved 2026-07-01). Newest first. Once published, the
-live URL goes into `docs/scorecard.md` § Shipped distribution; the entry
-survives here only as a venue pointer until the venue variant posts.
+live URL goes into `docs/scorecard.md` § Shipped distribution and the entry
+survives here as a venue pointer. The **dev.to** variant is drained
+autonomously by the daily loop via `scripts/syndicate-devto.ts` (one/day,
+`SK-BLOG-003`); Reddit/HN/lobste.rs pointers stay for human posting (platform
+norms forbid unattended submission).
 
 **Retention (D4, 20 KB cap):** keep the most recent full draft(s) inline — as
 many as fit under the cap; older ones collapse to a one-line title + venue +
@@ -57,12 +60,13 @@ gist (full body in git history). Earliest drafts: [archive](./distribution-queue
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
-Post each venue variant as a pointer to (or excerpt of) the canonical URL, then
-delete its line.
+The dev.to variant posts autonomously (daily loop, `SK-BLOG-003`) and is
+dropped from the line on success; Reddit/HN/lobste.rs are posted by a human and
+removed by hand. Delete the whole line once no venues remain.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
-- run 78 — **https://nlqdb.com/blog/smoke-test-walks-the-old-ui/** — dev.to (#testing #e2e #frontend) + r/ExperiencedDevs + lobste.rs (`testing`) · e2e/measurement lesson (the run-58 walker re-true — pinned-literal acceptance walkers are a regression detector, but a red that mixes product-breakage with test-drift costs a full triage; make the fail detail name element + expectation, triage reds within a bounded window, and gate "re-run the walker on PRs touching a walked surface" instead of leaving it a convention)
+- run 78 — **https://nlqdb.com/blog/smoke-test-walks-the-old-ui/** — r/ExperiencedDevs + lobste.rs (`testing`) · e2e/measurement lesson (the run-58 walker re-true — pinned-literal acceptance walkers are a regression detector, but a red that mixes product-breakage with test-drift costs a full triage; make the fail detail name element + expectation, triage reds within a bounded window, and gate "re-run the walker on PRs touching a walked surface" instead of leaving it a convention) · dev.to posted 2026-07-16: https://dev.to/omer_hochman/the-redesign-shipped-the-smoke-test-kept-walking-the-old-ui-47c8
 - run 65 — **https://nlqdb.com/blog/one-shot-recovery-permanent-outage/** — dev.to (#postgres #reliability #architecture) + r/ExperiencedDevs + lobste.rs (`practices`) · reliability lesson (`SK-ASK-024` — a run-exactly-once best-effort repair turns one silent skip into a permanent outage; fix the root, keep it idempotent, and re-trigger from the steady-state symptom because the original event never recurs)
 - run 60 — **https://nlqdb.com/blog/green-checkmark-has-a-half-life/** — dev.to (#ci #testing #devops) + r/ExperiencedDevs + lobste.rs (`practices`) · CI/measurement lesson (the scorecard row #15 freshness method — manual-dispatch e2e makes "passing" an event not a state; score `pass × freshness` with a linear 7-day decay so the number rots until an operator re-runs it)
 - run 56 — **https://nlqdb.com/blog/ephemeral-staging-persistent-registry/** — dev.to (#testing #ci #database) + r/ExperiencedDevs + lobste.rs (`practices`) · CI/test-infra lesson (the `SK-E2E-007` spin-up purge — an environment is only as ephemeral as the most persistent store that references it; reset at spin-up, not teardown)

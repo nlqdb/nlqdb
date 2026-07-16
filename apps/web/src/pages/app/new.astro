@@ -2,6 +2,7 @@
 // Anonymous-create permalink alias of the marketing hero
 // (`SK-ANON-008` / `SK-HDC-001` / `SK-WEB-008`).
 
+import AppAnalytics from "../../components/AppAnalytics.astro";
 import CreateForm from "../../components/CreateForm.tsx";
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
@@ -20,6 +21,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     </main>
     <Footer />
   </div>
+  <AppAnalytics />
 </Base>
 
 <script>

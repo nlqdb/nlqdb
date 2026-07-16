@@ -30,6 +30,7 @@ import { setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { buildDunningEmail, type PaymentFailedEvent } from "./sinks/dunning-email.ts";
 import { publishToLogSnag } from "./sinks/logsnag.ts";
+import { publishToPostHog } from "./sinks/posthog.ts";
 import { publishToQueryLog } from "./sinks/query-log.ts";
 
 const SERVICE_VERSION = "0.1.0";
@@ -75,7 +76,32 @@ async function drainBatch(env: Cloudflare.Env, batch: MessageBatch<EventEnvelope
       sinkMsgs.push(msg);
     }
   }
-  await Promise.all([drainQueryLog(env, queryLogMsgs), drainToSinks(env, sinkMsgs)]);
+  await Promise.all([
+    drainQueryLog(env, queryLogMsgs),
+    drainToSinks(env, sinkMsgs),
+    drainToPostHog(env, batch.messages),
+  ]);
+}
+
+// PostHog fan-out (SK-EVENTS-013). Drains EVERY event in the batch (both
+// the LogSnag-bound lifecycle/demand events AND the query-log-bound
+// `ask.completed` fingerprints) into PostHog so funnels / cohorts /
+// retention see the whole product-event stream. Env-gated on
+// `POSTHOG_API_KEY` + `POSTHOG_HOST` (missing → silent return per
+// SK-EVENTS-005). Best-effort: `publishToPostHog` never throws, and this
+// path never touches `msg.ack()` / `msg.retry()` — LogSnag and the
+// query-log sink own delivery semantics, so a PostHog outage can't
+// re-page the operator or re-drive the other sinks.
+async function drainToPostHog(
+  env: Cloudflare.Env,
+  msgs: readonly Message<EventEnvelope>[],
+): Promise<void> {
+  if (msgs.length === 0) return;
+  if (!env.POSTHOG_API_KEY || !env.POSTHOG_HOST) return;
+  await publishToPostHog(
+    { apiKey: env.POSTHOG_API_KEY, host: env.POSTHOG_HOST },
+    msgs.map((m) => m.body),
+  );
 }
 
 // Per-message dispatch to the non-query-log sinks. Each event is its own

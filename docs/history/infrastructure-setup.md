@@ -146,7 +146,7 @@ Optional (apply Day 1, don't block): Anthropic / OpenAI / Google Cloud for Start
 | **Cloudflare Web Analytics** | beacon, no key | Free, no SDK, no cookie banner. Pageview analytics per `GLOBAL-034` (replaced the dropped self-hosted Plausible plan). |
 | **Grafana Cloud OTLP** | `GRAFANA_CLOUD_API_KEY`, `GRAFANA_CLOUD_INSTANCE_ID`, `GRAFANA_OTLP_ENDPOINT` | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` with `metrics:write` + `logs:write` + `traces:write`. Live-verified via empty OTLP envelope POST. |
 | **LogSnag** | `LOGSNAG_TOKEN`, `LOGSNAG_PROJECT` | Sole product-event sink for now. Free tier 2,500 events/mo. Sign-ins deliberately **not** emitted — they would dominate the quota. If `LOGSNAG_TOKEN` is absent on the consumer Worker, the sink ack-and-drops (unit-tested) so dev + CI never need real credentials. |
-| **PostHog Cloud** | `POSTHOG_API_KEY`, `POSTHOG_HOST` | **Phase 2, optional** — only if a cohort / funnel / retention question lands that SQL on D1/Neon can't answer. Wires into `packages/events` as a second sink; call sites stay unchanged. |
+| **PostHog Cloud** | `POSTHOG_API_KEY`, `POSTHOG_HOST` | Wired 2026-07-16 (`GLOBAL-034`): server-side sink fanning every `ProductEvent` out (`SK-EVENTS-013`, events-worker) + posthog-js on the `/app` product surfaces only (`SK-WEB-024`). EU region; the `phc_` key is publishable (baked into the web build). If the two secrets are absent on the events-worker the sink silently no-ops. |
 
 ---
 

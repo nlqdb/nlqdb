@@ -85,12 +85,7 @@ when-to-load:
 
 ### SK-EVENTS-007 — PostHog as a future second sink, gated on a real cohort question
 
-- **Decision:** PostHog Cloud is held in reserve. Wiring is deferred until a real cohort / funnel / retention question lands that SQL on D1/Neon can't answer. When wired, it plugs into `apps/events-worker/src/sinks/posthog.ts` — call-sites stay unchanged. Server-side from the Worker only (no client SDK on the marketing site — would break Lighthouse 100s).
-- **Core value:** Free, Honest latency, Effortless UX
-- **Why:** PostHog Cloud is free for 1M events/mo but its client SDK adds ~30KB + a third-party fetch (DESIGN §5.4). Until a real cohort question lands, env vars stay empty and the sink no-ops via `SK-EVENTS-005`.
-- **Consequence in code:** No PostHog client in `apps/api` or `apps/web`. When wiring, follow the four-place sync from `SK-EVENTS-005`. Until then, `apps/events-worker/src/sinks/` has only `logsnag.ts` + `query-log.ts`.
-- **Alternatives rejected:**
-  - Wire PostHog now for redundancy — burns time on signal we can't yet act on.
+- **Status:** Superseded by `SK-EVENTS-013` — the named trigger (a real lifecycle/funnel question, founder directive 2026-07-16) landed and the sink is wired exactly where this decision reserved it (`apps/events-worker/src/sinks/posthog.ts`).
 
 ### SK-EVENTS-008 — Retry exhaustion drops silently; DLQ deferred until OTel signal warrants it
 
@@ -161,8 +156,13 @@ when-to-load:
 - **Alternatives rejected:**
   - **Fix the Cloudflare beacon instead.** Can't — blockers, 10-rounding, and zero identity are inherent to the tool, not a wiring bug.
   - **Client-supplied email / identifier.** Spoofable; a visitor could inflate or forge the unique-user count. Identity is server-derived from the session cookie.
-  - **Wire PostHog now (`SK-EVENTS-007` / `GLOBAL-034`).** The question is answerable on the existing LogSnag `user_id` facet + tags; PostHog stays reserved until a cohort/funnel question the pipeline genuinely can't answer.
+  - **A dedicated PostHog integration for this question.** The question was answerable on the existing LogSnag `user_id` facet + tags; the `SK-EVENTS-013` generic sink now carries `pricing.*` to PostHog with no per-event work.
   - **Mint an anon-bearer for logged-out views.** Coerces every visitor into an auth artifact for a page load; the per-day IP bucket is the honest anon floor (`SK-EVENTS-011` precedent).
+
+### SK-EVENTS-013 — PostHog sink: server-side fan-out of every `ProductEvent`
+
+**Body:** [`decisions/SK-EVENTS-013-posthog-sink.md`](./decisions/SK-EVENTS-013-posthog-sink.md).
+`src/sinks/posthog.ts` drains every `EventEnvelope` to PostHog in one `/batch` POST per queue batch (plain `fetch`, no SDK); envelope `id` → deterministic `uuid` for dedup; env-gated per `SK-EVENTS-005`, best-effort — never touches ack/retry. Client half is [`SK-WEB-024`](../web-app/decisions/SK-WEB-024-posthog-app-surfaces-only.md).
 
 ## GLOBALs governing this feature
 
@@ -173,12 +173,11 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-021** — Each external system has one canonical owning module. *In this feature:* the events-worker owns `EVENTS_QUEUE` (consumer); `packages/events/` owns the producer types; Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/`, so `SK-EVENTS-009`'s sink imports `writeQueryLog` rather than POSTing (owner-to-owner deps are GLOBAL-021-allowed).
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this feature:* `SK-EVENTS-010` + `SK-EVENTS-011`.
-- **GLOBAL-034** — Analytics stack. *In this feature:* PostHog Cloud, when wired, is a second sink draining `EVENTS_QUEUE` server-side, no client SDK.
+- **GLOBAL-034** — Analytics stack. *In this feature:* the PostHog sink (`SK-EVENTS-013`) drains `EVENTS_QUEUE` server-side, fanning every `ProductEvent` out to PostHog for funnels/cohorts/retention.
 
 ## Open questions / known unknowns
 
 - **DLQ activation threshold** — Decided: wire the DLQ when `nlqdb.events.dropped` exceeds 500/day for 2 consecutive days (≈15% of the daily budget); below that the TTL dead-letter pattern is cheaper. Document in the events-worker README when the Grafana alert lands.
-- **PostHog wiring criteria** — Resolved by [`GLOBAL-034`](../../decisions/GLOBAL-034-analytics-stack.md): PostHog is the Phase-2-optional sink. **Parked until** a named funnel/cohort/retention question lands that SQL on D1/Neon can't answer — that ticket is the trigger and first event-set spec.
 - **Schema evolution** — Decided: `ProductEvent` changes are additive-only (new fields optional with a default). Non-additive changes (rename/remove/retype) need a two-step deploy: add the new shape optional alongside the old, then drop the old once all producers ship.
 - **Queue free-tier ceiling** — Alert threshold > 7 000 ops/day (70% of 10K), as a Grafana alert on `nlqdb.events.queue_ops`.
 - **Inbound-email sink — Parked until a `support.email_received` consumer exists** (`GLOBAL-033` speculative-scope). Email Routing is wired separately; the producer reuses the additive `ProductEvent` contract.

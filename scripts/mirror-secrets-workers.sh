@@ -132,6 +132,11 @@ select_secrets() {
         LOGSNAG_PROJECT
         TINYBIRD_TOKEN
         TINYBIRD_API_BASE
+        # PostHog sink (SK-EVENTS-013) — server-side product-event fan-out.
+        # `POSTHOG_API_KEY` is the publishable `phc_` project key; host is
+        # the EU ingestion origin. Missing → sink no-ops per SK-EVENTS-005.
+        POSTHOG_API_KEY
+        POSTHOG_HOST
         GRAFANA_OTLP_ENDPOINT
         # Customer dunning email (SK-STRIPE-013) — same Resend key as apps/api.
         RESEND_API_KEY

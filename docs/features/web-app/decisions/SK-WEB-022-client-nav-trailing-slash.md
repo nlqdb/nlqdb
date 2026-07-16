@@ -1,0 +1,4 @@
+# SK-WEB-022 — Client-side navigations must carry the trailing slash (guarded)
+
+Under `trailingSlash: "always"`, a bare `window.location.assign("/app/new")` in a React island / Astro `<script>` 307-redirects — and `check-links.mjs` (built-output `href`/`src` only) can't see it (the class run 75 hand-fixed in `ConnectForm.tsx`). **Decision:** every client-side navigation to an internal page path ends its path (before `?`/`#`) in `/`, guarded by `src/data/client-nav-integrity.test.ts` — which scans only the string-literal argument of a `location.assign/replace(...)` / `.href =` call (bare or `window.`-prefixed; narrow → no false positives on comments/JSX-`href`/route-matchers) and names the offending `file:line`. Load-bearing: not redundant with check-links — it covers the JS-navigation blind-spot check-links cannot.
+

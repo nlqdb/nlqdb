@@ -763,7 +763,11 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
           </div>
         ) : null}
 
-        <ol className="chat-list" aria-live="polite">
+        {/* data-ph-mask (SK-WEB-024): PostHog session replay masks all text
+            in this subtree — the conversation renders user DB contents
+            (query results, sample rows, the typed goal), which must never
+            be recorded. Replay keeps layout + click targets, not values. */}
+        <ol className="chat-list" aria-live="polite" data-ph-mask="true">
           {hasOlder && (
             <li className="chat-list__load-more">
               <button
