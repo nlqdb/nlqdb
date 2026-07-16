@@ -33,14 +33,15 @@ import Legal from "../layouts/Legal.astro";
     <li>
       <strong>Web analytics.</strong> Public pageviews use
       <strong>Cloudflare Web Analytics</strong> &mdash; cookieless, no personal
-      data, aggregates only, no cross-site tracking. Signed-in product surfaces
-      may also use PostHog for product analytics (session replay masks inputs).
+      data, aggregates only, no cross-site tracking. App pages
+      (<code>/app</code>) also use PostHog for product analytics (session
+      replay masks all inputs and the chat conversation).
     </li>
     <li>
-      <strong>Support chat.</strong> The site loads a
-      <a href="https://www.tawk.to/">Tawk.to</a> chat widget so you can message
-      us. Tawk.to may set its own cookies / process chat messages on their
-      infrastructure under their privacy policy.
+      <strong>Support chat.</strong> App pages (<code>/app</code>, not
+      marketing pages) load a <a href="https://www.tawk.to/">Tawk.to</a> chat
+      widget so you can message us. Tawk.to may set its own cookies / process
+      chat messages on their infrastructure under their privacy policy.
     </li>
     <li>
       <strong>Error reports.</strong> If a page crashes, the browser sends us
