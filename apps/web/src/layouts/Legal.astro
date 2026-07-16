@@ -1,8 +1,8 @@
 ---
 // Shared shell for the legal pages (/privacy, /terms). Plain Astro,
-// zero JS (SK-WEB-001). Holds the prose styling + the pre-beta-draft
-// banner in one place so the two pages stay thin. The final
-// lawyer-reviewed copy is a founder action (docs/blocked-by-human.md).
+// zero JS (SK-WEB-001). Holds the prose styling + a neutral legal
+// banner in one place so the two pages stay thin. Copy describes only
+// practices the codebase actually implements — no aspirational policy.
 import Footer from "../components/Footer.astro";
 import Topnav from "../components/Topnav.astro";
 import Base from "./Base.astro";
@@ -24,14 +24,13 @@ const { title, description, heading, canonical, updated } = Astro.props;
 
     <main class="legal">
       <header class="legal__head">
-        <p class="legal__kicker">Legal &middot; Pre-beta draft</p>
+        <p class="legal__kicker">Legal</p>
         <h1 class="legal__title">{heading}</h1>
         <p class="legal__updated">Last updated: {updated}</p>
         <p class="legal__note">
-          nlqdb is in pre-beta. This is a plain-English draft describing what
-          we actually do today &mdash; final, lawyer-reviewed text will replace
-          it before general availability. Questions:
-          <a href="mailto:hello@nlqdb.com">hello@nlqdb.com</a>.
+          Plain-English on purpose, and honest &mdash; this page describes only
+          what nlqdb actually does today. Questions:
+          <a href="mailto:contact@nlqdb.com">contact@nlqdb.com</a>.
         </p>
       </header>
 
