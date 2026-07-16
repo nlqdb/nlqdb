@@ -33,7 +33,7 @@ describe("createClient", () => {
     const out = await client.ask({ goal: "users", dbId: "db_1" });
 
     expect(capturedUrl).toBe("https://api.example.com/v1/ask");
-    expect((capturedInit?.headers as Record<string, string>)["authorization"]).toBe(
+    expect((capturedInit!.headers as Record<string, string>)["authorization"]).toBe(
       "Bearer sk_test",
     );
     expect(capturedInit?.method).toBe("POST");

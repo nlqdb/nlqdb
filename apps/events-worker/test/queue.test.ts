@@ -236,7 +236,7 @@ describe("events-worker queue consumer", () => {
     const resendCall = calls.find(([u]) => u.includes("api.resend.com"));
     expect(calls.some(([u]) => u.includes("api.logsnag.com"))).toBe(true);
     expect(resendCall).toBeDefined();
-    expect((resendCall?.[1].headers as Record<string, string>)["idempotency-key"]).toBe(
+    expect((resendCall![1].headers as Record<string, string>)["idempotency-key"]).toBe(
       "billing.payment_failed.in_42",
     );
     expect(msgs[0]?.ack).toHaveBeenCalledTimes(1);

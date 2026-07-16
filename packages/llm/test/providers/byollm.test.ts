@@ -57,7 +57,7 @@ describe("createByollmProvider", () => {
     expect(provider.model("route")).toBe("openai/gpt-5.2");
     expect(provider.model("plan")).toBe("openai/gpt-5.2");
     await provider.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
-    expect((seen[0]?.body as { model: string }).model).toBe("openai/gpt-5.2");
+    expect((seen[0]!.body as { model: string }).model).toBe("openai/gpt-5.2");
   });
 
   it("namespaces the cache key per tenant (BYOLLM_<userId> prefix)", async () => {

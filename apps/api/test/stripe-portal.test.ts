@@ -17,7 +17,6 @@ function makeStubDeps(overrides: Partial<PortalDeps> = {}): PortalDeps {
 // Patch newStripeClient to return a stub Stripe instance.
 vi.mock("../src/stripe/client.ts", () => {
   return {
-    STRIPE_API_VERSION: "2026-04-22.dahlia",
     newStripeClient: vi.fn(),
     stripe: { webhooks: { constructEventAsync: vi.fn() } },
     cryptoProvider: undefined,
