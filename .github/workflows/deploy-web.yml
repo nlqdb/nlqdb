@@ -55,6 +55,16 @@ jobs:
       - name: Build site
         env:
           PUBLIC_API_BASE: https://app.nlqdb.com
+          # Cloudflare Turnstile sitekey for the anon-create bot floor
+          # (SK-ANON-009/012). Baked into the client bundle at build time
+          # (`import.meta.env.PUBLIC_TURNSTILE_SITE_KEY`, read by
+          # `apps/web/src/lib/turnstile.ts`). Public by design — safe as a
+          # literal, mirroring PUBLIC_API_BASE above. Widget: nlqdb-anon,
+          # invisible mode, domains nlqdb.com + app.nlqdb.com. ARM IN
+          # LOCKSTEP: the matching worker secret TURNSTILE_SECRET must be
+          # set on the prod API in the same release this ships — a secret
+          # without this sitekey 428-kills every anon create (run-56).
+          PUBLIC_TURNSTILE_SITE_KEY: 0x4AAAAAAD3WnUiwKEWfcy_X
           # PostHog client capture on the /app product surfaces only
           # (SK-WEB-024 / GLOBAL-034). Key lives in repo secrets
           # (founder-resolved 2026-07-16 — never a literal in the repo);
