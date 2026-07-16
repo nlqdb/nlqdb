@@ -22,24 +22,24 @@ falsified the "clean window" hypothesis; full detail + run link in row #15).
 /weekly should re-point the focus off #15 while that secret is unset.
 
 **Worst number today:** real strangers reaching a first answer = **0**
-(row #2; funnel open since run 56, lagging — moved only through its
-agent-controllable inputs). **Run 85 pulls priority-1 (real UX-flow quality),
-off the chat cluster:** the sign-in `?error=session_lost` hint was **write-only** —
-`post-signin.astro` bounces a stranger whose cookie didn't land (Safari ITP /
-third-party-cookie block) back to `/auth/sign-in/?error=session_lost`, but
-`sign-in.astro` read only `return_to`, so they hit a pristine form with no
-explanation and re-looped. Now surfaced. See _Last change_. **Step 0:** the run-84
-chat-trace lever merged as **PR #709** (`components/chat/**`) — this run stays off
-`chat/**` (auth pages instead) and off the run-80→84 chat/clipboard cluster
-(rule 7). **Rule 6:** CI + `deploy-web` `success` on `main` `8c826df` (#708); no
+(row #2; fresh 07-16 remote-D1 pull — 9 users = 4 founder/company + 5
+test/dev, newest registration 07-06, none since; lagging, moved only through
+agent-controllable inputs). **Run 86 is a NULL RUN (step 2):** no lever cleared
+the bar — rule 7 blocks a 7th UX-flow pull (runs 80–85), distribution is owned by
+open **PR #711**, engine is unmeasurable from this egress-gated container (row #70),
+and docs-ambiguity's 15 bullets are genuine deferrals. Full reasoning + step-1
+refresh in _Last change_. **Step 0:** PR #711
+(`claude/repo-build-icp-acquisition-3tlhj6`, draft) owns web-app / deploy-web /
+sitemap — this run touches only `docs/scorecard.md`, zero overlap. **Rule 6:** CI +
+all 9 deploy/publish/security workflows `success` on `main` `0d0abc9` (07-16); no
 red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
 | | **Funnel** (fresh 07-13 02:58Z pull — CF GraphQL + remote D1) | | exclude synthetic stranger-test walker traffic |
 | 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** (Chrome 41, ChromeMobile 3, MobileSafari 2, Firefox 2, Edge 1) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
-| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev (re-verified 07-13 02:52Z). The 428 wall is gone (run 56, live since 13:03Z); acquisition now depends on distribution yield |
-| 3 | DBs total | **223** (07-13 02:52Z; +58 vs 07-12, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
+| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield (owned by PR #711) |
+| 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
@@ -51,14 +51,14 @@ red-main / stale-deploy lever.
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-15 run 76):** all 9 workflows (CI, all `deploy-*`, canary, npm, security) **green on `main`** (`80e4aa4`); `deploy-cli` recovered on `80e4aa44` after run 73's goreleaser fix and populated the Homebrew tap (row #19) |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-16 run 86):** all 9 workflows (CI, all `deploy-*`, `deploy-canary`, `release-npm`, `security`) **green on `main`** (`0d0abc9`; deploy-mcp stalest at 07-14 but passing); no red-main / stale-deploy lever |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
 | 15 | E2E manual-suite freshness | **≈ 0.75** (sdk/mcp/examples ≈1.0 each; **opencheck's latest main run [29324716801](https://github.com/nlqdb/nlqdb/actions/runs/29324716801) (run 70) FAILED**, pass=0 zeroes it ⇒ mean 0.75). **Run 70 falsified the "clean window" hypothesis:** re-dispatched `abc` on `2b9f8a7` ~3 h after the last free-lane consumer (run 69 memory eval, 07:24Z) — all 3 suites still red, Suite A's anon 2nd `/v1/ask` 240 s-timed-out, **no product regression** (bootstrap recordings passed, no `schema_mismatch`). The free pools (NIM + OpenRouter `:free`) flap intrinsically on a minute timescale ⇒ contention timing was never the cause. **Now dark (rule 8):** only the founder-only independent 3rd free pool (top `blocked-by-human.md` bullet) lifts it | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **15** (fresh grep 07-16 run 85; unchanged since run 78, was 17). Run 78 reclassified 2 decided-deferral ICP bullets (`icp-mining`: Reddit disable [SK-ICP-011], 10th-source refactor pin [P5]) to the canonical "Parked until `<trigger>`" form their 4 siblings already use — honest miscount correction, not a genuinely-open question resolved | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); this run pulls it only under the step-2 priority-3 waiver (UX-flow maxed, engine + #15 dark, distribution surfaces verified complete) |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **15** (fresh grep 07-16 run 86; unchanged since run 78, was 17). Run 78 reclassified 2 decided-deferral ICP bullets (`icp-mining`: Reddit disable [SK-ICP-011], 10th-source refactor pin [P5]) to the canonical "Parked until `<trigger>`" form their 4 siblings already use — honest miscount correction, not a genuinely-open question resolved | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); this run pulls it only under the step-2 priority-3 waiver (UX-flow maxed, engine + #15 dark, distribution surfaces verified complete) |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-13 run-61 sweep: **118** pages, **2,908** internal + **14 cross-app** links). Run 61 **added cross-app coverage** — `href`/`src` to owned subdomains (`docs./app./mcp.nlqdb.com`) were dropped by `isInternal` and never checked; the sweep now live-verifies them (4xx/5xx = dead & hard-fail; auth/method gate = alive; network error = "unverified", never red). 14 `docs.nlqdb.com` funnel links now covered (0 → 14). **Run 72 prod-verified this live:** all 110 `sitemap.xml` URLs return 200 against deployed `nlqdb.com` (built-output sweep confirmed in production). **Run 75 named a coverage blind-spot; run 77 closed it:** the sweep scans built `dist/` HTML only, so navigations rendered by client-side JS (`window.location.assign(...)` in React islands / Astro `<script>`) never appear as `href` literals and are unswept — that is how `ConnectForm.tsx`'s `/app?db=` redirecting CTA lived undetected while this row read "0 redirecting". Run 75 fixed one link by hand and deferred the guard. **Run 77 swept all `location.*` navigations in `apps/web/src` and found 6 bare-path 307s** (`ChatPanel.tsx` new-db/keys/sign-out + `Topnav.astro` sign-out + the `/vs/*` try-CTA + `post-signin.astro`'s session-lost redirect), fixed them, and added the **standing guard** `client-nav-integrity.test.ts` (`SK-WEB-022`) — narrowly scoped to the string-literal argument of an actual `location.*` call (bare or `window.`-prefixed), so no false positives (the breadth run 75 rejected). **Client-side-nav redirects 6 → 0** | target 0 — `bun run build && bun run check:links` (built-output `href`/`src`) + `client-nav-integrity.test.ts` (JS navigations) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** — run 76 verified `brew install nlqdb/tap/nlq` (advertised in `cli/README.md` + npm-shim fallback, `SK-CLI-002`) is now real: `nlqdb/homebrew-tap` carries `nlq.rb` at root (commit 07-15 02:42Z, v0.1.12; **empty since 2026-05-19** before this), the linux_x86_64 asset returns HTTP 200 with a **sha256 matching the formula exactly** (`63a9266…814a`), tarball ships the `nlq` binary. Run 73's `cli/.goreleaser.yml` token-format fix (merged) populated the tap on `deploy-cli`@`80e4aa44`; run 76 is the post-merge tap-verify the scorecard deferred. Runs 32 + 37 + 56 + 59 + 62 + 64 + 72 + 73 + 74 + **76** each found/closed 1 agent-movable gap | claim-vs-reality on shipped surfaces + docs; target 0 **met**. **Standing guards:** `mcp-tool-integrity.test.ts` (run 64) sweeps the shipped MCP catalog closed-world; `cli-verb-integrity.test.ts` (run 74) derives the 15 shipped top-level verbs from the cobra tree (first `Use:` per `cli/internal/cmd/*.go` minus `nlq`) and — **as of run 76** — sweeps every `nlq <verb>` snippet across **both** `apps/web/src` (`.ts/.tsx/.astro`) and the docs-site prose `apps/docs/src` (`.md/.mdx`), naming the phantom + file on failure (verified: fails on an injected `nlq schema` in `cli.mdx`). Next candidate: the SDK method surface (`client.*`), and a docs-prose sweep of MCP-tool names |
@@ -84,34 +84,31 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-16 (run 85)** — **priority-1 UX-flow lever (off the chat cluster): the
-sign-in page now surfaces the `session_lost` hint instead of a blank form.**
-**Before:** `post-signin.astro:107` redirects a failed round-trip (cookie blocked,
-third-party-cookie partitioning / Safari ITP, or a tab closed mid-flow) to
-`/auth/sign-in/?error=session_lost` — its comment promising "a friendly hint" —
-but `sign-in.astro`'s script read only `return_to`; it **never read `?error`**, and
-`showError` fired only for a bad email / send failure. Grep-proven: `session_lost`
-was written in exactly one place and **read nowhere** — the stranger bounced back to
-a pristine form with zero feedback and re-looped — the onboarding conversion
-killer. No P1 conflict — restores the documented intent (SK-WEB-001 "no
-blank screens"). **Change (P5, no new decision — D5):** new pure
-`lib/signin-hints.ts` `signInHintFor(code)` (mirrors `create-errors.ts`; GLOBAL-012
-— absent/unknown code → null, never echoes the slug); `sign-in.astro` imports it
-and, after parsing `params`, fills the existing `role="alert"` region (a page-level
-notice, not an email-field validation error, so no false `aria-invalid`). Added
-`signin-hints.test.ts` with a **contract guard** that scans `post-signin.astro`
-for every `?error=<code>` it emits and asserts each has copy — the write/read sides
-can't silently drift again (sibling of the SK-WEB-022 nav sweep). **After:** web
-**282/282** (+3 new); workspace typecheck all-green; biome clean; `astro check`
-0 errors; `bun run build` 120 pages OK. **Rule 6:** CI + `deploy-web` `success` on
-`main` `8c826df` (#708). **Step 0:** the run-84 chat-trace lever is open as **PR
-#709** (`components/chat/**` + scorecard) — this run touches only
-`pages/auth/sign-in.astro` + `lib/signin-hints*`, zero code overlap; steps off the
-run-80/81/82/83/84 chat/clipboard cluster (rule 7). **Artifact (step 3):** skipped
-— queue **2** (< 3). **Step 1 (carried):** strangers **0**, docs-ambiguity **15**
-(fresh grep 07-16), row #18 **0 dead**, row #6 **100** / queue **2**. **KPI
-(GLOBAL-025):** advances **onboarding + UX** (honest recovery at the sign-in
-failure moment); engine/performance/distribution **unchanged**.
+**2026-07-16 (run 86)** — **NULL RUN (step 2): no lever cleared the bar; ships
+only the step-1 scorecard refresh.** The finding, in order of the loop's lever
+priority: **(1) UX-flow is rut-blocked** — runs 80–85 are six consecutive
+priority-1 UX-flow frontend fixes (chat trace/sample-tables, keys clipboard,
+CopySnippet, sign-in hint), so **rule 7 forbids a 7th** identical pull, and the
+category's yield can't be measured either (its only external signal is the funnel,
+still stranger-N=0). **(2) Distribution is owned by open PR #711**
+(`claude/repo-build-icp-acquisition-3tlhj6`, draft — IndexNow push-on-deploy +
+sitemap `lastmod`); overlapping its web-app/deploy files is forbidden by step 0.
+**(3) Engine — the worst absolute numbers (BIRD 0.546 < 0.60 floor, Spider
+0.2963) — is unmeasurable from this daily container:** it is egress-gated for the
+free LLM lanes (row #70), so the mandatory step-3 same-seed re-measure cannot run
+here; an engine change I couldn't measure would violate step 3. **(4)
+Docs-ambiguity (15)** — the remaining bullets are all genuine parked-until-trigger
+or infra-/human-gated deferrals (Lago, Stripe live cutover, self-host container,
+device-flow endpoints, OpenAPI schema); resolving them means reclassifying
+phrasing, which run 78 already correctly called a miscount fix, not a resolved
+question — metric-gaming, not value. **Rule 6 clear:** main `0d0abc9` is green
+across CI + all 9 deploy/publish/security workflows (07-16). **Step-1 refresh
+(genuine 07-16 remote-D1 pull via CF API):** registered users **9**, real
+strangers **0** (newest registration 07-06, none since); DBs total **223 → 251**
+(synthetic walker/preview traffic); docs-ambiguity **15** (fresh grep);
+deploy-health note re-stamped to `0d0abc9`. **Artifact (step 3):** skipped — null
+run + queue **2** (< 3). **KPI (GLOBAL-025):** none moved (null run); none
+degraded — the refresh is measurement only.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
