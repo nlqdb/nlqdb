@@ -5,9 +5,9 @@
 // even with nodejs_compat). The crypto provider is passed per-call to
 // `constructEventAsync`; the http client is set on the constructor.
 //
-// `STRIPE_API_VERSION` is pinned to `2026-04-22.dahlia`. Bumping the SDK
-// is the supported way to advance — see SK-STRIPE-007 and the runbook
-// for the bump procedure.
+// The API version is the SDK's compiled-in default — never a hard-coded
+// string. Bumping the SDK is the supported way to advance — see
+// SK-STRIPE-007 and the runbook for the bump procedure.
 //
 // `newStripeClient(secretKey)` creates a fresh instance per request for
 // outbound API calls (Checkout creation, etc.). Webhook verification uses
@@ -16,11 +16,8 @@
 
 import Stripe from "stripe";
 
-export const STRIPE_API_VERSION = "2026-04-22.dahlia" as const;
-
 export function newStripeClient(secretKey: string): Stripe {
   return new Stripe(secretKey, {
-    apiVersion: STRIPE_API_VERSION,
     httpClient: Stripe.createFetchHttpClient(),
   });
 }

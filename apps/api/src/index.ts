@@ -2050,7 +2050,7 @@ async function idempotencyLookup(
   return (await kv.get(`${scope}:${tenantId}:${key}`, "json")) as Record<string, unknown> | null;
 }
 function idempotencyStore(
-  ctx: ExecutionContext,
+  ctx: Pick<ExecutionContext, "waitUntil">,
   kv: KVNamespace,
   scope: string,
   tenantId: string,

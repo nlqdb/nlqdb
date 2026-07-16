@@ -251,7 +251,7 @@ export async function sha256Hex(input: string, hexChars = 64): Promise<string> {
 // Hono throws on `c.executionCtx` when the app is invoked without an
 // env+ctx pair (i.e. `app.request()` in unit tests). Tolerating that
 // path keeps the middleware testable without injecting a fake ctx.
-function tryGetExecutionCtx(c: Context): ExecutionContext | null {
+function tryGetExecutionCtx(c: Context): Pick<ExecutionContext, "waitUntil"> | null {
   try {
     return c.executionCtx;
   } catch {
