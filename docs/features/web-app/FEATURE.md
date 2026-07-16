@@ -170,6 +170,28 @@ One route (`/architecture/`) renders the system as a three.js zoom-to-detail map
 
 Under `trailingSlash: "always"`, a bare `window.location.assign("/app/new")` in a React island / Astro `<script>` 307-redirects — and `check-links.mjs` (built-output `href`/`src` only) can't see it (the class run 75 hand-fixed in `ConnectForm.tsx`). **Decision:** every client-side navigation to an internal page path ends its path (before `?`/`#`) in `/`, guarded by `src/data/client-nav-integrity.test.ts` — which scans only the string-literal argument of a `location.assign/replace(...)` / `.href =` call (bare or `window.`-prefixed; narrow → no false positives on comments/JSX-`href`/route-matchers) and names the offending `file:line`. Load-bearing: not redundant with check-links — it covers the JS-navigation blind-spot check-links cannot.
 
+### SK-WEB-023 — IndexNow push on every web deploy; robots + sitemap stay index-open
+
+- **Decision:** Every `apps/web` deploy pushes the live sitemap URL list to IndexNow (`api.indexnow.org`) via a non-blocking (`continue-on-error`) post-deploy step in `deploy-web.yml` running `scripts/submit-indexnow.ts`. The public key is served as `apps/web/public/<key>.txt`. The site stays index-open by posture: `robots.txt` keeps `Allow: /` + the `Sitemap:` line (Cloudflare injects its managed AI-bot block above ours; the search-relevant bots — Bingbot, Googlebot via `*`, `Content-Signal: search=yes` — are not blocked), pages carry self-referential canonicals and **no** `noindex`, and the sitemap emits accurate `<lastmod>` for blog posts only (never a synthetic "today" that gets the tag ignored site-wide).
+- **Core value:** Free, Simple, Bullet-proof
+- **Why:** A 6-week-old site with near-zero inbound links is crawl-starved — only the homepage indexes despite ~110 valid sitemap URLs. IndexNow is the only *automatable push* channel (Google ignores it; Bing is already this site's sole converting engine), so it directly feeds what works while Google's automated path (robots + sitemap + `lastmod` + time) is left unobstructed. Autonomous acquisition (founder directive) rules out any human-gated submission step; Google Search Console needs the founder's Google account and is tracked out-of-scope in `docs/blocked-by-human.md`.
+- **Consequence in code:** `scripts/submit-indexnow.ts` (bun) reads the live sitemap and POSTs `{host,key,keyLocation,urlList}`, treating 200/202 as success and logging 400/403/422/429 per spec. The key file must ship in `dist/` (Astro copies `public/` verbatim). No secret is added — the key is public by design; no new CI permission scope (`SK-CIPERM-002` unchanged) since the POST is unauthenticated. First real submission lands on the next deploy (engines verify the key file live first).
+- **Alternatives rejected:**
+  - Google-only via Search Console API — needs OAuth to the founder's Google identity; not autonomous.
+  - Submit from the API worker at runtime — couples indexing to request traffic and burns the free-tier budget; deploy-time is the natural trigger.
+  - `<lastmod>` on every URL from build time — reads as "always today", which gets Google to ignore `lastmod` site-wide.
+
+### SK-WEB-024 — PostHog client capture on the product `/app` surfaces only, with the conversation region masked
+
+- **Decision:** posthog-js loads on the `/app/*` product surfaces only (`AppAnalytics.astro`, included on `/app`, `/app/new`, `/app/connect`, `/app/keys`), never on marketing/blog/vs/solve. It is lazy-loaded (`import("posthog-js")` after the memoised session probe) so the SDK never blocks first paint and never ships to marketing (verified in the build: the 224 KB library chunk is reachable only via the runtime dynamic import, no marketing HTML preloads it). Config (`lib/posthog.ts`): EU host, `defaults: "2026-05-30"`, autocapture + heatmaps + dead-click capture on, session replay on with `maskAllInputs: true` **and** `maskTextSelector` masking the chat conversation list (`data-ph-mask="true"` on `<ol class="chat-list">` in `ChatPanel.tsx`), `persistence: "localStorage+cookie"`, `person_profiles: "identified_only"`. On a live Better Auth session it calls `posthog.identify(userId, { email })` so lifecycle stitches across visits. This is the client half of [`SK-EVENTS-013`](../events-pipeline/FEATURE.md) (server sink). The publishable `phc_` project key is baked at build time via `PUBLIC_POSTHOG_KEY`/`PUBLIC_POSTHOG_HOST` in `deploy-web.yml` (same pattern as `PUBLIC_API_BASE`); absent locally/on previews → the SDK never loads.
+- **Core value:** Effortless UX, Bullet-proof, Free
+- **Why:** The founder's client-side lifecycle questions — where users click more/less (autocapture + heatmaps), what blocks them (session replay + rage/dead clicks) — physically need a client SDK, which the server-side sink can't provide. Scoping it to `/app` keeps the marketing Lighthouse-100 + no-cookie-banner posture (`GLOBAL-034`) intact. Masking all inputs and the entire conversation region is non-negotiable: the chat renders user DB contents (query results, sample rows, the typed goal) which must never reach a session recording — replay keeps layout + click targets, not values.
+- **Consequence in code:** `apps/web/src/lib/posthog.ts` (`initAppAnalytics`), `components/AppAnalytics.astro` (mount, `/app` pages only), `data-ph-mask="true"` on the chat list in `ChatPanel.tsx`, `posthog-js` in `apps/web/package.json`, and the `PUBLIC_POSTHOG_*` build env in `.github/workflows/deploy-web.yml`. Adding a new `/app` page includes `<AppAnalytics />`; a marketing page must not.
+- **Alternatives rejected:**
+  - **Init in `Base.astro` (shared by marketing).** Would ship the SDK site-wide, breaking the Lighthouse posture and the no-cookie-banner promise.
+  - **Eager (non-lazy) import.** Blocks first paint and pulls the 224 KB library onto the critical path.
+  - **Record the chat unmasked.** Leaks user DB contents into session replay — a privacy incident. Layout-only replay answers "what blocks them" without the values.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -180,7 +202,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* the chat panel renders the diff inline before commit (per `SK-TRUST-001`), the trace pane sits below the answer with collapsed-by-default state (per `SK-TRUST-002`), and low-confidence refusals surface as click-to-disambiguate chips (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
-- **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for pageviews; PostHog Phase-2-optional).
+- **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for public pageviews; PostHog client SDK on the `/app` product surfaces only per `SK-WEB-024`; marketing stays SDK-free).
 - **GLOBAL-032** — Canonical user flows.
   - *In this feature:* the marketing site hosts three of the canonical inbound surfaces (FLOW-001 hero, FLOW-002 `/solve`, FLOW-003 `/vs`), each walked daily by `stranger-test.sh` under `acquisition-health.yml`, so a template regression surfaces within 24 h.
 

@@ -48,6 +48,17 @@ when-to-load:
   - Astro content collection — breaks the bun-test import of the endpoints; a second content pattern in a repo standardized on typed data files.
   - A markdown dependency (marked / markdown-it) — a dependency plus a sanitization surface for what is a four-pattern inline subset; `inline-md.ts` escapes first, so post content can never inject markup.
 
+### SK-BLOG-003 — dev.to syndication is autonomous, canonical points at `/blog`
+
+- **Decision:** The daily loop mirrors the oldest un-syndicated `/blog` post to dev.to via `scripts/syndicate-devto.ts` using the founder-provided `DEV_TO_API_KEY`, with `canonical_url` → `nlqdb.com/blog/<slug>/`, one post/day (founder-resolved 2026-07-16). Reddit / HN / lobste.rs stay human-posted.
+- **Core value:** Free, Simple
+- **Why:** `/blog` publishing was already autonomous (`SK-BLOG-001`) but venue variants sat unposted for weeks because posting was implicitly a human job — exactly one dev.to post in the queue's lifetime. dev.to's `rel=canonical` cross-post is the officially supported pattern: the mirror widens reach while `/blog` keeps the indexation and citations, at zero human action. Reddit/HN/lobste.rs forbid unattended submission, so automating them would earn bans, not reach.
+- **Consequence in code:** daily step 3 runs `--list` then `--post <slug> --tags …` every non-null run; the script enforces canonical-dedup idempotency and a 20 h drip guard (one post/day), reads the key fail-loud (`GLOBAL-012`), and sends `tags` as a 1–4 alphanumeric array (a comma string is silently dropped). On success the queue line drops its dev.to venue (whole line deleted when none remain). A reviewer rejects any change that reintroduces a human gate on dev.to posting.
+- **Alternatives rejected:**
+  - dev.to's "publish from RSS" auto-import — no per-post tag control, fires on its own clock outside the one-lever daily cadence, and re-imports edits unpredictably.
+  - Automate Reddit/HN/lobste.rs too — violates their platform norms (no unattended submission); they stay human-gated pointers.
+  - Keep venue posting a human job — the implicit status quo; it produced one post ever.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)).
@@ -56,7 +67,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* the post CTA emits `blog.cta_clicked` `{slug}` via `lib/logsnag.ts` (same late-bound hook as `vs.try_query_clicked` / `solve.try_query_clicked`), so per-post funnel yield is measurable per venue.
 - **GLOBAL-025** — North-star compass.
   - *In this feature:* the KPI advanced is **onboarding/UX via distribution yield** — every post CTA points at `/app/new` (anonymous mode); posts are the daily loop's released artifact.
-- **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for pageviews; PostHog Phase-2-optional). No client analytics SDK ships with blog pages.
+- **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for public pageviews; PostHog client SDK is scoped to the `/app` product surfaces). No client analytics SDK ships with blog pages.
 
 ## Open questions / known unknowns
 

@@ -39,6 +39,23 @@ export type IcpItem = {
 const SEEN_TTL_SECONDS = 90 * 24 * 60 * 60; // 90 days
 const ITEM_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
+// SK-ICP-014: single snapshot of the most recent scrape's per-source yield.
+// `runIcpCluster` reads it on a starved run to name what the last harvest
+// actually returned. 90-day TTL so a weeks-long drought still shows the last
+// live harvest rather than nothing.
+export const LAST_SCRAPE_STATS_KEY = "icp:last_scrape_stats";
+const STATS_TTL_SECONDS = 90 * 24 * 60 * 60; // 90 days
+
+export type IcpScrapeStats = {
+  ts: number;
+  newItems: number;
+  skipped: number;
+  // New items stored per source this run.
+  sources: Record<string, number>;
+  // Sources that self-skipped this run because their env key(s) were absent.
+  skippedSources: string[];
+};
+
 function yyyymmdd(ts: number): string {
   const d = new Date(ts);
   const y = d.getUTCFullYear();
@@ -1250,6 +1267,23 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
   await Promise.all(writePromises);
 
   const result: IcpScrapeResult = { newItems, skipped, sources, items: storedItems };
+
+  // SK-ICP-014: snapshot per-source yield + which sources self-skipped for
+  // missing env keys, so a later starved cluster run can name the drought.
+  const skippedSources: string[] = [];
+  if (!(deps.redditClientId && deps.redditClientSecret)) skippedSources.push("reddit");
+  if (!deps.ghToken) skippedSources.push("github", "github_discussions");
+  await deps.kv.put(
+    LAST_SCRAPE_STATS_KEY,
+    JSON.stringify({
+      ts: now,
+      newItems,
+      skipped,
+      sources,
+      skippedSources,
+    } satisfies IcpScrapeStats),
+    { expirationTtl: STATS_TTL_SECONDS },
+  );
 
   // LogSnag notification — failure is non-fatal.
   if (deps.logsnagToken && deps.logsnagProject) {

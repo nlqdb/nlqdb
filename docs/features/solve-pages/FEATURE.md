@@ -45,7 +45,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-SOLVE-N
   - *In this feature:* the KPI advanced is **onboarding** — every page CTA points at `/app/new` (anonymous mode); the solve page is the search-intent on-ramp the homepage can't be. KPI degraded: none.
 - **GLOBAL-028** — Acquisition progress tracker.
   - *In this feature:* the implementation of [`automated-icp-validation-plan.md §3.1`](../../research/automated-icp-validation-plan.md). Progress is recorded in that file.
-- **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for pageviews; PostHog Phase-2-optional).
+- **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for public pageviews; PostHog client SDK is scoped to the `/app` product surfaces — solve pages stay SDK-free).
 
 ## Open questions / known unknowns
 

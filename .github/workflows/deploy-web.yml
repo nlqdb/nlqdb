@@ -55,6 +55,14 @@ jobs:
       - name: Build site
         env:
           PUBLIC_API_BASE: https://app.nlqdb.com
+          # PostHog client capture on the /app product surfaces only
+          # (SK-WEB-024 / GLOBAL-034). Key lives in repo secrets
+          # (founder-resolved 2026-07-16 — never a literal in the repo);
+          # `scripts/mirror-secrets-gha.sh` sets both from .envrc. Absent
+          # on preview/local builds → the SDK never loads, so marketing +
+          # previews stay SDK-free.
+          PUBLIC_POSTHOG_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          PUBLIC_POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
         run: bun run --cwd apps/web build
 
       # SLSA L3 build-provenance attestation. The action's
@@ -78,3 +86,12 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/web
           command: deploy
+
+      # Push the freshly-deployed sitemap URLs to IndexNow (Bing / Yandex /
+      # Seznam / Naver — not Google). Runs after deploy so the <key>.txt
+      # file and any new pages are already live when engines verify the key.
+      # Non-blocking: an IndexNow outage must never fail a web deploy
+      # (SK-WEB-023). No secrets — the IndexNow key is public by design.
+      - name: Ping IndexNow with the live sitemap
+        continue-on-error: true
+        run: bun scripts/submit-indexnow.ts

@@ -83,15 +83,6 @@ when-to-load:
 - **Consequence in code:** Reviewers reject `userSignedIn` (camelCase), `signin` (no domain). New events firing more than once per user-lifecycle need an explicit cost analysis. Stripe billing event choices (omitted `subscription_updated`, per-invoice dedup on `payment_failed`) live in `SK-STRIPE-005`/`SK-STRIPE-011`.
 - **Alternatives rejected:** Per-team naming (LogSnag UI fragments); emit-everything (burns quota with no founder signal).
 
-### SK-EVENTS-007 — PostHog as a future second sink, gated on a real cohort question
-
-- **Decision:** PostHog Cloud is held in reserve. Wiring is deferred until a real cohort / funnel / retention question lands that SQL on D1/Neon can't answer. When wired, it plugs into `apps/events-worker/src/sinks/posthog.ts` — call-sites stay unchanged. Server-side from the Worker only (no client SDK on the marketing site — would break Lighthouse 100s).
-- **Core value:** Free, Honest latency, Effortless UX
-- **Why:** PostHog Cloud is free for 1M events/mo but its client SDK adds ~30KB + a third-party fetch (DESIGN §5.4). Until a real cohort question lands, env vars stay empty and the sink no-ops via `SK-EVENTS-005`.
-- **Consequence in code:** No PostHog client in `apps/api` or `apps/web`. When wiring, follow the four-place sync from `SK-EVENTS-005`. Until then, `apps/events-worker/src/sinks/` has only `logsnag.ts` + `query-log.ts`.
-- **Alternatives rejected:**
-  - Wire PostHog now for redundancy — burns time on signal we can't yet act on.
-
 ### SK-EVENTS-008 — Retry exhaustion drops silently; DLQ deferred until OTel signal warrants it
 
 - **Decision:** `wrangler.toml`'s `max_retries = 3` is the only retry surface. After exhaustion the message drops — no DLQ today. When OTel counters show meaningful volume, configure a DLQ via a second queue (`dead_letter_queue = "nlqdb-events-dlq"`).
@@ -161,8 +152,19 @@ when-to-load:
 - **Alternatives rejected:**
   - **Fix the Cloudflare beacon instead.** Can't — blockers, 10-rounding, and zero identity are inherent to the tool, not a wiring bug.
   - **Client-supplied email / identifier.** Spoofable; a visitor could inflate or forge the unique-user count. Identity is server-derived from the session cookie.
-  - **Wire PostHog now (`SK-EVENTS-007` / `GLOBAL-034`).** The question is answerable on the existing LogSnag `user_id` facet + tags; PostHog stays reserved until a cohort/funnel question the pipeline genuinely can't answer.
+  - **A dedicated PostHog integration for this question.** The question was answerable on the existing LogSnag `user_id` facet + tags; the `SK-EVENTS-013` generic sink now carries `pricing.*` to PostHog with no per-event work.
   - **Mint an anon-bearer for logged-out views.** Coerces every visitor into an auth artifact for a page load; the per-day IP bucket is the honest anon floor (`SK-EVENTS-011` precedent).
+
+### SK-EVENTS-013 — PostHog sink: server-side fan-out of every `ProductEvent`
+
+- **Decision:** `apps/events-worker/src/sinks/posthog.ts` drains **every** `EventEnvelope` off `EVENTS_QUEUE` to PostHog Cloud (EU) in one batched `POST <POSTHOG_HOST>/batch/` per queue batch, so funnels / cohorts / retention see the whole product-event stream. Plain `fetch` with the publishable `phc_` key — **no posthog-node SDK** (keeps the events-worker under `GLOBAL-013`'s bundle ceiling). Generic mapping: event `name` → PostHog event; identity field → `distinct_id` (mirrors how `logsnag.ts` picks `user_id` — `userId` for user/billing, `principalId` for demand-signal/wishlist, `dbId` for the anonymised `ask.completed`, `eval:<dataset>` for eval runs); remaining typed fields → `properties`; `EventEnvelope.id` → a deterministic UUIDv5 in PostHog's `uuid` for idempotent dedup (`SK-EVENTS-004`). Env-gated on `POSTHOG_API_KEY` + `POSTHOG_HOST` (missing → silent return per `SK-EVENTS-005`). **Best-effort fan-out:** it never touches a message's ack/retry and never throws — LogSnag and the query-log sink own delivery, so a PostHog outage can't re-page the operator or re-drive the other sinks (same posture as the dunning-email side-effect). OTel span `nlqdb.events.sink.posthog` per batch (`GLOBAL-014`). The **client** half (posthog-js on the product `/app` surfaces) is [`SK-WEB-024`](../web-app/FEATURE.md); marketing stays SDK-free (`GLOBAL-034`).
+- **Core value:** Free, Honest latency, Bullet-proof
+- **Why:** Founder directive 2026-07-16 — full user-lifecycle visibility (where users click more/less, what blocks them, why they leave) — is the named trigger `GLOBAL-034` set for wiring PostHog. The events already flow through the queue; adding a second sink is one `switch`-free generic mapping and reuses the `SK-EVENTS-001` producer/consumer seam, so `apps/api` still imports no PostHog client. Server-side dedup via the envelope id makes queue redeliveries collapse without a person having to reason about idempotency at the call site.
+- **Consequence in code:** `apps/events-worker/src/sinks/posthog.ts` owns the wire shape; `src/index.ts` `drainToPostHog()` fans out in the batch `Promise.all` alongside LogSnag + query-log. Four-place sync per `SK-EVENTS-005`: env-gate + `.envrc` + `scripts/mirror-secrets-workers.sh` SECRETS array + `src/env.d.ts` (both `POSTHOG_API_KEY` + `POSTHOG_HOST`). Widening the mapping is additive — a new `ProductEvent` variant flows through the generic projection automatically (only a non-`userId`/`principalId` identity needs a `distinctId()` case).
+- **Alternatives rejected:**
+  - **posthog-node SDK.** Its transport + retry machinery breaks the bundle budget for a wire shape a plain `fetch` covers.
+  - **Retry the message on a PostHog failure.** Would re-drive LogSnag (double-send) and re-page the operator; analytics fan-out is best-effort, LogSnag owns ack/retry.
+  - **Per-event `capture` call.** Burns the daily request budget; one `/batch` per queue batch is trivially cheaper.
 
 ## GLOBALs governing this feature
 
@@ -173,12 +175,11 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-021** — Each external system has one canonical owning module. *In this feature:* the events-worker owns `EVENTS_QUEUE` (consumer); `packages/events/` owns the producer types; Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/`, so `SK-EVENTS-009`'s sink imports `writeQueryLog` rather than POSTing (owner-to-owner deps are GLOBAL-021-allowed).
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this feature:* `SK-EVENTS-010` + `SK-EVENTS-011`.
-- **GLOBAL-034** — Analytics stack. *In this feature:* PostHog Cloud, when wired, is a second sink draining `EVENTS_QUEUE` server-side, no client SDK.
+- **GLOBAL-034** — Analytics stack. *In this feature:* the PostHog sink (`SK-EVENTS-013`) drains `EVENTS_QUEUE` server-side, fanning every `ProductEvent` out to PostHog for funnels/cohorts/retention.
 
 ## Open questions / known unknowns
 
 - **DLQ activation threshold** — Decided: wire the DLQ when `nlqdb.events.dropped` exceeds 500/day for 2 consecutive days (≈15% of the daily budget); below that the TTL dead-letter pattern is cheaper. Document in the events-worker README when the Grafana alert lands.
-- **PostHog wiring criteria** — Resolved by [`GLOBAL-034`](../../decisions/GLOBAL-034-analytics-stack.md): PostHog is the Phase-2-optional sink. **Parked until** a named funnel/cohort/retention question lands that SQL on D1/Neon can't answer — that ticket is the trigger and first event-set spec.
 - **Schema evolution** — Decided: `ProductEvent` changes are additive-only (new fields optional with a default). Non-additive changes (rename/remove/retype) need a two-step deploy: add the new shape optional alongside the old, then drop the old once all producers ship.
 - **Queue free-tier ceiling** — Alert threshold > 7 000 ops/day (70% of 10K), as a Grafana alert on `nlqdb.events.queue_ops`.
 - **Inbound-email sink — Parked until a `support.email_received` consumer exists** (`GLOBAL-033` speculative-scope). Email Routing is wired separately; the producer reuses the additive `ProductEvent` contract.

@@ -19,6 +19,7 @@
     "@nlqdb/elements": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
     "astro": "^6.4.4",
+    "posthog-js": "^1.402.3",
     "react": "^19",
     "react-dom": "^19",
     "three": "^0.185.0"

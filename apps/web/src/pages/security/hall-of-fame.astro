@@ -1,0 +1,67 @@
+---
+// Security Hall of Fame — advertised by SECURITY.md and
+// /.well-known/security.txt (RFC 9116 Acknowledgments), so this URL must
+// exist (claim-integrity, scorecard row #19). Ported from the retired
+// apps/coming-soon stub.
+import Base from "../../layouts/Base.astro";
+---
+<Base
+  title="Security Hall of Fame — nlqdb"
+  description="Researchers who have responsibly disclosed security issues to nlqdb."
+  canonical="/security/hall-of-fame"
+>
+  <main class="hof">
+    <p class="hof__nav"><a href="/">← nlqdb</a></p>
+
+    <h1>Security Hall of Fame</h1>
+
+    <p>
+      Thanks to the researchers below for responsibly disclosing security
+      issues to nlqdb. Listing here is opt-in — we ask before adding anyone,
+      and we use only the name or handle the researcher chooses.
+    </p>
+
+    <p>
+      Want to report something? Email
+      <a href="mailto:security@nlqdb.com">security@nlqdb.com</a>. We
+      acknowledge within 72 hours, fix confirmed issues within 90 days, and
+      credit reporters here at their request.
+    </p>
+
+    <h2>Researchers</h2>
+    <p><em>No reports yet. Be the first.</em></p>
+
+    <p class="hof__note">
+      nlqdb is pre-revenue and does not currently operate a paid bug-bounty
+      program. We may, at our sole discretion, offer a token of thanks for
+      exceptional reports, but credit on this page is the standard
+      recognition.
+    </p>
+  </main>
+</Base>
+
+<style>
+  .hof {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 3rem 1.25rem 5rem;
+  }
+  .hof__nav {
+    margin-bottom: 2.5rem;
+  }
+  .hof h1 {
+    margin-bottom: 1.5rem;
+  }
+  .hof h2 {
+    margin-top: 2.5rem;
+  }
+  .hof p {
+    margin-top: 1rem;
+    line-height: 1.6;
+  }
+  .hof__note {
+    margin-top: 3rem;
+    font-size: 0.85em;
+    opacity: 0.7;
+  }
+</style>

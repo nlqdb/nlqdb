@@ -11,6 +11,7 @@
 // `client:load` island) — the cookie session is the principal for its
 // `POST /v1/db/connect` (credentials:"include").
 
+import AppAnalytics from "../../components/AppAnalytics.astro";
 import ConnectForm from "../../components/ConnectForm.tsx";
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
@@ -29,6 +30,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     </main>
     <Footer />
   </div>
+  <AppAnalytics />
 </Base>
 
 <script>

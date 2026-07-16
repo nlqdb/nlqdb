@@ -327,4 +327,70 @@ describe("events-worker queue consumer", () => {
     expect(msg.ack).toHaveBeenCalledTimes(1);
     expect(msg.retry).not.toHaveBeenCalled();
   });
+
+  // SK-EVENTS-013 — the PostHog sink fans every event out alongside LogSnag.
+  it("fans an event out to PostHog AND LogSnag, and still acks (SK-EVENTS-013)", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.includes("posthog.com")
+        ? new Response("{}", { status: 200 })
+        : new Response("{}", { status: 200 }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { batch, msgs } = makeBatch([envelope]);
+    const env = {
+      LOGSNAG_TOKEN: "tok_abc",
+      LOGSNAG_PROJECT: "nlqdb",
+      POSTHOG_API_KEY: "phc_test",
+      POSTHOG_HOST: "https://eu.i.posthog.com",
+    } as Cloudflare.Env;
+
+    if (!handler.queue) throw new Error("expected default export to define a queue handler");
+    await handler.queue(batch, env, ctx);
+
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
+    const posthogCall = calls.find(([u]) => u.includes("posthog.com"));
+    expect(posthogCall?.[0]).toBe("https://eu.i.posthog.com/batch/");
+    expect(calls.some(([u]) => u.includes("logsnag.com"))).toBe(true);
+    expect(msgs[0]?.ack).toHaveBeenCalledTimes(1);
+    expect(msgs[0]?.retry).not.toHaveBeenCalled();
+  });
+
+  it("does not call PostHog when its env is unset", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { batch } = makeBatch([envelope]);
+    const env = { LOGSNAG_TOKEN: "tok_abc", LOGSNAG_PROJECT: "nlqdb" } as Cloudflare.Env;
+
+    if (!handler.queue) throw new Error("expected default export to define a queue handler");
+    await handler.queue(batch, env, ctx);
+
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
+    expect(calls.some(([u]) => u.includes("posthog.com"))).toBe(false);
+  });
+
+  it("acks the message even when the PostHog fan-out fails (best-effort)", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.includes("posthog.com")
+        ? new Response("boom", { status: 500 })
+        : new Response("{}", { status: 200 }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { batch, msgs } = makeBatch([envelope]);
+    const env = {
+      LOGSNAG_TOKEN: "tok_abc",
+      LOGSNAG_PROJECT: "nlqdb",
+      POSTHOG_API_KEY: "phc_test",
+      POSTHOG_HOST: "https://eu.i.posthog.com",
+    } as Cloudflare.Env;
+
+    if (!handler.queue) throw new Error("expected default export to define a queue handler");
+    await handler.queue(batch, env, ctx);
+
+    // LogSnag succeeded; the failed PostHog fan-out is swallowed → ack, no retry.
+    expect(msgs[0]?.ack).toHaveBeenCalledTimes(1);
+    expect(msgs[0]?.retry).not.toHaveBeenCalled();
+  });
 });

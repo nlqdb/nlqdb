@@ -74,18 +74,79 @@ const CLUSTER_PAYLOAD = [
 // --- Tests ---
 
 describe("runIcpCluster", () => {
-  it("returns written=false immediately for empty KV", async () => {
-    const kv = stubKv();
-    const result = await runIcpCluster({ kv, ghToken: "tok" });
-    expect(result).toEqual({
-      personaItems: {},
-      clustered: 0,
-      written: false,
-      primaryStatus: "no_signal",
-    });
+  // SK-ICP-014: an empty scored set now writes a starvation-marked evidence
+  // file (with the last scrape's per-source counts) instead of silently
+  // returning nothing, and marks the result `starved: true`.
+  it("writes a starvation evidence file with per-source scrape counts when the scored set is empty", async () => {
+    const stats = {
+      ts: Date.UTC(2026, 6, 13), // 2026-07-13
+      newItems: 0,
+      skipped: 12,
+      sources: { hn: 0, github: 0, mastodon: 0 },
+      skippedSources: ["reddit"],
+    };
+    const kv = stubKv({ "icp:last_scrape_stats": JSON.stringify(stats) });
+
+    let putBody: string | undefined;
+    const fetcher = vi.fn(
+      async (url: string | URL | Request, opts?: { method?: string; body?: string }) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("github.com")) {
+          if (opts?.method === "PUT") {
+            const b = JSON.parse(opts.body ?? "{}") as { content?: string };
+            putBody = b.content ? atob(b.content) : undefined;
+            return makeGhPutResponse();
+          }
+          return makeGhNotFound();
+        }
+        return new Response("{}", { status: 200 });
+      },
+    ) as unknown as typeof fetch;
+
+    const result = await runIcpCluster({ kv, ghToken: "tok", fetch: fetcher });
+
+    expect(result.starved).toBe(true);
+    expect(result.written).toBe(true);
+    expect(result.clustered).toBe(0);
+    expect(result.primaryStatus).toBe("no_signal");
+
+    expect(putBody).toContain("PIPELINE STARVED");
+    expect(putBody).toContain("Starvation notice");
+    // atob yields a Latin-1 string, so assert on the ASCII fragments only
+    // (the em-dash before the date does not round-trip through atob).
+    expect(putBody).toContain("Most recent scrape");
+    expect(putBody).toContain("2026-07-13");
+    expect(putBody).toContain("| hn | 0 |");
+    expect(putBody).toContain("Sources self-skipped for missing env keys: reddit.");
   });
 
-  it("returns written=false when all KV values are missing after listing", async () => {
+  it("writes a starvation file noting absent scrape stats when none recorded", async () => {
+    const kv = stubKv(); // no icp:last_scrape_stats key
+
+    let putBody: string | undefined;
+    const fetcher = vi.fn(
+      async (url: string | URL | Request, opts?: { method?: string; body?: string }) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("github.com")) {
+          if (opts?.method === "PUT") {
+            const b = JSON.parse(opts.body ?? "{}") as { content?: string };
+            putBody = b.content ? atob(b.content) : undefined;
+            return makeGhPutResponse();
+          }
+          return makeGhNotFound();
+        }
+        return new Response("{}", { status: 200 });
+      },
+    ) as unknown as typeof fetch;
+
+    const result = await runIcpCluster({ kv, ghToken: "tok", fetch: fetcher });
+
+    expect(result.starved).toBe(true);
+    expect(result.written).toBe(true);
+    expect(putBody).toContain("No scrape statistics recorded yet");
+  });
+
+  it("marks starved when list returns keys but all values are missing (TTL expired)", async () => {
     // list returns keys but get returns null (TTL expired between list and get).
     const kv = {
       list: vi.fn(async () => ({
@@ -97,8 +158,18 @@ describe("runIcpCluster", () => {
       delete: vi.fn(),
     } as unknown as KVNamespace;
 
-    const result = await runIcpCluster({ kv, ghToken: "tok" });
-    expect(result.written).toBe(false);
+    const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+      if (urlStr.includes("github.com")) {
+        if (opts?.method === "PUT") return makeGhPutResponse();
+        return makeGhNotFound();
+      }
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const result = await runIcpCluster({ kv, ghToken: "tok", fetch: fetcher });
+    expect(result.starved).toBe(true);
+    expect(result.written).toBe(true);
     expect(result.clustered).toBe(0);
   });
 

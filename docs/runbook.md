@@ -85,15 +85,8 @@ re-enable via Cloudflare later).
 | Grafana Cloud    | `omer.hochman@gmail.com`  | Free                              | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` |
 | LogSnag          | `omer.hochman@gmail.com`  | Free (2,500 events/mo)            | Sole sink for `packages/events`; verified end-to-end (first `/v1/ask` produced an event) |
 | Tinybird         | `omer.hochman@gmail.com`  | Free Forever (10 GB, 1k reads/day)| Workspace `omer` (`us-east-1`, Forward). **Dual role:** the ClickHouse engine (`packages/db/clickhouse-tinybird`) **and** the `query_log` events sink (`SK-EVENTS-009`). `query_log` Data Source **live** — deploy datafiles with `scripts/tinybird-deploy.sh`. Worker token scope `DATASOURCE:APPEND` |
+| PostHog          | `omer.hochman@gmail.com`  | Free (EU region, 1M events/mo)    | Product analytics (`GLOBAL-034`). Server-side sink fans every `ProductEvent` out (`SK-EVENTS-013`, events-worker `POSTHOG_API_KEY`/`POSTHOG_HOST`) + posthog-js on the `/app` product surfaces only (`SK-WEB-024`; publishable `phc_` key baked at build via `PUBLIC_POSTHOG_*`). Marketing stays SDK-free |
 | Docker Hub       | **SKIPPED**               | —                                 | Using `ghcr.io/nlqdb` instead (paid-only org tier) |
-
-**Explicitly deferred** (re-evaluate if a real cohort question lands):
-
-- PostHog Cloud (`POSTHOG_API_KEY`, `POSTHOG_HOST`) — optional Phase 2
-  second sink for funnels / retention. Pre-PMF, SQL on D1/Neon
-  answers every analytics question we actually have. Designed to
-  plug into `packages/events` with zero call-site changes when
-  needed.
 
 **Explicitly skipped** (re-evaluate post-PMF):
 
@@ -608,7 +601,7 @@ unmerged consumer code against the preview queue.
 | 2.6  | Sentry DSN                         | ✅            |
 | 2.6  | Grafana Cloud OTLP                 | ✅            |
 | 2.6  | LogSnag (`LOGSNAG_TOKEN` + `LOGSNAG_PROJECT`) | ✅ (verified end-to-end: first `/v1/ask` produced a LogSnag event) |
-| 2.6  | PostHog Cloud (`POSTHOG_API_KEY`, `POSTHOG_HOST`) | ⏭ optional Phase 2 (only if SQL on D1/Neon stops being enough) |
+| 2.6  | PostHog Cloud (`POSTHOG_API_KEY`, `POSTHOG_HOST`) | wired 2026-07-16 — server-side sink (`SK-EVENTS-013`, events-worker secrets) + posthog-js on `/app` (`SK-WEB-024`). Mirror the two secrets to the events-worker; the client key is the publishable `phc_` baked at web build |
 | 2.7  | Mirror `.envrc` → GHA secrets      | ✅ via `scripts/mirror-secrets-gha.sh` |
 | 2.7  | Mirror `.envrc` → Workers secrets  | ✅ via `scripts/mirror-secrets-workers.sh local`/`remote` |
 | 3    | `apps/api` Worker skeleton + `/v1/health` | ✅ (Slice 1 — PR #21) |

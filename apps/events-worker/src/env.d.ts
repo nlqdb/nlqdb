@@ -25,6 +25,15 @@ declare global {
       // `https://api.us-east.tinybird.co`.
       TINYBIRD_API_BASE?: string;
 
+      // PostHog Cloud (SK-EVENTS-013). Both must be set for the PostHog
+      // sink to fan out `EventEnvelope`s; a missing key or host short-
+      // circuits to a silent return per `SK-EVENTS-005` (dev / pre-mirror
+      // ack-and-drop). `POSTHOG_API_KEY` is the publishable `phc_` project
+      // key; `POSTHOG_HOST` is the ingestion origin (`https://eu.i.posthog.com`
+      // for the EU region). Server-side fan-out only — no SDK in the bundle.
+      POSTHOG_API_KEY?: string;
+      POSTHOG_HOST?: string;
+
       GRAFANA_OTLP_ENDPOINT?: string;
       GRAFANA_OTLP_AUTHORIZATION?: string;
 

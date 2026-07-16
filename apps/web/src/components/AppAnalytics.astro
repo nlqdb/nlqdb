@@ -1,0 +1,16 @@
+---
+// Product-only PostHog capture mount (SK-WEB-024). Included on the
+// `/app/*` product surfaces ONLY — never on marketing/blog/vs/solve
+// pages, which stay SDK-free per GLOBAL-034. The script lazy-loads the
+// SDK after the (memoised) session probe so it never blocks first paint,
+// then identifies the signed-in user so lifecycle stitches across visits.
+---
+<script>
+  import { fetchSession } from "../lib/session";
+  import { initAppAnalytics } from "../lib/posthog";
+
+  void (async () => {
+    const user = await fetchSession();
+    await initAppAnalytics(user);
+  })();
+</script>

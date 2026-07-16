@@ -1,26 +1,45 @@
 # AI-permissive — DESIGN §3.1 (AEO/GEO). We want citations from
 # Perplexity / ChatGPT / Gemini / Claude as a primary acquisition
 # channel.
+#
+# Disallows repeat in every group — a crawler that matches a named group
+# ignores the `*` group entirely. /cdn-cgi/ is Cloudflare's injected
+# scaffolding (its email-protection links 404 for crawlers); /v1/ is API
+# surface with no crawlable GETs.
 
 User-agent: GPTBot
 Allow: /
+Disallow: /cdn-cgi/
+Disallow: /v1/
 
 User-agent: ClaudeBot
 Allow: /
+Disallow: /cdn-cgi/
+Disallow: /v1/
 
 User-agent: anthropic-ai
 Allow: /
+Disallow: /cdn-cgi/
+Disallow: /v1/
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /cdn-cgi/
+Disallow: /v1/
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /cdn-cgi/
+Disallow: /v1/
 
 User-agent: Bingbot
 Allow: /
+Disallow: /cdn-cgi/
+Disallow: /v1/
 
 User-agent: *
 Allow: /
+Disallow: /cdn-cgi/
+Disallow: /v1/
 
 Sitemap: https://nlqdb.com/sitemap.xml
