@@ -7,7 +7,8 @@
 // Failure-open vs failure-closed:
 //   - Secret unset → `{ ok: false, reason: "unconfigured" }`, which
 //     the gate (`anon-create-gate.ts`) allows through in EVERY
-//     environment per SK-ANON-009 — no client ships a widget yet.
+//     environment per SK-ANON-009 — arm the secret only in lockstep
+//     with a web deploy that bakes the client sitekey.
 //   - siteverify itself fails (network, 5xx) →
 //     `{ ok: false, reason: "verify_failed" }`, mapped to the 428
 //     challenge_required envelope so the client re-renders the widget.

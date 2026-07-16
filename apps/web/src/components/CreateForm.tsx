@@ -12,9 +12,9 @@
 //     in-flight prompt is moved to the `pending` slot before the
 //     redirect to /sign-in; the post-OAuth landing replays it.
 //
-// Turnstile (SK-ANON-007) is stubbed via lib/turnstile.ts —
-// `solveChallenge()` returns null today. The 428 retry seam picks
-// up the real widget when it ships.
+// Turnstile (SK-ANON-012 bot floor): on a 428 the retry seam calls
+// `solveChallenge()` (lib/turnstile.ts — real invisible widget; null
+// on any failure so the API's SK-ANON-009 fail-open decides).
 //
 // `CreateSnippetView` (SK-WEB-010) renders the embed snippet shape
 // under the schema preview with `pk_live_REPLACE_ME` + a Sign-in CTA.
@@ -128,8 +128,8 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
     const submittedAt = new Date().toISOString();
     try {
       let outcome = await postAskCreate(apiBase, trimmed);
-      // 428 retry seam — solveChallenge() returns null today
-      // (SK-ANON-007 widget lands with the same 428 contract).
+      // 428 retry seam — one retry with the Turnstile token; a null
+      // token (widget unconfigured/failed) falls through to the error.
       if (!outcome.ok && outcome.error.kind === "challenge_required") {
         const token = await solveChallenge();
         if (token) {

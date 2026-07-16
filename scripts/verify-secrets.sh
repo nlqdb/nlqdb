@@ -79,15 +79,23 @@ check_http CLOUDFLARE_API_TOKEN \
   --match '"status":"active"'
 check_present CLOUDFLARE_ACCOUNT_ID 20
 check_present CF_AI_TOKEN 20
+# Turnstile-write-scoped token — same verify endpoint as CLOUDFLARE_API_TOKEN.
+# Account-owned token — /user/tokens/verify 401s on those (observed
+# 2026-07-16). Listing Turnstile widgets proves both validity and the
+# challenges scope the token exists for. Skips cleanly when unset.
+check_http CF_TURNSTILE_EDIT_API_TOKEN \
+  -H "Authorization: Bearer ${CF_TURNSTILE_EDIT_API_TOKEN:-MISSING}" \
+  "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID:-MISSING}/challenges/widgets" \
+  --match '"success": *true'
 
 say "Neon"
-# /api/v2/users/me works for both personal and org-scoped API keys
-# without needing an `org_id` query param. /api/v2/projects requires
-# org_id when the key is org-scoped, which errors with HTTP 400.
+# The key is project-scoped: /users/me and /projects both 404 for it
+# (observed 2026-07-16). Fetch the project it's scoped to — the exact
+# capability preview-CI needs, and it works for broader keys too.
 check_http NEON_API_KEY \
   -H "Authorization: Bearer ${NEON_API_KEY:-MISSING}" \
-  "https://console.neon.tech/api/v2/users/me" \
-  --match '"email"|"id"|"name"'
+  "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID:-MISSING}" \
+  --match '"id"'
 
 if command -v psql >/dev/null 2>&1; then
   if [[ -n "${DATABASE_URL:-}" ]]; then
@@ -115,17 +123,6 @@ check_http FLY_API_TOKEN \
   "https://api.fly.io/graphql" \
   --match '"email"'
 
-say "Upstash Redis"
-if [[ -n "${UPSTASH_REDIS_REST_URL:-}" && -n "${UPSTASH_REDIS_REST_TOKEN:-}" ]]; then
-  check_http UPSTASH_REDIS_REST_TOKEN \
-    -H "Authorization: Bearer ${UPSTASH_REDIS_REST_TOKEN}" \
-    "${UPSTASH_REDIS_REST_URL}/ping" \
-    --match '"PONG"'
-else
-  [[ -z "${UPSTASH_REDIS_REST_URL:-}"   ]] && skip UPSTASH_REDIS_REST_URL
-  [[ -z "${UPSTASH_REDIS_REST_TOKEN:-}" ]] && skip UPSTASH_REDIS_REST_TOKEN
-fi
-
 say "LLM providers"
 check_http CEREBRAS_API_KEY \
   -H "Authorization: Bearer ${CEREBRAS_API_KEY:-MISSING}" \
@@ -149,6 +146,12 @@ check_http OPENROUTER_API_KEY \
 check_http MISTRAL_API_KEY \
   -H "Authorization: Bearer ${MISTRAL_API_KEY:-MISSING}" \
   "https://api.mistral.ai/v1/models" \
+  --match '"id"'
+
+# SambaNova Cloud — arms the 3rd opencheck agent lane (_e2e-opencheck.yml).
+check_http FALLBACK2_LLM_API_KEY \
+  -H "Authorization: Bearer ${FALLBACK2_LLM_API_KEY:-MISSING}" \
+  "https://api.sambanova.ai/v1/models" \
   --match '"id"'
 
 say "OAuth providers"

@@ -36,8 +36,7 @@ Apply to every edit, whatever the user asked for.
 `docs/features/<feature>/FEATURE.md` (local `SK-<FEATURE>-NNN`) are the
 canonical record of why the system is the way it is. If a request would
 violate one — even subtly — **stop and raise it with the user**, citing the
-specific ID(s). Don't rationalise around it. The user may decide to
-supersede the decision, which results in changing it; if so, follow `P3`.
+specific ID(s). Don't rationalise around it. The user may decide to supersede it; if so, follow `P3`.
 
 ### P2. On any ambiguity or unfamiliar error, web-research first
 
@@ -47,8 +46,8 @@ wrong answer is more expensive than the slower right one. State the
 sources you checked when you propose the fix.
 
 **Also:** When selecting any 3rd party package, SDK, or API, always web-search for
-the latest stable version before using it. Version and API changes move fast; your
-knowledge cutoff is stale for any external dependency.
+the latest stable version before using it — your knowledge cutoff is stale for
+any external dependency.
 
 ### P3. Decisions live in one place
 
@@ -79,7 +78,7 @@ Before documenting any decision or plan:
 - **D1. Resolve open questions first** — Don't document vague decisions. **Push the user to answer open questions** before you document.
 - **D2. Never document ambiguity** — Vague or ambiguous decisions are worse than no documentation. If it's not clear enough to document, it's not ready.
 - **D3. Clarity always increases** — When documenting, **the next steps must be clearer than before**. Never document in a way that leaves the reader more confused.
-- **D4. No doc over 20 KB** — When a markdown file would cross 20 KB, split it before adding text and route from the §5 path map / §6 long-form index / feature index so agents land on the right shard. Edits to a file already over 20 KB must net-shrink it (revisit with D5; keep cross-refs in sync). **Exempt** (append-only by design): the acquisition tracker `docs/research/automated-icp-validation-plan.md` + its mirror ([GLOBAL-028](docs/decisions/GLOBAL-028-acquisition-progress-tracker.md)/[GLOBAL-029](docs/decisions/GLOBAL-029-acquisition-verification-tracker.md)).
+- **D4. No doc over 20 KB** — When a markdown file would cross 20 KB, split it before adding text and route from the §5 path map / §6 long-form index / feature index so agents land on the right shard. Edits to a file already over 20 KB must net-shrink it (revisit with D5; keep cross-refs in sync). **Exempt** (append-only by design): the acquisition tracker `docs/research/automated-icp-validation-plan.md` + its mirror ([GLOBAL-028](docs/decisions/GLOBAL-028-acquisition-progress-tracker.md)/[GLOBAL-029](docs/decisions/GLOBAL-029-acquisition-verification-tracker.md)) and the evidence log `docs/progress/quality-score-verification-log.md`.
 - **D5. Document only load-bearing decisions** — Keep docs simple. Never document a decision that could be undoubtedly inferred from `docs/guidelines.md` or the code itself, or whose cost to change is negligible. Document only what is both non-obvious *and* expensive to reverse — where a reader lacking the record would plausibly choose differently and pay for it. On every doc edit, find one section that fails this test and trim it off.
 
 ### P5. Keep functions simple. Keep high level architecture simple.

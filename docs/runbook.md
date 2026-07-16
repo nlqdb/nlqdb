@@ -73,7 +73,6 @@ re-enable via Cloudflare later).
 | npm              | `omerhochman`             | Free (unlimited public packages)  | Scope `@nlqdb`                                     |
 | Cloudflare       | `omer.hochman@gmail.com`  | Free per zone                     | Token name: `nlqdb-phase0-dev`                     |
 | Neon             | `omer.hochman@gmail.com`  | Free                              | Project in `us-east-1`, PG 17, **Neon Auth OFF**   |
-| Upstash          | `omer.hochman@gmail.com`  | Free                              | Redis DB provisioned                               |
 | Fly.io           | `omer.hochman@gmail.com`  | 7-day trial → PAYG (no card yet)  | Org `personal`, **no apps**, token scope: `org`    |
 | Sentry           | `omer.hochman@gmail.com`  | 14-day Business trial → Developer | Project: `nlqdb-api` (Cloudflare Workers platform) |
 | Google AI Studio | Existing                  | Free                              | Gemini API key                                     |
@@ -105,18 +104,17 @@ Every credential's canonical name lives in
   `scripts/bootstrap-dev.sh` after deleting `.envrc`.
 - **CI (GitHub Actions):** mirrored from `.envrc` via
   `scripts/mirror-secrets-gha.sh` (idempotent; never logs values).
-  Skips `BETTER_AUTH_SECRET` + `INTERNAL_JWT_SECRET` — local-dev only;
-  CI workflows generate ephemeral test values per run.
-- **Runtime (Cloudflare Workers):** not yet mirrored — Phase 0 §3
-  pending (needs `apps/api` to exist).
+  Skips only `INTERNAL_JWT_SECRET` — scaffolded per `SK-AUTH-005`,
+  not yet read at runtime.
+- **Runtime (Cloudflare Workers):** mirrored per-app from `.envrc` via
+  `scripts/mirror-secrets-workers.sh remote <app>` (also run by each
+  deploy workflow so every deploy self-heals its secret set).
+- **Canary Worker:** the `nlqdb-api-canary` OAuth pairs live in `.envrc`
+  as `CANARY_*` and mirror to that Worker's own secret store (prod-slot
+  names, `SK-AUTH-008`) via `scripts/mirror-secrets-canary.sh`.
 
-**Live verification:** `./scripts/verify-secrets.sh`. Current baseline
-is 21 ✅ across self-generated, Cloudflare ×3, Neon ×2, Fly, Upstash,
-LLM ×3, OAuth ×4 (Google ×2 + GitHub prod pair + GitHub dev pair),
-Resend, Stripe ×2 (sk + pk), Grafana, Sentry. Stripe webhook secret
-skips cleanly until `apps/api` exists (Phase 0 §3).
-
-**Values never echoed** — all checks are length/HTTP-status based.
+**Live verification:** `./scripts/verify-secrets.sh` — one OK/FAIL line
+per credential, values never echoed.
 
 ---
 
@@ -157,12 +155,9 @@ the consent screen ships unverified-but-public (Google shows an
   device/token, refresh, logout}` in a later slice (different paths,
   different ownership) — Google's redirect URI list above is OAuth-only.
 
-**Re-verification trigger.** Stay in production with the current
-non-sensitive scope set indefinitely. The moment we add a sensitive
-or restricted scope (Drive / Gmail / Calendar / fitness / health), we
-need to submit for verification — Google reviews can take weeks for
-sensitive scopes, longer for restricted. Do not roll a sensitive
-scope into production without budgeting that timeline.
+**Re-verification trigger.** Adding a sensitive/restricted scope (Drive
+/ Gmail / Calendar / health) forces a Google verification submission —
+reviews run weeks to months. Budget that timeline before shipping one.
 
 ---
 
@@ -745,7 +740,6 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 | `NEON_API_KEY`         | Neon → Account settings → API keys → create new                            |
 | `DATABASE_URL`         | Neon → Branches → main → Roles → `neondb_owner` → Reset password           |
 | `FLY_API_TOKEN`        | `fly tokens create org --name nlqdb-phase0-<purpose>`                      |
-| `UPSTASH_REDIS_REST_*` | console.upstash.com → DB → REST API section                                |
 | `GEMINI_API_KEY`       | https://aistudio.google.com/apikey — **free tier only; the project must have NO billing account** (a billed project bills even free-model calls and is suspended on non-payment — the 2026-06-15 denial). On a denial, rotate to a billing-free key (`GLOBAL-013`). Paid Gemini = hosted-premium lane. |
 | `GROQ_API_KEY`         | https://console.groq.com/keys                                              |
 | `OPENROUTER_API_KEY`   | https://openrouter.ai/settings/keys                                        |

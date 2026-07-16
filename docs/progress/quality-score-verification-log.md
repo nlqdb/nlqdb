@@ -3,7 +3,8 @@
 > Append-only, dated, evidence-referenced log of every shipped engine-quality
 > lever. Split out of
 > [`quality-score-source-of-truth.md`](./quality-score-source-of-truth.md)
-> (`CLAUDE.md` §D4) so the progress-bar tracker stays under the 20 KB cap.
+> (`CLAUDE.md` §D4) so the progress-bar tracker stays under the 20 KB cap;
+> this log itself is D4-exempt (append-only carve-out, founder-approved 2026-07-16).
 > The tracker's §3 table is the current-state view; this file is the history.
 > On any conflict the tracker and the canonical `SK-*`/`GLOBAL-*` homes win.
 

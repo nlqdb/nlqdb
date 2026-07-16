@@ -34,9 +34,9 @@
 # but not yet read at runtime — promote to the SECRETS array below
 # once the edge starts minting internal JWTs.
 #
-# Prereqs: gh authenticated (keyring / `gh auth login`), admin/maintainer
-# access to nlqdb/nlqdb. Do NOT point `gh` at the ICP fine-grained PAT in
-# `GH_TOKEN` — gh CLI reads that env var and it lacks Actions-secrets scope.
+# Prereqs: `gh auth login` as the repo-admin account (default: omerhochman;
+# override with NLQDB_GH_ACCOUNT). Do NOT point `gh` at the ICP fine-grained
+# PAT in `GH_TOKEN` — it lacks Actions-secrets scope.
 
 set -euo pipefail
 
@@ -50,15 +50,31 @@ ok()   { printf '  \033[1;32m✓\033[0m %s\n' "$*"; }
 fail() { printf '  \033[1;31m✗\033[0m %s — %s\n' "$1" "$2"; }
 skip() { printf '  \033[2m· skip %s (not set in .envrc)\033[0m\n' "$*"; }
 
-# gh CLI prefers the GH_TOKEN env var over `gh auth login` credentials.
-# Our Worker/GHA secret named GH_TOKEN is a fine-grained ICP PAT (Issues +
-# Contents only) — it cannot call Actions-secrets APIs. Always invoke gh
-# with GH_TOKEN unset; .envrc values are read from shell variables instead.
-gh_cli() { env -u GH_TOKEN gh "$@"; }
+# gh CLI prefers the GH_TOKEN env var over keyring credentials, and two
+# hijacks have burned us: .envrc exports GH_TOKEN (the ICP fine-grained PAT,
+# no Actions-secrets scope), and the *active* keyring account can be a work
+# account with no nlqdb access (observed 2026-07-16: all 49 sets 403'd).
+# Pin the repo-admin account explicitly instead of trusting ambient state.
+GH_ACCOUNT="${NLQDB_GH_ACCOUNT:-omerhochman}"
 
 # --- preflight ----------------------------------------------------------
 [[ -f .envrc ]] || { fail "preflight" ".envrc not found at $REPO_ROOT — run scripts/bootstrap-dev.sh first"; exit 1; }
 command -v gh >/dev/null 2>&1 || { fail "preflight" "gh not installed — run scripts/bootstrap-dev.sh first"; exit 1; }
+
+ADMIN_TOKEN="$(env -u GH_TOKEN gh auth token -u "$GH_ACCOUNT" 2>/dev/null)" || {
+  fail "preflight" "no gh keyring token for '$GH_ACCOUNT' — run: gh auth login (or set NLQDB_GH_ACCOUNT)"
+  exit 1
+}
+gh_cli() { GH_TOKEN="$ADMIN_TOKEN" gh "$@"; }
+
+# Prove Actions-secrets access up front — `gh repo view` passes on read
+# access while every `secret set` still 403s; listing secrets exercises the
+# actual permission, so a wrong account dies here with one message instead
+# of once per secret in the loop.
+gh_cli secret list --repo "$REPO" >/dev/null 2>&1 || {
+  fail "preflight" "cannot access Actions secrets on $REPO as '$GH_ACCOUNT' — needs repo admin"
+  exit 1
+}
 
 # Source .envrc without echoing (may export GH_TOKEN — that's fine).
 set -a
@@ -71,15 +87,6 @@ set +a
 # OPENROUTER_API_KEY when unset, so one key serves both lanes and no separate
 # secret needs provisioning. Set a distinct value in .envrc to override.
 : "${OPENROUTER_FRONTIER_API_KEY:=${OPENROUTER_API_KEY:-}}"
-
-gh_cli auth status >/dev/null 2>&1 || {
-  fail "preflight" "gh not authenticated — run: gh auth login (needs repo admin for Actions secrets; do not rely on GH_TOKEN env)"
-  exit 1
-}
-gh_cli repo view "$REPO" >/dev/null 2>&1 || {
-  fail "preflight" "no access to $REPO — check gh auth token scope (repo admin)"
-  exit 1
-}
 
 # --- canonical mirror list ----------------------------------------------
 # Order = .env.example for easy diff. Add new secrets here AND in
@@ -94,13 +101,15 @@ SECRETS=(
   CLOUDFLARE_ACCOUNT_ID
   CLOUDFLARE_API_TOKEN
   CF_AI_TOKEN
+  # Turnstile-write CF API token — future automation creates the widget via
+  # POST accounts/{id}/challenges/widgets (main CLOUDFLARE_API_TOKEN is read-only).
+  CF_TURNSTILE_EDIT_API_TOKEN
   NEON_API_KEY
   DATABASE_URL
-  UPSTASH_REDIS_REST_URL
-  UPSTASH_REDIS_REST_TOKEN
   FLY_API_TOKEN
   GEMINI_API_KEY
-  GH_TOKEN
+  # GH_TOKEN (ICP PAT) is deliberately NOT mirrored: no workflow reads
+  # secrets.GH_TOKEN — it's a Worker runtime secret only (mirror-secrets-workers.sh).
   GROQ_API_KEY
   OPENROUTER_API_KEY
   # Paid frontier eval lane (quality-eval-*.yml, GLOBAL-025 free-vs-frontier
@@ -112,6 +121,9 @@ SECRETS=(
   HF_ACCESS_TOKEN
   NVIDIA_API_KEY
   MISTRAL_API_KEY
+  # SambaNova Cloud key — arms the 3rd opencheck agent lane
+  # (_e2e-opencheck.yml, secrets.FALLBACK2_LLM_API_KEY). CI-only.
+  FALLBACK2_LLM_API_KEY
   OAUTH_GITHUB_CLIENT_ID
   OAUTH_GITHUB_CLIENT_SECRET
   OAUTH_GITHUB_CLIENT_ID_DEV
@@ -194,7 +206,7 @@ for name in "${SECRETS[@]}"; do
     ok "$name (${#val} chars)"
     set_count=$((set_count + 1))
   else
-    fail "$name" "gh secret set failed (if GH_TOKEN is in .envrc: gh CLI was hijacked — this script now unsets it; re-run, or run: gh auth login)"
+    fail "$name" "gh secret set failed as '$GH_ACCOUNT' (transient GH error? re-run; else check token scopes)"
     fail_count=$((fail_count + 1))
   fi
 done
@@ -224,8 +236,8 @@ say "Done"
 ok "$set_count secrets mirrored"
 [[ $skip_count -gt 0 ]] && printf '  \033[2m· %d skipped (empty in .envrc — provision later)\033[0m\n' "$skip_count"
 [[ $suspicious_count -gt 0 ]] && printf '  \033[1;31m✗ %d refused (value < %d chars — looks truncated)\033[0m\n' "$suspicious_count" "$SUSPICIOUSLY_SHORT"
-[[ $fail_count -gt 0 ]] && printf '  \033[1;31m✗ %d failed — run: env -u GH_TOKEN gh auth status; needs repo admin (not the ICP GH_TOKEN PAT)\033[0m\n' "$fail_count"
+[[ $fail_count -gt 0 ]] && printf '  \033[1;31m✗ %d failed — check: gh auth status (needs repo admin as %s)\033[0m\n' "$fail_count" "$GH_ACCOUNT"
 echo ""
-echo "Verify with: env -u GH_TOKEN gh secret list -R $REPO"
+echo "Verify with: GH_TOKEN=\$(gh auth token -u $GH_ACCOUNT) gh secret list -R $REPO"
 [[ $fail_count -gt 0 || $suspicious_count -gt 0 ]] && exit 1
 exit 0
