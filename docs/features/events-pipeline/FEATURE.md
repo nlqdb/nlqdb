@@ -83,6 +83,10 @@ when-to-load:
 - **Consequence in code:** Reviewers reject `userSignedIn` (camelCase), `signin` (no domain). New events firing more than once per user-lifecycle need an explicit cost analysis. Stripe billing event choices (omitted `subscription_updated`, per-invoice dedup on `payment_failed`) live in `SK-STRIPE-005`/`SK-STRIPE-011`.
 - **Alternatives rejected:** Per-team naming (LogSnag UI fragments); emit-everything (burns quota with no founder signal).
 
+### SK-EVENTS-007 — PostHog as a future second sink, gated on a real cohort question
+
+- **Status:** Superseded by `SK-EVENTS-013` — the named trigger (a real lifecycle/funnel question, founder directive 2026-07-16) landed and the sink is wired exactly where this decision reserved it (`apps/events-worker/src/sinks/posthog.ts`).
+
 ### SK-EVENTS-008 — Retry exhaustion drops silently; DLQ deferred until OTel signal warrants it
 
 - **Decision:** `wrangler.toml`'s `max_retries = 3` is the only retry surface. After exhaustion the message drops — no DLQ today. When OTel counters show meaningful volume, configure a DLQ via a second queue (`dead_letter_queue = "nlqdb-events-dlq"`).

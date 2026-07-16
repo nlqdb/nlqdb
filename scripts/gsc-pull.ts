@@ -56,12 +56,15 @@ function pemToDer(pem: string): Uint8Array {
 
 async function accessToken(): Promise<string> {
   const raw = process.env.GSC_SERVICE_ACCOUNT_JSON;
-  if (!raw) die("GSC_SERVICE_ACCOUNT_JSON is unset — see docs/blocked-by-human.md for the one-time setup.");
+  if (!raw)
+    die("GSC_SERVICE_ACCOUNT_JSON is unset — see docs/blocked-by-human.md for the one-time setup.");
   let sa: { client_email: string; private_key: string };
   try {
     sa = JSON.parse(raw);
   } catch {
-    die("GSC_SERVICE_ACCOUNT_JSON is not valid JSON (paste the whole service-account key file as one line).");
+    die(
+      "GSC_SERVICE_ACCOUNT_JSON is not valid JSON (paste the whole service-account key file as one line).",
+    );
   }
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
@@ -151,8 +154,13 @@ if (sm.status === 200) {
   console.info("\n## Sitemaps");
   for (const s of JSON.parse(sm.body).sitemap ?? []) {
     const counts = (s.contents ?? [])
-      .map((c: { type: string; submitted: string; indexed: string }) => `${c.type}: ${c.submitted} submitted / ${c.indexed} indexed`)
+      .map(
+        (c: { type: string; submitted: string; indexed: string }) =>
+          `${c.type}: ${c.submitted} submitted / ${c.indexed} indexed`,
+      )
       .join(", ");
-    console.info(`${s.path} — pending=${s.isPending} errors=${s.errors ?? 0} warnings=${s.warnings ?? 0} ${counts}`);
+    console.info(
+      `${s.path} — pending=${s.isPending} errors=${s.errors ?? 0} warnings=${s.warnings ?? 0} ${counts}`,
+    );
   }
 }

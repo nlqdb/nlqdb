@@ -20,6 +20,9 @@ const ENDPOINT = process.env.INDEXNOW_ENDPOINT ?? "https://api.indexnow.org/inde
 const SITE = `https://${HOST}`;
 const SITEMAP_URL = `${SITE}/sitemap.xml`;
 const KEY_LOCATION = `${SITE}/${KEY}.txt`;
+// A hung connection must never stall the deploy job into its job-level
+// timeout (which WOULD fail the run despite continue-on-error).
+const FETCH_TIMEOUT_MS = 30_000;
 
 function fail(msg: string): never {
   console.error(`indexnow: ${msg}`);
@@ -27,11 +30,20 @@ function fail(msg: string): never {
 }
 
 async function readSitemapUrls(): Promise<string[]> {
-  const res = await fetch(SITEMAP_URL, { headers: { accept: "application/xml" } });
+  const res = await fetch(SITEMAP_URL, {
+    headers: { accept: "application/xml" },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   if (!res.ok) fail(`could not fetch ${SITEMAP_URL} (HTTP ${res.status})`);
   const xml = await res.text();
-  const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim());
-  if (urls.length === 0) fail(`no <loc> entries in ${SITEMAP_URL}`);
+  const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map((m) => m[1].trim())
+    // Spec guards (https://www.indexnow.org): every URL must belong to the
+    // submitted host (one foreign URL can 422 the whole batch) and one POST
+    // carries at most 10,000 URLs.
+    .filter((u) => u.startsWith(`${SITE}/`))
+    .slice(0, 10_000);
+  if (urls.length === 0) fail(`no ${SITE} <loc> entries in ${SITEMAP_URL}`);
   return urls;
 }
 
@@ -63,13 +75,15 @@ async function main(): Promise<void> {
     method: "POST",
     headers: { "content-type": "application/json; charset=utf-8" },
     body: JSON.stringify({ host: HOST, key: KEY, keyLocation: KEY_LOCATION, urlList }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   const line = `indexnow: HTTP ${res.status} — ${describe(res.status)} (${urlList.length} URLs → ${ENDPOINT})`;
   // 200/202 are the only success codes; everything else is a real failure
-  // when the key file is already live. The CI step is non-blocking
-  // (continue-on-error), so a non-2xx here never fails a deploy.
+  // when the key file is already live — exit 1 so the CI step surfaces it
+  // as an annotation. The step is continue-on-error (SK-WEB-023), so this
+  // still never fails a deploy.
   if (res.status === 200 || res.status === 202) console.info(line);
-  else console.error(line);
+  else fail(line.replace(/^indexnow: /, ""));
 }
 
 main().catch((err) => fail(err instanceof Error ? err.message : String(err)));
