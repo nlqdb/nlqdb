@@ -138,6 +138,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   import { adoptAnonNow } from "../../lib/anon-adopt";
   import { isValidEmail } from "../../lib/email";
   import { attachHandoff, importHandoffFromLocation } from "../../lib/handoff";
+  import { signInHintFor } from "../../lib/signin-hints";
 
   // SK-ANON-015 — a cross-origin arrival (hero auth-redirect, marketing
   // sign-in hop) may carry the pending prompt, draft, and anon token in
@@ -229,6 +230,19 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
     const params = new URLSearchParams(location.search);
     const returnTo = params.get("return_to") ?? "/app/";
+
+    // A failed round-trip bounces the user back here from post-signin
+    // with `?error=session_lost` (cookie blocked, third-party-cookie
+    // partitioning, or a tab closed mid-flow). Surface the promised hint
+    // in the alert region instead of a pristine, unexplained form. This
+    // is a page-level notice, not an email-field validation error, so it
+    // doesn't mark the email `aria-invalid`. clearError() (on the next
+    // submit / OAuth click) dismisses it.
+    const hint = signInHintFor(params.get("error"));
+    if (hint) {
+      errorEl.textContent = hint;
+      errorEl.hidden = false;
+    }
     // callbackURL routes through `/auth/post-signin` (SK-ANON-012)
     // so the post-OAuth landing page can read `nlqdb_pending` and
     // replay the queued anon prompt against `/v1/ask` under the
