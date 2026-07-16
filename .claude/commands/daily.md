@@ -172,7 +172,10 @@ update; the queue drains on the next non-null run:
    canonical publish check above, run `bun scripts/syndicate-devto.ts --list`
    and post the oldest pending variant with its queue-line tags:
    `bun scripts/syndicate-devto.ts --post <slug> --tags a,b,c`. The script is
-   idempotent and self-throttles to one post/day (drip guard), so just run it.
+   idempotent and self-throttles to one post/day: since /daily fires ~6×/day,
+   on all but the first run it prints `drip guard: … skipping` and exits 0 —
+   that is the expected no-op, not an error. Never pass `--force` (it exists
+   for the human operator only); skip the queue-line edit on a throttled run.
    On success, edit that queue line: drop its `dev.to (#…)` venue and append
    the live dev.to URL (run-12 entry style); delete the whole line once no
    venues remain. Reddit/HN/lobste.rs stay human (platform norms) — leave their

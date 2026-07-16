@@ -138,10 +138,14 @@ function assertDripOk(articles: DevToArticle[], force: boolean): void {
   if (times.length === 0) return;
   const hoursSince = (Date.now() - Math.max(...times)) / 3_600_000;
   if (hoursSince < DRIP_HOURS && !force) {
-    die(
-      `drip guard: newest dev.to article was ${hoursSince.toFixed(1)}h ago (< ${DRIP_HOURS}h). ` +
-        "One venue post per day — re-run later or pass --force.",
+    // Exit 0: a throttled run is the EXPECTED outcome on all but the first
+    // /daily run of the day (it fires ~6×/day) — an agent must read this as
+    // a clean no-op, never as an error to work around.
+    console.info(
+      `drip guard: newest dev.to article was ${hoursSince.toFixed(1)}h ago (< ${DRIP_HOURS}h) — ` +
+        "skipping; one venue post per day. Expected no-op on all but the first run of the day.",
     );
+    process.exit(0);
   }
 }
 
