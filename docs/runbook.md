@@ -107,16 +107,15 @@ Every credential's canonical name lives in
   `scripts/mirror-secrets-gha.sh` (idempotent; never logs values).
   Skips `BETTER_AUTH_SECRET` + `INTERNAL_JWT_SECRET` — local-dev only;
   CI workflows generate ephemeral test values per run.
-- **Runtime (Cloudflare Workers):** not yet mirrored — Phase 0 §3
-  pending (needs `apps/api` to exist).
+- **Runtime (Cloudflare Workers):** mirrored per-app from `.envrc` via
+  `scripts/mirror-secrets-workers.sh remote <app>` (also run by each
+  deploy workflow so every deploy self-heals its secret set).
+- **Canary Worker:** the `nlqdb-api-canary` OAuth pairs live in `.envrc`
+  as `CANARY_*` and mirror to that Worker's own secret store (prod-slot
+  names, `SK-AUTH-008`) via `scripts/mirror-secrets-canary.sh`.
 
-**Live verification:** `./scripts/verify-secrets.sh`. Current baseline
-is 23 ✅ across self-generated, Cloudflare ×4 (incl. Turnstile-edit),
-Neon ×2, Fly, Upstash, LLM ×4 (incl. SambaNova), OAuth ×4, Resend,
-Stripe ×2, Grafana, Sentry. Stripe webhook secret skips cleanly until
-`apps/api` exists (Phase 0 §3).
-
-**Values never echoed** — all checks are length/HTTP-status based.
+**Live verification:** `./scripts/verify-secrets.sh` — one OK/FAIL line
+per credential, values never echoed.
 
 ---
 
@@ -157,12 +156,9 @@ the consent screen ships unverified-but-public (Google shows an
   device/token, refresh, logout}` in a later slice (different paths,
   different ownership) — Google's redirect URI list above is OAuth-only.
 
-**Re-verification trigger.** Stay in production with the current
-non-sensitive scope set indefinitely. The moment we add a sensitive
-or restricted scope (Drive / Gmail / Calendar / fitness / health), we
-need to submit for verification — Google reviews can take weeks for
-sensitive scopes, longer for restricted. Do not roll a sensitive
-scope into production without budgeting that timeline.
+**Re-verification trigger.** Adding a sensitive/restricted scope (Drive
+/ Gmail / Calendar / health) forces a Google verification submission —
+reviews run weeks to months. Budget that timeline before shipping one.
 
 ---
 
