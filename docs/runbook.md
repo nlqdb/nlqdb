@@ -73,7 +73,6 @@ re-enable via Cloudflare later).
 | npm              | `omerhochman`             | Free (unlimited public packages)  | Scope `@nlqdb`                                     |
 | Cloudflare       | `omer.hochman@gmail.com`  | Free per zone                     | Token name: `nlqdb-phase0-dev`                     |
 | Neon             | `omer.hochman@gmail.com`  | Free                              | Project in `us-east-1`, PG 17, **Neon Auth OFF**   |
-| Upstash          | `omer.hochman@gmail.com`  | Free                              | Redis DB provisioned                               |
 | Fly.io           | `omer.hochman@gmail.com`  | 7-day trial → PAYG (no card yet)  | Org `personal`, **no apps**, token scope: `org`    |
 | Sentry           | `omer.hochman@gmail.com`  | 14-day Business trial → Developer | Project: `nlqdb-api` (Cloudflare Workers platform) |
 | Google AI Studio | Existing                  | Free                              | Gemini API key                                     |
@@ -741,7 +740,6 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 | `NEON_API_KEY`         | Neon → Account settings → API keys → create new                            |
 | `DATABASE_URL`         | Neon → Branches → main → Roles → `neondb_owner` → Reset password           |
 | `FLY_API_TOKEN`        | `fly tokens create org --name nlqdb-phase0-<purpose>`                      |
-| `UPSTASH_REDIS_REST_*` | console.upstash.com → DB → REST API section                                |
 | `GEMINI_API_KEY`       | https://aistudio.google.com/apikey — **free tier only; the project must have NO billing account** (a billed project bills even free-model calls and is suspended on non-payment — the 2026-06-15 denial). On a denial, rotate to a billing-free key (`GLOBAL-013`). Paid Gemini = hosted-premium lane. |
 | `GROQ_API_KEY`         | https://console.groq.com/keys                                              |
 | `OPENROUTER_API_KEY`   | https://openrouter.ai/settings/keys                                        |

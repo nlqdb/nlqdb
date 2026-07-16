@@ -91,10 +91,6 @@ resource, paste the resulting value into .envrc.
   Neon           https://console.neon.tech  →  Account settings → API keys
                  → NEON_API_KEY (key is shown ONCE — copy immediately)
 
-  Upstash        https://console.upstash.com  →  create a Redis DB,
-                 then open the DB page → REST API section, copy token.
-                 → UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
-
   Resend         https://resend.com/api-keys
                  → RESEND_API_KEY. Separately: add nlqdb.com as a domain
                  and configure SPF/DKIM/DMARC per Resend's wizard.
