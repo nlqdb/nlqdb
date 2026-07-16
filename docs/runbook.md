@@ -105,8 +105,8 @@ Every credential's canonical name lives in
   `scripts/bootstrap-dev.sh` after deleting `.envrc`.
 - **CI (GitHub Actions):** mirrored from `.envrc` via
   `scripts/mirror-secrets-gha.sh` (idempotent; never logs values).
-  Skips `BETTER_AUTH_SECRET` + `INTERNAL_JWT_SECRET` — local-dev only;
-  CI workflows generate ephemeral test values per run.
+  Skips only `INTERNAL_JWT_SECRET` — scaffolded per `SK-AUTH-005`,
+  not yet read at runtime.
 - **Runtime (Cloudflare Workers):** mirrored per-app from `.envrc` via
   `scripts/mirror-secrets-workers.sh remote <app>` (also run by each
   deploy workflow so every deploy self-heals its secret set).
