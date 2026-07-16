@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { emit } from "../../lib/logsnag";
+import { type CopySnippetState, copySnippetLabel } from "./copy-snippet-label";
 
 interface CopySnippetProps {
   goal: string;
@@ -19,12 +20,13 @@ interface CopySnippetProps {
 }
 
 export default function CopySnippet({ goal, pkLive }: CopySnippetProps) {
-  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const [state, setState] = useState<CopySnippetState>("idle");
 
   async function copy() {
     const key = pkLive ?? readAnonPkLive();
     if (!key) {
-      setState("failed");
+      // Only here does signing in help — no pk_live_ resolved (SK-WEB-007).
+      setState("no-key");
       return;
     }
     const snippet = buildSnippet(goal, key);
@@ -36,17 +38,15 @@ export default function CopySnippet({ goal, pkLive }: CopySnippetProps) {
       // for a different reply without a page reload.
       setTimeout(() => setState("idle"), 1600);
     } catch {
-      setState("failed");
+      // The key was valid; the clipboard write threw (permissions/focus).
+      // Don't misdiagnose this as an auth wall.
+      setState("copy-failed");
     }
   }
 
   return (
     <button type="button" className="copy-snippet" onClick={copy} data-state={state}>
-      {state === "copied"
-        ? "Copied"
-        : state === "failed"
-          ? "Couldn't copy — sign in to load your key."
-          : "Copy snippet"}
+      {copySnippetLabel(state)}
     </button>
   );
 }
