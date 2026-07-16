@@ -111,10 +111,10 @@ Every credential's canonical name lives in
   pending (needs `apps/api` to exist).
 
 **Live verification:** `./scripts/verify-secrets.sh`. Current baseline
-is 21 ✅ across self-generated, Cloudflare ×3, Neon ×2, Fly, Upstash,
-LLM ×3, OAuth ×4 (Google ×2 + GitHub prod pair + GitHub dev pair),
-Resend, Stripe ×2 (sk + pk), Grafana, Sentry. Stripe webhook secret
-skips cleanly until `apps/api` exists (Phase 0 §3).
+is 23 ✅ across self-generated, Cloudflare ×4 (incl. Turnstile-edit),
+Neon ×2, Fly, Upstash, LLM ×4 (incl. SambaNova), OAuth ×4, Resend,
+Stripe ×2, Grafana, Sentry. Stripe webhook secret skips cleanly until
+`apps/api` exists (Phase 0 §3).
 
 **Values never echoed** — all checks are length/HTTP-status based.
 

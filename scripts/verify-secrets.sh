@@ -79,6 +79,13 @@ check_http CLOUDFLARE_API_TOKEN \
   --match '"status":"active"'
 check_present CLOUDFLARE_ACCOUNT_ID 20
 check_present CF_AI_TOKEN 20
+# Turnstile-write-scoped token — same verify endpoint as CLOUDFLARE_API_TOKEN.
+# Scope isn't distinguishable here (both report active); this confirms the token
+# itself is valid. Skips cleanly when unset.
+check_http CF_TURNSTILE_EDIT_API_TOKEN \
+  -H "Authorization: Bearer ${CF_TURNSTILE_EDIT_API_TOKEN:-MISSING}" \
+  "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+  --match '"status":"active"'
 
 say "Neon"
 # /api/v2/users/me works for both personal and org-scoped API keys
@@ -149,6 +156,12 @@ check_http OPENROUTER_API_KEY \
 check_http MISTRAL_API_KEY \
   -H "Authorization: Bearer ${MISTRAL_API_KEY:-MISSING}" \
   "https://api.mistral.ai/v1/models" \
+  --match '"id"'
+
+# SambaNova Cloud — arms the 3rd opencheck agent lane (_e2e-opencheck.yml).
+check_http FALLBACK2_LLM_API_KEY \
+  -H "Authorization: Bearer ${FALLBACK2_LLM_API_KEY:-MISSING}" \
+  "https://api.sambanova.ai/v1/models" \
   --match '"id"'
 
 say "OAuth providers"

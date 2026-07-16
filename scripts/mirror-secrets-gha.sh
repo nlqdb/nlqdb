@@ -94,6 +94,9 @@ SECRETS=(
   CLOUDFLARE_ACCOUNT_ID
   CLOUDFLARE_API_TOKEN
   CF_AI_TOKEN
+  # Turnstile-write CF API token — future automation creates the widget via
+  # POST accounts/{id}/challenges/widgets (main CLOUDFLARE_API_TOKEN is read-only).
+  CF_TURNSTILE_EDIT_API_TOKEN
   NEON_API_KEY
   DATABASE_URL
   UPSTASH_REDIS_REST_URL
@@ -112,6 +115,9 @@ SECRETS=(
   HF_ACCESS_TOKEN
   NVIDIA_API_KEY
   MISTRAL_API_KEY
+  # SambaNova Cloud key — arms the 3rd opencheck agent lane
+  # (_e2e-opencheck.yml, secrets.FALLBACK2_LLM_API_KEY). CI-only.
+  FALLBACK2_LLM_API_KEY
   OAUTH_GITHUB_CLIENT_ID
   OAUTH_GITHUB_CLIENT_SECRET
   OAUTH_GITHUB_CLIENT_ID_DEV
