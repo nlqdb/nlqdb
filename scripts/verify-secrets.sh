@@ -360,30 +360,6 @@ else
   skip "POSTHOG_HOST"
 fi
 
-# PostHog — Phase 2 optional second sink, format-check only. Live
-# probe deferred until the sink is actually wired up; until then, a
-# present key just means "something was provisioned." Server-side
-# capture from the Worker is zero-user-facing-latency via ctx.waitUntil,
-# but that property is enforced in code, not here.
-if [[ -n "${POSTHOG_API_KEY:-}" ]]; then
-  if [[ "$POSTHOG_API_KEY" == phc_* ]]; then
-    ok "POSTHOG_API_KEY (format looks right, ${#POSTHOG_API_KEY} chars)"
-  else
-    fail "POSTHOG_API_KEY" "doesn't start with phc_ — paste error?"
-  fi
-else
-  skip "POSTHOG_API_KEY"
-fi
-if [[ -n "${POSTHOG_HOST:-}" ]]; then
-  if [[ "$POSTHOG_HOST" =~ ^https://[a-z0-9.-]+\.posthog\.com/?$ ]]; then
-    ok "POSTHOG_HOST (looks right: $POSTHOG_HOST)"
-  else
-    fail "POSTHOG_HOST" "expected https://us.posthog.com or https://eu.posthog.com"
-  fi
-else
-  skip "POSTHOG_HOST"
-fi
-
 say "Observability"
 # Sentry DSN format:
 #   https://<public-key>@o<org-id>.ingest.sentry.io/<project-id>

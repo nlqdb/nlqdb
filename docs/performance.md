@@ -1,13 +1,10 @@
 # nlqdb — Performance & Observability
 
-The "fast" promise made concrete. This doc pins:
-
-1. **SLOs** we promise to users (§1).
-2. **Per-stage latency budgets** that sum to fit the SLOs (§2).
-3. **Span / metric / label catalog** so dashboards aren't a snowflake of one-off names (§3).
-4. **Slice-by-slice instrumentation hookpoints** so each upcoming PR ships with the right OTel calls (§4).
-5. **Sampling + cost discipline** for the Grafana Cloud free tier (§5).
-6. **Dashboards-as-code** layout (§6).
+The "fast" promise made concrete. This doc pins: **SLOs** (§1), the
+**per-stage latency budgets** that sum to fit them (§2), the
+**span / metric / label catalog** (§3), **instrumentation hookpoints**
+(§4), **sampling + cost discipline** for the Grafana Cloud free tier
+(§5), and the **dashboards-as-code** layout (§6).
 
 Not in scope: architectural rationale (see [./architecture.md](./architecture.md)),
 phased plan (see [./phase-plan.md](./phase-plan.md)), current
@@ -180,7 +177,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `llm.engine_classify`         | Hosted db.create — goal text → engine pick (SK-DB-010, SK-MULTIENG-002). Parent carries `nlqdb.engine_classify.fallback_reason ∈ {deferred, below_floor, provider_failed, unknown_string}`. |
 | `nlqdb.sql.validate`          | SQL parse + schema-fit check.                  |
 | `db.query`                    | Neon HTTP execute — standard OTel `db.*`. Attributes: `db.system=postgresql`, `db.operation.name`, `db.statement` (PII-redacted SQL text). |
-| `db.transaction`              | One Neon HTTP `transaction([...])` round-trip (server-side `BEGIN/COMMIT`); no per-statement `db.query` nests under it. Emitters: db.create provision batch (`db-create/neon-provision.ts`, SK-HDC-012 — adds `db.transaction.statement_count`, `db.transaction.batch_call=true`) and the ACL retarget (`anon-adopt-regrant.ts` — adds `nlqdb.anon.adopt.regrant_db_id`; runs at adoption per SK-ANON-003 and from the exec heal per SK-ASK-024, which stamps `nlqdb.ask.acl_healed` on the request span). All carry `db.system=postgresql`; on failure `db.transaction.error_sqlstate` (SK-HDC-017). |
+| `db.transaction`              | One Neon HTTP `transaction([...])` round-trip; no per-statement `db.query` nests under it. Emitters: db.create provision batch (SK-HDC-012 — adds `db.transaction.statement_count`, `db.transaction.batch_call=true`) and the ACL retarget (SK-ANON-003 / SK-ASK-024 — adds `nlqdb.anon.adopt.regrant_db_id`; the heal path stamps `nlqdb.ask.acl_healed` on the request span). All carry `db.system=postgresql`; on failure `db.transaction.error_sqlstate` (SK-HDC-017). |
 | `db.query` (Neon keep-warm)   | SK-HDC-014 — every-4-min `SELECT 1` cron ping; discriminator `nlqdb.cron="keep_warm"`. Owner: `db-create/pg-client.ts:keepNeonWarm`. |
 | `nlqdb.auth.oauth.callback`   | `/api/auth/callback/{github,google}` flow.     |
 | `nlqdb.anon.adopt`            | Better Auth `after`-hook adoption hop (SK-ANON-012). Wraps `recordAnonAdoption()` (SK-ANON-003) on magic-link / OAuth callback when the `__Secure-anon-bearer` cookie is present. Carries `nlqdb.user.id`, `nlqdb.anon.adopt.outcome ∈ {adopted, replay, invalid_cookie, invalid_token, token_taken, internal}`. Owner: `apps/api/src/auth.ts`. |
@@ -189,7 +186,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.billing.portal.create` | Stripe Billing Portal Session create (SK-STRIPE-008). One per `POST /v1/billing/portal`. Carries `nlqdb.user.id`, `nlqdb.billing.portal_session_id`. |
 | `nlqdb.events.emit`           | Product-event sink dispatch (LogSnag + PostHog). Wrapped in `ctx.waitUntil` (off the response path). Server-side only. |
 | `nlqdb.events.sink.query_log` | Tinybird `query_log` Data Source write; one per consumed events-batch. Carries `nlqdb.events.{batch_size,rows_written,circuit_open}`, `http.response.status_code`. Owner: `apps/events-worker/src/sinks/query-log.ts` → `@nlqdb/db/clickhouse-tinybird/query-log.ts` (`SK-EVENTS-009`). |
-| `nlqdb.events.sink.posthog` | PostHog `/batch` fan-out of every `ProductEvent`; one per consumed events-batch. Carries `nlqdb.events.batch_size`, `http.response.status_code`. Best-effort — ERROR status on failure, never affects message ack/retry. Owner: `apps/events-worker/src/sinks/posthog.ts` (`SK-EVENTS-013`). |
+| `nlqdb.events.sink.posthog` | PostHog `/batch` fan-out; one per consumed events-batch. Carries `nlqdb.events.batch_size`, `http.response.status_code`. Best-effort — ERROR on failure, never affects ack/retry. Owner: `apps/events-worker/src/sinks/posthog.ts` (`SK-EVENTS-013`). |
 | `nlqdb.workload_analyser.run` | W5 daily cron parent span. Carries `nlqdb.workload_analyser.{query_log_rows, proposals, reshapes_applied, errors, elapsed_ms}`. Owner: `apps/api/src/workload-analyser/cron.ts` (`SK-MIGRATE-001`). |
 | `nlqdb.workload_analyser.reshape` | One child span per `ReshapeProposal` the cron dispatches. Carries `nlqdb.workload_analyser.{kind, db_id, pipe_pre_existed?, pipe_name?}`. ERROR on a Tinybird create-reject or `schema_hash`-drift rollback (`SK-MIGRATE-004/006`). |
 | `db.query` (Tinybird Pipes mgmt) | Per-call span around `createPipe` / `dropPipe` / `getPipe`. Attributes `db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`, `db.tinybird.pipe`. Latency on `nlqdb.db.duration_ms{operation}`. Owner: `packages/db/src/clickhouse-tinybird/pipe-management.ts` (`SK-MIGRATE-001`). |
