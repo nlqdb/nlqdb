@@ -1,6 +1,9 @@
 # nlqdb sub-processors
 
-**Last updated:** 2026-07-16.
+**Last updated:** 2026-07-17.
+
+nlqdb is operated by **Omer Hochman**, an individual (sole
+proprietor) based in Switzerland (see [IMPRESSUM.md](./IMPRESSUM.md)).
 
 This page lists the third-party service providers ("sub-processors")
 that may process personal data on our behalf in delivering nlqdb. We
@@ -10,18 +13,18 @@ are notified at least **30 days in advance** by email and on this
 page; subscribe at `subprocessors@nlqdb.com` (mention "subscribe" in
 the body) to receive updates.
 
-> **Status (Phase 0):** the runtime services that would actually
-> process data are not yet generally available. The list below is
-> the *planned* sub-processor architecture. Categories marked
-> "(planned)" are not yet receiving any user data because the
-> corresponding runtime is not deployed. The list will be updated
-> at each Phase milestone with effective dates.
+> **Status (pre-beta):** rows in the *Planned* table are not yet
+> receiving any user data because the corresponding runtime is not
+> deployed. The list is updated as services activate; the
+> **Last updated** date above is the effective date of the latest
+> change.
 
 ## Active sub-processors
 
 | Sub-processor | Purpose | Region of processing | DPA |
 | :--- | :--- | :--- | :--- |
-| Cloudflare, Inc. | Edge runtime (Workers), DNS, CDN, marketing site (Pages), API gateway, KV / D1 storage, R2 object storage, email routing | Global edge; data-at-rest in US (KV/D1/R2) | https://www.cloudflare.com/cloudflare-customer-dpa/ |
+| Cloudflare, Inc. | Edge runtime (Workers), DNS, CDN, static site hosting (Workers Static Assets), cookieless Web Analytics, API gateway, KV / D1 storage, R2 object storage, email routing | Global edge; data-at-rest in US (KV/D1/R2) | https://www.cloudflare.com/cloudflare-customer-dpa/ |
+| PostHog, Inc. | Product analytics on the `/app` product pages only (client SDK, session replay with inputs + conversation masked) + server-side product events | EU (Frankfurt) | https://posthog.com/dpa |
 | tawk.to inc. | In-app support chat widget on the `/app` product pages (chat messages, visitor metadata) | US | https://www.tawk.to/data-protection/dpa-data-processing-addendum/ |
 
 ## Planned sub-processors (not yet active)
@@ -30,7 +33,7 @@ the body) to receive updates.
 | :--- | :--- | :--- | :--- |
 | Neon, Inc. | Serverless Postgres data plane (`apps/api` Slice 6+) | US-East (us-east-1) | https://neon.tech/dpa |
 | Upstash, Inc. | Redis (rate-limit windows, plan cache adjacency) | US-East | https://upstash.com/static/trust/UpstashDPA.pdf |
-| Fly.io, Inc. | Self-hosted Plausible analytics + Listmonk newsletter | EU (Frankfurt or Amsterdam region preferred) | https://fly.io/legal/dpa/ |
+| Fly.io, Inc. | Self-hosted Listmonk newsletter (Phase 2; no apps deployed today — the previously listed self-hosted Plausible was dropped in favour of Cloudflare Web Analytics) | EU (Frankfurt or Amsterdam region preferred) | https://fly.io/legal/dpa/ |
 | Stripe Payments Europe, Ltd. (IE) | Payment processing, billing, tax | EU (Ireland) + US for global processing | https://stripe.com/legal/dpa |
 | Resend, Inc. | Transactional email (magic links, security alerts, billing alerts) | US | https://resend.com/legal/dpa |
 | Sentry GmbH | Error monitoring (`apps/api`, `apps/web`) | EU (Frankfurt) — Sentry's Frankfurt region selected explicitly | https://sentry.io/legal/dpa/ |

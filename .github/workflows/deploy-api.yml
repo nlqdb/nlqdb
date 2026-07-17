@@ -96,6 +96,21 @@ jobs:
       # `versions upload` / `deploy` time. See `SK-AUTH-016`.
       - name: Build apps/web (Astro static output)
         working-directory: apps/web
+        env:
+          # PUBLIC_* vars are baked into the client bundle at build
+          # time, and THIS build is the one `app.nlqdb.com` serves (the
+          # `[assets]` binding above) — so the product surfaces (`/app`,
+          # Turnstile, PostHog) live or die on this env block, not
+          # deploy-web.yml's. Keep it mirrored with deploy-web.yml
+          # (~lines 56-75), minus PUBLIC_API_BASE: app.nlqdb.com is
+          # same-origin with the API, so the code's `?? ""` fallback is
+          # correct here (deploy-web.yml sets it only because nlqdb.com
+          # has no /v1/* routes). A var missing here compiles the
+          # feature out of the shipped bundle — the 2026-07 Turnstile
+          # arming failed exactly this way (SK-ANON-009).
+          PUBLIC_TURNSTILE_SITE_KEY: 0x4AAAAAAD3WnUiwKEWfcy_X
+          PUBLIC_POSTHOG_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          PUBLIC_POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
         run: bun run build
 
       # `bun run build` runs `wrangler deploy --dry-run --outdir dist`

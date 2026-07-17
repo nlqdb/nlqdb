@@ -52,6 +52,10 @@ jobs:
       # `CORS_ALLOWED_ORIGINS`). Preview builds (`preview-app.yml`)
       # deliberately leave this unset so the preview hero stays
       # same-origin — see comment in `apps/web/src/components/Hero.astro`.
+      # NOTE: this env block covers only the nlqdb.com (marketing) copy
+      # of the bundle. app.nlqdb.com serves the copy deploy-api.yml
+      # builds — keep the two env blocks mirrored (deploy-api.yml omits
+      # PUBLIC_API_BASE on purpose: same-origin there).
       - name: Build site
         env:
           PUBLIC_API_BASE: https://app.nlqdb.com

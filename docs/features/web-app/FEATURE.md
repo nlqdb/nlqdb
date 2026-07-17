@@ -167,7 +167,7 @@ Every deploy pushes the live sitemap URL list to IndexNow via a `continue-on-err
 ### SK-WEB-024 — PostHog client capture on the product `/app` surfaces only, with the conversation region masked
 
 **Body:** [`decisions/SK-WEB-024-posthog-app-surfaces-only.md`](./decisions/SK-WEB-024-posthog-app-surfaces-only.md).
-posthog-js lazy-loads on `/app/*` only (`AppAnalytics.astro` + `lib/posthog.ts`); marketing stays SDK-free (`GLOBAL-034`). Session replay masks all inputs and the chat list (`data-ph-mask="true"`) so user DB contents are never recorded; the publishable key bakes in via `PUBLIC_POSTHOG_*` in `deploy-web.yml`. Client half of `SK-EVENTS-013`.
+posthog-js lazy-loads on `/app/*` only (`AppAnalytics.astro` + `lib/posthog.ts`); marketing stays SDK-free (`GLOBAL-034`). Session replay masks all inputs and the chat list so user DB contents are never recorded; the publishable key bakes in via `PUBLIC_POSTHOG_*` in both deploy workflows. Client half of `SK-EVENTS-013`.
 
 ### SK-WEB-025 — Tawk.to support chat on the product `/app` surfaces only
 

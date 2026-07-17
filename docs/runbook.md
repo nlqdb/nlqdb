@@ -129,8 +129,11 @@ the consent screen ships unverified-but-public (Google shows an
 - **GCP project:** `nlqdb`
 - **OAuth consent screen** (Branding tab):
   - App name: `nlqdb`
-  - User support email: `contact@nlqdb.com` (routed via the
-    `nlqdb.com` Email Routing catch-all → founder's inbox)
+  - User support email: `hello@nlqdb.com` — the canonical support
+    address (routed via the `nlqdb.com` Email Routing catch-all →
+    founder's inbox). The GCP console may still show the retired
+    `contact@nlqdb.com`; both route identically — update to `hello@`
+    on the next console visit.
   - Privacy policy: https://nlqdb.com/privacy
   - Terms of service: https://nlqdb.com/terms
   - Authorized domain: `nlqdb.com`
