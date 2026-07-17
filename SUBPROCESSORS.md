@@ -93,8 +93,8 @@ service.
 
 ## Customer DPA
 
-We sign DPAs with controllers (our customers) on request. See
-[DPA.md](./DPA.md) for the template, or email `legal@nlqdb.com`.
+We sign DPAs with controllers (our customers) on request — email
+`legal@nlqdb.com`.
 
 ## Contact
 
