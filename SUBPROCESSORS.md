@@ -18,6 +18,14 @@ the body) to receive updates.
 > deployed. The list is updated as services activate; the
 > **Last updated** date above is the effective date of the latest
 > change.
+>
+> **30-day-notice gap accepted (2026-07-17):** PostHog and tawk.to went
+> live on the `/app` product pages ahead of the 30-day advance notice
+> this page promises. No notice was owed: the obligation runs to
+> controllers under a signed DPA (Clause 9(a)), and pre-beta there are
+> no such customers — no personal data of a controller's data subjects
+> has been processed. The advance-notice commitment applies in full to
+> every sub-processor change once the first DPA is signed.
 
 ## Active sub-processors
 
@@ -85,8 +93,8 @@ service.
 
 ## Customer DPA
 
-We sign DPAs with controllers (our customers) on request. See
-[DPA.md](./DPA.md) for the template, or email `legal@nlqdb.com`.
+We sign DPAs with controllers (our customers) on request — email
+`legal@nlqdb.com`.
 
 ## Contact
 

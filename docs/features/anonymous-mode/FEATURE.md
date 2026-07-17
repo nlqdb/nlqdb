@@ -74,7 +74,7 @@ when-to-load:
 
 ### SK-ANON-007 — PoW challenge: Cloudflare Turnstile; triggers at 3 creates / 5 min per IP
 
-- **Status:** superseded by SK-ANON-012. Turnstile is retained as the bot-floor on the create path, unconditional (not burst-gated); arming per SK-ANON-009.
+- **Status:** superseded by SK-ANON-012 (Turnstile retained as the unconditional bot-floor; arming per SK-ANON-009).
 
 ### SK-ANON-008 — Anon principal id is `anon:<sha256(token)[:16]>`; cookie session wins when both present
 
@@ -89,11 +89,11 @@ when-to-load:
 
 ### SK-ANON-009 — Turnstile verify fails open when `TURNSTILE_SECRET` is unset
 
-- **Decision:** `verifyTurnstile()` returns `{ ok: false, reason: "unconfigured" }` when no secret is configured, and `unconfigured` is allow-through in **every** environment. Any other failure (`invalid` / `verify_failed`) returns 428 with the challenge envelope. Set `TURNSTILE_SECRET` only in lockstep with a web deploy that bakes the client sitekey (`PUBLIC_TURNSTILE_SITE_KEY` → `solveChallenge()`, `apps/web/src/lib/turnstile.ts`) — a secret with no client token makes every anon create an unrecoverable 428.
+- **Decision:** `verifyTurnstile()` returns `{ ok: false, reason: "unconfigured" }` when no secret is configured, and `unconfigured` is allow-through in **every** environment. Any other failure (`invalid` / `verify_failed`) returns 428 with the challenge envelope. Set `TURNSTILE_SECRET` only in lockstep with a deploy that bakes the client sitekey (`PUBLIC_TURNSTILE_SITE_KEY` → `solveChallenge()` in `apps/web/src/lib/turnstile.ts`) — a secret with no client token makes every anon create an unrecoverable 428.
 - **Core value:** Bullet-proof, Effortless UX
-- **Why:** Dev/tests run without Workers secrets; prod had no Turnstile keypair either. A 2026-07 hardening made `unconfigured` fail closed in prod on the false premise the secret was set; every prod anon create 428'd for ≥ a week (stranger walkers 0/9, caught run 56). Until the secret is armed, the abuse bound is the SK-ANON-012 per-device cap + SK-ANON-010 global caps + per-IP buckets.
-- **Consequence in code:** `apps/api/src/turnstile.ts` returns the typed `unconfigured` reason; the only fail-open branch is `turnstileAllowed` in `apps/api/src/anon-create-gate.ts`. Tests assert a configured secret never fails open on an invalid token. The `PUBLIC_*` build env must be set in **`deploy-api.yml`'s** web-build step — `app.nlqdb.com` serves the `apps/web/dist` that workflow builds (API worker `[assets]` binding); `deploy-web.yml`'s env covers only `nlqdb.com` (the 2nd arming gap, fixed 2026-07-17).
-- **Alternatives rejected:** fail-closed on a missing secret (re-creates the run-56 outage whenever secret and widget ship out of lockstep) and allowing `verify_failed` through (masks Cloudflare outages; hammering Turnstile would bypass the gate).
+- **Why:** Dev/tests run without Workers secrets. A 2026-07 hardening made `unconfigured` fail closed in prod on the false premise the secret was set; every prod anon create 428'd for ≥ a week (run 56). Unset, the abuse bound is SK-ANON-012 per-device + SK-ANON-010 global + per-IP buckets. **Armed on prod 2026-07-17** once `deploy-api.yml` baked the sitekey into the deployed `CreateForm.*.js`; tokenless create now 428s. Rollback: `wrangler secret delete TURNSTILE_SECRET` restores fail-open.
+- **Consequence in code:** `apps/api/src/turnstile.ts` returns the typed `unconfigured` reason; the only fail-open branch is `turnstileAllowed` in `apps/api/src/anon-create-gate.ts`. Tests assert a configured secret never fails open on an invalid token. The `PUBLIC_*` build env must be set in **`deploy-api.yml`'s** web-build step (`app.nlqdb.com` serves that workflow's `apps/web/dist` via the API worker `[assets]` binding), not `deploy-web.yml`.
+- **Alternatives rejected:** fail-closed on a missing secret (re-creates the run-56 outage when secret and widget ship out of lockstep); allowing `verify_failed` through (masks Cloudflare outages, and hammering Turnstile bypasses the gate).
 
 ### SK-ANON-010 — Global anon cap (100/hr / 1000/day / 10k/month) → seamless auth redirect (401 `auth_required`)
 
