@@ -25,8 +25,8 @@
 - **Alternatives rejected:** **One global `DELETE` across all memory DBs** —
   cross-tenant SQL, breaks per-DB isolation and the tenant search_path model. ·
   **A view / compile-layer TTL filter for read invisibility** — the read path
-  executes `neonSql.unsafe(sql)`; there is no AST step to inject a predicate
-  into (the SK-PIVOT-009 finding). · **Sweep `episodes`/`entities` too** —
+  executes the raw LLM SQL string via `neonSql.query(sql, [])`; there is no
+  AST step to inject a predicate into (the SK-PIVOT-009 finding). · **Sweep `episodes`/`entities` too** —
   they have no `expires_at` and are append-only / long-lived by design (a
   wrongly-set `ttlSeconds` on them is rejected write-side with a one-sentence
   error, GLOBAL-012).

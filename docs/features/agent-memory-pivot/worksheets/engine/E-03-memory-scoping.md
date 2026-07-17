@@ -22,7 +22,7 @@ server-defaulted, narrowing is one request field, nothing to configure.
 
 `Pivot:` boolean "memory scoping invariant tested." Indirectly: every later
 wedge claim assumes this works, and `MEMORY_PRESET=1` in prod (E-06) — which
-the reach track's strongest claims wait on — is gated on this slice.
+the strongest public wedge claims wait on — is gated on this slice.
 
 ## Read first
 
@@ -105,7 +105,8 @@ rationale):
 
 A "memory scoping in nlqdb" technical note → `distribution-queue.md`.
 (Honest about the invariant + why restrictive-RLS, not query-rewriting;
-useful for the WS-09 blog and the reach track's R-02/R-03 isolation claims.)
+useful for the WS-09 blog and the wedge's per-agent / per-end-user
+isolation claims.)
 
 ## Rollback
 

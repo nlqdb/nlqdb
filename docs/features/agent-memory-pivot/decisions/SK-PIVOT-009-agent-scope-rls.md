@@ -34,7 +34,7 @@
     matching restrictive policies. There is no layer to inject a `WHERE`
     into LLM SQL (this decision's own finding), so GUC + RLS is the only
     mechanism that lets "give each end-user their own memory" be claimed
-    honestly (reach hard rule 1). Absent the field, cross-end-user
+    honestly. Absent the field, cross-end-user
     analytics — the wedge pitch — run unrestricted within the agent scope.
   - Anon has **no memory surface** (SK-PIVOT-010: preset create is
     `requireSession`; `remember` rejects anon/pk_live) — E-03 pins that
@@ -42,9 +42,10 @@
   - Every GUC comparison **fails closed**: an unset GUC yields NULL and
     matches no row.
 - **Core value:** Bullet-proof, Simple
-- **Why:** The read path executes free-form LLM-emitted SQL via
-  `neonSql.unsafe(sql)` (`ask/build-deps.ts`) — there is **no** typed-plan
-  compiler or AST step on the query path to inject a predicate into.
+- **Why:** The read path executes free-form LLM-emitted SQL as a raw
+  string via `neonSql.query(sql, [])` (`ask/build-deps.ts`) — there is
+  **no** typed-plan compiler or AST step on the query path to inject a
+  predicate into.
   Rewriting arbitrary LLM SQL (CTEs, JOINs, aliases) is fragile, and on a
   security boundary a parser gap is a cross-agent data breach. RLS is what
   the provisioner already uses for tenant isolation (`tenant_isolation`,
@@ -70,5 +71,5 @@
   zero-schema-design wedge. · **Strict GUC-equality (no tenant arm)** —
   blinds the account owner and the E-04 sweep to narrowed-agent rows;
   TTL'd facts would silently never expire. · **Advisory end-user
-  filtering** — unenforceable on LLM SQL; the per-end-user claim (R-03)
-  could never be published under reach hard rule 1.
+  filtering** — unenforceable on LLM SQL; the per-end-user isolation
+  claim could never be made honestly.
