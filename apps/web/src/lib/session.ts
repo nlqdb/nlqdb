@@ -10,10 +10,9 @@ export type SessionUser = {
 let cached: Promise<SessionUser | null> | null = null;
 
 export function readApiBase(): string {
-  const fromEnv =
-    typeof import.meta !== "undefined" && import.meta.env
-      ? (import.meta.env["PUBLIC_API_BASE"] as string | undefined)
-      : undefined;
+  // Dotted access only — Vite inlines `import.meta.env.PUBLIC_*`
+  // member expressions; bracket access ships a dead runtime lookup.
+  const fromEnv = import.meta.env.PUBLIC_API_BASE as string | undefined;
   return fromEnv ?? "";
 }
 
