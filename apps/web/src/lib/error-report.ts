@@ -13,10 +13,8 @@ const REPORT_PATH = "/v1/errors/web";
 // it's set; fall back to same-origin.
 function resolveApiBase(): string {
   try {
-    const v =
-      typeof import.meta !== "undefined" && import.meta.env
-        ? (import.meta.env["PUBLIC_API_BASE"] as string | undefined)
-        : undefined;
+    // Dotted access only — Vite never inlines `import.meta.env["…"]` bracket access.
+    const v = import.meta.env.PUBLIC_API_BASE as string | undefined;
     return v ?? "";
   } catch {
     return "";

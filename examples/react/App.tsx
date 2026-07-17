@@ -11,7 +11,7 @@
 
 import { NlqData, NlqScript, type NlqDataLoadDetail } from "@nlqdb/react";
 
-const apiKey = import.meta.env["VITE_NLQDB_KEY"] ?? "pk_live_REPLACE_ME";
+const apiKey = import.meta.env.VITE_NLQDB_KEY ?? "pk_live_REPLACE_ME";
 
 export default function App() {
   return (

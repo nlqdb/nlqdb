@@ -49,9 +49,8 @@ declare global {
 }
 
 function siteKey(): string | null {
-  const env = typeof import.meta !== "undefined" ? import.meta.env : undefined;
-  const key = env?.["PUBLIC_TURNSTILE_SITE_KEY"] as string | undefined;
-  return key || null;
+  // Dotted access only — Vite never inlines `import.meta.env["…"]` bracket access.
+  return import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || null;
 }
 
 // Load api.js once — proxying/caching it is unsupported (Cloudflare
