@@ -29,7 +29,8 @@ let started = false;
 function config(): { key: string; host: string } | null {
   // Dotted access only — Vite never inlines `import.meta.env["…"]` bracket access.
   const key = import.meta.env.PUBLIC_POSTHOG_KEY as string | undefined;
-  const host = (import.meta.env.PUBLIC_POSTHOG_HOST as string | undefined) ?? "https://eu.i.posthog.com";
+  const host =
+    (import.meta.env.PUBLIC_POSTHOG_HOST as string | undefined) ?? "https://eu.i.posthog.com";
   return key ? { key, host } : null;
 }
 
