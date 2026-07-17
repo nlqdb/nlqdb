@@ -9,5 +9,32 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
 
 ## Human actions (clicks, secrets, legal)
 
-- **Re-arm the Turnstile worker secret (agent-doable, after this PR merges + `deploy-api` redeploys)** — arming attempt 1 failed on bracket-access env getters Vite never inlines (SK-ANON-009 rollback); #717 fixed the getters, but `deploy-api.yml` built `apps/web` with no `PUBLIC_*` env, so the bundle `app.nlqdb.com` actually serves still compiled `solveChallenge()` to null (fixed in this PR). Procedure: (1) **bundle gate** — grep the `CreateForm.*.js` chunk referenced by `app.nlqdb.com/app/new` for the sitekey literal `0x4AAAAAAD3WnUiwKEWfcy_X`; (2) fetch the widget secret — `GET accounts/$CLOUDFLARE_ACCOUNT_ID/challenges/widgets/0x4AAAAAAD3WnUiwKEWfcy_X` → `.result.secret` (read token suffices); (3) `printf '%s' "<secret>" | bunx wrangler secret put TURNSTILE_SECRET` from `apps/api`; (4) verify a tokenless anon create 428s AND a real browser create succeeds; on any regression `wrangler secret delete TURNSTILE_SECRET` (fail-open restores). Until armed, abuse stays bounded by the SK-ANON-012 device cap + SK-ANON-010 global caps.
-- **Canary Stripe test-mode keys (agent-doable once a `sk_test_…` key is in the session env — founder to provide, likely as `CANARY_STRIPE_SECRET_KEY`)** — Neon half DONE (2026-07-17): dedicated branch `canary` (`br-nameless-forest-a4b7cn69`, child of production) created and its pooled `DATABASE_URL` set on the `nlqdb-api-canary` worker (verified via pooler HTTP SQL + `/v1/health` 200). Note the branch is a copy-on-write snapshot of prod data — scrub/reset is an open founder call. Remaining, cold-agent procedure: (1) scan env for any `sk_test_`-prefixed value under any var name; never print secrets. (2) Read-only fetch the two live prices (`$STRIPE_PRICE_PRO`, `$STRIPE_PRICE_HOBBY` via `$STRIPE_SECRET_KEY`) for name/amount/currency/interval — mutate nothing in live mode. (3) With the test key, create matching test-mode products + recurring prices. (4) Create a test-mode webhook endpoint at `https://nlqdb-api-canary.omer-hochman.workers.dev/v1/stripe/webhook` (path confirmed in `apps/api/src/index.ts`); capture `whsec_…` from the create response. (5) From `apps/api`: `bunx wrangler secret put <NAME> --config wrangler.canary.toml` for `STRIPE_SECRET_KEY` (test), `STRIPE_WEBHOOK_SECRET` (test), `STRIPE_PRICE_PRO`/`STRIPE_PRICE_HOBBY` (new test price IDs; not in canary `[vars]`, so secrets are fine) — never touch prod worker secrets. (6) Report the `price_…` IDs + suggested `CANARY_STRIPE_*` names for `.envrc` / `scripts/mirror-secrets-canary.sh` ([SK-AUTH-008](./features/auth/decisions/SK-AUTH-008-three-oauth-app-pairs.md) canary secret convention).
+- **Re-arm the prod `TURNSTILE_SECRET` after #718's `deploy-api` run ships** —
+  gate first: the sitekey literal `0x4AAAAAAD3WnUiwKEWfcy_X` must appear in the
+  `CreateForm.*.js` chunk `app.nlqdb.com/app/new` references (the gate the first
+  arming skipped). Widget secret is readable via
+  `GET accounts/$CLOUDFLARE_ACCOUNT_ID/challenges/widgets/<sitekey>` → `.result.secret`;
+  set it with `wrangler secret put TURNSTILE_SECRET` from `apps/api`, verify a
+  tokenless anon create 428s and a browser create succeeds, and on any regression
+  delete the secret — fail-open restores (`SK-ANON-009`).
+- **Provide a Stripe test-mode key for the canary Worker** (`sk_test_…`, e.g.
+  `CANARY_STRIPE_SECRET_KEY` in `.envrc`) — an agent then mirrors test products /
+  prices + the webhook endpoint onto `nlqdb-api-canary` via
+  `wrangler secret put --config wrangler.canary.toml` (never prod secrets;
+  `SK-AUTH-008` canary convention). Neon half DONE 2026-07-17: branch `canary`
+  (`br-nameless-forest-a4b7cn69`) is live as the canary `DATABASE_URL` — it's a
+  copy-on-write snapshot of prod data, so scrub/reset is your call.
+- **Confirm the Tawk.to property ID is ours** — `SupportChat.astro` embeds
+  `6a58f0cc096ab21d402a6b88/1jtlmp8d1` (PR #715); log into tawk.to and confirm
+  it's your dashboard, else user chats go to a stranger.
+- **Tawk.to + PostHog went active without the 30-day advance notice
+  `SUBPROCESSORS.md` promises** — send the notice email to `subprocessors@nlqdb.com`
+  subscribers, or accept the gap pre-beta (no customers under DPA yet).
+
+## Suggestions needing approval (to amend the guidelines)
+
+- **Rebrand: do you want the database + speech-bubble logo?** The #715 mark was
+  reverted (raster-in-SVG, contra `SK-PIVOT-004`); shipping it needs that decision
+  superseded + a true vector mark in the documented palette.
+- **Chat on marketing pages?** Site-wide Tawk needs `GLOBAL-034` superseded
+  (marketing stays SDK-free / no cookie banner) + an EU cookie-consent review.

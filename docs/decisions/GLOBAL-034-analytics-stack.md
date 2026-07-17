@@ -32,8 +32,8 @@
 - **Consequence in code & docs:** `apps/web` (and `apps/docs`) embed the
   Cloudflare Web Analytics beacon; the posthog-js SDK is lazy-loaded ONLY
   on `/app/*` (`apps/web/src/lib/posthog.ts` + `components/AppAnalytics.astro`;
-  publishable key baked at build time in `deploy-web.yml`, same pattern as
-  `PUBLIC_API_BASE`). The events-worker PostHog sink drains `EVENTS_QUEUE`
+  publishable key baked at build time in both deploy workflows, see
+  `SK-WEB-024`). The events-worker PostHog sink drains `EVENTS_QUEUE`
   server-side (plain `fetch` to `<host>/batch/`, no SDK — stays under
   GLOBAL-013's bundle ceiling); envelope `id` → PostHog `uuid` for
   idempotent dedup. `architecture.md §3.1` + stack table name Cloudflare

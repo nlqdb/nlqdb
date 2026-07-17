@@ -10,7 +10,8 @@
 // since SK-WEB-008 unified them on the real-LLM `/v1/ask` flow.
 //
 // The sitekey is baked at build time via `PUBLIC_TURNSTILE_SITE_KEY`
-// (deploy-web.yml, mirroring PUBLIC_API_BASE). Absent — dev, PR
+// (deploy-web.yml AND deploy-api.yml — the latter builds the bundle
+// `app.nlqdb.com` serves). Absent — dev, PR
 // previews, or before the widget ships — `solveChallenge()` returns
 // null and the API fails open on an unset `TURNSTILE_SECRET`
 // (SK-ANON-009), so `wrangler dev` keeps working without a keypair.

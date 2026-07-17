@@ -24,8 +24,9 @@ import type { SessionUser } from "./session";
 let started = false;
 
 // Publishable `phc_` project key + EU ingestion host, baked at build
-// time (deploy-web.yml, mirroring PUBLIC_API_BASE). Absent locally →
-// the SDK never loads, so `bun run dev` and previews stay SDK-free.
+// time (deploy-web.yml AND deploy-api.yml — the latter builds the
+// bundle `app.nlqdb.com` serves). Absent locally → the SDK never
+// loads, so `bun run dev` and previews stay SDK-free.
 function config(): { key: string; host: string } | null {
   // Dotted access only — Vite never inlines `import.meta.env["…"]` bracket access.
   const key = import.meta.env.PUBLIC_POSTHOG_KEY as string | undefined;
