@@ -171,7 +171,7 @@ export function agentMemoryV1Ddl(schemaName: string): string[] {
   ON DELETE CASCADE;`,
     // Scope index: every read filters by (agent_id, end_user_id,
     // thread_id) then orders by recency — the leading scope columns are
-    // also what E-03's compile-layer predicate keys on.
+    // the ones E-03's RLS policies key on (SK-PIVOT-009).
     `CREATE INDEX "idx_facts__scope" ON ${q("facts")} ("agent_id", "end_user_id", "thread_id", "created_at" DESC);`,
     `CREATE INDEX "idx_episodes__scope" ON ${q("episodes")} ("agent_id", "end_user_id", "thread_id", "occurred_at" DESC);`,
     `CREATE INDEX "idx_facts__tags" ON ${q("facts")} USING GIN ("tags");`,

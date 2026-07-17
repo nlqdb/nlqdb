@@ -29,7 +29,11 @@ workload-analyzer hook that motivates Phase-3 multi-engine.
 > agent-memory-quality eval, `SK-QUAL-023` in
 > [`quality-eval/FEATURE.md`](../../../quality-eval/FEATURE.md) (seeded by
 > persona-bench's `agent_memory` schema). Pick an `E-*` slice to build the
-> primitive; the eval says whether it worked.
+> primitive; the eval says whether it worked. The recall *quality* layer is
+> governed by the founder mandate in
+> [`docs/future/memory-architecture-research.md`](../../../../future/memory-architecture-research.md)
+> (researched best practices, documented why, speed/efficiency budgets,
+> right-sized context per task) — mandatory pre-read for E-05+.
 
 **E-01 is a prerequisite for several `WS-*` worksheets** (WS-07's CreateForm
 preset, WS-09's live demo over an `agent_memory` table). It does NOT block
