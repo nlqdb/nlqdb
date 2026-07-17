@@ -189,39 +189,7 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 ### SK-PIVOT-009 — Per-agent memory scoping is row-level RLS keyed on `app.agent_id`, never query-rewriting the LLM's SQL
 
-- **Decision:** E-03 per-agent scoping (and E-04's TTL read-visibility) is
-  enforced by an **additive row-level RLS policy** on the `agent_memory_v1`
-  tables — `agent_isolation`, keyed on `current_setting('app.agent_id', true)`
-  (E-04 adds the `expires_at` clause) and ANDed with the existing schema-wide
-  `tenant_isolation` — with the exec wrappers setting
-  `set_config('app.agent_id', …, true)` per request alongside `app.tenant_id`.
-  The `/v1/ask` read path is **not** rewritten to inject a `WHERE agent_id`
-  predicate. `agent_id` defaults to the tenant principal id (today's
-  behaviour); an optional explicit `agent_id` request field narrows to a
-  sub-tenant agent (additive, backward-compatible).
-- **Core value:** Bullet-proof, Simple
-- **Why:** The read path executes free-form LLM-emitted SQL via
-  `neonSql.unsafe(sql)` (`ask/build-deps.ts`) — there is **no** typed-plan
-  compiler or AST step on the query path to inject a predicate into. Rewriting
-  arbitrary LLM SQL to force a scope predicate (CTEs, JOINs, aliases) is
-  fragile, and on a security boundary a parser gap is a cross-agent data
-  breach. RLS is what the provisioner already uses for tenant isolation
-  (`tenant_isolation`, `neon-provision.ts`): engine-enforced, filters every
-  read/write regardless of SQL shape, extends to agent scope with one policy +
-  one GUC (also the single scope source for the eventual ClickHouse engine).
-- **Consequence in code:** `neon-provision.ts` emits an `agent_isolation`
-  policy per memory table on the preset path; `buildExec`/`buildMemoryExec`
-  set `app.agent_id`; the handler resolves `agent_id` from the principal (+
-  optional field). `sql-validate.ts` stays a generic destructive-verb
-  guardrail — **not** the scope gate. **Supersedes** the "compile-layer scope
-  predicate, dual-gated by `sql-validate`" mechanism in SK-PIVOT-006 / the
-  E-03 worksheet. Ships with two-principal invariant tests + second review
-  (Neon-gated).
-- **Alternatives rejected:** **AST `WHERE`-injection into LLM SQL** — fragile;
-  a parser miss is a breach (the original E-03 plan, falsified here). ·
-  **`sql-validate.ts` refuses queries lacking the predicate** — it can reject
-  but not *inject*, so can't be the primary gate. · **Per-agent schema/DB** —
-  defeats one shared memory DB per tenant + the zero-schema-design wedge.
+**Body:** [`decisions/SK-PIVOT-009-agent-scope-rls.md`](./decisions/SK-PIVOT-009-agent-scope-rls.md). E-03's `agent_isolation` policy is **`AS RESTRICTIVE`** (Postgres ANDs it with `tenant_isolation`; a default-permissive policy would OR — dead code), keyed on the `app.agent_id` GUC with a baked tenant-literal arm so the account principal — and the E-04 sweep — keep full visibility. `end_user_id`/`thread_id` narrowing is an opt-in GUC-keyed **hard gate**, never an advisory SQL filter. Zero-config for the SaaS builder and their coding agent: every scope server-defaulted, narrowing is one request field, anon has no memory surface (SK-PIVOT-010).
 
 ### SK-PIVOT-010 — E-06's preset on-ramp lives on the authed create surface, never the anonymous `/agents` CreateForm
 

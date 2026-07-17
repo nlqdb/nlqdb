@@ -33,6 +33,10 @@ vector search yet" disclaimer goes away).
 
 ## Read first
 
+- [`docs/future/memory-architecture-research.md`](../../../../future/memory-architecture-research.md)
+  — **founder mandate (2026-07-17, must):** recall design starts from a
+  cited best-practices research pass; speed/token budgets; "all the
+  context it needs, only the context it needs"
 - `docs/future/semantic-layer.md` — the closest prior thinking on
   embedding-driven retrieval
 - `apps/api/src/db-create/embedTableCards` (the stubbed slice from
