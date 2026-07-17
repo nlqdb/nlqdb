@@ -46,8 +46,13 @@ on:
       # gate is to trigger on every web change; the workflow then
       # rebuilds web before deploying.
       - "apps/web/**"
+      # elements + sdk are bundled into apps/web/dist, so they flip
+      # the static output too.
+      - "packages/elements/**"
+      - "packages/sdk/**"
       - "packages/auth-internal/**"
       - "packages/db/**"
+      - "packages/email/**"
       - "packages/events/**"
       - "packages/llm/**"
       - "packages/otel/**"
