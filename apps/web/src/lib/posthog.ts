@@ -27,9 +27,11 @@ let started = false;
 // time (deploy-web.yml, mirroring PUBLIC_API_BASE). Absent locally →
 // the SDK never loads, so `bun run dev` and previews stay SDK-free.
 function config(): { key: string; host: string } | null {
-  const env = typeof import.meta !== "undefined" ? import.meta.env : undefined;
-  const key = env?.["PUBLIC_POSTHOG_KEY"] as string | undefined;
-  const host = (env?.["PUBLIC_POSTHOG_HOST"] as string | undefined) ?? "https://eu.i.posthog.com";
+  // Direct dotted access — Vite only statically inlines
+  // `import.meta.env.PUBLIC_*` member expressions; bracket access
+  // ships a runtime lookup of an empty object (dead getter in prod).
+  const key = import.meta.env.PUBLIC_POSTHOG_KEY as string | undefined;
+  const host = (import.meta.env.PUBLIC_POSTHOG_HOST as string | undefined) ?? "https://eu.i.posthog.com";
   return key ? { key, host } : null;
 }
 
