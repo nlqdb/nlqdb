@@ -5,16 +5,19 @@ to a single `/daily` run. This is the canonical backlog. Governed by
 **GLOBAL-036**; the per-surface copy inventory is
 [`messaging-surface-map.md`](messaging-surface-map.md).
 
-**Two tracks, interleaved.** This file is the **messaging track** (WS-*).
-The **engine track** (E-*) — the actual architectural slices that make the
-wedge claims durable — lives at
-[`engine/INDEX.md`](engine/INDEX.md). Rule of thumb when picking a
-worksheet:
+**Three tracks.** This file is the **messaging track** (WS-*). The
+**engine track** (E-*) — the architectural slices that make the wedge
+claims durable — lives at [`engine/INDEX.md`](engine/INDEX.md). The
+**reach track** (R-* — search-moment + coding-agent acquisition,
+SK-PIVOT-015) lives at [`reach/INDEX.md`](reach/INDEX.md) and is driven
+**only** by its own `/reach` loop — `/daily` agents don't pick from it.
+Rule of thumb when picking a worksheet:
 
 | Worst-number lane today | Pick from |
 |---|---|
 | Funnel / distribution / wedge conversion | this file (WS-*) |
 | Engine quality / agent on-ramp / "wedge claims true" | [`engine/INDEX.md`](engine/INDEX.md) (E-*) |
+| Acquisition reach (search + coding-agent discovery) | [`reach/INDEX.md`](reach/INDEX.md) (R-*, `/reach` loop only) |
 
 Several `WS-*` worksheets sharpen once an `E-*` lands (E-01 unblocks
 WS-09's live demo; E-02 sharpens WS-04's MCP copy; E-05 lets WS-03 drop

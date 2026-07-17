@@ -16,9 +16,10 @@ when-to-load:
 **One-liner:** Reweight nlqdb's go-to-market so "analytical memory for AI
 agents" is the lead wedge — a real, queryable database an agent uses as
 memory — delivered as a sequence of small, daily-loop-sized
-slices rather than a relaunch. **Two tracks ship in parallel:** messaging
-(WS-01..WS-13 — how users discover the wedge) and **engine** (E-01..E-07 —
-the memory-shaped primitives that make the wedge claims durable).
+slices rather than a relaunch. **Three tracks ship in parallel:** messaging
+(WS-* — how users discover the wedge), **engine** (E-* — the memory-shaped
+primitives that make the wedge claims durable), and **reach** (R-* —
+search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 **Status:** in progress (Phase 2 distribution) — **WS-13 headline reposition shipped 2026-06-24** (SK-PIVOT-013; the site leads with the wedge sitewide); **WS-14 home-flow reposition** (SK-PIVOT-014 + SK-WEB-017), since superseded on `/` by the two-door home (SK-WEB-018); E-04 TTL-sweep core shipped (SK-PIVOT-011; cron + RLS clause pending).
 **Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/db-create/neon-provision.ts` + `ask/build-deps.ts` (agent-scope RLS, SK-PIVOT-009), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
 **Cross-refs:** `docs/research/deepseek-moat-framing.md` (the thesis) · `docs/competitors.md §4` (agent-memory landscape) · `docs/research/personas.md §P2` · GLOBAL-036 (canonical text in `docs/decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md`; index in `docs/decisions.md`).
@@ -36,7 +37,9 @@ the memory-shaped primitives that make the wedge claims durable).
 > agents start at [`worksheets/INDEX.md`](worksheets/INDEX.md) (messaging
 > `WS-*`) and [`worksheets/engine/INDEX.md`](worksheets/engine/INDEX.md)
 > (engine `E-01..E-07`); rule of thumb is `WS-*` when the worst number is
-> funnel/distribution, `E-*` when it is engine quality / agent on-ramp. The
+> funnel/distribution, `E-*` when it is engine quality / agent on-ramp.
+> The **reach** track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md),
+> `R-*`) is picked up only by its own `/reach` loop. The
 > surface-by-surface copy inventory is
 > [`worksheets/messaging-surface-map.md`](worksheets/messaging-surface-map.md).
 
@@ -55,59 +58,15 @@ the memory-shaped primitives that make the wedge claims durable).
 
 ### SK-PIVOT-001 — The multi-competitor capability matrix is a new surface, not a hacked `/vs` template
 
-- **Decision:** The "What can your agent actually DO with its memory?" table
-  (rows = capabilities; columns = Mem0 · Zep · Letta · **nlqdb**) ships as its
-  own typed data structure rendered on `/agents`, **not** by extending the
-  `/vs/[slug].astro` single-`them`-column template.
-- **Core value:** Simple, Creative
-- **Why:** The comparison template renders one competitor column (`us` vs
-  `them`). The wedge's signature artifact is a *four-column* side-by-side;
-  bending the template into an N-column one complicates every existing `/vs`
-  page for one consumer. A dedicated typed matrix keeps both simple.
-- **Consequence in code:** A typed `agentMemoryMatrix.ts` with
-  `{ capability, mem0, zep, letta, nlqdb }` rows rendered as a glyph grid
-  (`✓ / ◐ / —`, the `ComparisonRow` vocabulary). Honest claims only. Reused
-  on `/agents` + the blog.
-- **Alternatives rejected:** Add N `them` columns to `ComparisonRow` —
-  pollutes all six existing pages. · A static image — unmaintainable + off-brand (tenet 08).
+**Body:** [`decisions/SK-PIVOT-001-matrix-surface.md`](./decisions/SK-PIVOT-001-matrix-surface.md). The four-column capability matrix is a dedicated typed data structure (`agentMemoryMatrix.ts`) rendered on `/agents`, not an N-column bend of the single-`them` `/vs` template.
 
 ### SK-PIVOT-002 — Memory-competitor pages reuse the existing comparison machinery, one per run
 
-- **Decision:** Zep, Letta, and LangMem each get a `/vs` page by adding one
-  `Competitor` entry to `competitors.ts` (persona `P2 agent builder`),
-  **one competitor per daily run**, each anchored in `docs/competitors.md`
-  first.
-- **Core value:** Simple, Goal-first
-- **Why:** The machinery is already static + one-file-per-competitor
-  (`SK-CMP-002`); one competitor per run keeps each diff reviewable and each a
-  distribution artifact.
-- **Consequence in code:** Per entry: real MCP tool names only,
-  `whenChooseThem`/`whenChooseUs` ≤ 16 words, `feature` rows verifiable today,
-  FAQ names the competitor. Update slug lists in `scripts/verify-flows.sh` +
-  `tools/stranger-test/`.
-- **Alternatives rejected:** One mega-PR for all three — unreviewable, wastes
-  three runs' artifacts. · Skip the `competitors.md` anchor — ships an
-  un-vetted claim.
+**Body:** [`decisions/SK-PIVOT-002-vs-pages-one-per-run.md`](./decisions/SK-PIVOT-002-vs-pages-one-per-run.md). Zep / Letta / LangMem each get a `/vs` page via one `Competitor` entry, one competitor per daily run, each anchored in `docs/competitors.md` first.
 
 ### SK-PIVOT-003 — MCP tool + package descriptions carry the agent-memory framing
 
-- **Decision:** The MCP server's tool descriptions, `title`s, and the
-  `packages/mcp` npm description signal "analytical memory your agent can
-  query" — because the MCP tool list is where an AI agent/host *discovers*
-  what nlqdb is, and it currently says nothing about memory.
-- **Core value:** Goal-first, Creative
-- **Why:** When a host (Claude Desktop, Cursor, VS Code) lists nlqdb's tools,
-  the one-line descriptions are the entire pitch to the agent. Today
-  `nlqdb_query` reads "Run a natural-language query…" — accurate but invisible
-  to the memory use case.
-- **Consequence in code:** `packages/mcp/src/server.ts` tool `description`s
-  gain a memory-shaped lead clause without losing the contract text (rows +
-  compiled SQL, materialise-on-reference, `requires_confirm` diff);
-  `package.json` + `mcp.mdx` match. Copy only, no behaviour/schema change.
-  Read `mcp-server/FEATURE.md` first (GLOBAL-003 parity).
-- **Alternatives rejected:** Rename tools to `nlqdb_remember`/`nlqdb_recall` —
-  breaks `SK-MCP-002` + parity tests for cosmetic gain. · Leave generic —
-  forfeits the highest-leverage agent-facing surface.
+**Body:** [`decisions/SK-PIVOT-003-mcp-framing.md`](./decisions/SK-PIVOT-003-mcp-framing.md). The MCP tool list is where an agent/host discovers what nlqdb is — tool descriptions gain a memory-shaped lead clause (copy only, no renames; SK-MCP-002 contract preserved).
 
 ### SK-PIVOT-004 — Visualizations stay on-brand: code/CSS motion and type, never stock or produced video
 
@@ -289,6 +248,10 @@ the memory-shaped primitives that make the wedge claims durable).
 **Status:** superseded on `/` by [`SK-WEB-018`](../web-app/decisions/SK-WEB-018-two-door-home.md) — the home is now a two-door chooser; the agent-loop proof relocates to `/agents`.
 
 **Body:** [`decisions/SK-PIVOT-014-home-flow-reposition.md`](./decisions/SK-PIVOT-014-home-flow-reposition.md). The WS-13 follow-on: hero's primary action became the SK-WEB-016 `<McpInstall>` row, `Demo.astro` the agent loop, `Replaces.astro` the agent-memory list collapsing into `nlqdb_query(…)`, the generalist flow a `.alsoworks` link to `/app/new`.
+
+### SK-PIVOT-015 — Reach is the pivot's third track: search-moment interception + coding-agent injection, driven by its own `/reach` loop
+
+**Body:** [`decisions/SK-PIVOT-015-reach-track.md`](./decisions/SK-PIVOT-015-reach-track.md). The buying decision happens at stage-0/1 searches ("my agent forgets") — increasingly issued by the builder's own coding agent (Claude Code / Cursor / Codex) — so a third track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md), R-01..R-08) wins that moment: intent-mapped solve pages, a machine-followable one-command setup guide, MCP registry/directory listings, droppable in-repo artifacts (skill / rules / AGENTS.md), and a coding-agent walker as the yield metric. Runs on its own `/reach` loop (4×/day, offset from `/daily`) so `/daily`'s worst-number selection can't starve it; reach numbers live in the reach INDEX, never `docs/scorecard.md`.
 
 ## GLOBALs governing this feature
 
