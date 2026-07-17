@@ -13,8 +13,7 @@ const REPORT_PATH = "/v1/errors/web";
 // it's set; fall back to same-origin.
 function resolveApiBase(): string {
   try {
-    // Dotted access only — Vite inlines `import.meta.env.PUBLIC_*`
-    // member expressions; bracket access ships a dead runtime lookup.
+    // Dotted access only — Vite never inlines `import.meta.env["…"]` bracket access.
     const v = import.meta.env.PUBLIC_API_BASE as string | undefined;
     return v ?? "";
   } catch {

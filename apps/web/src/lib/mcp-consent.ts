@@ -16,8 +16,7 @@ export const BRIDGE_CALLBACK_PATH = "/oauth/mcp-bridge-callback";
 // Overridable at build time for previews / `wrangler dev` where the MCP
 // Worker lands on a different host.
 export function mcpOrigin(): string {
-  // Dotted access only — Vite inlines `import.meta.env.PUBLIC_*`
-  // member expressions; bracket access ships a dead runtime lookup.
+  // Dotted access only — Vite never inlines `import.meta.env["…"]` bracket access.
   const fromEnv = import.meta.env.PUBLIC_MCP_ORIGIN as string | undefined;
   return (fromEnv ?? "https://mcp.nlqdb.com").replace(/\/$/, "");
 }

@@ -12,7 +12,7 @@
 
 import { NlqData, type NlqDataLoadDetail } from "@nlqdb/solid";
 
-const apiKey = (import.meta.env["VITE_NLQDB_KEY"] as string) ?? "pk_live_REPLACE_ME";
+const apiKey = (import.meta.env.VITE_NLQDB_KEY as string) ?? "pk_live_REPLACE_ME";
 
 export default function App() {
   return (

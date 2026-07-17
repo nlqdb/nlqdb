@@ -49,9 +49,7 @@ declare global {
 }
 
 function siteKey(): string | null {
-  // Direct dotted access — Vite only statically inlines
-  // `import.meta.env.PUBLIC_*` member expressions; bracket access
-  // ships a runtime lookup of an empty object (dead getter in prod).
+  // Dotted access only — Vite never inlines `import.meta.env["…"]` bracket access.
   return import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || null;
 }
 

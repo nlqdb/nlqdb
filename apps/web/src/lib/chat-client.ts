@@ -13,8 +13,7 @@ export function getChatClient(apiBase?: string): NlqClient {
 }
 
 function readApiBase(): string {
-  // Dotted access only — Vite inlines `import.meta.env.PUBLIC_*`
-  // member expressions; bracket access ships a dead runtime lookup.
+  // Dotted access only — Vite never inlines `import.meta.env["…"]` bracket access.
   const fromEnv = import.meta.env.PUBLIC_API_BASE as string | undefined;
   return fromEnv ?? "";
 }
