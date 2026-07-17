@@ -129,16 +129,17 @@ the consent screen ships unverified-but-public (Google shows an
 - **GCP project:** `nlqdb`
 - **OAuth consent screen** (Branding tab):
   - App name: `nlqdb`
-  - User support email: `contact@nlqdb.com` (routed via the
-    `nlqdb.com` Email Routing catch-all → founder's inbox)
+  - User support email: `hello@nlqdb.com` — the canonical support
+    address (routed via the `nlqdb.com` catch-all → founder's inbox);
+    the console may still show the retired `contact@nlqdb.com` —
+    update on next visit.
   - Privacy policy: https://nlqdb.com/privacy
   - Terms of service: https://nlqdb.com/terms
   - Authorized domain: `nlqdb.com`
 - **Audience:** External, Production status.
 - **Data access (scopes):** `openid`, `/auth/userinfo.email`,
-  `/auth/userinfo.profile` — all non-sensitive, so the app stays
-  unverified-but-public; verification submission only needed if we
-  later request sensitive scopes (Drive / Gmail / Calendar / etc.).
+  `/auth/userinfo.profile` — all non-sensitive (see the verification
+  note above).
 - **OAuth 2.0 Client** — Web application named `nlqdb-web`:
   - Authorized JavaScript origins:
     - `https://app.nlqdb.com`

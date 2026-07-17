@@ -46,8 +46,13 @@ on:
       # gate is to trigger on every web change; the workflow then
       # rebuilds web before deploying.
       - "apps/web/**"
+      # elements + sdk are bundled into apps/web/dist, so they flip
+      # the static output too.
+      - "packages/elements/**"
+      - "packages/sdk/**"
       - "packages/auth-internal/**"
       - "packages/db/**"
+      - "packages/email/**"
       - "packages/events/**"
       - "packages/llm/**"
       - "packages/otel/**"
@@ -96,6 +101,18 @@ jobs:
       # `versions upload` / `deploy` time. See `SK-AUTH-016`.
       - name: Build apps/web (Astro static output)
         working-directory: apps/web
+        env:
+          # PUBLIC_* vars are baked into the client bundle at build
+          # time, and THIS build is the one `app.nlqdb.com` serves (the
+          # `[assets]` binding above). Keep mirrored with deploy-web.yml's
+          # env block, minus PUBLIC_API_BASE — app.nlqdb.com is
+          # same-origin with the API, so the code's `?? ""` fallback is
+          # correct here. A var missing here compiles the feature out of
+          # the shipped bundle — the 2026-07 Turnstile arming failed
+          # exactly this way (SK-ANON-009).
+          PUBLIC_TURNSTILE_SITE_KEY: 0x4AAAAAAD3WnUiwKEWfcy_X
+          PUBLIC_POSTHOG_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          PUBLIC_POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
         run: bun run build
 
       # `bun run build` runs `wrangler deploy --dry-run --outdir dist`

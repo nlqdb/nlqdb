@@ -9,14 +9,32 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
 
 ## Human actions (clicks, secrets, legal)
 
-- **Re-arm the Turnstile worker secret after this PR's client fix deploys** — first arming attempt (2026-07-16) was **rolled back**: the shipped bundle's env getters used bracket access (`import.meta.env["PUBLIC_…"]`), which Vite never inlines, so `solveChallenge()` had a null sitekey and the armed secret 428-killed anon creates (run-56 repeated; secret deleted, fail-open restored, SK-ANON-009). This PR fixes all six dead getters to dotted access (turnstile, posthog, 3× `PUBLIC_API_BASE`, `PUBLIC_MCP_ORIGIN`) — verified locally: literals now inline into the built chunks. **Re-arm procedure (agent-doable):** after merge + deploy-web, (1) **verify the sitekey literal is actually in the shipped bundle** — `curl` the `CreateForm.*.js` chunk referenced by `app.nlqdb.com/app/new` and grep for `0x4AAAAAAD3WnUiwKEWfcy_X` (this is the gate the first attempt skipped); (2) fetch the widget secret via `GET accounts/$CLOUDFLARE_ACCOUNT_ID/challenges/widgets/0x4AAAAAAD3WnUiwKEWfcy_X` (`.result.secret`, read token suffices); (3) `printf '%s' "<secret>" | bunx wrangler secret put TURNSTILE_SECRET` from `apps/api`; (4) confirm a tokenless anon create 428s and a real browser create succeeds; roll back (`wrangler secret delete TURNSTILE_SECRET`) on any regression. Until armed the API fails open; abuse stays bounded by the SK-ANON-012 device cap + SK-ANON-010 global caps.
-- **(Optional, deferred) Canary Stripe test-mode keys + a dedicated Neon-branch `DATABASE_URL`** — only for exercising billing / hosted `db.create` on `nlqdb-api-canary`; no healthy route depends on them. Real-IdP sign-in is otherwise fully wired (2026-07-16): Google + GitHub creds live in `.envrc` as `CANARY_*` and mirror via `scripts/mirror-secrets-canary.sh` ([SK-AUTH-008](./features/auth/decisions/SK-AUTH-008-three-oauth-app-pairs.md)), which live-verifies both sign-in legs.
-- **Tawk.to sub-processor notice (legal):** PR #715 ships the in-app support chat (`SK-WEB-025`), which makes tawk.to inc. an *active* sub-processor (chat messages on their US infra). `SUBPROCESSORS.md` promises **30-day advance notice** before adding one — the row + privacy-page disclosure are in, but only you can decide whether to (a) send the notice email to `subprocessors@nlqdb.com` subscribers and delay enabling the widget 30 days, or (b) accept the gap pre-beta (no customers under DPA yet). Also note `SUBPROCESSORS.md` predates GLOBAL-034: PostHog (active since #711) is missing and Fly.io/Plausible is stale — same decision, one email.
-- **Confirm the Tawk.to property ID is ours** — `SupportChat.astro` embeds `6a58f0cc096ab21d402a6b88/1jtlmp8d1` (from PR #715); log into tawk.to and confirm it's your dashboard, else user chats go to a stranger.
-- **IMPRESSUM.md still says operator "to be set on incorporation"** while the new `/terms` + `/privacy` name Omer Hochman (sole proprietor, Swiss law) — align it in the same pass as the sub-processor email; `SUBPROCESSORS.md` needs the matching founder sweep (stale rows noted above).
+- **Re-arm the prod `TURNSTILE_SECRET` after #718's `deploy-api` run ships** —
+  gate first: the sitekey literal `0x4AAAAAAD3WnUiwKEWfcy_X` must appear in the
+  `CreateForm.*.js` chunk `app.nlqdb.com/app/new` references (the gate the first
+  arming skipped). Widget secret is readable via
+  `GET accounts/$CLOUDFLARE_ACCOUNT_ID/challenges/widgets/<sitekey>` → `.result.secret`;
+  set it with `wrangler secret put TURNSTILE_SECRET` from `apps/api`, verify a
+  tokenless anon create 428s and a browser create succeeds, and on any regression
+  delete the secret — fail-open restores (`SK-ANON-009`).
+- **Provide a Stripe test-mode key for the canary Worker** (`sk_test_…`, e.g.
+  `CANARY_STRIPE_SECRET_KEY` in `.envrc`) — an agent then mirrors test products /
+  prices + the webhook endpoint onto `nlqdb-api-canary` via
+  `wrangler secret put --config wrangler.canary.toml` (never prod secrets;
+  `SK-AUTH-008` canary convention). Neon half DONE 2026-07-17: branch `canary`
+  (`br-nameless-forest-a4b7cn69`) is live as the canary `DATABASE_URL` — it's a
+  copy-on-write snapshot of prod data, so scrub/reset is your call.
+- **Confirm the Tawk.to property ID is ours** — `SupportChat.astro` embeds
+  `6a58f0cc096ab21d402a6b88/1jtlmp8d1` (PR #715); log into tawk.to and confirm
+  it's your dashboard, else user chats go to a stranger.
+- **Tawk.to + PostHog went active without the 30-day advance notice
+  `SUBPROCESSORS.md` promises** — send the notice email to `subprocessors@nlqdb.com`
+  subscribers, or accept the gap pre-beta (no customers under DPA yet).
 
 ## Suggestions needing approval (to amend the guidelines)
 
-- **Rebrand: do you actually want the database + speech-bubble logo?** PR #715's `logo.svg` replacement was **reverted** — it was a 156 KB raster PNG wrapped in SVG, contradicting SK-PIVOT-004 (illustration-free acid-lime vector brand, tenet-08 bans raster), the pivot surface map's "logo/favicon: no rebrand", and the 256×256 SVG already cited in the pending Anthropic Connectors Directory submission. To ship it: approve superseding SK-PIVOT-004 (+ surface-map row) and supply/approve a true vector mark in the documented palette — then an agent wires it everywhere.
-- **Chat on marketing pages?** The Tawk widget was scoped to `/app/*` only; putting it site-wide (as PR #715 originally did) needs GLOBAL-034 superseded (marketing stays SDK-free / Lighthouse-100 / no cookie banner) and an EU cookie-consent review.
-- **One canonical support address?** New legal pages use `contact@nlqdb.com`; everything else uses `hello@nlqdb.com` (both route via the catch-all). Say which wins and an agent unifies.
+- **Rebrand: do you want the database + speech-bubble logo?** The #715 mark was
+  reverted (raster-in-SVG, contra `SK-PIVOT-004`); shipping it needs that decision
+  superseded + a true vector mark in the documented palette.
+- **Chat on marketing pages?** Site-wide Tawk needs `GLOBAL-034` superseded
+  (marketing stays SDK-free / no cookie banner) + an EU cookie-consent review.

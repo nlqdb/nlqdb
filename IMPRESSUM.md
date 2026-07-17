@@ -4,22 +4,25 @@ Required by Swiss Federal Act on Unfair Competition (UWG)
 [Art. 3(1)(s)](https://www.fedlex.admin.ch/eli/cc/1988/223_223_223/en#art_3)
 for commercial websites operating in or from Switzerland.
 
-> **Status (Phase 0 / pre-incorporation):** the legal entity is
-> still being formed. Once incorporated, the entries below will be
-> filled in and a duplicate of this page will be published at
-> `https://nlqdb.com/impressum` (the canonical user-facing location).
-> This file in the repo exists so the discoverability and audit
-> trail are version-controlled.
+> **Status (pre-beta):** a duplicate of this page will be published
+> at `https://nlqdb.com/impressum` (the canonical user-facing
+> location). This file in the repo exists so the discoverability and
+> audit trail are version-controlled.
 
 ## Operator of the service
 
-**Legal name:** _to be set on incorporation (Swiss GmbH or sole
-proprietorship `Einzelfirma`)_
+**Operator:** **Omer Hochman**, an individual (sole proprietor,
+`Einzelunternehmen`) based in Switzerland — the same operator named
+in the [Terms](https://nlqdb.com/terms) and
+[Privacy policy](https://nlqdb.com/privacy).
 
-**Postal address:** _to be set on incorporation_
+**Postal address:** available on request via `hello@nlqdb.com`;
+published here once a stable business address is set.
 
-**Commercial Register number** (if applicable):
-_to be set on incorporation. Public lookup at https://zefix.ch/_
+**Commercial Register number:** not registered — registration of a
+sole proprietorship becomes mandatory at CHF 100'000 annual revenue
+([CO Art. 931](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_931)).
+Public lookup at https://zefix.ch/
 
 **Swiss VAT number (UID):** _registration triggered on crossing
 CHF 100'000 worldwide turnover, per
@@ -40,10 +43,7 @@ CHF 100'000 worldwide turnover, per
 
 ## Responsible for content
 
-Once incorporated, the named natural person responsible for editorial
-content under
-[Bundesgesetz über die elektronischen Medien](https://www.fedlex.admin.ch/)
-(when applicable) will be listed here.
+Omer Hochman (contact via `hello@nlqdb.com`).
 
 ## Disclaimer
 
