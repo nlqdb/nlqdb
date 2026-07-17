@@ -36,7 +36,7 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 > **The backlog lives in [`worksheets/`](worksheets/)** — cold daily-loop
 > agents start at [`worksheets/INDEX.md`](worksheets/INDEX.md) (messaging
 > `WS-*`) and [`worksheets/engine/INDEX.md`](worksheets/engine/INDEX.md)
-> (engine `E-01..E-07`); rule of thumb is `WS-*` when the worst number is
+> (engine `E-01..E-08`); rule of thumb is `WS-*` when the worst number is
 > funnel/distribution, `E-*` when it is engine quality / agent on-ramp.
 > The **reach** track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md),
 > `R-*`) is picked up only by its own `/reach` loop. The
@@ -52,7 +52,7 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 | **Architecture** | `architecture.md §0` "Apache-2.0" corrected to FSL-1.1; `§2.1` gains the `/agents` route (a path on `nlqdb.com`, **no new domain**). | this PR (§0); WS-07 (§2.1 route) |
 | **Phase plan** | Phase 2 already targets "1 agent product publicly uses nlqdb as memory" — the wedge content folds into Phase 2 distribution. Self-host container pulled forward from Phase 3 (SK-PIVOT-005). | WS-11 |
 | **Home page & product/APIs** | Home is now a two-door chooser (SK-WEB-018: agent-memory door + question-your-ClickHouse door), superseding the earlier wedge-led reweight; `/agents` is the deep door (matrix, demo, OG); MCP tool + package descriptions carry the framing. Headline/README/llms.txt swap shipped 2026-06-24 (SK-PIVOT-013). | WS-01…WS-13, SK-WEB-018 |
-| **Engine / actual architecture** | Canonical `agent_memory_v1` preset (`facts`/`episodes`/`entities`/`entity_facts`) as a `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (SK-MCP-002). Per-agent scope via row-level RLS (SK-PIVOT-009). TTL + cron sweep, `facts`-only (SK-PIVOT-011). pgvector hybrid recall. Preset on-ramp on the **authed** surface (SK-PIVOT-010). Workload-analyzer routes large memory DBs to ClickHouse (Phase 3). | E-01…E-07 |
+| **Engine / actual architecture** | Canonical `agent_memory_v1` preset (`facts`/`episodes`/`entities`/`entity_facts`) as a `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (SK-MCP-002). Per-agent scope via row-level RLS (SK-PIVOT-009). TTL + cron sweep, `facts`-only (SK-PIVOT-011). pgvector hybrid recall. Preset on-ramp on the **authed** surface (SK-PIVOT-010). Caller-SQL MCP default lane via read-only `nlqdb_run` (SK-PIVOT-016). Workload-analyzer routes large memory DBs to ClickHouse (Phase 3). | E-01…E-08 |
 
 ## Decisions
 
@@ -90,41 +90,7 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 ### SK-PIVOT-006 — Engine track ships **additive** memory primitives; the existing contract is preserved
 
-- **Decision:** The architectural commitment behind the wedge ships as a
-  parallel **engine track** (`worksheets/engine/E-01..E-07`) — a canonical
-  `agent_memory_v1` schema preset, additive MCP tools (`nlqdb_remember`,
-  `nlqdb_recall`), per-agent scoping, TTL, pgvector hybrid recall, an
-  `/agents` CreateForm preset, and a workload-analyzer rule. **No existing
-  MCP tool, API, table, or surface is renamed or removed.** The existing
-  generalist `db.create` / `nlqdb_query` / `<nlq-data>` flows keep their
-  contracts; the memory shape sits alongside as a first-class opt-in.
-- **Core value:** Bullet-proof, Simple, Goal-first
-- **Why:** The moat ("real SQL on structured memory, typed-plan trust
-  boundary") is already shipped — but **being a database isn't the same as
-  being the memory primitive an agent reaches for.** Today an agent must
-  design its own schema via generic `db.create`, so the "zero schema design"
-  claim isn't yet true. The engine track makes it true without an
-  incompatible rebuild: keep `SK-MCP-002`'s tool contract and `db.create`'s
-  generalist path (GLOBAL-036's dual front door), add memory shapes
-  alongside. Renames are a hidden tax on early adopters; additive is the
-  right shape pre-PMF.
-- **Consequence in code:** New `apps/api/src/db-create/presets/agent-memory-v1.ts`
-  (E-01) and a `{ preset }` field on `db.create`. New `nlqdb_remember`
-  (E-02) and `nlqdb_recall` (E-05) MCP tools alongside the three existing
-  ones. Per-agent scope via row-level RLS (E-03, `app.agent_id` GUC —
-  SK-PIVOT-009), not query-rewriting. `expires_at` TTL with a
-  scheduled sweep (E-04). pgvector index on `facts.content` + hybrid fusion
-  in the compile layer (E-05, infra-gated). `/agents` CreateForm passes
-  `preset="agent_memory_v1"` (E-06). Workload-analyzer + migration
-  orchestrator gain a memory rule (E-07, Phase 3).
-- **Alternatives rejected:** **Rename `nlqdb_query` to memory verbs** —
-  breaks SK-MCP-002 and every integrated host for cosmetic gain. · **Replace
-  the generalist `db.create` path with the memory preset** — destroys the
-  P1/P3/P4 surfaces the dual-front-door (GLOBAL-036) is committed to. ·
-  **Skip the engine track and let agents build their own memory schema via
-  generic `db.create`** — what we have today; the "zero schema design"
-  wedge claim is then false. · **One mega-PR for the whole track** —
-  unreviewable, contradicts the daily-loop sizing rule.
+**Body:** [`decisions/SK-PIVOT-006-additive-engine-track.md`](./decisions/SK-PIVOT-006-additive-engine-track.md). The engine track (E-01..E-08) ships the wedge's architecture as additive opt-ins — preset, memory tools, RLS scoping, TTL, hybrid recall, authed on-ramp (SK-PIVOT-010), analyzer rule — with **no rename or removal** of any existing tool, API, table, or surface.
 
 ### SK-PIVOT-007 — Memory schema `agent_memory_v1` is the canonical shape; evolve by version, never in place
 
@@ -220,6 +186,10 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 ### SK-PIVOT-015 — Reach is the pivot's third track: search-moment interception + coding-agent injection, driven by its own `/reach` loop
 
 **Body:** [`decisions/SK-PIVOT-015-reach-track.md`](./decisions/SK-PIVOT-015-reach-track.md). The buying decision happens at stage-0/1 searches ("my agent forgets") — increasingly issued by the builder's own coding agent (Claude Code / Cursor / Codex) — so a third track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md), R-01..R-08) wins that moment: intent-mapped solve pages, a machine-followable one-command setup guide, MCP registry/directory listings, droppable in-repo artifacts (skill / rules / AGENTS.md), and a coding-agent walker as the yield metric. Runs on its own `/reach` loop (4×/day, offset from `/daily`) so `/daily`'s worst-number selection can't starve it; reach numbers live in the reach INDEX, never `docs/scorecard.md`.
+
+### SK-PIVOT-016 — Caller-inference is the MCP default lane: agents compose SQL; NL is the compile-and-coach fallback
+
+**Body:** [`decisions/SK-PIVOT-016-mcp-caller-sql-default.md`](./decisions/SK-PIVOT-016-mcp-caller-sql-default.md). MCP gains the GLOBAL-015 escape hatch as an additive, **read-only** `nlqdb_run` tool (same validator + RLS exec path as `/v1/run`; E-03's gates scope SQL of any provenance); tool descriptions steer describe→run as the default read lane, `nlqdb_query` responses coach the crossover, and NL stays first-class as the human path + engine-portability layer. MCP "sampling" rejected (unsupported by Claude Code/Desktop). Worksheet [E-08](worksheets/engine/E-08-caller-sql-lane.md); sequenced after E-03.
 
 ## GLOBALs governing this feature
 

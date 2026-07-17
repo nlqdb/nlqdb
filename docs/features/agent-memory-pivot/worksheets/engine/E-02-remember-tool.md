@@ -1,7 +1,7 @@
 # E-02 — Additive MCP tool `nlqdb_remember`
 
 **Status:** ✅ shipped (2026-06-20, run 31 — `apps/api/src/memory/remember.ts` + `POST /v1/memory/remember` + SDK `remember()` + `nlqdb_remember` MCP tool; SK-PIVOT-008). CLI `nlq remember` ✅ (run 32 — `cli/internal/cmd/remember.go`, SK-CLI-018, GLOBAL-003 parity closed). One follow-on left: the `tests/e2e/mcp` Neon-branch `remember → query` smoke (infra-gated).
-**Sequence:** Engine 2 of 7 · **Risk:** med · **Runs:** 1 · **Prereqs:** E-01 ✅ · **Gate:** none
+**Sequence:** Engine 2 of 8 · **Risk:** med · **Runs:** 1 · **Prereqs:** E-01 ✅ · **Gate:** none
 
 ## Goal
 

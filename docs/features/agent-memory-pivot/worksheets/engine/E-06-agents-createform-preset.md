@@ -2,7 +2,7 @@
 
 **Status:** ⬜ not started — **redirected** (SK-PIVOT-010, run 37): the anon
 `/agents` CreateForm path is infeasible; the on-ramp is authed-only.
-**Sequence:** Engine 6 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** E-01 ✅, WS-07 ✅, **`MEMORY_PRESET=1` enabled in prod** (currently dark — a plain non-secret var, gated on E-03 security scoping shipping first) · **Gate:** none
+**Sequence:** Engine 6 of 8 · **Risk:** med · **Runs:** ~2 · **Prereqs:** E-01 ✅, WS-07 ✅, **`MEMORY_PRESET=1` enabled in prod** (currently dark — a plain non-secret var, gated on E-03 security scoping shipping first) · **Gate:** none
 
 ## Finding (run 37, SK-PIVOT-010) — why the original mechanism was dropped
 

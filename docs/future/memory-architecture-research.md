@@ -16,7 +16,7 @@
 
 **Cross-refs:** engine track
 [`worksheets/engine/INDEX.md`](../features/agent-memory-pivot/worksheets/engine/INDEX.md)
-(E-01..E-07 build the primitives) ·
+(E-01..E-08 build the primitives) ·
 [`quality-eval/FEATURE.md`](../features/quality-eval/FEATURE.md)
 (`SK-QUAL-023` scores the four memory-quality axes) ·
 [`SK-PIVOT-009`](../features/agent-memory-pivot/decisions/SK-PIVOT-009-agent-scope-rls.md)

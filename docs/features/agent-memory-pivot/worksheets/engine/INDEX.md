@@ -52,6 +52,7 @@ copy with a real tool to point at), etc.
 | [E-05](E-05-hybrid-recall-pgvector.md) | Hybrid recall — pgvector + `nlqdb_recall` (closes the honest gap) | high | multi | E-01 | infra-gated (Neon pgvector + free embeddings) | sharpens WS-03 |
 | [E-06](E-06-agents-createform-preset.md) | Preset on-ramp on the **authed** create surface (`MEMORY_PRESET`-gated) — anon `/agents` CreateForm path infeasible (SK-PIVOT-010) | med | ~2 | E-01 ✅, WS-07 ✅, `MEMORY_PRESET=1` in prod (dark) | — | redirected run 37 |
 | [E-07](E-07-memory-workload-analyzer.md) | Workload-analyzer rule: memory DB above N facts → recommend ClickHouse | med | multi | E-01 | depends on `multi-engine-adapter` / `engine-migration` features (Phase 3) | — |
+| [E-08](E-08-caller-sql-lane.md) | Caller-SQL default lane on MCP — additive read-only `nlqdb_run` + describe→run steering (SK-PIVOT-016) | med | ~2 | E-03 | — | feeds reach R-04/R-06 |
 
 **Why this order:** E-01 anchors everything (every later slice writes to or
 queries it). E-02 makes the wedge tool-discoverable. E-03 is the
@@ -62,7 +63,10 @@ that the solve page admits today — the biggest lift, but the slice that
 makes the wedge **actually complete**. E-06 lets a signed-in user spin up the
 memory preset from the authed create surface (the anon `/agents` path is
 infeasible — SK-PIVOT-010). E-07 connects the engine
-north-star (data-engine pillar) to the wedge.
+north-star (data-engine pillar) to the wedge. E-08 makes caller-composed
+SQL the MCP default lane (SK-PIVOT-016) — zero LLM config for the calling
+agent, no inference hop on ours — and waits on E-03 so the scope gates are
+live before arbitrary agent SQL arrives at memory scale.
 
 ## Hard rules
 
@@ -90,3 +94,4 @@ Tick on merge.
 - [ ] E-05 — hybrid recall (pgvector + `nlqdb_recall`)
 - [ ] E-06 — preset on-ramp on the **authed** create surface. **Redirected 2026-06-21 (run 37, SK-PIVOT-010):** the anon `/agents` CreateForm path is infeasible across three auth boundaries — `POST /v1/databases` is `requireSession` + `MEMORY_PRESET`-gated (`index.ts:2357,2390`), `POST /v1/memory/remember` rejects anon+pk_live (`index.ts:1426-1433`), and CreateForm is anon-only by contract (`credentials:"omit"`, SK-ANON-008). On-ramp moves to the authed create surface; **blocked on `MEMORY_PRESET=1` in prod** (dark).
 - [ ] E-07 — workload-analyzer rule for memory DBs
+- [ ] E-08 — caller-SQL default lane on MCP (`nlqdb_run` + steering, SK-PIVOT-016)

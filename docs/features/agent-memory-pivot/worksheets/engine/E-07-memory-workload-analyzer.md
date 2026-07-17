@@ -1,7 +1,7 @@
 # E-07 — Workload-analyzer rule for memory DBs
 
 **Status:** ⬜ not started
-**Sequence:** Engine 7 of 7 · **Risk:** med · **Runs:** multi · **Prereqs:** E-01 ✅; depends on `multi-engine-adapter` / `engine-migration` features (Phase 3) · **Gate:** waits on Phase-3 multi-engine landing
+**Sequence:** Engine 7 of 8 · **Risk:** med · **Runs:** multi · **Prereqs:** E-01 ✅; depends on `multi-engine-adapter` / `engine-migration` features (Phase 3) · **Gate:** waits on Phase-3 multi-engine landing
 
 ## Goal
 

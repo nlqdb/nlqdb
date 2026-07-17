@@ -1,7 +1,7 @@
 # E-04 — TTL + cron sweep (`expires_at` on memory rows)
 
 **Status:** 🟡 sweep core shipped (run 39) — cron wiring (infra) + read-side RLS clause (E-03-gated) remain
-**Sequence:** Engine 4 of 7 · **Risk:** low · **Runs:** 1 · **Prereqs:** E-01 ✅ · **Gate:** none
+**Sequence:** Engine 4 of 8 · **Risk:** low · **Runs:** 1 · **Prereqs:** E-01 ✅ · **Gate:** none
 
 **Progress (run 39, SK-PIVOT-011):** the deterministic, offline-tested sweep
 core shipped — `apps/api/src/memory/expire.ts`: `buildExpirySweep(nowMs)` (the

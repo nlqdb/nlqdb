@@ -3,7 +3,7 @@
 **Status:** ⬜ not started — **plan blockers resolved 2026-07-17** (restrictive
 policy flavour + owner visibility + opt-in end-user gate ratified into
 [SK-PIVOT-009](../../decisions/SK-PIVOT-009-agent-scope-rls.md))
-**Sequence:** Engine 3 of 7 · **Risk:** **high — security-critical** · **Runs:** ~2 · **Prereqs:** E-01 ✅ · **Gate:** none, but extra-review
+**Sequence:** Engine 3 of 8 · **Risk:** **high — security-critical** · **Runs:** ~2 · **Prereqs:** E-01 ✅ · **Gate:** none, but extra-review
 
 ## Goal
 

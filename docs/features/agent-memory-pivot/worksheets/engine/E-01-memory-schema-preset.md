@@ -1,7 +1,7 @@
 # E-01 — Canonical `agent_memory_v1` schema preset for `db.create`
 
 **Status:** ✅ wired (run 1/2 module + run 2/2 request-path; SK-HDC-020). One follow-on tracked: the quality-eval preset-path ablation row (Neon-branch gated).
-**Sequence:** Engine 1 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** none · **Gate:** none
+**Sequence:** Engine 1 of 8 · **Risk:** med · **Runs:** ~2 · **Prereqs:** none · **Gate:** none
 
 ## Goal
 

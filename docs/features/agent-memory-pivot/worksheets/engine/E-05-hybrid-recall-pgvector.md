@@ -1,7 +1,7 @@
 # E-05 — Hybrid recall: pgvector + `nlqdb_recall`
 
 **Status:** ⬜ not started
-**Sequence:** Engine 5 of 7 · **Risk:** **high** · **Runs:** multi · **Prereqs:** E-01 ✅ · **Gate:** infra-gated (Neon pgvector enablement; embeddings provider in the free chain)
+**Sequence:** Engine 5 of 8 · **Risk:** **high** · **Runs:** multi · **Prereqs:** E-01 ✅ · **Gate:** infra-gated (Neon pgvector enablement; embeddings provider in the free chain)
 
 ## Goal
 
