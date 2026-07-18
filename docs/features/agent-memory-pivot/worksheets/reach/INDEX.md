@@ -104,7 +104,7 @@ layer for AI agents", direct entrant). Then a solve page
 (`build-vs-buy-agent-memory` or extend an existing one): honest DIY steps
 first — the reader keeps trust — then where DIY bites (cross-user leakage,
 embedding plumbing, TTL, analytics), then the one-command alternative.
-**Done when:** ⬜ two competitor entries · ⬜ solve page live + in llms.txt.
+**Done when:** ✅ two competitor entries ([`competitors.md`](../../../../competitors.md) §4: DIY-on-your-Postgres + Agentic DB/Constructive) · ⬜ solve page live + in llms.txt.
 
 ### R-03 — Stage-0 solve pages (one per run)
 
@@ -186,11 +186,15 @@ where closed), record cited/not-cited per query in § Current numbers.
 
 - Coding-agent walker pass rate: not yet measured (R-06 unbuilt)
 - Registry/directory listings live: 0 of 8
-- Stage-0 solve pages live: 0 of top-5 (R-01 map now names the top-5 unowned:
-  #2 best-way-to-store, #5 build-vs-buy, #10 TTL/expiry, #13 agent-memory-MCP)
+- Stage-0 solve pages live: 0 of top-5 (R-01 map names the top-5 unowned:
+  #2 best-way-to-store, #5 build-vs-buy, #10 TTL/expiry, #13 agent-memory-MCP).
+  R-02 competitor-honesty surface: two `competitors.md` §4 entries landed
+  (DIY-on-Postgres baseline + Agentic DB/Constructive); solve page still ⬜.
 - GSC intent-query clicks (28d to 2026-07-16): **0** — no intent query clears
-  1 click; `/agents` sits at pos ~8 with 3 impressions; site total 1 click /
-  440 impr. This zero is the R-01 baseline.
+  1 click; `/agents` at pos ~7.3 with 3 impressions; the agent-memory blog
+  (`/blog/agent-memory-benchmarks…`, 5 impr) and "deep memory retrieval
+  benchmark" now surface impressions but no clicks; site total 1 click /
+  455 impr. This zero is the R-01 baseline.
 - Answer-engine citations (top-10): not yet measured (R-08 unbuilt)
 
 ## Tracker
