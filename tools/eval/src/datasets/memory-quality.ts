@@ -18,8 +18,9 @@
 //
 // This module ships the four offline, EX-scorable axes. The
 // analytical-memory-vs-vector head-to-head (SK-QUAL-023) needs an embedding
-// baseline and is infra-gated (E-05 pgvector) — a documented follow-on, not
-// here. BIRD/Spider/persona-bench baselines are untouched.
+// baseline, pending E-05 (the free-chain embedding provider — LLM-router
+// work, not infra) — a documented follow-on, not here.
+// BIRD/Spider/persona-bench baselines are untouched.
 //
 // Determinism (mirrors persona-bench): gold SQL uses literal date bounds,
 // never `date('now')`; the seed is sized so every gold returns a non-empty,

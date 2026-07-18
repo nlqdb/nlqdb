@@ -1,6 +1,7 @@
 // E-04 unit tests — the deterministic TTL-sweep core (stubbed exec; no
-// Neon). The exec adapter + the cron Worker that drives this are infra,
-// exercised by the Neon-branch smoke once they land, same as
+// Neon). The exec adapter + the cron wiring that drives this are plain
+// code (a `wrangler.toml` `[triggers]` entry + `scheduled()` branch; no
+// human step), exercised by the Neon-branch smoke once they land, same as
 // `buildMemoryExec`.
 
 import { describe, expect, it } from "vitest";

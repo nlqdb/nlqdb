@@ -99,8 +99,8 @@ unstructured text. **Every serious system still uses embeddings** for
 similarity search — including MemoriesDB, the most on-thesis Postgres system,
 which falls back to pgvector nearest-neighbor. **Pure analytical SQL cannot
 replace vector similarity for unstructured recall.** For nlqdb this is not a
-caveat to hide — it's exactly what E-05 (pgvector hybrid recall,
-infra-gated) exists to add. The honest wedge is "**analytical** memory," not
+caveat to hide — it's exactly what E-05 (pgvector hybrid recall — all code: per-DB
+`CREATE EXTENSION` + a free-chain embedding provider) exists to add. The honest wedge is "**analytical** memory," not
 "memory without embeddings."
 
 **The strategic opening:** *no verified benchmark isolates analytical SQL
