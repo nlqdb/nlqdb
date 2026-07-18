@@ -22,17 +22,22 @@ falsified the "clean window" hypothesis; full detail + run link in row #15).
 /weekly should re-point the focus off #15 while that secret is unset.
 
 **Worst number today:** real strangers reaching a first answer = **0**
-(row #2; fresh 07-16 remote-D1 pull — 9 users = 4 founder/company + 5
+(row #2; 07-16 remote-D1 pull carried — 9 users = 4 founder/company + 5
 test/dev, newest registration 07-06, none since; lagging, moved only through
-agent-controllable inputs). **Run 86 is a NULL RUN (step 2):** no lever cleared
-the bar — rule 7 blocks a 7th UX-flow pull (runs 80–85), distribution is owned by
-open **PR #711**, engine is unmeasurable from this egress-gated container
-(`SK-QUAL-023` row), and docs-ambiguity's 15 bullets are genuine deferrals. Full
-reasoning + step-1 refresh in _Last change_. **Step 0:** PR #711
-(`claude/repo-build-icp-acquisition-3tlhj6`) owns web-app / deploy-web /
-sitemap — this run touches only `docs/scorecard.md`, zero overlap. **Rule 6:** CI +
-all 11 deploy/publish/security workflows' latest `main` runs `success` (07-16,
-head `0d0abc9`); no red-main / stale-deploy lever.
+agent-controllable inputs). **Run 87 pulled a surface-integrity lever (row #18,
+distribution priority-2):** the built-output link sweep found **2 redirecting
+links** — the legal pages cross-linked each other with bare paths (`href="/terms"`
+in `privacy.astro`, `href="/privacy"` in `terms.astro`, added in the #718/#714
+legal sweep) that 307-redirect under `trailingSlash:"always"`. Fixed both (row #18
+**2 → 0 redirecting**) and closed the CI blind-spot that hid them: `check:links`
+is not wired into CI, so `<a href>` bare paths regress silently between manual
+daily sweeps — widened the SK-WEB-022 guard to catch static `<a href="/literal">`
+source literals (negative-tested). UX-flow rut-blocked (rule 7, runs 80–85);
+engine unmeasurable here (`SK-QUAL-023`, egress-gated). **Step 0:** open PRs #724
+(reach intent-map), #723 (human-dependency audit), #719 (Infisical) are all
+docs/worksheets — zero overlap with `apps/web/**`. PR #711 merged (`730e525`),
+so distribution is no longer PR-owned. **Rule 6:** CI green on `main` head
+`ba7bbde` (run 2552 `success`); no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -44,14 +49,14 @@ head `0d0abc9`); no red-main / stale-deploy lever.
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **100** (`/vs` 31 + `/solve` 33 + `/blog` **36**; run-79 count fix — `blog.ts` holds 36 published posts, run 78 read 35). Run 78 published the oldest queued draft (`smoke-test-walks-the-old-ui`, step 3.1 forced-publish at ≥3 depth) → live at `/blog/smoke-test-walks-the-old-ui/`, verified in sitemap + rss + llms.txt. Queue now holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **36** (run-79 count fix, was 35); 7d external referrals = 9 (bing 8, github 1 — carried 07-12 19:39Z pull; was 6 on 07-09, 1 on 07-06). Syndication feeds 1 (`/rss.xml`); internal links **2,958** + **14 cross-app** (run-78 build: 120 pages, 0 dead / 0 redirecting — row #18) | CF `refererHost` — carried from 19:39Z (strangers unchanged). External-referral yield holding (bing-led) as indexation lands |
+| 7 | Surface yield | posts **36** built; **GSC 28d (06-18→07-16, fresh 07-18 pull): 1 click / 455 impr / avg pos 16.4**, sitemap 112 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-11 · Spider 07-11 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.546** (272/498 EA, 2 `gold_error`, 07-11 canonical on main `2cfda39`, [run 29144102081](https://github.com/nlqdb/nlqdb/actions/runs/29144102081) — completed in ONE window, `no_sql` 0/500). Δ +2.01 pp vs 07-05, McNemar b=31/c=41, `regressions: []`. Baseline re-seeded. Measured pre-`SK-LLM-044`; next canonical re-verifies | target 0.65 / **Phase 2 floor 0.60** — gap 5.4 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2963** (40/135, `no_sql` 0/135, exec_error 3, gold_error 0 — 07-11 canonical on `6e1725c` with `SK-LLM-044`, nine-window `SK-QUAL-013` resume [29160009809](https://github.com/nlqdb/nlqdb/actions/runs/29160009809) → [29164092490](https://github.com/nlqdb/nlqdb/actions/runs/29164092490)). Was 0.2741 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-16 run 86):** all 12 workflows (CI, the 9 `deploy-*`, `release-npm`, `security`) **green on `main`** (push-triggered six on `0d0abc9`; path-filtered rest older but passing, stalest `deploy-coming-soon` 07-02); no red-main / stale-deploy lever |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-18 run 87):** CI **green on `main`** head `ba7bbde` (run 2552 `success`); merges since 07-16 (#721/#722 docs/pivot) are path-filtered away from `deploy-*`, so the run-86 all-green deploy verification (9 `deploy-*` + `release-npm` + `security`) still holds; no red-main / stale-deploy lever |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
@@ -59,7 +64,7 @@ head `0d0abc9`); no red-main / stale-deploy lever.
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **15** (fresh grep 07-16 run 86; unchanged since run 78, was 17). Run 78 reclassified 2 decided-deferral ICP bullets (`icp-mining`: Reddit disable [SK-ICP-011], 10th-source refactor pin [P5]) to the canonical "Parked until `<trigger>`" form their 4 siblings already use — honest miscount correction, not a genuinely-open question resolved | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver — run 86 declined the pull: the 15 bullets are genuine deferrals (see _Last change_) |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-13 run-61 sweep: **118** pages, **2,908** internal + **14 cross-app** links). Run 61 **added cross-app coverage** — `href`/`src` to owned subdomains (`docs./app./mcp.nlqdb.com`) were dropped by `isInternal` and never checked; the sweep now live-verifies them (4xx/5xx = dead & hard-fail; auth/method gate = alive; network error = "unverified", never red). 14 `docs.nlqdb.com` funnel links now covered (0 → 14). **Run 72 prod-verified this live:** all 110 `sitemap.xml` URLs return 200 against deployed `nlqdb.com` (built-output sweep confirmed in production). **Run 75 named a coverage blind-spot; run 77 closed it:** the sweep scans built `dist/` HTML only, so navigations rendered by client-side JS (`window.location.assign(...)` in React islands / Astro `<script>`) never appear as `href` literals and are unswept — that is how `ConnectForm.tsx`'s `/app?db=` redirecting CTA lived undetected while this row read "0 redirecting". Run 75 fixed one link by hand and deferred the guard. **Run 77 swept all `location.*` navigations in `apps/web/src` and found 6 bare-path 307s** (`ChatPanel.tsx` new-db/keys/sign-out + `Topnav.astro` sign-out + the `/vs/*` try-CTA + `post-signin.astro`'s session-lost redirect), fixed them, and added the **standing guard** `client-nav-integrity.test.ts` (`SK-WEB-022`) — narrowly scoped to the string-literal argument of an actual `location.*` call (bare or `window.`-prefixed), so no false positives (the breadth run 75 rejected). **Client-side-nav redirects 6 → 0** | target 0 — `bun run build && bun run check:links` (built-output `href`/`src`) + `client-nav-integrity.test.ts` (JS navigations) |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Coverage layered over prior runs: built-output `href`/`src` sweep + cross-app subdomain verification (run 61) + prod sitemap-200 check (run 72) + `client-nav-integrity.test.ts` guarding `location.*` JS navigations (run 77, SK-WEB-022, after 6 bare-path 307s). **Run 87 found + fixed a fresh regression:** the built sweep reported **2 redirecting** — `privacy.astro`↔`terms.astro` cross-linked with bare paths (`href="/terms"`, `href="/privacy"`, added in the #718/#714 legal sweep) that 307 under `trailingSlash:"always"`. Root cause: `check:links` is **not wired into CI**, so bare-path `<a href>` literals regress silently between manual daily sweeps (the run-77 guard covered `location.*` JS navigations, not `href`). Fixed both (**2 → 0 redirecting**) and **widened SK-WEB-022's guard with a second test sweeping static `<a href="/literal">` source literals** — negative-tested (fails on a reintroduced bare href, naming `file:line`), false-positive-free (dotted assets + dynamic `href={…}` skipped) | target 0 — `bun run build && bun run check:links` (built-output) + `client-nav-integrity.test.ts` (JS navigations **+ static `<a href>`**, in CI) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** — run 76 verified `brew install nlqdb/tap/nlq` (advertised in `cli/README.md` + npm-shim fallback, `SK-CLI-002`) is now real: `nlqdb/homebrew-tap` carries `nlq.rb` at root (commit 07-15 02:42Z, v0.1.12; **empty since 2026-05-19** before this), the linux_x86_64 asset returns HTTP 200 with a **sha256 matching the formula exactly** (`63a9266…814a`), tarball ships the `nlq` binary. Run 73's `cli/.goreleaser.yml` token-format fix (merged) populated the tap on `deploy-cli`@`80e4aa44`; run 76 is the post-merge tap-verify the scorecard deferred. Runs 32 + 37 + 56 + 59 + 62 + 64 + 72 + 73 + 74 + **76** each found/closed 1 agent-movable gap | claim-vs-reality on shipped surfaces + docs; target 0 **met**. **Standing guards:** `mcp-tool-integrity.test.ts` (run 64) sweeps the shipped MCP catalog closed-world; `cli-verb-integrity.test.ts` (run 74) derives the 15 shipped top-level verbs from the cobra tree (first `Use:` per `cli/internal/cmd/*.go` minus `nlq`) and — **as of run 76** — sweeps every `nlq <verb>` snippet across **both** `apps/web/src` (`.ts/.tsx/.astro`) and the docs-site prose `apps/docs/src` (`.md/.mdx`), naming the phantom + file on failure (verified: fails on an injected `nlq schema` in `cli.mdx`). Next candidate: the SDK method surface (`client.*`), and a docs-prose sweep of MCP-tool names |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
@@ -84,31 +89,32 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-16 (run 86)** — **NULL RUN (step 2): no lever cleared the bar; ships
-only the step-1 scorecard refresh.** The finding, in order of the loop's lever
-priority: **(1) UX-flow is rut-blocked** — runs 80–85 are six consecutive
-priority-1 UX-flow frontend fixes (chat trace/sample-tables, keys clipboard,
-CopySnippet, sign-in hint), so **rule 7 forbids a 7th** identical pull, and the
-category's yield can't be measured either (its only external signal is the funnel,
-still stranger-N=0). **(2) Distribution is owned by open PR #711**
-(`claude/repo-build-icp-acquisition-3tlhj6` — IndexNow push-on-deploy +
-sitemap `lastmod`); overlapping its web-app/deploy files is forbidden by step 0.
-**(3) Engine — the worst absolute numbers (BIRD 0.546 < 0.60 floor, Spider
-0.2963) — is unmeasurable from this daily container:** it is egress-gated for the
-free LLM lanes (`SK-QUAL-023` row), so the mandatory rule-3 same-seed re-measure
-cannot run here; an engine change I couldn't measure would violate rule 3. **(4)
-Docs-ambiguity (15)** — the remaining bullets are all genuine parked-until-trigger
-or infra-/human-gated deferrals (Lago, Stripe live cutover, self-host container,
-device-flow endpoints, OpenAPI schema); resolving them means reclassifying
-phrasing, which run 78 already correctly called a miscount fix, not a resolved
-question — metric-gaming, not value. **Rule 6 clear:** main `0d0abc9` is green
-across CI + all 11 deploy/publish/security workflows (07-16). **Step-1 refresh
-(genuine 07-16 remote-D1 pull via CF API):** registered users **9**, real
-strangers **0** (newest registration 07-06, none since); DBs total **223 → 251**
-(synthetic walker/preview traffic); docs-ambiguity **15** (fresh grep);
-deploy-health note re-stamped to `0d0abc9`. **Artifact (step 3):** skipped — null
-run + queue **2** (< 3). **KPI (GLOBAL-025):** none moved (null run); none
-degraded — the refresh is measurement only.
+**2026-07-18 (run 87)** — **Surface-integrity lever (row #18, distribution
+priority-2): redirecting links 2 → 0.** Built-output link sweep (`bun run build &&
+bun run check:links`, 121 pages / 2,970 internal links) found **2 redirecting
+links**: the legal pages cross-linked each other with bare paths — `href="/terms"`
+in `privacy.astro`, `href="/privacy"` in `terms.astro` (introduced in the
+#718/#714 legal sweep) — which 307-redirect under `trailingSlash:"always"`. Fixed
+both to trailing-slash paths; re-swept **0 dead / 0 redirecting**. **Root cause +
+guard:** `check:links` is not wired into CI, so it only runs on a manual/daily
+build — bare-path `<a href>` literals regress silently between sweeps, and the
+run-77 `client-nav-integrity` guard (SK-WEB-022) only covered `location.*` JS
+navigations, not `href`. **Widened that guard** with a second test sweeping static
+`<a href="/literal">` source literals (dotted assets + dynamic `href={…}` skipped
+→ false-positive-free; negative-tested: fails on a reintroduced bare href naming
+`file:line`); updated the SK-WEB-022 canonical body to record why href now needs a
+source guard (P3). **Why this lever:** UX-flow rut-blocked (rule 7, runs 80–85);
+engine unmeasurable here (`SK-QUAL-023`, egress-gated); distribution un-blocked now
+PR #711 merged. **Step-1 refresh:** CI green `ba7bbde` (run 2552); indexable
+surfaces **100** (built: /vs 31 + /solve 33 + /blog 36 — raw data-file entries
+37/35 include unbuilt drafts, built count unchanged); GSC 28d **1 click / 455 impr
+/ pos 16.4** (fresh 07-18); users **9** / strangers **0** carried (07-16 pull,
+newest reg 07-06); docs-ambiguity **15** (fresh grep). **Artifact (step 3):** queue
+**2** (< 3) → no forced publish, no new draft (lesson closely overlaps the queued
+`link-checker-cant-see-your-javascript` draft); **dev.to variant drained** —
+`null-timestamp-ttl-sweep-funnel-metric` posted (`SK-BLOG-003`, idempotent). **KPI
+(GLOBAL-025):** **UX** + **onboarding** — dead-click-free legal surfaces + a
+standing CI guard against silent href redirects; no KPI degrades.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
