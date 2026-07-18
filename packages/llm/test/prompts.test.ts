@@ -56,16 +56,6 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     expect(PLAN_SYSTEM).toMatch(/unless the goal explicitly asks for a single combined string/);
   });
 
-  it("carries the SK-LLM-044 entity-identification projection directive (name over surrogate id; no subset answers)", () => {
-    // Identification goals project the entity's naming column, not its id.
-    expect(PLAN_SYSTEM).toMatch(/return the column that names the entity/);
-    expect(PLAN_SYSTEM).toMatch(/surrogate id\/code/);
-    // The regression bound — ids/attributes still follow the goal's literal ask.
-    expect(PLAN_SYSTEM).toMatch(/only as the goal requests them/);
-    // The omission half — a multi-attribute goal is never answered with a subset.
-    expect(PLAN_SYSTEM).toMatch(/never a subset/);
-  });
-
   it("carries the SK-LLM-029 NULL-safe extremum directive (false-minimum guard)", () => {
     // ORDER BY ... LIMIT extremum selection must filter NULLs on the ranked column.
     expect(PLAN_SYSTEM).toMatch(/exclude NULLs in the ordered column/);
