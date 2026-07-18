@@ -1,6 +1,6 @@
 # E-04 — TTL + cron sweep (`expires_at` on memory rows)
 
-**Status:** 🟡 sweep core shipped (run 39) — cron wiring (infra) + read-side RLS clause (E-03-gated) remain
+**Status:** 🟡 sweep core shipped (run 39) — cron wiring (plain code, see Steps 3) + read-side RLS clause (E-03-gated) remain
 **Sequence:** Engine 4 of 7 · **Risk:** low · **Runs:** 1 · **Prereqs:** E-01 ✅ · **Gate:** none
 
 **Progress (run 39, SK-PIVOT-011):** the deterministic, offline-tested sweep
@@ -10,8 +10,8 @@ $1 RETURNING id`, `facts`-only, cutoff bound so it's deterministic in tests) +
 `orchestrateSweep(deps, dbs)` (filters to memory-preset DBs via
 `isAgentMemoryV1Db`, sweeps each with the injected exec, **isolates a per-DB
 failure** so the rest still sweep, aggregates the `expiredRows` count the metric
-will report). Staged ahead of the two non-pure halves — the scheduled Worker
-that drives it (cron schedule = infra) and the read-side TTL *invisibility*
+will report). Staged ahead of the two remaining halves — the cron wiring
+that drives it (plain code, Steps 3) and the read-side TTL *invisibility*
 clause on E-03's `facts` RLS policy (E-03-gated). Same shape as E-02
 (`buildRememberInsert` shipped ahead of its e2e wiring). 7 unit cases; no prod
 path imports it yet, so engine/chain/scorer/baselines are untouched.
@@ -31,8 +31,10 @@ explicit-forget story closed).
 
 ## Read first
 
-- `apps/events-worker/AGENTS.md` — the cron Worker pattern (we already run
-  a scheduled job for events)
+- `apps/api/src/index.ts` `scheduled()` + `apps/api/wrangler.toml`
+  `[triggers]` — the cron dispatch this slice extends (three schedules
+  already run there; the keep-warm branch already opens Neon from the
+  cron isolate, SK-HDC-014)
 - `docs/features/observability/FEATURE.md` — span/metric for the sweep
 - `docs/performance.md` — free-tier budget; the sweep must stay inside it
 
@@ -65,12 +67,21 @@ explicit-forget story closed).
    only** (no compile-layer / `sql-validate` change — RLS, not
    query-rewriting).
 3. **Sweep core ✅ (run 39)** — `buildExpirySweep` + `orchestrateSweep` (pure,
-   per-DB failure isolation, count aggregation). **Remaining:** a new cron
-   Worker (or new schedule on `events-worker`) — daily 03:00 UTC — drives
-   `orchestrateSweep` over the tenant's memory DBs and emits the
-   `nlqdb.memory.expire` span + `nlqdb.memory.expired_rows_total` counter from
-   the returned `SweepSummary.expiredRows`. The schedule + exec adapter are
-   infra (Neon-reachable Worker), so they land with the deploy.
+   per-DB failure isolation, count aggregation). **Remaining (plain code — no
+   human step; crons ship with the normal CI `wrangler deploy`):**
+   (a) a fourth `[triggers]` cron in `apps/api/wrangler.toml` (daily 03:00
+   UTC) + the matching constant and dispatch branch in `scheduled()`
+   (`apps/api/src/index.ts` — pattern and unknown-cron guard already exist);
+   (b) enumerate memory DBs from D1 (`SELECT … FROM databases WHERE id LIKE
+   'db_agent_memory_v1_%'` — the same prefix `isAgentMemoryV1Db` checks);
+   (c) an exec adapter: generalise `buildMemoryExec` (`ask/build-deps.ts`) to
+   accept the sweep plan too — both plans are `{table, text, params}`; the
+   sweep runs with the tenant-literal `app.agent_id`, so it sees all agents'
+   rows per SK-PIVOT-009. Mind SK-ASK-024: the keep-warm branch lazy-imports
+   its pg client to dodge the module-scope libpg-query crash on the cron
+   isolate — import the exec adapter inside the branch the same way;
+   (d) emit the `nlqdb.memory.expire` span + `nlqdb.memory.expired_rows_total`
+   counter from the returned `SweepSummary.expiredRows`.
 4. CLI parity (SK-CLI): `nlq remember --ttl 7d` shorthand for `ttlSeconds`
    (**already shipped**, SK-CLI-018; rejected by the server on `--kind
    episode|entity`).

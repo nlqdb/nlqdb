@@ -66,7 +66,7 @@ and `episodes`; GIN on `facts.tags`; vector index left to E-05.
    composite-PK link table, `ON DELETE CASCADE`, `TEXT[]` + GIN, beyond the
    inferred-plan grammar), authored to pass the **same** `sql-validate-ddl`
    validator (asserted in the test). **Deviations from the schema block,
-   intentional:** `embedding VECTOR` is deferred to E-05 (pgvector infra-gated;
+   intentional:** `embedding VECTOR` is deferred to E-05 (its own multi-run slice;
    added later as an ADD COLUMN widen) so the preset provisions on stock
    Postgres; `expires_at` ships now (plain nullable column, E-04 adds the
    sweep); the `episodes` scope index orders by `occurred_at` (its time column)

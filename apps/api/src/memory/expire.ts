@@ -1,9 +1,10 @@
 // E-04 — agent-memory TTL sweep. The deterministic, offline-tested core
 // of the daily expiry job: build the parameterised DELETE, run it across
 // the memory-preset DBs with per-DB failure isolation, and aggregate the
-// counts the OTel metric will report. Staged ahead of the two halves that
-// are not pure code: the scheduled Worker that drives it (a cron schedule
-// is infra — blocked-by-human) and the read-side TTL *invisibility*
+// counts the OTel metric will report. Staged ahead of the two remaining
+// halves: the cron wiring that drives it (a `wrangler.toml` `[triggers]`
+// entry + a `scheduled()` branch — plain code, deploys with the Worker;
+// no human step) and the read-side TTL *invisibility*
 // (an `AND (expires_at IS NULL OR expires_at > NOW())` clause on E-03's
 // `facts` RLS `USING` policy — E-03-gated). Same shape as E-02, which
 // shipped `buildRememberInsert` ahead of its e2e wiring.
