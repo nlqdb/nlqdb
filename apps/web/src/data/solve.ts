@@ -1980,6 +1980,64 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "build-vs-buy-agent-memory",
+    persona: "P2 agent builder",
+    searchTitle: "Should I build my own agent memory on Postgres or buy it?",
+    oneLiner:
+      "If you already run Postgres and are deciding whether to hand-roll agent memory, a `memories` table is easy to start and expensive to get right at scale. nlqdb is the buy answer: one MCP command gives your agent a real database it writes rows to and queries in English, with tenant isolation enforced in the engine.",
+    painContext:
+      "The agent-SaaS builder already runs Postgres or Supabase, so the real build-vs-buy question isn't 'which memory vendor' — it's 'why not just add a `memories` table?' That's the honest default, and for one project it's the right one. It stops being right the moment memory goes multi-tenant: a hand-rolled `WHERE agent_id = $1` leaks every account the one time it's forgotten, retention becomes a cron you maintain, and 'group memories by user this week' means owning a text-to-SQL layer too. The `CREATE TABLE` was the easy part.",
+    demoGoal: "count of memories per user, highest first",
+    demoWhy:
+      "The rollup a DIY `memories` table gives you only after you also build the query layer — group, count, order — answered here from one English goal.",
+    howNlqdbAnswers: [
+      "Honest first: if you just need recall for one project, a `memories` table on the Postgres you already run is the right call.",
+      "Where DIY bites: one command — `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp` — gives your agent a real hosted Postgres instead.",
+      "Tenant isolation is in the engine: a fail-closed `tenant_isolation` RLS policy keyed on `app.tenant_id`, not a `WHERE` filter you must remember to write.",
+      "Analytics come free: ask 'memories per user this week' in English and nlqdb compiles the `GROUP BY`, runs it, and shows the SQL.",
+    ],
+    whatItDoesnt: [
+      "The opinionated `agent_memory_v1` schema (facts/episodes/entities) isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark, `SK-PIVOT-010`); today the agent designs its own tables or provisions them from the first English goal.",
+      "Per-end-user row scoping *within one shared database* isn't shipped — agent-scope RLS keyed on `app.agent_id` is in progress (E-03, `SK-PIVOT-009`); today isolation is per-tenant RLS or a database per tenant.",
+      "Writes go through the SDK or the authed remember path, not the public embed — the public `<nlq-data>` key is read-scoped, so a write credential must never sit in client HTML.",
+    ],
+    faqs: [
+      {
+        q: "Should I build my own agent memory or buy it?",
+        a: "If you need recall for a single project, build it — a `memories` table on the Postgres you already run is the honest, zero-vendor answer. The build cost shows up later: multi-tenant isolation that fails closed, a retention story, and analytical queries over what you stored. nlqdb is the buy answer once those must be correct at scale — one MCP command, a real hosted Postgres, tenant-isolation RLS in the engine, and NL analytics with the SQL shown.",
+      },
+      {
+        q: "What does a DIY `memories` table on Postgres cost me later?",
+        a: "The `CREATE TABLE` is the easy 20%. The expensive 80% is isolation you can't forget (a hand-rolled `WHERE agent_id = $1` leaks every tenant the one time it's dropped; RLS doesn't), a TTL sweep instead of a forgotten cron, and a text-to-SQL trust boundary if you ever want to `GROUP BY` over memory in English. DIY wins on control; it loses once those must be correct.",
+      },
+      {
+        q: "How do I switch from a DIY table to nlqdb?",
+        a: "Run one command — `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp` — and your coding agent (Claude Code, Cursor, Codex) gets a real database it queries in English. The agent writes memory rows through the SDK or the authed remember path and reads them back with `nlqdb_query`; the server builds every write as a parameterised `INSERT`, so the agent controls data, never SQL.",
+      },
+      {
+        q: "Can I expire old agent memory automatically instead of writing a cron?",
+        a: "The TTL story is a server-built, bound-cutoff `DELETE` swept per database (`SK-PIVOT-011`) rather than a cron you maintain — the core sweep logic ships; the scheduled Worker that runs it is landing. On a DIY table you own the whole retention job yourself. Until the scheduler is live, treat automatic expiry as in-progress, not a promise.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://hn.algolia.com/?q=agent%20memory",
+        label:
+          'Hacker News search: "agent memory" — recurring build-vs-buy threads on how to store what an agent remembers.',
+      },
+      {
+        url: "https://www.reddit.com/r/LLMDevs/search/?q=agent%20memory",
+        label:
+          "r/LLMDevs — practitioner threads on rolling your own memory table vs. adopting a memory layer.",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/ddl-rowsecurity.html",
+        label:
+          "Postgres Row Security Policies — the fail-closed isolation mechanism a hand-rolled `WHERE` filter has to replicate by hand.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {

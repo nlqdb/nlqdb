@@ -104,7 +104,7 @@ layer for AI agents", direct entrant). Then a solve page
 (`build-vs-buy-agent-memory` or extend an existing one): honest DIY steps
 first — the reader keeps trust — then where DIY bites (cross-user leakage,
 embedding plumbing, TTL, analytics), then the one-command alternative.
-**Done when:** ✅ two competitor entries ([`competitors.md`](../../../../competitors.md) §4: DIY-on-your-Postgres + Agentic DB/Constructive) · ⬜ solve page live + in llms.txt.
+**Done when:** ✅ two competitor entries ([`competitors.md`](../../../../competitors.md) §4: DIY-on-your-Postgres + Agentic DB/Constructive) · ✅ solve page live + in llms.txt ([`solve/build-vs-buy-agent-memory`](../../../../../apps/web/src/data/solve.ts); llms.txt auto-includes the slug).
 
 ### R-03 — Stage-0 solve pages (one per run)
 
@@ -186,10 +186,11 @@ where closed), record cited/not-cited per query in § Current numbers.
 
 - Coding-agent walker pass rate: not yet measured (R-06 unbuilt)
 - Registry/directory listings live: 0 of 8
-- Stage-0 solve pages live: 0 of top-5 (R-01 map names the top-5 unowned:
-  #2 best-way-to-store, #5 build-vs-buy, #10 TTL/expiry, #13 agent-memory-MCP).
-  R-02 competitor-honesty surface: two `competitors.md` §4 entries landed
-  (DIY-on-Postgres baseline + Agentic DB/Constructive); solve page still ⬜.
+- Stage-0 solve pages live: 1 of top-5 (R-01 map names the top-5 unowned:
+  #2 best-way-to-store, #5 build-vs-buy ✅, #10 TTL/expiry, #13 agent-memory-MCP).
+  R-02 complete: two `competitors.md` §4 entries (DIY-on-Postgres baseline +
+  Agentic DB/Constructive) + the `solve/build-vs-buy-agent-memory` page (owns
+  query #5; DIY-first honesty, one-command buy answer, in llms.txt).
 - GSC intent-query clicks (28d to 2026-07-16): **0** — no intent query clears
   1 click; `/agents` at pos ~7.3 with 3 impressions; the agent-memory blog
   (`/blog/agent-memory-benchmarks…`, 5 impr) and "deep memory retrieval
@@ -202,8 +203,8 @@ where closed), record cited/not-cited per query in § Current numbers.
 Tick on merge.
 
 - [x] R-01 — intent map + P2a/P2b persona split
-- [ ] R-02 — build-vs-buy honesty surface (competitor rows + solve page)
-- [ ] R-03 — stage-0 solve pages (0/5)
+- [x] R-02 — build-vs-buy honesty surface (competitor rows + solve page)
+- [ ] R-03 — stage-0 solve pages (0/5; #5 build-vs-buy already filled under R-02)
 - [ ] R-04 — canonical machine-followable setup guide
 - [ ] R-05 — registry sweep (0/8 venues)
 - [ ] R-06 — coding-agent walker + baseline
