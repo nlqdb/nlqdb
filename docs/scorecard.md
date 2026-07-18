@@ -24,20 +24,25 @@ falsified the "clean window" hypothesis; full detail + run link in row #15).
 **Worst number today:** real strangers reaching a first answer = **0**
 (row #2; 07-16 remote-D1 pull carried — 9 users = 4 founder/company + 5
 test/dev, newest registration 07-06, none since; lagging, moved only through
-agent-controllable inputs). **Run 87 pulled a surface-integrity lever (row #18,
-distribution priority-2):** the built-output link sweep found **2 redirecting
-links** — the legal pages cross-linked each other with bare paths (`href="/terms"`
-in `privacy.astro`, `href="/privacy"` in `terms.astro`, added in the #718/#714
-legal sweep) that 307-redirect under `trailingSlash:"always"`. Fixed both (row #18
-**2 → 0 redirecting**) and closed the CI blind-spot that hid them: `check:links`
-is not wired into CI, so `<a href>` bare paths regress silently between manual
-daily sweeps — widened the SK-WEB-022 guard to catch static `<a href="/literal">`
-source literals (negative-tested). UX-flow rut-blocked (rule 7, runs 80–85);
-engine unmeasurable here (`SK-QUAL-023`, egress-gated). **Step 0:** open PRs #724
-(reach intent-map), #723 (human-dependency audit), #719 (Infisical) are all
-docs/worksheets — zero overlap with `apps/web/**`. PR #711 merged (`730e525`),
-so distribution is no longer PR-owned. **Rule 6:** CI green on `main` head
-`ba7bbde` (run 2552 `success`); no red-main / stale-deploy lever.
+agent-controllable inputs). **Run 88 pulled a product-readiness / claim-integrity
+lever (row #19):** the SDK method surface (`client.*` / `NlqClient.*`) was the
+**last un-guarded advertised capability** — CLI verbs (run 74) and MCP tools
+(run 64) each already had a standing CI guard, but a phantom `client.foo(...)` in
+a web/docs snippet would throw on a stranger's first SDK call (the run-62
+`nlqdb_recall` failure mode, `GLOBAL-003`) and slip CI. Built
+`sdk-method-integrity.test.ts` (`SK-SDK-013`): sweeps `apps/web/src` +
+`apps/docs/src` against the shipped `NlqClient` type (derived from
+`packages/sdk/src/index.ts`, pinned). **0 phantom live** (18 distinct refs all
+shipped); negative-tested + false-positive-free. This is a different lever
+category from the recent runs — web-UX rut-blocked (rule 7, runs 80–85);
+surface-integrity pulled last run (87); engine unmeasurable here (`SK-QUAL-023`,
+egress-gated). **Step 0:** only PR #719 open (Infisical research, `docs/research/`)
+— zero overlap with the SDK guard / `apps/web` / `packages/sdk` / docs-features.
+**Rule 6:** CI green on `main` head `4afc71b` (latest merge a docs audit; ci.yml
+`success`); no red-main / stale-deploy lever. **Engine freshness:** rows #8/#9
+measured 07-11 = 7 days old (at the alert boundary, not yet >7); a re-dispatch is
+due once this PR merges (avoid churning the SHA-keyed `SK-QUAL-013` checkpoint
+mid-cycle).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -64,11 +69,11 @@ so distribution is no longer PR-owned. **Rule 6:** CI green on `main` head
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.546, 07-11); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **15** (fresh grep 07-16 run 86; unchanged since run 78, was 17). Run 78 reclassified 2 decided-deferral ICP bullets (`icp-mining`: Reddit disable [SK-ICP-011], 10th-source refactor pin [P5]) to the canonical "Parked until `<trigger>`" form their 4 siblings already use — honest miscount correction, not a genuinely-open question resolved | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver — run 86 declined the pull: the 15 bullets are genuine deferrals (see _Last change_) |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Coverage layered over prior runs: built-output `href`/`src` sweep + cross-app subdomain verification (run 61) + prod sitemap-200 check (run 72) + `client-nav-integrity.test.ts` guarding `location.*` JS navigations (run 77, SK-WEB-022, after 6 bare-path 307s). **Run 87 found + fixed a fresh regression:** the built sweep reported **2 redirecting** — `privacy.astro`↔`terms.astro` cross-linked with bare paths (`href="/terms"`, `href="/privacy"`, added in the #718/#714 legal sweep) that 307 under `trailingSlash:"always"`. Root cause: `check:links` is **not wired into CI**, so bare-path `<a href>` literals regress silently between manual daily sweeps (the run-77 guard covered `location.*` JS navigations, not `href`). Fixed both (**2 → 0 redirecting**) and **widened SK-WEB-022's guard with a second test sweeping static `<a href="/literal">` source literals** — negative-tested (fails on a reintroduced bare href, naming `file:line`), false-positive-free (dotted assets + dynamic `href={…}` skipped) | target 0 — `bun run build && bun run check:links` (built-output) + `client-nav-integrity.test.ts` (JS navigations **+ static `<a href>`**, in CI) |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Layered coverage: built-output `href`/`src` sweep + cross-app subdomain verification (run 61) + prod sitemap-200 check (run 72) + `client-nav-integrity.test.ts` (SK-WEB-022) guarding both `location.*` JS navigations (run 77) **and** static `<a href="/literal">` source literals (run 87, after legal-page bare-path 307s) — dotted assets + dynamic `href={…}` skipped, negative-tested | target 0 — `bun run build && bun run check:links` (built-output) + `client-nav-integrity.test.ts` (in CI) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
-| 19 | Live-surface claim integrity | **0 open** — run 76 verified `brew install nlqdb/tap/nlq` (advertised in `cli/README.md` + npm-shim fallback, `SK-CLI-002`) is now real: `nlqdb/homebrew-tap` carries `nlq.rb` at root (commit 07-15 02:42Z, v0.1.12; **empty since 2026-05-19** before this), the linux_x86_64 asset returns HTTP 200 with a **sha256 matching the formula exactly** (`63a9266…814a`), tarball ships the `nlq` binary. Run 73's `cli/.goreleaser.yml` token-format fix (merged) populated the tap on `deploy-cli`@`80e4aa44`; run 76 is the post-merge tap-verify the scorecard deferred. Runs 32 + 37 + 56 + 59 + 62 + 64 + 72 + 73 + 74 + **76** each found/closed 1 agent-movable gap | claim-vs-reality on shipped surfaces + docs; target 0 **met**. **Standing guards:** `mcp-tool-integrity.test.ts` (run 64) sweeps the shipped MCP catalog closed-world; `cli-verb-integrity.test.ts` (run 74) derives the 15 shipped top-level verbs from the cobra tree (first `Use:` per `cli/internal/cmd/*.go` minus `nlq`) and — **as of run 76** — sweeps every `nlq <verb>` snippet across **both** `apps/web/src` (`.ts/.tsx/.astro`) and the docs-site prose `apps/docs/src` (`.md/.mdx`), naming the phantom + file on failure (verified: fails on an injected `nlq schema` in `cli.mdx`). Next candidate: the SDK method surface (`client.*`), and a docs-prose sweep of MCP-tool names |
+| 19 | Live-surface claim integrity | **0 open** (claim-vs-reality on shipped surfaces + docs; target 0 **met**). Runs 32 + 37 + 56 + 59 + 62 + 64 + 72–74 + 76 each found/closed 1 agent-movable gap (most recent: run 76 verified `brew install nlqdb/tap/nlq` live — tap `nlq.rb` sha256 matches the formula, tarball ships the binary). **Standing guards — all three advertised-capability surfaces now closed-world CI-swept**, each deriving its truth from source (never hand-copied) and naming the phantom + file on failure: `mcp-tool-integrity.test.ts` (MCP tools, run 64, `apps/web/src`), `cli-verb-integrity.test.ts` (CLI verbs from the cobra tree, run 74, web + docs prose), and **`sdk-method-integrity.test.ts` (SDK methods, run 88, `SK-SDK-013`)** — sweeps `apps/web/src` + `apps/docs/src` for `client.<method>(` / `NlqClient.<method>` against the shipped `NlqClient` type; 0 phantom live, negative-tested, false-positive-free. Next candidate: a docs-prose sweep of MCP-tool names (`mcp-tool-integrity` is `apps/web/src`-only) |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
-| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-60 branch dispatch [29211619838](https://github.com/nlqdb/nlqdb/actions/runs/29211619838) against prod: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). FLOW-001's step-8 red was the walker asserting a 2nd anon `/v1/ask` 200 — impossible under `SK-ANON-012`'s message-#2 wall; step 8 now asserts the 401 cap (dt 296–337 ms). Before: main dispatch [29211269726](https://github.com/nlqdb/nlqdb/actions/runs/29211269726) FLOW-001 0/3 step-8 `status=401`. The run-59 "morph-to-chat gap" is **decided, not a gap**: the anon terminus IS the sign-in redirect (SK-ANON-011 stash → SK-ANON-003 adopt); the SK-WEB-002 chat is the post-sign-in /app surface. **Run 62 closed the step-7 false-green:** the copy-snippet conversion action was silently skipping (selector matched the accessible name, which the `aria-label` diverged from) — now the aria-label is dropped (accessible name = visible "Copy snippet", WCAG 2.5.3) and the selector widened; branch dispatch [29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660) walked prod **9/9 passed (exit 0)** with the new selector | target 9/9 + both FLOW-005 ✅ **met**. Per-step JSON artifact isn't downloadable from the agent container (proxy-gated); the selector→accessible-name defect is closed deterministically |
+| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-62 branch dispatch [29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660) against prod, exit 0: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). Prior fixes: FLOW-001 step 8 asserts the `SK-ANON-012` 401 message-#2 cap (not a 2nd 200); step 7 copy-snippet selector matches the visible accessible name after the diverging `aria-label` was dropped (run 62, WCAG 2.5.3). The run-59 "morph-to-chat gap" is **decided, not a gap** (anon terminus IS the sign-in redirect; SK-WEB-002 chat is post-sign-in) | target 9/9 + both FLOW-005 ✅ **met**. Per-step JSON artifact proxy-gated from the agent container |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -89,32 +94,37 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-18 (run 87)** — **Surface-integrity lever (row #18, distribution
-priority-2): redirecting links 2 → 0.** Built-output link sweep (`bun run build &&
-bun run check:links`, 121 pages / 2,970 internal links) found **2 redirecting
-links**: the legal pages cross-linked each other with bare paths — `href="/terms"`
-in `privacy.astro`, `href="/privacy"` in `terms.astro` (introduced in the
-#718/#714 legal sweep) — which 307-redirect under `trailingSlash:"always"`. Fixed
-both to trailing-slash paths; re-swept **0 dead / 0 redirecting**. **Root cause +
-guard:** `check:links` is not wired into CI, so it only runs on a manual/daily
-build — bare-path `<a href>` literals regress silently between sweeps, and the
-run-77 `client-nav-integrity` guard (SK-WEB-022) only covered `location.*` JS
-navigations, not `href`. **Widened that guard** with a second test sweeping static
-`<a href="/literal">` source literals (dotted assets + dynamic `href={…}` skipped
-→ false-positive-free; negative-tested: fails on a reintroduced bare href naming
-`file:line`); updated the SK-WEB-022 canonical body to record why href now needs a
-source guard (P3). **Why this lever:** UX-flow rut-blocked (rule 7, runs 80–85);
-engine unmeasurable here (`SK-QUAL-023`, egress-gated); distribution un-blocked now
-PR #711 merged. **Step-1 refresh:** CI green `ba7bbde` (run 2552); indexable
-surfaces **100** (built: /vs 31 + /solve 33 + /blog 36 — raw data-file entries
-37/35 include unbuilt drafts, built count unchanged); GSC 28d **1 click / 455 impr
-/ pos 16.4** (fresh 07-18); users **9** / strangers **0** carried (07-16 pull,
-newest reg 07-06); docs-ambiguity **15** (fresh grep). **Artifact (step 3):** queue
-**2** (< 3) → no forced publish, no new draft (lesson closely overlaps the queued
-`link-checker-cant-see-your-javascript` draft); **dev.to variant drained** —
-`null-timestamp-ttl-sweep-funnel-metric` posted (`SK-BLOG-003`, idempotent). **KPI
-(GLOBAL-025):** **UX** + **onboarding** — dead-click-free legal surfaces + a
-standing CI guard against silent href redirects; no KPI degrades.
+**2026-07-18 (run 88)** — **Product-readiness / claim-integrity lever (row #19):
+SDK method surface guarded — the last un-guarded advertised capability.** CLI
+verbs (run 74) and MCP tools (run 64) each had a standing CI guard, but the SDK
+method surface (`client.*` / `NlqClient.*`) did not — a phantom `client.foo(...)`
+copy-pasted from the site or docs throws on a stranger's first SDK call (the
+run-62 `nlqdb_recall` failure mode in the SDK lane, `GLOBAL-003`) and slips CI
+between manual sweeps. Built `apps/web/src/data/sdk-method-integrity.test.ts`
+(`SK-SDK-013`): sweeps `apps/web/src` (`.ts/.tsx/.astro`) + docs-site
+`apps/docs/src` (`.md/.mdx`) for `client.<method>(` snippets and
+`NlqClient.<method>` references and fails CI on any member absent from the shipped
+`NlqClient` type — **derived** from `packages/sdk/src/index.ts` (JSDoc-anchored,
+brace-matched so nested `databases.connect` is caught and method params are not)
+and **pinned** by a second test so an SDK rename/add/drop is caught too, never
+hand-copied. **Number:** advertised-but-unshipped SDK methods **0 → 0, now
+CI-enforced** (18 distinct refs swept, all shipped). Negative-tested (fails on an
+injected `client.recall` in `sdk.mdx`, naming segment + file), false-positive-free
+(Astro `client:` colon-directives + Go/Rust PascalCase idioms don't match).
+Documented as `SK-SDK-013` (sdk feature; kept the block terse — full rationale in
+the self-documenting test header, D5). **Why this lever:** row #19's explicitly
+named "next candidate"; a different lever category from the web-UX rut (rule 7,
+runs 80–85) and last run's surface-integrity (87); engine unmeasurable here
+(`SK-QUAL-023`, egress-gated). **Step-1 refresh:** CI green `4afc71b`; typecheck +
+lint + full test (926 api + 66 web-data) green; docs-ambiguity **15** (fresh
+grep); users **9** / strangers **0** carried (07-16 pull, newest reg 07-06); GSC
+28d **1 click / 455 impr / pos 16.4** carried (07-18); engine rows #8/#9 at the
+7-day freshness boundary (re-dispatch due post-merge). **Artifact (step 3):** queue
+**2** (< 3) → no forced publish; this run's lesson (advertised-vs-shipped drift
+needs a derived-not-hand-copied guard) closely overlaps the queued
+`guard-advertised-capabilities-against-code` draft → no new draft. **KPI
+(GLOBAL-025):** **UX** + **onboarding** — a stranger's first SDK call can no longer
+hit a phantom advertised method; no KPI degrades.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
