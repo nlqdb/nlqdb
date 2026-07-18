@@ -41,35 +41,47 @@ The personas are ordered by **priority for Phase 1 onboarding**. We optimize the
 
 ---
 
-## P2 — The Agent Builder
+## P2 — The Agent Builder (split: P2a hobbyist · P2b agent-SaaS)
 
-**Role.** Engineer building LLM-powered agents, assistants, or autonomous workflows. Writes glue code around Claude / GPT / local models. Uses MCP, LangChain, or custom tool-use loops.
+Both build LLM agents and want a `remember`/`recall` tool, not a schema
+project. They split on **tenancy**: P2a stores one user's memory; P2b stores
+memory *per end-user* in a multi-tenant product, so cross-user leakage is a
+correctness bug, not a preference. P2b is the reach track's priority target
+(the stage-0 buyer); P2a is today's Jordan. Shared: MCP install, no up-front
+schema, usage-based pricing. Both search — and increasingly have their coding
+agent (Claude Code/Cursor/Codex) search — at stage 0; the queries they issue
+are the [reach intent map](../features/agent-memory-pivot/worksheets/reach/intent-map.md).
 
-**Current pain.**
-- Every agent needs memory and state. Giving an agent a real DB requires schema design the agent can't be trusted to do, or hand-rolling a JSON blob store.
-- Existing vector DBs are either over-provisioned (Pinecone/Weaviate) or under-featured (raw pgvector with no mgmt).
-- They want to hand the LLM a tool called `remember_this` and `recall_that` and be done.
+### P2a — Hobbyist tool-agent builder
 
-**Why they churn off existing DBs.** The schema + credential + provisioning ceremony is fundamentally hostile to an agent. An agent can't click through AWS IAM.
+Engineer wiring a single-user agent around Claude/GPT/local via MCP or a custom
+tool-use loop. **Pain:** the agent dumps facts into a messy `notes.json` and
+forgets between sessions; a real DB needs schema it can't design.
+**Default alternative:** a hand-rolled blob store or raw pgvector. **"Works":**
+install the MCP server; the agent creates and queries its own DB in NL, cheap
+under test load. **Use case:** Jordan's research agent forgot its `notes.json`;
+now it calls `nlqdb_remember`/`nlqdb_recall` over `agent_memory_v1` — ~40 lines
+of glue, not a bespoke vector + metadata service. **Phase 1 success:** MCP in
+3+ agent products; #1 logged use case is "agent giving itself memory."
 
-**What "works" looks like.**
-- Install the MCP server. The agent itself creates databases and queries them via natural language. No schema up front.
-- Per-agent isolation — each agent gets its own DB handle, same API key.
-- Cheap: an agent firing 100 queries/hour during testing shouldn't cost $50/day.
+### P2b — Agent-SaaS builder
 
-**Willingness to pay.** Usage-based is perfect for them. Will pay per-query if the unit cost is predictable.
-
-**ROI (est.).** ~10–15 hrs/mo of engineering saved by not hand-rolling per-agent memory (vector DB + metadata + schema-design glue + session lifecycle). At a $100–125/hr engineer rate, that's **~$1,000–1,800/mo** in development time, plus replacing a Pinecone Starter (~$70/mo) and whatever metadata store they'd bolt on. Bigger but fuzzier win: shipping the agent two weeks earlier.
-
-**Representative queries.**
-- Agent does: `nlqdb_query("memory", "remember that the user's name is Sam and they prefer metric units")`
-- Agent does: `nlqdb_query("kb", "find articles mentioning shipping delays in the last 30 days")`
-- Agent does: `nlqdb_create_database("session_abc123")` at session start, drops it at session end.
-- Developer does: `"show me every query the agent ran today that returned zero rows"` (agent debugging)
-
-**Real-life use case.** Jordan is building a personal research agent that browses the web and drafts memos. Before nlqdb the agent dumped facts into a messy `notes.json` and forgot things between sessions. Now at session start the agent calls `nlqdb_create_database("session_<id>")` and stores claims, sources, and user corrections as structured rows it designs itself. At session end the agent either persists the DB (if the user liked the output) or drops it. Jordan's entire memory layer is ~40 lines of glue code instead of a bespoke vector store + metadata service.
-
-**Phase 1 success for this persona.** The MCP server is installed in 3+ agent products (Claude Desktop, Cursor, Zed, homegrown) and the #1 use case in our logs is "agent giving itself memory."
+Engineer shipping a multi-tenant agent *product* — memory per end-user —
+already on Postgres/Supabase, building with Claude Code/Cursor/Codex.
+**Pain:** per-user memory means isolation done right (RLS,
+`end_user_id`/`thread_id` scoping), TTL, and analytics over what agents
+remembered — plumbing they don't want to own; cross-user leakage is a shipping
+blocker. **Default alternative:** a DIY `memories` table on the Postgres they
+already run — **not** a memory vendor; the honest counter is isolation
+correctness at scale, zero schema design, TTL, and NL analytics (reach R-02
+build-vs-buy). **"Works":** one command wires memory with per-agent RLS
+(`app.agent_id`, SK-PIVOT-009) and per-end-user narrowing server-defaulted; TTL
+sweeps `facts`; `nlqdb_query` answers "what did the agent remember per tenant
+this week" without a warehouse. **ROI:** ~10–15 hrs/mo saved not hand-rolling
+per-tenant memory; at $100–125/hr, **~$1,000–1,800/mo**, plus a Pinecone
+Starter (~$70/mo). **Willingness to pay:** usage-based, predictable per-query.
+**Phase 1 success:** ≥1 agent *product* publicly uses nlqdb as its per-user
+memory layer.
 
 ---
 
@@ -231,7 +243,7 @@ Ranked by how much of Phase 1 capacity they deserve.
 | Use case | Persona | Priority | Notes |
 |---|---|---|---|
 | Solo dev prototyping a new app's DB | P1 | **P0** | The flagship journey. Optimize onboarding for this. |
-| Agent giving itself memory via MCP | P2 | **P0** | MCP server is the first item in the Phase 2 distribution slice (see `docs/phase-plan.md §4`); Phase 1 must still flow for an agent-shaped first call. |
+| Agent giving itself memory via MCP | P2a | **P0** | MCP server is the first item in the Phase 2 distribution slice (see `docs/phase-plan.md §4`); Phase 1 must still flow for an agent-shaped first call. |
 | Non-engineer answering a one-off question from a CSV | P3 | **P1** | Requires CSV upload. Ship it. |
 | Solo dev using chat as an admin UI over their own nlqdb | P1 | **P1** | Falls out of P0 naturally. |
 | Startup team using chat as admin UI over *their own* PG | P4 | **Active (`SK-DB-011`)** | BYO-connection per `docs/architecture.md §3.6.7`; promoted from Phase 4+; not yet shipped. |
@@ -251,7 +263,7 @@ Ranked by how much of Phase 1 capacity they deserve.
 For each P0 persona, before we declare Phase 1 done:
 
 - **P1 Solo Builder:** 5 design partners each ship a real project using nlqdb as the primary DB. **Paid-conversion target (≥ 2 to Hobby)** becomes measurable once Stripe live-mode go-live lands (`docs/blocked-by-human.md`). The equivalent qualitative gate is the Sean Ellis "very disappointed" check in [`docs/founder-playbook.md §2`](../founder-playbook.md).
-- **P2 Agent Builder:** MCP server installed in 3 distinct agent frameworks in the wild. At least 1 agent product publicly integrates nlqdb as its memory layer. (MCP is the first item in the Phase 2 distribution slice — this validation gate is measured *after* MCP ships, not pre-Phase-2.)
+- **P2a/P2b Agent Builders:** MCP server installed in 3 distinct agent frameworks in the wild (P2a). At least 1 agent *product* publicly integrates nlqdb as its per-user memory layer (P2b). (MCP is the first item in the Phase 2 distribution slice — this validation gate is measured *after* MCP ships, not pre-Phase-2.)
 - **P3 Analyst:** 3 non-engineers complete a real analysis end-to-end in under 10 minutes, unassisted, in user tests.
 
 If any of these don't hit, we don't ship Phase 2 — we iterate.
