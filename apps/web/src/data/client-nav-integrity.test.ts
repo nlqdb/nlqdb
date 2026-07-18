@@ -22,14 +22,24 @@ import { fileURLToPath } from "node:url";
 // string-literal argument of an actual client navigation —
 // `location.assign(...)`, `.replace(...)`, or `location.href = ...`, with or
 // without a `window.` prefix (bare `location.assign` in an Astro `<script>`
-// navigates just the same). Reads like `new URL(location.href)`, JSX `href=`
-// attributes (swept by check-links), and route matchers lack the
-// `= "literal"` / `("literal")` shape, so none trip. The one thing that would
-// is a comment literally spelling out the call — which is why the sweep skips
-// `.test.ts` files, where (as here) that shape gets documented.
+// navigates just the same). Reads like `new URL(location.href)` and route
+// matchers lack the `= "literal"` / `("literal")` shape, so none trip. The one
+// thing that would is a comment literally spelling out the call — which is why
+// the sweep skips `.test.ts` files, where (as here) that shape gets documented.
 // Navs built via `new URL("/path", origin)` → `location.replace(...)` carry the
 // slash by convention/review, not here — matching them would false-positive on
 // asset (`/og.png`) and API (`/v1/…`) URLs that legitimately carry no slash.
+//
+// The second test guards the same trailing-slash class for static
+// `<a href="/literal">` links. SK-WEB-022 originally left these to
+// `check-links.mjs` — but that sweep runs on built output and is NOT wired into
+// CI (only a manual/daily build invokes it), so a bare-path legal cross-link
+// (`href="/terms"` in `privacy.astro`) 307-redirected undetected for two days
+// until a daily sweep caught it (row #18). A static-literal href carries no
+// dynamic segment, so a source scan for `href="/path"` (no trailing slash, no
+// dotted final segment = asset) is false-positive-free — the same narrowness
+// that makes the nav sweep safe. Dynamic `href={…}` (no string literal) and
+// asset/API paths (dotted / `//host`) never match.
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const WEB_SRC = join(REPO_ROOT, "apps", "web", "src");
@@ -48,12 +58,26 @@ function sweepFiles(dir: string, ext: RegExp, acc: string[] = []): string[] {
 // `window.`/`document.`-prefixed — `\b` anchors the `location` token).
 const NAV = /\blocation(?:\.href\s*=|\.(?:assign|replace)\s*\()\s*["'`]([^"'`]*)["'`]/g;
 
+// `href="/literal"` / `href='/literal'` — a static internal link. `href={…}`
+// (dynamic) has no leading quote and never matches.
+const HREF = /\bhref=["'](\/[^"'`]*)["']/g;
+
+// A same-origin absolute path (`/…`, not `//host`) whose path component (before
+// `?`/`#`) lacks a trailing slash 307-redirects under trailingSlash:"always".
+// A dotted final segment (`/og.png`, `/rss.xml`) is a real asset that carries
+// no slash — skip it, not a redirect. Returns the offending `url` or null.
+function trailingSlashOffender(url: string): string | null {
+  if (!url.startsWith("/") || url.startsWith("//")) return null; // relative / cross-origin
+  const path = url.split(/[?#]/)[0];
+  if (path.endsWith("/")) return null;
+  if (path.split("/").pop()?.includes(".")) return null; // asset, not a page
+  return url;
+}
+
 describe("client-nav trailing-slash integrity (SK-WEB-022)", () => {
   test("every client-side navigation to an internal page path ends in `/`", () => {
     // Maps the first offending bare path → the file:line it appears on, so a
-    // failure names the redirect and where to fix it. A same-origin absolute
-    // path (`/…`, not `//host`) whose path component (before `?`/`#`) lacks a
-    // trailing slash 307-redirects under trailingSlash:"always". Root `/` and
+    // failure names the redirect and where to fix it. Root `/` and
     // `/auth/sign-in/?return_to=…` already end their path in `/` and pass.
     const offenders: Record<string, string> = {};
     for (const file of sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/)) {
@@ -65,6 +89,22 @@ describe("client-nav trailing-slash integrity (SK-WEB-022)", () => {
         if (path.endsWith("/")) continue;
         const line = src.slice(0, m.index).split("\n").length;
         offenders[url] ??= `${relative(REPO_ROOT, file)}:${line}`;
+      }
+    }
+    expect(offenders).toEqual({});
+  });
+
+  test("every static `<a href>` to an internal page path ends in `/`", () => {
+    // The href half of the same class — the blind spot that let `href="/terms"`
+    // 307-redirect for two days because check-links.mjs isn't in CI.
+    const offenders: Record<string, string> = {};
+    for (const file of sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/)) {
+      const src = readFileSync(file, "utf8");
+      for (const m of src.matchAll(HREF)) {
+        const offender = trailingSlashOffender(m[1]);
+        if (!offender) continue;
+        const line = src.slice(0, m.index).split("\n").length;
+        offenders[offender] ??= `${relative(REPO_ROOT, file)}:${line}`;
       }
     }
     expect(offenders).toEqual({});
