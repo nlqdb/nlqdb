@@ -145,6 +145,11 @@ immediate — the `GLOBAL-015` escape hatch is untouched. CLI surface is
 [`SK-CLI-017`](../cli/decisions/SK-CLI-017-run-dry-run.md); ships to MCP +
 `<nlq-data>` + wrappers in the same slice (`GLOBAL-003`).
 
+### SK-SDK-013 — Advertised-method integrity guard: every `client.*` / `NlqClient.*` in web+docs is a shipped member
+
+**Detail:** `apps/web/src/data/sdk-method-integrity.test.ts` (self-documenting header).
+Third sibling of the CLI-verb (`SK-WEB-008`) and MCP-tool (`SK-MCP-002`) guards — the SDK method surface was the last un-guarded advertised capability. Fails CI on any `client.<method>(` / `NlqClient.<method>` reference in web+docs naming a member absent from the shipped `NlqClient` type (derived + pinned), so a phantom can't throw on a stranger's first SDK call (`GLOBAL-003`).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
