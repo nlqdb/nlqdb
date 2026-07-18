@@ -5,12 +5,16 @@ Point-in-time tracker, regenerated each
 (≤20 KB cap). History: `git log` +
 `progress/quality-score-verification-log.md` (engine).
 
-**Weekly focus number (2026-07-11 → 07-18, awaiting the next /weekly re-point):**
+**Weekly focus number (2026-07-18 → 07-25):**
 **row #8 BIRD raw EX → ≥ 0.60** — the pillar furthest from its
 [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) floor. The `SK-LLM-044` detour
 is now closed: measured on BIRD (run 90 — regressed), reverted, and run 91
 **confirmed the revert recovered the number** (0.514 → 0.542, PR #734 merged) —
-see below.
+see below. **Row #15 stays founder-blocked** — its only fix is arming
+`FALLBACK2_LLM_API_KEY` (SambaNova, `_e2e-opencheck.yml`), an operator-only
+action **restored to `blocked-by-human.md` this week** after PR #714 deleted the
+bullet while the secret was still unset (this week's `weekly-review.md`, worst
+finding).
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; within engine, **row #8
 BIRD 0.542 < the 0.60 Phase-2 floor** (gap 5.8 pp). The weekly-focus engine lever
