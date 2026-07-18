@@ -25,7 +25,7 @@ from the reachable step summary without the egress-gated artifact JSON).
 Confirms the free chain *is*
 reachable in CI (only the daily-agent container is egress-gated). **Deferred:**
 the analytical-vs-vector head-to-head (needs an embedding baseline —
-infra-gated, E-05).
+pending E-05's free-chain embedding provider, LLM-router work, not infra).
 
 - **Decision:** Add an agent-memory-quality benchmark to `tools/eval` alongside
   the NL→SQL canon (`SK-QUAL-003`). It scores four axes — (a) **retrieval

@@ -25,7 +25,8 @@
 //
 // Deferred to later engine slices (kept out of v1 so the preset
 // provisions on stock Postgres with no extension): `facts.embedding
-// VECTOR(?)` is E-05 (pgvector, infra-gated) and lands as an additive
+// VECTOR(?)` is E-05 (pgvector — its own multi-run slice, all code:
+// per-DB `CREATE EXTENSION IF NOT EXISTS vector`) and lands as an additive
 // ADD COLUMN widen. `facts.expires_at` ships now (a plain nullable
 // column); the TTL sweep that consumes it is E-04.
 //

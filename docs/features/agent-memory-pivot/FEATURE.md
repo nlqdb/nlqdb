@@ -114,8 +114,9 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
   ones. Per-agent scope via row-level RLS (E-03, `app.agent_id` GUC —
   SK-PIVOT-009), not query-rewriting. `expires_at` TTL with a
   scheduled sweep (E-04). pgvector index on `facts.content` + hybrid fusion
-  in the compile layer (E-05, infra-gated). `/agents` CreateForm passes
-  `preset="agent_memory_v1"` (E-06). Workload-analyzer + migration
+  in the compile layer (E-05). The authed create surface posts
+  `{ preset: "agent_memory_v1" }` (E-06 — SK-PIVOT-010; the anon `/agents`
+  CreateForm path was found infeasible). Workload-analyzer + migration
   orchestrator gain a memory rule (E-07, Phase 3).
 - **Alternatives rejected:** **Rename `nlqdb_query` to memory verbs** —
   breaks SK-MCP-002 and every integrated host for cosmetic gain. · **Replace

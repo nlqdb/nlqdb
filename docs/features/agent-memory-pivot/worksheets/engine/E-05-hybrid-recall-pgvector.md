@@ -1,7 +1,7 @@
 # E-05 — Hybrid recall: pgvector + `nlqdb_recall`
 
 **Status:** ⬜ not started
-**Sequence:** Engine 5 of 7 · **Risk:** **high** · **Runs:** multi · **Prereqs:** E-01 ✅ · **Gate:** infra-gated (Neon pgvector enablement; embeddings provider in the free chain)
+**Sequence:** Engine 5 of 7 · **Risk:** **high** · **Runs:** multi · **Prereqs:** E-01 ✅ · **Gate:** none — all-code (pgvector is per-DB SQL on the provisioner path; embedding provider is LLM-router work)
 
 ## Goal
 
@@ -12,11 +12,16 @@ analytics is the *only* thing we cover, the wedge is half a product. E-05
 makes nlqdb the **complete** memory primitive: similarity recall over fuzzy
 content **and** analytical SQL over structured fields, fused.
 
-## Why this is gated, not a normal slice
+## Why this is multi-run, not a normal slice
 
-- Needs **pgvector enabled on Neon** for the project (a Neon project
-  setting; founder-clickable, not agent-runnable). Capture in
-  `docs/blocked-by-human.md` per `.claude/commands/daily.md` rule 4.
+- Needs **pgvector in the memory DBs** — on Neon that is per-database SQL
+  (`CREATE EXTENSION IF NOT EXISTS vector;`), available on every plan with
+  no console step or add-on
+  ([neon.com/docs/extensions/pgvector](https://neon.com/docs/extensions/pgvector),
+  verified 2026-07-18). The provisioner emits it idempotently on the
+  `agent_memory_v1` preset DDL path — agent-runnable; **no
+  blocked-by-human entry**. (An earlier draft called this a
+  founder-clickable project setting; that was wrong.)
 - Needs an **embedding provider in the free chain** (LLM-router work).
   Today the `db-create` `embedTableCards` slice is stubbed pending pgvector
   (per README L134-135). E-05 is the slice that un-stubs it.
@@ -62,9 +67,11 @@ vector search yet" disclaimer goes away).
 
 ## Steps
 
-1. **Founder/infra (blocked-by-human entry).** Enable pgvector on the Neon
-   project; pick an embedding provider for the free chain (and the BYOLLM
-   path).
+1. **Enable pgvector on the preset path (code).** `neon-provision.ts` emits
+   `CREATE EXTENSION IF NOT EXISTS vector;` for memory-preset DBs (per-database,
+   idempotent; existing memory DBs pick it up via the step-5 backfill); pick an
+   embedding provider for the free chain (and the BYOLLM path) — LLM-router
+   work, web-research current options first (P2).
 2. **Run 1 — embedding write path.** `nlqdb_remember` embeds on write,
    GLOBAL-022 retry semantics; write completes even if embedding fails (row
    has NULL embedding; recall falls back to text-tsvector or skips
@@ -80,7 +87,7 @@ vector search yet" disclaimer goes away).
 
 ## Done when
 
-- [ ] pgvector enabled on Neon; embedding provider wired into the free chain.
+- [ ] `CREATE EXTENSION IF NOT EXISTS vector` emitted on the preset provisioner path; embedding provider wired into the free chain.
 - [ ] `facts.embedding` populated on new writes; backfill job for existing rows.
 - [ ] `nlqdb_recall` (additive) returns hybrid results; compile-layer owns the fusion.
 - [ ] WS-06 matrix' vector-search cell flips to ✓ honestly; WS-03 solve page disclaimer removed.

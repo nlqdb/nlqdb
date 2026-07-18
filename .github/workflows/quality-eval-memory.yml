@@ -16,8 +16,9 @@
 # overwrites BIRD/Spider and is not blocked by the SK-QUAL-002 < 7-day gate.
 #
 # The analytical-memory-vs-vector head-to-head (SK-QUAL-023) needs a pgvector
-# embedding baseline and is infra-gated (E-05) — a documented follow-on, not
-# here. The free-vs-frontier LLM delta below is the GLOBAL-026 bet applied to
+# embedding baseline, pending E-05 (the free-chain embedding provider —
+# LLM-router work, not infra) — a documented follow-on, not here. The
+# free-vs-frontier LLM delta below is the GLOBAL-026 bet applied to
 # the memory shape and IS supported (generic runner lane, opt-in per dispatch).
 
 name: Quality eval — memory-quality (agent-memory)
