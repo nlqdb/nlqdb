@@ -89,8 +89,9 @@ into **P2a** (hobbyist tool-agent builder — today's Jordan) and **P2b**
 (**agent-SaaS builder**: multi-tenant product, memory per end-user, builds
 with Claude Code/Cursor/Codex, already runs Postgres/Supabase — their
 default alternative is a DIY `memories` table, not a memory vendor).
-**Done when:** ⬜ intent-map.md with ≥ 15 ranked queries incl. agent
-phrasings · ⬜ personas.md P2a/P2b split merged.
+**Done when:** ✅ intent-map.md with ≥ 15 ranked queries incl. agent
+phrasings ([`intent-map.md`](intent-map.md), 18 queries) · ✅ personas.md
+P2a/P2b split merged.
 
 ### R-02 — Build-vs-buy honesty surface
 
@@ -185,15 +186,18 @@ where closed), record cited/not-cited per query in § Current numbers.
 
 - Coding-agent walker pass rate: not yet measured (R-06 unbuilt)
 - Registry/directory listings live: 0 of 8
-- Stage-0 solve pages live: 0 of top-5
-- GSC intent-query clicks (7d): — (needs R-01 map + GSC creds)
+- Stage-0 solve pages live: 0 of top-5 (R-01 map now names the top-5 unowned:
+  #2 best-way-to-store, #5 build-vs-buy, #10 TTL/expiry, #13 agent-memory-MCP)
+- GSC intent-query clicks (28d to 2026-07-16): **0** — no intent query clears
+  1 click; `/agents` sits at pos ~8 with 3 impressions; site total 1 click /
+  440 impr. This zero is the R-01 baseline.
 - Answer-engine citations (top-10): not yet measured (R-08 unbuilt)
 
 ## Tracker
 
 Tick on merge.
 
-- [ ] R-01 — intent map + P2a/P2b persona split
+- [x] R-01 — intent map + P2a/P2b persona split
 - [ ] R-02 — build-vs-buy honesty surface (competitor rows + solve page)
 - [ ] R-03 — stage-0 solve pages (0/5)
 - [ ] R-04 — canonical machine-followable setup guide
