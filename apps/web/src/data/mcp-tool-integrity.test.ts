@@ -17,12 +17,17 @@ import { fileURLToPath } from "node:url";
 // This sweep instead reads the shipped catalog from the server's own
 // `registerTool(...)` sites — the same catalog the FLOW-005 stdio walker
 // (SK-STRG-009) asserts at runtime against the real binary — and requires
-// every `nlqdb_*` token anywhere under apps/web/src to be either a shipped
+// every `nlqdb_*` token in the marketing app (`apps/web/src`) *and* the
+// docs-site prose (`apps/docs/src`, docs.nlqdb.com) to be either a shipped
 // tool or an explicitly classified non-tool. A new phantom on any surface
-// is neither, so it fails loudly.
+// is neither, so it fails loudly. Sweeping docs too closes the last gap in
+// the advertised-capability guard trilogy — the CLI-verb (SK-WEB-008) and
+// SDK-method (SK-SDK-013) guards already cover the docs site; a stranger
+// reads the same MCP tool names there before wiring `mcp.nlqdb.com`.
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const WEB_SRC = join(REPO_ROOT, "apps", "web", "src");
+const DOCS_SRC = join(REPO_ROOT, "apps", "docs", "src");
 const MCP_SERVER = join(REPO_ROOT, "packages", "mcp", "src", "server.ts");
 
 // Source of truth: the verbs the shipped MCP server actually registers.
@@ -48,15 +53,20 @@ const NON_TOOL_TOKENS = new Set([
   "nlqdb_create_database", // manifesto foil — intentionally unshipped
 ]);
 
-function tsFiles(dir: string, acc: string[] = []): string[] {
+// Extension-parameterised so the same walker sweeps the web app's source
+// (`.ts/.tsx/.astro`) and the docs site's Starlight prose (`.md/.mdx`),
+// matching the SK-SDK-013 sweep shape.
+function sweepFiles(dir: string, ext: RegExp, acc: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
     if (name === "node_modules" || name === "dist") continue;
     const p = join(dir, name);
-    if (statSync(p).isDirectory()) tsFiles(p, acc);
-    else if (/\.(ts|tsx|astro)$/.test(name) && !name.endsWith(".test.ts")) acc.push(p);
+    if (statSync(p).isDirectory()) sweepFiles(p, ext, acc);
+    else if (ext.test(name) && !name.endsWith(".test.ts")) acc.push(p);
   }
   return acc;
 }
+
+const swept = [...sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/), ...sweepFiles(DOCS_SRC, /\.(md|mdx)$/)];
 
 describe("MCP tool-name integrity (SK-MCP-002)", () => {
   test("the shipped catalog is the SK-MCP-002 verb set", () => {
@@ -71,9 +81,9 @@ describe("MCP tool-name integrity (SK-MCP-002)", () => {
     ]);
   });
 
-  test("every nlqdb_* token in apps/web is a shipped tool or a documented non-tool", () => {
+  test("every nlqdb_* token in apps/web + apps/docs is a shipped tool or a documented non-tool", () => {
     const offenders: Record<string, string> = {};
-    for (const file of tsFiles(WEB_SRC)) {
+    for (const file of swept) {
       for (const m of readFileSync(file, "utf8").matchAll(/nlqdb_[a-z][a-z_]*/g)) {
         const tok = m[0];
         if (shippedTools.has(tok) || NON_TOOL_TOKENS.has(tok)) continue;
@@ -81,7 +91,7 @@ describe("MCP tool-name integrity (SK-MCP-002)", () => {
       }
     }
     // Maps token → first file it appears in, so a failure names the phantom
-    // and where to fix it (e.g. `{ nlqdb_recall: "apps/web/src/pages/agents/index.astro" }`).
+    // and where to fix it (e.g. `{ nlqdb_recall: "apps/docs/src/content/docs/mcp.mdx" }`).
     expect(offenders).toEqual({});
   });
 });
