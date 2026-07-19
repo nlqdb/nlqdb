@@ -10,7 +10,7 @@ Row #15 (E2E freshness ≈ 0.75) has been the weekly-focus dark metric for two
 weeks; runs 62/67/70 all pin its **sole** fix to an operator-only action —
 arm a 3rd independent free-LLM pool (`FALLBACK2_LLM_API_KEY`, lane already
 wired in `_e2e-opencheck.yml`, "disabled while unset"). PR #714 (07-16) wired
-the lane's code and PR #720 (07-17) then **deleted the operator bullet from
+the lane's code and, in the same PR, **deleted the operator bullet from
 `blocked-by-human.md`** while "clearing the backlog" — but the secret was
 never set. So the scorecard still cites "its `blocked-by-human.md` bullet" for
 a bullet that no longer exists, and the one action that lifts row #15 was
