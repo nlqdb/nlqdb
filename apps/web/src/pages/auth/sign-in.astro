@@ -112,8 +112,8 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           <p id="signin-error" class="signin__error" hidden role="alert"></p>
         </form>
 
-        <div id="signin-sent" class="signin__sent" hidden>
-          <h2 class="signin__sent-title">Check your inbox.</h2>
+        <div id="signin-sent" class="signin__sent" role="status" hidden>
+          <h2 id="signin-sent-title" class="signin__sent-title" tabindex="-1">Check your inbox.</h2>
           <p class="signin__sent-body">
             We sent a sign-in link to <strong id="signin-sent-email"></strong>.
             Click it within 10 minutes to finish signing in.
@@ -350,6 +350,11 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
         if (options.showSent) {
           form.hidden = true;
           sentEl.hidden = false;
+          // The submit button just activated is now inside a hidden form,
+          // orphaning focus. role="status" on #signin-sent announces the
+          // success; move focus to its heading so keyboard/SR users also
+          // land on the "Check your inbox" beat instead of nowhere.
+          document.getElementById("signin-sent-title")?.focus();
         } else if (busyState === resendBtnState) {
           resendStatus.textContent = "sent";
           resendStatus.hidden = false;

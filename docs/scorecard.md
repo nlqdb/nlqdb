@@ -16,21 +16,25 @@ action **restored to `blocked-by-human.md` this week** after PR #714 deleted the
 bullet while the secret was still unset (this week's `weekly-review.md`, worst
 finding).
 
-**Worst number today:** **row #16 Phase-2 exit gate 1/9**; the gate-relevant engine
-worst is **row #8 BIRD 0.542 < the 0.60 Phase-2 floor** (gap 5.8 pp), and the worst
-engine number overall is **row #9 Spider 0.2222** (both fresh 07-19, offline levers
-exhausted). Per the founder-resolved lever order the engine worst-numbers aren't
-pullable this run, so **run 95 took a priority-1 UX-flow lever on the
-create→first-answer path (row #4 onboarding-KPI input): the marketing create-result
-surface had drifted from its in-chat twin on the a11y contract — a screen-reader
-stranger got no announcement that their DB was created (the pivotal "did it work?"
-funnel beat) and no column context on their first data table.** Restored both to
-match the shipped twin (`role="status"` + `scope="col"`) and added a source-scan
-parity guard. **Step 0:** PRs #737 / #736 / #731 merged; open PR #719 (Infisical
-docs/research draft) remains — no code overlap (this run touched only
-`apps/web/src/components/*` + `docs/scorecard.md`; scorecard regen is
-overlap-exempt). **Rule 6:** CI + all deploy workflows green on `main`;
-no red-main / stale-deploy lever.
+**Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
+**row #9 Spider 0.2222** and the weekly-focus **row #8 BIRD 0.542** is resolved
+(run 91) + fresh (07-19) with offline levers exhausted — both dark for a single
+run. Per **step 0** the two engine/distribution lanes and the priority-1 UX
+components lane are all held by open PRs (see below), so **run 96 pulled the next
+untaken priority-1 UX-flow lever: the magic-link "Check your inbox" confirmation
+(`#signin-sent`) was the only announcement in the whole onboarding flow with no
+live-region role** — a screen-reader stranger submitting the magic-link form (the
+path that gates anon-DB adoption) heard nothing and keyboard focus was orphaned onto
+the now-hidden submit button. Added `role="status"` + a focus move to the heading;
+guarded by a source-scan test (row #4). **Step 0 collision map:** open PRs #742
+(admin GTM dashboard — `apps/api/src/admin/**` + `apps/web/src/pages/app/admin/**`),
+#741 (reach solve page — `data/solve.ts`), #740 (weekly re-point — `weekly.md` +
+scorecard), #739 (daily run 95 — `apps/web/src/components/*` a11y), #719 (Infisical
+docs draft). This run touched only `apps/web/src/pages/auth/sign-in.astro` +
+`apps/web/src/lib/signin-hints.test.ts` + `docs/scorecard.md` — **no overlap**
+(scorecard regen is overlap-exempt). **Rule 6:** CI green on `main` `d4a1c69`;
+deploy-api/web/canary green on `b46d39e`, deploy-docs/mcp green on `04fa3d0` (run 94
+was docs-only ⇒ no new deploy); no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -38,7 +42,7 @@ no red-main / stale-deploy lever.
 | 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** (Chrome 41, ChromeMobile 3, MobileSafari 2, Firefox 2, Edge 1) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield (owned by PR #711) |
 | 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. **Run 92** wired the vague-first-goal recovery copy (`422 infer_failed` → `goal_unclear`); **run 93** fixed the follow-up-before-first-answer path — an aborted in-flight reply no longer spins forever (it settles to a terminal "Cancelled — …"), which also unblocks per-session history persistence (rows #4/#5); **run 95** restored a11y parity between the create-result surface and its in-chat twin (`role="status"` on the create-success beat + `scope="col"` on the first data table), so a screen-reader stranger is no longer silently dropped at the pivotal "did it work?" moment |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. **Run 92** wired the vague-first-goal recovery copy (`422 infer_failed` → `goal_unclear`); **run 93** fixed the follow-up-before-first-answer path — an aborted in-flight reply no longer spins forever (it settles to a terminal "Cancelled — …"); **run 95** restored a11y parity between the create-result surface and its in-chat twin (`role="status"` + `scope="col"`), so a screen-reader stranger is no longer silently dropped at the "did it work?" moment; **run 96** made the magic-link "Check your inbox" confirmation (`#signin-sent`) an announced live region (`role="status"` + focus move) — it was the only announcement in the flow with no role, so a screen-reader stranger heard nothing on the beat that gates anon-DB adoption (rows #4/#5) |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -49,7 +53,7 @@ no red-main / stale-deploy lever.
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-19 run 94):** CI + deploy-api/web/docs/mcp all `success` on `main` head `04fa3d0`; no red-main / stale-deploy lever |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-19 run 96):** CI `success` on `main` head `d4a1c69`; deploy-api/web/canary `success` on `b46d39e`, deploy-docs/mcp on `04fa3d0` (run 94 docs-only ⇒ no new deploy); no red-main / stale-deploy lever |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
@@ -82,38 +86,31 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-19 (run 95)** — **Priority-1 UX-flow lever (row #4 onboarding-KPI input):
-the marketing create-result surface had drifted from its in-chat twin on the
-accessibility contract — a screen-reader stranger got no announcement that their DB
-was created and no column context on their first data table. Restored both to the
-shipped-twin contract + added a parity guard.** The create-result surface
-(`CreateForm`'s `CreateResultView` + `SampleTable`) renders the same "did it work?"
-success beat as the in-chat `created` reply and shares the sample-row rendering
-(`SK-HDC-001`; `GLOBAL-020` "returns rows"), but had silently dropped two a11y
-attributes the twin carries: the chat twin announces the success line with
-`role="status"` (`ChatPanel` `chat-reply__created-line`) and marks header cells with
-`scope="col"` (`Data.tsx`). So on the *pivotal funnel beat* a screen-reader stranger
-heard nothing when their DB provisioned and read the first data table with no column
-association. **Change (3 files, +1 test):** added `role="status"` to the
-`createresult__schema` summary and `scope="col"` to `SampleTable`'s `<th>`, plus
-`create-result-a11y.test.ts` — a source-scan parity guard (react isn't a resolvable
-test dep, so the guard reads source like the `*-integrity` suites do) asserting the
-attribute lives on the right element on *both* twins so they can't drift apart again.
-**Number:** row #4 (first-10 / onboarding UX-flow quality) is a lagging metric moved
-through its agent-controllable input; the measurable before→after is the new guard
-(would-fail with the attributes absent → 2 pass) and twin-parity restored. **Gates:**
-`bun run typecheck` clean; `bun run lint` exit 0 (my files biome-clean); `bun run
-test` green (83 create-path/component tests incl. the new guard). **Step-1 refresh:**
-CI + deploy-api/web/docs/mcp all `success` on `main` `d4a1c69`; row #8 BIRD 0.542 &
-row #9 Spider 0.2222 both fresh 07-19 (offline levers exhausted → not pullable);
-docs-ambiguity **15**; indexable surfaces **105**, queue **2**; users **9** /
-strangers **0** carried (07-16, newest reg 07-06); GSC 28d **1 click / 452 impr /
-pos 16.3** carried (row #7). **Artifact (step 3):** queue **2** (< 3) → no forced
-publish; dev.to drip throttled (5.7h < 20h — expected no-op); no new draft (the
-lesson — twin surfaces drift on a11y contract — is thin and the queue is near the D4
-cap). **KPI (GLOBAL-025):** **onboarding + UX** — the create→first-answer path is now
-accessible-parity with its twin on the success beat; no KPI degrades (2 additive
-attributes + 1 test; no engine/API/funnel logic touched).
+**2026-07-19 (run 96)** — **Priority-1 UX-flow lever (row #4 onboarding input): the
+magic-link "Check your inbox" confirmation is now an announced live region.** Both
+engine lanes are dark for a single run (row #8 BIRD resolved+fresh, offline levers
+exhausted; row #9 Spider fresh 07-19) and per **step 0** every other pullable lane is
+held by an open PR — #742 (admin GTM dashboard), #741 (reach solve page), #740
+(weekly re-point), #739 (run 95 create-result a11y), #719 (Infisical draft). The next
+untaken priority-1 UX-flow defect: `#signin-sent` (the magic-link success panel,
+revealed by toggling `hidden` off) had **no live-region role** — the only
+announcement in the whole onboarding flow without one (`#signin-error` is
+`role="alert"`; CreateForm error `role="alert"`; chat notice `role="status"`). A
+screen-reader stranger submitting the form (the path that gates anon-DB adoption)
+heard nothing, and keyboard focus was orphaned onto the now-hidden submit button.
+**Change (3 files):** added `role="status"` + a focus move to the `tabindex="-1"`
+heading on reveal (`sign-in.astro`), plus a source-scan guard in `signin-hints.test.ts`
+(guard-the-guard pins `#signin-error`'s role too). **Number moved — row #4 input:**
+the guard fails with the role absent (pre-change) → passes after; web suite **295 →
+296 pass**, live-region parity restored. No new decision doc (D5 — cheap to reverse,
+per #739's same call). **Gates:** `bun run typecheck` green; lint exit 0 (0 findings
+on touched files); web 296 pass / 0 fail; astro check 0 errors. **Step-1:** docs-
+ambiguity **15**; surfaces **105**, queue **2**; users **9** / strangers **0**
+(07-16); GSC 28d **1/452/16.3** carried (row #7); engine BIRD 0.542 / Spider 0.2222
+fresh 07-19. **Artifact:** queue **2** (< 3) → no forced publish; dev.to drip
+throttled (8.9h < 20h — no-op); no new draft. **KPI (GLOBAL-025):** **onboarding +
+UX** — sign-in success beat now accessible-parity with its siblings; **no KPI
+degrades** (2 attrs + 1 focus call + 1 test; no engine/API/funnel logic touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
