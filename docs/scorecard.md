@@ -16,20 +16,21 @@ action **restored to `blocked-by-human.md` this week** after PR #714 deleted the
 bullet while the secret was still unset (this week's `weekly-review.md`, worst
 finding).
 
-**Worst number today:** **row #16 Phase-2 exit gate 1/9**; within engine, **row #8
-BIRD 0.542 < the 0.60 Phase-2 floor** (gap 5.8 pp). The weekly-focus engine lever
-(row #8) is resolved — **run 91 (PR #734, merged): the post-revert canonical BIRD
-re-measure recovered 0.514 → 0.5422** (McNemar b=36/c=34 p=0.452, `regressions:
-[]` — the run-90 `SK-QUAL-006` trigger cleared; baseline re-seeded 0.5462 →
-0.5422, a flat give-back per `SK-QUAL-005`). The engine lever is fresh (07-19) and
-flat; offline levers exhausted. Per **step 0** run 92's row-#4 lever is merged, so **run 93 pulled a step-2
-priority-1 UX-flow lever (rows #4/#5, chat ask path):** an aborted in-flight reply
-(a follow-up sent before the first answer lands) was left a perpetual `pending`
-skeleton — a GLOBAL-011 spinner-lie that also blocked the whole session from
-persisting — now settled to a terminal `error` (full detail in **Last change**).
-**Step 0:** open PR #719 (Infisical draft) remains; this run touched only
-`apps/web/src/components/chat/{ChatPanel.tsx,reply-settle.*}` — no overlap;
-scorecard regen is overlap-exempt. **Rule 6:** CI + deploy-web green on `main`;
+**Worst number today:** **row #16 Phase-2 exit gate 1/9**; the gate-relevant engine
+worst is **row #8 BIRD 0.542 < the 0.60 Phase-2 floor** (gap 5.8 pp), and the worst
+engine number overall is **row #9 Spider 0.2222**. The weekly-focus BIRD lever is
+resolved (run 91) and fresh (07-19), and BIRD offline levers are exhausted. Per
+**step 0** the run-93 UX-flow lane (PR #736, ChatPanel abort-settle) and the reach
+distribution lane (PR #737) are merged, so **run 94 pulled the
+remaining step-1 engine-freshness alert: row #9 Spider was 8 days stale AND
+measured on the reverted `SK-LLM-044` SHA `6e1725c` — invalid on both counts.**
+Fresh post-revert canonical on main `04fa3d0` (3 `SK-QUAL-013` transient-wall
+windows, `no_sql` 0/135, gold_error 0): free **30/135 = 0.2222** — a give-back from
+the 0.2963 `SK-LLM-044` reading (and −5.2 pp vs the pre-directive 0.2741, free-lane
+cross-date noise on the byte-identical reverted engine; see row #9). **Step 0:**
+PRs #737 / #736 / #731 merged; open PR #719 (Infisical draft) remains — this run
+touched only `docs/scorecard.md` + the verification log; no overlap (scorecard
+regen is overlap-exempt). **Rule 6:** CI + all deploy workflows green on `main`;
 no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
@@ -41,15 +42,15 @@ no red-main / stale-deploy lever.
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. **Run 92** wired the vague-first-goal recovery copy (`422 infer_failed` → `goal_unclear`); **run 93** fixed the follow-up-before-first-answer path — an aborted in-flight reply no longer spins forever (it settles to a terminal "Cancelled — …"), which also unblocks per-session history persistence (rows #4/#5) |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **100** (`/vs` 31 + `/solve` 33 + `/blog` **36**; run-79 count fix — `blog.ts` holds 36 published posts, run 78 read 35). Run 78 published the oldest queued draft (`smoke-test-walks-the-old-ui`, step 3.1 forced-publish at ≥3 depth) → live at `/blog/smoke-test-walks-the-old-ui/`, verified in sitemap + rss + llms.txt. Queue now holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **36** built; **GSC 28d (06-19→07-17, fresh 07-19 pull): 1 click / 452 impr / avg pos 16.3** (the 1 click is the homepage, pos 9.7), sitemap 112 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
-| | **Engine** — BIRD 07-19 · Spider 07-11 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
+| 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-19→07-17, fresh 07-19 pull): 1 click / 452 impr / avg pos 16.3** (the 1 click is the homepage, pos 9.7), sitemap 112 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). **Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar b=36/c=34 p=0.452, `regressions: []`) — the run-90 `SK-QUAL-006` trigger is cleared.** Baseline **re-seeded 0.5462 → 0.5422** (07-19; a flat give-back, not a ratcheted regression, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
-| 9 | Spider raw EX | **0.2963** (40/135, 07-11 with `SK-LLM-044`, [29160009809](https://github.com/nlqdb/nlqdb/actions/runs/29160009809) → [29164092490](https://github.com/nlqdb/nlqdb/actions/runs/29164092490)). **`SK-LLM-044` reverted (run 90, now off `main`)** (its +2.2 pp here was McNemar-flat, p≈0.68, while it regressed BIRD row #8) — expect a give-back toward the pre-directive **0.2741** on the next Spider canonical; re-measure due | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
+| 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836) → [29683450778](https://github.com/nlqdb/nlqdb/actions/runs/29683450778) → [29683911778](https://github.com/nlqdb/nlqdb/actions/runs/29683911778); 3 `SK-QUAL-013` windows, `no_sql` 0/135, gold_error 0, exec_error 5). **Give-back from the 0.2963 `SK-LLM-044` reading (now reverted, run 90); also −5.2 pp vs the pre-directive 0.2741 — but post-revert `PLAN_DIRECTIVES` is byte-identical to that pre-directive engine, so the drop is free-lane cross-date provider-mix/capacity noise on the *same* engine, not an attributable regression (SK-LLM-044's own Spider gain was McNemar-flat, p≈0.68; its removal is symmetrically flat).** p50 1.52 s / p95 10.9 s. Freshness clock reset 07-11 → 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-19 run 91):** CI **green on `main`** head `2b3e4d2` (ci.yml run 2575 `success`); no red-main / stale-deploy lever |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-19 run 94):** CI + deploy-api/web/docs/mcp all `success` on `main` head `04fa3d0`; no red-main / stale-deploy lever |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
@@ -82,43 +83,40 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-19 (run 93)** — **UX-flow lever (step-2 priority 1, rows #4/#5, chat ask
-path): an aborted in-flight reply spun a loading skeleton forever and silently
-blocked the whole session from persisting; settled it + de-duped the settle rule.**
-Run 92's row-#4 lever is merged (per **step 0** not duplicated), so this run pulled
-the next priority-1 stranger-flow defect on the create→ask→first-answer path. When
-a stranger asks a follow-up **before their first answer lands**,
-`ChatPanel.startSend` aborts the in-flight request (SK-SDK-003). But the aborted
-call's catch was
-`if (ac.signal.aborted) return;` — it bailed **without settling the reply**, so
-reply #1 stayed `{ kind: "pending" }` forever: a perpetual Answer/Data skeleton
-(`aria-busy`) spinning above the newer answer (a **GLOBAL-011** spinner-lie), and —
-because the history save effect skips while any reply is `pending` — the entire
-session never persisted to `localStorage`, so a reload rewrote all of it to
-"Session ended.". The closure's `replyId` is always the *superseded* reply (a
-newer send's id differs), so settling it can't clobber the live one. **Fix:** the
-abort branch now settles the superseded reply to a terminal
-`error` "Cancelled — replaced by a newer question."; extracted the settle rule
-into a pure, unit-tested `reply-settle.ts` and routed `loadHistory`'s identical
-non-terminal→"Session ended." rewrite through the same predicate (de-dup, net
-−6 lines in `ChatPanel`).
-**Number:** rows #4/#5 (onboarding / retention) — the follow-up-before-answer path
-went from **orphaned perpetual spinner + lost session history → terminal state +
-history persists**; behavior locked by 3 new `reply-settle.test.ts` cases (aborted
-`pending` → error; terminal states untouched). **Gates:** `bun test src` (web)
-**295 pass**; changed files tsc-clean (only pre-existing
-`react`/`@nlqdb/sdk` module-resolution noise); biome clean; scorecard < 20 KB (D4).
-**Step-1 refresh:** nothing merged since run 92 → CI + deploy-web `success` on
-`main` `04fa3d0`; docs-ambiguity **15**; `/blog` **36**, queue **2**; users **9** /
-strangers **0** carried (07-16, newest reg 07-06); GSC 28d **1 click / 452 impr /
-pos 16.3** carried (row #7). **Artifact (step 3):** queue **2** (< 3) → no forced
-publish; **dev.to drip fired** (> 20 h since last) — posted the oldest pending
-variant `zep-recall-vs-analytical-agent-memory` →
-https://dev.to/omer_hochman/zep-gives-my-agent-perfect-recall-it-still-cant-answer-average-per-group-about-its-own-memory-3ae0
-(tags `ai,agents,database`; archive-only pointer, script's API dedup
-self-updates); no new draft (optional, queue at the D4 edge). **KPI (GLOBAL-025):** **onboarding + UX** — an impatient stranger's
-first session no longer breaks into a frozen spinner or loses its history; no KPI
-degrades (client-only settle + tests, no engine/API surface touched).
+**2026-07-19 (run 94)** — **Engine-freshness lever (step-1 measurement discipline,
+row #9 Spider): the worst engine number was 8 days stale AND measured on reverted
+code — refreshed it to a valid post-revert canonical; raw EX 0.2963 → 0.2222.**
+Row #8 BIRD (the weekly focus) is resolved and fresh (run 91, 07-19); its offline
+levers are exhausted, and per **step 0** the two priority-1/2 lanes are taken
+(PR #736 run-93 ChatPanel UX; PR #737 reach solve page). The remaining pullable
+step-1 alert: **row #9 Spider had two independent invalidity flags** — last measured
+07-11 (8 days → freshness alert) **and** on the `SK-LLM-044` SHA `6e1725c`, a
+directive reverted 07-18 (run 90) for a BIRD regression, so the number described
+off-`main` code. Dispatched the canonical full free-lane Spider 2.0-lite on
+post-revert main `04fa3d0`; it completed across **3 `SK-QUAL-013` transient-wall
+windows** (66 → 117 → 135 attempted; `no_sql` 0/135, gold_error 0, exec_error 5):
+free **30/135 = 0.2222**, p50 1.52 s / p95 10.9 s (GHA
+[29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836) →
+[29683450778](https://github.com/nlqdb/nlqdb/actions/runs/29683450778) →
+[29683911778](https://github.com/nlqdb/nlqdb/actions/runs/29683911778)). **Number:**
+row #9 Spider **0.2963 → 0.2222** — a give-back from the `SK-LLM-044` reading, and
+−5.2 pp vs the pre-directive 0.2741; but post-revert `PLAN_DIRECTIVES` is
+byte-identical to that pre-directive engine, so the delta is free-lane cross-date
+provider-mix/capacity noise on the *same* engine, **not an attributable regression**
+(the directive's own Spider gain was McNemar-flat, p≈0.68). No baseline file to
+touch (`SK-QUAL-018`); freshness clock reset 07-11 → 07-19; verification-log row
+appended. **Gates:** docs-only change (`docs/scorecard.md` + append-only
+verification log) — typecheck/lint/test structurally unaffected; scorecard < 20 KB
+(D4). **Step-1 refresh:** CI + deploy-api/web/docs/mcp all `success` on `main`
+`04fa3d0`; docs-ambiguity **15**; indexable surfaces **105** (`/vs` 32 + `/solve`
+36 + `/blog` 37, fresh recount), queue **2**; users **9** / strangers **0** carried
+(07-16, newest reg 07-06); GSC 28d **1 click / 455 impr / pos 16.4** carried
+(row #7). **Artifact (step 3):** queue **2** (< 3) → no forced publish; dev.to drip
+throttled (3.6h < 20h since run 93's post — expected no-op); no new draft (optional
+side-work, queue near D4 cap). **KPI (GLOBAL-025):** **engine quality** — the worst
+engine number is now a valid, fresh measurement of the shipped engine instead of a
+stale reading of reverted code; no KPI degrades (measurement only, no
+engine/API/funnel surface touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
