@@ -17,3 +17,18 @@ export const SYNTHETIC_UA_TOKEN = "nlqdb-stranger-test";
 export function isSyntheticUserAgent(ua: string | null | undefined): boolean {
   return !!ua && ua.toLowerCase().includes(SYNTHETIC_UA_TOKEN);
 }
+
+// SK-GTM-005 — request-level synthetic predicate for the create paths.
+// True when the request self-identifies as nlqdb-generated: the walker
+// UA above, or a preview/mock deployment (previews share the prod D1,
+// so their creates pollute the funnel counts otherwise). Same
+// preview-detection pair as `ask/frontier-router.ts` (SK-AUTH-018).
+// Deliberately never a host/IP heuristic: a false positive here would
+// silently erase a REAL stranger from the GTM numbers, which is worse
+// than counting one extra robot.
+export function isSyntheticRequest(
+  ua: string | null | undefined,
+  env: { NODE_ENV?: string | undefined; MOCK_IDP?: string | undefined },
+): boolean {
+  return isSyntheticUserAgent(ua) || env.NODE_ENV === "preview" || env.MOCK_IDP === "1";
+}

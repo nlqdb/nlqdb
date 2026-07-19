@@ -72,7 +72,8 @@ function Metrics({ m }: { m: GtmMetrics }) {
         <h1>GTM / PMF</h1>
         <p className="admin__meta">
           Live from the control plane · generated {fmtDateTime(m.generatedAt)} · strangers exclude
-          founder/test accounts ({m.users.internal} internal of {m.users.total} total)
+          founder/test accounts ({m.users.internal} internal of {m.users.total} total) and tagged
+          robot traffic (walker/preview, {m.funnel.anonDbsSynthetic} synthetic anon DBs)
         </p>
       </header>
 
@@ -86,9 +87,14 @@ function Metrics({ m }: { m: GtmMetrics }) {
             hero
           />
           <Tile
-            label="Stranger signups"
-            value={m.users.strangers}
-            hint={`newest ${fmtDateTime(m.users.newestStrangerSignupAt)}`}
+            label="Real unique users"
+            value={m.uniques.realUsers}
+            hint={`unique stranger accounts · newest ${fmtDateTime(m.users.newestStrangerSignupAt)}`}
+          />
+          <Tile
+            label="Anon devices (organic)"
+            value={m.uniques.anonDevicesOrganic}
+            hint={`distinct devices with a live DB · ${m.uniques.anonDevicesSynthetic} tagged robots excluded`}
           />
           <Tile
             label="Retained ≥7d"
@@ -122,9 +128,11 @@ function Metrics({ m }: { m: GtmMetrics }) {
           ))}
         </ol>
         <p className="admin__note">
-          Adoption rate {fmtPct(m.funnel.adoptionRate)} ({m.funnel.adoptionsTotal} of{" "}
-          {m.funnel.anonDbsTotal} anon DBs) · {m.funnel.dbsCreated7d} DBs created in 7d ·{" "}
-          {m.funnel.dbsTotal} DBs total
+          Real adoption rate {fmtPct(m.funnel.adoptionRateReal)} ({m.funnel.adoptionsReal} stranger
+          adoptions vs {m.funnel.anonDbsTotal - m.funnel.anonDbsSynthetic} organic live anon DBs) ·
+          all-traffic rate {fmtPct(m.funnel.adoptionRate)} ({m.funnel.adoptionsTotal} adoptions,{" "}
+          {m.funnel.anonDbsTotal} anon DBs incl. {m.funnel.anonDbsSynthetic} synthetic) ·{" "}
+          {m.funnel.dbsCreated7d} DBs created in 7d · {m.funnel.dbsTotal} total
         </p>
       </section>
 
@@ -233,7 +241,11 @@ function Metrics({ m }: { m: GtmMetrics }) {
               label="Activated strangers"
               values={trendSeries(m.trend, "activatedStrangers")}
             />
-            <Spark label="Stranger signups" values={trendSeries(m.trend, "strangers")} />
+            <Spark label="Real unique users" values={trendSeries(m.trend, "strangers")} />
+            <Spark
+              label="Anon devices (organic)"
+              values={trendSeries(m.trend, "anonDevicesOrganic")}
+            />
             <Spark label="DBs active 7d" values={trendSeries(m.trend, "dbsActive7d")} />
             <Spark label="Premium interest" values={trendSeries(m.trend, "premiumInterest")} />
           </div>

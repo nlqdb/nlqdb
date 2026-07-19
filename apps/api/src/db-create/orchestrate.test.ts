@@ -621,7 +621,7 @@ describe("orchestrateDbCreate", () => {
 
     const deps = makeDeps({ inferSchema, provision, schemaHash });
 
-    await orchestrateDbCreate(deps, { ...ARGS, name: "my coffee shop" });
+    await orchestrateDbCreate(deps, { ...ARGS, name: "my coffee shop", synthetic: true });
 
     expect(inferSchema).toHaveBeenCalledWith(
       { llm: deps.llm },
@@ -630,11 +630,14 @@ describe("orchestrateDbCreate", () => {
     expect(schemaHash).toHaveBeenCalledTimes(1);
     expect(provision).toHaveBeenCalledTimes(1);
     const provisionArgs = provision.mock.calls[0]?.[1] as
-      | { schemaHash: string; secretRef: string; tenantId: string }
+      | { schemaHash: string; secretRef: string; tenantId: string; synthetic: boolean }
       | undefined;
     expect(provisionArgs?.schemaHash).toBe("deterministic_hash");
     expect(provisionArgs?.secretRef).toBe(ARGS.secretRef);
     expect(provisionArgs?.tenantId).toBe(ARGS.tenantId);
+    // SK-GTM-005 — the route-resolved synthetic flag passes through
+    // untouched (and defaults to false when absent).
+    expect(provisionArgs?.synthetic).toBe(true);
   });
 
   // SK-HDC-020 — the agent-memory preset path. The LLM is bypassed

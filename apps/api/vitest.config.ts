@@ -71,6 +71,7 @@ export default defineConfig(async () => {
               "test/oauth-mcp-bridge.test.ts",
               "test/workload-analyser/*.test.ts",
               "src/admin/gate.test.ts",
+              "src/synthetic-ua.test.ts",
               "src/databases/list.test.ts",
               "src/db-connect/connect.test.ts",
               "src/db-create/**/*.test.ts",

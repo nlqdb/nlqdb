@@ -275,6 +275,7 @@ export async function orchestrateDbCreate(
         // keys). Joined with blank lines so each statement stays legible
         // in the plan prompt.
         schemaText: ddl.join("\n\n"),
+        synthetic: args.synthetic === true,
       },
     );
     if (provisioned.ok) break;

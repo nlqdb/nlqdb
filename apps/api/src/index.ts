@@ -115,7 +115,7 @@ import { type CheckoutPlan, createCheckoutSession } from "./stripe/checkout.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { createPortalSession } from "./stripe/portal.ts";
 import { processWebhook } from "./stripe/webhook.ts";
-import { isSyntheticUserAgent } from "./synthetic-ua.ts";
+import { isSyntheticRequest, isSyntheticUserAgent } from "./synthetic-ua.ts";
 import { verifyTurnstile } from "./turnstile.ts";
 import { runWorkloadAnalyser } from "./workload-analyser/index.ts";
 
@@ -850,6 +850,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           // get the classifier — they may pick BYO engines later.
           ...(engineOverride !== undefined ? { engine: engineOverride } : {}),
           secretRef,
+          // SK-GTM-005 — stamp walker/preview creates so GTM reads
+          // (GLOBAL-038) can exclude nlqdb's own robots.
+          synthetic: isSyntheticRequest(c.req.header("user-agent"), c.env),
         });
         if (result.ok) await commitAnonCreate();
         return formatCreateJsonResponse(result);
@@ -2809,6 +2812,8 @@ app.post("/v1/databases", requireSession, async (c) => {
         ...(preset !== undefined ? { preset } : {}),
         tenantId: session.user.id,
         secretRef,
+        // SK-GTM-005 — same stamp as the /v1/ask create arm.
+        synthetic: isSyntheticRequest(c.req.header("user-agent"), c.env),
       });
       if (!result.ok) {
         span.setAttribute("nlqdb.databases.create.outcome", result.error.kind);
@@ -2960,6 +2965,8 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
         connectionUrl,
         ...(name !== undefined ? { name } : {}),
         tenantId,
+        // SK-GTM-005 — same stamp as the create arms.
+        synthetic: isSyntheticRequest(c.req.header("user-agent"), c.env),
       });
       if (!result.ok) {
         // Map the orchestrator's HTTP status to the string error code the

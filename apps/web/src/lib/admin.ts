@@ -20,6 +20,15 @@ export type GtmMetrics = {
     adoptionsTotal: number;
     adoptions7d: number;
     adoptionRate: number | null;
+    anonDbsSynthetic: number;
+    adoptionsReal: number;
+    adoptionRateReal: number | null;
+  };
+  uniques: {
+    realUsers: number;
+    anonDevices: number;
+    anonDevicesSynthetic: number;
+    anonDevicesOrganic: number;
   };
   activation: {
     dbsStarted: number;

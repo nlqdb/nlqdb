@@ -35,13 +35,19 @@ export type FunnelStage = { label: string; unit: "DBs" | "users"; value: number 
 /**
  * The acquisition funnel, top to bottom. Stages 1–2 count DBs, 3–6
  * count users — mixed units are labeled per stage rather than hidden
- * (the funnel is a narrative, not a strict subset chain).
+ * (the funnel is a narrative, not a strict subset chain). Every stage
+ * is robot-free (SK-GTM-005): tagged-synthetic anon DBs and internal
+ * adoptions are excluded; the totals live in the note line below it.
  */
 export function funnelStages(m: GtmMetrics): FunnelStage[] {
   return [
-    { label: "Anonymous DBs created", unit: "DBs", value: m.funnel.anonDbsTotal },
-    { label: "Adopted into accounts", unit: "DBs", value: m.funnel.adoptionsTotal },
-    { label: "Stranger signups", unit: "users", value: m.users.strangers },
+    {
+      label: "Anonymous DBs (organic, live)",
+      unit: "DBs",
+      value: m.funnel.anonDbsTotal - m.funnel.anonDbsSynthetic,
+    },
+    { label: "Adopted by strangers", unit: "DBs", value: m.funnel.adoptionsReal },
+    { label: "Real unique users", unit: "users", value: m.uniques.realUsers },
     { label: "Strangers with a DB", unit: "users", value: m.activation.strangersWithDb },
     { label: "Activated (≥1 answer)", unit: "users", value: m.activation.activatedStrangers },
     { label: "Retained ≥7 days", unit: "users", value: m.retention.strangersRetained7d },

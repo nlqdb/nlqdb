@@ -142,6 +142,9 @@ export type ProvisionArgs = {
   // statements) so callers can override the prompt shape later
   // without touching either of the other two.
   schemaText: string;
+  // SK-GTM-005 — stamped onto `databases.synthetic` (migration 0023) so
+  // the GTM read side excludes walker/preview-created rows.
+  synthetic: boolean;
 };
 
 export type ProvisionFailureReason =
@@ -220,6 +223,11 @@ export type DbCreateArgs = {
   // SK-HDC-003 defense-in-depth holds. Mutually exclusive with `engine`
   // (the preset pins `postgres`). Gated behind `MEMORY_PRESET` at the route.
   preset?: MemoryPreset;
+  // SK-GTM-005 — request self-identified as nlqdb-generated traffic
+  // (walker UA / preview deploy). Persisted onto the `databases` row so
+  // GTM reads (GLOBAL-038) can exclude robots. Resolved at the route via
+  // `isSyntheticRequest`; the orchestrator only passes it through.
+  synthetic?: boolean;
 };
 
 export type DbCreatePlanSummary = {
