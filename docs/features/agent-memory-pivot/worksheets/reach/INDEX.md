@@ -201,10 +201,11 @@ where closed), record cited/not-cited per query in § Current numbers.
   `solve/best-way-to-store-agent-memory` (query #2, storage-shape decision) +
   R-02's two `competitors.md` §4 entries (DIY-on-Postgres + Agentic DB/Constructive)
   and `solve/build-vs-buy-agent-memory` (query #5).
-- GSC intent-query clicks (28d to 2026-07-16, unchanged — no refresh this run:
-  the INDEX-referenced `scripts/gsc-pull.ts` is absent from the repo despite
-  `GSC_SERVICE_ACCOUNT_JSON` being set; step-1 GSC refresh is blocked until the
-  puller lands): **0** — no intent query clears
+- GSC intent-query clicks (28d to 2026-07-16 — correction 2026-07-19: the
+  earlier "puller absent" block here was stale; `scripts/gsc-pull.ts` exists
+  (landed PR #711, 07-16) and `/daily` run 94 pulled with it same-day, so the
+  next `/reach` step-1 refreshes via `bun scripts/gsc-pull.ts` filtered to the
+  R-01 intent map): **0** — no intent query clears
   1 click; `/agents` at pos ~7.3 with 3 impressions; the agent-memory blog
   (`/blog/agent-memory-benchmarks…`, 5 impr) and "deep memory retrieval
   benchmark" now surface impressions but no clicks; site total 1 click /
