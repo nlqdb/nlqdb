@@ -116,8 +116,8 @@ answer first (copy block per host, values sourced from `mcp-install.ts` —
 never hand-typed), the proven-best-practice schema story
 (`agent_memory_v1`: facts/episodes/entities + per-agent RLS + TTL) as the
 credibility layer, honest DIY section last. Cross-link R-02.
-**Done when:** ⬜ one page per top-5 unowned R-01 query (tick per page).
-Owned so far: #2 [`solve/best-way-to-store-agent-memory`](../../../../../apps/web/src/data/solve.ts) ✅, #5 build-vs-buy ✅ (R-02), #10 [`solve/expire-old-agent-memory`](../../../../../apps/web/src/data/solve.ts) ✅. Remaining: #13 agent-memory-MCP (#13 also R-05 registries).
+**Done when:** ✅ one page per top-5 unowned R-01 query (all filled).
+Owned: #2 [`solve/best-way-to-store-agent-memory`](../../../../../apps/web/src/data/solve.ts) ✅, #5 build-vs-buy ✅ (R-02), #10 [`solve/expire-old-agent-memory`](../../../../../apps/web/src/data/solve.ts) ✅, #13 [`solve/agent-memory-mcp-server`](../../../../../apps/web/src/data/solve.ts) ✅ (#13 also R-05 registries).
 
 ### R-04 — Canonical machine-followable setup guide
 
@@ -187,13 +187,17 @@ where closed), record cited/not-cited per query in § Current numbers.
 
 - Coding-agent walker pass rate: not yet measured (R-06 unbuilt)
 - Registry/directory listings live: 0 of 8
-- Stage-0 solve pages live: 3 of top-5 (R-01 map names the top-5 unowned:
-  #2 best-way-to-store ✅, #5 build-vs-buy ✅, #10 TTL/expiry ✅, #13 agent-memory-MCP).
-  R-03 latest page: `solve/expire-old-agent-memory` (owns query #10 TTL/expiry;
-  `expires_at`-on-typed-rows makes expiry a `WHERE`-predicate query, one-command
-  buy answer, honest about the not-yet-live automatic sweep — SK-PIVOT-011 core
-  ships, scheduler landing — and the in-progress E-04 read-invisibility clause;
-  cross-links build-vs-buy; auto-in llms.txt + sitemap). Earlier pages:
+- Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete):
+  #2 best-way-to-store ✅, #5 build-vs-buy ✅, #10 TTL/expiry ✅, #13 agent-memory-MCP ✅.
+  R-03 latest page: `solve/agent-memory-mcp-server` (owns query #13 "agent memory
+  MCP server"; the MCP-noun search — answers it with the one-command hosted-server
+  install and the honest contrast against blob/vector "memory MCP servers" that
+  can't aggregate; live path is `nlqdb_query` provisioning + querying, honest that
+  the dedicated `nlqdb_remember` verb + `agent_memory_v1` preset are MEMORY_PRESET-
+  gated per SK-PIVOT-010; auto-in llms.txt + sitemap). Earlier R-03 pages:
+  `solve/expire-old-agent-memory` (query #10 TTL/expiry; `expires_at`-on-typed-rows
+  makes expiry a `WHERE`-predicate query, honest about the not-yet-live automatic
+  sweep — SK-PIVOT-011 core ships, scheduler landing). Foundational pages:
   `solve/best-way-to-store-agent-memory` (query #2, storage-shape decision) +
   R-02's two `competitors.md` §4 entries (DIY-on-Postgres + Agentic DB/Constructive)
   and `solve/build-vs-buy-agent-memory` (query #5).
@@ -213,7 +217,7 @@ Tick on merge.
 
 - [x] R-01 — intent map + P2a/P2b persona split
 - [x] R-02 — build-vs-buy honesty surface (competitor rows + solve page)
-- [ ] R-03 — stage-0 solve pages (3/5; #2 best-way-to-store + #5 build-vs-buy + #10 TTL/expiry filled; remaining #13 agent-memory-MCP)
+- [x] R-03 — stage-0 solve pages (all top-5 unowned filled: #2 best-way-to-store + #5 build-vs-buy + #10 TTL/expiry + #13 agent-memory-MCP)
 - [ ] R-04 — canonical machine-followable setup guide
 - [ ] R-05 — registry sweep (0/8 venues)
 - [ ] R-06 — coding-agent walker + baseline
