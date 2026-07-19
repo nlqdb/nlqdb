@@ -2188,7 +2188,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Which coding agents and MCP hosts can install the nlqdb memory server?",
-        a: "Any host that speaks MCP. Claude Code, Cursor, and Codex install it from one command or config line (sourced from the host descriptors in `mcp-install.ts`); Claude Desktop, Windsurf, VS Code, and Zed connect via their custom-connector settings. It's a hosted remote server at `mcp.nlqdb.com/mcp` — no local binary to run.",
+        a: "Any host that speaks MCP. Cursor and VS Code install from a one-click link, Claude Code from one command, and Codex from a config-file line (all sourced from the host descriptors in `mcp-install.ts`); Claude Desktop, Windsurf, and Zed connect via their custom-connector settings. It's a hosted remote server at `mcp.nlqdb.com/mcp` — no local binary to run.",
       },
       {
         q: "Do I get dedicated remember and recall tools, or just query?",
