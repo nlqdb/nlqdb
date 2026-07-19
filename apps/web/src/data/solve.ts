@@ -2000,7 +2000,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     whatItDoesnt: [
       "The opinionated `agent_memory_v1` schema (facts/episodes/entities) isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark, `SK-PIVOT-010`); today the agent designs its own tables or provisions them from the first English goal.",
       "Per-end-user row scoping *within one shared database* isn't shipped — agent-scope RLS keyed on `app.agent_id` is in progress (E-03, `SK-PIVOT-009`); today isolation is per-tenant RLS or a database per tenant.",
-      "Writes go through the SDK or the authed remember path, not the public embed — the public `<nlq-data>` key is read-scoped, so a write credential must never sit in client HTML.",
+      "Writes go through the SDK or a signed-in `POST /v1/run`, not the public embed — the public `<nlq-data>` key is read-scoped, so a write credential must never sit in client HTML.",
     ],
     faqs: [
       {
@@ -2013,7 +2013,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How do I switch from a DIY table to nlqdb?",
-        a: "Run one command — `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp` — and your coding agent (Claude Code, Cursor, Codex) gets a real database it queries in English. The agent writes memory rows through the SDK or the authed remember path and reads them back with `nlqdb_query`; the server builds every write as a parameterised `INSERT`, so the agent controls data, never SQL.",
+        a: "Run one command — `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp` — and your coding agent (Claude Code, Cursor, Codex) gets a real database it queries in English with `nlqdb_query`. The agent writes memory rows through the SDK or a signed-in `POST /v1/run`, then reads and aggregates them back in English.",
       },
       {
         q: "Can I expire old agent memory automatically instead of writing a cron?",
