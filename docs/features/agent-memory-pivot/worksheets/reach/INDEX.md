@@ -117,7 +117,7 @@ never hand-typed), the proven-best-practice schema story
 (`agent_memory_v1`: facts/episodes/entities + per-agent RLS + TTL) as the
 credibility layer, honest DIY section last. Cross-link R-02.
 **Done when:** ⬜ one page per top-5 unowned R-01 query (tick per page).
-Owned so far: #2 [`solve/best-way-to-store-agent-memory`](../../../../../apps/web/src/data/solve.ts) ✅, #5 build-vs-buy ✅ (R-02). Remaining: #10 TTL/expiry, #13 agent-memory-MCP (#13 also R-05 registries).
+Owned so far: #2 [`solve/best-way-to-store-agent-memory`](../../../../../apps/web/src/data/solve.ts) ✅, #5 build-vs-buy ✅ (R-02), #10 [`solve/expire-old-agent-memory`](../../../../../apps/web/src/data/solve.ts) ✅. Remaining: #13 agent-memory-MCP (#13 also R-05 registries).
 
 ### R-04 — Canonical machine-followable setup guide
 
@@ -187,16 +187,20 @@ where closed), record cited/not-cited per query in § Current numbers.
 
 - Coding-agent walker pass rate: not yet measured (R-06 unbuilt)
 - Registry/directory listings live: 0 of 8
-- Stage-0 solve pages live: 2 of top-5 (R-01 map names the top-5 unowned:
-  #2 best-way-to-store ✅, #5 build-vs-buy ✅, #10 TTL/expiry, #13 agent-memory-MCP).
-  R-03 first page: `solve/best-way-to-store-agent-memory` (owns query #2; the
-  storage-shape decision — vector/JSON/relational — one-command buy answer,
-  relational-shape credibility layer, honest DIY + gated-preset limits,
-  cross-links build-vs-buy; auto-in llms.txt + sitemap). R-02 complete: two
-  `competitors.md` §4 entries (DIY-on-Postgres baseline + Agentic DB/Constructive)
-  + the `solve/build-vs-buy-agent-memory` page (owns query #5; DIY-first
-  honesty, one-command buy answer, in llms.txt).
-- GSC intent-query clicks (28d to 2026-07-16): **0** — no intent query clears
+- Stage-0 solve pages live: 3 of top-5 (R-01 map names the top-5 unowned:
+  #2 best-way-to-store ✅, #5 build-vs-buy ✅, #10 TTL/expiry ✅, #13 agent-memory-MCP).
+  R-03 latest page: `solve/expire-old-agent-memory` (owns query #10 TTL/expiry;
+  `expires_at`-on-typed-rows makes expiry a `WHERE`-predicate query, one-command
+  buy answer, honest about the not-yet-live automatic sweep — SK-PIVOT-011 core
+  ships, scheduler landing — and the in-progress E-03 read-invisibility clause;
+  cross-links build-vs-buy; auto-in llms.txt + sitemap). Earlier pages:
+  `solve/best-way-to-store-agent-memory` (query #2, storage-shape decision) +
+  R-02's two `competitors.md` §4 entries (DIY-on-Postgres + Agentic DB/Constructive)
+  and `solve/build-vs-buy-agent-memory` (query #5).
+- GSC intent-query clicks (28d to 2026-07-16, unchanged — no refresh this run:
+  the INDEX-referenced `scripts/gsc-pull.ts` is absent from the repo despite
+  `GSC_SERVICE_ACCOUNT_JSON` being set; step-1 GSC refresh is blocked until the
+  puller lands): **0** — no intent query clears
   1 click; `/agents` at pos ~7.3 with 3 impressions; the agent-memory blog
   (`/blog/agent-memory-benchmarks…`, 5 impr) and "deep memory retrieval
   benchmark" now surface impressions but no clicks; site total 1 click /
@@ -209,7 +213,7 @@ Tick on merge.
 
 - [x] R-01 — intent map + P2a/P2b persona split
 - [x] R-02 — build-vs-buy honesty surface (competitor rows + solve page)
-- [ ] R-03 — stage-0 solve pages (2/5; #2 best-way-to-store + #5 build-vs-buy filled; remaining #10 TTL, #13 agent-memory-MCP)
+- [ ] R-03 — stage-0 solve pages (3/5; #2 best-way-to-store + #5 build-vs-buy + #10 TTL/expiry filled; remaining #13 agent-memory-MCP)
 - [ ] R-04 — canonical machine-followable setup guide
 - [ ] R-05 — registry sweep (0/8 venues)
 - [ ] R-06 — coding-agent walker + baseline
