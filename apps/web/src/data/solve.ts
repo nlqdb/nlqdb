@@ -2098,6 +2098,63 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "expire-old-agent-memory",
+    persona: "P2 agent builder",
+    searchTitle: "How do I expire old agent memory automatically instead of writing a cron?",
+    oneLiner:
+      "If stale agent memory is piling up, give it an `expires_at` timestamp on typed rows in a real database — then expiry is a one-line `WHERE expires_at < now()` predicate you query in English, not a bespoke cron. One command (`claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`) gives your agent that database.",
+    painContext:
+      "Every agent that remembers things eventually has to forget them — session facts that go stale, per-user notes that must not outlive a subscription, cheap chatter that shouldn't crowd out signal. On a hand-rolled `memories` table that means a retention cron you write, schedule, and monitor yourself, plus remembering to filter expired rows out of every read. Retention is where DIY memory quietly rots: the sweep job is easy to skip and expensive to get wrong.",
+    demoGoal: "count of memory rows that are still active versus expired",
+    demoWhy:
+      "The question that tells you whether your retention is working — group rows by whether their expiry has passed and count each — is a GROUP BY over an `expires_at` column a JSON blob or vector store can't run.",
+    howNlqdbAnswers: [
+      "Store memory as typed rows with an `expires_at` timestamp, so expiry is a `WHERE expires_at < now()` predicate you query, not a service you build.",
+      "One command (`claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`) points Claude Code, Cursor, or Codex at a real hosted Postgres to store it in.",
+      "Run the cutoff `DELETE` yourself through the SDK or a signed-in `POST /v1/run`, or ask 'memories expiring this week' in English with the SQL shown.",
+      "A managed server-run TTL sweep is on the roadmap: a bound-cutoff `DELETE FROM facts` with per-database failure isolation (`SK-PIVOT-011`); core shipped, scheduler landing.",
+    ],
+    whatItDoesnt: [
+      "The automatic server-run TTL sweep is not live yet — the deterministic sweep core (`SK-PIVOT-011`) ships, but the scheduled Worker that runs it nightly is landing; until then expiry is a `DELETE` you run on your own schedule, not a promise.",
+      "The opinionated `agent_memory_v1` schema whose `facts` table carries `expires_at` isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark, `SK-PIVOT-010`); today the agent provisions its tables from the first English goal or adds the column itself.",
+      "Read-side invisibility of expired-but-not-yet-swept rows is an in-progress RLS clause (E-04), not shipped — filter `expires_at` in your read query until it lands.",
+    ],
+    faqs: [
+      {
+        q: "How do I expire old agent memory automatically instead of writing a cron?",
+        a: "Store memory as typed rows with an `expires_at` timestamp in a real database, and expiry becomes a `WHERE expires_at < now()` predicate rather than a service you build. Today you run that cutoff `DELETE` on your own schedule through the SDK or a signed-in `POST /v1/run`; a managed server-run sweep (`SK-PIVOT-011`) is landing so you won't have to. On a hand-rolled table you own the whole retention job yourself.",
+      },
+      {
+        q: "Does nlqdb delete expired memory for me yet?",
+        a: "Not automatically yet — be honest about the state. The deterministic sweep core (a bound-cutoff `DELETE FROM facts`, per-database failure isolation) is written and tested, but the scheduled Worker that fires it nightly is still landing (`SK-PIVOT-011`). Until then, expiry is a `DELETE` you trigger yourself on the schedule you choose; the storage shape makes it one line instead of a bespoke job.",
+      },
+      {
+        q: "Can I query which agent memories are about to expire?",
+        a: "Yes — because `expires_at` is a typed column, 'memories expiring in the next 7 days, soonest first' is a normal query. Ask it in English and nlqdb compiles the `WHERE` + `ORDER BY`, runs it, and shows the SQL. A JSON blob or vector store has no such grain to filter or sort on.",
+      },
+      {
+        q: "What does a DIY retention cron cost me later?",
+        a: "The `DELETE` statement is the easy part. The expensive part is scheduling it reliably, isolating one failed run so it doesn't wedge the rest, and remembering to filter expired-but-not-yet-deleted rows out of every read path. Miss the last one and your agent recalls memory you meant to forget. nlqdb is moving that into the engine (`SK-PIVOT-011`, E-04) so you don't hand-maintain it.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/AI_Agents/search/?q=memory+expire",
+        label: 'r/AI_Agents — recurring "how do I expire / prune old agent memory" threads.',
+      },
+      {
+        url: "https://hn.algolia.com/?q=agent%20memory",
+        label:
+          'HN search: "agent memory" — recurring threads on retention and forgetting in agent memory.',
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/functions-datetime.html",
+        label:
+          "Postgres date/time functions — the `now()` cutoff a `WHERE expires_at < now()` retention query is built on.",
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
