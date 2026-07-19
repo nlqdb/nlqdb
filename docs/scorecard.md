@@ -21,30 +21,35 @@ arming `FALLBACK2_LLM_API_KEY` (SambaNova, `_e2e-opencheck.yml`), the top
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** is resolved
 (run 91) + fresh (07-19) with offline levers exhausted — both dark for a single
-run. Per **step 0** the two engine/distribution lanes and the priority-1 UX
-components lane are all held by open PRs (see below), so **run 96 pulled the next
-untaken priority-1 UX-flow lever: the magic-link "Check your inbox" confirmation
-(`#signin-sent`) was the only announcement in the whole onboarding flow with no
-live-region role** — a screen-reader stranger submitting the magic-link form (the
-path that gates anon-DB adoption) heard nothing and keyboard focus was orphaned onto
-the now-hidden submit button. Added `role="status"` + a focus move to the heading;
-guarded by a source-scan test (row #4). **Step 0 collision map:** open PRs #742
-(admin GTM dashboard — `apps/api/src/admin/**` + `apps/web/src/pages/app/admin/**`),
-#741 (reach solve page — `data/solve.ts`), #740 (weekly re-point — `weekly.md` +
-scorecard), #739 (daily run 95 — `apps/web/src/components/*` a11y), #719 (Infisical
-docs draft). This run touched only `apps/web/src/pages/auth/sign-in.astro` +
-`apps/web/src/lib/signin-hints.test.ts` + `docs/scorecard.md` — **no overlap**
-(scorecard regen is overlap-exempt). **Rule 6:** CI green on `main` `d4a1c69`;
-deploy-api/web/canary green on `b46d39e`, deploy-docs/mcp green on `04fa3d0` (run 94
-was docs-only ⇒ no new deploy); no red-main / stale-deploy lever.
+run. The weekly-focus number (agentic-frontier EX → 0.80 via the premium chain) is
+**not agent-movable to a measured delta this run**: `SK-LLM-017`'s premium chain
+needs paid frontier provider credentials (founder-blocked secrets) to be real +
+testable, its meter is §6-dark, and the agentic-frontier smoke is frontier-key +
+workflow-dispatch gated — `premiumEligible` is never set true in `apps/api` today, so
+the lane is dead code, not a live defect (verified this run). So **run 97 pulled a
+priority-1 UX-flow lever a defect-hunt surfaced in the stranger ask→answer path
+(deliberately not another a11y fix, breaking the row-#4 a11y run): the chat result
+block silently dropped rows past 50.** `Data.tsx` rendered only the first 50 rows but
+gated its "+N more rows" footer on `rowCount > rows.length` — false whenever `/v1/ask`
+returns the complete uncapped array (`rowCount === rows.length`), so a stranger whose
+first answer exceeds 50 rows saw exactly 50 as the whole result (contradicts SK-WEB-005
++ GLOBAL-023 never silent). Fixed to count rows beyond the *rendered* cap, guarded by a
+pure-logic test (rows #4/#5). **Step 0 collision map:** open PRs
+#744 (GTM real-unique-users — `apps/api/src/admin/**`, `apps/web/src/pages/app/admin/**`,
+migrations, `onboarding`/`gtm-metrics` docs), #719 (Infisical docs draft). This run
+touched only `apps/web/src/components/chat/{Data.tsx,data-rows.ts,data-rows.test.ts}` +
+`docs/scorecard.md` — **no overlap** (scorecard regen is overlap-exempt). **Rule 6:**
+CI + Security green on `main` head `c8138d5`; deploy-api/web/canary green on `c8138d5`,
+deploy-docs/mcp green on `04fa3d0` (recent merges didn't touch docs/mcp paths ⇒ no new
+deploy); no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
 | | **Funnel** (visits 07-13 02:58Z CF GraphQL; users/DBs 07-16 remote D1) | | exclude synthetic stranger-test walker traffic |
 | 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** (Chrome 41, ChromeMobile 3, MobileSafari 2, Firefox 2, Edge 1) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
-| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield (owned by PR #711) |
+| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield |
 | 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. **Run 92** wired the vague-first-goal recovery copy (`422 infer_failed` → `goal_unclear`); **run 93** fixed the follow-up-before-first-answer path — an aborted in-flight reply no longer spins forever (it settles to a terminal "Cancelled — …"); **run 95** restored a11y parity between the create-result surface and its in-chat twin (`role="status"` + `scope="col"`), so a screen-reader stranger is no longer silently dropped at the "did it work?" moment; **run 96** made the magic-link "Check your inbox" confirmation (`#signin-sent`) an announced live region (`role="status"` + focus move) — it was the only announcement in the flow with no role, so a screen-reader stranger heard nothing on the beat that gates anon-DB adoption (rows #4/#5) |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is progressively hardened each run (vague-goal recovery copy, aborted-reply settle, create-result a11y parity, magic-link live region); **run 97** (latest) fixed the chat result block silently dropping rows past 50 — footer gated on `rowCount > rows.length`, always false for the complete uncapped `/v1/ask` array; now counts rows beyond the rendered cap (rows #4/#5). Per-run detail in `git log` |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -55,14 +60,14 @@ was docs-only ⇒ no new deploy); no red-main / stale-deploy lever.
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-19 run 96):** CI `success` on `main` head `d4a1c69`; deploy-api/web/canary `success` on `b46d39e`, deploy-docs/mcp on `04fa3d0` (run 94 docs-only ⇒ no new deploy); no red-main / stale-deploy lever |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-19 run 97):** CI + Security `success` on `main` head `c8138d5`; deploy-api/web/canary `success` on `c8138d5`, deploy-docs/mcp on `04fa3d0` (recent merges didn't touch docs/mcp paths ⇒ no new deploy); no red-main / stale-deploy lever |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
 | 15 | E2E manual-suite freshness | **≈ 0.75** (sdk/mcp/examples ≈1.0 each; **opencheck's latest main run [29324716801](https://github.com/nlqdb/nlqdb/actions/runs/29324716801) (run 70) FAILED**, pass=0 zeroes it ⇒ mean 0.75). **Run 70 falsified the "clean window" hypothesis:** re-dispatched `abc` on `2b9f8a7` ~3 h after the last free-lane consumer (run 69 memory eval, 07:24Z) — all 3 suites still red, Suite A's anon 2nd `/v1/ask` 240 s-timed-out, **no product regression** (bootstrap recordings passed, no `schema_mismatch`). The free pools (NIM + OpenRouter `:free`) flap intrinsically on a minute timescale ⇒ contention timing was never the cause. **Now dark (rule 8):** only the founder-only independent 3rd free pool (its `blocked-by-human.md` bullet) lifts it | Sequencing rule (unchanged): never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.542, 07-19 post-revert, flat vs baseline — the run-90 regression is cleared); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **15** (fresh grep 07-16 run 86; unchanged since run 78, was 17). Run 78 reclassified 2 decided-deferral ICP bullets (`icp-mining`: Reddit disable [SK-ICP-011], 10th-source refactor pin [P5]) to the canonical "Parked until `<trigger>`" form their 4 siblings already use — honest miscount correction, not a genuinely-open question resolved | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver — run 86 declined the pull: the 15 bullets are genuine deferrals (see _Last change_) |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **16** (fresh grep 07-19 run 97; was 15, +1: the merged #742 GTM dashboard added `gtm-metrics` "Loop integration" — the `/daily` funnel-source-of-truth wiring, which open PR #744 is already resolving, so not an agent-pullable target this run). Run 78 reclassified 2 decided-deferral ICP bullets to the canonical "Parked until `<trigger>`" form — honest miscount correction, not a genuinely-open question resolved | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver — run 86 declined the pull: the 15 bullets are genuine deferrals (see _Last change_) |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Layered coverage: built-output `href`/`src` sweep + cross-app subdomain verification (run 61) + prod sitemap-200 check (run 72) + `client-nav-integrity.test.ts` (SK-WEB-022) guarding both `location.*` JS navigations (run 77) **and** static `<a href="/literal">` source literals (run 87, after legal-page bare-path 307s) — dotted assets + dynamic `href={…}` skipped, negative-tested | target 0 — `bun run build && bun run check:links` (built-output) + `client-nav-integrity.test.ts` (in CI) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** (claim-vs-reality on shipped surfaces + docs; target 0 **met**). Runs 32 + 37 + 56 + 59 + 62 + 64 + 72–74 + 76 each found/closed 1 agent-movable gap (most recent: run 76 verified `brew install nlqdb/tap/nlq` live — tap `nlq.rb` sha256 matches the formula, tarball ships the binary). **Standing guards — all three advertised-capability surfaces now closed-world CI-swept across web *and* docs** (run 89 closed the last gap), each deriving its truth from source (never hand-copied) and naming the phantom + file on failure: `mcp-tool-integrity.test.ts` (MCP tools from the server's `registerTool(...)` sites, run 64 + **run 89 extended to `apps/docs/src`, `SK-MCP-002`**), `cli-verb-integrity.test.ts` (CLI verbs from the cobra tree, run 74, web + docs prose), and `sdk-method-integrity.test.ts` (SDK methods from the shipped `NlqClient` type, run 88, `SK-SDK-013`, web + docs). All 0 phantom live, negative-tested, false-positive-free. **Trilogy complete** — no advertised-capability surface remains web-only; the category is closed |
@@ -88,31 +93,32 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-19 (run 96)** — **Priority-1 UX-flow lever (row #4 onboarding input): the
-magic-link "Check your inbox" confirmation is now an announced live region.** Both
-engine lanes are dark for a single run (row #8 BIRD resolved+fresh, offline levers
-exhausted; row #9 Spider fresh 07-19) and per **step 0** every other pullable lane is
-held by an open PR — #742 (admin GTM dashboard), #741 (reach solve page), #740
-(weekly re-point), #739 (run 95 create-result a11y), #719 (Infisical draft). The next
-untaken priority-1 UX-flow defect: `#signin-sent` (the magic-link success panel,
-revealed by toggling `hidden` off) had **no live-region role** — the only
-announcement in the whole onboarding flow without one (`#signin-error` is
-`role="alert"`; CreateForm error `role="alert"`; chat notice `role="status"`). A
-screen-reader stranger submitting the form (the path that gates anon-DB adoption)
-heard nothing, and keyboard focus was orphaned onto the now-hidden submit button.
-**Change (3 files):** added `role="status"` + a focus move to the `tabindex="-1"`
-heading on reveal (`sign-in.astro`), plus a source-scan guard in `signin-hints.test.ts`
-(guard-the-guard pins `#signin-error`'s role too). **Number moved — row #4 input:**
-the guard fails with the role absent (pre-change) → passes after; web suite **295 →
-296 pass**, live-region parity restored. No new decision doc (D5 — cheap to reverse,
-per #739's same call). **Gates:** `bun run typecheck` green; lint exit 0 (0 findings
-on touched files); web 296 pass / 0 fail; astro check 0 errors. **Step-1:** docs-
-ambiguity **15**; surfaces **105**, queue **2**; users **9** / strangers **0**
-(07-16); GSC 28d **1/452/16.3** carried (row #7); engine BIRD 0.542 / Spider 0.2222
-fresh 07-19. **Artifact:** queue **2** (< 3) → no forced publish; dev.to drip
-throttled (8.9h < 20h — no-op); no new draft. **KPI (GLOBAL-025):** **onboarding +
-UX** — sign-in success beat now accessible-parity with its siblings; **no KPI
-degrades** (2 attrs + 1 focus call + 1 test; no engine/API/funnel logic touched).
+**2026-07-19 (run 97)** — **Priority-1 UX-flow lever (rows #4/#5): the chat result
+block no longer silently drops rows past 50.** Weekly-focus number (agentic-frontier
+→ 0.80 via the `SK-LLM-017` premium chain) is not agent-movable this run — see the
+worst-number paragraph (founder-blocked paid frontier credentials, §6-dark meter,
+gated smoke; `premiumEligible` never true ⇒ dead lane, not a live defect). A
+defect-hunt over the stranger create→ask→first-answer path surfaced a genuine
+functional bug (not another a11y fix — breaks the row-#4 a11y run): `chat/Data.tsx`
+renders only the first 50 rows but gated its "+N more rows" footer on
+`rowCount > rows.length` — **always false** for the complete uncapped array `/v1/ask`
+returns (`rowCount === rows.length`), so an answer over 50 rows renders 50 with
+**zero indicator** (contradicts SK-WEB-005 "the data is the proof" + GLOBAL-023 never
+silent). **Change (3 files):** extracted a pure `hiddenRowCount(returnedLen, rowCount)`
+helper (`chat/data-rows.ts`) counting rows beyond the *rendered* cap — the correct
+`SampleTable.tsx:55` comparison the block had diverged from — wired into `Data.tsx`,
+plus a `bun:test` guard whose first case (`hiddenRowCount(80,80) === 30`) is exactly
+what the old expression got wrong (→ 0). **Number moved — rows #4/#5:** guard proves
+the regression; web suite **308 → 314 pass** (+6). No new decision doc (D5 — bug fix
+restoring SK-WEB-005's intent). **Gates:** typecheck green; `bun run lint` exit 0 (0
+findings on touched files); web **314 pass / 0 fail**; astro check 0 errors.
+**Step-1:** docs-ambiguity **16** (+1, #742's `gtm-metrics` "Loop integration", owned
+by #744); surfaces **105**, queue **2**; users **9** / strangers **0** (07-16); GSC
+28d **1/452/16.3** carried; engine BIRD 0.542 / Spider 0.2222 fresh 07-19.
+**Artifact:** queue **2** (< 3) → no forced publish; dev.to drip throttled (11.9h <
+20h — no-op); no draft (queue 19.7 KB, a draft crosses the D4 cap). **KPI
+(GLOBAL-025):** **onboarding + UX** — a stranger's first answer is now honest about
+truncation instead of hiding proof rows; **no KPI degrades**.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

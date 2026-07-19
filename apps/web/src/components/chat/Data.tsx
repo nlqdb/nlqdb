@@ -5,6 +5,7 @@
 // paraphrase the data away — even when an Answer is present.
 
 import { prettifyHeader } from "../../lib/text";
+import { hiddenRowCount, MAX_ROWS } from "./data-rows.ts";
 
 type Row = Record<string, unknown>;
 
@@ -13,8 +14,6 @@ interface DataProps {
   rowCount: number | null;
   pending: boolean;
 }
-
-const MAX_ROWS = 50;
 
 export default function Data({ rows, rowCount, pending }: DataProps) {
   if (pending && !rows) {
@@ -32,14 +31,13 @@ export default function Data({ rows, rowCount, pending }: DataProps) {
   }
 
   const shape = inferShape(rows);
+  const hidden = hiddenRowCount(rows.length, rowCount);
   return (
     <div className="chat-data" data-shape={shape}>
       {shape === "kv" && rows[0] ? <KvBlock row={rows[0]} /> : null}
       {shape === "list" ? <ListBlock rows={rows} /> : null}
       {shape === "table" ? <TableBlock rows={rows} /> : null}
-      {rowCount && rowCount > rows.length ? (
-        <p className="chat-data__more">+ {rowCount - rows.length} more rows</p>
-      ) : null}
+      {hidden > 0 ? <p className="chat-data__more">+ {hidden} more rows</p> : null}
     </div>
   );
 }
