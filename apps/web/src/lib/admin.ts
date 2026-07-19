@@ -44,6 +44,11 @@ export type GtmMetrics = {
     strangersActive7d: number;
     strangersRetained7d: number;
   };
+  acquisition: {
+    dbsWithSource: number;
+    dbsBySource: Array<{ source: string; total: number; last7d: number }>;
+    strangersBySource: Array<{ source: string; strangers: number }>;
+  };
   pmf: {
     premiumInterest: number;
     payingCustomers: number;

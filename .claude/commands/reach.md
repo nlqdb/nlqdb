@@ -26,7 +26,12 @@ memory**, and making that answer one free command.
    today" (GLOBAL-019); human-norm venues (Reddit/HN/Discord) get a fact
    sheet via `docs/research/distribution-queue.md`, never final agent
    copy; account-walled submissions → exact payload to
-   `docs/blocked-by-human.md`; every new CTA emits a GLOBAL-024 signal.
+   `docs/blocked-by-human.md`; every new CTA emits a GLOBAL-024 signal;
+   **every externally published nlqdb URL carries its channel's
+   `utm_source` key from `docs/research/acquisition-channels.md`**
+   (SK-GTM-007, founder-resolved 2026-07-19) — yield is read from
+   `/app/admin` sources, never estimated. Flip that ledger's Status
+   column in the same PR that changes a channel's state.
 4. **P2 applies with force here:** registries, host directories, and
    answer-engine behaviour change monthly — web-search the current
    submission mechanism / format before acting on any external venue, and
@@ -44,7 +49,9 @@ eligible slice or end as a null run. Never duplicate an open PR's work.
 Update the reach `INDEX.md` **§ Current numbers** (overwrite in place, no
 changelog): GSC intent-query impressions/clicks
 (`bun scripts/gsc-pull.ts` when `GSC_SERVICE_ACCOUNT_JSON` is set, filtered
-to the R-01 intent map), registry listings live, stage-0 pages live, the
+to the R-01 intent map), registry listings live, stage-0 pages live,
+**acquisition channels live with attributable yield** (the
+`docs/research/acquisition-channels.md` ledger count), the
 R-06 coding-agent walker pass rate (re-run it if merged), and the R-08
 answer-engine citation check when its monthly cadence is due.
 

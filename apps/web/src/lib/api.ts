@@ -14,6 +14,7 @@
 // to wire CreateForm.tsx end-to-end.
 
 import { getOrMintAnonToken } from "./anon";
+import { firstTouchSource } from "./attribution";
 
 export type CreateRow = Record<string, string | number | boolean | null>;
 
@@ -85,6 +86,7 @@ export async function postAskCreate(
   if (options.turnstileToken) {
     headers["cf-turnstile-response"] = options.turnstileToken;
   }
+  const source = firstTouchSource();
 
   const res = await fetch(`${apiBase.replace(/\/$/, "")}/v1/ask`, {
     method: "POST",
@@ -101,8 +103,10 @@ export async function postAskCreate(
     // what the device-cap → sign-in handoff requires.
     credentials: "omit",
     // dbId omitted on purpose — the kind=create classifier branch
-    // routes the typed-plan pipeline (SK-HDC-001).
-    body: JSON.stringify({ goal }),
+    // routes the typed-plan pipeline (SK-HDC-001). `source` is the
+    // SK-GTM-007 first-touch attribution — telemetry the server
+    // sanitizes-or-drops, never a reason for a create to fail.
+    body: JSON.stringify({ goal, ...(source ? { source } : {}) }),
   });
 
   if (res.status === 428) return { ok: false, error: { kind: "challenge_required" } };

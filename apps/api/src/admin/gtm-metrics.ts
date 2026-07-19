@@ -24,6 +24,18 @@ const INTERNAL_EMAIL_SQL = `(
   OR lower(u.email) LIKE '%@preview.dev'
 )`;
 
+// SK-GTM-007 — one channel key per row: utm_source wins, else the
+// external referrer host, else 'direct' (captured but unattributed).
+// Rows with no source_json at all (pre-instrument, or created via
+// CLI/SDK/MCP which don't capture) group as 'untracked' so instrument
+// coverage is itself visible. utm_source values are canonical in
+// docs/research/acquisition-channels.md.
+const SOURCE_CHANNEL_SQL = (col: string) => `COALESCE(
+  NULLIF(json_extract(${col}, '$.utm_source'), ''),
+  NULLIF(json_extract(${col}, '$.ref'), ''),
+  'direct'
+)`;
+
 const DAY_SECONDS = 86_400;
 const RETENTION_WINDOW_DAYS = 7;
 // Below this many activated strangers a Sean-Ellis "very disappointed"
@@ -99,6 +111,14 @@ export type GtmMetrics = {
     /** Real strangers whose latest activity is ≥ 7 days after signup. */
     strangersRetained7d: number;
   };
+  acquisition: {
+    /** DBs whose create captured a first touch (instrument coverage). */
+    dbsWithSource: number;
+    /** All DBs grouped by channel; 'untracked' = no source captured. */
+    dbsBySource: Array<{ source: string; total: number; last7d: number }>;
+    /** Real strangers by their earliest captured channel. */
+    strangersBySource: Array<{ source: string; strangers: number }>;
+  };
   pmf: {
     premiumInterest: number;
     payingCustomers: number;
@@ -140,6 +160,8 @@ export async function computeGtmMetrics(
     userCounts,
     signupDays,
     dbCounts,
+    dbsBySource,
+    strangersBySource,
     first10,
     strangerDbs,
     adoptions,
@@ -166,9 +188,27 @@ export async function computeGtmMetrics(
         SUM(CASE WHEN tenant_id LIKE 'anon:%' AND synthetic = 1 THEN 1 ELSE 0 END) AS anonSynthetic,
         SUM(CASE WHEN created_at >= ?1 THEN 1 ELSE 0 END) AS created7d,
         SUM(CASE WHEN last_queried_at >= ?1 THEN 1 ELSE 0 END) AS active7d,
-        SUM(CASE WHEN last_queried_at >= ?2 THEN 1 ELSE 0 END) AS active30d
+        SUM(CASE WHEN last_queried_at >= ?2 THEN 1 ELSE 0 END) AS active30d,
+        SUM(CASE WHEN source_json IS NOT NULL THEN 1 ELSE 0 END) AS withSource
       FROM databases`)
       .bind(cut7d, cut30d),
+    db
+      .prepare(`SELECT
+        CASE WHEN source_json IS NULL THEN 'untracked'
+             ELSE ${SOURCE_CHANNEL_SQL("source_json")} END AS source,
+        COUNT(*) AS total,
+        SUM(CASE WHEN created_at >= ?1 THEN 1 ELSE 0 END) AS last7d
+      FROM databases GROUP BY source ORDER BY total DESC, source`)
+      .bind(cut7d),
+    db.prepare(`SELECT src AS source, COUNT(*) AS strangers FROM (
+        SELECT COALESCE((
+          SELECT ${SOURCE_CHANNEL_SQL("d.source_json")}
+          FROM databases d
+          WHERE d.tenant_id = u.id AND d.source_json IS NOT NULL
+          ORDER BY d.created_at ASC LIMIT 1
+        ), 'untracked') AS src
+        FROM user u WHERE NOT ${INTERNAL_EMAIL_SQL}
+      ) GROUP BY src ORDER BY strangers DESC, src`),
     db.prepare(`SELECT COUNT(*) AS started,
         SUM(CASE WHEN first10_ok > 0 THEN 1 ELSE 0 END) AS activated,
         SUM(CASE WHEN first10_asks >= 2 THEN 1 ELSE 0 END) AS secondAsk,
@@ -302,6 +342,18 @@ export async function computeGtmMetrics(
       strangersActive7d,
       strangersRetained7d,
     },
+    acquisition: {
+      dbsWithSource: num(dc, "withSource"),
+      dbsBySource: ((dbsBySource?.results ?? []) as CountsRow[]).map((r) => ({
+        source: String(r["source"]),
+        total: num(r, "total"),
+        last7d: num(r, "last7d"),
+      })),
+      strangersBySource: ((strangersBySource?.results ?? []) as CountsRow[]).map((r) => ({
+        source: String(r["source"]),
+        strangers: num(r, "strangers"),
+      })),
+    },
     pmf: {
       premiumInterest: num(pi, "n"),
       payingCustomers,
@@ -340,6 +392,8 @@ export async function writeGtmSnapshot(db: D1Database, metrics: GtmMetrics): Pro
     anonDevicesOrganic: metrics.uniques.anonDevicesOrganic,
     anonDbsOrganic: metrics.funnel.anonDbsTotal - metrics.funnel.anonDbsSynthetic,
     adoptionsReal: metrics.funnel.adoptionsReal,
+    // SK-GTM-007 — additive key: trend of instrument coverage.
+    dbsWithSource: metrics.acquisition.dbsWithSource,
   };
   await db
     .prepare(`INSERT OR IGNORE INTO gtm_snapshots (day, metrics_json) VALUES (?, ?)`)

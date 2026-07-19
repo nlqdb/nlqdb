@@ -126,19 +126,29 @@ set, the worst **agent-movable** number). Skip dark or founder-blocked
 metrics when *choosing the lever* — still report them, but never pick a
 target no single run can move. A lagging metric (real strangers ≈ 0) is
 moved through its agent-controllable inputs, **in this order**
-(founder-resolved 2026-07-11):
+(founder-resolved 2026-07-19, amending the 2026-07-11 order per
+[`GLOBAL-038`](../../docs/decisions/GLOBAL-038-gtm-pmf-instrumentation.md) —
+the operating focus is user acquisition):
 
-1. **Real UX-flow quality.** A stranger's actual path — land → create /
+1. **Acquisition & distribution yield.** The channel ledger
+   (`docs/research/acquisition-channels.md`) and the GTM instrument are
+   the frame: levers that make a channel live, make its yield
+   attributable (utm-tagging per `SK-GTM-007`, attribution coverage),
+   strengthen the pages GSC shows losing winnable clicks, or lift a
+   funnel-conversion number on `/app/admin`. `/reach` owns the R-slices —
+   never duplicate its open PRs (step 0); this lane is the daily-sized
+   acquisition work around them.
+2. **Real UX-flow quality.** A stranger's actual path — land → create /
    adopt → ask → first answer — exercised end-to-end (measured by the
    canonical stranger walkers, row #21, and the E2E suites' pass
    component, row #15). A flow that fails, errors intermittently, or
    confuses is always a pullable lever, even when the walker that exposed
-   it is synthetic.
-2. **Distribution surfaces and their yield.**
+   it is synthetic — a broken funnel wastes every visitor a channel
+   delivers.
 3. **Meta levers last, and only with a written waiver:** docs-ambiguity
    (row #17) and doc reconciliation are valid only after this run states,
-   in the scorecard's "Last change" entry, why no UX-flow, engine, or
-   distribution lever is pullable right now. Queue drafting is not a
+   in the scorecard's "Last change" entry, why no acquisition/
+   distribution, UX-flow, or engine lever is pullable right now. Queue drafting is not a
    lever — it is step-3 side work and never a run's justification.
 
 **If no lever clears that bar, don't manufacture one:** record the finding

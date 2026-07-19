@@ -6,14 +6,15 @@ when-to-load:
     - apps/api/src/admin/**
     - apps/web/src/pages/app/admin.astro
     - apps/web/src/components/admin/**
-  topics: [gtm, pmf, metrics, funnel, admin, dashboard, acquisition]
+    - apps/web/src/lib/attribution.ts
+  topics: [gtm, pmf, metrics, funnel, admin, dashboard, acquisition, attribution, utm]
 ---
 
 # Feature: GTM Metrics
 
 **One-liner:** Canonical GTM/PMF metric set — admin-gated live metrics endpoint, daily snapshots, and the `/app/admin` founder dashboard.
-**Status:** implemented (2026-07-19 — endpoint + snapshots + dashboard v1; SK-GTM-005 synthetic-traffic exclusion + unique-people counts same day; external sources stay out of scope, see Open questions)
-**Owners (code):** `apps/api/src/admin/**`, `apps/api/src/synthetic-ua.ts`, `apps/api/migrations/00{22_gtm_snapshots,23_synthetic_traffic_flag}.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`
+**Status:** implemented (2026-07-19 — endpoint + snapshots + dashboard v1; SK-GTM-005 synthetic-traffic exclusion + unique-people counts + first-touch attribution `SK-GTM-007` same day; external sources stay out of scope, see Open questions)
+**Owners (code):** `apps/api/src/admin/**`, `apps/api/src/synthetic-ua.ts`, `apps/api/migrations/00{22_gtm_snapshots,23_synthetic_traffic_flag,24_databases_source}.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`
 
 **Contribution to north-star:** Onboarding — the funnel/activation/retention numbers ARE the onboarding pillar's measurement (TTFV cousins, first-10 success, retention per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)), now continuously measured instead of hand-pulled; per [`GLOBAL-038`](../../decisions/GLOBAL-038-gtm-pmf-instrumentation.md) acquisition measurement is additionally first-class. No other pillar degrades: the endpoint is admin-only D1 reads off the request path of every product surface.
 
@@ -23,6 +24,7 @@ when-to-load:
 
 - `apps/api/src/admin/**` (gate + metric definitions + snapshots)
 - `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`
+- `apps/web/src/lib/attribution.ts` (SK-GTM-007 first-touch capture; persisted via the `/v1/ask` create path)
 
 ## Decisions
 
@@ -202,6 +204,55 @@ when-to-load:
   - Backfilling the pre-0023 backlog — no reliable key exists; the
     sweep resolves it within 90 days for free.
 
+### SK-GTM-007 — First-touch attribution: one localStorage slot, persisted on the created DB row; channel keys canonical in the acquisition ledger
+
+- **Decision:** Acquisition attribution is **first-party and first-touch**.
+  The web layout (`Base.astro`) calls `captureFirstTouch()`
+  (`apps/web/src/lib/attribution.ts`) on every page load: the FIRST
+  touch a device makes (UTM params, external referrer host, landing
+  pathname) is stored once in `localStorage["nlqdb_src"]` and never
+  overwritten. `postAskCreate` forwards it as the `/v1/ask` `source`
+  field; the API sanitizes it (`sanitizeAskSource` — whitelist keys,
+  160-char caps, **drop-never-400**) and persists it to
+  `databases.source_json` (migration `0024`) off the response path
+  (`waitUntil`, best-effort). Adoption re-tenants that row untouched, so
+  a stranger signup stays attributed to the channel that produced it.
+  The channel key per metric row is `utm_source`, else referrer host,
+  else `direct`; rows with no capture (pre-instrument, CLI/SDK/MCP) are
+  `untracked` so instrument coverage is itself a visible number.
+  **`utm_source` values are canonical in
+  [`docs/research/acquisition-channels.md`](../../research/acquisition-channels.md)** —
+  every externally published nlqdb URL carries its ledger key.
+- **Core value:** Free, Bullet-proof, Simple
+- **Why:** The first stranger cohort can never be attributed
+  retroactively — waiting for "stranger signups > 0" (the previous
+  parking of this question) guarantees the channel experiments the
+  2026-07-19 acquisition focus (`GLOBAL-038`) runs are unmeasurable
+  exactly when their readout matters. First-party capture is the D1
+  ground truth PostHog can't be (client-blockable, different
+  population); first-touch (vs last-touch) matches the question "which
+  channel *brought* them", and one slot needs no consent-scoped cookie.
+- **Consequence in code:** Attribution is telemetry, never load-bearing:
+  every layer (capture, parse, persist) drops on failure — a malformed
+  `source` must never 400 a create, and a failed D1 write only logs
+  (`gtm_source_write_failed`). New channels add a ledger row, not code.
+  `acquisition.*` metrics in `computeGtmMetrics` group by the SQL
+  channel expression (`SOURCE_CHANNEL_SQL`) — reviewers reject a second
+  channel-derivation elsewhere. `first write wins` on both layers
+  (localStorage guard + `WHERE source_json IS NULL`).
+- **Alternatives rejected:**
+  - Wait for strangers before instrumenting (the prior parking) —
+    attribution can't be backfilled; rejected by the acquisition focus.
+  - PostHog-only attribution — client-blockable and a different
+    population than the D1 rows the funnel counts (GLOBAL-034 keeps it
+    for behavioral funnels).
+  - Server-side capture from the `Referer` header — the create POST's
+    referrer is our own page, never the acquiring channel; only the
+    client sees the first touch.
+  - A dedicated touches table keyed by principal — a second store +
+    join for data that is 1:1 with the created row today; the column is
+    the smaller diff and adoption already carries it.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the line.
@@ -217,6 +268,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 ## Open questions / known unknowns
 
 - **External sources on the dashboard (CF Web Analytics visits, GSC clicks/impressions)** — Parked until the D1-derived dashboard proves daily use. Both need operator tokens (`CF_ANALYTICS_TOKEN`, GSC service account) mirrored into the Worker; the v1 dashboard names the gap honestly (visits row links to the scorecard method) rather than proxying half-configured sources.
-- **Signup source attribution (referrer/UTM captured at anon-create/signup)** — Parked until stranger signups > 0 make attribution answerable. PostHog client capture on `/app` (`SK-WEB-024`) already records initial referrer for signed-in flows; a first-party `signup_source` column is the follow-up slice if PostHog's view proves insufficient.
 - **Loop integration** — the `/daily` scorecard funnel pull can switch from remote-D1 SQL to `GET /v1/admin/metrics` (founder session or a read token TBD); decide when a loop prompt next touches the funnel rows.
 - **Adoption-rate denominator understates the true anon-DB base** — `adoptionRate` is `adopted / (live anon DBs + adopted)`, bounded [0,1]. Adoption re-tenants the row off `anon:%` and the sweep (`SK-ANON-002`) deletes abandoned anon DBs, so neither the adopted nor the swept-abandoned DBs are in the live-anon count — the true all-time created base is larger, so the rate slightly overstates. Exact all-time adoption share needs an append-only anon-DB-created counter (a `gtm_snapshots` key or an events-derived count); parked until anon volume makes the gap material.

@@ -48,6 +48,10 @@ acting on it is one free command** (the per-host strings in
 - **Submissions needing a human account** (sign-in wall, OAuth, payment) →
   exact payload + link as a bullet in `docs/blocked-by-human.md`.
 - **Every new CTA emits a GLOBAL-024 demand signal.**
+- **Every externally published URL carries its channel's `utm_source`
+  key** from the canonical ledger
+  [`docs/research/acquisition-channels.md`](../../../../research/acquisition-channels.md)
+  (`SK-GTM-007`) — yield reads from `/app/admin` sources, never estimates.
 - **Additive.** No renames; reach slices land on existing machinery
   (`solve.ts`, `/blog`, `llms.txt`, docs site, `mcp-install.ts`).
 

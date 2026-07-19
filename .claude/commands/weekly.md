@@ -52,10 +52,15 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 1. **Set the weekly focus number** at the top of `docs/scorecard.md`: one
    agent-movable number + a one-line why, chosen from the audit. If the
    founder wrote one this week, keep theirs — never overwrite a founder
-   edit. Default when everything is green: the pillar furthest from its
-   `GLOBAL-025` floor — **via that pillar's best agent-movable input,
-   never its headline number while that number is dark** (levers
-   exhausted or externally blocked). A focus no daily run can pull
+   edit. **Default while the `GLOBAL-038` acquisition focus stands
+   (founder-resolved 2026-07-19): the best agent-movable acquisition/GTM
+   input** — channel coverage per
+   `docs/research/acquisition-channels.md`, attribution/instrument
+   coverage, or a funnel-conversion number — falling back to the pillar
+   furthest from its `GLOBAL-025` floor only when every acquisition
+   lever is blocked. Either way pick **an agent-movable input, never a
+   headline number while that number is dark** (levers exhausted or
+   externally blocked). A focus no daily run can pull
    scatters the week into meta work and measurement churn — found
    2026-07-11 (BIRD), repeated 2026-07-18 (BIRD again, runs 90–94)
    (founder-resolved 2026-07-19).

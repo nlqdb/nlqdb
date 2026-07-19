@@ -98,6 +98,14 @@ const siteEntityJsonLd =
   <body>
     <slot />
 
+    {/* SK-GTM-007 — record the first external touch (UTM / referrer /
+        landing) on every page; first write wins. Bundled (not inline)
+        so it shares lib/attribution.ts with the create path. */}
+    <script>
+      import { captureFirstTouch } from "../lib/attribution";
+      captureFirstTouch();
+    </script>
+
     {/* SK-WEB-001 — pre-hydration recovery panel for crashes before `DOMContentLoaded`; the boot script below gates the reveal and the CSS overlay covers the viewport if it ever fires. */}
     <div id="boot-fallback" hidden role="alert">
       <div class="boot-fallback__card">

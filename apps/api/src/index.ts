@@ -855,6 +855,21 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           synthetic: isSyntheticRequest(c.req.header("user-agent"), c.env),
         });
         if (result.ok) await commitAnonCreate();
+        // SK-GTM-007 — persist the client's first-touch acquisition
+        // source on the freshly-created row, off the response path.
+        // Best-effort telemetry: a failed write logs and is dropped —
+        // it must never break a create. `source_json IS NULL` keeps
+        // the write first-touch-only even on an idempotent replay.
+        if (result.ok && parsed.body.source) {
+          c.executionCtx.waitUntil(
+            c.env.DB.prepare(
+              "UPDATE databases SET source_json = ?1 WHERE id = ?2 AND source_json IS NULL",
+            )
+              .bind(JSON.stringify(parsed.body.source), result.dbId)
+              .run()
+              .catch((err) => console.warn("gtm_source_write_failed", String(err))),
+          );
+        }
         return formatCreateJsonResponse(result);
       } finally {
         span.end();

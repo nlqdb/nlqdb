@@ -35,6 +35,7 @@ export default defineConfig(async () => {
           test: {
             name: "unit",
             include: [
+              "test/http.test.ts",
               "test/byollm.test.ts",
               "test/secret-envelope.test.ts",
               "test/orchestrate.test.ts",

@@ -134,3 +134,44 @@ describe("parseAskBody — model preset validation (SK-PREMIUM-014)", () => {
     }
   });
 });
+
+describe("parseAskBody — acquisition source (SK-GTM-007)", () => {
+  it("carries a valid source through, trimmed and length-capped", async () => {
+    const out = await parseAskBody(
+      fakeCtx({
+        goal: "g",
+        source: {
+          utm_source: "  devto ",
+          ref: "news.ycombinator.com",
+          landing: `/${"x".repeat(400)}`,
+        },
+      }),
+    );
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(out.body.source?.utm_source).toBe("devto");
+    expect(out.body.source?.ref).toBe("news.ycombinator.com");
+    expect(out.body.source?.landing?.length).toBe(160);
+  });
+
+  it("drops unknown keys and non-string values — never a 400", async () => {
+    const out = await parseAskBody(
+      fakeCtx({
+        goal: "g",
+        source: { utm_source: 42, evil: "x", __proto__: { hacked: true }, ref: "reddit.com" },
+      }),
+    );
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(out.body.source).toEqual({ ref: "reddit.com" });
+  });
+
+  it("treats a malformed / empty / non-object source as omitted", async () => {
+    for (const source of ["devto", 7, null, [], {}, { utm_source: "  " }]) {
+      const out = await parseAskBody(fakeCtx({ goal: "g", source }));
+      expect(out.ok).toBe(true);
+      if (!out.ok) throw new Error("expected ok");
+      expect(out.body.source).toBeUndefined();
+    }
+  });
+});
