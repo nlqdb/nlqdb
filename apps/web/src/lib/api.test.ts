@@ -78,4 +78,36 @@ describe("postAskCreate", () => {
     // The anon bearer still rides — only the cookie is dropped.
     expect(captured?.headers?.get("authorization")).toMatch(/^Bearer anon_/);
   });
+
+  // The API reports an unusable goal as `422 infer_failed` (index.ts
+  // formatCreateJsonResponse). A vague hero goal ("test", "stuff")
+  // trips `ambiguous_goal`; a plan that fails validation trips
+  // `plan_invalid`. Both must surface `goal_unclear` — the actionable
+  // "describe what you want to build" copy — NOT the misleading
+  // "try again" of `server_error` (retrying the same goal fails again).
+  for (const reason of ["ambiguous_goal", "plan_invalid"] as const) {
+    test(`maps 422 infer_failed/${reason} to goal_unclear`, async () => {
+      mockFetch(
+        new Response(JSON.stringify({ error: { kind: "infer_failed", reason } }), {
+          status: 422,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+      const { postAskCreate } = await import("./api.ts");
+      const out = await postAskCreate("", "test");
+      expect(out).toEqual({ ok: false, error: { kind: "goal_unclear" } });
+    });
+  }
+
+  test("leaves other 422 kinds (transient/internal) as server_error", async () => {
+    mockFetch(
+      new Response(JSON.stringify({ error: { kind: "compile_failed" } }), {
+        status: 422,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const { postAskCreate } = await import("./api.ts");
+    const out = await postAskCreate("", "a real goal");
+    expect(out).toEqual({ ok: false, error: { kind: "server_error", status: 422 } });
+  });
 });
