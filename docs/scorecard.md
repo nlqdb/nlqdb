@@ -94,10 +94,10 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 path): an aborted in-flight reply spun a loading skeleton forever and silently
 blocked the whole session from persisting; settled it + de-duped the settle rule.**
 Run 92's row-#4 lever is merged (per **step 0** not duplicated), so this run pulled
-the next priority-1 stranger-flow defect (surfaced by an `Explore` sweep of the
-create→ask→first-answer path). When a stranger asks a follow-up **before their
-first answer lands**, `ChatPanel.startSend` aborts the in-flight request
-(SK-SDK-003, single-in-flight model). But the aborted call's catch was
+the next priority-1 stranger-flow defect on the create→ask→first-answer path. When
+a stranger asks a follow-up **before their first answer lands**,
+`ChatPanel.startSend` aborts the in-flight request (SK-SDK-003). But the aborted
+call's catch was
 `if (ac.signal.aborted) return;` — it bailed **without settling the reply**, so
 reply #1 stayed `{ kind: "pending" }` forever: a perpetual Answer/Data skeleton
 (`aria-busy`) spinning above the newer answer (a **GLOBAL-011** spinner-lie), and —
@@ -107,14 +107,14 @@ session never persisted to `localStorage`, so a reload rewrote all of it to
 newer send's id differs), so settling it can't clobber the live one. **Fix:** the
 abort branch now settles the superseded reply to a terminal
 `error` "Cancelled — replaced by a newer question."; extracted the settle rule
-into a pure, unit-tested `reply-settle.ts` (structural-typing discipline of
-`trace-steps.ts`) and routed `loadHistory`'s identical non-terminal→"Session
-ended." rewrite through the same predicate (de-dup, net −6 lines in `ChatPanel`).
+into a pure, unit-tested `reply-settle.ts` and routed `loadHistory`'s identical
+non-terminal→"Session ended." rewrite through the same predicate (de-dup, net
+−6 lines in `ChatPanel`).
 **Number:** rows #4/#5 (onboarding / retention) — the follow-up-before-answer path
 went from **orphaned perpetual spinner + lost session history → terminal state +
 history persists**; behavior locked by 3 new `reply-settle.test.ts` cases (aborted
 `pending` → error; terminal states untouched). **Gates:** `bun test src` (web)
-**295 pass** (290 + 5 new); changed files tsc-clean (only pre-existing
+**295 pass**; changed files tsc-clean (only pre-existing
 `react`/`@nlqdb/sdk` module-resolution noise); biome clean; scorecard < 20 KB (D4).
 **Step-1 refresh:** nothing merged since run 92 → CI + deploy-web `success` on
 `main` `04fa3d0`; docs-ambiguity **15**; `/blog` **36**, queue **2**; users **9** /
@@ -123,9 +123,8 @@ pos 16.3** carried (row #7). **Artifact (step 3):** queue **2** (< 3) → no for
 publish; **dev.to drip fired** (> 20 h since last) — posted the oldest pending
 variant `zep-recall-vs-analytical-agent-memory` →
 https://dev.to/omer_hochman/zep-gives-my-agent-perfect-recall-it-still-cant-answer-average-per-group-about-its-own-memory-3ae0
-(tags `ai,agents,database`; archive-only pointer, no queue-line venue to edit —
-the script's API dedup self-updates); no new draft (optional, queue at the D4
-edge, 19.7 KB). **KPI (GLOBAL-025):** **onboarding + UX** — an impatient stranger's
+(tags `ai,agents,database`; archive-only pointer, script's API dedup
+self-updates); no new draft (optional, queue at the D4 edge). **KPI (GLOBAL-025):** **onboarding + UX** — an impatient stranger's
 first session no longer breaks into a frozen spinner or loses its history; no KPI
 degrades (client-only settle + tests, no engine/API surface touched).
 

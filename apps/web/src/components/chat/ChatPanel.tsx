@@ -50,8 +50,8 @@ import { freeChainStruggled } from "./free-model-nudge-gate";
 import LeftRail from "./LeftRail";
 import ModelPicker, { BYOLLM_STATUS_EVENT } from "./ModelPicker";
 import Palette, { type PaletteAction } from "./Palette";
-import Trace, { type TraceStepName, type TraceStepRecord } from "./Trace";
 import { settleInterruptedReply } from "./reply-settle";
+import Trace, { type TraceStepName, type TraceStepRecord } from "./Trace";
 import { displayTraceSteps } from "./trace-steps";
 
 interface ChatPanelProps {
