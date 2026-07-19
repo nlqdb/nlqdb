@@ -32,7 +32,7 @@ Split lives in [`docs/research/personas.md`](../../../../research/personas.md) �
 | # | Human query | Rank | Owns today | nlqdb surface | Agent phrasing |
 |---|---|---|---|---|---|
 | 1 | per-user memory for AI agent | 🔥 | DIY pgvector guides, Mem0 | `solve/isolate-ai-agent-memory-per-tenant` | "per-tenant memory isolation postgres MCP" |
-| 2 | best way to store agent memory | 🔥 | DIY blog posts, Mem0 pip | *gap* → R-03 stage-0 page | "MCP server for agent memory" |
+| 2 | best way to store agent memory | 🔥 | DIY blog posts, Mem0 pip | `solve/best-way-to-store-agent-memory` | "MCP server for agent memory" |
 | 3 | multi-tenant agent memory isolation | 🔥 | roll-your-own RLS threads | `solve/isolate-ai-agent-memory-per-tenant` | "row-level security per agent postgres" |
 | 4 | mem0 alternative | ● | Mem0 comparison bait | `vs/mem0` | "mem0 alternative MCP" |
 | 5 | should I build my own agent memory | ● | HN/Reddit build-vs-buy threads | *gap* → R-02 build-vs-buy page | "agent memory build vs buy postgres" |
@@ -59,9 +59,10 @@ Split lives in [`docs/research/personas.md`](../../../../research/personas.md) �
 
 - **R-02 (build-vs-buy):** #5 and the DIY-`memories`-table default are
   unowned — the honesty surface is the highest-leverage gap for P2b.
-- **R-03 (stage-0 pages):** the top-5 *unowned* human queries are #2 (best
-  way to store agent memory), #5 (build vs buy — R-02), #10 (TTL/expiry),
-  #13 (agent memory MCP server — also R-05). Existing `solve/*` pages
+- **R-03 (stage-0 pages):** the top-5 *unowned* human queries were #2 (best
+  way to store agent memory — now `solve/best-way-to-store-agent-memory`), #5
+  (build vs buy — R-02), #10 (TTL/expiry), #13 (agent memory MCP server —
+  also R-05). Remaining gaps: #10, #13. Existing `solve/*` pages
   already own #1/#3/#6/#8/#9/#11/#12/#14/#15/#16/#17 — R-03 fills the gaps,
   not the covered rows.
 - **R-04/R-05 (setup guide + registries):** every "Agent phrasing" column

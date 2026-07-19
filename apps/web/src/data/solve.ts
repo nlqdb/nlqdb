@@ -2038,6 +2038,66 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "best-way-to-store-agent-memory",
+    persona: "P2 agent builder",
+    searchTitle: "What's the best way to store what my AI agent remembers?",
+    oneLiner:
+      "If you're choosing how to store what your AI agent remembers, the storage shape decides what you can ask later — a vector store recalls one fact but can't count them. Store memory as typed rows in a real database: one command (`claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`) gives your agent one it writes to and queries in English.",
+    painContext:
+      "Agent builders reach for whatever storage is nearest — a JSON blob on the user row, the vector store already running for RAG, or a hand-rolled `memories` table. Each is fine until the question changes: a blob has no grain to group by, a vector store returns the top-k similar rows but has no query planner, so 'the 5 things this agent remembers most' becomes the LLM doing arithmetic over search hits. The storage shape you pick on day one decides which questions are a query and which are a hallucination.",
+    demoGoal: "the 5 most common facts the agent has stored, with a count of each",
+    demoWhy:
+      "The question that tells you whether your storage shape was right — group the stored facts, count them, take the top 5 — is a GROUP BY a vector store or JSON blob can't run.",
+    howNlqdbAnswers: [
+      "One command — `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp` — points Claude Code, Cursor, or Codex at a real hosted Postgres, no connection string.",
+      "Memory is typed rows, so `GROUP BY`, top-N, and per-period rollups run as SQL — the questions a vector store or JSON blob can't answer.",
+      "The proven shape is relational — facts, episodes, and entities — and `nlqdb_query` provisions a Postgres for them from your first English goal.",
+      "Tenant isolation is a fail-closed `tenant_isolation` RLS policy in the engine, not a `WHERE` filter you must remember to write.",
+    ],
+    whatItDoesnt: [
+      "The opinionated `agent_memory_v1` schema (facts/episodes/entities) isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark, `SK-PIVOT-010`); today the agent provisions its tables from the first English goal or designs them itself.",
+      "No native vector search — nlqdb is Postgres-first; if the best way to store *your* memory is unstructured similarity recall over chat-text, that's Mem0 or pgvector's job, not this.",
+      "Writes go through the SDK or a signed-in `POST /v1/run`, not the public `<nlq-data>` embed — the embed's key is read-scoped, so a write credential never sits in client HTML.",
+    ],
+    faqs: [
+      {
+        q: "What's the best way to store agent memory — a vector store, JSON, or a database?",
+        a: "It depends on the question. If you only ever need 'recall the most similar note', a vector store is right. If you'll ever ask 'how many', 'top N', or 'per user this week', store it as typed rows in a database — a vector store has no query planner and a JSON blob can't be grouped, so those become the LLM doing arithmetic over a list. nlqdb is the database half; it composes with a vector store for recall.",
+      },
+      {
+        q: "Can't I just store agent memory in a JSON column on the user row?",
+        a: "For a handful of flags, yes. It breaks the moment you need to aggregate — 'the 5 most common facts', 'memories added per day' — because a JSON blob has no grain to GROUP BY without unnesting it by hand every query. Typed rows make that a one-line SQL query; nlqdb runs it and shows you the SQL.",
+      },
+      {
+        q: "How do I give my agent a database to store its memory in?",
+        a: "Run one command — `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp` — and your coding agent (Claude Code, Cursor, Codex) gets a real hosted Postgres via the `nlqdb_query` tool. No connection string, no schema authored by hand: the first English goal provisions the database and infers the shape.",
+      },
+      {
+        q: "Should I build the storage myself or use nlqdb?",
+        a: "If you already run Postgres and need memory for one project, a `memories` table is the honest DIY answer — that build-vs-buy trade-off is its own page (see /solve/build-vs-buy-agent-memory). The short version: DIY wins on control and loses once isolation, retention, and analytics over memory all have to be correct at multi-tenant scale.",
+      },
+      {
+        q: "Can I see the SQL behind the memory rollups?",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can verify the grain before trusting a number. nlqdb never hides the SQL behind the answer.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/AI_Agents/search/?q=store+memory",
+        label: 'r/AI_Agents — recurring "best way to store agent memory" threads.',
+      },
+      {
+        url: "https://hn.algolia.com/?q=agent%20memory",
+        label:
+          'HN search: "agent memory" — recurring threads on how to store what an agent remembers.',
+      },
+      {
+        url: "https://www.reddit.com/r/LocalLLaMA/search/?q=agent+memory",
+        label: 'r/LocalLLaMA — "how should I store agent memory" recurring discussion hub.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {

@@ -212,6 +212,11 @@ const solveCards = [
     ],
     mono: "SELECT agent_id, COUNT(*) FROM memory GROUP BY agent_id",
   },
+  {
+    slug: "best-way-to-store-agent-memory",
+    title: [[{ t: "The best way to " }, { t: "store", accent: true }], [{ t: "agent memory." }]],
+    mono: "SELECT fact, COUNT(*) FROM facts GROUP BY fact",
+  },
 ];
 for (const { slug, title, mono } of solveCards) {
   cards[`solve-${slug}`] = card({
