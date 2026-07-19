@@ -9,7 +9,13 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
 
 ## Human actions (clicks, secrets, legal)
 
-_Nothing blocked. The backlog is clear._
+- **Arm the 3rd independent free-LLM pool for the opencheck agent lane —
+  set repo secret `FALLBACK2_LLM_API_KEY`** (SambaNova/Cerebras/Together
+  free tier; lane wired in `_e2e-opencheck.yml`, degrades to "disabled"
+  while unset). **Sole** fix for scorecard row #15 (E2E freshness ≈ 0.75):
+  the 2 free lanes (NIM + OpenRouter `:free`) flap intrinsically, so a
+  2-lane walk can't stay green (run 70). **Blocked ~6 days** (since ~07-13;
+  history in `weekly-review.md`).
 
 ## Suggestions needing approval (to amend the guidelines)
 

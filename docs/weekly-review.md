@@ -1,63 +1,64 @@
-# Weekly review — 2026-07-11
+# Weekly review — 2026-07-18
 
 Current-state audit of the `/daily` loop (≤ 4 KB, overwritten weekly, no
-changelog). Worst finding first. Covers daily PRs #613–#663 (runs 8–50).
+changelog). Worst finding first. Covers the 07-11→07-18 window (runs 60–88 +
+the new `/reach` track PRs #721/#724/#727).
 
-## Worst finding — the focus number was dark (checks 1 & 4)
+## Worst finding — a standing dark metric lost its human blocker (check 4)
 
-The 07-04 focus was **BIRD raw EX → ≥ 0.60**, but row #8 has **no agent-movable
-lever** and the scorecard says so in its own words ("offline levers exhausted; SC
-dead (#619); frontier-lens closed (run 15); row #8 stays dark for the lever").
-The one remaining path — the corrected-set — is blocked on an **external
-maintainer's license reply** (uiuc-kang-lab issue #7, filed 07-07, no response),
-so it is not agent-movable either. The result was predictable: **0 of the week's
-~43 runs pulled BIRD as a lever**; it drifted 0.526 → 0.546 (+2.0 pp) which the
-canonical re-measure attributes to noise ("no attributable lever," #661). Per
-`daily.md` rule 8 a dark metric must never be the lever — pointing the *focus* at
-one guarantees the loop's energy scatters (see monoculture). The floor breach
-(0.546 < 0.60) is real but **no GLOBAL-025 alert tripped** (flat-to-positive, no
-regression), so the fix is to stop steering by it, not to keep chasing it.
-Flagged by ID per P1: `SK-QUAL-005`'s "engine work until cleared" mandate is
-**lever-blocked, not superseded** — it re-binds the focus the moment any engine
-lever unparks (first candidate: the license reply).
+Row #15 (E2E freshness ≈ 0.75) has been the weekly-focus dark metric for two
+weeks; runs 62/67/70 all pin its **sole** fix to an operator-only action —
+arm a 3rd independent free-LLM pool (`FALLBACK2_LLM_API_KEY`, lane already
+wired in `_e2e-opencheck.yml`, "disabled while unset"). PR #714 (07-16) wired
+the lane's code and, in the same PR, **deleted the operator bullet from
+`blocked-by-human.md`** while "clearing the backlog" — but the secret was
+never set. So the scorecard still cites "its `blocked-by-human.md` bullet" for
+a bullet that no longer exists, and the one action that lifts row #15 was
+invisible to the founder for a week. **Restored this PR**, top of
+`blocked-by-human.md`, with a ~5-day-blocked count. Honesty rule: a dark
+metric's human blocker must live in `blocked-by-human.md` until the metric
+moves, not be pruned when the metric is inconvenient.
 
-## Monoculture (check 2) — internal hygiene, no yield
+## Monoculture (check 2) — a week of no-yield internal polish
 
-Two levers dominated: **docs-ambiguity/row #17 (11 runs, 28 → 17)** and **blog
-publishing (8 runs, surfaces 84 → 93)**. Publishing earns its share — external
-referrals rose **1 → 9** (bing-led, row #7), real yield. Docs-ambiguity does not:
-it is internal doc-hygiene with **no external consumer**, and it is now stalling
-(run 50 "count held" at 17). Eleven runs on a stalling internal counter while the
-GLOBAL-025 floor breach had no lever to pull is the mis-allocation the focus
-number should correct — de-prioritise row #17 as a default lever.
+~12 of ~14 substantive `/daily` runs pulled two internal-quality levers:
+**claim/surface-integrity guards** (rows #18/#19 — runs 72, 74, 76, 77, 87,
+88) and **web-UX trust polish** (SK-WEB/TRUST/HDC/APIKEYS — runs 80–85). Both
+are product-readiness for strangers who aren't arriving: row #2 strangers
+still **0**, row #7 GSC **1 click / 455 impr** flat, external referrals **9
+carried**. The loop obeyed its own lever-order (#1 UX-flow), but the readiness
+lane is saturated with no yield signal. The structural fix already landed —
+the **`/reach` track** (SK-PIVOT-015, 07-17) now owns acquisition on its own
+loop and numbers — so `/daily` should re-point to its measurable
+furthest-from-floor pillar. Hence the focus: **row #8 BIRD** (0.542 < the 0.60
+Phase-2 floor).
 
-## Inert output (check 3) — venue variants still never drain
+## Trend (check 1) — flat, no regression
 
-`distribution-queue.md`'s "venue variants pending" list (dev.to / Reddit /
-lobste.rs) keeps growing — canonical `/blog` copies ship every run, but the
-community posts that drive referrals are human-gated (Reddit needs the founder's
-account, `blocked-by-human.md`). Not agent-fixable, correctly parked there; noted
-so it is not mistaken for loop output that could be automated.
+Engine below floor but flat (BIRD 0.542, Spider 0.2963). Onboarding/funnel flat at floor (strangers 0,
+first-10 N=0). UX/perf green (row #21 9/9, row #18 0 dead, p95 1.70 s). No
+`GLOBAL-025` regression tripped.
+
+## Inert output (check 3) — none agent-fixable
+
+`distribution-queue.md` holds 2 drafts (below the 3-deep forced-publish gate —
+correctly not draining); dev.to syndication drips one/day (`SK-BLOG-003`);
+Reddit/HN pointers are human-gated by norm. **Watch:** the new reach INDEX
+"§ Current numbers" is the acquisition yield ledger — confirm next week it's
+actually being written each `/reach` run, else reach becomes the next inert
+loop.
 
 ## Delta integrity (check 5) — sampled 4, all verify
 
-Re-measured **row #17 = 17** with the pinned method — matches #663 exactly.
-Engine deltas cite real CI run IDs (Spider 0.2741 #29151548561, BIRD 0.546
-#29144102081) and the Spider gain is honestly labelled capacity-honesty
-(`no_sql` 30 → 0), not an engine lift. Fourth sample: `BLOG_POSTS` in `blog.ts`
-held **29** posts at the audit window — matching its scorecard's "/blog 29"
-(rows #6/#7) exactly; run 51 (#664) has since published the 30th. (A naive
-`slug:` grep over-counts by two: the type-definition line + the
-`blogBySlug` signature.)
+Re-measured live: docs-ambiguity = **15** (run 78, pinned grep) ✓; `/blog` =
+**36** published (run 79 count-fix, `blog.ts`) ✓; SDK/CLI/MCP integrity guards
+present and deriving from source (runs 88/74/64) ✓; row #18 = 0 dead
+built-output (run 87) consistent with the sweep. No claimed-but-unverified
+delta.
 
 ## Prompt drift (check 6) — none
 
 Every GLOBAL cited in `daily.md`/`weekly.md` (025/026/027/033) resolves to a
-canonical file — notably **GLOBAL-027, the archetype this prompt flags, now
-exists** (fixed). Every path referenced in `daily.md` resolves. No fix needed;
-`daily.md` untouched this run.
-
-## Focus number set
-
-**Row #15 E2E freshness → 1.0** (row #8 BIRD is dark; strangers lag) — see the
-scorecard top line for the why.
+canonical file; every referenced path resolves (`fable-recommendation.md`,
+`stranger-test.sh`, `flow-005-walk.sh`, `gsc-pull.ts`, `syndicate-devto.ts`,
+`baseline-2026-06-15.json`, `phase-plan.md`). No `daily.md` edit this week.
