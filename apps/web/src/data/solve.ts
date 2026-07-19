@@ -2118,7 +2118,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     whatItDoesnt: [
       "The automatic server-run TTL sweep is not live yet — the deterministic sweep core (`SK-PIVOT-011`) ships, but the scheduled Worker that runs it nightly is landing; until then expiry is a `DELETE` you run on your own schedule, not a promise.",
       "The opinionated `agent_memory_v1` schema whose `facts` table carries `expires_at` isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark, `SK-PIVOT-010`); today the agent provisions its tables from the first English goal or adds the column itself.",
-      "Read-side invisibility of expired-but-not-yet-swept rows is an in-progress RLS clause (E-03), not shipped — filter `expires_at` in your read query until it lands.",
+      "Read-side invisibility of expired-but-not-yet-swept rows is an in-progress RLS clause (E-04), not shipped — filter `expires_at` in your read query until it lands.",
     ],
     faqs: [
       {
@@ -2135,7 +2135,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "What does a DIY retention cron cost me later?",
-        a: "The `DELETE` statement is the easy part. The expensive part is scheduling it reliably, isolating one failed run so it doesn't wedge the rest, and remembering to filter expired-but-not-yet-deleted rows out of every read path. Miss the last one and your agent recalls memory you meant to forget. nlqdb is moving that into the engine (`SK-PIVOT-011`, E-03) so you don't hand-maintain it.",
+        a: "The `DELETE` statement is the easy part. The expensive part is scheduling it reliably, isolating one failed run so it doesn't wedge the rest, and remembering to filter expired-but-not-yet-deleted rows out of every read path. Miss the last one and your agent recalls memory you meant to forget. nlqdb is moving that into the engine (`SK-PIVOT-011`, E-04) so you don't hand-maintain it.",
       },
     ],
     sources: [
