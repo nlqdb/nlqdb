@@ -30,14 +30,12 @@ carried**. The loop obeyed its own lever-order (#1 UX-flow), but the readiness
 lane is saturated with no yield signal. The structural fix already landed —
 the **`/reach` track** (SK-PIVOT-015, 07-17) now owns acquisition on its own
 loop and numbers — so `/daily` should re-point to its measurable
-furthest-from-floor pillar. Hence the focus: **row #8 BIRD**, the one engine
-lever that's genuinely unparked (`SK-LLM-044` lifted Spider +2.2 pp, run 9,
-but has never been measured on BIRD).
+furthest-from-floor pillar. Hence the focus: **row #8 BIRD** (0.542 < the 0.60
+Phase-2 floor).
 
-## Trend (check 1) — flat, no regression; engine at freshness edge
+## Trend (check 1) — flat, no regression
 
-Engine below floor but flat (BIRD 0.546, Spider 0.2963, both 07-11 → **7 days
-old today = freshness alert**). Onboarding/funnel flat at floor (strangers 0,
+Engine below floor but flat (BIRD 0.542, Spider 0.2963). Onboarding/funnel flat at floor (strangers 0,
 first-10 N=0). UX/perf green (row #21 9/9, row #18 0 dead, p95 1.70 s). No
 `GLOBAL-025` regression tripped.
 
