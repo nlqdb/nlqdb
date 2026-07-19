@@ -22,23 +22,15 @@ BIRD 0.542 < the 0.60 Phase-2 floor** (gap 5.8 pp). The weekly-focus engine leve
 re-measure recovered 0.514 → 0.5422** (McNemar b=36/c=34 p=0.452, `regressions:
 []` — the run-90 `SK-QUAL-006` trigger cleared; baseline re-seeded 0.5462 →
 0.5422, a flat give-back per `SK-QUAL-005`). The engine lever is fresh (07-19) and
-flat; offline levers exhausted. Per **step 0** run 92's row-#4 lever is merged, so
-**run 93 pulled a step-2 priority-1 UX-flow lever (rows #4/#5, chat ask path):**
-when a stranger asks a follow-up before their first answer lands, the new send
-aborts the in-flight request (`ChatPanel` `startSend`, SK-SDK-003) — but the
-aborted reply's catch did `if (ac.signal.aborted) return;` **without settling the
-reply**, leaving reply #1 a perpetual `pending` skeleton spinning above the newer
-answer (a GLOBAL-011 spinner-lie) *and* silently blocking the whole session from
-persisting (the history save effect skips while any reply is pending → on reload
-the entire session rewrote to "Session ended."). Fixed: the abort branch now
-settles the superseded reply to a terminal `error` ("Cancelled — replaced by a
-newer question."); extracted the settle rule into a pure, unit-tested
-`reply-settle.ts` (same discipline as `trace-steps.ts`) and routed `loadHistory`'s
-identical "Session ended." rewrite through it (de-dup). **Step 0:** open PRs #731
-(weekly docs) and #719 (Infisical draft) remain; this run touched only
+flat; offline levers exhausted. Per **step 0** run 92's row-#4 lever is merged, so **run 93 pulled a step-2
+priority-1 UX-flow lever (rows #4/#5, chat ask path):** an aborted in-flight reply
+(a follow-up sent before the first answer lands) was left a perpetual `pending`
+skeleton — a GLOBAL-011 spinner-lie that also blocked the whole session from
+persisting — now settled to a terminal `error` (full detail in **Last change**).
+**Step 0:** open PR #719 (Infisical draft) remains; this run touched only
 `apps/web/src/components/chat/{ChatPanel.tsx,reply-settle.*}` — no overlap;
-scorecard regen is overlap-exempt. **Rule 6:** CI + deploy-web green on `main`
-(`04fa3d0`); no red-main / stale-deploy lever.
+scorecard regen is overlap-exempt. **Rule 6:** CI + deploy-web green on `main`;
+no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
