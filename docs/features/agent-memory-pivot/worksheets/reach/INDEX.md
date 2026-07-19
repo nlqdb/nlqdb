@@ -192,7 +192,7 @@ where closed), record cited/not-cited per query in § Current numbers.
   R-03 latest page: `solve/expire-old-agent-memory` (owns query #10 TTL/expiry;
   `expires_at`-on-typed-rows makes expiry a `WHERE`-predicate query, one-command
   buy answer, honest about the not-yet-live automatic sweep — SK-PIVOT-011 core
-  ships, scheduler landing — and the in-progress E-03 read-invisibility clause;
+  ships, scheduler landing — and the in-progress E-04 read-invisibility clause;
   cross-links build-vs-buy; auto-in llms.txt + sitemap). Earlier pages:
   `solve/best-way-to-store-agent-memory` (query #2, storage-shape decision) +
   R-02's two `competitors.md` §4 entries (DIY-on-Postgres + Agentic DB/Constructive)
