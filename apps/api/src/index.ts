@@ -20,6 +20,8 @@ import {
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
+import { isAdminEmail } from "./admin/gate.ts";
+import { computeGtmMetrics, writeDailyGtmSnapshot, writeGtmSnapshot } from "./admin/gtm-metrics.ts";
 import { recordAnonAdoption } from "./anon-adopt.ts";
 import { makeAclRetarget } from "./anon-adopt-regrant.ts";
 import {
@@ -241,6 +243,7 @@ app.use("/v1/models", credentialedCors);
 app.use("/v1/keys", credentialedCors);
 app.use("/v1/keys/*", credentialedCors);
 app.use("/v1/premium/*", credentialedCors);
+app.use("/v1/admin/*", credentialedCors);
 
 // Session gate for `/v1/*` routes. Captures `auth.api.getSession`
 // (cookieCache fast path → secondaryStorage → D1) + the KV revocation
@@ -2594,6 +2597,49 @@ app.get("/v1/keys/:hash/status", requirePrincipal, async (c) => {
   });
 });
 
+// `GET /v1/admin/metrics` — the canonical GTM/PMF read (GLOBAL-038,
+// SK-GTM-001/-002/-003). Session-only + `isAdminEmail` gate: admin data
+// must ride a verified first-party identity, never a leakable bearer
+// key. A signed-in non-admin gets 403 (the gate is the security, not
+// the status code). Every authorized read also writes today's
+// idempotent `gtm_snapshots` row via waitUntil — belt-and-braces next
+// to the daily cron writer, so trend history accrues even across cron
+// misses. Deliberately web-only per SK-GTM-004 (no SDK/CLI/MCP verb).
+app.get("/v1/admin/metrics", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.admin.metrics", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      if (!isAdminEmail(session.user.email)) {
+        span.setAttribute("nlqdb.admin.metrics.outcome", "forbidden");
+        return c.json({ error: "forbidden" }, 403);
+      }
+      const metrics = await computeGtmMetrics(c.env.DB);
+      c.executionCtx.waitUntil(
+        writeGtmSnapshot(c.env.DB, metrics).catch((err) => {
+          console.error(
+            JSON.stringify({
+              msg: "gtm_snapshot_on_read_failed",
+              message: err instanceof Error ? err.message : String(err),
+            }),
+          );
+        }),
+      );
+      span.setAttribute("nlqdb.admin.metrics.outcome", "ok");
+      return c.json(metrics);
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.admin.metrics.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
 // `GET /v1/databases` — left-rail data source for the chat surface
 // (apps/web/src/components/chat/LeftRail.tsx) and the MCP server's
 // `nlqdb_list_databases` tool (packages/mcp). Tenant-scoped read of
@@ -3656,6 +3702,23 @@ async function scheduled(
         JSON.stringify({
           msg: "anon_db_sweep_failed",
           message: sweepErr instanceof Error ? sweepErr.message : String(sweepErr),
+        }),
+      );
+    }
+
+    // SK-GTM-003 — daily GTM/PMF snapshot (GLOBAL-038). Best-effort:
+    // a snapshot miss must never break the sweep above or the analyser
+    // below, and the on-read writer in `GET /v1/admin/metrics` covers
+    // the gap. Runs BEFORE the Tinybird early-return — the snapshot is
+    // D1-only and must not depend on a Tinybird token being set.
+    try {
+      await writeDailyGtmSnapshot(envBindings.DB);
+      console.info(JSON.stringify({ msg: "gtm_snapshot_written" }));
+    } catch (snapErr) {
+      console.error(
+        JSON.stringify({
+          msg: "gtm_snapshot_failed",
+          message: snapErr instanceof Error ? snapErr.message : String(snapErr),
         }),
       );
     }

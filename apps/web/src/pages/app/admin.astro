@@ -1,0 +1,77 @@
+---
+// Founder GTM/PMF dashboard (SK-GTM-004, GLOBAL-038). The client-side
+// email check below is presentation only — the data boundary is the
+// SK-GTM-002 server gate on `GET /v1/admin/metrics`; a non-admin who
+// bypasses this script sees an empty shell and a 403.
+
+import AppAnalytics from "../../components/AppAnalytics.astro";
+import AdminDashboard from "../../components/admin/AdminDashboard.tsx";
+import Footer from "../../components/Footer.astro";
+import SupportChat from "../../components/SupportChat.astro";
+import Topnav from "../../components/Topnav.astro";
+import Base from "../../layouts/Base.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
+---
+<Base
+  title="Admin — GTM/PMF — nlqdb"
+  description="Founder dashboard: acquisition funnel, activation, retention, PMF signals."
+>
+  <div class="page page--admin" id="admin-shell" data-api-base={apiBase} hidden>
+    <Topnav current="chat" />
+    <main class="page__main page__main--admin">
+      <AdminDashboard client:only="react" apiBase={apiBase} />
+    </main>
+    <Footer />
+  </div>
+  <AppAnalytics />
+  <SupportChat />
+</Base>
+
+<script>
+  // Inline auth guard — the keys.astro pattern plus the admin email
+  // check (lib/admin-gate.ts, presentation-only copy of the server
+  // predicate). Unauthenticated → sign-in with return_to; signed-in
+  // non-admin → back to /app/.
+  import { isAdminEmail } from "../../lib/admin-gate";
+  import { fetchSession, invalidateSession } from "../../lib/session";
+
+  const shell = document.getElementById("admin-shell");
+  if (shell) {
+    const apiBase = (shell as HTMLElement).dataset["apiBase"];
+
+    async function requireAdminSession(): Promise<boolean> {
+      const user = await fetchSession(apiBase);
+      if (!user) {
+        const returnTo = `${location.pathname}${location.search}${location.hash}`;
+        const signInUrl = new URL("/auth/sign-in/", location.origin);
+        signInUrl.searchParams.set("return_to", returnTo);
+        location.replace(signInUrl.toString());
+        return false;
+      }
+      if (!isAdminEmail(user.email)) {
+        location.replace("/app/");
+        return false;
+      }
+      return true;
+    }
+
+    // Re-probe on bfcache restore so a signed-out cookie can't leave
+    // the admin shell visible (mirrors /app/keys.astro).
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) {
+        invalidateSession();
+        void requireAdminSession();
+      }
+    });
+
+    void (async () => {
+      if (!(await requireAdminSession())) return;
+      shell.hidden = false;
+    })();
+  }
+</script>
+
+<style is:global>
+  @import "../../styles/admin.css";
+</style>
