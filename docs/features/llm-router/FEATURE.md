@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..044`). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) lands in Phase 2; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043`; `SK-LLM-044` reverted). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) lands in Phase 2; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -223,9 +223,9 @@ added latency on any succeeding call.
 
 **Body:** [`decisions/SK-LLM-043-single-column-projection-directive.md`](./decisions/SK-LLM-043-single-column-projection-directive.md). One `PLAN_DIRECTIVES` bullet, the projection sibling of [`SK-LLM-027`](#sk-llm-027): return each requested attribute as its own column, don't fuse them with `||` unless the goal explicitly asks for a combined string. Evidence-picked (`SK-QUAL-014` analyzer on BIRD baseline), zero regression floor; prompt-only.
 
-### SK-LLM-044 — Entity-identification projection directive in the planner prompt (name over surrogate id; no subset answers)
+### SK-LLM-044 — Entity-identification projection directive — REVERTED (regressed BIRD)
 
-**Body:** [`decisions/SK-LLM-044-entity-identification-projection-directive.md`](./decisions/SK-LLM-044-entity-identification-projection-directive.md). One `PLAN_DIRECTIVES` bullet after [`SK-LLM-043`](#sk-llm-043): an identify/list/rank-entities goal projects the entity's human-readable *name* column (JOIN to the naming table over a surrogate id), ids/attributes only as the goal requests them, never a subset of a multi-part ask. Evidence-picked on the 2026-07-11 canonical Spider run's result-shape bucketing; prompt-only.
+**Body:** [`decisions/SK-LLM-044-entity-identification-projection-directive.md`](./decisions/SK-LLM-044-entity-identification-projection-directive.md). Reverted 2026-07-18: the first-ever BIRD measurement of this prompt bullet showed a `SK-QUAL-006` regression on the gate-binding benchmark (BIRD free EA 0.546 → 0.514, McNemar p=0.043) while its Spider justification was statistically flat (p≈0.68). Bullet + test removed; do not re-add without a paired-draw BIRD+Spider net-gain A/B.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
