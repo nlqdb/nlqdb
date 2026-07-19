@@ -18,19 +18,18 @@ finding).
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; the gate-relevant engine
 worst is **row #8 BIRD 0.542 < the 0.60 Phase-2 floor** (gap 5.8 pp), and the worst
-engine number overall is **row #9 Spider 0.2222**. The weekly-focus BIRD lever is
-resolved (run 91) and fresh (07-19), and BIRD offline levers are exhausted. Per
-**step 0** the run-93 UX-flow lane (PR #736, ChatPanel abort-settle) and the reach
-distribution lane (PR #737) are merged, so **run 94 pulled the
-remaining step-1 engine-freshness alert: row #9 Spider was 8 days stale AND
-measured on the reverted `SK-LLM-044` SHA `6e1725c` — invalid on both counts.**
-Fresh post-revert canonical on main `04fa3d0` (3 `SK-QUAL-013` transient-wall
-windows, `no_sql` 0/135, gold_error 0): free **30/135 = 0.2222** — a give-back from
-the 0.2963 `SK-LLM-044` reading (and −5.2 pp vs the pre-directive 0.2741, free-lane
-cross-date noise on the byte-identical reverted engine; see row #9). **Step 0:**
-PRs #737 / #736 / #731 merged; open PR #719 (Infisical draft) remains — this run
-touched only `docs/scorecard.md` + the verification log; no overlap (scorecard
-regen is overlap-exempt). **Rule 6:** CI + all deploy workflows green on `main`;
+engine number overall is **row #9 Spider 0.2222** (both fresh 07-19, offline levers
+exhausted). Per the founder-resolved lever order the engine worst-numbers aren't
+pullable this run, so **run 95 took a priority-1 UX-flow lever on the
+create→first-answer path (row #4 onboarding-KPI input): the marketing create-result
+surface had drifted from its in-chat twin on the a11y contract — a screen-reader
+stranger got no announcement that their DB was created (the pivotal "did it work?"
+funnel beat) and no column context on their first data table.** Restored both to
+match the shipped twin (`role="status"` + `scope="col"`) and added a source-scan
+parity guard. **Step 0:** PRs #737 / #736 / #731 merged; open PR #719 (Infisical
+docs/research draft) remains — no code overlap (this run touched only
+`apps/web/src/components/*` + `docs/scorecard.md`; scorecard regen is
+overlap-exempt). **Rule 6:** CI + all deploy workflows green on `main`;
 no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
@@ -39,7 +38,7 @@ no red-main / stale-deploy lever.
 | 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** (Chrome 41, ChromeMobile 3, MobileSafari 2, Firefox 2, Edge 1) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield (owned by PR #711) |
 | 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. **Run 92** wired the vague-first-goal recovery copy (`422 infer_failed` → `goal_unclear`); **run 93** fixed the follow-up-before-first-answer path — an aborted in-flight reply no longer spins forever (it settles to a terminal "Cancelled — …"), which also unblocks per-session history persistence (rows #4/#5) |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. **Run 92** wired the vague-first-goal recovery copy (`422 infer_failed` → `goal_unclear`); **run 93** fixed the follow-up-before-first-answer path — an aborted in-flight reply no longer spins forever (it settles to a terminal "Cancelled — …"), which also unblocks per-session history persistence (rows #4/#5); **run 95** restored a11y parity between the create-result surface and its in-chat twin (`role="status"` on the create-success beat + `scope="col"` on the first data table), so a screen-reader stranger is no longer silently dropped at the pivotal "did it work?" moment |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -83,40 +82,38 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-19 (run 94)** — **Engine-freshness lever (step-1 measurement discipline,
-row #9 Spider): the worst engine number was 8 days stale AND measured on reverted
-code — refreshed it to a valid post-revert canonical; raw EX 0.2963 → 0.2222.**
-Row #8 BIRD (the weekly focus) is resolved and fresh (run 91, 07-19); its offline
-levers are exhausted, and per **step 0** the two priority-1/2 lanes are taken
-(PR #736 run-93 ChatPanel UX; PR #737 reach solve page). The remaining pullable
-step-1 alert: **row #9 Spider had two independent invalidity flags** — last measured
-07-11 (8 days → freshness alert) **and** on the `SK-LLM-044` SHA `6e1725c`, a
-directive reverted 07-18 (run 90) for a BIRD regression, so the number described
-off-`main` code. Dispatched the canonical full free-lane Spider 2.0-lite on
-post-revert main `04fa3d0`; it completed across **3 `SK-QUAL-013` transient-wall
-windows** (66 → 117 → 135 attempted; `no_sql` 0/135, gold_error 0, exec_error 5):
-free **30/135 = 0.2222**, p50 1.52 s / p95 10.9 s (GHA
-[29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836) →
-[29683450778](https://github.com/nlqdb/nlqdb/actions/runs/29683450778) →
-[29683911778](https://github.com/nlqdb/nlqdb/actions/runs/29683911778)). **Number:**
-row #9 Spider **0.2963 → 0.2222** — a give-back from the `SK-LLM-044` reading, and
-−5.2 pp vs the pre-directive 0.2741; but post-revert `PLAN_DIRECTIVES` is
-byte-identical to that pre-directive engine, so the delta is free-lane cross-date
-provider-mix/capacity noise on the *same* engine, **not an attributable regression**
-(the directive's own Spider gain was McNemar-flat, p≈0.68). No baseline file to
-touch (`SK-QUAL-018`); freshness clock reset 07-11 → 07-19; verification-log row
-appended. **Gates:** docs-only change (`docs/scorecard.md` + append-only
-verification log) — typecheck/lint/test structurally unaffected; scorecard < 20 KB
-(D4). **Step-1 refresh:** CI + deploy-api/web/docs/mcp all `success` on `main`
-`04fa3d0`; docs-ambiguity **15**; indexable surfaces **105** (`/vs` 32 + `/solve`
-36 + `/blog` 37, fresh recount), queue **2**; users **9** / strangers **0** carried
-(07-16, newest reg 07-06); GSC 28d **1 click / 455 impr / pos 16.4** carried
-(row #7). **Artifact (step 3):** queue **2** (< 3) → no forced publish; dev.to drip
-throttled (3.6h < 20h since run 93's post — expected no-op); no new draft (optional
-side-work, queue near D4 cap). **KPI (GLOBAL-025):** **engine quality** — the worst
-engine number is now a valid, fresh measurement of the shipped engine instead of a
-stale reading of reverted code; no KPI degrades (measurement only, no
-engine/API/funnel surface touched).
+**2026-07-19 (run 95)** — **Priority-1 UX-flow lever (row #4 onboarding-KPI input):
+the marketing create-result surface had drifted from its in-chat twin on the
+accessibility contract — a screen-reader stranger got no announcement that their DB
+was created and no column context on their first data table. Restored both to the
+shipped-twin contract + added a parity guard.** The create-result surface
+(`CreateForm`'s `CreateResultView` + `SampleTable`) renders the same "did it work?"
+success beat as the in-chat `created` reply and shares the sample-row rendering
+(`SK-HDC-001`; `GLOBAL-020` "returns rows"), but had silently dropped two a11y
+attributes the twin carries: the chat twin announces the success line with
+`role="status"` (`ChatPanel` `chat-reply__created-line`) and marks header cells with
+`scope="col"` (`Data.tsx`). So on the *pivotal funnel beat* a screen-reader stranger
+heard nothing when their DB provisioned and read the first data table with no column
+association. **Change (3 files, +1 test):** added `role="status"` to the
+`createresult__schema` summary and `scope="col"` to `SampleTable`'s `<th>`, plus
+`create-result-a11y.test.ts` — a source-scan parity guard (react isn't a resolvable
+test dep, so the guard reads source like the `*-integrity` suites do) asserting the
+attribute lives on the right element on *both* twins so they can't drift apart again.
+**Number:** row #4 (first-10 / onboarding UX-flow quality) is a lagging metric moved
+through its agent-controllable input; the measurable before→after is the new guard
+(would-fail with the attributes absent → 2 pass) and twin-parity restored. **Gates:**
+`bun run typecheck` clean; `bun run lint` exit 0 (my files biome-clean); `bun run
+test` green (83 create-path/component tests incl. the new guard). **Step-1 refresh:**
+CI + deploy-api/web/docs/mcp all `success` on `main` `d4a1c69`; row #8 BIRD 0.542 &
+row #9 Spider 0.2222 both fresh 07-19 (offline levers exhausted → not pullable);
+docs-ambiguity **15**; indexable surfaces **105**, queue **2**; users **9** /
+strangers **0** carried (07-16, newest reg 07-06); GSC 28d **1 click / 452 impr /
+pos 16.3** carried (row #7). **Artifact (step 3):** queue **2** (< 3) → no forced
+publish; dev.to drip throttled (5.7h < 20h — expected no-op); no new draft (the
+lesson — twin surfaces drift on a11y contract — is thin and the queue is near the D4
+cap). **KPI (GLOBAL-025):** **onboarding + UX** — the create→first-answer path is now
+accessible-parity with its twin on the success beat; no KPI degrades (2 additive
+attributes + 1 test; no engine/API/funnel logic touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
