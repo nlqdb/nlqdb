@@ -21,6 +21,7 @@ Cloudflare Workers HTTP API. Hosts /v1/ask, /v1/run, auth, billing, webhooks.
 - [`api-keys`](../../docs/features/api-keys/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`stripe-billing`](../../docs/features/stripe-billing/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`observability`](../../docs/features/observability/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`gtm-metrics`](../../docs/features/gtm-metrics/FEATURE.md) — mandatory pre-read for changes under `src/admin/**` (admin gate + GTM/PMF metrics + snapshots).
 
 ## Commands
 

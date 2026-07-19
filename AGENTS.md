@@ -162,8 +162,9 @@ supported; else read manually before editing.)
 | `packages/llm/src/frontier/**` (founder-funded lane) | `docs/features/frontier-keys/FEATURE.md` |
 | `apps/events-worker/**`, `packages/events/**`, `apps/api/src/events-feature.ts`, `apps/api/src/ask/demand-signal.ts` | `docs/features/events-pipeline/FEATURE.md` |
 | `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` |
-| rate-limit middleware (`apps/api/src/ask/rate-limit.ts`, `apps/api/src/principal.ts` `rateLimitBucketKey`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`) | `docs/features/rate-limit/FEATURE.md` |
-| `apps/api/src/principal.ts`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`, `apps/api/src/turnstile.ts`, `apps/web/src/lib/{anon,anon-adopt,handoff,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | `docs/features/anonymous-mode/FEATURE.md` |
+| rate-limit middleware (`apps/api/src/{ask/rate-limit,anon-rate-limit,anon-global-cap}.ts`, `principal.ts` `rateLimitBucketKey`) | `docs/features/rate-limit/FEATURE.md` |
+| `apps/api/src/{principal,anon-rate-limit,anon-global-cap,turnstile}.ts`, `apps/web/src/lib/{anon,anon-adopt,handoff,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | `docs/features/anonymous-mode/FEATURE.md` |
+| `apps/api/src/admin/**`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**` | `docs/features/gtm-metrics/FEATURE.md` |
 | `cli/**` | `docs/features/cli/FEATURE.md` |
 | `packages/elements/**` | `docs/features/elements/FEATURE.md` |
 | `packages/sdk/**` | `docs/features/sdk/FEATURE.md` |
@@ -178,7 +179,7 @@ supported; else read manually before editing.)
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/FEATURE.md` |
 | `apps/docs/**`, `docs.nlqdb.com` Starlight site | `docs/features/docs-site/FEATURE.md` |
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |
-| `tests/personas/**`, `tests/opencheck/**`, `tests/e2e/**`, `examples/**/e2e/**`, `.github/workflows/e2e*.yml`, `.github/workflows/_e2e-*.yml`, `packages/nlqdb-rb/spec/e2e/**`, `packages/nlqdb-rs/tests/e2e/**` | `docs/features/e2e-coverage/FEATURE.md` |
+| `tests/{personas,opencheck,e2e}/**`, `examples/**/e2e/**`, `.github/workflows/{e2e*,_e2e-*}.yml`, `packages/nlqdb-{rb/spec,rs/tests}/e2e/**` | `docs/features/e2e-coverage/FEATURE.md` |
 | `apps/api/src/icp-*.ts`, `docs/research/automated-icp-validation-plan*.md`, `docs/research/icp-evidence-*.md` | `docs/features/icp-mining/FEATURE.md` |
 | `tools/stranger-test/**`, `scripts/stranger-test.sh`, `scripts/flow-005-walk.sh`, `scripts/flow-005-stdio-walk.sh` | `docs/features/stranger-test/FEATURE.md` |
 

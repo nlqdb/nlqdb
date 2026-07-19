@@ -94,6 +94,11 @@
     surface scope.
   - **Growth-style NSM** (DAU, conversion %) — premature pre-PMF;
     biases work toward distribution before quality is provable.
+    *Amended in part by
+    [`GLOBAL-038`](./GLOBAL-038-gtm-pmf-instrumentation.md)
+    (founder directive 2026-07-19): growth/acquisition metrics are now
+    first-class **measured** numbers with a canonical live instrument;
+    the four pillars above remain the product compass.*
   - **OKRs instead of KPIs** — quarterly noise; KPIs with a measurement
     instrument + per-PR contribution line are tighter and lighter.
 
