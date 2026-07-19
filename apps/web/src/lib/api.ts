@@ -141,16 +141,25 @@ export async function postAskCreate(
     }
     return { ok: false, error: { kind: "unauthorized" } };
   }
-  if (res.status === 400) {
+  if (res.status === 422) {
+    // The create pipeline reports an unusable goal as `422
+    // infer_failed` (SK-HDC): the inferred plan was too shallow
+    // (`ambiguous_goal`) or failed validation (`plan_invalid`).
+    // Retrying the identical goal fails the same way, so surface the
+    // "describe what you want to build" copy — not the transient "try
+    // again" of `server_error`. Other 422 kinds (transient
+    // `llm_failed`, compile/ddl/embed_failed) fall through below.
     try {
-      const body = (await res.json()) as { error?: { status?: string } };
-      if (body.error?.status === "db_id_required") {
+      const body = (await res.json()) as { error?: { kind?: string; reason?: string } };
+      if (
+        body.error?.kind === "infer_failed" &&
+        (body.error.reason === "ambiguous_goal" || body.error.reason === "plan_invalid")
+      ) {
         return { ok: false, error: { kind: "goal_unclear" } };
       }
     } catch {
-      // not json — fall through
+      // body wasn't json — fall through to server_error.
     }
-    return { ok: false, error: { kind: "server_error", status: 400 } };
   }
   if (!res.ok) return { ok: false, error: { kind: "server_error", status: res.status } };
 

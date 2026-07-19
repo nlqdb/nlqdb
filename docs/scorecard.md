@@ -8,28 +8,31 @@ Point-in-time tracker, regenerated each
 **Weekly focus number (2026-07-11 → 07-18, awaiting the next /weekly re-point):**
 **row #8 BIRD raw EX → ≥ 0.60** — the pillar furthest from its
 [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) floor. The `SK-LLM-044` detour
-is now closed: measured on BIRD (run 90 — regressed), reverted, and this run (91)
-**confirmed the revert recovered the number** — see below.
+is now closed: measured on BIRD (run 90 — regressed), reverted, and run 91
+**confirmed the revert recovered the number** (0.514 → 0.542, PR #734 merged) —
+see below.
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; within engine, **row #8
-BIRD 0.542 < the 0.60 Phase-2 floor** (gap 5.8 pp). **Run 91 pulled the engine
-lever (row #8, weekly focus): the post-revert canonical BIRD re-measure — the
-run-90 `SK-LLM-044` revert recovered the gate benchmark.** Dispatched the
-canonical BIRD full eval on **post-revert** main `2b3e4d2` (the run-90 revert head;
-`SK-LLM-044` gone from `prompts.ts`), completed across **6 `SK-QUAL-013` windows**
-as the free tier flapped (218 → 286 → 354 → 425 → 497 → 500 attempted, `no_sql`
-0/500). Result: free EA **0.514 → 0.5422** (256 → 270 match; EA 270/498, 2
-`gold_error`, 1 `exec_error`) — **+2.8 pp vs the `SK-LLM-044` reading**. Baseline
-diff vs the 07-11 0.5462: Δ **−0.40 pp, McNemar b=36 / c=34, p=0.452
-(edwards-chi2), `regressions: []`** — statistically flat, **clearing the run-90
-`SK-QUAL-006` trigger** (was b=46/c=30, p=0.043). Both runs measure the identical
-reverted engine ⇒ the −0.40 pp is provider-mix noise. **Baseline re-seeded**
-0.5462 → 0.5422 (`run_at` 07-11 → 07-19; refreshes the >7-day freshness clock — a
-flat give-back, not a ratcheted regression per `SK-QUAL-005`). Row #9 Spider
-give-back re-measure still due (`SK-LLM-044` now off main). **Step 0:** open PRs
-#731 (scorecard/weekly docs), #719 (Infisical draft) — neither touches
-`packages/llm/**` or `tools/eval/**`; scorecard/baseline regen is overlap-exempt.
-**Rule 6:** CI green on `main` head `2b3e4d2`; no red-main / stale-deploy lever.
+BIRD 0.542 < the 0.60 Phase-2 floor** (gap 5.8 pp). The weekly-focus engine lever
+(row #8) is resolved — **run 91 (PR #734, merged): the post-revert canonical BIRD
+re-measure recovered 0.514 → 0.5422** (McNemar b=36/c=34 p=0.452, `regressions:
+[]` — the run-90 `SK-QUAL-006` trigger cleared; baseline re-seeded 0.5462 →
+0.5422, a flat give-back per `SK-QUAL-005`). Per **step 0** that lever is taken, so
+**run 92 pulled a step-2 priority-1 UX-flow lever (row #4 onboarding):** a stranger
+who fumbles their first goal ("test", "a database") trips the create pipeline's
+`422 infer_failed` (`ambiguous_goal`/`plan_invalid`, `index.ts`
+`formatCreateJsonResponse`), but the web client's `postAskCreate` had **no 422
+branch** → the catch-all showed *"Try again — the database couldn't be created,"*
+which is wrong (retrying the identical vague goal fails the same way). The
+actionable `goal_unclear` copy — *"Try describing what you want to build, e.g. 'a
+messages database'"* — existed and was unit-tested but **unreachable**: its only
+trigger was `400 + error.status === "db_id_required"`, a shape the API never
+emits. Fixed: mapped `422 infer_failed/{ambiguous_goal,plan_invalid}` →
+`goal_unclear` (other 422 kinds stay `server_error`), deleted the dead
+`db_id_required` branch, added 3 reachability tests (`api.test.ts`). **Step 0:**
+open PRs #731 (weekly docs) and #719 (Infisical draft) remain; this run touched
+only `apps/web/src/lib/api*.ts` — no overlap; scorecard regen is overlap-exempt.
+**Rule 6:** CI green on `main`; no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -37,7 +40,7 @@ give-back re-measure still due (`SK-LLM-044` now off main). **Step 0:** open PRs
 | 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** (Chrome 41, ChromeMobile 3, MobileSafari 2, Firefox 2, Edge 1) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield (owned by PR #711) |
 | 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. **Run 92** wired the first-run recovery affordance — a vague goal (`422 infer_failed`) now surfaces the actionable `goal_unclear` copy (previously unreachable dead code) instead of a dead-end "try again" |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **100** (`/vs` 31 + `/solve` 33 + `/blog` **36**; run-79 count fix — `blog.ts` holds 36 published posts, run 78 read 35). Run 78 published the oldest queued draft (`smoke-test-walks-the-old-ui`, step 3.1 forced-publish at ≥3 depth) → live at `/blog/smoke-test-walks-the-old-ui/`, verified in sitemap + rss + llms.txt. Queue now holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -81,33 +84,40 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-19 (run 91)** — **Engine lever (row #8, weekly focus): the post-revert
-canonical BIRD re-measure confirms the run-90 `SK-LLM-044` revert recovered the
-gate benchmark — regression cleared.** Run 90 measured `SK-LLM-044` on BIRD for
-the first time (0.514, McNemar p=0.043 → `SK-QUAL-006` trigger) and reverted it,
-leaving a "re-measure due next run" debt. This run discharged it: dispatched the
-canonical BIRD full eval on **post-revert** main `2b3e4d2` (the run-90 revert head;
-`SK-LLM-044` gone from `prompts.ts`), completed across **6 `SK-QUAL-013` windows**
-as the free tier flapped (218 → 286 → 354 → 425 → 497 → 500 attempted, `no_sql`
-0/500). Result: free EA **0.514 → 0.5422** (256 → 270 match; EA 270/498, 2
-`gold_error`, 1 `exec_error`) — **+2.8 pp recovery**. Baseline diff vs the 07-11
-0.5462: Δ **−0.40 pp, McNemar b=36/c=34, p=0.452 (edwards-chi2), `regressions:
-[]`** — statistically flat, **clearing the run-90 trigger**. Both runs measure the
-identical reverted engine, so the −0.40 pp is provider-mix noise. **Number:** row
-#8 BIRD **0.514 → 0.542**; **baseline re-seeded** 0.5462 → 0.5422 (`run_at` 07-11 →
-07-19 — a flat give-back that refreshes the >7-day freshness clock, not a ratcheted
-regression per `SK-QUAL-005`; a downward re-seed on a flat run has 07-03
-precedent). **Gates:** `bun test tools/eval` green; typecheck/lint/test clean.
-**Step-1 refresh:** CI green `2b3e4d2` (ci.yml run 2575); docs-ambiguity **15**
-(fresh grep); `/blog` **36**, queue **2**; users **9** / strangers **0** carried
-(07-16, newest reg 07-06); GSC 28d **1 click / 452 impr / pos 16.3** (fresh 07-19).
-Row #9 Spider give-back re-measure still due (one lever/run; BIRD is the gate
-benchmark). **Artifact (step 3):** queue **2** (< 3) → no forced publish; dev.to
-drip guard skipped (a variant posted 14.9 h ago); this run's lesson (a reverted
-prompt directive is only cleared once the gate benchmark is re-measured, not at
-revert time) is engine-internal, not a stranger-search topic → no new draft.
-**KPI (GLOBAL-025):** **engine quality** — confirms the gate benchmark recovered
-to its flat baseline after the regressor's removal; no real KPI degrades.
+**2026-07-19 (run 92)** — **UX-flow lever (step-2 priority 1, row #4 onboarding):
+the first-run "your goal was too vague" recovery affordance was dead code —
+strangers got the wrong error; wired + tested it.** The weekly-focus engine lever
+(row #8 BIRD) was resolved by run 91 (PR #734, merged — recovered the
+post-revert benchmark to 0.5422, `SK-QUAL-006` trigger cleared) — per **step 0**
+this run must not duplicate it, so it pulled the top-priority pullable lever left:
+a real stranger-facing flow defect. When a first-timer types a thin goal
+("test", "a database") and hits Create, the create pipeline returns `422
+infer_failed` (`ambiguous_goal`/`plan_invalid`; `index.ts`
+`formatCreateJsonResponse`). The web client's `postAskCreate` (`apps/web/src/lib/api.ts`)
+had **no 422 branch**, so it fell to the catch-all → `server_error` →
+*"Try again — the database couldn't be created."* — misleading, since retrying
+the identical vague goal fails the same way. The correct copy,
+`goal_unclear` → *"Try describing what you want to build, e.g. 'a messages
+database'"*, **existed and was unit-tested but unreachable**: its sole trigger was
+`400 + error.status === "db_id_required"`, a shape the API never emits (grep
+confirms the API uses `dbId_required`/`goal_required` strings and `error.kind`,
+never `db_id_required`). **Fix:** map `422 infer_failed/{ambiguous_goal,
+plan_invalid}` → `goal_unclear` (transient `llm_failed` + compile/ddl/embed_failed
+correctly stay `server_error`), delete the dead `db_id_required` branch, add 3
+reachability tests. **Number:** row #4 (first-10-queries success / onboarding) —
+the vague-first-goal recovery path went from **unreachable → reachable + verified**
+(3 new tests; the `goal_unclear` copy's own test already existed but never
+exercised the real API shape). **Gates:** `bun test src` (web) **290 pass**;
+changed files tsc-clean (pre-existing `react`/`three` decl errors unrelated);
+biome lint clean; scorecard < 20 KB (D4). **Step-1 refresh:** CI + deploy
+all `success` on `main` `2b3e4d2`; docs-ambiguity **15**; `/blog` **36**, queue
+**2**; users **9** / strangers **0** carried (07-16, newest reg 07-06); GSC 28d
+**1 click / 455 impr / pos 16.4** carried (row #7). **Artifact (step 3):** queue **2** (< 3)
+→ no forced publish; dev.to drip throttled (18.1h < 20h — expected no-op); no new
+draft (optional side-work, queue near D4 cap). **KPI (GLOBAL-025):** **onboarding
++ UX** — a stranger who fumbles their first goal now gets the actionable
+correction instead of a dead-end retry; no KPI degrades (additive client mapping +
+tests, no engine/API surface touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
