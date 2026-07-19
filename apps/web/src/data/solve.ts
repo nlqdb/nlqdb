@@ -2155,6 +2155,62 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
+  {
+    slug: "agent-memory-mcp-server",
+    persona: "P2 agent builder",
+    searchTitle: "Is there an MCP server that gives my AI agent memory?",
+    oneLiner:
+      "If you want an MCP server that gives your AI agent memory, point your coding agent at nlqdb's hosted one with one command — `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`. Unlike a blob-store memory server, it's a real Postgres your agent writes to and queries in English, so 'how many' and 'top N' are SQL, not guesses.",
+    painContext:
+      "Search 'agent memory MCP server' and you land on a pile of registry entries — most are a thin wrapper over a JSON file or a vector store, exposing `store_memory` / `get_memory` tools that write blobs and return the top-k similar ones. That covers recall. It falls apart the moment you want to count what the agent remembered, group it by user, or see what changed this week — a blob has no grain and a vector store has no query planner, so those answers become the LLM doing arithmetic over a list.",
+    demoGoal: "count of remembered items grouped by kind, most first",
+    demoWhy:
+      "The question a blob-store memory server can't answer — group what the agent remembered by kind and count each — is one GROUP BY when memory is typed rows in a real database.",
+    howNlqdbAnswers: [
+      "One command — `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp` — points Claude Code, Cursor, or Codex at nlqdb's hosted MCP server.",
+      "The `nlqdb_query` tool provisions a real Postgres from the agent's first English goal — no connection string, no schema, no separate create call.",
+      "Because memory is typed rows, `GROUP BY`, top-N, and per-period rollups run as SQL — the aggregates a blob or vector-store memory server can't.",
+      "Every answer returns the rows plus the compiled SQL, and tenant isolation is a fail-closed RLS policy in the engine, not a `WHERE` you remember.",
+    ],
+    whatItDoesnt: [
+      "It's a hosted server (`mcp.nlqdb.com/mcp`), not a self-hostable local MCP binary you run beside your agent — the FSL-1.1 self-host container is on the roadmap, not shippable today.",
+      "The dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts/episodes/entities) are authed and gated (`MEMORY_PRESET` is dark, `SK-PIVOT-010`); today the live path is `nlqdb_query` provisioning and querying a database, and it rejects anonymous writes.",
+      "No native vector search — nlqdb is Postgres-first; if what you need from a memory server is unstructured similarity recall over chat-text, that's Mem0 or pgvector's job, and nlqdb composes with it.",
+    ],
+    faqs: [
+      {
+        q: "Is there an MCP server that gives my AI agent memory?",
+        a: "Yes — nlqdb's hosted MCP server. Run one command (`claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`) and your coding agent gets a real hosted Postgres via the `nlqdb_query` tool: it provisions the database from the first English goal, then reads and writes it in English with the SQL shown. It's memory you can aggregate over, not just a blob store.",
+      },
+      {
+        q: "How is this different from a memory MCP server that stores and retrieves memories?",
+        a: "Most 'memory' MCP servers wrap a JSON file or a vector store: `store_memory` writes a blob, `get_memory` returns the top-k similar ones. That's recall. nlqdb stores memory as typed rows in Postgres, so on top of recall you can `GROUP BY`, count, and roll up — 'the 5 things this agent remembers most' is a query, not the LLM adding up search hits.",
+      },
+      {
+        q: "Which coding agents and MCP hosts can install the nlqdb memory server?",
+        a: "Any host that speaks MCP. Cursor and VS Code install from a one-click link, Claude Code from one command, and Codex from a config-file line (all sourced from the host descriptors in `mcp-install.ts`); Claude Desktop, Windsurf, and Zed connect via their custom-connector settings. It's a hosted remote server at `mcp.nlqdb.com/mcp` — no local binary to run.",
+      },
+      {
+        q: "Do I get dedicated remember and recall tools, or just query?",
+        a: "Today the live tool is `nlqdb_query`, which both provisions the database and answers over it in English. A dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts, episodes, entities with per-agent isolation and TTL) exist but are authed and gated behind `MEMORY_PRESET` (`SK-PIVOT-010`) — coming, not anonymous today. Until then the agent provisions and queries its memory tables through `nlqdb_query`.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://github.com/modelcontextprotocol/servers",
+        label:
+          "Model Context Protocol server registry — the 'memory MCP server' listings a search for one lands on.",
+      },
+      {
+        url: "https://www.reddit.com/r/mcp/search/?q=memory",
+        label: 'r/mcp — recurring "memory MCP server" / "give my agent memory" threads.',
+      },
+      {
+        url: "https://hn.algolia.com/?q=mcp%20memory",
+        label: 'HN search: "mcp memory" — discussion on memory servers for AI agents.',
+      },
+    ],
+  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {

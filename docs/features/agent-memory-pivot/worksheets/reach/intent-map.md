@@ -59,12 +59,13 @@ Split lives in [`docs/research/personas.md`](../../../../research/personas.md) �
 
 - **R-02 (build-vs-buy):** #5 and the DIY-`memories`-table default are
   unowned — the honesty surface is the highest-leverage gap for P2b.
-- **R-03 (stage-0 pages):** the top-5 *unowned* human queries were #2 (best
-  way to store agent memory — now `solve/best-way-to-store-agent-memory`), #5
-  (build vs buy — R-02), #10 (TTL/expiry — now `solve/expire-old-agent-memory`),
-  #13 (agent memory MCP server — also R-05). Remaining gap: #13. Existing `solve/*` pages
-  already own #1/#3/#6/#8/#9/#11/#12/#14/#15/#16/#17 — R-03 fills the gaps,
-  not the covered rows.
+- **R-03 (stage-0 pages) — complete:** the top-5 *unowned* human queries were
+  #2 (best way to store agent memory — `solve/best-way-to-store-agent-memory`),
+  #5 (build vs buy — R-02), #10 (TTL/expiry — `solve/expire-old-agent-memory`),
+  #13 (agent memory MCP server — now `solve/agent-memory-mcp-server`; also R-05).
+  All filled. Existing `solve/*` pages already own
+  #1/#3/#6/#8/#9/#11/#12/#14/#15/#16/#17 — R-03 filled the gaps, not the
+  covered rows.
 - **R-04/R-05 (setup guide + registries):** every "Agent phrasing" column
   entry is a machine target. The MCP-noun ones (#2, #13, #14) resolve to a
   registry listing or the one-command setup guide, not a prose page.
