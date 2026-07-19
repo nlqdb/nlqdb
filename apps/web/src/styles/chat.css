@@ -706,6 +706,54 @@
   line-height: 1.4;
 }
 
+/* SK-GTM-006 — Sean-Ellis Q1 survey card. Same calm shell as
+   .chat-notice; a fieldset (semantic group), with the legend floated so
+   it flows like a normal line instead of notching the border. */
+.chat-pmf {
+  position: relative;
+  min-width: 0;
+  margin: 8px 18px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-elev);
+  font-family: var(--sans);
+  font-size: 13px;
+}
+
+.chat-pmf__question {
+  float: left;
+  width: calc(100% - 28px);
+  margin: 0;
+  padding: 0;
+  color: var(--fg);
+  line-height: 1.4;
+}
+
+.chat-pmf__dismiss {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+}
+
+.chat-pmf__thanks {
+  margin: 0;
+  color: var(--fg);
+  line-height: 1.4;
+}
+
+.chat-pmf__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  clear: both;
+  padding-top: 10px;
+}
+
+.chat-pmf__option {
+  font-size: 13px;
+}
+
 .chat-notice__dismiss {
   flex-shrink: 0;
   padding: 0 4px;

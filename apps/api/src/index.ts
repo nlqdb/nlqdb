@@ -96,6 +96,7 @@ import {
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { loadModelCatalog } from "./models-catalog.ts";
 import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
+import { getPmfSurveyStatus, parseSeanEllisResponse, recordPmfSurveyResponse } from "./pmf-survey.ts";
 import { recordPremiumInterest } from "./premium-interest.ts";
 import {
   accountTenantIdFromPrincipal,
@@ -2442,6 +2443,100 @@ app.post("/v1/premium/interest", requireSession, async (c) => {
       span.recordException(e);
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.premium.interest.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// Sean-Ellis Q1 PMF survey (SK-GTM-006) — the in-product replacement for
+// the founder-playbook §2 interview call (acquisition tracker Phase D
+// §4.1). Session-only on both routes: a survey answer is an account
+// opinion, so an anon / sk_live bearer can never read eligibility or
+// post a response. GET is a read (no Idempotency-Key, GLOBAL-005
+// exempt); POST is idempotent by construction — the `user_id` PK dedups
+// (SK-IDEMP-005) and the response body is constant, so an SDK retry
+// (GLOBAL-022) observes the same result.
+app.get("/v1/pmf-survey", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.pmf.survey_status", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const status = await getPmfSurveyStatus(c.env.DB, session.user.id);
+      span.setAttribute("nlqdb.pmf.eligible", status.eligible);
+      span.setAttribute("nlqdb.pmf.survey_status.outcome", "ok");
+      return c.json(status);
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.pmf.survey_status.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+app.post("/v1/pmf-survey", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.pmf.survey", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const body = (await c.req.json().catch(() => null)) as { response?: unknown } | null;
+      const response = parseSeanEllisResponse(body?.response);
+      if (!response) {
+        span.setAttribute("nlqdb.pmf.survey.outcome", "invalid_response");
+        return c.json(
+          { error: "invalid_response", message: "response must be one of: very_disappointed, somewhat_disappointed, not_disappointed, na" },
+          400,
+        );
+      }
+      span.setAttribute("nlqdb.pmf.response", response);
+      const email = session.user.email ?? null;
+      const { firstTime } = await recordPmfSurveyResponse(
+        c.env.DB,
+        session.user.id,
+        email,
+        response,
+      );
+      span.setAttribute("nlqdb.pmf.survey.first_time", firstTime);
+      if (firstTime) {
+        // Notify the founder per response — the premium-interest pattern
+        // (dispatch-after-insert, SK-IDEMP-006). At most one email per
+        // account by construction; best-effort, never a 5xx.
+        try {
+          const sendEmail = makeEmailSender({
+            apiKey: c.env.RESEND_API_KEY,
+            from: c.env.RESEND_FROM ?? DEFAULT_FROM,
+          });
+          const who = email ?? `user ${session.user.id}`;
+          await sendEmail({
+            to: FOUNDER_EMAIL,
+            subject: `PMF survey (Sean-Ellis Q1): ${response} — ${who}`,
+            text: [
+              `${who} answered the in-product Sean-Ellis Q1 survey: ${response}.`,
+              "",
+              `user id: ${session.user.id}`,
+              "All responses: SELECT response, COUNT(*) FROM pmf_survey GROUP BY response;",
+            ].join("\n"),
+            idempotencyKey: `pmf-survey:${session.user.id}`,
+          });
+        } catch (mailErr) {
+          span.setAttribute("nlqdb.pmf.survey.notify_failed", true);
+          span.recordException(mailErr as Error);
+        }
+      }
+      span.setAttribute("nlqdb.pmf.survey.outcome", "ok");
+      return c.json({ ok: true });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.pmf.survey.outcome", "internal_error");
       return c.json({ error: "internal_error" }, 500);
     } finally {
       span.end();

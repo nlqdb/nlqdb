@@ -164,7 +164,7 @@ supported; else read manually before editing.)
 | `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` |
 | rate-limit middleware (`apps/api/src/{ask/rate-limit,anon-rate-limit,anon-global-cap}.ts`, `principal.ts` `rateLimitBucketKey`) | `docs/features/rate-limit/FEATURE.md` |
 | `apps/api/src/{principal,anon-rate-limit,anon-global-cap,turnstile}.ts`, `apps/web/src/lib/{anon,anon-adopt,handoff,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | `docs/features/anonymous-mode/FEATURE.md` |
-| `apps/api/src/admin/**`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts` | `docs/features/gtm-metrics/FEATURE.md` |
+| `apps/api/src/admin/**`, `apps/api/src/pmf-survey.ts`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/{lib/pmf-survey.ts,components/chat/PmfSurveyCard.tsx}` | `docs/features/gtm-metrics/FEATURE.md` |
 | `cli/**` | `docs/features/cli/FEATURE.md` |
 | `packages/elements/**` | `docs/features/elements/FEATURE.md` |
 | `packages/sdk/**` | `docs/features/sdk/FEATURE.md` |

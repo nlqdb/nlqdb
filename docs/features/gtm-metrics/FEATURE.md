@@ -4,17 +4,20 @@ description: Canonical GTM/PMF metric set — admin-gated live metrics endpoint,
 when-to-load:
   globs:
     - apps/api/src/admin/**
+    - apps/api/src/pmf-survey.ts
     - apps/web/src/pages/app/admin.astro
     - apps/web/src/components/admin/**
     - apps/web/src/lib/attribution.ts
-  topics: [gtm, pmf, metrics, funnel, admin, dashboard, acquisition, attribution, utm]
+    - apps/web/src/lib/pmf-survey.ts
+    - apps/web/src/components/chat/PmfSurveyCard.tsx
+  topics: [gtm, pmf, metrics, funnel, admin, dashboard, acquisition, attribution, utm, survey, sean-ellis]
 ---
 
 # Feature: GTM Metrics
 
 **One-liner:** Canonical GTM/PMF metric set — admin-gated live metrics endpoint, daily snapshots, and the `/app/admin` founder dashboard.
-**Status:** implemented (2026-07-19 — endpoint + snapshots + dashboard v1; SK-GTM-005 synthetic-traffic exclusion + unique-people counts + first-touch attribution `SK-GTM-007` same day; external sources stay out of scope, see Open questions)
-**Owners (code):** `apps/api/src/admin/**`, `apps/api/src/synthetic-ua.ts`, `apps/api/migrations/00{22_gtm_snapshots,23_synthetic_traffic_flag,24_databases_source}.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`
+**Status:** implemented (2026-07-19 — endpoint + snapshots + dashboard v1; SK-GTM-005 synthetic-traffic exclusion + unique-people counts, first-touch attribution `SK-GTM-007`, and the in-product Sean-Ellis Q1 survey `SK-GTM-006` all same day; external sources stay out of scope, see Open questions)
+**Owners (code):** `apps/api/src/admin/**`, `apps/api/src/synthetic-ua.ts`, `apps/api/src/pmf-survey.ts`, `apps/api/migrations/00{22_gtm_snapshots,23_synthetic_traffic_flag,24_databases_source,25_pmf_survey}.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/lib/pmf-survey.ts`, `apps/web/src/components/chat/PmfSurveyCard.tsx`
 
 **Contribution to north-star:** Onboarding — the funnel/activation/retention numbers ARE the onboarding pillar's measurement (TTFV cousins, first-10 success, retention per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)), now continuously measured instead of hand-pulled; per [`GLOBAL-038`](../../decisions/GLOBAL-038-gtm-pmf-instrumentation.md) acquisition measurement is additionally first-class. No other pillar degrades: the endpoint is admin-only D1 reads off the request path of every product surface.
 
@@ -253,13 +256,66 @@ when-to-load:
     join for data that is 1:1 with the created row today; the column is
     the smaller diff and adoption already carries it.
 
+### SK-GTM-006 — Sean-Ellis Q1 ships as an in-product one-click survey, asked once per account on an eligible return visit
+
+- **Decision:** The canonical PMF question ("How would you feel if you
+  could no longer use nlqdb?" — wording verbatim from founder-playbook §2
+  / acquisition-tracker Phase D §4.1) is asked **in-product**, in the
+  `/app` chat (`PmfSurveyCard.tsx`), never by call or email. Eligibility
+  is server-decided (`apps/api/src/pmf-survey.ts`,
+  `GET /v1/pmf-survey`): the account's owned DBs carry ≥ 2 successful
+  first-10 answers (`SUM(first10_ok) ≥ 2`, the `SK-ONBOARD-006`
+  counters) AND the most recent activity is ≥ 24 h old — i.e. a return
+  visit, per PMFsurvey.com's "never survey day-1 users" rule. One
+  response per account, ever: `pmf_survey` D1 table (migration `0025`),
+  `user_id` PK + `ON CONFLICT DO NOTHING` (the `premium_interest` /
+  SK-IDEMP-005 pattern); a dismissal snoozes 7 days client-side
+  (localStorage) without spending the one answer. `POST /v1/pmf-survey`
+  accepts any signed-in response and snapshots `query_count` /
+  `days_since_first` per row, so the read side enforces the population
+  rule instead of the write 403ing a stale-tab answer. The founder is
+  emailed per response (dispatch-after-insert, at most one per account);
+  the metric read lives in `computeGtmMetrics` (`pmf.seanEllis.responses`
+  / `byResponse` / `veryDisappointedShare`, na-excluded) per `SK-GTM-001`,
+  with additive snapshot keys. Per
+  [`GLOBAL-003`](../../decisions/GLOBAL-003-all-surfaces-one-pr.md) this
+  is **deliberately web-only**: the survey is a feedback widget on the
+  human chat surface, not a user capability — no SDK/CLI/MCP/elements verb.
+- **Core value:** Goal-first, Free, Honest latency
+- **Why:** The Sean-Ellis 40%-very-disappointed rule is the repo's
+  committed PMF gate (Phase D §4.4) yet had no capture instrument — it
+  was recommended twice (fable-recommendation §4.5/§8, 2026-06-12) and
+  never built, so PMF would have stayed unmeasurable exactly when launch
+  traffic (launch-kit.md) starts producing eligible users. Instrument
+  before the cohort arrives: attribution and surveys can't be
+  retrofitted onto users who already churned.
+- **Consequence in code:** Both routes are session-only (an anon /
+  `sk_*` bearer 401s — a survey answer is an account opinion); the card
+  renders nothing unless the server says eligible, so anon visitors and
+  day-1 users never see it. New PMF metrics read `pmf_survey` only via
+  `computeGtmMetrics`. The first stored response per account is
+  immutable — reviewers reject an UPDATE path. Q2–Q5 of Phase D §4.2 are
+  NOT in scope; add them only when Q1 response volume proves the surface
+  (each is a new nullable column or its own SK).
+- **Alternatives rejected:**
+  - Email/interview surveys (founder-playbook calls) — the tracker's
+    zero-1:1-calls operating model; response rates die off-product.
+  - Events-pipeline emission (`feature.pmf.sean_ellis_q1` per the
+    original Phase D sketch) — the D1 row IS the queryable record and
+    GLOBAL-024 targets "not yet" denial paths, not feedback capture; a
+    LogSnag event would duplicate the founder email for no reader.
+  - Gating POST on live eligibility — rejects honest answers from a tab
+    opened while eligible; population filtering belongs at the read.
+  - Ask on every Nth query (no 24 h rule) — day-1 enthusiasm corrupts
+    the 40% read; PMFsurvey.com guidance is explicit.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the line.
 
 - **GLOBAL-038** — GTM/PMF instrumentation is first-class; this feature is its implementation.
 - **GLOBAL-003** — New capability ships to all surfaces or the gap is annotated. *In this feature:* web-only by decision (`SK-GTM-004`).
-- **GLOBAL-005** — Every mutation accepts `Idempotency-Key`. *In this feature:* the only route is a GET (exempt); the snapshot write is idempotent by primary key.
+- **GLOBAL-005** — Every mutation accepts `Idempotency-Key`. *In this feature:* the metrics route is a GET (exempt); the snapshot write and the `POST /v1/pmf-survey` write are idempotent by primary key (SK-IDEMP-005 pattern, constant response body).
 - **GLOBAL-013** — $0/month free tier. *In this feature:* D1-only reads, no new vendor, one small island.
 - **GLOBAL-014** — OTel span on every external call. *In this feature:* the handler wraps in `nlqdb.admin.metrics`; the cron snapshot logs `gtm_snapshot_*`.
 - **GLOBAL-025** — North-star KPIs. *In this feature:* activation/retention read `SK-ONBOARD-006`'s counters verbatim — same numbers, now continuous (amended in part by GLOBAL-038).

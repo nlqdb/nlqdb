@@ -257,11 +257,20 @@ function Metrics({ m }: { m: GtmMetrics }) {
                 .join(" · ") || "no Stripe customers yet"
             }
           />
+          <Tile
+            label="Sean-Ellis Q1 answers"
+            value={m.pmf.seanEllis.responses}
+            hint={
+              m.pmf.seanEllis.veryDisappointedShare === null
+                ? "in-product survey live (SK-GTM-006); asked on the 2nd+ return visit"
+                : `${Math.round(m.pmf.seanEllis.veryDisappointedShare * 100)}% very disappointed (PMF bar: 40%)`
+            }
+          />
         </div>
         <p className="admin__note" data-testid="sean-ellis-gate">
           {m.pmf.seanEllis.runnable
-            ? "Sean-Ellis survey is runnable — enough activated strangers to ask “how disappointed…”."
-            : `Sean-Ellis survey locked: needs ${needed} more activated stranger${needed === 1 ? "" : "s"} (${m.pmf.seanEllis.activatedStrangers}/${m.pmf.seanEllis.minActivated}).`}
+            ? "Sean-Ellis read is meaningful — enough activated strangers for the 40% rule."
+            : `Sean-Ellis % stays noise until ${needed} more activated stranger${needed === 1 ? "" : "s"} (${m.pmf.seanEllis.activatedStrangers}/${m.pmf.seanEllis.minActivated}); responses collect meanwhile.`}
         </p>
       </section>
 

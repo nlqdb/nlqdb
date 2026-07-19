@@ -49,6 +49,7 @@ import FreeModelNudge from "./FreeModelNudge";
 import { freeChainStruggled } from "./free-model-nudge-gate";
 import LeftRail from "./LeftRail";
 import ModelPicker, { BYOLLM_STATUS_EVENT } from "./ModelPicker";
+import PmfSurveyCard from "./PmfSurveyCard";
 import Palette, { type PaletteAction } from "./Palette";
 import { settleInterruptedReply } from "./reply-settle";
 import Trace, { type TraceStepName, type TraceStepRecord } from "./Trace";
@@ -770,6 +771,10 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
             </button>
           </div>
         ) : null}
+
+        {/* SK-GTM-006 — renders nothing unless the server says this is an
+            eligible return visit (≥2 successful answers, ≥24h old). */}
+        <PmfSurveyCard apiBase={apiBase} />
 
         {/* data-ph-mask (SK-WEB-024): PostHog session replay masks all text
             in this subtree — the conversation renders user DB contents

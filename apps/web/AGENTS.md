@@ -14,7 +14,7 @@ Marketing + product web app. Onboarding, anonymous-mode default, demo dataset.
 - [`sdk`](../../docs/features/sdk/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`api-keys`](../../docs/features/api-keys/FEATURE.md) — mandatory pre-read for changes under `src/pages/app/keys.astro` or `src/components/keys/**`.
 - [`blog`](../../docs/features/blog/FEATURE.md) — mandatory pre-read for changes under `src/data/blog.ts`, `src/pages/blog/**`, or `src/lib/inline-md.ts`.
-- [`gtm-metrics`](../../docs/features/gtm-metrics/FEATURE.md) — mandatory pre-read for changes under `src/pages/app/admin.astro`, `src/components/admin/**`, or `src/lib/attribution.ts` (SK-GTM-007 first-touch capture).
+- [`gtm-metrics`](../../docs/features/gtm-metrics/FEATURE.md) — mandatory pre-read for changes under `src/pages/app/admin.astro`, `src/components/admin/**`, `src/lib/attribution.ts` (SK-GTM-007 first-touch capture), `src/lib/pmf-survey.ts`, or `src/components/chat/PmfSurveyCard.tsx`.
 
 ## Commands
 

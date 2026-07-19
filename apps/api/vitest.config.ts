@@ -134,6 +134,7 @@ export default defineConfig(async () => {
               "test/byollm-account.test.ts",
               "test/byollm-endpoints.test.ts",
               "test/premium-interest.test.ts",
+              "test/pmf-survey.test.ts",
               "test/models.test.ts",
               "test/databases-delete.test.ts",
               "test/db-connect.test.ts",
