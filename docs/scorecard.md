@@ -19,7 +19,7 @@ arming `FALLBACK2_LLM_API_KEY` (SambaNova, `_e2e-opencheck.yml`), the top
 `blocked-by-human.md` bullet.
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
-**row #9 Spider 0.2222** and the weekly-focus **row #8 BIRD 0.542** is resolved
+**row #9 Spider 0.2222** and **row #8 BIRD 0.542** is resolved
 (run 91) + fresh (07-19) with offline levers exhausted — both dark for a single
 run. Per **step 0** the two engine/distribution lanes and the priority-1 UX
 components lane are all held by open PRs (see below), so **run 96 pulled the next
