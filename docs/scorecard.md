@@ -5,16 +5,18 @@ Point-in-time tracker, regenerated each
 (≤20 KB cap). History: `git log` +
 `progress/quality-score-verification-log.md` (engine).
 
-**Weekly focus number (2026-07-18 → 07-25):**
-**row #8 BIRD raw EX → ≥ 0.60** — the pillar furthest from its
-[`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) floor. The `SK-LLM-044` detour
-is now closed: measured on BIRD (run 90 — regressed), reverted, and run 91
-**confirmed the revert recovered the number** (0.514 → 0.542, PR #734 merged) —
-see below. **Row #15 stays founder-blocked** — its only fix is arming
-`FALLBACK2_LLM_API_KEY` (SambaNova, `_e2e-opencheck.yml`), an operator-only
-action **restored to `blocked-by-human.md` this week** after PR #714 deleted the
-bullet while the secret was still unset (this week's `weekly-review.md`, worst
-finding).
+**Weekly focus number (2026-07-19 → 07-25, founder-set):**
+**agentic-frontier EX → ≥ 0.80 (rows #11/#16) via the premium chain
+(`SK-LLM-017`, row #20's only open build slot).** Engine stays the pillar
+furthest from its [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) floor, but
+its headline number BIRD (row #8, 0.542) is **dark for the lever** — offline
+levers exhausted, external license reply pending — so per the amended `/weekly`
+rule the focus is engine's best agent-movable input: build the flag-dark premium
+chain and measure it on the `SK-QUAL-022` agentic-frontier smoke (0.693 today;
+the ≥ 0.80 Phase-2 criterion is the target). BIRD's revert saga is closed (runs
+90/91, flat vs baseline). **Row #15 stays founder-blocked** — its only fix is
+arming `FALLBACK2_LLM_API_KEY` (SambaNova, `_e2e-opencheck.yml`), the top
+`blocked-by-human.md` bullet.
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and the weekly-focus **row #8 BIRD 0.542** is resolved

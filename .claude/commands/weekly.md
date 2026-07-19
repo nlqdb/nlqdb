@@ -10,10 +10,14 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 
 - `docs/scorecard.md` **and its git history** — the week-over-week trend
   per row, not the day.
-- `git log --since='7 days ago'` — every daily PR: title, body, the delta
-  it claims.
+- `git log --since='7 days ago'` — every daily **and reach** PR: title,
+  body, the delta it claims.
 - `docs/research/distribution-queue.md`, `docs/blocked-by-human.md`.
-- [`.claude/commands/daily.md`](daily.md) — the prompt under audit.
+- [`.claude/commands/daily.md`](daily.md) and
+  [`.claude/commands/reach.md`](reach.md) — the prompts under audit —
+  plus the reach `INDEX.md` § Current numbers (its scorecard-equivalent;
+  founder-resolved 2026-07-19: the hourly reach loop is inside every
+  check below, same as daily).
 
 ## The audit — six checks, worst finding first
 
@@ -39,7 +43,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
    regression.
 6. **Prompt drift.** Dangling references (decision IDs with no canonical
    file, paths that no longer exist), dead rules, and contradictions in
-   `daily.md` and this file — the GLOBAL-027 case (cited everywhere,
+   `daily.md`, `reach.md`, and this file — the GLOBAL-027 case (cited everywhere,
    canonical file missing until its superseded record landed 2026-07-01)
    is the archetype.
 
@@ -49,12 +53,18 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
    agent-movable number + a one-line why, chosen from the audit. If the
    founder wrote one this week, keep theirs — never overwrite a founder
    edit. Default when everything is green: the pillar furthest from its
-   `GLOBAL-025` floor.
+   `GLOBAL-025` floor — **via that pillar's best agent-movable input,
+   never its headline number while that number is dark** (levers
+   exhausted or externally blocked). A focus no daily run can pull
+   scatters the week into meta work and measurement churn — found
+   2026-07-11 (BIRD), repeated 2026-07-18 (BIRD again, runs 90–94)
+   (founder-resolved 2026-07-19).
 2. **Overwrite `docs/weekly-review.md`** (current-state, ≤ 4 KB, no
    accretion): one short paragraph per check, worst finding first, each
    naming its evidence (PR #s, scorecard rows, URLs).
-3. **One smallest fix to `daily.md`** if check 6 found drift — a small
-   diff, never a restructure, never touching founder-resolved rules (P1).
+3. **One smallest fix to `daily.md` or `reach.md`** if check 6 found
+   drift — a small diff, never a restructure, never touching
+   founder-resolved rules (P1).
 4. §8 quality gates green. PR body: the focus number chosen + why, and the
    worst finding.
 
