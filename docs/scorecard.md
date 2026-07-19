@@ -21,22 +21,16 @@ BIRD 0.542 < the 0.60 Phase-2 floor** (gap 5.8 pp). The weekly-focus engine leve
 (row #8) is resolved — **run 91 (PR #734, merged): the post-revert canonical BIRD
 re-measure recovered 0.514 → 0.5422** (McNemar b=36/c=34 p=0.452, `regressions:
 []` — the run-90 `SK-QUAL-006` trigger cleared; baseline re-seeded 0.5462 →
-0.5422, a flat give-back per `SK-QUAL-005`). Per **step 0** that lever is taken, so
-**run 92 pulled a step-2 priority-1 UX-flow lever (row #4 onboarding):** a stranger
-who fumbles their first goal ("test", "a database") trips the create pipeline's
-`422 infer_failed` (`ambiguous_goal`/`plan_invalid`, `index.ts`
-`formatCreateJsonResponse`), but the web client's `postAskCreate` had **no 422
-branch** → the catch-all showed *"Try again — the database couldn't be created,"*
-which is wrong (retrying the identical vague goal fails the same way). The
-actionable `goal_unclear` copy — *"Try describing what you want to build, e.g. 'a
-messages database'"* — existed and was unit-tested but **unreachable**: its only
-trigger was `400 + error.status === "db_id_required"`, a shape the API never
-emits. Fixed: mapped `422 infer_failed/{ambiguous_goal,plan_invalid}` →
-`goal_unclear` (other 422 kinds stay `server_error`), deleted the dead
-`db_id_required` branch, added 3 reachability tests (`api.test.ts`). **Step 0:**
-open PRs #731 (weekly docs) and #719 (Infisical draft) remain; this run touched
-only `apps/web/src/lib/api*.ts` — no overlap; scorecard regen is overlap-exempt.
-**Rule 6:** CI green on `main`; no red-main / stale-deploy lever.
+0.5422, a flat give-back per `SK-QUAL-005`). The engine lever is fresh (07-19) and
+flat; offline levers exhausted. Per **step 0** run 92's row-#4 lever is merged, so **run 93 pulled a step-2
+priority-1 UX-flow lever (rows #4/#5, chat ask path):** an aborted in-flight reply
+(a follow-up sent before the first answer lands) was left a perpetual `pending`
+skeleton — a GLOBAL-011 spinner-lie that also blocked the whole session from
+persisting — now settled to a terminal `error` (full detail in **Last change**).
+**Step 0:** open PR #719 (Infisical draft) remains; this run touched only
+`apps/web/src/components/chat/{ChatPanel.tsx,reply-settle.*}` — no overlap;
+scorecard regen is overlap-exempt. **Rule 6:** CI + deploy-web green on `main`;
+no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -44,7 +38,7 @@ only `apps/web/src/lib/api*.ts` — no overlap; scorecard regen is overlap-exemp
 | 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** (Chrome 41, ChromeMobile 3, MobileSafari 2, Firefox 2, Edge 1) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield (owned by PR #711) |
 | 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. **Run 92** wired the first-run recovery affordance — a vague goal (`422 infer_failed`) now surfaces the actionable `goal_unclear` copy (previously unreachable dead code) instead of a dead-end "try again" |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. **Run 92** wired the vague-first-goal recovery copy (`422 infer_failed` → `goal_unclear`); **run 93** fixed the follow-up-before-first-answer path — an aborted in-flight reply no longer spins forever (it settles to a terminal "Cancelled — …"), which also unblocks per-session history persistence (rows #4/#5) |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **100** (`/vs` 31 + `/solve` 33 + `/blog` **36**; run-79 count fix — `blog.ts` holds 36 published posts, run 78 read 35). Run 78 published the oldest queued draft (`smoke-test-walks-the-old-ui`, step 3.1 forced-publish at ≥3 depth) → live at `/blog/smoke-test-walks-the-old-ui/`, verified in sitemap + rss + llms.txt. Queue now holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -88,40 +82,43 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-19 (run 92)** — **UX-flow lever (step-2 priority 1, row #4 onboarding):
-the first-run "your goal was too vague" recovery affordance was dead code —
-strangers got the wrong error; wired + tested it.** The weekly-focus engine lever
-(row #8 BIRD) was resolved by run 91 (PR #734, merged — recovered the
-post-revert benchmark to 0.5422, `SK-QUAL-006` trigger cleared) — per **step 0**
-this run must not duplicate it, so it pulled the top-priority pullable lever left:
-a real stranger-facing flow defect. When a first-timer types a thin goal
-("test", "a database") and hits Create, the create pipeline returns `422
-infer_failed` (`ambiguous_goal`/`plan_invalid`; `index.ts`
-`formatCreateJsonResponse`). The web client's `postAskCreate` (`apps/web/src/lib/api.ts`)
-had **no 422 branch**, so it fell to the catch-all → `server_error` →
-*"Try again — the database couldn't be created."* — misleading, since retrying
-the identical vague goal fails the same way. The correct copy,
-`goal_unclear` → *"Try describing what you want to build, e.g. 'a messages
-database'"*, **existed and was unit-tested but unreachable**: its sole trigger was
-`400 + error.status === "db_id_required"`, a shape the API never emits (grep
-confirms the API uses `dbId_required`/`goal_required` strings and `error.kind`,
-never `db_id_required`). **Fix:** map `422 infer_failed/{ambiguous_goal,
-plan_invalid}` → `goal_unclear` (transient `llm_failed` + compile/ddl/embed_failed
-correctly stay `server_error`), delete the dead `db_id_required` branch, add 3
-reachability tests. **Number:** row #4 (first-10-queries success / onboarding) —
-the vague-first-goal recovery path went from **unreachable → reachable + verified**
-(3 new tests; the `goal_unclear` copy's own test already existed but never
-exercised the real API shape). **Gates:** `bun test src` (web) **290 pass**;
-changed files tsc-clean (pre-existing `react`/`three` decl errors unrelated);
-biome lint clean; scorecard < 20 KB (D4). **Step-1 refresh:** CI + deploy
-all `success` on `main` `2b3e4d2`; docs-ambiguity **15**; `/blog` **36**, queue
-**2**; users **9** / strangers **0** carried (07-16, newest reg 07-06); GSC 28d
-**1 click / 455 impr / pos 16.4** carried (row #7). **Artifact (step 3):** queue **2** (< 3)
-→ no forced publish; dev.to drip throttled (18.1h < 20h — expected no-op); no new
-draft (optional side-work, queue near D4 cap). **KPI (GLOBAL-025):** **onboarding
-+ UX** — a stranger who fumbles their first goal now gets the actionable
-correction instead of a dead-end retry; no KPI degrades (additive client mapping +
-tests, no engine/API surface touched).
+**2026-07-19 (run 93)** — **UX-flow lever (step-2 priority 1, rows #4/#5, chat ask
+path): an aborted in-flight reply spun a loading skeleton forever and silently
+blocked the whole session from persisting; settled it + de-duped the settle rule.**
+Run 92's row-#4 lever is merged (per **step 0** not duplicated), so this run pulled
+the next priority-1 stranger-flow defect on the create→ask→first-answer path. When
+a stranger asks a follow-up **before their first answer lands**,
+`ChatPanel.startSend` aborts the in-flight request (SK-SDK-003). But the aborted
+call's catch was
+`if (ac.signal.aborted) return;` — it bailed **without settling the reply**, so
+reply #1 stayed `{ kind: "pending" }` forever: a perpetual Answer/Data skeleton
+(`aria-busy`) spinning above the newer answer (a **GLOBAL-011** spinner-lie), and —
+because the history save effect skips while any reply is `pending` — the entire
+session never persisted to `localStorage`, so a reload rewrote all of it to
+"Session ended.". The closure's `replyId` is always the *superseded* reply (a
+newer send's id differs), so settling it can't clobber the live one. **Fix:** the
+abort branch now settles the superseded reply to a terminal
+`error` "Cancelled — replaced by a newer question."; extracted the settle rule
+into a pure, unit-tested `reply-settle.ts` and routed `loadHistory`'s identical
+non-terminal→"Session ended." rewrite through the same predicate (de-dup, net
+−6 lines in `ChatPanel`).
+**Number:** rows #4/#5 (onboarding / retention) — the follow-up-before-answer path
+went from **orphaned perpetual spinner + lost session history → terminal state +
+history persists**; behavior locked by 3 new `reply-settle.test.ts` cases (aborted
+`pending` → error; terminal states untouched). **Gates:** `bun test src` (web)
+**295 pass**; changed files tsc-clean (only pre-existing
+`react`/`@nlqdb/sdk` module-resolution noise); biome clean; scorecard < 20 KB (D4).
+**Step-1 refresh:** nothing merged since run 92 → CI + deploy-web `success` on
+`main` `04fa3d0`; docs-ambiguity **15**; `/blog` **36**, queue **2**; users **9** /
+strangers **0** carried (07-16, newest reg 07-06); GSC 28d **1 click / 452 impr /
+pos 16.3** carried (row #7). **Artifact (step 3):** queue **2** (< 3) → no forced
+publish; **dev.to drip fired** (> 20 h since last) — posted the oldest pending
+variant `zep-recall-vs-analytical-agent-memory` →
+https://dev.to/omer_hochman/zep-gives-my-agent-perfect-recall-it-still-cant-answer-average-per-group-about-its-own-memory-3ae0
+(tags `ai,agents,database`; archive-only pointer, script's API dedup
+self-updates); no new draft (optional, queue at the D4 edge). **KPI (GLOBAL-025):** **onboarding + UX** — an impatient stranger's
+first session no longer breaks into a frozen spinner or loses its history; no KPI
+degrades (client-only settle + tests, no engine/API surface touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

@@ -50,6 +50,7 @@ import { freeChainStruggled } from "./free-model-nudge-gate";
 import LeftRail from "./LeftRail";
 import ModelPicker, { BYOLLM_STATUS_EVENT } from "./ModelPicker";
 import Palette, { type PaletteAction } from "./Palette";
+import { settleInterruptedReply } from "./reply-settle";
 import Trace, { type TraceStepName, type TraceStepRecord } from "./Trace";
 import { displayTraceSteps } from "./trace-steps";
 
@@ -133,16 +134,8 @@ function loadHistory(dbId: string): Message[] {
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(isValidMessage).map((m): Message => {
       if (m.role === "user") return m;
-      const { state } = m.reply;
-      if (
-        state.kind === "pending" ||
-        state.kind === "needs-confirm" ||
-        state.kind === "clarify" ||
-        state.kind === "ambiguous"
-      ) {
-        return { ...m, reply: { ...m.reply, state: { kind: "error", message: "Session ended." } } };
-      }
-      return m;
+      const settled = settleInterruptedReply(m.reply.state.kind, "Session ended.");
+      return settled ? { ...m, reply: { ...m.reply, state: settled } } : m;
     });
   } catch {
     return [];
@@ -443,7 +436,22 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
           state: { kind: "ok", ok: result },
         }));
       } catch (err) {
-        if (ac.signal.aborted) return;
+        if (ac.signal.aborted) {
+          // A newer send aborted this in-flight request (see the abort
+          // above). Settle the superseded reply to a terminal state —
+          // leaving it "pending" spins a skeleton forever above the newer
+          // answer and blocks history persistence (the save effect skips
+          // while any reply is pending; the session then only heals on a
+          // full reload). GLOBAL-011 — never spinner-lie.
+          updateReply(replyId, (reply) => {
+            const settled = settleInterruptedReply(
+              reply.state.kind,
+              "Cancelled — replaced by a newer question.",
+            );
+            return settled ? { ...reply, state: settled } : reply;
+          });
+          return;
+        }
         // SK-ASK-009: 409 ambiguous_db carries `candidate_dbs` —
         // surface as a picker chip rather than a generic error.
         if (err instanceof NlqdbApiError && err.code === "ambiguous_db") {
