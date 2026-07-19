@@ -1,0 +1,115 @@
+---
+title: Give your agent memory — one command
+description: Connect any MCP host (Claude Code, Cursor, Codex, Claude Desktop) to nlqdb and give your agent a real database it can query in English as memory. Machine-followable — a coding agent can complete this without a human.
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+nlqdb is analytical memory for AI agents: a real Postgres your agent
+connects to over MCP and queries in plain English — `GROUP BY`, `JOIN`,
+aggregate over what it remembered, not just the top-k a vector store
+recalls. One command connects it.
+
+<Aside type="tip" title="For coding agents">
+If you are a coding agent (Claude Code, Cursor, Codex) setting this up for
+the developer you build with: every step below is runnable as-is. Pick the
+one command block that matches the host you run in, execute it, then run the
+verification query in Step 4. No API key to paste — auth is a browser OAuth
+on the first tool call.
+</Aside>
+
+## Step 1 — Connect the server
+
+The hosted server lives at `https://mcp.nlqdb.com/mcp` (the protocol is at
+`/mcp`, not the bare domain). Run the one block for your host.
+
+<Steps>
+
+1. **Claude Code** — run in your terminal:
+
+   ```bash
+   claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp
+   ```
+
+2. **Codex** — add to `~/.codex/config.toml` (remote HTTP servers are not
+   addable via `codex mcp add`, which is stdio-only):
+
+   ```toml
+   [mcp_servers.nlqdb]
+   url = "https://mcp.nlqdb.com/mcp"
+   ```
+
+3. **Claude Desktop, Windsurf, Zed** — paste this config block (exact key
+   names vary by host; the verified per-host block to copy is on
+   [nlqdb.com/integrations](https://nlqdb.com/integrations/)):
+
+   ```json
+   { "mcpServers": { "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" } } }
+   ```
+
+4. **Cursor, VS Code** — use the one-click deep-link buttons on
+   [nlqdb.com/integrations](https://nlqdb.com/integrations/); they hand the
+   install straight to the host.
+
+</Steps>
+
+## Step 2 — Authenticate
+
+On the first tool call, nlqdb opens an OAuth page in your browser. Approve
+it once; the host stores the token. No key to generate or paste.
+
+## Step 3 — Confirm the tools
+
+After connecting, the host lists these nlqdb tools:
+
+- `nlqdb_query` — ask your memory a question in English; returns rows **plus
+  the exact SQL it ran** (in `trace`). The database materialises on first
+  reference — there is no separate create step.
+- `nlqdb_list_databases` — list the memory databases scoped to your account.
+- `nlqdb_describe` — inspect one database's shape (slug, engine, schema).
+- `nlqdb_connect_database` — attach an existing ClickHouse/Postgres so the
+  agent can query it in English (no migration, no schema upload).
+- `nlqdb_remember` — write a typed memory row directly. See
+  [What's live today](#whats-live-today) — the typed-memory schema this verb
+  targets is still gated, so today you store and query memory through
+  `nlqdb_query`.
+
+## Step 4 — Verify
+
+Store one fact, then read it back, both through `nlqdb_query`:
+
+```
+Agent → nlqdb_query(db: "memory", goal: "remember: the user prefers metric units")
+      → { ok, db: "memory-…" }
+
+Agent → nlqdb_query(db: "memory", goal: "what do you remember about the user?")
+      → rows: [{ fact: "prefers metric units" }]  (+ the SQL in trace)
+```
+
+The second call returning the fact — with the SQL visible in `trace` —
+confirms setup end to end: connected, authenticated, reading and writing
+memory.
+
+## Step 5 — On failure
+
+- **404 / connection refused on first call** — the config points at the
+  bare domain. It must be the full `https://mcp.nlqdb.com/mcp` (the protocol
+  is served at `/mcp`).
+- **Auth loop / `unauthorized`** — the browser OAuth was dismissed. Trigger
+  any tool again and complete the approval.
+- **Host doesn't show the tools** — restart the host after editing its
+  config, then re-list MCP servers. Deep-link hosts (Cursor, VS Code) need
+  the button from [nlqdb.com/integrations](https://nlqdb.com/integrations/),
+  not a hand-edited file.
+- **`nlqdb_remember` returns `wrong_preset`** — expected today; use
+  `nlqdb_query` for memory writes (see below).
+
+## What's live today
+
+The live, working memory path is `nlqdb_query`: your agent provisions a
+database on first reference and reads and writes memory through it in plain
+English, aggregating over what it stored. The dedicated `nlqdb_remember`
+verb and the typed `agent_memory_v1` schema (`facts` / `episodes` /
+`entities`, per-agent isolation, TTL) are **coming** — that on-ramp is gated
+while it hardens, so the tool appears but rejects with `wrong_preset` until
+then. Everything on this page works through `nlqdb_query` regardless.

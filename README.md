@@ -48,6 +48,9 @@ be wrong — every response carries a confidence signal and the SQL it ran.
 
 ## Use it
 
+Connecting an agent over MCP? One command, machine-followable end to end:
+[**Give your agent memory**](https://docs.nlqdb.com/agent-memory/).
+
 The 60-second walkthrough — plain HTML, CLI, and ten framework wrappers —
 lives at [`docs.nlqdb.com`](https://docs.nlqdb.com). Start with the
 [HTML tutorial](https://docs.nlqdb.com/tutorials/html/) or the

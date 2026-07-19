@@ -86,6 +86,16 @@ export const GET: APIRoute = () => {
     `engines underneath as it evolves. Five surfaces share one engine: an HTML element\n` +
     `(\`<nlq-data>\`), a typed SDK, a CLI (\`nlq\`), an MCP server (\`mcp.nlqdb.com\`), and a\n` +
     `chat web app at app.nlqdb.com.\n\n` +
+    `## For coding agents\n\n` +
+    `Setting up memory for the app you build with? One command connects nlqdb over MCP:\n\n` +
+    "```bash\n" +
+    `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp\n` +
+    "```\n\n" +
+    `Other hosts (Codex, Cursor, VS Code, Claude Desktop, Windsurf, Zed) and the full\n` +
+    `machine-followable guide — expected tools, a verification query, what to do on\n` +
+    `failure — are at ${DOCS_SITE}/agent-memory/. Auth is a browser OAuth on the first\n` +
+    `tool call; no API key to paste. The live memory path is \`nlqdb_query\` (provision +\n` +
+    `query in English); the typed \`agent_memory_v1\` preset is coming.\n\n` +
     `## Integrate\n\n` +
     `Add nlqdb to an app. Every surface calls the same \`/v1/ask\` engine — pick one;\n` +
     `each snippet is the smallest runnable shape, and the link is the page to read next.\n` +
