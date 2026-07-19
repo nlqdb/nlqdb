@@ -276,7 +276,7 @@ function CreateResultView({ result }: { result: CreateResult }) {
         <span className="createresult__id-label">db</span>
         <code>{result.displayName}</code>
       </p>
-      <p className="createresult__schema">
+      <p className="createresult__schema" role="status">
         Provisioned with {result.sampleRows.length} sample row
         {result.sampleRows.length === 1 ? "" : "s"} across {grouped.length} table
         {grouped.length === 1 ? "" : "s"}.

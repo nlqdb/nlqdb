@@ -35,7 +35,9 @@ export function SampleTable({ table, rows }: { table: string; rows: Record<strin
           <thead>
             <tr>
               {columns.map((c) => (
-                <th key={c}>{prettifyHeader(c)}</th>
+                <th key={c} scope="col">
+                  {prettifyHeader(c)}
+                </th>
               ))}
             </tr>
           </thead>
