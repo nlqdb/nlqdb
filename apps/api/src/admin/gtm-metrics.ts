@@ -46,7 +46,13 @@ export type GtmMetrics = {
     dbsCreated7d: number;
     adoptionsTotal: number;
     adoptions7d: number;
-    /** anon DB → adopted-into-account share, all-time. */
+    /**
+     * Adopted / (live anon DBs + adopted) — bounded [0,1]. Adoption
+     * re-tenants the row off `anon:%` and the sweep deletes abandoned
+     * anon DBs, so neither is in `anonDbsTotal`; the true created-base
+     * also includes swept-abandoned DBs D1 no longer holds, so this
+     * slightly overstates the rate (caveat in FEATURE Open questions).
+     */
     adoptionRate: number | null;
   };
   activation: {
@@ -232,7 +238,7 @@ export async function computeGtmMetrics(
       dbsCreated7d: num(dc, "created7d"),
       adoptionsTotal: num(ad, "total"),
       adoptions7d: num(ad, "last7d"),
-      adoptionRate: ratio(num(ad, "total"), num(dc, "anon")),
+      adoptionRate: ratio(num(ad, "total"), num(dc, "anon") + num(ad, "total")),
     },
     activation: {
       dbsStarted: num(f10, "started"),

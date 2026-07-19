@@ -74,12 +74,11 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     await seedDb("db_s1", "u_s1", { asks: 6, ok: 5, lastQueriedAt: nowSec - DAY });
     // Founder DB: activated but internal — must not count as stranger.
     await seedDb("db_f1", "u_founder", { asks: 10, ok: 9, lastQueriedAt: nowSec - 40 * DAY });
-    // Anonymous DBs: one adopted, one abandoned.
-    await seedDb("db_a1", "anon:aaaa000011112222", {
-      asks: 1,
-      ok: 1,
-      lastQueriedAt: nowSec - 2 * DAY,
-    });
+    // Anonymous DBs: db_a1 was adopted by u_s1 — adoption re-tenants the
+    // row off `anon:%` (SK-ANON-003), so it is NO LONGER an anon DB; only
+    // db_a2 remains anonymous. The anon_adoptions row is the permanent
+    // record of the adoption.
+    await seedDb("db_a1", "u_s1", { asks: 1, ok: 1, lastQueriedAt: nowSec - 2 * DAY });
     await seedDb("db_a2", "anon:bbbb000011112222");
     await env.DB.prepare(
       "INSERT INTO anon_adoptions (token, user_id, database_id, created_at) VALUES ('tok1', 'u_s1', 'db_a1', ?)",
@@ -105,9 +104,11 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     expect(strangerSignups).toBe(2);
 
     expect(m.funnel.dbsTotal).toBe(4);
-    expect(m.funnel.anonDbsTotal).toBe(2);
+    // Only db_a2 is still anonymous — db_a1 was re-tenanted on adoption.
+    expect(m.funnel.anonDbsTotal).toBe(1);
     expect(m.funnel.adoptionsTotal).toBe(1);
     expect(m.funnel.adoptions7d).toBe(1);
+    // adopted / (live anon + adopted) = 1 / (1 + 1); bounded [0,1].
     expect(m.funnel.adoptionRate).toBeCloseTo(0.5);
 
     expect(m.activation.dbsStarted).toBe(3);
