@@ -48,7 +48,7 @@ Canary `success` on `39aef4b`; no red-main / stale-deploy lever.
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-19→07-17, fresh 07-19 pull): 1 click / 452 impr / avg pos 16.3** (the 1 click is the homepage, pos 9.7), sitemap 112 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-20→07-18, fresh 07-20 pull): 1 click / 472 impr / avg pos 16.6** (the 1 click is the homepage, 72 impr / pos 9.6), sitemap 115 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). **Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar b=36/c=34 p=0.452, `regressions: []`) — the run-90 `SK-QUAL-006` trigger is cleared.** Baseline **re-seeded 0.5462 → 0.5422** (07-19; a flat give-back, not a ratcheted regression, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836) → [29683450778](https://github.com/nlqdb/nlqdb/actions/runs/29683450778) → [29683911778](https://github.com/nlqdb/nlqdb/actions/runs/29683911778); 3 `SK-QUAL-013` windows, `no_sql` 0/135, gold_error 0, exec_error 5). **Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); −5.2 pp vs pre-directive 0.2741, but post-revert `PLAN_DIRECTIVES` is byte-identical to that engine ⇒ free-lane cross-date provider-mix noise, not a regression (McNemar-flat both ways).** p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -62,7 +62,7 @@ Canary `success` on `39aef4b`; no red-main / stale-deploy lever.
 | 15 | E2E manual-suite freshness | **≈ 0.75** (sdk/mcp/examples ≈1.0 each; **opencheck's latest main run [29324716801](https://github.com/nlqdb/nlqdb/actions/runs/29324716801) (run 70) FAILED**, pass=0 zeroes it ⇒ mean 0.75). Run 70 falsified the "clean window" hypothesis (re-dispatched 3 h after the last free-lane consumer, still all-red, Suite A anon 2nd `/v1/ask` timed out, **no product regression**): the free pools (NIM + OpenRouter `:free`) flap on a minute timescale, so contention timing was never the cause. **Now dark (rule 8):** only the founder-only 3rd free pool (its `blocked-by-human.md` bullet) lifts it | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.542, 07-19 post-revert, flat vs baseline — the run-90 regression is cleared); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **16** (fresh grep 07-20 run 100; flat vs run 98) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **16** (fresh grep 07-20 run 102; flat vs run 100) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Layered coverage: built-output `href`/`src` sweep + cross-app subdomain verification (run 61) + prod sitemap-200 check (run 72) + `client-nav-integrity.test.ts` (SK-WEB-022) guarding both `location.*` JS navigations (run 77) **and** static `<a href="/literal">` source literals (run 87, after legal-page bare-path 307s) — dotted assets + dynamic `href={…}` skipped, negative-tested | target 0 — `bun run build && bun run check:links` (built-output) + `client-nav-integrity.test.ts` (in CI) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** (claim-vs-reality on shipped surfaces + docs; target 0 **met**). **Standing guards — all three advertised-capability surfaces closed-world CI-swept across web *and* docs**, each deriving truth from source (never hand-copied) and naming the phantom + file on failure: `mcp-tool-integrity.test.ts` (`registerTool(...)` sites, `SK-MCP-002`), `cli-verb-integrity.test.ts` (cobra tree), `sdk-method-integrity.test.ts` (shipped `NlqClient` type, `SK-SDK-013`). All 0 phantom live, negative-tested. **Trilogy complete** — no advertised-capability surface remains web-only |
@@ -90,36 +90,34 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-20 (run 101)** — **Priority-1 acquisition lever (row #22, the weekly focus):
-the GitHub channel is now attributable — 3 → 4 live, 0 partial.** The two PRs that held
-this number last run — #750 (npm → live) + #751 (MCP-registry venue) — are now **merged**,
-so per **step 0** the priority-1 lever is pullable with no collision (only open PR is #719,
-the Infisical founder draft). GitHub was the sole `partial` in the ledger: repo public,
-README shipped, but its product CTA linked bare `https://nlqdb.com`, so a github.com
-click-through landed on the site and `captureFirstTouch` recorded it as `direct`, never
-`github`. Its ledger next-step listed "utm-tag README links" as a `/daily` input (the
-weekly focus assigns repo *topics/templates* to `/reach`; the *tagging* is `/daily`).
-**Change (P5 — one string, mirroring run 99's npm flip):** tagged the root README's single
-product CTA to `https://nlqdb.com/?utm_source=github` (the canonical ledger `github` key,
-`SK-GTM-007`). `attribution.ts` reads `utm_source` on landing and `postAskCreate` persists
-it to `databases.source_json`, so github click-throughs are attributable end-to-end; yield
-reads on `/app/admin`. docs./elements. links don't run `Base.astro` and legal-footer links
-aren't a conversion path — both left untagged (tagging them would misattribute non-buyers).
-**Number moved — row #22 3 live → 4 live / 0 partial** (GitHub partial → live; the npm
-precedent, run 99, established that attribution — not discovery amplification like
-topics/templates — is rule 2's live-gate). No new decision doc (D5 — conforms GitHub's
-published link to the already-documented `SK-GTM-007` "every URL carries its `utm_source`"
-rule; nothing non-obvious to record). **Gates:** `bun run lint` exit 0 (41 pre-existing
-warnings, none in touched files); `bun run typecheck` exit 0; `bun run test` exit 0 (api
-**974 pass** / 6 skipped). **Step-1:** docs-ambiguity **16** (flat, carried); surfaces
-**105**, queue **2**; users **9** / strangers **0** (07-16 carried); GSC 28d **1/452/16.3**
-carried (row #7); engine BIRD 0.542 / Spider 0.2222 fresh 07-19; deploy health all-green
-on head `012904d`. **Artifact:** queue **2** (< 3) → no forced publish; dev.to drip
-attempted (throttle-guarded, ~6 runs/day → expected no-op on all but the first daily run);
-no new draft (queue at D4 cap). **KPI (GLOBAL-025, amended by GLOBAL-038):** **acquisition
-measurement** — GitHub is measurable from the first stranger it produces; **no KPI
-degrades** (one README URL string; attribution is telemetry, never load-bearing; no
-engine/API/funnel logic touched).
+**2026-07-20 (run 102)** — **Priority-2 UX-flow lever (row #4): the create-result screen now
+reports the *provisioned* schema, not the LLM-seeded subset.** Weekly-focus number (row #22) is
+**held by open PR** #753 (GitHub → live, 3 → 4, edits the acquisition ledger) — per **step 0**
+the priority-1 lever can't be pulled without duplicating it; reach #754 holds the agent-artifacts
+surface. Engine lanes dark + fresh (07-19). Defect-hunt over the stranger create→first-answer
+path found a genuine drift: **both create-result renderers (`CreateForm.tsx` + `chat/ChatPanel.tsx`)
+derived the table count *and* the per-table preview from `sampleRows`** — but that seed set is
+LLM-authored and SK-HDC-018/019 make it partial or empty. A 3-table DB seeded only on `orders`
+showed "1 table" (hiding `customers`/`products`); a fully-unseeded-but-committed DB showed a green
+**"0 sample rows across 0 tables"** — indistinguishable from total failure at the stranger's first
+"did it work?" moment (SK-HDC-001). **Change (P5 — carry the truth, consolidate):** the create
+response now ships the provisioned table list (`DbCreatePlanSummary.tables` ←
+`plan.tables.map(t=>t.name)`); one new shared `groupProvisionedTables(tables, rows)` in
+`sample-rows.ts` renders one group per provisioned table (seeded rows where present, else
+SampleTable's empty state) and **both** renderers call it, replacing the two divergent
+`groupByTable` sites. **Number moved — row #4:** guard-the-guard confirmed — pre-fix
+(`groupByTable` on `sampleRows`) yields `["orders"]` where the contract needs all 3 tables
+(fails); web **337 → 341 pass** (+4: partial-seed, fully-unseeded, schema-order, pre-field
+fallback); `orchestrate.test.ts` pins `plan.tables:["orders"]`. No new doc (D5 — extends
+SK-HDC-018/019's "never claims rows it doesn't hold" to "never under-claims tables"). **Gates:**
+typecheck exit 0; touched files biome-clean; astro check **0/0**; web **341**, api **974** pass.
+**Step-1:** docs-ambiguity **16** (flat); surfaces **105**, queue **2**; users **9** / strangers
+**0** (07-16 carried); GSC 28d **1/472/16.6** fresh 07-20; BIRD 0.542 / Spider 0.2222 (07-19).
+**Artifact:** queue **2** (< 3) → no publish; dev.to drip **throttled** (6.2h ago < 20h, run 100
+posted today); no new draft (queue at D4 cap). **KPI (GLOBAL-025):** **onboarding + UX** — a
+stranger sees every table their DB has, and a schema-only DB reads as success not failure; **no
+KPI degrades** (additive response field + one shared pure helper; no engine/API/funnel logic
+touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

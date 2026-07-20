@@ -1,12 +1,11 @@
 import { formatCell, prettifyHeader } from "../lib/text";
-import { groupByTable } from "./sample-rows";
 
 // Shared sample-row rendering for the create path. Used by both the
 // marketing CreateForm result view and the in-chat `created` reply so a
 // stranger sees the same real sample data at their first "did it work?"
 // moment on either surface (SK-HDC-001 create path; GLOBAL-020 "returns
 // rows"). Styling is the global `createresult__*` chrome (styles/global.css).
-export { groupByTable };
+// Grouping helpers live in `./sample-rows` — consumers import them from there.
 
 const MAX_ROWS_RENDERED = 5;
 

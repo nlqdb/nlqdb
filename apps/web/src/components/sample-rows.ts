@@ -15,3 +15,23 @@ export function groupByTable(
   }
   return Array.from(groups, ([table, rows]) => ({ table, rows }));
 }
+
+// Render one group per *provisioned* table (the SchemaPlan's table list),
+// joining in sample rows where the seed covered them. The create response's
+// seed set is LLM-authored and may be partial or empty (SK-HDC-018/019), so
+// deriving the table list from `sampleRows` alone silently drops unseeded
+// tables — and a fully-unseeded create would show "0 tables" despite a
+// committed schema. `tables` is the source of truth; fall back to grouping the
+// rows only when it's absent (a response from before the field shipped).
+export function groupProvisionedTables(
+  tables: readonly string[] | undefined,
+  rows: SampleRow[],
+): { table: string; rows: Record<string, unknown>[] }[] {
+  const seeded = groupByTable(rows);
+  // `tables` crosses untyped boundaries (rehydrated localStorage history,
+  // the SDK's `plan: unknown`), so a non-array can slip past the type — fall
+  // back to grouping the rows rather than throwing on `.map`.
+  if (!Array.isArray(tables) || tables.length === 0) return seeded;
+  const bySeed = new Map(seeded.map((g) => [g.table, g.rows]));
+  return tables.map((table) => ({ table, rows: bySeed.get(table) ?? [] }));
+}

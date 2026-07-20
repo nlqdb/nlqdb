@@ -197,6 +197,9 @@ describe("orchestrateDbCreate", () => {
       model: "fake-model",
       confidence: 1.0,
       plan: {
+        // The provisioned table list rides the response so surfaces don't
+        // derive the table count from the (possibly empty) seed set.
+        tables: ["orders"],
         metrics: stubPlan().metrics,
         dimensions: stubPlan().dimensions,
         foreign_keys: stubPlan().foreign_keys,
