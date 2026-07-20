@@ -148,7 +148,14 @@ Cursor's MCP directory · Anthropic's Claude connector/extension directory ·
 framing) + the one command. Account-walled venues → payload to
 `blocked-by-human.md` (hard rule 4). Re-verify each venue's current
 submission mechanism by web search first (P2).
-**Done when:** ⬜ per venue: listed (URL) or payload parked — tick per venue.
+**Done when:** per venue: listed (URL) or payload parked — tick per venue.
+- ✅ #1 official MCP registry (`registry.modelcontextprotocol.io`) — **account-walled**
+  (`mcp-publisher` needs interactive GitHub OAuth or a domain-verify secret), exact
+  ready-to-run payload parked in [`blocked-by-human.md`](../../../../blocked-by-human.md)
+  (remote `server.json` + `mcp-publisher login/publish` flow; mechanism web-verified
+  2026-07-20). Ledger row #3 → `blocked-by-human`.
+- ⬜ #2 Smithery · ⬜ #3 PulseMCP · ⬜ #4 Glama · ⬜ #5 mcp.so · ⬜ #6 Cursor MCP dir ·
+  ⬜ #7 Anthropic connector dir · ⬜ #8 `awesome-mcp-servers` (PR).
 
 ### R-06 — Coding-agent walker (measurement backbone)
 
@@ -198,7 +205,10 @@ where closed), record cited/not-cited per query in § Current numbers.
   live path is `nlqdb_query`). Linked from README, `/agents` connect card, and
   a new llms.txt `## For coding agents` section. Remaining box: the manual
   cold-agent walk (next R-04 run).
-- Registry/directory listings live: 0 of 8
+- Registry/directory listings live: 0 of 8 (1/8 prepared — #1 official MCP registry
+  payload parked in `blocked-by-human.md`; account-walled on founder `mcp-publisher`
+  login, so not live until submitted). Acquisition channels live w/ attributable
+  yield: **2** (unchanged; registry row #3 is `blocked-by-human`, not yet live).
 - Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete):
   #2 best-way-to-store ✅, #5 build-vs-buy ✅, #10 TTL/expiry ✅, #13 agent-memory-MCP ✅.
   R-03 latest page: `solve/agent-memory-mcp-server` (owns query #13 "agent memory
@@ -230,7 +240,7 @@ Tick on merge.
 - [x] R-02 — build-vs-buy honesty surface (competitor rows + solve page)
 - [x] R-03 — stage-0 solve pages (all top-5 unowned filled: #2 best-way-to-store + #5 build-vs-buy + #10 TTL/expiry + #13 agent-memory-MCP)
 - [ ] R-04 — canonical machine-followable setup guide
-- [ ] R-05 — registry sweep (0/8 venues)
+- [ ] R-05 — registry sweep (1/8 venues: #1 official MCP registry payload parked, account-walled)
 - [ ] R-06 — coding-agent walker + baseline
 - [ ] R-07 — droppable in-repo artifacts (skill / rules / AGENTS.md / Codex)
 - [ ] R-08 — answer-engine citation baseline

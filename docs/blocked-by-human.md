@@ -29,6 +29,33 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
   non-fatal) in prod (tables won't exist). Operator-only (prod
   credentials).
 
+- **Publish nlqdb to the official MCP registry** (`registry.modelcontextprotocol.io`;
+  reach R-05 venue #1, ledger row #3). Account-walled: `mcp-publisher` needs an
+  interactive GitHub device-flow login *or* a domain-verify private key — an agent
+  can't. No npm publish needed (remote server; `remotes`, not `packages`). Verified
+  mechanism 2026-07-20. Run from any dir:
+  1. Install: `brew install mcp-publisher` (or the `curl … releases/latest` binary).
+  2. Save this as `server.json` (endpoint matches `mcp-install.ts` `MCP_ENDPOINT_URL`):
+     ```json
+     {
+       "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+       "name": "io.github.nlqdb/nlqdb",
+       "title": "nlqdb — analytical memory for AI agents",
+       "description": "Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.",
+       "repository": { "url": "https://github.com/nlqdb/nlqdb", "source": "github" },
+       "version": "0.1.0",
+       "remotes": [ { "type": "streamable-http", "url": "https://mcp.nlqdb.com/mcp" } ]
+     }
+     ```
+  3. `mcp-publisher login github` → authorize as a member of the **nlqdb** GitHub org
+     (grants the `io.github.nlqdb/*` namespace).
+  4. `mcp-publisher publish` → then verify:
+     `curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.nlqdb/nlqdb"`.
+  Alt namespace `com.nlqdb/nlqdb` (cleaner) needs DNS-TXT or a
+  `/.well-known/mcp-registry-auth` domain-verify secret on `nlqdb.com` instead of the
+  GitHub login — heavier; use GitHub. On publish, flip ledger row #3 to **in-flight**
+  and note the registry URL.
+
 - **Fire the launch sequence** — the founder-only half of
   [`docs/research/launch-kit.md`](./research/launch-kit.md): pick the angle
   (§2; GLOBAL-036 says lead with analytical agent memory), write the Show

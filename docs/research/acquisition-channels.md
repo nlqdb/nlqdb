@@ -32,7 +32,7 @@ surface counts (row #6) never answered.
 |---|---------|------------------------|--------|-------|--------------------|
 | 1 | Organic search (Google/Bing) — 105 `/vs`+`/solve`+`/blog` surfaces | ref `google.com` / `bing.com` (+ GSC) | **live** — 28d: 1 click / 452 impr | `/daily` + `/reach` R-03 | grow impression breadth; win the page-1 queries GSC already shows |
 | 2 | dev.to syndication (1/day drip, `SK-BLOG-003`) | `devto` | **live**, yield untagged until canonical links carry the key | `/daily` step 3 | add `?utm_source=devto` to canonical-URL links in variants |
-| 3 | Official MCP registry (registry.modelcontextprotocol.io) | `mcp-registry` | untried (R-05 #1) | `/reach` | web-search current submission mechanism; submit or park payload |
+| 3 | Official MCP registry (registry.modelcontextprotocol.io) | `mcp-registry` | blocked-by-human — payload parked 2026-07-20 (R-05 #1) | `/reach` → founder | founder runs the parked `mcp-publisher` flow ([`blocked-by-human.md`](../blocked-by-human.md)); then → in-flight |
 | 4 | Smithery | `smithery` | untried (R-05 #2) | `/reach` | same |
 | 5 | PulseMCP | `pulsemcp` | untried (R-05 #3) | `/reach` | same |
 | 6 | Glama | `glama` | untried (R-05 #4) | `/reach` | same |
@@ -52,7 +52,7 @@ surface counts (row #6) never answered.
 | 20 | Integration marketplaces (Supabase integrations, Vercel templates, Neon partners, Astro integrations) | venue slug (`supabase`, `vercel`, …) | untried | `/reach` | verify each venue's submission mechanism (P2), one per run |
 | 21 | Demo video (60-second one-command memory setup; site-embedded + shareable) | `youtube` | untried | founder-assisted | script + record once R-04 guide is live |
 
-**Live: 2 · partial: 2 · in-flight: 0 · untried: 17.** The number that
+**Live: 2 · partial: 2 · in-flight: 0 · blocked-by-human: 1 · untried: 16.** The number that
 matters weekly: **channels live with attributable yield** (`/reach` step 1
 records it; target per the 2026-07-19 focus: +3 via R-05).
 
