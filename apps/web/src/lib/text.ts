@@ -13,3 +13,19 @@ export function prettifyHeader(identifier: string): string {
   if (replaced.length === 0) return identifier;
   return replaced.charAt(0).toUpperCase() + replaced.slice(1);
 }
+
+// Render one result/sample cell to a display string. Shared by the
+// chat result table (Data.tsx) and the create-path sample table
+// (SampleTable.tsx) so a stranger sees the SAME rendering of the same
+// value on either "did it work?" surface. The object fallback is
+// load-bearing: a JSON/JSONB column value arrives as an object, and a
+// bare `String(value)` would show `[object Object]` in the create
+// surface — the divergence this single source of truth removes.
+// `null`/`undefined` are caught first, so JSON.stringify never sees
+// `undefined` (which would yield the value `undefined`, not a string).
+export function formatCell(value: unknown): string {
+  if (value == null) return "—";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
+}

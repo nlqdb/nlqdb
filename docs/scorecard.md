@@ -23,31 +23,22 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 (SambaNova, `_e2e-opencheck.yml`), the top `blocked-by-human.md` bullet.
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
-**row #9 Spider 0.2222** and **row #8 BIRD 0.542** is resolved (run 91) + fresh
-(07-19) with offline levers exhausted — both dark for a single run. The weekly-focus
-number (agentic-frontier EX → 0.80 via the `SK-LLM-017` premium chain) stays
-not-agent-movable this run (founder-blocked paid frontier credentials, §6-dark meter,
-frontier-key + dispatch-gated smoke, `premiumEligible` never true ⇒ dead lane — same
-finding as run 97). Per **step 0** every GTM/admin/chat/attribution/docs lane is held
-by an open PR, so **run 98 pulled a priority-1 UX-flow lever a defect-hunt surfaced in
-a free lane (not another a11y fix — continues run 97's break from the row-#4 a11y run):
-`getOrMintAnonToken` was the one localStorage slot that touched `window.localStorage`
-bare** while its three SK-ANON-011 companion slots all degrade through `safeStorage`.
-A stranger with cookies/DOM-storage blocked (Chrome "block all cookies", Firefox DOM
-storage off, sandboxed iframes) hit a **hard throw on the create path** — the bearer
-every `/v1/ask` reads — surfaced as a misleading "Couldn't reach the API." Fixed to
-fall back to an in-memory token (the graceful-degradation contract SK-ANON-011 already
-mandates), guarded by a pure `bun:test` (rows #4/#5). **Step 0 collision map:** open PRs
-#748 (PMF survey + launch kit — chat/`ChatPanel`/`PmfSurveyCard`, `index.ts`, admin,
-migrations, docs), #747 (reach R-04 docs — `agent-memory.mdx`, README, `llms.txt`,
-`/agents`), #746 (run 97 — `chat/Data.tsx`), #745 (attribution — `Base.astro`,
-`lib/{api,attribution,admin}.ts`, `index.ts`, `.claude/commands`, admin), #744 (GTM
-uniques — `db-create/**`, `db-connect`, `synthetic-ua`, `index.ts`, admin, onboarding
-docs), #719 (Infisical draft). This run touched only `apps/web/src/lib/anon.ts` +
-`apps/web/src/lib/anon.test.ts` + `docs/scorecard.md` — **no overlap** (scorecard
-regen is overlap-exempt). **Rule 6:** CI + Security green on `main` head `c8138d5`;
-deploy-api/web/canary green on `c8138d5`, deploy-docs/mcp on `04fa3d0` (recent merges
-didn't touch docs/mcp paths ⇒ no new deploy); no red-main / stale-deploy lever.
+**row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
+levers exhausted. The weekly-focus number (row #22) is **held by open PRs** #750 (npm →
+live) and #751 (MCP-registry venue), both editing the acquisition ledger, so per **step
+0** the priority-1 acquisition lever can't be pulled without duplicating them; verified
+the attribution/GTM stack (`lib/attribution.ts`, `admin/gtm-metrics.ts`) end-to-end
+regardless — production-grade, no gap. So **run 100 pulled a priority-2 UX-flow lever
+(a data-correctness bug, NOT another a11y/copy fix — anti-rut rule 7 clear since run 94
+was engine)**: see the Last-change entry below. **Step 0 collision map:** open PRs #751
+(reach R-05 — `blocked-by-human.md`, `acquisition-channels.md`, reach `INDEX.md`), #750
+(daily run 99 — `apps/web` sdk/cli `package.json`, `acquisition-channels.md`,
+`scorecard.md`), #719 (Infisical draft). This run touched `lib/text.ts` + `text.test.ts`
++ `components/SampleTable.tsx` + `components/chat/Data.tsx` +
+`docs/research/distribution-queue.md` + `docs/scorecard.md` — **no overlap** (scorecard
+regen exempt; distribution-queue not held). **Rule 6:** CI + Security + deploy-api/web/
+canary green on `main` head `b1450f7`; deploy-docs on `446b023`; no red-main /
+stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -66,14 +57,14 @@ didn't touch docs/mcp paths ⇒ no new deploy); no red-main / stale-deploy lever
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-19 run 98):** CI + Security `success` on `main` head `c8138d5`; deploy-api/web/canary `success` on `c8138d5`, deploy-docs/mcp on `04fa3d0` (recent merges didn't touch docs/mcp paths ⇒ no new deploy); no red-main / stale-deploy lever |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-20 run 100):** CI + Security `success` on `main` head `b1450f7`; deploy-api/web/canary `success` on `b1450f7`, deploy-docs on `446b023` (recent merges didn't touch docs/mcp paths ⇒ no new deploy); no red-main / stale-deploy lever |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
 | 15 | E2E manual-suite freshness | **≈ 0.75** (sdk/mcp/examples ≈1.0 each; **opencheck's latest main run [29324716801](https://github.com/nlqdb/nlqdb/actions/runs/29324716801) (run 70) FAILED**, pass=0 zeroes it ⇒ mean 0.75). Run 70 falsified the "clean window" hypothesis (re-dispatched 3 h after the last free-lane consumer, still all-red, Suite A anon 2nd `/v1/ask` timed out, **no product regression**): the free pools (NIM + OpenRouter `:free`) flap on a minute timescale, so contention timing was never the cause. **Now dark (rule 8):** only the founder-only 3rd free pool (its `blocked-by-human.md` bullet) lifts it | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.542, 07-19 post-revert, flat vs baseline — the run-90 regression is cleared); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **16** (fresh grep 07-19 run 98; +1 vs run 86's 15 — #742's merged `gtm-metrics` "Loop integration" bullet, already owned by open PR #744) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **16** (fresh grep 07-20 run 100; flat vs run 98) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Layered coverage: built-output `href`/`src` sweep + cross-app subdomain verification (run 61) + prod sitemap-200 check (run 72) + `client-nav-integrity.test.ts` (SK-WEB-022) guarding both `location.*` JS navigations (run 77) **and** static `<a href="/literal">` source literals (run 87, after legal-page bare-path 307s) — dotted assets + dynamic `href={…}` skipped, negative-tested | target 0 — `bun run build && bun run check:links` (built-output) + `client-nav-integrity.test.ts` (in CI) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** (claim-vs-reality on shipped surfaces + docs; target 0 **met**). **Standing guards — all three advertised-capability surfaces closed-world CI-swept across web *and* docs**, each deriving truth from source (never hand-copied) and naming the phantom + file on failure: `mcp-tool-integrity.test.ts` (`registerTool(...)` sites, `SK-MCP-002`), `cli-verb-integrity.test.ts` (cobra tree), `sdk-method-integrity.test.ts` (shipped `NlqClient` type, `SK-SDK-013`). All 0 phantom live, negative-tested. **Trilogy complete** — no advertised-capability surface remains web-only |
@@ -101,39 +92,39 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-19 (run 98)** — **Priority-1 UX-flow lever (rows #4/#5): the anonymous
-create path no longer hard-throws when localStorage is blocked.** Weekly-focus number
-(agentic-frontier → 0.80 via the `SK-LLM-017` premium chain) is not agent-movable this
-run — founder-blocked paid frontier credentials, §6-dark meter, dispatch-gated smoke,
-`premiumEligible` never true (dead lane, same as run 97). Both engine lanes dark + fresh
-(07-19); per **step 0** every GTM/admin/chat/attribution/docs lane is held by an open PR
-(#748 PMF+launch, #747 reach docs, #746 run 97 chat, #745 attribution, #744 GTM uniques,
-#719 Infisical). A defect-hunt over the free stranger-path files (not another a11y fix)
-surfaced a genuine functional bug: **`getOrMintAnonToken` (`lib/anon.ts`) read/wrote
-`window.localStorage` bare** — the one anon slot bypassing the `safeStorage` in-memory
-fallback its three SK-ANON-011 companion slots (`nlqdb_draft/pending/history`) all use.
-In privacy modes where touching `localStorage` throws (Chrome "block all cookies",
-Firefox DOM storage off, sandboxed iframes) or on quota-over write, minting the bearer
-every `/v1/ask` reads **threw hard on the create path**; `CreateForm.submit`'s catch
-surfaced it as "Couldn't reach the API — try again" (misleading; the API is reachable),
-and retry never helps. **Change (2 files):** wrapped the read/write in try/catch with a
-module-level in-memory token fallback — the exact graceful-degradation SK-ANON-011
-already mandates ("fall back to in-memory state without throwing"); SSR guard + the
-"no DB-recovery path" invariant unchanged. Guarded by a pure `bun:test`
-(`anon.test.ts`): blocked-storage returns a stable `anon_` token instead of throwing,
-quota-over write keeps the token in memory, happy-path still persists. **Number moved —
-rows #4/#5:** guard-the-guard confirmed — reverting `readStored` to the bare call fails
-the regression test; web suite **308 → 313 pass** (+5). No new decision doc (D5 — the
-fix conforms the token slot to the already-documented SK-ANON-011 contract). **Gates:**
-astro check **0 errors**; `bun run lint` exit 0 (0 findings on touched files); web
-**313 pass / 0 fail**. **Step-1:** docs-ambiguity **16**; surfaces **105**, queue **2**;
-users **9** / strangers **0** (07-16); GSC 28d **1/452/16.3** carried (row #7); engine
-BIRD 0.542 / Spider 0.2222 fresh 07-19. **Artifact:** queue **2** (< 3) → no forced
-publish; dev.to drip throttled (15.0h < 20h — no-op, no queue-line edit); no new draft
-(queue ~19.2 KB, near the D4 cap). **KPI (GLOBAL-025):** **onboarding + UX** — a
-cookie-blocked stranger can now create + ask instead of dead-ending on a misleading
-error; **no KPI degrades** (one try/catch + in-memory fallback; no engine/API/funnel
-logic touched).
+**2026-07-20 (run 100)** — **Priority-2 UX-flow lever (row #4): the create-path sample
+table no longer renders `[object Object]` for JSON/object columns.** Weekly-focus number
+(row #22 channels-live-with-attributable-yield) is **held by open PRs** #750 (npm → live)
+and #751 (MCP-registry venue), both editing the acquisition ledger — per **step 0** the
+priority-1 acquisition/distribution lever can't be pulled without duplicating their work;
+verified the attribution/GTM stack (`lib/attribution.ts`, `admin/gtm-metrics.ts`)
+end-to-end and it is production-grade with no gap. Both engine lanes dark + fresh (07-19).
+A defect-hunt over the free stranger create→first-answer renderers (a data-correctness
+bug, NOT another a11y/copy fix — anti-rut clear since run 94 was engine) surfaced a
+genuine drift: **`SampleTable.formatCell` (`components/SampleTable.tsx`) rendered a
+JSON/JSONB column value via bare `String(value)` ⇒ `[object Object]`** at a stranger's
+first "did it work?" moment (SK-HDC-001), while its documented chat twin
+(`chat/Data.tsx formatCell`) correctly `JSON.stringify`d the same value — two sibling
+renderers of "the same real sample data" had diverged. **Change (P5 — consolidate, don't
+patch):** moved one correct `formatCell` into the shared `lib/text.ts` (both renderers
+already import `prettifyHeader` from there) and deleted both local copies — the create
+surface is fixed and future drift is structurally impossible (net −1 duplicate). Guarded
+by a pure `bun:test` (`text.test.ts`): object/array cells serialize to JSON, scalars/null
+unchanged. **Number moved — row #4:** guard-the-guard confirmed — reverting `formatCell`
+to the bare `String(value)` fails the new object/array cases (2 fails); web suite **332 →
+337 pass** (+5). No new decision doc (D5 — conforms to the existing "same real sample
+data on either surface" contract; nothing non-obvious to record). **Gates:** astro check
+**0 errors / 0 warnings**; `bun run lint` clean on touched files; `bun run typecheck`
+exit 0; web **337 pass / 0 fail**. **Step-1:** docs-ambiguity **16** (flat); surfaces
+**105**, queue **2**; users **9** / strangers **0** (07-16 carried); GSC 28d **1/452/16.3**
+carried (row #7); engine BIRD 0.542 / Spider 0.2222 fresh 07-19. **Artifact:** queue **2**
+(< 3) → no forced publish; dev.to drip **posted** the oldest pending variant
+(`not-in-subquery-null-trap`) → https://dev.to/omer_hochman/not-in-returned-zero-rows-it-wasnt-your-data-it-was-one-null-4inj
+(queue line updated: dev.to venue dropped, live URL appended); no new draft (queue
+~19.9 KB, at the D4 cap). **KPI (GLOBAL-025):** **onboarding + UX** — a stranger creating
+a DB with a JSON column now sees the real value instead of `[object Object]` in their
+first result; **no KPI degrades** (one shared pure formatter; Data.tsx behavior unchanged,
+no engine/API/funnel logic touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
