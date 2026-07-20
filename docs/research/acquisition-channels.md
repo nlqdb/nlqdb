@@ -32,11 +32,11 @@ surface counts (row #6) never answered.
 |---|---------|------------------------|--------|-------|--------------------|
 | 1 | Organic search (Google/Bing) — 105 `/vs`+`/solve`+`/blog` surfaces | ref `google.com` / `bing.com` (+ GSC) | **live** — 28d: 1 click / 452 impr | `/daily` + `/reach` R-03 | grow impression breadth; win the page-1 queries GSC already shows |
 | 2 | dev.to syndication (1/day drip, `SK-BLOG-003`) | `devto` | **live** — each variant's read-through link now carries `?utm_source=devto` (the API `canonical_url` stays clean for SEO), so dev.to→nlqdb.com visits are `utm_source`-attributable, not reliant on the flaky referrer host | `/daily` step 3 | grow tag/topic breadth per variant |
-| 3 | Official MCP registry (registry.modelcontextprotocol.io) | `mcp-registry` | blocked-by-human — payload parked 2026-07-20 (R-05 #1) | `/reach` → founder | founder runs the parked `mcp-publisher` flow ([`blocked-by-human.md`](../blocked-by-human.md)); then → in-flight |
-| 4 | Smithery | `smithery` | untried (R-05 #2) | `/reach` | same |
-| 5 | PulseMCP | `pulsemcp` | untried (R-05 #3) | `/reach` | same |
-| 6 | Glama | `glama` | untried (R-05 #4) | `/reach` | same |
-| 7 | mcp.so | `mcpso` | untried (R-05 #5) | `/reach` | same |
+| 3 | Official MCP registry (registry.modelcontextprotocol.io) | `mcp-registry` | blocked-by-human — payload parked 2026-07-20 (R-05 #1) | `/reach` → founder | founder runs the parked `mcp-publisher` flow ([`blocked-by-human.md`](../blocked-by-human.md)) — **one publish cascades to the crawl-fed rows 4–6**; then → in-flight |
+| 4 | Smithery | `smithery` | crawl-fed — auto-ingests from row #3 once published (Smithery crawls the official registry; verified 2026-07-20, R-05 #2) | `/reach` → founder | claim/clean-up listing after row #3 publishes (no separate submission) |
+| 5 | PulseMCP | `pulsemcp` | crawl-fed — indexes the ecosystem + registry, auto-ingests from row #3 (verified 2026-07-20, R-05 #3) | `/reach` → founder | claim listing after row #3 publishes (no separate submission) |
+| 6 | Glama | `glama` | crawl-fed — auto-indexes open-source GitHub repos **and** crawls the registry, auto-ingests from row #3 (verified 2026-07-20, R-05 #4) | `/reach` → founder | claim listing after row #3 publishes (no separate submission) |
+| 7 | mcp.so | `mcpso` | untried — manual submit form (`mcp.so/submit`, not a registry crawler; R-05 #5) | `/reach` | verify submit mechanism (P2), then park payload / submit |
 | 8 | Cursor MCP directory | `cursor-dir` | untried (R-05 #6) | `/reach` | same |
 | 9 | Anthropic Claude connector directory | `claude-dir` | untried (R-05 #7) | `/reach` | same |
 | 10 | `awesome-mcp-servers` (GitHub PR) | `awesome-mcp` | untried (R-05 #8) | `/reach` | open the listing PR |
@@ -52,20 +52,28 @@ surface counts (row #6) never answered.
 | 20 | Integration marketplaces (Supabase integrations, Vercel templates, Neon partners, Astro integrations) | venue slug (`supabase`, `vercel`, …) | untried | `/reach` | verify each venue's submission mechanism (P2), one per run |
 | 21 | Demo video (60-second one-command memory setup; site-embedded + shareable) | `youtube` | untried | founder-assisted | script + record once R-04 guide is live |
 
-**Live: 4 · partial: 0 · in-flight: 0 · blocked-by-human: 1 · untried: 16.** The number that
+**Live: 4 · crawl-fed (gated on row #3): 3 · in-flight: 0 · blocked-by-human: 1 · untried: 13.** The number that
 matters weekly: **channels live with attributable yield** (`/reach` step 1
 records it; target per the 2026-07-19 focus: +3 via R-05). npm joined the
 live set 2026-07-20 (homepage links tagged); GitHub joined 2026-07-20 (README
 CTA tagged `utm_source=github`). No partials remain — every published channel's
-yield is attributable; the not-yet-live channels (registries rows 3–10, human-norm
-venues) are now the only path to further live-count growth.
+yield is attributable. **R-05 mechanism re-verified 2026-07-20 (P2):** rows 4–6
+(Smithery / PulseMCP / Glama) crawl the official registry, so the single row-#3
+`mcp-publisher` publish (payload already parked) cascades to all three — the +3
+registry target collapses to **one founder action**, not four separate submissions.
+The remaining path to live-count growth is that one publish plus the non-crawling
+venues (mcp.so form, Cursor/Anthropic dirs, `awesome-mcp-servers` PR) and the
+human-norm venues.
 
 ## Why this order
 
-Registries (rows 3–10) come first: they are agent-submittable (no
-human-norm constraint), they intercept the coding-agent search moment the
-reach thesis bets on, and one listing is permanent — unlike a Reddit post
-its yield compounds. Human-norm venues (13, 14, 18) are cheap for agents
+Registries (rows 3–10) come first: they intercept the coding-agent search
+moment the reach thesis bets on, and one listing is permanent — unlike a
+Reddit post its yield compounds. The 2026 mechanism (verified 2026-07-20)
+is **publish once to the official registry (row #3) → the crawling
+directories (Smithery, PulseMCP, Glama) ingest it automatically**; only the
+non-crawling venues (mcp.so, Cursor, Anthropic connector dir,
+`awesome-mcp-servers`) need their own submission. Human-norm venues (13, 14, 18) are cheap for agents
 to *prepare* but blocked on founder posting; they stay queued until the
 founder drains them. Paid/editorial (19) waits for proof from the free
 channels.

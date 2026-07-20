@@ -54,7 +54,10 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
   Alt namespace `com.nlqdb/nlqdb` (cleaner) needs DNS-TXT or a
   `/.well-known/mcp-registry-auth` domain-verify secret on `nlqdb.com` instead of the
   GitHub login — heavier; use GitHub. On publish, flip ledger row #3 to **in-flight**
-  and note the registry URL.
+  and note the registry URL. **This one publish cascades:** Smithery, PulseMCP, and
+  Glama crawl the official registry (verified 2026-07-20), so they auto-ingest nlqdb
+  from this entry — no separate submissions; just claim/clean-up those listings after.
+  Flip ledger rows #4–#6 to in-flight at the same time.
 
 - **Fire the launch sequence** — the founder-only half of
   [`docs/research/launch-kit.md`](./research/launch-kit.md): pick the angle
