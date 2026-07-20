@@ -23,6 +23,15 @@ function metrics(overrides: Partial<GtmMetrics> = {}): GtmMetrics {
       adoptionsTotal: 4,
       adoptions7d: 1,
       adoptionRate: 0.4,
+      anonDbsSynthetic: 6,
+      adoptionsReal: 3,
+      adoptionRateReal: 0.5,
+    },
+    uniques: {
+      realUsers: 2,
+      anonDevices: 5,
+      anonDevicesSynthetic: 3,
+      anonDevicesOrganic: 2,
     },
     activation: {
       dbsStarted: 5,
@@ -83,9 +92,11 @@ describe("fillDays", () => {
 });
 
 describe("funnelStages", () => {
-  test("orders the narrative and labels the unit per stage", () => {
+  test("orders the robot-free narrative and labels the unit per stage", () => {
     const stages = funnelStages(metrics());
-    expect(stages.map((s) => s.value)).toEqual([10, 4, 2, 2, 1, 1]);
+    // Stage 1 is organic anon DBs (10 − 6 synthetic); stage 2 is
+    // stranger adoptions only (SK-GTM-005).
+    expect(stages.map((s) => s.value)).toEqual([4, 3, 2, 2, 1, 1]);
     expect(stages[0]?.unit).toBe("DBs");
     expect(stages[2]?.unit).toBe("users");
   });

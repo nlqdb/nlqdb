@@ -54,6 +54,28 @@ export type GtmMetrics = {
      * slightly overstates the rate (caveat in FEATURE Open questions).
      */
     adoptionRate: number | null;
+    /** Live anon DBs stamped `synthetic = 1` (SK-GTM-005 — walker/preview). */
+    anonDbsSynthetic: number;
+    /** Adoptions by real strangers (adopter email outside the internal set). */
+    adoptionsReal: number;
+    /**
+     * Robot-free adoption rate: real-stranger adoptions /
+     * (organic live anon DBs + real-stranger adoptions). Additive
+     * sibling of `adoptionRate` (SK-GTM-001 — fields are never
+     * repurposed); same swept-abandoned caveat applies.
+     */
+    adoptionRateReal: number | null;
+  };
+  /** Unique-people counts (SK-GTM-005) — the founder's headline ask. */
+  uniques: {
+    /** Unique real-stranger accounts (founder/test excluded; email is UNIQUE). */
+    realUsers: number;
+    /** Distinct anonymous devices (anon tenant ids) with a live DB. */
+    anonDevices: number;
+    /** …of which self-identified robots (any DB of the device synthetic). */
+    anonDevicesSynthetic: number;
+    /** anonDevices − anonDevicesSynthetic. Pre-0023 rows count as organic. */
+    anonDevicesOrganic: number;
   };
   activation: {
     /** DBs that received ≥ 1 routed /v1/ask (first10_asks > 0). */
@@ -125,6 +147,7 @@ export async function computeGtmMetrics(
     premium,
     customers,
     snapshots,
+    anonDevices,
   ] = await db.batch([
     db.prepare(`SELECT COUNT(*) AS total,
         SUM(CASE WHEN ${INTERNAL_EMAIL_SQL} THEN 1 ELSE 0 END) AS internal,
@@ -140,6 +163,7 @@ export async function computeGtmMetrics(
     db
       .prepare(`SELECT COUNT(*) AS total,
         SUM(CASE WHEN tenant_id LIKE 'anon:%' THEN 1 ELSE 0 END) AS anon,
+        SUM(CASE WHEN tenant_id LIKE 'anon:%' AND synthetic = 1 THEN 1 ELSE 0 END) AS anonSynthetic,
         SUM(CASE WHEN created_at >= ?1 THEN 1 ELSE 0 END) AS created7d,
         SUM(CASE WHEN last_queried_at >= ?1 THEN 1 ELSE 0 END) AS active7d,
         SUM(CASE WHEN last_queried_at >= ?2 THEN 1 ELSE 0 END) AS active30d
@@ -154,10 +178,13 @@ export async function computeGtmMetrics(
         COUNT(DISTINCT CASE WHEN d.first10_ok > 0 THEN u.id END) AS activated
       FROM user u JOIN databases d ON d.tenant_id = u.id
       WHERE NOT ${INTERNAL_EMAIL_SQL}`),
+    // Adoptions split by the adopter's account email — a preview
+    // mock-IdP or founder adoption is internal, not a real conversion.
     db
       .prepare(`SELECT COUNT(*) AS total,
-        SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS last7d
-      FROM anon_adoptions`)
+        SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS last7d,
+        SUM(CASE WHEN NOT ${INTERNAL_EMAIL_SQL} THEN 1 ELSE 0 END) AS realAdoptions
+      FROM anon_adoptions a JOIN user u ON u.id = a.user_id`)
       .bind(cut7d),
     // Per-stranger latest activity across owned DBs (seconds) and chat
     // (milliseconds); the 7-day retention/active math runs in TS below
@@ -169,6 +196,14 @@ export async function computeGtmMetrics(
     db.prepare(`SELECT COUNT(*) AS n FROM premium_interest`),
     db.prepare(`SELECT status, COUNT(*) AS n FROM customers GROUP BY status`),
     db.prepare(`SELECT day, metrics_json FROM gtm_snapshots ORDER BY day DESC LIMIT 90`),
+    // SK-GTM-005 — unique anonymous devices: one anon tenant id = one
+    // device (SK-ANON-008's sha256 derivation). A device is synthetic
+    // when ANY of its DBs carries the flag — one self-identification
+    // marks the robot for good.
+    db.prepare(`SELECT COUNT(*) AS devices, SUM(isSyn) AS synthetic FROM (
+        SELECT tenant_id, MAX(synthetic) AS isSyn FROM databases
+        WHERE tenant_id LIKE 'anon:%' GROUP BY tenant_id
+      )`),
   ]);
 
   const uc = (userCounts?.results?.[0] ?? null) as CountsRow | null;
@@ -177,6 +212,7 @@ export async function computeGtmMetrics(
   const sdb = (strangerDbs?.results?.[0] ?? null) as CountsRow | null;
   const ad = (adoptions?.results?.[0] ?? null) as CountsRow | null;
   const pi = (premium?.results?.[0] ?? null) as CountsRow | null;
+  const dev = (anonDevices?.results?.[0] ?? null) as CountsRow | null;
 
   let strangersActive7d = 0;
   let strangersRetained7d = 0;
@@ -239,6 +275,18 @@ export async function computeGtmMetrics(
       adoptionsTotal: num(ad, "total"),
       adoptions7d: num(ad, "last7d"),
       adoptionRate: ratio(num(ad, "total"), num(dc, "anon") + num(ad, "total")),
+      anonDbsSynthetic: num(dc, "anonSynthetic"),
+      adoptionsReal: num(ad, "realAdoptions"),
+      adoptionRateReal: ratio(
+        num(ad, "realAdoptions"),
+        num(dc, "anon") - num(dc, "anonSynthetic") + num(ad, "realAdoptions"),
+      ),
+    },
+    uniques: {
+      realUsers: total - internal,
+      anonDevices: num(dev, "devices"),
+      anonDevicesSynthetic: num(dev, "synthetic"),
+      anonDevicesOrganic: num(dev, "devices") - num(dev, "synthetic"),
     },
     activation: {
       dbsStarted: num(f10, "started"),
@@ -287,6 +335,11 @@ export async function writeGtmSnapshot(db: D1Database, metrics: GtmMetrics): Pro
     first10SuccessRate: metrics.activation.first10SuccessRate,
     premiumInterest: metrics.pmf.premiumInterest,
     payingCustomers: metrics.pmf.payingCustomers,
+    // SK-GTM-005 additions (additive keys — older rows simply lack them).
+    realUsers: metrics.uniques.realUsers,
+    anonDevicesOrganic: metrics.uniques.anonDevicesOrganic,
+    anonDbsOrganic: metrics.funnel.anonDbsTotal - metrics.funnel.anonDbsSynthetic,
+    adoptionsReal: metrics.funnel.adoptionsReal,
   };
   await db
     .prepare(`INSERT OR IGNORE INTO gtm_snapshots (day, metrics_json) VALUES (?, ?)`)

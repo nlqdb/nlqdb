@@ -71,6 +71,9 @@ export type ConnectByoArgs = {
   connectionUrl: string;
   name?: string;
   tenantId: string;
+  // SK-GTM-005 — request self-identified as nlqdb-generated (walker UA /
+  // preview deploy); persisted so GTM reads exclude robot-created rows.
+  synthetic?: boolean;
 };
 
 export type ConnectByoResult =
@@ -174,8 +177,8 @@ export async function connectByoDb(
   await deps.d1
     .prepare(
       "INSERT INTO databases " +
-        "(id, tenant_id, engine, connection_secret_ref, connection_blob, schema_hash, schema_text, created_at, updated_at, last_queried_at) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch(), unixepoch())",
+        "(id, tenant_id, engine, connection_secret_ref, connection_blob, schema_hash, schema_text, synthetic, created_at, updated_at, last_queried_at) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch(), unixepoch())",
     )
     .bind(
       dbId,
@@ -185,6 +188,7 @@ export async function connectByoDb(
       blob,
       rendered.schemaHash,
       rendered.schemaText,
+      args.synthetic ? 1 : 0,
     )
     .run();
 

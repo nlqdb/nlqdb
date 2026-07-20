@@ -12,8 +12,8 @@ when-to-load:
 # Feature: GTM Metrics
 
 **One-liner:** Canonical GTM/PMF metric set — admin-gated live metrics endpoint, daily snapshots, and the `/app/admin` founder dashboard.
-**Status:** implemented (2026-07-19 — endpoint + snapshots + dashboard v1; external sources stay out of scope, see Open questions)
-**Owners (code):** `apps/api/src/admin/**`, `apps/api/migrations/0022_gtm_snapshots.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`
+**Status:** implemented (2026-07-19 — endpoint + snapshots + dashboard v1; SK-GTM-005 synthetic-traffic exclusion + unique-people counts same day; external sources stay out of scope, see Open questions)
+**Owners (code):** `apps/api/src/admin/**`, `apps/api/src/synthetic-ua.ts`, `apps/api/migrations/00{22_gtm_snapshots,23_synthetic_traffic_flag}.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`
 
 **Contribution to north-star:** Onboarding — the funnel/activation/retention numbers ARE the onboarding pillar's measurement (TTFV cousins, first-10 success, retention per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)), now continuously measured instead of hand-pulled; per [`GLOBAL-038`](../../decisions/GLOBAL-038-gtm-pmf-instrumentation.md) acquisition measurement is additionally first-class. No other pillar degrades: the endpoint is admin-only D1 reads off the request path of every product surface.
 
@@ -156,6 +156,51 @@ when-to-load:
     for a two-person audience; GLOBAL-003 exists for user capabilities.
   - A chart library (recharts/d3) — bundle + design drift for four
     sparklines; the calm token system covers it.
+
+### SK-GTM-005 — Synthetic traffic is stamped at DB create; unique-people counts exclude it
+
+- **Decision:** Migration `0023_synthetic_traffic_flag.sql` adds
+  `databases.synthetic INTEGER NOT NULL DEFAULT 0`, stamped at every
+  create path (hosted create both arms + BYO connect) when
+  `isSyntheticRequest()` (`apps/api/src/synthetic-ua.ts`) says the
+  request self-identifies as nlqdb-generated: the stranger-test walker
+  UA token (`SK-ONBOARD-007`) or a preview/mock deploy (`NODE_ENV=
+  preview` / `MOCK_IDP=1`, `SK-AUTH-018` — previews share the prod D1).
+  On top of it `computeGtmMetrics` reports the **unique-people block**:
+  `uniques.realUsers` (distinct stranger accounts — `user.email` is
+  UNIQUE, so accounts ARE unique people), `uniques.anonDevices` split
+  synthetic/organic (one anon tenant id = one device, `SK-ANON-008`; a
+  device is synthetic when ANY of its DBs carries the flag), plus
+  `funnel.anonDbsSynthetic`, `funnel.adoptionsReal` (adopter email
+  outside the internal set) and `funnel.adoptionRateReal`. Existing
+  fields keep their semantics (`SK-GTM-001` — additive only). The
+  write-side complement of `SK-ONBOARD-007`: that decision keeps walker
+  *asks* out of the first-10 counters; this one keeps walker/preview
+  *DBs and devices* out of the funnel counts.
+- **Core value:** Bullet-proof, Simple, Free
+- **Why:** The founder's headline question is "how many real unique
+  people", and the anon side was unanswerable: the daily walker
+  (`SK-STRG-003`) and preview deploys create anon DBs in prod D1 that
+  read as strangers. Detection is strictly self-identification — the
+  walker UA and the preview env flag — never a host/IP/UA-family
+  heuristic, because a false positive silently erases a REAL stranger
+  from the north-star, which is worse than counting an extra robot.
+- **Consequence in code:** `DbCreateArgs.synthetic` / `ConnectByoArgs.
+  synthetic` are resolved only at the route via `isSyntheticRequest`
+  (orchestrators pass them through untouched); reviewers reject a
+  second detection site or any IP/host-based rule. Walker changes that
+  drop the `nlqdb-stranger-test` UA token (or preview deploys that
+  unset `MOCK_IDP`/`NODE_ENV=preview`) silently re-pollute the counts —
+  treat those as breaking changes to this decision. Rows created before
+  migration 0023 default to organic (unattributable); the 90-day anon
+  sweep ages that backlog out.
+- **Alternatives rejected:**
+  - Host/IP heuristics for previews — previews are same-origin merged
+    workers; a host list rots and misfires on real users.
+  - Excluding by the walker's 25 seeded prompt strings — goals aren't
+    stored on `databases`; fragile string coupling.
+  - Backfilling the pre-0023 backlog — no reliable key exists; the
+    sweep resolves it within 90 days for free.
 
 ## GLOBALs governing this feature
 

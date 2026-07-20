@@ -247,10 +247,20 @@ export async function provisionDb(
         // because the create path doesn't hit the /v1/ask touch and
         // the 2nd anon call is auth-walled (SK-ANON-012). Migration
         // 0009's backfill only covered rows existing at migration time.
-        "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, schema_hash, schema_text, created_at, updated_at, last_queried_at) " +
-          "VALUES (?, ?, ?, ?, ?, ?, unixepoch(), unixepoch(), unixepoch())",
+        "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, schema_hash, schema_text, synthetic, created_at, updated_at, last_queried_at) " +
+          "VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch(), unixepoch())",
       )
-      .bind(args.dbId, args.tenantId, args.engine, args.secretRef, args.schemaHash, args.schemaText)
+      .bind(
+        args.dbId,
+        args.tenantId,
+        args.engine,
+        args.secretRef,
+        args.schemaHash,
+        args.schemaText,
+        // SK-GTM-005 — walker/preview-created rows are excludable on the
+        // GTM read side (GLOBAL-038).
+        args.synthetic ? 1 : 0,
+      )
       .run();
   } catch (_err) {
     // The D1 INSERT never landed, so only the Postgres schema needs

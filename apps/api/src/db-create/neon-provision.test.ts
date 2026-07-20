@@ -87,6 +87,7 @@ function makeArgs(overrides: Partial<ProvisionArgs> = {}): ProvisionArgs {
     secretRef: "DATABASE_URL",
     schemaHash: "schema_v1",
     schemaText: "CREATE TABLE A (id INT)\n\nCREATE TABLE B (id INT)",
+    synthetic: false,
     ...overrides,
   };
 }
@@ -241,6 +242,7 @@ describe("provisionDb — happy path", () => {
       "DATABASE_URL",
       "schema_v1",
       "CREATE TABLE A (id INT)\n\nCREATE TABLE B (id INT)",
+      0,
     ]);
     // SK-ANON-002 — the create seeds `last_queried_at` (a successful
     // create returned sampleRows = the first answer) so the age-sweep

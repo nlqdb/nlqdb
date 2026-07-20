@@ -47,12 +47,24 @@ async function seedUser(id: string, email: string, createdAtIso: string) {
 async function seedDb(
   id: string,
   tenantId: string,
-  opts: { asks?: number; ok?: number; lastQueriedAt?: number | null } = {},
+  opts: {
+    asks?: number;
+    ok?: number;
+    lastQueriedAt?: number | null;
+    synthetic?: boolean;
+  } = {},
 ) {
   await env.DB.prepare(
-    "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, first10_asks, first10_ok, last_queried_at) VALUES (?, ?, 'postgres', 'ref', ?, ?, ?)",
+    "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, first10_asks, first10_ok, last_queried_at, synthetic) VALUES (?, ?, 'postgres', 'ref', ?, ?, ?, ?)",
   )
-    .bind(id, tenantId, opts.asks ?? 0, opts.ok ?? 0, opts.lastQueriedAt ?? null)
+    .bind(
+      id,
+      tenantId,
+      opts.asks ?? 0,
+      opts.ok ?? 0,
+      opts.lastQueriedAt ?? null,
+      opts.synthetic ? 1 : 0,
+    )
     .run();
 }
 
@@ -80,10 +92,21 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     // record of the adoption.
     await seedDb("db_a1", "u_s1", { asks: 1, ok: 1, lastQueriedAt: nowSec - 2 * DAY });
     await seedDb("db_a2", "anon:bbbb000011112222");
+    // SK-GTM-005 — one walker device with two synthetic DBs: the device
+    // and its rows must be excludable from the organic anon counts.
+    await seedDb("db_w1", "anon:cccc000011112222", { synthetic: true });
+    await seedDb("db_w2", "anon:cccc000011112222", { synthetic: true });
     await env.DB.prepare(
       "INSERT INTO anon_adoptions (token, user_id, database_id, created_at) VALUES ('tok1', 'u_s1', 'db_a1', ?)",
     )
       .bind(nowSec - 3 * DAY)
+      .run();
+    // An old founder adoption — internal, so it must count in
+    // adoptionsTotal but never in adoptionsReal (SK-GTM-005).
+    await env.DB.prepare(
+      "INSERT INTO anon_adoptions (token, user_id, database_id, created_at) VALUES ('tok2', 'u_founder', 'db_f1', ?)",
+    )
+      .bind(nowSec - 30 * DAY)
       .run();
 
     await env.DB.prepare(
@@ -103,13 +126,28 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     const strangerSignups = m.users.signupsByDay.reduce((n, d) => n + d.strangers, 0);
     expect(strangerSignups).toBe(2);
 
-    expect(m.funnel.dbsTotal).toBe(4);
-    // Only db_a2 is still anonymous — db_a1 was re-tenanted on adoption.
-    expect(m.funnel.anonDbsTotal).toBe(1);
-    expect(m.funnel.adoptionsTotal).toBe(1);
+    expect(m.funnel.dbsTotal).toBe(6);
+    // db_a2 + the two walker DBs are anonymous — db_a1 was re-tenanted
+    // on adoption.
+    expect(m.funnel.anonDbsTotal).toBe(3);
+    expect(m.funnel.anonDbsSynthetic).toBe(2);
+    expect(m.funnel.adoptionsTotal).toBe(2);
     expect(m.funnel.adoptions7d).toBe(1);
-    // adopted / (live anon + adopted) = 1 / (1 + 1); bounded [0,1].
-    expect(m.funnel.adoptionRate).toBeCloseTo(0.5);
+    // adopted / (live anon + adopted) = 2 / (3 + 2); bounded [0,1].
+    expect(m.funnel.adoptionRate).toBeCloseTo(0.4);
+    // The adopter (u_s1) is a real stranger; robot-free rate uses the
+    // organic anon base: 1 / (1 organic + 1 adopted).
+    expect(m.funnel.adoptionsReal).toBe(1);
+    expect(m.funnel.adoptionRateReal).toBeCloseTo(0.5);
+
+    // SK-GTM-005 uniques: 2 stranger accounts; 2 anon devices (bbbb
+    // organic, cccc walker-synthetic).
+    expect(m.uniques).toEqual({
+      realUsers: 2,
+      anonDevices: 2,
+      anonDevicesSynthetic: 1,
+      anonDevicesOrganic: 1,
+    });
 
     expect(m.activation.dbsStarted).toBe(3);
     expect(m.activation.dbsActivated).toBe(3);
@@ -135,8 +173,15 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     const m = await computeGtmMetrics(env.DB);
     expect(m.users.total).toBe(0);
     expect(m.funnel.adoptionRate).toBeNull();
+    expect(m.funnel.adoptionRateReal).toBeNull();
     expect(m.activation.first10SuccessRate).toBeNull();
     expect(m.retention.strangersRetained7d).toBe(0);
+    expect(m.uniques).toEqual({
+      realUsers: 0,
+      anonDevices: 0,
+      anonDevicesSynthetic: 0,
+      anonDevicesOrganic: 0,
+    });
     expect(m.trend).toEqual([]);
   });
 });
@@ -239,6 +284,7 @@ describe("/v1/admin/metrics — SK-GTM-002 auth gate", () => {
         "pmf",
         "retention",
         "trend",
+        "uniques",
         "users",
       ]);
       // Both minted accounts are internal-pattern emails — the
