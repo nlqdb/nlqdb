@@ -39,7 +39,8 @@ import { getChatClient } from "../../lib/chat-client";
 import { deriveSlug, displayName } from "../../lib/names";
 import { clearPending, loadPending } from "../../lib/prompt-storage";
 import ErrorBoundary from "../ErrorBoundary";
-import { groupByTable, SampleTable } from "../SampleTable";
+import { SampleTable } from "../SampleTable";
+import { groupProvisionedTables } from "../sample-rows";
 import Answer from "./Answer";
 import CopySnippet from "./CopySnippet";
 import { matchesValidMessageShape } from "./chat-validate";
@@ -75,6 +76,12 @@ type ReplyState =
       kind: "created";
       displayName: string;
       dbId: string;
+      // Provisioned table names (schema source of truth). The count + one
+      // preview per table derive from this, never from `sampleRows` — the
+      // seed set is LLM-authored and may be partial or empty
+      // (SK-HDC-018/019), which would otherwise drop unseeded tables and
+      // render a fully-unseeded create as "0 tables".
+      tables: string[];
       sampleRows: { table: string; values: Record<string, unknown> }[];
       trace: ApiTrace;
     }
@@ -414,6 +421,10 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
               kind: "created",
               displayName: result.displayName,
               dbId: result.db,
+              // SDK types `plan` as `unknown`; narrow to the provisioned
+              // table list the create response carries (schema source of
+              // truth for the count + preview).
+              tables: (result.plan as { tables?: string[] } | null)?.tables ?? [],
               sampleRows: result.sampleRows,
               trace: result.trace,
             },
@@ -933,7 +944,7 @@ function ReplyView({
       ) : null}
       {created
         ? (() => {
-            const grouped = groupByTable(created.sampleRows);
+            const grouped = groupProvisionedTables(created.tables, created.sampleRows);
             const rowCount = created.sampleRows.length;
             return (
               <div className="chat-reply__created">

@@ -27,11 +27,17 @@ export interface CreateResult {
   displayName: string;
   schemaName: string;
   pkLive: string | null;
-  // The full SchemaPlan ships back; we pass it through verbatim
-  // since the consumer (CreateForm.tsx) only renders sample rows
-  // for now. Future surfaces will render metrics + dimensions too
-  // (SK-HDC-004).
-  plan: unknown;
+  // The SchemaPlan summary ships back. `tables` is the provisioned table
+  // list (schema source of truth) — CreateResultView renders the table
+  // count + one preview per table from it, never from the seed set (which
+  // SK-HDC-018/019 may leave partial or empty). Metrics/dimensions are
+  // carried for future surfaces (SK-HDC-004).
+  plan: {
+    tables?: string[];
+    metrics?: unknown;
+    dimensions?: unknown;
+    foreign_keys?: unknown;
+  };
   // Matches `SampleRow` in `packages/db/src/types.ts` — one row per
   // entry, with `values` carrying the column → scalar map. The UI
   // groups by table at render time.

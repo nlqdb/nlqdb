@@ -409,6 +409,10 @@ export async function orchestrateDbCreate(
     model,
     confidence,
     plan: {
+      // The provisioned schema's table names — not the seeded subset.
+      // Surfaces render the table count + one preview per table from this
+      // (SK-HDC-018/019 make the seed set partial or empty).
+      tables: plan.tables.map((t) => t.name),
       metrics: plan.metrics,
       dimensions: plan.dimensions,
       foreign_keys: plan.foreign_keys,

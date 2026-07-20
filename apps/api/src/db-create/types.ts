@@ -231,6 +231,14 @@ export type DbCreateArgs = {
 };
 
 export type DbCreatePlanSummary = {
+  // Provisioned table names, in schema order — the source of truth for
+  // "how many tables did I get" on the create result. Surfaces must NOT
+  // derive the table count or preview from `sampleRows`: the seed set is
+  // LLM-authored and may be partial or empty (SK-HDC-018/019), so a table
+  // that wasn't seeded would silently vanish from the stranger's first
+  // "did it work?" view — and a fully-unseeded create would read as
+  // "0 tables" despite a committed schema.
+  tables: string[];
   metrics: Metric[];
   dimensions: Dimension[];
   foreign_keys: ForeignKey[];

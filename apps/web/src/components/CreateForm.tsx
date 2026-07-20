@@ -44,7 +44,8 @@ import { makeTtfvOnce } from "../lib/ttfv";
 import { solveChallenge } from "../lib/turnstile";
 import ErrorBoundary from "./ErrorBoundary";
 import McpInstallView from "./McpInstallView";
-import { groupByTable, SampleTable } from "./SampleTable";
+import { SampleTable } from "./SampleTable";
+import { groupProvisionedTables } from "./sample-rows";
 
 interface CreateFormProps {
   apiBase: string;
@@ -269,7 +270,7 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
 }
 
 function CreateResultView({ result }: { result: CreateResult }) {
-  const grouped = groupByTable(result.sampleRows);
+  const grouped = groupProvisionedTables(result.plan.tables, result.sampleRows);
   return (
     <section className="createresult" aria-label="Created database">
       <p className="createresult__id">
