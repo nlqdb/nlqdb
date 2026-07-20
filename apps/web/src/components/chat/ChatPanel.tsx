@@ -46,6 +46,7 @@ import CopySnippet from "./CopySnippet";
 import { matchesValidMessageShape } from "./chat-validate";
 import Data from "./Data";
 import DiffChip from "./DiffChip";
+import { messageFor } from "./error-message";
 import FreeModelNudge from "./FreeModelNudge";
 import { freeChainStruggled } from "./free-model-nudge-gate";
 import LeftRail from "./LeftRail";
@@ -1122,50 +1123,6 @@ function extractSqlFromSteps(_steps: TraceStepRecord[]): string | null {
   // for a future where the trace events carry the SQL on a per-step
   // basis. Keeping the hook here so ReplyView doesn't have to know.
   return null;
-}
-
-function messageFor(err: unknown): string {
-  if (err instanceof NlqdbApiError) {
-    switch (err.code) {
-      case "rate_limited":
-        return "Slow down — try again in a moment.";
-      case "unauthorized":
-        return "Sign in expired — sign in again to continue.";
-      case "sql_rejected":
-        return "That query was rejected — try rephrasing.";
-      case "db_unreachable":
-      case "db_misconfigured":
-        return "Couldn't reach the database — try again.";
-      case "llm_failed":
-        return "Couldn't generate a plan — try rephrasing.";
-      case "aborted":
-        return "Cancelled.";
-      case "network_error":
-        return "Couldn't reach the API — check your connection.";
-      case "db_not_found":
-        return "That database isn't available — try a different one.";
-      case "schema_unavailable":
-        return "Couldn't load the database schema — try again.";
-      case "schema_mismatch": {
-        // SK-ASK-016 — the API returns referencedTables (in the goal,
-        // missing from the DB) and schemaTables (what's actually
-        // there). Surface both so the user can rephrase or create a
-        // new DB instead of dead-ending on "Something went wrong".
-        const body = err.body as { referencedTables?: string[]; schemaTables?: string[] } | null;
-        const missing = body?.referencedTables ?? [];
-        const available = (body?.schemaTables ?? []).slice(0, 5);
-        if (missing.length > 0 && available.length > 0) {
-          const tablesWord = missing.length === 1 ? "table" : "tables";
-          return `No such ${tablesWord}: ${missing.join(", ")}. This database has: ${available.join(", ")}.`;
-        }
-        if (missing.length > 0) {
-          return `This database has no ${missing.join(", ")} table — try rephrasing or creating a new database.`;
-        }
-        return "That query references a table this database doesn't have — try rephrasing or creating a new database.";
-      }
-    }
-  }
-  return "Something went wrong — try again.";
 }
 
 function cryptoRandomId(): string {

@@ -49,7 +49,7 @@ Security + Deploy web/docs/MCP/API + Release npm all `success` on `main` head `a
 | 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** (Chrome 41, ChromeMobile 3, MobileSafari 2, Firefox 2, Edge 1) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield (owned by PR #711) |
 | 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run (vague-goal recovery, aborted-reply settle, create-result + magic-link a11y); **run 98** stopped `getOrMintAnonToken` hard-throwing when localStorage is blocked (privacy modes) — the one anon slot bypassing the SK-ANON-011 `safeStorage` in-memory fallback, so a cookie-blocked stranger's create died on a misleading "Couldn't reach the API"; now degrades to an in-memory token (rows #4/#5). Per-run detail in `git log` |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run (vague-goal recovery, aborted-reply settle, create-result schema truth, localStorage-blocked create); **run 104** fixed the first-answer *error* copy — `schema_mismatch` listed only the first 5 tables with no overflow hint, so a stranger with a >5-table DB read the shown subset as the complete schema and abandoned a valid query; now appends `(+N more)`. Per-run detail in `git log` |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -95,34 +95,33 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-20 (run 103)** — **Priority-1 acquisition lever (row #22): dev.to click-throughs are now
-`utm_source`-attributable — the channel's `live` status was really a partial.** Weekly focus is
-row #22 (channels live with attributable yield → ≥ 5). Step 0: only open PR is #719 (Infisical,
-founder territory) — no collision; dev.to is `/daily`-owned (step 3), not a `/reach` R-slice.
-**Before:** `scripts/syndicate-devto.ts` built each variant's read-through link (`*Originally
-published at nlqdb.com/blog*`) pointing at the **clean canonical** (`https://nlqdb.com/blog/<slug>/`),
-so a dev.to→nlqdb.com visit was captured only as the **flaky `ref: dev.to` referrer** — readers,
-RSS clients, and app webviews routinely strip it — never the `utm_source=devto` key that rule 1
-mandates for every externally published URL, contradicting the ledger's own "every published
-channel's yield is attributable." **Change (P5 — one link, one constant):** tag the read-through
-link `…/blog/<slug>/?utm_source=devto` while the API `canonical_url` field stays the **clean**
-canonical (rel=canonical SEO dedup must not carry utm params); also guarded top-level `main()`
-behind `import.meta.main` so `buildBody` is importable (the correct bun idiom; was
-`await main()` unconditional). **Number moved — row #22:** before/after via imported `buildBody` —
-read-through link went `.../blog/some-slug/` → `.../blog/some-slug/?utm_source=devto` (verified
-present) while the API `canonical_url` argument stays untagged (verified clean); `captureFirstTouch`
-reads `utm_source` from the query, and `/blog/[slug]` renders under `Base.astro` which calls it.
-**Row #22 count holds 4** (dev.to was already counted `live`), but its **partial is closed** — all
-four live channels (organic search + dev.to + npm + GitHub) now satisfy rule 1. No new doc (D5 —
-`SK-BLOG-003` + `SK-GTM-007` already govern; ledger row 2 next-step updated). **Gates:** `bun
-install` then typecheck **exit 0** workspace-wide; `syndicate-devto.ts` biome-clean (41 warnings
-are pre-existing, untouched e2e files). **Step-1:** docs-ambiguity **16** (flat); surfaces **105**,
-queue **2**; users **9** / strangers **0** (07-16 carried); GSC 28d **1/472/16.6** (07-20);
-BIRD 0.542 / Spider 0.2222 (07-19 dark). **Artifact:** queue **2** (< 3) → no publish; dev.to drip
-**throttled** (8.9h ago < 20h, posted today) → clean no-op, no queue-line edit; no new draft (queue
-at D4 cap; lever's lesson thin). **KPI (GLOBAL-025):** **onboarding** — attribution is how a
-stranger cohort becomes measurable at all (GLOBAL-038); **no KPI degrades** (one script link + a
-main-guard; no engine/API/funnel logic touched, and the SEO canonical is provably unchanged).
+**2026-07-20 (run 104)** — **Priority-2 UX-flow lever (row #4): the stranger's first-answer
+*error* copy no longer presents a truncated table list as the whole schema.** Weekly-focus
+number (row #22) was pulled by run 103 (#756, now merged — closed the dev.to attribution
+partial); no agent-movable priority-1 acquisition lever was open at run time (reach #757 held
+`tools/stranger-test/**`). No other
+agent-movable acquisition/distribution lever is open (registries R-05/R-04 = `/reach`+human; the
+one winnable GSC query is reach R-03). Engine lanes dark + fresh (07-19). Defect-hunt over the
+`/v1/ask` failure path found a genuine drift: `messageFor`'s `schema_mismatch` branch built
+`(schemaTables ?? []).slice(0, 5)` with **no overflow indicator** — the API sends the full table
+list, so on a DB with >5 tables a stranger who referenced a missing table saw `This database has:
+a, b, c, d, e.` and reasonably read that as the *complete* schema, abandoning a valid query (or
+needlessly recreating the DB). Same "never under-claim" class as run 102. **Change (P5 — extract
++ fix):** pulled the untested `messageFor` out of the 1198-line `ChatPanel.tsx` into a pure
+`chat/error-message.ts` (matching sibling helpers `data-rows.ts`/`reply-settle.ts`) and appended
+` (+N more)` when the shown list is capped; API/pre-flight logic untouched. **Number moved —
+row #4:** guard-the-guard confirmed — the regression test (`schemaTables` of 7) fails against the
+old slice-only string, passes now; web **347 → 354 pass** (+7: overflow-indicator regression,
+single/multi missing wording, no-overflow, exec-catch empty-array fallback, generic fallback,
+code mappings). No new doc (D5 — copy fix under SK-WEB-005). **Gates:** typecheck exit 0; lint
+exit 0; touched files biome-clean; astro check **0/0**; web **354**, api **974**, full `bun run
+test` exit 0. **Step-1:** docs-ambiguity **16** (flat); surfaces **105**, queue **2**; users
+**9** / strangers **0** (07-16 carried); GSC 28d **1/472/16.6** fresh 07-20; BIRD 0.542 / Spider
+0.2222 (07-19); CI + all deploys `success` on `main` `a833cf4`. **Artifact:** queue **2** (< 3) →
+no publish; dev.to drip **throttled** (run 103 posted today, <20h); no new draft (queue at 20 KB
+D4 cap). **KPI (GLOBAL-025):** **onboarding + UX** — a stranger's recovery copy is now honest
+about the schema; **no KPI degrades** (client copy + one pure-helper extraction; no engine/API/
+funnel logic touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
