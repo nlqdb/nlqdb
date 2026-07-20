@@ -119,36 +119,5 @@ stranger sees every table their DB has, and a schema-only DB reads as success no
 KPI degrades** (additive response field + one shared pure helper; no engine/API/funnel logic
 touched).
 
-**2026-07-20 (run 101)** — **Priority-1 acquisition lever (row #22, the weekly focus):
-the GitHub channel is now attributable — 3 → 4 live, 0 partial.** The two PRs that held
-this number last run — #750 (npm → live) + #751 (MCP-registry venue) — are now **merged**,
-so per **step 0** the priority-1 lever is pullable with no collision (only open PR is #719,
-the Infisical founder draft). GitHub was the sole `partial` in the ledger: repo public,
-README shipped, but its product CTA linked bare `https://nlqdb.com`, so a github.com
-click-through landed on the site and `captureFirstTouch` recorded it as `direct`, never
-`github`. Its ledger next-step listed "utm-tag README links" as a `/daily` input (the
-weekly focus assigns repo *topics/templates* to `/reach`; the *tagging* is `/daily`).
-**Change (P5 — one string, mirroring run 99's npm flip):** tagged the root README's single
-product CTA to `https://nlqdb.com/?utm_source=github` (the canonical ledger `github` key,
-`SK-GTM-007`). `attribution.ts` reads `utm_source` on landing and `postAskCreate` persists
-it to `databases.source_json`, so github click-throughs are attributable end-to-end; yield
-reads on `/app/admin`. docs./elements. links don't run `Base.astro` and legal-footer links
-aren't a conversion path — both left untagged (tagging them would misattribute non-buyers).
-**Number moved — row #22 3 live → 4 live / 0 partial** (GitHub partial → live; the npm
-precedent, run 99, established that attribution — not discovery amplification like
-topics/templates — is rule 2's live-gate). No new decision doc (D5 — conforms GitHub's
-published link to the already-documented `SK-GTM-007` "every URL carries its `utm_source`"
-rule; nothing non-obvious to record). **Gates:** `bun run lint` exit 0 (41 pre-existing
-warnings, none in touched files); `bun run typecheck` exit 0; `bun run test` exit 0 (api
-**974 pass** / 6 skipped). **Step-1:** docs-ambiguity **16** (flat, carried); surfaces
-**105**, queue **2**; users **9** / strangers **0** (07-16 carried); GSC 28d **1/452/16.3**
-carried (row #7); engine BIRD 0.542 / Spider 0.2222 fresh 07-19; deploy health all-green
-on head `012904d`. **Artifact:** queue **2** (< 3) → no forced publish; dev.to drip
-attempted (throttle-guarded, ~6 runs/day → expected no-op on all but the first daily run);
-no new draft (queue at D4 cap). **KPI (GLOBAL-025, amended by GLOBAL-038):** **acquisition
-measurement** — GitHub is measurable from the first stranger it produces; **no KPI
-degrades** (one README URL string; attribution is telemetry, never load-bearing; no
-engine/API/funnel logic touched).
-
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
