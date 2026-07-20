@@ -28,13 +28,22 @@ tools/stranger-test/
 │   ├── browser.ts            # shared chromium + per-walk deadline helper
 │   ├── personas.ts           # 25 seeded prompts (P1×10, P2×8, P3×4, P6×3)
 │   ├── types.ts              # WalkResult / FlowResult / FlowRun / StepResult
+│   ├── reach-agent-walk.ts   # R-06 coding-agent walker (reach track, NOT a canonical FLOW)
 │   └── flows/
 │       ├── flow-001.ts       # anonymous-first happy path (two-door home → /app/new/ hero)
 │       ├── flow-002.ts       # /solve/<slug> → first query
 │       └── flow-003.ts       # /vs/<slug> → first query
+├── fixtures/agent-app/       # scratch repo the R-06 cold agent session works in
 ├── test/                     # bun test, no browser launch
 └── results/                  # walk JSON output (gitignored except .gitkeep)
 ```
+
+> **`reach-agent-walk.ts` is owned by the reach track**
+> ([`docs/features/agent-memory-pivot/worksheets/reach/INDEX.md`](../../docs/features/agent-memory-pivot/worksheets/reach/INDEX.md)
+> R-06), not the stranger-test canonical flows. It reuses this tool's
+> conventions (pure grader + spawn layer, JSON-to-`results/`) but drives a
+> nested `claude -p` session (`bash scripts/reach-agent-walk.sh`) rather than a
+> Playwright walk, and is re-run by `/reach` step 1, not the SK-STRG-003 cron.
 
 ## Running locally
 
