@@ -49,6 +49,7 @@ const NON_TOOL_TOKENS = new Set([
   "nlqdb_pending", // pending prompt across sign-in
   "nlqdb_draft", // draft prompt (localStorage)
   "nlqdb_history", // prompt history (localStorage)
+  "nlqdb_src", // first-touch acquisition source (localStorage, SK-GTM-007)
   "nlqdb_logsnag", // analytics channel name
   "nlqdb_create_database", // manifesto foil — intentionally unshipped
 ]);

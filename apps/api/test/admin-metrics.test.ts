@@ -52,10 +52,14 @@ async function seedDb(
     ok?: number;
     lastQueriedAt?: number | null;
     synthetic?: boolean;
+    sourceJson?: string | null;
+    /** Explicit create time — the SK-GTM-007 last7d/earliest-touch
+        assertions need determinism, not the real-clock default. */
+    createdAt?: number;
   } = {},
 ) {
   await env.DB.prepare(
-    "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, first10_asks, first10_ok, last_queried_at, synthetic) VALUES (?, ?, 'postgres', 'ref', ?, ?, ?, ?)",
+    "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, first10_asks, first10_ok, last_queried_at, synthetic, source_json, created_at) VALUES (?, ?, 'postgres', 'ref', ?, ?, ?, ?, ?, COALESCE(?, unixepoch()))",
   )
     .bind(
       id,
@@ -64,6 +68,8 @@ async function seedDb(
       opts.ok ?? 0,
       opts.lastQueriedAt ?? null,
       opts.synthetic ? 1 : 0,
+      opts.sourceJson ?? null,
+      opts.createdAt ?? null,
     )
     .run();
 }
@@ -82,20 +88,41 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     await seedUser("u_s2", "aarav@startup.dev", "2026-07-18T00:00:00.000Z");
 
     // Stranger 1: activated (first10_ok > 0), active now (retained —
-    // last activity is ≥ 7 days after the 07-01 signup).
-    await seedDb("db_s1", "u_s1", { asks: 6, ok: 5, lastQueriedAt: nowSec - DAY });
+    // last activity is ≥ 7 days after the 07-01 signup). Their DB
+    // carries an SK-GTM-007 first touch: utm_source wins over ref.
+    await seedDb("db_s1", "u_s1", {
+      asks: 6,
+      ok: 5,
+      lastQueriedAt: nowSec - DAY,
+      sourceJson: JSON.stringify({ utm_source: "devto", ref: "dev.to", landing: "/blog/x/" }),
+      createdAt: nowSec - 10 * DAY,
+    });
     // Founder DB: activated but internal — must not count as stranger.
-    await seedDb("db_f1", "u_founder", { asks: 10, ok: 9, lastQueriedAt: nowSec - 40 * DAY });
+    await seedDb("db_f1", "u_founder", {
+      asks: 10,
+      ok: 9,
+      lastQueriedAt: nowSec - 40 * DAY,
+      createdAt: nowSec - 40 * DAY,
+    });
     // Anonymous DBs: db_a1 was adopted by u_s1 — adoption re-tenants the
     // row off `anon:%` (SK-ANON-003), so it is NO LONGER an anon DB; only
     // db_a2 remains anonymous. The anon_adoptions row is the permanent
-    // record of the adoption.
-    await seedDb("db_a1", "u_s1", { asks: 1, ok: 1, lastQueriedAt: nowSec - 2 * DAY });
-    await seedDb("db_a2", "anon:bbbb000011112222");
+    // record of the adoption. db_a2's referrer-only touch groups by host.
+    await seedDb("db_a1", "u_s1", {
+      asks: 1,
+      ok: 1,
+      lastQueriedAt: nowSec - 2 * DAY,
+      createdAt: nowSec - 3 * DAY,
+    });
+    await seedDb("db_a2", "anon:bbbb000011112222", {
+      sourceJson: JSON.stringify({ ref: "news.ycombinator.com", landing: "/" }),
+      createdAt: nowSec - 2 * DAY,
+    });
     // SK-GTM-005 — one walker device with two synthetic DBs: the device
-    // and its rows must be excludable from the organic anon counts.
-    await seedDb("db_w1", "anon:cccc000011112222", { synthetic: true });
-    await seedDb("db_w2", "anon:cccc000011112222", { synthetic: true });
+    // and its rows must be excludable from the organic anon counts. No
+    // source captured, so both group under 'untracked' in the ledger.
+    await seedDb("db_w1", "anon:cccc000011112222", { synthetic: true, createdAt: nowSec - DAY });
+    await seedDb("db_w2", "anon:cccc000011112222", { synthetic: true, createdAt: nowSec - DAY });
     await env.DB.prepare(
       "INSERT INTO anon_adoptions (token, user_id, database_id, created_at) VALUES ('tok1', 'u_s1', 'db_a1', ?)",
     )
@@ -162,6 +189,22 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     expect(m.retention.strangersActive7d).toBe(1);
     expect(m.retention.strangersRetained7d).toBe(1);
 
+    // SK-GTM-007 — channel = utm_source, else ref, else untracked;
+    // strangers attribute by their EARLIEST sourced DB. db_s1 was
+    // created before db_a1 in this seed order, so u_s1 → devto.
+    // untracked = db_f1 + db_a1 + the two walker DBs (no source);
+    // last7d excludes db_f1 (40d old).
+    expect(m.acquisition.dbsWithSource).toBe(2);
+    expect(m.acquisition.dbsBySource).toEqual([
+      { source: "untracked", total: 4, last7d: 3 },
+      { source: "devto", total: 1, last7d: 0 },
+      { source: "news.ycombinator.com", total: 1, last7d: 1 },
+    ]);
+    expect(m.acquisition.strangersBySource).toEqual([
+      { source: "devto", strangers: 1 },
+      { source: "untracked", strangers: 1 },
+    ]);
+
     expect(m.pmf.premiumInterest).toBe(1);
     expect(m.pmf.payingCustomers).toBe(1);
     expect(m.pmf.customersByStatus).toEqual({ active: 1 });
@@ -182,6 +225,9 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
       anonDevicesSynthetic: 0,
       anonDevicesOrganic: 0,
     });
+    expect(m.acquisition.dbsWithSource).toBe(0);
+    expect(m.acquisition.dbsBySource).toEqual([]);
+    expect(m.acquisition.strangersBySource).toEqual([]);
     expect(m.trend).toEqual([]);
   });
 });
@@ -278,6 +324,7 @@ describe("/v1/admin/metrics — SK-GTM-002 auth gate", () => {
       expect(ok.status).toBe(200);
       const body = (await ok.json()) as Record<string, unknown>;
       expect(Object.keys(body).sort()).toEqual([
+        "acquisition",
         "activation",
         "funnel",
         "generatedAt",

@@ -40,7 +40,39 @@ export type AskBody = {
   engine?: Engine;
   confirm?: boolean;
   model?: ModelPreset;
+  source?: AskSource;
 };
+
+// SK-GTM-007 — first-touch acquisition source, forwarded by the web
+// client on the create branch and persisted to `databases.source_json`.
+// Telemetry, never load-bearing: a malformed `source` is dropped in
+// `sanitizeAskSource`, never a 400 — attribution must not be able to
+// fail a create.
+export type AskSource = {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  /** External referrer hostname (the client strips same-site referrers). */
+  ref?: string;
+  /** First-touch landing pathname. */
+  landing?: string;
+};
+
+const ASK_SOURCE_KEYS = ["utm_source", "utm_medium", "utm_campaign", "ref", "landing"] as const;
+const MAX_SOURCE_FIELD_LENGTH = 160;
+
+export function sanitizeAskSource(value: unknown): AskSource | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const raw = value as Record<string, unknown>;
+  const out: AskSource = {};
+  for (const key of ASK_SOURCE_KEYS) {
+    const v = raw[key];
+    if (typeof v !== "string") continue;
+    const trimmed = v.trim().slice(0, MAX_SOURCE_FIELD_LENGTH);
+    if (trimmed.length > 0) out[key] = trimmed;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 // `invalid_engine` carries the offending value + the allowed list so
 // SDK / CLI consumers can render a precise message ("`mysql` is not a
@@ -130,6 +162,7 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
     engine?: unknown;
     confirm?: unknown;
     model?: unknown;
+    source?: unknown;
   }>(c);
   if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
   if (typeof raw.body.goal !== "string" || raw.body.goal.trim().length === 0) {
@@ -169,6 +202,11 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
       };
     }
     body.model = raw.body.model;
+  }
+  // SK-GTM-007 — attribution is telemetry: sanitize-or-drop, never 400.
+  const source = sanitizeAskSource(raw.body.source);
+  if (source !== undefined) {
+    body.source = source;
   }
   return { ok: true, body };
 }

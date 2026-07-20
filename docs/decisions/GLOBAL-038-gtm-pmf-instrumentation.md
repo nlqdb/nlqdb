@@ -34,7 +34,12 @@
   internal-email exclusion patterns) live **only** in
   `apps/api/src/admin/gtm-metrics.ts`; the scorecard funnel rows and any
   loop prompt read `GET /v1/admin/metrics` (or quote that module) rather
-  than re-deriving SQL. The gate predicate lives only in
+  than re-deriving SQL. The acquisition focus also re-orders the loops'
+  lever priority (acquisition/distribution yield first — `daily.md`
+  step 2, `weekly.md` default focus, both marked founder-resolved
+  2026-07-19) and makes channel yield attributable end-to-end:
+  first-touch capture per `SK-GTM-007`, channel keys canonical in
+  [`docs/research/acquisition-channels.md`](../research/acquisition-channels.md). The gate predicate lives only in
   `apps/api/src/admin/gate.ts` (`isAdminEmail`). The daily `scheduled()`
   cron and every authorized dashboard read write an idempotent
   per-UTC-day `gtm_snapshots` row (additive JSON shape). Feature-local

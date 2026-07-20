@@ -17,11 +17,14 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
   2-lane walk can't stay green (run 70). **Blocked ~6 days** (since ~07-13;
   history in `weekly-review.md`).
 
-- **Apply D1 migration `0022` (`gtm_snapshots`) to the prod control-plane
-  D1 at the next deploy** (`wrangler d1 migrations apply`). Added by the
-  GTM-metrics dashboard ([GLOBAL-038](./decisions/GLOBAL-038-gtm-pmf-instrumentation.md));
-  until applied, `GET /v1/admin/metrics` snapshot writes + trend reads error
-  in prod (the table won't exist). Operator-only (prod credentials).
+- **Apply D1 migrations `0022` (`gtm_snapshots`) + `0024`
+  (`databases.source_json`) to the prod control-plane D1 at the next
+  deploy** (`wrangler d1 migrations apply`). Added by the GTM-metrics
+  dashboard + first-touch attribution
+  ([GLOBAL-038](./decisions/GLOBAL-038-gtm-pmf-instrumentation.md),
+  `SK-GTM-007`); until applied, `GET /v1/admin/metrics` snapshot/trend
+  reads error and create-path source writes fail (logged, non-fatal) in
+  prod. Operator-only (prod credentials).
 
 ## Suggestions needing approval (to amend the guidelines)
 

@@ -6,17 +6,21 @@ Point-in-time tracker, regenerated each
 `progress/quality-score-verification-log.md` (engine).
 
 **Weekly focus number (2026-07-19 → 07-25, founder-set):**
-**agentic-frontier EX → ≥ 0.80 (rows #11/#16) via the premium chain
-(`SK-LLM-017`, row #20's only open build slot).** Engine stays the pillar
-furthest from its [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md) floor, but
-its headline number BIRD (row #8, 0.542) is **dark for the lever** — offline
-levers exhausted, external license reply pending — so per the amended `/weekly`
-rule the focus is engine's best agent-movable input: build the flag-dark premium
-chain and measure it on the `SK-QUAL-022` agentic-frontier smoke (0.693 today;
-the ≥ 0.80 Phase-2 criterion is the target). BIRD's revert saga is closed (runs
-90/91, flat vs baseline). **Row #15 stays founder-blocked** — its only fix is
-arming `FALLBACK2_LLM_API_KEY` (SambaNova, `_e2e-opencheck.yml`), the top
-`blocked-by-human.md` bullet.
+**Acquisition — channels live with attributable yield: 2 → ≥ 5 (row #22).**
+Founder directive 2026-07-19 ([`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-instrumentation.md)):
+the operating focus is **user acquisition**, measured continuously — product
+progress is secondary this cycle. The agent-movable inputs, in order: reach
+R-05 registry listings (0/8 → list or park each), R-04 machine-followable
+setup guide (registries' prerequisite), utm-tagging the already-live channels
+(dev.to, npm/GitHub READMEs) per `SK-GTM-007`, and R-06 (the track's
+falsifier). Channel truth lives in
+[`research/acquisition-channels.md`](research/acquisition-channels.md); yield
+truth on `/app/admin` (first-touch attribution shipped 07-19 — the first
+stranger cohort will be attributable from day one). This supersedes the
+morning's agentic-frontier focus: premium-chain work (`SK-LLM-017`, row #20)
+is pullable only when no acquisition lever is. **Row #15 stays
+founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
+(SambaNova, `_e2e-opencheck.yml`), the top `blocked-by-human.md` bullet.
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** is resolved (run 91) + fresh
@@ -75,6 +79,8 @@ didn't touch docs/mcp paths ⇒ no new deploy); no red-main / stale-deploy lever
 | 19 | Live-surface claim integrity | **0 open** (claim-vs-reality on shipped surfaces + docs; target 0 **met**). **Standing guards — all three advertised-capability surfaces closed-world CI-swept across web *and* docs**, each deriving truth from source (never hand-copied) and naming the phantom + file on failure: `mcp-tool-integrity.test.ts` (`registerTool(...)` sites, `SK-MCP-002`), `cli-verb-integrity.test.ts` (cobra tree), `sdk-method-integrity.test.ts` (shipped `NlqClient` type, `SK-SDK-013`). All 0 phantom live, negative-tested. **Trilogy complete** — no advertised-capability surface remains web-only |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-62 branch dispatch [29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660) against prod, exit 0: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). The run-59 "morph-to-chat gap" is **decided, not a gap** (anon terminus IS the sign-in redirect; SK-WEB-002 chat is post-sign-in) | target 9/9 + both FLOW-005 ✅ **met**. Per-step JSON artifact proxy-gated from the agent container |
+| | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
+| 22 | Channels live with attributable yield | **2 live / 2 partial / 17 untried** (07-19 ledger v1: organic search + dev.to live; GitHub/npm partial — links untagged; MCP registries 0/8). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; `dbsWithSource` accrues from next deploy (needs prod migration 0024, see `blocked-by-human.md`) | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |

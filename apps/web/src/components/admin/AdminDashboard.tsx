@@ -182,6 +182,43 @@ function Metrics({ m }: { m: GtmMetrics }) {
         </details>
       </section>
 
+      <section aria-labelledby="admin-h-sources">
+        <h2 id="admin-h-sources">Acquisition sources</h2>
+        {m.acquisition.dbsBySource.length === 0 ? (
+          <p className="admin__note">No DBs yet — sources appear with the first create.</p>
+        ) : (
+          <table className="admin__table" data-testid="sources-table">
+            <thead>
+              <tr>
+                <th scope="col">Channel</th>
+                <th scope="col">DBs (all time)</th>
+                <th scope="col">DBs (7d)</th>
+                <th scope="col">Strangers</th>
+              </tr>
+            </thead>
+            <tbody>
+              {m.acquisition.dbsBySource.map((row) => (
+                <tr key={row.source}>
+                  <td>{row.source}</td>
+                  <td>{row.total}</td>
+                  <td>{row.last7d}</td>
+                  <td>
+                    {m.acquisition.strangersBySource.find((s) => s.source === row.source)
+                      ?.strangers ?? 0}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="admin__note">
+          Channel = utm_source, else external referrer host, else “direct”; “untracked” = created
+          before the instrument or via CLI/SDK/MCP. {m.acquisition.dbsWithSource} of{" "}
+          {m.funnel.dbsTotal} DBs carry a source. Channel keys are canonical in
+          docs/research/acquisition-channels.md.
+        </p>
+      </section>
+
       <section aria-labelledby="admin-h-quality">
         <h2 id="admin-h-quality">Activation quality</h2>
         <div className="admin__tiles">
