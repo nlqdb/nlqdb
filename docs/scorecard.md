@@ -24,19 +24,24 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. **The weekly-focus number (row #22) is now pullable:** the PRs that
-held it last run — #750 (npm → live) and #751 (MCP-registry venue) — are **merged**, so
-the priority-1 acquisition lever no longer collides. **Run 101 pulled it** (priority-1
-acquisition): the GitHub channel was the sole `partial` in the ledger; its next-step
-listed "utm-tag README links" as a `/daily` input (the weekly focus assigns
-topics/templates to `/reach`, not the tagging). Tagged the root README's single product
-CTA `https://nlqdb.com/?utm_source=github`, mirroring run 99's npm flip — GitHub
-click-throughs are now `captureFirstTouch`-attributable ⇒ **row #22 3 → 4 live, 0
-partial.** **Step 0 collision map:** only open PR is #719 (Infisical draft — founder
-territory, untouched). This run touched `README.md` + `docs/research/acquisition-channels.md`
-+ `docs/scorecard.md` — **no overlap** (scorecard regen exempt). **Rule 6:** CI +
-Security + Deploy web/docs/MCP/API all `success` on `main` head `012904d` (fresh 07-20);
-Canary `success` on `39aef4b`; no red-main / stale-deploy lever.
+levers exhausted. **Run 103 pulled the weekly-focus number (row #22)** via priority-1
+acquisition — the daily-sized work *around* `/reach`'s registry R-slices, per step 2. The
+ledger listed dev.to as `live` but its footnote admitted "yield untagged until canonical
+links carry the key": the syndication script's read-through link (`*Originally published
+at nlqdb.com/blog*`) pointed at the clean canonical, so a dev.to→nlqdb.com click was
+captured only as the **flaky `ref: dev.to` referrer** (readers, RSS clients, and app
+webviews routinely strip it) — never the `utm_source=devto` key rule 1 mandates for every
+published URL. So dev.to's "live" status was actually a **partial**, and the ledger
+summary's "every published channel's yield is attributable" was contradicted by its own
+row 2. Tagged the read-through link `…/blog/<slug>/?utm_source=devto` while keeping the
+API `canonical_url` clean for SEO ⇒ **row #22: all 4 live channels now genuinely
+`utm_source`-attributable (the dev.to partial is closed); count holds 4, integrity
+gap resolved.** **Step 0 collision map:** only open PR is #719 (Infisical draft — founder
+territory, untouched). This run touched `scripts/syndicate-devto.ts` +
+`docs/research/acquisition-channels.md` + `docs/scorecard.md` — **no overlap** (scorecard
+regen exempt); dev.to is `/daily`-owned (step 3), not a `/reach` R-slice. **Rule 6:** CI +
+Security + Deploy web/docs/MCP/API + Release npm all `success` on `main` head `a833cf4`
+(fresh 07-20T12:52Z); Canary `success` on `a833cf4`; no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -55,7 +60,7 @@ Canary `success` on `39aef4b`; no red-main / stale-deploy lever.
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-20 run 101):** CI + Security + Deploy web/docs/MCP/API all `success` on `main` head `012904d`; Canary `success` on `39aef4b`; no red-main / stale-deploy lever |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-20 run 103):** CI + Security + Deploy web/docs/MCP/API + Release npm all `success` on `main` head `a833cf4`; Canary `success` on `a833cf4`; no red-main / stale-deploy lever |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
@@ -69,7 +74,7 @@ Canary `success` on `39aef4b`; no red-main / stale-deploy lever.
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-62 branch dispatch [29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660) against prod, exit 0: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). The run-59 "morph-to-chat gap" is **decided, not a gap** (anon terminus IS the sign-in redirect; SK-WEB-002 chat is post-sign-in) | target 9/9 + both FLOW-005 ✅ **met**. Per-step JSON artifact proxy-gated from the agent container |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
-| 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** (07-20 run 101: **GitHub joined the live set** — the root README's single product CTA ("describe your database at nlqdb.com") now links `https://nlqdb.com/?utm_source=github`, so github.com click-throughs are `captureFirstTouch`-attributable, mirroring run 99's npm flip; docs./elements. subdomain links don't run `Base.astro` and legal-footer links aren't a conversion path, so both left untagged. Repo topics/starter-template remain `/reach` discovery amplification — not the live-gate per rule 2. **No partials remain.** Also live: organic search + dev.to + npm. MCP registries 0/8 live — official registry payload parked → `blocked-by-human` (#751)). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; `dbsWithSource` accrues from next deploy (needs prod migration 0024, see `blocked-by-human.md`) | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated. Further live-count growth now comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
+| 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** (07-20 run 103: **dev.to's `live` was really a partial — now genuinely attributable.** The syndication read-through link carried no key, so dev.to→nlqdb.com visits fell back to the `ref: dev.to` referrer (readers/RSS/webviews strip it); tagging the link `…/blog/<slug>/?utm_source=devto` (API `canonical_url` stays clean for SEO) makes them `utm_source`-attributable via `captureFirstTouch`. Now **all 4 live channels** (organic search + dev.to + npm + GitHub) satisfy rule 1's utm-key requirement — the summary's "every published channel's yield is attributable" is finally true. MCP registries 0/8 live — official registry payload parked → `blocked-by-human` (#751)). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; `dbsWithSource` accrues from next deploy (needs prod migration 0024, see `blocked-by-human.md`) | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated. Further live-count growth now comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -77,47 +82,47 @@ Canary `success` on `39aef4b`; no red-main / stale-deploy lever.
 
 ## Shipped distribution (live URLs)
 
-Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
-`research/distribution-queue.md` as pointers:
+Canonical copies on `/blog` (`SK-BLOG-001`); venue variants + full lesson gists
+stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
-- https://nlqdb.com/blog/smoke-test-walks-the-old-ui/ (run 78 — e2e/measurement lesson, the run-58 walker re-true: pinned-literal acceptance walkers are a regression detector, but a red mixing product-breakage with test-drift costs a full triage — make the fail detail name element + expectation, triage reds on a clock, and gate "re-run the walker on PRs touching a walked surface")
-- https://nlqdb.com/blog/green-checkmark-has-a-half-life/ (run 60 — CI/measurement lesson, the row #15 freshness method: when an expensive suite can't run on every push, "passing" is an event not a state — score `pass × freshness` with a linear decay so the number rots until someone re-runs it)
-- https://nlqdb.com/blog/ephemeral-staging-persistent-registry/ (run 56 — CI/test-infra lesson, the SK-E2E-007 spin-up purge: an environment is only as ephemeral as the most persistent store that references it)
-- https://nlqdb.com/blog/ownership-transfer-outlives-least-privilege/ (run 54 — Postgres multi-tenancy lesson, the SK-ANON-003 adoption ACL gap: an ownership transfer must retarget every authorization store; a catch-all must log the code it swallows)
-- https://nlqdb.com/blog/most-active-user-is-your-test-suite/ (run 53 — measurement-hygiene lesson, the funnel bot-filter: a metric that doesn't name its population is measuring your robots; filter at read time)
-- https://nlqdb.com/blog/five-fallback-models-one-provider/ (run 51 — CI/engine lesson, the opencheck lane swap: redundancy must cross the failure-domain boundary; the lane, not the model, is the fallback unit)
-- …and 30 more posts — full 36-post registry in `apps/web/src/data/blog.ts` (row #6), live under `/blog/`.
+- https://nlqdb.com/blog/smoke-test-walks-the-old-ui/ (run 78)
+- https://nlqdb.com/blog/green-checkmark-has-a-half-life/ (run 60)
+- https://nlqdb.com/blog/ephemeral-staging-persistent-registry/ (run 56)
+- https://nlqdb.com/blog/ownership-transfer-outlives-least-privilege/ (run 54)
+- https://nlqdb.com/blog/most-active-user-is-your-test-suite/ (run 53)
+- https://nlqdb.com/blog/five-fallback-models-one-provider/ (run 51)
+- …and 31 more posts — full 37-post registry in `apps/web/src/data/blog.ts` (row #6), live under `/blog/`.
 
 ## Last change
 
-**2026-07-20 (run 102)** — **Priority-2 UX-flow lever (row #4): the create-result screen now
-reports the *provisioned* schema, not the LLM-seeded subset.** Weekly-focus number (row #22) is
-**held by open PR** #753 (GitHub → live, 3 → 4, edits the acquisition ledger) — per **step 0**
-the priority-1 lever can't be pulled without duplicating it; reach #754 holds the agent-artifacts
-surface. Engine lanes dark + fresh (07-19). Defect-hunt over the stranger create→first-answer
-path found a genuine drift: **both create-result renderers (`CreateForm.tsx` + `chat/ChatPanel.tsx`)
-derived the table count *and* the per-table preview from `sampleRows`** — but that seed set is
-LLM-authored and SK-HDC-018/019 make it partial or empty. A 3-table DB seeded only on `orders`
-showed "1 table" (hiding `customers`/`products`); a fully-unseeded-but-committed DB showed a green
-**"0 sample rows across 0 tables"** — indistinguishable from total failure at the stranger's first
-"did it work?" moment (SK-HDC-001). **Change (P5 — carry the truth, consolidate):** the create
-response now ships the provisioned table list (`DbCreatePlanSummary.tables` ←
-`plan.tables.map(t=>t.name)`); one new shared `groupProvisionedTables(tables, rows)` in
-`sample-rows.ts` renders one group per provisioned table (seeded rows where present, else
-SampleTable's empty state) and **both** renderers call it, replacing the two divergent
-`groupByTable` sites. **Number moved — row #4:** guard-the-guard confirmed — pre-fix
-(`groupByTable` on `sampleRows`) yields `["orders"]` where the contract needs all 3 tables
-(fails); web **337 → 341 pass** (+4: partial-seed, fully-unseeded, schema-order, pre-field
-fallback); `orchestrate.test.ts` pins `plan.tables:["orders"]`. No new doc (D5 — extends
-SK-HDC-018/019's "never claims rows it doesn't hold" to "never under-claims tables"). **Gates:**
-typecheck exit 0; touched files biome-clean; astro check **0/0**; web **341**, api **974** pass.
-**Step-1:** docs-ambiguity **16** (flat); surfaces **105**, queue **2**; users **9** / strangers
-**0** (07-16 carried); GSC 28d **1/472/16.6** fresh 07-20; BIRD 0.542 / Spider 0.2222 (07-19).
-**Artifact:** queue **2** (< 3) → no publish; dev.to drip **throttled** (6.2h ago < 20h, run 100
-posted today); no new draft (queue at D4 cap). **KPI (GLOBAL-025):** **onboarding + UX** — a
-stranger sees every table their DB has, and a schema-only DB reads as success not failure; **no
-KPI degrades** (additive response field + one shared pure helper; no engine/API/funnel logic
-touched).
+**2026-07-20 (run 103)** — **Priority-1 acquisition lever (row #22): dev.to click-throughs are now
+`utm_source`-attributable — the channel's `live` status was really a partial.** Weekly focus is
+row #22 (channels live with attributable yield → ≥ 5). Step 0: only open PR is #719 (Infisical,
+founder territory) — no collision; dev.to is `/daily`-owned (step 3), not a `/reach` R-slice.
+**Before:** `scripts/syndicate-devto.ts` built each variant's read-through link (`*Originally
+published at nlqdb.com/blog*`) pointing at the **clean canonical** (`https://nlqdb.com/blog/<slug>/`),
+so a dev.to→nlqdb.com visit was captured only as the **flaky `ref: dev.to` referrer** — readers,
+RSS clients, and app webviews routinely strip it — never the `utm_source=devto` key that rule 1
+mandates for every externally published URL, contradicting the ledger's own "every published
+channel's yield is attributable." **Change (P5 — one link, one constant):** tag the read-through
+link `…/blog/<slug>/?utm_source=devto` while the API `canonical_url` field stays the **clean**
+canonical (rel=canonical SEO dedup must not carry utm params); also guarded top-level `main()`
+behind `import.meta.main` so `buildBody` is importable (the correct bun idiom; was
+`await main()` unconditional). **Number moved — row #22:** before/after via imported `buildBody` —
+read-through link went `.../blog/some-slug/` → `.../blog/some-slug/?utm_source=devto` (verified
+present) while the API `canonical_url` argument stays untagged (verified clean); `captureFirstTouch`
+reads `utm_source` from the query, and `/blog/[slug]` renders under `Base.astro` which calls it.
+**Row #22 count holds 4** (dev.to was already counted `live`), but its **partial is closed** — all
+four live channels (organic search + dev.to + npm + GitHub) now satisfy rule 1. No new doc (D5 —
+`SK-BLOG-003` + `SK-GTM-007` already govern; ledger row 2 next-step updated). **Gates:** `bun
+install` then typecheck **exit 0** workspace-wide; `syndicate-devto.ts` biome-clean (41 warnings
+are pre-existing, untouched e2e files). **Step-1:** docs-ambiguity **16** (flat); surfaces **105**,
+queue **2**; users **9** / strangers **0** (07-16 carried); GSC 28d **1/472/16.6** (07-20);
+BIRD 0.542 / Spider 0.2222 (07-19 dark). **Artifact:** queue **2** (< 3) → no publish; dev.to drip
+**throttled** (8.9h ago < 20h, posted today) → clean no-op, no queue-line edit; no new draft (queue
+at D4 cap; lever's lesson thin). **KPI (GLOBAL-025):** **onboarding** — attribution is how a
+stranger cohort becomes measurable at all (GLOBAL-038); **no KPI degrades** (one script link + a
+main-guard; no engine/API/funnel logic touched, and the SEO canonical is provably unchanged).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

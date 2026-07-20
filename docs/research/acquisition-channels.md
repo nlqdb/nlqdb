@@ -31,7 +31,7 @@ surface counts (row #6) never answered.
 | # | Channel | `utm_source` / ref key | Status | Owner | Next concrete step |
 |---|---------|------------------------|--------|-------|--------------------|
 | 1 | Organic search (Google/Bing) — 105 `/vs`+`/solve`+`/blog` surfaces | ref `google.com` / `bing.com` (+ GSC) | **live** — 28d: 1 click / 452 impr | `/daily` + `/reach` R-03 | grow impression breadth; win the page-1 queries GSC already shows |
-| 2 | dev.to syndication (1/day drip, `SK-BLOG-003`) | `devto` | **live**, yield untagged until canonical links carry the key | `/daily` step 3 | add `?utm_source=devto` to canonical-URL links in variants |
+| 2 | dev.to syndication (1/day drip, `SK-BLOG-003`) | `devto` | **live** — each variant's read-through link now carries `?utm_source=devto` (the API `canonical_url` stays clean for SEO), so dev.to→nlqdb.com visits are `utm_source`-attributable, not reliant on the flaky referrer host | `/daily` step 3 | grow tag/topic breadth per variant |
 | 3 | Official MCP registry (registry.modelcontextprotocol.io) | `mcp-registry` | blocked-by-human — payload parked 2026-07-20 (R-05 #1) | `/reach` → founder | founder runs the parked `mcp-publisher` flow ([`blocked-by-human.md`](../blocked-by-human.md)); then → in-flight |
 | 4 | Smithery | `smithery` | untried (R-05 #2) | `/reach` | same |
 | 5 | PulseMCP | `pulsemcp` | untried (R-05 #3) | `/reach` | same |
