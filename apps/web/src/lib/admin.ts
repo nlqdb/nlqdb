@@ -53,7 +53,14 @@ export type GtmMetrics = {
     premiumInterest: number;
     payingCustomers: number;
     customersByStatus: Record<string, number>;
-    seanEllis: { runnable: boolean; activatedStrangers: number; minActivated: number };
+    seanEllis: {
+      runnable: boolean;
+      activatedStrangers: number;
+      minActivated: number;
+      responses: number;
+      byResponse: Record<string, number>;
+      veryDisappointedShare: number | null;
+    };
   };
   trend: Array<{ day: string } & Record<string, unknown>>;
 };

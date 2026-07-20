@@ -127,6 +127,15 @@ export type GtmMetrics = {
       runnable: boolean;
       activatedStrangers: number;
       minActivated: number;
+      /** In-product Q1 responses recorded (SK-GTM-006), all-time. */
+      responses: number;
+      byResponse: Record<string, number>;
+      /**
+       * very_disappointed / (responses − na) — the canonical 40% PMF
+       * read. Null until a non-na response exists; noise below
+       * `minActivated` respondents (the `runnable` gate).
+       */
+      veryDisappointedShare: number | null;
     };
   };
   /** Daily headline history (SK-GTM-003), newest first, ≤ 90 rows. */
@@ -168,6 +177,7 @@ export async function computeGtmMetrics(
     strangerActivity,
     premium,
     customers,
+    surveyRows,
     snapshots,
     anonDevices,
   ] = await db.batch([
@@ -235,6 +245,7 @@ export async function computeGtmMetrics(
       FROM user u WHERE NOT ${INTERNAL_EMAIL_SQL}`),
     db.prepare(`SELECT COUNT(*) AS n FROM premium_interest`),
     db.prepare(`SELECT status, COUNT(*) AS n FROM customers GROUP BY status`),
+    db.prepare(`SELECT response, COUNT(*) AS n FROM pmf_survey GROUP BY response`),
     db.prepare(`SELECT day, metrics_json FROM gtm_snapshots ORDER BY day DESC LIMIT 90`),
     // SK-GTM-005 — unique anonymous devices: one anon tenant id = one
     // device (SK-ANON-008's sha256 derivation). A device is synthetic
@@ -275,6 +286,17 @@ export async function computeGtmMetrics(
   for (const raw of (customers?.results ?? []) as CountsRow[]) {
     customersByStatus[String(raw["status"])] = num(raw, "n");
   }
+
+  // SK-GTM-006 — in-product Sean-Ellis Q1 responses. The 40% read
+  // excludes "na" (respondents who haven't really used the product),
+  // per the canonical survey methodology.
+  const surveyByResponse: Record<string, number> = {};
+  for (const raw of (surveyRows?.results ?? []) as CountsRow[]) {
+    surveyByResponse[String(raw["response"])] = num(raw, "n");
+  }
+  const surveyResponses = Object.values(surveyByResponse).reduce((a, b) => a + b, 0);
+  const surveyScored = surveyResponses - (surveyByResponse["na"] ?? 0);
+  const veryDisappointedShare = ratio(surveyByResponse["very_disappointed"] ?? 0, surveyScored);
   const payingCustomers = (customersByStatus["active"] ?? 0) + (customersByStatus["trialing"] ?? 0);
 
   const activatedStrangers = num(sdb, "activated");
@@ -362,6 +384,9 @@ export async function computeGtmMetrics(
         runnable: activatedStrangers >= SEAN_ELLIS_MIN_ACTIVATED,
         activatedStrangers,
         minActivated: SEAN_ELLIS_MIN_ACTIVATED,
+        responses: surveyResponses,
+        byResponse: surveyByResponse,
+        veryDisappointedShare,
       },
     },
     trend,
@@ -394,6 +419,9 @@ export async function writeGtmSnapshot(db: D1Database, metrics: GtmMetrics): Pro
     adoptionsReal: metrics.funnel.adoptionsReal,
     // SK-GTM-007 — additive key: trend of instrument coverage.
     dbsWithSource: metrics.acquisition.dbsWithSource,
+    // SK-GTM-006 — additive keys (SK-GTM-003: never rename/retype).
+    seanEllisResponses: metrics.pmf.seanEllis.responses,
+    veryDisappointedShare: metrics.pmf.seanEllis.veryDisappointedShare,
   };
   await db
     .prepare(`INSERT OR IGNORE INTO gtm_snapshots (day, metrics_json) VALUES (?, ?)`)
