@@ -80,7 +80,9 @@ export async function recordPmfSurveyResponse(
     .first<{ asks: number; first: number | null }>();
   const queryCount = ctx?.asks ?? 0;
   const daysSinceFirst =
-    typeof ctx?.first === "number" ? Math.max(0, Math.floor((nowSec - ctx.first) / DAY_SECONDS)) : 0;
+    typeof ctx?.first === "number"
+      ? Math.max(0, Math.floor((nowSec - ctx.first) / DAY_SECONDS))
+      : 0;
 
   const row = await d1
     .prepare(

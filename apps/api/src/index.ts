@@ -96,7 +96,11 @@ import {
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { loadModelCatalog } from "./models-catalog.ts";
 import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
-import { getPmfSurveyStatus, parseSeanEllisResponse, recordPmfSurveyResponse } from "./pmf-survey.ts";
+import {
+  getPmfSurveyStatus,
+  parseSeanEllisResponse,
+  recordPmfSurveyResponse,
+} from "./pmf-survey.ts";
 import { recordPremiumInterest } from "./premium-interest.ts";
 import {
   accountTenantIdFromPrincipal,
@@ -2491,7 +2495,11 @@ app.post("/v1/pmf-survey", requireSession, async (c) => {
       if (!response) {
         span.setAttribute("nlqdb.pmf.survey.outcome", "invalid_response");
         return c.json(
-          { error: "invalid_response", message: "response must be one of: very_disappointed, somewhat_disappointed, not_disappointed, na" },
+          {
+            error: "invalid_response",
+            message:
+              "response must be one of: very_disappointed, somewhat_disappointed, not_disappointed, na",
+          },
           400,
         );
       }

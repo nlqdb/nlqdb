@@ -90,7 +90,13 @@ describe("getPmfSurveyStatus — eligibility predicate", () => {
 describe("recordPmfSurveyResponse — one row per account + context snapshot", () => {
   it("first insert reports firstTime and stores the usage context", async () => {
     await seedDb("d1", "u1", { ok: 3, asks: 7, last: NOW - 2 * DAY, created: NOW - 9 * DAY });
-    const res = await recordPmfSurveyResponse(env.DB, "u1", "a@x.com", "somewhat_disappointed", NOW);
+    const res = await recordPmfSurveyResponse(
+      env.DB,
+      "u1",
+      "a@x.com",
+      "somewhat_disappointed",
+      NOW,
+    );
     expect(res).toEqual({ firstTime: true });
 
     const row = await env.DB.prepare(
@@ -108,9 +114,9 @@ describe("recordPmfSurveyResponse — one row per account + context snapshot", (
     await recordPmfSurveyResponse(env.DB, "u1", null, "not_disappointed", NOW);
     const again = await recordPmfSurveyResponse(env.DB, "u1", null, "very_disappointed", NOW);
     expect(again).toEqual({ firstTime: false });
-    const row = await env.DB.prepare(
-      "SELECT response FROM pmf_survey WHERE user_id = 'u1'",
-    ).first<{ response: string }>();
+    const row = await env.DB.prepare("SELECT response FROM pmf_survey WHERE user_id = 'u1'").first<{
+      response: string;
+    }>();
     expect(row?.response).toBe("not_disappointed");
   });
 });
