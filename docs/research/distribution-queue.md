@@ -88,7 +88,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 
 - run 20 — **https://nlqdb.com/blog/llm-timeout-looks-like-hallucination/** — dev.to (#llm #benchmarking #eval) + r/LLMDevs + lobste.rs · engine lesson (SK-QUAL-022 eval-budget ≠ prod SLA; abort ≠ parse failure; latency fingerprint)
 - run 106 — **https://nlqdb.com/blog/store-form-submissions-without-a-backend/** — dev.to + r/webdev + r/sideproject · `/solve/store-form-submissions-without-backend`
-- run 130 — **https://nlqdb.com/blog/not-in-subquery-null-trap/** — dev.to + r/SQL + r/PostgreSQL · `/solve/find-rows-with-no-match-in-another-table`
+- run 130 — **https://nlqdb.com/blog/not-in-subquery-null-trap/** — r/SQL + r/PostgreSQL · `/solve/find-rows-with-no-match-in-another-table` · dev.to posted 2026-07-20: https://dev.to/omer_hochman/not-in-returned-zero-rows-it-wasnt-your-data-it-was-one-null-4inj
 - run 102 — **https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/** — dev.to + r/LLMDevs + r/AI_Agents · `/vs/hex`
 - run 55 — **https://nlqdb.com/blog/text-to-sql-accuracy-schemas-your-users-never-build/** — dev.to + lobste.rs + r/LLMDevs
 - run 67 — **https://nlqdb.com/blog/ai-internal-tool-builder-faster/** — dev.to + lobste.rs · `/vs/retool`

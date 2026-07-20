@@ -4,7 +4,7 @@
 // array of strings → list, otherwise table. Surfaces never
 // paraphrase the data away — even when an Answer is present.
 
-import { prettifyHeader } from "../../lib/text";
+import { formatCell, prettifyHeader } from "../../lib/text";
 import { hiddenRowCount, MAX_ROWS } from "./data-rows.ts";
 
 type Row = Record<string, unknown>;
@@ -117,11 +117,4 @@ function TableBlock({ rows }: { rows: Row[] }) {
       </table>
     </div>
   );
-}
-
-function formatCell(value: unknown): string {
-  if (value == null) return "—";
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return JSON.stringify(value);
 }

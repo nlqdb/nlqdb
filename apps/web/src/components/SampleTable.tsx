@@ -1,4 +1,4 @@
-import { prettifyHeader } from "../lib/text";
+import { formatCell, prettifyHeader } from "../lib/text";
 import { groupByTable } from "./sample-rows";
 
 // Shared sample-row rendering for the create path. Used by both the
@@ -9,11 +9,6 @@ import { groupByTable } from "./sample-rows";
 export { groupByTable };
 
 const MAX_ROWS_RENDERED = 5;
-
-function formatCell(value: unknown): string {
-  if (value == null) return "—";
-  return String(value);
-}
 
 export function SampleTable({ table, rows }: { table: string; rows: Record<string, unknown>[] }) {
   const firstRow = rows[0];
