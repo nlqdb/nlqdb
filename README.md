@@ -57,8 +57,8 @@ lives at [`docs.nlqdb.com`](https://docs.nlqdb.com). Start with the
 [CLI tutorial](https://docs.nlqdb.com/tutorials/cli/).
 
 You don't generate an API key separately: describe your database at
-[nlqdb.com](https://nlqdb.com), and the chat hands you a `<nlq-data>`
-snippet with the key already inlined.
+[nlqdb.com](https://nlqdb.com/?utm_source=github), and the chat hands you a
+`<nlq-data>` snippet with the key already inlined.
 
 ## Examples
 

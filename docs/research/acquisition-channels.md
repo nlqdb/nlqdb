@@ -45,18 +45,20 @@ surface counts (row #6) never answered.
 | 13 | Hacker News (Show HN + answer comments) | ref `news.ycombinator.com` | untried — human-norm | founder (fact sheet by agents) | draft Show HN fact sheet into distribution-queue |
 | 14 | Reddit (r/LocalLLaMA, r/AI_Agents, r/ClaudeAI) | ref `reddit.com` | untried — human-norm | founder (fact sheet by agents) | draft per-sub fact sheets |
 | 15 | Product Hunt launch | `producthunt` | untried — account-walled | founder | assemble launch payload → `blocked-by-human.md` when R-04/R-05 give it legs |
-| 16 | GitHub discovery (repo topics, README badges, starter-template repos) | `github` | partial — repo public, topics/templates unworked | `/reach` | set topics; utm-tag README links; publish a starter template |
+| 16 | GitHub discovery (repo topics, README badges, starter-template repos) | `github` | **live** — the root README's product CTA ("describe your database at nlqdb.com") now links `https://nlqdb.com/?utm_source=github`, so github.com click-throughs are `captureFirstTouch`-attributable (docs./elements. subdomain links don't run `Base.astro`; legal-footer links are not a conversion path, left untagged). Topics/templates remain `/reach` amplification (discovery), not the live-gate | `/reach` (amplify) | grow discovery: set repo topics; publish a starter template |
 | 17 | npm discovery (`@nlqdb/*` package READMEs, keywords) | `npm` | **live** — the two published packages (`@nlqdb/sdk`, `@nlqdb/cli`; all wrappers are `private`) now carry `homepage: https://nlqdb.com/?utm_source=npm`, so npmjs "Homepage" click-throughs are attributable | `/daily` | grow keyword breadth; publish a wrapper if a framework channel warrants it |
 | 18 | Stack Overflow / GitHub Discussions answers | `stackoverflow` | untried — human-norm | founder (fact sheet by agents) | collect the R-01 intent questions that already exist on SO |
 | 19 | Dev newsletters (TLDR AI, Ben's Bites, AI Agents Weekly) | `newsletter-<name>` | untried — editorial/paid | founder | pitch only after a channel-1 page ranks (social proof) |
 | 20 | Integration marketplaces (Supabase integrations, Vercel templates, Neon partners, Astro integrations) | venue slug (`supabase`, `vercel`, …) | untried | `/reach` | verify each venue's submission mechanism (P2), one per run |
 | 21 | Demo video (60-second one-command memory setup; site-embedded + shareable) | `youtube` | untried | founder-assisted | script + record once R-04 guide is live |
 
-**Live: 3 · partial: 1 · in-flight: 0 · blocked-by-human: 1 · untried: 16.** The number that
+**Live: 4 · partial: 0 · in-flight: 0 · blocked-by-human: 1 · untried: 16.** The number that
 matters weekly: **channels live with attributable yield** (`/reach` step 1
 records it; target per the 2026-07-19 focus: +3 via R-05). npm joined the
-live set 2026-07-20 (homepage links tagged); GitHub (row 16) is the sole
-remaining partial (repo topics/templates unworked — `/reach`).
+live set 2026-07-20 (homepage links tagged); GitHub joined 2026-07-20 (README
+CTA tagged `utm_source=github`). No partials remain — every published channel's
+yield is attributable; the untried set (registries rows 3–10, human-norm
+venues) is now the only path to further live-count growth.
 
 ## Why this order
 
