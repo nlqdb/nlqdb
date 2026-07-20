@@ -9,7 +9,7 @@
     "url": "git+https://github.com/nlqdb/nlqdb.git",
     "directory": "packages/cli-shim"
   },
-  "homepage": "https://nlqdb.com",
+  "homepage": "https://nlqdb.com/?utm_source=npm",
   "bugs": "https://github.com/nlqdb/nlqdb/issues",
   "keywords": [
     "nlqdb",
