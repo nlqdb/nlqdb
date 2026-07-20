@@ -24,21 +24,19 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. The weekly-focus number (row #22) is **held by open PRs** #750 (npm →
-live) and #751 (MCP-registry venue), both editing the acquisition ledger, so per **step
-0** the priority-1 acquisition lever can't be pulled without duplicating them; verified
-the attribution/GTM stack (`lib/attribution.ts`, `admin/gtm-metrics.ts`) end-to-end
-regardless — production-grade, no gap. So **run 100 pulled a priority-2 UX-flow lever
-(a data-correctness bug, NOT another a11y/copy fix — anti-rut rule 7 clear since run 94
-was engine)**: see the Last-change entry below. **Step 0 collision map:** open PRs #751
-(reach R-05 — `blocked-by-human.md`, `acquisition-channels.md`, reach `INDEX.md`), #750
-(daily run 99 — `apps/web` sdk/cli `package.json`, `acquisition-channels.md`,
-`scorecard.md`), #719 (Infisical draft). This run touched `lib/text.ts` + `text.test.ts`
-+ `components/SampleTable.tsx` + `components/chat/Data.tsx` +
-`docs/research/distribution-queue.md` + `docs/scorecard.md` — **no overlap** (scorecard
-regen exempt; distribution-queue not held). **Rule 6:** CI + Security + deploy-api/web/
-canary green on `main` head `b1450f7`; deploy-docs on `446b023`; no red-main /
-stale-deploy lever.
+levers exhausted. **The weekly-focus number (row #22) is now pullable:** the PRs that
+held it last run — #750 (npm → live) and #751 (MCP-registry venue) — are **merged**, so
+the priority-1 acquisition lever no longer collides. **Run 101 pulled it** (priority-1
+acquisition): the GitHub channel was the sole `partial` in the ledger; its next-step
+listed "utm-tag README links" as a `/daily` input (the weekly focus assigns
+topics/templates to `/reach`, not the tagging). Tagged the root README's single product
+CTA `https://nlqdb.com/?utm_source=github`, mirroring run 99's npm flip — GitHub
+click-throughs are now `captureFirstTouch`-attributable ⇒ **row #22 3 → 4 live, 0
+partial.** **Step 0 collision map:** only open PR is #719 (Infisical draft — founder
+territory, untouched). This run touched `README.md` + `docs/research/acquisition-channels.md`
++ `docs/scorecard.md` — **no overlap** (scorecard regen exempt). **Rule 6:** CI +
+Security + Deploy web/docs/MCP/API all `success` on `main` head `012904d` (fresh 07-20);
+Canary `success` on `39aef4b`; no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -57,7 +55,7 @@ stale-deploy lever.
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-20 run 100):** CI + Security `success` on `main` head `b1450f7`; deploy-api/web/canary `success` on `b1450f7`, deploy-docs on `446b023` (recent merges didn't touch docs/mcp paths ⇒ no new deploy); no red-main / stale-deploy lever |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-20 run 101):** CI + Security + Deploy web/docs/MCP/API all `success` on `main` head `012904d`; Canary `success` on `39aef4b`; no red-main / stale-deploy lever |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
@@ -71,7 +69,7 @@ stale-deploy lever.
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-62 branch dispatch [29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660) against prod, exit 0: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). The run-59 "morph-to-chat gap" is **decided, not a gap** (anon terminus IS the sign-in redirect; SK-WEB-002 chat is post-sign-in) | target 9/9 + both FLOW-005 ✅ **met**. Per-step JSON artifact proxy-gated from the agent container |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
-| 22 | Channels live with attributable yield | **3 live / 1 partial / 1 blocked-by-human / 16 untried** (07-20 run 99: **npm joined the live set** — the two non-private published packages `@nlqdb/sdk` + `@nlqdb/cli` now carry `homepage: https://nlqdb.com/?utm_source=npm`, so npmjs "Homepage" click-throughs are `captureFirstTouch`-attributable; all 10 framework/element/mcp wrappers are `private:true`, not on npm ⇒ nothing else to tag. Also live: organic search + dev.to. GitHub is the sole remaining partial — repo topics/templates unworked, `/reach`. MCP registries 0/8 live — official registry payload parked → `blocked-by-human` (#751)). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; `dbsWithSource` accrues from next deploy (needs prod migration 0024, see `blocked-by-human.md`) | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated |
+| 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** (07-20 run 101: **GitHub joined the live set** — the root README's single product CTA ("describe your database at nlqdb.com") now links `https://nlqdb.com/?utm_source=github`, so github.com click-throughs are `captureFirstTouch`-attributable, mirroring run 99's npm flip; docs./elements. subdomain links don't run `Base.astro` and legal-footer links aren't a conversion path, so both left untagged. Repo topics/starter-template remain `/reach` discovery amplification — not the live-gate per rule 2. **No partials remain.** Also live: organic search + dev.to + npm. MCP registries 0/8 live — official registry payload parked → `blocked-by-human` (#751)). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; `dbsWithSource` accrues from next deploy (needs prod migration 0024, see `blocked-by-human.md`) | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated. Further live-count growth now comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -92,39 +90,36 @@ Canonical copies on `/blog` (`SK-BLOG-001`); venue variants stay in
 
 ## Last change
 
-**2026-07-20 (run 100)** — **Priority-2 UX-flow lever (row #4): the create-path sample
-table no longer renders `[object Object]` for JSON/object columns.** Weekly-focus number
-(row #22 channels-live-with-attributable-yield) is **held by open PRs** #750 (npm → live)
-and #751 (MCP-registry venue), both editing the acquisition ledger — per **step 0** the
-priority-1 acquisition/distribution lever can't be pulled without duplicating their work;
-verified the attribution/GTM stack (`lib/attribution.ts`, `admin/gtm-metrics.ts`)
-end-to-end and it is production-grade with no gap. Both engine lanes dark + fresh (07-19).
-A defect-hunt over the free stranger create→first-answer renderers (a data-correctness
-bug, NOT another a11y/copy fix — anti-rut clear since run 94 was engine) surfaced a
-genuine drift: **`SampleTable.formatCell` (`components/SampleTable.tsx`) rendered a
-JSON/JSONB column value via bare `String(value)` ⇒ `[object Object]`** at a stranger's
-first "did it work?" moment (SK-HDC-001), while its documented chat twin
-(`chat/Data.tsx formatCell`) correctly `JSON.stringify`d the same value — two sibling
-renderers of "the same real sample data" had diverged. **Change (P5 — consolidate, don't
-patch):** moved one correct `formatCell` into the shared `lib/text.ts` (both renderers
-already import `prettifyHeader` from there) and deleted both local copies — the create
-surface is fixed and future drift is structurally impossible (net −1 duplicate). Guarded
-by a pure `bun:test` (`text.test.ts`): object/array cells serialize to JSON, scalars/null
-unchanged. **Number moved — row #4:** guard-the-guard confirmed — reverting `formatCell`
-to the bare `String(value)` fails the new object/array cases (2 fails); web suite **332 →
-337 pass** (+5). No new decision doc (D5 — conforms to the existing "same real sample
-data on either surface" contract; nothing non-obvious to record). **Gates:** astro check
-**0 errors / 0 warnings**; `bun run lint` clean on touched files; `bun run typecheck`
-exit 0; web **337 pass / 0 fail**. **Step-1:** docs-ambiguity **16** (flat); surfaces
+**2026-07-20 (run 101)** — **Priority-1 acquisition lever (row #22, the weekly focus):
+the GitHub channel is now attributable — 3 → 4 live, 0 partial.** The two PRs that held
+this number last run — #750 (npm → live) + #751 (MCP-registry venue) — are now **merged**,
+so per **step 0** the priority-1 lever is pullable with no collision (only open PR is #719,
+the Infisical founder draft). GitHub was the sole `partial` in the ledger: repo public,
+README shipped, but its product CTA linked bare `https://nlqdb.com`, so a github.com
+click-through landed on the site and `captureFirstTouch` recorded it as `direct`, never
+`github`. Its ledger next-step listed "utm-tag README links" as a `/daily` input (the
+weekly focus assigns repo *topics/templates* to `/reach`; the *tagging* is `/daily`).
+**Change (P5 — one string, mirroring run 99's npm flip):** tagged the root README's single
+product CTA to `https://nlqdb.com/?utm_source=github` (the canonical ledger `github` key,
+`SK-GTM-007`). `attribution.ts` reads `utm_source` on landing and `postAskCreate` persists
+it to `databases.source_json`, so github click-throughs are attributable end-to-end; yield
+reads on `/app/admin`. docs./elements. links don't run `Base.astro` and legal-footer links
+aren't a conversion path — both left untagged (tagging them would misattribute non-buyers).
+**Number moved — row #22 3 live → 4 live / 0 partial** (GitHub partial → live; the npm
+precedent, run 99, established that attribution — not discovery amplification like
+topics/templates — is rule 2's live-gate). No new decision doc (D5 — conforms GitHub's
+published link to the already-documented `SK-GTM-007` "every URL carries its `utm_source`"
+rule; nothing non-obvious to record). **Gates:** `bun run lint` exit 0 (41 pre-existing
+warnings, none in touched files); `bun run typecheck` exit 0; `bun run test` exit 0 (api
+**974 pass** / 6 skipped). **Step-1:** docs-ambiguity **16** (flat, carried); surfaces
 **105**, queue **2**; users **9** / strangers **0** (07-16 carried); GSC 28d **1/452/16.3**
-carried (row #7); engine BIRD 0.542 / Spider 0.2222 fresh 07-19. **Artifact:** queue **2**
-(< 3) → no forced publish; dev.to drip **posted** the oldest pending variant
-(`not-in-subquery-null-trap`) → https://dev.to/omer_hochman/not-in-returned-zero-rows-it-wasnt-your-data-it-was-one-null-4inj
-(queue line updated: dev.to venue dropped, live URL appended); no new draft (queue
-~19.9 KB, at the D4 cap). **KPI (GLOBAL-025):** **onboarding + UX** — a stranger creating
-a DB with a JSON column now sees the real value instead of `[object Object]` in their
-first result; **no KPI degrades** (one shared pure formatter; Data.tsx behavior unchanged,
-no engine/API/funnel logic touched).
+carried (row #7); engine BIRD 0.542 / Spider 0.2222 fresh 07-19; deploy health all-green
+on head `012904d`. **Artifact:** queue **2** (< 3) → no forced publish; dev.to drip
+attempted (throttle-guarded, ~6 runs/day → expected no-op on all but the first daily run);
+no new draft (queue at D4 cap). **KPI (GLOBAL-025, amended by GLOBAL-038):** **acquisition
+measurement** — GitHub is measurable from the first stranger it produces; **no KPI
+degrades** (one README URL string; attribution is telemetry, never load-bearing; no
+engine/API/funnel logic touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
