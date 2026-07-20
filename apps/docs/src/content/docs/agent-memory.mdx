@@ -76,19 +76,27 @@ After connecting, the host lists these nlqdb tools:
 
 ## Step 4 — Verify
 
-Store one fact, then read it back, both through `nlqdb_query`:
+Store one fact, then read it back, both through `nlqdb_query` (the
+natural-language goal is the `q` argument). Writes go through a
+render-before-commit gate: the first call returns `requires_confirm: true`
+plus a diff of what it will write; re-call with `confirm: true` to commit.
+Reads run straight through.
 
 ```
-Agent → nlqdb_query(db: "memory", goal: "remember: the user prefers metric units")
-      → { ok, db: "memory-…" }
+# Write — previews first, then commit
+Agent → nlqdb_query(db: "memory", q: "remember that the user prefers metric units")
+      → requires_confirm: true  (+ a diff of the row it will insert)
+Agent → nlqdb_query(db: "memory", q: "remember that the user prefers metric units", confirm: true)
+      → committed  (+ the SQL in trace)
 
-Agent → nlqdb_query(db: "memory", goal: "what do you remember about the user?")
+# Read — no confirm needed
+Agent → nlqdb_query(db: "memory", q: "what do you remember about the user?")
       → rows: [{ fact: "prefers metric units" }]  (+ the SQL in trace)
 ```
 
-The second call returning the fact — with the SQL visible in `trace` —
-confirms setup end to end: connected, authenticated, reading and writing
-memory.
+The read returning the fact — with the SQL visible in `trace` — confirms
+setup end to end: connected, authenticated, writing (through the confirm
+gate) and reading memory.
 
 ## Step 5 — On failure
 
