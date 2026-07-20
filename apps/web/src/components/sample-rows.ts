@@ -28,7 +28,10 @@ export function groupProvisionedTables(
   rows: SampleRow[],
 ): { table: string; rows: Record<string, unknown>[] }[] {
   const seeded = groupByTable(rows);
-  if (!tables || tables.length === 0) return seeded;
+  // `tables` crosses untyped boundaries (rehydrated localStorage history,
+  // the SDK's `plan: unknown`), so a non-array can slip past the type — fall
+  // back to grouping the rows rather than throwing on `.map`.
+  if (!Array.isArray(tables) || tables.length === 0) return seeded;
   const bySeed = new Map(seeded.map((g) => [g.table, g.rows]));
   return tables.map((table) => ({ table, rows: bySeed.get(table) ?? [] }));
 }

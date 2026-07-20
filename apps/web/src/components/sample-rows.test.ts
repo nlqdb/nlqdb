@@ -82,4 +82,13 @@ describe("groupProvisionedTables", () => {
     expect(groupProvisionedTables(undefined, rows)).toEqual(groupByTable(rows));
     expect(groupProvisionedTables([], rows)).toEqual(groupByTable(rows));
   });
+
+  test("falls back (never throws) when a non-array slips past the type", () => {
+    // `tables` crosses untyped boundaries (localStorage rehydrate, SDK
+    // `plan: unknown`); a corrupt/drifted non-array must not crash the render.
+    const rows = [{ table: "orders", values: { id: 1 } }];
+    expect(groupProvisionedTables("orders" as unknown as string[], rows)).toEqual(
+      groupByTable(rows),
+    );
+  });
 });
