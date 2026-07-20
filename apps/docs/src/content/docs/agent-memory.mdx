@@ -78,15 +78,21 @@ After connecting, the host lists these nlqdb tools:
 
 Store one fact, then read it back, both through `nlqdb_query`. The
 natural-language goal is the `q` argument; **omit `db`** and nlqdb targets
-your memory database, provisioning it on first reference — there is no
-separate create step, and no database name to invent (a `db` slug that
-doesn't exist yet returns `db_not_found`). Writes go through a
-render-before-commit gate: the first call returns `requires_confirm: true`
-plus a diff of what it will write; re-call with `confirm: true` to commit.
-Reads run straight through.
+your memory database — no database name to invent (a `db` slug that doesn't
+exist yet returns `db_not_found`). The very first query has nothing to
+target yet, so nlqdb **provisions the database from your goal on that call**
+and returns `db_created` (the compiled schema rides in `trace`) — that is
+the "first reference", and there is no separate create step to run. Every
+write after that goes through a render-before-commit gate: the write call
+returns `requires_confirm: true` plus a diff of what it will write, and you
+re-call with `confirm: true` to commit. Reads run straight through.
 
 ```
-# Write — previews first, then commit (omit db: nlqdb auto-targets your memory DB)
+# First query provisions your memory DB from the goal (one-time) → db_created
+Agent → nlqdb_query(q: "remember that the user prefers metric units")
+      → db_created: true, dbId: "db_…"  (+ the compiled schema in trace)
+
+# Write — previews first, then commit
 Agent → nlqdb_query(q: "remember that the user prefers metric units")
       → requires_confirm: true  (+ a diff of the row it will insert)
 Agent → nlqdb_query(q: "remember that the user prefers metric units", confirm: true)
@@ -94,12 +100,12 @@ Agent → nlqdb_query(q: "remember that the user prefers metric units", confirm:
 
 # Read — no confirm needed
 Agent → nlqdb_query(q: "what do you remember about the user?")
-      → rows: [{ fact: "prefers metric units" }]  (+ the SQL in trace)
+      → rows  (+ the SQL in trace)
 ```
 
-The read returning the fact — with the SQL visible in `trace` — confirms
-setup end to end: connected, authenticated, writing (through the confirm
-gate) and reading memory.
+The read returning your fact — with the SQL visible in `trace` — confirms
+setup end to end: connected, authenticated, a database provisioned, and
+writing (through the confirm gate) and reading memory.
 
 ## Step 5 — On failure
 
