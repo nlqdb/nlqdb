@@ -182,8 +182,18 @@ never drift from `mcp-install.ts`: a Claude Code **skill/plugin**
 **AGENTS.md snippet**, and the Codex `config.toml` block. Distribute via
 the R-04 guide + npm + registries. Add a drift test (artifact strings ==
 `mcp-install.ts`).
-**Done when:** ⬜ artifacts published · ⬜ install path on the R-04 page ·
-⬜ drift test green.
+**Done when:** 🟡 artifacts published — 3 of 4 host artifacts live in
+[`apps/web/public/agent-artifacts/`](../../../../../apps/web/public/agent-artifacts/)
+(host-neutral [`AGENTS.snippet.md`](../../../../../apps/web/public/agent-artifacts/AGENTS.snippet.md),
+Cursor [`nlqdb-memory.mdc`](../../../../../apps/web/public/agent-artifacts/nlqdb-memory.mdc),
+Codex [`codex-config.toml`](../../../../../apps/web/public/agent-artifacts/codex-config.toml),
++ a README index); the packaged Claude Code **skill/plugin** + npm/registry
+distribution are the next R-07 run · ✅ install path on the R-04 page
+([`agent-memory.mdx`](../../../../../apps/docs/src/content/docs/agent-memory.mdx)
+"Drop it into your repo") · ✅ drift test green
+([`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) —
+every connect string == `mcp-install.ts`, all served-file URLs pinned to the
+`/mcp` route, all `nlqdb.com` links carry `utm_source=agent-artifacts`).
 
 ### R-08 — Answer-engine citation baseline
 
@@ -204,11 +214,31 @@ where closed), record cited/not-cited per query in § Current numbers.
   that `nlqdb_remember` + the typed `agent_memory_v1` preset are gated so the
   live path is `nlqdb_query`). Linked from README, `/agents` connect card, and
   a new llms.txt `## For coding agents` section. Remaining box: the manual
-  cold-agent walk (next R-04 run).
+  cold-agent walk — **it clears Step 2's browser OAuth, a human action an
+  autonomous `/reach` run can't perform**; it needs a human walk (or the R-06
+  headless walker, which hits the same OAuth wall).
+- Droppable in-repo artifacts (R-07): **3 of 4 host artifacts live** in
+  `apps/web/public/agent-artifacts/` (served at `nlqdb.com/agent-artifacts/`) —
+  host-neutral `AGENTS.snippet.md`, Cursor `.cursor/rules/nlqdb-memory.mdc`,
+  Codex `config.toml` block, + README. All connect strings are generated from
+  `mcp-install.ts` and pinned by `agent-artifacts.test.ts` (drift test green:
+  commands == builders, endpoints on `/mcp`, `nlqdb.com` links carry
+  `utm_source=agent-artifacts`). Honest to the R-04 line: memory via
+  `nlqdb_query`; `nlqdb_remember`/`agent_memory_v1` marked gated. Linked from
+  the R-04 guide. **Channel #12 (`agent-artifacts`) stays untried** in the
+  ledger — files exist in-repo but aren't yet externally distributed (npm/
+  registries) with attributable yield; the packaged Claude Code skill/plugin +
+  distribution are the next R-07 run.
 - Registry/directory listings live: 0 of 8 (1/8 prepared — #1 official MCP registry
   payload parked in `blocked-by-human.md`; account-walled on founder `mcp-publisher`
   login, so not live until submitted). Acquisition channels live w/ attributable
   yield: **2** (unchanged; registry row #3 is `blocked-by-human`, not yet live).
+  R-05 not advanced this run: the next venue (#2 Smithery) is account-walled
+  (publish via `smithery.ai/new` needs a Smithery account + a browser OAuth so
+  Smithery can scan our auth-required server — verified 2026-07-20), which
+  would park a payload and flip `docs/research/acquisition-channels.md` — a file
+  an open `/daily` PR (#753) is already editing, so per the collision rule R-05
+  waits for that PR to merge.
 - Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete):
   #2 best-way-to-store ✅, #5 build-vs-buy ✅, #10 TTL/expiry ✅, #13 agent-memory-MCP ✅.
   R-03 latest page: `solve/agent-memory-mcp-server` (owns query #13 "agent memory
@@ -242,5 +272,5 @@ Tick on merge.
 - [ ] R-04 — canonical machine-followable setup guide
 - [ ] R-05 — registry sweep (1/8 venues: #1 official MCP registry payload parked, account-walled)
 - [ ] R-06 — coding-agent walker + baseline
-- [ ] R-07 — droppable in-repo artifacts (skill / rules / AGENTS.md / Codex)
+- [ ] R-07 — droppable in-repo artifacts (3/4 host artifacts live + drift-tested: AGENTS.md snippet + Cursor rules + Codex block; Claude Code skill/plugin + npm/registry distribution remain)
 - [ ] R-08 — answer-engine citation baseline
