@@ -1,0 +1,48 @@
+---
+description: Use nlqdb as this agent's analytical memory — persist and query memory in plain English over MCP.
+alwaysApply: true
+---
+
+# nlqdb — analytical memory
+
+This project uses nlqdb for agent memory: a real Postgres queried in plain
+English over MCP. Prefer it over an ad-hoc `memories` table or a vector store
+whenever the agent needs to *aggregate* over memory (`GROUP BY`, `JOIN`,
+counts, trends), not just recall the nearest few rows.
+
+## Setup (once)
+
+Add the hosted MCP server to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "nlqdb": {
+      "url": "https://mcp.nlqdb.com/mcp"
+    }
+  }
+}
+```
+
+On the first tool call nlqdb opens a browser OAuth page once — approve it and
+Cursor stores the token. No API key to paste.
+
+## Usage
+
+All memory goes through the **`nlqdb_query`** tool. Omit the `db` argument and
+nlqdb targets this account's memory database (provisioned from your goal on the
+first call — no separate create step).
+
+- **Remember** — `nlqdb_query(q: "remember that the user prefers metric units")`.
+  A write previews first (`requires_confirm: true` + a row diff); re-call with
+  `confirm: true` to commit.
+- **Recall / analyse** — `nlqdb_query(q: "what do you remember about the user?")`
+  or aggregate: `nlqdb_query(q: "how many sessions has each user had this week?")`.
+  Reads run straight through and return rows plus the exact SQL in `trace`.
+
+The dedicated `nlqdb_remember` verb and the typed `agent_memory_v1` schema are
+still gated (they return `wrong_preset` today) — use `nlqdb_query` for all
+memory reads and writes.
+
+Full guide: https://docs.nlqdb.com/agent-memory/ · Learn more:
+https://nlqdb.com/agents?utm_source=agent-artifacts

@@ -1,0 +1,18 @@
+# nlqdb — analytical memory for your agent.
+#
+# Add this block to ~/.codex/config.toml. Remote HTTP servers are not addable
+# via `codex mcp add` (stdio-only), so the config edit is the install path.
+# On the first tool call nlqdb opens a browser OAuth page once — approve it and
+# Codex stores the token. No API key to paste.
+#
+# Then use the nlqdb_query MCP tool for all memory reads/writes (omit the `db`
+# argument to target this account's memory database):
+#   remember  → nlqdb_query(q: "remember that ...")  # previews, then confirm: true
+#   recall    → nlqdb_query(q: "what do you remember about ...?")
+#   aggregate → nlqdb_query(q: "how many sessions has each user had this week?")
+# The nlqdb_remember verb + the agent_memory_v1 preset are still gated
+# (wrong_preset today) — use nlqdb_query. Guide: https://docs.nlqdb.com/agent-memory/
+# Learn more: https://nlqdb.com/agents?utm_source=agent-artifacts
+
+[mcp_servers.nlqdb]
+url = "https://mcp.nlqdb.com/mcp"

@@ -121,6 +121,21 @@ writing (through the confirm gate) and reading memory.
 - **`nlqdb_remember` returns `wrong_preset`** — expected today; use
   `nlqdb_query` for memory writes (see below).
 
+## Drop it into your repo
+
+Want the coding agent you build *with* to wire this up once and use it
+forever? Drop a ready-made artifact into your project — the connect command
+in each is generated from the same source as this page, so it never drifts:
+
+- **`AGENTS.md`** (host-neutral — Claude Code, Codex, and any agent that reads
+  it): append [`AGENTS.snippet.md`](https://nlqdb.com/agent-artifacts/AGENTS.snippet.md).
+- **Cursor**: save [`nlqdb-memory.mdc`](https://nlqdb.com/agent-artifacts/nlqdb-memory.mdc)
+  as `.cursor/rules/nlqdb-memory.mdc`.
+- **Codex**: merge [`codex-config.toml`](https://nlqdb.com/agent-artifacts/codex-config.toml)
+  into `~/.codex/config.toml`.
+
+Index + drop locations: [nlqdb.com/agent-artifacts/README.md](https://nlqdb.com/agent-artifacts/README.md).
+
 ## What's live today
 
 The live, working memory path is `nlqdb_query`: your agent provisions a
