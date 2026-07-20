@@ -36,6 +36,10 @@ import { BLOG_POSTS } from "../apps/web/src/data/blog.ts";
 const API = "https://dev.to/api";
 const ACCEPT_V1 = "application/vnd.forem.api-v1+json";
 const DRIP_HOURS = 20;
+// acquisition-channels.md row 2 utm_source key — every externally published
+// nlqdb URL carries its ledger key (SK-GTM-007), so dev.to click-throughs are
+// first-touch attributable instead of relying on a referrer readers often strip.
+const DEVTO_SOURCE = "devto";
 
 interface DevToArticle {
   canonical_url: string | null;
@@ -180,8 +184,12 @@ function blockToMarkdown(block: BlogBlock): string {
   }
 }
 
-function buildBody(post: BlogPost, canonical: string): string {
-  const header = `*Originally published at [nlqdb.com/blog](${canonical})*`;
+export function buildBody(post: BlogPost, canonical: string): string {
+  // The API `canonical_url` field stays the clean URL (rel=canonical for SEO
+  // dedup); the human-facing read-through link carries ?utm_source=devto so a
+  // dev.to→nlqdb.com visit is captured as `devto`, not the flaky referrer host.
+  const readThrough = `${canonical}?utm_source=${DEVTO_SOURCE}`;
+  const header = `*Originally published at [nlqdb.com/blog](${readThrough})*`;
   return [header, ...post.body.map(blockToMarkdown)].join("\n\n");
 }
 
@@ -255,4 +263,4 @@ async function main(): Promise<void> {
   else die("usage: --list | --post <slug> --tags a,b,c [--force]");
 }
 
-await main();
+if (import.meta.main) await main();
