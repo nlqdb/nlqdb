@@ -57,8 +57,8 @@ matters weekly: **channels live with attributable yield** (`/reach` step 1
 records it; target per the 2026-07-19 focus: +3 via R-05). npm joined the
 live set 2026-07-20 (homepage links tagged); GitHub joined 2026-07-20 (README
 CTA tagged `utm_source=github`). No partials remain — every published channel's
-yield is attributable; the untried set (registries rows 3–10, human-norm
-venues) is now the only path to further live-count growth.
+yield is attributable; the not-yet-live channels (registries rows 3–10, human-norm
+venues) are now the only path to further live-count growth.
 
 ## Why this order
 
