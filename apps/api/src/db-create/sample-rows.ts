@@ -117,10 +117,22 @@ export function pruneUninsertableSampleRows(plan: SchemaPlan): SampleRowPruneRes
 
     // NOT NULL completeness — a column is required when it is NOT NULL
     // (explicit `nullable: false` or a primary-key member) AND has no DEFAULT.
+    // SK-HDC-015: the compiler gives a single-column integer/bigint/uuid PK with
+    // no plan default an IDENTITY / gen_random_uuid() default, so an OMITTED key
+    // is filled by Postgres and the INSERT (which names only the provided
+    // columns, `neon-provision.ts`) succeeds — pruning must not read that as a
+    // 23502. An explicit null still violates the column, so relax ONLY when the
+    // key is absent from the row.
+    const singleColPk = table.primary_key.length === 1;
     let badReason: string | undefined;
     for (const col of table.columns) {
       const isNotNull = col.nullable === false || pk.has(col.name);
-      const hasDefault = col.default != null;
+      const autoPk =
+        singleColPk &&
+        pk.has(col.name) &&
+        col.default == null &&
+        (col.type === "integer" || col.type === "bigint" || col.type === "uuid");
+      const hasDefault = col.default != null || (autoPk && !(col.name in row.values));
       if (isNotNull && !hasDefault) {
         const v = row.values[col.name];
         if (v == null) {
