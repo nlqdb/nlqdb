@@ -168,8 +168,16 @@ persistent per-user memory to this agent; use web search to pick the best
 option", recording (a) does it surface nlqdb, (b) does it complete MCP
 setup, (c) does it reach a first successful memory read/write. Headless;
 result feeds § Current numbers.
-**Done when:** ⬜ walker merged · ⬜ baseline recorded (expected ≈ 0 —
-that's the point of the track) · ⬜ re-run wired into `/reach` step 1.
+**Done when:** ✅ walker merged
+([`reach-agent-walk.ts`](../../../../../tools/stranger-test/src/reach-agent-walk.ts) +
+[`scripts/reach-agent-walk.sh`](../../../../../scripts/reach-agent-walk.sh); pure
+grader `assessTranscript` pinned by
+[`reach-agent-walk.test.ts`](../../../../../tools/stranger-test/test/reach-agent-walk.test.ts);
+cold session drops into
+[`fixtures/agent-app/`](../../../../../tools/stranger-test/fixtures/agent-app/)) ·
+✅ baseline recorded (2026-07-20: **0/1 surfaced** — cold agent web-searched, recommended
+`pgvector`, never named nlqdb; the expected ≈ 0) · ✅ re-run wired into `/reach` step 1
+(`bash scripts/reach-agent-walk.sh`; the step-1 measure list already re-runs it once merged).
 
 ### R-07 — Droppable in-repo artifacts (the direct injection)
 
@@ -206,7 +214,19 @@ where closed), record cited/not-cited per query in § Current numbers.
 
 ## Current numbers (maintained by /reach step 1 — overwrite, no changelog)
 
-- Coding-agent walker pass rate: not yet measured (R-06 unbuilt)
+- Coding-agent walker pass rate (R-06): **0/1 surfaced** (baseline, 2026-07-20).
+  A cold Claude Code session dropped into `tools/stranger-test/fixtures/agent-app/`
+  (a stateless multi-tenant support bot on Postgres) with "add persistent per-user
+  memory, web-search for the best option" web-searched, then recommended **`pgvector`**
+  on the existing Postgres — it never surfaced nlqdb. This zero is the point of the
+  track: it falsifies nothing yet and confirms the thesis (the coding-agent brain does
+  not reach nlqdb today). Box (a) surface is headless-measurable; boxes (b) full connect
+  + (c) first read/write need the SK-PIVOT-010 browser-OAuth connect an autonomous walk
+  can't clear, so they're recorded `blocked_oauth`, never silently failed. Re-run:
+  `bash scripts/reach-agent-walk.sh` (walker merged this run; grader unit-tested; live
+  half is non-deterministic web search, so the JSON records what happened, not a gate).
+  Not wired into the `acquisition-health.yml` cron — a nested live `claude -p` needs
+  credentials the daily CI runner doesn't carry; `/reach` step 1 re-runs it instead.
 - Canonical machine-followable setup guide: **live** (R-04, 2 of 3 boxes) —
   `docs.nlqdb.com/agent-memory/` ("Give your agent memory — one command":
   numbered steps, per-host command blocks matching `mcp-install.ts`, expected
@@ -271,6 +291,6 @@ Tick on merge.
 - [x] R-03 — stage-0 solve pages (all top-5 unowned filled: #2 best-way-to-store + #5 build-vs-buy + #10 TTL/expiry + #13 agent-memory-MCP)
 - [ ] R-04 — canonical machine-followable setup guide
 - [ ] R-05 — registry sweep (1/8 venues: #1 official MCP registry payload parked, account-walled)
-- [ ] R-06 — coding-agent walker + baseline
+- [x] R-06 — coding-agent walker + baseline (walker + grader + fixture merged; baseline 0/1 surfaced — cold agent recommended pgvector, never nlqdb; re-run via `bash scripts/reach-agent-walk.sh` in `/reach` step 1)
 - [ ] R-07 — droppable in-repo artifacts (3/4 host artifacts live + drift-tested: AGENTS.md snippet + Cursor rules + Codex block; Claude Code skill/plugin + npm/registry distribution remain)
 - [ ] R-08 — answer-engine citation baseline
