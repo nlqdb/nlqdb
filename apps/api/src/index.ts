@@ -88,6 +88,7 @@ import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
 import { getLLMRouter } from "./llm-router.ts";
+import { isMarketingMirrorPath, marketingMirrorRedirect } from "./marketing-mirror.ts";
 import {
   orchestrateRemember,
   type RememberError,
@@ -3889,6 +3890,21 @@ async function scheduled(
 }
 
 export default {
-  fetch: (req: Request, e: Cloudflare.Env, ctx: ExecutionContext) => app.fetch(req, e, ctx),
+  fetch: (req: Request, e: Cloudflare.Env, ctx: ExecutionContext) => {
+    // Front-controller for the marketing content trees (`SK-WEB-026`). The
+    // merged app host serves the same build as the canonical marketing host,
+    // so 301 those trees to `nlqdb.com` to stop Google indexing a duplicate.
+    const url = new URL(req.url);
+    const redirect = marketingMirrorRedirect(url);
+    if (redirect) return Response.redirect(redirect, 301);
+    // `run_worker_first` also invokes us for these trees on preview /
+    // workers.dev hosts, where there's no duplication to fix — serve the built
+    // asset there instead of falling through to Hono (which has no marketing
+    // routes and would 404).
+    if (isMarketingMirrorPath(url.pathname) && e.STATIC_ASSETS) {
+      return e.STATIC_ASSETS.fetch(req);
+    }
+    return app.fetch(req, e, ctx);
+  },
   scheduled,
 };

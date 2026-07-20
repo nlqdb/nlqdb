@@ -174,6 +174,11 @@ posthog-js lazy-loads on `/app/*` only (`AppAnalytics.astro` + `lib/posthog.ts`)
 **Body:** [`decisions/SK-WEB-025-tawk-support-chat-app-only.md`](./decisions/SK-WEB-025-tawk-support-chat-app-only.md).
 The Tawk.to widget (`SupportChat.astro`, official async snippet) mounts beside `<AppAnalytics />` on the four `/app` pages only — marketing/blog/vs/solve stay third-party-free, same posture as `SK-WEB-024` (`GLOBAL-034`). Tawk hosts are denylisted in `lib/boot-fallback.ts#EXTENSION_PREFIXES` (+ the `Base.astro` hand-copy, drift-pinned) so its throws never trip the boot panel or `/v1/errors/web`. Disclosed in `privacy.astro`, `SUPPORT.md`, and `SUBPROCESSORS.md`.
 
+### SK-WEB-026 — Merged app host 301-redirects the marketing content trees to the canonical host
+
+**Body:** [`decisions/SK-WEB-026-app-host-marketing-mirror-301.md`](./decisions/SK-WEB-026-app-host-marketing-mirror-301.md).
+`app.nlqdb.com` serves the same build as `nlqdb.com`, so `/blog`, `/solve`, `/vs` are crawlable duplicates there. GSC indexed the app-host copy despite a correct `rel=canonical`, so a thin front-controller (`marketing-mirror.ts`, `run_worker_first`-scoped in `apps/api/wrangler.toml`) 301s those trees to `nlqdb.com`; product/auth/API and the root stay untouched. Adding a new marketing tree means syncing both `MARKETING_MIRROR_PREFIXES` and `run_worker_first`.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
