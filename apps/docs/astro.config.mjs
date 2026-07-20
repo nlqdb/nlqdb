@@ -29,6 +29,7 @@ export default defineConfig({
         }),
       ],
       sidebar: [
+        { label: "Give your agent memory", link: "/agent-memory/" },
         { label: "Tutorials", items: [{ autogenerate: { directory: "tutorials" } }] },
         { label: "SDK", link: "/sdk/" },
         { label: "Framework wrappers", link: "/frameworks/" },

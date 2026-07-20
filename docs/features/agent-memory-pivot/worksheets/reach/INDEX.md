@@ -130,7 +130,7 @@ for machine execution: numbered steps, one fenced command block per host
 after connect, a verification query, what to do on failure. Add a
 `## For coding agents` section to `llms.txt` with the same content.
 **Verify every step against prod before publishing** (hard rule 1).
-**Done when:** ⬜ page live · ⬜ llms.txt section · ⬜ one manual cold-agent
+**Done when:** ✅ page live ([`docs/agent-memory`](../../../../../apps/docs/src/content/docs/agent-memory.mdx) → `docs.nlqdb.com/agent-memory/`; sidebar-registered, linked from README + `/agents` connect card + llms.txt) · ✅ llms.txt `## For coding agents` section ([`llms.txt.ts`](../../../../../apps/web/src/pages/llms.txt.ts)) · ⬜ one manual cold-agent
 walk (agent given only the URL) completes setup, logged in the PR.
 
 ### R-05 — Registry + directory sweep (one venue per run)
@@ -186,6 +186,14 @@ where closed), record cited/not-cited per query in § Current numbers.
 ## Current numbers (maintained by /reach step 1 — overwrite, no changelog)
 
 - Coding-agent walker pass rate: not yet measured (R-06 unbuilt)
+- Canonical machine-followable setup guide: **live** (R-04, 2 of 3 boxes) —
+  `docs.nlqdb.com/agent-memory/` ("Give your agent memory — one command":
+  numbered steps, per-host command blocks matching `mcp-install.ts`, expected
+  tool list after connect, a verification query, a failure playbook; honest
+  that `nlqdb_remember` + the typed `agent_memory_v1` preset are gated so the
+  live path is `nlqdb_query`). Linked from README, `/agents` connect card, and
+  a new llms.txt `## For coding agents` section. Remaining box: the manual
+  cold-agent walk (next R-04 run).
 - Registry/directory listings live: 0 of 8
 - Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete):
   #2 best-way-to-store ✅, #5 build-vs-buy ✅, #10 TTL/expiry ✅, #13 agent-memory-MCP ✅.
@@ -201,15 +209,13 @@ where closed), record cited/not-cited per query in § Current numbers.
   `solve/best-way-to-store-agent-memory` (query #2, storage-shape decision) +
   R-02's two `competitors.md` §4 entries (DIY-on-Postgres + Agentic DB/Constructive)
   and `solve/build-vs-buy-agent-memory` (query #5).
-- GSC intent-query clicks (28d to 2026-07-16 — correction 2026-07-19: the
-  earlier "puller absent" block here was stale; `scripts/gsc-pull.ts` exists
-  (landed PR #711, 07-16) and `/daily` run 94 pulled with it same-day, so the
-  next `/reach` step-1 refreshes via `bun scripts/gsc-pull.ts` filtered to the
-  R-01 intent map): **0** — no intent query clears
-  1 click; `/agents` at pos ~7.3 with 3 impressions; the agent-memory blog
-  (`/blog/agent-memory-benchmarks…`, 5 impr) and "deep memory retrieval
-  benchmark" now surface impressions but no clicks; site total 1 click /
-  455 impr. This zero is the R-01 baseline.
+- GSC intent-query clicks (28d to 2026-07-17, pulled 2026-07-19 via
+  `bun scripts/gsc-pull.ts`): **0** — no intent query clears 1 click.
+  `/agents` at pos 7.3 with 3 impressions; intent impressions surfacing but
+  not clicking: "agent memory benchmark" (2 impr, pos 53), "deep memory
+  retrieval benchmark" (1 impr, pos 52), `/blog/agent-memory-benchmarks…`
+  (7 impr, pos 30). Site total 1 click / 468 impr, pos 16.3. This zero is the
+  R-01 baseline.
 - Answer-engine citations (top-10): not yet measured (R-08 unbuilt)
 
 ## Tracker
