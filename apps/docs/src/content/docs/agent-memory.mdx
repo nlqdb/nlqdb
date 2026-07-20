@@ -76,21 +76,24 @@ After connecting, the host lists these nlqdb tools:
 
 ## Step 4 — Verify
 
-Store one fact, then read it back, both through `nlqdb_query` (the
-natural-language goal is the `q` argument). Writes go through a
+Store one fact, then read it back, both through `nlqdb_query`. The
+natural-language goal is the `q` argument; **omit `db`** and nlqdb targets
+your memory database, provisioning it on first reference — there is no
+separate create step, and no database name to invent (a `db` slug that
+doesn't exist yet returns `db_not_found`). Writes go through a
 render-before-commit gate: the first call returns `requires_confirm: true`
 plus a diff of what it will write; re-call with `confirm: true` to commit.
 Reads run straight through.
 
 ```
-# Write — previews first, then commit
-Agent → nlqdb_query(db: "memory", q: "remember that the user prefers metric units")
+# Write — previews first, then commit (omit db: nlqdb auto-targets your memory DB)
+Agent → nlqdb_query(q: "remember that the user prefers metric units")
       → requires_confirm: true  (+ a diff of the row it will insert)
-Agent → nlqdb_query(db: "memory", q: "remember that the user prefers metric units", confirm: true)
+Agent → nlqdb_query(q: "remember that the user prefers metric units", confirm: true)
       → committed  (+ the SQL in trace)
 
 # Read — no confirm needed
-Agent → nlqdb_query(db: "memory", q: "what do you remember about the user?")
+Agent → nlqdb_query(q: "what do you remember about the user?")
       → rows: [{ fact: "prefers metric units" }]  (+ the SQL in trace)
 ```
 
