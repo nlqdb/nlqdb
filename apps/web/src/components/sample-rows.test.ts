@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { groupByTable, groupProvisionedTables } from "./sample-rows";
+import { groupByTable, groupProvisionedTables, sampleRowKey } from "./sample-rows";
 
 // Guards the grouping behind the create-path sample tables — the in-chat
 // `created` reply now renders these (matching the marketing CreateForm),
@@ -90,5 +90,20 @@ describe("groupProvisionedTables", () => {
     expect(groupProvisionedTables("orders" as unknown as string[], rows)).toEqual(
       groupByTable(rows),
     );
+  });
+});
+
+// The sample seed set is LLM-authored with no unique id, and lookup/enum/join
+// tables can seed identical rows — the create-result SampleTable had keyed its
+// <tr> on the joined cell values alone, so duplicate rows collided (React key
+// warning + reconciliation risk) at the stranger's first "did it work?" view.
+describe("sampleRowKey", () => {
+  test("duplicate rows get distinct keys (the regression the position prefix fixes)", () => {
+    const cells = ["active", "1"];
+    expect(sampleRowKey(0, cells)).not.toBe(sampleRowKey(1, cells));
+  });
+
+  test("distinct rows at the same position stay distinct", () => {
+    expect(sampleRowKey(0, ["a", "bc"])).not.toBe(sampleRowKey(0, ["ab", "c"]));
   });
 });

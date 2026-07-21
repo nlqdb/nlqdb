@@ -35,3 +35,10 @@ export function groupProvisionedTables(
   const bySeed = new Map(seeded.map((g) => [g.table, g.rows]));
   return tables.map((table) => ({ table, rows: bySeed.get(table) ?? [] }));
 }
+
+// React list key for one create-path sample row: the LLM-seeded set has no
+// unique id and can repeat rows, so prefixing the render position keeps
+// duplicates distinct — matching the chat result table (Data.tsx).
+export function sampleRowKey(index: number, cells: string[]): string {
+  return `${index}:${cells.join("|")}`;
+}
