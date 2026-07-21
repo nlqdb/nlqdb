@@ -24,39 +24,42 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. **Run 108 pulled a priority-2 UX-flow-quality lever (row #4, the
-first-value surface):** row #22's live count only grows via registries (`/reach` #764) or
-founder venues (neither daily-agent-movable), attribution is owned by open PR #763, and
-per-page CTR is noise at N≤12 impr (row #7 conclusion) — so the daily-sized lever was a real
-create-path render bug. `SampleTable.tsx` (the "did it work?" sample table on both the
-marketing CreateForm and the in-chat `created` reply) keyed each `<tr>` on the joined cell
-values with **no row-index prefix**, so two identical LLM-seeded sample rows (small
-lookup/enum/join tables) produced colliding React keys — a console error + reconciliation
-risk exactly at a developer-stranger's first eval. Its sibling chat result table (`Data.tsx`)
-already guards this with an `idx:`-prefixed key; `SampleTable` had diverged. **Fix:** a pure
-`sampleRowKey(index, cells)` helper in `sample-rows.ts` (position-prefixed, matching
-`Data.tsx`) + 2 unit tests (duplicate rows → distinct keys). **Step 0 collision map:** open
-PRs #763 (`apps/api/src/index.ts`, `apps/web/src/lib/connect.ts` — attribution), #764 +
-#719 (reach/Infisical docs). This run touched only `apps/web/src/components/{SampleTable.tsx,
-sample-rows.ts,sample-rows.test.ts}` + `docs/scorecard.md` — **no overlap** (scorecard regen
-exempt); no `/reach` R-slice touched. **Rule 6:** CI + Security + Release npm all `success`
-on `main` head `9988524`; latest Deploy web/docs/MCP/API + Canary `success` on `bdd8ca9`; no
-red-main / stale-deploy lever.
+levers exhausted. **Run 109 pulled a priority-1 distribution-yield lever (row #7):** the
+weekly-focus live count (row #22, 4) grows only via registries (`/reach`) or founder venues
+(neither daily-agent-movable); web attribution is complete (create + connect + all pages
+capture); CLI/MCP surface-attribution would contradict `SK-GTM-007`'s "which channel *brought*
+them" semantics (P1, left alone); every live-channel URL's utm tag re-verified clean
+(npm/github/dev.to); and GSC snippet/page work isn't same-run-measurable (Google lag). So the
+one clean same-run-measurable acquisition lever was **completing run-105's app-host
+de-duplication (`SK-WEB-026`)**: fresh GSC + curl showed `app.nlqdb.com` still 200-serving the
+marketing **singles** (`/agents` GSC pos 7.3, `/architecture` pos 12.3, `/pricing`, `/manifesto`)
+and the SEO **aggregators** (`/sitemap.xml`, `/rss.xml`, `/llms.txt`) — run 105 covered only the
+`/blog|/solve|/vs` trees, excluding singles as "a far smaller duplicate surface." `rel=canonical`
+demonstrably didn't stop Google (run 105's own finding), so those duplicates split authority and
+suppress the canonical host's impression breadth — the row #7 bottleneck. **Fix (P3 supersede of
+`SK-WEB-026`):** extend `MARKETING_MIRROR_PREFIXES` + `run_worker_first` to the whole marketing
+surface (301 → canonical), plus a `marketing-mirror.test.ts` guard that parses the toml and fails
+if the two lists drift — eliminating the very list-sync burden that motivated the trees-only
+scope, so the surface can be complete instead of partial. **Step 0:** only open PR #719
+(Infisical docs) — no overlap; this run touched `apps/api/src/{marketing-mirror.ts,
+marketing-mirror.test.ts}` + `apps/api/wrangler.toml` + the `SK-WEB-026` doc + `docs/scorecard.md`.
+**Rule 6:** CI + Security + Release npm + Deploy web/API + Canary all `success` on `main` head
+`ad57543`; no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
 | | **Funnel** (visits 07-13 02:58Z CF GraphQL; users/DBs 07-16 remote D1) | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** (Chrome 41, ChromeMobile 3, MobileSafari 2, Firefox 2, Edge 1) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
-| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield (owned by PR #711) |
+| 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
+| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield |
 | 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run (vague-goal recovery, aborted-reply settle, create-result schema truth, localStorage-blocked create, run-104 first-answer error-copy overflow hint); **run 106** fixed the seeded first-value demo — `SK-HDC-019` pruning dropped sample rows that omit a `SK-HDC-015` auto-generated PK (int/bigint IDENTITY, uuid `gen_random_uuid()`), emptying the demo entirely for uuid-PK schemas though the INSERT would succeed; now kept when the key is absent. **Run 108** fixed colliding React keys on duplicate seeded sample rows (`SampleTable.tsx` keyed `<tr>` on cell values with no position prefix, unlike its `Data.tsx` sibling). Per-run detail in `git log` |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run (vague-goal recovery, aborted-reply settle, create-result schema truth, localStorage-blocked create, first-answer error-copy overflow hint, seeded-demo PK pruning, duplicate-row React keys). Per-run detail in `git log` |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-21→07-19, fresh 07-21 pull): 1 click / 469 impr / avg pos 16.6** (the 1 click is the homepage, 71 impr / pos 9.3), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-21→07-19, fresh 07-21 pull): 1 click / 469 impr / avg pos 16.6** (the 1 click is the homepage, 71 impr / pos 9.3), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18). **Run 109:** app-host de-dup (`SK-WEB-026`) now covers the **whole** marketing surface (singles + `/sitemap.xml`/`/rss.xml`/`/llms.txt`), not just `/blog\|/solve\|/vs` — all 301 `app.nlqdb.com`→`nlqdb.com`, drift-guarded (see Last change) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
-| 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). **Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar b=36/c=34 p=0.452, `regressions: []`) — the run-90 `SK-QUAL-006` trigger is cleared.** Baseline **re-seeded 0.5462 → 0.5422** (07-19; a flat give-back, not a ratcheted regression, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
-| 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836) → [29683450778](https://github.com/nlqdb/nlqdb/actions/runs/29683450778) → [29683911778](https://github.com/nlqdb/nlqdb/actions/runs/29683911778); 3 `SK-QUAL-013` windows, `no_sql` 0/135, gold_error 0, exec_error 5). **Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); −5.2 pp vs pre-directive 0.2741, but post-revert `PLAN_DIRECTIVES` is byte-identical to that engine ⇒ free-lane cross-date provider-mix noise, not a regression (McNemar-flat both ways).** p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
+| 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) — run-90 `SK-QUAL-006` trigger cleared. Baseline re-seeded 0.5462 → 0.5422 (07-19, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
+| 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 `SK-QUAL-013` windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); post-revert engine is byte-identical ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
@@ -104,23 +107,30 @@ the daily-sized lever was a real render bug. **Root cause:** `SampleTable.tsx` �
 work?" sample table on both the marketing CreateForm and the in-chat `created` reply — keyed
 each `<tr>` on the joined cell values (U+200B-separated) with **no row-index prefix**. Small
 lookup/enum/join tables can seed *identical* sample rows, so two duplicates produced the **same**
-React key → console error + reconciliation risk at a developer-stranger's first eval. Its sibling
-chat result table (`Data.tsx`) already guards the exact case with an `idx:`-prefixed key;
-`SampleTable` had silently diverged. **Change (P5):** extracted a pure `sampleRowKey(index,
-cells)` helper into `sample-rows.ts` (position-prefixed, `|`-joined — matching `Data.tsx`) and
-used it for the `<tr>` key. **Number moved — row #4 (first-value render integrity):** before =
-duplicate seeded rows → `sampleRowKey`-equivalent bare key collides (proven: `join(cells)`
-identical across rows); after = position prefix makes them distinct (2 new unit tests in
-`sample-rows.test.ts`: duplicate rows → distinct keys, distinct rows stay distinct). **Gates:**
-typecheck exit 0; touched files biome-clean; web `sample-rows.test.ts` **10 pass**; full
-`bun run test` exit 0 (api **985 pass**). **Step-1:** docs-ambiguity **16** (flat); surfaces
-**105**, queue **2**; users **9** / strangers **0** (07-16 carried); GSC 28d **1/469/16.6** fresh
-07-21 (homepage the sole click, 71 impr / pos 9.3); BIRD 0.542 / Spider 0.2222 (07-19); CI +
-Release `success` on `main` `9988524`, deploys `success` on `bdd8ca9`. **Artifact:** queue **2**
-(< 3) → no publish; dev.to drip skipped (`DEVTO_API_KEY` absent in agent container — posting is
-credential-gated, not throttled); no new draft. **KPI (GLOBAL-025):** **onboarding** — hardens
-the first-value surface; **no KPI degrades** (a render-key fix on the create sample table; no
-API, engine, funnel, or attribution path touched).
+**2026-07-21 (run 109)** — **Priority-1 distribution-yield lever (row #7): the merged app host
+now 301-de-duplicates its WHOLE marketing surface to the canonical host, not just the content
+trees.** Chosen after the acquisition lane's other agent-movable inputs were re-confirmed
+exhausted this run: row #22's live count grows only via registries (`/reach`) or founder venues;
+web attribution is complete; CLI/MCP surface-attribution would contradict `SK-GTM-007` (P1, left
+alone); live-channel utm tags all clean; GSC snippet work isn't same-run-measurable. **Root
+cause:** `app.nlqdb.com` serves the same build as `nlqdb.com` (`SK-AUTH-016`); run 105
+(`SK-WEB-026`) 301'd only `/blog|/solve|/vs`, excluding marketing singles + never considering the
+SEO aggregators. Curl + GSC proved the gap: `/agents/` (GSC pos 7.3), `/architecture/` (pos 12.3),
+`/pricing/`, `/manifesto/`, `/sitemap.xml`, `/rss.xml`, `/llms.txt` all still **200** — and
+`rel=canonical` doesn't dedupe them (run 105's own finding). **Change (P3 supersede of
+`SK-WEB-026`):** extended `MARKETING_MIRROR_PREFIXES` + `run_worker_first` to the full surface
+(trees + 8 singles + 3 aggregators), all 301 → canonical, + a `marketing-mirror.test.ts` guard
+that fails if the two lists drift — so the surface can be complete instead of the trees-only
+scope the sync burden forced. **Number moved — row #7:** before = 11 marketing paths **200** on
+the app host (curl 07-21); after = all 301 → canonical (11 unit tests + sync guard;
+live-verifiable post-deploy, run-105 method). **Gates:** typecheck 0; biome-clean;
+`marketing-mirror.test.ts` **11 pass**; full `bun run test` exit 0 (api **988 pass**). **Step-1:**
+docs-ambiguity 16; surfaces 105, queue 2; users 9 / strangers 0 (07-16); GSC 28d 1/469/16.6 fresh
+07-21; BIRD 0.542 / Spider 0.2222 (07-19); CI + Release + Deploy web/API + Canary `success` on
+`main` `ad57543`. **Artifact:** queue 2 (<3) → no publish; dev.to drip skipped (key absent); no
+draft (queue at D4 cap). **KPI (GLOBAL-025):** **distribution** — consolidates SEO authority on
+the canonical host (row #7 impression-breadth bottleneck); **no KPI degrades** (product/auth/API/
+root untouched — proven by test + `custom_domain` ownership).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
