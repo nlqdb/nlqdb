@@ -73,6 +73,24 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
   - **Connect / config (if asked):** `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
   On submit, flip ledger row #7 to **in-flight** and note the `mcp.so/server/...` URL.
 
+- **Submit nlqdb to cursor.directory** (`cursor.directory/plugins/new`; reach R-05 venue #6,
+  ledger row #8). Account-walled: Cursor's **official in-product marketplace is curated** with
+  no public self-serve path, and the community directory Cursor's own docs point to
+  (`cursor.directory`) takes submissions only through a web form that needs a GitHub/Google
+  sign-in — the `cursor/community-plugins` repo explicitly says "all content is submitted
+  through the website — no pull requests needed for data", so there is **no agent PR path** and
+  the row-#3 registry publish does not cascade here. Verified 2026-07-21. Sign in at
+  `cursor.directory/login` (GitHub or Google), open `cursor.directory/plugins/new`, and enter:
+  - **GitHub repo URL:** `https://github.com/nlqdb/nlqdb` (the form auto-detects Open-Plugins
+    components — `.mcp.json`, `rules/*.mdc`, `skills/*/SKILL.md`; nlqdb's repo has no root
+    `.mcp.json` yet since the MCP server is hosted-remote, so fill the hosted URL below by hand)
+  - **Name / title:** `nlqdb — analytical memory for AI agents`
+  - **Website:** `https://nlqdb.com/agents/?utm_source=cursor-dir` (carries the ledger key)
+  - **Description:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
+  - **MCP server / connect (if asked):** hosted HTTP URL `https://mcp.nlqdb.com/mcp`, or the
+    one command `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
+  On submit, flip ledger row #8 to **in-flight** and note the `cursor.directory/...` URL.
+
 - **Fire the launch sequence** — the founder-only half of
   [`docs/research/launch-kit.md`](./research/launch-kit.md): pick the angle
   (§2; GLOBAL-036 says lead with analytical agent memory), write the Show
