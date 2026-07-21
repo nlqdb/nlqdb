@@ -34,7 +34,7 @@ Each folder's `README.md` includes:
 
 Every example uses a publishable key (`pk_live_…`) inlined into the HTML/JSX/template. That's by design: publishable keys are read-only, origin-pinned, and meant for client-side embed (`docs/architecture.md §4.1`). For server-side usage where a `sk_live_…` is required, see `examples/cli/` and the (forthcoming) `@nlqdb/sdk` snippets.
 
-To get a key: sign in at [`nlqdb.com/app`](https://nlqdb.com/app) and mint one in the dashboard — CLI key-minting arrives with the device-flow `nlq login` (not shipped yet). Or use anonymous mode (`docs/architecture.md §3.3`): no sign-in, DB lives 72 h, adopt it when you sign in later.
+To get a key: sign in at [`nlqdb.com/app`](https://nlqdb.com/app/?utm_source=github) and mint one in the dashboard — CLI key-minting arrives with the device-flow `nlq login` (not shipped yet). Or use anonymous mode (`docs/architecture.md §3.3`): no sign-in, DB lives 72 h, adopt it when you sign in later.
 
 ## Contributing a new example
 
