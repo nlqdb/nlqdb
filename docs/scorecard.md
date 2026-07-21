@@ -24,22 +24,26 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. **Run 105 pulled a priority-1 distribution-yield lever (row #7):** the
-fresh 07-20 GSC pull surfaced `app.nlqdb.com/blog/postgres-validator-rejects-valid-clickhouse-sql/`
-indexed at page-1 (**pos 8**), a duplicate of the canonical `nlqdb.com/blog/…`. Root cause:
-the merged app host (`SK-AUTH-016`) serves the **same** `apps/web` build as `nlqdb.com`, so
-its marketing content trees (`/blog`, `/solve`, `/vs` — ~105 of 115 indexable surfaces) are a
-full crawlable mirror. `rel=canonical` + sitemap already pointed at `nlqdb.com` (verified via
-curl), yet Google indexed the app-host copy anyway (canonical is a hint, not a directive) —
-splitting crawl budget/authority and suppressing the canonical host's impression breadth (the
-row #7 bottleneck). **Fix (`SK-WEB-026`):** a `run_worker_first`-scoped front-controller in
-`apps/api` 301-redirects those trees on `app.nlqdb.com` → `nlqdb.com`; product/auth/API/root
-untouched. **Step 0 collision map:** only open PR is #719 (Infisical draft — founder territory,
-untouched). This run touched `apps/api/src/{index,marketing-mirror}.ts` +
-`apps/api/{wrangler.toml,vitest.config.ts}` + `docs/features/web-app/**` + `docs/scorecard.md`
-— **no overlap** with #719 (scorecard regen exempt); no `/reach` R-slice touched. **Rule 6:**
-CI + Security + Deploy web/docs/MCP/API + Release npm all `success` on `main` head `7808cd4`
-(fresh 07-20T18:26Z); Canary `success` on `7808cd4`; no red-main / stale-deploy lever.
+levers exhausted. **Run 107 pulled a priority-1 attribution-coverage lever (row #22):** the
+weekly-focus number (channels live *with attributable yield*) can only grow through registries
+(owned by `/reach` #760) + human-norm venues — none `/daily`-sized — so the daily-sized
+priority-1 work is closing coverage holes in the attribution instrument the whole focus depends
+on. Found one: `source_json` was persisted **only** on the `/v1/ask` create arm (`index.ts:869`);
+the BYO `POST /v1/db/connect` path minted DB rows with no source, so a stranger who lands from a
+**developer channel (github/npm — both went live 07-20) and connects their own DB rather than
+ask-creating a demo** was counted `untracked` in every GTM read. That connect-first path is the
+*natural* first action for exactly the two newest live channels, so their yield was systematically
+under-measured. **Fix (`SK-GTM-007` coverage extension):** the web `postConnect` forwards
+`firstTouchSource()`; the connect handler sanitizes (`sanitizeAskSource`, drop-never-400) and
+persists it via the same `source_json IS NULL`-guarded `waitUntil` UPDATE as the create arm.
+Build-before-signal — the read is gated on prod migration 0024 (`blocked-by-human.md`), so when
+the founder runs it, *all* DB-minting paths are attributed, not just create. **Step 0 collision
+map:** open PRs #762 (docs `blocked-by-human` — untouched) + #719 (Infisical draft — founder
+territory, untouched). This run touched `apps/api/src/index.ts` + `apps/web/src/lib/connect{,.test}.ts`
++ `docs/features/gtm-metrics/FEATURE.md` + `docs/research/distribution-queue.md` + `docs/scorecard.md`
+— **no overlap** with either PR (scorecard regen exempt); no `/reach` R-slice touched. **Rule 6:**
+CI + Security + Deploy API + Canary + Release npm all `success` on `main` head `8917788`
+(30 most-recent main runs, 0 failures; fresh 07-21T01Z); no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -51,7 +55,7 @@ CI + Security + Deploy web/docs/MCP/API + Release npm all `success` on `main` he
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-20→07-18, fresh 07-20 pull): 1 click / 472 impr / avg pos 16.6** (the 1 click is the homepage, 72 impr / pos 9.6), sitemap 115 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-21→07-19, fresh 07-21 pull): 1 click / 469 impr / avg pos 16.6** (flat vs 07-20's 472; the 1 click is the homepage, 71 impr / pos 9.3), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). The run-105 app-host redirect fix is a forward metric — the `app.nlqdb.com/blog/…` duplicate still shows 1 impr this window (pre-deploy crawl). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). **Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar b=36/c=34 p=0.452, `regressions: []`) — the run-90 `SK-QUAL-006` trigger is cleared.** Baseline **re-seeded 0.5462 → 0.5422** (07-19; a flat give-back, not a ratcheted regression, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836) → [29683450778](https://github.com/nlqdb/nlqdb/actions/runs/29683450778) → [29683911778](https://github.com/nlqdb/nlqdb/actions/runs/29683911778); 3 `SK-QUAL-013` windows, `no_sql` 0/135, gold_error 0, exec_error 5). **Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); −5.2 pp vs pre-directive 0.2741, but post-revert `PLAN_DIRECTIVES` is byte-identical to that engine ⇒ free-lane cross-date provider-mix noise, not a regression (McNemar-flat both ways).** p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -72,7 +76,7 @@ CI + Security + Deploy web/docs/MCP/API + Release npm all `success` on `main` he
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-62 branch dispatch [29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660) against prod, exit 0: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). The run-59 "morph-to-chat gap" is **decided, not a gap** (anon terminus IS the sign-in redirect; SK-WEB-002 chat is post-sign-in) | target 9/9 + both FLOW-005 ✅ **met**. Per-step JSON artifact proxy-gated from the agent container |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
-| 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** (07-20 run 103: **dev.to's `live` was really a partial — now genuinely attributable.** The syndication read-through link carried no key, so dev.to→nlqdb.com visits fell back to the `ref: dev.to` referrer (readers/RSS/webviews strip it); tagging the link `…/blog/<slug>/?utm_source=devto` (API `canonical_url` stays clean for SEO) makes them `utm_source`-attributable via `captureFirstTouch`. Now **all 4 live channels** (organic search + dev.to + npm + GitHub) satisfy rule 1's utm-key requirement — the summary's "every published channel's yield is attributable" is finally true. MCP registries 0/8 live — official registry payload parked → `blocked-by-human` (#751)). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; `dbsWithSource` accrues from next deploy (needs prod migration 0024, see `blocked-by-human.md`) | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated. Further live-count growth now comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
+| 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** (07-20 run 103: **dev.to's `live` was really a partial — now genuinely attributable.** The syndication read-through link carried no key, so dev.to→nlqdb.com visits fell back to the `ref: dev.to` referrer (readers/RSS/webviews strip it); tagging the link `…/blog/<slug>/?utm_source=devto` (API `canonical_url` stays clean for SEO) makes them `utm_source`-attributable via `captureFirstTouch`. Now **all 4 live channels** (organic search + dev.to + npm + GitHub) satisfy rule 1's utm-key requirement — the summary's "every published channel's yield is attributable" is finally true. MCP registries 0/8 live — official registry payload parked → `blocked-by-human` (#751)). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; `dbsWithSource` accrues from next deploy (needs prod migration 0024, see `blocked-by-human.md`). **Run 107 closed the connect-path coverage hole:** `source_json` now persists on `POST /v1/db/connect` too (was `/v1/ask` create-arm only), so a connect-first signup — the natural first action on the just-live github/npm developer channels — is attributable, not `untracked` | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated. Further live-count growth now comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -93,38 +97,7 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-20 (run 105)** — **Priority-1 distribution-yield lever (row #7): the product host no
-longer serves a full crawlable mirror of the marketing site.** Weekly-focus number (row #22)
-holds at 4 live/attributable — further live-count growth needs the not-yet-live registries
-(`/reach` R-05 + human) which are not daily-sized; the daily-sized priority-1 work is distribution
-yield. The fresh 07-20 GSC pull surfaced
-`app.nlqdb.com/blog/postgres-validator-rejects-valid-clickhouse-sql/` **indexed at page-1 (pos 8)**
-— a duplicate of the canonical `nlqdb.com/blog/…`. **Root cause:** the merged app host
-(`SK-AUTH-016`) serves the **same** `apps/web` build as `nlqdb.com`, so its marketing content trees
-(`/blog`, `/solve`, `/vs` — ~105 of the 115 indexable surfaces) are a full crawlable mirror. The
-pages already carry a correct `rel=canonical` to `nlqdb.com` and the sitemap lists only `nlqdb.com`
-URLs (both re-verified via curl), yet Google indexed the app-host copy anyway (canonical is a hint,
-not a directive) — splitting crawl budget/authority and suppressing the canonical host's impression
-breadth, which is the row #7 bottleneck. **Change (`SK-WEB-026`, P5 — parallels the existing
-`apps/web` `/app/*` front-controller in reverse):** a pure `marketing-mirror.ts` helper + a thin
-front-controller in `apps/api`'s worker export 301-redirects those trees on `app.nlqdb.com` →
-`nlqdb.com`; `run_worker_first` in `wrangler.toml` is scoped to exactly `/blog|/solve|/vs` so
-product (`/app/*`), auth (`/auth/*`), API (`/v1/*`), the root, and static singles keep their
-zero-cost paths; preview/`workers.dev` hosts serve the asset (no duplication there). **Number
-moved — row #7:** before = `curl app.nlqdb.com/blog/…` returns **200** (duplicate); after = the
-front-controller **301s to the canonical host** (8 unit tests in `marketing-mirror.test.ts` pin
-blog/solve/vs redirect, query-string preservation, and the never-touch set for product/auth/API/
-canonical/preview/lookalikes). SEO consolidation is a forward metric — GSC impression breadth
-re-measures over the coming weeks. New doc **SK-WEB-026** (non-obvious: canonical alone didn't stop
-app-host indexation — the 301 is why). **Gates:** typecheck exit 0; lint exit 0; touched files
-biome-clean; api **974 → 982 pass** (+8), full `bun run test` exit 0. **Step-1:** docs-ambiguity
-**16** (flat); surfaces **105**, queue **2**; users **9** / strangers **0** (07-16 carried); GSC
-28d **1/472/16.6** fresh 07-20 (homepage the sole click, 72 impr / pos 9.6); BIRD 0.542 / Spider
-0.2222 (07-19); CI + all deploys `success` on `main` `7808cd4`. **Artifact:** queue **2** (< 3) →
-no publish; dev.to drip **throttled** (last post 15 h ago, <20h); no new draft (queue at 20 KB
-D4 cap). **KPI (GLOBAL-025):** **onboarding + distribution** — consolidates SEO authority onto the
-one canonical host; **no KPI degrades** (only `/blog|/solve|/vs` on the app host change behaviour;
-product/auth/API/engine/funnel untouched).
+**2026-07-21 (run 107)** — **Priority-1 attribution-coverage lever (row #22): the BYO connect path is now acquisition-attributable.** Full rationale in the header block above. **Gap:** `source_json` persisted **only** on the `/v1/ask` create arm (`index.ts:869`); `POST /v1/db/connect` minted `databases` rows with no source, so a connect-first signup — the natural first action on the just-live github/npm developer channels — read `untracked` in every `/app/admin` GTM read. **Change (`SK-GTM-007` coverage extension, P5 — mirrors the create arm, no new decision):** web `postConnect` forwards `firstTouchSource()`; the handler sanitizes it (`sanitizeAskSource`, drop-never-400) and persists via the same `source_json IS NULL`-guarded `waitUntil` UPDATE. Replay-safe, never load-bearing. Build-before-signal (read gated on prod migration 0024). **Number moved — row #22 coverage:** before = connect DBs `source_json = NULL` → `untracked`; after = web-connect DBs carry first-touch source (2 new web tests). **Gates:** typecheck 0; lint 0 (touched biome-clean); apps/web **356 pass**; apps/api **985 pass** / 6 skip / 0 fail. **Step-1:** docs-ambiguity **16** (flat); surfaces **105**, drafts **2**; users **9** / strangers **0** (07-16 carried); GSC 28d **1/469/16.6** (fresh 07-21, flat); BIRD 0.542 / Spider 0.2222 (07-19, dark); 30 recent `main` runs `success` on `8917788`. **Artifact:** drafts **2** (< 3) → no forced publish; dev.to drip **posted** `sitemap-advertising-redirects` → https://dev.to/omer_hochman/your-sitemap-is-advertising-redirects-and-your-canonical-tag-points-at-one-2860 (queue line updated; `lobste.rs` left for founder). **KPI (GLOBAL-025):** **onboarding/distribution** — makes the newest live channels' yield measurable; **no KPI degrades** (telemetry-only; connect success/latency, engine, funnel untouched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

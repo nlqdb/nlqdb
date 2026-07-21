@@ -93,7 +93,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 55 — **https://nlqdb.com/blog/text-to-sql-accuracy-schemas-your-users-never-build/** — dev.to + lobste.rs + r/LLMDevs
 - run 67 — **https://nlqdb.com/blog/ai-internal-tool-builder-faster/** — dev.to + lobste.rs · `/vs/retool`
 - run 68 — **https://nlqdb.com/blog/offline-llm-eval-rate-limits/** — dev.to + lobste.rs
-- run 69 — **https://nlqdb.com/blog/sitemap-advertising-redirects/** — dev.to + lobste.rs
+- run 69 — **https://nlqdb.com/blog/sitemap-advertising-redirects/** — lobste.rs · dev.to posted 2026-07-21: https://dev.to/omer_hochman/your-sitemap-is-advertising-redirects-and-your-canonical-tag-points-at-one-2860
 - run 109 — **https://nlqdb.com/blog/text-to-sql-build-vs-buy/** — dev.to + r/SaaS + r/ExperiencedDevs · `/solve/add-ask-your-data-feature-without-building-text-to-sql`
 - run 119 — **https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/** — dev.to + r/SQL + r/analytics · `/solve/find-duplicate-rows-in-my-data`
 - run 110 — **https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/** — dev.to + r/dataengineering + r/BusinessIntelligence · `/vs/mode`

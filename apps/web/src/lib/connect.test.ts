@@ -105,6 +105,31 @@ describe("postConnect", () => {
     }
   });
 
+  test("forwards the stored first-touch source so a connect-first signup is attributable (SK-GTM-007)", async () => {
+    // A stranger who landed from a developer channel (github/npm) has a
+    // first-touch slot in localStorage; connecting their own DB must carry
+    // it as `source` or the signup reads as `untracked` in GTM.
+    localStorage.setItem(
+      "nlqdb_src",
+      JSON.stringify({ utm_source: "github", ref: "github.com", landing: "/", ts: 1 }),
+    );
+    mockFetch(new Response(JSON.stringify({}), { status: 201 }));
+
+    await postConnect("", { engine: "postgres", connectionUrl: SECRET_URL });
+
+    expect(captured?.body).toEqual({
+      engine: "postgres",
+      connection_url: SECRET_URL,
+      source: { utm_source: "github", ref: "github.com", landing: "/" },
+    });
+  });
+
+  test("omits `source` when no first touch is stored", async () => {
+    mockFetch(new Response(JSON.stringify({}), { status: 201 }));
+    await postConnect("", { engine: "postgres", connectionUrl: SECRET_URL });
+    expect(captured?.body).toEqual({ engine: "postgres", connection_url: SECRET_URL });
+  });
+
   test("never writes the connection URL (or anything) to localStorage", async () => {
     mockFetch(
       new Response(

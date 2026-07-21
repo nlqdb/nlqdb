@@ -77,12 +77,14 @@ import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import { recordEvalReport, recordPricingEvent, recordWishlist } from "./events-feature.ts";
 import {
+  type AskSource,
   isAllowedEngine,
   MAX_GOAL_LENGTH,
   parseAskBody,
   parseGoalDbBody,
   parseJsonBody,
   parseRunBody,
+  sanitizeAskSource,
 } from "./http.ts";
 import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
@@ -862,19 +864,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         });
         if (result.ok) await commitAnonCreate();
         // SK-GTM-007 — persist the client's first-touch acquisition
-        // source on the freshly-created row, off the response path.
-        // Best-effort telemetry: a failed write logs and is dropped —
-        // it must never break a create. `source_json IS NULL` keeps
-        // the write first-touch-only even on an idempotent replay.
+        // source on the freshly-created row (see `persistSourceJson`).
         if (result.ok && parsed.body.source) {
-          c.executionCtx.waitUntil(
-            c.env.DB.prepare(
-              "UPDATE databases SET source_json = ?1 WHERE id = ?2 AND source_json IS NULL",
-            )
-              .bind(JSON.stringify(parsed.body.source), result.dbId)
-              .run()
-              .catch((err) => console.warn("gtm_source_write_failed", String(err))),
-          );
+          persistSourceJson(c, result.dbId, parsed.body.source);
         }
         return formatCreateJsonResponse(result);
       } finally {
@@ -3009,9 +3001,12 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
     }
     span.setAttribute("nlqdb.user.id", tenantId);
 
-    const raw = await parseJsonBody<{ engine?: unknown; connection_url?: unknown; name?: unknown }>(
-      c,
-    );
+    const raw = await parseJsonBody<{
+      engine?: unknown;
+      connection_url?: unknown;
+      name?: unknown;
+      source?: unknown;
+    }>(c);
     if (!raw.ok) {
       span.setAttribute("nlqdb.db.connect.outcome", "invalid_json");
       span.end();
@@ -3051,6 +3046,10 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
       typeof raw.body.name === "string" && raw.body.name.trim().length > 0
         ? raw.body.name.trim()
         : undefined;
+    // SK-GTM-007 — first-touch acquisition source (telemetry, never
+    // load-bearing). Sanitize-or-drop, same as the create arm; a
+    // malformed value is silently ignored, never a 400.
+    const source = sanitizeAskSource(raw.body.source);
 
     // GLOBAL-005 — Idempotency-Key replay. A prior success stored the
     // minted dbId under this key; return it verbatim so the retry is a
@@ -3107,6 +3106,14 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
       }
       span.setAttribute("nlqdb.db.connect.outcome", "ok");
       span.setAttribute("nlqdb.db.connect.db_id", result.dbId);
+      // SK-GTM-007 — persist the first-touch source on the freshly
+      // connected BYO row (see `persistSourceJson`). Without this, a
+      // stranger who lands from a developer channel (github/npm) and
+      // connects their own DB — rather than ask-creating a demo — is
+      // counted `untracked` in GTM reads.
+      if (source) {
+        persistSourceJson(c, result.dbId, source);
+      }
       if (kvKey) {
         // Store the dbId for 24h so a retry within the client's window
         // dedupes. Fire-and-forget — a KV write failure must not fail an
@@ -3276,6 +3283,20 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
 
 function serializeEvent(event: OrchestrateEvent): string {
   return JSON.stringify(event);
+}
+
+// SK-GTM-007 — persist the first-touch acquisition source on a freshly
+// minted `databases` row, off the response path. Best-effort telemetry:
+// `source_json IS NULL` keeps it first-touch-only (idempotent-replay-safe),
+// a failed write only logs. Shared by the create + connect arms so the
+// bound-param SQL, the guard, and the log key can never diverge.
+function persistSourceJson(c: Context, dbId: string, source: AskSource): void {
+  c.executionCtx.waitUntil(
+    c.env.DB.prepare("UPDATE databases SET source_json = ?1 WHERE id = ?2 AND source_json IS NULL")
+      .bind(JSON.stringify(source), dbId)
+      .run()
+      .catch((err: unknown) => console.warn("gtm_source_write_failed", String(err))),
+  );
 }
 
 // Render the gate's typed decision (from `anon-create-gate.ts`)
