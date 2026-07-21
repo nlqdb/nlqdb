@@ -15,10 +15,10 @@
 export const MERGED_APP_HOST = "app.nlqdb.com";
 export const CANONICAL_MARKETING_ORIGIN = "https://nlqdb.com";
 
-// Every top-level marketing route the shared `apps/web` build ships. Matched
-// as a prefix (`/blog` also covers `/blog/post/`) so content trees stay
-// self-maintaining; the exact-file aggregators (`/llms.txt`, …) match via the
-// `===` arm. Kept in lock-step with `run_worker_first` in `apps/api/wrangler.toml`
+// Every top-level marketing route the shared `apps/web` build ships. Content
+// trees match as a prefix (`/blog` also covers `/blog/post/`) so they stay
+// self-maintaining; the exact-file aggregators (`/llms.txt`, …) match only
+// their own path. Kept in lock-step with `run_worker_first` in `apps/api/wrangler.toml`
 // (a test in `marketing-mirror.test.ts` fails if the two drift) — the sync
 // burden that motivated the original trees-only scope is now enforced, not
 // trusted. Must never include the root `/` or an `/app|/auth|/oauth|/v1|/api`
@@ -44,8 +44,14 @@ export const MARKETING_MIRROR_PREFIXES = [
 ] as const;
 
 export function isMarketingMirrorPath(pathname: string): boolean {
-  return MARKETING_MIRROR_PREFIXES.some(
-    (base) => pathname === base || pathname.startsWith(`${base}/`),
+  return MARKETING_MIRROR_PREFIXES.some((base) =>
+    // Aggregator files (`/llms.txt`) have no sub-paths — match them exactly, so
+    // `/llms.txt/x` never redirects. Content trees also cover descendants
+    // (`/blog/post/`). This mirrors the file-vs-tree split `run_worker_first`
+    // uses, keeping the matcher and the wrangler routing on one model.
+    base.slice(base.lastIndexOf("/") + 1).includes(".")
+      ? pathname === base
+      : pathname === base || pathname.startsWith(`${base}/`),
   );
 }
 

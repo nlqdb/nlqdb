@@ -85,6 +85,12 @@ describe("marketingMirrorRedirect", () => {
     expect(marketingMirrorRedirect(new URL("https://app.nlqdb.com/vspecial"))).toBeNull();
     // A single's prefix must not swallow a longer product-ish path.
     expect(marketingMirrorRedirect(new URL("https://app.nlqdb.com/agents-api"))).toBeNull();
+    // Aggregator files are matched exactly — no sub-path or suffix lookalikes.
+    // (`run_worker_first` only routes their bare entry, so the matcher must
+    // agree, else its model would diverge from the wrangler routing.)
+    expect(marketingMirrorRedirect(new URL("https://app.nlqdb.com/llms.txt/foo"))).toBeNull();
+    expect(marketingMirrorRedirect(new URL("https://app.nlqdb.com/sitemap.xml.bak"))).toBeNull();
+    expect(marketingMirrorRedirect(new URL("https://app.nlqdb.com/rss.xmlsomething"))).toBeNull();
   });
 });
 
