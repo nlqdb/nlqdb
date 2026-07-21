@@ -3285,12 +3285,6 @@ function serializeEvent(event: OrchestrateEvent): string {
   return JSON.stringify(event);
 }
 
-// Render the gate's typed decision (from `anon-create-gate.ts`)
-// into a Hono Response. The gate now only enforces the Turnstile
-// bot-floor — the per-device cap (SK-ANON-012) is checked at the
-// top of `/v1/ask`, so it never bubbles up to this helper. Non-anon
-// principals + Turnstile-pass return `null` so the route handler
-// proceeds. Turnstile-fail returns 428 challenge_required.
 // SK-GTM-007 — persist the first-touch acquisition source on a freshly
 // minted `databases` row, off the response path. Best-effort telemetry:
 // `source_json IS NULL` keeps it first-touch-only (idempotent-replay-safe),
@@ -3305,6 +3299,12 @@ function persistSourceJson(c: Context, dbId: string, source: AskSource): void {
   );
 }
 
+// Render the gate's typed decision (from `anon-create-gate.ts`)
+// into a Hono Response. The gate now only enforces the Turnstile
+// bot-floor — the per-device cap (SK-ANON-012) is checked at the
+// top of `/v1/ask`, so it never bubbles up to this helper. Non-anon
+// principals + Turnstile-pass return `null` so the route handler
+// proceeds. Turnstile-fail returns 428 challenge_required.
 function decisionToResponse(
   // Hono's Context is generic over Bindings + Variables — keep this
   // helper agnostic so route handlers with different Variable shapes
