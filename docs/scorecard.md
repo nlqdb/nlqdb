@@ -24,26 +24,24 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. **Run 107 pulled a priority-1 attribution-coverage lever (row #22):** the
-weekly-focus number (channels live *with attributable yield*) can only grow through registries
-(owned by `/reach` #760) + human-norm venues — none `/daily`-sized — so the daily-sized
-priority-1 work is closing coverage holes in the attribution instrument the whole focus depends
-on. Found one: `source_json` was persisted **only** on the `/v1/ask` create arm (`index.ts:869`);
-the BYO `POST /v1/db/connect` path minted DB rows with no source, so a stranger who lands from a
-**developer channel (github/npm — both went live 07-20) and connects their own DB rather than
-ask-creating a demo** was counted `untracked` in every GTM read. That connect-first path is the
-*natural* first action for exactly the two newest live channels, so their yield was systematically
-under-measured. **Fix (`SK-GTM-007` coverage extension):** the web `postConnect` forwards
-`firstTouchSource()`; the connect handler sanitizes (`sanitizeAskSource`, drop-never-400) and
-persists it via the same `source_json IS NULL`-guarded `waitUntil` UPDATE as the create arm.
-Build-before-signal — the read is gated on prod migration 0024 (`blocked-by-human.md`), so when
-the founder runs it, *all* DB-minting paths are attributed, not just create. **Step 0 collision
-map:** open PRs #762 (docs `blocked-by-human` — untouched) + #719 (Infisical draft — founder
-territory, untouched). This run touched `apps/api/src/index.ts` + `apps/web/src/lib/connect{,.test}.ts`
-+ `docs/features/gtm-metrics/FEATURE.md` + `docs/research/distribution-queue.md` + `docs/scorecard.md`
-— **no overlap** with either PR (scorecard regen exempt); no `/reach` R-slice touched. **Rule 6:**
-CI + Security + Deploy API + Canary + Release npm all `success` on `main` head `8917788`
-(30 most-recent main runs, 0 failures; fresh 07-21T01Z); no red-main / stale-deploy lever.
+levers exhausted. **Run 108 pulled a priority-2 UX-flow-quality lever (row #4, the
+first-value surface):** row #22's live count only grows via registries (`/reach` #764) or
+founder venues (neither daily-agent-movable), attribution is owned by open PR #763, and
+per-page CTR is noise at N≤12 impr (row #7 conclusion) — so the daily-sized lever was a real
+create-path render bug. `SampleTable.tsx` (the "did it work?" sample table on both the
+marketing CreateForm and the in-chat `created` reply) keyed each `<tr>` on the joined cell
+values with **no row-index prefix**, so two identical LLM-seeded sample rows (small
+lookup/enum/join tables) produced colliding React keys — a console error + reconciliation
+risk exactly at a developer-stranger's first eval. Its sibling chat result table (`Data.tsx`)
+already guards this with an `idx:`-prefixed key; `SampleTable` had diverged. **Fix:** a pure
+`sampleRowKey(index, cells)` helper in `sample-rows.ts` (position-prefixed, matching
+`Data.tsx`) + 2 unit tests (duplicate rows → distinct keys). **Step 0 collision map:** open
+PRs #763 (`apps/api/src/index.ts`, `apps/web/src/lib/connect.ts` — attribution), #764 +
+#719 (reach/Infisical docs). This run touched only `apps/web/src/components/{SampleTable.tsx,
+sample-rows.ts,sample-rows.test.ts}` + `docs/scorecard.md` — **no overlap** (scorecard regen
+exempt); no `/reach` R-slice touched. **Rule 6:** CI + Security + Release npm all `success`
+on `main` head `9988524`; latest Deploy web/docs/MCP/API + Canary `success` on `bdd8ca9`; no
+red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -51,11 +49,11 @@ CI + Security + Deploy API + Canary + Release npm all `success` on `main` head `
 | 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** (Chrome 41, ChromeMobile 3, MobileSafari 2, Firefox 2, Edge 1) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield (owned by PR #711) |
 | 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run (vague-goal recovery, aborted-reply settle, create-result schema truth, localStorage-blocked create, run-104 first-answer error-copy overflow hint); **run 106** fixed the seeded first-value demo — `SK-HDC-019` pruning dropped sample rows that omit a `SK-HDC-015` auto-generated PK (int/bigint IDENTITY, uuid `gen_random_uuid()`), emptying the demo entirely for uuid-PK schemas though the INSERT would succeed; now kept when the key is absent. Per-run detail in `git log` |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run (vague-goal recovery, aborted-reply settle, create-result schema truth, localStorage-blocked create, run-104 first-answer error-copy overflow hint); **run 106** fixed the seeded first-value demo — `SK-HDC-019` pruning dropped sample rows that omit a `SK-HDC-015` auto-generated PK (int/bigint IDENTITY, uuid `gen_random_uuid()`), emptying the demo entirely for uuid-PK schemas though the INSERT would succeed; now kept when the key is absent. **Run 108** fixed colliding React keys on duplicate seeded sample rows (`SampleTable.tsx` keyed `<tr>` on cell values with no position prefix, unlike its `Data.tsx` sibling). Per-run detail in `git log` |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-21→07-19, fresh 07-21 pull): 1 click / 469 impr / avg pos 16.6** (flat vs 07-20's 472; the 1 click is the homepage, 71 impr / pos 9.3), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). The run-105 app-host redirect fix is a forward metric — the `app.nlqdb.com/blog/…` duplicate still shows 1 impr this window (pre-deploy crawl). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-21→07-19, fresh 07-21 pull): 1 click / 469 impr / avg pos 16.6** (the 1 click is the homepage, 71 impr / pos 9.3), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). **Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar b=36/c=34 p=0.452, `regressions: []`) — the run-90 `SK-QUAL-006` trigger is cleared.** Baseline **re-seeded 0.5462 → 0.5422** (07-19; a flat give-back, not a ratcheted regression, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836) → [29683450778](https://github.com/nlqdb/nlqdb/actions/runs/29683450778) → [29683911778](https://github.com/nlqdb/nlqdb/actions/runs/29683911778); 3 `SK-QUAL-013` windows, `no_sql` 0/135, gold_error 0, exec_error 5). **Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); −5.2 pp vs pre-directive 0.2741, but post-revert `PLAN_DIRECTIVES` is byte-identical to that engine ⇒ free-lane cross-date provider-mix noise, not a regression (McNemar-flat both ways).** p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -97,7 +95,32 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-21 (run 107)** — **Priority-1 attribution-coverage lever (row #22): the BYO connect path is now acquisition-attributable.** Full rationale in the header block above. **Gap:** `source_json` persisted **only** on the `/v1/ask` create arm (`index.ts:869`); `POST /v1/db/connect` minted `databases` rows with no source, so a connect-first signup — the natural first action on the just-live github/npm developer channels — read `untracked` in every `/app/admin` GTM read. **Change (`SK-GTM-007` coverage extension, P5 — mirrors the create arm, no new decision):** web `postConnect` forwards `firstTouchSource()`; the handler sanitizes it (`sanitizeAskSource`, drop-never-400) and persists via the same `source_json IS NULL`-guarded `waitUntil` UPDATE. Replay-safe, never load-bearing. Build-before-signal (read gated on prod migration 0024). **Number moved — row #22 coverage:** before = connect DBs `source_json = NULL` → `untracked`; after = web-connect DBs carry first-touch source (2 new web tests). **Gates:** typecheck 0; lint 0 (touched biome-clean); apps/web **356 pass**; apps/api **985 pass** / 6 skip / 0 fail. **Step-1:** docs-ambiguity **16** (flat); surfaces **105**, drafts **2**; users **9** / strangers **0** (07-16 carried); GSC 28d **1/469/16.6** (fresh 07-21, flat); BIRD 0.542 / Spider 0.2222 (07-19, dark); 30 recent `main` runs `success` on `8917788`. **Artifact:** drafts **2** (< 3) → no forced publish; dev.to drip **posted** `sitemap-advertising-redirects` → https://dev.to/omer_hochman/your-sitemap-is-advertising-redirects-and-your-canonical-tag-points-at-one-2860 (queue line updated; `lobste.rs` left for founder). **KPI (GLOBAL-025):** **onboarding/distribution** — makes the newest live channels' yield measurable; **no KPI degrades** (telemetry-only; connect success/latency, engine, funnel untouched).
+**2026-07-21 (run 108)** — **Priority-2 UX-flow-quality lever (row #4, the first-value surface):
+the create-path sample table no longer emits colliding React keys on duplicate seeded rows.**
+Weekly-focus number (row #22) holds at 4 live/attributable — its live count grows only via the
+not-yet-live registries (`/reach` #764) or founder venues, neither daily-agent-movable;
+attribution coverage is owned by open PR #763; per-page CTR is noise at N≤12 impr (row #7). So
+the daily-sized lever was a real render bug. **Root cause:** `SampleTable.tsx` — the "did it
+work?" sample table on both the marketing CreateForm and the in-chat `created` reply — keyed
+each `<tr>` on the joined cell values (U+200B-separated) with **no row-index prefix**. Small
+lookup/enum/join tables can seed *identical* sample rows, so two duplicates produced the **same**
+React key → console error + reconciliation risk at a developer-stranger's first eval. Its sibling
+chat result table (`Data.tsx`) already guards the exact case with an `idx:`-prefixed key;
+`SampleTable` had silently diverged. **Change (P5):** extracted a pure `sampleRowKey(index,
+cells)` helper into `sample-rows.ts` (position-prefixed, `|`-joined — matching `Data.tsx`) and
+used it for the `<tr>` key. **Number moved — row #4 (first-value render integrity):** before =
+duplicate seeded rows → `sampleRowKey`-equivalent bare key collides (proven: `join(cells)`
+identical across rows); after = position prefix makes them distinct (2 new unit tests in
+`sample-rows.test.ts`: duplicate rows → distinct keys, distinct rows stay distinct). **Gates:**
+typecheck exit 0; touched files biome-clean; web `sample-rows.test.ts` **10 pass**; full
+`bun run test` exit 0 (api **985 pass**). **Step-1:** docs-ambiguity **16** (flat); surfaces
+**105**, queue **2**; users **9** / strangers **0** (07-16 carried); GSC 28d **1/469/16.6** fresh
+07-21 (homepage the sole click, 71 impr / pos 9.3); BIRD 0.542 / Spider 0.2222 (07-19); CI +
+Release `success` on `main` `9988524`, deploys `success` on `bdd8ca9`. **Artifact:** queue **2**
+(< 3) → no publish; dev.to drip skipped (`DEVTO_API_KEY` absent in agent container — posting is
+credential-gated, not throttled); no new draft. **KPI (GLOBAL-025):** **onboarding** — hardens
+the first-value surface; **no KPI degrades** (a render-key fix on the create sample table; no
+API, engine, funnel, or attribution path touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

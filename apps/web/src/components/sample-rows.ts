@@ -35,3 +35,13 @@ export function groupProvisionedTables(
   const bySeed = new Map(seeded.map((g) => [g.table, g.rows]));
   return tables.map((table) => ({ table, rows: bySeed.get(table) ?? [] }));
 }
+
+// React list key for one create-path sample row. The seeded set is
+// LLM-authored with no unique id, and small lookup/enum/join tables can seed
+// duplicate rows — so a key built from the cell values alone collides across
+// identical rows. Prefixing the render position keeps duplicates distinct,
+// matching the chat result table (Data.tsx), which SampleTable had diverged
+// from (a bare value-join key → colliding React keys on duplicate rows).
+export function sampleRowKey(index: number, cells: string[]): string {
+  return `${index}:${cells.join("|")}`;
+}

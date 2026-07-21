@@ -1,4 +1,5 @@
 import { formatCell, prettifyHeader } from "../lib/text";
+import { sampleRowKey } from "./sample-rows";
 
 // Shared sample-row rendering for the create path. Used by both the
 // marketing CreateForm result view and the in-chat `created` reply so a
@@ -36,8 +37,13 @@ export function SampleTable({ table, rows }: { table: string; rows: Record<strin
             </tr>
           </thead>
           <tbody>
-            {visible.map((row) => (
-              <tr key={columns.map((c) => formatCell(row[c])).join("​")}>
+            {visible.map((row, idx) => (
+              <tr
+                key={sampleRowKey(
+                  idx,
+                  columns.map((c) => formatCell(row[c])),
+                )}
+              >
                 {columns.map((c) => (
                   <td key={c}>{formatCell(row[c])}</td>
                 ))}
