@@ -93,12 +93,21 @@ bucket_name = "nlqdb-assets"
 directory = "../web/dist"
 binding = "STATIC_ASSETS"
 not_found_handling = "404-page"
-# Run the Worker before serving assets for the marketing content trees only, so
-# the `SK-WEB-026` front-controller can 301 `/blog|/solve|/vs` on `app.nlqdb.com`
-# to the canonical marketing host (they ship in this build but must not be
-# indexed as duplicates of `nlqdb.com`). Product (`/app/*`), auth (`/auth/*`),
-# and API paths keep the zero-cost asset-first / Hono paths.
-run_worker_first = ["/blog", "/blog/*", "/solve", "/solve/*", "/vs", "/vs/*"]
+# Run the Worker before serving assets for the whole marketing surface, so the
+# `SK-WEB-026` front-controller can 301 it on `app.nlqdb.com` to the canonical
+# marketing host (it ships in this build but must not be indexed as a duplicate
+# of `nlqdb.com`). Kept in lock-step with `MARKETING_MIRROR_PREFIXES`
+# (`marketing-mirror.ts`) — a unit test fails if the two lists drift. Product
+# (`/app/*`), auth (`/auth/*`, `/oauth/*`), the root `/`, and API paths keep the
+# zero-cost asset-first / Hono paths.
+run_worker_first = [
+  "/blog", "/blog/*", "/solve", "/solve/*", "/vs", "/vs/*",
+  "/agents", "/agents/*", "/architecture", "/architecture/*",
+  "/integrations", "/integrations/*", "/manifesto", "/manifesto/*",
+  "/pricing", "/pricing/*", "/privacy", "/privacy/*",
+  "/terms", "/terms/*", "/security", "/security/*",
+  "/llms.txt", "/rss.xml", "/sitemap.xml",
+]
 
 # `custom_domain = true` (vs `pattern + zone_name`) gives the worker
 # exclusive ownership of `app.nlqdb.com` and lets wrangler create the
