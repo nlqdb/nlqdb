@@ -119,8 +119,7 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 
 **Status:** superseded — the three-beat IA on `/` by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) (two-door home), and the quiet-brutalism **token system by [`SK-WEB-020`](./decisions/SK-WEB-020-calm-token-system.md)** (the calm system), site-wide.
 
-**Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md).
-One quiet-brutalism token system in `global.css` (neutrals + one accent gated to three lime moments per fold, three faces, five type steps, two widths, two gaps) and a three-beat homepage IA — WHAT (hero) → HOW (`Demo.astro` live `/v1/ask` + snippet) → WHY (`Replaces.astro` + one CTA). Off-`/` blocks (`AgentMemoryBand`, `AlsoWorksFor`, `ResearchReceipts`, `ManifestoExcerpt`) removed; `/vs/*` and `/solve/*` collapse to one what-we-replace template; one motion moment per page, `prefers-reduced-motion`-gated.
+**Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md) (superseded; see SK-WEB-018 / SK-WEB-020).
 
 ### SK-WEB-016 — One-click MCP install affordance: shared `<McpInstall>` at five venues, deep-link where supported
 
@@ -131,8 +130,7 @@ A shared MCP-install surface (host descriptors in `lib/mcp-install.ts`) renders 
 
 **Status:** superseded in part by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) — the connect-first vertical hero on `/` is replaced by the two-door chooser; SK-WEB-017's `<McpInstall>`-primacy is **absorbed into Door A**.
 
-**Body:** [`decisions/SK-WEB-017-connect-first-hero.md`](./decisions/SK-WEB-017-connect-first-hero.md).
-The home hero leads with the SK-WEB-016 `<McpInstall compact>` row of host buttons ("Connect it to your agent.") as the **primary** affordance; the goal text input (`<CreateForm>`) is retained below it as a quieter secondary ("Or spin one up yourself —") separated by a `--rule` line. The form still posts to `/v1/ask` (SK-ANON-008), still morphs to chat, still requires no sign-in (GLOBAL-007) — only its visual primacy demotes. Supersedes SK-WEB-002's "one input IS the hero" claim in place (no-signup-wall floor + morph-to-chat retained). Closes the gap WS-13 / SK-PIVOT-013 left — the headline strings now match the hero's primary action.
+**Body:** [`decisions/SK-WEB-017-connect-first-hero.md`](./decisions/SK-WEB-017-connect-first-hero.md) (superseded in part; `<McpInstall>`-primacy absorbed into Door A per SK-WEB-018).
 
 ### SK-WEB-018 — Two-door home: agent-memory door + question-your-ClickHouse door
 
@@ -173,6 +171,11 @@ posthog-js lazy-loads on `/app/*` only (`AppAnalytics.astro` + `lib/posthog.ts`)
 
 **Body:** [`decisions/SK-WEB-025-tawk-support-chat-app-only.md`](./decisions/SK-WEB-025-tawk-support-chat-app-only.md).
 The Tawk.to widget (`SupportChat.astro`, official async snippet) mounts beside `<AppAnalytics />` on the four `/app` pages only — marketing/blog/vs/solve stay third-party-free, same posture as `SK-WEB-024` (`GLOBAL-034`). Tawk hosts are denylisted in `lib/boot-fallback.ts#EXTENSION_PREFIXES` (+ the `Base.astro` hand-copy, drift-pinned) so its throws never trip the boot panel or `/v1/errors/web`. Disclosed in `privacy.astro`, `SUPPORT.md`, and `SUBPROCESSORS.md`.
+
+### SK-WEB-026 — Merged app host 301-redirects the marketing content trees to the canonical host
+
+**Body:** [`decisions/SK-WEB-026-app-host-marketing-mirror-301.md`](./decisions/SK-WEB-026-app-host-marketing-mirror-301.md).
+`app.nlqdb.com` serves the same build as `nlqdb.com`, so `/blog`, `/solve`, `/vs` are crawlable duplicates there. GSC indexed the app-host copy despite a correct `rel=canonical`, so a thin front-controller (`marketing-mirror.ts`, `run_worker_first`-scoped in `apps/api/wrangler.toml`) 301s those trees to `nlqdb.com`; product/auth/API and the root stay untouched. Adding a new marketing tree means syncing both `MARKETING_MIRROR_PREFIXES` and `run_worker_first`.
 
 ## GLOBALs governing this feature
 
