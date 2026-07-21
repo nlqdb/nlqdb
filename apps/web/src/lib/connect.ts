@@ -10,6 +10,8 @@
 // helper just shapes the call + normalises the response into a tagged
 // outcome; the error `message` is rendered verbatim as one sentence.
 
+import { firstTouchSource } from "./attribution";
+
 export type ConnectEngine = "clickhouse" | "postgres";
 
 export interface ConnectSuccess {
@@ -36,12 +38,19 @@ const NETWORK_MESSAGE = "Couldn't reach the API — check your connection and tr
 const UNREADABLE_MESSAGE = "Something went wrong connecting your database — try again.";
 
 export async function postConnect(apiBase: string, args: ConnectArgs): Promise<ConnectOutcome> {
-  const body: Record<string, string> = {
+  const body: Record<string, unknown> = {
     engine: args.engine,
     connection_url: args.connectionUrl,
   };
   const trimmedName = args.name?.trim();
   if (trimmedName) body["name"] = trimmedName;
+  // SK-GTM-007 — forward the first-touch acquisition source so a
+  // connect-first signup (common on the developer channels: land from a
+  // github/npm README, connect your own DB, never ask-create a demo) is
+  // attributable, not `untracked`. Telemetry only — the API drops a
+  // malformed value, never fails the connect.
+  const source = firstTouchSource();
+  if (source) body["source"] = source;
 
   let res: Response;
   try {

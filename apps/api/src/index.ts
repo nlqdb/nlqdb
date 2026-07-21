@@ -83,6 +83,7 @@ import {
   parseGoalDbBody,
   parseJsonBody,
   parseRunBody,
+  sanitizeAskSource,
 } from "./http.ts";
 import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
@@ -3009,9 +3010,12 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
     }
     span.setAttribute("nlqdb.user.id", tenantId);
 
-    const raw = await parseJsonBody<{ engine?: unknown; connection_url?: unknown; name?: unknown }>(
-      c,
-    );
+    const raw = await parseJsonBody<{
+      engine?: unknown;
+      connection_url?: unknown;
+      name?: unknown;
+      source?: unknown;
+    }>(c);
     if (!raw.ok) {
       span.setAttribute("nlqdb.db.connect.outcome", "invalid_json");
       span.end();
@@ -3051,6 +3055,10 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
       typeof raw.body.name === "string" && raw.body.name.trim().length > 0
         ? raw.body.name.trim()
         : undefined;
+    // SK-GTM-007 — first-touch acquisition source (telemetry, never
+    // load-bearing). Sanitize-or-drop, same as the create arm; a
+    // malformed value is silently ignored, never a 400.
+    const source = sanitizeAskSource(raw.body.source);
 
     // GLOBAL-005 — Idempotency-Key replay. A prior success stored the
     // minted dbId under this key; return it verbatim so the retry is a
@@ -3107,6 +3115,23 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
       }
       span.setAttribute("nlqdb.db.connect.outcome", "ok");
       span.setAttribute("nlqdb.db.connect.db_id", result.dbId);
+      // SK-GTM-007 — persist the first-touch source on the freshly
+      // connected BYO row, off the response path. Mirrors the create
+      // arm: best-effort, `source_json IS NULL`-guarded (first-touch
+      // only, idempotent-replay-safe), never fails an already-committed
+      // connect. Without this, a stranger who lands from a developer
+      // channel (github/npm) and connects their own DB — rather than
+      // ask-creating a demo — is counted `untracked` in GTM reads.
+      if (source) {
+        c.executionCtx.waitUntil(
+          c.env.DB.prepare(
+            "UPDATE databases SET source_json = ?1 WHERE id = ?2 AND source_json IS NULL",
+          )
+            .bind(JSON.stringify(source), result.dbId)
+            .run()
+            .catch((err) => console.warn("gtm_source_write_failed", String(err))),
+        );
+      }
       if (kvKey) {
         // Store the dbId for 24h so a retry within the client's window
         // dedupes. Fire-and-forget — a KV write failure must not fail an
