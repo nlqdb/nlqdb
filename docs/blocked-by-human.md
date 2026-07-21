@@ -91,6 +91,34 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
     one command `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
   On submit, flip ledger row #8 to **in-flight** and note the `cursor.directory/...` URL.
 
+- **Submit nlqdb to the Anthropic Claude connector directory**
+  (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
+  Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
+  settings**, so it needs a **Team or Enterprise** org (not an individual plan) plus Owner or
+  Directory-management access — a heavier gate than mcp.so/Cursor (any sign-in). Not a registry
+  crawler, so the row-#3 official-registry publish does **not** cascade here. Verified 2026-07-21
+  (`claude.com/docs/connectors/building/submission`). nlqdb already clears the two hard technical
+  gates the reviewer enforces: **OAuth 2.0** (`apps/mcp` runs `@cloudflare/workers-oauth-provider`
+  with dynamic client registration + `/.well-known/*`) and **tool annotations** (every tool in
+  `packages/mcp/src/server.ts` — `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`,
+  `nlqdb_remember`, `nlqdb_connect_database` — carries a `title` + `readOnlyHint`/`destructiveHint`).
+  Open the portal (remote-MCP path) and enter:
+  - **Server URL / transport:** `https://mcp.nlqdb.com/mcp`, streamable HTTP, same URL for every user
+  - **Name (≤100):** `nlqdb — analytical memory for AI agents`
+  - **Tagline (≤55):** `Analytical memory for AI agents. One command.`
+  - **Description (≤2000):** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
+  - **Categories (1–5):** Developer Tools + Data & Analytics
+  - **Documentation URL:** `https://nlqdb.com/agents/?utm_source=claude-dir` (carries the ledger key)
+  - **Privacy policy URL:** `https://nlqdb.com/privacy`
+  - **Support contact:** your support email · **Icon:** the nlqdb mark · **Slug (permanent):** `nlqdb`
+  - **Authentication:** OAuth 2.0 with dynamic client registration (supported out of the box)
+  - **Data handling:** first-party API (nlqdb's own); no health data / no sponsored content
+  - **Test & launch:** give reviewer credentials for a *populated* demo account. Honesty caveat
+    (SK-PIVOT-010): `nlqdb_remember` + `agent_memory_v1` are `MEMORY_PRESET`-gated in prod, so a
+    reviewer can exercise `nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`/`nlqdb_connect_database`
+    end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
+  On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
+
 - **Fire the launch sequence** — the founder-only half of
   [`docs/research/launch-kit.md`](./research/launch-kit.md): pick the angle
   (§2; GLOBAL-036 says lead with analytical agent memory), write the Show
