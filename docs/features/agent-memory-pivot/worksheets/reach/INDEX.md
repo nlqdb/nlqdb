@@ -164,8 +164,11 @@ separate per-venue payload; the founder's single publish covers them.
 - ✅ #3 PulseMCP — **crawl-fed** (ledger row #5): same cascade from #1.
 - ✅ #4 Glama — **crawl-fed** (ledger row #6): same cascade, plus it auto-indexes
   open-source GitHub repos (nlqdb not yet listed, verified 2026-07-20).
-- ⬜ #5 mcp.so — manual submit form (`mcp.so/submit`; not a registry crawler) — next R-05
-  venue · ⬜ #6 Cursor MCP dir · ⬜ #7 Anthropic connector dir · ⬜ #8 `awesome-mcp-servers` (PR).
+- ✅ #5 mcp.so — **account-walled + NOT a crawler** (`mcp.so/submit` needs a GitHub sign-in;
+  Supabase directory `chatmcp/mcpso`, so #1's publish doesn't cascade; verified 2026-07-21),
+  exact form payload parked in [`blocked-by-human.md`](../../../../blocked-by-human.md).
+  Ledger row #7 → `blocked-by-human`.
+- ⬜ #6 Cursor MCP dir — next R-05 venue · ⬜ #7 Anthropic connector dir · ⬜ #8 `awesome-mcp-servers` (PR).
 
 ### R-06 — Coding-agent walker (measurement backbone)
 
@@ -254,15 +257,16 @@ where closed), record cited/not-cited per query in § Current numbers.
   ledger — files exist in-repo but aren't yet externally distributed (npm/
   registries) with attributable yield; the packaged Claude Code skill/plugin +
   distribution are the next R-07 run.
-- Registry/directory listings live: 0 of 8 (**4/8 prepared** — mechanism re-verified
-  2026-07-20, P2). #1 official MCP registry `server.json` parked in `blocked-by-human.md`;
-  #2 Smithery / #3 PulseMCP / #4 Glama are **crawl-fed** — they crawl the official registry
-  (Glama also auto-indexes open-source GitHub repos), so the single #1 publish cascades to
-  all three, no separate payloads (sources: Tallyfy, RoxyAPI 2026). nlqdb not yet on Glama
-  (verified 2026-07-20). Nothing is *live* until the founder runs the parked `mcp-publisher`
-  flow — that one action now covers 4 venues, not 4 separate submissions. Next separate
-  venue: #5 mcp.so (manual `mcp.so/submit` form, not a crawler). Acquisition channels live
-  w/ attributable yield: **4** (ledger: organic search, dev.to, github, npm; registries not yet live).
+- Registry/directory listings live: 0 of 8 (**5/8 prepared** — mechanisms verified
+  2026-07-20/21, P2). #1 official registry `server.json` parked; #2 Smithery / #3 PulseMCP /
+  #4 Glama are **crawl-fed** (crawl the official registry), so the single #1 publish cascades
+  to all three, no separate payloads. #5 mcp.so is **account-walled and NOT a crawler** —
+  a Supabase directory (`chatmcp/mcpso`) fed by its own `mcp.so/submit` form (GitHub sign-in;
+  anon fetch → 403; per-server giscus Discussion is comments-only, verified 2026-07-21), so
+  #1 doesn't cascade — its form payload is parked too. All in `blocked-by-human.md`. Nothing
+  *live* until the founder acts: #1's publish
+  covers 4 venues (#1–#4), #5's form submit covers 1. Next separate venue: #6 Cursor.
+  Acquisition channels live w/ attributable yield: **4** (organic search, dev.to, github, npm).
 - Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete):
   #2 best-way-to-store ✅, #5 build-vs-buy ✅, #10 TTL/expiry ✅, #13 agent-memory-MCP ✅.
   R-03 latest page: `solve/agent-memory-mcp-server` (owns query #13 "agent memory

@@ -59,6 +59,20 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
   from this entry — no separate submissions; just claim/clean-up those listings after.
   Flip ledger rows #4–#6 to in-flight at the same time.
 
+- **Submit nlqdb to mcp.so** (`mcp.so/submit`; reach R-05 venue #5, ledger row #7).
+  Account-walled: the form needs a GitHub sign-in (anonymous fetch → 403), and mcp.so
+  is **not** an official-registry crawler — it's a Next.js + Supabase directory
+  (`chatmcp/mcpso`) whose data comes from this form, so the row-#3 registry publish does
+  **not** cascade here (per-server pages auto-open a giscus GitHub Discussion for
+  *comments*, which is not the submission path). Verified 2026-07-21. Sign in, open
+  `mcp.so/submit`, and enter:
+  - **GitHub URL:** `https://github.com/nlqdb/nlqdb` (the form auto-fetches name/README)
+  - **Name / title:** `nlqdb — analytical memory for AI agents`
+  - **Website:** `https://nlqdb.com/agents/?utm_source=mcpso` (carries the ledger key)
+  - **Description:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
+  - **Connect / config (if asked):** `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
+  On submit, flip ledger row #7 to **in-flight** and note the `mcp.so/server/...` URL.
+
 - **Fire the launch sequence** — the founder-only half of
   [`docs/research/launch-kit.md`](./research/launch-kit.md): pick the angle
   (§2; GLOBAL-036 says lead with analytical agent memory), write the Show
