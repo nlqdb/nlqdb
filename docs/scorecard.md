@@ -24,25 +24,25 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. **Run 109 pulled a priority-1 distribution-yield lever (row #7):** the
-weekly-focus live count (row #22, 4) grows only via registries (`/reach`) or founder venues
-(neither daily-agent-movable); web attribution is complete (create + connect + all pages
-capture); CLI/MCP surface-attribution would contradict `SK-GTM-007`'s "which channel *brought*
-them" semantics (P1, left alone); every live-channel URL's utm tag re-verified clean
-(npm/github/dev.to); and GSC snippet/page work isn't same-run-measurable (Google lag). So the
-one clean same-run-measurable acquisition lever was **completing run-105's app-host
-de-duplication (`SK-WEB-026`)**: fresh GSC + curl showed `app.nlqdb.com` still 200-serving the
-marketing **singles** (`/agents` GSC pos 7.3, `/architecture` pos 12.3, `/pricing`, `/manifesto`)
-and the SEO **aggregators** (`/sitemap.xml`, `/rss.xml`, `/llms.txt`) — run 105 covered only the
-`/blog|/solve|/vs` trees, excluding singles as "a far smaller duplicate surface." `rel=canonical`
-demonstrably didn't stop Google (run 105's own finding), so those duplicates split authority and
-suppress the canonical host's impression breadth — the row #7 bottleneck. **Fix (P3 supersede of
-`SK-WEB-026`):** extend `MARKETING_MIRROR_PREFIXES` + `run_worker_first` to the whole marketing
-surface (301 → canonical), plus a `marketing-mirror.test.ts` guard that parses the toml and fails
-if the two lists drift — eliminating the very list-sync burden that motivated the trees-only
-scope, so the surface can be complete instead of partial. **Step 0:** only open PR #719
-(Infisical docs) — no overlap; this run touched `apps/api/src/{marketing-mirror.ts,
-marketing-mirror.test.ts}` + `apps/api/wrangler.toml` + the `SK-WEB-026` doc + `docs/scorecard.md`.
+levers exhausted. **Run 110 pulled a priority-1 acquisition lever (row #22, attribution
+coverage — the weekly-focus lane):** row #22's live *count* only grows via registries
+(`/reach` #767) or founder venues (neither daily-agent-movable), so per step-2 the daily
+priority-1 work is closing attribution-coverage holes in the already-live channels
+(SK-GTM-007, "every published URL carries its ledger `utm_source`"). Run 101 tagged only the
+**root** README's product CTA to `?utm_source=github`; the `examples/` READMEs — the
+developer-eval surface a builder browses on GitHub before signing up — still linked the
+marketing host **bare**. GitHub strips the referrer on external README links (run 101's own
+finding), so those click-throughs land as `direct`, never `github`. **Fix:** tagged the two
+GitHub-rendered example product CTAs (`examples/README.md` → `nlqdb.com/app/`,
+`examples/html/README.md` → `nlqdb.com/`) with `?utm_source=github` (also to their
+non-redirecting `trailingSlash:"always"` form), and added a **source-derived guard**
+(`readme-attribution-integrity.test.ts`) that fails if any GitHub-rendered README product CTA
+to the bare marketing host lacks `utm_source=github` — converting three piecemeal utm fixes
+(#750, #753, this run) into a closed rule. **Step 0:** sibling daily/reach PRs #766 (run 109,
+row #7) and #767 (reach R-05) merged ahead of this; only #719 (Infisical draft) remains open.
+This run touched only `examples/{README.md,html/README.md}` +
+`apps/web/src/data/readme-attribution-integrity.test.ts` + `docs/scorecard.md` — **no overlap**
+(scorecard regen exempt); no `/reach` R-slice touched.
 **Rule 6:** CI + Security + Release npm + Deploy web/API + Canary all `success` on `main` head
 `ad57543`; no red-main / stale-deploy lever.
 
@@ -52,7 +52,7 @@ marketing-mirror.test.ts}` + `apps/api/wrangler.toml` + the `SK-WEB-026` doc + `
 | 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield |
 | 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run (vague-goal recovery, aborted-reply settle, create-result schema truth, localStorage-blocked create, first-answer error-copy overflow hint, seeded-demo PK pruning, duplicate-row React keys). Per-run detail in `git log` |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run (vague-goal recovery, aborted-reply settle, create-result schema truth, localStorage-blocked create, first-answer error-copy overflow, seeded-demo PK pruning, duplicate-row React keys); per-run detail in `git log` |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -63,7 +63,7 @@ marketing-mirror.test.ts}` + `apps/api/wrangler.toml` + the `SK-WEB-026` doc + `
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). **Deploy health (07-20 run 103):** CI + Security + Deploy web/docs/MCP/API + Release npm all `success` on `main` head `a833cf4`; Canary `success` on `a833cf4`; no red-main / stale-deploy lever |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). Deploy health tracked in the Rule-6 line above (all `success` on `main` `ad57543`) |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
@@ -77,7 +77,7 @@ marketing-mirror.test.ts}` + `apps/api/wrangler.toml` + the `SK-WEB-026` doc + `
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-62 branch dispatch [29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660) against prod, exit 0: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). The run-59 "morph-to-chat gap" is **decided, not a gap** (anon terminus IS the sign-in redirect; SK-WEB-002 chat is post-sign-in) | target 9/9 + both FLOW-005 ✅ **met**. Per-step JSON artifact proxy-gated from the agent container |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
-| 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** (07-20 run 103: **dev.to's `live` was really a partial — now genuinely attributable.** The syndication read-through link carried no key, so dev.to→nlqdb.com visits fell back to the `ref: dev.to` referrer (readers/RSS/webviews strip it); tagging the link `…/blog/<slug>/?utm_source=devto` (API `canonical_url` stays clean for SEO) makes them `utm_source`-attributable via `captureFirstTouch`. Now **all 4 live channels** (organic search + dev.to + npm + GitHub) satisfy rule 1's utm-key requirement — the summary's "every published channel's yield is attributable" is finally true. MCP registries 0/8 live — official registry payload parked → `blocked-by-human` (#751)). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; `dbsWithSource` accrues from next deploy (needs prod migration 0024, see `blocked-by-human.md`). **Run 107 closed the connect-path coverage hole:** `source_json` now persists on `POST /v1/db/connect` too (was `/v1/ask` create-arm only), so a connect-first signup — the natural first action on the just-live github/npm developer channels — is attributable, not `untracked` | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated. Further live-count growth now comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
+| 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** (07-20 run 103: **dev.to's `live` was really a partial — now genuinely attributable.** The syndication read-through link carried no key, so dev.to→nlqdb.com visits fell back to the `ref: dev.to` referrer (readers/RSS/webviews strip it); tagging the link `…/blog/<slug>/?utm_source=devto` (API `canonical_url` stays clean for SEO) makes them `utm_source`-attributable via `captureFirstTouch`. Now **all 4 live channels** (organic search + dev.to + npm + GitHub) satisfy rule 1's utm-key requirement — the summary's "every published channel's yield is attributable" is finally true. MCP registries 0/8 live — official registry payload parked → `blocked-by-human` (#751)). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; `dbsWithSource` accrues from next deploy (needs prod migration 0024, see `blocked-by-human.md`). **Run 107 closed the connect-path coverage hole:** `source_json` now persists on `POST /v1/db/connect` too (was `/v1/ask` create-arm only), so a connect-first signup — the natural first action on the just-live github/npm developer channels — is attributable, not `untracked`. **Run 110 closed the github-channel README hole:** run 101 tagged only the *root* README's CTA, but the `examples/` READMEs (the GitHub dev-eval surface) still linked the marketing host bare → GitHub strips the referrer → those clicks landed as `direct`, not `github`; both example product CTAs now carry `?utm_source=github`, guarded by `readme-attribution-integrity.test.ts` (source-derived, fails on any untagged GitHub-rendered README CTA) | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated. Further live-count growth now comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -98,39 +98,35 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-21 (run 108)** — **Priority-2 UX-flow-quality lever (row #4, the first-value surface):
-the create-path sample table no longer emits colliding React keys on duplicate seeded rows.**
-Weekly-focus number (row #22) holds at 4 live/attributable — its live count grows only via the
-not-yet-live registries (`/reach` #764) or founder venues, neither daily-agent-movable;
-attribution coverage is owned by open PR #763; per-page CTR is noise at N≤12 impr (row #7). So
-the daily-sized lever was a real render bug. **Root cause:** `SampleTable.tsx` — the "did it
-work?" sample table on both the marketing CreateForm and the in-chat `created` reply — keyed
-each `<tr>` on the joined cell values (U+200B-separated) with **no row-index prefix**. Small
-lookup/enum/join tables can seed *identical* sample rows, so two duplicates produced the **same**
-**2026-07-21 (run 109)** — **Priority-1 distribution-yield lever (row #7): the merged app host
-now 301-de-duplicates its WHOLE marketing surface to the canonical host, not just the content
-trees.** Chosen after the acquisition lane's other agent-movable inputs were re-confirmed
-exhausted this run: row #22's live count grows only via registries (`/reach`) or founder venues;
-web attribution is complete; CLI/MCP surface-attribution would contradict `SK-GTM-007` (P1, left
-alone); live-channel utm tags all clean; GSC snippet work isn't same-run-measurable. **Root
-cause:** `app.nlqdb.com` serves the same build as `nlqdb.com` (`SK-AUTH-016`); run 105
-(`SK-WEB-026`) 301'd only `/blog|/solve|/vs`, excluding marketing singles + never considering the
-SEO aggregators. Curl + GSC proved the gap: `/agents/` (GSC pos 7.3), `/architecture/` (pos 12.3),
-`/pricing/`, `/manifesto/`, `/sitemap.xml`, `/rss.xml`, `/llms.txt` all still **200** — and
-`rel=canonical` doesn't dedupe them (run 105's own finding). **Change (P3 supersede of
-`SK-WEB-026`):** extended `MARKETING_MIRROR_PREFIXES` + `run_worker_first` to the full surface
-(trees + 8 singles + 3 aggregators), all 301 → canonical, + a `marketing-mirror.test.ts` guard
-that fails if the two lists drift — so the surface can be complete instead of the trees-only
-scope the sync burden forced. **Number moved — row #7:** before = 11 marketing paths **200** on
-the app host (curl 07-21); after = all 301 → canonical (11 unit tests + sync guard;
-live-verifiable post-deploy, run-105 method). **Gates:** typecheck 0; biome-clean;
-`marketing-mirror.test.ts` **11 pass**; full `bun run test` exit 0 (api **988 pass**). **Step-1:**
-docs-ambiguity 16; surfaces 105, queue 2; users 9 / strangers 0 (07-16); GSC 28d 1/469/16.6 fresh
-07-21; BIRD 0.542 / Spider 0.2222 (07-19); CI + Release + Deploy web/API + Canary `success` on
-`main` `ad57543`. **Artifact:** queue 2 (<3) → no publish; dev.to drip skipped (key absent); no
-draft (queue at D4 cap). **KPI (GLOBAL-025):** **distribution** — consolidates SEO authority on
-the canonical host (row #7 impression-breadth bottleneck); **no KPI degrades** (product/auth/API/
-root untouched — proven by test + `custom_domain` ownership).
+**2026-07-21 (run 110)** — **Priority-1 acquisition lever (row #22, attribution coverage — the
+weekly-focus lane): the GitHub-channel README hole is closed — `examples/` product CTAs are now
+`utm_source`-attributable, not `direct`.** Row #22's live *count* grows only via not-yet-live
+registries (`/reach` #767) or founder venues (neither daily-agent-movable), so per step-2 the
+daily priority-1 work is attribution-coverage (SK-GTM-007). **Root cause:** run 101 (#753) tagged
+only the **root** README's product CTA to `?utm_source=github`; the `examples/` READMEs — the
+surface a developer browses on GitHub while evaluating nlqdb — still linked the marketing host
+**bare**. GitHub strips the referrer on external README links (run 101's own finding), so those
+click-throughs hit `captureFirstTouch` with no utm and no referrer → recorded as `direct`, never
+`github`. **Change (P5):** tagged the two GitHub-rendered example product CTAs —
+`examples/README.md` (`nlqdb.com/app/`) and `examples/html/README.md` (`nlqdb.com/`) — with
+`?utm_source=github` in their non-redirecting form (`/install` `curl | sh` bare URLs are not
+click surfaces, left). Added `readme-attribution-integrity.test.ts` — a **source-derived** guard
+(repo-root + `examples/**` README links to the bare marketing host must carry `utm_source=github`;
+legal `/privacy` `/terms` exempt) turning three piecemeal utm fixes (#750, #753, this) into a
+closed rule. **Number moved — row #22 (attribution
+coverage):** before = 2 GitHub-rendered example product CTAs untagged → clicks land as `direct`
+(proven: bare host, GitHub strips referrer); after = both `utm_source=github`, negative-tested
+(reverting one link fails the guard, naming `examples/html/README.md:9`). **Gates:** `bun install`
+then typecheck **exit 0 workspace-wide**; touched files biome-clean; web suite **359 pass / 0
+fail** (incl. the new guard); lint exit 0 (pre-existing warnings only). **Step-1:** docs-ambiguity
+**16** (carried); surfaces **105**, queue **2**; users **9** / strangers **0** (07-16 carried);
+GSC 28d **1/469/16.6** (fresh 07-21, homepage sole click); BIRD 0.542 / Spider 0.2222 (07-19,
+dark); CI + Security + Release npm + Deploy web/API + Canary all `success` on `main` `ad57543`.
+**Artifact:** queue **2** (< 3) → no publish; dev.to drip skipped (`DEVTO_API_KEY` absent — posting
+is credential-gated, not throttled); no new draft. **KPI (GLOBAL-025):** **onboarding** (the
+acquisition/attribution pillar — makes the GitHub developer channel's yield readable on
+`/app/admin`); **no KPI degrades** (docs + a test only; no API, engine, funnel, or UX path
+touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
