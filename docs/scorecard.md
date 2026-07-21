@@ -24,24 +24,20 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. **Run 103 pulled the weekly-focus number (row #22)** via priority-1
-acquisition — the daily-sized work *around* `/reach`'s registry R-slices, per step 2. The
-ledger listed dev.to as `live` but its footnote admitted "yield untagged until canonical
-links carry the key": the syndication script's read-through link (`*Originally published
-at nlqdb.com/blog*`) pointed at the clean canonical, so a dev.to→nlqdb.com click was
-captured only as the **flaky `ref: dev.to` referrer** (readers, RSS clients, and app
-webviews routinely strip it) — never the `utm_source=devto` key rule 1 mandates for every
-published URL. So dev.to's "live" status was actually a **partial**, and the ledger
-summary's "every published channel's yield is attributable" was contradicted by its own
-row 2. Tagged the read-through link `…/blog/<slug>/?utm_source=devto` while keeping the
-API `canonical_url` clean for SEO ⇒ **row #22: all 4 live channels now genuinely
-`utm_source`-attributable (the dev.to partial is closed); count holds 4, integrity
-gap resolved.** **Step 0 collision map:** only open PR is #719 (Infisical draft — founder
-territory, untouched). This run touched `scripts/syndicate-devto.ts` +
-`docs/research/acquisition-channels.md` + `docs/scorecard.md` — **no overlap** (scorecard
-regen exempt); dev.to is `/daily`-owned (step 3), not a `/reach` R-slice. **Rule 6:** CI +
-Security + Deploy web/docs/MCP/API + Release npm all `success` on `main` head `a833cf4`
-(fresh 07-20T12:52Z); Canary `success` on `a833cf4`; no red-main / stale-deploy lever.
+levers exhausted. **Run 106 pulled a priority-2 UX-flow lever (row #4):** the create→
+first-answer funnel silently emptied the stranger's seeded demo for auto-PK schemas —
+`SK-HDC-019` pruning dropped sample rows that omit a `SK-HDC-015` auto-generated PK
+(int/bigint IDENTITY, uuid `gen_random_uuid()`) as `not_null_violation`, though the INSERT
+would succeed; entirely empty for uuid PKs. Mechanism + fix in **Last change** below.
+**Step 0 collision map:** open PRs #759 (self-labeled run 105, row #7 — `apps/api/src/
+{index,marketing-mirror}.ts` + web-app docs), #760 (reach R-05, row #22 — acquisition
+ledger + reach INDEX + `blocked-by-human.md`), #719 (Infisical draft — founder). This run
+touched only `apps/api/src/db-create/sample-rows.{ts,test.ts}` +
+`hosted-db-create/decisions/SK-HDC-019…md` + `docs/scorecard.md` — **no overlap** (scorecard
+regen exempt); row #7 + row #22 daily levers are taken, so per step 2 priority order the
+pullable lever is priority-2 UX-flow. **Rule 6:** CI + Security + Deploy web/docs/MCP/API +
+Release npm all `success` on `main` head `7808cd4` (07-20T18:26Z); Canary `success`; no
+red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -49,7 +45,7 @@ Security + Deploy web/docs/MCP/API + Release npm all `success` on `main` head `a
 | 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** (Chrome 41, ChromeMobile 3, MobileSafari 2, Firefox 2, Edge 1) | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield (owned by PR #711) |
 | 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run (vague-goal recovery, aborted-reply settle, create-result schema truth, localStorage-blocked create); **run 104** fixed the first-answer *error* copy — `schema_mismatch` listed only the first 5 tables with no overflow hint, so a stranger with a >5-table DB read the shown subset as the complete schema and abandoned a valid query; now appends `(+N more)`. Per-run detail in `git log` |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run (vague-goal recovery, aborted-reply settle, create-result schema truth, localStorage-blocked create, run-104 first-answer error-copy overflow hint); **run 106** fixed the seeded first-value demo — `SK-HDC-019` pruning dropped sample rows that omit a `SK-HDC-015` auto-generated PK (int/bigint IDENTITY, uuid `gen_random_uuid()`), emptying the demo entirely for uuid-PK schemas though the INSERT would succeed; now kept when the key is absent. Per-run detail in `git log` |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** (`link-checker-cant-see-your-javascript` [newest], `guard-advertised-capabilities-against-code`) — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -95,33 +91,38 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-20 (run 104)** — **Priority-2 UX-flow lever (row #4): the stranger's first-answer
-*error* copy no longer presents a truncated table list as the whole schema.** Weekly-focus
-number (row #22) was pulled by run 103 (#756, now merged — closed the dev.to attribution
-partial); no agent-movable priority-1 acquisition lever was open at run time (reach #757 held
-`tools/stranger-test/**`). No other
-agent-movable acquisition/distribution lever is open (registries R-05/R-04 = `/reach`+human; the
-one winnable GSC query is reach R-03). Engine lanes dark + fresh (07-19). Defect-hunt over the
-`/v1/ask` failure path found a genuine drift: `messageFor`'s `schema_mismatch` branch built
-`(schemaTables ?? []).slice(0, 5)` with **no overflow indicator** — the API sends the full table
-list, so on a DB with >5 tables a stranger who referenced a missing table saw `This database has:
-a, b, c, d, e.` and reasonably read that as the *complete* schema, abandoning a valid query (or
-needlessly recreating the DB). Same "never under-claim" class as run 102. **Change (P5 — extract
-+ fix):** pulled the untested `messageFor` out of the 1198-line `ChatPanel.tsx` into a pure
-`chat/error-message.ts` (matching sibling helpers `data-rows.ts`/`reply-settle.ts`) and appended
-` (+N more)` when the shown list is capped; API/pre-flight logic untouched. **Number moved —
-row #4:** guard-the-guard confirmed — the regression test (`schemaTables` of 7) fails against the
-old slice-only string, passes now; web **347 → 354 pass** (+7: overflow-indicator regression,
-single/multi missing wording, no-overflow, exec-catch empty-array fallback, generic fallback,
-code mappings). No new doc (D5 — copy fix under SK-WEB-005). **Gates:** typecheck exit 0; lint
-exit 0; touched files biome-clean; astro check **0/0**; web **354**, api **974**, full `bun run
-test` exit 0. **Step-1:** docs-ambiguity **16** (flat); surfaces **105**, queue **2**; users
-**9** / strangers **0** (07-16 carried); GSC 28d **1/472/16.6** fresh 07-20; BIRD 0.542 / Spider
-0.2222 (07-19); CI + all deploys `success` on `main` `a833cf4`. **Artifact:** queue **2** (< 3) →
-no publish; dev.to drip **throttled** (run 103 posted today, <20h); no new draft (queue at 20 KB
-D4 cap). **KPI (GLOBAL-025):** **onboarding + UX** — a stranger's recovery copy is now honest
-about the schema; **no KPI degrades** (client copy + one pure-helper extraction; no engine/API/
-funnel logic touched).
+**2026-07-20 (run 106)** — **Priority-2 UX-flow lever (row #4): the create→first-answer
+funnel no longer silently empties a stranger's seeded demo for auto-PK schemas.** Row #7 (the
+priority-1 distribution lever) and row #22 (weekly-focus acquisition) are both taken by open
+PRs #759 and #760; per step 2's priority order the pullable daily-sized lever is priority-2
+UX-flow. Defect-hunt over the `apps/api/src/db-create/**` create pipeline found a genuine
+contradiction between two decisions: `SK-HDC-019`'s `pruneUninsertableSampleRows` drops seed
+rows it can *prove* won't insert and promises it "never [drops] a row that might insert" —
+but its NOT-NULL check computed `hasDefault` from the LLM-authored `col.default` only, so it
+never modelled `SK-HDC-015`'s compiler-injected auto-generator (`GENERATED BY DEFAULT AS
+IDENTITY` for a single-column `integer`/`bigint` PK, `DEFAULT gen_random_uuid()` for `uuid`).
+LLM sample rows normally *omit* the auto-PK, and `neon-provision.ts` names only the provided
+columns in the INSERT, so those inserts succeed — yet pruning dropped every such row as
+`not_null_violation`. For a `uuid` PK (LLMs never author raw UUIDs) it empties the seed
+**entirely** → the create response returns 0 sample rows and the stranger sees "Provisioned
+with 0 sample rows" on a DB that would have seeded fine. Code wrong / decision right (§10.2):
+the fix aligns pruning with `SK-HDC-015`. **Change (P5 — narrow):** in the NOT-NULL loop,
+treat a single-column int/bigint/uuid PK with no plan default as defaulted **only when the
+key is absent** from the row (an explicit null still drops — an IDENTITY column rejects it);
+kept the SK-HDC-019 soundness-contract doc in sync. **Number moved — row #4:** guard-the-guard
+confirmed — the two new omit-auto-PK tests (integer + uuid) **fail** against the pre-fix source
+(2 failed on stash), **pass** after; api **974 → 977 pass** (+3: integer-omit, uuid-omit,
+text-PK narrowness guard; existing explicit-`id: null` drop still passes). No new decision
+(D5 — bug fix inferable from SK-HDC-015 + code). **Gates:** typecheck exit 0; lint exit 0;
+touched files biome-clean; api **977**, full `bun run test` exit 0 (983 total, 6 skipped).
+**Step-1:** docs-ambiguity **16** (flat); surfaces **105**, queue **2**; users **9** /
+strangers **0** (07-16 carried); GSC 28d **1/472/16.6** (07-20); BIRD 0.542 / Spider 0.2222
+(07-19); CI + all deploys `success` on `main` `7808cd4`. **Artifact:** queue **2** (< 3) →
+no publish; dev.to drip **throttled** (last post <24h ago); no new draft (queue at 20 KB
+D4 cap). **KPI (GLOBAL-025):** **onboarding** — the seeded first-value demo (the first-10-queries
+KPI's on-ramp) now survives the whole auto-PK schema class; **no KPI degrades** (pruning only
+ever *kept more* provably-insertable rows; the happy path and every other drop reason are
+byte-unchanged; no engine/funnel/API-contract logic touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
