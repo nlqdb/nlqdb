@@ -69,6 +69,19 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
   attributable; apply the migrations bullet above first. nlqdb has never
   launched anywhere; this is the highest-yield untaken acquisition action.
 
+- **Decide the toolchain path to unblock the Astro 6→7 security upgrade**
+  (fixes moderate/low XSS `GHSA-f48w-9m4c-m7f5` / `GHSA-4g3v-8h47-v7g6` /
+  `GHSA-7pw4-f3q4-r2p2` on the marketing + docs sites). The dep+code migration
+  is otherwise done and green, but Astro 7 hard-requires `cookie@2` (renamed
+  `parseCookie` API) while better-auth / express / sveltekit / nuxt need
+  `cookie@0.7.x` (held above `GHSA-pxg6-pf52-xh8x` by the root global
+  override), and bun 1.3.11 supports neither scoped overrides
+  ([oven-sh/bun#6608](https://github.com/oven-sh/bun/issues/6608)) nor correct
+  isolated-install linking here. Pick one: migrate the cookie consumers off
+  `parse`/`serialize`, switch bun linker mode / package manager, or bump bun
+  and re-verify. Until then the 3 Astro advisories stay on `main`
+  (agent-verified 2026-07-21).
+
 ## Suggestions needing approval (to amend the guidelines)
 
 _None open._
