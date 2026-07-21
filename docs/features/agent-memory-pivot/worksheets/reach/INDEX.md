@@ -149,32 +149,20 @@ framing) + the one command. Account-walled venues → payload to
 `blocked-by-human.md` (hard rule 4). Re-verify each venue's current
 submission mechanism by web search first (P2).
 **Done when:** per venue: listed (URL) or payload parked — tick per venue.
-**Mechanism re-verified 2026-07-20 (P2):** the canonical 2026 path is **publish once to
-the official MCP registry → the crawling directories ingest it automatically** (sources:
-Tallyfy "how-to-list-mcp-server-registry"; RoxyAPI "MCP Registries in 2026"). So the #1
-parked `server.json` **is** the submission artifact for every crawl-fed venue — no
-separate per-venue payload; the founder's single publish covers them.
-- ✅ #1 official MCP registry (`registry.modelcontextprotocol.io`) — **account-walled**
-  (`mcp-publisher` needs interactive GitHub OAuth or a domain-verify secret), exact
-  ready-to-run payload parked in [`blocked-by-human.md`](../../../../blocked-by-human.md)
-  (remote `server.json` + `mcp-publisher login/publish` flow; mechanism web-verified
-  2026-07-20). Ledger row #3 → `blocked-by-human`.
-- ✅ #2 Smithery — **crawl-fed** (ledger row #4): auto-ingests once #1 publishes; claim/
-  clean-up the listing after, no separate submission.
-- ✅ #3 PulseMCP — **crawl-fed** (ledger row #5): same cascade from #1.
-- ✅ #4 Glama — **crawl-fed** (ledger row #6): same cascade, plus it auto-indexes
-  open-source GitHub repos (nlqdb not yet listed, verified 2026-07-20).
-- ✅ #5 mcp.so — **account-walled + NOT a crawler** (`mcp.so/submit` needs a GitHub sign-in;
-  Supabase directory `chatmcp/mcpso`, so #1's publish doesn't cascade; verified 2026-07-21),
-  exact form payload parked in [`blocked-by-human.md`](../../../../blocked-by-human.md).
-  Ledger row #7 → `blocked-by-human`.
-- ✅ #6 Cursor MCP dir — **account-walled** (official in-product marketplace is curated with no
-  self-serve path; the community `cursor.directory` — the venue Cursor's own docs point to —
-  takes submissions only via a GitHub/Google-signed-in web form, and `cursor/community-plugins`
-  states "no pull requests needed for data", so no agent PR path; not a registry crawler, so #1
-  doesn't cascade; verified 2026-07-21), exact form payload parked in
-  [`blocked-by-human.md`](../../../../blocked-by-human.md). Ledger row #8 → `blocked-by-human`.
-- ⬜ #7 Anthropic connector dir — next R-05 venue · ⬜ #8 `awesome-mcp-servers` (PR).
+**Mechanism re-verified 2026-07-20/21 (P2):** the canonical 2026 path is **publish once to
+the official MCP registry → the crawling directories ingest it automatically**. Full per-venue
+mechanism + exact payloads live canonically in the ledger
+[`acquisition-channels.md`](../../../../research/acquisition-channels.md) and
+[`blocked-by-human.md`](../../../../blocked-by-human.md); summary only here.
+- ✅ #1 official MCP registry (`registry.modelcontextprotocol.io`) — account-walled (`mcp-publisher`
+  needs GitHub OAuth or a domain-verify secret); `server.json` + publish flow parked. This one publish
+  **cascades** to the crawl-fed ✅ #2 Smithery / ✅ #3 PulseMCP / ✅ #4 Glama (they crawl the registry —
+  no separate submission; claim listings after). Ledger rows #3–#6.
+- ✅ #5 mcp.so · ✅ #6 Cursor (`cursor.directory`) · ✅ #7 Anthropic connector dir — each account-walled
+  and **not** a registry crawler (so #1 doesn't cascade), exact per-venue payloads parked; ledger rows
+  #7/#8/#9. #7 is additionally **plan-gated** (Team/Enterprise Claude org), though nlqdb already clears
+  its reviewer gates — OAuth 2.0 (`apps/mcp`) + tool annotations (`packages/mcp/src/server.ts`).
+- ⬜ #8 `awesome-mcp-servers` (PR).
 
 ### R-06 — Coding-agent walker (measurement backbone)
 
@@ -260,13 +248,15 @@ where closed), record cited/not-cited per query in § Current numbers.
   ledger — files exist in-repo but aren't yet externally distributed (npm/
   registries) with attributable yield; the packaged Claude Code skill/plugin +
   distribution are the next R-07 run.
-- Registry/directory listings live: 0 of 8 (**6/8 prepared** — per-venue mechanism
+- Registry/directory listings live: 0 of 8 (**7/8 prepared** — per-venue mechanism
   detail in the R-05 slice above; all verified 2026-07-20/21, P2). #1 official registry
   `server.json` parked, and that one publish cascades to the crawl-fed #2 Smithery / #3
-  PulseMCP / #4 Glama (no separate payloads). #5 mcp.so + #6 Cursor are account-walled,
-  non-crawling web forms — no agent path, exact payloads parked in `blocked-by-human.md`.
-  Nothing *live* until the founder acts: #1's publish covers #1–#4, #5's + #6's form submits
-  cover 1 each. Next separate venue: #7 Anthropic connector dir.
+  PulseMCP / #4 Glama (no separate payloads). #5 mcp.so + #6 Cursor + #7 Anthropic connector
+  dir are account-walled, non-crawling venues — no agent path, exact payloads parked in
+  `blocked-by-human.md` (#7 is additionally plan-gated: its portal needs a Team/Enterprise
+  Claude org, though nlqdb already clears the reviewer's OAuth-2.0 + tool-annotation gates).
+  Nothing *live* until the founder acts: #1's publish covers #1–#4, #5's/#6's/#7's submits
+  cover 1 each. Next separate venue: #8 `awesome-mcp-servers` PR.
   Acquisition channels live w/ attributable yield: **4** (organic search, dev.to, github, npm).
 - Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete; page-shape detail
   in the R-03 slice above) — #2 `solve/best-way-to-store-agent-memory`, #5
@@ -293,7 +283,7 @@ Tick on merge.
 - [x] R-02 — build-vs-buy honesty surface (competitor rows + solve page)
 - [x] R-03 — stage-0 solve pages (all top-5 unowned filled: #2 best-way-to-store + #5 build-vs-buy + #10 TTL/expiry + #13 agent-memory-MCP)
 - [ ] R-04 — canonical machine-followable setup guide
-- [ ] R-05 — registry sweep (6/8 venues resolved: #1 official registry parked; #2 Smithery / #3 PulseMCP / #4 Glama crawl-fed from #1's parked payload — one publish cascades; #5 mcp.so + #6 Cursor form payloads parked in blocked-by-human; remaining: #7 Anthropic connector dir, #8 awesome-mcp-servers PR)
+- [ ] R-05 — registry sweep (7/8 venues resolved: #1 official registry parked; #2 Smithery / #3 PulseMCP / #4 Glama crawl-fed from #1's parked payload — one publish cascades; #5 mcp.so + #6 Cursor + #7 Anthropic connector-dir payloads parked in blocked-by-human; remaining: #8 awesome-mcp-servers PR)
 - [x] R-06 — coding-agent walker + baseline (walker + grader + fixture merged; baseline 0/1 surfaced — cold agent recommended pgvector, never nlqdb; re-run via `bash scripts/reach-agent-walk.sh` in `/reach` step 1)
 - [ ] R-07 — droppable in-repo artifacts (3/4 host artifacts live + drift-tested: AGENTS.md snippet + Cursor rules + Codex block; Claude Code skill/plugin + npm/registry distribution remain)
 - [ ] R-08 — answer-engine citation baseline
