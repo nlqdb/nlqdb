@@ -16,16 +16,16 @@ when-to-load:
 # Feature: GTM Metrics
 
 **One-liner:** Canonical GTM/PMF metric set — admin-gated live metrics endpoint, daily snapshots, and the `/app/admin` founder dashboard.
-**Status:** implemented (2026-07-19 — endpoint + snapshots + dashboard v1; `SK-GTM-005` unique-people counts, `SK-GTM-007` attribution, `SK-GTM-006` Sean-Ellis survey; external sources out of scope — see Open questions)
-**Owners (code):** `apps/api/src/admin/**`, `apps/api/src/synthetic-ua.ts`, `apps/api/src/pmf-survey.ts`, `apps/api/migrations/00{22_gtm_snapshots,23_synthetic_traffic_flag,24_databases_source,25_pmf_survey}.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/lib/pmf-survey.ts`, `apps/web/src/components/chat/PmfSurveyCard.tsx`
+**Status:** implemented (2026-07-19 — endpoint + snapshots + dashboard v1; `SK-GTM-005`/`-006`/`-007` unique-people counts / Sean-Ellis survey / attribution; external sources out of scope — see Open questions)
+**Owners (code):** `apps/api/src/admin/**`, `apps/api/src/synthetic-ua.ts`, `apps/api/src/pmf-survey.ts`, `apps/api/migrations/0022_gtm_snapshots…0025_pmf_survey.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/lib/pmf-survey.ts`, `apps/web/src/components/chat/PmfSurveyCard.tsx`
 
-**Contribution to north-star:** Onboarding — the funnel/activation/retention numbers ARE the onboarding pillar's measurement (per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)), now continuous instead of hand-pulled; acquisition measurement is first-class per [`GLOBAL-038`](../../decisions/GLOBAL-038-gtm-pmf-instrumentation.md). No other pillar degrades: admin-only D1 reads, off every product surface's request path.
+**Contribution to north-star:** Onboarding — the funnel/activation/retention numbers ARE the onboarding pillar's measurement ([`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)), now continuous; acquisition measurement is first-class ([`GLOBAL-038`](../../decisions/GLOBAL-038-gtm-pmf-instrumentation.md)). No pillar degrades: admin-only D1 reads, off every product request path.
 
-**Cross-refs:** [`GLOBAL-038`](../../decisions/GLOBAL-038-gtm-pmf-instrumentation.md) · `docs/scorecard.md` funnel rows #1–#5 · [`onboarding`](../onboarding/FEATURE.md) (`SK-ONBOARD-006` counters) · [`anonymous-mode`](../anonymous-mode/FEATURE.md) · [`events-pipeline`](../events-pipeline/FEATURE.md) (PostHog)
+**Cross-refs:** `docs/scorecard.md` funnel rows #1–#5 · [`onboarding`](../onboarding/FEATURE.md) (`SK-ONBOARD-006` counters) · [`anonymous-mode`](../anonymous-mode/FEATURE.md) · [`events-pipeline`](../events-pipeline/FEATURE.md) (PostHog)
 
 ## Touchpoints — read this feature before editing
 
-Paths: see **Owners (code)** above. Non-obvious: `apps/web/src/lib/attribution.ts` captures the SK-GTM-007 first touch, persisted via `/v1/ask`.
+Non-obvious path: `apps/web/src/lib/attribution.ts` captures the SK-GTM-007 first touch, persisted via `/v1/ask`.
 
 ## Decisions
 
@@ -91,7 +91,7 @@ Paths: see **Owners (code)** above. Non-obvious: `apps/web/src/lib/attribution.t
   - Client-side gate only — the page is a static asset; anyone reads the
     JS.
 
-### SK-GTM-003 — Daily `gtm_snapshots` rows make progress observable; written by cron AND on authorized reads
+### SK-GTM-003 — Daily `gtm_snapshots` rows make progress observable; written by cron + on-read
 
 - **Decision:** Migration `0022_gtm_snapshots.sql` adds `gtm_snapshots
   (day TEXT PRIMARY KEY, metrics_json TEXT, created_at)`. A headline
@@ -192,7 +192,7 @@ Paths: see **Owners (code)** above. Non-obvious: `apps/web/src/lib/attribution.t
   - Backfilling the pre-0023 backlog — no reliable key exists; the sweep
     resolves it within 90 days for free.
 
-### SK-GTM-007 — First-touch attribution: one localStorage slot, persisted on the created DB row; channel keys canonical in the acquisition ledger
+### SK-GTM-007 — First-touch attribution: one localStorage slot, persisted on the created DB row
 
 - **Decision:** Acquisition attribution is **first-party and first-touch**.
   The web layout (`Base.astro`) calls `captureFirstTouch()`
@@ -305,6 +305,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 
 ## Open questions / known unknowns
 
-- **External sources on the dashboard (CF Web Analytics visits, GSC clicks/impressions)** — Parked until the D1 dashboard proves daily use. Both need operator tokens (`CF_ANALYTICS_TOKEN`, GSC service account) in the Worker; v1 names the gap honestly rather than proxying half-configured sources.
-- **Loop integration** — the `/daily` funnel pull can switch from remote-D1 SQL to `GET /v1/admin/metrics` (founder session or a read token TBD); decide when a loop prompt next touches those rows.
-- **Adoption-rate denominator understates the true anon-DB base** — `adoptionRate` = `adopted / (live anon DBs + adopted)`. Adoption re-tenants off `anon:%` and the sweep (`SK-ANON-002`) deletes abandoned anon DBs, so neither is in the live-anon count and the rate slightly overstates. Exact all-time share needs an append-only anon-DB-created counter; parked until anon volume makes the gap material.
+- **External sources (CF Web Analytics visits, GSC clicks/impressions)** — Parked until the D1 dashboard proves daily use; both need operator tokens (`CF_ANALYTICS_TOKEN`, GSC service account) in the Worker, so v1 names the gap rather than proxy half-configured sources.
+- **Loop integration — Resolved (`GLOBAL-033`).** `GET /v1/admin/metrics` is the canonical read (`gtm-metrics.ts` forbids re-derived SQL in loop prompts), but it is `requireSession` + `isAdminEmail`-gated (`SK-GTM-002`) with no token path — so an agent-run `/daily` can't call it without a new admin-token auth surface, which GLOBAL-033 says not to build on spec: remote-D1 is a working equivalent whose row-#2 exclusion list mirrors `INTERNAL_EMAIL_SQL` (no drift). **Parked until** a founder automation needs the endpoint.
+- **Adoption-rate denominator understates the true anon-DB base** — `adoptionRate = adopted / (live anon DBs + adopted)`, but the `SK-ANON-002` sweep deletes abandoned anon DBs and adoption re-tenants off `anon:%`, so the rate slightly overstates. Exact share needs an append-only anon-created counter; parked until anon volume makes the gap material.
