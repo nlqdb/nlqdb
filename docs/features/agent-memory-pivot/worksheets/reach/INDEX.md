@@ -162,7 +162,10 @@ mechanism + exact payloads live canonically in the ledger
   and **not** a registry crawler (so #1 doesn't cascade), exact per-venue payloads parked; ledger rows
   #7/#8/#9. #7 is additionally **plan-gated** (Team/Enterprise Claude org), though nlqdb already clears
   its reviewer gates — OAuth 2.0 (`apps/mcp`) + tool annotations (`packages/mcp/src/server.ts`).
-- ⬜ #8 `awesome-mcp-servers` (PR).
+- ✅ #8 `awesome-mcp-servers` (`punkpeye/awesome-mcp-servers`) — exact PR payload + mechanism
+  (verified 2026-07-21, `CONTRIBUTING.md`; entry → `## 🧠 Knowledge & Memory` per SK-PIVOT-003)
+  parked in [`blocked-by-human.md`](../../../../blocked-by-human.md) (ledger row #10). Plain
+  GitHub PR, out of this session's `nlqdb/nlqdb` scope; links the repo, no utm-taggable URL.
 
 ### R-06 — Coding-agent walker (measurement backbone)
 
@@ -248,15 +251,17 @@ where closed), record cited/not-cited per query in § Current numbers.
   ledger — files exist in-repo but aren't yet externally distributed (npm/
   registries) with attributable yield; the packaged Claude Code skill/plugin +
   distribution are the next R-07 run.
-- Registry/directory listings live: 0 of 8 (**7/8 prepared** — per-venue mechanism
-  detail in the R-05 slice above; all verified 2026-07-20/21, P2). #1 official registry
-  `server.json` parked, and that one publish cascades to the crawl-fed #2 Smithery / #3
-  PulseMCP / #4 Glama (no separate payloads). #5 mcp.so + #6 Cursor + #7 Anthropic connector
-  dir are account-walled, non-crawling venues — no agent path, exact payloads parked in
-  `blocked-by-human.md` (#7 is additionally plan-gated: its portal needs a Team/Enterprise
-  Claude org, though nlqdb already clears the reviewer's OAuth-2.0 + tool-annotation gates).
-  Nothing *live* until the founder acts: #1's publish covers #1–#4, #5's/#6's/#7's submits
-  cover 1 each. Next separate venue: #8 `awesome-mcp-servers` PR.
+- Registry/directory listings live: 0 of 8 (**8/8 prepared — R-05 sweep complete this run**;
+  per-venue mechanism detail in the R-05 slice above; all verified 2026-07-20/21, P2). #1
+  official registry `server.json` parked, and that one publish cascades to the crawl-fed #2
+  Smithery / #3 PulseMCP / #4 Glama (no separate payloads). #5 mcp.so + #6 Cursor + #7
+  Anthropic connector dir + #8 `awesome-mcp-servers` PR are non-crawling venues with exact
+  payloads parked in `blocked-by-human.md` — #5/#6/#7 account-walled (#7 additionally
+  plan-gated: Team/Enterprise Claude org; nlqdb already clears the reviewer's technical
+  gates), #8 a plain GitHub PR but out of this session's `nlqdb/nlqdb` scope.
+  Nothing *live* until the founder acts: #1's publish covers #1–#4, #5/#6/#7/#8's submits
+  cover 1 each. #8 links the GitHub repo (not a utm-taggable `nlqdb.com` URL), so it can
+  never be "live with attributable yield" — it feeds `github`/organic refs.
   Acquisition channels live w/ attributable yield: **4** (organic search, dev.to, github, npm).
 - Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete; page-shape detail
   in the R-03 slice above) — #2 `solve/best-way-to-store-agent-memory`, #5
@@ -283,7 +288,7 @@ Tick on merge.
 - [x] R-02 — build-vs-buy honesty surface (competitor rows + solve page)
 - [x] R-03 — stage-0 solve pages (all top-5 unowned filled: #2 best-way-to-store + #5 build-vs-buy + #10 TTL/expiry + #13 agent-memory-MCP)
 - [ ] R-04 — canonical machine-followable setup guide
-- [ ] R-05 — registry sweep (7/8 venues resolved: #1 official registry parked; #2 Smithery / #3 PulseMCP / #4 Glama crawl-fed from #1's parked payload — one publish cascades; #5 mcp.so + #6 Cursor + #7 Anthropic connector-dir payloads parked in blocked-by-human; remaining: #8 awesome-mcp-servers PR)
+- [x] R-05 — registry sweep (8/8 venues resolved: #1 official registry parked → cascades to crawl-fed #2 Smithery / #3 PulseMCP / #4 Glama; #5 mcp.so + #6 Cursor + #7 Anthropic connector-dir + #8 awesome-mcp-servers PR payloads parked in blocked-by-human. Nothing live yet — all account-walled or out of an autonomous run's scope; founder submits)
 - [x] R-06 — coding-agent walker + baseline (walker + grader + fixture merged; baseline 0/1 surfaced — cold agent recommended pgvector, never nlqdb; re-run via `bash scripts/reach-agent-walk.sh` in `/reach` step 1)
 - [ ] R-07 — droppable in-repo artifacts (3/4 host artifacts live + drift-tested: AGENTS.md snippet + Cursor rules + Codex block; Claude Code skill/plugin + npm/registry distribution remain)
 - [ ] R-08 — answer-engine citation baseline

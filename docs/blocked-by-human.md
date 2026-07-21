@@ -119,6 +119,30 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
     end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
   On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
+- **Open the `awesome-mcp-servers` listing PR** (`punkpeye/awesome-mcp-servers`;
+  reach R-05 venue #8, ledger row #10). A plain GitHub PR — but this `/reach`
+  session is scoped to `nlqdb/nlqdb` only and can't fork/PR an external repo, so
+  it's parked for the founder or a scope-unrestricted session. Mechanism verified
+  2026-07-21 (`CONTRIBUTING.md`): follow the README's existing format, keep
+  alphabetical order within the category, one server per line; automated-agent PRs
+  can prefix the title with `🤖🤖🤖` for the maintainer's fast-track merge.
+  1. Fork `github.com/punkpeye/awesome-mcp-servers`, edit `README.md`.
+  2. Under the `## 🧠 Knowledge & Memory` heading (memory-first per SK-PIVOT-003;
+     not `🗄️ Databases`), insert **in alphabetical position** (by `nlqdb`) this line:
+     ```
+     - [nlqdb/nlqdb](https://github.com/nlqdb/nlqdb) 📇 ☁️ - Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.
+     ```
+     Markers: 📇 TypeScript codebase · ☁️ hosted cloud service (remote MCP at
+     `mcp.nlqdb.com/mcp`). No 🎖️ (not an official MCP-protocol-team server). The
+     Glama score badge is auto-added by Glama's bot later — omit it.
+  3. PR title: `🤖🤖🤖 Add nlqdb (analytical memory for AI agents) to Knowledge & Memory`
+     (drop the `🤖🤖🤖` if a human submits by hand).
+  Honesty caveat: the entry links to the **GitHub repo** (list convention), not a
+  utm-taggable `nlqdb.com` URL, so this venue can't carry the `awesome-mcp` key —
+  its yield rolls into the `github`/organic refs (discovery/SEO), and it never
+  becomes "live with attributable yield" on its own. Alt list if rejected:
+  `wong2/awesome-mcp-servers`. On merge, flip ledger row #10 → in-flight.
+
 - **Fire the launch sequence** — the founder-only half of
   [`docs/research/launch-kit.md`](./research/launch-kit.md): pick the angle
   (§2; GLOBAL-036 says lead with analytical agent memory), write the Show
