@@ -71,4 +71,4 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Per-post OG images** — same deferral as the `/vs` + `/solve` per-slug OG open question (single generator when it lands); posts inherit the site default card today.
+- **Per-post OG images** — **Parked until** the shared per-slug OG-card generator lands (canonical decision + trigger in [`comparison-pages/FEATURE.md`](../comparison-pages/FEATURE.md): ≥ 5 AEO pages shipped + a Cloudflare Pages OG endpoint up — one generator serves `/vs`, `/solve`, and `/blog`). Posts inherit the site default card today; no per-feature decision to make here.
