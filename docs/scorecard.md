@@ -24,27 +24,23 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. **Run 110 pulled a priority-1 acquisition lever (row #22, attribution
-coverage — the weekly-focus lane):** row #22's live *count* only grows via registries
-(`/reach` #767) or founder venues (neither daily-agent-movable), so per step-2 the daily
-priority-1 work is closing attribution-coverage holes in the already-live channels
-(SK-GTM-007, "every published URL carries its ledger `utm_source`"). Run 101 tagged only the
-**root** README's product CTA to `?utm_source=github`; the `examples/` READMEs — the
-developer-eval surface a builder browses on GitHub before signing up — still linked the
-marketing host **bare**. GitHub strips the referrer on external README links (run 101's own
-finding), so those click-throughs land as `direct`, never `github`. **Fix:** tagged the two
-GitHub-rendered example product CTAs (`examples/README.md` → `nlqdb.com/app/`,
-`examples/html/README.md` → `nlqdb.com/`) with `?utm_source=github` (also to their
-non-redirecting `trailingSlash:"always"` form), and added a **source-derived guard**
-(`readme-attribution-integrity.test.ts`) that fails if any GitHub-rendered README product CTA
-to the bare marketing host lacks `utm_source=github` — converting three piecemeal utm fixes
-(#750, #753, this run) into a closed rule. **Step 0:** sibling daily/reach PRs #766 (run 109,
-row #7) and #767 (reach R-05) merged ahead of this; only #719 (Infisical draft) remains open.
-This run touched only `examples/{README.md,html/README.md}` +
-`apps/web/src/data/readme-attribution-integrity.test.ts` + `docs/scorecard.md` — **no overlap**
-(scorecard regen exempt); no `/reach` R-slice touched.
-**Rule 6:** CI + Security + Release npm + Deploy web/API + Canary all `success` on `main` head
-`ad57543`; no red-main / stale-deploy lever.
+levers exhausted. **Run 111 is a null run (step-2 provision):** no agent-movable
+acquisition / UX-flow / engine lever cleared the measurement bar this run — busywork
+is worse than a recorded null. Attribution coverage (the weekly-focus daily lane,
+SK-GTM-007) was **verified saturated** (see Last change for the check). Row #22's live
+*count* (4) grows only via MCP registries (`/reach`, founder-blocked) or human-norm venues
+— neither daily-agent-movable.
+The stranger create→ask→first-answer path (`Data`/`Answer`/`error-message`/`ChatPanel`/
+`CopySnippet`/create) is hardened by runs 102–110; no concrete defect found. SEO
+page-strengthening (homepage pos 9.3, `/blog/bird-gold-noise-distinct/` pos 11.1) is not
+in-run re-measurable (GSC lag) and is reach-track (R-03). A README product CTA on the
+low-traffic npm SDK page was weighed and **declined as marginal / monoculture-risk**
+(yield unmeasurable in-run; the reader is already installing the SDK). Per rule 2 the run
+ships only the step-1 scorecard update.
+**Step 0:** only #719 (Infisical draft) open — no file overlap (scorecard regen exempt);
+no `/reach` R-slice touched.
+**Rule 6:** CI + Security + Deploy web/API/docs + Canary all `success` on `main` head
+`c345583` (run 110 merged); no red-main / stale-deploy lever.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -56,7 +52,7 @@ This run touched only `examples/{README.md,html/README.md}` +
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-21→07-19, fresh 07-21 pull): 1 click / 469 impr / avg pos 16.6** (the 1 click is the homepage, 71 impr / pos 9.3), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18). **Run 109:** app-host de-dup (`SK-WEB-026`) now covers the **whole** marketing surface (singles + `/sitemap.xml`/`/rss.xml`/`/llms.txt`), not just `/blog\|/solve\|/vs` — all 301 `app.nlqdb.com`→`nlqdb.com`, drift-guarded (see Last change) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-21→07-19, fresh 07-21 re-pull): 2 clicks / 489 impr / avg pos 16.6** (homepage 71 impr / pos 9.3 = 1 click; **first-ever blog-post click 07-21: `/blog/bird-gold-noise-distinct/` 1 click / 12 impr / pos 11.1** — clicks 1→2, impr 469→489), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18). **Run 109:** app-host de-dup (`SK-WEB-026`) now covers the **whole** marketing surface (singles + `/sitemap.xml`/`/rss.xml`/`/llms.txt`), not just `/blog\|/solve\|/vs` — all 301 `app.nlqdb.com`→`nlqdb.com`, drift-guarded (see Last change) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) — run-90 `SK-QUAL-006` trigger cleared. Baseline re-seeded 0.5462 → 0.5422 (07-19, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 `SK-QUAL-013` windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); post-revert engine is byte-identical ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -98,34 +94,32 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-21 (run 110)** — **Priority-1 acquisition lever (row #22, attribution coverage — the
-weekly-focus lane): the GitHub-channel README hole is closed — `examples/` product CTAs are now
-`utm_source`-attributable, not `direct`.** Row #22's live *count* grows only via not-yet-live
-registries (`/reach` #767) or founder venues (neither daily-agent-movable), so per step-2 the
-daily priority-1 work is attribution-coverage (SK-GTM-007). **Root cause:** run 101 (#753) tagged
-only the **root** README's product CTA to `?utm_source=github`; the `examples/` READMEs — the
-surface a developer browses on GitHub while evaluating nlqdb — still linked the marketing host
-**bare**. GitHub strips the referrer on external README links (run 101's own finding), so those
-click-throughs hit `captureFirstTouch` with no utm and no referrer → recorded as `direct`, never
-`github`. **Change (P5):** tagged the two GitHub-rendered example product CTAs —
-`examples/README.md` (`nlqdb.com/app/`) and `examples/html/README.md` (`nlqdb.com/`) — with
-`?utm_source=github` in their non-redirecting form (`/install` `curl | sh` bare URLs are not
-click surfaces, left). Added `readme-attribution-integrity.test.ts` — a **source-derived** guard
-(repo-root + `examples/**` README links to the bare marketing host must carry `utm_source=github`;
-legal `/privacy` `/terms` exempt) turning three piecemeal utm fixes (#750, #753, this) into a
-closed rule. **Number moved — row #22 (attribution
-coverage):** before = 2 GitHub-rendered example product CTAs untagged → clicks land as `direct`
-(proven: bare host, GitHub strips referrer); after = both `utm_source=github`, negative-tested
-(reverting one link fails the guard, naming `examples/html/README.md:9`). **Gates:** `bun install`
-then typecheck **exit 0 workspace-wide**; touched files biome-clean; web suite **359 pass / 0
-fail** (incl. the new guard); lint exit 0 (pre-existing warnings only). **Step-1:** docs-ambiguity
-**16** (carried); surfaces **105**, queue **2**; users **9** / strangers **0** (07-16 carried);
-GSC 28d **1/469/16.6** (fresh 07-21, homepage sole click); BIRD 0.542 / Spider 0.2222 (07-19,
-dark); CI + Security + Release npm + Deploy web/API + Canary all `success` on `main` `ad57543`.
-**Artifact:** queue **2** (< 3) → no publish; dev.to drip skipped (`DEVTO_API_KEY` absent — posting
-is credential-gated, not throttled); no new draft. **KPI (GLOBAL-025):** **onboarding** (the
-acquisition/attribution pillar — makes the GitHub developer channel's yield readable on
-`/app/admin`); **no KPI degrades** (docs + a test only; no API, engine, funnel, or UX path
+**2026-07-21 (run 111)** — **Null run (step-2 provision): no agent-movable acquisition /
+UX-flow / engine lever cleared the measurement bar; ships only the step-1 scorecard update.**
+Finding: the weekly-focus daily lane (attribution coverage, SK-GTM-007) is **saturated** —
+first-touch capture runs on every on-site entry page (all pages use `Base.astro`; legal
+exempt), and every published README click-surface is already tagged: the two npm packages
+(`@nlqdb/sdk`, `@nlqdb/cli`) carry `homepage=https://nlqdb.com/?utm_source=npm` and neither
+README **body** contains a bare marketing-host click link (the SDK README has no product link;
+the CLI README's only nlqdb.com URL is the `curl | sh` installer, not a click surface); GitHub
+READMEs were closed run 110. Row #22's live *count* (4) grows only via MCP registries (`/reach`,
+founder-blocked) or human-norm venues — not daily-agent-movable. The stranger
+create→ask→first-answer path (`Data`/`Answer`/`error-message`/`ChatPanel`/`CopySnippet`/create)
+is hardened by runs 102–110 — no concrete defect found. SEO strengthening of the pages GSC shows
+losing winnable clicks (homepage pos 9.3; `/blog/bird-gold-noise-distinct/` pos 11.1) is not
+in-run re-measurable (GSC lag) and is reach-track (R-03). A README product CTA on the low-traffic
+npm SDK page was weighed and **declined as marginal / monoculture-risk** (yield unmeasurable
+in-run; the reader is already installing the SDK). **Positive signal recorded (step-1
+measurement, not this run's doing):** GSC 28d clicks **1 → 2**, impr **469 → 489** —
+`/blog/bird-gold-noise-distinct/` earned the **first-ever click on a blog post** (12 impr / pos
+11.1); previously only the homepage had ever been clicked (row #7). **Step-1 (carried where not
+re-pulled):** docs-ambiguity **16**; surfaces **105**, queue **2**; users **9** / strangers
+**0** (07-16); BIRD 0.542 / Spider 0.2222 (07-19, dark); CI + Security + Deploy web/API/docs +
+Canary all `success` on `main` `c345583`. **Step 0:** only #719 (Infisical draft) open — no file
+overlap (scorecard regen exempt). **Artifact:** null run skips step 3; queue **2** (< 3) → no
+publish; dev.to drip skipped (`DEVTO_API_KEY` absent). **Gates:** docs-only change — `bun run
+typecheck && lint && test` unaffected (CI green on `main` `c345583`). **KPI (GLOBAL-025):** none
+moved (null run); **none degraded** (scorecard-only edit; no API, engine, funnel, or UX path
 touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
