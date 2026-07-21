@@ -159,14 +159,11 @@ separate per-venue payload; the founder's single publish covers them.
   ready-to-run payload parked in [`blocked-by-human.md`](../../../../blocked-by-human.md)
   (remote `server.json` + `mcp-publisher login/publish` flow; mechanism web-verified
   2026-07-20). Ledger row #3 → `blocked-by-human`.
-- ✅ #2 Smithery — **crawl-fed**: Smithery crawls the official registry (verified
-  2026-07-20), so it auto-ingests once #1 publishes; no separate submission (claim/
-  clean-up after). Ledger row #4 → crawl-fed.
-- ✅ #3 PulseMCP — **crawl-fed**: indexes the ecosystem + registry; auto-ingests from
-  #1. Ledger row #5 → crawl-fed.
-- ✅ #4 Glama — **crawl-fed**: auto-indexes open-source GitHub repos **and** crawls the
-  registry (nlqdb not yet listed, verified 2026-07-20); auto-ingests from #1. Ledger row
-  #6 → crawl-fed.
+- ✅ #2 Smithery — **crawl-fed** (ledger row #4): auto-ingests once #1 publishes; claim/
+  clean-up the listing after, no separate submission.
+- ✅ #3 PulseMCP — **crawl-fed** (ledger row #5): same cascade from #1.
+- ✅ #4 Glama — **crawl-fed** (ledger row #6): same cascade, plus it auto-indexes
+  open-source GitHub repos (nlqdb not yet listed, verified 2026-07-20).
 - ⬜ #5 mcp.so — manual submit form (`mcp.so/submit`; not a registry crawler) — next R-05
   venue · ⬜ #6 Cursor MCP dir · ⬜ #7 Anthropic connector dir · ⬜ #8 `awesome-mcp-servers` (PR).
 
