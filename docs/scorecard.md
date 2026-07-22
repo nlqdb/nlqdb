@@ -29,15 +29,16 @@ levers exhausted. **Top `blocked-by-human` bullet:** #1 apply pending prod D1 mi
 every attribution write and the GTM/PMF dashboard live; queue depth 10, head-age 3 d is the
 company's real cycle time with real strangers at 0.
 
-**Run 118 is a null run** — no agent-movable lever cleared the step-2 bar (full finding in "Last
-change"): rule 6 clean (main + 8/8 deploys `success` on `3a92d0a`, re-verified — full
-`typecheck`/`lint`/`test` green on `main` `1eee291`), priority-1 acquisition/distribution not
-pullable (4 live channels all attributable — attribution *capture* (`attribution.ts`) and *read*
-(`admin/gtm-metrics.ts`) both re-audited complete this run; new live channels `/reach`- or
-founder-blocked and the ledger itself locked by open reach PR #782), priority-2 walkers 9/9 fresh,
-priority-3 docs de-prioritised. **Step 0:** two open PRs — #782 (reach R-08 answer-engine baseline;
-touches `reach/INDEX.md` + `acquisition-channels.md`) and #719 (draft Infisical research); this run
-avoids both files — its sole write is `scorecard.md` (step-1 exempt).
+**Run 119 is a null run** — no agent-movable lever cleared the step-2 bar (full finding in "Last
+change"): rule 6 clean (main CI `success` on `ebdfc56`; deploys `success` at last code-bearing SHA
+`3a92d0a` — #781/#783/#782 since were docs-only, no deploy trigger; full local
+`typecheck`/`lint`/`test` green on `ebdfc56`, exit 0), priority-1 acquisition/distribution not
+pullable (4 live channels all attributable; new live channels `/reach`- or founder-blocked; GSC's
+one page-1 winnable-click loss is reach R-03 territory and both GSC host anomalies are non-levers —
+detail in "Last change"), priority-2 walkers 9/9 fresh 07-21, priority-3 docs de-prioritised.
+**Step 0:** one open PR — #719 (draft Infisical research; `docs/research/` only); this run avoids it
+— its sole write is `scorecard.md` (step-1 exempt). **Step-1 delta:** fresh 07-22 GSC pull moved
+row #7 (2/483/16.5 → **5/508/16.3**).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -49,7 +50,7 @@ avoids both files — its sole write is `scorecard.md` (step-1 exempt).
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-22→07-20, fresh 07-22 pull): 2 clicks / 483 impr / avg pos 16.5** (clicks: homepage 68 impr / pos 8.2 + `/blog/bird-gold-noise-distinct/` 12 impr / pos 11.1 — a 2nd organic click landed on a blog post this window, up from 1/469 last pull), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18). **Run 109:** app-host de-dup (`SK-WEB-026`) now covers the **whole** marketing surface (singles + `/sitemap.xml`/`/rss.xml`/`/llms.txt`), not just `/blog\|/solve\|/vs` — all 301 `app.nlqdb.com`→`nlqdb.com`, drift-guarded (see Last change) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-22→07-20, fresh 07-22 late pull): 5 clicks / 508 impr / avg pos 16.3** (+3 clicks / +25 impr vs the earlier 07-22 pull; clicks: **`/security/hall-of-fame/` 2 (pos 27, query "hall of fame bug bounty")** + homepage 1 (68 impr / pos 8.2) + `/architecture/` 1 (8 impr / pos 10.9) + `/blog/bird-gold-noise-distinct/` 1 (12 impr / pos 11.1) — click sources broadening beyond the homepage: 4 distinct pages earned a click this window), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18). **Run 109:** app-host de-dup (`SK-WEB-026`) now covers the **whole** marketing surface (singles + `/sitemap.xml`/`/rss.xml`/`/llms.txt`), not just `/blog\|/solve\|/vs` — all 301 `app.nlqdb.com`→`nlqdb.com`, drift-guarded (see Last change) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) — run-90 `SK-QUAL-006` trigger cleared. Baseline re-seeded 0.5462 → 0.5422 (07-19, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 `SK-QUAL-013` windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); post-revert engine is byte-identical ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -91,30 +92,33 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-22 (run 118)** — **Null run: no agent-movable lever cleared the step-2 bar; ships only
-this step-1 scorecard update.** Second null of the day (run 117 was the first); nothing material
-changed since — `main` advanced only via the docs-only scorecard PR #781, deploys unchanged at
-`3a92d0a`. The finding, in the loop's priority order: **(1) Rule 6 clean** — `bun run typecheck &&
-lint && test` all green on `main` `1eee291` (fresh container: `bun install` then full suite, exit 0);
-all 8 JS-bundle deploys `success` on `3a92d0a` (last code-bearing SHA — #781 was docs-only, no deploy
-trigger). **(2) Priority-1 acquisition/distribution — not pullable.** All 4 live channels (organic /
-dev.to / npm / GitHub) are `utm_source`-attributable; this run re-audited **both ends** of the
-instrument and found them complete — capture (`apps/web/src/lib/attribution.ts`: first-touch
-utm→ref→landing, first-write-wins, adoption-surviving) and read (`apps/api/src/admin/gtm-metrics.ts`:
-`utm_source`→`ref`→`direct`, `untracked` for no `source_json`). New live-channel growth is all
-`/reach`- or founder-blocked (MCP-registry cascade gated on the parked `mcp-publisher` publish;
-human-norm venues), and the acquisition ledger is itself locked by open reach PR #782 (step 0). GSC
-unchanged from run 117's fresh 07-22 pull (**2 clicks / 483 impr / pos 16.5**; N≤12 per-page CTR is
-noise). **(3) Priority-2 UX-flow clean** — walkers 9/9 + both FLOW-005 transports fresh 07-21;
-first-10 N=0. **(4) Priority-3 docs de-prioritised** (no external yield, against the weekly
-acquisition focus); a doc-shrink to avoid a null run is the busywork step 2 forbids. **Step-1
-snapshot:** surfaces **105**, distribution queue **2** (< 3, no forced publish); users **9** /
-strangers **0** (07-16 carried); GSC **2/483/16.5** (07-22); BIRD 0.542 / Spider 0.2222 (07-19,
-dark); row #21 walkers 9/9 fresh 07-21; open PRs **2** (#782 reach, 0 d; #719 draft, ~5 d); top
-human-queue bullet #1 D1 migrations, 3 d old. **Artifact:** null run skips step 3 — queue 2 (< 3) so
-no publish regardless; dev.to drip N/A (`DEVTO_API_KEY` absent in agent container; 30 variants pending
-for the CI/founder path). **KPI (GLOBAL-025):** no KPI moved (null run) and **none degrades** —
-measurement-only, no code touched.
+**2026-07-22 (run 119)** — **Null run: no agent-movable lever cleared the step-2 bar; ships only
+this step-1 scorecard update — with a genuine GSC measurement delta.** Third null of the day (117/118
+prior); `main` advanced only via docs-only PRs #781/#783 (scorecard) + #782 (reach R-08), so deploys
+are unchanged at `3a92d0a`. Finding, in loop priority order: **(1) Rule 6 clean** — `main` CI
+`success` on `ebdfc56`; local `bun install` + full `typecheck && lint && test` green on `ebdfc56`,
+exit 0; all 8 JS-bundle deploys `success` at `3a92d0a` (last code-bearing SHA — the three PRs since
+are docs-only, no deploy trigger). **(2) Priority-1 acquisition/distribution — not pullable.** All 4
+live channels (organic / dev.to / npm / GitHub) remain `utm_source`-attributable (both instrument
+ends re-audited complete run 118 — no code changed since). New live-channel growth is all `/reach`-
+or founder-blocked. Fresh GSC surfaced **one** page-1 winnable-click loss — `"top 10 products by
+revenue" metabase` pos 6.8, 0 clicks — but it is reach-track **R-03** solve/vs comparison territory,
+not a daily-sized pull; a per-group top-N solve page already exists (`solve.ts`). The two GSC host
+anomalies are confirmed non-levers this run: `curl` shows `app.nlqdb.com/blog/…` → **301**
+`nlqdb.com/…` (correct; the app-host GSC index row is crawl-lag, not a leak), and
+`http://nlqdb.com/solve/…` returns 200 with no HTTPS upgrade — the founder-blocked Cloudflare "Always
+Use HTTPS" toggle (already logged run 115). **(3) Priority-2 UX-flow clean** — walkers 9/9 + both
+FLOW-005 transports fresh 07-21; first-10 N=0. **(4) Priority-3 docs de-prioritised** (row #17
+re-grepped **14**, unchanged; no external yield). **Step-1 delta:** fresh late-07-22 GSC pull moved
+row #7 **2/483/16.5 → 5/508/16.3** (+3 clicks / +25 impr); `/security/hall-of-fame/` is now the top
+click earner (2 clicks, bug-bounty query), and 4 distinct pages earned a click this window (click
+sources broadening past the homepage). **Step-1 snapshot:** surfaces **105**, distribution queue **2**
+(< 3, no forced publish); users **9** / strangers **0** (07-16 carried); BIRD 0.542 / Spider 0.2222
+(07-19, dark, 3 d fresh); persona-bench 0.9565 (07-09, now 13 d — noisy N=23, not the weekly focus);
+row #21 walkers 9/9 fresh 07-21; open PRs **1** (#719 draft, ~5 d — #782 merged); top human-queue
+bullet #1 D1 migrations, 3 d old. **Artifact:** null run skips step 3 — queue 2 (< 3) so no publish
+regardless; dev.to drip N/A (`DEVTO_API_KEY` absent in agent container). **KPI (GLOBAL-025):** no KPI
+moved (null run) and **none degrades** — measurement-only, no code touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
