@@ -57,7 +57,8 @@ describe("npm homepage acquisition-attribution integrity (SK-GTM-007)", () => {
     const offenders: Record<string, string> = {};
     for (const pkg of published) {
       if (pkg.homepage === EXPECTED_HOMEPAGE) continue;
-      offenders[pkg.name] = `${relative(REPO_ROOT, pkg.file)} → homepage=${pkg.homepage ?? "(missing)"}`;
+      offenders[pkg.name] =
+        `${relative(REPO_ROOT, pkg.file)} → homepage=${pkg.homepage ?? "(missing)"}`;
     }
     expect(offenders).toEqual({});
   });
