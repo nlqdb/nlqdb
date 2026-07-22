@@ -29,16 +29,19 @@ levers exhausted. **Top `blocked-by-human` bullet:** #1 apply pending prod D1 mi
 every attribution write and the GTM/PMF dashboard live; queue depth 10, head-age 3 d is the
 company's real cycle time with real strangers at 0.
 
-**Run 120 is a null run** — no agent-movable lever cleared the step-2 bar (full finding in "Last
-change"): rule 6 clean (CI `success` on `main` `ebdfc56`; deploy-web + 7 other JS-bundle deploys
-`success` on the last code-bearing SHA `3a92d0a`; PRs since — #781/#783/#782 — docs-only, no deploy
-trigger), priority-1 acquisition/distribution not pullable (4 live channels all attributable; fresh
-GSC pull **unchanged** from run 119 at 5 clicks / 508 impr / pos 16.3; new live channels `/reach`- or
-founder-blocked), priority-2 walkers 9/9 fresh 07-21, priority-3 docs de-prioritised. **Step 0:**
-three open PRs — #784 (daily run 119, null; touches only `scorecard.md`, step-1 exempt), #785 (reach
-R-07 `llms.txt`/agent-artifacts; touches `reach/INDEX.md` + `acquisition-channels.md` + `llms.txt`)
-and #719 (draft Infisical research); this run's sole write is `scorecard.md` and touches none of the
-files #785/#719 change.
+**Run 121 is a null run** — no agent-movable lever cleared the step-2 bar (full finding in "Last
+change"): rule 6 clean (CI `success` + deploy-web `success` on the current code-bearing SHA `c46b013`
+= merged reach R-07; the other 8 deploys unchanged since run 120 verified them green — R-07 was the
+only merge since and touched only `apps/web`/docs; local `typecheck`/`lint`/`test` all green this
+session, the initial typecheck red being an incomplete fresh-container install of
+`@cloudflare/workers-types`, fixed by `bun install`, lockfile unchanged — not a code red), priority-1
+acquisition/distribution not pullable (4 live channels all attributable; fresh GSC pull **unchanged**
+from run 120 at 5 clicks / 508 impr / pos 16.3, same 28d window 06-22→07-20; new live channels
+`/reach`- or founder-blocked — 5 parked payloads), priority-2 walkers 9/9 fresh 07-21, priority-3 docs
+not pullable (all 14 open questions are genuine unbuilt-slice / human-gated items — none is a
+research-resolvable stale question, so a park-to-decrement would be counter-gaming against the
+acquisition-focused week). **Step 0:** one open PR — #719 (draft Infisical research; #785/#786 merged
+since run 120); this run's sole write is `scorecard.md`, which #719 does not touch.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -50,7 +53,7 @@ files #785/#719 change.
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-22→07-20, fresh 07-22 pull): 5 clicks / 508 impr / avg pos 16.3** (top click earner `/security/hall-of-fame/` 2 clicks / pos 27; homepage 1 / 68 impr / pos 8.2; `/architecture/` 1 / pos 10.9; `/blog/bird-gold-noise-distinct/` 1 / pos 11.1 — 4 distinct pages earned a click this window, click sources broadening past the homepage), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18). **Run 109:** app-host de-dup (`SK-WEB-026`) now covers the **whole** marketing surface (singles + `/sitemap.xml`/`/rss.xml`/`/llms.txt`), not just `/blog\|/solve\|/vs` — all 301 `app.nlqdb.com`→`nlqdb.com`, drift-guarded (see Last change) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-22→07-20, fresh 07-22 pull): 5 clicks / 508 impr / avg pos 16.3** (top click earner `/security/hall-of-fame/` 2 clicks / pos 27; homepage 1 / 68 impr / pos 8.2; `/architecture/` 1 / pos 10.9; `/blog/bird-gold-noise-distinct/` 1 / pos 11.1 — 4 distinct pages earned a click this window, click sources broadening past the homepage), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18). App-host de-dup (`SK-WEB-026`, run 109) 301s the **whole** marketing surface (singles + `/sitemap.xml`/`/rss.xml`/`/llms.txt`) `app.nlqdb.com`→`nlqdb.com`, drift-guarded | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) — run-90 `SK-QUAL-006` trigger cleared. Baseline re-seeded 0.5462 → 0.5422 (07-19, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 `SK-QUAL-013` windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); post-revert engine is byte-identical ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -92,32 +95,30 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-22 (run 120)** — **Null run: no agent-movable lever cleared the step-2 bar; ships only
-this step-1 scorecard update.** Fourth consecutive null (117/118/119/120); nothing code-bearing has
-merged since run 116's `3a92d0a` — `main` advanced only via docs-only PRs (#781/#783/#782), so the
-lever landscape is unchanged from run 119. The finding, in the loop's priority order: **(1) Rule 6
-clean** — CI `success` on `main` `ebdfc56` ([run 29918973169](https://github.com/nlqdb/nlqdb/actions/runs/29918973169));
-deploy-web `success` on the last code-bearing SHA `3a92d0a` (the 3 PRs since are docs-only → no deploy
-trigger); local full `typecheck`/`lint`/`test` run this session (green). **(2) Priority-1
-acquisition/distribution — not pullable.** All 4 live channels (organic / dev.to / npm / GitHub)
-remain `utm_source`-attributable (both instrument ends verified complete run 118; no code changed
-since). Fresh GSC pull is **unchanged** from run 119: **5 clicks / 508 impr / pos 16.3**; the one
-page-1 winnable-click loss (`"top 10 products by revenue" metabase`, 6 impr / pos 6.8, 0 clicks) is
-reach-track **R-03** solve/vs territory, not a daily-sized pull. The `http://` GSC index row
-(`/solve/count-consecutive-days-streak-in-sql/`, pos 8.5) is the founder-blocked Cloudflare "Always
-Use HTTPS" toggle (logged run 115); the `app.nlqdb.com/blog/…` row is a correct 301 (crawl-lag, run
-119). New live-channel growth is all `/reach`- or founder-blocked, and the R-slices are owned by open
-reach PR #785 (step 0). **(3) Priority-2 UX-flow clean** — walkers 9/9 + both FLOW-005 transports
-fresh 07-21; first-10 N=0. **(4) Priority-3 docs de-prioritised** (row #17 re-grepped **14**,
-unchanged; no external yield, against the weekly acquisition focus); a doc-shrink to avoid a null run
-is the busywork step 2 forbids. **Step-1 snapshot:** surfaces **105**, distribution queue **2** (< 3,
-no forced publish, publishing never justifies a run); users **9** / strangers **0** (07-16 carried);
-GSC **5/508/16.3** (07-22); BIRD 0.542 / Spider 0.2222 (07-19, dark); row #21 walkers 9/9 fresh
-07-21; open PRs **3** (#784 daily-null 0 d; #785 reach 0 d; #719 draft ~5 d); top human-queue bullet
-#1 D1 migrations, 3 d old. **Artifact:** null run skips step 3 — queue 2 (< 3) so no publish
-regardless; dev.to drip N/A (`DEVTO_API_KEY` absent in agent container; variants pending for the
-CI/founder path). **KPI (GLOBAL-025):** no KPI moved (null run) and **none degrades** —
-measurement-only, no code touched.
+**2026-07-22 (run 121)** — **Null run: no agent-movable lever cleared the step-2 bar; ships only
+this step-1 scorecard update.** Fifth consecutive null (117/118/119/120/121); reach R-07 (#785,
+`c46b013`) merged since run 120 but is a distribution/`llms.txt` change owned by `/reach`, so the
+daily lever landscape is unchanged. The finding, in the loop's priority order: **(1) Rule 6 clean** —
+CI `success` **and** deploy-web `success` on the current code-bearing SHA `c46b013` (R-07 touched only
+`apps/web`/docs → deploy-web the only trigger; the other 8 deploys unchanged since run 120 verified
+them green). The session's initial `typecheck` red was a **fresh-container install artifact**
+(`@cloudflare/workers-types` unresolved), not a code red: `bun install` completed the workspace, after
+which `typecheck`/`lint`/`test` are all green and `bun.lock` is unchanged. **(2) Priority-1
+acquisition/distribution — not pullable.** All 4 live channels remain attributable; remaining
+live-count growth is 5 founder-parked payloads (mcp-registry, mcp.so, cursor-dir, claude-dir,
+awesome-mcp) + reach-owned R-slices. Fresh GSC pull is **unchanged** from run 120: **5 clicks / 508
+impr / pos 16.3**, same 28d window (06-22→07-20); the one page-1 winnable-click loss (`"top 10
+products by revenue" metabase`, pos 6.8) is reach-track **R-03**, not a daily pull. **(3) Priority-2
+UX-flow clean** — walkers 9/9 + both FLOW-005 transports fresh 07-21; first-10 N=0. **(4) Priority-3
+docs not pullable** — row #17 **14**, unchanged; all are genuine unbuilt-slice or human-gated items,
+none a stale research-resolvable question, so a park-to-decrement is the counter-gaming step 2 forbids
+and is meta against the acquisition focus. **Step-1 snapshot:** surfaces **105**,
+distribution queue **2** (< 3, no forced publish); users **9** / strangers **0** (07-16 carried); GSC
+**5/508/16.3** (07-22); BIRD 0.542 / Spider 0.2222 (07-19, dark); row #21 walkers 9/9 fresh 07-21;
+open PRs **1** (#719 draft ~5 d) + this run's daily PR; top human-queue bullet #1 D1 migrations, 3 d
+old. **Artifact:** null run skips step 3 — queue 2 (< 3) so no publish regardless; dev.to drip N/A
+(`DEVTO_API_KEY` absent in agent container). **KPI (GLOBAL-025):** no KPI moved (null run) and
+**none degrades** — measurement-only, no code touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
