@@ -96,6 +96,13 @@ export const GET: APIRoute = () => {
     `failure — are at ${DOCS_SITE}/agent-memory/. Auth is a browser OAuth on the first\n` +
     `tool call; no API key to paste. The live memory path is \`nlqdb_query\` (provision +\n` +
     `query in English); the typed \`agent_memory_v1\` preset is coming.\n\n` +
+    `Building this into a repo? Drop a ready-made rules file into the codebase so this\n` +
+    `agent wires and uses nlqdb memory correctly for good — every connect string in them\n` +
+    `is generated from nlqdb's own source of truth, so they never drift:\n\n` +
+    `- Host-neutral \`AGENTS.md\`: append ${SITE}/agent-artifacts/AGENTS.snippet.md\n` +
+    `- Claude Code skill: save ${SITE}/agent-artifacts/nlqdb-memory/SKILL.md to \`.claude/skills/nlqdb-memory/SKILL.md\`\n` +
+    `- Cursor: save ${SITE}/agent-artifacts/nlqdb-memory.mdc to \`.cursor/rules/nlqdb-memory.mdc\`\n` +
+    `- Codex: merge ${SITE}/agent-artifacts/codex-config.toml into \`~/.codex/config.toml\`\n\n` +
     `## Integrate\n\n` +
     `Add nlqdb to an app. Every surface calls the same \`/v1/ask\` engine — pick one;\n` +
     `each snippet is the smallest runnable shape, and the link is the page to read next.\n` +

@@ -19,6 +19,15 @@ describe("llms.txt index", () => {
     expect(body).toContain("(https://nlqdb.com/pricing/)");
   });
 
+  test("surfaces the R-07 drop-in artifacts to coding agents (reach Channel #12)", () => {
+    // llms.txt is a surface coding agents fetch directly, so it must point
+    // them at every ready-to-drop repo artifact, not just the connect command.
+    expect(body).toContain("https://nlqdb.com/agent-artifacts/AGENTS.snippet.md");
+    expect(body).toContain("https://nlqdb.com/agent-artifacts/nlqdb-memory/SKILL.md");
+    expect(body).toContain("https://nlqdb.com/agent-artifacts/nlqdb-memory.mdc");
+    expect(body).toContain("https://nlqdb.com/agent-artifacts/codex-config.toml");
+  });
+
   test("advertises the /blog hub and every published post", async () => {
     const { BLOG_POSTS } = await import("../../data/blog.ts");
     expect(body).toContain("(https://nlqdb.com/blog/)");
