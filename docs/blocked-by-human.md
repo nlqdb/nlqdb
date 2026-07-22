@@ -152,11 +152,6 @@ is the company's real cycle time.
 
 ## Suggestions needing approval (to amend the guidelines)
 
-- **Define an auto-merge tier for daily PRs** so review latency stops
-  serializing the loop: on 2026-07-19 seven PRs stacked unmerged and step 0
-  pushed runs 95–98 into progressively smaller levers because every real
-  lane was "held by an open PR". Proposal: a daily PR auto-merges when the
-  §8 gates are green AND the diff is docs/web-only, small (< ~150 lines),
-  with no migrations and no API/auth/billing paths; everything else keeps
-  waiting for founder review. Would amend `daily.md` §4 — needs your
-  approval since it changes what ships without you.
+(none — the auto-merge-tier proposal was **rejected by the founder
+2026-07-22**: review latency is handled by a separate merger agent, not by
+`/daily` self-merging; recorded in `daily.md` §4. Don't re-propose.)
