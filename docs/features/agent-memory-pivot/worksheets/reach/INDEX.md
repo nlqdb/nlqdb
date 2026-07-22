@@ -220,68 +220,66 @@ every connect string == `mcp-install.ts`, all served-file URLs pinned to the
 **Do:** A low-cost spot-check: for the top-10 R-01 queries, query the
 answer engines that expose an API (skip ToS-hostile scraping; manual pass
 where closed), record cited/not-cited per query in § Current numbers.
-**Done when:** ⬜ first baseline recorded · ⬜ monthly cadence noted in
-`/reach` step 1.
+**Autonomous method (what `/reach` re-runs):** an answer engine can only
+cite what its retrieval surfaces, so the reproducible baseline is *retrieval
+presence* — `WebSearch` each top-10 query, record whether `nlqdb.com` is in
+the grounding set (0 sets ⇒ 0 possible citations). The generative-UI pass
+(answer-engine accounts, "manual pass where closed") is optional founder
+enrichment — it gates nothing, so it is **not** queued in `blocked-by-human.md`.
+**Done when:** ✅ first baseline recorded (2026-07-22: **0/10**; see § Current
+numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
 
 ## Current numbers (maintained by /reach step 1 — overwrite, no changelog)
 
-- Coding-agent walker pass rate (R-06): **0/1 surfaced** (baseline, 2026-07-20) — a cold
-  Claude Code session told to add per-user memory + web-search the best option recommended
-  `pgvector` on the existing Postgres, never surfaced nlqdb; this zero confirms the thesis.
-  Boxes (b) connect + (c) read/write hit SK-PIVOT-010 browser OAuth an autonomous walk can't
-  clear (recorded `blocked_oauth`, never silently failed). Re-run `bash scripts/reach-agent-walk.sh`
-  (grader unit-tested; live half non-deterministic → JSON records, not a gate); not in the
-  `acquisition-health.yml` cron (nested live `claude -p` needs credentials CI lacks). Not re-run
-  this run (baseline stands).
+- Coding-agent walker pass rate (R-06): **0/1 surfaced** (baseline, 2026-07-20) —
+  a cold Claude Code session told to add per-user memory + web-search the best
+  option recommended `pgvector`, never surfaced nlqdb; this zero confirms the
+  thesis. Boxes (b)/(c) hit SK-PIVOT-010 browser OAuth an autonomous walk can't
+  clear (recorded `blocked_oauth`). Re-run `bash scripts/reach-agent-walk.sh`
+  (live half non-deterministic → JSON, not a gate; not in the
+  `acquisition-health.yml` cron). Not re-run this run (baseline stands).
 - Canonical machine-followable setup guide: **live** (R-04, 2 of 3 boxes) —
-  `docs.nlqdb.com/agent-memory/` (numbered steps, per-host command blocks matching
-  `mcp-install.ts`, expected tool list, verification query, failure playbook; honest
-  that `nlqdb_remember` + `agent_memory_v1` are gated so the live path is `nlqdb_query`).
-  Linked from README, `/agents` connect card, and a new llms.txt `## For coding agents`
-  section. Remaining box: the manual cold-agent walk — needs a human to clear Step 2's
-  browser OAuth, which an autonomous `/reach` run (and the R-06 headless walker) can't.
+  `docs.nlqdb.com/agent-memory/` (numbered steps, per-host command blocks from
+  `mcp-install.ts`, tool list, verification query, failure playbook; live path
+  `nlqdb_query`, remember/preset gated). Linked from README, `/agents`, llms.txt
+  `## For coding agents`. Remaining box: the manual cold-agent walk — needs a
+  human to clear Step 2's browser OAuth, which an autonomous run can't.
 - Droppable in-repo artifacts (R-07): **4 of 4 host artifacts live** in
-  `apps/web/public/agent-artifacts/` (served at `nlqdb.com/agent-artifacts/`) —
-  host-neutral `AGENTS.snippet.md`, Claude Code skill `nlqdb-memory/SKILL.md`
-  (canonical `.claude/skills/<name>/SKILL.md` layout, drop the folder in),
-  Cursor `.cursor/rules/nlqdb-memory.mdc`, Codex `config.toml` block, + README.
-  All connect strings are generated from `mcp-install.ts` and pinned by
-  `agent-artifacts.test.ts` (drift test green — now covers the skill too:
-  commands == builders, endpoints on `/mcp`, `nlqdb.com` links carry
-  `utm_source=agent-artifacts`). Honest to the R-04 line: memory via
-  `nlqdb_query`; `nlqdb_remember`/`agent_memory_v1` marked gated. Linked from
-  the R-04 guide. **Channel #12 (`agent-artifacts`) stays untried** in the
-  ledger — files exist in-repo but aren't yet externally distributed (npm/
-  registries) with attributable yield; that external distribution is the
-  remaining R-07 work.
-- Registry/directory listings live: 0 of 8 (**8/8 prepared — R-05 sweep complete this run**;
-  per-venue mechanism detail in the R-05 slice above; all verified 2026-07-20/21, P2). #1
-  official registry `server.json` parked, and that one publish cascades to the crawl-fed #2
-  Smithery / #3 PulseMCP / #4 Glama (no separate payloads). #5 mcp.so + #6 Cursor + #7
-  Anthropic connector dir + #8 `awesome-mcp-servers` PR are non-crawling venues with exact
-  payloads parked in `blocked-by-human.md` — #5/#6/#7 account-walled (#7 additionally
-  plan-gated: Team/Enterprise Claude org; nlqdb already clears the reviewer's technical
-  gates), #8 a plain GitHub PR but out of this session's `nlqdb/nlqdb` scope.
-  Nothing *live* until the founder acts: #1's publish covers #1–#4, #5/#6/#7/#8's submits
-  cover 1 each. #8 links the GitHub repo (not a utm-taggable `nlqdb.com` URL), so it can
-  never be "live with attributable yield" — it feeds `github`/organic refs.
+  `apps/web/public/agent-artifacts/` (AGENTS snippet, Claude Code skill, Cursor
+  rules, Codex block, + README; detail in the R-07 slice/tracker). Connect
+  strings generated from `mcp-install.ts`, drift-tested (`agent-artifacts.test.ts`).
+  **Channel #12 (`agent-artifacts`) stays untried** — files are in-repo but not
+  yet externally distributed (npm/registries) with attributable yield; that is
+  the remaining R-07 work.
+- Registry/directory listings live: **0 of 8** (8/8 prepared; per-venue mechanism
+  in the R-05 slice above, verified 2026-07-20/21, P2). Nothing live until the
+  founder acts: #1 official-registry publish cascades to crawl-fed #2 Smithery /
+  #3 PulseMCP / #4 Glama; #5 mcp.so, #6 Cursor, #7 Anthropic connector dir, #8
+  `awesome-mcp-servers` PR each need their own submit (payloads parked in
+  `blocked-by-human.md`; #8 links the repo, not a utm URL → `github`/organic).
   Acquisition channels live w/ attributable yield: **4** (organic search, dev.to, github, npm).
 - Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete; page-shape detail
   in the R-03 slice above) — #2 `solve/best-way-to-store-agent-memory`, #5
   `solve/build-vs-buy-agent-memory` (+ R-02's two `competitors.md` §4 entries:
   DIY-on-Postgres + Agentic DB/Constructive), #10 `solve/expire-old-agent-memory`,
-  #13 `solve/agent-memory-mcp-server`. All honest that the live path is `nlqdb_query`
-  provisioning + querying while `nlqdb_remember` + `agent_memory_v1` are MEMORY_PRESET-gated
-  (SK-PIVOT-010); auto-in llms.txt + sitemap.
-- GSC intent-query clicks (28d to 2026-07-19, pulled 2026-07-21 via
+  #13 `solve/agent-memory-mcp-server`. Live path `nlqdb_query`; remember/preset
+  gated (SK-PIVOT-010); auto-in llms.txt + sitemap.
+- GSC intent-query clicks (28d, pulled 2026-07-22 via
   `bun scripts/gsc-pull.ts`): **0** — no intent query clears 1 click.
   `/agents` at pos 7.3 with 3 impressions; intent impressions surfacing but
   not clicking: "agent memory benchmark" (2 impr, pos 53), "deep memory
   retrieval benchmark" (1 impr, pos 52), "locomo benchmark ai memory" (1 impr,
-  pos 85), `/blog/agent-memory-benchmarks…` (8 impr, pos 37). Site total
-  1 click / 469 impr, pos 16.6 (the 1 click is the homepage `/`, pos 9.3).
-  This zero is the R-01 baseline, unmoved.
-- Answer-engine citations (top-10): not yet measured (R-08 unbuilt)
+  pos 85), `/blog/agent-memory-benchmarks…` (8 impr, pos 40). Site total
+  2 clicks / 483 impr (homepage `/` pos 8.2, and `/blog/bird-gold-noise-distinct/`
+  pos 11.1 — both non-intent). This intent-zero is the R-01 baseline, unmoved.
+- Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10** — no
+  top-10 R-01 query (6 🔥 + top-4 ● rows) surfaces `nlqdb.com` in the web-search
+  layer that grounds ChatGPT/Claude/Perplexity; the grounding set is owned by
+  mem0/Zep/Letta/Redis/Cognee/Agno/VoltAgent/Memori + pgvector guides. Even
+  "agent memory postgres" and "agent memory MCP server" never return nlqdb, so
+  R-05's parked (not-live) listings can't cite-cascade yet. Third confirming zero
+  alongside R-06 (0/1 walker) + GSC (0 intent clicks): no retrieval ⇒ no citation.
+  **Monthly; next due 2026-08-22.** Generative-UI pass = optional founder enrichment, not queued.
 
 ## Tracker
 
@@ -294,4 +292,4 @@ Tick on merge.
 - [x] R-05 — registry sweep (8/8 venues resolved: #1 official registry parked → cascades to crawl-fed #2 Smithery / #3 PulseMCP / #4 Glama; #5 mcp.so + #6 Cursor + #7 Anthropic connector-dir + #8 awesome-mcp-servers PR payloads parked in blocked-by-human. Nothing live yet — all account-walled or out of an autonomous run's scope; founder submits)
 - [x] R-06 — coding-agent walker + baseline (walker + grader + fixture merged; baseline 0/1 surfaced — cold agent recommended pgvector, never nlqdb; re-run via `bash scripts/reach-agent-walk.sh` in `/reach` step 1)
 - [ ] R-07 — droppable in-repo artifacts (4/4 host artifacts live + drift-tested: AGENTS.md snippet + Claude Code skill + Cursor rules + Codex block; external npm/registry distribution with attributable yield (Channel #12) remains)
-- [ ] R-08 — answer-engine citation baseline
+- [x] R-08 — answer-engine citation baseline (retrieval-layer spot-check: 0/10 top-R-01 queries surface nlqdb; monthly cadence, next 2026-08-22; generative-UI confirmation is optional founder enrichment, gates nothing)
