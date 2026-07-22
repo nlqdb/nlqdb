@@ -20,7 +20,7 @@ stranger cohort will be attributable from day one). This supersedes the
 morning's agentic-frontier focus: premium-chain work (`SK-LLM-017`, row #20)
 is pullable only when no acquisition lever is. **Row #15 stays
 founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
-(SambaNova, `_e2e-opencheck.yml`), the top `blocked-by-human.md` bullet.
+(SambaNova, `_e2e-opencheck.yml`), the oldest `blocked-by-human.md` bullet (ranked #8).
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
