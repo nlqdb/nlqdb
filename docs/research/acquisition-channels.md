@@ -32,10 +32,10 @@ surface counts (row #6) never answered.
 |---|---------|------------------------|--------|-------|--------------------|
 | 1 | Organic search (Google/Bing) — 105 `/vs`+`/solve`+`/blog` surfaces | ref `google.com` / `bing.com` (+ GSC) | **live** — 28d: 2 clicks / 483 impr (07-22 pull) | `/daily` + `/reach` R-03 | grow impression breadth; win the page-1 queries GSC already shows |
 | 2 | dev.to syndication (1/day drip, `SK-BLOG-003`) | `devto` | **live** — each variant's read-through link now carries `?utm_source=devto` (the API `canonical_url` stays clean for SEO), so dev.to→nlqdb.com visits are `utm_source`-attributable, not reliant on the flaky referrer host | `/daily` step 3 | grow tag/topic breadth per variant |
-| 3 | Official MCP registry (registry.modelcontextprotocol.io) | `mcp-registry` | blocked-by-human — payload parked 2026-07-20 (R-05 #1) | `/reach` → founder | founder runs the parked `mcp-publisher` flow ([`blocked-by-human.md`](../blocked-by-human.md)) — **one publish cascades to the crawl-fed rows 4–6**; then → in-flight |
-| 4 | Smithery | `smithery` | crawl-fed — auto-ingests from row #3 once published (Smithery crawls the official registry; verified 2026-07-20, R-05 #2) | `/reach` → founder | claim/clean-up listing after row #3 publishes (no separate submission) |
-| 5 | PulseMCP | `pulsemcp` | crawl-fed — indexes the ecosystem + registry, auto-ingests from row #3 (verified 2026-07-20, R-05 #3) | `/reach` → founder | claim listing after row #3 publishes (no separate submission) |
-| 6 | Glama | `glama` | crawl-fed — auto-indexes open-source GitHub repos **and** crawls the registry, auto-ingests from row #3 (verified 2026-07-20, R-05 #4) | `/reach` → founder | claim listing after row #3 publishes (no separate submission) |
+| 3 | Official MCP registry (registry.modelcontextprotocol.io) | `mcp-registry` | **in-flight** — **published 2026-07-22** as [`com.nlqdb/nlqdb`](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.nlqdb/nlqdb) v0.1.1, status `active`; `websiteUrl` carries `?utm_source=mcp-registry` (rule 1 ✓). Agent-published via the `com.nlqdb` DNS domain-verify path (TXT record on `nlqdb.com`, kept; the signing keypair is ephemeral — a future version bump regenerates a key + updates the TXT record, agent-doable with the DNS-scoped CF token) | `/reach` | watch `/app/admin` for `mcp-registry` yield → live; registry description caps at 100 chars (learned on publish) |
+| 4 | Smithery | `smithery` | **in-flight** — row #3 published 2026-07-22; auto-ingests from the official registry crawl (verified 2026-07-20, R-05 #2) | `/reach` → founder | claim/clean-up the listing once it appears (no separate submission) |
+| 5 | PulseMCP | `pulsemcp` | **in-flight** — row #3 published 2026-07-22; auto-ingests from the registry crawl (verified 2026-07-20, R-05 #3) | `/reach` → founder | claim the listing once it appears (no separate submission) |
+| 6 | Glama | `glama` | **in-flight** — row #3 published 2026-07-22; auto-indexes GitHub repos **and** crawls the registry (verified 2026-07-20, R-05 #4) | `/reach` → founder | claim the listing once it appears (no separate submission) |
 | 7 | mcp.so | `mcpso` | blocked-by-human — payload parked 2026-07-21 (R-05 #5). Mechanism verified (P2): account-walled `mcp.so/submit` form (GitHub sign-in), Supabase-backed directory `chatmcp/mcpso`, **not** a registry crawler → row-#3 cascade does not reach it | `/reach` → founder | founder submits the parked form payload ([`blocked-by-human.md`](../blocked-by-human.md)); then → in-flight |
 | 8 | Cursor MCP directory | `cursor-dir` | blocked-by-human — payload parked 2026-07-21 (R-05 #6). Mechanism verified (P2): official in-product marketplace is curated (no self-serve); the community `cursor.directory` takes submissions only via a GitHub/Google-signed-in web form (`cursor/community-plugins`: "no pull requests needed for data") — not a registry crawler, so row-#3 cascade does not reach it | `/reach` → founder | founder submits the parked form payload ([`blocked-by-human.md`](../blocked-by-human.md)); then → in-flight |
 | 9 | Anthropic Claude connector directory | `claude-dir` | blocked-by-human — payload parked 2026-07-21 (R-05 #7). Mechanism verified (P2): remote-MCP submission portal lives in a Claude.ai org's admin settings, **plan-gated** to Team/Enterprise + Owner/Directory-management access; **not** a registry crawler → row-#3 cascade does not reach it. nlqdb already clears the reviewer's OAuth-2.0 + tool-annotation gates | `/reach` → founder | founder submits the parked portal payload ([`blocked-by-human.md`](../blocked-by-human.md)); then → in-flight |
@@ -52,20 +52,20 @@ surface counts (row #6) never answered.
 | 20 | Integration marketplaces (Supabase integrations, Vercel templates, Neon partners, Astro integrations) | venue slug (`supabase`, `vercel`, …) | untried | `/reach` | verify each venue's submission mechanism (P2), one per run |
 | 21 | Demo video (60-second one-command memory setup; site-embedded + shareable) | `youtube` | untried | founder-assisted | script + record once R-04 guide is live |
 
-**Live: 4 · crawl-fed (gated on row #3): 3 · in-flight: 1 · blocked-by-human: 5 · untried: 8.** The number that
+**Live: 4 · in-flight: 5 · blocked-by-human: 4 · untried: 8.** The number that
 matters weekly: **channels live with attributable yield** (`/reach` step 1
 records it; target per the 2026-07-19 focus: +3 via R-05). npm joined the
 live set 2026-07-20 (homepage links tagged); GitHub joined 2026-07-20 (README
 CTA tagged `utm_source=github`). No partials remain — every published channel's
-yield is attributable. **R-05 mechanism re-verified 2026-07-20 (P2):** rows 4–6
-(Smithery / PulseMCP / Glama) crawl the official registry, so the single row-#3
-`mcp-publisher` publish (payload already parked) cascades to all three — the +3
-registry target collapses to **one founder action**, not four separate submissions.
-The remaining path to live-count growth is that one publish plus the non-crawling
-venues — all four now have parked payloads (mcp.so #7, Cursor `cursor.directory` #8,
-Anthropic connector dir #9, `awesome-mcp-servers` PR #10; account-walled or, for #10,
-out of this session's repo scope) — and the human-norm venues. Every R-05 registry
-venue is now resolved (listed, crawl-fed, or payload-parked).
+yield is attributable. **Row #3 published 2026-07-22** (agent-side, DNS
+domain-verify — no founder action was needed after all), which cascades to the
+crawl-fed rows 4–6 (Smithery / PulseMCP / Glama ingest the official registry);
+all four flip to live as yield lands on `/app/admin`. The remaining path to
+live-count growth is the non-crawling venues — all four have parked payloads
+(mcp.so #7, Cursor `cursor.directory` #8, Anthropic connector dir #9,
+`awesome-mcp-servers` PR #10; account-walled or, for #10, out of agent-session
+repo scope) — and the human-norm venues. Every R-05 registry venue is now
+resolved (published, crawl-fed in-flight, or payload-parked).
 
 ## Why this order
 
