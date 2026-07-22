@@ -24,29 +24,26 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. **Run 112 pulled a priority-3 docs-ambiguity lever (row #17, 16 → 15) under
-the written waiver below** — the first non-attribution daily pull in several runs, breaking the
-run 107/110 attribution monoculture rather than extending it.
+levers exhausted. **Run 114 pulled a priority-3 docs-ambiguity lever (row #17, 15 → 14) under
+the written waiver below** — resolved the gtm-metrics "Loop integration" open question, a
+decision the loop is uniquely positioned to make.
 
-**Priority-3 waiver (step-2):** no priority-1/2/engine lever is pullable this run.
-**Priority-1 (acquisition/attribution)** is saturated — verified this run that the only
-untagged bare-marketing-host README links (`packages/nlqdb-{rs,rb}/README.md:3`) are **Phase-2
-placeholders**, not published crates.io/RubyGems click-surfaces (run 110's guard deliberately
-excludes them, comment L22–23), so tagging them would tag a dead surface; row #22's live *count*
-grows only via registries (`/reach`, founder-blocked) or human-norm venues. **Priority-2
-(UX-flow)** has no concrete defect — the stranger create→ask→first-answer render/logic path
-(`data-rows`, `sample-rows`, `Data.tsx`, `text.ts` `formatCell`/`prettifyHeader`) is hardened by
-runs 102–110 + 111; re-audited this run, JSON/null/boolean cells + duplicate-row keys + unseeded
-tables all handled. **Engine** dark (07-19, offline levers exhausted). **The lever:** the `blog`
-per-post-OG open-question was a duplicate of the already-*deferred* canonical `/vs`+`/solve`
-per-slug OG decision (`comparison-pages/FEATURE.md`), but phrased "same deferral" (not the
-"deferred"/"parked" the row-#17 method excludes) so it inflated the count; reworded to a proper
-**Parked** decision-to-defer pointing at the canonical trigger (P3/P4/D3, GLOBAL-033). **Step 0:**
-open PRs #769 (run 111 null, scorecard-only), #770 (reach R-05 #7), #719 (Infisical draft) — this
-run touches only `docs/features/blog/FEATURE.md` + `docs/scorecard.md`, **no overlap** with any
-(a pure null run was declined precisely because it would duplicate #769; scorecard regen is exempt).
-**Rule 6:** CI + Security + Release npm + Deploy web/API + Canary all `success` on `main` head
-`c345583`; no red-main / stale-deploy lever.
+**Priority-3 waiver (step-2):** no priority-1/2/engine lever is pullable — verified, not assumed.
+**Priority-1** — the agent-movable live-count +1 is exhausted: registries are `/reach`-owned +
+founder-blocked (open PR #773 parks the last, `awesome-mcp-servers`); attribution is saturated
+*and* guarded (run 110 READMEs + open PR #772 npm homepage). **Priority-2 (UX-flow)** — no
+defect: the daily acquisition-health walk (run 67 [29815040423](https://github.com/nlqdb/nlqdb/actions/runs/29815040423),
+07-21 08:37Z, prod) is **4/4 walkers PASS**; the create→ask→answer render path is hardened
+(runs 102–111). **Engine** dark (07-19 fresh). **The lever:** `GET /v1/admin/metrics` is the
+canonical GTM read but is `requireSession`+`isAdminEmail`-gated with no token path, so switching
+`/daily` to it needs a new admin-token auth surface — GLOBAL-033 says don't build on spec since
+remote-D1 is a working equivalent (its row-#2 exclusion list mirrors `INTERNAL_EMAIL_SQL`, no
+drift); resolved to **Parked-until** (P3/P4/D3). **Step 0:** open PRs #772 (row #22 npm guard),
+#773 (reach R-05 #8), #719 (Infisical draft) — this run touches only `gtm-metrics/FEATURE.md` +
+`scorecard.md`, no overlap. **Rule 6:** all 9 deploy/CI workflows latest `main` run `success`
+(verified — incl. docs/mcp/elements the prior run skipped); the shallow-clone "stale cli deploy"
+signal was checked against real GitHub history and is **false** (last `cli/` change 80e4aa44
+07-15 → v0.1.11; #721 07-17 didn't touch `cli/`).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -72,12 +69,12 @@ run touches only `docs/features/blog/FEATURE.md` + `docs/scorecard.md`, **no ove
 | 15 | E2E manual-suite freshness | **≈ 0.75** (sdk/mcp/examples ≈1.0 each; **opencheck's latest main run [29324716801](https://github.com/nlqdb/nlqdb/actions/runs/29324716801) (run 70) FAILED**, pass=0 zeroes it ⇒ mean 0.75). Run 70 falsified the "clean window" hypothesis (re-dispatched 3 h after the last free-lane consumer, still all-red, Suite A anon 2nd `/v1/ask` timed out, **no product regression**): the free pools (NIM + OpenRouter `:free`) flap on a minute timescale, so contention timing was never the cause. **Now dark (rule 8):** only the founder-only 3rd free pool (its `blocked-by-human.md` bullet) lifts it | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.542, 07-19 post-revert, flat vs baseline — the run-90 regression is cleared); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **15** (fresh grep 07-21 run 112; −1 vs run 102's 16 — run 112 parked the `blog` per-post-OG bullet, a duplicate of the already-deferred canonical `/vs`+`/solve` OG decision) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **14** (fresh grep 07-21 run 114; −1 vs run 112's 15 — run 114 resolved the gtm-metrics "Loop integration" bullet to a GLOBAL-033 Parked-until decision) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Layered coverage: built-output `href`/`src` sweep + cross-app subdomain verification (run 61) + prod sitemap-200 check (run 72) + `client-nav-integrity.test.ts` (SK-WEB-022) guarding both `location.*` JS navigations (run 77) **and** static `<a href="/literal">` source literals (run 87, after legal-page bare-path 307s) — dotted assets + dynamic `href={…}` skipped, negative-tested | target 0 — `bun run build && bun run check:links` (built-output) + `client-nav-integrity.test.ts` (in CI) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** (claim-vs-reality on shipped surfaces + docs; target 0 **met**). **Standing guards — all three advertised-capability surfaces closed-world CI-swept across web *and* docs**, each deriving truth from source (never hand-copied) and naming the phantom + file on failure: `mcp-tool-integrity.test.ts` (`registerTool(...)` sites, `SK-MCP-002`), `cli-verb-integrity.test.ts` (cobra tree), `sdk-method-integrity.test.ts` (shipped `NlqClient` type, `SK-SDK-013`). All 0 phantom live, negative-tested. **Trilogy complete** — no advertised-capability surface remains web-only |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
-| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (run-62 branch dispatch [29231826660](https://github.com/nlqdb/nlqdb/actions/runs/29231826660) against prod, exit 0: FLOW-001 3/3 · FLOW-002 3/3 · FLOW-003 3/3 · FLOW-005 walk + stdio both `passed`). The run-59 "morph-to-chat gap" is **decided, not a gap** (anon terminus IS the sign-in redirect; SK-WEB-002 chat is post-sign-in) | target 9/9 + both FLOW-005 ✅ **met**. Per-step JSON artifact proxy-gated from the agent container |
+| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (daily acquisition-health cron run 67 [29815040423](https://github.com/nlqdb/nlqdb/actions/runs/29815040423) against prod, 07-21 08:37Z: verify-flows all-green, stranger-test FLOW-001/002/003 exit 0, FLOW-005 walk 6/6, FLOW-005 stdio 22/22 — 5 tools, no legacy verbs). The run-59 "morph-to-chat gap" is **decided, not a gap** (anon terminus IS the sign-in redirect; SK-WEB-002 chat is post-sign-in) | target 9/9 + both FLOW-005 ✅ **met**. Freshness re-armed 07-21 (GLOBAL-032 7-day rule); per-step JSON artifact proxy-gated from the agent container |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** (07-20 run 103: **dev.to's `live` was really a partial — now genuinely attributable.** The syndication read-through link carried no key, so dev.to→nlqdb.com visits fell back to the `ref: dev.to` referrer (readers/RSS/webviews strip it); tagging the link `…/blog/<slug>/?utm_source=devto` (API `canonical_url` stays clean for SEO) makes them `utm_source`-attributable via `captureFirstTouch`. Now **all 4 live channels** (organic search + dev.to + npm + GitHub) satisfy rule 1's utm-key requirement — the summary's "every published channel's yield is attributable" is finally true. MCP registries 0/8 live — official registry payload parked → `blocked-by-human` (#751)). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; `dbsWithSource` accrues from next deploy (needs prod migration 0024, see `blocked-by-human.md`). **Run 107 closed the connect-path coverage hole:** `source_json` now persists on `POST /v1/db/connect` too (was `/v1/ask` create-arm only), so a connect-first signup — the natural first action on the just-live github/npm developer channels — is attributable, not `untracked`. **Run 110 closed the github-channel README hole:** run 101 tagged only the *root* README's CTA, but the `examples/` READMEs (the GitHub dev-eval surface) still linked the marketing host bare → GitHub strips the referrer → those clicks landed as `direct`, not `github`; both example product CTAs now carry `?utm_source=github`, guarded by `readme-attribution-integrity.test.ts` (source-derived, fails on any untagged GitHub-rendered README CTA) | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated. Further live-count growth now comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
@@ -100,28 +97,29 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-21 (run 112)** — **Priority-3 docs-ambiguity lever under a written waiver (row #17,
-16 → 15): the `blog` per-post-OG open-question was a duplicate of an already-deferred decision
-and is now parked.** No priority-1/2/engine lever was pullable (waiver in the summary block):
-attribution is saturated (the only untagged bare-host README links, `packages/nlqdb-{rs,rb}`, are
-Phase-2 placeholders — dead surfaces, deliberately excluded by run 110's guard); the stranger
-UX-flow render/logic path is hardened by runs 102–111 (re-audited — no defect); engine dark. A
-pure null run was **declined** because it would duplicate the still-open #769 (run 111 null,
-scorecard-only) — step 0 forbids duplicating an open PR. **Change (P3/P4/D3, GLOBAL-033):** the
-`blog` "Per-post OG images" bullet said "same deferral as the `/vs`+`/solve` per-slug OG open
-question" but was phrased with "deferral" (not the "deferred"/"parked" the row-#17 method
-excludes), so it counted despite the decision already being made — one shared OG-card generator
-serves `/vs`, `/solve`, and `/blog`, canonically deferred in `comparison-pages/FEATURE.md` (≥ 5
-AEO pages + a Cloudflare Pages OG endpoint). Reworded to a proper **Parked until** line citing
-that canonical trigger, so the count reflects reality. **Number moved — row #17:** before = 16
-(the blog bullet counted); after = 15 (pinned-method re-grep confirms −1); no other bullet
-touched. **Gates:** docs-only, single-markdown diff — no code/config/test touched, so
-typecheck/lint/test are structurally unaffected (biome ignores markdown; `bun install` clean).
-**Step-1:** surfaces **105**, queue **2**; users **9** / strangers **0** (07-16 carried); GSC 28d
-**1/469/16.6** (07-21); BIRD 0.542 / Spider 0.2222 (07-19, dark); CI + Security + Release npm +
-Deploy web/API + Canary all `success` on `main` `c345583`. **Artifact:** queue **2** (< 3) → no
-publish; dev.to drip skipped (`DEVTO_API_KEY` absent). **KPI (GLOBAL-025):** none moved (docs
-clarity only); **no KPI degrades** — docs-only, no API/engine/funnel/UX path touched.
+**2026-07-21 (run 114)** — **Priority-3 docs-ambiguity lever under a written waiver (row #17,
+15 → 14): resolved the gtm-metrics "Loop integration" open question to a GLOBAL-033 Parked-until
+decision.** No priority-1/2/engine lever was pullable — verified, not assumed (waiver in the
+summary block): acquisition live-count +1 is `/reach`-owned + founder-blocked (open PR #773 parks
+the last registry venue) with attribution saturated *and* guarded (run 110 READMEs + open PR #772
+npm homepage); the stranger UX-flow is 4/4 walkers PASS against prod (daily acquisition-health
+cron run 67, 07-21 08:37Z); engine dark (07-19 fresh). **Change (P3/P4/D3, GLOBAL-033):** the
+"Loop integration" bullet asked "decide when `/daily` switches from remote-D1 SQL to
+`GET /v1/admin/metrics`" — a decision the loop itself is the actor for. Verified the endpoint is
+gated `requireSession` + `isAdminEmail` (`SK-GTM-002`) with **no token/API-key path**, so an
+agent-runnable `/daily` can't call it without a new admin-scope-token auth surface; GLOBAL-033
+says don't build that on spec because remote-D1 is a working equivalent whose row-#2 exclusion
+list already mirrors the canonical `INTERNAL_EMAIL_SQL` (verified — no drift). Reworded to a
+**Resolved / Parked-until** line (not a `blocked-by-human` item — remote-D1 works, no founder
+action pending). **Number moved — row #17:** before = 15; after = 14 (pinned-method re-grep
+confirms −1); no other bullet touched. **Gates:** typecheck + lint + test all green this run
+(full local pass on `main` head); diff is 2 markdown files, no code/config/test touched (biome
+ignores markdown). **Step-1:** surfaces **105**, queue **2**; users **9** / strangers **0** (07-16
+carried); GSC 28d **1/469/16.6** (07-21 carried); BIRD 0.542 / Spider 0.2222 (07-19, dark); all 9
+deploy/CI workflows `success` on `main` (verified — incl. docs/mcp/elements the prior run skipped);
+row #21 walkers 4/4 fresh 07-21. **Artifact:** queue **2** (< 3) → no publish; dev.to drip skipped
+(`DEVTO_API_KEY` absent). **KPI (GLOBAL-025):** none moved (docs clarity only); **no KPI
+degrades** — docs-only, no API/engine/funnel/UX path touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
