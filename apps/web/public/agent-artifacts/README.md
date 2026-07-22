@@ -8,6 +8,7 @@ what it remembered, not just recall the nearest few rows.
 | File | Drop it at | For |
 |------|-----------|-----|
 | [`AGENTS.snippet.md`](AGENTS.snippet.md) | append to your repo's `AGENTS.md` | any agent that reads `AGENTS.md` (host-neutral) |
+| [`nlqdb-memory/SKILL.md`](nlqdb-memory/SKILL.md) | `.claude/skills/nlqdb-memory/SKILL.md` | Claude Code (skill) |
 | [`nlqdb-memory.mdc`](nlqdb-memory.mdc) | `.cursor/rules/nlqdb-memory.mdc` | Cursor |
 | [`codex-config.toml`](codex-config.toml) | merge into `~/.codex/config.toml` | Codex |
 

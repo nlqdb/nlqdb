@@ -23,6 +23,7 @@ const read = (f: string) => readFileSync(join(DIR, f), "utf8");
 const AGENTS = read("AGENTS.snippet.md");
 const CURSOR = read("nlqdb-memory.mdc");
 const CODEX = read("codex-config.toml");
+const SKILL = read("nlqdb-memory/SKILL.md");
 
 /**
  * The first fenced ```<lang> block, dedented (fences nested under a
@@ -47,6 +48,7 @@ function urlsInText(text: string): string[] {
 describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
   test("the Claude Code command matches the shipped builder", () => {
     expect(AGENTS).toContain(buildClaudeCodeCommand(MCP_ENDPOINT_URL));
+    expect(SKILL).toContain(buildClaudeCodeCommand(MCP_ENDPOINT_URL));
   });
 
   test("the Codex config block matches the shipped builder", () => {
@@ -62,7 +64,7 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
   });
 
   test("every mcp.nlqdb.com URL resolves to the server route — no bare domain, no doubled path", () => {
-    for (const artifact of [AGENTS, CURSOR, CODEX]) {
+    for (const artifact of [AGENTS, CURSOR, CODEX, SKILL]) {
       const endpoints = urlsInText(artifact).filter((u) => u.includes("mcp.nlqdb.com"));
       expect(endpoints.length).toBeGreaterThan(0);
       for (const url of endpoints) {
@@ -73,7 +75,7 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
   });
 
   test("every published nlqdb.com link carries the agent-artifacts utm_source (SK-GTM-007)", () => {
-    for (const artifact of [AGENTS, CURSOR, CODEX, read("README.md")]) {
+    for (const artifact of [AGENTS, CURSOR, CODEX, SKILL, read("README.md")]) {
       for (const url of urlsInText(artifact)) {
         // Marketing host only — docs.nlqdb.com / mcp.nlqdb.com don't run the
         // attribution capture; the apex is the one that does.
