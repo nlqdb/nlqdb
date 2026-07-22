@@ -17,7 +17,10 @@ audits this loop once a week and sets the weekly focus number.
 2. **No change without a number.** Before touching code, name the scorecard
    number you intend to move, and its current value. If you cannot name one,
    either do D5 deletion/cleanup (docs over 20 KB, dead code, stale prose)
-   or end the run as a null run (step 2) — never build.
+   or end the run as a null run (step 2) — never build. **Suite pass-counts
+   and new-test counts are never the number moved** (founder-directed
+   2026-07-22): a test proves a fix holds — it is evidence, not a delta.
+   Name the scorecard row (or a named direct input to one) the fix moves.
 3. **Measure → change → re-measure.** Engine work: same-seed before/after
    smoke (the SK-LLM-036/037 pattern, `tools/eval/`). Funnel work: the
    stranger-test walkers (`scripts/stranger-test.sh`,
@@ -26,7 +29,13 @@ audits this loop once a week and sets the weekly focus number.
 4. `docs/blocked-by-human.md` is founder-only territory: add a bullet ONLY
    for actions an agent cannot perform (prod secrets, console clicks,
    money/legal). Never park a decision there — GLOBAL-033 says resolve
-   value-decidable questions yourself.
+   value-decidable questions yourself. The file is a **ranked queue**
+   (expected user-yield per founder-minute; founder-directed 2026-07-22):
+   a new bullet opens with `⏱ estimate · blocked since date` and slots in
+   by rank, never appends. **A fix that costs money is not a fix**
+   (`docs/cost-ladder.md`: $0/month while there are no paying customers) —
+   never propose spend as a blocker-resolution; the capability waits, as
+   "Parked until first paying customer", for revenue or a $0 path.
 5. **Only the billing *meter* is frozen** until the `phase-plan.md` §6
    demand signal fires — *not* the paid plan. Per §6 + `GLOBAL-026`,
    **building** the paid plan is never gated: the hosted-premium dispatch
@@ -51,9 +60,9 @@ audits this loop once a week and sets the weekly focus number.
    different lever.
 8. **Dark metrics don't loop.** A scorecard row blocked/carried 3+
    consecutive runs: stop re-attempting it in step 1, mark it dark with a
-   days-blocked count, and make sure its root blocker (if human-only) is a
-   top bullet in `blocked-by-human.md`. Never pick a dark metric as the
-   lever.
+   days-blocked count, and make sure its root blocker (if human-only) is in
+   `blocked-by-human.md` at its yield rank with a days-blocked count. Never
+   pick a dark metric as the lever.
 
 ## The loop, in order
 
@@ -116,8 +125,16 @@ table + one "Last change" entry, no changelog; create it if missing):
   including cross-app hrefs (nlqdb.com → docs.nlqdb.com) — counted by
   sweeping built output; target 0. Until an automated sweep exists,
   building it is itself a lever.
+- **Human queue** (founder-directed 2026-07-22): depth of
+  `docs/blocked-by-human.md` and the age in days of its top bullet. The
+  founder is the one non-automatable actor, so the queue head's age is the
+  company's real cycle time — with real strangers at 0 it is a worst-number
+  candidate like any row. Also record open-PR count + oldest open-PR age
+  (review latency is what forces step-0 lever retreats).
 - **Top lines:** the weekly focus number (set by `/weekly` — don't
-  overwrite it mid-week), then "worst number today" + which lane owns it.
+  overwrite it mid-week), then "worst number today" + which lane owns it,
+  then the top `blocked-by-human.md` bullet + its days-blocked — restated
+  every run until done (measurement, not nagging).
 
 ### 2 — One lever, measured
 

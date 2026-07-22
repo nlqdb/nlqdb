@@ -34,9 +34,9 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
    The fix is changing the loop (or deleting the output), never raising
    volume.
 4. **Dark metrics.** Rows stale/carried ≥ 1 week: is the root blocker
-   named? Human-only blockers must sit at the top of
-   `blocked-by-human.md` with a days-blocked count; agent-fixable ones
-   are focus-number candidates.
+   named? Human-only blockers must be in `blocked-by-human.md` at their
+   yield-per-founder-minute rank with a days-blocked count; agent-fixable
+   ones are focus-number candidates.
 5. **Delta integrity.** Sample ≥ 3 of the week's PR bodies and verify the
    named delta was genuinely re-measured (rerun the check where cheap). A
    claimed-but-unverified delta beats every other finding except a trend
@@ -50,7 +50,13 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 ## Outputs (one PR)
 
 1. **Set the weekly focus number** at the top of `docs/scorecard.md`: one
-   agent-movable number + a one-line why, chosen from the audit. If the
+   agent-movable number + a one-line why, chosen from the audit.
+   Agent-movable means **movable at $0** (`docs/cost-ladder.md` — no
+   spend while there are no paying customers): a focus whose only lever
+   needs founder spend or founder-held credentials is not agent-movable
+   (founder-directed 2026-07-22; the short-lived 07-19 agentic-frontier
+   focus needed paid frontier credentials and stalled runs 97–98 this way
+   before being re-pointed). If the
    founder wrote one this week, keep theirs — never overwrite a founder
    edit. **Default while the `GLOBAL-038` acquisition focus stands
    (founder-resolved 2026-07-19): the best agent-movable acquisition/GTM
