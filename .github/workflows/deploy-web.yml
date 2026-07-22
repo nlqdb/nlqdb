@@ -16,6 +16,10 @@ on:
       - "apps/web/**"
       - "packages/elements/**"
       - "packages/sdk/**"
+      # Root `overrides` (security patches to bundled transitive deps) must
+      # redeploy — see deploy-api.yml for the rationale.
+      - "package.json"
+      - "bun.lock"
       - ".github/workflows/deploy-web.yml"
   workflow_dispatch:
 
