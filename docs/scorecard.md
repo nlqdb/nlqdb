@@ -26,7 +26,7 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
 levers exhausted. **Top `blocked-by-human` bullet:** #1 apply pending prod D1 migrations
 (`0022`–`0025`; ⏱ ~5 min, blocked since 07-19 → **3 days old**) — the prerequisite that makes
-every attribution write and the GTM/PMF dashboard live; queue depth 7, head-age 3 d is the
+every attribution write and the GTM/PMF dashboard live; queue depth 10, head-age 3 d is the
 company's real cycle time with real strangers at 0.
 
 **Run 117 is a null run** — no agent-movable lever cleared the step-2 bar (full finding in "Last
