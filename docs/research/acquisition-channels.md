@@ -39,7 +39,7 @@ surface counts (row #6) never answered.
 | 7 | mcp.so | `mcpso` | blocked-by-human — payload parked 2026-07-21 (R-05 #5). Mechanism verified (P2): account-walled `mcp.so/submit` form (GitHub sign-in), Supabase-backed directory `chatmcp/mcpso`, **not** a registry crawler → row-#3 cascade does not reach it | `/reach` → founder | founder submits the parked form payload ([`blocked-by-human.md`](../blocked-by-human.md)); then → in-flight |
 | 8 | Cursor MCP directory | `cursor-dir` | blocked-by-human — payload parked 2026-07-21 (R-05 #6). Mechanism verified (P2): official in-product marketplace is curated (no self-serve); the community `cursor.directory` takes submissions only via a GitHub/Google-signed-in web form (`cursor/community-plugins`: "no pull requests needed for data") — not a registry crawler, so row-#3 cascade does not reach it | `/reach` → founder | founder submits the parked form payload ([`blocked-by-human.md`](../blocked-by-human.md)); then → in-flight |
 | 9 | Anthropic Claude connector directory | `claude-dir` | blocked-by-human — payload parked 2026-07-21 (R-05 #7). Mechanism verified (P2): remote-MCP submission portal lives in a Claude.ai org's admin settings, **plan-gated** to Team/Enterprise + Owner/Directory-management access; **not** a registry crawler → row-#3 cascade does not reach it. nlqdb already clears the reviewer's OAuth-2.0 + tool-annotation gates | `/reach` → founder | founder submits the parked portal payload ([`blocked-by-human.md`](../blocked-by-human.md)); then → in-flight |
-| 10 | `awesome-mcp-servers` (GitHub PR) | `awesome-mcp` | untried (R-05 #8) | `/reach` | open the listing PR |
+| 10 | `awesome-mcp-servers` (GitHub PR) | `awesome-mcp` | blocked-by-human — PR payload parked 2026-07-21 (R-05 #8). A plain GitHub PR to `punkpeye/awesome-mcp-servers`, but this `/reach` session is scoped to `nlqdb/nlqdb` only so it can't fork/PR an external repo. Listing links to the GitHub repo (list convention), **not** a utm-taggable `nlqdb.com` URL — so yield rolls into the `github`/organic refs, never its own attributable key; this venue can't become "live with attributable yield" on its own | `/reach` → founder | founder (or a scope-unrestricted session) opens the parked PR ([`blocked-by-human.md`](../blocked-by-human.md)); on merge → in-flight |
 | 11 | Answer engines (ChatGPT / Claude / Perplexity citations) | ref `chatgpt.com` / `perplexity.ai` | untried — R-08 baseline unbuilt | `/reach` | build the R-08 citation spot-check |
 | 12 | Coding-agent in-repo artifacts (Claude Code skill, Cursor rules, AGENTS.md, Codex) | `agent-artifacts` | untried (R-07) | `/reach` | R-04 guide first, then publish artifacts |
 | 13 | Hacker News (Show HN + answer comments) | ref `news.ycombinator.com` | untried — human-norm | founder (fact sheet by agents) | draft Show HN fact sheet into distribution-queue |
@@ -52,7 +52,7 @@ surface counts (row #6) never answered.
 | 20 | Integration marketplaces (Supabase integrations, Vercel templates, Neon partners, Astro integrations) | venue slug (`supabase`, `vercel`, …) | untried | `/reach` | verify each venue's submission mechanism (P2), one per run |
 | 21 | Demo video (60-second one-command memory setup; site-embedded + shareable) | `youtube` | untried | founder-assisted | script + record once R-04 guide is live |
 
-**Live: 4 · crawl-fed (gated on row #3): 3 · in-flight: 0 · blocked-by-human: 4 · untried: 10.** The number that
+**Live: 4 · crawl-fed (gated on row #3): 3 · in-flight: 0 · blocked-by-human: 5 · untried: 9.** The number that
 matters weekly: **channels live with attributable yield** (`/reach` step 1
 records it; target per the 2026-07-19 focus: +3 via R-05). npm joined the
 live set 2026-07-20 (homepage links tagged); GitHub joined 2026-07-20 (README
@@ -62,9 +62,10 @@ yield is attributable. **R-05 mechanism re-verified 2026-07-20 (P2):** rows 4–
 `mcp-publisher` publish (payload already parked) cascades to all three — the +3
 registry target collapses to **one founder action**, not four separate submissions.
 The remaining path to live-count growth is that one publish plus the non-crawling
-venues — three now have parked payloads (mcp.so #7, Cursor `cursor.directory` #8,
-Anthropic connector dir #9; all account-walled, no agent path), leaving the
-`awesome-mcp-servers` PR (#10) — and the human-norm venues.
+venues — all four now have parked payloads (mcp.so #7, Cursor `cursor.directory` #8,
+Anthropic connector dir #9, `awesome-mcp-servers` PR #10; account-walled or, for #10,
+out of this session's repo scope) — and the human-norm venues. Every R-05 registry
+venue is now resolved (listed, crawl-fed, or payload-parked).
 
 ## Why this order
 
