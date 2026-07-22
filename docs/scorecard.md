@@ -20,24 +20,21 @@ stranger cohort will be attributable from day one). This supersedes the
 morning's agentic-frontier focus: premium-chain work (`SK-LLM-017`, row #20)
 is pullable only when no acquisition lever is. **Row #15 stays
 founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
-(SambaNova, `_e2e-opencheck.yml`), the top `blocked-by-human.md` bullet.
+(SambaNova, `_e2e-opencheck.yml`), the oldest `blocked-by-human.md` bullet (ranked #8).
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. **Run 116 pulled a rule-6 deploy-integrity lever** — the root
-`overrides` block (the repo's transitive-dep security-patch mechanism) was in **no** deploy
-workflow's `paths:` filter, so a security override deployed nothing and prod kept serving the
-pre-patch build. Concrete instance: #775's `fast-uri` override (patched `3.1.4`, reaches prod via
-`@modelcontextprotocol/sdk`→`ajv`→`fast-uri` in the MCP/API workers) merged to `main` `ba7942e`
-but never deployed. Fix: added `package.json` + `bun.lock` to the 8 JS-bundle deploys
-(api/canary/web/mcp/events-worker/elements/docs/coming-soon; `cli` excluded — Go binary). Merging
-this PR triggers all 8 (each lists its own workflow file in `paths:`), redeploying prod from the
-current lockfile and shipping the pending `fast-uri` patch.
+levers exhausted. **Top `blocked-by-human` bullet:** #1 apply pending prod D1 migrations
+(`0022`–`0025`; ⏱ ~5 min, blocked since 07-19 → **3 days old**) — the prerequisite that makes
+every attribution write and the GTM/PMF dashboard live; queue depth 10, head-age 3 d is the
+company's real cycle time with real strangers at 0.
 
-**Rule 6 outranks the acquisition levers:** a merged security patch not reaching prod IS the
-"production silently serves a stale build" class. Priority-1/2/engine otherwise not pullable (as
-run 115 #776 verified an hour prior). **Step 0:** open PRs #776/#777/#778/#719 — none touch
-`.github/workflows/deploy-*.yml`; this run's only shared file is `scorecard.md` (step-1 exempt).
+**Run 117 is a null run** — no agent-movable lever cleared the step-2 bar (full finding in "Last
+change"): rule 6 clean (main green, 8/8 deploys `success` on `3a92d0a`), priority-1
+acquisition/distribution not pullable (4 live channels all attributable, surface verifiably clean,
+GSC page CTR is N≤12 noise, new live channels `/reach`- or founder-blocked), priority-2 walkers 9/9
+fresh, priority-3 docs de-prioritised. **Step 0:** only open PR is #719 (draft Infisical research) —
+no file overlap; this run's sole write is `scorecard.md` (step-1 exempt).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -91,31 +88,29 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-22 (run 116)** — **Rule-6 deploy-integrity lever: root-`overrides` security patches now
-trigger deploys (0/8 → 8/8 JS-bundle deploys).** The repo applies transitive-dep security patches
-via the root `package.json` `overrides` block (fast-uri, ws, qs, cookie, postcss…), but **none** of
-the 9 deploy workflows watched `package.json`/`bun.lock` in their `paths:` filter — so a security
-override deployed nothing and production kept serving the pre-patch bundle until an unrelated app
-change happened to trigger a deploy. **Concrete live instance:** #775's `fast-uri`→`^3.1.4`
-override merged to `main` `ba7942e` but never deployed; `fast-uri` reaches the MCP/API workers via
-`@modelcontextprotocol/sdk`→`ajv`→`fast-uri` (verified in `bun.lock`), so prod ran the unpatched
-version. **Change:** added `- "package.json"` + `- "bun.lock"` to the 8 JS-bundle deploys
-(api/canary/web/mcp/events-worker/elements/docs/coming-soon; `deploy-cli` excluded — Go binary,
-JS lockfile irrelevant). **Number moved:** deploy-trigger coverage for the security-override
-mechanism **0/8 → 8/8**; and because each deploy workflow lists its own file in `paths:`, merging
-this PR triggers all 8 → prod rebuilds from the current lockfile → the pending `fast-uri` patch
-ships live. **Measure→change→re-measure:** before = `git grep` of each deploy `paths:` block shows
-0 references to `package.json`/`bun.lock`; after = all 8 present; all 8 files re-validated with
-`yaml.safe_load`. **Gates:** diff is 8 `.github/workflows/deploy-*.yml` files (YAML only); biome
-typecheck/lint/test do not process YAML and CI is `success` on the base SHA `27412f3`/`ba7942e`;
-YAML syntax validated across all 8. **No P1 conflict:** `ci-permissions/FEATURE.md` governs
-`permissions:` blocks, not `paths:` triggers — no decision documents excluding the root lockfile.
-**Step-1:** surfaces **105**, queue **2**; users **9** / strangers **0** (07-16 carried); GSC 28d
-**2/483/16.5** (07-21 carried from run 115); BIRD 0.542 / Spider 0.2222 (07-19, dark); row #21
-walkers 4/4 fresh 07-21. **Artifact:** queue **2** (< 3) → no publish; dev.to drip skipped
-(`DEVTO_API_KEY` absent). **KPI (GLOBAL-025):** advances **performance/reliability** — the
-security-patch→prod path is no longer silently broken; **no KPI degrades** (deploys are idempotent,
-free-tier; no engine/funnel/UX code touched).
+**2026-07-22 (run 117)** — **Null run: no agent-movable lever cleared the step-2 bar; ships only
+this step-1 scorecard update.** The finding, in the loop's priority order: **(1) Rule 6 clean** —
+`bun run typecheck && lint && test` all green on `main` `3a92d0a` (fresh container: `bun install`
+then full suite, exit 0); all 8 JS-bundle deploys `success` on `3a92d0a` (the run-116 trigger fix
+confirmed — #780's `package.json` change fired every one), `deploy-cli` correctly release-gated (Go
+binary, last main run 07-15, not a missed trigger). **(2) Priority-1 acquisition/distribution — not
+pullable.** All 4 live channels (organic / dev.to / npm / GitHub) are already `utm_source`-
+attributable (runs 103/107/110/113 closed every hole); the distribution surface is verifiably clean
+— internal blog links slash-consistent (only non-slash `/blog/…` match is an external dbt URL),
+canonicals normalise to the trailing-slash form, `app.nlqdb.com`→`nlqdb.com` 301 live in prod with a
+correct canonical (GSC's stray `app.` + non-slash entries are legacy tail that self-heals), homepage
+head complete (title + description + canonical + full OG + 3× JSON-LD). Fresh `gsc-pull.ts`: **2
+clicks / 483 impr / pos 16.5** (28d 06-22→07-20) — per-page CTR is noise at N≤12 impr and the one
+real-breadth page (homepage 68 impr / pos 8.2) has no SEO defect and can't be re-measured same-run;
+new live-channel growth is all `/reach`- or founder-blocked (registry cascade gated on the parked
+`mcp-publisher` publish; human-norm venues). **(3) Priority-2 UX-flow clean** — walkers 9/9 + both
+FLOW-005 transports fresh 07-21; first-10 N=0. **(4) Priority-3 docs de-prioritised** (no external
+yield, against the weekly acquisition focus); a doc-shrink to avoid a null run is the busywork step 2
+forbids. **Step-1 snapshot:** surfaces **105**, queue **2**; users **9** / strangers **0** (07-16
+carried); GSC **2/483/16.5** (fresh 07-22); BIRD 0.542 / Spider 0.2222 (07-19, dark); row #21 walkers
+9/9 fresh 07-21; open PRs **1** (#719 draft, ~5 d); top human-queue bullet #1 D1 migrations, 3 d old.
+**Artifact:** queue **2** (< 3) → no publish; dev.to drip skipped (`DEVTO_API_KEY` absent). **KPI
+(GLOBAL-025):** no KPI moved (null run) and **none degrades** — measurement-only, no code touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
