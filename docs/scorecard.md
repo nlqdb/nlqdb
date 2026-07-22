@@ -29,12 +29,15 @@ levers exhausted. **Top `blocked-by-human` bullet:** #1 apply pending prod D1 mi
 every attribution write and the GTM/PMF dashboard live; queue depth 10, head-age 3 d is the
 company's real cycle time with real strangers at 0.
 
-**Run 117 is a null run** — no agent-movable lever cleared the step-2 bar (full finding in "Last
-change"): rule 6 clean (main green, 8/8 deploys `success` on `3a92d0a`), priority-1
-acquisition/distribution not pullable (4 live channels all attributable, surface verifiably clean,
-GSC page CTR is N≤12 noise, new live channels `/reach`- or founder-blocked), priority-2 walkers 9/9
-fresh, priority-3 docs de-prioritised. **Step 0:** only open PR is #719 (draft Infisical research) —
-no file overlap; this run's sole write is `scorecard.md` (step-1 exempt).
+**Run 118 is a null run** — no agent-movable lever cleared the step-2 bar (full finding in "Last
+change"): rule 6 clean (main + 8/8 deploys `success` on `3a92d0a`, re-verified — full
+`typecheck`/`lint`/`test` green on `main` `1eee291`), priority-1 acquisition/distribution not
+pullable (4 live channels all attributable — attribution *capture* (`attribution.ts`) and *read*
+(`admin/gtm-metrics.ts`) both re-audited complete this run; new live channels `/reach`- or
+founder-blocked and the ledger itself locked by open reach PR #782), priority-2 walkers 9/9 fresh,
+priority-3 docs de-prioritised. **Step 0:** two open PRs — #782 (reach R-08 answer-engine baseline;
+touches `reach/INDEX.md` + `acquisition-channels.md`) and #719 (draft Infisical research); this run
+avoids both files — its sole write is `scorecard.md` (step-1 exempt).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -88,29 +91,30 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-22 (run 117)** — **Null run: no agent-movable lever cleared the step-2 bar; ships only
-this step-1 scorecard update.** The finding, in the loop's priority order: **(1) Rule 6 clean** —
-`bun run typecheck && lint && test` all green on `main` `3a92d0a` (fresh container: `bun install`
-then full suite, exit 0); all 8 JS-bundle deploys `success` on `3a92d0a` (the run-116 trigger fix
-confirmed — #780's `package.json` change fired every one), `deploy-cli` correctly release-gated (Go
-binary, last main run 07-15, not a missed trigger). **(2) Priority-1 acquisition/distribution — not
-pullable.** All 4 live channels (organic / dev.to / npm / GitHub) are already `utm_source`-
-attributable (runs 103/107/110/113 closed every hole); the distribution surface is verifiably clean
-— internal blog links slash-consistent (only non-slash `/blog/…` match is an external dbt URL),
-canonicals normalise to the trailing-slash form, `app.nlqdb.com`→`nlqdb.com` 301 live in prod with a
-correct canonical (GSC's stray `app.` + non-slash entries are legacy tail that self-heals), homepage
-head complete (title + description + canonical + full OG + 3× JSON-LD). Fresh `gsc-pull.ts`: **2
-clicks / 483 impr / pos 16.5** (28d 06-22→07-20) — per-page CTR is noise at N≤12 impr and the one
-real-breadth page (homepage 68 impr / pos 8.2) has no SEO defect and can't be re-measured same-run;
-new live-channel growth is all `/reach`- or founder-blocked (registry cascade gated on the parked
-`mcp-publisher` publish; human-norm venues). **(3) Priority-2 UX-flow clean** — walkers 9/9 + both
-FLOW-005 transports fresh 07-21; first-10 N=0. **(4) Priority-3 docs de-prioritised** (no external
-yield, against the weekly acquisition focus); a doc-shrink to avoid a null run is the busywork step 2
-forbids. **Step-1 snapshot:** surfaces **105**, queue **2**; users **9** / strangers **0** (07-16
-carried); GSC **2/483/16.5** (fresh 07-22); BIRD 0.542 / Spider 0.2222 (07-19, dark); row #21 walkers
-9/9 fresh 07-21; open PRs **1** (#719 draft, ~5 d); top human-queue bullet #1 D1 migrations, 3 d old.
-**Artifact:** queue **2** (< 3) → no publish; dev.to drip skipped (`DEVTO_API_KEY` absent). **KPI
-(GLOBAL-025):** no KPI moved (null run) and **none degrades** — measurement-only, no code touched.
+**2026-07-22 (run 118)** — **Null run: no agent-movable lever cleared the step-2 bar; ships only
+this step-1 scorecard update.** Second null of the day (run 117 was the first); nothing material
+changed since — `main` advanced only via the docs-only scorecard PR #781, deploys unchanged at
+`3a92d0a`. The finding, in the loop's priority order: **(1) Rule 6 clean** — `bun run typecheck &&
+lint && test` all green on `main` `1eee291` (fresh container: `bun install` then full suite, exit 0);
+all 8 JS-bundle deploys `success` on `3a92d0a` (last code-bearing SHA — #781 was docs-only, no deploy
+trigger). **(2) Priority-1 acquisition/distribution — not pullable.** All 4 live channels (organic /
+dev.to / npm / GitHub) are `utm_source`-attributable; this run re-audited **both ends** of the
+instrument and found them complete — capture (`apps/web/src/lib/attribution.ts`: first-touch
+utm→ref→landing, first-write-wins, adoption-surviving) and read (`apps/api/src/admin/gtm-metrics.ts`:
+`utm_source`→`ref`→`direct`, `untracked` for no `source_json`). New live-channel growth is all
+`/reach`- or founder-blocked (MCP-registry cascade gated on the parked `mcp-publisher` publish;
+human-norm venues), and the acquisition ledger is itself locked by open reach PR #782 (step 0). GSC
+unchanged from run 117's fresh 07-22 pull (**2 clicks / 483 impr / pos 16.5**; N≤12 per-page CTR is
+noise). **(3) Priority-2 UX-flow clean** — walkers 9/9 + both FLOW-005 transports fresh 07-21;
+first-10 N=0. **(4) Priority-3 docs de-prioritised** (no external yield, against the weekly
+acquisition focus); a doc-shrink to avoid a null run is the busywork step 2 forbids. **Step-1
+snapshot:** surfaces **105**, distribution queue **2** (< 3, no forced publish); users **9** /
+strangers **0** (07-16 carried); GSC **2/483/16.5** (07-22); BIRD 0.542 / Spider 0.2222 (07-19,
+dark); row #21 walkers 9/9 fresh 07-21; open PRs **2** (#782 reach, 0 d; #719 draft, ~5 d); top
+human-queue bullet #1 D1 migrations, 3 d old. **Artifact:** null run skips step 3 — queue 2 (< 3) so
+no publish regardless; dev.to drip N/A (`DEVTO_API_KEY` absent in agent container; 30 variants pending
+for the CI/founder path). **KPI (GLOBAL-025):** no KPI moved (null run) and **none degrades** —
+measurement-only, no code touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
