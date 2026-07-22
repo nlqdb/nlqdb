@@ -17,6 +17,12 @@ monetization trigger. Unit-economics detail lives in
 strictly forced by traffic or contractual need. Every line below is gated
 on a real signal — **don't upgrade pre-emptively.**
 
+**No measurement-infra exception** (founder-resolved 2026-07-22): a small
+paid budget (~$30–50/mo for a stable third eval lane + a frontier API key,
+to un-dark scorecard rows #11/#15) was advisor-proposed and rejected the
+same day. Dark metrics wait for a $0 path or for revenue — don't re-raise
+paid options as fixes.
+
 ## Today: $0/month
 
 *(+ ~$85/yr unavoidable for the two domain renewals)*
