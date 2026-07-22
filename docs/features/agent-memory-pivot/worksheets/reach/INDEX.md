@@ -200,13 +200,14 @@ never drift from `mcp-install.ts`: a Claude Code **skill/plugin**
 **AGENTS.md snippet**, and the Codex `config.toml` block. Distribute via
 the R-04 guide + npm + registries. Add a drift test (artifact strings ==
 `mcp-install.ts`).
-**Done when:** 🟡 artifacts published — 3 of 4 host artifacts live in
+**Done when:** ✅ artifacts published — 4 of 4 host artifacts live in
 [`apps/web/public/agent-artifacts/`](../../../../../apps/web/public/agent-artifacts/)
 (host-neutral [`AGENTS.snippet.md`](../../../../../apps/web/public/agent-artifacts/AGENTS.snippet.md),
+Claude Code skill [`nlqdb-memory/SKILL.md`](../../../../../apps/web/public/agent-artifacts/nlqdb-memory/SKILL.md),
 Cursor [`nlqdb-memory.mdc`](../../../../../apps/web/public/agent-artifacts/nlqdb-memory.mdc),
 Codex [`codex-config.toml`](../../../../../apps/web/public/agent-artifacts/codex-config.toml),
-+ a README index); the packaged Claude Code **skill/plugin** + npm/registry
-distribution are the next R-07 run · ✅ install path on the R-04 page
++ a README index); **external npm/registry distribution with attributable
+yield (Channel #12) is the remaining R-07 work** · ✅ install path on the R-04 page
 ([`agent-memory.mdx`](../../../../../apps/docs/src/content/docs/agent-memory.mdx)
 "Drop it into your repo") · ✅ drift test green
 ([`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) —
@@ -239,18 +240,20 @@ where closed), record cited/not-cited per query in § Current numbers.
   Linked from README, `/agents` connect card, and a new llms.txt `## For coding agents`
   section. Remaining box: the manual cold-agent walk — needs a human to clear Step 2's
   browser OAuth, which an autonomous `/reach` run (and the R-06 headless walker) can't.
-- Droppable in-repo artifacts (R-07): **3 of 4 host artifacts live** in
+- Droppable in-repo artifacts (R-07): **4 of 4 host artifacts live** in
   `apps/web/public/agent-artifacts/` (served at `nlqdb.com/agent-artifacts/`) —
-  host-neutral `AGENTS.snippet.md`, Cursor `.cursor/rules/nlqdb-memory.mdc`,
-  Codex `config.toml` block, + README. All connect strings are generated from
-  `mcp-install.ts` and pinned by `agent-artifacts.test.ts` (drift test green:
+  host-neutral `AGENTS.snippet.md`, Claude Code skill `nlqdb-memory/SKILL.md`
+  (canonical `.claude/skills/<name>/SKILL.md` layout, drop the folder in),
+  Cursor `.cursor/rules/nlqdb-memory.mdc`, Codex `config.toml` block, + README.
+  All connect strings are generated from `mcp-install.ts` and pinned by
+  `agent-artifacts.test.ts` (drift test green — now covers the skill too:
   commands == builders, endpoints on `/mcp`, `nlqdb.com` links carry
   `utm_source=agent-artifacts`). Honest to the R-04 line: memory via
   `nlqdb_query`; `nlqdb_remember`/`agent_memory_v1` marked gated. Linked from
   the R-04 guide. **Channel #12 (`agent-artifacts`) stays untried** in the
   ledger — files exist in-repo but aren't yet externally distributed (npm/
-  registries) with attributable yield; the packaged Claude Code skill/plugin +
-  distribution are the next R-07 run.
+  registries) with attributable yield; that external distribution is the
+  remaining R-07 work.
 - Registry/directory listings live: 0 of 8 (**8/8 prepared — R-05 sweep complete this run**;
   per-venue mechanism detail in the R-05 slice above; all verified 2026-07-20/21, P2). #1
   official registry `server.json` parked, and that one publish cascades to the crawl-fed #2
@@ -290,5 +293,5 @@ Tick on merge.
 - [ ] R-04 — canonical machine-followable setup guide
 - [x] R-05 — registry sweep (8/8 venues resolved: #1 official registry parked → cascades to crawl-fed #2 Smithery / #3 PulseMCP / #4 Glama; #5 mcp.so + #6 Cursor + #7 Anthropic connector-dir + #8 awesome-mcp-servers PR payloads parked in blocked-by-human. Nothing live yet — all account-walled or out of an autonomous run's scope; founder submits)
 - [x] R-06 — coding-agent walker + baseline (walker + grader + fixture merged; baseline 0/1 surfaced — cold agent recommended pgvector, never nlqdb; re-run via `bash scripts/reach-agent-walk.sh` in `/reach` step 1)
-- [ ] R-07 — droppable in-repo artifacts (3/4 host artifacts live + drift-tested: AGENTS.md snippet + Cursor rules + Codex block; Claude Code skill/plugin + npm/registry distribution remain)
+- [ ] R-07 — droppable in-repo artifacts (4/4 host artifacts live + drift-tested: AGENTS.md snippet + Claude Code skill + Cursor rules + Codex block; external npm/registry distribution with attributable yield (Channel #12) remains)
 - [ ] R-08 — answer-engine citation baseline
