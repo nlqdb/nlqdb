@@ -111,6 +111,7 @@ Paid plans aren't live yet. The full model strategy is in
 | Framework wrappers (React / Next / Vue / Nuxt / Svelte / SvelteKit / Astro / Solid + Swift) | ~ built + CI-tested; npm / SPM publish pending | `packages/{react,next,…}/**` |
 | Chat app `nlqdb.com/app` | ✓ shipped | `apps/web/**` |
 | Hosted MCP server `mcp.nlqdb.com/mcp` | ✓ shipped (host auto-detect pending) | `apps/mcp/**`, `packages/mcp/**` |
+| Droppable agent-memory artifacts (AGENTS.md snippet · Claude Code skill · Cursor rules · Codex config) | ✓ shipped (4/4 hosts; external registry distribution pending) | `apps/web/public/agent-artifacts/**` |
 | `nlq` CLI (Go) | ✓ shipped (core verbs; device-login pending) | `cli/**` |
 
 Full integration matrix in [`docs/progress.md`](./docs/progress.md).
