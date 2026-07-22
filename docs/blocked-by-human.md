@@ -166,6 +166,16 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
   and re-verify. Until then the 3 Astro advisories stay on `main`
   (agent-verified 2026-07-21).
 
+- **Enable "Always Use HTTPS" + HSTS on the `nlqdb.com` Cloudflare zone**
+  (dashboard → SSL/TLS → Edge Certificates, or a broader API token). Prod
+  currently serves `http://` with a **200 (no HTTP→HTTPS 301) and no HSTS
+  header** — the 07-22 GSC pull found Google indexing an `http://` solve URL.
+  The `rel=canonical` tag already points Google to https (SEO harm is small);
+  the real gap is SSL-strip/HSTS hardening across all 105 surfaces.
+  Agent-blocked: the CF API token is Workers/DNS-scoped and returns
+  `10000 Authentication error` on `/zones/*/settings`, so this needs a console
+  click or a Zone-Settings-scoped token. Low priority (agent-verified 2026-07-22).
+
 ## Suggestions needing approval (to amend the guidelines)
 
 _None open._
