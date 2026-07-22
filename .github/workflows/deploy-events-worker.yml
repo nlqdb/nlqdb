@@ -24,6 +24,10 @@ on:
       - "apps/events-worker/**"
       - "packages/events/**"
       - "packages/otel/**"
+      # Root `overrides` (security patches to bundled transitive deps) must
+      # redeploy — see deploy-api.yml for the rationale.
+      - "package.json"
+      - "bun.lock"
       - ".github/workflows/deploy-events-worker.yml"
   workflow_dispatch:
 

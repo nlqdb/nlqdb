@@ -24,35 +24,20 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. **Run 115 is a null run** — no priority-1 acquisition, priority-2 UX-flow, or
-engine lever clears the "measurable delta this cycle" bar (verified below). Ships only this
-step-1 refresh + one founder-routed finding (http→https canonicalization → `blocked-by-human.md`).
+levers exhausted. **Run 116 pulled a rule-6 deploy-integrity lever** — the root
+`overrides` block (the repo's transitive-dep security-patch mechanism) was in **no** deploy
+workflow's `paths:` filter, so a security override deployed nothing and prod kept serving the
+pre-patch build. Concrete instance: #775's `fast-uri` override (patched `3.1.4`, reaches prod via
+`@modelcontextprotocol/sdk`→`ajv`→`fast-uri` in the MCP/API workers) merged to `main` `ba7942e`
+but never deployed. Fix: added `package.json` + `bun.lock` to the 8 JS-bundle deploys
+(api/canary/web/mcp/events-worker/elements/docs/coming-soon; `cli` excluded — Go binary). Merging
+this PR triggers all 8 (each lists its own workflow file in `paths:`), redeploying prod from the
+current lockfile and shipping the pending `fast-uri` patch.
 
-**Null-run verification (step-2):** no lever pullable — verified, not assumed.
-**Priority-1 (acquisition/distribution).** Live-count +1 is exhausted for `/daily`: every untried
-ledger row is `/reach`-owned (registries — crawl-fed on the parked row-#3 publish, or their own
-payload parked to `blocked-by-human`) or a founder-owned human-norm venue; the 4 live channels
-(organic + dev.to + npm + github) are all utm-attributable and guarded (runs 107/110/113). GSC
-page-strengthening isn't pullable either — total 28d volume is **2 clicks / 483 impr (pos 16.5)**,
-so every page/query sits at N ≤ 12 impr where a one-edit CTR/position change is pure noise and
-won't re-measure within a cycle; the lone page-1 query (`"top 10 products by revenue" metabase`,
-pos 6.8, 6 impr) is a reach-track R-03 solve-page candidate, not a `/daily` pull. **Priority-2
-(UX-flow)** — no defect: daily acquisition-health walk (run 67
-[29815040423](https://github.com/nlqdb/nlqdb/actions/runs/29815040423), 07-21 08:37Z, prod) is
-**4/4 walkers PASS**, fresh under the GLOBAL-032 7-day rule; create→ask→answer render path hardened
-(runs 102–111). **Engine** dark (07-19 fresh — 3 days < the 7-day staleness alert). **Finding
-routed (not a lever — moves no number):** today's fresh GSC pull surfaced an indexed
-`http://nlqdb.com/solve/...` URL served **200 (no HTTP→HTTPS 301) with no HSTS** — a canonical
-weakness across all 105 surfaces. The `rel=canonical` tag already points Google to https (so
-residual SEO harm is small); HSTS/SSL-strip hardening is the real gap. **Not agent-movable:** the
-CF API token is Workers/DNS-scoped and returns `10000 Authentication error` on `/zones/*/settings`,
-so enabling "Always Use HTTPS" + HSTS is a console/broader-token action → added to
-`blocked-by-human.md`. **Step 0:** the only open PR is #719 (Infisical draft — docs/runbook +
-`.envrc`); no overlap with this run's `scorecard.md` + `blocked-by-human.md` + ledger-row-#1 edits.
-**Rule 6:** all 9 deploy/CI workflows' latest `main` run `success` (`ci.yml` green on head
-`ba7942e`). Local `bun run test` showed 2 timeouts in `apps/api/test/run.test.ts` — **confirmed
-container-perf flakiness, not red main:** the file passes 7/7 in isolation (27 s) and CI is green
-on the same SHA (the full-suite workers-pool setup took 676 s, starving the 5 s per-test timeout).
+**Rule 6 outranks the acquisition levers:** a merged security patch not reaching prod IS the
+"production silently serves a stale build" class. Priority-1/2/engine otherwise not pullable (as
+run 115 #776 verified an hour prior). **Step 0:** open PRs #776/#777/#778/#719 — none touch
+`.github/workflows/deploy-*.yml`; this run's only shared file is `scorecard.md` (step-1 exempt).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -71,7 +56,7 @@ on the same SHA (the full-suite workers-pool setup took 676 s, starving the 5 s 
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
 | | **Ops** — 7d, CF Workers analytics (fresh 07-13 02:58Z pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). Deploy health tracked in the Rule-6 line above (all `success` on `main` `ba7942e`) |
+| 12 | nlqdb-api requests / errors | 4,974 / 0 (0.00%) | mcp-server 473 req / 0 err; events-worker 31 req; canary 4 req / 0 err this window (secret-drift re-provisioning still tracked in `blocked-by-human.md`). Deploy health tracked in the Rule-6 line above (all `success` on `main`; run 116 closed the root-`overrides`→no-deploy trigger gap) |
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
@@ -106,22 +91,31 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-22 (run 115)** — **Null run.** No priority-1 acquisition, priority-2 UX-flow, or engine
-lever cleared the "measurable delta this cycle" bar (verified, not assumed — see the null-run
-verification block above). **Finding in place of a delta:** the fresh GSC pull found Google indexing
-an `http://nlqdb.com/solve/...` URL served **200, no HTTP→HTTPS 301, no HSTS** — a cross-surface
-canonicalization/SSL-strip gap. **Not agent-movable** (CF token Workers/DNS-scoped → `10000` on
-`/zones/*/settings`; `rel=canonical` already handles Google's dedup) → routed to
-`blocked-by-human.md`, not fixed here. **Why null, not a docs meta-lever:** /weekly de-prioritised
-row #17 (monoculture) and runs 112+114 already pulled it this week — a 3rd pull is the rut rule 7
-warns against. **Step-1 refresh:** GSC 28d **2 clicks / 483 impr / pos 16.5** (2nd organic click on
-`/blog/bird-gold-noise-distinct/`, up from 1/469); surfaces **105**, queue **2** (< 3 → no publish;
-dev.to drip skipped, key absent); row #17 **14** (pinned re-grep, unchanged); users **9** /
-strangers **0** (07-16 carried); BIRD 0.542 / Spider 0.2222 (07-19 dark). **Rule 6:** all 9
-deploy/CI `success` on `main` (`ci.yml` green on `ba7942e`); 2 local `run.test.ts` timeouts are
-confirmed container-perf flakiness (7/7 in isolation; CI green same SHA). **Gates:** typecheck + lint
-green, test green modulo that flakiness; markdown-only diff. **KPI (GLOBAL-025):** none moved (null
-run); **no KPI degrades** — no code path touched.
+**2026-07-22 (run 116)** — **Rule-6 deploy-integrity lever: root-`overrides` security patches now
+trigger deploys (0/8 → 8/8 JS-bundle deploys).** The repo applies transitive-dep security patches
+via the root `package.json` `overrides` block (fast-uri, ws, qs, cookie, postcss…), but **none** of
+the 9 deploy workflows watched `package.json`/`bun.lock` in their `paths:` filter — so a security
+override deployed nothing and production kept serving the pre-patch bundle until an unrelated app
+change happened to trigger a deploy. **Concrete live instance:** #775's `fast-uri`→`^3.1.4`
+override merged to `main` `ba7942e` but never deployed; `fast-uri` reaches the MCP/API workers via
+`@modelcontextprotocol/sdk`→`ajv`→`fast-uri` (verified in `bun.lock`), so prod ran the unpatched
+version. **Change:** added `- "package.json"` + `- "bun.lock"` to the 8 JS-bundle deploys
+(api/canary/web/mcp/events-worker/elements/docs/coming-soon; `deploy-cli` excluded — Go binary,
+JS lockfile irrelevant). **Number moved:** deploy-trigger coverage for the security-override
+mechanism **0/8 → 8/8**; and because each deploy workflow lists its own file in `paths:`, merging
+this PR triggers all 8 → prod rebuilds from the current lockfile → the pending `fast-uri` patch
+ships live. **Measure→change→re-measure:** before = `git grep` of each deploy `paths:` block shows
+0 references to `package.json`/`bun.lock`; after = all 8 present; all 8 files re-validated with
+`yaml.safe_load`. **Gates:** diff is 8 `.github/workflows/deploy-*.yml` files (YAML only); biome
+typecheck/lint/test do not process YAML and CI is `success` on the base SHA `27412f3`/`ba7942e`;
+YAML syntax validated across all 8. **No P1 conflict:** `ci-permissions/FEATURE.md` governs
+`permissions:` blocks, not `paths:` triggers — no decision documents excluding the root lockfile.
+**Step-1:** surfaces **105**, queue **2**; users **9** / strangers **0** (07-16 carried); GSC 28d
+**2/483/16.5** (07-21 carried from run 115); BIRD 0.542 / Spider 0.2222 (07-19, dark); row #21
+walkers 4/4 fresh 07-21. **Artifact:** queue **2** (< 3) → no publish; dev.to drip skipped
+(`DEVTO_API_KEY` absent). **KPI (GLOBAL-025):** advances **performance/reliability** — the
+security-patch→prod path is no longer silently broken; **no KPI degrades** (deploys are idempotent,
+free-tier; no engine/funnel/UX code touched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

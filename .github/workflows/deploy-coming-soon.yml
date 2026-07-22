@@ -15,6 +15,10 @@ on:
     branches: [main]
     paths:
       - "apps/coming-soon/**"
+      # Root `overrides` (security patches to bundled transitive deps) must
+      # redeploy — see deploy-api.yml for the rationale.
+      - "package.json"
+      - "bun.lock"
       - ".github/workflows/deploy-coming-soon.yml"
   workflow_dispatch:
 

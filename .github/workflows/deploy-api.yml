@@ -56,6 +56,12 @@ on:
       - "packages/events/**"
       - "packages/llm/**"
       - "packages/otel/**"
+      # Root dep graph: `overrides` in package.json apply security patches to
+      # transitive deps bundled into this worker (e.g. fast-uri via the MCP
+      # SDK's ajv). Without these, a security-override change deploys nothing
+      # and prod keeps serving the pre-patch build.
+      - "package.json"
+      - "bun.lock"
       - ".github/workflows/deploy-api.yml"
   workflow_dispatch:
 
