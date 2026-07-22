@@ -125,7 +125,17 @@ writing (through the confirm gate) and reading memory.
 
 Want the coding agent you build *with* to wire this up once and use it
 forever? Drop a ready-made artifact into your project — the connect command
-in each is generated from the same source as this page, so it never drifts:
+in each is generated from the same source as this page, so it never drifts.
+
+**One command** (Claude Code / Cursor) — installs the skill, formats a
+matching Cursor rule, and registers it in `AGENTS.md` with the
+[`skills`](https://github.com/vercel-labs/skills) CLI (public repo, no account):
+
+```bash
+npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory
+```
+
+Or drop a file in by hand:
 
 - **`AGENTS.md`** (host-neutral — Claude Code, Codex, and any agent that reads
   it): append [`AGENTS.snippet.md`](https://nlqdb.com/agent-artifacts/AGENTS.snippet.md).
