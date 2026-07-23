@@ -258,7 +258,7 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
 - Registry/directory listings: **1 of 8 published** (per-venue mechanism in the
   R-05 slice, verified 2026-07-20/21, P2). #1 official registry **published
   2026-07-22** (`com.nlqdb/nlqdb` v0.1.1; ledger row #3 in-flight), cascading to
-  crawl-fed #2–#4 (Smithery / PulseMCP / Glama — pending ingest); #5–#8 (mcp.so,
+  crawl-fed #2–#4 (pending ingest); #5–#8 (mcp.so,
   Cursor, Anthropic connector dir, `awesome-mcp-servers` PR) each need their own
   founder submit (payloads parked in `blocked-by-human.md`). Acquisition channels
   live w/ attributable yield: **4** (organic search, dev.to, github, npm);
