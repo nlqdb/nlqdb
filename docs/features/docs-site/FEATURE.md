@@ -24,7 +24,7 @@ when-to-load:
 ## Decisions
 
 - **SK-DOCS-001** — Astro Starlight + Cloudflare Workers Static Assets.
-  - **Decision:** The docs site is Astro Starlight (Astro 6 + `@astrojs/starlight`), built to static HTML, served by a Cloudflare Worker via Workers Static Assets (`apps/web` pattern). `custom_domain = true` in `wrangler.toml` auto-provisions DNS + cert for `docs.nlqdb.com`.
+  - **Decision:** The docs site is Astro Starlight (Astro 7 + `@astrojs/starlight`), built to static HTML, served by a Cloudflare Worker via Workers Static Assets (`apps/web` pattern). `custom_domain = true` in `wrangler.toml` auto-provisions DNS + cert for `docs.nlqdb.com`.
   - **Core value:** A docs site that ships in the same deploy flow as every other surface — `wrangler deploy` via GH Actions on every merge — with zero per-host glue.
   - **Why:** Astro is already in `apps/web`, so the toolchain is shared. Starlight is the Astro team's docs preset and handles search, sidebar, code blocks, dark mode out of the box. Workers Static Assets is the lighter sibling of Cloudflare Pages and is the platform Cloudflare is steering toward; it gives us one `wrangler deploy` per surface and one cert auto-provisioned via `custom_domain = true`, matching the `apps/mcp` pattern.
   - **Consequence in code:** New docs pages are `.mdx` files under `apps/docs/src/content/docs/`; the sidebar is hand-edited in `astro.config.mjs`. No Cloudflare adapter — Astro pre-renders everything. PRs that introduce a server-rendered route here fail review (the site must remain fully static so it can be served by Static Assets with no Worker code).
@@ -77,6 +77,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-013** — Free-tier bundle budget. *In this feature:* the static-assets build must fit Workers' free-tier limits (no Workers script execution per request — assets only).
 - **GLOBAL-017** — One way to do each thing. *In this feature:* one docs site, one host. Don't fork "internal" vs "external" docs sites — internal stays in-repo, external is `docs.nlqdb.com`.
 - **GLOBAL-034** — Analytics stack. *In this feature:* the docs site embeds the same Cloudflare Web Analytics beacon as `apps/web`; no separate analytics provider.
+- **GLOBAL-039** — Production hosts are https-only. *In this feature:* HSTS ships via `apps/docs/public/_headers` (no worker runs on the asset path).
 
 ## Open questions / known unknowns
 

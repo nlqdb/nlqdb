@@ -86,6 +86,7 @@ import {
   parseRunBody,
   sanitizeAskSource,
 } from "./http.ts";
+import { httpsRedirectTarget, withHsts } from "./https-enforce.ts";
 import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
@@ -3911,21 +3912,24 @@ async function scheduled(
 }
 
 export default {
-  fetch: (req: Request, e: Cloudflare.Env, ctx: ExecutionContext) => {
+  fetch: async (req: Request, e: Cloudflare.Env, ctx: ExecutionContext) => {
+    const url = new URL(req.url);
+    // Plaintext never serves content on a production host (`GLOBAL-039`).
+    const httpsTarget = httpsRedirectTarget(url);
+    if (httpsTarget) return Response.redirect(httpsTarget, 301);
     // Front-controller for the marketing surface (`SK-WEB-026`). The merged app
     // host serves the same build as the canonical marketing host, so 301 that
     // surface to `nlqdb.com` to stop Google indexing a duplicate.
-    const url = new URL(req.url);
     const redirect = marketingMirrorRedirect(url);
-    if (redirect) return Response.redirect(redirect, 301);
+    if (redirect) return withHsts(Response.redirect(redirect, 301));
     // `run_worker_first` also invokes us for these paths on preview /
     // workers.dev hosts, where there's no duplication to fix — serve the built
     // asset there instead of falling through to Hono (which has no marketing
     // routes and would 404).
     if (isMarketingMirrorPath(url.pathname) && e.STATIC_ASSETS) {
-      return e.STATIC_ASSETS.fetch(req);
+      return withHsts(await e.STATIC_ASSETS.fetch(req));
     }
-    return app.fetch(req, e, ctx);
+    return withHsts(await app.fetch(req, e, ctx));
   },
   scheduled,
 };
