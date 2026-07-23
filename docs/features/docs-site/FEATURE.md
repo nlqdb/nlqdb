@@ -24,7 +24,7 @@ when-to-load:
 ## Decisions
 
 - **SK-DOCS-001** — Astro Starlight + Cloudflare Workers Static Assets.
-  - **Decision:** The docs site is Astro Starlight (Astro 6 + `@astrojs/starlight`), built to static HTML, served by a Cloudflare Worker via Workers Static Assets (`apps/web` pattern). `custom_domain = true` in `wrangler.toml` auto-provisions DNS + cert for `docs.nlqdb.com`.
+  - **Decision:** The docs site is Astro Starlight (Astro 7 + `@astrojs/starlight`), built to static HTML, served by a Cloudflare Worker via Workers Static Assets (`apps/web` pattern). `custom_domain = true` in `wrangler.toml` auto-provisions DNS + cert for `docs.nlqdb.com`.
   - **Core value:** A docs site that ships in the same deploy flow as every other surface — `wrangler deploy` via GH Actions on every merge — with zero per-host glue.
   - **Why:** Astro is already in `apps/web`, so the toolchain is shared. Starlight is the Astro team's docs preset and handles search, sidebar, code blocks, dark mode out of the box. Workers Static Assets is the lighter sibling of Cloudflare Pages and is the platform Cloudflare is steering toward; it gives us one `wrangler deploy` per surface and one cert auto-provisioned via `custom_domain = true`, matching the `apps/mcp` pattern.
   - **Consequence in code:** New docs pages are `.mdx` files under `apps/docs/src/content/docs/`; the sidebar is hand-edited in `astro.config.mjs`. No Cloudflare adapter — Astro pre-renders everything. PRs that introduce a server-rendered route here fail review (the site must remain fully static so it can be served by Static Assets with no Worker code).

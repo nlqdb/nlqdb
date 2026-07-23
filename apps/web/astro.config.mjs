@@ -22,5 +22,9 @@ export default defineConfig({
   site: "https://nlqdb.com",
   trailingSlash: "always",
   prefetch: true,
+  // Astro 7 changed the default to "jsx" (strips whitespace between inline
+  // elements); keep the v6 semantics so inline spacing on the 126 marketing
+  // pages doesn't shift under a toolchain bump.
+  compressHTML: true,
   integrations: [react()],
 });

@@ -57,7 +57,7 @@ An "official" module adds typed props, auto script injection, SSR prefetch, and 
 | `@nlqdb/nuxt`            | Nuxt 4 module                  | **P1 · Built** | Module + `useNlq()`; injects elements CDN.                                                 |
 | `@nlqdb/svelte`          | Svelte 5 (runes)               | **P1 · Built** | Foundation for `@nlqdb/sveltekit`.                                                         |
 | `@nlqdb/sveltekit`       | SvelteKit                      | **P1 · Built** | `<NlqHead>` + `/server` `nlqdbLoad()`.                                                     |
-| `@nlqdb/astro`           | Astro 6 integration            | **P1 · Built** | `astro:config:setup` injects the script.                                                   |
+| `@nlqdb/astro`           | Astro integration              | **P1 · Built** | `astro:config:setup` injects the script.                                                   |
 | `@nlqdb/solid`           | SolidJS                        | **P1 · Built** | Attribute pass-through; lazy CE registration.                                              |
 
 ### Mobile + desktop
