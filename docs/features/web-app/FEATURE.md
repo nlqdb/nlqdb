@@ -188,6 +188,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* the chat panel renders the diff inline before commit (per `SK-TRUST-001`), the trace pane sits below the answer with collapsed-by-default state (per `SK-TRUST-002`), and low-confidence refusals surface as click-to-disambiguate chips (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
 - **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for public pageviews; PostHog client SDK on the `/app` product surfaces only per `SK-WEB-024`; marketing stays SDK-free).
+- **GLOBAL-039** — Production hosts are https-only.
+  - *In this feature:* the static marketing surface ships HSTS via `apps/web/public/_headers`; the `/app*` worker path already 301s to the https product origin.
 - **GLOBAL-032** — Canonical user flows.
   - *In this feature:* the marketing site hosts three of the canonical inbound surfaces (FLOW-001 hero, FLOW-002 `/solve`, FLOW-003 `/vs`), each walked daily by `stranger-test.sh` under `acquisition-health.yml`, so a template regression surfaces within 24 h.
 

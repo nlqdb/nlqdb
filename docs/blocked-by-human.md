@@ -121,33 +121,16 @@ is the company's real cycle time.
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-6. **⏱ ~15 min (decision only) · since 2026-07-21 — Decide the toolchain path
-   to unblock the Astro 6→7 security upgrade**
-   (fixes moderate/low XSS `GHSA-f48w-9m4c-m7f5` / `GHSA-4g3v-8h47-v7g6` /
-   `GHSA-7pw4-f3q4-r2p2` on the marketing + docs sites). The dep+code migration
-   is otherwise done and green, but Astro 7 hard-requires `cookie@2` (renamed
-   `parseCookie` API) while better-auth / express / sveltekit / nuxt need
-   `cookie@0.7.x` (held above `GHSA-pxg6-pf52-xh8x` by the root global
-   override), and bun 1.3.11 supports neither scoped overrides
-   ([oven-sh/bun#6608](https://github.com/oven-sh/bun/issues/6608)) nor correct
-   isolated-install linking here. Pick one: migrate the cookie consumers off
-   `parse`/`serialize`, switch bun linker mode / package manager, or bump bun
-   and re-verify. Until then the 3 Astro advisories stay on `main`
-   (agent-verified 2026-07-21; re-verified 2026-07-22 — bun overrides are
-   still name-keyed only, [#6608](https://github.com/oven-sh/bun/issues/6608)
-   open, so "bump bun" is not yet a path).
-
-7. **⏱ ~5 min · since 2026-07-22 — Enable "Always Use HTTPS" + HSTS on the
-   `nlqdb.com` Cloudflare zone** (dashboard → SSL/TLS → Edge Certificates, or
-   a broader API token). Prod currently serves `http://` with a **200 (no
-   HTTP→HTTPS 301) and no HSTS header** — the 07-22 GSC pull found Google
-   indexing an `http://` solve URL. The `rel=canonical` tag already points
-   Google to https (SEO harm is small); the real gap is SSL-strip/HSTS
-   hardening across all 105 surfaces. Agent-blocked: the CF API token is
-   Workers/DNS/D1-scoped and gets auth errors on zone settings,
-   `security_header`, page rules, and zone/account rulesets alike
-   (re-verified 2026-07-22), so this needs a console click or a
-   Zone-Settings-scoped token. Lowest rank: internal-integrity yield, no
+6. **⏱ ~2 min · since 2026-07-22 — Flip "Always Use HTTPS" on the `nlqdb.com`
+   Cloudflare zone** (dashboard → SSL/TLS → Edge Certificates). The code half
+   shipped 2026-07-23 ([`GLOBAL-039`](./decisions/GLOBAL-039-https-only-hsts.md)):
+   dynamic hosts (app/mcp) 301 http→https in-worker and every surface now
+   serves HSTS, so returning browsers are pinned to https. The residual gap is
+   only the *first-ever* plaintext hit on the static-asset sites (nlqdb.com
+   marketing + docs.nlqdb.com answer `http://` 200 until the zone toggle;
+   `rel=canonical` keeps the SEO harm small). Agent-blocked: the CF API token
+   is Workers/DNS/D1-scoped and gets auth errors on zone settings
+   (re-verified 2026-07-22). Lowest rank: internal-integrity yield, no
    user-facing surface.
 
 ## Suggestions needing approval (to amend the guidelines)
