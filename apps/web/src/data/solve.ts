@@ -132,9 +132,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Per-`(mcp_host, device_id)` `sk_mcp_*` keys scope access per agent and device; revocation is per-device and shown in the dashboard.",
     ],
     whatItDoesnt: [
-      "This page is about nlqdb provisioning a fresh database for the agent — no connection string. To point nlqdb at a Postgres you already run instead, use the signed-in BYO connect verb (`SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language), not the zero-config provisioning path shown here.",
+      "This page is about nlqdb provisioning a fresh database for the agent — no connection string. To point nlqdb at a Postgres you already run instead, use the signed-in BYO connect verb (see /solve/query-existing-postgres-in-natural-language), not the zero-config provisioning path shown here.",
       "No native vector search — nlqdb is Postgres-first; unstructured similarity recall over text strings is Mem0 or pgvector's job.",
-      "No public `nlqdb_create_database` verb — provisioning is implicit in `nlqdb_query` by design (`SK-MCP-002`, trust boundary).",
+      "No public `nlqdb_create_database` verb — provisioning is implicit in `nlqdb_query` by design (trust boundary).",
     ],
     faqs: [
       {
@@ -147,7 +147,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How does the agent create the database — is there a create tool?",
-        a: "No separate create tool. The agent calls `nlqdb_query` with no `db` set and an English goal; when it has no database, nlqdb provisions Postgres from the goal and answers in the same call. Keeping create implicit in query is a deliberate trust-boundary choice (`SK-MCP-002`).",
+        a: "No separate create tool. The agent calls `nlqdb_query` with no `db` set and an English goal; when it has no database, nlqdb provisions Postgres from the goal and answers in the same call. Keeping create implicit in query is a deliberate trust-boundary choice.",
       },
       {
         q: "Can the agent see the SQL it ran?",
@@ -183,7 +183,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "The query a small team would otherwise write by hand (or pay per viewer to render) is the one nlqdb answers from a single English goal.",
     howNlqdbAnswers: [
       'One HTML element (`<nlq-data goal="...">`) renders the answer with the compiled SQL toggle-revealed underneath.',
-      "Anonymous mode (`SK-ANON-001`) provisions an ephemeral Postgres database in seconds — no signup before first answer.",
+      "Anonymous mode provisions an ephemeral Postgres database in seconds — no signup before first answer.",
       "Pricing is free forever for the free LLM chain; paid tiers add a flat sub with included requests, never per-viewer.",
     ],
     whatItDoesnt: [
@@ -205,7 +205,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "What happens when the dashboard hits a paid LLM?",
-        a: "Free chain (Groq → Gemini) handles the free tier indefinitely; BYO-LLM at 0% markup lets you point any provider key at the same request shape. Hosted-premium adds a soft-meter overage — no surprise bills, no auto-upgrade (GLOBAL-013).",
+        a: "Free chain (Groq → Gemini) handles the free tier indefinitely; BYO-LLM at 0% markup lets you point any provider key at the same request shape. Hosted-premium adds a soft-meter overage — no surprise bills, no auto-upgrade.",
       },
     ],
     sources: [
@@ -237,7 +237,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     howNlqdbAnswers: [
       "MCP `nlqdb_query` provisions Postgres from the agent's first English goal and answers in English — plus `nlqdb_list_databases` / `nlqdb_describe`, no human in the loop.",
       "Memory is typed rows in Postgres, so the agent can `GROUP BY`, rank top-N, and aggregate over what it stored — not just similarity recall.",
-      'Schema evolves via English: `"add a priority column"` migrates the table; the diff is shown before apply (`SK-ONBOARD-004`).',
+      'Schema evolves via English: `"add a priority column"` migrates the table; the diff is shown before apply.',
       "Per-(mcp_host, device_id) keys (`sk_mcp_*`) let one tenant share memory across an agent fleet without leaking other tenants' rows.",
     ],
     whatItDoesnt: [
@@ -295,7 +295,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     howNlqdbAnswers: [
       "The agent's memory is typed rows in Postgres, so `GROUP BY`, top-N, and per-period rollups run as actual SQL — not arithmetic over search hits.",
       "Ask the report in English via MCP `nlqdb_query`; the answer returns rows plus the compiled SQL under a trace toggle, so you audit the grain.",
-      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — a repeated weekly rollup hits the cache and returns in single-digit ms.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` — a repeated weekly rollup hits the cache and returns in single-digit ms.",
       "Same database the agent writes to and reports over — no ETL into a separate analytics store, no second connection string to keep in sync.",
     ],
     whatItDoesnt: [
@@ -313,7 +313,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "What does the report query actually look like?",
-        a: "You write the goal in English — 'count of facts the agent logged per category this month, highest first' — and nlqdb compiles it to SQL over the memory table, runs it, and returns the ranked rows. The compiled SQL shows under the trace toggle (`SK-WEB-005`) so you can verify the grain.",
+        a: "You write the goal in English — 'count of facts the agent logged per category this month, highest first' — and nlqdb compiles it to SQL over the memory table, runs it, and returns the ranked rows. The compiled SQL shows under the trace toggle so you can verify the grain.",
       },
       {
         q: "Do I need a separate analytics database for this?",
@@ -347,9 +347,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       'The CRM-style table is the most common "my side project needs to remember things" shape — nlqdb mints it from one English goal with no schema authored by hand.',
     howNlqdbAnswers: [
-      "One HTML element on any page provisions a Postgres database on the first query; subsequent queries reuse it via a per-device anonymous identity (`SK-ANON-001`).",
+      "One HTML element on any page provisions a Postgres database on the first query; subsequent queries reuse it via a per-device anonymous identity.",
       'Schema is inferred from the query intent — no `CREATE TABLE` written by hand; subsequent fields are added via English (`"add a status column"`).',
-      "Adopt the anonymous database into your account with one click within 72 hours (`SK-ANON-002`); no data loss, no re-import.",
+      "Adopt the anonymous database into your account with one click within 72 hours; no data loss, no re-import.",
     ],
     whatItDoesnt: [
       "Anonymous databases sweep after 72h unless adopted — designed for trial, not for storing the next year of your data without an account.",
@@ -358,7 +358,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     faqs: [
       {
         q: "Can I keep a database from a side project after the 72-hour anonymous window?",
-        a: 'Yes — sign in inside the 72h window and click "Adopt this database" (`SK-ANON-002`). The DB is re-keyed to your account, all rows persist, and the original anonymous device key keeps working until you rotate it.',
+        a: 'Yes — sign in inside the 72h window and click "Adopt this database". The DB is re-keyed to your account, all rows persist, and the original anonymous device key keeps working until you rotate it.',
       },
       {
         q: "Does this work without a build step or a framework?",
@@ -370,7 +370,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How do I migrate later if the project takes off?",
-        a: "The SDK's `runSql` (`POST /v1/run` raw-SQL escape hatch — `GLOBAL-015`) lets you stream out an arbitrary `SELECT` of your data for a parameterised migration. Phase 2 adds engine migration (Postgres → ClickHouse) without an app-side rewrite — the workload analyser proposes it; you approve.",
+        a: "The SDK's `runSql` (`POST /v1/run` raw-SQL escape hatch) lets you stream out an arbitrary `SELECT` of your data for a parameterised migration. Phase 2 adds engine migration (Postgres → ClickHouse) without an app-side rewrite — the workload analyser proposes it; you approve.",
       },
     ],
     sources: [
@@ -401,9 +401,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The query an ad-hoc analyst would run from a fresh schema is the no-training-data sweet spot — schema fingerprint + recent-tables hint is enough.",
     howNlqdbAnswers: [
-      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`); a cache hit returns in single-digit ms and avoids a model call entirely.",
-      "Quality is measured against BIRD Mini-Dev + Spider 2.0-lite and published to `docs/features/quality-eval/` — the numbers are visible, not asserted.",
-      "Every reply renders the compiled SQL under a `Cmd+/` trace toggle (`SK-WEB-005`); you audit before you trust.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)`; a cache hit returns in single-digit ms and avoids a model call entirely.",
+      "Quality is measured against BIRD Mini-Dev + Spider 2.0-lite and published openly — the numbers are visible, not asserted.",
+      "Every reply renders the compiled SQL under a `Cmd+/` trace toggle; you audit before you trust.",
     ],
     whatItDoesnt: [
       "No retrieval-augmented training corpus — if you have years of curated query examples and want a tool that exploits them, Vanna AI's training loop is the right shape.",
@@ -412,7 +412,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     faqs: [
       {
         q: "Is nlqdb's natural-language accuracy comparable to fine-tuned text-to-SQL?",
-        a: "We publish BIRD Mini-Dev + Spider 2.0-lite scores to `docs/features/quality-eval/`. They are still climbing toward our public target and the numbers are visible rather than asserted — measurement is honest, not a marketing claim.",
+        a: "We publish BIRD Mini-Dev + Spider 2.0-lite scores openly. They are still climbing toward our public target and the numbers are visible rather than asserted — measurement is honest, not a marketing claim.",
       },
       {
         q: "Do I need to write training examples like Vanna AI requires?",
@@ -420,11 +420,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How does the system avoid wrong SQL on a complex schema?",
-        a: "Three guardrails: (1) the SQL validator allowlists the verbs the orchestrator may emit (`docs/features/sql-allowlist/FEATURE.md`); (2) destructive operations show a row-count diff and require second confirmation (`SK-ONBOARD-004`); (3) the trace toggle surfaces the SQL so the analyst can audit before applying.",
+        a: "Three guardrails: (1) the SQL validator allowlists the verbs the orchestrator may emit; (2) destructive operations show a row-count diff and require second confirmation; (3) the trace toggle surfaces the SQL so the analyst can audit before applying.",
       },
       {
         q: "Can I see the SQL nlqdb generated?",
-        a: "Always — every chat reply and every `<nlq-data>` render includes a collapsible trace block (`SK-WEB-005`). The SQL is the audit surface; we never hide it behind the answer.",
+        a: "Always — every chat reply and every `<nlq-data>` render includes a collapsible trace block. The SQL is the audit surface; we never hide it behind the answer.",
       },
     ],
     sources: [
@@ -454,7 +454,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The most common indie-product ranking query — `ORDER BY score DESC LIMIT N` — written as the English goal that ships it without an ORM.",
     howNlqdbAnswers: [
-      "One element renders the ranked table; the engine indexes the sort column automatically based on the workload analyser's observations (`docs/features/engine-migration/FEATURE.md`).",
+      "One element renders the ranked table; the engine indexes the sort column automatically based on the workload analyser's observations.",
       'Adding the next dimension is an English edit — `"now by region"`, `"now this month only"` — not an ORM rewrite.',
       "Anonymous mode ships the leaderboard inside 72h on the free chain; adopt the database to keep it past the window.",
     ],
@@ -469,15 +469,15 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How do I add a new field — say, a player's badge?",
-        a: 'Ask in English: `"add a badge column to players"`. The diff (and migration plan) shows under the `SK-ONBOARD-004` confirmation; press Enter to apply. No `ALTER TABLE` written by hand.',
+        a: 'Ask in English: `"add a badge column to players"`. The diff (and migration plan) shows under the confirmation; press Enter to apply. No `ALTER TABLE` written by hand.',
       },
       {
         q: "Does it scale beyond a hackathon-sized leaderboard?",
-        a: "The Phase 1 engine is Postgres on Neon Free tier (`docs/features/hosted-db-create/FEATURE.md`); single-tenant scales to small-product traffic. The Phase 2 workload analyser proposes a ClickHouse migration when row-count + scan patterns cross the threshold — without an app-side rewrite.",
+        a: "The Phase 1 engine is Postgres on Neon Free tier; single-tenant scales to small-product traffic. The Phase 2 workload analyser proposes a ClickHouse migration when row-count + scan patterns cross the threshold — without an app-side rewrite.",
       },
       {
         q: "Can my game client write scores via the API?",
-        a: "Yes — `@nlqdb/sdk` (TypeScript), the Go `nlq` CLI, and the Swift Package all speak the same `/v1` wire contract today (Ruby + Rust are placeholders). The `POST /v1/ask` endpoint accepts an English goal; the `POST /v1/run` raw-SQL escape hatch (`GLOBAL-015`) is available when you want to send a parameterised `INSERT` instead.",
+        a: "Yes — `@nlqdb/sdk` (TypeScript), the Go `nlq` CLI, and the Swift Package all speak the same `/v1` wire contract today (Ruby + Rust are placeholders). The `POST /v1/ask` endpoint accepts an English goal; the `POST /v1/run` raw-SQL escape hatch is available when you want to send a parameterised `INSERT` instead.",
       },
     ],
     sources: [
@@ -506,11 +506,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Conversation turns are typed rows in Postgres, so 'messages per day' and 'average turns per session' run as SQL GROUP BY — not log math.",
       "Ask the engagement question in English via MCP `nlqdb_query` or the `@nlqdb/sdk`; every answer returns rows plus the compiled SQL to audit.",
       "Write turns with the deterministic `nlqdb_remember` tool (or a `POST /v1/run` INSERT) and report over the same database — no second store, no ETL.",
-      'Schema evolves in English: `"add a sentiment column to messages"` migrates the table; the diff is shown before apply (`SK-ONBOARD-004`).',
+      'Schema evolves in English: `"add a sentiment column to messages"` migrates the table; the diff is shown before apply.',
     ],
     whatItDoesnt: [
       "No semantic search over message text — finding the most similar past message is a vector store's job (Mem0, pgvector); nlqdb answers the counting questions, not the similarity ones.",
-      "No ingesting your existing logging pipeline — nlqdb stores the conversation rows you write to it. If your transcripts already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb (`SK-DBCONN-001`) and query it in place.",
+      "No ingesting your existing logging pipeline — nlqdb stores the conversation rows you write to it. If your transcripts already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb and query it in place.",
       "No built-in PII redaction or retention policy on message text — you choose what to write; anonymous DBs auto-sweep at 72h, authed rows persist until deleted.",
     ],
     faqs: [
@@ -524,11 +524,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How do I get conversation turns into the database?",
-        a: "Write each turn with the deterministic `nlqdb_remember` MCP tool, or send a parameterised INSERT through `POST /v1/run` (`GLOBAL-015`). Then ask engagement questions in English over the same table. The remember path builds the INSERT server-side, so the row shape stays a trust boundary, not LLM-guessed.",
+        a: "Write each turn with the deterministic `nlqdb_remember` MCP tool, or send a parameterised INSERT through `POST /v1/run`. Then ask engagement questions in English over the same table. The remember path builds the INSERT server-side, so the row shape stays a trust boundary, not LLM-guessed.",
       },
       {
         q: "Can I see the SQL behind the engagement numbers?",
-        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can verify the grain (per message vs per conversation) before trusting a dashboard number. nlqdb never hides the SQL behind the answer.",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle, so you can verify the grain (per message vs per conversation) before trusting a dashboard number. nlqdb never hides the SQL behind the answer.",
       },
     ],
     sources: [
@@ -561,11 +561,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Log each call as a row — user, model, tokens, cost, timestamp — so cost-per-user and tokens-per-model run as SQL GROUP BY, not log math.",
       "Ask the cost question in English via the `<nlq-data>` element, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
       "Write usage rows with the deterministic `nlqdb_remember` tool or a `POST /v1/run` INSERT, and report over the same database — no separate store, no ETL.",
-      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly cost rollup hits the cache and returns in single-digit ms.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)`, so a repeated weekly cost rollup hits the cache and returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "No automatic token metering — nlqdb stores and aggregates the usage rows you write; counting tokens and computing cost per call is your app's job (or your provider SDK's).",
-      "No ingesting your existing logging or billing pipeline — nlqdb stores the usage rows you write to it. If those rows already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb (`SK-DBCONN-001`) and query it in place.",
+      "No ingesting your existing logging or billing pipeline — nlqdb stores the usage rows you write to it. If those rows already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb and query it in place.",
       "No live streaming cost meter — the table refreshes on query, not via websocket push; realtime dashboards are roadmap, not shipped.",
     ],
     faqs: [
@@ -575,11 +575,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How do the token and cost numbers get into the database?",
-        a: "Write one row per LLM call — user, model, prompt and completion tokens, computed cost, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run` (`GLOBAL-015`). The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the cost questions in English over the same table.",
+        a: "Write one row per LLM call — user, model, prompt and completion tokens, computed cost, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run`. The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the cost questions in English over the same table.",
       },
       {
         q: "Can I see the SQL behind the cost numbers?",
-        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can verify the grain (per call vs per user) before trusting a spend figure. nlqdb never hides the SQL behind the answer.",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle, so you can verify the grain (per call vs per user) before trusting a spend figure. nlqdb never hides the SQL behind the answer.",
       },
       {
         q: "Is this a replacement for an LLM observability tool like Langfuse or Helicone?",
@@ -616,12 +616,12 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Log each tool call as a typed row — tool, session id, status, latency_ms, timestamp — so error-rate-per-tool and p95-latency run as SQL GROUP BY.",
       "Ask the reliability question in English via `<nlq-data>`, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
       "Write call records with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, then report over the same database — no separate analytics store.",
-      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly reliability rollup hits the cache and returns in single-digit ms.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)`, so a repeated weekly reliability rollup hits the cache and returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "No automatic tracing — nlqdb stores and aggregates the call rows you write; capturing each tool invocation, its status, and its latency is your agent framework's job (or an OTel/tracing SDK's).",
       "No nested trace-tree UI — nlqdb answers tabular 'per tool / per session' aggregations, not the multi-step span waterfall a dedicated agent-observability tool draws.",
-      "No ingesting your existing tracing pipeline — nlqdb stores the call rows you write to it. If those rows already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb (`SK-DBCONN-001`) and query it in place.",
+      "No ingesting your existing tracing pipeline — nlqdb stores the call rows you write to it. If those rows already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb and query it in place.",
     ],
     faqs: [
       {
@@ -630,11 +630,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How do the tool-call records get into the database?",
-        a: "Write one row per tool call — tool name, session id, status, latency, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run` (`GLOBAL-015`). The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the reliability questions in English over the same table.",
+        a: "Write one row per tool call — tool name, session id, status, latency, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run`. The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the reliability questions in English over the same table.",
       },
       {
         q: "Can I see the SQL behind the error rates?",
-        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can check the grain (per call vs per session) before trusting a failure rate. nlqdb never hides the SQL behind the answer.",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle, so you can check the grain (per call vs per session) before trusting a failure rate. nlqdb never hides the SQL behind the answer.",
       },
       {
         q: "Is this a replacement for an agent-observability tool like Langfuse or AgentOps?",
@@ -673,12 +673,12 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Log each retrieval as a typed row — query id, source doc, relevance score, timestamp — so retrievals-per-source and avg-score run as SQL GROUP BY.",
       "Ask the retrieval-quality question in English via `<nlq-data>`, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
       "Write retrieval records with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, then report over the same database — no separate analytics store.",
-      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly retrieval rollup hits the cache and returns in single-digit ms.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)`, so a repeated weekly retrieval rollup hits the cache and returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "No vector search or embedding — nlqdb stores and aggregates the retrieval rows you write; the similarity search that picks the chunks stays in your vector store (Pinecone, pgvector, Chroma).",
       "No automatic capture — logging each retrieval, its source, and its relevance score is your RAG pipeline's job (or your framework's callback hook).",
-      "No ingesting your existing log or vector store — nlqdb stores the retrieval rows you write to it. If those rows already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb (`SK-DBCONN-001`); the vector similarity search stays in your vector store regardless.",
+      "No ingesting your existing log or vector store — nlqdb stores the retrieval rows you write to it. If those rows already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb; the vector similarity search stays in your vector store regardless.",
     ],
     faqs: [
       {
@@ -687,7 +687,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How do the retrieval records get into the database?",
-        a: "Write one row per retrieval — query id, source document, chunk id, relevance score, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run` (`GLOBAL-015`). The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the retrieval-quality questions in English over the same table.",
+        a: "Write one row per retrieval — query id, source document, chunk id, relevance score, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run`. The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the retrieval-quality questions in English over the same table.",
       },
       {
         q: "Does nlqdb do the vector search or retrieval itself?",
@@ -695,7 +695,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I see the SQL behind the retrieval numbers?",
-        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can check the grain (per retrieval vs per query) before trusting a usage figure. nlqdb never hides the SQL behind the answer.",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle, so you can check the grain (per retrieval vs per query) before trusting a usage figure. nlqdb never hides the SQL behind the answer.",
       },
     ],
     sources: [
@@ -731,12 +731,12 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Log each scored eval case as a typed row — prompt version, test case, model, score, pass/fail — so pass-rate-per-version runs as SQL GROUP BY.",
       "Ask the regression question in English via `<nlq-data>`, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
       "Write eval records with the deterministic `nlqdb_remember` tool or a `POST /v1/run` parameterised INSERT, then trend over the same database — no separate analytics store.",
-      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly pass-rate rollup hits the cache and returns in single-digit ms.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)`, so a repeated weekly pass-rate rollup hits the cache and returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "No running the evals or scoring outputs — your eval harness (promptfoo, Braintrust, LangSmith, or a custom judge) produces the scores; nlqdb stores and aggregates them.",
       "No LLM-as-judge built in — you bring the score per case; nlqdb is the query planner over the scored results, not the grader.",
-      "No ingesting your existing eval store or LangSmith project — nlqdb stores the scored rows you write to it. If those scores already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb (`SK-DBCONN-001`) and query it in place.",
+      "No ingesting your existing eval store or LangSmith project — nlqdb stores the scored rows you write to it. If those scores already live in a Postgres or ClickHouse you run, connect it with the signed-in BYO connect verb and query it in place.",
     ],
     faqs: [
       {
@@ -745,7 +745,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How do the eval results get into the database?",
-        a: "Write one row per scored case — prompt version, test case id, model, score, pass/fail, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run` (`GLOBAL-015`). The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the trend questions in English over the same table.",
+        a: "Write one row per scored case — prompt version, test case id, model, score, pass/fail, timestamp — with the deterministic `nlqdb_remember` MCP tool or a parameterised INSERT through `POST /v1/run`. The row shape stays a trust boundary, built server-side, not LLM-guessed. Then ask the trend questions in English over the same table.",
       },
       {
         q: "Does nlqdb run the evals or score the outputs itself?",
@@ -753,7 +753,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I see the SQL behind a regression number?",
-        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can check the grain (per case vs per run) before trusting a pass-rate figure. nlqdb never hides the SQL behind the answer.",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle, so you can check the grain (per case vs per run) before trusting a pass-rate figure. nlqdb never hides the SQL behind the answer.",
       },
     ],
     sources: [
@@ -785,15 +785,15 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The agent asks in English; nlqdb compiles and shows the exact SELECT, so you audit the grain — and the validator would have rejected anything that wasn't a read before it ran.",
     howNlqdbAnswers: [
-      "Agent writes go through `nlqdb_remember`: the server builds a parameterised INSERT from a fixed column allow-list, so the agent supplies data, never SQL (`SK-PIVOT-008`).",
-      "Read SQL passes a three-stage validator — leading-verb gate, `node-sql-parser` AST parse, embedded-verb walk — that fails closed, so a CTE-hidden DROP is rejected (`SK-SQLAL-001`).",
+      "Agent writes go through `nlqdb_remember`: the server builds a parameterised INSERT from a fixed column allow-list, so the agent supplies data, never SQL.",
+      "Read SQL passes a three-stage validator — leading-verb gate, `node-sql-parser` AST parse, embedded-verb walk — that fails closed, so a CTE-hidden DROP is rejected.",
       "Postgres row-level security isolates tenant rows at the engine, enforced on reads and writes regardless of SQL shape — not a guard in app code.",
-      "Every answer returns the compiled SQL under a trace toggle, and destructive operations show a row-count diff that needs a second confirmation before applying (`SK-ONBOARD-004`).",
+      "Every answer returns the compiled SQL under a trace toggle, and destructive operations show a row-count diff that needs a second confirmation before applying.",
     ],
     whatItDoesnt: [
       "nlqdb can connect to a Postgres you already run (the signed-in BYO connect verb), but connecting one does not import these guardrails onto it — the server-built-write boundary and per-tenant RLS apply to databases nlqdb provisions, so the safe-store model on this page is the provisioned database, not a connected prod DB. On a connected database, scope safety with a least-privilege role.",
       "No per-query statement-timeout or cost cap yet — a heavy SELECT can still run long; resource-exhaustion guards are tracked in the db-adapter, not wired.",
-      "No per-agent (sub-tenant) row scoping yet — `app.agent_id` RLS is roadmap (E-03); today isolation is per-tenant / per-database, not per-agent-within-a-tenant.",
+      "No per-agent (sub-tenant) row scoping yet — `app.agent_id` RLS is roadmap; today isolation is per-tenant / per-database, not per-agent-within-a-tenant.",
     ],
     faqs: [
       {
@@ -802,11 +802,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How does nlqdb stop an agent from running a destructive or injected query?",
-        a: "Writes never use agent-authored SQL — `nlqdb_remember` builds a parameterised INSERT server-side from a fixed column allow-list. Read SQL passes three independent stages (a leading-verb gate, a `node-sql-parser` AST parse, and an embedded-verb/function walk) and fails closed, so a CTE-hidden DROP, a `pg_sleep`, or an unparseable statement is rejected before it runs (`SK-SQLAL-001`).",
+        a: "Writes never use agent-authored SQL — `nlqdb_remember` builds a parameterised INSERT server-side from a fixed column allow-list. Read SQL passes three independent stages (a leading-verb gate, a `node-sql-parser` AST parse, and an embedded-verb/function walk) and fails closed, so a CTE-hidden DROP, a `pg_sleep`, or an unparseable statement is rejected before it runs.",
       },
       {
         q: "Can I see exactly what SQL the agent ran?",
-        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), and any destructive operation shows a row-count diff that needs a second confirmation before it applies (`SK-ONBOARD-004`). The SQL is the audit surface; nlqdb never hides it behind the answer.",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle, and any destructive operation shows a row-count diff that needs a second confirmation before it applies. The SQL is the audit surface; nlqdb never hides it behind the answer.",
       },
       {
         q: "Can I point nlqdb at my existing production database to make it agent-safe?",
@@ -842,13 +842,13 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "Each agent's writes carry an `agent_id`, so one English question rolls the shared memory up per agent — the cross-team view a per-agent store can't give you.",
     howNlqdbAnswers: [
-      "Every agent writes to one shared Postgres via `nlqdb_remember`: the server builds a parameterised insert, so each agent supplies data, never SQL (`SK-PIVOT-008`).",
+      "Every agent writes to one shared Postgres via `nlqdb_remember`: the server builds a parameterised insert, so each agent supplies data, never SQL.",
       "Every row carries `agent_id`; facts and episodes also carry `end_user_id` and `thread_id`, so you attribute shared memory by which agent, user, or thread wrote it.",
       "Any agent recalls in English via `nlqdb_query` — nlqdb compiles NL→SQL over shared tables, so one agent reads what another wrote, with the SQL shown.",
       "It's one Postgres, so the engine handles concurrent writes; entities upsert on `(agent_id, kind, canonical_name)` so two agents recording the same thing don't duplicate.",
     ],
     whatItDoesnt: [
-      "No per-agent access control yet — every agent sharing one nlqdb database sees the same rows. Engine-enforced private-vs-shared scoping (`app.agent_id` RLS) is roadmap (E-03), not shipped; today the boundary is per-database / per-tenant.",
+      "No per-agent access control yet — every agent sharing one nlqdb database sees the same rows. Engine-enforced private-vs-shared scoping (`app.agent_id` RLS) is roadmap, not shipped; today the boundary is per-database / per-tenant.",
       "No semantic / vector recall — recall is structured SQL (filter, `GROUP BY`, aggregate), not embedding similarity. Keep embeddings in your vector store; nlqdb is the structured shared memory beside it, not a replacement for it.",
       "This shared memory is a database nlqdb provisions for the crew — not a layer over a store you already run. You can connect an existing Postgres with the signed-in BYO connect verb instead, but the shared-memory model here assumes nlqdb owns the database all agents write to.",
     ],
@@ -863,7 +863,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can one agent read what another agent remembered?",
-        a: "Yes — all agents sharing an nlqdb database query the same tables, so the research agent's facts are visible to the writer agent via `nlqdb_query`. The honest limit: there's no per-agent access control yet (`app.agent_id` RLS is roadmap, E-03), so today it's shared-by-default — every agent on that database sees every row.",
+        a: "Yes — all agents sharing an nlqdb database query the same tables, so the research agent's facts are visible to the writer agent via `nlqdb_query`. The honest limit: there's no per-agent access control yet (`app.agent_id` RLS is roadmap), so today it's shared-by-default — every agent on that database sees every row.",
       },
       {
         q: "How does nlqdb handle concurrent writes from many agents at once?",
@@ -904,7 +904,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Want hard physical isolation? Give each customer their own database — `nlqdb_query` with no `db` set provisions a fresh Postgres from the first English goal.",
     ],
     whatItDoesnt: [
-      "No per-end-user row scoping *within one shared database* yet — agent-scope RLS keyed on `app.agent_id` is in progress (E-03, `SK-PIVOT-009`); today sub-tenant isolation is one key or one database per agent, not a single-DB row policy.",
+      "No per-end-user row scoping *within one shared database* yet — agent-scope RLS keyed on `app.agent_id` is in progress; today sub-tenant isolation is one key or one database per agent, not a single-DB row policy.",
       "No role hierarchy or app-level RBAC — isolation is tenant-grained RLS plus per-device keys, not a permissions matrix; model roles and grants in your own app.",
       "No applying this RLS isolation onto a database you already run — the tenant-isolation policy is set up on databases nlqdb provisions. You can connect an existing Postgres with the signed-in BYO connect verb, but nlqdb does not add its row-level-security policy to a database you bring; isolation there stays your schema's responsibility.",
     ],
@@ -919,7 +919,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I isolate AI agent memory per end-user, not just per account?",
-        a: "Within a single shared database, per-user / per-agent row scoping (`app.agent_id`) is in progress (E-03, `SK-PIVOT-009`) — not shipped yet. Today the shipped boundaries are per-tenant RLS and per-device API keys; for hard per-user isolation now, give each end-user their own provisioned database.",
+        a: "Within a single shared database, per-user / per-agent row scoping (`app.agent_id`) is in progress — not shipped yet. Today the shipped boundaries are per-tenant RLS and per-device API keys; for hard per-user isolation now, give each end-user their own provisioned database.",
       },
       {
         q: "How is this multi-tenant isolation different from a WHERE clause?",
@@ -956,13 +956,13 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The kind of ad-hoc admin question you'd otherwise hand-write SQL for — a grouped count over your own schema — answered from one English goal.",
     howNlqdbAnswers: [
-      "Connect your database once with `POST /v1/db/connect` (or `nlq db connect`, the SDK, or `nlqdb_connect_database`, `SK-DBCONN-001`); nlqdb introspects the live schema — no training corpus.",
-      "Your connection URL is sealed at rest (AES-256-GCM, `GLOBAL-031`); the host is egress-guarded and re-checked before every query (`GLOBAL-035`); only a redacted pill stays unsealed.",
-      "English compiles to SQL and runs on your own Postgres — every answer returns rows plus the compiled SQL (`SK-WEB-005`) to audit.",
+      "Connect your database once with `POST /v1/db/connect` (or `nlq db connect`, the SDK, or `nlqdb_connect_database`); nlqdb introspects the live schema — no training corpus.",
+      "Your connection URL is sealed at rest (AES-256-GCM); the host is egress-guarded and re-checked before every query; only a redacted pill stays unsealed.",
+      "English compiles to SQL and runs on your own Postgres — every answer returns rows plus the compiled SQL to audit.",
       "The data never moves — nlqdb queries your database in place over its own connection; no copy, no ETL, no second store to sync.",
     ],
     whatItDoesnt: [
-      "No anonymous connect — pointing nlqdb at a database you run is a signed-in account verb on the SDK, CLI, and MCP; the public `<nlq-data>` embed holds a read-scoped key, never a connection credential, so the connect step isn't an embed (`GLOBAL-003`).",
+      "No anonymous connect — pointing nlqdb at a database you run is a signed-in account verb on the SDK, CLI, and MCP; the public `<nlq-data>` embed holds a read-scoped key, never a connection credential, so the connect step isn't an embed.",
       "No engine-side guardrails imported onto your database — the per-tenant RLS and server-built-write trust boundary nlqdb applies to databases it provisions are not added to a database you already run; nlqdb executes the compiled SQL with whatever privileges your connection role has, so scope it with a least-privilege (read-only) role.",
       "ClickHouse can be connected too, but the planner emits Postgres-flavored SQL and the validator is Postgres-dialect today (a known correctness gap, not a security one) — Postgres is the smooth path; ClickHouse-only syntax may mis-compile until the engine-aware planner lands.",
     ],
@@ -973,11 +973,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Does my data leave my database when I use natural-language queries?",
-        a: "No. nlqdb queries your Postgres in place over its own connection — there's no copy, no ETL, no analytics mirror. Your connection URL is sealed with AES-256-GCM at rest (`GLOBAL-031`); only a redacted connection pill is stored unsealed for the dashboard. The rows stay in your database.",
+        a: "No. nlqdb queries your Postgres in place over its own connection — there's no copy, no ETL, no analytics mirror. Your connection URL is sealed with AES-256-GCM at rest; only a redacted connection pill is stored unsealed for the dashboard. The rows stay in your database.",
       },
       {
         q: "How is this different from Vanna AI or training a text-to-SQL model on my schema?",
-        a: "There's no training corpus or per-tenant fine-tune to maintain. nlqdb prompts directly from your live schema fingerprint plus a recent-tables hint, caches the plan on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), and shows the compiled SQL every time. The equivalent of training is the automatic plan cache, not a curated example set you keep alive.",
+        a: "There's no training corpus or per-tenant fine-tune to maintain. nlqdb prompts directly from your live schema fingerprint plus a recent-tables hint, caches the plan on `(goal-fingerprint, schema-hash)`, and shows the compiled SQL every time. The equivalent of training is the automatic plan cache, not a curated example set you keep alive.",
       },
       {
         q: "Can I limit what nlqdb is allowed to do on my database?",
@@ -1013,10 +1013,10 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The first question you ask after a launch — how many signups came in and when — is one English goal here, not a hand-written GROUP BY over a submissions table.",
     howNlqdbAnswers: [
-      "Write each submission as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert (`GLOBAL-015`) — no server of your own to run.",
-      "Anonymous mode provisions a Postgres in seconds on the free chain — no signup before your first submission lands (`SK-ANON-001`).",
+      "Write each submission as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert — no server of your own to run.",
+      "Anonymous mode provisions a Postgres in seconds on the free chain — no signup before your first submission lands.",
       "Ask 'signups per day' or 'submissions by source' in English via `<nlq-data>` or the SDK; every answer shows the compiled SQL.",
-      "Adopt the anonymous database into your account within 72 hours to keep submissions past the trial window — no re-import (`SK-ANON-002`).",
+      "Adopt the anonymous database into your account within 72 hours to keep submissions past the trial window — no re-import.",
     ],
     whatItDoesnt: [
       "The public `<nlq-data>` embed is read-scoped — it renders answers, it is not a write endpoint. Submissions go in through the SDK or `POST /v1/run`, run from your page's own fetch or a tiny serverless function, never from a write key exposed in client HTML.",
@@ -1026,11 +1026,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     faqs: [
       {
         q: "Can I collect form submissions without running a backend server?",
-        a: "Yes — provision an nlqdb database (anonymous mode mints one in seconds) and write each submission as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert (`GLOBAL-015`). The insert call runs from your page's fetch or a small serverless function, so there's no server of your own to maintain. Then query the submissions in English. The honest limit: the public `<nlq-data>` embed reads, it doesn't write.",
+        a: "Yes — provision an nlqdb database (anonymous mode mints one in seconds) and write each submission as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert. The insert call runs from your page's fetch or a small serverless function, so there's no server of your own to maintain. Then query the submissions in English. The honest limit: the public `<nlq-data>` embed reads, it doesn't write.",
       },
       {
         q: "How do I see how many signups I got per day or per source?",
-        a: "Ask in English — 'signups grouped by day with a count' or 'submissions by referrer this week'. nlqdb compiles it to SQL over your submissions table, runs it, and returns the ranked rows with the compiled SQL under a trace toggle (`SK-WEB-005`) so you can verify the grain before trusting the number.",
+        a: "Ask in English — 'signups grouped by day with a count' or 'submissions by referrer this week'. nlqdb compiles it to SQL over your submissions table, runs it, and returns the ranked rows with the compiled SQL under a trace toggle so you can verify the grain before trusting the number.",
       },
       {
         q: "Is this a replacement for a form service like Formspree or Tally?",
@@ -1038,7 +1038,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How do I keep the data if I started in anonymous mode?",
-        a: "Sign in within the 72-hour anonymous window and click 'Adopt this database' (`SK-ANON-002`). The database is re-keyed to your account, every submission row persists, and there's no re-import. Anonymous databases that aren't adopted sweep at 72h, so adopt before launch traffic piles up if you want to keep it.",
+        a: "Sign in within the 72-hour anonymous window and click 'Adopt this database'. The database is re-keyed to your account, every submission row persists, and there's no re-import. Anonymous databases that aren't adopted sweep at 72h, so adopt before launch traffic piles up if you want to keep it.",
       },
     ],
     sources: [
@@ -1076,7 +1076,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     whatItDoesnt: [
       "No governed semantic layer or certified-metric catalog — nlqdb answers from the schema as it is; centrally curated metric definitions stay your data team's job.",
       "No drag-and-drop charts or dashboard builder — answers come back as tables plus a one-sentence summary; visualisation is the consumer's choice.",
-      "BYO connect to a Postgres you already run is signed-in only (not the public embed), and the ClickHouse dialect isn't covered yet (`SK-DBCONN-001`).",
+      "BYO connect to a Postgres you already run is signed-in only (not the public embed), and the ClickHouse dialect isn't covered yet.",
     ],
     faqs: [
       {
@@ -1126,12 +1126,12 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     howNlqdbAnswers: [
       'Embed `<nlq-data goal="...">` in your UI, or call `POST /v1/ask` from your backend — the text-to-SQL pipeline is the API, not your code.',
       "The SQL validator allowlists the verbs the model may emit, so a generated query can't drop a table or escape its scope.",
-      "Every answer returns rows plus the compiled SQL (`SK-WEB-005`) for users to audit; plans cache on `(goal, schema-hash)` (`GLOBAL-006`).",
+      "Every answer returns rows plus the compiled SQL for users to audit; plans cache on `(goal, schema-hash)`.",
       "Quality is measured against BIRD Mini-Dev + Spider 2.0-lite and published — the accuracy is visible, not a marketing claim.",
     ],
     whatItDoesnt: [
       "It's a hosted pipeline you embed, not a library you vendor into your codebase — there's no self-hosted text-to-SQL container yet (roadmap, infra-gated). If the SQL generation must run inside your own infrastructure, nlqdb isn't that today.",
-      "Serving many end-users each over their own data means a database (or per-tenant RLS scope) per tenant — per-user/agent row scoping within one shared database is in progress (E-03, `SK-PIVOT-009`), not shipped. Today isolation is one database or one key per tenant.",
+      "Serving many end-users each over their own data means a database (or per-tenant RLS scope) per tenant — per-user/agent row scoping within one shared database is in progress, not shipped. Today isolation is one database or one key per tenant.",
       "The public `<nlq-data>` embed holds a read-scoped key — it reads, it doesn't write, and a write or connection credential must never sit in client HTML. Writes go through the SDK or `POST /v1/run` from your backend.",
     ],
     faqs: [
@@ -1145,11 +1145,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "What stops the LLM from generating SQL that drops or corrupts a table?",
-        a: "Two guardrails. The SQL validator allowlists the verbs the orchestrator may emit (`docs/features/sql-allowlist`), so destructive statements are rejected before execution; and every answer surfaces the compiled SQL under a trace toggle (`SK-WEB-005`) so you and your users can audit the grain before trusting it. Destructive DDL also requires a row-count diff and second confirmation (`SK-ONBOARD-004`).",
+        a: "Two guardrails. The SQL validator allowlists the verbs the orchestrator may emit, so destructive statements are rejected before execution; and every answer surfaces the compiled SQL under a trace toggle so you and your users can audit the grain before trusting it. Destructive DDL also requires a row-count diff and second confirmation.",
       },
       {
         q: "Can my users each query only their own data?",
-        a: "For a handful of tenants, give each its own provisioned database — clean physical isolation. For many users in one shared database, per-user/agent row scoping (`app.agent_id` RLS) is in progress (E-03), not shipped; per-tenant RLS keyed on `app.tenant_id` is the shipped boundary today. So plan on a database or an RLS-scoped key per tenant, not one open database for everyone.",
+        a: "For a handful of tenants, give each its own provisioned database — clean physical isolation. For many users in one shared database, per-user/agent row scoping (`app.agent_id` RLS) is in progress, not shipped; per-tenant RLS keyed on `app.tenant_id` is the shipped boundary today. So plan on a database or an RLS-scoped key per tenant, not one open database for everyone.",
       },
     ],
     sources: [
@@ -1184,7 +1184,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Provision a Postgres in seconds, then write each webhook payload from your receiver via the `@nlqdb/sdk` client or `POST /v1/run`.",
       "Ask 'how many events per type this week' in English — nlqdb compiles the `GROUP BY` and shows the SQL it ran.",
       "Postgres JSONB stores the raw payload, so you query nested fields later without designing every column up front.",
-      "Mutating writes accept an `Idempotency-Key` (`GLOBAL-005`), so a retried delivery isn't processed twice into your store.",
+      "Mutating writes accept an `Idempotency-Key`, so a retried delivery isn't processed twice into your store.",
     ],
     whatItDoesnt: [
       "nlqdb is not the webhook receiver — you still need a tiny endpoint (a Cloudflare Worker or serverless function) to accept the provider's POST and verify its signature. nlqdb is where you store and query, not the HTTP listener.",
@@ -1238,8 +1238,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     demoWhy:
       "The first question after wiring up event tracking — how many active users per day — is one English goal here, not a windowed GROUP BY over an events table.",
     howNlqdbAnswers: [
-      "Emit each event as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert (`GLOBAL-015`) — no warehouse or pipeline to run.",
-      "Anonymous mode provisions a Postgres in seconds on the free chain — start logging events before you sign up (`SK-ANON-001`).",
+      "Emit each event as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert — no warehouse or pipeline to run.",
+      "Anonymous mode provisions a Postgres in seconds on the free chain — start logging events before you sign up.",
       "Ask 'active users per day' or 'top features this week' in English via `<nlq-data>` or the SDK; every answer shows the compiled SQL.",
       "Free chain (Groq → Gemini) is free forever and never priced per event, so growing event volume never pushes you off a billing tier.",
     ],
@@ -1251,11 +1251,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     faqs: [
       {
         q: "Can I track product usage events without a data warehouse?",
-        a: "Yes — provision an nlqdb database (anonymous mode mints one in seconds) and write each usage event as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert (`GLOBAL-015`). There's no Snowflake/BigQuery to stand up and no ingestion pipeline to run. Then ask 'active users this week' in English. The honest limit: you emit the events; nlqdb stores and queries them, it doesn't autocapture.",
+        a: "Yes — provision an nlqdb database (anonymous mode mints one in seconds) and write each usage event as a row with the `@nlqdb/sdk` or a `POST /v1/run` parameterised insert. There's no Snowflake/BigQuery to stand up and no ingestion pipeline to run. Then ask 'active users this week' in English. The honest limit: you emit the events; nlqdb stores and queries them, it doesn't autocapture.",
       },
       {
         q: "How do I query product analytics events in plain English instead of SQL?",
-        a: "Ask the question — 'active users grouped by day this week' or 'top 10 features by event count'. nlqdb compiles it to SQL over your events table, runs it, and returns the ranked rows plus the compiled SQL under a `Show trace` toggle (`SK-WEB-005`) so you can audit the grain before trusting the number.",
+        a: "Ask the question — 'active users grouped by day this week' or 'top 10 features by event count'. nlqdb compiles it to SQL over your events table, runs it, and returns the ranked rows plus the compiled SQL under a `Show trace` toggle so you can audit the grain before trusting the number.",
       },
       {
         q: "Is this a replacement for Mixpanel, Amplitude, or PostHog?",
@@ -1263,7 +1263,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "How do I keep the events if I started in anonymous mode?",
-        a: "Sign in within the 72-hour anonymous window and click 'Adopt this database' (`SK-ANON-002`). The database is re-keyed to your account, every event row persists, and there's no re-import. Anonymous databases that aren't adopted sweep at 72h, so adopt before real traffic piles up if you want to keep the history.",
+        a: "Sign in within the 72-hour anonymous window and click 'Adopt this database'. The database is re-keyed to your account, every event row persists, and there's no re-import. Anonymous databases that aren't adopted sweep at 72h, so adopt before real traffic piles up if you want to keep the history.",
       },
     ],
     sources: [
@@ -1298,8 +1298,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     howNlqdbAnswers: [
       "Log each run as a typed row — job name, status, duration_ms, started_at — so failures-per-job and average-duration run as SQL GROUP BY.",
       "Ask the reliability question in English via `<nlq-data>`, the `@nlqdb/sdk`, or MCP `nlqdb_query`; every answer returns rows plus the compiled SQL.",
-      "Write run records with a `POST /v1/run` parameterised insert (`GLOBAL-015`) from your job's exit hook, then report over the same database.",
-      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`), so a repeated weekly reliability rollup hits the cache and returns in single-digit ms.",
+      "Write run records with a `POST /v1/run` parameterised insert from your job's exit hook, then report over the same database.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)`, so a repeated weekly reliability rollup hits the cache and returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "nlqdb is not a scheduler or cron runner — it doesn't run your jobs or trigger them on a schedule; it stores and queries the run records you write after each job finishes.",
@@ -1309,7 +1309,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     faqs: [
       {
         q: "How do I track which background job fails most without a monitoring service?",
-        a: "Log one row per run — job name, status, duration, timestamp — with a `POST /v1/run` parameterised insert (`GLOBAL-015`) from your job's exit hook, then ask 'failure rate per job this week' in English. nlqdb compiles the GROUP BY, runs it in Postgres, and shows the SQL. The honest limit: you write the run records; nlqdb stores and queries them, it doesn't run or watch your jobs.",
+        a: "Log one row per run — job name, status, duration, timestamp — with a `POST /v1/run` parameterised insert from your job's exit hook, then ask 'failure rate per job this week' in English. nlqdb compiles the GROUP BY, runs it in Postgres, and shows the SQL. The honest limit: you write the run records; nlqdb stores and queries them, it doesn't run or watch your jobs.",
       },
       {
         q: "Why not just grep my scheduler or cron logs?",
@@ -1321,7 +1321,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I see the SQL behind a job's failure rate?",
-        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can check the grain (per run vs per job) before trusting a failure rate. nlqdb never hides the SQL behind the answer.",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle, so you can check the grain (per run vs per job) before trusting a failure rate. nlqdb never hides the SQL behind the answer.",
       },
     ],
     sources: [
@@ -1354,9 +1354,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "The exact query you'd otherwise hand-write — GROUP BY the column, HAVING count greater than one — is one English goal here, with the SQL shown so you can trust the grain.",
     howNlqdbAnswers: [
       "Ask 'which rows are duplicated by email?' in plain English; nlqdb compiles the `GROUP BY ... HAVING COUNT(*) > 1` and runs it in Postgres.",
-      "Every answer returns the duplicate rows plus the compiled SQL under a trace toggle (`SK-WEB-005`) — check the grain before trusting a count.",
-      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to dedupe your real data.",
-      "Repeated checks hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same dedup question returns in single-digit ms.",
+      "Every answer returns the duplicate rows plus the compiled SQL under a trace toggle — check the grain before trusting a count.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect) to dedupe your real data.",
+      "Repeated checks hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` — so the same dedup question returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "nlqdb finds and reports duplicates with a read-only SELECT — it doesn't delete or merge them for you. Which row to keep and how to merge stays a deliberate write you run yourself.",
@@ -1374,7 +1374,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I dedupe a Postgres database I already run?",
-        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask the duplicate question in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb reports the duplicates with a read-only query — deleting or merging them is a write you run deliberately.",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask the duplicate question in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb reports the duplicates with a read-only query — deleting or merging them is a write you run deliberately.",
       },
       {
         q: "Why not just ask ChatGPT to find the duplicates in my data?",
@@ -1411,9 +1411,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "The exact query you'd otherwise reach for a window function or lateral join — ranked within each group — is one English goal here, with the SQL shown so you can check the partition and the tiebreak.",
     howNlqdbAnswers: [
       "Ask 'top 3 products per category by revenue'; nlqdb compiles the `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...)` and runs it in Postgres.",
-      "Every answer returns the ranked rows plus the compiled SQL under a trace toggle (`SK-WEB-005`) — confirm the partition and tiebreak before trusting it.",
-      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to rank your real data.",
-      "Repeated rankings hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same top-N question returns in single-digit ms.",
+      "Every answer returns the ranked rows plus the compiled SQL under a trace toggle — confirm the partition and tiebreak before trusting it.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect) to rank your real data.",
+      "Repeated rankings hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` — so the same top-N question returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "nlqdb answers the top-N question with a read-only SELECT — it's not a BI tool that maintains a live 'top sellers' dashboard or alerts you when the ranking shifts. That's a scheduled job's work.",
@@ -1431,7 +1431,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I rank rows in a Postgres database I already run?",
-        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask the top-N question in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the ranking with a read-only query — it doesn't persist a materialized leaderboard for you.",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask the top-N question in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the ranking with a read-only query — it doesn't persist a materialized leaderboard for you.",
       },
       {
         q: "Why not just ask ChatGPT for the top N per group?",
@@ -1469,9 +1469,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "The exact wide report you'd otherwise hand-write with one CASE expression per month is one English goal here, with the SQL shown so you can check each bucket.",
     howNlqdbAnswers: [
       "Ask 'revenue per product, one column per month'; nlqdb compiles the conditional aggregation (`SUM(...) FILTER (WHERE month = ...)`) and runs it in Postgres.",
-      "Every answer returns the pivoted table plus the compiled SQL under a trace toggle (`SK-WEB-005`) — confirm each column's bucket before trusting it.",
-      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to pivot your real data.",
-      "Repeated pivots hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same wide report returns in single-digit ms.",
+      "Every answer returns the pivoted table plus the compiled SQL under a trace toggle — confirm each column's bucket before trusting it.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect) to pivot your real data.",
+      "Repeated pivots hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` — so the same wide report returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "The pivot columns must be ones you can name — 'months this year', 'these three statuses'. A fully dynamic crosstab over a category set unknown until query time needs that list resolved first; nlqdb doesn't generate columns from values it hasn't seen.",
@@ -1489,7 +1489,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I pivot a Postgres database I already run?",
-        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the wide report in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the pivot with a read-only query — it doesn't persist a materialized crosstab for you.",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask for the wide report in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the pivot with a read-only query — it doesn't persist a materialized crosstab for you.",
       },
       {
         q: "Why not just pivot in Excel or a spreadsheet?",
@@ -1527,9 +1527,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "The cumulative curve you'd otherwise hand-write with a window function and a careful ORDER BY is one English goal here, with the SQL shown so you can check the order and frame.",
     howNlqdbAnswers: [
       "Ask 'running total of revenue by day'; nlqdb compiles the window function (`SUM(...) OVER (ORDER BY day)`) and runs it in Postgres.",
-      "Every answer returns the accumulating rows plus the compiled SQL under a trace toggle (`SK-WEB-005`) — verify the ORDER BY and frame.",
-      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to accumulate your real data.",
-      "Repeated running totals hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same curve returns in single-digit ms.",
+      "Every answer returns the accumulating rows plus the compiled SQL under a trace toggle — verify the ORDER BY and frame.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect) to accumulate your real data.",
+      "Repeated running totals hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` — so the same curve returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "The ordering must be one you can name — 'by day', 'by order date'. A running total needs an explicit, unambiguous sort; over rows with no meaningful order, or ties you haven't broken, the cumulative sequence isn't well-defined and nlqdb won't invent one.",
@@ -1547,7 +1547,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I compute a running total on a Postgres database I already run?",
-        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the cumulative curve in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the running total with a read-only query — it doesn't persist a materialized cumulative column for you.",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask for the cumulative curve in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the running total with a read-only query — it doesn't persist a materialized cumulative column for you.",
       },
       {
         q: "Can nlqdb do a moving average or 7-day rolling sum too?",
@@ -1585,9 +1585,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "The growth-versus-last-period column you'd otherwise hand-write with a LAG window function and a careful divide-by-zero guard is one English goal here, with the SQL shown so you can check the order and the baseline.",
     howNlqdbAnswers: [
       "Ask 'month-over-month revenue growth'; nlqdb compiles the `LAG(...) OVER (ORDER BY month)` window function and the growth formula, then runs it in Postgres.",
-      "Every answer returns the per-period rows plus the compiled SQL under a trace toggle (`SK-WEB-005`) — verify the ORDER BY and the zero-baseline guard.",
-      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to compare your real periods.",
-      "Repeated growth reports hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same comparison returns in single-digit ms.",
+      "Every answer returns the per-period rows plus the compiled SQL under a trace toggle — verify the ORDER BY and the zero-baseline guard.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect) to compare your real periods.",
+      "Repeated growth reports hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` — so the same comparison returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "The period ordering must be one you can name — 'by month', 'by week'. Period-over-period needs an explicit, gap-free sort; if a period has no rows, LAG reaches the previous present row, not a zero — nlqdb won't invent the missing period for you.",
@@ -1609,7 +1609,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I run period-over-period growth on a Postgres database I already run?",
-        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the growth report in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the comparison with a read-only query — it doesn't persist a materialized growth column for you.",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask for the growth report in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the comparison with a read-only query — it doesn't persist a materialized growth column for you.",
       },
     ],
     sources: [
@@ -1643,9 +1643,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "The middle-value-and-tail summary you'd otherwise hand-write with an ordered-set aggregate and the right `WITHIN GROUP` clause is one English goal here, with the SQL shown so you can check the order and whether it interpolated.",
     howNlqdbAnswers: [
       "Ask 'median revenue per order'; nlqdb compiles the ordered-set aggregate (`PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY revenue)`) and runs it in Postgres.",
-      "Every answer returns the value plus the compiled SQL under a trace toggle (`SK-WEB-005`) — verify the order and whether it used `PERCENTILE_CONT` or `PERCENTILE_DISC`.",
-      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect, `SK-DBCONN-001`) to summarise your real rows.",
-      "Repeated percentile summaries hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same statistic returns in single-digit ms.",
+      "Every answer returns the value plus the compiled SQL under a trace toggle — verify the order and whether it used `PERCENTILE_CONT` or `PERCENTILE_DISC`.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect) to summarise your real rows.",
+      "Repeated percentile summaries hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` — so the same statistic returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "The median needs a column it can order — a number, date, or duration. Over values with no meaningful sort, or a mix nlqdb can't rank, the 'middle' isn't defined and it won't invent one.",
@@ -1668,7 +1668,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I compute a median or percentile on a Postgres database I already run?",
-        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the summary in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the percentile with a read-only query — it doesn't persist a materialized summary for you.",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask for the summary in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the percentile with a read-only query — it doesn't persist a materialized summary for you.",
       },
     ],
     sources: [
@@ -1703,8 +1703,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     howNlqdbAnswers: [
       "Ask 'each product's revenue as a percent of total'; nlqdb compiles the window aggregate `100.0 * revenue / SUM(revenue) OVER ()` and runs it.",
       "The `OVER ()` broadcasts the grand total onto every row without a self-join or a second query — the rows stay, the denominator rides along.",
-      "Every answer returns the shares plus the compiled SQL under a trace toggle (`SK-WEB-005`) — verify the denominator and the integer-division guard.",
-      "Repeated share breakdowns hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same query returns in single-digit ms.",
+      "Every answer returns the shares plus the compiled SQL under a trace toggle — verify the denominator and the integer-division guard.",
+      "Repeated share breakdowns hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` — so the same query returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "Percent-of-grand-total (`OVER ()`) and percent-within-a-group (`OVER (PARTITION BY ...)`) are different denominators. nlqdb picks one from your English and shows it in the SQL — it doesn't guess which you meant when you don't name the grouping.",
@@ -1727,7 +1727,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I calculate percentage of total on a Postgres database I already run?",
-        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the share breakdown in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the shares with a read-only query — it doesn't persist a materialized breakdown for you.",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask for the share breakdown in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the shares with a read-only query — it doesn't persist a materialized breakdown for you.",
       },
     ],
     sources: [
@@ -1762,8 +1762,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     howNlqdbAnswers: [
       "Ask 'customers who never placed an order'; nlqdb compiles the NULL-safe anti-join `LEFT JOIN orders WHERE orders.id IS NULL` and runs it.",
       "The compiled SQL avoids the `NOT IN (subquery)` shape, so a NULL in the inner table can't silently collapse the result to zero rows.",
-      "Every answer returns the missing rows plus the SQL under a trace toggle (`SK-WEB-005`) — confirm it's `IS NULL` / `NOT EXISTS`, not `NOT IN`.",
-      "Repeated 'who's missing' checks hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — so the same query returns in single-digit ms.",
+      "Every answer returns the missing rows plus the SQL under a trace toggle — confirm it's `IS NULL` / `NOT EXISTS`, not `NOT IN`.",
+      "Repeated 'who's missing' checks hit the plan cache — content-addressed on `(goal-fingerprint, schema-hash)` — so the same query returns in single-digit ms.",
     ],
     whatItDoesnt: [
       "`LEFT JOIN ... IS NULL` and `NOT EXISTS` are equivalent for a plain anti-join, but a `LEFT JOIN` can multiply rows if the join key isn't unique. nlqdb picks one from your English and shows it — it doesn't guarantee your keys are unique.",
@@ -1785,7 +1785,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I run an anti-join on a Postgres database I already run?",
-        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask 'rows with no match' in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the unmatched rows read-only — it doesn't persist the result set for you.",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask 'rows with no match' in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the unmatched rows read-only — it doesn't persist the result set for you.",
       },
     ],
     sources: [
@@ -1821,7 +1821,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Ask 'signups per day for the last 14 days, including days with zero'; nlqdb compiles a `generate_series` date spine and runs it in Postgres.",
       "Your rows LEFT JOIN onto the spine, so a day with no matches comes back as 0 instead of vanishing from the result.",
       "The compiled SQL counts a table column — `COUNT(s.id)`, not `COUNT(*)` — so an empty day can't count its own spine row as 1.",
-      "Every answer shows the SQL under a trace toggle (`SK-WEB-005`) — confirm the spine's range and the join key.",
+      "Every answer shows the SQL under a trace toggle — confirm the spine's range and the join key.",
     ],
     whatItDoesnt: [
       "The date range is one you name — 'last 14 days', a start and an end. nlqdb picks the spine's bounds from your English and shows them; it won't invent a reporting window.",
@@ -1843,7 +1843,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I fill missing dates on a Postgres database I already run?",
-        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for per-day counts in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and the answer is read-only — nlqdb doesn't materialise the filled series into a table for you.",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask for per-day counts in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and the answer is read-only — nlqdb doesn't materialise the filled series into a table for you.",
       },
     ],
     sources: [
@@ -1879,7 +1879,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Ask 'count of orders bucketed by amount: under 50, 50 to 200, over 200'; nlqdb compiles the `CASE`-band bucket expression and runs it in Postgres.",
       "It groups by the bucket, not the raw value, so you get one row per range instead of one per exact amount.",
       "The compiled bands tile without a gap or overlap at the boundaries, so no row is dropped or double-counted between adjacent ranges.",
-      "Ranges come back ordered by their lower bound, not alphabetically, and every answer shows the SQL under a trace toggle (`SK-WEB-005`) to confirm the boundaries.",
+      "Ranges come back ordered by their lower bound, not alphabetically, and every answer shows the SQL under a trace toggle to confirm the boundaries.",
     ],
     whatItDoesnt: [
       "The bucket edges are ones you name — 'under 50, 50 to 200, over 200'. nlqdb compiles the bands from your English and shows them; it won't pick a 'good' bin width for you.",
@@ -1901,7 +1901,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I bucket numbers on a Postgres database I already run?",
-        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the histogram in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and the answer is read-only — nlqdb reports the buckets, it doesn't materialise them into a table.",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask for the histogram in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and the answer is read-only — nlqdb reports the buckets, it doesn't materialise them into a table.",
       },
     ],
     sources: [
@@ -1937,7 +1937,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Ask 'each user's longest streak of consecutive days with an order'; nlqdb compiles the gaps-and-islands query and runs it in Postgres.",
       "It subtracts a per-user `ROW_NUMBER()` from the date — an unbroken run maps to one constant, a gap starts a new one.",
       "It groups by that island key and returns the longest run per user — the streak length, not the total number of active days.",
-      "Every answer shows the SQL under a trace toggle (`SK-WEB-005`) so you can confirm a single missing day breaks the streak the way you expect.",
+      "Every answer shows the SQL under a trace toggle so you can confirm a single missing day breaks the streak the way you expect.",
     ],
     whatItDoesnt: [
       "'Consecutive' means the grain you name — consecutive calendar days by default. If your run should ignore weekends or count consecutive weeks, say so in the goal; nlqdb won't guess a business-calendar rule for you.",
@@ -1959,7 +1959,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I compute a streak on a Postgres database I already run?",
-        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`, `SK-DBCONN-001`; see /solve/query-existing-postgres-in-natural-language) and ask for the streak in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and the answer is read-only — nlqdb reports the streak, it doesn't materialise it into a column.",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask for the streak in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and the answer is read-only — nlqdb reports the streak, it doesn't materialise it into a column.",
       },
     ],
     sources: [
@@ -1998,8 +1998,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Analytics come free: ask 'memories per user this week' in English and nlqdb compiles the `GROUP BY`, runs it, and shows the SQL.",
     ],
     whatItDoesnt: [
-      "The opinionated `agent_memory_v1` schema (facts/episodes/entities) isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark, `SK-PIVOT-010`); today the agent designs its own tables or provisions them from the first English goal.",
-      "Per-end-user row scoping *within one shared database* isn't shipped — agent-scope RLS keyed on `app.agent_id` is in progress (E-03, `SK-PIVOT-009`); today isolation is per-tenant RLS or a database per tenant.",
+      "The opinionated `agent_memory_v1` schema (facts/episodes/entities) isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark); today the agent designs its own tables or provisions them from the first English goal.",
+      "Per-end-user row scoping *within one shared database* isn't shipped — agent-scope RLS keyed on `app.agent_id` is in progress; today isolation is per-tenant RLS or a database per tenant.",
       "Writes go through the SDK or a signed-in `POST /v1/run`, not the public embed — the public `<nlq-data>` key is read-scoped, so a write credential must never sit in client HTML.",
     ],
     faqs: [
@@ -2017,7 +2017,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I expire old agent memory automatically instead of writing a cron?",
-        a: "The TTL story is a server-built, bound-cutoff `DELETE` swept per database (`SK-PIVOT-011`) rather than a cron you maintain — the core sweep logic ships; the scheduled Worker that runs it is landing. On a DIY table you own the whole retention job yourself. Until the scheduler is live, treat automatic expiry as in-progress, not a promise.",
+        a: "The TTL story is a server-built, bound-cutoff `DELETE` swept per database rather than a cron you maintain — the core sweep logic ships; the scheduled Worker that runs it is landing. On a DIY table you own the whole retention job yourself. Until the scheduler is live, treat automatic expiry as in-progress, not a promise.",
       },
     ],
     sources: [
@@ -2056,7 +2056,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Tenant isolation is a fail-closed `tenant_isolation` RLS policy in the engine, not a `WHERE` filter you must remember to write.",
     ],
     whatItDoesnt: [
-      "The opinionated `agent_memory_v1` schema (facts/episodes/entities) isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark, `SK-PIVOT-010`); today the agent provisions its tables from the first English goal or designs them itself.",
+      "The opinionated `agent_memory_v1` schema (facts/episodes/entities) isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark); today the agent provisions its tables from the first English goal or designs them itself.",
       "No native vector search — nlqdb is Postgres-first; if the best way to store *your* memory is unstructured similarity recall over chat-text, that's Mem0 or pgvector's job, not this.",
       "Writes go through the SDK or a signed-in `POST /v1/run`, not the public `<nlq-data>` embed — the embed's key is read-scoped, so a write credential never sits in client HTML.",
     ],
@@ -2079,7 +2079,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Can I see the SQL behind the memory rollups?",
-        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle (`SK-WEB-005`), so you can verify the grain before trusting a number. nlqdb never hides the SQL behind the answer.",
+        a: "Always — every answer returns the result rows plus the compiled SQL under a trace toggle, so you can verify the grain before trusting a number. nlqdb never hides the SQL behind the answer.",
       },
     ],
     sources: [
@@ -2113,21 +2113,21 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Store memory as typed rows with an `expires_at` timestamp, so expiry is a `WHERE expires_at < now()` predicate you query, not a service you build.",
       "One command (`claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`) points Claude Code, Cursor, or Codex at a real hosted Postgres to store it in.",
       "Run the cutoff `DELETE` yourself through the SDK or a signed-in `POST /v1/run`, or ask 'memories expiring this week' in English with the SQL shown.",
-      "A managed server-run TTL sweep is on the roadmap: a bound-cutoff `DELETE FROM facts` with per-database failure isolation (`SK-PIVOT-011`); core shipped, scheduler landing.",
+      "A managed server-run TTL sweep is on the roadmap: a bound-cutoff `DELETE FROM facts` with per-database failure isolation; core shipped, scheduler landing.",
     ],
     whatItDoesnt: [
-      "The automatic server-run TTL sweep is not live yet — the deterministic sweep core (`SK-PIVOT-011`) ships, but the scheduled Worker that runs it nightly is landing; until then expiry is a `DELETE` you run on your own schedule, not a promise.",
-      "The opinionated `agent_memory_v1` schema whose `facts` table carries `expires_at` isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark, `SK-PIVOT-010`); today the agent provisions its tables from the first English goal or adds the column itself.",
-      "Read-side invisibility of expired-but-not-yet-swept rows is an in-progress RLS clause (E-04), not shipped — filter `expires_at` in your read query until it lands.",
+      "The automatic server-run TTL sweep is not live yet — the deterministic sweep core ships, but the scheduled Worker that runs it nightly is landing; until then expiry is a `DELETE` you run on your own schedule, not a promise.",
+      "The opinionated `agent_memory_v1` schema whose `facts` table carries `expires_at` isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark); today the agent provisions its tables from the first English goal or adds the column itself.",
+      "Read-side invisibility of expired-but-not-yet-swept rows is an in-progress RLS clause, not shipped — filter `expires_at` in your read query until it lands.",
     ],
     faqs: [
       {
         q: "How do I expire old agent memory automatically instead of writing a cron?",
-        a: "Store memory as typed rows with an `expires_at` timestamp in a real database, and expiry becomes a `WHERE expires_at < now()` predicate rather than a service you build. Today you run that cutoff `DELETE` on your own schedule through the SDK or a signed-in `POST /v1/run`; a managed server-run sweep (`SK-PIVOT-011`) is landing so you won't have to. On a hand-rolled table you own the whole retention job yourself.",
+        a: "Store memory as typed rows with an `expires_at` timestamp in a real database, and expiry becomes a `WHERE expires_at < now()` predicate rather than a service you build. Today you run that cutoff `DELETE` on your own schedule through the SDK or a signed-in `POST /v1/run`; a managed server-run sweep is landing so you won't have to. On a hand-rolled table you own the whole retention job yourself.",
       },
       {
         q: "Does nlqdb delete expired memory for me yet?",
-        a: "Not automatically yet — be honest about the state. The deterministic sweep core (a bound-cutoff `DELETE FROM facts`, per-database failure isolation) is written and tested, but the scheduled Worker that fires it nightly is still landing (`SK-PIVOT-011`). Until then, expiry is a `DELETE` you trigger yourself on the schedule you choose; the storage shape makes it one line instead of a bespoke job.",
+        a: "Not automatically yet — be honest about the state. The deterministic sweep core (a bound-cutoff `DELETE FROM facts`, per-database failure isolation) is written and tested, but the scheduled Worker that fires it nightly is still landing. Until then, expiry is a `DELETE` you trigger yourself on the schedule you choose; the storage shape makes it one line instead of a bespoke job.",
       },
       {
         q: "Can I query which agent memories are about to expire?",
@@ -2135,7 +2135,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "What does a DIY retention cron cost me later?",
-        a: "The `DELETE` statement is the easy part. The expensive part is scheduling it reliably, isolating one failed run so it doesn't wedge the rest, and remembering to filter expired-but-not-yet-deleted rows out of every read path. Miss the last one and your agent recalls memory you meant to forget. nlqdb is moving that into the engine (`SK-PIVOT-011`, E-04) so you don't hand-maintain it.",
+        a: "The `DELETE` statement is the easy part. The expensive part is scheduling it reliably, isolating one failed run so it doesn't wedge the rest, and remembering to filter expired-but-not-yet-deleted rows out of every read path. Miss the last one and your agent recalls memory you meant to forget. nlqdb is moving that into the engine so you don't hand-maintain it.",
       },
     ],
     sources: [
@@ -2174,7 +2174,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     ],
     whatItDoesnt: [
       "It's a hosted server (`mcp.nlqdb.com/mcp`), not a self-hostable local MCP binary you run beside your agent — the FSL-1.1 self-host container is on the roadmap, not shippable today.",
-      "The dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts/episodes/entities) are authed and gated (`MEMORY_PRESET` is dark, `SK-PIVOT-010`); today the live path is `nlqdb_query` provisioning and querying a database, and it rejects anonymous writes.",
+      "The dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts/episodes/entities) are authed and gated (`MEMORY_PRESET` is dark); today the live path is `nlqdb_query` provisioning and querying a database, and it rejects anonymous writes.",
       "No native vector search — nlqdb is Postgres-first; if what you need from a memory server is unstructured similarity recall over chat-text, that's Mem0 or pgvector's job, and nlqdb composes with it.",
     ],
     faqs: [
@@ -2192,7 +2192,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Do I get dedicated remember and recall tools, or just query?",
-        a: "Today the live tool is `nlqdb_query`, which both provisions the database and answers over it in English. A dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts, episodes, entities with per-agent isolation and TTL) exist but are authed and gated behind `MEMORY_PRESET` (`SK-PIVOT-010`) — coming, not anonymous today. Until then the agent provisions and queries its memory tables through `nlqdb_query`.",
+        a: "Today the live tool is `nlqdb_query`, which both provisions the database and answers over it in English. A dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts, episodes, entities with per-agent isolation and TTL) exist but are authed and gated behind `MEMORY_PRESET` — coming, not anonymous today. Until then the agent provisions and queries its memory tables through `nlqdb_query`.",
       },
     ],
     sources: [

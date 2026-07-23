@@ -136,6 +136,34 @@ describe("SOLVE_ENTRIES data integrity", () => {
     }
   });
 
+  // Rendered prose (oneLiner, painContext, howNlqdbAnswers, whatItDoesnt,
+  // faqs, source labels) is public-facing copy — the /solve pages are the
+  // highest-impression organic surface. Internal tracking IDs (SK-*, GLOBAL-*,
+  // E-0x roadmap codes, docs/features repo paths) are meaningless to a stranger
+  // and read as a leak; they must never reach rendered HTML (same norm the
+  // P1..P4 persona-code guard above enforces). Named on failure so the next
+  // leak fails in the PR that writes it.
+  test("no internal tracking IDs leak into rendered /solve prose", () => {
+    const leak = /\b(?:SK-[A-Z]+-\d+|GLOBAL-\d+|E-0\d)\b|docs\/features\//;
+    for (const s of SOLVE_ENTRIES) {
+      const prose = [
+        s.searchTitle,
+        s.oneLiner,
+        s.painContext,
+        s.demoGoal,
+        s.demoWhy,
+        ...s.howNlqdbAnswers,
+        ...s.whatItDoesnt,
+        ...s.faqs.flatMap((f) => [f.q, f.a]),
+        ...s.sources.map((src) => src.label),
+      ];
+      for (const text of prose) {
+        const hit = text.match(leak);
+        expect(hit ? `${s.slug}: ${hit[0]} — "${text.slice(0, 60)}…"` : "").toBe("");
+      }
+    }
+  });
+
   test("SOLVE_PERSONA_ORDER covers every persona key in SOLVE_PERSONAS exactly once", () => {
     expect(new Set(SOLVE_PERSONA_ORDER).size).toBe(SOLVE_PERSONA_ORDER.length);
     const keys = Object.keys(SOLVE_PERSONAS).sort();
