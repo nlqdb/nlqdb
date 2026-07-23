@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   buildClaudeCodeCommand,
@@ -83,6 +83,46 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
           expect(url).toContain("utm_source=agent-artifacts");
         }
       }
+    }
+  });
+});
+
+// R-07 one-command install guard. The `npx skills add <github-tree-url>` line
+// (vercel-labs/skills, verified 2026-07-22) is the account-free drop-in path
+// published on three agent-facing surfaces (this README, the docs guide,
+// llms.txt). It fetches the skill straight from the public repo, so a moved
+// skill directory or missing SKILL.md frontmatter silently breaks the command
+// for every reader. This pins the URL to the on-disk skill and to all three
+// surfaces — one source of truth for the published command.
+const SKILL_REPO_PATH = "apps/web/public/agent-artifacts/nlqdb-memory";
+const SKILLS_INSTALL_URL = `https://github.com/nlqdb/nlqdb/tree/main/${SKILL_REPO_PATH}`;
+const SKILLS_INSTALL_CMD = `npx skills add ${SKILLS_INSTALL_URL}`;
+
+describe("the npx skills add one-command install can't drift", () => {
+  test("the SKILL.md still lives at the published repo path", () => {
+    // The URL's repo-relative path must resolve to the SKILL.md the site serves.
+    expect(SKILL_REPO_PATH.endsWith("/agent-artifacts/nlqdb-memory")).toBe(true);
+    expect(existsSync(join(DIR, "nlqdb-memory/SKILL.md"))).toBe(true);
+  });
+
+  test("SKILL.md carries the name + description `skills add` requires", () => {
+    const fm = SKILL.match(/^---\n([\s\S]*?)\n---/)?.[1];
+    if (fm === undefined) throw new Error("SKILL.md has no YAML frontmatter");
+    expect(fm).toMatch(/^name:\s*nlqdb-memory\s*$/m);
+    expect(fm).toMatch(/^description:\s*\S.*$/m);
+  });
+
+  test("all three published surfaces show the exact install command", () => {
+    const surfaces = {
+      "agent-artifacts README": read("README.md"),
+      "docs agent-memory guide": readFileSync(
+        join(import.meta.dir, "../../../docs/src/content/docs/agent-memory.mdx"),
+        "utf8",
+      ),
+      "llms.txt route": readFileSync(join(import.meta.dir, "../pages/llms.txt.ts"), "utf8"),
+    };
+    for (const [name, text] of Object.entries(surfaces)) {
+      expect(text, name).toContain(SKILLS_INSTALL_CMD);
     }
   });
 });

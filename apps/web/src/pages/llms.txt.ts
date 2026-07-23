@@ -96,8 +96,13 @@ export const GET: APIRoute = () => {
     `failure — are at ${DOCS_SITE}/agent-memory/. Auth is a browser OAuth on the first\n` +
     `tool call; no API key to paste. The live memory path is \`nlqdb_query\` (provision +\n` +
     `query in English); the typed \`agent_memory_v1\` preset is coming.\n\n` +
-    `Building this into a repo? Drop a ready-made rules file into the codebase so this\n` +
-    `agent wires and uses nlqdb memory correctly for good — every connect string in them\n` +
+    `Building this into a repo? One command installs the skill (Claude Code / Cursor,\n` +
+    `via the public repo — no account, no publish); it writes the skill, a matching\n` +
+    `Cursor rule, and an AGENTS.md entry:\n\n` +
+    "```bash\n" +
+    `npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory\n` +
+    "```\n\n" +
+    `Or drop a ready-made file into the codebase by hand — every connect string in them\n` +
     `is generated from nlqdb's own source of truth, so they never drift:\n\n` +
     `- Host-neutral \`AGENTS.md\`: append ${SITE}/agent-artifacts/AGENTS.snippet.md\n` +
     `- Claude Code skill: save ${SITE}/agent-artifacts/nlqdb-memory/SKILL.md to \`.claude/skills/nlqdb-memory/SKILL.md\`\n` +

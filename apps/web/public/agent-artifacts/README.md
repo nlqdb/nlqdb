@@ -5,6 +5,20 @@ Cursor, Codex) wires nlqdb memory and uses it correctly — a real Postgres it
 queries in plain English over MCP, so it can `GROUP BY`/`JOIN`/aggregate over
 what it remembered, not just recall the nearest few rows.
 
+## One command (Claude Code / Cursor)
+
+```bash
+npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory
+```
+
+Installs the `nlqdb-memory` skill from this repo (public) with the
+[`skills`](https://github.com/vercel-labs/skills) CLI — it writes
+`.claude/skills/nlqdb-memory/SKILL.md`, formats a matching Cursor
+`.cursor/rules/` rule, and registers it in `AGENTS.md`. No account, no publish.
+Then connect the MCP server once with the command inside the skill.
+
+## Or drop a file in by hand
+
 | File | Drop it at | For |
 |------|-----------|-----|
 | [`AGENTS.snippet.md`](AGENTS.snippet.md) | append to your repo's `AGENTS.md` | any agent that reads `AGENTS.md` (host-neutral) |
