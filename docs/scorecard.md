@@ -28,39 +28,31 @@ pre-flight env and that run passed Suite A 5/5); the row now needs only fresh di
 levers exhausted. **Top `blocked-by-human` bullet:** #1 fire the launch sequence (Show HN
 draft **idle 40 days since 06-13**, kit ready since 07-19) — the only queue action that can move
 real strangers from 0; its age is the company's real cycle time (rule: human-queue). Queue depth
-**7** (unchanged since 07-22: prod D1 migrations `0022`–`0025` verified applied, official
-MCP-registry publish executed agent-side, `FALLBACK2_LLM_API_KEY` verified armed since 07-16).
+**6** (corrected from run 128's stale "7" — the file holds 6 ranked bullets: prod D1 migrations
+`0022`–`0025` verified applied, official MCP-registry publish executed agent-side,
+`FALLBACK2_LLM_API_KEY` verified armed since 07-16; the GLOBAL-039 zone toggle is bullet #6, lowest
+rank — internal-integrity yield).
 
-**Run 128 pulled a priority-2 UX / priority-1 distribution lever** — stripped **177 internal
-tracking-ID leaks** (`SK-WEB-005`×40, `SK-DBCONN-001`×36, `GLOBAL-015`/`GLOBAL-006`, `E-03`/`E-04`
-roadmap codes, `docs/features/…` repo paths) out of the public **`/solve`** prose across **all 37
-rendered pages** — the highest-impression organic surface, meaningless internal jargon a stranger
-read verbatim at the land moment. Rule 6 clean (CI + Release
-+ Security all `success` on `main` `7422a76`; Deploy web/API/docs/Canary `success` on last deployable
-SHA `c9d3dca`, run 126/127 docs-only so no deploy). **Lever discovery:** fresh GSC exposed the page
-prior runs missed — `/solve/count-rows-per-day-including-missing-dates/` at **64 impr / pos 7.8**,
-the surface's single biggest winnable page; it
-was already fully on-page-optimized (title/meta/FAQPage+HowTo+Breadcrumb/absolute-https canonical) —
-its only defect was the ID leak, now fixed. Measured `grep dist/solve` **177 → 0**; durable guard
-test added (mirrors the P1..P4 code guard). GSC re-pulled live **6 clicks / 477 impr / pos 17.5**
-(window shift, flat). Weekly-focus row #22 inputs all founder/account-walled (blocked-by-human
-#1–#7). Priority-2 UX otherwise green (row #21 9/9 + both FLOW-005, fresh 07-21).
-**Step 0:** open PRs #719 (draft Infisical), #799 (blocked-by-human Astro/https — no `solve.ts`
-overlap, verified), #798 (reach null), #797 (run 127 null, scorecard-only) + this PR. This run's
-writes (`apps/web/src/data/solve.ts` + `solve.test.ts`) overlap none of them; scorecard step-1 is
-step-0 exempt.
+**Run 129 — null run (no agent-movable lever); full reasoning in "Last change" below.** Every
+priority lever is exhausted or founder-gated: row #22 acquisition (founder claims/submissions/N=0
+traffic), distribution yield (top page maxed run 128, `/solve` breadth foreclosed run 127), engine
+(dark + fresh), UX-flow (9/9 fresh). Rule 6 clean (all CI + deploy workflows `success` on `main`
+`c3f0647` / `15ed082`). Measurement strengthened: row #2 real strangers **0** re-verified via live
+remote-D1 today (identical 9-user set, 255 DBs, `dbsWithSource` 0); GSC 6/477/17.5 (no window shift).
+**Step 0:** only open PR is #719 (draft Infisical docs; #797–#800 merged since 128); this run writes
+only `docs/scorecard.md` (step-0 exempt) — no overlap.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
 | | **Funnel** (visits + users/DBs fresh 07-22 remote-D1 + CF GraphQL) | | exclude synthetic stranger-test walker traffic |
 | 1 | Visits, 7d (CF Web Analytics) | **212 pageloads** (07-15→07-22, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 168 + BingBot 2 ⇒ **real-browser ≈ 42** (Chrome 33 + Edge 8 + MobileSafari 1). Flat vs 07-13's ≈49 | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
-| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-22 remote-D1, identical 9-user set, no new registration**. The 428 wall is gone (run 56); acquisition now depends on distribution yield |
-| 3 | DBs total | **255** (07-22 remote-D1; +4 vs 07-16's 251, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test. **Attribution instrument verified live in prod 07-22:** `databases.source_json` column exists (migration 0024), `dbsWithSource` = 0 (accrues from first attributable traffic) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run; per-run detail in `git log` |
+| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-23 live remote-D1 (this run), identical 9-user set, no new registration**. The 428 wall is gone (run 56); acquisition now depends on distribution yield |
+| 3 | DBs total | **255** (07-23 live remote-D1, flat vs 07-22; synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test. **Attribution instrument verified live in prod 07-23 (this run):** `databases.source_json` column exists (migration 0024), `dbsWithSource` = 0 (accrues from first attributable traffic) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run; per-run detail in `git log` |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-23→07-21, re-pulled live 07-23 run 128): 6 clicks / 477 impr / avg pos 17.5** — top winnable page `/solve/count-rows-per-day-including-missing-dates/` **64 impr / pos 7.8** (surface's single biggest impression×position opportunity, already on-page-maxed; run 128 fixed its lone defect — internal-ID leak). Prior window: 5 clicks / 454 impr / pos 17.8 (impr 508→454 & pos shift is window-move not decline, clicks flat). 4 click-earning pages: `/security/hall-of-fame/`, homepage, `/architecture/`, `/blog/bird-gold-noise-distinct/`. sitemap 116 submitted / 0 err. Query `"top 10 products by revenue" metabase` pos 6.8 → `/vs/metabase/` (run 125's FAQ lever, merged; delta reads next pull). 7d external referrals = 9 (bing 8, github 1). Internal links **2,970** + **14 cross-app** (0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-23→07-21, re-pulled live 07-23 run 129): 6 clicks / 477 impr / avg pos 17.5** (identical to run 128 — no window shift) — top winnable page `/solve/count-rows-per-day-including-missing-dates/` **64 impr / pos 7.8** (surface's single biggest impression×position opportunity, already on-page-maxed; run 128 fixed its lone defect — internal-ID leak). 4 click-earning pages: `/security/hall-of-fame/`, homepage, `/architecture/`, `/blog/bird-gold-noise-distinct/`. sitemap 116 submitted / 0 err. Query `"top 10 products by revenue" metabase` pos 6.8 → `/vs/metabase/` (run 125's FAQ lever, merged; delta reads next pull). Two GSC-index anomalies checked live run 129: `app.nlqdb.com/blog/…` 301→`nlqdb.com` (`SK-WEB-026`), `http://…` 200 = GLOBAL-039 residual (blocked-by-human #6) — both handled, neither a defect. 7d external referrals = 9 (bing 8, github 1). Internal links **2,970** + **14 cross-app** (0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) — run-90 `SK-QUAL-006` trigger cleared. Baseline re-seeded 0.5462 → 0.5422 (07-19, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 `SK-QUAL-013` windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); post-revert engine is byte-identical ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -102,22 +94,27 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-23 (run 128)** — **Number moved:** internal tracking-ID leaks in rendered `/solve` HTML
-**177 → 0** (measured `grep -rE 'SK-…|GLOBAL-…|E-0x|docs/features/' apps/web/dist/solve/`, before/after
-same-build). Stripped `SK-WEB-005`×40, `SK-DBCONN-001`×36, `GLOBAL-015`/`GLOBAL-006`, `E-03`/`E-04`,
-and `docs/features/…` repo paths from public FAQ/answer prose across all 37 `/solve` pages (the
-highest-impression organic surface) — internal jargon a stranger read verbatim at the land moment.
-Grammar preserved (real terms `POST /v1/run`, `nlq db connect`, `app.agent_id` kept); durable guard
-test added (`no internal tracking IDs leak into rendered /solve prose`, mirrors the P1..P4 code
-guard). Data-only diff (`solve.ts` + `solve.test.ts`); web `check` 0 errors, `lint`/`typecheck`
-green, 19 solve tests pass, both Astro sites build. **Lever came from fresh GSC** (`scripts/gsc-pull.ts`,
-28d: 6 clicks / 477 impr / pos 17.5): the `/solve/count-rows-per-day` page ranks **64 impr / pos 7.8**
-— the surface's biggest winnable page, already fully on-page-optimized, its only defect the ID leak.
-Funnel carried from 07-22 remote-D1 (< 2 days; wrangler/D1 token absent, disproportionate at 0
-strangers): strangers 0, DBs 255, real-browser ≈ 42/7d. **Artifact:** queue 2-deep (< 3), no forced
-publish; dev.to drip N/A (`DEVTO_API_KEY` absent). **KPI (GLOBAL-025):** advances **UX/onboarding**
-(clean copy on the pages Google shows most) + **distribution** (public-surface integrity); **degrades
-none** — engine/perf untouched, no new external calls or endpoints.
+**2026-07-23 (run 129)** — **Null run: no agent-movable lever cleared the bar** (step-2 valid
+outcome; ships only the step-1 scorecard update). **Finding:** the weekly-focus number (row #22,
+channels live with attributable yield 4 → ≥5) is fully founder/reach-gated — every remaining path
+needs a founder claim (Smithery/PulseMCP/Glama), a founder submission (blocked-by-human #2–#5), or
+real traffic (row #12 agent-artifacts, N=0). The distribution-yield lane is exhausted: the single
+biggest winnable page (`/solve/count-rows-per-day`, 64 impr / pos 7.8) was maxed and ID-leak-fixed
+run 128; `/solve` breadth was foreclosed run 127 (every recurring low-ranking SQL query already has a
+page — the rest is N≤3-impr noise); the `/vs/metabase` FAQ delta (run 125) still reads next pull.
+Engine is dark + fresh (07-19, 4 days). UX-flow row #21 is 9/9 + both FLOW-005 fresh 07-21.
+**Investigated two fresh-GSC index anomalies — both documented/handled, neither a defect:**
+`app.nlqdb.com/blog/…` (pos 8.0) 301-redirects to `nlqdb.com` (`SK-WEB-026` app-host de-dup, verified
+live); `http://nlqdb.com/…` answering 200 over plaintext (pos 10.1) is
+[`GLOBAL-039`](decisions/GLOBAL-039-https-only-hsts.md)'s documented residual — the worker-level 301
+is explicitly rejected for the zero-cost static-asset path and the zone toggle is blocked-by-human #6;
+P1 forbids re-implementing a rejected alternative. **Measurement strengthened** (the run's only value):
+row #2 real strangers **0** re-verified via live remote-D1 today (CF/D1 token present this run, absent
+in 128 which carried the 07-22 read) — identical 9-user set, 255 DBs, `dbsWithSource` 0; GSC re-pulled
+live 6 clicks / 477 impr / pos 17.5 (no window shift); queue depth corrected 7 → 6 (stale count).
+Rule 6 clean (all CI + deploy workflows `success` on `main`). Docs-only diff (`docs/scorecard.md`).
+**Artifact:** null run skips step 3 (queue 2-deep < 3; dev.to drip N/A, `DEVTO_API_KEY` absent).
+**KPI (GLOBAL-025):** none moved (null run); **degrades none** — no code, no external calls, no endpoints.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
