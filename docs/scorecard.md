@@ -97,8 +97,8 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 First non-null run since run 116 (`3a92d0a`). **(measure)** fresh grep found 14 genuinely-open
 FEATURE.md bullets. **(change)** marked the two Stripe billing bullets — Lago meter wiring and the
 Dashboard/live-mode cutover — **Parked until phase-plan §6 + GLOBAL-026**, which already hold every
-cost-incurring meter-firing layer dark until the demand signal (§6 lists Lago as "not in Phase 2 by
-default"). These were decided deferrals mislabeled as open questions; the same section's sibling bullets
+cost-incurring meter-firing layer dark until the demand signal (§6 names Lago metering among those
+signal-gated layers). These were decided deferrals mislabeled as open questions; the same section's sibling bullets
 (R2 lifecycle, DLQ, re-subscribe) are already correctly marked "Parked". **(re-measure)** grep now
 returns **12** — Δ −2, honest (no unbuilt-slice bullet was parked; both edits cite an existing decision).
 **Waiver (step-2 priority-3):** no acquisition/distribution, UX-flow, or engine lever was pullable —

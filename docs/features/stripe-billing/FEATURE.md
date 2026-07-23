@@ -141,7 +141,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 
 - **R2 lifecycle policy** — Resolved (`GLOBAL-033`): **90-day retention** on the date-partitioned keys (events are Dashboard-replayable, so the bucket is a convenience cache). One-time Cloudflare R2 config; **parked until** bucket size is load-bearing.
 - **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable signal exists; the ops cron + alert is the wiring that lands when a dispatch first slips by.
-- **Lago wiring — Parked until [`phase-plan.md §6`](../../phase-plan.md).** Lago-on-Fly (usage meter → Stripe) is a cost-incurring layer §6 + `GLOBAL-026` hold dark until the demand signal trips (§6 lists it "not in Phase 2 by default"); a decided deferral, not an open question.
+- **Lago wiring — Parked until [`phase-plan.md §6`](../../phase-plan.md).** Lago-on-Fly (usage meter → Stripe) is one of the cost-incurring layers §6 names; §6 + `GLOBAL-026` hold the meter dark until the demand signal trips. A decided deferral, not an open question.
 - **Dashboard + live-mode cutover — Parked until [`phase-plan.md §6`](../../phase-plan.md).** Going live (live products/price IDs, portal config, Stripe Tax, keys/webhook) is the operator step §6 gates; runbook lands in `docs/runbook.md §6` at the flip.
 - **Re-subscribe against a customer deleted in Stripe** (SK-STRIPE-014). A `stripe_customer_id` manually deleted in the Dashboard surfaces as a `500 internal` on the next re-subscribe. **Parked** — it can't arise from our own flow (we never delete customers), and the operator who deleted it is the one who sees the error.
 
