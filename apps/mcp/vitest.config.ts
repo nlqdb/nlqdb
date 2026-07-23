@@ -23,7 +23,11 @@ export default defineConfig({
         extends: true,
         test: {
           name: "unit",
-          include: ["test/oauth-bridge.test.ts", "test/oauth-observability.test.ts"],
+          include: [
+            "test/oauth-bridge.test.ts",
+            "test/oauth-observability.test.ts",
+            "test/https-enforce.test.ts",
+          ],
         },
       },
       {

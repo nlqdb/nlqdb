@@ -77,6 +77,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-013** — Free-tier bundle budget. *In this feature:* the static-assets build must fit Workers' free-tier limits (no Workers script execution per request — assets only).
 - **GLOBAL-017** — One way to do each thing. *In this feature:* one docs site, one host. Don't fork "internal" vs "external" docs sites — internal stays in-repo, external is `docs.nlqdb.com`.
 - **GLOBAL-034** — Analytics stack. *In this feature:* the docs site embeds the same Cloudflare Web Analytics beacon as `apps/web`; no separate analytics provider.
+- **GLOBAL-039** — Production hosts are https-only. *In this feature:* HSTS ships via `apps/docs/public/_headers` (no worker runs on the asset path).
 
 ## Open questions / known unknowns
 

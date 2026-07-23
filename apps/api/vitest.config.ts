@@ -73,6 +73,7 @@ export default defineConfig(async () => {
               "test/workload-analyser/*.test.ts",
               "src/admin/gate.test.ts",
               "src/synthetic-ua.test.ts",
+              "src/https-enforce.test.ts",
               "src/marketing-mirror.test.ts",
               "src/databases/list.test.ts",
               "src/db-connect/connect.test.ts",
