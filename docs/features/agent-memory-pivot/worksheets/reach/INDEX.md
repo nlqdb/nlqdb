@@ -243,44 +243,39 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
 ## Current numbers (maintained by /reach step 1 — overwrite, no changelog)
 
 - Coding-agent walker pass rate (R-06): **0/1 surfaced** (baseline 2026-07-20) —
-  cold Claude Code session recommended `pgvector`, never nlqdb; confirms the thesis.
-  Boxes (b)/(c) blocked on SK-PIVOT-010 OAuth (`blocked_oauth`). Re-run
-  `bash scripts/reach-agent-walk.sh` (non-deterministic → JSON, not a gate); not
-  re-run this run.
+  cold session recommended `pgvector`, never nlqdb. Boxes (b)/(c) blocked on
+  SK-PIVOT-010 OAuth. Walker (`bash scripts/reach-agent-walk.sh`) not re-run (no
+  `ANTHROPIC_API_KEY` here). **Retrieval spot-check 2026-07-23** (box-(a) via the
+  R-08 method): unbranded stage-0/1 searches still surface mem0/OMEGA/Hindsight/
+  pgvector — **nlqdb absent**. The 07-22 registry publish has **not** moved the
+  web-search moment; registry presence ≠ search ranking, so 0/1 holds.
 - Canonical setup guide (R-04): **live**, 2 of 3 boxes — `docs.nlqdb.com/agent-memory/`,
   linked from README, `/agents`, llms.txt. Remaining box (manual cold-agent walk)
   needs a human to clear Step 2 browser OAuth.
 - Droppable in-repo artifacts (R-07): **4 of 4 live**, `agent-artifacts` **in-flight**
   — on both agent-fetched surfaces + one-command installable (`npx skills add`).
-  Yield 0; **live** only when `/app/admin` shows an `agent-artifacts` visit.
-  **P2 2026-07-23:** `skills.sh` has **no submission flow** — the leaderboard
-  populates from anonymous `npx skills` install telemetry (no account/review), so
-  nothing to submit or park; remaining growth = organic install yield + the
-  account-walled founder npm package.
-- Registry/directory listings: **1 published + 1 crawl-fed now live** (mechanism in
-  R-05 slice, P2 07-20/21). #1 official registry **published 07-22**
-  (`com.nlqdb/nlqdb` v0.1.1, active 07-23; row #3 in-flight); **Glama ingested it** —
-  listing live at `glama.ai/mcp/connectors/com.nlqdb/nlqdb` (07-23, first cascade
-  proof); Smithery (403 to bots) / PulseMCP not yet surfacing. #5–#8 (mcp.so, Cursor,
-  Anthropic dir, `awesome-mcp-servers`) each need a founder submit
-  (`blocked-by-human.md`). Channels live w/ attributable yield: **4** (organic, dev.to,
-  github, npm) — Glama shows the repo link not the utm-tagged `websiteUrl`, so it's
-  in-flight until claimed; #12 in-flight.
-- Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete; slugs + shape
-  in the R-03 slice, + R-02's two `competitors.md` §4 entries: DIY-on-Postgres +
-  Agentic DB/Constructive). Live path `nlqdb_query`; remember/preset gated
-  (SK-PIVOT-010); auto-in llms.txt + sitemap.
-- GSC intent-query clicks (28d, re-pulled 2026-07-23 via `bun scripts/gsc-pull.ts`):
-  **0**, unchanged — no intent query clears 1 click. `/agents` at pos 7.3 (3 impr);
-  intent impressions stuck at deep positions ("agent memory benchmark" pos 53,
-  "deep memory retrieval benchmark" 52, "locomo benchmark ai memory" 85,
-  `/blog/agent-memory-benchmarks…` pos 37). All site clicks come from non-intent
-  pages. R-01 baseline, unmoved.
-- Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10** — no
-  top-10 R-01 query surfaces `nlqdb.com` in the web-search layer grounding
-  ChatGPT/Claude/Perplexity (owned by mem0/Zep/Letta + pgvector guides); no
-  retrieval ⇒ no citation. Third confirming zero alongside R-06 (0/1) + GSC (0
-  intent clicks). **Monthly; next due 2026-08-22** (not due this run).
+  Yield 0; **live** only when `/app/admin` shows an `agent-artifacts` visit. `skills.sh`
+  has no submission flow (leaderboard = anonymous install telemetry), so remaining
+  growth = organic install yield + the account-walled founder npm package.
+- Registry/directory listings: **1 published + 1 crawl-fed live**. #1 official registry
+  **published 07-22** (`com.nlqdb/nlqdb` v0.1.1, active 07-23); **Glama** listing
+  re-confirmed live 07-23 (`glama.ai/mcp/connectors/com.nlqdb/nlqdb`, memory-first
+  framing intact) but links the repo not the utm-tagged `websiteUrl` → in-flight
+  until founder-claimed; Smithery / PulseMCP still not surfacing (branded search
+  returns zero). #5–#8 (mcp.so, Cursor, Anthropic dir, `awesome-mcp-servers`) each
+  need a founder submit (`blocked-by-human.md`). Channels live w/ attributable
+  yield: **4** (organic, dev.to, github, npm); #12 in-flight.
+- Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete) + R-02's two
+  `competitors.md` §4 entries (DIY-on-Postgres + Agentic DB/Constructive). Live path
+  `nlqdb_query`; remember/preset gated (SK-PIVOT-010); auto-in llms.txt + sitemap.
+- GSC intent-query clicks (28d, re-pulled 2026-07-23): **0**, unchanged — no intent
+  query clears 1 click. `/agents` at pos 7.3 (3 impr); intent impressions stuck deep
+  ("agent memory benchmark" 53, "locomo benchmark ai memory" 85). All clicks from
+  non-intent pages. R-01 baseline, unmoved.
+- Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10** — no top-10
+  R-01 query surfaces `nlqdb.com` in the grounding set (owned by mem0/Zep/Letta +
+  pgvector). Third confirming zero alongside R-06 (0/1) + GSC. **Monthly; next due
+  2026-08-22** (not due this run).
 
 ## Tracker
 
