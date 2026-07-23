@@ -246,9 +246,13 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
   cold session recommended `pgvector`, never nlqdb. Boxes (b)/(c) blocked on
   SK-PIVOT-010 OAuth. Walker (`bash scripts/reach-agent-walk.sh`) not re-run (no
   `ANTHROPIC_API_KEY` here). **Retrieval spot-check 2026-07-23** (box-(a) via the
-  R-08 method): unbranded stage-0/1 searches still surface mem0/OMEGA/Hindsight/
-  pgvector — **nlqdb absent**. The 07-22 registry publish has **not** moved the
-  web-search moment; registry presence ≠ search ranking, so 0/1 holds.
+  R-08 method): unbranded stage-0/1 searches (`best way to store agent memory MCP
+  server`, `per-user memory for AI agent postgres multi-tenant`) surface mem0/Redis/
+  Constructive Agentic DB/Oracle multi-tenant-memory content — **nlqdb absent**, and
+  the P2b field is **intensifying** (Oracle now publishes a "multi-tenant agent memory
+  schemas for SaaS" series + Constructive's Agentic DB ranks the exact intent queries).
+  The 07-22 registry publish (re-confirmed `active` this run, Glama HTTP 200) has
+  **not** moved the web-search moment; registry presence ≠ search ranking, so 0/1 holds.
 - Canonical setup guide (R-04): **live**, 2 of 3 boxes — `docs.nlqdb.com/agent-memory/`,
   linked from README, `/agents`, llms.txt. Remaining box (manual cold-agent walk)
   needs a human to clear Step 2 browser OAuth.
@@ -268,10 +272,10 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
 - Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete) + R-02's two
   `competitors.md` §4 entries (DIY-on-Postgres + Agentic DB/Constructive). Live path
   `nlqdb_query`; remember/preset gated (SK-PIVOT-010); auto-in llms.txt + sitemap.
-- GSC intent-query clicks (28d, re-pulled 2026-07-23): **0**, unchanged — no intent
-  query clears 1 click. `/agents` at pos 7.3 (3 impr); intent impressions stuck deep
-  ("agent memory benchmark" 53, "locomo benchmark ai memory" 85). All clicks from
-  non-intent pages. R-01 baseline, unmoved.
+- GSC intent-query clicks (28d, re-pulled 2026-07-23): **0**, unchanged (5 total / 454
+  impr / pos 17.8, all from non-intent pages) — no intent query clears 1 click. `/agents`
+  at pos 7.3 (3 impr); intent impressions stuck deep ("agent memory benchmark" pos 53,
+  "locomo benchmark ai memory" pos 83). R-01 baseline, unmoved.
 - Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10** — no top-10
   R-01 query surfaces `nlqdb.com` in the grounding set (owned by mem0/Zep/Letta +
   pgvector). Third confirming zero alongside R-06 (0/1) + GSC. **Monthly; next due
