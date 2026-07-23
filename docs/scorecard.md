@@ -37,12 +37,11 @@ MCP-registry publish executed agent-side, `FALLBACK2_LLM_API_KEY` verified armed
 scorecard's own bottleneck is "impression breadth", so this run probed whether any GSC query with
 demand lacks a `/solve` page — every recurring SQL query GSC shows us ranking low
 (`pivot rows to columns` pos 34.5, `cumulative sum` pos 39, `consecutive streak` pos 8.5) **already
-has a dedicated page** (`pivot-rows-into-columns`, `running-total-cumulative-sum-in-sql`,
-`count-consecutive-days-streak-in-sql`); no content gap to fill, and all are N≤3 impr (ranking noise,
+has a dedicated `/solve` page**; no content gap to fill, and all are N≤3 impr (ranking noise,
 not missing surface). The one page-1 winnable query (`"top 10 products by revenue" metabase`, pos 6.8)
 was pulled by run 125's merged `/vs/metabase` FAQ (PR #795) and **has not yet converted** — GSC still
-0 clicks / pos 6.8 on it (~1 day post-merge, expected FAQPage re-crawl lag; reads on the next 28d
-pull). GSC re-pulled live **5 clicks / 454 impr / pos 17.8**, flat. Weekly-focus row #22 inputs all
+0 clicks / pos 6.8 on it (~1 day post-merge; re-crawl lag). GSC re-pulled live
+**5 clicks / 454 impr / pos 17.8**, flat. Weekly-focus row #22 inputs all
 founder/account-walled (blocked-by-human #1–#7); reach (merged PR #794) confirms every R-slice
 complete or human-gated. Priority-2 UX green (row #21 9/9 + both FLOW-005 transports, fresh 07-21).
 Priority-3 meta not pulled (monoculture, /weekly-de-prioritized — loop forbids manufacturing a lever).
@@ -105,8 +104,8 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 the summary block above. One-line: this run tested the scorecard's own "impression-breadth" thesis by
 probing for a GSC query with demand but no landing page — and **foreclosed it**: every recurring SQL
 query GSC shows us ranking low (`pivot rows to columns`, `cumulative sum`, `consecutive streak`)
-already has a dedicated `/solve` page, so there is no content gap; the poor positions are N≤3-impr
-ranking noise, not missing surface. Run 125's `/vs/metabase` FAQ lever has not yet converted (target
+already has a dedicated `/solve` page, so there is no content gap (poor positions = N≤3-impr noise).
+Run 125's `/vs/metabase` FAQ lever has not yet converted (target
 still 0 clicks / pos 6.8, ~1 day post-merge — expected re-crawl lag). Weekly-focus row #22 inputs all
 founder/account-walled (blocked-by-human #1–#7); priority-2 UX green (row #21 9/9, 07-21); priority-3
 meta declined as monoculture. Fresh this run: GSC re-pulled live 5/454/17.8 (flat); rule 6 clean
