@@ -31,15 +31,15 @@ strangers from 0. Queue depth **7** (−3 on 07-22: prod D1 migrations `0022`–
 applied, official MCP-registry publish executed agent-side via DNS domain-verify,
 `FALLBACK2_LLM_API_KEY` verified armed since 07-16).
 
-**Run 122 is a null run** — no agent-movable code lever cleared the step-2 bar, but the core
-funnel is **freshly re-measured** (full finding in "Last change"): rule 6 clean (CI + Deploy
-web/API/Canary + Release npm all `success` on `main` `c46b013`); priority-1 not pullable (4 live
-channels attributable; GSC **unchanged** 5 clicks / 508 impr / pos 16.3; new live channels
-`/reach`- or founder-blocked); priority-2 walkers 9/9 fresh 07-21; priority-3 docs de-prioritised.
-**Step 0:** open PRs — #787 (daily run 121, null; scorecard-only, step-1 exempt), #788 (reach R-07
-`npx skills add`; touches `apps/web`/`apps/docs`/`llms.txt`/reach INDEX), #789 (blocked-by-human
-resolution; touches `blocked-by-human.md`/reach R-05/`daily.md`) and #719 (draft Infisical). This
-run's sole write is `scorecard.md` — touches none of the files #788/#789/#719 change.
+**Run 123 pulls a priority-3 docs-ambiguity lever** (row #17: 14 → 12) — waiver: no priority-1/2/engine
+lever is pullable (rule 6 clean: CI + Deploy web/API/docs/Canary + Release npm all `success` on `main`
+`d3afdd3`; priority-1 — 4 live channels all utm-attributable, no coverage hole, the one page-1 winnable
+GSC query `"top 10 products by revenue" metabase` pos 6.8 is reach R-03; priority-2 walkers 9/9 fresh
+07-21; engine dark+fresh 07-19, offline-exhausted). The change resolves 2 Stripe open-question bullets
+(Lago wiring + live-mode cutover) that phase-plan §6 + `GLOBAL-026` already hold dark until the demand
+signal — decided deferrals, now marked **Parked until §6** to match the section's sibling bullets.
+**Step 0:** only open PR is #719 (draft Infisical); this run touches
+`docs/features/stripe-billing/FEATURE.md` + `scorecard.md` — no overlap.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -51,7 +51,7 @@ run's sole write is `scorecard.md` — touches none of the files #788/#789/#719 
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-22→07-20, fresh 07-22 pull): 5 clicks / 508 impr / avg pos 16.3** (top click earner `/security/hall-of-fame/` 2 clicks / pos 27; homepage 1 / 68 impr / pos 8.2; `/architecture/` 1 / pos 10.9; `/blog/bird-gold-noise-distinct/` 1 / pos 11.1 — 4 distinct pages earned a click this window, click sources broadening past the homepage), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18). **Run 109:** app-host de-dup (`SK-WEB-026`) now covers the **whole** marketing surface (singles + `/sitemap.xml`/`/rss.xml`/`/llms.txt`), not just `/blog\|/solve\|/vs` — all 301 `app.nlqdb.com`→`nlqdb.com`, drift-guarded (see Last change) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-23→07-21, fresh 07-23 pull): 5 clicks / 454 impr / avg pos 17.8** (top click earner `/security/hall-of-fame/` 2 clicks / pos 27; homepage 1 / 21 impr / pos 19.4; `/architecture/` 1 / pos 10.9; `/blog/bird-gold-noise-distinct/` 1 / pos 11.1 — same 4 click-earning pages; impr 508→454 & pos 16.3→17.8 vs 07-22 is window-shift not decline, clicks flat 5), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18). **Run 109:** app-host de-dup (`SK-WEB-026`) now covers the **whole** marketing surface (singles + `/sitemap.xml`/`/rss.xml`/`/llms.txt`), not just `/blog\|/solve\|/vs` — all 301 `app.nlqdb.com`→`nlqdb.com`, drift-guarded (see Last change) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) — run-90 `SK-QUAL-006` trigger cleared. Baseline re-seeded 0.5462 → 0.5422 (07-19, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 `SK-QUAL-013` windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); post-revert engine is byte-identical ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -65,7 +65,7 @@ run's sole write is `scorecard.md` — touches none of the files #788/#789/#719 
 | 15 | E2E manual-suite freshness | **stale reading — recompute next run:** sdk/mcp/examples ≈1.0 each; opencheck's actual latest `main` run is [29553384150](https://github.com/nlqdb/nlqdb/actions/runs/29553384150) (07-17, `depth=a`) — **PASSED Suite A 5/5** with the 3rd free pool armed (`FALLBACK2_LLM_API_KEY` set 07-16, present in the run env), superseding the failed 07-14 run this row previously cited. **No longer dark, no founder action pending** — freshness now decays only with dispatch cadence | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.542, 07-19 post-revert, flat vs baseline — the run-90 regression is cleared); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **14** (fresh grep 07-21 run 114; −1 vs run 112's 15 — run 114 resolved the gtm-metrics "Loop integration" bullet to a GLOBAL-033 Parked-until decision) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **12** (fresh grep 07-23 run 123; −2 vs run 114's 14 — run 123 marked the Stripe Lago-wiring + live-mode-cutover bullets **Parked until §6** per phase-plan §6 + GLOBAL-026, matching their siblings; decided deferrals, not open questions) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Layered coverage: built-output `href`/`src` sweep + cross-app subdomain verification (run 61) + prod sitemap-200 check (run 72) + `client-nav-integrity.test.ts` (SK-WEB-022) guarding both `location.*` JS navigations (run 77) **and** static `<a href="/literal">` source literals (run 87, after legal-page bare-path 307s) — dotted assets + dynamic `href={…}` skipped, negative-tested | target 0 — `bun run build && bun run check:links` (built-output) + `client-nav-integrity.test.ts` (in CI) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** (claim-vs-reality on shipped surfaces + docs; target 0 **met**). **Standing guards — all three advertised-capability surfaces closed-world CI-swept across web *and* docs**, each deriving truth from source (never hand-copied) and naming the phantom + file on failure: `mcp-tool-integrity.test.ts` (`registerTool(...)` sites, `SK-MCP-002`), `cli-verb-integrity.test.ts` (cobra tree), `sdk-method-integrity.test.ts` (shipped `NlqClient` type, `SK-SDK-013`). All 0 phantom live, negative-tested. **Trilogy complete** — no advertised-capability surface remains web-only |
@@ -93,26 +93,23 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-22 (run 122)** — **Null run with a freshly re-measured funnel; ships only this step-1
-scorecard update.** Sixth consecutive null (117–122); nothing code-bearing has merged since run
-116's `3a92d0a`. This run refreshed the core funnel from prod rather than carrying stale dates:
-**(measure) real strangers = 0** (07-22 remote-D1, identical 9-user set, no new registration since
-07-06); DBs **255** (+4 synthetic); visits **212** pageloads 7d / real-browser ≈ 42 (CF GraphQL,
-07-15→07-22, flat vs 49). **Corrected a stale worst-number:** the human-queue head "apply prod D1
-migrations `0022`–`0025`" is **verified applied in prod** — `gtm_snapshots` has 3 rows (daily cron),
-`databases.source_json` exists (0024 live); the real queue head is the founder-only launch sequence.
-PR #789 (open) formalises this. The finding in priority order: **(1) Rule 6 clean** — CI + Deploy
-web/API/Canary + Release npm all `success` on `main` `c46b013`. **(2) Priority-1 not pullable** — 4
-live channels attributable; GSC **unchanged** 5 clicks / 508 impr / pos 16.3; the one page-1
-winnable-click query (`"top 10 products by revenue" metabase`, pos 6.8) is reach-track R-03 (needs a
-built page + can't be same-run re-measured per rule 3), not a daily pull. New live-channel growth is
-`/reach`- or founder-blocked. **(3) Priority-2 UX clean** — walkers 9/9 + both FLOW-005 transports
-fresh 07-21; first-10 N=0. **(4) Priority-3 docs de-prioritised** (row #17 = 14, unchanged; parking
-a genuine unbuilt-slice bullet would be counter-gaming). **Step 0:** open PRs #787 (daily 121, null,
-scorecard-only), #788 (reach R-07), #789 (blocked-by-human), #719 (draft); this run touches only
-`scorecard.md`. **Artifact:** null run skips step 3 — queue 2 (< 3), no forced publish; dev.to drip
-N/A (`DEVTO_API_KEY` absent). **KPI (GLOBAL-025):** no KPI moved (null run) and **none degrades** —
-measurement-only, no code touched.
+**2026-07-23 (run 123)** — **Priority-3 docs-ambiguity lever: row #17 open-question bullets 14 → 12.**
+First non-null run since run 116 (`3a92d0a`). **(measure)** fresh grep found 14 genuinely-open
+FEATURE.md bullets. **(change)** marked the two Stripe billing bullets — Lago meter wiring and the
+Dashboard/live-mode cutover — **Parked until phase-plan §6 + GLOBAL-026**, which already hold every
+cost-incurring meter-firing layer dark until the demand signal (§6 lists Lago as "not in Phase 2 by
+default"). These were decided deferrals mislabeled as open questions; the same section's sibling bullets
+(R2 lifecycle, DLQ, re-subscribe) are already correctly marked "Parked". **(re-measure)** grep now
+returns **12** — Δ −2, honest (no unbuilt-slice bullet was parked; both edits cite an existing decision).
+**Waiver (step-2 priority-3):** no acquisition/distribution, UX-flow, or engine lever was pullable —
+rule 6 clean on `d3afdd3` (CI + all deploys `success`); the 4 live channels are all utm-attributable
+with no coverage hole (`readme-attribution-integrity.test.ts` green); the sole page-1 winnable GSC
+query (`"top 10 products by revenue" metabase`, pos 6.8) is reach-track R-03, not a daily pull; walkers
+9/9 fresh 07-21; engine BIRD/Spider dark+fresh 07-19, offline levers exhausted. **GSC (fresh 07-23):**
+5 clicks / 454 impr / pos 17.8 (28d) — impr 508→454 & pos 16.3→17.8 is window shift, clicks flat.
+**Funnel:** real strangers 0 (carried 07-22 remote-D1). **Artifact:** queue 2 (< 3), no forced publish;
+dev.to drip N/A (`DEVTO_API_KEY` absent). **KPI (GLOBAL-025):** engine-quality doc accuracy improves
+(row #17 ↓); **no KPI degrades** — docs-only, no code touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

@@ -141,8 +141,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 
 - **R2 lifecycle policy** — Resolved (`GLOBAL-033`): **90-day retention** on the date-partitioned keys (events are Dashboard-replayable, so the bucket is a convenience cache). One-time Cloudflare R2 config; **parked until** bucket size is load-bearing.
 - **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable signal exists; the ops cron + alert is the wiring that lands when a dispatch first slips by.
-- **Lago wiring.** Lago-on-Fly as the usage-metering layer batched into Stripe (PLAN §6); not yet wired. Phase 2 slice TBD.
-- **Dashboard + live-mode cutover.** Going live: create live products + price IDs, save a Customer-portal config (`sessions.create` errors without one), enable Stripe Tax, then put live keys/products/webhook in `.envrc` + run the mirror scripts and update the Dashboard webhook endpoint. Operator steps tracked in [`blocked-by-human.md`](../../blocked-by-human.md); capture the runbook in `docs/runbook.md §6` when the flip lands.
+- **Lago wiring — Parked until the [`phase-plan.md §6`](../../phase-plan.md) demand signal.** Lago-on-Fly (usage meter → Stripe) is a cost-incurring layer §6 + `GLOBAL-026` hold dark until the signal trips (§6 lists Lago as "not in Phase 2 by default"); the paid-plan *surfaces* build ahead (row #20), the meter wiring is a decided deferral, not an open question.
+- **Dashboard + live-mode cutover — Parked until [`phase-plan.md §6`](../../phase-plan.md) + first paying customer.** Firing the meter live (live products/price IDs, portal config, Stripe Tax, live keys/webhook) is the operator step §6 gates; the runbook lands in `docs/runbook.md §6` when the flip happens.
 - **Re-subscribe against a customer deleted in Stripe** (SK-STRIPE-014). A `stripe_customer_id` manually deleted in the Dashboard surfaces as a `500 internal` on the next re-subscribe. **Parked** — it can't arise from our own flow (we never delete customers), and the operator who deleted it is the one who sees the error.
 
 ## Billing constraints and philosophy
