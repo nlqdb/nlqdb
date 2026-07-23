@@ -34,12 +34,12 @@ MCP-registry publish executed agent-side, `FALLBACK2_LLM_API_KEY` verified armed
 **Run 128 pulled a priority-2 UX / priority-1 distribution lever** — stripped **177 internal
 tracking-ID leaks** (`SK-WEB-005`×40, `SK-DBCONN-001`×36, `GLOBAL-015`/`GLOBAL-006`, `E-03`/`E-04`
 roadmap codes, `docs/features/…` repo paths) out of the public **`/solve`** prose across **all 37
-rendered pages** — the highest-impression organic surface. A stranger on the top page read `trace
-toggle (\`SK-WEB-005\`)` — meaningless internal jargon at the land moment. Rule 6 clean (CI + Release
+rendered pages** — the highest-impression organic surface, meaningless internal jargon a stranger
+read verbatim at the land moment. Rule 6 clean (CI + Release
 + Security all `success` on `main` `7422a76`; Deploy web/API/docs/Canary `success` on last deployable
 SHA `c9d3dca`, run 126/127 docs-only so no deploy). **Lever discovery:** fresh GSC exposed the page
-prior runs missed — `/solve/count-rows-per-day-including-missing-dates/` at **64 impr / pos 7.8**
-(10× the 6-impr `/vs/metabase` query run 125 chased), the surface's single biggest winnable page; it
+prior runs missed — `/solve/count-rows-per-day-including-missing-dates/` at **64 impr / pos 7.8**,
+the surface's single biggest winnable page; it
 was already fully on-page-optimized (title/meta/FAQPage+HowTo+Breadcrumb/absolute-https canonical) —
 its only defect was the ID leak, now fixed. Measured `grep dist/solve` **177 → 0**; durable guard
 test added (mirrors the P1..P4 code guard). GSC re-pulled live **6 clicks / 477 impr / pos 17.5**
