@@ -246,13 +246,11 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
   cold session recommended `pgvector`, never nlqdb. Boxes (b)/(c) blocked on
   SK-PIVOT-010 OAuth. Walker (`bash scripts/reach-agent-walk.sh`) not re-run (no
   `ANTHROPIC_API_KEY` here). **Retrieval spot-check 2026-07-23** (box-(a) via the
-  R-08 method): unbranded stage-0/1 searches (`best way to store agent memory MCP
-  server`, `per-user memory for AI agent postgres multi-tenant`) surface mem0/Redis/
-  Constructive Agentic DB/Oracle multi-tenant-memory content — **nlqdb absent**, and
-  the P2b field is **intensifying** (Oracle now publishes a "multi-tenant agent memory
-  schemas for SaaS" series + Constructive's Agentic DB ranks the exact intent queries).
-  The 07-22 registry publish (re-confirmed `active` this run, Glama HTTP 200) has
-  **not** moved the web-search moment; registry presence ≠ search ranking, so 0/1 holds.
+  R-08 method): unbranded stage-0/1 searches surface mem0/Redis/Constructive Agentic
+  DB/Oracle multi-tenant-memory content — **nlqdb absent**; the P2b field is
+  **intensifying** (Oracle + Constructive's Agentic DB now rank the exact intent
+  queries). The 07-22 registry publish (re-confirmed `active` this run, Glama HTTP 200)
+  has **not** moved the web-search moment; registry presence ≠ search ranking, so 0/1 holds.
 - Canonical setup guide (R-04): **live**, 2 of 3 boxes — `docs.nlqdb.com/agent-memory/`,
   linked from README, `/agents`, llms.txt. Remaining box (manual cold-agent walk)
   needs a human to clear Step 2 browser OAuth.
