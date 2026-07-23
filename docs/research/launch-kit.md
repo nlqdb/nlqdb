@@ -32,7 +32,7 @@ structure only. Sources for venue norms (P2, checked 2026-07-19):
 | GTM measurement | ✅ `/app/admin` live (#742); daily `gtm_snapshots` | GLOBAL-038 |
 | PMF measurement | ✅ Sean-Ellis Q1 in-product (`SK-GTM-006`, this PR) | `pmf_survey` D1 |
 | Per-channel attribution | ⏳ PR #745 (first-touch UTM/referrer) — **merge before firing** | #745 |
-| Prod migrations | ⏳ 0022 + 0025 (+ #744/#745's 0023s) need `wrangler d1 migrations apply` | blocked-by-human.md |
+| Prod migrations | ✅ 0022–0025 applied to prod D1 (verified live 2026-07-22; `gtm_snapshots` accruing) | prod D1 `d1_migrations` |
 
 **Capacity — the two launch-day physics facts:**
 
@@ -124,7 +124,7 @@ subreddit self-promo rules re-checked at post time. Same fact sheet as 3.1.
 
 ## 4. Sequence + measurement contract
 
-1. Merge #745 (attribution) + this PR; apply prod migrations (0022–0025).
+1. ✅ Done — #745 (attribution) merged; prod migrations 0022–0025 applied (verified 2026-07-22).
 2. Soft venues (3.2) — expect tens of visits; verify attribution rows land
    on `/app/admin`.
 3. Show HN (3.1). Success bar, honest: front page = hundreds–thousands of

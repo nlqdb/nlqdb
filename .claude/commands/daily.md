@@ -222,3 +222,6 @@ exception: a null run's PR (step 2) ships only the step-1 scorecard update
 and names the recorded finding in place of a delta. Ending without a delta
 for any other reason means the measurement is broken — ship the measurement
 fix instead. Open the PR without asking for permissions.
+
+No auto-merge tier: daily PRs always wait for review (founder-rejected
+2026-07-22 — a separate merger agent owns review latency; don't re-propose).
