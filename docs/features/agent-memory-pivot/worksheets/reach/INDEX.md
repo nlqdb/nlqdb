@@ -252,8 +252,15 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
   queries). The 07-22 registry publish (re-confirmed `active` this run, Glama HTTP 200)
   has **not** moved the web-search moment; registry presence ≠ search ranking, so 0/1 holds.
 - Canonical setup guide (R-04): **live**, 2 of 3 boxes — `docs.nlqdb.com/agent-memory/`,
-  linked from README, `/agents`, llms.txt. Remaining box (manual cold-agent walk)
-  needs a human to clear Step 2 browser OAuth.
+  linked from README, `/agents`, llms.txt. **Live cold-agent walk this run** (2026-07-23,
+  fetched the published URL only): every connect command, tool name, and link matches
+  the repo + `mcp-install.ts`; artifact files serve; guide is machine-followable end to
+  end **except** the one intended human step (Step 2 browser OAuth). One machine-
+  followability gap **closed**: Step 1.4 offered Cursor/VS Code only a GUI deep-link
+  button (unpressable by a headless agent) — now gives writable `.cursor/mcp.json` +
+  `.vscode/mcp.json` config blocks (P2-verified 2026-07-23), the button kept for humans.
+  Final box (setup *completed* to a first memory read/write) still needs a human to
+  clear the OAuth step (SK-PIVOT-010) → box stays ⬜.
 - Droppable in-repo artifacts (R-07): **4 of 4 live**, `agent-artifacts` **in-flight**
   — on both agent-fetched surfaces + one-command installable (`npx skills add`).
   Yield 0; **live** only when `/app/admin` shows an `agent-artifacts` visit. `skills.sh`
