@@ -154,10 +154,11 @@ the official MCP registry → the crawling directories ingest it automatically**
 mechanism + exact payloads live canonically in the ledger
 [`acquisition-channels.md`](../../../../research/acquisition-channels.md) and
 [`blocked-by-human.md`](../../../../blocked-by-human.md); summary only here.
-- ✅ #1 official MCP registry (`registry.modelcontextprotocol.io`) — account-walled (`mcp-publisher`
-  needs GitHub OAuth or a domain-verify secret); `server.json` + publish flow parked. This one publish
-  **cascades** to the crawl-fed ✅ #2 Smithery / ✅ #3 PulseMCP / ✅ #4 Glama (they crawl the registry —
-  no separate submission; claim listings after). Ledger rows #3–#6.
+- ✅ #1 official MCP registry (`registry.modelcontextprotocol.io`) — **published 2026-07-22**
+  (`com.nlqdb/nlqdb` v0.1.1, agent-side via the `com.nlqdb` DNS domain-verify path; `websiteUrl`
+  carries `?utm_source=mcp-registry`). Cascades to the crawl-fed ✅ #2 Smithery / ✅ #3 PulseMCP /
+  ✅ #4 Glama (they crawl the registry — no separate submission; claim listings once ingested).
+  Ledger rows #3–#6 → in-flight.
 - ✅ #5 mcp.so · ✅ #6 Cursor (`cursor.directory`) · ✅ #7 Anthropic connector dir — each account-walled
   and **not** a registry crawler (so #1 doesn't cascade), exact per-venue payloads parked; ledger rows
   #7/#8/#9. #7 is additionally **plan-gated** (Team/Enterprise Claude org), though nlqdb already clears
@@ -209,12 +210,11 @@ Codex [`codex-config.toml`](../../../../../apps/web/public/agent-artifacts/codex
 + a README index); Channel #12 surfaced on both agent-fetched surfaces
 (R-04 docs guide + `llms.txt` `## For coding agents`) **and now one-command
 installable** — `npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory`
-(vercel-labs/skills CLI, verified 2026-07-22 P2: installs the skill from the
-**public** repo into `.claude/skills/` + a Cursor rule + `AGENTS.md`, no
-account/no publish) → **in-flight**; **remaining R-07 work is account-walled
-external distribution** (the curated `skills.sh` leaderboard listing + an npm
-installer package → founder) plus the yield gate (a real `agent-artifacts`
-visit in `/app/admin`) · ✅ install path on the R-04 page
+(vercel-labs/skills CLI, P2 2026-07-22: installs from the **public** repo into
+`.claude/skills/` + a Cursor rule + `AGENTS.md`, no account) → **in-flight**;
+**remaining R-07 work is account-walled external distribution** (`skills.sh`
+leaderboard + npm installer → founder) plus the yield gate (a real
+`agent-artifacts` visit in `/app/admin`) · ✅ install path on the R-04 page
 ([`agent-memory.mdx`](../../../../../apps/docs/src/content/docs/agent-memory.mdx)
 "Drop it into your repo") · ✅ drift test green
 ([`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) —
@@ -250,29 +250,19 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
   `nlqdb_query`, remember/preset gated). Linked from README, `/agents`, llms.txt.
   Remaining box: the manual cold-agent walk — needs a human to clear Step 2's
   browser OAuth, which an autonomous run can't.
-- Droppable in-repo artifacts (R-07): **4 of 4 host artifacts live** in
-  `apps/web/public/agent-artifacts/` (AGENTS snippet + Claude Code skill + Cursor
-  rules + Codex block + README; detail in the R-07 slice). Connect strings
-  generated from `mcp-install.ts`, drift-tested (`agent-artifacts.test.ts`).
-  **Channel #12 (`agent-artifacts`) → in-flight** — the artifacts are surfaced to
-  the coding-agent read channel on both agent-fetched surfaces the thesis names
-  (R-04 docs guide + `llms.txt` `## For coding agents`) **and now install in one
-  account-free command** (this run): `npx skills add <public-repo-tree-URL>` pulls
-  the skill from `nlqdb/nlqdb` (verified public via GitHub API) into
-  `.claude/skills/` + a Cursor rule + `AGENTS.md` via the vercel-labs/skills CLI
-  (P2-verified 2026-07-22; subcommand is `add`, not `install`). Shipped on all
-  three surfaces + drift-guarded (`agent-artifacts.test.ts` pins the URL to the
-  on-disk skill and to each surface). Yield still 0; **live** only when
-  `/app/admin` shows an `agent-artifacts` visit. Remaining R-07 work is
-  account-walled: the curated `skills.sh` leaderboard listing (submission
-  mechanism not yet P2-verified) + an npm installer package (→ founder).
-- Registry/directory listings live: **0 of 8** (8/8 prepared; per-venue mechanism
-  in the R-05 slice, verified 2026-07-20/21, P2). Nothing live until the founder
-  acts: #1 official-registry publish cascades to crawl-fed #2–#4 (Smithery /
-  PulseMCP / Glama); #5–#8 (mcp.so, Cursor, Anthropic connector dir,
-  `awesome-mcp-servers` PR) each need their own submit (payloads parked in
-  `blocked-by-human.md`). Acquisition channels live w/ attributable yield: **4**
-  (organic search, dev.to, github, npm); Channel #12 `agent-artifacts` in-flight.
+- Droppable in-repo artifacts (R-07): **4 of 4 host artifacts live**;
+  **Channel #12 (`agent-artifacts`) → in-flight** — surfaced on both agent-fetched
+  surfaces (R-04 docs guide + `llms.txt`) and **now one-command installable** this
+  run (`npx skills add`; mechanism + drift guard detailed in the R-07 slice). Yield
+  still 0; **live** only when `/app/admin` shows an `agent-artifacts` visit.
+  Remaining R-07 is account-walled (`skills.sh` leaderboard + npm installer → founder).
+- Registry/directory listings: **1 of 8 published** (per-venue mechanism in the
+  R-05 slice, verified 2026-07-20/21, P2). #1 official registry **published
+  2026-07-22** (`com.nlqdb/nlqdb` v0.1.1; ledger row #3 in-flight), cascading to
+  crawl-fed #2–#4 (pending ingest); #5–#8 (mcp.so, Cursor, Anthropic connector dir,
+  `awesome-mcp-servers` PR) each need a founder submit (payloads in
+  `blocked-by-human.md`). Channels live w/ attributable yield: **4** (organic,
+  dev.to, github, npm); #12 `agent-artifacts` in-flight.
 - Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete; slugs +
   page-shape detail in the R-03 slice, + R-02's two `competitors.md` §4 entries:
   DIY-on-Postgres + Agentic DB/Constructive). Live path `nlqdb_query`; remember/preset
@@ -301,7 +291,7 @@ Tick on merge.
 - [x] R-02 — build-vs-buy honesty surface (competitor rows + solve page)
 - [x] R-03 — stage-0 solve pages (all top-5 unowned filled: #2 best-way-to-store + #5 build-vs-buy + #10 TTL/expiry + #13 agent-memory-MCP)
 - [ ] R-04 — canonical machine-followable setup guide
-- [x] R-05 — registry sweep (8/8 venues resolved: #1 official registry parked → cascades to crawl-fed #2 Smithery / #3 PulseMCP / #4 Glama; #5 mcp.so + #6 Cursor + #7 Anthropic connector-dir + #8 awesome-mcp-servers PR payloads parked in blocked-by-human. Nothing live yet — all account-walled or out of an autonomous run's scope; founder submits)
+- [x] R-05 — registry sweep (8/8 venues resolved: #1 official registry **published 2026-07-22** → cascades to crawl-fed #2 Smithery / #3 PulseMCP / #4 Glama, pending ingest; #5 mcp.so + #6 Cursor + #7 Anthropic connector-dir + #8 awesome-mcp-servers PR payloads parked in blocked-by-human for the founder)
 - [x] R-06 — coding-agent walker + baseline (walker + grader + fixture merged; baseline 0/1 surfaced — cold agent recommended pgvector, never nlqdb; re-run via `bash scripts/reach-agent-walk.sh` in `/reach` step 1)
 - [ ] R-07 — droppable in-repo artifacts (4/4 host artifacts live + drift-tested: AGENTS.md snippet + Claude Code skill + Cursor rules + Codex block; Channel #12 now surfaced on both agent-fetched surfaces — R-04 docs guide + `llms.txt` — so → in-flight; external npm/registry distribution with attributable yield remains before it ticks)
 - [x] R-08 — answer-engine citation baseline (retrieval-layer spot-check: 0/10 top-R-01 queries surface nlqdb; monthly cadence, next 2026-08-22; generative-UI confirmation is optional founder enrichment, gates nothing)

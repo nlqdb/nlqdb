@@ -17,65 +17,20 @@ is the company's real cycle time.
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
-1. **⏱ ~5 min · since 2026-07-19 — Apply pending D1 migrations (`0022`
-   `gtm_snapshots`, `0023` `synthetic_traffic_flag`, `0024`
-   `databases.source_json`, `0025` `pmf_survey`) to the prod control-plane D1
-   at the next deploy** (`wrangler d1 migrations apply`). Added by the
-   GTM-metrics dashboard + first-touch attribution + in-product Sean-Ellis
-   survey ([GLOBAL-038](./decisions/GLOBAL-038-gtm-pmf-instrumentation.md),
-   `SK-GTM-005`/`SK-GTM-006`/`SK-GTM-007`); until applied,
-   `GET /v1/admin/metrics` snapshot/trend reads, the Sean-Ellis survey
-   routes, and create-path source writes error / fail (some logged,
-   non-fatal) in prod (tables won't exist). Operator-only (prod
-   credentials). **Prerequisite for #2–#7 below** — every listing/launch
-   visit is attributable only once these are live.
-
-2. **⏱ ~10 min · since 2026-07-20 — Publish nlqdb to the official MCP registry**
-   (`registry.modelcontextprotocol.io`; reach R-05 venue #1, ledger row #3).
-   Highest evergreen yield-per-minute in the queue: **this one publish cascades**
-   — Smithery, PulseMCP, and Glama crawl the official registry (verified
-   2026-07-20), so they auto-ingest nlqdb from this entry; no separate
-   submissions, just claim/clean-up those listings after. Account-walled:
-   `mcp-publisher` needs an interactive GitHub device-flow login *or* a
-   domain-verify private key — an agent can't. No npm publish needed (remote
-   server; `remotes`, not `packages`). Verified mechanism 2026-07-20. Run from
-   any dir:
-   1. Install: `brew install mcp-publisher` (or the `curl … releases/latest` binary).
-   2. Save this as `server.json` (endpoint matches `mcp-install.ts` `MCP_ENDPOINT_URL`):
-      ```json
-      {
-        "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-        "name": "io.github.nlqdb/nlqdb",
-        "title": "nlqdb — analytical memory for AI agents",
-        "description": "Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.",
-        "repository": { "url": "https://github.com/nlqdb/nlqdb", "source": "github" },
-        "version": "0.1.0",
-        "remotes": [ { "type": "streamable-http", "url": "https://mcp.nlqdb.com/mcp" } ]
-      }
-      ```
-   3. `mcp-publisher login github` → authorize as a member of the **nlqdb** GitHub org
-      (grants the `io.github.nlqdb/*` namespace).
-   4. `mcp-publisher publish` → then verify:
-      `curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.nlqdb/nlqdb"`.
-   Alt namespace `com.nlqdb/nlqdb` (cleaner) needs DNS-TXT or a
-   `/.well-known/mcp-registry-auth` domain-verify secret on `nlqdb.com` instead of the
-   GitHub login — heavier; use GitHub. On publish, flip ledger row #3 to **in-flight**
-   and note the registry URL; flip ledger rows #4–#6 (Smithery/PulseMCP/Glama)
-   to in-flight at the same time.
-
-3. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
+1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — the founder-only half of
    [`docs/research/launch-kit.md`](./research/launch-kit.md): pick the angle
    (§2; GLOBAL-036 says lead with analytical agent memory), write the Show
    HN post + first comment in your own voice from the §3.1 fact sheet
    (never agent copy — the r/SQL lesson), soft-launch lobste.rs/r/SideProject
    first, then Show HN Tue–Thu morning, Product Hunt ≥ 1 week later
-   (account-walled). Attribution (#745) is merged, so every visit is
-   attributable; apply bullet #1 first. nlqdb has never launched anywhere;
+   (account-walled). Attribution (#745) is merged and the prod D1
+   migrations (`0022`–`0025`) are applied (verified live 2026-07-22), so
+   every visit is attributable end-to-end. nlqdb has never launched anywhere;
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0 this week.
 
-4. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
+2. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
    reach R-05 venue #5, ledger row #7).
    Account-walled: the form needs a GitHub sign-in (anonymous fetch → 403), and mcp.so
    is **not** an official-registry crawler — it's a Next.js + Supabase directory
@@ -90,7 +45,7 @@ is the company's real cycle time.
    - **Connect / config (if asked):** `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #7 to **in-flight** and note the `mcp.so/server/...` URL.
 
-5. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
+3. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
    (`cursor.directory/plugins/new`; reach R-05 venue #6, ledger row #8).
    Account-walled: Cursor's **official in-product marketplace is curated** with
    no public self-serve path, and the community directory Cursor's own docs point to
@@ -109,11 +64,12 @@ is the company's real cycle time.
      one command `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #8 to **in-flight** and note the `cursor.directory/...` URL.
 
-6. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
+4. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
    (`punkpeye/awesome-mcp-servers`; reach R-05 venue #8, ledger row #10). A
-   plain GitHub PR — but the `/reach` session is scoped to `nlqdb/nlqdb` only
-   and can't fork/PR an external repo, so it's parked for the founder or a
-   scope-unrestricted session. Mechanism verified
+   plain GitHub PR — but agent sessions are scoped to `nlqdb/nlqdb` only
+   and can't fork/PR an external repo (re-verified 2026-07-22: `add_repo`
+   rejects cross-owner adds, GitHub-MCP fork denied), so it's parked for the
+   founder or a scope-unrestricted session. Mechanism verified
    2026-07-21 (`CONTRIBUTING.md`): follow the README's existing format, keep
    alphabetical order within the category, one server per line; automated-agent PRs
    can prefix the title with `🤖🤖🤖` for the maintainer's fast-track merge.
@@ -134,7 +90,7 @@ is the company's real cycle time.
    becomes "live with attributable yield" on its own. Alt list if rejected:
    `wong2/awesome-mcp-servers`. On merge, flip ledger row #10 → in-flight.
 
-7. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -165,17 +121,7 @@ is the company's real cycle time.
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-8. **⏱ ~10 min · since 2026-07-13 — Arm the 3rd independent free-LLM pool for
-   the opencheck agent lane — set repo secret `FALLBACK2_LLM_API_KEY`**
-   (SambaNova/Cerebras/Together **free tier — $0, cost-ladder-compliant**;
-   lane wired in `_e2e-opencheck.yml`, degrades to "disabled"
-   while unset). **Sole** fix for scorecard row #15 (E2E freshness ≈ 0.75):
-   the 2 free lanes (NIM + OpenRouter `:free`) flap intrinsically, so a
-   2-lane walk can't stay green (run 70). Internal-metric yield only (no
-   user-facing surface), hence ranked below every acquisition action
-   despite being the oldest bullet. History in `weekly-review.md`.
-
-9. **⏱ ~15 min (decision only) · since 2026-07-21 — Decide the toolchain path
+6. **⏱ ~15 min (decision only) · since 2026-07-21 — Decide the toolchain path
    to unblock the Astro 6→7 security upgrade**
    (fixes moderate/low XSS `GHSA-f48w-9m4c-m7f5` / `GHSA-4g3v-8h47-v7g6` /
    `GHSA-7pw4-f3q4-r2p2` on the marketing + docs sites). The dep+code migration
@@ -187,27 +133,25 @@ is the company's real cycle time.
    isolated-install linking here. Pick one: migrate the cookie consumers off
    `parse`/`serialize`, switch bun linker mode / package manager, or bump bun
    and re-verify. Until then the 3 Astro advisories stay on `main`
-   (agent-verified 2026-07-21).
+   (agent-verified 2026-07-21; re-verified 2026-07-22 — bun overrides are
+   still name-keyed only, [#6608](https://github.com/oven-sh/bun/issues/6608)
+   open, so "bump bun" is not yet a path).
 
-10. **⏱ ~5 min · since 2026-07-22 — Enable "Always Use HTTPS" + HSTS on the
-    `nlqdb.com` Cloudflare zone** (dashboard → SSL/TLS → Edge Certificates, or
-    a broader API token). Prod currently serves `http://` with a **200 (no
-    HTTP→HTTPS 301) and no HSTS header** — the 07-22 GSC pull found Google
-    indexing an `http://` solve URL. The `rel=canonical` tag already points
-    Google to https (SEO harm is small); the real gap is SSL-strip/HSTS
-    hardening across all 105 surfaces. Agent-blocked: the CF API token is
-    Workers/DNS-scoped and returns `10000 Authentication error` on
-    `/zones/*/settings`, so this needs a console click or a Zone-Settings-scoped
-    token. Lowest rank: internal-integrity yield, no user-facing surface
-    (agent-verified 2026-07-22).
+7. **⏱ ~5 min · since 2026-07-22 — Enable "Always Use HTTPS" + HSTS on the
+   `nlqdb.com` Cloudflare zone** (dashboard → SSL/TLS → Edge Certificates, or
+   a broader API token). Prod currently serves `http://` with a **200 (no
+   HTTP→HTTPS 301) and no HSTS header** — the 07-22 GSC pull found Google
+   indexing an `http://` solve URL. The `rel=canonical` tag already points
+   Google to https (SEO harm is small); the real gap is SSL-strip/HSTS
+   hardening across all 105 surfaces. Agent-blocked: the CF API token is
+   Workers/DNS/D1-scoped and gets auth errors on zone settings,
+   `security_header`, page rules, and zone/account rulesets alike
+   (re-verified 2026-07-22), so this needs a console click or a
+   Zone-Settings-scoped token. Lowest rank: internal-integrity yield, no
+   user-facing surface.
 
 ## Suggestions needing approval (to amend the guidelines)
 
-- **Define an auto-merge tier for daily PRs** so review latency stops
-  serializing the loop: on 2026-07-19 seven PRs stacked unmerged and step 0
-  pushed runs 95–98 into progressively smaller levers because every real
-  lane was "held by an open PR". Proposal: a daily PR auto-merges when the
-  §8 gates are green AND the diff is docs/web-only, small (< ~150 lines),
-  with no migrations and no API/auth/billing paths; everything else keeps
-  waiting for founder review. Would amend `daily.md` §4 — needs your
-  approval since it changes what ships without you.
+(none — the auto-merge-tier proposal was **rejected by the founder
+2026-07-22**: review latency is handled by a separate merger agent, not by
+`/daily` self-merging; recorded in `daily.md` §4. Don't re-propose.)
