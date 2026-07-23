@@ -24,29 +24,30 @@ founder-blocked** — its only fix is arming `FALLBACK2_LLM_API_KEY`
 
 **Worst number today:** **row #16 Phase-2 exit gate 1/9**; worst engine number is
 **row #9 Spider 0.2222** and **row #8 BIRD 0.542** — both dark + fresh (07-19), offline
-levers exhausted. **Top `blocked-by-human` bullet:** #1 apply pending prod D1 migrations
-(`0022`–`0025`; ⏱ ~5 min, blocked since 07-19 → **3 days old**) — the prerequisite that makes
-every attribution write and the GTM/PMF dashboard live; queue depth 10, head-age 3 d is the
-company's real cycle time with real strangers at 0.
+levers exhausted. **Top `blocked-by-human` bullet (corrected 07-22):** the queue's #1
+"apply prod D1 migrations `0022`–`0025`" is **verified applied in prod this run** —
+`gtm_snapshots` has 3 rows (daily cron writing), `databases.source_json` column exists
+(0024 live). So the real queue head is **"fire the launch sequence"** (founder voice, no
+prerequisite left); PR #789 (open) formalises the queue 10 → 7. Head-age is the company's
+real cycle time with real strangers at 0.
 
-**Run 120 is a null run** — no agent-movable lever cleared the step-2 bar (full finding in "Last
-change"): rule 6 clean (CI `success` on `main` `ebdfc56`; deploy-web + 7 other JS-bundle deploys
-`success` on the last code-bearing SHA `3a92d0a`; PRs since — #781/#783/#782 — docs-only, no deploy
-trigger), priority-1 acquisition/distribution not pullable (4 live channels all attributable; fresh
-GSC pull **unchanged** from run 119 at 5 clicks / 508 impr / pos 16.3; new live channels `/reach`- or
-founder-blocked), priority-2 walkers 9/9 fresh 07-21, priority-3 docs de-prioritised. **Step 0:**
-three open PRs — #784 (daily run 119, null; touches only `scorecard.md`, step-1 exempt), #785 (reach
-R-07 `llms.txt`/agent-artifacts; touches `reach/INDEX.md` + `acquisition-channels.md` + `llms.txt`)
-and #719 (draft Infisical research); this run's sole write is `scorecard.md` and touches none of the
-files #785/#719 change.
+**Run 122 is a null run** — no agent-movable code lever cleared the step-2 bar, but the core
+funnel is **freshly re-measured** (full finding in "Last change"): rule 6 clean (CI + Deploy
+web/API/Canary + Release npm all `success` on `main` `c46b013`); priority-1 not pullable (4 live
+channels attributable; GSC **unchanged** 5 clicks / 508 impr / pos 16.3; new live channels
+`/reach`- or founder-blocked); priority-2 walkers 9/9 fresh 07-21; priority-3 docs de-prioritised.
+**Step 0:** open PRs — #787 (daily run 121, null; scorecard-only, step-1 exempt), #788 (reach R-07
+`npx skills add`; touches `apps/web`/`apps/docs`/`llms.txt`/reach INDEX), #789 (blocked-by-human
+resolution; touches `blocked-by-human.md`/reach R-05/`daily.md`) and #719 (draft Infisical). This
+run's sole write is `scorecard.md` — touches none of the files #788/#789/#719 change.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel** (visits 07-13 02:58Z CF GraphQL; users/DBs 07-16 remote D1) | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF Web Analytics) | 232 pageloads (07-06→07-13 02:58Z, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 183 ⇒ **real-browser ≈ 49 pageloads** | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
-| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-16 remote-D1, newest registration 07-06, none since**. The 428 wall is gone (run 56); acquisition now depends on distribution yield |
-| 3 | DBs total | **251** (07-16 remote-D1; +28 vs 07-13's 223, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run (vague-goal recovery, aborted-reply settle, create-result schema truth, localStorage-blocked create, first-answer error-copy overflow, seeded-demo PK pruning, duplicate-row React keys); per-run detail in `git log` |
+| | **Funnel** (visits + users/DBs fresh 07-22 remote-D1 + CF GraphQL) | | exclude synthetic stranger-test walker traffic |
+| 1 | Visits, 7d (CF Web Analytics) | **212 pageloads** (07-15→07-22, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 168 + BingBot 2 ⇒ **real-browser ≈ 42** (Chrome 33 + Edge 8 + MobileSafari 1). Flat vs 07-13's ≈49 | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
+| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-22 remote-D1, identical 9-user set, no new registration**. The 428 wall is gone (run 56); acquisition now depends on distribution yield |
+| 3 | DBs total | **255** (07-22 remote-D1; +4 vs 07-16's 251, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test. **Attribution instrument verified live in prod 07-22:** `databases.source_json` column exists (migration 0024), `dbsWithSource` = 0 (accrues from first attributable traffic) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run; per-run detail in `git log` |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -71,7 +72,7 @@ files #785/#719 change.
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (daily acquisition-health cron run 67 [29815040423](https://github.com/nlqdb/nlqdb/actions/runs/29815040423) against prod, 07-21 08:37Z: verify-flows all-green, stranger-test FLOW-001/002/003 exit 0, FLOW-005 walk 6/6, FLOW-005 stdio 22/22 — 5 tools, no legacy verbs). The run-59 "morph-to-chat gap" is **decided, not a gap** (anon terminus IS the sign-in redirect; SK-WEB-002 chat is post-sign-in) | target 9/9 + both FLOW-005 ✅ **met**. Freshness re-armed 07-21 (GLOBAL-032 7-day rule); per-step JSON artifact proxy-gated from the agent container |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
-| 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** (07-20 run 103: **dev.to's `live` was really a partial — now genuinely attributable.** The syndication read-through link carried no key, so dev.to→nlqdb.com visits fell back to the `ref: dev.to` referrer (readers/RSS/webviews strip it); tagging the link `…/blog/<slug>/?utm_source=devto` (API `canonical_url` stays clean for SEO) makes them `utm_source`-attributable via `captureFirstTouch`. Now **all 4 live channels** (organic search + dev.to + npm + GitHub) satisfy rule 1's utm-key requirement — the summary's "every published channel's yield is attributable" is finally true. MCP registries 0/8 live — official registry payload parked → `blocked-by-human` (#751)). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; `dbsWithSource` accrues from next deploy (needs prod migration 0024, see `blocked-by-human.md`). **Run 107 closed the connect-path coverage hole:** `source_json` now persists on `POST /v1/db/connect` too (was `/v1/ask` create-arm only), so a connect-first signup — the natural first action on the just-live github/npm developer channels — is attributable, not `untracked`. **Run 110 closed the github-channel README hole:** run 101 tagged only the *root* README's CTA, but the `examples/` READMEs (the GitHub dev-eval surface) still linked the marketing host bare → GitHub strips the referrer → those clicks landed as `direct`, not `github`; both example product CTAs now carry `?utm_source=github`, guarded by `readme-attribution-integrity.test.ts` (source-derived, fails on any untagged GitHub-rendered README CTA) | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated. Further live-count growth now comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
+| 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** (07-20 run 103: **dev.to's `live` was really a partial — now genuinely attributable.** The syndication read-through link carried no key, so dev.to→nlqdb.com visits fell back to the `ref: dev.to` referrer (readers/RSS/webviews strip it); tagging the link `…/blog/<slug>/?utm_source=devto` (API `canonical_url` stays clean for SEO) makes them `utm_source`-attributable via `captureFirstTouch`. Now **all 4 live channels** (organic search + dev.to + npm + GitHub) satisfy rule 1's utm-key requirement — the summary's "every published channel's yield is attributable" is finally true. MCP registries 0/8 live — official registry payload parked → `blocked-by-human` (#751)). First-touch attribution live 07-19: `databases.source_json` + `/app/admin` sources; migration 0024 verified applied in prod 07-22, `dbsWithSource` = 0 (accrues from first attributable traffic). **Run 107 closed the connect-path coverage hole:** `source_json` now persists on `POST /v1/db/connect` too (was `/v1/ask` create-arm only), so a connect-first signup — the natural first action on the just-live github/npm developer channels — is attributable, not `untracked`. **Run 110 closed the github-channel README hole:** run 101 tagged only the *root* README's CTA, but the `examples/` READMEs (the GitHub dev-eval surface) still linked the marketing host bare → GitHub strips the referrer → those clicks landed as `direct`, not `github`; both example product CTAs now carry `?utm_source=github`, guarded by `readme-attribution-integrity.test.ts` (source-derived, fails on any untagged GitHub-rendered README CTA) | **weekly focus: → ≥ 5 live.** Every published URL carries its ledger `utm_source`; yield read from `/app/admin`, never estimated. Further live-count growth now comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -92,31 +93,25 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-22 (run 120)** — **Null run: no agent-movable lever cleared the step-2 bar; ships only
-this step-1 scorecard update.** Fourth consecutive null (117/118/119/120); nothing code-bearing has
-merged since run 116's `3a92d0a` — `main` advanced only via docs-only PRs (#781/#783/#782), so the
-lever landscape is unchanged from run 119. The finding, in the loop's priority order: **(1) Rule 6
-clean** — CI `success` on `main` `ebdfc56` ([run 29918973169](https://github.com/nlqdb/nlqdb/actions/runs/29918973169));
-deploy-web `success` on the last code-bearing SHA `3a92d0a` (the 3 PRs since are docs-only → no deploy
-trigger); local full `typecheck`/`lint`/`test` run this session (green). **(2) Priority-1
-acquisition/distribution — not pullable.** All 4 live channels (organic / dev.to / npm / GitHub)
-remain `utm_source`-attributable (both instrument ends verified complete run 118; no code changed
-since). Fresh GSC pull is **unchanged** from run 119: **5 clicks / 508 impr / pos 16.3**; the one
-page-1 winnable-click loss (`"top 10 products by revenue" metabase`, 6 impr / pos 6.8, 0 clicks) is
-reach-track **R-03** solve/vs territory, not a daily-sized pull. The `http://` GSC index row
-(`/solve/count-consecutive-days-streak-in-sql/`, pos 8.5) is the founder-blocked Cloudflare "Always
-Use HTTPS" toggle (logged run 115); the `app.nlqdb.com/blog/…` row is a correct 301 (crawl-lag, run
-119). New live-channel growth is all `/reach`- or founder-blocked, and the R-slices are owned by open
-reach PR #785 (step 0). **(3) Priority-2 UX-flow clean** — walkers 9/9 + both FLOW-005 transports
-fresh 07-21; first-10 N=0. **(4) Priority-3 docs de-prioritised** (row #17 re-grepped **14**,
-unchanged; no external yield, against the weekly acquisition focus); a doc-shrink to avoid a null run
-is the busywork step 2 forbids. **Step-1 snapshot:** surfaces **105**, distribution queue **2** (< 3,
-no forced publish, publishing never justifies a run); users **9** / strangers **0** (07-16 carried);
-GSC **5/508/16.3** (07-22); BIRD 0.542 / Spider 0.2222 (07-19, dark); row #21 walkers 9/9 fresh
-07-21; open PRs **3** (#784 daily-null 0 d; #785 reach 0 d; #719 draft ~5 d); top human-queue bullet
-#1 D1 migrations, 3 d old. **Artifact:** null run skips step 3 — queue 2 (< 3) so no publish
-regardless; dev.to drip N/A (`DEVTO_API_KEY` absent in agent container; variants pending for the
-CI/founder path). **KPI (GLOBAL-025):** no KPI moved (null run) and **none degrades** —
+**2026-07-22 (run 122)** — **Null run with a freshly re-measured funnel; ships only this step-1
+scorecard update.** Sixth consecutive null (117–122); nothing code-bearing has merged since run
+116's `3a92d0a`. This run refreshed the core funnel from prod rather than carrying stale dates:
+**(measure) real strangers = 0** (07-22 remote-D1, identical 9-user set, no new registration since
+07-06); DBs **255** (+4 synthetic); visits **212** pageloads 7d / real-browser ≈ 42 (CF GraphQL,
+07-15→07-22, flat vs 49). **Corrected a stale worst-number:** the human-queue head "apply prod D1
+migrations `0022`–`0025`" is **verified applied in prod** — `gtm_snapshots` has 3 rows (daily cron),
+`databases.source_json` exists (0024 live); the real queue head is the founder-only launch sequence.
+PR #789 (open) formalises this. The finding in priority order: **(1) Rule 6 clean** — CI + Deploy
+web/API/Canary + Release npm all `success` on `main` `c46b013`. **(2) Priority-1 not pullable** — 4
+live channels attributable; GSC **unchanged** 5 clicks / 508 impr / pos 16.3; the one page-1
+winnable-click query (`"top 10 products by revenue" metabase`, pos 6.8) is reach-track R-03 (needs a
+built page + can't be same-run re-measured per rule 3), not a daily pull. New live-channel growth is
+`/reach`- or founder-blocked. **(3) Priority-2 UX clean** — walkers 9/9 + both FLOW-005 transports
+fresh 07-21; first-10 N=0. **(4) Priority-3 docs de-prioritised** (row #17 = 14, unchanged; parking
+a genuine unbuilt-slice bullet would be counter-gaming). **Step 0:** open PRs #787 (daily 121, null,
+scorecard-only), #788 (reach R-07), #789 (blocked-by-human), #719 (draft); this run touches only
+`scorecard.md`. **Artifact:** null run skips step 3 — queue 2 (< 3), no forced publish; dev.to drip
+N/A (`DEVTO_API_KEY` absent). **KPI (GLOBAL-025):** no KPI moved (null run) and **none degrades** —
 measurement-only, no code touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
