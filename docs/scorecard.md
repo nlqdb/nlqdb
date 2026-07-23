@@ -31,18 +31,14 @@ strangers from 0. Queue depth **7** (−3 on 07-22: prod D1 migrations `0022`–
 applied, official MCP-registry publish executed agent-side via DNS domain-verify,
 `FALLBACK2_LLM_API_KEY` verified armed since 07-16).
 
-**Run 124 is a null run** — no agent-movable code lever cleared the step-2 bar (full finding in
-"Last change"): rule 6 clean (CI + Deploy web/API/docs/Canary + Release npm + Security all
-`success` on `main` `d3afdd3`); priority-1 not pullable (4 live channels attributable; GSC
-re-pulled live **5 clicks / 454 impr / pos 17.8**, flat vs 5/508/16.3; every not-yet-live channel
-founder/account-walled per blocked-by-human #1–#5; http→https gap founder-blocked **and** already
-mitigated by the https `rel=canonical`, verified live); priority-2 all user-facing funnel surfaces
-green (`verify-flows` live; the 3 fails are agent-egress false-negatives on FLOW-008 scrape sources,
-cron Worker unaffected); priority-3 docs-ambiguity resolved on `main` (row #17 = 12 — the run-123
-Stripe §6 parkings landed via #791).
-**Step 0:** only open PRs are #719 (draft Infisical) and this run's PR; #791 (daily run 123,
-docs-ambiguity) and #792 (reach R-05/R-07) have merged into `main`. This run's sole write is
-`scorecard.md` (step-1 regeneration, step-0 exempt).
+**Run 125 pulls a priority-1 acquisition lever** — win the page-1 query GSC already shows (the
+`/daily`-owned half of the organic-search channel, [`acquisition-channels.md`](research/acquisition-channels.md)
+row 1). Rule 6 clean (all deploys `success` on `main` `d3afdd3`). A fresh GSC query→page drill pinned the
+single clearest 0-CTR winnable query — **`"top 10 products by revenue" metabase`**, pos **6.8**, **6 impr /
+0 clicks** — to **`/vs/metabase/`**, which ranks only because its demo goal contains that phrase yet whose
+SERP snippet never speaks to the intent. Lever: added one honest build-vs-buy FAQ for that exact query →
+on-page relevance + FAQPage rich-result entry. Full delta in "Last change". **Step 0:** open PRs #719
+(draft Infisical) + #794 (reach null run, worksheet only) + this run's; no file overlap.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -54,7 +50,7 @@ docs-ambiguity) and #792 (reach R-05/R-07) have merged into `main`. This run's s
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-23→07-21, fresh 07-23 pull): 5 clicks / 454 impr / avg pos 17.8** (top click earner `/security/hall-of-fame/` 2 clicks / pos 27; homepage 1 / 21 impr / pos 19.4; `/architecture/` 1 / 8 impr / pos 10.9; `/blog/bird-gold-noise-distinct/` 1 / 12 impr / pos 11.1 — same 4 distinct click-earning pages as the prior window; impr 508→454 & pos 16.3→17.8 is window-shift not decline, clicks flat 5), sitemap 116 submitted / 0 err. Top query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks — page-1 build-vs-buy intent losing the click; a reach-track R-03 solve-page candidate, not a /daily pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18). **Run 109:** app-host de-dup (`SK-WEB-026`) now covers the **whole** marketing surface (singles + `/sitemap.xml`/`/rss.xml`/`/llms.txt`), not just `/blog\|/solve\|/vs` — all 301 `app.nlqdb.com`→`nlqdb.com`, drift-guarded (see Last change) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-23→07-21, fresh 07-23 pull): 5 clicks / 454 impr / avg pos 17.8** (top click earner `/security/hall-of-fame/` 2 clicks / pos 27; homepage 1 / 21 impr / pos 19.4; `/architecture/` 1 / 8 impr / pos 10.9; `/blog/bird-gold-noise-distinct/` 1 / 12 impr / pos 11.1 — same 4 distinct click-earning pages as the prior window; impr 508→454 & pos 16.3→17.8 is window-shift not decline, clicks flat 5), sitemap 116 submitted / 0 err. Top winnable query `"top 10 products by revenue" metabase` pos 6.8 (6 impr, 0 clicks) resolves to `/vs/metabase/` — **run 125 pulled it** (added an exact-match build-vs-buy FAQ → on-page relevance + FAQPage rich-result entry; the click delta reads on the next 28d GSC pull). 7d external referrals = 9 (bing 8, github 1 — carried 07-12). Internal links **2,970** + **14 cross-app** (run-87 build: 121 pages, 0 dead / 0 redirecting — row #18). **Run 109:** app-host de-dup (`SK-WEB-026`) now covers the **whole** marketing surface (singles + `/sitemap.xml`/`/rss.xml`/`/llms.txt`), not just `/blog\|/solve\|/vs` — all 301 `app.nlqdb.com`→`nlqdb.com`, drift-guarded (see Last change) | GSC via `scripts/gsc-pull.ts`; CF `refererHost` carried. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) — run-90 `SK-QUAL-006` trigger cleared. Baseline re-seeded 0.5462 → 0.5422 (07-19, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 `SK-QUAL-013` windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); post-revert engine is byte-identical ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -96,26 +92,28 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-23 (run 124)** — **Null run; ships only this step-1 scorecard update.** No agent-movable
-code lever cleared the step-2 bar. Live measurement this run: **(1) Rule 6 clean** — CI + Deploy web/API/docs/Canary +
-Release npm + Security all `success` on `main` `d3afdd3`. **(2) Priority-1 not pullable** — GSC
-re-pulled live (`bun scripts/gsc-pull.ts`, 06-23→07-21): **5 clicks / 454 impr / pos 17.8**, flat vs
-5/508/16.3 (impr 508→454, same 4 click-earning pages). The one page-1 winnable query (`"top 10
-products by revenue" metabase`, pos 6.8, 6 impr / 0 clicks) is reach-track R-03, not a daily pull.
-Every not-yet-live channel is founder/account-walled (blocked-by-human #1–#5); GSC surfaced Google
-indexing an `app.nlqdb.com/blog/…` URL (pos 8.0) and an `http://` solve URL (pos 8.5) — **both
-verified self-healing live:** the app-host path 301s to `nlqdb.com`, and the http:// pages emit the
-correct https `rel=canonical` (residual HSTS hardening is founder-blocked, blocked-by-human #7).
-**(3) Priority-2 UX clean** — `verify-flows` live vs prod:
-all user-facing surfaces green (two-door home, `/app/new` hero, all `/solve`+`/vs` slugs with
-FAQ/HowTo JSON-LD, `/llms.txt` enumerates every slug, sitemap 116, MCP OAuth discovery). The 3
-reported fails are agent-egress false-negatives on FLOW-008 scrape sources (GitHub API 403, Stack
-Exchange 000) — the deployed cron Worker has open egress; no user-facing defect. **(4) Priority-3
-docs-ambiguity resolved on `main`** — row #17 = 12 (the run-123 Stripe §6 parkings landed via #791).
-Funnel carried from run 122's 07-22 remote-D1 read (< 1 day): real strangers = 0 (9-user set), DBs 255, real-browser ≈ 42/7d.
-**Step 0:** open PRs are #719 (draft Infisical) + this run's PR; #791 (run 123 docs) & #792 (reach)
-have merged into `main` since. Sole write is `scorecard.md` (step-1, step-0 exempt). **Artifact:** null run skips step 3; dev.to drip N/A (`DEVTO_API_KEY`
-absent). **KPI (GLOBAL-025):** no KPI moved and **none degrades** — measurement-only, no code.
+**2026-07-23 (run 125)** — **Priority-1 acquisition lever: won the page-1 SERP snippet for the single
+clearest 0-CTR winnable query.** Number moved: **row #7 surface yield → `/vs/metabase/` CTR on
+`"top 10 products by revenue" metabase`** (its named direct input: exact-match on-page + FAQPage
+rich-result coverage for the query). **Before:** the query ranks **pos 6.8** with **6 impr / 0 clicks
+(0% CTR)** — a fresh `scripts/gsc-pull.ts` query→page drill (query+page dimensions, 06-23→07-21)
+pinned it to `/vs/metabase/`; the page ranks only because its `demo.goal` literally contains "top 10
+products by revenue", yet its SERP snippet (title `nlqdb vs Metabase — natural-language databases` +
+positioning oneLiner) never speaks to the searcher's intent, so the page-1 result earns nothing.
+**Change:** added one honest build-vs-buy FAQ — *"How do I get the top 10 products by revenue in
+Metabase?"* — to the Metabase entry in `competitors.ts` (5 → 6 FAQs, within SK-CMP-003's 4–6). **After
+(direct-input re-measure):** rebuilt `apps/web` (126 pages, 0 errors); the built
+`dist/vs/metabase/index.html` now carries the exact-match Q&A in both the visible FAQ and the FAQPage
+JSON-LD (6 `@type:Question` entries), rich-result-eligible for the verbatim query. Click delta reads on
+the next 28d GSC pull (lagging).
+`competitors.test.ts` 12/12, `biome lint` clean, `tsc --noEmit` clean. Rule 6 clean (CI + all deploys
+`success` on `main` `d3afdd3`). GSC top-line flat this pull: 5 clicks / 454 impr / pos 17.8. Funnel
+carried from run 122's 07-22 remote-D1 read (< 1 day stale): real strangers = 0 (9-user set), DBs 255,
+real-browser ≈ 42/7d. **Step 0:** #719 (draft Infisical), #794 (reach null run — worksheet only), this
+run's PR; no file overlap. **Artifact:** queue holds 2 (< 3-deep threshold — no forced publish); dev.to
+drip N/A (`DEVTO_API_KEY` absent). **KPI (GLOBAL-025):** advances **onboarding/acquisition** (the
+comparison page's on-ramp CTA → `/app/new`); **no KPI degrades** — one honest FAQ added, no capability
+claim changed (row #19 stays 0), no link added (row #18 stays 0).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

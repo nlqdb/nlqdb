@@ -2082,6 +2082,10 @@ export const COMPETITORS: Competitor[] = [
         q: "Can an AI agent call Metabase the way it calls nlqdb?",
         a: "Not as a database. Metabot answers inside Metabase and Slack for human analysts; it isn't an agent-callable data layer. nlqdb ships an MCP server, so a Claude or Cursor agent can provision a Postgres and query it in English — `nlqdb_query` materialises the database on first reference.",
       },
+      {
+        q: "How do I get the top 10 products by revenue in Metabase?",
+        a: "In Metabase you build a question — group by product, sum revenue, sort descending, set a row limit of 10 — in the query builder or the native SQL editor (Metabot can draft the SQL for you on a paid plan), and save it as a chart or dashboard you view inside Metabase. With nlqdb you ask the same thing in plain English — 'top 10 products by revenue this quarter' — and get the ranked rows plus the exact `GROUP BY … ORDER BY revenue DESC … LIMIT 10` SQL it ran, returned over an API or a `<nlq-data>` element you embed in your own product. Same query, two shapes: Metabase for an internal BI dashboard, nlqdb for an answer your app or agent ships inline.",
+      },
     ],
     demo: {
       goal: "top 10 products by revenue this quarter, with month-over-month growth",
