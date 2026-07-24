@@ -204,7 +204,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **`engine?` surface parity gap (W3, GLOBAL-003)** — `SK-DB-010` lands `engine?` on the TS SDK, the HTTP API, and `<nlq-data>` (auto-bound). The Go CLI, MCP, and Rust/Ruby SDKs don't yet expose `db.create` (scaffolds), so per `GLOBAL-003`'s "tracked gap" clause they inherit `engine?` via a one-line addition when their `db.create` first lands.
+- **Parked until each remaining surface's `db.create` first lands:** the `engine?` surface parity gap (W3, GLOBAL-003). `SK-DB-010` lands `engine?` on the TS SDK, the HTTP API, and `<nlq-data>` (auto-bound); the Go CLI, MCP, and Rust/Ruby SDKs don't yet expose `db.create` (scaffolds), so per `GLOBAL-003`'s "tracked gap" clause they inherit `engine?` via a one-line addition when their `db.create` first lands. Decision fixed by `GLOBAL-003` — a tracked gap, not an open question.
 - **Parked until the per-tenant adapter-wrapper slice:** role + RLS wiring. `SK-DB-007` describes the model but the adapter doesn't yet emit `SET LOCAL search_path` / `SET LOCAL ROLE`; consumers wrap calls themselves. A thin per-tenant wrapper closes that "forgot the SET LOCAL" risk.
 - **Parked until the paid tier exists:** Phase 2b dedicated-branch upgrade — a `branch_id` column on `databases` + a provisioner branch-create path. Decision shape locked (DESIGN §3.6.6).
 - **BYO Postgres `connect.ts` wiring — resolved** in `SK-DBCONN-001` ([`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md)); the `SK-DB-013/014/015` + `GLOBAL-035` primitives are composed behind `POST /v1/db/connect` + its `GLOBAL-003` surface set.
