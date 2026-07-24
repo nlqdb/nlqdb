@@ -13,7 +13,7 @@ function stubClient(overrides: Partial<NlqClient>): NlqClient {
     ask: notStubbed("ask"),
     askStream: notStubbed("askStream"),
     runSql: notStubbed("runSql"),
-    getModels: async () => ({ presets: [], models: [] }),
+    getModels: async () => ({ presets: [], free: { label: "", note: "" }, providers: [] }),
     listChat: async () => ({ messages: [] }),
     postChat: notStubbed("postChat"),
     listDatabases: async () => ({ databases: [] }),

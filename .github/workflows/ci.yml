@@ -320,6 +320,33 @@ jobs:
         working-directory: tools/${{ matrix.tool }}
         run: bun test
 
+  # `tests/e2e/{sdk,mcp,examples}` sit OUTSIDE the root workspace (own
+  # lockfiles), so root `bun run typecheck` never sees them — they import
+  # in-workspace types across a boundary CI didn't cover. That let
+  # `tests/e2e/mcp` compile-rot for 11 days after `ModelCatalog` gained
+  # `free`/`providers`: every dispatch since died in `tsc`, so the MCP
+  # protocol suite silently stopped testing anything (run 138).
+  #
+  # This is compile-only — SK-E2E-004 keeps *execution* dispatch-only.
+  # Typechecking costs no provider quota, no secrets, no Neon branch.
+  typecheck-e2e:
+    name: tests/e2e/${{ matrix.suite }} (typecheck — out-of-workspace)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        suite: [sdk, mcp, examples]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+      - name: Install suite deps
+        working-directory: tests/e2e/${{ matrix.suite }}
+        run: bun install
+      - name: Typecheck
+        working-directory: tests/e2e/${{ matrix.suite }}
+        run: bun run typecheck
+
   build-web:
     name: apps/web (astro check + build)
     runs-on: ubuntu-latest
