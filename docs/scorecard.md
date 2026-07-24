@@ -28,7 +28,7 @@ pre-flight env and that run passed Suite A 5/5); the row now needs only fresh di
 levers exhausted. **Top `blocked-by-human` bullet:** #1 fire the launch sequence (Show HN
 draft **idle 40 days since 06-13**, kit ready since 07-19) — the only queue action that can move
 real strangers from 0; its age is the company's real cycle time (rule: human-queue). Queue depth
-**6** (unchanged since 07-22: prod D1 migrations `0022`–`0025` verified applied, official
+**7** (unchanged since 07-22: prod D1 migrations `0022`–`0025` verified applied, official
 MCP-registry publish executed agent-side, `FALLBACK2_LLM_API_KEY` verified armed since 07-16).
 
 **Run 130 pulled a priority-3 docs-ambiguity lever (row #17: 12 → 8); full waiver + detail in "Last
