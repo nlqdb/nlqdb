@@ -47,11 +47,26 @@ The hosted server lives at `https://mcp.nlqdb.com/mcp` (the protocol is at
    { "mcpServers": { "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" } } }
    ```
 
-4. **Cursor, VS Code** — use the one-click deep-link buttons on
-   [nlqdb.com/integrations](https://nlqdb.com/integrations/); they hand the
-   install straight to the host.
+4. **Cursor** — write `.cursor/mcp.json` in the project (or `~/.cursor/mcp.json`
+   to apply it everywhere):
+
+   ```json
+   { "mcpServers": { "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" } } }
+   ```
+
+5. **VS Code** — write `.vscode/mcp.json` (the root key is `servers`, and a
+   remote entry needs `"type": "http"`):
+
+   ```json
+   { "servers": { "nlqdb": { "type": "http", "url": "https://mcp.nlqdb.com/mcp" } } }
+   ```
 
 </Steps>
+
+A human on Cursor or VS Code can instead click the one-click deep-link buttons on
+[nlqdb.com/integrations](https://nlqdb.com/integrations/) — they hand the install
+straight to the host. The config files above are the machine-followable path: a
+coding agent writes the file itself, no GUI click.
 
 ## Step 2 — Authenticate
 
