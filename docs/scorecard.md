@@ -31,12 +31,12 @@ real strangers from 0; its age is the company's real cycle time (rule: human-que
 **6** ranked bullets: launch (#1), mcp.so / cursor.directory / awesome-mcp / Claude-dir submissions
 (#2–#5, all account-walled), the GLOBAL-039 zone toggle (#6, lowest rank — internal-integrity yield).
 
-**Run 136 is a null run** — no agent-movable lever cleared the step-2 bar in any lane (full finding in
+**Run 137 is a null run** — no agent-movable lever cleared the step-2 bar in any lane (full finding in
 "Last change" below); ships only this step-1 update. **Rule 6 clean** (CI + Security + Release-npm
-`success` on `main` `fb22861` — 07-24 12:18Z; latest `deploy-api` `success` on the last code SHA
-`c3f0647`; runs 129–135 docs-only, no deploy). **Step 0:** open PRs #810 (run 135 null, `scorecard.md`
-— step-1 exempt), #811 (reach null, reach INDEX), #719 (draft Infisical); this run writes only
-`scorecard.md` (step-1 exempt, overlaps only #810's exempt edit — measurements re-verified live this run).
+`success` on `main` `a60bf5b` — verified live this run; latest `deploy-api` `success` on the last code
+SHA `c3f0647`; runs 129–136 docs-only, no deploy). **Step 0:** only open PR is #719 (draft Infisical,
+untouched — runs 135/136 PRs all merged); this run writes only `scorecard.md` (step-1 exempt, no
+overlap).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -48,7 +48,7 @@ real strangers from 0; its age is the company's real cycle time (rule: human-que
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-24→07-22, re-pulled live 07-24 run 136, byte-flat 5th consecutive read): 6 clicks / 496 impr / avg pos 17.5** — top winnable page `/solve/count-rows-per-day-including-missing-dates/` **66 impr / pos 7.8** (surface's single biggest impression×position opportunity, already on-page-maxed; run 128 fixed its lone defect — internal-ID leak). Prior window: 5 clicks / 454 impr / pos 17.8 (impr 508→454 & pos shift is window-move not decline, clicks flat). 4 click-earning pages: `/security/hall-of-fame/`, homepage, `/architecture/`, `/blog/bird-gold-noise-distinct/`. sitemap 116 submitted / 0 err. Query `"top 10 products by revenue" metabase` pos 6.8 → `/vs/metabase/` (run 125's FAQ lever, merged; delta reads next pull). 7d external referrals = 9 (bing 8, github 1). Internal links **2,970** + **14 cross-app** (0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-24→07-22, re-pulled live 07-24 run 137, byte-flat 6th consecutive read): 6 clicks / 496 impr / avg pos 17.5** — top winnable page `/solve/count-rows-per-day-including-missing-dates/` **66 impr / pos 7.8** (surface's single biggest impression×position opportunity, already on-page-maxed; run 128 fixed its lone defect — internal-ID leak). Prior window: 5 clicks / 454 impr / pos 17.8 (impr 508→454 & pos shift is window-move not decline, clicks flat). 4 click-earning pages: `/security/hall-of-fame/`, homepage, `/architecture/`, `/blog/bird-gold-noise-distinct/`. sitemap 116 submitted / 0 err. Query `"top 10 products by revenue" metabase` pos 6.8 → `/vs/metabase/` (run 125's FAQ lever, merged; delta reads next pull). 7d external referrals = 9 (bing 8, github 1). Internal links **2,970** + **14 cross-app** (0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) — run-90 `SK-QUAL-006` trigger cleared. Baseline re-seeded 0.5462 → 0.5422 (07-19, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 `SK-QUAL-013` windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); post-revert engine is byte-identical ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -62,7 +62,7 @@ real strangers from 0; its age is the company's real cycle time (rule: human-que
 | 15 | E2E manual-suite freshness | **stale reading — recompute next run:** sdk/mcp/examples ≈1.0 each; opencheck's actual latest `main` run is [29553384150](https://github.com/nlqdb/nlqdb/actions/runs/29553384150) (07-17, `depth=a`) — **PASSED Suite A 5/5** with the 3rd free pool armed (`FALLBACK2_LLM_API_KEY` set 07-16, present in the run env), superseding the failed 07-14 run this row previously cited. **No longer dark, no founder action pending** — freshness now decays only with dispatch cadence | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.542, 07-19 post-revert, flat vs baseline — the run-90 regression is cleared); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **8** (re-verified 07-24 run 131, same pinned grep, unchanged since run 130's 12 → 8 — run 130 reclassified the CLI device-flow / `keys rotate` / `--preset` and db-adapter `engine?`-parity bullets **Parked until <trigger>**; each cites a fixed decision record (`SK-AUTH-004`/`SK-APIKEYS-005`/E-01·`SK-HDC-020`/`GLOBAL-003`) and is a mechanical build task, not an open design choice — decided deferrals, not open questions) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **8** (re-verified 07-24 run 137, same pinned grep, unchanged since run 130's 12 → 8 — run 130 reclassified the CLI device-flow / `keys rotate` / `--preset` and db-adapter `engine?`-parity bullets **Parked until <trigger>**; each cites a fixed decision record (`SK-AUTH-004`/`SK-APIKEYS-005`/E-01·`SK-HDC-020`/`GLOBAL-003`) and is a mechanical build task, not an open design choice — decided deferrals, not open questions) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Layered coverage: built-output `href`/`src` sweep + cross-app subdomain verification (run 61) + prod sitemap-200 check (run 72) + `client-nav-integrity.test.ts` (SK-WEB-022) guarding both `location.*` JS navigations (run 77) **and** static `<a href="/literal">` source literals (run 87, after legal-page bare-path 307s) — dotted assets + dynamic `href={…}` skipped, negative-tested | target 0 — `bun run build && bun run check:links` (built-output) + `client-nav-integrity.test.ts` (in CI) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** (claim-vs-reality on shipped surfaces + docs; target 0 **met**). **Standing guards — all three advertised-capability surfaces closed-world CI-swept across web *and* docs**, each deriving truth from source (never hand-copied) and naming the phantom + file on failure: `mcp-tool-integrity.test.ts` (`registerTool(...)` sites, `SK-MCP-002`), `cli-verb-integrity.test.ts` (cobra tree), `sdk-method-integrity.test.ts` (shipped `NlqClient` type, `SK-SDK-013`). All 0 phantom live, negative-tested. **Trilogy complete** — no advertised-capability surface remains web-only |
@@ -90,33 +90,33 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-24 (run 136)** — **Null run** (step-2 valid outcome): no agent-movable lever cleared the
+**2026-07-24 (run 137)** — **Null run** (step-2 valid outcome): no agent-movable lever cleared the
 bar in any lane. **Number moved:** none. **Finding (in place of a delta):**
 - **Priority 1 (acquisition/distribution):** weekly-focus row #22 (channels live 4 → ≥ 5) grows only
-  through not-yet-live channels — all account-walled human actions (`blocked-by-human` #2–#5: mcp.so,
-  cursor.directory, awesome-mcp, Claude connector directory), none agent-executable. All 4 live channels
-  already utm-keyed (attribution complete). GSC re-pulled **live this run**: 6 clicks / 496 impr / pos
-  17.5 — byte-flat for a **5th consecutive read**. Largest single-query impression is **6**
-  (`"top 10 products by revenue" metabase`, pos 6.8 → `/vs/metabase/`, FAQ-maxed run 125); biggest page
-  `/solve/count-rows…` 66 impr / pos 7.8 already on-page-maxed. Every winnable page maxed and
-  per-query impressions at noise level ⇒ no page-strengthening lever has measurable yield; the
-  bottleneck is impression breadth (traffic), gated on the human launch, not a code defect.
+  through not-yet-live channels — all account-walled human actions (`blocked-by-human` #2–#5), none
+  agent-executable; all 4 live channels already utm-keyed (attribution complete). GSC re-pulled **live
+  this run**: 6 clicks / 496 impr / pos 17.5 — byte-flat for a **6th consecutive read**. Every winnable
+  page maxed (`/solve/count-rows…` 66 impr/pos 7.8, `/vs/metabase/` FAQ-maxed run 125); all other
+  queries at 1–6 impr noise, incl. buried agent-memory-benchmark intent queries (pos 52–83). Bottleneck
+  is impression breadth (traffic), gated on the human launch — not a page defect, so a new /solve page
+  = count not yield (breadth-lever foreclosed since run 127).
 - **Priority 2 (UX-flow):** funnel healthy — 07-24 08:34Z acquisition-health cron `success` (walkers
-  9/9 + both FLOW-005 transports); strangers 0 (unchanged, human-gated). No stranger traffic ⇒ no
-  first-10 signal to fix.
-- **Priority 3 (meta):** row #17 = 8, each an unbuilt-slice/infra decided-deferral, not a research-
-  resolvable open question. D4-oversize docs are long-standing & non-blocking; trimming one to dodge a
-  null run is the busywork the loop forbids — skipped, no waiver earned.
+  9/9 + both FLOW-005 transports); strangers 0 (human-gated). No stranger traffic ⇒ no first-10 signal
+  to fix; walker not re-runnable here (no `ANTHROPIC_API_KEY`).
+- **Priority 3 (meta):** row #17 = 8, re-counted live this run with the pinned grep — each an
+  infra/build/hardware/human-gated dependency (pk_live issuance slice, Grafana queue-ceiling alert,
+  Windows-hardware CLI, upstream OpenAPI ref, engine frontier baseline, self-host container), not a
+  research-resolvable design question. No waiver earned; D4 trim = forbidden busywork.
 - **Engine:** dark + fresh (baseline `run_at` 07-19, 5 days — under the 7-day dispatch trigger; offline
   levers exhausted).
 
 Structural bottleneck stays the human-gated launch (`blocked-by-human` #1, idle **41 days**) — its age
 is the company's real cycle time. **Rule 6 clean** (CI + Security + Release-npm `success` on `main`
-`fb22861`; last code-SHA `deploy-api` `success` on `c3f0647`; runs 129–135 docs-only, no deploy).
-**Gates:** change is scorecard-only markdown — `bun run typecheck && lint && test` unaffected, `main`
-already green. **Artifact:** queue 2-deep (< 3), no forced publish; dev.to drip N/A (`DEVTO_API_KEY`
-absent); null run skips step 3. **KPI (GLOBAL-025):** none advanced; **degrades none** — `scorecard.md`
-only, no code / external calls / endpoints.
+`a60bf5b`, verified live this run; last code-SHA `deploy-api` `success` on `c3f0647`; runs 129–136
+docs-only, no deploy). **Gates:** change is scorecard-only markdown — `bun run typecheck && lint && test`
+unaffected, `main` already green. **Artifact:** queue 2-deep (< 3), no forced publish; dev.to drip N/A
+(`DEVTO_API_KEY` absent); null run skips step 3. **KPI (GLOBAL-025):** none advanced; **degrades none**
+— `scorecard.md` only, no code / external calls / endpoints.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
