@@ -245,22 +245,26 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
 - Coding-agent walker pass rate (R-06): **0/1 surfaced** (baseline 2026-07-20) —
   cold session recommended `pgvector`, never nlqdb. Boxes (b)/(c) blocked on
   SK-PIVOT-010 OAuth. Walker (`bash scripts/reach-agent-walk.sh`) not re-run (no
-  `ANTHROPIC_API_KEY` here). **Retrieval spot-check 2026-07-23** (box-(a) via the
-  R-08 method): unbranded stage-0/1 searches surface mem0/Redis/Constructive Agentic
-  DB/Oracle multi-tenant-memory content — **nlqdb absent**; the P2b field is
-  **intensifying** (Oracle + Constructive's Agentic DB now rank the exact intent
-  queries). The 07-22 registry publish (re-confirmed `active` this run, Glama HTTP 200)
-  has **not** moved the web-search moment; registry presence ≠ search ranking, so 0/1 holds.
+  `ANTHROPIC_API_KEY` here). **Retrieval spot-check 2026-07-24** (box-(a) via the
+  R-08 method, two top intent queries): "best way to store agent memory … MCP …
+  postgres" and "agent memory MCP server install claude" both surface
+  mem0 / Neo4j / Stash / Hindsight / cognee / Cockroach-Memori — **nlqdb absent from
+  both grounding sets**; the crowded P2b/P2a field is unmoved. The 07-22 registry
+  publish still has **not** moved the web-search moment; registry presence ≠ search
+  ranking, so 0/1 holds.
 - Canonical setup guide (R-04): **live**, 2 of 3 boxes — `docs.nlqdb.com/agent-memory/`,
-  linked from README, `/agents`, llms.txt. **Live cold-agent walk this run** (2026-07-23,
-  fetched the published URL only): every connect command, tool name, and link matches
-  the repo + `mcp-install.ts`; artifact files serve; guide is machine-followable end to
-  end **except** the one intended human step (Step 2 browser OAuth). One machine-
-  followability gap **closed**: Step 1.4 offered Cursor/VS Code only a GUI deep-link
-  button (unpressable by a headless agent) — now gives writable `.cursor/mcp.json` +
-  `.vscode/mcp.json` config blocks (P2-verified 2026-07-23), the button kept for humans.
-  Final box (setup *completed* to a first memory read/write) still needs a human to
-  clear the OAuth step (SK-PIVOT-010) → box stays ⬜.
+  linked from README, `/agents`, llms.txt. **Cold-agent walk re-run 2026-07-24**, this
+  time verifying every Step-4 claim against prod *source* (not just string parity): the
+  response fields the guide tells an agent to key on all exist and match — `db_created`,
+  `requires_confirm`, `confirm: true`, `db_not_found` (`packages/mcp/src/tools.ts`); the
+  "materialises on first reference → `db_created`" flow is genuinely live via the
+  `/v1/ask` handler's `routeAsk` + create path (SK-ASK-009), not `orchestrateAsk` (which
+  still returns `schema_unavailable` for an empty schema); Step 3's five-tool list ==
+  exactly the five `registerTool` calls in `server.ts`; all nine intent-map "owned"
+  solve slugs exist in `solve.ts`. **No new machine-followability gap** — the guide is
+  honest and followable end to end. Final box (setup *completed* to a first memory
+  read/write) still needs a human to clear the Step-2 browser OAuth (SK-PIVOT-010) →
+  box stays ⬜.
 - Droppable in-repo artifacts (R-07): **4 of 4 live**, `agent-artifacts` **in-flight**
   — on both agent-fetched surfaces + one-command installable (`npx skills add`).
   Yield 0; **live** only when `/app/admin` shows an `agent-artifacts` visit. `skills.sh`
@@ -275,12 +279,14 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
   need a founder submit (`blocked-by-human.md`). Channels live w/ attributable
   yield: **4** (organic, dev.to, github, npm); #12 in-flight.
 - Stage-0 solve pages live: 4 of top-5 unowned filled (R-03 complete) + R-02's two
-  `competitors.md` §4 entries (DIY-on-Postgres + Agentic DB/Constructive). Live path
+  `competitors.md` §4 entries (DIY-on-Postgres + Agentic DB/Constructive). **Re-verified
+  2026-07-24:** all nine intent-map "owned" solve slugs present in `solve.ts`. Live path
   `nlqdb_query`; remember/preset gated (SK-PIVOT-010); auto-in llms.txt + sitemap.
-- GSC intent-query clicks (28d, re-pulled 2026-07-23): **0**, unchanged (5 total / 454
-  impr / pos 17.8, all from non-intent pages) — no intent query clears 1 click. `/agents`
-  at pos 7.3 (3 impr); intent impressions stuck deep ("agent memory benchmark" pos 53,
-  "locomo benchmark ai memory" pos 83). R-01 baseline, unmoved.
+- GSC intent-query clicks (28d, re-pulled 2026-07-24): **0**, unchanged (6 total / 475
+  impr / pos 17.4, all from non-intent pages) — no intent query clears 1 click. `/agents`
+  at pos 6.8 (4 impr); intent impressions stuck deep ("agent memory benchmark" pos 53,
+  "deep memory retrieval benchmark" pos 52, "locomo benchmark ai memory" pos 83). R-01
+  baseline, unmoved.
 - Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10** — no top-10
   R-01 query surfaces `nlqdb.com` in the grounding set (owned by mem0/Zep/Letta +
   pgvector). Third confirming zero alongside R-06 (0/1) + GSC. **Monthly; next due
