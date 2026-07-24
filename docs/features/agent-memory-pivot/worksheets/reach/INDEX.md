@@ -242,44 +242,46 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
 
 ## Current numbers (maintained by /reach step 1 — overwrite, no changelog)
 
-- **Null-run finding (2026-07-24, 3rd consecutive):** the R-slice ledger stays
-  **agent-exhausted** — every intent-map surface + R-05 venue is built or payload-parked;
-  the two open slices gate only on human/external actions (R-04's setup-*completion* walk on
-  Step-2 browser OAuth **and** the dark `MEMORY_PRESET`, SK-PIVOT-010; R-07's channel-#12 tick
-  on a real `/app/admin` `agent-artifacts` visit + the account-walled founder npm package). No
-  agent-pullable box → numbers refresh only. Binding constraint = the founder draining
-  `blocked-by-human` #2–#5 (parked since 07-21) + external crawl→ranking latency, not agent
-  work. Padding the human queue with lower-fit integration-marketplace payloads (channel #20 —
-  a stage-2 "browsing integrations" moment, not the stage-0/1 memory felt-need the thesis
-  targets) is the busywork the loop forbids, so skipped.
+- **Null-run finding (2026-07-24, 4th consecutive):** the R-slice ledger stays
+  **agent-exhausted** — every intent-map surface + R-05 venue is built or payload-parked (all
+  10 "owned" solve slugs re-verified present in `solve.ts` this run — map honest, no phantom
+  surface); the two open slices gate only on human/external actions (R-04's setup-*completion*
+  walk on Step-2 browser OAuth **and** the dark `MEMORY_PRESET`, SK-PIVOT-010; R-07's
+  channel-#12 tick on a real `/app/admin` `agent-artifacts` visit + the account-walled founder
+  npm package). No agent-pullable box → numbers refresh only. **New signal this run:** 2+ days
+  after the 07-22 registry publish + 07-23 Glama ingest, GSC intent-query retrieval is still
+  byte-flat and Smithery/PulseMCP still don't surface (both re-verified live) — confirming the
+  binding constraint is external crawl→ranking latency + the human launch (`blocked-by-human`
+  #1, idle **41 days**), **not** agent work or registry presence. Padding the human queue with
+  lower-fit integration-marketplace payloads (channel #20, a stage-2 moment not the stage-0/1
+  felt-need) is the busywork the loop forbids, so skipped.
 - GSC intent-query clicks (28d, live re-pull 2026-07-24, window 06-24→07-22): **0** — total
   6 clicks / 496 impr / pos 17.5, **byte-identical to the prior read** (all clicks from
-  non-intent pages: hall-of-fame, `/`, `/architecture`, `count-rows-per-day` solve). `/agents`
-  pos 6.8 (4 impr); intent queries stuck deep ("agent memory benchmark" 53, "deep memory
-  retrieval benchmark" 52, "locomo benchmark ai memory" 83). **3rd consecutive flat read** —
-  the 07-22 registry publish + 07-23 Glama ingest still have not moved search retrieval
-  (registry presence ≠ ranking; crawl→rank latency). R-01 baseline, unmoved.
+  non-intent pages). `/agents` pos 6.8 (4 impr); intent queries stuck deep ("agent memory
+  benchmark" 53, "deep memory retrieval benchmark" 52, "locomo benchmark" 83). **4th
+  consecutive flat read**, now 2+ days past publish+ingest with zero movement (registry
+  presence ≠ ranking; lag is crawl→rank). R-01 baseline, unmoved.
 - Coding-agent walker (R-06): **0/1 surfaced** (baseline 2026-07-20; cold session recommended
-  `pgvector`, never nlqdb). Boxes (b)/(c) blocked on SK-PIVOT-010 OAuth; walker not re-run
-  (no `ANTHROPIC_API_KEY` here). Consistent with the two zeros above.
+  `pgvector`, never nlqdb). Boxes (b)/(c) blocked on SK-PIVOT-010 OAuth; not re-run (no
+  `ANTHROPIC_API_KEY` here). Consistent with the two zeros above.
 - Registry/directory listings: **1 published + 1 crawl-fed**. #1 official registry published
-  07-22 (`com.nlqdb/nlqdb` v0.1.1, active 07-23); **Glama** listing live (`glama.ai/mcp/
-  connectors/com.nlqdb/nlqdb`) but links the repo not the utm-tagged `websiteUrl` → in-flight
-  until founder-claimed. **Smithery / PulseMCP still not surfacing** (web-verified 07-24 —
-  branded search returns zero; cascade lag > 2 days). #5–#8 (mcp.so, Cursor, Anthropic dir,
-  `awesome-mcp-servers`) each need a founder submit (`blocked-by-human.md`). Channels live
-  w/ attributable yield: **4** (organic, dev.to, github, npm); #12 in-flight.
+  07-22 (`com.nlqdb/nlqdb` v0.1.1, active 07-23); **Glama** live (`glama.ai/mcp/connectors/
+  com.nlqdb/nlqdb`) but links the repo not the utm-tagged `websiteUrl` → in-flight until
+  founder-claimed. **Smithery / PulseMCP still not surfacing** (re-verified live 07-24, branded
+  search returns zero; cascade lag > 2 days). #5–#8 need a founder submit
+  (`blocked-by-human.md`). Channels live w/ attributable yield: **4** (organic, dev.to, github,
+  npm); #12 in-flight.
 - Canonical setup guide (R-04): **live, 2 of 3** — `docs.nlqdb.com/agent-memory/`, linked from
-  README, `/agents`, llms.txt; guide verified honest + followable end-to-end against prod
-  source (07-24 prior run). Final box (setup *completed* to a first memory read/write) is
-  double-blocked: Step-2 browser OAuth (human) + the dark `MEMORY_PRESET` (SK-PIVOT-010) → ⬜.
+  README, `/agents`, llms.txt; verified honest + followable end-to-end vs prod. Final box
+  (setup *completed* to a first read/write) double-blocked: Step-2 browser OAuth + dark
+  `MEMORY_PRESET` (SK-PIVOT-010) → ⬜.
 - Droppable artifacts (R-07): **4 of 4 live**, `agent-artifacts` in-flight — on both
   agent-fetched surfaces + one-command installable (`npx skills add`). Yield 0; **live** only
   on a real `/app/admin` `agent-artifacts` visit. `skills.sh` has no submission flow, so growth
   = organic install yield + the account-walled founder npm package.
-- Stage-0 solve pages: 4 of top-5 unowned filled (R-03 complete) + R-02's two `competitors.md`
-  §4 entries; all nine intent-map "owned" solve slugs present in `solve.ts`. Live path
-  `nlqdb_query`; remember/preset gated (SK-PIVOT-010); auto-in llms.txt + sitemap.
+- Stage-0 solve pages: R-03 complete (4 of top-5 unowned filled) + R-02's two `competitors.md`
+  §4 entries. Live path `nlqdb_query`; remember/preset gated (SK-PIVOT-010); auto-in llms.txt
+  + sitemap.
 - Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10** — no top-10 R-01
   query surfaces `nlqdb.com` in the grounding set (owned by mem0/Zep/Letta + pgvector).
   **Monthly; next due 2026-08-22** (not due this run).
