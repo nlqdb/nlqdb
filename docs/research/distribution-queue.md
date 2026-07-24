@@ -1,11 +1,9 @@
 # Distribution queue
 
-Drafts queued by the daily agent per
-[`/daily`](../../.claude/commands/daily.md) step 3 (queue-gated — drafting is
-optional, founder-resolved 2026-07-11); publishing is autonomous
-(`SK-BLOG-001`, founder-resolved 2026-07-01). Newest first. Once published, the
-live URL goes into `docs/scorecard.md` § Shipped distribution and the entry
-survives here as a venue pointer. The **dev.to** variant is drained
+Drafts queued per [`/daily`](../../.claude/commands/daily.md) step 3
+(drafting is optional, founder-resolved 2026-07-11); publishing is autonomous
+(`SK-BLOG-001`, founder-resolved 2026-07-01). A published entry survives here
+as a venue pointer. The **dev.to** variant is drained
 autonomously by the daily loop via `scripts/syndicate-devto.ts` (one/day,
 `SK-BLOG-003`); Reddit/HN/lobste.rs pointers stay for human posting (platform
 norms forbid unattended submission). **For those human-posted venues, agents
@@ -14,8 +12,8 @@ agent prose was flagged as "ChatGPT copy-paste" and downvoted on r/SQL
 (2026-07-16); the founder writes the post in their own voice
 ([lesson](../history/reddit-ai-voice-rejection.md)).
 
-**Retention (D4, 20 KB cap):** keep the most recent full draft(s) inline — as
-many as fit under the cap; older ones collapse to a one-line title + venue +
+**Retention (D4, 20 KB cap):** keep the most recent full draft(s) inline;
+older ones collapse to a one-line title + venue +
 gist (full body in git history). Earliest drafts: [archive](./distribution-queue-archive.md).
 
 ## Drafts — unpublished, newest first
@@ -87,7 +85,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 24 — **https://nlqdb.com/blog/serverless-db-cold-start-retry/** — dev.to (#database #serverless #postgres) + r/PostgreSQL + r/webdev + lobste.rs · engine/ops lesson (SK-ASK-013 — a retry policy is one-per-failure-mode; back off the DB stage, fail over the LLM stages instantly)
 
 - run 20 — **https://nlqdb.com/blog/llm-timeout-looks-like-hallucination/** — dev.to (#llm #benchmarking #eval) + r/LLMDevs + lobste.rs · engine lesson (SK-QUAL-022 eval-budget ≠ prod SLA; abort ≠ parse failure; latency fingerprint)
-- run 106 — **https://nlqdb.com/blog/store-form-submissions-without-a-backend/** — dev.to + r/webdev + r/sideproject · `/solve/store-form-submissions-without-backend`
+- run 106 — **https://nlqdb.com/blog/store-form-submissions-without-a-backend/** — r/webdev + r/sideproject · `/solve/store-form-submissions-without-backend` · dev.to posted 2026-07-24: https://dev.to/omer_hochman/you-dont-need-a-backend-to-store-form-submissions-you-need-a-place-to-ask-how-many-3kec
 - run 130 — **https://nlqdb.com/blog/not-in-subquery-null-trap/** — r/SQL + r/PostgreSQL · `/solve/find-rows-with-no-match-in-another-table` · dev.to posted 2026-07-20: https://dev.to/omer_hochman/not-in-returned-zero-rows-it-wasnt-your-data-it-was-one-null-4inj
 - run 102 — **https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/** — dev.to + r/LLMDevs + r/AI_Agents · `/vs/hex`
 - run 55 — **https://nlqdb.com/blog/text-to-sql-accuracy-schemas-your-users-never-build/** — dev.to + lobste.rs + r/LLMDevs
