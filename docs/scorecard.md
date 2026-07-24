@@ -28,8 +28,10 @@ pre-flight env and that run passed Suite A 5/5); the row now needs only fresh di
 levers exhausted. **Top `blocked-by-human` bullet:** #1 fire the launch sequence (Show HN
 draft **idle 40 days since 06-13**, kit ready since 07-19) — the only queue action that can move
 real strangers from 0; its age is the company's real cycle time (rule: human-queue). Queue depth
-**7** (unchanged since 07-22: prod D1 migrations `0022`–`0025` verified applied, official
-MCP-registry publish executed agent-side, `FALLBACK2_LLM_API_KEY` verified armed since 07-16).
+**6** (corrected from run 128's stale "7" — the file holds 6 ranked bullets: prod D1 migrations
+`0022`–`0025` verified applied, official MCP-registry publish executed agent-side,
+`FALLBACK2_LLM_API_KEY` verified armed since 07-16; the GLOBAL-039 zone toggle is bullet #6, lowest
+rank — internal-integrity yield).
 
 **Run 130 pulled a priority-3 docs-ambiguity lever (row #17: 12 → 8); full waiver + detail in "Last
 change" below.** Reclassified 4 decided-deferrals mis-filed under `## Open questions` into `Parked
@@ -42,9 +44,9 @@ Infisical); this run's writes (`cli/FEATURE.md` + `db-adapter/FEATURE.md`) overl
 |---|--------|-------|------|
 | | **Funnel** (visits + users/DBs fresh 07-22 remote-D1 + CF GraphQL) | | exclude synthetic stranger-test walker traffic |
 | 1 | Visits, 7d (CF Web Analytics) | **212 pageloads** (07-15→07-22, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 168 + BingBot 2 ⇒ **real-browser ≈ 42** (Chrome 33 + Edge 8 + MobileSafari 1). Flat vs 07-13's ≈49 | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
-| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-22 remote-D1, identical 9-user set, no new registration**. The 428 wall is gone (run 56); acquisition now depends on distribution yield |
-| 3 | DBs total | **255** (07-22 remote-D1; +4 vs 07-16's 251, synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test. **Attribution instrument verified live in prod 07-22:** `databases.source_json` column exists (migration 0024), `dbsWithSource` = 0 (accrues from first attributable traffic) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run; per-run detail in `git log` |
+| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-verified 07-23 live remote-D1 (this run), identical 9-user set, no new registration**. The 428 wall is gone (run 56); acquisition now depends on distribution yield |
+| 3 | DBs total | **255** (07-23 live remote-D1, flat vs 07-22; synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test. **Attribution instrument verified live in prod 07-23 (this run):** `databases.source_json` column exists (migration 0024), `dbsWithSource` = 0 (accrues from first attributable traffic) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run; per-run detail in `git log` |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
