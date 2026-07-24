@@ -242,6 +242,15 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
 
 ## Current numbers (maintained by /reach step 1 — overwrite, no changelog)
 
+- **Null-run finding (2026-07-24, 2nd consecutive):** the reach R-slice ledger is
+  **agent-exhausted** — every intent-map surface + R-05 venue is built or payload-parked,
+  and the two open slices are gated only on human/external actions (R-04's setup-*completion*
+  walk on Step-2 browser OAuth, SK-PIVOT-010; R-07's channel-#12 tick on a real `/app/admin`
+  `agent-artifacts` visit + the account-walled founder npm package). No agent-pullable box, so
+  this ships the numbers refresh only. Binding constraint is now the founder draining
+  `blocked-by-human` #2–#5 (parked since 07-21) + external crawl→ranking latency — not agent
+  work. Padding the ranked human queue with lower-fit integration-marketplace payloads
+  (channel #20) would be the busywork the loop forbids, so skipped.
 - Coding-agent walker pass rate (R-06): **0/1 surfaced** (baseline 2026-07-20) —
   cold session recommended `pgvector`, never nlqdb. Boxes (b)/(c) blocked on
   SK-PIVOT-010 OAuth. Walker (`bash scripts/reach-agent-walk.sh`) not re-run (no
@@ -282,11 +291,13 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
   `competitors.md` §4 entries (DIY-on-Postgres + Agentic DB/Constructive). **Re-verified
   2026-07-24:** all nine intent-map "owned" solve slugs present in `solve.ts`. Live path
   `nlqdb_query`; remember/preset gated (SK-PIVOT-010); auto-in llms.txt + sitemap.
-- GSC intent-query clicks (28d, re-pulled 2026-07-24): **0**, unchanged (6 total / 475
-  impr / pos 17.4, all from non-intent pages) — no intent query clears 1 click. `/agents`
-  at pos 6.8 (4 impr); intent impressions stuck deep ("agent memory benchmark" pos 53,
-  "deep memory retrieval benchmark" pos 52, "locomo benchmark ai memory" pos 83). R-01
-  baseline, unmoved.
+- GSC intent-query clicks (28d, live re-pull 2026-07-24, window 06-24→07-22): **0**,
+  **byte-identical** to the prior read (6 total / 475 impr / pos 17.4, all from non-intent
+  pages) — no intent query clears 1 click. `/agents` at pos 6.8 (4 impr); intent impressions
+  stuck deep ("agent memory benchmark" pos 53, "deep memory retrieval benchmark" pos 52,
+  "locomo benchmark ai memory" pos 83). 2nd consecutive flat read confirms the 07-22 registry
+  publish + 07-23 Glama ingest have **not** yet moved the search-retrieval moment (registry
+  presence ≠ ranking; crawl→rank latency). R-01 baseline, unmoved.
 - Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10** — no top-10
   R-01 query surfaces `nlqdb.com` in the grounding set (owned by mem0/Zep/Letta +
   pgvector). Third confirming zero alongside R-06 (0/1) + GSC. **Monthly; next due
