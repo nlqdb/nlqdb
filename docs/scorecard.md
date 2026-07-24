@@ -28,15 +28,15 @@ pre-flight env and that run passed Suite A 5/5); the row now needs only fresh di
 levers exhausted. **Top `blocked-by-human` bullet:** #1 fire the launch sequence (Show HN
 draft **idle 41 days since 06-13**, kit ready since 07-19) — the only queue action that can move
 real strangers from 0; its age is the company's real cycle time (rule: human-queue). Queue depth
-**6** (unchanged; the file holds 6 ranked bullets — prod D1 migrations `0022`–`0025` verified applied,
-official MCP-registry publish executed agent-side, `FALLBACK2_LLM_API_KEY` verified armed since 07-16;
-the GLOBAL-039 zone toggle is bullet #6, lowest rank — internal-integrity yield).
+**6** ranked bullets: launch (#1), mcp.so / cursor.directory / awesome-mcp / Claude-dir submissions
+(#2–#5, all account-walled), the GLOBAL-039 zone toggle (#6, lowest rank — internal-integrity yield).
 
-**Run 131 is a null run** — no agent-movable lever cleared the bar in any lane (full finding in "Last
-change" below). **Rule 6 clean** (CI `success` on `main` tip `f2aa5a0`; deploy-web/api `success` on
-`c3f0647`, deploy-docs `success` on `dcd42d7` — docs-only runs 129/130 correctly didn't retrigger
-web/api). **Step 0:** only open PR is #719 (founder's draft Infisical research) — no overlap; this run
-writes only `scorecard.md` (step-1 exempt).
+**Run 132 is a null run** — no agent-movable lever cleared the step-2 bar in any lane (full finding in
+"Last change" below); ships only this step-1 update. **Rule 6 clean** (CI `success` on `main`
+`f2aa5a0` — [run 2780](https://github.com/nlqdb/nlqdb/actions/runs/30056235914), 07-24 00:30Z; latest
+`deploy-api` `success` on the last code SHA `c3f0647`; runs 129–130 were docs-only, no deploy). **Step
+0:** open PRs #805 (reach null, reach INDEX), #804 (run 131 null, `scorecard.md` — step-1 exempt), #719
+(draft Infisical); this run writes only `scorecard.md` (step-1 exempt, overlaps only #804's exempt edit).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -48,7 +48,7 @@ writes only `scorecard.md` (step-1 exempt).
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-24→07-22, re-pulled live 07-24 run 131, byte-flat vs run 130): 6 clicks / 475 impr / avg pos 17.4** — top winnable page `/solve/count-rows-per-day-including-missing-dates/` **64 impr / pos 7.8** (surface's single biggest impression×position opportunity, already on-page-maxed; run 128 fixed its lone defect — internal-ID leak). Canonical tags re-verified correct (https, self-referential) on solve/blog/home 07-24, so the `http://…/solve/count-consecutive-days-streak/` Google indexes (7 impr, pos 10.1) is benign — consolidates to the https canonical (bullet #6's SEO-harm ceiling holds). Prior window: 5 clicks / 454 impr / pos 17.8 (impr 508→454 & pos shift is window-move not decline, clicks flat). 4 click-earning pages: `/security/hall-of-fame/`, homepage, `/architecture/`, `/blog/bird-gold-noise-distinct/`. sitemap 116 submitted / 0 err. Query `"top 10 products by revenue" metabase` pos 6.8 → `/vs/metabase/` (run 125's FAQ lever, merged; delta reads next pull). 7d external referrals = 9 (bing 8, github 1). Internal links **2,970** + **14 cross-app** (0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-24→07-22, re-pulled live 07-24 run 132, byte-flat 3rd consecutive read): 6 clicks / 475 impr / avg pos 17.4** — top winnable page `/solve/count-rows-per-day-including-missing-dates/` **64 impr / pos 7.8** (surface's single biggest impression×position opportunity, already on-page-maxed; run 128 fixed its lone defect — internal-ID leak). Prior window: 5 clicks / 454 impr / pos 17.8 (impr 508→454 & pos shift is window-move not decline, clicks flat). 4 click-earning pages: `/security/hall-of-fame/`, homepage, `/architecture/`, `/blog/bird-gold-noise-distinct/`. sitemap 116 submitted / 0 err. Query `"top 10 products by revenue" metabase` pos 6.8 → `/vs/metabase/` (run 125's FAQ lever, merged; delta reads next pull). 7d external referrals = 9 (bing 8, github 1). Internal links **2,970** + **14 cross-app** (0 dead / 0 redirecting — row #18) | GSC via `scripts/gsc-pull.ts`. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) — run-90 `SK-QUAL-006` trigger cleared. Baseline re-seeded 0.5462 → 0.5422 (07-19, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 `SK-QUAL-013` windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); post-revert engine is byte-identical ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -90,27 +90,28 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-24 (run 131)** — **Null run — no delta.** No agent-movable lever cleared the step-2 bar in
-any lane; ships only this step-1 scorecard update. **Finding, lane by lane:** (1) **Acquisition/
-distribution** — the weekly focus (channels 4 → ≥ 5) grows only via not-yet-live channels, all
-account-walled human actions in `blocked-by-human` #2–#5 (mcp.so, cursor.directory, awesome-mcp,
-Claude connector dir) — none agent-executable (agent sessions are `nlqdb/nlqdb`-scoped, can't
-fork/PR external repos or sign into portals). Attribution coverage **re-verified complete this run**:
-only `@nlqdb/cli` + `@nlqdb/sdk` are public npm packages and both carry `homepage=…?utm_source=npm`;
-GitHub READMEs are CI-guarded (`readme-attribution-integrity.test.ts`); dev.to + `examples/` tagged —
-no untagged CTA to close. GSC re-pulled live: 6 clicks / 475 impr / pos 17.4, byte-flat vs run 130,
-every winnable page maxed (biggest, `/solve/count-rows…` 64 impr, on-page-maxed run 128) or noise-floor
-(no page > 12 impr unaddressed). Canonical tags verified correct → http:// indexing benign. `/app/admin`
-conversion has no data at strangers = 0. (2) **UX-flow** — walkers 9/9 + both FLOW-005 transports fresh
-07-21 (row #21); no failing/flaky/confusing flow to fix. (3) **Meta (row #17 = 8)** — run 130 just
-pulled it; a 2nd consecutive docs-ambiguity pull is the monoculture `/weekly` de-prioritised, so
-skipped. **Engine** dark + fresh (07-19, 5 days, under the 7-day dispatch trigger). The structural
-bottleneck remains the human-gated launch (`blocked-by-human` #1, idle **41 days**) — not agent
-work. **Measurement this run:** funnel live remote-D1 (strangers 0, DBs 255, `dbsWithSource` 0), GSC
-live, CI + all deploys `success` on `main`, row #17 grep = 8. Diff is `scorecard.md` only (step-1
-exempt); `bun run typecheck && lint && test` green. **Artifact:** queue 2-deep (< 3), no forced
-publish; dev.to drip N/A (`DEVTO_API_KEY` absent) — and a null run skips step 3 regardless. **KPI
-(GLOBAL-025):** none moved (null run); **degrades none** — no code, no external calls, no endpoints.
+**2026-07-24 (run 132)** — **Null run** (step-2 valid outcome): no agent-movable lever cleared the
+bar in any lane. **Number moved:** none. **Finding (in place of a delta):**
+- **Priority 1 (acquisition/distribution):** weekly-focus row #22 (channels live 4 → ≥ 5) grows only
+  through not-yet-live channels — all account-walled human actions (`blocked-by-human` #2–#5: mcp.so,
+  cursor.directory, awesome-mcp, Claude connector directory), none agent-executable from a
+  `nlqdb/nlqdb`-scoped session. Attribution complete (all 4 live channels utm-keyed). GSC re-pulled
+  **live this run**: 6 clicks / 475 impr / pos 17.4 — byte-flat for a 3rd consecutive read; biggest
+  page (`/solve/count-rows…` 64 impr / pos 7.8) already on-page-maxed, no other page > 6 impr.
+- **Priority 2 (UX-flow):** funnel healthy — walkers 9/9 + both FLOW-005 transports fresh 07-21;
+  live remote-D1 funnel re-read this run (strangers 0, users 9, DBs 255, `dbsWithSource` 0).
+- **Priority 3 (meta):** row #17 = 8; run 130 just pulled it — a 2nd consecutive docs-ambiguity pull
+  is the monoculture `/weekly` de-prioritised (anti-rut), skipped.
+- **Engine:** dark + fresh (07-19, 5 days — under the 7-day dispatch trigger).
+
+Re-confirmed two prior-flagged GSC index anomalies are still handled, not defects: `app.nlqdb.com/blog/…`
+301→`nlqdb.com` (SK-WEB-026), and `nlqdb.com/blog/…` serves a correct `rel=canonical`. Structural
+bottleneck stays the human-gated launch (`blocked-by-human` #1, idle **41 days**). **Rule 6 clean**
+(CI [run 2780](https://github.com/nlqdb/nlqdb/actions/runs/30056235914) `success` on `main`; deploys
+`success`). **Gates:** `bun run typecheck && lint && test` all green. **Artifact:** queue 2-deep
+(< 3), no forced publish; dev.to drip N/A (`DEVTO_API_KEY` absent); null run skips step 3. **KPI
+(GLOBAL-025):** none advanced; **degrades none** — `scorecard.md` only, no code / external calls /
+endpoints.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
