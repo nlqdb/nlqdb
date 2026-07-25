@@ -144,10 +144,8 @@ const totals = await query(token, iso(start), iso(end), [], 1);
 console.info(`# GSC ${SITE} — ${iso(start)} → ${iso(end)} (${days}d)`);
 console.info(totals.length ? fmtRow(totals[0]) : "no data in window");
 
-// GSC orders rows by clicks, so a small rowLimit on a near-zero-click property
-// drops impression mass rather than a tail — pull the whole dimension, rank by
-// impressions, and print the coverage so a truncated pull can't read as a
-// complete one.
+// GSC orders rows by clicks, so on a near-zero-click property a small rowLimit drops
+// impression mass rather than a tail — pull the whole dimension and rank by impressions.
 const ROW_LIMIT = 5000; // GSC allows 25k rows/request — far above this property
 const SHOW = 20;
 
