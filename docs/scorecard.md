@@ -21,8 +21,8 @@ row #20) is pullable only when no acquisition lever is.
 founder-blocked: `blocked-by-human` **#1 fire the launch sequence** (Show HN draft
 **idle 42 days since 06-13**), whose age is the company's real cycle time. Queue depth **9**
 (re-derived after #822 merged). The roster and its numbering live only in
-[`blocked-by-human.md`](blocked-by-human.md) — cite bullets by number, never restate the list;
-the copy this replaces had gone stale on #822's renumbering. **Dark (rule 8, reported not pulled):**
+[`blocked-by-human.md`](blocked-by-human.md) — cite bullets by number, never restate the list.
+**Dark (rule 8, reported not pulled):**
 engine **#9 Spider 0.2222** / **#8 BIRD 0.542** (offline levers exhausted; baseline `run_at` 07-19
 = 6.4 d, so the 7-day dispatch trigger fires **07-26**, not today); rows **#4/#5/#16**'s
 stranger-dependent criteria (N = 0 by definition until #1 fires); row **#15**'s opencheck arm
@@ -129,10 +129,8 @@ proxy), which is why the re-measure ran in Actions.
 the account-level distribution. Engine dark and fresh one more day (trigger fires 07-26).
 **Gates:** `typecheck` (22 pkgs,
 0 errors) · `lint` 0 errors / 41 warnings = baseline · `biome format` clean · `test` exit 0 (992
-api; stranger-test **18 → 34**). Gate 3: `grep -rn '^### GLOBAL-' docs/features/` prints nothing.
-**D4:** every edited doc under **20000 B** (`scorecard.md` held there by D5-trimming per-run prose
-from rows #1–#12, #16, #18 and the shipped-distribution list; `SK-STRG-010`'s body lives in
-`decisions/` per the SK-STRG-003/005/009 pattern). **Step 3:** queue 2-deep (< 3) ⇒ no forced
+api; stranger-test **18 → 51**). Gate 3: `grep -rn '^### GLOBAL-' docs/features/` prints nothing.
+**D4:** every edited doc under **20000 B**. **Step 3:** queue 2-deep (< 3) ⇒ no forced
 publish; no new draft; dev.to drip self-throttled ⇒ no queue-line edit. **KPI (GLOBAL-025):**
 advances **UX** (the canonical-flow instrument can now report a real break instead of drowning
 it) and **onboarding** (row #21 is the onboarding path's only end-to-end observer);

@@ -47,6 +47,18 @@ describe("classifyAsk", () => {
     expect(classifyAsk(status, body, true)).toBe("fail");
   });
 
+  // Pins the *status* leg of the three conditions — the cases above pin the
+  // body leg and `challengeEngaged` pins the evidence leg, but without this a
+  // classifier that dropped the status check entirely would stay green. 428 is
+  // the only status `apps/api` mints this envelope under, so the same code on
+  // any other status is an error echoing it, not the bot floor.
+  test.each([[500], [503], [403]])(
+    "the challenge envelope on status %i is failed, not blocked",
+    (status) => {
+      expect(classifyAsk(status, CHALLENGE_BODY, true)).toBe("fail");
+    },
+  );
+
   // The run-56 shape: the API 428s but the client never ran the widget (no
   // sitekey / api.js blocked), so the 428 is terminal for real visitors too.
   test("a challenge the client never engaged is failed, not blocked", () => {
@@ -56,6 +68,18 @@ describe("classifyAsk", () => {
   test("a 200 is never downgraded by a body that mentions the code", () => {
     expect(classifyAsk(200, CHALLENGE_BODY, true)).toBe("ok");
   });
+
+  // Pins the `ok` branch to exactly 200, not `status < 400`. `waitForResponse`
+  // surfaces redirect responses, and a 30x on a POST route is a live defect
+  // class here (#817 shipped bare paths 301-ing instead of 307-ing), so a
+  // widened branch would record TTFV for a redirect and read row #21 green
+  // with no answer ever rendered.
+  test.each([[201], [204], [301], [302], [307]])(
+    "a non-200 2xx/3xx is failed, not ok (status %i)",
+    (status) => {
+      expect(classifyAsk(status, "", false)).toBe("fail");
+    },
+  );
 });
 
 // `classifyAsk`'s third condition is only as good as the evidence fed to it, so
