@@ -37,11 +37,11 @@ stranger-dependent criteria (N = 0 until queue bullet #1 fires); row **#15**'s o
 (free-lane saturation, remedy costs money ⇒ rule 4).
 
 **Rule 6 clean** — CI + Security + Release-npm + all **9** `deploy-*` green as their latest `main`
-run (each is path-filtered, so those greens sit on the last SHA that touched it, not one shared
-SHA). Open PRs **2** — **#826** (changesets Version PR, `@nlqdb/sdk@0.2.2`) and draft **#719**
-(oldest, **8 days**). **#824 merged mid-run**, so row #21 carries its shipped `RunState.blocked`
-split re-read from `main` instead of pointing at an open PR; this run's diff is otherwise
-`scripts/` + docs, which no open PR touches.
+run (each path-filtered, so its green sits on the last SHA that touched it).
+Open PRs **3** — **#826** (changesets, `@nlqdb/sdk@0.2.2`), **#828** (Renovate never watched
+`tests/`) and draft **#719** (oldest, **8 days**). **#824 merged mid-run**, so row #21 carries its
+shipped `RunState.blocked` split re-read from `main` instead of pointing at an open PR; this run's
+diff is otherwise `scripts/` + docs, and none of those six files is touched by any open PR.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
