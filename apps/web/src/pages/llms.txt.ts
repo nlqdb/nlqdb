@@ -103,10 +103,11 @@ export const GET: APIRoute = () => {
     `npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory\n` +
     "```\n\n" +
     `It writes \`.agents/skills/nlqdb-memory/SKILL.md\` — the cross-agent skill directory\n` +
-    `Claude Code, Cursor and Codex all read — plus a \`.claude/skills/\` symlink and a\n` +
-    `\`skills-lock.json\` (verified against the live CLI 2026-07-25). It does NOT write a\n` +
-    `\`.cursor/rules/\` file and does NOT edit \`AGENTS.md\`; a host that reads only\n` +
-    `\`AGENTS.md\` still needs the snippet below appended.\n\n` +
+    `Cursor and Codex read directly — plus a \`.claude/skills/\` symlink to it (Claude Code\n` +
+    `documents only \`.claude/skills/\`) and a \`skills-lock.json\` (verified against the live\n` +
+    `CLI 2026-07-25). It does NOT write a \`.cursor/rules/\` file and does NOT edit\n` +
+    `\`AGENTS.md\`; a host that reads only \`AGENTS.md\` still needs the snippet below\n` +
+    `appended by hand.\n\n` +
     `Or drop a ready-made file into the codebase by hand — every connect string in them\n` +
     `is pinned by a test to nlqdb's own source of truth, so they can't drift:\n\n` +
     `- Host-neutral \`AGENTS.md\`: append ${SITE}/agent-artifacts/AGENTS.snippet.md\n` +

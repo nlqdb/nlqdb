@@ -16,13 +16,14 @@ Installs the `nlqdb-memory` skill from this repo (public) with the
 Measured against the live CLI 2026-07-25, it writes:
 
 - `.agents/skills/nlqdb-memory/SKILL.md` — the cross-agent skill directory
-  Claude Code, Cursor and Codex all read
-- `.claude/skills/nlqdb-memory` — a symlink to it, for Claude Code
+  Cursor and Codex read directly, per their own docs
+- `.claude/skills/nlqdb-memory` — a symlink to it. Claude Code documents only
+  `.claude/skills/`, so the symlink is how the one command reaches it
 - `skills-lock.json` — the install record
 
 It does **not** write a `.cursor/rules/` file and does **not** edit
-`AGENTS.md`. Cursor and Codex are covered through `.agents/skills/`; a host
-that reads only `AGENTS.md` still needs `AGENTS.snippet.md` appended by hand.
+`AGENTS.md`, so a host that reads only `AGENTS.md` still needs
+`AGENTS.snippet.md` from the table below appended by hand.
 Then connect the MCP server once with the command inside the skill.
 
 ## Or drop a file in by hand

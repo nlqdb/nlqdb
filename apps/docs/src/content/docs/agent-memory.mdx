@@ -172,10 +172,11 @@ npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-ar
 ```
 
 It writes `.agents/skills/nlqdb-memory/SKILL.md` — the cross-agent skill
-directory Claude Code, Cursor and Codex all read — plus a `.claude/skills/`
-symlink and a `skills-lock.json`. Verified against the live CLI 2026-07-25.
-It does **not** write a `.cursor/rules/` file and does **not** edit
-`AGENTS.md`; if your host reads only `AGENTS.md`, append the snippet below.
+directory Cursor and Codex read directly — plus a `.claude/skills/` symlink
+to it (Claude Code documents only `.claude/skills/`) and a `skills-lock.json`.
+Verified against the live CLI 2026-07-25. It does **not** write a
+`.cursor/rules/` file and does **not** edit `AGENTS.md`; if your host reads
+only `AGENTS.md`, append the snippet below by hand.
 
 Or drop a file in by hand:
 

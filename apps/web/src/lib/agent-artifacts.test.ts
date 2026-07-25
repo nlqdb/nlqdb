@@ -171,20 +171,23 @@ describe("the npx skills add one-command install can't drift", () => {
 
   // Hard rule 1 — only promise what the command actually does. Until
   // 2026-07-25 all three surfaces claimed it "formats a matching Cursor rule"
-  // and "registers it in AGENTS.md"; measured against the live CLI it writes
-  // neither, under any `--agent` selection. Cursor and Codex are covered
-  // because they read `.agents/skills/` too, so the outcome is fine and only
-  // the mechanism was wrong — but a reader waiting for an `AGENTS.md` entry
-  // that never lands is exactly the phantom-capability failure this track
-  // forbids. Pinning the disclosure (not the absence of the words, which the
-  // by-hand section legitimately uses) means re-adding the claim means
-  // deleting a test-required sentence.
+  // and "registers it in AGENTS.md"; run against the live CLI three ways
+  // (default, `--agent cursor`, `--all`) it writes neither, so a reader
+  // waiting on that `AGENTS.md` entry got nothing. Two halves, because
+  // either alone is escapable: the disclosure must be present (deleting it
+  // goes red) *and* the old mechanism claim must be absent (re-adding it
+  // alongside the disclosure would otherwise pass).
   test("every surface discloses what the command does not write", () => {
     for (const [name, text] of Object.entries(installSurfaces())) {
       const prose = normalizeProse(text);
       expect(prose, name).toContain(".agents/skills/nlqdb-memory/skill.md");
       expect(prose, name).toContain("does not write a .cursor/rules/ file");
       expect(prose, name).toContain("does not edit agents.md");
+      // The by-hand section legitimately names both files, so forbid the
+      // mechanism phrasing, not the filenames.
+      expect(prose, name).not.toContain("matching cursor");
+      expect(prose, name).not.toContain("registers it in agents.md");
+      expect(prose, name).not.toContain("agents.md entry");
     }
   });
 });
