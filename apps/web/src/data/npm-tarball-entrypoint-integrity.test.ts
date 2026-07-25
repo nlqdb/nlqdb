@@ -1,32 +1,26 @@
 import { describe, expect, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-// @ts-expect-error — plain .mjs helper, no declarations; see the comment below.
-import { effectivePublishedManifest } from "../../../../scripts/apply-publish-config.mjs";
+// @ts-expect-error — plain .mjs helper, no type declarations.
+import {
+  BACKUP_SUFFIX,
+  effectivePublishedManifest,
+} from "../../../../scripts/apply-publish-config.mjs";
 
 // A published package whose entrypoints are not inside its own `files` allowlist
-// is dead on arrival, and nothing in a normal build says so.
-//
-// This is not hypothetical. `@nlqdb/sdk` shipped that way for its entire life —
-// 0.1.0, 0.2.0 and 0.2.1 all published `main`/`types`/`exports` → `./src/index.ts`
-// while `files` shipped only `dist/`. Installing it from the registry and
-// importing it threw ERR_MODULE_NOT_FOUND on every version, so `GLOBAL-001`'s
-// "the only HTTP client" could not be imported by anyone outside this repo,
-// while `bun run build`, `typecheck`, `test` and the release job all stayed
-// green — the defect lives in the gap between the manifest and the tarball,
-// which none of them look at. Root cause: `publishConfig` field overrides are a
-// pnpm feature that npm ignores (npm/cli#7586), so the corrected entrypoints
-// never reached the published manifest.
-//
-// So assert the invariant directly, against the *effective* published manifest
-// (`scripts/apply-publish-config.mjs`, imported rather than reimplemented so
-// this also pins the prepack transform that makes publishConfig effective).
-// Reachability, not existence: `dist/` is a build artifact absent from a fresh
-// clone, so this checks that each entrypoint *would* be packed — the defect
-// above — and not that the build emitted it.
+// is dead on arrival, and nothing in a normal build says so — `@nlqdb/sdk` 0.1.0
+// → 0.2.1 all published `main` → `./src/index.ts` while `files` shipped only
+// `dist/`, so `import "@nlqdb/sdk"` threw ERR_MODULE_NOT_FOUND on every version
+// while build, typecheck, test and the release job stayed green. The full root
+// cause is in `scripts/apply-publish-config.mjs`, whose transform this imports
+// rather than reimplements. Reachability, not existence: `dist/` is absent from
+// a fresh clone, so this asserts each entrypoint *would* be packed.
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const SCRIPT = join(REPO_ROOT, "scripts", "apply-publish-config.mjs");
 
 // npm packs these regardless of `files`, so an entrypoint pointing at one is
 // still reachable. (`package.json` matters: it is the manifest itself.)
@@ -131,8 +125,9 @@ describe("npm tarball entrypoint integrity (GLOBAL-001)", () => {
     let checked = 0;
     for (const { manifest, file } of publishable) {
       const published = effectivePublishedManifest(manifest) as Manifest;
-      const unreachable = entrypoints(published).filter((p) => !isPacked(p, published.files));
-      checked += entrypoints(published).length;
+      const declared = entrypoints(published);
+      checked += declared.length;
+      const unreachable = declared.filter((p) => !isPacked(p, published.files));
       if (unreachable.length === 0) continue;
       offenders[manifest.name ?? file] =
         `${relative(REPO_ROOT, file)} → ${unreachable.join(", ")} not matched by files=[${(published.files ?? []).join(", ")}]`;
@@ -165,5 +160,63 @@ describe("npm tarball entrypoint integrity (GLOBAL-001)", () => {
         `${relative(REPO_ROOT, file)} overrides ${overrides.join(", ")} via publishConfig but has no apply-publish-config prepack/postpack pair`;
     }
     expect(offenders).toEqual({});
+  });
+
+  // The tests above assert the pure transform; this one runs the script the way
+  // npm does, because a prepack that no-ops or a postpack that fails to restore
+  // is the same class of green-build-ships-nothing defect one layer down.
+  test("the prepack script applies at pack time and postpack restores byte-for-byte", () => {
+    const dir = mkdtempSync(join(tmpdir(), "prepack-roundtrip-"));
+    const manifestPath = join(dir, "package.json");
+    const original = `${JSON.stringify(
+      {
+        name: "roundtrip-probe",
+        version: "1.0.0",
+        main: "./src/index.ts",
+        files: ["dist"],
+        publishConfig: { main: "./dist/index.js", access: "public" },
+      },
+      null,
+      2,
+    )}\n`;
+    const run = (...args: string[]) => {
+      const r = spawnSync(process.execPath, [SCRIPT, ...args], { cwd: dir, encoding: "utf8" });
+      expect(r.status).toBe(0);
+      return r;
+    };
+    const read = () => JSON.parse(readFileSync(manifestPath, "utf8"));
+    const strays = () => readdirSync(dir).filter((f) => f !== "package.json");
+
+    try {
+      writeFileSync(manifestPath, original);
+
+      run();
+      expect(read().main).toBe("./dist/index.js");
+      // `access` is npm's own key, so it must stay in publishConfig, not leak up.
+      expect(read().access).toBeUndefined();
+
+      // Re-running prepack after an interrupted pack must not overwrite the
+      // backup with the already-rewritten manifest — that would lose the
+      // source-resolving original permanently and break every in-repo consumer.
+      run();
+      run("--restore");
+      expect(readFileSync(manifestPath, "utf8")).toBe(original);
+      expect(strays()).toEqual([]);
+
+      // postpack fires even when prepack changed nothing; that must be a no-op.
+      run("--restore");
+      expect(readFileSync(manifestPath, "utf8")).toBe(original);
+
+      // The backup must carry a suffix npm ignores unconditionally, or a package
+      // publishing without a `files` allowlist would ship it. `.orig` is on that
+      // list — verified with `npm pack --dry-run`; re-verify before changing it.
+      expect(BACKUP_SUFFIX).toBe(".orig");
+      run();
+      expect(strays()).toEqual([`package.json${BACKUP_SUFFIX}`]);
+      run("--restore");
+      expect(existsSync(join(dir, `package.json${BACKUP_SUFFIX}`))).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

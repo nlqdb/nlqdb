@@ -1,45 +1,39 @@
 #!/usr/bin/env node
-// Applies `publishConfig`'s package.json *field* overrides into the manifest,
-// because npm does not.
+// Applies `publishConfig`'s package.json *field* overrides into the manifest at
+// pack time, because npm does not.
 //
-// Why this exists. Workspace packages expose TypeScript source
-// (`main`/`exports` → `src/index.ts`): every in-workspace consumer resolves
-// through Bun or Vite, both TS-aware, so source resolution is what makes
-// `bun run test` see an SDK edit without a build step. A published tarball must
-// instead point at built `dist/`. `publishConfig` looks like the answer and is
-// how pnpm behaves — but **npm ignores every publishConfig key that is not one
-// of its own config keys** (`access`, `provenance`, `registry`, `tag`);
-// overriding `main`/`types`/`exports` from it is pnpm-only
-// (https://github.com/npm/cli/issues/7586, still open 2026-07-25).
+// Workspace packages point `main`/`exports` at TypeScript source so every
+// in-workspace consumer (Bun, Vite — both TS-aware) sees an edit with no build
+// step; a published tarball must instead point at built `dist/`. `publishConfig`
+// looks like the answer and is how pnpm behaves, but **npm honours only its own
+// config keys there** (`access`, `provenance`, `registry`, `tag`) and silently
+// drops field overrides (https://github.com/npm/cli/issues/7586, open
+// 2026-07-25). That shipped `@nlqdb/sdk` 0.1.0 → 0.2.1 with `main` →
+// `./src/index.ts` while `files` shipped only `dist/`, so `import "@nlqdb/sdk"`
+// threw ERR_MODULE_NOT_FOUND on every version ever released — with nothing
+// failing at build time, because the registry manifest is just the tarball's
+// package.json.
 //
-// That silently shipped a broken package: `@nlqdb/sdk` 0.1.0 → 0.2.1 all
-// published `main`/`types`/`exports` → `./src/index.ts` while `files` shipped
-// only `dist/`, so `import "@nlqdb/sdk"` threw ERR_MODULE_NOT_FOUND on every
-// version ever released. Nothing failed at build time; the registry manifest is
-// just derived from the tarball's package.json.
+// So apply the override ourselves in `prepack` (npm/cli#7586's documented
+// workaround) and undo it in `postpack`: the tarball gets `dist/`, the working
+// tree keeps source resolution. Rejected alternative — custom export conditions
+// — needs every resolver to opt in (`customConditions`, six `resolve.conditions`
+// blocks, `--conditions` on every `bun` call) for the same outcome (P5).
 //
-// So we run the override ourselves in `prepack`, npm's own hook for exactly
-// this (npm/cli#7586's documented workaround), and undo it in `postpack`.
-// `prepack` runs before the tarball is written, so the published manifest gets
-// the overrides while the working tree keeps source resolution.
-//
-// Rejected: custom export conditions (the "live types in a monorepo" pattern).
-// It is the tidier mechanism, but a condition only helps if every resolver opts
-// in — that is `customConditions` in tsconfig.base.json plus `resolve.conditions`
-// in six vitest/astro configs plus `--conditions` on every `bun` invocation.
-// Same outcome, an order of magnitude more config to keep in sync (P5).
-//
-// `npm-tarball-entrypoint-integrity.test.ts` pins the transform below and fails
-// if any publishable package's effective entrypoints fall outside its `files`.
+// `npm-tarball-entrypoint-integrity.test.ts` pins both the transform and this
+// script's apply/restore round trip.
 
 import { copyFileSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 // npm's *own* config keys inside publishConfig. Everything else is a
 // package.json field override — pnpm's semantics, which we implement here.
 const NPM_CONFIG_KEYS = new Set(["access", "provenance", "registry", "tag"]);
 
-const BACKUP_SUFFIX = ".prepack-backup";
+// `*.orig` is on npm's unconditional ignore list, so the backup can never reach
+// a tarball even in a package that publishes without a `files` allowlist.
+const BACKUP_SUFFIX = ".orig";
 
 /**
  * Splits a `publishConfig` block into the npm config keys npm honours itself
@@ -72,12 +66,12 @@ function main() {
   const manifestPath = join(process.cwd(), "package.json");
   const backupPath = manifestPath + BACKUP_SUFFIX;
 
-  if (restore) {
-    // postpack also fires when prepack made no change, so a missing backup is
-    // the normal no-op — never an error.
-    if (existsSync(backupPath)) renameSync(backupPath, manifestPath);
-    return;
-  }
+  // A backup on disk means an earlier pack was interrupted before `postpack`,
+  // so the manifest in place is the rewritten one and the backup is the only
+  // copy of the source-resolving original. Restoring first makes both paths
+  // idempotent; backing up over it would destroy that original for good.
+  if (existsSync(backupPath)) renameSync(backupPath, manifestPath);
+  if (restore) return;
 
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const overrides = manifestOverrides(manifest.publishConfig);
@@ -94,12 +88,15 @@ function main() {
     renameSync(backupPath, manifestPath);
     throw err;
   }
-  const applied = Object.keys(overrides).join(", ");
-  process.stdout.write(`apply-publish-config: ${manifest.name} → applied ${applied}\n`);
+  process.stdout.write(
+    `apply-publish-config: ${manifest.name} → applied ${Object.keys(overrides).join(", ")}\n`,
+  );
 }
 
-// Only act when run as a script; the integrity guard imports the pure helpers.
-if (process.argv[1]?.endsWith("apply-publish-config.mjs")) {
+// Act only when invoked as the script — the integrity guard imports the pure
+// helpers. Compared by resolved path, not filename, so renaming this file can
+// never turn `prepack` into a silent no-op that ships a broken tarball.
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   try {
     main();
   } catch (err) {
