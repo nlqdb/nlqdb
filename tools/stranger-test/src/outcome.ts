@@ -31,6 +31,8 @@ export function classifyAsk(status: number, body: string): AskOutcome {
 // nothing, and a blocked run's stopping point is the `blocked` step in
 // `steps`.
 export function runOutcome(steps: StepResult[]): { state: RunState; failedStep: number | null } {
+  // A walk that observed nothing is not a walk that found nothing wrong.
+  if (steps.length === 0) return { state: "failed", failedStep: 0 };
   const failed = steps.find((s) => s.status === "fail");
   if (failed) return { state: "failed", failedStep: failed.step };
   const blocked = steps.some((s) => s.status === "blocked");

@@ -190,7 +190,7 @@ async function doWalk(
         failedStep = 5;
       } else {
         const status = askResp.status();
-        const body = status === 200 ? "" : await askResp.text().catch(() => "");
+        const body = await askResp.text().catch(() => "");
         const outcome = classifyAsk(status, body);
         // Only a real answer is time-to-first-value.
         if (outcome === "ok") ttfvMs = Date.now() - t0;

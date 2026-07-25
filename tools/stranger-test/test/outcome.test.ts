@@ -79,4 +79,10 @@ describe("runOutcome", () => {
   test("skips alone are not a verdict", () => {
     expect(runOutcome([s(1, "ok"), s(2, "skip")]).state).toBe("passed");
   });
+
+  // A zero-step walk means the walker never observed the surface at all.
+  // Reading that as `passed` is the "green build ships nothing" shape.
+  test("a walk with no steps is failed, not passed", () => {
+    expect(runOutcome([])).toEqual({ state: "failed", failedStep: 0 });
+  });
 });

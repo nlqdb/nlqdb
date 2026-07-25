@@ -28,14 +28,14 @@ stranger-dependent criteria (N = 0 by definition until #1 fires); row **#15**'s 
 (free-lane saturation; the remedy costs money ⇒ rule 4). Row **#21 is no longer saturated** —
 this run split *failed* from *blocked*, and it now reads **0 failed / 9 blocked**.
 
-**Rule 6 clean** (CI + Security + Release-npm + Acquisition-health and all 9 `deploy-*`
-`success` on `main` `705ded0`; the four path-filtered deploys hold green on older SHAs —
-`deploy-mcp` on `97d7712`, `deploy-cli` on `aad87a7`, `deploy-docs` on `bb85ccf`. Verified
-before the first edit.) **Step 0:** 3 open PRs + 1 draft. This run touched **none** of their
-files — #823 (`packages/sdk`, `scripts/apply-publish-config.mjs`, `.changeset/`), #822
-(`packages/mcp`, `.changeset/README.md`, `acquisition-channels.md`, `blocked-by-human.md`),
-#821 (`scripts/gsc-pull.ts`, `.claude/commands/daily.md`), draft #719 — the only overlap is
-the step-1-exempt `scorecard.md`.
+**Rule 6 clean** (verified before the first edit on `main` `705ded0`, then **re-verified after
+#821 merged**: CI + Security + Release-npm `success` on `cb53f29`; each `deploy-*` is
+path-filtered, so its green sits on the last SHA that touched it — api/web/canary `705ded0`,
+`deploy-docs` `bb85ccf`, `deploy-cli` `aad87a7`, `deploy-mcp` `97d7712` — and #821 touched none
+of their paths.) **Step 0:** this run touched **none** of the open PRs' files — #823
+(`packages/sdk`, `scripts/apply-publish-config.mjs`, `.changeset/`), #822 (`packages/mcp`,
+`.changeset/README.md`, `acquisition-channels.md`, `blocked-by-human.md`), draft #719 — the only
+overlap is the step-1-exempt `scorecard.md`, which #821 rewrote and this run rebased onto.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -47,7 +47,7 @@ the step-1-exempt `scorecard.md`.
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **104** content pages (`/solve` 37 + `/vs` 31 + `/blog` 36; recounted from source 07-25, 116 sitemap URLs total). Queue holds **2** drafts — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | **GSC 28d (06-25→07-23, live 07-25): 6 clicks / 485 impr / avg pos 17.4** — clicks flat a **10th** consecutive read. 5 click-earning pages: `/security/hall-of-fame/` (2), homepage, `/architecture/`, `/blog/bird-gold-noise-distinct/`, `/solve/count-rows-per-day-including-missing-dates/` (66 impr / pos 7.8). **This is `main`'s `rowLimit: 20` pull, which sees ~28% of impression mass — open PR #821 fixes it and identifies the real strengthening target (`/solve/running-total-cumulative-sum-in-sql/`, 57 impr / pos 36); trust #821's instrument once merged.** The `http://…streak-in-sql/` variant (7 impr / pos 10.1) still needs the zone toggle (`blocked-by-human` #6). Sitemap 116 submitted / 0 indexed. Internal links **2,970** + **14 cross-app**, 0 dead / 0 redirecting (row #18) | GSC via `scripts/gsc-pull.ts`. Impression breadth is the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
+| 7 | Surface yield | **GSC 28d (06-25→07-23, live 07-25): 6 clicks / 485 impr / avg pos 17.4** — clicks flat a **10th** consecutive read. 5 click-earning pages: `/security/hall-of-fame/` (2), homepage, `/architecture/`, `/blog/bird-gold-noise-distinct/`, `/solve/count-rows-per-day-including-missing-dates/` (66 impr / pos 7.8). **That pull was `main`'s pre-#821 `rowLimit: 20` instrument, which sees only ~28% of impression mass, so read the fuller figure #821 measured and has since merged: 100 pages / 572 impr, whose true strengthen-next target is `/solve/running-total-cumulative-sum-in-sql/` (57 impr / pos 36.0) — not `/solve/count-rows-per-day…`, already page 1 at pos 7.8 yet recorded here as the top opportunity for weeks.** Bare (unslashed) paths carry ≥ 107 impr, each splitting signal with its slashed twin (#817's 301 landed 07-25); the `http://…streak-in-sql/` variant (7 impr / pos 10.1) still needs the zone toggle (`blocked-by-human` #6). Sitemap 116 submitted / 0 indexed. Internal links **2,970** + **14 cross-app**, 0 dead / 0 redirecting (row #18) | GSC via `scripts/gsc-pull.ts`. Impression breadth is the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 reading on a byte-identical engine ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -68,8 +68,8 @@ the step-1-exempt `scorecard.md`.
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0 failed / 9 blocked** — no product failure on any canonical flow (live prod walk 07-25, [30159902837](https://github.com/nlqdb/nlqdb/actions/runs/30159902837)); verify-flows all-green · FLOW-005 walk 6/6 · stdio 22/22. All 9 walks stop at the **428 `challenge_required`** step — Turnstile declining a headless GH-Actions client by design (`SK-ANON-012`), now scored `blocked` per `SK-STRG-010` instead of `failed`. 0 `passed` is therefore expected from CI and **not** a defect: no walk can complete the `/v1/ask` arm from a datacenter IP. Run 140's handoff fix is confirmed by progression — FLOW-002/003 previously died at step 6 (`nlqdb_draft actual=<null>`) and now reach steps 9/8 | target: **0 `failed`** ✅ — met. `blocked` is reported beside it, never folded in. A green *run* still means nothing (`SK-STRG-003` exits 0 by design): read the per-walk `FAILED`/`BLOCKED` lines `tee`d into the job log |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
-| 22 | Channels live with attributable yield | **4 live / 0 partial / blocked-by-human 5 / untried 8** — organic search + dev.to + npm + GitHub, each carrying its ledger `utm_source` on every published URL (`readme-attribution-integrity.test.ts` fails on any untagged GitHub-rendered CTA). MCP official registry published 07-22 ([`com.nlqdb/nlqdb`](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.nlqdb/nlqdb) v0.1.1, remotes-only) — Glama crawl-listed, **Smithery 0 · PulseMCP 0** (open PR #822 established neither ingests the registry). First-touch attribution live since 07-19 on both the `/v1/ask` create arm and `POST /v1/db/connect`; `source_json` non-null **0** (07-25 live). Caveat from row #19: npm is live for *discovery* and broken on *arrival* until `0.2.2` | **weekly focus: → ≥ 5 live.** Yield read from `/app/admin`, never estimated. Growth comes only from not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
-| | **Human queue** (founder-directed 2026-07-22) | depth **7**, head **idle 42 d** (Show HN, since 06-13). Open PRs **3** + 1 draft; oldest non-draft **#821 (07-25)**, oldest overall draft **#719 (07-17, 8 d)** | the founder is the one non-automatable actor, so the queue head's age is the real cycle time |
+| 22 | Channels live with attributable yield | **4 live / 5 in-flight / 4 blocked-by-human / 8 untried** (= the 21 ledger rows; re-read from the ledger footer 07-25, correcting a mix this row carried that summed to 17) — organic search + dev.to + npm + GitHub, each carrying its ledger `utm_source` on every published URL (`readme-attribution-integrity.test.ts` fails on any untagged GitHub-rendered CTA). MCP official registry published 07-22 ([`com.nlqdb/nlqdb`](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.nlqdb/nlqdb) v0.1.1, remotes-only) — Glama crawl-listed, **Smithery 0 · PulseMCP 0** (open PR #822 established neither ingests the registry). First-touch attribution live since 07-19 on both the `/v1/ask` create arm and `POST /v1/db/connect`; `source_json` non-null **0** (07-25 live). Caveat from row #19: npm is live for *discovery* and broken on *arrival* until `0.2.2` | **weekly focus: → ≥ 5 live.** Yield read from `/app/admin`, never estimated. Growth comes only from not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
+| | **Human queue** (founder-directed 2026-07-22) | depth **7**, head **idle 42 d** (Show HN, since 06-13). Open PRs **3** + 1 draft; oldest non-draft **#822 (07-25 08:41Z)**, oldest overall draft **#719 (07-17, 8 d)**. Depth moves **7 → 9** the moment #822 merges (it parks two new bullets and shifts the numbering) — re-derive it in the next run, not here, since #822 may still change | the founder is the one non-automatable actor, so the queue head's age is the real cycle time |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -103,36 +103,34 @@ information — which is how the `SK-ANON-015` handoff regression (every `/solve
 Open-questions bullet had this **decided and unbuilt**; run 142 (#823) confirmed 0 of the 9
 failures were product. This run built it (`SK-STRG-010`).
 
-**The load-bearing half is the narrowness.** `blocked` requires **428 *and*
-`challenge_required`** — `apps/api` mints that pair in exactly one place and uses 428 nowhere
-else, so a bare 428, a 401, a 429 or any 5xx all stay `fail`. `runOutcome(steps)` derives the
-verdict from the steps, so **any `fail` outranks any `blocked`**: FLOW-003's step 9 (`/llms.txt`)
-runs *after* the blocked submit, and a per-flow latch would have let a block mask it. TTFV now
-covers passing runs only, and the runner exits non-zero on `failed > 0` alone.
+**The load-bearing half is the narrowness** (mechanism in `SK-STRG-010`): `blocked` needs **428
+*and* `challenge_required`**, a pair `apps/api` mints in exactly one place, so a bare 428, a 401,
+a 429 or any 5xx stay `fail`; and `runOutcome(steps)` derives the verdict so **any `fail` outranks
+any `blocked`** — FLOW-003's step 9 runs *after* the blocked submit and a per-flow latch would
+have let a block mask it.
 
-**Verification (rule 3).** The prod re-walk above is the measurement — dispatched on this
-branch so the *changed* walker ran against the same surface from the same datacenter-IP client
-class; every line now reads `BLOCKED`, and `- failed (product): 0`. The pure functions are
-unit-tested (`test/outcome.test.ts`, +15 tests) and **negative-tested twice**: a status-only
-classifier and a `runOutcome` that lets `blocked` win each turn the suite red, naming the exact
-tests. The workflow's jq — untestable in CI — was verified against a synthesized artifact
-holding 8 blocks + 1 real step-9 failure: the table cell renders `failed (1/9)`, i.e. one
-product failure among any number of blocks still turns the walk red. A local prod walk was
-**not** possible (Chromium can't egress this container — `ERR_CONNECTION_RESET` with *and*
-without the proxy), which is why the re-measure ran in Actions.
+**Verification (rule 3).** The prod re-walk above is the measurement — dispatched on this branch
+so the *changed* walker hit the same surface from the same datacenter-IP client class; every line
+reads `BLOCKED`, `- failed (product): 0`. The pure functions are unit-tested and **negative-tested
+four ways** (status-only classifier · body-only classifier · `blocked` outranking `fail` · `skip`
+counted as a block) — each turns the suite red naming the exact tests. The workflow's jq,
+untestable in CI, was re-verified against a synthesized artifact of 8 blocks + 1 real step-9
+failure: the cell renders `failed (1/9)` and both the FAILED and BLOCKED lines print, so one
+product failure among any number of blocks still turns the walk red. A local prod walk stays
+impossible (Chromium can't egress this container — `ERR_CONNECTION_RESET` with and without the
+proxy), which is why the re-measure ran in Actions.
 
 **Other lanes.** Strangers **0**, roster byte-identical; GSC flat a 10th read (row #7). Row #15
 0.74 → **0.69** on time-decay alone. Row #13's carried `p50 ≈ 0.61 s` **did not reproduce** —
 corrected to the live 4.0 ms with the reason (cheap routes dominate the account-level
 distribution). Row #19 corrected to **1 open** on #823's live npm finding. Engine dark and fresh
 for one more day (`run_at` 07-19 = 6.4 d; trigger fires 07-26). **Gates:** `typecheck` (22 pkgs,
-0 errors) · `lint` (0 errors, 41 warnings = baseline exactly) · `biome format` clean · `test`
-(exit 0; 992 api, stranger-test **18 → 33**). Gate 3: `grep -rn '^### GLOBAL-' docs/features/`
-prints nothing. **D4:** `stranger-test/FEATURE.md` 15.7 KB (SK-STRG-010's body lives in
-`decisions/`, per the SK-STRG-003/005/009 pattern); `scorecard.md` held under **20000 B** by
-D5-trimming per-run prose from rows #1–#12, #16, #18 and the shipped-distribution URL list.
-**Step 3:** queue 2-deep (< 3) ⇒ no forced publish; no new draft (drafting is never a run's
-output on its own); dev.to drip self-throttled ⇒ no queue-line edit. **KPI (GLOBAL-025):**
+0 errors) · `lint` 0 errors / 41 warnings = baseline · `biome format` clean · `test` exit 0 (992
+api; stranger-test **18 → 34**). Gate 3: `grep -rn '^### GLOBAL-' docs/features/` prints nothing.
+**D4:** every edited doc under **20000 B** (`scorecard.md` held there by D5-trimming per-run prose
+from rows #1–#12, #16, #18 and the shipped-distribution list; `SK-STRG-010`'s body lives in
+`decisions/` per the SK-STRG-003/005/009 pattern). **Step 3:** queue 2-deep (< 3) ⇒ no forced
+publish; no new draft; dev.to drip self-throttled ⇒ no queue-line edit. **KPI (GLOBAL-025):**
 advances **UX** (the canonical-flow instrument can now report a real break instead of drowning
 it) and **onboarding** (row #21 is the onboarding path's only end-to-end observer);
 **degrades none** — no runtime code, endpoint, migration, external call or bundle changed.
