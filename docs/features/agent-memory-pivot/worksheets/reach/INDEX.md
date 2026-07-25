@@ -249,7 +249,8 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
   a real `/app/admin` `agent-artifacts` visit + the account-walled founder npm package. Binding
   constraint = crawl→rank latency + the unfired launch (`blocked-by-human` #1, idle
   **41 days**), not agent work or registry presence. Padding the queue with lower-fit
-  channel-#20 payloads (a stage-2 moment, not the stage-0/1 felt-need) is busywork, so skipped.
+  integration-marketplace payloads (channel #20 — a stage-2 moment, not the stage-0/1
+  felt-need) is busywork, so skipped.
 - GSC intent-query clicks (28d, live re-pull 2026-07-24, window 06-24→07-22): **0** — total
   6 clicks / 496 impr / pos 17.5, **byte-identical to the prior read** (all clicks from
   non-intent pages: hall-of-fame, `/`, `/architecture`, `count-rows-per-day` solve). `/agents`
