@@ -34,9 +34,10 @@ real strangers from 0; its age is the company's real cycle time (rule: human-que
 **Run 137 is a null run** — no agent-movable lever cleared the step-2 bar in any lane (full finding in
 "Last change" below); ships only this step-1 update. **Rule 6 clean** (CI + Security + Release-npm
 `success` on `main` `a60bf5b` — verified live this run; latest `deploy-api` `success` on the last code
-SHA `c3f0647`; runs 129–136 docs-only, no deploy). **Step 0:** 4 other open PRs — #719 (draft
-Infisical; oldest — 7 days, opened 07-17), #814 (reach `INDEX.md`), #815 (run 138, `scorecard.md`),
-#816 (deps); this run writes only `scorecard.md` — step-1 exempt, and #815 is its only overlap.
+SHA `c3f0647`; runs 129–136 docs-only, no deploy). **Step 0** (as of this run — later merges don't
+backdate it): 3 other PRs open — #719 (draft Infisical; oldest — 7 days, opened 07-17), #814 (reach
+`INDEX.md`), #815 (run 138, `scorecard.md`); this run writes only `scorecard.md` — step-1 exempt,
+and #815 is its only overlap.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
