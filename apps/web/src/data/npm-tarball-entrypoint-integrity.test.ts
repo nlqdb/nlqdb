@@ -6,7 +6,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 // @ts-expect-error — plain .mjs helper, no type declarations.
 import {
-  BACKUP_SUFFIX,
+  BACKUP_FILE,
   effectivePublishedManifest,
 } from "../../../../scripts/apply-publish-config.mjs";
 
@@ -50,10 +50,12 @@ function normalize(path: string): string {
 function entrypoints(manifest: Manifest): string[] {
   const found: string[] = [];
   const walk = (value: unknown): void => {
+    // Every string here is a path into the tarball — `exports` targets must be
+    // relative per the spec, and `bin`/`browser` paths are relative with or
+    // without a `./` prefix. Requiring the prefix let `bin: {x: "bin/x.js"}`
+    // past the guard unchecked.
     if (typeof value === "string") {
-      // Bare package names in an `exports` target (rare, but legal) are not
-      // file paths — only relative specifiers are packed from this tarball.
-      if (value.startsWith(".")) found.push(normalize(value));
+      found.push(normalize(value));
       return;
     }
     if (Array.isArray(value)) {
@@ -203,14 +205,23 @@ describe("npm tarball entrypoint integrity (GLOBAL-001)", () => {
       run("--restore");
       expect(readFileSync(manifestPath, "utf8")).toBe(original);
 
-      // The backup must carry a suffix npm ignores unconditionally, or a package
-      // publishing without a `files` allowlist would ship it. `.orig` is on that
-      // list — verified with `npm pack --dry-run`; re-verify before changing it.
-      expect(BACKUP_SUFFIX).toBe(".orig");
+      // A `package.json.orig` (what `git mergetool` leaves behind) is not our
+      // backup, so it must never be restored over the manifest.
+      writeFileSync(join(dir, "package.json.orig"), '{"name":"stray"}\n');
       run();
-      expect(strays()).toEqual([`package.json${BACKUP_SUFFIX}`]);
       run("--restore");
-      expect(existsSync(join(dir, `package.json${BACKUP_SUFFIX}`))).toBe(false);
+      expect(readFileSync(manifestPath, "utf8")).toBe(original);
+      rmSync(join(dir, "package.json.orig"));
+
+      // The backup name must be one npm ignores unconditionally, or a package
+      // publishing without a `files` allowlist would ship it — and one no other
+      // tool writes, given the line above. `._*` is on npm's list (verified with
+      // `npm pack --dry-run`); `*.orig` is too, but is not ours alone.
+      expect(BACKUP_FILE).toBe("._package.json.prepack");
+      run();
+      expect(strays()).toEqual([BACKUP_FILE]);
+      run("--restore");
+      expect(existsSync(join(dir, BACKUP_FILE))).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

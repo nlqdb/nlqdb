@@ -23,17 +23,26 @@
 // `npm-tarball-entrypoint-integrity.test.ts` pins both the transform and this
 // script's apply/restore round trip.
 
-import { copyFileSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import {
+  copyFileSync,
+  existsSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
 
 // npm's *own* config keys inside publishConfig. Everything else is a
 // package.json field override — pnpm's semantics, which we implement here.
 const NPM_CONFIG_KEYS = new Set(["access", "provenance", "registry", "tag"]);
 
-// `*.orig` is on npm's unconditional ignore list, so the backup can never reach
-// a tarball even in a package that publishes without a `files` allowlist.
-const BACKUP_SUFFIX = ".orig";
+// `._*` is on npm's unconditional ignore list, so the backup can never reach a
+// tarball even from a package that publishes without a `files` allowlist. Also
+// a name nothing else writes, so its presence always means *our* interrupted
+// pack — `*.orig` is equally unpackable but is what `git mergetool` and
+// `patch` leave behind, and restoring a stranger's copy overwrites the manifest.
+const BACKUP_FILE = "._package.json.prepack";
 
 /**
  * Splits a `publishConfig` block into the npm config keys npm honours itself
@@ -64,7 +73,7 @@ export function effectivePublishedManifest(manifest) {
 function main() {
   const restore = process.argv.includes("--restore");
   const manifestPath = join(process.cwd(), "package.json");
-  const backupPath = manifestPath + BACKUP_SUFFIX;
+  const backupPath = join(process.cwd(), BACKUP_FILE);
 
   // A backup on disk means an earlier pack was interrupted before `postpack`,
   // so the manifest in place is the rewritten one and the backup is the only
@@ -94,9 +103,10 @@ function main() {
 }
 
 // Act only when invoked as the script — the integrity guard imports the pure
-// helpers. Compared by resolved path, not filename, so renaming this file can
-// never turn `prepack` into a silent no-op that ships a broken tarball.
-if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+// helpers. Compared by real path, not filename, so neither renaming this file
+// nor reaching it through a symlink (`argv[1]` keeps the link, `import.meta`
+// resolves it) can turn `prepack` into a no-op that ships a broken tarball.
+if (process.argv[1] && realpathSync(process.argv[1]) === import.meta.filename) {
   try {
     main();
   } catch (err) {
@@ -105,4 +115,4 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
   }
 }
 
-export { BACKUP_SUFFIX };
+export { BACKUP_FILE };
