@@ -34,8 +34,8 @@ GLOBAL-039 zone toggle (#6, lowest rank — internal-integrity yield).
 **Rule 6 clean** (CI + Security + Release-npm `success` on `main` `a60bf5b` — 07-24 18:12Z; latest
 `deploy-api` `success` on the last code SHA `c3f0647`; runs 129–137 docs-only, no deploy). **Step 0:**
 open PRs #813 (run 137 null, `scorecard.md` — step-1 exempt), #814 (reach null, reach INDEX), #719
-(draft Infisical); run 138 touches `tests/e2e/mcp`, `ci.yml`, the e2e-coverage FEATURE, the
-distribution queue and `scorecard.md` — no overlap with #813/#814 beyond the step-1-exempt scorecard.
+(draft Infisical); run 138 touches `tests/e2e/mcp`, `ci.yml`, `README.md`, the e2e-coverage FEATURE,
+the distribution queue and `scorecard.md` — no overlap with #813/#814 beyond the step-1-exempt scorecard.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -58,7 +58,7 @@ distribution queue and `scorecard.md` — no overlap with #813/#814 beyond the s
 | 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms this window; `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.50** (07-24 run 138, all four suites dispatched + recomputed from live run history). Per suite `pass × freshness`: **sdk 1.0** ([30130254208](https://github.com/nlqdb/nlqdb/actions/runs/30130254208) 07-24 ✅) · **examples 1.0** ([30130272149](https://github.com/nlqdb/nlqdb/actions/runs/30130272149) 07-24 ✅) · **mcp 0** ([30130270721](https://github.com/nlqdb/nlqdb/actions/runs/30130270721) 07-24 ❌ — `tsc` error, **not a product break**: the suite has died in typecheck since 07-13, so it compiled and ran **zero** tests for 11 days; fixed + verified green this run on branch [30130543841](https://github.com/nlqdb/nlqdb/actions/runs/30130543841) 4/4, returns to 1.0 on the first post-merge `main` dispatch) · **opencheck 0** ([30130304331](https://github.com/nlqdb/nlqdb/actions/runs/30130304331) 07-24 ❌ Suite A 1/5 — all 4 failures are `TEST_FAILED: rate-limit error` on the **agent** lane after a green pre-flight, i.e. the documented NVIDIA-free-tier saturation flake, not a funnel defect). **Prior reading was wrong, not just stale:** the "sdk/mcp/examples ≈1.0" cell implied ≈0.75 while every suite's last `main` success was 07-13 (11 d) or 07-17 (7 d) ⇒ true value **0.00** | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md`. Compile-rot can no longer hide between dispatches — `ci.yml`'s `typecheck-e2e` matrix `tsc`s the three out-of-workspace suites on every PR (execution stays dispatch-only per `SK-E2E-004`) |
+| 15 | E2E manual-suite freshness | **0.50** (07-24 run 138, all four suites dispatched + recomputed from live run history). Per suite `pass × freshness`: **sdk 1.0** ([30130254208](https://github.com/nlqdb/nlqdb/actions/runs/30130254208) 07-24 ✅) · **examples 1.0** ([30130272149](https://github.com/nlqdb/nlqdb/actions/runs/30130272149) 07-24 ✅) · **mcp 0** ([30130270721](https://github.com/nlqdb/nlqdb/actions/runs/30130270721) 07-24 ❌ — `tsc` error, **not a product break**: the suite has died in typecheck since 07-13, so it compiled and ran **zero** tests for 11 days; fixed + verified green this run on branch [30130543841](https://github.com/nlqdb/nlqdb/actions/runs/30130543841) 4/4, returns to 1.0 on the first post-merge `main` dispatch) · **opencheck 0** ([30130304331](https://github.com/nlqdb/nlqdb/actions/runs/30130304331) 07-24 ❌ Suite A 1/5 — all 4 failures are `TEST_FAILED: rate-limit error` on the **agent** lane after a green pre-flight, i.e. the documented NVIDIA-free-tier saturation flake, not a funnel defect). **Prior reading was wrong, not just stale:** the "sdk/mcp/examples ≈1.0" cell implied ≈0.75 while every suite's last `main` success was 07-13 (11 d) or 07-17 (7 d) ⇒ true value **0.00** | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md`. Compile-rot can no longer hide between dispatches — `ci.yml`'s `typecheck-e2e` job `tsc`s the three out-of-workspace suites on every PR (execution stays dispatch-only per `SK-E2E-004`) |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.542, 07-19 post-revert, flat vs baseline — the run-90 regression is cleared); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **8** (re-verified 07-24 run 137, same pinned grep — unchanged since run 130's 12 → 8) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
@@ -101,7 +101,7 @@ The mcp ❌ is the real find: `tests/e2e/mcp` has died in `tsc` on **every** dis
 looking merely "not recently dispatched". Fixed the stub (verified green on branch,
 [30130543841](https://github.com/nlqdb/nlqdb/actions/runs/30130543841), 4/4) and closed the structural
 hole: `tests/e2e/{sdk,mcp,examples}` live outside the root workspace, so root `bun run typecheck` never
-covered them — `ci.yml` now has a compile-only `typecheck-e2e` matrix. `SK-E2E-004` is unchanged and
+covered them — `ci.yml` now has a compile-only `typecheck-e2e` job. `SK-E2E-004` is unchanged and
 gains one clarifying clause: dispatch-only bounds *execution*, not compilation ($0, no secrets, no Neon
 branch). Row #15 returns to 0.75 on the first post-merge `main` dispatch.
 
@@ -114,8 +114,9 @@ tests died on `TEST_FAILED: rate-limit error` from the NVIDIA free agent lane �
 run-106 queue line updated); GSC re-pulled live, byte-flat 7th read (6 clicks / 496 impr / pos 17.5),
 strangers re-read live = 0. Engine dark + fresh (07-19). Queue 2-deep (< 3) ⇒ no forced publish; no new
 draft (`distribution-queue.md` is at the D4 cap and drafting is optional).
-**Gates:** `bun run typecheck && lint && test` green locally; **D4:** scorecard net-shrank 20154 → 20140 B by compressing row #22's accumulated per-run changelog (D5), e2e-coverage FEATURE and the
-distribution queue each net-shrunk. **KPI (GLOBAL-025):** advances **engine quality**'s verification
+**Gates:** `bun run typecheck && lint && test` green locally; **D4:** the scorecard net-shrank (row
+#22's accumulated per-run changelog compressed per D5), as did the e2e-coverage FEATURE and the
+distribution queue. **KPI (GLOBAL-025):** advances **engine quality**'s verification
 floor + **UX** (the MCP surface is tested again, not silently untested); **degrades none**.
 
 _(Single-entry by design — per-run history lives in `git log` +

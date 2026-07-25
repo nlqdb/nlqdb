@@ -2,19 +2,19 @@
 
 Drafts queued per [`/daily`](../../.claude/commands/daily.md) step 3
 (drafting is optional, founder-resolved 2026-07-11); publishing is autonomous
-(`SK-BLOG-001`, founder-resolved 2026-07-01). A published entry survives here
-as a venue pointer. The **dev.to** variant is drained
-autonomously by the daily loop via `scripts/syndicate-devto.ts` (one/day,
-`SK-BLOG-003`); Reddit/HN/lobste.rs pointers stay for human posting (platform
+(`SK-BLOG-001`). A published entry survives here as a venue pointer. The
+**dev.to** variant is drained autonomously by the daily loop via
+`scripts/syndicate-devto.ts` (one/day, `SK-BLOG-003`); Reddit/HN/lobste.rs
+pointers stay for human posting (platform
 norms forbid unattended submission). **For those human-posted venues, agents
 deliver a fact sheet only (numbers, code, links) — never final copy.** Verbatim
 agent prose was flagged as "ChatGPT copy-paste" and downvoted on r/SQL
 (2026-07-16); the founder writes the post in their own voice
 ([lesson](../history/reddit-ai-voice-rejection.md)).
 
-**Retention (D4, 20 KB cap):** keep the most recent full draft(s) inline;
-older ones collapse to a one-line title + venue +
-gist (full body in git history). Earliest drafts: [archive](./distribution-queue-archive.md).
+**Retention (D4, 20 KB cap):** keep as many of the newest full drafts inline as
+fit under the cap; older ones collapse to a one-line title + venue + gist (full
+body in git history). Earliest drafts: [archive](./distribution-queue-archive.md).
 
 ## Drafts — unpublished, newest first
 
