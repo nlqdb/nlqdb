@@ -4,6 +4,7 @@
 import type { Browser } from "@playwright/test";
 
 import { landedGoal, openSession, step, withDeadline } from "../browser.ts";
+import { classifyAsk, runOutcome } from "../outcome.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
 // Pinned literal mirror of `apps/web/src/data/competitors.ts` — drift fails
@@ -63,6 +64,9 @@ async function doWalk(
   const steps: StepResult[] = [];
   const startedAt = Date.now();
   let ttfvMs: number | null = null;
+  // Local stop-walking latch: set by a failed *or* blocked step, since
+  // neither leaves the later steps observable. The emitted verdict is
+  // runOutcome(steps) — this variable only gates the skips.
   let failedStep: number | null = null;
 
   try {
@@ -202,20 +206,22 @@ async function doWalk(
         );
         failedStep = 8;
       } else {
-        ttfvMs = Date.now() - t0;
         const status = askResp.status();
         const body = await askResp.text().catch(() => "");
+        const outcome = classifyAsk(status, body);
+        // Only a real answer is time-to-first-value.
+        if (outcome === "ok") ttfvMs = Date.now() - t0;
         steps.push(
           step(
             8,
             "submit → /v1/ask 200 + table within 60 s",
-            status === 200 ? "ok" : "fail",
-            status === 200
+            outcome,
+            outcome === "ok"
               ? `status=200 ttfvMs=${ttfvMs}`
-              : `status=${status} ttfvMs=${ttfvMs} body=${body.slice(0, 120)}`,
+              : `status=${status} dt=${Date.now() - t0} body=${body.slice(0, 120)}`,
           ),
         );
-        if (status !== 200) failedStep = 8;
+        if (outcome !== "ok") failedStep = 8;
       }
     } else {
       steps.push(
@@ -260,8 +266,9 @@ async function doWalk(
   const durationMs = Date.now() - startedAt;
   return {
     prompt: slug,
-    state: failedStep === null ? "passed" : "failed",
-    failedStep,
+    // Step 9 (/llms.txt) runs even when step 8 is blocked, so the verdict is
+    // derived from every step: a real failure there outranks the block.
+    ...runOutcome(steps),
     ttfvMs,
     durationMs,
     steps,

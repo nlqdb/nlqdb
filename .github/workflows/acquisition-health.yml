@@ -157,7 +157,10 @@ jobs:
           flow005stdio_state="$([ -f "$flow005stdio" ] && jq -r '.state // "missing"' "$flow005stdio" || echo "missing")"
           walk_state="missing"
           if [ -f "$walk" ]; then
-            walk_state="$(jq -r 'if .summary.failed > 0 then "failed (\(.summary.failed)/\(.summary.totalRuns))" else "passed (\(.summary.passed)/\(.summary.totalRuns))" end' "$walk")"
+            # SK-STRG-010: a blocked-only walk is not a red walk. Report the
+            # three counts distinctly — collapsing blocked into failed is what
+            # made scorecard row #21 read as permanently broken.
+            walk_state="$(jq -r 'if .summary.failed > 0 then "failed (\(.summary.failed)/\(.summary.totalRuns))" elif .summary.blocked > 0 then "blocked (\(.summary.blocked)/\(.summary.totalRuns), 0 failed)" else "passed (\(.summary.passed)/\(.summary.totalRuns))" end' "$walk")"
           fi
           vf_state="$([ "${{ steps.verify-flows.outputs.exit_code || '1' }}" = "0" ] && echo "passed" || echo "failed")"
           {
@@ -202,16 +205,19 @@ jobs:
               jq -r '
                 "- total walks: " + (.summary.totalRuns | tostring),
                 "- passed: " + (.summary.passed | tostring),
-                "- failed: " + (.summary.failed | tostring),
-                "- ttfv p50 ms: " + (.summary.ttfvP50Ms // 0 | tostring),
-                "- ttfv p95 ms: " + (.summary.ttfvP95Ms // 0 | tostring)
+                "- failed (product): " + (.summary.failed | tostring),
+                "- blocked (instrument refused): " + (.summary.blocked | tostring),
+                "- ttfv p50 ms (passing walks only): " + (.summary.ttfvP50Ms // "n/a" | tostring),
+                "- ttfv p95 ms (passing walks only): " + (.summary.ttfvP95Ms // "n/a" | tostring)
               ' "$walk" || true
-              # Name every failing walk and each of its failing steps. Without
-              # this a red walk is only a count, and diagnosing it costs a re-run.
+              # Name every non-passing walk and the step that stopped it, tagged
+              # FAILED vs BLOCKED. Without this a red walk is only a count, and
+              # diagnosing it costs a re-run.
               jq -r '
                 .flows[] as $f | $f.runs[] | select(.state != "passed") |
-                "- FAILED \($f.id) (\($f.persona)) prompt=\"\(.prompt)\" step=\(.failedStep // "n/a")"
-                  + ((.steps[] | select(.status == "fail") | " — \(.description)"
+                "- \(.state | ascii_upcase) \($f.id) (\($f.persona)) prompt=\"\(.prompt)\""
+                  + ((.steps[] | select(.status == "fail" or .status == "blocked")
+                      | " step=\(.step) — \(.description)"
                       + (if .detail then ": \(.detail)" else "" end)) // "")
               ' "$walk" || true
             fi

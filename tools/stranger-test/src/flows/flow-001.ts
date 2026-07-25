@@ -4,6 +4,7 @@
 import type { Browser } from "@playwright/test";
 
 import { openSession, step, withDeadline } from "../browser.ts";
+import { classifyAsk, runOutcome } from "../outcome.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
 const HERO_PLACEHOLDER_RE = /orders|tracker|building/i;
@@ -49,6 +50,9 @@ async function doWalk(
   const steps: StepResult[] = [];
   const startedAt = Date.now();
   let ttfvMs: number | null = null;
+  // Local stop-walking latch: set by a failed *or* blocked step, since
+  // neither leaves the later steps observable. The emitted verdict is
+  // runOutcome(steps) — this variable only gates the skips.
   let failedStep: number | null = null;
 
   try {
@@ -185,27 +189,28 @@ async function doWalk(
         );
         failedStep = 5;
       } else {
-        ttfvMs = Date.now() - t0;
         const status = askResp.status();
-        if (status === 200) {
-          steps.push(
-            step(5, "/v1/ask 200 + result table within 60 s", "ok", `status=200 ttfvMs=${ttfvMs}`),
-          );
+        const body = status === 200 ? "" : await askResp.text().catch(() => "");
+        const outcome = classifyAsk(status, body);
+        // Only a real answer is time-to-first-value.
+        if (outcome === "ok") ttfvMs = Date.now() - t0;
+        steps.push(
+          step(
+            5,
+            "/v1/ask 200 + result table within 60 s",
+            outcome,
+            outcome === "ok"
+              ? `status=200 ttfvMs=${ttfvMs}`
+              : `status=${status} dt=${Date.now() - t0} body=${body.slice(0, 120)}`,
+          ),
+        );
+        if (outcome === "ok") {
           await page
             .locator("nlq-data, table")
             .first()
             .waitFor({ state: "visible", timeout: 10_000 })
             .catch(() => {});
         } else {
-          const body = await askResp.text().catch(() => "");
-          steps.push(
-            step(
-              5,
-              "/v1/ask 200 + result table within 60 s",
-              "fail",
-              `status=${status} ttfvMs=${ttfvMs} body=${body.slice(0, 120)}`,
-            ),
-          );
           failedStep = 5;
         }
       }
@@ -386,11 +391,9 @@ async function doWalk(
   }
 
   const durationMs = Date.now() - startedAt;
-  const state: FlowRun["state"] = failedStep === null ? "passed" : "failed";
   return {
     prompt,
-    state,
-    failedStep,
+    ...runOutcome(steps),
     ttfvMs,
     durationMs,
     steps,

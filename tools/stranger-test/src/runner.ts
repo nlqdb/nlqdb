@@ -5,8 +5,10 @@
 //   bun src/runner.ts [--base-url URL] [--flows flow-001,flow-002,flow-003]
 //                     [--prompts N] [--out path.json] [--quiet]
 //
-// Exits 0 when every walked run passed; non-zero with a one-line summary
-// otherwise, so an agent can cron it without parsing JSON.
+// Exits 0 when no walked run *failed* — blocked runs (SK-STRG-010: the
+// instrument was refused, not the product) do not turn the walk red. The
+// one-line summary carries passed / failed / blocked so an agent can cron it
+// without parsing JSON.
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -68,13 +70,15 @@ function parseCliArgs(): Args {
 }
 
 function summarise(id: FlowId, persona: PersonaId, runs: FlowRun[]): FlowResult {
-  let passed = 0;
-  let failed = 0;
-  for (const r of runs) {
-    if (r.state === "passed") passed++;
-    else failed++;
-  }
-  return { id, persona, runs, passed, failed };
+  const count = (s: FlowRun["state"]) => runs.filter((r) => r.state === s).length;
+  return {
+    id,
+    persona,
+    runs,
+    passed: count("passed"),
+    failed: count("failed"),
+    blocked: count("blocked"),
+  };
 }
 
 async function runFlow001(args: Args, browser: Browser): Promise<FlowResult> {
@@ -148,9 +152,13 @@ export async function main(): Promise<number> {
   const finishedAt = new Date().toISOString();
 
   const allRuns = flows.flatMap((f) => f.runs);
-  const ttfvs = allRuns.map((r) => r.ttfvMs).filter((v): v is number => v !== null);
+  const ttfvs = allRuns
+    .filter((r) => r.state === "passed")
+    .map((r) => r.ttfvMs)
+    .filter((v): v is number => v !== null);
   const passed = allRuns.filter((r) => r.state === "passed").length;
   const failed = allRuns.filter((r) => r.state === "failed").length;
+  const blocked = allRuns.filter((r) => r.state === "blocked").length;
 
   const result: WalkResult = {
     baseUrl: args.baseUrl,
@@ -162,6 +170,7 @@ export async function main(): Promise<number> {
       totalRuns: allRuns.length,
       passed,
       failed,
+      blocked,
       ttfvP50Ms: percentile(ttfvs, 50),
       ttfvP95Ms: percentile(ttfvs, 95),
     },
@@ -178,11 +187,14 @@ export async function main(): Promise<number> {
 
   if (!args.quiet) {
     console.info(
-      `\n  → ${passed}/${allRuns.length} passed (failed=${failed}) ` +
+      `\n  → ${passed}/${allRuns.length} passed (failed=${failed} blocked=${blocked}) ` +
         `ttfv p50=${result.summary.ttfvP50Ms ?? "—"}ms p95=${result.summary.ttfvP95Ms ?? "—"}ms ` +
         `wall=${durationMs}ms`,
     );
   }
+  // Only product failures are red (SK-STRG-010). A blocked-only walk exits 0:
+  // it reports nothing wrong with the product, and treating it as red is what
+  // made row #21 permanently unreadable.
   return failed > 0 ? 1 : 0;
 }
 
