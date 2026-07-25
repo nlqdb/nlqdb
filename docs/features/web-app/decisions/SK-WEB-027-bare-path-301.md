@@ -34,8 +34,12 @@
   directory (`apps/api/wrangler.toml` `[assets] directory = "../web/dist"`,
   `SK-AUTH-016`), so every rule ships there too — and on that host `/app|/auth|
   /oauth` are the app's own routes that `SK-WEB-026` bars from the map and
-  `SK-AUTH-016` reserves from server-side redirects. All three are `noindex`, so
-  the exclusion costs no indexable yield: **115** rules for 126 built pages.
+  `SK-AUTH-016` reserves from server-side redirects. The exclusion costs no
+  indexable yield: none of the three is in `sitemap.xml`, `/auth/*` is
+  `noindex`, and on the canonical host bare `/app*` never reaches the asset
+  router at all (`apps/web/wrangler.toml` `run_worker_first = ["/app",
+  "/app/*"]` → `worker.ts` 301s it to `app.nlqdb.com`). **115** rules for 126
+  built pages.
   `canonicalRedirectRules()` is pure and unit-tested
   (`canonical-redirects.test.ts`: permanent code, root skipped, no rule under an
   excluded prefix, no file shadowed, ceiling enforced). Those cases only bind
@@ -59,7 +63,7 @@
     with a 307; the status code is not configurable, which is the whole defect.
   - **`run_worker_first = ["/*"]`** to redirect in the worker — already rejected
     by `GLOBAL-039` for charging a worker invocation on every marketing request.
-  - **A dynamic splat rule** (`/:path` → `/:path/`) — one line instead of 120,
+  - **A dynamic splat rule** (`/:path` → `/:path/`) — one line instead of 115,
     but it also matches asset paths and the slashed forms, risking a redirect
     loop on the whole surface to save a generated file.
   - **Leaving it to `rel=canonical`** — already present on every page and

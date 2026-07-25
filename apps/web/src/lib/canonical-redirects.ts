@@ -19,8 +19,8 @@ export const MAX_STATIC_RULES = 2000;
 /** Prefixes no rule may cover. This build also ships to the merged app host
  *  (`apps/api/wrangler.toml` `[assets] directory = "../web/dist"`), where these
  *  are the app's own routes: `SK-WEB-026` bars the map from `/app|/auth|/oauth`
- *  and `SK-AUTH-016` reserves `/auth/*` from any server-side redirect. All three
- *  are `noindex`, so excluding them costs no indexable yield. */
+ *  and `SK-AUTH-016` reserves `/auth/*` from any server-side redirect. None is in
+ *  `sitemap.xml`, so excluding them costs no indexable yield. */
 const EXCLUDED_PREFIXES = ["/app", "/auth", "/oauth"];
 
 const isExcluded = (p: string) =>
