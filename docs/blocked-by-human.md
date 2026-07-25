@@ -130,16 +130,19 @@ is the company's real cycle time.
    marketing + docs.nlqdb.com answer `http://` 200 until the zone toggle;
    `rel=canonical` keeps the SEO harm small). Agent-blocked: the CF API token
    is Workers/DNS/D1-scoped and gets auth errors on zone settings
-   (re-verified 2026-07-22). Lowest rank: internal-integrity yield, no
+   (re-verified 2026-07-22). Low rank: internal-integrity yield, no
    user-facing surface.
 
 7. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
    (repo → Settings → Branches → `main`). PR #816 merged with **zero approving
    reviews and no gate**, so nothing currently blocks a merge on red CI — an
    agent session can't read or set branch protection, so this can only be
-   confirmed by a human. Add at least `CI` and the new
-   `tests/e2e/* (typecheck — out-of-workspace suites)` (#815) to the required
-   list. Without it that backstop can go red and still merge, which is the exact
+   confirmed by a human. The required list matches individual check-run names,
+   not the workflow name `CI` — select the `CI` workflow's job checks
+   (`Go (gofumpt + vet + golangci-lint + test)`, `Biome (JS/TS/JSON/CSS)`,
+   `apps/api (typecheck + vitest + wrangler dry-run)`, …) plus the new
+   `tests/e2e/* (typecheck — out-of-workspace suites)` (#815). Without it that
+   backstop can go red and still merge, which is the exact
    silent-failure mode #815 exists to close — it caught `tests/e2e/mcp`
    compiling zero tests for 11 days. Lowest rank: internal integrity, no
    user-facing surface.
