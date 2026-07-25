@@ -35,21 +35,31 @@ Status:
   must never reach a published `dependencies`.
   Only the bootstrap publish below is left, and it is maintainer-only;
   the founder command is queued as
-  [`blocked-by-human.md`](../docs/blocked-by-human.md) bullet 2. Un-gate
-  (drop `private`, add the `release-npm.yml` build step, configure the
-  Trusted Publisher) in the PR that follows the publish, not before — a
-  non-private package whose version is not yet on npm makes
-  `changeset publish` fail the whole release job. That same PR owes the
+  [`blocked-by-human.md`](../docs/blocked-by-human.md) bullet 2. Un-gate in
+  the follow-up PR, per the ordered list below. That PR owes the
   `prepack` rewrite below: only the `bin` surface is reachable today, because
   npm force-packs the `main` file (`src/index.ts`) *without* its imports, so
   `import "@nlqdb/mcp"` from the tarball would throw. Nothing advertises that
   import, which is why it can wait for the un-gate — not longer.
 - Everything else in `packages/*` — still gated.
 
-To un-gate a new package:
+To un-gate a new package, **in this order** — the repo change comes last,
+because OIDC cannot create a package's first version (see below), so a
+non-private package whose version is not yet on npm makes `changeset publish`
+fail the whole release job:
 
 1. Add a `build` script (tsup) that emits `dist/index.js` + `dist/index.d.ts`.
-2. Drop `"private": true` and add the publish metadata (workspace dev
+2. **Verify the tarball**, since none of this fails at build time: `npm pack`
+   (works while the package is still private), install the `.tgz` into an empty
+   dir **outside the monorepo** — inside it Bun resolves the workspace copy and
+   the test proves nothing — then `node -e "import('<pkg>')"`, or for a `bin`
+   run it under **both** node and bun, which resolve the package differently.
+3. Bootstrap-publish by hand, deleting `private` in the working tree only —
+   the founder paste in
+   [`blocked-by-human.md`](../docs/blocked-by-human.md) is the canonical form.
+4. *Then*, in the follow-up PR: add a `bun run --filter='@nlqdb/<name>' build`
+   step to `release-npm.yml` before the changesets action, and drop
+   `"private": true` plus the publish metadata (workspace dev
    keeps reading `src/` via the top-level `main`/`exports`):
    ```json
    {
@@ -83,13 +93,8 @@ To un-gate a new package:
    > `"sideEffects": false` to a package whose entry is a pure re-export barrel
    > built by `bun build`: the bundler shakes it down to a stub that still
    > *builds* clean and then fails to load.
-3. Add a `bun run --filter='@nlqdb/<name>' build` step to
-   `release-npm.yml` before the changesets action.
-4. **Verify the tarball before publishing**, since none of the above fails at
-   build time: `npm pack`, install the `.tgz` into an empty dir, and
-   `node -e "import('<pkg>')"` — or, for a `bin`, run it under **both** node
-   and bun, which resolve the package differently.
-5. Configure Trusted Publishing on the package (see below).
+5. Configure Trusted Publishing on the package (see below) — npmjs.com web
+   console, so a human, not the PR.
 
 ## Authentication: Trusted Publishing (OIDC)
 
@@ -99,9 +104,10 @@ OIDC token (`id-token: write`) and npm verifies the claim against the
 configured GitHub repo + workflow. No long-lived secret in CI; npm
 auto-attaches SLSA v1 provenance on OIDC publishes.
 
-**Chicken-and-egg (one-time per new package):** Trusted Publishers
-can only be configured on a package that **already exists** on npm.
-Publish the first version manually from a maintainer machine
+**Chicken-and-egg (one-time per new package):** OIDC cannot create a package's
+first version ([npm/cli#8544](https://github.com/npm/cli/issues/8544)), and
+Trusted Publishers can only be configured on a package that **already exists**
+on npm. So publish the first version manually from a maintainer machine
 (`npx --yes -p npm@latest -- npm publish --no-provenance --access public`)
 with the user's npm session (`npm login --auth-type=web`), then
 configure the Trusted Publisher fields below. The next CI publish
