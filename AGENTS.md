@@ -227,6 +227,13 @@ bun run --filter apps/api build && wrangler deploy --dry-run --outdir=/tmp/out
 
 Per-package commands are in each area's `AGENTS.md`.
 
+Working inside a checkout nested under `.claude/` (agent worktrees live at
+`.claude/worktrees/<id>`)? `bun run lint` and `bun run format` match
+`biome.json`'s `!**/.claude` against the ancestor path and process **zero**
+files — `Checked 0 files`, exit 1. Pass explicit paths (`biome check
+scripts/foo.ts`) to get real signal; CI checks out normally and is unaffected.
+Repo lint baseline: 41 warnings, 0 errors across 680 files.
+
 ## 8. Quality gates before opening a PR
 
 > **Format and lint before every commit.**
