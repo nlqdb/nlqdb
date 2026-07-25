@@ -207,7 +207,7 @@
       "name": "@nlqdb/mcp",
       "version": "0.1.0",
       "bin": {
-        "nlqdb-mcp": "./bin/nlqdb-mcp.mjs",
+        "nlqdb-mcp": "bin/nlqdb-mcp.mjs",
       },
       "dependencies": {
         "@modelcontextprotocol/sdk": "1.29.0",

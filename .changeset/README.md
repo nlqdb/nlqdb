@@ -39,7 +39,11 @@ Status:
   (drop `private`, add the `release-npm.yml` build step, configure the
   Trusted Publisher) in the PR that follows the publish, not before — a
   non-private package whose version is not yet on npm makes
-  `changeset publish` fail the whole release job.
+  `changeset publish` fail the whole release job. That same PR owes the
+  `prepack` rewrite below: only the `bin` surface is reachable today, because
+  npm force-packs the `main` file (`src/index.ts`) *without* its imports, so
+  `import "@nlqdb/mcp"` from the tarball would throw. Nothing advertises that
+  import, which is why it can wait for the un-gate — not longer.
 - Everything else in `packages/*` — still gated.
 
 To un-gate a new package:

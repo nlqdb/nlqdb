@@ -47,9 +47,10 @@ is the company's real cycle time.
    `tools/list` with all five tools under both node and bun — so this is one paste:
    ```bash
    cd packages/mcp
+   npm login --auth-type=web     # once, if not already signed in — do it first,
+                                 # so an aborted login can't leave the gate open
    npm pkg delete private        # publish gate; reverted on the last line
    bun run build                 # emits dist/ (~25 KB, @nlqdb/sdk bundled in)
-   npm login --auth-type=web     # once, if not already signed in
    npx --yes -p npm@latest -- npm publish --no-provenance --access public
    git checkout package.json     # leave the repo gated — an agent PR un-gates it
    ```

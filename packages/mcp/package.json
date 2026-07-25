@@ -32,7 +32,7 @@
     ".": "./src/index.ts"
   },
   "bin": {
-    "nlqdb-mcp": "./bin/nlqdb-mcp.mjs"
+    "nlqdb-mcp": "bin/nlqdb-mcp.mjs"
   },
   "files": [
     "bin",
