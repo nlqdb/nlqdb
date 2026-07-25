@@ -1,6 +1,6 @@
 ---
 title: Give your agent memory — one command
-description: Connect any MCP host (Claude Code, Cursor, Codex, Claude Desktop) to nlqdb and give your agent a real database it can query in English as memory. Machine-followable — a coding agent runs every step except one browser-OAuth approval.
+description: Connect any MCP host (Claude Code, Cursor, Codex, Claude Desktop) to nlqdb and give your agent a real database it can query in English as memory. Machine-followable on every file-configured host — a coding agent runs each step except one browser-OAuth approval.
 ---
 
 import { Steps, Aside } from "@astrojs/starlight/components";
@@ -21,7 +21,8 @@ approve it** — then run the Step 4 verification query yourself.
 ## Step 1 — Connect the server
 
 The hosted server lives at `https://mcp.nlqdb.com/mcp` (the protocol is at
-`/mcp`, not the bare domain). Run the one block for your host.
+`/mcp`, not the bare domain). Follow the one step for your host — each
+host's key names differ, so copy its own block, not a neighbour's.
 
 <Steps>
 
@@ -39,22 +40,32 @@ The hosted server lives at `https://mcp.nlqdb.com/mcp` (the protocol is at
    url = "https://mcp.nlqdb.com/mcp"
    ```
 
-3. **Claude Desktop, Windsurf, Zed** — paste this config block (exact key
-   names vary by host; the verified per-host block to copy is on
-   [nlqdb.com/integrations](https://nlqdb.com/integrations/)):
+3. **Claude Desktop** — Settings → Connectors → Add custom connector, then
+   paste the URL above. This is the one host whose documented remote path is
+   a dialog, so it is the one step here a coding agent can't run for you.
+
+4. **Windsurf** — write `~/.codeium/windsurf/mcp_config.json` (a remote entry
+   uses `serverUrl`, not `url`):
 
    ```json
-   { "mcpServers": { "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" } } }
+   { "mcpServers": { "nlqdb": { "serverUrl": "https://mcp.nlqdb.com/mcp" } } }
    ```
 
-4. **Cursor** — write `.cursor/mcp.json` in the project (or `~/.cursor/mcp.json`
+5. **Zed** — add to `settings.json` (`zed: open settings file`; the root key is
+   `context_servers`):
+
+   ```json
+   { "context_servers": { "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" } } }
+   ```
+
+6. **Cursor** — write `.cursor/mcp.json` in the project (or `~/.cursor/mcp.json`
    to apply it everywhere):
 
    ```json
    { "mcpServers": { "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" } } }
    ```
 
-5. **VS Code** — write `.vscode/mcp.json` (the root key is `servers`, and a
+7. **VS Code** — write `.vscode/mcp.json` (the root key is `servers`, and a
    remote entry needs `"type": "http"`):
 
    ```json
@@ -63,10 +74,11 @@ The hosted server lives at `https://mcp.nlqdb.com/mcp` (the protocol is at
 
 </Steps>
 
-A human on Cursor or VS Code can instead click the one-click deep-link buttons on
-[nlqdb.com/integrations](https://nlqdb.com/integrations/) — they hand the install
-straight to the host. The config files above are the machine-followable path: a
-coding agent writes the file itself, no GUI click.
+Every file-based host above is machine-followable: a coding agent writes the
+config itself, no GUI click. On Cursor and VS Code the one-click deep-link
+buttons on [nlqdb.com/integrations](https://nlqdb.com/integrations/) are a
+faster route for a human, not a requirement — the file works either way.
+Claude Desktop is the exception: its connector dialog needs a human.
 
 ## Step 2 — Authenticate
 
@@ -131,9 +143,10 @@ writing (through the confirm gate) and reading memory.
 - **Auth loop / `unauthorized`** — the browser OAuth was dismissed. Trigger
   any tool again and complete the approval.
 - **Host doesn't show the tools** — restart the host after editing its
-  config, then re-list MCP servers. Deep-link hosts (Cursor, VS Code) need
-  the button from [nlqdb.com/integrations](https://nlqdb.com/integrations/),
-  not a hand-edited file.
+  config, then re-list MCP servers. If they still don't appear, check the
+  root key: Cursor reads `mcpServers` from `.cursor/mcp.json`, VS Code reads
+  `servers` (each entry needing `"type": "http"`) from `.vscode/mcp.json` —
+  the wrong key parses as zero servers, with no error.
 - **`nlqdb_remember` returns `wrong_preset`** — expected today; use
   `nlqdb_query` for memory writes (see below).
 
@@ -141,7 +154,8 @@ writing (through the confirm gate) and reading memory.
 
 Want the coding agent you build *with* to wire this up once and use it
 forever? Drop a ready-made artifact into your project — the connect command
-in each is generated from the same source as this page, so it never drifts.
+in each is pinned by a test to the same source as this page, so the two
+can't drift apart.
 
 **One command** (Claude Code / Cursor) — installs the skill, formats a
 matching Cursor rule, and registers it in `AGENTS.md` with the
