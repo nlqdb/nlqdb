@@ -94,10 +94,10 @@ fail the whole release job:
    > every in-workspace consumer resolves the package through them (Bun/Vite,
    > no build step), and 5 of them break when `dist/` is absent. Without the
    > pair the published entrypoints point into `src/`, which `files` doesn't
-   > pack — npm force-packs the `main` path only when it is written bare, so
-   > `@nlqdb/mcp`'s `main: "src/index.ts"` ships but `@nlqdb/sdk`'s
-   > `"./src/index.ts"` doesn't, and either way the imports it needs are
-   > missing — so `import` throws `ERR_MODULE_NOT_FOUND` while every gate
+   > pack (npm force-packs the `main` path only when it is written *bare* —
+   > `@nlqdb/mcp`'s `main: "src/index.ts"` ships, `@nlqdb/sdk`'s
+   > `"./src/index.ts"` doesn't — and either way that one file arrives without
+   > its imports), so `import` throws `ERR_MODULE_NOT_FOUND` while every gate
    > stays green. Verified 2026-07-25 against the live registry: that is how
    > `@nlqdb/sdk` 0.1.0–0.2.1 shipped unimportable.
    > `apps/web/src/data/npm-tarball-entrypoint-integrity.test.ts` fails the

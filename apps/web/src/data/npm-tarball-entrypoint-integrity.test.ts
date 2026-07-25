@@ -22,9 +22,12 @@ import {
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const SCRIPT = join(REPO_ROOT, "scripts", "apply-publish-config.mjs");
 
-// npm packs exactly these regardless of `files`, so an entrypoint pointing at
-// one is still reachable — measured with `npm pack --dry-run` against a
-// `files: ["dist"]` package, which packs README and LICENSE but *not* CHANGELOG.
+// Packed regardless of `files`, so an entrypoint pointing at one is still
+// reachable — measured with `npm pack --dry-run` against a `files: ["dist"]`
+// package, which packs README and LICENSE but *not* CHANGELOG. npm also
+// force-packs `main` when written *bare* (`src/index.ts` yes, `./src/index.ts`
+// no) — deliberately not listed: it ships that one file without its imports, so
+// the entrypoint still fails to load and the guard should still say so.
 const ALWAYS_PACKED = [/^package\.json$/, /^readme(\.|$)/i, /^licen[cs]e(\.|$)/i];
 
 type Manifest = {
