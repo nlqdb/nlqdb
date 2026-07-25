@@ -232,6 +232,10 @@ Run the hermetic surfaces locally without GitHub:
 ( cd tests/e2e/examples && bun install && bun run install:browsers && bun run test )
 ```
 
+Only *execution* is manual: `tests/e2e/{sdk,mcp,examples}` live outside the root
+workspace, so CI's `typecheck-e2e` job `tsc`s them on every PR — the free
+backstop against a suite that compiles today and rots before the next dispatch.
+
 Conventions, persona mapping, and cassette governance are in
 [`docs/features/e2e-coverage/FEATURE.md`](./docs/features/e2e-coverage/FEATURE.md).
 

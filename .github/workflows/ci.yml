@@ -320,6 +320,33 @@ jobs:
         working-directory: tools/${{ matrix.tool }}
         run: bun test
 
+  # The JS suites under `tests/e2e/` sit OUTSIDE the root workspace (own
+  # lockfiles) yet import in-workspace types, so root `bun run typecheck`
+  # never sees them — which let `tests/e2e/mcp` die in `tsc` for 11 days,
+  # testing nothing, visible only on the next manual dispatch (run 138).
+  # Compile-only: SK-E2E-004 keeps *execution* dispatch-only, and `tsc`
+  # costs no provider quota, no secrets, no Neon branch. One job, not a
+  # matrix — sub-second `tsc` runs aren't worth 3× the cold setup.
+  typecheck-e2e:
+    name: tests/e2e/* (typecheck — out-of-workspace suites)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+      # Globbed, not a hardcoded list: a new out-of-workspace suite must not
+      # be able to go uncovered — that silence is the bug this job exists to
+      # prevent. `rc` accumulates so one run reports every rotten suite.
+      - name: Typecheck each suite
+        run: |
+          rc=0
+          for pkg in tests/e2e/*/package.json; do
+            suite="${pkg%/package.json}"
+            echo "--- $suite"
+            (cd "$suite" && bun install && bun run typecheck) || rc=1
+          done
+          exit $rc
+
   build-web:
     name: apps/web (astro check + build)
     runs-on: ubuntu-latest
