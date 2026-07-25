@@ -46,7 +46,7 @@ const canonicalRedirects = {
 //
 // `trailingSlash: "always"` matches what CF Static Assets serves: the
 // default `build.format: "directory"` emits `<route>/index.html`, so
-// `/agents/` is the 200 and bare `/agents` redirects (301, SK-WEB-027). Without this,
+// `/agents/` is the 200 and bare `/agents` 301s (SK-WEB-027). Without this,
 // `Astro.url.pathname` (hence `<link rel=canonical>` + `og:url`) comes
 // out bare, pointing every crawler at a redirect of the page that
 // declares it — a self-referential canonical that dilutes the AEO/SEO

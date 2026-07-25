@@ -140,7 +140,7 @@ The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked
 ### SK-WEB-019 — `/app/connect`: auth-guarded BYO-connect page + `ConnectForm.tsx`
 
 **Body:** [`decisions/SK-WEB-019-connect-page.md`](./decisions/SK-WEB-019-connect-page.md).
-`/app/connect` is auth-guarded (anon → `/auth/sign-in?return_to=/app/connect`) and mounts `ConnectForm.tsx`: an engine select (default ClickHouse), a `type="password"` connection-URL field **never persisted** client-side, posting `{ engine, connection_url, name? }` to `/v1/db/connect` with `credentials:"include"`. On success it renders the schema preview then a "Question it now →" CTA to `/app?db=<dbId>`. The product-side landing for Door B (`SK-WEB-018`); backend is [`SK-DBCONN-001`](../byo-connect/FEATURE.md). Reached from Door B and from a "Connect existing DB" affordance in the `/app` chat-window `LeftRail` (Postgres / ClickHouse chips that deep-link `?engine=` so `ConnectForm` preselects the engine) — one connect page, no second flow (`GLOBAL-017`).
+`/app/connect` is auth-guarded (anon → `/auth/sign-in?return_to=/app/connect`) and mounts `ConnectForm.tsx`: an engine select, a `type="password"` connection URL **never persisted** client-side, `POST /v1/db/connect` → schema preview → "Question it now →". Door B's product landing (`SK-WEB-018`); backend [`SK-DBCONN-001`](../byo-connect/FEATURE.md). Also reached from the `/app` `LeftRail` engine chips that deep-link `?engine=` — one connect page, no second flow (`GLOBAL-017`).
 
 ### SK-WEB-020 — Calm token system (supersedes SK-WEB-015's quiet-brutalism tokens)
 
@@ -180,7 +180,7 @@ The Tawk.to widget (`SupportChat.astro`, official async snippet) mounts beside `
 ### SK-WEB-027 — Bare page paths 301 to their trailing-slash canonical (generated `_redirects`)
 
 **Body:** [`decisions/SK-WEB-027-bare-path-301.md`](./decisions/SK-WEB-027-bare-path-301.md).
-`astro build` emits one `301` per built page into `dist/_redirects` (`src/lib/canonical-redirects.ts`), replacing the asset router's 307 — a temporary code Google does not read as a canonicalisation signal, so GSC held bare `/agents` and `/blog/llm-concatenates-…` as index entries competing with their slashed twins. `/app*` stays with `worker.ts`; a bare path that is a real asset (`/install`) is never shadowed.
+`astro build` emits one `301` per built page into `dist/_redirects` (`src/lib/canonical-redirects.ts`), replacing the asset router's 307 — a temporary code Google does not read as a canonicalisation signal, so GSC held bare `/agents` and `/blog/llm-concatenates-…` as index entries competing with their slashed twins. The `/app|/auth|/oauth` prefixes are excluded — the same `dist/` is the merged app host's asset directory (`SK-AUTH-016`), where those are the app's own routes (`SK-WEB-026`) — and a bare path that is a real asset (`/install`) is never shadowed.
 
 ## GLOBALs governing this feature
 

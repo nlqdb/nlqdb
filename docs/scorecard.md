@@ -63,7 +63,7 @@ run's `apps/web` + web-app-feature diff; every number below re-measured live her
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **9/9 + both FLOW-005 transports** ✅ (daily acquisition-health cron run 67 [29815040423](https://github.com/nlqdb/nlqdb/actions/runs/29815040423) against prod, 07-21 08:37Z: verify-flows all-green, stranger-test FLOW-001/002/003 exit 0, FLOW-005 walk 6/6, FLOW-005 stdio 22/22 — 5 tools, no legacy verbs). The run-59 "morph-to-chat gap" is **decided, not a gap** (anon terminus IS the sign-in redirect; SK-WEB-002 chat is post-sign-in) | target 9/9 + both FLOW-005 ✅ **met**. Freshness re-armed 07-21 (GLOBAL-032 7-day rule); per-step JSON artifact proxy-gated from the agent container |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
-| 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** — organic search + dev.to + npm + GitHub, each carrying its ledger `utm_source` on every published URL: the dev.to read-through link (`…/blog/<slug>/?utm_source=devto`, API `canonical_url` left clean for SEO), the root README CTA, and both `examples/` README CTAs — GitHub strips referrers, so an untagged CTA there lands as `direct`; `readme-attribution-integrity.test.ts` is source-derived and fails on any untagged GitHub-rendered CTA. MCP official registry **published 07-22** ([`com.nlqdb/nlqdb`](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.nlqdb/nlqdb) v0.1.1 active, `websiteUrl` utm-tagged → ledger row #3 in-flight; crawl-fed Smithery/PulseMCP still not surfacing, Glama crawl-listed). First-touch attribution live since 07-19: `databases.source_json` persists on **both** the `/v1/ask` create arm and `POST /v1/db/connect`, so a connect-first signup — the natural first action on the developer channels — is attributable rather than `untracked`; `dbsWithSource` **0** (07-25 live, accrues from the first attributable visit) | **weekly focus: → ≥ 5 live.** Yield read from `/app/admin`, never estimated. Further live-count growth comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
+| 22 | Channels live with attributable yield | **4 live / 0 partial / 1 blocked-by-human / 16 untried** — organic search + dev.to + npm + GitHub, each carrying its ledger `utm_source` on every published URL (dev.to read-through — API `canonical_url` left clean for SEO — the root README CTA, both `examples/` README CTAs; GitHub strips referrers, so an untagged CTA lands as `direct` and `readme-attribution-integrity.test.ts` is source-derived and fails on one). MCP official registry **published 07-22** ([`com.nlqdb/nlqdb`](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.nlqdb/nlqdb) v0.1.1 active, `websiteUrl` utm-tagged; crawl-fed Smithery/PulseMCP still not surfacing, Glama crawl-listed). First-touch attribution live since 07-19: `databases.source_json` persists on **both** the `/v1/ask` create arm and `POST /v1/db/connect`, so a connect-first signup is attributable rather than `untracked`; `dbsWithSource` **0** (07-25 live, accrues from the first attributable visit) | **weekly focus: → ≥ 5 live.** Yield read from `/app/admin`, never estimated. Further growth comes only from the not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -87,42 +87,45 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 **2026-07-25 (run 139)** — priority-1 distribution lever, found in this run's own live GSC pull.
 
 **Number moved — row #7 (surface yield), Google-side canonicalisation: bare-path redirect 307 → 301
-on all 120 marketing pages.** `trailingSlash: "always"` makes every page `<route>/index.html` and
+on every indexable marketing page.** `trailingSlash: "always"` makes every page `<route>/index.html` and
 Cloudflare's asset router answers the bare path with a *temporary* redirect;
 [Google's indexing pipeline](https://developers.google.com/search/docs/crawling-indexing/301-redirects)
 uses only 301/308 as a canonicalisation signal and keeps the *source* URL canonical for a 307. The
-06-25→07-23 pull shows the cost as a live index split, not a theory: bare **`/agents` 4 impr / pos
-6.8** (the GLOBAL-036 wedge's own landing page) and bare **`/blog/llm-concatenates-columns-text-to-
-sql` 2 impr / pos 15.5**, each competing with its slashed twin instead of feeding it. Same defect
+06-25→07-23 pull shows the cost as a live index split, not a theory — row #7's two bare URLs carry 6
+impressions between them, each competing with its slashed twin instead of feeding it. Same defect
 class as `SK-WEB-026` (Google indexing a non-canonical variant despite a correct `rel=canonical`),
 same remedy.
 
 **Change (`SK-WEB-027`):** `astro build` emits `dist/_redirects` — one `301` per built page, derived
 from the built tree at `astro:build:done` (`apps/web/src/lib/canonical-redirects.ts`), so a new page
-ships its own rule. `/app*` stays with `worker.ts` (`SK-AUTH-016`); a bare path that is a real asset
-is never shadowed, since `_redirects` outranks asset matching and a rule at `/install` would have
-broken the `curl nlqdb.com/install | sh` script. Cloudflare skips static rules past 2,000 behind one
-easily-missed wrangler warning, so the generator throws instead (120/2,000 today).
+ships its own rule. `/app|/auth|/oauth` are excluded — the same `dist/` is the merged app host's asset
+directory (`SK-AUTH-016`), where those are the app's own routes (`SK-WEB-026`) — and no rule shadows a
+real asset (`_redirects` outranks asset matching; a rule at `/install` would break the
+`curl … | sh` script). Wrangler skips *every* line past 2,000 behind one easily-missed warning, so the
+generator throws instead (115/2,000).
 
 **Re-measure, same way (rule 3):** before — prod `GET /agents` = **307**, measured live. After — the
-same request against `wrangler dev` on the same built output = **301**; slashed paths, `/`,
-`/install`, `/robots.txt`, `/llms.txt` still 200, `/app*` untouched, and the `_headers` HSTS stamp
-still on the 301, so `GLOBAL-039` coverage is unchanged. The GSC-side consolidation is crawl-latency
+same request against `wrangler dev` on the same built output = **301**, query preserved; slashed
+paths, `/`, `/install`, `/robots.txt`, `/llms.txt` still 200, `/app|/auth|/oauth` untouched,
+`/_redirects` 404, and the `_headers` HSTS stamp still on the 301, so `GLOBAL-039` coverage is
+unchanged. The GSC-side consolidation is crawl-latency
 bound — read it on later pulls; the delta claimed here is the redirect status, which is what this run
 controls.
 
-**Measured, not pulled:** `http://…/count-consecutive-days-streak-in-sql/` carries **7 impr / pos
-10.1** on the *plaintext* variant — same class of split, but `_redirects` can't express a scheme
-redirect and the in-worker alternative is already rejected by `GLOBAL-039`; it needs the zone toggle
-(`blocked-by-human` #6). `apps/docs` shares the 307 behaviour but has zero indexed bare paths, so
-there is no yield to claim there. Engine dark + fresh (baseline `run_at` 07-19, 6 days, under the
-7-day trigger). Strangers still **0** (re-read live, roster byte-identical), so the structural
-bottleneck stays the human-gated launch (`blocked-by-human` #1, idle **42 days**).
+**Measured, not pulled:** the *plaintext* `http://…/count-consecutive-days-streak-in-sql/` carries
+**7 impr / pos 10.1** — same class of split, but `_redirects` can't express a scheme redirect and the
+in-worker alternative is already rejected by `GLOBAL-039`; it needs the zone toggle
+(`blocked-by-human` #6). `apps/docs` shares the 307 but has zero indexed bare paths. Engine dark +
+fresh (baseline `run_at` 07-19, 6 days, under the 7-day trigger). Strangers still **0** (re-read live,
+roster byte-identical), so the bottleneck stays the human-gated launch (`blocked-by-human` #1, idle
+**42 days**).
 
-Self-review also swapped the hook's percent-encoded `dir.pathname` for `fileURLToPath` and retired
-the stale "bare paths are 307s" prose across six files. **Gates:** `typecheck` 22 packages · `lint`
-exit 0 · `test` 20 packages — green after the rebase onto `aad87a7`.
-**D4:** `web-app/FEATURE.md` was already over cap and **net-shrank 24603 → 24530 B**. **KPI
+Self-review swapped the hook's percent-encoded `dir.pathname` for `fileURLToPath`, retired the stale
+"bare paths are 307s" prose, and found `ci.yml`'s `build-web` ran `astro check` + `build` only — so
+**no `apps/web` test had ever run on a PR**, including the `SK-WEB-022` guard row #18 calls "in CI".
+It now runs `bun run test` (371); `agentMemoryMatrix`'s >60-day staleness check is `skipIf(CI)` so a
+calendar date can't redden unrelated PRs. **Gates:** typecheck · lint · test all green.
+**D4:** `web-app/FEATURE.md` **net-shrank 24603 → 24404 B**, `agent-memory-pivot` 21214 → 21180. **KPI
 (GLOBAL-025):** advances **onboarding/distribution** — the wedge's landing page stops splitting its
 own ranking signal; **degrades none** (no runtime code, endpoint, or external call).
 

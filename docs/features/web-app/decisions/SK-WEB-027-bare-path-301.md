@@ -5,10 +5,10 @@
   200 (`/agents` → `/agents/`). The rule set is derived from the built tree at
   `astro:build:done` (`apps/web/astro.config.mjs` + the pure
   `src/lib/canonical-redirects.ts`), never hand-maintained, so a new page ships
-  its own redirect. Two exclusions: `/app*` (owned by `worker.ts`, which 301s it
-  to the merged app host per `SK-AUTH-016`) and any bare path that is itself a
-  real asset — `_redirects` wins over asset matching, so a rule at `/install`
-  would shadow the `curl nlqdb.com/install | sh` script.
+  its own redirect. Two exclusions: the `/app`, `/auth` and `/oauth` prefixes,
+  and any bare path that is itself a real asset — `_redirects` wins over asset
+  matching, so a rule at `/install` would shadow the
+  `curl nlqdb.com/install | sh` script.
 
 - **Core value:** Free, Bullet-proof, Simple
 
@@ -29,18 +29,26 @@
   substitute: it keeps *our own* links slashed, while these are URLs Google
   discovered elsewhere.
 
-- **Consequence in code:** `canonicalRedirectRules()` is pure and unit-tested
-  (`canonical-redirects.test.ts`: permanent code, root skipped, `/app*` left
-  alone, no file shadowed, ceiling enforced). Those cases only bind because
-  `ci.yml`'s `build-web` job now runs `apps/web`'s `bun run test` — it ran
-  `astro check` + `astro build` only, so every `apps/web` test (including
-  `SK-WEB-022`'s guard, documented as "in CI") was never executed on a PR.
-  Cloudflare skips static rules past
-  **2,000** ([limits](https://developers.cloudflare.com/workers/static-assets/redirects/);
-  `MAX_STATIC_REDIRECT_RULES` in wrangler, one easily-missed warning per dropped
-  line), so the generator **throws** rather than ship a truncated file — at 120
-  rules for 126 pages there is ample headroom, and the build fails loudly if the
-  surface ever outgrows it. `_redirects` is evaluated ahead of the asset router
+- **Consequence in code:** `EXCLUDED_PREFIXES = ["/app", "/auth", "/oauth"]` is
+  the load-bearing detail: this `dist/` is *also* the merged app host's asset
+  directory (`apps/api/wrangler.toml` `[assets] directory = "../web/dist"`,
+  `SK-AUTH-016`), so every rule ships there too — and on that host `/app|/auth|
+  /oauth` are the app's own routes that `SK-WEB-026` bars from the map and
+  `SK-AUTH-016` reserves from server-side redirects. All three are `noindex`, so
+  the exclusion costs no indexable yield: **115** rules for 126 built pages.
+  `canonicalRedirectRules()` is pure and unit-tested
+  (`canonical-redirects.test.ts`: permanent code, root skipped, no rule under an
+  excluded prefix, no file shadowed, ceiling enforced). Those cases only bind
+  because `ci.yml`'s `build-web` job now runs `apps/web`'s `bun run test` — it
+  ran `astro check` + `astro build` only, so no `apps/web` test (including
+  `SK-WEB-022`'s guard, which scorecard row #18 called "in CI") ever ran on a PR.
+  Cloudflare's ceiling is **2,000** static rules and 1,000 characters per line
+  ([limits](https://developers.cloudflare.com/workers/static-assets/redirects/));
+  wrangler's `MAX_STATIC_REDIRECT_RULES = 2e3` skips *every* line past it behind
+  a single "Skipping remaining … lines" warning, so the generator **throws**
+  rather than ship a truncated file — ample headroom today (longest line 128 ch),
+  and the build fails loudly if the surface outgrows it.
+  `_redirects` is evaluated ahead of the asset router
   and is never itself served (verified against `wrangler dev`: bare paths 301
   **with the query string carried over**, slashed paths and `/install`,
   `/robots.txt`, `/llms.txt` still 200, `/_redirects` 404) and the `_headers`

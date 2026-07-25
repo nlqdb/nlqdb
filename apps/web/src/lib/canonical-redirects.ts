@@ -12,12 +12,19 @@
 // (Scheme redirects still can't be expressed there — that gap stays zone-level
 // per `GLOBAL-039`.)
 
-/** Cloudflare's ceiling for static `_redirects` rules; extra rules are dropped. */
+/** Cloudflare's ceiling for static `_redirects` rules (wrangler's
+ *  `MAX_STATIC_REDIRECT_RULES`); every line past it is skipped at upload. */
 export const MAX_STATIC_RULES = 2000;
 
-/** `/app*` bare paths belong to `worker.ts`, which 301s them to the merged app
- *  on `app.nlqdb.com` (SK-AUTH-016) — leave that chain exactly as documented. */
-const WORKER_OWNED = "/app";
+/** Prefixes no rule may cover. This build also ships to the merged app host
+ *  (`apps/api/wrangler.toml` `[assets] directory = "../web/dist"`), where these
+ *  are the app's own routes: `SK-WEB-026` bars the map from `/app|/auth|/oauth`
+ *  and `SK-AUTH-016` reserves `/auth/*` from any server-side redirect. All three
+ *  are `noindex`, so excluding them costs no indexable yield. */
+const EXCLUDED_PREFIXES = ["/app", "/auth", "/oauth"];
+
+const isExcluded = (p: string) =>
+  EXCLUDED_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`));
 
 /**
  * One `301` rule per built page, mapping its bare path to the slashed URL that
@@ -32,20 +39,13 @@ export function canonicalRedirectRules(
   hasFileAt: (barePath: string) => boolean,
 ): string[] {
   const rules = pagePaths
-    .filter(
-      (p) =>
-        p !== "" &&
-        p !== "/" &&
-        p !== WORKER_OWNED &&
-        !p.startsWith(`${WORKER_OWNED}/`) &&
-        !hasFileAt(p),
-    )
+    .filter((p) => p !== "" && p !== "/" && !isExcluded(p) && !hasFileAt(p))
     .sort()
     .map((p) => `${p} ${p}/ 301`);
 
   if (rules.length > MAX_STATIC_RULES) {
     throw new Error(
-      `canonical-redirects: ${rules.length} rules exceeds Cloudflare's ${MAX_STATIC_RULES}-static-rule ceiling — rules past it are skipped at upload (one buried wrangler warning per line), so split the surface or switch to a dynamic rule before shipping.`,
+      `canonical-redirects: ${rules.length} rules exceeds Cloudflare's ${MAX_STATIC_RULES}-static-rule ceiling — wrangler would skip every line past it behind a single "Skipping remaining … lines of file" warning, so split the surface or switch to Bulk Redirects before shipping.`,
     );
   }
   return rules;

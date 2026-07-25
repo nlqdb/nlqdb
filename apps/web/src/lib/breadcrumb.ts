@@ -3,8 +3,8 @@
 // / Perplexity read it to place a page in the site hierarchy). Mirrors
 // `Base.astro`'s canonical normalisation — a trailing slash on every non-root
 // path — so each `item` URL is the 200, not the redirect CF serves for the
-// bare path (run-69; a 301 since `SK-WEB-027`). Shared by `/vs/[slug]` and `/solve/[slug]` so the two
-// templates can't drift on shape.
+// bare path (run-69; a 301 since `SK-WEB-027`). Shared by `/vs/[slug]` and
+// `/solve/[slug]` so the two templates can't drift on shape.
 
 export interface Crumb {
   /** Visible label — must match the on-page breadcrumb trail (Google rule). */

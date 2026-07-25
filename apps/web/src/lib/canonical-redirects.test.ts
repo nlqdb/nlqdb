@@ -14,8 +14,12 @@ describe("canonicalRedirectRules", () => {
     expect(canonicalRedirectRules(["/", ""], noFiles)).toEqual([]);
   });
 
-  test("leaves `/app*` to worker.ts, which 301s it to the merged app host", () => {
-    expect(canonicalRedirectRules(["/app", "/app/new", "/apps-of-note"], noFiles)).toEqual([
+  test("emits no rule under `/app`, `/auth` or `/oauth`", () => {
+    // The same build ships to the merged app host, where these are the app's own
+    // routes (`SK-WEB-026` / `SK-AUTH-016`). A same-named sibling like
+    // `/apps-of-note` is a marketing page and must still get its rule.
+    const excluded = ["/app", "/app/new", "/auth", "/auth/sign-in", "/oauth/mcp-authorize"];
+    expect(canonicalRedirectRules([...excluded, "/apps-of-note"], noFiles)).toEqual([
       "/apps-of-note /apps-of-note/ 301",
     ]);
   });
