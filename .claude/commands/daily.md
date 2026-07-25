@@ -90,8 +90,9 @@ table + one "Last change" entry, no changelog; create it if missing):
   published-post count, indexation signal when measurable. When
   `GSC_SERVICE_ACCOUNT_JSON` is set, `bun scripts/gsc-pull.ts` reads Google
   clicks / impressions / position + top queries and pages — use it as the
-  rows #6–#7 Google-side yield input (and to pick which `/solve`/`/vs` page
-  to strengthen: highest impressions × worst position first).
+  rows #6–#7 Google-side yield input. Its **Strengthen next** section already
+  applies the selection rule (highest impressions still off page 1); take the
+  page from there rather than re-eyeballing the list.
 - **Engine:** BIRD / Spider vs `tools/eval/baseline-2026-06-15.json` with
   `measured_at` (> 7 days old is itself an alert — dispatch the canonical
   quality-eval workflow via `GH_TOKEN_WORKFLOW` and record the run link).
