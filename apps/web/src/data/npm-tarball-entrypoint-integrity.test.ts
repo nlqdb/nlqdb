@@ -22,14 +22,10 @@ import {
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const SCRIPT = join(REPO_ROOT, "scripts", "apply-publish-config.mjs");
 
-// npm packs these regardless of `files`, so an entrypoint pointing at one is
-// still reachable. (`package.json` matters: it is the manifest itself.)
-const ALWAYS_PACKED = [
-  /^package\.json$/,
-  /^readme(\.|$)/i,
-  /^licen[cs]e(\.|$)/i,
-  /^changelog(\.|$)/i,
-];
+// npm packs exactly these regardless of `files`, so an entrypoint pointing at
+// one is still reachable — measured with `npm pack --dry-run` against a
+// `files: ["dist"]` package, which packs README and LICENSE but *not* CHANGELOG.
+const ALWAYS_PACKED = [/^package\.json$/, /^readme(\.|$)/i, /^licen[cs]e(\.|$)/i];
 
 type Manifest = {
   name?: string;
