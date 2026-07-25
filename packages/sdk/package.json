@@ -46,6 +46,8 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
+    "prepack": "node ../../scripts/apply-publish-config.mjs",
+    "postpack": "node ../../scripts/apply-publish-config.mjs --restore",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

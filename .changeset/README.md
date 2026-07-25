@@ -36,11 +36,11 @@ Status:
   Only the founder's bootstrap-publish + Trusted-Publisher sitting is left;
   the command is queued as
   [`blocked-by-human.md`](../docs/blocked-by-human.md) bullet 2. Un-gate in
-  the follow-up PR, per the ordered list below. That PR owes the
-  `prepack` rewrite below: only the `bin` surface is reachable today, because
-  npm force-packs the `main` file (`src/index.ts`) *without* its imports, so
-  `import "@nlqdb/mcp"` from the tarball would throw. Nothing advertises that
-  import, which is why it can wait for the un-gate — not longer.
+  the follow-up PR, per the ordered list below. That PR owes step 2's
+  `publishConfig` + `prepack`/`postpack` pair: only the `bin` surface is
+  reachable today, so `import "@nlqdb/mcp"` from the tarball would throw and
+  the integrity guard fails the moment `private` is dropped. Nothing advertises
+  that import, which is why it can wait for the un-gate — not longer.
 - Everything else in `packages/*` — still gated.
 
 To un-gate a new package, **in this order** — the repo change comes last,
@@ -51,8 +51,9 @@ fail the whole release job:
 1. Add a `build` script (tsup) that emits `dist/index.js` + `dist/index.d.ts`.
 2. Add the publish metadata, **keeping `"private": true`** — it has to be in the
    manifest before the bootstrap publish, because that first version is
-   permanent (workspace dev keeps reading `src/` via the top-level
-   `main`/`exports`):
+   permanent. `publishConfig` declares the *published* entrypoints and the
+   `prepack`/`postpack` pair applies them at pack time, so workspace dev keeps
+   reading `src/` via the top-level `main`/`exports`:
    ```json
    {
      "main": "./src/index.ts",
@@ -64,27 +65,48 @@ fail the whole release job:
        "url": "git+https://github.com/nlqdb/nlqdb.git",
        "directory": "packages/<name>"
      },
+     "scripts": {
+       "prepack": "node ../../scripts/apply-publish-config.mjs",
+       "postpack": "node ../../scripts/apply-publish-config.mjs --restore"
+     },
      "publishConfig": {
+       "main": "./dist/index.js",
+       "types": "./dist/index.d.ts",
+       "exports": {
+         ".": {
+           "types": "./dist/index.d.ts",
+           "import": "./dist/index.js",
+           "default": "./dist/index.js"
+         }
+       },
        "provenance": true,
        "access": "public"
      }
    }
    ```
-   > **npm ignores `publishConfig` field overrides.** Rewriting
+   > **The `prepack`/`postpack` pair is not optional.** Rewriting
    > `main`/`types`/`exports` from `publishConfig` is a **pnpm** feature; npm
-   > honours only its own keys (`access`, `provenance`, `registry`, `tag`).
-   > Verified 2026-07-25 against the live registry: `@nlqdb/sdk@0.2.1`
-   > publishes `main: "./src/index.ts"` while its `files` ships only `dist/`,
-   > so `import "@nlqdb/sdk"` from npm throws `ERR_MODULE_NOT_FOUND`. The
-   > *published* manifest has to point at `dist/`, and the real fields can't:
+   > honours only its own keys there (`access`, `provenance`, `registry`,
+   > `tag`) and silently drops the rest
+   > ([npm/cli#7586](https://github.com/npm/cli/issues/7586)), so
+   > `scripts/apply-publish-config.mjs` applies the override in `prepack` and
+   > undoes it in `postpack`. The real fields can't just move to `dist/`:
    > every in-workspace consumer resolves the package through them (Bun/Vite,
-   > no build step), so moving them breaks the monorepo. So either expose the
-   > artifact through `bin` (what `@nlqdb/mcp` does — its bin loads the source
-   > only when the source is present *and* the runtime is Bun) or rewrite those
-   > fields at pack time in a `prepack` hook. Also don't add
-   > `"sideEffects": false` to a package whose entry is a pure re-export barrel
-   > built by `bun build`: the bundler shakes it down to a stub that still
-   > *builds* clean and then fails to load.
+   > no build step), and 5 of them break when `dist/` is absent. Without the
+   > pair the published entrypoints point into `src/`, which `files` doesn't
+   > pack (npm force-packs the `main` path only when it is written *bare* —
+   > `@nlqdb/mcp`'s `main: "src/index.ts"` ships, `@nlqdb/sdk`'s
+   > `"./src/index.ts"` doesn't — and either way that one file arrives without
+   > its imports), so `import` throws `ERR_MODULE_NOT_FOUND` while every gate
+   > stays green. Verified 2026-07-25 against the live registry: that is how
+   > `@nlqdb/sdk` 0.1.0–0.2.1 shipped unimportable.
+   > `apps/web/src/data/npm-tarball-entrypoint-integrity.test.ts` fails the
+   > build if you forget the pair. The other viable surface is `bin` (what
+   > `@nlqdb/mcp` does — its bin loads the source only when the source is
+   > present *and* the runtime is Bun). Also don't add `"sideEffects": false`
+   > to a package whose entry is a pure re-export barrel built by `bun build`:
+   > the bundler shakes it down to a stub that still *builds* clean and then
+   > fails to load.
 3. **Verify the tarball**, since none of this fails at build time: `npm pack`
    (works while the package is still private), install the `.tgz` into an empty
    dir **outside the monorepo** — inside it Bun resolves the workspace copy and
