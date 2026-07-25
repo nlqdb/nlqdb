@@ -27,8 +27,16 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 </Base>
 
 <script>
+  // Import the SK-ANON-015 handoff first: this page is a different origin
+  // from the marketing surface that sent the visitor (SK-AUTH-016), so the
+  // `#nlq=` fragment is the only carrier for their draft and anon token —
+  // localStorage does not cross. It has to run before `getOrMintAnonToken`,
+  // which would otherwise mint a fresh token and orphan the DB they already
+  // started on `nlqdb.com`.
+  import { importHandoffFromLocation } from "../../lib/handoff";
   // Provision the anonymous-mode token early so it's in localStorage
   // before CreateForm.tsx hydrates (SK-ANON-001).
   import { getOrMintAnonToken } from "../../lib/anon";
+  importHandoffFromLocation();
   getOrMintAnonToken();
 </script>

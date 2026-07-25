@@ -17,6 +17,7 @@ import {
   parseHandoff,
   serializeHandoff,
 } from "./handoff";
+import { saveDraft } from "./prompt-storage";
 
 // Valid per the client mint format: `anon_` + ≥16 chars of [A-Za-z0-9-].
 const ANON_A = "anon_aaaaaaaaaaaaaaaa";
@@ -216,5 +217,34 @@ describe("importHandoffFromLocation", () => {
     importHandoffFromLocation();
     expect(store.size).toBe(0);
     expect(replacedUrl).toBeNull();
+  });
+});
+
+describe("content-CTA handoff (the /solve · /vs · /agents 'Try this query' arc)", () => {
+  const GOAL = "today's orders aggregated by drink with revenue";
+
+  test("a goal saved on the marketing origin arrives in the app origin's draft slot", () => {
+    // The regression this pins: the CTAs called `saveDraft` and then navigated
+    // to `/app/new/`, which 301s to `app.nlqdb.com` — a different origin, so
+    // the draft was written to storage the create form could never read and
+    // every visitor landed on an empty input. Walk both origins for real.
+    installWindow("https://nlqdb.com/solve/cheap-internal-dashboard/");
+    saveDraft(GOAL);
+    const target = attachHandoff("/app/new/");
+    expect(target).toStartWith("/app/new/#nlq=");
+
+    // Second origin: fresh storage, as a real cross-origin hop gets.
+    store = new Map();
+    installWindow(`https://app.nlqdb.com/app/new/${target.slice(target.indexOf("#"))}`);
+    expect(store.get("nlqdb_draft")).toBeUndefined();
+
+    importHandoffFromLocation();
+    expect(store.get("nlqdb_draft")).toBe(GOAL);
+    expect(replacedUrl).toBe("https://app.nlqdb.com/app/new/");
+  });
+
+  test("carries nothing when the visitor never typed a goal", () => {
+    installWindow("https://nlqdb.com/solve/cheap-internal-dashboard/");
+    expect(attachHandoff("/app/new/")).toBe("/app/new/");
   });
 });

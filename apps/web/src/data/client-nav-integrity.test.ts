@@ -55,8 +55,12 @@ function sweepFiles(dir: string, ext: RegExp, acc: string[] = []): string[] {
 }
 
 // `location.assign("…")` | `.replace("…")` | `location.href = "…"` (bare or
-// `window.`/`document.`-prefixed — `\b` anchors the `location` token).
-const NAV = /\blocation(?:\.href\s*=|\.(?:assign|replace)\s*\()\s*["'`]([^"'`]*)["'`]/g;
+// `window.`/`document.`-prefixed — `\b` anchors the `location` token). The
+// optional `\w+\(` hop keeps the literal in scope when the target is wrapped
+// in a helper — `location.assign(attachHandoff("/app/new/"))` still gets its
+// trailing slash swept.
+const NAV =
+  /\blocation(?:\.href\s*=|\.(?:assign|replace)\s*\()\s*(?:\w+\(\s*)?["'`]([^"'`]*)["'`]/g;
 
 // `href="/literal"` / `href='/literal'` — a static internal link. `href={…}`
 // (dynamic) has no leading quote and never matches.
@@ -89,6 +93,32 @@ describe("client-nav trailing-slash integrity (SK-WEB-022)", () => {
         if (path.endsWith("/")) continue;
         const line = src.slice(0, m.index).split("\n").length;
         offenders[url] ??= `${relative(REPO_ROOT, file)}:${line}`;
+      }
+    }
+    expect(offenders).toEqual({});
+  });
+
+  test("every marketing CTA into the app carries the SK-ANON-015 handoff", () => {
+    // `/app/*` 301s to `app.nlqdb.com` (SK-AUTH-016), a different browser
+    // origin — so a CTA that stashes the visitor's goal with `saveDraft` and
+    // then navigates there hands off nothing: localStorage does not cross.
+    // That is how the `/solve`, `/vs` and `/agents` "Try this query" buttons
+    // came to drop every prompt on the floor while each file still read
+    // correctly in isolation. The carrier is `attachHandoff` (`#nlq=`).
+    //
+    // Scope: files that call `saveDraft` AND navigate into `/app`, minus the
+    // app surface itself (same-origin there, nothing to carry).
+    const offenders: Record<string, string> = {};
+    for (const file of sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/)) {
+      const rel = relative(REPO_ROOT, file);
+      if (rel.includes(join("src", "pages", "app"))) continue; // already on the app origin
+      const src = readFileSync(file, "utf8");
+      if (!src.includes("saveDraft(")) continue;
+      const intoApp = [...src.matchAll(NAV), ...src.matchAll(HREF)].some((m) =>
+        (m[1] ?? "").startsWith("/app/"),
+      );
+      if (intoApp && !src.includes("attachHandoff(")) {
+        offenders[rel] = "navigates into /app after saveDraft without attachHandoff";
       }
     }
     expect(offenders).toEqual({});
