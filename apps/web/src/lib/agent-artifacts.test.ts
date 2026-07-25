@@ -111,8 +111,8 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
 //             https://code.visualstudio.com/docs/copilot/customization/mcp-servers
 //   Windsurf  `~/.codeium/windsurf/mcp_config.json` `mcpServers` + `serverUrl`
 //             https://docs.windsurf.com/windsurf/cascade/mcp
-//   Zed       `settings.json`                     `context_servers` + `url`
-//             https://zed.dev/docs/ai/mcp
+//   Zed       `~/.config/zed/settings.json`       `context_servers` + `url`
+//             (same path on macOS and Linux) https://zed.dev/docs/ai/mcp
 // All four also confirm a hand-written file is sufficient — the one-click
 // deep-links are a convenience, not a requirement.
 describe("the R-04 setup guide's connect blocks don't drift from mcp-install.ts", () => {
@@ -122,7 +122,11 @@ describe("the R-04 setup guide's connect blocks don't drift from mcp-install.ts"
   });
 
   test("each JSON block matches its host's vendor schema at the shipped endpoint", () => {
-    const [windsurf, zed, cursor, vscode] = allFenced(DOCS_GUIDE, "json").map((b) => JSON.parse(b));
+    const blocks = allFenced(DOCS_GUIDE, "json");
+    // Pinned positionally, so a host added to Step 1 without a matching
+    // assertion below would ship unguarded. Fail until it is pinned too.
+    expect(blocks).toHaveLength(4);
+    const [windsurf, zed, cursor, vscode] = blocks.map((b) => JSON.parse(b));
     expect(windsurf).toEqual(JSON.parse(buildWindsurfConfig(MCP_ENDPOINT_URL)));
     expect(zed).toEqual(JSON.parse(buildZedConfig(MCP_ENDPOINT_URL)));
     // Cursor's documented remote shape is the same `mcpServers` + `url`.

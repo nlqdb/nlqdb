@@ -51,8 +51,8 @@ host's key names differ, so copy its own block, not a neighbour's.
    { "mcpServers": { "nlqdb": { "serverUrl": "https://mcp.nlqdb.com/mcp" } } }
    ```
 
-5. **Zed** — add to `settings.json` (`zed: open settings file`; the root key is
-   `context_servers`):
+5. **Zed** — write `~/.config/zed/settings.json` (same path on macOS and Linux;
+   `zed: open settings file` opens it. The root key is `context_servers`):
 
    ```json
    { "context_servers": { "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" } } }
