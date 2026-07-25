@@ -83,7 +83,7 @@ jobs:
     steps:
       # SHA-pinned per renovate.json5 (`pinDigests: true`); Renovate
       # rolls these forward when the upstream tag moves.
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # `bunx wrangler` resolves wrangler's bin via `#!/usr/bin/env
       # node`, so wrangler runs on the runner's Node — not Bun.
