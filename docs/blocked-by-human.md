@@ -30,7 +30,22 @@ is the company's real cycle time.
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0 this week.
 
-2. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
+2. **⏱ ~5 min · since 2026-07-25 — Configure the npm Trusted Publisher for
+   `@nlqdb/mcp`** (npmjs.com → the `@nlqdb` org → Trusted Publisher for a new
+   `@nlqdb/mcp` package; OIDC per [`SK-CIPERM-003`](./features/ci-permissions/FEATURE.md),
+   so no `NPM_TOKEN`). Account-walled: only an npm org owner can add it.
+   This is the **only** thing standing between a coding agent and unattended
+   nlqdb setup. Today the hosted MCP server's browser OAuth is the sole way in,
+   so every agent hits a consent screen it cannot click (verified live
+   2026-07-25) — the local-stdio hatch that `SK-MCP-001` already promises is
+   built and reads `NLQDB_API_KEY`, but `@nlqdb/mcp` is `"private": true` and
+   `registry.npmjs.org/@nlqdb/mcp` 404s. Engineering is two lines once the
+   publisher exists (drop `"private"`, add `--filter='@nlqdb/mcp'` to
+   `release-npm.yml`) and needs no further human step. Ranked here because it
+   unblocks a *capability* the GLOBAL-036 agent-memory wedge is built on, not a
+   one-shot listing — see `docs/features/mcp-server/FEATURE.md` § Open questions.
+
+3. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
    reach R-05 venue #5, ledger row #7).
    Account-walled: the form needs a GitHub sign-in (anonymous fetch → 403), and mcp.so
    is **not** an official-registry crawler — it's a Next.js + Supabase directory
@@ -45,7 +60,7 @@ is the company's real cycle time.
    - **Connect / config (if asked):** `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #7 to **in-flight** and note the `mcp.so/server/...` URL.
 
-3. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
+4. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
    (`cursor.directory/plugins/new`; reach R-05 venue #6, ledger row #8).
    Account-walled: Cursor's **official in-product marketplace is curated** with
    no public self-serve path, and the community directory Cursor's own docs point to
@@ -64,7 +79,7 @@ is the company's real cycle time.
      one command `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #8 to **in-flight** and note the `cursor.directory/...` URL.
 
-4. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
+5. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
    (`punkpeye/awesome-mcp-servers`; reach R-05 venue #8, ledger row #10). A
    plain GitHub PR — but agent sessions are scoped to `nlqdb/nlqdb` only
    and can't fork/PR an external repo (re-verified 2026-07-22: `add_repo`
@@ -90,7 +105,7 @@ is the company's real cycle time.
    becomes "live with attributable yield" on its own. Alt list if rejected:
    `wong2/awesome-mcp-servers`. On merge, flip ledger row #10 → in-flight.
 
-5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+6. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -121,7 +136,7 @@ is the company's real cycle time.
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-6. **⏱ ~2 min · since 2026-07-22 — Flip "Always Use HTTPS" on the `nlqdb.com`
+7. **⏱ ~2 min · since 2026-07-22 — Flip "Always Use HTTPS" on the `nlqdb.com`
    Cloudflare zone** (dashboard → SSL/TLS → Edge Certificates). The code half
    shipped 2026-07-23 ([`GLOBAL-039`](./decisions/GLOBAL-039-https-only-hsts.md)):
    dynamic hosts (app/mcp) 301 http→https in-worker and every surface now
@@ -133,7 +148,7 @@ is the company's real cycle time.
    (re-verified 2026-07-22). Low rank: internal-integrity yield, no
    user-facing surface.
 
-7. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
+8. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
    (repo → Settings → Branches → `main`). PR #816 merged with **zero approving
    reviews and no gate**, so nothing currently blocks a merge on red CI — an
    agent session can't read or set branch protection, so this can only be
