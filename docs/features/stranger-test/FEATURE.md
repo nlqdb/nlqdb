@@ -20,7 +20,7 @@ when-to-load:
 ## Touchpoints — read this feature before editing
 
 - `tools/stranger-test/src/runner.ts` — CLI entry; `--base-url`, `--flows`, `--prompts`, `--out`, `--quiet`
-- `tools/stranger-test/src/browser.ts` — `launchBrowser`, `openSession` (shared browser, per-walk context), `withDeadline`, `percentile`
+- `tools/stranger-test/src/browser.ts` — `launchBrowser`, `openSession` (shared browser, per-walk context), `withDeadline`, `percentile`. `launchBrowser` strips `*_proxy` from the browser's env: Chromium reads those vars on Linux and an agent sandbox's proxy resets its CONNECT, so a proxied container could not walk prod at all until this landed (measured 2026-07-25 — the run-143 belief that a local walk was impossible was this bug, not a hard limit)
 - `tools/stranger-test/src/flows/flow-00{1,2,3}.ts` — one walker per FLOW-NNN; assertions mirror the verification file step-for-step
 - `tools/stranger-test/src/personas.ts` — 25 seeded prompts pinned to the §1.1 paragraph (P1×10, P2×8, P3×4, P6×3)
 - `tools/stranger-test/src/types.ts` — `WalkResult` / `FlowResult` / `FlowRun` / `StepResult` (the JSON shape downstream tiles consume)
