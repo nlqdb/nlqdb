@@ -164,13 +164,18 @@ forever? Drop a ready-made artifact into your project — the connect command
 in each is pinned by a test to the same source as this page, so the two
 can't drift apart.
 
-**One command** (Claude Code / Cursor) — installs the skill, formats a
-matching Cursor rule, and registers it in `AGENTS.md` with the
+**One command** (Claude Code, Cursor, Codex) — installs the skill with the
 [`skills`](https://github.com/vercel-labs/skills) CLI (public repo, no account):
 
 ```bash
 npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory
 ```
+
+It writes `.agents/skills/nlqdb-memory/SKILL.md` — the cross-agent skill
+directory Claude Code, Cursor and Codex all read — plus a `.claude/skills/`
+symlink and a `skills-lock.json`. Verified against the live CLI 2026-07-25.
+It does **not** write a `.cursor/rules/` file and does **not** edit
+`AGENTS.md`; if your host reads only `AGENTS.md`, append the snippet below.
 
 Or drop a file in by hand:
 

@@ -164,13 +164,46 @@ describe("the npx skills add one-command install can't drift", () => {
   });
 
   test("all three published surfaces show the exact install command", () => {
-    const surfaces = {
-      "agent-artifacts README": read("README.md"),
-      "docs agent-memory guide": DOCS_GUIDE,
-      "llms.txt route": readFileSync(join(import.meta.dir, "../pages/llms.txt.ts"), "utf8"),
-    };
-    for (const [name, text] of Object.entries(surfaces)) {
+    for (const [name, text] of Object.entries(installSurfaces())) {
       expect(text, name).toContain(SKILLS_INSTALL_CMD);
     }
   });
+
+  // Hard rule 1 — only promise what the command actually does. Until
+  // 2026-07-25 all three surfaces claimed it "formats a matching Cursor rule"
+  // and "registers it in AGENTS.md"; measured against the live CLI it writes
+  // neither, under any `--agent` selection. Cursor and Codex are covered
+  // because they read `.agents/skills/` too, so the outcome is fine and only
+  // the mechanism was wrong — but a reader waiting for an `AGENTS.md` entry
+  // that never lands is exactly the phantom-capability failure this track
+  // forbids. Pinning the disclosure (not the absence of the words, which the
+  // by-hand section legitimately uses) means re-adding the claim means
+  // deleting a test-required sentence.
+  test("every surface discloses what the command does not write", () => {
+    for (const [name, text] of Object.entries(installSurfaces())) {
+      const prose = normalizeProse(text);
+      expect(prose, name).toContain(".agents/skills/nlqdb-memory/skill.md");
+      expect(prose, name).toContain("does not write a .cursor/rules/ file");
+      expect(prose, name).toContain("does not edit agents.md");
+    }
+  });
 });
+
+function installSurfaces(): Record<string, string> {
+  return {
+    "agent-artifacts README": read("README.md"),
+    "docs agent-memory guide": DOCS_GUIDE,
+    "llms.txt route": readFileSync(join(import.meta.dir, "../pages/llms.txt.ts"), "utf8"),
+  };
+}
+
+// Flattens a surface to comparable prose: llms.txt is TS source, so literal
+// `\n` escapes and template-string punctuation would otherwise split a
+// sentence mid-phrase across source lines.
+function normalizeProse(text: string): string {
+  return text
+    .replace(/\\n/g, " ")
+    .replace(/[`"'+\\*]/g, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
