@@ -164,6 +164,15 @@ is the company's real cycle time.
 
 ## Suggestions needing approval (to amend the guidelines)
 
-(none — the auto-merge-tier proposal was **rejected by the founder
+- **⏱ ~1 min · Say what unit `D4`'s "20 KB" is.** `CLAUDE.md` `P4/D4` caps a doc at
+  "20 KB" without defining the unit, and `docs/scorecard.md` landed at 20,339 B —
+  over on the decimal reading (20,000), under on the binary one (20,480). Two runs
+  can now disagree about whether the same file passes a gate. **Approve one line:**
+  D4 means **20,000 bytes**, verified by `wc -c`. Picking the stricter reading costs
+  a few sentences of trimming and makes the gate mechanically checkable; I resolved
+  it that way already, but the wording change is a guidelines amendment, so it needs
+  your yes. (Reply "yes" and any agent can apply it.)
+
+(otherwise none — the auto-merge-tier proposal was **rejected by the founder
 2026-07-22**: review latency is handled by a separate merger agent, not by
 `/daily` self-merging; recorded in `daily.md` §4. Don't re-propose.)
