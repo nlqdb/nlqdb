@@ -59,6 +59,27 @@ describe("reportClientError", () => {
     expect(body.stack).toBe("at foo");
   });
 
+  // SK-ANON-015 — the handoff fragment carries the anon bearer; an error thrown
+  // before the receiving page strips it must not POST that credential.
+  test("never sends the URL fragment", async () => {
+    mockFetch(new Response(null, { status: 204 }));
+    const { reportClientError, _resetReportClientErrorForTests } = await import(
+      "./error-report.ts"
+    );
+    _resetReportClientErrorForTests();
+
+    reportClientError({
+      surface: "test",
+      message: "frag",
+      href: "https://app.nlqdb.com/app/new/#nlq=%7B%22anon%22%3A%22anon_secret%22%7D",
+    });
+    await new Promise((r) => setTimeout(r, 0));
+
+    const body = captures[0]?.body ?? "";
+    expect(JSON.parse(body).href).toBe("https://app.nlqdb.com/app/new/");
+    expect(body).not.toContain("anon_secret");
+  });
+
   test("dedups by surface+message+stack head — same crash only POSTs once", async () => {
     mockFetch(new Response(null, { status: 204 }));
     const { reportClientError, _resetReportClientErrorForTests } = await import(

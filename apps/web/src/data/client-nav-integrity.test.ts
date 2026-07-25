@@ -55,12 +55,39 @@ function sweepFiles(dir: string, ext: RegExp, acc: string[] = []): string[] {
 }
 
 // `location.assign("…")` | `.replace("…")` | `location.href = "…"` (bare or
-// `window.`/`document.`-prefixed — `\b` anchors the `location` token).
-const NAV = /\blocation(?:\.href\s*=|\.(?:assign|replace)\s*\()\s*["'`]([^"'`]*)["'`]/g;
+// `window.`/`document.`-prefixed — `\b` anchors the `location` token). The
+// optional `\w+\(` hop keeps the literal in scope when the target is wrapped
+// in a helper — `location.assign(attachHandoff("/app/new/"))` still gets its
+// trailing slash swept.
+const NAV =
+  /\blocation(?:\.href\s*=|\.(?:assign|replace)\s*\()\s*(?:\w+\(\s*)?["'`]([^"'`]*)["'`]/g;
 
-// `href="/literal"` / `href='/literal'` — a static internal link. `href={…}`
-// (dynamic) has no leading quote and never matches.
-const HREF = /\bhref=["'](\/[^"'`]*)["']/g;
+// `href="/literal"` / `action='/literal'` — a static internal target. `href={…}`
+// (dynamic) has no leading quote and never matches. A bare `<form action>`
+// 307-redirects exactly like a bare `<a href>`, so both belong here.
+const HREF = /\b(?:href|action)=["'](\/[^"'`]*)["']/g;
+
+// SK-ANON-015 — the two halves the handoff sweep below keys on (non-global so
+// `.test` carries no `lastIndex` state).
+//
+// Half one: the file holds prompt state that a cross-origin hop would drop.
+// `importHandoffFromLocation` counts because a *receiver* that forwards onward
+// — `auth/sign-in.astro`, which imports the payload then hops to the app-origin
+// copy of itself — drops the payload just as completely without re-attaching
+// it, and persists nothing of its own to trip the `save*` shapes.
+const TOUCHES_PROMPT = /\b(?:saveDraft|makeDraftSaver|savePending|importHandoffFromLocation)\(/;
+// Half two: any client-side navigation. Deliberately wider than
+// `location.assign` — `window.open`, a bare `location = "…"`, `el.href = "/…"`,
+// and a `<meta http-equiv="refresh">` all leave the origin just as effectively.
+// `assign`/`replace` are matched on the *member*, not the call, so an aliased
+// or `.bind`-ed reference (`const go = location.assign.bind(location)`) can't
+// duck the sweep; neither member is ever read for anything but navigating.
+const NAVIGATES =
+  /\blocation\s*=\s*["'`]|\blocation\.(?:href\s*=|assign\b|replace\b)|\bwindow\.open\s*\(|\.href\s*=\s*["'`]\/|http-equiv=["']refresh/;
+
+// Surfaces that only ever render on the app origin, where there is nothing to
+// carry across.
+const APP_ORIGIN_ONLY = [join("src", "pages", "app"), join("src", "components", "chat")];
 
 // A same-origin absolute path (`/…`, not `//host`) whose path component (before
 // `?`/`#`) lacks a trailing slash redirects under trailingSlash:"always".
@@ -92,6 +119,57 @@ describe("client-nav trailing-slash integrity (SK-WEB-022)", () => {
       }
     }
     expect(offenders).toEqual({});
+  });
+
+  test("every prompt-persisting surface that navigates carries the SK-ANON-015 handoff", () => {
+    // `/app/*` 301s to `app.nlqdb.com` (SK-AUTH-016), a different browser
+    // origin — so a surface that stashes the visitor's goal and then navigates
+    // there hands off nothing: localStorage does not cross. That is how the
+    // `/solve`, `/vs` and `/agents` "Try this query" CTAs came to drop every
+    // prompt on the floor while each file still read correctly in isolation.
+    // The carrier is `attachHandoff` (`#nlq=`).
+    //
+    // The trigger is *any* prompt-state idiom and *any* navigation, not
+    // `saveDraft` + a literal `/app/` target: `CreateForm.tsx` — the original
+    // cross-origin sender — persists via `makeDraftSaver`/`savePending` and
+    // hops to a server-supplied absolute `signInUrl`, so the narrow shapes
+    // would leave it unguarded.
+    //
+    // Static analysis can't see everything. Probed and confirmed still
+    // slipping: a target computed at runtime (`<a href={expr}>`); a split
+    // across two files (goal saved in A, link rendered — or `location.assign`
+    // called — in B); a `location` object held in a local (`const l =
+    // location; l.href = target`); and a file where SOME navigations carry the
+    // handoff, since one `attachHandoff(` clears the whole file. The `/solve` +
+    // `/vs` stranger walkers are the browser-level backstop — they assert the
+    // goal reaches the create input, whatever the mechanism.
+    const offenders: Record<string, string> = {};
+    for (const file of sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/)) {
+      const rel = relative(REPO_ROOT, file);
+      if (APP_ORIGIN_ONLY.some((dir) => rel.includes(dir))) continue;
+      const src = readFileSync(file, "utf8");
+      if (!TOUCHES_PROMPT.test(src)) continue;
+      const navigates =
+        NAVIGATES.test(src) || [...src.matchAll(HREF)].some((m) => m[1].startsWith("/app/"));
+      if (navigates && !src.includes("attachHandoff(")) {
+        offenders[rel] = "holds prompt state then navigates without attachHandoff";
+      }
+    }
+    expect(offenders).toEqual({});
+  });
+
+  test("the third-party support embed boots after the SK-ANON-015 fragment strip", () => {
+    // `/app/new/` mounts `<SupportChat />` AND receives the handoff as
+    // `#nlq=<json>` carrying the anon bearer. Tawk's visitor monitoring reports
+    // the page URL to a third party, so the vendor's "inject during parsing"
+    // snippet would race `importHandoffFromLocation()` for a credential. Astro's
+    // hoisted page scripts are deferred modules and therefore always run before
+    // `DOMContentLoaded` — waiting for it makes the ordering a guarantee. Pinned
+    // here because the obvious "restore the vendor snippet" edit reopens it
+    // silently.
+    const src = readFileSync(join(WEB_SRC, "components", "SupportChat.astro"), "utf8");
+    expect(src).toContain('addEventListener("DOMContentLoaded"');
+    expect(src.indexOf("embed.tawk.to")).toBeGreaterThan(src.indexOf("DOMContentLoaded"));
   });
 
   test("every static `<a href>` to an internal page path ends in `/`", () => {

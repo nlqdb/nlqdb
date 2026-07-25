@@ -37,6 +37,10 @@ export const ANON_PREV_KEY = "nlqdb_anon_prev";
 // little slack but pin prefix + length so a crafted fragment can't
 // smuggle arbitrary strings into the bearer slot.
 const ANON_TOKEN_RE = /^anon_[A-Za-z0-9-]{16,128}$/;
+// One cap for prompt text, enforced on BOTH sides of the hop by the single
+// `normalize` below. A receiver-only cap silently dropped any >4096-char
+// prompt and landed the visitor on an empty input — the exact loss
+// SK-ANON-011 forbids.
 const MAX_TEXT = 4096;
 
 export interface HandoffPayload {
@@ -63,9 +67,34 @@ function asText(v: unknown, max: number): string | null {
   return typeof v === "string" && v.length > 0 && v.length <= max ? v : null;
 }
 
-// Parse + validate a `#nlq=` fragment. Field-wise: an invalid field is
-// dropped, not fatal, so a valid prompt still survives a mangled token
-// (and vice versa). Returns null when nothing valid remains.
+// The single place the payload shape and the `MAX_TEXT` cap are decided, so
+// the sender (`buildHandoffPayload`) and the receiver (`parseHandoff`) can
+// never drift apart. Field-wise: an invalid field is dropped, not fatal, so a
+// valid prompt still survives a mangled token (and vice versa). Prompt text is
+// never dropped for length (SK-ANON-011) — an oversize `draft` is truncated,
+// and an oversize `pending` is demoted to `draft` so a truncated goal never
+// occupies the queued-submission slot; it lands in the composer for review.
+// Returns null when nothing valid remains.
+function normalize(input: Record<string, unknown>): HandoffPayload | null {
+  const payload: HandoffPayload = { v: 1 };
+  const anon = asText(input["anon"], 133);
+  if (anon && ANON_TOKEN_RE.test(anon)) payload.anon = anon;
+  const pending =
+    typeof input["pending"] === "object" && input["pending"] !== null
+      ? (input["pending"] as Record<string, unknown>)
+      : null;
+  const goal = pending && typeof pending["goal"] === "string" ? pending["goal"] : "";
+  if (pending && goal.length > 0 && goal.length <= MAX_TEXT) {
+    payload.pending = { goal, submittedAt: asText(pending["submittedAt"], 64) ?? "" };
+  }
+  const draft = typeof input["draft"] === "string" ? input["draft"] : "";
+  const text = (draft || (goal.length > MAX_TEXT ? goal : "")).slice(0, MAX_TEXT);
+  if (text) payload.draft = text;
+  if (!payload.anon && !payload.pending && !payload.draft) return null;
+  return payload;
+}
+
+// Parse + validate a `#nlq=` fragment.
 export function parseHandoff(hash: string): HandoffPayload | null {
   if (!hash.startsWith(FRAGMENT_PREFIX)) return null;
   let raw: unknown;
@@ -77,27 +106,7 @@ export function parseHandoff(hash: string): HandoffPayload | null {
   if (typeof raw !== "object" || raw === null) return null;
   const input = raw as Record<string, unknown>;
   if (input["v"] !== 1) return null;
-  const payload: HandoffPayload = { v: 1 };
-  const anon = asText(input["anon"], 133);
-  if (anon && ANON_TOKEN_RE.test(anon)) payload.anon = anon;
-  const pending =
-    typeof input["pending"] === "object" && input["pending"] !== null
-      ? (input["pending"] as Record<string, unknown>)
-      : null;
-  const goal = pending ? asText(pending["goal"], MAX_TEXT) : null;
-  if (pending && goal) {
-    const origin = asText(pending["origin"], 2048);
-    payload.pending = {
-      goal,
-      submittedAt: asText(pending["submittedAt"], 64) ?? "",
-      // `origin` is a same-origin landing path, never a full URL.
-      origin: origin?.startsWith("/") ? origin : "/",
-    };
-  }
-  const draft = asText(input["draft"], MAX_TEXT);
-  if (draft) payload.draft = draft;
-  if (!payload.anon && !payload.pending && !payload.draft) return null;
-  return payload;
+  return normalize(input);
 }
 
 // Snapshot this origin's prompt + identity state. Null when there is
@@ -105,22 +114,13 @@ export function parseHandoff(hash: string): HandoffPayload | null {
 export function buildHandoffPayload(): HandoffPayload | null {
   const ls = safeStorage();
   if (!ls) return null;
-  const payload: HandoffPayload = { v: 1 };
-  const anon = ls.getItem(ANON_KEY) ?? "";
-  if (ANON_TOKEN_RE.test(anon)) payload.anon = anon;
-  const rawPending = ls.getItem("nlqdb_pending");
-  if (rawPending) {
-    try {
-      const pending = JSON.parse(rawPending) as PendingPrompt;
-      if (typeof pending.goal === "string" && pending.goal.length > 0) payload.pending = pending;
-    } catch {
-      // corrupt slot — drop it from the handoff rather than fail the redirect
-    }
+  let pending: unknown = null;
+  try {
+    pending = JSON.parse(ls.getItem("nlqdb_pending") ?? "null");
+  } catch {
+    // corrupt slot — drop it from the handoff rather than fail the redirect
   }
-  const draft = loadDraft();
-  if (draft) payload.draft = draft;
-  if (!payload.anon && !payload.pending && !payload.draft) return null;
-  return payload;
+  return normalize({ anon: ls.getItem(ANON_KEY), pending, draft: loadDraft() });
 }
 
 // Append the handoff fragment to a navigation target. A no-op when
@@ -133,43 +133,76 @@ export function attachHandoff(url: string): string {
   return base + serializeHandoff(payload);
 }
 
-// The handoff is honored only when the navigation demonstrably came
-// from our own surfaces: same origin, a `nlqdb.com` host, or localhost
-// dev. `Base.astro` pins `strict-origin-when-cross-origin`, so every
-// legit hop carries at least its origin, and a referrer can't be
-// forged upward — an attacker can only send their own origin or none.
-// A stripped referrer (privacy extension) drops the payload; the
-// SK-ANON-012 "couldn't recover your message" notice covers that rare
-// legit loss.
+// The only hosts that legitimately originate a handoff: the two marketing
+// hosts the `nlqdb-web` worker serves (`web/src/worker.ts` MARKETING_HOSTS)
+// and the merged app host (`api/wrangler.toml`). An explicit set, NOT a
+// `*.nlqdb.com` suffix match: a wildcard hands the same trust to every
+// present and future subdomain, so one dangling or taken-over host
+// (`docs.`, `mcp.`, a stale CNAME) could fixate an attacker-known anon
+// bearer on a victim at sign-in. `docs.`/`mcp.` hold no prompt state and
+// never call `attachHandoff`, so nothing legitimate is lost, and a new
+// subdomain fails closed — the correct default for a credential-bearing hop.
+// Previews and `*.workers.dev` need no entry: there `/app/*` is served by the
+// same worker as the marketing pages, so the hop is same-origin.
+const TRUSTED_HANDOFF_HOSTS = new Set(["nlqdb.com", "www.nlqdb.com", "app.nlqdb.com"]);
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"]);
+
+// The handoff is honored only when the navigation demonstrably came from our
+// own surfaces. `Base.astro` pins `strict-origin-when-cross-origin`, so every
+// legit hop carries at least its origin, and a referrer can't be forged upward
+// — an attacker can only send their own origin or none. A stripped referrer
+// (privacy extension) drops the payload; the SK-ANON-012 "couldn't recover
+// your message" notice covers that rare legit loss.
 function trustedReferrer(): boolean {
   const ref = typeof document === "undefined" ? "" : document.referrer;
   if (!ref) return false;
   try {
+    const here = new URL(window.location.href);
     const from = new URL(ref);
-    if (from.origin === new URL(window.location.href).origin) return true;
-    if (from.hostname === "localhost" || from.hostname === "127.0.0.1") return true;
-    return from.hostname === "nlqdb.com" || from.hostname.endsWith(".nlqdb.com");
+    if (from.origin === here.origin) return true;
+    // Two-origin local dev (`astro dev` on :4321 → `wrangler dev` on :8787)
+    // needs a cross-port hop. Gated on *this* page also being local — a host
+    // check, not a build flag, because the app origin in that flow serves the
+    // production `dist/` bundle. In production `here.hostname` is
+    // `app.nlqdb.com`, so no local process can hand us a bearer.
+    if (LOCAL_HOSTS.has(here.hostname)) return LOCAL_HOSTS.has(from.hostname);
+    // Production hops are https-only, so a plaintext referrer means either a
+    // downgrade or a spoofable hop — never a real one.
+    return from.protocol === "https:" && TRUSTED_HANDOFF_HOSTS.has(from.hostname);
   } catch {
     return false;
   }
 }
 
-// Import a handoff fragment into this origin's localStorage, then
-// strip it from the address bar. Must run before any code that reads
-// `nlqdb_anon` or `nlqdb_pending` (adoption, session short-circuits).
-// The fragment is stripped even when the payload is rejected, so the
-// bearer never lingers in the address bar or the history entry.
+// Import a handoff fragment into this origin's localStorage. Must run before
+// any code that reads `nlqdb_anon` or `nlqdb_pending` (adoption, session
+// short-circuits). The fragment is stripped first and unconditionally — before
+// the writes, and whether or not the payload was accepted — so the bearer
+// leaves the address bar and the history entry at the earliest possible moment,
+// and a `setItem` that throws (quota) can never leave it behind.
 export function importHandoffFromLocation(): void {
   if (typeof window === "undefined") return;
   if (!window.location.hash.startsWith(FRAGMENT_PREFIX)) return;
   const payload = trustedReferrer() ? parseHandoff(window.location.hash) : null;
+  const url = new URL(window.location.href);
+  url.hash = "";
+  window.history.replaceState(null, "", url.toString());
   // One funnel event per rejected arrival — crafted links and
   // referrer-stripped legit hops are otherwise invisible.
-  if (!payload) emit("handoff.rejected");
-  const ls = payload ? safeStorage() : null;
-  if (payload && ls) {
-    if (payload.pending) savePending(payload.pending);
-    if (payload.draft) saveDraft(payload.draft);
+  if (!payload) {
+    emit("handoff.rejected");
+    return;
+  }
+  const ls = safeStorage();
+  if (!ls) return;
+  // `safeStorage()` only proves the object is reachable — `setItem` still
+  // throws on a full quota or in Safari private mode. Swallow it: this runs at
+  // the top of `app/new.astro`'s script, so an escaping throw would skip
+  // `getOrMintAnonToken()` and leave the page with no identity at all.
+  // The token goes first: it is the smallest value and the only unrecoverable
+  // one (losing it orphans the DB the visitor already created), so a quota that
+  // trips partway through must not spend its last bytes on a 4 KB prompt.
+  try {
     if (payload.anon) {
       const existing = ls.getItem(ANON_KEY) ?? "";
       if (existing.startsWith("anon_") && existing !== payload.anon) {
@@ -177,8 +210,10 @@ export function importHandoffFromLocation(): void {
       }
       ls.setItem(ANON_KEY, payload.anon);
     }
+    if (payload.pending) savePending(payload.pending);
+    if (payload.draft) saveDraft(payload.draft);
+  } catch {
+    // Same funnel meaning as above: an arrival whose payload didn't land.
+    emit("handoff.rejected");
   }
-  const url = new URL(window.location.href);
-  url.hash = "";
-  window.history.replaceState(null, "", url.toString());
 }

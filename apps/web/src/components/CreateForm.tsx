@@ -146,11 +146,7 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
       // anon token across in the URL fragment (SK-ANON-015) so the
       // app-origin localStorage can rehydrate them.
       if (!outcome.ok && outcome.error.kind === "auth_required") {
-        savePending({
-          goal: trimmed,
-          submittedAt,
-          origin: typeof window !== "undefined" ? window.location.pathname : "/",
-        });
+        savePending({ goal: trimmed, submittedAt });
         if (typeof window !== "undefined") {
           window.location.assign(attachHandoff(withReplayFlag(outcome.error.signInUrl)));
         }

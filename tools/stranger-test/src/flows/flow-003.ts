@@ -3,7 +3,7 @@
 
 import type { Browser } from "@playwright/test";
 
-import { openSession, step, withDeadline } from "../browser.ts";
+import { landedGoal, openSession, step, withDeadline } from "../browser.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
 // Pinned literal mirror of `apps/web/src/data/competitors.ts` — drift fails
@@ -134,17 +134,18 @@ async function doWalk(
     }
 
     if (failedStep === null) {
-      const draft = await page
-        .evaluate(() => localStorage.getItem("nlqdb_draft"))
-        .catch(() => null);
+      // Outcome, not mechanism — see flow-002 step 6 for why the old
+      // `localStorage.nlqdb_draft` read stopped meaning anything once
+      // `/app/new/` moved to its own origin (SK-AUTH-016).
       const expectedDraft = meta?.goal;
-      const draftOk = expectedDraft !== undefined && draft === expectedDraft;
+      const landed = await landedGoal(page, expectedDraft);
+      const draftOk = expectedDraft !== undefined && landed === expectedDraft;
       steps.push(
         step(
           6,
-          "localStorage.nlqdb_draft = Competitor.demo.goal",
+          "Competitor.demo.goal arrives in the /app/new create input",
           draftOk ? "ok" : "fail",
-          `expected=${expectedDraft ?? "<unknown>"} actual=${draft ?? "<null>"}`,
+          `expected=${expectedDraft ?? "<unknown>"} actual=${landed ?? "<empty>"}`,
         ),
       );
       if (!draftOk) failedStep = 6;
@@ -152,7 +153,7 @@ async function doWalk(
       steps.push(
         step(
           6,
-          "localStorage.nlqdb_draft = Competitor.demo.goal",
+          "Competitor.demo.goal arrives in the /app/new create input",
           "skip",
           "blocked by earlier step",
         ),

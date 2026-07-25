@@ -3,7 +3,7 @@
 
 import type { Browser } from "@playwright/test";
 
-import { openSession, step, withDeadline } from "../browser.ts";
+import { landedGoal, openSession, step, withDeadline } from "../browser.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
 // Pinned literal mirror of `apps/web/src/data/solve.ts` `demoGoal` values;
@@ -63,20 +63,25 @@ async function doWalk(
   let ttfvMs: number | null = null;
   let failedStep: number | null = null;
 
-  // The CTA emits the event synchronously then calls `location.assign`,
-  // so an in-window spy gets wiped by the navigation. Persist into
-  // sessionStorage instead — it survives same-origin navigations and
-  // can be read on /app/new.
+  // The CTA emits the event synchronously then calls `location.assign`, so an
+  // in-window spy gets wiped by the navigation. Records used to be parked in
+  // sessionStorage "because it survives same-origin navigations" — but
+  // `/app/new/` 301s to the app origin (SK-AUTH-016), and web storage is
+  // per-origin, so the sender's records became unreachable the moment the hop
+  // went cross-origin. Record on the Node side instead: `exposeFunction`
+  // binding survives every navigation, cross-origin included.
+  const emitted: string[] = [];
+  await page.exposeFunction("__nlqdbWalkerEmit", (event: string) => {
+    emitted.push(event);
+  });
   await page.addInitScript(() => {
     const w = window as unknown as {
       __nlqdb_logsnag?: (e: string, p?: Record<string, unknown>) => void;
+      __nlqdbWalkerEmit?: (e: string) => void;
     };
-    w.__nlqdb_logsnag = (event, props) => {
+    w.__nlqdb_logsnag = (event) => {
       try {
-        const raw = sessionStorage.getItem("__nlqdb_logsnag_events");
-        const arr = raw ? (JSON.parse(raw) as unknown[]) : [];
-        arr.push({ event, ...(props !== undefined ? { props } : {}) });
-        sessionStorage.setItem("__nlqdb_logsnag_events", JSON.stringify(arr));
+        void w.__nlqdbWalkerEmit?.(event);
       } catch {
         /* ignore — analytics should never break the user flow */
       }
@@ -158,18 +163,20 @@ async function doWalk(
     }
 
     if (failedStep === null) {
-      // Read localStorage on the origin BEFORE the navigation lands —
-      // CTA's saveDraft + emit + location.assign all run synchronously.
-      const draft = await page
-        .evaluate(() => localStorage.getItem("nlqdb_draft"))
-        .catch(() => null);
-      const draftOk = expectedDraft !== undefined && draft === expectedDraft;
+      // Assert the *outcome*, not the mechanism: the demo goal is sitting in
+      // the create-form input the visitor now sees. The old check read
+      // `localStorage.nlqdb_draft` on the sending origin and raced the
+      // navigation — once `/app/new/` became cross-origin (SK-AUTH-016) the
+      // read landed on the app origin's empty storage, which is how a
+      // genuinely broken handoff and a stale assertion became indistinguishable.
+      const landed = await landedGoal(page, expectedDraft);
+      const draftOk = expectedDraft !== undefined && landed === expectedDraft;
       steps.push(
         step(
           6,
-          "localStorage.nlqdb_draft = SolveEntry.demoGoal",
+          "SolveEntry.demoGoal arrives in the /app/new create input",
           draftOk ? "ok" : "fail",
-          `expected=${expectedDraft ?? "<unknown-slug>"} actual=${draft ?? "<null>"}`,
+          `expected=${expectedDraft ?? "<unknown-slug>"} actual=${landed ?? "<empty>"}`,
         ),
       );
       if (!draftOk) failedStep = 6;
@@ -177,7 +184,7 @@ async function doWalk(
       steps.push(
         step(
           6,
-          "localStorage.nlqdb_draft = SolveEntry.demoGoal",
+          "SolveEntry.demoGoal arrives in the /app/new create input",
           "skip",
           "blocked by earlier step",
         ),
@@ -195,31 +202,13 @@ async function doWalk(
     }
 
     if (failedStep === null) {
-      const events = await page
-        .evaluate(() => {
-          try {
-            const raw = sessionStorage.getItem("__nlqdb_logsnag_events");
-            return raw ? (JSON.parse(raw) as unknown[]) : [];
-          } catch {
-            return [];
-          }
-        })
-        .catch(() => []);
-      const sawEvent =
-        Array.isArray(events) &&
-        events.some((ev) => {
-          return (
-            typeof ev === "object" &&
-            ev !== null &&
-            (ev as { event?: unknown }).event === "solve.try_query_clicked"
-          );
-        });
+      const sawEvent = emitted.includes("solve.try_query_clicked");
       steps.push(
         step(
           8,
           "solve.try_query_clicked event fired",
           sawEvent ? "ok" : "fail",
-          sawEvent ? undefined : `events=${JSON.stringify(events).slice(0, 120)}`,
+          sawEvent ? undefined : `events=${JSON.stringify(emitted).slice(0, 120)}`,
         ),
       );
       if (!sawEvent) failedStep = 8;

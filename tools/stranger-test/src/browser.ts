@@ -84,6 +84,29 @@ export async function withDeadline<T>(
   }
 }
 
+// Wait for the content→app CTA to land and report what the create input
+// actually holds. Origin-agnostic on purpose: `/app/new/` 301s to the app host
+// (SK-AUTH-016), so the goal can only arrive via the SK-ANON-015 `#nlq=`
+// fragment, and only the rendered input proves it did. Polls because the value
+// appears when the React island hydrates and its rehydrate effect runs, not
+// when the URL settles. Returns null if the goal never shows up.
+export async function landedGoal(
+  page: Page,
+  expected: string | undefined,
+  timeoutMs = 15_000,
+): Promise<string | null> {
+  await page.waitForURL(/\/app\/new\/?$/, { timeout: timeoutMs }).catch(() => {});
+  const input = page.locator("input[placeholder],textarea[placeholder]").first();
+  const deadline = Date.now() + timeoutMs;
+  let last: string | null = null;
+  while (Date.now() < deadline) {
+    last = await input.inputValue({ timeout: 2_000 }).catch(() => null);
+    if (last && (expected === undefined || last === expected)) return last;
+    await page.waitForTimeout(250);
+  }
+  return last;
+}
+
 export function step(
   num: number,
   description: string,

@@ -96,8 +96,13 @@ jobs:
         env:
           NLQDB_BASE_URL: ${{ inputs.base_url || 'https://nlqdb.com' }}
         run: |
+          # Deliberately NOT --quiet: SK-STRG-003 keeps this workflow green, so
+          # the job log is the only failure carrier an agent can actually read
+          # (artifact download is proxy-gated from the agent container, and
+          # $GITHUB_STEP_SUMMARY never lands in the logs). Under --quiet a red
+          # walk emitted zero bytes and read as "not recently dispatched".
           set +e
-          bash scripts/stranger-test.sh --prompts 3 --quiet \
+          bash scripts/stranger-test.sh --prompts 3 \
             --out tools/stranger-test/results/walk-cron.json
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
@@ -201,5 +206,16 @@ jobs:
                 "- ttfv p50 ms: " + (.summary.ttfvP50Ms // 0 | tostring),
                 "- ttfv p95 ms: " + (.summary.ttfvP95Ms // 0 | tostring)
               ' "$walk" || true
+              # Name every failing walk and each of its failing steps. Without
+              # this a red walk is only a count, and diagnosing it costs a re-run.
+              jq -r '
+                .flows[] as $f | $f.runs[] | select(.state != "passed") |
+                "- FAILED \($f.id) (\($f.persona)) prompt=\"\(.prompt)\" step=\(.failedStep // "n/a")"
+                  + ((.steps[] | select(.status == "fail") | " — \(.description)"
+                      + (if .detail then ": \(.detail)" else "" end)) // "")
+              ' "$walk" || true
             fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          # tee, not >>: SK-STRG-003 keeps this workflow green, so the job log
+          # has to carry the verdict too — $GITHUB_STEP_SUMMARY is not in the
+          # logs, and the agent that reads this cron cannot fetch artifacts.
+          } | tee -a "$GITHUB_STEP_SUMMARY"

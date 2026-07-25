@@ -88,7 +88,13 @@ export function reportClientError(report: ErrorReport): void {
         message: report.message,
         stack: report.stack ?? null,
         componentStack: report.componentStack ?? null,
-        href: report.href ?? null,
+        // Fragment dropped, always: `/app/new/` and `/auth/sign-in/` receive
+        // the SK-ANON-015 handoff as `#nlq=<json>` carrying the anonymous
+        // bearer, and an error thrown before the page's synchronous strip would
+        // otherwise POST that credential into the error log — the one place
+        // SK-ANON-011/015 guarantee it never reaches. Hashes carry no
+        // diagnostic value here (Astro MPA, no hash routing).
+        href: report.href?.split("#")[0] ?? null,
         userAgent: report.userAgent ?? null,
       }),
     }).catch(() => {

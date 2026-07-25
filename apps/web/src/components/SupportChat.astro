@@ -4,17 +4,32 @@
 // marketing/blog/vs/solve pages stay third-party-SDK-free per GLOBAL-034
 // (Lighthouse-100 + no-cookie-banner posture). Official async embed snippet;
 // its throws are ignored by the boot-fallback panel (lib/boot-fallback.ts).
+//
+// SK-ANON-015 — the embed loads on `/app/new/`, which receives the handoff as
+// `#nlq=<json>` carrying the anonymous **bearer**, and Tawk's visitor
+// monitoring reports the page URL to a third party. So the injection waits for
+// `DOMContentLoaded`: Astro's hoisted page scripts are deferred modules, so
+// `importHandoffFromLocation()` has provably already stripped the fragment by
+// then. Ordering, not a network race — and the widget still loads, unlike the
+// `lib/posthog.ts` bail-out (that one also has `$snapshot_data` to worry about).
 ---
 <script is:inline>
-  var Tawk_API = Tawk_API || {},
-    Tawk_LoadStart = new Date();
+  window.Tawk_API = window.Tawk_API || {};
+  window.Tawk_LoadStart = new Date();
   (function () {
-    var s1 = document.createElement("script"),
-      s0 = document.getElementsByTagName("script")[0];
-    s1.async = true;
-    s1.src = "https://embed.tawk.to/6a58f0cc096ab21d402a6b88/1jtlmp8d1";
-    s1.charset = "UTF-8";
-    s1.setAttribute("crossorigin", "*");
-    s0.parentNode.insertBefore(s1, s0);
+    function boot() {
+      var s1 = document.createElement("script"),
+        s0 = document.getElementsByTagName("script")[0];
+      s1.async = true;
+      s1.src = "https://embed.tawk.to/6a58f0cc096ab21d402a6b88/1jtlmp8d1";
+      s1.charset = "UTF-8";
+      s1.setAttribute("crossorigin", "*");
+      s0.parentNode.insertBefore(s1, s0);
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", boot);
+    } else {
+      boot();
+    }
   })();
 </script>

@@ -17,6 +17,7 @@ import {
   parseHandoff,
   serializeHandoff,
 } from "./handoff";
+import { saveDraft } from "./prompt-storage";
 
 // Valid per the client mint format: `anon_` + ≥16 chars of [A-Za-z0-9-].
 const ANON_A = "anon_aaaaaaaaaaaaaaaa";
@@ -26,10 +27,11 @@ const ANON_OLD = "anon_oooooooooooooooo";
 let store: Map<string, string>;
 let replacedUrl: string | null;
 
-function installWindow(href: string, referrer = "https://nlqdb.com/") {
+function installWindow(href: string, referrer = "https://nlqdb.com/", failWrites = false) {
   const storage = {
     getItem: (k: string) => store.get(k) ?? null,
     setItem: (k: string, v: string) => {
+      if (failWrites) throw new DOMException("quota", "QuotaExceededError");
       store.set(k, v);
     },
     removeItem: (k: string) => store.delete(k),
@@ -68,7 +70,7 @@ describe("serialize / parse", () => {
     const payload = {
       v: 1 as const,
       anon: ANON_A,
-      pending: { goal: "add a pool", submittedAt: "2026-07-02T00:00:00Z", origin: "/app/new/" },
+      pending: { goal: "add a pool", submittedAt: "2026-07-02T00:00:00Z" },
       draft: "add a pool",
     };
     expect(parseHandoff(serializeHandoff(payload))).toEqual(payload);
@@ -91,10 +93,33 @@ describe("serialize / parse", () => {
         draft: { nested: "object" },
       }),
     )}`;
+    // `origin` was a dead field on `PendingPrompt`; an attacker-supplied one is
+    // not copied through at all now (no key on the output object).
     expect(parseHandoff(mixed)).toEqual({
       v: 1,
-      pending: { goal: "add a pool", submittedAt: "", origin: "/" },
+      pending: { goal: "add a pool", submittedAt: "" },
     });
+  });
+
+  // The fragment is attacker-writable, so the parser is a trust boundary even
+  // before the referrer gate: it must not be walkable into the prototype chain
+  // and must not throw on anything a crafted link can put in the URL.
+  test("survives prototype-pollution and malformed input without throwing", () => {
+    const frag = (s: string) => `#nlq=${encodeURIComponent(s)}`;
+    expect(
+      parseHandoff(frag('{"v":1,"draft":"ok","__proto__":{"polluted":true},"constructor":{}}')),
+    ).toEqual({ v: 1, draft: "ok" });
+    expect(({} as Record<string, unknown>)["polluted"]).toBeUndefined();
+    // `goal` reachable only through a JSON `__proto__` key is not a real
+    // property, so the pending is dropped rather than half-built.
+    expect(parseHandoff(frag('{"v":1,"pending":{"__proto__":{"goal":"x"}}}'))).toBeNull();
+    // Truncated percent-encoding (URIError) and a 1 MB fragment.
+    expect(parseHandoff("#nlq=%E0%A4%A")).toBeNull();
+    expect(parseHandoff(`#nlq=${"a".repeat(1_000_000)}`)).toBeNull();
+    // An XSS payload is inert data — carried as text, never a URL or HTML.
+    expect(parseHandoff(frag('{"v":1,"draft":"<img src=x onerror=alert(1)>"}'))?.draft).toBe(
+      "<img src=x onerror=alert(1)>",
+    );
   });
 
   test("rejects payloads with nothing valid left", () => {
@@ -102,8 +127,54 @@ describe("serialize / parse", () => {
       JSON.stringify({ v: 1, anon: "anon_x", pending: { goal: { evil: true } }, draft: "" }),
     )}`;
     expect(parseHandoff(bad)).toBeNull();
-    const huge = `#nlq=${encodeURIComponent(JSON.stringify({ v: 1, draft: "x".repeat(5000) }))}`;
-    expect(parseHandoff(huge)).toBeNull();
+  });
+});
+
+// SK-ANON-011 forbids silent prompt loss, and the cap is the one place a
+// prompt could vanish without anybody noticing — the receiver used to reject
+// >MAX_TEXT text outright, so a long goal landed the visitor on an empty input.
+describe("the MAX_TEXT cap is symmetric and never drops a prompt", () => {
+  const OVERSIZE = "x".repeat(5000);
+  const frag = (p: unknown) => `#nlq=${encodeURIComponent(JSON.stringify(p))}`;
+
+  test("an oversize draft is truncated, not dropped — receiver", () => {
+    const out = parseHandoff(frag({ v: 1, draft: OVERSIZE }));
+    expect(out?.draft).toBe("x".repeat(4096));
+  });
+
+  test("an oversize draft is truncated, not dropped — sender", () => {
+    store.set("nlqdb_draft", OVERSIZE);
+    expect(buildHandoffPayload()?.draft).toBe("x".repeat(4096));
+  });
+
+  test("an oversize pending demotes to draft and is never queued for replay", () => {
+    const out = parseHandoff(frag({ v: 1, pending: { goal: OVERSIZE, submittedAt: "t" } }));
+    expect(out?.pending).toBeUndefined();
+    expect(out?.draft).toBe("x".repeat(4096));
+  });
+
+  test("the sender demotes an oversize pending the same way", () => {
+    store.set("nlqdb_pending", JSON.stringify({ goal: OVERSIZE, submittedAt: "t" }));
+    const payload = buildHandoffPayload();
+    expect(payload?.pending).toBeUndefined();
+    expect(payload?.draft).toBe("x".repeat(4096));
+  });
+
+  test("a demoted pending reaches the app origin's draft slot, and nothing replays", () => {
+    store.set("nlqdb_pending", JSON.stringify({ goal: OVERSIZE, submittedAt: "t" }));
+    const target = attachHandoff("/app/new/");
+    store = new Map();
+    installWindow(`https://app.nlqdb.com/app/new/${target.slice(target.indexOf("#"))}`);
+    importHandoffFromLocation();
+    expect(store.get("nlqdb_draft")).toBe("x".repeat(4096));
+    expect(store.get("nlqdb_pending")).toBeUndefined();
+  });
+
+  test("under-cap text is untouched on both sides", () => {
+    const under = "y".repeat(4096);
+    expect(parseHandoff(frag({ v: 1, draft: under }))?.draft).toBe(under);
+    store.set("nlqdb_draft", under);
+    expect(buildHandoffPayload()?.draft).toBe(under);
   });
 });
 
@@ -117,10 +188,7 @@ describe("buildHandoffPayload / attachHandoff", () => {
 
   test("snapshots anon + pending + draft from localStorage", () => {
     store.set("nlqdb_anon", ANON_A);
-    store.set(
-      "nlqdb_pending",
-      JSON.stringify({ goal: "add a pool", submittedAt: "t", origin: "/" }),
-    );
+    store.set("nlqdb_pending", JSON.stringify({ goal: "add a pool", submittedAt: "t" }));
     store.set("nlqdb_draft", "add a pool");
     const payload = buildHandoffPayload();
     expect(payload?.anon).toBe(ANON_A);
@@ -157,7 +225,7 @@ describe("importHandoffFromLocation", () => {
     arriveWith({
       v: 1,
       anon: ANON_A,
-      pending: { goal: "add a pool", submittedAt: "t", origin: "/app/new/" },
+      pending: { goal: "add a pool", submittedAt: "t" },
       draft: "add a pool",
     });
     importHandoffFromLocation();
@@ -212,9 +280,100 @@ describe("importHandoffFromLocation", () => {
     expect(replacedUrl).toBe("https://app.nlqdb.com/auth/sign-in?return_to=%2Fapp");
   });
 
+  // A full quota (or Safari private mode) throws from `setItem`, not from the
+  // `localStorage` getter `safeStorage()` guards. The throw must not escape:
+  // this runs at the top of `app/new.astro`'s script, ahead of
+  // `getOrMintAnonToken()`, and it must not leave the bearer in the URL.
+  test("a throwing setItem neither escapes nor leaves the fragment behind", () => {
+    installWindow(
+      `https://app.nlqdb.com/app/new/${serializeHandoff({ v: 1, anon: ANON_A, draft: "d" })}`,
+      "https://nlqdb.com/",
+      true,
+    );
+    expect(() => importHandoffFromLocation()).not.toThrow();
+    expect(replacedUrl).toBe("https://app.nlqdb.com/app/new/");
+  });
+
   test("no fragment → no writes, no history rewrite", () => {
     importHandoffFromLocation();
     expect(store.size).toBe(0);
     expect(replacedUrl).toBeNull();
+  });
+});
+
+// The referrer gate is the whole anti-fixation boundary: a crafted `#nlq=`
+// link plants an attacker-known bearer, which at sign-in adopts the attacker's
+// DB into the victim's account. The trusted set is therefore an explicit
+// allowlist, not a `*.nlqdb.com` suffix match — one dangling subdomain would
+// otherwise inherit credential-granting trust.
+describe("the trusted-referrer allowlist", () => {
+  function accepts(referrer: string, here = "https://app.nlqdb.com/app/new/"): boolean {
+    store = new Map();
+    installWindow(`${here}${serializeHandoff({ v: 1, anon: ANON_A })}`, referrer);
+    importHandoffFromLocation();
+    return store.get("nlqdb_anon") === ANON_A;
+  }
+
+  test("accepts every host that legitimately hands off", () => {
+    expect(accepts("https://nlqdb.com/solve/x/")).toBe(true);
+    expect(accepts("https://www.nlqdb.com/vs/y/")).toBe(true);
+    expect(accepts("https://app.nlqdb.com/auth/sign-in/")).toBe(true);
+  });
+
+  test("rejects a non-listed nlqdb.com subdomain — no wildcard trust", () => {
+    expect(accepts("https://evil.nlqdb.com/")).toBe(false);
+    // Real subdomains we serve, but which hold no prompt state and never call
+    // `attachHandoff` — trust fails closed for them too.
+    expect(accepts("https://docs.nlqdb.com/")).toBe(false);
+    expect(accepts("https://mcp.nlqdb.com/")).toBe(false);
+  });
+
+  test("rejects suffix-confusion hosts", () => {
+    expect(accepts("https://nlqdb.com.evil.com/")).toBe(false);
+    expect(accepts("https://evil-nlqdb.com/")).toBe(false);
+    expect(accepts("https://notnlqdb.com/")).toBe(false);
+    expect(accepts("https://xnlqdb.com/")).toBe(false);
+  });
+
+  test("rejects a plaintext referrer for a production hop", () => {
+    expect(accepts("http://nlqdb.com/")).toBe(false);
+  });
+
+  // The dev affordance, gated on the receiving page also being local, so a
+  // process on the developer's machine can never hand a bearer to production.
+  test("localhost is trusted only while the receiving page is itself local", () => {
+    expect(accepts("http://localhost:4321/", "http://localhost:8787/app/new/")).toBe(true);
+    expect(accepts("http://127.0.0.1:4321/", "http://localhost:8787/app/new/")).toBe(true);
+    expect(accepts("http://localhost:4321/")).toBe(false);
+    expect(accepts("http://127.0.0.1:4321/")).toBe(false);
+  });
+});
+
+describe("content-CTA handoff (the /solve · /vs · /agents 'Try this query' arc)", () => {
+  const GOAL = "today's orders aggregated by drink with revenue";
+
+  test("a goal saved on the marketing origin arrives in the app origin's draft slot", () => {
+    // The regression this pins: the CTAs called `saveDraft` and then navigated
+    // to `/app/new/`, which 301s to `app.nlqdb.com` — a different origin, so
+    // the draft was written to storage the create form could never read and
+    // every visitor landed on an empty input. Walk both origins for real.
+    installWindow("https://nlqdb.com/solve/cheap-internal-dashboard/");
+    saveDraft(GOAL);
+    const target = attachHandoff("/app/new/");
+    expect(target).toStartWith("/app/new/#nlq=");
+
+    // Second origin: fresh storage, as a real cross-origin hop gets.
+    store = new Map();
+    installWindow(`https://app.nlqdb.com/app/new/${target.slice(target.indexOf("#"))}`);
+    expect(store.get("nlqdb_draft")).toBeUndefined();
+
+    importHandoffFromLocation();
+    expect(store.get("nlqdb_draft")).toBe(GOAL);
+    expect(replacedUrl).toBe("https://app.nlqdb.com/app/new/");
+  });
+
+  test("carries nothing when the visitor never typed a goal", () => {
+    installWindow("https://nlqdb.com/solve/cheap-internal-dashboard/");
+    expect(attachHandoff("/app/new/")).toBe("/app/new/");
   });
 });

@@ -273,11 +273,13 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
   <script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
   <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
   <script>
-    // "Try this query" → seed the anonymous-create input via the same
-    // `nlqdb_draft` localStorage slot CreateForm rehydrates from
-    // (SK-ANON-011), emit a per-slug demand signal (GLOBAL-024), then
-    // navigate. No URL param so the goal can't be sniffed from
-    // referrer / access logs.
+    // "Try this query" → seed the `nlqdb_draft` slot CreateForm rehydrates
+    // from (SK-ANON-011), emit a per-slug demand signal (GLOBAL-024), then
+    // navigate. `/app/new/` 301s to the app origin (SK-AUTH-016), where this
+    // origin's localStorage is unreadable, so the draft rides along in the
+    // SK-ANON-015 `#nlq=` fragment — still no query param, so the goal never
+    // reaches referrer or access logs.
+    import { attachHandoff } from "../../lib/handoff";
     import { emit } from "../../lib/logsnag";
     import { saveDraft } from "../../lib/prompt-storage";
     document.querySelectorAll<HTMLButtonElement>(".vs__try-btn").forEach((btn) => {
@@ -286,7 +288,7 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
         const slug = btn.dataset["competitorSlug"] ?? "";
         if (goal) saveDraft(goal);
         emit("vs.try_query_clicked", { slug, goal });
-        location.assign("/app/new/");
+        location.assign(attachHandoff("/app/new/"));
       });
     });
   </script>
