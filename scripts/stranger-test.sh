@@ -13,7 +13,8 @@
 #   bash scripts/stranger-test.sh --flows flow-001         # one flow only
 #   NLQDB_BASE_URL=https://preview-xyz.nlqdb.com bash scripts/stranger-test.sh
 #
-# Exits non-zero if any walked run failed (or was blocked); cron-friendly.
+# Exits non-zero only if a walked run *failed* — a `blocked` run is the
+# instrument being refused, not a product break (SK-STRG-010); cron-friendly.
 # Output JSON is written to tools/stranger-test/results/walk-<utc>.json
 # unless `--out <path>` overrides.
 

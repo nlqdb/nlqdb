@@ -6,6 +6,17 @@ import type { RunState, StepResult, StepStatus } from "./types.ts";
 
 export type AskOutcome = Extract<StepStatus, "ok" | "blocked" | "fail">;
 
+// The evidence half of `classifyAsk`'s third condition: did the page request
+// the script `solveChallenge()` loads? Matches the api.js path rather than the
+// bare `challenges.cloudflare.com` host on purpose — Cloudflare's own managed
+// challenge serves from that host too, and a headless walker on a datacenter IP
+// is a prime target for one, so a host-wide match would let an interstitial
+// stand in as proof our widget ran and reopen the run-56 hole this condition
+// exists to close.
+export function isTurnstileApiRequest(url: string): boolean {
+  return url.includes("challenges.cloudflare.com/turnstile/v0/api.js");
+}
+
 // A 428 carrying `challenge_required` is Turnstile declining this client,
 // not a product break: SK-ANON-012 runs Turnstile on every anon create, and
 // a headless Chromium on a GitHub-Actions datacenter IP is exactly the

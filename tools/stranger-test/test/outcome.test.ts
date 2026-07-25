@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { classifyAsk, runOutcome } from "../src/outcome.ts";
+import { classifyAsk, isTurnstileApiRequest, runOutcome } from "../src/outcome.ts";
 import type { StepResult, StepStatus } from "../src/types.ts";
 
 const s = (step: number, status: StepStatus): StepResult => ({
@@ -55,6 +55,30 @@ describe("classifyAsk", () => {
 
   test("a 200 is never downgraded by a body that mentions the code", () => {
     expect(classifyAsk(200, CHALLENGE_BODY, true)).toBe("ok");
+  });
+});
+
+// `classifyAsk`'s third condition is only as good as the evidence fed to it, so
+// the matcher is pinned here too — neutering it must turn this suite red.
+describe("isTurnstileApiRequest", () => {
+  test("the script solveChallenge() actually loads is a match", () => {
+    expect(
+      isTurnstileApiRequest(
+        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit",
+      ),
+    ).toBe(true);
+  });
+
+  // Cloudflare's managed-challenge interstitial serves from the same host, and
+  // the walker is exactly the client that gets one. Matching the host alone
+  // would let it pose as evidence our widget ran.
+  test.each([
+    ["https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/b/orchestrate/jsch/v1"],
+    ["https://challenges.cloudflare.com/turnstile/v0/siteverify"],
+    ["https://nlqdb.com/app/new"],
+    ["https://challenges.cloudflare.com/"],
+  ])("%s is not evidence the widget ran", (url) => {
+    expect(isTurnstileApiRequest(url)).toBe(false);
   });
 });
 

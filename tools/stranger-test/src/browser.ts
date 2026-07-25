@@ -1,5 +1,6 @@
 import { type Browser, type BrowserContext, chromium, type Page } from "@playwright/test";
 
+import { isTurnstileApiRequest } from "./outcome.ts";
 import type { StepResult } from "./types.ts";
 
 export type SessionDeps = {
@@ -71,7 +72,7 @@ export async function openSession(deps: SessionDeps): Promise<Session> {
   // the one thing that tells those two apart from outside (SK-STRG-010).
   let challengeSeen = false;
   page.on("request", (r) => {
-    if (r.url().includes("challenges.cloudflare.com")) challengeSeen = true;
+    if (isTurnstileApiRequest(r.url())) challengeSeen = true;
   });
   return {
     ctx,
