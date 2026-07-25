@@ -46,6 +46,15 @@ below). Natural-language → SQL accuracy is still climbing toward our public
 bar (BIRD ≥ 0.65, Spider 2.0 ≥ 0.75 on the free model chain), so answers can
 be wrong — every response carries a confidence signal and the SQL it ran.
 
+**Known gap — `npm i @nlqdb/sdk` is not usable yet.** Every version published
+so far (through `0.2.1`) declares its entrypoints as `./src/index.ts` while
+shipping only `dist/`, so importing it fails with `ERR_MODULE_NOT_FOUND`.
+Measured against the live registry, not inferred. The manifest is fixed in
+this repo and a CI guard now pins every publishable package's entrypoints
+inside its own `files` allowlist, but **the registry stays broken until
+`0.2.2` publishes**. Until then, use the `<nlq-data>` element, the HTTP API,
+or the CLI. Building from a clone is unaffected.
+
 ## Use it
 
 Connecting an agent over MCP? One command, plus one browser-OAuth approval:
@@ -107,10 +116,11 @@ Paid plans aren't live yet. The full model strategy is in
 |---|---|---|
 | HTTP API (`POST /v1/ask`, `POST /v1/run`) | ✓ shipped | `apps/api/src/ask/**` |
 | `<nlq-data>` + `<nlq-action>` elements | ✓ shipped (v0.1) | `packages/elements/**` |
-| `@nlqdb/sdk` (TypeScript) | ✓ shipped (incl. `runSql`) | `packages/sdk/**` |
+| `@nlqdb/sdk` (TypeScript) | ✓ shipped (incl. `runSql`) — but **not installable from npm** until `0.2.2` (see below) | `packages/sdk/**` |
 | Framework wrappers (React / Next / Vue / Nuxt / Svelte / SvelteKit / Astro / Solid + Swift) | ~ built + CI-tested; npm / SPM publish pending | `packages/{react,next,…}/**` |
 | Chat app `nlqdb.com/app` | ✓ shipped | `apps/web/**` |
 | Hosted MCP server `mcp.nlqdb.com/mcp` | ✓ shipped (host auto-detect pending) | `apps/mcp/**`, `packages/mcp/**` |
+| Local stdio MCP server `@nlqdb/mcp` | ~ publish-ready + verified end-to-end; first npm publish is a maintainer action | `packages/mcp/**` |
 | Droppable agent-memory artifacts (AGENTS.md snippet · Claude Code skill · Cursor rules · Codex config) | ✓ shipped (4/4 hosts; external registry distribution pending) | `apps/web/public/agent-artifacts/**` |
 | `nlq` CLI (Go) | ✓ shipped (core verbs; device-login pending) | `cli/**` |
 
@@ -154,10 +164,13 @@ and shares the link — in under 60 seconds, no card, no config.
 ### Phase 2 — Distribution (agent + developer surfaces)
 
 - ✓ Hosted MCP server (`mcp.nlqdb.com/mcp`) — host auto-detect pending;
-  local stdio `@nlqdb/mcp` built, npm publish pending
+  local stdio `@nlqdb/mcp` publish-ready and verified from a packed tarball
+  under both node and bun, first publish pending (maintainer-only: npm's OIDC
+  trusted publishing can't create a package's first version)
 - ✓ CLI `nlq` (Go) — core verbs + raw-SQL escape hatch; device-login +
   chat REPL pending
-- ✓ `@nlqdb/sdk` — basic methods + `runSql`
+- ✓ `@nlqdb/sdk` — basic methods + `runSql`; npm entrypoints fixed in-repo,
+  usable from the registry once `0.2.2` publishes
 - ~ Framework wrappers + native Swift package — built + CI-tested; npm /
   SPM publish pending
 - ✓ Quality-eval harness (BIRD + Spider 2.0, manual on-demand) — the
