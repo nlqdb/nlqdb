@@ -154,8 +154,8 @@ Per-venue mechanism and exact payloads live canonically in
 [`blocked-by-human.md`](../../../../blocked-by-human.md) — status only here.
 - ✅ #1 official MCP registry — **published 2026-07-22** (`com.nlqdb/nlqdb` v0.1.1, DNS
   domain-verify; `websiteUrl` carries `?utm_source=mcp-registry`). Cascade reached ✅ #4 Glama
-  (07-23) and partly ✅ #3 PulseMCP (re-check 08-22); ✅ #2 **Smithery is not a registry crawler** —
-  needs its own `smithery mcp publish`, payload parked.
+  (07-23) and no one else: ✅ #3 PulseMCP still **absent** 07-25, re-check 08-22; ✅ #2 **Smithery
+  is not a registry crawler** — needs its own `smithery mcp publish`, payload parked.
 - ✅ #5 mcp.so · ✅ #6 Cursor · ✅ #7 Anthropic connector dir — account-walled, **not** registry
   crawlers (so #1 doesn't cascade), payloads parked. #7 is also plan-gated (Team/Enterprise), though
   nlqdb clears its reviewer gates — OAuth 2.0 + tool annotations.
