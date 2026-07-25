@@ -34,9 +34,9 @@ real strangers from 0; its age is the company's real cycle time (rule: human-que
 **Run 137 is a null run** — no agent-movable lever cleared the step-2 bar in any lane (full finding in
 "Last change" below); ships only this step-1 update. **Rule 6 clean** (CI + Security + Release-npm
 `success` on `main` `a60bf5b` — verified live this run; latest `deploy-api` `success` on the last code
-SHA `c3f0647`; runs 129–136 docs-only, no deploy). **Step 0:** 3 open PRs — #719 (draft Infisical,
-oldest at 8 days), #814 (reach `INDEX.md`), #815 (run 138, `scorecard.md`); this run writes only
-`scorecard.md` — step-1 exempt, and #815 is its only overlap.
+SHA `c3f0647`; runs 129–136 docs-only, no deploy). **Step 0:** 4 other open PRs — #719 (draft
+Infisical; oldest — 7 days, opened 07-17), #814 (reach `INDEX.md`), #815 (run 138, `scorecard.md`),
+#816 (deps); this run writes only `scorecard.md` — step-1 exempt, and #815 is its only overlap.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -44,7 +44,7 @@ oldest at 8 days), #814 (reach `INDEX.md`), #815 (run 138, `scorecard.md`); this
 | 1 | Visits, 7d (CF Web Analytics) | **212 pageloads** (07-15→07-22, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 168 + BingBot 2 ⇒ **real-browser ≈ 42** (Chrome 33 + Edge 8 + MobileSafari 1). Flat vs 07-13's ≈49 | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — last live remote-D1 read run 134 (07-24), unchanged — no acquisition channel newly live to produce a signal; funnel walkers green via the 07-24 08:34Z acquisition-health cron. The 428 wall is gone (run 56); acquisition now depends on distribution yield |
 | 3 | DBs total | **255** (07-24 live remote-D1, flat vs 07-23; synthetic — walker/preview traffic; previews share prod D1) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test. **Attribution instrument verified live in prod 07-24 run 134:** `databases.source_json` column exists (migration 0024), `dbsWithSource` = 0 (accrues from first attributable traffic; DBs 255 flat) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel. The stranger create→ask→first-answer path is hardened each run; per-run detail in `git log` |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test. **Attribution instrument verified live in prod 07-24 run 134:** `databases.source_json` column exists (migration 0024), `dbsWithSource` = 0 (accrues from first attributable traffic; DBs 255 flat) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; fresh recount 07-19 — `/solve` +3 & `/vs` +1 from merged reach solve/vs pages, `/blog` +1 corrects run 92's 36 undercount). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
@@ -62,7 +62,7 @@ oldest at 8 days), #814 (reach `INDEX.md`), #815 (run 138, `scorecard.md`); this
 | 15 | E2E manual-suite freshness | **stale reading — recompute next run:** sdk/mcp/examples ≈1.0 each; opencheck's actual latest `main` run is [29553384150](https://github.com/nlqdb/nlqdb/actions/runs/29553384150) (07-17, `depth=a`) — **PASSED Suite A 5/5** with the 3rd free pool armed (`FALLBACK2_LLM_API_KEY` set 07-16, present in the run env), superseding the failed 07-14 run this row previously cited. **No longer dark, no founder action pending** — freshness now decays only with dispatch cadence | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.542, 07-19 post-revert, flat vs baseline — the run-90 regression is cleared); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (instrumented run 38, N≈0); MCP in 3+ host apps (07-11: 0 stranger hosts, 1 founder host — FAIL); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **8** (re-verified 07-24 run 137, same pinned grep — unchanged since run 130's 12 → 8, which reclassified four bullets **Parked until <trigger>** against their decision records) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **8** (re-verified 07-24 run 137, same pinned grep — unchanged since run 130's 12 → 8) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Layered coverage: built-output `href`/`src` sweep + cross-app subdomain verification (run 61) + prod sitemap-200 check (run 72) + `client-nav-integrity.test.ts` (SK-WEB-022) guarding both `location.*` JS navigations (run 77) **and** static `<a href="/literal">` source literals (run 87, after legal-page bare-path 307s) — dotted assets + dynamic `href={…}` skipped, negative-tested | target 0 — `bun run build && bun run check:links` (built-output) + `client-nav-integrity.test.ts` (in CI) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 open** (claim-vs-reality on shipped surfaces + docs; target 0 **met**). **Standing guards — all three advertised-capability surfaces closed-world CI-swept across web *and* docs**, each deriving truth from source (never hand-copied) and naming the phantom + file on failure: `mcp-tool-integrity.test.ts` (`registerTool(...)` sites, `SK-MCP-002`), `cli-verb-integrity.test.ts` (cobra tree), `sdk-method-integrity.test.ts` (shipped `NlqClient` type, `SK-SDK-013`). All 0 phantom live, negative-tested. **Trilogy complete** — no advertised-capability surface remains web-only |
@@ -103,12 +103,12 @@ bar in any lane. **Number moved:** none. **Finding (in place of a delta):**
 - **Priority 2 (UX-flow):** funnel healthy — 07-24 08:34Z acquisition-health cron `success` (walkers
   9/9 + both FLOW-005 transports); strangers 0 (human-gated). No stranger traffic ⇒ no first-10 signal
   to fix; walker not re-runnable here (no `ANTHROPIC_API_KEY`).
-- **Priority 3 (meta):** row #17 = 8, re-counted live this run with the pinned grep — 6 gate on
-  infra/hardware/upstream dependencies (pk_live issuance, Grafana queue alert, Windows hardware,
-  upstream OpenAPI, frontier baseline, self-host container). The other 2 are agent-decidable
-  (elements `<nlq-action>` write-token shape, the Suite-A flake) — real levers, but row #17 is
-  de-prioritised and no priority-3 waiver beats the founder-set acquisition focus. D4 trim =
-  forbidden busywork.
+- **Priority 3 (meta):** row #17 = 8, re-counted live with the pinned grep. 7 are gated — 6 on
+  infra/hardware/upstream (pk_live issuance, Grafana queue alert, Windows hardware, upstream
+  OpenAPI, frontier baseline, self-host container), and the elements `<nlq-action>` write-token
+  bullet restates a question `api-keys/FEATURE.md` already parks to the Phase-2 browser-writes
+  slice. The 8th (Suite-A flake) its own record calls agent-decidable, but only behind an N-run
+  Suite-A window — a re-measure no single run can complete (rule 3). D4 trim = forbidden busywork.
 - **Engine:** dark + fresh (baseline `run_at` 07-19, 5 days — under the 7-day dispatch trigger; offline
   levers exhausted).
 
