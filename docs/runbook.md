@@ -461,22 +461,21 @@ Auth path (per [`SK-CIPERM-003`](features/ci-permissions/FEATURE.md)):
 - **Default — Trusted Publishing (OIDC).** Workflow declares
   `id-token: write`; npm matches the claim to the configured
   publisher (`nlqdb/nlqdb` repo, `release-npm.yml` workflow) on each
-  publish. No long-lived secret. Provenance attestations
-  auto-generate (`NPM_CONFIG_PROVENANCE: true` is set on the job).
-- **Bootstrap-only — `NPM_TOKEN`.** Required for the *first* publish
-  of any new `@nlqdb/*` package, because Trusted Publishers can only
-  be configured on a package that already exists on npm. After the
-  first publish lands, configure the publisher at
-  `npmjs.com/package/@nlqdb/<name>/access` (fields in
-  `.changeset/README.md`) and stop relying on `NPM_TOKEN` for that
-  package.
+  publish. No long-lived secret; npm attaches provenance itself on an
+  OIDC publish.
+- **Bootstrap — a maintainer, not CI.** OIDC cannot create a package's
+  first version ([npm/cli#8544](https://github.com/npm/cli/issues/8544)),
+  so version 1 is published from the maintainer's own npm session and
+  the Trusted Publisher is configured right after — both *before* the
+  repo un-gates the package, or `changeset publish` fails the whole
+  release job.
 
 Per-package un-gating steps + Trusted Publisher field values live in
 [`.changeset/README.md`](../.changeset/README.md) — the canonical
 operator runbook for npm releases.
 
-Current state: `@nlqdb/sdk` un-gated (bootstrap publish pending);
-remaining `@nlqdb/*` packages still `"private": true`.
+Current state: `@nlqdb/sdk` + `@nlqdb/cli` un-gated and published;
+everything else in `packages/*` still `"private": true`.
 
 ### CLI releases (`cli/` → GitHub Releases + Homebrew)
 

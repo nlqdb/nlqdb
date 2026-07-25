@@ -33,8 +33,8 @@ Status:
   `npx -y @nlqdb/mcp` will work on publish. The `@nlqdb/sdk` workspace dep is
   bundled into `dist/`, so it is a **devDependency** — a `workspace:*` range
   must never reach a published `dependencies`.
-  Only the bootstrap publish below is left, and it is maintainer-only;
-  the founder command is queued as
+  Only the founder's bootstrap-publish + Trusted-Publisher sitting is left;
+  the command is queued as
   [`blocked-by-human.md`](../docs/blocked-by-human.md) bullet 2. Un-gate in
   the follow-up PR, per the ordered list below. That PR owes the
   `prepack` rewrite below: only the `bin` surface is reachable today, because
@@ -49,18 +49,10 @@ non-private package whose version is not yet on npm makes `changeset publish`
 fail the whole release job:
 
 1. Add a `build` script (tsup) that emits `dist/index.js` + `dist/index.d.ts`.
-2. **Verify the tarball**, since none of this fails at build time: `npm pack`
-   (works while the package is still private), install the `.tgz` into an empty
-   dir **outside the monorepo** — inside it Bun resolves the workspace copy and
-   the test proves nothing — then `node -e "import('<pkg>')"`, or for a `bin`
-   run it under **both** node and bun, which resolve the package differently.
-3. Bootstrap-publish by hand, deleting `private` in the working tree only —
-   the founder paste in
-   [`blocked-by-human.md`](../docs/blocked-by-human.md) is the canonical form.
-4. *Then*, in the follow-up PR: add a `bun run --filter='@nlqdb/<name>' build`
-   step to `release-npm.yml` before the changesets action, and drop
-   `"private": true` plus the publish metadata (workspace dev
-   keeps reading `src/` via the top-level `main`/`exports`):
+2. Add the publish metadata, **keeping `"private": true`** — it has to be in the
+   manifest before the bootstrap publish, because that first version is
+   permanent (workspace dev keeps reading `src/` via the top-level
+   `main`/`exports`):
    ```json
    {
      "main": "./src/index.ts",
@@ -93,8 +85,20 @@ fail the whole release job:
    > `"sideEffects": false` to a package whose entry is a pure re-export barrel
    > built by `bun build`: the bundler shakes it down to a stub that still
    > *builds* clean and then fails to load.
-5. Configure Trusted Publishing on the package (see below) — npmjs.com web
-   console, so a human, not the PR.
+3. **Verify the tarball**, since none of this fails at build time: `npm pack`
+   (works while the package is still private), install the `.tgz` into an empty
+   dir **outside the monorepo** — inside it Bun resolves the workspace copy and
+   the test proves nothing — then `node -e "import('<pkg>')"`, or for a `bin`
+   run it under **both** node and bun, which resolve the package differently.
+4. Hand to the founder — one sitting, both account-walled: bootstrap-publish by
+   hand (deleting `private` in the working tree only; the founder paste in
+   [`blocked-by-human.md`](../docs/blocked-by-human.md) is the canonical form),
+   then configure Trusted Publishing on the package (fields below). Both come
+   before the repo change — CI's first publish of the package authenticates only
+   through that Trusted Publisher.
+5. *Then* the follow-up PR: drop `"private": true` and add a
+   `bun run --filter='@nlqdb/<name>' build` step to `release-npm.yml` before the
+   changesets action.
 
 ## Authentication: Trusted Publishing (OIDC)
 
