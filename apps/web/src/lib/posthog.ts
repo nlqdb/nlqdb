@@ -31,7 +31,7 @@ let started = false;
 // "PostHog never sees it" must be a property of this config, not of that
 // accident. Fragments carry no analytics value here (Astro MPA, no hash
 // routing), so the whole hash goes.
-function stripFragment(properties: Record<string, unknown>): Record<string, unknown> {
+export function stripFragment(properties: Record<string, unknown>): Record<string, unknown> {
   for (const key of ["$current_url", "$referrer"]) {
     const value = properties[key];
     if (typeof value === "string" && value.includes("#")) {
@@ -55,6 +55,14 @@ function config(): { key: string; host: string } | null {
 
 export async function initAppAnalytics(user: SessionUser | null): Promise<void> {
   if (started || typeof window === "undefined") return;
+  // Never start capture while the URL still carries a handoff. `stripFragment`
+  // below covers the top-level URL properties, but session replay records
+  // rrweb's own Meta `href` inside `$snapshot_data`, and `$initial_current_url`
+  // lands in `$set_once` — neither passes through `sanitize_properties`. Every
+  // page that receives a `#nlq=` fragment strips it synchronously long before
+  // this runs, so bailing costs nothing real and makes "the anon bearer can
+  // never reach the replay store" structural instead of a race we won.
+  if (window.location.hash.startsWith("#nlq=")) return;
   const cfg = config();
   if (!cfg) return;
   started = true;

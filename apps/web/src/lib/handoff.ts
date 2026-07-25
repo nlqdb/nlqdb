@@ -72,8 +72,8 @@ function asText(v: unknown, max: number): string | null {
 // never drift apart. Field-wise: an invalid field is dropped, not fatal, so a
 // valid prompt still survives a mangled token (and vice versa). Prompt text is
 // never dropped for length (SK-ANON-011) — an oversize `draft` is truncated,
-// and an oversize `pending` is demoted to `draft` so the goal lands in the
-// input for the user to review instead of being replayed in mangled form.
+// and an oversize `pending` is demoted to `draft` so a truncated goal never
+// occupies the queued-submission slot; it lands in the composer for review.
 // Returns null when nothing valid remains.
 function normalize(input: Record<string, unknown>): HandoffPayload | null {
   const payload: HandoffPayload = { v: 1 };
@@ -85,13 +85,7 @@ function normalize(input: Record<string, unknown>): HandoffPayload | null {
       : null;
   const goal = pending && typeof pending["goal"] === "string" ? pending["goal"] : "";
   if (pending && goal.length > 0 && goal.length <= MAX_TEXT) {
-    const origin = asText(pending["origin"], 2048);
-    payload.pending = {
-      goal,
-      submittedAt: asText(pending["submittedAt"], 64) ?? "",
-      // `origin` is a same-origin landing path, never a full URL.
-      origin: origin?.startsWith("/") ? origin : "/",
-    };
+    payload.pending = { goal, submittedAt: asText(pending["submittedAt"], 64) ?? "" };
   }
   const draft = typeof input["draft"] === "string" ? input["draft"] : "";
   const text = (draft || (goal.length > MAX_TEXT ? goal : "")).slice(0, MAX_TEXT);
@@ -139,22 +133,42 @@ export function attachHandoff(url: string): string {
   return base + serializeHandoff(payload);
 }
 
-// The handoff is honored only when the navigation demonstrably came
-// from our own surfaces: same origin, a `nlqdb.com` host, or localhost
-// dev. `Base.astro` pins `strict-origin-when-cross-origin`, so every
-// legit hop carries at least its origin, and a referrer can't be
-// forged upward — an attacker can only send their own origin or none.
-// A stripped referrer (privacy extension) drops the payload; the
-// SK-ANON-012 "couldn't recover your message" notice covers that rare
-// legit loss.
+// The only hosts that legitimately originate a handoff: the two marketing
+// hosts the `nlqdb-web` worker serves (`web/src/worker.ts` MARKETING_HOSTS)
+// and the merged app host (`api/wrangler.toml`). An explicit set, NOT a
+// `*.nlqdb.com` suffix match: a wildcard hands the same trust to every
+// present and future subdomain, so one dangling or taken-over host
+// (`docs.`, `mcp.`, a stale CNAME) could fixate an attacker-known anon
+// bearer on a victim at sign-in. `docs.`/`mcp.` hold no prompt state and
+// never call `attachHandoff`, so nothing legitimate is lost, and a new
+// subdomain fails closed — the correct default for a credential-bearing hop.
+// Previews and `*.workers.dev` need no entry: there `/app/*` is served by the
+// same worker as the marketing pages, so the hop is same-origin.
+const TRUSTED_HANDOFF_HOSTS = new Set(["nlqdb.com", "www.nlqdb.com", "app.nlqdb.com"]);
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"]);
+
+// The handoff is honored only when the navigation demonstrably came from our
+// own surfaces. `Base.astro` pins `strict-origin-when-cross-origin`, so every
+// legit hop carries at least its origin, and a referrer can't be forged upward
+// — an attacker can only send their own origin or none. A stripped referrer
+// (privacy extension) drops the payload; the SK-ANON-012 "couldn't recover
+// your message" notice covers that rare legit loss.
 function trustedReferrer(): boolean {
   const ref = typeof document === "undefined" ? "" : document.referrer;
   if (!ref) return false;
   try {
+    const here = new URL(window.location.href);
     const from = new URL(ref);
-    if (from.origin === new URL(window.location.href).origin) return true;
-    if (from.hostname === "localhost" || from.hostname === "127.0.0.1") return true;
-    return from.hostname === "nlqdb.com" || from.hostname.endsWith(".nlqdb.com");
+    if (from.origin === here.origin) return true;
+    // Two-origin local dev (`astro dev` on :4321 → `wrangler dev` on :8787)
+    // needs a cross-port hop. Gated on *this* page also being local — a host
+    // check, not a build flag, because the app origin in that flow serves the
+    // production `dist/` bundle. In production `here.hostname` is
+    // `app.nlqdb.com`, so no local process can hand us a bearer.
+    if (LOCAL_HOSTS.has(here.hostname)) return LOCAL_HOSTS.has(from.hostname);
+    // Production hops are https-only, so a plaintext referrer means either a
+    // downgrade or a spoofable hop — never a real one.
+    return from.protocol === "https:" && TRUSTED_HANDOFF_HOSTS.has(from.hostname);
   } catch {
     return false;
   }
@@ -181,13 +195,22 @@ export function importHandoffFromLocation(): void {
   }
   const ls = safeStorage();
   if (!ls) return;
-  if (payload.pending) savePending(payload.pending);
-  if (payload.draft) saveDraft(payload.draft);
-  if (payload.anon) {
-    const existing = ls.getItem(ANON_KEY) ?? "";
-    if (existing.startsWith("anon_") && existing !== payload.anon) {
-      ls.setItem(ANON_PREV_KEY, existing);
+  // `safeStorage()` only proves the object is reachable — `setItem` still
+  // throws on a full quota or in Safari private mode. Swallow it: this runs at
+  // the top of `app/new.astro`'s script, so an escaping throw would skip
+  // `getOrMintAnonToken()` and leave the page with no identity at all.
+  try {
+    if (payload.pending) savePending(payload.pending);
+    if (payload.draft) saveDraft(payload.draft);
+    if (payload.anon) {
+      const existing = ls.getItem(ANON_KEY) ?? "";
+      if (existing.startsWith("anon_") && existing !== payload.anon) {
+        ls.setItem(ANON_PREV_KEY, existing);
+      }
+      ls.setItem(ANON_KEY, payload.anon);
     }
-    ls.setItem(ANON_KEY, payload.anon);
+  } catch {
+    // Same funnel meaning as above: an arrival whose payload didn't land.
+    emit("handoff.rejected");
   }
 }

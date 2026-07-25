@@ -33,8 +33,6 @@ export interface PendingPrompt {
   goal: string;
   /** ISO 8601 timestamp of the original submit attempt. */
   submittedAt: string;
-  /** Where the user was when the redirect happened — used to land back. */
-  origin: string;
 }
 
 export interface HistoryEntry {

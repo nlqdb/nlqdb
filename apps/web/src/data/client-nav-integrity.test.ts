@@ -77,10 +77,13 @@ const HREF = /\b(?:href|action)=["'](\/[^"'`]*)["']/g;
 // it, and persists nothing of its own to trip the `save*` shapes.
 const TOUCHES_PROMPT = /\b(?:saveDraft|makeDraftSaver|savePending|importHandoffFromLocation)\(/;
 // Half two: any client-side navigation. Deliberately wider than
-// `location.assign` — `window.open`, a bare `location = "…"`, and `el.href =
-// "/…"` all leave the origin just as effectively.
+// `location.assign` — `window.open`, a bare `location = "…"`, `el.href = "/…"`,
+// and a `<meta http-equiv="refresh">` all leave the origin just as effectively.
+// `assign`/`replace` are matched on the *member*, not the call, so an aliased
+// or `.bind`-ed reference (`const go = location.assign.bind(location)`) can't
+// duck the sweep; neither member is ever read for anything but navigating.
 const NAVIGATES =
-  /\blocation\s*=\s*["'`]|\blocation\.(?:href\s*=|assign\s*\(|replace\s*\()|\bwindow\.open\s*\(|\.href\s*=\s*["'`]\//;
+  /\blocation\s*=\s*["'`]|\blocation\.(?:href\s*=|assign\b|replace\b)|\bwindow\.open\s*\(|\.href\s*=\s*["'`]\/|http-equiv=["']refresh/;
 
 // Surfaces that only ever render on the app origin, where there is nothing to
 // carry across.
@@ -132,11 +135,14 @@ describe("client-nav trailing-slash integrity (SK-WEB-022)", () => {
     // hops to a server-supplied absolute `signInUrl`, so the narrow shapes
     // would leave it unguarded.
     //
-    // Static analysis can't see everything: a target computed at runtime
-    // (`<a href={expr}>`), or a split across two files (goal saved in A, link
-    // rendered in B), still gets past this. The `/solve` + `/vs` stranger
-    // walkers are the browser-level backstop — they assert the goal reaches the
-    // create input, whatever the mechanism.
+    // Static analysis can't see everything. Probed and confirmed still
+    // slipping: a target computed at runtime (`<a href={expr}>`); a split
+    // across two files (goal saved in A, link rendered — or `location.assign`
+    // called — in B); a `location` object held in a local (`const l =
+    // location; l.href = target`); and a file where SOME navigations carry the
+    // handoff, since one `attachHandoff(` clears the whole file. The `/solve` +
+    // `/vs` stranger walkers are the browser-level backstop — they assert the
+    // goal reaches the create input, whatever the mechanism.
     const offenders: Record<string, string> = {};
     for (const file of sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/)) {
       const rel = relative(REPO_ROOT, file);

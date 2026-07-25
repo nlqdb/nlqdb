@@ -187,7 +187,9 @@ const siteEntityJsonLd =
               body: JSON.stringify({
                 surface: "boot",
                 message: message,
-                href: location.href,
+                // No fragment: `#nlq=` carries the SK-ANON-015 anon bearer, and
+                // a boot error can fire before the page strips it.
+                href: location.href.split("#")[0],
                 userAgent: navigator.userAgent,
               }),
             }).catch(function () {});
