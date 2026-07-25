@@ -164,13 +164,49 @@ describe("the npx skills add one-command install can't drift", () => {
   });
 
   test("all three published surfaces show the exact install command", () => {
-    const surfaces = {
-      "agent-artifacts README": read("README.md"),
-      "docs agent-memory guide": DOCS_GUIDE,
-      "llms.txt route": readFileSync(join(import.meta.dir, "../pages/llms.txt.ts"), "utf8"),
-    };
-    for (const [name, text] of Object.entries(surfaces)) {
+    for (const [name, text] of Object.entries(installSurfaces())) {
       expect(text, name).toContain(SKILLS_INSTALL_CMD);
     }
   });
+
+  // Hard rule 1 — only promise what the command actually does. Until
+  // 2026-07-25 all three surfaces claimed it "formats a matching Cursor rule"
+  // and "registers it in AGENTS.md"; run against the live CLI three ways
+  // (default, `--agent cursor`, `--all`) it writes neither, so a reader
+  // waiting on that `AGENTS.md` entry got nothing. Two halves, because
+  // either alone is escapable: the disclosure must be present (deleting it
+  // goes red) *and* the old mechanism claim must be absent (re-adding it
+  // alongside the disclosure would otherwise pass).
+  test("every surface discloses what the command does not write", () => {
+    for (const [name, text] of Object.entries(installSurfaces())) {
+      const prose = normalizeProse(text);
+      expect(prose, name).toContain(".agents/skills/nlqdb-memory/skill.md");
+      expect(prose, name).toContain("does not write a .cursor/rules/ file");
+      expect(prose, name).toContain("does not edit agents.md");
+      // The by-hand section legitimately names both files, so forbid the
+      // mechanism phrasing, not the filenames.
+      expect(prose, name).not.toContain("matching cursor");
+      expect(prose, name).not.toContain("registers it in agents.md");
+      expect(prose, name).not.toContain("agents.md entry");
+    }
+  });
 });
+
+function installSurfaces(): Record<string, string> {
+  return {
+    "agent-artifacts README": read("README.md"),
+    "docs agent-memory guide": DOCS_GUIDE,
+    "llms.txt route": readFileSync(join(import.meta.dir, "../pages/llms.txt.ts"), "utf8"),
+  };
+}
+
+// Flattens a surface to comparable prose: llms.txt is TS source, so literal
+// `\n` escapes and template-string punctuation would otherwise split a
+// sentence mid-phrase across source lines.
+function normalizeProse(text: string): string {
+  return text
+    .replace(/\\n/g, " ")
+    .replace(/[`"'+\\*]/g, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}

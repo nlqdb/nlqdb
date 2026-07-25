@@ -5,16 +5,25 @@ Cursor, Codex) wires nlqdb memory and uses it correctly — a real Postgres it
 queries in plain English over MCP, so it can `GROUP BY`/`JOIN`/aggregate over
 what it remembered, not just recall the nearest few rows.
 
-## One command (Claude Code / Cursor)
+## One command (Claude Code, Cursor, Codex)
 
 ```bash
 npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory
 ```
 
 Installs the `nlqdb-memory` skill from this repo (public) with the
-[`skills`](https://github.com/vercel-labs/skills) CLI — it writes
-`.claude/skills/nlqdb-memory/SKILL.md`, formats a matching Cursor
-`.cursor/rules/` rule, and registers it in `AGENTS.md`. No account, no publish.
+[`skills`](https://github.com/vercel-labs/skills) CLI. No account, no publish.
+Measured against the live CLI 2026-07-25, it writes:
+
+- `.agents/skills/nlqdb-memory/SKILL.md` — the cross-agent skill directory
+  Cursor and Codex read directly, per their own docs
+- `.claude/skills/nlqdb-memory` — a symlink to it. Claude Code documents only
+  `.claude/skills/`, so the symlink is how the one command reaches it
+- `skills-lock.json` — the install record
+
+It does **not** write a `.cursor/rules/` file and does **not** edit
+`AGENTS.md`, so a host that reads only `AGENTS.md` still needs
+`AGENTS.snippet.md` from the table below appended by hand.
 Then connect the MCP server once with the command inside the skill.
 
 ## Or drop a file in by hand
