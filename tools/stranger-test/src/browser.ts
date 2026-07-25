@@ -22,14 +22,9 @@ export type Session = {
 const IGNORED_STATUSES = new Set([401, 429]);
 
 // The stranger must reach the surface the way a stranger does: directly.
-// Chromium reads `*_proxy` from its environment on Linux (it does *not*
-// ignore them, as this function long claimed), and an agent sandbox's proxy
-// resets its CONNECT — measured 2026-07-25: every navigation died with
-// `net::ERR_CONNECTION_RESET`, whether the proxy was passed via `--proxy-server`
-// or merely inherited, while `--no-proxy-server` and `proxy: direct://` both
-// failed too. Only removing the vars from the child's env reaches prod (200).
-// That single line is what makes a local prod walk possible at all; without
-// it the walker looks CI-only, which is why three runs believed it was.
+// Chromium reads these from its env on Linux, and an agent sandbox's proxy
+// resets its CONNECT, so stripping them is the only config that reaches prod
+// (measured 2026-07-25 — `--no-proxy-server` and `proxy: direct://` do not).
 const PROXY_ENV_KEYS = ["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"] as const;
 
 export async function launchBrowser(): Promise<Browser> {
