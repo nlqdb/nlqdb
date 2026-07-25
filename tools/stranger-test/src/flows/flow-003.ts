@@ -4,6 +4,7 @@
 import type { Browser } from "@playwright/test";
 
 import { landedGoal, openSession, step, withDeadline } from "../browser.ts";
+import { classifyAsk, runOutcome } from "../outcome.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
 // Pinned literal mirror of `apps/web/src/data/competitors.ts` — drift fails
@@ -59,10 +60,13 @@ async function doWalk(
 ): Promise<FlowRun> {
   const meta = SLUG_META[slug];
   const session = await openSession({ baseUrl, userAgent, browser });
-  const { page, consoleErrors, httpErrors, close } = session;
+  const { page, consoleErrors, httpErrors, challengeEngaged, close } = session;
   const steps: StepResult[] = [];
   const startedAt = Date.now();
   let ttfvMs: number | null = null;
+  // Local stop-walking latch: set by a failed *or* blocked step, since
+  // neither leaves the later steps observable. The emitted verdict is
+  // runOutcome(steps) — this variable only gates the skips.
   let failedStep: number | null = null;
 
   try {
@@ -202,20 +206,23 @@ async function doWalk(
         );
         failedStep = 8;
       } else {
-        ttfvMs = Date.now() - t0;
         const status = askResp.status();
         const body = await askResp.text().catch(() => "");
+        const engaged = status === 428 ? await challengeEngaged() : false;
+        const outcome = classifyAsk(status, body, engaged);
+        // Only a real answer is time-to-first-value.
+        if (outcome === "ok") ttfvMs = Date.now() - t0;
         steps.push(
           step(
             8,
             "submit → /v1/ask 200 + table within 60 s",
-            status === 200 ? "ok" : "fail",
-            status === 200
+            outcome,
+            outcome === "ok"
               ? `status=200 ttfvMs=${ttfvMs}`
-              : `status=${status} ttfvMs=${ttfvMs} body=${body.slice(0, 120)}`,
+              : `status=${status} challengeEngaged=${engaged} dt=${Date.now() - t0} body=${body.slice(0, 120)}`,
           ),
         );
-        if (status !== 200) failedStep = 8;
+        if (outcome !== "ok") failedStep = 8;
       }
     } else {
       steps.push(
@@ -224,8 +231,12 @@ async function doWalk(
     }
 
     // Step 9: /llms.txt enumerates this slug. Independent from steps 5-8 —
-    // a separate GET, useful even when the submit gate-fails earlier.
-    const llmsResp = await page.request.get(`${baseUrl}/llms.txt`).catch(() => null);
+    // useful even when the submit gate-fails earlier. Navigated rather than
+    // fetched via `page.request`, which egresses from the Playwright driver
+    // process and so still sees the sandbox proxy `launchBrowser` strips from
+    // the browser — that combination failed this step closed on every proxied
+    // local walk (measured 2026-07-25).
+    const llmsResp = await page.goto(`${baseUrl}/llms.txt`, { timeout: 30_000 }).catch(() => null);
     if (!llmsResp || llmsResp.status() !== 200) {
       steps.push(
         step(
@@ -260,8 +271,9 @@ async function doWalk(
   const durationMs = Date.now() - startedAt;
   return {
     prompt: slug,
-    state: failedStep === null ? "passed" : "failed",
-    failedStep,
+    // Step 9 (/llms.txt) runs even when step 8 is blocked, so the verdict is
+    // derived from every step: a real failure there outranks the block.
+    ...runOutcome(steps),
     ttfvMs,
     durationMs,
     steps,

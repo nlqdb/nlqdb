@@ -4,6 +4,7 @@
 import type { Browser } from "@playwright/test";
 
 import { landedGoal, openSession, step, withDeadline } from "../browser.ts";
+import { classifyAsk, runOutcome } from "../outcome.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
 // Pinned literal mirror of `apps/web/src/data/solve.ts` `demoGoal` values;
@@ -57,10 +58,13 @@ async function doWalk(
 ): Promise<FlowRun> {
   const expectedDraft = SLUG_DEMO_GOAL[slug];
   const session = await openSession({ baseUrl, userAgent, browser });
-  const { page, consoleErrors, httpErrors, close } = session;
+  const { page, consoleErrors, httpErrors, challengeEngaged, close } = session;
   const steps: StepResult[] = [];
   const startedAt = Date.now();
   let ttfvMs: number | null = null;
+  // Local stop-walking latch: set by a failed *or* blocked step, since
+  // neither leaves the later steps observable. The emitted verdict is
+  // runOutcome(steps) — this variable only gates the skips.
   let failedStep: number | null = null;
 
   // The CTA emits the event synchronously then calls `location.assign`, so an
@@ -235,20 +239,23 @@ async function doWalk(
         );
         failedStep = 9;
       } else {
-        ttfvMs = Date.now() - t0;
         const status = askResp.status();
         const body = await askResp.text().catch(() => "");
+        const engaged = status === 428 ? await challengeEngaged() : false;
+        const outcome = classifyAsk(status, body, engaged);
+        // Only a real answer is time-to-first-value.
+        if (outcome === "ok") ttfvMs = Date.now() - t0;
         steps.push(
           step(
             9,
             "/v1/ask 200 + table within 60 s",
-            status === 200 ? "ok" : "fail",
-            status === 200
+            outcome,
+            outcome === "ok"
               ? `status=200 ttfvMs=${ttfvMs}`
-              : `status=${status} ttfvMs=${ttfvMs} body=${body.slice(0, 120)}`,
+              : `status=${status} challengeEngaged=${engaged} dt=${Date.now() - t0} body=${body.slice(0, 120)}`,
           ),
         );
-        if (status !== 200) failedStep = 9;
+        if (outcome !== "ok") failedStep = 9;
       }
     } else {
       steps.push(step(9, "/v1/ask 200 + table within 60 s", "skip", "blocked by earlier step"));
@@ -271,8 +278,7 @@ async function doWalk(
   const durationMs = Date.now() - startedAt;
   return {
     prompt: slug,
-    state: failedStep === null ? "passed" : "failed",
-    failedStep,
+    ...runOutcome(steps),
     ttfvMs,
     durationMs,
     steps,

@@ -123,6 +123,7 @@ founder-facing inbox.
 - `partial YYYY-MM-DD steps A,B,…` — agent walked a subset (typically the static / HTTP-observable steps via curl) and recorded results; remaining steps need a richer tool (Playwright, MCP inspector, OAuth account, email inbox). Not a pass.
 - `failed YYYY-MM-DD step N` — agent reached step N; assertion failed; outcome log carries the trace.
 - `blocked credentials` — agent could not complete because a credential it does not possess is required; founder has been asked.
+- `blocked instrument` — the surface refused the *walker*, not the user: a designed bot floor declined this client class (today: Turnstile answering the CI walker `428 challenge_required`, `SK-STRG-010`). Not a pass and not a product failure; the steps after it are unobserved, so read them as untested rather than green.
 - `blocked upstream` — a third-party (Resend, GitHub OAuth, free-chain LLM, Cloudflare) was returning unhealthy responses unrelated to nlqdb code.
 
 ---

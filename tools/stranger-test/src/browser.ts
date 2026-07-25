@@ -1,5 +1,6 @@
 import { type Browser, type BrowserContext, chromium, type Page } from "@playwright/test";
 
+import { isTurnstileApiRequest } from "./outcome.ts";
 import type { StepResult } from "./types.ts";
 
 export type SessionDeps = {
@@ -13,6 +14,8 @@ export type Session = {
   page: Page;
   consoleErrors: string[];
   httpErrors: string[];
+  // Did the page ask Cloudflare for the Turnstile challenge? See openSession.
+  challengeEngaged: (timeoutMs?: number) => Promise<boolean>;
   close: () => Promise<void>;
 };
 
@@ -21,15 +24,24 @@ export type Session = {
 // guards against.
 const IGNORED_STATUSES = new Set([401, 429]);
 
+// The stranger must reach the surface the way a stranger does: directly.
+// Chromium reads all of these from its env on Linux, and an agent sandbox's
+// proxy resets its CONNECT, so stripping them is the only config that reaches
+// prod (measured 2026-07-25 — `--no-proxy-server` and `proxy: direct://` do
+// not). Only the spawned browser's env is touched; this process keeps its own.
+const PROXY_ENV_KEYS = [
+  "HTTPS_PROXY",
+  "https_proxy",
+  "HTTP_PROXY",
+  "http_proxy",
+  "ALL_PROXY",
+  "all_proxy",
+] as const;
+
 export async function launchBrowser(): Promise<Browser> {
-  // Chromium ignores HTTPS_PROXY by default; honour it so the walker runs
-  // from proxied agent sandboxes too (no-op on the cron/laptop path).
-  // openSession's ignoreHTTPSErrors already tolerates the proxy's CA.
-  const proxy = process.env["HTTPS_PROXY"] ?? process.env["https_proxy"];
-  return chromium.launch({
-    headless: true,
-    ...(proxy ? { proxy: { server: proxy } } : {}),
-  });
+  const env = { ...process.env };
+  for (const key of PROXY_ENV_KEYS) delete env[key];
+  return chromium.launch({ headless: true, env });
 }
 
 export async function openSession(deps: SessionDeps): Promise<Session> {
@@ -53,11 +65,33 @@ export async function openSession(deps: SessionDeps): Promise<Session> {
       httpErrors.push(`${r.request().method()} ${s} ${r.url().slice(0, 200)}`);
     }
   });
+  // The client half of the SK-ANON-012 dance: `CreateForm`'s 428 retry seam
+  // calls `solveChallenge()`, which fetches Cloudflare's api.js. Its absence
+  // means the widget never ran, so the 428 is terminal for real visitors too
+  // (the run-56 fail-closed outage) rather than a bot-floor decline — which is
+  // the one thing that tells those two apart from outside (SK-STRG-010).
+  let challengeSeen = false;
+  page.on("request", (r) => {
+    if (isTurnstileApiRequest(r.url())) challengeSeen = true;
+  });
   return {
     ctx,
     page,
     consoleErrors,
     httpErrors,
+    // Polls because the fetch is kicked off by the retry seam that the 428 we
+    // are classifying has only just unblocked.
+    challengeEngaged: async (timeoutMs = 10_000) => {
+      const deadline = Date.now() + timeoutMs;
+      while (!challengeSeen && Date.now() < deadline) {
+        const alive = await page
+          .waitForTimeout(200)
+          .then(() => true)
+          .catch(() => false);
+        if (!alive) break;
+      }
+      return challengeSeen;
+    },
     close: async () => {
       await ctx.close().catch(() => {});
     },

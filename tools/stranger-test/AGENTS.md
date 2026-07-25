@@ -67,8 +67,10 @@ bun run --filter @nlqdb/stranger-test typecheck
 
 First run on a machine without the Playwright Chromium cached: `bunx playwright install chromium`. The walker uses the same Chromium revision Playwright 1.49.x pins. On Cloudflare-hosted environments where `PLAYWRIGHT_BROWSERS_PATH` is already provisioned with a 1.49.x chromium (e.g. `/opt/pw-browsers/chromium-1148`), the install is a no-op.
 
-The script exits non-zero if any walked run failed or was blocked, so an
-agent can use the exit code as the regression signal without parsing JSON.
+The script exits non-zero only if a walked run *failed*; a `blocked` run is
+the instrument being refused at the bot floor, not a product break, and exits
+0 ([`SK-STRG-010`](../../docs/features/stranger-test/decisions/SK-STRG-010-blocked-run-state.md)).
+So an agent can use the exit code as the regression signal without parsing JSON.
 A summary line — `→ N/M passed (failed=X blocked=Y) ttfv p50=…ms p95=…ms`
 — prints to stdout. JSON goes to `tools/stranger-test/results/walk-<utc>.json`
 unless `--out` overrides.
