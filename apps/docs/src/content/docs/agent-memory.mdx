@@ -44,8 +44,9 @@ host's key names differ, so copy its own block, not a neighbour's.
    paste the URL above. This is the one host whose documented remote path is
    a dialog, so it is the one step here a coding agent can't run for you.
 
-4. **Windsurf** — write `~/.codeium/windsurf/mcp_config.json` (a remote entry
-   uses `serverUrl`, not `url`):
+4. **Windsurf** — merge the `nlqdb` entry into `mcpServers` in
+   `~/.codeium/windsurf/mcp_config.json`, keeping any servers already there
+   (a remote entry uses `serverUrl`, not `url`):
 
    ```json
    { "mcpServers": { "nlqdb": { "serverUrl": "https://mcp.nlqdb.com/mcp" } } }
@@ -60,15 +61,17 @@ host's key names differ, so copy its own block, not a neighbour's.
    { "context_servers": { "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" } } }
    ```
 
-6. **Cursor** — write `.cursor/mcp.json` in the project (or `~/.cursor/mcp.json`
-   to apply it everywhere):
+6. **Cursor** — merge the `nlqdb` entry into `mcpServers` in the project's
+   `.cursor/mcp.json` (or `~/.cursor/mcp.json` to apply it everywhere), keeping
+   any servers already there:
 
    ```json
    { "mcpServers": { "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" } } }
    ```
 
-7. **VS Code** — write `.vscode/mcp.json` (the root key is `servers`, and a
-   remote entry needs `"type": "http"`):
+7. **VS Code** — merge the `nlqdb` entry into `.vscode/mcp.json`, keeping any
+   servers already there (the root key is `servers`, and a remote entry needs
+   `"type": "http"`):
 
    ```json
    { "servers": { "nlqdb": { "type": "http", "url": "https://mcp.nlqdb.com/mcp" } } }
@@ -76,10 +79,12 @@ host's key names differ, so copy its own block, not a neighbour's.
 
 </Steps>
 
-Every file-based host above is machine-followable: a coding agent writes the
-config itself, no GUI click. On Cursor and VS Code the one-click deep-link
-buttons on [nlqdb.com/integrations](https://nlqdb.com/integrations/) are a
-faster route for a human, not a requirement — the file works either way.
+Every file-based host above is machine-followable: a coding agent edits the
+config itself, no GUI click. Each block shows only the `nlqdb` entry — merge it
+in; overwriting the file drops the developer's other servers and settings.
+On Cursor and VS Code the one-click deep-link buttons on
+[nlqdb.com/integrations](https://nlqdb.com/integrations/) are a faster route
+for a human, not a requirement — the file works either way.
 Claude Desktop is the exception: its connector dialog needs a human.
 
 ## Step 2 — Authenticate
