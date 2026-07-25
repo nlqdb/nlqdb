@@ -135,11 +135,9 @@ after connect, a verification query, what to do on failure. Add a
 `## For coding agents` section to `llms.txt` with the same content.
 **Verify every step against prod before publishing** (hard rule 1).
 **Done when:** ✅ page live ([`docs/agent-memory`](../../../../../apps/docs/src/content/docs/agent-memory.mdx) → `docs.nlqdb.com/agent-memory/`; sidebar-registered, linked from README + `/agents` connect card + llms.txt) · ✅ llms.txt `## For coding agents` section ([`llms.txt.ts`](../../../../../apps/web/src/pages/llms.txt.ts)) · ⬜ one manual cold-agent
-walk (agent given only the URL) completes setup, logged in the PR — **walked 2026-07-25, did not
-complete**: discovery + DCR healthy, `/authorize` reaches a browser consent screen needing a
-signed-in human (§ Current numbers). Cannot tick until a headless credential exists — the parked
-`@nlqdb/mcp` npm publish in [`mcp-server/FEATURE.md`](../../../mcp-server/FEATURE.md), not a
-copy change on this page.
+walk (agent given only the URL) completes setup — **walked 2026-07-25, blocked at Step 2's browser
+consent; cannot tick until a headless credential ships** (§ Current numbers;
+[`mcp-server/FEATURE.md`](../../../mcp-server/FEATURE.md)).
 
 ### R-05 — Registry + directory sweep (one venue per run)
 
@@ -261,13 +259,10 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
   attributable yield: **4** (organic, dev.to, github, npm); #12 in-flight.
 - Coding-agent walker (R-06): **0/1 surfaced** (baseline 2026-07-20 — cold session recommended
   `pgvector`, never nlqdb). Not re-run: no `ANTHROPIC_API_KEY` in this session.
-- Canonical setup guide (R-04): **live, 2 of 3**. This run fixed an honesty defect on it — the
-  "For coding agents" aside claimed "every step below is runnable as-is", which the walk above
-  disproves. It now names Step 2 as the one step an agent must hand to a human and states plainly
-  that no headless credential exists today (hard rule 1).
-- Droppable artifacts (R-07): **4 of 4 live**, `agent-artifacts` in-flight, yield 0. Their auth
-  copy was re-checked against the walk and is already honest ("opens a browser OAuth page once —
-  approve it"); no change needed.
+- Canonical setup guide (R-04): **live, 2 of 3** — its "For coding agents" aside now names Step 2 as
+  the one step an agent hands to a human, per the walk above (hard rule 1).
+- Droppable artifacts (R-07): **4 of 4 live**, `agent-artifacts` in-flight, yield 0. Their auth copy
+  already matches the walk ("opens a browser OAuth page once — approve it").
 - Stage-0 solve pages: R-03 complete (4 of top-5 unowned filled) + R-02's two `competitors.md` §4
   entries. Live path `nlqdb_query`; remember/preset gated (SK-PIVOT-010).
 - Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10**. Monthly; next due
