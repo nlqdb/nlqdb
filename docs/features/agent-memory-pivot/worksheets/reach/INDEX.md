@@ -255,7 +255,8 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
   6 clicks / 496 impr / pos 17.5, **byte-identical to the prior read** (all clicks from
   non-intent pages: hall-of-fame, `/`, `/architecture`, `count-rows-per-day` solve). `/agents`
   pos 6.8 (4 impr); intent queries stuck deep ("agent memory benchmark" 53, "deep memory
-  retrieval benchmark" 52, "locomo benchmark ai memory" 83). **4th consecutive flat read**,
+  retrieval benchmark" 52, "locomo benchmark ai memory" 83). **4th consecutive flat read across
+  reach runs** (`/daily`'s scorecard counts the same pull as its 5th — separate loop cadence),
   2+ days past the 07-22 publish + 07-23 Glama ingest with zero movement — registry presence
   ≠ ranking. R-01 baseline, unmoved.
 - Coding-agent walker (R-06): **0/1 surfaced** (baseline 2026-07-20; cold session recommended
