@@ -1,9 +1,32 @@
 {
   "name": "@nlqdb/mcp",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "mcpName": "com.nlqdb/nlqdb",
   "description": "Analytical-memory MCP server for nlqdb — a real database your AI agent can GROUP BY / JOIN / aggregate over in natural language, not just recall.",
   "type": "module",
+  "license": "FSL-1.1-ALv2",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nlqdb/nlqdb.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://nlqdb.com/agents/?utm_source=npm",
+  "bugs": "https://github.com/nlqdb/nlqdb/issues",
+  "keywords": [
+    "nlqdb",
+    "mcp",
+    "model-context-protocol",
+    "agent-memory",
+    "ai-agent",
+    "memory",
+    "postgres",
+    "sql",
+    "llm"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts"
@@ -22,20 +45,15 @@
     "build": "bun build src/index.ts --target=node --format=esm --outdir=dist --external='@modelcontextprotocol/sdk*' --external=@opentelemetry/api --external=zod --sourcemap=linked --minify"
   },
   "publishConfig": {
-    "main": "dist/index.js",
-    "exports": {
-      ".": {
-        "default": "./dist/index.js"
-      }
-    }
+    "access": "public"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
-    "@nlqdb/sdk": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@nlqdb/sdk": "workspace:*",
     "typescript": "^5.6.0",
     "vitest": "^4.1.0"
   }

@@ -27,6 +27,18 @@ Status:
 - `@nlqdb/cli` — un-gated; bootstrap published at `0.1.0` (npm shim
   that downloads the `nlq` Go binary on `postinstall`). Configure
   Trusted Publisher on npmjs.com (see below).
+- `@nlqdb/mcp` — **gated, publish-ready and tarball-verified** 2026-07-25:
+  `npm pack` → install → `node .../bin/nlqdb-mcp.mjs` serves a real MCP
+  `initialize` + `tools/list` with the full `SK-MCP-002` catalog, so
+  `npx -y @nlqdb/mcp` will work on publish. The `@nlqdb/sdk` workspace dep is
+  bundled into `dist/`, so it is a **devDependency** — a `workspace:*` range
+  must never reach a published `dependencies`.
+  Only the bootstrap publish below is left, and it is maintainer-only;
+  the founder command is queued as
+  [`blocked-by-human.md`](../docs/blocked-by-human.md) bullet 2. Un-gate
+  (steps 2–4) in the PR that follows the publish, not before — a
+  non-private package whose version is not yet on npm makes
+  `changeset publish` fail the whole release job.
 - Everything else in `packages/*` — still gated.
 
 To un-gate a new package:
@@ -48,23 +60,28 @@ To un-gate a new package:
        "directory": "packages/<name>"
      },
      "publishConfig": {
-       "main": "./dist/index.js",
-       "types": "./dist/index.d.ts",
-       "exports": {
-         ".": {
-           "types": "./dist/index.d.ts",
-           "import": "./dist/index.js",
-           "default": "./dist/index.js"
-         }
-       },
        "provenance": true,
        "access": "public"
      }
    }
    ```
+   > **npm ignores `publishConfig` field overrides.** Rewriting
+   > `main`/`types`/`exports` from `publishConfig` is a **pnpm** feature; npm
+   > honours only its own keys (`access`, `provenance`, `registry`, `tag`).
+   > Verified 2026-07-25 against the live registry: `@nlqdb/sdk@0.2.1`
+   > publishes `main: "./src/index.ts"` while its `files` ships only `dist/`,
+   > so `import "@nlqdb/sdk"` from npm throws `ERR_MODULE_NOT_FOUND`. Point a
+   > library's real `main`/`types`/`exports` at `dist/`, or expose the artifact
+   > through `bin` (what `@nlqdb/mcp` does — its bin picks source under bun and
+   > `dist/` under node). Don't add `"sideEffects": false` to a package whose
+   > entry is a pure re-export barrel built by `bun build`: the bundler shakes
+   > it down to a stub that still *builds* clean and then fails to load.
 3. Add a `bun run --filter='@nlqdb/<name>' build` step to
    `release-npm.yml` before the changesets action.
-4. Configure Trusted Publishing on the package (see below).
+4. **Verify the tarball before publishing**, since none of the above fails at
+   build time: `npm pack`, install the `.tgz` into an empty dir, and
+   `node -e "import('<pkg>')"` (or run its `bin`) with **node**, not bun.
+5. Configure Trusted Publishing on the package (see below).
 
 ## Authentication: Trusted Publishing (OIDC)
 
