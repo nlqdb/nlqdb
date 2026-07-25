@@ -143,11 +143,45 @@ const totals = await query(token, iso(start), iso(end), [], 1);
 console.info(`# GSC ${SITE} — ${iso(start)} → ${iso(end)} (${days}d)`);
 console.info(totals.length ? fmtRow(totals[0]) : "no data in window");
 
-console.info("\n## Top queries");
-for (const r of await query(token, iso(start), iso(end), ["query"], 20)) console.info(fmtRow(r));
+// GSC orders rows by clicks. On a property with 6 clicks and 485 impressions
+// that ordering is noise, so a 20-row pull hid most of the impression mass:
+// measured 2026-07-25, the page dimension returned 20 of 100 rows and 158 of
+// 572 impressions, and the single biggest strengthening target
+// (/solve/running-total-cumulative-sum-in-sql/ — 57 impr at position 36) sat
+// under the cap while a page already at position 7.8 was reported as the top
+// opportunity. Pull the whole dimension, rank by impressions, and print the
+// coverage so a truncated pull can never read as a complete one.
+const ROW_LIMIT = 5000; // GSC allows 25k rows/request — far above this property
+const SHOW = 20;
 
-console.info("\n## Top pages");
-for (const r of await query(token, iso(start), iso(end), ["page"], 20)) console.info(fmtRow(r));
+function section(title: string, rows: Row[]): void {
+  const ranked = [...rows].sort((a, b) => b.impressions - a.impressions);
+  const total = ranked.reduce((n, r) => n + r.impressions, 0);
+  const shown = ranked.slice(0, SHOW);
+  const pct = total ? Math.round((shown.reduce((n, r) => n + r.impressions, 0) / total) * 100) : 100;
+  console.info(
+    `\n## ${title} — ${ranked.length} rows / ${total} impr; top ${shown.length} by impressions = ${pct}% of them`,
+  );
+  for (const r of shown) console.info(fmtRow(r));
+  if (rows.length >= ROW_LIMIT) console.info(`!! truncated at rowLimit ${ROW_LIMIT} — raise it`);
+}
+
+section("Top queries", await query(token, iso(start), iso(end), ["query"], ROW_LIMIT));
+
+const pages = await query(token, iso(start), iso(end), ["page"], ROW_LIMIT);
+section("Top pages", pages);
+
+// The /daily + /reach selection rule, computed instead of eyeballed: impressions
+// are the ceiling on clicks a rank gain can convert, and a page already inside
+// the top 10 has little rank left to win.
+const strengthen = pages
+  .filter((r) => r.position > 10)
+  .sort((a, b) => b.impressions - a.impressions)
+  .slice(0, 10);
+if (strengthen.length) {
+  console.info("\n## Strengthen next — highest impressions still off page 1 (pos > 10)");
+  for (const r of strengthen) console.info(fmtRow(r));
+}
 
 const sm = await curlRequest("GET", `${API}/sitemaps`, [`Authorization: Bearer ${token}`]);
 if (sm.status === 200) {
