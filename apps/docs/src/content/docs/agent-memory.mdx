@@ -51,8 +51,10 @@ host's key names differ, so copy its own block, not a neighbour's.
    { "mcpServers": { "nlqdb": { "serverUrl": "https://mcp.nlqdb.com/mcp" } } }
    ```
 
-5. **Zed** — write `~/.config/zed/settings.json` (same path on macOS and Linux;
-   `zed: open settings file` opens it. The root key is `context_servers`):
+5. **Zed** — merge the `context_servers` key into
+   `~/.config/zed/settings.json` (same path on macOS and Linux; `zed: open
+   settings file` opens it). That file holds every Zed setting — theme, keymap,
+   language servers — so add the key, don't overwrite the file:
 
    ```json
    { "context_servers": { "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" } } }
