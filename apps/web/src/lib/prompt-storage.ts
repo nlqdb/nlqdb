@@ -9,10 +9,10 @@
 //
 //   nlqdb_pending  — a submitted prompt that hit `auth_required` (or
 //                    any redirect-style failure). The surface stashes
-//                    it here, redirects to /sign-in, and the post-
-//                    OAuth landing page replays it against `/v1/ask`
-//                    with the now-authed cookie session. Cleared on
-//                    successful replay.
+//                    it here and redirects to /sign-in; after sign-in
+//                    `ChatPanel`'s mount pre-fills the composer from
+//                    it and clears the slot. Never auto-submitted —
+//                    the user reviews and sends (SK-ANON-012).
 //
 //   nlqdb_history  — completed prompts + their outcomes (last N).
 //                    Useful for "what did I just ask?" recall and as

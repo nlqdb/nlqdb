@@ -32,13 +32,9 @@ cursor.directory / awesome-mcp / Claude-dir (#2–#5, account-walled), GLOBAL-03
 CI-as-required-check (#7).
 
 **Rule 6 clean** (CI + Security + Release-npm **and all 8 `deploy-*` workflows** `success` on `main`
-`aad87a7` — 07-25 02:24Z). **Open PRs 4** — oldest #719 (draft Infisical, 8 d), oldest non-draft #817
-(< 1 d). **Step 0:** open PRs #817 (run 139: `astro.config.mjs`, `canonical-redirects*`,
-`check-links.mjs`, web-app FEATURE), #819 (reach INDEX, mcp-server FEATURE, `apps/docs`), #719 (draft
-Infisical). This run touches `acquisition-health.yml`, the `/solve` · `/vs` · `/agents` · `/app/new`
-pages, `lib/handoff.ts` + `lib/posthog.ts`, `client-nav-integrity` + `handoff` tests,
-`tools/stranger-test`, and the anonymous-mode + stranger-test FEATUREs — **no overlap** beyond the
-step-1-exempt `scorecard.md`.
+`2d353cf` — run 139 / #817 merged 07-25). **Step 0:** no PR open alongside this one touches `apps/web`
+or this run's FEATUREs — #817 (run 139) and #819 (reach) both landed ahead of it and #719 stays a draft
+— so the only overlap is the step-1-exempt `scorecard.md`.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -122,20 +118,24 @@ is stripped, back/forward and reload hold, and a hostile-referrer `#nlq=` is rej
 **Also closed this run.** `handoff.ts` capped prompt text on the receiver only, so any >4096-char prompt
 was **silently dropped** — now one `normalize()` decides the cap for both sides, an oversize draft
 truncates, and an oversize `pending` demotes to `draft` rather than replaying mangled (`SK-ANON-011`
-amended). `lib/posthog.ts` strips the URL fragment from `$current_url`/`$referrer` so the anon **bearer**
-cannot reach the analytics store even if capture beats the strip. FLOW-001's 3 remaining failures stay
+amended). Four review passes then made "the anon **bearer** never reaches a URL sink" structural rather
+than a race won: `posthog.ts` refuses to `init` while the fragment is present (and still strips
+`$current_url`/`$referrer`), `error-report.ts` + `Base.astro`'s boot reporter drop the fragment before
+POSTing `href`, the `/app/new/` Tawk embed waits for `DOMContentLoaded` so it cannot read the URL first,
+and the trusted-referrer set became three explicit hosts (no `*.nlqdb.com` wildcard) with `localhost`
+trusted only by a local receiver. FLOW-001's 3 remaining failures stay
 **428 `challenge_required`** — Turnstile declining a headless Chromium on a GH-Actions IP, by design,
 **not** a repeat of the run-56 fail-closed outage. Row #21 can't read 9/9 from CI until `RunState` gains
 `blocked` — decided and recorded (`stranger-test/FEATURE.md`), next run's work.
 
-**Other lanes.** GSC live: 6 clicks / 485 impr / pos 17.4, clicks flat an 8th read. Strangers **0**,
-roster byte-identical. Row #15 rose 0.50 → **0.74** unaided (run 138's mcp fix merged). Engine dark +
-fresh. Queue 2-deep (< 3) ⇒ no forced publish, no new draft; dev.to drip self-throttled — expected
-no-op. **Gates:** `typecheck` (22 pkgs, 0 errors) · `lint` (exit 0) · `test` (20 pkgs exit 0, 992 api
-tests + 9 new handoff/guard cases); web build clean, 126 pages. **D4:** `anonymous-mode/FEATURE.md` was
-over cap, so `SK-ANON-015`'s body split into `decisions/SK-ANON-015-*.md` (3.8 KB) and the FEATURE
-**net-shrank** 33353 → 31111 B; `scorecard.md` held under **20000 B** (strict decimal reading) by
-compressing per-run prose, no rows dropped. **KPI (GLOBAL-025):** advances **onboarding** (the
+**Other lanes.** Strangers **0**, roster byte-identical (GSC in row #7, flat). Row #15 rose 0.50 →
+**0.74** unaided (run 138's mcp fix merged). Engine dark + fresh. Queue 2-deep ⇒ no forced publish
+(row #6); dev.to drip self-throttled. **Gates:** `typecheck` (22 pkgs, 0 errors) · `lint` (0 errors,
+baseline 41 warnings) · `test` (992 api + 391 web, 0 fail); web build clean. **D4:**
+`anonymous-mode/FEATURE.md` was over cap, so `SK-ANON-015`'s body split into
+`decisions/SK-ANON-015-*.md` (5.8 KB) and the FEATURE **net-shrank** 33353 → 32016 B; `scorecard.md`
+held under **20000 B** (strict decimal reading) by compressing per-run prose out of the step-0 block and
+rows #7–#9, #17–#19, #22 — no rows dropped. **KPI (GLOBAL-025):** advances **onboarding** (the
 first-query path now carries the goal it promised, on 69 pages) and **UX**; **degrades none**.
 
 _(Single-entry by design — per-run history lives in `git log` +

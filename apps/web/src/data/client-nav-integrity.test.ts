@@ -158,6 +158,20 @@ describe("client-nav trailing-slash integrity (SK-WEB-022)", () => {
     expect(offenders).toEqual({});
   });
 
+  test("the third-party support embed boots after the SK-ANON-015 fragment strip", () => {
+    // `/app/new/` mounts `<SupportChat />` AND receives the handoff as
+    // `#nlq=<json>` carrying the anon bearer. Tawk's visitor monitoring reports
+    // the page URL to a third party, so the vendor's "inject during parsing"
+    // snippet would race `importHandoffFromLocation()` for a credential. Astro's
+    // hoisted page scripts are deferred modules and therefore always run before
+    // `DOMContentLoaded` — waiting for it makes the ordering a guarantee. Pinned
+    // here because the obvious "restore the vendor snippet" edit reopens it
+    // silently.
+    const src = readFileSync(join(WEB_SRC, "components", "SupportChat.astro"), "utf8");
+    expect(src).toContain('addEventListener("DOMContentLoaded"');
+    expect(src.indexOf("embed.tawk.to")).toBeGreaterThan(src.indexOf("DOMContentLoaded"));
+  });
+
   test("every static `<a href>` to an internal page path ends in `/`", () => {
     // The href half of the same class — the blind spot that let `href="/terms"`
     // 307-redirect for two days because check-links.mjs isn't in CI.

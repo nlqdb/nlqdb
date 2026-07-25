@@ -199,9 +199,10 @@ export function importHandoffFromLocation(): void {
   // throws on a full quota or in Safari private mode. Swallow it: this runs at
   // the top of `app/new.astro`'s script, so an escaping throw would skip
   // `getOrMintAnonToken()` and leave the page with no identity at all.
+  // The token goes first: it is the smallest value and the only unrecoverable
+  // one (losing it orphans the DB the visitor already created), so a quota that
+  // trips partway through must not spend its last bytes on a 4 KB prompt.
   try {
-    if (payload.pending) savePending(payload.pending);
-    if (payload.draft) saveDraft(payload.draft);
     if (payload.anon) {
       const existing = ls.getItem(ANON_KEY) ?? "";
       if (existing.startsWith("anon_") && existing !== payload.anon) {
@@ -209,6 +210,8 @@ export function importHandoffFromLocation(): void {
       }
       ls.setItem(ANON_KEY, payload.anon);
     }
+    if (payload.pending) savePending(payload.pending);
+    if (payload.draft) saveDraft(payload.draft);
   } catch {
     // Same funnel meaning as above: an arrival whose payload didn't land.
     emit("handoff.rejected");
