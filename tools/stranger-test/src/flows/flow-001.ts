@@ -46,7 +46,7 @@ async function doWalk(
   browser: Browser,
 ): Promise<FlowRun> {
   const session = await openSession({ baseUrl, userAgent, browser });
-  const { page, consoleErrors, httpErrors, close } = session;
+  const { page, consoleErrors, httpErrors, challengeEngaged, close } = session;
   const steps: StepResult[] = [];
   const startedAt = Date.now();
   let ttfvMs: number | null = null;
@@ -191,7 +191,8 @@ async function doWalk(
       } else {
         const status = askResp.status();
         const body = await askResp.text().catch(() => "");
-        const outcome = classifyAsk(status, body);
+        const engaged = status === 428 ? await challengeEngaged() : false;
+        const outcome = classifyAsk(status, body, engaged);
         // Only a real answer is time-to-first-value.
         if (outcome === "ok") ttfvMs = Date.now() - t0;
         steps.push(
@@ -201,7 +202,7 @@ async function doWalk(
             outcome,
             outcome === "ok"
               ? `status=200 ttfvMs=${ttfvMs}`
-              : `status=${status} dt=${Date.now() - t0} body=${body.slice(0, 120)}`,
+              : `status=${status} challengeEngaged=${engaged} dt=${Date.now() - t0} body=${body.slice(0, 120)}`,
           ),
         );
         if (outcome === "ok") {

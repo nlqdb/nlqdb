@@ -13,14 +13,18 @@ export type AskOutcome = Extract<StepStatus, "ok" | "blocked" | "fail">;
 // (index.ts's anon-create gate) and uses 428 for nothing else, so the match
 // is unambiguous.
 //
-// Both halves are required on purpose. Status-only would score any future
-// 428 as blocked; body-only would score a 200 whose payload merely mentions
-// the code. Anything else — 401, 429, 500, a bare 428 with an unreadable
-// body — stays `fail`, because green-washing a real regression is the one
-// failure mode this function must not have.
-export function classifyAsk(status: number, body: string): AskOutcome {
+// All three conditions are required on purpose. Status-only would score any
+// future 428 as blocked; body-only would score a 200 whose payload merely
+// mentions the code. `challengeEngaged` is the third: every anonymous create
+// gets this 428 on its first leg, and only the client's Turnstile retry turns
+// it into an answer — so without evidence that the widget actually ran, a 428
+// is the run-56 fail-closed outage (terminal for real visitors), not a
+// decline. Anything else — 401, 429, 500, a bare 428, an unreadable body —
+// stays `fail`, because green-washing a real regression is the one failure
+// mode this function must not have.
+export function classifyAsk(status: number, body: string, challengeEngaged: boolean): AskOutcome {
   if (status === 200) return "ok";
-  if (status === 428 && body.includes("challenge_required")) return "blocked";
+  if (status === 428 && body.includes("challenge_required") && challengeEngaged) return "blocked";
   return "fail";
 }
 
@@ -31,10 +35,12 @@ export function classifyAsk(status: number, body: string): AskOutcome {
 // nothing, and a blocked run's stopping point is the `blocked` step in
 // `steps`.
 export function runOutcome(steps: StepResult[]): { state: RunState; failedStep: number | null } {
-  // A walk that observed nothing is not a walk that found nothing wrong.
-  if (steps.length === 0) return { state: "failed", failedStep: 0 };
   const failed = steps.find((s) => s.status === "fail");
   if (failed) return { state: "failed", failedStep: failed.step };
-  const blocked = steps.some((s) => s.status === "blocked");
-  return { state: blocked ? "blocked" : "passed", failedStep: null };
+  if (steps.some((s) => s.status === "blocked")) return { state: "blocked", failedStep: null };
+  // A walk that observed nothing is not a walk that found nothing wrong, so
+  // green needs a positive observation: no steps at all, nothing but skips, or
+  // a status this function does not recognise all fail closed.
+  if (!steps.some((s) => s.status === "ok")) return { state: "failed", failedStep: 0 };
+  return { state: "passed", failedStep: null };
 }

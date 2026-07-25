@@ -60,7 +60,7 @@ async function doWalk(
 ): Promise<FlowRun> {
   const meta = SLUG_META[slug];
   const session = await openSession({ baseUrl, userAgent, browser });
-  const { page, consoleErrors, httpErrors, close } = session;
+  const { page, consoleErrors, httpErrors, challengeEngaged, close } = session;
   const steps: StepResult[] = [];
   const startedAt = Date.now();
   let ttfvMs: number | null = null;
@@ -208,7 +208,8 @@ async function doWalk(
       } else {
         const status = askResp.status();
         const body = await askResp.text().catch(() => "");
-        const outcome = classifyAsk(status, body);
+        const engaged = status === 428 ? await challengeEngaged() : false;
+        const outcome = classifyAsk(status, body, engaged);
         // Only a real answer is time-to-first-value.
         if (outcome === "ok") ttfvMs = Date.now() - t0;
         steps.push(
@@ -218,7 +219,7 @@ async function doWalk(
             outcome,
             outcome === "ok"
               ? `status=200 ttfvMs=${ttfvMs}`
-              : `status=${status} dt=${Date.now() - t0} body=${body.slice(0, 120)}`,
+              : `status=${status} challengeEngaged=${engaged} dt=${Date.now() - t0} body=${body.slice(0, 120)}`,
           ),
         );
         if (outcome !== "ok") failedStep = 8;
@@ -230,8 +231,12 @@ async function doWalk(
     }
 
     // Step 9: /llms.txt enumerates this slug. Independent from steps 5-8 —
-    // a separate GET, useful even when the submit gate-fails earlier.
-    const llmsResp = await page.request.get(`${baseUrl}/llms.txt`).catch(() => null);
+    // useful even when the submit gate-fails earlier. Navigated rather than
+    // fetched via `page.request`, which egresses from the Playwright driver
+    // process and so still sees the sandbox proxy `launchBrowser` strips from
+    // the browser — that combination failed this step closed on every proxied
+    // local walk (measured 2026-07-25).
+    const llmsResp = await page.goto(`${baseUrl}/llms.txt`, { timeout: 30_000 }).catch(() => null);
     if (!llmsResp || llmsResp.status() !== 200) {
       steps.push(
         step(

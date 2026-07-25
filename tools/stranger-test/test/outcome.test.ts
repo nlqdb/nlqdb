@@ -16,15 +16,16 @@ const CHALLENGE_BODY =
 
 describe("classifyAsk", () => {
   test("the live Turnstile rejection is blocked, not failed", () => {
-    expect(classifyAsk(428, CHALLENGE_BODY)).toBe("blocked");
+    expect(classifyAsk(428, CHALLENGE_BODY, true)).toBe("blocked");
   });
 
   test("a real answer is ok", () => {
-    expect(classifyAsk(200, "")).toBe("ok");
+    expect(classifyAsk(200, "", false)).toBe("ok");
   });
 
   // Each of these would be a product regression the walker exists to catch;
-  // scoring any of them `blocked` is the failure mode to avoid.
+  // scoring any of them `blocked` is the failure mode to avoid. Passed with
+  // `challengeEngaged` true so it is the status/body pair being asserted.
   test.each([
     [401, '{"error":{"code":"unauthorized"}}'],
     [429, '{"error":{"code":"rate_limited"}}'],
@@ -35,12 +36,25 @@ describe("classifyAsk", () => {
     [428, '{"error":{"code":"precondition_required"}}'],
     // Body unreadable: fail loudly rather than assume the benign cause.
     [428, ""],
+    // Pins the substring to the *code*: the real envelope's prose says
+    // "Complete the browser challenge", so matching on "challenge" alone
+    // would widen the gate to any 428 that merely mentions one.
+    [
+      428,
+      '{"error":{"code":"precondition_required","action":"Complete the browser challenge to continue."}}',
+    ],
   ])("status %i is failed", (status, body) => {
-    expect(classifyAsk(status, body)).toBe("fail");
+    expect(classifyAsk(status, body, true)).toBe("fail");
+  });
+
+  // The run-56 shape: the API 428s but the client never ran the widget (no
+  // sitekey / api.js blocked), so the 428 is terminal for real visitors too.
+  test("a challenge the client never engaged is failed, not blocked", () => {
+    expect(classifyAsk(428, CHALLENGE_BODY, false)).toBe("fail");
   });
 
   test("a 200 is never downgraded by a body that mentions the code", () => {
-    expect(classifyAsk(200, CHALLENGE_BODY)).toBe("ok");
+    expect(classifyAsk(200, CHALLENGE_BODY, true)).toBe("ok");
   });
 });
 
@@ -84,5 +98,19 @@ describe("runOutcome", () => {
   // Reading that as `passed` is the "green build ships nothing" shape.
   test("a walk with no steps is failed, not passed", () => {
     expect(runOutcome([])).toEqual({ state: "failed", failedStep: 0 });
+  });
+
+  // Same shape as the zero-step walk: nothing was asserted, so there is no
+  // observation to call green. `passed` requires at least one `ok`.
+  test("a walk of nothing but skips is failed, not passed", () => {
+    expect(runOutcome([s(1, "skip"), s(2, "skip")])).toEqual({ state: "failed", failedStep: 0 });
+  });
+
+  // A status outside the union (a hand-edited artifact, a future StepStatus
+  // this function was not taught) must not read as green.
+  test("an unrecognised status is failed, not passed", () => {
+    expect(runOutcome([{ step: 1, description: "s1", status: "weird" as StepStatus }]).state).toBe(
+      "failed",
+    );
   });
 });

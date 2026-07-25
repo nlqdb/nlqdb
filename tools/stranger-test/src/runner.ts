@@ -91,7 +91,7 @@ async function runFlow001(args: Args, browser: Browser): Promise<FlowResult> {
     if (!args.quiet) process.stdout.write(`  flow-001 prompt="${prompt}" ... `);
     const r = await walkFlow001(prompt, args.baseUrl, USER_AGENT, browser);
     if (!args.quiet)
-      process.stdout.write(`${r.state}${r.failedStep ? ` step=${r.failedStep}` : ""}\n`);
+      process.stdout.write(`${r.state}${r.failedStep !== null ? ` step=${r.failedStep}` : ""}\n`);
     runs.push(r);
   }
   return summarise("flow-001", persona, runs);
@@ -106,7 +106,7 @@ async function runFlow002(args: Args, browser: Browser): Promise<FlowResult> {
     if (!args.quiet) process.stdout.write(`  flow-002 slug="${slug}" ... `);
     const r = await walkFlow002(slug, args.baseUrl, USER_AGENT, browser);
     if (!args.quiet)
-      process.stdout.write(`${r.state}${r.failedStep ? ` step=${r.failedStep}` : ""}\n`);
+      process.stdout.write(`${r.state}${r.failedStep !== null ? ` step=${r.failedStep}` : ""}\n`);
     runs.push(r);
   }
   return summarise("flow-002", persona, runs);
@@ -121,7 +121,7 @@ async function runFlow003(args: Args, browser: Browser): Promise<FlowResult> {
     if (!args.quiet) process.stdout.write(`  flow-003 slug="${slug}" ... `);
     const r = await walkFlow003(slug, args.baseUrl, USER_AGENT, browser);
     if (!args.quiet)
-      process.stdout.write(`${r.state}${r.failedStep ? ` step=${r.failedStep}` : ""}\n`);
+      process.stdout.write(`${r.state}${r.failedStep !== null ? ` step=${r.failedStep}` : ""}\n`);
     runs.push(r);
   }
   return summarise("flow-003", persona, runs);
