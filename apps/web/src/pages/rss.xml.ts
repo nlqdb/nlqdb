@@ -12,7 +12,7 @@ import { BLOG_POSTS } from "../data/blog";
 const SITE = "https://nlqdb.com";
 
 // CF Static Assets serves `<route>/index.html`, so the 200 URL carries a
-// trailing slash and the bare path 307-redirects (matches sitemap.xml.ts).
+// trailing slash and the bare path 301-redirects (matches sitemap.xml.ts).
 const withSlash = (p: string) => (p.endsWith("/") ? p : `${p}/`);
 
 // Post titles/descriptions are free text, so XML-escape before embedding —

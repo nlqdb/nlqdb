@@ -11,7 +11,7 @@ import { SOLVE_ENTRIES } from "../data/solve";
 
 const SITE = "https://nlqdb.com";
 // CF Static Assets serves `<route>/index.html`, so the 200 URL carries a
-// trailing slash and the bare path 307-redirects (matches `trailingSlash:
+// trailing slash and the bare path 301-redirects (matches `trailingSlash:
 // "always"` in astro.config). Advertise the non-redirecting URL.
 const withSlash = (p: string) => (p.endsWith("/") ? p : `${p}/`);
 const STATIC_ROUTES = [

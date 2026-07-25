@@ -1,9 +1,9 @@
 // ItemList JSON-LD builder — the AEO/SEO collection signal for the `/vs` and
 // `/solve` hub pages, so answer engines read the *complete* set in one fetch
 // instead of scraping the prose list. Each `url` is trailing-slash-normalised
-// to the 200 (mirrors `breadcrumb.ts` / `Base.astro` canonical), never the 307
-// redirect CF serves for a bare path. Callers pass `entries` from the same
-// array the page renders, so the markup can't drift from the visible list.
+// to the 200 (mirrors `breadcrumb.ts` / `Base.astro` canonical), never the 301
+// CF serves for a bare path (`SK-WEB-027`). Callers pass `entries` from the
+// same array the page renders, so the markup can't drift from the visible list.
 // Shared by both hubs so they can't drift on shape — mirrors `breadcrumb.ts`.
 
 export interface ListEntry {

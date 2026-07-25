@@ -63,7 +63,7 @@ const NAV = /\blocation(?:\.href\s*=|\.(?:assign|replace)\s*\()\s*["'`]([^"'`]*)
 const HREF = /\bhref=["'](\/[^"'`]*)["']/g;
 
 // A same-origin absolute path (`/…`, not `//host`) whose path component (before
-// `?`/`#`) lacks a trailing slash 307-redirects under trailingSlash:"always".
+// `?`/`#`) lacks a trailing slash redirects under trailingSlash:"always".
 // A dotted final segment (`/og.png`, `/rss.xml`) is a real asset that carries
 // no slash — skip it, not a redirect. Returns the offending `url` or null.
 function trailingSlashOffender(url: string): string | null {

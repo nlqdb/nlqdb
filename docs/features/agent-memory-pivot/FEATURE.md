@@ -202,7 +202,7 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 ### SK-PIVOT-012 — Wedge OG cards are committed static PNGs from a manually-run generator, never built in CI
 
-**Body:** [`decisions/SK-PIVOT-012-og-cards.md`](./decisions/SK-PIVOT-012-og-cards.md). WS-08's `/agents` + memory-`/vs` social cards are pre-rendered PNGs in `apps/web/public/og/`, produced by a manually-run SVG→PNG generator (`scripts/og/gen-og.mjs`, `@resvg/resvg-js`) kept **out of `astro build`** so the rasteriser + fonts never reach the CF free-tier build/Worker path (GLOBAL-013). Wired through `Base.astro`'s existing `ogImage` prop.
+**Body:** [`decisions/SK-PIVOT-012-og-cards.md`](./decisions/SK-PIVOT-012-og-cards.md). WS-08's `/agents` + memory-`/vs` social cards are pre-rendered PNGs in `apps/web/public/og/`, produced by a manually-run generator (`scripts/og/gen-og.mjs`) kept **out of `astro build`** so the rasteriser + fonts never reach the CF free-tier build path (GLOBAL-013). Wired through `Base.astro`'s `ogImage` prop.
 
 ### SK-PIVOT-005 — The self-host / anti-VC angle is messaged under FSL-1.1 honestly, and the container is pulled forward to make it true
 
@@ -220,7 +220,7 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 ### SK-PIVOT-015 — Reach is the pivot's third track: search-moment interception + coding-agent injection, driven by its own `/reach` loop
 
-**Body:** [`decisions/SK-PIVOT-015-reach-track.md`](./decisions/SK-PIVOT-015-reach-track.md). The buying decision happens at stage-0/1 searches ("my agent forgets") — increasingly issued by the builder's own coding agent (Claude Code / Cursor / Codex) — so a third track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md), R-01..R-08) wins that moment: intent-mapped solve pages, a machine-followable one-command setup guide, MCP registry/directory listings, droppable in-repo artifacts (skill / rules / AGENTS.md), and a coding-agent walker as the yield metric. Runs on its own `/reach` loop (4×/day, offset from `/daily`) so `/daily`'s worst-number selection can't starve it; reach numbers live in the reach INDEX, never `docs/scorecard.md`.
+**Body:** [`decisions/SK-PIVOT-015-reach-track.md`](./decisions/SK-PIVOT-015-reach-track.md). The buying decision happens at stage-0/1 searches ("my agent forgets"), increasingly issued by the builder's own coding agent, so a third track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md), R-01..R-08) wins that moment: intent-mapped solve pages, a one-command setup guide, MCP registry listings, droppable in-repo artifacts, and a coding-agent walker as the yield metric. Runs on its own `/reach` loop (4×/day, offset from `/daily`) so worst-number selection can't starve it; reach numbers live in the reach INDEX, never `docs/scorecard.md`.
 
 ## GLOBALs governing this feature
 
@@ -241,9 +241,10 @@ index in [`docs/decisions.md`](../../decisions.md)).
 ## Open questions / known unknowns
 
 - **Capability-matrix freshness — Resolved.** WS-06's `MATRIX_VERIFIED_ON` +
-  `agentMemoryMatrix.test.ts` fail the §8 test gate (GitHub CI skips web bun
-  tests) once the date is > 60 days old, invalid, or future, forcing
-  re-verify against `docs/competitors.md` §4.
+  `agentMemoryMatrix.test.ts` fail the §8 gate once the date is invalid, future,
+  or > 60 days old — forcing re-verify against `docs/competitors.md` §4. The
+  >60-day case is `skipIf(CI)`: it fires on a date, so as a CI gate it would
+  redden unrelated PRs (`SK-WEB-027` wired these tests into `ci.yml`).
 - **Self-host container scope** — pulling `ghcr.io/nlqdb/api` forward (WS-11)
   may exceed one daily run and touches infra; the worksheet flags the
   founder/infra gate.

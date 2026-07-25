@@ -16,7 +16,7 @@ const SITE = "https://nlqdb.com";
 const DOCS_SITE = "https://docs.nlqdb.com";
 
 // Internal links resolve to the trailing-slash 200 (CF serves
-// `<route>/index.html`; the bare path 307-redirects). Advertise the
+// `<route>/index.html`; the bare path 301-redirects). Advertise the
 // non-redirecting URL so AI crawlers fetching llms.txt skip the hop.
 const url = (path: string) => `${SITE}${path.endsWith("/") ? path : `${path}/`}`;
 

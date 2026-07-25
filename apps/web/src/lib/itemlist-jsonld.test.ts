@@ -34,7 +34,7 @@ describe("itemListJsonLd", () => {
     ]);
   });
 
-  test("trailing-slash-normalises every url to the 200, never the bare-path 307", () => {
+  test("trailing-slash-normalises every url to the 200, never the bare-path redirect", () => {
     const ld = itemListJsonLd(
       "Solve a specific problem with nlqdb",
       [

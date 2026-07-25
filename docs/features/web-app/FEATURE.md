@@ -25,7 +25,7 @@ when-to-load:
 - **Decision:** `apps/web` is a single Astro project. Marketing pages (`nlqdb.com`) ship as static-first Astro routes (0 KB JS by default); product pages (`app.nlqdb.com`) are Astro routes with React islands for chat, dashboard, and key management. **Every React island is wrapped in `<ErrorBoundary>` (`apps/web/src/components/ErrorBoundary.tsx`) and `Base.astro` ships an inline pre-hydration `boot-fallback` block.** A render throw never produces a blank `<main>`; a chunk-load or top-level eval failure never produces an empty body. Persisted-state loaders (`localStorage` histories) shape-validate before returning hydrated values. Crashes POST best-effort to `/v1/errors/web` so client-side throws land in the same OTel pipeline as server errors.
 - **Core value:** Free, Fast, Simple, Bullet-proof
 - **Why:** A single project gives one build, one deploy, one component set, one design system. The Lighthouse 100/100/100/100 marketing target needs static-first; the product surface needs interactive islands. Astro is the only popular framework that does both without forking the project, and keeps `GLOBAL-013` (≤3 MiB Workers bundle) attainable — static pages contribute ~0. The ErrorBoundary + boot-fallback layer is non-negotiable: production hit a stale-history throw in `ChatPanel` that vanished the whole chat surface with no recovery affordance. A blank screen is the worst failure mode — no call to action, no breadcrumb. Defence-in-depth (type narrowing + ErrorBoundary + pre-hydration handler + history shape guard) keeps every reachable failure visible.
-- **Consequence in code:** `apps/web` has one `astro.config.mjs`, one `package.json`. React appears only inside `*.tsx` islands; routes are `*.astro`. State in islands is URL-first (every chat is permalinkable). No global Redux. Marketing pages stay JS-free unless an island is genuinely required. **Every island's top-level component renders its children inside `<ErrorBoundary>` (`*Inner` split); new islands MUST do the same — reviewers reject otherwise.** `Base.astro` ships the `#boot-fallback` recovery block; persisted-state loaders shape-guard before returning hydrated values.
+- **Consequence in code:** `apps/web` has one `astro.config.mjs`, one `package.json`. React appears only inside `*.tsx` islands; routes are `*.astro`. State in islands is URL-first (every chat is permalinkable). No global Redux. Marketing pages stay JS-free unless an island is genuinely required. New islands wrap their children in `<ErrorBoundary>` via the `*Inner` split — reviewers reject otherwise.
 - **Alternatives rejected:**
   - Two projects (Next.js product + Astro marketing) — duplicated tokens, components, deploys; double the surface.
   - Next.js for everything — heavier client bundles by default; misses the static-marketing message.
@@ -124,7 +124,7 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 ### SK-WEB-016 — One-click MCP install affordance: shared `<McpInstall>` at five venues, deep-link where supported
 
 **Body:** [`decisions/SK-WEB-016-mcp-install-affordance.md`](./decisions/SK-WEB-016-mcp-install-affordance.md).
-A shared MCP-install surface (host descriptors in `lib/mcp-install.ts`) renders host buttons — Cursor/VS Code via deep-link, Claude Code/Codex via command, Claude/Windsurf/Zed via paste-ready per-host JSON — at five venues: Door A of the two-door home, `/agents` hero (under the form), post-create `CreateResultView`, `/integrations`, and the **`/app` chat window** ("Install MCP" trigger in the `LeftRail` → focus-trapped popover). Rendered by `McpInstall.astro` (marketing SSR) and the shared React `McpInstallView` (`components/McpInstallView.tsx`, imported by the post-create view + the chat popover so the React venues can't drift). One promoted button per row (`SK-WEB-015`/`SK-WEB-020`); `pk_live_REPLACE_ME` placeholder + sign-in nudge on anon surfaces (`SK-ANON-012` / `SK-WEB-010`); `SK-WEB-002` kept (install only after the CTA, never on the homepage hero).
+A shared MCP-install surface (host descriptors in `lib/mcp-install.ts`) renders per-host buttons — deep-link, command, or paste-ready JSON — at five venues: Door A of the two-door home, the `/agents` hero, post-create `CreateResultView`, `/integrations`, and the `/app` chat window. `McpInstall.astro` (marketing) and the shared React `McpInstallView` keep those venues from drifting; `pk_live_REPLACE_ME` + a sign-in nudge on anon surfaces (`SK-ANON-012`/`SK-WEB-010`), and `SK-WEB-002` keeps install off the homepage hero.
 
 ### SK-WEB-017 — Connect-first hero on the agent-memory home; goal input retained as secondary
 
@@ -140,7 +140,7 @@ The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked
 ### SK-WEB-019 — `/app/connect`: auth-guarded BYO-connect page + `ConnectForm.tsx`
 
 **Body:** [`decisions/SK-WEB-019-connect-page.md`](./decisions/SK-WEB-019-connect-page.md).
-`/app/connect` is auth-guarded (anon → `/auth/sign-in?return_to=/app/connect`) and mounts `ConnectForm.tsx`: an engine select (default ClickHouse), a `type="password"` connection-URL field **never persisted** client-side, posting `{ engine, connection_url, name? }` to `/v1/db/connect` with `credentials:"include"`. On success it renders the schema preview then a "Question it now →" CTA to `/app?db=<dbId>`. The product-side landing for Door B (`SK-WEB-018`); backend is [`SK-DBCONN-001`](../byo-connect/FEATURE.md). Reached from Door B and from a "Connect existing DB" affordance in the `/app` chat-window `LeftRail` (Postgres / ClickHouse chips that deep-link `?engine=` so `ConnectForm` preselects the engine) — one connect page, no second flow (`GLOBAL-017`).
+`/app/connect` is auth-guarded (anon → `/auth/sign-in?return_to=/app/connect`) and mounts `ConnectForm.tsx`: an engine select, a `type="password"` connection URL **never persisted** client-side, `POST /v1/db/connect` → schema preview → "Question it now →". Door B's product landing (`SK-WEB-018`); backend [`SK-DBCONN-001`](../byo-connect/FEATURE.md). Also reached from the `/app` `LeftRail` engine chips that deep-link `?engine=` — one connect page, no second flow (`GLOBAL-017`).
 
 ### SK-WEB-020 — Calm token system (supersedes SK-WEB-015's quiet-brutalism tokens)
 
@@ -155,7 +155,7 @@ One route (`/architecture/`) renders the system as a three.js zoom-to-detail map
 ### SK-WEB-022 — Client-side navigations must carry the trailing slash (guarded)
 
 **Body:** [`decisions/SK-WEB-022-client-nav-trailing-slash.md`](./decisions/SK-WEB-022-client-nav-trailing-slash.md).
-Every client-side navigation to an internal page path ends in `/` (`trailingSlash: "always"` otherwise 307s), guarded by `src/data/client-nav-integrity.test.ts` — the JS-navigation blind spot `check-links.mjs` cannot see.
+Every client-side navigation to an internal page path ends in `/` (`trailingSlash: "always"` otherwise redirects), guarded by `src/data/client-nav-integrity.test.ts` — the JS-navigation blind spot `check-links.mjs` cannot see.
 
 ### SK-WEB-023 — IndexNow push on every web deploy; robots + sitemap stay index-open
 
@@ -175,7 +175,12 @@ The Tawk.to widget (`SupportChat.astro`, official async snippet) mounts beside `
 ### SK-WEB-026 — Merged app host 301-redirects the whole marketing surface to the canonical host
 
 **Body:** [`decisions/SK-WEB-026-app-host-marketing-mirror-301.md`](./decisions/SK-WEB-026-app-host-marketing-mirror-301.md).
-`app.nlqdb.com` serves the same build as `nlqdb.com`, so its whole marketing surface (content trees `/blog|/solve|/vs`, singles, and the `/llms.txt|/rss.xml|/sitemap.xml` aggregators) is a crawlable duplicate there. GSC indexed the app-host copy despite a correct `rel=canonical`, so a thin front-controller (`marketing-mirror.ts`, `run_worker_first`-scoped in `apps/api/wrangler.toml`) 301s that surface to `nlqdb.com`; product/auth/API and the root stay untouched. Adding a route is a one-list edit of `MARKETING_MIRROR_PREFIXES` (+ its `run_worker_first` entries) — a `marketing-mirror.test.ts` guard fails if the two drift.
+`app.nlqdb.com` serves the same build as `nlqdb.com`, so its whole marketing surface (content trees `/blog|/solve|/vs`, singles, and the `/llms.txt|/rss.xml|/sitemap.xml` aggregators) is a crawlable duplicate there. GSC indexed the app-host copy despite a correct `rel=canonical`, so a thin front-controller (`marketing-mirror.ts`, `run_worker_first`-scoped in `apps/api/wrangler.toml`) 301s that surface to `nlqdb.com`; product/auth/API and the root stay untouched.
+
+### SK-WEB-027 — Bare page paths 301 to their trailing-slash canonical (generated `_redirects`)
+
+**Body:** [`decisions/SK-WEB-027-bare-path-301.md`](./decisions/SK-WEB-027-bare-path-301.md).
+`astro build` emits one `301` per built page into `dist/_redirects` (`src/lib/canonical-redirects.ts`), replacing the asset router's 307 — a temporary code Google does not read as a canonicalisation signal, so GSC held bare `/agents` and `/blog/llm-concatenates-…` as index entries competing with their slashed twins. The `/app|/auth|/oauth` prefixes are excluded — the same `dist/` is the merged app host's asset directory (`SK-AUTH-016`), where those are the app's own routes (`SK-WEB-026`) — and a bare path that is a real asset (`/install`) is never shadowed.
 
 ## GLOBALs governing this feature
 

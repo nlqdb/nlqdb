@@ -36,18 +36,23 @@ describe("AGENT_MEMORY_MATRIX integrity", () => {
     expect(recall.length).toBeGreaterThanOrEqual(2);
   });
 
-  test("verifiedOn is a valid, non-future ISO date < 60 days old (staleness alert)", () => {
+  test("verifiedOn is a valid, non-future ISO date", () => {
     expect(MATRIX_VERIFIED_ON).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     const parsed = Date.parse(MATRIX_VERIFIED_ON);
     // A regex-shaped but impossible date (e.g. "2026-13-45") parses to NaN.
     expect(Number.isNaN(parsed)).toBe(false);
-    const ageDays = (Date.now() - parsed) / 86_400_000;
-    // A future date's negative age silently passes `< 60` and disables the
-    // staleness alert — reject it, with 1 day of tolerance because the date
-    // parses as UTC midnight, so a "today" written east of UTC is briefly
-    // future. To fix: re-verify against docs/competitors.md §4, then set
-    // MATRIX_VERIFIED_ON to that reconciliation date.
-    expect(ageDays).toBeGreaterThanOrEqual(-1);
-    expect(ageDays).toBeLessThan(60);
+    // A future date's negative age silently passes the staleness alert below —
+    // reject it, with 1 day of tolerance because the date parses as UTC
+    // midnight, so a "today" written east of UTC is briefly future.
+    expect((Date.now() - parsed) / 86_400_000).toBeGreaterThanOrEqual(-1);
+  });
+
+  // Skipped in GitHub CI on purpose: this fires on a calendar date, so as a
+  // pre-merge gate it would redden every unrelated PR in the repo. It stays a
+  // §8 / daily-loop alert, which is what agent-memory-pivot WS-06 step 3 asked
+  // for. To fix a failure: re-verify against docs/competitors.md §4, then set
+  // MATRIX_VERIFIED_ON to that reconciliation date.
+  test.skipIf(!!process.env.CI)("verifiedOn is < 60 days old (staleness alert)", () => {
+    expect((Date.now() - Date.parse(MATRIX_VERIFIED_ON)) / 86_400_000).toBeLessThan(60);
   });
 });
