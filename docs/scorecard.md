@@ -19,9 +19,10 @@ row #20) is pullable only when no acquisition lever is.
 
 **Worst number today:** **row #2 real strangers 0** — and its only mover is
 founder-blocked: `blocked-by-human` **#1 fire the launch sequence** (Show HN draft
-**idle 42 days since 06-13**), whose age is the company's real cycle time. Queue depth **7**:
-launch (#1), mcp.so / cursor.directory / awesome-mcp / Claude-dir (#2–#5, account-walled),
-GLOBAL-039 zone toggle (#6), CI-as-required-check (#7). **Dark (rule 8, reported not pulled):**
+**idle 42 days since 06-13**), whose age is the company's real cycle time. Queue depth **9**
+(re-derived after #822 merged): launch (#1), npm bootstrap-publish `@nlqdb/mcp` (#2), Smithery
+(#3), mcp.so / cursor.directory / awesome-mcp / Claude connector dir (#4–#7, account- or
+plan-walled), zone toggle (#8), CI-as-required-check (#9). **Dark (rule 8, reported not pulled):**
 engine **#9 Spider 0.2222** / **#8 BIRD 0.542** (offline levers exhausted; baseline `run_at` 07-19
 = 6.4 d, so the 7-day dispatch trigger fires **07-26**, not today); rows **#4/#5/#16**'s
 stranger-dependent criteria (N = 0 by definition until #1 fires); row **#15**'s opencheck arm
@@ -32,10 +33,12 @@ this run split *failed* from *blocked*, and it now reads **0 failed / 9 blocked*
 #821 merged**: CI + Security + Release-npm `success` on `cb53f29`; each `deploy-*` is
 path-filtered, so its green sits on the last SHA that touched it — api/web/canary `705ded0`,
 `deploy-docs` `bb85ccf`, `deploy-cli` `aad87a7`, `deploy-mcp` `97d7712` — and #821 touched none
-of their paths.) **Step 0:** this run touched **none** of the open PRs' files — #823
+of their paths.) **Step 0:** this run touched **none** of the other PRs' files — #823
 (`packages/sdk`, `scripts/apply-publish-config.mjs`, `.changeset/`), #822 (`packages/mcp`,
 `.changeset/README.md`, `acquisition-channels.md`, `blocked-by-human.md`), draft #719 — the only
-overlap is the step-1-exempt `scorecard.md`, which #821 rewrote and this run rebased onto.
+overlap is the step-1-exempt `scorecard.md`. **#821 and #822 both merged mid-run**, so this file
+was rebased onto each and every number they own was re-read from source: row #7's GSC breadth,
+the queue depth, row #22's mix.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -68,8 +71,8 @@ overlap is the step-1-exempt `scorecard.md`, which #821 rewrote and this run reb
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0 failed / 9 blocked** — no product failure on any canonical flow (live prod walk 07-25, [30159902837](https://github.com/nlqdb/nlqdb/actions/runs/30159902837)); verify-flows all-green · FLOW-005 walk 6/6 · stdio 22/22. All 9 walks stop at the **428 `challenge_required`** step — Turnstile declining a headless GH-Actions client by design (`SK-ANON-012`), now scored `blocked` per `SK-STRG-010` instead of `failed`. 0 `passed` is therefore expected from CI and **not** a defect: no walk can complete the `/v1/ask` arm from a datacenter IP. Run 140's handoff fix is confirmed by progression — FLOW-002/003 previously died at step 6 (`nlqdb_draft actual=<null>`) and now reach steps 9/8 | target: **0 `failed`** ✅ — met. `blocked` is reported beside it, never folded in. A green *run* still means nothing (`SK-STRG-003` exits 0 by design): read the per-walk `FAILED`/`BLOCKED` lines `tee`d into the job log |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
-| 22 | Channels live with attributable yield | **4 live / 5 in-flight / 4 blocked-by-human / 8 untried** (= the 21 ledger rows; re-read from the ledger footer 07-25, correcting a mix this row carried that summed to 17) — organic search + dev.to + npm + GitHub, each carrying its ledger `utm_source` on every published URL (`readme-attribution-integrity.test.ts` fails on any untagged GitHub-rendered CTA). MCP official registry published 07-22 ([`com.nlqdb/nlqdb`](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.nlqdb/nlqdb) v0.1.1, remotes-only) — Glama crawl-listed, **Smithery 0 · PulseMCP 0** (open PR #822 established neither ingests the registry). First-touch attribution live since 07-19 on both the `/v1/ask` create arm and `POST /v1/db/connect`; `source_json` non-null **0** (07-25 live). Caveat from row #19: npm is live for *discovery* and broken on *arrival* until `0.2.2` | **weekly focus: → ≥ 5 live.** Yield read from `/app/admin`, never estimated. Growth comes only from not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
-| | **Human queue** (founder-directed 2026-07-22) | depth **7**, head **idle 42 d** (Show HN, since 06-13). Open PRs **3** + 1 draft; oldest non-draft **#822 (07-25 08:41Z)**, oldest overall draft **#719 (07-17, 8 d)**. Depth moves **7 → 9** the moment #822 merges (it parks two new bullets and shifts the numbering) — re-derive it in the next run, not here, since #822 may still change | the founder is the one non-automatable actor, so the queue head's age is the real cycle time |
+| 22 | Channels live with attributable yield | **4 live / 4 in-flight / 5 blocked-by-human / 8 untried** (the 21 ledger rows; re-read from the ledger after #822 merged — the mix this row carried summed to 17) — organic search + dev.to + npm + GitHub, each carrying its ledger `utm_source` on every published URL (`readme-attribution-integrity.test.ts` fails on any untagged GitHub-rendered CTA). MCP official registry published 07-22 ([`com.nlqdb/nlqdb`](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.nlqdb/nlqdb) v0.1.1, remotes-only) — Glama crawl-listed, **Smithery 0 · PulseMCP 0** (#822, merged, established neither ingests the registry; Smithery is now `blocked-by-human` #3 with a parked payload). First-touch attribution live since 07-19 on both the `/v1/ask` create arm and `POST /v1/db/connect`; `source_json` non-null **0** (07-25 live). Caveat from row #19: npm is live for *discovery* and broken on *arrival* until `0.2.2` | **weekly focus: → ≥ 5 live.** Yield read from `/app/admin`, never estimated. Growth comes only from not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
+| | **Human queue** (founder-directed 2026-07-22) | depth **9** (7 → 9 on #822's merge mid-run; re-derived from source), head **idle 42 d** (Show HN, since 06-13). Open PRs **2** + 1 draft; oldest non-draft **#823 (07-25 10:59Z)**, oldest draft **#719 (07-17, 8 d)** | the founder is the one non-automatable actor, so the queue head's age is the real cycle time |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
@@ -120,11 +123,11 @@ product failure among any number of blocks still turns the walk red. A local pro
 impossible (Chromium can't egress this container — `ERR_CONNECTION_RESET` with and without the
 proxy), which is why the re-measure ran in Actions.
 
-**Other lanes.** Strangers **0**, roster byte-identical; GSC flat a 10th read (row #7). Row #15
-0.74 → **0.69** on time-decay alone. Row #13's carried `p50 ≈ 0.61 s` **did not reproduce** —
-corrected to the live 4.0 ms with the reason (cheap routes dominate the account-level
-distribution). Row #19 corrected to **1 open** on #823's live npm finding. Engine dark and fresh
-for one more day (`run_at` 07-19 = 6.4 d; trigger fires 07-26). **Gates:** `typecheck` (22 pkgs,
+**Other lanes.** Strangers **0**, roster byte-identical; GSC flat a 10th read (row #7); row #15
+**0.69** on time-decay alone; row #19 → **1 open** on #823's npm finding. Row #13's carried
+`p50 ≈ 0.61 s` **did not reproduce** — corrected to the live 4.0 ms, because cheap routes dominate
+the account-level distribution. Engine dark and fresh one more day (trigger fires 07-26).
+**Gates:** `typecheck` (22 pkgs,
 0 errors) · `lint` 0 errors / 41 warnings = baseline · `biome format` clean · `test` exit 0 (992
 api; stranger-test **18 → 34**). Gate 3: `grep -rn '^### GLOBAL-' docs/features/` prints nothing.
 **D4:** every edited doc under **20000 B** (`scorecard.md` held there by D5-trimming per-run prose
