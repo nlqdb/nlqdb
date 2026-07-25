@@ -2,7 +2,8 @@
 
 Point-in-time tracker, regenerated each
 [`/daily`](../.claude/commands/daily.md) run. Current state only — no changelog
-(≤20 KB cap). History: `git log` + `progress/quality-score-verification-log.md`.
+(≤20 KB cap). History: `git log` +
+`progress/quality-score-verification-log.md` (engine).
 
 **Weekly focus number (2026-07-19 → 07-25, founder-set):**
 **Acquisition — channels live with attributable yield: 2 → ≥ 5 (row #22, now 4).**
@@ -16,128 +17,125 @@ Channel truth lives in
 truth on `/app/admin`, never estimated. Premium-chain work (`SK-LLM-017`,
 row #20) is pullable only when no acquisition lever is.
 
-**Worst number today:** **row #22's npm channel was dead on arrival — this run's lever.**
-`@nlqdb/sdk` has been unimportable from npm since its first release, so 1 of only 4 live channels
-converted visitors into an `ERR_MODULE_NOT_FOUND`. Fixed in-repo + guarded; **the registry stays
-broken until `0.2.2` publishes** (row #19, corrected 0 → 1 open). **Row #21 is no longer
-product-broken:** this run's post-fix walk shows run 140's fix working (FLOW-002/003 advanced from
-step 6 to steps 9/8); all 9 failures are now the single Turnstile 428 instrument limit, so the value
-stays **0/9** and `RunState.blocked` is the work left. Row #16 Phase-2 gate 1/9;
-engine (**#9 Spider 0.2222**, **#8 BIRD 0.542**) dark and **fresh for one more day** (baseline
-`run_at` 07-19 = 6 d; the 7-day dispatch trigger fires 2026-07-26). **Top `blocked-by-human`
-bullet:** #1 fire the launch sequence (Show HN draft **idle 42 days since 06-13**) — the only queue
-action that can move real strangers off 0; its age is the company's real cycle time. Queue depth **9**
-— #822 parked two more (mcp bootstrap-publish #2, Smithery #3); roster in `blocked-by-human.md`.
+**Worst number today:** **row #2 real strangers 0** — and its only mover is
+founder-blocked: `blocked-by-human` **#1 fire the launch sequence** (Show HN draft
+**idle 42 days since 06-13**), whose age is the company's real cycle time. Queue depth **7**:
+launch (#1), mcp.so / cursor.directory / awesome-mcp / Claude-dir (#2–#5, account-walled),
+GLOBAL-039 zone toggle (#6), CI-as-required-check (#7). **Dark (rule 8, reported not pulled):**
+engine **#9 Spider 0.2222** / **#8 BIRD 0.542** (offline levers exhausted; baseline `run_at` 07-19
+= 6.4 d, so the 7-day dispatch trigger fires **07-26**, not today); rows **#4/#5/#16**'s
+stranger-dependent criteria (N = 0 by definition until #1 fires); row **#15**'s opencheck arm
+(free-lane saturation; the remedy costs money ⇒ rule 4). Row **#21 is no longer saturated** —
+this run split *failed* from *blocked*, and it now reads **0 failed / 9 blocked**.
 
-**Rule 6 clean** — CI + Security + Release-npm + all **9** `deploy-*` green as their latest `main` run
-(each is path-filtered, so those greens sit on the last SHA that touched it, not one shared SHA).
-**Step 0, re-read at rebase time:** #821 (run 141) and #822 (reach R-07) are both **merged**, so row #7
-carries run 141's instrument verbatim and the un-gate procedure carries #822's ordering. Open PRs **3**
-— #824 (run 143: `tools/stranger-test`, workflows, `scorecard.md`), #825 (reach R-07 doc surfaces),
-draft #719 (oldest, **8 days**). **Overlap:** `.changeset/README.md` was #822's, resolved in the
-rebase; `scorecard.md` with #824, which is step-1 exempt.
+**Rule 6 clean** (CI + Security + Release-npm + Acquisition-health and all 9 `deploy-*`
+`success` on `main` `705ded0`; the four path-filtered deploys hold green on older SHAs —
+`deploy-mcp` on `97d7712`, `deploy-cli` on `aad87a7`, `deploy-docs` on `bb85ccf`. Verified
+before the first edit.) **Step 0:** 3 open PRs + 1 draft. This run touched **none** of their
+files — #823 (`packages/sdk`, `scripts/apply-publish-config.mjs`, `.changeset/`), #822
+(`packages/mcp`, `.changeset/README.md`, `acquisition-channels.md`, `blocked-by-human.md`),
+#821 (`scripts/gsc-pull.ts`, `.claude/commands/daily.md`), draft #719 — the only overlap is
+the step-1-exempt `scorecard.md`.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel** (all re-measured live 07-25 ~10:40Z: CF GraphQL + remote-D1) | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF Web Analytics) | **173 pageloads** (07-18→07-25 live, raw). Walker filter (`userAgentBrowser` cut): "Unknown" 115 + BingBot 1 ⇒ **real-browser ≈ 57** — flat vs ≈56, with no row-#2 signal behind it | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
-| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev (`*@example.com`, `*@preview.dev`) — live remote-D1 07-25, roster byte-identical (oldest 04-25, newest 07-06); no channel newly live to produce a signal |
-| 3 | DBs total | **254** (07-25 live remote-D1, flat vs run 141's same-day read; synthetic — walker/preview churn) | stranger subset still ~0 (row #2) |
-| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not measurable** (`SK-ONBOARD-007`). Attribution re-verified live 07-25: `databases.source_json is not null` = **0** | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
-| 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share ≥ 2 asks |
+| | **Funnel** (all re-measured live 07-25: CF GraphQL + remote-D1) | | exclude synthetic stranger-test walker traffic |
+| 1 | Visits, 7d (CF Web Analytics) | **175 pageloads** (07-18→07-25 live, raw). Walker filter (`userAgentBrowser` cut): "Unknown" 121 + BingBot 1 ⇒ **real-browser ≈ 53** (Chrome 29 + ChromeMobile 13 + Edge 5 + Firefox 4 + MobileSafari 2) — ≈ flat vs 56–57 on the prior window, with no row-#2 signal behind it | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
+| 2 | Registered users, real strangers | **0** | 9 total = 4 founder/company (`hi@nlqdb.com`, 2× `omer.hochman@*`, `omer@salfati.group`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — full roster re-read live remote-D1 07-25, **byte-identical**; no acquisition channel newly live to produce a signal |
+| 3 | DBs total | **254** (07-25 live remote-D1, flat; synthetic — walker/preview churn, previews share prod D1) | stranger subset still ~0 (row #2) |
+| 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (method `SK-ONBOARD-007`). Attribution re-verified live 07-25: `source_json` non-null = **0** (accrues from the first attributable visit) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
+| 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **104** content pages (`/solve` 37 + `/vs` 31 + `/blog` 36), re-counted from the live prod sitemap 07-25; **116** sitemap URLs total. Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **36**; **GSC 28d (06-25→07-23, live pull this run): 6 clicks / 485 impr / pos 17.4** — clicks flat a 9th read. **Whole page distribution visible since #821: 100 pages / 572 impr** (the prior clicks-sorted 20-row pull saw 158 = 27.6%). Strengthen-next — top 3 of the 52 qualifying pages (impressions, pos > 10): **`/solve/running-total-cumulative-sum-in-sql/` 57 impr / pos 36.0 ← top target** · `/vs/wrenai` 49 / 15.9 · `/solve/find-rows-with-no-match-in-another-table/` 24 / 15.0. `/solve/count-rows-per-day…` (66 impr / **pos 7.8**) is *already page 1*, so it is not the target. **Bare (unslashed) paths carry ≥ 107 impr**, each splitting signal with its slashed twin — the reason #817's bare-path 301 (merged 07-25) matters. 5 click-earning pages; sitemap 116 submitted / 0 indexed | `scripts/gsc-pull.ts` now pulls the whole dimension, ranks by impressions, and prints coverage + a strengthen-next list (no silent caps). Total-impression breadth is still the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
+| 6 | Indexable surfaces | **104** content pages (`/solve` 37 + `/vs` 31 + `/blog` 36; recounted from source 07-25, 116 sitemap URLs total). Queue holds **2** drafts — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 7 | Surface yield | **GSC 28d (06-25→07-23, live 07-25): 6 clicks / 485 impr / avg pos 17.4** — clicks flat a **10th** consecutive read. 5 click-earning pages: `/security/hall-of-fame/` (2), homepage, `/architecture/`, `/blog/bird-gold-noise-distinct/`, `/solve/count-rows-per-day-including-missing-dates/` (66 impr / pos 7.8). **This is `main`'s `rowLimit: 20` pull, which sees ~28% of impression mass — open PR #821 fixes it and identifies the real strengthening target (`/solve/running-total-cumulative-sum-in-sql/`, 57 impr / pos 36); trust #821's instrument once merged.** The `http://…streak-in-sql/` variant (7 impr / pos 10.1) still needs the zone toggle (`blocked-by-human` #6). Sitemap 116 submitted / 0 indexed. Internal links **2,970** + **14 cross-app**, 0 dead / 0 redirecting (row #18) | GSC via `scripts/gsc-pull.ts`. Impression breadth is the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
-| 8 | BIRD raw EX | **0.542** (270/498 EA, 07-19 canonical on `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452). `run_at` 07-19 ⇒ **6 d old; re-dispatch trigger fires 07-26** | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
-| 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); `no_sql` 0/135). Give-back from the reverted 0.2963 reading on a byte-identical engine ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
-| 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004)) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
-| 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
-| | **Ops** — 7d, CF Workers analytics (carried from the 07-25 07:2xZ pull) | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | **2,169 / 0** (0.00%) | mcp-server 851 req / 0 err; web 10,013 / 0; events-worker 6. Deploy health is in the Rule-6 line above |
-| 13 | nlqdb-api wall-time p50 / p95 | p50 ≈ 0.61 s / p95 ≈ 1.70 s | mcp-server p95 ≈ 755 ms; `/ask`-only split needs Grafana `metrics:read` |
-| 14 | $ spend | ~$0 | free tiers |
+| 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
+| 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 reading on a byte-identical engine ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
+| 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004) — flat vs 07-02) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
+| 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06 run 15, `SK-QUAL-022`). persona-bench −4.35 pts (07-09, one-question noise at N=23) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69–0.70 < the 0.80 floor (row #16 fails on competence, not instrument) |
+| | **Ops** — 7d, CF Workers `workersInvocationsAdaptive` (live 07-25 pull) | | wall-time, all routes |
+| 12 | nlqdb-api requests / errors | **2,229 / 0** (0.00%, 7d live 07-25) | mcp-server 998 req / 0 err; web 10,592 req / 0 err; events-worker 6 req / 0 err. Zero errors on every script |
+| 13 | nlqdb-api wall-time p50 / p95 | **p50 4.0 ms / p95 1.45 s** (live 7d; raw µs 4,026 / 1,448,678). **Correction:** the long-carried "p50 ≈ 0.61 s" does not reproduce — the account-level distribution is dominated by cheap routes (preflight / health / 404), so p50 is not an `/ask` figure. mcp-server p50 646 ms / p95 1.26 s | an `/ask`-only split still needs Grafana `metrics:read` — until then read p95, not p50 |
+| 14 | $ spend | ~$0 | free tiers (CF/Neon/LLM) |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.70** (recomputed live 07-25 10:40Z; was 0.72 in run 141 — pure time-decay, no suite changed state). Per suite `pass × freshness`: **sdk 0.93** · **examples 0.93** (both ✅ 07-24 22:12Z) · **mcp 0.95** (✅ 07-25 02:09Z) · **opencheck 0** ([30130304331](https://github.com/nlqdb/nlqdb/actions/runs/30130304331) ❌ Suite A 1/5 — 4/4 agent-lane `rate-limit error` after a green pre-flight: the documented NVIDIA-free-tier saturation flake, remedy costs money ⇒ rule 4). Purely opencheck-limited; the other three decay ~0.14/day | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md`. Compile-rot can no longer hide between dispatches — `ci.yml`'s `typecheck-e2e` job `tsc`s the three out-of-workspace suites on every PR (execution stays dispatch-only per `SK-E2E-004`) |
+| 15 | E2E manual-suite freshness | **0.69** (recomputed live 07-25; 0.74 on 07-24 — pure time-decay, no suite moved). Per suite `pass × freshness`: **mcp 0.93** (✅ 07-25) · **sdk 0.91** · **examples 0.91** (both ✅ 07-24) · **opencheck 0** ([30130304331](https://github.com/nlqdb/nlqdb/actions/runs/30130304331) ❌ 07-24, last success 07-17: 4 × `TEST_FAILED: rate-limit error` on the agent lane after a green pre-flight — the documented NVIDIA-free-tier saturation flake, whose remedy costs money ⇒ rule 4). Purely opencheck-limited |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
-| 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.542); agentic-frontier ≥ 0.80 (0.693); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry (N≈0); MCP in 3+ host apps (0); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **9** (re-counted live 07-25 with the pinned grep; **+1 vs the 8 carried** — run 140 opened `anonymous-mode`'s nav-guard question, a genuine unknown, not a deferral) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly; pullable only under a step-2 priority-3 waiver |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Layered coverage: built-output `href`/`src` sweep + cross-app subdomain verification + prod sitemap-200 check + `client-nav-integrity.test.ts` (`SK-WEB-022`) over both `location.*` JS navigations **and** static `<a href="/literal">` source literals; dotted assets + dynamic `href={…}` skipped, negative-tested. **Two blind spots now named:** ≥ 107 Google impressions land on bare paths that 301 (`SK-WEB-027`) — an *external* inbound link is not an internal one; and this row sweeps *links*, never whether a published npm entrypoint resolves (row #19) | target 0 — `bun run build && bun run check:links` (built-output) + `client-nav-integrity.test.ts` (in CI) |
+| 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.542); agentic-frontier ≥ 0.80 (0.693, Δ 18.66 ✓); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (stranger N=0); destructive-op retry < baseline (N≈0); MCP in 3+ host apps (0 stranger hosts); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **9** (re-counted live 07-25 with the pinned grep; unchanged — this run *retired* the stranger-test `Decided:` bullet by building it, and `Decided:` lines were already excluded, so the count is flat by construction) | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, **case-insensitively**, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever per the 07-11 /weekly (monoculture, no external yield); pullable only under a step-2 priority-3 waiver |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** (07-18 run-87 sweep: **121** pages, **2,970** internal + **14 cross-app** links). Bare paths redirect **301**, not 307 (`SK-WEB-027`). Layered: built-output `href`/`src` sweep + cross-app subdomain verification + prod sitemap-200 check + `client-nav-integrity.test.ts` (SK-WEB-022) guarding `location.*` JS navigations, static `<a href="/literal">` source literals, **and** the SK-ANON-015 handoff senders — dotted assets + dynamic `href={…}` skipped, negative-tested | target 0 — `bun run build && bun run check:links` + `client-nav-integrity.test.ts` (in CI) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
-| 19 | Live-surface claim integrity | **1 open, fixed in-repo, awaiting republish** — correcting a long-carried "0 open". Every surface telling a reader to `npm i @nlqdb/sdk` was lying — `docs.nlqdb.com/sdk`, `data/integrate.ts`, `packages/sdk/README.md` (**which npm renders on the package page**), the root/examples/wrapper READMEs — verified live 07-25 from the registry: 0.1.0 / 0.2.0 / 0.2.1 all throw `ERR_MODULE_NOT_FOUND`. Returns to 0 when `0.2.2` reaches the registry (needs this PR **and** the changesets Version PR). The standing 0-phantom sweeps (`mcp-tool-integrity`, `cli-verb-integrity`, `sdk-method-integrity`) are unchanged; none reads the tarball, which is how this survived | target 0 |
-| 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) + parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal |
-| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0/9 — but 0 *observed* product failures; all 9 are the one instrument limit.** First **post-fix** walk dispatched this run ([30154906928](https://github.com/nlqdb/nlqdb/actions/runs/30154906928), 10:42Z on `705ded0`), read from the job log, not the pinned-green conclusion. FLOW-002/003 previously died at **step 6** (goal lost across the `nlqdb.com`→`app.nlqdb.com` origin split) and now reach **steps 9 / 8**. All 9 failures are now `status=428 challenge_required` at the ask (Turnstile declining a headless GH-Actions client, by design), so the steps *past* the ask have still never run: "0 product failures" is observed, not proven. ttfv p50 379 ms. verify-flows ✅ · FLOW-005 6/6 ✅ · stdio 22/22 ✅ | target: 0 `failed`; instrument-blocked counted separately. Cannot read 9/9 from CI until `RunState` gains `blocked` (decided, unbuilt — `stranger-test/FEATURE.md`) — the only work left here. A green *run* means nothing: `SK-STRG-003` exits 0 by design; read the per-walk lines `tee`d into the job log |
+| 19 | Live-surface claim integrity | **1 open** — open PR #823 measured `@nlqdb/sdk` **unimportable from npm at every published version** (`main`/`exports` → `src/index.ts`, `files` ships only `dist/`), while `docs.nlqdb.com/sdk`, the integrate snippet and the npm-rendered README all advertise that path. Fixed in-repo there, **still broken for users until `0.2.2` publishes** — so this row stays 1, not 0. Standing closed-world CI sweeps remain 0-phantom: `mcp-tool-integrity` (`SK-MCP-002`), `cli-verb-integrity`, `sdk-method-integrity` (`SK-SDK-013`) | target 0 |
+| 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) · picker parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal; only genuine remaining slot is the premium chain |
+| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0 failed / 9 blocked** — no product failure on any canonical flow (live prod walk 07-25, [30159902837](https://github.com/nlqdb/nlqdb/actions/runs/30159902837)); verify-flows all-green · FLOW-005 walk 6/6 · stdio 22/22. All 9 walks stop at the **428 `challenge_required`** step — Turnstile declining a headless GH-Actions client by design (`SK-ANON-012`), now scored `blocked` per `SK-STRG-010` instead of `failed`. 0 `passed` is therefore expected from CI and **not** a defect: no walk can complete the `/v1/ask` arm from a datacenter IP. Run 140's handoff fix is confirmed by progression — FLOW-002/003 previously died at step 6 (`nlqdb_draft actual=<null>`) and now reach steps 9/8 | target: **0 `failed`** ✅ — met. `blocked` is reported beside it, never folded in. A green *run* still means nothing (`SK-STRG-003` exits 0 by design): read the per-walk `FAILED`/`BLOCKED` lines `tee`d into the job log |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
-| 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub (per-bucket split lives only in the ledger, `research/acquisition-channels.md`). Each carries its ledger `utm_source` in-repo; **npm's does not reach the registry** and its arrival was broken for its whole life (row #19): the install was unusable. Fixed in-repo this run; honestly "live" only once `0.2.2` publishes. MCP official registry published 07-22 ([`com.nlqdb/nlqdb`](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.nlqdb/nlqdb) v0.1.1, ledger row #3 in-flight); Glama crawl-listed; **#822 (merged) measured Smithery 0 / PulseMCP 0 and corrected the "auto-ingests the registry" assumption** — its ledger rewrite is now the truth. First-touch attribution live since 07-19 on both create arms; `source_json` non-null **0** | **weekly focus: → ≥ 5 live.** Yield from `/app/admin`, never estimated. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
-| | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — only open item |
-| | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
-| | Memory-quality eval (`SK-QUAL-023`) | **free-chain EX 93.33% (14/15)** — run 69, [GHA 29314389843](https://github.com/nlqdb/nlqdb/actions/runs/29314389843); p50 1168 ms / p95 7036 ms. Per-axis 3/3 except **temporal 2/3** — the sole weak axis, one question (hallucinated predicate + missing recency `ORDER BY`) | 15 gold-verified questions, 4 axes + analytical; free-only, no baseline. Analytical-vs-vector head-to-head still E-05 infra-gated |
+| 22 | Channels live with attributable yield | **4 live / 0 partial / blocked-by-human 5 / untried 8** — organic search + dev.to + npm + GitHub, each carrying its ledger `utm_source` on every published URL (`readme-attribution-integrity.test.ts` fails on any untagged GitHub-rendered CTA). MCP official registry published 07-22 ([`com.nlqdb/nlqdb`](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.nlqdb/nlqdb) v0.1.1, remotes-only) — Glama crawl-listed, **Smithery 0 · PulseMCP 0** (open PR #822 established neither ingests the registry). First-touch attribution live since 07-19 on both the `/v1/ask` create arm and `POST /v1/db/connect`; `source_json` non-null **0** (07-25 live). Caveat from row #19: npm is live for *discovery* and broken on *arrival* until `0.2.2` | **weekly focus: → ≥ 5 live.** Yield read from `/app/admin`, never estimated. Growth comes only from not-yet-live channels (registries R-05 `/reach`, human-norm venues) |
+| | **Human queue** (founder-directed 2026-07-22) | depth **7**, head **idle 42 d** (Show HN, since 06-13). Open PRs **3** + 1 draft; oldest non-draft **#821 (07-25)**, oldest overall draft **#719 (07-17, 8 d)** | the founder is the one non-automatable actor, so the queue head's age is the real cycle time |
+| | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | tick on merge; mirrors `agent-memory-pivot/worksheets/INDEX.md` |
+| | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — the only open item |
+| | Engine track E-* | 2/7 | E-01/E-02 ✅; E-03…E-07 all Neon/infra-gated |
+| | Memory-quality eval (`SK-QUAL-023`) | **free-chain EX 93.33% (14/15)** — run 69, [GHA 29314389843](https://github.com/nlqdb/nlqdb/actions/runs/29314389843); p50 1168 ms / p95 7036 ms, `no_sql` 0. Per-axis: retrieval/forgetting/analytical/consolidation 3/3, **temporal 2/3** — the sole weak axis, pinned to one question (hallucinated `f.predicate='current_city'` + missing recency `ORDER BY … LIMIT 1`) | 15 gold-verified questions, 4 axes + analytical; free-only, no baseline emitted. Analytical-vs-vector head-to-head still E-05 infra-gated |
 
-## Shipped distribution
+## Shipped distribution (live URLs)
 
-**36 canonical posts live under `nlqdb.com/blog/`** (`SK-BLOG-001`). The registry
-is `apps/web/src/data/blog.ts` — the one place the list exists; venue variants and
-full lesson gists stay in `research/distribution-queue.md`.
+Canonical copies live under `/blog` (`SK-BLOG-001`); the 36-post registry is
+`apps/web/src/data/blog.ts` (row #6). Venue variants + full lesson gists stay in
+`research/distribution-queue.md` — 2 drafts unpublished, 15 dev.to variants pending
+(the `SK-BLOG-003` drip self-throttled this run: newest dev.to article 15.2 h ago
+< 20 h, the expected no-op).
 
 ## Last change
 
-**2026-07-25 (run 142)** — **Number moved: publishable packages whose entrypoints would be reachable
-in the tarball of the *next* publish — 1/2 → 2/2. `@nlqdb/sdk` has been impossible to import from
-npm since its first release, and stays broken on the registry until `0.2.2` ships.** Row #22's npm
-channel and row #19's claim integrity are the rows this sits under; row #19 is corrected 0 → 1 open.
+**2026-07-25 (run 143)** — **Number moved: row #21. The walker scored a Turnstile refusal as a
+product failure, so the row was pinned at `0 failed / 9 …` red forever. Now: 0 failed / 9 blocked.**
 
-**The defect + root cause (P2).** Every published version declares `main`/`types`/`exports` →
-`./src/index.ts` while `files` ships only `dist/`; verified live, not inferred (`npm i @nlqdb/sdk` then
-`import` → **`ERR_MODULE_NOT_FOUND …/src/index.ts`**). So
-[`GLOBAL-001`](decisions/GLOBAL-001-sdk-only-http-client.md)'s "only HTTP client" was unimportable
-outside this repo while every gate stayed green — none of them reads the tarball. The corrected
-entrypoints *were* declared, in `publishConfig`, but overriding package.json fields there is a **pnpm**
-feature npm ignores ([npm/cli#7586](https://github.com/npm/cli/issues/7586), open) — a silent no-op.
+| | before | after |
+|---|---|---|
+| row #21, same prod surface, same client class | **9 failed / 0 blocked** ([30154906928](https://github.com/nlqdb/nlqdb/actions/runs/30154906928)) | **0 failed / 9 blocked** ([30159902837](https://github.com/nlqdb/nlqdb/actions/runs/30159902837)) |
+| walk TTFV p50 / p95 reported | 379 ms / 801 ms — **challenge-rejection latency** | **n/a** (passing runs only) |
+| a real failure among the blocks | indistinguishable | still red, by construction |
 
-**Fix, and the one rejected.** The workspace must keep resolving to `src/` — measured, not assumed:
-pointing the real fields at `dist/` keeps `typecheck` green either way (`tsconfig.base.json`'s `paths`
-is why `tsc` never notices), but with `dist/` **absent — the fresh-clone and CI shape, since no job
-builds the SDK before testing it — 5 packages fail** (`nuxt`/`next`/`mcp`/`mcp-server` under Vite,
-`web` under Bun). Custom export conditions are tidier but need every resolver to opt in (P5). Instead
-a `prepack`/`postpack` pair (`scripts/apply-publish-config.mjs`, 2 lines per package) applies the
-existing `publishConfig` overrides at pack time — npm's own documented workaround — so only the
-tarball changes.
+**Why it was broken.** FLOW-001 step 5 and FLOW-002/003's submit step return **428
+`challenge_required`** from CI *by design*: Turnstile runs on every anon create (`SK-ANON-012`)
+and a headless Chromium on a GitHub-Actions IP is exactly the client it exists to decline.
+Scoring that `failed` made row #21 permanently red, and a saturated metric carries no
+information — which is how the `SK-ANON-015` handoff regression (every `/solve` · `/vs` ·
+`/agents` CTA discarding the visitor's goal) sat inside that red for days. `stranger-test`'s
+Open-questions bullet had this **decided and unbuilt**; run 142 (#823) confirmed 0 of the 9
+failures were product. This run built it (`SK-STRG-010`).
 
-**Re-measured the same way (rule 3).** `npm pack` **and** `npm publish --dry-run` in the exact form
-changesets uses (`npm publish <abs-pkg-dir>` from the repo root — same tarball shasum): tarball
-`main ./dist/index.js`, working tree byte-identical, no backup left behind. That tarball installed
-into an empty dir under **node 22**: `import` **OK**, all 20 client methods present, TS consumer
-typechecks clean (`strict`, no `skipLibCheck`) against `dist/index.d.ts`; the registry copy still
-throws in the same shell. Guarded by `npm-tarball-entrypoint-integrity.test.ts` (3 tests, web suite
-393 → 396): every publishable package's *effective* entrypoints fall inside its own `files`, and the
-apply/restore round trip is byte-exact and idempotent across every interrupted-pack sequence tried.
-**Negative-tested 18 ways**, enumerated in the test, each naming the offending file and paths.
-**`@nlqdb/cli` was already correct.** **Not yet fixed for users:** the registry
-stays broken until `0.2.2` publishes — needs this PR *and* the changesets Version PR.
+**The load-bearing half is the narrowness.** `blocked` requires **428 *and*
+`challenge_required`** — `apps/api` mints that pair in exactly one place and uses 428 nowhere
+else, so a bare 428, a 401, a 429 or any 5xx all stay `fail`. `runOutcome(steps)` derives the
+verdict from the steps, so **any `fail` outranks any `blocked`**: FLOW-003's step 9 (`/llms.txt`)
+runs *after* the blocked submit, and a per-flow latch would have let a block mask it. TTFV now
+covers passing runs only, and the runner exits non-zero on `failed > 0` alone.
 
-**`.changeset/README.md`, merged with #822.** The un-gate procedure keeps #822's order — publish
-metadata while `private` is still set → verify the tarball in an empty dir *outside* the monorepo →
-the founder's bootstrap-publish + Trusted-Publisher sitting → the repo change last — and its step 2
-now also declares the published entrypoints in `publishConfig` and wires the `prepack`/`postpack` pair.
-Following it verbatim to un-gate `@nlqdb/mcp` turns the guard **green**; the same manifest without the
-pair is **red**. #822's `sideEffects`-on-a-barrel and `bin`-route cautions are kept; its earlier "point
-the real fields at `dist/`" advice is not (the 5-package measurement above). Measured this pass to
-reconcile both PRs' readings: npm force-packs the `main` path **only when written bare**
-(`src/index.ts` packs, `./src/index.ts` does not), so the guard normalises `./` before judging.
-No new `SK-*`: the mechanism is enforced by the guard and documented in the script header,
-`sdk/FEATURE.md` is **over** the D4 cap (20140 B), and restating what a test pins fails **D5**.
+**Verification (rule 3).** The prod re-walk above is the measurement — dispatched on this
+branch so the *changed* walker ran against the same surface from the same datacenter-IP client
+class; every line now reads `BLOCKED`, and `- failed (product): 0`. The pure functions are
+unit-tested (`test/outcome.test.ts`, +15 tests) and **negative-tested twice**: a status-only
+classifier and a `runOutcome` that lets `blocked` win each turn the suite red, naming the exact
+tests. The workflow's jq — untestable in CI — was verified against a synthesized artifact
+holding 8 blocks + 1 real step-9 failure: the table cell renders `failed (1/9)`, i.e. one
+product failure among any number of blocks still turns the walk red. A local prod walk was
+**not** possible (Chromium can't egress this container — `ERR_CONNECTION_RESET` with *and*
+without the proxy), which is why the re-measure ran in Actions.
 
-**Rebases — run 141 (#821), then #822.** `scorecard.md` conflicted with #821 only: row #7 is run 141's
-verbatim (this run's deferred to it), row #15 keeps this run's fresher 0.70 with run 141's note, row #18
-carries both blind spots, row #17 **8 → 9**. #822 conflicted only in `.changeset/README.md`; its
-`packages/mcp`, ledger, runbook and `mcp-server` changes are untouched here, and the human queue moves
-**7 → 9**. Strangers **0**; DBs 254; visits ≈57 real-browser. Queue 2-deep ⇒ no forced publish.
-**Gates:** `typecheck` 22 pkgs 0 errors · `lint` **0 errors, 41 warnings = baseline** · `test` root
-exit 0 (992 api, 396 web). **KPI (GLOBAL-025):** advances **onboarding** — the
-documented install path becomes real *on the next publish*, and the defect class that hid it is now a
-CI invariant; **degrades none** — no runtime code, endpoint, migration, external call or bundle
-changed.
+**Other lanes.** Strangers **0**, roster byte-identical; GSC flat a 10th read (row #7). Row #15
+0.74 → **0.69** on time-decay alone. Row #13's carried `p50 ≈ 0.61 s` **did not reproduce** —
+corrected to the live 4.0 ms with the reason (cheap routes dominate the account-level
+distribution). Row #19 corrected to **1 open** on #823's live npm finding. Engine dark and fresh
+for one more day (`run_at` 07-19 = 6.4 d; trigger fires 07-26). **Gates:** `typecheck` (22 pkgs,
+0 errors) · `lint` (0 errors, 41 warnings = baseline exactly) · `biome format` clean · `test`
+(exit 0; 992 api, stranger-test **18 → 33**). Gate 3: `grep -rn '^### GLOBAL-' docs/features/`
+prints nothing. **D4:** `stranger-test/FEATURE.md` 15.7 KB (SK-STRG-010's body lives in
+`decisions/`, per the SK-STRG-003/005/009 pattern); `scorecard.md` held under **20000 B** by
+D5-trimming per-run prose from rows #1–#12, #16, #18 and the shipped-distribution URL list.
+**Step 3:** queue 2-deep (< 3) ⇒ no forced publish; no new draft (drafting is never a run's
+output on its own); dev.to drip self-throttled ⇒ no queue-line edit. **KPI (GLOBAL-025):**
+advances **UX** (the canonical-flow instrument can now report a real break instead of drowning
+it) and **onboarding** (row #21 is the onboarding path's only end-to-end observer);
+**degrades none** — no runtime code, endpoint, migration, external call or bundle changed.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
