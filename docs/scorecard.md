@@ -34,11 +34,11 @@ this run split *failed* from *blocked*, and it now reads **0 failed / 9 blocked*
 path-filtered, so its green sits on the last SHA that touched it — api/web/canary `705ded0`,
 `deploy-docs` `bb85ccf`, `deploy-cli` `aad87a7`, `deploy-mcp` `97d7712` — and #821 touched none
 of their paths.) **Step 0:** this run touched no other PR's code files; the only overlap is the
-step-1-exempt `scorecard.md`. **#821, #822 and #823 all merged mid-run**, so every number they own
-was re-read from source: row #7's GSC breadth, the queue depth, row #22's mix, row #19's
-republish state. The #823 conflict was resolved onto this run's later same-day reads, which carry
-corrections #823 predates — row #13's p50 above all. Open: #825, **#826** (the changesets release
-that publishes `@nlqdb/sdk@0.2.2`), draft #719.
+step-1-exempt `scorecard.md`. **#821, #822, #823 and #825 all merged mid-run**, so every number
+they own was re-read from source: row #7's GSC breadth, the queue depth, row #22's mix (still
+4/4/5/8 after #825's row-#12 edit), row #19's republish state. The #823 conflict was resolved onto
+this run's later same-day reads, which carry corrections #823 predates — row #13's p50 above all.
+Open: **#826** (the changesets release that publishes `@nlqdb/sdk@0.2.2`), draft #719.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
