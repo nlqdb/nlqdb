@@ -29,6 +29,7 @@ import {
   readFileSync,
   realpathSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -70,16 +71,35 @@ export function effectivePublishedManifest(manifest) {
   return { ...manifest, ...manifestOverrides(manifest.publishConfig) };
 }
 
+/**
+ * Whether a backup is a whole manifest. The backup is only ever a copy of a
+ * `package.json`, so a named object is exactly the completeness test: no proper
+ * prefix of a JSON object parses, and nothing else on disk should hold this name.
+ * @param {string} text
+ */
+function isManifestCopy(text) {
+  try {
+    return typeof JSON.parse(text)?.name === "string";
+  } catch {
+    return false;
+  }
+}
+
 function main() {
   const restore = process.argv.includes("--restore");
   const manifestPath = join(process.cwd(), "package.json");
   const backupPath = join(process.cwd(), BACKUP_FILE);
 
-  // A backup on disk means an earlier pack was interrupted before `postpack`,
+  // A *whole* backup means an earlier pack was interrupted before `postpack`,
   // so the manifest in place is the rewritten one and the backup is the only
-  // copy of the source-resolving original. Restoring first makes both paths
-  // idempotent; backing up over it would destroy that original for good.
-  if (existsSync(backupPath)) renameSync(backupPath, manifestPath);
+  // copy of the source-resolving original — restore it first to make both hooks
+  // idempotent. Anything else is a fragment from a `copyFileSync` that was
+  // itself interrupted (ENOSPC, SIGKILL), which means the rewrite never started
+  // and the manifest is still the original: drop it rather than clobber it.
+  if (existsSync(backupPath)) {
+    if (isManifestCopy(readFileSync(backupPath, "utf8"))) renameSync(backupPath, manifestPath);
+    else rmSync(backupPath);
+  }
   if (restore) return;
 
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));

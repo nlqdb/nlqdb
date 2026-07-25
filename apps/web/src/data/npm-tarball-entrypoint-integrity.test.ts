@@ -222,6 +222,18 @@ describe("npm tarball entrypoint integrity (GLOBAL-001)", () => {
       expect(strays()).toEqual([BACKUP_FILE]);
       run("--restore");
       expect(existsSync(join(dir, BACKUP_FILE))).toBe(false);
+
+      // A *partial* backup — `copyFileSync` interrupted by ENOSPC or a signal —
+      // means the rewrite never started, so the manifest in place is still the
+      // good original. Restoring the fragment over it would destroy the only
+      // copy; both hooks must drop it instead.
+      for (const partial of ["", '{"name":"roundtrip-pro', "not json", "null", "[]"]) {
+        writeFileSync(join(dir, BACKUP_FILE), partial);
+        run();
+        run("--restore");
+        expect(readFileSync(manifestPath, "utf8")).toBe(original);
+        expect(strays()).toEqual([]);
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
