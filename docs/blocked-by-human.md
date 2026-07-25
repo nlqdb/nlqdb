@@ -45,7 +45,18 @@ is the company's real cycle time.
    unblocks a *capability* the GLOBAL-036 agent-memory wedge is built on, not a
    one-shot listing — see `docs/features/mcp-server/FEATURE.md` § Open questions.
 
-3. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
+3. **⏱ ~2 min · since 2026-07-25 — Connect the Claude GitHub App to the `nlqdb`
+   org** (github.com → `nlqdb` org → Settings → GitHub Apps → grant the Claude
+   app repo access). Account-walled: needs an org admin. Without it the
+   Dependabot alerts API returns 403 to every agent session
+   (*"an org admin must connect the Claude GitHub App for this organization"*),
+   so agents cannot read which vulnerability GitHub is reporting and have to
+   guess by sweeping every ecosystem by hand. That happened this run: a blind
+   sweep found and fixed **57** advisories (7 high) — but the specific alert
+   GitHub was flagging still could not be confirmed. Two minutes here turns
+   vulnerability triage from guesswork into a lookup, permanently.
+
+4. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
    reach R-05 venue #5, ledger row #7).
    Account-walled: the form needs a GitHub sign-in (anonymous fetch → 403), and mcp.so
    is **not** an official-registry crawler — it's a Next.js + Supabase directory
@@ -60,7 +71,7 @@ is the company's real cycle time.
    - **Connect / config (if asked):** `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #7 to **in-flight** and note the `mcp.so/server/...` URL.
 
-4. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
+5. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
    (`cursor.directory/plugins/new`; reach R-05 venue #6, ledger row #8).
    Account-walled: Cursor's **official in-product marketplace is curated** with
    no public self-serve path, and the community directory Cursor's own docs point to
@@ -79,7 +90,7 @@ is the company's real cycle time.
      one command `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #8 to **in-flight** and note the `cursor.directory/...` URL.
 
-5. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
+6. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
    (`punkpeye/awesome-mcp-servers`; reach R-05 venue #8, ledger row #10). A
    plain GitHub PR — but agent sessions are scoped to `nlqdb/nlqdb` only
    and can't fork/PR an external repo (re-verified 2026-07-22: `add_repo`
@@ -105,7 +116,7 @@ is the company's real cycle time.
    becomes "live with attributable yield" on its own. Alt list if rejected:
    `wong2/awesome-mcp-servers`. On merge, flip ledger row #10 → in-flight.
 
-6. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+7. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -136,7 +147,7 @@ is the company's real cycle time.
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-7. **⏱ ~2 min · since 2026-07-22 — Flip "Always Use HTTPS" on the `nlqdb.com`
+8. **⏱ ~2 min · since 2026-07-22 — Flip "Always Use HTTPS" on the `nlqdb.com`
    Cloudflare zone** (dashboard → SSL/TLS → Edge Certificates). The code half
    shipped 2026-07-23 ([`GLOBAL-039`](./decisions/GLOBAL-039-https-only-hsts.md)):
    dynamic hosts (app/mcp) 301 http→https in-worker and every surface now
@@ -148,7 +159,7 @@ is the company's real cycle time.
    (re-verified 2026-07-22). Low rank: internal-integrity yield, no
    user-facing surface.
 
-8. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
+9. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
    (repo → Settings → Branches → `main`). PR #816 merged with **zero approving
    reviews and no gate**, so nothing currently blocks a merge on red CI — an
    agent session can't read or set branch protection, so this can only be
