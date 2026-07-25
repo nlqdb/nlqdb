@@ -84,6 +84,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **GLOBAL-013** — `$0/month free tier`.
   - *In this feature:* OIDC for publish (`SK-CIPERM-003`) keeps us off paid secret-rotation tools (HashiCorp Vault, AWS Secrets Manager) and removes the `NPM_TOKEN` rotation chore from the always-on list.
+- **GLOBAL-040** — every workflow `uses:` is SHA-pinned, version in a trailing comment.
+  - *In this feature:* the pin is the other half of the `permissions:` discipline — a narrow grant is worthless if a hijacked tag runs inside it. `cla.yml` is the sharpest case: it hands a third-party action both `GITHUB_TOKEN` and the long-lived `CLA_PAT`, so its pin is what bounds that exposure.
 - **GLOBAL-014** — OTel span on every external call.
   - *In this feature:* CI runs aren't part of the user-facing trace, but the `deploy-cloudflare` composite emits a `nlqdb.ci.deploy` span when it has the OTel collector configured (Phase 2+). Permission to write OTel is in the `id-token: write` lane (vendor-issued OIDC at the OTel endpoint).
 
