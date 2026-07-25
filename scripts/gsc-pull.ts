@@ -158,13 +158,12 @@ function section(title: string, rows: Row[]): void {
   const pct = total
     ? Math.round((shown.reduce((n, r) => n + r.impressions, 0) / total) * 100)
     : 100;
+  // The cap notice rides the same line as the numbers it qualifies: on stderr, or
+  // anywhere but the header, a redirected stdout reads as a complete pull again.
+  const capped = rows.length >= ROW_LIMIT ? ` !! HIT rowLimit ${ROW_LIMIT} — all floors` : "";
   console.info(
-    `\n## ${title} — ${ranked.length} rows / ${total} impr; top ${shown.length} by impressions = ${pct}% of them`,
+    `\n## ${title} — ${ranked.length} rows / ${total} impr; top ${shown.length} by impressions = ${pct}% of them${capped}`,
   );
-  if (rows.length >= ROW_LIMIT)
-    console.error(
-      `!! ${title} hit rowLimit ${ROW_LIMIT} — every number above is a floor; raise it`,
-    );
   for (const r of shown) console.info(fmtRow(r));
 }
 
@@ -176,17 +175,19 @@ section("Top pages", pages);
 // The /daily + /reach selection rule, computed rather than eyeballed: impressions
 // cap the clicks a rank gain can convert, and a page already on page 1 has little
 // rank left to win.
-const strengthen = pages
-  .filter((r) => r.position > 10)
-  .sort((a, b) => b.impressions - a.impressions)
-  .slice(0, 10);
-console.info("\n## Strengthen next — highest impressions still off page 1 (pos > 10)");
-for (const r of strengthen) console.info(fmtRow(r));
-if (!strengthen.length) console.info("  (none — every page earning impressions is on page 1)");
+const offPage1 = pages.filter((r) => r.position > 10).sort((a, b) => b.impressions - a.impressions);
+const targets = offPage1.slice(0, 10);
+console.info(
+  `\n## Strengthen next — ${targets.length} of ${offPage1.length} pages off page 1 (pos > 10), highest impressions first`,
+);
+for (const r of targets) console.info(fmtRow(r));
+if (!offPage1.length) console.info("  (none — every page earning impressions is on page 1)");
 
 const sm = await curlRequest("GET", `${API}/sitemaps`, [`Authorization: Bearer ${token}`]);
-if (sm.status === 200) {
-  console.info("\n## Sitemaps");
+console.info("\n## Sitemaps");
+if (sm.status !== 200) {
+  console.info(`  (unavailable — HTTP ${sm.status}: ${sm.body.slice(0, 200)})`);
+} else {
   for (const s of JSON.parse(sm.body).sitemap ?? []) {
     const counts = (s.contents ?? [])
       .map(
