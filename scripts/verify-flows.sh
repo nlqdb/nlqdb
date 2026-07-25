@@ -101,7 +101,7 @@ fetch_json() {
   return 1
 }
 
-# Asserts a 307 → 200 redirect chain exists from a non-trailing-slash URL
+# Asserts a 3xx → 200 redirect chain exists from a non-trailing-slash URL
 # to the trailing-slash variant. Informational: catches the regression
 # that bit the 2026-05-23 verification (curl without -L returned 0 bytes).
 assert_trailing_slash_redirect() {
@@ -161,8 +161,8 @@ SOLVE_SLUGS=(
 say "FLOW-002 — /solve/<slug> (curl-observable subset, all ${#SOLVE_SLUGS[@]} slugs)"
 for slug in "${SOLVE_SLUGS[@]}"; do
   # The deployed CDN serves the static AEO surface at the trailing-slash
-  # URL; the unslashed form 307-redirects. Curl-only agents that don't
-  # follow redirects see HTTP 307 + 0 bytes — record the redirect once
+  # URL; the unslashed form 301-redirects (SK-WEB-027). Curl-only agents that
+  # don't follow redirects see the 3xx + 0 bytes — record the redirect once
   # per walk so future verifiers don't re-discover it on every PR.
   assert_trailing_slash_redirect "FLOW-002 redirect probe ($slug)" "$BASE_URL/solve/$slug"
   if fetch_body "FLOW-002 step 1 GET /solve/$slug/ returns 200" "$BASE_URL/solve/$slug/"; then

@@ -1,4 +1,4 @@
-// Bare internal paths are 307s. `trailingSlash: "always"` means every page is
+// Why this file exists. `trailingSlash: "always"` means every page is
 // `<route>/index.html`, so Cloudflare's asset router answers `/agents` with a
 // *temporary* redirect to `/agents/`. Google's indexing pipeline only treats
 // permanent codes (301/308) as a canonicalisation signal, so the bare URL stays
@@ -45,7 +45,7 @@ export function canonicalRedirectRules(
 
   if (rules.length > MAX_STATIC_RULES) {
     throw new Error(
-      `canonical-redirects: ${rules.length} rules exceeds Cloudflare's ${MAX_STATIC_RULES}-static-rule ceiling — rules past it are silently dropped, so split the surface or switch to a dynamic rule before shipping.`,
+      `canonical-redirects: ${rules.length} rules exceeds Cloudflare's ${MAX_STATIC_RULES}-static-rule ceiling — rules past it are skipped at upload (one buried wrangler warning per line), so split the surface or switch to a dynamic rule before shipping.`,
     );
   }
   return rules;

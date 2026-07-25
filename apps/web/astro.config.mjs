@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import react from "@astrojs/react";
 import { defineConfig } from "astro/config";
 import { canonicalRedirectRules } from "./src/lib/canonical-redirects.ts";
@@ -14,7 +15,9 @@ const canonicalRedirects = {
   name: "nlqdb:canonical-redirects",
   hooks: {
     "astro:build:done": ({ dir, logger }) => {
-      const dist = dir.pathname;
+      // `fileURLToPath`, not `dir.pathname` — the latter stays percent-encoded,
+      // so a checkout under a path with a space or non-ASCII char never resolves.
+      const dist = fileURLToPath(dir);
       const pagePaths = [];
       (function walk(current) {
         for (const name of readdirSync(current)) {
@@ -43,7 +46,7 @@ const canonicalRedirects = {
 //
 // `trailingSlash: "always"` matches what CF Static Assets serves: the
 // default `build.format: "directory"` emits `<route>/index.html`, so
-// `/agents/` is the 200 and bare `/agents` 307-redirects. Without this,
+// `/agents/` is the 200 and bare `/agents` redirects (301, SK-WEB-027). Without this,
 // `Astro.url.pathname` (hence `<link rel=canonical>` + `og:url`) comes
 // out bare, pointing every crawler at a redirect of the page that
 // declares it — a self-referential canonical that dilutes the AEO/SEO

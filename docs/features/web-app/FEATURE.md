@@ -155,7 +155,7 @@ One route (`/architecture/`) renders the system as a three.js zoom-to-detail map
 ### SK-WEB-022 — Client-side navigations must carry the trailing slash (guarded)
 
 **Body:** [`decisions/SK-WEB-022-client-nav-trailing-slash.md`](./decisions/SK-WEB-022-client-nav-trailing-slash.md).
-Every client-side navigation to an internal page path ends in `/` (`trailingSlash: "always"` otherwise 307s), guarded by `src/data/client-nav-integrity.test.ts` — the JS-navigation blind spot `check-links.mjs` cannot see.
+Every client-side navigation to an internal page path ends in `/` (`trailingSlash: "always"` otherwise redirects), guarded by `src/data/client-nav-integrity.test.ts` — the JS-navigation blind spot `check-links.mjs` cannot see.
 
 ### SK-WEB-023 — IndexNow push on every web deploy; robots + sitemap stay index-open
 

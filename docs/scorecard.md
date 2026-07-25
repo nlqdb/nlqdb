@@ -24,11 +24,10 @@ draft **idle 42 days since 06-13**, kit ready since 07-19) — the only queue ac
 real strangers from 0; its age is the company's real cycle time (rule: human-queue). Queue depth
 **6** ranked bullets: launch (#1), mcp.so / cursor.directory / awesome-mcp / Claude-dir submissions
 (#2–#5, all account-walled), the GLOBAL-039 zone toggle (#6, lowest rank — internal-integrity yield).
-**Open PRs 4** — oldest #719 (draft Infisical, 8 d), oldest non-draft #813 (< 1 d).
 
 **Rule 6 clean** (CI + Security + Release-npm **and all 8 `deploy-*` workflows** `success` on `main`
-`97d7712` — 07-25 01:02Z, the first code SHA since `c3f0647`). **Step 0** (as of this run — later
-merges don't backdate it)**:** open PRs #813 (run 137
+`97d7712` — 07-25 01:02Z, the first code SHA since `c3f0647`). **Step 0** (as of this run —
+later merges don't backdate it): open PRs #813 (run 137
 null, `scorecard.md` — step-1 exempt), #814 (reach `INDEX.md`), #815 (run 138, `tests/e2e/mcp` +
 `ci.yml` + e2e-coverage/distribution-queue), #719 (draft Infisical) — no file overlap with this
 run's `apps/web` + web-app-feature diff; every number below re-measured live here.
@@ -37,13 +36,13 @@ run's `apps/web` + web-app-feature diff; every number below re-measured live her
 |---|--------|-------|------|
 | | **Funnel** (visits + users/DBs re-measured live 07-25 remote-D1 + CF GraphQL) | | exclude synthetic stranger-test walker traffic |
 | 1 | Visits, 7d (CF Web Analytics) | **147 pageloads** (07-18→07-25 live, raw). Walker filter (run 12, `userAgentBrowser` cut): "Unknown" 90 + BingBot 1 ⇒ **real-browser ≈ 56** (Chrome 32 + ChromeMobile 14 + Edge 5 + Firefox 4 + MobileSafari 1) — up from ≈42 on the 07-15→07-22 window, still no row-#2 signal behind it | account-level RUM can't split per-path; genuine-stranger signal is row #2 |
-| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-read live remote-D1 07-25 (run 139), roster byte-identical**; no acquisition channel newly live to produce a signal. Acquisition depends on distribution yield (the run-56 428 wall is long gone) |
+| 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company (`omer@salfati.group`, `omer.hochman@{gmail,bigpanda}`, `hi@nlqdb.com`) + 5 test/dev (`*@example.com`, `*@preview.dev`) — **re-read live remote-D1 07-25 (run 139), roster byte-identical**; no acquisition channel newly live to produce a signal. Acquisition depends on distribution yield |
 | 3 | DBs total | **254** (07-25 live remote-D1, −1 vs 07-24; synthetic — walker/preview churn; previews share prod D1) | stranger subset still ~0 (row #2) |
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not yet measurable** (07-12 19:41Z remote-D1; method `SK-ONBOARD-007`). Only 3/165 DBs have `first10_asks > 0` (Σok 3 / Σasks 4), all founder/test. Attribution instrument re-verified live 07-25: `databases.source_json` present (migration 0024), `dbsWithSource` = **0** (accrues from the first attributable visit) | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** (`/vs` 32 + `/solve` 36 + `/blog` **37**; recount 07-19). Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** built; **GSC 28d (06-25→07-23, re-pulled live 07-25 run 139): 6 clicks / 485 impr / avg pos 17.4** — clicks flat a 6th read, impr/pos move is the window sliding one day. **Run 139's find:** 6 impressions sat on **bare-path** URLs Google holds as separate index entries — `/agents` 4 impr / pos 6.8 and `/blog/llm-concatenates-columns-text-to-sql` 2 impr / pos 15.5 — the 307 defect fixed this run (`SK-WEB-027`, see "Last change"). Still unfixable here: `http://…/count-consecutive-days-streak-in-sql/` (**7 impr / pos 10.1** on the plaintext variant) needs the zone toggle — `blocked-by-human` #6, `GLOBAL-039`. Top winnable page `/solve/count-rows-per-day-including-missing-dates/` **66 impr / pos 7.8** (already on-page-maxed) is now **click-earning**: 5 pages carry the 6 clicks — `/security/hall-of-fame/` (2), homepage, `/architecture/`, `/blog/bird-gold-noise-distinct/`, `/solve/count-rows…`. sitemap 116 submitted / 0 err; link integrity in row #18 | GSC via `scripts/gsc-pull.ts`. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
+| 7 | Surface yield | posts **37** built; **GSC 28d (06-25→07-23, re-pulled live 07-25 run 139): 6 clicks / 485 impr / avg pos 17.4** — clicks flat a 6th read, impr/pos move is the window sliding one day. **Run 139's find:** 6 impressions sat on **bare-path** URLs Google holds as separate index entries — `/agents` 4 impr / pos 6.8 and `/blog/llm-concatenates-columns-text-to-sql` 2 impr / pos 15.5 — the 307 defect fixed this run (`SK-WEB-027`). Still unfixable here: `http://…/count-consecutive-days-streak-in-sql/` (**7 impr / pos 10.1** on the plaintext variant) needs the zone toggle — `blocked-by-human` #6, `GLOBAL-039`. Top winnable page `/solve/count-rows-per-day-including-missing-dates/` **66 impr / pos 7.8** (already on-page-maxed) is now **click-earning**: 5 pages carry the 6 clicks — `/security/hall-of-fame/` (2), homepage, `/architecture/`, `/blog/bird-gold-noise-distinct/`, `/solve/count-rows…`. sitemap 116 submitted / 0 err | GSC via `scripts/gsc-pull.ts`. Impressions indexing-wide but ~0 CTR — total-impression breadth is the bottleneck, not per-page CTR at N≤12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on **post-revert** main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Recovered +2.8 pp from the 0.514 `SK-LLM-044` reading; flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) — run-90 `SK-QUAL-006` trigger cleared. Baseline re-seeded 0.5462 → 0.5422 (07-19, `SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 post-revert canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 `SK-QUAL-013` windows, `no_sql` 0/135, exec_error 5). Give-back from the reverted 0.2963 `SK-LLM-044` reading (run 90); post-revert engine is byte-identical ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s. Freshness reset 07-19 | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -85,8 +84,7 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 
 ## Last change
 
-**2026-07-25 (run 139)** — **Priority-1 distribution lever, found in this run's own live GSC pull:
-the marketing surface's bare paths were 307s, so Google kept them as competing index entries.**
+**2026-07-25 (run 139)** — priority-1 distribution lever, found in this run's own live GSC pull.
 
 **Number moved — row #7 (surface yield), Google-side canonicalisation: bare-path redirect 307 → 301
 on all 120 marketing pages.** `trailingSlash: "always"` makes every page `<route>/index.html` and
@@ -121,11 +119,10 @@ there is no yield to claim there. Engine dark + fresh (baseline `run_at` 07-19, 
 7-day trigger). Strangers still **0** (re-read live, roster byte-identical), so the structural
 bottleneck stays the human-gated launch (`blocked-by-human` #1, idle **42 days**).
 
-**Self-review pass** additionally fixed the build hook's `dir.pathname` (percent-encoded ⇒ a
-checkout path with a space never resolved) to `fileURLToPath`, and retired the stale "bare paths are
-307s" prose left in `Base.astro`, `verify-flows.sh`, `SK-WEB-022` and the four JSON-LD decisions.
-**Gates:** `typecheck` 22 packages · `lint` exit 0 · `test` 20 packages, all green after the rebase.
-**D4:** `web-app/FEATURE.md` was already over cap and **net-shrank 24603 → 24525 B**. **KPI
+Self-review also swapped the hook's percent-encoded `dir.pathname` for `fileURLToPath` and retired
+the stale "bare paths are 307s" prose across six files. **Gates:** `typecheck` 22 packages · `lint`
+exit 0 · `test` 20 packages — green after the rebase onto `aad87a7`.
+**D4:** `web-app/FEATURE.md` was already over cap and **net-shrank 24603 → 24530 B**. **KPI
 (GLOBAL-025):** advances **onboarding/distribution** — the wedge's landing page stops splitting its
 own ranking signal; **degrades none** (no runtime code, endpoint, or external call).
 

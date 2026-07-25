@@ -348,7 +348,7 @@ jobs:
           exit $rc
 
   build-web:
-    name: apps/web (astro check + build)
+    name: apps/web (astro check + test + build)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -358,6 +358,14 @@ jobs:
       - name: Astro check
         working-directory: apps/web
         run: bun run check
+
+      # `apps/web` owns pre-merge guards that only exist as tests —
+      # `client-nav-integrity.test.ts` (SK-WEB-022) and
+      # `canonical-redirects.test.ts` (SK-WEB-027). Without this step they were
+      # documented as "in CI" while never running on a PR.
+      - name: Test
+        working-directory: apps/web
+        run: bun run test
 
       - name: Astro build
         working-directory: apps/web
