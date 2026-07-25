@@ -17,8 +17,9 @@
   Postgres+pgvector guides and Mem0's pip install — not at stage 2
   ("analytical memory"), which nobody searches for. And increasingly the
   *searcher is a coding agent*: it reads MCP registries, `llms.txt`,
-  READMEs, and in-repo rules/skills, and it can complete a one-command
-  setup end-to-end without a human. Folding this into `/daily` starves it:
+  READMEs, and in-repo rules/skills, and it drives the one-command setup
+  itself, bar one browser-OAuth approval that still needs a human
+  ([`mcp-server`](../../mcp-server/FEATURE.md)). Folding this into `/daily` starves it:
   `/daily` picks the worst scorecard number, which is rarely acquisition
   reach until reach is measured at all. A dedicated loop with its own
   measurement (the R-06 coding-agent walker) makes the campaign sustained
