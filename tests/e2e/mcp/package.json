@@ -19,7 +19,7 @@
     "typescript": "^5.6.0",
     "vitest": "^4.1.0"
   },
-  "//overrides": "Advisory floors inside ranges the parents already permit; the hono/fast-uri/body-parser chain comes from @modelcontextprotocol/sdk 1.29.0 (its latest) and none of it runs here, since this suite uses InMemoryTransport rather than an HTTP listener.",
+  "//overrides": "Advisory floors mirroring the root workspace's own overrides, so this out-of-workspace suite resolves what production does. The hono/fast-uri/body-parser chain is transitive under @modelcontextprotocol/sdk 1.29.0 (its latest, so there is no upstream fix) and none of it executes here — the suite drives the server over InMemoryTransport, never an HTTP listener. @hono/node-server is the one floor past a parent's range (the SDK asks for ^1.19.9), because the advisory has no 1.x fix; root pins the same ^2.x.",
   "overrides": {
     "vite": "^8.1.5",
     "postcss": "^8.5.23",

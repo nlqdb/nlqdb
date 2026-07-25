@@ -227,32 +227,25 @@ bun run --filter apps/api build && wrangler deploy --dry-run --outdir=/tmp/out
 
 Per-package commands are in each area's `AGENTS.md`.
 
-Working inside a checkout nested under `.claude/` (agent worktrees live at
-`.claude/worktrees/<id>`)? `bun run lint` and `bun run format` match
-`biome.json`'s `!**/.claude` against the ancestor path and process **zero**
-files — `Checked 0 files`, exit 1. Pass explicit paths (`biome check
-scripts/foo.ts`) to get real signal; CI checks out normally and is unaffected.
-Repo lint baseline: 41 warnings, 0 errors across 680 files.
+Inside an agent worktree (`.claude/worktrees/<id>`), `bun run lint` and
+`bun run format` match `biome.json`'s `!**/.claude` on the ancestor path and
+check **zero** files — `Checked 0 files`, exit 1. Pass explicit paths, or run
+biome from a copy outside `.claude/`, for real signal. CI is unaffected.
 
 ## 8. Quality gates before opening a PR
 
 > **Format and lint before every commit.**
 
 1. `bun run typecheck && bun run lint && bun run test` all green.
-2. Every new decision has an ID (`GLOBAL-NNN` or `SK-<FEATURE>-NNN`)
-   and is in its canonical home (`docs/decisions/GLOBAL-NNN-<slug>.md`
-   for `GLOBAL` plus a row in `docs/decisions.md`,
-   `docs/features/<feature>/FEATURE.md` for `SK`). Features reference
-   GLOBALs by ID; they don't duplicate the body
-   (`docs/feature-conventions.md` §5).
-3. No `### GLOBAL-NNN` block exists under `docs/features/` — only
-   reference lines in `## GLOBALs governing this feature` sections.
-   Verify: `grep -rn '^### GLOBAL-' docs/features/` prints nothing.
+2. Every new decision has an ID in its canonical home per `P3`; a new
+   `GLOBAL` also adds a row to the `docs/decisions.md` index.
+3. `grep -rn '^### GLOBAL-' docs/features/` prints nothing — features
+   reference GLOBALs by ID, bodies live only under `docs/decisions/`.
 4. Every new external call has an OTel span (`GLOBAL-014`).
 5. Every mutating endpoint accepts `Idempotency-Key` (`GLOBAL-005`).
 6. New capability added → SDK + CLI + MCP + elements all updated, or
    gap tracked in the affected feature (`GLOBAL-003`).
-7. PR body names the [`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md) KPI advanced + confirms no other KPI degrades.
+7. PR body names the `GLOBAL-025` KPI advanced; no other KPI degrades.
 
 ## 9. When in doubt
 

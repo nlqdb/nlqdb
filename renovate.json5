@@ -20,11 +20,14 @@
   // `config:recommended` pulls in `:ignoreModulesAndTests`, whose
   // `ignorePaths` includes `**/tests/**` — so Renovate silently skipped
   // all five manifests under `tests/` (the three e2e bun suites,
-  // opencheck, and the Go CLI suite). They are CI infrastructure, not
-  // fixtures, and 19 advisories had accumulated in `tests/e2e/mcp`
-  // alone before anything flagged them. Restated here without the
-  // `tests`/`test` entries; `examples/` stays ignored only because
-  // those scaffolds carry no manifests at all.
+  // opencheck, and the Go CLI suite), for upgrades *and* for
+  // `vulnerabilityAlerts`: an alert only ever becomes a PR by matching a
+  // dependency that extraction already found, and extraction is where
+  // `ignorePaths` is applied. They are CI infrastructure, not fixtures,
+  // and 19 advisories had piled up in `tests/e2e/mcp` alone before
+  // anything flagged them. Restated below without the preset's
+  // `tests`/`test`/`__tests__`/`examples` entries — dropping `examples`
+  // is safe because those scaffolds carry no manifests at all.
   ignorePaths: [
     "**/node_modules/**",
     "**/bower_components/**",
@@ -76,6 +79,15 @@
       matchManagers: ["github-actions"],
       pinDigests: true,
       groupName: "github-actions",
+    },
+    {
+      // Last, so it overrides the patch/pin/digest automerge above. PR CI
+      // only *typechecks* the suites under `tests/` (`typecheck-e2e`); the
+      // vitest runs are `workflow_dispatch`-only, so nothing would catch a
+      // bump that breaks a test at runtime rather than at the type level.
+      // Raise the PR — never merge it unreviewed.
+      matchFileNames: ["tests/**"],
+      automerge: false,
     },
   ],
   vulnerabilityAlerts: {

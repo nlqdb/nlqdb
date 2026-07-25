@@ -34,7 +34,8 @@ sit down to do the thing.
 | 9 | ~3 min | Make CI a required status check on `main` | 2026-07-25 |
 
 Only #1 can move real strangers (scorecard row #2) this week; #7 is the only
-one that costs money. Everything else is a login and a form.
+one that costs money. Each of the rest is a sign-in plus a form, a terminal
+paste, a PR, or a console toggle.
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
