@@ -3,10 +3,11 @@
 //
 // Checks every internal href/src in built HTML, plus every URL advertised in
 // sitemap.xml and llms.txt, against the dist file tree. With
-// `trailingSlash: "always"` a bare internal path (`/foo`) is served as a 307
-// to `/foo/` (see the run-69 lesson in docs/research/distribution-queue.md),
-// so bare paths are reported as redirects — the sweep's hard failures are
-// targets with no file at all.
+// `trailingSlash: "always"` a bare internal path (`/foo`) is a redirect to
+// `/foo/` (a 301 from the generated `_redirects` since SK-WEB-027; see the
+// run-69 lesson in docs/research/distribution-queue.md), so bare paths are
+// reported as redirects — the sweep's hard failures are targets with no file
+// at all.
 //
 // Cross-app coverage: hrefs/srcs pointing at an owned subdomain
 // (`https://<sub>.nlqdb.com/...`, e.g. docs./app./mcp./elements.) live on a
