@@ -5,7 +5,7 @@ import { createServer } from "./server.ts";
 // Hand-maintained sync with package.json#version to avoid JSON-import-attribute portability across Node 20-22 + Bun.
 // A unit test pins this to package.json#version so the two can't drift silently.
 const PACKAGE_NAME = "@nlqdb/mcp";
-export const PACKAGE_VERSION = "0.0.0";
+export const PACKAGE_VERSION = "0.1.0";
 
 const KEY_PREFIXES = ["pk_live_", "sk_live_", "sk_mcp_", "nlqdb_"];
 

@@ -30,7 +30,66 @@ is the company's real cycle time.
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0 this week.
 
-2. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
+2. **⏱ ~5 min · since 2026-07-25 — Bootstrap-publish `@nlqdb/mcp` to npm.**
+   This is the one action that gives a coding agent a *headless* way in. Today
+   the only route to nlqdb memory is the hosted server's browser OAuth consent
+   screen (walked live 2026-07-25, PR #819): an agent gets through discovery,
+   dynamic client registration and `/authorize`, then hits a page only a
+   signed-in human can approve. `packages/mcp` already ships the MCP spec's
+   headless answer — local stdio reading `NLQDB_API_KEY` (`SK-MCP-001`), spawned
+   daily by `scripts/flow-005-stdio-walk.sh` — but `registry.npmjs.org/@nlqdb/mcp`
+   **404s**, so nobody can install it. Account-walled: npm's Trusted Publishing
+   (OIDC) **cannot publish a package's first version**
+   ([npm/cli#8544](https://github.com/npm/cli/issues/8544), still open —
+   re-verified 2026-07-25), so version `0.1.0` must come from your npm session.
+   The repo is publish-ready and the artifact is **verified end-to-end** — the
+   packed tarball, installed into an empty dir, serves a real MCP `initialize` +
+   `tools/list` with all five tools under both node and bun — so this is one paste:
+   ```bash
+   cd packages/mcp
+   npm login --auth-type=web     # once, if not already signed in — do it first,
+                                 # so an aborted login can't leave the gate open
+   npm pkg delete private        # publish gate; reverted on the last line
+   bun run build                 # emits dist/ (~25 KB, @nlqdb/sdk bundled in)
+   npx --yes -p npm@latest -- npm publish --no-provenance --access public
+   git checkout package.json     # leave the repo gated — an agent PR un-gates it
+   ```
+   Then configure the Trusted Publisher (fields table in
+   [`.changeset/README.md`](../.changeset/README.md)) so every later publish
+   flows via OIDC with provenance. **Don't** commit the `private` flip yourself:
+   un-gating before the package exists on npm makes `changeset publish` fail the
+   whole release job. What it unblocks, once live: `npx -y @nlqdb/mcp` completes
+   setup with a pasted `sk_mcp_*` key instead of a browser (reach R-04's last
+   box); the official-registry entry can then declare an npm `packages` block
+   beside the remote — `mcpName` is already in the tarball for the ownership
+   check the registry runs — which is what the directories that only surface
+   *installable* servers read; ledger rows #12 + #17 gain a real install path.
+   Tell the next `/reach` run when it's live and it will land all three.
+
+3. **⏱ ~3 min · since 2026-07-25 — Publish nlqdb to Smithery** (reach R-05
+   venue #2, ledger row #4). **This corrects a wrong assumption, not a delay:**
+   rows #4/#5 recorded Smithery as auto-ingesting the official registry, so
+   nobody was ever going to submit it. Smithery documents publishing only as its
+   own CLI verb and mentions **no** official-registry ingestion (re-verified
+   2026-07-25); measured live the same day, `registry.smithery.ai` returns **no
+   nlqdb server**, three days after the registry publish that Glama ingested in
+   one. Remote servers stay self-hosted (Smithery's gateway proxies to ours;
+   streamable HTTP + OAuth are both required and both shipped), so there is
+   nothing to deploy — it is one paste, account-walled only by the login:
+   ```bash
+   npx --yes @smithery/cli auth login
+   npx --yes @smithery/cli mcp publish https://mcp.nlqdb.com/mcp -n nlqdb/nlqdb
+   npx --yes @smithery/cli mcp publish --resume   # only if it paused for OAuth approval
+   ```
+   Smithery scans the server for its tool catalog and pauses on our OAuth wall —
+   that is what `--resume` is for, after you approve in the browser. Then open
+   the listing and set the metadata that carries the ledger key (rule 1):
+   - **Display name:** `nlqdb — analytical memory for AI agents`
+   - **Website / homepage:** `https://nlqdb.com/agents/?utm_source=smithery`
+   - **Description:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
+   On publish, flip ledger row #4 to **in-flight** and note the listing URL.
+
+4. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
    reach R-05 venue #5, ledger row #7).
    Account-walled: the form needs a GitHub sign-in (anonymous fetch → 403), and mcp.so
    is **not** an official-registry crawler — it's a Next.js + Supabase directory
@@ -45,7 +104,7 @@ is the company's real cycle time.
    - **Connect / config (if asked):** `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #7 to **in-flight** and note the `mcp.so/server/...` URL.
 
-3. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
+5. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
    (`cursor.directory/plugins/new`; reach R-05 venue #6, ledger row #8).
    Account-walled: Cursor's **official in-product marketplace is curated** with
    no public self-serve path, and the community directory Cursor's own docs point to
@@ -64,7 +123,7 @@ is the company's real cycle time.
      one command `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #8 to **in-flight** and note the `cursor.directory/...` URL.
 
-4. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
+6. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
    (`punkpeye/awesome-mcp-servers`; reach R-05 venue #8, ledger row #10). A
    plain GitHub PR — but agent sessions are scoped to `nlqdb/nlqdb` only
    and can't fork/PR an external repo (re-verified 2026-07-22: `add_repo`
@@ -90,7 +149,7 @@ is the company's real cycle time.
    becomes "live with attributable yield" on its own. Alt list if rejected:
    `wong2/awesome-mcp-servers`. On merge, flip ledger row #10 → in-flight.
 
-5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+7. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -121,7 +180,7 @@ is the company's real cycle time.
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-6. **⏱ ~2 min · since 2026-07-22 — Flip "Always Use HTTPS" on the `nlqdb.com`
+8. **⏱ ~2 min · since 2026-07-22 — Flip "Always Use HTTPS" on the `nlqdb.com`
    Cloudflare zone** (dashboard → SSL/TLS → Edge Certificates). The code half
    shipped 2026-07-23 ([`GLOBAL-039`](./decisions/GLOBAL-039-https-only-hsts.md)):
    dynamic hosts (app/mcp) 301 http→https in-worker and every surface now
@@ -133,7 +192,7 @@ is the company's real cycle time.
    (re-verified 2026-07-22). Low rank: internal-integrity yield, no
    user-facing surface.
 
-7. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
+9. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
    (repo → Settings → Branches → `main`). PR #816 merged with **zero approving
    reviews and no gate**, so nothing currently blocks a merge on red CI — an
    agent session can't read or set branch protection, so this can only be

@@ -27,20 +27,37 @@ Status:
 - `@nlqdb/cli` — un-gated; bootstrap published at `0.1.0` (npm shim
   that downloads the `nlq` Go binary on `postinstall`). Configure
   Trusted Publisher on npmjs.com (see below).
+- `@nlqdb/mcp` — **gated, publish-ready and tarball-verified** 2026-07-25:
+  `npm pack` → install → `node .../bin/nlqdb-mcp.mjs` serves a real MCP
+  `initialize` + `tools/list` with the full `SK-MCP-002` catalog, so
+  `npx -y @nlqdb/mcp` will work on publish. The `@nlqdb/sdk` workspace dep is
+  bundled into `dist/`, so it is a **devDependency** — a `workspace:*` range
+  must never reach a published `dependencies`.
+  Only the founder's bootstrap-publish + Trusted-Publisher sitting is left;
+  the command is queued as
+  [`blocked-by-human.md`](../docs/blocked-by-human.md) bullet 2. Un-gate in
+  the follow-up PR, per the ordered list below. That PR owes the
+  `prepack` rewrite below: only the `bin` surface is reachable today, because
+  npm force-packs the `main` file (`src/index.ts`) *without* its imports, so
+  `import "@nlqdb/mcp"` from the tarball would throw. Nothing advertises that
+  import, which is why it can wait for the un-gate — not longer.
 - Everything else in `packages/*` — still gated.
 
-To un-gate a new package:
+To un-gate a new package, **in this order** — the repo change comes last,
+because OIDC cannot create a package's first version (see below), so a
+non-private package whose version is not yet on npm makes `changeset publish`
+fail the whole release job:
 
 1. Add a `build` script (tsup) that emits `dist/index.js` + `dist/index.d.ts`.
-2. Drop `"private": true` and add `publishConfig` so the published
-   tarball points at `dist/` (workspace dev keeps reading `src/` via
-   the top-level `main`/`exports`):
+2. Add the publish metadata, **keeping `"private": true`** — it has to be in the
+   manifest before the bootstrap publish, because that first version is
+   permanent (workspace dev keeps reading `src/` via the top-level
+   `main`/`exports`):
    ```json
    {
      "main": "./src/index.ts",
      "exports": { ".": "./src/index.ts" },
      "files": ["dist"],
-     "sideEffects": false,
      "license": "FSL-1.1-ALv2",
      "repository": {
        "type": "git",
@@ -48,23 +65,40 @@ To un-gate a new package:
        "directory": "packages/<name>"
      },
      "publishConfig": {
-       "main": "./dist/index.js",
-       "types": "./dist/index.d.ts",
-       "exports": {
-         ".": {
-           "types": "./dist/index.d.ts",
-           "import": "./dist/index.js",
-           "default": "./dist/index.js"
-         }
-       },
        "provenance": true,
        "access": "public"
      }
    }
    ```
-3. Add a `bun run --filter='@nlqdb/<name>' build` step to
-   `release-npm.yml` before the changesets action.
-4. Configure Trusted Publishing on the package (see below).
+   > **npm ignores `publishConfig` field overrides.** Rewriting
+   > `main`/`types`/`exports` from `publishConfig` is a **pnpm** feature; npm
+   > honours only its own keys (`access`, `provenance`, `registry`, `tag`).
+   > Verified 2026-07-25 against the live registry: `@nlqdb/sdk@0.2.1`
+   > publishes `main: "./src/index.ts"` while its `files` ships only `dist/`,
+   > so `import "@nlqdb/sdk"` from npm throws `ERR_MODULE_NOT_FOUND`. The
+   > *published* manifest has to point at `dist/`, and the real fields can't:
+   > every in-workspace consumer resolves the package through them (Bun/Vite,
+   > no build step), so moving them breaks the monorepo. So either expose the
+   > artifact through `bin` (what `@nlqdb/mcp` does — its bin loads the source
+   > only when the source is present *and* the runtime is Bun) or rewrite those
+   > fields at pack time in a `prepack` hook. Also don't add
+   > `"sideEffects": false` to a package whose entry is a pure re-export barrel
+   > built by `bun build`: the bundler shakes it down to a stub that still
+   > *builds* clean and then fails to load.
+3. **Verify the tarball**, since none of this fails at build time: `npm pack`
+   (works while the package is still private), install the `.tgz` into an empty
+   dir **outside the monorepo** — inside it Bun resolves the workspace copy and
+   the test proves nothing — then `node -e "import('<pkg>')"`, or for a `bin`
+   run it under **both** node and bun, which resolve the package differently.
+4. Hand to the founder — one sitting, both account-walled: bootstrap-publish by
+   hand (deleting `private` in the working tree only; the founder paste in
+   [`blocked-by-human.md`](../docs/blocked-by-human.md) is the canonical form),
+   then configure Trusted Publishing on the package (fields below). Both come
+   before the repo change — CI's first publish of the package authenticates only
+   through that Trusted Publisher.
+5. *Then* the follow-up PR: drop `"private": true` and add a
+   `bun run --filter='@nlqdb/<name>' build` step to `release-npm.yml` before the
+   changesets action.
 
 ## Authentication: Trusted Publishing (OIDC)
 
@@ -74,9 +108,10 @@ OIDC token (`id-token: write`) and npm verifies the claim against the
 configured GitHub repo + workflow. No long-lived secret in CI; npm
 auto-attaches SLSA v1 provenance on OIDC publishes.
 
-**Chicken-and-egg (one-time per new package):** Trusted Publishers
-can only be configured on a package that **already exists** on npm.
-Publish the first version manually from a maintainer machine
+**Chicken-and-egg (one-time per new package):** OIDC cannot create a package's
+first version ([npm/cli#8544](https://github.com/npm/cli/issues/8544)), and
+Trusted Publishers can only be configured on a package that **already exists**
+on npm. So publish the first version manually from a maintainer machine
 (`npx --yes -p npm@latest -- npm publish --no-provenance --access public`)
 with the user's npm session (`npm login --auth-type=web`), then
 configure the Trusted Publisher fields below. The next CI publish
