@@ -31,14 +31,16 @@ the only queue action that can move real strangers off 0; its age is the company
 Queue depth **7**: launch (#1), mcp.so / cursor.directory / awesome-mcp / Claude-dir submissions
 (#2–#5, account-walled), GLOBAL-039 zone toggle (#6), CI-as-required-check (#7).
 
-**Rule 6 clean** (CI + Security + Release-npm + **all 8 `deploy-*`** `success` on `main` `aad87a7`
-07-25 02:24Z, deploys on the last code SHA `97d7712`; gates green locally on `aad87a7` before any edit).
+**Rule 6 clean** — CI + Security + Release-npm + **all 9 `deploy-*`** green as their latest `main`
+run. Each deploy is path-filtered, so those greens sit on the last SHA that touched it, not one shared
+SHA: `705ded0` api/web/canary · `bb85ccf` docs · `aad87a7` cli · `97d7712` the other four. Gates green
+locally before any edit.
 **Step 0** (as of this run — later merges don't backdate it): open PRs **#820** (walkers, `handoff`,
 `/solve`+`/vs`+`/agents` pages, `app/new.astro`, anonymous-mode + stranger-test FEATUREs), **#817**
-(`astro.config.mjs`, `canonical-redirects*`, `Base.astro`, breadcrumb/itemlist JSON-LD,
-`llms.txt`/`rss.xml`/`sitemap.xml`, web-app + solve/comparison decisions), **#819** (reach INDEX,
-mcp-server FEATURE, `apps/docs`), #719 (draft). This run touches `scripts/gsc-pull.ts`, the acquisition
-ledger and `scorecard.md` — no overlap; the scorecard is step-1 exempt.
+(`astro.config.mjs`, canonical-redirects, `Base.astro`, JSON-LD, `llms.txt`/`rss.xml`/`sitemap.xml`),
+**#819** (reach INDEX, mcp-server FEATURE, `apps/docs`), #719 (draft). This run touches
+`scripts/gsc-pull.ts`, `/daily`, the acquisition ledger and `scorecard.md` — no overlap; the scorecard
+is step-1 exempt.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -50,7 +52,7 @@ ledger and `scorecard.md` — no overlap; the scorecard is step-1 exempt.
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12 19:41Z; founder-owned) | share of DBs with `first10_asks ≥ 2` |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **104 detail pages** (`/solve` 37 + `/vs` 31 + `/blog` 36), counted from the **live prod sitemap** (116 `<loc>` total), not a source grep — correcting the long-standing "105 (`/vs` 32 + `/solve` 36 + `/blog` 37)", wrong in every bucket. Queue holds **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **36**; **GSC 28d (06-25→07-23, live pull this run): 6 clicks / 485 impr / pos 17.4** — clicks flat a 9th read. **The whole page distribution is visible for the first time (this run's lever): 100 pages / 572 impr**, vs the prior 20-row clicks-sorted pull's 158 impr = **27.6%**. Strengthen-next by the loop's own rule (impressions, pos > 10; 6 of the 52 pages that qualify): **`/solve/running-total-cumulative-sum-in-sql/` 57 impr / pos 36.0 ← true top target** · `/vs/wrenai` 49 / 15.9 · `/solve/find-rows-with-no-match-in-another-table/` 24 / 15.0 · `/vs/` 18 / 17.9 · `/vs/metabase/` 13 / 10.4 · `/blog/top-n-rows-per-group/` 9 / 21.3. `/solve/count-rows-per-day…` (66 impr / **pos 7.8**) is *already page 1*, yet was recorded here as "the single biggest opportunity" for weeks. **Bare (unslashed) paths carry ≥ 107 impr**: `/vs/wrenai` 49, `/solve` 23, `/vs/vanna` 10, `/solve/pivot-rows-into-columns` 9, `/vs/askyourdatabase` 8, `/vs/cognee` 8 — each splitting signal with its slashed twin, so **#817's bare-path 301 (merged 07-25) is worth ~18× the 6 impr its body could cite**. 5 click-earning pages; sitemap 116 submitted / 0 indexed | `scripts/gsc-pull.ts` now pulls the whole dimension, ranks by impressions, and prints coverage + a strengthen-next list (no silent caps). Total-impression breadth is still the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
+| 7 | Surface yield | posts **36**; **GSC 28d (06-25→07-23, live pull this run): 6 clicks / 485 impr / pos 17.4** — clicks flat a 9th read. **The whole page distribution is visible for the first time (this run's lever): 100 pages / 572 impr**, vs the prior 20-row clicks-sorted pull's 158 impr = **27.6%**. Strengthen-next — the instrument's **top 6** of the 52 qualifying pages (impressions, pos > 10): **`/solve/running-total-cumulative-sum-in-sql/` 57 impr / pos 36.0 ← true top target** · `/vs/wrenai` 49 / 15.9 · `/solve/find-rows-with-no-match-in-another-table/` 24 / 15.0 · the homepage 20 / 16.9 · `/vs/` 18 / 17.9 · `/blog/bird-gold-noise-distinct/` 13 / 10.8. `/solve/count-rows-per-day…` (66 impr / **pos 7.8**) is *already page 1*, yet was recorded here as "the single biggest opportunity" for weeks. **Bare (unslashed) paths carry ≥ 107 impr**: `/vs/wrenai` 49, `/solve` 23, `/vs/vanna` 10, `/solve/pivot-rows-into-columns` 9, `/vs/askyourdatabase` 8, `/vs/cognee` 8 — each splitting signal with its slashed twin, so **#817's bare-path 301 (merged 07-25) is worth ~18× the 6 impr its body could cite**. 5 click-earning pages; sitemap 116 submitted / 0 indexed | `scripts/gsc-pull.ts` now pulls the whole dimension, ranks by impressions, and prints coverage + a strengthen-next list (no silent caps). Total-impression breadth is still the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
 | | **Engine** — BIRD 07-19 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.542** (270/498 EA, 2 `gold_error`, 1 `exec_error`, 07-19 canonical on main `2b3e4d2`, [run 29670818828](https://github.com/nlqdb/nlqdb/actions/runs/29670818828) — 6 `SK-QUAL-013` windows, `no_sql` 0/500). Flat vs the re-seeded baseline (Δ −0.40 pp, McNemar p=0.452) — run-90 `SK-QUAL-006` trigger cleared; baseline re-seeded 0.5462 → 0.5422 (`SK-QUAL-005`) | target 0.65 / **Phase 2 floor 0.60** — gap 5.8 pp. Offline levers exhausted; SC dead (#619); frontier-lens closed (run 15) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on main `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836); 3 windows, `no_sql` 0/135, exec_error 5). Give-back from run 90's reverted 0.2963 on a byte-identical engine ⇒ free-lane provider-mix noise, not a regression. p50 1.52 s / p95 10.9 s | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is its source of truth |
@@ -100,11 +102,10 @@ single biggest impression×position opportunity" for weeks: a page already on pa
 rank upside is smallest. Also newly visible: the **≥ 107 impressions landing on bare, unslashed paths**
 that row #7 now itemises — the reason #817's bare-path 301 is worth far more than its own body could cite.
 
-Fix (one file): pull the whole dimension, rank by impressions, print `rows / impr` coverage plus the
-share the printed slice covers, warn if the row cap is ever hit, and emit a **Strengthen next** section
-so the selection rule is computed rather than eyeballed. **Re-measured the same way after:** `## Top
-pages — 100 rows / 572 impr; top 20 by impressions = 66% of them`. No new decision record — the trap is
-closed in code, so documenting it would fail D5.
+Fix: pull the whole dimension, rank by impressions, and print its own coverage in every section
+header — including a row-cap alarm on stdout, where no redirect can drop it — plus a **Strengthen next**
+section so the selection rule is computed, not eyeballed; `/daily` now reads that section. Re-measured
+after: 100 rows / 572 impr, top 20 = 66%. No new decision record — the trap is closed in code (D5).
 
 **Other lanes:** funnel + GSC + CF RUM re-measured live (strangers **0**; DBs 254; `dbsWithSource` 0).
 Row #21 corrected **9/9 → 0/9** by reading the walk's *job log* instead of its pinned-green conclusion —

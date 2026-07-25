@@ -151,6 +151,13 @@ console.info(totals.length ? fmtRow(totals[0]) : "no data in window");
 const ROW_LIMIT = 5000; // GSC allows 25k rows/request — far above this property
 const SHOW = 20;
 
+// A capped pull is GSC's clicks-ordered prefix, so its impressions are floors and any
+// ranking off it is wrong — the notice rides every header it could distort, on stdout.
+const capNotice = (pull: Row[]) =>
+  pull.length >= ROW_LIMIT
+    ? ` !! HIT rowLimit ${ROW_LIMIT} — clicks-ordered prefix: impressions are floors, ranking wrong`
+    : "";
+
 function section(title: string, rows: Row[]): void {
   const ranked = [...rows].sort((a, b) => b.impressions - a.impressions);
   const total = ranked.reduce((n, r) => n + r.impressions, 0);
@@ -158,11 +165,8 @@ function section(title: string, rows: Row[]): void {
   const pct = total
     ? Math.round((shown.reduce((n, r) => n + r.impressions, 0) / total) * 100)
     : 100;
-  // The cap notice rides the same line as the numbers it qualifies: on stderr, or
-  // anywhere but the header, a redirected stdout reads as a complete pull again.
-  const capped = rows.length >= ROW_LIMIT ? ` !! HIT rowLimit ${ROW_LIMIT} — all floors` : "";
   console.info(
-    `\n## ${title} — ${ranked.length} rows / ${total} impr; top ${shown.length} by impressions = ${pct}% of them${capped}`,
+    `\n## ${title} — ${ranked.length} rows / ${total} impr; top ${shown.length} by impressions = ${pct}% of them${capNotice(rows)}`,
   );
   for (const r of shown) console.info(fmtRow(r));
 }
@@ -178,7 +182,7 @@ section("Top pages", pages);
 const offPage1 = pages.filter((r) => r.position > 10).sort((a, b) => b.impressions - a.impressions);
 const targets = offPage1.slice(0, 10);
 console.info(
-  `\n## Strengthen next — ${targets.length} of ${offPage1.length} pages off page 1 (pos > 10), highest impressions first`,
+  `\n## Strengthen next — ${targets.length} of ${offPage1.length} pages off page 1 (pos > 10), highest impressions first${capNotice(pages)}`,
 );
 for (const r of targets) console.info(fmtRow(r));
 if (!offPage1.length) console.info("  (none — every page earning impressions is on page 1)");
@@ -186,7 +190,10 @@ if (!offPage1.length) console.info("  (none — every page earning impressions i
 const sm = await curlRequest("GET", `${API}/sitemaps`, [`Authorization: Bearer ${token}`]);
 console.info("\n## Sitemaps");
 if (sm.status !== 200) {
-  console.info(`  (unavailable — HTTP ${sm.status}: ${sm.body.slice(0, 200)})`);
+  // An error body is often an HTML page — collapse whitespace so it can't break
+  // the one-fact-per-line shape the rest of the report keeps.
+  const why = sm.body.replace(/\s+/g, " ").slice(0, 200);
+  console.info(`  (unavailable — HTTP ${sm.status}: ${why})`);
 } else {
   for (const s of JSON.parse(sm.body).sitemap ?? []) {
     const counts = (s.contents ?? [])
