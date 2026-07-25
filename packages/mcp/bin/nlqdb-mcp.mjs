@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-// Entrypoint for both worlds, keyed on the runtime because that is what
-// actually differs: bun reads the TypeScript source directly, node cannot.
-// In-workspace the FLOW-005 stdio walker spawns this under bun, so it always
-// exercises fresh source with no build step. A published tarball is run by node
-// via `npx` — and npm ignores `publishConfig` main/exports overrides (a
-// pnpm-only feature), so the package's own entrypoint still points at `src/`
-// there. Load the bundled `dist/` that ships in the same tarball instead.
-const { runStdio } =
-  globalThis.Bun === undefined ? await import("../dist/index.js") : await import("@nlqdb/mcp");
+import { existsSync } from "node:fs";
+
+// Bun loads the TypeScript source directly, so in-workspace the FLOW-005 stdio
+// walker exercises fresh source with no build step; everything else loads the
+// bundled `dist/`. The probe targets `stdio.ts` because npm force-packs the
+// `main` file (`src/index.ts`) into the tarball without its imports — so a
+// tarball run under bun must take the `dist/` path too.
+const source = new URL("../src/stdio.ts", import.meta.url);
+const { runStdio } = await (globalThis.Bun !== undefined && existsSync(source)
+  ? import(source.href)
+  : import("../dist/index.js"));
 
 runStdio().catch((err) => {
   const message = err instanceof Error ? err.message : String(err);

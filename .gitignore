@@ -76,6 +76,9 @@ packages/nlqdb-rs/target/
 # Ruby gem build artifacts
 packages/nlqdb-rb/*.gem
 
+# npm pack output (the pre-publish tarball-verify step in .changeset/README.md)
+*.tgz
+
 # Terraform (if/when we add IaC)
 *.tfstate
 *.tfstate.*

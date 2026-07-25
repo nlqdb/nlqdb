@@ -44,8 +44,11 @@ per-host config path):
   directly. Run tests via `bun run --filter @nlqdb/mcp test`.
 - **Publish artifact:** `bun run build` emits `dist/index.js` (single
   ESM bundle with `@nlqdb/sdk` inlined; npm deps kept external).
-  `publishConfig` flips `main` and `exports` to `dist/index.js` so
-  `npx @nlqdb/mcp` works under Node 20+ from npm.
+  `bin/nlqdb-mcp.mjs` loads the TypeScript source only when it is
+  present *and* the runtime is Bun, so `npx @nlqdb/mcp` from a published
+  tarball always runs the bundle. (`publishConfig` can't flip `main` /
+  `exports` to `dist/` — npm ignores those overrides, they are a pnpm
+  feature.)
 
 CI runs the build for the `mcp` matrix entry and asserts `dist/index.js`
 is produced; the bundle stays out of git (`.gitignore`'s `dist/`).

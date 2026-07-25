@@ -36,7 +36,8 @@ Status:
   Only the bootstrap publish below is left, and it is maintainer-only;
   the founder command is queued as
   [`blocked-by-human.md`](../docs/blocked-by-human.md) bullet 2. Un-gate
-  (steps 2–4) in the PR that follows the publish, not before — a
+  (drop `private`, add the `release-npm.yml` build step, configure the
+  Trusted Publisher) in the PR that follows the publish, not before — a
   non-private package whose version is not yet on npm makes
   `changeset publish` fail the whole release job.
 - Everything else in `packages/*` — still gated.
@@ -44,15 +45,13 @@ Status:
 To un-gate a new package:
 
 1. Add a `build` script (tsup) that emits `dist/index.js` + `dist/index.d.ts`.
-2. Drop `"private": true` and add `publishConfig` so the published
-   tarball points at `dist/` (workspace dev keeps reading `src/` via
-   the top-level `main`/`exports`):
+2. Drop `"private": true` and add the publish metadata (workspace dev
+   keeps reading `src/` via the top-level `main`/`exports`):
    ```json
    {
      "main": "./src/index.ts",
      "exports": { ".": "./src/index.ts" },
      "files": ["dist"],
-     "sideEffects": false,
      "license": "FSL-1.1-ALv2",
      "repository": {
        "type": "git",
@@ -70,17 +69,22 @@ To un-gate a new package:
    > honours only its own keys (`access`, `provenance`, `registry`, `tag`).
    > Verified 2026-07-25 against the live registry: `@nlqdb/sdk@0.2.1`
    > publishes `main: "./src/index.ts"` while its `files` ships only `dist/`,
-   > so `import "@nlqdb/sdk"` from npm throws `ERR_MODULE_NOT_FOUND`. Point a
-   > library's real `main`/`types`/`exports` at `dist/`, or expose the artifact
-   > through `bin` (what `@nlqdb/mcp` does — its bin picks source under bun and
-   > `dist/` under node). Don't add `"sideEffects": false` to a package whose
-   > entry is a pure re-export barrel built by `bun build`: the bundler shakes
-   > it down to a stub that still *builds* clean and then fails to load.
+   > so `import "@nlqdb/sdk"` from npm throws `ERR_MODULE_NOT_FOUND`. The
+   > *published* manifest has to point at `dist/`, and the real fields can't:
+   > every in-workspace consumer resolves the package through them (Bun/Vite,
+   > no build step), so moving them breaks the monorepo. So either expose the
+   > artifact through `bin` (what `@nlqdb/mcp` does — its bin loads the source
+   > only when the source is present *and* the runtime is Bun) or rewrite those
+   > fields at pack time in a `prepack` hook. Also don't add
+   > `"sideEffects": false` to a package whose entry is a pure re-export barrel
+   > built by `bun build`: the bundler shakes it down to a stub that still
+   > *builds* clean and then fails to load.
 3. Add a `bun run --filter='@nlqdb/<name>' build` step to
    `release-npm.yml` before the changesets action.
 4. **Verify the tarball before publishing**, since none of the above fails at
    build time: `npm pack`, install the `.tgz` into an empty dir, and
-   `node -e "import('<pkg>')"` (or run its `bin`) with **node**, not bun.
+   `node -e "import('<pkg>')"` — or, for a `bin`, run it under **both** node
+   and bun, which resolve the package differently.
 5. Configure Trusted Publishing on the package (see below).
 
 ## Authentication: Trusted Publishing (OIDC)

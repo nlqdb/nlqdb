@@ -22,8 +22,23 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".."
 
 // The bare marketing host tagged with the npm ledger key. Subdomains
 // (docs./elements./mcp./app.) are internal to captureFirstTouch and can't
-// acquire a first touch, so only the bare host counts (attribution.ts).
-const EXPECTED_HOMEPAGE = "https://nlqdb.com/?utm_source=npm";
+// acquire a first touch, so only the bare host counts (attribution.ts). The
+// path is free: every `nlqdb.com` page renders `Base.astro`, which captures the
+// landing pathname, so a package may point at the page its own audience should
+// land on (`@nlqdb/mcp` → `/agents/`).
+function isAttributableHomepage(homepage: string | undefined): boolean {
+  if (homepage === undefined) return false;
+  try {
+    const url = new URL(homepage);
+    return (
+      url.protocol === "https:" &&
+      url.host === "nlqdb.com" &&
+      url.searchParams.get("utm_source") === "npm"
+    );
+  } catch {
+    return false;
+  }
+}
 
 // Every workspace package manifest. `private: true` is npm's own "never
 // publish" flag, so those never render a Homepage link — the wrappers are all
@@ -56,7 +71,7 @@ describe("npm homepage acquisition-attribution integrity (SK-GTM-007)", () => {
     // failure names the untagged manifest and the exact fix.
     const offenders: Record<string, string> = {};
     for (const pkg of published) {
-      if (pkg.homepage === EXPECTED_HOMEPAGE) continue;
+      if (isAttributableHomepage(pkg.homepage)) continue;
       offenders[pkg.name] =
         `${relative(REPO_ROOT, pkg.file)} → homepage=${pkg.homepage ?? "(missing)"}`;
     }

@@ -43,11 +43,11 @@ is the company's real cycle time.
    ([npm/cli#8544](https://github.com/npm/cli/issues/8544), still open —
    re-verified 2026-07-25), so version `0.1.0` must come from your npm session.
    The repo is publish-ready and the artifact is **verified end-to-end** — the
-   packed tarball, installed clean and run by node, serves a real MCP
-   `initialize` + `tools/list` with all five tools — so this is one paste:
+   packed tarball, installed into an empty dir, serves a real MCP `initialize` +
+   `tools/list` with all five tools under both node and bun — so this is one paste:
    ```bash
    cd packages/mcp
-   npm pkg set private=false     # publish gate; reverted on the last line
+   npm pkg delete private        # publish gate; reverted on the last line
    bun run build                 # emits dist/ (~25 KB, @nlqdb/sdk bundled in)
    npm login --auth-type=web     # once, if not already signed in
    npx --yes -p npm@latest -- npm publish --no-provenance --access public
@@ -65,28 +65,28 @@ is the company's real cycle time.
    *installable* servers read; ledger rows #12 + #17 gain a real install path.
    Tell the next `/reach` run when it's live and it will land all three.
 
-3. **⏱ ~3 min · since 2026-07-25 — Publish nlqdb to Smithery**
-   (`smithery.ai/servers/new`; reach R-05 venue #2, ledger row #4). **This
-   corrects a wrong assumption, not a delay:** rows #4/#5 recorded Smithery as
-   auto-ingesting the official registry, so nobody was ever going to submit it.
-   Smithery's own publish docs (re-verified 2026-07-25) document exactly two
-   paths — the URL flow below, or `smithery mcp publish` — and mention **no**
-   official-registry ingestion; measured live the same day, `registry.smithery.ai`
-   returns **0** results for `nlqdb`, three days after the registry publish that
-   Glama ingested in one. Remote servers stay self-hosted (Smithery's gateway
-   proxies to ours; streamable HTTP + OAuth are both required and both shipped),
-   so there is nothing to deploy. Sign in, open `smithery.ai/servers/new`, choose
-   the URL/remote path, and enter:
-   - **Server URL:** `https://mcp.nlqdb.com/mcp` (streamable HTTP)
-   - **Qualified name:** `nlqdb/nlqdb` · **Display name:** `nlqdb — analytical memory for AI agents`
-   - **Website / homepage:** `https://nlqdb.com/agents/?utm_source=smithery` (carries the ledger key)
+3. **⏱ ~3 min · since 2026-07-25 — Publish nlqdb to Smithery** (reach R-05
+   venue #2, ledger row #4). **This corrects a wrong assumption, not a delay:**
+   rows #4/#5 recorded Smithery as auto-ingesting the official registry, so
+   nobody was ever going to submit it. Smithery documents publishing only as its
+   own CLI verb and mentions **no** official-registry ingestion (re-verified
+   2026-07-25); measured live the same day, `registry.smithery.ai` returns **no
+   nlqdb server**, three days after the registry publish that Glama ingested in
+   one. Remote servers stay self-hosted (Smithery's gateway proxies to ours;
+   streamable HTTP + OAuth are both required and both shipped), so there is
+   nothing to deploy — it is one paste, account-walled only by the login:
+   ```bash
+   npx --yes @smithery/cli auth login
+   npx --yes @smithery/cli mcp publish https://mcp.nlqdb.com/mcp -n nlqdb/nlqdb
+   npx --yes @smithery/cli mcp publish --resume   # only if it paused for OAuth approval
+   ```
+   Smithery scans the server for its tool catalog and pauses on our OAuth wall —
+   that is what `--resume` is for, after you approve in the browser. Then open
+   the listing and set the metadata that carries the ledger key (rule 1):
+   - **Display name:** `nlqdb — analytical memory for AI agents`
+   - **Website / homepage:** `https://nlqdb.com/agents/?utm_source=smithery`
    - **Description:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
-   Smithery scans the server to extract its tool catalog and **may not complete
-   the scan behind OAuth** — if the listing shows no tools, that is the known
-   cause, and the documented fallback is serving
-   `/.well-known/mcp/server-card.json` with the catalog (agent-doable in
-   `apps/mcp`; ask a `/reach` run for it rather than hand-filling metadata).
-   On submit, flip ledger row #4 to **in-flight** and note the listing URL.
+   On publish, flip ledger row #4 to **in-flight** and note the listing URL.
 
 4. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
    reach R-05 venue #5, ledger row #7).
