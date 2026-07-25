@@ -8,7 +8,7 @@
 # what's missing.
 #
 # Scope (§2 of IMPLEMENTATION.md):
-#   - Runtimes:              Node 20+, Bun, Go 1.24+, Python 3.12+ (via uv).
+#   - Runtimes:              Node 20+, Bun, Go 1.25+, Python 3.12+ (via uv).
 #   - Cloud CLIs:             gh, wrangler (via Bun), flyctl, awscli, stripe.
 #   - Formatter / linter:     Biome (JS/TS/JSON), gofumpt + golangci-lint (Go),
 #                             ruff (Python). Git hooks run them via lefthook.

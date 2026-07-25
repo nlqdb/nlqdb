@@ -194,7 +194,7 @@ scripts/login-cloud.sh     # signs you into cloud providers that have a CLI flow
 ```
 
 `bootstrap-dev.sh` stands up the whole toolchain in one shot — Bun, Node
-20+, Go 1.24+, uv; Biome / gofumpt / golangci-lint / ruff; lefthook git
+20+, Go 1.25+, uv; Biome / gofumpt / golangci-lint / ruff; lefthook git
 hooks; the cloud CLIs (wrangler, flyctl, stripe, gh); a local Ollama so the
 LLM router works offline; and a `.envrc` with self-generated dev secrets.
 Details in
