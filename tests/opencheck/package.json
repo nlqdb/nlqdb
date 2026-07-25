@@ -8,5 +8,8 @@
     "@langchain/openai": "^1.4.5",
     "@playwright/mcp": "0.0.60",
     "opencheck": "^0.3.0"
+  },
+  "overrides": {
+    "@hono/node-server": "^2.0.11"
   }
 }
