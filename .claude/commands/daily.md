@@ -83,11 +83,12 @@ table + one "Last change" entry, no changelog; create it if missing):
 - **Funnel, bot-filtered** (exclude stranger-test bot traffic): visits
   (`bun scripts/rum-pull.ts` — CF RUM, split by host / path / referrer, with
   the synthetic-client cut applied as a printed rule and every removed row
-  listed; real-browser is a floor, never re-derive it by hand), registered
-  users (D1 `user`, real strangers vs founder/test), DBs with a first answer,
-  **first-10-queries success rate** (per new user/DB: share of their first 10
-  `/v1/ask` calls answered successfully; target ≥ 95%), session retention
-  (≥ 2 queries).
+  listed; real-browser is a floor, never re-derive it by hand. Keep its default
+  7d window — longer windows come back sampled, and the header says so),
+  registered users (D1 `user`, real strangers vs founder/test), DBs with a
+  first answer, **first-10-queries success rate** (per new user/DB: share of
+  their first 10 `/v1/ask` calls answered successfully; target ≥ 95%), session
+  retention (≥ 2 queries).
 - **Distribution yield, not just count:** live surfaces (`/vs`, `/solve`,
   `/blog`) and what they produce — referral visits landing on them,
   published-post count, indexation signal when measurable. When
