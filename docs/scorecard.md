@@ -20,12 +20,11 @@ row #20) is pullable only when no acquisition lever is.
 **Worst number today:** **row #21 stranger-walker pass rate — true value 0/9, not the `9/9 ✅` carried
 since 07-21** (live prod walk [30143764445](https://github.com/nlqdb/nlqdb/actions/runs/30143764445)).
 It was never re-read because `SK-STRG-003` keeps the cron green **by design** and the walk ran
-`--quiet`, so a red walk emitted zero bytes and looked identical to one nobody dispatched — run 138's
-blind spot, one layer out. Two causes, now separated: **6 walks failed on a real product break** (the
+`--quiet`, so a red walk emitted zero bytes and looked identical to one nobody dispatched. Two causes,
+now separated: **6 walks failed on a real product break** (the
 `/solve` · `/vs` · `/agents` CTAs discarded the visitor's goal across the marketing→app origin split —
 fixed this run, `SK-ANON-015`); **3 fail on Turnstile declining a headless datacenter client** (428),
-an instrument limit, *not* a repeat of the run-56 fail-closed outage (prod ships a live sitekey,
-verified). Row #16 Phase-2 gate stays 1/9; engine (**#9 Spider 0.2222**, **#8 BIRD 0.542**) dark + fresh
+an instrument limit. Row #16 Phase-2 gate stays 1/9; engine (**#9 Spider 0.2222**, **#8 BIRD 0.542**) dark + fresh
 (07-19, 6 d). Row #15 rose to **0.74** unaided. **Top `blocked-by-human` bullet:** #1 fire the launch
 sequence (Show HN draft **idle 42 days since 06-13**) — the only queue action that can move real
 strangers off 0; its age is the company's real cycle time. Queue depth **7**: launch (#1), mcp.so /
@@ -33,8 +32,13 @@ cursor.directory / awesome-mcp / Claude-dir (#2–#5, account-walled), GLOBAL-03
 CI-as-required-check (#7).
 
 **Rule 6 clean** (CI + Security + Release-npm **and all 8 `deploy-*` workflows** `success` on `main`
-`2d353cf` — run 139 / #817 merged 07-25). **Step 0:** open PRs #819 (reach) + #719 (draft Infisical)
-touch neither `apps/web` nor this run's FEATUREs — no overlap beyond the step-1-exempt `scorecard.md`.
+`aad87a7` — 07-25 02:24Z). **Open PRs 4** — oldest #719 (draft Infisical, 8 d), oldest non-draft #817
+(< 1 d). **Step 0:** open PRs #817 (run 139: `astro.config.mjs`, `canonical-redirects*`,
+`check-links.mjs`, web-app FEATURE), #819 (reach INDEX, mcp-server FEATURE, `apps/docs`), #719 (draft
+Infisical). This run touches `acquisition-health.yml`, the `/solve` · `/vs` · `/agents` · `/app/new`
+pages, `lib/handoff.ts` + `lib/posthog.ts`, `client-nav-integrity` + `handoff` tests,
+`tools/stranger-test`, and the anonymous-mode + stranger-test FEATUREs — **no overlap** beyond the
+step-1-exempt `scorecard.md`.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -91,52 +95,48 @@ stay in `research/distribution-queue.md` (and `apps/web/src/data/blog.ts`):
 **2026-07-25 (run 140)** — **Number moved: row #21 stranger-walker pass rate. The `9/9 ✅` it had
 carried since 07-21 was false; measured 0/9 — and the product half is fixed.**
 
-**How it hid.** `SK-STRG-003` keeps `acquisition-health.yml` green on purpose (a red cron would create
-the founder-facing email channel the operator loop forbids). But the walk also ran `--quiet`, its
-summary went only to `$GITHUB_STEP_SUMMARY`, and artifact download is proxy-gated from the agent
-container — so a failing walk emitted **zero bytes** into the only surface an agent can read. The 07-24
-cron exited **1**; three `/daily` runs recorded green anyway. Fixed first, so the measurement could be
-trusted: no `--quiet`, summary `tee`d to stdout, each failing walk naming its flow, persona, prompt and
-first failing step.
+**How it hid.** `SK-STRG-003` keeps `acquisition-health.yml` green on purpose, and the walk also ran
+`--quiet` with its summary going only to `$GITHUB_STEP_SUMMARY` (artifact download is proxy-gated from
+the agent container) — so a failing walk emitted **zero bytes** into the only surface an agent can read.
+The 07-24 cron exited **1**; three `/daily` runs recorded green anyway. Fixed first, so the measurement
+could be trusted: no `--quiet`, summary `tee`d to stdout, each failing walk naming flow, persona, prompt
+and failing steps.
 
-**The real defect (`SK-ANON-015`, amended).** 6 of 9 walks failed because the **`/solve`, `/vs` and
-`/agents` "Try this query" CTAs discarded the visitor's goal.** Each called `saveDraft(goal)` on
-`nlqdb.com`, then navigated to `/app/new/` — which **301s to `app.nlqdb.com`** (`SK-AUTH-016`).
-localStorage is per-origin, so the goal was written where the create form can never read it.
-`handoff.ts`'s header states the rule ("localStorage does NOT cross") and `SK-ANON-015` shipped the
-`#nlq=` carrier for exactly this — but only the *sign-in* arc was ever wired to it (`attachHandoff`
-appeared in one file). **69 content pages** — every page GSC shows earning impressions — sent strangers
-to an empty input. `§10.2` code-wrong/decision-right: the three CTAs now navigate through
-`attachHandoff`, and `app/new.astro` imports the fragment **before** `getOrMintAnonToken`, or a fresh
-app-origin token wins the race and orphans the DB the visitor already started.
+**The real defect (`SK-ANON-015`, amended).** 6 of 9 walks failed because the three "Try this query"
+CTAs each called `saveDraft(goal)` on `nlqdb.com` and then navigated to `/app/new/`, which **301s to
+`app.nlqdb.com`** (`SK-AUTH-016`) — localStorage is per-origin, so the goal landed where the create form
+can never read it. `SK-ANON-015` had shipped the `#nlq=` carrier for exactly this, but only the
+*sign-in* arc was ever wired to it. `§10.2` code-wrong/decision-right: the three CTAs now navigate
+through `attachHandoff`, and `app/new.astro` imports the fragment **before** `getOrMintAnonToken`, or a
+fresh app-origin token wins the race and orphans the DB the visitor already started.
 
 **Re-measure (rule 3).** Before: **0 passed / 9 failed**, FLOW-002/003 all reporting `nlqdb_draft
 actual=<null>`. The prod re-walk lands after merge+deploy (the cron walks `nlqdb.com`, not a branch), so
-the fix is pinned by tests that fail without it: a two-origin round-trip in `handoff.test.ts`, and a
-closed-world sweep in `client-nav-integrity.test.ts` that fails **by filename** on any file holding
-prompt state that navigates without `attachHandoff` — negative-tested by reverting one CTA. That guard
-is the point: nothing structural prevented this drift, which is how a host merge silently broke 69
-pages. Review passes then pinned the fragment out of every URL sink it can reach — error reports,
-PostHog, the Tawk embed — and narrowed the trusted-referrer set to three explicit hosts.
+the fix is pinned by tests that fail without it: a two-origin round-trip in `handoff.test.ts`, plus a
+source sweep in `client-nav-integrity.test.ts` that fails **by filename** on a file holding prompt state
+that navigates without `attachHandoff` — negative-tested by neutering each of the five senders in turn,
+all five red. That guard is the point: nothing structural prevented this drift. Verified in a real
+two-origin browser (marketing 301s `/app/*` to the app port): all three arcs land the goal, the fragment
+is stripped, back/forward and reload hold, and a hostile-referrer `#nlq=` is rejected.
 
-**Measured, deliberately not pulled.** FLOW-001's 3 remaining failures are **428 `challenge_required`**
-— Turnstile declining a headless Chromium on a GH-Actions IP, working as designed, and **not** a repeat
-of the run-56 fail-closed outage: the deployed `CreateForm` bundle carries a live sitekey and loads
-`challenges.cloudflare.com/turnstile/v0/api.js`, so real browsers are fine. Row #21 can't read 9/9 from
-CI until `RunState` gains `blocked` — **decided and recorded** (`stranger-test/FEATURE.md`), free, next
-run's work; one lever per run. Arming a Turnstile *test* key in production is rejected: weakening the
-live bot floor to make a walker green is not a fix. The walkers' origin-blind assertions were corrected
-in the same pass (`landedGoal()`; emitted events ride a Playwright `exposeFunction` binding).
+**Also closed this run.** `handoff.ts` capped prompt text on the receiver only, so any >4096-char prompt
+was **silently dropped** — now one `normalize()` decides the cap for both sides, an oversize draft
+truncates, and an oversize `pending` demotes to `draft` rather than replaying mangled (`SK-ANON-011`
+amended). `lib/posthog.ts` strips the URL fragment from `$current_url`/`$referrer` so the anon **bearer**
+cannot reach the analytics store even if capture beats the strip. FLOW-001's 3 remaining failures stay
+**428 `challenge_required`** — Turnstile declining a headless Chromium on a GH-Actions IP, by design,
+**not** a repeat of the run-56 fail-closed outage. Row #21 can't read 9/9 from CI until `RunState` gains
+`blocked` — decided and recorded (`stranger-test/FEATURE.md`), next run's work.
 
-**Other lanes.** Strangers **0**, roster byte-identical (GSC in row #7,
-flat). Row #15 rose 0.50 → **0.74** unaided (run 138's mcp fix merged). Engine dark +
-fresh. Queue 2-deep ⇒ no forced publish (row #6); dev.to drip self-throttled. **Gates:** `typecheck` (22 pkgs, 0 errors) · `lint` (0 errors) · `test` (992 api + 385 web);
-web build clean; `main` green first (`2d353cf`, all 8 deploys).
-**D4:** `anonymous-mode/FEATURE.md` was over cap so the edit **net-shrank** it (33353 → 31462 B);
-`scorecard.md` held under 20 KB by compressing per-run changelog out of the step-0 block and rows #7–#9,
-#17–#19, #22.
-**KPI (GLOBAL-025):** advances **onboarding** (the first-query path now carries the goal it promised, on
-69 pages) and **UX**; **degrades none** — no endpoint, external call or bundle change.
+**Other lanes.** GSC live: 6 clicks / 485 impr / pos 17.4, clicks flat an 8th read. Strangers **0**,
+roster byte-identical. Row #15 rose 0.50 → **0.74** unaided (run 138's mcp fix merged). Engine dark +
+fresh. Queue 2-deep (< 3) ⇒ no forced publish, no new draft; dev.to drip self-throttled — expected
+no-op. **Gates:** `typecheck` (22 pkgs, 0 errors) · `lint` (exit 0) · `test` (20 pkgs exit 0, 992 api
+tests + 9 new handoff/guard cases); web build clean, 126 pages. **D4:** `anonymous-mode/FEATURE.md` was
+over cap, so `SK-ANON-015`'s body split into `decisions/SK-ANON-015-*.md` (3.8 KB) and the FEATURE
+**net-shrank** 33353 → 31111 B; `scorecard.md` held under **20000 B** (strict decimal reading) by
+compressing per-run prose, no rows dropped. **KPI (GLOBAL-025):** advances **onboarding** (the
+first-query path now carries the goal it promised, on 69 pages) and **UX**; **degrades none**.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

@@ -62,15 +62,25 @@ function sweepFiles(dir: string, ext: RegExp, acc: string[] = []): string[] {
 const NAV =
   /\blocation(?:\.href\s*=|\.(?:assign|replace)\s*\()\s*(?:\w+\(\s*)?["'`]([^"'`]*)["'`]/g;
 
-// `href="/literal"` / `href='/literal'` — a static internal link. `href={…}`
-// (dynamic) has no leading quote and never matches.
-const HREF = /\bhref=["'](\/[^"'`]*)["']/g;
+// `href="/literal"` / `action='/literal'` — a static internal target. `href={…}`
+// (dynamic) has no leading quote and never matches. A bare `<form action>`
+// 307-redirects exactly like a bare `<a href>`, so both belong here.
+const HREF = /\b(?:href|action)=["'](\/[^"'`]*)["']/g;
 
-// SK-ANON-015 — the two halves the handoff sweep below keys on: anything that
-// persists the visitor's prompt, and any client-side navigation at all
-// (non-global so `.test` carries no `lastIndex` state).
-const PERSISTS_PROMPT = /\b(?:saveDraft|makeDraftSaver|savePending)\(/;
-const NAVIGATES = /\blocation(?:\.href\s*=|\.(?:assign|replace)\s*\()/;
+// SK-ANON-015 — the two halves the handoff sweep below keys on (non-global so
+// `.test` carries no `lastIndex` state).
+//
+// Half one: the file holds prompt state that a cross-origin hop would drop.
+// `importHandoffFromLocation` counts because a *receiver* that forwards onward
+// — `auth/sign-in.astro`, which imports the payload then hops to the app-origin
+// copy of itself — drops the payload just as completely without re-attaching
+// it, and persists nothing of its own to trip the `save*` shapes.
+const TOUCHES_PROMPT = /\b(?:saveDraft|makeDraftSaver|savePending|importHandoffFromLocation)\(/;
+// Half two: any client-side navigation. Deliberately wider than
+// `location.assign` — `window.open`, a bare `location = "…"`, and `el.href =
+// "/…"` all leave the origin just as effectively.
+const NAVIGATES =
+  /\blocation\s*=\s*["'`]|\blocation\.(?:href\s*=|assign\s*\(|replace\s*\()|\bwindow\.open\s*\(|\.href\s*=\s*["'`]\//;
 
 // Surfaces that only ever render on the app origin, where there is nothing to
 // carry across.
@@ -116,21 +126,27 @@ describe("client-nav trailing-slash integrity (SK-WEB-022)", () => {
     // prompt on the floor while each file still read correctly in isolation.
     // The carrier is `attachHandoff` (`#nlq=`).
     //
-    // The trigger is *any* persistence idiom and *any* navigation, not
+    // The trigger is *any* prompt-state idiom and *any* navigation, not
     // `saveDraft` + a literal `/app/` target: `CreateForm.tsx` — the original
     // cross-origin sender — persists via `makeDraftSaver`/`savePending` and
     // hops to a server-supplied absolute `signInUrl`, so the narrow shapes
     // would leave it unguarded.
+    //
+    // Static analysis can't see everything: a target computed at runtime
+    // (`<a href={expr}>`), or a split across two files (goal saved in A, link
+    // rendered in B), still gets past this. The `/solve` + `/vs` stranger
+    // walkers are the browser-level backstop — they assert the goal reaches the
+    // create input, whatever the mechanism.
     const offenders: Record<string, string> = {};
     for (const file of sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/)) {
       const rel = relative(REPO_ROOT, file);
       if (APP_ORIGIN_ONLY.some((dir) => rel.includes(dir))) continue;
       const src = readFileSync(file, "utf8");
-      if (!PERSISTS_PROMPT.test(src)) continue;
+      if (!TOUCHES_PROMPT.test(src)) continue;
       const navigates =
         NAVIGATES.test(src) || [...src.matchAll(HREF)].some((m) => m[1].startsWith("/app/"));
       if (navigates && !src.includes("attachHandoff(")) {
-        offenders[rel] = "persists a prompt then navigates without attachHandoff";
+        offenders[rel] = "holds prompt state then navigates without attachHandoff";
       }
     }
     expect(offenders).toEqual({});

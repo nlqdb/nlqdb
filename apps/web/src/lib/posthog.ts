@@ -23,6 +23,24 @@ import type { SessionUser } from "./session";
 
 let started = false;
 
+// Drop the URL fragment from every captured property. `/app/new/` receives the
+// SK-ANON-015 handoff as `#nlq=<json>`, and that JSON contains the anonymous
+// **bearer token** — a credential. `importHandoffFromLocation()` strips it
+// synchronously, and today that always wins the race because the `await
+// fetchSession()` below cannot resolve inside a deferred-script chain; but
+// "PostHog never sees it" must be a property of this config, not of that
+// accident. Fragments carry no analytics value here (Astro MPA, no hash
+// routing), so the whole hash goes.
+function stripFragment(properties: Record<string, unknown>): Record<string, unknown> {
+  for (const key of ["$current_url", "$referrer"]) {
+    const value = properties[key];
+    if (typeof value === "string" && value.includes("#")) {
+      properties[key] = value.slice(0, value.indexOf("#"));
+    }
+  }
+  return properties;
+}
+
 // Publishable `phc_` project key + EU ingestion host, baked at build
 // time (deploy-web.yml AND deploy-api.yml — the latter builds the
 // bundle `app.nlqdb.com` serves). Absent locally → the SDK never
@@ -44,6 +62,7 @@ export async function initAppAnalytics(user: SessionUser | null): Promise<void> 
   const { default: posthog } = await import("posthog-js");
   posthog.init(cfg.key, {
     api_host: cfg.host,
+    sanitize_properties: stripFragment,
     // Snapshot of PostHog's recommended defaults (autocapture on,
     // heatmaps + dead-click capture on, sensible replay defaults).
     defaults: "2026-05-30",

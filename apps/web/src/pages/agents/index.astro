@@ -330,11 +330,12 @@ const faqJsonLd = faqPageJsonLd(faqs);
 
   <script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
 
-  {/* Pre-seed the `nlqdb_draft` localStorage slot BEFORE the
-      CreateForm React island hydrates, so `loadDraft()` rehydrates
-      the textarea with the agent-memory goal on first paint. Only
-      writes when the slot is empty — never clobbers a draft the
-      visitor was typing on another page. (SK-ANON-011.) */}
+  {/* Pre-seed the `nlqdb_draft` slot before the `<CreateForm>` island
+      hydrates, so `loadDraft()` shows the agent-memory goal on first paint
+      (SK-ANON-011). Empty-slot-only, so it never overwrites what the visitor
+      is typing *here*; clicking "Try a query" below, however, IS their choice
+      of that goal, so from there `saveDraft` and the SK-ANON-015 handoff both
+      overwrite unconditionally — including the app origin's draft. */}
   <script is:inline define:vars={{ heroGoal }}>
     try {
       if (!localStorage.getItem("nlqdb_draft")) {

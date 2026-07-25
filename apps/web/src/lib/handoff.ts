@@ -37,6 +37,10 @@ export const ANON_PREV_KEY = "nlqdb_anon_prev";
 // little slack but pin prefix + length so a crafted fragment can't
 // smuggle arbitrary strings into the bearer slot.
 const ANON_TOKEN_RE = /^anon_[A-Za-z0-9-]{16,128}$/;
+// One cap for prompt text, enforced on BOTH sides of the hop by the single
+// `normalize` below. A receiver-only cap silently dropped any >4096-char
+// prompt and landed the visitor on an empty input — the exact loss
+// SK-ANON-011 forbids.
 const MAX_TEXT = 4096;
 
 export interface HandoffPayload {
@@ -63,9 +67,40 @@ function asText(v: unknown, max: number): string | null {
   return typeof v === "string" && v.length > 0 && v.length <= max ? v : null;
 }
 
-// Parse + validate a `#nlq=` fragment. Field-wise: an invalid field is
-// dropped, not fatal, so a valid prompt still survives a mangled token
-// (and vice versa). Returns null when nothing valid remains.
+// The single place the payload shape and the `MAX_TEXT` cap are decided, so
+// the sender (`buildHandoffPayload`) and the receiver (`parseHandoff`) can
+// never drift apart. Field-wise: an invalid field is dropped, not fatal, so a
+// valid prompt still survives a mangled token (and vice versa). Prompt text is
+// never dropped for length (SK-ANON-011) — an oversize `draft` is truncated,
+// and an oversize `pending` is demoted to `draft` so the goal lands in the
+// input for the user to review instead of being replayed in mangled form.
+// Returns null when nothing valid remains.
+function normalize(input: Record<string, unknown>): HandoffPayload | null {
+  const payload: HandoffPayload = { v: 1 };
+  const anon = asText(input["anon"], 133);
+  if (anon && ANON_TOKEN_RE.test(anon)) payload.anon = anon;
+  const pending =
+    typeof input["pending"] === "object" && input["pending"] !== null
+      ? (input["pending"] as Record<string, unknown>)
+      : null;
+  const goal = pending && typeof pending["goal"] === "string" ? pending["goal"] : "";
+  if (pending && goal.length > 0 && goal.length <= MAX_TEXT) {
+    const origin = asText(pending["origin"], 2048);
+    payload.pending = {
+      goal,
+      submittedAt: asText(pending["submittedAt"], 64) ?? "",
+      // `origin` is a same-origin landing path, never a full URL.
+      origin: origin?.startsWith("/") ? origin : "/",
+    };
+  }
+  const draft = typeof input["draft"] === "string" ? input["draft"] : "";
+  const text = (draft || (goal.length > MAX_TEXT ? goal : "")).slice(0, MAX_TEXT);
+  if (text) payload.draft = text;
+  if (!payload.anon && !payload.pending && !payload.draft) return null;
+  return payload;
+}
+
+// Parse + validate a `#nlq=` fragment.
 export function parseHandoff(hash: string): HandoffPayload | null {
   if (!hash.startsWith(FRAGMENT_PREFIX)) return null;
   let raw: unknown;
@@ -77,27 +112,7 @@ export function parseHandoff(hash: string): HandoffPayload | null {
   if (typeof raw !== "object" || raw === null) return null;
   const input = raw as Record<string, unknown>;
   if (input["v"] !== 1) return null;
-  const payload: HandoffPayload = { v: 1 };
-  const anon = asText(input["anon"], 133);
-  if (anon && ANON_TOKEN_RE.test(anon)) payload.anon = anon;
-  const pending =
-    typeof input["pending"] === "object" && input["pending"] !== null
-      ? (input["pending"] as Record<string, unknown>)
-      : null;
-  const goal = pending ? asText(pending["goal"], MAX_TEXT) : null;
-  if (pending && goal) {
-    const origin = asText(pending["origin"], 2048);
-    payload.pending = {
-      goal,
-      submittedAt: asText(pending["submittedAt"], 64) ?? "",
-      // `origin` is a same-origin landing path, never a full URL.
-      origin: origin?.startsWith("/") ? origin : "/",
-    };
-  }
-  const draft = asText(input["draft"], MAX_TEXT);
-  if (draft) payload.draft = draft;
-  if (!payload.anon && !payload.pending && !payload.draft) return null;
-  return payload;
+  return normalize(input);
 }
 
 // Snapshot this origin's prompt + identity state. Null when there is
@@ -105,22 +120,13 @@ export function parseHandoff(hash: string): HandoffPayload | null {
 export function buildHandoffPayload(): HandoffPayload | null {
   const ls = safeStorage();
   if (!ls) return null;
-  const payload: HandoffPayload = { v: 1 };
-  const anon = ls.getItem(ANON_KEY) ?? "";
-  if (ANON_TOKEN_RE.test(anon)) payload.anon = anon;
-  const rawPending = ls.getItem("nlqdb_pending");
-  if (rawPending) {
-    try {
-      const pending = JSON.parse(rawPending) as PendingPrompt;
-      if (typeof pending.goal === "string" && pending.goal.length > 0) payload.pending = pending;
-    } catch {
-      // corrupt slot — drop it from the handoff rather than fail the redirect
-    }
+  let pending: unknown = null;
+  try {
+    pending = JSON.parse(ls.getItem("nlqdb_pending") ?? "null");
+  } catch {
+    // corrupt slot — drop it from the handoff rather than fail the redirect
   }
-  const draft = loadDraft();
-  if (draft) payload.draft = draft;
-  if (!payload.anon && !payload.pending && !payload.draft) return null;
-  return payload;
+  return normalize({ anon: ls.getItem(ANON_KEY), pending, draft: loadDraft() });
 }
 
 // Append the handoff fragment to a navigation target. A no-op when
@@ -154,31 +160,34 @@ function trustedReferrer(): boolean {
   }
 }
 
-// Import a handoff fragment into this origin's localStorage, then
-// strip it from the address bar. Must run before any code that reads
-// `nlqdb_anon` or `nlqdb_pending` (adoption, session short-circuits).
-// The fragment is stripped even when the payload is rejected, so the
-// bearer never lingers in the address bar or the history entry.
+// Import a handoff fragment into this origin's localStorage. Must run before
+// any code that reads `nlqdb_anon` or `nlqdb_pending` (adoption, session
+// short-circuits). The fragment is stripped first and unconditionally — before
+// the writes, and whether or not the payload was accepted — so the bearer
+// leaves the address bar and the history entry at the earliest possible moment,
+// and a `setItem` that throws (quota) can never leave it behind.
 export function importHandoffFromLocation(): void {
   if (typeof window === "undefined") return;
   if (!window.location.hash.startsWith(FRAGMENT_PREFIX)) return;
   const payload = trustedReferrer() ? parseHandoff(window.location.hash) : null;
-  // One funnel event per rejected arrival — crafted links and
-  // referrer-stripped legit hops are otherwise invisible.
-  if (!payload) emit("handoff.rejected");
-  const ls = payload ? safeStorage() : null;
-  if (payload && ls) {
-    if (payload.pending) savePending(payload.pending);
-    if (payload.draft) saveDraft(payload.draft);
-    if (payload.anon) {
-      const existing = ls.getItem(ANON_KEY) ?? "";
-      if (existing.startsWith("anon_") && existing !== payload.anon) {
-        ls.setItem(ANON_PREV_KEY, existing);
-      }
-      ls.setItem(ANON_KEY, payload.anon);
-    }
-  }
   const url = new URL(window.location.href);
   url.hash = "";
   window.history.replaceState(null, "", url.toString());
+  // One funnel event per rejected arrival — crafted links and
+  // referrer-stripped legit hops are otherwise invisible.
+  if (!payload) {
+    emit("handoff.rejected");
+    return;
+  }
+  const ls = safeStorage();
+  if (!ls) return;
+  if (payload.pending) savePending(payload.pending);
+  if (payload.draft) saveDraft(payload.draft);
+  if (payload.anon) {
+    const existing = ls.getItem(ANON_KEY) ?? "";
+    if (existing.startsWith("anon_") && existing !== payload.anon) {
+      ls.setItem(ANON_PREV_KEY, existing);
+    }
+    ls.setItem(ANON_KEY, payload.anon);
+  }
 }

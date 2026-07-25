@@ -103,8 +103,56 @@ describe("serialize / parse", () => {
       JSON.stringify({ v: 1, anon: "anon_x", pending: { goal: { evil: true } }, draft: "" }),
     )}`;
     expect(parseHandoff(bad)).toBeNull();
-    const huge = `#nlq=${encodeURIComponent(JSON.stringify({ v: 1, draft: "x".repeat(5000) }))}`;
-    expect(parseHandoff(huge)).toBeNull();
+  });
+});
+
+// SK-ANON-011 forbids silent prompt loss, and the cap is the one place a
+// prompt could vanish without anybody noticing — the receiver used to reject
+// >MAX_TEXT text outright, so a long goal landed the visitor on an empty input.
+describe("the MAX_TEXT cap is symmetric and never drops a prompt", () => {
+  const OVERSIZE = "x".repeat(5000);
+  const frag = (p: unknown) => `#nlq=${encodeURIComponent(JSON.stringify(p))}`;
+
+  test("an oversize draft is truncated, not dropped — receiver", () => {
+    const out = parseHandoff(frag({ v: 1, draft: OVERSIZE }));
+    expect(out?.draft).toBe("x".repeat(4096));
+  });
+
+  test("an oversize draft is truncated, not dropped — sender", () => {
+    store.set("nlqdb_draft", OVERSIZE);
+    expect(buildHandoffPayload()?.draft).toBe("x".repeat(4096));
+  });
+
+  test("an oversize pending demotes to draft and is never queued for replay", () => {
+    const out = parseHandoff(
+      frag({ v: 1, pending: { goal: OVERSIZE, submittedAt: "t", origin: "/" } }),
+    );
+    expect(out?.pending).toBeUndefined();
+    expect(out?.draft).toBe("x".repeat(4096));
+  });
+
+  test("the sender demotes an oversize pending the same way", () => {
+    store.set("nlqdb_pending", JSON.stringify({ goal: OVERSIZE, submittedAt: "t", origin: "/" }));
+    const payload = buildHandoffPayload();
+    expect(payload?.pending).toBeUndefined();
+    expect(payload?.draft).toBe("x".repeat(4096));
+  });
+
+  test("a demoted pending reaches the app origin's draft slot, and nothing replays", () => {
+    store.set("nlqdb_pending", JSON.stringify({ goal: OVERSIZE, submittedAt: "t", origin: "/" }));
+    const target = attachHandoff("/app/new/");
+    store = new Map();
+    installWindow(`https://app.nlqdb.com/app/new/${target.slice(target.indexOf("#"))}`);
+    importHandoffFromLocation();
+    expect(store.get("nlqdb_draft")).toBe("x".repeat(4096));
+    expect(store.get("nlqdb_pending")).toBeUndefined();
+  });
+
+  test("under-cap text is untouched on both sides", () => {
+    const under = "y".repeat(4096);
+    expect(parseHandoff(frag({ v: 1, draft: under }))?.draft).toBe(under);
+    store.set("nlqdb_draft", under);
+    expect(buildHandoffPayload()?.draft).toBe(under);
   });
 });
 
