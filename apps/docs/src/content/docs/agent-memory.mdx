@@ -11,11 +11,11 @@ aggregate over what it remembered, not just the top-k a vector store
 recalls. One command connects it.
 
 <Aside type="tip" title="For coding agents">
-If you are a coding agent (Claude Code, Cursor, Codex) setting this up for
-the developer you build with: every step except Step 2 is runnable as-is —
-execute the one command block for the host you run in, then run the
-verification query. **Stop at Step 2 and hand it to the developer**: auth is a
-browser OAuth and there is no headless credential today.
+If you are a coding agent (Claude Code, Cursor, Codex) setting this up for the
+developer you build with: write the Step 1 config yourself, then trigger a tool
+call. That first call opens Step 2's browser OAuth — **there is no headless
+credential, so pause and ask the developer to approve it**, then run the Step 4
+verification query yourself. No API key to paste; nothing else needs a human.
 </Aside>
 
 ## Step 1 — Connect the server
