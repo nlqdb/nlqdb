@@ -157,7 +157,7 @@ func TestDBConnectURLNotPersisted(t *testing.T) {
 	root.SetIn(strings.NewReader(secret + "\n"))
 	root.SetArgs([]string{"db", "connect", "--api-url", srv.URL, "--no-update-check", "--engine", "postgres"})
 	if err := root.Execute(); err != nil {
-		t.Fatalf("connect: %v (stderr=%q)", err, errBuf)
+		t.Fatalf("connect: %v (stderr=%q)", err, errBuf.String())
 	}
 
 	// Walk the whole config dir; no file may contain the secret.
