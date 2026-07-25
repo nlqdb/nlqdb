@@ -66,6 +66,16 @@ const NAV =
 // (dynamic) has no leading quote and never matches.
 const HREF = /\bhref=["'](\/[^"'`]*)["']/g;
 
+// SK-ANON-015 — the two halves the handoff sweep below keys on: anything that
+// persists the visitor's prompt, and any client-side navigation at all
+// (non-global so `.test` carries no `lastIndex` state).
+const PERSISTS_PROMPT = /\b(?:saveDraft|makeDraftSaver|savePending)\(/;
+const NAVIGATES = /\blocation(?:\.href\s*=|\.(?:assign|replace)\s*\()/;
+
+// Surfaces that only ever render on the app origin, where there is nothing to
+// carry across.
+const APP_ORIGIN_ONLY = [join("src", "pages", "app"), join("src", "components", "chat")];
+
 // A same-origin absolute path (`/…`, not `//host`) whose path component (before
 // `?`/`#`) lacks a trailing slash redirects under trailingSlash:"always".
 // A dotted final segment (`/og.png`, `/rss.xml`) is a real asset that carries
@@ -98,27 +108,29 @@ describe("client-nav trailing-slash integrity (SK-WEB-022)", () => {
     expect(offenders).toEqual({});
   });
 
-  test("every marketing CTA into the app carries the SK-ANON-015 handoff", () => {
+  test("every prompt-persisting surface that navigates carries the SK-ANON-015 handoff", () => {
     // `/app/*` 301s to `app.nlqdb.com` (SK-AUTH-016), a different browser
-    // origin — so a CTA that stashes the visitor's goal with `saveDraft` and
-    // then navigates there hands off nothing: localStorage does not cross.
-    // That is how the `/solve`, `/vs` and `/agents` "Try this query" buttons
-    // came to drop every prompt on the floor while each file still read
-    // correctly in isolation. The carrier is `attachHandoff` (`#nlq=`).
+    // origin — so a surface that stashes the visitor's goal and then navigates
+    // there hands off nothing: localStorage does not cross. That is how the
+    // `/solve`, `/vs` and `/agents` "Try this query" CTAs came to drop every
+    // prompt on the floor while each file still read correctly in isolation.
+    // The carrier is `attachHandoff` (`#nlq=`).
     //
-    // Scope: files that call `saveDraft` AND navigate into `/app`, minus the
-    // app surface itself (same-origin there, nothing to carry).
+    // The trigger is *any* persistence idiom and *any* navigation, not
+    // `saveDraft` + a literal `/app/` target: `CreateForm.tsx` — the original
+    // cross-origin sender — persists via `makeDraftSaver`/`savePending` and
+    // hops to a server-supplied absolute `signInUrl`, so the narrow shapes
+    // would leave it unguarded.
     const offenders: Record<string, string> = {};
     for (const file of sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/)) {
       const rel = relative(REPO_ROOT, file);
-      if (rel.includes(join("src", "pages", "app"))) continue; // already on the app origin
+      if (APP_ORIGIN_ONLY.some((dir) => rel.includes(dir))) continue;
       const src = readFileSync(file, "utf8");
-      if (!src.includes("saveDraft(")) continue;
-      const intoApp = [...src.matchAll(NAV), ...src.matchAll(HREF)].some((m) =>
-        (m[1] ?? "").startsWith("/app/"),
-      );
-      if (intoApp && !src.includes("attachHandoff(")) {
-        offenders[rel] = "navigates into /app after saveDraft without attachHandoff";
+      if (!PERSISTS_PROMPT.test(src)) continue;
+      const navigates =
+        NAVIGATES.test(src) || [...src.matchAll(HREF)].some((m) => m[1].startsWith("/app/"));
+      if (navigates && !src.includes("attachHandoff(")) {
+        offenders[rel] = "persists a prompt then navigates without attachHandoff";
       }
     }
     expect(offenders).toEqual({});

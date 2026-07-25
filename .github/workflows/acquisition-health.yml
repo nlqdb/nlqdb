@@ -206,8 +206,8 @@ jobs:
                 "- ttfv p50 ms: " + (.summary.ttfvP50Ms // 0 | tostring),
                 "- ttfv p95 ms: " + (.summary.ttfvP95Ms // 0 | tostring)
               ' "$walk" || true
-              # Name the failing walk + its first failing step. Without this a
-              # red walk is only a count, and diagnosing it costs a re-run.
+              # Name every failing walk and each of its failing steps. Without
+              # this a red walk is only a count, and diagnosing it costs a re-run.
               jq -r '
                 .flows[] as $f | $f.runs[] | select(.state != "passed") |
                 "- FAILED \($f.id) (\($f.persona)) prompt=\"\(.prompt)\" step=\(.failedStep // "n/a")"
