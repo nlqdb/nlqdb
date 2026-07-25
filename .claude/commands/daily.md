@@ -80,11 +80,15 @@ changes. The step-1 scorecard regeneration is exempt: every run updates
 Regenerate `docs/scorecard.md` (current-state tracker, ≤ 20 KB — the metrics
 table + one "Last change" entry, no changelog; create it if missing):
 
-- **Funnel, bot-filtered** (exclude stranger-test bot traffic): visits (CF
-  Web Analytics), registered users (D1 `user`, real strangers vs
-  founder/test), DBs with a first answer, **first-10-queries success rate**
-  (per new user/DB: share of their first 10 `/v1/ask` calls answered
-  successfully; target ≥ 95%), session retention (≥ 2 queries).
+- **Funnel, bot-filtered** (exclude stranger-test bot traffic): visits
+  (`bun scripts/rum-pull.ts` — CF RUM, split by host / path / referrer, with
+  the synthetic-client cut applied as a printed rule and every removed row
+  listed; real-browser is a floor, never re-derive it by hand. Keep its default
+  7d window — longer windows come back sampled, and the header says so),
+  registered users (D1 `user`, real strangers vs founder/test), DBs with a
+  first answer, **first-10-queries success rate** (per new user/DB: share of
+  their first 10 `/v1/ask` calls answered successfully; target ≥ 95%), session
+  retention (≥ 2 queries).
 - **Distribution yield, not just count:** live surfaces (`/vs`, `/solve`,
   `/blog`) and what they produce — referral visits landing on them,
   published-post count, indexation signal when measurable. When
@@ -92,7 +96,9 @@ table + one "Last change" entry, no changelog; create it if missing):
   clicks / impressions / position + top queries and pages — use it as the
   rows #6–#7 Google-side yield input. Its **Strengthen next** section already
   applies the selection rule (highest impressions still off page 1); take the
-  page from there rather than re-eyeballing the list.
+  page from there rather than re-eyeballing the list. The **referral** half is
+  first-party: `bun scripts/rum-pull.ts` prints which external referrer opened
+  which surface — that is row #7's referral yield, not an estimate of it.
 - **Engine:** BIRD / Spider vs `tools/eval/baseline-2026-06-15.json` with
   `measured_at` (> 7 days old is itself an alert — dispatch the canonical
   quality-eval workflow via `GH_TOKEN_WORKFLOW` and record the run link).

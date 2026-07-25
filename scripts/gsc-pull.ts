@@ -13,10 +13,8 @@
 // Usage:
 //   bun scripts/gsc-pull.ts            # last 28 days
 //   bun scripts/gsc-pull.ts --days 7
-//
-// Transport is curl, not `fetch`: the daily loop runs behind a TLS-terminating
-// egress proxy that bun's fetch can't traverse, but curl already trusts
-// (same reasoning as scripts/syndicate-devto.ts).
+
+import { curlRequest as curl } from "./lib/curl.ts";
 
 const SITE = "sc-domain:nlqdb.com";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -27,23 +25,8 @@ function die(msg: string): never {
   process.exit(1);
 }
 
-async function curlRequest(
-  method: string,
-  url: string,
-  headers: string[],
-  body?: string,
-): Promise<{ status: number; body: string }> {
-  const args = ["-sS", "-X", method, url, "-w", "\n%{http_code}"];
-  for (const h of headers) args.push("-H", h);
-  if (body !== undefined) args.push("--data-binary", body);
-  const proc = Bun.spawn(["curl", ...args], { stderr: "pipe" });
-  const out = await new Response(proc.stdout).text();
-  const err = await new Response(proc.stderr).text();
-  await proc.exited;
-  if (proc.exitCode !== 0) die(`curl ${method} ${url} failed (exit ${proc.exitCode}): ${err}`);
-  const idx = out.lastIndexOf("\n");
-  return { status: Number(out.slice(idx + 1)), body: out.slice(0, idx) };
-}
+const curlRequest = (method: string, url: string, headers: string[], body?: string) =>
+  curl(method, url, headers, body).catch((e: Error) => die(e.message));
 
 function b64url(data: Uint8Array | string): string {
   const bytes = typeof data === "string" ? new TextEncoder().encode(data) : data;
