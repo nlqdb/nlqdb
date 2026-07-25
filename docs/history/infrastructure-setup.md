@@ -170,7 +170,7 @@ A single script `scripts/bootstrap-dev.sh` stands up every local tool, pulls Oll
 | :----------------------------- | :-------------------------------- |
 | JS/TS runtime + package mgr    | **Bun** (`bun@1.3+`)              |
 | Python envs + tools            | **uv**                            |
-| Go CLI                         | Go 1.24+                          |
+| Go CLI                         | Go 1.25+                          |
 | JS/TS/JSON/CSS format + lint   | **Biome**                         |
 | Go format                      | **gofumpt**                       |
 | Go lint                        | **golangci-lint**                 |
