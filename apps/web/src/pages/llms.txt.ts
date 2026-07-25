@@ -94,7 +94,8 @@ export const GET: APIRoute = () => {
     `Other hosts (Codex, Cursor, VS Code, Claude Desktop, Windsurf, Zed) and the full\n` +
     `machine-followable guide — expected tools, a verification query, what to do on\n` +
     `failure — are at ${DOCS_SITE}/agent-memory/. Auth is a browser OAuth on the first\n` +
-    `tool call; no API key to paste. The live memory path is \`nlqdb_query\` (provision +\n` +
+    `tool call — no API key to paste, but no headless credential either, so hand that\n` +
+    `one step to the developer. The live memory path is \`nlqdb_query\` (provision +\n` +
     `query in English); the typed \`agent_memory_v1\` preset is coming.\n\n` +
     `Building this into a repo? One command installs the skill (Claude Code / Cursor,\n` +
     `via the public repo — no account, no publish); it writes the skill, a matching\n` +

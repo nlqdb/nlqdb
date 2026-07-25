@@ -1,6 +1,6 @@
 ---
 title: Give your agent memory — one command
-description: Connect any MCP host (Claude Code, Cursor, Codex, Claude Desktop) to nlqdb and give your agent a real database it can query in English as memory. Machine-followable — a coding agent can complete this without a human.
+description: Connect any MCP host (Claude Code, Cursor, Codex, Claude Desktop) to nlqdb and give your agent a real database it can query in English as memory. Machine-followable — a coding agent runs every step except one browser-OAuth approval.
 ---
 
 import { Steps, Aside } from "@astrojs/starlight/components";
@@ -12,12 +12,10 @@ recalls. One command connects it.
 
 <Aside type="tip" title="For coding agents">
 If you are a coding agent (Claude Code, Cursor, Codex) setting this up for
-the developer you build with: Steps 1, 3 and 4 are runnable as-is — pick the
-one command block that matches the host you run in, execute it, then run the
-verification query. **Step 2 is the one step you cannot do yourself**: auth is
-a browser OAuth, so hand that step to the developer, wait for them to approve
-once, then carry on. There is no API key to paste and no headless credential
-today.
+the developer you build with: every step except Step 2 is runnable as-is —
+execute the one command block for the host you run in, then run the
+verification query. **Stop at Step 2 and hand it to the developer**: auth is a
+browser OAuth and there is no headless credential today.
 </Aside>
 
 ## Step 1 — Connect the server
@@ -73,11 +71,8 @@ coding agent writes the file itself, no GUI click.
 ## Step 2 — Authenticate
 
 On the first tool call, nlqdb opens an OAuth page in your browser. Approve
-it once; the host stores the token. No key to generate or paste.
-
-This is the only step that needs a human, and it needs one once per machine:
-the hosted server accepts OAuth tokens only, so there is no API key or
-service credential that lets an agent authenticate unattended today.
+it once; the host stores the token. There is no key to generate or paste — and
+no headless credential either, so this one step needs a human.
 
 ## Step 3 — Confirm the tools
 

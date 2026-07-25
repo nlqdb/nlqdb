@@ -70,7 +70,13 @@ async function main() {
 
 function locateBinary(): string | null {
   const fromEnv = process.env.NLQDB_CLI;
-  if (fromEnv) return existsSync(fromEnv) ? fromEnv : null;
+  // An explicit NLQDB_CLI that doesn't exist is a broken build (deploy-docs.yml sets it), not a
+  // reason to silently publish the placeholder in place of the reference.
+  if (fromEnv) {
+    if (existsSync(fromEnv)) return fromEnv;
+    console.error(`✗ gen-cli: NLQDB_CLI is set to '${fromEnv}' but no such file exists`);
+    process.exit(1);
+  }
   const fromDist = join(REPO_ROOT, "cli/dist/nlq");
   if (existsSync(fromDist) && statSync(fromDist).isFile()) return fromDist;
   return null;
