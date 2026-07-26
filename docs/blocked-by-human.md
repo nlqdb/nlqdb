@@ -17,25 +17,21 @@ is the company's real cycle time.
 
 ## At a glance
 
-The whole queue in nine lines, same order as the bullets below — where the
-exact URL, form values and paste-ready commands live. Read those only when you
-sit down to do the thing.
+The whole queue, same order as the bullets below — where the exact URLs, form
+values and criteria live. Read those only when you sit down to do the thing.
+(Seven bullets cleared in the 2026-07-26 founder sitting: npm bootstrap-publish
++ Trusted Publisher, Smithery, HTTPS zone toggle, mcp.so, cursor.directory,
+the `awesome-mcp-servers` PR, and branch protection — declined, merger agent
+owns the gate.)
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~30 min | Fire the Show HN launch sequence — nlqdb has never launched anywhere | 2026-06-13 |
-| 2 | ~5 min | Bootstrap-publish `@nlqdb/mcp` to npm (one paste), then set its Trusted Publisher | 2026-07-25 |
-| 3 | ~3 min | Publish nlqdb to Smithery (`smithery mcp publish`) | 2026-07-25 |
-| 4 | ~5 min | Submit nlqdb to mcp.so | 2026-07-21 |
-| 5 | ~5 min | Submit nlqdb to cursor.directory | 2026-07-21 |
-| 6 | ~10 min | Open the `awesome-mcp-servers` listing PR | 2026-07-21 |
-| 7 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 8 | ~2 min | Flip "Always Use HTTPS" on the `nlqdb.com` Cloudflare zone | 2026-07-22 |
-| 9 | ~3 min | Make CI a required status check on `main` | 2026-07-25 |
+| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
+| 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #1 can move real strangers (scorecard row #2) this week; #7 is the only
-one that costs money. Each of the rest is a sign-in plus a form, a terminal
-paste, a PR, or a console toggle.
+Only #1 can move real strangers (scorecard row #2); #2 is the only one that
+costs money and waits per `docs/cost-ladder.md` unless a Team org already
+exists.
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
