@@ -52,30 +52,7 @@ paste, a PR, or a console toggle.
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0 this week.
 
-2. **⏱ ~3 min · since 2026-07-25 — Publish nlqdb to Smithery** (reach R-05
-   venue #2, ledger row #4). **This corrects a wrong assumption, not a delay:**
-   rows #4/#5 recorded Smithery as auto-ingesting the official registry, so
-   nobody was ever going to submit it. Smithery documents publishing only as its
-   own CLI verb and mentions **no** official-registry ingestion (re-verified
-   2026-07-25); measured live the same day, `registry.smithery.ai` returns **no
-   nlqdb server**, three days after the registry publish that Glama ingested in
-   one. Remote servers stay self-hosted (Smithery's gateway proxies to ours;
-   streamable HTTP + OAuth are both required and both shipped), so there is
-   nothing to deploy — it is one paste, account-walled only by the login:
-   ```bash
-   npx --yes @smithery/cli auth login
-   npx --yes @smithery/cli mcp publish https://mcp.nlqdb.com/mcp -n nlqdb/nlqdb
-   npx --yes @smithery/cli mcp publish --resume   # only if it paused for OAuth approval
-   ```
-   Smithery scans the server for its tool catalog and pauses on our OAuth wall —
-   that is what `--resume` is for, after you approve in the browser. Then open
-   the listing and set the metadata that carries the ledger key (rule 1):
-   - **Display name:** `nlqdb — analytical memory for AI agents`
-   - **Website / homepage:** `https://nlqdb.com/agents/?utm_source=smithery`
-   - **Description:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
-   On publish, flip ledger row #4 to **in-flight** and note the listing URL.
-
-3. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
+2. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
    reach R-05 venue #5, ledger row #7).
    Account-walled: the form needs a GitHub sign-in (anonymous fetch → 403), and mcp.so
    is **not** an official-registry crawler — it's a Next.js + Supabase directory
@@ -90,7 +67,7 @@ paste, a PR, or a console toggle.
    - **Connect / config (if asked):** `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #7 to **in-flight** and note the `mcp.so/server/...` URL.
 
-4. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
+3. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
    (`cursor.directory/plugins/new`; reach R-05 venue #6, ledger row #8).
    Account-walled: Cursor's **official in-product marketplace is curated** with
    no public self-serve path, and the community directory Cursor's own docs point to
@@ -109,7 +86,7 @@ paste, a PR, or a console toggle.
      one command `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #8 to **in-flight** and note the `cursor.directory/...` URL.
 
-5. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
+4. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
    (`punkpeye/awesome-mcp-servers`; reach R-05 venue #8, ledger row #10). A
    plain GitHub PR — but agent sessions are scoped to `nlqdb/nlqdb` only
    and can't fork/PR an external repo (re-verified 2026-07-22: `add_repo`
@@ -135,7 +112,7 @@ paste, a PR, or a console toggle.
    becomes "live with attributable yield" on its own. Alt list if rejected:
    `wong2/awesome-mcp-servers`. On merge, flip ledger row #10 → in-flight.
 
-6. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -166,19 +143,7 @@ paste, a PR, or a console toggle.
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-7. **⏱ ~2 min · since 2026-07-22 — Flip "Always Use HTTPS" on the `nlqdb.com`
-   Cloudflare zone** (dashboard → SSL/TLS → Edge Certificates). The code half
-   shipped 2026-07-23 ([`GLOBAL-039`](./decisions/GLOBAL-039-https-only-hsts.md)):
-   dynamic hosts (app/mcp) 301 http→https in-worker and every surface now
-   serves HSTS, so returning browsers are pinned to https. The residual gap is
-   only the *first-ever* plaintext hit on the static-asset sites (nlqdb.com
-   marketing + docs.nlqdb.com answer `http://` 200 until the zone toggle;
-   `rel=canonical` keeps the SEO harm small). Agent-blocked: the CF API token
-   is Workers/DNS/D1-scoped and gets auth errors on zone settings
-   (re-verified 2026-07-22). Low rank: internal-integrity yield, no
-   user-facing surface.
-
-8. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
+6. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
    (repo → Settings → Branches → `main`). PR #816 merged with **zero approving
    reviews and no gate**, so nothing currently blocks a merge on red CI — an
    agent session can't read or set branch protection, so this can only be

@@ -9,8 +9,9 @@
   `apps/coming-soon`) ship the same HSTS header via a `_headers` file, since
   the asset path never invokes a worker (by design — zero worker cost) and
   Workers `_redirects` cannot express scheme redirects. **No `preload`
-  directive** — the preload list is effectively irreversible and gated on a
-  zone-level http→301 we can't yet set. Dev hosts (localhost,
+  directive** — the preload list is effectively irreversible; its zone-level
+  http→301 prerequisite is live since 2026-07-26, so adding it is a
+  deliberate one-way decision, not a default. Dev hosts (localhost,
   `*.workers.dev` previews) are never redirected.
 
 - **Core value:** Bullet-proof, Simple, Free
@@ -20,8 +21,9 @@
   leaving every surface open to SSL-strip. The zone-level "Always Use
   HTTPS" toggle needs a dashboard click (the CI token is
   Workers/DNS/D1-scoped), so the enforcement the workers *can* do lands in
-  code where it deploys with every surface; the residual zone toggle is
-  queued in `docs/blocked-by-human.md`. One year + `includeSubDomains` is
+  code where it deploys with every surface; the residual zone toggle was
+  flipped by the founder 2026-07-26 (verified: `http://` on nlqdb.com, www
+  and docs all 301 at the edge). One year + `includeSubDomains` is
   the standard hardening posture; it is expensive to reverse (browsers pin
   it), which is exactly why it is recorded here — a future plaintext-only
   subdomain would be broken for up to a year in returning browsers.
@@ -36,8 +38,8 @@
 - **Alternatives rejected:**
   - **Zone-level "Always Use HTTPS" + HSTS settings only** — blocked on a
     console click today; also leaves enforcement outside the repo where a
-    zone migration silently drops it. The toggle is still worth flipping
-    (covers static-asset `http://` 200s) — it's the residual founder action.
+    zone migration silently drops it. The toggle itself was flipped
+    2026-07-26, closing the static-asset `http://` 200 gap.
   - **`run_worker_first = ["/*"]` on the static sites to 301 in code** —
     charges a worker invocation for every marketing/docs request, undoing
     the documented zero-cost asset path (`apps/web/wrangler.toml`).
