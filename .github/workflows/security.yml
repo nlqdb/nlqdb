@@ -6,9 +6,9 @@
 # and only matters once a week).
 #
 # Renovate covers dependency upgrades; vulnerabilityAlerts in
-# renovate.json5 surface CVEs as PRs the same day they're published —
-# for every manifest outside that file's `ignorePaths`, which now
-# includes the non-workspace suites under `tests/`.
+# renovate.json5 surface CVEs as PRs the same day they're published.
+# That reach now extends to the non-workspace suites under `tests/`,
+# which the preset's `ignorePaths` used to exclude.
 
 name: Security
 
