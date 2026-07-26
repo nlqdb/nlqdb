@@ -15,6 +15,28 @@ and its age next to "worst number today" — restating it each run is
 measurement, not nagging: with 0 real strangers, the age of this queue's head
 is the company's real cycle time.
 
+## At a glance
+
+The whole queue in nine lines, same order as the bullets below — where the
+exact URL, form values and paste-ready commands live. Read those only when you
+sit down to do the thing.
+
+| # | ⏱ | Do this | Blocked since |
+|---|---|---|---|
+| 1 | ~30 min | Fire the Show HN launch sequence — nlqdb has never launched anywhere | 2026-06-13 |
+| 2 | ~5 min | Bootstrap-publish `@nlqdb/mcp` to npm (one paste), then set its Trusted Publisher | 2026-07-25 |
+| 3 | ~3 min | Publish nlqdb to Smithery (`smithery mcp publish`) | 2026-07-25 |
+| 4 | ~5 min | Submit nlqdb to mcp.so | 2026-07-21 |
+| 5 | ~5 min | Submit nlqdb to cursor.directory | 2026-07-21 |
+| 6 | ~10 min | Open the `awesome-mcp-servers` listing PR | 2026-07-21 |
+| 7 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 8 | ~2 min | Flip "Always Use HTTPS" on the `nlqdb.com` Cloudflare zone | 2026-07-22 |
+| 9 | ~3 min | Make CI a required status check on `main` | 2026-07-25 |
+
+Only #1 can move real strangers (scorecard row #2) this week; #7 is the only
+one that costs money. Each of the rest is a sign-in plus a form, a terminal
+paste, a PR, or a console toggle.
+
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
 1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit

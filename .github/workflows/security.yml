@@ -7,6 +7,8 @@
 #
 # Renovate covers dependency upgrades; vulnerabilityAlerts in
 # renovate.json5 surface CVEs as PRs the same day they're published.
+# That reach now extends to the non-workspace suites under `tests/`,
+# which the preset's `ignorePaths` used to exclude.
 
 name: Security
 
