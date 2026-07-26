@@ -52,41 +52,37 @@ paste, a PR, or a console toggle.
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0 this week.
 
-2. **⏱ ~5 min · since 2026-07-25 — Bootstrap-publish `@nlqdb/mcp` to npm.**
-   This is the one action that gives a coding agent a *headless* way in. Today
-   the only route to nlqdb memory is the hosted server's browser OAuth consent
-   screen (walked live 2026-07-25, PR #819): an agent gets through discovery,
-   dynamic client registration and `/authorize`, then hits a page only a
-   signed-in human can approve. `packages/mcp` already ships the MCP spec's
-   headless answer — local stdio reading `NLQDB_API_KEY` (`SK-MCP-001`), spawned
-   daily by `scripts/flow-005-stdio-walk.sh` — but `registry.npmjs.org/@nlqdb/mcp`
-   **404s**, so nobody can install it. Account-walled: npm's Trusted Publishing
-   (OIDC) **cannot publish a package's first version**
-   ([npm/cli#8544](https://github.com/npm/cli/issues/8544), still open —
-   re-verified 2026-07-25), so version `0.1.0` must come from your npm session.
-   The repo is publish-ready and the artifact is **verified end-to-end** — the
-   packed tarball, installed into an empty dir, serves a real MCP `initialize` +
-   `tools/list` with all five tools under both node and bun — so this is one paste:
-   ```bash
-   cd packages/mcp
-   npm login --auth-type=web     # once, if not already signed in — do it first,
-                                 # so an aborted login can't leave the gate open
-   npm pkg delete private        # publish gate; reverted on the last line
-   bun run build                 # emits dist/ (~25 KB, @nlqdb/sdk bundled in)
-   npx --yes -p npm@latest -- npm publish --no-provenance --access public
-   git checkout package.json     # leave the repo gated — an agent PR un-gates it
-   ```
-   Then configure the Trusted Publisher (fields table in
-   [`.changeset/README.md`](../.changeset/README.md)) so every later publish
-   flows via OIDC with provenance. **Don't** commit the `private` flip yourself:
-   un-gating before the package exists on npm makes `changeset publish` fail the
-   whole release job. What it unblocks, once live: `npx -y @nlqdb/mcp` completes
-   setup with a pasted `sk_mcp_*` key instead of a browser (reach R-04's last
-   box); the official-registry entry can then declare an npm `packages` block
-   beside the remote — `mcpName` is already in the tarball for the ownership
-   check the registry runs — which is what the directories that only surface
-   *installable* servers read; ledger rows #12 + #17 gain a real install path.
-   Tell the next `/reach` run when it's live and it will land all three.
+2. ~~**Bootstrap-publish `@nlqdb/mcp` to npm.**~~ **DONE 2026-07-26** —
+   `@nlqdb/mcp@0.1.0` is live on `registry.npmjs.org`, published from the
+   founder's npm session (Trusted Publishing/OIDC cannot create a first
+   version — [npm/cli#8544](https://github.com/npm/cli/issues/8544), still
+   open). Verified against a clean install *from the registry*, not from a
+   local pack: `import "@nlqdb/mcp"` resolves and `npx nlqdb-mcp` starts and
+   asks for `NLQDB_API_KEY`. A coding agent now has a headless way in — no
+   browser consent screen (the hosted server's `/authorize` page still needs
+   a signed-in human, PR #819).
+
+   Caught and fixed at publish time (PR #830): the manifest pointed
+   `main`/`exports` at `src/index.ts`, which `files` doesn't pack — the same
+   permanent-first-version defect `@nlqdb/sdk` shipped in 0.1.0–0.2.1. Note
+   for later: `npm view @nlqdb/mcp main` still prints `src/index.ts` because
+   the registry packument is captured **before** `prepack`; the tarball
+   manifest is what resolution reads, and it is correct. Don't "fix" it.
+
+   **Two human actions remain:**
+   - Configure the Trusted Publisher (fields table in
+     [`.changeset/README.md`](../.changeset/README.md)) so later publishes
+     flow via OIDC with provenance.
+   - Un-gate: PR #830 deliberately keeps `private: true`. Drop it only once
+     the Trusted Publisher is configured, or `changeset publish` fails the
+     whole release job on the next version.
+
+   Now unblocked, needs a `/reach` run: `npx -y @nlqdb/mcp` completes setup
+   with a pasted `sk_mcp_*` key instead of a browser (reach R-04's last box);
+   the official-registry entry can declare an npm `packages` block beside the
+   remote — `mcpName` is in the tarball for the ownership check — which is
+   what directories that only surface *installable* servers read; ledger rows
+   #12 + #17 gain a real install path. Tell the next `/reach` run.
 
 3. **⏱ ~3 min · since 2026-07-25 — Publish nlqdb to Smithery** (reach R-05
    venue #2, ledger row #4). **This corrects a wrong assumption, not a delay:**

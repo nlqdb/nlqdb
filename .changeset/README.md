@@ -27,7 +27,13 @@ Status:
 - `@nlqdb/cli` — un-gated; bootstrap published at `0.1.0` (npm shim
   that downloads the `nlq` Go binary on `postinstall`). Configure
   Trusted Publisher on npmjs.com (see below).
-- `@nlqdb/mcp` — **gated, publish-ready and tarball-verified** 2026-07-25:
+- `@nlqdb/mcp` — **published `0.1.0` 2026-07-26**, manifest still gated
+  (`private: true`) until the Trusted Publisher is configured; registry-verified
+  end-to-end (clean install → `import` resolves, `npx nlqdb-mcp` starts).
+  `npm view @nlqdb/mcp main` reports `src/index.ts` and always will — the
+  packument is captured **before** `prepack`, while resolution reads the
+  tarball's manifest, which points at `dist/`. Not a bug; don't "fix" it.
+  Prior state — publish-ready and tarball-verified 2026-07-25:
   `npm pack` → install → `node .../bin/nlqdb-mcp.mjs` serves a real MCP
   `initialize` + `tools/list` with the full `SK-MCP-002` catalog, so
   `npx -y @nlqdb/mcp` will work on publish. The `@nlqdb/sdk` workspace dep is
