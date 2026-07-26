@@ -20,6 +20,11 @@ when-to-load:
 - `apps/docs/wrangler.toml` (custom-domain, assets binding)
 - `apps/docs/src/content/docs/**` (page bodies, .mdx)
 - `apps/docs/public/**` (`robots.txt`, `_headers` — served verbatim)
+- `apps/docs/src/{components/Head.astro,channel-forward.ts}` — the Starlight
+  `Head` override exists for one reason: this host runs no first-touch capture
+  of its own (`localStorage` is per-origin) and the apex discards a
+  `*.nlqdb.com` referrer as internal, so channel params must ride the URL to
+  the apex or the channel reads `direct` ([`SK-GTM-007`](../gtm-metrics/FEATURE.md))
 - `.github/workflows/deploy-docs.yml` (CI)
 
 ## Decisions

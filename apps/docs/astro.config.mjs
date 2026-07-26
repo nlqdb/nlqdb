@@ -12,6 +12,11 @@ export default defineConfig({
       editLink: {
         baseUrl: "https://github.com/nlqdb/nlqdb/edit/main/apps/docs/",
       },
+      // SK-GTM-007 — the docs host captures no first touch of its own
+      // (`localStorage` is per-origin) and the apex discards a
+      // `*.nlqdb.com` referrer as internal, so the channel has to ride the
+      // URL across the hop. `src/channel-forward.ts`.
+      components: { Head: "./src/components/Head.astro" },
       // WS06-T3 — self-describing machine index for agents that land on
       // docs.nlqdb.com. Emits /llms.txt, /llms-full.txt, /llms-small.txt
       // at build time (starlight-llms-txt, llmstxt.org spec). The

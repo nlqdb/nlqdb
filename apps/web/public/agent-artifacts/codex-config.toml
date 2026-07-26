@@ -11,7 +11,7 @@
 #   recall    → nlqdb_query(q: "what do you remember about ...?")
 #   aggregate → nlqdb_query(q: "how many sessions has each user had this week?")
 # The nlqdb_remember verb + the agent_memory_v1 preset are still gated
-# (wrong_preset today) — use nlqdb_query. Guide: https://docs.nlqdb.com/agent-memory/
+# (wrong_preset today) — use nlqdb_query. Guide: https://docs.nlqdb.com/agent-memory/?utm_source=agent-artifacts
 # Learn more: https://nlqdb.com/agents?utm_source=agent-artifacts
 
 [mcp_servers.nlqdb]

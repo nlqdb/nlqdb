@@ -26,6 +26,7 @@ CLI reference.
 bun run --filter apps/docs dev        # local dev server
 bun run --filter apps/docs build      # static build → dist/
 bun run --filter apps/docs deploy     # build + wrangler deploy
+bun run --filter apps/docs test       # unit tests under src/
 ```
 
 ## Deploy
@@ -39,6 +40,8 @@ touching `apps/docs/**`. Custom domain + cert auto-provisioned by
 - Content additions: write new `.mdx` files under
   `src/content/docs/`; update the sidebar in `astro.config.mjs`.
 - No client-side analytics SDKs — use Cloudflare Web Analytics
-  (`apps/web` pattern) once configured.
+  (`apps/web` pattern) once configured. First-party attribution that
+  sends nothing is not an SDK: `src/channel-forward.ts` only rewrites
+  outbound apex links so the channel survives the hop (SK-GTM-007).
 - No imports from `apps/web` or `packages/elements` — keep the docs
   site decoupled from product code.

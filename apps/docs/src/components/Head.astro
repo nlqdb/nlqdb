@@ -1,0 +1,16 @@
+---
+// Starlight Head override — the documented way to ship a script that imports
+// a local module (`head` config entries bypass Astro's script processing).
+// Everything the default Head renders is unchanged; this only adds the
+// SK-GTM-007 channel forwarding, so a reader who arrives here tagged still
+// reaches the apex tagged. See `../channel-forward.ts`.
+import Default from "@astrojs/starlight/components/Head.astro";
+---
+
+<Default />
+
+<script>
+  import { applyChannelForwarding } from "../channel-forward.ts";
+
+  applyChannelForwarding();
+</script>

@@ -3,7 +3,7 @@
   Append this block to your repo's AGENTS.md (host-neutral: Claude Code,
   Codex, Cursor, and any agent that reads AGENTS.md pick it up). Every
   command below is verified against production — see
-  https://docs.nlqdb.com/agent-memory/.
+  <https://docs.nlqdb.com/agent-memory/?utm_source=agent-artifacts>
 -->
 
 ## Memory — use nlqdb
@@ -63,5 +63,5 @@ agent needs to *aggregate* over memory, not just recall the nearest few rows.
 
 > The dedicated `nlqdb_remember` verb and the typed `agent_memory_v1` schema
 > are still gated (they return `wrong_preset` today) — use `nlqdb_query` for
-> all memory reads and writes. Full guide: https://docs.nlqdb.com/agent-memory/
+> all memory reads and writes. Full guide: https://docs.nlqdb.com/agent-memory/?utm_source=agent-artifacts
 > · Learn more: https://nlqdb.com/agents?utm_source=agent-artifacts
