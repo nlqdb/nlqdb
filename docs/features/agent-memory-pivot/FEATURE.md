@@ -222,6 +222,14 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 **Body:** [`decisions/SK-PIVOT-015-reach-track.md`](./decisions/SK-PIVOT-015-reach-track.md). The buying decision happens at stage-0/1 searches ("my agent forgets"), increasingly issued by the builder's own coding agent, so a third track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md), R-01..R-08) wins that moment: intent-mapped solve pages, a one-command setup guide, MCP registry listings, droppable in-repo artifacts, and a coding-agent walker as the yield metric. Runs on its own `/reach` loop (4×/day, offset from `/daily`) so worst-number selection can't starve it; reach numbers live in the reach INDEX, never `docs/scorecard.md`.
 
+### SK-PIVOT-016 — The launch is condition-gated on a lived dogfood workload; conditions, never calendar dates
+
+**Body:** [`decisions/SK-PIVOT-016-dogfood-launch-gate.md`](./decisions/SK-PIVOT-016-dogfood-launch-gate.md). Founder-directed 2026-07-26: queue bullet #1 fires when the dogfood gate's five criteria are green (≥ 100 real public-MCP asks from the ops workload, first-10 ≥ 95 % on it, zero silent data loss, temporal golden queries pass, live `/agents` dashboard) — agents may tighten criteria, only the founder loosens; calendar dates are banned from the gate. `/daily` restates gate progress (n/5) beside the bullet's age.
+
+### SK-PIVOT-017 — The dogfood workload is a productized docs→memory skill: structured extraction, one-way sync, markdown canonical
+
+**Body:** [`decisions/SK-PIVOT-017-docs-to-memory-skill.md`](./decisions/SK-PIVOT-017-docs-to-memory-skill.md). An nlqdb-branded skill extracts a repo's **structured operational knowledge** (decisions, statuses, open questions, queues, ledgers) into an nlqdb memory DB via the public MCP surface, kept fresh by a one-way re-sync hook; markdown stays the git-reviewed source of truth. nlqdb's own `docs/` is the first corpus — the SK-PIVOT-016 gate workload and the launch demo in one. v1 never ingests arbitrary prose (the vector-RAG trap); the golden-query set (≥ 10, incl. temporal) rides the `SK-QUAL-023` eval family.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL;

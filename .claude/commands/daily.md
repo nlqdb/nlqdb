@@ -141,7 +141,10 @@ table + one "Last change" entry, no changelog; create it if missing):
 - **Top lines:** the weekly focus number (set by `/weekly` — don't
   overwrite it mid-week), then "worst number today" + which lane owns it,
   then the top `blocked-by-human.md` bullet + its days-blocked — restated
-  every run until done (measurement, not nagging).
+  every run until done (measurement, not nagging). When the top bullet
+  carries a condition gate (e.g. `SK-PIVOT-016`), also restate its gate
+  progress (n/N criteria green) — agent-movable criteria are lever
+  candidates like any row (founder-directed 2026-07-26).
 
 ### 2 — One lever, measured
 

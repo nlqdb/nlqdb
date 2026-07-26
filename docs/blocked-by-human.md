@@ -40,8 +40,15 @@ paste, a PR, or a console toggle.
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
 1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
-   ready since 07-19 — Fire the launch sequence** — the founder-only half of
-   [`docs/research/launch-kit.md`](./research/launch-kit.md): pick the angle
+   ready since 07-19 — Fire the launch sequence** — **now condition-gated on
+   the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
+   founder-directed 2026-07-26: criteria, never calendar dates — agents
+   drive all five; `/daily` restates gate progress n/5 beside this bullet's
+   age). When the gate is green, only this founder-only half remains, and
+   the launch demo is the gate's own artifact (the live `/agents` memory
+   dashboard + "we ran our company's ops on our own memory through the
+   public MCP endpoint — here's what broke"): per
+   [`docs/research/launch-kit.md`](./research/launch-kit.md), pick the angle
    (§2; GLOBAL-036 says lead with analytical agent memory), write the Show
    HN post + first comment in your own voice from the §3.1 fact sheet
    (never agent copy — the r/SQL lesson), soft-launch lobste.rs/r/SideProject
@@ -50,7 +57,7 @@ paste, a PR, or a console toggle.
    migrations (`0022`–`0025`) are applied (verified live 2026-07-22), so
    every visit is attributable end-to-end. nlqdb has never launched anywhere;
    this is the only action in the queue that can move real strangers
-   (scorecard row #2) from 0 this week.
+   (scorecard row #2) from 0.
 
 2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
@@ -85,6 +92,17 @@ paste, a PR, or a console toggle.
 
 ## Suggestions needing approval (to amend the guidelines)
 
-(none — the auto-merge-tier proposal was **rejected by the founder
-2026-07-22**: review latency is handled by a separate merger agent, not by
-`/daily` self-merging; recorded in `daily.md` §4. Don't re-propose.)
+- **Add a "surface-creating" escape hatch to `/daily` step 2** (proposed
+  2026-07-26, advisor session): after N (suggest 4) consecutive null runs,
+  the next run may — instead of a 5th null — propose **one** new
+  surface-area lever (a new workload, channel experiment, or product
+  wedge slice) as a written option for founder review, rather than idling.
+  Rationale: runs 131–137 produced six consecutive "no agent-movable
+  lever" nulls while the phase gate sat at 1/9 — the nulls were a signal
+  the lever taxonomy was exhausted, and nothing was assigned to hear it.
+  Approving amends `daily.md` step 2; rejecting records a don't-re-propose
+  note here, like the auto-merge tier below.
+
+(The auto-merge-tier proposal was **rejected by the founder 2026-07-22**:
+review latency is handled by a separate merger agent, not by `/daily`
+self-merging; recorded in `daily.md` §4. Don't re-propose.)
