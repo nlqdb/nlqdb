@@ -70,123 +70,19 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 ### SK-PIVOT-004 — Visualizations stay on-brand: code/CSS motion and type, never stock or produced video
 
-- **Decision:** Every pivot "visualization" — the capability matrix, the
-  demo, the OG images — is rendered in the existing brand system (acid-lime
-  `#c6f432` on near-black `#0b0f0a`, JetBrains Mono, hard shadows, live
-  `<nlq-data>` / CSS motion). The framing doc's "one 90-second demo video"
-  becomes a **live, interactive in-page demo + a technical blog post**, not a
-  produced video with footage.
-- **Core value:** Creative, Honest latency
-- **Why:** Manifesto tenet 08 forbids stock photos and decorative imagery;
-  the site is deliberately illustration-free and that *is* the brand. A live
-  demo (a real `GROUP BY` over an `agent_memory` table in the page) is
-  on-brand and a stronger proof than a produced video.
-- **Consequence in code:** OG images authored in the brand palette as
-  type-on-dark (no raster screenshots). The `/agents` demo is `<nlq-data>` or
-  the carousel, not `<img>`/`<video>`. The blog post (WS-09) is the long-form
-  artifact.
-- **Alternatives rejected:** Commission a video — off-brand, stale on first
-  change. · Screenshot the matrix as a PNG — raster drift + tenet-08.
+**Body:** [`decisions/SK-PIVOT-004-brand-visuals.md`](./decisions/SK-PIVOT-004-brand-visuals.md). Every pivot "visualization" — the capability matrix, the demo, the OG images — is rendered in the existing brand system (acid-lime `#c6f432` on near-black `#0b0f0a`, JetBrains Mono, hard shadows, live `<nlq-data>` / CSS motion).
 
 ### SK-PIVOT-006 — Engine track ships **additive** memory primitives; the existing contract is preserved
 
-- **Decision:** The architectural commitment behind the wedge ships as a
-  parallel **engine track** (`worksheets/engine/E-01..E-07`) — a canonical
-  `agent_memory_v1` schema preset, additive MCP tools (`nlqdb_remember`,
-  `nlqdb_recall`), per-agent scoping, TTL, pgvector hybrid recall, an
-  `/agents` CreateForm preset, and a workload-analyzer rule. **No existing
-  MCP tool, API, table, or surface is renamed or removed.** The existing
-  generalist `db.create` / `nlqdb_query` / `<nlq-data>` flows keep their
-  contracts; the memory shape sits alongside as a first-class opt-in.
-- **Core value:** Bullet-proof, Simple, Goal-first
-- **Why:** The moat ("real SQL on structured memory, typed-plan trust
-  boundary") is already shipped — but **being a database isn't the same as
-  being the memory primitive an agent reaches for.** Today an agent must
-  design its own schema via generic `db.create`, so the "zero schema design"
-  claim isn't yet true. The engine track makes it true without an
-  incompatible rebuild: keep `SK-MCP-002`'s tool contract and `db.create`'s
-  generalist path (GLOBAL-036's dual front door), add memory shapes
-  alongside. Renames are a hidden tax on early adopters; additive is the
-  right shape pre-PMF.
-- **Consequence in code:** New `apps/api/src/db-create/presets/agent-memory-v1.ts`
-  (E-01) and a `{ preset }` field on `db.create`. New `nlqdb_remember`
-  (E-02) and `nlqdb_recall` (E-05) MCP tools alongside the three existing
-  ones. Per-agent scope via row-level RLS (E-03, `app.agent_id` GUC —
-  SK-PIVOT-009), not query-rewriting. `expires_at` TTL with a
-  scheduled sweep (E-04). pgvector index on `facts.content` + hybrid fusion
-  in the compile layer (E-05). The authed create surface posts
-  `{ preset: "agent_memory_v1" }` (E-06 — SK-PIVOT-010; the anon `/agents`
-  CreateForm path was found infeasible). Workload-analyzer + migration
-  orchestrator gain a memory rule (E-07, Phase 3).
-- **Alternatives rejected:** **Rename `nlqdb_query` to memory verbs** —
-  breaks SK-MCP-002 and every integrated host for cosmetic gain. · **Replace
-  the generalist `db.create` path with the memory preset** — destroys the
-  P1/P3/P4 surfaces the dual-front-door (GLOBAL-036) is committed to. ·
-  **Skip the engine track and let agents build their own memory schema via
-  generic `db.create`** — what we have today; the "zero schema design"
-  wedge claim is then false. · **One mega-PR for the whole track** —
-  unreviewable, contradicts the daily-loop sizing rule.
+**Body:** [`decisions/SK-PIVOT-006-additive-engine-track.md`](./decisions/SK-PIVOT-006-additive-engine-track.md). The architectural commitment behind the wedge ships as a parallel **engine track** (`worksheets/engine/E-01..E-07`) — a canonical `agent_memory_v1` schema preset, additive MCP tools (`nlqdb_remember`, `nlqdb_recall`), per-agent scoping, TTL, pgvector hybrid recall, an `/agents` CreateForm preset, and a workload-analyzer rule.
 
 ### SK-PIVOT-007 — Memory schema `agent_memory_v1` is the canonical shape; evolve by version, never in place
 
-- **Decision:** Agent memory has one canonical schema —
-  `agent_memory_v1`'s four tables (`facts`, `episodes`, `entities`,
-  `entity_facts`) — and it is part of the **public contract** once shipped.
-  Schema evolution happens by promoting to `agent_memory_v2` with a
-  documented compatibility note; no in-place column rename or table
-  removal on an active memory preset.
-- **Core value:** Bullet-proof, Simple
-- **Why:** Once an agent's memory lives in `agent_memory_v1`, its `WHERE`
-  predicates, MCP-host configs, and downstream analytics all assume the
-  shape. An in-place rename is a silent breaking change for every
-  integrator. The schema-widening rule (GLOBAL-004) already says logical
-  schemas only widen — versioning the preset is the application of that
-  rule to a *named* schema (rather than a user-inferred one). The
-  ClickHouse migration rule (E-07) hashes on this version to pick a
-  target.
-- **Consequence in code:** `agent_memory_v1` DDL ships from a typed module
-  whose `versionTag` flows into `schema_hash`. Adding a column (widening)
-  is allowed; renaming or removing one requires `agent_memory_v2`. The
-  agent-scope RLS (E-03, SK-PIVOT-009) is added on the preset path; the
-  recall-fusion logic (E-05) and the workload-analyzer rule (E-07) key on
-  the version. Tests pin the column set so a silent drift is rejected at
-  PR time.
-- **Alternatives rejected:** **No versioning — evolve in place** — silent
-  breakage for every integrator on the next schema change. · **Per-tenant
-  custom memory schemas** — defeats the "zero schema design" wedge; the
-  preset *is* the value. · **Defer versioning to v2 time** — versioning is
-  a contract; adding it later is harder than starting with it.
+**Body:** [`decisions/SK-PIVOT-007-memory-schema-versioning.md`](./decisions/SK-PIVOT-007-memory-schema-versioning.md). Agent memory has one canonical schema — `agent_memory_v1`'s four tables (`facts`, `episodes`, `entities`, `entity_facts`) — and it is part of the **public contract** once shipped.
 
 ### SK-PIVOT-008 — The memory **write** verb is a dedicated server endpoint that builds the SQL itself, never `/v1/run`
 
-- **Decision:** `nlqdb_remember` (E-02) writes through a dedicated
-  `POST /v1/memory/remember` endpoint. The server — not the LLM, not the
-  caller — builds the deterministic parameterised `INSERT … RETURNING`
-  (`apps/api/src/memory/remember.ts` `buildRememberInsert`): every identifier
-  is drawn from the fixed `AGENT_MEMORY_V1_COLUMNS` allow-list, every value is
-  a bound `$n`. Rejected with `wrong_preset` (409) unless the target DB is an
-  `agent_memory_v1` preset (the `db_agent_memory_v1_` id prefix). Entities
-  upsert on the `(agent_id, kind, canonical_name)` UNIQUE. `agent_id`
-  resolution + scoping is SK-PIVOT-009.
-- **Core value:** Bullet-proof, Simple, Goal-first
-- **Why:** Routing the write through `/v1/run` would re-open string-built SQL
-  over arbitrary agent content and move SQL authorship to the caller — exactly
-  the trust boundary the typed-plan pipeline keeps (`SK-PIVOT-006`). A
-  server-built endpoint keeps it: the agent controls *data*, never *SQL*. The
-  `wrong_preset` guard fails loud (GLOBAL-012). `buildMemoryExec` reuses the
-  read path's `set_config('app.tenant_id', …)` transaction so RLS governs the
-  INSERT's `WITH CHECK` too.
-- **Consequence in code:** New `apps/api/src/memory/remember.ts` (builder +
-  validator + orchestrator) + `buildMemoryExec` in `ask/build-deps.ts` + the
-  route. SDK `client.remember()` (GLOBAL-003 parity, auto-keyed, `SK-SDK-006`)
-  + the additive `nlqdb_remember` tool ship the same PR; `wrong_preset` joins
-  the SDK `ApiErrorCode` union. CLI `nlq remember` (Go) is the tracked
-  fast-follow. Idempotency has the same accept-the-header posture as `/v1/run`.
-- **Alternatives rejected:** **Write via `/v1/run`** — re-opens string-SQL
-  over agent content, breaks the boundary. · **Let the LLM compose the
-  INSERT** — non-deterministic + a token cost for a mechanical write. ·
-  **Generic `/v1/memory` with a `verb` field** — over-abstracts three fixed
-  shapes; an explicit `kind` discriminant is simpler.
+**Body:** [`decisions/SK-PIVOT-008-remember-endpoint.md`](./decisions/SK-PIVOT-008-remember-endpoint.md). `nlqdb_remember` (E-02) writes through a dedicated `POST /v1/memory/remember` endpoint.
 
 ### SK-PIVOT-009 — Per-agent memory scoping is row-level RLS keyed on `app.agent_id`, never query-rewriting the LLM's SQL
 
