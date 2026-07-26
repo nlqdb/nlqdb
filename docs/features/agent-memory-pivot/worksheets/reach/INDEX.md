@@ -121,7 +121,9 @@ never hand-typed), the proven-best-practice schema story
 (`agent_memory_v1`: facts/episodes/entities + per-agent RLS + TTL) as the
 credibility layer, honest DIY section last. Cross-link R-02.
 **Done when:** ✅ one page per top-5 unowned R-01 query (all filled).
-Owned: #2 [`solve/best-way-to-store-agent-memory`](../../../../../apps/web/src/data/solve.ts) ✅, #5 build-vs-buy ✅ (R-02), #10 [`solve/expire-old-agent-memory`](../../../../../apps/web/src/data/solve.ts) ✅, #13 [`solve/agent-memory-mcp-server`](../../../../../apps/web/src/data/solve.ts) ✅ (#13 also R-05 registries).
+Owned, all in [`solve.ts`](../../../../../apps/web/src/data/solve.ts): #2
+`best-way-to-store-agent-memory`, #5 `build-vs-buy-agent-memory` (R-02), #10
+`expire-old-agent-memory`, #13 `agent-memory-mcp-server` (also R-05 registries).
 
 ### R-04 — Canonical machine-followable setup guide
 
@@ -136,8 +138,8 @@ after connect, a verification query, what to do on failure. Add a
 **Verify every step against prod before publishing** (hard rule 1).
 **Done when:** ✅ page live ([`docs/agent-memory`](../../../../../apps/docs/src/content/docs/agent-memory.mdx) → `docs.nlqdb.com/agent-memory/`; sidebar-registered, linked from README + `/agents` connect card + llms.txt) · ✅ llms.txt `## For coding agents` section ([`llms.txt.ts`](../../../../../apps/web/src/pages/llms.txt.ts)) · ⬜ one manual cold-agent
 walk (agent given only the URL) completes setup — **walked 2026-07-25, blocked at Step 2's browser
-consent; cannot tick until a headless credential ships** (§ Current numbers;
-[`mcp-server/FEATURE.md`](../../../mcp-server/FEATURE.md)).
+consent; cannot tick until a headless credential ships**
+([`mcp-server/FEATURE.md`](../../../mcp-server/FEATURE.md)).
 
 ### R-05 — Registry + directory sweep (one venue per run)
 
@@ -147,9 +149,8 @@ servers.
 leads with memory (SK-PIVOT-003 framing) + the one command.
 **Done when:** per venue: listed (URL) or payload parked — tick per venue.
 **Mechanism (P2, corrected 2026-07-25 by #822):** publishing once to the official MCP registry
-cascades only to the venues that document ingestion — Glama (confirmed) and PulseMCP (partly:
-registry is one input to crawl + curation). Every other venue needs its own account-walled submit.
-Per-venue mechanism and exact payloads live canonically in
+cascades only to venues that document ingestion — Glama (confirmed) and PulseMCP (partly). Every
+other venue needs its own account-walled submit. Per-venue mechanism and exact payloads live in
 [`acquisition-channels.md`](../../../../research/acquisition-channels.md) +
 [`blocked-by-human.md`](../../../../blocked-by-human.md) — status only here.
 - ✅ #1 official MCP registry — **published 2026-07-22** (`com.nlqdb/nlqdb` v0.1.1, DNS
@@ -182,7 +183,7 @@ cold session drops into
 [`fixtures/agent-app/`](../../../../../tools/stranger-test/fixtures/agent-app/)) ·
 ✅ baseline recorded (2026-07-20: **0/1 surfaced** — cold agent web-searched, recommended
 `pgvector`, never named nlqdb; the expected ≈ 0) · ✅ re-run wired into `/reach` step 1
-(`bash scripts/reach-agent-walk.sh`; the step-1 measure list already re-runs it once merged).
+(`bash scripts/reach-agent-walk.sh`).
 
 ### R-07 — Droppable in-repo artifacts (the direct injection)
 
@@ -200,9 +201,9 @@ the R-04 guide + npm + registries. Add a drift test (artifact strings ==
 docs guide + llms.txt `## For coding agents`) **and one-command installable** —
 `npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory`
 (vercel-labs/skills; **run against the live CLI 2026-07-25**: writes `.agents/skills/nlqdb-memory/`
-— read directly by Cursor and Codex — plus a `.claude/skills/` symlink for Claude Code, no account.
-Writes **no** Cursor rule and **no** `AGENTS.md` entry; the 07-22 record claimed both)
-→ **in-flight**. **Remaining R-07 work is external distribution**:
+— read directly by Cursor and Codex — plus a `.claude/skills/` symlink for Claude Code, no account,
+and **no** Cursor rule or `AGENTS.md` entry) → **in-flight**. **Remaining R-07 work is external
+distribution**:
 `skills.sh` has no submission flow (P2 2026-07-23 — the leaderboard populates from anonymous
 `npx skills` install telemetry), so growth is organic install yield + the account-walled npm
 installer package (→ founder), plus the yield gate (a real `agent-artifacts` visit in `/app/admin`)
@@ -214,67 +215,72 @@ connect string == `mcp-install.ts`, served-file URLs pinned to `/mcp`, all `nlqd
 ### R-08 — Answer-engine citation baseline
 
 **Goal:** Know whether ChatGPT/Claude/Perplexity cite nlqdb on R-01 queries.
-**Do:** A low-cost spot-check: for the top-10 R-01 queries, query the
-answer engines that expose an API (skip ToS-hostile scraping; manual pass
-where closed), record cited/not-cited per query in § Current numbers.
-**Autonomous method (what `/reach` re-runs):** an answer engine can only
+**Do / autonomous method (what `/reach` re-runs):** an answer engine can only
 cite what its retrieval surfaces, so the reproducible baseline is *retrieval
-presence* — `WebSearch` each top-10 query, record whether `nlqdb.com` is in
-the grounding set (0 sets ⇒ 0 possible citations). The generative-UI pass
-(answer-engine accounts, "manual pass where closed") is optional founder
-enrichment — it gates nothing, so it is **not** queued in `blocked-by-human.md`.
+presence* — `WebSearch` each top-10 R-01 query, record whether `nlqdb.com` is
+in the grounding set (0 sets ⇒ 0 possible citations). The generative-UI pass
+(answer-engine accounts) is optional founder enrichment — it gates nothing, so
+it is **not** queued in `blocked-by-human.md`.
 **Done when:** ✅ first baseline recorded (2026-07-22: **0/10**; see § Current
 numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
 
 ## Current numbers (maintained by /reach step 1 — overwrite, no changelog)
 
-- **R-07's one-command install shipped a false mechanism on all three agent-facing surfaces —
-  found by running it, fixed this run.** The docs guide, `llms.txt` and the `agent-artifacts`
-  README each said `npx skills add …` "formats a matching Cursor rule and registers it in
-  `AGENTS.md`". Run against the live CLI three ways (default, `--agent cursor`, `--all`) it writes
-  `.agents/skills/nlqdb-memory/SKILL.md`, a `.claude/skills/` symlink and `skills-lock.json` —
-  **never** a `.cursor/rules/` file, **never** an `AGENTS.md` edit. The *outcome* holds and is
-  wider than advertised: Cursor and Codex both read `.agents/skills/` (their own docs), so one
-  command covers Claude Code + Cursor + Codex. But a reader waiting on the `AGENTS.md` entry got
-  nothing. All three surfaces now state what lands, and
-  [`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) goes red
-  per-surface if the disclosure is dropped (negative-tested on each).
-- **R-04 cold-agent walk (2026-07-25, prior run) — the blocker is a *delivery* gap, not crawl→rank
-  latency.** Given only the URL an agent clears Step 1 and every discovery hop against live prod —
-  `POST /mcp` 401 with a spec-correct `WWW-Authenticate`, RFC 9728 + RFC 8414 metadata, RFC 7591
-  dynamic registration, `/authorize` 302 with PKCE — then stops dead at a browser consent screen
-  needing a signed-in human. Re-confirmed at the source this run: `apps/mcp` routes `/mcp` through
-  `OAuthProvider`, so there is **no** API-key bearer path to document as a headless alternative.
-  Parked in [`mcp-server/FEATURE.md`](../../../mcp-server/FEATURE.md); `SK-MCP-001`'s stdio hatch
-  is now publish-ready (#822) and un-gates on one founder npm paste (blocked-by-human #2).
-- **Indexability audited live this run** — five flat GSC reads deserved a technical cause; there
-  isn't one. `sitemap.xml` carries 116 URLs including all four R-02/R-03 intent pages; each serves
-  200, self-canonical, no `noindex`; `robots.txt` allows `*` plus GPTBot/ClaudeBot/PerplexityBot/
-  Bingbot. **Correction:** the "116 submitted / 0 indexed" carried by the last five runs is the
-  GSC API's *deprecated* indexed field, which returns 0 for every site (confirmed by Google) — it
-  was never evidence of anything. Nothing to fix here; the gap is authority, not crawlability.
-- GSC intent-query clicks (28d, live re-pull 2026-07-25, window 06-25→07-23): **0** — total 6
-  clicks / 485 impr / pos 17.4, every click on a non-intent page. Intent queries stuck deep
-  ("agent memory benchmark" 53, "deep memory retrieval benchmark" 52, "locomo benchmark ai memory"
-  83). **6th consecutive flat read**, 4 days past the registry publish. Sharper read this run:
-  **none of the four R-02/R-03 intent pages appears in any of the 100 returned page rows** — they
-  have not zero clicks but zero impressions. R-01 baseline, unmoved.
-- Registry/directory listings: **1 published + 1 crawl-fed**. #1 official registry live
-  (`com.nlqdb/nlqdb`; its search API returns the entry). **Glama** live but links the repo, not the
-  utm-tagged `websiteUrl` → in-flight until founder-claimed. Smithery + PulseMCP both measured
-  absent 2026-07-25 (#822): Smithery needs its own publish (parked), PulseMCP re-checks 08-22.
-  R-05 #5–#8 each need a founder submit. Channels live with attributable yield: **4** (organic,
-  dev.to, github, npm); #12 in-flight.
+- **The R-04 guide was `Disallow: /` to ClaudeBot + GPTBot and Google had never crawled it — found
+  and fixed this run.** `docs.nlqdb.com` shipped with no `robots.txt`, so it served only
+  Cloudflare's *managed* block, which disallows ClaudeBot, GPTBot, Google-Extended, CCBot and five
+  more. The marketing host has carried an AI-permissive override all along; docs never got one — so
+  the one page the coding-agent thesis routes through, plus the `/llms.txt` + `/llms-full.txt`
+  beside it, was closed to the exact crawlers behind Claude Code and Codex while `/agents` and every
+  solve page stayed open. Fixed by mirroring the apex policy
+  ([`apps/docs/public/robots.txt`](../../../../../apps/docs/public/robots.txt)) + advertising
+  Starlight's `sitemap-index.xml` (a second GSC sitemap submission is a console action; the
+  directive is the discovery path we control in code). Edge enforcement ruled out first — all four
+  crawler UAs get 200, so robots.txt was the only gate.
+  [`robots-ai-parity.test.ts`](../../../../../apps/web/src/data/robots-ai-parity.test.ts) derives
+  the required crawler set from the marketing file, so re-opening one there can't skip docs again
+  (negative-tested both ways).
+- **Per-URL index truth is now measured, not inferred** — `gsc-pull.ts` gained `## Index status`
+  (URL Inspection API; the same readonly service account can call it). Wedge pages: **2 of 6
+  indexed.** `solve/best-way-to-store-agent-memory` (crawled 07-20) and `solve/agent-memory-mcp-server`
+  (07-21) are indexed and **still earn 0 impressions** — for those two the gap really is ranking.
+  `solve/build-vs-buy-agent-memory` + `solve/expire-old-agent-memory`: **never crawled**.
+  `docs/agent-memory`: **unknown to Google** (the robots block above). `/agents/` reports canonical
+  drift (Google indexes non-slash `/agents`), but prod is correct — 301 → slash, self-canonical
+  matches the sitemap — so that is GSC naming the redirect source; nothing to fix.
+- **Correction:** the prior run's "the gap is authority, not crawlability" was half wrong.
+  Crawlability *was* a real cause — two stage-0 pages are not in the index and the guide was
+  robots-blocked — invisible while the loop read the sitemaps endpoint's `indexed` field, which is
+  deprecated and returns 0 for every site
+  ([seroundtable 27712](https://www.seroundtable.com/google-search-console-api-sitemaps-indexed-counts-27712.html)).
+  `gsc-pull.ts` now says so inline so run N+1 cannot re-derive it.
+- GSC (28d, live 2026-07-26, window 06-26→07-24): **8 clicks / 520 impr / pos 17.5**; intent-query
+  clicks **0** — **7th consecutive flat read**. All four stage-0 pages earn zero impressions, but
+  **nine other agent-memory URLs earn them, five on page 1** (`solve/isolate-ai-agent-memory-per-tenant`
+  pos 3.0, `solve/analytical-queries-over-agent-memory` 6.7, `/agents` 6.8, `vs/supermemory` 8.8,
+  `solve/analyze-agent-tool-call-logs` 9.5). The host ranks agent-memory content fine; it is the
+  stage-0 set specifically that earns nothing. R-01 baseline, unmoved.
+- **R-04 setup blocker is delivery, not discovery** (walked 2026-07-25): an agent clears every
+  discovery hop against live prod — RFC 9728 + 8414 metadata, RFC 7591 registration, `/authorize`
+  302 with PKCE — then stops at a browser consent screen needing a signed-in human, because
+  `apps/mcp` routes `/mcp` through `OAuthProvider` with no bearer-key path. Parked in
+  [`mcp-server/FEATURE.md`](../../../mcp-server/FEATURE.md); the `SK-MCP-001` stdio hatch is
+  publish-ready (#822) and un-gates on one founder npm paste (blocked-by-human #2).
+- Registry/directory listings: **1 published + 1 crawl-fed** (#1 official registry live; Glama
+  in-flight — links the repo, not the utm-tagged `websiteUrl`, until founder-claimed). Smithery +
+  PulseMCP absent 2026-07-25 (#822); R-05 #5–#8 each need a founder submit. Channels live with
+  attributable yield: **4** (organic, dev.to, github, npm); #12 in-flight.
 - Coding-agent walker (R-06): **0/1 surfaced** (baseline 2026-07-20 — cold session recommended
   `pgvector`, never nlqdb). Not re-run: no `ANTHROPIC_API_KEY` in this session.
-- Canonical setup guide (R-04): **live, 2 of 3** — its "For coding agents" aside now names Step 2 as
-  the one step an agent hands to a human, per the walk above (hard rule 1).
-- Droppable artifacts (R-07): **4 of 4 live**, `agent-artifacts` in-flight, yield 0. The one-command
-  install path is now verified end-to-end by running it, not just linted (finding above); auth copy
-  already matches the walk ("opens a browser OAuth page once — approve it").
-- Stage-0 solve pages: R-03 complete (4 of top-5 unowned filled) + R-02's two `competitors.md` §4
-  entries. Live path `nlqdb_query`; remember/preset gated (SK-PIVOT-010).
+- Canonical setup guide (R-04): **live, 2 of 3** — its crawl path opened this run; the walk box stays
+  ⬜ because the blocker is the credential, not discovery.
+- Droppable artifacts (R-07): **4 of 4 live**, `agent-artifacts` in-flight, yield 0; the
+  one-command install path is verified by running it, not just linted (#825).
+- Stage-0 solve pages: R-03 complete + R-02's two `competitors.md` §4 entries. Live path
+  `nlqdb_query`; remember/preset gated (SK-PIVOT-010).
 - Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10**. Monthly; next 2026-08-22.
+  Not re-run (not due). Note for that run: no Claude/ChatGPT retrieval path could have cited the
+  docs-hosted guide before this run's robots fix — the apex was always open, so the 0/10 stands.
 
 ## Tracker
 

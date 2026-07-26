@@ -170,6 +170,10 @@ if (!offPage1.length) console.info("  (none — every page earning impressions i
 
 const sm = await curlRequest("GET", `${API}/sitemaps`, [`Authorization: Bearer ${token}`]);
 console.info("\n## Sitemaps");
+// `indexed` below is always 0: Google dropped the metric from this endpoint and
+// never restored it (seroundtable 27712; Search Central threads 5640575 +
+// 7570062). Five reach runs read that 0 as evidence pages were unindexed — it is
+// evidence of nothing. Per-URL truth is `## Index status`.
 if (sm.status !== 200) {
   // An error body is often an HTML page — collapse whitespace so it can't break
   // the one-fact-per-line shape the rest of the report keeps.
@@ -188,3 +192,55 @@ if (sm.status !== 200) {
     );
   }
 }
+
+// The wedge pages the reach loop exists to make win (R-02/R-03/R-04 in
+// docs/features/agent-memory-pivot/worksheets/reach/INDEX.md). They earn ~0
+// impressions, which is exactly why the sections above cannot see them: a
+// search-analytics row exists only for a URL that got an impression, so a page
+// Google never crawled is indistinguishable there from one that ranks badly.
+// URL Inspection is the read that separates the two. Trailing slashes match
+// what sitemap.xml advertises (astro `trailingSlash: "always"`).
+const INTENT_URLS = [
+  "https://nlqdb.com/agents/",
+  "https://nlqdb.com/solve/best-way-to-store-agent-memory/",
+  "https://nlqdb.com/solve/build-vs-buy-agent-memory/",
+  "https://nlqdb.com/solve/expire-old-agent-memory/",
+  "https://nlqdb.com/solve/agent-memory-mcp-server/",
+  "https://docs.nlqdb.com/agent-memory/",
+];
+
+type IndexStatus = {
+  verdict?: string;
+  coverageState?: string;
+  lastCrawlTime?: string;
+  googleCanonical?: string;
+  userCanonical?: string;
+};
+
+console.info("\n## Index status — per-URL, the wedge pages (URL Inspection API)");
+let indexed = 0;
+for (const url of INTENT_URLS) {
+  const res = await curlRequest(
+    "POST",
+    "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
+    [`Authorization: Bearer ${token}`, "Content-Type: application/json"],
+    JSON.stringify({ inspectionUrl: url, siteUrl: SITE, languageCode: "en-US" }),
+  );
+  if (res.status !== 200) {
+    console.info(`  (unavailable — HTTP ${res.status}) ${url}`);
+    continue;
+  }
+  const r: IndexStatus = JSON.parse(res.body).inspectionResult?.indexStatusResult ?? {};
+  if (r.verdict === "PASS") indexed++;
+  // A never-crawled URL is the actionable case: Google holds the URL but has
+  // spent no crawl on it, so no amount of on-page work can move it yet.
+  const crawl = r.lastCrawlTime ? `crawled ${r.lastCrawlTime.slice(0, 10)}` : "NEVER CRAWLED";
+  const drift =
+    r.googleCanonical && r.userCanonical && r.googleCanonical !== r.userCanonical
+      ? `  !! canonical drift — Google chose ${r.googleCanonical}`
+      : "";
+  console.info(
+    `  ${(r.coverageState ?? r.verdict ?? "unknown").padEnd(38)} ${crawl.padEnd(18)} ${url}${drift}`,
+  );
+}
+console.info(`  → ${indexed} of ${INTENT_URLS.length} indexed`);
