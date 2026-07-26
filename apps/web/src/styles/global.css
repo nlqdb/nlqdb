@@ -177,8 +177,14 @@ h3 {
 
 /* Topnav (Topnav.astro) */
 
+/* `flex-wrap` on both rows is what keeps the nav inside a phone viewport: the
+   seven links + auth slot need ~650px, so without wrapping every page on the
+   site scrolled horizontally at 390px (measured identical on `/`, `/solve/`,
+   `/privacy/`, `/manifesto/`, `/integrations/`). No effect above ~652px, where
+   the single row already fits. */
 .topnav {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   padding: 22px 0;
@@ -214,6 +220,7 @@ h3 {
 
 .topnav__links {
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
   align-items: center;
 }
