@@ -33,14 +33,16 @@ Status:
   `npx -y @nlqdb/mcp` will work on publish. The `@nlqdb/sdk` workspace dep is
   bundled into `dist/`, so it is a **devDependency** — a `workspace:*` range
   must never reach a published `dependencies`.
+  Step 2's `publishConfig` + `prepack`/`postpack` pair landed 2026-07-26, so the
+  tarball's `main`/`exports` resolve to `dist/` and `src/index.ts` is no longer
+  force-packed — `import "@nlqdb/mcp"` works from the registry, and the first
+  (permanent) version won't ship the `@nlqdb/sdk` 0.1.0–0.2.1 defect. No `types`
+  condition: the `bun build` bundle emits no `.d.ts`, and claiming one that
+  isn't packed is the same class of lie.
   Only the founder's bootstrap-publish + Trusted-Publisher sitting is left;
   the command is queued as
-  [`blocked-by-human.md`](../docs/blocked-by-human.md) bullet 2. Un-gate in
-  the follow-up PR, per the ordered list below. That PR owes step 2's
-  `publishConfig` + `prepack`/`postpack` pair: only the `bin` surface is
-  reachable today, so `import "@nlqdb/mcp"` from the tarball would throw and
-  the integrity guard fails the moment `private` is dropped. Nothing advertises
-  that import, which is why it can wait for the un-gate — not longer.
+  [`blocked-by-human.md`](../docs/blocked-by-human.md) bullet 2. Drop `private`
+  in the follow-up PR, per the ordered list below.
 - Everything else in `packages/*` — still gated.
 
 To un-gate a new package, **in this order** — the repo change comes last,
