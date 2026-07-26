@@ -52,67 +52,7 @@ paste, a PR, or a console toggle.
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0 this week.
 
-2. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
-   reach R-05 venue #5, ledger row #7).
-   Account-walled: the form needs a GitHub sign-in (anonymous fetch → 403), and mcp.so
-   is **not** an official-registry crawler — it's a Next.js + Supabase directory
-   (`chatmcp/mcpso`) whose data comes from this form, so the row-#3 registry publish does
-   **not** cascade here (per-server pages auto-open a giscus GitHub Discussion for
-   *comments*, which is not the submission path). Verified 2026-07-21. Sign in, open
-   `mcp.so/submit`, and enter:
-   - **GitHub URL:** `https://github.com/nlqdb/nlqdb` (the form auto-fetches name/README)
-   - **Name / title:** `nlqdb — analytical memory for AI agents`
-   - **Website:** `https://nlqdb.com/agents/?utm_source=mcpso` (carries the ledger key)
-   - **Description:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
-   - **Connect / config (if asked):** `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
-   On submit, flip ledger row #7 to **in-flight** and note the `mcp.so/server/...` URL.
-
-3. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
-   (`cursor.directory/plugins/new`; reach R-05 venue #6, ledger row #8).
-   Account-walled: Cursor's **official in-product marketplace is curated** with
-   no public self-serve path, and the community directory Cursor's own docs point to
-   (`cursor.directory`) takes submissions only through a web form that needs a GitHub/Google
-   sign-in — the `cursor/community-plugins` repo explicitly says "all content is submitted
-   through the website — no pull requests needed for data", so there is **no agent PR path** and
-   the row-#3 registry publish does not cascade here. Verified 2026-07-21. Sign in at
-   `cursor.directory/login` (GitHub or Google), open `cursor.directory/plugins/new`, and enter:
-   - **GitHub repo URL:** `https://github.com/nlqdb/nlqdb` (the form auto-detects Open-Plugins
-     components — `.mcp.json`, `rules/*.mdc`, `skills/*/SKILL.md`; nlqdb's repo has no root
-     `.mcp.json` yet since the MCP server is hosted-remote, so fill the hosted URL below by hand)
-   - **Name / title:** `nlqdb — analytical memory for AI agents`
-   - **Website:** `https://nlqdb.com/agents/?utm_source=cursor-dir` (carries the ledger key)
-   - **Description:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
-   - **MCP server / connect (if asked):** hosted HTTP URL `https://mcp.nlqdb.com/mcp`, or the
-     one command `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
-   On submit, flip ledger row #8 to **in-flight** and note the `cursor.directory/...` URL.
-
-4. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
-   (`punkpeye/awesome-mcp-servers`; reach R-05 venue #8, ledger row #10). A
-   plain GitHub PR — but agent sessions are scoped to `nlqdb/nlqdb` only
-   and can't fork/PR an external repo (re-verified 2026-07-22: `add_repo`
-   rejects cross-owner adds, GitHub-MCP fork denied), so it's parked for the
-   founder or a scope-unrestricted session. Mechanism verified
-   2026-07-21 (`CONTRIBUTING.md`): follow the README's existing format, keep
-   alphabetical order within the category, one server per line; automated-agent PRs
-   can prefix the title with `🤖🤖🤖` for the maintainer's fast-track merge.
-   1. Fork `github.com/punkpeye/awesome-mcp-servers`, edit `README.md`.
-   2. Under the `## 🧠 Knowledge & Memory` heading (memory-first per SK-PIVOT-003;
-      not `🗄️ Databases`), insert **in alphabetical position** (by `nlqdb`) this line:
-      ```
-      - [nlqdb/nlqdb](https://github.com/nlqdb/nlqdb) 📇 ☁️ - Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.
-      ```
-      Markers: 📇 TypeScript codebase · ☁️ hosted cloud service (remote MCP at
-      `mcp.nlqdb.com/mcp`). No 🎖️ (not an official MCP-protocol-team server). The
-      Glama score badge is auto-added by Glama's bot later — omit it.
-   3. PR title: `🤖🤖🤖 Add nlqdb (analytical memory for AI agents) to Knowledge & Memory`
-      (drop the `🤖🤖🤖` if a human submits by hand).
-   Honesty caveat: the entry links to the **GitHub repo** (list convention), not a
-   utm-taggable `nlqdb.com` URL, so this venue can't carry the `awesome-mcp` key —
-   its yield rolls into the `github`/organic refs (discovery/SEO), and it never
-   becomes "live with attributable yield" on its own. Alt list if rejected:
-   `wong2/awesome-mcp-servers`. On merge, flip ledger row #10 → in-flight.
-
-5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -143,7 +83,7 @@ paste, a PR, or a console toggle.
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-6. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
+3. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
    (repo → Settings → Branches → `main`). PR #816 merged with **zero approving
    reviews and no gate**, so nothing currently blocks a merge on red CI — an
    agent session can't read or set branch protection, so this can only be
