@@ -83,20 +83,6 @@ paste, a PR, or a console toggle.
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-3. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
-   (repo → Settings → Branches → `main`). PR #816 merged with **zero approving
-   reviews and no gate**, so nothing currently blocks a merge on red CI — an
-   agent session can't read or set branch protection, so this can only be
-   confirmed by a human. The required list matches individual check-run names,
-   not the workflow name `CI` — select the `CI` workflow's job checks
-   (`Go (gofumpt + vet + golangci-lint + test)`, `Biome (JS/TS/JSON/CSS)`,
-   `apps/api (typecheck + vitest + wrangler dry-run)`, …) plus the new
-   `tests/e2e/* (typecheck — out-of-workspace suites)` (#815). Without it that
-   backstop can go red and still merge, which is the exact
-   silent-failure mode #815 exists to close — it caught `tests/e2e/mcp`
-   compiling zero tests for 11 days. Lowest rank: internal integrity, no
-   user-facing surface.
-
 ## Suggestions needing approval (to amend the guidelines)
 
 (none — the auto-merge-tier proposal was **rejected by the founder

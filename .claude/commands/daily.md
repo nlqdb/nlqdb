@@ -232,3 +232,7 @@ fix instead. Open the PR without asking for permissions.
 
 No auto-merge tier: daily PRs always wait for review (founder-rejected
 2026-07-22 — a separate merger agent owns review latency; don't re-propose).
+The same decision covers GitHub branch protection: the founder declined
+required status checks on `main` (2026-07-26) — the reviewer-fixer merger
+agent's daily criteria are the merge gate, including CI state — so don't
+re-queue a branch-protection bullet in `blocked-by-human.md`.
