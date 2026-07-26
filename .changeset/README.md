@@ -27,28 +27,17 @@ Status:
 - `@nlqdb/cli` — un-gated; bootstrap published at `0.1.0` (npm shim
   that downloads the `nlq` Go binary on `postinstall`). Configure
   Trusted Publisher on npmjs.com (see below).
-- `@nlqdb/mcp` — **published `0.1.0` 2026-07-26**, manifest still gated
-  (`private: true`) until the Trusted Publisher is configured; registry-verified
-  end-to-end (clean install → `import` resolves, `npx nlqdb-mcp` starts).
+- `@nlqdb/mcp` — un-gated; bootstrap published at `0.1.0` from the
+  founder's npm session 2026-07-26, Trusted Publisher configured the same
+  sitting; registry-verified end-to-end (clean install → `import` resolves,
+  `npx nlqdb-mcp` starts). Two standing constraints:
   `npm view @nlqdb/mcp main` reports `src/index.ts` and always will — the
   packument is captured **before** `prepack`, while resolution reads the
   tarball's manifest, which points at `dist/`. Not a bug; don't "fix" it.
-  Prior state — publish-ready and tarball-verified 2026-07-25:
-  `npm pack` → install → `node .../bin/nlqdb-mcp.mjs` serves a real MCP
-  `initialize` + `tools/list` with the full `SK-MCP-002` catalog, so
-  `npx -y @nlqdb/mcp` will work on publish. The `@nlqdb/sdk` workspace dep is
-  bundled into `dist/`, so it is a **devDependency** — a `workspace:*` range
-  must never reach a published `dependencies`.
-  Step 2's `publishConfig` + `prepack`/`postpack` pair landed 2026-07-26, so the
-  tarball's `main`/`exports` resolve to `dist/` and `src/index.ts` is no longer
-  force-packed — `import "@nlqdb/mcp"` works from the registry, and the first
-  (permanent) version won't ship the `@nlqdb/sdk` 0.1.0–0.2.1 defect. No `types`
-  condition: the `bun build` bundle emits no `.d.ts`, and claiming one that
-  isn't packed is the same class of lie.
-  Only the founder's bootstrap-publish + Trusted-Publisher sitting is left;
-  the command is queued as
-  [`blocked-by-human.md`](../docs/blocked-by-human.md) bullet 2. Drop `private`
-  in the follow-up PR, per the ordered list below.
+  And the `@nlqdb/sdk` workspace dep is bundled into `dist/`, so it is a
+  **devDependency** — a `workspace:*` range must never reach a published
+  `dependencies`. No `types` condition: the `bun build` bundle emits no
+  `.d.ts`, and claiming one that isn't packed is the same class of lie.
 - Everything else in `packages/*` — still gated.
 
 To un-gate a new package, **in this order** — the repo change comes last,
@@ -121,8 +110,8 @@ fail the whole release job:
    the test proves nothing — then `node -e "import('<pkg>')"`, or for a `bin`
    run it under **both** node and bun, which resolve the package differently.
 4. Hand to the founder — one sitting, both account-walled: bootstrap-publish by
-   hand (deleting `private` in the working tree only; the founder paste in
-   [`blocked-by-human.md`](../docs/blocked-by-human.md) is the canonical form),
+   hand (deleting `private` in the working tree only; the command in the
+   Chicken-and-egg section below is the canonical form),
    then configure Trusted Publishing on the package (fields below). Both come
    before the repo change — CI's first publish of the package authenticates only
    through that Trusted Publisher.

@@ -52,39 +52,7 @@ paste, a PR, or a console toggle.
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0 this week.
 
-2. ~~**Bootstrap-publish `@nlqdb/mcp` to npm.**~~ **DONE 2026-07-26** —
-   `@nlqdb/mcp@0.1.0` is live on `registry.npmjs.org`, published from the
-   founder's npm session (Trusted Publishing/OIDC cannot create a first
-   version — [npm/cli#8544](https://github.com/npm/cli/issues/8544), still
-   open). Verified against a clean install *from the registry*, not from a
-   local pack: `import "@nlqdb/mcp"` resolves and `npx nlqdb-mcp` starts and
-   asks for `NLQDB_API_KEY`. A coding agent now has a headless way in — no
-   browser consent screen (the hosted server's `/authorize` page still needs
-   a signed-in human, PR #819).
-
-   Caught and fixed at publish time (PR #830): the manifest pointed
-   `main`/`exports` at `src/index.ts`, which `files` doesn't pack — the same
-   permanent-first-version defect `@nlqdb/sdk` shipped in 0.1.0–0.2.1. Note
-   for later: `npm view @nlqdb/mcp main` still prints `src/index.ts` because
-   the registry packument is captured **before** `prepack`; the tarball
-   manifest is what resolution reads, and it is correct. Don't "fix" it.
-
-   **Two human actions remain:**
-   - Configure the Trusted Publisher (fields table in
-     [`.changeset/README.md`](../.changeset/README.md)) so later publishes
-     flow via OIDC with provenance.
-   - Un-gate: PR #830 deliberately keeps `private: true`. Drop it only once
-     the Trusted Publisher is configured, or `changeset publish` fails the
-     whole release job on the next version.
-
-   Now unblocked, needs a `/reach` run: `npx -y @nlqdb/mcp` completes setup
-   with a pasted `sk_mcp_*` key instead of a browser (reach R-04's last box);
-   the official-registry entry can declare an npm `packages` block beside the
-   remote — `mcpName` is in the tarball for the ownership check — which is
-   what directories that only surface *installable* servers read; ledger rows
-   #12 + #17 gain a real install path. Tell the next `/reach` run.
-
-3. **⏱ ~3 min · since 2026-07-25 — Publish nlqdb to Smithery** (reach R-05
+2. **⏱ ~3 min · since 2026-07-25 — Publish nlqdb to Smithery** (reach R-05
    venue #2, ledger row #4). **This corrects a wrong assumption, not a delay:**
    rows #4/#5 recorded Smithery as auto-ingesting the official registry, so
    nobody was ever going to submit it. Smithery documents publishing only as its
@@ -107,7 +75,7 @@ paste, a PR, or a console toggle.
    - **Description:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
    On publish, flip ledger row #4 to **in-flight** and note the listing URL.
 
-4. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
+3. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
    reach R-05 venue #5, ledger row #7).
    Account-walled: the form needs a GitHub sign-in (anonymous fetch → 403), and mcp.so
    is **not** an official-registry crawler — it's a Next.js + Supabase directory
@@ -122,7 +90,7 @@ paste, a PR, or a console toggle.
    - **Connect / config (if asked):** `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #7 to **in-flight** and note the `mcp.so/server/...` URL.
 
-5. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
+4. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
    (`cursor.directory/plugins/new`; reach R-05 venue #6, ledger row #8).
    Account-walled: Cursor's **official in-product marketplace is curated** with
    no public self-serve path, and the community directory Cursor's own docs point to
@@ -141,7 +109,7 @@ paste, a PR, or a console toggle.
      one command `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
    On submit, flip ledger row #8 to **in-flight** and note the `cursor.directory/...` URL.
 
-6. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
+5. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
    (`punkpeye/awesome-mcp-servers`; reach R-05 venue #8, ledger row #10). A
    plain GitHub PR — but agent sessions are scoped to `nlqdb/nlqdb` only
    and can't fork/PR an external repo (re-verified 2026-07-22: `add_repo`
@@ -167,7 +135,7 @@ paste, a PR, or a console toggle.
    becomes "live with attributable yield" on its own. Alt list if rejected:
    `wong2/awesome-mcp-servers`. On merge, flip ledger row #10 → in-flight.
 
-7. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+6. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -198,7 +166,7 @@ paste, a PR, or a console toggle.
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-8. **⏱ ~2 min · since 2026-07-22 — Flip "Always Use HTTPS" on the `nlqdb.com`
+7. **⏱ ~2 min · since 2026-07-22 — Flip "Always Use HTTPS" on the `nlqdb.com`
    Cloudflare zone** (dashboard → SSL/TLS → Edge Certificates). The code half
    shipped 2026-07-23 ([`GLOBAL-039`](./decisions/GLOBAL-039-https-only-hsts.md)):
    dynamic hosts (app/mcp) 301 http→https in-worker and every surface now
@@ -210,7 +178,7 @@ paste, a PR, or a console toggle.
    (re-verified 2026-07-22). Low rank: internal-integrity yield, no
    user-facing surface.
 
-9. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
+8. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
    (repo → Settings → Branches → `main`). PR #816 merged with **zero approving
    reviews and no gate**, so nothing currently blocks a merge on red CI — an
    agent session can't read or set branch protection, so this can only be
