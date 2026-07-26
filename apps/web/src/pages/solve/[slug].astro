@@ -16,7 +16,8 @@
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { blogByAnchorPath } from "../../data/blog";
-import { SOLVE_ENTRIES, SOLVE_PERSONAS, solveBySlug } from "../../data/solve";
+import { PERSONAS } from "../../data/personas";
+import { SOLVE_ENTRIES, solveBySlug } from "../../data/solve";
 import Base from "../../layouts/Base.astro";
 import { breadcrumbJsonLd } from "../../lib/breadcrumb";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
@@ -106,7 +107,7 @@ const breadcrumbLd = breadcrumbJsonLd(
 
       {/* Beat 1 — Hero. One-line problem statement. */}
       <header class="slv__head">
-        <p class="slv__eyebrow">Solve · {SOLVE_PERSONAS[s.persona].label}</p>
+        <p class="slv__eyebrow">Solve · {PERSONAS[s.persona].label}</p>
         <h1 class="slv__title">{s.searchTitle}</h1>
         <p class="slv__lede">{s.oneLiner}</p>
         <p class="slv__context">{s.painContext}</p>

@@ -4,12 +4,13 @@
 // hub the per-comparison pages cross-link to.
 //
 // SK-WEB-015 page sweep: same token system as `/vs/[slug]`. Display
-// serif for the narrative header; mono only for identifier columns
-// (competitor name + persona tag); quiet sans body.
+// serif for the narrative header; mono only for the competitor name;
+// quiet sans body — the audience tag reads as prose, not an identifier.
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { COMPETITORS } from "../../data/competitors";
+import { PERSONAS } from "../../data/personas";
 import Base from "../../layouts/Base.astro";
 import { itemListJsonLd } from "../../lib/itemlist-jsonld";
 
@@ -48,7 +49,7 @@ const itemListLd = itemListJsonLd(
               <a href={`/vs/${c.slug}/`} class="vsidx__link">
                 <div class="vsidx__row">
                   <h2 class="vsidx__name">nlqdb vs {c.name}</h2>
-                  <span class="vsidx__persona">{c.persona}</span>
+                  <span class="vsidx__persona">{PERSONAS[c.persona].label}</span>
                 </div>
                 <p class="vsidx__one-liner">{c.oneLiner}</p>
               </a>
@@ -145,11 +146,10 @@ const itemListLd = itemListJsonLd(
     color: var(--ink);
   }
   .vsidx__persona {
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: var(--t-small);
     color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    white-space: nowrap;
   }
   .vsidx__one-liner {
     font-family: var(--sans);

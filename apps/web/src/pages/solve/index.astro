@@ -9,7 +9,8 @@
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
-import { SOLVE_ENTRIES, SOLVE_PERSONA_ORDER, SOLVE_PERSONAS } from "../../data/solve";
+import { PERSONA_ORDER, PERSONAS } from "../../data/personas";
+import { SOLVE_ENTRIES } from "../../data/solve";
 import Base from "../../layouts/Base.astro";
 import { itemListJsonLd } from "../../lib/itemlist-jsonld";
 
@@ -22,9 +23,9 @@ const itemListLd = itemListJsonLd(
   Astro.site,
 );
 
-const groupedByPersona = SOLVE_PERSONA_ORDER.map((persona) => ({
+const groupedByPersona = PERSONA_ORDER.map((persona) => ({
   persona,
-  info: SOLVE_PERSONAS[persona],
+  info: PERSONAS[persona],
   entries: SOLVE_ENTRIES.filter((s) => s.persona === persona),
   sectionId: `group-${persona.split(" ").slice(1).join("-")}`,
 })).filter((g) => g.entries.length > 0);
