@@ -51,6 +51,11 @@ crons = ["0 4 * * *", "*/4 13-21 * * 1-5", "0 6 * * 1"]
 # to "development" via .dev.vars (gitignored; copy from .dev.vars.example).
 [vars]
 NODE_ENV = "production"
+# SK-HDC-020's opt-in agent-memory preset, enabled founder-directed
+# 2026-07-26 (prerequisite of the SK-PIVOT-016 dogfood gate; unblocks
+# E-06). The flag stays the rollback lever: clearing it returns
+# `preset_disabled` on new creates; existing DBs are untouched.
+MEMORY_PRESET = "1"
 
 # Resources provisioned by `scripts/provision-cf-resources.sh`. The
 # script fills in resolved IDs idempotently — IDs are public identifiers
