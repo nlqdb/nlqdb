@@ -80,9 +80,16 @@ describe("/agents local-stdio connect card", () => {
     // and `/app/keys` deliberately won't mint one (SK-APIKEYS-012). Telling a
     // reader to paste a value that cannot exist is the same dead end this card
     // was added to remove. `sk_live_` is the only self-mintable prefix.
+    const skLive = apiKeyPrefix("SK_LIVE_PREFIX");
     const placeholder = Object.values(stdioConfig().mcpServers.nlqdb.env)[0] ?? "";
     expect(placeholder.startsWith(apiKeyPrefix("SK_MCP_PREFIX"))).toBe(false);
-    expect(placeholder.startsWith(apiKeyPrefix("SK_LIVE_PREFIX"))).toBe(true);
+    expect(placeholder.startsWith(skLive)).toBe(true);
+    // The prefix alone is not enough in the other direction either: `mintSkKey`
+    // emits `sk_live_` + 32 lowercase hex, which every assertion above accepts,
+    // so a *live* key pasted in while verifying this route would ship to the
+    // marketing page — and the repo runs no secret scanner to catch it. Requiring
+    // a shouted suffix rejects both a real key and a bare, keyless `sk_live_`.
+    expect(placeholder.slice(skLive.length)).toMatch(/^[A-Z_]{3,}$/);
     // …and the prose names the same prefix the block pastes.
     expect(agentsPage).toContain("<code>sk_live_</code>");
   });
