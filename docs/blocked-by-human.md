@@ -154,6 +154,15 @@ supersede or amend a recorded decision.
 
 ## Suggestions needing approval (to amend the guidelines)
 
+- **Key the dogfood gate's `n/5` readout to the bullet that carries the
+  gate, not to the top bullet** (proposed 2026-07-27). `SK-PIVOT-016`'s
+  *Consequence in code* and `daily.md` both say `/daily` restates gate
+  progress beside the **top** queue bullet. Inserting the two decision
+  bullets above pushed the launch bullet off the top, so that rule silently
+  stops firing and you lose the `n/5` readout — the instrument that keeps a
+  condition gate from becoming an undated veto. One clause in each file
+  fixes it; it touches a canonical decision, so it is yours to approve.
+
 - **Add a "surface-creating" escape hatch to `/daily` step 2** (proposed
   2026-07-26, advisor session): after N (suggest 4) consecutive null runs,
   the next run may — instead of a 5th null — propose **one** new
