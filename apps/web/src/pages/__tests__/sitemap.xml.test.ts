@@ -71,7 +71,7 @@ describe("sitemap.xml", () => {
     const hasChrome = (src: string) => {
       const markup = src
         .slice(src.indexOf("---", 3) + 3)
-        .replace(/\{?\/\*[\s\S]*?\*\/\}?|<!--[\s\S]*?-->/g, "");
+        .replace(/\{\/\*[\s\S]*?\*\/\}|<!--[\s\S]*?-->/g, "");
       return chrome.every((tag) => markup.includes(tag));
     };
 
