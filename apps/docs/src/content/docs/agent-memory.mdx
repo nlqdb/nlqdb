@@ -126,10 +126,9 @@ one dialog on this page: merge it into `mcpServers` in
 it — then fully quit and reopen the app.
 
 VS Code additionally needs `"type": "stdio"` on that entry, in place of the
-`"type": "http"` its hosted block carries. Two hosts take it differently.
-**Claude Code** reads that same object, but its JSON file is the
-repo-committed `.mcp.json` — so use the CLI, which writes the key to
-`~/.claude.json` and nothing into your project:
+`"type": "http"` its hosted block carries. **Claude Code** reads that same
+object too, but its JSON file is the repo-committed `.mcp.json` — so use the
+CLI, which writes the key to `~/.claude.json` and nothing into your project:
 
 ```bash
 claude mcp add --env NLQDB_API_KEY=sk_live_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
