@@ -3,9 +3,9 @@
 - **Decision:** nlqdb ships a public, reproducible **memory-strategy
   benchmark** (founder-decided 2026-07-27): the same real corpus (the
   `SK-PIVOT-017` ops memories) and the same golden queries, grouped by the
-  `SK-QUAL-023` purpose axes (recall, temporal, entity, analytical), run
-  against competing memory strategies and published with **per-purpose
-  winners even where nlqdb loses**. v1 strategy set: nlqdb, DIY
+  five `SK-QUAL-023` axes (retrieval, temporal, forgetting, consolidation,
+  analytical), run against competing memory strategies and published with
+  **per-purpose winners even where nlqdb loses**. v1 strategy set: nlqdb, DIY
   Postgres+pgvector, plain-context (no store); hosted competitors (Mem0,
   Zep, …) are added **one per run** (the `SK-PIVOT-002` cadence) as their
   ToS allows. Rendered on the `/agents` surface from a typed data
@@ -18,15 +18,15 @@
 - **Why:** Benchmarks are the most-cited artifact class in developer
   tooling — answer engines quote them, and they are exactly what the
   stage-0 searcher and their coding agent compare on. nlqdb currently earns
-  **0** answer-engine citations (that row in
+  **0** answer-engine citations (the answer-engines row in
   [`docs/research/acquisition-channels.md`](../../../research/acquisition-channels.md)),
-  so this is a channel opened, not a channel optimised. A vendor benchmark earns links only by conceding columns:
-  admitting "for pure fuzzy recall, top-k wins — here's the number" is
-  what makes the analytical column believable (the R-02 build-vs-buy
-  lesson). The purpose taxonomy and the corpus already exist, so the
-  marginal cost is a harness and runs. Deciding the shape now also kills
-  the drift risk early: "combine with other providers" must never become
-  memory middleware.
+  so this is a channel opened, not a channel optimised. A vendor benchmark
+  earns links only by conceding columns: admitting "for pure fuzzy recall,
+  top-k wins — here's the number" is what makes the analytical column
+  believable (the R-02 build-vs-buy lesson). The axis taxonomy and the
+  scorers already exist (`SK-QUAL-023` ships them), and the corpus is
+  `SK-PIVOT-017`'s own deliverable, so the marginal cost is a harness and
+  runs.
 - **Consequence in code:** Harness + corpus + raw results are public;
   provider **defaults**, pinned versions and run dates printed on the
   page. Free tiers only (`docs/cost-ladder.md`). Before any named number

@@ -5,8 +5,8 @@ agents resolve value-decidable questions themselves; this file is **only** for
 what a human must do — operator actions an agent can't perform (set a prod
 secret, click through a console, prune a DB) and genuine money / strategy /
 legal bets — or a suggestion needing human approval before it can amend the
-guidelines. Keep each a very short bullet. Delete a bullet once done —
-after appending the action as one line to
+guidelines. Keep each a very short bullet. Delete a bullet once done — an
+**operator action** first gets one line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md)
 (metadata only, never secret values), the only record that survives deletion.
 

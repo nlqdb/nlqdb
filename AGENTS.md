@@ -202,7 +202,7 @@ don't need the full root view when working in one directory.
 | [`docs/progress/quality-score-source-of-truth.md`](docs/progress/quality-score-source-of-truth.md) | Engine-quality progress bar: tried / not-tried, sourced. |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — threat matrix + gap analysis. |
-| [`docs/history/`](docs/history/) | Lessons learnt — one doc per topic. |
+| [`docs/history/`](docs/history/) | Lessons learnt + [`founder-actions-log.md`](docs/history/founder-actions-log.md) (every human operator action) — one doc per topic. |
 | [`docs/blindspot-analysis.md`](docs/blindspot-analysis.md) | Adversarial audit findings + deferred-design tracker. |
 | [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits, marketing, Phase 1 exit, open questions. |
 | [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature (e.g. semantic-layer). Promote once decisions are firm. |
@@ -297,5 +297,4 @@ if you can't fill all five, don't document it yet.
 ### 10.3 Tie-breakers when sources disagree
 
 - **Feature vs code, or feature vs `architecture.md`/`runbook.md` prose** → the feature wins. Fix the losing side; if the code is actually right, file a P1 to amend the feature rather than silently updating either.
-- **A feature has a `### GLOBAL-NNN` body block** → convention violation (`docs/feature-conventions.md` §5): replace it with a one-line reference; the body lives only under `docs/decisions/`.
 - **Two features disagree on a cross-cutting rule** → it should be a `GLOBAL-NNN`. Promote it (§10.1) and reference it from both.
