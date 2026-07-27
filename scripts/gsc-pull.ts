@@ -8,7 +8,9 @@
 // Auth: `GSC_SERVICE_ACCOUNT_JSON` holds the service account's JSON key
 // (single line). The script signs a RS256 JWT (scope webmasters.readonly),
 // exchanges it for an access token, and calls the Search Analytics API.
-// Setup steps for the founder live in docs/blocked-by-human.md.
+// Restricted covers every section except `## Index status` — the URL
+// Inspection API needs the service account promoted to Owner, and soft-fails
+// with that hint until it is. Setup steps live in docs/blocked-by-human.md.
 //
 // Usage:
 //   bun scripts/gsc-pull.ts            # last 28 days
@@ -219,17 +221,27 @@ type IndexStatus = {
 
 console.info("\n## Index status — per-URL, the wedge pages (URL Inspection API)");
 let indexed = 0;
+let inspected = 0;
 for (const url of INTENT_URLS) {
-  const res = await curlRequest(
+  // Soft-fail, unlike every section above: this read is an add-on, and a
+  // reach run still wants the search-analytics report even when it is down.
+  const res = await curl(
     "POST",
     "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
     [`Authorization: Bearer ${token}`, "Content-Type: application/json"],
     JSON.stringify({ inspectionUrl: url, siteUrl: SITE, languageCode: "en-US" }),
-  );
+  ).catch((e: Error) => ({ status: 0, body: e.message }));
   if (res.status !== 200) {
-    console.info(`  (unavailable — HTTP ${res.status}) ${url}`);
-    continue;
+    // Whatever stops one URL stops them all (permission, quota, outage), so
+    // stop rather than repeat the same line six times and burn the quota.
+    console.info(
+      res.status === 403
+        ? "  (unavailable — 403: URL Inspection needs the service account as an *Owner*; Restricted covers search-analytics only)"
+        : `  (unavailable — ${res.status || "transport error"}; skipping the remaining URLs)`,
+    );
+    break;
   }
+  inspected++;
   const r: IndexStatus = JSON.parse(res.body).inspectionResult?.indexStatusResult ?? {};
   if (r.verdict === "PASS") indexed++;
   // A never-crawled URL is the actionable case: Google holds the URL but has
@@ -243,4 +255,6 @@ for (const url of INTENT_URLS) {
     `  ${(r.coverageState ?? r.verdict ?? "unknown").padEnd(38)} ${crawl.padEnd(18)} ${url}${drift}`,
   );
 }
-console.info(`  → ${indexed} of ${INTENT_URLS.length} indexed`);
+console.info(
+  `  → ${indexed} of ${inspected} inspected indexed (${INTENT_URLS.length} wedge pages)`,
+);

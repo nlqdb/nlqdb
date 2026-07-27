@@ -25,23 +25,26 @@ const HOSTS = {
 } as const;
 
 /**
- * User-agents the file grants `Allow: /`. A group ends at the next
- * `User-agent:` line, so a bare `Disallow: /cdn-cgi/` group never counts as
- * allowed — only an explicit root allow does.
+ * User-agents the file grants `Allow: /`. Groups follow RFC 9309: consecutive
+ * `User-agent:` lines share one rule block, and a new group only starts at the
+ * first `User-agent:` after a rule — so rule order inside a group is
+ * irrelevant, as it is to a real crawler.
  */
 function allowedAgents(file: string): Set<string> {
   const allowed = new Set<string>();
   let agents: string[] = [];
+  let sawRule = false;
   for (const raw of readFileSync(file, "utf8").split("\n")) {
     const line = raw.replace(/#.*$/, "").trim();
+    if (!line) continue;
     const ua = /^user-agent:\s*(.+)$/i.exec(line);
     if (ua) {
-      // Consecutive `User-agent:` lines share one group's rules.
+      if (sawRule) [agents, sawRule] = [[], false];
       agents.push(ua[1].trim());
       continue;
     }
+    sawRule = true;
     if (/^allow:\s*\/$/i.test(line)) for (const a of agents) allowed.add(a);
-    if (line !== "") agents = [];
   }
   return allowed;
 }

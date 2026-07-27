@@ -1,20 +1,16 @@
-# AI-permissive — mirrors `apps/web/public/robots.txt` (AEO/GEO). We want
-# citations from Perplexity / ChatGPT / Gemini / Claude as a primary
-# acquisition channel, and this host is the one a coding agent gets pointed
-# at: the "Give your agent memory" guide plus /llms.txt, /llms-full.txt.
+# AI-permissive — mirrors `apps/web/public/robots.txt` (AEO/GEO, SK-DOCS-005).
+# Without this file the host served only Cloudflare's *managed* block, which
+# Disallows ClaudeBot / GPTBot / Google-Extended / CCBot — the crawlers behind
+# the coding agents /agent-memory/ and /llms.txt are written for.
 #
-# Why the file exists at all: with no robots.txt of its own, this host served
-# only Cloudflare's *managed* block, which Disallows ClaudeBot, GPTBot,
-# Google-Extended, CCBot and friends — the exact crawlers behind the coding
-# agents the guide is written for. Cloudflare keeps emitting that block above
-# this content; declaring the same user-agent again merges the groups, and
-# Google resolves equal-length conflicting rules in favour of the least
-# restrictive one, so `Allow: /` re-opens the host.
+# Cloudflare prepends that block above this file rather than replacing it, so
+# re-opening a crawler means re-declaring it: same-token groups merge and an
+# equal-length Allow beats a Disallow (RFC 9309 §2.2; Google robots.txt spec,
+# "least restrictive rule"). Verified live on nlqdb.com, which already does it.
 #
-# Disallows repeat in every group — a crawler that matches a named group
-# ignores the `*` group entirely. /cdn-cgi/ is Cloudflare's injected
-# scaffolding (its email-protection links 404 for crawlers). There is no
-# `/v1/` here; that disallow belongs to the marketing host's API surface.
+# Disallows repeat in every group — a crawler matching a named group ignores
+# the `*` group. /cdn-cgi/ is Cloudflare's injected scaffolding. No `/v1/` line:
+# that is the marketing host's API surface, not this one.
 
 User-agent: GPTBot
 Allow: /

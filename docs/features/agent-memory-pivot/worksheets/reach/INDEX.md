@@ -227,21 +227,15 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
 ## Current numbers (maintained by /reach step 1 — overwrite, no changelog)
 
 - **The R-04 guide was `Disallow: /` to ClaudeBot + GPTBot and Google had never crawled it — found
-  and fixed this run.** `docs.nlqdb.com` shipped with no `robots.txt`, so it served only
-  Cloudflare's *managed* block, which disallows ClaudeBot, GPTBot, Google-Extended, CCBot and five
-  more. The marketing host has carried an AI-permissive override all along; docs never got one — so
-  the one page the coding-agent thesis routes through, plus the `/llms.txt` + `/llms-full.txt`
-  beside it, was closed to the exact crawlers behind Claude Code and Codex while `/agents` and every
-  solve page stayed open. Fixed by mirroring the apex policy
-  ([`apps/docs/public/robots.txt`](../../../../../apps/docs/public/robots.txt)) + advertising
-  Starlight's `sitemap-index.xml` (a second GSC sitemap submission is a console action; the
-  directive is the discovery path we control in code). Edge enforcement ruled out first — all four
-  crawler UAs get 200, so robots.txt was the only gate.
-  [`robots-ai-parity.test.ts`](../../../../../apps/web/src/data/robots-ai-parity.test.ts) derives
-  the required crawler set from the marketing file, so re-opening one there can't skip docs again
-  (negative-tested both ways).
+  and fixed this run.** `docs.nlqdb.com` shipped with no `robots.txt` of its own, so it served only
+  Cloudflare's *managed* block: the guide plus `/llms.txt` + `/llms-full.txt` were closed to the
+  exact crawlers behind Claude Code and Codex while `/agents` and every solve page stayed open. Edge
+  enforcement ruled out first — all four crawler UAs get 200, so robots.txt was the only gate. Fixed
+  by mirroring the apex policy; mechanism and the parity guard are canonical in
+  [`SK-DOCS-005`](../../../docs-site/FEATURE.md).
 - **Per-URL index truth is now measured, not inferred** — `gsc-pull.ts` gained `## Index status`
-  (URL Inspection API; the same readonly service account can call it). Wedge pages: **2 of 6
+  (URL Inspection API; needs the service account promoted to Owner, and soft-fails saying so).
+  Wedge pages: **2 of 6
   indexed.** `solve/best-way-to-store-agent-memory` (crawled 07-20) and `solve/agent-memory-mcp-server`
   (07-21) are indexed and **still earn 0 impressions** — for those two the gap really is ranking.
   `solve/build-vs-buy-agent-memory` + `solve/expire-old-agent-memory`: **never crawled**.

@@ -19,6 +19,7 @@ when-to-load:
 - `apps/docs/astro.config.mjs` (sidebar, integrations, site URL)
 - `apps/docs/wrangler.toml` (custom-domain, assets binding)
 - `apps/docs/src/content/docs/**` (page bodies, .mdx)
+- `apps/docs/public/**` (`robots.txt`, `_headers` — served verbatim)
 - `.github/workflows/deploy-docs.yml` (CI)
 
 ## Decisions
@@ -59,6 +60,15 @@ when-to-load:
     - **Dedicated `/onboarding/get-a-key/` page linked from every tutorial.** Works but adds an extra click; the Step-0 inline approach keeps the read in one place.
     - **Restructure `docs.nlqdb.com` to host the create flow itself.** Forks the goal — the marketing site is `nlqdb.com`'s job; docs is reference + tutorials. Two sources of truth for "first 60 seconds" is worse than one.
     - **Hand-wave: "Get a key from the dashboard."** What the docs used to imply. Fails for fresh visitors who don't yet know `/app/keys` exists, and contradicts `SK-WEB-007`'s "the key is never a separate errand".
+
+- **SK-DOCS-005** — The docs host ships its own AI-permissive `robots.txt`; Cloudflare's managed block is not a default to inherit.
+  - **Decision:** `apps/docs/public/robots.txt` mirrors the marketing host's AI-permissive posture ([`SK-WEB-023`](../web-app/decisions/SK-WEB-023-indexnow-push-on-deploy.md)) and advertises `sitemap-index.xml` (Starlight emits an index, not a flat `sitemap.xml`; only `nlqdb.com/sitemap.xml` is submitted in Search Console and a second submission is a console action).
+  - **Core value:** Free, Bullet-proof
+  - **Why:** A host with no `robots.txt` of its own does not serve *nothing* — Cloudflare serves its managed block, which `Disallow: /`s ClaudeBot, GPTBot, Google-Extended and CCBot. `docs.nlqdb.com` shipped that way for months, so `/agent-memory/`, `/llms.txt` and `/llms-full.txt` — the pages the coding-agent acquisition thesis routes through — were closed to the exact crawlers they target while the apex stayed open. Cloudflare *prepends* its block rather than replacing the origin's file, so re-opening a crawler means re-declaring the same token: groups with the same token merge and an equal-length `Allow` beats a `Disallow` (RFC 9309 §2.2; Google's robots.txt spec, "least restrictive rule").
+  - **Consequence in code:** Astro copies `public/` verbatim, so the file ships with the normal deploy. [`apps/web/src/data/robots-ai-parity.test.ts`](../../../apps/web/src/data/robots-ai-parity.test.ts) derives the required crawler set from the marketing file and fails if the docs host allows fewer, so a crawler re-opened on one host cannot silently skip the other. Any new public host needs the same file and the same row in that test.
+  - **Alternatives considered:**
+    - **Turn Cloudflare's managed robots.txt off at the zone.** One toggle, but it is a dashboard action on a shared zone (founder-gated, invisible in git) and it drops the `Content-Signal` header the apex also serves. An in-repo file is reviewable and testable.
+    - **Leave docs closed and rely on the apex.** Fails the goal — the apex `/llms.txt` points *at* this host, so the deep content an agent follows to would stay unreadable.
 
 ## Slicing (SK-DOCS-003 implementation)
 

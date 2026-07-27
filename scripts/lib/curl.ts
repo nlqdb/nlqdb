@@ -19,7 +19,9 @@ export async function curlRequest(
   headers: string[],
   body?: string,
 ): Promise<CurlResponse> {
-  const args = ["-sS", "-X", method, url, "-w", "\n%{http_code}"];
+  // Bounded so one wedged upstream can't hang a whole daily/reach run.
+  const timeouts = ["--connect-timeout", "10", "--max-time", "60"];
+  const args = ["-sS", ...timeouts, "-X", method, url, "-w", "\n%{http_code}"];
   for (const h of headers) args.push("-H", h);
   if (body !== undefined) args.push("--data-binary", body);
   const proc = Bun.spawn(["curl", ...args], { stderr: "pipe" });
