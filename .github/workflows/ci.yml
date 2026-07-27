@@ -371,6 +371,37 @@ jobs:
         working-directory: apps/web
         run: bun run build
 
+  # `apps/docs` had no pre-merge job at all: its only build ran in
+  # deploy-docs.yml on push-to-main, so a broken Starlight override or a
+  # failing `channel-forward.test.ts` (SK-GTM-007 — it guards a URL rewrite
+  # against look-alike hosts) surfaced as a red deploy, not a red PR.
+  # No Go toolchain: `gen-cli` writes a placeholder when no `nlq` binary is
+  # present, which is the only autogen input CI can't produce for free.
+  build-docs:
+    name: apps/docs (astro check + test + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      # `check` needs the autogen pages the sidebar references.
+      - name: Generate autogen content
+        working-directory: apps/docs
+        run: bun run gen
+
+      - name: Astro check
+        working-directory: apps/docs
+        run: bun run check
+
+      - name: Test
+        working-directory: apps/docs
+        run: bun run test
+
+      - name: Astro build
+        working-directory: apps/docs
+        run: bun run build
+
   build-elements:
     name: packages/elements (esbuild + bundle-size)
     runs-on: ubuntu-latest

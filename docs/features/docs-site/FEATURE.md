@@ -25,7 +25,7 @@ when-to-load:
   of its own (`localStorage` is per-origin) and the apex discards a
   `*.nlqdb.com` referrer as internal, so channel params must ride the URL to
   the apex or the channel reads `direct` ([`SK-GTM-007`](../gtm-metrics/FEATURE.md))
-- `.github/workflows/deploy-docs.yml` (CI)
+- `.github/workflows/ci.yml` (`build-docs` pre-merge gate) · `deploy-docs.yml` (deploy)
 
 ## Decisions
 

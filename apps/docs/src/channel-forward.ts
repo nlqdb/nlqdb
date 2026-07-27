@@ -43,7 +43,11 @@ export function forwardChannelParams(href: string, search: string): string {
   } catch {
     return href;
   }
-  if (url.hostname !== APEX_HOST) return href;
+  // `hostname` is already lowercased and excludes userinfo and port, so a
+  // look-alike or `https://nlqdb.com@evil.example/` can't match; the scheme
+  // guard additionally keeps a `javascript://nlqdb.com/…` href — whose "query
+  // string" is executable source — out of a function that edits URLs.
+  if (url.protocol !== "https:" || url.hostname !== APEX_HOST) return href;
   // A hand-tagged link already names its channel — first touch wins there too.
   if (url.searchParams.has("utm_source")) return href;
 
@@ -71,5 +75,10 @@ export function forwardChannelParamsOnLinks(links: Iterable<LinkLike>, search: s
 
 /** Browser entry point — called once per docs page load from `Head.astro`. */
 export function applyChannelForwarding(): void {
-  forwardChannelParamsOnLinks(document.querySelectorAll("a[href]"), location.search);
+  try {
+    forwardChannelParamsOnLinks(document.querySelectorAll("a[href]"), location.search);
+  } catch {
+    // SK-GTM-007: every attribution layer drops on failure rather than
+    // costing a click. Nothing downstream reads the result.
+  }
 }

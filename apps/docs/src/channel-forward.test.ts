@@ -59,22 +59,69 @@ describe("forwardChannelParams", () => {
 
   test("skips every host that does not capture first touch", () => {
     // Subdomains are `isInternalHost` to attribution.ts and run no capture;
-    // a look-alike host must never receive our params either.
+    // a look-alike host must never receive our params either. Every entry is
+    // a way an attacker-shaped href could try to read as the apex.
     for (const href of [
       "https://docs.nlqdb.com/agent-memory/",
       "https://mcp.nlqdb.com/mcp",
       "https://github.com/nlqdb/nlqdb",
-      "https://nlqdb.com.evil.example/x",
-      "https://notnlqdb.com/x",
+      "https://nlqdb.com.evil.example/x", // apex as a subdomain prefix
+      "https://notnlqdb.com/x", // apex as a host suffix
+      "https://nlqdb.com@evil.example/", // apex as userinfo
+      "https://nlqdb.com:pw@evil.example/", // apex as userinfo + password
+      "https://evil.example/?x=nlqdb.com", // apex in the query
+      "https://evil.example/nlqdb.com/", // apex in the path
+      "https://evil.example/#https://nlqdb.com/", // apex in the fragment
+      "https://nlqdb%2ecom.evil.example/", // percent-encoded dot
+      "https://nlqdb.cоm/x", // IDN homograph (Cyrillic о)
+      "https://xn--nlqdb-8cd.com/x", // its punycode form
+      "https://nlqdb.com./x", // trailing-dot FQDN
+      "//evil.example/x", // protocol-relative
     ]) {
       expect(forwardChannelParams(href, TAGGED)).toBe(href);
     }
   });
 
-  test("skips relative and non-http hrefs", () => {
-    for (const href of ["/mcp/", "../sdk/", "#step-2", "mailto:hi@nlqdb.com", ""]) {
+  test("matches the apex whatever the case, and resolves protocol-relative", () => {
+    for (const href of ["HTTPS://NLQDB.COM/x", "https://NlQdB.CoM/x", "//nlqdb.com/x"]) {
+      expect(forwardChannelParams(href, TAGGED)).toBe(
+        "https://nlqdb.com/x?utm_source=agent-artifacts",
+      );
+    }
+  });
+
+  test("skips relative hrefs and every non-https scheme", () => {
+    // `javascript:`'s "query string" is executable source, so a scheme this
+    // rewrites must be one where appending a param is inert. Only https is.
+    for (const href of [
+      "/mcp/",
+      "../sdk/",
+      "#step-2",
+      "",
+      "mailto:hi@nlqdb.com",
+      "tel:+15550100",
+      "javascript:alert(1)",
+      "javascript://nlqdb.com/%0aalert(1)",
+      "data:text/html,<b>x</b>",
+      "blob:https://nlqdb.com/abc",
+      "http://nlqdb.com/x",
+      "ftp://nlqdb.com/x",
+    ]) {
       expect(forwardChannelParams(href, TAGGED)).toBe(href);
     }
+  });
+
+  test("param values are encoded, never able to add a param or break the URL", () => {
+    const out = forwardChannelParams(
+      "https://nlqdb.com/agents",
+      `?utm_source=${encodeURIComponent('x"><img src=q onerror=alert(1)>')}&utm_medium=${encodeURIComponent("a&utm_source=evil#frag")}`,
+    );
+    const url = new URL(out);
+    expect(url.origin + url.pathname).toBe("https://nlqdb.com/agents");
+    expect(url.hash).toBe("");
+    expect([...url.searchParams.keys()]).toEqual(["utm_source", "utm_medium"]);
+    expect(url.searchParams.get("utm_source")).toBe('x"><img src=q onerror=alert(1)>');
+    expect(out).not.toContain("<");
   });
 });
 

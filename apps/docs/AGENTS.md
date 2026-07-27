@@ -29,11 +29,12 @@ bun run --filter apps/docs deploy     # build + wrangler deploy
 bun run --filter apps/docs test       # unit tests under src/
 ```
 
-## Deploy
+## CI + deploy
 
-GH Actions → `.github/workflows/deploy-docs.yml` on push to `main`
-touching `apps/docs/**`. Custom domain + cert auto-provisioned by
-`wrangler` via `custom_domain = true` in `wrangler.toml`.
+Pre-merge gate: `ci.yml`'s `build-docs` job (astro check + test + build).
+Deploy: `.github/workflows/deploy-docs.yml` on push to `main` touching
+`apps/docs/**`. Custom domain + cert auto-provisioned by `wrangler` via
+`custom_domain = true` in `wrangler.toml`.
 
 ## Local rules
 

@@ -1,9 +1,10 @@
 ---
-// Starlight Head override — the documented way to ship a script that imports
-// a local module (`head` config entries bypass Astro's script processing).
-// Everything the default Head renders is unchanged; this only adds the
-// SK-GTM-007 channel forwarding, so a reader who arrives here tagged still
-// reaches the apex tagged. See `../channel-forward.ts`.
+// Starlight calls a Head override "a last resort" and prefers the `head`
+// config option — but those entries are raw tags Vite never processes, so they
+// cannot import a typed, unit-tested local module. `<Default />` renders
+// untouched, so Starlight still owns and de-duplicates every route tag; the
+// only addition is the SK-GTM-007 channel forwarding, so a reader who arrives
+// here tagged still reaches the apex tagged. See `../channel-forward.ts`.
 import Default from "@astrojs/starlight/components/Head.astro";
 ---
 
