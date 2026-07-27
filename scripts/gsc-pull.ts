@@ -224,8 +224,8 @@ console.info("\n## Index status — per-URL, the wedge pages (URL Inspection API
 let indexed = 0;
 let inspected = 0;
 for (const url of INTENT_URLS) {
-  // Soft-fail, unlike every section above: this read is an add-on, and a
-  // reach run still wants the search-analytics report even when it is down.
+  // Soft-fail, unlike every section above: this read is an add-on, so a broken
+  // one costs its own block and nothing else — not the run's exit code.
   const res = await curlRequest(
     "POST",
     "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
