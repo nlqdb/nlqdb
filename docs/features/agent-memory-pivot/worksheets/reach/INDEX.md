@@ -229,8 +229,9 @@ presence* — `WebSearch` each top-10 R-01 query, record whether `nlqdb.com` is
 in the grounding set (0 sets ⇒ 0 possible citations). The generative-UI pass
 (answer-engine accounts) is optional founder enrichment — it gates nothing, so
 it is **not** queued in `blocked-by-human.md`.
-**Done when:** ✅ first baseline recorded (2026-07-22: **0/10**; see § Current
-numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
+**Done when:** ✅ first baseline recorded (2026-07-22: **0/10**; see
+[`NUMBERS.md`](NUMBERS.md)) · ✅ monthly cadence noted in `/reach` step 1 (next
+due 2026-08-22).
 
 ## Current numbers
 
