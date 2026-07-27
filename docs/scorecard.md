@@ -12,8 +12,8 @@ is secondary this cycle. Channel truth lives in
 [`research/acquisition-channels.md`](research/acquisition-channels.md); yield truth on
 `/app/admin`, never estimated. Premium-chain work (`SK-LLM-017`, row #20) is pullable
 only when no acquisition lever is.
-**⚠ Window closed 07-25 and no `/weekly` has run since — kept verbatim but lapsed, so
-this run picked its own target per step 2. `/weekly` is overdue.**
+**⚠ Window lapsed 07-25; `/weekly` is 2 days overdue, so this run picked its own
+target per step 2.**
 
 **Worst number today:** **the human queue — 5 deep with its top row already resolved,
 i.e. the founder's one non-automatable slot pointed at work that no longer existed.**
@@ -21,14 +21,12 @@ With real strangers at 0, the age of this queue's head is the company's real cyc
 time. Verified live on the Neon API: the two orphaned branches that row asked the
 founder to delete (`pr-571`, `pr-648`) are **gone**, project at **5 of 10** slots. Row
 deleted, its durable half shipped (see Last change). **Queue 5 → 4.**
-**Why no acquisition lever instead (step-2 priority 1).** The GSC *Strengthen next*
-head is `/solve/running-total-cumulative-sum-in-sql/` — **72 impr, 0 clicks, pos
-36.3**, the largest winnable pool off page 1 — and `data/solve.ts` is free now that
-#829 merged. Measured and **declined**: against
-`/solve/count-rows-per-day-including-missing-dates/` (**70 impr, pos 8.0** — same
-volume, 28 positions better) the entries are structurally the same page: same section
-set, FAQ count, 3 enduring sources. The delta is query saturation, not page quality,
-so a copy edit is a guess with no in-run re-measure.
+**Why no acquisition lever instead (step-2 priority 1).** The GSC *Strengthen next* head
+is `/solve/running-total-cumulative-sum-in-sql/` — **72 impr, 0 clicks, pos 36.3** — and
+`data/solve.ts` is free now #829 merged. Measured and **declined**: it is structurally the
+same page as `/solve/count-rows-per-day-including-missing-dates/` (**70 impr, pos 8.0**),
+so the delta is query saturation, not page quality, and a copy edit is a guess with no
+in-run re-measure (full comparison in the PR body).
 **Top `blocked-by-human` bullet:** decide `MEMORY_PRESET` in prod (⏱ ~5 min, **0 days
 old**, PR #835 drafted). The launch-sequence bullet — the only one that can move real
 strangers off 0 — is **idle 44 days since 06-13**; its `SK-PIVOT-016` gate is **0/5
@@ -40,15 +38,17 @@ agent-movable and `MEMORY_PRESET=1` is its prerequisite — which is the top bul
 bullet fires); row **#15**'s opencheck arm (free-lane saturation, remedy costs money
 ⇒ rule 4).
 
-**Rule 6 clean** — CI + Security + Release-npm green on `main@4ddd24d` (07-27 06:28Z);
+**Rule 6 clean** — CI + Security + Release-npm green on `main@0623cba` (merged 07-27);
 all 10 `deploy-*` workflows green (07-27 03:07–03:27Z). Local gates re-run from a
 clean install: typecheck exit 0, lint 0 errors, test exit 0.
-Open PRs **6** — **#839** (founder-actions log), **#837** (reach R-04 headless
-route), **#836** (daily run 146, `/agents` stdio card), **#835** (draft,
+Open PRs **4** — **#837** (reach R-04 headless route), **#835** (draft,
 `MEMORY_PRESET`), **#826** (changesets, `@nlqdb/sdk@0.2.2`), draft **#719** (oldest,
-**10 days**). Step-0 checked: this run's five files (3 workflows, 1 new test,
-`blocked-by-human.md`) appear in **none** of them; `docs/scorecard.md` overlaps #836
-under the exemption every run carries.
+**10 days**). **#836 + #839 merged mid-review, rebased onto both:** run 146 took
+`/agents` from **9 to 10** connect affordances by adding the one a headless agent can
+finish (`npx @nlqdb/mcp` over stdio) and gave `agents.connect_clicked` a `transport`
+dimension; #839 added `history/founder-actions-log.md` plus the charter clause that
+logs an operator action before its queue row is deleted — this run's deleted row now
+has its log line.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -113,27 +113,26 @@ each held a slot for weeks until a human deleted them.
 **Verified against the live API, then by CI itself (P2).** `expires_at` (RFC 3339,
 ≤30 days, [docs](https://neon.com/docs/guides/branch-expiration)) was probed on **this
 project's Free plan** with the byte-exact body `ci.yml` renders: **HTTP 201**, expiry
-echoed, `connection_uris` still present — the field whose loss would have reddened
-every CI run. Then the PR proved it: `preview-app.yml` minted **`pr-840` carrying
+echoed, `connection_uris` still present — losing it would have reddened every CI run.
+Then the PR proved it: `preview-app.yml` minted **`pr-840` carrying
 `expires_at=2026-08-03`** while `pr-835/836/837` carry none, and the `ci-smoke-*` path
-went green too. Probe branches deleted; the project ended where it started, 5 of 10.
+went green too. Both probe branches deleted.
 
 **The guard.** Nothing else catches a drift: workflows are not typechecked, not linted for
 semantics, and a missing expiry costs nothing until the tenth branch. Four review passes
-each found the same class — a *working* creation site read green — because each tried to
-recognise the request, and the ways to write one are unbounded: the fourth ran **46
-mutations** and the third-pass guard was blind to 11, among them a single-quoted URL (the
-spelling in Neon's own docs), a URL built from two variables, `wget`,
-`actions/github-script`, and a create in a `Makefile`. So it stopped trying. The guard
-**pins the six files allowed to reach the Neon API at all** — anything new, in any language
-via any client, is added on purpose — and inside them requires every `run:`/`script:` block
-writing to `…/branches` to bind `expires_at`, nested in the `branch` object, to a `date -u`
-window it computes itself between 1 h and Neon's 30-day ceiling, no request exempt. **42 of
-46 land as intended**; the rest are three prescriptive false-*fails* (epoch arithmetic, a
-`jq --arg` payload, one spread over unjoined lines — each red with its fix named) and one
-residual: blanking the variable after computing it, which needs dataflow and which Neon
-rejects loudly. `runbook.md` §6 also still promised a preview DB "deleted on PR close" —
-corrected, and the sticky comment now names the 7-day reap wherever the database exists.
+found one class — a *working* creation site read green — because each tried to recognise the
+request, and the ways to write one are unbounded: the fourth ran **46 mutations** and the
+third-pass guard was blind to 11, among them a single-quoted URL (the spelling in Neon's own
+docs), a URL built from two variables, `wget`, `actions/github-script`, a `Makefile` recipe.
+So it stopped trying. The guard **pins the six files allowed to reach the Neon API at all** —
+anything new, in any language via any client, is added on purpose — and inside them makes
+every `run:`/`script:` block writing to `…/branches` bind `expires_at`, nested in `branch`,
+to a `date -u` window it computes itself between 1 h and Neon's 30-day ceiling, no request
+exempt. **42 of 46 land as intended**; the rest are three prescriptive false-*fails* (epoch
+arithmetic, a `jq --arg` payload, one over unjoined lines — each red with its fix named) and
+one residual: blanking the variable after computing it, needing dataflow, and loudly
+rejected by Neon. `runbook.md` §6 and the sticky comment also still promised a preview DB
+"deleted on PR close" — both corrected, on every path where the database exists.
 
 **Recorded, not fixed (one lever per run).** The canonical-eval resume protocol is
 unexecutable as documented. Spider's checkpoint cache is keyed
@@ -157,7 +156,7 @@ backstop the decisions already implied. A record restating "clean up what you cr
 fails D5.
 
 **Gates:** `typecheck` exit 0 all packages · `lint` **0 errors, 41 warnings, 2 infos =
-repo baseline** · `test` exit 0 all packages (`apps/web` **404 pass / 0 fail**) · all
+repo baseline** · `test` exit 0 all packages (`apps/web` **409 pass / 0 fail**) · all
 three edited workflows parse as YAML, their rendered payloads as JSON · shellcheck
 green in CI · link sweep **0 dead / 0 redirecting** on 126 pages · gate 3 prints
 nothing · **D4** every edited doc under 20480 B.
