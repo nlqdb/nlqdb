@@ -53,12 +53,17 @@ exists.
      -H "Authorization: Bearer $NEON_API_KEY"
    ```
    **This recurs.** Two slots buys headroom, not a fix: with 6 PRs open at
-   once the cap binds again. The durable options are a founder call —
-   (a) sweep `pr-N` branches whose PR is closed, on a schedule (the
-   `ci-smoke-*` >1 h sweep in `ci.yml` is the pattern to copy; it needs the
-   GH API to ask which PRs are closed, and it deletes data, so it wants your
-   sign-off before an agent builds it); (b) raise the Neon plan (money);
-   (c) decide a capacity failure should not block a PR — today
+   once the cap binds again. The cheapest durable fix needs no founder call
+   and deletes nothing that already exists: Neon's create-branch API accepts
+   an `expires_at` (RFC 3339, ≤30 days out) and reaps the branch itself once
+   it passes, so `preview-app.yml` and `ci.yml` can bound every `pr-N` /
+   `ci-smoke-*` branch at creation. An agent can ship that — the docs don't
+   state which plans offer it, so confirm on Free first. Only if that falls
+   through is it a founder call — (a) sweep `pr-N` branches whose PR is
+   closed, on a schedule (the `ci-smoke-*` >1 h sweep in `ci.yml` is the
+   pattern to copy; it needs the GH API to ask which PRs are closed, and it
+   deletes data, so it wants your sign-off); (b) raise the Neon plan
+   (money); (c) decide a capacity failure should not block a PR — today
    `test-api-smoke-neon` fails hard, which is right for a code fault and
    wrong for a full shared project. Not chosen by an agent: (a) has blast
    radius, (b) costs, (c) weakens a merge gate.

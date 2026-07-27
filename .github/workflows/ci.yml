@@ -576,7 +576,12 @@ jobs:
             -d "{\"branch\":{\"name\":\"$name\"},\"endpoints\":[{\"type\":\"read_write\"}]}")
           response=$(cat /tmp/neon-create.json)
           if [ "$status" -ge 300 ]; then
-            echo "::error::Neon branch creation failed (HTTP $status): $(echo "$response" | jq -rc '{code, message}' 2>/dev/null || echo "$response")"
+            # Print the body verbatim, not a `{code, message}` projection: jq
+            # succeeds on *any* valid JSON, so a differently-shaped error would
+            # render as `{"code":null,"message":null}` — losing exactly the
+            # reason this reporting exists to surface. Non-2xx means no branch
+            # was created, so the body carries no `connection_uris` to leak.
+            echo "::error::Neon branch creation failed (HTTP $status): $(head -c 500 /tmp/neon-create.json)"
             exit 1
           fi
           id=$(echo "$response" | jq -r '.branch.id // empty')

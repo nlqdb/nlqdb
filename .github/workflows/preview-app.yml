@@ -143,17 +143,25 @@ jobs:
             # Deletion is asynchronous: the DELETE returns as soon as the
             # operation is queued, and recreating the name before it finishes
             # is rejected 422. Wait for the name to actually free up.
-            still=""
+            # Seeded as "still there" so an unreadable probe can never be
+            # mistaken for a completed deletion — that would recreate too
+            # early and 422 anyway, just with a more confusing message.
+            still="$existing"
             for _ in $(seq 30); do
-              still=$(curl -fsSL \
+              # A transient blip must retry, not kill the step: under
+              # `set -e` an unguarded failure here aborts the whole deploy.
+              if ! branches=$(curl -fsSL \
                 "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
-                -H "Authorization: Bearer ${NEON_API_KEY}" \
-                | jq -r ".branches[] | select(.id == \"${existing}\") | .id")
+                -H "Authorization: Bearer ${NEON_API_KEY}"); then
+                sleep 2
+                continue
+              fi
+              still=$(echo "$branches" | jq -r ".branches[] | select(.id == \"${existing}\") | .id")
               if [ -z "$still" ]; then break; fi
               sleep 2
             done
             if [ -n "$still" ]; then
-              echo "::error::Neon branch ${existing} still present 60s after DELETE"
+              echo "::error::Neon branch ${existing} still present (or the branch list unreadable) 60s after DELETE"
               exit 1
             fi
             echo "Recreating branch..."
@@ -170,7 +178,12 @@ jobs:
             -d "{\"branch\": {\"name\": \"pr-${PR_NUMBER}\"}, \"endpoints\": [{\"type\": \"read_write\"}]}")
           response=$(cat /tmp/neon-create.json)
           if [ "$status" -ge 300 ]; then
-            echo "::error::Neon branch creation failed (HTTP $status): $(echo "$response" | jq -rc '{code, message}' 2>/dev/null || echo "$response")"
+            # Print the body verbatim, not a `{code, message}` projection: jq
+            # succeeds on *any* valid JSON, so a differently-shaped error would
+            # render as `{"code":null,"message":null}` — losing exactly the
+            # reason this reporting exists to surface. Non-2xx means no branch
+            # was created, so the body carries no `connection_uris` to leak.
+            echo "::error::Neon branch creation failed (HTTP $status): $(head -c 500 /tmp/neon-create.json)"
             exit 1
           fi
           db_url=$(echo "$response" | jq -r '.connection_uris[0].connection_uri // empty')
