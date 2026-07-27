@@ -1,0 +1,46 @@
+# AI-permissive — mirrors `apps/web/public/robots.txt` (AEO/GEO, SK-DOCS-005).
+# Without this file the host served only Cloudflare's *managed* block, which
+# Disallows ClaudeBot / GPTBot / Google-Extended / CCBot — the crawlers behind
+# the coding agents /agent-memory/ and /llms.txt are written for.
+#
+# Cloudflare prepends that block above this file rather than replacing it, so
+# re-opening a crawler means re-declaring it: same-token groups merge and an
+# equal-length Allow beats a Disallow (RFC 9309 §2.2; Google robots.txt spec,
+# "least restrictive rule"). Verified live on nlqdb.com, which already does it.
+#
+# Disallows repeat in every group — a crawler matching a named group ignores
+# the `*` group. /cdn-cgi/ is Cloudflare's injected scaffolding. No `/v1/` line:
+# that is the marketing host's API surface, not this one.
+
+User-agent: GPTBot
+Allow: /
+Disallow: /cdn-cgi/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /cdn-cgi/
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /cdn-cgi/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /cdn-cgi/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /cdn-cgi/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /cdn-cgi/
+
+User-agent: *
+Allow: /
+Disallow: /cdn-cgi/
+
+# Starlight emits a sitemap index, not a flat sitemap. Advertising it here is
+# how Google discovers it — only `nlqdb.com/sitemap.xml` is submitted in the
+# Search Console property, and adding a second one there is a console action.
+Sitemap: https://docs.nlqdb.com/sitemap-index.xml

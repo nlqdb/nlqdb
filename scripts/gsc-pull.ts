@@ -7,14 +7,16 @@
 //
 // Auth: `GSC_SERVICE_ACCOUNT_JSON` holds the service account's JSON key
 // (single line). The script signs a RS256 JWT (scope webmasters.readonly),
-// exchanges it for an access token, and calls the Search Analytics API.
-// Setup steps for the founder live in docs/blocked-by-human.md.
+// exchanges it for an access token, and calls the Search Analytics API. The
+// same token drives `## Index status` (URL Inspection API) — verified live
+// 2026-07-27, no extra role needed. Setup steps live in
+// docs/blocked-by-human.md.
 //
 // Usage:
 //   bun scripts/gsc-pull.ts            # last 28 days
 //   bun scripts/gsc-pull.ts --days 7
 
-import { curlRequest as curl } from "./lib/curl.ts";
+import { curlRequest } from "./lib/curl.ts";
 
 const SITE = "sc-domain:nlqdb.com";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -25,8 +27,9 @@ function die(msg: string): never {
   process.exit(1);
 }
 
-const curlRequest = (method: string, url: string, headers: string[], body?: string) =>
-  curl(method, url, headers, body).catch((e: Error) => die(e.message));
+/** `curlRequest`, but any transport failure ends the run — the default for this script. */
+const curlOrDie = (method: string, url: string, headers: string[], body?: string) =>
+  curlRequest(method, url, headers, body).catch((e: Error) => die(e.message));
 
 function b64url(data: Uint8Array | string): string {
   const bytes = typeof data === "string" ? new TextEncoder().encode(data) : data;
@@ -74,7 +77,7 @@ async function accessToken(): Promise<string> {
     new TextEncoder().encode(`${header}.${claims}`),
   );
   const jwt = `${header}.${claims}.${b64url(new Uint8Array(signature))}`;
-  const res = await curlRequest(
+  const res = await curlOrDie(
     "POST",
     TOKEN_URL,
     ["Content-Type: application/x-www-form-urlencoded"],
@@ -93,7 +96,7 @@ async function query(
   dimensions: string[],
   rowLimit: number,
 ): Promise<Row[]> {
-  const res = await curlRequest(
+  const res = await curlOrDie(
     "POST",
     `${API}/searchAnalytics/query`,
     [`Authorization: Bearer ${token}`, "Content-Type: application/json"],
@@ -168,8 +171,12 @@ console.info(
 for (const r of targets) console.info(fmtRow(r));
 if (!offPage1.length) console.info("  (none — every page earning impressions is on page 1)");
 
-const sm = await curlRequest("GET", `${API}/sitemaps`, [`Authorization: Bearer ${token}`]);
+const sm = await curlOrDie("GET", `${API}/sitemaps`, [`Authorization: Bearer ${token}`]);
 console.info("\n## Sitemaps");
+// `indexed` below is always 0: Google dropped the metric from this endpoint and
+// never restored it (seroundtable 27712; Search Central threads 5640575 +
+// 7570062). Five reach runs read that 0 as evidence pages were unindexed — it is
+// evidence of nothing. Per-URL truth is `## Index status`.
 if (sm.status !== 200) {
   // An error body is often an HTML page — collapse whitespace so it can't break
   // the one-fact-per-line shape the rest of the report keeps.
@@ -188,3 +195,78 @@ if (sm.status !== 200) {
     );
   }
 }
+
+// The wedge pages the reach loop exists to make win (R-02/R-03/R-04 in
+// docs/features/agent-memory-pivot/worksheets/reach/INDEX.md). They earn ~0
+// impressions, which is exactly why the sections above cannot see them: a
+// search-analytics row exists only for a URL that got an impression, so a page
+// Google never crawled is indistinguishable there from one that ranks badly.
+// URL Inspection is the read that separates the two. Trailing slashes match
+// what sitemap.xml advertises (astro `trailingSlash: "always"`).
+const INTENT_URLS = [
+  "https://nlqdb.com/agents/",
+  "https://nlqdb.com/solve/best-way-to-store-agent-memory/",
+  "https://nlqdb.com/solve/build-vs-buy-agent-memory/",
+  "https://nlqdb.com/solve/expire-old-agent-memory/",
+  "https://nlqdb.com/solve/agent-memory-mcp-server/",
+  "https://docs.nlqdb.com/agent-memory/",
+];
+
+type IndexStatus = {
+  verdict?: string;
+  coverageState?: string;
+  lastCrawlTime?: string;
+  googleCanonical?: string;
+  userCanonical?: string;
+};
+
+console.info("\n## Index status — per-URL, the wedge pages (URL Inspection API)");
+let indexed = 0;
+let inspected = 0;
+for (const url of INTENT_URLS) {
+  // Soft-fail, unlike every section above: this read is an add-on, so a broken
+  // one costs its own block and nothing else — not the run's exit code.
+  const res = await curlRequest(
+    "POST",
+    "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
+    [`Authorization: Bearer ${token}`, "Content-Type: application/json"],
+    JSON.stringify({ inspectionUrl: url, siteUrl: SITE, languageCode: "en-US" }),
+  ).catch((e: Error) => ({ status: 0, body: e.message }));
+  if (res.status !== 200) {
+    // The body carries the only actionable half — which quota a 429 hit, or
+    // whether a 403 is a missing role vs a URL outside the property. status 0
+    // is a transport failure, where the curl error is the whole fact.
+    const detail = res.body.replace(/\s+/g, " ").trim().slice(0, 200);
+    console.info(`  (unavailable — ${res.status ? `HTTP ${res.status}: ` : ""}${detail}) ${url}`);
+    // 401/403 are property-wide, so every remaining URL would fail identically
+    // — stop rather than print the same line six times. A 429 or 5xx can be
+    // per-request, so keep going; the tally states what was actually read.
+    if (res.status === 401 || res.status === 403) {
+      console.info("  (auth — skipping the rest; check GSC → Settings → Users and permissions)");
+      break;
+    }
+    continue;
+  }
+  let r: IndexStatus;
+  try {
+    r = JSON.parse(res.body).inspectionResult?.indexStatusResult ?? {};
+  } catch {
+    // Soft-fail the parse too, or a 200 carrying a proxy error page throws
+    // past the tally and takes the run's exit code with it.
+    console.info(`  (unreadable — 200 but not JSON) ${url}`);
+    continue;
+  }
+  inspected++;
+  if (r.verdict === "PASS") indexed++;
+  // A never-crawled URL is the actionable case: Google holds the URL but has
+  // spent no crawl on it, so no amount of on-page work can move it yet.
+  const crawl = r.lastCrawlTime ? `crawled ${r.lastCrawlTime.slice(0, 10)}` : "NEVER CRAWLED";
+  const drift =
+    r.googleCanonical && r.userCanonical && r.googleCanonical !== r.userCanonical
+      ? `  !! canonical drift — Google chose ${r.googleCanonical}`
+      : "";
+  console.info(
+    `  ${(r.coverageState ?? r.verdict ?? "unknown").padEnd(38)} ${crawl.padEnd(18)} ${url}${drift}`,
+  );
+}
+console.info(`  → ${indexed} indexed / ${inspected} read of ${INTENT_URLS.length} wedge pages`);

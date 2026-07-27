@@ -49,7 +49,10 @@ eligible slice or end as a null run. Never duplicate an open PR's work.
 Update the reach `INDEX.md` **§ Current numbers** (overwrite in place, no
 changelog): GSC intent-query impressions/clicks
 (`bun scripts/gsc-pull.ts` when `GSC_SERVICE_ACCOUNT_JSON` is set, filtered
-to the R-01 intent map), registry listings live, stage-0 pages live,
+to the R-01 intent map) **and that run's `## Index status` block — per-URL
+index truth for the wedge pages; never infer indexing from the sitemap
+`indexed` count, which is deprecated and returns 0 for every site**,
+registry listings live, stage-0 pages live,
 **acquisition channels live with attributable yield** (the
 `docs/research/acquisition-channels.md` ledger count), the
 R-06 coding-agent walker pass rate (re-run it if merged), and the R-08
