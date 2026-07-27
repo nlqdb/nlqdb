@@ -22,14 +22,46 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 1 | ~2 min | Delete 2 orphaned Neon branches — the project sits at its 10-branch cap, so **CI goes red whenever PRs overlap** | 2026-07-27 |
+| 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
+| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #1 can move real strangers (scorecard row #2); #2 is the only one that
+Only #2 can move real strangers (scorecard row #2); #3 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
 exists.
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
+
+0. **⏱ ~2 min · since 2026-07-27 — Delete two orphaned Neon branches; the
+   project is at its cap and CI is red on every PR.** Measured live
+   2026-07-27: the project holds **10 branches, which is the Free-plan cap**,
+   so `POST /branches` returns `422 {"code":"BRANCHES_LIMIT_EXCEEDED"}`. That
+   fails `ci.yml`'s `test-api-smoke-neon` (and any preview needing a new
+   branch) on **every** PR, regardless of its diff — first seen on #832.
+   Two slots are held by branches whose PRs are long gone: **`pr-571`**
+   (closed 2026-07-02) and **`pr-648`** (merged 2026-07-10). Deleting a Neon
+   branch destroys its data, so an agent won't do it unattended — but these
+   two have no owner left. Paste-ready (needs `NEON_API_KEY` +
+   `NEON_PROJECT_ID`):
+   ```bash
+   # confirm they are still the two oldest pr-* branches before deleting
+   curl -fsSL "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
+     -H "Authorization: Bearer $NEON_API_KEY" \
+     | jq -r '.branches[] | select(.name|startswith("pr-")) | "\(.name)\t\(.id)\t\(.created_at)"' | sort -k3
+   # then, for each of pr-571 and pr-648's ids:
+   curl -fsS -X DELETE "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/<id>" \
+     -H "Authorization: Bearer $NEON_API_KEY"
+   ```
+   **This recurs.** Two slots buys headroom, not a fix: with 6 PRs open at
+   once the cap binds again. The durable options are a founder call —
+   (a) sweep `pr-N` branches whose PR is closed, on a schedule (the
+   `ci-smoke-*` >1 h sweep in `ci.yml` is the pattern to copy; it needs the
+   GH API to ask which PRs are closed, and it deletes data, so it wants your
+   sign-off before an agent builds it); (b) raise the Neon plan (money);
+   (c) decide a capacity failure should not block a PR — today
+   `test-api-smoke-neon` fails hard, which is right for a code fault and
+   wrong for a full shared project. Not chosen by an agent: (a) has blast
+   radius, (b) costs, (c) weakens a merge gate.
 
 1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on

@@ -159,11 +159,20 @@ jobs:
             echo "Recreating branch..."
           fi
 
-          response=$(curl -fsSL -X POST \
+          # No `-f`: it exits 22 and discards the body, so an API rejection
+          # logged only "curl: (22) ... error: 422" with no reason. Neon puts
+          # the reason in the body (e.g. `BRANCHES_LIMIT_EXCEEDED` when the
+          # project is at its branch cap — shared capacity, not this PR).
+          status=$(curl -sSL -o /tmp/neon-create.json -w '%{http_code}' -X POST \
             "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
             -H "Authorization: Bearer ${NEON_API_KEY}" \
             -H "Content-Type: application/json" \
             -d "{\"branch\": {\"name\": \"pr-${PR_NUMBER}\"}, \"endpoints\": [{\"type\": \"read_write\"}]}")
+          response=$(cat /tmp/neon-create.json)
+          if [ "$status" -ge 300 ]; then
+            echo "::error::Neon branch creation failed (HTTP $status): $(echo "$response" | jq -rc '{code, message}' 2>/dev/null || echo "$response")"
+            exit 1
+          fi
           db_url=$(echo "$response" | jq -r '.connection_uris[0].connection_uri // empty')
           if [ -z "$db_url" ]; then
             echo "::error::Neon API did not return connection_uris[0].connection_uri"
