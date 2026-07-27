@@ -1,29 +1,15 @@
-// Canonical persona set for the AEO surfaces (`/solve`, `/vs`).
+// Canonical persona set for both AEO surfaces — `/solve` groups its index
+// by persona, `/vs` tags each comparison with the audience. Same four
+// buyers, so the labels live here rather than once per feature.
 //
-// The `P1..P4` codes match docs/research/personas.md and exist for
-// grouping, ordering, and telemetry only — they are **internal
-// terminology and must never reach rendered copy**. A stranger landing
-// on `/vs` from "supabase alternative" reads "P3 analyst" as a leak, not
-// a hint: the code carries no meaning outside this repo. Every surface
-// that shows the audience renders `PERSONAS[persona].label` (and
-// `.description` where there's room for a sentence).
-//
-// One home, two features: `/solve` groups its index by persona and
-// `/vs` tags each comparison with the audience — same four buyers, so
-// the labels and the render order live here rather than once per feature.
+// The `P1..P4` keys mirror docs/research/personas.md and exist for
+// grouping, ordering, and telemetry only: they are internal terminology
+// and must never reach rendered copy, because "P3 analyst" reads as a leak
+// to a stranger arriving from "supabase alternative". Every surface showing
+// the audience renders `PERSONAS[persona].label` (and `description` where
+// there's room for a sentence). Declaration order is the render order.
 
-export type Persona =
-  | "P1 solo builder"
-  | "P2 agent builder"
-  | "P3 analyst"
-  | "P4 backend engineer";
-
-export type PersonaInfo = {
-  label: string;
-  description: string;
-};
-
-export const PERSONAS: Record<Persona, PersonaInfo> = {
+export const PERSONAS = {
   "P1 solo builder": {
     label: "Solo builders",
     description:
@@ -44,12 +30,6 @@ export const PERSONAS: Record<Persona, PersonaInfo> = {
     description:
       "Engineers at small startups running their own Postgres. Want a natural-language admin layer over the database they already own — not a replacement for the data store underneath.",
   },
-};
+} satisfies Record<string, { label: string; description: string }>;
 
-// Canonical render order — matches the priority in docs/research/personas.md.
-export const PERSONA_ORDER: Persona[] = [
-  "P1 solo builder",
-  "P2 agent builder",
-  "P3 analyst",
-  "P4 backend engineer",
-];
+export type Persona = keyof typeof PERSONAS;

@@ -4,12 +4,12 @@
 // internal-link hub the per-pain pages cross-link to.
 //
 // SK-WEB-015 page sweep: same token system as `/solve/[slug]` and
-// `/vs/index`. Display serif for the narrative header; mono only for
-// identifier columns (persona tag); quiet sans body.
+// `/vs/index`. Display serif for the narrative header and the persona
+// group titles; quiet sans body.
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
-import { PERSONA_ORDER, PERSONAS } from "../../data/personas";
+import { PERSONAS } from "../../data/personas";
 import { SOLVE_ENTRIES } from "../../data/solve";
 import Base from "../../layouts/Base.astro";
 import { itemListJsonLd } from "../../lib/itemlist-jsonld";
@@ -23,12 +23,15 @@ const itemListLd = itemListJsonLd(
   Astro.site,
 );
 
-const groupedByPersona = PERSONA_ORDER.map((persona) => ({
-  persona,
-  info: PERSONAS[persona],
-  entries: SOLVE_ENTRIES.filter((s) => s.persona === persona),
-  sectionId: `group-${persona.split(" ").slice(1).join("-")}`,
-})).filter((g) => g.entries.length > 0);
+// Declaration order in PERSONAS is the render order. `sectionId` drops the
+// leading `P1`/`P2` token so the anchor is readable, not internal.
+const groupedByPersona = Object.entries(PERSONAS)
+  .map(([persona, info]) => ({
+    info,
+    entries: SOLVE_ENTRIES.filter((s) => s.persona === persona),
+    sectionId: `group-${persona.split(" ").slice(1).join("-")}`,
+  }))
+  .filter((g) => g.entries.length > 0);
 ---
 <Base
   title="Solve a specific problem with nlqdb — natural-language databases"

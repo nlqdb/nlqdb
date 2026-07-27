@@ -90,8 +90,8 @@ describe("SOLVE_ENTRIES data integrity", () => {
     }
   });
 
-  // Persona coverage + the internal-code render guard live in
-  // `personas.test.ts` — one home for both AEO surfaces (/solve, /vs).
+  // The persona guard lives in `personas.test.ts` — one home for both AEO
+  // surfaces (/solve, /vs).
 
   test("FAQ answers stay under 80 words each (LLM lift-verbatim sweet spot)", () => {
     for (const s of SOLVE_ENTRIES) {
@@ -139,5 +139,4 @@ describe("SOLVE_ENTRIES data integrity", () => {
       }
     }
   });
-
 });

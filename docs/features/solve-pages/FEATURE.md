@@ -21,7 +21,7 @@ when-to-load:
 ## Touchpoints — read this feature before editing
 
 - `apps/web/src/data/solve.ts` — typed source of truth (one object per page)
-- `apps/web/src/data/personas.ts` — shared with `comparison-pages`: the `P1..P4` codes plus their user-facing labels/descriptions and render order. One home for both AEO surfaces; `personas.test.ts` fails any surface that interpolates a raw code.
+- `apps/web/src/data/personas.ts` — shared with `comparison-pages`: the `P1..P4` codes plus their user-facing labels/descriptions (declaration order = render order). `personas.test.ts` fails any surface that reads a persona outside a `PERSONAS[…]` lookup.
 - `apps/web/src/data/solve.test.ts` — data-integrity tests pinning the AEO invariants
 - `apps/web/src/pages/solve/[slug].astro` — single dynamic template using `getStaticPaths()`
 - `apps/web/src/pages/solve/index.astro` — solve-page index (`/solve`), grouped by user-facing persona label (internal `P1..P4` codes never reach rendered HTML)

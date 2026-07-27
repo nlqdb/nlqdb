@@ -5,7 +5,8 @@
 //
 // SK-WEB-015 page sweep: same token system as `/vs/[slug]`. Display
 // serif for the narrative header; mono only for the competitor name;
-// quiet sans body — the audience tag reads as prose, not an identifier.
+// quiet sans body — the audience tag reads as prose ("For solo
+// builders"), not as an identifier a stranger has to decode.
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
@@ -22,6 +23,11 @@ const itemListLd = itemListJsonLd(
   COMPETITORS.map((c) => ({ name: `nlqdb vs ${c.name}`, path: `/vs/${c.slug}` })),
   Astro.site,
 );
+
+// Persona labels are authored as `/solve` section headings ("Solo builders");
+// mid-sentence here the first letter drops. A blanket toLowerCase would eat
+// the acronym in "Analysts and PMs".
+const audience = (label: string) => `For ${label[0].toLowerCase()}${label.slice(1)}`;
 ---
 <Base
   title="Compare nlqdb to alternatives — natural-language databases"
@@ -49,7 +55,7 @@ const itemListLd = itemListJsonLd(
               <a href={`/vs/${c.slug}/`} class="vsidx__link">
                 <div class="vsidx__row">
                   <h2 class="vsidx__name">nlqdb vs {c.name}</h2>
-                  <span class="vsidx__persona">{PERSONAS[c.persona].label}</span>
+                  <span class="vsidx__persona">{audience(PERSONAS[c.persona].label)}</span>
                 </div>
                 <p class="vsidx__one-liner">{c.oneLiner}</p>
               </a>
