@@ -132,25 +132,30 @@ jobs:
             | jq -r ".branches[] | select(.name == \"pr-${PR_NUMBER}\") | .id")
 
           if [ -n "$existing" ]; then
-            echo "Neon branch pr-${PR_NUMBER} already exists (${existing}) — reusing"
-            # Fetch the connection URI for the existing branch's endpoint
-            ep_response=$(curl -fsSL \
-              "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${existing}/endpoints" \
-              -H "Authorization: Bearer ${NEON_API_KEY}")
-            db_url=$(echo "$ep_response" | jq -r '.endpoints[0].host // empty')
-            if [ -z "$db_url" ]; then
-              echo "::error::Existing Neon branch has no endpoint — delete it and re-run"
-              echo "$ep_response" | jq .
-              exit 1
-            fi
-            # Reconstruct the postgres URI from the endpoint host
-            # (Neon returns host only from /endpoints; the full URI
-            # with credentials comes only from branch creation).
-            # Delete and recreate to get a fresh connection_uri.
-            echo "Deleting stale branch to get fresh credentials..."
+            # Neon returns a connection URI (with credentials) only from
+            # branch *creation* — `/endpoints` gives a host and no password —
+            # so reuse means delete-then-recreate.
+            echo "Neon branch pr-${PR_NUMBER} exists (${existing}) — deleting for fresh credentials"
             curl -fsSL -X DELETE \
               "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${existing}" \
               -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null
+
+            # Deletion is asynchronous: the DELETE returns as soon as the
+            # operation is queued, and recreating the name before it finishes
+            # is rejected 422. Wait for the name to actually free up.
+            still=""
+            for _ in $(seq 30); do
+              still=$(curl -fsSL \
+                "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+                -H "Authorization: Bearer ${NEON_API_KEY}" \
+                | jq -r ".branches[] | select(.id == \"${existing}\") | .id")
+              if [ -z "$still" ]; then break; fi
+              sleep 2
+            done
+            if [ -n "$still" ]; then
+              echo "::error::Neon branch ${existing} still present 60s after DELETE"
+              exit 1
+            fi
             echo "Recreating branch..."
           fi
 
