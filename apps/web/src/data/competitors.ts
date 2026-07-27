@@ -9,6 +9,8 @@
 // demoted by Perplexity / ChatGPT cited-source heuristics. Verified
 // claims only — no parity rows we can't ship today.
 
+import type { Persona } from "./personas";
+
 export type ComparisonClaim = "shipped" | "partial" | "no";
 
 export type ComparisonRow = {
@@ -41,8 +43,9 @@ export type Competitor = {
   url: string;
   // One-sentence pitch of the competitor (their own positioning, paraphrased).
   tagline: string;
-  // The persona this comparison serves (from `docs/research/personas.md`).
-  persona: "P1 solo builder" | "P2 agent builder" | "P3 analyst" | "P4 backend engineer";
+  // The persona this comparison serves — rendered as
+  // `PERSONAS[persona].label`, never as the raw code (see `personas.ts`).
+  persona: Persona;
   // Direct-answer capsule for AEO crawlers — under 60 words, capsule shape
   // ("If you need X, pick A. If you need Y, pick B.").
   oneLiner: string;

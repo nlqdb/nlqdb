@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SOLVE_ENTRIES, SOLVE_PERSONA_ORDER, SOLVE_PERSONAS, solveBySlug } from "./solve.ts";
+import { SOLVE_ENTRIES, solveBySlug } from "./solve.ts";
 
 // `/solve/<slug>` data is loaded by 4 surfaces (page template, /solve
 // index, sitemap, llms.txt). These checks pin the invariants the
@@ -90,17 +90,8 @@ describe("SOLVE_ENTRIES data integrity", () => {
     }
   });
 
-  test("persona is one of the documented P1-P4 slugs (matches docs/research/personas.md)", () => {
-    const valid = new Set([
-      "P1 solo builder",
-      "P2 agent builder",
-      "P3 analyst",
-      "P4 backend engineer",
-    ]);
-    for (const s of SOLVE_ENTRIES) {
-      expect(valid.has(s.persona)).toBe(true);
-    }
-  });
+  // The persona guard lives in `personas.test.ts` — one home for both AEO
+  // surfaces (/solve, /vs).
 
   test("FAQ answers stay under 80 words each (LLM lift-verbatim sweet spot)", () => {
     for (const s of SOLVE_ENTRIES) {
@@ -119,21 +110,6 @@ describe("SOLVE_ENTRIES data integrity", () => {
 
   test("solveBySlug returns undefined for unknown slug (404 path)", () => {
     expect(solveBySlug("definitely-not-a-real-pain")).toBeUndefined();
-  });
-
-  test("SOLVE_PERSONAS has an entry for every persona used in SOLVE_ENTRIES", () => {
-    for (const s of SOLVE_ENTRIES) {
-      expect(SOLVE_PERSONAS[s.persona]).toBeDefined();
-    }
-  });
-
-  test("SOLVE_PERSONAS labels and descriptions are user-facing — no internal P1/P2/P3/P4 codes leak", () => {
-    for (const info of Object.values(SOLVE_PERSONAS)) {
-      expect(info.label.length).toBeGreaterThan(0);
-      expect(info.description.length).toBeGreaterThan(0);
-      expect(info.label).not.toMatch(/\bP[1-9]\b/);
-      expect(info.description).not.toMatch(/\bP[1-9]\b/);
-    }
   });
 
   // Rendered prose (oneLiner, painContext, howNlqdbAnswers, whatItDoesnt,
@@ -162,12 +138,5 @@ describe("SOLVE_ENTRIES data integrity", () => {
         expect(hit ? `${s.slug}: ${hit[0]} — "${text.slice(0, 60)}…"` : "").toBe("");
       }
     }
-  });
-
-  test("SOLVE_PERSONA_ORDER covers every persona key in SOLVE_PERSONAS exactly once", () => {
-    expect(new Set(SOLVE_PERSONA_ORDER).size).toBe(SOLVE_PERSONA_ORDER.length);
-    const keys = Object.keys(SOLVE_PERSONAS).sort();
-    const ordered = [...SOLVE_PERSONA_ORDER].sort();
-    expect(ordered).toEqual(keys);
   });
 });

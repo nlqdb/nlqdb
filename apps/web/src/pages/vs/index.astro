@@ -4,12 +4,14 @@
 // hub the per-comparison pages cross-link to.
 //
 // SK-WEB-015 page sweep: same token system as `/vs/[slug]`. Display
-// serif for the narrative header; mono only for identifier columns
-// (competitor name + persona tag); quiet sans body.
+// serif for the narrative header; mono only for the competitor name;
+// quiet sans body — the audience tag reads as prose ("For solo
+// builders"), not as an identifier a stranger has to decode.
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { COMPETITORS } from "../../data/competitors";
+import { PERSONAS } from "../../data/personas";
 import Base from "../../layouts/Base.astro";
 import { itemListJsonLd } from "../../lib/itemlist-jsonld";
 
@@ -21,6 +23,12 @@ const itemListLd = itemListJsonLd(
   COMPETITORS.map((c) => ({ name: `nlqdb vs ${c.name}`, path: `/vs/${c.slug}` })),
   Astro.site,
 );
+
+// Persona labels are authored as `/solve` section headings ("Solo builders");
+// mid-sentence here the first letter drops — but only when the second is
+// already lowercase, so an acronym ("PMs", "AI engineers") survives intact.
+const audience = (label: string) =>
+  `For ${label.replace(/^\p{Lu}(?=\p{Ll})/u, (c) => c.toLowerCase())}`;
 ---
 <Base
   title="Compare nlqdb to alternatives — natural-language databases"
@@ -48,7 +56,7 @@ const itemListLd = itemListJsonLd(
               <a href={`/vs/${c.slug}/`} class="vsidx__link">
                 <div class="vsidx__row">
                   <h2 class="vsidx__name">nlqdb vs {c.name}</h2>
-                  <span class="vsidx__persona">{c.persona}</span>
+                  <span class="vsidx__persona">{audience(PERSONAS[c.persona].label)}</span>
                 </div>
                 <p class="vsidx__one-liner">{c.oneLiner}</p>
               </a>
@@ -131,9 +139,12 @@ const itemListLd = itemListJsonLd(
   }
   .vsidx__row {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: 16px;
+    /* Wrap rather than squeeze: at 390px the audience tag drops to its own
+       line instead of breaking the competitor name people scan for. */
+    gap: 2px 16px;
     margin-bottom: 8px;
   }
   .vsidx__name {
@@ -145,11 +156,10 @@ const itemListLd = itemListJsonLd(
     color: var(--ink);
   }
   .vsidx__persona {
-    font-family: var(--mono);
+    font-family: var(--sans);
     font-size: var(--t-small);
     color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    white-space: nowrap;
   }
   .vsidx__one-liner {
     font-family: var(--sans);
