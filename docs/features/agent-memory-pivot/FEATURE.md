@@ -126,6 +126,14 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 **Body:** [`decisions/SK-PIVOT-017-docs-to-memory-skill.md`](./decisions/SK-PIVOT-017-docs-to-memory-skill.md). An nlqdb-branded skill extracts a repo's **structured operational knowledge** (decisions, statuses, open questions, queues, ledgers) into an nlqdb memory DB via the public MCP surface, kept fresh by a one-way re-sync hook; markdown stays the git-reviewed source of truth. nlqdb's own `docs/` is the first corpus — the SK-PIVOT-016 gate workload and the launch demo in one. v1 never ingests arbitrary prose (the vector-RAG trap); the golden-query set (≥ 10, incl. temporal) rides the `SK-QUAL-023` eval family.
 
+### SK-PIVOT-018 — Memory ships persona-goal packs on the one canonical schema, never per-vertical schemas
+
+**Body:** [`decisions/SK-PIVOT-018-goal-packs.md`](./decisions/SK-PIVOT-018-goal-packs.md). Goal packs = extraction recipe (skill prompt) + seed entities + golden queries, all on the one `agent_memory_v1` schema (`SK-PIVOT-007`). Pack #1 repo-ops (`SK-PIVOT-017`); pack #2 founder-ops (accounts, credential *metadata* — never values — listings, the human-actions log, seeded from [`docs/history/founder-actions-log.md`](../../history/founder-actions-log.md)). A pack adds no schema, endpoint or tool.
+
+### SK-PIVOT-019 — nlqdb publishes a reproducible cross-strategy memory benchmark; honest per-purpose winners, never an integrations program
+
+**Body:** [`decisions/SK-PIVOT-019-memory-strategy-benchmark.md`](./decisions/SK-PIVOT-019-memory-strategy-benchmark.md). Same corpus (`SK-PIVOT-017`), same golden queries per `SK-QUAL-023` axis, run against memory strategies (v1: nlqdb, DIY pgvector, plain-context; hosted competitors one per run, ToS-checked) with per-purpose winners published even where nlqdb loses. Public harness in `tools/`; rendered on `/agents`. Build starts when the corpus exists; explicitly not an integrations program.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL;
