@@ -77,22 +77,24 @@ describe("sitemap.xml", () => {
 
     // `/vs/wrenai/` → `vs/[slug].astro`; `/agents/` → `agents/index.astro`;
     // `/architecture/` → `architecture.astro`; `/` → `index.astro`.
-    const fileFor = (path: string): string => {
+    const filesFor = (path: string): string[] => {
       const segs = path.split("/").filter(Boolean);
-      if (segs.length === 0) return "index.astro";
+      if (segs.length === 0) return ["index.astro"];
+      for (const c of [`${segs.join("/")}.astro`, `${segs.join("/")}/index.astro`]) {
+        if (existsSync(join(pagesDir, c))) return [c];
+      }
+      // Demand chrome from *every* `[param].astro` in the parent, so neither the
+      // param's name nor Astro's static-over-rest priority has to be modelled.
       const parent = segs.slice(0, -1).join("/");
       const dir = join(pagesDir, parent);
-      // Whatever the param is called — `[slug]`, `[id]`, `[...rest]` all render
-      // this level, so match the shape rather than one hardcoded name.
-      const dynamic = existsSync(dir) ? readdirSync(dir).find((f) => f.startsWith("[")) : undefined;
-      for (const c of [
-        `${segs.join("/")}.astro`,
-        `${segs.join("/")}/index.astro`,
-        ...(dynamic ? [join(parent, dynamic)] : []),
-      ]) {
-        if (existsSync(join(pagesDir, c))) return c;
+      const dynamic = (existsSync(dir) ? readdirSync(dir) : [])
+        .filter((f) => f.startsWith("[") && f.endsWith(".astro"))
+        .sort()
+        .map((f) => join(parent, f));
+      if (dynamic.length === 0) {
+        throw new Error(`sitemap advertises ${path} but no src/pages file renders it`);
       }
-      throw new Error(`sitemap advertises ${path} but no src/pages file renders it`);
+      return dynamic;
     };
 
     const rendersChrome = (file: string): boolean => {
@@ -108,7 +110,7 @@ describe("sitemap.xml", () => {
     expect(paths.length).toBeGreaterThan(0); // the regex actually parsed the sitemap
     // Dedupe by template — 100+ URLs collapse to ~15 files, and a failure
     // names the template to fix rather than every URL it renders.
-    const bare = [...new Set(paths.map(fileFor))].filter((f) => !rendersChrome(f));
+    const bare = [...new Set(paths.flatMap(filesFor))].filter((f) => !rendersChrome(f));
     expect(bare).toEqual([]);
   });
 });
