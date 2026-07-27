@@ -50,7 +50,8 @@ host's key names differ, so copy its own block, not a neighbour's.
 
 3. **Claude Desktop** — Settings → Connectors → Add custom connector, then
    paste the URL above. This is the one host whose documented remote path is
-   a dialog, so it is the one step here a coding agent can't run for you.
+   a dialog, so it is the one step here a coding agent can't run for you —
+   take the [headless route](#no-browser-the-headless-route) instead, which it can.
 
 4. **Windsurf** — merge the `nlqdb` entry into `mcpServers` in
    `~/.codeium/windsurf/mcp_config.json`, keeping any servers already there
@@ -93,7 +94,8 @@ in; overwriting the file drops the developer's other servers and settings.
 On Cursor and VS Code the one-click deep-link buttons on
 [nlqdb.com/integrations](https://nlqdb.com/integrations/) are a faster route
 for a human, not a requirement — the file works either way.
-Claude Desktop is the exception: its connector dialog needs a human.
+Claude Desktop is the exception *on this route*: its connector dialog needs a
+human. The headless route below is a file, so it needs none.
 
 ### No browser? The headless route
 
@@ -108,13 +110,20 @@ Mint the key once at [app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys)
 (that page needs a signed-in account), then swap the `nlqdb` entry from your
 host's Step 1 block for this one — same file, same root key, only the server
 value changes. Unlike the hosted blocks, this entry holds a live account
-secret: put it in the **user-level** config (`~/.cursor/mcp.json`,
-`~/.codex/config.toml`) rather than a project file your repo commits, and
-revoke it at `/app/keys` if it leaks.
+secret: put it in the **user-level** config — `~/.cursor/mcp.json`,
+`~/.codex/config.toml`, or VS Code's *MCP: Open User Configuration* rather than
+its workspace `.vscode/mcp.json` — never a file your repo commits. Revoke it at
+`/app/keys` if it leaks.
 
 ```json
 { "command": "npx", "args": ["-y", "@nlqdb/mcp"], "env": { "NLQDB_API_KEY": "sk_live_REPLACE_ME" } }
 ```
+
+That object is also the route into **Claude Desktop**, whose hosted path is the
+one dialog on this page: merge it into `mcpServers` in
+`claude_desktop_config.json` — `~/Library/Application Support/Claude/` on macOS,
+`%APPDATA%\Claude\` on Windows, or Settings → Developer → Edit Config to open
+it — then fully quit and reopen the app.
 
 VS Code additionally needs `"type": "stdio"` on that entry, in place of the
 `"type": "http"` its hosted block carries. Two hosts don't take a plain JSON
@@ -135,7 +144,7 @@ args = ["-y", "@nlqdb/mcp"]
 env = { NLQDB_API_KEY = "sk_live_REPLACE_ME" }
 ```
 
-Steps 3–5 below are identical on either route.
+Steps 3–5 below apply to both routes.
 
 ## Step 2 — Authenticate
 
@@ -207,10 +216,11 @@ writing (through the confirm gate) and reading memory.
   as failed rather than showing a tool error; check the `env` block sits inside
   the `nlqdb` entry, and restart the host so it re-reads the file.
 - **Headless route: `unexpected prefix`** — the key was copied with a stray
-  quote or whitespace, or it isn't an account key. That message prints every
-  accepted prefix, including `sk_mcp_` — ignore that one here: `sk_mcp_` keys
-  are minted server-side by the hosted route's OAuth callback and never shown,
-  so there is no `sk_mcp_` value you can paste. Use `sk_live_`.
+  quote or whitespace, or it isn't an account key.
+- **`sk_mcp_` is never the key to paste — use `sk_live_`.** Both messages above
+  name it (the binary's prefix allowlist accepts it, and `0.1.0`'s no-key hint
+  suggests it), but `sk_mcp_` keys are minted server-side by the hosted route's
+  OAuth callback and never shown, so no `sk_mcp_` value can be pasted.
 - **Headless route: a tool call answers "This tool requires a user-scoped
   key"** — the config reached the server and the server reached nlqdb, but the
   key isn't valid. Mint a fresh one at
