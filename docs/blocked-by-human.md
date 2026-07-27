@@ -32,7 +32,7 @@ exists.
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
-0. **⏱ ~2 min · since 2026-07-27 — Delete two orphaned Neon branches; the
+1. **⏱ ~2 min · since 2026-07-27 — Delete two orphaned Neon branches; the
    project sits at its cap and CI goes red whenever PRs overlap.** Measured
    live 2026-07-27: the project holds **10 branches, the Free-plan cap**, so
    `POST /branches` returns `422 {"code":"BRANCHES_LIMIT_EXCEEDED"}` and
@@ -62,7 +62,7 @@ exists.
    every `pr-N` / `ci-smoke-*` branch at creation. No decision needed from
    you — if that ever falls through, it comes back here as its own row.
 
-1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
+2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
    the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
    founder-directed 2026-07-26: criteria, never calendar dates — agents
@@ -82,7 +82,7 @@ exists.
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0.
 
-2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
