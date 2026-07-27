@@ -118,23 +118,22 @@ every CI run. Then the PR proved it: `preview-app.yml` minted **`pr-840` carryin
 `expires_at=2026-08-03`** while `pr-835/836/837` carry none, and the `ci-smoke-*` path
 went green too. Probe branches deleted; the project ended where it started, 5 of 10.
 
-**The guard.** `neon-branch-expiry-integrity.test.ts` scans `.github/workflows/`,
-bounds each candidate to its own `curl` invocation, keeps only POSTs to the
-*collection* endpoint (so a `/branches/${id}` delete can't be mistaken for a create),
-and asserts each payload maps `expires_at` to a `date -u`-computed variable, with
-every window in the directory inside Neon's 30-day ceiling. Nothing else would catch
-a drift: workflows are not typechecked, not linted for semantics, and a missing
-expiry costs nothing until the tenth branch. **Negative-tested nine ways, each failing
-loudly:** drop `expires_at` from any of the three sites · widen past 30 days (`+60
-days`, `+5 weeks`) · hardcode a literal timestamp · blind the scanner on 2 of 3 sites
-(the `≥ 3` floor fires, so a scanner matching nothing can't pass vacuously) · add a
-fourth site with no expiry, named `.yml` or `.yaml`. **Four holes were mine, all found
-in review, three of them the same vacuous-green class — a fourth site the scan simply
-never saw:** the endpoint pattern hardcoded `${NEON_PROJECT_ID}`; the file filter took
-`.yml` only; and the unit set was `hour|day`, so a *valid* `+30 minutes` window
-false-failed. (Each re-verified both ways: **0 fails** on my guard, 2 on the merged
-one.) Fourth: the 30-day bound read only each file's *first* `expires=`. `runbook.md`
-§6 also still promised a preview DB "deleted on PR close" — corrected, D4 net-shrunk.
+**The guard.** `neon-branch-expiry-integrity.test.ts` scans every YAML and shell file in
+the repo, bounds each candidate to its own `curl` command, and treats *endpoint + a body
+or any POST spelling* as a create. Each must map `expires_at` to a `date -u`-computed
+variable, and its own file must compute a window inside Neon's 30-day ceiling and above a
+1 h floor. Nothing else catches a drift: workflows are not typechecked, not linted for
+semantics, and a missing expiry costs nothing until the tenth branch. **Negative-tested
+fourteen ways, thirteen failing loudly. Every hole in it was mine, found across three
+review passes, and nearly all were one class — a working creation site the guard read
+green.** The scan was too narrow four ways (endpoint pinned to `${NEON_PROJECT_ID}`, then
+to a literal at all, so a URL in a variable blinded it; `.yml`-only; one directory) and
+detection two more (a literal `-X POST` required, so a bare `curl -d` was invisible; no
+floor, so `+1 minute` passed and would reap mid-run). The 30-day ceiling also read only
+each file's *first* `expires=`, and the window count balanced repo-wide, so a site could
+borrow one from another file — both now per file. The lone false-fail: `hour|day` rejected
+a *valid* `+30 minutes`. `runbook.md` §6 also still promised a preview DB "deleted on PR
+close" — corrected.
 
 **Recorded, not fixed (one lever per run).** The canonical-eval resume protocol is
 unexecutable as documented. Spider's checkpoint cache is keyed
@@ -158,7 +157,7 @@ backstop the decisions already implied. A record restating "clean up what you cr
 fails D5.
 
 **Gates:** `typecheck` exit 0 all packages · `lint` **0 errors, 41 warnings, 2 infos =
-repo baseline** · `test` exit 0 all packages (`apps/web` **404 pass / 0 fail**) · all
+repo baseline** · `test` exit 0 all packages (`apps/web` **406 pass / 0 fail**) · all
 three edited workflows parse as YAML, their rendered payloads as JSON · shellcheck
 green in CI · link sweep **0 dead / 0 redirecting** on 126 pages · gate 3 prints
 nothing · **D4** every edited doc under 20480 B.
