@@ -233,9 +233,11 @@ for (const url of INTENT_URLS) {
     JSON.stringify({ inspectionUrl: url, siteUrl: SITE, languageCode: "en-US" }),
   ).catch((e: Error) => ({ status: 0, body: e.message }));
   if (res.status !== 200) {
-    // status 0 is a transport failure, where the curl error is the whole fact.
-    const why = res.status || res.body.replace(/\s+/g, " ").slice(0, 120);
-    console.info(`  (unavailable — ${why}) ${url}`);
+    // The body carries the only actionable half — which quota a 429 hit, or
+    // whether a 403 is a missing role vs a URL outside the property. status 0
+    // is a transport failure, where the curl error is the whole fact.
+    const detail = res.body.replace(/\s+/g, " ").trim().slice(0, 200);
+    console.info(`  (unavailable — ${res.status ? `HTTP ${res.status}: ` : ""}${detail}) ${url}`);
     // 401/403 are property-wide, so every remaining URL would fail identically
     // — stop rather than print the same line six times. A 429 or 5xx can be
     // per-request, so keep going; the tally states what was actually read.
