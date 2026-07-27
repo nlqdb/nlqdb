@@ -42,8 +42,12 @@ rebuild; the times are replay estimates, not measurements:
    `mirror-secrets-workers.sh` propagate; `scripts/verify-secrets.sh`
    proves the set. Agent-doable once values exist; the *minting clicks* are
    human. ~1–2 h.
-5. **One-time console opt-ins** — Cloudflare R2 "Get Started" click; Neon
-   project (us-east-1, PG 17, Neon Auth OFF). Minutes each.
+5. **One-time console opt-ins** — Neon project (us-east-1, PG 17, Neon Auth
+   OFF), minutes. Cloudflare R2 is **not** a free click: it needs a payment
+   method on file even inside the always-free allowance, so the R2 line was
+   added **2026-04-26 and cancelled the same day** — replay both halves, and
+   re-read the "does the bucket keep serving after cancellation?" unknown in
+   [`runbook.md §7`](../runbook.md).
 
 ## Era 1 — Phase 0/1 operations (dated where a source records it)
 
@@ -55,7 +59,7 @@ rebuild; the times are replay estimates, not measurements:
 | (unrecorded) | GSC service account + `GSC_SERVICE_ACCOUNT_JSON` (Google console) | `scripts/gsc-pull.ts` — scorecard row #7's Google-side instrument | ~10 min |
 | 2026-06-12 | Submitted the original Anthropic MCP directory form (clau.de form) | nothing — produced no listing; superseded by the plan-gated admin-portal path (ledger row #9, still queued) | lesson: verify the live submission path first |
 
-## Era 2 — the 2026-07-26 sitting (seven actions, one hour, queue 9 → 2)
+## Era 2 — the 2026-07-26 sitting (seven actions, queue 9 → 2)
 
 Recorded live during the sitting (PR #834; verification per action in its
 body). "Ledger row #N" = the channel row in

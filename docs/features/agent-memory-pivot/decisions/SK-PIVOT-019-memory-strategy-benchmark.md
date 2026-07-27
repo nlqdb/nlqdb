@@ -3,7 +3,7 @@
 - **Decision:** nlqdb ships a public, reproducible **memory-strategy
   benchmark** (founder-decided 2026-07-27): the same real corpus (the
   `SK-PIVOT-017` ops memories) and the same golden queries, grouped by the
-  five `SK-QUAL-023` axes (retrieval, temporal, forgetting, consolidation,
+  `SK-QUAL-023` axis labels (retrieval, temporal, forgetting, consolidation,
   analytical), run against competing memory strategies and published with
   **per-purpose winners even where nlqdb loses**. v1 strategy set: nlqdb, DIY
   Postgres+pgvector, plain-context (no store); hosted competitors (Mem0,
