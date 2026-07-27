@@ -88,11 +88,10 @@ supersede or amend a recorded decision.
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
    the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
    founder-directed 2026-07-26: criteria, never calendar dates — agents
-   drive all five; `/daily` restates gate progress n/5 beside this bullet's
-   age). When the gate is green, only this founder-only half remains, and
-   the launch demo is the gate's own artifact (the live `/agents` memory
-   dashboard + "we ran our company's ops on our own memory through the
-   public MCP endpoint — here's what broke"): per
+   drive all five). When the gate is green, only this founder-only half
+   remains, and the launch demo is the gate's own artifact (the live
+   `/agents` memory dashboard + "we ran our company's ops on our own memory
+   through the public MCP endpoint — here's what broke"): per
    [`docs/research/launch-kit.md`](./research/launch-kit.md), pick the angle
    (§2; GLOBAL-036 says lead with analytical agent memory), write the Show
    HN post + first comment in your own voice from the §3.1 fact sheet
