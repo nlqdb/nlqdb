@@ -24,10 +24,10 @@ same tools:
    for Cursor and VS Code, a copy-paste `claude mcp add` command for
    Claude Code, and paste-ready config blocks for Claude, Windsurf, Zed,
    and Codex.
-3. **`NLQDB_API_KEY` env var** — an `sk_…` key authenticates the local
-   stdio server; the CI / Docker / air-gapped escape hatch. The stdio
-   package (`@nlqdb/mcp`) runs from the monorepo today — its npm publish
-   is gated with the [wrapper packages](/frameworks/).
+3. **`npx -y @nlqdb/mcp` + an `NLQDB_API_KEY` env var** — the local stdio
+   server, authenticated by a key instead of a browser. The headless path:
+   CI, Docker, air-gapped, and coding agents that can't click a consent
+   screen.
 
 ## Add it to your host
 
@@ -44,6 +44,21 @@ per-host block to copy):
 
 ```json
 { "url": "https://mcp.nlqdb.com/mcp" }
+```
+
+Headless (no browser) — get an `sk_mcp_…` key from
+[app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys), then:
+
+```json
+{
+  "mcpServers": {
+    "nlqdb": {
+      "command": "npx",
+      "args": ["-y", "@nlqdb/mcp"],
+      "env": { "NLQDB_API_KEY": "sk_mcp_…" }
+    }
+  }
+}
 ```
 
 The CLI can list which supported hosts are installed on your machine with

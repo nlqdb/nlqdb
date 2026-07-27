@@ -19,10 +19,6 @@ is the company's real cycle time.
 
 The whole queue, same order as the bullets below — where the exact URLs, form
 values and criteria live. Read those only when you sit down to do the thing.
-(Seven bullets cleared in the 2026-07-26 founder sitting: npm bootstrap-publish
-+ Trusted Publisher, Smithery, HTTPS zone toggle, mcp.so, cursor.directory,
-the `awesome-mcp-servers` PR, and branch protection — declined, merger agent
-owns the gate.)
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|

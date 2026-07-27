@@ -2,8 +2,9 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createClient } from "@nlqdb/sdk";
 import { createServer } from "./server.ts";
 
-// Hand-maintained sync with package.json#version to avoid JSON-import-attribute portability across Node 20-22 + Bun.
-// A unit test pins this to package.json#version so the two can't drift silently.
+// A literal, not a JSON import — import attributes aren't portable across the Node, Bun and Workers
+// runtimes this module loads in. `scripts/sync-source-versions.mjs` rewrites it during
+// `changeset version`; a unit test pins it to package.json#version so the two can't drift silently.
 const PACKAGE_NAME = "@nlqdb/mcp";
 export const PACKAGE_VERSION = "0.1.0";
 

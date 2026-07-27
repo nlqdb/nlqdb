@@ -28,12 +28,12 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".."
 // nothing. Adding a landing page is a channel decision — add it here.
 const ATTRIBUTABLE_HOMEPAGES = new Set([
   "https://nlqdb.com/?utm_source=npm",
-  "https://nlqdb.com/agents/?utm_source=npm", // @nlqdb/mcp, once it un-gates
+  "https://nlqdb.com/agents/?utm_source=npm", // @nlqdb/mcp — the memory wedge landing
 ]);
 
 // Every workspace package manifest. `private: true` is npm's own "never
 // publish" flag, so those never render a Homepage link — the wrappers are all
-// private today (only @nlqdb/sdk + @nlqdb/cli publish).
+// private today (only @nlqdb/sdk, @nlqdb/cli and @nlqdb/mcp publish).
 function publishedManifests(): { name: string; homepage?: string; file: string }[] {
   const pkgDir = join(REPO_ROOT, "packages");
   const out: { name: string; homepage?: string; file: string }[] = [];
