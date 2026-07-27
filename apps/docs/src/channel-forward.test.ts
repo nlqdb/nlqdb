@@ -49,6 +49,14 @@ describe("forwardChannelParams", () => {
     expect(forwardChannelParams(hand, "?utm_source=mcp-registry")).toBe(hand);
   });
 
+  test("a bare `utm_source=` names no channel, so it is filled in, not preserved", () => {
+    // The apex's `clean()` drops an empty value, so leaving it would convert
+    // as `direct`. Same truthiness test as the incoming side.
+    expect(forwardChannelParams("https://nlqdb.com/agents?utm_source=", TAGGED)).toBe(
+      "https://nlqdb.com/agents?utm_source=agent-artifacts",
+    );
+  });
+
   test("does nothing without an incoming utm_source", () => {
     for (const search of ["", "?", "?utm_medium=listing", "?utm_source="]) {
       expect(forwardChannelParams("https://nlqdb.com/integrations/", search)).toBe(

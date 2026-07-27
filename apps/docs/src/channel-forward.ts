@@ -49,7 +49,9 @@ export function forwardChannelParams(href: string, search: string): string {
   // string" is executable source — out of a function that edits URLs.
   if (url.protocol !== "https:" || url.hostname !== APEX_HOST) return href;
   // A hand-tagged link already names its channel — first touch wins there too.
-  if (url.searchParams.has("utm_source")) return href;
+  // Truthiness, not `has`: a bare `?utm_source=` names no channel, and the
+  // apex's `clean()` would drop it, so treat it the same as the incoming test.
+  if (url.searchParams.get("utm_source")) return href;
 
   for (const param of CHANNEL_PARAMS) {
     const value = incoming.get(param);
@@ -73,12 +75,14 @@ export function forwardChannelParamsOnLinks(links: Iterable<LinkLike>, search: s
   return rewritten;
 }
 
-/** Browser entry point — called once per docs page load from `Head.astro`. */
+/** Browser entry point — the `injectScript` in `astro.config.mjs` calls this. */
 export function applyChannelForwarding(): void {
   try {
     forwardChannelParamsOnLinks(document.querySelectorAll("a[href]"), location.search);
-  } catch {
-    // SK-GTM-007: every attribution layer drops on failure rather than
-    // costing a click. Nothing downstream reads the result.
+  } catch (err) {
+    // SK-GTM-007: every attribution layer drops on failure rather than costing
+    // a click. Vite folds `DEV` to `false` in prod, so a bug is loud locally
+    // and this whole branch is dead code in the shipped bundle.
+    if (import.meta.env.DEV) console.error("channel-forward", err);
   }
 }

@@ -2,9 +2,27 @@ import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
 import starlightLlmsTxt from "starlight-llms-txt";
 
+// SK-GTM-007 — the docs host captures no first touch of its own
+// (`localStorage` is per-origin) and the apex discards a `*.nlqdb.com`
+// referrer as internal, so the channel has to ride the URL across the hop.
+// `injectScript("page", …)` is Vite-processed, so it can import the typed,
+// unit-tested module; Starlight's own reference calls a `Head` override,
+// the other way to ship this, "a last resort".
+const channelForward = {
+  name: "nlqdb-channel-forward",
+  hooks: {
+    "astro:config:setup": ({ injectScript }) =>
+      injectScript(
+        "page",
+        'import { applyChannelForwarding } from "/src/channel-forward.ts"; applyChannelForwarding();',
+      ),
+  },
+};
+
 export default defineConfig({
   site: "https://docs.nlqdb.com",
   integrations: [
+    channelForward,
     starlight({
       title: "nlqdb",
       description: "A database you talk to. Documentation.",
@@ -12,11 +30,6 @@ export default defineConfig({
       editLink: {
         baseUrl: "https://github.com/nlqdb/nlqdb/edit/main/apps/docs/",
       },
-      // SK-GTM-007 — the docs host captures no first touch of its own
-      // (`localStorage` is per-origin) and the apex discards a
-      // `*.nlqdb.com` referrer as internal, so the channel has to ride the
-      // URL across the hop. `src/channel-forward.ts`.
-      components: { Head: "./src/components/Head.astro" },
       // WS06-T3 — self-describing machine index for agents that land on
       // docs.nlqdb.com. Emits /llms.txt, /llms-full.txt, /llms-small.txt
       // at build time (starlight-llms-txt, llmstxt.org spec). The
