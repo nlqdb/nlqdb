@@ -10,7 +10,8 @@
 # Per-PR isolation:
 #   - Ephemeral Neon branch (`pr-N`) — isolated Postgres for the app
 #     data the Worker queries through `DATABASE_URL`. Created on
-#     open/synchronize, deleted on close.
+#     open/synchronize, deleted on close, and Neon-side `expires_at`
+#     reaps it 7 days after the last push if the close is missed.
 #   - Mock IdP / mock Stripe (`MOCK_IDP=1`, `MOCK_STRIPE=1`) —
 #     bypass real OAuth + Stripe round-trips so previews don't need
 #     per-PR OAuth callbacks (callback URL is single-tenant per
@@ -290,12 +291,12 @@ jobs:
               lines.push(`- See logs: <${runUrl}>`);
             } else if (deployOutcome !== 'success') {
               header = '❌ **Preview app deploy FAILED — version upload**';
-              lines.push(`- Neon branch: \`pr-${process.env.PR_NUMBER ?? context.issue.number}\` (created — will be cleaned up on PR close)`);
+              lines.push(`- Neon branch: \`pr-${process.env.PR_NUMBER ?? context.issue.number}\` (created — cleaned up on PR close, or expires 7 d after the last push)`);
               lines.push(`- See logs: <${runUrl}>`);
             } else if (url) {
               header = '🚀 **Preview app deployed**';
               lines.push(`- URL: <${url}>`);
-              lines.push(`- Neon branch: \`pr-${process.env.PR_NUMBER ?? context.issue.number}\` (deleted on PR close)`);
+              lines.push(`- Neon branch: \`pr-${process.env.PR_NUMBER ?? context.issue.number}\` (deleted on PR close; expires 7 d after the last push)`);
               lines.push('- Mock IdP: visit `/auth/sign-in` and submit the mock form');
               lines.push(`- Magic-link inbox: \`${url}/api/dev/inbox\``);
             } else {
