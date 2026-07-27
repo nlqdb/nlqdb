@@ -27,12 +27,11 @@ change). **Queue 5 → 4.**
 **Why no acquisition lever instead (step-2 priority 1).** The GSC *Strengthen next*
 head is `/solve/running-total-cumulative-sum-in-sql/` — **72 impr, 0 clicks, pos
 36.3**, the largest winnable pool off page 1 — and `data/solve.ts` is free now that
-#829 merged. It was measured and **declined**: side-by-side against
-`/solve/count-rows-per-day-including-missing-dates/` (**70 impr, pos 8.0** — near-identical
+#829 merged. Measured and **declined**: against
+`/solve/count-rows-per-day-including-missing-dates/` (**70 impr, pos 8.0** — same
 volume, 28 positions better) the two entries are structurally the same page — same
-section set, same FAQ count, same 3 enduring sources. The delta is query saturation,
-not page quality, so a copy edit is a guess with no in-run re-measure. Recorded as a
-finding rather than dressed up as a lever.
+section set, FAQ count, and 3 enduring sources. The delta is query saturation, not
+page quality, so a copy edit is a guess with no in-run re-measure.
 **Top `blocked-by-human` bullet:** decide `MEMORY_PRESET` in prod (⏱ ~5 min, **0 days
 old**, PR #835 drafted). The launch-sequence bullet — the only one that can move real
 strangers off 0 — is **idle 44 days since 06-13**; its `SK-PIVOT-016` gate is **0/5
@@ -126,28 +125,29 @@ ended the run where it started, 5 of 10.
 **The guard.** `neon-branch-expiry-integrity.test.ts` scans `.github/workflows/`,
 bounds each candidate to its own `curl` invocation, keeps only POSTs to the
 *collection* endpoint (so a `/branches/${id}` delete can't be mistaken for a create),
-and asserts each payload maps `expires_at` to a shell variable computed by `date -u`
-inside ≤ 30 days. Nothing else would catch a drift: the workflows are not typechecked,
-not linted for semantics, and a missing expiry costs nothing until the tenth branch.
-**Negative-tested six ways, each failing loudly:** drop `expires_at` from any one of
-the three sites (1 fail each) · widen `preview-app` to 60 days, past Neon's ceiling
-(1 fail) · hardcode a literal timestamp instead of the computed one (1 fail) · blind
-the scanner on 2 of 3 sites (the `≥ 3` floor fires, so a scanner that quietly matches
-nothing cannot pass vacuously). An earlier attempt at that last mutation edited the
-*list* GET rather than the create POST and wrongly read as green — re-run against the
-POST it fails correctly.
+and asserts each payload maps `expires_at` to a `date -u`-computed variable, with
+every window in the directory inside Neon's 30-day ceiling. Nothing else would catch
+a drift: workflows are not typechecked, not linted for semantics, and a missing
+expiry costs nothing until the tenth branch. **Negative-tested seven ways, each
+failing loudly:** drop `expires_at` from any of the three sites · widen `preview-app`
+past 30 days · hardcode a literal timestamp · blind the scanner on 2 of 3 sites (the
+`≥ 3` floor fires, so a scanner matching nothing can't pass vacuously) · add a fourth
+site with no expiry. **Two holes were mine and review caught them:** the endpoint
+pattern hardcoded `${NEON_PROJECT_ID}`, so that fourth site went green if it spelled
+the secret differently (re-verified both ways: **0 fails** on my original guard, 2 on
+the widened one); and the 30-day bound read only each file's *first* `expires=`.
 
 **Recorded, not fixed (one lever per run).** The canonical-eval resume protocol is
 unexecutable as documented. Spider's checkpoint cache is keyed
 `eval-full-spider-${{ github.sha }}-`, and `/daily` explicitly says to "re-dispatch on
 the **same SHA**" — but `workflow_dispatch` only accepts a branch or tag ref, and
-`main` moved three times (`7579430` → `e438ec5` → `4ddd24d`) in the 4.5 h after
+`main` moved three times in the 4.5 h after
 [30230040001](https://github.com/nlqdb/nlqdb/actions/runs/30230040001) budget-stopped
-on `d961475`. That checkpoint is now unreachable, and any `main` dispatch restarts
-from zero. Left alone deliberately: the key's comment states its purpose ("so two code
-versions never share a canonical run's partial scores"), so changing it supersedes a
-recorded rationale — **P1** makes that the founder's call, not a silent edit. BIRD is
-unaffected in practice: it finished in one 38-minute window.
+on `d961475`. That checkpoint is unreachable; any `main` dispatch restarts from zero.
+Left alone deliberately: the key's comment states its purpose ("so two code versions
+never share a canonical run's partial scores"), so changing it supersedes a recorded
+rationale — **P1** makes that the founder's call. BIRD is unaffected in practice: it
+finished in one 38-minute window.
 
 **Step 3.** Queue **2**-deep (< 3) ⇒ no forced publish, and this run's lever taught a
 lesson too specific to syndicate. The dev.to drip refused as designed (newest article
@@ -160,10 +160,10 @@ backstop the decisions already implied. A record restating "clean up what you cr
 fails D5.
 
 **Gates:** `typecheck` exit 0 all packages · `lint` **0 errors, 41 warnings, 2 infos =
-repo baseline** · `test` exit 0 across all packages · all three edited workflows parse
-as YAML and their rendered payloads parse as JSON · link sweep **0 dead / 0
-redirecting** on 126 pages · gate 3 prints nothing · **D4** every edited doc under
-20480 B.
+repo baseline** · `test` exit 0 all packages (`apps/web` **404 pass / 0 fail**) · all
+three edited workflows parse as YAML, their rendered payloads as JSON · shellcheck
+green in CI · link sweep **0 dead / 0 redirecting** on 126 pages · gate 3 prints
+nothing · **D4** every edited doc under 20480 B.
 **KPI (GLOBAL-025):** advances **onboarding** — the founder's scarcest resource stops
 being spent on a queue row that was already done, and the recurring CI-red that
 delayed every merge is closed at the source; **degrades none** — no engine, API,
