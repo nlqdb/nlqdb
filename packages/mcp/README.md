@@ -11,8 +11,9 @@ Don't want a local process? Point your host at the hosted server
 
 ## Install
 
-Get a key at [app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys), then add
-this to your MCP host's config:
+Create an `sk_live_…` key at
+[app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys), then add this to your
+MCP host's config:
 
 ```json
 {
@@ -20,14 +21,14 @@ this to your MCP host's config:
     "nlqdb": {
       "command": "npx",
       "args": ["-y", "@nlqdb/mcp"],
-      "env": { "NLQDB_API_KEY": "sk_mcp_…" }
+      "env": { "NLQDB_API_KEY": "sk_live_…" }
     }
   }
 }
 ```
 
-`sk_mcp_…` and `sk_live_…` keys are account-scoped. A `pk_live_…` key is pinned
-to one database and can only call `nlqdb_query`.
+`sk_live_…` and `sk_mcp_…` keys are account-scoped and reach every tool. A
+`pk_live_…` key is pinned to one database and can only call `nlqdb_query`.
 
 ## Tools
 
