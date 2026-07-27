@@ -42,5 +42,5 @@ The dedicated `nlqdb_remember` verb and the typed `agent_memory_v1` schema are
 still gated (they return `wrong_preset` today) — use `nlqdb_query` for all
 memory reads and writes.
 
-Full guide: https://docs.nlqdb.com/agent-memory/ · Learn more:
+Full guide: https://docs.nlqdb.com/agent-memory/?utm_source=agent-artifacts · Learn more:
 https://nlqdb.com/agents?utm_source=agent-artifacts

@@ -20,7 +20,16 @@ when-to-load:
 - `apps/docs/wrangler.toml` (custom-domain, assets binding)
 - `apps/docs/src/content/docs/**` (page bodies, .mdx)
 - `apps/docs/public/**` (`robots.txt`, `_headers` — served verbatim)
-- `.github/workflows/deploy-docs.yml` (CI)
+- `apps/docs/src/channel-forward.ts` (+ its `injectScript` wiring in
+  `astro.config.mjs`) — this host runs no first-touch capture of its own
+  (`localStorage` is per-origin) and the apex discards a `*.nlqdb.com` referrer
+  as internal, so channel params must ride the URL to the apex or the channel
+  reads `direct`. This is how [`SK-GTM-007`](../gtm-metrics/FEATURE.md)
+  ("every externally published nlqdb URL carries its ledger key") is met on a
+  second host — a mechanism, not a decision of its own, so it gets no SK of
+  its own. Carries only the landing page's params — a reader who navigates
+  within the docs before clicking through converts as `direct`
+- `.github/workflows/ci.yml` (`build-docs` pre-merge gate) · `deploy-docs.yml` (deploy)
 
 ## Decisions
 

@@ -52,9 +52,13 @@ function allFenced(text: string, lang: string): string[] {
 
 const firstFenced = (text: string, lang: string): string => allFenced(text, lang)[0] as string;
 
-/** Every `https://…` token in a raw text artifact. */
+/**
+ * Every `https://…` token in a raw text artifact. Autolink brackets and
+ * sentence punctuation are not part of the URL — a `?utm_source=x>.` token
+ * would otherwise read as a different channel key than the one published.
+ */
 function urlsInText(text: string): string[] {
-  return text.match(/https?:\/\/[^\s"`)]+/g) ?? [];
+  return (text.match(/https?:\/\/[^\s"`)<>]+/g) ?? []).map((u) => u.replace(/[.,;:]+$/, ""));
 }
 
 describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
@@ -86,14 +90,24 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
     }
   });
 
-  test("every published nlqdb.com link carries the agent-artifacts utm_source (SK-GTM-007)", () => {
+  // An artifact lives in someone else's repo, so its links are externally
+  // published URLs and SK-GTM-007 applies to every one of them. The docs host
+  // was exempted here until 2026-07-26 on the grounds that it runs no
+  // attribution capture — true, but it made the *primary* link in all five
+  // artifacts unattributable while only the tertiary "Learn more" counted, so
+  // the R-07 yield gate could not fire. `apps/docs/src/channel-forward.ts`
+  // now carries the key across the hop; these two hosts are the ones that end
+  // in a first touch, and `mcp.nlqdb.com` (protocol only) is not one of them.
+  const ATTRIBUTING_HOSTS = ["https://nlqdb.com/", "https://docs.nlqdb.com/"];
+
+  test("every published nlqdb link carries the agent-artifacts utm_source (SK-GTM-007)", () => {
     for (const artifact of [AGENTS, CURSOR, CODEX, SKILL, read("README.md")]) {
-      for (const url of urlsInText(artifact)) {
-        // Marketing host only — docs.nlqdb.com / mcp.nlqdb.com don't run the
-        // attribution capture; the apex is the one that does.
-        if (/^https:\/\/nlqdb\.com\//.test(url)) {
-          expect(url).toContain("utm_source=agent-artifacts");
-        }
+      const attributable = urlsInText(artifact).filter((u) =>
+        ATTRIBUTING_HOSTS.some((h) => u.startsWith(h)),
+      );
+      expect(attributable.length).toBeGreaterThan(0);
+      for (const url of attributable) {
+        expect(new URL(url).searchParams.get("utm_source")).toBe("agent-artifacts");
       }
     }
   });

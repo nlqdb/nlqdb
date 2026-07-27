@@ -23,22 +23,27 @@ CLI reference.
 ## Commands
 
 ```bash
-bun run --filter apps/docs dev        # local dev server
-bun run --filter apps/docs build      # static build → dist/
-bun run --filter apps/docs deploy     # build + wrangler deploy
+bun run --filter @nlqdb/docs dev      # local dev server
+bun run --filter @nlqdb/docs build    # static build → dist/
+bun run --filter @nlqdb/docs deploy   # build + wrangler deploy
+bun run --filter @nlqdb/docs test     # unit tests under src/
+bun run --filter @nlqdb/docs check    # astro check (the CI gate)
 ```
 
-## Deploy
+## CI + deploy
 
-GH Actions → `.github/workflows/deploy-docs.yml` on push to `main`
-touching `apps/docs/**`. Custom domain + cert auto-provisioned by
-`wrangler` via `custom_domain = true` in `wrangler.toml`.
+Pre-merge gate: `ci.yml`'s `build-docs` job (astro check + test + build).
+Deploy: `.github/workflows/deploy-docs.yml` on push to `main` touching
+`apps/docs/**`. Custom domain + cert auto-provisioned by `wrangler` via
+`custom_domain = true` in `wrangler.toml`.
 
 ## Local rules
 
 - Content additions: write new `.mdx` files under
   `src/content/docs/`; update the sidebar in `astro.config.mjs`.
 - No client-side analytics SDKs — use Cloudflare Web Analytics
-  (`apps/web` pattern) once configured.
+  (`apps/web` pattern) once configured. First-party attribution that
+  sends nothing is not an SDK: `src/channel-forward.ts` only rewrites
+  outbound apex links so the channel survives the hop (SK-GTM-007).
 - No imports from `apps/web` or `packages/elements` — keep the docs
   site decoupled from product code.

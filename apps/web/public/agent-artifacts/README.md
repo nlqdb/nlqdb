@@ -40,4 +40,4 @@ Every connect command in these files is generated from one source of truth
 (`apps/web/src/lib/agent-artifacts.test.ts`), so they can never fall out of
 sync with the endpoint nlqdb actually serves.
 
-Full setup guide: <https://docs.nlqdb.com/agent-memory/>.
+Full setup guide: <https://docs.nlqdb.com/agent-memory/?utm_source=agent-artifacts>.

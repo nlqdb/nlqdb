@@ -22,16 +22,47 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 1 | ~2 min | Delete 2 orphaned Neon branches — the project sits at its 10-branch cap, so **CI goes red whenever PRs overlap** | 2026-07-27 |
+| 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
+| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #1 can move real strangers (scorecard row #2); #2 is the only one that
+Only #2 can move real strangers (scorecard row #2); #3 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
 exists.
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
-1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
+1. **⏱ ~2 min · since 2026-07-27 — Delete two orphaned Neon branches; the
+   project sits at its cap and CI goes red whenever PRs overlap.** Measured
+   live 2026-07-27: the project holds **10 branches, the Free-plan cap**, so
+   `POST /branches` returns `422 {"code":"BRANCHES_LIMIT_EXCEEDED"}` and
+   `ci.yml`'s `test-api-smoke-neon` (plus any preview needing a branch)
+   fails regardless of the PR's diff. Intermittent, not constant: on #832 it
+   failed 01:41Z and passed 02:08Z once a `ci-smoke-*` branch aged out of the
+   >1 h sweep. Two of the ten slots are held for good, so only eight rotate —
+   the cap binds as soon as more than that want a branch at once. Those two
+   belong to branches whose PRs are long gone: **`pr-571`** (closed
+   2026-07-02) and **`pr-648`** (merged 2026-07-10). Deleting a Neon branch
+   destroys its data, so an agent won't do it unattended — but these two have
+   no owner left. Paste-ready (needs `NEON_API_KEY` + `NEON_PROJECT_ID`):
+   ```bash
+   # confirm they are still the two oldest pr-* branches before deleting
+   curl -fsSL "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
+     -H "Authorization: Bearer $NEON_API_KEY" \
+     | jq -r '.branches[] | select(.name|startswith("pr-")) | "\(.name)\t\(.id)\t\(.created_at)"' | sort -k3
+   # then, for each of pr-571 and pr-648's ids:
+   curl -fsS -X DELETE "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/<id>" \
+     -H "Authorization: Bearer $NEON_API_KEY"
+   ```
+   **Only the deletion is yours.** Two slots buys headroom, not a fix, but the
+   durable fix is agent work and is already queued: Neon's create-branch API
+   takes an `expires_at` (RFC 3339, ≤30 days out,
+   [generally available on all plans](https://neon.com/docs/guides/branch-expiration))
+   and reaps the branch itself, so `preview-app.yml` and `ci.yml` can bound
+   every `pr-N` / `ci-smoke-*` branch at creation. No decision needed from
+   you — if that ever falls through, it comes back here as its own row.
+
+2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
    the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
    founder-directed 2026-07-26: criteria, never calendar dates — agents
@@ -51,7 +82,7 @@ exists.
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0.
 
-2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin

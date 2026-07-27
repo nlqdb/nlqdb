@@ -371,6 +371,37 @@ jobs:
         working-directory: apps/web
         run: bun run build
 
+  # `apps/docs` had no pre-merge job at all: its only build ran in
+  # deploy-docs.yml on push-to-main, so a broken Starlight override or a
+  # failing `channel-forward.test.ts` (SK-GTM-007 — it guards a URL rewrite
+  # against look-alike hosts) surfaced as a red deploy, not a red PR.
+  # No Go toolchain: `gen-cli` writes a placeholder when no `nlq` binary is
+  # present, which is the only autogen input CI can't produce for free.
+  build-docs:
+    name: apps/docs (astro check + test + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      # `check` needs the autogen pages the sidebar references.
+      - name: Generate autogen content
+        working-directory: apps/docs
+        run: bun run gen
+
+      - name: Astro check
+        working-directory: apps/docs
+        run: bun run check
+
+      - name: Test
+        working-directory: apps/docs
+        run: bun run test
+
+      - name: Astro build
+        working-directory: apps/docs
+        run: bun run build
+
   build-elements:
     name: packages/elements (esbuild + bundle-size)
     runs-on: ubuntu-latest
@@ -533,11 +564,26 @@ jobs:
           # No curl --retry here: POST is not idempotent; a retry after
           # a mid-response stream drop would double-create. Orphans from
           # this kind of flake are cleaned up by the >1 h sweep above.
-          response=$(curl -fsSL -X POST \
+          # No `-f` either: it exits 22 and *discards the body*, so an API
+          # rejection printed only "curl: (22) ... error: 422" and the
+          # diagnosis below could never run. Neon says why in the body —
+          # e.g. `BRANCHES_LIMIT_EXCEEDED` when the project is at its cap,
+          # which is a shared-capacity problem, not a problem with this PR.
+          status=$(curl -sSL -o /tmp/neon-create.json -w '%{http_code}' -X POST \
             "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
             -H "Authorization: Bearer ${NEON_API_KEY}" \
             -H "Content-Type: application/json" \
             -d "{\"branch\":{\"name\":\"$name\"},\"endpoints\":[{\"type\":\"read_write\"}]}")
+          response=$(cat /tmp/neon-create.json)
+          if [ "$status" -ge 300 ]; then
+            # Print the body verbatim, not a `{code, message}` projection: jq
+            # succeeds on *any* valid JSON, so a differently-shaped error would
+            # render as `{"code":null,"message":null}` — losing exactly the
+            # reason this reporting exists to surface. Non-2xx means no branch
+            # was created, so the body carries no `connection_uris` to leak.
+            echo "::error::Neon branch creation failed (HTTP $status): $(head -c 500 /tmp/neon-create.json)"
+            exit 1
+          fi
           id=$(echo "$response" | jq -r '.branch.id // empty')
           uri=$(echo "$response" | jq -r '.connection_uris[0].connection_uri // empty')
           if [ -z "$id" ] || [ -z "$uri" ]; then

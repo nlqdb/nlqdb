@@ -202,8 +202,8 @@ docs guide + llms.txt `## For coding agents`) **and one-command installable** �
 `npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory`
 (vercel-labs/skills; **run against the live CLI 2026-07-25**: writes `.agents/skills/nlqdb-memory/`
 — read directly by Cursor and Codex — plus a `.claude/skills/` symlink for Claude Code, no account,
-and **no** Cursor rule or `AGENTS.md` entry) → **in-flight**. **Remaining R-07 work is external
-distribution**:
+and **no** Cursor rule or `AGENTS.md` entry) → **in-flight**; all artifact links keyed 2026-07-26
+(§ Current numbers). **Remaining R-07 work is external distribution**:
 `skills.sh` has no submission flow (P2 2026-07-23 — the leaderboard populates from anonymous
 `npx skills` install telemetry), so growth is organic install yield + the account-walled npm
 installer package (→ founder), plus the yield gate (a real `agent-artifacts` visit in `/app/admin`)
@@ -272,7 +272,14 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
 - Canonical setup guide (R-04): **live, 2 of 3** — its crawl path opened this run; the walk box stays
   ⬜ because the blocker is the credential, not discovery.
 - Droppable artifacts (R-07): **4 of 4 live**, `agent-artifacts` in-flight, yield 0; the
-  one-command install path is verified by running it, not just linted (#825).
+  one-command install path is verified by running it, not just linted (#825). **The gate was
+  unmeasurable until this run** — all five artifacts led with an untagged
+  `docs.nlqdb.com/agent-memory/`, so every channel published there converted as `direct`, which
+  the drift test had encoded as an exemption. The key now rides the URL across the hop
+  (mechanism canonical in [`docs-site`](../../../docs-site/FEATURE.md); 27-case
+  spoof suite, Chromium-verified), taking keyed links on an attributing host **4 of 10 → 10 of
+  10**. Two holes stay open: a `claude mcp add` conversion never loads an apex page
+  (`untracked`), and only the *landing* URL carries the key.
 - Stage-0 solve pages: R-03 complete + R-02's two `competitors.md` §4 entries. Live path
   `nlqdb_query`; remember/preset gated (SK-PIVOT-010).
 - Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10**. Monthly; next 2026-08-22.

@@ -10,6 +10,7 @@
     "build": "bun run gen && astro build",
     "preview": "astro preview",
     "check": "astro check",
+    "test": "bun test src",
     "deploy": "bun run gen && astro build && wrangler deploy"
   },
   "dependencies": {
