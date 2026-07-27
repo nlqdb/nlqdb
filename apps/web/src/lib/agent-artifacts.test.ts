@@ -33,11 +33,14 @@ const CURSOR = read("nlqdb-memory.mdc");
 const CODEX = read("codex-config.toml");
 const SKILL = read("nlqdb-memory/SKILL.md");
 
+const docsPage = (name: string) =>
+  readFileSync(join(import.meta.dir, `../../../docs/src/content/docs/${name}.mdx`), "utf8");
+
 /** The R-04 canonical setup guide (docs.nlqdb.com/agent-memory/). */
-const DOCS_GUIDE = readFileSync(
-  join(import.meta.dir, "../../../docs/src/content/docs/agent-memory.mdx"),
-  "utf8",
-);
+const DOCS_GUIDE = docsPage("agent-memory");
+
+/** The MCP setup page (docs.nlqdb.com/mcp/) — the other page that names tools. */
+const DOCS_MCP = docsPage("mcp");
 
 /**
  * Every fenced ```<lang> block in document order, dedented (fences nested
@@ -169,6 +172,31 @@ describe("the R-04 setup guide's connect blocks don't drift from mcp-install.ts"
   });
 });
 
+// Both docs pages enumerate the tool catalog in prose, and a reader takes that
+// list as the contract — `/mcp` shipped naming four while the server has long
+// registered five, so `nlqdb_connect_database` was invisible to anyone who read
+// that page instead of the guide. Neither page can be pinned to a builder (it
+// is prose, not a config block), so pin it to the registrations themselves.
+describe("the docs pages name every tool packages/mcp registers", () => {
+  const registered = [
+    ...readFileSync(
+      join(import.meta.dir, "../../../../packages/mcp/src/server.ts"),
+      "utf8",
+    ).matchAll(/registerTool\(\s*"(nlqdb_[a-z_]+)"/g),
+  ].map(([, name]) => name as string);
+
+  test("the registry itself is readable, so a rename can't silently empty this", () => {
+    expect(registered.length).toBeGreaterThan(4);
+  });
+
+  test.each([
+    ["agent-memory guide", DOCS_GUIDE],
+    ["mcp setup page", DOCS_MCP],
+  ])("%s lists all of them", (_name, page) => {
+    for (const tool of registered) expect(page).toContain(tool);
+  });
+});
+
 // Hard rule 1, inverted: the guide must not deny a capability that shipped.
 // Until 2026-07-26 there genuinely was no headless credential, and both
 // agent-fetched surfaces said so — then `@nlqdb/mcp` published to npm and the
@@ -181,10 +209,12 @@ describe("the R-04 setup guide's connect blocks don't drift from mcp-install.ts"
 // string from `mcp-install.ts` counts as shipping it — the source-text form
 // would have failed on the very refactor it should reward.
 //
-// Scope is these two surfaces, not "every" — `/agents` and the four droppable
-// artifacts above are agent-fetched too and still document the hosted route
-// only. Widening this map is what closes that; naming the limit here is what
-// keeps a passing suite from reading as coverage it doesn't have.
+// Scope is these two surfaces, not "every". `/agents` is agent-fetched too and
+// carries the route since #836 — guarded separately, against the builders it
+// renders, by `pages/__tests__/agents-stdio-config.test.ts`. The four droppable
+// artifacts above are the remaining gap: still hosted-route only, tracked as
+// owed R-07 work. Naming the limit here is what keeps a passing suite from
+// reading as coverage it doesn't have.
 describe("both R-04 agent-fetched surfaces offer the headless route", () => {
   async function surfaces(): Promise<Record<string, string>> {
     return {
