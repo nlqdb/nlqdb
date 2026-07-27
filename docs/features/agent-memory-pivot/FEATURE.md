@@ -116,7 +116,7 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 ### SK-PIVOT-015 — Reach is the pivot's third track: search-moment interception + coding-agent injection, driven by its own `/reach` loop
 
-**Body:** [`decisions/SK-PIVOT-015-reach-track.md`](./decisions/SK-PIVOT-015-reach-track.md). The buying decision happens at stage-0/1 searches ("my agent forgets"), increasingly issued by the builder's own coding agent, so a third track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md), R-01..R-08) wins that moment: intent-mapped solve pages, a one-command setup guide, MCP registry listings, droppable in-repo artifacts, and a coding-agent walker as the yield metric. Runs on its own `/reach` loop (4×/day, offset from `/daily`) so worst-number selection can't starve it; reach numbers live in the reach INDEX, never `docs/scorecard.md`.
+**Body:** [`decisions/SK-PIVOT-015-reach-track.md`](./decisions/SK-PIVOT-015-reach-track.md). The buying decision happens at stage-0/1 searches ("my agent forgets"), increasingly issued by the builder's own coding agent, so a third track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md), R-01..R-08) wins that moment: intent-mapped solve pages, a one-command setup guide, MCP registry listings, droppable in-repo artifacts, and a coding-agent walker as the yield metric. Runs on its own `/reach` loop (4×/day, offset from `/daily`) so worst-number selection can't starve it; reach numbers live in the reach worksheet's `NUMBERS.md`, never `docs/scorecard.md`.
 
 ### SK-PIVOT-016 — The launch is condition-gated on a lived dogfood workload; conditions, never calendar dates
 

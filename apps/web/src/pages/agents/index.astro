@@ -32,6 +32,12 @@ import McpInstall from "../../components/McpInstall.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
+import {
+  buildClaudeCodeCommand,
+  buildClaudeConfig,
+  buildStdioMcpServersConfig,
+  MCP_ENDPOINT_URL,
+} from "../../lib/mcp-install.ts";
 
 const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
@@ -43,34 +49,16 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 // CreateForm reads from after a refresh.)
 const heroGoal = "agents that remember feedback per user, ranked by count this month";
 
-// The MCP connector config the agent builder pastes into their host
-// (Claude Desktop, Cursor, Codex, Zed, Windsurf). Hosted server, OAuth
-// on the first tool call, no key wired up front.
-const mcpConfig = `{
-  "mcpServers": {
-    "nlqdb": { "url": "https://mcp.nlqdb.com/mcp" }
-  }
-}`;
-
-// The local-stdio route (SK-MCP-001's second transport), published to npm
-// as `@nlqdb/mcp` on 2026-07-26. It exists because the hosted route's
-// OAuth consent screen is a wall for any agent without a human at a
-// browser — CI, a server, a headless coding agent. Same tool catalog,
-// credential pasted once instead of granted per session.
-//
-// `sk_live_` and not `sk_mcp_`: `sk_mcp_*` is minted server-side by the
-// OAuth callback and never displayed (SK-APIKEYS-009), and `/app/keys`
-// deliberately won't mint one (SK-APIKEYS-012) — so a reader cannot
-// obtain the value this block would tell them to paste.
-const mcpStdioConfig = `{
-  "mcpServers": {
-    "nlqdb": {
-      "command": "npx",
-      "args": ["-y", "@nlqdb/mcp"],
-      "env": { "NLQDB_API_KEY": "sk_live_REPLACE_ME" }
-    }
-  }
-}`;
+// Both connect blocks come from `mcp-install.ts` — the single owner of every
+// install string the site publishes (SK-PIVOT-015), so the docs guide, llms.txt
+// and this page cannot drift apart. The hosted block is the OAuth route (no key
+// wired up front); the stdio block is SK-MCP-001's second transport, published
+// as `@nlqdb/mcp`, and the only one an agent with no human at a browser can
+// complete. Why its placeholder is `sk_live_` and not `sk_mcp_` is recorded on
+// `STDIO_PLACEHOLDER_KEY`.
+const mcpConfig = buildClaudeConfig(MCP_ENDPOINT_URL);
+const mcpCommand = buildClaudeCodeCommand(MCP_ENDPOINT_URL);
+const mcpStdioConfig = buildStdioMcpServersConfig();
 
 // The DEMO block — an `nlqdb_remember` / `nlqdb_query` MCP tool call
 // pair, the compiled SQL, and the answer rows. Rendered from a fixture
@@ -308,7 +296,7 @@ const faqJsonLd = faqPageJsonLd(faqs);
               One line adds the hosted server; one-click installs for
               Cursor, VS Code, and more on <a href="/integrations/">integrations</a>.
             </p>
-            <pre class="ag-connect__code"><code>claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp</code></pre>
+            <pre class="ag-connect__code"><code>{mcpCommand}</code></pre>
             <a
               class="cta cta--ghost ag-connect__docs"
               href="https://docs.nlqdb.com/agent-memory/"

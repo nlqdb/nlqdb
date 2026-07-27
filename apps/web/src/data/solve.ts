@@ -2130,7 +2130,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Every answer returns the rows plus the compiled SQL, and tenant isolation is a fail-closed RLS policy in the engine, not a `WHERE` you remember.",
     ],
     whatItDoesnt: [
-      "It's a hosted server (`mcp.nlqdb.com/mcp`), not a self-hostable local MCP binary you run beside your agent — the FSL-1.1 self-host container is on the roadmap, not shippable today.",
+      "`npx -y @nlqdb/mcp` runs beside your agent, but it still talks to nlqdb's hosted API — the database and the engine are ours, not yours. A self-hostable FSL-1.1 container is on the roadmap, not shippable today.",
       "The dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts/episodes/entities) are authed and gated (`MEMORY_PRESET` is dark); today the live path is `nlqdb_query` provisioning and querying a database, and it rejects anonymous writes.",
       "No native vector search — nlqdb is Postgres-first; if what you need from a memory server is unstructured similarity recall over chat-text, that's Mem0 or pgvector's job, and nlqdb composes with it.",
     ],
@@ -2145,7 +2145,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Which coding agents and MCP hosts can install the nlqdb memory server?",
-        a: "Any host that speaks MCP. Cursor and VS Code install from a one-click link, Claude Code from one command, and Codex from a config-file line (all sourced from the host descriptors in `mcp-install.ts`); Claude Desktop, Windsurf, and Zed connect via their custom-connector settings. It's a hosted remote server at `mcp.nlqdb.com/mcp` — no local binary to run.",
+        a: "Any host that speaks MCP. Cursor and VS Code install from a one-click link, Claude Code from one command, and Codex from a config-file line (all sourced from the host descriptors in `mcp-install.ts`); Claude Desktop, Windsurf, and Zed connect via their custom-connector settings. The hosted server at `mcp.nlqdb.com/mcp` needs one browser approval; where nobody can give it (CI, unattended agents), `npx -y @nlqdb/mcp` plus an `sk_live_` key runs the same tools locally, no browser.",
       },
       {
         q: "Do I get dedicated remember and recall tools, or just query?",

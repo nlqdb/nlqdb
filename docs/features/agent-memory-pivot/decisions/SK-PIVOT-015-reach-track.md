@@ -9,8 +9,8 @@
   driven by a dedicated recurring command
   ([`.claude/commands/reach.md`](../../../../.claude/commands/reach.md))
   fired every few hours by a Routine on hours offset from `/daily`'s, and
-  its yield numbers live in the reach INDEX (never `docs/scorecard.md`,
-  which stays `/daily`-owned).
+  its yield numbers live in the reach worksheet's `NUMBERS.md` (never
+  `docs/scorecard.md`, which stays `/daily`-owned).
 - **Core value:** Goal-first, Creative, Honest
 - **Why:** The buying decision happens at stage 0/1 ("my agent forgets
   things", "per-user memory") — where today's winning answers are DIY
@@ -18,14 +18,16 @@
   ("analytical memory"), which nobody searches for. And increasingly the
   *searcher is a coding agent*: it reads MCP registries, `llms.txt`,
   READMEs, and in-repo rules/skills, and it drives the one-command setup
-  itself, bar one browser-OAuth approval that still needs a human
+  itself — end to end since 2026-07-26, when the `SK-MCP-001` stdio route
+  removed the browser-OAuth approval that used to need a human
   ([`mcp-server`](../../mcp-server/FEATURE.md)). Folding this into `/daily` starves it:
   `/daily` picks the worst scorecard number, which is rarely acquisition
   reach until reach is measured at all. A dedicated loop with its own
   measurement (the R-06 coding-agent walker) makes the campaign sustained
   and falsifiable.
 - **Consequence in code:** `worksheets/reach/INDEX.md` (slices + hard
-  rules + § Current numbers), `.claude/commands/reach.md` (the runnable
+  rules) + its `NUMBERS.md` (the overwritten yield ledger),
+  `.claude/commands/reach.md` (the runnable
   loop), a Routine firing "run /reach prompt" 4×/day offset from
   `/daily`'s hours. Slices land on existing machinery only: `solve.ts`,
   `/blog`, `llms.txt`, docs site, `tools/stranger-test` conventions,

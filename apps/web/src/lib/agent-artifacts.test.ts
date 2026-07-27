@@ -1,14 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { GET as LLMS_TXT } from "../pages/llms.txt.ts";
 import {
   buildClaudeCodeCommand,
   buildClaudeConfig,
   buildCodexConfig,
+  buildStdioClaudeCodeCommand,
+  buildStdioCodexConfig,
+  buildStdioServerObject,
   buildWindsurfConfig,
   buildZedConfig,
   MCP_ENDPOINT_URL,
   MCP_SERVER_ROUTE,
+  STDIO_KEY_ENV,
+  STDIO_PACKAGE,
 } from "./mcp-install.ts";
 
 // R-07 drift guard. The droppable in-repo artifacts under
@@ -27,11 +33,14 @@ const CURSOR = read("nlqdb-memory.mdc");
 const CODEX = read("codex-config.toml");
 const SKILL = read("nlqdb-memory/SKILL.md");
 
+const docsPage = (name: string) =>
+  readFileSync(join(import.meta.dir, `../../../docs/src/content/docs/${name}.mdx`), "utf8");
+
 /** The R-04 canonical setup guide (docs.nlqdb.com/agent-memory/). */
-const DOCS_GUIDE = readFileSync(
-  join(import.meta.dir, "../../../docs/src/content/docs/agent-memory.mdx"),
-  "utf8",
-);
+const DOCS_GUIDE = docsPage("agent-memory");
+
+/** The MCP setup page (docs.nlqdb.com/mcp/) — the other page that names tools. */
+const DOCS_MCP = docsPage("mcp");
 
 /**
  * Every fenced ```<lang> block in document order, dedented (fences nested
@@ -132,15 +141,19 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
 describe("the R-04 setup guide's connect blocks don't drift from mcp-install.ts", () => {
   test("the Claude Code command and Codex TOML match the shipped builders", () => {
     expect(DOCS_GUIDE).toContain(buildClaudeCodeCommand(MCP_ENDPOINT_URL));
-    expect(firstFenced(DOCS_GUIDE, "toml")).toBe(buildCodexConfig(MCP_ENDPOINT_URL));
+    const toml = allFenced(DOCS_GUIDE, "toml");
+    expect(toml).toHaveLength(2);
+    // Hosted route first (Step 1), then the headless one.
+    expect(toml[0]).toBe(buildCodexConfig(MCP_ENDPOINT_URL));
+    expect(toml[1]).toBe(buildStdioCodexConfig());
   });
 
   test("each JSON block matches its host's vendor schema at the shipped endpoint", () => {
     const blocks = allFenced(DOCS_GUIDE, "json");
     // Pinned positionally, so a host added to Step 1 without a matching
     // assertion below would ship unguarded. Fail until it is pinned too.
-    expect(blocks).toHaveLength(4);
-    const [windsurf, zed, cursor, vscode] = blocks.map((b) => JSON.parse(b));
+    expect(blocks).toHaveLength(5);
+    const [windsurf, zed, cursor, vscode, stdio] = blocks.map((b) => JSON.parse(b));
     expect(windsurf).toEqual(JSON.parse(buildWindsurfConfig(MCP_ENDPOINT_URL)));
     expect(zed).toEqual(JSON.parse(buildZedConfig(MCP_ENDPOINT_URL)));
     // Cursor's documented remote shape is the same `mcpServers` + `url`.
@@ -149,6 +162,91 @@ describe("the R-04 setup guide's connect blocks don't drift from mcp-install.ts"
     // (it ships as a deep-link, not a config fallback). A wrong root key here
     // loads zero servers with no error — exactly what the guide must not ship.
     expect(vscode).toEqual({ servers: { nlqdb: { type: "http", url: MCP_ENDPOINT_URL } } });
+    // The headless route's server value, root-key-less by design (the reader
+    // keeps the wrapper from their host's Step 1 block).
+    expect(stdio).toEqual(JSON.parse(buildStdioServerObject()));
+  });
+
+  test("the Claude Code headless one-liner matches its builder", () => {
+    expect(DOCS_GUIDE).toContain(buildStdioClaudeCodeCommand());
+  });
+});
+
+// Both docs pages enumerate the tool catalog in prose, and a reader takes that
+// list as the contract — `/mcp` shipped naming four while the server has long
+// registered five, so `nlqdb_connect_database` was invisible to anyone who read
+// that page instead of the guide. Neither page can be pinned to a builder (it
+// is prose, not a config block), so pin it to the registrations themselves.
+describe("the docs pages name every tool packages/mcp registers", () => {
+  const registered = [
+    ...readFileSync(
+      join(import.meta.dir, "../../../../packages/mcp/src/server.ts"),
+      "utf8",
+    ).matchAll(/registerTool\(\s*"(nlqdb_[a-z_]+)"/g),
+  ].map(([, name]) => name as string);
+
+  test("the registry itself is readable, so a rename can't silently empty this", () => {
+    expect(registered.length).toBeGreaterThan(4);
+  });
+
+  test.each([
+    ["agent-memory guide", DOCS_GUIDE],
+    ["mcp setup page", DOCS_MCP],
+  ])("%s lists all of them", (_name, page) => {
+    for (const tool of registered) expect(page).toContain(tool);
+  });
+
+  // …and nothing else. Under-listing was the bug (`nlqdb_connect_database`
+  // invisible on `/mcp`); over-listing is the same false claim pointing the
+  // other way — a reader who wires a call to a tool the server never
+  // registered gets an error the page told them to expect to work.
+  test.each([
+    ["agent-memory guide", DOCS_GUIDE],
+    ["mcp setup page", DOCS_MCP],
+  ])("%s names no tool the server doesn't register", (_name, page) => {
+    for (const named of new Set(page.match(/nlqdb_[a-z_]+/g) ?? [])) {
+      expect(registered, named).toContain(named);
+    }
+  });
+});
+
+// Hard rule 1, inverted: the guide must not deny a capability that shipped.
+// Until 2026-07-26 there genuinely was no headless credential, and both
+// agent-fetched surfaces said so — then `@nlqdb/mcp` published to npm and the
+// sentences stayed. An agent reads "no headless credential, hand this to the
+// developer" and stops at a wall that no longer exists, which is worse than
+// silence. Two halves, because either alone is escapable: the headless route
+// must be present *and* the retracted denial must be absent.
+//
+// llms.txt is asserted on its *rendered* body, not its source, so building a
+// string from `mcp-install.ts` counts as shipping it — the source-text form
+// would have failed on the very refactor it should reward.
+//
+// Scope is these two surfaces, not "every". `/agents` is agent-fetched too and
+// carries the route since #836 — guarded separately, against the builders it
+// renders, by `pages/__tests__/agents-stdio-config.test.ts`. The four droppable
+// artifacts above are the remaining gap: still hosted-route only, tracked as
+// owed R-07 work. Naming the limit here is what keeps a passing suite from
+// reading as coverage it doesn't have.
+describe("both R-04 agent-fetched surfaces offer the headless route", () => {
+  async function surfaces(): Promise<Record<string, string>> {
+    return {
+      "docs agent-memory guide": DOCS_GUIDE,
+      "llms.txt route": await (await LLMS_TXT({} as never)).text(),
+    };
+  }
+
+  test("names the published package and the env var that authenticates it", async () => {
+    for (const [name, text] of Object.entries(await surfaces())) {
+      expect(text, name).toContain(STDIO_PACKAGE);
+      expect(text, name).toContain(STDIO_KEY_ENV);
+    }
+  });
+
+  test("no surface still claims a headless credential doesn't exist", async () => {
+    for (const [name, text] of Object.entries(await surfaces())) {
+      expect(normalizeProse(text), name).not.toContain("no headless credential");
+    }
   });
 });
 

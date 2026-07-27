@@ -3,6 +3,7 @@ import { BLOG_POSTS } from "../data/blog";
 import { COMPETITORS } from "../data/competitors";
 import { INTEGRATE } from "../data/integrate";
 import { SOLVE_ENTRIES } from "../data/solve";
+import { buildStdioClaudeCodeCommand } from "../lib/mcp-install.ts";
 
 // `llms.txt` — community spec (https://llmstxt.org) the LLM-IDE
 // ecosystem (Claude Desktop, Perplexity, Cursor, Windsurf, Cline,
@@ -91,12 +92,20 @@ export const GET: APIRoute = () => {
     "```bash\n" +
     `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp\n` +
     "```\n\n" +
-    `Other hosts (Codex, Cursor, VS Code, Claude Desktop, Windsurf, Zed) and the full\n` +
-    `machine-followable guide — expected tools, a verification query, what to do on\n` +
-    `failure — are at ${DOCS_SITE}/agent-memory/. Auth is a browser OAuth on the first\n` +
-    `tool call — no API key to paste, but no headless credential either, so hand that\n` +
-    `one step to the developer. The live memory path is \`nlqdb_query\` (provision +\n` +
-    `query in English); the typed \`agent_memory_v1\` preset is coming.\n\n` +
+    `That hosted route authenticates with a browser OAuth on the first tool call — no\n` +
+    `API key to paste, but it does need a human at a browser. **With nobody at a\n` +
+    `browser, take the headless route instead:** the same five tools run locally over\n` +
+    `stdio against the same production API, authenticated by a key, so no browser ever\n` +
+    `opens. Mint an \`sk_live_\` key at https://app.nlqdb.com/app/keys (one signed-in\n` +
+    `visit), then:\n\n` +
+    "```bash\n" +
+    `${buildStdioClaudeCodeCommand()}\n` +
+    "```\n\n" +
+    `Other hosts (Codex, Cursor, VS Code, Claude Desktop, Windsurf, Zed), both routes\n` +
+    `per host, and the full machine-followable guide — expected tools, a verification\n` +
+    `query, what to do on failure — are at ${DOCS_SITE}/agent-memory/. The live memory\n` +
+    `path is \`nlqdb_query\` (provision + query in English); the typed\n` +
+    `\`agent_memory_v1\` preset is coming.\n\n` +
     `Building this into a repo? One command installs the skill (Claude Code, Cursor,\n` +
     `Codex — via the public repo, no account, no publish):\n\n` +
     "```bash\n" +

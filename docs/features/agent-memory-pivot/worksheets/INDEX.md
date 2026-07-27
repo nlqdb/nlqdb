@@ -9,8 +9,9 @@ to a single `/daily` run. This is the canonical backlog. Governed by
 **engine track** (E-*) — the architectural slices that make the wedge
 claims durable — lives at [`engine/INDEX.md`](engine/INDEX.md). The
 **reach track** (R-* — search-moment + coding-agent acquisition,
-SK-PIVOT-015) lives at [`reach/INDEX.md`](reach/INDEX.md) and is driven
-**only** by its own `/reach` loop — `/daily` agents don't pick from it.
+SK-PIVOT-015) lives at [`reach/INDEX.md`](reach/INDEX.md) — with its measured
+state in [`reach/NUMBERS.md`](reach/NUMBERS.md), overwritten every cycle — and is
+driven **only** by its own `/reach` loop; `/daily` agents don't pick from it.
 Rule of thumb when picking a worksheet:
 
 | Worst-number lane today | Pick from |
