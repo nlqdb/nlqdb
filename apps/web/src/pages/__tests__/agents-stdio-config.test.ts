@@ -84,11 +84,12 @@ describe("/agents local-stdio connect card", () => {
     const placeholder = Object.values(stdioConfig().mcpServers.nlqdb.env)[0] ?? "";
     expect(placeholder.startsWith(apiKeyPrefix("SK_MCP_PREFIX"))).toBe(false);
     expect(placeholder.startsWith(skLive)).toBe(true);
-    // The prefix alone is not enough in the other direction either: `mintSkKey`
-    // emits `sk_live_` + 32 lowercase hex, which every assertion above accepts,
-    // so a *live* key pasted in while verifying this route would ship to the
-    // marketing page — and the repo runs no secret scanner to catch it. Requiring
-    // a shouted suffix rejects both a real key and a bare, keyless `sk_live_`.
+    // The prefix alone is not enough in the other direction either:
+    // `mintSkLiveKey` emits `sk_live_` + 32 *lowercase* hex (`randomHex` has no
+    // other alphabet), which every assertion above accepts — so a live key pasted
+    // in while verifying this route would ship to the marketing page. A shouted
+    // suffix rejects both that and a bare, keyless `sk_live_`, and rejects them
+    // here rather than at CI's semgrep `p/secrets`, which sees them post-push.
     expect(placeholder.slice(skLive.length)).toMatch(/^[A-Z_]{3,}$/);
     // …and the prose names the same prefix the block pastes.
     expect(agentsPage).toContain("<code>sk_live_</code>");
