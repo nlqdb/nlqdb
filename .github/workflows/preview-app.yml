@@ -286,22 +286,28 @@ jobs:
             let header;
             const lines = [];
 
+            // One wording, on every branch where the branch exists: the two
+            // reaps are both true and an author who reads only one comment
+            // should not have to guess which applies.
+            const branchLine = `- Neon branch: \`pr-${process.env.PR_NUMBER ?? context.issue.number}\` (deleted on PR close; expires 7 d after the last push)`;
+
             if (neonOutcome !== 'success') {
               header = '❌ **Preview app deploy FAILED — Neon branch step**';
               lines.push(`- See logs: <${runUrl}>`);
             } else if (deployOutcome !== 'success') {
               header = '❌ **Preview app deploy FAILED — version upload**';
-              lines.push(`- Neon branch: \`pr-${process.env.PR_NUMBER ?? context.issue.number}\` (created — cleaned up on PR close, or expires 7 d after the last push)`);
+              lines.push(branchLine);
               lines.push(`- See logs: <${runUrl}>`);
             } else if (url) {
               header = '🚀 **Preview app deployed**';
               lines.push(`- URL: <${url}>`);
-              lines.push(`- Neon branch: \`pr-${process.env.PR_NUMBER ?? context.issue.number}\` (deleted on PR close; expires 7 d after the last push)`);
+              lines.push(branchLine);
               lines.push('- Mock IdP: visit `/auth/sign-in` and submit the mock form');
               lines.push(`- Magic-link inbox: \`${url}/api/dev/inbox\``);
             } else {
               header = '🚀 **Preview app deployed** (URL parse degraded — see logs)';
               lines.push('- URL: latest version visible in the dashboard → `nlqdb-api` → Versions');
+              lines.push(branchLine);
             }
 
             lines.push('- Worker: `nlqdb-api` (non-production version — `app.nlqdb.com` untouched)');

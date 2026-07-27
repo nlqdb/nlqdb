@@ -79,7 +79,11 @@ jobs:
               "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${existing}" \
               -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null
           fi
-          response=$(curl -fsSL -X POST \
+          # No -f on the create: it makes curl exit 22 with nothing but
+          # "curl: (22) ... error: 422", and the branch cap answers exactly
+          # that. Letting the body through reaches the `-z "$db_url"` branch
+          # below, which prints it.
+          response=$(curl -sSL -X POST \
             "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
             -H "Authorization: Bearer ${NEON_API_KEY}" \
             -H "Content-Type: application/json" \

@@ -20,91 +20,147 @@ import { fileURLToPath } from "node:url";
 // adds. Neon bounds the window at 30 days and rejects a longer one with the
 // same 4xx this exists to prevent, so the window is bounded here too.
 // Docs: https://neon.com/docs/guides/branch-expiration
+//
+// Three review passes each found the same hole: a working creation site the
+// guard read green because it did not recognise how the request was written.
+// So this does not try to recognise a request in the general case. It pins the
+// short list of files allowed to reach the Neon API at all — a new caller in
+// any language, via any client, has to be added on purpose — and checks the
+// payload only inside them.
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const SELF = fileURLToPath(import.meta.url);
+const REPO_ROOT = join(dirname(SELF), "..", "..", "..", "..");
+const NEON_API = "console.neon.tech/api";
 
-// The collection endpoint, closing quote included — `.../branches/${id}` is a
-// delete and must not be mistaken for a create. The project id matches any
-// expression, so a site that spells the secret differently is still scanned.
-const CREATE_URL = /"https:\/\/console\.neon\.tech\/api\/v2\/projects\/[^"/]+\/branches"/;
+// The whole inventory of Neon control-plane callers. A creation site written in
+// something other than shell+curl — `wget`, `actions/github-script`, an inline
+// python, a Makefile recipe, a composite action, a `.buildkite/pipeline.yml` —
+// lands here first, and adding the line is the prompt to give it an
+// `expires_at`. `verify-secrets.sh` only reads the project.
+const NEON_API_CALLERS = [
+  ".github/workflows/_e2e-staging.yml",
+  ".github/workflows/ci.yml",
+  ".github/workflows/e2e-examples.yml",
+  ".github/workflows/e2e-opencheck.yml",
+  ".github/workflows/preview-app.yml",
+  "scripts/verify-secrets.sh",
+];
 
-// A body or any POST spelling means "create"; the list call is a bare GET.
-// Matching the method alone is not enough — `curl -d` posts without naming one,
-// which is the easiest way to add a site a method-only scan walks past.
-const SENDS_A_BODY =
-  /(^|\s)(-X\s*POST|--request[\s=]+POST|--json(?![\w-])|-d(?![\w-])|--data(-raw|-binary|-urlencode)?(?![\w-]))/;
+// The collection endpoint. Quote-agnostic — Neon's own documented example
+// single-quotes the URL — and `(?![\w/])` keeps `/branches/${id}`, a delete,
+// out. The host is matched per file, not per command, because the URL is
+// routinely assembled from variables a line or two above the call.
+const CREATES_A_BRANCH = /\/branches(?![\w/])/;
 
-const EXPIRES_AT_FROM_VAR = /\\"expires_at\\":\s*\\"\$\{?expires\}?\\"/;
-const WINDOW =
-  /\bexpires=\$\(date -u -d '\+(\d+) (minute|hour|day|week)s?' \+%Y-%m-%dT%H:%M:%SZ\)/g;
+// Any spelling of "carries a payload" or "is a POST". Matching the method alone
+// is not enough (`curl -d` posts without naming one) and neither is matching a
+// body (Neon accepts a bodyless POST). Reads are bare GETs and deletes name
+// `-X DELETE`, so neither trips this — but `date -u -d '1 hour ago'`, which the
+// sweep uses, would, so date's own `-d` comes out first.
+const IS_A_WRITE =
+  /(^|\s)(-X\s*POST|--request[\s=]+POST|--method[\s=]+POST|--json(?![\w-])|-d(?![\w-])|--data(-raw|-binary)?(?![\w-])|--body-data|method:\s*["']POST)/;
+const withoutDateFlag = (text: string) => text.replace(/\bdate (-u )?-d\b/g, "date");
+
+// `expires_at` has to come from a variable the same block computes with
+// `date -u`. Tying the two together is what stops a site from borrowing a
+// window computed for something else. One spelling is prescribed on purpose: a
+// window built by epoch arithmetic, or fed in through `jq --arg`, fails here
+// rather than being followed through — the guard stays a text match.
+const EXPIRES_AT_VAR = /expires_at\\?["']?\s*:\s*\\?["']?\$\{?(\w+)\}?/g;
+// And it belongs to the `branch` object. `{"branch":{"name":"x"},"expires_at":…}`
+// closes `branch` first, so the branch is created with no expiry at all — the
+// last way left to ship a payload that looks compliant and is not. Shell
+// expansions come out first: `${PR_NUMBER}` is not the end of the object.
+const NESTED_IN_BRANCH = /branch\\?["']?\s*:\s*\{[^}]*expires_at/;
+const withoutExpansions = (text: string) => text.replace(/\$\{[^}]*\}/g, "V");
+const windowFor = (name: string) =>
+  new RegExp(
+    `\\b${name}=\\$\\(date -u -d ["']\\+(\\d+) (minute|hour|day|week)s?["'] \\+%Y-%m-%dT%H:%M:%SZ\\)`,
+    "g",
+  );
 const HOURS_PER_UNIT: Record<string, number> = { minute: 1 / 60, hour: 1, day: 24, week: 168 };
 
-// 30 days is Neon's own ceiling. The floor is the longest job that runs against
-// a minted branch (`_e2e-opencheck.yml`'s suite, `timeout-minutes: 60`) — a
-// shorter window reaps the branch mid-run, and the author meets a red check
-// whose database has vanished.
+// 30 days is Neon's own ceiling. The floor is the longest single job that runs
+// against a minted branch (`_e2e-opencheck.yml`, `timeout-minutes: 60`) — less
+// than that reaps the branch mid-run and the author meets a red check whose
+// database has vanished. It is a floor, not a sufficient window: the shared
+// `e2e` branch is held across up to three sequential opencheck suites plus the
+// staging deploy (~3.2 h), which is why `_e2e-staging.yml` sets 6 h.
 const MAX_EXPIRY_HOURS = 30 * 24;
 const MIN_EXPIRY_HOURS = 1;
 
-// A creation site is only as findable as the place we look. Both earlier holes
-// in this guard were scan-scope holes, so scan every YAML and shell file in the
-// repo: a composite action, a reusable workflow, or a script a `run:` block
-// calls is just as much a creation site as `.github/workflows/*.yml`.
-function scannableFiles(dir: string): string[] {
+function repoFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
-    if (!entry.isDirectory()) return /\.(ya?ml|sh)$/.test(entry.name) ? [path] : [];
-    // Skip build output, and every dotdir except `.github` — which holds the
-    // workflows and composite actions this guard exists to police.
-    if (entry.name === "node_modules" || entry.name === "dist" || entry.name === "build") return [];
-    if (entry.name.startsWith(".") && entry.name !== ".github") return [];
-    return scannableFiles(path);
+    if (!entry.isDirectory()) return path === SELF ? [] : [path];
+    // Generated, vendored, or (`.claude`) full agent worktrees of this same
+    // repo. Every other directory is walked, dotted CI configs included
+    // (`.buildkite`, `.circleci`, `.gitlab`) — a creation site hides in one
+    // just as well as in `.github/workflows`.
+    return /^(node_modules|dist|build|coverage|\.git|\.claude|\.astro|\.wrangler|\.turbo)$/.test(
+      entry.name,
+    )
+      ? []
+      : repoFiles(path);
   });
 }
 
-// One curl command is the line it starts on plus its `\`-continued lines.
-// Bounding it that way stops a neighbouring command's flags — another curl's
-// `-X POST`, or the `date -u -d` computing the window — from satisfying these
-// assertions on its behalf.
-function curlCommands(text: string): string[] {
+// One shell script or inline snippet: a `run:`/`script:` block scalar in YAML,
+// anything else whole. Coarser than one curl invocation on purpose — a
+// per-command window cannot see the variable holding the URL, or a payload
+// spread over lines that carry no `\`.
+function scriptBlocks(path: string, text: string): string[] {
+  if (!/\.ya?ml$/.test(path)) return [text];
   const lines = text.split("\n");
-  const commands: string[] = [];
+  const blocks: string[] = [];
   for (let i = 0; i < lines.length; i++) {
-    if (!/\bcurl\b/.test(lines[i])) continue;
+    const open = /^\s*(?:-\s+)?(?:run|script):[ \t]*(.*)$/.exec(lines[i]);
+    if (!open) continue;
+    const indent = lines[i].search(/\S/);
+    const body = [/^[|>]/.test(open[1]) ? "" : open[1]];
+    while (
+      i + 1 < lines.length &&
+      (lines[i + 1].trim() === "" || lines[i + 1].search(/\S/) > indent)
+    )
+      body.push(lines[++i]);
+    blocks.push(body.join("\n"));
+  }
+  return blocks;
+}
+
+// One command inside a block: the line it starts on plus its `\`-continued
+// lines. The block above is what catches a request the line split hides; this
+// is what stops a second, bare create from hiding behind a compliant one in the
+// same block.
+function commands(block: string): string[] {
+  const lines = block.split("\n");
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
     let command = lines[i];
     while (/\\\s*$/.test(lines[i]) && i + 1 < lines.length) command += `\n${lines[++i]}`;
-    commands.push(command);
+    out.push(command);
   }
-  return commands;
+  return out;
 }
 
-// Inline any variable holding the endpoint, so factoring the shared URL out of
-// the three sites — the obvious next tidy-up — can't blind the scan to all of
-// them at once.
-function inlineEndpointVars(text: string): string {
-  let inlined = text;
-  for (const [, name, url] of text.matchAll(
-    /(\w+)=("https:\/\/console\.neon\.tech\/api\/v2\/projects\/[^"]*")/g,
-  )) {
-    inlined = inlined.replaceAll(`"$${name}"`, url).replaceAll(`"\${${name}}"`, url);
-  }
-  return inlined;
-}
-
-function windowsIn(text: string): number[] {
-  return [...text.matchAll(WINDOW)].map(
-    ([, amount, unit]) => Number(amount) * HOURS_PER_UNIT[unit],
-  );
-}
-
-const creates = scannableFiles(REPO_ROOT).flatMap((path) => {
-  const text = inlineEndpointVars(readFileSync(path, "utf8"));
-  return curlCommands(text)
-    .filter((command) => CREATE_URL.test(command) && SENDS_A_BODY.test(command))
-    .map((command) => ({ file: relative(REPO_ROOT, path), command, windows: windowsIn(text) }));
+const neonFiles = repoFiles(REPO_ROOT).flatMap((path) => {
+  const text = readFileSync(path, "utf8");
+  return text.includes(NEON_API) ? [{ file: relative(REPO_ROOT, path), text }] : [];
 });
 
+const creates = neonFiles.flatMap(({ file, text }) =>
+  scriptBlocks(file, text)
+    .filter((block) => CREATES_A_BRANCH.test(block) && IS_A_WRITE.test(withoutDateFlag(block)))
+    .map((block, index) => ({ site: `${file} #${index + 1}`, block })),
+);
+
 describe("Neon branch creation is bounded server-side", () => {
+  // The tripwire. A creation site the payload checks below cannot parse is
+  // still caught here the moment it lives in a file nobody has vouched for.
+  test("only NEON_API_CALLERS reach the Neon API", () => {
+    expect(neonFiles.map(({ file }) => file).sort()).toEqual(NEON_API_CALLERS);
+  });
+
   // A scanner that quietly matches nothing would pass every assertion below.
   // Three sites exist today (ci.yml, preview-app.yml, _e2e-staging.yml); a
   // fourth is covered automatically, a broken scanner is not.
@@ -112,14 +168,33 @@ describe("Neon branch creation is bounded server-side", () => {
     expect(creates.length).toBeGreaterThanOrEqual(3);
   });
 
-  test.each(creates)("$file sets expires_at from a computed timestamp", ({ command }) => {
-    expect(command).toMatch(EXPIRES_AT_FROM_VAR);
-  });
-
-  // Checked per file, not repo-wide: a count that only balances in aggregate
-  // lets a site with no window of its own borrow one from an unrelated file.
-  test.each(creates)("$file computes a window Neon will accept", ({ windows }) => {
-    expect(windows.length).toBeGreaterThanOrEqual(1);
-    expect(windows.filter((h) => h < MIN_EXPIRY_HOURS || h > MAX_EXPIRY_HOURS)).toEqual([]);
+  // Failures read as a list of what to change, not as `Expected: not []`: the
+  // author who trips this guard is the author it exists to protect.
+  test.each(creates)("$site sets expires_at from a window Neon accepts", ({ block }) => {
+    const problems: string[] = [];
+    const names = [...block.matchAll(EXPIRES_AT_VAR)].map(([, name]) => name);
+    if (names.length === 0) problems.push("no expires_at fed from a shell variable");
+    else if (!NESTED_IN_BRANCH.test(withoutExpansions(block)))
+      problems.push("expires_at sits outside the `branch` object, where Neon ignores it");
+    for (const name of names) {
+      const hours = [...block.matchAll(windowFor(name))].map(
+        ([, amount, unit]) => Number(amount) * HOURS_PER_UNIT[unit],
+      );
+      if (hours.length === 0)
+        problems.push(`$${name} is not a \`date -u -d '+N unit' +%Y-%m-%dT%H:%M:%SZ\` window`);
+      for (const h of hours.filter((h) => h < MIN_EXPIRY_HOURS || h > MAX_EXPIRY_HOURS))
+        problems.push(`$${name} is ${h} h, outside ${MIN_EXPIRY_HOURS}–${MAX_EXPIRY_HOURS} h`);
+    }
+    // And no single request in the block skips it. Requests are written as one
+    // `\`-continued command here, as all three sites and Neon's own documented
+    // example are; a payload spread over unjoined lines fails this.
+    for (const command of commands(block))
+      if (
+        CREATES_A_BRANCH.test(command) &&
+        IS_A_WRITE.test(withoutDateFlag(command)) &&
+        !command.includes("expires_at")
+      )
+        problems.push(`this request skips expires_at: ${command.split("\n")[0].trim()}`);
+    expect(problems).toEqual([]);
   });
 });
