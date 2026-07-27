@@ -29,7 +29,9 @@ const WORKFLOW_DIR = join(REPO_ROOT, ".github", "workflows");
 // expression, so a site that spells the secret differently is still scanned.
 const CREATE_ENDPOINT = /"https:\/\/console\.neon\.tech\/api\/v2\/projects\/[^"/]+\/branches"/;
 const EXPIRES_AT_FROM_VAR = /\\"expires_at\\":\s*\\"\$\{?expires\}?\\"/;
-const EXPIRES_ASSIGNMENT = /expires=\$\(date -u -d '\+(\d+) (hour|day)s?' \+%Y-%m-%dT%H:%M:%SZ\)/g;
+const EXPIRES_ASSIGNMENT =
+  /expires=\$\(date -u -d '\+(\d+) (minute|hour|day|week)s?' \+%Y-%m-%dT%H:%M:%SZ\)/g;
+const HOURS_PER_UNIT: Record<string, number> = { minute: 1 / 60, hour: 1, day: 24, week: 168 };
 const NEON_MAX_EXPIRY_HOURS = 30 * 24;
 
 // Splitting on the word bounds each candidate to its own command, so a
@@ -56,7 +58,7 @@ const creates = workflows.flatMap(({ file, yaml }) =>
 const windows = workflows.flatMap(({ file, yaml }) =>
   [...yaml.matchAll(EXPIRES_ASSIGNMENT)].map(([, amount, unit]) => ({
     file,
-    hours: unit === "day" ? Number(amount) * 24 : Number(amount),
+    hours: Number(amount) * HOURS_PER_UNIT[unit],
   })),
 );
 
@@ -74,7 +76,9 @@ describe("Neon branch creation is bounded server-side", () => {
   });
 
   // One `date -u` window per creation site: a shortfall means a site hardcoded
-  // its timestamp, which stops being in the future the day after it's written.
+  // its timestamp (which stops being in the future the day after it's written)
+  // or spelled its window in a unit missing from `HOURS_PER_UNIT` — widen that,
+  // don't drop the assertion.
   test("every expiry window is computed and inside Neon's 30-day ceiling", () => {
     expect(windows.length).toBe(creates.length);
     expect(windows.filter(({ hours }) => hours <= 0 || hours > NEON_MAX_EXPIRY_HOURS)).toEqual([]);
