@@ -169,7 +169,7 @@ and shares the link — in under 60 seconds, no card, no config.
 - ✓ Hosted MCP server (`mcp.nlqdb.com/mcp`) — host auto-detect pending;
   local stdio `@nlqdb/mcp@0.1.0` is on npm, so `npx -y @nlqdb/mcp` with an
   `sk_live_*` key is a headless route in with no browser consent step
-  (`nlqdb.com`'s own install panel still offers OAuth only)
+  (`/agents` now carries it; the per-host install panel is still OAuth-only)
 - ✓ CLI `nlq` (Go) — core verbs + raw-SQL escape hatch; device-login +
   chat REPL pending
 - ✓ `@nlqdb/sdk` — basic methods + `runSql`; npm entrypoints fixed in-repo,
