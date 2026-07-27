@@ -1,0 +1,73 @@
+import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// The `/agents` connect card offers two routes into nlqdb memory: the hosted
+// MCP server (OAuth in a browser) and the local-stdio server (a key pasted
+// into the host config). The stdio card is the only one an agent with no human
+// at a browser can complete, and it is the only place on the marketing site
+// that names the published npm package — so every identifier inside it is a
+// cross-repo contract with `packages/mcp`, not page copy.
+//
+// Nothing else catches a drift here. `check-links.mjs` sweeps hrefs, not code
+// blocks; the tarball-entrypoint guard checks what npm ships, not what the
+// site tells a reader to type. Rename the package, change the env var the
+// binary reads, or tighten its accepted key prefixes, and this card silently
+// starts printing a command that fails on the reader's machine.
+//
+// Each assertion therefore derives its expected value from the `packages/mcp`
+// source rather than restating a literal.
+
+const here = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(here, "../../../../..");
+
+const agentsPage = readFileSync(join(here, "../agents/index.astro"), "utf8");
+const mcpManifest = JSON.parse(
+  readFileSync(join(repoRoot, "packages/mcp/package.json"), "utf8"),
+) as { name: string };
+const stdioSource = readFileSync(join(repoRoot, "packages/mcp/src/stdio.ts"), "utf8");
+
+/** The `mcpStdioConfig` template literal, parsed as the JSON a reader pastes. */
+function stdioConfig(): {
+  mcpServers: { nlqdb: { command: string; args: string[]; env: Record<string, string> } };
+} {
+  const match = agentsPage.match(/const mcpStdioConfig = `([\s\S]*?)`;/);
+  if (!match?.[1]) throw new Error("`/agents` no longer defines `mcpStdioConfig`");
+  return JSON.parse(match[1]);
+}
+
+describe("/agents local-stdio connect card", () => {
+  test("the pasted block is valid JSON an MCP host can read", () => {
+    const server = stdioConfig().mcpServers.nlqdb;
+    expect(server.command).toBe("npx");
+  });
+
+  test("launches the package name `packages/mcp` actually publishes", () => {
+    // A scope/name change in the manifest without one here leaves the site
+    // telling readers to `npx` a package that does not exist.
+    expect(stdioConfig().mcpServers.nlqdb.args).toEqual(["-y", mcpManifest.name]);
+  });
+
+  test("sets the credential env var the binary reads, with an accepted prefix", () => {
+    const env = stdioConfig().mcpServers.nlqdb.env;
+    const [name, placeholder] = Object.entries(env)[0] ?? [];
+
+    // `stdio.ts` reads exactly one env var for the key and gates it on a
+    // prefix allowlist; both are re-read here rather than hardcoded.
+    expect(stdioSource).toContain(`env["${name}"]`);
+    const prefixes = stdioSource
+      .match(/const KEY_PREFIXES = \[([^\]]*)\]/)?.[1]
+      ?.match(/"([^"]+)"/g)
+      ?.map((q) => q.slice(1, -1));
+    expect(prefixes?.length).toBeGreaterThan(0);
+    expect(prefixes?.some((p) => placeholder?.startsWith(p))).toBe(true);
+  });
+
+  test("the card is reachable copy, wired to the connect demand signal", () => {
+    // GLOBAL-024: whether anyone reaches for the headless route is only
+    // measurable if the button reports its own transport.
+    expect(agentsPage).toContain('data-copy-method="stdio"');
+    expect(agentsPage).toContain('data-copy-method="url"');
+  });
+});
