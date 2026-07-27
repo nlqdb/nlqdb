@@ -16,9 +16,8 @@ truth on `/app/admin`, never estimated.
 could finish — this run's lever.** `/agents` is the GLOBAL-036 landing page, and
 all **9** of its connect affordances (counted from the rendered page: 7
 `McpInstall` host cells + 2 connect-card configs) terminate on the hosted
-server's **OAuth consent screen**, which
-`blocked-by-human` #2 itself describes as a page "only a signed-in human can
-approve". The founder published `@nlqdb/mcp` on **07-26** precisely to open a
+server's **OAuth consent screen** — a page only a signed-in human can approve.
+The founder published `@nlqdb/mcp` on **07-26** precisely to open a
 headless route — and no surface on nlqdb.com named it: `grep npx` across
 `apps/web/src` returned **0**. Verified end-to-end from a clean registry install
 this run, not assumed (row #19).
@@ -26,13 +25,15 @@ this run, not assumed (row #19).
 **`/solve/running-total-cumulative-sum-in-sql/` — 69 impressions (14% of the
 property's 488), 0 clicks, position 36.1**, top of `gsc-pull.ts`'s own
 *Strengthen next* list for the **third** run running. Untouched only because
-`data/solve.ts` belongs to open PR **#829** (step-0 retreat, not a judgement).
-**Top `blocked-by-human` bullet:** #1 fire the launch sequence (Show HN draft
-**idle 44 days since 06-13**) — still the only queue action that can move real
-strangers off 0; its age is the company's real cycle time. Queue depth **9** on
-`main`; open PR **#834** clears 7 of them. Nothing added this run (no secret,
-console click or money was needed). Cite bullets by number — the roster lives
-only in [`blocked-by-human.md`](blocked-by-human.md).
+`data/solve.ts` belonged to then-open PR **#829** (step-0 retreat, not a
+judgement).
+**Queue (`blocked-by-human.md`):** the launch-sequence bullet (Show HN draft
+**idle 44 days since 06-13**) is still the only queue action that can move real
+strangers off 0; its age is the company's real cycle time. Depth **5** on `main`
+after #834 + #838. Nothing added this run (no secret, console click or money was
+needed) — but this run's own credential fix lands next to the queue's **open
+founder decision on whether `sk_live_*` is the headless MCP credential** at all;
+the roster lives only in [`blocked-by-human.md`](blocked-by-human.md).
 **Dark (rule 8 — reported, never picked as a lever):** engine **#8 BIRD 0.5382**
 (offline levers exhausted) and **#9 Spider 0.2222** (re-dispatched this run on
 its staleness trigger); rows **#4/#5/#16**'s stranger-dependent criteria
@@ -42,9 +43,11 @@ saturation, remedy costs money ⇒ rule 4).
 **Rule 6 clean** — CI + Security + Release-npm + every `deploy-*` green as their
 latest `main` run (each path-filtered). Local gates on this branch: `typecheck`
 exit 0, `lint` at baseline, `test` exit 0 across all 20 packages.
-**Open PRs 8** — #835, #834, #833 (daily 145), #832, #831, #829, #826, draft
-#719 (oldest, **10 days**). This run's two files are touched by **none** of
-them; the scorecard collision with #833 is the step-0 exemption.
+**Open PRs 6** — #840 (daily 147), #839, #837, #835, #826, draft #719 (oldest,
+**10 days**). This run's two files are touched by **none** of them; #837 carries
+the same headless-route fix onto the docs host + `llms.txt` and shares only the
+`sk_live_` conclusion, not a file. The scorecard collision with #840 is the
+step-0 exemption.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -91,68 +94,74 @@ full lesson gists stay in `research/distribution-queue.md`.
 
 ## Last change
 
-**2026-07-27 (run 146)** — **Number moved: connect routes on `/agents` a headless
-agent can complete: 0 of 9 → 1 of 10.** Lane: real UX-flow quality (step-2
-priority 2) on the GLOBAL-036 wedge's landing page.
+**2026-07-27 (run 146)** — **Number moved: connect routes on `/agents` an
+unattended agent can run: 0 of 9 → 1 of 10.** One signed-in visit still mints the
+key; what the route removes is the per-session consent click, so everything after
+the mint runs with no browser. Lane: real UX-flow quality (step-2 priority 2) on
+the GLOBAL-036 wedge's landing page.
 
-**The defect.** `/agents` sells analytical memory to agent builders and offers
-**9** ways in — 7 `McpInstall` host cells (Cursor/VS Code deep-links, Claude
-Code/Codex commands, Claude/Windsurf/Zed configs) plus 2 connect-card configs,
-counted from the rendered page. Every one lands on `https://mcp.nlqdb.com/mcp`,
-whose first tool call opens an **OAuth consent screen** — fine for a human, a
-wall for the reader the page is written for. `blocked-by-human` #2 said so, and
-the founder cleared it on **07-26** by publishing `@nlqdb/mcp`. Measured this
-run, **nothing on nlqdb.com had caught up**: `grep -rn 'npx\|@nlqdb/mcp'` over
-`apps/web/src` returned 0 non-test hits.
+**The defect.** All **9** ways into `/agents` (7 `McpInstall` host cells + 2
+connect-card configs, counted from the rendered page) land on
+`https://mcp.nlqdb.com/mcp`, whose first tool call opens an **OAuth consent
+screen** — fine for a human, a wall for the reader the page is written for. The
+founder cleared the queue bullet that said so on **07-26** by publishing
+`@nlqdb/mcp`; measured this run, **nothing on nlqdb.com had caught up**
+(`grep -rn 'npx\|@nlqdb/mcp'` over `apps/web/src`: 0 non-test hits).
 
 **Verified before it was written down** (P2). From a clean `npm i @nlqdb/mcp` in
 an empty directory: the tarball manifest resolves to `dist/`, the binary
 completes a real MCP `initialize` + `tools/list` handshake over stdio, and a
 prefix-valid bogus key returns **the API's own 401 copy** — proving the transport
-reaches prod, not a local stub. Only then did the card get written.
+reaches prod, not a local stub.
 
 **Fix.** One card in the existing connect grid, honest about its cost: the hosted
 route's consent screen is named as the reason this one exists, and the key it
-needs is a link away. Three identifiers inside it are cross-repo contracts, so
-the guard derives each from `packages/mcp` rather than restating a literal —
-package name from its `package.json`, env var and key prefixes from `stdio.ts`.
-Nothing else could catch a drift there: `check-links.mjs` sweeps hrefs, not code
-blocks, and the tarball-entrypoint guard checks what npm ships, not what the site
-tells a reader to type. **Negative-tested four ways**, each failing loudly:
-renaming the package (1 fail), renaming the env var (2), downgrading the key
-prefix (2), dropping the demand-signal attribute (3).
+needs is a link away. Four identifiers inside it are cross-repo contracts, so
+the guard derives each from source rather than restating a literal — package name
+from `packages/mcp/package.json`, env var and accepted prefixes from `stdio.ts`,
+and the credential prefix from `apps/api/src/api-keys.ts`. Nothing else covers
+this: `check-links.mjs` sweeps hrefs, not code blocks.
+
+**The credential the first draft got wrong.** It said mint `sk_mcp_`, which clears
+every mechanical check — it is in the binary's own `KEY_PREFIXES` — and is
+**unobtainable**: `sk_mcp_*` is minted server-side by the OAuth callback and never
+displayed (`SK-APIKEYS-009`), and `/app/keys` deliberately won't mint one
+(`SK-APIKEYS-012`). That is the same dead end this card exists to remove. Now
+`sk_live_`, matching #834's merged sweep, and the guard asserts **obtainable**,
+not merely **accepted**.
 
 **Paid, not deferred.** A second config card would have duplicated the
 copy-to-clipboard handler, so the single-button listener became one loop over
-`[data-copy-config]` keyed on `data-copy-method`, and the `agents.connect_clicked`
-signal (GLOBAL-024) now reports *which* transport the reader reached for — the
-only way this card's uptake becomes measurable. Layout is **proven neutral, not
-asserted**: in Chromium at 390 / 768 / 1280 px, document `scrollWidth` is
-**652 / 768 / 1280 before and after** and the connect section **632 / 691 / 1108
-before and after**. The code block scrolls inside its own box
-(`scrollWidth == clientWidth` at every width), so it adds nothing to the
-pre-existing 390 px topnav overflow that #833 fixes.
+`[data-copy-config]` keyed on `data-copy-method`, and `agents.connect_clicked`
+(GLOBAL-024) now reports *which* transport the reader reached for. That is
+necessary but not sufficient: the client funnel's late-bound
+`window.__nlqdb_logsnag` hook is **not installed anywhere**, so every
+`lib/logsnag.ts` emit — this one included — is a no-op until it is
+(`solve-pages/FEATURE.md` records the same gap). Layout **measured, not
+asserted**: in Chromium at 390 / 768 / 1280 px both document and `.ag-connect`
+`scrollWidth` are byte-identical before and after, the code block scrolling
+inside its own box at every width.
 
 **Recorded, not fixed** (one lever per run): row #7's top target,
 `/solve/running-total-cumulative-sum-in-sql/` (69 impr / 0 clicks / pos 36.1),
-named for the third run running, untouched only because `data/solve.ts` belongs
-to open PR **#829**. Also still open: `https://www.nlqdb.com/solve/` serves the
-site un-redirected on a second hostname (row #18).
+named for the third run running, untouched because `data/solve.ts` belonged to
+then-open PR **#829**. And the **founder decision this run's fix now leans on** —
+whether `sk_live_*` is the headless MCP credential at all, given it survives
+global sign-out (`SK-APIKEYS-006`) — is queue bullet #4, recorded by #838 and
+not taken here.
 
 **Corrected from run 145.** #833 recorded its BIRD dispatch as "window 1 of ~6";
-the run had already finished in one — `Save full-run checkpoint` is `skipped`,
-which per `SK-QUAL-011` only happens after a completed run deletes its
-checkpoint. Row #8 now carries the 07-26 number (0.5382, flat). The baseline file
-is left alone on purpose: its lane needs fields that exist only in the run
-artifact, whose bytes no `/daily` session can read — fabricating them is worse
-than a stale `run_at`. Spider hit its own 8-day trigger and was re-dispatched.
+it had already finished in one (`Save full-run checkpoint` `skipped`, which per
+`SK-QUAL-011` only follows a completed run). Row #8 carries the 07-26 number
+(0.5382, flat); the baseline file is left alone because a lane row needs fields
+that live only in the run artifact, whose bytes no `/daily` session can read.
+Spider hit its own 8-day trigger and was re-dispatched.
 
 **No new `SK-*`/`GLOBAL-*`** (P5/D5): `SK-MCP-001` already documents two
 transports and `GLOBAL-003` already requires a shipped capability to reach every
 surface. Per §10.2 this is code-wrong / decision-right — the page lagged a
-decision that already existed. Step 3: queue **2**-deep (< 3) ⇒ no forced
-publish; the dev.to drip is a **confirmed no-op** — last post 07-26 17:32Z,
-**8.0 h < the 20 h guard** — and its queue line lives in #833 either way.
+decision that already existed. Step 3: the dev.to drip is a **confirmed no-op**
+(last post 07-26 17:32Z, **8.0 h < the 20 h guard**).
 
 **Gates:** `typecheck` exit 0 all packages · `astro check` **0 errors / 0
 warnings / 2 hints** (pre-existing) · `bun run lint` **0 errors, 41 warnings,

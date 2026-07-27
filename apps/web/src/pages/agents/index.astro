@@ -57,12 +57,17 @@ const mcpConfig = `{
 // OAuth consent screen is a wall for any agent without a human at a
 // browser — CI, a server, a headless coding agent. Same tool catalog,
 // credential pasted once instead of granted per session.
+//
+// `sk_live_` and not `sk_mcp_`: `sk_mcp_*` is minted server-side by the
+// OAuth callback and never displayed (SK-APIKEYS-009), and `/app/keys`
+// deliberately won't mint one (SK-APIKEYS-012) — so a reader cannot
+// obtain the value this block would tell them to paste.
 const mcpStdioConfig = `{
   "mcpServers": {
     "nlqdb": {
       "command": "npx",
       "args": ["-y", "@nlqdb/mcp"],
-      "env": { "NLQDB_API_KEY": "sk_mcp_…" }
+      "env": { "NLQDB_API_KEY": "sk_live_REPLACE_ME" }
     }
   }
 }`;
@@ -315,18 +320,16 @@ const faqJsonLd = faqPageJsonLd(faqs);
             </a>
           </div>
 
-          {/* Local-stdio route. The hosted card above cannot be completed
-              by an agent with no human at a browser — it ends on an OAuth
-              consent screen. This one is the same tool catalog over stdio,
-              authenticated by a key pasted once. */}
+          {/* Local-stdio route — the only one an unattended agent can run. */}
           <div class="ag-connect__card ag-connect__card--wide">
-            <p class="ag-connect__h">Or: no browser (headless agents, CI)</p>
+            <p class="ag-connect__h">Or: no browser at run time (headless agents, CI)</p>
             <p class="ag-connect__note">
               The hosted route ends on an OAuth consent screen, so an agent
               running in CI or on a server can&rsquo;t finish it. Run the same
-              MCP server locally instead — identical tools, authenticated by
-              one key. Mint an <code>sk_mcp_</code> key at
-              <a href="/app/keys/">API keys</a>, paste it into the config.
+              MCP server locally instead — same five tools, authenticated by a
+              key instead of a consent click. Mint an <code>sk_live_</code> key
+              once at <a href="/app/keys/">API keys</a> (one signed-in visit),
+              paste it in, and no browser opens again.
             </p>
             <pre class="ag-connect__code"><code>{mcpStdioConfig}</code></pre>
             <button
@@ -401,16 +404,18 @@ const faqJsonLd = faqPageJsonLd(faqs);
     // copies the code block in its own card. Clipboard failure still fires
     // the signal and leaves the config visible.
     document.querySelectorAll<HTMLButtonElement>("[data-copy-config]").forEach((btn) => {
+      // Read outside the handler: a second click inside the 1.6 s window would
+      // otherwise capture "Copied ✓" as the label to restore, sticking there.
+      const label = btn.textContent;
       btn.addEventListener("click", async () => {
-        emit("agents.connect_clicked", { method: btn.dataset["copyMethod"] ?? "url" });
+        emit("agents.connect_clicked", { method: btn.dataset["copyMethod"] ?? "unknown" });
         try {
           const code = btn.closest(".ag-connect__card")?.querySelector(".ag-connect__code code");
           await navigator.clipboard.writeText(code?.textContent ?? "");
-          const original = btn.textContent;
           btn.textContent = "Copied ✓";
           btn.classList.add("is-copied");
           setTimeout(() => {
-            btn.textContent = original;
+            btn.textContent = label;
             btn.classList.remove("is-copied");
           }, 1600);
         } catch {

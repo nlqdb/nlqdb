@@ -17,7 +17,8 @@ import { fileURLToPath } from "node:url";
 // starts printing a command that fails on the reader's machine.
 //
 // Each assertion therefore derives its expected value from the `packages/mcp`
-// source rather than restating a literal.
+// source rather than restating a literal — and, for the credential, from the
+// API's own prefix constants, so the card can't advertise a key nobody can mint.
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "../../../../..");
@@ -27,6 +28,14 @@ const mcpManifest = JSON.parse(
   readFileSync(join(repoRoot, "packages/mcp/package.json"), "utf8"),
 ) as { name: string };
 const stdioSource = readFileSync(join(repoRoot, "packages/mcp/src/stdio.ts"), "utf8");
+const apiKeysSource = readFileSync(join(repoRoot, "apps/api/src/api-keys.ts"), "utf8");
+
+/** A key-prefix constant read from the API's own definition of it. */
+function apiKeyPrefix(name: string): string {
+  const value = apiKeysSource.match(new RegExp(`${name} = "([^"]+)"`))?.[1];
+  if (!value) throw new Error(`\`api-keys.ts\` no longer exports ${name}`);
+  return value;
+}
 
 /** The `mcpStdioConfig` template literal, parsed as the JSON a reader pastes. */
 function stdioConfig(): {
@@ -62,6 +71,20 @@ describe("/agents local-stdio connect card", () => {
       ?.map((q) => q.slice(1, -1));
     expect(prefixes?.length).toBeGreaterThan(0);
     expect(prefixes?.some((p) => placeholder?.startsWith(p))).toBe(true);
+  });
+
+  test("...and a prefix a reader can actually obtain", () => {
+    // The gate the allowlist alone does not catch, and the one this card got
+    // wrong first time round: `sk_mcp_` passes `runStdio` but is minted
+    // server-side by the OAuth callback and never displayed (SK-APIKEYS-009),
+    // and `/app/keys` deliberately won't mint one (SK-APIKEYS-012). Telling a
+    // reader to paste a value that cannot exist is the same dead end this card
+    // was added to remove. `sk_live_` is the only self-mintable prefix.
+    const placeholder = Object.values(stdioConfig().mcpServers.nlqdb.env)[0] ?? "";
+    expect(placeholder.startsWith(apiKeyPrefix("SK_MCP_PREFIX"))).toBe(false);
+    expect(placeholder.startsWith(apiKeyPrefix("SK_LIVE_PREFIX"))).toBe(true);
+    // …and the prose names the same prefix the block pastes.
+    expect(agentsPage).toContain("<code>sk_live_</code>");
   });
 
   test("the card is reachable copy, wired to the connect demand signal", () => {
