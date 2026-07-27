@@ -15,18 +15,19 @@ only when no acquisition lever is.
 **⚠ Window lapsed 07-25; `/weekly` is 2 days overdue, so this run picked its own
 target per step 2.**
 
-**Worst number today:** **the human queue — 5 deep with its top row already resolved,
-i.e. the founder's one non-automatable slot pointed at work that no longer existed.**
-With real strangers at 0, the age of this queue's head is the company's real cycle
-time. Verified live on the Neon API: the two orphaned branches that row asked the
-founder to delete (`pr-571`, `pr-648`) are **gone**, project at **5 of 10** slots. Row
-deleted, its durable half shipped (see Last change). **Queue 5 → 4.**
-**Why no acquisition lever instead (step-2 priority 1).** The GSC *Strengthen next* head
-is `/solve/running-total-cumulative-sum-in-sql/` — **72 impr, 0 clicks, pos 36.3** — and
-`data/solve.ts` is free now #829 merged. Measured and **declined**: it is structurally the
-same page as `/solve/count-rows-per-day-including-missing-dates/` (**70 impr, pos 8.0**),
-so the delta is query saturation, not page quality, and a copy edit is a guess with no
-in-run re-measure (full comparison in the PR body).
+**Worst number today:** **the human queue — depth 4, top bullet (`MEMORY_PRESET`) 0
+days old but the launch-sequence bullet idle 44 days.** With real strangers at 0, the
+age of this queue's head is the company's real cycle time, and the one bullet that can
+move strangers off 0 (`SK-PIVOT-016`) has sat since 06-13. No agent run can clear it —
+it is a founder decision (rule 4). So this run took the highest-yield **agent-movable**
+lever instead (below).
+**Why this acquisition lever (step-2 priority 1).** A live channel (npm, row #22) had a
+published discovery surface — the canonical `@nlqdb/sdk` package page — that dead-ended
+with zero links out; closing that is a direct input to row #22's yield attribution,
+in-run measurable, and collides with none of the 4 open PRs. The GSC *Strengthen next*
+head (`/solve/running-total-cumulative-sum-in-sql/`, 72 impr / pos 36.3) stays declined
+(run 147): structurally the same page as a pos-8.0 sibling ⇒ the gap is query
+saturation, not page quality, and a copy edit has no in-run re-measure.
 **Top `blocked-by-human` bullet:** decide `MEMORY_PRESET` in prod (⏱ ~5 min, **0 days
 old**, PR #835 drafted). The launch-sequence bullet — the only one that can move real
 strangers off 0 — is **idle 44 days since 06-13**; its `SK-PIVOT-016` gate is **0/5
@@ -38,17 +39,16 @@ agent-movable and `MEMORY_PRESET=1` is its prerequisite — which is the top bul
 bullet fires); row **#15**'s opencheck arm (free-lane saturation, remedy costs money
 ⇒ rule 4).
 
-**Rule 6 clean** — CI + Security + Release-npm green on `main@0623cba` (merged 07-27);
-all 10 `deploy-*` workflows green (07-27 03:07–03:27Z). Local gates re-run from a
-clean install: typecheck exit 0, lint 0 errors, test exit 0.
-Open PRs **4** — **#837** (reach R-04 headless route), **#835** (draft,
-`MEMORY_PRESET`), **#826** (changesets, `@nlqdb/sdk@0.2.2`), draft **#719** (oldest,
-**10 days**). **#836 + #839 merged mid-review, rebased onto both:** run 146 took
-`/agents` from **9 to 10** connect affordances by adding the one a headless agent can
-finish (`npx @nlqdb/mcp` over stdio) and gave `agents.connect_clicked` a `transport`
-dimension; #839 added `history/founder-actions-log.md` plus the charter clause that
-logs an operator action before its queue row is deleted — this run's deleted row now
-has its log line.
+**Rule 6 clean** — CI + Security + Release-npm + all deploy workflows (`Deploy API`,
+`Deploy web`, `Deploy docs site`, `Deploy — Canary`) green on `main@3d7d1ad` (#837
+merged 07-27 16:01Z). Local gates on the touched scope: typecheck exit 0, sdk suite
+**82 pass** (incl. 2 new), lint clean.
+Open PRs **4** — **#841** (reach R-07, `@nlqdb/mcp` README + registries), **#835**
+(draft, `MEMORY_PRESET`), **#826** (changesets, `@nlqdb/sdk@0.2.2` + `@nlqdb/mcp@0.1.1`),
+draft **#719** (oldest, **10 days**). **#837 merged since run 147** (reach R-04: the two
+agent-fetched surfaces now name the headless `npx -y @nlqdb/mcp` route). This run's
+files (`packages/sdk/README.md`, its new test, an sdk changeset) overlap none of the
+open PRs — #841 touches only `packages/mcp/README.md`.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -96,75 +96,55 @@ lesson gists stay in `research/distribution-queue.md`.
 
 ## Last change
 
-**2026-07-27 (run 147)** — **Numbers moved: founder-queue depth 5 → 4 (its head
-row was resolved work), and Neon branch-creation sites with a server-side reap
-0 of 3 → 3 of 3.** Orphan lifetime goes from **unbounded** (observed: 25 days for
-`pr-571`, 17 for `pr-648`) to ≤ 7 d for `pr-N`, ≤ 6 h for `e2e`, ≤ 2 h for
-`ci-smoke-*`. Lane: CI health under rule 6 — a cap collision fails
-`test-api-smoke-neon` on a PR whose diff is innocent, so it taxes every other lever's
-delivery.
+**2026-07-27 (run 148)** — **Number moved: attributable outbound links on the
+`@nlqdb/sdk` npm package page 0 → 2** (apex + docs, both `?utm_source=npm`). Lane:
+acquisition (weekly-focus row #22 — npm-channel yield attribution, SK-GTM-007
+coverage) + GLOBAL-025 onboarding.
 
-**The defect.** Every cleanup path we own can be skipped. `preview-app.yml`'s runs
-only on `pull_request: closed`; `ci.yml`'s `if: always()` delete and its >1 h sweep
-both need a live runner, and the sweep fires on the *next* CI run — the run the cap is
-already failing. Three creation sites, zero server-side bound; the two orphans above
-each held a slot for weeks until a human deleted them.
+**The defect.** `@nlqdb/sdk` is the canonical HTTP client (GLOBAL-001) and npm is a
+live acquisition channel (row #22, one of the 4). But its README — the page
+npmjs.com renders — documented every verb and linked **nowhere**: a developer who
+discovered the SDK on npm had no path to the product, the docs, or the API key the
+very next `## Auth` section already assumes they hold. The same funnel-leak class
+#841 just closed on the sibling `@nlqdb/mcp` README, on a file neither open PR touches.
 
-**Verified against the live API, then by CI itself (P2).** `expires_at` (RFC 3339,
-≤30 days, [docs](https://neon.com/docs/guides/branch-expiration)) was probed on **this
-project's Free plan** with the byte-exact body `ci.yml` renders: **HTTP 201**, expiry
-echoed, `connection_uris` still present — losing it would have reddened every CI run.
-Then the PR proved it: `preview-app.yml` minted **`pr-840` carrying
-`expires_at=2026-08-03`** while `pr-835/836/837` carry none, and the `ci-smoke-*` path
-went green too. Both probe branches deleted.
+**The fix + re-measure.** Added a lead-in linking `nlqdb.com/?utm_source=npm`,
+`docs.nlqdb.com/sdk/?utm_source=npm`, and (untagged, product-not-landing per #841)
+`app.nlqdb.com/app/keys`. All three verified **200 on prod** before linking (P2).
+Re-measured: the README now carries **2 tagged landing links** (was 0), so a
+click-through from the package page stops converting as `direct`. A patch changeset
+ships it on the next sdk publish (folds into #826's 0.2.2).
 
-**The guard.** Nothing else catches a drift: workflows are not typechecked, not linted for
-semantics, and a missing expiry costs nothing until the tenth branch. Four review passes
-found one class — a *working* creation site read green — because each tried to recognise the
-request, and the ways to write one are unbounded: the fourth ran **46 mutations** and the
-third-pass guard was blind to 11, among them a single-quoted URL (the spelling in Neon's own
-docs), a URL built from two variables, `wget`, `actions/github-script`, a `Makefile` recipe.
-So it stopped trying. The guard **pins the six files allowed to reach the Neon API at all** —
-anything new, in any language via any client, is added on purpose — and inside them makes
-every `run:`/`script:` block writing to `…/branches` bind `expires_at`, nested in `branch`,
-to a `date -u` window it computes itself between 1 h and Neon's 30-day ceiling, no request
-exempt. **42 of 46 land as intended**; the rest are three prescriptive false-*fails* (epoch
-arithmetic, a `jq --arg` payload, one over unjoined lines — each red with its fix named) and
-one residual: blanking the variable after computing it, needing dataflow, and loudly
-rejected by Neon. `runbook.md` §6 and the sticky comment also still promised a preview DB
-"deleted on PR close" — both corrected, on every path where the database exists.
+**The guard.** Nothing else pins this file — `check-links.mjs` sweeps rendered site
+hrefs, not a package README (`agent-artifacts.test.ts` pins the *site's* surfaces).
+`packages/sdk/test/readme.test.ts` (2 tests, vitest — the package's own runner, so
+the guard ships with the thing it guards) asserts the README links to the product,
+docs, and keys page, and that every apex/docs URL carries `utm_source=npm`; `app.`
+is out of scope (it never runs the attribution capture).
 
-**Recorded, not fixed (one lever per run).** The canonical-eval resume protocol is
-unexecutable as documented. Spider's checkpoint cache is keyed
-`eval-full-spider-${{ github.sha }}-`, and `/daily` explicitly says to "re-dispatch on
-the **same SHA**" — but `workflow_dispatch` only accepts a branch or tag ref, and
-`main` moved three times in the 4.5 h after
-[30230040001](https://github.com/nlqdb/nlqdb/actions/runs/30230040001) budget-stopped
-on `d961475`. That checkpoint is unreachable; any `main` dispatch restarts from zero.
-Left alone deliberately: the key's comment states its purpose ("so two code versions
-never share a canonical run's partial scores"), so changing it supersedes a recorded
-rationale — **P1** makes that the founder's call. BIRD is unaffected in practice: it
-finished in one 38-minute window.
+**Step 3.** Drafts **2**-deep (< 3) ⇒ no forced publish; skipped a step-3.2 draft
+(the lesson overlaps #841's "package page needs a way in", would near-duplicate).
+**dev.to drip fired this run** (>20 h since the last post): drained the oldest pending
+variant, `top-n-rows-per-group` → https://dev.to/omer_hochman/top-n-per-group-is-the-query-limit-cant-write-57eb
+(tags `sql,database,webdev`); queue line updated, dev.to venue dropped. Pending
+variants 20 → 19.
 
-**Step 3.** Queue **2**-deep (< 3) ⇒ no forced publish. The dev.to drip refused as
-designed (newest article 15.9 h ago < 20 h), so no queue line was edited.
-
-**No new `SK-*`** (P5/D5): `e2e-coverage/FEATURE.md` and `ci-permissions/FEATURE.md`
-already record the 10-branch ceiling as the constraint and orphaned branches as the
-hazard. Per `AGENTS.md` §10.2 this is code-wrong / decision-right — the code lacked a
-backstop the decisions already implied. A record restating "clean up what you create"
+**No new `SK-*`** (P5/D5): `GLOBAL-003` already requires a shipped capability to reach
+every surface and `SK-GTM-007` already requires the `utm_source` key on every published
+landing URL. Per `AGENTS.md` §10.2 this is code-wrong / decision-right — a published
+surface lagged decisions that already existed. A record saying "link the sdk page too"
 fails D5.
 
-**Gates:** `typecheck` exit 0 all packages · `lint` **0 errors, 41 warnings, 2 infos =
-repo baseline** · `test` exit 0 all packages (`apps/web` **409 pass / 0 fail**) · all
-three edited workflows parse as YAML, their rendered payloads as JSON · shellcheck
-green in CI · link sweep **0 dead / 0 redirecting** on 126 pages · gate 3 prints
-nothing · **D4** every edited doc under 20480 B.
-**KPI (GLOBAL-025):** advances **onboarding** — the founder's scarcest resource stops
-being spent on a queue row that was already done, and the recurring CI-red that
-delayed every merge is closed at the source; **degrades none** — no engine, API,
-migration, runtime code, external call or bundle touched; three workflow payloads and
-one test.
+**Gates:** `typecheck` exit 0 (sdk) · sdk suite **82 pass** (incl. 2 new) · `lint`
+clean on the new `.ts` · gate 3 `grep -rn '^### GLOBAL-' docs/features/` prints
+nothing · **D4** every edited doc under 20480 B. Change is isolated — a README (imported
+nowhere), one test (sdk-only), a markdown changeset — so cross-package gates are
+untouched by construction.
+**KPI (GLOBAL-025):** advances **onboarding** — a developer who finds the canonical
+client on npm now has a one-click path to the product, the docs, and a key, and every
+click-through is attributable to the npm channel instead of reading as `direct`;
+**degrades none** — no engine, API, migration, runtime code, external call, or bundle
+touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
