@@ -48,7 +48,9 @@ function neonBranchCreatePayloads(yaml: string): string[] {
 }
 
 const workflows = readdirSync(WORKFLOW_DIR)
-  .filter((f) => f.endsWith(".yml"))
+  // Both extensions: Actions accepts `.yaml`, so filtering on `.yml` alone
+  // would leave a whole naming convention unscanned.
+  .filter((f) => /\.ya?ml$/.test(f))
   .map((file) => ({ file, yaml: readFileSync(join(WORKFLOW_DIR, file), "utf8") }));
 
 const creates = workflows.flatMap(({ file, yaml }) =>
