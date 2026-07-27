@@ -23,12 +23,15 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~2 min | Delete 2 orphaned Neon branches — the project sits at its 10-branch cap, so **CI goes red whenever PRs overlap** | 2026-07-27 |
-| 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 2 | ~5 min | **Decide:** flip `MEMORY_PRESET` in prod before E-03 ships, or hold? PR #835 is blocked on it (drafted) | 2026-07-27 |
+| 3 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
+| 4 | ~5 min | **Decide:** is `sk_live_*` the headless MCP credential? It defeats global-signout revocation and mis-attributes MCP as `cli` | 2026-07-27 |
+| 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #2 can move real strangers (scorecard row #2); #3 is the only one that
+Only #3 can move real strangers (scorecard row #2); #5 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists.
+exists. #2 and #4 are decisions an agent may not take alone — both would
+supersede or amend a recorded decision.
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
@@ -62,7 +65,29 @@ exists.
    every `pr-N` / `ci-smoke-*` branch at creation. No decision needed from
    you — if that ever falls through, it comes back here as its own row.
 
-2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
+2. **⏱ ~5 min · since 2026-07-27 — Decide: flip `MEMORY_PRESET` in prod
+   before E-03 ships, or hold?** PR #835 flips it; I drafted the PR rather
+   than merge it. The flip crosses a recorded security gate:
+   [`E-06`](./features/agent-memory-pivot/worksheets/engine/E-06-agents-createform-preset.md)
+   says *"do this only after E-03 (per-agent isolation) ships; enabling it
+   earlier exposes memory with no cross-agent scoping"*, and
+   [`E-03`](./features/agent-memory-pivot/worksheets/engine/E-03-memory-scoping.md)
+   is **⬜ not started**. Verified unbuilt in code, not just on paper:
+   `app.agent_id` appears only in marketing copy, and `index.ts` tags rows
+   with the *tenant* id, so every key in an account shares one scope.
+   `remember.ts` writes `end_user_id`/`thread_id` and the preset ships an
+   `idx_facts__scope` index, but nothing reads them — **the columns look like
+   isolation and provide none**. Cross-*account* isolation is fine; the
+   exposure is between end-users inside one builder's app, which is the
+   GLOBAL-036 case `/agents` sells.
+   - **Hold** (safe default): no action — leave #835 drafted, E-03 proceeds
+     with no backfill, and nothing regresses.
+   - **Ship**: needs a recorded decision superseding the E-03 gate, plus a
+     backfill line item on E-03 (flipping now falsifies its *"no prod memory
+     DBs exist ⇒ no backfill migration"* premise). Also then fix five sites
+     in `solve.ts` that publicly say the preset "is dark".
+
+3. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
    the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
    founder-directed 2026-07-26: criteria, never calendar dates — agents
@@ -82,7 +107,25 @@ exists.
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0.
 
-3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+4. **⏱ ~5 min · since 2026-07-27 — Decide: is `sk_live_*` the headless MCP
+   credential?** Five review rounds on #834 standardised the docs on
+   `sk_live_*`, because `sk_mcp_*` is OAuth-minted server-side and never
+   displayed ([`SK-APIKEYS-009`](./features/api-keys/decisions/SK-APIKEYS-009-sk-mcp-server-side-mint.md)) —
+   so every doc telling a user to paste one was unexecutable. Correct, but it
+   has two consequences nobody chose:
+   - [`SK-APIKEYS-006`](./features/api-keys/decisions/SK-APIKEYS-006-global-signout-scope.md)
+     clears `sk_mcp_*` on global sign-out and deliberately spares `sk_live_*`
+     — so *"sign out everywhere"* will **not** revoke a compromised headless
+     MCP host, which is exactly the property that decision exists to give.
+   - `surfaceFromPrincipal` labels `sk_live_*` as `cli`, so headless-MCP
+     adoption lands in the events pipeline as CLI traffic and the onboarding
+     KPI is unmeasurable on the path we now document.
+   - **Either** widen `/app/keys` to mint `sk_mcp_*` (amends SK-APIKEYS-009)
+     **or** accept and record. Until then five sites still name a key no one
+     can hold: `tools.ts:436/438/458/465` and `cli remember.go:174`. Recorded
+     as an open question in `mcp-server/FEATURE.md`.
+
+5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
