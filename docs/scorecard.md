@@ -12,26 +12,23 @@ is secondary this cycle. Channel truth lives in
 [`research/acquisition-channels.md`](research/acquisition-channels.md); yield truth on
 `/app/admin`, never estimated. Premium-chain work (`SK-LLM-017`, row #20) is pullable
 only when no acquisition lever is.
-**⚠ Window closed 07-25; no `/weekly` has run in the 2 days since — the line above
-is kept verbatim but is lapsed, so this run picked its own target per step 2.
-`/weekly` is overdue.**
+**⚠ Window closed 07-25 and no `/weekly` has run since — kept verbatim but lapsed, so
+this run picked its own target per step 2. `/weekly` is overdue.**
 
-**Worst number today:** **the human queue — 5 bullets deep with its top row already
-resolved, i.e. the founder's one non-automatable slot was pointing at work that no
-longer existed.** With real strangers at 0, the age of this queue's head is the
-company's real cycle time, so a stale head is a real cost. Verified live against the
-Neon API this run: the two orphaned branches that row asked the founder to delete
-(`pr-571`, `pr-648`) are **gone**, and the project sits at **5 of 10** slots. Row
-deleted, and its durable half — the reason it existed — shipped this run (see Last
-change). **Queue 5 → 4.**
+**Worst number today:** **the human queue — 5 deep with its top row already resolved,
+i.e. the founder's one non-automatable slot pointed at work that no longer existed.**
+With real strangers at 0, the age of this queue's head is the company's real cycle
+time. Verified live on the Neon API: the two orphaned branches that row asked the
+founder to delete (`pr-571`, `pr-648`) are **gone**, project at **5 of 10** slots. Row
+deleted, its durable half shipped (see Last change). **Queue 5 → 4.**
 **Why no acquisition lever instead (step-2 priority 1).** The GSC *Strengthen next*
 head is `/solve/running-total-cumulative-sum-in-sql/` — **72 impr, 0 clicks, pos
 36.3**, the largest winnable pool off page 1 — and `data/solve.ts` is free now that
 #829 merged. Measured and **declined**: against
 `/solve/count-rows-per-day-including-missing-dates/` (**70 impr, pos 8.0** — same
-volume, 28 positions better) the two entries are structurally the same page — same
-section set, FAQ count, and 3 enduring sources. The delta is query saturation, not
-page quality, so a copy edit is a guess with no in-run re-measure.
+volume, 28 positions better) the entries are structurally the same page: same section
+set, FAQ count, 3 enduring sources. The delta is query saturation, not page quality,
+so a copy edit is a guess with no in-run re-measure.
 **Top `blocked-by-human` bullet:** decide `MEMORY_PRESET` in prod (⏱ ~5 min, **0 days
 old**, PR #835 drafted). The launch-sequence bullet — the only one that can move real
 strangers off 0 — is **idle 44 days since 06-13**; its `SK-PIVOT-016` gate is **0/5
@@ -109,18 +106,17 @@ delivery.
 
 **The defect.** Every cleanup path we own can be skipped. `preview-app.yml`'s runs
 only on `pull_request: closed`; `ci.yml`'s `if: always()` delete and its >1 h sweep
-both need a live runner, and the sweep fires on the *next* CI run — which is the run
-the cap is already failing. Three creation sites, zero server-side bound. `pr-571`
-(closed 07-02) and `pr-648` (merged 07-10) each held a slot for weeks until a human
-deleted them by hand.
+both need a live runner, and the sweep fires on the *next* CI run — the run the cap is
+already failing. Three creation sites, zero server-side bound; the two orphans above
+each held a slot for weeks until a human deleted them.
 
-**Verified against the live API before it was written (P2).** Neon's `expires_at`
-(RFC 3339, ≤30 days, [docs](https://neon.com/docs/guides/branch-expiration)) was
-probed on **this project's Free plan**, then the fix was probed again by POSTing the
-byte-exact body `ci.yml` now renders: **HTTP 201**, expiry echoed back, and
-`connection_uris` still present — the field that would have turned every CI run red
-had the plan silently ignored or rejected it. Both probe branches deleted; the project
-ended the run where it started, 5 of 10.
+**Verified against the live API, then by CI itself (P2).** `expires_at` (RFC 3339,
+≤30 days, [docs](https://neon.com/docs/guides/branch-expiration)) was probed on **this
+project's Free plan** with the byte-exact body `ci.yml` renders: **HTTP 201**, expiry
+echoed, `connection_uris` still present — the field whose loss would have reddened
+every CI run. Then the PR proved it: `preview-app.yml` minted **`pr-840` carrying
+`expires_at=2026-08-03`** while `pr-835/836/837` carry none, and the `ci-smoke-*` path
+went green too. Probe branches deleted; the project ended where it started, 5 of 10.
 
 **The guard.** `neon-branch-expiry-integrity.test.ts` scans `.github/workflows/`,
 bounds each candidate to its own `curl` invocation, keeps only POSTs to the
@@ -128,14 +124,17 @@ bounds each candidate to its own `curl` invocation, keeps only POSTs to the
 and asserts each payload maps `expires_at` to a `date -u`-computed variable, with
 every window in the directory inside Neon's 30-day ceiling. Nothing else would catch
 a drift: workflows are not typechecked, not linted for semantics, and a missing
-expiry costs nothing until the tenth branch. **Negative-tested seven ways, each
-failing loudly:** drop `expires_at` from any of the three sites · widen `preview-app`
-past 30 days · hardcode a literal timestamp · blind the scanner on 2 of 3 sites (the
-`≥ 3` floor fires, so a scanner matching nothing can't pass vacuously) · add a fourth
-site with no expiry. **Two holes were mine and review caught them:** the endpoint
-pattern hardcoded `${NEON_PROJECT_ID}`, so that fourth site went green if it spelled
-the secret differently (re-verified both ways: **0 fails** on my original guard, 2 on
-the widened one); and the 30-day bound read only each file's *first* `expires=`.
+expiry costs nothing until the tenth branch. **Negative-tested nine ways, each failing
+loudly:** drop `expires_at` from any of the three sites · widen past 30 days (`+60
+days`, `+5 weeks`) · hardcode a literal timestamp · blind the scanner on 2 of 3 sites
+(the `≥ 3` floor fires, so a scanner matching nothing can't pass vacuously) · add a
+fourth site with no expiry, named `.yml` or `.yaml`. **Four holes were mine, all found
+in review, three of them the same vacuous-green class — a fourth site the scan simply
+never saw:** the endpoint pattern hardcoded `${NEON_PROJECT_ID}`; the file filter took
+`.yml` only; and the unit set was `hour|day`, so a *valid* `+30 minutes` window
+false-failed. (Each re-verified both ways: **0 fails** on my guard, 2 on the merged
+one.) Fourth: the 30-day bound read only each file's *first* `expires=`. `runbook.md`
+§6 also still promised a preview DB "deleted on PR close" — corrected, D4 net-shrunk.
 
 **Recorded, not fixed (one lever per run).** The canonical-eval resume protocol is
 unexecutable as documented. Spider's checkpoint cache is keyed
@@ -149,9 +148,8 @@ never share a canonical run's partial scores"), so changing it supersedes a reco
 rationale — **P1** makes that the founder's call. BIRD is unaffected in practice: it
 finished in one 38-minute window.
 
-**Step 3.** Queue **2**-deep (< 3) ⇒ no forced publish, and this run's lever taught a
-lesson too specific to syndicate. The dev.to drip refused as designed (newest article
-15.9 h ago < 20 h), so no queue line was edited.
+**Step 3.** Queue **2**-deep (< 3) ⇒ no forced publish. The dev.to drip refused as
+designed (newest article 15.9 h ago < 20 h), so no queue line was edited.
 
 **No new `SK-*`** (P5/D5): `e2e-coverage/FEATURE.md` and `ci-permissions/FEATURE.md`
 already record the 10-branch ceiling as the constraint and orphaned branches as the
