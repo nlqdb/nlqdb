@@ -72,14 +72,15 @@ a follow-up slice. Until then, detection is exposed via ` + "`nlq mcp detect`" +
 				_ = enc.Encode(map[string]any{
 					"status": "not_implemented",
 					"reason": "device_flow_login_required",
-					"hint":   "https://nlqdb.com/app to mint sk_mcp_ keys until `nlq login` ships",
+					// Names sk_live_: the dashboard mints only that. sk_mcp_ is OAuth-mint-only (SK-APIKEYS-009).
+					"hint": "https://app.nlqdb.com/app/keys to mint an sk_live_ key until `nlq login` ships",
 				})
 				return errors.New("mcp install not yet implemented")
 			}
 			fmt.Fprintln(cmd.ErrOrStderr(),
 				"nlq mcp install requires session-authenticated key minting (POST /v1/keys is session-only).")
 			fmt.Fprintln(cmd.ErrOrStderr(),
-				"Device-flow `nlq login` ships in the next CLI slice; until then use the dashboard at https://nlqdb.com/app to mint sk_mcp_ keys.")
+				"Device-flow `nlq login` ships in the next CLI slice; until then mint an sk_live_ key from the dashboard at https://app.nlqdb.com/app/keys.")
 			return errors.New("mcp install not yet implemented")
 		},
 	}
