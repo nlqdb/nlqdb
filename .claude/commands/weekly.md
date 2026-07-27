@@ -15,7 +15,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 - `docs/research/distribution-queue.md`, `docs/blocked-by-human.md`.
 - [`.claude/commands/daily.md`](daily.md) and
   [`.claude/commands/reach.md`](reach.md) — the prompts under audit —
-  plus the reach `INDEX.md` § Current numbers (its scorecard-equivalent;
+  plus the reach worksheet's `NUMBERS.md` (its scorecard-equivalent;
   founder-resolved 2026-07-19: the hourly reach loop is inside every
   check below, same as daily).
 

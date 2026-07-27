@@ -180,7 +180,12 @@ describe("the R-04 setup guide's connect blocks don't drift from mcp-install.ts"
 // llms.txt is asserted on its *rendered* body, not its source, so building a
 // string from `mcp-install.ts` counts as shipping it — the source-text form
 // would have failed on the very refactor it should reward.
-describe("every agent-fetched surface offers the headless route", () => {
+//
+// Scope is these two surfaces, not "every" — `/agents` and the four droppable
+// artifacts above are agent-fetched too and still document the hosted route
+// only. Widening this map is what closes that; naming the limit here is what
+// keeps a passing suite from reading as coverage it doesn't have.
+describe("both R-04 agent-fetched surfaces offer the headless route", () => {
   async function surfaces(): Promise<Record<string, string>> {
     return {
       "docs agent-memory guide": DOCS_GUIDE,

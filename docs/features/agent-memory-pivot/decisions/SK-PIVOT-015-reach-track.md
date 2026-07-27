@@ -25,7 +25,8 @@
   measurement (the R-06 coding-agent walker) makes the campaign sustained
   and falsifiable.
 - **Consequence in code:** `worksheets/reach/INDEX.md` (slices + hard
-  rules + § Current numbers), `.claude/commands/reach.md` (the runnable
+  rules) + its `NUMBERS.md` (the overwritten yield ledger),
+  `.claude/commands/reach.md` (the runnable
   loop), a Routine firing "run /reach prompt" 4×/day offset from
   `/daily`'s hours. Slices land on existing machinery only: `solve.ts`,
   `/blog`, `llms.txt`, docs site, `tools/stranger-test` conventions,

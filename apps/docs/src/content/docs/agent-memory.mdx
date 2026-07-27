@@ -108,8 +108,8 @@ host config, so no browser opens at any point.
 
 Mint the key once at [app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys)
 (that page needs a signed-in account), then swap the `nlqdb` entry from your
-host's Step 1 block for this one — same file, same root key, only the server
-value changes. Unlike the hosted blocks, this entry holds a live account
+host's Step 1 block for this one — same root key, only the server value
+changes. Unlike the hosted blocks, this entry holds a live account
 secret: put it in the **user-level** config — `~/.cursor/mcp.json`,
 `~/.codex/config.toml`, or VS Code's *MCP: Open User Configuration* rather than
 its workspace `.vscode/mcp.json` — never a file your repo commits. Revoke it at
@@ -126,8 +126,10 @@ one dialog on this page: merge it into `mcpServers` in
 it — then fully quit and reopen the app.
 
 VS Code additionally needs `"type": "stdio"` on that entry, in place of the
-`"type": "http"` its hosted block carries. Two hosts don't take a plain JSON
-object — **Claude Code**, which has a one-liner:
+`"type": "http"` its hosted block carries. Two hosts take it differently.
+**Claude Code** reads that same object, but its JSON file is the
+repo-committed `.mcp.json` — so use the CLI, which writes the key to
+`~/.claude.json` and nothing into your project:
 
 ```bash
 claude mcp add --env NLQDB_API_KEY=sk_live_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
@@ -135,7 +137,8 @@ claude mcp add --env NLQDB_API_KEY=sk_live_REPLACE_ME --transport stdio nlqdb --
 
 (the `--transport stdio` between `--env` and `nlqdb` is deliberate — the CLI
 reads a bare name straight after `--env` as another `KEY=value` pair and
-rejects it), and **Codex**, whose `~/.codex/config.toml` table becomes:
+rejects it). **Codex** takes TOML, not JSON — its `~/.codex/config.toml`
+table becomes:
 
 ```toml
 [mcp_servers.nlqdb]
@@ -228,8 +231,9 @@ writing (through the confirm gate) and reading memory.
 - **Host doesn't show the tools** — restart the host after editing its
   config, then re-list MCP servers. If they still don't appear, check the
   root key: Cursor reads `mcpServers` from `.cursor/mcp.json`, VS Code reads
-  `servers` (each entry needing `"type": "http"`) from `.vscode/mcp.json` —
-  the wrong key parses as zero servers, with no error.
+  `servers` from its `mcp.json`, each entry needing a `"type"` — `"http"` on
+  the hosted route, `"stdio"` on the headless one. The wrong key parses as
+  zero servers, with no error.
 - **`nlqdb_remember` returns `wrong_preset`** — expected today; use
   `nlqdb_query` for memory writes (see below).
 

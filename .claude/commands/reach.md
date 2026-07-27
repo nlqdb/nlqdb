@@ -19,7 +19,7 @@ memory**, and making that answer one free command.
    same repo — list open PRs first; if your slice or files overlap one,
    pick the next slice or end as a null run. **Never edit
    `docs/scorecard.md`** — that file is `/daily`'s; reach numbers live in
-   the reach `INDEX.md` § Current numbers.
+   the reach worksheet's `NUMBERS.md`.
 3. **Honesty gates** (the reach INDEX hard rules, in brief): only promise
    capabilities live in prod — verify before publishing (`MEMORY_PRESET`
    is dark, `remember` is authed; SK-PIVOT-010); FSL-1.1 never "Apache-2.0
@@ -46,8 +46,7 @@ eligible slice or end as a null run. Never duplicate an open PR's work.
 
 ### 1 — Measure
 
-Update the reach `INDEX.md` **§ Current numbers** (overwrite in place, no
-changelog): GSC intent-query impressions/clicks
+Overwrite the reach worksheet's **`NUMBERS.md`** in place (no changelog): GSC intent-query impressions/clicks
 (`bun scripts/gsc-pull.ts` when `GSC_SERVICE_ACCOUNT_JSON` is set, filtered
 to the R-01 intent map) **and that run's `## Index status` block — per-URL
 index truth for the wedge pages; never infer indexing from the sitemap
@@ -65,7 +64,7 @@ smallest diff that satisfies one of its `Done when` boxes; a slice may span
 several runs. Tick the box (and the Tracker on slice completion) in the
 same PR. If every eligible box is blocked, take the next slice; if nothing
 is pullable at all, end as a **null run** — ship only the step-1 numbers
-update plus a one-line finding in § Current numbers. Busywork is not a
+update plus a one-line finding in `NUMBERS.md`. Busywork is not a
 valid output.
 
 ### 3 — Ship

@@ -43,8 +43,8 @@ first-10 N=0). UX/perf green (row #21 9/9, row #18 0 dead, p95 1.70 s). No
 
 `distribution-queue.md` holds 2 drafts (below the 3-deep forced-publish gate —
 correctly not draining); dev.to syndication drips one/day (`SK-BLOG-003`);
-Reddit/HN pointers are human-gated by norm. **Watch:** the new reach INDEX
-"§ Current numbers" is the acquisition yield ledger — confirm next week it's
+Reddit/HN pointers are human-gated by norm. **Watch:** the reach worksheet's
+`NUMBERS.md` is the acquisition yield ledger — confirm next week it's
 actually being written each `/reach` run, else reach becomes the next inert
 loop.
 

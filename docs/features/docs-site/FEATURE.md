@@ -28,7 +28,11 @@ when-to-load:
   ("every externally published nlqdb URL carries its ledger key") is met on a
   second host — a mechanism, not a decision of its own, so it gets no SK of
   its own. Carries only the landing page's params — a reader who navigates
-  within the docs before clicking through converts as `direct`
+  within the docs before clicking through converts as `direct`. The apex check
+  is https-only and was bypass-tested against the **built, minified** bytes in
+  real Chromium — 44 host/scheme cases (homograph, punycode, userinfo,
+  backslash-folding, trailing-dot FQDN, protocol-relative), zero bypasses and
+  zero false skips; `channel-forward.test.ts` pins 27 of them
 - `.github/workflows/ci.yml` (`build-docs` pre-merge gate) · `deploy-docs.yml` (deploy)
 
 ## Decisions
