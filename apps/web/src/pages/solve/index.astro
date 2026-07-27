@@ -23,13 +23,14 @@ const itemListLd = itemListJsonLd(
   Astro.site,
 );
 
-// Declaration order in PERSONAS is the render order. `sectionId` drops the
-// leading `P1`/`P2` token so the anchor is readable, not internal.
+// Declaration order in PERSONAS is the render order. The anchor is slugged
+// from the visible heading, so a deep link matches what the reader sees and
+// the internal `P1..P4` code stays out of the URL fragment.
 const groupedByPersona = Object.entries(PERSONAS)
   .map(([persona, info]) => ({
     info,
     entries: SOLVE_ENTRIES.filter((s) => s.persona === persona),
-    sectionId: `group-${persona.split(" ").slice(1).join("-")}`,
+    sectionId: `group-${info.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
   }))
   .filter((g) => g.entries.length > 0);
 ---

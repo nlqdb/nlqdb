@@ -25,9 +25,10 @@ const itemListLd = itemListJsonLd(
 );
 
 // Persona labels are authored as `/solve` section headings ("Solo builders");
-// mid-sentence here the first letter drops. A blanket toLowerCase would eat
-// the acronym in "Analysts and PMs".
-const audience = (label: string) => `For ${label[0].toLowerCase()}${label.slice(1)}`;
+// mid-sentence here the first letter drops — but only when the second is
+// already lowercase, so an acronym ("PMs", "AI engineers") survives intact.
+const audience = (label: string) =>
+  `For ${label.replace(/^\p{Lu}(?=\p{Ll})/u, (c) => c.toLowerCase())}`;
 ---
 <Base
   title="Compare nlqdb to alternatives — natural-language databases"
@@ -138,9 +139,12 @@ const audience = (label: string) => `For ${label[0].toLowerCase()}${label.slice(
   }
   .vsidx__row {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: 16px;
+    /* Wrap rather than squeeze: at 390px the audience tag drops to its own
+       line instead of breaking the competitor name people scan for. */
+    gap: 2px 16px;
     margin-bottom: 8px;
   }
   .vsidx__name {

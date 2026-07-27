@@ -12,17 +12,16 @@ import { PERSONAS } from "./personas.ts";
 //
 // So the rule is structural rather than a search for one leak shape: a
 // `.persona` property read may only be a `PERSONAS[...]` lookup or an
-// `===` comparison. Strip those two, and anything left can reach HTML.
-// (Scope: property reads. `/solve`'s section anchor interpolates a bare
-// loop variable, and deliberately drops the `P1` token before doing so.)
+// equality comparison. Blank those two out, and anything left can reach HTML.
+// Known limit: a persona reached by destructuring (`const { persona } = c`)
+// carries no `.persona` token and slips through — closing that would need a
+// parser, and the four render sites all go through the property read.
 
 const WEB_SRC = join(dirname(fileURLToPath(import.meta.url)), "..");
-const ALLOWED = /PERSONAS\[[\w$.]*\.persona\]|\.persona\s*===/g;
+const ALLOWED = /PERSONAS\[\s*[\w$.]*\.persona\s*\]|\.persona\s*[!=]==/g;
 const RAW = /\.persona\b|\[\s*["']persona["']\s*\]/;
 
 describe("persona taxonomy stays internal (personas.ts)", () => {
-  // Non-empty matters beyond the obvious: `/vs` lowercases `label[0]` to read
-  // it mid-sentence, which throws on an empty string.
   test("labels and descriptions are real copy, with no internal P1..P4 code", () => {
     for (const info of Object.values(PERSONAS)) {
       expect(info.label.length).toBeGreaterThan(0);
@@ -36,8 +35,15 @@ describe("persona taxonomy stays internal (personas.ts)", () => {
     const offenders: string[] = [];
     for (const name of readdirSync(WEB_SRC, { recursive: true, encoding: "utf8" })) {
       if (!/\.(ts|tsx|astro)$/.test(name) || name.includes(".test.")) continue;
-      const hit = readFileSync(join(WEB_SRC, name), "utf8").replace(ALLOWED, "").match(RAW);
-      if (hit) offenders.push(`src/${name}: ${hit[0]}`);
+      const src = readFileSync(join(WEB_SRC, name), "utf8");
+      const lines = src.split("\n");
+      // Blank the allowed forms to spaces, not "", so line numbers survive.
+      src
+        .replace(ALLOWED, (m) => m.replace(/[^\n]/g, " "))
+        .split("\n")
+        .forEach((line, i) => {
+          if (RAW.test(line)) offenders.push(`src/${name}:${i + 1}: ${lines[i].trim()}`);
+        });
     }
     expect(offenders).toEqual([]);
   });
