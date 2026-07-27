@@ -21,8 +21,12 @@ const ALLOWED = /PERSONAS\[[\w$.]*\.persona\]|\.persona\s*===/g;
 const RAW = /\.persona\b|\[\s*["']persona["']\s*\]/;
 
 describe("persona taxonomy stays internal (personas.ts)", () => {
-  test("labels and descriptions carry no internal P1/P2/P3/P4 code", () => {
+  // Non-empty matters beyond the obvious: `/vs` lowercases `label[0]` to read
+  // it mid-sentence, which throws on an empty string.
+  test("labels and descriptions are real copy, with no internal P1..P4 code", () => {
     for (const info of Object.values(PERSONAS)) {
+      expect(info.label.length).toBeGreaterThan(0);
+      expect(info.description.length).toBeGreaterThan(0);
       expect(info.label).not.toMatch(/\bP[1-9]\b/);
       expect(info.description).not.toMatch(/\bP[1-9]\b/);
     }
