@@ -1,6 +1,7 @@
 # SK-PIVOT-016 — The launch is condition-gated on a lived dogfood workload; conditions, never calendar dates
 
-- **Decision:** Queue bullet #1 (fire the launch sequence) is gated on a
+- **Decision:** The launch-sequence bullet in
+  [`docs/blocked-by-human.md`](../../../blocked-by-human.md) is gated on a
   **dogfood gate**: nlqdb's own operating agents run a real memory workload
   through the **public** surfaces (`npx -y @nlqdb/mcp` + a self-minted
   `sk_live_*` key — `sk_mcp_*` is OAuth-mint-only per `SK-APIKEYS-009`, so

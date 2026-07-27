@@ -41,7 +41,7 @@ lives only in [`blocked-by-human.md`](blocked-by-human.md).
 0.542** — the 7-day staleness trigger fired today and a canonical free-lane run is
 **in flight** ([30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876),
 window 1 of ~6 on `main@d961475`); rows **#4/#5/#16**'s stranger-dependent criteria
-(N = 0 until queue bullet #1 fires); row **#15**'s opencheck arm (free-lane
+(N = 0 until the launch bullet fires); row **#15**'s opencheck arm (free-lane
 saturation, remedy costs money ⇒ rule 4).
 
 **Rule 6 clean** — CI + Security + Release-npm green on their latest `main` run
