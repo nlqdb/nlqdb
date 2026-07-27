@@ -43,17 +43,28 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   #2 Smithery live; Glama crawl-fed — links the repo, not the utm-tagged `websiteUrl`, until
   founder-claimed; #5 mcp.so + #6 Cursor submitted 2026-07-26, #8 `awesome-mcp-servers` PR open;
   only #7 still needs a founder submit; PulseMCP re-checks 08-22). Channels live with attributable
-  yield: **4** (organic, dev.to, github, npm); #12 in-flight.
+  yield: **4** (organic, dev.to, github, npm); #12 in-flight. **State changes read live 2026-07-27:**
+  Smithery's homepage field **did save** — its listing now serves
+  `https://nlqdb.com/agents/?utm_source=smithery` and names all five tools, closing publish day's
+  "no outbound link, key not carried" caveat; **mcp.so still absent day + 1** (its search payload
+  returns `total: 0`, plausible `mcp.so/server/…` slugs 404); Glama and `cursor.directory` **could
+  not be read at all** (504 and 429 to a non-browser client), so their silence is not evidence of
+  absence.
 - Coding-agent walker (R-06): **0/1 surfaced** (baseline 2026-07-20 — cold session recommended
   `pgvector`, never nlqdb). Not re-run: no `ANTHROPIC_API_KEY` in this session.
 - Canonical setup guide (R-04): **live, 2 of 3**. Walk box ⬜ — blocker is now "the walker has no
   key", not the product. **One founder action closes it:** mint an `sk_live_` key at `/app/keys`
   and set it as `NLQDB_API_KEY` in the walker env (queue in `blocked-by-human.md` next run).
 - Droppable artifacts (R-07): **4 of 4 live**, `agent-artifacts` in-flight, yield 0; the
-  one-command install path is verified by running it, not just linted (#825). **The yield gate was
-  unmeasurable until 07-26** — all five artifacts led with an untagged
-  `docs.nlqdb.com/agent-memory/`, so every channel converted as `direct`. The key now rides the URL
-  across the hop (mechanism canonical in
+  one-command install path is verified by running it, not just linted (#825). **Published install
+  surfaces 3 → 4 (2026-07-27):** the `npx skills add …` one-liner now also ships on **`@nlqdb/mcp`'s
+  npm README — the page npmjs.com renders** — beside the docs guide, `llms.txt` and the artifacts
+  index, pinned by `packages/mcp/test/readme.test.ts`. Re-run live in a clean directory it writes
+  `.agents/skills/nlqdb-memory/SKILL.md`, a `.claude/skills/` symlink and `skills-lock.json` (no
+  Cursor rule, no `AGENTS.md` edit); npm serves the new page from **0.1.1** (latest published still
+  0.1.0, release PR #826). **The yield gate was unmeasurable until 07-26** — all five artifacts led
+  with an untagged `docs.nlqdb.com/agent-memory/`, so every channel converted as `direct`. The key
+  now rides the URL across the hop (mechanism canonical in
   [`docs-site`](../../../docs-site/FEATURE.md)), taking keyed links on an attributing host **4 of
   10 → 10 of 10**. Two holes stay open: a `claude mcp add` conversion never loads an apex page
   (`untracked`), and only the *landing* URL carries the key.
