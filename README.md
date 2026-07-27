@@ -59,7 +59,9 @@ registry). Building from a clone is unaffected.
 ## Use it
 
 Connecting an agent over MCP? One command, plus one browser-OAuth approval:
-[**Give your agent memory**](https://docs.nlqdb.com/agent-memory/).
+[**Give your agent memory**](https://docs.nlqdb.com/agent-memory/). Headless
+hosts skip the browser with `npx -y @nlqdb/mcp` and an `sk_live_*` key
+([MCP setup](https://docs.nlqdb.com/mcp/)).
 
 The 60-second walkthrough — plain HTML, CLI, and ten framework wrappers —
 lives at [`docs.nlqdb.com`](https://docs.nlqdb.com). Start with the

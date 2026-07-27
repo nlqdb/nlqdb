@@ -23,7 +23,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~2 min | Delete 2 orphaned Neon branches — the project sits at its 10-branch cap, so **CI goes red whenever PRs overlap** | 2026-07-27 |
-| 2 | ~5 min | **Decide:** flip `MEMORY_PRESET` in prod before E-03 ships, or hold? PR #835 is blocked on it (drafted) | 2026-07-27 |
+| 2 | ~5 min | **Decide:** flip `MEMORY_PRESET` in prod before E-03 ships, or hold? Holding also holds #3's dogfood gate; PR #835 drafted | 2026-07-27 |
 | 3 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 4 | ~5 min | **Decide:** is `sk_live_*` the headless MCP credential? It defeats global-signout revocation and mis-attributes MCP as `cli` | 2026-07-27 |
 | 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
@@ -66,26 +66,23 @@ supersede or amend a recorded decision.
    you — if that ever falls through, it comes back here as its own row.
 
 2. **⏱ ~5 min · since 2026-07-27 — Decide: flip `MEMORY_PRESET` in prod
-   before E-03 ships, or hold?** PR #835 flips it; I drafted the PR rather
-   than merge it. The flip crosses a recorded security gate:
+   before E-03 ships, or hold?** PR #835 flips it; I left it drafted because
+   the flip crosses a recorded security gate:
    [`E-06`](./features/agent-memory-pivot/worksheets/engine/E-06-agents-createform-preset.md)
-   says *"do this only after E-03 (per-agent isolation) ships; enabling it
-   earlier exposes memory with no cross-agent scoping"*, and
+   says do it *"only after E-03 (per-agent isolation) ships"*, and
    [`E-03`](./features/agent-memory-pivot/worksheets/engine/E-03-memory-scoping.md)
-   is **⬜ not started**. Verified unbuilt in code, not just on paper:
-   `app.agent_id` appears only in marketing copy, and `index.ts` tags rows
-   with the *tenant* id, so every key in an account shares one scope.
-   `remember.ts` writes `end_user_id`/`thread_id` and the preset ships an
-   `idx_facts__scope` index, but nothing reads them — **the columns look like
-   isolation and provide none**. Cross-*account* isolation is fine; the
-   exposure is between end-users inside one builder's app, which is the
-   GLOBAL-036 case `/agents` sells.
-   - **Hold** (safe default): no action — leave #835 drafted, E-03 proceeds
-     with no backfill, and nothing regresses.
-   - **Ship**: needs a recorded decision superseding the E-03 gate, plus a
-     backfill line item on E-03 (flipping now falsifies its *"no prod memory
-     DBs exist ⇒ no backfill migration"* premise). Also then fix five sites
-     in `solve.ts` that publicly say the preset "is dark".
+   is **⬜ not started** — unbuilt in code, not just on paper: rows are tagged
+   with the *tenant* id, and `end_user_id`/`thread_id` are written but never
+   read, so the columns look like isolation and provide none. Cross-*account*
+   isolation holds; the exposure is end-user-to-end-user inside one builder's
+   app. **Holding also holds the launch:**
+   [`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
+   names `MEMORY_PRESET=1` a prerequisite of the dogfood gate #3 waits on.
+   - **Hold** (safe default): no action — #835 stays drafted, E-03 proceeds.
+   - **Ship**: I record a decision superseding the E-06 gate, add a backfill
+     line to E-03 (the flip falsifies its *"no prod memory DBs ⇒ no backfill
+     migration"* premise), and correct the five `solve.ts` sites that tell
+     the public the preset is gated.
 
 3. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
@@ -108,22 +105,21 @@ supersede or amend a recorded decision.
    (scorecard row #2) from 0.
 
 4. **⏱ ~5 min · since 2026-07-27 — Decide: is `sk_live_*` the headless MCP
-   credential?** Five review rounds on #834 standardised the docs on
-   `sk_live_*`, because `sk_mcp_*` is OAuth-minted server-side and never
-   displayed ([`SK-APIKEYS-009`](./features/api-keys/decisions/SK-APIKEYS-009-sk-mcp-server-side-mint.md)) —
-   so every doc telling a user to paste one was unexecutable. Correct, but it
-   has two consequences nobody chose:
-   - [`SK-APIKEYS-006`](./features/api-keys/decisions/SK-APIKEYS-006-global-signout-scope.md)
-     clears `sk_mcp_*` on global sign-out and deliberately spares `sk_live_*`
-     — so *"sign out everywhere"* will **not** revoke a compromised headless
-     MCP host, which is exactly the property that decision exists to give.
-   - `surfaceFromPrincipal` labels `sk_live_*` as `cli`, so headless-MCP
-     adoption lands in the events pipeline as CLI traffic and the onboarding
-     KPI is unmeasurable on the path we now document.
-   - **Either** widen `/app/keys` to mint `sk_mcp_*` (amends SK-APIKEYS-009)
-     **or** accept and record. Until then five sites still name a key no one
-     can hold: `tools.ts:436/438/458/465` and `cli remember.go:174`. Recorded
-     as an open question in `mcp-server/FEATURE.md`.
+   credential?** #834 standardised every doc on it, because `sk_mcp_*` is
+   OAuth-minted server-side and never displayed
+   ([`SK-APIKEYS-009`](./features/api-keys/decisions/SK-APIKEYS-009-sk-mcp-server-side-mint.md)),
+   so the docs telling users to paste one were unexecutable. Correct, but it
+   drags in two properties nobody chose: *"sign out everywhere"* no longer
+   revokes a compromised headless MCP host
+   ([`SK-APIKEYS-006`](./features/api-keys/decisions/SK-APIKEYS-006-global-signout-scope.md)
+   deliberately spares `sk_live_*`), and `surfaceFromPrincipal` labels that
+   traffic `cli`, so headless-MCP adoption is unmeasurable in the events
+   pipeline. Full write-up: `mcp-server/FEATURE.md` → Open questions.
+   - **Accept** (default): I record both as intended and strip `sk_mcp_*`
+     from the five sites still naming a key no one can hold
+     (`packages/mcp/src/tools.ts` ×4, `cli/internal/cmd/remember.go`).
+   - **Widen `/app/keys` to mint `sk_mcp_*`**: amends SK-APIKEYS-009; I ship
+     it, and those five sites become true as written.
 
 5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
