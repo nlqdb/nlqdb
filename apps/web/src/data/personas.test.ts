@@ -15,7 +15,8 @@ import { PERSONAS } from "./personas.ts";
 // equality comparison. Blank those two out, and anything left can reach HTML.
 // Known limit: a persona reached by destructuring (`const { persona } = c`)
 // carries no `.persona` token and slips through — closing that would need a
-// parser, and the four render sites all go through the property read.
+// parser, and both render sites (`/vs/index`, `/solve/[slug]`) go through the
+// property read; the other four reads are equality branches, not copy.
 
 const WEB_SRC = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ALLOWED = /PERSONAS\[\s*[\w$.]*\.persona\s*\]|\.persona\s*[!=]==/g;
