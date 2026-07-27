@@ -16,9 +16,11 @@
   gate or the launch.
 - **Core value:** Honest, Goal-first, Free
 - **Why:** Benchmarks are the most-cited artifact class in developer
-  tooling — answer engines quote them (row #11 sits at 0 citations), and
-  they are exactly what the stage-0 searcher and their coding agent
-  compare on. A vendor benchmark earns links only by conceding columns:
+  tooling — answer engines quote them, and they are exactly what the
+  stage-0 searcher and their coding agent compare on. nlqdb currently earns
+  **0** answer-engine citations (that row in
+  [`docs/research/acquisition-channels.md`](../../../research/acquisition-channels.md)),
+  so this is a channel opened, not a channel optimised. A vendor benchmark earns links only by conceding columns:
   admitting "for pure fuzzy recall, top-k wins — here's the number" is
   what makes the analytical column believable (the R-02 build-vs-buy
   lesson). The purpose taxonomy and the corpus already exist, so the

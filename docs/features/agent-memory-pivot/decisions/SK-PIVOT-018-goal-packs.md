@@ -13,9 +13,7 @@
   [`docs/history/founder-actions-log.md`](../../../history/founder-actions-log.md)
   and answering the builder's replay queries ("what did I have to do by
   hand before first deploy, in order?", "which submissions are pending?",
-  "replay this launch for product X"). The founder-ops pack's first
-  deliverable is the dependency-ordered bootstrap sequence that log's
-  Era 0 sketches.
+  "replay this launch for product X").
 - **Core value:** Simple, Goal-first, Honest
 - **Why:** nlqdb's own history proves the demand: every human action was
   documented *somewhere* (runbook, history docs, decision records, deleted
