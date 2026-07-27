@@ -17,31 +17,30 @@ is the company's real cycle time.
 
 ## At a glance
 
-The whole queue in nine lines, same order as the bullets below — where the
-exact URL, form values and paste-ready commands live. Read those only when you
-sit down to do the thing.
+The whole queue, same order as the bullets below — where the exact URLs, form
+values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~30 min | Fire the Show HN launch sequence — nlqdb has never launched anywhere | 2026-06-13 |
-| 2 | ~5 min | Bootstrap-publish `@nlqdb/mcp` to npm (one paste), then set its Trusted Publisher | 2026-07-25 |
-| 3 | ~3 min | Publish nlqdb to Smithery (`smithery mcp publish`) | 2026-07-25 |
-| 4 | ~5 min | Submit nlqdb to mcp.so | 2026-07-21 |
-| 5 | ~5 min | Submit nlqdb to cursor.directory | 2026-07-21 |
-| 6 | ~10 min | Open the `awesome-mcp-servers` listing PR | 2026-07-21 |
-| 7 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 8 | ~2 min | Flip "Always Use HTTPS" on the `nlqdb.com` Cloudflare zone | 2026-07-22 |
-| 9 | ~3 min | Make CI a required status check on `main` | 2026-07-25 |
+| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
+| 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #1 can move real strangers (scorecard row #2) this week; #7 is the only
-one that costs money. Each of the rest is a sign-in plus a form, a terminal
-paste, a PR, or a console toggle.
+Only #1 can move real strangers (scorecard row #2); #2 is the only one that
+costs money and waits per `docs/cost-ladder.md` unless a Team org already
+exists.
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
 1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
-   ready since 07-19 — Fire the launch sequence** — the founder-only half of
-   [`docs/research/launch-kit.md`](./research/launch-kit.md): pick the angle
+   ready since 07-19 — Fire the launch sequence** — **now condition-gated on
+   the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
+   founder-directed 2026-07-26: criteria, never calendar dates — agents
+   drive all five; `/daily` restates gate progress n/5 beside this bullet's
+   age). When the gate is green, only this founder-only half remains, and
+   the launch demo is the gate's own artifact (the live `/agents` memory
+   dashboard + "we ran our company's ops on our own memory through the
+   public MCP endpoint — here's what broke"): per
+   [`docs/research/launch-kit.md`](./research/launch-kit.md), pick the angle
    (§2; GLOBAL-036 says lead with analytical agent memory), write the Show
    HN post + first comment in your own voice from the §3.1 fact sheet
    (never agent copy — the r/SQL lesson), soft-launch lobste.rs/r/SideProject
@@ -50,128 +49,9 @@ paste, a PR, or a console toggle.
    migrations (`0022`–`0025`) are applied (verified live 2026-07-22), so
    every visit is attributable end-to-end. nlqdb has never launched anywhere;
    this is the only action in the queue that can move real strangers
-   (scorecard row #2) from 0 this week.
+   (scorecard row #2) from 0.
 
-2. **⏱ ~5 min · since 2026-07-25 — Bootstrap-publish `@nlqdb/mcp` to npm.**
-   This is the one action that gives a coding agent a *headless* way in. Today
-   the only route to nlqdb memory is the hosted server's browser OAuth consent
-   screen (walked live 2026-07-25, PR #819): an agent gets through discovery,
-   dynamic client registration and `/authorize`, then hits a page only a
-   signed-in human can approve. `packages/mcp` already ships the MCP spec's
-   headless answer — local stdio reading `NLQDB_API_KEY` (`SK-MCP-001`), spawned
-   daily by `scripts/flow-005-stdio-walk.sh` — but `registry.npmjs.org/@nlqdb/mcp`
-   **404s**, so nobody can install it. Account-walled: npm's Trusted Publishing
-   (OIDC) **cannot publish a package's first version**
-   ([npm/cli#8544](https://github.com/npm/cli/issues/8544), still open —
-   re-verified 2026-07-25), so version `0.1.0` must come from your npm session.
-   The repo is publish-ready and the artifact is **verified end-to-end** — the
-   packed tarball, installed into an empty dir, serves a real MCP `initialize` +
-   `tools/list` with all five tools under both node and bun — so this is one paste:
-   ```bash
-   cd packages/mcp
-   npm login --auth-type=web     # once, if not already signed in — do it first,
-                                 # so an aborted login can't leave the gate open
-   npm pkg delete private        # publish gate; reverted on the last line
-   bun run build                 # emits dist/ (~25 KB, @nlqdb/sdk bundled in)
-   npx --yes -p npm@latest -- npm publish --no-provenance --access public
-   git checkout package.json     # leave the repo gated — an agent PR un-gates it
-   ```
-   Then configure the Trusted Publisher (fields table in
-   [`.changeset/README.md`](../.changeset/README.md)) so every later publish
-   flows via OIDC with provenance. **Don't** commit the `private` flip yourself:
-   un-gating before the package exists on npm makes `changeset publish` fail the
-   whole release job. What it unblocks, once live: `npx -y @nlqdb/mcp` completes
-   setup with a pasted `sk_mcp_*` key instead of a browser (reach R-04's last
-   box); the official-registry entry can then declare an npm `packages` block
-   beside the remote — `mcpName` is already in the tarball for the ownership
-   check the registry runs — which is what the directories that only surface
-   *installable* servers read; ledger rows #12 + #17 gain a real install path.
-   Tell the next `/reach` run when it's live and it will land all three.
-
-3. **⏱ ~3 min · since 2026-07-25 — Publish nlqdb to Smithery** (reach R-05
-   venue #2, ledger row #4). **This corrects a wrong assumption, not a delay:**
-   rows #4/#5 recorded Smithery as auto-ingesting the official registry, so
-   nobody was ever going to submit it. Smithery documents publishing only as its
-   own CLI verb and mentions **no** official-registry ingestion (re-verified
-   2026-07-25); measured live the same day, `registry.smithery.ai` returns **no
-   nlqdb server**, three days after the registry publish that Glama ingested in
-   one. Remote servers stay self-hosted (Smithery's gateway proxies to ours;
-   streamable HTTP + OAuth are both required and both shipped), so there is
-   nothing to deploy — it is one paste, account-walled only by the login:
-   ```bash
-   npx --yes @smithery/cli auth login
-   npx --yes @smithery/cli mcp publish https://mcp.nlqdb.com/mcp -n nlqdb/nlqdb
-   npx --yes @smithery/cli mcp publish --resume   # only if it paused for OAuth approval
-   ```
-   Smithery scans the server for its tool catalog and pauses on our OAuth wall —
-   that is what `--resume` is for, after you approve in the browser. Then open
-   the listing and set the metadata that carries the ledger key (rule 1):
-   - **Display name:** `nlqdb — analytical memory for AI agents`
-   - **Website / homepage:** `https://nlqdb.com/agents/?utm_source=smithery`
-   - **Description:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
-   On publish, flip ledger row #4 to **in-flight** and note the listing URL.
-
-4. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to mcp.so** (`mcp.so/submit`;
-   reach R-05 venue #5, ledger row #7).
-   Account-walled: the form needs a GitHub sign-in (anonymous fetch → 403), and mcp.so
-   is **not** an official-registry crawler — it's a Next.js + Supabase directory
-   (`chatmcp/mcpso`) whose data comes from this form, so the row-#3 registry publish does
-   **not** cascade here (per-server pages auto-open a giscus GitHub Discussion for
-   *comments*, which is not the submission path). Verified 2026-07-21. Sign in, open
-   `mcp.so/submit`, and enter:
-   - **GitHub URL:** `https://github.com/nlqdb/nlqdb` (the form auto-fetches name/README)
-   - **Name / title:** `nlqdb — analytical memory for AI agents`
-   - **Website:** `https://nlqdb.com/agents/?utm_source=mcpso` (carries the ledger key)
-   - **Description:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
-   - **Connect / config (if asked):** `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
-   On submit, flip ledger row #7 to **in-flight** and note the `mcp.so/server/...` URL.
-
-5. **⏱ ~5 min · since 2026-07-21 — Submit nlqdb to cursor.directory**
-   (`cursor.directory/plugins/new`; reach R-05 venue #6, ledger row #8).
-   Account-walled: Cursor's **official in-product marketplace is curated** with
-   no public self-serve path, and the community directory Cursor's own docs point to
-   (`cursor.directory`) takes submissions only through a web form that needs a GitHub/Google
-   sign-in — the `cursor/community-plugins` repo explicitly says "all content is submitted
-   through the website — no pull requests needed for data", so there is **no agent PR path** and
-   the row-#3 registry publish does not cascade here. Verified 2026-07-21. Sign in at
-   `cursor.directory/login` (GitHub or Google), open `cursor.directory/plugins/new`, and enter:
-   - **GitHub repo URL:** `https://github.com/nlqdb/nlqdb` (the form auto-detects Open-Plugins
-     components — `.mcp.json`, `rules/*.mdc`, `skills/*/SKILL.md`; nlqdb's repo has no root
-     `.mcp.json` yet since the MCP server is hosted-remote, so fill the hosted URL below by hand)
-   - **Name / title:** `nlqdb — analytical memory for AI agents`
-   - **Website:** `https://nlqdb.com/agents/?utm_source=cursor-dir` (carries the ledger key)
-   - **Description:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
-   - **MCP server / connect (if asked):** hosted HTTP URL `https://mcp.nlqdb.com/mcp`, or the
-     one command `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`
-   On submit, flip ledger row #8 to **in-flight** and note the `cursor.directory/...` URL.
-
-6. **⏱ ~10 min · since 2026-07-21 — Open the `awesome-mcp-servers` listing PR**
-   (`punkpeye/awesome-mcp-servers`; reach R-05 venue #8, ledger row #10). A
-   plain GitHub PR — but agent sessions are scoped to `nlqdb/nlqdb` only
-   and can't fork/PR an external repo (re-verified 2026-07-22: `add_repo`
-   rejects cross-owner adds, GitHub-MCP fork denied), so it's parked for the
-   founder or a scope-unrestricted session. Mechanism verified
-   2026-07-21 (`CONTRIBUTING.md`): follow the README's existing format, keep
-   alphabetical order within the category, one server per line; automated-agent PRs
-   can prefix the title with `🤖🤖🤖` for the maintainer's fast-track merge.
-   1. Fork `github.com/punkpeye/awesome-mcp-servers`, edit `README.md`.
-   2. Under the `## 🧠 Knowledge & Memory` heading (memory-first per SK-PIVOT-003;
-      not `🗄️ Databases`), insert **in alphabetical position** (by `nlqdb`) this line:
-      ```
-      - [nlqdb/nlqdb](https://github.com/nlqdb/nlqdb) 📇 ☁️ - Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.
-      ```
-      Markers: 📇 TypeScript codebase · ☁️ hosted cloud service (remote MCP at
-      `mcp.nlqdb.com/mcp`). No 🎖️ (not an official MCP-protocol-team server). The
-      Glama score badge is auto-added by Glama's bot later — omit it.
-   3. PR title: `🤖🤖🤖 Add nlqdb (analytical memory for AI agents) to Knowledge & Memory`
-      (drop the `🤖🤖🤖` if a human submits by hand).
-   Honesty caveat: the entry links to the **GitHub repo** (list convention), not a
-   utm-taggable `nlqdb.com` URL, so this venue can't carry the `awesome-mcp` key —
-   its yield rolls into the `github`/organic refs (discovery/SEO), and it never
-   becomes "live with attributable yield" on its own. Alt list if rejected:
-   `wong2/awesome-mcp-servers`. On merge, flip ledger row #10 → in-flight.
-
-7. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -202,34 +82,19 @@ paste, a PR, or a console toggle.
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-8. **⏱ ~2 min · since 2026-07-22 — Flip "Always Use HTTPS" on the `nlqdb.com`
-   Cloudflare zone** (dashboard → SSL/TLS → Edge Certificates). The code half
-   shipped 2026-07-23 ([`GLOBAL-039`](./decisions/GLOBAL-039-https-only-hsts.md)):
-   dynamic hosts (app/mcp) 301 http→https in-worker and every surface now
-   serves HSTS, so returning browsers are pinned to https. The residual gap is
-   only the *first-ever* plaintext hit on the static-asset sites (nlqdb.com
-   marketing + docs.nlqdb.com answer `http://` 200 until the zone toggle;
-   `rel=canonical` keeps the SEO harm small). Agent-blocked: the CF API token
-   is Workers/DNS/D1-scoped and gets auth errors on zone settings
-   (re-verified 2026-07-22). Low rank: internal-integrity yield, no
-   user-facing surface.
-
-9. **⏱ ~3 min · since 2026-07-25 — Make CI a required status check on `main`**
-   (repo → Settings → Branches → `main`). PR #816 merged with **zero approving
-   reviews and no gate**, so nothing currently blocks a merge on red CI — an
-   agent session can't read or set branch protection, so this can only be
-   confirmed by a human. The required list matches individual check-run names,
-   not the workflow name `CI` — select the `CI` workflow's job checks
-   (`Go (gofumpt + vet + golangci-lint + test)`, `Biome (JS/TS/JSON/CSS)`,
-   `apps/api (typecheck + vitest + wrangler dry-run)`, …) plus the new
-   `tests/e2e/* (typecheck — out-of-workspace suites)` (#815). Without it that
-   backstop can go red and still merge, which is the exact
-   silent-failure mode #815 exists to close — it caught `tests/e2e/mcp`
-   compiling zero tests for 11 days. Lowest rank: internal integrity, no
-   user-facing surface.
-
 ## Suggestions needing approval (to amend the guidelines)
 
-(none — the auto-merge-tier proposal was **rejected by the founder
-2026-07-22**: review latency is handled by a separate merger agent, not by
-`/daily` self-merging; recorded in `daily.md` §4. Don't re-propose.)
+- **Add a "surface-creating" escape hatch to `/daily` step 2** (proposed
+  2026-07-26, advisor session): after N (suggest 4) consecutive null runs,
+  the next run may — instead of a 5th null — propose **one** new
+  surface-area lever (a new workload, channel experiment, or product
+  wedge slice) as a written option for founder review, rather than idling.
+  Rationale: runs 131–137 produced six consecutive "no agent-movable
+  lever" nulls while the phase gate sat at 1/9 — the nulls were a signal
+  the lever taxonomy was exhausted, and nothing was assigned to hear it.
+  Approving amends `daily.md` step 2; rejecting records a don't-re-propose
+  note here, like the auto-merge tier below.
+
+(The auto-merge-tier proposal was **rejected by the founder 2026-07-22**:
+review latency is handled by a separate merger agent, not by `/daily`
+self-merging; recorded in `daily.md` §4. Don't re-propose.)

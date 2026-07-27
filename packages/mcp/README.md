@@ -1,61 +1,52 @@
 # @nlqdb/mcp
 
-Model Context Protocol server for nlqdb — local-stdio transport
-(slice 2 of `SK-MCP-010`). Tools: `nlqdb_query`,
-`nlqdb_list_databases`, `nlqdb_describe`, `nlqdb_remember` (the
-agent-memory write verb — E-02 / SK-PIVOT-008). See
-[`docs/features/mcp-server/FEATURE.md`](../../docs/features/mcp-server/FEATURE.md)
-for the full design.
+Analytical memory for AI agents, over MCP — a real Postgres your agent can
+`GROUP BY` / `JOIN` / aggregate over in natural language, not just a recall
+store. This package is the **local stdio** transport: it reads an API key from
+the environment, so it works headless (CI, Docker, air-gapped, coding agents
+that can't open a browser).
 
-## Auth posture (slice 2)
+Don't want a local process? Point your host at the hosted server
+`https://mcp.nlqdb.com/mcp` instead — OAuth in the browser, nothing to install.
 
-- `nlqdb_query` works end-to-end against a `pk_live_*` key (pinned to
-  one database). Destructive plans (INSERT/UPDATE/DELETE/DDL) return
-  `requires_confirm: true` + a `diff` — re-call with `confirm: true`
-  to commit (`SK-TRUST-001`).
-- `nlqdb_list_databases` and `nlqdb_describe` require user-scoped
-  auth (`sk_live_*` or `sk_mcp_*`). Until slice 1 ships those keys,
-  both surface a typed `auth_required` tool error in the
-  `SK-MCP-006` shape — one sentence + one next action.
+## Install
 
-## Install (manual; pre-slice-4)
-
-`nlq mcp install` (slice 4) is the supported install path. Until it
-ships, add this to your host's MCP config (see `SK-MCP-008` for the
-per-host config path):
+Create an `sk_live_…` key at
+[app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys), then add this to your
+MCP host's config:
 
 ```json
 {
   "mcpServers": {
     "nlqdb": {
       "command": "npx",
-      "args": ["@nlqdb/mcp"],
-      "env": { "NLQDB_API_KEY": "pk_live_…" }
+      "args": ["-y", "@nlqdb/mcp"],
+      "env": { "NLQDB_API_KEY": "sk_live_…" }
     }
   }
 }
 ```
 
-`NLQDB_MCP_DEBUG=1` in the env prints stack traces on fatal errors.
+`sk_live_…` is account-scoped and reaches every tool. A `pk_live_…` key is
+pinned to one database and can only call `nlqdb_query`.
 
-## Build pipeline
+## Tools
 
-- **Monorepo dev:** `main` points at `src/index.ts`; Bun loads `.ts`
-  directly. Run tests via `bun run --filter @nlqdb/mcp test`.
-- **Publish artifact:** `bun run build` emits `dist/index.js` (single
-  ESM bundle with `@nlqdb/sdk` inlined; npm deps kept external).
-  `bin/nlqdb-mcp.mjs` loads the TypeScript source only when it is
-  present *and* the runtime is Bun, so `npx @nlqdb/mcp` from a published
-  tarball always runs the bundle. (`publishConfig` can't flip `main` /
-  `exports` to `dist/` — npm ignores those overrides, they are a pnpm
-  feature.)
+| Tool | Does |
+|---|---|
+| `nlqdb_query` | Ask in plain English; returns rows plus the compiled SQL. The database materialises on first reference — there is no create tool. |
+| `nlqdb_remember` | Write a typed memory row the agent can query later. |
+| `nlqdb_list_databases` | List your databases. |
+| `nlqdb_describe` | Describe a database's schema. |
+| `nlqdb_connect_database` | Attach your own Postgres or ClickHouse. |
 
-CI runs the build for the `mcp` matrix entry and asserts `dist/index.js`
-is produced; the bundle stays out of git (`.gitignore`'s `dist/`).
+Destructive plans (INSERT/UPDATE/DELETE/DDL) come back as
+`requires_confirm: true` with a diff — re-call with `confirm: true` to commit.
+`NLQDB_MCP_DEBUG=1` prints stack traces on fatal errors.
 
-## Lockfile invariant (SK-MCP-005)
+## More
 
-`@nlqdb/mcp` has zero database drivers in its lockfile. CI
-(`scripts/lockfile-guard.sh` + `.github/lockfile-allowlist.json`)
-fails any PR that adds `pg` / `postgres` / `redis` / similar. All
-data access goes through `/v1/*` via `@nlqdb/sdk`.
+Per-host config blocks and one-click installs:
+[docs.nlqdb.com/mcp](https://docs.nlqdb.com/mcp/) ·
+[what agent memory buys you](https://nlqdb.com/agents/?utm_source=npm) ·
+[design + contributing](https://github.com/nlqdb/nlqdb/blob/main/docs/features/mcp-server/FEATURE.md)

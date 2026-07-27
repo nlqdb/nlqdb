@@ -2,8 +2,9 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createClient } from "@nlqdb/sdk";
 import { createServer } from "./server.ts";
 
-// Hand-maintained sync with package.json#version to avoid JSON-import-attribute portability across Node 20-22 + Bun.
-// A unit test pins this to package.json#version so the two can't drift silently.
+// A literal, not a JSON import — import attributes aren't portable across the Node, Bun and Workers
+// runtimes this module loads in. `scripts/sync-source-versions.mjs` rewrites it during
+// `changeset version`; a unit test pins it to package.json#version so the two can't drift silently.
 const PACKAGE_NAME = "@nlqdb/mcp";
 export const PACKAGE_VERSION = "0.1.0";
 
@@ -19,7 +20,8 @@ export async function runStdio(opts: StdioOptions = {}): Promise<void> {
 
   if (!apiKey) {
     process.stderr.write(
-      "@nlqdb/mcp: NLQDB_API_KEY is not set. Easiest: point your host at the hosted server (https://mcp.nlqdb.com/mcp — OAuth, no key needed). For local stdio, set env NLQDB_API_KEY=sk_mcp_… in the host config.\n",
+      // Names sk_live_ because that is the one a user can mint themselves; sk_mcp_ is OAuth-mint-only (SK-APIKEYS-009).
+      "@nlqdb/mcp: NLQDB_API_KEY is not set. Easiest: point your host at the hosted server (https://mcp.nlqdb.com/mcp — OAuth, no key needed). For local stdio, create an sk_live_ key at https://app.nlqdb.com/app/keys and set env NLQDB_API_KEY in the host config.\n",
     );
     process.exit(1);
   }

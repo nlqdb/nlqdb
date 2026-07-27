@@ -1,6 +1,5 @@
 {
   "name": "@nlqdb/mcp",
-  "private": true,
   "version": "0.1.0",
   "mcpName": "com.nlqdb/nlqdb",
   "description": "Analytical-memory MCP server for nlqdb — a real database your AI agent can GROUP BY / JOIN / aggregate over in natural language, not just recall.",
@@ -42,9 +41,19 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "build": "bun build src/index.ts --target=node --format=esm --outdir=dist --external='@modelcontextprotocol/sdk*' --external=@opentelemetry/api --external=zod --sourcemap=linked --minify"
+    "build": "bun build src/index.ts --target=node --format=esm --outdir=dist --external='@modelcontextprotocol/sdk*' --external=@opentelemetry/api --external=zod --sourcemap=linked --minify",
+    "prepack": "node ../../scripts/apply-publish-config.mjs",
+    "postpack": "node ../../scripts/apply-publish-config.mjs --restore"
   },
   "publishConfig": {
+    "main": "./dist/index.js",
+    "exports": {
+      ".": {
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    },
+    "provenance": true,
     "access": "public"
   },
   "dependencies": {

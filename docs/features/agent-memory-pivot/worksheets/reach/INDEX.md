@@ -258,12 +258,15 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
   discovery hop against live prod — RFC 9728 + 8414 metadata, RFC 7591 registration, `/authorize`
   302 with PKCE — then stops at a browser consent screen needing a signed-in human, because
   `apps/mcp` routes `/mcp` through `OAuthProvider` with no bearer-key path. Parked in
-  [`mcp-server/FEATURE.md`](../../../mcp-server/FEATURE.md); the `SK-MCP-001` stdio hatch is
-  publish-ready (#822) and un-gates on one founder npm paste (blocked-by-human #2).
-- Registry/directory listings: **1 published + 1 crawl-fed** (#1 official registry live; Glama
-  in-flight — links the repo, not the utm-tagged `websiteUrl`, until founder-claimed). Smithery +
-  PulseMCP absent 2026-07-25 (#822); R-05 #5–#8 each need a founder submit. Channels live with
-  attributable yield: **4** (organic, dev.to, github, npm); #12 in-flight.
+  [`mcp-server/FEATURE.md`](../../../mcp-server/FEATURE.md); `SK-MCP-001`'s stdio hatch
+  shipped 2026-07-26 — `@nlqdb/mcp@0.1.0` live on npm, Trusted Publisher set, package un-gated —
+  so R-04's last box (headless `npx -y @nlqdb/mcp` + a self-minted `sk_live_*` key) is open for the
+  next run — `sk_mcp_*` stays OAuth-mint-only per `SK-APIKEYS-009`, so it is not the pasteable one.
+- Registry/directory listings: **2 published + 1 crawl-fed + 3 queued** (#1 official registry and
+  #2 Smithery live; Glama crawl-fed — links the repo, not the utm-tagged `websiteUrl`, until
+  founder-claimed; #5 mcp.so + #6 Cursor submitted 2026-07-26, #8 `awesome-mcp-servers` PR open;
+  only #7 still needs a founder submit; PulseMCP re-checks 08-22). Channels live with attributable
+  yield: **4** (organic, dev.to, github, npm); #12 in-flight.
 - Coding-agent walker (R-06): **0/1 surfaced** (baseline 2026-07-20 — cold session recommended
   `pgvector`, never nlqdb). Not re-run: no `ANTHROPIC_API_KEY` in this session.
 - Canonical setup guide (R-04): **live, 2 of 3** — its crawl path opened this run; the walk box stays

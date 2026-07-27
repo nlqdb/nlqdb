@@ -219,9 +219,9 @@ section(
   Number.POSITIVE_INFINITY,
 );
 
-// GLOBAL-039's residual gap, quantified: the static-asset surfaces answer
-// plaintext http until the zone toggle (blocked-by-human), and Google indexes
-// what it can reach. This is the size of that leak, not an estimate of it.
+// GLOBAL-039's residual gap, quantified: the static-asset surfaces answered
+// plaintext http until the zone toggle (flipped 2026-07-26). Regression
+// watch — with the zone-level 301 live this should trend to 0 pageloads.
 const plaintext = groups.filter((g) => g.dimensions.requestScheme === "http");
 section(
   `Plaintext http pageloads — ${sumOf(plaintext).pageloads} [GLOBAL-039 residual]`,

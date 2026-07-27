@@ -117,16 +117,22 @@ curl -X POST https://app.nlqdb.com/v1/ask \\
     lang: "ts",
     source: `// ~/Library/Application Support/Claude/claude_desktop_config.json
 // (or ~/.cursor/mcp.json — same shape works in every MCP host)
+// No key: OAuth opens in your browser on the first tool call.
 {
   "mcpServers": {
     "nlqdb": {
-      "url": "https://mcp.nlqdb.com/mcp",
-      "headers": {
-        "Authorization": "Bearer sk_mcp_..."
-      }
+      "url": "https://mcp.nlqdb.com/mcp"
     }
   }
-}`,
+}
+
+// Headless (CI, Docker, an agent that can't click consent) — swap in the
+// local stdio server and an sk_live_ key from app.nlqdb.com/app/keys:
+// "nlqdb": {
+//   "command": "npx",
+//   "args": ["-y", "@nlqdb/mcp"],
+//   "env": { "NLQDB_API_KEY": "sk_live_..." }
+// }`,
   },
   {
     id: "swift",
