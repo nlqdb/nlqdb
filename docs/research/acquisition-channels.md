@@ -66,10 +66,10 @@ flow, so row #4 needed a founder publish — done 2026-07-26 — and
 PulseMCP treats the registry as one input to crawl + manual curation (row #5
 keeps a dated re-check trigger rather than a founder minute). Registry presence
 buys one listing automatically, not the directory long tail. So live-count
-growth now runs through the submission queues: Smithery #4, mcp.so #7 and Cursor
+growth now runs through the submission queues — Smithery #4, mcp.so #7 and Cursor
 `cursor.directory` #8 published/submitted 2026-07-26, `awesome-mcp-servers` PR #10 awaiting
-merge — only the Anthropic connector dir #9 stays parked (plan-gated) plus the
-human-norm venues; each flips to live once a claimed listing exposes the
+merge — plus the human-norm venues; only the Anthropic connector dir #9 stays
+parked (plan-gated). Each flips to live once a claimed listing exposes the
 utm-tagged `websiteUrl` and yield lands on `/app/admin`. Every R-05 venue is
 resolved (published, crawl-fed, or payload-parked) — none is waiting on agent work.
 

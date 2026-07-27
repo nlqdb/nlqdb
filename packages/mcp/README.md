@@ -27,8 +27,8 @@ MCP host's config:
 }
 ```
 
-`sk_live_…` and `sk_mcp_…` keys are account-scoped and reach every tool. A
-`pk_live_…` key is pinned to one database and can only call `nlqdb_query`.
+`sk_live_…` is account-scoped and reaches every tool. A `pk_live_…` key is
+pinned to one database and can only call `nlqdb_query`.
 
 ## Tools
 
@@ -50,4 +50,3 @@ Per-host config blocks and one-click installs:
 [docs.nlqdb.com/mcp](https://docs.nlqdb.com/mcp/) ·
 [what agent memory buys you](https://nlqdb.com/agents/?utm_source=npm) ·
 [design + contributing](https://github.com/nlqdb/nlqdb/blob/main/docs/features/mcp-server/FEATURE.md)
-</content>
