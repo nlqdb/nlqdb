@@ -80,9 +80,9 @@ supersede or amend a recorded decision.
    names `MEMORY_PRESET=1` a prerequisite of the dogfood gate #3 waits on.
    - **Hold** (safe default): no action — #835 stays drafted, E-03 proceeds.
    - **Ship**: I record a decision superseding the E-06 gate, add a backfill
-     line to E-03 (the flip falsifies its *"no prod memory DBs ⇒ no backfill
-     migration"* premise), and correct the five `solve.ts` sites that tell
-     the public the preset is gated.
+     line to E-03 (its "no prod memory DBs exist, so no backfill migration"
+     premise stops holding the moment you flip), and correct the five
+     `solve.ts` sites that tell the public the preset is gated.
 
 3. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
