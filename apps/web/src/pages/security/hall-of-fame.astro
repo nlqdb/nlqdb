@@ -3,12 +3,8 @@
 // /.well-known/security.txt (RFC 9116 Acknowledgments), so this URL must
 // exist (claim-integrity, scorecard row #19). Ported from the retired
 // apps/coming-soon stub.
-//
-// Carries the site chrome like every other sitemap-advertised page: it is
-// the highest-CTR organic surface we have (4 of 8 GSC clicks / 40% CTR at
-// 28d, and 5 of 9 first-party referral landings), and it shipped with the
-// bare `<Base>` shell — one onward link, so half our organic arrivals hit
-// a dead end. Pinned by the chrome sweep in `pages/__tests__/sitemap.xml.test.ts`.
+// Carries the site chrome like every other sitemap-advertised page, so an
+// organic arrival can navigate onward — pinned by `__tests__/sitemap.xml.test.ts`.
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
