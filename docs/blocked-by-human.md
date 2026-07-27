@@ -33,11 +33,14 @@ exists.
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
 0. **⏱ ~2 min · since 2026-07-27 — Delete two orphaned Neon branches; the
-   project is at its cap and CI is red on every PR.** Measured live
-   2026-07-27: the project holds **10 branches, which is the Free-plan cap**,
-   so `POST /branches` returns `422 {"code":"BRANCHES_LIMIT_EXCEEDED"}`. That
-   fails `ci.yml`'s `test-api-smoke-neon` (and any preview needing a new
-   branch) on **every** PR, regardless of its diff — first seen on #832.
+   project sits at its cap and CI goes red whenever PRs overlap.** Measured
+   live 2026-07-27: the project holds **10 branches, the Free-plan cap**, so
+   `POST /branches` returns `422 {"code":"BRANCHES_LIMIT_EXCEEDED"}` and
+   `ci.yml`'s `test-api-smoke-neon` (plus any preview needing a branch)
+   fails regardless of the PR's diff. Intermittent, not constant: on #832 it
+   failed 01:41Z and passed 02:08Z once a `ci-smoke-*` branch aged out of the
+   >1 h sweep. Two of the ten slots are held for good, so only eight rotate —
+   the cap binds as soon as more than that want a branch at once.
    Two slots are held by branches whose PRs are long gone: **`pr-571`**
    (closed 2026-07-02) and **`pr-648`** (merged 2026-07-10). Deleting a Neon
    branch destroys its data, so an agent won't do it unattended — but these
