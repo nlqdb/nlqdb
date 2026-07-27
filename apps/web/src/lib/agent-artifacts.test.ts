@@ -5,10 +5,15 @@ import {
   buildClaudeCodeCommand,
   buildClaudeConfig,
   buildCodexConfig,
+  buildStdioClaudeCodeCommand,
+  buildStdioCodexConfig,
+  buildStdioServerObject,
   buildWindsurfConfig,
   buildZedConfig,
   MCP_ENDPOINT_URL,
   MCP_SERVER_ROUTE,
+  STDIO_KEY_ENV,
+  STDIO_PACKAGE,
 } from "./mcp-install.ts";
 
 // R-07 drift guard. The droppable in-repo artifacts under
@@ -132,15 +137,19 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
 describe("the R-04 setup guide's connect blocks don't drift from mcp-install.ts", () => {
   test("the Claude Code command and Codex TOML match the shipped builders", () => {
     expect(DOCS_GUIDE).toContain(buildClaudeCodeCommand(MCP_ENDPOINT_URL));
-    expect(firstFenced(DOCS_GUIDE, "toml")).toBe(buildCodexConfig(MCP_ENDPOINT_URL));
+    const toml = allFenced(DOCS_GUIDE, "toml");
+    expect(toml).toHaveLength(2);
+    // Hosted route first (Step 1), then the headless one.
+    expect(toml[0]).toBe(buildCodexConfig(MCP_ENDPOINT_URL));
+    expect(toml[1]).toBe(buildStdioCodexConfig());
   });
 
   test("each JSON block matches its host's vendor schema at the shipped endpoint", () => {
     const blocks = allFenced(DOCS_GUIDE, "json");
     // Pinned positionally, so a host added to Step 1 without a matching
     // assertion below would ship unguarded. Fail until it is pinned too.
-    expect(blocks).toHaveLength(4);
-    const [windsurf, zed, cursor, vscode] = blocks.map((b) => JSON.parse(b));
+    expect(blocks).toHaveLength(5);
+    const [windsurf, zed, cursor, vscode, stdio] = blocks.map((b) => JSON.parse(b));
     expect(windsurf).toEqual(JSON.parse(buildWindsurfConfig(MCP_ENDPOINT_URL)));
     expect(zed).toEqual(JSON.parse(buildZedConfig(MCP_ENDPOINT_URL)));
     // Cursor's documented remote shape is the same `mcpServers` + `url`.
@@ -149,6 +158,40 @@ describe("the R-04 setup guide's connect blocks don't drift from mcp-install.ts"
     // (it ships as a deep-link, not a config fallback). A wrong root key here
     // loads zero servers with no error — exactly what the guide must not ship.
     expect(vscode).toEqual({ servers: { nlqdb: { type: "http", url: MCP_ENDPOINT_URL } } });
+    // The headless route's server value, root-key-less by design (the reader
+    // keeps the wrapper from their host's Step 1 block).
+    expect(stdio).toEqual(JSON.parse(buildStdioServerObject()));
+  });
+
+  test("the Claude Code headless one-liner matches its builder", () => {
+    expect(DOCS_GUIDE).toContain(buildStdioClaudeCodeCommand());
+  });
+});
+
+// Hard rule 1, inverted: the guide must not deny a capability that shipped.
+// Until 2026-07-26 there genuinely was no headless credential, and both
+// agent-fetched surfaces said so — then `@nlqdb/mcp` published to npm and the
+// sentences stayed. An agent reads "no headless credential, hand this to the
+// developer" and stops at a wall that no longer exists, which is worse than
+// silence. Two halves, because either alone is escapable: the headless route
+// must be present *and* the retracted denial must be absent.
+describe("every agent-fetched surface offers the headless route", () => {
+  const surfaces = () => ({
+    "docs agent-memory guide": DOCS_GUIDE,
+    "llms.txt route": readFileSync(join(import.meta.dir, "../pages/llms.txt.ts"), "utf8"),
+  });
+
+  test("names the published package and the env var that authenticates it", () => {
+    for (const [name, text] of Object.entries(surfaces())) {
+      expect(text, name).toContain(STDIO_PACKAGE);
+      expect(text, name).toContain(STDIO_KEY_ENV);
+    }
+  });
+
+  test("no surface still claims a headless credential doesn't exist", () => {
+    for (const [name, text] of Object.entries(surfaces())) {
+      expect(normalizeProse(text), name).not.toContain("no headless credential");
+    }
   });
 });
 

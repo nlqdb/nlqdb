@@ -161,6 +161,79 @@ export function buildCodexConfig(mcpUrl: string): string {
   return `[mcp_servers.nlqdb]\nurl = "${mcpUrl}"`;
 }
 
+// ---------------------------------------------------------------------------
+// The headless route (local stdio).
+//
+// Everything above connects to the hosted server, whose first tool call opens
+// a browser OAuth page. That is a wall for an unattended coding agent, so
+// `@nlqdb/mcp` (published to npm 2026-07-26) runs the same five tools locally
+// over stdio against the same prod API, authenticated by a key in the host
+// config's env — no browser at any point.
+//
+// Each identifier below is a cross-repo contract with `packages/mcp`, pinned
+// to that package's own source by `mcp-install-stdio.test.ts`.
+
+/** The npm package `packages/mcp` publishes; `npx` resolves its single bin. */
+export const STDIO_PACKAGE = "@nlqdb/mcp";
+
+/** The env var `packages/mcp/src/stdio.ts` reads the credential from. */
+export const STDIO_KEY_ENV = "NLQDB_API_KEY";
+
+/**
+ * Placeholder credential. It must clear two independent gates, and `sk_mcp_`
+ * — the obvious guess, and what the binary's own prefix list names first —
+ * clears only one: the binary accepts it, but nobody can obtain one to paste.
+ * `sk_mcp_*` is minted server-side by the OAuth callback and *never displayed*
+ * (`SK-APIKEYS-009`), and `/app/keys` deliberately does not offer it
+ * (`SK-APIKEYS-012`). `sk_live_` is the account-scoped key a reader can
+ * actually mint and copy, so it is the only honest placeholder here.
+ */
+export const STDIO_PLACEHOLDER_KEY = "sk_live_REPLACE_ME";
+
+/** Where a reader mints the key above (needs a signed-in account, once). */
+export const KEYS_PAGE_URL = "https://app.nlqdb.com/app/keys";
+
+/**
+ * The `nlqdb` server entry for any host configured by file. Hosts differ only
+ * in the root key wrapping it (`mcpServers` / `servers` / `context_servers`),
+ * so we ship the value and let each host's Step 1 block supply the wrapper.
+ */
+export function buildStdioServerObject(): string {
+  return JSON.stringify(
+    {
+      command: "npx",
+      args: ["-y", STDIO_PACKAGE],
+      env: { [STDIO_KEY_ENV]: STDIO_PLACEHOLDER_KEY },
+    },
+    null,
+    2,
+  );
+}
+
+/**
+ * Claude Code (CLI) — stdio servers take the command after a `--` separator.
+ * `--transport stdio` sits between `--env` and the server name deliberately:
+ * the CLI reads a bare name directly after `--env` as another KEY=value pair
+ * and rejects it (https://code.claude.com/docs/en/mcp).
+ */
+export function buildStdioClaudeCodeCommand(): string {
+  return `claude mcp add --env ${STDIO_KEY_ENV}=${STDIO_PLACEHOLDER_KEY} --transport stdio nlqdb -- npx -y ${STDIO_PACKAGE}`;
+}
+
+/**
+ * Codex — `command`/`args`/`env` under `[mcp_servers.<name>]`
+ * (https://learn.chatgpt.com/docs/config-file/config-reference; the old
+ * `developers.openai.com/codex/config-reference` URL 308s there).
+ */
+export function buildStdioCodexConfig(): string {
+  return [
+    "[mcp_servers.nlqdb]",
+    'command = "npx"',
+    `args = ["-y", "${STDIO_PACKAGE}"]`,
+    `env = { ${STDIO_KEY_ENV} = "${STDIO_PLACEHOLDER_KEY}" }`,
+  ].join("\n");
+}
+
 export function buildMcpHosts(mcpUrl: string): readonly McpHostEntry[] {
   return [
     // Deep-link hosts (the OS hands the click to the host's URI handler).

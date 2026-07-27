@@ -1,6 +1,6 @@
 ---
 title: Give your agent memory — one command
-description: Connect any MCP host (Claude Code, Cursor, Codex, Claude Desktop) to nlqdb and give your agent a real database it can query in English as memory. Machine-followable on every file-configured host — a coding agent runs each step except one browser-OAuth approval.
+description: Connect any MCP host (Claude Code, Cursor, Codex, Claude Desktop) to nlqdb and give your agent a real database it can query in English as memory. Machine-followable end to end — the headless stdio route needs no browser, so a coding agent can run every step itself.
 ---
 
 import { Steps, Aside } from "@astrojs/starlight/components";
@@ -12,10 +12,12 @@ recalls. One command connects it.
 
 <Aside type="tip" title="For coding agents">
 If you are a coding agent (Claude Code, Cursor, Codex) setting this up for the
-developer you build with: run the Step 1 block for your host yourself, then
-trigger any tool call. That first call opens Step 2's browser OAuth — there is no
-API key to paste and **no headless credential, so pause and ask the developer to
-approve it** — then run the Step 4 verification query yourself.
+developer you build with, pick your route by whether a human is around:
+**no human at a browser → take the [headless
+route](#no-browser-the-headless-route)** — it needs an `sk_live_` key in the host
+config and never opens a browser, so you can run every step yourself. With a
+human available, the hosted blocks in Step 1 are one line and need no key, at
+the cost of one browser approval on the first tool call (Step 2).
 </Aside>
 
 ## Step 1 — Connect the server
@@ -87,11 +89,53 @@ On Cursor and VS Code the one-click deep-link buttons on
 for a human, not a requirement — the file works either way.
 Claude Desktop is the exception: its connector dialog needs a human.
 
+### No browser? The headless route
+
+Every block above points at the hosted server, whose first tool call opens a
+browser page someone has to approve. If nobody is at a browser — an unattended
+agent, CI, a container — run the same five tools locally over stdio instead.
+`npx` fetches [`@nlqdb/mcp`](https://www.npmjs.com/package/@nlqdb/mcp) and it
+talks to the same production API; the credential is an `sk_live_` key in the
+host config, so no browser opens at any point.
+
+Mint the key once at [app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys)
+(that page needs a signed-in account), then swap the `nlqdb` entry from your
+host's Step 1 block for this one — same file, same root key, only the server
+value changes:
+
+```json
+{ "command": "npx", "args": ["-y", "@nlqdb/mcp"], "env": { "NLQDB_API_KEY": "sk_live_REPLACE_ME" } }
+```
+
+VS Code additionally needs `"type": "stdio"` on that entry, in place of the
+`"type": "http"` its hosted block carries. Two hosts don't take a plain JSON
+object — **Claude Code**, which has a one-liner:
+
+```bash
+claude mcp add --env NLQDB_API_KEY=sk_live_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
+```
+
+(the `--transport stdio` between `--env` and `nlqdb` is deliberate — the CLI
+reads a bare name straight after `--env` as another `KEY=value` pair and
+rejects it), and **Codex**, whose `~/.codex/config.toml` table becomes:
+
+```toml
+[mcp_servers.nlqdb]
+command = "npx"
+args = ["-y", "@nlqdb/mcp"]
+env = { NLQDB_API_KEY = "sk_live_REPLACE_ME" }
+```
+
+Steps 3–5 below are identical on either route.
+
 ## Step 2 — Authenticate
 
-On the first tool call, nlqdb opens an OAuth page in your browser. Approve
-it once; the host stores the token. There is no key to generate or paste — and
-no headless credential either, so this one step needs a human.
+**Hosted route:** on the first tool call, nlqdb opens an OAuth page in your
+browser. Approve it once; the host stores the token. There is no key to
+generate or paste, and this is the one step needing a human.
+
+**Headless route:** already done — the `sk_live_` key in the config above
+authenticates every call, and nothing opens a browser.
 
 ## Step 3 — Confirm the tools
 
@@ -147,8 +191,21 @@ writing (through the confirm gate) and reading memory.
 - **404 / connection refused on first call** — the config points at the
   bare domain. It must be the full `https://mcp.nlqdb.com/mcp` (the protocol
   is served at `/mcp`).
-- **Auth loop / `unauthorized`** — the browser OAuth was dismissed. Trigger
-  any tool again and complete the approval.
+- **Auth loop / `unauthorized`** (hosted route) — the browser OAuth was
+  dismissed. Trigger any tool again and complete the approval.
+- **Headless route: `NLQDB_API_KEY is not set`** — the host didn't pass `env`
+  through. The binary exits before connecting, so the host reports the server
+  as failed rather than showing a tool error; check the `env` block sits inside
+  the `nlqdb` entry, and restart the host so it re-reads the file.
+- **Headless route: `unexpected prefix`** — the key was copied with a stray
+  quote or whitespace, or it isn't an account key. That message prints every
+  accepted prefix, including `sk_mcp_` — ignore that one here: `sk_mcp_` keys
+  are minted server-side by the hosted route's OAuth callback and never shown,
+  so there is no `sk_mcp_` value you can paste. Use `sk_live_`.
+- **Headless route: `auth_required` on a tool call** — the config reached the
+  server and the server reached nlqdb, but the key isn't valid. Mint a fresh
+  one at [app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys) and restart
+  the host.
 - **Host doesn't show the tools** — restart the host after editing its
   config, then re-list MCP servers. If they still don't appear, check the
   root key: Cursor reads `mcpServers` from `.cursor/mcp.json`, VS Code reads
