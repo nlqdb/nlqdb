@@ -25,50 +25,25 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~2 min | Delete 2 orphaned Neon branches — the project sits at its 10-branch cap, so **CI goes red whenever PRs overlap** | 2026-07-27 |
-| 2 | ~5 min | **Decide:** flip `MEMORY_PRESET` in prod before E-03 ships, or hold? Holding also holds #3's dogfood gate; PR #835 drafted | 2026-07-27 |
-| 3 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 4 | ~5 min | **Decide:** is `sk_live_*` the headless MCP credential? It defeats global-signout revocation and mis-attributes MCP as `cli` | 2026-07-27 |
-| 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 1 | ~5 min | **Decide:** flip `MEMORY_PRESET` in prod before E-03 ships, or hold? Holding also holds #2's dogfood gate; PR #835 drafted | 2026-07-27 |
+| 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
+| 3 | ~5 min | **Decide:** is `sk_live_*` the headless MCP credential? It defeats global-signout revocation and mis-attributes MCP as `cli` | 2026-07-27 |
+| 4 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #3 can move real strangers (scorecard row #2); #5 is the only one that
+Only #2 can move real strangers (scorecard row #2); #4 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists. #2 and #4 are decisions an agent may not take alone — both would
+exists. #1 and #3 are decisions an agent may not take alone — both would
 supersede or amend a recorded decision.
+
+(The 2026-07-27 "delete two orphaned Neon branches" row is **done** — verified
+live: `pr-571` and `pr-648` are gone and the project sits at 5 of 10 slots. Its
+durable half shipped the same day: all three creation sites now set Neon's
+`expires_at`, so an orphan reaps itself even when no runner survives to clean
+up. Nothing to re-queue.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
-1. **⏱ ~2 min · since 2026-07-27 — Delete two orphaned Neon branches; the
-   project sits at its cap and CI goes red whenever PRs overlap.** Measured
-   live 2026-07-27: the project holds **10 branches, the Free-plan cap**, so
-   `POST /branches` returns `422 {"code":"BRANCHES_LIMIT_EXCEEDED"}` and
-   `ci.yml`'s `test-api-smoke-neon` (plus any preview needing a branch)
-   fails regardless of the PR's diff. Intermittent, not constant: on #832 it
-   failed 01:41Z and passed 02:08Z once a `ci-smoke-*` branch aged out of the
-   >1 h sweep. Two of the ten slots are held for good, so only eight rotate —
-   the cap binds as soon as more than that want a branch at once. Those two
-   belong to branches whose PRs are long gone: **`pr-571`** (closed
-   2026-07-02) and **`pr-648`** (merged 2026-07-10). Deleting a Neon branch
-   destroys its data, so an agent won't do it unattended — but these two have
-   no owner left. Paste-ready (needs `NEON_API_KEY` + `NEON_PROJECT_ID`):
-   ```bash
-   # confirm they are still the two oldest pr-* branches before deleting
-   curl -fsSL "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
-     -H "Authorization: Bearer $NEON_API_KEY" \
-     | jq -r '.branches[] | select(.name|startswith("pr-")) | "\(.name)\t\(.id)\t\(.created_at)"' | sort -k3
-   # then, for each of pr-571 and pr-648's ids:
-   curl -fsS -X DELETE "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/<id>" \
-     -H "Authorization: Bearer $NEON_API_KEY"
-   ```
-   **Only the deletion is yours.** Two slots buys headroom, not a fix, but the
-   durable fix is agent work and is already queued: Neon's create-branch API
-   takes an `expires_at` (RFC 3339, ≤30 days out,
-   [generally available on all plans](https://neon.com/docs/guides/branch-expiration))
-   and reaps the branch itself, so `preview-app.yml` and `ci.yml` can bound
-   every `pr-N` / `ci-smoke-*` branch at creation. No decision needed from
-   you — if that ever falls through, it comes back here as its own row.
-
-2. **⏱ ~5 min · since 2026-07-27 — Decide: flip `MEMORY_PRESET` in prod
+1. **⏱ ~5 min · since 2026-07-27 — Decide: flip `MEMORY_PRESET` in prod
    before E-03 ships, or hold?** PR #835 flips it; I left it drafted because
    the flip crosses a recorded security gate:
    [`E-06`](./features/agent-memory-pivot/worksheets/engine/E-06-agents-createform-preset.md)
@@ -80,14 +55,14 @@ supersede or amend a recorded decision.
    isolation holds; the exposure is end-user-to-end-user inside one builder's
    app. **Holding also holds the launch:**
    [`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
-   names `MEMORY_PRESET=1` a prerequisite of the dogfood gate #3 waits on.
+   names `MEMORY_PRESET=1` a prerequisite of the dogfood gate #2 waits on.
    - **Hold** (safe default): no action — #835 stays drafted, E-03 proceeds.
    - **Ship**: I record a decision superseding the E-06 gate, add a backfill
      line to E-03 (its "no prod memory DBs exist, so no backfill migration"
      premise stops holding the moment you flip), and correct the five
      `solve.ts` sites that tell the public the preset is gated.
 
-3. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
+2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
    the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
    founder-directed 2026-07-26: criteria, never calendar dates — agents
@@ -106,7 +81,7 @@ supersede or amend a recorded decision.
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0.
 
-4. **⏱ ~5 min · since 2026-07-27 — Decide: is `sk_live_*` the headless MCP
+3. **⏱ ~5 min · since 2026-07-27 — Decide: is `sk_live_*` the headless MCP
    credential?** #834 standardised every doc on it, because `sk_mcp_*` is
    OAuth-minted server-side and never displayed
    ([`SK-APIKEYS-009`](./features/api-keys/decisions/SK-APIKEYS-009-sk-mcp-server-side-mint.md)),
@@ -123,7 +98,7 @@ supersede or amend a recorded decision.
    - **Widen `/app/keys` to mint `sk_mcp_*`**: amends SK-APIKEYS-009; I ship
      it, and those five sites become true as written.
 
-5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+4. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin

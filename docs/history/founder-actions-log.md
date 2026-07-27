@@ -79,3 +79,9 @@ which owns each listing's current status:
 Pattern worth keeping: every action took minutes **because the payload was
 pre-staged by agents** — the founder-minute cost of an action is set by how
 well the queue bullet was prepared, not by the action itself.
+
+## Era 3 — 2026-07-27
+
+| Date | Action (surface) | Unblocked | Replay note |
+|---|---|---|---|
+| 2026-07-27 | Deleted the orphaned Neon branches `pr-571` and `pr-648` (Neon API) | `ci.yml`'s `test-api-smoke-neon` and every preview needing a branch — the project sat at Free's 10-branch cap, so `POST /branches` answered `422 BRANCHES_LIMIT_EXCEEDED` on innocent PRs | ~2 min; **don't replay** — the same run made it self-healing: all three creation sites now set Neon's `expires_at`, so an orphan reaps itself server-side even when no runner survives to clean up |

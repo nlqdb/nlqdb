@@ -539,7 +539,9 @@ version (and `app.nlqdb.com`) stay untouched.
 
 Per-PR isolation:
 - **Neon branch:** an ephemeral `pr-<N>` branch is provisioned via
-  the Neon API — each PR gets its own Postgres. Deleted on PR close.
+  the Neon API — each PR gets its own Postgres. Deleted on PR close,
+  and reaped by Neon's `expires_at` 7 d after the last push if the
+  close is missed — so an idle PR's preview loses its database.
 - **Mock IdP** (`MOCK_IDP=1`): OAuth + Resend bypassed; a one-click
   form mints a real Better Auth session. Email sink at `/api/dev/inbox`.
 - **Mock Stripe** (`MOCK_STRIPE=1`): webhook signature verification
@@ -554,12 +556,6 @@ injected at upload time via `--var`. See the header comment in
 `preview-elements.yml` deploys to the elements Pages project with
 `--branch=pr-<N>`, giving a sticky `pr-<N>.nlqdb-elements.pages.dev/v1.js`.
 Production stays untouched.
-
-#### Workers — `apps/events-worker`
-
-Queue-only consumer with no public URL. Preview adds little
-visible value — defer until there's a clear reason to test
-unmerged consumer code against the preview queue.
 
 ---
 
