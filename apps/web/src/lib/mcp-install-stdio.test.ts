@@ -88,6 +88,14 @@ describe("the published headless-route strings match packages/mcp", () => {
     // is the same dead end the headless route was added to remove.
     expect(STDIO_PLACEHOLDER_KEY.startsWith(SK_MCP_PREFIX)).toBe(false);
     expect(STDIO_PLACEHOLDER_KEY.startsWith(SK_LIVE_PREFIX)).toBe(true);
+    // The prefix alone is not enough in the other direction either: every
+    // assertion above also accepts a *real* key, because `mintSkLiveKey` emits
+    // `sk_live_` + 32 lowercase hex (`randomHex` has no other alphabet). A
+    // shouted suffix rejects that, and a bare keyless `sk_live_`, here — rather
+    // than at CI's semgrep `p/secrets`, which only sees them after the push.
+    // Guards every surface at once now that `/agents`, the docs guide and
+    // llms.txt all render this constant (`agents-stdio-config.test.ts`).
+    expect(STDIO_PLACEHOLDER_KEY.slice(SK_LIVE_PREFIX.length)).toMatch(/^[A-Z_]{3,}$/);
   });
 
   test("the server object is valid JSON in the shape an MCP host executes", () => {

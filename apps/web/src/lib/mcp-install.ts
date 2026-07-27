@@ -190,21 +190,30 @@ export const STDIO_KEY_ENV = "NLQDB_API_KEY";
  */
 export const STDIO_PLACEHOLDER_KEY = "sk_live_REPLACE_ME";
 
+/** The one `nlqdb` stdio server value every surface below is rendered from. */
+function stdioServer() {
+  return {
+    command: "npx",
+    args: ["-y", STDIO_PACKAGE],
+    env: { [STDIO_KEY_ENV]: STDIO_PLACEHOLDER_KEY },
+  };
+}
+
 /**
  * The `nlqdb` server entry for any host configured by file. Hosts differ only
  * in the root key wrapping it (`mcpServers` / `servers` / `context_servers`),
  * so we ship the value and let each host's Step 1 block supply the wrapper.
  */
 export function buildStdioServerObject(): string {
-  return JSON.stringify(
-    {
-      command: "npx",
-      args: ["-y", STDIO_PACKAGE],
-      env: { [STDIO_KEY_ENV]: STDIO_PLACEHOLDER_KEY },
-    },
-    null,
-    2,
-  );
+  return JSON.stringify(stdioServer(), null, 2);
+}
+
+/**
+ * The same value under `mcpServers` — the wrapper Claude Desktop, Cursor and
+ * Windsurf read, and the paste-ready block `/agents` renders.
+ */
+export function buildStdioMcpServersConfig(): string {
+  return JSON.stringify({ mcpServers: { nlqdb: stdioServer() } }, null, 2);
 }
 
 /**
