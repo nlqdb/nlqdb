@@ -22,9 +22,10 @@
   already exists — it is the grep/hand-edit work agents do against
   `docs/` today.
 - **Consequence in code:** The skill writes through
-  `nlqdb_remember`/`nlqdb_query` only (public MCP; an `sk_mcp_*` key) —
-  never a privileged path. Sync is one-way and idempotent: a re-run after a
-  docs change converges; nlqdb never edits markdown. A golden-query set
+  `nlqdb_remember`/`nlqdb_query` only (public MCP, on the SK-PIVOT-016
+  credential) — never a privileged path. Sync is one-way and idempotent: a
+  re-run after a docs change converges; nlqdb never edits markdown. A
+  golden-query set
   (≥ 10, including temporal) gates the workload in the memory eval suite
   (`SK-QUAL-023` family). Anything that makes the DB the source of truth
   over markdown is a separate founder decision (P1), not a v1 default.
