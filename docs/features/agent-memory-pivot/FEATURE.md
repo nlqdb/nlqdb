@@ -156,3 +156,21 @@ index in [`docs/decisions.md`](../../decisions.md)).
 - **Self-host container scope** — pulling `ghcr.io/nlqdb/api` forward (WS-11)
   may exceed one daily run and touches infra; the worksheet flags the
   founder/infra gate.
+- **Cross-provider memory-strategy benchmark — Parked until the
+  `SK-PIVOT-017` corpus + golden queries exist** (founder-raised
+  2026-07-27). Generalize E-05's analytical-vs-vector head-to-head into a
+  reproducible, published benchmark: the same real corpus (the ops
+  memories) and the same per-purpose golden queries (the `SK-QUAL-023`
+  axes — recall, temporal, entity, analytical — are the purpose taxonomy)
+  run against N memory strategies (nlqdb, DIY pgvector, Mem0, Zep,
+  plain-context), with honest per-purpose winners — including where top-k
+  recall beats us (the R-02 build-vs-buy honesty pattern; the credibility
+  is the point). Guardrails before any publish: harness + data public,
+  provider defaults + pinned versions, free tiers only
+  (`docs/cost-ladder.md`), per-provider ToS checked for benchmark clauses
+  (P2) — a provider whose terms forbid published benchmarks is listed as
+  "not benchmarkable under its ToS", not renamed; one provider per run
+  (the `SK-PIVOT-002` cadence); hosted-competitor accounts are founder
+  actions → queue bullets. Explicitly **not** an integrations program —
+  nlqdb does not ship adapters to competing memory stores; the benchmark
+  is content + harness, retired at zero cost.
