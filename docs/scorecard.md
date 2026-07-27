@@ -32,16 +32,16 @@ chrome — **`/` at 541 px** (also the #1 landing surface, 31 real-browser
 pageloads) and **`/vs/wrenai/` at 401 px**. Google-side runner-up:
 **`/solve/running-total-cumulative-sum-in-sql/` — 69 impr at pos 36.1**, the
 largest winnable impression pool still off page 1.
-**Top `blocked-by-human` bullet:** #1 fire the launch sequence (Show HN draft **idle
-43 days since 06-13**) — still the only queue action that can move real strangers off
-0; its age is the company's real cycle time. Queue depth **9**, nothing added this run
-(no secret, console click or money was needed); cite bullets by number — the roster
-lives only in [`blocked-by-human.md`](blocked-by-human.md).
+**Top `blocked-by-human` bullet:** delete two orphaned Neon branches (07-27, CI red
+at the branch cap). The launch-sequence bullet — the only one that can move real
+strangers off 0, its age the company's real cycle time — is **idle 43 days since
+06-13**. Queue depth **9**, nothing added this run; the roster lives only in
+[`blocked-by-human.md`](blocked-by-human.md).
 **Dark (rule 8, reported not pulled):** engine **#9 Spider 0.2222** / **#8 BIRD
 0.542** — the 7-day staleness trigger fired today and a canonical free-lane run is
 **in flight** ([30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876),
 window 1 of ~6 on `main@d961475`); rows **#4/#5/#16**'s stranger-dependent criteria
-(N = 0 until queue bullet #1 fires); row **#15**'s opencheck arm (free-lane
+(N = 0 until the launch bullet fires); row **#15**'s opencheck arm (free-lane
 saturation, remedy costs money ⇒ rule 4).
 
 **Rule 6 clean** — CI + Security + Release-npm green on their latest `main` run

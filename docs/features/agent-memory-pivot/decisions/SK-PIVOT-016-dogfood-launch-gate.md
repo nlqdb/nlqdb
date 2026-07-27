@@ -1,6 +1,7 @@
 # SK-PIVOT-016 — The launch is condition-gated on a lived dogfood workload; conditions, never calendar dates
 
-- **Decision:** Queue bullet #1 (fire the launch sequence) is gated on a
+- **Decision:** The launch-sequence bullet in
+  [`docs/blocked-by-human.md`](../../../blocked-by-human.md) is gated on a
   **dogfood gate**: nlqdb's own operating agents run a real memory workload
   through the **public** surfaces (`npx -y @nlqdb/mcp` + a self-minted
   `sk_live_*` key — `sk_mcp_*` is OAuth-mint-only per `SK-APIKEYS-009`, so
@@ -30,8 +31,8 @@
   availability can't absorb. Conditions are the repo's native idiom
   ("Parked until <trigger>"), and every criterion is agent-movable, so the
   gate cannot silently become a veto again.
-- **Consequence in code:** `/daily` step 1 restates the top queue bullet's
-  **gate progress (n/5 green)** beside its age. The dogfood workload must
+- **Consequence in code:** `/daily` step 1 restates the launch-sequence
+  bullet's **gate progress (n/5 green)** beside its age, wherever it ranks. The dogfood workload must
   authenticate exactly as a stranger's agent would; a reviewer rejects any
   ops-agent path that bypasses the public MCP/auth surface. Loosening a
   criterion without a founder note in this file is a P1 violation.

@@ -23,12 +23,15 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~2 min | Delete 2 orphaned Neon branches — the project sits at its 10-branch cap, so **CI goes red whenever PRs overlap** | 2026-07-27 |
-| 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 2 | ~5 min | **Decide:** flip `MEMORY_PRESET` in prod before E-03 ships, or hold? Holding also holds #3's dogfood gate; PR #835 drafted | 2026-07-27 |
+| 3 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
+| 4 | ~5 min | **Decide:** is `sk_live_*` the headless MCP credential? It defeats global-signout revocation and mis-attributes MCP as `cli` | 2026-07-27 |
+| 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #2 can move real strangers (scorecard row #2); #3 is the only one that
+Only #3 can move real strangers (scorecard row #2); #5 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists.
+exists. #2 and #4 are decisions an agent may not take alone — both would
+supersede or amend a recorded decision.
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
@@ -62,15 +65,33 @@ exists.
    every `pr-N` / `ci-smoke-*` branch at creation. No decision needed from
    you — if that ever falls through, it comes back here as its own row.
 
-2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
+2. **⏱ ~5 min · since 2026-07-27 — Decide: flip `MEMORY_PRESET` in prod
+   before E-03 ships, or hold?** PR #835 flips it; I left it drafted because
+   the flip crosses a recorded security gate:
+   [`E-06`](./features/agent-memory-pivot/worksheets/engine/E-06-agents-createform-preset.md)
+   says do it *"only after E-03 (per-agent isolation) ships"*, and
+   [`E-03`](./features/agent-memory-pivot/worksheets/engine/E-03-memory-scoping.md)
+   is **⬜ not started** — unbuilt in code, not just on paper: rows are tagged
+   with the *tenant* id, and `end_user_id`/`thread_id` are written but never
+   read, so the columns look like isolation and provide none. Cross-*account*
+   isolation holds; the exposure is end-user-to-end-user inside one builder's
+   app. **Holding also holds the launch:**
+   [`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
+   names `MEMORY_PRESET=1` a prerequisite of the dogfood gate #3 waits on.
+   - **Hold** (safe default): no action — #835 stays drafted, E-03 proceeds.
+   - **Ship**: I record a decision superseding the E-06 gate, add a backfill
+     line to E-03 (its "no prod memory DBs exist, so no backfill migration"
+     premise stops holding the moment you flip), and correct the five
+     `solve.ts` sites that tell the public the preset is gated.
+
+3. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
    the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
    founder-directed 2026-07-26: criteria, never calendar dates — agents
-   drive all five; `/daily` restates gate progress n/5 beside this bullet's
-   age). When the gate is green, only this founder-only half remains, and
-   the launch demo is the gate's own artifact (the live `/agents` memory
-   dashboard + "we ran our company's ops on our own memory through the
-   public MCP endpoint — here's what broke"): per
+   drive all five). When the gate is green, only this founder-only half
+   remains, and the launch demo is the gate's own artifact (the live
+   `/agents` memory dashboard + "we ran our company's ops on our own memory
+   through the public MCP endpoint — here's what broke"): per
    [`docs/research/launch-kit.md`](./research/launch-kit.md), pick the angle
    (§2; GLOBAL-036 says lead with analytical agent memory), write the Show
    HN post + first comment in your own voice from the §3.1 fact sheet
@@ -82,7 +103,24 @@ exists.
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0.
 
-3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+4. **⏱ ~5 min · since 2026-07-27 — Decide: is `sk_live_*` the headless MCP
+   credential?** #834 standardised every doc on it, because `sk_mcp_*` is
+   OAuth-minted server-side and never displayed
+   ([`SK-APIKEYS-009`](./features/api-keys/decisions/SK-APIKEYS-009-sk-mcp-server-side-mint.md)),
+   so the docs telling users to paste one were unexecutable. Correct, but it
+   drags in two properties nobody chose: *"sign out everywhere"* no longer
+   revokes a compromised headless MCP host
+   ([`SK-APIKEYS-006`](./features/api-keys/decisions/SK-APIKEYS-006-global-signout-scope.md)
+   deliberately spares `sk_live_*`), and `surfaceFromPrincipal` labels that
+   traffic `cli`, so headless-MCP adoption is unmeasurable in the events
+   pipeline. Full write-up: `mcp-server/FEATURE.md` → Open questions.
+   - **Accept** (default): I record both as intended and strip `sk_mcp_*`
+     from the five sites still naming a key no one can hold
+     (`packages/mcp/src/tools.ts` ×4, `cli/internal/cmd/remember.go`).
+   - **Widen `/app/keys` to mint `sk_mcp_*`**: amends SK-APIKEYS-009; I ship
+     it, and those five sites become true as written.
+
+5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin

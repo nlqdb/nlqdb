@@ -120,7 +120,7 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 ### SK-PIVOT-016 — The launch is condition-gated on a lived dogfood workload; conditions, never calendar dates
 
-**Body:** [`decisions/SK-PIVOT-016-dogfood-launch-gate.md`](./decisions/SK-PIVOT-016-dogfood-launch-gate.md). Founder-directed 2026-07-26: queue bullet #1 fires when the dogfood gate's five criteria are green (≥ 100 real public-MCP asks from the ops workload, first-10 ≥ 95 % on it, zero silent data loss, temporal golden queries pass, live `/agents` dashboard) — agents may tighten criteria, only the founder loosens; calendar dates are banned from the gate. `/daily` restates gate progress (n/5) beside the bullet's age.
+**Body:** [`decisions/SK-PIVOT-016-dogfood-launch-gate.md`](./decisions/SK-PIVOT-016-dogfood-launch-gate.md). Founder-directed 2026-07-26: the launch-sequence bullet in `docs/blocked-by-human.md` fires when the dogfood gate's five criteria are green (≥ 100 real public-MCP asks from the ops workload, first-10 ≥ 95 % on it, zero silent data loss, temporal golden queries pass, live `/agents` dashboard) — agents may tighten criteria, only the founder loosens; calendar dates are banned from the gate. `/daily` restates gate progress (n/5) beside the bullet's age.
 
 ### SK-PIVOT-017 — The dogfood workload is a productized docs→memory skill: structured extraction, one-way sync, markdown canonical
 

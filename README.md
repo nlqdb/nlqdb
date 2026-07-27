@@ -53,12 +53,15 @@ Measured against the live registry, not inferred. The manifest is fixed in
 this repo and a CI guard now pins every publishable package's entrypoints
 inside its own `files` allowlist, but **the registry stays broken until
 `0.2.2` publishes**. Until then, use the `<nlq-data>` element, the HTTP API,
-or the CLI. Building from a clone is unaffected.
+the CLI, or `npx -y @nlqdb/mcp` (`0.1.0`, verified installable from a clean
+registry). Building from a clone is unaffected.
 
 ## Use it
 
 Connecting an agent over MCP? One command, plus one browser-OAuth approval:
-[**Give your agent memory**](https://docs.nlqdb.com/agent-memory/).
+[**Give your agent memory**](https://docs.nlqdb.com/agent-memory/). Headless
+hosts skip the browser with `npx -y @nlqdb/mcp` and an `sk_live_*` key
+([MCP setup](https://docs.nlqdb.com/mcp/)).
 
 The 60-second walkthrough — plain HTML, CLI, and ten framework wrappers —
 lives at [`docs.nlqdb.com`](https://docs.nlqdb.com). Start with the
@@ -120,7 +123,7 @@ Paid plans aren't live yet. The full model strategy is in
 | Framework wrappers (React / Next / Vue / Nuxt / Svelte / SvelteKit / Astro / Solid + Swift) | ~ built + CI-tested; npm / SPM publish pending | `packages/{react,next,…}/**` |
 | Chat app `nlqdb.com/app` | ✓ shipped | `apps/web/**` |
 | Hosted MCP server `mcp.nlqdb.com/mcp` | ✓ shipped (host auto-detect pending) | `apps/mcp/**`, `packages/mcp/**` |
-| Local stdio MCP server `@nlqdb/mcp` | ~ publish-ready + verified end-to-end; first npm publish is a maintainer action | `packages/mcp/**` |
+| Local stdio MCP server `@nlqdb/mcp` | ✓ shipped — `npx -y @nlqdb/mcp` with an `sk_live_*` key | `packages/mcp/**` |
 | Droppable agent-memory artifacts (AGENTS.md snippet · Claude Code skill · Cursor rules · Codex config) | ✓ shipped (4/4 hosts; external registry distribution pending) | `apps/web/public/agent-artifacts/**` |
 | `nlq` CLI (Go) | ✓ shipped (core verbs; device-login pending) | `cli/**` |
 
@@ -164,9 +167,9 @@ and shares the link — in under 60 seconds, no card, no config.
 ### Phase 2 — Distribution (agent + developer surfaces)
 
 - ✓ Hosted MCP server (`mcp.nlqdb.com/mcp`) — host auto-detect pending;
-  local stdio `@nlqdb/mcp` publish-ready and verified from a packed tarball
-  under both node and bun, first publish pending (maintainer-only: npm's OIDC
-  trusted publishing can't create a package's first version)
+  local stdio `@nlqdb/mcp@0.1.0` is on npm, so `npx -y @nlqdb/mcp` with an
+  `sk_live_*` key is a headless route in with no browser consent step
+  (`nlqdb.com`'s own install panel still offers OAuth only)
 - ✓ CLI `nlq` (Go) — core verbs + raw-SQL escape hatch; device-login +
   chat REPL pending
 - ✓ `@nlqdb/sdk` — basic methods + `runSql`; npm entrypoints fixed in-repo,
