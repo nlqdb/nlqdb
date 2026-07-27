@@ -561,6 +561,12 @@ jobs:
         run: |
           set -euo pipefail
           name="ci-smoke-${{ github.run_id }}-${{ github.run_attempt }}"
+          # Server-side reap (RFC 3339, ≤30 days out) so the branch dies even
+          # when neither client-side cleanup runs: a killed runner skips both
+          # the `if: always()` delete below and the >1 h sweep above, and the
+          # sweep only fires on the *next* CI run — which is itself the run
+          # the cap is busy failing. Comfortably past the job's own lifetime.
+          expires=$(date -u -d '+2 hours' +%Y-%m-%dT%H:%M:%SZ)
           # No curl --retry here: POST is not idempotent; a retry after
           # a mid-response stream drop would double-create. Orphans from
           # this kind of flake are cleaned up by the >1 h sweep above.
@@ -573,7 +579,7 @@ jobs:
             "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
             -H "Authorization: Bearer ${NEON_API_KEY}" \
             -H "Content-Type: application/json" \
-            -d "{\"branch\":{\"name\":\"$name\"},\"endpoints\":[{\"type\":\"read_write\"}]}")
+            -d "{\"branch\":{\"name\":\"$name\",\"expires_at\":\"$expires\"},\"endpoints\":[{\"type\":\"read_write\"}]}")
           response=$(cat /tmp/neon-create.json)
           if [ "$status" -ge 300 ]; then
             # Print the body verbatim, not a `{code, message}` projection: jq

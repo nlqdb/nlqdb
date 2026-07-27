@@ -123,6 +123,16 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Server-side reap (RFC 3339, ≤30 days out) so an abandoned PR can't
+          # hold a slot forever: the `cleanup` job only runs on
+          # `pull_request: closed`, so a close event it misses strands the
+          # branch permanently — `pr-571` (closed 2026-07-02) and `pr-648`
+          # (merged 2026-07-10) each sat for weeks, and the Free-tier cap is
+          # 10. Every push recreates the branch (see below), so the window
+          # only expires on a PR nobody has touched for a week; the next push
+          # to such a PR simply creates it fresh.
+          expires=$(date -u -d '+7 days' +%Y-%m-%dT%H:%M:%SZ)
+
           # Idempotent: if the branch already exists (workflow re-run),
           # look up its connection URI instead of failing on a name
           # conflict.
@@ -175,7 +185,7 @@ jobs:
             "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
             -H "Authorization: Bearer ${NEON_API_KEY}" \
             -H "Content-Type: application/json" \
-            -d "{\"branch\": {\"name\": \"pr-${PR_NUMBER}\"}, \"endpoints\": [{\"type\": \"read_write\"}]}")
+            -d "{\"branch\": {\"name\": \"pr-${PR_NUMBER}\", \"expires_at\": \"$expires\"}, \"endpoints\": [{\"type\": \"read_write\"}]}")
           response=$(cat /tmp/neon-create.json)
           if [ "$status" -ge 300 ]; then
             # Print the body verbatim, not a `{code, message}` projection: jq

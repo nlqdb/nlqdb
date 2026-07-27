@@ -63,6 +63,12 @@ jobs:
           NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
         run: |
           set -euo pipefail
+          # Server-side reap (RFC 3339, ≤30 days out): the calling workflow's
+          # `Delete Neon branch` job is `if: always()`, but a cancelled or
+          # killed run never reaches it, and the single shared `e2e` branch
+          # then holds one of Neon Free's 10 slots until a human notices.
+          # Generous against the longest suite (opencheck fans out three ways).
+          expires=$(date -u -d '+6 hours' +%Y-%m-%dT%H:%M:%SZ)
           existing=$(curl -fsSL \
             "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
             -H "Authorization: Bearer ${NEON_API_KEY}" \
@@ -77,7 +83,7 @@ jobs:
             "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
             -H "Authorization: Bearer ${NEON_API_KEY}" \
             -H "Content-Type: application/json" \
-            -d "{\"branch\": {\"name\": \"${E2E_NEON_BRANCH}\"}, \"endpoints\": [{\"type\": \"read_write\"}]}")
+            -d "{\"branch\": {\"name\": \"${E2E_NEON_BRANCH}\", \"expires_at\": \"$expires\"}, \"endpoints\": [{\"type\": \"read_write\"}]}")
           db_url=$(echo "$response" | jq -r '.connection_uris[0].connection_uri // empty')
           if [ -z "$db_url" ]; then
             echo "::error::Neon API did not return connection_uris[0].connection_uri"
