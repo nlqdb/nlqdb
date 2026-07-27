@@ -234,8 +234,8 @@ numbers) · ✅ monthly cadence noted in `/reach` step 1 (next due 2026-08-22).
   by mirroring the apex policy; mechanism and the parity guard are canonical in
   [`SK-DOCS-005`](../../../docs-site/FEATURE.md).
 - **Per-URL index truth is now measured, not inferred** — `gsc-pull.ts` gained `## Index status`
-  (URL Inspection API; needs the service account promoted to Owner, and soft-fails saying so).
-  Wedge pages: **2 of 6
+  (URL Inspection API, same readonly service account — no extra role needed; soft-fails so a bad
+  read can't cost the run its exit code). Wedge pages: **2 of 6
   indexed.** `solve/best-way-to-store-agent-memory` (crawled 07-20) and `solve/agent-memory-mcp-server`
   (07-21) are indexed and **still earn 0 impressions** — for those two the gap really is ranking.
   `solve/build-vs-buy-agent-memory` + `solve/expire-old-agent-memory`: **never crawled**.

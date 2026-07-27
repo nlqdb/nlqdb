@@ -44,7 +44,11 @@ function allowedAgents(file: string): Set<string> {
       continue;
     }
     sawRule = true;
-    if (/^allow:\s*\/$/i.test(line)) for (const a of agents) allowed.add(a);
+    // Three spellings of allow-all: `Allow: /`, `Allow: /*`, and an empty
+    // `Disallow:` (RFC 9309 §2.2.2). Missing one would make parity vacuous for
+    // a crawler the marketing file re-opened in that form.
+    if (/^allow:\s*\/\*?$/i.test(line) || /^disallow:\s*$/i.test(line))
+      for (const a of agents) allowed.add(a);
   }
   return allowed;
 }
