@@ -12,15 +12,14 @@ recalls. One command connects it.
 
 <Aside type="tip" title="For coding agents">
 If you are a coding agent (Claude Code, Cursor, Codex) setting this up for the
-developer you build with, both routes cost the developer exactly one action —
-pick by which one you can actually wait for:
+developer you build with, pick your route by which wait you can actually clear:
 
-- **[Headless route](#no-browser-the-headless-route)** — you run every step
-  yourself and no browser ever opens, given an `sk_live_` key. If the developer
-  hasn't already put one in your environment, ask for it up front: minting it is
-  one copy-paste from [`/app/keys`](https://app.nlqdb.com/app/keys), which needs
-  a signed-in account. Use this route in CI, containers, and any unattended
-  session.
+- **[Headless route](#no-browser-the-headless-route)** — no browser opens at any
+  point, and you write the config yourself, given an `sk_live_` key. If the
+  developer hasn't already put one in your environment, ask for it up front:
+  minting it is one copy-paste from
+  [`/app/keys`](https://app.nlqdb.com/app/keys), which needs a signed-in
+  account. Use this route in CI, containers, and any unattended session.
 - **Hosted route (Step 1)** — one line, no key, but the first tool call blocks
   on a browser approval (Step 2) that you cannot complete. Only take it when a
   human is at the keyboard.
@@ -50,8 +49,9 @@ host's key names differ, so copy its own block, not a neighbour's.
 
 3. **Claude Desktop** — Settings → Connectors → Add custom connector, then
    paste the URL above. This is the one host whose documented remote path is
-   a dialog, so it is the one step here a coding agent can't run for you —
-   take the [headless route](#no-browser-the-headless-route) instead, which it can.
+   a dialog, so it is the one step here a coding agent can't run for you — take
+   the [headless route](#no-browser-the-headless-route) instead, which is a file
+   it can write for you (you still quit and reopen the app).
 
 4. **Windsurf** — merge the `nlqdb` entry into `mcpServers` in
    `~/.codeium/windsurf/mcp_config.json`, keeping any servers already there
@@ -95,7 +95,8 @@ On Cursor and VS Code the one-click deep-link buttons on
 [nlqdb.com/integrations](https://nlqdb.com/integrations/) are a faster route
 for a human, not a requirement — the file works either way.
 Claude Desktop is the exception *on this route*: its connector dialog needs a
-human. The headless route below is a file, so it needs none.
+human. The headless route below reaches it through a file instead, which an
+agent can write.
 
 ### No browser? The headless route
 

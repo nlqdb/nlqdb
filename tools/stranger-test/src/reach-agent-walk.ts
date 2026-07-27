@@ -14,9 +14,12 @@
 //   (b) does it reach the one-command MCP SETUP string,
 //   (c) does it complete a first memory read/write.
 //
-// (c) — and the live half of (b) — require the browser-OAuth connect that
-// SK-PIVOT-010 puts behind sign-in; an autonomous walk cannot clear it, so
-// those are recorded as `blocked_oauth`, never silently failed. (a) is fully
+// (c) — and the live half of (b) — need a credential. The hosted route's
+// browser-OAuth connect (SK-PIVOT-010, behind sign-in) is one an autonomous walk
+// cannot clear; since 2026-07-26 the `SK-MCP-001` stdio route can be, but only
+// once an `sk_live_` key reaches this walker's env (a founder action, still
+// open). Until then both stay recorded as `blocked_oauth`, never silently
+// failed — the label names the wall, not a product gap. (a) is fully
 // measurable headless and is the headline baseline number (expected ≈ 0 until
 // R-05 registries + R-07 artifacts move it).
 //
