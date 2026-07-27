@@ -40,12 +40,11 @@ exists.
    fails regardless of the PR's diff. Intermittent, not constant: on #832 it
    failed 01:41Z and passed 02:08Z once a `ci-smoke-*` branch aged out of the
    >1 h sweep. Two of the ten slots are held for good, so only eight rotate —
-   the cap binds as soon as more than that want a branch at once.
-   Two slots are held by branches whose PRs are long gone: **`pr-571`**
-   (closed 2026-07-02) and **`pr-648`** (merged 2026-07-10). Deleting a Neon
-   branch destroys its data, so an agent won't do it unattended — but these
-   two have no owner left. Paste-ready (needs `NEON_API_KEY` +
-   `NEON_PROJECT_ID`):
+   the cap binds as soon as more than that want a branch at once. Those two
+   belong to branches whose PRs are long gone: **`pr-571`** (closed
+   2026-07-02) and **`pr-648`** (merged 2026-07-10). Deleting a Neon branch
+   destroys its data, so an agent won't do it unattended — but these two have
+   no owner left. Paste-ready (needs `NEON_API_KEY` + `NEON_PROJECT_ID`):
    ```bash
    # confirm they are still the two oldest pr-* branches before deleting
    curl -fsSL "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
@@ -55,21 +54,13 @@ exists.
    curl -fsS -X DELETE "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/<id>" \
      -H "Authorization: Bearer $NEON_API_KEY"
    ```
-   **This recurs.** Two slots buys headroom, not a fix: with 6 PRs open at
-   once the cap binds again. The cheapest durable fix needs no founder call
-   and deletes nothing that already exists: Neon's create-branch API accepts
-   an `expires_at` (RFC 3339, ≤30 days out) and reaps the branch itself once
-   it passes, so `preview-app.yml` and `ci.yml` can bound every `pr-N` /
-   `ci-smoke-*` branch at creation. An agent can ship that — the docs don't
-   state which plans offer it, so confirm on Free first. Only if that falls
-   through is it a founder call — (a) sweep `pr-N` branches whose PR is
-   closed, on a schedule (the `ci-smoke-*` >1 h sweep in `ci.yml` is the
-   pattern to copy; it needs the GH API to ask which PRs are closed, and it
-   deletes data, so it wants your sign-off); (b) raise the Neon plan
-   (money); (c) decide a capacity failure should not block a PR — today
-   `test-api-smoke-neon` fails hard, which is right for a code fault and
-   wrong for a full shared project. Not chosen by an agent: (a) has blast
-   radius, (b) costs, (c) weakens a merge gate.
+   **Only the deletion is yours.** Two slots buys headroom, not a fix, but the
+   durable fix is agent work and is already queued: Neon's create-branch API
+   takes an `expires_at` (RFC 3339, ≤30 days out,
+   [generally available on all plans](https://neon.com/docs/guides/branch-expiration))
+   and reaps the branch itself, so `preview-app.yml` and `ci.yml` can bound
+   every `pr-N` / `ci-smoke-*` branch at creation. No decision needed from
+   you — if that ever falls through, it comes back here as its own row.
 
 1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on

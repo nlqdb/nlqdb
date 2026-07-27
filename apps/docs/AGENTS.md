@@ -23,10 +23,11 @@ CLI reference.
 ## Commands
 
 ```bash
-bun run --filter apps/docs dev        # local dev server
-bun run --filter apps/docs build      # static build → dist/
-bun run --filter apps/docs deploy     # build + wrangler deploy
-bun run --filter apps/docs test       # unit tests under src/
+bun run --filter @nlqdb/docs dev      # local dev server
+bun run --filter @nlqdb/docs build    # static build → dist/
+bun run --filter @nlqdb/docs deploy   # build + wrangler deploy
+bun run --filter @nlqdb/docs test     # unit tests under src/
+bun run --filter @nlqdb/docs check    # astro check (the CI gate)
 ```
 
 ## CI + deploy
