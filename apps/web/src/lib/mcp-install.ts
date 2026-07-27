@@ -1,10 +1,13 @@
 // SK-WEB-016 — Shared MCP-host install descriptors.
 //
-// Single source of truth for the deep-link URI + fallback JSON configs
-// rendered by both `McpInstall.astro` (SSR) and `CreateForm.tsx`
-// (post-create React island). When the research outputs change (a host
-// adds a deep-link scheme, etc.) edit this file — both venues update
-// together.
+// Single source of truth for every MCP install string the site publishes —
+// deep-link URIs, per-host config blocks, and the headless-route strings
+// below. Rendered by `McpInstall.astro` (SSR), `McpInstallView.tsx` +
+// `McpInstallPopover.tsx` (React islands), `pages/agents/index.astro` and
+// `pages/llms.txt.ts`; the docs guide's blocks are hand-written but pinned to
+// these builders by `agent-artifacts.test.ts`. When the research outputs
+// change (a host adds a deep-link scheme, etc.) edit this file — every venue
+// updates together.
 //
 // Hosts:
 //   - Cursor:      deep-link `cursor://anysphere.cursor-deeplink/mcp/install`.

@@ -195,6 +195,19 @@ describe("the docs pages name every tool packages/mcp registers", () => {
   ])("%s lists all of them", (_name, page) => {
     for (const tool of registered) expect(page).toContain(tool);
   });
+
+  // …and nothing else. Under-listing was the bug (`nlqdb_connect_database`
+  // invisible on `/mcp`); over-listing is the same false claim pointing the
+  // other way — a reader who wires a call to a tool the server never
+  // registered gets an error the page told them to expect to work.
+  test.each([
+    ["agent-memory guide", DOCS_GUIDE],
+    ["mcp setup page", DOCS_MCP],
+  ])("%s names no tool the server doesn't register", (_name, page) => {
+    for (const named of new Set(page.match(/nlqdb_[a-z_]+/g) ?? [])) {
+      expect(registered, named).toContain(named);
+    }
+  });
 });
 
 // Hard rule 1, inverted: the guide must not deny a capability that shipped.

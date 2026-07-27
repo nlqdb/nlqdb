@@ -116,7 +116,8 @@ curl -X POST https://app.nlqdb.com/v1/ask \\
     sub: "talk to your data from Claude",
     lang: "ts",
     source: `// ~/Library/Application Support/Claude/claude_desktop_config.json
-// (or ~/.cursor/mcp.json — same shape works in every MCP host)
+// (or ~/.cursor/mcp.json — Windsurf, Zed, VS Code and Codex each name the
+//  keys differently; nlqdb.com/integrations renders the block per host)
 // No key: OAuth opens in your browser on the first tool call.
 {
   "mcpServers": {

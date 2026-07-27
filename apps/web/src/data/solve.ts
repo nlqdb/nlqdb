@@ -2130,7 +2130,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Every answer returns the rows plus the compiled SQL, and tenant isolation is a fail-closed RLS policy in the engine, not a `WHERE` you remember.",
     ],
     whatItDoesnt: [
-      "It's a hosted server (`mcp.nlqdb.com/mcp`), not a self-hostable local MCP binary you run beside your agent — the FSL-1.1 self-host container is on the roadmap, not shippable today.",
+      "`npx -y @nlqdb/mcp` runs beside your agent, but it still talks to nlqdb's hosted API — the database and the engine are ours, not yours. A self-hostable FSL-1.1 container is on the roadmap, not shippable today.",
       "The dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts/episodes/entities) are authed and gated (`MEMORY_PRESET` is dark); today the live path is `nlqdb_query` provisioning and querying a database, and it rejects anonymous writes.",
       "No native vector search — nlqdb is Postgres-first; if what you need from a memory server is unstructured similarity recall over chat-text, that's Mem0 or pgvector's job, and nlqdb composes with it.",
     ],

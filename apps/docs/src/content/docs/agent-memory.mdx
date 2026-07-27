@@ -153,7 +153,8 @@ Steps 3–5 below apply to both routes.
 
 **Hosted route:** on the first tool call, nlqdb opens an OAuth page in your
 browser. Approve it once; the host stores the token. There is no key to
-generate or paste, and this is the one step needing a human.
+generate or paste, but it does need a human at a browser (as does Claude
+Desktop's connector dialog in Step 1).
 
 **Headless route:** already done — the `sk_live_` key in the config above
 authenticates every call, and nothing opens a browser.
@@ -209,9 +210,10 @@ writing (through the confirm gate) and reading memory.
 
 ## Step 5 — On failure
 
-- **404 / connection refused on first call** — the config points at the
-  bare domain. It must be the full `https://mcp.nlqdb.com/mcp` (the protocol
-  is served at `/mcp`).
+- **404 / connection refused on first call** (hosted route) — the config
+  points at the bare domain. It must be the full `https://mcp.nlqdb.com/mcp`
+  (the protocol is served at `/mcp`). The headless route carries no URL at
+  all, so it cannot fail this way.
 - **Auth loop / `unauthorized`** (hosted route) — the browser OAuth was
   dismissed. Trigger any tool again and complete the approval.
 - **Headless route: `NLQDB_API_KEY is not set`** — the host didn't pass `env`
