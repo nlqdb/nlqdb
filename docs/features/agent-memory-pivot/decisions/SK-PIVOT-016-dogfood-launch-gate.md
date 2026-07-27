@@ -31,8 +31,8 @@
   availability can't absorb. Conditions are the repo's native idiom
   ("Parked until <trigger>"), and every criterion is agent-movable, so the
   gate cannot silently become a veto again.
-- **Consequence in code:** `/daily` step 1 restates the top queue bullet's
-  **gate progress (n/5 green)** beside its age. The dogfood workload must
+- **Consequence in code:** `/daily` step 1 restates the launch-sequence
+  bullet's **gate progress (n/5 green)** beside its age, wherever it ranks. The dogfood workload must
   authenticate exactly as a stranger's agent would; a reviewer rejects any
   ops-agent path that bypasses the public MCP/auth surface. Loosening a
   criterion without a founder note in this file is a P1 violation.
