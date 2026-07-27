@@ -177,8 +177,11 @@ h3 {
 
 /* Topnav (Topnav.astro) */
 
+/* Both rows wrap because the links + auth slot need ~650px, so without it every
+   page scrolled horizontally at 390px; inert at the widths where the row fits. */
 .topnav {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   padding: 22px 0;
@@ -214,6 +217,7 @@ h3 {
 
 .topnav__links {
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
   align-items: center;
 }
