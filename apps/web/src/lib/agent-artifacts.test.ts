@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { GET as LLMS_TXT } from "../pages/llms.txt.ts";
 import {
   buildClaudeCodeCommand,
   buildClaudeConfig,
@@ -175,21 +176,27 @@ describe("the R-04 setup guide's connect blocks don't drift from mcp-install.ts"
 // developer" and stops at a wall that no longer exists, which is worse than
 // silence. Two halves, because either alone is escapable: the headless route
 // must be present *and* the retracted denial must be absent.
+//
+// llms.txt is asserted on its *rendered* body, not its source, so building a
+// string from `mcp-install.ts` counts as shipping it — the source-text form
+// would have failed on the very refactor it should reward.
 describe("every agent-fetched surface offers the headless route", () => {
-  const surfaces = () => ({
-    "docs agent-memory guide": DOCS_GUIDE,
-    "llms.txt route": readFileSync(join(import.meta.dir, "../pages/llms.txt.ts"), "utf8"),
-  });
+  async function surfaces(): Promise<Record<string, string>> {
+    return {
+      "docs agent-memory guide": DOCS_GUIDE,
+      "llms.txt route": await (await LLMS_TXT({} as never)).text(),
+    };
+  }
 
-  test("names the published package and the env var that authenticates it", () => {
-    for (const [name, text] of Object.entries(surfaces())) {
+  test("names the published package and the env var that authenticates it", async () => {
+    for (const [name, text] of Object.entries(await surfaces())) {
       expect(text, name).toContain(STDIO_PACKAGE);
       expect(text, name).toContain(STDIO_KEY_ENV);
     }
   });
 
-  test("no surface still claims a headless credential doesn't exist", () => {
-    for (const [name, text] of Object.entries(surfaces())) {
+  test("no surface still claims a headless credential doesn't exist", async () => {
+    for (const [name, text] of Object.entries(await surfaces())) {
       expect(normalizeProse(text), name).not.toContain("no headless credential");
     }
   });

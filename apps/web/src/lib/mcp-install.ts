@@ -190,9 +190,6 @@ export const STDIO_KEY_ENV = "NLQDB_API_KEY";
  */
 export const STDIO_PLACEHOLDER_KEY = "sk_live_REPLACE_ME";
 
-/** Where a reader mints the key above (needs a signed-in account, once). */
-export const KEYS_PAGE_URL = "https://app.nlqdb.com/app/keys";
-
 /**
  * The `nlqdb` server entry for any host configured by file. Hosts differ only
  * in the root key wrapping it (`mcpServers` / `servers` / `context_servers`),

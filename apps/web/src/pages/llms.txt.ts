@@ -3,6 +3,7 @@ import { BLOG_POSTS } from "../data/blog";
 import { COMPETITORS } from "../data/competitors";
 import { INTEGRATE } from "../data/integrate";
 import { SOLVE_ENTRIES } from "../data/solve";
+import { buildStdioClaudeCodeCommand } from "../lib/mcp-install.ts";
 
 // `llms.txt` — community spec (https://llmstxt.org) the LLM-IDE
 // ecosystem (Claude Desktop, Perplexity, Cursor, Windsurf, Cline,
@@ -98,7 +99,7 @@ export const GET: APIRoute = () => {
     `opens. Mint an \`sk_live_\` key at https://app.nlqdb.com/app/keys (one signed-in\n` +
     `visit), then:\n\n` +
     "```bash\n" +
-    `claude mcp add --env NLQDB_API_KEY=sk_live_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp\n` +
+    `${buildStdioClaudeCodeCommand()}\n` +
     "```\n\n" +
     `Other hosts (Codex, Cursor, VS Code, Claude Desktop, Windsurf, Zed), both routes\n` +
     `per host, and the full machine-followable guide — expected tools, a verification\n` +
