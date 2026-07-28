@@ -134,6 +134,10 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 **Body:** [`decisions/SK-PIVOT-019-memory-strategy-benchmark.md`](./decisions/SK-PIVOT-019-memory-strategy-benchmark.md). Same corpus (`SK-PIVOT-017`), same golden queries per `SK-QUAL-023` axis, run against memory strategies (v1: nlqdb, DIY pgvector, plain-context; hosted competitors one per run, ToS-checked) with per-purpose winners published even where nlqdb loses. Public harness in `tools/`; rendered on `/agents`. Build starts when the corpus exists; explicitly not an integrations program.
 
+### SK-PIVOT-020 — Business model, first cut: free is self-host + hosted free tier + BYO key; paid is hosted memory *operations* on the existing premium chain
+
+**Body:** [`decisions/SK-PIVOT-020-memory-ops-business-model.md`](./decisions/SK-PIVOT-020-memory-ops-business-model.md). Founder-decided 2026-07-28: free = FSL self-host (`SK-PIVOT-005`/GLOBAL-019) + the hosted free tier + BYO LLM key at 0% (GLOBAL-026 unchanged); paid = the memory **operations** a self-hoster would run themselves — per-agent/per-end-user isolation (E-03), TTL/retention sweeps (E-04), the hosted premium model lane — sold through the **existing GLOBAL-026 premium chain**, no second monetization system, no new meter or endpoint. Pricing numbers/packaging are deliberately **not** decided; nothing paid is live, so no pricing copy rides this.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL;
@@ -144,6 +148,8 @@ index in [`docs/decisions.md`](../../decisions.md)).
   - *Dual front door, literal expression:* the two-door home ([`SK-WEB-018`](../web-app/decisions/SK-WEB-018-two-door-home.md)) is the literal dual front door — **Door A** = agent-memory wedge (MCP install), **Door B** = generalist/analytics (BYO ClickHouse via `/app/connect`, `SK-WEB-019` / `SK-DBCONN-001`). The generalist seam is now Door A's *"or just describe your data →"* link to `/app/new` (replacing the SK-WEB-017 secondary hero input; SK-WEB-018 supersedes the three-beat-on-`/` IA).
 - **GLOBAL-019** — Free + Open Source core.
   - *In this feature:* the anti-VC angle leans on it; its stale "Apache-2.0 today" wording (and `architecture.md §0`) is corrected to FSL-1.1→Apache in this PR. The FSL-accurate self-host *marketing copy* is WS-10.
+- **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid.
+  - *In this feature:* the wedge's paid line rides this chain and nothing else (`SK-PIVOT-020`); memory never gets its own meter or SKU.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* every new wedge CTA (matrix "try this", the `/agents` connect CTA) emits the typed event; wedge conversion = a registered user reaching a first answer (GLOBAL-036).
 - **GLOBAL-025** — North-star KPIs (advance ≥ 1, degrade 0).
