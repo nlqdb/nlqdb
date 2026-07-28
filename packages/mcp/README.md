@@ -30,6 +30,26 @@ MCP host's config:
 `sk_live_…` is account-scoped and reaches every tool. A `pk_live_…` key is
 pinned to one database and can only call `nlqdb_query`.
 
+## Drop-in skill — teach the agent *when* to remember
+
+Connecting the server gives your agent the tools. It doesn't tell it what is
+worth remembering, or that it can aggregate over what it stored. One command
+installs a skill that does, into a repo your agent already reads:
+
+```bash
+npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory
+```
+
+Run against the live [`skills`](https://github.com/vercel-labs/skills) CLI
+2026-07-27 — no account, no publish. It writes
+`.agents/skills/nlqdb-memory/SKILL.md` (the cross-agent directory Cursor and
+Codex read directly), a `.claude/skills/nlqdb-memory` symlink for Claude Code,
+and a `skills-lock.json`. It does not write a `.cursor/rules/` file and does
+not edit `AGENTS.md` — a host that reads only `AGENTS.md` needs
+[`AGENTS.snippet.md`](https://nlqdb.com/agent-artifacts/AGENTS.snippet.md?utm_source=npm)
+appended by hand. All four host artifacts:
+[nlqdb.com/agent-artifacts](https://nlqdb.com/agent-artifacts/README.md?utm_source=npm).
+
 ## Tools
 
 | Tool | Does |
@@ -47,6 +67,6 @@ Destructive plans (INSERT/UPDATE/DELETE/DDL) come back as
 ## More
 
 Per-host config blocks and one-click installs:
-[docs.nlqdb.com/mcp](https://docs.nlqdb.com/mcp/) ·
+[docs.nlqdb.com/mcp](https://docs.nlqdb.com/mcp/?utm_source=npm) ·
 [what agent memory buys you](https://nlqdb.com/agents/?utm_source=npm) ·
 [design + contributing](https://github.com/nlqdb/nlqdb/blob/main/docs/features/mcp-server/FEATURE.md)

@@ -207,8 +207,9 @@ docs guide + llms.txt `## For coding agents`) **and one-command installable** �
 and **no** Cursor rule or `AGENTS.md` entry) → **in-flight**; all artifact links keyed 2026-07-26
 ([`NUMBERS.md`](NUMBERS.md)). **Remaining R-07 work is external distribution**:
 `skills.sh` has no submission flow (P2 2026-07-23 — the leaderboard populates from anonymous
-`npx skills` install telemetry), so growth is organic install yield + the account-walled npm
-installer package (→ founder), plus the yield gate (a real `agent-artifacts` visit in `/app/admin`)
+`npx skills` install telemetry), so growth is organic install yield — which now has one more mouth:
+**the install command ships on `@nlqdb/mcp`'s npm README from 0.1.1** (2026-07-27), so no separate
+installer package is needed — plus the yield gate (a real `agent-artifacts` visit in `/app/admin`)
 · ✅ install path on the R-04 page · ✅ drift test green
 ([`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) — every
 connect string == `mcp-install.ts`, served-file URLs pinned to `/mcp`, all `nlqdb.com` links carry
