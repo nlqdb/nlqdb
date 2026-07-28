@@ -25,18 +25,26 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~5 min | **Decide:** flip `MEMORY_PRESET` in prod before E-03 ships, or hold? Holding also holds #2's dogfood gate; PR #835 drafted | 2026-07-27 |
+| 1 | ~5 min | **Flip `MEMORY_PRESET` in prod** (or decide to hold) — E-03 per-agent isolation has now **shipped** (#851), so the E-06 gate's "only after E-03" prerequisite is met; this is #2's dogfood-gate prerequisite. PR #835 drafted | 2026-07-27 |
 | 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 3 | ~2 min | Mint an `sk_live_` key and set it as `NLQDB_API_KEY` in the walker env — the last tick on the cold-agent headless walk #836/#837 just shipped the route for | 2026-07-27 |
-| 4 | ~5 min | **Decide:** is `sk_live_*` the headless MCP credential? It defeats global-signout revocation and mis-attributes MCP as `cli` | 2026-07-27 |
-| 5 | ~10 min | Provide a LogSnag ingest token (+ wire the late-bound `window.__nlqdb_logsnag` hook) so client demand signals stop being silent no-ops | 2026-07-27 |
-| 6 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 7 | ~5 min | Connect the Claude GitHub App to the org so Dependabot alert #29 (1 high) is viewable — `bun audit` on the lockfile shows nothing high, so its target can't be confirmed from here | 2026-07-27 |
+| 4 | ~10 min | Provide a LogSnag ingest token (+ wire the late-bound `window.__nlqdb_logsnag` hook) so client demand signals stop being silent no-ops | 2026-07-27 |
+| 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 6 | ~5 min | Connect the Claude GitHub App to the org so Dependabot alert #29 (1 high) is viewable — `bun audit` on the lockfile shows nothing high, so its target can't be confirmed from here | 2026-07-27 |
 
-Only #2 can move real strangers (scorecard row #2); #6 is the only one that
+Only #2 can move real strangers (scorecard row #2); #5 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists. #1 and #4 are decisions an agent may not take alone — both would
-supersede or amend a recorded decision.
+exists. #1 is a founder go/no-go (a prod-secret flip) an agent may not take
+alone.
+
+(The 2026-07-27 "is `sk_live_*` the headless MCP credential?" decision is
+**resolved** — merged 2026-07-28 as
+[`SK-APIKEYS-015`](./features/api-keys/decisions/SK-APIKEYS-015-mintable-sk-mcp-service-credential.md):
+`/app/keys` now mints `sk_mcp_*` as *the* least-privilege headless credential
+(labeled `mcp`, per-key revocable, never swept by sign-out), superseding
+SK-APIKEYS-006 and widening SK-APIKEYS-009. The remaining `sk_live_`→`sk_mcp_`
+copy sweep across artifacts/docs is agent-doable, tracked in
+`api-keys/FEATURE.md` — not a founder gate.)
 
 (The 2026-07-27 "delete two orphaned Neon branches" row is **done** — verified
 live: `pr-571` and `pr-648` are gone and the project sits at 5 of 10 slots. Its
@@ -54,24 +62,25 @@ release step, largely automated.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
-1. **⏱ ~5 min · since 2026-07-27 — Decide: flip `MEMORY_PRESET` in prod
-   before E-03 ships, or hold?** PR #835 flips it; I left it drafted because
-   the flip crosses a recorded security gate:
+1. **⏱ ~5 min · since 2026-07-27 — Flip `MEMORY_PRESET` in prod, or decide to
+   hold?** PR #835 flips it. The flip crossed a recorded security gate:
    [`E-06`](./features/agent-memory-pivot/worksheets/engine/E-06-agents-createform-preset.md)
-   says do it *"only after E-03 (per-agent isolation) ships"*, and
+   says do it *"only after E-03 (per-agent isolation) ships"* — and
    [`E-03`](./features/agent-memory-pivot/worksheets/engine/E-03-memory-scoping.md)
-   is **⬜ not started** — unbuilt in code, not just on paper: rows are tagged
-   with the *tenant* id, and `end_user_id`/`thread_id` are written but never
-   read, so the columns look like isolation and provide none. Cross-*account*
-   isolation holds; the exposure is end-user-to-end-user inside one builder's
-   app. **Holding also holds the launch:**
+   has now **shipped** (#851, merged 2026-07-28): per-agent / per-end-user /
+   per-thread isolation is RLS-enforced on every read **and** write path,
+   injection-safe and fail-closed, proven by a Postgres-executed negative-path
+   integration test in CI (the earlier "columns written but never read" gap is
+   fixed). So the E-06 prerequisite is met; the exposure that held this — one
+   builder's end-users reading each other — no longer stands once the preset is
+   on. **The flip is still a founder go/no-go** because it is a prod-secret set
+   and it publicly ungates the memory preset. **It also unblocks the launch:**
    [`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
    names `MEMORY_PRESET=1` a prerequisite of the dogfood gate #2 waits on.
-   - **Hold** (safe default): no action — #835 stays drafted, E-03 proceeds.
-   - **Ship**: I record a decision superseding the E-06 gate, add a backfill
-     line to E-03 (its "no prod memory DBs exist, so no backfill migration"
-     premise stops holding the moment you flip), and correct the five
-     `solve.ts` sites that tell the public the preset is gated.
+   - **Hold**: no action — #835 stays drafted.
+   - **Ship**: set `MEMORY_PRESET=1` in the prod Worker (#835). An agent then
+     corrects the five `solve.ts` sites that still tell the public the preset
+     is gated (no backfill migration needed — no prod memory DBs exist yet).
 
 2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
@@ -106,28 +115,11 @@ release step, largely automated.)
    The one thing left to tick R-04's cold-agent walk is a real key in the
    walker's environment — an operator secret an agent can't self-mint. Mint at
    `https://app.nlqdb.com/app/keys`, set `NLQDB_API_KEY` in the walker
-   env. (No relation to #4's *policy* question below — this is just the key.)
+   env. (Just the key — the credential-type policy is settled by SK-APIKEYS-015:
+   `sk_mcp_*` is now the headless MCP credential, though `sk_live_*` still works
+   for the walker until the doc sweep lands.)
 
-4. **⏱ ~5 min · since 2026-07-27 — Decide: is `sk_live_*` the headless MCP
-   credential?** #834 standardised every doc on it, because `sk_mcp_*` is
-   OAuth-minted server-side and never displayed
-   ([`SK-APIKEYS-009`](./features/api-keys/decisions/SK-APIKEYS-009-sk-mcp-server-side-mint.md)),
-   so the docs telling users to paste one were unexecutable. Correct, but it
-   drags in two properties nobody chose: *"sign out everywhere"* no longer
-   revokes a compromised headless MCP host
-   ([`SK-APIKEYS-006`](./features/api-keys/decisions/SK-APIKEYS-006-global-signout-scope.md)
-   deliberately spares `sk_live_*`), and `surfaceFromPrincipal` labels that
-   traffic `cli`, so headless-MCP adoption is unmeasurable in the events
-   pipeline. Full write-up: `mcp-server/FEATURE.md` → Open questions.
-   **`/agents` and the docs guide now render `sk_live_` too**, so picking
-   *Widen* below is a wider edit than when this was first queued.
-   - **Accept** (default): I record both as intended and strip `sk_mcp_*`
-     from the five sites still naming a key no one can hold
-     (`packages/mcp/src/tools.ts` ×4, `cli/internal/cmd/remember.go`).
-   - **Widen `/app/keys` to mint `sk_mcp_*`**: amends SK-APIKEYS-009; I ship
-     it, and those five sites become true as written.
-
-5. **⏱ ~10 min · since 2026-07-27 — Provide a LogSnag ingest token so client
+4. **⏱ ~10 min · since 2026-07-27 — Provide a LogSnag ingest token so client
    demand signals stop being silent no-ops.** The events `lib/logsnag.ts` emits
    (`agents.connect_clicked` with its new `url`/`stdio` transport dimension,
    `solve.try_query_clicked`, …) only fire if the late-bound
@@ -139,7 +131,7 @@ release step, largely automated.)
    (as a build-time public env) and I'll wire the hook. Recorded at
    `solve-pages/FEATURE.md`.
 
-6. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -170,7 +162,7 @@ release step, largely automated.)
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-7. **⏱ ~5 min · since 2026-07-27 — Connect the Claude GitHub App to the org so
+6. **⏱ ~5 min · since 2026-07-27 — Connect the Claude GitHub App to the org so
    Dependabot is viewable.** A push flagged **Dependabot alert #29 (1 high)**
    on the default branch, but the alerts API answers *"GitHub access is not
    enabled for this session — an org admin must connect the Claude GitHub App
