@@ -273,6 +273,20 @@ Or drop a file in by hand:
 
 Index + drop locations: [nlqdb.com/agent-artifacts/README.md](https://nlqdb.com/agent-artifacts/README.md).
 
+### Make the repo's own docs queryable
+
+A second skill points the same memory at the repo it lives in. It extracts the
+**structure** your docs already carry — decision ids and statuses, open
+questions with the dates they appeared, queues, trackers, and the references
+between them — so "which features have open questions older than 30 days" and
+"which decisions reference GLOBAL-013" become one query instead of an afternoon
+of grep. It ingests structure only, never prose paragraphs, and the sync is
+one-way: markdown stays the source of truth and nlqdb never writes it.
+
+```bash
+npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-docs-memory
+```
+
 ## What's live today
 
 The live, working memory path is `nlqdb_query`: your agent provisions a
