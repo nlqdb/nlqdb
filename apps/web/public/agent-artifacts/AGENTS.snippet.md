@@ -45,6 +45,44 @@ Connect the hosted MCP server for this repo's agent runtime:
 On the first tool call nlqdb opens a browser OAuth page once — approve it and
 the host stores the token. No API key to paste.
 
+### No browser? (headless / CI)
+
+If nobody is at a browser — an unattended agent, CI, a container — run the same
+five tools locally over stdio instead. `npx` fetches `@nlqdb/mcp` and it talks
+to the same production API, authenticated by an `sk_live_` key (mint one at
+`app.nlqdb.com/app/keys`, a signed-in account) rather than a browser. This entry
+holds a live account secret — keep it in a **user-level** config, never a file
+your repo commits.
+
+- **Claude Code** — run in the terminal (writes the key to `~/.claude.json`):
+
+  ```bash
+  claude mcp add --env NLQDB_API_KEY=sk_live_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
+  ```
+
+- **Codex** — the `~/.codex/config.toml` table instead of the hosted one:
+
+  ```toml
+  [mcp_servers.nlqdb]
+  command = "npx"
+  args = ["-y", "@nlqdb/mcp"]
+  env = { NLQDB_API_KEY = "sk_live_REPLACE_ME" }
+  ```
+
+- **Cursor** — user-level `~/.cursor/mcp.json` instead of the hosted block:
+
+  ```json
+  {
+    "mcpServers": {
+      "nlqdb": {
+        "command": "npx",
+        "args": ["-y", "@nlqdb/mcp"],
+        "env": { "NLQDB_API_KEY": "sk_live_REPLACE_ME" }
+      }
+    }
+  }
+  ```
+
 ### How to use it
 
 All memory goes through the **`nlqdb_query`** tool. Omit the `db` argument and

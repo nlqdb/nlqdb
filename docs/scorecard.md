@@ -15,22 +15,27 @@ only when no acquisition lever is.
 **⚠ Window lapsed 07-25; `/weekly` is 2 days overdue, so this run picked its own
 target per step 2.**
 
-**Worst number today:** **the human queue — depth 4, top bullet (`MEMORY_PRESET`) 0
-days old but the launch-sequence bullet idle 44 days.** With real strangers at 0, the
+**Worst number today:** **the human queue — depth 4, top bullet (`MEMORY_PRESET`) 1
+day old but the launch-sequence bullet idle 45 days.** With real strangers at 0, the
 age of this queue's head is the company's real cycle time, and the one bullet that can
 move strangers off 0 (`SK-PIVOT-016`) has sat since 06-13. No agent run can clear it —
 it is a founder decision (rule 4). So this run took the highest-yield **agent-movable**
 lever instead (below).
-**Why this acquisition lever (step-2 priority 1).** A live channel (npm, row #22) had a
-published discovery surface — the canonical `@nlqdb/sdk` package page — that dead-ended
-with zero links out; closing that is a direct input to row #22's yield attribution,
-in-run measurable, and collides with none of the 4 open PRs. The GSC *Strengthen next*
-head (`/solve/running-total-cumulative-sum-in-sql/`, 72 impr / pos 36.3) stays declined
-(run 147): structurally the same page as a pos-8.0 sibling ⇒ the gap is query
-saturation, not page quality, and a copy edit has no in-run re-measure.
-**Top `blocked-by-human` bullet:** decide `MEMORY_PRESET` in prod (⏱ ~5 min, **0 days
+**Why this funnel-conversion lever (step-2 priority 1).** `/security/hall-of-fame/` is
+the single **highest-traffic real-stranger surface** — 4 of 8 GSC clicks and 5 of 9
+first-party referral pageloads (row #7), the one page strangers actually reach — yet its
+**body dead-ended**: run 145 gave it site chrome, but the content itself never said what
+nlqdb is or offered a way to try it, so every one of those arrivals read about security
+disclosure and left. Adding a product CTA to the page's own body is a direct
+funnel-conversion lever on the highest-yield organic landing surface, in-run measurable
+(CTA links 0 → 1, `/app/new/` verified 200), and collides with none of the 3 open PRs.
+The GSC *Strengthen next* head (`/solve/running-total-cumulative-sum-in-sql/`, pos 36.3)
+stays declined (run 147): query saturation, not page quality, and a copy edit has no
+in-run re-measure. The `@nlqdb/sdk` npm-page fix (run 148) is shipped in-repo but its
+publish (0.2.2) still waits on release PR #826 (merger-agent territory, not agent-movable).
+**Top `blocked-by-human` bullet:** decide `MEMORY_PRESET` in prod (⏱ ~5 min, **1 day
 old**, PR #835 drafted). The launch-sequence bullet — the only one that can move real
-strangers off 0 — is **idle 44 days since 06-13**; its `SK-PIVOT-016` gate is **0/5
+strangers off 0 — is **idle 45 days since 06-13**; its `SK-PIVOT-016` gate is **0/5
 green** (no ops workload on the public MCP surface yet ⇒ criteria 1–3 unstartable;
 temporal golden 2/3; `/agents` memory dashboard unshipped). Every criterion is
 agent-movable and `MEMORY_PRESET=1` is its prerequisite — which is the top bullet.
@@ -39,16 +44,15 @@ agent-movable and `MEMORY_PRESET=1` is its prerequisite — which is the top bul
 bullet fires); row **#15**'s opencheck arm (free-lane saturation, remedy costs money
 ⇒ rule 4).
 
-**Rule 6 clean** — CI + Security + Release-npm + all deploy workflows (`Deploy API`,
-`Deploy web`, `Deploy docs site`, `Deploy — Canary`) green on `main@3d7d1ad` (#837
-merged 07-27 16:01Z). Local gates on the touched scope: typecheck exit 0, sdk suite
-**82 pass** (incl. 2 new), lint clean.
-Open PRs **4** — **#841** (reach R-07, `@nlqdb/mcp` README + registries), **#835**
-(draft, `MEMORY_PRESET`), **#826** (changesets, `@nlqdb/sdk@0.2.2` + `@nlqdb/mcp@0.1.1`),
-draft **#719** (oldest, **10 days**). **#837 merged since run 147** (reach R-04: the two
-agent-fetched surfaces now name the headless `npx -y @nlqdb/mcp` route). This run's
-files (`packages/sdk/README.md`, its new test, an sdk changeset) overlap none of the
-open PRs — #841 touches only `packages/mcp/README.md`.
+**Rule 6 clean** — CI green on `main@e4d740a` (#841 merged 07-28 00:24Z); Deploy API /
+Deploy web / Deploy docs site all green on the latest deployable SHA `cd81a07` (#841 was
+a `packages/mcp` README-only change — no app deploy triggered). Local gates on the
+touched scope: `astro check` **0 errors / 0 warnings**, web suite **425 pass**, lint
+clean, `check-links` **0 dead** (126 pages, 3240 internal links).
+Open PRs **3** — **#835** (draft, `MEMORY_PRESET`), **#826** (changesets,
+`@nlqdb/sdk@0.2.2` + `@nlqdb/mcp@0.1.1`), draft **#719** (oldest, **11 days**). **#841
+merged since run 148** (reach R-07: `@nlqdb/mcp` README + registries). This run's single
+file (`apps/web/src/pages/security/hall-of-fame.astro`) overlaps none of the open PRs.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -60,7 +64,7 @@ open PRs — #841 touches only `packages/mcp/README.md`.
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share with ≥ 2 asks |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **104** content pages (`/solve` 37 + `/vs` 31 + `/blog` 36); **116** sitemap URLs, **126** built pages. Queue **2** — below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **36**. **Google (GSC 28d, 06-27→07-25, live): 8 clicks / 496 impr / pos 16.9**; 100 pages / 586 impr; top queries 17 rows / 24 impr. Clicks stay concentrated: **`/security/hall-of-fame/` is 4 of the 8** (11 impr, pos 13.5) — run 145 gave that page site chrome, so the next pull is the first that can show whether the onward links convert. Strengthen-next, top 3 of 50 off page 1: **`/solve/running-total-cumulative-sum-in-sql/` 72 / 36.3 ← declined, see above** · `/solve/find-rows-with-no-match-in-another-table/` 31 / 14.3 · `/vs/` 18 / 17.9. **First-party referral: 8 pageloads / 3 referrers** (google 5, baidu 2, bing 1); **5 of the 8 on `/security/hall-of-fame/`**. **New — URL Inspection: `/agents/` reads "Duplicate, Google chose different canonical" (it picked `/agents`, crawled 07-19).** Verified live: `/agents` 301s to `/agents/`, and both the rendered `<link rel=canonical>` and the sitemap carry the slash ⇒ a stale pre-`SK-WEB-027` crawl, not a live defect. Only a lever if it survives a fresh crawl | `scripts/gsc-pull.ts` + `scripts/rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
+| 7 | Surface yield | posts **36**. **Google (GSC 28d, 06-27→07-25, live): 8 clicks / 496 impr / pos 16.9**; 100 pages / 586 impr; top queries 17 rows / 24 impr. Clicks stay concentrated: **`/security/hall-of-fame/` is 4 of the 8** (11 impr, pos 13.5) — run 145 gave that page site chrome and **run 149 added a product CTA to its own body** (it had zero product context / conversion path before), so the next pull is the first that can show whether that landing surface now converts onward. Strengthen-next, top 3 of 50 off page 1: **`/solve/running-total-cumulative-sum-in-sql/` 72 / 36.3 ← declined, see above** · `/solve/find-rows-with-no-match-in-another-table/` 31 / 14.3 · `/vs/` 18 / 17.9. **First-party referral: 8 pageloads / 3 referrers** (google 5, baidu 2, bing 1); **5 of the 8 on `/security/hall-of-fame/`**. **New — URL Inspection: `/agents/` reads "Duplicate, Google chose different canonical" (it picked `/agents`, crawled 07-19).** Verified live: `/agents` 301s to `/agents/`, and both the rendered `<link rel=canonical>` and the sitemap carry the slash ⇒ a stale pre-`SK-WEB-027` crawl, not a live defect. Only a lever if it survives a fresh crawl | `scripts/gsc-pull.ts` + `scripts/rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
 | | **Engine** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **1.7 d old, staleness trigger not fired**. This run verified the run's *completeness* rather than re-reading the score: its `Save full-run checkpoint` step is **`skipped`**, which per `SK-QUAL-011` happens only after a finished run deletes its checkpoint — one 38-min window, not six. The EX figure itself is run 146's read of that report | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted; SC dead (#619) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836)). The 07-27 re-dispatch [30230040001](https://github.com/nlqdb/nlqdb/actions/runs/30230040001) (`d961475`) exited **partial** — its `Save full-run checkpoint` step **ran**, so a `SK-QUAL-013` budget-stop left a checkpoint behind | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
@@ -71,18 +75,18 @@ open PRs — #841 touches only `packages/mcp/README.md`.
 | 13 | nlqdb-api wall-time p50 / p95 | **p50 16.4 ms / p95 1.48 s** (p99 1.69 s) | mcp-server p50 691.3 ms / p95 1.30 s. Read p95: the account-level distribution is dominated by cheap routes, so p50 is **not** `/ask` — an `/ask`-only split needs Grafana `metrics:read` (run 143's correction) |
 | 14 | $ spend | ~$0 | free tiers |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.492** (recomputed live 07-27; was 0.563 — **pure time-decay, no suite changed state**). Per suite `pass × freshness`: **mcp 0.671** (✅ 07-25) · **sdk 0.648** (✅ 07-24) · **examples 0.648** (✅ 07-24) · **opencheck 0** (latest ❌ 07-24; last success 07-17 ⇒ 10.2 d, freshness floored — the documented NVIDIA-free-tier saturation flake, remedy costs money ⇒ rule 4). Purely opencheck-limited; the other three decay ~0.14/day | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
+| 15 | E2E manual-suite freshness | **0.420** (recomputed 07-28; was 0.492 — **pure time-decay, no suite changed state**). Per suite `pass × freshness`: **mcp 0.576** (✅ 07-25) · **sdk 0.553** (✅ 07-24) · **examples 0.553** (✅ 07-24) · **opencheck 0** (latest ❌ 07-24; last success 07-17 ⇒ 11 d, freshness floored — the documented NVIDIA-free-tier saturation flake, remedy costs money ⇒ rule 4). Purely opencheck-limited; the other three decay ~0.14/day | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.5382); agentic-frontier ≥ 0.80 (0.693); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (N=0); destructive-op retry (N≈0); MCP in 3+ hosts (0); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
 | 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **10** (re-counted live 07-27, pinned grep; **+1 vs 9**). The new one is `mcp-server`'s `sk_live_*`-as-MCP-credential question, already mirrored as founder queue bullet #3 — a founder-only call, so it is queue depth, not agent backlog. Rest: elements 2; agent-memory-pivot / anonymous-mode / cli / docs-site / e2e-coverage / events-pipeline / quality-eval 1 each | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, case-insensitively, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever (07-11 /weekly); pullable only under a step-2 priority-3 waiver |
-| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** — re-swept live on a fresh build: **126** pages, **3,238** internal + **15** cross-app links, `_redirects` carrying 115 bare-path 301s | target 0 — `node apps/web/scripts/check-links.mjs` + `client-nav-integrity.test.ts`. Four standing blind spots: external inbound links to bare paths (≥107 impr), published npm entrypoints (row #19), **hosts** not paths (`www.nlqdb.com` serves the whole site un-redirected — bounded, `rel=canonical` is absolute; fix is a zone Redirect Rule ⇒ console click), and pages with no links at all (run 145) |
+| 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** — re-swept live on a fresh build: **126** pages, **3,240** internal (+2, the run-149 hall-of-fame CTA) + **15** cross-app links, `_redirects` carrying 115 bare-path 301s | target 0 — `node apps/web/scripts/check-links.mjs` + `client-nav-integrity.test.ts`. Four standing blind spots: external inbound links to bare paths (≥107 impr), published npm entrypoints (row #19), **hosts** not paths (`www.nlqdb.com` serves the whole site un-redirected — bounded, `rel=canonical` is absolute; fix is a zone Redirect Rule ⇒ console click), and pages with no links at all (run 145) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
-| 19 | Live-surface claim integrity | **1 open, fixed in-repo, awaiting republish.** Checked live on the registry this run: `@nlqdb/sdk` latest is still **0.2.1**, so every surface telling a reader to `npm i @nlqdb/sdk` still hands them an `ERR_MODULE_NOT_FOUND`. #823 fixed + guarded the manifests; returns to 0 when **`0.2.2` reaches the registry — release PR #826 open, unmerged 2 days**. `@nlqdb/mcp` is live at **0.1.0** (0.1.1 waits in the same PR). The 0-phantom sweeps (`mcp-tool-`/`cli-verb-`/`sdk-method-integrity`) are unchanged | target 0 |
+| 19 | Live-surface claim integrity | **1 open, fixed in-repo, awaiting republish.** Checked live on the registry this run: `@nlqdb/sdk` latest is still **0.2.1**, so every surface telling a reader to `npm i @nlqdb/sdk` still hands them an `ERR_MODULE_NOT_FOUND`. #823 fixed + guarded the manifests; returns to 0 when **`0.2.2` reaches the registry — release PR #826 open, unmerged 3 days**. `@nlqdb/mcp` is live at **0.1.0** (0.1.1 waits in the same PR). The 0-phantom sweeps (`mcp-tool-`/`cli-verb-`/`sdk-method-integrity`) are unchanged | target 0 |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | schema ✅ · BYOLLM lanes ✅ · picker web ✅ (`SK-PREMIUM-013`) + parity ✅ (`SK-PREMIUM-014`) · CTA ✅ (`SK-PREMIUM-004`) · premium chain ⬜ (`SK-LLM-017`, flag-dark) · spend-cap UI ⬜ (Lago-parked) | per [`phase-plan.md §6`](phase-plan.md) + `GLOBAL-026` the paid plan is built before the signal fires |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0 failed / 9 blocked** — carried from the 07-26 live walk; the scheduled CI walk [30194859852](https://github.com/nlqdb/nlqdb/actions/runs/30194859852) (07-26 08:34Z) concluded success. **Not re-walkable from a `/daily` container**, a new standing constraint: `@playwright/test` pins `~1.60.0`, which wants Chromium **1223**; the image ships **1194**, so the walker aborts with `Executable doesn't exist`. CI-only until they agree | target **0 `failed`** ✅; `blocked` reported beside it, never folded in. All walks stop at the 428 `challenge_required` (Turnstile declining a datacenter IP by design, `SK-ANON-012`), so steps past the ask are **observed, not proven** |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub (per-bucket split lives only in the ledger). Each carries its ledger `utm_source` in-repo; **npm's does not reach the registry** and the SDK install is broken (row #19) until #826 merges. MCP official registry published 07-22 (`com.nlqdb/nlqdb`); Glama crawl-listed; Smithery 0 / PulseMCP 0. First-touch attribution live since 07-19 on both create arms; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus: → ≥ 5 live.** Yield from `/app/admin` + `scripts/rum-pull.ts`, never estimated. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 4** (was 5), head ⏱ ~5 min · **0 days old**; oldest bullet 44 days (`SK-PIVOT-016` gate **0/5**) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs 6, oldest 10 days (draft #719) |
+| | **Human queue** — the one non-automatable actor | **depth 4**, head ⏱ ~5 min · **1 day old**; oldest bullet 45 days (`SK-PIVOT-016` gate **0/5**) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs 3, oldest 11 days (draft #719) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
@@ -96,55 +100,53 @@ lesson gists stay in `research/distribution-queue.md`.
 
 ## Last change
 
-**2026-07-27 (run 148)** — **Number moved: attributable outbound links on the
-`@nlqdb/sdk` npm package page 0 → 2** (apex + docs, both `?utm_source=npm`). Lane:
-acquisition (weekly-focus row #22 — npm-channel yield attribution, SK-GTM-007
-coverage) + GLOBAL-025 onboarding.
+**2026-07-28 (run 149)** — **Number moved: product-conversion CTA links in the body of
+`/security/hall-of-fame/` 0 → 1** (`/app/new/`, the canonical create entry). Lane:
+funnel-conversion (step-2 priority 1) on the highest-yield organic landing surface +
+GLOBAL-025 onboarding.
 
-**The defect.** `@nlqdb/sdk` is the canonical HTTP client (GLOBAL-001) and npm is a
-live acquisition channel (row #22, one of the 4). But its README — the page
-npmjs.com renders — documented every verb and linked **nowhere**: a developer who
-discovered the SDK on npm had no path to the product, the docs, or the API key the
-very next `## Auth` section already assumes they hold. The same funnel-leak class
-#841 just closed on the sibling `@nlqdb/mcp` README, on a file neither open PR touches.
+**The defect.** `/security/hall-of-fame/` is the **single highest-traffic real-stranger
+surface** — 4 of 8 GSC clicks and 5 of 9 first-party referral pageloads (row #7), the one
+page strangers actually reach organically (it is linked from `SECURITY.md` +
+`/.well-known/security.txt`). Run 145 gave it site chrome so an arrival *could* navigate
+onward, but the page **body itself** never said what nlqdb is or offered a reason to try
+it: a security researcher landed, read about responsible disclosure, and left without
+learning the product exists. A dead-ended body on the page that gets the most real
+traffic is a funnel-conversion leak, not a cosmetic one.
 
-**The fix + re-measure.** Added a lead-in linking `nlqdb.com/?utm_source=npm`,
-`docs.nlqdb.com/sdk/?utm_source=npm`, and (untagged, product-not-landing per #841)
-`app.nlqdb.com/app/keys`. All three verified **200 on prod** before linking (P2).
-Re-measured: the README now carries **2 tagged landing links** (was 0), so a
-click-through from the package page stops converting as `direct`. A patch changeset
-ships it on the next sdk publish (folds into #826's 0.2.2).
+**The fix + re-measure.** Added a final CTA section to the page body, mirroring the
+`/solve` idiom (the `.cta` lime primitive + `--rule` divider): a one-line "nlqdb is a
+database you query in plain English" plus **`Start with a goal →` linking `/app/new/`**
+(verified **200 on prod**, P2) and the anonymous-DB reassurance. Re-measured on a fresh
+build: the built page now carries **1 product-CTA link** (was 0), chrome intact, and
+`check-links` counts **3240** internal links (was 3238), 0 dead. The link is internal, so
+`captureFirstTouch` (which runs on every `Base.astro` load) already attributed the visit
+on arrival — no `utm` needed, matching how every `/solve` page links `/app/new/`.
 
-**The guard.** Nothing else pins this file — `check-links.mjs` sweeps rendered site
-hrefs, not a package README (`agent-artifacts.test.ts` pins the *site's* surfaces).
-`packages/sdk/test/readme.test.ts` (2 tests, vitest — the package's own runner, so
-the guard ships with the thing it guards) asserts the README links to the product,
-docs, and keys page, and that every apex/docs URL carries `utm_source=npm`; `app.`
-is out of scope (it never runs the attribution capture).
+**The guard.** `check-links.mjs` already fails if `/app/new/` ever goes dead, and
+`sitemap.xml.test.ts` pins the page's Topnav+Footer chrome (3 pass). No bespoke
+per-page CTA test — the `/solve` pages carry the same idiom with no such test, so a
+dedicated one would break that consistency for a low-cost-to-restore marketing CTA (D5).
 
-**Step 3.** Drafts **2**-deep (< 3) ⇒ no forced publish; skipped a step-3.2 draft
-(the lesson overlaps #841's "package page needs a way in", would near-duplicate).
-**dev.to drip fired this run** (>20 h since the last post): drained the oldest pending
-variant, `top-n-rows-per-group` → https://dev.to/omer_hochman/top-n-per-group-is-the-query-limit-cant-write-57eb
-(tags `sql,database,webdev`); queue line updated, dev.to venue dropped. Pending
-variants 20 → 19.
+**Step 3.** Distribution queue **2**-deep (< 3) ⇒ no forced publish; skipped a step-3.2
+draft (the lesson — "your highest-traffic page needs a body CTA, not just chrome" —
+near-duplicates the run-145/148 funnel-leak entries, fails D5). **dev.to drip:** newest
+dev.to article was 8.1 h ago (< 20 h), so the 1/day guard skips this run — the expected
+no-op; no queue-line edit.
 
-**No new `SK-*`** (P5/D5): `GLOBAL-003` already requires a shipped capability to reach
-every surface and `SK-GTM-007` already requires the `utm_source` key on every published
-landing URL. Per `AGENTS.md` §10.2 this is code-wrong / decision-right — a published
-surface lagged decisions that already existed. A record saying "link the sdk page too"
-fails D5.
+**No new `SK-*`** (P5/D5): `GLOBAL-025` already makes onboarding a first-class KPI and the
+`/solve` CTA idiom already exists. Per `AGENTS.md` §10.2 this is code-wrong / decision-
+right — a real surface lagged an idiom that already existed. A record saying "put a CTA on
+the security page too" fails D5.
 
-**Gates:** `typecheck` exit 0 (sdk) · sdk suite **82 pass** (incl. 2 new) · `lint`
-clean on the new `.ts` · gate 3 `grep -rn '^### GLOBAL-' docs/features/` prints
-nothing · **D4** every edited doc under 20480 B. Change is isolated — a README (imported
-nowhere), one test (sdk-only), a markdown changeset — so cross-package gates are
-untouched by construction.
-**KPI (GLOBAL-025):** advances **onboarding** — a developer who finds the canonical
-client on npm now has a one-click path to the product, the docs, and a key, and every
-click-through is attributable to the npm channel instead of reading as `direct`;
-**degrades none** — no engine, API, migration, runtime code, external call, or bundle
-touched.
+**Gates:** `astro check` **0 errors / 0 warnings** · web suite **425 pass** · `lint`
+clean on the touched `.astro` · `check-links` **0 dead** · gate 3 `grep -rn '^### GLOBAL-'
+docs/features/` prints nothing · **D4** every edited doc under 20480 B. Change is a single
+marketing `.astro` page — no engine, API, migration, runtime, or bundle code — so
+cross-package gates are untouched by construction.
+**KPI (GLOBAL-025):** advances **onboarding** — the page real strangers most often reach
+now names the product and offers a one-click path into the create flow; **degrades none**
+— no engine, API, migration, runtime code, external call, or bundle touched.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

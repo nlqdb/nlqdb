@@ -8,6 +8,7 @@ import {
   buildCodexConfig,
   buildStdioClaudeCodeCommand,
   buildStdioCodexConfig,
+  buildStdioMcpServersConfig,
   buildStdioServerObject,
   buildWindsurfConfig,
   buildZedConfig,
@@ -86,6 +87,38 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
     const expected = JSON.parse(buildClaudeConfig(MCP_ENDPOINT_URL));
     expect(JSON.parse(firstFenced(AGENTS, "json"))).toEqual(expected);
     expect(JSON.parse(firstFenced(CURSOR, "json"))).toEqual(expected);
+  });
+
+  // R-07 headless-route coverage. Every artifact carries the hosted route
+  // above *and* the `@nlqdb/mcp` + `sk_live_` stdio route for an unattended
+  // agent (GLOBAL-003) — a dropped file whose only path opens a browser
+  // dead-ends the very reader (a CI/container agent) it exists for.
+  test("every artifact offers the headless stdio route (@nlqdb/mcp + the key env)", () => {
+    for (const [name, text] of Object.entries({ AGENTS, CURSOR, CODEX, SKILL })) {
+      expect(text, name).toContain(STDIO_PACKAGE);
+      expect(text, name).toContain(STDIO_KEY_ENV);
+    }
+  });
+
+  test("the headless Claude Code command matches the shipped builder", () => {
+    expect(AGENTS).toContain(buildStdioClaudeCodeCommand());
+    expect(SKILL).toContain(buildStdioClaudeCodeCommand());
+  });
+
+  test("the headless Codex TOML matches the shipped builder", () => {
+    const block = buildStdioCodexConfig();
+    // AGENTS ships it as its 2nd (headless) ```toml block, uncommented.
+    expect(allFenced(AGENTS, "toml")[1]).toBe(block);
+    // codex-config.toml ships it as a commented alternative — only one live
+    // [mcp_servers.nlqdb] table is valid TOML — so uncomment before matching.
+    expect(CODEX.replace(/^# ?/gm, "")).toContain(block);
+  });
+
+  test("the headless mcpServers JSON matches the shipped builder", () => {
+    const expected = JSON.parse(buildStdioMcpServersConfig());
+    // AGENTS and the Cursor rule each ship it as their 2nd (headless) block.
+    expect(JSON.parse(allFenced(AGENTS, "json")[1] as string)).toEqual(expected);
+    expect(JSON.parse(allFenced(CURSOR, "json")[1] as string)).toEqual(expected);
   });
 
   test("every mcp.nlqdb.com URL resolves to the server route — no bare domain, no doubled path", () => {
@@ -225,9 +258,8 @@ describe("the docs pages name every tool packages/mcp registers", () => {
 // Scope is these two surfaces, not "every". `/agents` is agent-fetched too and
 // carries the route since #836 — guarded separately, against the builders it
 // renders, by `pages/__tests__/agents-stdio-config.test.ts`. The four droppable
-// artifacts above are the remaining gap: still hosted-route only, tracked as
-// owed R-07 work. Naming the limit here is what keeps a passing suite from
-// reading as coverage it doesn't have.
+// artifacts carry the headless route too as of this change — guarded by the
+// "headless" tests in the first describe block above.
 describe("both R-04 agent-fetched surfaces offer the headless route", () => {
   async function surfaces(): Promise<Record<string, string>> {
     return {

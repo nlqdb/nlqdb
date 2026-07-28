@@ -4,11 +4,13 @@
 //     `<nlq-data>`). Minted as a side-effect of `db.create`.
 //   - `sk_live_` — account-scoped backend key (Phase 2 Slice 1 of
 //     `SK-MCP-010`, used by CI / Docker / `NLQDB_API_KEY` / the HTTP API).
-//   - `sk_mcp_<host>_<device>_` — like `sk_live_` but tagged with the
-//     `(mcp_host, device_id)` claims from `SK-APIKEYS-004`. One key per
-//     MCP host per device; SK-APIKEYS-006 calls for "sign out
-//     everywhere" to revoke only this type (the helper lands with
-//     the dashboard slice — see api-keys/FEATURE.md Open questions).
+//     `sk_live_` is the widest key: it is the only one that may connect a
+//     BYO database (`canConnectDatabase` in `principal.ts`).
+//   - `sk_mcp_<host>_<device>_` — a strict subset of `sk_live_` tagged with
+//     the `(mcp_host, device_id)` claims from `SK-APIKEYS-004`. One key per
+//     MCP host per device, and the credential every headless MCP path
+//     hands out (`SK-APIKEYS-015`). Revoked only by an explicit
+//     `DELETE /v1/keys/:id` — no key type is swept by global sign-out.
 //
 // Hashing: HMAC-SHA256(apiKeyHmacSecret(env), plaintext_key) per
 // SK-APIKEYS-008. The secret is the dedicated `API_KEY_SECRET` when set,
