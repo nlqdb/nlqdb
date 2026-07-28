@@ -102,6 +102,17 @@ export function accountTenantIdFromPrincipal(principal: Principal): string | nul
   }
 }
 
+// SK-APIKEYS-015: the one place the `sk_mcp_` ⊂ `sk_live_` capability
+// boundary is expressed. Connecting a BYO database is an account action —
+// a headless MCP host's service credential must not be able to attach new
+// data sources to the account, so `sk_mcp` is excluded even though it
+// resolves to the same tenant. `POST /v1/db/connect` is the only route
+// that discriminates between the two sk_ kinds; widening this widens the
+// credential and needs an amendment to SK-APIKEYS-015.
+export function canConnectDatabase(principal: Principal): boolean {
+  return principal.kind === "user" || principal.kind === "sk_live";
+}
+
 export type RequirePrincipalVariables = {
   principal: Principal;
 };

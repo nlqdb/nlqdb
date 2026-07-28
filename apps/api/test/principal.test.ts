@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import {
   accountTenantIdFromPrincipal,
+  canConnectDatabase,
   makeRequirePrincipal,
   type Principal,
   parseAnonBearer,
@@ -194,6 +195,55 @@ describe("surfaceFromPrincipal", () => {
       deviceId: "macbook-air",
     };
     expect(surfaceFromPrincipal(principal)).toBe("mcp");
+  });
+
+  it("labels a dashboard-minted sk_mcp key `mcp` too — mint path is not a claim", () => {
+    // SK-APIKEYS-015: `/app/keys` mints `sk_mcp_` alongside the OAuth
+    // callback, and headless-MCP adoption is only measurable if both land
+    // on `mcp`. The row carries no mint-path column precisely because the
+    // label must not depend on one.
+    const oauthMinted: Principal = {
+      kind: "sk_mcp",
+      id: "u_1",
+      keyId: "k_oauth",
+      mcpHost: "claude-desktop",
+      deviceId: "oauth-device",
+    };
+    const dashboardMinted: Principal = {
+      kind: "sk_mcp",
+      id: "u_1",
+      keyId: "k_dash",
+      mcpHost: "cursor",
+      deviceId: "ci-runner",
+    };
+    expect(surfaceFromPrincipal(dashboardMinted)).toBe(surfaceFromPrincipal(oauthMinted));
+  });
+});
+
+// SK-APIKEYS-015 — the `sk_mcp_` ⊂ `sk_live_` capability boundary. This is
+// the whole of the least-privilege claim the dashboard's MCP-key mint makes,
+// so a PR that widens it has to fail here first.
+describe("canConnectDatabase", () => {
+  it("allows a cookie session and an sk_live key", () => {
+    const user = { kind: "user", id: "u_1", session: {} } as unknown as Principal;
+    expect(canConnectDatabase(user)).toBe(true);
+    expect(canConnectDatabase({ kind: "sk_live", id: "u_1", keyId: "k_1" })).toBe(true);
+  });
+
+  it("refuses an sk_mcp key — an MCP host must not attach data sources", () => {
+    const skMcp: Principal = {
+      kind: "sk_mcp",
+      id: "u_1",
+      keyId: "k_1",
+      mcpHost: "cursor",
+      deviceId: "macbook-air",
+    };
+    expect(canConnectDatabase(skMcp)).toBe(false);
+  });
+
+  it("refuses anon and pk_live (no account behind them)", () => {
+    expect(canConnectDatabase({ kind: "anon", id: "anon:abc", token: "anon_x" })).toBe(false);
+    expect(canConnectDatabase({ kind: "pk_live", id: "t_1", dbId: "db_1" })).toBe(false);
   });
 });
 

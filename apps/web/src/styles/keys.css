@@ -358,6 +358,45 @@
   color: var(--fg-dim);
 }
 
+/* The mint form stacks a type picker, the type's own fields, an error slot
+ * and the actions row — same rhythm as the dialog's own children. */
+.keys-dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* SK-APIKEYS-015 — sk_live_ vs sk_mcp_ picker. Radio rows rather than a
+ * <select> so each type's scope is readable before it is chosen. */
+.keys-dialog__types {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.keys-dialog__type {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.keys-dialog__type input {
+  margin-top: 2px;
+  accent-color: var(--accent-line);
+}
+
+.keys-dialog__type span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .keys-dialog__label {
   display: flex;
   flex-direction: column;
