@@ -108,6 +108,7 @@ import {
 import { recordPremiumInterest } from "./premium-interest.ts";
 import {
   accountTenantIdFromPrincipal,
+  canConnectDatabase,
   makeRequirePrincipal,
   type Principal,
   type RequirePrincipalVariables,
@@ -2966,11 +2967,12 @@ app.post("/v1/databases", requireSession, async (c) => {
 // is read out of the user's DB — there is no authored plan, so this does
 // NOT route through the typed-plan create pipeline.
 //
-// Auth (GLOBAL-003 surface parity): `requirePrincipal`, then accept only
-// account-scoped kinds — `user` (web ConnectForm) and `sk_live`
-// (SDK / CLI / MCP). `anon`, `pk_live` (db-scoped), and `sk_mcp` are
-// rejected 403 `connect_requires_account`: connecting a DB is an account
-// action, not a per-DB embed action.
+// Auth (GLOBAL-003 surface parity): `requirePrincipal`, then
+// `canConnectDatabase` — `user` (web ConnectForm) and `sk_live` (SDK / CLI)
+// only. `anon`, `pk_live` (db-scoped), and `sk_mcp` are rejected 403
+// `connect_requires_account`: connecting a DB is an account action, not a
+// per-DB embed action, and it is the one capability that keeps `sk_mcp_`
+// strictly narrower than `sk_live_` (SK-APIKEYS-015).
 //
 // Idempotency (GLOBAL-005): an `Idempotency-Key` header dedupes via KV
 // `byo_connect:<tenantId>:<key>` so a client retry returns the same dbId
@@ -2987,7 +2989,7 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
 
     // Only account-scoped principals may connect a database.
     const tenantId = accountTenantIdFromPrincipal(principal);
-    if (!tenantId || (principal.kind !== "user" && principal.kind !== "sk_live")) {
+    if (!tenantId || !canConnectDatabase(principal)) {
       span.setAttribute("nlqdb.db.connect.outcome", "connect_requires_account");
       span.end();
       return c.json(

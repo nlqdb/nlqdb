@@ -22,7 +22,7 @@ when-to-load:
 
 **Contribution to north-star:** Engine quality (hosted-premium + BYOLLM give heavy users frontier-model accuracy on real schemas, feeding `quality-eval`'s free-vs-frontier delta KPI per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)) and UX (request-denominated Shape B + opt-in fallback per `SK-PREMIUM-011` keep the boundary honest, no "first-token bill" surprise).
 **Owners (code):** none yet — `apps/api/src/{billing,ask}/**`, `packages/{llm,sdk,elements,mcp}/**`, `apps/web/**`, `cli/` will all carry slices.
-**Cross-refs:** docs/architecture.md §5/§6/§8 (add-on · pricing row · model catalog) · `llm-router/FEATURE.md` (`SK-LLM-007` chain selector, `SK-LLM-008` Pro privacy, `SK-LLM-009` caching) · `stripe-billing/FEATURE.md` (`SK-STRIPE-004` Checkout) · `rate-limit/FEATURE.md` (spend cap open) · `web-app/FEATURE.md` (CTA) · `sdk` / `cli` / `mcp-server` / `elements` FEATUREs (surface parity per `GLOBAL-003`)
+**Cross-refs:** docs/architecture.md §5/§6/§8 (add-on · pricing row · model catalog) · `llm-router/FEATURE.md` (`SK-LLM-007` chain selector, `SK-LLM-008` Pro privacy, `SK-LLM-009` caching) · `stripe-billing/FEATURE.md` (`SK-STRIPE-004` Checkout) · `rate-limit/FEATURE.md` (spend cap open) · `web-app/FEATURE.md` (CTA) · `sdk` / `cli` / `mcp-server` / `elements` FEATUREs (surface parity per `GLOBAL-003`) · [`agent-memory-pivot/FEATURE.md`](../agent-memory-pivot/FEATURE.md) (`SK-PIVOT-020` — the memory wedge's paid line is hosted memory *operations* riding this feature's premium chain; no memory-specific meter or SKU)
 
 ## Touchpoints — read this feature before editing
 
@@ -181,11 +181,3 @@ The 8-point BYOK decision tree that previously lived here is resolved by [`SK-PR
 - **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram (shape + judge prompt + CI) — the CTA's quality-delta pull depends on it.
 - **Parked until Lago wiring (Phase 2, blocks `SK-PREMIUM-002`):** the LLM-router → Lago usage-metering path (`phase-plan.md §6`); and the per-key spend-cap **UI** (`SK-PREMIUM-006` has the data model; dashboard lives on the API-keys + DB-settings pages).
 - **Parked to Enterprise:** reseller / agency consolidated billing — v1 is per-account only.
-
-## Source pointers
-
-- `docs/architecture.md` — §6 pricing row · §8 model catalog (Sonnet 4.6, Opus 4.7, GPT-5) · §5 add-on + honest-billing rules
-- `docs/features/llm-router/FEATURE.md` — credit landscape, tier-aware flow; `SK-LLM-007`/`008`/`009`/`010`
-- `docs/features/stripe-billing/FEATURE.md` — `SK-STRIPE-004`; Open: dunning, Lago wiring
-- `docs/features/rate-limit/FEATURE.md` — Open: per-key spend cap
-- `docs/features/web-app/FEATURE.md` — `SK-WEB-005` (three-part reply, the trace surface the CTA hooks into)

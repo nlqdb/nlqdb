@@ -184,6 +184,15 @@ in the scorecard and end the run with only the step-1 scorecard update — a
 null run is a valid outcome; busywork is not. (Runs fire several times a
 day; most days do not contain that many real levers.)
 
+**Four nulls in a row earn one proposal** (founder-approved 2026-07-28): read
+back through `git log` — when the previous **4** runs were nulls, this run may,
+instead of a 5th, **propose one** new surface-area lever (a new workload, a
+channel experiment, a product-wedge slice) as a bullet at its yield rank in
+`docs/blocked-by-human.md` (rule 4's strategy lane). Four nulls say the lever
+taxonomy is exhausted, not that nothing is left. The proposal is written for
+founder review and **never self-executed**, and the run is still a null for
+step 3. One proposal, then back to null runs until it is answered.
+
 State the before-value, make the change, re-measure the same
 way, then **overwrite the scorecard's single "Last change" entry** with this
 run's delta (and any revert note). Per-run history lives in `git log` +
@@ -240,3 +249,7 @@ The same decision covers GitHub branch protection: the founder declined
 required status checks on `main` (2026-07-26) — the reviewer-fixer merger
 agent's daily criteria are the merge gate, including CI state — so don't
 re-queue a branch-protection bullet in `blocked-by-human.md`.
+
+The step-2 surface-creating escape hatch was **approved by the founder
+2026-07-28** (proposed 2026-07-26, advisor session) — it lives in step 2; don't
+re-litigate it here.

@@ -214,12 +214,12 @@ installer package is needed — plus the yield gate (a real `agent-artifacts` vi
 ([`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) — every
 connect string == `mcp-install.ts`, served-file URLs pinned to `/mcp`, all `nlqdb.com` links carry
 `utm_source=agent-artifacts`).
-**Owed, found 2026-07-27:** all four artifacts still document only the hosted route ("nlqdb opens a
-browser OAuth page once"), so the file a developer drops in for their *unattended* agent dead-ends
-where R-04's page no longer does. Give each the `npx -y @nlqdb/mcp` + `sk_live_` alternative from
-`mcp-install.ts`'s `buildStdio*` builders and widen the surface map in
-[`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) to cover them
-(`GLOBAL-003`).
+**Resolved 2026-07-28:** all four artifacts now carry the `npx -y @nlqdb/mcp` + `sk_live_` headless
+route beside the hosted one (`GLOBAL-003`), from `mcp-install.ts`'s `buildStdio*` builders, so the
+file a developer drops in for their *unattended* agent no longer dead-ends where R-04's page does
+not. `agent-artifacts.test.ts` widened to pin each artifact's headless strings to those builders
+(the Claude Code command, the Codex TOML, the `mcpServers` JSON). **Still owed:** external
+distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`).
 
 ### R-08 — Answer-engine citation baseline
 
