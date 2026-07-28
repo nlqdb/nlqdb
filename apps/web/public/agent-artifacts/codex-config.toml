@@ -20,8 +20,10 @@ url = "https://mcp.nlqdb.com/mcp"
 # No browser? (headless — for CI, containers, unattended agents.)
 # Run the same tools locally over stdio instead: npx fetches @nlqdb/mcp,
 # authenticated by an sk_live_ key (mint one at app.nlqdb.com/app/keys) rather
-# than a browser. Use THIS table instead of the one above — delete the hosted
-# one, only one [mcp_servers.nlqdb] table is valid TOML:
+# than a browser. That key is a live account secret — ~/.codex/config.toml is
+# user-level, so keep it out of any repo you commit. Use THIS table instead of
+# the one above — delete the hosted one, only one [mcp_servers.nlqdb] table is
+# valid TOML:
 #
 # [mcp_servers.nlqdb]
 # command = "npx"

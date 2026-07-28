@@ -63,7 +63,8 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   from `mcp-install.ts`'s `buildStdio*` builders (`GLOBAL-003`), pinned by `agent-artifacts.test.ts`
   (23 pass). **Published install surfaces 3 → 4 (2026-07-27):** the `npx skills add …` one-liner now
   also ships on **`@nlqdb/mcp`'s npm README — the page npmjs.com renders** — beside the docs guide,
-  `llms.txt` and the artifacts index, pinned by `packages/mcp/test/readme.test.ts`. Re-run live in a clean directory it writes
+  `llms.txt` and the artifacts index, pinned by `packages/mcp/test/readme.test.ts`. Re-run live in a
+  clean directory it writes
   `.agents/skills/nlqdb-memory/SKILL.md`, a `.claude/skills/` symlink and `skills-lock.json` (no
   Cursor rule, no `AGENTS.md` edit); npm serves the new page from **0.1.1** (latest published still
   0.1.0, release PR #826). **The yield gate was unmeasurable until 07-26** — all five artifacts led
