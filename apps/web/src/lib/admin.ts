@@ -62,6 +62,19 @@ export type GtmMetrics = {
       veryDisappointedShare: number | null;
     };
   };
+  // SK-GTM-008 — the D1-answerable inputs of the SK-PIVOT-016 dogfood
+  // launch gate, plus the serving Worker's `MEMORY_PRESET`. Criteria
+  // 3–5 have no D1 source and are static-with-as-of in launch-gate.ts.
+  launchGate: {
+    memoryPresetEnabled: boolean;
+    memoryDbs: number;
+    memoryDbsInternal: number;
+    /** Lower bound only — `first10_asks` saturates at 10 per DB. */
+    memoryFirst10Asks: number;
+    memoryFirst10Ok: number;
+    memoryFirst10SuccessRate: number | null;
+    memoryLastQueriedAt: string | null;
+  };
   trend: Array<{ day: string } & Record<string, unknown>>;
 };
 

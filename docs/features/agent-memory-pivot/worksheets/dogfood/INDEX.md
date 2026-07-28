@@ -96,7 +96,11 @@ it must **never** delay the gate or the launch.
 ## Gate progress — the number this track exists to move
 
 `SK-PIVOT-016`: **0/5 green** (2026-07-28). `/daily` step 1 restates this
-beside the launch bullet's age every run.
+beside the launch bullet's age every run. The founder also reads it on
+**`/app/admin` → "Launch gate — SK-PIVOT-016"** (`SK-GTM-008`), which renders
+criteria 1–2 live from D1 and 3–5 as static-with-as-of constants; this table
+stays canonical, so a criterion that moves is updated here **and** in
+`apps/web/src/components/admin/launch-gate.ts`.
 
 | # | Criterion | State | Owned by |
 |---|-----------|-------|----------|

@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { type AdminMetricsResult, fetchAdminMetrics, type GtmMetrics } from "../../lib/admin";
 import ErrorBoundary from "../ErrorBoundary";
 import { fillDays, fmtDateTime, fmtPct, funnelStages, sparkPoints, trendSeries } from "./format";
+import { GATE_STATIC, gateGreenCount, gateStateGlyph, launchGateCriteria } from "./launch-gate";
 
 interface AdminDashboardProps {
   apiBase: string;
@@ -76,6 +77,8 @@ function Metrics({ m }: { m: GtmMetrics }) {
           robot traffic (walker/preview, {m.funnel.anonDbsSynthetic} synthetic anon DBs)
         </p>
       </header>
+
+      <LaunchGate m={m} />
 
       <section aria-labelledby="admin-h-north">
         <h2 id="admin-h-north">Acquisition north-star</h2>
@@ -325,6 +328,74 @@ function Metrics({ m }: { m: GtmMetrics }) {
         )}
       </section>
     </div>
+  );
+}
+
+// SK-GTM-008 — the SK-PIVOT-016 dogfood gate, on the surface the
+// founder already reads. Every row states whether its number is live
+// or static-with-as-of; a criterion with no source says so instead of
+// showing an invented one.
+function LaunchGate({ m }: { m: GtmMetrics }) {
+  const criteria = launchGateCriteria(m);
+  const green = gateGreenCount(criteria);
+  const g = m.launchGate;
+
+  return (
+    <section aria-labelledby="admin-h-gate" data-testid="launch-gate">
+      <h2 id="admin-h-gate">Launch gate — SK-PIVOT-016</h2>
+      <div className="admin__tiles">
+        <Tile
+          label="Gate green"
+          valueText={`${green} / ${criteria.length}`}
+          hint="condition-gated, never date-gated; only the founder may loosen a criterion"
+          hero
+        />
+        <Tile
+          label="Dogfood track"
+          valueText={`D-${GATE_STATIC.track.done} / ${GATE_STATIC.track.total}`}
+          hint={`slices merged, per worksheets/dogfood/INDEX.md as of ${GATE_STATIC.track.asOf}`}
+        />
+        <Tile
+          label="MEMORY_PRESET"
+          valueText={g.memoryPresetEnabled ? "on" : "off"}
+          hint="live from the serving Worker's env — the gate's prerequisite (PR #835)"
+        />
+        <Tile
+          label="Memory DBs"
+          value={g.memoryDbs}
+          hint={`${g.memoryDbsInternal} on internal accounts · newest activity ${fmtDateTime(g.memoryLastQueriedAt)}`}
+        />
+      </div>
+      <table className="admin__table" data-testid="launch-gate-criteria">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Criterion</th>
+            <th scope="col">State</th>
+            <th scope="col">How it is measured</th>
+          </tr>
+        </thead>
+        <tbody>
+          {criteria.map((c) => (
+            <tr key={c.n}>
+              <td>{`${gateStateGlyph(c.state)} ${c.n}`}</td>
+              <td>{c.label}</td>
+              <td>{c.value}</td>
+              <td>
+                <em>{c.measurement}</em> — {c.detail}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="admin__note">
+        “live” = read this request from the control-plane D1 (or the Worker's own env); “static” = a
+        constant in launch-gate.ts carrying its as-of date, because no queryable source exists yet.
+        Nothing here is estimated. The canonical gate state stays in
+        SK-PIVOT-016-dogfood-launch-gate.md and worksheets/dogfood/INDEX.md — this section mirrors
+        them.
+      </p>
+    </section>
   );
 }
 

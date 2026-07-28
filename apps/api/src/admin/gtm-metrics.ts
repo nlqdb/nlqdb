@@ -12,6 +12,8 @@
 //   anon_adoptions.*        INTEGER unixepoch seconds
 //   chat_message.created_at INTEGER milliseconds (Date.now())
 
+import { AGENT_MEMORY_V1_VERSION } from "../db-create/presets/agent-memory-v1.ts";
+
 // Founder/test account patterns — the scorecard row #2 exclusion list,
 // previously re-typed by hand on every /daily pull. `lower(email)` is
 // applied in SQL so casing in the stored row can't leak an internal
@@ -35,6 +37,13 @@ const SOURCE_CHANNEL_SQL = (col: string) => `COALESCE(
   NULLIF(json_extract(${col}, '$.ref'), ''),
   'direct'
 )`;
+
+// SK-GTM-008 — the ops memory workload lives on `agent_memory_v1` DBs,
+// identified by the version-keyed id prefix the create path mints
+// (`isAgentMemoryV1Db`, SK-HDC-020). Matched with `substr(...) = prefix`
+// rather than LIKE so the prefix's own underscores can't act as
+// single-char wildcards.
+const MEMORY_DB_PREFIX = `db_${AGENT_MEMORY_V1_VERSION}_`;
 
 const DAY_SECONDS = 86_400;
 const RETENTION_WINDOW_DAYS = 7;
@@ -138,6 +147,34 @@ export type GtmMetrics = {
       veryDisappointedShare: number | null;
     };
   };
+  /**
+   * SK-GTM-008 — the D1-answerable inputs of the `SK-PIVOT-016` dogfood
+   * launch gate, plus the one non-D1 fact the client cannot read (the
+   * serving Worker's `MEMORY_PRESET`). Criteria 3–5 have no D1 source at
+   * all and are rendered static-with-as-of by the dashboard — nothing
+   * here is estimated (GLOBAL-038).
+   */
+  launchGate: {
+    /** `MEMORY_PRESET === "1"` in the Worker serving this request. */
+    memoryPresetEnabled: boolean;
+    /** `agent_memory_v1` DBs in the registry (any tenant). */
+    memoryDbs: number;
+    /** …owned by a founder/test account — where the ops workload runs. */
+    memoryDbsInternal: number;
+    /**
+     * Asks/oks summed over memory DBs from the `SK-ONBOARD-006`
+     * counters. `first10_asks` saturates at 10 per DB, so `asks` is a
+     * LOWER BOUND on the workload's ask volume, never the total — and
+     * D1 carries no per-ask surface attribution, so neither number can
+     * isolate the public-MCP subset (criterion 1's gap, D-04 owns it).
+     */
+    memoryFirst10Asks: number;
+    memoryFirst10Ok: number;
+    /** Criterion 2's instrument: ok/asks over memory DBs; null at N = 0. */
+    memoryFirst10SuccessRate: number | null;
+    /** Newest activity across memory DBs (ISO), null if never queried. */
+    memoryLastQueriedAt: string | null;
+  };
   /** Daily headline history (SK-GTM-003), newest first, ≤ 90 rows. */
   trend: Array<{ day: string; [key: string]: unknown }>;
 };
@@ -156,6 +193,13 @@ function ratio(numerator: number, denominator: number): number | null {
 export async function computeGtmMetrics(
   db: D1Database,
   now: Date = new Date(),
+  /**
+   * The serving Worker's `MEMORY_PRESET` flag — the only non-D1 input
+   * (SK-GTM-008). The `GET /v1/admin/metrics` route passes the real
+   * flag; the cron snapshot leaves the default because no snapshot key
+   * records it, so the default can never be persisted as truth.
+   */
+  memoryPresetEnabled = false,
 ): Promise<GtmMetrics> {
   const nowSec = Math.floor(now.getTime() / 1000);
   const cut7d = nowSec - 7 * DAY_SECONDS;
@@ -180,6 +224,7 @@ export async function computeGtmMetrics(
     surveyRows,
     snapshots,
     anonDevices,
+    memoryDbs,
   ] = await db.batch([
     db.prepare(`SELECT COUNT(*) AS total,
         SUM(CASE WHEN ${INTERNAL_EMAIL_SQL} THEN 1 ELSE 0 END) AS internal,
@@ -255,6 +300,17 @@ export async function computeGtmMetrics(
         SELECT tenant_id, MAX(synthetic) AS isSyn FROM databases
         WHERE tenant_id LIKE 'anon:%' GROUP BY tenant_id
       )`),
+    // SK-GTM-008 — the `agent_memory_v1` workload behind the
+    // SK-PIVOT-016 gate's criteria 1–2. LEFT JOIN so an anon-owned
+    // memory DB still counts (its NULL email is simply not internal).
+    db
+      .prepare(`SELECT COUNT(*) AS dbs,
+        SUM(CASE WHEN ${INTERNAL_EMAIL_SQL} THEN 1 ELSE 0 END) AS internalDbs,
+        SUM(d.first10_asks) AS asks, SUM(d.first10_ok) AS ok,
+        MAX(d.last_queried_at) AS lastQueriedAt
+      FROM databases d LEFT JOIN user u ON u.id = d.tenant_id
+      WHERE substr(d.id, 1, length(?1)) = ?1`)
+      .bind(MEMORY_DB_PREFIX),
   ]);
 
   const uc = (userCounts?.results?.[0] ?? null) as CountsRow | null;
@@ -264,6 +320,8 @@ export async function computeGtmMetrics(
   const ad = (adoptions?.results?.[0] ?? null) as CountsRow | null;
   const pi = (premium?.results?.[0] ?? null) as CountsRow | null;
   const dev = (anonDevices?.results?.[0] ?? null) as CountsRow | null;
+  const mem = (memoryDbs?.results?.[0] ?? null) as CountsRow | null;
+  const memLastSec = num(mem, "lastQueriedAt");
 
   let strangersActive7d = 0;
   let strangersRetained7d = 0;
@@ -388,6 +446,15 @@ export async function computeGtmMetrics(
         byResponse: surveyByResponse,
         veryDisappointedShare,
       },
+    },
+    launchGate: {
+      memoryPresetEnabled,
+      memoryDbs: num(mem, "dbs"),
+      memoryDbsInternal: num(mem, "internalDbs"),
+      memoryFirst10Asks: num(mem, "asks"),
+      memoryFirst10Ok: num(mem, "ok"),
+      memoryFirst10SuccessRate: ratio(num(mem, "ok"), num(mem, "asks")),
+      memoryLastQueriedAt: memLastSec > 0 ? new Date(memLastSec * 1000).toISOString() : null,
     },
     trend,
   };
