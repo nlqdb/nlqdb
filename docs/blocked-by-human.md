@@ -91,6 +91,12 @@ release step, largely automated.)
    every visit is attributable end-to-end. nlqdb has never launched anywhere;
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0.
+   **Reaffirmed 2026-07-28 (advisor session): no launch before the pivot has
+   real proof of value — the condition gate stands unchanged, criteria not
+   loosened.** The gate now has an execution track that `/daily` can pick up:
+   [`dogfood/INDEX.md`](./features/agent-memory-pivot/worksheets/dogfood/INDEX.md)
+   (`D-01..D-07`, one slice per criterion), and it is the founder-set weekly
+   focus number as of 07-28. Gate progress: **0/5**.
 
 3. **⏱ ~2 min · since 2026-07-27 — Mint an `sk_live_` key and set it as
    `NLQDB_API_KEY` in the walker env.** #836 (the `/agents` connect card)
