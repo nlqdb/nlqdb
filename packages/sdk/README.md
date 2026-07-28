@@ -7,6 +7,12 @@ runtime-agnostic — only depends on global `fetch` (browsers, Node ≥
 Phase 0 — first consumer is `apps/web`; second is `packages/elements`.
 Published to npm as `@nlqdb/sdk` (docs/architecture.md §5.1).
 
+**New here?** [nlqdb.com](https://nlqdb.com/?utm_source=npm) is the product —
+describe a database in plain English and query it, no backend to build. Grab an
+API key at [app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys), then follow
+the [SDK guide](https://docs.nlqdb.com/sdk/?utm_source=npm). The `## Auth`
+section below assumes you have that key.
+
 ## Install
 
 ```sh
