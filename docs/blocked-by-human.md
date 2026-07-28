@@ -25,7 +25,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~5 min | **Decide:** flip `MEMORY_PRESET` in prod before E-03 ships, or hold? Holding also holds #2's dogfood gate; PR #835 drafted | 2026-07-27 |
+| 1 | ~0 min | **Decided 2026-07-28:** hold #835 until E-03 merges, then un-draft and ship the flip. Nothing to do until E-03 lands (in flight) | 2026-07-27 → decided 07-28 |
 | 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 3 | ~2 min | Mint an `sk_live_` key and set it as `NLQDB_API_KEY` in the walker env — the last tick on the cold-agent headless walk #836/#837 just shipped the route for | 2026-07-27 |
 | 4 | ~5 min | **Decide:** is `sk_live_*` the headless MCP credential? It defeats global-signout revocation and mis-attributes MCP as `cli` | 2026-07-27 |
@@ -35,8 +35,9 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 Only #2 can move real strangers (scorecard row #2); #6 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists. #1 and #4 are decisions an agent may not take alone — both would
-supersede or amend a recorded decision.
+exists. **#1 is answered as of 07-28** and stays listed only until #835 merges;
+#4 is still a decision an agent may not take alone — it would amend a recorded
+decision.
 
 (The 2026-07-27 "delete two orphaned Neon branches" row is **done** — verified
 live: `pr-571` and `pr-648` are gone and the project sits at 5 of 10 slots. Its
@@ -54,24 +55,23 @@ release step, largely automated.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
-1. **⏱ ~5 min · since 2026-07-27 — Decide: flip `MEMORY_PRESET` in prod
-   before E-03 ships, or hold?** PR #835 flips it; I left it drafted because
-   the flip crosses a recorded security gate:
+1. **✅ Decided 2026-07-28 (advisor session) — hold #835 until E-03 merges,
+   then un-draft and ship the flip.** E-03 is now **in flight** on branch
+   `claude/e03-memory-scoping`; when it merges, an agent un-drafts #835 and
+   ships `MEMORY_PRESET=1`. The
    [`E-06`](./features/agent-memory-pivot/worksheets/engine/E-06-agents-createform-preset.md)
-   says do it *"only after E-03 (per-agent isolation) ships"*, and
+   gate ("only after E-03 ships") is **satisfied by that sequence, not
+   superseded** — no decision is amended. Two things the shipping run owes:
+   E-03's "no prod memory DBs exist ⇒ no backfill migration" premise stops
+   holding at the flip, and the five `solve.ts` sites saying the preset is
+   gated become false. Then the dogfood corpus sync
+   ([`D-04`](./features/agent-memory-pivot/worksheets/dogfood/D-04-first-corpus-sync.md))
+   unblocks. **Nothing for you to do here** — kept as a row until #835 merges.
+   *Why the hold:* until
    [`E-03`](./features/agent-memory-pivot/worksheets/engine/E-03-memory-scoping.md)
-   is **⬜ not started** — unbuilt in code, not just on paper: rows are tagged
-   with the *tenant* id, and `end_user_id`/`thread_id` are written but never
-   read, so the columns look like isolation and provide none. Cross-*account*
-   isolation holds; the exposure is end-user-to-end-user inside one builder's
-   app. **Holding also holds the launch:**
-   [`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
-   names `MEMORY_PRESET=1` a prerequisite of the dogfood gate #2 waits on.
-   - **Hold** (safe default): no action — #835 stays drafted, E-03 proceeds.
-   - **Ship**: I record a decision superseding the E-06 gate, add a backfill
-     line to E-03 (its "no prod memory DBs exist, so no backfill migration"
-     premise stops holding the moment you flip), and correct the five
-     `solve.ts` sites that tell the public the preset is gated.
+   lands, `end_user_id`/`thread_id` are written but never read — the columns
+   look like isolation and provide none. Cross-*account* isolation holds; the
+   exposure is end-user-to-end-user inside one builder's app.
 
 2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
@@ -91,6 +91,12 @@ release step, largely automated.)
    every visit is attributable end-to-end. nlqdb has never launched anywhere;
    this is the only action in the queue that can move real strangers
    (scorecard row #2) from 0.
+   **Reaffirmed 2026-07-28 (advisor session): no launch before the pivot has
+   real proof of value — the condition gate stands unchanged, criteria not
+   loosened.** The gate now has an execution track that `/daily` can pick up:
+   [`dogfood/INDEX.md`](./features/agent-memory-pivot/worksheets/dogfood/INDEX.md)
+   (`D-01..D-07`, one slice per criterion), and it is the founder-set weekly
+   focus number as of 07-28. Gate progress: **0/5**.
 
 3. **⏱ ~2 min · since 2026-07-27 — Mint an `sk_live_` key and set it as
    `NLQDB_API_KEY` in the walker env.** #836 (the `/agents` connect card)

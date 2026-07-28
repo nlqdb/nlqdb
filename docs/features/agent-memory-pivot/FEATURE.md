@@ -16,11 +16,12 @@ when-to-load:
 **One-liner:** Reweight nlqdb's go-to-market so "analytical memory for AI
 agents" is the lead wedge — a real, queryable database an agent uses as
 memory — delivered as a sequence of small, daily-loop-sized
-slices rather than a relaunch. **Three tracks ship in parallel:** messaging
+slices rather than a relaunch. **Four tracks ship in parallel:** messaging
 (WS-* — how users discover the wedge), **engine** (E-* — the memory-shaped
-primitives that make the wedge claims durable), and **reach** (R-* —
+primitives that make the wedge claims durable), **dogfood** (D-* — nlqdb's own
+ops running on nlqdb memory, the SK-PIVOT-016 launch gate), and **reach** (R-* —
 search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
-**Status:** in progress (Phase 2 distribution) — **WS-13 headline reposition shipped 2026-06-24** (SK-PIVOT-013; the site leads with the wedge sitewide); **WS-14 home-flow reposition** (SK-PIVOT-014 + SK-WEB-017), since superseded on `/` by the two-door home (SK-WEB-018); E-04 TTL-sweep core shipped (SK-PIVOT-011; cron + RLS clause pending).
+**Status:** in progress (Phase 2 distribution) — **WS-13 headline reposition shipped 2026-06-24** (SK-PIVOT-013; the site leads with the wedge sitewide); **WS-14 home-flow reposition** (SK-PIVOT-014 + SK-WEB-017), since superseded on `/` by the two-door home (SK-WEB-018); E-04 TTL-sweep core shipped (SK-PIVOT-011; cron + RLS clause pending). **Dogfood track opened 2026-07-28** — `D-01..D-07` under [`worksheets/dogfood/`](worksheets/dogfood/INDEX.md) give SK-PIVOT-016/017/018/019 an execution path the `/daily` loop can pick up; the SK-PIVOT-016 gate is **0/5**.
 **Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/db-create/neon-provision.ts` + `ask/build-deps.ts` (agent-scope RLS, SK-PIVOT-009), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
 **Cross-refs:** `docs/research/deepseek-moat-framing.md` (the thesis) · `docs/competitors.md §4` (agent-memory landscape) · `docs/research/personas.md §P2` · GLOBAL-036 (canonical text in `docs/decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md`; index in `docs/decisions.md`).
 
@@ -38,6 +39,9 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 > `WS-*`) and [`worksheets/engine/INDEX.md`](worksheets/engine/INDEX.md)
 > (engine `E-01..E-07`); rule of thumb is `WS-*` when the worst number is
 > funnel/distribution, `E-*` when it is engine quality / agent on-ramp.
+> The **dogfood** track ([`worksheets/dogfood/INDEX.md`](worksheets/dogfood/INDEX.md),
+> `D-01..D-07`) is the execution track for the `SK-PIVOT-016` launch gate —
+> pick from it when the weekly focus is that gate's `n/5` (founder-set 2026-07-28).
 > The **reach** track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md),
 > `R-*`) is picked up only by its own `/reach` loop. The
 > surface-by-surface copy inventory is

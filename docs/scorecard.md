@@ -4,16 +4,21 @@ Point-in-time tracker, regenerated each [`/daily`](../.claude/commands/daily.md)
 run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 `progress/quality-score-verification-log.md`.
 
-**Weekly focus number (2026-07-19 → 07-25, founder-set):**
-**Acquisition — channels live with attributable yield: 2 → ≥ 5 (row #22, now 4).**
-Founder directive 2026-07-19 ([`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-instrumentation.md)):
-the operating focus is **user acquisition**, measured continuously — product progress
-is secondary this cycle. Channel truth lives in
-[`research/acquisition-channels.md`](research/acquisition-channels.md); yield truth on
-`/app/admin`, never estimated. Premium-chain work (`SK-LLM-017`, row #20) is pullable
-only when no acquisition lever is.
-**⚠ Window lapsed 07-25; `/weekly` is 2 days overdue, so this run picked its own
-target per step 2.**
+**Weekly focus number (2026-07-28 →, founder-set, advisor session):**
+**The [`SK-PIVOT-016`](features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
+dogfood gate — criteria green: 0/5 → 5/5.**
+Founder directive 2026-07-28 (advisor session): the operating focus is the **dogfood
+gate** — nlqdb's own agents running a real memory workload through the public MCP
+surface. Execution track:
+[`agent-memory-pivot/worksheets/dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md)
+(`D-01..D-07`), which carries the per-criterion owner. Every criterion is agent-movable;
+only the founder may loosen one, and the gate is condition-gated — never dated.
+**Superseded 2026-07-28 (window had lapsed 07-25):** acquisition — channels live with
+attributable yield 2 → ≥ 5 (row #22, now 4), founder directive 2026-07-19
+([`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-instrumentation.md)); channel truth in
+[`research/acquisition-channels.md`](research/acquisition-channels.md), yield truth on
+`/app/admin`, never estimated. Acquisition levers stay pullable when no dogfood lever
+is — as does premium-chain work (`SK-LLM-017`, row #20), one rank below.
 
 **Worst number today:** **the human queue — depth 4, top bullet (`MEMORY_PRESET`) 0
 days old but the launch-sequence bullet idle 44 days.** With real strangers at 0, the
@@ -83,9 +88,10 @@ open PRs — #841 touches only `packages/mcp/README.md`.
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub (per-bucket split lives only in the ledger). Each carries its ledger `utm_source` in-repo; **npm's does not reach the registry** and the SDK install is broken (row #19) until #826 merges. MCP official registry published 07-22 (`com.nlqdb/nlqdb`); Glama crawl-listed; Smithery 0 / PulseMCP 0. First-touch attribution live since 07-19 on both create arms; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus: → ≥ 5 live.** Yield from `/app/admin` + `scripts/rum-pull.ts`, never estimated. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
 | | **Human queue** — the one non-automatable actor | **depth 4** (was 5), head ⏱ ~5 min · **0 days old**; oldest bullet 44 days (`SK-PIVOT-016` gate **0/5**) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs 6, oldest 10 days (draft #719) |
-| | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/20 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
+| | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
+| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **0/7** — gate **0/5** | opened 07-28; mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md). D-01 🟡 in flight; D-03 the only slice pullable while `MEMORY_PRESET` is dark; D-07 ⛔ blocked on D-03+D-04 |
 | | Memory-quality eval (`SK-QUAL-023`) | **free-chain EX 93.33% (14/15)** — run 69, [GHA 29314389843](https://github.com/nlqdb/nlqdb/actions/runs/29314389843); p50 1168 ms / p95 7036 ms. Per-axis 3/3 except **temporal 2/3** (`SK-PIVOT-016` criterion 4) | 15 gold-verified questions, 4 axes + analytical; free-only, no baseline |
 
 ## Shipped distribution
