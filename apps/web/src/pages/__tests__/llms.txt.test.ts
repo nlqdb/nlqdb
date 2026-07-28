@@ -26,6 +26,8 @@ describe("llms.txt index", () => {
     expect(body).toContain("https://nlqdb.com/agent-artifacts/nlqdb-memory/SKILL.md");
     expect(body).toContain("https://nlqdb.com/agent-artifacts/nlqdb-memory.mdc");
     expect(body).toContain("https://nlqdb.com/agent-artifacts/codex-config.toml");
+    // The SK-PIVOT-017 docs→memory pack — same channel, fifth artifact.
+    expect(body).toContain("https://nlqdb.com/agent-artifacts/nlqdb-docs-memory/SKILL.md");
   });
 
   test("advertises the /blog hub and every published post", async () => {

@@ -8,9 +8,19 @@ sits alongside) · [`SK-QUAL-018`](./SK-QUAL-018-persona-bench.md) (the
 (the wedge this measures) · `GLOBAL-026` (the free-vs-frontier bet).
 Research: [`docs/research/agent-memory-quality-landscape.md`](../../../research/agent-memory-quality-landscape.md).
 
+**Status (2026-07-28):** the family now carries **two corpora, 27 gold-verified
+questions**. The repo-ops docs→memory pack landed 2026-07-28
+(`SK-PIVOT-017`/`SK-PIVOT-018` goal pack #1): `repo_ops_memory_v1`, **12
+questions** (retrieval 2 / temporal 4 / forgetting 2 / consolidation 2 /
+analytical 2) on the shipped preset's real column shape, gold-verified offline
+against a hand-authored seed — **no EX measured on them yet** (next
+`quality-eval-memory` dispatch). That dispatch's per-axis table now reads
+question→axis from the dataset (`--axes`) instead of guessing from id ranges,
+which mislabelled everything past id 14 as `analytical`.
+
 **Status (2026-07-14):** offline four-axis dataset, dispatchable workflow,
 **and first canonical EX** shipped — `tools/eval/src/datasets/memory-quality.ts`
-(15 gold-verified questions, 3 per axis + analytical) + runner wiring
+(then 15 gold-verified questions, 3 per axis + analytical) + runner wiring
 (`--dataset memory-quality`) + gold-executability / tie-free /
 axis-semantics tests + `.github/workflows/quality-eval-memory.yml`
 (`workflow_dispatch`, free chain + optional frontier lane, per-axis EX

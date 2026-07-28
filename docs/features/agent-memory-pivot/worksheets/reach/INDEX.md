@@ -196,7 +196,9 @@ below, all from ONE source of truth so command strings never drift from
 `mcp-install.ts`. Distribute via
 the R-04 guide + npm + registries. Add a drift test (artifact strings ==
 `mcp-install.ts`).
-**Done when:** ✅ artifacts published — 4 of 4 host artifacts live in
+**Done when:** ✅ artifacts published — 4 of 4 host artifacts live (+ a fifth,
+goal-pack artifact: the `nlqdb-docs-memory` docs→memory skill, `SK-PIVOT-017`,
+one-command installable and surfaced on the same three surfaces) in
 [`agent-artifacts/`](../../../../../apps/web/public/agent-artifacts/) (host-neutral
 `AGENTS.snippet.md`, Claude Code skill `nlqdb-memory/SKILL.md`, Cursor `nlqdb-memory.mdc`, Codex
 `codex-config.toml`, + a README index); Channel #12 surfaced on both agent-fetched surfaces (R-04

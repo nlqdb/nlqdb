@@ -33,6 +33,8 @@ const AGENTS = read("AGENTS.snippet.md");
 const CURSOR = read("nlqdb-memory.mdc");
 const CODEX = read("codex-config.toml");
 const SKILL = read("nlqdb-memory/SKILL.md");
+/** The SK-PIVOT-017 docs→memory pack — goal pack #1 (SK-PIVOT-018). */
+const DOCS_SKILL = read("nlqdb-docs-memory/SKILL.md");
 
 const docsPage = (name: string) =>
   readFileSync(join(import.meta.dir, `../../../docs/src/content/docs/${name}.mdx`), "utf8");
@@ -75,6 +77,16 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
   test("the Claude Code command matches the shipped builder", () => {
     expect(AGENTS).toContain(buildClaudeCodeCommand(MCP_ENDPOINT_URL));
     expect(SKILL).toContain(buildClaudeCodeCommand(MCP_ENDPOINT_URL));
+    expect(DOCS_SKILL).toContain(buildClaudeCodeCommand(MCP_ENDPOINT_URL));
+  });
+
+  // The docs→memory pack's re-sync runs in CI, where nobody can approve a
+  // browser OAuth page — so it is the one artifact for which the headless
+  // route is load-bearing, not an alternative. Both strings pinned.
+  test("the docs→memory pack ships the headless route for its unattended re-sync", () => {
+    expect(DOCS_SKILL).toContain(buildStdioClaudeCodeCommand());
+    expect(DOCS_SKILL).toContain(STDIO_PACKAGE);
+    expect(DOCS_SKILL).toContain(STDIO_KEY_ENV);
   });
 
   test("the Codex config block matches the shipped builder", () => {
@@ -122,7 +134,7 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
   });
 
   test("every mcp.nlqdb.com URL resolves to the server route — no bare domain, no doubled path", () => {
-    for (const artifact of [AGENTS, CURSOR, CODEX, SKILL]) {
+    for (const artifact of [AGENTS, CURSOR, CODEX, SKILL, DOCS_SKILL]) {
       const endpoints = urlsInText(artifact).filter((u) => u.includes("mcp.nlqdb.com"));
       expect(endpoints.length).toBeGreaterThan(0);
       for (const url of endpoints) {
@@ -143,7 +155,7 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
   const ATTRIBUTING_HOSTS = ["https://nlqdb.com/", "https://docs.nlqdb.com/"];
 
   test("every published nlqdb link carries the agent-artifacts utm_source (SK-GTM-007)", () => {
-    for (const artifact of [AGENTS, CURSOR, CODEX, SKILL, read("README.md")]) {
+    for (const artifact of [AGENTS, CURSOR, CODEX, SKILL, DOCS_SKILL, read("README.md")]) {
       const attributable = urlsInText(artifact).filter((u) =>
         ATTRIBUTING_HOSTS.some((h) => u.startsWith(h)),
       );
@@ -333,6 +345,54 @@ describe("the npx skills add one-command install can't drift", () => {
       expect(prose, name).not.toContain("registers it in agents.md");
       expect(prose, name).not.toContain("agents.md entry");
     }
+  });
+});
+
+// SK-PIVOT-017 / SK-PIVOT-018 — the docs→memory pack (goal pack #1). Same
+// one-command path as its sibling, so the same drift risk applies: the command
+// carries a repo path, and a moved directory 404s for every reader.
+const DOCS_SKILL_REPO_PATH = "apps/web/public/agent-artifacts/nlqdb-docs-memory";
+const DOCS_SKILLS_INSTALL_CMD = `npx skills add https://github.com/nlqdb/nlqdb/tree/main/${DOCS_SKILL_REPO_PATH}`;
+
+describe("the docs→memory pack (SK-PIVOT-017)", () => {
+  test("its SKILL.md lives at the published repo path, with the frontmatter `skills add` requires", () => {
+    expect(existsSync(join(DIR, "nlqdb-docs-memory/SKILL.md"))).toBe(true);
+    const fm = DOCS_SKILL.match(/^---\n([\s\S]*?)\n---/)?.[1];
+    if (fm === undefined) throw new Error("nlqdb-docs-memory/SKILL.md has no YAML frontmatter");
+    // `skills add` derives the install directory from `name`, so it must equal
+    // the directory in the published URL above.
+    expect(fm).toMatch(/^name:\s*nlqdb-docs-memory\s*$/m);
+    expect(fm).toMatch(/^description:\s*\S.*$/m);
+  });
+
+  test("every surface that publishes it shows the exact install command", () => {
+    for (const [name, text] of Object.entries(installSurfaces())) {
+      expect(text, name).toContain(DOCS_SKILLS_INSTALL_CMD);
+    }
+  });
+
+  // Hard rule 1 (R-07): only promise what is live in prod. `nlqdb_remember`
+  // and the `agent_memory_v1` preset are `MEMORY_PRESET`-gated, and this
+  // artifact lands in someone else's repo where nobody re-reads it — so the
+  // gate, its two observable error codes, and the path that does work must be
+  // named in the file itself, not just on the site.
+  test("states the MEMORY_PRESET gate, how it shows up, and what works meanwhile", () => {
+    const prose = normalizeProse(DOCS_SKILL);
+    expect(prose).toContain("memory_preset");
+    expect(prose).toContain("wrong_preset");
+    expect(prose).toContain("preset_disabled");
+    expect(prose).toContain("nlqdb_query");
+  });
+
+  // SK-PIVOT-017's two load-bearing constraints. Both halves matter: an agent
+  // that ingests prose rebuilds the vector-RAG product the decision rejects,
+  // and one that writes markdown breaks the git-reviewed source of truth.
+  test("keeps the one-way, structure-only contract explicit", () => {
+    const prose = normalizeProse(DOCS_SKILL);
+    expect(prose).toContain("never ingest arbitrary prose");
+    expect(prose).toContain("nlqdb does not write markdown");
+    expect(prose).not.toContain("two-way");
+    expect(prose).not.toContain("bidirectional");
   });
 });
 

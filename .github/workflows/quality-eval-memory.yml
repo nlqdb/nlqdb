@@ -5,8 +5,9 @@
 # consolidation) plus the analytical-over-memory showcase. The dataset +
 # runner wiring (`--dataset memory-quality`) shipped offline-first; this is the
 # documented remaining half — the dispatchable `workflow_dispatch` that turns
-# the 15 gold-verified questions into an EX number for the scorecard Engine
-# lane.
+# the gold-verified questions into an EX number for the scorecard Engine lane
+# (27 today: 15 on the core memory corpus + 12 on the repo-ops docs→memory
+# pack, SK-PIVOT-017).
 #
 # Manual on-demand only (SK-QUAL-002); never a PR gate. Like persona-bench and
 # unlike BIRD/Spider there is NO upstream fixture download — the
@@ -49,9 +50,9 @@ jobs:
   run:
     name: Run memory-quality (free chain + optional frontier)
     runs-on: ubuntu-latest
-    # 15 questions × (≈3 s throttle, SK-QUAL-012 + ~2 s LLM tail) ≈ a couple
-    # of minutes; ×2 lanes with the frontier toggle. 30 min absorbs
-    # single-provider degradation + the bounded SK-QUAL-013 capacity waits.
+    # 27 questions × (≈3 s throttle, SK-QUAL-012 + ~2 s LLM tail) ≈ 3 minutes;
+    # ×2 lanes with the frontier toggle. 30 min absorbs single-provider
+    # degradation + the bounded SK-QUAL-013 capacity waits.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -111,6 +112,13 @@ jobs:
             echo "::warning::No results JSON produced (runner failed)."
             exit 0
           fi
+          # question_id → axis, read from the dataset itself. It used to be an
+          # id-range guess in jq (`if id < 3 then "retrieval" …`), which
+          # silently mislabelled every question as "analytical" the moment ids
+          # grew past 14 — they did, when the repo-ops pack landed
+          # (SK-PIVOT-017). The per-axis table gates SK-PIVOT-016 criterion 4,
+          # so a wrong label reads as a passing temporal axis.
+          axes=$(cd tools/eval && bun src/datasets/memory-quality.ts --axes)
           {
             echo "## quality-eval — memory-quality (agent-memory, SK-QUAL-023)"
             echo ""
@@ -127,19 +135,14 @@ jobs:
               "",
               "Free-vs-frontier delta: " + (if .free_vs_frontier_delta == null then "n/a (free-only run — set include_frontier)" else ((.free_vs_frontier_delta * 100 | tostring) + " pts") end)
             ' "$latest"
-            # Per-axis EX for the free lane. question_id → axis is fixed by the
-            # dataset (3 questions per axis, ids 0-14, SK-QUAL-023); gold_error
-            # rows are excluded from the denominator like the lane EX.
+            # Per-axis EX for the free lane, axis labels straight from the
+            # dataset ($axes above); gold_error rows are excluded from the
+            # denominator like the lane EX.
             echo ""
             echo "### Per-axis EX (free lane)"
             echo ""
-            jq -r '
-              def axis(id):
-                if id < 3 then "retrieval"
-                elif id < 6 then "temporal"
-                elif id < 9 then "forgetting"
-                elif id < 12 then "consolidation"
-                else "analytical" end;
+            jq -r --argjson axes "$axes" '
+              def axis(id): $axes[(id | tostring)] // "unknown";
               "| Axis | Match | Scored | EX |",
               "|---|---|---|---|",
               ( [.results[] | select(.lane == "free")]
@@ -165,13 +168,8 @@ jobs:
             echo ""
             echo "### Mismatched questions (free lane) — diagnostic for the next engine lever"
             echo ""
-            jq -r '
-              def axis(id):
-                if id < 3 then "retrieval"
-                elif id < 6 then "temporal"
-                elif id < 9 then "forgetting"
-                elif id < 12 then "consolidation"
-                else "analytical" end;
+            jq -r --argjson axes "$axes" '
+              def axis(id): $axes[(id | tostring)] // "unknown";
               [ .results[]
                 | select(.lane == "free")
                 | select(.outcome != "match" and .outcome != "gold_error") ] as $bad

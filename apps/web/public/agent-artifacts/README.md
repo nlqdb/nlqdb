@@ -32,8 +32,24 @@ Then connect the MCP server once with the command inside the skill.
 |------|-----------|-----|
 | [`AGENTS.snippet.md`](AGENTS.snippet.md) | append to your repo's `AGENTS.md` | any agent that reads `AGENTS.md` (host-neutral) |
 | [`nlqdb-memory/SKILL.md`](nlqdb-memory/SKILL.md) | `.claude/skills/nlqdb-memory/SKILL.md` | Claude Code (skill) |
+| [`nlqdb-docs-memory/SKILL.md`](nlqdb-docs-memory/SKILL.md) | `.claude/skills/nlqdb-docs-memory/SKILL.md` | Claude Code (skill) — the docs→memory pack |
 | [`nlqdb-memory.mdc`](nlqdb-memory.mdc) | `.cursor/rules/nlqdb-memory.mdc` | Cursor |
 | [`codex-config.toml`](codex-config.toml) | merge into `~/.codex/config.toml` | Codex |
+
+## Also: make your own docs queryable
+
+`nlqdb-docs-memory` is the same memory, pointed at the repo it lives in. It
+extracts the **structure** your docs already carry — decision ids and statuses,
+open questions with dates, queues, trackers, and the references between them —
+into the memory DB, so questions like "which features have open questions older
+than 30 days" or "which decisions reference GLOBAL-013" become one query
+instead of an afternoon of grep. Markdown stays the source of truth: the sync
+is one-way, idempotent, and nlqdb never writes a markdown file. It ingests
+structure only — never prose paragraphs.
+
+```bash
+npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-docs-memory
+```
 
 Every connect command in these files is generated from one source of truth
 (`apps/web/src/lib/mcp-install.ts`) and pinned by a drift test
