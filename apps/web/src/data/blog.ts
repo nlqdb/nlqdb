@@ -41,6 +41,45 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "guard-advertised-capabilities-against-code",
+    title: "Your docs promised a tool your server never shipped.",
+    description:
+      "An agent product advertised a tool it never built — a new user's first call hit 'tool not found.' The fix isn't a better list; it's deriving the advertised set from the shipped artifact.",
+    date: "2026-07-28",
+    body: [
+      {
+        kind: "p",
+        text: "For an agent-facing product, the surface *is* a list of named verbs. When a model asks what your product can do, it reads tool names off a manifest and calls them by hand. So the names matter more than usual — and we were maintaining them in two unrelated places, both by hand: the server that registers the tools at runtime, and the copy that sells them (the docs, the landing page, the catalog listing). Two hand-kept lists of the same names is a drift generator with a clock on it.",
+      },
+      {
+        kind: "p",
+        text: "It drifted. We advertised `nlqdb_recall` — a verb we had designed and named but never actually built — and it sat in the docs for a week. The failure mode is the worst kind: a new user's *very first* call, the one an agent makes by reading the advertised name, came back `tool not found`. The product lied about its own surface before it got a chance to do anything right.",
+      },
+      { kind: "h2", text: "The guard we wrote had the bug it was meant to catch" },
+      {
+        kind: "p",
+        text: "So we added a test to catch the drift. It scanned one of the six surfaces that name our tools and compared what it found against an allow-list we typed into the test by hand. Read that back: the drift-catcher was itself a second hand-maintained copy of the tool names, on one surface out of six, going stale in exactly the way it was supposed to prevent. A drift check that a human has to keep in sync is not a check — it is more drift wearing a green checkmark.",
+      },
+      { kind: "h2", text: "Derive the advertised set from the shipped artifact" },
+      {
+        kind: "ol",
+        items: [
+          "**One source of truth, and it's the code.** The set of real capabilities is whatever the server registers at runtime — so read it from there. Never compare a surface against a second list a human promises to update; compare it against the artifact that actually ships.",
+          '**Closed-world, not allow-list.** Every capability-shaped token on every surface must resolve to either a shipped capability or a token you have *explicitly* classified as not-a-capability. There is no third "probably fine" bucket, because that bucket is exactly where a typo or a retired verb hides.',
+          "**Sweep every surface, not the convenient one.** Docs, marketing copy, the manifest, the SDK method table, the CLI subcommands — one check across all of them. Drift always surfaces on the surface you didn't scan.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "There is one question that tells you whether the guard actually works: rename a tool and *don't* touch the docs. Does something go red — without you also having to edit a copy of the tool list that lives inside the test? If the only way to get back to green is to hand-edit a list buried in the test, you have rebuilt the original problem with extra steps. A guard that survives its own maintainer forgetting is the only kind worth having.",
+      },
+      {
+        kind: "p",
+        text: "This is a claim-integrity pattern, not a feature: it applies to any product whose surface is advertised as named verbs — MCP tools, SDK methods, CLI subcommands. nlqdb is a database you query in plain English through exactly that kind of surface, and keeping the verbs we advertise provably identical to the verbs we ship is one of the integrity checks we run against ourselves rather than against a list someone remembered to update.",
+      },
+    ],
+  },
+  {
     slug: "smoke-test-walks-the-old-ui",
     title: "The redesign shipped. The smoke test kept walking the old UI.",
     description:
