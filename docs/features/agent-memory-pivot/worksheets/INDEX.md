@@ -5,10 +5,12 @@ to a single `/daily` run. This is the canonical backlog. Governed by
 **GLOBAL-036**; the per-surface copy inventory is
 [`messaging-surface-map.md`](messaging-surface-map.md).
 
-**Three tracks.** This file is the **messaging track** (WS-*). The
+**Four tracks.** This file is the **messaging track** (WS-*). The
 **engine track** (E-*) — the architectural slices that make the wedge
 claims durable — lives at [`engine/INDEX.md`](engine/INDEX.md). The
-**reach track** (R-* — search-moment + coding-agent acquisition,
+**dogfood track** (D-* — nlqdb's own ops running on nlqdb memory, the
+`SK-PIVOT-016` launch gate) lives at [`dogfood/INDEX.md`](dogfood/INDEX.md).
+The **reach track** (R-* — search-moment + coding-agent acquisition,
 SK-PIVOT-015) lives at [`reach/INDEX.md`](reach/INDEX.md) — with its measured
 state in [`reach/NUMBERS.md`](reach/NUMBERS.md), overwritten every cycle — and is
 driven **only** by its own `/reach` loop; `/daily` agents don't pick from it.
@@ -18,6 +20,7 @@ Rule of thumb when picking a worksheet:
 |---|---|
 | Funnel / distribution / wedge conversion | this file (WS-*) |
 | Engine quality / agent on-ramp / "wedge claims true" | [`engine/INDEX.md`](engine/INDEX.md) (E-*) |
+| The `SK-PIVOT-016` dogfood gate (founder-set weekly focus 2026-07-28) | [`dogfood/INDEX.md`](dogfood/INDEX.md) (D-*) |
 | Acquisition reach (search + coding-agent discovery) | [`reach/INDEX.md`](reach/INDEX.md) (R-*, `/reach` loop only) |
 
 Several `WS-*` worksheets sharpen once an `E-*` lands (E-01 unblocks
