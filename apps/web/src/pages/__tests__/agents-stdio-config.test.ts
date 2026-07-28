@@ -29,7 +29,7 @@ const agentsPage = readFileSync(join(here, "../agents/index.astro"), "utf8");
 describe("/agents connect card renders the canonical install strings", () => {
   test("both config blocks and the CLI one-liner come from mcp-install.ts", () => {
     // Assigned from the builders, never re-typed. A literal reintroduced here
-    // is exactly the drift that shipped an unobtainable `sk_mcp_` placeholder.
+    // is exactly the drift that once shipped a placeholder key nobody could mint.
     expect(agentsPage).toContain("const mcpConfig = buildClaudeConfig(MCP_ENDPOINT_URL);");
     expect(agentsPage).toContain("const mcpCommand = buildClaudeCodeCommand(MCP_ENDPOINT_URL);");
     expect(agentsPage).toContain("const mcpStdioConfig = buildStdioMcpServersConfig();");
@@ -48,7 +48,7 @@ describe("/agents connect card renders the canonical install strings", () => {
     // The npm package and the credential env var reach the page only through
     // `mcp-install.ts`; `@nlqdb/mcp` may still appear in prose/comments, but a
     // pasteable key placeholder may not.
-    expect(agentsPage).not.toContain("sk_live_REPLACE_ME");
+    expect(agentsPage).not.toContain("sk_mcp_REPLACE_ME");
   });
 
   test("the stdio block a reader pastes is valid JSON under `mcpServers`", () => {
@@ -59,7 +59,7 @@ describe("/agents connect card renders the canonical install strings", () => {
   });
 
   test("the prose names the same prefix the block pastes", () => {
-    expect(agentsPage).toContain("<code>sk_live_</code>");
+    expect(agentsPage).toContain("<code>sk_mcp_</code>");
   });
 
   test("the card is reachable copy, wired to the connect demand signal", () => {

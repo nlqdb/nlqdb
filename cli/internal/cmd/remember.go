@@ -171,7 +171,7 @@ func renderRememberError(cmd *cobra.Command, err error) error {
 		printErr(cmd, "that database isn't an agent_memory_v1 preset — `nlq remember` only writes to memory-preset databases (create one via the SDK/MCP `db.create` preset).")
 		return err
 	case "forbidden":
-		printErr(cmd, "this key is read-only — mint an `sk_live_…` key (or use an `sk_mcp_…` key) to write memory.")
+		printErr(cmd, "this key is read-only — use an `sk_mcp_…` MCP key (or an `sk_live_…` account key) to write memory.")
 		return err
 	case "invalid_body":
 		reason := apiErr.Message

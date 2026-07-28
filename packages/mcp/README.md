@@ -11,7 +11,7 @@ Don't want a local process? Point your host at the hosted server
 
 ## Install
 
-Create an `sk_live_…` key at
+Create an `sk_mcp_…` **MCP key** at
 [app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys), then add this to your
 MCP host's config:
 
@@ -21,14 +21,17 @@ MCP host's config:
     "nlqdb": {
       "command": "npx",
       "args": ["-y", "@nlqdb/mcp"],
-      "env": { "NLQDB_API_KEY": "sk_live_…" }
+      "env": { "NLQDB_API_KEY": "sk_mcp_…" }
     }
   }
 }
 ```
 
-`sk_live_…` is account-scoped and reaches every tool. A `pk_live_…` key is
-pinned to one database and can only call `nlqdb_query`.
+`sk_mcp_…` is bound to one host + device and reaches every tool here except
+`nlqdb_connect_database` (attaching an external database stays an account
+action); revoke it on its own at `/app/keys`. An `sk_live_…` account key also
+works if you need that one tool too. A `pk_live_…` key is pinned to one database
+and can only call `nlqdb_query`.
 
 ## Drop-in skill — teach the agent *when* to remember
 

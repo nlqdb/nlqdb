@@ -79,23 +79,24 @@ describe("the published headless-route strings match packages/mcp", () => {
     expect(keyPrefixes().some((p) => STDIO_PLACEHOLDER_KEY.startsWith(p))).toBe(true);
   });
 
-  test("...and one a reader can actually obtain", () => {
-    // The gate the prefix allowlist alone does not catch, and the one this
-    // guide got wrong first time round: `sk_mcp_` passes `runStdio` but is
-    // minted server-side by the OAuth callback and never displayed
-    // (SK-APIKEYS-009), and `/app/keys` deliberately won't mint one
-    // (SK-APIKEYS-012). Telling a reader to paste a value that cannot exist
-    // is the same dead end the headless route was added to remove.
-    expect(STDIO_PLACEHOLDER_KEY.startsWith(SK_MCP_PREFIX)).toBe(false);
-    expect(STDIO_PLACEHOLDER_KEY.startsWith(SK_LIVE_PREFIX)).toBe(true);
+  test("...and is the least-privilege one, not the full-account key", () => {
+    // The gate the prefix allowlist does not catch: which key we tell a reader
+    // to paste. `SK-APIKEYS-015` makes `/app/keys` mint `sk_mcp_` — scoped to
+    // MCP (no BYO-connect, no key management), revocable per host+device — so
+    // the headless route names it rather than the full-account `sk_live_`,
+    // which the binary also accepts but which is more privilege than pasting a
+    // key into a host config should hand out.
+    expect(STDIO_PLACEHOLDER_KEY.startsWith(SK_MCP_PREFIX)).toBe(true);
+    expect(STDIO_PLACEHOLDER_KEY.startsWith(SK_LIVE_PREFIX)).toBe(false);
     // The prefix alone is not enough in the other direction either: every
-    // assertion above also accepts a *real* key, because `mintSkLiveKey` emits
-    // `sk_live_` + 32 lowercase hex (`randomHex` has no other alphabet). A
-    // shouted suffix rejects that, and a bare keyless `sk_live_`, here — rather
-    // than at CI's semgrep `p/secrets`, which only sees them after the push.
-    // Guards every surface at once now that `/agents`, the docs guide and
-    // llms.txt all render this constant (`agents-stdio-config.test.ts`).
-    expect(STDIO_PLACEHOLDER_KEY.slice(SK_LIVE_PREFIX.length)).toMatch(/^[A-Z_]{3,}$/);
+    // assertion above also accepts a *real* key, because `mintSkMcpKey` emits
+    // `sk_mcp_<host>_<device>_` + 32 lowercase hex (`randomHex` has no other
+    // alphabet). A shouted suffix rejects that, and a bare keyless `sk_mcp_`,
+    // here — rather than at CI's semgrep `p/secrets`, which only sees them
+    // after the push. Guards every surface at once now that `/agents`, the docs
+    // guide and llms.txt all render this constant
+    // (`agents-stdio-config.test.ts`).
+    expect(STDIO_PLACEHOLDER_KEY.slice(SK_MCP_PREFIX.length)).toMatch(/^[A-Z_]{3,}$/);
   });
 
   test("the server object is valid JSON in the shape an MCP host executes", () => {

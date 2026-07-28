@@ -26,11 +26,13 @@ Claude Code stores the token. No API key to paste.
 
 If nobody is at a browser — an unattended agent, CI, a container — run the same
 five tools locally over stdio instead. `npx` fetches `@nlqdb/mcp` and it talks
-to the same production API, authenticated by an `sk_live_` key (mint one at
-`app.nlqdb.com/app/keys`, a signed-in account) rather than a browser:
+to the same production API, authenticated by an `sk_mcp_` MCP key (mint one at
+`app.nlqdb.com/app/keys`, a signed-in account) rather than a browser. That key is
+scoped to MCP — ask, list, describe, read/write memory; no external-database
+connects, no key management — and is revocable on its own:
 
 ```bash
-claude mcp add --env NLQDB_API_KEY=sk_live_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
+claude mcp add --env NLQDB_API_KEY=sk_mcp_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
 ```
 
 The CLI writes the key to `~/.claude.json`, nothing into your repo.

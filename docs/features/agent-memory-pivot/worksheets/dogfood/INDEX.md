@@ -75,7 +75,7 @@ it must **never** delay the gate or the launch.
 ## Hard rules
 
 - **Public surfaces only.** Every read and write in this track goes through
-  `npx -y @nlqdb/mcp` + a self-minted `sk_live_*` key +
+  `npx -y @nlqdb/mcp` + a self-minted `sk_mcp_*` MCP key +
   `nlqdb_remember`/`nlqdb_query`. A reviewer rejects any ops-agent path that
   reaches a privileged endpoint, an internal binding, or the platform DB.
   Dogfooding through a backdoor measures nothing (SK-PIVOT-016).

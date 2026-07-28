@@ -32,9 +32,11 @@ Cursor stores the token. No API key to paste.
 The block above points at the hosted server, whose first tool call opens a
 browser page someone must approve. For an unattended agent, CI, or a container,
 run the same tools locally over stdio — `npx` fetches `@nlqdb/mcp`,
-authenticated by an `sk_live_` key (mint one at `app.nlqdb.com/app/keys`) rather
-than a browser. This entry holds a live account secret, so put it in
-**user-level** `~/.cursor/mcp.json`, never a file your repo commits:
+authenticated by an `sk_mcp_` MCP key (mint one at `app.nlqdb.com/app/keys`)
+rather than a browser. That key is scoped to MCP — ask, list, describe,
+read/write memory; no external-database connects, no key management — and is
+revocable on its own. It is still a live credential, so put it in **user-level**
+`~/.cursor/mcp.json`, never a file your repo commits:
 
 ```json
 {
@@ -42,7 +44,7 @@ than a browser. This entry holds a live account secret, so put it in
     "nlqdb": {
       "command": "npx",
       "args": ["-y", "@nlqdb/mcp"],
-      "env": { "NLQDB_API_KEY": "sk_live_REPLACE_ME" }
+      "env": { "NLQDB_API_KEY": "sk_mcp_REPLACE_ME" }
     }
   }
 }

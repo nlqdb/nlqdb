@@ -430,12 +430,13 @@ export function mapSdkError(err: unknown): ToolError {
   if (code === "unauthorized" || httpStatus === 401) {
     return {
       code: "auth_required",
-      // Both sk_ keys are full-access (SK-APIKEYS-001 / SK-MCP-012); they
-      // differ by purpose, not capability — name which to mint for what.
+      // sk_mcp_ ⊂ sk_live_ (SK-APIKEYS-015): an MCP key reaches every tool
+      // here but cannot connect a BYO database, so name it first — a host
+      // config should hold the narrower credential.
       message:
-        "This tool requires a user-scoped key — sk_mcp_ (minted per MCP host) or sk_live_ (a backend/server secret).",
+        "This tool requires a user-scoped key — sk_mcp_ (an MCP key, scoped to one MCP host + device) or sk_live_ (a full-account backend secret).",
       action:
-        "Mint one at https://app.nlqdb.com/app/keys, then re-launch this host so it picks up the new credentials.",
+        "Mint an MCP key at https://app.nlqdb.com/app/keys, then re-launch this host so it picks up the new credentials.",
     };
   }
   // Read-only principal tried to write memory (`/v1/memory/remember` 403).
@@ -445,24 +446,27 @@ export function mapSdkError(err: unknown): ToolError {
       code: "forbidden",
       message: "This key is read-only, so it can't write memory.",
       action:
-        "Use a user-scoped key (sk_live_ or sk_mcp_) to write; pk_live_ embeds can only query.",
+        "Use a user-scoped key (sk_mcp_ or sk_live_) to write; pk_live_ embeds can only query.",
     };
   }
-  // SK-DBCONN-001 — connect on an anonymous session. Checked before the
-  // generic 403 so the action names the real fix (sign in), not a key swap.
+  // SK-DBCONN-001 — connect on an anonymous session, or on an MCP key, which
+  // is deliberately narrower than sk_live_ here (SK-APIKEYS-015). Checked
+  // before the generic 403 so the action names the real fix, and never names
+  // sk_mcp_ — re-launching with another MCP key would fail identically.
   if (code === "connect_requires_account") {
     return {
       code: "connect_requires_account",
-      message: "Connecting a database needs an account; this is an anonymous session.",
+      message:
+        "Connecting a database needs an account session or an sk_live_ key; an MCP key cannot attach data sources.",
       action:
-        "Sign in at https://app.nlqdb.com and re-launch this host with an account-scoped key (sk_live_ or sk_mcp_).",
+        "Connect it once at https://app.nlqdb.com (signed in), or re-launch this host with an sk_live_ key. Every other tool works on the MCP key.",
     };
   }
   if (code === "account_required" || httpStatus === 403) {
     return {
       code: "account_required",
       message: "This tool needs an account-scoped key; a pk_live_ embed key is not enough.",
-      action: "Re-launch with a sk_live_ or sk_mcp_ key minted at https://app.nlqdb.com/app/keys.",
+      action: "Re-launch with an sk_mcp_ MCP key minted at https://app.nlqdb.com/app/keys.",
     };
   }
   if (code === "low_confidence") {

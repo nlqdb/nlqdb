@@ -137,11 +137,13 @@ after connect, a verification query, what to do on failure. Add a
 `## For coding agents` section to `llms.txt` with the same content.
 **Verify every step against prod before publishing** (hard rule 1).
 **Done when:** ✅ page live ([`docs/agent-memory`](../../../../../apps/docs/src/content/docs/agent-memory.mdx) → `docs.nlqdb.com/agent-memory/`; sidebar-registered, linked from README + `/agents` connect card + llms.txt) · ✅ llms.txt `## For coding agents` section ([`llms.txt.ts`](../../../../../apps/web/src/pages/llms.txt.ts)) — both now publish the **headless** route
-(`npx -y @nlqdb/mcp` + an `sk_live_` key), strings owned by
+(`npx -y @nlqdb/mcp` + an `sk_mcp_` MCP key, swept 2026-07-28 per `SK-APIKEYS-015`), strings owned by
 [`mcp-install.ts`](../../../../../apps/web/src/lib/mcp-install.ts) and pinned to `packages/mcp` by
 [`mcp-install-stdio.test.ts`](../../../../../apps/web/src/lib/mcp-install-stdio.test.ts) ·
 ⬜ one manual cold-agent walk (agent given only the URL) completes setup — browser consent is no
-longer the blocker; what remains is one `sk_live_` key in the walker env ([`NUMBERS.md`](NUMBERS.md)).
+longer the blocker; what remains is one key in the walker env ([`NUMBERS.md`](NUMBERS.md);
+`blocked-by-human.md` #3 still names `sk_live_`, so that queued action stands as written — mint
+`sk_mcp_` instead once someone re-words it).
 
 ### R-05 — Registry + directory sweep (one venue per run)
 
@@ -216,12 +218,16 @@ installer package is needed — plus the yield gate (a real `agent-artifacts` vi
 ([`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) — every
 connect string == `mcp-install.ts`, served-file URLs pinned to `/mcp`, all `nlqdb.com` links carry
 `utm_source=agent-artifacts`).
-**Resolved 2026-07-28:** all four artifacts now carry the `npx -y @nlqdb/mcp` + `sk_live_` headless
-route beside the hosted one (`GLOBAL-003`), from `mcp-install.ts`'s `buildStdio*` builders, so the
+**Resolved 2026-07-28:** all four artifacts now carry the `npx -y @nlqdb/mcp` headless route beside
+the hosted one (`GLOBAL-003`), from `mcp-install.ts`'s `buildStdio*` builders, so the
 file a developer drops in for their *unattended* agent no longer dead-ends where R-04's page does
 not. `agent-artifacts.test.ts` widened to pin each artifact's headless strings to those builders
-(the Claude Code command, the Codex TOML, the `mcpServers` JSON). **Still owed:** external
-distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`).
+(the Claude Code command, the Codex TOML, the `mcpServers` JSON). Its credential was swept the same
+day from the full-account `sk_live_` to the MCP-scoped `sk_mcp_` — one dropped file that lives in
+someone else's repo should not tell their agent to paste an account-wide secret
+([`SK-APIKEYS-015`](../../../api-keys/FEATURE.md)); `STDIO_PLACEHOLDER_KEY` is the one place it
+changed. **Still owed:** external distribution with attributable yield (a real `agent-artifacts`
+visit in `/app/admin`).
 
 ### R-08 — Answer-engine citation baseline
 
@@ -249,7 +255,7 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [x] R-01 — intent map + P2a/P2b persona split
 - [x] R-02 — build-vs-buy honesty surface
 - [x] R-03 — stage-0 solve pages
-- [ ] R-04 — canonical setup guide — **owed:** the unattended cold-agent walk (the headless route it needs ships; all that is left is an `sk_live_` key in the walker env)
+- [ ] R-04 — canonical setup guide — **owed:** the unattended cold-agent walk (the headless route it needs ships; all that is left is a key in the walker env — see the slice note on which prefix)
 - [x] R-05 — registry sweep (8/8 venues resolved)
 - [x] R-06 — coding-agent walker + baseline
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)

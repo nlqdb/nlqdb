@@ -284,7 +284,7 @@ Canonical features: `auth/FEATURE.md` (`SK-AUTH-001..012`), `api-keys/FEATURE.md
 |---|---|---|
 | `pk_live_…` | Publishable, read-only, per-DB, origin-pinned | `<nlq-data>` |
 | `sk_live_…` | Secret, server-only, full scope | Backend / HTTP API |
-| `sk_mcp_<host>_<device>_…` | `sk_live_` + `(mcp_host, device_id)` claims | MCP server |
+| `sk_mcp_<host>_<device>_…` | `sk_live_` minus BYO-connect; headless MCP | MCP hosts |
 
 Hashed with Argon2id; last 4 chars cleartext for display. No plaintext retrieval — lost means rotate.
 

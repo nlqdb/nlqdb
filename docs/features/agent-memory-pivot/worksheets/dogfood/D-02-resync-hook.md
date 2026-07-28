@@ -51,11 +51,14 @@ API call, or criterion 1's call count stops meaning "real work".
 
 ## Credential
 
-The workflow needs `NLQDB_API_KEY` (a self-minted `sk_live_*`) as a **repo
+The workflow needs `NLQDB_API_KEY` (a self-minted `sk_mcp_*` MCP key — least
+privilege for a headless CI runner, `SK-APIKEYS-015`) as a **repo
 secret** — an operator action an agent cannot perform. Queue bullet **#3** in
 [`blocked-by-human.md`](../../../../blocked-by-human.md) already asks the
-founder to mint exactly this credential for the walker env. The run that ships
-this slice should **extend that bullet** to name the repo secret too, rather
+founder to mint this credential for the walker env (it still says `sk_live_`,
+written before `/app/keys` could mint an MCP key). The run that ships
+this slice should **extend that bullet** to name the repo secret and the
+`sk_mcp_` prefix, rather
 than adding a new bullet (the queue is ranked by yield per founder-minute, not
 appended to — founder-directed 2026-07-22). Until the secret exists the
 workflow is committed but skips with a printed reason, never fails red.

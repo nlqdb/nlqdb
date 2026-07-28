@@ -96,8 +96,8 @@ export const GET: APIRoute = () => {
     `API key to paste, but it does need a human at a browser. **With nobody at a\n` +
     `browser, take the headless route instead:** the same five tools run locally over\n` +
     `stdio against the same production API, authenticated by a key, so no browser ever\n` +
-    `opens. Mint an \`sk_live_\` key at https://app.nlqdb.com/app/keys (one signed-in\n` +
-    `visit), then:\n\n` +
+    `opens. Mint an \`sk_mcp_\` MCP key at https://app.nlqdb.com/app/keys (one signed-in\n` +
+    `visit) — scoped to MCP, not your whole account, and revocable on its own — then:\n\n` +
     "```bash\n" +
     `${buildStdioClaudeCodeCommand()}\n` +
     "```\n\n" +
