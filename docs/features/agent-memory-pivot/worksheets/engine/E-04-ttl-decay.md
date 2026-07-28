@@ -1,6 +1,7 @@
 # E-04 — TTL + cron sweep (`expires_at` on memory rows)
 
-**Status:** 🟡 sweep core shipped (run 39) — cron wiring (plain code, see Steps 3) + read-side RLS clause (E-03-gated) remain
+**Status:** 🟡 sweep core shipped (run 39) + **read-side RLS clause shipped
+with E-03 (2026-07-28)** — only the cron wiring (plain code, see Steps 3) remains
 **Sequence:** Engine 4 of 7 · **Risk:** low · **Runs:** 1 · **Prereqs:** E-01 ✅ · **Gate:** none
 
 **Progress (run 39, SK-PIVOT-011):** the deterministic, offline-tested sweep
@@ -52,20 +53,23 @@ explicit-forget story closed).
   scoped per-DB so failure is isolated. **`facts` only** — `episodes` /
   `entities` have no `expires_at` to sweep.
 - Queries see only non-expired `facts` via the **`agent_isolation` RLS policy**
-  (E-03 / SK-PIVOT-009) on the `facts` table gaining an `AND (expires_at IS
-  NULL OR expires_at > NOW())` clause in its `USING` expression — *not* a
-  compile-layer predicate (the read path is free-form LLM SQL; there is nothing
-  to inject into). A clean add on the per-table `facts` policy E-03 creates;
-  the `episodes` / `entities` policies are unchanged.
+  (E-03 / SK-PIVOT-009) on the `facts` table carrying an
+  `AND (expires_at IS NULL OR expires_at > now())` arm in its `USING`
+  expression — *not* a compile-layer predicate (the read path is free-form LLM
+  SQL; there is nothing to inject into). Shipped with E-03; the
+  `episodes` / `entities` policies are unchanged.
 
 ## Steps
 
 1. Migration: confirm `expires_at` exists on `facts` (it does, from E-01's
    DDL). `episodes` / `entities` intentionally have no such column.
-2. RLS addition: extend E-03's `agent_isolation` `USING` clause with
-   `AND (expires_at IS NULL OR expires_at > NOW())` **on the `facts` policy
-   only** (no compile-layer / `sql-validate` change — RLS, not
-   query-rewriting).
+2. **RLS addition ✅ (2026-07-28, with E-03)** — the `facts`
+   `agent_isolation` policy carries
+   `AND ("expires_at" IS NULL OR "expires_at" > now())`; `episodes` /
+   `entities` policies are unchanged. Emitted by
+   `agentMemoryV1ScopePolicies()` and pinned by the DDL unit test + the
+   Neon invariant test (expired row invisible on reads, still physically
+   present for the sweep).
 3. **Sweep core ✅ (run 39)** — `buildExpirySweep` + `orchestrateSweep` (pure,
    per-DB failure isolation, count aggregation). **Remaining (plain code — no
    human step; crons ship with the normal CI `wrangler deploy`):**
@@ -75,9 +79,16 @@ explicit-forget story closed).
    (b) enumerate memory DBs from D1 (`SELECT … FROM databases WHERE id LIKE
    'db_agent_memory_v1_%'` — the same prefix `isAgentMemoryV1Db` checks);
    (c) an exec adapter: generalise `buildMemoryExec` (`ask/build-deps.ts`) to
-   accept the sweep plan too — both plans are `{table, text, params}`; the
-   sweep runs with the tenant-literal `app.agent_id`, so it sees all agents'
-   rows per SK-PIVOT-009. Mind SK-ASK-024: the keep-warm branch lazy-imports
+   accept the sweep plan too — both plans are `{table, text, params}`.
+   **The sweep must run as the schema owner — do NOT reuse
+   `buildHostedExecSteps`' `SET LOCAL ROLE`.** The TTL arm now lives in a
+   `FOR ALL` policy's `USING`, and Postgres applies SELECT/ALL policies to a
+   `DELETE` that reads columns in its `WHERE` / `RETURNING`
+   ([Table 297 note a](https://www.postgresql.org/docs/17/sql-createpolicy.html)),
+   so under the non-owner tenant role the expired rows are filtered out of
+   the DELETE and the sweep silently deletes nothing. The owner bypasses RLS,
+   which is also what lets one cron sweep every tenant.
+   Mind SK-ASK-024: the keep-warm branch lazy-imports
    its pg client to dodge the module-scope libpg-query crash on the cron
    isolate — import the exec adapter inside the branch the same way;
    (d) emit the `nlqdb.memory.expire` span + `nlqdb.memory.expired_rows_total`

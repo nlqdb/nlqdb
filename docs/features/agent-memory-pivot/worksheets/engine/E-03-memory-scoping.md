@@ -1,8 +1,9 @@
 # E-03 — Per-agent / per-end-user / per-thread scoping
 
-**Status:** ⬜ not started — **plan blockers resolved 2026-07-17** (restrictive
-policy flavour + owner visibility + opt-in end-user gate ratified into
-[SK-PIVOT-009](../../decisions/SK-PIVOT-009-agent-scope-rls.md))
+**Status:** ✅ shipped (2026-07-28) — restrictive `agent_isolation` +
+opt-in `end_user_isolation` / `thread_isolation` on the provisioner path,
+scope GUCs on both exec wrappers, invariant tests (unit + Neon-gated).
+**E-06's `MEMORY_PRESET` prerequisite is satisfied.**
 **Sequence:** Engine 3 of 7 · **Risk:** **high — security-critical** · **Runs:** ~2 · **Prereqs:** E-01 ✅ · **Gate:** none, but extra-review
 
 ## Goal
@@ -85,21 +86,68 @@ rationale):
 
 ## Done when
 
-- [ ] `agent_isolation` created **`AS RESTRICTIVE`** per memory table on
+- [x] `agent_isolation` created **`AS RESTRICTIVE`** per memory table on
       the preset path, `USING` = agent-GUC-or-tenant-literal (+ TTL arm on
       `facts`); opt-in end-user/thread restrictive policies; exec wrappers
       set the GUCs per request.
-- [ ] Unit tests (always run, never skipped — red without the policies +
+- [x] Unit tests (always run, never skipped — red without the policies +
       GUCs): DDL pins policy flavour and clauses; exec steps pin the
       `set_config` calls. Neon integration tests (env-gated like
       `neon-provision.integration.test.ts`): A-cannot-read-B,
       tenant-sees-all, end-user + thread hard gates, TTL invisibility,
       anon/pk_live rejected.
-- [ ] E-04 worksheet's read-side-clause remainder ticked (cron Worker
+- [x] E-04 worksheet's read-side-clause remainder ticked (cron Worker
       stays open there).
-- [ ] `bun run typecheck && lint && test` green.
-- [ ] Engine INDEX tracker + status ticked. **Code-review:** request a
+- [x] `bun run typecheck && lint && test` green.
+- [x] Engine INDEX tracker + status ticked. **Code-review:** request a
       second reviewer; this slice owns a security invariant.
+
+## Shipped shape (2026-07-28)
+
+- `db-create/presets/agent-memory-v1.ts` — `agentMemoryV1ScopePolicies()`
+  emits the four `agent_isolation` policies (all `AS RESTRICTIVE`) plus the
+  `end_user_isolation` / `thread_isolation` pair on `facts` + `episodes`
+  (the only tables carrying those columns). `entity_facts` has no
+  `agent_id`, so it inherits scope from its parent `entities` row
+  (`entity_id IN (SELECT e.id FROM entities e WHERE <agent arm>)`) rather
+  than being left unrestricted. `isAgentMemoryV1Db` moved here so the
+  provisioner, the `remember` verb and the E-04 sweep share one predicate —
+  a DB the write verb accepts can never be a DB whose rows went unscoped.
+- `db-create/neon-provision.ts` — emits them right after the permissive
+  `tenant_isolation` policies, on the memory-preset id prefix only. No
+  backfill (`MEMORY_PRESET` dark ⇒ no prod memory DB exists).
+- `ask/build-deps.ts` — `buildHostedExecSteps` sets `app.agent_id` on
+  **every** hosted exec (defaulted to the tenant id = the policy's baked
+  literal) and the narrowing GUCs only when the request carried them;
+  `buildMemoryExec` takes the scope off `plan.scope`, so a write is checked
+  against the same gate its later reads are filtered by.
+- Handlers: `POST /v1/memory/remember` accepts an optional `agentId`
+  (server-defaulted to the principal); `/v1/ask` accepts `agentId` /
+  `endUserId` / `threadId` (`invalid_scope` 400 on a non-string — a
+  silently-dropped scope field would *widen* visibility).
+- GUC re-arming from inside LLM-emitted SQL was already closed:
+  `set_config` / `current_setting` are on `sql-validate.ts`'s
+  `DISALLOWED_FUNCTIONS` list (SK-SQLAL-008).
+- **"Absent GUC" is `nullif(current_setting(…), '') IS NULL`, not `IS NULL`.**
+  A custom-GUC placeholder reads NULL only until something sets it; after
+  `SET LOCAL`'s transaction-end reset it reads the **empty string** for the
+  rest of that backend session, and Neon's HTTP proxy reuses backends. With a
+  bare `IS NULL` the first `endUserId`-narrowed request on a connection made
+  every later *unnarrowed* read on it return zero rows. Caught by running the
+  generated policies against a real Postgres before merge (fail-closed, so
+  not a breach — but silent, and only reproducible after a narrowed request).
+- **Consequence for E-04's remaining cron half:** the TTL arm lives in a
+  `FOR ALL` policy's `USING`, and Postgres applies SELECT/ALL policies to a
+  `DELETE` that reads columns in `WHERE`/`RETURNING`
+  ([Table 297 note a](https://www.postgresql.org/docs/17/sql-createpolicy.html)),
+  so the sweep must run as the schema **owner** — reusing
+  `buildHostedExecSteps`' `SET LOCAL ROLE` would make it delete nothing.
+  Noted in `memory/expire.ts` and in E-04 step 3(c).
+
+**Surface-parity gap (GLOBAL-003):** the three scope fields are HTTP-only
+this run — SDK / CLI / MCP / elements still send neither, so nothing
+regresses, but the narrowed-agent story is not reachable from those
+surfaces yet. Tracked in the feature's *Open questions*.
 
 ## Artifact
 

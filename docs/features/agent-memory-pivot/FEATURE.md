@@ -20,16 +20,15 @@ slices rather than a relaunch. **Three tracks ship in parallel:** messaging
 (WS-* — how users discover the wedge), **engine** (E-* — the memory-shaped
 primitives that make the wedge claims durable), and **reach** (R-* —
 search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
-**Status:** in progress (Phase 2 distribution) — **WS-13 headline reposition shipped 2026-06-24** (SK-PIVOT-013; the site leads with the wedge sitewide); **WS-14 home-flow reposition** (SK-PIVOT-014 + SK-WEB-017), since superseded on `/` by the two-door home (SK-WEB-018); E-04 TTL-sweep core shipped (SK-PIVOT-011; cron + RLS clause pending).
-**Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/db-create/neon-provision.ts` + `ask/build-deps.ts` (agent-scope RLS, SK-PIVOT-009), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
+**Status:** in progress (Phase 2 distribution) — **WS-13 headline reposition shipped 2026-06-24** (SK-PIVOT-013; the site leads with the wedge sitewide); **WS-14 home-flow reposition** (SK-PIVOT-014 + SK-WEB-017), since superseded on `/` by the two-door home (SK-WEB-018); **E-03 memory scoping shipped 2026-07-28** (SK-PIVOT-009 — restrictive per-agent/end-user/thread RLS; satisfies E-06's `MEMORY_PRESET` prerequisite); E-04 sweep core + read-side clause shipped (SK-PIVOT-011; cron pending).
+**Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/{db-create/neon-provision,ask/build-deps,memory/remember}.ts` (agent-scope RLS, SK-PIVOT-009), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
 **Cross-refs:** `docs/research/deepseek-moat-framing.md` (the thesis) · `docs/competitors.md §4` (agent-memory landscape) · `docs/research/personas.md §P2` · GLOBAL-036 (canonical text in `docs/decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md`; index in `docs/decisions.md`).
 
 ## Touchpoints — read this feature doc before editing
 
-- `apps/web/src/pages/agents/**` — the dedicated `/agents` front door (new)
-- `apps/web/src/data/competitors.ts` — memory-competitor `/vs` pages
-- `apps/web/src/data/solve.ts` — agent-memory solve pages
-- `apps/web/src/data/showcase-examples.ts` — home carousel slides
+- `apps/web/src/pages/agents/**` — the `/agents` front door
+- `apps/web/src/data/{competitors,solve,showcase-examples}.ts` — memory `/vs`
+  pages, agent-memory solve pages, home carousel slides
 - `packages/mcp/src/server.ts`, `apps/docs/src/content/docs/mcp.mdx` — MCP framing
 - `docs/features/agent-memory-pivot/worksheets/**` — the backlog
 
@@ -39,20 +38,19 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 > (engine `E-01..E-07`); rule of thumb is `WS-*` when the worst number is
 > funnel/distribution, `E-*` when it is engine quality / agent on-ramp.
 > The **reach** track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md),
-> `R-*`) is picked up only by its own `/reach` loop. The
-> surface-by-surface copy inventory is
+> `R-*`) is picked up only by its own `/reach` loop. Copy inventory:
 > [`worksheets/messaging-surface-map.md`](worksheets/messaging-surface-map.md).
 
 ## What changes where (answers "how does each area change?")
 
 | Area | Change | Owned by |
 |---|---|---|
-| **Docs decisions** | New **GLOBAL-036** (lead positioning, dual front door). **GLOBAL-019** + `architecture.md §0` wording synced to FSL-1.1→Apache. This feature's `SK-PIVOT-*` carry the tactical calls. | GLOBAL-036 |
-| **Scorecard / daily loop** | A **Pivot — agent-memory wedge** section in `docs/scorecard.md` carries one row per worksheet (13 WS + 7 E), ticked ⬜→✅ on merge. The weekly focus number stays founder-set. | this PR (`scorecard.md`) |
-| **Architecture** | `architecture.md §0` "Apache-2.0" corrected to FSL-1.1; `§2.1` gains the `/agents` route (a path on `nlqdb.com`, **no new domain**). | this PR (§0); WS-07 (§2.1 route) |
-| **Phase plan** | Phase 2 already targets "1 agent product publicly uses nlqdb as memory" — the wedge content folds into Phase 2 distribution. Self-host container pulled forward from Phase 3 (SK-PIVOT-005). | WS-11 |
-| **Home page & product/APIs** | Home is now a two-door chooser (SK-WEB-018: agent-memory door + question-your-ClickHouse door), superseding the earlier wedge-led reweight; `/agents` is the deep door (matrix, demo, OG); MCP tool + package descriptions carry the framing. Headline/README/llms.txt swap shipped 2026-06-24 (SK-PIVOT-013). | WS-01…WS-13, SK-WEB-018 |
-| **Engine / actual architecture** | Canonical `agent_memory_v1` preset (`facts`/`episodes`/`entities`/`entity_facts`) as a `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (SK-MCP-002). Per-agent scope via row-level RLS (SK-PIVOT-009). TTL + cron sweep, `facts`-only (SK-PIVOT-011). pgvector hybrid recall. Preset on-ramp on the **authed** surface (SK-PIVOT-010). Workload-analyzer routes large memory DBs to ClickHouse (Phase 3). | E-01…E-07 |
+| **Docs decisions** | **GLOBAL-036** (lead positioning, dual front door); **GLOBAL-019** + `architecture.md §0` synced to FSL-1.1→Apache; this feature's `SK-PIVOT-*` carry the tactical calls. | GLOBAL-036 |
+| **Scorecard / daily loop** | The **Pivot — agent-memory wedge** section of `docs/scorecard.md` carries one row per worksheet, ticked ⬜→✅ on merge. | scorecard |
+| **Architecture** | `architecture.md §0` synced to FSL-1.1; `§2.1` carries the `/agents` route (a path on `nlqdb.com`, **no new domain**). | shipped |
+| **Phase plan** | Phase 2 targets "1 agent product publicly uses nlqdb as memory", so the wedge content folds into Phase 2 distribution. Self-host container pulled forward from Phase 3 (SK-PIVOT-005). | WS-11 |
+| **Home page & product/APIs** | Home is a two-door chooser (SK-WEB-018: agent-memory door + question-your-ClickHouse door), superseding the earlier wedge-led reweight; `/agents` is the deep door (matrix, demo, OG); MCP tool + package descriptions carry the framing. Headline/README/llms.txt swap shipped 2026-06-24 (SK-PIVOT-013). | WS-01…WS-13, SK-WEB-018 |
+| **Engine / actual architecture** | Canonical `agent_memory_v1` preset as a `db.create` path; **additive** MCP tools (SK-MCP-002); per-agent RLS scope (SK-PIVOT-009); `facts`-only TTL + sweep (SK-PIVOT-011); pgvector hybrid recall; authed preset on-ramp (SK-PIVOT-010); ClickHouse routing for large memory DBs (Phase 3). Per-slice status: [`worksheets/engine/INDEX.md`](worksheets/engine/INDEX.md). | E-01…E-07 |
 
 ## Decisions
 
@@ -112,7 +110,7 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 **Status:** superseded on `/` by [`SK-WEB-018`](../web-app/decisions/SK-WEB-018-two-door-home.md) — the home is now a two-door chooser; the agent-loop proof relocates to `/agents`.
 
-**Body:** [`decisions/SK-PIVOT-014-home-flow-reposition.md`](./decisions/SK-PIVOT-014-home-flow-reposition.md). The WS-13 follow-on: hero's primary action became the SK-WEB-016 `<McpInstall>` row, `Demo.astro` the agent loop, `Replaces.astro` the agent-memory list collapsing into `nlqdb_query(…)`, the generalist flow a `.alsoworks` link to `/app/new`.
+**Body:** [`decisions/SK-PIVOT-014-home-flow-reposition.md`](./decisions/SK-PIVOT-014-home-flow-reposition.md).
 
 ### SK-PIVOT-015 — Reach is the pivot's third track: search-moment interception + coding-agent injection, driven by its own `/reach` loop
 
@@ -160,3 +158,8 @@ index in [`docs/decisions.md`](../../decisions.md)).
 - **Self-host container scope** — pulling `ghcr.io/nlqdb/api` forward (WS-11)
   may exceed one daily run and touches infra; the worksheet flags the
   founder/infra gate.
+- **Memory-scope fields are HTTP-only (GLOBAL-003 gap)** — E-03 shipped
+  `agentId`/`endUserId`/`threadId` on `/v1/ask` + `/v1/memory/remember`;
+  SDK / CLI / MCP / `<nlq-data>` don't forward them yet, so a narrowed agent
+  is reachable over raw HTTP only. Nothing regresses (absent ⇒ tenant-default
+  scope). Pairs with E-05's `nlqdb_recall`, which needs the same parameters.

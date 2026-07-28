@@ -17,6 +17,8 @@ import {
   AGENT_MEMORY_V1_VERSION,
   agentMemoryV1Ddl,
   agentMemoryV1Plan,
+  agentMemoryV1ScopePolicies,
+  isAgentMemoryV1Db,
 } from "./agent-memory-v1.ts";
 
 const SCHEMA = "agent_mem_ab12cd";
@@ -74,6 +76,99 @@ describe("agent_memory_v1 preset", () => {
   it("rejects an unsafe schema name before quoting (SK-HDC-009)", () => {
     expect(() => agentMemoryV1Ddl(`evil"; DROP SCHEMA public; --`)).toThrow(/unsafe schema name/);
     expect(() => agentMemoryV1Ddl("a".repeat(64))).toThrow(/63-char/);
+  });
+});
+
+// E-03 / SK-PIVOT-009 — the security invariant of the whole memory wedge
+// lives in these policies, so the tests pin the generated SQL clause by
+// clause. `AS RESTRICTIVE` is the load-bearing keyword: without it Postgres
+// OR-combines the policy with the permissive `tenant_isolation` and every
+// agent reads every other agent's memory while the code still "has RLS".
+describe("agentMemoryV1ScopePolicies", () => {
+  const TENANT = "user_42";
+  const policies = () => agentMemoryV1ScopePolicies(SCHEMA, TENANT);
+  const policyOn = (name: string, table: string) =>
+    policies().find((s) => s.startsWith(`CREATE POLICY ${name} ON "${SCHEMA}"."${table}"`));
+
+  it("creates EVERY policy AS RESTRICTIVE (permissive would OR with tenant_isolation)", () => {
+    const all = policies();
+    expect(all.length).toBeGreaterThan(0);
+    for (const sql of all) {
+      expect(sql, sql).toMatch(/AS RESTRICTIVE USING \(/);
+    }
+    expect(all.filter((s) => /AS PERMISSIVE/.test(s))).toEqual([]);
+  });
+
+  it("puts an agent_isolation policy on all four contract tables", () => {
+    for (const table of Object.keys(AGENT_MEMORY_V1_COLUMNS)) {
+      expect(policyOn("agent_isolation", table), `agent_isolation on ${table}`).toBeDefined();
+    }
+  });
+
+  it("keys agent_isolation on the GUC-or-baked-tenant-literal pair (owner stays sighted)", () => {
+    for (const table of ["facts", "episodes", "entities"]) {
+      const sql = policyOn("agent_isolation", table);
+      expect(sql, table).toContain(`current_setting('app.agent_id', true) = "agent_id"`);
+      expect(sql, table).toContain(`current_setting('app.agent_id', true) = '${TENANT}'`);
+    }
+  });
+
+  it("carries E-04's TTL read arm on facts only (SK-PIVOT-011)", () => {
+    expect(policyOn("agent_isolation", "facts")).toContain(
+      `AND ("expires_at" IS NULL OR "expires_at" > now())`,
+    );
+    for (const table of ["episodes", "entities", "entity_facts"]) {
+      expect(policyOn("agent_isolation", table), table).not.toContain("expires_at");
+    }
+  });
+
+  it("scopes the entity_facts link table through its parent entities row", () => {
+    const sql = policyOn("agent_isolation", "entity_facts");
+    expect(sql).toContain(`"entity_id" IN (SELECT e."id" FROM "${SCHEMA}"."entities" AS e`);
+    expect(sql).toContain(`current_setting('app.agent_id', true) = e."agent_id"`);
+    expect(sql).toContain(`current_setting('app.agent_id', true) = '${TENANT}'`);
+  });
+
+  it("gates end_user_id / thread_id only when the GUC is set (opt-in hard gate)", () => {
+    for (const [name, guc, column] of [
+      ["end_user_isolation", "app.end_user_id", "end_user_id"],
+      ["thread_isolation", "app.thread_id", "thread_id"],
+    ] as const) {
+      for (const table of ["facts", "episodes"]) {
+        const sql = policyOn(name, table);
+        expect(sql, `${name} on ${table}`).toBeDefined();
+        // absent GUC ⇒ the arm is a no-op, so cross-end-user analytics still
+        // run inside the agent scope. `nullif(…, '')` — NOT a bare
+        // `IS NULL` — because a custom GUC resets to the empty string once
+        // anything has set it on that backend session (Neon reuses
+        // backends), which would otherwise zero every later unnarrowed read.
+        expect(sql).toContain(`nullif(current_setting('${guc}', true), '') IS NULL`);
+        // present ⇒ exact equality, enforced at the row level.
+        expect(sql).toContain(`current_setting('${guc}', true) = "${column}"`);
+      }
+      // Only facts / episodes carry the columns (SK-PIVOT-007 contract).
+      expect(policyOn(name, "entities")).toBeUndefined();
+      expect(policyOn(name, "entity_facts")).toBeUndefined();
+    }
+  });
+
+  it("never emits a WITH CHECK — USING doubles as the write check", () => {
+    expect(policies().filter((s) => /WITH CHECK/.test(s))).toEqual([]);
+  });
+
+  it("inlines the caller-escaped tenant literal and rejects an unsafe schema name", () => {
+    expect(agentMemoryV1ScopePolicies(SCHEMA, "anon:o''malley")[0]).toContain(`'anon:o''malley'`);
+    expect(() => agentMemoryV1ScopePolicies(`evil"; DROP SCHEMA public; --`, TENANT)).toThrow(
+      /unsafe schema name/,
+    );
+  });
+});
+
+describe("isAgentMemoryV1Db", () => {
+  it("matches only the version-keyed preset id prefix", () => {
+    expect(isAgentMemoryV1Db(`db_${AGENT_MEMORY_V1_VERSION}_abc123`)).toBe(true);
+    expect(isAgentMemoryV1Db("db_orders_xyz789")).toBe(false);
+    expect(isAgentMemoryV1Db("db_agent_memory_v2_abc123")).toBe(false);
   });
 });
 

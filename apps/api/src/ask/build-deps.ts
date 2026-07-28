@@ -26,6 +26,7 @@ import { makeAclRetarget } from "../anon-adopt-regrant.ts";
 import { resolveDb } from "../db-registry.ts";
 import { buildEventEmitter } from "../events-emitter.ts";
 import { getLLMRouter } from "../llm-router.ts";
+import type { MemoryInsertPlan, MemoryScope } from "../memory/remember.ts";
 import { kekFromEnv, openSecret } from "../secret-envelope.ts";
 import { assertTenantRoleName, isTenantRoleMissingError, tenantRoleName } from "../tenant-role.ts";
 import { makeKvDiagSink } from "./diag.ts";
@@ -40,12 +41,22 @@ import { DbConfigError, type DbRecord, type QueryResult } from "./types.ts";
 // `/v1/ask` handler passes a per-request override when a BYOLLM lane is
 // selected (`resolveAskRouter`), so the swap lands here, not duplicated
 // per call site.
-export function buildAskDeps(envBindings: Cloudflare.Env, llm?: LLMRouter): OrchestrateDeps {
+//
+// `scope` (E-03 / SK-PIVOT-009) is the per-request memory scope: the
+// handler resolves it from the principal + the optional `agentId` /
+// `endUserId` / `threadId` request fields and it rides into the exec
+// transaction as GUCs. Omitted ⇒ `buildHostedExecSteps` defaults to the
+// tenant principal (full visibility), so non-memory callers are unchanged.
+export function buildAskDeps(
+  envBindings: Cloudflare.Env,
+  llm?: LLMRouter,
+  scope?: MemoryScope,
+): OrchestrateDeps {
   return {
     resolveDb: (id, tenantId) => resolveDb(envBindings.DB, id, tenantId),
     planCache: makePlanCache(envBindings.KV),
     llm: llm ?? getLLMRouter(),
-    exec: buildExec,
+    exec: (db, sql, signal) => buildExec(db, sql, signal, scope),
     rateLimiter: makeRateLimiter(envBindings.DB),
     firstQuery: makeFirstQueryTracker(envBindings.KV),
     events: buildEventEmitter(envBindings.EVENTS_QUEUE),
@@ -99,13 +110,15 @@ async function lookupPipeAdvisory(
 // (`DEFAULT_RUNNERS`); the test passes fakes that record how they were
 // called. Each runner receives an already-resolved connection URL.
 export type ExecRunners = {
-  // Hosted Postgres: search_path + app.tenant_id + the user SQL, batched.
+  // Hosted Postgres: search_path + app.tenant_id + the E-03 scope GUCs +
+  // the user SQL, batched.
   runHostedPg: (
     url: string,
     schemaName: string,
     tenantId: string,
     sql: string,
     signal?: AbortSignal,
+    scope?: MemoryScope,
   ) => Promise<QueryResult>;
   // BYO Postgres: the user SQL run directly (no search_path / RLS).
   runByoPg: (url: string, sql: string, signal?: AbortSignal) => Promise<QueryResult>;
@@ -133,6 +146,9 @@ export async function dispatchExec(
   // is testable without `BYO_SECRET_KEK` in the (node) unit env; prod
   // uses `openByoUrl` (env-backed).
   openUrl: (db: DbRecord) => Promise<string> = openByoUrl,
+  // E-03 memory scope — only the hosted path can honour it (a BYO database
+  // has neither our schema nor our policies).
+  scope?: MemoryScope,
 ): Promise<QueryResult> {
   if (db.engine === "clickhouse") {
     const url = await openUrl(db);
@@ -149,7 +165,7 @@ export async function dispatchExec(
     );
   }
   const schemaName = db.id.startsWith("db_") ? db.id.slice(3) : db.id;
-  return runners.runHostedPg(url, schemaName, db.tenantId, sql, signal);
+  return runners.runHostedPg(url, schemaName, db.tenantId, sql, signal, scope);
 }
 
 // SK-ASK-024 — exec-time tenant-ACL self-heal. The adoption-time retarget
@@ -185,11 +201,16 @@ export async function execWithTenantAclHeal(
 
 // Production exec — wires the real Neon + BYO ClickHouse runners. This is
 // the `OrchestrateDeps.exec` callback `buildAskDeps` passes.
-function buildExec(db: DbRecord, sql: string, signal?: AbortSignal): Promise<QueryResult> {
+function buildExec(
+  db: DbRecord,
+  sql: string,
+  signal?: AbortSignal,
+  scope?: MemoryScope,
+): Promise<QueryResult> {
   return execWithTenantAclHeal(
     db,
     sql,
-    (d, s, sig) => dispatchExec(d, s, DEFAULT_RUNNERS, sig),
+    (d, s, sig) => dispatchExec(d, s, DEFAULT_RUNNERS, sig, openByoUrl, scope),
     makeAclRetarget(env, "exec_acl_heal_failed"),
     signal,
   );
@@ -211,10 +232,42 @@ const EXEC_STATEMENT_TIMEOUT = "10s";
 
 export type HostedExecStep = { text: string; params: unknown[] };
 
+// E-03 / SK-PIVOT-009 — the scope GUCs, in the order they are set. Split
+// out so the "always set `app.agent_id`, set the narrowing GUCs only when
+// the request carries them" rule lives in one place for both wrappers.
+// Fail-closed by construction: a GUC we never set reads as NULL, and NULL
+// matches no row under the restrictive policies.
+function scopeGucSteps(scope: MemoryScope): HostedExecStep[] {
+  const steps: HostedExecStep[] = [
+    { text: "SELECT set_config('app.agent_id', $1, true)", params: [scope.agentId] },
+  ];
+  if (scope.endUserId !== undefined) {
+    steps.push({
+      text: "SELECT set_config('app.end_user_id', $1, true)",
+      params: [scope.endUserId],
+    });
+  }
+  if (scope.threadId !== undefined) {
+    steps.push({ text: "SELECT set_config('app.thread_id', $1, true)", params: [scope.threadId] });
+  }
+  return steps;
+}
+
 // The ordered statement list run in one hosted-Postgres exec transaction.
 // Order is load-bearing:
 //   1. search_path      → unqualified names resolve to the tenant schema.
 //   2. app.tenant_id    → satisfies the RLS USING clause.
+//   2b. app.agent_id (+ app.end_user_id / app.thread_id when the request
+//      carries them) → satisfies the RESTRICTIVE memory-scope policies on
+//      an `agent_memory_v1` DB (E-03 / SK-PIVOT-009). `app.agent_id` is set
+//      on EVERY hosted exec, defaulting to the tenant id — which is the
+//      literal baked into the policy's second arm, so a plain tenant read
+//      keeps full visibility while an unset GUC (a wrapper that forgot)
+//      would see nothing. Non-memory DBs have no policy reading them, so
+//      the extra statements are inert there. Set BEFORE `SET LOCAL ROLE`
+//      for symmetry with `app.tenant_id`; re-arming either from inside the
+//      user SQL is blocked by the `set_config` / `current_setting` function
+//      denylist in `sql-validate.ts` (SK-SQLAL-008).
 //   3. statement_timeout→ bounds a runaway query (resource guard).
 //   4. SET LOCAL ROLE tenant_<hash> → LEAST PRIVILEGE, the load-bearing
 //      cross-tenant isolation control. The shared `neondb_owner` OWNS the
@@ -234,11 +287,16 @@ export function buildHostedExecSteps(
   tenantId: string,
   roleName: string,
   userStep: HostedExecStep,
+  // Server-defaulted to the tenant principal (SK-PIVOT-009's zero-config
+  // contract): callers that know nothing about agents get full-tenant
+  // visibility, callers that pass a narrowed scope get it enforced.
+  scope: MemoryScope = { agentId: tenantId },
 ): HostedExecStep[] {
   assertTenantRoleName(roleName);
   return [
     { text: "SELECT set_config('search_path', $1, true)", params: [schemaName] },
     { text: "SELECT set_config('app.tenant_id', $1, true)", params: [tenantId] },
+    ...scopeGucSteps(scope),
     { text: `SET LOCAL statement_timeout = '${EXEC_STATEMENT_TIMEOUT}'`, params: [] },
     { text: `SET LOCAL ROLE "${roleName}"`, params: [] },
     userStep,
@@ -254,12 +312,19 @@ async function runHostedPgQuery(
   tenantId: string,
   sql: string,
   signal?: AbortSignal,
+  scope?: MemoryScope,
 ): Promise<QueryResult> {
   const neonSql = neon(url, { fullResults: true });
   const operation = detectSqlOperation(sql);
   const tracer = trace.getTracer("@nlqdb/api");
   const roleName = await tenantRoleName(tenantId);
-  const steps = buildHostedExecSteps(schemaName, tenantId, roleName, { text: sql, params: [] });
+  const steps = buildHostedExecSteps(
+    schemaName,
+    tenantId,
+    roleName,
+    { text: sql, params: [] },
+    scope,
+  );
 
   return tracer.startActiveSpan(
     "db.query",
@@ -425,16 +490,15 @@ function detectSqlOperation(sql: string): string {
 }
 
 // Executes the deterministic memory-write `INSERT` (E-02) in the tenant's
-// schema + RLS context. Same three-statement transaction as `buildExec`
-// (set search_path, set app.tenant_id, then the user statement), but the
-// third statement is **parameterised** (`neonSql.query(text, params)`)
-// because the values are arbitrary agent-supplied content. The two
-// `set_config(..., true)` calls are transaction-local, so the
-// provisioner's `tenant_isolation` RLS policy governs the INSERT's
-// WITH CHECK just as it governs reads.
+// schema + RLS context. Same statement plan as `buildExec`
+// (`buildHostedExecSteps`), but the user statement is **parameterised**
+// (`neonSql.query(text, params)`) because the values are arbitrary
+// agent-supplied content. Every `set_config(..., true)` call is
+// transaction-local, so both `tenant_isolation` and the E-03 restrictive
+// scope policies govern the INSERT's write check just as they govern reads.
 export async function buildMemoryExec(
   db: DbRecord,
-  plan: import("../memory/remember.ts").MemoryInsertPlan,
+  plan: MemoryInsertPlan,
   signal?: AbortSignal,
 ): Promise<QueryResult> {
   // Memory writes target the hosted `agent_memory_v1` preset DB (its
@@ -462,10 +526,16 @@ export async function buildMemoryExec(
   // INSERT runs as the tenant role (RLS enforced, no cross-schema reach),
   // not the shared owner. The INSERT itself stays parameterised.
   const roleName = await tenantRoleName(db.tenantId);
-  const steps = buildHostedExecSteps(schemaName, db.tenantId, roleName, {
-    text: plan.text,
-    params: plan.params,
-  });
+  const steps = buildHostedExecSteps(
+    schemaName,
+    db.tenantId,
+    roleName,
+    { text: plan.text, params: plan.params },
+    // E-03 — the row is tagged with exactly this scope, so the restrictive
+    // policies' write check passes and a narrowed agent cannot write a row
+    // it would not be allowed to read back.
+    plan.scope,
+  );
 
   return tracer.startActiveSpan(
     "nlqdb.memory.remember",

@@ -604,9 +604,11 @@ jobs:
 
       # Vitest is wrapped in a 3-attempt retry to absorb cold-compute
       # first-query flakes on freshly-provisioned Neon endpoints and
-      # transient HTTP drops mid-test. The integration test's
-      # `beforeAll`/`afterAll` drop `test_ws6%` schemas idempotently,
-      # so a retry starts from a clean state.
+      # transient HTTP drops mid-test. Each integration test's
+      # `beforeAll`/`afterAll` drops its own schemas (`test_ws6%`,
+      # `test_e03_scope`) idempotently, so a retry starts from a clean state.
+      # `memory-scoping.integration.test.ts` is E-03's security invariant
+      # (SK-PIVOT-009) — it must run wherever the Neon branch exists.
       - name: Run integration smoke test
         if: steps.preflight.outputs.configured == 'true'
         working-directory: apps/api
@@ -615,7 +617,7 @@ jobs:
         run: |
           set -uo pipefail
           for attempt in 1 2 3; do
-            if bunx vitest run src/db-create/neon-provision.integration.test.ts; then
+            if bunx vitest run src/db-create/*.integration.test.ts; then
               exit 0
             fi
             if [ "$attempt" -lt 3 ]; then
