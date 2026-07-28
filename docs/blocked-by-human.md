@@ -27,7 +27,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 |---|---|---|---|
 | 1 | ~5 min | **Decide:** flip `MEMORY_PRESET` in prod before E-03 ships, or hold? Holding also holds #2's dogfood gate; PR #835 drafted | 2026-07-27 |
 | 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 3 | ~2 min | Mint an `sk_live_` key and set it as `NLQDB_API_KEY` in the R-04 walker env — the last tick on the cold-agent headless walk #836/#837 just shipped the route for | 2026-07-27 |
+| 3 | ~2 min | Mint an `sk_live_` key and set it as `NLQDB_API_KEY` in the walker env — the last tick on the cold-agent headless walk #836/#837 just shipped the route for | 2026-07-27 |
 | 4 | ~5 min | **Decide:** is `sk_live_*` the headless MCP credential? It defeats global-signout revocation and mis-attributes MCP as `cli` | 2026-07-27 |
 | 5 | ~10 min | Provide a LogSnag ingest token (+ wire the late-bound `window.__nlqdb_logsnag` hook) so client demand signals stop being silent no-ops | 2026-07-27 |
 | 6 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
@@ -93,13 +93,13 @@ release step, largely automated.)
    (scorecard row #2) from 0.
 
 3. **⏱ ~2 min · since 2026-07-27 — Mint an `sk_live_` key and set it as
-   `NLQDB_API_KEY` in the R-04 walker env.** #836 (the `/agents` connect card)
+   `NLQDB_API_KEY` in the walker env.** #836 (the `/agents` connect card)
    and #837 (the docs guide + `llms.txt`) shipped the browser-free MCP route
    end-to-end; every step below the credential is proven (transport, tool
    list, prod reachability, the published `claude mcp add` line run verbatim).
    The one thing left to tick R-04's cold-agent walk is a real key in the
    walker's environment — an operator secret an agent can't self-mint. Mint at
-   `https://app.nlqdb.com/app/keys`, set `NLQDB_API_KEY` in the R-06 walker
+   `https://app.nlqdb.com/app/keys`, set `NLQDB_API_KEY` in the walker
    env. (No relation to #4's *policy* question below — this is just the key.)
 
 4. **⏱ ~5 min · since 2026-07-27 — Decide: is `sk_live_*` the headless MCP
@@ -122,7 +122,7 @@ release step, largely automated.)
      it, and those five sites become true as written.
 
 5. **⏱ ~10 min · since 2026-07-27 — Provide a LogSnag ingest token so client
-   demand signals stop being silent no-ops.** `lib/logsnag.ts` emits
+   demand signals stop being silent no-ops.** The events `lib/logsnag.ts` emits
    (`agents.connect_clicked` with its new `url`/`stdio` transport dimension,
    `solve.try_query_clicked`, …) only fire if the late-bound
    `window.__nlqdb_logsnag` hook is present, and that hook is defined nowhere
