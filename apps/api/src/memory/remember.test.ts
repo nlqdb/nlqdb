@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import { DbConfigError, type DbRecord, type QueryResult } from "../ask/types.ts";
 import {
   buildRememberInsert,
-  isAgentMemoryV1Db,
+  memorySurfaceRejection,
   orchestrateRemember,
   type RememberDeps,
   validateRememberInput,
@@ -42,11 +42,15 @@ function makeDeps(overrides: Partial<RememberDeps> = {}): RememberDeps {
   };
 }
 
-describe("isAgentMemoryV1Db", () => {
-  it("matches only the preset id prefix", () => {
-    expect(isAgentMemoryV1Db("db_agent_memory_v1_abc123")).toBe(true);
-    expect(isAgentMemoryV1Db("db_orders_xyz789")).toBe(false);
-    expect(isAgentMemoryV1Db("db_agent_memory_v2_abc123")).toBe(false);
+// SK-PIVOT-010 — the memory surface is authed-only. Pinned for every
+// principal kind so a future kind can't quietly inherit write access.
+describe("memorySurfaceRejection", () => {
+  it("rejects anon and pk_live, admits the three account-scoped kinds", () => {
+    expect(memorySurfaceRejection("anon")).toBe("auth_required");
+    expect(memorySurfaceRejection("pk_live")).toBe("forbidden");
+    expect(memorySurfaceRejection("user")).toBeNull();
+    expect(memorySurfaceRejection("sk_live")).toBeNull();
+    expect(memorySurfaceRejection("sk_mcp")).toBeNull();
   });
 });
 
@@ -118,6 +122,45 @@ describe("buildRememberInsert", () => {
     expect(plan.text).toContain("DO UPDATE SET last_seen_at = NOW()");
     expect(plan.params).toEqual(["user_1", "person", "Ada", JSON.stringify({ role: "eng" })]);
   });
+
+  // E-03 / SK-PIVOT-009 — the plan carries the scope the exec wrapper turns
+  // into GUCs, so the row is written under exactly the scope it is tagged
+  // with (the restrictive policies' write check then passes by construction,
+  // and a narrowed agent cannot write a row it could not read back).
+  it("carries the scope the row is tagged with, narrowing GUCs only when supplied", () => {
+    const scoped = buildRememberInsert(
+      {
+        db: MEMORY_DB_ID,
+        kind: "fact",
+        endUserId: "u_9",
+        threadId: "t_3",
+        payload: { content: "x" },
+      },
+      { ...ctx, agentId: "agent_a" },
+    );
+    expect(scoped.scope).toEqual({ agentId: "agent_a", endUserId: "u_9", threadId: "t_3" });
+    // the same values the INSERT tags the row with
+    expect(scoped.params.slice(0, 3)).toEqual(["agent_a", "u_9", "t_3"]);
+
+    const bare = buildRememberInsert(
+      { db: MEMORY_DB_ID, kind: "fact", payload: { content: "x" } },
+      ctx,
+    );
+    expect(bare.scope).toEqual({ agentId: "user_1" });
+
+    // `entities` has no end-user/thread columns but the scope still travels
+    // (its policies simply have nothing to pin).
+    const entity = buildRememberInsert(
+      {
+        db: MEMORY_DB_ID,
+        kind: "entity",
+        endUserId: "u_9",
+        payload: { kind: "person", canonical_name: "Ada" },
+      },
+      ctx,
+    );
+    expect(entity.scope).toEqual({ agentId: "user_1", endUserId: "u_9" });
+  });
 });
 
 describe("validateRememberInput", () => {
@@ -164,6 +207,25 @@ describe("validateRememberInput", () => {
       ttlSeconds: 60,
     });
     expect(r.ok).toBe(false);
+  });
+  // E-03 — `agentId` is the optional sub-agent narrowing (server-defaulted
+  // at the handler). A malformed one fails loud rather than silently
+  // falling back to the tenant-wide scope.
+  it("accepts an agentId and rejects a non-string one", () => {
+    const ok = validateRememberInput({
+      db: "d",
+      kind: "fact",
+      payload: { content: "x" },
+      agentId: "agent_a",
+    });
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(ok.value.agentId).toBe("agent_a");
+    expect(
+      validateRememberInput({ db: "d", kind: "fact", payload: { content: "x" }, agentId: 7 }).ok,
+    ).toBe(false);
+    expect(
+      validateRememberInput({ db: "d", kind: "fact", payload: { content: "x" }, agentId: "" }).ok,
+    ).toBe(false);
   });
 });
 

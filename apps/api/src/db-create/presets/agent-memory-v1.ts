@@ -89,6 +89,17 @@ export const AGENT_MEMORY_V1_COLUMNS = {
 
 export type AgentMemoryV1Table = keyof typeof AGENT_MEMORY_V1_COLUMNS;
 
+// A memory-preset DB carries the version-keyed id prefix the create path
+// mints (`db_${slug_hint}_<6hex>`, SK-HDC-020). Checking the prefix avoids
+// a second round-trip to recompute the schema hash. One predicate for
+// three call sites — the provisioner's scope-policy branch (E-03), the
+// `remember` verb's preset guard (E-02), and the TTL sweep's DB filter
+// (E-04) — so a DB the write verb accepts is always a DB the provisioner
+// scoped.
+export function isAgentMemoryV1Db(dbId: string): boolean {
+  return dbId.startsWith(`db_${AGENT_MEMORY_V1_VERSION}_`);
+}
+
 // SK-HDC-009 — identifier guard, mirrored from `neon-provision.ts`.
 // The preset is the last-mile author of its own SQL, so it re-validates
 // the only interpolated identifier (the per-db schema name) before
@@ -178,6 +189,81 @@ export function agentMemoryV1Ddl(schemaName: string): string[] {
     `CREATE INDEX "idx_facts__tags" ON ${q("facts")} USING GIN ("tags");`,
     `CREATE INDEX "idx_entity_facts__fact_id" ON ${q("entity_facts")} ("fact_id");`,
   ];
+}
+
+// E-03 / SK-PIVOT-009 — the memory-scope RLS policies, emitted by the
+// provisioner right after the schema-wide permissive `tenant_isolation`
+// policy (`neon-provision.ts`), on the preset path only.
+//
+// **Every policy is `AS RESTRICTIVE`.** Default-flavour Postgres policies
+// are PERMISSIVE and OR-combined, so a permissive `agent_isolation` next to
+// `tenant_isolation` would be dead code and a silent cross-agent breach;
+// restrictive policies are AND-ed with the permissive set
+// (postgresql.org/docs/17/sql-createpolicy.html). The DDL test pins the
+// keyword.
+//
+// Semantics:
+//   • `agent_isolation` — GUC equals the row's `agent_id`, **or** equals the
+//     baked tenant literal. The tenant arm keeps the account principal (the
+//     dashboard, cross-agent analytics) and the E-04 sweep — which DELETEs
+//     across agents through the same exec wrapper — fully sighted. An unset
+//     GUC reads NULL (or `''` after a reset — see below) and matches neither
+//     an `agent_id` nor the tenant literal: fail-closed either way.
+//   • `end_user_isolation` / `thread_isolation` — opt-in **hard gate**: when
+//     the request carries the scope the exec wrapper sets the GUC and the
+//     policy pins it (exact equality — a row with a NULL `end_user_id` is
+//     *not* visible to an end-user-scoped request). Absent, the arm is a
+//     no-op, so cross-end-user analytics run unrestricted within the agent
+//     scope (the wedge pitch). Only `facts` / `episodes` carry those columns.
+//     "Absent" is `nullif(current_setting(…), '') IS NULL`, **not**
+//     `IS NULL`: a custom-GUC placeholder reads NULL only until something
+//     sets it, after which `SET LOCAL`'s transaction-end reset leaves it as
+//     the **empty string** for the rest of that backend session. Neon's HTTP
+//     proxy reuses backends, so with a bare `IS NULL` the first narrowed
+//     request on a connection would silently zero every later unnarrowed
+//     read on it (verified on PG16: `current_setting('app.x', true)` → NULL
+//     before the first set, `''` after the reset).
+//   • `facts` additionally carries E-04's read-invisibility arm
+//     (SK-PIVOT-011) so expired rows are gone from reads before the sweep
+//     runs. No `WITH CHECK` is declared anywhere, so `USING` doubles as the
+//     write check (Postgres rule for `FOR ALL` policies) — a write must tag
+//     the row with the scope it is executing under, which the deterministic
+//     `buildRememberInsert` does by construction.
+//   • `entity_facts` is a bare (entity_id, fact_id) link table with no
+//     `agent_id` of its own, so it inherits scope from its parent `entities`
+//     row rather than being left unrestricted.
+//
+// `tenantLiteral` MUST already be single-quote-escaped by the caller
+// (`escapeSqlLiteral` in `neon-provision.ts`, the only caller) — same
+// contract as the `tenant_isolation` literal it sits next to.
+export function agentMemoryV1ScopePolicies(schemaName: string, tenantLiteral: string): string[] {
+  assertSafeSchemaName(schemaName);
+  const q = (table: string) => `${quoteIdent(schemaName)}.${quoteIdent(table)}`;
+  const agentArm = (agentIdRef: string) =>
+    `current_setting('app.agent_id', true) = ${agentIdRef} ` +
+    `OR current_setting('app.agent_id', true) = '${tenantLiteral}'`;
+  const narrowing = (name: string, table: string, guc: string, column: string) =>
+    `CREATE POLICY ${name} ON ${q(table)} AS RESTRICTIVE ` +
+    `USING (nullif(current_setting('${guc}', true), '') IS NULL ` +
+    `OR current_setting('${guc}', true) = ${quoteIdent(column)})`;
+
+  const out: string[] = [];
+  for (const table of ["facts", "episodes", "entities"] as const) {
+    const ttlArm = table === "facts" ? ` AND ("expires_at" IS NULL OR "expires_at" > now())` : "";
+    out.push(
+      `CREATE POLICY agent_isolation ON ${q(table)} AS RESTRICTIVE ` +
+        `USING ((${agentArm('"agent_id"')})${ttlArm})`,
+    );
+  }
+  out.push(
+    `CREATE POLICY agent_isolation ON ${q("entity_facts")} AS RESTRICTIVE ` +
+      `USING ("entity_id" IN (SELECT e."id" FROM ${q("entities")} AS e WHERE ${agentArm('e."agent_id"')}))`,
+  );
+  for (const table of ["facts", "episodes"] as const) {
+    out.push(narrowing("end_user_isolation", table, "app.end_user_id", "end_user_id"));
+    out.push(narrowing("thread_isolation", table, "app.thread_id", "thread_id"));
+  }
+  return out;
 }
 
 // Typed `SchemaPlan` *projection* of the v1 shape. The executable schema

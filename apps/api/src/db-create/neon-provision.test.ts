@@ -366,6 +366,77 @@ describe("provisionDb — happy path", () => {
   });
 });
 
+// E-03 / SK-PIVOT-009 — the memory-scope policies ride the preset path
+// only, keyed on the `db_agent_memory_v1_` id prefix (the same predicate
+// the `remember` verb and the E-04 sweep use). Non-memory DBs must stay
+// byte-identical to the pre-E-03 batch.
+describe("provisionDb — agent-memory scope policies (E-03)", () => {
+  const memoryArgs = () =>
+    makeArgs({
+      dbId: "db_agent_memory_v1_a4f3b2",
+      schemaName: "agent_memory_v1_a4f3b2",
+      plan: makePlan({
+        slug_hint: "agent_memory_v1",
+        tables: [
+          tableShell("facts"),
+          tableShell("episodes"),
+          tableShell("entities"),
+          tableShell("entity_facts"),
+        ],
+        sample_rows: [],
+      }),
+    });
+
+  it("emits the RESTRICTIVE agent_isolation policy per memory table, after tenant_isolation", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+
+    await provisionDb({ pg: pg.pg, d1: d1.d1 }, memoryArgs());
+
+    if (!pg.batch) throw new Error("expected batch");
+    const sqls = pg.batch.map((s) => s.sql);
+    for (const table of ["facts", "episodes", "entities", "entity_facts"]) {
+      const policy = sqls.find((s) =>
+        s.startsWith(`CREATE POLICY agent_isolation ON "agent_memory_v1_a4f3b2"."${table}"`),
+      );
+      expect(policy, `agent_isolation on ${table}`).toBeDefined();
+      expect(policy).toContain("AS RESTRICTIVE");
+      // Every scope policy lands after the permissive tenant policy it is
+      // AND-ed with — the table must already have RLS enabled.
+      const tenantIdx = sqls.findIndex((s) =>
+        s.startsWith(`CREATE POLICY tenant_isolation ON "agent_memory_v1_a4f3b2"."${table}"`),
+      );
+      expect(tenantIdx).toBeGreaterThan(-1);
+      expect(sqls.indexOf(policy as string)).toBeGreaterThan(tenantIdx);
+    }
+    // The opt-in narrowing pair rides along on the two tables that carry
+    // the columns.
+    expect(sqls.filter((s) => s.startsWith("CREATE POLICY end_user_isolation"))).toHaveLength(2);
+    expect(sqls.filter((s) => s.startsWith("CREATE POLICY thread_isolation"))).toHaveLength(2);
+  });
+
+  it("bakes the escaped tenant literal into the agent arm", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+
+    await provisionDb({ pg: pg.pg, d1: d1.d1 }, { ...memoryArgs(), tenantId: "anon:o'malley" });
+
+    if (!pg.batch) throw new Error("expected batch");
+    const policy = pg.batch.find((s) => s.sql.startsWith("CREATE POLICY agent_isolation"));
+    expect(policy?.sql).toContain(`current_setting('app.agent_id', true) = 'anon:o''malley'`);
+  });
+
+  it("emits NO scope policy for a non-memory dbId (preset path only)", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+
+    await provisionDb({ pg: pg.pg, d1: d1.d1 }, makeArgs());
+
+    if (!pg.batch) throw new Error("expected batch");
+    expect(pg.batch.filter((s) => /agent_isolation|app\.agent_id/.test(s.sql))).toEqual([]);
+  });
+});
+
 describe("provisionDb — failure paths", () => {
   it("D1 row already present for dbId → schema_already_exists with rolled_back=false; pg untouched", async () => {
     const pg = makePgStub();

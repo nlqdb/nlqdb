@@ -34,6 +34,12 @@ export type GoalDbBody = { goal: string; dbId: string };
 // SK-PREMIUM-014 — `model` is the goal-first preset knob (SK-PREMIUM-003),
 // validated at parse time against `MODEL_PRESETS`; an unknown string
 // returns `invalid_model` rather than silently coercing to `auto`.
+// E-03 / SK-PIVOT-009 — optional memory-scope narrowing on the read path.
+// Same three field names `/v1/memory/remember` accepts, so a caller scopes
+// a write and the read that follows it identically. Omitted ⇒ the exec
+// wrapper defaults `app.agent_id` to the tenant principal (full
+// visibility); present ⇒ the RESTRICTIVE RLS policies pin the rows. Blank
+// strings are treated as omitted (same client convenience as `dbId`).
 export type AskBody = {
   goal: string;
   dbId?: string;
@@ -41,7 +47,12 @@ export type AskBody = {
   confirm?: boolean;
   model?: ModelPreset;
   source?: AskSource;
+  agentId?: string;
+  endUserId?: string;
+  threadId?: string;
 };
+
+const ASK_SCOPE_KEYS = ["agentId", "endUserId", "threadId"] as const;
 
 // SK-GTM-007 — first-touch acquisition source, forwarded by the web
 // client on the create branch and persisted to `databases.source_json`.
@@ -103,7 +114,14 @@ export type SqlTooLongBody = { error: "sql_too_long"; maxLength: number };
 
 export type ParseErrorBody =
   | {
-      error: "invalid_json" | "goal_required" | "dbId_required" | "sql_required" | "db_required";
+      error:
+        | "invalid_json"
+        | "goal_required"
+        | "dbId_required"
+        | "sql_required"
+        | "db_required"
+        // E-03 — a non-string `agentId` / `endUserId` / `threadId`.
+        | "invalid_scope";
     }
   | GoalTooLongBody
   | SqlTooLongBody
@@ -163,6 +181,9 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
     confirm?: unknown;
     model?: unknown;
     source?: unknown;
+    agentId?: unknown;
+    endUserId?: unknown;
+    threadId?: unknown;
   }>(c);
   if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
   if (typeof raw.body.goal !== "string" || raw.body.goal.trim().length === 0) {
@@ -207,6 +228,19 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
   const source = sanitizeAskSource(raw.body.source);
   if (source !== undefined) {
     body.source = source;
+  }
+  // E-03 scope narrowing — a malformed scope field **fails loud**
+  // (GLOBAL-012). Silently dropping it would run the query unrestricted
+  // within the agent scope, i.e. a client typo would widen visibility past
+  // what the caller asked for; that is the one failure mode a scoping
+  // feature must not have.
+  for (const key of ASK_SCOPE_KEYS) {
+    const value = raw.body[key];
+    if (value === undefined || value === "") continue;
+    if (typeof value !== "string") {
+      return { ok: false, error: { status: 400, body: { error: "invalid_scope" } } };
+    }
+    body[key] = value;
   }
   return { ok: true, body };
 }

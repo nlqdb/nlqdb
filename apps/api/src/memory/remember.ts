@@ -19,16 +19,18 @@
 // preset (E-01) — a non-memory DB has no `facts`/`episodes`/`entities`
 // tables, so the deterministic INSERT would be meaningless. The exec
 // adapter (`build-deps.ts buildMemoryExec`) batches the same
-// `set_config('app.tenant_id', …)` the read path uses, so RLS
-// (`SK-HDC` provisioner policy) governs the row at write time too.
+// `set_config('app.tenant_id', …)` the read path uses plus the E-03 scope
+// GUCs from `plan.scope`, so both the tenant policy and the restrictive
+// `agent_isolation` / `end_user_isolation` / `thread_isolation` policies
+// (SK-PIVOT-009) govern the row at write time too.
 //
 // Sibling: `docs/features/agent-memory-pivot/worksheets/engine/E-02-remember-tool.md`.
 
 import type { RateLimiter } from "../ask/rate-limit.ts";
 import { type AskError, DbConfigError, type DbRecord, type QueryResult } from "../ask/types.ts";
 import {
-  AGENT_MEMORY_V1_VERSION,
   type AgentMemoryV1Table,
+  isAgentMemoryV1Db,
 } from "../db-create/presets/agent-memory-v1.ts";
 
 export type RememberKind = "fact" | "episode" | "entity";
@@ -60,10 +62,13 @@ export type EntityPayload = {
 
 export type RememberArgs = {
   db: string;
-  // Optional scoping (E-03 will derive `agent_id` from the principal and
-  // enforce read isolation; these stay caller-supplied free-form columns
-  // until then). `entities` has no end-user/thread columns, so they are
-  // ignored for `kind: "entity"`.
+  // E-03 / SK-PIVOT-009 scoping. All three are optional and
+  // server-defaulted (`agentId` falls back to the tenant principal), so the
+  // zero-config call still works; supplying them narrows the row's scope
+  // AND the RLS GUCs the exec wrapper sets, so the write is checked against
+  // the same gate a later read is filtered by. `entities` has no
+  // end-user/thread columns, so those are ignored for `kind: "entity"`.
+  agentId?: string;
   endUserId?: string;
   threadId?: string;
   // E-04 — TTL on a fact row; the sweep that consumes `expires_at` is
@@ -77,10 +82,26 @@ export type RememberArgs = {
   | { kind: "entity"; payload: EntityPayload }
 );
 
+// E-03 / SK-PIVOT-009 — the row-level scope a statement executes under.
+// `buildHostedExecSteps` turns it into `set_config('app.agent_id', …)` (+
+// the opt-in `app.end_user_id` / `app.thread_id`) so the restrictive
+// policies the provisioner emitted have something to match. `agentId` is
+// always present: an unset GUC is NULL and matches no row (fail-closed), so
+// every hosted exec carries at least the tenant-default agent scope.
+export type MemoryScope = {
+  agentId: string;
+  endUserId?: string;
+  threadId?: string;
+};
+
 export type MemoryInsertPlan = {
   table: AgentMemoryV1Table;
   text: string;
   params: unknown[];
+  // The scope the INSERT runs under — the same values the row is tagged
+  // with, so the restrictive policies' WITH CHECK (defaulted from `USING`)
+  // passes by construction.
+  scope: MemoryScope;
 };
 
 export type RememberResult = {
@@ -106,20 +127,17 @@ export type RememberRequest = {
   args: RememberArgs;
   // Tenant id (`Principal.id`) — drives `resolveDb` scope.
   userId: string;
-  // Server-injected memory owner. Until E-03 ships per-agent identities
-  // this is the tenant id; E-03 narrows it without changing this contract.
+  // The resolved memory owner: the tenant principal by default, or the
+  // caller's optional `args.agentId` sub-agent (E-03 / SK-PIVOT-009 —
+  // the handler resolves it, never the caller alone). Narrowing only ever
+  // *reduces* what the row is visible to, so no extra authorisation is
+  // needed: the tenant literal baked into the policy keeps the account
+  // principal sighted either way.
   agentId: string;
   rateLimitBucketKey?: string;
   // Injected so `expires_at` is deterministic in tests.
   nowMs?: number;
 };
-
-// A memory-preset DB carries the version-keyed id prefix the create
-// path mints (`db_${slug_hint}_<6hex>`, SK-HDC-020). Checking the prefix
-// avoids a second round-trip to recompute the schema hash.
-export function isAgentMemoryV1Db(dbId: string): boolean {
-  return dbId.startsWith(`db_${AGENT_MEMORY_V1_VERSION}_`);
-}
 
 // Pure, deterministic INSERT builder. Identifiers come only from the
 // fixed column allow-list; every caller value is a `$n` bound param.
@@ -127,6 +145,12 @@ export function buildRememberInsert(
   args: RememberArgs,
   ctx: { agentId: string; nowMs: number },
 ): MemoryInsertPlan {
+  const scope: MemoryScope = {
+    agentId: ctx.agentId,
+    ...(args.endUserId !== undefined ? { endUserId: args.endUserId } : {}),
+    ...(args.threadId !== undefined ? { threadId: args.threadId } : {}),
+  };
+
   if (args.kind === "fact") {
     const expiresAt =
       args.ttlSeconds !== undefined
@@ -148,6 +172,7 @@ export function buildRememberInsert(
         args.payload.source !== undefined ? JSON.stringify(args.payload.source) : null,
         expiresAt,
       ],
+      scope,
     };
   }
 
@@ -167,6 +192,7 @@ export function buildRememberInsert(
         args.payload.tool_calls !== undefined ? JSON.stringify(args.payload.tool_calls) : null,
         args.payload.tokens ?? null,
       ],
+      scope,
     };
   }
 
@@ -187,7 +213,23 @@ export function buildRememberInsert(
       args.payload.canonical_name,
       args.payload.properties !== undefined ? JSON.stringify(args.payload.properties) : null,
     ],
+    scope,
   };
+}
+
+// SK-PIVOT-010 — anon and `pk_live` have **no memory surface**, so E-03
+// designs no anon-token scoping: the preset create is `requireSession` and
+// this verb rejects both principal kinds outright. Pure so the mapping is
+// pinned by a unit test for every principal kind rather than only by the
+// handler it feeds (`index.ts POST /v1/memory/remember`).
+//   pk_live → `forbidden` (read-only embed key, SK-APIKEYS-003)
+//   anon    → `auth_required` (no account ⇒ no memory DB to write to)
+export function memorySurfaceRejection(
+  principalKind: "user" | "anon" | "pk_live" | "sk_live" | "sk_mcp",
+): "forbidden" | "auth_required" | null {
+  if (principalKind === "pk_live") return "forbidden";
+  if (principalKind === "anon") return "auth_required";
+  return null;
 }
 
 // Request-body validation. Kept pure (no Hono) so the same checks cover
@@ -214,17 +256,33 @@ export function validateRememberInput(body: unknown): ValidateResult {
   }
   const p = rawPayload as Record<string, unknown>;
 
-  const scope: { endUserId?: string; threadId?: string; ttlSeconds?: number } = {};
+  const scope: {
+    agentId?: string;
+    endUserId?: string;
+    threadId?: string;
+    ttlSeconds?: number;
+  } = {};
+  const agentId = b["agentId"];
   const endUserId = b["endUserId"];
   const threadId = b["threadId"];
   const ttlSeconds = b["ttlSeconds"];
+  if (agentId !== undefined) {
+    if (typeof agentId !== "string" || agentId.length === 0) {
+      return { ok: false, reason: "`agentId` must be a non-empty string." };
+    }
+    scope.agentId = agentId;
+  }
+  // Empty strings are rejected, not coerced: the RLS policies read an empty
+  // scope GUC as "no narrowing" (a placeholder GUC resets to `''`, not NULL),
+  // so an empty `endUserId` would silently write a row nothing can narrow to.
   if (endUserId !== undefined) {
-    if (typeof endUserId !== "string")
-      return { ok: false, reason: "`endUserId` must be a string." };
+    if (typeof endUserId !== "string" || endUserId.length === 0)
+      return { ok: false, reason: "`endUserId` must be a non-empty string." };
     scope.endUserId = endUserId;
   }
   if (threadId !== undefined) {
-    if (typeof threadId !== "string") return { ok: false, reason: "`threadId` must be a string." };
+    if (typeof threadId !== "string" || threadId.length === 0)
+      return { ok: false, reason: "`threadId` must be a non-empty string." };
     scope.threadId = threadId;
   }
   if (ttlSeconds !== undefined) {

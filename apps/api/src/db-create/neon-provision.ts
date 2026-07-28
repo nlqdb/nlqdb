@@ -8,6 +8,9 @@
 //   2. per-tenant role with USAGE only on its own schemas
 //   3. row-level security policy on every table, bound to
 //      `current_setting('app.tenant_id', true)`
+// On the `agent_memory_v1` preset path a fourth, RESTRICTIVE layer
+// scopes rows *within* the tenant to one agent / end-user / thread
+// (E-03, SK-PIVOT-009 — `agentMemoryV1ScopePolicies`).
 // Cross-tenant leak therefore requires three independent failures —
 // see docs/research-receipts.md §6 (instatunnel multi-tenant RLS
 // post-mortem) for the prior art that motivated the layering.
@@ -36,6 +39,7 @@
 
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, type Tracer, trace } from "@opentelemetry/api";
+import { agentMemoryV1ScopePolicies, isAgentMemoryV1Db } from "./presets/agent-memory-v1.ts";
 import type {
   PgClient,
   PgTransactionStatement,
@@ -165,6 +169,21 @@ export async function provisionDb(
         `CREATE POLICY tenant_isolation ON "${schemaName}"."${table.name}" ` +
         `USING (current_setting('app.tenant_id', true) = '${tenantLiteral}')`,
     });
+  }
+
+  // E-03 / SK-PIVOT-009 — per-agent (+ opt-in per-end-user / per-thread)
+  // scoping on the `agent_memory_v1` preset path. The policies are
+  // `AS RESTRICTIVE`, so Postgres ANDs them with the permissive
+  // `tenant_isolation` above instead of OR-ing them into irrelevance.
+  // Keyed on the id prefix the preset create mints — the same predicate
+  // the `remember` verb and the E-04 sweep use, so a DB the memory verbs
+  // accept can never be a DB whose rows went unscoped. `MEMORY_PRESET` is
+  // dark in prod, so no memory DB exists to backfill: the policies land on
+  // the provisioner path only.
+  if (isAgentMemoryV1Db(args.dbId)) {
+    for (const sql of agentMemoryV1ScopePolicies(schemaName, tenantLiteral)) {
+      statements.push({ sql });
+    }
   }
 
   // Grant the tenant role DML on the tables + USAGE on their sequences

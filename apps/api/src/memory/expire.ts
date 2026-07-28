@@ -1,13 +1,23 @@
 // E-04 — agent-memory TTL sweep. The deterministic, offline-tested core
 // of the daily expiry job: build the parameterised DELETE, run it across
 // the memory-preset DBs with per-DB failure isolation, and aggregate the
-// counts the OTel metric will report. Staged ahead of the two remaining
-// halves: the cron wiring that drives it (a `wrangler.toml` `[triggers]`
-// entry + a `scheduled()` branch — plain code, deploys with the Worker;
-// no human step) and the read-side TTL *invisibility*
-// (an `AND (expires_at IS NULL OR expires_at > NOW())` clause on E-03's
-// `facts` RLS `USING` policy — E-03-gated). Same shape as E-02, which
-// shipped `buildRememberInsert` ahead of its e2e wiring.
+// counts the OTel metric will report. The read-side half shipped with E-03
+// (the `facts` `agent_isolation` policy carries the
+// `expires_at IS NULL OR expires_at > now()` arm, SK-PIVOT-009), so expired
+// rows are already invisible to reads before this sweep runs. Still
+// remaining: the cron wiring that drives it (a `wrangler.toml` `[triggers]`
+// entry + a `scheduled()` branch — plain code, deploys with the Worker; no
+// human step).
+//
+// **The sweep must run as the schema OWNER, not through
+// `buildHostedExecSteps`' `SET LOCAL ROLE`.** That TTL arm sits in a
+// `FOR ALL` policy's `USING`, and Postgres applies SELECT/ALL policies to a
+// `DELETE` that reads columns in its `WHERE` / `RETURNING`
+// (postgresql.org/docs/17/sql-createpolicy.html, Table 297 note [a]) — so
+// under the non-owner tenant role the expired rows this DELETE targets are
+// filtered out of it and the sweep silently deletes nothing. The owner
+// bypasses RLS, which is also what makes the cross-tenant cron possible at
+// all.
 //
 // Why a server-built constant DELETE and not LLM SQL: identical trust
 // boundary to remember (E-02) — the only thing consulted is
@@ -20,7 +30,7 @@
 // Sibling: `docs/features/agent-memory-pivot/worksheets/engine/E-04-ttl-decay.md`.
 
 import { DbConfigError, type DbRecord, type QueryResult } from "../ask/types.ts";
-import { isAgentMemoryV1Db } from "./remember.ts";
+import { isAgentMemoryV1Db } from "../db-create/presets/agent-memory-v1.ts";
 
 export type MemorySweepPlan = {
   table: "facts";
