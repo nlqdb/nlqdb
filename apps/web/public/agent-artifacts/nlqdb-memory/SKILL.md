@@ -22,6 +22,19 @@ claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp
 On the first tool call nlqdb opens a browser OAuth page once — approve it and
 Claude Code stores the token. No API key to paste.
 
+### No browser? (headless / CI)
+
+If nobody is at a browser — an unattended agent, CI, a container — run the same
+five tools locally over stdio instead. `npx` fetches `@nlqdb/mcp` and it talks
+to the same production API, authenticated by an `sk_live_` key (mint one at
+`app.nlqdb.com/app/keys`, a signed-in account) rather than a browser:
+
+```bash
+claude mcp add --env NLQDB_API_KEY=sk_live_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
+```
+
+The CLI writes the key to `~/.claude.json`, nothing into your repo.
+
 ## Usage
 
 All memory goes through the **`nlqdb_query`** tool. Omit the `db` argument and

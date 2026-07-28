@@ -18,47 +18,50 @@ body in git history). Earliest drafts: [archive](./distribution-queue-archive.md
 
 ## Drafts — unpublished, newest first
 
+- **"Row-level security has a flavour, and the default one is a silent
+  breach."** slug `restrictive-rls-agent-memory-scoping` · venue dev.to
+  (#postgres #security #ai) + r/PostgreSQL + lobste.rs (`databases`,
+  `security`) · security lesson (`SK-PIVOT-009`). Facts: a shared-schema
+  Postgres DB with a permissive `tenant_isolation` policy needs a *second*
+  boundary inside: per-agent, optional end-user/thread. The read path executes
+  free-form LLM SQL — no AST to inject a `WHERE` into, so RLS or nothing. The
+  invariant is one keyword — `CREATE POLICY` defaults to `PERMISSIVE`,
+  permissive policies **OR**-combine and restrictive ones **AND**
+  (postgresql.org/docs/17/sql-createpolicy.html) — so a default-flavour
+  `agent_isolation` is dead code that reads like security in review. Clause:
+  `USING (current_setting('app.agent_id', true) = agent_id OR … = '<tenant>')`
+  — arm two keeps owner + TTL sweep sighted; an unset GUC matches nothing
+  (fail-closed). Gotchas: (1) a link table with no scope column must
+  inherit it from its parent, else it is unrestricted; (2) a "hide expired" TTL arm in
+  a `FOR ALL` `USING` hides those rows from your cleanup `DELETE` too (Table
+  297 note [a]: SELECT/ALL policies apply to a DELETE reading columns in
+  `WHERE`/`RETURNING`), so sweep as owner; (3) denylist
+  `set_config`/`current_setting` in user SQL, else a CTE re-arms it; (4) "GUC
+  unset" is `nullif(current_setting(x, true), '') IS NULL` — a placeholder GUC
+  reads NULL only until something sets it, then resets to `''` for the session
+  — on a pooled connection a bare `IS NULL` lets one narrowed request zero
+  every later unnarrowed read. Test shape: pin `AS RESTRICTIVE` in a DDL test,
+  then run them on real Postgres — two agents, one DB; (4) only reproduces
+  there.
+
 - **"Your link checker can't see your JavaScript."** slug
   `link-checker-cant-see-your-javascript` · venue dev.to (#testing #webdev
   #frontend) + r/webdev + lobste.rs (`web`) · testing/UX-integrity lesson
-  (run-75→77 arc, 2026-07-15). Angle: a dead-link sweep over built HTML reports
-  "0 dead, 0 redirecting" for weeks — then a stranger clicks "Sign out" and the
-  browser makes two requests: a 307 to add the trailing slash, then the page.
-  The checker never saw it because it parses `href`/`src` attributes out of
-  `dist/`, but that navigation is `window.location.assign("/auth/sign-out")`
-  inside a React island — a string that exists only at runtime. Static-output
-  link checkers have a blind spot exactly the size of your client-side JS, and
-  it's invisible precisely because the tool reports green. With
-  `trailingSlash: "always"`, every bare-path JS navigation is a silent redirect
-  round-trip on a real click. We found one by hand (a CTA that redirected for a
-  week), then swept every `location.*` navigation and found five more — CTAs
-  (new query, API keys, sign out) plus a comparison-page CTA and an auth-flow
-  redirect. Fix shape: fix the paths, then add a guard the built-output checker
-  structurally can't be — scan source for the string-literal argument of an
-  actual navigation call (`location.assign/replace`, `location.href =`, bare or
-  `window.`-prefixed) and assert its path ends in `/`. Keep it narrow to the call shape: every `/path` literal, comments, and
-  JSX `href=` (already swept) drown you in false positives. Honest split: a
-  coverage-gap pattern for any static-output link checker on a JS-heavy site —
-  the green check measures the surface you serve, not the surface you script.
+  (run-75→77 arc). Gist: a dead-link sweep over built HTML reads "0 dead"
+  while six real navigations redirect on click — `location.assign("/p")`
+  strings inside React islands, invisible to a checker parsing `href`/`src`
+  out of `dist/`. Guard the string-literal argument of navigation calls.
+  **(collapsed per D4; body in git history.)**
 
 - **"Your docs promised a tool your server never shipped."** slug
   `guard-advertised-capabilities-against-code` · venue dev.to (#api #testing
   #devrel) + r/ExperiencedDevs + lobste.rs (`practices`) · integrity/testing
-  lesson (run-62→64 arc, 2026-07-13). Gist: an agent-facing product names its
-  tools in two unrelated hand-copied places — the server that registers them and
-  the copy that sells them — so they drift; ours drifted to a verb designed but
-  never built (`nlqdb_recall`), live a week, so a new user's very first call
-  returns "tool not found." The real lesson is the guard's own bugs: it scanned
-  one of six surfaces and pinned a hand-typed allow-list that itself went stale.
-  Fix shape: derive the allow-set from the shipped artifact, make it closed-world
-  (every capability-shaped token resolves to a shipped capability or an
-  explicitly-classified non-capability), sweep every surface. Design test:
-  "rename a tool and forget the docs — does anything go red without also editing
-  the test's copy of the list?" Honest split: a claim-integrity pattern for any
-  product whose surface is advertised as named verbs (MCP tools, SDK methods,
-  CLI subcommands). **(oldest full draft — collapsed per D4; full body in git
-  history; next non-null run publishes this one, step 3.1.)**
-
+  lesson (run-62→64 arc). Gist: tool names hand-copied into the server that
+  registers them and the copy that sells them drift — ours advertised a verb
+  never built (`nlqdb_recall`) for a week; the guard's own bugs (one surface of
+  six, hand-typed allow-list) are the real lesson. Derive the allow-set from
+  the shipped artifact — closed-world, every surface. **(collapsed per D4;
+  body in git history; next non-null run publishes this one, step 3.1.)**
 
 ## Published — canonical `/blog` copies live; venue variants pending
 

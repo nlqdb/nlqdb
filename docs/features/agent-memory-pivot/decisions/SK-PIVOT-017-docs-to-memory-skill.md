@@ -1,5 +1,15 @@
 # SK-PIVOT-017 — The dogfood workload is a productized docs→memory skill: extract structured operational knowledge, one-way sync, markdown stays canonical
 
+**Status (2026-07-28):** the pack ships —
+[`nlqdb-docs-memory/SKILL.md`](../../../../apps/web/public/agent-artifacts/nlqdb-docs-memory/SKILL.md)
+(fifth agent-artifact, one-command installable, surfaced on the R-04 guide +
+`llms.txt` + the artifacts index, drift/utm/honesty-pinned by
+`apps/web/src/lib/agent-artifacts.test.ts`) + the 12 golden queries in the
+`SK-QUAL-023` family (`repo_ops_memory_v1`, temporal 4 of 12). **Not yet run
+against nlqdb's own `docs/`** — that live run is the SK-PIVOT-016 gate
+measurement (criteria 1, 2, 4) and needs `MEMORY_PRESET=1` in prod (PR #835) or
+the `nlqdb_query` fallback path the skill documents.
+
 - **Decision:** Ship an nlqdb-branded skill (agent-artifacts family, beside
   `nlqdb-memory`) that instructs a coding agent to **extract a repo's
   structured operational knowledge** — decisions (IDs, statuses, dates,

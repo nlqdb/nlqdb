@@ -196,7 +196,9 @@ below, all from ONE source of truth so command strings never drift from
 `mcp-install.ts`. Distribute via
 the R-04 guide + npm + registries. Add a drift test (artifact strings ==
 `mcp-install.ts`).
-**Done when:** ✅ artifacts published — 4 of 4 host artifacts live in
+**Done when:** ✅ artifacts published — 4 of 4 host artifacts live (+ a fifth,
+goal-pack artifact: the `nlqdb-docs-memory` docs→memory skill, `SK-PIVOT-017`,
+one-command installable and surfaced on the same three surfaces) in
 [`agent-artifacts/`](../../../../../apps/web/public/agent-artifacts/) (host-neutral
 `AGENTS.snippet.md`, Claude Code skill `nlqdb-memory/SKILL.md`, Cursor `nlqdb-memory.mdc`, Codex
 `codex-config.toml`, + a README index); Channel #12 surfaced on both agent-fetched surfaces (R-04
@@ -214,12 +216,12 @@ installer package is needed — plus the yield gate (a real `agent-artifacts` vi
 ([`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) — every
 connect string == `mcp-install.ts`, served-file URLs pinned to `/mcp`, all `nlqdb.com` links carry
 `utm_source=agent-artifacts`).
-**Owed, found 2026-07-27:** all four artifacts still document only the hosted route ("nlqdb opens a
-browser OAuth page once"), so the file a developer drops in for their *unattended* agent dead-ends
-where R-04's page no longer does. Give each the `npx -y @nlqdb/mcp` + `sk_live_` alternative from
-`mcp-install.ts`'s `buildStdio*` builders and widen the surface map in
-[`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) to cover them
-(`GLOBAL-003`).
+**Resolved 2026-07-28:** all four artifacts now carry the `npx -y @nlqdb/mcp` + `sk_live_` headless
+route beside the hosted one (`GLOBAL-003`), from `mcp-install.ts`'s `buildStdio*` builders, so the
+file a developer drops in for their *unattended* agent no longer dead-ends where R-04's page does
+not. `agent-artifacts.test.ts` widened to pin each artifact's headless strings to those builders
+(the Claude Code command, the Codex TOML, the `mcpServers` JSON). **Still owed:** external
+distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`).
 
 ### R-08 — Answer-engine citation baseline
 

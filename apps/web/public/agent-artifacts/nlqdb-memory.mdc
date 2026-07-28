@@ -27,6 +27,27 @@ Add the hosted MCP server to `.cursor/mcp.json`:
 On the first tool call nlqdb opens a browser OAuth page once — approve it and
 Cursor stores the token. No API key to paste.
 
+### No browser? (headless / CI)
+
+The block above points at the hosted server, whose first tool call opens a
+browser page someone must approve. For an unattended agent, CI, or a container,
+run the same tools locally over stdio — `npx` fetches `@nlqdb/mcp`,
+authenticated by an `sk_live_` key (mint one at `app.nlqdb.com/app/keys`) rather
+than a browser. This entry holds a live account secret, so put it in
+**user-level** `~/.cursor/mcp.json`, never a file your repo commits:
+
+```json
+{
+  "mcpServers": {
+    "nlqdb": {
+      "command": "npx",
+      "args": ["-y", "@nlqdb/mcp"],
+      "env": { "NLQDB_API_KEY": "sk_live_REPLACE_ME" }
+    }
+  }
+}
+```
+
 ## Usage
 
 All memory goes through the **`nlqdb_query`** tool. Omit the `db` argument and

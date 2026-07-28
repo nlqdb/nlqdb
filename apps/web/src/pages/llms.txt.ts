@@ -123,6 +123,17 @@ export const GET: APIRoute = () => {
     `- Claude Code skill: save ${SITE}/agent-artifacts/nlqdb-memory/SKILL.md to \`.claude/skills/nlqdb-memory/SKILL.md\`\n` +
     `- Cursor: save ${SITE}/agent-artifacts/nlqdb-memory.mdc to \`.cursor/rules/nlqdb-memory.mdc\`\n` +
     `- Codex: merge ${SITE}/agent-artifacts/codex-config.toml into \`~/.codex/config.toml\`\n\n` +
+    `Working in a repo whose \`docs/\` hold its operating state? A second skill points the\n` +
+    `same memory at those docs — it extracts the *structure* (decision ids + statuses,\n` +
+    `open questions with dates, queues, trackers, and the references between them), never\n` +
+    `prose, so "which features have open questions older than 30 days" and "which\n` +
+    `decisions reference GLOBAL-013" become one query. One-way: markdown stays the source\n` +
+    `of truth, nlqdb never writes it.\n\n` +
+    "```bash\n" +
+    `npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-docs-memory\n` +
+    "```\n\n" +
+    `Or by hand: save ${SITE}/agent-artifacts/nlqdb-docs-memory/SKILL.md to\n` +
+    `\`.claude/skills/nlqdb-docs-memory/SKILL.md\`.\n\n` +
     `## Integrate\n\n` +
     `Add nlqdb to an app. Every surface calls the same \`/v1/ask\` engine — pick one;\n` +
     `each snippet is the smallest runnable shape, and the link is the page to read next.\n` +

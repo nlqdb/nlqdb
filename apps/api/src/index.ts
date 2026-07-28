@@ -93,6 +93,8 @@ import { runIcpScrape } from "./icp-scrape.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { isMarketingMirrorPath, marketingMirrorRedirect } from "./marketing-mirror.ts";
 import {
+  type MemoryScope,
+  memorySurfaceRejection,
   orchestrateRemember,
   type RememberError,
   validateRememberInput,
@@ -108,6 +110,7 @@ import {
 import { recordPremiumInterest } from "./premium-interest.ts";
 import {
   accountTenantIdFromPrincipal,
+  canConnectDatabase,
   makeRequirePrincipal,
   type Principal,
   type RequirePrincipalVariables,
@@ -1186,7 +1189,17 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     for (const [key, value] of Object.entries(routing.attributes)) {
       span.setAttribute(key, value);
     }
-    const deps = buildAskDeps(c.env, routing.router);
+    // E-03 / SK-PIVOT-009 — the memory scope this read executes under.
+    // Server-defaulted to the tenant principal (zero-config: an agent that
+    // knows nothing about scoping still reads its whole memory DB); the
+    // optional body fields narrow it, and the RESTRICTIVE RLS policies —
+    // not this object — are what enforce the narrowing.
+    const scope: MemoryScope = {
+      agentId: parsed.body.agentId ?? principal.id,
+      ...(parsed.body.endUserId !== undefined ? { endUserId: parsed.body.endUserId } : {}),
+      ...(parsed.body.threadId !== undefined ? { threadId: parsed.body.threadId } : {}),
+    };
+    const deps = buildAskDeps(c.env, routing.router, scope);
     // After the SK-ASK-009 resolution above, `dbId` is guaranteed to
     // be set — either by the caller, by the 1-DB auto-target, or by
     // routeAsk (recent-table fast-path / slug fast-path / LLM pick).
@@ -1562,11 +1575,14 @@ app.post("/v1/memory/remember", requirePrincipal, async (c) => {
       // The memory write needs a user-scoped key (the MCP tool contract).
       // pk_live_ embeds are read-only (SK-APIKEYS-003); anon principals
       // have no memory DB (the preset create is authed behind MEMORY_PRESET).
-      if (principal.kind === "pk_live") {
+      // The kind → rejection mapping is `memorySurfaceRejection`
+      // (SK-PIVOT-010, unit-pinned for every principal kind).
+      const rejection = memorySurfaceRejection(principal.kind);
+      if (rejection === "forbidden") {
         span.setAttribute("nlqdb.memory.outcome", "forbidden_read_only");
         return c.json({ error: { status: "forbidden", reason: "read_only_principal" } }, 403);
       }
-      if (principal.kind === "anon") {
+      if (rejection === "auth_required") {
         span.setAttribute("nlqdb.memory.outcome", "auth_required");
         return c.json(
           {
@@ -1601,9 +1617,11 @@ app.post("/v1/memory/remember", requirePrincipal, async (c) => {
         {
           args: validated.value,
           userId: principal.id,
-          // E-03 narrows this to a per-agent identity; until then the
-          // tenant id tags every row (the existing per-tenant isolation).
-          agentId: principal.id,
+          // E-03 / SK-PIVOT-009 — server-defaulted to the tenant principal;
+          // an explicit `agentId` narrows the row to a sub-tenant agent that
+          // can then only read its own memory back. Narrowing never widens,
+          // so no extra authorisation check is needed here.
+          agentId: validated.value.agentId ?? principal.id,
           rateLimitBucketKey: rateLimitBucketKey(principal),
         },
       );
@@ -2966,11 +2984,12 @@ app.post("/v1/databases", requireSession, async (c) => {
 // is read out of the user's DB — there is no authored plan, so this does
 // NOT route through the typed-plan create pipeline.
 //
-// Auth (GLOBAL-003 surface parity): `requirePrincipal`, then accept only
-// account-scoped kinds — `user` (web ConnectForm) and `sk_live`
-// (SDK / CLI / MCP). `anon`, `pk_live` (db-scoped), and `sk_mcp` are
-// rejected 403 `connect_requires_account`: connecting a DB is an account
-// action, not a per-DB embed action.
+// Auth (GLOBAL-003 surface parity): `requirePrincipal`, then
+// `canConnectDatabase` — `user` (web ConnectForm) and `sk_live` (SDK / CLI)
+// only. `anon`, `pk_live` (db-scoped), and `sk_mcp` are rejected 403
+// `connect_requires_account`: connecting a DB is an account action, not a
+// per-DB embed action, and it is the one capability that keeps `sk_mcp_`
+// strictly narrower than `sk_live_` (SK-APIKEYS-015).
 //
 // Idempotency (GLOBAL-005): an `Idempotency-Key` header dedupes via KV
 // `byo_connect:<tenantId>:<key>` so a client retry returns the same dbId
@@ -2987,7 +3006,7 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
 
     // Only account-scoped principals may connect a database.
     const tenantId = accountTenantIdFromPrincipal(principal);
-    if (!tenantId || (principal.kind !== "user" && principal.kind !== "sk_live")) {
+    if (!tenantId || !canConnectDatabase(principal)) {
       span.setAttribute("nlqdb.db.connect.outcome", "connect_requires_account");
       span.end();
       return c.json(

@@ -94,7 +94,7 @@ describe("dispatchExec", () => {
 describe("buildHostedExecSteps", () => {
   const ROLE = "tenant_0123456789abcdef";
 
-  it("runs search_path, app.tenant_id, statement_timeout, SET LOCAL ROLE, then the user SQL — in that order", () => {
+  it("runs search_path, app.tenant_id, app.agent_id, statement_timeout, SET LOCAL ROLE, then the user SQL — in that order", () => {
     const steps = buildHostedExecSteps("myschema", "user_1", ROLE, {
       text: "SELECT * FROM t",
       params: [],
@@ -102,10 +102,17 @@ describe("buildHostedExecSteps", () => {
     expect(steps.map((s) => s.text)).toEqual([
       "SELECT set_config('search_path', $1, true)",
       "SELECT set_config('app.tenant_id', $1, true)",
+      "SELECT set_config('app.agent_id', $1, true)",
       "SET LOCAL statement_timeout = '10s'",
       `SET LOCAL ROLE "${ROLE}"`,
       "SELECT * FROM t",
     ]);
+    // E-03 / SK-PIVOT-009 — `app.agent_id` is set on EVERY hosted exec and
+    // defaults to the tenant id, which is the literal baked into the
+    // policy's second arm: a caller that knows nothing about agents keeps
+    // full visibility, while a wrapper that forgot the GUC would read NULL
+    // and see no rows at all (fail-closed).
+    expect(steps[2]?.params).toEqual(["user_1"]);
     // schema + tenant are parameterised (no identifier injection).
     expect(steps[0]?.params).toEqual(["myschema"]);
     expect(steps[1]?.params).toEqual(["user_1"]);
@@ -125,6 +132,98 @@ describe("buildHostedExecSteps", () => {
       text: "INSERT INTO m (v) VALUES ($1)",
       params: ["hello"],
     });
+  });
+
+  it("sets the narrowing GUCs only when the request carries them (E-03 opt-in)", () => {
+    const narrowed = buildHostedExecSteps(
+      "s",
+      "user_1",
+      ROLE,
+      { text: "SELECT 1", params: [] },
+      {
+        agentId: "agent_a",
+        endUserId: "eu_7",
+        threadId: "th_3",
+      },
+    );
+    expect(narrowed.map((s) => s.text)).toEqual([
+      "SELECT set_config('search_path', $1, true)",
+      "SELECT set_config('app.tenant_id', $1, true)",
+      "SELECT set_config('app.agent_id', $1, true)",
+      "SELECT set_config('app.end_user_id', $1, true)",
+      "SELECT set_config('app.thread_id', $1, true)",
+      "SET LOCAL statement_timeout = '10s'",
+      `SET LOCAL ROLE "${ROLE}"`,
+      "SELECT 1",
+    ]);
+    expect(narrowed[2]?.params).toEqual(["agent_a"]);
+    expect(narrowed[3]?.params).toEqual(["eu_7"]);
+    expect(narrowed[4]?.params).toEqual(["th_3"]);
+
+    // Agent-only scope ⇒ no end-user / thread GUC at all, so those
+    // restrictive policies stay a no-op and cross-end-user analytics run
+    // unrestricted inside the agent scope (the wedge pitch).
+    const agentOnly = buildHostedExecSteps(
+      "s",
+      "user_1",
+      ROLE,
+      { text: "SELECT 1", params: [] },
+      {
+        agentId: "agent_a",
+      },
+    );
+    expect(agentOnly.some((s) => s.text.includes("app.end_user_id"))).toBe(false);
+    expect(agentOnly.some((s) => s.text.includes("app.thread_id"))).toBe(false);
+
+    // Thread without end-user is a legal narrowing (one conversation across
+    // whatever end-users share it).
+    const threadOnly = buildHostedExecSteps(
+      "s",
+      "user_1",
+      ROLE,
+      { text: "SELECT 1", params: [] },
+      {
+        agentId: "agent_a",
+        threadId: "th_3",
+      },
+    );
+    expect(threadOnly.some((s) => s.text.includes("app.end_user_id"))).toBe(false);
+    expect(threadOnly.some((s) => s.text.includes("app.thread_id"))).toBe(true);
+  });
+
+  it("sets every scope GUC BEFORE dropping to the tenant role", () => {
+    const steps = buildHostedExecSteps(
+      "s",
+      "user_1",
+      ROLE,
+      { text: "SELECT 1", params: [] },
+      {
+        agentId: "agent_a",
+        endUserId: "eu_7",
+        threadId: "th_3",
+      },
+    );
+    const roleIdx = steps.findIndex((s) => s.text.startsWith("SET LOCAL ROLE"));
+    for (const [i, step] of steps.entries()) {
+      if (step.text.includes("set_config('app.")) expect(i).toBeLessThan(roleIdx);
+    }
+  });
+
+  it("parameterises every scope value (no literal interpolation of caller ids)", () => {
+    const hostile = `x'; DROP TABLE facts; --`;
+    const steps = buildHostedExecSteps(
+      "s",
+      "user_1",
+      ROLE,
+      { text: "SELECT 1", params: [] },
+      {
+        agentId: hostile,
+        endUserId: hostile,
+        threadId: hostile,
+      },
+    );
+    for (const step of steps) expect(step.text).not.toContain(hostile);
+    expect(steps.filter((s) => s.params.includes(hostile))).toHaveLength(3);
   });
 
   it("rejects a malformed role name before it can be interpolated", () => {

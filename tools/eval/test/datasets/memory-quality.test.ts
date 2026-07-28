@@ -154,6 +154,70 @@ describe("memory-quality axis semantics", () => {
   });
 });
 
+// The repo-ops pack (SK-PIVOT-017 / SK-PIVOT-018 goal pack #1) — the corpus
+// the docs→memory skill produces. Same contract as above: assert the values,
+// not just that the golds run, because the wedge's whole claim is that these
+// answers are *right*, not merely returned. Hand-checked against the seed.
+describe("repo-ops pack axis semantics", () => {
+  const REPO_OPS = "repo_ops_memory_v1";
+
+  it("retrieval: two decisions reference GLOBAL-013, and the other repo's edge stays out", () => {
+    const db = seeded(REPO_OPS);
+    const rows = (db.query(goldFor(15)).values() as unknown[][]).flat();
+    db.close();
+    expect(rows.sort()).toEqual(["SK-AUTH-004", "SK-BILL-002"]);
+  });
+
+  it("temporal: four open questions were over 30 days old on 2026-07-27, oldest 116 days", () => {
+    const db = seeded(REPO_OPS);
+    const rows = db.query(goldFor(17)).values() as unknown[][];
+    db.close();
+    expect(rows.map((r) => r[1])).toEqual([116, 77, 56, 37]);
+  });
+
+  it("temporal: SK-ASK-011's current status is the superseding row, not the first one", () => {
+    const db = seeded(REPO_OPS);
+    expect(scalar(db, 18)).toBe("SK-ASK-011 status: superseded by SK-ASK-014");
+    db.close();
+  });
+
+  it("forgetting: one tracker fact had expired, and one decision is tombstoned", () => {
+    const db = seeded(REPO_OPS);
+    expect(scalar(db, 21)).toBe("icp-tracker: 12 candidate repos pending review");
+    expect(scalar(db, 22)).toBe("SK-AUTH-002");
+    db.close();
+  });
+
+  it("consolidation: 6 distinct open questions from 7 rows (one re-written by a later sync)", () => {
+    const db = seeded(REPO_OPS);
+    expect(scalar(db, 23)).toBe(6);
+    expect(db.query(goldFor(24)).values()).toHaveLength(1);
+    db.close();
+  });
+
+  it("analytical: open questions per feature are 3 / 2 / 1, duplicates collapsed", () => {
+    const db = seeded(REPO_OPS);
+    const rows = db.query(goldFor(25)).values() as unknown[][];
+    db.close();
+    expect(rows).toEqual([
+      ["auth", 3],
+      ["ask-pipeline", 2],
+      ["billing", 1],
+    ]);
+  });
+
+  // Cross-agent isolation is retrieval *precision*: the other repo's agent
+  // stores an open question and a GLOBAL-013 reference of its own, and neither
+  // may appear in a repo-ops answer.
+  it("retrieval precision: no other-repo row leaks into a repo-ops answer", () => {
+    const db = seeded(REPO_OPS);
+    const questions = db.query(goldFor(16)).values() as unknown[][];
+    db.close();
+    expect(questions).toHaveLength(7);
+    expect(questions.some((r) => String(r[0]).startsWith("other:"))).toBe(false);
+  });
+});
+
 describe("toEvalQuestions", () => {
   it("projects to the canonical EvalQuestion shape (empty evidence, gold sql)", () => {
     const out = toEvalQuestions();
