@@ -42,6 +42,16 @@ import Base from "../../layouts/Base.astro";
         exceptional reports, but credit on this page is the standard
         recognition.
       </p>
+
+      <section class="hof__cta">
+        <h2 class="hof__cta-title">New here? nlqdb is a database you query in plain English.</h2>
+        <p>No schema wrangling, no SQL — describe what you want and get the answer.</p>
+        <a class="cta hof__cta-btn" href="/app/new/">Start with a goal &rarr;</a>
+        <p class="hof__cta-meta">
+          No sign-in. The anonymous database lasts 72 hours; adopt it with one
+          click if you keep it.
+        </p>
+      </section>
     </main>
 
     <Footer />
@@ -67,6 +77,23 @@ import Base from "../../layouts/Base.astro";
   }
   .hof__note {
     margin-top: 3rem;
+    font-size: 0.85em;
+    opacity: 0.7;
+  }
+  /* Final CTA — the page's highest-traffic organic surface (row #7); the
+     .cta primitive carries the lime moment, matching the /solve idiom. */
+  .hof__cta {
+    margin-top: 3.5rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--rule);
+  }
+  .hof__cta-title {
+    margin-top: 0;
+  }
+  .hof__cta-btn {
+    margin-top: 1.5rem;
+  }
+  .hof__cta-meta {
     font-size: 0.85em;
     opacity: 0.7;
   }
