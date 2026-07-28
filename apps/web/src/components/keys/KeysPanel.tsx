@@ -1,4 +1,6 @@
-// SK-APIKEYS-010-012; sk_mcp_* is mint-only via OAuth (SK-APIKEYS-009), not this UI.
+// SK-APIKEYS-010-012. Mints both `sk_live_` and `sk_mcp_` (SK-APIKEYS-015 —
+// `sk_mcp_` is the least-privilege headless-MCP credential); the OAuth
+// callback (SK-APIKEYS-009) stays the mint path for hosts with an OAuth flow.
 
 import { type KeyRecord, NlqdbApiError } from "@nlqdb/sdk";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -7,6 +9,14 @@ import { useFocusTrap, useRestoreFocusOnUnmount } from "../../lib/dialog";
 import ErrorBoundary from "../ErrorBoundary";
 import { type CopyKeyState, copyKeyFeedback } from "./copy-key-feedback";
 import { groupKeys, summarizeKey } from "./group";
+import {
+  DEVICE_MAX,
+  EMPTY_MINT_FORM,
+  HOST_MAX,
+  type MintForm,
+  mintRequestFromForm,
+  NAME_MAX,
+} from "./mint-request";
 
 interface KeysPanelProps {
   apiBase: string;
@@ -257,7 +267,7 @@ function NewKeyDialog({
   onCancel: () => void;
   onMinted: (record: KeyRecord) => void;
 }) {
-  const [name, setName] = useState("");
+  const [form, setForm] = useState<MintForm>(EMPTY_MINT_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [minted, setMinted] = useState<{ id: string; key: string; last4: string } | null>(null);
@@ -292,9 +302,9 @@ function NewKeyDialog({
   async function submit(event: { preventDefault: () => void }) {
     event.preventDefault();
     if (inFlightRef.current || minted) return;
-    const trimmed = name.trim();
-    if (trimmed.length > 80) {
-      setError("Name must be 80 characters or fewer.");
+    const parsed = mintRequestFromForm(form);
+    if (!parsed.ok) {
+      setError(parsed.error);
       return;
     }
     inFlightRef.current = true;
@@ -304,10 +314,7 @@ function NewKeyDialog({
     abortRef.current = ac;
     try {
       const client = getChatClient(apiBase);
-      const out = await client.mintKey(
-        { type: "sk_live", ...(trimmed ? { name: trimmed } : {}) },
-        { signal: ac.signal },
-      );
+      const out = await client.mintKey(parsed.request, { signal: ac.signal });
       setMinted({ id: out.id, key: out.key, last4: out.last4 });
       const now = Math.floor(Date.now() / 1000);
       onMinted({
@@ -402,25 +409,95 @@ function NewKeyDialog({
           </>
         ) : (
           <form onSubmit={submit}>
-            <p className="keys-dialog__body">
-              <code>sk_live_*</code> keys are account-scoped. Pair them with{" "}
-              <code>NLQDB_API_KEY</code> for the CLI in CI, or use directly from server-side code.
-            </p>
-            <label className="keys-dialog__label">
-              <span className="keys-dialog__label-text">Label (optional)</span>
-              <input
-                ref={inputRef}
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                spellCheck={false}
-                autoComplete="off"
-                maxLength={80}
-                placeholder="e.g. ci-deploy, modal-prod"
-                disabled={submitting}
-                data-testid="keys-mint-name"
-              />
-            </label>
+            <fieldset className="keys-dialog__types" disabled={submitting}>
+              <legend className="keys-dialog__label-text">What is this key for?</legend>
+              {(
+                [
+                  {
+                    type: "sk_live" as const,
+                    title: "Backend / CI",
+                    detail: "sk_live_* — account-scoped, full access. Pair with NLQDB_API_KEY.",
+                  },
+                  {
+                    type: "sk_mcp" as const,
+                    title: "MCP host (agent)",
+                    detail:
+                      "sk_mcp_* — scoped to the MCP surface: queries and memory, no database connecting. Revoke per host.",
+                  },
+                ] as const
+              ).map((opt) => (
+                <label className="keys-dialog__type" key={opt.type}>
+                  <input
+                    type="radio"
+                    name="keys-mint-type"
+                    value={opt.type}
+                    checked={form.type === opt.type}
+                    onChange={() => {
+                      setForm((f) => ({ ...f, type: opt.type }));
+                      setError(null);
+                    }}
+                    data-testid={`keys-mint-type-${opt.type}`}
+                  />
+                  <span>
+                    <strong>{opt.title}</strong>
+                    <span className="keys-dialog__hint">{opt.detail}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            {form.type === "sk_live" ? (
+              <label className="keys-dialog__label">
+                <span className="keys-dialog__label-text">Label (optional)</span>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  spellCheck={false}
+                  autoComplete="off"
+                  maxLength={NAME_MAX}
+                  placeholder="e.g. ci-deploy, modal-prod"
+                  disabled={submitting}
+                  data-testid="keys-mint-name"
+                />
+              </label>
+            ) : (
+              <>
+                <label className="keys-dialog__label">
+                  <span className="keys-dialog__label-text">MCP host</span>
+                  <input
+                    type="text"
+                    value={form.host}
+                    onChange={(e) => setForm((f) => ({ ...f, host: e.target.value }))}
+                    spellCheck={false}
+                    autoComplete="off"
+                    maxLength={HOST_MAX}
+                    placeholder="e.g. cursor, claude-desktop"
+                    disabled={submitting}
+                    data-testid="keys-mint-host"
+                  />
+                </label>
+                <label className="keys-dialog__label">
+                  <span className="keys-dialog__label-text">Device</span>
+                  <input
+                    type="text"
+                    value={form.device}
+                    onChange={(e) => setForm((f) => ({ ...f, device: e.target.value }))}
+                    spellCheck={false}
+                    autoComplete="off"
+                    maxLength={DEVICE_MAX}
+                    placeholder="e.g. macbook-air, ci-runner"
+                    disabled={submitting}
+                    data-testid="keys-mint-device"
+                  />
+                </label>
+                <p className="keys-dialog__hint">
+                  Host and device are what you revoke: one key per host per machine, so cutting off
+                  one agent leaves the rest running. Signing out everywhere does not revoke it —
+                  revoke it here.
+                </p>
+              </>
+            )}
             {error ? (
               <p className="keys-dialog__status keys-dialog__status--error" role="alert">
                 {error}
