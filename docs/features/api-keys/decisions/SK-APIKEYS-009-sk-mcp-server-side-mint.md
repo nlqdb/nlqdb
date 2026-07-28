@@ -8,3 +8,5 @@
   - Mint at redemption (after code check) — adds a hop; consent screen stalls visibly while the user-agent waits for OAuth to settle.
   - Return the plaintext to the consent screen → echo through the OAuth redirect — leaks the bearer into URL logs / browser history.
   - Mint via `POST /v1/keys` from the consent screen — same UX surface as the dashboard mint, but [`SK-APIKEYS-007`](SK-APIKEYS-007-mint-via-post-keys.md) requires `nlq mcp install` to write the result to a host config; the hosted flow has no host config to write to.
+
+**Widened by [`SK-APIKEYS-015`](SK-APIKEYS-015-mintable-sk-mcp-service-credential.md):** the OAuth callback is no longer the *only* `sk_mcp_*` mint path — `/app/keys` mints one too, copy-once, for headless hosts that have no OAuth flow. Everything above still holds for the hosted-MCP flow: inside that flow the plaintext never crosses a user-facing surface.

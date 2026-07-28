@@ -178,17 +178,6 @@ release step, largely automated.)
 
 ## Suggestions needing approval (to amend the guidelines)
 
-- **Add a "surface-creating" escape hatch to `/daily` step 2** (proposed
-  2026-07-26, advisor session): after N (suggest 4) consecutive null runs,
-  the next run may — instead of a 5th null — propose **one** new
-  surface-area lever (a new workload, channel experiment, or product
-  wedge slice) as a written option for founder review, rather than idling.
-  Rationale: runs 131–137 produced six consecutive "no agent-movable
-  lever" nulls while the phase gate sat at 1/9 — the nulls were a signal
-  the lever taxonomy was exhausted, and nothing was assigned to hear it.
-  Approving amends `daily.md` step 2; rejecting records a don't-re-propose
-  note here, like the auto-merge tier below.
-
 (The auto-merge-tier proposal was **rejected by the founder 2026-07-22**:
 review latency is handled by a separate merger agent, not by `/daily`
 self-merging; recorded in `daily.md` §4. Don't re-propose.)
