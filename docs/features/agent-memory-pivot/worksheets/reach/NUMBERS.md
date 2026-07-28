@@ -5,76 +5,52 @@ The reach loop's scorecard-equivalent: **overwrite in place, no changelog**
 [`INDEX.md`](INDEX.md); this file holds only the latest measured state, so it
 can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
 
-- **The R-04 guide was `Disallow: /` to ClaudeBot + GPTBot and Google had never crawled it — found
-  and fixed 2026-07-26.** `docs.nlqdb.com` shipped with no `robots.txt` of its own, so it served
-  only Cloudflare's *managed* block: the guide plus `/llms.txt` + `/llms-full.txt` were closed to
-  the exact crawlers behind Claude Code and Codex while `/agents` and every solve page stayed open.
-  Edge enforcement was ruled out first — all four crawler UAs get 200, so robots.txt was the only
-  gate. Fixed by mirroring the apex policy; mechanism and parity guard canonical in
-  [`SK-DOCS-005`](../../../docs-site/FEATURE.md).
-- **Per-URL index truth is now measured, not inferred** — `gsc-pull.ts` gained `## Index status`
-  (URL Inspection API, same readonly service account). Wedge pages: **2 of 6
-  indexed.** `solve/best-way-to-store-agent-memory` (crawled 07-20) and `solve/agent-memory-mcp-server`
-  (07-21) are indexed and **still earn 0 impressions** — for those two the gap really is ranking.
-  `solve/build-vs-buy-agent-memory` + `solve/expire-old-agent-memory`: **never crawled**.
-  `docs/agent-memory`: **unknown to Google** (the robots block above). `/agents/` reports canonical
-  drift (Google indexes non-slash `/agents`), but prod is correct — 301 → slash, self-canonical
-  matches the sitemap — so that is GSC naming the redirect source; nothing to fix.
-- GSC (28d, live 2026-07-27, window 06-27→07-25): **8 clicks / 488 impr / pos 16.7**; intent-query
-  clicks **0** — **8th consecutive flat read**. All four stage-0 pages earn zero impressions, but
-  **nine other agent-memory URLs earn them, five on page 1** (07-26 read: `solve/isolate-ai-agent-memory-per-tenant`
-  pos 3.0, `solve/analytical-queries-over-agent-memory` 6.7, `/agents` 6.8, `vs/supermemory` 8.8,
-  `solve/analyze-agent-tool-call-logs` 9.5). The host ranks agent-memory content fine; it is the
-  stage-0 set specifically that earns nothing. R-01 baseline, unmoved.
-- **R-04's blocker was delivery, not discovery — delivery closed this run.** Walked 2026-07-25: an
-  agent clears every discovery hop against live prod (RFC 9728 + 8414, RFC 7591, `/authorize` 302 +
-  PKCE) then stops at browser consent — `apps/mcp` routes `/mcp` through `OAuthProvider`, no bearer
-  path.
-  `SK-MCP-001`'s stdio hatch shipped 2026-07-26, but both agent-fetched surfaces kept asserting
-  *"no headless credential either, so hand that one step to the developer"*. Both now carry the
-  route, per-host blocks (incl. Claude Desktop, whose only hosted path is a dialog) and its failure
-  modes. **Verified by running the published binary** (clean `npm i`, empty dir): `initialize` +
-  `tools/list` (5 tools) + `tools/call` reaching prod — a prefix-valid bogus key returns the API's
-  own 401, no browser. **`0.1.0`'s own no-key stderr still steers readers to `sk_mcp_`** — fixed in
-  `stdio.ts` after publish, so it needs a republish; `sk_live_` is the only pasteable prefix
-  (`SK-APIKEYS-009`) and its revocation consequence is a founder call open in
-  [`mcp-server/FEATURE.md`](../../../mcp-server/FEATURE.md).
-- Registry/directory listings: **2 published + 1 crawl-fed + 3 queued** (#1 official registry and
-  #2 Smithery live; Glama crawl-fed — links the repo, not the utm-tagged `websiteUrl`, until
-  founder-claimed; #5 mcp.so + #6 Cursor submitted 2026-07-26, #8 `awesome-mcp-servers` PR open;
-  only #7 still needs a founder submit; PulseMCP re-checks 08-22). Channels live with attributable
-  yield: **4** (organic, dev.to, github, npm); #12 in-flight. **State changes read live 2026-07-27:**
-  Smithery's homepage field **did save** — its listing now serves
-  `https://nlqdb.com/agents/?utm_source=smithery` and names all five tools, closing publish day's
-  "no outbound link, key not carried" caveat; **mcp.so still absent day + 1** (its search payload
-  returns `total: 0`, plausible `mcp.so/server/…` slugs 404); Glama and `cursor.directory` **could
-  not be read at all** (504 and 429 to a non-browser client), so their silence is not evidence of
-  absence.
+- **Null run 2026-07-28 — nothing was agent-pullable, so this is a measurement-only cycle.** Both
+  open slices' remaining work is blocked on factors an agent can't move this session: **R-04**'s
+  cold-agent walk needs an `sk_live_` key in the walker env (already queued `blocked-by-human.md` #3)
+  and there is no `ANTHROPIC_API_KEY` here to re-run the R-06 walker either; **R-07**'s external
+  distribution is organic-install-yield-bound with the npm `0.1.1` mouth gated on release PR #826,
+  and its yield gate (a real `agent-artifacts` visit) reads from `/app/admin`, not from here. R-08's
+  answer-engine cadence is next due 2026-08-22. No new venue is publishable (R-05 is 8/8 resolved).
+- GSC (28d, live 2026-07-28, window 06-28→07-26): **8 clicks / 487 impr / pos 17.7**; intent-query
+  clicks **0** — **9th consecutive flat read**. The four stage-0 pages still earn zero impressions,
+  while other agent-memory URLs keep earning them (`solve/running-total-cumulative-sum-in-sql` 75
+  impr, `vs/wrenai` pos 6.8, `blog/bird-gold-noise-distinct` pos 11.4 with a click). The host ranks
+  agent-memory content fine; it is the stage-0 set specifically that earns nothing. R-01 baseline,
+  unmoved.
+- **Per-URL index truth (URL Inspection API): 2 of 6 wedge pages indexed — unchanged.**
+  `solve/best-way-to-store-agent-memory` (crawled 07-20) and `solve/agent-memory-mcp-server` (07-21)
+  are indexed and **still earn 0 impressions** — for those two the gap is ranking, not indexing.
+  `solve/build-vs-buy-agent-memory` + `solve/expire-old-agent-memory`: **still never crawled**
+  (discovered via the submitted apex sitemap, not yet crawled — a crawl-priority wait, not a
+  discoverability bug). `docs/agent-memory`: **still "unknown to Google"** — the 07-26 robots fix is
+  only 2 days old and the docs host was verified reachable this run (robots `Allow: /` for `*`,
+  Googlebot ungated, the page is in `sitemap-0.xml`, and robots advertises `sitemap-index.xml`), so
+  discovery of the separate host is a latency wait per the mechanism `SK-DOCS-005` chose; **re-check
+  next run** before treating it as failed. `/agents/` still reports canonical drift (Google indexes
+  non-slash `/agents`) but prod is correct (301→slash, self-canonical) — GSC naming the redirect
+  source, nothing to fix.
+- Registry/directory listings (re-read live 2026-07-28): **official registry #1 ✅ active**
+  (`com.nlqdb/nlqdb` v0.1.0) · **Smithery #2 ✅** (308→canonical listing, homepage link + 5 tools,
+  confirmed 07-27) · **Glama #4** crawl-fed (index 200; links the repo, not the utm-tagged
+  `websiteUrl`, until founder-claimed) · **mcp.so #5 still 404** day+2 after the 07-26 submit
+  (`mcp.so/server/nlqdb` → 404) — re-check · **Cursor #6** unreadable (`cursor.directory/mcp` → 429
+  to a non-browser client, same as 07-27; silence ≠ absence) · #8 `awesome-mcp-servers` PR open · #7
+  Anthropic dir founder-gated (`blocked-by-human.md` #6) · PulseMCP #3 re-checks 08-22. Channels
+  live with attributable yield: **4** (organic, dev.to, github, npm); #12 in-flight.
 - Coding-agent walker (R-06): **0/1 surfaced** (baseline 2026-07-20 — cold session recommended
   `pgvector`, never nlqdb). Not re-run: no `ANTHROPIC_API_KEY` in this session.
-- Canonical setup guide (R-04): **live, 2 of 3**. Walk box ⬜ — blocker is now "the walker has no
-  key", not the product. **One founder action closes it:** mint an `sk_live_` key at `/app/keys`
-  and set it as `NLQDB_API_KEY` in the walker env (queue in `blocked-by-human.md` next run).
-- Droppable artifacts (R-07): **4 of 4 live**, `agent-artifacts` in-flight, yield 0; the
-  one-command install path is verified by running it, not just linted (#825). **Headless route now
-  in every artifact (2026-07-28):** all four dropped files (AGENTS snippet, Claude Code SKILL,
-  Cursor `.mdc`, Codex TOML) carried only the hosted browser-OAuth route — a dead-end for the
-  *unattended* agent they exist for — so each gained the `npx -y @nlqdb/mcp` + `sk_live_` alternative
-  from `mcp-install.ts`'s `buildStdio*` builders (`GLOBAL-003`), pinned by `agent-artifacts.test.ts`
-  (23 pass). **Published install surfaces 3 → 4 (2026-07-27):** the `npx skills add …` one-liner now
-  also ships on **`@nlqdb/mcp`'s npm README — the page npmjs.com renders** — beside the docs guide,
-  `llms.txt` and the artifacts index, pinned by `packages/mcp/test/readme.test.ts`. Re-run live in a
-  clean directory it writes
-  `.agents/skills/nlqdb-memory/SKILL.md`, a `.claude/skills/` symlink and `skills-lock.json` (no
-  Cursor rule, no `AGENTS.md` edit); npm serves the new page from **0.1.1** (latest published still
-  0.1.0, release PR #826). **The yield gate was unmeasurable until 07-26** — all five artifacts led
-  with an untagged `docs.nlqdb.com/agent-memory/`, so every channel converted as `direct`. The key
-  now rides the URL across the hop (mechanism canonical in
-  [`docs-site`](../../../docs-site/FEATURE.md)), taking keyed links on an attributing host **4 of
-  10 → 10 of 10**. Two holes stay open: a `claude mcp add` conversion never loads an apex page
-  (`untracked`), and only the *landing* URL carries the key.
+- Canonical setup guide (R-04): **live, 2 of 3**. Walk box ⬜ — blocker is "the walker has no key",
+  not the product. **One founder action closes it** (`blocked-by-human.md` #3): mint an `sk_live_`
+  key at `/app/keys` and set it as `NLQDB_API_KEY` in the walker env. The browser-free MCP route the
+  walk needs shipped end-to-end (#836/#837) and is verified by running the published binary.
+- Droppable artifacts (R-07): **4 of 4 live**, `agent-artifacts` in-flight, yield 0. Every dropped
+  file carries the `npx -y @nlqdb/mcp` + `sk_live_` headless route beside the hosted one (2026-07-28,
+  `GLOBAL-003`), pinned by `agent-artifacts.test.ts`. Published install surfaces = 4 (docs guide,
+  `llms.txt`, artifacts index, and `@nlqdb/mcp`'s npm README — the last serves from `0.1.1`, gated on
+  release PR #826). `skills.sh` has no submission flow (P2 07-23), so growth is organic install
+  yield; the yield gate (a real `agent-artifacts` visit in `/app/admin`) is unmeasurable from here.
 - Stage-0 solve pages: R-03 complete + R-02's two `competitors.md` §4 entries. Live path
   `nlqdb_query`; remember/preset gated (SK-PIVOT-010).
 - Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10**. Monthly; next 2026-08-22,
-  so not re-run. Note for that run: no Claude/ChatGPT retrieval path could have cited the
-  docs-hosted guide before the 07-26 robots fix — the apex was always open, so the 0/10 stands.
+  so not re-run this cycle.
