@@ -2,10 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// This README *is* the npmjs.com package page — `files` ships it, so it is an
-// externally published discovery surface (channel #17 in
-// `docs/research/acquisition-channels.md`), not internal notes. Nothing else
-// guards it: `check-links.mjs` sweeps rendered site hrefs, not this file.
+// This README *is* the npmjs.com package page — npm always ships README.md
+// (regardless of the `files` allowlist), so it is an externally published
+// discovery surface (channel #17 in `docs/research/acquisition-channels.md`),
+// not internal notes. Nothing else guards it: `check-links.mjs` sweeps
+// rendered site hrefs, not this file.
 
 const README = readFileSync(join(import.meta.dirname, "../README.md"), "utf8");
 
