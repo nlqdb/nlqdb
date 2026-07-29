@@ -88,7 +88,7 @@ when-to-load:
   LEFT JOIN user u ON u.id = d.tenant_id
   WHERE d.first10_asks > 0
     AND (u.email IS NULL          -- anon (walker already excluded at write)
-         OR (u.email NOT LIKE '%@salfati.group'
+         OR (u.email NOT LIKE '%@nlqdb.com'
              AND u.email NOT IN ('omer.hochman@gmail.com', 'test@example.com')));
   ```
 

@@ -8,13 +8,13 @@ import { isAdminEmail } from "./gate.ts";
 
 describe("isAdminEmail", () => {
   it("admits the founder allowlist and any @nlqdb.com address", () => {
-    expect(isAdminEmail("omer@salfati.group")).toBe(true);
+    expect(isAdminEmail("omer@nlqdb.com")).toBe(true);
     expect(isAdminEmail("hi@nlqdb.com")).toBe(true);
     expect(isAdminEmail("future-teammate@nlqdb.com")).toBe(true);
   });
 
   it("normalizes case and surrounding whitespace", () => {
-    expect(isAdminEmail("Omer@Salfati.Group")).toBe(true);
+    expect(isAdminEmail("Omer@nlqdb.com")).toBe(true);
     expect(isAdminEmail("  OPS@NLQDB.COM  ")).toBe(true);
   });
 
@@ -23,7 +23,7 @@ describe("isAdminEmail", () => {
     expect(isAdminEmail("attacker@nlqdb.com.evil.io")).toBe(false);
     expect(isAdminEmail("attacker@evilnlqdb.com")).toBe(false);
     expect(isAdminEmail("nlqdb.com")).toBe(false);
-    expect(isAdminEmail("other@salfati.group")).toBe(false);
+    expect(isAdminEmail("other@nlqdb.com")).toBe(false);
   });
 
   it("rejects empty / null / undefined", () => {

@@ -80,7 +80,7 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     const nowSec = Math.floor(now.getTime() / 1000);
 
     // Internal accounts: founder + company domain + test domain.
-    await seedUser("u_founder", "omer@salfati.group", "2026-06-01T00:00:00.000Z");
+    await seedUser("u_founder", "omer@nlqdb.com", "2026-06-01T00:00:00.000Z");
     await seedUser("u_team", "dev@nlqdb.com", "2026-06-02T00:00:00.000Z");
     await seedUser("u_test", "e2e@example.com", "2026-06-03T00:00:00.000Z");
     // Strangers: one activated + retained, one signed-up-never-queried.
@@ -244,7 +244,7 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
 describe("computeGtmMetrics — SK-GTM-008 launch-gate inputs", () => {
   it("counts only agent_memory_v1 DBs and reports the Worker's MEMORY_PRESET", async () => {
     const lastQueried = Math.floor(Date.parse("2026-07-28T08:00:00Z") / 1000);
-    await seedUser("u_founder", "omer@salfati.group", "2026-06-01T00:00:00.000Z");
+    await seedUser("u_founder", "omer@nlqdb.com", "2026-06-01T00:00:00.000Z");
     await seedUser("u_s1", "maya@builders.io", "2026-07-01T00:00:00.000Z");
 
     // The ops workload: two memory DBs on the founder account.

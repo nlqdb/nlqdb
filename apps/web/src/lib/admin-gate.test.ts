@@ -7,7 +7,7 @@ import { isAdminEmail } from "./admin-gate";
 
 describe("isAdminEmail (web copy)", () => {
   test("admits the founder allowlist and any @nlqdb.com address", () => {
-    expect(isAdminEmail("omer@salfati.group")).toBe(true);
+    expect(isAdminEmail("omer@nlqdb.com")).toBe(true);
     expect(isAdminEmail("hi@nlqdb.com")).toBe(true);
     expect(isAdminEmail("  OPS@NLQDB.COM  ")).toBe(true);
   });
@@ -15,7 +15,7 @@ describe("isAdminEmail (web copy)", () => {
   test("rejects strangers, lookalikes, and empty input", () => {
     expect(isAdminEmail("maya@builders.io")).toBe(false);
     expect(isAdminEmail("attacker@nlqdb.com.evil.io")).toBe(false);
-    expect(isAdminEmail("other@salfati.group")).toBe(false);
+    expect(isAdminEmail("other@nlqdb.com")).toBe(false);
     expect(isAdminEmail("")).toBe(false);
     expect(isAdminEmail(null)).toBe(false);
     expect(isAdminEmail(undefined)).toBe(false);

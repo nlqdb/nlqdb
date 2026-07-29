@@ -2,7 +2,7 @@
 
 - **Decision:** `isAdminEmail(email)` in `apps/api/src/admin/gate.ts` is
   the only authorization predicate for admin surfaces: case-insensitive
-  match against the exact allowlist (`omer@salfati.group`) or the
+  match against the exact allowlist (`omer.hochman@gmail.com`) or the
   `nlqdb.com` domain. `GET /v1/admin/metrics` runs it after
   `requireSession` (cookie session only — an `sk_live_`/`pk_live_`/anon
   bearer never reaches admin data) and returns `403 {error: "forbidden"}`

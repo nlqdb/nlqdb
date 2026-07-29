@@ -7,7 +7,7 @@
 // security boundary. Reviewed constants, not env vars: the list
 // changes ~never and a code review beats a secret-mirroring errand.
 
-const ADMIN_EMAILS = new Set(["omer@salfati.group"]);
+const ADMIN_EMAILS = new Set(["omer@nlqdb.com"]);
 const ADMIN_DOMAINS = new Set(["nlqdb.com"]);
 
 export function isAdminEmail(email: string | null | undefined): boolean {

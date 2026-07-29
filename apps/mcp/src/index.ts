@@ -109,7 +109,7 @@ async function handleFetch(req: Request, env: Env, ctx: ExecutionContext): Promi
   if (url.pathname === "/.well-known/glama.json" && req.method === "GET") {
     return Response.json({
       $schema: "https://glama.ai/mcp/schemas/connector.json",
-      maintainers: [{ email: "omer@salfati.group" }],
+      maintainers: [{ email: "omer@nlqdb.com" }],
     });
   }
   return tracer.startActiveSpan("nlqdb.mcp.http.request", async (span) => {

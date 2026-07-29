@@ -16,7 +16,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../apps/api"
 
-EXCLUDED_EMAILS="'omer.hochman@gmail.com','hi@nlqdb.com','omer@salfati.group','omer.hochman@bigpanda.io','test@example.com','e2e-test@preview.dev','browser-test@preview.dev','debug@example.com','myuser@example.com'"
+EXCLUDED_EMAILS="'omer.hochman@gmail.com','hi@nlqdb.com','omer@nlqdb.com','omer.hochman@bigpanda.io','test@example.com','e2e-test@preview.dev','browser-test@preview.dev','debug@example.com','myuser@example.com'"
 
 bunx wrangler d1 execute nlqdb-app --remote --json --command "
 SELECT k.mcp_host,

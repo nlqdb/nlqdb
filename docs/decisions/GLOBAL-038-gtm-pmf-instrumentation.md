@@ -8,7 +8,7 @@
   control-plane D1 by `apps/api/src/admin/gtm-metrics.ts`, served at
   admin-gated `GET /v1/admin/metrics`, trended via daily `gtm_snapshots`
   rows, and rendered at `/app/admin/`. **Admin access** = the exact
-  allowlist (`omer@salfati.group`) plus any `@nlqdb.com` account email,
+  allowlist (`omer.hochman@gmail.com`) plus any `@nlqdb.com` account email,
   enforced **server-side in `apps/api`** (`admin/gate.ts`); any web-side
   check is presentation only. Founder directive 2026-07-19: the current
   operating focus is **user acquisition** — GTM/PMF numbers must be

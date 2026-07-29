@@ -107,7 +107,7 @@ automated OIDC lane, tracked by scorecard row #22.)
    - **Connector** (`glama.ai/mcp/connectors/com.nlqdb/nlqdb`, crawl-fed,
      health *Unhealthy* 07-29): once this repo's `apps/mcp` deploy ships
      `/.well-known/glama.json`, Glama auto-detects it within minutes and the
-     claim binds to the email in the file — `omer@salfati.group`; if your
+     claim binds to the email in the file — `omer@nlqdb.com`; if your
      Glama account uses another email, edit `apps/mcp/src/index.ts` first.
      Once claimed, set the website to
      `https://nlqdb.com/agents/?utm_source=glama` (flips ledger row #6 to

@@ -4,7 +4,7 @@
 // this copy only decides whether the static /app/admin page shows a
 // shell or bounces. Keep the two in sync when the allowlist changes.
 
-const ADMIN_EMAILS = new Set(["omer@salfati.group"]);
+const ADMIN_EMAILS = new Set(["omer@nlqdb.com"]);
 const ADMIN_DOMAINS = new Set(["nlqdb.com"]);
 
 export function isAdminEmail(email: string | null | undefined): boolean {
