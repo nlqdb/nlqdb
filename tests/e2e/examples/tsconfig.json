@@ -1,12 +1,9 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    // Override base's `baseUrl: "."` (which is anchored at the
-    // tsconfig.base.json location, i.e. the repo root) so the path
-    // mapping below resolves to THIS package's local node_modules,
-    // where @playwright/test actually lives.
-    "baseUrl": ".",
     "types": ["bun-types", "@playwright/test"],
+    // Resolved relative to THIS file (no `baseUrl`), i.e. this suite's
+    // local node_modules, where @playwright/test actually lives.
     "paths": {
       "@playwright/test": ["./node_modules/@playwright/test"]
     }
