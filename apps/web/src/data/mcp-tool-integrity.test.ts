@@ -52,6 +52,10 @@ const NON_TOOL_TOKENS = new Set([
   "nlqdb_src", // first-touch acquisition source (localStorage, SK-GTM-007)
   "nlqdb_logsnag", // analytics channel name
   "nlqdb_create_database", // manifesto foil — intentionally unshipped
+  "nlqdb_recall", // the run-62 never-built phantom, referenced as a cautionary
+  // non-capability in /blog/guard-advertised-capabilities-against-code (the
+  // post *about* this guard); classified, not advertised — exactly the
+  // closed-world resolution the post prescribes.
 ]);
 
 // Extension-parameterised so the same walker sweeps the web app's source
