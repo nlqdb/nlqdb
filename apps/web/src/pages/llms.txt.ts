@@ -106,8 +106,18 @@ export const GET: APIRoute = () => {
     `query, what to do on failure — are at ${DOCS_SITE}/agent-memory/. The live memory\n` +
     `path is \`nlqdb_query\` (provision + query in English); the typed\n` +
     `\`agent_memory_v1\` preset is coming.\n\n` +
-    `Building this into a repo? One command installs the skill (Claude Code, Cursor,\n` +
-    `Codex — via the public repo, no account, no publish):\n\n` +
+    `Building this into a repo with Claude Code? The plugin wires the server AND the\n` +
+    `instructions in one step, replacing the connect command above — run both lines\n` +
+    `inside Claude Code:\n\n` +
+    "```bash\n" +
+    `/plugin marketplace add nlqdb/nlqdb\n` +
+    `/plugin install nlqdb-memory@nlqdb\n` +
+    "```\n\n" +
+    `The plugin is nlqdb's published artifacts directory itself, so its two skills are\n` +
+    `the same files below, never copies. It authenticates by the hosted route (browser\n` +
+    `OAuth once); for a headless host use the stdio command above.\n\n` +
+    `On any other host, one command installs the skill alone (Cursor, Codex, and 15\n` +
+    `more — via the public repo, no account, no publish):\n\n` +
     "```bash\n" +
     `npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory\n` +
     "```\n\n" +
