@@ -20,45 +20,48 @@ attributable yield 2 → ≥ 5 (row #22, now 4), founder directive 2026-07-19
 `/app/admin`, never estimated. Acquisition levers stay pullable when no dogfood lever
 is — as does premium-chain work (`SK-LLM-017`, row #20), one rank below.
 
-**Worst number today:** **the human queue — depth 4, top bullet (`MEMORY_PRESET`) 2
+**Worst number today:** **the human queue — depth 6, top bullet (`MEMORY_PRESET`) 2
 days old, the launch-sequence bullet idle 46 days.** With real strangers at 0, the
 age of this queue's head is the company's real cycle time, and the one bullet that can
 move strangers off 0 (`SK-PIVOT-016`) has sat since 06-13. No agent run can clear it —
 it is a founder decision (rule 4). So this run took the highest-yield **agent-movable**
 lever instead (below).
-**Why this distribution-yield lever (step-2 priority 1).** The distribution queue held
-**3 unpublished drafts** — at the step-3.1 forced-publish threshold (the run-150 scorecard
-undercounted it as 2; the `restrictive-rls` draft landed since). Step 3.1 is unambiguous:
-publish the oldest ready draft, don't draft a new one. The oldest
-(`guard-advertised-capabilities-against-code`) was annotated in the queue itself as "next
-non-null run publishes this one." Publishing lifts the `/blog` surface count + the
-llms.txt/sitemap/rss breadth (rows #6/#7), is in-run measurable, breaks the recent
-copy-CTA lever streak (runs 148–150, anti-rut), and touches `blog.ts` + `/blog` — files
-none of the 8 open PRs change. A fitting one: the post is *about* the SK-MCP-002 tool-name
-guard, and its `nlqdb_recall` token tripped that very guard — resolved the closed-world
-way the post prescribes (classify the phantom as a documented non-tool, don't soften copy).
-**Top `blocked-by-human` bullet:** decide `MEMORY_PRESET` in prod (⏱ ~5 min, **1 day
-old**, PR #835 drafted). The launch-sequence bullet — the only one that can move real
-strangers off 0 — is **idle 45 days since 06-13**; its `SK-PIVOT-016` gate is **0/5
+**Why this dogfood-gate lever (step-2 top priority — the weekly focus itself).** The
+weekly focus is the `SK-PIVOT-016` dogfood gate; its one criterion pullable while
+`MEMORY_PRESET` is dark is **criterion 4 (temporal golden queries)**, owned by
+[`D-03`](features/agent-memory-pivot/worksheets/dogfood/D-03-golden-queries.md) — offline
+eval work, no prod flag, no Neon. D-03's dataset (12 repo-ops questions, 4 temporal) had
+already **shipped in #847** but was **never measured**: the scorecard's memory-quality
+number was still run 69 (15 synthetic questions only, 93.33%), so the ops corpus the
+launch gate depends on was a *vibe*, not a number. This run supplied the missing half —
+dispatched [run 30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690)
+(free lane, `main@5cc4bd1`, clean: `transport_failed:false resumable:false`) over the full
+27-question set. **Number moved: memory-quality (Engine lane) 15-q synthetic-only →
+27-q synthetic+ops, first-ever ops EX; criterion 4 from *unmeasured on ops* → measured
+temporal 2/7 (synthetic 2/3, ops 0/4).** It breaks the distribution anti-rut streak (runs
+149–151), and touches `tools/eval` docs + the dogfood worksheets + `launch-gate.ts` —
+files none of the 3 open PRs change. The result names the next lever: all four ops
+temporal golds miss on the free chain (each miss's SQL is in the run summary).
+**Top `blocked-by-human` bullet:** decide `MEMORY_PRESET` in prod (⏱ ~5 min, **2 days
+old**, PR #835). The launch-sequence bullet — the only one that can move real
+strangers off 0 — is **idle 46 days since 06-13**; its `SK-PIVOT-016` gate is **0/5
 green** (no ops workload on the public MCP surface yet ⇒ criteria 1–3 unstartable;
-temporal golden 2/3; `/agents` memory dashboard unshipped). Every criterion is
-agent-movable and `MEMORY_PRESET=1` is its prerequisite — which is the top bullet.
+criterion 4 now measured but red — temporal 2/7; `/agents` memory dashboard unshipped).
+Every criterion is agent-movable and `MEMORY_PRESET=1` is criteria 1–3's prerequisite —
+which is the top bullet.
 **Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** / **#9 Spider
 0.2222**; rows **#4/#5/#16**'s stranger-dependent criteria (N = 0 until the launch
 bullet fires); row **#15**'s opencheck arm (free-lane saturation, remedy costs money
 ⇒ rule 4).
 
 **Rule 6 clean** — `bun run typecheck && bun run lint && bun run test` **green on
-`main@2ca241d`** (EXIT=0, full workspace, re-run this run before any edit); `Deploy web`
-green on `3ac8b0c` (run 150). Local gates on the touched scope: `astro check` **0 errors /
-0 warnings**, web suite **441 pass** (was 440 + this run's `nlqdb_recall` non-tool
-classification), biome clean on the two touched `.ts`, `check-links` **0 dead / 0
-redirecting** on a fresh **127-page** build.
-Open PRs **8** — **#855** (admin launch gate), **#854** (headless-credential sweep),
-**#853** (founder-queue reconcile), **#852** (reach null-run NUMBERS), **#835** (draft,
-`MEMORY_PRESET`), **#826** (changesets), draft **#719** (oldest, **11 days**). This run's
-files (`blog.ts`, `mcp-tool-integrity.test.ts`, `distribution-queue.md`) overlap none of
-them.
+`main@5cc4bd1`** (EXIT=0, full workspace, re-run this run before any edit); **all 8
+`deploy-*` workflows green on `5cc4bd1`** (2026-07-29). Local gates on the touched scope:
+memory-quality gold-executability **27/27**, its guard test **24 pass**, and
+`launch-gate.test.ts` green after the criterion-4 constant sync.
+Open PRs **3** — **#835** (`MEMORY_PRESET` flip, founder go/no-go), **#826** (changesets
+release), draft **#719** (oldest, **12 days**). This run's files (`scorecard.md`, the
+dogfood `INDEX.md`/`D-03`, `admin/launch-gate.ts`+`.test.ts`) overlap none of them.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -70,7 +73,7 @@ them.
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share with ≥ 2 asks |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** content pages (`/solve` 37 + `/vs` 31 + **`/blog` 37 ← this run, was 36**); **117** sitemap URLs, **127** built pages. Queue **2** — publishing the oldest draft dropped it from 3 (over threshold) to below the 3-deep forced-publish threshold | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** (**+1 this run**: `guard-advertised-capabilities-against-code`). GSC carried from run 150 (same-day pull): **Google (GSC 28d, 06-27→07-25, live): 8 clicks / 496 impr / pos 16.9**; 100 pages / 586 impr; top queries 17 rows / 24 impr. Clicks stay concentrated: **`/security/hall-of-fame/` is 4 of the 8** (11 impr, pos 13.5) — run 145 gave that page site chrome and **#844 (run 149) added a product CTA to its body**, so the next pull is the first that can show whether that landing surface converts onward. Strengthen-next, top 3 of 50 off page 1: **`/solve/running-total-cumulative-sum-in-sql/` 72 / 36.3 ← declined, see above** · `/solve/find-rows-with-no-match-in-another-table/` 31 / 14.3 · `/vs/` 18 / 17.9. **First-party referral: 5 pageloads / 3 referrers** (google 2 → `/security/hall-of-fame/`, baidu 2 → `/blog/`, bing 1 → `/`) — hall-of-fame still the top referral landing (validates #844). **New — URL Inspection: `/agents/` reads "Duplicate, Google chose different canonical" (it picked `/agents`, crawled 07-19).** Verified live: `/agents` 301s to `/agents/`, and both the rendered `<link rel=canonical>` and the sitemap carry the slash ⇒ a stale pre-`SK-WEB-027` crawl, not a live defect. Only a lever if it survives a fresh crawl | `scripts/gsc-pull.ts` + `scripts/rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
+| 7 | Surface yield | posts **37** (flat this run — engine-lane run, no publish). GSC carried from run 150 (same-day pull): **Google (GSC 28d, 06-27→07-25): 8 clicks / 496 impr / pos 16.9**; 100 pages / 586 impr. Clicks concentrated: **`/security/hall-of-fame/` = 4 of 8** (11 impr, pos 13.5; #844 added a body CTA — next pull tests onward conversion). Strengthen-next, top 3 off page 1: **`/solve/running-total-cumulative-sum-in-sql/` 72 / 36.3** · `/solve/find-rows-with-no-match-in-another-table/` 31 / 14.3 · `/vs/` 18 / 17.9. First-party referral: 5 pageloads / 3 referrers (google 2 → hall-of-fame, baidu 2 → `/blog/`, bing 1 → `/`) | `scripts/gsc-pull.ts` + `scripts/rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
 | | **Engine** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **1.7 d old, staleness trigger not fired**. This run verified the run's *completeness* rather than re-reading the score: its `Save full-run checkpoint` step is **`skipped`**, which per `SK-QUAL-011` happens only after a finished run deletes its checkpoint — one 38-min window, not six. The EX figure itself is run 146's read of that report | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted; SC dead (#619) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836)). The 07-27 re-dispatch [30230040001](https://github.com/nlqdb/nlqdb/actions/runs/30230040001) (`d961475`) exited **partial** — its `Save full-run checkpoint` step **ran**, so a `SK-QUAL-013` budget-stop left a checkpoint behind | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
@@ -92,12 +95,12 @@ them.
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0 failed / 9 blocked** — carried from the 07-26 live walk; the scheduled CI walk [30194859852](https://github.com/nlqdb/nlqdb/actions/runs/30194859852) (07-26 08:34Z) concluded success. **Not re-walkable from a `/daily` container**, a new standing constraint: `@playwright/test` pins `~1.60.0`, which wants Chromium **1223**; the image ships **1194**, so the walker aborts with `Executable doesn't exist`. CI-only until they agree | target **0 `failed`** ✅; `blocked` reported beside it, never folded in. All walks stop at the 428 `challenge_required` (Turnstile declining a datacenter IP by design, `SK-ANON-012`), so steps past the ask are **observed, not proven** |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub (per-bucket split lives only in the ledger). Each carries its ledger `utm_source` in-repo; **npm's does not reach the registry** and the SDK install is broken (row #19) until #826 merges. MCP official registry published 07-22 (`com.nlqdb/nlqdb`); Glama crawl-listed; Smithery 0 / PulseMCP 0. First-touch attribution live since 07-19 on both create arms; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus: → ≥ 5 live.** Yield from `/app/admin` + `scripts/rum-pull.ts`, never estimated. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 4**, head ⏱ ~5 min · **2 days old**; oldest bullet 46 days (`SK-PIVOT-016` gate **0/5**) | [`blocked-by-human.md`](blocked-by-human.md) (#853 proposes trimming it). Open PRs **8**, oldest 11 days (draft #719) |
+| | **Human queue** — the one non-automatable actor | **depth 6**, head ⏱ ~5 min · **2 days old**; oldest bullet 46 days (`SK-PIVOT-016` gate **0/5**, criterion 4 now measured) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs **3**, oldest 12 days (draft #719) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
-| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **0/7** — gate **0/5** | opened 07-28; mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md). D-01 🟡 in flight; D-03 the only slice pullable while `MEMORY_PRESET` is dark; D-07 ⛔ blocked on D-03+D-04 |
-| | Memory-quality eval (`SK-QUAL-023`) | **free-chain EX 93.33% (14/15)** — run 69, [GHA 29314389843](https://github.com/nlqdb/nlqdb/actions/runs/29314389843); p50 1168 ms / p95 7036 ms. Per-axis 3/3 except **temporal 2/3** (`SK-PIVOT-016` criterion 4) | 15 gold-verified questions, 4 axes + analytical; free-only, no baseline |
+| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **1/7** (D-03 ✅) — gate **0/5** (criterion 4 measured this run: temporal 2/7 = synthetic 2/3 + ops 0/4, not yet green) | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md). D-01 🟡 in flight; **D-03 ✅ done 07-29** (first ops-corpus EX); D-07 ⛔ blocked on D-04 |
+| | Memory-quality eval (`SK-QUAL-023`) | **27-q free-chain EX 59.26% (16/27)** — run [30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690) 2026-07-29, `main@5cc4bd1`, `resumable:false`; p50 1074 ms / p95 4406 ms. **First dispatch over the full set (15 synthetic + 12 repo-ops docs→memory questions) — NOT a regression from the old 15-q 93.33% (run 69), a broader+harder denominator that finally measures the workload the launch gate depends on.** Per-axis (free): consolidation 4/5, analytical 4/5, retrieval 3/5, forgetting 3/5, **temporal 2/7 (synthetic 2/3, ops 0/4)** — the weak axis gating `SK-PIVOT-016` criterion 4; each ops-temporal miss's generated SQL is in the run summary (the next engine lever) | 27 gold-verified questions, 5 axes; free-only, no baseline (a measurement, never canonical) |
 
 ## Shipped distribution
 
@@ -113,41 +116,39 @@ lesson gists stay in `research/distribution-queue.md`.
 
 ## Last change
 
-**2026-07-28 (run 151)** — **Number moved: canonical `/blog` posts 36 → 37**
-(`/blog/guard-advertised-capabilities-against-code/`). Corroborating: indexable content
-pages `/blog` 36 → 37 (row #6), built pages 126 → 127, sitemap 116 → 117, and the post
-auto-appears in `llms.txt` + `sitemap.xml` + `rss.xml` (verified in `dist/`). Lane:
-**distribution yield (step-2 priority 1)** — the forced-publish of a queued draft +
-GLOBAL-025 onboarding/UX-via-distribution.
+**2026-07-29 (run 152)** — **Number moved: the memory-quality Engine-lane row —
+15-q synthetic-only (run 69, 93.33%) → 27-q synthetic+ops, first-ever ops-corpus EX**
+([run 30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690): free-chain EX
+**59.26% (16/27)**, p50 1074 ms / p95 4406 ms, clean). This is the **weekly-focus**
+`SK-PIVOT-016` gate's **criterion 4**, moved from *unmeasured on the ops corpus* →
+**measured: temporal 2/7 (synthetic 2/3, ops 0/4)**. Lane: **dogfood gate = step-2 top
+priority** (the weekly focus), the D-03 slice.
 
-**Why publish, not draft.** The queue held **3 unpublished drafts** — the step-3.1
-forced-publish threshold (run-150 undercounted it as 2; the `restrictive-rls` draft landed
-since). Step 3.1: ship the oldest. `guard-advertised-capabilities-against-code` was oldest
-and self-annotated "next non-null run publishes this one." It breaks the runs 148–150
-copy-CTA streak (anti-rut) and touches only `blog.ts` + `/blog` — no open PR overlap.
+**Not a regression.** The old 93.33% measured only the 15 synthetic questions; the 59.26%
+is the first run that also includes the 12 harder repo-ops docs→memory questions
+(references, joins, date arithmetic) the launch actually rides on — a broader, harder
+denominator, not a quality drop. Per-axis (free): consolidation 4/5, analytical 4/5,
+retrieval 3/5, forgetting 3/5, **temporal 2/7 (weakest)**.
 
-**The closed-world twist.** The post (run-62→64 arc: an agent product advertised
-`nlqdb_recall`, a verb never built, so a stranger's first call hit `tool not found`; the
-drift-guard had the same bug) contains the literal `nlqdb_recall`, which tripped the very
-guard it describes (`mcp-tool-integrity.test.ts`, SK-MCP-002). Resolved as the post
-prescribes — classified `nlqdb_recall` as a documented non-tool, did **not** soften copy.
-Web suite 440 → **441 pass**.
+**Why this lever.** The dogfood gate is the founder-set weekly focus; D-03 is its one
+criterion pullable while `MEMORY_PRESET` is dark (offline eval, no prod flag). Its dataset
+had shipped in #847 but was never dispatched, so the scorecard still carried the stale
+synthetic-only number. Dispatching + recording it closes that gap and **names the next
+lever**: all four ops temporal golds (Q17 age>30d, Q18 supersession, Q19/Q20 ordering)
+miss on the free chain — an engine/prompt fix, each miss's SQL in the run summary. Breaks
+the runs 149–151 distribution anti-rut streak.
 
-**Re-measure.** Fresh `bun run build` → **127 pages** (was 126); `check-links` **0 dead /
-0 redirecting**; the post's `index.html` is in `dist/blog/…` and its slug is in
-`sitemap.xml`, `llms.txt`, and `rss.xml`. **dev.to drip fired** (3.3, ≥ 20 h since last
-mirror): posted the oldest pending variant `ai-internal-tool-builder-faster` (URL above),
-dropped its `dev.to` venue from the queue line.
+**No new `SK-*`** (P5/D5): D-03 is an existing worksheet slice under `SK-PIVOT-016` /
+`SK-QUAL-023`; the corpus-vs-snapshot deviation is recorded in the D-03 worksheet, not a
+new decision.
 
-**No new `SK-*`** (P5/D5): publishing a queued draft is what `SK-BLOG-001` + step 3.1
-prescribe; classifying a phantom token is the closed-world rule `SK-MCP-002` documents.
-
-**Gates:** `typecheck && lint && test` green on `main@2ca241d` before edits · `astro check`
-**0/0** · web suite **441 pass** · biome clean on the touched `.ts` · `check-links` **0
-dead** · gate 3 grep empty · **D4** every edited doc under 20480 B.
-**KPI (GLOBAL-025):** advances **onboarding/UX via distribution yield** — one more indexed
-first-party surface + a dev.to mirror, each carrying its `/app/new` CTA + `utm_source`;
-**degrades none**.
+**Gates:** `typecheck && lint && test` green on `main@5cc4bd1` before edits · all 8
+`deploy-*` green on `5cc4bd1` · memory-quality gold-executability **27/27** · its guard
+test **24 pass** · `launch-gate.test.ts` green after the criterion-4 constant sync · **D4**
+every edited doc under 20480 B.
+**KPI (GLOBAL-025):** advances **engine quality** — the wedge's own memory-quality number
+now measures the ops corpus honestly and localises the weak axis (temporal); **degrades
+none** (a measurement, no baseline touched; BIRD/Spider/persona-bench untouched).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

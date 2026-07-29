@@ -85,7 +85,7 @@ describe("launchGateCriteria", () => {
   test("criterion 4 renders the last known temporal value, labeled static", () => {
     const c = launchGateCriteria(gate())[3];
     expect(c?.value).toBe(
-      `${GATE_STATIC.temporal.pass} / ${GATE_STATIC.temporal.total} (synthetic corpus)`,
+      `${GATE_STATIC.temporal.pass} / ${GATE_STATIC.temporal.total} (synthetic + ops corpus)`,
     );
     expect(c?.measurement).toBe("static");
     expect(c?.detail).toContain(GATE_STATIC.temporal.asOf);
