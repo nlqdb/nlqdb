@@ -101,11 +101,12 @@ how to tag it), seed entities (the target language, its rule set, a starter
 word list), and ≥ 5 golden queries added to the `SK-QUAL-023` eval family —
 the analytical questions above, as pass/fail golds.
 
-Cost: ~2 `/daily` runs. Queue status: a **pack candidate**, ranked in the
-dogfood track's `pack-candidates.md` (founder-ranked #1 among candidates).
-Being ranked #1 among candidates is *not* a claim on the next run — pack
-candidates are pulled when the daily loop's lever is pack work, subject to
-normal founder ranking.
+Cost: ~2 `/daily` runs. Queue status: a **pack candidate** — a future
+goal-pack slice in the dogfood track
+([`dogfood/INDEX.md`](../features/agent-memory-pivot/worksheets/dogfood/INDEX.md),
+where `D-05` is the existing founder-ops pack). It is pulled only when the
+daily loop's lever is pack work, competes under normal founder ranking, and
+carries **no priority claim** and no claim on the next run.
 
 Value if we stop here: the analytical-memory claim gains its most
 human-legible golden-query set, and any agent can run the tutor by hand.
