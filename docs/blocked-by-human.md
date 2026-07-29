@@ -26,7 +26,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 2 | ~10 min | Glama: Make a **Release** (parked Dockerfile) so the server listing scores, push the badge to `awesome-mcp-servers` PR #10984; claim the *connector* (its `/.well-known/glama.json` ships with the repo) + hand test creds for health | 2026-07-29 |
+| 2 | ~5 min | Glama: push the score badge to `awesome-mcp-servers` PR #10984 (listing is claimed + released, tier B); claim the *connector* (its `/.well-known/glama.json` ships with the repo) + hand test creds for health | 2026-07-29 |
 | 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
 Only #1 can move real strangers (scorecard row #2); #3 is the only one that
@@ -83,31 +83,17 @@ automated OIDC lane, tracked by scorecard row #22.)
    (`D-01..D-07`, one slice per criterion), the founder-set weekly focus
    number as of 07-28. Gate progress: **0/5**.
 
-2. **⏱ ~10 min · since 2026-07-29 — Glama release → score badge on
-   `awesome-mcp-servers` #10984; claim + heal the connector.** The maintainer
-   gates the [#10984](https://github.com/punkpeye/awesome-mcp-servers/pull/10984)
-   merge on a claimed, *scored* Glama server listing + its badge. Founder
-   submitted + claimed the server listing 2026-07-29
+2. **⏱ ~5 min · since 2026-07-29 — Glama badge onto `awesome-mcp-servers`
+   #10984; claim + heal the connector.** The scored-listing prerequisite is
+   **done** — server listing submitted, claimed and released 2026-07-29
    ([`glama.ai/mcp/servers/nlqdb/nlqdb`](https://glama.ai/mcp/servers/nlqdb/nlqdb),
-   `author:official` — the committed root `glama.json` did the org-repo claim).
-   Remaining, in order:
-   - **Score:** the Dockerfile admin page is a *form*, not a paste box. Build
-     steps `["npm install -g @nlqdb/mcp"]` · CMD
-     `["sh", "-c", "NLQDB_API_KEY=\"${NLQDB_API_KEY:-sk_mcp_glama_inspection_placeholder}\" nlqdb-mcp"]`
-     (the fallback lets the keyless build test pass `initialize`/`tools/list` —
-     prefix gate ok, introspection never calls the API — while a real user
-     key overrides it) · env schema: **rename the auto-generated `SK_MCP_KEY`
-     to `NLQDB_API_KEY`** (required; it's the var the server actually reads) ·
-     base image + Node/Python defaults. Deploy, then **Make Release** (version
-     `0.1.1`, matching npm) — scoring stays "unavailable" until a release
-     exists. Ignore the license "F": GitHub's detector
-     doesn't ship FSL at all (`getsentry/sentry` itself reads `NOASSERTION`),
-     so it's inherent to `GLOBAL-019`, not fixable — and it's a side-grade,
-     not part of the quality tier (= TDQS 70% + coherence 30%; tool
-     definitions are already TDQS-shaped). After this PR merges + deploys,
-     click **Sync Server** on the admin page to refresh the profile.
-   - **Badge:** once a score shows, append to the entry line on your fork
-     branch `add-nlqdb` and #10984 unblocks:
+   `author:official`, release `0.1.0`, tier **B**; the license "F" side-grade
+   is inherent to `GLOBAL-019` — GitHub's detector doesn't ship FSL,
+   `getsentry/sentry` itself reads `NOASSERTION` — and sits outside the
+   quality tier, ignore it). Remaining:
+   - **Badge:** append to the entry line on your fork branch `add-nlqdb` —
+     the maintainer's stated merge gate on
+     [#10984](https://github.com/punkpeye/awesome-mcp-servers/pull/10984):
      `[![nlqdb MCP server](https://glama.ai/mcp/servers/nlqdb/nlqdb/badges/score.svg)](https://glama.ai/mcp/servers/nlqdb/nlqdb)`
    - **Connector** (`glama.ai/mcp/connectors/com.nlqdb/nlqdb`, crawl-fed,
      health *Unhealthy* 07-29): once this repo's `apps/mcp` deploy ships
@@ -119,7 +105,7 @@ automated OIDC lane, tracked by scorecard row #22.)
      attributable) and give support@glama.ai demo-account credentials so the
      health check can pass OAuth — the hosted transport is OAuth-only by
      design (`SK-MCP-001`), so unhealthy-without-credentials is expected, not
-     a server bug.
+     a server bug. Then click **Sync Server** on the admin page.
    Ledger rows #6 + #10 in
    [`acquisition-channels.md`](./research/acquisition-channels.md) track both.
 
