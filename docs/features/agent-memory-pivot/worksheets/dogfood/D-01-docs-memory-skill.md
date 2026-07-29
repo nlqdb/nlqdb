@@ -1,10 +1,14 @@
 # D-01 — The docs→memory extraction skill (tracking slice)
 
-**Status:** 🟡 **build in flight 2026-07-28** — the skill artifact is being
-built by a parallel agent on branch **`claude/docs-memory-skill`**. **Do not
-build it here.** This worksheet is the *tracking* slice: it records what the
-artifact must satisfy for the rest of the track to stand on it, and it is
-ticked when that branch merges.
+**Status:** ✅ **done 2026-07-29** — the artifact merged in #847 (branch
+`claude/docs-memory-skill`) and lives at
+**`apps/web/public/agent-artifacts/nlqdb-docs-memory/SKILL.md`** (also bundled
+by the #863 Claude Code plugin). Acceptance verified against the merged files
+2026-07-29 (advisor session): points 1–4 and 6 satisfied as shipped (#847,
+`sk_mcp_` route per #854, gate honesty updated post-flip in #871); point 5
+(credential metadata, never secret values) was missing and was closed in the
+ticking PR — the rule is now stated in the skill and pinned in
+`agent-artifacts.test.ts`.
 **Sequence:** Dogfood 1 of 7 · **Risk:** med · **Runs:** ~2 (in flight) · **Prereqs:** — · **Gate:** none
 
 ## Goal
@@ -75,14 +79,14 @@ the gap is this worksheet's remaining work, not a silent renegotiation.
 
 ## Done when
 
-- [ ] `claude/docs-memory-skill` is merged and its artifact path is recorded
-      here + in [`INDEX.md`](INDEX.md).
-- [ ] All six acceptance-contract points verified against the merged files
-      (each one either satisfied or carried as a numbered follow-on box).
-- [ ] `agent-artifacts.test.ts` (or its successor guard) pins the new skill's
-      published surface.
-- [ ] `bun run typecheck && test` green; lint run with explicit paths.
-- [ ] INDEX tracker + status ticked `🟡 → ✅`.
+- [x] `claude/docs-memory-skill` is merged (#847) and its artifact path is
+      recorded here + in [`INDEX.md`](INDEX.md).
+- [x] All six acceptance-contract points verified against the merged files
+      (1–4, 6 satisfied as shipped; 5 closed in the ticking PR, see Status).
+- [x] `agent-artifacts.test.ts` pins the new skill's published surface
+      (install command, frontmatter, honesty gates, credential rule).
+- [x] `bun run typecheck && test` green; lint run with explicit paths.
+- [x] INDEX tracker + status ticked `🟡 → ✅`.
 
 ## Artifact
 

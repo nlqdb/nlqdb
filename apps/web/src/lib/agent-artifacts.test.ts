@@ -392,6 +392,13 @@ describe("the docs→memory pack (SK-PIVOT-017)", () => {
   // else's repo where nobody re-reads it — so the flag, its two observable
   // error codes, and the always-on path must be named in the file itself,
   // not just on the site.
+  // D-01 acceptance point 5 (SK-PIVOT-018): a corpus that mentions a
+  // credential yields metadata rows only — the value never enters `content`.
+  test("states the credential rule: metadata only, never secret values", () => {
+    const prose = normalizeProse(DOCS_SKILL);
+    expect(prose).toContain("never store secret values");
+  });
+
   test("states the MEMORY_PRESET flag, how an off state shows up, and the always-on path", () => {
     const prose = normalizeProse(DOCS_SKILL);
     expect(prose).toContain("memory_preset");
