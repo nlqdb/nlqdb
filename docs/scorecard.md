@@ -18,49 +18,46 @@ yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-in
 Acquisition levers stay pullable when no dogfood lever is — as does premium-chain work
 (`SK-LLM-017`, row #20), one rank below.
 
-**Worst number today:** **the human queue — depth 2 (the advisor session cut it 6 → 2;
-`MEMORY_PRESET` shipped #835), head is the Show HN launch, idle 46 days.** With real strangers at 0, the
-age of this queue's head is the company's real cycle time, and the one bullet that can
-move strangers off 0 (`SK-PIVOT-016`) has sat since 06-13. No agent run can clear it —
-it is a founder decision (rule 4). So this run took the highest-yield **agent-movable**
-lever instead (below).
-**Why this npm-attribution lever (step-2 priority 1, GLOBAL-038).** `#826`
-(chore(release): version packages) **merged this cycle**, publishing `@nlqdb/sdk@0.2.2`
-and `@nlqdb/mcp@0.1.1` — so **row #19 resolved 1 → 0**, verified live end-to-end this run
-(`npm i @nlqdb/sdk@0.2.2` → imports `NlqdbApiError, createClient`; the tarball's manifest
-carries `main`/`types`/`exports` → `dist/`, `types` resolves to a shipped `dist/index.d.ts`;
-homepage `?utm_source=npm`). The `npm view` src-pointing fields are a cosmetic packument
-artifact — consumers install the tarball, which is correct. That completed the **sdk** half
-of the acquisition-channels `/daily` republish task; the **cli** half is the residual live
-drift this run pulled: `@nlqdb/cli@0.1.0` still serves an **untagged** `https://nlqdb.com`
-homepage (the `?utm_source=npm` tag was committed to `cli-shim` after 0.1.0 published), so
-every click from its npm page converts as `direct`. A single changeset
-(`@nlqdb/cli` patch) queues the republish that carries the tag — no code change, bin/shim
-byte-identical. Clean lane: `#826` merged, no other open PR touches `cli-shim` or `.changeset/`.
-**Top `blocked-by-human` bullet:** fire the Show HN launch sequence — the queue's head now
-that `MEMORY_PRESET=1` shipped (#835 merged) and the advisor-session queue dropped 6 → 2.
-The launch-sequence bullet is the only one that can move real strangers off 0 and is **idle
-46 days since 06-13**; its `SK-PIVOT-016` gate is **0/5 green** (no ops workload on the
-public MCP surface yet ⇒ criteria 1–3 unstartable; criterion 4 now measured but red —
-temporal 2/7, per #857's merged memory-quality run; `/agents` memory dashboard unshipped).
-Every criterion is agent-movable.
+**Worst number today (run 154, 2026-07-29):** **the `SK-PIVOT-016` dogfood gate — 0/5
+green** (the founder-set weekly focus). Its prod prerequisite **cleared today**:
+`MEMORY_PRESET=1` shipped to `main` (#835, in `cce51a6` history; Deploy API green), and
+the founder's 2026-07-29 advisor session also merged the release PR #826 (`@nlqdb/mcp@0.1.1`
++ `@nlqdb/sdk@0.2.2`), wired LogSnag, fixed the sharp CVE, and minted the `sk_mcp_` walker
+key — #865 (merged) reconciled the human queue **6 → 2**, since nudged to **3** by a new
+Glama-release bullet. But the gate still has **no pullable slice this run**: D-01
+(docs→memory skill) is unmerged on `claude/docs-memory-skill`, D-02 chains off it, D-03 was
+taken today by #857, and D-04+ chain off D-01. So this run took the highest-yield
+**agent-movable, non-overlapping** lever instead (below).
+**Why this UX-integrity lever (step-2 priority 2).** With the dogfood gate unpullable,
+distribution already worked today by runs 152/153 + reach #862/#863, and anti-rut
+discouraging a 5th-of-6 distribution copy lever, the pullable lever is a real
+anonymous-stranger-flow hardening: the `SK-ANON-015` nav guard was **per-file** — one
+`attachHandoff(` cleared the whole file, so a second unprotected cross-origin hop could
+silently drop a stranger's first prompt during the marketing→app handoff and stay green
+forever. Tightened to per-navigation for the `/app/`-literal hop (`client-nav-integrity.test.ts`),
+resolving anonymous-mode open-question #17 (10 → 9). Touches the anon nav test +
+`anonymous-mode/FEATURE.md` — files **no open PR changes**.
+**Top `blocked-by-human` bullet:** fire the Show HN launch sequence (⏱ ~30 min,
+**idle 46 days since 06-13**) — the only bullet that can move real strangers off 0, still
+condition-gated on the `SK-PIVOT-016` gate (**0/5**). Every criterion is agent-movable; the
+prod prerequisite is now clear, so the gate is the weekly-focus lane to drive as D-01 merges.
 **Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** / **#9 Spider
 0.2222** (Spider **10 d** stale, > 7 d alert — resume-dispatch deferred: async multi-window,
 a 07-27 partial checkpoint exists on `d961475`, `main` has since moved); rows
 **#4/#5/#16**'s stranger-dependent criteria (N = 0 until the launch bullet fires); row
 **#15**'s opencheck arm (free-lane saturation, remedy costs money ⇒ rule 4).
 
-**Rule 6 clean** — `bun run typecheck && bun run lint && bun run test` **green on
-`main@cce51a6`** (EXIT=0, full workspace, re-run this run before the edit); all `deploy-*`
-green on `cce51a6` (`Deploy web` success 08:28Z, the #826 release run that published sdk
-0.2.2 / mcp 0.1.1). This run's diff is a `.changeset/` markdown + scorecard/doc reconcile —
-no app-code touched, so the workspace suite is unchanged from the green base.
-Open PRs: this run's cluster siblings (#857/#858/#859/#860/#861/#862/#863/#865) plus #835
-(`MEMORY_PRESET`) and #826 (changesets release) all merged this cycle; the changesets
-"Version Packages" PR is now **#864**, which this run's cli republish joins on merge.
-See GitHub for the live list; draft **#719** stays oldest (**12 days**). This run's files
-(`.changeset/cli-shim-attribution-republish.md`, `scorecard.md`, `acquisition-channels.md`,
-`blocked-by-human.md`) overlap none of the still-open PRs (scorecard regen is step-0-exempt).
+**Rule 6 clean** — after `bun install`, `bun run typecheck && bun run lint && bun run test`
+**all EXIT=0 on `main@cce51a6`** (full workspace; the bare-repo `TS5101 baseUrl` /
+`bun-types` errors were a not-yet-installed artifact, cf. #860, since merged). **All nine
+`deploy-*` workflows green on `cce51a6`** (web, api, docs, mcp, events-worker verified).
+Touched-scope gate: the anon nav-integrity suite **5 pass** (was 4 + this run's
+per-navigation `/app/`-literal case), and a negative check confirmed it flags an injected
+unwrapped `location.assign("/app/…")`.
+Open PRs — this run's cluster siblings (#857/#858/#859/#860/#861/#862/#863/#865/#866)
+merged this cycle; still open per GitHub: **#868** (/review command), **#864** (changesets
+Version-Packages), draft **#719** (oldest, **12 days**). This run's files
+(`client-nav-integrity.test.ts`, `anonymous-mode/FEATURE.md`) overlap none of them.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -86,7 +83,7 @@ See GitHub for the live list; draft **#719** stays oldest (**12 days**). This ru
 | 15 | E2E manual-suite freshness | **0.420** (recomputed 07-28; was 0.492 — **pure time-decay, no suite changed state**). Per suite `pass × freshness`: **mcp 0.576** (✅ 07-25) · **sdk 0.553** (✅ 07-24) · **examples 0.553** (✅ 07-24) · **opencheck 0** (latest ❌ 07-24; last success 07-17 ⇒ 11 d, freshness floored — the documented NVIDIA-free-tier saturation flake, remedy costs money ⇒ rule 4). Purely opencheck-limited; the other three decay ~0.14/day | Never dispatch opencheck alongside another consumer of its lanes. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
 | 16 | Phase 2 (Distribution) exit gate | **1/9 pass** — pass: inference cost < $1/mo/user ($0). Fail: BIRD ≥ 0.60 free (0.5382); agentic-frontier ≥ 0.80 (0.693); TTFV p50 ≤ 60 s (instrumented, awaits strangers); first-10 ≥ 95% (N=0); destructive-op retry (N≈0); MCP in 3+ hosts (0); 1 public agent product (0); 3 non-engineer CSV tests (CSV unshipped) | stranger-dependent criteria measure reality since run 56 removed the 428 wall |
-| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **10** (re-counted live 07-27, pinned grep; **+1 vs 9**). The new one is `mcp-server`'s `sk_live_*`-as-MCP-credential question, already mirrored as founder queue bullet #3 — a founder-only call, so it is queue depth, not agent backlog. Rest: elements 2; agent-memory-pivot / anonymous-mode / cli / docs-site / e2e-coverage / events-pipeline / quality-eval 1 each | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, case-insensitively, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever (07-11 /weekly); pullable only under a step-2 priority-3 waiver |
+| 17 | Genuinely-open question bullets, `docs/features/*/FEATURE.md` | **9** (re-counted live 07-29, pinned grep; **−1 vs 10** — this run resolved anonymous-mode's `SK-ANON-015` per-navigation nav-guard question, GLOBAL-033). Rest: elements 2; agent-memory-pivot / cli / docs-site / e2e-coverage / events-pipeline / gtm-metrics / quality-eval 1 each | target ↓ 0. **Method pinned:** `- ` bullets under `## Open questions` not matching, case-insensitively, `Resolved\|Shipped\|~~\|Parked\|Deferred\|Decided:\|Closed`. De-prioritised as a default lever (07-11 /weekly); this run's is a real UX-flow-integrity hardening (priority 2), not a meta pull |
 | 18 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** — re-swept live on a fresh build this run: **127** pages, **3,268** internal + **15** cross-app links, `_redirects` carrying 116 bare-path 301s. The new `/blog` post's links resolve clean | target 0 — `node apps/web/scripts/check-links.mjs` + `client-nav-integrity.test.ts`. Four standing blind spots: external inbound links to bare paths (≥107 impr), published npm entrypoints (row #19), **hosts** not paths (`www.nlqdb.com` serves the whole site un-redirected — bounded, `rel=canonical` is absolute; fix is a zone Redirect Rule ⇒ console click), and pages with no links at all (run 145) |
 | | **Product-readiness** — client-blocking gaps (added 07-04) | | |
 | 19 | Live-surface claim integrity | **0 — resolved this cycle (was 1).** `#826` merged + published **`@nlqdb/sdk@0.2.2`** and **`@nlqdb/mcp@0.1.1`**. Verified live in a clean dir: `npm i @nlqdb/sdk@0.2.2` installs a tarball whose manifest is correct (`main`/`types`/`exports` → `dist/`, `files: ["dist"]`, README), `import "@nlqdb/sdk"` yields `NlqdbApiError, createClient`, and `types` resolves to the shipped `dist/index.d.ts` — the `ERR_MODULE_NOT_FOUND` class is gone for every consumer. (`npm view` shows src-pointing `main`/`exports`; that is a cosmetic **packument** artifact — the installed tarball, which is what npm resolves, carries the `prepack`-applied `dist` values.) The 0-phantom sweeps (`mcp-tool-`/`cli-verb-`/`sdk-method-integrity`) unchanged | target 0 ✓ |
@@ -94,7 +91,7 @@ See GitHub for the live list; draft **#719** stays oldest (**12 days**). This ru
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0 failed / 9 blocked** — carried from the 07-26 live walk; the scheduled CI walk [30194859852](https://github.com/nlqdb/nlqdb/actions/runs/30194859852) (07-26 08:34Z) concluded success. **Not re-walkable from a `/daily` container**, a new standing constraint: `@playwright/test` pins `~1.60.0`, which wants Chromium **1223**; the image ships **1194**, so the walker aborts with `Executable doesn't exist`. CI-only until they agree | target **0 `failed`** ✅; `blocked` reported beside it, never folded in. All walks stop at the 428 `challenge_required` (Turnstile declining a datacenter IP by design, `SK-ANON-012`), so steps past the ask are **observed, not proven** |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub (per-bucket split lives only in the ledger). npm attribution now **reaches the registry for 2 of 3 packages**: `@nlqdb/sdk@0.2.2` (`?utm_source=npm`) and `@nlqdb/mcp@0.1.1` (`.../agents/?utm_source=npm`) both verified live this cycle; **`@nlqdb/cli@0.1.0` is the laggard — still an untagged `https://nlqdb.com`**, so this run queued its republish changeset (`@nlqdb/cli` patch) to close the last third. MCP official registry published 07-22 (`com.nlqdb/nlqdb`); Glama crawl-listed; Smithery 0 / PulseMCP 0. First-touch attribution live since 07-19 on both create arms; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus: → ≥ 5 live.** Yield from `/app/admin` + `scripts/rum-pull.ts`, never estimated. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 2** (advisor session cut it 6 → 2, `MEMORY_PRESET` shipped #835); head is the Show HN launch, oldest bullet 46 days (`SK-PIVOT-016` gate **0/5**, criterion 4 measured) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: see GitHub, oldest 12 days (draft #719) |
+| | **Human queue** — the one non-automatable actor | **depth 3** (advisor session cut it 6 → 2; a Glama-release bullet since); head is the Show HN launch, oldest bullet 46 days (`SK-PIVOT-016` gate **0/5**) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: see GitHub, oldest 12 days (draft #719) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
@@ -114,38 +111,40 @@ lesson gists stay in `research/distribution-queue.md`.
 
 ## Last change
 
-**2026-07-29 (run 153)** — **Number moved: row #19 (live-surface claim integrity) 1 → 0**,
-verified live end-to-end; **lever pulled: queue `@nlqdb/cli`'s attribution republish**, the
-last third of the npm channel's attribution (row #22). Lane: **acquisition/distribution
-attribution (step-2 priority 1, GLOBAL-038)**.
+**2026-07-29 (run 154)** — **Number moved: open-question bullets 10 → 9** (row #17):
+resolved anonymous-mode's `SK-ANON-015` per-file-vs-per-navigation nav-guard question
+(GLOBAL-033 — a value-decidable call an agent owns). Lane: **UX-flow integrity (step-2
+priority 2)** — hardening the real anonymous-stranger marketing→app handoff, not a meta pull.
 
-**What resolved on its own.** `#826` merged and published `@nlqdb/sdk@0.2.2` +
-`@nlqdb/mcp@0.1.1`. Verified in a clean dir: `npm i @nlqdb/sdk@0.2.2` → the tarball manifest
-points `main`/`types`/`exports` at `dist/`, `import "@nlqdb/sdk"` returns
-`NlqdbApiError, createClient`, `types` resolves to `dist/index.d.ts` — the
-`ERR_MODULE_NOT_FOUND` is gone for all consumers. (`npm view` still prints src-pointing
-fields: a cosmetic packument artifact; npm resolves the tarball.) A measurement, not the lever.
+**The hole (before).** `SK-ANON-015` carries a stranger's prompt across the
+`nlqdb.com → app.nlqdb.com` origin boundary in a URL fragment via `attachHandoff(`; the
+guard (`client-nav-integrity.test.ts`) checked it **per-file** — one `attachHandoff(`
+anywhere cleared the whole file. So a second, unprotected cross-origin `/app/` hop added
+later would silently drop the visitor's first prompt on the floor and the guard would stay
+green forever (the exact failure that wastes an acquired visitor).
 
-**The lever.** Verifying the registry surfaced the one drift the sdk fix did not cover:
-`@nlqdb/cli@0.1.0` still serves an **untagged** `https://nlqdb.com` homepage (the
-`?utm_source=npm` tag landed in `cli-shim` after 0.1.0 published), so every click from its
-npm page converts as `direct`. One changeset — `.changeset/cli-shim-attribution-republish.md`,
-`@nlqdb/cli` patch — queues the republish that carries the tag; no code change,
-bin/shim/postinstall byte-identical. This is the **cli** half of the `/daily` republish task
-(sdk rode #826); it lands when the changesets "Version Packages" PR (#864) merges, tracked
-via row #22 until the registry serves cli 0.1.1.
+**The change.** Added the narrow, false-positive-free invariant: any JS `location.*`
+navigation whose *string-literal* target is `/app/…` must wrap it in `attachHandoff(`.
+Static `<a href>` anchors (goal rides a sibling JS interceptor) and variable-target
+same-origin hops in `sign-in.astro` never match the shape, so **no inline-suppression
+mechanism** is needed — which is what the open question asked. The broad "every navigation"
+rule stays rejected (it false-positives on exactly those). Resolution recorded in
+`anonymous-mode/FEATURE.md`; full rationale canonical in the test comment (P3).
 
-**No new `SK-*`** (P5/D5): the republish is the standard changesets/OIDC lane
-(`.changeset/README.md`); attribution intent is `SK-GTM-007` / GLOBAL-038, already canonical.
-dev.to drip throttled (newest article 15.4 h ago < 20 h); distribution queue at 2 (< 3), no
-forced publish.
+**Measure → change → re-measure.** Before: nav-integrity suite **4 pass**, guard per-file.
+After: **5 pass**; a negative check (injected `location.assign("/app/dashboard")` into a
+prompt-touching file) **failed** exactly one navigation with `navigates to /app/dashboard
+without attachHandoff`, then reverted clean. Row #17 re-counted live: **10 → 9**.
 
-**Gates:** `typecheck && lint && test` green on `main@cce51a6` · all `deploy-*` green ·
-gate-3 grep empty · **D4** every edited doc under 20480 B · diff is a `.changeset/` markdown
-+ scorecard/doc reconcile, no app-code.
-**KPI (GLOBAL-025):** advances **onboarding/acquisition** — row #19 → 0 restores the
-`npm i @nlqdb/sdk` install claim, and the queued cli republish makes the last npm package
-attributable; **degrades none** (no baseline, no app-code touched).
+**No new `SK-*`** (P5/D5): this tightens an existing guard under `SK-ANON-015` and resolves
+its own open question; the test comment is the one canonical rationale home.
+
+**Gates:** after `bun install`, `typecheck && lint && test` all **EXIT=0 on
+`main@cce51a6`** before edits · all nine `deploy-*` green on `cce51a6` · anon nav suite
+**5 pass** + negative check · biome clean on the touched `.ts` · gate-3 grep empty · **D4**
+`anonymous-mode/FEATURE.md` net-shrunk (32016 → 32015 B), scorecard < 20480 B.
+**KPI (GLOBAL-025):** advances **onboarding/UX** — closes a silent regression path in the
+anonymous first-prompt handoff; **degrades none**.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

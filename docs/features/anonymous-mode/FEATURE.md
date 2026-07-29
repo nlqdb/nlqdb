@@ -162,7 +162,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **The `SK-ANON-015` nav guard is per-file, not per-navigation.** One `attachHandoff(` anywhere clears the whole file, so a sender that gains a second, unprotected cross-origin navigation stays green forever (verified). A per-navigation rule is *not* blocked on whole-program analysis — today it would flag exactly two sites, both in `sign-in.astro`, both provably same-origin (they run only past the `crossOrigin` early-return). The open question is whether that's worth an inline-suppression mechanism, which a future agent can silence in one line.
+- **Resolved 2026-07-29 — the `SK-ANON-015` nav guard is now per-navigation for the `/app/`-literal hop** (`client-nav-integrity.test.ts`, full rationale in its comment): any JS `location.*` nav whose string-literal target is `/app/…` must wrap it in `attachHandoff(`. The old file-global check cleared a whole file on one `attachHandoff(`, hiding a second hop. The broad "every navigation" rule stays rejected — false-positives on static anchors and variable-target same-origin hops; the `/solve`+`/vs` walkers backstop the variable-target case.
 - **Cross-device anonymous continuity — Parked until Phase 2.** Per-device identity (browser `localStorage`, CLI keychain) is Phase 1; cross-device unification (paste-a-code handshake) waits until a signed-out user asks to move a DB between devices.
 
 ## Happy path walkthrough
