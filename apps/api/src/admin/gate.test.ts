@@ -23,7 +23,7 @@ describe("isAdminEmail", () => {
     expect(isAdminEmail("attacker@nlqdb.com.evil.io")).toBe(false);
     expect(isAdminEmail("attacker@evilnlqdb.com")).toBe(false);
     expect(isAdminEmail("nlqdb.com")).toBe(false);
-    expect(isAdminEmail("other@nlqdb.com")).toBe(false);
+    expect(isAdminEmail("other@salfati.group")).toBe(false);
   });
 
   it("rejects empty / null / undefined", () => {
