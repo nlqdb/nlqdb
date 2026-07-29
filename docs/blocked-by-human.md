@@ -36,7 +36,8 @@ exists.
 `MEMORY_PRESET=1` go decision live — #835 merged, the preset + `nlqdb_remember`
 are prod-enabled for signed-in accounts — and merged the Version-Packages
 release PR #826 (`@nlqdb/mcp@0.1.1` + `@nlqdb/sdk@0.2.2` via
-Trusted-Publisher OIDC). The **LogSnag** bullet resolved the same sitting: the
+Trusted-Publisher OIDC; scorecard row #19 is now 0). The **LogSnag** bullet
+resolved the same sitting: the
 founder put `LOGSNAG_TOKEN`/`LOGSNAG_PROJECT` in the session env, the
 `window.__nlqdb_logsnag` hook is wired in `Base.astro` (build-time
 `PUBLIC_LOGSNAG_*`, both deploy workflows), and one live ingest event verified
@@ -46,7 +47,10 @@ pasted the alert (sharp < 0.35.0 in `apps/docs`, libvips CVEs) and the bump to
 resolved last: the founder minted the key and set it in the walker env, and
 R-04's cold-agent walk ran green the same session — published binary, published
 guide, real prod write + read-back (evidence: reach `INDEX.md` §R-04). All
-operator actions logged in `history/founder-actions-log.md` Era 4.)
+operator actions logged in `history/founder-actions-log.md` Era 4. One npm
+laggard remains but needs no human — `@nlqdb/cli@0.1.0` still serves an untagged
+homepage; its `?utm_source=npm` republish changeset is queued on the same
+automated OIDC lane, tracked by scorecard row #22.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
