@@ -97,10 +97,12 @@ automated OIDC lane, tracked by scorecard row #22.)
      `sk_mcp_` prefix gate) suffices and no real secret goes in the image:
      `FROM node:22-slim` · `RUN npm i -g @nlqdb/mcp` ·
      `ENV NLQDB_API_KEY=sk_mcp_glama_inspection_placeholder` ·
-     `ENTRYPOINT ["nlqdb-mcp"]`. Glama also flags "no LICENSE" (GitHub
-     detects our FSL file as `NOASSERTION`); root `package.json` now declares
-     `FSL-1.1-ALv2` — if the flag still blocks the release, ask
-     support@glama.ai.
+     `ENTRYPOINT ["nlqdb-mcp"]`. Ignore the license "F": GitHub's detector
+     doesn't ship FSL at all (`getsentry/sentry` itself reads `NOASSERTION`),
+     so it's inherent to `GLOBAL-019`, not fixable — and it's a side-grade,
+     not part of the quality tier (= TDQS 70% + coherence 30%; tool
+     definitions are already TDQS-shaped). After this PR merges + deploys,
+     click **Sync Server** on the admin page to refresh the profile.
    - **Badge:** once a score shows, append to the entry line on your fork
      branch `add-nlqdb` and #10984 unblocks:
      `[![nlqdb MCP server](https://glama.ai/mcp/servers/nlqdb/nlqdb/badges/score.svg)](https://glama.ai/mcp/servers/nlqdb/nlqdb)`
