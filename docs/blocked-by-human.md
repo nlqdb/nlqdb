@@ -91,13 +91,16 @@ automated OIDC lane, tracked by scorecard row #22.)
    ([`glama.ai/mcp/servers/nlqdb/nlqdb`](https://glama.ai/mcp/servers/nlqdb/nlqdb),
    `author:official` — the committed root `glama.json` did the org-repo claim).
    Remaining, in order:
-   - **Score:** on the listing's Dockerfile admin page paste + Deploy, then
-     **Make Release** — scoring stays "unavailable" until a release exists.
-     `tools/list` never calls the API, so a placeholder key (passes the
-     `sk_mcp_` prefix gate) suffices and no real secret goes in the image:
-     `FROM node:22-slim` · `RUN npm i -g @nlqdb/mcp` ·
-     `ENV NLQDB_API_KEY=sk_mcp_glama_inspection_placeholder` ·
-     `ENTRYPOINT ["nlqdb-mcp"]`. Ignore the license "F": GitHub's detector
+   - **Score:** the Dockerfile admin page is a *form*, not a paste box. Build
+     steps `["npm install -g @nlqdb/mcp"]` · CMD
+     `["sh", "-c", "NLQDB_API_KEY=\"${NLQDB_API_KEY:-sk_mcp_glama_inspection_placeholder}\" nlqdb-mcp"]`
+     (the fallback lets the keyless build test pass `initialize`/`tools/list` —
+     prefix gate ok, introspection never calls the API — while a real user
+     key overrides it) · env schema: **rename the auto-generated `SK_MCP_KEY`
+     to `NLQDB_API_KEY`** (required; it's the var the server actually reads) ·
+     base image + Node/Python defaults. Deploy, then **Make Release** (version
+     `0.1.1`, matching npm) — scoring stays "unavailable" until a release
+     exists. Ignore the license "F": GitHub's detector
      doesn't ship FSL at all (`getsentry/sentry` itself reads `NOASSERTION`),
      so it's inherent to `GLOBAL-019`, not fixable — and it's a side-grade,
      not part of the quality tier (= TDQS 70% + coherence 30%; tool
