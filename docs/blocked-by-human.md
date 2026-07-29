@@ -25,23 +25,19 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 2 | ~2 min | Mint an **`sk_mcp_`** key (`/app/keys` → MCP key, SK-APIKEYS-015) and set it as `NLQDB_API_KEY` in the walker env — the last tick on the cold-agent headless walk | 2026-07-27 |
-| 3 | ~10 min | Provide a LogSnag ingest token (+ wire the late-bound `window.__nlqdb_logsnag` hook) so client demand signals stop being silent no-ops | 2026-07-27 |
-| 4 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 5 | ~5 min | Connect the Claude GitHub App to the org so Dependabot alert #29 (1 high) is viewable — `bun audit` on the lockfile shows nothing high, so its target can't be confirmed from here | 2026-07-27 |
+| 1 | ~5 min | **Go/no-go:** flip `MEMORY_PRESET=1` in prod (PR #835) or hold — E-03 per-agent isolation shipped (#851), so the E-06 gate is satisfied; the flip itself is a prod data-write surface only an operator turns on | 2026-07-27 |
+| 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
+| 3 | ~2 min | Mint an **`sk_mcp_`** key (`/app/keys` → MCP key, SK-APIKEYS-015) and set it as `NLQDB_API_KEY` in the walker env — the last tick on the cold-agent headless walk | 2026-07-27 |
+| 4 | ~10 min | Provide a LogSnag ingest token (+ wire the late-bound `window.__nlqdb_logsnag` hook) so client demand signals stop being silent no-ops | 2026-07-27 |
+| 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 6 | ~5 min | Connect the Claude GitHub App to the org so Dependabot alert #29 (1 high) is viewable — `bun audit` on the lockfile shows nothing high, so its target can't be confirmed from here | 2026-07-27 |
 
-Only #1 can move real strangers (scorecard row #2); #4 is the only one that
+Only #2 can move real strangers (scorecard row #2); #5 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists. No decision bullets remain — both 07-27 decisions were taken
-2026-07-28 (advisor session; see the parentheticals below).
-
-(**Resolved 2026-07-28 — `MEMORY_PRESET`:** founder decided *build the
-blocker, then ship* — never supersede the E-06 gate. E-03 per-agent scoping
-shipped in #851, satisfying the gate; #835 is un-drafted and rides the
-automatic twice-daily review-merge flow. Nothing left for the founder here;
-delete this note once #835 merges and the five `solve.ts` "preset is gated"
-sites are corrected — both loop-pickable.)
+exists. #1 is now a clean operator go/no-go — its E-06 gate blocker shipped in
+#851, so no decision crosses a recorded gate; flipping a prod data-write
+surface stays a human action. The headless-credential decision was taken
+2026-07-28 (advisor session; see below).
 
 (**Resolved 2026-07-28 — headless MCP credential:** founder chose the
 security-first *Widen* option; shipped in #850 as
@@ -66,7 +62,25 @@ release step, largely automated.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
-1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
+1. **⏱ ~5 min · since 2026-07-27 — Go/no-go: flip `MEMORY_PRESET=1` in prod
+   (PR #835), or hold.** The decision that blocked this is cleared —
+   [`E-03`](./features/agent-memory-pivot/worksheets/engine/E-03-memory-scoping.md)
+   (per-agent isolation, the security-critical slice) **shipped** in #851,
+   satisfying
+   [`E-06`](./features/agent-memory-pivot/worksheets/engine/E-06-agents-createform-preset.md)'s
+   *"only after E-03 ships"* gate, so no recorded decision crosses here now.
+   What remains is the flip itself: turning on a prod data-write surface is an
+   operator action an agent won't self-take. The founder's 2026-07-28 lean was
+   *build the blocker, then ship*, and E-03 has now shipped — so this is teed
+   up, but the prod flip is yours to execute or hold. It also unblocks the
+   dogfood gate ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
+   names `MEMORY_PRESET=1` a prerequisite) that #2's launch waits on.
+   - **Hold** (safe default): #835 stays unmerged.
+   - **Ship**: merge #835; an agent then adds E-03's backfill line (its "no
+     prod memory DBs exist" premise ends the moment you flip) and corrects the
+     five `solve.ts` sites that still tell the public the preset is gated.
+
+2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
    the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
    founder-directed 2026-07-26: criteria, never calendar dates — agents
@@ -91,7 +105,7 @@ release step, largely automated.)
    (`D-01..D-07`, one slice per criterion), and it is the founder-set weekly
    focus number as of 07-28. Gate progress: **0/5**.
 
-2. **⏱ ~2 min · since 2026-07-27 — Mint an `sk_mcp_` key and set it as
+3. **⏱ ~2 min · since 2026-07-27 — Mint an `sk_mcp_` key and set it as
    `NLQDB_API_KEY` in the walker env.** The browser-free MCP route is
    proven end-to-end (transport, tool list, prod reachability, the
    published `claude mcp add` line run verbatim); the one thing left to
@@ -103,7 +117,7 @@ release step, largely automated.)
    *Founder asked 2026-07-28 to be reminded rather than re-ranked — the
    advisor session re-arms reminders until this is done.*
 
-3. **⏱ ~10 min · since 2026-07-27 — Provide a LogSnag ingest token so client
+4. **⏱ ~10 min · since 2026-07-27 — Provide a LogSnag ingest token so client
    demand signals stop being silent no-ops.** The events `lib/logsnag.ts` emits
    (`agents.connect_clicked` with its new `url`/`stdio` transport dimension,
    `solve.try_query_clicked`, …) only fire if the late-bound
@@ -115,7 +129,7 @@ release step, largely automated.)
    (as a build-time public env) and I'll wire the hook. Recorded at
    `solve-pages/FEATURE.md`.
 
-4. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -146,7 +160,7 @@ release step, largely automated.)
      end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-5. **⏱ ~5 min · since 2026-07-27 — Connect the Claude GitHub App to the org so
+6. **⏱ ~5 min · since 2026-07-27 — Connect the Claude GitHub App to the org so
    Dependabot is viewable.** A push flagged **Dependabot alert #29 (1 high)**
    on the default branch, but the alerts API answers *"GitHub access is not
    enabled for this session — an org admin must connect the Claude GitHub App
