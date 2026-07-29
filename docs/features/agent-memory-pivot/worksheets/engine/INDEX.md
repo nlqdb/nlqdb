@@ -52,6 +52,7 @@ copy with a real tool to point at), etc.
 | [E-05](E-05-hybrid-recall-pgvector.md) | Hybrid recall — pgvector + `nlqdb_recall` (closes the honest gap) | high | multi | E-01 | none — all-code (pgvector = per-DB SQL on the provisioner path; free-chain embedding provider) | sharpens WS-03 |
 | [E-06](E-06-agents-createform-preset.md) | Preset on-ramp on the **authed** create surface (`MEMORY_PRESET`-gated) — anon `/agents` CreateForm path infeasible (SK-PIVOT-010) | med | ~2 | E-01 ✅, WS-07 ✅, `MEMORY_PRESET=1` in prod ✅ (enabled 2026-07-26, founder-directed) | — | unblocked — buildable |
 | [E-07](E-07-memory-workload-analyzer.md) | Workload-analyzer rule: memory DB above N facts → recommend ClickHouse | med | multi | E-01 | depends on `multi-engine-adapter` / `engine-migration` features (Phase 3) | — |
+| [E-08](E-08-mcp-2026-07-28-revision.md) | MCP **2026-07-28** revision — SDK v2 + stateless Workers path (audited 2026-07-29; **trigger-gated**, `SK-MCP-015`) | high | multi (~4) | — | founder-gated at step 3 (live connector URL) | `mcp-server` feature; reach R-04/R-05 install strings |
 
 **Why this order:** E-01 anchors everything (every later slice writes to or
 queries it). E-02 makes the wedge tool-discoverable. E-03 is the
@@ -62,7 +63,11 @@ that the solve page admits today — the biggest lift, but the slice that
 makes the wedge **actually complete**. E-06 lets a signed-in user spin up the
 memory preset from the authed create surface (the anon `/agents` path is
 infeasible — SK-PIVOT-010). E-07 connects the engine
-north-star (data-engine pillar) to the wedge.
+north-star (data-engine pillar) to the wedge. E-08 is last and **deliberately
+not sequenced**: it keeps the transport the wedge is delivered over on the
+current spec revision, but it is gated on a trigger (`SK-MCP-015`), not on
+the other slices — pull it when the trigger fires, whatever E-04..E-07 are
+doing.
 
 ## Hard rules
 
@@ -90,3 +95,4 @@ Tick on merge.
 - [ ] E-05 — hybrid recall (pgvector + `nlqdb_recall`)
 - [ ] E-06 — preset on-ramp on the **authed** create surface. **Redirected 2026-06-21 (run 37, SK-PIVOT-010):** the anon `/agents` CreateForm path is infeasible across three auth boundaries — `POST /v1/databases` is `requireSession` + `MEMORY_PRESET`-gated (`index.ts:2357,2390`), `POST /v1/memory/remember` rejects anon+pk_live (`index.ts:1426-1433`), and CreateForm is anon-only by contract (`credentials:"omit"`, SK-ANON-008). On-ramp moves to the authed create surface; **unblocked 2026-07-26** — `MEMORY_PRESET=1` set in `apps/api/wrangler.toml` `[vars]` (founder-directed; SK-PIVOT-016 prerequisite).
 - [ ] E-07 — workload-analyzer rule for memory DBs
+- [ ] E-08 — MCP 2026-07-28 revision. **Audit ✅ (2026-07-29, `SK-MCP-015`)** — the revision is final, but `@modelcontextprotocol/sdk` v1 will never serve it; support is v2-only (`@modelcontextprotocol/server`, `latest` since 2026-07-27T23:55Z, Node ≥ 20 + Zod 4), and the Workers statelessness win needs `createMcpHandler`, which requires v2 *and* displaces the now-deprecated `McpAgent` that `SK-MCP-014`'s revocation cache lives in — one coupled migration, not a bump. nlqdb is compliant today via the revision's own `initialize` fallback, uses **no** deprecated primitive (Roots/Sampling/Logging — now guarded by `packages/mcp/test/protocol-revision.test.ts`), and the Claude directory still accepts streamable HTTP + DCR, so the queued submission is unaffected. **Migration phase is trigger-gated** — see the worksheet.

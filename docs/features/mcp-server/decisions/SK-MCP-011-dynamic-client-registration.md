@@ -4,6 +4,7 @@
 - **Core value:** Effortless UX, Free, Bullet-proof
 - **Why:** Hardcoding allowed clients would mean every new MCP host needs a PR. RFC 7591 is the standard MCP hosts already implement (Claude Desktop, Cursor, Zed). The registry doubles as the CORS allow-list — adding a host is one operation, not two.
 - **Consequence in code:** `apps/mcp/src/index.ts`'s `OAuthProvider` config carries `clientRegistrationEndpoint: '/register'`. `apps/mcp/src/cors-allowlist.ts`'s `resolveAllowedOrigin` walks `OAUTH_PROVIDER.listClients()` and accepts any origin matching a registered `redirect_uri` origin. PRs that hardcode client_ids inside `apps/mcp/` fail review.
+- **Status note (2026-07-29):** MCP 2026-07-28 **deprecates** RFC 7591 DCR in favour of [Client ID Metadata Documents](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration#client-id-metadata-documents), and requires clients to send `application_type` at registration. DCR remains specified for back-compat and the Claude Connectors Directory still accepts it, so **this decision stands unchanged**; CIMD is evaluated as part of [`E-08`](../../agent-memory-pivot/worksheets/engine/E-08-mcp-2026-07-28-revision.md) step 3, not before.
 - **Alternatives rejected:**
   - Static client allow-list — every new host requires a PR; defeats the "paste a URL" promise.
   - Disable DCR, require manual provisioning — same problem, worse UX.
