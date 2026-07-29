@@ -27,23 +27,24 @@ values and criteria live. Read those only when you sit down to do the thing.
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 2 | ~2 min | Mint an **`sk_mcp_`** key (`/app/keys` → MCP key, SK-APIKEYS-015) and set it as `NLQDB_API_KEY` in the walker env — the last tick on the cold-agent headless walk | 2026-07-27 |
-| 3 | ~10 min | Provide a LogSnag ingest token (+ wire the late-bound `window.__nlqdb_logsnag` hook) so client demand signals stop being silent no-ops | 2026-07-27 |
-| 4 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 5 | ~5 min | Open Dependabot alert #29 (1 high) on github.com and paste its package + advisory into a session — agent GitHub access covers PRs/issues/code but exposes no alerts endpoint | 2026-07-27 |
+| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #1 can move real strangers (scorecard row #2); #4 is the only one that
+Only #1 can move real strangers (scorecard row #2); #3 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
 exists.
 
-(**Resolved 2026-07-29 — advisor session:** the founder took the
+(**Resolved 2026-07-29 — advisor session, queue 6 → 3:** the founder took the
 `MEMORY_PRESET=1` go decision live — #835 merged, the preset + `nlqdb_remember`
-are prod-enabled for signed-in accounts, and the Version-Packages release PR
-#826 merged, publishing `@nlqdb/mcp@0.1.1` (corrected no-key stderr + README)
-and `@nlqdb/sdk@0.2.2` (import-entrypoint fix) via Trusted-Publisher OIDC.
-Both logged in `history/founder-actions-log.md`; the flip's two agent
-follow-ups — E-03's backfill note and the five `solve.ts` gated-preset
-claims — shipped in the same PR as this edit. LogSnag (#3) and Dependabot
-(#5) were re-decided *keep queued* the same sitting.)
+are prod-enabled for signed-in accounts — and merged the Version-Packages
+release PR #826 (`@nlqdb/mcp@0.1.1` + `@nlqdb/sdk@0.2.2` via
+Trusted-Publisher OIDC). The **LogSnag** bullet resolved the same sitting: the
+founder put `LOGSNAG_TOKEN`/`LOGSNAG_PROJECT` in the session env, the
+`window.__nlqdb_logsnag` hook is wired in `Base.astro` (build-time
+`PUBLIC_LOGSNAG_*`, both deploy workflows), and one live ingest event verified
+the token end-to-end. The **Dependabot #29** bullet resolved too: the founder
+pasted the alert (sharp < 0.35.0 in `apps/docs`, libvips CVEs) and the bump to
+0.35.3 shipped with a verified build. All operator actions logged in
+`history/founder-actions-log.md` Era 4.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
@@ -86,19 +87,7 @@ claims — shipped in the same PR as this edit. LogSnag (#3) and Dependabot
    *Founder asked 2026-07-28 to be reminded rather than re-ranked — the
    advisor session re-arms reminders until this is done.*
 
-3. **⏱ ~10 min · since 2026-07-27 — Provide a LogSnag ingest token so client
-   demand signals stop being silent no-ops.** The events `lib/logsnag.ts` emits
-   (`agents.connect_clicked` with its new `url`/`stdio` transport dimension,
-   `solve.try_query_clicked`, …) only fire if the late-bound
-   `window.__nlqdb_logsnag` hook is present, and that hook is defined nowhere
-   in the repo — so every client-side demand signal is currently a no-op, and
-   any scorecard row that reads a "signal transports moved" number is measuring
-   nothing on the client. The wiring is agent-doable; what only you can give is
-   the LogSnag project/ingest token (an external account). Hand me the token
-   (as a build-time public env) and I'll wire the hook. Recorded at
-   `solve-pages/FEATURE.md`. *Re-decided keep-queued 2026-07-29.*
-
-4. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -127,20 +116,6 @@ claims — shipped in the same PR as this edit. LogSnag (#3) and Dependabot
      shipped 2026-07-29 (#835), so a signed-in reviewer can now exercise **all five tools**
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
-
-5. **⏱ ~5 min · since 2026-07-27 — Open Dependabot alert #29 (1 high) and
-   paste its package + advisory into a session.** A push flagged the alert on
-   the default branch. Agent GitHub access is live for PRs/issues/code
-   (verified 2026-07-29 — an agent session merged #835/#826 through it), but
-   the agent toolset exposes **no Dependabot-alerts endpoint**, so the alert's
-   target is still unreadable from any session. `bun audit` against the
-   committed lockfile shows **nothing high** (only the already-accepted low
-   `cookie` advisory, `framework-wrappers/FEATURE.md`), so the high can't be
-   confirmed or fixed without seeing it. Open
-   `github.com/nlqdb/nlqdb/security/dependabot/29`, paste the package +
-   advisory ID, and an agent bumps and verifies the build. Bumping blind for
-   an alert we can't see risks breaking the build for no confirmed gain.
-   *Re-decided keep-queued 2026-07-29.*
 
 ## Suggestions needing approval (to amend the guidelines)
 

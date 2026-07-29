@@ -82,6 +82,13 @@ jobs:
           # previews stay SDK-free.
           PUBLIC_POSTHOG_KEY: ${{ secrets.POSTHOG_API_KEY }}
           PUBLIC_POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          # LogSnag demand-signal hook (GLOBAL-024) — Base.astro renders the
+          # inline `window.__nlqdb_logsnag` script only when both are set;
+          # absent → every `lib/logsnag.ts` emit stays a no-op. Mirrored from
+          # .envrc by scripts/mirror-secrets-gha.sh. The token is publishable
+          # by design here (client-side ingest; founder-accepted 2026-07-29).
+          PUBLIC_LOGSNAG_TOKEN: ${{ secrets.LOGSNAG_TOKEN }}
+          PUBLIC_LOGSNAG_PROJECT: ${{ secrets.LOGSNAG_PROJECT }}
         run: bun run --cwd apps/web build
 
       # SLSA L3 build-provenance attestation. The action's

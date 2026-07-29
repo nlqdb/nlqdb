@@ -119,6 +119,8 @@ jobs:
           PUBLIC_TURNSTILE_SITE_KEY: 0x4AAAAAAD3WnUiwKEWfcy_X
           PUBLIC_POSTHOG_KEY: ${{ secrets.POSTHOG_API_KEY }}
           PUBLIC_POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          PUBLIC_LOGSNAG_TOKEN: ${{ secrets.LOGSNAG_TOKEN }}
+          PUBLIC_LOGSNAG_PROJECT: ${{ secrets.LOGSNAG_PROJECT }}
         run: bun run build
 
       # `bun run build` runs `wrangler deploy --dry-run --outdir dist`
