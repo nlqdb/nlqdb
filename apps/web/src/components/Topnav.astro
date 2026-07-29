@@ -8,7 +8,7 @@
 // `nlqdb.com` because the session cookie is host-only on
 // `app.nlqdb.com` — authed visitors see the "Sign in" link.
 interface Props {
-  current?: "manifesto" | "agents" | "chat" | "vs" | "solve" | "blog" | "pricing";
+  current?: "manifesto" | "agents" | "chat" | "keys" | "vs" | "solve" | "blog" | "pricing";
 }
 const { current } = Astro.props;
 const inChat = current === "chat";
@@ -69,6 +69,12 @@ const inChat = current === "chat";
       {!inChat && (
         <a href="/app/" class="topnav__chat-link">Open chat &rarr;</a>
       )}
+      <a
+        href="/app/keys/"
+        aria-current={current === "keys" ? "page" : undefined}
+      >
+        API keys
+      </a>
       <button type="button" id="topnav-signout" class="topnav__signout">
         Sign out
       </button>
