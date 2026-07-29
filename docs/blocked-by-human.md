@@ -26,14 +26,13 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 2 | ~2 min | Mint an **`sk_mcp_`** key (`/app/keys` → MCP key, SK-APIKEYS-015) and set it as `NLQDB_API_KEY` in the walker env — the last tick on the cold-agent headless walk | 2026-07-27 |
-| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #1 can move real strangers (scorecard row #2); #3 is the only one that
+Only #1 can move real strangers (scorecard row #2); #2 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
 exists.
 
-(**Resolved 2026-07-29 — advisor session, queue 6 → 3:** the founder took the
+(**Resolved 2026-07-29 — advisor session, queue 6 → 2:** the founder took the
 `MEMORY_PRESET=1` go decision live — #835 merged, the preset + `nlqdb_remember`
 are prod-enabled for signed-in accounts — and merged the Version-Packages
 release PR #826 (`@nlqdb/mcp@0.1.1` + `@nlqdb/sdk@0.2.2` via
@@ -43,8 +42,11 @@ founder put `LOGSNAG_TOKEN`/`LOGSNAG_PROJECT` in the session env, the
 `PUBLIC_LOGSNAG_*`, both deploy workflows), and one live ingest event verified
 the token end-to-end. The **Dependabot #29** bullet resolved too: the founder
 pasted the alert (sharp < 0.35.0 in `apps/docs`, libvips CVEs) and the bump to
-0.35.3 shipped with a verified build. All operator actions logged in
-`history/founder-actions-log.md` Era 4.)
+0.35.3 shipped with a verified build. The **`sk_mcp_` walker-key** bullet
+resolved last: the founder minted the key and set it in the walker env, and
+R-04's cold-agent walk ran green the same session — published binary, published
+guide, real prod write + read-back (evidence: reach `INDEX.md` §R-04). All
+operator actions logged in `history/founder-actions-log.md` Era 4.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
@@ -75,19 +77,7 @@ pasted the alert (sharp < 0.35.0 in `apps/docs`, libvips CVEs) and the bump to
    (`D-01..D-07`, one slice per criterion), the founder-set weekly focus
    number as of 07-28. Gate progress: **0/5**.
 
-2. **⏱ ~2 min · since 2026-07-27 — Mint an `sk_mcp_` key and set it as
-   `NLQDB_API_KEY` in the walker env.** The browser-free MCP route is
-   proven end-to-end (transport, tool list, prod reachability, the
-   published `claude mcp add` line run verbatim); the one thing left to
-   tick R-04's cold-agent walk is a real key in the walker's environment —
-   an operator secret an agent can't self-mint. Mint the **MCP key** at
-   `https://app.nlqdb.com/app/keys` (SK-APIKEYS-015 — MCP-scoped,
-   host+device-bound, revocable per key; shipped #850, so no full-account
-   `sk_live_` in a CI env), set `NLQDB_API_KEY` in the walker env.
-   *Founder asked 2026-07-28 to be reminded rather than re-ranked — the
-   advisor session re-arms reminders until this is done.*
-
-3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin

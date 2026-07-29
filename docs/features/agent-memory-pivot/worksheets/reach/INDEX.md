@@ -141,10 +141,13 @@ after connect, a verification query, what to do on failure. Add a
 (`npx -y @nlqdb/mcp` + an `sk_mcp_` MCP key, swept 2026-07-28 per `SK-APIKEYS-015`), strings owned by
 [`mcp-install.ts`](../../../../../apps/web/src/lib/mcp-install.ts) and pinned to `packages/mcp` by
 [`mcp-install-stdio.test.ts`](../../../../../apps/web/src/lib/mcp-install-stdio.test.ts) ·
-⬜ one manual cold-agent walk (agent given only the URL) completes setup — browser consent is no
-longer the blocker; what remains is one key in the walker env ([`NUMBERS.md`](NUMBERS.md);
-`blocked-by-human.md` #3 was corrected to `sk_mcp_` in #853, so the queued operator action is ready
-as written — mint it at `/app/keys` and set `NLQDB_API_KEY` in the walker env).
+✅ cold-agent walk completed 2026-07-29: an agent given only the published
+`docs.nlqdb.com/agent-memory/` URL ran its headless route verbatim — `npx -y @nlqdb/mcp` (0.1.1
+from npm) + a founder-minted `sk_mcp_` key — initialize, all-5 `tools/list`, then the page's own
+verification flow against prod: write via `nlqdb_query` (`requires_confirm` → diff preview →
+`confirm: true`) and the fact read back with its SQL trace. Replay note: inside a CCR sandbox the
+spawned node needs `NODE_OPTIONS=--use-env-proxy` (direct egress is blocked there); irrelevant on
+normal machines.
 
 ### R-05 — Registry + directory sweep (one venue per run)
 
@@ -291,7 +294,7 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [x] R-01 — intent map + P2a/P2b persona split
 - [x] R-02 — build-vs-buy honesty surface
 - [x] R-03 — stage-0 solve pages
-- [ ] R-04 — canonical setup guide — **owed:** the unattended cold-agent walk (the headless route it needs ships; all that is left is the operator minting the `sk_mcp_` walker key, `blocked-by-human.md` #3)
+- [x] R-04 — canonical setup guide (cold-agent walk green 2026-07-29, `sk_mcp_` key)
 - [x] R-05 — registry sweep (8/8 venues resolved)
 - [x] R-06 — coding-agent walker + baseline
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)
