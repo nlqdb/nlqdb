@@ -103,6 +103,15 @@ async function handleFetch(req: Request, env: Env, ctx: ExecutionContext): Promi
   if (url.pathname === "/health" && req.method === "GET") {
     return oauth.fetch(req, env, ctx);
   }
+  // Glama connector-ownership claim: Glama polls this file and matches the
+  // email against the claiming account (glama.ai/mcp/connectors/com.nlqdb/nlqdb).
+  // A registry poller like /health — kept out of the trace span.
+  if (url.pathname === "/.well-known/glama.json" && req.method === "GET") {
+    return Response.json({
+      $schema: "https://glama.ai/mcp/schemas/connector.json",
+      maintainers: [{ email: "omer@salfati.group" }],
+    });
+  }
   return tracer.startActiveSpan("nlqdb.mcp.http.request", async (span) => {
     span.setAttributes({
       "http.request.method": req.method,
