@@ -55,8 +55,9 @@ surface counts (row #6) never answered.
 | 19 | Dev newsletters (TLDR AI, Ben's Bites, AI Agents Weekly) | `newsletter-<name>` | untried — editorial/paid | founder | pitch only after a channel-1 page ranks (social proof) |
 | 20 | Integration marketplaces (Supabase integrations, Vercel templates, Neon partners, Astro integrations) | venue slug (`supabase`, `vercel`, …) | untried | `/reach` | verify each venue's submission mechanism (P2), one per run |
 | 21 | Demo video (60-second one-command memory setup; site-embedded + shareable) | `youtube` | untried | founder-assisted | script + record once R-04 guide is live |
+| 22 | Claude Code plugin (own git marketplace → Anthropic `claude-community`) | `claude-plugin` | **in-flight** — nlqdb is its own marketplace as of this PR: `.claude-plugin/marketplace.json` at the repo root lists one plugin whose source *is* `apps/web/public/agent-artifacts`, so `/plugin marketplace add nlqdb/nlqdb` + `/plugin install nlqdb-memory@nlqdb` wires the hosted MCP server **and** both R-07 skills in one step, with zero copies to drift (verified end-to-end on Claude Code CLI 2.1.220: `claude plugin validate --strict` passes, `claude plugin details` reports 2 skills + 1 MCP server, ~273 tok always-on). No account, no review, permanent — the whole channel is agent-shippable, unlike every R-05 registry. The key rides `plugin.json`'s `homepage`, the one link `/plugin` surfaces; the bundled skills keep `agent-artifacts` (row #12), so plugin-install yield and skill-install yield stay separable. **Two downstream venues need nothing from us:** [claudemarketplaces.com](https://claudemarketplaces.com/about) (~300 k monthly visitors) crawls GitHub **daily for `.claude-plugin/marketplace.json`** — no submission exists — and SkillsMP crawls every public repo for `SKILL.md`. **One needs a human:** Anthropic's `claude-community` marketplace (the in-product `/plugin` Discover tab) takes submissions only through a signed-in form, so the payload is founder-queued. `claude-plugins-official` is curated at Anthropic's discretion with **no application process** — nothing to submit, ever | `/reach` → founder | watch `/app/admin` for `claude-plugin` yield → live; re-verify the crawl pickup at the R-08 monthly check (2026-08-22); founder submits the community-marketplace payload |
 
-**Live: 4 · in-flight: 7 · submitted awaiting merge: 1 · blocked-by-human: 1 · untried: 8.** The number that
+**Live: 4 · in-flight: 8 · submitted awaiting merge: 1 · blocked-by-human: 1 · untried: 8.** The number that
 matters weekly: **channels live with attributable yield** (`/reach` step 1
 records it; target per the 2026-07-19 focus: +3 via R-05). npm joined the
 live set 2026-07-20 (homepage links tagged); GitHub joined 2026-07-20 (README
@@ -76,6 +77,11 @@ merge — plus the human-norm venues; only the Anthropic connector dir #9 stays
 parked (plan-gated). Each flips to live once a claimed listing exposes the
 utm-tagged `websiteUrl` and yield lands on `/app/admin`. Every R-05 venue is
 resolved (published, crawl-fed, or payload-parked) — none is waiting on agent work.
+**Row #22 is the exception to "growth runs through submission queues":** a Claude
+Code marketplace is just a JSON file in our own repo, so that venue needed no
+account, no review and no founder minute — and the ~300 k-visitor aggregator that
+indexes it crawls for exactly that file. Venues an agent can *publish* outrank
+venues an agent can only *submit to*.
 
 ## Why this order
 
