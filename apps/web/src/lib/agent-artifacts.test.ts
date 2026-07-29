@@ -387,11 +387,12 @@ describe("the docs→memory pack (SK-PIVOT-017)", () => {
   });
 
   // Hard rule 1 (R-07): only promise what is live in prod. `nlqdb_remember`
-  // and the `agent_memory_v1` preset are `MEMORY_PRESET`-gated, and this
-  // artifact lands in someone else's repo where nobody re-reads it — so the
-  // gate, its two observable error codes, and the path that does work must be
-  // named in the file itself, not just on the site.
-  test("states the MEMORY_PRESET gate, how it shows up, and what works meanwhile", () => {
+  // and the `agent_memory_v1` preset ride the `MEMORY_PRESET` flag (on since
+  // 2026-07-29, but a one-var rollback), and this artifact lands in someone
+  // else's repo where nobody re-reads it — so the flag, its two observable
+  // error codes, and the always-on path must be named in the file itself,
+  // not just on the site.
+  test("states the MEMORY_PRESET flag, how an off state shows up, and the always-on path", () => {
     const prose = normalizeProse(DOCS_SKILL);
     expect(prose).toContain("memory_preset");
     expect(prose).toContain("wrong_preset");

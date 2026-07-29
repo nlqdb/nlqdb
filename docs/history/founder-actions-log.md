@@ -85,3 +85,13 @@ well the queue bullet was prepared, not by the action itself.
 | Date | Action (surface) | Unblocked | Replay note |
 |---|---|---|---|
 | 2026-07-27 | Deleted the orphaned Neon branches `pr-571` and `pr-648` (Neon API) | `ci.yml`'s `test-api-smoke-neon` and every preview needing a branch — the project sat at Free's 10-branch cap, so `POST /branches` answered `422 BRANCHES_LIMIT_EXCEEDED` on innocent PRs | ~2 min; **don't replay** — the same run made it self-healing: all three creation sites now set Neon's `expires_at`, so an orphan reaps itself server-side even when no runner survives to clean up |
+
+## Era 4 — 2026-07-29 (advisor session, in-session decisions)
+
+| Date | Action (surface) | Unblocked | Replay note |
+|---|---|---|---|
+| 2026-07-29 | **Go** on the `MEMORY_PRESET=1` prod flip — merged #835 (agent session, founder-directed live) | the `agent_memory_v1` preset + `nlqdb_remember` for every signed-in account; SK-PIVOT-016's prod prerequisite → D-04 is agent-drivable | ~1 min; the E-06 gate blocker (E-03, #851) had already shipped, so the decision was a clean go/no-go; rollback stays one var |
+| 2026-07-29 | Merged the changesets release PR #826 (agent session, founder-directed live) | `@nlqdb/mcp@0.1.1` (corrected no-key stderr + README) and `@nlqdb/sdk@0.2.2` (import-entrypoint fix) publish via Trusted-Publisher OIDC — no manual `npm login` | ~1 min; a normal release step — merging the changesets PR is the whole action |
+| 2026-07-29 | Provided `LOGSNAG_TOKEN` + `LOGSNAG_PROJECT` to the agent session env (CCR environment settings) | the `window.__nlqdb_logsnag` hook — client demand signals (GLOBAL-024) stop being no-ops; verified with one live ingest event (HTTP 200, channel auto-accepted) | ~2 min; both names were already in `.envrc` + `mirror-secrets-gha.sh`, so the GHA secrets side needed nothing new |
+| 2026-07-29 | Pasted Dependabot alert #29's body into the session (sharp < 0.35.0 in `apps/docs`, 4 libvips CVEs) | the bump to sharp 0.35.3 (libvips 8.18.3) with a verified docs build — the alert was unreadable from any agent session (no alerts endpoint in the toolset) | ~1 min; replay: pasting the alert text beats waiting on a security-events grant |
+| 2026-07-29 | Minted an `sk_mcp_` MCP key at `/app/keys` and set it as `NLQDB_MCP_API_KEY` in the agent-session env | R-04's cold-agent walk — ran green the same session (published `@nlqdb/mcp@0.1.1` + published guide, real prod write + read-back through the confirm flow), deleting the queue's last ~2-min item | ~2 min; the walk passes it to the binary as `NLQDB_API_KEY`; CCR-sandbox replays need `NODE_OPTIONS=--use-env-proxy` (direct egress blocked there) |

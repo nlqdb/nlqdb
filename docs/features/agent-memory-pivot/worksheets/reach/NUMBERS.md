@@ -5,13 +5,11 @@ The reach loop's scorecard-equivalent: **overwrite in place, no changelog**
 [`INDEX.md`](INDEX.md); this file holds only the latest measured state, so it
 can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
 
-- **Null run 2026-07-29 — no R-slice box was agent-pullable, so this is a measurement cycle plus
-  one honesty correction.** Both open slices' remaining work is blocked on factors an agent can't
-  move here: **R-04**'s cold-agent walk needs the founder to mint an `sk_mcp_` key and set it as
-  `NLQDB_API_KEY` in the walker env (`blocked-by-human.md` #3 — was re-worded from `sk_live_` to
-  `sk_mcp_` in #853, so the queued action is now correct as written; this run also fixed the INDEX
-  slice note + tracker that still described it as un-reworded), and there is no `ANTHROPIC_API_KEY`
-  here to re-run the R-06 walker either; **R-07**'s external distribution is organic-install-yield-bound
+- **Cycle 2026-07-29 — R-04 was the one box pulled (walk green, below); the rest is
+  measurement-only.** **R-04**'s cold-agent walk ran green with a founder-minted `sk_mcp_` key set
+  as `NLQDB_API_KEY` in the walker env (see the R-04 line below), closing the slice; there is no
+  `ANTHROPIC_API_KEY` here to re-run the R-06 walker; **R-07**'s external distribution is
+  organic-install-yield-bound
   and its yield gate (a real `agent-artifacts` visit) reads from `/app/admin`, not from here. R-08's
   answer-engine cadence is next due 2026-08-22. No new venue is publishable (R-05 is 8/8 resolved).
 - GSC (28d, live 2026-07-29, window 06-29→07-27): **7 clicks / 464 impr / pos 17.3**; intent-query
@@ -43,11 +41,9 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   live with attributable yield: **4** (organic, dev.to, github, npm); #12 in-flight.
 - Coding-agent walker (R-06): **0/1 surfaced** (baseline 2026-07-20 — cold session recommended
   `pgvector`, never nlqdb). Not re-run: no `ANTHROPIC_API_KEY` in this session.
-- Canonical setup guide (R-04): **live, 2 of 3**. Walk box ⬜ — blocker is "the walker has no key",
-  not the product. **One founder action closes it** (`blocked-by-human.md` #3): mint an `sk_mcp_`
-  MCP key at `/app/keys` (SK-APIKEYS-015) and set it as `NLQDB_API_KEY` in the walker env. The
-  browser-free MCP route the walk needs shipped end-to-end (#836/#837) and is verified by running
-  the published binary.
+- Canonical setup guide (R-04): **complete, 3 of 3** (2026-07-29). The cold-agent walk ran green
+  with a founder-minted `sk_mcp_` key — published binary, published guide, real prod write +
+  read-back; evidence in [`INDEX.md`](INDEX.md) §R-04. The queue item is deleted.
 - Droppable artifacts (R-07): **4 of 4 live**, `agent-artifacts` in-flight, yield 0. Every dropped
   file carries the `npx -y @nlqdb/mcp` + `sk_mcp_` headless route beside the hosted one (2026-07-28,
   `GLOBAL-003`, swept to the MCP-scoped key per `SK-APIKEYS-015`), pinned by `agent-artifacts.test.ts`.

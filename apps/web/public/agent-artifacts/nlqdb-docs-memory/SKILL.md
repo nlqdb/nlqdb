@@ -61,22 +61,25 @@ revocable on its own — then:
 claude mcp add --env NLQDB_API_KEY=sk_mcp_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
 ```
 
-## Gated today — read this before promising anything
+## Availability — verify with one call, don't trust this snapshot
 
-`nlqdb_remember` and the typed `agent_memory_v1` preset are **flag-gated in
-production** (`MEMORY_PRESET`). How to tell in one call: `nlqdb_remember`
-returns `wrong_preset`, and creating a preset database returns
-`preset_disabled`. The tool is registered and visible either way, so do not
-read its presence as availability.
+`nlqdb_remember` and the typed `agent_memory_v1` preset are **live in
+production for signed-in keys** (`MEMORY_PRESET=1` since 2026-07-29) — but the
+flag is a one-var rollback and this file lands in repos nobody re-reads, so
+check rather than assume: if the flag is ever off, `nlqdb_remember` returns
+`wrong_preset` and creating a preset database returns `preset_disabled`. The
+tool is registered and visible either way, so do not read its presence as
+availability.
 
-**What works today:** `nlqdb_query` — reads *and* writes, in plain English,
-against a database nlqdb provisions on first reference. Everything below runs
-on that path: describe the four-table shape in your first call's goal, then
-write and read with `nlqdb_query`. Be honest with yourself about the
+**The always-on path:** `nlqdb_query` — reads *and* writes, in plain English,
+against a database nlqdb provisions on first reference. If the preset is
+unavailable to you (anonymous session, or a rollback), everything below runs
+on that path too: describe the four-table shape in your first call's goal,
+then write and read with `nlqdb_query`. Be honest with yourself about the
 difference — that schema is *inferred*, so column names may vary; call
 `nlqdb_describe` once and adapt. The extraction rules, the sync protocol and
-the queries are identical on both paths, so nothing has to be redone when the
-preset ungates.
+the queries are identical on both paths, so nothing has to be redone if you
+started on the fallback.
 
 ## Where each doc structure lands
 
