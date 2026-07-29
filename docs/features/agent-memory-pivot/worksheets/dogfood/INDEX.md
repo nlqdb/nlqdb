@@ -45,9 +45,9 @@ assigned to move them. This file is the missing intake.
 | Acquisition reach (search + coding-agent discovery) | [`../reach/INDEX.md`](../reach/INDEX.md) (`R-*`, `/reach` loop only) |
 
 `D-*` slices are picked by `/daily`, like `WS-*` and `E-*`. The track's own
-prereq is engine-side: **E-03** (memory scoping) must merge, then
-`MEMORY_PRESET=1` ships (PR #835), before any real corpus lands in a prod
-memory DB — see D-04.
+engine-side prereq is **satisfied**: E-03 (memory scoping) merged in #851 and
+`MEMORY_PRESET=1` shipped in #835 (2026-07-29) — a real corpus may land in a
+prod memory DB, see D-04.
 
 ## Sequence
 
@@ -56,7 +56,7 @@ memory DB — see D-04.
 | [D-01](D-01-docs-memory-skill.md) 🟡 | The docs→memory extraction skill (SK-PIVOT-017) — **build in flight on `claude/docs-memory-skill`; this slice tracks it, do not rebuild** | med | ~2 | — | the instrument behind criteria 1–3 |
 | [D-02](D-02-resync-hook.md) | One-way re-sync hook — CI on merge when `docs/**` changed | low | 1 | D-01 | criterion 1 (sustained call volume) |
 | [D-03](D-03-golden-queries.md) ✅ | Ops-corpus golden-query set (≥ 10, ≥ 3 temporal) in the `SK-QUAL-023` eval family — **done 2026-07-29: first dispatch measured ops temporal 0/4 (run 30413719690)** | med | ~2 | D-01 | **criterion 4** (temporal passes) |
-| [D-04](D-04-first-corpus-sync.md) | First real sync of nlqdb's own `docs/` corpus + the gate-progress readout | med | ~2 | D-01, D-02, **E-03 merged → `MEMORY_PRESET=1` (#835)** | **criteria 1, 2, 3** |
+| [D-04](D-04-first-corpus-sync.md) | First real sync of nlqdb's own `docs/` corpus + the gate-progress readout | med | ~2 | D-01, D-02, ~~E-03 → `MEMORY_PRESET=1`~~ ✅ (#851, #835) | **criteria 1, 2, 3** |
 | [D-05](D-05-founder-ops-pack.md) | Goal pack #2 — founder-ops (SK-PIVOT-018), seeded from `history/founder-actions-log.md` | low | ~2 | D-01, D-04 | criterion 1 · Pivot row |
 | [D-06](D-06-agents-memory-dashboard.md) | The public memory dashboard on `/agents` | med | ~2 | D-04 | **criterion 5** |
 | [D-07](D-07-memory-strategy-benchmark.md) ⛔ | Cross-strategy memory benchmark (SK-PIVOT-019) — **blocked** | high | multi | **blocked: the SK-PIVOT-017 corpus + golden queries must exist** (D-03 ✅ + D-04 ✅) | none — row #22 / answer-engine citations |

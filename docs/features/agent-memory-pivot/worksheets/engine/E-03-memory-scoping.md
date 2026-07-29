@@ -64,7 +64,9 @@ rationale):
   anon-token scoping is designed.
 - No prod memory DBs exist (`MEMORY_PRESET` dark), so the policies land on
   the provisioner path only — **no backfill migration**. Pre-E-03 dev DBs
-  are disposable.
+  are disposable. *(Premise ended 2026-07-29: `MEMORY_PRESET=1` shipped in
+  #835 — after this slice, so every prod memory DB has carried the policies
+  from creation and the no-backfill stance stays sound.)*
 
 ## Steps
 
@@ -115,7 +117,9 @@ rationale):
   a DB the write verb accepts can never be a DB whose rows went unscoped.
 - `db-create/neon-provision.ts` — emits them right after the permissive
   `tenant_isolation` policies, on the memory-preset id prefix only. No
-  backfill (`MEMORY_PRESET` dark ⇒ no prod memory DB exists).
+  backfill — and none needed retroactively: `MEMORY_PRESET=1` reached prod
+  (#835, 2026-07-29) *after* this slice, so no unscoped prod memory DB ever
+  existed.
 - `ask/build-deps.ts` — `buildHostedExecSteps` sets `app.agent_id` on
   **every** hosted exec (defaulted to the tenant id = the policy's baked
   literal) and the narrowing GUCs only when the request carried them;

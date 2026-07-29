@@ -239,8 +239,9 @@ writing (through the confirm gate) and reading memory.
   `servers` from its `mcp.json`, each entry needing a `"type"` — `"http"` on
   the hosted route, `"stdio"` on the headless one. The wrong key parses as
   zero servers, with no error.
-- **`nlqdb_remember` returns `wrong_preset`** — expected today; use
-  `nlqdb_query` for memory writes (see below).
+- **`nlqdb_remember` returns `wrong_preset`** — the target database isn't an
+  `agent_memory_v1` preset. Create one (`db.create { preset: 'agent_memory_v1' }`
+  or the dashboard), or write through `nlqdb_query` instead (see below).
 
 ## Drop it into your repo
 
@@ -305,10 +306,12 @@ npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-ar
 
 ## What's live today
 
-The live, working memory path is `nlqdb_query`: your agent provisions a
-database on first reference and reads and writes memory through it in plain
-English, aggregating over what it stored. The dedicated `nlqdb_remember`
-verb and the typed `agent_memory_v1` schema (`facts` / `episodes` /
-`entities`, per-agent isolation, TTL) are **coming** — that on-ramp is gated
-while it hardens, so the tool appears but rejects with `wrong_preset` until
-then. Everything on this page works through `nlqdb_query` regardless.
+Two paths, both live. The dedicated `nlqdb_remember` verb and the typed
+`agent_memory_v1` schema (`facts` / `episodes` / `entities`, per-agent
+isolation, TTL) are **live for signed-in keys** as of 2026-07-29: create a
+memory database with the preset, then `nlqdb_remember` writes typed rows into
+it (a non-preset target rejects with `wrong_preset`). And `nlqdb_query` works
+everywhere, anonymous sessions included: your agent provisions a database on
+first reference and reads and writes memory through it in plain English,
+aggregating over what it stored. Everything on this page works through
+`nlqdb_query` regardless.

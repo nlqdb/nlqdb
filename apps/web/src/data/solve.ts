@@ -1955,8 +1955,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Analytics come free: ask 'memories per user this week' in English and nlqdb compiles the `GROUP BY`, runs it, and shows the SQL.",
     ],
     whatItDoesnt: [
-      "The opinionated `agent_memory_v1` schema (facts/episodes/entities) isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark); today the agent designs its own tables or provisions them from the first English goal.",
-      "Per-end-user row scoping *within one shared database* isn't shipped — agent-scope RLS keyed on `app.agent_id` is in progress; today isolation is per-tenant RLS or a database per tenant.",
+      "The opinionated `agent_memory_v1` preset (facts/episodes/entities) is live but signed-in only — an anonymous agent still designs its own tables or provisions them from the first English goal.",
+      "Per-agent and per-end-user row scoping *within one shared database* is enforced in the engine (restrictive RLS keyed on `app.agent_id`), but the narrowing fields are HTTP-only today — the SDK, CLI, and MCP tools don't send them yet.",
       "Writes go through the SDK or a signed-in `POST /v1/run`, not the public embed — the public `<nlq-data>` key is read-scoped, so a write credential must never sit in client HTML.",
     ],
     faqs: [
@@ -2013,7 +2013,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Tenant isolation is a fail-closed `tenant_isolation` RLS policy in the engine, not a `WHERE` filter you must remember to write.",
     ],
     whatItDoesnt: [
-      "The opinionated `agent_memory_v1` schema (facts/episodes/entities) isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark); today the agent provisions its tables from the first English goal or designs them itself.",
+      "The opinionated `agent_memory_v1` preset (facts/episodes/entities) is live but signed-in only — an anonymous agent still provisions its tables from the first English goal or designs them itself.",
       "No native vector search — nlqdb is Postgres-first; if the best way to store *your* memory is unstructured similarity recall over chat-text, that's Mem0 or pgvector's job, not this.",
       "Writes go through the SDK or a signed-in `POST /v1/run`, not the public `<nlq-data>` embed — the embed's key is read-scoped, so a write credential never sits in client HTML.",
     ],
@@ -2074,8 +2074,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     ],
     whatItDoesnt: [
       "The automatic server-run TTL sweep is not live yet — the deterministic sweep core ships, but the scheduled Worker that runs it nightly is landing; until then expiry is a `DELETE` you run on your own schedule, not a promise.",
-      "The opinionated `agent_memory_v1` schema whose `facts` table carries `expires_at` isn't a one-click preset yet — it's authed and gated (`MEMORY_PRESET` is dark); today the agent provisions its tables from the first English goal or adds the column itself.",
-      "Read-side invisibility of expired-but-not-yet-swept rows is an in-progress RLS clause, not shipped — filter `expires_at` in your read query until it lands.",
+      "The opinionated `agent_memory_v1` preset whose `facts` table carries `expires_at` is live but signed-in only — an anonymous agent still provisions its tables from the first English goal or adds the column itself.",
+      "Read-side invisibility of expired-but-not-yet-swept rows ships only on the preset path (an RLS clause on `facts`) — on tables the agent designed itself, filter `expires_at` in your read query.",
     ],
     faqs: [
       {
@@ -2131,7 +2131,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     ],
     whatItDoesnt: [
       "`npx -y @nlqdb/mcp` runs beside your agent, but it still talks to nlqdb's hosted API — the database and the engine are ours, not yours. A self-hostable FSL-1.1 container is on the roadmap, not shippable today.",
-      "The dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts/episodes/entities) are authed and gated (`MEMORY_PRESET` is dark); today the live path is `nlqdb_query` provisioning and querying a database, and it rejects anonymous writes.",
+      "The dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts/episodes/entities) are live but signed-in only — anonymous callers stay on `nlqdb_query` provisioning and querying a database, and memory writes reject anonymous and publishable-key credentials.",
       "No native vector search — nlqdb is Postgres-first; if what you need from a memory server is unstructured similarity recall over chat-text, that's Mem0 or pgvector's job, and nlqdb composes with it.",
     ],
     faqs: [
@@ -2149,7 +2149,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Do I get dedicated remember and recall tools, or just query?",
-        a: "Today the live tool is `nlqdb_query`, which both provisions the database and answers over it in English. A dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts, episodes, entities with per-agent isolation and TTL) exist but are authed and gated behind `MEMORY_PRESET` — coming, not anonymous today. Until then the agent provisions and queries its memory tables through `nlqdb_query`.",
+        a: "Both. A dedicated `nlqdb_remember` verb and the opinionated `agent_memory_v1` schema (facts, episodes, entities with per-agent isolation and TTL) are live for signed-in accounts, and `nlqdb_query` both provisions a database and answers over it in English. Anonymous sessions stay on `nlqdb_query` — memory writes require a signed-in credential.",
       },
     ],
     sources: [
