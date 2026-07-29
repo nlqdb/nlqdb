@@ -3,51 +3,26 @@ import Base from "../../layouts/Base.astro";
 
 // Magic-link continue page. The API rewrites every magic-link email
 // from `app.nlqdb.com/api/auth/magic-link/verify?token=…` to
-// `nlqdb.com/auth/continue?next=<encoded verify URL>` so passive
-// link-scanners (Outlook SafeLinks, Gmail prefetch, Defender) GET the
-// continue page — which renders a button — instead of GETting the
-// verify endpoint, which would consume the single-use token.
+// `/auth/continue?next=<encoded verify URL>` so passive link-scanners
+// (Outlook SafeLinks, Gmail prefetch, Defender) GET the continue page
+// — which renders a button — instead of GETting the verify endpoint,
+// which would consume the single-use token.
+//
+// This site builds static (SK-WEB-001, no adapter), so the query
+// string exists only in the browser — `next` MUST be resolved in the
+// client script below, never in this frontmatter (which runs once at
+// build time with an empty query string and would bake one branch
+// into the HTML for every visitor). Both cards ship hidden; the
+// script reveals exactly one.
 //
 // Open-redirect defense:
-//   `next` is decoded server-side at render time and validated against
-//   an allow-list of origins. Anything outside the allow-list is
-//   refused — the page renders an error instead of the button. This
-//   is the trust-boundary the API change at apps/api/src/auth.ts:177
-//   implicitly extended; without it, a fake email of the form
-//   `https://nlqdb.com/auth/continue?next=https://attacker.example/`
-//   would phish through our own domain.
-//
-// Why static-validated, not signed:
-//   The verify URL itself is HMAC-protected by Better Auth (the token
-//   query param). The continue page only needs to ensure `next`
-//   points at OUR verify endpoint. Origin allow-list is sufficient
-//   for that — we already control which origins ship our auth UI.
-//   Signing `next` would be defense-in-depth but adds a server-side
-//   secret to a static page.
-
-// Production: only `app.nlqdb.com`. Localhost for `wrangler dev`.
-const ALLOWED_NEXT_ORIGINS = new Set(["https://app.nlqdb.com", "http://localhost:8787"]);
-
-type ResolvedNext =
-  | { ok: true; url: string }
-  | { ok: false; reason: "missing" | "malformed" | "untrusted_origin" };
-
-function resolveNext(raw: string | null): ResolvedNext {
-  if (!raw) return { ok: false, reason: "missing" };
-  let parsed: URL;
-  try {
-    parsed = new URL(raw);
-  } catch {
-    return { ok: false, reason: "malformed" };
-  }
-  if (!ALLOWED_NEXT_ORIGINS.has(parsed.origin)) {
-    return { ok: false, reason: "untrusted_origin" };
-  }
-  return { ok: true, url: parsed.toString() };
-}
-
-const rawNext = Astro.url.searchParams.get("next");
-const resolved = resolveNext(rawNext);
+//   `next` is validated against an allow-list of origins before the
+//   button gets an href. Anything outside the allow-list is refused —
+//   without this, a fake email of the form
+//   `https://app.nlqdb.com/auth/continue?next=https://attacker.example/`
+//   would phish through our own domain. The verify URL itself is
+//   protected by Better Auth's single-use token; the allow-list only
+//   needs to ensure `next` points at OUR verify endpoint.
 ---
 
 <Base
@@ -58,49 +33,93 @@ const resolved = resolveNext(rawNext);
 >
   <div class="page">
     <main class="auth-continue">
-      {
-        resolved.ok ? (
-          <section class="auth-continue__card" aria-labelledby="continue-title">
-            <h1 id="continue-title" class="auth-continue__title">
-              Sign in to nlqdb
-            </h1>
-            <p class="auth-continue__lede">
-              Click below to finish signing in. The link is single-use and
-              expires in 10 minutes.
-            </p>
-            <p class="auth-continue__cta">
-              <a class="btn btn--accent" href={resolved.url} rel="noopener">
-                Continue to nlqdb
-              </a>
-            </p>
-            <p class="auth-continue__hint">
-              You&rsquo;re seeing this page because email security
-              scanners sometimes follow links automatically. The button
-              keeps your one-time link valid until you click it.
-            </p>
-          </section>
-        ) : (
-          <section class="auth-continue__card auth-continue__card--err" aria-labelledby="continue-error-title">
-            <h1 id="continue-error-title" class="auth-continue__title">
-              This link can&rsquo;t be opened.
-            </h1>
-            <p class="auth-continue__lede">
-              {resolved.reason === "untrusted_origin"
-                ? "The destination of this link isn't an nlqdb endpoint, so we won't forward you to it."
-                : "The sign-in link is missing or malformed."}
-            </p>
-            <p class="auth-continue__hint">
-              Try requesting a fresh link from the sign-in page.
-            </p>
-            <p class="auth-continue__cta">
-              <a class="btn btn--accent" href="/">Back to home</a>
-            </p>
-          </section>
-        )
-      }
+      <section
+        id="continue-card"
+        class="auth-continue__card"
+        aria-labelledby="continue-title"
+        hidden
+      >
+        <h1 id="continue-title" class="auth-continue__title">
+          Sign in to nlqdb
+        </h1>
+        <p class="auth-continue__lede">
+          Click below to finish signing in. The link is single-use and
+          expires in 10 minutes.
+        </p>
+        <p class="auth-continue__cta">
+          <a id="continue-link" class="btn btn--accent" rel="noopener">
+            Continue to nlqdb
+          </a>
+        </p>
+        <p class="auth-continue__hint">
+          You&rsquo;re seeing this page because email security
+          scanners sometimes follow links automatically. The button
+          keeps your one-time link valid until you click it.
+        </p>
+      </section>
+
+      <section
+        id="continue-error"
+        class="auth-continue__card auth-continue__card--err"
+        aria-labelledby="continue-error-title"
+        hidden
+      >
+        <h1 id="continue-error-title" class="auth-continue__title">
+          This link can&rsquo;t be opened.
+        </h1>
+        <p id="continue-error-lede" class="auth-continue__lede">
+          The sign-in link is missing or malformed.
+        </p>
+        <p class="auth-continue__hint">
+          Try requesting a fresh link from the sign-in page.
+        </p>
+        <p class="auth-continue__cta">
+          <a class="btn btn--accent" href="/">Back to home</a>
+        </p>
+      </section>
     </main>
   </div>
 </Base>
+
+<script>
+  // `location.origin` covers the merged worker (SK-AUTH-016) wherever
+  // it's served — prod, canary (`BETTER_AUTH_URL`), previews; the
+  // literals keep the prod verify origin and `wrangler dev` working
+  // when the page is served from a different origin (`astro dev`).
+  const ALLOWED_NEXT_ORIGINS = new Set([
+    location.origin,
+    "https://app.nlqdb.com",
+    "http://localhost:8787",
+  ]);
+
+  function resolveNext(raw: string | null): { url: string } | { error: string } {
+    if (!raw) return { error: "The sign-in link is missing or malformed." };
+    let parsed: URL;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      return { error: "The sign-in link is missing or malformed." };
+    }
+    if (!ALLOWED_NEXT_ORIGINS.has(parsed.origin)) {
+      return {
+        error:
+          "The destination of this link isn't an nlqdb endpoint, so we won't forward you to it.",
+      };
+    }
+    return { url: parsed.toString() };
+  }
+
+  const resolved = resolveNext(new URLSearchParams(location.search).get("next"));
+  if ("url" in resolved) {
+    const link = document.getElementById("continue-link") as HTMLAnchorElement | null;
+    if (link) link.href = resolved.url;
+    document.getElementById("continue-card")?.removeAttribute("hidden");
+  } else {
+    const lede = document.getElementById("continue-error-lede");
+    if (lede) lede.textContent = resolved.error;
+    document.getElementById("continue-error")?.removeAttribute("hidden");
+  }
+</script>
 
 <style is:global>
   .auth-continue {
