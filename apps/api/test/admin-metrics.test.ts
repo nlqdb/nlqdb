@@ -229,6 +229,49 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     expect(m.acquisition.dbsBySource).toEqual([]);
     expect(m.acquisition.strangersBySource).toEqual([]);
     expect(m.trend).toEqual([]);
+    expect(m.launchGate).toEqual({
+      memoryPresetEnabled: false,
+      memoryDbs: 0,
+      memoryDbsInternal: 0,
+      memoryFirst10Asks: 0,
+      memoryFirst10Ok: 0,
+      memoryFirst10SuccessRate: null,
+      memoryLastQueriedAt: null,
+    });
+  });
+});
+
+describe("computeGtmMetrics — SK-GTM-008 launch-gate inputs", () => {
+  it("counts only agent_memory_v1 DBs and reports the Worker's MEMORY_PRESET", async () => {
+    const lastQueried = Math.floor(Date.parse("2026-07-28T08:00:00Z") / 1000);
+    await seedUser("u_founder", "omer@salfati.group", "2026-06-01T00:00:00.000Z");
+    await seedUser("u_s1", "maya@builders.io", "2026-07-01T00:00:00.000Z");
+
+    // The ops workload: two memory DBs on the founder account.
+    await seedDb("db_agent_memory_v1_aaa111", "u_founder", {
+      asks: 10,
+      ok: 10,
+      lastQueriedAt: 100,
+    });
+    await seedDb("db_agent_memory_v1_bbb222", "u_founder", {
+      asks: 10,
+      ok: 9,
+      lastQueriedAt: lastQueried,
+    });
+    // A stranger's memory DB counts in `memoryDbs`, not in the internal split.
+    await seedDb("db_agent_memory_v1_ccc333", "u_s1", { asks: 2, ok: 2 });
+    // Neither a non-memory DB nor a near-miss id may leak into the workload.
+    await seedDb("db_orders_xyz789", "u_founder", { asks: 10, ok: 1 });
+    await seedDb("db_agent_memory_v2_ddd444", "u_founder", { asks: 10, ok: 1 });
+
+    const m = await computeGtmMetrics(env.DB, new Date("2026-07-28T12:00:00Z"), true);
+    expect(m.launchGate.memoryPresetEnabled).toBe(true);
+    expect(m.launchGate.memoryDbs).toBe(3);
+    expect(m.launchGate.memoryDbsInternal).toBe(2);
+    expect(m.launchGate.memoryFirst10Asks).toBe(22);
+    expect(m.launchGate.memoryFirst10Ok).toBe(21);
+    expect(m.launchGate.memoryFirst10SuccessRate).toBeCloseTo(21 / 22, 6);
+    expect(m.launchGate.memoryLastQueriedAt).toBe("2026-07-28T08:00:00.000Z");
   });
 });
 
@@ -328,6 +371,7 @@ describe("/v1/admin/metrics — SK-GTM-002 auth gate", () => {
         "activation",
         "funnel",
         "generatedAt",
+        "launchGate",
         "pmf",
         "retention",
         "trend",

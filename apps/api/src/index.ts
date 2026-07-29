@@ -2748,7 +2748,10 @@ app.get("/v1/admin/metrics", requireSession, async (c) => {
         span.setAttribute("nlqdb.admin.metrics.outcome", "forbidden");
         return c.json({ error: "forbidden" }, 403);
       }
-      const metrics = await computeGtmMetrics(c.env.DB);
+      // The `MEMORY_PRESET` argument is the SK-GTM-008 launch-gate read:
+      // the founder dashboard cannot see prod env, so the serving Worker
+      // reports its own flag instead of the page guessing at it.
+      const metrics = await computeGtmMetrics(c.env.DB, new Date(), c.env.MEMORY_PRESET === "1");
       c.executionCtx.waitUntil(
         writeGtmSnapshot(c.env.DB, metrics).catch((err) => {
           console.error(
