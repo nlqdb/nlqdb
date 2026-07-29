@@ -158,6 +158,41 @@ describe("client-nav trailing-slash integrity (SK-WEB-022)", () => {
     expect(offenders).toEqual({});
   });
 
+  test("every JS navigation to an `/app/` literal in a prompt-persisting file carries the handoff", () => {
+    // Per-navigation tightening of the file-global check above (resolves the
+    // anonymous-mode SK-ANON-015 open question: is per-navigation worth it?).
+    // The file-global rule clears a whole file the instant ONE `attachHandoff(`
+    // appears, so a second, unprotected cross-origin hop could ride in
+    // undetected forever (verified hole). The *broad* "every navigation must
+    // carry it" rule was rejected — it false-positives on the legit un-wrapped
+    // navigations this repo actually has: static `<a href="/app/new/">` anchors
+    // whose goal rides a sibling JS interceptor (`/solve`, `/vs`, `/agents`),
+    // and the two same-origin `location.*` hops in `sign-in.astro` that run only
+    // past the crossOrigin early-return (their targets are runtime variables,
+    // not `/app/` literals). The narrow, false-positive-free invariant that DOES
+    // catch the regression: a *JS* navigation (`location.assign`/`.replace`,
+    // `location.href =`) whose *string-literal* target path is `/app/…` — the
+    // cross-origin hop to `app.nlqdb.com` (SK-AUTH-016) that drops localStorage —
+    // must wrap that literal in `attachHandoff(`. Anchors (matched by HREF, not
+    // NAV) and variable targets never match, so no inline-suppression mechanism
+    // is needed; the `/solve`+`/vs` browser walkers remain the backstop for the
+    // variable-target hop this static sweep can't see.
+    const offenders: Record<string, string> = {};
+    for (const file of sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/)) {
+      const rel = relative(REPO_ROOT, file);
+      if (APP_ORIGIN_ONLY.some((dir) => rel.includes(dir))) continue;
+      const src = readFileSync(file, "utf8");
+      if (!TOUCHES_PROMPT.test(src)) continue;
+      for (const m of src.matchAll(NAV)) {
+        if (!m[1].startsWith("/app/")) continue;
+        if (m[0].includes("attachHandoff(")) continue;
+        const line = src.slice(0, m.index).split("\n").length;
+        offenders[`${rel}:${line}`] = `navigates to ${m[1]} without attachHandoff`;
+      }
+    }
+    expect(offenders).toEqual({});
+  });
+
   test("the third-party support embed boots after the SK-ANON-015 fragment strip", () => {
     // `/app/new/` mounts `<SupportChat />` AND receives the handoff as
     // `#nlq=<json>` carrying the anon bearer. Tawk's visitor monitoring reports
