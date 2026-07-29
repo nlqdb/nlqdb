@@ -142,8 +142,8 @@ after connect, a verification query, what to do on failure. Add a
 [`mcp-install-stdio.test.ts`](../../../../../apps/web/src/lib/mcp-install-stdio.test.ts) ·
 ⬜ one manual cold-agent walk (agent given only the URL) completes setup — browser consent is no
 longer the blocker; what remains is one key in the walker env ([`NUMBERS.md`](NUMBERS.md);
-`blocked-by-human.md` #3 still names `sk_live_`, so that queued action stands as written — mint
-`sk_mcp_` instead once someone re-words it).
+`blocked-by-human.md` #3 was corrected to `sk_mcp_` in #853, so the queued operator action is ready
+as written — mint it at `/app/keys` and set `NLQDB_API_KEY` in the walker env).
 
 ### R-05 — Registry + directory sweep (one venue per run)
 
@@ -255,7 +255,7 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [x] R-01 — intent map + P2a/P2b persona split
 - [x] R-02 — build-vs-buy honesty surface
 - [x] R-03 — stage-0 solve pages
-- [ ] R-04 — canonical setup guide — **owed:** the unattended cold-agent walk (the headless route it needs ships; all that is left is a key in the walker env — see the slice note on which prefix)
+- [ ] R-04 — canonical setup guide — **owed:** the unattended cold-agent walk (the headless route it needs ships; all that is left is the operator minting the `sk_mcp_` walker key, `blocked-by-human.md` #3)
 - [x] R-05 — registry sweep (8/8 venues resolved)
 - [x] R-06 — coding-agent walker + baseline
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)
