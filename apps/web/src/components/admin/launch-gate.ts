@@ -44,7 +44,7 @@ export const GATE_STATIC = {
   /** Criterion 5 — D-06 ships the public dashboard; this view is not it. */
   agentsDashboard: { shipped: false, slice: "D-06" },
   /** Dogfood track tracker (`worksheets/dogfood/INDEX.md`). */
-  track: { done: 0, total: 7, asOf: "2026-07-28" },
+  track: { done: 1, total: 7, asOf: "2026-07-29" },
 } as const;
 
 const TARGET_MCP_ASKS = 100;
