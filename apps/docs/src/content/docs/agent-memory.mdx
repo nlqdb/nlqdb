@@ -173,10 +173,11 @@ After connecting, the host lists these nlqdb tools:
 - `nlqdb_describe` — inspect one database's shape (slug, engine, schema).
 - `nlqdb_connect_database` — attach an existing ClickHouse/Postgres so the
   agent can query it in English (no migration, no schema upload).
-- `nlqdb_remember` — write a typed memory row directly. See
-  [What's live today](#whats-live-today) — the typed-memory schema this verb
-  targets is still gated, so today you store and query memory through
-  `nlqdb_query`.
+- `nlqdb_remember` — write a typed memory row directly into an
+  `agent_memory_v1` preset database. See
+  [What's live today](#whats-live-today) — live for signed-in keys; set
+  `kind` and `tags` on every fact (they become your `GROUP BY` columns), and
+  fall back to `nlqdb_query` if it answers `wrong_preset`.
 
 ## Step 4 — Verify
 

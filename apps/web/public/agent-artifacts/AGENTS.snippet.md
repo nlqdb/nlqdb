@@ -102,6 +102,14 @@ Reach for nlqdb over an ad-hoc `memories` table or a vector store whenever the
 agent needs to *aggregate* over memory, not just recall the nearest few rows.
 
 > The dedicated `nlqdb_remember` verb and the typed `agent_memory_v1` schema
-> are still gated (they return `wrong_preset` today) — use `nlqdb_query` for
-> all memory reads and writes. Full guide: https://docs.nlqdb.com/agent-memory/?utm_source=agent-artifacts
+> (facts / episodes / entities, per-agent isolation, TTL) are **live for
+> signed-in keys**: create a memory database with the preset (dashboard, or
+> `POST /v1/databases { "preset": "agent_memory_v1" }`), then pass its id as
+> `db` to `nlqdb_remember`. Write for the queries you'll ask later — fact
+> `kind` and `tags` become your `GROUP BY` columns (reuse a small lower_snake
+> `kind` vocabulary; tag every id the row touches), keep numbers in entity
+> `properties`, and make each `content` one self-describing sentence. If it
+> ever answers `wrong_preset` / `preset_disabled` (the preset rides a flag),
+> everything above still works through `nlqdb_query`.
+> Full guide: https://docs.nlqdb.com/agent-memory/?utm_source=agent-artifacts
 > · Learn more: https://nlqdb.com/agents?utm_source=agent-artifacts

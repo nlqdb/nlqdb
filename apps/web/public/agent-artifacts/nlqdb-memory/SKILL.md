@@ -53,9 +53,30 @@ on the first call, so there is no separate create step.
 Reach for nlqdb over an ad-hoc `memories` table or a vector store whenever the
 agent needs to *aggregate* over memory, not just recall the nearest few rows.
 
-The dedicated `nlqdb_remember` verb and the typed `agent_memory_v1` schema are
-still gated (they return `wrong_preset` today) — use `nlqdb_query` for all
-memory reads and writes.
+### Typed writes with `nlqdb_remember`
+
+The dedicated `nlqdb_remember` verb and the typed `agent_memory_v1` schema
+(facts / episodes / entities, per-agent isolation, TTL) are **live for
+signed-in keys**: create a memory database with the preset (from the
+dashboard, or `POST /v1/databases { "preset": "agent_memory_v1" }`), then
+pass its id as `db` to `nlqdb_remember`. Prefer it over an NL write when you
+know what you're storing — it's deterministic, no LLM in the loop.
+
+Write for the queries you'll ask later:
+
+- Fact `kind` and `tags` become your `GROUP BY` columns. Reuse a small
+  lower_snake `kind` vocabulary (recall your existing kinds before inventing
+  one — leaving every row on the default `fact` makes categories unqueryable)
+  and put every id/topic the row touches in `tags`.
+- Keep numeric measures in entity `properties` (JSONB), not inside prose
+  `content`. Re-remembering an entity replaces `properties` when provided, so
+  re-send the whole object, not one key.
+- Make each `content` a single self-describing sentence, so a row still reads
+  correctly on its own in a result set.
+
+The preset rides a flag — if `nlqdb_remember` ever answers `wrong_preset`
+against a preset database (or creating one answers `preset_disabled`),
+everything above still works through `nlqdb_query`.
 
 Full guide: https://docs.nlqdb.com/agent-memory/?utm_source=agent-artifacts · Learn more:
 https://nlqdb.com/agents?utm_source=agent-artifacts
