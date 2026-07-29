@@ -102,10 +102,12 @@ automated OIDC lane, tracked by scorecard row #22.)
      Glama account uses another email, edit `apps/mcp/src/index.ts` first.
      Once claimed, set the website to
      `https://nlqdb.com/agents/?utm_source=glama` (flips ledger row #6 to
-     attributable) and give support@glama.ai demo-account credentials so the
-     health check can pass OAuth — the hosted transport is OAuth-only by
-     design (`SK-MCP-001`), so unhealthy-without-credentials is expected, not
-     a server bug. Then click **Sync Server** on the admin page.
+     attributable) and email support@glama.ai about health: the hosted
+     transport is OAuth-only by design (`SK-MCP-001`) so their checker stops
+     at the 401 wall, and nlqdb has no passwords (`SK-AUTH-002`) — explain
+     signup is free (magic link / GitHub / Google), offer to seed a demo
+     workspace for an email they name, and ask how they mark OAuth-only
+     connectors. Then click **Sync Server** on the admin page.
    Ledger rows #6 + #10 in
    [`acquisition-channels.md`](./research/acquisition-channels.md) track both.
 
