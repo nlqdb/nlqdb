@@ -83,7 +83,10 @@ export const rememberInputShape = {
   payload: z
     .record(z.string(), z.unknown())
     .describe(
-      "Kind-specific fields. fact: { content, kind?, tags?, source? }. episode: { role, content, tool_calls?, tokens? }. entity: { kind, canonical_name, properties? }.",
+      "Kind-specific fields. fact: { content, kind?, tags?, source? }. episode: { role, content, tool_calls?, tokens? }. entity: { kind, canonical_name, properties? }. " +
+        "Write for the queries you'll ask later: fact kind + tags become GROUP BY columns — reuse a small lower_snake kind vocabulary (leaving every row on the default 'fact' makes categories unqueryable) and tag every id/topic the row touches. " +
+        "Keep numeric measures in entity properties (JSONB), not inside prose content; an entity re-remember replaces properties when provided, so re-send the whole object. " +
+        "Make content one self-describing sentence, so a row reads correctly on its own in a result set.",
     ),
   endUserId: z.string().optional().describe("Optional end-user scope (facts / episodes)."),
   threadId: z

@@ -10,8 +10,11 @@
 #   remember  → nlqdb_query(q: "remember that ...")  # previews, then confirm: true
 #   recall    → nlqdb_query(q: "what do you remember about ...?")
 #   aggregate → nlqdb_query(q: "how many sessions has each user had this week?")
-# The nlqdb_remember verb + the agent_memory_v1 preset are still gated
-# (wrong_preset today) — use nlqdb_query. Guide: https://docs.nlqdb.com/agent-memory/?utm_source=agent-artifacts
+# The nlqdb_remember verb + the agent_memory_v1 preset are live for signed-in
+# keys — typed writes into a preset DB (create: dashboard or POST /v1/databases
+# { "preset": "agent_memory_v1" }). Set kind + tags: they become your GROUP BY
+# columns. If it answers wrong_preset / preset_disabled (flag rollback), use
+# nlqdb_query. Guide: https://docs.nlqdb.com/agent-memory/?utm_source=agent-artifacts
 # Learn more: https://nlqdb.com/agents?utm_source=agent-artifacts
 
 [mcp_servers.nlqdb]
