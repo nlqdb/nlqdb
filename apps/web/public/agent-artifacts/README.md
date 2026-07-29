@@ -5,6 +5,20 @@ Cursor, Codex) wires nlqdb memory and uses it correctly — a real Postgres it
 queries in plain English over MCP, so it can `GROUP BY`/`JOIN`/aggregate over
 what it remembered, not just recall the nearest few rows.
 
+## One command, server included (Claude Code plugin)
+
+```bash
+/plugin marketplace add nlqdb/nlqdb
+/plugin install nlqdb-memory@nlqdb
+```
+
+Run both inside Claude Code. **This directory *is* the plugin** — its manifest
+declares the two skill folders below as its skills and bundles the hosted MCP
+server, so one install wires the connection *and* the instructions, with no
+separate `claude mcp add` step. Nothing here is a copy: the plugin serves the
+same files this page lists. The first tool call opens the browser OAuth page
+once; with nobody at a browser, take the headless route the skill documents.
+
 ## One command (Claude Code, Cursor, Codex)
 
 ```bash

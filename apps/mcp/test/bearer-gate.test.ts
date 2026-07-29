@@ -130,6 +130,13 @@ describe("apps/mcp auth boundary (slice 3b)", () => {
     expect(res.status).toBe(200);
     expect(await res.text()).toBe("ok");
   });
+
+  it("serves the Glama connector-claim file on /.well-known/glama.json", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/.well-known/glama.json");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { maintainers: Array<{ email: string }> };
+    expect(body.maintainers[0]?.email).toContain("@");
+  });
 });
 
 // WS06-T5 — DNS-rebinding defense per the MCP Streamable-HTTP spec

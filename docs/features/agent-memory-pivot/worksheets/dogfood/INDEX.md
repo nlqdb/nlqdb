@@ -18,7 +18,10 @@ restated here):
   canonical.
 - [**SK-PIVOT-018**](../../decisions/SK-PIVOT-018-goal-packs.md) — the wedge grows
   by persona goal packs on the one canonical schema. Pack #1 = repo-ops
-  (SK-PIVOT-017), pack #2 = founder-ops (D-05).
+  (SK-PIVOT-017), pack #2 = founder-ops (D-05). Candidates for packs #3..N are
+  **proposals awaiting founder ranking** in
+  [`pack-candidates.md`](pack-candidates.md) — nothing there is decided, and a
+  pick becomes a `D-NN` slice below.
 - [**SK-PIVOT-019**](../../decisions/SK-PIVOT-019-memory-strategy-benchmark.md) — the
   public cross-strategy benchmark, **sequenced after** the corpus + golden
   queries exist (D-07).
@@ -42,9 +45,9 @@ assigned to move them. This file is the missing intake.
 | Acquisition reach (search + coding-agent discovery) | [`../reach/INDEX.md`](../reach/INDEX.md) (`R-*`, `/reach` loop only) |
 
 `D-*` slices are picked by `/daily`, like `WS-*` and `E-*`. The track's own
-prereq is engine-side: **E-03** (memory scoping) must merge, then
-`MEMORY_PRESET=1` ships (PR #835), before any real corpus lands in a prod
-memory DB — see D-04.
+engine-side prereq is **satisfied**: E-03 (memory scoping) merged in #851 and
+`MEMORY_PRESET=1` shipped in #835 (2026-07-29) — a real corpus may land in a
+prod memory DB, see D-04.
 
 ## Sequence
 
@@ -52,8 +55,8 @@ memory DB — see D-04.
 |---|-------|------|------|---------|---------------------------------------|
 | [D-01](D-01-docs-memory-skill.md) 🟡 | The docs→memory extraction skill (SK-PIVOT-017) — **build in flight on `claude/docs-memory-skill`; this slice tracks it, do not rebuild** | med | ~2 | — | the instrument behind criteria 1–3 |
 | [D-02](D-02-resync-hook.md) | One-way re-sync hook — CI on merge when `docs/**` changed | low | 1 | D-01 | criterion 1 (sustained call volume) |
-| [D-03](D-03-golden-queries.md) | Ops-corpus golden-query set (≥ 10, ≥ 3 temporal) in the `SK-QUAL-023` eval family | med | ~2 | D-01 | **criterion 4** (temporal passes) |
-| [D-04](D-04-first-corpus-sync.md) | First real sync of nlqdb's own `docs/` corpus + the gate-progress readout | med | ~2 | D-01, D-02, **E-03 merged → `MEMORY_PRESET=1` (#835)** | **criteria 1, 2, 3** |
+| [D-03](D-03-golden-queries.md) ✅ | Ops-corpus golden-query set (≥ 10, ≥ 3 temporal) in the `SK-QUAL-023` eval family — **done 2026-07-29: first dispatch measured ops temporal 0/4 (run 30413719690)** | med | ~2 | D-01 | **criterion 4** (temporal passes) |
+| [D-04](D-04-first-corpus-sync.md) | First real sync of nlqdb's own `docs/` corpus + the gate-progress readout | med | ~2 | D-01, D-02, ~~E-03 → `MEMORY_PRESET=1`~~ ✅ (#851, #835) | **criteria 1, 2, 3** |
 | [D-05](D-05-founder-ops-pack.md) | Goal pack #2 — founder-ops (SK-PIVOT-018), seeded from `history/founder-actions-log.md` | low | ~2 | D-01, D-04 | criterion 1 · Pivot row |
 | [D-06](D-06-agents-memory-dashboard.md) | The public memory dashboard on `/agents` | med | ~2 | D-04 | **criterion 5** |
 | [D-07](D-07-memory-strategy-benchmark.md) ⛔ | Cross-strategy memory benchmark (SK-PIVOT-019) — **blocked** | high | multi | **blocked: the SK-PIVOT-017 corpus + golden queries must exist** (D-03 ✅ + D-04 ✅) | none — row #22 / answer-engine citations |
@@ -95,8 +98,13 @@ it must **never** delay the gate or the launch.
 
 ## Gate progress — the number this track exists to move
 
-`SK-PIVOT-016`: **0/5 green** (2026-07-28). `/daily` step 1 restates this
-beside the launch bullet's age every run. The founder also reads it on
+`SK-PIVOT-016`: **0/5 green** (2026-07-29). Criterion 4 is now **measured on
+both corpora** — the last unmeasured half closed by D-03 this run — but not yet
+green: temporal **2/7** (synthetic 2/3, ops 0/4). The gate count is unchanged;
+what changed is that the ops temporal axis went from *unmeasured* to a concrete
+**0/4**, which is the named engine lever the next run pulls (SK-QUAL-023 run
+summary lists each miss's generated SQL). `/daily` step 1 restates this beside
+the launch bullet's age every run. The founder also reads it on
 **`/app/admin` → "Launch gate — SK-PIVOT-016"** (`SK-GTM-008`), which renders
 criteria 1–2 live from D1 and 3–5 as static-with-as-of constants; this table
 stays canonical, so a criterion that moves is updated here **and** in
@@ -107,13 +115,13 @@ stays canonical, so a criterion that moves is updated here **and** in
 | 1 | ≥ 100 real `/v1/ask` calls through the public MCP surface from the ops workload | ⬜ 0 | D-04 (+ D-02, D-05) |
 | 2 | First-10-queries success ≥ 95 % **on that workload** | ⬜ N = 0 | D-04 |
 | 3 | Zero silent data loss / wrong-answer-accepted incidents | ⬜ unstartable | D-04 |
-| 4 | Temporal golden queries pass | ⬜ temporal 2/3 on the synthetic corpus | D-03 |
+| 4 | Temporal golden queries pass | ⬜ **temporal 2/7** — synthetic 2/3 + **ops 0/4** (measured 2026-07-29, run 30413719690) | D-03 ✅ (measured) → engine fix |
 | 5 | Live memory dashboard public on `/agents` | ⬜ unshipped | D-06 |
 
-Criterion 4's `2/3` is the **synthetic** `memory-quality` corpus, owned by
-[`quality-eval`](../../../quality-eval/decisions/SK-QUAL-023-agent-memory-quality-eval.md).
-D-03 adds the **ops** corpus's temporal queries; both must be green, which is a
-tightening, not a loosening.
+Criterion 4's synthetic half stays `2/3`; D-03 added the **ops** corpus's 4
+temporal queries and measured them for the first time — **0/4** on the free
+chain (run 30413719690). Both halves must be green, which is a tightening, not a
+loosening; the ops half is now the binding constraint.
 
 ## Tracker
 
@@ -122,7 +130,7 @@ Tick on merge. Keep this list as the durable dogfood status (the scorecard's
 
 - [ ] D-01 — docs→memory extraction skill. **🟡 build in flight 2026-07-28 on branch `claude/docs-memory-skill`** (parallel agent owns the skill artifact). This worksheet is the tracking slice: do not rebuild it; on that branch's merge, record the artifact path here and tick.
 - [ ] D-02 — one-way re-sync hook (CI on merge, `docs/**` paths filter)
-- [ ] D-03 — ops-corpus golden-query set (≥ 10, ≥ 3 temporal) in the `SK-QUAL-023` family
+- [x] D-03 — ops-corpus golden-query set (12 questions, 4 temporal) in the `SK-QUAL-023` family. **Done 2026-07-29:** authoring landed #847; this run dispatched [run 30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690) — 27-q free EX 59.26 %, ops temporal **0/4** (the next engine lever)
 - [ ] D-04 — first `docs/` corpus sync + gate-progress readout (E-03 → #835 → sync)
 - [ ] D-05 — founder-ops goal pack (pack #2, SK-PIVOT-018)
 - [ ] D-06 — public memory dashboard on `/agents` (criterion 5)

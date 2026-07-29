@@ -66,6 +66,16 @@ function allFenced(text: string, lang: string): string[] {
 const firstFenced = (text: string, lang: string): string => allFenced(text, lang)[0] as string;
 
 /**
+ * The two hosts where an artifact link ends in a first touch, so SK-GTM-007
+ * applies. The docs host was exempted here until 2026-07-26 on the grounds that
+ * it runs no attribution capture — true, but it made the *primary* link in
+ * every artifact unattributable while only the tertiary "Learn more" counted, so
+ * the R-07 yield gate could not fire. `apps/docs/src/channel-forward.ts` now
+ * carries the key across the hop. `mcp.nlqdb.com` (protocol only) is not one.
+ */
+const ATTRIBUTING_HOSTS = ["https://nlqdb.com/", "https://docs.nlqdb.com/"];
+
+/**
  * Every `https://…` token in a raw text artifact. Autolink brackets and
  * sentence punctuation are not part of the URL — a `?utm_source=x>.` token
  * would otherwise read as a different channel key than the one published.
@@ -158,15 +168,7 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
   });
 
   // An artifact lives in someone else's repo, so its links are externally
-  // published URLs and SK-GTM-007 applies to every one of them. The docs host
-  // was exempted here until 2026-07-26 on the grounds that it runs no
-  // attribution capture — true, but it made the *primary* link in all five
-  // artifacts unattributable while only the tertiary "Learn more" counted, so
-  // the R-07 yield gate could not fire. `apps/docs/src/channel-forward.ts`
-  // now carries the key across the hop; these two hosts are the ones that end
-  // in a first touch, and `mcp.nlqdb.com` (protocol only) is not one of them.
-  const ATTRIBUTING_HOSTS = ["https://nlqdb.com/", "https://docs.nlqdb.com/"];
-
+  // published URLs and SK-GTM-007 applies to every one of them.
   test("every published nlqdb link carries the agent-artifacts utm_source (SK-GTM-007)", () => {
     for (const artifact of [AGENTS, CURSOR, CODEX, SKILL, DOCS_SKILL, read("README.md")]) {
       const attributable = urlsInText(artifact).filter((u) =>
@@ -385,11 +387,12 @@ describe("the docs→memory pack (SK-PIVOT-017)", () => {
   });
 
   // Hard rule 1 (R-07): only promise what is live in prod. `nlqdb_remember`
-  // and the `agent_memory_v1` preset are `MEMORY_PRESET`-gated, and this
-  // artifact lands in someone else's repo where nobody re-reads it — so the
-  // gate, its two observable error codes, and the path that does work must be
-  // named in the file itself, not just on the site.
-  test("states the MEMORY_PRESET gate, how it shows up, and what works meanwhile", () => {
+  // and the `agent_memory_v1` preset ride the `MEMORY_PRESET` flag (on since
+  // 2026-07-29, but a one-var rollback), and this artifact lands in someone
+  // else's repo where nobody re-reads it — so the flag, its two observable
+  // error codes, and the always-on path must be named in the file itself,
+  // not just on the site.
+  test("states the MEMORY_PRESET flag, how an off state shows up, and the always-on path", () => {
     const prose = normalizeProse(DOCS_SKILL);
     expect(prose).toContain("memory_preset");
     expect(prose).toContain("wrong_preset");
@@ -406,6 +409,71 @@ describe("the docs→memory pack (SK-PIVOT-017)", () => {
     expect(prose).toContain("nlqdb does not write markdown");
     expect(prose).not.toContain("two-way");
     expect(prose).not.toContain("bidirectional");
+  });
+});
+
+// R-09 — the Claude Code plugin. `apps/web/public/agent-artifacts/` doubles as
+// the plugin root: the two skill directories it already serves are the plugin's
+// `skills`, so the plugin ships zero copies of them and cannot drift from the
+// files the site publishes. What CAN drift is the wiring — the manifest's skill
+// paths, the bundled MCP endpoint, and the marketplace entry's `source`, none of
+// which any other test covers. A wrong `source` or a moved artifacts directory
+// makes `/plugin install` fail for every reader with no local symptom.
+const PLUGIN_DIR_FROM_ROOT = "apps/web/public/agent-artifacts";
+const REPO_ROOT = join(import.meta.dir, "../../../..");
+const readJson = (p: string) => JSON.parse(readFileSync(join(REPO_ROOT, p), "utf8"));
+
+const PLUGIN = readJson(`${PLUGIN_DIR_FROM_ROOT}/.claude-plugin/plugin.json`);
+const PLUGIN_MCP = readJson(`${PLUGIN_DIR_FROM_ROOT}/.mcp.json`);
+const MARKETPLACE = readJson(".claude-plugin/marketplace.json");
+const MARKETPLACE_ENTRY = MARKETPLACE.plugins.find((p: { name: string }) => p.name === PLUGIN.name);
+
+/** The two published one-liners: register the marketplace, then install. */
+const PLUGIN_INSTALL_CMDS = [
+  `/plugin marketplace add nlqdb/nlqdb`,
+  `/plugin install ${PLUGIN.name}@${MARKETPLACE.name}`,
+];
+
+describe("the Claude Code plugin (R-09)", () => {
+  test("its skills are the published artifacts themselves, not copies", () => {
+    // Each declared path must be a real directory holding a SKILL.md — this is
+    // what makes "one source of truth" structural rather than test-enforced.
+    expect(PLUGIN.skills).toEqual(["./nlqdb-memory/", "./nlqdb-docs-memory/"]);
+    for (const rel of PLUGIN.skills as string[]) {
+      expect(existsSync(join(DIR, rel, "SKILL.md")), rel).toBe(true);
+    }
+  });
+
+  test("the bundled MCP server is the shipped endpoint, in Claude Code's own shape", () => {
+    // `claude mcp add --transport http` writes `type` + `url`; a block without
+    // `type` loads zero servers with no error (same trap as the VS Code block).
+    expect(PLUGIN_MCP).toEqual({
+      mcpServers: { nlqdb: { type: "http", url: MCP_ENDPOINT_URL } },
+    });
+  });
+
+  test("the marketplace entry points at the plugin root and agrees on the name", () => {
+    expect(MARKETPLACE_ENTRY).toBeDefined();
+    expect(MARKETPLACE_ENTRY.source).toBe(`./${PLUGIN_DIR_FROM_ROOT}`);
+    expect(existsSync(join(REPO_ROOT, PLUGIN_DIR_FROM_ROOT, ".claude-plugin/plugin.json"))).toBe(
+      true,
+    );
+  });
+
+  // GLOBAL-019 — the licence a reader sees in `/plugin` must be the real one,
+  // never "Apache-2.0 today". SK-GTM-007 — the manifest `homepage` is the one
+  // link the plugin manager surfaces, and it is this channel's own key, not the
+  // skills' (`agent-artifacts`), so plugin installs are attributable separately.
+  test("declares FSL-1.1-ALv2 and a homepage keyed to this channel", () => {
+    expect(PLUGIN.license).toBe("FSL-1.1-ALv2");
+    expect(new URL(PLUGIN.homepage).searchParams.get("utm_source")).toBe("claude-plugin");
+    expect(ATTRIBUTING_HOSTS.some((h) => PLUGIN.homepage.startsWith(h))).toBe(true);
+  });
+
+  test("every surface that publishes the skills also publishes the plugin", () => {
+    for (const [name, text] of Object.entries(installSurfaces())) {
+      for (const cmd of PLUGIN_INSTALL_CMDS) expect(text, name).toContain(cmd);
+    }
   });
 });
 

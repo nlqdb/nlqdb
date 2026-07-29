@@ -25,62 +25,38 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~5 min | **Go/no-go:** flip `MEMORY_PRESET=1` in prod (PR #835) or hold — E-03 per-agent isolation shipped (#851), so the E-06 gate is satisfied; the flip itself is a prod data-write surface only an operator turns on | 2026-07-27 |
-| 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 3 | ~2 min | Mint an **`sk_mcp_`** key (`/app/keys` → MCP key, SK-APIKEYS-015) and set it as `NLQDB_API_KEY` in the walker env — the last tick on the cold-agent headless walk | 2026-07-27 |
-| 4 | ~10 min | Provide a LogSnag ingest token (+ wire the late-bound `window.__nlqdb_logsnag` hook) so client demand signals stop being silent no-ops | 2026-07-27 |
-| 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 6 | ~5 min | Connect the Claude GitHub App to the org so Dependabot alert #29 (1 high) is viewable — `bun audit` on the lockfile shows nothing high, so its target can't be confirmed from here | 2026-07-27 |
+| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
+| 2 | ~10 min | Glama: Make a **Release** (parked Dockerfile) so the server listing scores, push the badge to `awesome-mcp-servers` PR #10984; claim the *connector* (its `/.well-known/glama.json` ships with the repo) + hand test creds for health | 2026-07-29 |
+| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #2 can move real strangers (scorecard row #2); #5 is the only one that
+Only #1 can move real strangers (scorecard row #2); #3 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists. #1 is now a clean operator go/no-go — its E-06 gate blocker shipped in
-#851, so no decision crosses a recorded gate; flipping a prod data-write
-surface stays a human action. The headless-credential decision was taken
-2026-07-28 (advisor session; see below).
+exists; #2 unblocks a waiting external merge (`awesome-mcp-servers` #10984), so
+it's the freshest yield.
 
-(**Resolved 2026-07-28 — headless MCP credential:** founder chose the
-security-first *Widen* option; shipped in #850 as
-[`SK-APIKEYS-015`](./features/api-keys/FEATURE.md) — `sk_mcp_` is mintable
-from `/app/keys`, MCP-scoped, host+device-bound, individually revocable,
-attributed as `mcp`. The cross-surface docs sweep is in flight on
-`claude/headless-credential-sweep`.)
-
-(The 2026-07-27 "delete two orphaned Neon branches" row is **done** — verified
-live: `pr-571` and `pr-648` are gone and the project sits at 5 of 10 slots. Its
-durable half shipped the same day: all three creation sites now set Neon's
-`expires_at`, so an orphan reaps itself even when no runner survives to clean
-up. Nothing to re-queue.)
-
-(**Not queued — rides the release flow, not a founder gate:** the published
-`@nlqdb/mcp@0.1.0` no-key stderr still names the unmintable `sk_mcp_`, but
-`stdio.ts` is already fixed on `main` and a `patch` changeset is queued, so
-merging the changesets "Version Packages" PR (#826) publishes `0.1.1` with the
-corrected stderr + npm page via Trusted-Publisher OIDC — no manual `npm login`.
-That same PR also carries the `@nlqdb/sdk` import-entrypoint fix. A normal
-release step, largely automated.)
+(**Resolved 2026-07-29 — advisor session, queue 6 → 2:** the founder took the
+`MEMORY_PRESET=1` go decision live — #835 merged, the preset + `nlqdb_remember`
+are prod-enabled for signed-in accounts — and merged the Version-Packages
+release PR #826 (`@nlqdb/mcp@0.1.1` + `@nlqdb/sdk@0.2.2` via
+Trusted-Publisher OIDC; scorecard row #19 is now 0). The **LogSnag** bullet
+resolved the same sitting: the
+founder put `LOGSNAG_TOKEN`/`LOGSNAG_PROJECT` in the session env, the
+`window.__nlqdb_logsnag` hook is wired in `Base.astro` (build-time
+`PUBLIC_LOGSNAG_*`, both deploy workflows), and one live ingest event verified
+the token end-to-end. The **Dependabot #29** bullet resolved too: the founder
+pasted the alert (sharp < 0.35.0 in `apps/docs`, libvips CVEs) and the bump to
+0.35.3 shipped with a verified build. The **`sk_mcp_` walker-key** bullet
+resolved last: the founder minted the key and set it in the walker env, and
+R-04's cold-agent walk ran green the same session — published binary, published
+guide, real prod write + read-back (evidence: reach `INDEX.md` §R-04). All
+operator actions logged in `history/founder-actions-log.md` Era 4. One npm
+laggard remains but needs no human — `@nlqdb/cli@0.1.0` still serves an untagged
+homepage; its `?utm_source=npm` republish changeset is queued on the same
+automated OIDC lane, tracked by scorecard row #22.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
-1. **⏱ ~5 min · since 2026-07-27 — Go/no-go: flip `MEMORY_PRESET=1` in prod
-   (PR #835), or hold.** The decision that blocked this is cleared —
-   [`E-03`](./features/agent-memory-pivot/worksheets/engine/E-03-memory-scoping.md)
-   (per-agent isolation, the security-critical slice) **shipped** in #851,
-   satisfying
-   [`E-06`](./features/agent-memory-pivot/worksheets/engine/E-06-agents-createform-preset.md)'s
-   *"only after E-03 ships"* gate, so no recorded decision crosses here now.
-   What remains is the flip itself: turning on a prod data-write surface is an
-   operator action an agent won't self-take. The founder's 2026-07-28 lean was
-   *build the blocker, then ship*, and E-03 has now shipped — so this is teed
-   up, but the prod flip is yours to execute or hold. It also unblocks the
-   dogfood gate ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
-   names `MEMORY_PRESET=1` a prerequisite) that #2's launch waits on.
-   - **Hold** (safe default): #835 stays unmerged.
-   - **Ship**: merge #835; an agent then adds E-03's backfill line (its "no
-     prod memory DBs exist" premise ends the moment you flip) and corrects the
-     five `solve.ts` sites that still tell the public the preset is gated.
-
-2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
+1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
    the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
    founder-directed 2026-07-26: criteria, never calendar dates — agents
@@ -100,36 +76,49 @@ release step, largely automated.)
    (scorecard row #2) from 0.
    **Reaffirmed 2026-07-28 (advisor session): no launch before the pivot has
    real proof of value — the condition gate stands unchanged, criteria not
-   loosened.** The gate now has an execution track that `/daily` can pick up:
+   loosened.** The gate's `MEMORY_PRESET=1` prerequisite **shipped 2026-07-29**
+   (#835), so all five criteria are now agent-drivable — D-04's prod prereq is
+   clear. Execution track:
    [`dogfood/INDEX.md`](./features/agent-memory-pivot/worksheets/dogfood/INDEX.md)
-   (`D-01..D-07`, one slice per criterion), and it is the founder-set weekly
-   focus number as of 07-28. Gate progress: **0/5**.
+   (`D-01..D-07`, one slice per criterion), the founder-set weekly focus
+   number as of 07-28. Gate progress: **0/5**.
 
-3. **⏱ ~2 min · since 2026-07-27 — Mint an `sk_mcp_` key and set it as
-   `NLQDB_API_KEY` in the walker env.** The browser-free MCP route is
-   proven end-to-end (transport, tool list, prod reachability, the
-   published `claude mcp add` line run verbatim); the one thing left to
-   tick R-04's cold-agent walk is a real key in the walker's environment —
-   an operator secret an agent can't self-mint. Mint the **MCP key** at
-   `https://app.nlqdb.com/app/keys` (SK-APIKEYS-015 — MCP-scoped,
-   host+device-bound, revocable per key; shipped #850, so no full-account
-   `sk_live_` in a CI env), set `NLQDB_API_KEY` in the walker env.
-   *Founder asked 2026-07-28 to be reminded rather than re-ranked — the
-   advisor session re-arms reminders until this is done.*
+2. **⏱ ~10 min · since 2026-07-29 — Glama release → score badge on
+   `awesome-mcp-servers` #10984; claim + heal the connector.** The maintainer
+   gates the [#10984](https://github.com/punkpeye/awesome-mcp-servers/pull/10984)
+   merge on a claimed, *scored* Glama server listing + its badge. Founder
+   submitted + claimed the server listing 2026-07-29
+   ([`glama.ai/mcp/servers/nlqdb/nlqdb`](https://glama.ai/mcp/servers/nlqdb/nlqdb),
+   `author:official` — the committed root `glama.json` did the org-repo claim).
+   Remaining, in order:
+   - **Score:** on the listing's Dockerfile admin page paste + Deploy, then
+     **Make Release** — scoring stays "unavailable" until a release exists.
+     `tools/list` never calls the API, so a placeholder key (passes the
+     `sk_mcp_` prefix gate) suffices and no real secret goes in the image:
+     `FROM node:22-slim` · `RUN npm i -g @nlqdb/mcp` ·
+     `ENV NLQDB_API_KEY=sk_mcp_glama_inspection_placeholder` ·
+     `ENTRYPOINT ["nlqdb-mcp"]`. Glama also flags "no LICENSE" (GitHub
+     detects our FSL file as `NOASSERTION`); root `package.json` now declares
+     `FSL-1.1-ALv2` — if the flag still blocks the release, ask
+     support@glama.ai.
+   - **Badge:** once a score shows, append to the entry line on your fork
+     branch `add-nlqdb` and #10984 unblocks:
+     `[![nlqdb MCP server](https://glama.ai/mcp/servers/nlqdb/nlqdb/badges/score.svg)](https://glama.ai/mcp/servers/nlqdb/nlqdb)`
+   - **Connector** (`glama.ai/mcp/connectors/com.nlqdb/nlqdb`, crawl-fed,
+     health *Unhealthy* 07-29): once this repo's `apps/mcp` deploy ships
+     `/.well-known/glama.json`, Glama auto-detects it within minutes and the
+     claim binds to the email in the file — `omer@salfati.group`; if your
+     Glama account uses another email, edit `apps/mcp/src/index.ts` first.
+     Once claimed, set the website to
+     `https://nlqdb.com/agents/?utm_source=glama` (flips ledger row #6 to
+     attributable) and give support@glama.ai demo-account credentials so the
+     health check can pass OAuth — the hosted transport is OAuth-only by
+     design (`SK-MCP-001`), so unhealthy-without-credentials is expected, not
+     a server bug.
+   Ledger rows #6 + #10 in
+   [`acquisition-channels.md`](./research/acquisition-channels.md) track both.
 
-4. **⏱ ~10 min · since 2026-07-27 — Provide a LogSnag ingest token so client
-   demand signals stop being silent no-ops.** The events `lib/logsnag.ts` emits
-   (`agents.connect_clicked` with its new `url`/`stdio` transport dimension,
-   `solve.try_query_clicked`, …) only fire if the late-bound
-   `window.__nlqdb_logsnag` hook is present, and that hook is defined nowhere
-   in the repo — so every client-side demand signal is currently a no-op, and
-   any scorecard row that reads a "signal transports moved" number is measuring
-   nothing on the client. The wiring is agent-doable; what only you can give is
-   the LogSnag project/ingest token (an external account). Hand me the token
-   (as a build-time public env) and I'll wire the hook. Recorded at
-   `solve-pages/FEATURE.md`.
-
-5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -154,23 +143,10 @@ release step, largely automated.)
    - **Support contact:** your support email · **Icon:** the nlqdb mark · **Slug (permanent):** `nlqdb`
    - **Authentication:** OAuth 2.0 with dynamic client registration (supported out of the box)
    - **Data handling:** first-party API (nlqdb's own); no health data / no sponsored content
-   - **Test & launch:** give reviewer credentials for a *populated* demo account. Honesty caveat
-     (SK-PIVOT-010): `nlqdb_remember` + `agent_memory_v1` are `MEMORY_PRESET`-gated in prod, so a
-     reviewer can exercise `nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`/`nlqdb_connect_database`
-     end-to-end but not the gated remember path — seed the demo DB so `nlqdb_query` returns rows.
+   - **Test & launch:** give reviewer credentials for a *populated* demo account. `MEMORY_PRESET=1`
+     shipped 2026-07-29 (#835), so a signed-in reviewer can now exercise **all five tools**
+     end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
-
-6. **⏱ ~5 min · since 2026-07-27 — Connect the Claude GitHub App to the org so
-   Dependabot is viewable.** A push flagged **Dependabot alert #29 (1 high)**
-   on the default branch, but the alerts API answers *"GitHub access is not
-   enabled for this session — an org admin must connect the Claude GitHub App
-   for this organization,"* so the alert's target is unreadable from here.
-   `bun audit` against the committed lockfile shows **nothing high** (only the
-   already-accepted low `cookie` advisory, `framework-wrappers/FEATURE.md`), so
-   the high can't be confirmed or fixed without seeing it. Connect the app (or
-   paste alert #29's package + advisory), then an agent can bump and verify the
-   build. Bumping blind for an alert we can't see risks breaking the build for
-   no confirmed gain, so this waits on visibility.
 
 ## Suggestions needing approval (to amend the guidelines)
 

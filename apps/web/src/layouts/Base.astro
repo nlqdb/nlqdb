@@ -106,6 +106,51 @@ const siteEntityJsonLd =
       captureFirstTouch();
     </script>
 
+    {/* GLOBAL-024 — the late-bound demand-signal hook `lib/logsnag.ts` emits
+        through; absent env (dev, preview) renders nothing and every emit
+        stays a no-op. Inline + dependency-free per GLOBAL-034: marketing
+        pages stay SDK-free. Channel = the event's dot-prefix (`solve.…` →
+        `solve`); LogSnag accepts unseen channels (verified live 2026-07-29). */}
+    {
+      import.meta.env.PUBLIC_LOGSNAG_TOKEN && import.meta.env.PUBLIC_LOGSNAG_PROJECT && (
+        <script
+          is:inline
+          define:vars={{
+            lsToken: import.meta.env.PUBLIC_LOGSNAG_TOKEN,
+            lsProject: import.meta.env.PUBLIC_LOGSNAG_PROJECT,
+          }}
+        >
+          window.__nlqdb_logsnag = function (event, props) {
+            try {
+              var tags = {};
+              for (var k in props || {}) {
+                var v = (props || {})[k];
+                if (v == null) continue;
+                tags[k.toLowerCase().replace(/[^a-z0-9-]/g, "-")] =
+                  typeof v === "boolean" || typeof v === "number" ? v : String(v).slice(0, 120);
+              }
+              fetch("https://api.logsnag.com/v1/log", {
+                method: "POST",
+                keepalive: true,
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: "Bearer " + lsToken,
+                },
+                body: JSON.stringify({
+                  project: lsProject,
+                  channel: String(event).split(".")[0] || "web",
+                  event: event,
+                  tags: tags,
+                }),
+              }).catch(function () {});
+            } catch (e) {
+              /* analytics never interrupts the flow — GLOBAL-012 */
+            }
+          };
+        </script>
+      )
+    }
+
     {/* SK-WEB-001 — pre-hydration recovery panel for crashes before `DOMContentLoaded`; the boot script below gates the reveal and the CSS overlay covers the viewport if it ever fires. */}
     <div id="boot-fallback" hidden role="alert">
       <div class="boot-fallback__card">

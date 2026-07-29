@@ -38,12 +38,13 @@ export type GateCriterion = {
 export const GATE_STATIC = {
   /** Criterion 3's actual evidence: tests + eval runs, not a counter. */
   invariants: { asOf: "2026-07-28", suite: "E-03 scoping invariant suite (unit + Neon-gated)" },
-  /** Criterion 4 — per-axis EX lives in the CI run summary, never in D1. */
-  temporal: { pass: 2, total: 3, asOf: "2026-07-14", run: "memory-quality eval run 68" },
+  /** Criterion 4 — per-axis EX lives in the CI run summary, never in D1.
+   * Now combined synthetic + ops (D-03 measured the repo-ops corpus). */
+  temporal: { pass: 2, total: 7, asOf: "2026-07-29", run: "GHA run 30413719690" },
   /** Criterion 5 — D-06 ships the public dashboard; this view is not it. */
   agentsDashboard: { shipped: false, slice: "D-06" },
   /** Dogfood track tracker (`worksheets/dogfood/INDEX.md`). */
-  track: { done: 0, total: 7, asOf: "2026-07-28" },
+  track: { done: 1, total: 7, asOf: "2026-07-29" },
 } as const;
 
 const TARGET_MCP_ASKS = 100;
@@ -85,8 +86,8 @@ export function launchGateCriteria(m: GtmMetrics): GateCriterion[] {
       label: "Temporal golden queries pass",
       state: "in-progress",
       measurement: "static",
-      value: `${GATE_STATIC.temporal.pass} / ${GATE_STATIC.temporal.total} (synthetic corpus)`,
-      detail: `Latest known value, as of ${GATE_STATIC.temporal.asOf} (${GATE_STATIC.temporal.run}, SK-QUAL-023) — per-axis EX lives in the CI run summary, not in D1, so this is static, not a live read. The 12-question repo-ops corpus (4 temporal) landed 2026-07-28 with no EX measured yet; D-03 owns both.`,
+      value: `${GATE_STATIC.temporal.pass} / ${GATE_STATIC.temporal.total} (synthetic + ops corpus)`,
+      detail: `Latest known value, as of ${GATE_STATIC.temporal.asOf} (${GATE_STATIC.temporal.run}, SK-QUAL-023) — per-axis EX lives in the CI run summary, not in D1, so this is static, not a live read. D-03 measured the 12-question repo-ops corpus (4 temporal) for the first time this run: overall temporal 2/7 — synthetic 2/3, ops 0/4. All four ops temporal queries currently miss on the free chain, which is the weak axis this criterion turns on and the lever the next run pulls.`,
     },
     {
       n: 5,

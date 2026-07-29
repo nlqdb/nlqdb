@@ -130,7 +130,7 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 ### SK-PIVOT-018 — Memory ships persona-goal packs on the one canonical schema, never per-vertical schemas
 
-**Body:** [`decisions/SK-PIVOT-018-goal-packs.md`](./decisions/SK-PIVOT-018-goal-packs.md). Goal packs = extraction recipe (skill prompt) + seed entities + golden queries, all on the one `agent_memory_v1` schema (`SK-PIVOT-007`). Pack #1 repo-ops (`SK-PIVOT-017`); pack #2 founder-ops (accounts, credential *metadata* — never values — listings, the human-actions log, seeded from [`docs/history/founder-actions-log.md`](../../history/founder-actions-log.md)). A pack adds no schema, endpoint or tool.
+**Body:** [`decisions/SK-PIVOT-018-goal-packs.md`](./decisions/SK-PIVOT-018-goal-packs.md). Goal packs = extraction recipe (skill prompt) + seed entities + golden queries, all on the one `agent_memory_v1` schema (`SK-PIVOT-007`). Pack #1 repo-ops (`SK-PIVOT-017`); pack #2 founder-ops (accounts, credential *metadata* — never values — listings, the human-actions log, seeded from [`docs/history/founder-actions-log.md`](../../history/founder-actions-log.md)). A pack adds no schema, endpoint or tool. Candidates for packs #3..N are proposals awaiting founder ranking in [`worksheets/dogfood/pack-candidates.md`](worksheets/dogfood/pack-candidates.md) (#1 founder-set 2026-07-29); none is decided.
 
 ### SK-PIVOT-019 — nlqdb publishes a reproducible cross-strategy memory benchmark; honest per-purpose winners, never an integrations program
 

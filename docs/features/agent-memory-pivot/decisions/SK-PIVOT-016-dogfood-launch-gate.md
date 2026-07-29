@@ -36,7 +36,8 @@
   authenticate exactly as a stranger's agent would; a reviewer rejects any
   ops-agent path that bypasses the public MCP/auth surface. Loosening a
   criterion without a founder note in this file is a P1 violation.
-  `MEMORY_PRESET=1` in prod is a prerequisite (flag flip, own PR).
+  `MEMORY_PRESET=1` in prod is a prerequisite (flag flip, own PR) —
+  satisfied 2026-07-29 (#835).
 - **Alternatives rejected:** **Date-gated launch plan** — founder is
   randomly available; a missed date teaches the queue to ignore dates. ·
   **Launch now, dogfood later** — spends the one first impression on an

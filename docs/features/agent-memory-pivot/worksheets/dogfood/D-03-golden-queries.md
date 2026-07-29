@@ -1,8 +1,10 @@
 # D-03 — Ops-corpus golden-query set (≥ 10, ≥ 3 temporal)
 
-**Status:** ⬜ not started — **the one slice in this track pullable while
-`MEMORY_PRESET` is dark** (offline, frozen-snapshot corpus; no prod flag, no
-Neon)
+**Status:** ✅ done (2026-07-29) — the dataset authoring (12 repo-ops questions,
+4 temporal) landed with the docs→memory skill in #847; this run supplied the
+missing half: the first dispatch over the 27-question set, the recorded per-axis
+EX, and the tracker/gate/scorecard sync. The one slice in this track pullable
+while `MEMORY_PRESET` is dark (offline corpus; no prod flag, no Neon).
 **Sequence:** Dogfood 3 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** D-01 (the extraction shape) · **Gate:** none
 
 ## Goal
@@ -84,19 +86,44 @@ itself.
 
 ## Done when
 
-- [ ] ≥ 10 questions total, **≥ 3 temporal**, each with hand-verified gold over
-      the pinned snapshot; all pass the existing gold-executability / tie-free /
-      axis-semantics guards.
-- [ ] Corpus snapshot is committed and its source commit is named in the module
-      header (so a later re-snapshot is a visible, reviewed diff).
-- [ ] Every temporal gold uses literal date bounds — **no** `date('now')`
-      (`SK-QUAL-023` determinism rule); a test pins this.
-- [ ] `quality-eval-memory.yml` dispatched; per-axis EX + run link recorded in
-      the scorecard's memory-quality row.
-- [ ] Criterion 4's two halves stated in [`INDEX.md`](INDEX.md)'s gate table
-      (synthetic + ops), neither dropped.
-- [ ] `bun run typecheck && test` green; lint with explicit paths.
-- [ ] INDEX tracker + status ticked.
+- [x] **12** ops questions (ids 15–26), **4 temporal** (17–20), each with
+      hand-verified gold; all 27 golds execute non-empty (`bun
+      src/datasets/memory-quality.ts` → `27/27`) and pass the tie-free /
+      axis-semantics guards (`memory-quality.test.ts` → 24 pass).
+- [x] Corpus committed. **Deviation from the snapshot mechanism, intentional:**
+      the module ships a *hand-authored representative* corpus, not a pinned
+      dump of `docs/` (see the `REPO_OPS_MEMORY` header). Hand-authoring is a
+      stronger determinism guarantee — every gold's answer stays hand-checkable
+      and no re-snapshot can silently regrade it — so it supersedes the pinned
+      extract for this slice; D-04's live sync is where the real `docs/` corpus
+      enters, measured as criteria 1–3, not here.
+- [x] Every temporal gold uses literal date bounds — `julianday('2026-07-27')`,
+      no `date('now')` (`SK-QUAL-023` rule); pinned by the guard test.
+- [x] `quality-eval-memory.yml` dispatched
+      ([run 30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690),
+      free lane, `main@5cc4bd1`); per-axis EX recorded in the scorecard's
+      memory-quality row: **27-q free EX 59.26 % (16/27)**; temporal **2/7**
+      (synthetic 2/3, **ops 0/4**), retrieval 3/5, forgetting 3/5,
+      consolidation 4/5, analytical 4/5.
+- [x] Criterion 4's two halves stated in [`INDEX.md`](INDEX.md)'s gate table
+      (synthetic 2/3 + ops 0/4), neither dropped.
+- [x] `bun run typecheck && test` green; lint with explicit paths.
+- [x] INDEX tracker + status ticked.
+
+## Result (2026-07-29) — the ops corpus is now a number, and it says "temporal"
+
+The first dispatch over the full 27-question set (free chain,
+[run 30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690))
+scores **59.26 % EX** overall. That is *not* a regression from the old
+93.33 %: run 69 measured only the 15-question synthetic corpus; this is the
+first run that includes the 12 harder repo-ops questions (references, joins,
+date arithmetic) the wedge actually depends on. Per-axis: consolidation 4/5,
+analytical 4/5, retrieval 3/5, forgetting 3/5, and **temporal 2/7 — the weak
+axis criterion 4 turns on**. The four *ops* temporal golds (Q17 age>30d, Q18
+supersession-by-recency, Q19 blocked-since ordering, Q20 sync-run ordering) all
+miss on the free chain; the synthetic half holds at 2/3 (Q3 current-city miss).
+Each miss's generated SQL is in the run summary — **that is the lever the next
+dogfood/engine run pulls**, per the D-03 plan.
 
 ## Artifact
 
