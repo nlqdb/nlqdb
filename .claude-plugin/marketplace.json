@@ -1,0 +1,12 @@
+{
+  "name": "nlqdb",
+  "description": "nlqdb's own plugins — analytical agent memory over MCP, from the repo that serves it.",
+  "owner": { "name": "nlqdb", "url": "https://github.com/nlqdb/nlqdb" },
+  "plugins": [
+    {
+      "name": "nlqdb-memory",
+      "source": "./apps/web/public/agent-artifacts",
+      "description": "Persistent, queryable memory for your agent — a real Postgres it asks in plain English over MCP, so it can aggregate over what it remembered."
+    }
+  ]
+}

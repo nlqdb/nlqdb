@@ -249,7 +249,20 @@ forever? Drop a ready-made artifact into your project — the connect command
 in each is pinned by a test to the same source as this page, so the two
 can't drift apart.
 
-**One command** (Claude Code, Cursor, Codex) — installs the skill with the
+**Claude Code: install the plugin** — it bundles the MCP server *and* both
+skills, so this replaces Step 1 rather than following it. Run both lines inside
+Claude Code:
+
+```bash
+/plugin marketplace add nlqdb/nlqdb
+/plugin install nlqdb-memory@nlqdb
+```
+
+The plugin is nlqdb's published artifacts directory itself, so its skills are
+the same files listed below — never a copy that can drift. Authentication is
+the hosted route above: the first tool call opens the browser OAuth page once.
+
+**Any host (Claude Code, Cursor, Codex)** — installs the skill alone with the
 [`skills`](https://github.com/vercel-labs/skills) CLI (public repo, no account):
 
 ```bash

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "nlqdb-memory",
+  "displayName": "nlqdb — analytical agent memory",
+  "description": "Persistent, queryable memory for your agent: a real Postgres it asks in plain English over MCP, so it can GROUP BY / JOIN / aggregate over what it remembered instead of recalling the nearest few rows. Bundles the hosted MCP server plus two skills that teach the agent when to use it.",
+  "version": "0.1.0",
+  "author": { "name": "nlqdb", "url": "https://github.com/nlqdb/nlqdb" },
+  "homepage": "https://docs.nlqdb.com/agent-memory/?utm_source=claude-plugin",
+  "repository": "https://github.com/nlqdb/nlqdb",
+  "license": "FSL-1.1-ALv2",
+  "keywords": ["memory", "agent-memory", "postgres", "sql", "mcp", "nlqdb"],
+  "skills": ["./nlqdb-memory/", "./nlqdb-docs-memory/"]
+}
