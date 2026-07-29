@@ -162,13 +162,15 @@ Per-venue mechanism and exact payloads live in
 [`blocked-by-human.md`](../../../../blocked-by-human.md) — status only here.
 - ✅ #1 official MCP registry — **published 2026-07-22** (`com.nlqdb/nlqdb` v0.1.1, DNS
   domain-verify; `websiteUrl` carries `?utm_source=mcp-registry`). Cascade reached ✅ #4 Glama
-  (07-23) and no one else: ✅ #3 PulseMCP still **absent** 07-25, re-check 08-22; ✅ #2 **Smithery
+  (07-23 — *connector* listing; the *server* directory is separate — founder submitted + claimed
+  it 07-29, score pending a Glama Release, founder queue #2) and no one else: ✅ #3 PulseMCP still **absent** 07-25, re-check 08-22; ✅ #2 **Smithery
   is not a registry crawler** — needs its own `smithery mcp publish`, payload parked.
 - ✅ #5 mcp.so · ✅ #6 Cursor · ✅ #7 Anthropic connector dir — account-walled, **not** registry
   crawlers (so #1 doesn't cascade), payloads parked. #7 is also plan-gated (Team/Enterprise), though
   nlqdb clears its reviewer gates — OAuth 2.0 + tool annotations.
-- ✅ #8 `awesome-mcp-servers` — PR payload parked (verified 2026-07-21). Plain GitHub PR, outside
-  this session's repo scope; links the repo, no utm-taggable URL.
+- ✅ #8 `awesome-mcp-servers` — PR #10984 open since 07-26; maintainer gates the merge (07-29) on
+  the #4 Glama *server* listing + score badge — founder queue #2 covers both. Links the repo, no
+  utm-taggable URL.
 
 ### R-06 — Coding-agent walker (measurement backbone)
 
