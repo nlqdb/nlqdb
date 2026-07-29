@@ -18,7 +18,10 @@ restated here):
   canonical.
 - [**SK-PIVOT-018**](../../decisions/SK-PIVOT-018-goal-packs.md) — the wedge grows
   by persona goal packs on the one canonical schema. Pack #1 = repo-ops
-  (SK-PIVOT-017), pack #2 = founder-ops (D-05).
+  (SK-PIVOT-017), pack #2 = founder-ops (D-05). Candidates for packs #3..N are
+  **proposals awaiting founder ranking** in
+  [`pack-candidates.md`](pack-candidates.md) — nothing there is decided, and a
+  pick becomes a `D-NN` slice below.
 - [**SK-PIVOT-019**](../../decisions/SK-PIVOT-019-memory-strategy-benchmark.md) — the
   public cross-strategy benchmark, **sequenced after** the corpus + golden
   queries exist (D-07).
