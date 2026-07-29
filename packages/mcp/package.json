@@ -1,6 +1,6 @@
 {
   "name": "@nlqdb/mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "mcpName": "com.nlqdb/nlqdb",
   "description": "Analytical-memory MCP server for nlqdb — a real database your AI agent can GROUP BY / JOIN / aggregate over in natural language, not just recall.",
   "type": "module",
