@@ -52,11 +52,13 @@ claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp
 The first tool call opens a browser OAuth page once; approve it and the host
 stores the token. For the **unattended** re-sync below nobody is at a browser,
 so use the headless route instead — the same tools run locally over stdio
-against the same production API, authenticated by a key. Mint an `sk_live_`
-key at https://app.nlqdb.com/app/keys, then:
+against the same production API, authenticated by a key. Mint an `sk_mcp_` MCP
+key at https://app.nlqdb.com/app/keys — scoped to MCP (ask, list, describe,
+read/write memory; no external-database connects, no key management) and
+revocable on its own — then:
 
 ```bash
-claude mcp add --env NLQDB_API_KEY=sk_live_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
+claude mcp add --env NLQDB_API_KEY=sk_mcp_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
 ```
 
 ## Gated today — read this before promising anything
@@ -125,7 +127,7 @@ Pick one — both are one-way, both are safe to run repeatedly:
 
 - **On merge** — a CI step on pushes to the default branch that syncs only the
   docs the merge touched (`git diff --name-only`). Use the headless route
-  above with an `sk_live_` key from the runner's secrets. Cheapest and the
+  above with an `sk_mcp_` key from the runner's secrets. Cheapest and the
   most current.
 - **At session start** — sync the docs changed since the last `episodes` row's
   commit sha before doing anything else. Costs one read per session and needs

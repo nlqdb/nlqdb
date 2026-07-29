@@ -49,15 +49,17 @@ the host stores the token. No API key to paste.
 
 If nobody is at a browser — an unattended agent, CI, a container — run the same
 five tools locally over stdio instead. `npx` fetches `@nlqdb/mcp` and it talks
-to the same production API, authenticated by an `sk_live_` key (mint one at
-`app.nlqdb.com/app/keys`, a signed-in account) rather than a browser. This entry
-holds a live account secret — keep it in a **user-level** config, never a file
+to the same production API, authenticated by an `sk_mcp_` MCP key (mint one at
+`app.nlqdb.com/app/keys`, a signed-in account) rather than a browser. That key is
+scoped to MCP — it can ask, list, describe and read/write memory, but cannot
+connect external databases or manage keys — and is revocable on its own. It is
+still a live credential, so keep it in a **user-level** config, never a file
 your repo commits.
 
 - **Claude Code** — run in the terminal (writes the key to `~/.claude.json`):
 
   ```bash
-  claude mcp add --env NLQDB_API_KEY=sk_live_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
+  claude mcp add --env NLQDB_API_KEY=sk_mcp_REPLACE_ME --transport stdio nlqdb -- npx -y @nlqdb/mcp
   ```
 
 - **Codex** — the `~/.codex/config.toml` table instead of the hosted one:
@@ -66,7 +68,7 @@ your repo commits.
   [mcp_servers.nlqdb]
   command = "npx"
   args = ["-y", "@nlqdb/mcp"]
-  env = { NLQDB_API_KEY = "sk_live_REPLACE_ME" }
+  env = { NLQDB_API_KEY = "sk_mcp_REPLACE_ME" }
   ```
 
 - **Cursor** — user-level `~/.cursor/mcp.json` instead of the hosted block:
@@ -77,7 +79,7 @@ your repo commits.
       "nlqdb": {
         "command": "npx",
         "args": ["-y", "@nlqdb/mcp"],
-        "env": { "NLQDB_API_KEY": "sk_live_REPLACE_ME" }
+        "env": { "NLQDB_API_KEY": "sk_mcp_REPLACE_ME" }
       }
     }
   }

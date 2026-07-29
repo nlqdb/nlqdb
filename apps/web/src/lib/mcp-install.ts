@@ -183,15 +183,16 @@ export const STDIO_PACKAGE = "@nlqdb/mcp";
 export const STDIO_KEY_ENV = "NLQDB_API_KEY";
 
 /**
- * Placeholder credential. It must clear two independent gates, and `sk_mcp_`
- * — the obvious guess, and what the binary's own prefix list names first —
- * clears only one: the binary accepts it, but nobody can obtain one to paste.
- * `sk_mcp_*` is minted server-side by the OAuth callback and *never displayed*
- * (`SK-APIKEYS-009`), and `/app/keys` deliberately does not offer it
- * (`SK-APIKEYS-012`). `sk_live_` is the account-scoped key a reader can
- * actually mint and copy, so it is the only honest placeholder here.
+ * Placeholder credential. It must clear two gates: the binary's prefix
+ * allowlist, and obtainability — a reader has to be able to mint the thing we
+ * tell them to paste. `sk_mcp_` clears both since `SK-APIKEYS-015` made
+ * `/app/keys` mint it, and it is the *right* one to name: an MCP key can ask,
+ * list, describe and read/write memory but cannot connect a BYO database or
+ * manage keys, and it is revocable per host+device. `sk_live_` also runs the
+ * binary, but pasting a full-account secret into a host config is more
+ * privilege than the headless route needs.
  */
-export const STDIO_PLACEHOLDER_KEY = "sk_live_REPLACE_ME";
+export const STDIO_PLACEHOLDER_KEY = "sk_mcp_REPLACE_ME";
 
 /** The one `nlqdb` stdio server value every surface below is rendered from. */
 function stdioServer() {

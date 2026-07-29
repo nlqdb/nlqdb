@@ -128,11 +128,11 @@ curl -X POST https://app.nlqdb.com/v1/ask \\
 }
 
 // Headless (CI, Docker, an agent that can't click consent) — swap in the
-// local stdio server and an sk_live_ key from app.nlqdb.com/app/keys:
+// local stdio server and an sk_mcp_ MCP key from app.nlqdb.com/app/keys:
 // "nlqdb": {
 //   "command": "npx",
 //   "args": ["-y", "@nlqdb/mcp"],
-//   "env": { "NLQDB_API_KEY": "sk_live_..." }
+//   "env": { "NLQDB_API_KEY": "sk_mcp_..." }
 // }`,
   },
   {

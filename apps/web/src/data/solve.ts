@@ -2145,7 +2145,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
       {
         q: "Which coding agents and MCP hosts can install the nlqdb memory server?",
-        a: "Any host that speaks MCP. Cursor and VS Code install from a one-click link, Claude Code from one command, and Codex from a config-file line (all sourced from the host descriptors in `mcp-install.ts`); Claude Desktop, Windsurf, and Zed connect via their custom-connector settings. The hosted server at `mcp.nlqdb.com/mcp` needs one browser approval; where nobody can give it (CI, unattended agents), `npx -y @nlqdb/mcp` plus an `sk_live_` key runs the same tools locally, no browser.",
+        a: "Any host that speaks MCP. Cursor and VS Code install from a one-click link, Claude Code from one command, and Codex from a config-file line (all sourced from the host descriptors in `mcp-install.ts`); Claude Desktop, Windsurf, and Zed connect via their custom-connector settings. The hosted server at `mcp.nlqdb.com/mcp` needs one browser approval; where nobody can give it (CI, unattended agents), `npx -y @nlqdb/mcp` plus an `sk_mcp_` MCP key runs the same tools locally, no browser.",
       },
       {
         q: "Do I get dedicated remember and recall tools, or just query?",

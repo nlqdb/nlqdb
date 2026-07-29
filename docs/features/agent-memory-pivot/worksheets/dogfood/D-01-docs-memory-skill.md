@@ -48,7 +48,7 @@ The rest of this track assumes all of these. If the merged artifact misses one,
 the gap is this worksheet's remaining work, not a silent renegotiation.
 
 1. **Public surfaces only** — writes via `nlqdb_remember`, reads via
-   `nlqdb_query`, over `npx -y @nlqdb/mcp` with a self-minted `sk_live_*` key.
+   `nlqdb_query`, over `npx -y @nlqdb/mcp` with a self-minted `sk_mcp_*` MCP key.
    No privileged path, no internal binding.
 2. **Idempotent** — a second run over an unchanged corpus converges (no
    duplicate facts). Entities upsert on `(agent_id, kind, canonical_name)`, the

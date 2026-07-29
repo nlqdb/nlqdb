@@ -47,8 +47,9 @@ per-host block to copy):
 { "url": "https://mcp.nlqdb.com/mcp" }
 ```
 
-Headless (no browser) — create an `sk_live_…` key at
-[app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys), then:
+Headless (no browser) — create an `sk_mcp_…` MCP key at
+[app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys) (scoped to MCP, bound to
+one host + device, revocable on its own), then:
 
 ```json
 {
@@ -56,7 +57,7 @@ Headless (no browser) — create an `sk_live_…` key at
     "nlqdb": {
       "command": "npx",
       "args": ["-y", "@nlqdb/mcp"],
-      "env": { "NLQDB_API_KEY": "sk_live_…" }
+      "env": { "NLQDB_API_KEY": "sk_mcp_…" }
     }
   }
 }

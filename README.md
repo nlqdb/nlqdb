@@ -60,7 +60,7 @@ registry). Building from a clone is unaffected.
 
 Connecting an agent over MCP? One command, plus one browser-OAuth approval:
 [**Give your agent memory**](https://docs.nlqdb.com/agent-memory/). Headless
-hosts skip the browser with `npx -y @nlqdb/mcp` and an `sk_live_*` key
+hosts skip the browser with `npx -y @nlqdb/mcp` and an `sk_mcp_*` MCP key
 ([MCP setup](https://docs.nlqdb.com/mcp/)).
 
 The 60-second walkthrough — plain HTML, CLI, and ten framework wrappers —
@@ -123,7 +123,7 @@ Paid plans aren't live yet. The full model strategy is in
 | Framework wrappers (React / Next / Vue / Nuxt / Svelte / SvelteKit / Astro / Solid + Swift) | ~ built + CI-tested; npm / SPM publish pending | `packages/{react,next,…}/**` |
 | Chat app `nlqdb.com/app` | ✓ shipped | `apps/web/**` |
 | Hosted MCP server `mcp.nlqdb.com/mcp` | ✓ shipped (host auto-detect pending) | `apps/mcp/**`, `packages/mcp/**` |
-| Local stdio MCP server `@nlqdb/mcp` | ✓ shipped — `npx -y @nlqdb/mcp` with an `sk_live_*` key | `packages/mcp/**` |
+| Local stdio MCP server `@nlqdb/mcp` | ✓ shipped — `npx -y @nlqdb/mcp` with an `sk_mcp_*` key | `packages/mcp/**` |
 | Droppable agent-memory artifacts (AGENTS.md snippet · Claude Code skill · Cursor rules · Codex config) | ✓ shipped (4/4 hosts; external registry distribution pending) | `apps/web/public/agent-artifacts/**` |
 | `nlq` CLI (Go) | ✓ shipped (core verbs; device-login pending) | `cli/**` |
 
@@ -168,7 +168,7 @@ and shares the link — in under 60 seconds, no card, no config.
 
 - ✓ Hosted MCP server (`mcp.nlqdb.com/mcp`) — host auto-detect pending;
   local stdio `@nlqdb/mcp@0.1.0` is on npm, so `npx -y @nlqdb/mcp` with an
-  `sk_live_*` key is a headless route in with no browser consent step
+  `sk_mcp_*` key is a headless route in with no browser consent step
   (`/agents` now carries it; the per-host install panel is still OAuth-only)
 - ✓ CLI `nlq` (Go) — core verbs + raw-SQL escape hatch; device-login +
   chat REPL pending

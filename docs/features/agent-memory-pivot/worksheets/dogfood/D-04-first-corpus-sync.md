@@ -64,7 +64,7 @@ slice — D-03 is the pullable one (offline, no flag).
 1. **Run 1 — provision + first sync.** Verify the chain (E-03 merged, #835
    merged, E-03's backfill line present). Create the memory DB through the
    **authed** create surface with `{ preset: "agent_memory_v1" }`
-   (`SK-PIVOT-010` — never the anon path). Mint an `sk_live_*` key exactly as a
+   (`SK-PIVOT-010` — never the anon path). Mint an `sk_mcp_*` MCP key exactly as a
    stranger would, configure `npx -y @nlqdb/mcp`, run D-01's skill against
    `docs/`. Record: rows written per table, asks issued, wall-clock, and every
    failure verbatim — the failures are the launch post's whole value ("here's
@@ -83,7 +83,7 @@ slice — D-03 is the pullable one (offline, no flag).
 - [ ] A prod `agent_memory_v1` DB holds the extracted `docs/` corpus, created
       through the **authed** surface, written **only** via
       `nlqdb_remember`/`nlqdb_query` over `npx -y @nlqdb/mcp` with a self-minted
-      `sk_live_*` key — no privileged path anywhere in the run.
+      `sk_mcp_*` key — no privileged path anywhere in the run.
 - [ ] Rows-per-table, asks issued, and **every failure verbatim** recorded here.
 - [ ] Criterion 1 readout exists and prints a number (even if < 100).
 - [ ] Criterion 2 read off `SK-ONBOARD-007`'s existing instrument scoped to this

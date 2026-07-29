@@ -333,7 +333,8 @@ describe("handleQuery", () => {
     expect("err" in result).toBe(true);
     if ("err" in result) {
       expect(result.err.code).toBe("account_required");
-      expect(result.err.action).toMatch(/sk_live_/);
+      // SK-APIKEYS-015: the fix a host is told to apply is the MCP key.
+      expect(result.err.action).toMatch(/sk_mcp_/);
     }
   });
 
@@ -569,7 +570,10 @@ describe("handleConnectDatabase", () => {
       connection_url: "postgres://u:secret@host/db",
     });
     expect("err" in result && result.err.code).toBe("connect_requires_account");
-    expect("err" in result && result.err.action).toMatch(/sk_live_|sign in/i);
+    expect("err" in result && result.err.action).toMatch(/sk_live_|signed in/i);
+    // An sk_mcp_ key can never connect (SK-APIKEYS-015), so naming it here
+    // would send a headless host round the same 403 forever.
+    expect("err" in result && result.err.action).not.toMatch(/sk_mcp_/);
     expect(JSON.stringify(result)).not.toContain("secret");
   });
 });
@@ -817,8 +821,9 @@ describe("tool descriptions carry the contract (WS04-T1)", () => {
   });
 });
 
-// WS04-T2 — name which key is for which purpose; both sk_ keys are
-// full-access per SK-APIKEYS-001, so don't imply a read-only/full split.
+// WS04-T2 — name which key is for which purpose. `sk_mcp_` ⊂ `sk_live_`
+// (SK-APIKEYS-015): it reaches every tool here except `nlqdb_connect_database`,
+// so it is named first — but neither is read-only, so don't imply that split.
 describe("auth_required names each key by purpose (WS04-T2)", () => {
   it("mentions sk_mcp_ and sk_live_ with their purpose", () => {
     const err = mapSdkError(

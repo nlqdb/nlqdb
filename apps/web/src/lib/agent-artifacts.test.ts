@@ -16,6 +16,7 @@ import {
   MCP_SERVER_ROUTE,
   STDIO_KEY_ENV,
   STDIO_PACKAGE,
+  STDIO_PLACEHOLDER_KEY,
 } from "./mcp-install.ts";
 
 // R-07 drift guard. The droppable in-repo artifacts under
@@ -102,13 +103,25 @@ describe("agent-memory artifacts don't drift from mcp-install.ts", () => {
   });
 
   // R-07 headless-route coverage. Every artifact carries the hosted route
-  // above *and* the `@nlqdb/mcp` + `sk_live_` stdio route for an unattended
+  // above *and* the `@nlqdb/mcp` + `sk_mcp_` stdio route for an unattended
   // agent (GLOBAL-003) — a dropped file whose only path opens a browser
   // dead-ends the very reader (a CI/container agent) it exists for.
   test("every artifact offers the headless stdio route (@nlqdb/mcp + the key env)", () => {
     for (const [name, text] of Object.entries({ AGENTS, CURSOR, CODEX, SKILL })) {
       expect(text, name).toContain(STDIO_PACKAGE);
       expect(text, name).toContain(STDIO_KEY_ENV);
+    }
+  });
+
+  // SK-APIKEYS-015. An artifact lives in someone else's repo and nobody
+  // re-reads it, so the credential it names must be the least-privilege one:
+  // the MCP key, not the full-account `sk_live_`. Both halves matter — the
+  // MCP-scoped placeholder must be present *and* the account key absent, since
+  // re-adding `sk_live_` beside it is the same over-scoped paste.
+  test("every artifact names the MCP-scoped key, never the full-account one", () => {
+    for (const [name, text] of Object.entries({ AGENTS, CURSOR, CODEX, SKILL, DOCS_SKILL })) {
+      expect(text, name).toContain(STDIO_PLACEHOLDER_KEY);
+      expect(text, name).not.toContain("sk_live_");
     }
   });
 

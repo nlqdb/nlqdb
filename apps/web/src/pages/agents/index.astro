@@ -54,8 +54,8 @@ const heroGoal = "agents that remember feedback per user, ranked by count this m
 // and this page cannot drift apart. The hosted block is the OAuth route (no key
 // wired up front); the stdio block is SK-MCP-001's second transport, published
 // as `@nlqdb/mcp`, and the only one an agent with no human at a browser can
-// complete. Why its placeholder is `sk_live_` and not `sk_mcp_` is recorded on
-// `STDIO_PLACEHOLDER_KEY`.
+// complete. Why its placeholder is the MCP-scoped `sk_mcp_` is recorded on
+// `STDIO_PLACEHOLDER_KEY` (SK-APIKEYS-015).
 const mcpConfig = buildClaudeConfig(MCP_ENDPOINT_URL);
 const mcpCommand = buildClaudeCodeCommand(MCP_ENDPOINT_URL);
 const mcpStdioConfig = buildStdioMcpServersConfig();
@@ -315,9 +315,10 @@ const faqJsonLd = faqPageJsonLd(faqs);
               The hosted route ends on an OAuth consent screen, so an agent
               running in CI or on a server can&rsquo;t finish it. Run the same
               MCP server locally instead — same five tools, authenticated by a
-              key instead of a consent click. Mint an <code>sk_live_</code> key
-              once at <a href="/app/keys/">API keys</a> (one signed-in visit),
-              paste it in, and no browser opens again.
+              key instead of a consent click. Mint an <code>sk_mcp_</code> MCP
+              key once at <a href="/app/keys/">API keys</a> (one signed-in
+              visit) &mdash; scoped to MCP, revocable on its own &mdash; paste
+              it in, and no browser opens again.
             </p>
             <pre class="ag-connect__code"><code>{mcpStdioConfig}</code></pre>
             <button

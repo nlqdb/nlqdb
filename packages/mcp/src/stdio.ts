@@ -20,8 +20,8 @@ export async function runStdio(opts: StdioOptions = {}): Promise<void> {
 
   if (!apiKey) {
     process.stderr.write(
-      // Names sk_live_ because that is the one a user can mint themselves; sk_mcp_ is OAuth-mint-only (SK-APIKEYS-009).
-      "@nlqdb/mcp: NLQDB_API_KEY is not set. Easiest: point your host at the hosted server (https://mcp.nlqdb.com/mcp — OAuth, no key needed). For local stdio, create an sk_live_ key at https://app.nlqdb.com/app/keys and set env NLQDB_API_KEY in the host config.\n",
+      // Names sk_mcp_ — the least-privilege headless credential, mintable at /app/keys (SK-APIKEYS-015).
+      "@nlqdb/mcp: NLQDB_API_KEY is not set. Easiest: point your host at the hosted server (https://mcp.nlqdb.com/mcp — OAuth, no key needed). For local stdio, create an sk_mcp_ MCP key at https://app.nlqdb.com/app/keys and set env NLQDB_API_KEY in the host config.\n",
     );
     process.exit(1);
   }
