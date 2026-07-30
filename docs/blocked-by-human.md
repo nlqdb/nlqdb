@@ -29,12 +29,14 @@ values and criteria live. Read those only when you sit down to do the thing.
 | 2 | ~5 min | Glama: push the score badge to `awesome-mcp-servers` PR #10984 (listing is claimed + released, tier B); claim the *connector* (its `/.well-known/glama.json` ships with the repo) + hand test creds for health | 2026-07-29 |
 | 3 | ~5 min | Submit the `nlqdb-memory` plugin to Anthropic's community plugin directory (`clau.de/plugin-directory-submission`) — free signed-in form, no plan gate | 2026-07-29 |
 | 4 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 5 | ~1 min | Paste `github.com/nlqdb/nlqdb` into skillsclaude.org's no-account submit form (optional; agent-blocked here) | 2026-07-30 |
 
 Only #1 can move real strangers (scorecard row #2); #4 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
 exists; #2 unblocks a waiting external merge (`awesome-mcp-servers` #10984), so
-it's the freshest yield; #3 is the cheapest — a free, no-plan-gate form that
-lists nlqdb in the in-product `/plugin` Discover tab.
+it's the freshest yield; #3 is the cheapest form that still adds real discovery
+(in-product `/plugin` Discover tab). #5 is lowest-yield and optional — a 1-min
+no-account paste that only lands here because this env can't drive the form.
 
 (**Resolved 2026-07-29 — advisor session, queue 6 → 2:** the founder took the
 `MEMORY_PRESET=1` go decision live — #835 merged, the preset + `nlqdb_remember`
@@ -166,6 +168,21 @@ automated OIDC lane, tracked by scorecard row #22.)
      shipped 2026-07-29 (#835), so a signed-in reviewer can now exercise **all five tools**
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
+
+5. **⏱ ~1 min · since 2026-07-30 — Paste one URL into skillsclaude.org's submit
+   form** (reach R-09 venue #5, ledger yield rolls into `github` row #16).
+   **Optional, lowest-yield** — a marginal skill directory (~7,200 skills) whose
+   listing links the repo, so it adds no separate attribution. It sits in this
+   queue only because it is **no-account** yet needs a browser paste the
+   automation env blocks (P2 2026-07-30: `skillsclaude.org/submit` is a Next.js
+   SPA whose `<form>` has no `action`, and the classifier blocks a headless
+   submit). The site is not an arbitrary-repo crawler — both nlqdb skills have
+   been public since 07-22 yet `?q=nlqdb` returned 0 eight days later — so it
+   must be submitted. Open `https://skillsclaude.org/submit` (no sign-in) and
+   paste `https://github.com/nlqdb/nlqdb` (it contains
+   `apps/web/public/agent-artifacts/nlqdb-memory/SKILL.md` +
+   `nlqdb-docs-memory/SKILL.md`). On submit, tick reach R-09 #5 to *listed* with
+   the directory URL; nothing else changes (no utm key — `github`-ref yield).
 
 ## Suggestions needing approval (to amend the guidelines)
 
