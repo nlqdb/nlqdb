@@ -1,8 +1,58 @@
 # E-09 — Schema value-linking (surface categorical column values to the planner)
 
-**Status:** ⬜ not started — **scoped from the run-156 diagnosis** (2026-07-30)
+**Status:** ⛔ **BLOCKED — contradicts [`GLOBAL-037`](../../../../decisions/GLOBAL-037-schema-only-llm-egress.md) (P1, run 158, 2026-07-30).** Cannot proceed as scoped without a founder supersession of GLOBAL-037 (a settled privacy/egress decision). See the P1 block below.
 **Sequence:** Engine 9 · **Risk:** med · **Runs:** ~2 · **Prereqs:** E-01 ✅ · **Gate:** none (all code)
-**Cross-link:** `ask-pipeline`, `db-adapter`, `schema-widening`, `quality-eval` (`SK-QUAL-023`) · moves **`SK-PIVOT-016` criterion 4**
+**Cross-link:** `ask-pipeline`, `db-adapter`, `schema-widening`, `quality-eval` (`SK-QUAL-023`) · would move **`SK-PIVOT-016` criterion 4**
+
+## ⛔ P1 — this slice is forbidden by GLOBAL-037 (run 158)
+
+Run 158 started to implement E-09 and, reading the `ask-pipeline` feature's
+governing GLOBALs before editing (`CLAUDE.md` §5/P1), found that E-09 as scoped
+**directly contradicts a settled decision**. [`GLOBAL-037`](../../../../decisions/GLOBAL-037-schema-only-llm-egress.md)
+names this lever by its old name and forbids it verbatim:
+
+> "The `value-retrieval` engine lever — which would sample a few real
+> cell-values per column into the prompt — is **not built**, and no future
+> lever may add cell-values to third-party LLM egress without superseding
+> this GLOBAL."
+
+E-09's mechanism — query-time `SELECT DISTINCT` sampling of categorical column
+values appended to the plan prompt — **is** the value-retrieval lever. It sends
+real user cell-values to a third-party LLM on both the product (`/v1/ask`
+cache-miss) and the eval (`runner.introspectSchema`) paths. Mirroring it in the
+eval to move the number is exactly the "measures a capability the product
+doesn't ship" metric-gaming E-09 itself rejected — and here the product legally
+*can't* ship it. GLOBAL-037's own rationale also records that value-sampling
+flips **~0 BIRD rows standalone** (`SK-QUAL-014`, run 18), so the accuracy
+premise behind the run-156 diagnosis is contested, not just the egress posture.
+
+The run-156 scoping missed this because E-09's **Read first** list omitted
+GLOBAL-037 (the `ask-pipeline` feature lists it under *GLOBALs governing this
+feature*; the slice doc did not). Runs 156 (null) and 157 both deferred E-09 for
+sizing, so the forbidden mechanism was never actually built — the P1 caught it
+at the implementation gate, as designed.
+
+**What would unblock it — two paths, neither a daily patch:**
+
+1. **A GLOBAL-037-compliant re-scope (agent-movable, engine track).** Categorical
+   domains can reach the planner as *schema* rather than *cell-values* if they
+   are declared in the DDL — a Postgres `ENUM` type or a `CHECK (kind IN (…))`
+   constraint on the `agent_memory_v1` preset. DDL/types/constraints are exactly
+   the "structural metadata" GLOBAL-037 permits. This helps only DBs whose schema
+   declares the domain (not a stranger's free-text column), and it is a
+   preset-schema design question (interacts with `SK-PIVOT-007` "no new DDL for a
+   pack" — this is a preset change, not a pack change), so it needs its own
+   scoping run, not a rushed patch.
+2. **Founder supersession of GLOBAL-037 (founder-only, privacy decision).** Not
+   value-decidable by an agent (`GLOBAL-033` classes egress trade-offs as
+   founder-owned); GLOBAL-037 already decided this *closed* on ~0 measured
+   benefit, so re-opening it needs new evidence, not a re-ask. **Not queued to
+   `blocked-by-human.md`** — parking an already-settled decision as a founder
+   question is a rule-4 violation.
+
+Until one of those happens, `SK-PIVOT-016` criterion 4's ops-temporal 0/4 has no
+agent-movable, GLOBAL-037-compliant lever. The steps below are retained only as
+the record of the rejected mechanism; **do not implement them.**
 
 ## Why this slice exists — the run-156 diagnosis
 

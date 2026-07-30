@@ -18,18 +18,27 @@ yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-in
 Acquisition levers stay pullable when no dogfood lever is — as does premium-chain work
 (`SK-LLM-017`, row #20), one rank below.
 
-**Worst number today (run 157, 2026-07-30):** the **acquisition bottleneck — row #7 surface
-yield: 7 clicks / 517 impr / pos 17.8** (GSC 28d 06-30→07-28, live this run). Rule 6 is GREEN
-(`main@7fc102e` CI success), so the worst *agent-movable* number is distribution yield: the site
-earns impressions but almost no clicks, and GSC confirms breadth-not-CTR is the ceiling. This
-run pulled the canonical priority-1 lever — **strengthen the top strengthen-next page** (see
-Last change). The weekly-focus dogfood gate (below) is one rank above but its next lever (E-09
-schema value-linking) is a hot-path perf change already scoped in open PR #879, not a daily-sized
-patch this run should duplicate.
+**Worst number today (run 158, 2026-07-30) — NULL RUN with a P1 finding:** the weekly-focus
+number (`SK-PIVOT-016` dogfood gate, criterion 4 temporal ops **0/4**) is the worst agent-movable
+number, and this run set out to move it via its own scoped lever **E-09 (schema value-linking)**.
+Reading the `ask-pipeline` feature's governing GLOBALs before editing (P1/§5), the run found
+**E-09 as scoped directly contradicts [`GLOBAL-037`](decisions/GLOBAL-037-schema-only-llm-egress.md)**:
+its mechanism — sampling real cell-values into the LLM plan prompt — **is** the `value-retrieval`
+lever GLOBAL-037 forbids *by name* ("schema-only egress; user cell-values are never sent … no
+future lever may add cell-values to third-party LLM egress without superseding this GLOBAL").
+GLOBAL-037's own rationale also records value-sampling flips ~0 BIRD rows (`SK-QUAL-014`). Per P1
+the code was **discarded** (built + proven offline, then reverted); the run ships the finding:
+E-09 is now marked ⛔ **P1-blocked** in its worksheet + both track INDEXes so no future run
+re-picks it. **No agent-movable, GLOBAL-037-compliant lever exists for criterion 4 today** — the
+compliant re-scope (categorical domains as DDL `ENUM`/`CHECK` = legitimate schema egress) is a
+preset-schema design question for a future engine-track run, not a daily patch; a founder
+supersession of GLOBAL-037 is founder-only (settled closed on ~0 benefit — not re-queued, rule 4).
+The priority-1 distribution lever (row #7) was pulled last run (157); one lever per run, so this
+run's output is the P1 finding.
 **Weekly-focus gate (unchanged, don't overwrite mid-week):** `SK-PIVOT-016` dogfood gate **0/5**
-— binding on **criterion 4** (memory-eval temporal axis, ops 0/4). Root cause diagnosed + scoped
-as engine slice **E-09 (schema value-linking)** in open PR **#879**; not re-pulled here (step-0
-overlap + hot-path scope).
+— binding on **criterion 4** (memory-eval temporal axis, ops 0/4). Its named engine lever **E-09
+is now ⛔ P1-blocked by GLOBAL-037** (this run); criterion 4 has no compliant agent-movable lever
+until a DDL-`ENUM`/`CHECK` re-scope lands.
 **Top `blocked-by-human` bullet:** fire the Show HN launch sequence (⏱ ~30 min,
 **idle 47 days since 06-13**) — the only bullet that can move real strangers off 0, still
 condition-gated on the `SK-PIVOT-016` gate (**0/5**, every criterion agent-movable). Queue
@@ -40,19 +49,19 @@ moved since the 07-27 partial checkpoint); rows **#4/#5/#16**'s stranger-depende
 (N = 0 until the launch bullet fires); row **#15**'s opencheck arm (free-lane saturation, remedy
 costs money ⇒ rule 4).
 
-**Rule 6 — GREEN.** `main@7fc102e` CI job is **success** (run 155's fix #877 merged; five daily/
-reach/dogfood PRs since all green on push). All six `deploy-*` green ⇒ production serves current
-build. On this run's branch head: `bun install` clean · `bun run typecheck` all workspaces EXIT=0
-· `bun run lint` touched file clean (41 warnings pre-existing, 0 errors) · touched-scope test
-`apps/web/src/data/solve.test.ts` **15 pass / 0 fail**.
-Open PRs (4): **#880** (reach R-05, acquisition ledger docs), **#879** (daily run 156, null —
-scorecard + E-09 engine slice docs), **#864** (changesets release), draft **#719** (oldest,
-**13 days**). This run's only file (`apps/web/src/data/solve.ts`) overlaps **none** of them.
+**Rule 6 — GREEN.** `main@54446f0` push CI job is **success** (CI + Security + Release npm all
+green; five daily/reach/dogfood PRs since run 155's fix #877, all green on push). Deploy workflows
+last-green ⇒ production serves current build. This run's branch is docs-only (null run):
+`bun run typecheck` all workspaces EXIT=0 (verified before the E-09 code was discarded) · the
+final tree touches only 4 `.md` files, which biome/tests don't process.
+Open PRs (3): **#882** (reach R-09, skillsclaude.org venue park), **#864** (changesets release —
+`@nlqdb/cli` utm republish), draft **#719** (oldest, **13 days**). This run's files (E-09 worksheet
++ two track INDEXes + this scorecard) overlap **none** of them.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel** (RUM + referral re-pulled live 07-30 ~09:17Z; users/DBs carried from 07-27 remote-D1 — no CF/D1 write-token this session to re-pull the roster, stable across runs 143–156, no channel newly live) | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF RUM) | **265 pageloads / 265 visits** raw (07-23→07-30 live, `bun scripts/rum-pull.ts`). **Real-browser floor 43 pl / 43 vis** (+9 vs 34); synthetic 222 pl. Real-browser landings led by `nlqdb.com/` (8), **`docs…/agent-memory/` (4)**, `/agents/` (4), `/security/hall-of-fame/` (2), docs SDK-reference pages. Client mix real-browser: Chrome·SG 24, Chrome·US 7, Chrome·IN 4, plus MobileSafari/Firefox. Header reports SAMPLED at interval ≤1.020 even on 7d — at that interval counts are effectively unscaled, but read them as estimates | the cut is a printed rule: `bot=1` or `userAgentBrowser ∈ {Unknown, ChromeHeadless}`, with **every removed row listed** so a real visitor it swallows is visible. Conservative ⇒ real-browser is a floor. Read at **7d**: a 28d pull comes back sampled at interval 10 |
+| | **Funnel** (RUM + referral re-pulled live 07-30 ~17:35Z; users/DBs carried from 07-27 remote-D1 — no CF/D1 write-token this session to re-pull the roster, stable across runs 143–158, no channel newly live) | | exclude synthetic stranger-test walker traffic |
+| 1 | Visits, 7d (CF RUM) | **Real-browser floor 41 pl / 41 vis** (07-23→07-30 live, `bun scripts/rum-pull.ts`; −2 vs run 157's 43, within noise). Real-browser landings led by `nlqdb.com/` (7), **`docs…/agent-memory/` (4)**, `/agents/` (4), docs SDK-reference pages. Client mix real-browser: Chrome·SG 24, Chrome·US 6, Chrome·IN 2, plus MobileSafari/Firefox/ChromeMobile. Header reports SAMPLED at interval ≤1.020 even on 7d — at that interval counts are effectively unscaled, but read them as estimates | the cut is a printed rule: `bot=1` or `userAgentBrowser ∈ {Unknown, ChromeHeadless}`, with **every removed row listed** so a real visitor it swallows is visible. Conservative ⇒ real-browser is a floor. Read at **7d**: a 28d pull comes back sampled at interval 10 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev (`*@example.com`, `*@preview.dev`) — live remote-D1 07-27, roster byte-identical a 4th run; no channel newly live to produce a signal |
 | 3 | DBs total | **254** (07-27 live remote-D1, flat across runs 143–147; synthetic — walker/preview churn) | stranger subset ~0 (row #2) |
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not measurable** (`SK-ONBOARD-007`). Re-verified live 07-27: `databases.source_json is not null` = **0** | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
@@ -85,8 +94,8 @@ scorecard + E-09 engine slice docs), **#864** (changesets release), draft **#719
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
-| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **1/7** (D-03 ✅) — gate **0/5** (criterion 4: temporal 2/7 = synthetic 2/3 + ops 0/4, not yet green; scoped as E-09 in #879) | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md). D-01 🟡 in flight; **D-03 ✅ done 07-29** (first ops-corpus EX); D-07 ⛔ blocked on D-04 |
-| | Memory-quality eval (`SK-QUAL-023`) | **27-q free-chain EX 59.26% (16/27)** — run [30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690) 2026-07-29, `main@5cc4bd1`, `resumable:false`; p50 1074 ms / p95 4406 ms. **First dispatch over the full set (15 synthetic + 12 repo-ops docs→memory questions) — NOT a regression from the old 15-q 93.33% (run 69), a broader+harder denominator that finally measures the workload the launch gate depends on.** Per-axis (free): consolidation 4/5, analytical 4/5, retrieval 3/5, forgetting 3/5, **temporal 2/7 (synthetic 2/3, ops 0/4)** — the weak axis gating `SK-PIVOT-016` criterion 4; each ops-temporal miss's generated SQL is in the run summary (the next engine lever) | 27 gold-verified questions, 5 axes; free-only, no baseline (a measurement, never canonical) |
+| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **1/7** (D-03 ✅) — gate **0/5** (criterion 4: temporal 2/7 = synthetic 2/3 + ops 0/4, not yet green; its engine lever **E-09 ⛔ P1-blocked by GLOBAL-037**, run 158) | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md). D-01 🟡 in flight; **D-03 ✅ done 07-29** (first ops-corpus EX); D-07 ⛔ blocked on D-04 |
+| | Memory-quality eval (`SK-QUAL-023`) | **27-q free-chain EX 59.26% (16/27)** — run [30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690) 2026-07-29, `main@5cc4bd1`, `resumable:false`; p50 1074 ms / p95 4406 ms. **First dispatch over the full set (15 synthetic + 12 repo-ops docs→memory questions) — NOT a regression from the old 15-q 93.33% (run 69), a broader+harder denominator that finally measures the workload the launch gate depends on.** Per-axis (free): consolidation 4/5, analytical 4/5, retrieval 3/5, forgetting 3/5, **temporal 2/7 (synthetic 2/3, ops 0/4)** — the weak axis gating `SK-PIVOT-016` criterion 4; the value-linking fix scoped for it (E-09) is **⛔ P1-blocked by GLOBAL-037** (run 158 — cell-value egress forbidden), so this axis has no compliant agent-movable lever until a DDL-`ENUM`/`CHECK` re-scope | 27 gold-verified questions, 5 axes; free-only, no baseline (a measurement, never canonical) |
 
 ## Shipped distribution
 
@@ -94,39 +103,36 @@ scorecard + E-09 engine slice docs), **#864** (changesets release), draft **#719
 `apps/web/src/data/blog.ts` — the one place the list exists; venue variants and full
 lesson gists stay in `research/distribution-queue.md`.
 
-- **This run (157):** no new blog post — the lever strengthened an existing `/solve` page (not a
-  new blog surface); distribution queue at 2 (< 3, no forced publish); drafting skipped (P5).
-  Dev.to drip (step 3.3) **throttled no-op** — newest article 15.9 h ago (< 20 h guard), expected
-  on all but the first run of the day; queue line untouched. Last canonical blog post remains
-  run 151's `/blog/guard-advertised-capabilities-against-code/`.
+- **This run (158) — NULL RUN:** step 3 (artifact/publish) is skipped entirely per the loop — a
+  null run ships only the step-1 scorecard update + the recorded P1 finding (no blog post, no
+  queue drain, no dev.to drip). Last canonical blog post remains run 151's
+  `/blog/guard-advertised-capabilities-against-code/`.
 
 ## Last change
 
-**2026-07-30 (run 157)** — **Number moved: query-intent coverage on the top strengthen-next
-page — a named direct input to row #7 surface yield.** GSC (live this run) shows
-`/solve/running-total-cumulative-sum-in-sql/` is the **highest-impression page still off page 1
-— 91 impr / pos 36.7 / 0 clicks** (the canonical priority-1 "strengthen the page GSC shows losing
-winnable clicks" lever). The page was written Postgres-only, yet GSC records it ranking — poorly —
-for two intents it never answered on-page: **dialect** ("cumulative sum snowflake", pos 39) and
-**definitional** ("cumulative total meaning", pos 85).
+**2026-07-30 (run 158) — NULL RUN, P1 finding (no delta by design).** The lever this run
+attempted was the weekly-focus engine slice **E-09 (schema value-linking)**, the named fix for
+`SK-PIVOT-016` criterion 4 (memory-eval temporal ops 0/4). Before editing, per P1/§5 the run read
+the `ask-pipeline` feature's governing GLOBALs and found E-09 **directly contradicts
+[`GLOBAL-037`](decisions/GLOBAL-037-schema-only-llm-egress.md)** — "schema-only egress; user
+cell-values are never sent to any third-party LLM … no future lever may add cell-values to
+third-party LLM egress without superseding this GLOBAL." E-09's mechanism (sample low-cardinality
+categorical column values via `SELECT DISTINCT`, append them to the plan prompt) **is** the
+`value-retrieval` lever GLOBAL-037 forbids by name, on both the product `/v1/ask` cache-miss path
+and the eval mirror.
 
-**The change.** Two FAQs appended to that entry in `apps/web/src/data/solve.ts` (4 → 6 FAQs),
-each mapping to one unmet GSC query and rendered into both visible content and the page's
-`FAQPage` JSON-LD: (1) *"What does a running total (cumulative sum) actually mean?"* — the
-definition + the grand-total contrast; (2) *"Does the running-total query work in Snowflake,
-BigQuery, or MySQL?"* — honest: the `SUM() OVER (ORDER BY)` pattern is ANSI-standard and portable,
-nlqdb runs it on Postgres today. No new capability claim; no other page touched.
+**What happened.** A full implementation was written and proven **offline** (DDL parser +
+bounded-DISTINCT sampler in `packages/db`, product wiring in `orchestrate.ts`, eval mirror in
+`runner.ts`; typecheck/lint/tests green; the smoke produced exactly the right hints, e.g.
+`facts.kind values: 'open_question','decision_status',…`), then — on finding the P1 conflict —
+**all code was discarded** (tree back to `main`). Per P1 the run does not rationalise around the
+decision; per GLOBAL-033 it is not re-queued to the founder (GLOBAL-037 is a settled privacy call).
 
-**Measure → change → re-measure.** Before: 4 FAQs (how / GROUP BY / BYO / moving-avg); dialect +
-definitional intent unanswered on-page; baseline pinned pos 36.7 @ 91 impr / 0 clicks. After:
-6 FAQs, both long-tail intents answered + 2 new `FAQPage` entries; `solve.test.ts` 15 pass
-(FAQ ≤ 80-words + no-ID-leak guards green). Ranking re-measure is a next-week GSC read against the
-recorded baseline (position moves are not same-day — the SK-LLM-036 rule for engine work; for
-distribution work the tracked baseline is the delta record, per runs 145/149).
-
-**No new `SK-*`** (P5/D5): additive content within the existing `SK-SOLVE-001/002/003` shape; no
-decision changes. **KPI (GLOBAL-025):** advances **onboarding/distribution** — widens the organic
-capture surface at the search moment; **degrades none** (content-only, all gates green).
+**Shipped (the finding):** E-09's worksheet + both track INDEXes + this scorecard now mark E-09
+⛔ P1-blocked and record the only two unblock paths — a GLOBAL-037-compliant re-scope (categorical
+domains as DDL `ENUM`/`CHECK`, which *is* permitted schema egress) or a founder supersession.
+**No new `SK-*`** (a P1 conflict against an existing GLOBAL, not a new decision). **KPI
+(GLOBAL-025):** none moved (null run); **none degraded** (docs-only). Rule 6 GREEN.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
