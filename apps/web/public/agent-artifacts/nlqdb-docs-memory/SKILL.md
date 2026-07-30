@@ -37,6 +37,10 @@ aggregate query unreliable. If an item has no id, no status, no date and no
 edge, **skip it** — a skipped row costs nothing; a fabricated one poisons every
 count built on it.
 
+**Never store secret values.** If a doc mentions a credential — an API key,
+token, password — store only its *metadata* (service, key name, scope, dates).
+The value itself never enters a `content` field, even redacted.
+
 Keep each `content` a single self-describing sentence including the id
 (`"SK-AUTH-004 status: implemented"`, not `"implemented"`), so a row still
 reads correctly on its own in a result set.
