@@ -56,43 +56,25 @@ surface counts (row #6) never answered.
 | 20 | Integration marketplaces (Supabase integrations, Vercel templates, Neon partners, Astro integrations) | venue slug (`supabase`, `vercel`, …) | untried | `/reach` | verify each venue's submission mechanism (P2), one per run |
 | 21 | Demo video (60-second one-command memory setup; site-embedded + shareable) | `youtube` | untried | founder-assisted | script + record once R-04 guide is live |
 | 22 | Claude Code plugin (own git marketplace → Anthropic `claude-community`) | `claude-plugin` | **in-flight** — nlqdb is its own marketplace as of this PR: `.claude-plugin/marketplace.json` at the repo root lists one plugin whose source *is* `apps/web/public/agent-artifacts`, so `/plugin marketplace add nlqdb/nlqdb` + `/plugin install nlqdb-memory@nlqdb` wires the hosted MCP server **and** both R-07 skills in one step, with zero copies to drift (verified end-to-end on the Claude Code CLI: validate passes, 2 skills + 1 MCP server). No account, no review, permanent — the whole channel is agent-shippable, unlike every R-05 registry. The key rides `plugin.json`'s `homepage`, the one link `/plugin` surfaces; the bundled skills keep `agent-artifacts` (row #12), so plugin-install yield and skill-install yield stay separable. **Two downstream venues need nothing from us:** [claudemarketplaces.com](https://claudemarketplaces.com/about) (~300 k monthly visitors) crawls GitHub **daily for `.claude-plugin/marketplace.json`** — no submission exists — and SkillsMP crawls every public repo for `SKILL.md`. **One needs a human:** Anthropic's `claude-community` marketplace (in-product `/plugin` Discover tab) takes only a signed-in form (`clau.de/plugin-directory-submission`, P2-verified 2026-07-29 — `anthropics/claude-plugins-community` is a read-only mirror), so its payload is now **parked** in [`blocked-by-human.md`](../blocked-by-human.md) #3. `claude-plugins-official` is curated with **no application process** — nothing to submit, ever | `/reach` → founder | founder submits the parked `clau.de` payload; watch `/app/admin` for `claude-plugin` yield → live; re-verify crawl pickup at R-08 (2026-08-22) |
+| 23 | `mcp.directory` (MCP server directory) | `mcpdir` | **in-flight** — P2 2026-07-30: **ingests the official MCP registry** (its `/submit` page documents "auto-discover / auto-pull" + a "claim" path for already-discovered servers — the PulseMCP #5 crawl-fed pattern), plus a **no-account** submit form (required: GitHub repo URL; optional npm/PyPI/description/email; 24 h review). Measured live 2026-07-30: `mcp.directory/?q=nlqdb` → **0**, not yet ingested 8 days post row-#3 publish. Ingested yield inherits the registry `websiteUrl`'s `mcp-registry` key until the listing is claimed with an `mcpdir`-tagged homepage. Static page is a Next.js SPA (no form action) → not cleanly agent-POST-able | `/reach` | re-check at the R-08 monthly (2026-08-22); if still absent, submit the no-account form (repo `https://github.com/nlqdb/nlqdb`, `https://nlqdb.com/agents/?utm_source=mcpdir`, description) then email to claim |
 
-**Live: 4 · in-flight: 8 · submitted awaiting merge: 1 · blocked-by-human: 1 · untried: 8.** The number that
+**Live: 4 · in-flight: 9 · submitted awaiting merge: 1 · blocked-by-human: 1 · untried: 8.** The number that
 matters weekly: **channels live with attributable yield** (`/reach` step 1
-records it; target per the 2026-07-19 focus: +3 via R-05). npm joined the
-live set 2026-07-20 (homepage links tagged); GitHub joined 2026-07-20 (README
-CTA tagged `utm_source=github`). No partials remain — every published channel's
-yield is attributable. **Row #3 published 2026-07-22** (agent-side, DNS
-domain-verify — no founder action was needed after all). **The cascade is
-narrower than this ledger claimed:** measured live 2026-07-25, three days on,
-only **Glama** ingested it (row #6, live within ~1 day). Smithery has no
-documented registry-ingestion path at all — its own docs describe a publish
-flow, so row #4 needed a founder publish — done 2026-07-26 — and
-PulseMCP treats the registry as one input to crawl + manual curation (row #5
-keeps a dated re-check trigger rather than a founder minute). Registry presence
-buys one listing automatically, not the directory long tail. So live-count
-growth now runs through the submission queues — Smithery #4, mcp.so #7 and Cursor
-`cursor.directory` #8 published/submitted 2026-07-26, `awesome-mcp-servers` PR #10 awaiting
-merge — plus the human-norm venues; only the Anthropic connector dir #9 stays
-parked (plan-gated). Each flips to live once a claimed listing exposes the
-utm-tagged `websiteUrl` and yield lands on `/app/admin`. Every R-05 venue is
-resolved (published, crawl-fed, or payload-parked) — none is waiting on agent work.
-**Row #22 is the exception to "growth runs through submission queues":** a Claude
-Code marketplace is just a JSON file in our own repo — no account, no review, no
-founder minute — and the ~300 k-visitor aggregator that indexes it crawls for
-exactly that file. Venues an agent can *publish* outrank ones it can only *submit to*.
+records it; target per the 2026-07-19 focus: +3 via R-05). Live = organic,
+dev.to, github, npm — every published channel's yield is attributable, no
+partials. All R-05 venues are resolved (published, crawl-fed, or payload-parked).
 
 ## Why this order
 
-Registries (rows 3–10) come first: they intercept the coding-agent search
-moment the reach thesis bets on, and one listing is permanent — unlike a
-Reddit post its yield compounds. The 2026 mechanism, corrected against live
-evidence 2026-07-25: **publish once to the official registry (row #3) → expect
-exactly the crawlers that document ingestion to pick it up** — that is Glama,
-and PulseMCP partially. Every other venue needs its own submission (Smithery,
-mcp.so, Cursor, Anthropic connector dir, `awesome-mcp-servers`), so "it will
-appear on its own" is the assumption to test with a live query, not to record.
-Human-norm venues (13, 14, 18) are cheap for agents
-to *prepare* but blocked on founder posting; they stay queued until the
-founder drains them. Paid/editorial (19) waits for proof from the free
-channels.
+Registries (rows 3–10, +23) come first: they intercept the coding-agent search
+moment the reach thesis bets on, and one listing is permanent — its yield
+compounds, unlike a Reddit post. **The cascade is narrow** (corrected against
+live evidence): publishing once to the official registry (row #3) reaches only
+the crawlers that *document* ingestion — Glama (row #6), PulseMCP partially
+(#5), and `mcp.directory` claims to (#23, pending). Every other venue needs its
+own submit/publish, so "it appears on its own" is a live query to run, never an
+assumption to record. **Venues an agent can *publish* outrank ones it can only
+*submit to*** — row #22 (a Claude Code marketplace = one JSON file in our repo,
+crawled by a ~300 k-visitor aggregator) is the cheapest permanent listing there
+is. Human-norm venues (13, 14, 18) are cheap to *prepare* but blocked on the
+founder posting; paid/editorial (19) waits for proof from the free channels.
