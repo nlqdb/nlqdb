@@ -49,7 +49,7 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   still reports canonical drift (Google indexes non-slash `/agents`) but prod is
   correct (301→slash, self-canonical) — GSC naming the redirect source, nothing
   to fix.
-- Registry/directory listings (last read live 2026-07-30): official registry #1
+- Registry/directory listings (last read live 2026-07-30): official registry #3
   ✅ active (`com.nlqdb/nlqdb` v0.1.1, `?utm_source=mcp-registry`) · Smithery #4
   ✅ (07-27) · Glama #6 crawl-fed · mcp.so #7 absent (approval queue) · Cursor #8
   submitted · `mcp.directory` **#23 new this cycle — absent, registry-ingestion
