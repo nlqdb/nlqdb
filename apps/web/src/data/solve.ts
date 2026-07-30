@@ -1510,6 +1510,14 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         q: "Can nlqdb do a moving average or 7-day rolling sum too?",
         a: "Yes — those are the same window-function family with a frame clause: `SUM(...) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)` for a 7-day rolling sum. Ask for a 'moving' or 'rolling' total and nlqdb compiles the frame, then shows the SQL so you can confirm the window width. The honest limit: name the window size and the order it slides over.",
       },
+      {
+        q: "What does a running total (cumulative sum) actually mean?",
+        a: "A running total is a column summed in order, so each row shows the total of everything up to and including it — day 1 alone, then day 1 + 2, then day 1 + 2 + 3, and so on. 'Cumulative sum' and 'running total' name the same thing. It differs from a grand total (one final number) because it keeps every row and grows down the sequence you name.",
+      },
+      {
+        q: "Does the running-total query work in Snowflake, BigQuery, or MySQL?",
+        a: "The pattern is ANSI-standard: `SUM(amount) OVER (ORDER BY day)` runs unchanged on Postgres, Snowflake, BigQuery, and MySQL 8+. Older MySQL (< 8.0) has no window functions, so it needs a self-join or session variable instead. nlqdb runs your ask on Postgres today and shows the compiled SQL — the running total it writes is the same clause you'd paste into any modern warehouse.",
+      },
     ],
     sources: [
       {
