@@ -20,7 +20,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   description="Mint, list, and revoke nlqdb API keys."
 >
   <div class="page page--keys" id="keys-shell" data-api-base={apiBase} hidden>
-    <Topnav current="chat" />
+    <Topnav current="keys" />
     <main class="page__main page__main--keys">
       <KeysPanel client:only="react" apiBase={apiBase} />
     </main>
