@@ -26,7 +26,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 2 | ~10 min | Glama: Make a **Release** (parked Dockerfile) so the server listing scores, push the badge to `awesome-mcp-servers` PR #10984; claim the *connector* (its `/.well-known/glama.json` ships with the repo) + hand test creds for health | 2026-07-29 |
+| 2 | ~5 min | Glama: push the score badge to `awesome-mcp-servers` PR #10984 (listing is claimed + released, tier B); claim the *connector* (its `/.well-known/glama.json` ships with the repo) + hand test creds for health | 2026-07-29 |
 | 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
 Only #1 can move real strangers (scorecard row #2); #3 is the only one that
@@ -83,26 +83,17 @@ automated OIDC lane, tracked by scorecard row #22.)
    (`D-01..D-07`, one slice per criterion), the founder-set weekly focus
    number as of 07-28. Gate progress: **0/5**.
 
-2. **⏱ ~10 min · since 2026-07-29 — Glama release → score badge on
-   `awesome-mcp-servers` #10984; claim + heal the connector.** The maintainer
-   gates the [#10984](https://github.com/punkpeye/awesome-mcp-servers/pull/10984)
-   merge on a claimed, *scored* Glama server listing + its badge. Founder
-   submitted + claimed the server listing 2026-07-29
+2. **⏱ ~5 min · since 2026-07-29 — Glama badge onto `awesome-mcp-servers`
+   #10984; claim + heal the connector.** The scored-listing prerequisite is
+   **done** — server listing submitted, claimed and released 2026-07-29
    ([`glama.ai/mcp/servers/nlqdb/nlqdb`](https://glama.ai/mcp/servers/nlqdb/nlqdb),
-   `author:official` — the committed root `glama.json` did the org-repo claim).
-   Remaining, in order:
-   - **Score:** on the listing's Dockerfile admin page paste + Deploy, then
-     **Make Release** — scoring stays "unavailable" until a release exists.
-     `tools/list` never calls the API, so a placeholder key (passes the
-     `sk_mcp_` prefix gate) suffices and no real secret goes in the image:
-     `FROM node:22-slim` · `RUN npm i -g @nlqdb/mcp` ·
-     `ENV NLQDB_API_KEY=sk_mcp_glama_inspection_placeholder` ·
-     `ENTRYPOINT ["nlqdb-mcp"]`. Glama also flags "no LICENSE" (GitHub
-     detects our FSL file as `NOASSERTION`); root `package.json` now declares
-     `FSL-1.1-ALv2` — if the flag still blocks the release, ask
-     support@glama.ai.
-   - **Badge:** once a score shows, append to the entry line on your fork
-     branch `add-nlqdb` and #10984 unblocks:
+   `author:official`, release `0.1.0`, tier **B**; the license "F" side-grade
+   is inherent to `GLOBAL-019` — GitHub's detector doesn't ship FSL,
+   `getsentry/sentry` itself reads `NOASSERTION` — and sits outside the
+   quality tier, ignore it). Remaining:
+   - **Badge:** append to the entry line on your fork branch `add-nlqdb` —
+     the maintainer's stated merge gate on
+     [#10984](https://github.com/punkpeye/awesome-mcp-servers/pull/10984):
      `[![nlqdb MCP server](https://glama.ai/mcp/servers/nlqdb/nlqdb/badges/score.svg)](https://glama.ai/mcp/servers/nlqdb/nlqdb)`
    - **Connector** (`glama.ai/mcp/connectors/com.nlqdb/nlqdb`, crawl-fed,
      health *Unhealthy* 07-29): once this repo's `apps/mcp` deploy ships
@@ -111,10 +102,12 @@ automated OIDC lane, tracked by scorecard row #22.)
      Glama account uses another email, edit `apps/mcp/src/index.ts` first.
      Once claimed, set the website to
      `https://nlqdb.com/agents/?utm_source=glama` (flips ledger row #6 to
-     attributable) and give support@glama.ai demo-account credentials so the
-     health check can pass OAuth — the hosted transport is OAuth-only by
-     design (`SK-MCP-001`), so unhealthy-without-credentials is expected, not
-     a server bug.
+     attributable) and email support@glama.ai about health: the hosted
+     transport is OAuth-only by design (`SK-MCP-001`) so their checker stops
+     at the 401 wall, and nlqdb has no passwords (`SK-AUTH-002`) — explain
+     signup is free (magic link / GitHub / Google), offer to seed a demo
+     workspace for an email they name, and ask how they mark OAuth-only
+     connectors. Then click **Sync Server** on the admin page.
    Ledger rows #6 + #10 in
    [`acquisition-channels.md`](./research/acquisition-channels.md) track both.
 
