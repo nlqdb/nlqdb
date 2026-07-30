@@ -102,8 +102,14 @@ it must **never** delay the gate or the launch.
 both corpora** — the last unmeasured half closed by D-03 this run — but not yet
 green: temporal **2/7** (synthetic 2/3, ops 0/4). The gate count is unchanged;
 what changed is that the ops temporal axis went from *unmeasured* to a concrete
-**0/4**, which is the named engine lever the next run pulls (SK-QUAL-023 run
-summary lists each miss's generated SQL). `/daily` step 1 restates this beside
+**0/4**, which is the named engine lever the next run pulls. Run 156 read the
+SK-QUAL-023 run summary and diagnosed the root cause — the planner is given
+DDL-only schema and guesses low-cardinality categorical values wrong
+(`kind='question'` vs `'open_question'`, `role='doc-sync'` vs `'sync'`) — and
+scoped the fix as engine slice
+[E-09](../engine/E-09-schema-value-linking.md) (schema value-linking); it is a
+hot-path change with a perf decision, not a one-run daily patch. `/daily` step
+1 restates this beside
 the launch bullet's age every run. The founder also reads it on
 **`/app/admin` → "Launch gate — SK-PIVOT-016"** (`SK-GTM-008`), which renders
 criteria 1–2 live from D1 and 3–5 as static-with-as-of constants; this table
@@ -115,7 +121,7 @@ stays canonical, so a criterion that moves is updated here **and** in
 | 1 | ≥ 100 real `/v1/ask` calls through the public MCP surface from the ops workload | ⬜ 0 | D-04 (+ D-02, D-05) |
 | 2 | First-10-queries success ≥ 95 % **on that workload** | ⬜ N = 0 | D-04 |
 | 3 | Zero silent data loss / wrong-answer-accepted incidents | ⬜ unstartable | D-04 |
-| 4 | Temporal golden queries pass | ⬜ **temporal 2/7** — synthetic 2/3 + **ops 0/4** (measured 2026-07-29, run 30413719690) | D-03 ✅ (measured) → engine fix |
+| 4 | Temporal golden queries pass | ⬜ **temporal 2/7** — synthetic 2/3 + **ops 0/4** (measured 2026-07-29, run 30413719690) | D-03 ✅ (measured) → engine fix [E-09](../engine/E-09-schema-value-linking.md) (schema value-linking; run-156 diagnosis) |
 | 5 | Live memory dashboard public on `/agents` | ⬜ unshipped | D-06 |
 
 Criterion 4's synthetic half stays `2/3`; D-03 added the **ops** corpus's 4
@@ -130,7 +136,7 @@ Tick on merge. Keep this list as the durable dogfood status (the scorecard's
 
 - [ ] D-01 — docs→memory extraction skill. **🟡 build in flight 2026-07-28 on branch `claude/docs-memory-skill`** (parallel agent owns the skill artifact). This worksheet is the tracking slice: do not rebuild it; on that branch's merge, record the artifact path here and tick.
 - [ ] D-02 — one-way re-sync hook (CI on merge, `docs/**` paths filter)
-- [x] D-03 — ops-corpus golden-query set (12 questions, 4 temporal) in the `SK-QUAL-023` family. **Done 2026-07-29:** authoring landed #847; this run dispatched [run 30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690) — 27-q free EX 59.26 %, ops temporal **0/4** (the next engine lever)
+- [x] D-03 — ops-corpus golden-query set (12 questions, 4 temporal) in the `SK-QUAL-023` family. **Done 2026-07-29:** authoring landed #847; this run dispatched [run 30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690) — 27-q free EX 59.26 %, ops temporal **0/4** → diagnosed + scoped as engine slice [E-09](../engine/E-09-schema-value-linking.md) (run 156)
 - [ ] D-04 — first `docs/` corpus sync + gate-progress readout (E-03 → #835 → sync)
 - [ ] D-05 — founder-ops goal pack (pack #2, SK-PIVOT-018)
 - [ ] D-06 — public memory dashboard on `/agents` (criterion 5)

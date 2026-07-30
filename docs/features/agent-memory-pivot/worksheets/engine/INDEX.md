@@ -53,6 +53,7 @@ copy with a real tool to point at), etc.
 | [E-06](E-06-agents-createform-preset.md) | Preset on-ramp on the **authed** create surface (`MEMORY_PRESET`-gated) — anon `/agents` CreateForm path infeasible (SK-PIVOT-010) | med | ~2 | E-01 ✅, WS-07 ✅, `MEMORY_PRESET=1` in prod ✅ (enabled 2026-07-26, founder-directed) | — | unblocked — buildable |
 | [E-07](E-07-memory-workload-analyzer.md) | Workload-analyzer rule: memory DB above N facts → recommend ClickHouse | med | multi | E-01 | depends on `multi-engine-adapter` / `engine-migration` features (Phase 3) | — |
 | [E-08](E-08-mcp-2026-07-28-revision.md) | MCP **2026-07-28** revision — SDK v2 + stateless Workers path (audited 2026-07-29; **trigger-gated**, `SK-MCP-015`) | high | multi (~4) | — | founder-gated at step 3 (live connector URL) | `mcp-server` feature; reach R-04/R-05 install strings |
+| [E-09](E-09-schema-value-linking.md) | **Schema value-linking** — surface low-cardinality categorical column values to the planner (the run-156 diagnosis of the temporal-axis 0/4) | med | ~2 | E-01 ✅ | none — all code | **moves `SK-PIVOT-016` criterion 4**; `ask-pipeline` / `db-adapter` / `SK-QUAL-023` |
 
 **Why this order:** E-01 anchors everything (every later slice writes to or
 queries it). E-02 makes the wedge tool-discoverable. E-03 is the
@@ -67,7 +68,10 @@ north-star (data-engine pillar) to the wedge. E-08 is last and **deliberately
 not sequenced**: it keeps the transport the wedge is delivered over on the
 current spec revision, but it is gated on a trigger (`SK-MCP-015`), not on
 the other slices — pull it when the trigger fires, whatever E-04..E-07 are
-doing.
+doing. E-09 is the run-156 diagnosis made pickable: the dogfood gate's
+temporal weak axis (criterion 4) is a **schema value-linking** gap, not a
+model gap — pull it as the weekly-focus engine lever when a run can budget
+the hot-path perf work + the memory-eval re-measure.
 
 ## Hard rules
 
