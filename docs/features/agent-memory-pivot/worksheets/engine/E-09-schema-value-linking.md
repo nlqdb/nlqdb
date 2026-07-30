@@ -10,9 +10,9 @@ The dogfood gate's weak axis is temporal EX: **2/7** (synthetic 2/3, **ops
 0/4**), the binding constraint on `SK-PIVOT-016` criterion 4. Run 156 read the
 per-question generated SQL from the `SK-QUAL-023` run summary
 ([30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690)) and
-found the ops-corpus misses share **one root cause**: the planner is given the
-schema as **DDL only** (`CREATE TABLE …`) and so **guesses the values of
-low-cardinality categorical text columns**, always plausibly and always wrong:
+found the misses across both corpora share **one root cause**: the planner is
+given the schema as **DDL only** (`CREATE TABLE …`) and so **guesses the values
+of low-cardinality categorical text columns**, always plausibly and always wrong:
 
 | Q | Axis | Guessed | Actual | Column |
 |---|------|---------|--------|--------|
@@ -25,8 +25,8 @@ low-cardinality categorical text columns**, always plausibly and always wrong:
 
 Q3/16/17/20/21 are pure value-guessing; Q18 is a relationship-comprehension
 gap. **`PlanRequest.schema` is a single string** (`packages/llm/src/types.ts`)
-and the product feeds it `db.schemaText` — DDL only (`orchestrate.ts:232`),
-byte-for-parity with the eval's `introspectSchema` (`tools/eval/src/runner.ts:359`).
+and the product feeds it `db.schemaText` — DDL only (`orchestrate.ts:232`), the
+same DDL-only shape the eval's `introspectSchema` produces (`tools/eval/src/runner.ts:359`).
 Neither ever shows the planner a single stored value. A real dogfood agent's
 `/v1/ask` hits the **exact** same wall — so this is a real product gap, not an
 eval artifact.
@@ -52,8 +52,8 @@ carries a perf decision, so it is a sequenced slice, not a one-run daily patch.
 
 ## Scorecard number it moves
 
-`SK-QUAL-023` **temporal EX** (row #97 / dogfood criterion 4): ops 0/4 → target
-green. Q3/16/17/20/21 are the directly-addressable misses; Q18 needs the
+`SK-QUAL-023` **temporal EX** (the scorecard memory-quality eval row / dogfood
+criterion 4): ops 0/4 → target green. Q3/16/17/20/21 are the directly-addressable misses; Q18 needs the
 relationship-hint half (Steps 2). Re-measured by the fast (~3 min) memory-eval
 CI dispatch on the slice branch — no baseline overwrite (`SK-QUAL-023` is a
 measurement, never canonical).
@@ -105,7 +105,7 @@ measurement, never canonical).
 - [ ] Value comments reach the planner in prod (cache-miss) and in the eval, same mechanism.
 - [ ] Bounded + OTel-spanned; free-tier budget unbroken; plan-cache key stable.
 - [ ] memory-eval temporal EX re-measured up (target ops 0/4 → green); no axis regresses.
-- [ ] Engine INDEX tracker + status ticked; scorecard row #97 / criterion 4 updated.
+- [ ] Engine INDEX tracker + status ticked; scorecard memory-quality (`SK-QUAL-023`) row / criterion 4 updated.
 
 ## Rollback
 
