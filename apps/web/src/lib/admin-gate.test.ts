@@ -15,7 +15,7 @@ describe("isAdminEmail (web copy)", () => {
   test("rejects strangers, lookalikes, and empty input", () => {
     expect(isAdminEmail("maya@builders.io")).toBe(false);
     expect(isAdminEmail("attacker@nlqdb.com.evil.io")).toBe(false);
-    expect(isAdminEmail("other@nlqdb.com")).toBe(false);
+    expect(isAdminEmail("other@salfati.group")).toBe(false);
     expect(isAdminEmail("")).toBe(false);
     expect(isAdminEmail(null)).toBe(false);
     expect(isAdminEmail(undefined)).toBe(false);

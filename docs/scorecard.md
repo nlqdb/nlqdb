@@ -18,25 +18,23 @@ yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-in
 Acquisition levers stay pullable when no dogfood lever is — as does premium-chain work
 (`SK-LLM-017`, row #20), one rank below.
 
-**Worst number today (run 154, 2026-07-29):** **the `SK-PIVOT-016` dogfood gate — 0/5
-green** (the founder-set weekly focus). Its prod prerequisite **cleared today**:
-`MEMORY_PRESET=1` shipped to `main` (#835, in `cce51a6` history; Deploy API green), and
-the founder's 2026-07-29 advisor session also merged the release PR #826 (`@nlqdb/mcp@0.1.1`
-+ `@nlqdb/sdk@0.2.2`), wired LogSnag, fixed the sharp CVE, and minted the `sk_mcp_` walker
-key — #865 (merged) reconciled the human queue **6 → 2**, since nudged to **3** by a new
-Glama-release bullet. But the gate still has **no pullable slice this run**: D-01
-(docs→memory skill) is unmerged on `claude/docs-memory-skill`, D-02 chains off it, D-03 was
-taken today by #857, and D-04+ chain off D-01. So this run took the highest-yield
-**agent-movable, non-overlapping** lever instead (below).
-**Why this UX-integrity lever (step-2 priority 2).** With the dogfood gate unpullable,
-distribution already worked today by runs 152/153 + reach #862/#863, and anti-rut
-discouraging a 5th-of-6 distribution copy lever, the pullable lever is a real
-anonymous-stranger-flow hardening: the `SK-ANON-015` nav guard was **per-file** — one
-`attachHandoff(` cleared the whole file, so a second unprotected cross-origin hop could
-silently drop a stranger's first prompt during the marketing→app handoff and stay green
-forever. Tightened to per-navigation for the `/app/`-literal hop (`client-nav-integrity.test.ts`),
-resolving anonymous-mode open-question #17 (10 → 9). Touches the anon nav test +
-`anonymous-mode/FEATURE.md` — files **no open PR changes**.
+**Worst number today (run 155, 2026-07-29):** **CI red on `main` (rule 6)** — the
+direct-to-`main` domain-move commit `6843f0d` ("salfati.group → nlqdb.com") mechanically
+rewrote two admin-gate reject-case assertions from `other@salfati.group` to
+`other@nlqdb.com`, which the `ADMIN_DOMAINS={nlqdb.com}` rule now *admits* → `expect(...).toBe(false)`
+fails in both `apps/api/src/admin/gate.test.ts` and `apps/web/src/lib/admin-gate.test.ts`.
+CI job has been **failure on `6843f0d` since 14:22Z** ([push runs](https://github.com/nlqdb/nlqdb/actions));
+all six `deploy-*` are green on the same SHA (deploys don't run tests ⇒ production is fine, no
+stale build). Per **rule 6 this red main IS the run** and outranks the weekly-focus dogfood
+gate. Fix restores the pre-move security-boundary meaning: the **retired** `@salfati.group`
+domain must no longer admit anyone (2 assertion lines).
+**Overlap note (step 0).** Open PR **#876** bundles this same test repair with dogfood D-01
+tracking + a new skill rule + a new test — a larger review surface. Rule 6 (non-negotiable,
+"outranks every other lever") governs: this run ships a **minimal, decoupled, immediately-
+mergeable** fix so `main` gets a clean shot at green regardless of #876's review latency;
+whichever lands first, the other drops its duplicate hunk.
+**Weekly-focus gate (unchanged):** `SK-PIVOT-016` dogfood gate **0/5** — D-01 in flight on
+#876; D-02/D-04+ chain off it. Not pulled this run (red main pre-empts).
 **Top `blocked-by-human` bullet:** fire the Show HN launch sequence (⏱ ~30 min,
 **idle 46 days since 06-13**) — the only bullet that can move real strangers off 0, still
 condition-gated on the `SK-PIVOT-016` gate (**0/5**). Every criterion is agent-movable; the
@@ -47,17 +45,17 @@ a 07-27 partial checkpoint exists on `d961475`, `main` has since moved); rows
 **#4/#5/#16**'s stranger-dependent criteria (N = 0 until the launch bullet fires); row
 **#15**'s opencheck arm (free-lane saturation, remedy costs money ⇒ rule 4).
 
-**Rule 6 clean** — after `bun install`, `bun run typecheck && bun run lint && bun run test`
-**all EXIT=0 on `main@cce51a6`** (full workspace; the bare-repo `TS5101 baseUrl` /
-`bun-types` errors were a not-yet-installed artifact, cf. #860, since merged). **All nine
-`deploy-*` workflows green on `cce51a6`** (web, api, docs, mcp, events-worker verified).
-Touched-scope gate: the anon nav-integrity suite **5 pass** (was 4 + this run's
-per-navigation `/app/`-literal case), and a negative check confirmed it flags an injected
-unwrapped `location.assign("/app/…")`.
-Open PRs — this run's cluster siblings (#857/#858/#859/#860/#861/#862/#863/#865/#866)
-merged this cycle; still open per GitHub: **#868** (/review command), **#864** (changesets
-Version-Packages), draft **#719** (oldest, **12 days**). This run's files
-(`client-nav-integrity.test.ts`, `anonymous-mode/FEATURE.md`) overlap none of them.
+**Rule 6 — was RED, fixed this run.** On `main@6843f0d` the CI job is **failure** (2 admin-gate
+assertions; see worst-number above), though `typecheck` + `lint` are green and all six
+`deploy-*` are green (production unaffected). After this run's 2-line assertion fix, on the
+branch head: `bun install` then `bun run typecheck` (all workspaces EXIT=0) · `bun run lint`
+EXIT=0 (41 warnings, 0 errors — pre-existing) · `bun run test` **overall EXIT=0** (api vitest
+1014 pass/15 skip; full workspace green). Touched-scope: `apps/api/src/admin/gate.test.ts`
+4 pass, `apps/web/src/lib/admin-gate.test.ts` 2 pass.
+Open PRs (7): **#876** (dogfood D-01 + this same domain-move test repair — overlap, see above),
+**#875** (reach R-09), **#874** (Glama), **#873** (web topnav keys link), **#864** (changesets),
+draft **#719** (oldest, **12 days**). This run's files (the two `*gate*.test.ts`) overlap only
+#876, addressed by the decoupling note above.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -104,47 +102,40 @@ Version-Packages), draft **#719** (oldest, **12 days**). This run's files
 `apps/web/src/data/blog.ts` — the one place the list exists; venue variants and full
 lesson gists stay in `research/distribution-queue.md`.
 
-- **This run (153):** no new post — the lever was the npm-channel attribution republish
-  (queued via changeset, not a blog surface); distribution queue at 2 (< 3, no forced
-  publish); dev.to drip throttled (newest article 15.4 h ago < 20 h). Last shipped post
-  remains run 151's `/blog/guard-advertised-capabilities-against-code/`.
+- **This run (155):** no new blog post — the lever was the rule-6 red-main CI fix (not a blog
+  surface); distribution queue at 2 (< 3, no forced publish). Dev.to drip **fired** (step 3.3):
+  syndicated run 24's post → https://dev.to/omer_hochman/your-database-scales-to-zero-your-retry-loop-doesnt-know-that-373e
+  (queue line's dev.to venue dropped, Reddit/lobste.rs kept). Last canonical blog post remains
+  run 151's `/blog/guard-advertised-capabilities-against-code/`.
 
 ## Last change
 
-**2026-07-29 (run 154)** — **Number moved: open-question bullets 10 → 9** (row #17):
-resolved anonymous-mode's `SK-ANON-015` per-file-vs-per-navigation nav-guard question
-(GLOBAL-033 — a value-decidable call an agent owns). Lane: **UX-flow integrity (step-2
-priority 2)** — hardening the real anonymous-stranger marketing→app handoff, not a meta pull.
+**2026-07-29 (run 155)** — **Number moved: CI on `main` red → green (rule 6)**. The
+direct-to-`main` domain-move commit `6843f0d` broke the CI test job: its mechanical
+`salfati.group → nlqdb.com` replace rewrote the admin-gate *reject-case* assertions from
+`other@salfati.group` to `other@nlqdb.com`, but `ADMIN_DOMAINS={nlqdb.com}` now admits that
+address — so `expect(isAdminEmail("other@nlqdb.com")).toBe(false)` fails in both the api and
+web gate tests. CI red since 14:22Z; deploys green (they run no tests).
 
-**The hole (before).** `SK-ANON-015` carries a stranger's prompt across the
-`nlqdb.com → app.nlqdb.com` origin boundary in a URL fragment via `attachHandoff(`; the
-guard (`client-nav-integrity.test.ts`) checked it **per-file** — one `attachHandoff(`
-anywhere cleared the whole file. So a second, unprotected cross-origin `/app/` hop added
-later would silently drop the visitor's first prompt on the floor and the guard would stay
-green forever (the exact failure that wastes an acquired visitor).
+**The fix.** Restore the assertions' original *meaning* — after the move, the security
+boundary they pin is that the **retired** `@salfati.group` domain no longer admits anyone.
+So each reject-case reverts to `expect(isAdminEmail("other@salfati.group")).toBe(false)`
+(the source `admin-gate.ts`/`gate.ts` allowlist is correct and untouched). Two assertion
+lines, no source change.
 
-**The change.** Added the narrow, false-positive-free invariant: any JS `location.*`
-navigation whose *string-literal* target is `/app/…` must wrap it in `attachHandoff(`.
-Static `<a href>` anchors (goal rides a sibling JS interceptor) and variable-target
-same-origin hops in `sign-in.astro` never match the shape, so **no inline-suppression
-mechanism** is needed — which is what the open question asked. The broad "every navigation"
-rule stays rejected (it false-positives on exactly those). Resolution recorded in
-`anonymous-mode/FEATURE.md`; full rationale canonical in the test comment (P3).
+**Measure → change → re-measure.** Before (branch = `main@6843f0d`): api `gate.test.ts` +
+web `admin-gate.test.ts` fail (3 fails / `bun run test` red; CI job failure on GitHub).
+After: `bun install` → `typecheck` all EXIT=0 · `lint` EXIT=0 · `bun run test` **overall
+EXIT=0** (api vitest 1014 pass; full workspace green); the two gate suites 4 + 2 pass.
 
-**Measure → change → re-measure.** Before: nav-integrity suite **4 pass**, guard per-file.
-After: **5 pass**; a negative check (injected `location.assign("/app/dashboard")` into a
-prompt-touching file) **failed** exactly one navigation with `navigates to /app/dashboard
-without attachHandoff`, then reverted clean. Row #17 re-counted live: **10 → 9**.
+**Overlap (step 0 vs rule 6).** Open PR #876 bundles this same repair with dogfood D-01
+tracking. Rule 6 is non-negotiable and "outranks every other lever"; this run ships the
+minimal decoupled fix so `main` recovers regardless of #876's larger review surface —
+whichever merges first, the other drops the duplicate test hunk.
 
-**No new `SK-*`** (P5/D5): this tightens an existing guard under `SK-ANON-015` and resolves
-its own open question; the test comment is the one canonical rationale home.
-
-**Gates:** after `bun install`, `typecheck && lint && test` all **EXIT=0 on
-`main@cce51a6`** before edits · all nine `deploy-*` green on `cce51a6` · anon nav suite
-**5 pass** + negative check · biome clean on the touched `.ts` · gate-3 grep empty · **D4**
-`anonymous-mode/FEATURE.md` net-shrunk (32016 → 32015 B), scorecard < 20480 B.
-**KPI (GLOBAL-025):** advances **onboarding/UX** — closes a silent regression path in the
-anonymous first-prompt handoff; **degrades none**.
+**No new `SK-*`** (P5/D5): a mechanical-replace regression fix; no decision changes.
+**KPI (GLOBAL-025):** advances **engine quality + onboarding** — unblocks CI for every
+open PR and the admin security-gate tests assert the boundary they mean to; **degrades none**.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
