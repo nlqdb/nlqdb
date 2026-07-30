@@ -256,32 +256,33 @@ extension venue. R-05 covers MCP-server registries; this covers the newer
 **Cadence:** R-05's — one venue per run, same listing copy plus the two `/plugin`
 lines; re-verify every listed venue at the R-08 monthly check.
 **Mechanism (P2 2026-07-29, cite on every edit):** the ecosystem splits three
-ways and only the first is agent-work — **publish** (a git marketplace is a JSON
-file in our own repo), **crawl** (aggregators index that file; nothing to submit),
-**submit** (signed-in forms → founder queue). Per-venue mechanism and payloads
-live in [`acquisition-channels.md`](../../../../research/acquisition-channels.md)
-row #22 + [`blocked-by-human.md`](../../../../blocked-by-human.md) — status only here.
+ways, only the first is agent-work — **publish** (a git marketplace is a JSON file
+in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
+(signed-in forms → founder queue). Per-venue payloads live in
+[`acquisition-channels.md`](../../../../research/acquisition-channels.md) row #22 +
+[`blocked-by-human.md`](../../../../blocked-by-human.md) — status only here.
 **Done when:** per venue: listed (URL) or payload parked — tick per venue.
 - ✅ #1 **nlqdb's own marketplace** — shipped: repo-root `.claude-plugin/marketplace.json`
   + a manifest that makes [`agent-artifacts/`](../../../../../apps/web/public/agent-artifacts/)
-  itself the plugin, so its skills are the published files and **cannot** be forked
-  copies. `/plugin marketplace add nlqdb/nlqdb` → `/plugin install nlqdb-memory@nlqdb`,
-  on all three agent-fetched surfaces (README index, R-04 guide, `llms.txt`) and pinned
-  by [`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts)
-  (manifest schema, endpoint == `mcp-install.ts`, FSL-1.1-ALv2, `utm_source=claude-plugin`).
+  itself the plugin, so its skills **cannot** be forked copies. `/plugin marketplace add
+  nlqdb/nlqdb` → `/plugin install nlqdb-memory@nlqdb`, on all three agent-fetched surfaces
+  (README index, R-04 guide, `llms.txt`) and pinned by
+  [`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts)
+  (schema, endpoint == `mcp-install.ts`, FSL-1.1-ALv2, `utm_source=claude-plugin`).
 - ✅ #2 **claudemarketplaces.com** (~300 k monthly visitors) — crawl-fed, daily, keyed
   on the very file #1 adds; **no submission mechanism exists**, so nothing is owed but
   a dated re-check.
 - ✅ #3 **SkillsMP** — crawls every public repo for `SKILL.md`; both skills have been
   public since 2026-07-22, so this venue was already served before the slice existed.
-- ⬜ #4 **Anthropic `claude-community`** (the in-product `/plugin` Discover tab) —
-  submission is a signed-in form only, so the payload is **founder-queued**. Distinct
-  from the connector directory (R-05 #7 / ledger #9): different catalog, different
-  form, different artifact. `claude-plugins-official` is curated with **no application
-  process** — permanently nothing to submit.
-- ⬜ **Install-yield gate:** this slice is not done on listings. It closes when
-  `/app/admin` shows one real `claude-plugin` visit — the same bar R-07 carries, and
-  the reason `plugin.json`'s `homepage` keeps its own key instead of `agent-artifacts`.
+- ✅ #4 **Anthropic `claude-community`** (in-product `/plugin` Discover tab) — signed-in
+  form only, so the **payload is parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md)
+  #3, 2026-07-29). P2 re-verified: `anthropics/claude-plugins-community` is a read-only mirror;
+  submit via `clau.de/plugin-directory-submission` (security scan → Discover tab). Distinct from
+  the connector directory (R-05 #7 / ledger #9). `claude-plugins-official` is curated with **no
+  application process** — nothing to submit.
+- ⬜ **Install-yield gate:** not done on listings — closes when `/app/admin` shows one
+  real `claude-plugin` visit (the same bar R-07 carries; why `plugin.json`'s `homepage`
+  keeps its own key, not `agent-artifacts`).
 
 ## Current numbers
 
@@ -301,4 +302,4 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [x] R-06 — coding-agent walker + baseline
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)
 - [x] R-08 — answer-engine citation baseline
-- [ ] R-09 — host plugin/skill venues — **owed:** the `claude-community` founder submission, and one real `claude-plugin` visit in `/app/admin` (3 of 4 venues resolved)
+- [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (4 of 4 venues resolved — #4 payload parked 2026-07-29)

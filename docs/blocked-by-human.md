@@ -27,12 +27,14 @@ values and criteria live. Read those only when you sit down to do the thing.
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 2 | ~5 min | Glama: push the score badge to `awesome-mcp-servers` PR #10984 (listing is claimed + released, tier B); claim the *connector* (its `/.well-known/glama.json` ships with the repo) + hand test creds for health | 2026-07-29 |
-| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 3 | ~5 min | Submit the `nlqdb-memory` plugin to Anthropic's community plugin directory (`clau.de/plugin-directory-submission`) — free signed-in form, no plan gate | 2026-07-29 |
+| 4 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #1 can move real strangers (scorecard row #2); #3 is the only one that
+Only #1 can move real strangers (scorecard row #2); #4 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
 exists; #2 unblocks a waiting external merge (`awesome-mcp-servers` #10984), so
-it's the freshest yield.
+it's the freshest yield; #3 is the cheapest — a free, no-plan-gate form that
+lists nlqdb in the in-product `/plugin` Discover tab.
 
 (**Resolved 2026-07-29 — advisor session, queue 6 → 2:** the founder took the
 `MEMORY_PRESET=1` go decision live — #835 merged, the preset + `nlqdb_remember`
@@ -111,7 +113,31 @@ automated OIDC lane, tracked by scorecard row #22.)
    Ledger rows #6 + #10 in
    [`acquisition-channels.md`](./research/acquisition-channels.md) track both.
 
-3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+3. **⏱ ~5 min · since 2026-07-29 — Submit the `nlqdb-memory` plugin to
+   Anthropic's community plugin directory** (reach R-09 venue #4, ledger row
+   #22). Free, signed-in web form — **no plan gate, no money** (unlike #4). P2
+   verified 2026-07-29 (`github.com/anthropics/claude-plugins-community`): that
+   repo is a read-only mirror; submissions go through
+   `clau.de/plugin-directory-submission`, pass automated security scanning, then
+   land in the in-product `/plugin` **Discover** tab and the community
+   marketplace (distinct from `claude-plugins-official`, which is curated with
+   **no** application process — nothing to submit there, ever). The plugin is
+   already live and installable directly today (`/plugin marketplace add
+   nlqdb/nlqdb` → `/plugin install nlqdb-memory@nlqdb`); this form only adds
+   directory discovery. Open the form and enter:
+   - **Marketplace / plugin repo:** `https://github.com/nlqdb/nlqdb` (the
+     `.claude-plugin/marketplace.json` at the repo root; plugin name
+     `nlqdb-memory`)
+   - **Display name:** `nlqdb — analytical agent memory`
+   - **Tagline (≤55):** `Analytical memory for AI agents. One command.`
+   - **Description:** `Persistent, queryable memory for your agent: a real Postgres it asks in plain English over MCP, so it can GROUP BY / JOIN / aggregate over what it remembered instead of recalling the nearest few rows. Bundles the hosted MCP server plus two skills that teach the agent when to use it.`
+   - **Homepage / docs URL:** `https://docs.nlqdb.com/agent-memory/?utm_source=claude-plugin` (carries the ledger key — matches `plugin.json`'s `homepage`)
+   - **License:** `FSL-1.1-ALv2` · **Category:** Developer Tools / Data
+   On submit, tick reach R-09 #4 to *listed* with the directory URL and note it
+   on ledger row #22; nothing else changes (the channel stays in-flight until
+   `/app/admin` shows a `claude-plugin` visit).
+
+4. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
