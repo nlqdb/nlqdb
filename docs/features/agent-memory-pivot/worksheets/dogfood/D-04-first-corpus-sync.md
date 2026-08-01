@@ -1,7 +1,7 @@
 # D-04 — First real sync of nlqdb's own `docs/` corpus + the gate-progress readout
 
-**Status:** ⬜ not started — **prereq chain not yet clear** (see below)
-**Sequence:** Dogfood 4 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** D-01, D-02, **E-03 merged → `MEMORY_PRESET=1` in prod (PR #835)** · **Gate:** the prereq chain is founder-sequenced
+**Status:** ⬜ not started — **only D-02 remains in the prereq chain** (verified 2026-08-01, see below)
+**Sequence:** Dogfood 4 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** D-01 ✅, D-02 ⬜, ~~E-03 merged → `MEMORY_PRESET=1` in prod~~ ✅ (#851, #835) · **Gate:** none — the founder-sequenced chain completed 2026-07-29
 
 ## Goal
 
@@ -22,27 +22,19 @@ can touch:
    instrument, finally with `N > 0` (today: `N = 0`, so not measurable).
 3. Zero silent data loss / wrong-answer-accepted incidents.
 
-## The prereq chain — do not shortcut it
+## The prereq chain — state as verified 2026-08-01
 
-**E-03 merges → `MEMORY_PRESET=1` ships (#835) → this corpus syncs.**
+**E-03 merged (#851) → `MEMORY_PRESET=1` shipped (#835, 2026-07-29) → E-03's
+backfill line landed** ("no backfill — and none needed retroactively: the flag
+reached prod *after* the scoping slice, so no unscoped prod memory DB ever
+existed", [`E-03`](../engine/E-03-memory-scoping.md) *Consequence in code*).
+All three boxes the first sync run must check are checked.
 
-- [`E-03`](../engine/E-03-memory-scoping.md) is the security-critical scoping
-  slice and is **in flight** on branch `claude/e03-memory-scoping`. Until it
-  merges, `end_user_id`/`thread_id` are written but never read — the columns
-  look like isolation and provide none.
-- `MEMORY_PRESET=1` is a `SK-PIVOT-016` prerequisite and is **dark**; PR #835
-  flips it and is deliberately drafted. **Founder-decided 2026-07-28: hold #835
-  until E-03 merges, then un-draft and ship the flip.** The
-  [`E-06`](../engine/E-06-agents-createform-preset.md) gate ("only after E-03
-  ships") is **satisfied by that sequence, not superseded** — recorded in
-  [`blocked-by-human.md`](../../../../blocked-by-human.md) bullet #1.
-- **The flip invalidates E-03's "no prod memory DBs exist ⇒ no backfill
-  migration" premise** the moment it happens. The run that flips it owes E-03 a
-  backfill line; the run that syncs this corpus is the first to create a prod
-  memory DB, so check that line landed before writing a single row.
-
-A run that finds the chain incomplete records that finding and picks another
-slice — D-03 is the pullable one (offline, no flag).
+**The only open prereq is [`D-02`](D-02-resync-hook.md)** — and its gate is a
+founder minute: the workflow needs the `NLQDB_API_KEY` repo secret (queued in
+[`blocked-by-human.md`](../../../../blocked-by-human.md)). A run that finds
+D-02 unmerged pulls D-02 itself (low risk, 1 run); nothing else blocks this
+slice.
 
 ## Read first
 
@@ -98,7 +90,7 @@ slice — D-03 is the pullable one (offline, no flag).
 
 **The launch post's raw material** — "we ran our own company's ops on our own
 memory through the public MCP endpoint; here's what broke." Named as the launch
-demo in `blocked-by-human.md` bullet #2 and in `research/launch-kit.md` §3.1's
+demo in `blocked-by-human.md` bullet #1 and in `research/launch-kit.md` §3.1's
 fact sheet. Draft it into `research/distribution-queue.md` even if the run's
 numbers are unflattering; unflattering is the point (`SK-PIVOT-019`'s
 concede-columns logic applies here too).

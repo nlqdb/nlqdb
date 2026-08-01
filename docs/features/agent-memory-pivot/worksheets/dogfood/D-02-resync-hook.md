@@ -53,15 +53,11 @@ API call, or criterion 1's call count stops meaning "real work".
 
 The workflow needs `NLQDB_API_KEY` (a self-minted `sk_mcp_*` MCP key — least
 privilege for a headless CI runner, `SK-APIKEYS-015`) as a **repo
-secret** — an operator action an agent cannot perform. Queue bullet **#3** in
-[`blocked-by-human.md`](../../../../blocked-by-human.md) already asks the
-founder to mint this credential for the walker env (it still says `sk_live_`,
-written before `/app/keys` could mint an MCP key). The run that ships
-this slice should **extend that bullet** to name the repo secret and the
-`sk_mcp_` prefix, rather
-than adding a new bullet (the queue is ranked by yield per founder-minute, not
-appended to — founder-directed 2026-07-22). Until the secret exists the
-workflow is committed but skips with a printed reason, never fails red.
+secret** — an operator action an agent cannot perform. **Already queued:**
+bullet **#2** in [`blocked-by-human.md`](../../../../blocked-by-human.md)
+(added 2026-08-01) asks the founder to mint the key and set the secret. Until
+the secret exists the workflow is committed but skips with a printed reason,
+never fails red.
 
 ## Steps
 
@@ -81,8 +77,8 @@ workflow is committed but skips with a printed reason, never fails red.
 - [ ] `.github/workflows/memory-sync.yml` exists: `push` on `main` filtered to
       `docs/**`, plus `workflow_dispatch`; least-privilege permissions;
       concurrency-guarded.
-- [ ] Missing-secret path skips with a printed reason (green, not red); the run
-      that lands this extends queue bullet #3 to name the repo secret.
+- [ ] Missing-secret path skips with a printed reason (green, not red); the
+      repo-secret ask is queue bullet #2 (queued 2026-08-01).
 - [ ] A merge touching no docs issues **zero** API calls (verified on a real
       run, or by a dry-run assertion if no such merge landed yet).
 - [ ] Second consecutive run over an unchanged corpus writes **0 new rows**
