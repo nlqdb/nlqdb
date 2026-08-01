@@ -22,6 +22,9 @@
 //   self-host (App Server). No relational aggregation over memory.
 // - nlqdb: NL→SQL aggregations + schema provision + diff preview ship;
 //   embedding hybrid recall still E-05; self-host container still WS-11.
+// Landscape also added Hindsight + GBrain in docs/competitors.md §4 (recall /
+// personal-brain shaped). SK-PIVOT-001 keeps this matrix at four columns —
+// new recall-only entrants do not change the wedge glyphs.
 
 import type { ComparisonClaim } from "./competitors.ts";
 

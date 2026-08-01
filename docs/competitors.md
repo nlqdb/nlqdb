@@ -77,7 +77,7 @@ OSS (AGPL) + cloud BI; Metabot is the AI layer (NL questions, chart-building, SQ
 - **Threat vector:** Medium for P3 — strong OSS distribution, but Metabase users want dashboards, not an embedded queryable data layer.
 
 ### Hex Magic / Mode AI / Fabi.ai / Count — notebook-first AI BI
-AI inside collaborative analyst notebooks. Different DNA — analyst notebooks, not PM chat. **Threat vector:** Low-medium — adjacent to P3, not head-to-head. Cluster complete: all four have canonical `/vs` pages (facts + dates in `competitors.ts`). Wedge: nlqdb owns+provisions the DB and embeds an answer element; they layer a notebook over a warehouse you already run.
+Analyst notebooks, not PM chat. **Threat:** Low-medium. Canonical `/vs` pages exist; nlqdb owns+provisions the DB + embed, they layer a notebook on a warehouse.
 
 ---
 
@@ -86,14 +86,10 @@ AI inside collaborative analyst notebooks. Different DNA — analyst notebooks, 
 P2's home territory. These solve "agent needs to remember things" but generally don't give the agent a real DB.
 
 ### DIY on your existing Postgres / Supabase — the #1 real alternative
-Not a vendor — the build path, and the honest baseline every reach page must beat rather than dodge. The agent-SaaS builder (P2b) already runs Postgres/Supabase, so their default "buy" decision is really "why not just add a `memories` table?"
-- **Gap nlqdb exploits (in the reader's order):** the `CREATE TABLE` is the easy 20%; the expensive 80% is (a) **multi-tenant isolation that fails closed** — hand-rolled `WHERE agent_id = $1` filters don't, RLS keyed on `app.agent_id` does (SK-PIVOT-009); (b) **zero schema design** — the proven `agent_memory_v1` shape vs. re-deriving it per project; (c) **TTL** as a swept `DELETE`, not a forgotten cron; (d) **NL analytics** — `GROUP BY`/`JOIN`/`HAVING` over memory in English with the SQL shown, which a raw table gives you only if you also build the text-to-SQL trust boundary. DIY wins on control and zero new vendor; it loses once isolation, retention, and analytics must be *correct* at scale.
-- **Threat vector:** **Highest for P2b** — free, in-stack, already trusted. The reach track's job is to be the first actionable answer at the moment the builder is about to hand-roll this: honest DIY steps first, one-command alternative after the reader feels where DIY bites (R-02 solve page).
+Not a vendor — P2b's default ("why not a `memories` table?"). **Gap:** `CREATE TABLE` is easy; fail-closed multi-tenant RLS (`app.agent_id`, SK-PIVOT-009), canonical `agent_memory_v1`, swept TTL, and NL analytics with SQL shown are the expensive 80%. **Threat:** **Highest for P2b**. Reach (R-02) leads with honest DIY, then the one-command alternative.
 
-### Agentic DB (Constructive) — [announcement](https://www.prnewswire.com/news-releases/constructive-open-sources-agentic-db-the-postgres-memory-layer-for-ai-agents-302755269.html) · org `constructive-io`, `pgpm.io` (OSS, 2026-04-28)
-Direct entrant. A purpose-built Postgres schema giving agents long-term memory, conversation history, a skill/tool registry, task orchestration, a CRM + knowledge graph, and hybrid retrieval — one-command install. Ships **Agent Skills** (instruction files that install into the agent's workspace) for Claude Code, Cursor, Codex, Devin, Copilot, Windsurf + 40 more, plus a generated CLI and type-safe SDK from one schema.
-- **Gap nlqdb exploits:** the most direct overlap here — its Agent Skills target the same coding-agent-injection moment as nlqdb's R-07 artifacts. But it's a **schema + skills bundle on a Postgres you stand up and operate**: the agent/SDK authors the SQL, so the trust boundary is the caller's. nlqdb is the **hosted** DB where the server builds every write as a parameterised `INSERT` — the agent controls *data*, never *SQL* (SK-PIVOT-008) — with per-agent RLS, a swept TTL, and NL→SQL analytics with the SQL shown.
-- **Threat vector:** **High and rising for P2** — competes on the coding-agent-onboarding axis directly, so the reach artifacts (R-04/R-05/R-07) must be at least as machine-followable as its Agent Skills.
+### Agentic DB (Constructive) — [announcement](https://www.prnewswire.com/news-releases/constructive-open-sources-agentic-db-the-postgres-memory-layer-for-ai-agents-302755269.html) · `constructive-io` / `pgpm.io` (OSS, 2026-04-28)
+Postgres schema + Agent Skills (Claude Code/Cursor/Codex/…) for memory, chat, skills, tasks, CRM/KG, hybrid retrieval — one-command install. **Gap:** schema+skills on a Postgres *you* operate; agent/SDK authors SQL. nlqdb hosts and server-builds every write (SK-PIVOT-008) + RLS + TTL + NL→SQL shown. **Threat:** **High and rising for P2** — same coding-agent onboarding axis as R-04/R-05/R-07.
 
 ### Mem0 — https://mem0.ai
 Apache-2.0 OSS + hosted memory SDK. V3 search is hybrid retrieval (semantic + BM25 + entity) with filters + `expiration_date` — still add/search, not SQL. **Gap:** memory-shaped vs DB-shaped — "remember this" vs. "here's a DB." **Threat:** high for P2. *(Matrix re-verified 2026-08-01: docs.mem0.ai, mem0ai/mem0.)*
@@ -114,34 +110,21 @@ OSS Python SDK adding long-term memory (semantic/episodic/procedural) to LangGra
 - **Threat vector:** **High for P2 on distribution** — LangChain's adoption makes LangMem the default a builder meets first; low on the analytical wedge.
 
 ### Supermemory — https://supermemory.ai
-"The memory + context API for the AI era" — fact extraction, hybrid recall, user profiles, connectors (Drive/Gmail/Notion/GitHub) over a custom vector-graph engine; MIT, one-binary local mode + MCP server. Benchmark leader (LongMemEval / LoCoMo / ConvoMem, sub-300ms recall). **Gap nlqdb exploits:** it ranks and returns memories — no SQL over what the agent stored; nlqdb is the analytical store the agent aggregates. **Threat:** high for P2 — strongest recall benchmarks today, but recall-only. `/vs/supermemory`.
+"The memory + context API for the AI era" — fact extraction, hybrid recall, user profiles, connectors (Drive/Gmail/Notion/GitHub) over a custom vector-graph engine; MIT, one-binary local mode + MCP server. Benchmark leader (LongMemEval / LoCoMo / ConvoMem, sub-300ms recall). **Gap:** ranks and returns memories — no SQL over what the agent stored. **Threat:** high for P2 — recall-only. `/vs/supermemory`.
 
-**Vector stores (P2 retrieval).** All share one gap: they rank nearest embeddings but have no SQL layer — an agent can't `GROUP BY` / `JOIN` / `HAVING` over what it stored (the "database, not a vector store" wedge, §4). Each has a canonical `/vs` page; distinctives below.
+### Hindsight (Vectorize) — https://hindsight.vectorize.io · `vectorize-io/hindsight` (MIT)
+`retain` / `recall` / `reflect`; TEMPR multi-strategy retrieval (semantic + BM25 + graph + temporal); MCP-first; self-host or cloud; strong LongMemEval claims. **Gap:** retrieval + reflection — no query planner / `GROUP BY`. **Threat:** **High and rising for P2** — recall mindshare, not the analytical wedge. *(Added 2026-08-01.)*
 
-### Pinecone — https://pinecone.io
-Managed serverless vector DB. **Threat:** medium — shifting toward pgvector-in-Postgres. `/vs/pinecone`.
+### GBrain — https://github.com/garrytan/gbrain (MIT; Garry Tan / YC, OSS 2026-04)
+Markdown-in-git personal brain + Postgres/pgvector hybrid search + MCP/CLI (OpenClaw/Hermes). **Gap:** single-operator knowledge brain, not hosted multi-tenant NL→SQL memory with fail-closed isolation. **Threat:** Medium–high mindshare / DIY; low on the analytical wedge. *(Added 2026-08-01.)*
 
-### Weaviate — https://weaviate.io · Chroma — https://trychroma.com
-OSS + managed vector DBs (Weaviate; Chroma OSS-first with a managed cloud). **Threat:** medium — same shape as Pinecone. `/vs/weaviate`, `/vs/chroma`.
+**Vector / graph recall (P2).** Same gap: rank nearest matches, no relational analytics. Pinecone, Weaviate, Chroma, Qdrant, Milvus — `/vs/*`. **Cognee** (`/vs/cognee`) — OSS knowledge-graph memory (Extract→Cognify→Load); high P2 threat as "not just a vector store," still no SQL.
 
-### Qdrant — https://qdrant.tech
-High-performance Rust vector DB, Apache-2.0; quantization + hybrid search, official `mcp-server-qdrant`. Cheaper recall, no aggregation. `/vs/qdrant`.
+### MindsDB — https://mindsdb.com · `/vs/mindsdb`
+Federates 200+ sources behind a Postgres-wire / MCP endpoint (+ in-DB ML). **Gap:** connects to data you already have; nlqdb provisions and owns Postgres from English. **Threat:** High for P2 MCP mindshare.
 
-### Milvus — https://milvus.io
-Cloud-native OSS vector DB for scalable ANN (Go, Apache-2.0, Zilliz-created); managed Zilliz Cloud, official `zilliztech/mcp-server-milvus`. Single-collection scalar group-by is new in 3.0-beta — still no cross-collection JOIN or HAVING. `/vs/milvus`.
-
-### Cognee — https://www.cognee.ai
-OSS AI memory framework (Apache-2.0) — a self-hosted **knowledge graph** (Extract → Cognify → Load) fusing vector embeddings + graph reasoning + ontology; official `cognee-mcp`. A *recall* engine via hybrid vector + graph traversal. **Threat:** high for P2 — the most credible "not just a vector store" framing; stops short of relational analytics. `/vs/cognee`.
-
-### MindsDB — https://mindsdb.com (OSS: https://github.com/mindsdb/mindsdb)
-The open-source **"Federated Query Engine for AI"** — federates 200+ data sources behind one PostgreSQL-wire endpoint, positioned as a universal MCP server ("the only MCP Server you'll ever need"); also ships knowledge bases, in-DB ML models, and agents. Self-host or cloud. (Full table in `/vs/mindsdb`.)
-- **Gap nlqdb exploits:** MindsDB *connects to* data you already have and adds federation + ML; nlqdb *provisions and owns* a Postgres from English, compiles NL → SQL (shown), and diff-previews writes. No sources to connect, no ML training.
-- **Threat vector:** **High for P2** — the most prominent "MCP server for your data" play; but federation assumes the sources already exist, which is what nlqdb removes.
-
-### Postgres MCP servers (community + vendor) — e.g. `@modelcontextprotocol/server-postgres`, Supabase MCP
-Let an agent run read (and sometimes write) SQL against a *pre-provisioned* Postgres.
-- **Gap nlqdb exploits:** they need the human to provision, credential, and schema-design first; nlqdb's `nlqdb_query` materialises a tenant-scoped Postgres + schema on first reference (no create verb — SK-MCP-002).
-- **Threat vector:** Medium, rising — narrows if the MCP ecosystem adds provisioning primitives.
+### Postgres MCP servers — e.g. `@modelcontextprotocol/server-postgres`, Supabase MCP
+Read/write SQL against a *pre-provisioned* Postgres. **Gap:** human provisions first; `nlqdb_query` materialises tenant Postgres + schema on first reference (SK-MCP-002). **Threat:** Medium, rising.
 
 ---
 
@@ -187,9 +170,11 @@ Adjacent DIY components. LlamaIndex (MIT) ships `NLSQLTableQueryEngine` (synthes
 | Zep | Agent memory | P2 | Graphiti temporal knowledge graph; benchmark-led, well-funded |
 | Letta | Agent memory | P2 | Self-editing OS-style memory inside an agent runtime (Apache-2.0) |
 | LangMem | Agent memory | P2 | LangChain-ecosystem distribution; default memory for LangGraph agents |
-| Supermemory | Agent memory | P2 | Benchmark-leading recall API (MIT, self-hostable); recall-only, no SQL |
-| Agentic DB (Constructive) | Agent memory (Postgres) | P2 | OSS one-command Postgres memory + Agent Skills for Claude Code/Cursor/Codex; same coding-agent-onboarding axis |
-| DIY on your Postgres/Supabase | Agent memory (build) | P2b | Free + in-stack; the real default — loses on isolation/TTL/analytics correctness at scale |
+| Supermemory | Agent memory | P2 | Benchmark-leading recall API (MIT); recall-only, no SQL |
+| Hindsight (Vectorize) | Agent memory | P2 | Multi-strategy recall + reflect (MIT, MCP-first); LongMemEval leader; still no SQL |
+| GBrain | Agent memory (personal) | P2 | YC-CEO halo; markdown+pgvector brain for OpenClaw/Hermes; single-operator |
+| Agentic DB (Constructive) | Agent memory (Postgres) | P2 | OSS Postgres memory + Agent Skills; same coding-agent onboarding axis |
+| DIY on your Postgres/Supabase | Agent memory (build) | P2b | Free + in-stack default — loses on isolation/TTL/analytics correctness at scale |
 | Julius AI | NL analytics | P3 | Cheap, consumer-grade CSV + NL workflow |
 | Vanna AI | Text-to-SQL | P3, P4 | OSS + flexible layer on existing DB |
 | Wren AI | Text-to-SQL (semantic-layer) | P3, P2 | MDL semantic model + RLAC/CLAC + SOC 2 (paid) + 22 engines; OSS-core self-host moat |
@@ -211,11 +196,11 @@ Nobody occupies nlqdb's intersection:
 1. **"Agent provisions its own DB"** — MCP Postgres / Vanna / Retool assume a human already stood the DB up.
 2. **DB + NL chat + auto-migration in one product** — Supabase / Outerbase / Defog each own a slice, not the stitch.
 3. **Conversational destructive-op preview** — rare; Retool gates UI clicks, not NL. Trust differentiator for P1/P4.
-4. **Analytical memory for agents** (§4 / GLOBAL-036) — Mem0 / Zep / Letta / LangMem *retrieve*; only nlqdb `GROUP BY` / `JOIN` / `HAVING` over memory. DIY `memories` tables are SQL-capable but not isolated, retention-swept, or NL-queryable out of the box.
+4. **Analytical memory for agents** (§4 / GLOBAL-036) — Mem0 / Zep / Letta / LangMem / Hindsight / Supermemory *retrieve* (or reflect); only nlqdb `GROUP BY` / `JOIN` / `HAVING` over memory. DIY / Agentic DB / GBrain are SQL-or-markdown-capable but not hosted NL-queryable memory with fail-closed isolation out of the box.
 5. **Cross-persona with one product** — most rivals aim at one persona; one chat+DB primitive for a dev, an agent, and a PM is unoccupied.
 
-Scariest threats within ~12 months: (a) Supabase NL + agent story; (b) MCP Postgres adding provisioning; (c) Agentic DB matching coding-agent onboarding (§4). Cross-persona + NL-migration are harder to copy.
+Scariest threats within ~12 months: (a) Supabase NL + agent story; (b) MCP Postgres adding provisioning; (c) Agentic DB / Hindsight matching coding-agent onboarding or recall mindshare (§4). Cross-persona + NL-migration are harder to copy.
 
 ---
 
-*Last verified: 2026-08-01 (§4 Mem0/Zep/Letta matrix re-verify — glyphs unchanged); 2026-07-18 (§4 DIY + Agentic DB); 2026-07-01 (§1 Neon, §6 LlamaIndex, §4 MindsDB). Re-check quarterly.*
+*Last verified: 2026-08-01 (§4 Mem0/Zep/Letta matrix re-verify + Hindsight/GBrain added); 2026-07-18 (§4 DIY + Agentic DB); 2026-07-01 (§1 Neon, §6 LlamaIndex). Re-check quarterly.*
