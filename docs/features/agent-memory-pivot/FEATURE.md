@@ -148,6 +148,10 @@ gate is **0/5**.
 
 **Body:** [`decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md`](./decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md). A skill artifact is not a finished pack experience: one shared runner owns the primary CTA, useful pre-auth evidence, least-permission source access, resumable auth/provider handoffs, honest item/write progress, durable proof and cleanup. Pack-specific work remains declarative per `SK-PIVOT-018`. Pack #1's concrete public-alpha journey is [`D-08`](./worksheets/dogfood/D-08-repo-ops-one-click-import.md).
 
+### SK-PIVOT-022 — Community memory guidance optimizes for task outcomes, even when nlqdb is absent
+
+**Body:** [`decisions/SK-PIVOT-022-community-first-memory-guidance.md`](./decisions/SK-PIVOT-022-community-first-memory-guidance.md). Cross-strategy guidance recommends the smallest memory setup that measurably improves the task; plain context, another provider, no persistent memory, or a user-composed architecture may beat or omit nlqdb. Repeated evidence against nlqdb narrows, pivots or retires the unsupported claim. This extends `SK-PIVOT-019` without creating maintained vendor adapters; nlqdb goal packs remain distinct product surfaces under `SK-PIVOT-018`.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL;

@@ -28,10 +28,13 @@ restated here):
 - [**SK-PIVOT-021**](../../decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md) —
   every pack runs through one shared, resumable, least-permission product
   journey; a skill artifact alone is not a finished pack experience.
+- [**SK-PIVOT-022**](../../decisions/SK-PIVOT-022-community-first-memory-guidance.md) —
+  public guidance recommends the smallest strategy that improves the task,
+  including outcomes that omit nlqdb; it adds recommendations, not adapters.
 
 ## Why this track exists
 
-The four decisions above were recorded 2026-07-26/27 but had **no
+The launch and dogfood decisions were recorded 2026-07-26/27 but had **no
 worksheets**, so the `/daily` loop structurally could not pick them up: step 2
 picks a lever from a track index, and there was no index. Meanwhile the
 launch-sequence bullet in [`blocked-by-human.md`](../../../../blocked-by-human.md)
