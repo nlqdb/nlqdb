@@ -30,7 +30,8 @@ restated here):
   journey; a skill artifact alone is not a finished pack experience.
 - [**SK-PIVOT-022**](../../decisions/SK-PIVOT-022-community-first-memory-guidance.md) —
   public guidance recommends the smallest strategy that improves the task,
-  including outcomes that omit nlqdb; it adds recommendations, not adapters.
+  including outcomes that do not include nlqdb; it adds recommendations, not
+  adapters.
 
 ## Why this track exists
 

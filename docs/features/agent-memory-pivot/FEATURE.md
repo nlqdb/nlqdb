@@ -150,7 +150,7 @@ gate is **0/5**.
 
 ### SK-PIVOT-022 — Community memory guidance optimizes for task outcomes, even when nlqdb is absent
 
-**Body:** [`decisions/SK-PIVOT-022-community-first-memory-guidance.md`](./decisions/SK-PIVOT-022-community-first-memory-guidance.md). Cross-strategy guidance recommends the smallest memory setup that measurably improves the task; plain context, another provider, no persistent memory, or a user-composed architecture may beat or omit nlqdb. Repeated evidence against nlqdb narrows, pivots or retires the unsupported claim. This extends `SK-PIVOT-019` without creating maintained vendor adapters; nlqdb goal packs remain distinct product surfaces under `SK-PIVOT-018`.
+**Body:** [`decisions/SK-PIVOT-022-community-first-memory-guidance.md`](./decisions/SK-PIVOT-022-community-first-memory-guidance.md). Cross-strategy guidance recommends the smallest memory setup that measurably improves the task; plain context, another provider, no persistent memory, or a user-composed architecture may be best without nlqdb. Repeated evidence against nlqdb narrows, pivots or retires the unsupported claim. This extends `SK-PIVOT-019` without creating maintained vendor adapters; nlqdb goal packs remain distinct product surfaces under `SK-PIVOT-018`.
 
 ## GLOBALs governing this feature
 

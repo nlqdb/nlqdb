@@ -16,9 +16,9 @@
   Keeping recommendations separate from maintained adapters preserves the
   credibility benefit without turning nlqdb into N-provider middleware.
 - **Consequence in code:** Every public cross-strategy result includes a
-  per-purpose recommendation and the evidence behind it; **"do not use nlqdb
-  here" is a valid outcome**. Recommendations distinguish measured results from
-  untested judgment, name the smallest sufficient setup, and may show
+  per-purpose recommendation and the evidence behind it; **the recommended
+  setup may not include nlqdb**. Recommendations distinguish measured results
+  from untested judgment, name the smallest sufficient setup, and may show
   user-composed reference architectures without shipping or maintaining
   adapters. nlqdb product goal packs remain nlqdb product surfaces under
   `SK-PIVOT-018`; vendor-neutral recipes are labeled reference architectures,
