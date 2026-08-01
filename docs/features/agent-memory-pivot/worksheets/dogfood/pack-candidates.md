@@ -13,7 +13,10 @@ needs the founder because taste about *which persona next* is the founder's inpu
 **Promotion path.** Founder picks one → a new `D-NN` slice is cut in [`INDEX.md`](INDEX.md)
 (same shape as D-05: goal, criterion moved, read-first, steps, `Done when`) → the pack ships
 as extraction recipe + seed entities + ≥ 5 golden queries in the `SK-QUAL-023` family, on
-the one `agent_memory_v1` schema, **no** new schema/endpoint/tool.
+the one `agent_memory_v1` schema, **no pack-specific** schema/endpoint/tool. Per
+[`SK-PIVOT-021`](../../decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md), it is not
+finished until that declarative pack runs through the shared one-click product journey
+with resumable auth/source handoffs, honest progress, durable proof and cleanup.
 
 **Admission test** (every candidate below passes, or it isn't listed): ≥ 3 natural queries
 that need `GROUP BY` / `JOIN` / aggregate / time-window over what the agent remembered —

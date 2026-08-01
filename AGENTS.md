@@ -26,7 +26,7 @@ frontier LLMs** — scaffolding compounds with the model; LLM strategy per
 Free-vs-frontier delta = headline KPI
 ([`quality-eval`](docs/features/quality-eval/FEATURE.md)).
 
-## 2. Five behavioral principles (non-negotiable)
+## 2. Six behavioral principles (non-negotiable)
 
 Apply to every edit, whatever the user asked for.
 
@@ -86,6 +86,30 @@ Before documenting any decision or plan:
 Simplify rather than complexify. Each goal must be achieved with minimal steps possible.
 When fixing an issue or adding a feature - always look for a way to remove code, or simplify code rather than adding code. Same for documentations and comments.
 De-prioritize backward compatilibty and prioritze clean code - we are still in a building stage.
+
+### P6. Customer journeys must be world-class, not merely functional
+
+For every customer-facing change, design and verify the whole journey before
+calling the surface done: entry point → one primary action → unavoidable
+identity or permission handoffs → visible progress → persistent proof of value
+→ a clear next step and a safe way to undo, reset, or delete.
+
+- Minimize product-side clicks and decisions. Preserve the user's intent across
+  sign-in, OAuth, redirects, refreshes, and retries, then resume automatically;
+  never make them re-enter information the product already has.
+- Ask for the least permission only when it becomes necessary. If a useful
+  read-only path works without an account or third-party connection, use it
+  before presenting that wall.
+- Show honest progress in user-meaningful units (items found, processed,
+  skipped, and why), not a spinner or invented percentage. Errors state what
+  happened and the single next action without discarding completed work.
+- Completion must leave durable, inspectable evidence on reload. Reversible
+  flows expose proportionate cleanup. Empty, partial, interrupted, denied, and
+  retry states receive the same design care as the happy path.
+- A customer journey is not done until its critical path has a real E2E walk
+  and the owner has manually used the production-shaped experience. Optimize
+  for time-to-value, successful completion, and recovery rate—not shipped
+  screen count.
 
 ## 3. Tech stack (high-level)
 
@@ -253,48 +277,8 @@ Read the relevant `FEATURE.md` first, then the cited `GLOBAL-NNN` file
 under `docs/decisions/` (indexed in `docs/decisions.md`), then ask the
 user. Don't guess across a documented decision.
 
-## 10. Workflow — features and bug fixes
+## 10. Workflow
 
-The standard loop for every change:
-
-```
-Touch path X
-  → §5 path map → the FEATURE.md name; read it fully (incl. its GLOBALs)
-  → do the work
-  → new decision? apply P4, then add SK-<PREFIX>-NNN (or promote to GLOBAL)
-  → ambiguity / unfamiliar error? web-search, cite sources (P2)
-  → contradicts a decision? STOP, raise with the ID (P1); supersede per P3
-  → run the §8 quality gates before the PR
-```
-
-### 10.1 Adding a new feature
-
-| Scope | Action |
-|---|---|
-| Fits an existing feature | Add `SK-<PREFIX>-<next-N>` block(s) to that feature's `FEATURE.md`. Update its `Status:` line if status moves (e.g. `partial` → `implemented`). |
-| Crosses several features | Add SK-* blocks in each affected feature, with cross-refs between them. |
-| Genuinely new (no feature covers it) | Create `docs/features/<feature>/FEATURE.md` from the [`docs/feature-conventions.md`](docs/feature-conventions.md) §3 template. Add the path-glob row to §5 above. Reserve the `SK-<PREFIX>-NNN` prefix (kebab-case → `<PREFIX>` is upper-snake, e.g. `auth` → `SK-AUTH-NNN`). |
-| Touches all surfaces (HTTP / SDK / CLI / MCP / elements) | Per `GLOBAL-003`, ship to all surfaces in the same PR or annotate the gap explicitly in the affected features under *Open questions*. |
-| Introduces a cross-cutting rule (multiple features must obey) | Promote to a new `GLOBAL-NNN` per `docs/decisions.md` §"Adding a new GLOBAL" (canonical file + index row + a reference line in each affected feature's `## GLOBALs governing this feature`). |
-
-Every SK-*/GLOBAL-* block carries the five fields of
-[`docs/feature-conventions.md`](docs/feature-conventions.md) §4; per P4,
-if you can't fill all five, don't document it yet.
-
-### 10.2 Fixing a bug
-
-1. Reproduce + isolate. Find the file. §5 → feature. Read the feature.
-2. **Does the bug contradict a documented decision?** Code wrong,
-   decision right → fix the code (normal bug fix). Decision wrong →
-   **STOP**; per `P1` raise it with the specific `SK-*`/`GLOBAL-NNN` ID —
-   the user decides whether to supersede.
-3. Superseding? Change the decision in its canonical place (prefer
-   simplifying it) and fix every reference in the same PR (`P3`;
-   `grep -rn 'GLOBAL-NNN' docs/`).
-4. A question the fix raises but doesn't decide goes to that feature's
-   `## Open questions / known unknowns`. Don't decide for the user.
-
-### 10.3 Tie-breakers when sources disagree
-
-- **Feature vs code, or feature vs `architecture.md`/`runbook.md` prose** → the feature wins. Fix the losing side; if the code is actually right, file a P1 to amend the feature rather than silently updating either.
-- **Two features disagree on a cross-cutting rule** → it should be a `GLOBAL-NNN`. Promote it (§10.1) and reference it from both.
+Follow §5 → relevant `FEATURE.md` → P1–P6 → §8. Adding or superseding a
+decision follows [`docs/feature-conventions.md`](docs/feature-conventions.md);
+do not duplicate that canonical procedure here.
