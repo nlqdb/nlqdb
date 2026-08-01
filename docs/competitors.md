@@ -96,17 +96,17 @@ Direct entrant. A purpose-built Postgres schema giving agents long-term memory, 
 - **Threat vector:** **High and rising for P2** — competes on the coding-agent-onboarding axis directly, so the reach artifacts (R-04/R-05/R-07) must be at least as machine-followable as its Agent Skills.
 
 ### Mem0 — https://mem0.ai
-"Long-term memory" SDK for agents (OSS + hosted, memory-graph shaped). **Gap nlqdb exploits:** memory-shaped (facts, entities, decay) vs. DB-shaped (tables + SQL + agent-designed schema) — "remember this" vs. "here's a DB." **Threat:** high for P2 — lighter-weight if the builder just wants recall.
+Apache-2.0 OSS + hosted memory SDK. V3 search is hybrid retrieval (semantic + BM25 + entity) with filters + `expiration_date` — still add/search, not SQL. **Gap:** memory-shaped vs DB-shaped — "remember this" vs. "here's a DB." **Threat:** high for P2. *(Matrix re-verified 2026-08-01: docs.mem0.ai, mem0ai/mem0.)*
 
 ### Zep — https://getzep.com
-Agent-memory platform built on **Graphiti**, a temporal knowledge-graph engine (facts as graph nodes with validity windows + entity resolution); "the Context Lake for AI agents", OSS core + hosted cloud. (Full architecture in `/vs/zep`.)
-- **Gap nlqdb exploits:** Zep is a *retrieval* graph — no query planner, so an agent can't `GROUP BY` / `JOIN` / aggregate over its own memory; the validity windows are point-in-time recall, not analytics. nlqdb is a real database the agent aggregates over in NL.
-- **Threat vector:** **High for P2** — well-funded, benchmark-led; the knowledge-graph framing is more structured than a flat vector store, but stops short of SQL semantics.
+Agent-memory platform on **Graphiti** (temporal knowledge graph; validity windows + entity resolution); OSS core + hosted cloud. `/vs/zep`.
+- **Gap:** hybrid vector/BM25/graph *retrieval* — no query planner, so no `GROUP BY` / `JOIN` / aggregate; validity windows are point-in-time recall, not analytics.
+- **Threat:** **High for P2** — benchmark-led; stops short of SQL. Graphiti Apache-2.0 self-hosts; Zep platform hosted (CE deprecated). *(Matrix re-verified 2026-08-01: getzep.com/platform/graphiti, getzep/graphiti.)*
 
 ### Letta (formerly MemGPT) — https://letta.com
-Open-source (Apache-2.0) agent runtime with persistent memory built in (out of the 2023 Berkeley MemGPT paper); OS-style memory tiers, self-host or hosted. (Full architecture in `/vs/letta`.)
-- **Gap nlqdb exploits:** Letta's memory is self-edited prose blocks + a searchable archive — it can recall "Alice has a $50k deal" but can't answer "average deal size per stage for enterprise" (no relational query layer). The two compose: Letta the runtime, nlqdb the analytical store.
-- **Threat vector:** Medium — they want to be the runtime, not the storage layer, so the overlap is the default built-in memory, not a head-to-head store.
+Apache-2.0 agent runtime with OS-style memory tiers (core / recall / archival); self-host (App Server) or hosted. Out of the 2023 Berkeley MemGPT paper. `/vs/letta`.
+- **Gap:** self-edited prose + searchable archive — can recall "Alice has a $50k deal" but not "average deal size per stage" (no relational layer). Composes: Letta runtime, nlqdb analytical store.
+- **Threat:** Medium — wants to be the runtime, not the store. *(Matrix re-verified 2026-08-01: docs.letta.com, letta-ai/letta.)*
 
 ### LangMem (LangChain) — https://langchain.com
 OSS Python SDK adding long-term memory (semantic/episodic/procedural) to LangGraph agents — extract, consolidate, dedup; storage-backend-agnostic. (Full architecture in `/vs/langmem`.)
@@ -206,16 +206,16 @@ Adjacent DIY components. LlamaIndex (MIT) ships `NLSQLTableQueryEngine` (synthes
 
 ## Gap analysis — where nlqdb actually wins
 
-The competitive set is crowded but fragmented; nobody fully occupies the intersection nlqdb targets:
+Nobody occupies nlqdb's intersection:
 
-1. **"Agent provisions its own DB" is whitespace** — every MCP Postgres server, Vanna/Defog, and Retool assumes a human already stood the database up.
-2. **DB + NL chat + auto-migration in one product** — Supabase has the DB, Outerbase the chat, Defog the SQL; nobody stitches all three into one install.
-3. **Conversational destructive-op preview** (diff-before-apply) is rare — Retool gates human button-clicks, nothing gates NL requests. A trust differentiator for P1/P4.
-4. **Analytical memory for agents** (§4) — Mem0 / Zep / Letta / LangMem *retrieve* facts; only nlqdb lets the agent `GROUP BY` / `JOIN` / `HAVING` over its own memory. Adding SQL semantics to a vector store is a storage-layer rewrite, not a feature (the GLOBAL-036 wedge). A DIY `memories` table *is* SQL-capable, but not multi-tenant-isolated, retention-swept, or NL-queryable out of the box.
-5. **Cross-persona coverage with one product** — most rivals aim at one persona; nlqdb's bet that one chat+DB primitive serves a dev, an agent, and a PM is unoccupied (moat or focus risk).
+1. **"Agent provisions its own DB"** — MCP Postgres / Vanna / Retool assume a human already stood the DB up.
+2. **DB + NL chat + auto-migration in one product** — Supabase / Outerbase / Defog each own a slice, not the stitch.
+3. **Conversational destructive-op preview** — rare; Retool gates UI clicks, not NL. Trust differentiator for P1/P4.
+4. **Analytical memory for agents** (§4 / GLOBAL-036) — Mem0 / Zep / Letta / LangMem *retrieve*; only nlqdb `GROUP BY` / `JOIN` / `HAVING` over memory. DIY `memories` tables are SQL-capable but not isolated, retention-swept, or NL-queryable out of the box.
+5. **Cross-persona with one product** — most rivals aim at one persona; one chat+DB primitive for a dev, an agent, and a PM is unoccupied.
 
-Scariest threats: (a) Supabase adding a first-class NL + agent story; (b) the MCP Postgres ecosystem closing the provisioning gap; (c) a direct entrant like Agentic DB matching the coding-agent onboarding (§4) — all plausible within 12 months. The cross-persona and NL-migration planks are harder to copy.
+Scariest threats within ~12 months: (a) Supabase NL + agent story; (b) MCP Postgres adding provisioning; (c) Agentic DB matching coding-agent onboarding (§4). Cross-persona + NL-migration are harder to copy.
 
 ---
 
-*Last verified: 2026-07-18 (§4 DIY-on-Postgres baseline + Agentic DB / Constructive, OSS announced 2026-04-28, R-02); 2026-07-01 (§1 Neon — pricing + official MCP server; §6 LlamaIndex; §4 MindsDB 2026-06-30). Pricing, URLs, and acquisitions change — re-check quarterly, especially §1/§3/§4 where consolidation and funding move fastest.*
+*Last verified: 2026-08-01 (§4 Mem0/Zep/Letta matrix re-verify — glyphs unchanged); 2026-07-18 (§4 DIY + Agentic DB); 2026-07-01 (§1 Neon, §6 LlamaIndex, §4 MindsDB). Re-check quarterly.*

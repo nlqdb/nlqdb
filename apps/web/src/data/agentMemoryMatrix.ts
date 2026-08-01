@@ -10,8 +10,18 @@
 // FEATURE): shipped = ✓, partial = ◐, no = —. Honesty is the conversion
 // lever (AEO 2026): every nlqdb ✓ is shippable today, and competitor
 // cells are sourced from the WS-01 web-verified landscape
-// (`docs/competitors.md §4`, verified 2026-06-19) — not the aspirational
+// (`docs/competitors.md §4`, re-verified 2026-08-01) — not the aspirational
 // framing doc, which mislabelled several self-host claims.
+//
+// 2026-08-01 evidence (public docs/repos only):
+// - Mem0: add/search + V3 hybrid retrieval (semantic+BM25+entity), filters,
+//   expiration_date; Apache-2.0 OSS + self-host server. No SQL planner.
+// - Zep: Graphiti temporal graph hybrid search (vector+BM25+graph); Graphiti
+//   Apache-2.0 self-hostable; Zep platform hosted. No GROUP BY / JOIN.
+// - Letta: core/recall/archival tiers + archival_memory_search; Apache-2.0
+//   self-host (App Server). No relational aggregation over memory.
+// - nlqdb: NL→SQL aggregations + schema provision + diff preview ship;
+//   embedding hybrid recall still E-05; self-host container still WS-11.
 
 import type { ComparisonClaim } from "./competitors.ts";
 
@@ -30,7 +40,7 @@ export type MatrixRow = {
 // When the competitor cells were last reconciled against their docs/repos.
 // A daily-loop alert if > 60 days old (mirrors the engine-row staleness
 // rule). Sourced from WS-01 (`docs/competitors.md §4`).
-export const MATRIX_VERIFIED_ON = "2026-06-19";
+export const MATRIX_VERIFIED_ON = "2026-08-01";
 
 // Rows ordered: shared baseline first (everyone can), then the analytical
 // wedge where only nlqdb wins, then the trust/ownership rows. The shape of
@@ -50,7 +60,7 @@ export const AGENT_MEMORY_MATRIX: MatrixRow[] = [
     zep: "shipped",
     letta: "shipped",
     nlqdb: "shipped",
-    note: "Retrieval is the job these tools are built for; nlqdb recalls via SQL filters.",
+    note: "Mem0/Zep/Letta rank by hybrid/semantic search; nlqdb recalls via SQL filters (embedding hybrid still E-05).",
   },
   {
     capability: 'Top-N by value ("top 5 deals by size")',
@@ -74,7 +84,7 @@ export const AGENT_MEMORY_MATRIX: MatrixRow[] = [
     zep: "no",
     letta: "no",
     nlqdb: "shipped",
-    note: "Zep tracks temporal validity for point-in-time recall, but cannot aggregate across a window.",
+    note: "Mem0/Zep can filter or point-in-time-recall by time; neither aggregates across a window.",
   },
   {
     capability: "Full GROUP BY / JOIN / HAVING over memory",
@@ -90,7 +100,7 @@ export const AGENT_MEMORY_MATRIX: MatrixRow[] = [
     zep: "no",
     letta: "no",
     nlqdb: "shipped",
-    note: "nlqdb provisions Postgres from the agent's first goal; the others impose a fixed memory shape.",
+    note: "nlqdb provisions Postgres from the agent's first goal; the others impose a fixed memory shape (Graphiti custom entity types ≠ agent-designed tables).",
   },
   {
     capability: "Diff preview before destructive writes",
@@ -106,6 +116,6 @@ export const AGENT_MEMORY_MATRIX: MatrixRow[] = [
     zep: "partial",
     letta: "shipped",
     nlqdb: "partial",
-    note: "Mem0/Letta/LangMem are OSI-licensed; Zep self-hosts the Graphiti engine but the platform is hosted; nlqdb is source-available under FSL (GLOBAL-019, not yet OSI), with the container pull-forward tracked in WS-11.",
+    note: "Mem0/Letta are Apache-2.0 self-hostable; Zep self-hosts Graphiti but the platform is hosted; nlqdb is FSL source-available (GLOBAL-019), container pull-forward still WS-11.",
   },
 ];
