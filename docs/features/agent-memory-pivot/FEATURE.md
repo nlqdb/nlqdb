@@ -146,11 +146,11 @@ gate is **0/5**.
 
 ### SK-PIVOT-021 — Every goal pack ships as a one-click product journey on one shared runner
 
-**Body:** [`decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md`](./decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md). A skill artifact is not a finished pack experience: one shared runner owns the primary CTA, useful pre-auth evidence, least-permission source access, resumable auth/provider handoffs, honest item/write progress, durable proof and cleanup. Pack-specific work remains declarative per `SK-PIVOT-018`. Pack #1's concrete public-alpha journey is [`D-08`](./worksheets/dogfood/D-08-repo-ops-one-click-import.md).
+**Body:** [`decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md`](./decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md). A skill artifact is not a finished pack: one shared runner owns the CTA, pre-auth evidence, least-permission source access, resumable handoffs, honest progress, durable proof and cleanup, while pack-specific work stays declarative per `SK-PIVOT-018`. Pack #1's public-alpha journey is [`D-08`](./worksheets/dogfood/D-08-repo-ops-one-click-import.md).
 
 ### SK-PIVOT-022 — Community memory guidance optimizes for task outcomes, even when nlqdb is absent
 
-**Body:** [`decisions/SK-PIVOT-022-community-first-memory-guidance.md`](./decisions/SK-PIVOT-022-community-first-memory-guidance.md). Cross-strategy guidance recommends the smallest memory setup that measurably improves the task; plain context, another provider, no persistent memory, or a user-composed architecture may be best without nlqdb. Repeated evidence against nlqdb narrows, pivots or retires the unsupported claim. This extends `SK-PIVOT-019` without creating maintained vendor adapters; nlqdb goal packs remain distinct product surfaces under `SK-PIVOT-018`.
+**Body:** [`decisions/SK-PIVOT-022-community-first-memory-guidance.md`](./decisions/SK-PIVOT-022-community-first-memory-guidance.md). Cross-strategy guidance recommends the smallest setup that measurably improves the task — plain context, another provider, no persistent memory, or a user-composed architecture may win without nlqdb; repeated counter-evidence narrows or retires the claim. Extends `SK-PIVOT-019` without maintained vendor adapters; nlqdb goal packs stay distinct product surfaces under `SK-PIVOT-018`.
 
 ## GLOBALs governing this feature
 
