@@ -26,15 +26,17 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 2 | ~5 min | Glama: push the score badge to `awesome-mcp-servers` PR #10984 (listing is claimed + released, tier B); claim the *connector* (its `/.well-known/glama.json` ships with the repo) + hand test creds for health | 2026-07-29 |
-| 3 | ~5 min | Submit the `nlqdb-memory` plugin to Anthropic's community plugin directory (`clau.de/plugin-directory-submission`) — free signed-in form, no plan gate | 2026-07-29 |
-| 4 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 2 | ~2 min | Set the `NLQDB_API_KEY` GitHub repo secret (an `sk_mcp_` key from `/app/keys`) so D-02's memory-sync workflow runs instead of skipping — feeds gate criterion 1 | 2026-08-01 |
+| 3 | ~5 min | Glama: push the score badge to `awesome-mcp-servers` PR #10984 (listing is claimed + released, tier B); claim the *connector* (its `/.well-known/glama.json` ships with the repo) + hand test creds for health | 2026-07-29 |
+| 4 | ~5 min | Submit the `nlqdb-memory` plugin to Anthropic's community plugin directory (`clau.de/plugin-directory-submission`) — free signed-in form, no plan gate | 2026-07-29 |
+| 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
-Only #1 can move real strangers (scorecard row #2); #4 is the only one that
-costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists; #2 unblocks a waiting external merge (`awesome-mcp-servers` #10984), so
-it's the freshest yield; #3 is the cheapest — a free, no-plan-gate form that
-lists nlqdb in the in-product `/plugin` Discover tab.
+Only #1 can move real strangers (scorecard row #2); #2 is the cheapest and
+feeds the gate that gates #1 (criterion 1's `/v1/ask` counter starts only when
+the sync workflow can authenticate); #5 is the only one that costs money and
+waits per `docs/cost-ladder.md` unless a Team org already exists; #3 unblocks
+a waiting external merge (`awesome-mcp-servers` #10984); #4 is a free,
+no-plan-gate form that lists nlqdb in the in-product `/plugin` Discover tab.
 
 (**Resolved 2026-07-29 — advisor session, queue 6 → 2:** the founder took the
 `MEMORY_PRESET=1` go decision live — #835 merged, the preset + `nlqdb_remember`
@@ -85,7 +87,18 @@ automated OIDC lane, tracked by scorecard row #22.)
    (`D-01..D-07`, one slice per criterion), the founder-set weekly focus
    number as of 07-28. Gate progress: **0/5**.
 
-2. **⏱ ~5 min · since 2026-07-29 — Glama badge onto `awesome-mcp-servers`
+2. **⏱ ~2 min · since 2026-08-01 — Set the `NLQDB_API_KEY` repo secret** so
+   the [D-02](./features/agent-memory-pivot/worksheets/dogfood/D-02-resync-hook.md)
+   docs→memory sync workflow authenticates instead of skipping. Mint an
+   `sk_mcp_` MCP key at `app.nlqdb.com/app/keys` (least privilege for a
+   headless runner, `SK-APIKEYS-015`; the walker key from 07-29 works too if
+   you'd rather reuse), then GitHub → `nlqdb/nlqdb` → Settings → Secrets and
+   variables → Actions → new repo secret `NLQDB_API_KEY`. D-02 ships
+   skip-green without it; with it, every `docs/**` merge re-syncs the corpus
+   and `SK-PIVOT-016` criterion 1's call counter starts accumulating. Doing
+   this *before* D-02 lands costs nothing and saves a round-trip.
+
+3. **⏱ ~5 min · since 2026-07-29 — Glama badge onto `awesome-mcp-servers`
    #10984; claim + heal the connector.** The scored-listing prerequisite is
    **done** — server listing submitted, claimed and released 2026-07-29
    ([`glama.ai/mcp/servers/nlqdb/nlqdb`](https://glama.ai/mcp/servers/nlqdb/nlqdb),
@@ -113,9 +126,9 @@ automated OIDC lane, tracked by scorecard row #22.)
    Ledger rows #6 + #10 in
    [`acquisition-channels.md`](./research/acquisition-channels.md) track both.
 
-3. **⏱ ~5 min · since 2026-07-29 — Submit the `nlqdb-memory` plugin to
+4. **⏱ ~5 min · since 2026-07-29 — Submit the `nlqdb-memory` plugin to
    Anthropic's community plugin directory** (reach R-09 venue #4, ledger row
-   #22). Free, signed-in web form — **no plan gate, no money** (unlike #4). P2
+   #22). Free, signed-in web form — **no plan gate, no money** (unlike #5). P2
    verified 2026-07-29 (`github.com/anthropics/claude-plugins-community`): that
    repo is a read-only mirror; submissions go through
    `clau.de/plugin-directory-submission`, pass automated security scanning, then
@@ -137,7 +150,7 @@ automated OIDC lane, tracked by scorecard row #22.)
    on ledger row #22; nothing else changes (the channel stays in-flight until
    `/app/admin` shows a `claude-plugin` visit).
 
-4. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin

@@ -139,7 +139,7 @@ loosening; the ops half is now the binding constraint.
 Tick on merge. Keep this list as the durable dogfood status (the scorecard's
 `Pivot:` rows are regenerated; this is not).
 
-- [ ] D-01 — docs→memory extraction skill. **🟡 build in flight 2026-07-28 on branch `claude/docs-memory-skill`** (parallel agent owns the skill artifact). This worksheet is the tracking slice: do not rebuild it; on that branch's merge, record the artifact path here and tick.
+- [x] D-01 — docs→memory extraction skill. **Done 2026-07-29** (#847 merged, ticked in #876): artifact `apps/web/public/agent-artifacts/nlqdb-docs-memory/SKILL.md`, all six acceptance points verified. (#876 ticked the sequence table but missed this line; fixed 2026-08-01 — **D-02 is unblocked and pullable now**.)
 - [ ] D-02 — one-way re-sync hook (CI on merge, `docs/**` paths filter)
 - [x] D-03 — ops-corpus golden-query set (12 questions, 4 temporal) in the `SK-QUAL-023` family. **Done 2026-07-29:** authoring landed #847; this run dispatched [run 30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690) — 27-q free EX 59.26 %, ops temporal **0/4** → diagnosed + scoped as engine slice [E-09](../engine/E-09-schema-value-linking.md) (run 156)
 - [ ] D-04 — first `docs/` corpus sync + gate-progress readout (E-03 → #835 → sync)
