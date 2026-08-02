@@ -141,48 +141,44 @@ after connect, a verification query, what to do on failure. Add a
 (`npx -y @nlqdb/mcp` + an `sk_mcp_` MCP key, swept 2026-07-28 per `SK-APIKEYS-015`), strings owned by
 [`mcp-install.ts`](../../../../../apps/web/src/lib/mcp-install.ts) and pinned to `packages/mcp` by
 [`mcp-install-stdio.test.ts`](../../../../../apps/web/src/lib/mcp-install-stdio.test.ts) ·
-✅ cold-agent walk completed 2026-07-29: an agent given only the published
-`docs.nlqdb.com/agent-memory/` URL ran its headless route verbatim — `npx -y @nlqdb/mcp` (0.1.1
-from npm) + a founder-minted `sk_mcp_` key — initialize, all-5 `tools/list`, then the page's own
-verification flow against prod: write via `nlqdb_query` (`requires_confirm` → diff preview →
-`confirm: true`) and the fact read back with its SQL trace. Replay note: inside a CCR sandbox the
-spawned node needs `NODE_OPTIONS=--use-env-proxy` (direct egress is blocked there); irrelevant on
-normal machines.
+✅ cold-agent walk green 2026-07-29: an agent given only the published
+`docs.nlqdb.com/agent-memory/` URL ran the headless route verbatim (`npx -y @nlqdb/mcp` 0.1.1 + a
+founder-minted `sk_mcp_` key) — initialize, all-5 `tools/list`, then the page's verification flow
+against prod (write via `nlqdb_query` behind the `requires_confirm` diff-preview gate, fact read
+back with its SQL trace).
 
 ### R-05 — Registry + directory sweep (one venue per run)
 
-**Goal:** Be listed wherever coding agents and their hosts discover MCP
-servers.
-Listing copy leads with memory (SK-PIVOT-003 framing) + the one command.
+**Goal:** Be listed wherever coding agents and their hosts discover MCP servers; listing copy leads
+with memory (SK-PIVOT-003) + the one command.
 **Done when:** per venue: listed (URL) or payload parked — tick per venue.
-**Mechanism (P2, corrected 2026-07-25 by #822):** the official-registry publish cascades only to
-venues that *document* ingestion; assume every other venue needs its own account-walled submit.
+**Mechanism (P2, 2026-07-25 #822):** the official-registry publish cascades only to venues that
+*document* ingestion; every other venue needs its own account-walled submit.
 Per-venue mechanism and exact payloads live in
 [`acquisition-channels.md`](../../../../research/acquisition-channels.md) +
 [`blocked-by-human.md`](../../../../blocked-by-human.md) — status only here.
-- ✅ #1 official MCP registry — **published 2026-07-22** (`com.nlqdb/nlqdb` v0.1.1, DNS
-  domain-verify; `?utm_source=mcp-registry`). Cascade reached only ✅ #4 Glama (connector 07-23;
-  *server* listing claimed 07-29, score pending, founder queue #3): ✅ #3 PulseMCP **absent** 07-25,
-  re-check 08-22; ✅ #2 **Smithery** needs its own `smithery mcp publish` (not a crawler), parked.
+- ✅ #1 official MCP registry — **published 2026-07-22** (`com.nlqdb/nlqdb` v0.1.1, DNS domain-verify;
+  `?utm_source=mcp-registry`). Cascade reached only Glama #4 (connector 07-23; server claimed 07-29,
+  founder queue #3); PulseMCP #3 absent 07-25 (re-check 08-22); Smithery #2 needs its own `smithery
+  mcp publish`, parked.
 - ✅ #5 mcp.so · ✅ #6 Cursor · ✅ #7 Anthropic connector dir — account-walled, **not** registry
   crawlers (so #1 doesn't cascade), payloads parked. #7 is also plan-gated (Team/Enterprise).
 - ✅ #8 `awesome-mcp-servers` — PR #10984 open since 07-26; merge gated on the Glama score badge
   (founder queue #3). Links the repo, no utm-taggable URL.
-- ✅ #9 `mcp.directory` — P2 07-30: a registry-ingesting crawler (+ no-account form fallback),
-  absent live 07-30; status/payload in
-  [`acquisition-channels.md`](../../../../research/acquisition-channels.md) #23, re-check 08-22.
+- ✅ #9 `mcp.directory` — P2 07-30: registry-ingesting crawler + no-account form fallback, absent
+  07-30; payload in [`acquisition-channels.md`](../../../../research/acquisition-channels.md) #23,
+  re-check 08-22.
 
 ### R-06 — Coding-agent walker (measurement backbone)
 
 **Goal:** Measure the claim the whole track makes: a cold coding agent
 tasked with adding memory finds nlqdb and completes setup.
 **Do:** A stranger-test-style walker (follow `tools/stranger-test`
-conventions; read `docs/features/stranger-test/FEATURE.md` first): scripted
-cold Claude Code session in a scratch agent-app fixture, prompt "add
-persistent per-user memory to this agent; use web search to pick the best
-option", recording (a) does it surface nlqdb, (b) does it complete MCP
-setup, (c) does it reach a first successful memory read/write. Headless;
-result feeds [`NUMBERS.md`](NUMBERS.md).
+conventions; read `docs/features/stranger-test/FEATURE.md` first): a headless
+cold Claude Code session in a scratch agent-app fixture, prompt "add persistent
+per-user memory to this agent; use web search to pick the best option",
+recording (a) surfaces nlqdb, (b) completes MCP setup, (c) reaches a first
+memory read/write. Result feeds [`NUMBERS.md`](NUMBERS.md).
 **Done when:** ✅ walker merged
 ([`reach-agent-walk.ts`](../../../../../tools/stranger-test/src/reach-agent-walk.ts) +
 [`scripts/reach-agent-walk.sh`](../../../../../scripts/reach-agent-walk.sh); pure
@@ -280,6 +276,10 @@ in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
   submit via `clau.de/plugin-directory-submission` (security scan → Discover tab). Distinct from
   the connector directory (R-05 #7 / ledger #9). `claude-plugins-official` is curated with **no
   application process** — nothing to submit.
+- ✅ #5 **skillsclaude.org** (~7,200 skills) — P2 2026-07-30: **no-account** paste-a-repo form, not
+  an arbitrary-repo crawler (nlqdb absent 8 days despite public). SPA form + headless submit
+  env-blocked → one-field payload **parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md)
+  #5); lists the repo URL → `github`-ref yield (ledger #16), no utm key.
 - ⬜ **Install-yield gate:** not done on listings — closes when `/app/admin` shows one
   real `claude-plugin` visit (the same bar R-07 carries; why `plugin.json`'s `homepage`
   keeps its own key, not `agent-artifacts`).
@@ -302,4 +302,4 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [x] R-06 — coding-agent walker + baseline
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)
 - [x] R-08 — answer-engine citation baseline
-- [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (4 of 4 venues resolved — #4 payload parked 2026-07-29)
+- [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (5 of 5 venues resolved — #4 + #5 payloads parked)
