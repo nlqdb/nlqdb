@@ -1749,6 +1749,14 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         a: "For a plain anti-join they return the same rows. `NOT EXISTS` is a correlated subquery that stops at the first match and is NULL-safe by construction. `LEFT JOIN ... WHERE b.key IS NULL` keeps every left row that found no partner — but if the join key isn't unique it can multiply rows before the filter. nlqdb picks one from your phrasing and shows the clause in the SQL.",
       },
       {
+        q: "Can I use EXCEPT instead of an anti-join to find rows with no match?",
+        a: "Yes, for the 'which keys are missing' shape. `EXCEPT` is set difference — NULL-safe (unlike `NOT IN`) and terse. The catch: it returns only the columns you project and de-duplicates them, so you get the distinct missing keys, not the full unmatched rows with their other columns. When you want the whole row, the `LEFT JOIN ... IS NULL` / `NOT EXISTS` anti-join is the right shape. nlqdb picks between them from your phrasing and shows the SQL.",
+      },
+      {
+        q: "Is NOT EXISTS or LEFT JOIN faster for an anti-join?",
+        a: "In modern Postgres, neither — the planner turns both `NOT EXISTS` and `LEFT JOIN ... IS NULL` into the same anti-join, so they share a plan. The one to avoid is `NOT IN (subquery)`: on a nullable column it can't become an anti-join at all — the correctness trap and the slow path. An index on the inner table's join key is what actually moves the time. nlqdb compiles the anti-join shapes, never `NOT IN`, and shows the SQL.",
+      },
+      {
         q: "Can I run an anti-join on a Postgres database I already run?",
         a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask 'rows with no match' in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the unmatched rows read-only — it doesn't persist the result set for you.",
       },
