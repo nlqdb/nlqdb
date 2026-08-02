@@ -17,7 +17,7 @@ import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { blogByAnchorPath } from "../../data/blog";
 import { PERSONAS } from "../../data/personas";
-import { SOLVE_ENTRIES, solveBySlug } from "../../data/solve";
+import { SOLVE_ENTRIES, relatedSolveEntries, solveBySlug } from "../../data/solve";
 import Base from "../../layouts/Base.astro";
 import { breadcrumbJsonLd } from "../../lib/breadcrumb";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
@@ -46,6 +46,13 @@ const ogImage = s.persona === "P2 agent builder" ? `/og/solve-${s.slug}.png` : u
 const ogImageAlt = `${s.searchTitle} — answered with a GROUP BY in nlqdb.`;
 
 const faqJsonLd = faqPageJsonLd(s.faqs);
+
+// Contextual `/solve ↔ /solve` links within the same topic cluster. Rendered
+// as descriptive anchors so a page discovered only via the flat `/solve/`
+// index + sitemap gains real inbound links from indexed siblings — the
+// documented remedy for "Discovered - currently not indexed" (crawl-priority,
+// not a penalty). See `related` in data/solve.ts.
+const related = relatedSolveEntries(s);
 
 // HowTo JSON-LD — per §3.1 of automated-icp-validation-plan.md. The
 // three steps map to the canonical anonymous-mode arc: read, embed,
@@ -189,6 +196,21 @@ const breadcrumbLd = breadcrumbJsonLd(
           }
         </ul>
       </section>
+
+      {
+        related.length > 0 && (
+          <section class="slv__related" aria-labelledby="slv-related-title">
+            <h2 class="slv__related-title" id="slv-related-title">Related guides</h2>
+            <ul class="slv__related-list">
+              {related.map((r) => (
+                <li>
+                  <a href={`/solve/${r.slug}/`}>{r.searchTitle}</a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
 
       <section class="slv__cta">
         <h2 class="slv__cta-title">Try nlqdb in 30 seconds</h2>
@@ -546,6 +568,37 @@ const breadcrumbLd = breadcrumbJsonLd(
     color: var(--body);
   }
   .slv__sources-list a:hover {
+    color: var(--ink);
+  }
+
+  /* Related guides — contextual /solve ↔ /solve internal links. Quiet,
+     same idiom as Sources: hairline list, descriptive anchors. */
+  .slv__related {
+    margin: 0 0 var(--gap-beat);
+    max-width: var(--col);
+  }
+  .slv__related-title {
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 12px;
+  }
+  .slv__related-list {
+    margin: 0;
+    padding-left: 20px;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.55;
+  }
+  .slv__related-list li + li {
+    margin-top: 8px;
+  }
+  .slv__related-list a {
+    color: var(--body);
+  }
+  .slv__related-list a:hover {
     color: var(--ink);
   }
 

@@ -68,6 +68,16 @@ export type SolveEntry = {
   // SK-SOLVE-003: this is the page's evidence trail — the reader can
   // confirm the theme is real without trusting our framing.
   sources: SolveSource[];
+  // Optional contextual internal links to sibling solve slugs in the same
+  // topic cluster, rendered as descriptive anchors (the target's searchTitle).
+  // The `/blog ↔ /solve` mesh already exists; this adds the `/solve ↔ /solve`
+  // one. Purpose is crawl-priority: a page discovered only via the flat
+  // `/solve/` index + sitemap gets deprioritised ("Discovered - currently not
+  // indexed"); 2–5 links from indexed, topically-relevant siblings is the
+  // documented remedy. Keep every slug in the same cluster — Google devalues
+  // topically-forced internal links. Validated in solve.test.ts (resolves,
+  // no self-ref, no dupes).
+  related?: string[];
 };
 
 export const SOLVE_ENTRIES: SolveEntry[] = [
@@ -2010,6 +2020,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "Postgres Row Security Policies — the fail-closed isolation mechanism a hand-rolled `WHERE` filter has to replicate by hand.",
       },
     ],
+    related: [
+      "best-way-to-store-agent-memory",
+      "expire-old-agent-memory",
+      "isolate-ai-agent-memory-per-tenant",
+    ],
   },
   {
     slug: "best-way-to-store-agent-memory",
@@ -2070,6 +2085,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         label: 'r/LocalLLaMA — "how should I store agent memory" recurring discussion hub.',
       },
     ],
+    related: [
+      "agent-memory-mcp-server",
+      "build-vs-buy-agent-memory",
+      "expire-old-agent-memory",
+    ],
   },
   {
     slug: "expire-old-agent-memory",
@@ -2127,6 +2147,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "Postgres date/time functions — the `now()` cutoff a `WHERE expires_at < now()` retention query is built on.",
       },
     ],
+    related: [
+      "best-way-to-store-agent-memory",
+      "build-vs-buy-agent-memory",
+      "agent-memory-mcp-server",
+    ],
   },
   {
     slug: "agent-memory-mcp-server",
@@ -2183,9 +2208,22 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         label: 'HN search: "mcp memory" — discussion on memory servers for AI agents.',
       },
     ],
+    related: [
+      "best-way-to-store-agent-memory",
+      "build-vs-buy-agent-memory",
+      "expire-old-agent-memory",
+    ],
   },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
   return SOLVE_ENTRIES.find((s) => s.slug === slug);
+}
+
+// Resolve an entry's `related` slugs to their entries, dropping any that don't
+// resolve (solve.test.ts fails the build if one doesn't, so this is defensive).
+export function relatedSolveEntries(entry: SolveEntry): SolveEntry[] {
+  return (entry.related ?? [])
+    .map((slug) => solveBySlug(slug))
+    .filter((s): s is SolveEntry => s !== undefined);
 }
