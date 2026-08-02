@@ -200,6 +200,15 @@ automated OIDC lane, tracked by scorecard row #22.)
 
 ## Suggestions needing approval (to amend the guidelines)
 
+- **Approve P6 as a non-negotiable principle (PR #885)** — #885 adds a 6th
+  binding CLAUDE.md/AGENTS.md principle, *"Customer journeys must be
+  world-class, not merely functional"* (whole-journey: least-click,
+  intent preserved across auth/redirects, honest progress, durable proof,
+  reversible, real E2E walk). It's clear, load-bearing, and contradicts
+  nothing — but making a **new rule non-negotiable for all agents** is a
+  founder call, not a value-decision. Approve → I merge #885 (rest is
+  clean, CI-green); or "guidance, not binding" → I downgrade P6 first.
+
 (The auto-merge-tier proposal was **rejected by the founder 2026-07-22**:
 review latency is handled by a separate merger agent, not by `/daily`
 self-merging; recorded in `daily.md` §4. Don't re-propose.)
