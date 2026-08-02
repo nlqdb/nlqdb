@@ -104,7 +104,7 @@ reading; do not block on the question either.
 
 ## Artifact
 
-This block *is* the launch demo (`blocked-by-human.md` bullet #2 names it).
+This block *is* the launch demo (`blocked-by-human.md` bullet #1 names it).
 Once live, the artifact owed is the queue draft that points at it — write it
 from the D-04 run's real numbers, including the failures.
 

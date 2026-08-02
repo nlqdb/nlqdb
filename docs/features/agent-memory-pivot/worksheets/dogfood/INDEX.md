@@ -102,14 +102,19 @@ it must **never** delay the gate or the launch.
 both corpora** — the last unmeasured half closed by D-03 this run — but not yet
 green: temporal **2/7** (synthetic 2/3, ops 0/4). The gate count is unchanged;
 what changed is that the ops temporal axis went from *unmeasured* to a concrete
-**0/4**, which is the named engine lever the next run pulls. Run 156 read the
-SK-QUAL-023 run summary and diagnosed the root cause — the planner is given
-DDL-only schema and guesses low-cardinality categorical values wrong
-(`kind='question'` vs `'open_question'`, `role='doc-sync'` vs `'sync'`) — and
-scoped the fix as engine slice
-[E-09](../engine/E-09-schema-value-linking.md) (schema value-linking); it is a
-hot-path change with a perf decision, not a one-run daily patch. `/daily` step
-1 restates this beside
+**0/4**. Run 156 read the SK-QUAL-023 run summary and diagnosed the root cause —
+the planner is given DDL-only schema and guesses low-cardinality categorical
+values wrong (`kind='question'` vs `'open_question'`, `role='doc-sync'` vs
+`'sync'`) — and scoped the fix as engine slice
+[E-09](../engine/E-09-schema-value-linking.md) (schema value-linking). **Run 158
+then found E-09 is ⛔ BLOCKED by [`GLOBAL-037`](../../../../decisions/GLOBAL-037-schema-only-llm-egress.md)
+(P1):** its mechanism — sampling real cell-values into the LLM prompt — is the
+`value-retrieval` lever GLOBAL-037 forbids by name (schema-only egress; never
+send user cell-values). So criterion 4 has **no agent-movable, GLOBAL-037-
+compliant lever** today; the compliant re-scope (declare the categorical domains
+as DDL `ENUM`/`CHECK` constraints so they're legitimate schema egress) is a
+preset-schema design question for a future engine-track run, not a daily patch.
+`/daily` step 1 restates this beside
 the launch bullet's age every run. The founder also reads it on
 **`/app/admin` → "Launch gate — SK-PIVOT-016"** (`SK-GTM-008`), which renders
 criteria 1–2 live from D1 and 3–5 as static-with-as-of constants; this table
@@ -121,7 +126,7 @@ stays canonical, so a criterion that moves is updated here **and** in
 | 1 | ≥ 100 real `/v1/ask` calls through the public MCP surface from the ops workload | ⬜ 0 | D-04 (+ D-02, D-05) |
 | 2 | First-10-queries success ≥ 95 % **on that workload** | ⬜ N = 0 | D-04 |
 | 3 | Zero silent data loss / wrong-answer-accepted incidents | ⬜ unstartable | D-04 |
-| 4 | Temporal golden queries pass | ⬜ **temporal 2/7** — synthetic 2/3 + **ops 0/4** (measured 2026-07-29, run 30413719690) | D-03 ✅ (measured) → engine fix [E-09](../engine/E-09-schema-value-linking.md) (schema value-linking; run-156 diagnosis) |
+| 4 | Temporal golden queries pass | ⬜ **temporal 2/7** — synthetic 2/3 + **ops 0/4** (measured 2026-07-29, run 30413719690) | D-03 ✅ (measured) → [E-09](../engine/E-09-schema-value-linking.md) ⛔ **BLOCKED (P1, [`GLOBAL-037`](../../../../decisions/GLOBAL-037-schema-only-llm-egress.md), run 158)** — value-sampling into the prompt is forbidden egress; no compliant agent-movable lever until a DDL-`ENUM`/`CHECK` re-scope |
 | 5 | Live memory dashboard public on `/agents` | ⬜ unshipped | D-06 |
 
 Criterion 4's synthetic half stays `2/3`; D-03 added the **ops** corpus's 4
@@ -134,7 +139,7 @@ loosening; the ops half is now the binding constraint.
 Tick on merge. Keep this list as the durable dogfood status (the scorecard's
 `Pivot:` rows are regenerated; this is not).
 
-- [ ] D-01 — docs→memory extraction skill. **🟡 build in flight 2026-07-28 on branch `claude/docs-memory-skill`** (parallel agent owns the skill artifact). This worksheet is the tracking slice: do not rebuild it; on that branch's merge, record the artifact path here and tick.
+- [x] D-01 — docs→memory extraction skill. **Done 2026-07-29** (#847 merged, ticked in #876): artifact `apps/web/public/agent-artifacts/nlqdb-docs-memory/SKILL.md`, all six acceptance points verified. (#876 ticked the sequence table but missed this line; fixed 2026-08-01 — **D-02 is unblocked and pullable now**.)
 - [ ] D-02 — one-way re-sync hook (CI on merge, `docs/**` paths filter)
 - [x] D-03 — ops-corpus golden-query set (12 questions, 4 temporal) in the `SK-QUAL-023` family. **Done 2026-07-29:** authoring landed #847; this run dispatched [run 30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690) — 27-q free EX 59.26 %, ops temporal **0/4** → diagnosed + scoped as engine slice [E-09](../engine/E-09-schema-value-linking.md) (run 156)
 - [ ] D-04 — first `docs/` corpus sync + gate-progress readout (E-03 → #835 → sync)

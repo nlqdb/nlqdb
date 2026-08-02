@@ -52,11 +52,11 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   ✅ (07-27) · Glama #6 crawl-fed · mcp.so #7 absent (approval queue) · Cursor #8
   submitted · `mcp.directory` #23 absent (registry-ingestion pending, re-check
   08-22) · `awesome-mcp-servers` #10 PR open (merge-gated on Glama score badge,
-  founder queue #2) · Anthropic connector dir #9 founder-gated
-  (`blocked-by-human.md` #4) · PulseMCP #5 re-checks 08-22. Plugin/skill venues
+  founder queue #3) · Anthropic connector dir #9 founder-gated
+  (`blocked-by-human.md` #5) · PulseMCP #5 re-checks 08-22. Plugin/skill venues
   (R-09): own marketplace ✅, claudemarketplaces.com ✅ (crawl-fed), SkillsMP ✅,
-  `claude-community` #4 payload parked (`blocked-by-human.md` #3), `skillsclaude.org`
-  **#5 new this cycle — no-account form, payload parked** (`blocked-by-human.md` #5).
+  `claude-community` #4 payload parked (`blocked-by-human.md` #4), `skillsclaude.org`
+  **#5 new this cycle — no-account form, payload parked** (`blocked-by-human.md` #6).
   **Channels live with attributable yield: 4** (organic, dev.to, github, npm); #12 +
   #22 + #23 in-flight, yield 0.
 - Coding-agent walker (R-06): **0/1 surfaced** (baseline 2026-07-20 — cold

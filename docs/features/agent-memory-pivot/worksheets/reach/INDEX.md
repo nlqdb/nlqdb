@@ -159,12 +159,12 @@ Per-venue mechanism and exact payloads live in
 [`blocked-by-human.md`](../../../../blocked-by-human.md) — status only here.
 - ✅ #1 official MCP registry — **published 2026-07-22** (`com.nlqdb/nlqdb` v0.1.1, DNS domain-verify;
   `?utm_source=mcp-registry`). Cascade reached only Glama #4 (connector 07-23; server claimed 07-29,
-  founder queue #2); PulseMCP #3 absent 07-25 (re-check 08-22); Smithery #2 needs its own `smithery
+  founder queue #3); PulseMCP #3 absent 07-25 (re-check 08-22); Smithery #2 needs its own `smithery
   mcp publish`, parked.
 - ✅ #5 mcp.so · ✅ #6 Cursor · ✅ #7 Anthropic connector dir — account-walled, **not** registry
   crawlers (so #1 doesn't cascade), payloads parked. #7 is also plan-gated (Team/Enterprise).
 - ✅ #8 `awesome-mcp-servers` — PR #10984 open since 07-26; merge gated on the Glama score badge
-  (founder queue #2). Links the repo, no utm-taggable URL.
+  (founder queue #3). Links the repo, no utm-taggable URL.
 - ✅ #9 `mcp.directory` — P2 07-30: registry-ingesting crawler + no-account form fallback, absent
   07-30; payload in [`acquisition-channels.md`](../../../../research/acquisition-channels.md) #23,
   re-check 08-22.
