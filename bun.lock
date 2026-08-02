@@ -375,6 +375,14 @@
         "vue": "^3.5.0",
       },
     },
+    "tools/docs-memory": {
+      "name": "@nlqdb/docs-memory",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/node": "^20.18.0",
+        "typescript": "^5.6.0",
+      },
+    },
     "tools/eval": {
       "name": "@nlqdb/eval",
       "version": "0.0.0",
@@ -868,6 +876,8 @@
     "@nlqdb/db": ["@nlqdb/db@workspace:packages/db"],
 
     "@nlqdb/docs": ["@nlqdb/docs@workspace:apps/docs"],
+
+    "@nlqdb/docs-memory": ["@nlqdb/docs-memory@workspace:tools/docs-memory"],
 
     "@nlqdb/elements": ["@nlqdb/elements@workspace:packages/elements"],
 
