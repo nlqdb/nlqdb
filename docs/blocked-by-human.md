@@ -29,17 +29,19 @@ values and criteria live. Read those only when you sit down to do the thing.
 | 2 | ~2 min | Set the `NLQDB_API_KEY` GitHub repo secret (an `sk_mcp_` key from `/app/keys`) so D-02's memory-sync workflow runs instead of skipping — feeds gate criterion 1 | 2026-08-01 |
 | 3 | ~5 min | Glama: push the score badge to `awesome-mcp-servers` PR #10984 (listing is claimed + released, tier B); claim the *connector* (its `/.well-known/glama.json` ships with the repo) + hand test creds for health | 2026-07-29 |
 | 4 | ~5 min | Submit the `nlqdb-memory` plugin to Anthropic's community plugin directory (`clau.de/plugin-directory-submission`) — free signed-in form, no plan gate | 2026-07-29 |
-| 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 6 | ~1 min | Paste `github.com/nlqdb/nlqdb` into skillsclaude.org's no-account submit form (optional; agent-blocked here) | 2026-07-30 |
+| 5 | ~15 min | Open a `[Server Submission]` issue on `cline/mcp-marketplace` — free, no plan gate; one-click install inside Cline | 2026-08-03 |
+| 6 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 7 | ~1 min | Paste `github.com/nlqdb/nlqdb` into skillsclaude.org's no-account submit form (optional; agent-blocked here) | 2026-07-30 |
 
 Only #1 can move real strangers (scorecard row #2); #2 is the cheapest and
 feeds the gate that gates #1 (criterion 1's `/v1/ask` counter starts only when
-the sync workflow can authenticate); #5 is the only one that costs money and
+the sync workflow can authenticate); #6 is the only one that costs money and
 waits per `docs/cost-ladder.md` unless a Team org already exists; #3 unblocks
-a waiting external merge (`awesome-mcp-servers` #10984); #4 is a free,
-no-plan-gate form that lists nlqdb in the in-product `/plugin` Discover tab.
-#6 is lowest-yield and optional — a 1-min no-account paste that only lands
-here because this env can't drive the form.
+a waiting external merge (`awesome-mcp-servers` #10984); #4 and #5 are free,
+no-plan-gate coding-agent-host venues (the Anthropic `/plugin` Discover tab and
+Cline's in-product marketplace) — both list nlqdb where an agent-builder is
+already installing tools. #7 is lowest-yield and optional — a 1-min no-account
+paste that only lands here because this env can't drive the form.
 
 (**Resolved 2026-07-29 — advisor session, queue 6 → 2:** the founder took the
 `MEMORY_PRESET=1` go decision live — #835 merged, the preset + `nlqdb_remember`
@@ -153,7 +155,33 @@ automated OIDC lane, tracked by scorecard row #22.)
    on ledger row #22; nothing else changes (the channel stays in-flight until
    `/app/admin` shows a `claude-plugin` visit).
 
-5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+5. **⏱ ~15 min · since 2026-08-03 — Open a `[Server Submission]` issue on
+   `cline/mcp-marketplace`** (reach R-05 venue #24, ledger row #24). Free,
+   **no plan gate, no money** — a GitHub issue on
+   [`cline/mcp-marketplace`](https://github.com/cline/mcp-marketplace). Approved
+   listings become **one-click installable inside Cline**, one of the largest
+   coding-agent hosts, so this puts nlqdb where a Cline-building agent already
+   installs MCP servers (squarely the reach thesis). P2-verified 2026-08-03: the
+   repo's `[Server Submission]` issue template asks for a repo URL, a 400×400 PNG
+   logo, a reason, and a testing-confirmation that Cline installs the server from
+   the repo README/`llms-install.md`. Agent-blocked here only because this env's
+   GitHub scope is `nlqdb/nlqdb` (can't open an issue on an external repo). Open
+   the template and enter:
+   - **GitHub repo URL:** `https://github.com/nlqdb/nlqdb`
+   - **Logo (400×400 PNG):** render `apps/web/public/logo.svg` (square, brand mark)
+     to a 400×400 PNG — e.g. `rsvg-convert -w 400 -h 400 apps/web/public/logo.svg > nlqdb-400.png` — and attach it.
+   - **Reason for addition:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY / JOIN / aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect (hosted https://mcp.nlqdb.com/mcp, or headless npx -y @nlqdb/mcp with an sk_mcp_ key); five tools incl. nlqdb_remember / nlqdb_query.`
+   - **Testing confirmation:** **actually run it once** — give Cline only the repo
+     README and watch it set up the server end-to-end (README + the R-04 guide
+     document the headless `npx -y @nlqdb/mcp` + `sk_mcp_` route). If the README
+     alone proves insufficient for Cline's agent-install, the follow-up is a
+     root `llms-install.md` generated from `mcp-install.ts` (drift-tested) — flag
+     it back to `/reach` and it becomes a slice.
+   No utm key: the listing links the repo, so its yield rolls into the `github`
+   ref (like `awesome-mcp` #10). On submit, tick reach R-05 Cline to *listed*
+   with the issue/listing URL and flip ledger row #24 to **in-flight**.
+
+6. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -183,7 +211,7 @@ automated OIDC lane, tracked by scorecard row #22.)
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-6. **⏱ ~1 min · since 2026-07-30 — Paste one URL into skillsclaude.org's submit
+7. **⏱ ~1 min · since 2026-07-30 — Paste one URL into skillsclaude.org's submit
    form** (reach R-09 venue #5, ledger yield rolls into `github` row #16).
    **Optional, lowest-yield** — a marginal skill directory (~7,200 skills) whose
    listing links the repo, so it adds no separate attribution. It sits in this
