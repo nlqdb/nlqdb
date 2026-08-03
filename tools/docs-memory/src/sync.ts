@@ -13,7 +13,7 @@
 //
 // Docs: docs/features/agent-memory-pivot/worksheets/dogfood/D-02-resync-hook.md
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type Extraction, extractCorpus } from "./extract.ts";
 
