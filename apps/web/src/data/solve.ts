@@ -2085,11 +2085,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         label: 'r/LocalLLaMA — "how should I store agent memory" recurring discussion hub.',
       },
     ],
-    related: [
-      "agent-memory-mcp-server",
-      "build-vs-buy-agent-memory",
-      "expire-old-agent-memory",
-    ],
+    related: ["agent-memory-mcp-server", "build-vs-buy-agent-memory", "expire-old-agent-memory"],
   },
   {
     slug: "expire-old-agent-memory",

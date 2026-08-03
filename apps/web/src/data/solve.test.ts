@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SOLVE_ENTRIES, relatedSolveEntries, solveBySlug } from "./solve.ts";
+import { relatedSolveEntries, SOLVE_ENTRIES, solveBySlug } from "./solve.ts";
 
 // `/solve/<slug>` data is loaded by 4 surfaces (page template, /solve
 // index, sitemap, llms.txt). These checks pin the invariants the
@@ -166,9 +166,7 @@ describe("SOLVE_ENTRIES data integrity", () => {
     const needsInbound = ["build-vs-buy-agent-memory", "expire-old-agent-memory"];
     for (const target of needsInbound) {
       const inbound = SOLVE_ENTRIES.filter((s) => s.related?.includes(target));
-      expect(
-        inbound.length > 0 ? "" : `${target} has no inbound related link (orphaned)`,
-      ).toBe("");
+      expect(inbound.length > 0 ? "" : `${target} has no inbound related link (orphaned)`).toBe("");
     }
   });
 });
