@@ -66,3 +66,4 @@ The [`automated-icp-validation-plan.md §3.1`](../../research/automated-icp-vali
 2. Run `bun run --filter @nlqdb/web check && bun run --filter @nlqdb/web test` — astro-check + data-integrity tests both pass.
 3. The sitemap and llms.txt pick up the new slug automatically.
 4. If the entry is drawn from a specific ICP-mining cluster, cross-link in the source label so the evidence trail is one click from the page.
+5. Optionally add a `related: [...]` array of sibling slugs in the same topic cluster — rendered as a "Related guides" section (`/solve ↔ /solve` internal links) that lifts crawl priority for pages otherwise reachable only via the flat `/solve/` index + sitemap. Keep links same-cluster; `solve.test.ts` fails on a self-reference, a dupe, or a dangling slug.
