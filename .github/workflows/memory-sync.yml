@@ -1,0 +1,69 @@
+# docs→memory re-sync (dogfood D-02b). On every merge to `main` that touched
+# `docs/**`, re-run the deterministic docs→memory extractor and converge the
+# ops memory index to it: read the current facts, write only what changed.
+# This is what makes the SK-PIVOT-016 dogfood workload *sustained* rather than
+# a one-off seeding run (criterion 1: ≥ 100 real /v1/ask-class calls) — and it
+# is why criterion 3 stays honest, since a stale index that answers from
+# deleted docs is exactly a wrong-answer-accepted incident.
+#
+# $0 and no-LLM: the extractor is pure (`tools/docs-memory/`), the read is a
+# keyed `/v1/run` SELECT and the write is the deterministic `/v1/memory/remember`
+# INSERT — no model in the loop (the read-verb decision is in `converge.ts`).
+#
+# Committed-but-dark until its inputs exist: `NLQDB_API_KEY` (a self-minted
+# `sk_mcp_*` key — blocked-by-human queue #2) and `NLQDB_MEMORY_DB` (the ops
+# memory DB provisioned by D-04). When either is absent the run prints the
+# reason and exits 0 — green, never red — so this workflow lights up as a flag
+# flip once the secret + DB land, not a refactor.
+#
+# Mandatory pre-read for `.github/workflows/**`: docs/features/ci-permissions/FEATURE.md
+# Feature: docs/features/agent-memory-pivot/worksheets/dogfood/D-02-resync-hook.md
+
+name: docs→memory re-sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "tools/docs-memory/**"
+      - ".github/workflows/memory-sync.yml"
+  workflow_dispatch:
+
+# Least privilege (SK-CIPERM-002): the sync only reads the checkout and talks
+# to the nlqdb API over a secret; it never writes back to the repo.
+permissions:
+  contents: read
+
+# One sync at a time so two quick merges converge in order rather than racing
+# the append-only facts table. NOT cancel-in-progress — let a started sync
+# finish writing.
+concurrency:
+  group: memory-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Converge ops memory to docs/
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Sync docs→memory (convergent, read-before-write)
+        working-directory: tools/docs-memory
+        env:
+          # A self-minted sk_mcp_* MCP key (least privilege for a headless
+          # runner, SK-APIKEYS-015) and the ops memory DB id. Both absent today;
+          # the script skips green with a printed reason until they are set.
+          NLQDB_API_KEY: ${{ secrets.NLQDB_API_KEY }}
+          NLQDB_MEMORY_DB: ${{ vars.NLQDB_MEMORY_DB }}
+          NLQDB_API_BASE: ${{ vars.NLQDB_API_BASE }}
+        run: |
+          set -euo pipefail
+          # Always print the offline yield (a $0 no-op that documents the run),
+          # then attempt the convergent apply (self-skips green without env).
+          bun src/sync.ts
+          echo "---"
+          bun src/sync.ts --apply | tee -a "$GITHUB_STEP_SUMMARY"

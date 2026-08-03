@@ -81,7 +81,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 20 — **https://nlqdb.com/blog/llm-timeout-looks-like-hallucination/** — dev.to (#llm #benchmarking #eval) + r/LLMDevs + lobste.rs · engine lesson (SK-QUAL-022 eval-budget ≠ prod SLA; abort ≠ parse failure; latency fingerprint)
 - run 106 — **https://nlqdb.com/blog/store-form-submissions-without-a-backend/** — r/webdev + r/sideproject · `/solve/store-form-submissions-without-backend` · dev.to posted 2026-07-24: https://dev.to/omer_hochman/you-dont-need-a-backend-to-store-form-submissions-you-need-a-place-to-ask-how-many-3kec
 - run 130 — **https://nlqdb.com/blog/not-in-subquery-null-trap/** — r/SQL + r/PostgreSQL · `/solve/find-rows-with-no-match-in-another-table` · dev.to posted 2026-07-20: https://dev.to/omer_hochman/not-in-returned-zero-rows-it-wasnt-your-data-it-was-one-null-4inj
-- run 102 — **https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/** — dev.to + r/LLMDevs + r/AI_Agents · `/vs/hex`
+- run 102 — **https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/** — r/LLMDevs + r/AI_Agents · `/vs/hex` · dev.to posted 2026-08-03: https://dev.to/omer_hochman/every-data-tool-shipped-an-mcp-server-this-year-your-agent-still-cant-build-on-most-of-them-4cn
 - run 55 — **https://nlqdb.com/blog/text-to-sql-accuracy-schemas-your-users-never-build/** — dev.to + lobste.rs + r/LLMDevs
 - run 67 — **https://nlqdb.com/blog/ai-internal-tool-builder-faster/** — lobste.rs · `/vs/retool` · dev.to posted 2026-07-28: https://dev.to/omer_hochman/ai-made-the-internal-tool-builder-faster-it-didnt-ask-whether-you-needed-the-tool-32ea
 - run 68 — **https://nlqdb.com/blog/offline-llm-eval-rate-limits/** — dev.to + lobste.rs
