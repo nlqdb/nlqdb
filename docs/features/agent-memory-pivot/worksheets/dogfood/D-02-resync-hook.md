@@ -1,7 +1,7 @@
 # D-02 — One-way re-sync hook: CI on merge when `docs/**` changed
 
-**Status:** 🟡 partial — **D-02a shipped** (the runnable extractor); **D-02b open** (authenticated convergent sync + the workflow).
-**Sequence:** Dogfood 2 of 7 · **Risk:** low → **D-02b is med** (see finding) · **Runs:** 2 (was estimated 1) · **Prereqs:** D-01 · **Gate:** D-02b needs an `NLQDB_API_KEY` repo secret (see *Credential* below) **and** a convergence-read decision
+**Status:** 🟢 code-complete — **D-02a shipped** (the runnable extractor); **D-02b shipped** (read-verb decided + convergent write path + the workflow). The workflow is committed-but-dark: it skips green until the `NLQDB_API_KEY` secret (queue #2) and the `NLQDB_MEMORY_DB` var (D-04) exist — a flag flip, not a refactor.
+**Sequence:** Dogfood 2 of 7 · **Risk:** low → **D-02b is med** (see finding) · **Runs:** 2 · **Prereqs:** D-01 · **Gate:** the live convergent sync fires once `NLQDB_API_KEY` (see *Credential*) + `NLQDB_MEMORY_DB` are set
 
 ## Finding (2026-08-02) — the slice splits in two
 
@@ -79,39 +79,53 @@ bullet **#2** in [`blocked-by-human.md`](../../../../blocked-by-human.md)
 the secret exists the workflow is committed but skips with a printed reason,
 never fails red.
 
-## The open design question (D-02b, `GLOBAL-033` — value-decidable, decide it in the D-02b run)
+## The open design question (D-02b, `GLOBAL-033` — value-decidable) — RESOLVED 2026-08-03
 
-**Which deterministic read backs the read-before-write convergence?** Two candidates, both
-`$0`/no-LLM: (a) `/v1/run` with a keyed `SELECT` over `facts` — if the `sk_mcp_` key scope
-reaches it; (b) a small keyed `facts`-read verb (`GET`/`POST /v1/memory/recall?key=…`) if it
-doesn't. The D-02b run reads `api-keys` + `sql-allowlist` (mandatory §5) to settle which,
-then wires the workflow around the extractor D-02a already ships. Do not wire the workflow before this is
-decided — a workflow that duplicates a fact on every merge fails criterion 1's meaning.
+**Which deterministic read backs the read-before-write convergence?** **Decided: (a) `/v1/run`
+with a keyed `SELECT` over `facts`** — no new endpoint (P5, `GLOBAL-015`). The subtlety the
+finding flagged (does the `sk_mcp_` scope even *see* the facts?) resolves in favour of (a): both
+sides default to the **same** scope. `nlqdb_remember` server-defaults `agentId` to the tenant
+principal, and `buildHostedExecSteps` (`apps/api/src/ask/build-deps.ts`) defaults
+`scope = { agentId: tenantId }` for a plain `/v1/run`. So the `SK-PIVOT-009` RESTRICTIVE RLS on
+`facts` lets a default-scope `/v1/run` SELECT read exactly the rows a default-scope `remember`
+wrote — the read and the write agree by construction. `sk_mcp_` reaches `/v1/run` (it is not in
+the pk_live/anon read-only-forced set), and a SELECT is a read either way. Option (b) — a new
+keyed `facts`-read verb — is **rejected**: it adds an endpoint for a read `/v1/run` already
+serves. The convergence read is `converge.ts`'s `FACTS_READ_SQL`; the pure diff (`planWrites`) is
+what makes idempotency a measured unit test rather than an assertion.
 
 ## Steps
 
 1. **D-02a ✅ (done, this run).** `tools/docs-memory/`: `extract.ts` (pure, tested),
    `sync.ts --dry-run` (offline yield report), `package.json`/`tsconfig.json`. `$0`, no
    secret, covered by `bun run test`/`typecheck`/`lint`.
-2. **D-02b (next run).** Decide the read verb (above), then add
+2. **D-02b ✅ (done, 2026-08-03).** Read verb decided (above). Added
    `.github/workflows/memory-sync.yml`: `push` → `branches: [main]`, `paths: ['docs/**']`,
    plus `workflow_dispatch`; least-privilege `permissions: contents: read` per the
-   `ci-permissions` feature; concurrency-guarded. It runs the D-02a extractor, reads current
-   facts per `source.key`, writes only what differs, and prints rows written / unchanged /
-   asks. Skip with a printed reason (green, not red) when the secret is absent.
+   `ci-permissions` feature; concurrency-guarded (`group: memory-sync`, no cancel). It runs
+   the D-02a extractor, then `bun src/sync.ts --apply`: reads current facts via
+   `FACTS_READ_SQL` (`/v1/run`), diffs by `source.key → source.digest` (`planWrites`), writes
+   only what differs via `/v1/memory/remember`, and prints existing / entities / facts-written
+   / facts-unchanged / call counts. Skips with a printed reason (green) when
+   `NLQDB_API_KEY` or `NLQDB_MEMORY_DB` is absent.
 
 ## Done when
 
 - [x] The runnable extractor exists as tested code (`tools/docs-memory/`), verified offline
       over the live `docs/` corpus (D-02a).
-- [ ] The convergence read-verb question is decided in the D-02b run (`GLOBAL-033`).
-- [ ] `.github/workflows/memory-sync.yml` exists: `push` on `main` filtered to `docs/**`,
-      plus `workflow_dispatch`; least-privilege permissions; concurrency-guarded (D-02b).
-- [ ] Missing-secret path skips with a printed reason (green, not red); the repo-secret ask
-      is queue bullet #2 (queued 2026-08-01) (D-02b).
-- [ ] Second consecutive run over an unchanged corpus writes **0 new rows** (idempotency
-      measured, not asserted) (D-02b).
-- [x] INDEX tracker + status ticked to 🟡 partial.
+- [x] The convergence read-verb question is decided (`GLOBAL-033`) — (a) `/v1/run` keyed SELECT,
+      see the resolved design section above (D-02b).
+- [x] `.github/workflows/memory-sync.yml` exists: `push` on `main` filtered to `docs/**`,
+      plus `workflow_dispatch`; least-privilege `permissions: contents: read`; concurrency-guarded (D-02b).
+- [x] Missing-secret path skips with a printed reason (green, not red); the repo-secret ask
+      is queue bullet #2 (queued 2026-08-01) (D-02b) — verified locally: `bun src/sync.ts --apply`
+      with no env prints the reason and exits 0.
+- [x] Second consecutive run over an unchanged corpus writes **0 new rows** — measured offline in
+      `converge.test.ts` (`planWrites` over an index reflecting run 1 → `factsToWrite` empty). The
+      **live** re-measurement over the ops DB awaits the secret + `NLQDB_MEMORY_DB` (D-04).
+- [x] INDEX tracker + status ticked. **Deferred to a later run:** the `INDEX.md` D-02 tracker line
+      is left to open PR #885 (which edits `INDEX.md`) — this run avoids that file per the `/daily`
+      step-0 no-overlap rule; the status here is the durable D-02 record until #885 merges.
 
 ## Artifact
 

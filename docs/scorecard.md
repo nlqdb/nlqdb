@@ -18,19 +18,21 @@ yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-in
 Acquisition levers stay pullable when no dogfood lever is — as does premium-chain work
 (`SK-LLM-017`, row #20), one rank below.
 
-**Worst number today (run 160, 2026-08-02):** the **weekly-focus `SK-PIVOT-016` dogfood gate 0/5**
-— and this run worked it. Its whole critical path (criteria 1/2/3 via D-04, criterion 5 via D-06)
-funnels through **D-02 → D-04**, and D-02 turned out **mis-scoped**: D-01 shipped only an
-agent-executed *skill*, so there was **no runnable producer** for CI (and CI can't run an agent for
-`$0`, rule 4). This run built it — **D-02a: `tools/docs-memory/`**, a deterministic no-LLM extractor
-(**9 open-question + 6 blocked facts, 14 entities** offline over live `docs/`; the 9 cross-checks
-row #17). Criterion **4** stays the measured weak axis (memory-eval temporal, ops 0/4) with its lever
-**E-09 ⛔ P1-blocked** ([`GLOBAL-037`](decisions/GLOBAL-037-schema-only-llm-egress.md), PR #883). See
-Last change. Distribution (row #7: **8 clicks / 577 impr / pos 19.0**, GSC 28d, carried from run 159)
-stays the acquisition-lane worst number but is one rank below the weekly focus and crowded (open PR
-#888 works `/solve`), so not this run's lever.
-**Weekly-focus gate (don't overwrite mid-week):** dogfood **0/5** — D-02b (convergent sync +
-workflow) now blocks on a read-verb decision + the `NLQDB_API_KEY` secret (queue #2).
+**Worst number today (run 162, 2026-08-03):** the **weekly-focus `SK-PIVOT-016` dogfood gate 0/5**
+— and this run worked it. Its critical path (criteria 1/2/3 via D-04) funnels through **D-02 → D-04**;
+run 160 shipped D-02a (the extractor); this run shipped **D-02b**: the read-verb decision + the
+convergent authenticated sync path + the `memory-sync.yml` workflow. **Read verb decided: (a)
+`/v1/run` keyed SELECT** — no new endpoint (P5); a default-scope SELECT reads exactly what a
+default-scope `remember` wrote (both default `app.agent_id = tenantId`), so `SK-PIVOT-009` RLS agrees
+by construction. `planWrites` is pure ⇒ **idempotency is a measured unit test** (2nd pass over an
+unchanged corpus → 0 fact-writes). The workflow is committed-but-dark: skips green until
+`NLQDB_API_KEY` (queue #2) + `NLQDB_MEMORY_DB` (D-04) — a flag flip, not a refactor. Criterion **4**
+stays the weak axis (ops temporal 0/4), lever **E-09 ⛔ P1-blocked**
+([`GLOBAL-037`](decisions/GLOBAL-037-schema-only-llm-egress.md), PR #883). See Last change.
+Distribution (row #7: **8 clicks / 577 impr / pos 19.0**, GSC 28d, carried from run 159) stays the
+acquisition-lane worst number but ranks below the weekly focus and is crowded (PRs #888/#892).
+**Weekly-focus gate (don't overwrite mid-week):** dogfood **0/5** — D-02b now **code-complete**; the
+gate stays 0/5 because the *live* sync (criterion 1's call volume) awaits the queue-#2 secret + D-04.
 **Top `blocked-by-human` bullet:** fire the Show HN launch sequence (⏱ ~30 min,
 **idle 50 days since 06-13**) — the only bullet that can move real strangers off 0, still
 condition-gated on the `SK-PIVOT-016` gate. Queue **depth 6**; head age 50 d is the real cycle time.
@@ -39,13 +41,14 @@ stale, resume deferred: async multi-window, `main` moved since the 07-27 checkpo
 **#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck (free-lane saturation,
 remedy costs money ⇒ rule 4).
 
-**Rule 6 — GREEN.** `main@a0b66b8` CI all **success** (latest 3 pushes green); recent merges are
-docs-only ⇒ no deploy-triggering change since run 157's verified-green Deploy web/API/Canary. This
-run's branch head: `bun install` clean · new workspace `@nlqdb/docs-memory` `typecheck` EXIT=0 ·
-`biome lint tools/docs-memory/src/` clean · `bun test` **12 pass / 0 fail**.
-Open PRs (4): **#888** (reach R-02/R-03 `/solve` linking), **#885** (agent-memory UX docs),
-**#864** (changesets), draft **#719** (oldest, **16 days**). This run's files (`tools/docs-memory/**`
-+ dogfood D-02 docs) overlap **none** of them.
+**Rule 6 — GREEN.** `main@c94bb7a` CI all **success** (latest 5 pushes green); recent merges are
+docs/tool-only ⇒ no deploy-triggering change since run 157's verified-green Deploy web/API/Canary.
+This run's branch head: `bun install` clean · `@nlqdb/docs-memory` `typecheck` EXIT=0 ·
+`biome lint`/`format` tools/docs-memory clean · `bun test` **20 pass / 0 fail** (+8 convergence tests).
+Open PRs (5): **#892** (reach R-04 sitemap), **#891** (daily run 161 null), **#888** (reach
+`/solve`), **#885** (agent-memory UX docs — edits `INDEX.md`), **#864** (changesets), draft **#719**
+(oldest, **17 days**). This run's files (`tools/docs-memory/**`, `memory-sync.yml`,
+`D-02-resync-hook.md`) overlap **none** — the dogfood `INDEX.md` tick is deferred to #885 per step 0.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -79,11 +82,11 @@ Open PRs (4): **#888** (reach R-02/R-03 `/solve` linking), **#885** (agent-memor
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0 failed / 9 blocked** — carried from the 07-26 live walk; the scheduled CI walk [30194859852](https://github.com/nlqdb/nlqdb/actions/runs/30194859852) (07-26 08:34Z) concluded success. **Not re-walkable from a `/daily` container**, a new standing constraint: `@playwright/test` pins `~1.60.0`, which wants Chromium **1223**; the image ships **1194**, so the walker aborts with `Executable doesn't exist`. CI-only until they agree | target **0 `failed`** ✅; `blocked` reported beside it, never folded in. All walks stop at the 428 `challenge_required` (Turnstile declining a datacenter IP by design, `SK-ANON-012`), so steps past the ask are **observed, not proven** |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub (per-bucket split lives only in the ledger). npm attribution now **reaches the registry for 2 of 3 packages**: `@nlqdb/sdk@0.2.2` (`?utm_source=npm`) and `@nlqdb/mcp@0.1.1` (`.../agents/?utm_source=npm`) both verified live this cycle; **`@nlqdb/cli@0.1.0` is the laggard — still an untagged `https://nlqdb.com`**, so this run queued its republish changeset (`@nlqdb/cli` patch) to close the last third. MCP official registry published 07-22 (`com.nlqdb/nlqdb`); Glama crawl-listed; Smithery 0 / PulseMCP 0. First-touch attribution live since 07-19 on both create arms; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus: → ≥ 5 live.** Yield from `/app/admin` + `scripts/rum-pull.ts`, never estimated. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 4**; head is the Show HN launch, oldest bullet **47 days** (`SK-PIVOT-016` gate **0/5**); #2 Glama badge push, #3 community-plugin-directory submit, #4 connector directory (money-gated) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: 4, oldest 13 days (draft #719) |
+| | **Human queue** — the one non-automatable actor | **depth 4**; head is the Show HN launch, oldest bullet **47 days** (`SK-PIVOT-016` gate **0/5**); #2 Glama badge push, #3 community-plugin-directory submit, #4 connector directory (money-gated) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: 5, oldest 17 days (draft #719) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
-| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **1/7** (D-03 ✅) — gate **0/5** (criterion 4: temporal 2/7 = synthetic 2/3 + ops 0/4, not yet green; scoped as E-09 in #879) | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md). D-01 🟡 in flight; **D-03 ✅ done 07-29** (first ops-corpus EX); D-07 ⛔ blocked on D-04 |
+| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **2/7** (D-03 ✅, D-02 🟢 code-complete this run) — gate **0/5** (criterion 4: temporal 2/7 = synthetic 2/3 + ops 0/4; scoped as E-09 in #879) | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md). **D-02 🟢** convergent sync + `memory-sync.yml` (dark until secret + D-04); D-07 ⛔ on D-04. INDEX tick deferred to PR #885 |
 | | Memory-quality eval (`SK-QUAL-023`) | **27-q free-chain EX 59.26% (16/27)** — run [30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690) 2026-07-29, `main@5cc4bd1`, `resumable:false`; p50 1074 ms / p95 4406 ms. **First dispatch over the full set (15 synthetic + 12 repo-ops docs→memory questions) — NOT a regression from the old 15-q 93.33% (run 69), a broader+harder denominator that finally measures the workload the launch gate depends on.** Per-axis (free): consolidation 4/5, analytical 4/5, retrieval 3/5, forgetting 3/5, **temporal 2/7 (synthetic 2/3, ops 0/4)** — the weak axis gating `SK-PIVOT-016` criterion 4; each ops-temporal miss's generated SQL is in the run summary (the next engine lever) | 27 gold-verified questions, 5 axes; free-only, no baseline (a measurement, never canonical) |
 
 ## Shipped distribution
@@ -92,44 +95,49 @@ Open PRs (4): **#888** (reach R-02/R-03 `/solve` linking), **#885** (agent-memor
 `apps/web/src/data/blog.ts` — the one place the list exists; venue variants and full
 lesson gists stay in `research/distribution-queue.md`.
 
-- **This run (159):** no new blog post — the lever strengthened an existing `/solve` page (not a
-  new blog surface); distribution queue < 3 (no forced publish); drafting skipped (P5). Dev.to
-  drip (step 3.3): see Last change. Last canonical blog post remains run 151's
+- **This run (162):** no new blog post — the lever was engine/dogfood (D-02b), not a blog surface;
+  distribution queue 2 (< 3, no forced publish); drafting skipped (P5, optional). **Dev.to drip
+  (step 3.3): posted run 102's variant** →
+  https://dev.to/omer_hochman/every-data-tool-shipped-an-mcp-server-this-year-your-agent-still-cant-build-on-most-of-them-4cn
+  (queue line's dev.to venue dropped). Last canonical blog post remains run 151's
   `/blog/guard-advertised-capabilities-against-code/`.
 
 ## Last change
 
-**2026-08-02 (run 160)** — **Number moved: the runnable docs→memory producer — a named direct input
-to `SK-PIVOT-016` criterion 1 (the weekly-focus dogfood gate).** 0 → **15 structured facts (9
-open-question + 6 blocked) + 14 entities** deterministically extractable offline from the live
-`docs/` corpus. The 9 open-questions independently reproduce scorecard row #17's pinned count,
-cross-validating the rule against the canonical method.
+**2026-08-03 (run 162)** — **Number moved: the convergent authenticated docs→memory sync path
+(D-02b) — a named direct input to `SK-PIVOT-016` criterion 1 (the weekly-focus dogfood gate).**
+Before: only a dry-run extractor existed (D-02a, run 160) — no read verb, no convergence, no way to
+write the index without duplicating a fact on every merge. After: the read verb is **decided** and
+the convergent write path is **built + idempotency-tested offline**, so lighting the live sync is a
+flag flip on the queue-#2 secret, not more engineering.
 
-**The finding (why this was the lever).** The gate's whole critical path funnels through D-02 → D-04,
-and D-02 was mis-scoped: **D-01 shipped only an agent-executed skill (`SKILL.md`), so no runnable
-extractor existed** for CI to invoke — and CI can't run an agent for `$0` (rule 4). A subtler blocker
-also surfaced: `facts` are **append-only** (`remember.ts` has no update verb), so idempotent re-sync
-needs a deterministic **read-before-write** per `source.key`, and that read verb (`/v1/run` vs a keyed
-`facts`-read) is unresolved (`ask()` is LLM-backed ⇒ `$`/non-deterministic). So the slice **splits**:
-D-02a (this run) ships the producer; D-02b wires the authenticated convergent sync + workflow.
+**The read-verb decision (value-decidable, `GLOBAL-033`).** Which `$0`/no-LLM read backs the
+read-before-write for append-only `facts`? **Decided (a): `/v1/run` keyed `SELECT` over `facts`** —
+no new endpoint (P5, `GLOBAL-015`). The finding's worry (does `sk_mcp_` even *see* the rows under
+`SK-PIVOT-009` RLS?) resolves *for* (a): `nlqdb_remember` defaults `agentId` to the tenant principal
+and `buildHostedExecSteps` defaults `scope={agentId:tenantId}` for a plain `/v1/run`, so a
+default-scope SELECT reads exactly what a default-scope write produced. Option (b) (a new keyed
+`facts`-read verb) rejected.
 
-**The change.** New `$0`, no-LLM, no-network `tools/docs-memory/` workspace: `extract.ts` (pure core —
-open-questions per feature + the blocked-queue, emitting `nlqdb_remember`-shaped entities/facts with
-`source.{key,digest}` for convergence), `extract.test.ts` (12 tests: structure-only, parked/resolved
-exclusion, idempotent digests), `sync.ts --dry-run` (offline yield report). D-02 worksheet + INDEX
-re-scoped to the a/b split with the read-verb design question recorded (single-homed, P3).
+**The change.** `tools/docs-memory/`: `converge.ts` (pure — `FACTS_READ_SQL`, `existingFromRows`,
+`planWrites` diffing by `source.key → source.digest`) + `converge.test.ts` (8 tests). `sync.ts`
+gains `--apply`: read (`/v1/run`) → plan → write only the diff (`/v1/memory/remember`), env-gated,
+self-skips green without `NLQDB_API_KEY` + `NLQDB_MEMORY_DB`. New `memory-sync.yml`: `push` on `main`
+`paths: docs/**` + `workflow_dispatch`, `permissions: contents: read`, concurrency-guarded, skips
+green while the secret is absent. D-02 worksheet: decision recorded (P3), its `Done when` boxes
+ticked; the `INDEX.md` tick deferred to open PR #885 (step-0 no-overlap).
 
-**Measure → change → re-measure.** Before: no runnable producer (criterion 1 structurally
-unstartable). After: `bun src/sync.ts` over live `docs/` prints 15 facts / 14 entities; a re-run over
-an unchanged corpus yields byte-identical keys+digests (idempotency proven in tests). `typecheck` /
-`lint` / `test` (12 pass) green. Remaining for the count to actually move: D-02b + the `NLQDB_API_KEY`
-secret (queue #2).
+**Measure → change → re-measure.** Before: no convergence (a re-sync duplicates every fact, breaking
+criterion 1). After: `planWrites` over an index reflecting a prior sync writes **0 facts**
+(idempotency measured, `converge.test.ts`); `--apply` with no env prints its skip reason and **exits
+0**. `typecheck` EXIT=0 · `lint`/`format` clean · `bun test` **20 pass** (+8). The live call-volume
+re-measurement awaits the queue-#2 secret + D-04.
 
-**Step 3 (artifact):** distribution queue 2 (< 3) ⇒ no forced publish; drafting skipped (optional,
-P5). Dev.to drip (3.3) skipped by its one-post/day guard (run 159 already posted today). **No new
-`SK-*`** (P5/D5): the a/b split is a worksheet execution detail, not a decision. **KPI (GLOBAL-025):**
-advances **engine-quality / onboarding** (unblocks the dogfood workload's producer); **degrades none**
-(new isolated tool, all gates green).
+**Step 3 (artifact):** queue 2 (< 3) ⇒ no forced publish; drafting skipped (P5). **Dev.to drip (3.3):
+posted** run 102's variant (queue line updated). **No new `SK-*`** (P5/D5): the read-verb call is a
+worksheet-level value decision recorded in the D-02 worksheet, not a cross-cutting rule. **KPI
+(GLOBAL-025):** advances **engine-quality / onboarding** (the dogfood workload's sustain path);
+**degrades none** (isolated tool + a dark workflow, all gates green).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
