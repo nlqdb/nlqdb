@@ -31,6 +31,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 | 4 | ~5 min | Submit the `nlqdb-memory` plugin to Anthropic's community plugin directory (`clau.de/plugin-directory-submission`) — free signed-in form, no plan gate | 2026-07-29 |
 | 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 | 6 | ~1 min | Paste `github.com/nlqdb/nlqdb` into skillsclaude.org's no-account submit form (optional; agent-blocked here) | 2026-07-30 |
+| 7 | ~2 min | Decide the fate of PR #892 (reach R-04 sitemap) — its premise is empirically false; close it or strip to the NUMBERS.md measurement refresh | 2026-08-03 |
 
 Only #1 can move real strangers (scorecard row #2); #2 is the cheapest and
 feeds the gate that gates #1 (criterion 1's `/v1/ask` counter starts only when
@@ -197,6 +198,21 @@ automated OIDC lane, tracked by scorecard row #22.)
    `apps/web/public/agent-artifacts/nlqdb-memory/SKILL.md` +
    `nlqdb-docs-memory/SKILL.md`). On submit, tick reach R-09 #5 to *listed* with
    the directory URL; nothing else changes (no utm key — `github`-ref yield).
+
+7. **⏱ ~2 min · since 2026-08-03 — Decide the fate of PR #892** (reach R-04
+   "wire docs-site sitemap"). The reviewer found its root cause is **false**:
+   Starlight `0.41.4` already auto-applies `@astrojs/sitemap` (`starlightSitemap()`
+   in `@astrojs/starlight/index.ts`), so `main` already emits `sitemap-index.xml`
+   + `sitemap-0.xml` (75 URLs incl. `/agent-memory/`) — the advertised URL never
+   404'd. The PR's `sitemap()` line is redundant (P5/GLOBAL-017), suppresses
+   Starlight's i18n wrapper (latent regression), and rewrites SK-DOCS-005 /
+   `robots.txt` / `NUMBERS.md` with an incorrect premise (the original "Starlight
+   emits an index" was right). **Not merged.** Choose: **close #892** (nothing to
+   fix — the page is already in the live sitemap; the real levers are the 07-26
+   robots re-open latency + the GSC docs-sitemap console submission, both already
+   tracked), or **reduce it** to the genuinely-useful `NUMBERS.md` measurement
+   refresh (fresh GSC read + per-URL index truth) with the sitemap code/docs/test
+   dropped. A value-strategy call on the reach diagnosis, hence surfaced here.
 
 ## Suggestions needing approval (to amend the guidelines)
 
