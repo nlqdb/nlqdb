@@ -31,6 +31,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 | 4 | ~5 min | Submit the `nlqdb-memory` plugin to Anthropic's community plugin directory (`clau.de/plugin-directory-submission`) — free signed-in form, no plan gate | 2026-07-29 |
 | 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 | 6 | ~1 min | Paste `github.com/nlqdb/nlqdb` into skillsclaude.org's no-account submit form (optional; agent-blocked here) | 2026-07-30 |
+| 7 | ~2 min | Close two dead automated PRs — #891 (superseded by merged #893) and #892 (sitemap premise disproven; close or reduce to its `NUMBERS.md` refresh) | 2026-08-03 |
 
 Only #1 can move real strangers (scorecard row #2); #2 is the cheapest and
 feeds the gate that gates #1 (criterion 1's `/v1/ask` counter starts only when
@@ -39,7 +40,9 @@ waits per `docs/cost-ladder.md` unless a Team org already exists; #3 unblocks
 a waiting external merge (`awesome-mcp-servers` #10984); #4 is a free,
 no-plan-gate form that lists nlqdb in the in-product `/plugin` Discover tab.
 #6 is lowest-yield and optional — a 1-min no-account paste that only lands
-here because this env can't drive the form.
+here because this env can't drive the form. #7 is pure cleanup (near-zero
+yield) — two dead automated PRs a review run couldn't merge and can't close
+for you.
 
 (**Resolved 2026-07-29 — advisor session, queue 6 → 2:** the founder took the
 `MEMORY_PRESET=1` go decision live — #835 merged, the preset + `nlqdb_remember`
@@ -197,6 +200,18 @@ automated OIDC lane, tracked by scorecard row #22.)
    `apps/web/public/agent-artifacts/nlqdb-memory/SKILL.md` +
    `nlqdb-docs-memory/SKILL.md`). On submit, tick reach R-09 #5 to *listed* with
    the directory URL; nothing else changes (no utm key — `github`-ref yield).
+
+7. **⏱ ~2 min · since 2026-08-03 — Close two dead automated PRs** a review run
+   fixed/reviewed but couldn't merge and shouldn't close for you.
+   - **#891** (daily run 161, null-run) only rewrites `docs/scorecard.md`, and
+     **#893** (run 162) — which merged to `main` — already carries the fresher
+     snapshot, so #891 is now older than `main`. Close unmerged.
+   - **#892** (reach R-04) rests on a disproven premise: Starlight `0.41.4`
+     already auto-applies `@astrojs/sitemap`, so `sitemap-index.xml` (incl.
+     `/agent-memory/`) already ships — the added integration is redundant and
+     suppresses the i18n-aware wrapper (disproof posted on the PR). **Close it**,
+     or reduce it to just the `NUMBERS.md` measurement refresh (drop the sitemap
+     code, the SK-DOCS-005 rewrite, and the test).
 
 ## Suggestions needing approval (to amend the guidelines)
 
