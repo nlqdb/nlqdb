@@ -1422,6 +1422,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "Oracle SQL blog — 'How to select the top-N rows per group with SQL' (window functions as the method of choice).",
       },
     ],
+    related: [
+      "running-total-cumulative-sum-in-sql",
+      "calculate-percentage-of-total-in-sql",
+      "count-consecutive-days-streak-in-sql",
+    ],
   },
   {
     slug: "pivot-rows-into-columns",
@@ -1546,6 +1551,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "LearnSQL — evergreen 'What is a running total and how to compute it in SQL' explainer.",
       },
     ],
+    related: [
+      "count-rows-per-day-including-missing-dates",
+      "month-over-month-growth-in-sql",
+      "calculate-percentage-of-total-in-sql",
+    ],
   },
   {
     slug: "month-over-month-growth-in-sql",
@@ -1603,6 +1613,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         label:
           "Citus Data — evergreen 'Computing run rate and month-over-month growth in Postgres' walkthrough (CTEs + window functions).",
       },
+    ],
+    related: [
+      "running-total-cumulative-sum-in-sql",
+      "calculate-percentage-of-total-in-sql",
+      "count-rows-per-day-including-missing-dates",
     ],
   },
   {
@@ -1721,6 +1736,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         label:
           "Mode — evergreen SQL window-functions tutorial widely cited for 'percent of total' / running-share patterns.",
       },
+    ],
+    related: [
+      "running-total-cumulative-sum-in-sql",
+      "month-over-month-growth-in-sql",
+      "find-top-n-rows-per-group",
     ],
   },
   {
@@ -1846,6 +1866,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "Stack Overflow — the `gaps-and-islands` tag, the broader standing hub for missing-ranges-in-sequences problems, of which the missing-dates count is the everyday case.",
       },
     ],
+    related: [
+      "running-total-cumulative-sum-in-sql",
+      "count-consecutive-days-streak-in-sql",
+      "month-over-month-growth-in-sql",
+    ],
   },
   {
     slug: "group-numbers-into-ranges-in-sql",
@@ -1961,6 +1986,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         label:
           'Hacker News search: "gaps and islands" — recurring discussion of the consecutive-run pattern and why streak queries trip people up.',
       },
+    ],
+    related: [
+      "count-rows-per-day-including-missing-dates",
+      "running-total-cumulative-sum-in-sql",
+      "month-over-month-growth-in-sql",
     ],
   },
   {

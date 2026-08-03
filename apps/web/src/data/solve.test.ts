@@ -169,4 +169,21 @@ describe("SOLVE_ENTRIES data integrity", () => {
       expect(inbound.length > 0 ? "" : `${target} has no inbound related link (orphaned)`).toBe("");
     }
   });
+
+  // `running-total-cumulative-sum-in-sql` is GSC's #1 "Strengthen next" page —
+  // by far the highest-impression /solve page still off page 1 (117 impr, pos
+  // ~36), yet content strengthening (runs 157/159) moved its position ~0. The
+  // remaining on-site lever is internal authority: contextual inbound links
+  // from indexed, topically-relevant window-function siblings. It must keep ≥2
+  // such inbound links (including its page-1 donor `count-rows-per-day…`), or
+  // the authority-funnel lever silently regresses.
+  test("the #1 strengthen-next page keeps its authority-funnel inbound links", () => {
+    const target = "running-total-cumulative-sum-in-sql";
+    const inbound = SOLVE_ENTRIES.filter((s) => s.related?.includes(target));
+    expect(inbound.length >= 2 ? "" : `${target} lost its inbound authority funnel`).toBe("");
+    const fromPage1Donor = inbound.some(
+      (s) => s.slug === "count-rows-per-day-including-missing-dates",
+    );
+    expect(fromPage1Donor ? "" : `${target} lost its page-1 authority donor`).toBe("");
+  });
 });
