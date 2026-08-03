@@ -7,6 +7,7 @@ when-to-load:
     - apps/web/src/data/competitors.ts
     - apps/web/src/data/solve.ts
     - apps/web/src/data/showcase-examples.ts
+    - tools/docs-memory/**
     - docs/features/agent-memory-pivot/**
   topics: [positioning, agent-memory, mem0, zep, letta, pivot, messaging, wedge]
 ---

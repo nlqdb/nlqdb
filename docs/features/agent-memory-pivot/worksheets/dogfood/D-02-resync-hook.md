@@ -1,7 +1,27 @@
 # D-02 — One-way re-sync hook: CI on merge when `docs/**` changed
 
-**Status:** ⬜ not started
-**Sequence:** Dogfood 2 of 7 · **Risk:** low · **Runs:** 1 · **Prereqs:** D-01 · **Gate:** needs an `NLQDB_API_KEY` repo secret (see *Credential* below)
+**Status:** 🟡 partial — **D-02a shipped** (the runnable extractor); **D-02b open** (authenticated convergent sync + the workflow).
+**Sequence:** Dogfood 2 of 7 · **Risk:** low → **D-02b is med** (see finding) · **Runs:** 2 (was estimated 1) · **Prereqs:** D-01 · **Gate:** D-02b needs an `NLQDB_API_KEY` repo secret (see *Credential* below) **and** a convergence-read decision
+
+## Finding (2026-08-02) — the slice splits in two
+
+D-01 shipped the producer as a **skill** (`agent-artifacts/nlqdb-docs-memory/SKILL.md`) —
+instructions for a coding *agent*. There is no runnable extractor, and CI can't run an
+agent for free (the `$0` ladder, rule 4). So "run D-01's extraction" needed a producer to
+exist as code first, and a second, subtler blocker surfaced: **`facts` rows are append-only**
+(`remember.ts` has no fact-update verb), so an idempotent re-sync must **read-before-write**
+per `source.key` — and the deterministic read verb is unresolved (`ask()` is LLM-backed ⇒
+costs money + non-deterministic; `/v1/run` may be outside the `sk_mcp_` key scope). That
+read-path decision, not the workflow, is the real work. The slice therefore splits:
+
+- **D-02a ✅ (this run):** the deterministic, `$0`, no-LLM extractor —
+  `tools/docs-memory/` (`extract.ts` pure core + `sync.ts --dry-run` + tests). It parses the
+  same structure SK-PIVOT-017 defines (v1: open questions per feature + the blocked-queue),
+  emits `nlqdb_remember`-shaped entities/facts with `source.{key,digest}` for convergence,
+  and reports the yield offline. Measured over the live `docs/` corpus: **9 open-question +
+  6 blocked facts, 14 entities** — the 9 cross-checks scorecard row #17's independent count.
+- **D-02b ⬜ (next):** the authenticated convergent write + the `memory-sync.yml` workflow,
+  once the read-path question below is decided and the `NLQDB_API_KEY` secret is set.
 
 ## Goal
 
@@ -59,33 +79,39 @@ bullet **#2** in [`blocked-by-human.md`](../../../../blocked-by-human.md)
 the secret exists the workflow is committed but skips with a printed reason,
 never fails red.
 
+## The open design question (D-02b, `GLOBAL-033` — value-decidable, decide it in the D-02b run)
+
+**Which deterministic read backs the read-before-write convergence?** Two candidates, both
+`$0`/no-LLM: (a) `/v1/run` with a keyed `SELECT` over `facts` — if the `sk_mcp_` key scope
+reaches it; (b) a small keyed `facts`-read verb (`GET`/`POST /v1/memory/recall?key=…`) if it
+doesn't. The D-02b run reads `api-keys` + `sql-allowlist` (mandatory §5) to settle which,
+then wires the workflow around the extractor D-02a already ships. Do not wire the workflow before this is
+decided — a workflow that duplicates a fact on every merge fails criterion 1's meaning.
+
 ## Steps
 
-1. **Run 1 — the workflow.** Add `.github/workflows/memory-sync.yml`:
-   `push` → `branches: [main]`, `paths: ['docs/**']`, plus
-   `workflow_dispatch` for manual re-sync. Least-privilege `permissions:`
-   (`contents: read`) per the `ci-permissions` feature. Steps: check the secret
-   is present (skip with a printed reason if not — never a red run), install,
-   run D-01's extraction against `docs/`, print rows written / rows unchanged /
-   asks issued. Concurrency group so two merges don't race the same corpus.
-2. **Prove idempotency in the same run.** Dispatch the workflow twice against an
-   unchanged `docs/` and assert the second run writes **0 new** rows. This is
-   the box that makes "convergent" a measurement instead of a claim.
+1. **D-02a ✅ (done, this run).** `tools/docs-memory/`: `extract.ts` (pure, tested),
+   `sync.ts --dry-run` (offline yield report), `package.json`/`tsconfig.json`. `$0`, no
+   secret, covered by `bun run test`/`typecheck`/`lint`.
+2. **D-02b (next run).** Decide the read verb (above), then add
+   `.github/workflows/memory-sync.yml`: `push` → `branches: [main]`, `paths: ['docs/**']`,
+   plus `workflow_dispatch`; least-privilege `permissions: contents: read` per the
+   `ci-permissions` feature; concurrency-guarded. It runs the D-02a extractor, reads current
+   facts per `source.key`, writes only what differs, and prints rows written / unchanged /
+   asks. Skip with a printed reason (green, not red) when the secret is absent.
 
 ## Done when
 
-- [ ] `.github/workflows/memory-sync.yml` exists: `push` on `main` filtered to
-      `docs/**`, plus `workflow_dispatch`; least-privilege permissions;
-      concurrency-guarded.
-- [ ] Missing-secret path skips with a printed reason (green, not red); the
-      repo-secret ask is queue bullet #2 (queued 2026-08-01).
-- [ ] A merge touching no docs issues **zero** API calls (verified on a real
-      run, or by a dry-run assertion if no such merge landed yet).
-- [ ] Second consecutive run over an unchanged corpus writes **0 new rows**
-      (idempotency measured, not asserted).
-- [ ] The run prints rows written / unchanged / asks issued, so D-04's
-      gate-progress readout has an input it doesn't have to reconstruct.
-- [ ] INDEX tracker + status ticked.
+- [x] The runnable extractor exists as tested code (`tools/docs-memory/`), verified offline
+      over the live `docs/` corpus (D-02a).
+- [ ] The convergence read-verb question is decided in the D-02b run (`GLOBAL-033`).
+- [ ] `.github/workflows/memory-sync.yml` exists: `push` on `main` filtered to `docs/**`,
+      plus `workflow_dispatch`; least-privilege permissions; concurrency-guarded (D-02b).
+- [ ] Missing-secret path skips with a printed reason (green, not red); the repo-secret ask
+      is queue bullet #2 (queued 2026-08-01) (D-02b).
+- [ ] Second consecutive run over an unchanged corpus writes **0 new rows** (idempotency
+      measured, not asserted) (D-02b).
+- [x] INDEX tracker + status ticked to 🟡 partial.
 
 ## Artifact
 
@@ -93,5 +119,6 @@ None owed — a workflow is not a stranger-searchable lesson. Skip step 3.2.
 
 ## Rollback
 
-Delete the workflow file. The corpus freezes at its last sync; nothing else
-breaks, and D-04's memories are untouched. No migration, no state.
+D-02a: delete `tools/docs-memory/` — a pure offline tool with no runtime, no state, no
+consumer yet. D-02b: delete the workflow file; the corpus freezes at its last sync, D-04's
+memories are untouched. No migration, no state either way.

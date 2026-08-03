@@ -18,40 +18,38 @@ yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-in
 Acquisition levers stay pullable when no dogfood lever is — as does premium-chain work
 (`SK-LLM-017`, row #20), one rank below.
 
-**Worst number today (run 159, 2026-08-02):** the **acquisition bottleneck — row #7 surface
-yield: 8 clicks / 577 impr / pos 19.0** (GSC 28d 07-03→07-31, live this run; +1 click / +60 impr
-vs run 157). Rule 6 is GREEN (`main@54446f0` CI success), so the worst *agent-movable* number is
-distribution yield: the site earns impressions but almost no clicks, breadth-not-CTR is the ceiling.
-This run pulled the canonical priority-1 lever — **strengthen the #2 strengthen-next page** (run 157
-did #1; anti-rut + step-0 keep me off it). See Last change.
-**Weekly-focus gate (unchanged, don't overwrite mid-week):** `SK-PIVOT-016` dogfood gate **0/5**
-— binding on **criterion 4** (memory-eval temporal axis, ops 0/4). Named lever **E-09 (schema
-value-linking)** is now **⛔ P1-blocked by [`GLOBAL-037`](decisions/GLOBAL-037-schema-only-llm-egress.md)**
-(forbids cell-value LLM egress by name) — finding recorded in open PR **#883**; no compliant
-agent-movable engine lever for criterion 4 today.
+**Worst number today (run 160, 2026-08-02):** the **weekly-focus `SK-PIVOT-016` dogfood gate 0/5**
+— and this run worked it. Its whole critical path (criteria 1/2/3 via D-04, criterion 5 via D-06)
+funnels through **D-02 → D-04**, and D-02 turned out **mis-scoped**: D-01 shipped only an
+agent-executed *skill*, so there was **no runnable producer** for CI (and CI can't run an agent for
+`$0`, rule 4). This run built it — **D-02a: `tools/docs-memory/`**, a deterministic no-LLM extractor
+(**9 open-question + 6 blocked facts, 14 entities** offline over live `docs/`; the 9 cross-checks
+row #17). Criterion **4** stays the measured weak axis (memory-eval temporal, ops 0/4) with its lever
+**E-09 ⛔ P1-blocked** ([`GLOBAL-037`](decisions/GLOBAL-037-schema-only-llm-egress.md), PR #883). See
+Last change. Distribution (row #7: **8 clicks / 577 impr / pos 19.0**, GSC 28d, carried from run 159)
+stays the acquisition-lane worst number but is one rank below the weekly focus and crowded (open PR
+#888 works `/solve`), so not this run's lever.
+**Weekly-focus gate (don't overwrite mid-week):** dogfood **0/5** — D-02b (convergent sync +
+workflow) now blocks on a read-verb decision + the `NLQDB_API_KEY` secret (queue #2).
 **Top `blocked-by-human` bullet:** fire the Show HN launch sequence (⏱ ~30 min,
 **idle 50 days since 06-13**) — the only bullet that can move real strangers off 0, still
-condition-gated on the `SK-PIVOT-016` gate (**0/5**, every criterion agent-movable). Queue
-**depth 4**; head age 50 d is the company's real cycle time.
-**Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** (7 d, staleness edge) / **#9 Spider
-0.2222** (**14 d** stale, > 7 d alert — resume-dispatch deferred: async multi-window, `main` has
-moved since the 07-27 partial checkpoint); rows **#4/#5/#16**'s stranger-dependent criteria
-(N = 0 until the launch bullet fires); row **#15**'s opencheck arm (free-lane saturation, remedy
-costs money ⇒ rule 4).
+condition-gated on the `SK-PIVOT-016` gate. Queue **depth 6**; head age 50 d is the real cycle time.
+**Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** / **#9 Spider 0.2222** (**14 d**
+stale, resume deferred: async multi-window, `main` moved since the 07-27 checkpoint); rows
+**#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck (free-lane saturation,
+remedy costs money ⇒ rule 4).
 
-**Rule 6 — GREEN.** `main@54446f0` CI + Security + Release-npm all **success**; the last
-deploy-triggering push (`561fe1e`/run 157) shows Deploy web/API/Canary green ⇒ production serves
-current build. On this run's branch head: `bun install` clean · `bun run typecheck` all workspaces
-EXIT=0 · `biome lint apps/web/src/data/solve.ts` clean · touched-scope test
-`apps/web/src/data/solve.test.ts` **15 pass / 0 fail**.
-Open PRs (7): **#886** (dogfood D-02 docs), **#885** (agent-memory UX docs), **#884** (agents matrix),
-**#883** (daily run 158 null — E-09 P1 finding), **#882** (reach R-09), **#864** (changesets),
-draft **#719** (oldest, **16 days**). This run's only file (`apps/web/src/data/solve.ts`) overlaps
-**none** of them.
+**Rule 6 — GREEN.** `main@a0b66b8` CI all **success** (latest 3 pushes green); recent merges are
+docs-only ⇒ no deploy-triggering change since run 157's verified-green Deploy web/API/Canary. This
+run's branch head: `bun install` clean · new workspace `@nlqdb/docs-memory` `typecheck` EXIT=0 ·
+`biome lint tools/docs-memory/src/` clean · `bun test` **12 pass / 0 fail**.
+Open PRs (4): **#888** (reach R-02/R-03 `/solve` linking), **#885** (agent-memory UX docs),
+**#864** (changesets), draft **#719** (oldest, **16 days**). This run's files (`tools/docs-memory/**`
++ dogfood D-02 docs) overlap **none** of them.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel** (RUM + referral re-pulled live 08-02 ~09:16Z; users/DBs carried from 07-27 remote-D1 — no CF/D1 write-token this session to re-pull the roster, stable across runs 143–159, no channel newly live) | | exclude synthetic stranger-test walker traffic |
+| | **Funnel** (RUM/GSC carried from run 159's live 08-02 ~09:16Z pull — same day; this run worked the weekly-focus dogfood lane, not distribution. Users/DBs carried from 07-27 remote-D1, no channel newly live) | | exclude synthetic stranger-test walker traffic |
 | 1 | Visits, 7d (CF RUM) | **181 pageloads / 179 visits** raw (07-26→08-02 live, `bun scripts/rum-pull.ts`). **Real-browser floor 40 pl / 39 vis**; synthetic 141 pl. Real-browser landings led by `nlqdb.com/` (7), **`/agents/` (6)**, `docs…/agent-memory/` (4), docs SDK-reference pages. Client mix real-browser: Chrome·SG 21, Chrome·US 9, plus MobileSafari/ChromeMobile·MX/Firefox. Header reports SAMPLED at interval ≤1.030 even on 7d — at that interval counts are effectively unscaled, but read them as estimates | the cut is a printed rule: `bot=1` or `userAgentBrowser ∈ {Unknown, ChromeHeadless}`, with **every removed row listed** so a real visitor it swallows is visible. Conservative ⇒ real-browser is a floor. Read at **7d**: a 28d pull comes back sampled at interval 10 |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev (`*@example.com`, `*@preview.dev`) — live remote-D1 07-27, roster byte-identical a 4th run; no channel newly live to produce a signal |
 | 3 | DBs total | **254** (07-27 live remote-D1, flat across runs 143–147; synthetic — walker/preview churn) | stranger subset ~0 (row #2) |
@@ -101,38 +99,37 @@ lesson gists stay in `research/distribution-queue.md`.
 
 ## Last change
 
-**2026-08-02 (run 159)** — **Number moved: query-intent coverage on the #2 strengthen-next
-page — a named direct input to row #7 surface yield.** GSC (live this run) ranks
-`/solve/find-rows-with-no-match-in-another-table/` at **pos 16.7 @ 41 impr / 0 clicks** — the
-highest-impression page still off page 1 that run 157 didn't already work (it took #1, running-total).
-The page's query dimension is **fully GSC-anonymized** (0 queries returned over 90d — its 41 impr are
-spread across many sub-threshold long-tail queries), so — unlike run 157's data-driven fix — the
-lever targets a **concrete on-page gap** instead: the anti-join page covered `LEFT JOIN … IS NULL`,
-`NOT EXISTS`, and the `NOT IN` NULL trap, but never **`EXCEPT`** (the set-difference construct) or
-**anti-join performance**, both high-frequency related searches.
+**2026-08-02 (run 160)** — **Number moved: the runnable docs→memory producer — a named direct input
+to `SK-PIVOT-016` criterion 1 (the weekly-focus dogfood gate).** 0 → **15 structured facts (9
+open-question + 6 blocked) + 14 entities** deterministically extractable offline from the live
+`docs/` corpus. The 9 open-questions independently reproduce scorecard row #17's pinned count,
+cross-validating the rule against the canonical method.
 
-**The change.** Two FAQs added to that entry in `apps/web/src/data/solve.ts` (4 → 6 FAQs), each
-rendered into both visible content and the page's `FAQPage` JSON-LD (`faqPageJsonLd`): (1) *"Can I
-use EXCEPT instead of an anti-join…?"* — honest: `EXCEPT` is NULL-safe set-difference but dedups and
-returns only projected columns, so it answers "which keys are missing", not the full rows; (2) *"Is
-NOT EXISTS or LEFT JOIN faster…?"* — in modern Postgres both plan to the same anti-join; `NOT IN` is
-the shape to avoid, and an index on the inner key is what moves the time. No new capability claim; no
-other page touched.
+**The finding (why this was the lever).** The gate's whole critical path funnels through D-02 → D-04,
+and D-02 was mis-scoped: **D-01 shipped only an agent-executed skill (`SKILL.md`), so no runnable
+extractor existed** for CI to invoke — and CI can't run an agent for `$0` (rule 4). A subtler blocker
+also surfaced: `facts` are **append-only** (`remember.ts` has no update verb), so idempotent re-sync
+needs a deterministic **read-before-write** per `source.key`, and that read verb (`/v1/run` vs a keyed
+`facts`-read) is unresolved (`ask()` is LLM-backed ⇒ `$`/non-deterministic). So the slice **splits**:
+D-02a (this run) ships the producer; D-02b wires the authenticated convergent sync + workflow.
 
-**Measure → change → re-measure.** Before: 4 FAQs, `EXCEPT`/performance intent unanswered on-page;
-baseline pinned pos 16.7 @ 41 impr / 0 clicks. After: 6 FAQs + 2 new `FAQPage` entries; `solve.test.ts`
-15 pass (FAQ ≤ 80-words + no-ID-leak guards green). Ranking re-measure is a next-week GSC read against
-the recorded baseline (position moves are not same-day; for distribution work the tracked baseline is
-the delta record, per runs 145/149/157).
+**The change.** New `$0`, no-LLM, no-network `tools/docs-memory/` workspace: `extract.ts` (pure core —
+open-questions per feature + the blocked-queue, emitting `nlqdb_remember`-shaped entities/facts with
+`source.{key,digest}` for convergence), `extract.test.ts` (12 tests: structure-only, parked/resolved
+exclusion, idempotent digests), `sync.ts --dry-run` (offline yield report). D-02 worksheet + INDEX
+re-scoped to the a/b split with the read-verb design question recorded (single-homed, P3).
 
-**Step 3 (artifact):** distribution queue < 3 ⇒ no forced publish; drafting skipped (P5). Dev.to
-drip (3.3) **posted** — first run of the day cleared the drip guard: oldest pending variant
-`agent-memory-vector-store-aggregation-gap` →
-[dev.to](https://dev.to/omer_hochman/your-agents-memory-is-a-vector-store-ask-it-how-many-and-watch-it-fall-over-4ha8)
-(canonical already live/archived; no queue line to edit — dev.to canonical_url dedup tracks it).
-**No new `SK-*`** (P5/D5): additive content within the existing `SK-SOLVE-001/002/003`
-shape; no decision changes. **KPI (GLOBAL-025):** advances **onboarding/distribution** — widens the
-organic capture surface at the search moment; **degrades none** (content-only, all gates green).
+**Measure → change → re-measure.** Before: no runnable producer (criterion 1 structurally
+unstartable). After: `bun src/sync.ts` over live `docs/` prints 15 facts / 14 entities; a re-run over
+an unchanged corpus yields byte-identical keys+digests (idempotency proven in tests). `typecheck` /
+`lint` / `test` (12 pass) green. Remaining for the count to actually move: D-02b + the `NLQDB_API_KEY`
+secret (queue #2).
+
+**Step 3 (artifact):** distribution queue 2 (< 3) ⇒ no forced publish; drafting skipped (optional,
+P5). Dev.to drip (3.3) skipped by its one-post/day guard (run 159 already posted today). **No new
+`SK-*`** (P5/D5): the a/b split is a worksheet execution detail, not a decision. **KPI (GLOBAL-025):**
+advances **engine-quality / onboarding** (unblocks the dogfood workload's producer); **degrades none**
+(new isolated tool, all gates green).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
