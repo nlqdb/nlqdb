@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SOLVE_ENTRIES, solveBySlug } from "./solve.ts";
+import { relatedSolveEntries, SOLVE_ENTRIES, solveBySlug } from "./solve.ts";
 
 // `/solve/<slug>` data is loaded by 4 surfaces (page template, /solve
 // index, sitemap, llms.txt). These checks pin the invariants the
@@ -137,6 +137,36 @@ describe("SOLVE_ENTRIES data integrity", () => {
         const hit = text.match(leak);
         expect(hit ? `${s.slug}: ${hit[0]} — "${text.slice(0, 60)}…"` : "").toBe("");
       }
+    }
+  });
+
+  // `related` is the `/solve ↔ /solve` internal-link mesh (crawl-priority
+  // remedy for "Discovered - currently not indexed"). Every listed slug must
+  // resolve to a real sibling, never point at itself, and carry no dupes — a
+  // dangling anchor renders a 404 link and wastes the crawl signal.
+  test("every `related` slug resolves, is not self-referential, and is unique", () => {
+    for (const s of SOLVE_ENTRIES) {
+      if (!s.related) continue;
+      expect(new Set(s.related).size).toBe(s.related.length);
+      expect(s.related).not.toContain(s.slug);
+      for (const slug of s.related) {
+        expect(solveBySlug(slug) ? "" : `${s.slug} → missing ${slug}`).toBe("");
+      }
+      expect(relatedSolveEntries(s).length).toBe(s.related.length);
+    }
+  });
+
+  // The stuck wedge pages (`build-vs-buy-agent-memory`, `expire-old-agent-memory`)
+  // were "Discovered - currently not indexed": known to Google but crawl-
+  // deprioritised because their only inbound links were the flat `/solve/`
+  // index + sitemap. The documented fix is contextual links from indexed,
+  // topically-relevant siblings — so each must receive ≥1 inbound `related`
+  // link, or the crawl-priority lever silently regresses.
+  test("stage-0 wedge pages receive contextual inbound `related` links", () => {
+    const needsInbound = ["build-vs-buy-agent-memory", "expire-old-agent-memory"];
+    for (const target of needsInbound) {
+      const inbound = SOLVE_ENTRIES.filter((s) => s.related?.includes(target));
+      expect(inbound.length > 0 ? "" : `${target} has no inbound related link (orphaned)`).toBe("");
     }
   });
 });
