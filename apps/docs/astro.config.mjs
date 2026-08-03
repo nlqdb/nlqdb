@@ -1,3 +1,4 @@
+import sitemap from "@astrojs/sitemap";
 import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
 import starlightLlmsTxt from "starlight-llms-txt";
@@ -23,6 +24,13 @@ export default defineConfig({
   site: "https://docs.nlqdb.com",
   integrations: [
     channelForward,
+    // Starlight bundles `@astrojs/sitemap` as a dependency but does NOT apply
+    // it — a Starlight site emits no sitemap until this integration is added.
+    // Without it, the `sitemap-index.xml` that `public/robots.txt` advertises
+    // 404s, so Google never discovers `/agent-memory/` (the R-04 wedge page).
+    // Enabling it emits `sitemap-index.xml` + `sitemap-0.xml` at build time,
+    // and Starlight augments the entries with localization data (SK-DOCS-005).
+    sitemap(),
     starlight({
       title: "nlqdb",
       description: "A database you talk to. Documentation.",

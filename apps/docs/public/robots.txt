@@ -40,7 +40,8 @@ User-agent: *
 Allow: /
 Disallow: /cdn-cgi/
 
-# Starlight emits a sitemap index, not a flat sitemap. Advertising it here is
-# how Google discovers it — only `nlqdb.com/sitemap.xml` is submitted in the
-# Search Console property, and adding a second one there is a console action.
+# The `@astrojs/sitemap` integration (wired in astro.config.mjs) emits a
+# sitemap index, not a flat sitemap. Advertising it here is how Google
+# discovers it — only `nlqdb.com/sitemap.xml` is submitted in the Search
+# Console property, and adding a second one there is a console action.
 Sitemap: https://docs.nlqdb.com/sitemap-index.xml
