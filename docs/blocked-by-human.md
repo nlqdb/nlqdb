@@ -209,6 +209,14 @@ automated OIDC lane, tracked by scorecard row #22.)
   founder call, not a value-decision. Approve → I merge #885 (rest is
   clean, CI-green); or "guidance, not binding" → I downgrade P6 first.
 
+- **Close PR #891 as superseded by #893** — #891 (run 161) is a **null run**
+  whose only change is a `docs/scorecard.md` snapshot; #893 (run 162, ~8 h newer,
+  same `main` base) rewrites the same scorecard with a fresher measurement **and**
+  ships the D-02b code #891 could only report as blocked. Merging #891 would land a
+  stale point-in-time snapshot ("current state only", no changelog) with no code
+  value and a revert risk. Recommend closing #891 unmerged, merge #893. Closing
+  another agent's PR is a human/approval action.
+
 (The auto-merge-tier proposal was **rejected by the founder 2026-07-22**:
 review latency is handled by a separate merger agent, not by `/daily`
 self-merging; recorded in `daily.md` §4. Don't re-propose.)
