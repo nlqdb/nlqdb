@@ -274,7 +274,7 @@ A new `FEATURE.md` that fails any of these is a draft, not a feature doc.
 - `docs/decisions.md` — index of every `GLOBAL-NNN`; bodies live in
   `docs/decisions/GLOBAL-NNN-<slug>.md` (one file per decision).
 - Root `AGENTS.md` — the before-editing path map (which paths require
-  which feature docs) and the five behavioral principles.
+  which feature docs) and the behavioral principles.
 - Per-area `AGENTS.md` (`apps/<x>/AGENTS.md`, `packages/<x>/AGENTS.md`,
   `cli/AGENTS.md`) — local subset of the path map, plus area-specific
   commands.

@@ -25,10 +25,17 @@ restated here):
 - [**SK-PIVOT-019**](../../decisions/SK-PIVOT-019-memory-strategy-benchmark.md) — the
   public cross-strategy benchmark, **sequenced after** the corpus + golden
   queries exist (D-07).
+- [**SK-PIVOT-021**](../../decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md) —
+  every pack runs through one shared, resumable, least-permission product
+  journey; a skill artifact alone is not a finished pack experience.
+- [**SK-PIVOT-022**](../../decisions/SK-PIVOT-022-community-first-memory-guidance.md) —
+  public guidance recommends the smallest strategy that improves the task,
+  including outcomes that do not include nlqdb; it adds recommendations, not
+  adapters.
 
 ## Why this track exists
 
-The four decisions above were recorded 2026-07-26/27 but had **no
+The launch and dogfood decisions were recorded 2026-07-26/27 but had **no
 worksheets**, so the `/daily` loop structurally could not pick them up: step 2
 picks a lever from a track index, and there was no index. Meanwhile the
 launch-sequence bullet in [`blocked-by-human.md`](../../../../blocked-by-human.md)
@@ -59,7 +66,8 @@ prod memory DB, see D-04.
 | [D-04](D-04-first-corpus-sync.md) | First real sync of nlqdb's own `docs/` corpus + the gate-progress readout | med | ~2 | D-01, D-02, ~~E-03 → `MEMORY_PRESET=1`~~ ✅ (#851, #835) | **criteria 1, 2, 3** |
 | [D-05](D-05-founder-ops-pack.md) | Goal pack #2 — founder-ops (SK-PIVOT-018), seeded from `history/founder-actions-log.md` | low | ~2 | D-01, D-04 | criterion 1 · Pivot row |
 | [D-06](D-06-agents-memory-dashboard.md) | The public memory dashboard on `/agents` | med | ~2 | D-04 | **criterion 5** |
-| [D-07](D-07-memory-strategy-benchmark.md) ⛔ | Cross-strategy memory benchmark (SK-PIVOT-019) — **blocked** | high | multi | **blocked: the SK-PIVOT-017 corpus + golden queries must exist** (D-03 ✅ + D-04 ✅) | none — row #22 / answer-engine citations |
+| [D-07](D-07-memory-strategy-benchmark.md) ⛔ | Cross-strategy memory benchmark (SK-PIVOT-019) — **blocked** | high | multi | **blocked: the SK-PIVOT-017 corpus + golden queries must exist** (D-03 ✅; D-04 pending) | none — row #22 / answer-engine citations |
+| [D-08](D-08-repo-ops-one-click-import.md) | Goal pack #1 as a one-click public-alpha repo-memory import (SK-PIVOT-021) | high | multi | D-01, D-04, E-06, delete | onboarding + UX · reusable pack runner |
 
 **Why this order.** D-01 is the workload's producer — nothing else in the track
 means anything without it, which is why it is being built first (in parallel,
@@ -71,9 +79,13 @@ pullable while `MEMORY_PRESET` is still dark — and it is the criterion the gat
 calls the measured weak axis. D-04 is the first slice that needs prod and
 produces criteria 1–3 by simply running. D-05 doubles the workload with a
 second persona at zero engine cost (SK-PIVOT-018: a pack is content, not
-schema). D-06 is the last criterion and the launch's own demo artifact. D-07 is
-last and explicitly blocked — SK-PIVOT-019 sequences it after the corpus, and
-it must **never** delay the gate or the launch.
+schema). D-06 is the last criterion and the launch's own demo artifact. D-07
+follows the gate sequence and is explicitly blocked — SK-PIVOT-019 sequences
+it after the corpus, and it must **never** delay the gate or the launch.
+
+D-08 is a productization follow-on, not a new launch-gate condition. It turns
+pack #1 into the shared one-click journey every later pack reuses; its public
+alpha may ship without delaying D-04–D-07.
 
 ## Hard rules
 
@@ -88,7 +100,8 @@ it must **never** delay the gate or the launch.
 - **No secret values, ever.** Goal packs store credential *metadata* — service,
   key name, scope, date — never the value (SK-PIVOT-018).
 - **No new schema, endpoint or tool for a pack.** Packs are seed content + a
-  skill prompt on `agent_memory_v1` (SK-PIVOT-007). A slice that adds DDL or a
+  recipe on `agent_memory_v1` (SK-PIVOT-007). The shared runner may add generic
+  product plumbing once (SK-PIVOT-021), but a pack-specific endpoint, DDL or
   preset version is in the wrong track.
 - **Loosening a gate criterion needs a founder note** in
   `SK-PIVOT-016-dogfood-launch-gate.md`. Tightening is agent-allowed. Silently
@@ -146,3 +159,4 @@ Tick on merge. Keep this list as the durable dogfood status (the scorecard's
 - [ ] D-05 — founder-ops goal pack (pack #2, SK-PIVOT-018)
 - [ ] D-06 — public memory dashboard on `/agents` (criterion 5)
 - [ ] D-07 — cross-strategy memory benchmark (SK-PIVOT-019) — **blocked** on D-03 + D-04
+- [ ] D-08 — one-click repo-memory public alpha on the shared pack runner (SK-PIVOT-021)

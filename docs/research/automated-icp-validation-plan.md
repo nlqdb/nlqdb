@@ -827,7 +827,7 @@ supersede before those start.
    (in-app survey for the 5 questions), §2 (mining pain at scale),
    §4.3 (LLM digest instead of theme-extract calls). **Decision:**
    mark §1–§2 `Status: superseded by docs/research/automated-icp-validation-plan.md`
-   per [CLAUDE.md §10.2](../../CLAUDE.md); OR keep both and let the
+   per [CLAUDE.md P3](../../CLAUDE.md); OR keep both and let the
    founder pull the human-loop trigger if §4.4 hits <25% VD.
 3. **[email-and-marketing.md §3](./email-and-marketing.md) refuse list.**
    §3.6 (reply-to-pain) flirts with the cold-outbound line. Proposed
@@ -846,7 +846,7 @@ onto a free chain that answers the first query poorly (priority #1).
 
 ## 7. Promotion path
 
-When results land, promote pieces per [CLAUDE.md §10](../../CLAUDE.md):
+When results land, promote pieces per [feature-conventions.md §6](../feature-conventions.md):
 
 - §1.1 stranger-test → new feature
   [`stranger-test/FEATURE.md`](../features/stranger-test/FEATURE.md)

@@ -70,7 +70,8 @@ The rule lands today; the codebase is not yet fully compliant. Tracked work:
 1. **D1 ownership consolidation** — move all direct `D1Database`
    usages in `apps/api/src/` into `@nlqdb/platform-db`. Tracked as
    open work under `docs/features/db-adapter/FEATURE.md` and the
-   forthcoming `platform-db` feature (or equivalent §10.1 promotion).
+   forthcoming `platform-db` feature (or equivalent feature promotion
+   per `docs/feature-conventions.md` §6).
 2. **Better Auth consolidation** — move Better Auth setup from
    `apps/api/src/auth.ts` into `packages/auth-internal/` once the
    package gets a `package.json`. Tracked under

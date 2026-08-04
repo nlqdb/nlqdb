@@ -22,15 +22,19 @@
   agent-operated company accumulates the same corpus. Packs make the
   memory DB useful on day one for a named persona (the cold-start fix,
   same as SK-PIVOT-017) while keeping the engine surface unchanged; a new
-  pack is content + a skill prompt, not a migration.
-- **Consequence in code:** A goal pack adds **no** schema, no endpoint and
-  no tool — it is seed content written through the public
-  `nlqdb_remember`/`nlqdb_query` surface plus a skill file in the
-  agent-artifacts family. A reviewer rejects: a pack that introduces
-  DDL or a new preset version (that path is `SK-PIVOT-007`'s, with its
-  own decision), and any pack that stores secret **values** rather than
-  credential metadata. Each pack ships with ≥ 5 golden queries added to
-  the `SK-QUAL-023` eval family.
+  pack is declarative content run by the shared `SK-PIVOT-021` journey, not a
+  new vertical backend.
+- **Consequence in code:** A goal pack adds **no pack-specific** schema,
+  endpoint or tool — it is declarative seed content and extraction judgment
+  written through the public `nlqdb_remember`/`nlqdb_query` surface. Per
+  [`SK-PIVOT-021`](SK-PIVOT-021-one-click-goal-pack-journeys.md), every pack
+  must also run through the shared one-click product journey; the shared runner
+  owns auth, source access, progress, resumability and cleanup once for all
+  packs. A reviewer rejects: a pack that introduces DDL, a bespoke endpoint or
+  a new preset version (that path is `SK-PIVOT-007`'s, with its own decision),
+  and any pack that stores secret **values** rather than credential metadata.
+  Each pack ships with ≥ 5 golden queries added to the `SK-QUAL-023` eval
+  family.
 - **Alternatives rejected:** **Per-vertical schema presets**
   (`agent_founder_ops_v1`, …) — schema explosion, contradicts
   `SK-PIVOT-007`, and every one multiplies the validator/eval surface. ·

@@ -22,7 +22,9 @@ slices rather than a relaunch. **Four tracks ship in parallel:** messaging
 primitives that make the wedge claims durable), **dogfood** (D-* — nlqdb's own
 ops running on nlqdb memory, the SK-PIVOT-016 launch gate), and **reach** (R-* —
 search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
-**Status:** in progress (Phase 2 distribution) — **WS-13 headline reposition shipped 2026-06-24** (SK-PIVOT-013; the site leads with the wedge sitewide); **WS-14 home-flow reposition** (SK-PIVOT-014 + SK-WEB-017), since superseded on `/` by the two-door home (SK-WEB-018); **E-03 memory scoping shipped 2026-07-28** (SK-PIVOT-009 — restrictive per-agent/end-user/thread RLS; satisfies E-06's `MEMORY_PRESET` prerequisite); E-04 sweep core + read-side clause shipped (SK-PIVOT-011; cron pending). **Dogfood track opened 2026-07-28** — `D-01..D-07` under [`worksheets/dogfood/`](worksheets/dogfood/INDEX.md) give SK-PIVOT-016/017/018/019 an execution path the `/daily` loop can pick up; the SK-PIVOT-016 gate is **0/5**.
+**Status:** in progress (Phase 2 distribution) — messaging, engine, dogfood and
+reach state lives in the linked worksheet indexes; the `SK-PIVOT-016` dogfood
+gate is **0/5**.
 **Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/{db-create/neon-provision,ask/build-deps,memory/remember}.ts` (agent-scope RLS, SK-PIVOT-009), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
 **Cross-refs:** `docs/research/deepseek-moat-framing.md` (the thesis) · `docs/competitors.md §4` (agent-memory landscape) · `docs/research/personas.md §P2` · GLOBAL-036 (canonical text in `docs/decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md`; index in `docs/decisions.md`).
 
@@ -40,7 +42,8 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 > (engine `E-01..E-07`); rule of thumb is `WS-*` when the worst number is
 > funnel/distribution, `E-*` when it is engine quality / agent on-ramp.
 > The **dogfood** track ([`worksheets/dogfood/INDEX.md`](worksheets/dogfood/INDEX.md),
-> `D-01..D-07`) is the execution track for the `SK-PIVOT-016` launch gate —
+> `D-01..D-08`) is the execution track for the `SK-PIVOT-016` launch gate and
+> the one-click pack productization follow-on —
 > pick from it when the weekly focus is that gate's `n/5` (founder-set 2026-07-28).
 > The **reach** track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md),
 > `R-*`) is picked up only by its own `/reach` loop. Copy inventory:
@@ -131,7 +134,7 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 
 ### SK-PIVOT-018 — Memory ships persona-goal packs on the one canonical schema, never per-vertical schemas
 
-**Body:** [`decisions/SK-PIVOT-018-goal-packs.md`](./decisions/SK-PIVOT-018-goal-packs.md). Goal packs = extraction recipe (skill prompt) + seed entities + golden queries, all on the one `agent_memory_v1` schema (`SK-PIVOT-007`). Pack #1 repo-ops (`SK-PIVOT-017`); pack #2 founder-ops (accounts, credential *metadata* — never values — listings, the human-actions log, seeded from [`docs/history/founder-actions-log.md`](../../history/founder-actions-log.md)). A pack adds no schema, endpoint or tool. Candidates for packs #3..N are proposals awaiting founder ranking in [`worksheets/dogfood/pack-candidates.md`](worksheets/dogfood/pack-candidates.md) (#1 founder-set 2026-07-29); none is decided.
+**Body:** [`decisions/SK-PIVOT-018-goal-packs.md`](./decisions/SK-PIVOT-018-goal-packs.md). Goal packs = extraction recipe + seed entities + golden queries, all on the one `agent_memory_v1` schema (`SK-PIVOT-007`). Pack #1 repo-ops (`SK-PIVOT-017`); pack #2 founder-ops (accounts, credential *metadata* — never values — listings, the human-actions log, seeded from [`docs/history/founder-actions-log.md`](../../history/founder-actions-log.md)). A pack adds no pack-specific schema, endpoint or tool; `SK-PIVOT-021` supplies one shared product runner for all packs. Candidates for packs #3..N are proposals awaiting founder ranking in [`worksheets/dogfood/pack-candidates.md`](worksheets/dogfood/pack-candidates.md) (#1 founder-set 2026-07-29); none is decided.
 
 ### SK-PIVOT-019 — nlqdb publishes a reproducible cross-strategy memory benchmark; honest per-purpose winners, never an integrations program
 
@@ -140,6 +143,14 @@ search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
 ### SK-PIVOT-020 — Business model, first cut: free is self-host + hosted free tier + BYO key; paid is hosted memory *operations* on the existing premium chain
 
 **Body:** [`decisions/SK-PIVOT-020-memory-ops-business-model.md`](./decisions/SK-PIVOT-020-memory-ops-business-model.md). Founder-decided 2026-07-28: free = FSL self-host (`SK-PIVOT-005`/GLOBAL-019) + the hosted free tier + BYO LLM key at 0% (GLOBAL-026 unchanged); paid = the memory **operations** a self-hoster would run themselves — per-agent/per-end-user isolation (E-03), TTL/retention sweeps (E-04), the hosted premium model lane — sold through the **existing GLOBAL-026 premium chain**, no second monetization system, no new meter or endpoint. Pricing numbers/packaging are deliberately **not** decided; nothing paid is live, so no pricing copy rides this.
+
+### SK-PIVOT-021 — Every goal pack ships as a one-click product journey on one shared runner
+
+**Body:** [`decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md`](./decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md). A skill artifact is not a finished pack: one shared runner owns the CTA, pre-auth evidence, least-permission source access, resumable handoffs, honest progress, durable proof and cleanup, while pack-specific work stays declarative per `SK-PIVOT-018`. Pack #1's public-alpha journey is [`D-08`](./worksheets/dogfood/D-08-repo-ops-one-click-import.md).
+
+### SK-PIVOT-022 — Community memory guidance optimizes for task outcomes, even when nlqdb is absent
+
+**Body:** [`decisions/SK-PIVOT-022-community-first-memory-guidance.md`](./decisions/SK-PIVOT-022-community-first-memory-guidance.md). Cross-strategy guidance recommends the smallest setup that measurably improves the task — plain context, another provider, no persistent memory, or a user-composed architecture may win without nlqdb; repeated counter-evidence narrows or retires the claim. Extends `SK-PIVOT-019` without maintained vendor adapters; nlqdb goal packs stay distinct product surfaces under `SK-PIVOT-018`.
 
 ## GLOBALs governing this feature
 

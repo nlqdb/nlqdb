@@ -7,7 +7,7 @@ path. Every mechanic below is **decided** per
 [`GLOBAL-033`](../decisions/GLOBAL-033-resolution-defaults.md) — no
 open questions are parked here. The `SK-*` blocks for each slice land
 in the owning feature's FEATURE.md in the same PR as the code, per
-`CLAUDE.md` §10.1; this doc is the plan of record until then.
+`CLAUDE.md` P3; this doc is the plan of record until then.
 
 ## 0. Hard constraints
 

@@ -1,7 +1,7 @@
-# D-07 — Cross-strategy memory benchmark (SK-PIVOT-019)
+# D-07 — Cross-strategy memory benchmark (SK-PIVOT-019, SK-PIVOT-022)
 
 **Status:** ⛔ **BLOCKED** — prereq: **the `SK-PIVOT-017` corpus + golden queries
-must exist** (D-03 ✅ *and* D-04 ✅). `SK-PIVOT-019` sequences this
+must exist** (D-03 ✅ *and* D-04 pending). `SK-PIVOT-019` sequences this
 build explicitly; the sequencing is a decided prerequisite, **not** an open
 question, and this slice must **never delay the `SK-PIVOT-016` gate or the
 launch**.
@@ -20,7 +20,8 @@ A public, reproducible memory-strategy benchmark: the **same real corpus** (the
 D-04 ops memories) and the **same golden queries** (D-03), grouped by the
 `SK-QUAL-023` axis labels (retrieval, temporal, forgetting, consolidation,
 analytical), run against competing memory strategies and published with
-**per-purpose winners even where nlqdb loses**.
+**per-purpose winners even where nlqdb loses** and a smallest-sufficient
+recommendation that may not include nlqdb.
 
 v1 strategy set: **nlqdb · DIY Postgres+pgvector · plain-context (no store)**.
 Hosted competitors (Mem0, Zep, …) are added **one per run** — the
@@ -37,6 +38,9 @@ answer-engine citations today, so this is a channel *opened*, not optimised.
 - [`SK-PIVOT-019`](../../decisions/SK-PIVOT-019-memory-strategy-benchmark.md) —
   the canonical decision: what is published, the ToS discipline, the
   no-integrations rule
+- [`SK-PIVOT-022`](../../decisions/SK-PIVOT-022-community-first-memory-guidance.md)
+  — recommendations optimize for the user's task; nlqdb inclusion is never the
+  objective
 - [`SK-QUAL-023`](../../../quality-eval/decisions/SK-QUAL-023-agent-memory-quality-eval.md)
   — the axis taxonomy and scorers this reuses (do not invent new ones)
 - `docs/features/quality-eval/FEATURE.md` — **mandatory** per `AGENTS.md` §5 for
@@ -55,6 +59,10 @@ answer-engine citations today, so this is a channel *opened*, not optimised.
   loses**. Winners-only edits are rejected. Admitting "for pure fuzzy recall,
   top-k wins — here is the number" is what makes the analytical column
   believable.
+- **Recommend the smallest sufficient setup.** Each purpose gets an actionable
+  recommendation grounded in the measured result. A setup based on plain
+  context that does not include nlqdb is a valid outcome; unmeasured judgment
+  is labeled.
 - **No adapters, ever.** Nothing that integrates nlqdb *with* a competing memory
   store may ride this work. That is the rejected integrations-program path: a
   permanent N-provider maintenance surface that blurs the wedge into middleware.
@@ -77,7 +85,7 @@ answer-engine citations today, so this is a channel *opened*, not optimised.
    the honest first comparison and can be published immediately.
 3. **Run 3 — the results surface.** A typed data structure rendered on
    `/agents` (`SK-PIVOT-001` pattern), per-axis winners, pinned versions and run
-   dates printed.
+   dates printed, plus the smallest-sufficient recommendation for each purpose.
 4. **One hosted competitor per later run.** ToS check → record it → account (a
    founder queue bullet if one is needed) → run → publish, conceding every
    column nlqdb loses.
@@ -89,7 +97,11 @@ answer-engine citations today, so this is a channel *opened*, not optimised.
 - [ ] nlqdb + DIY Postgres+pgvector + plain-context lanes all run; raw results
       committed.
 - [ ] Results surface live on `/agents` from a typed data structure, with
-      per-axis winners, **pinned versions and run dates printed**.
+      per-axis winners, smallest-sufficient per-purpose recommendations,
+      **pinned versions and run dates printed**.
+- [ ] At least one recommendation explicitly considers a setup that does not
+      include nlqdb; every recommendation cites measured evidence or is labeled
+      untested judgment.
 - [ ] At least one axis where nlqdb loses is published as such (if none exists,
       say so explicitly — an all-wins table is the signal the harness is wrong).
 - [ ] Every named hosted provider has a recorded ToS check; any that forbids
@@ -98,13 +110,6 @@ answer-engine citations today, so this is a channel *opened*, not optimised.
       diff; stated in the PR body.
 - [ ] `bun run typecheck && test` green; lint with explicit paths.
 - [ ] INDEX tracker + status ticked.
-
-## Artifact
-
-The benchmark page **is** the artifact class SK-PIVOT-019 is aiming at (the
-most-cited artifact class in developer tooling). The queue draft is the
-write-up that points at it and states the method — including which providers
-declined and why.
 
 ## Rollback
 

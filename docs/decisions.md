@@ -78,5 +78,5 @@ grep -rn 'GLOBAL-007' docs/features/
    `## GLOBALs governing this feature` section. Add nested
    commentary only when the GLOBAL has a feature-specific
    implication worth calling out.
-5. Per `CLAUDE.md` §10.1, `GLOBAL-NNN` lands **before** any code that
+5. Per `CLAUDE.md` P3, `GLOBAL-NNN` lands **before** any code that
    depends on it.
