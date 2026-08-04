@@ -133,7 +133,7 @@ automated OIDC lane, tracked by scorecard row #22.)
 
 4. **⏱ ~5 min · since 2026-07-29 — Submit the `nlqdb-memory` plugin to
    Anthropic's community plugin directory** (reach R-09 venue #4, ledger row
-   #22). Free, signed-in web form — **no plan gate, no money** (unlike #5). P2
+   #22). Free, signed-in web form — **no plan gate, no money** (unlike #6). P2
    verified 2026-07-29 (`github.com/anthropics/claude-plugins-community`): that
    repo is a read-only mirror; submissions go through
    `clau.de/plugin-directory-submission`, pass automated security scanning, then
