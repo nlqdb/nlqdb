@@ -1,0 +1,22 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://app.nlqdb.com/v1/",
+      "service-doc": [
+        { "href": "https://docs.nlqdb.com/", "type": "text/html" }
+      ]
+    },
+    {
+      "anchor": "https://mcp.nlqdb.com/mcp",
+      "service-doc": [
+        { "href": "https://docs.nlqdb.com/agent-memory/", "type": "text/html" }
+      ],
+      "service-meta": [
+        {
+          "href": "https://mcp.nlqdb.com/.well-known/oauth-protected-resource",
+          "type": "application/json"
+        }
+      ]
+    }
+  ]
+}

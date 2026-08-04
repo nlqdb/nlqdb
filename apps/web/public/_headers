@@ -1,2 +1,18 @@
 /*
   Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# SK-WEB-028 — machine-discovery surfaces. The homepage advertises the API
+# catalog (RFC 9727 link relation) and the canonical agent setup guide
+# (RFC 8631 service-doc). No rel exists for llms.txt — none is invented.
+/
+  Link: </.well-known/api-catalog>; rel="api-catalog", <https://docs.nlqdb.com/agent-memory/>; rel="service-doc"
+
+# RFC 9727 mandates the extensionless well-known name; the asset pipeline
+# infers Content-Type from the extension, so override it here (profile
+# parameter per RFC 9264 §5).
+/.well-known/api-catalog
+  Content-Type: application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"
+
+# SEP-2127 (draft): AI Catalogs SHOULD use this media type.
+/.well-known/ai-catalog.json
+  Content-Type: application/ai-catalog+json

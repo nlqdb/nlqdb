@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+  "skills": [
+    {
+      "name": "nlqdb-memory",
+      "type": "skill-md",
+      "description": "Give this agent persistent, queryable memory over the nlqdb MCP server. Use whenever the agent needs to remember something across sessions, recall what it stored, or aggregate over its memory (GROUP BY / JOIN / counts / trends) — backed by a real Postgres it queries in plain English, not a vector store.",
+      "url": "/agent-artifacts/nlqdb-memory/SKILL.md",
+      "digest": "sha256:753e957f65ee017c17b97861584b5a716c1ff8404319684dbdfd4f6d6b680c01"
+    },
+    {
+      "name": "nlqdb-docs-memory",
+      "type": "skill-md",
+      "description": "Turn this repo's markdown docs into a queryable nlqdb memory database — decision IDs and statuses, open questions with ages, queues, ledgers, and the cross-references between them. Use when asked which features have stale open questions, which decisions reference a given ID, what is blocked and since when, or to re-sync the memory DB after docs change. Extracts structure only; never ingests prose.",
+      "url": "/agent-artifacts/nlqdb-docs-memory/SKILL.md",
+      "digest": "sha256:9b3a41b041e2aa0292ddceee781a70111f5529ed11a58aa37171acb2b5cfaa1d"
+    }
+  ]
+}

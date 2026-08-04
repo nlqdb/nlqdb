@@ -11,33 +11,44 @@
 # Disallows repeat in every group — a crawler matching a named group ignores
 # the `*` group. /cdn-cgi/ is Cloudflare's injected scaffolding. No `/v1/` line:
 # that is the marketing host's API surface, not this one.
+#
+# Content-Signal repeats per group for the same reason — signals attach to
+# the group they appear in (contentsignals.org). Mirrors the marketing
+# host's declaration (SK-WEB-028).
 
 User-agent: GPTBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 
 User-agent: ClaudeBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 
 User-agent: anthropic-ai
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 
 User-agent: PerplexityBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 
 User-agent: Google-Extended
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 
 User-agent: Bingbot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 
 User-agent: *
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 
 # Starlight emits a sitemap index, not a flat sitemap. Advertising it here is
