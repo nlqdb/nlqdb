@@ -1,7 +1,7 @@
 # D-07 — Cross-strategy memory benchmark (SK-PIVOT-019, SK-PIVOT-022)
 
 **Status:** ⛔ **BLOCKED** — prereq: **the `SK-PIVOT-017` corpus + golden queries
-must exist** (D-03 ✅ *and* D-04 ✅). `SK-PIVOT-019` sequences this
+must exist** (D-03 ✅ *and* D-04 pending). `SK-PIVOT-019` sequences this
 build explicitly; the sequencing is a decided prerequisite, **not** an open
 question, and this slice must **never delay the `SK-PIVOT-016` gate or the
 launch**.
