@@ -103,9 +103,11 @@ export const GET: APIRoute = () => {
     "```\n\n" +
     `Other hosts (Codex, Cursor, VS Code, Claude Desktop, Windsurf, Zed), both routes\n` +
     `per host, and the full machine-followable guide — expected tools, a verification\n` +
-    `query, what to do on failure — are at ${DOCS_SITE}/agent-memory/. The live memory\n` +
-    `path is \`nlqdb_query\` (provision + query in English); the typed\n` +
-    `\`agent_memory_v1\` preset is coming.\n\n` +
+    `query, what to do on failure — are at ${DOCS_SITE}/agent-memory/. Two write paths,\n` +
+    `both live for signed-in keys: \`nlqdb_query\` (provision + query in English, always\n` +
+    `on) and the typed \`nlqdb_remember\` verb over the \`agent_memory_v1\` preset — create\n` +
+    `one with \`POST /v1/databases { "preset": "agent_memory_v1" }\` (or the dashboard),\n` +
+    `pass its id as \`db\`, and fact \`kind\` + \`tags\` become your GROUP BY columns.\n\n` +
     `Building this into a repo with Claude Code? The plugin wires the server AND the\n` +
     `instructions in one step, replacing the connect command above — run both lines\n` +
     `inside Claude Code:\n\n` +

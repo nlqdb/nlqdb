@@ -42,4 +42,15 @@ describe("llms.txt index", () => {
     expect(body).not.toContain("closed beta");
     expect(body).toContain("start anonymously");
   });
+
+  test("advertises the agent_memory_v1 preset as live, not 'coming'", () => {
+    // The preset ships behind `MEMORY_PRESET=1`, set in prod (apps/api/wrangler.toml),
+    // and every drop-in artifact already tells agents it is live for signed-in keys.
+    // llms.txt is the machine-readable index answer engines + coding-agent IDEs fetch;
+    // a stale "coming" here sends them down the slower `nlqdb_query` NL path instead of
+    // the fast typed-write preset path. Pin it so it can't drift back.
+    expect(body).not.toMatch(/preset is coming/i);
+    expect(body).toContain("nlqdb_remember");
+    expect(body).toContain('POST /v1/databases { "preset": "agent_memory_v1" }');
+  });
 });
