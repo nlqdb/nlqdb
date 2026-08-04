@@ -51,8 +51,8 @@ remedy costs money ⇒ rule 4); dogfood gate criteria (D-04 secret-blocked, E-09
 gate awaiting approval, not a failure); recent merges docs/tool-only ⇒ no deploy-triggering change
 since run 157's verified-green deploy. Branch head: `bun install` clean · `biome check` clean on the
 two changed files · `bun test solve.test.ts` **18 pass / 0 fail** (+1 authority-funnel guard).
-Open PRs (6): **#894** (reach R-05 Cline park), **#892** (reach R-04 sitemap), **#891** (daily run 161
-null), **#885** (agent-memory UX docs), **#864** (changesets), draft **#719** (oldest, **17 days**).
+Open PRs (4): **#894** (reach R-05 Cline park), **#885** (agent-memory UX docs), **#864** (changesets),
+draft **#719** (oldest, **17 days**).
 This run's files (`apps/web/src/data/solve.ts` + `solve.test.ts`) overlap **none** — #888's `/solve`
 mesh work is **merged**, and this extends that shipped `related` field to a different, non-overlapping
 cluster.
@@ -89,7 +89,7 @@ cluster.
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0 failed / 9 blocked** — carried from the 07-26 live walk; the scheduled CI walk [30194859852](https://github.com/nlqdb/nlqdb/actions/runs/30194859852) (07-26 08:34Z) concluded success. **Not re-walkable from a `/daily` container**, a new standing constraint: `@playwright/test` pins `~1.60.0`, which wants Chromium **1223**; the image ships **1194**, so the walker aborts with `Executable doesn't exist`. CI-only until they agree | target **0 `failed`** ✅; `blocked` reported beside it, never folded in. All walks stop at the 428 `challenge_required` (Turnstile declining a datacenter IP by design, `SK-ANON-012`), so steps past the ask are **observed, not proven** |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub (per-bucket split lives only in the ledger). npm attribution now **reaches the registry for 2 of 3 packages**: `@nlqdb/sdk@0.2.2` (`?utm_source=npm`) and `@nlqdb/mcp@0.1.1` (`.../agents/?utm_source=npm`) both verified live this cycle; **`@nlqdb/cli@0.1.0` is the laggard — still an untagged `https://nlqdb.com`**, so this run queued its republish changeset (`@nlqdb/cli` patch) to close the last third. MCP official registry published 07-22 (`com.nlqdb/nlqdb`); Glama crawl-listed; Smithery 0 / PulseMCP 0. First-touch attribution live since 07-19 on both create arms; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus: → ≥ 5 live.** Yield from `/app/admin` + `scripts/rum-pull.ts`, never estimated. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 6**; head is the Show HN launch, oldest bullet **51 days** (`SK-PIVOT-016` gate **0/5**); #2 set `NLQDB_API_KEY` secret (unblocks D-02 sync), #3 Glama badge, #4 community-plugin-directory submit, #5 connector directory (money-gated), #6 skillsclaude.org paste | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: 6, oldest 17 days (draft #719) |
+| | **Human queue** — the one non-automatable actor | **depth 6**; head is the Show HN launch, oldest bullet **51 days** (`SK-PIVOT-016` gate **0/5**); #2 set `NLQDB_API_KEY` secret (unblocks D-02 sync), #3 Glama badge, #4 community-plugin-directory submit, #5 connector directory (money-gated), #6 skillsclaude.org paste | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: 4, oldest 17 days (draft #719) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
