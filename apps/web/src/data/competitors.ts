@@ -129,7 +129,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb open source like Supabase?",
-        a: "The source is private during pre-beta. The SDKs, CLI, framework wrappers, and the `<nlq-data>` web component will be open source at general availability; the platform itself is hosted-only for now.",
+        a: "nlqdb's source is public under FSL-1.1-ALv2 — source-available, free to self-host for any non-competing use, BYO LLM key at 0% markup — auto-converting to Apache-2.0 two years after each release. That's source-available today rather than OSI open-source (Supabase is Apache-2.0/MIT now), and there's no turnkey GA self-host container yet, so the hosted platform stays the convenience — not a moat.",
       },
       {
         q: "What's the pricing model vs Supabase's $25/mo Pro?",
