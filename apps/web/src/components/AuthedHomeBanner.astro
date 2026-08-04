@@ -2,13 +2,14 @@
 // "Welcome back — open chat" banner on the marketing home page.
 // Stays hidden post-`SK-WEB-009` because the host-only session
 // cookie is invisible to a cross-origin probe from `nlqdb.com`.
+import { appHref } from "../lib/app-href";
 ---
 
 <aside id="authed-home-banner" class="authed-home-banner" hidden>
   <p class="authed-home-banner__text">
     Welcome back. Pick up where you left off.
   </p>
-  <a href="/app/" class="btn btn--accent authed-home-banner__cta">
+  <a href={appHref("/app/")} class="btn btn--accent authed-home-banner__cta">
     Open chat &rarr;
   </a>
 </aside>

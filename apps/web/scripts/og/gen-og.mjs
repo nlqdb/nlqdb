@@ -217,6 +217,29 @@ const solveCards = [
     title: [[{ t: "The best way to " }, { t: "store", accent: true }], [{ t: "agent memory." }]],
     mono: "SELECT fact, COUNT(*) FROM facts GROUP BY fact",
   },
+  {
+    slug: "isolate-ai-agent-memory-per-tenant",
+    title: [[{ t: "Tenant-" }, { t: "isolated", accent: true }], [{ t: "agent memory." }]],
+    mono: "SET app.tenant_id = 'acme'; SELECT COUNT(*) FROM memory",
+  },
+  {
+    slug: "build-vs-buy-agent-memory",
+    title: [
+      [{ t: "Build or " }, { t: "buy", accent: true }, { t: " your" }],
+      [{ t: "agent's memory?" }],
+    ],
+    mono: "SELECT category, COUNT(*) FROM memory GROUP BY category",
+  },
+  {
+    slug: "expire-old-agent-memory",
+    title: [[{ t: "Expire", accent: true }, { t: " old agent" }], [{ t: "memory automatically." }]],
+    mono: "DELETE FROM memory WHERE seen < now() - interval '90d'",
+  },
+  {
+    slug: "agent-memory-mcp-server",
+    title: [[{ t: "An MCP server that" }], [{ t: "remembers", accent: true }, { t: "." }]],
+    mono: "SELECT topic, COUNT(*) FROM memory GROUP BY topic",
+  },
 ];
 for (const { slug, title, mono } of solveCards) {
   cards[`solve-${slug}`] = card({

@@ -127,11 +127,14 @@ assert_trailing_slash_redirect() {
 say "FLOW-001 — two-door home → /app/new/ hero (curl-observable subset)"
 if fetch_body "FLOW-001 step 1: GET / returns 200" "$BASE_URL/"; then
   # SK-WEB-018 two-door home: the goal input lives on /app/new/ behind the
-  # GLOBAL-007 no-login-wall door; `/` must render that door.
+  # GLOBAL-007 no-login-wall door; `/` must render that door. The href is the
+  # absolute app-origin URL on the marketing build (`lib/app-href.ts` — a
+  # relative `/app/new/` would 301 per SK-AUTH-016) and relative on
+  # previews/local, so match the suffix only.
   assert_match \
     "FLOW-001 step 2a: no-login-wall door to /app/new/ on /" \
     "$FETCH_BODY_PATH" \
-    'href="/app/new/"'
+    'href="[^"]*/app/new/"'
   rm -f "$FETCH_BODY_PATH"
 fi
 if fetch_body "FLOW-001 step 2b: GET /app/new/ returns 200" "$BASE_URL/app/new/"; then

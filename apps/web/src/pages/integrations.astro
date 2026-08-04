@@ -3,6 +3,7 @@ import Footer from "../components/Footer.astro";
 import McpInstall from "../components/McpInstall.astro";
 import Topnav from "../components/Topnav.astro";
 import Base from "../layouts/Base.astro";
+import { appHref } from "../lib/app-href";
 
 // /integrations — quiet support page. New home for AlsoWorksFor's
 // "also works for solo builders, analysts, backend engineers" framing
@@ -207,7 +208,7 @@ const OTHER_LANGS: readonly Surface[] = [
           which framework to ship next.
         </p>
         <p class="ints__footnote-cta">
-          <a class="cta" href="/app/new/">Start with a goal &rarr;</a>
+          <a class="cta" href={appHref("/app/new/")}>Start with a goal &rarr;</a>
         </p>
       </section>
     </main>

@@ -49,6 +49,11 @@ import { groupProvisionedTables } from "./sample-rows";
 
 interface CreateFormProps {
   apiBase: string;
+  /** Heading level for the form title. `/app/new/` keeps the default `h1`
+      (the title IS that page's headline); `/agents/` passes `h2` because its
+      hero already carries the page's single `h1` — two `h1`s per page is the
+      multiple-H1 hygiene flag search tooling raises. */
+  headingLevel?: "h1" | "h2";
 }
 
 const draftSaver = makeDraftSaver();
@@ -63,7 +68,7 @@ export default function CreateForm(props: CreateFormProps) {
   );
 }
 
-function CreateFormInner({ apiBase }: CreateFormProps) {
+function CreateFormInner({ apiBase, headingLevel: Heading = "h1" }: CreateFormProps) {
   const inputId = useId();
   const errorId = useId();
   const [goal, setGoal] = useState("");
@@ -191,7 +196,7 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
 
   return (
     <section className="createform">
-      <h1 className="createform__title">Spin up a database from a sentence.</h1>
+      <Heading className="createform__title">Spin up a database from a sentence.</Heading>
       <p className="createform__lede">
         Anonymous — no sign-in. Your DB lives 72h; sign in (always free) to keep it.
       </p>

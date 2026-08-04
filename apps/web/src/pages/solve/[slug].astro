@@ -13,12 +13,15 @@
 // strikethrough list. The AEO-mandated sections (honest limits,
 // FAQs, sources, final CTA) ride below as quiet supporting beats.
 
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { blogByAnchorPath } from "../../data/blog";
 import { PERSONAS } from "../../data/personas";
 import { relatedSolveEntries, SOLVE_ENTRIES, solveBySlug } from "../../data/solve";
 import Base from "../../layouts/Base.astro";
+import { appHref } from "../../lib/app-href";
 import { breadcrumbJsonLd } from "../../lib/breadcrumb";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
 
@@ -41,8 +44,16 @@ const canonical = `/solve/${s.slug}`;
 
 // Bespoke share card for the P2 agent-builder solve cluster (parity with the
 // `/vs` cluster's WS-08 cards). Other personas fall back to the site-wide
-// default. PNGs are committed under public/og/ by scripts/og/gen-og.mjs.
-const ogImage = s.persona === "P2 agent builder" ? `/og/solve-${s.slug}.png` : undefined;
+// default. PNGs are committed under public/og/ by scripts/og/gen-og.mjs —
+// a manually-run generator, so gate on the file actually existing: a new P2
+// entry whose card wasn't generated yet ships the default card instead of a
+// 404ing og:image (five pages did exactly that until the 2026-08-04 audit).
+const ogCandidate = `/og/solve-${s.slug}.png`;
+const ogImage =
+  s.persona === "P2 agent builder" &&
+  existsSync(fileURLToPath(new URL(`../../../public${ogCandidate}`, import.meta.url)))
+    ? ogCandidate
+    : undefined;
 const ogImageAlt = `${s.searchTitle} — answered with a GROUP BY in nlqdb.`;
 
 const faqJsonLd = faqPageJsonLd(s.faqs);
@@ -215,7 +226,7 @@ const breadcrumbLd = breadcrumbJsonLd(
       <section class="slv__cta">
         <h2 class="slv__cta-title">Try nlqdb in 30 seconds</h2>
         <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
-        <a class="cta slv__cta-btn" href="/app/new/">Start with a goal &rarr;</a>
+        <a class="cta slv__cta-btn" href={appHref("/app/new/")}>Start with a goal &rarr;</a>
         {
           relatedPost && (
             <p class="slv__cta-meta">
@@ -242,10 +253,12 @@ const breadcrumbLd = breadcrumbJsonLd(
   <script>
     // "Try this query" → seed the `nlqdb_draft` slot CreateForm rehydrates
     // from (SK-ANON-011), emit a per-slug demand signal (GLOBAL-024), then
-    // navigate. `/app/new/` 301s to the app origin (SK-AUTH-016), where this
+    // navigate. `appHref` targets the app origin directly on the marketing
+    // build (SK-AUTH-016 — the relative path would 301 there), where this
     // origin's localStorage is unreadable, so the draft rides along in the
     // SK-ANON-015 `#nlq=` fragment — still no query param, so the goal never
     // reaches referrer or access logs.
+    import { appHref } from "../../lib/app-href";
     import { attachHandoff } from "../../lib/handoff";
     import { emit } from "../../lib/logsnag";
     import { saveDraft } from "../../lib/prompt-storage";
@@ -255,7 +268,7 @@ const breadcrumbLd = breadcrumbJsonLd(
         const slug = btn.dataset["solveSlug"] ?? "";
         if (goal) saveDraft(goal);
         emit("solve.try_query_clicked", { slug, goal });
-        location.assign(attachHandoff("/app/new/"));
+        location.assign(attachHandoff(appHref("/app/new/")));
       });
     });
   </script>

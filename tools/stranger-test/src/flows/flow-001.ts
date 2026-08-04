@@ -71,8 +71,11 @@ async function doWalk(
     if (failedStep === null) {
       // SK-WEB-018 two-door home: the goal input lives on /app/new/ behind
       // the GLOBAL-007 no-login-wall door ("just describe your data →").
-      // The walker takes the same door a stranger does.
-      const door = page.locator('a[href="/app/new/"]', { hasText: /describe your data/i }).first();
+      // The walker takes the same door a stranger does. Suffix match: on the
+      // marketing build the href is the absolute app-origin URL
+      // (`lib/app-href.ts` — a relative `/app/new/` would 301 per
+      // SK-AUTH-016); on previews/local it stays relative.
+      const door = page.locator('a[href$="/app/new/"]', { hasText: /describe your data/i }).first();
       const doorVisible = await door.isVisible({ timeout: 5_000 }).catch(() => false);
       if (!doorVisible) {
         steps.push(

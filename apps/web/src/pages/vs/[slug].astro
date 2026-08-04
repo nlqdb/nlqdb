@@ -16,6 +16,7 @@ import Topnav from "../../components/Topnav.astro";
 import { blogByAnchorPath } from "../../data/blog";
 import { COMPETITORS, type ComparisonClaim, competitorBySlug } from "../../data/competitors";
 import Base from "../../layouts/Base.astro";
+import { appHref } from "../../lib/app-href";
 import { breadcrumbJsonLd } from "../../lib/breadcrumb";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
 
@@ -238,7 +239,7 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
       <section class="vs__cta">
         <h2 class="vs__cta-title">Try nlqdb in 30 seconds</h2>
         <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
-        <a class="cta vs__cta-btn" href="/app/new/">Start with a goal &rarr;</a>
+        <a class="cta vs__cta-btn" href={appHref("/app/new/")}>Start with a goal &rarr;</a>
         {
           relatedPost && (
             <p class="vs__cta-meta">
@@ -275,10 +276,12 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
   <script>
     // "Try this query" → seed the `nlqdb_draft` slot CreateForm rehydrates
     // from (SK-ANON-011), emit a per-slug demand signal (GLOBAL-024), then
-    // navigate. `/app/new/` 301s to the app origin (SK-AUTH-016), where this
+    // navigate. `appHref` targets the app origin directly on the marketing
+    // build (SK-AUTH-016 — the relative path would 301 there), where this
     // origin's localStorage is unreadable, so the draft rides along in the
     // SK-ANON-015 `#nlq=` fragment — still no query param, so the goal never
     // reaches referrer or access logs.
+    import { appHref } from "../../lib/app-href";
     import { attachHandoff } from "../../lib/handoff";
     import { emit } from "../../lib/logsnag";
     import { saveDraft } from "../../lib/prompt-storage";
@@ -288,7 +291,7 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
         const slug = btn.dataset["competitorSlug"] ?? "";
         if (goal) saveDraft(goal);
         emit("vs.try_query_clicked", { slug, goal });
-        location.assign(attachHandoff("/app/new/"));
+        location.assign(attachHandoff(appHref("/app/new/")));
       });
     });
   </script>

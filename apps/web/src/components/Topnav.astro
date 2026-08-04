@@ -7,6 +7,8 @@
 // Marketing-side caveat (`SK-WEB-009`): probe returns null on
 // `nlqdb.com` because the session cookie is host-only on
 // `app.nlqdb.com` — authed visitors see the "Sign in" link.
+import { appHref } from "../lib/app-href";
+
 interface Props {
   current?: "manifesto" | "agents" | "chat" | "keys" | "vs" | "solve" | "blog" | "pricing";
 }
@@ -67,10 +69,10 @@ const inChat = current === "chat";
         a jump to the page they're on. */}
     <span id="topnav-authed" class="topnav__authed" hidden>
       {!inChat && (
-        <a href="/app/" class="topnav__chat-link">Open chat &rarr;</a>
+        <a href={appHref("/app/")} class="topnav__chat-link">Open chat &rarr;</a>
       )}
       <a
-        href="/app/keys/"
+        href={appHref("/app/keys/")}
         aria-current={current === "keys" ? "page" : undefined}
       >
         API keys

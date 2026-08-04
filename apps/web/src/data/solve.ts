@@ -1359,9 +1359,12 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         label: "r/SQL — recurring 'find / remove duplicate rows' threads.",
       },
       {
-        url: "https://learnsql.com/blog/how-to-find-duplicate-values-in-sql/",
+        // LearnSQL's guide serves humans but 404s crawler UAs (verified
+        // 2026-08-04), so it reads as a dead citation to any audit — the
+        // dba.SE tag is the SK-SOLVE-003-preferred enduring hub anyway.
+        url: "https://dba.stackexchange.com/questions/tagged/duplication",
         label:
-          "LearnSQL — evergreen 'How to Find Duplicate Values in SQL' guide (the GROUP BY ... HAVING canonical method).",
+          "DBA Stack Exchange — the 'duplication' tag, a perennial 'find / dedupe duplicate rows' hub (GROUP BY ... HAVING is the canonical answer).",
       },
     ],
   },
@@ -1475,9 +1478,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "Stack Overflow — the `pivot` tag, the perennial 'turn rows into columns' hub across SQL dialects.",
       },
       {
-        url: "https://wiki.postgresql.org/wiki/Pivot_Tables",
+        // Replaced wiki.postgresql.org/wiki/Pivot_Tables — that wiki page
+        // was deleted (404 for every UA, verified 2026-08-04).
+        url: "https://modern-sql.com/use-case/pivot",
         label:
-          "PostgreSQL Wiki — evergreen 'Pivot Tables' page (conditional aggregation + `crosstab()` methods).",
+          "modern SQL — the evergreen 'Pivot — rows to columns' use-case page (conditional aggregation + `FILTER`, the method nlqdb compiles).",
       },
       {
         url: "https://www.postgresql.org/docs/current/tablefunc.html",
@@ -1546,9 +1551,12 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "PostgreSQL docs — the canonical window-function tutorial (`SUM(...) OVER (ORDER BY ...)`, frames, `PARTITION BY`).",
       },
       {
-        url: "https://learnsql.com/blog/what-is-a-running-total-and-how-to-compute-it-in-sql/",
+        // LearnSQL's explainer serves humans but 404s crawler UAs (verified
+        // 2026-08-04), so it reads as a dead citation to any audit — the
+        // dba.SE tag is the SK-SOLVE-003-preferred enduring hub anyway.
+        url: "https://dba.stackexchange.com/questions/tagged/running-totals",
         label:
-          "LearnSQL — evergreen 'What is a running total and how to compute it in SQL' explainer.",
+          "DBA Stack Exchange — the 'running-totals' tag, a perennial 'cumulative sum in SQL' hub.",
       },
     ],
     related: [

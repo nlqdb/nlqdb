@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { APP_CANONICAL_ORIGIN } from "../lib/app-href.ts";
 import { ORGANIZATION_ID_FRAGMENT, organizationJsonLd, webSiteJsonLd } from "../lib/site-jsonld.ts";
 
 interface Props {
@@ -23,9 +24,15 @@ const { title, description, canonical, ogImage, ogImageAlt, noindex } = Astro.pr
 // the non-redirecting URL — a bare canonical points crawlers at a redirect of
 // the page declaring it, diluting the AEO/SEO signal.
 const canonicalPath = canonical ?? Astro.url.pathname;
+// `/app/*` pages live on the app host — `nlqdb.com/app/*` only 301s there
+// (SK-AUTH-016), so a canonical built from `Astro.site` would point every
+// crawler at a redirect of the page declaring it. Keep them self-referential
+// on `app.nlqdb.com` instead (SK-WEB-023's self-referential-canonical posture).
+const canonicalBase =
+  canonicalPath === "/app" || canonicalPath.startsWith("/app/") ? APP_CANONICAL_ORIGIN : Astro.site;
 const canonicalURL = new URL(
   canonicalPath.endsWith("/") ? canonicalPath : `${canonicalPath}/`,
-  Astro.site,
+  canonicalBase,
 );
 const ogImageURL = new URL(ogImage ?? "/og-default.png", Astro.site);
 const ogImageAltText =
@@ -72,6 +79,7 @@ const siteEntityJsonLd =
     <link rel="canonical" href={canonicalURL.toString()} />
 
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="nlqdb" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalURL.toString()} />
@@ -81,6 +89,8 @@ const siteEntityJsonLd =
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:alt" content={ogImageAltText} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageURL.toString()} />
     <meta name="twitter:image:alt" content={ogImageAltText} />
     {/* Strips query/path from cross-origin Referer — default privacy hygiene for outbound links. */}
