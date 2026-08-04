@@ -18,44 +18,40 @@ yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-in
 Acquisition levers stay pullable when no dogfood lever is — as does premium-chain work
 (`SK-LLM-017`, row #20), one rank below.
 
-**Worst number today (run 163, 2026-08-03):** the **weekly-focus `SK-PIVOT-016` dogfood gate 0/5**
-stays the worst number — but this run **could not pull it**: it is fully human/founder-blocked.
-Criteria 1/2/3/5 gate on **D-04** (prod `NLQDB_MEMORY_DB` + the queue-#2 `NLQDB_API_KEY` secret);
-criterion **4** (ops temporal 0/4) has **no GLOBAL-037-compliant agent-movable lever** — re-verified
-this run by reading the preset: `facts.kind`/`episodes.role` are free `TEXT` and the value vocabulary
-is **pack-defined, not preset-defined** (E-09 §rejected-shortcuts), so a `CHECK`/`ENUM` on the
-`agent_memory_v1` preset would wrongly reject a stranger's free-text `kind` and break the
-`SK-PIVOT-007` public contract — E-09 path-1 is a preset-schema **design decision**, not a daily
-patch, exactly as scoped (PR #883). So per step-2 priority order this run pulled the **acquisition-lane
-worst number: distribution row #7.** Fresh GSC (28d, 07-04→08-01): **8 clicks / 582 impr / pos 19.2**.
-Strengthen-next **#1 = `/solve/running-total-cumulative-sum-in-sql/` — 117 impr / pos 36.5 / 0 clicks**,
-by far the biggest page still off page 1. It was **content-strengthened in run 157 and is still pos 36.5**
-(was 114 / 36.4); run 159's #2 `find-rows-with-no-match` is likewise flat (43 / 17.3 vs 41 / 16.7).
-**Two content levers moved position ~0 ⇒ the bottleneck on deep-ranked pages is internal authority,
-not on-page content.** This run pulled the untried on-site lever: extended #888's `/solve ↔ /solve`
-`related` mesh to the **SQL-technique cluster**, funneling inbound links into `running-total` from all
-five window/time-series siblings — incl. the **page-1 authority donor** `count-rows-per-day…` (pos 8.3).
-See Last change.
+**Worst number today (run 164, 2026-08-04):** the **weekly-focus `SK-PIVOT-016` dogfood gate 0/5**
+stays the worst number — but this run **could not pull it**: it is fully human/founder-blocked and
+**dark (rule 8, 3+ consecutive runs 156/158/163)**. Criteria 1/2/3/5 gate on **D-04** (prod
+`NLQDB_MEMORY_DB` + the queue-#2 `NLQDB_API_KEY` secret); criterion **4** (ops temporal 0/4) has **no
+GLOBAL-037-compliant agent-movable lever** — the E-09 doc's two unblock paths are both non-daily (a
+preset-schema DDL-`ENUM` re-scope that interacts with `SK-PIVOT-007`, or a founder supersession of a
+settled privacy decision) and the doc says "do not implement." So per the step-2 priority order this
+run dropped to the **acquisition/UX lane**. Distribution row #7 had **no available delta** (GSC not
+re-pulled — crawl-lag; run 163's `/solve` mesh + run 157/159 content verify at R-08 08-22; structured
+data, sitemap, llms.txt link-lists all already complete). The pullable lever was a **surface-accuracy
+defect on the coding-agent onboarding path**: `llms.txt` (the machine-readable index answer engines +
+coding-agent IDEs fetch) still said the typed `agent_memory_v1` preset "is **coming**" — but
+`MEMORY_PRESET=1` is set in **prod** (`apps/api/wrangler.toml:58`) and all six drop-in artifacts
+already advertise it as **live**. An agent reading the stale claim takes the slower `nlqdb_query` NL
+path instead of the fast typed-write preset path. This run corrected it. See Last change.
 **Weekly-focus gate (don't overwrite mid-week):** dogfood **0/5**, unchanged — no agent-movable lever
 this run (D-04 secret-blocked; criterion 4 GLOBAL-037-blocked).
 **Top `blocked-by-human` bullet:** fire the Show HN launch sequence (⏱ ~30 min,
-**idle 51 days since 06-13**) — the only bullet that can move real strangers off 0, still
+**idle 52 days since 06-13**) — the only bullet that can move real strangers off 0, still
 condition-gated on the `SK-PIVOT-016` gate. #2 = set `NLQDB_API_KEY` (⏱ ~2 min, unblocks D-02's sync →
-gate criterion 1). Queue **depth 6**; head age 51 d is the real cycle time.
-**Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** / **#9 Spider 0.2222** (**15 d**
+gate criterion 1). Queue **depth 6**; head age 52 d is the real cycle time.
+**Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** (9 d) / **#9 Spider 0.2222** (**16 d**
 stale, resume deferred: async multi-window, `main` moved since the 07-27 checkpoint); rows
 **#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck (free-lane saturation,
 remedy costs money ⇒ rule 4); dogfood gate criteria (D-04 secret-blocked, E-09 GLOBAL-037-blocked).
 
-**Rule 6 — GREEN.** `main@88e166d` CI all **success** (the lone `action_required` is #864's Security
-gate awaiting approval, not a failure); recent merges docs/tool-only ⇒ no deploy-triggering change
-since run 157's verified-green deploy. Branch head: `bun install` clean · `biome check` clean on the
-two changed files · `bun test solve.test.ts` **18 pass / 0 fail** (+1 authority-funnel guard).
-Open PRs (4): **#894** (reach R-05 Cline park), **#885** (agent-memory UX docs), **#864** (changesets),
-draft **#719** (oldest, **17 days**).
-This run's files (`apps/web/src/data/solve.ts` + `solve.test.ts`) overlap **none** — #888's `/solve`
-mesh work is **merged**, and this extends that shipped `related` field to a different, non-overlapping
-cluster.
+**Rule 6 — GREEN.** `main@beecd90` CI all **success**; latest `Deploy web` + `Deploy API` on run 163's
+`fc32c01` both **success** (the lone `action_required` is #864's Security/CI gate on the changesets
+branch, not main). Branch head: `biome check` clean on the two changed files ·
+`bun test llms.txt.test.ts` **6 pass / 0 fail** (+1 preset-live guard).
+Open PRs (3): **#885** (agent-memory UX docs), **#864** (changesets — carries the `@nlqdb/cli@0.1.1`
+utm-republish), draft **#719** (oldest, **18 days**). #894 (reach R-05 Cline park) **merged**.
+This run's files (`apps/web/src/pages/llms.txt.ts` + `__tests__/llms.txt.test.ts`) overlap **no** open
+PR — #885 touches `docs/` + agent-memory feature files only.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -67,9 +63,9 @@ cluster.
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share with ≥ 2 asks |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **105** content pages (`/solve` 37 + `/vs` 31 + `/blog` 37); **117** sitemap URLs, **127** built pages. Queue **2** (< the 3-deep forced-publish threshold — no publish this run); drafting skipped (optional, P5) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** (no change). GSC live this run (28d, 07-04→08-01): **8 clicks / 582 impr / pos 19.2**; clicks concentrated — **`/security/hall-of-fame/` 4 of 8** (14 impr, pos 13.6). **Strengthen-next #1 = `/solve/running-total-cumulative-sum-in-sql/` — 117 impr / pos 36.5 / 0 clicks — this run's lever target** (biggest page off page 1; content-strengthened run 157, **still pos 36.5** ⇒ content isn't the bottleneck; pulled the internal-authority lever instead — see Last change). #2 = `/solve/find-rows-with-no-match-in-another-table/` — 43 / 17.3 (run 159's target, also flat). Next: `/vs/` 26 / 14.8 · `/blog/` 20 / 24.0 · `/vs/metabase/` 20 / 12.9. Index status: **3/6 wedge pages indexed** (`/agents/` crawled 08-02); `build-vs-buy`/`expire-old` still never-crawled (#888's mesh links land, verify R-08 08-22) | `scripts/gsc-pull.ts` + `scripts/rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
+| 7 | Surface yield | posts **37** (no change). GSC **carried from run 163** (not re-pulled — crawl-lag makes a same-day re-pull noise; 28d 07-04→08-01: **8 clicks / 582 impr / pos 19.2**; `/security/hall-of-fame/` 4 of 8 clicks). Strengthen-next #1 `/solve/running-total-cumulative-sum-in-sql/` (117 impr / pos 36.5) got run 163's inbound-authority mesh; #2 `find-rows-with-no-match` (43 / 17.3). Both, plus run 157/159 content, **verify at R-08 08-22**. Index status: **3/6 wedge pages indexed** (`/agents/` crawled 08-02); `build-vs-buy`/`expire-old` in sitemap + carrying 5/4 inbound mesh links, still never-crawled (crawl-timing, verify R-08 08-22). **This run: corrected the `llms.txt` coding-agent preset claim (`coming`→`live`) — see Last change** | `scripts/gsc-pull.ts` + `scripts/rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
 | | **Engine** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
-| 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **4 d old, staleness trigger not fired** (< 7 d). Full-run confirmed (`Save full-run checkpoint` skipped ⇒ checkpoint deleted, `SK-QUAL-011`) | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted; SC dead (#619) |
+| 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **9 d old, staleness trigger fired** (> 7 d), but **dark (rule 8)**: resume is async multi-window and `main` has moved since the 07-27 checkpoint (SHA-keyed cache would miss). Full-run confirmed (`SK-QUAL-011`) | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted; SC dead (#619) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836)). The 07-27 re-dispatch [30230040001](https://github.com/nlqdb/nlqdb/actions/runs/30230040001) exited **partial** (checkpoint left behind, `SK-QUAL-013` budget-stop) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004)) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06, `SK-QUAL-022`) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69 < the 0.80 floor (row #16 fails on competence, not instrument) |
@@ -89,7 +85,7 @@ cluster.
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0 failed / 9 blocked** — carried from the 07-26 live walk; the scheduled CI walk [30194859852](https://github.com/nlqdb/nlqdb/actions/runs/30194859852) (07-26 08:34Z) concluded success. **Not re-walkable from a `/daily` container**, a new standing constraint: `@playwright/test` pins `~1.60.0`, which wants Chromium **1223**; the image ships **1194**, so the walker aborts with `Executable doesn't exist`. CI-only until they agree | target **0 `failed`** ✅; `blocked` reported beside it, never folded in. All walks stop at the 428 `challenge_required` (Turnstile declining a datacenter IP by design, `SK-ANON-012`), so steps past the ask are **observed, not proven** |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub (per-bucket split lives only in the ledger). npm attribution now **reaches the registry for 2 of 3 packages**: `@nlqdb/sdk@0.2.2` (`?utm_source=npm`) and `@nlqdb/mcp@0.1.1` (`.../agents/?utm_source=npm`) both verified live this cycle; **`@nlqdb/cli@0.1.0` is the laggard — still an untagged `https://nlqdb.com`**, so this run queued its republish changeset (`@nlqdb/cli` patch) to close the last third. MCP official registry published 07-22 (`com.nlqdb/nlqdb`); Glama crawl-listed; Smithery 0 / PulseMCP 0. First-touch attribution live since 07-19 on both create arms; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus: → ≥ 5 live.** Yield from `/app/admin` + `scripts/rum-pull.ts`, never estimated. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 6**; head is the Show HN launch, oldest bullet **51 days** (`SK-PIVOT-016` gate **0/5**); #2 set `NLQDB_API_KEY` secret (unblocks D-02 sync), #3 Glama badge, #4 community-plugin-directory submit, #5 connector directory (money-gated), #6 skillsclaude.org paste | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: 4, oldest 17 days (draft #719) |
+| | **Human queue** — the one non-automatable actor | **depth 6**; head is the Show HN launch, oldest bullet **52 days** (`SK-PIVOT-016` gate **0/5**); #2 set `NLQDB_API_KEY` secret (unblocks D-02 sync), #3 Glama badge, #4 community-plugin-directory submit, #5 connector directory (money-gated), #6 skillsclaude.org paste | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: 3, oldest 18 days (draft #719) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
@@ -102,52 +98,49 @@ cluster.
 `apps/web/src/data/blog.ts` — the one place the list exists; venue variants and full
 lesson gists stay in `research/distribution-queue.md`.
 
-- **This run (163):** no new blog post — the lever was a distribution structural change (internal-link
-  authority mesh), not a blog surface; distribution queue 2 (< 3, no forced publish); drafting skipped
-  (P5, optional — the queue already holds a `one-way-internal-links-leak-yield` variant on this theme).
-  **Dev.to drip (step 3.3): throttled** (a variant already posted ~8h ago; one/day guard — expected
-  no-op). Last canonical blog post remains run 151's
-  `/blog/guard-advertised-capabilities-against-code/`.
+- **This run (164):** no new blog post — the lever was a surface-accuracy fix on `llms.txt` (preset
+  claim `coming` → `live`), not a blog surface; distribution queue 2 (< 3, no forced publish); drafting
+  skipped (P5, optional). **Dev.to drip (step 3.3): throttled** (one/day guard — expected no-op). Last
+  canonical blog post remains run 151's `/blog/guard-advertised-capabilities-against-code/`.
 
 ## Last change
 
-**2026-08-03 (run 163)** — **Number moved: distribution row #7 — inbound internal-authority links to
-the #1 "Strengthen next" page `/solve/running-total-cumulative-sum-in-sql/` (117 impr, pos 36.5, the
-biggest /solve page off page 1). Before → after: 0 → 5 contextual inbound `related` links** from
-indexed, topically-relevant window-function siblings, including the page-1 authority donor
-`count-rows-per-day…` (pos 8.3). GLOBAL-025 KPI: **distribution/onboarding on-ramp**.
+**2026-08-04 (run 164)** — **Number moved: coding-agent onboarding-surface accuracy — the
+`agent_memory_v1` preset availability claim across published discovery surfaces. Before → after: 5/6
+correct → 6/6 correct** — `llms.txt` was the lone stale surface, telling agents the typed preset "is
+coming" when `MEMORY_PRESET=1` is set in prod (`apps/api/wrangler.toml:58`) and all six drop-in
+artifacts (codex-config.toml, nlqdb-memory.mdc, both SKILL.md, AGENTS.snippet.md, README.md) already
+say **live**. GLOBAL-025 KPI: **onboarding + UX** (the coding-agent read channel, rows #11/#12/#22).
 
-**Why this lever (yield-informed, rule 7).** The weekly-focus dogfood gate (0/5) is the worst number
-but had **no agent-movable lever** this run — D-04's criteria are secret-blocked and criterion 4's
-E-09 is GLOBAL-037-blocked (re-verified: the preset's `kind`/`role` are free `TEXT`, vocabulary is
-pack-defined, so a preset `CHECK`/`ENUM` would break the `SK-PIVOT-007` free-text contract). Per the
-step-2 priority order I dropped to the acquisition lane. Measuring the last two distribution levers'
-yield (rule 7): run 157 content-strengthened `running-total` → **still pos 36.5**; run 159's
-`find-rows-with-no-match` → **still flat**. Content is not the bottleneck on deep-ranked pages;
-**internal authority is** the untried on-site lever. PR #888 built the `/solve ↔ /solve` `related` mesh
-but wired it only for the 4-page agent-memory cluster — leaving the highest-impression page starved of
-inbound links.
+**Why this lever.** The weekly-focus dogfood gate (0/5) is the worst number but is **dark (rule 8)** and
+had **no agent-movable lever** — E-09 (criterion 4) is GLOBAL-037-blocked and explicitly "do not
+implement"; D-04's criteria are secret-blocked. Per step-2 priority order I dropped to the
+acquisition/UX lane. Distribution row #7 had **no available delta** (GSC crawl-lagged; structured data /
+sitemap / llms.txt link-lists already complete). Scanning the coding-agent onboarding path (lane 2)
+surfaced a real **surface-accuracy defect**: `llms.txt` is the canonical
+machine-readable index answer engines (Perplexity, ChatGPT) and coding-agent IDEs (Cursor, Windsurf,
+Cline, Aider, Copilot) fetch — its "For coding agents" section named `nlqdb_query` as the only live
+write path and said the typed preset "is coming." An agent that believes that takes the slower NL-write
+path and never uses the fast typed `nlqdb_remember` + `agent_memory_v1` path the pivot's wedge is built
+on. Verified live: prod `MEMORY_PRESET=1`; the route returns `preset_disabled` only when the flag is
+off (`index.ts:2846`); no FEATURE decision keeps the preset soft-messaged (P1 clear).
 
-**The change (data-only, existing infra).** Added `related` arrays to the 6-page SQL-window/time-series
-cluster in `apps/web/src/data/solve.ts` (`running-total`, `month-over-month-growth`,
-`calculate-percentage-of-total`, `count-consecutive-days-streak`, `count-rows-per-day`,
-`find-top-n-rows-per-group`), each linking to 3 genuine same-cluster siblings, so `running-total`
-receives an inbound contextual link from **all five** siblings. Every link is a real window-function /
-time-series relationship (Google devalues topically-forced links). Reuses #888's `related` field +
-`relatedSolveEntries` resolver + rendered "Related guides" section — **no new component**. New test guard
-pins the invariant so the funnel can't silently regress (target keeps ≥ 2 inbound incl. the page-1 donor).
+**The change (prose + guard, existing infra).** Rewrote the `llms.txt.ts` "For coding agents" preset
+sentence to advertise **two live write paths** — `nlqdb_query` (always on) and the typed
+`nlqdb_remember` verb over `agent_memory_v1` (create with
+`POST /v1/databases { "preset": "agent_memory_v1" }`; `kind` + `tags` become GROUP BY columns) — worded
+consistently with the six artifacts. Added a `llms.txt.test.ts` guard that fails on any future
+`preset is coming` regression and pins the `nlqdb_remember` + create-contract advert. **No new
+component, no schema/flag change** — a served-file copy fix.
 
-**Measure → change → re-measure.** Immediate delta: inbound authority links to the target page
-**0 → 5**. Leading-indicator re-measure (position/clicks) is a crawl-priority signal, not instant —
-verify at the R-08 GSC check (08-22), same as #888's wedge links; if `running-total` is still pos ~36
-then, the next move is inbound links from an even stronger indexed page. `biome check` clean ·
-`bun test solve.test.ts` **18 pass** (+1 guard).
+**Measure → change → re-measure.** Immediate delta: stale-claim surfaces 1 → 0 (the preset claim is now
+consistent across all 6 published coding-agent surfaces). `biome check` clean ·
+`bun test llms.txt.test.ts` **6 pass** (+1 preset-live guard).
 
 **Step 3 (artifact):** queue 2 (< 3) ⇒ no forced publish; drafting skipped (P5). **Dev.to drip (3.3):
-throttled** (one/day guard, a variant already posted ~8h ago — expected no-op). **No new `SK-*`**
-(P5/D5): reuses the existing `SolveEntry.related` capability + `SK-SOLVE-*` conventions, no
-cross-cutting rule. **KPI (GLOBAL-025):** advances **distribution/onboarding**; **degrades none**
-(data-only additive links + a test, all gates green).
+throttled** (one/day guard — expected no-op). **No new `SK-*`** (P5/D5): a copy-accuracy fix to an
+existing surface, no new capability or cross-cutting rule. **KPI (GLOBAL-025):** advances **onboarding +
+UX** (coding-agent read channel); **degrades none** (prose correction + a test, all gates green).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
