@@ -143,9 +143,8 @@ after connect, a verification query, what to do on failure. Add a
 [`mcp-install-stdio.test.ts`](../../../../../apps/web/src/lib/mcp-install-stdio.test.ts) ·
 ✅ cold-agent walk green 2026-07-29: an agent given only the published
 `docs.nlqdb.com/agent-memory/` URL ran the headless route verbatim (`npx -y @nlqdb/mcp` 0.1.1 + a
-founder-minted `sk_mcp_` key) — initialize, all-5 `tools/list`, then the page's verification flow
-against prod (write via `nlqdb_query` behind the `requires_confirm` diff-preview gate, fact read
-back with its SQL trace).
+founder-minted `sk_mcp_` key) — initialize, all-5 `tools/list`, then the page's prod verification flow
+(gated write via `nlqdb_query` + fact read-back with its SQL trace).
 
 ### R-05 — Registry + directory sweep (one venue per run)
 
@@ -162,12 +161,17 @@ Per-venue mechanism and exact payloads live in
   founder queue #3); PulseMCP #3 absent 07-25 (re-check 08-22); Smithery #2 needs its own `smithery
   mcp publish`, parked.
 - ✅ #5 mcp.so · ✅ #6 Cursor · ✅ #7 Anthropic connector dir — account-walled, **not** registry
-  crawlers (so #1 doesn't cascade), payloads parked. #7 is also plan-gated (Team/Enterprise).
+  crawlers, payloads parked. #7 is also plan-gated (Team/Enterprise).
 - ✅ #8 `awesome-mcp-servers` — PR #10984 open since 07-26; merge gated on the Glama score badge
-  (founder queue #3). Links the repo, no utm-taggable URL.
+  (founder queue #3).
 - ✅ #9 `mcp.directory` — P2 07-30: registry-ingesting crawler + no-account form fallback, absent
   07-30; payload in [`acquisition-channels.md`](../../../../research/acquisition-channels.md) #23,
   re-check 08-22.
+- ✅ #10 **Cline MCP Marketplace** — P2 08-03: GitHub-issue submission (`[Server Submission]`
+  template — repo URL + 400×400 PNG logo + reason + Cline-setup confirmation), approved listings
+  one-click-installable inside Cline; agent-blocked here (GitHub scope `nlqdb/nlqdb` + logo render +
+  a real Cline-setup pass), payload parked ([`blocked-by-human.md`](../../../../blocked-by-human.md)
+  #5) + ledger #24; repo-linked → `github`-ref yield.
 
 ### R-06 — Coding-agent walker (measurement backbone)
 
@@ -219,16 +223,12 @@ installer package is needed — plus the yield gate (a real `agent-artifacts` vi
 ([`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) — every
 connect string == `mcp-install.ts`, served-file URLs pinned to `/mcp`, all `nlqdb.com` links carry
 `utm_source=agent-artifacts`).
-**Resolved 2026-07-28:** all four artifacts now carry the `npx -y @nlqdb/mcp` headless route beside
-the hosted one (`GLOBAL-003`), from `mcp-install.ts`'s `buildStdio*` builders, so the
-file a developer drops in for their *unattended* agent no longer dead-ends where R-04's page does
-not. `agent-artifacts.test.ts` widened to pin each artifact's headless strings to those builders
-(the Claude Code command, the Codex TOML, the `mcpServers` JSON). Its credential was swept the same
-day from the full-account `sk_live_` to the MCP-scoped `sk_mcp_` — one dropped file that lives in
-someone else's repo should not tell their agent to paste an account-wide secret
-([`SK-APIKEYS-015`](../../../api-keys/FEATURE.md)); `STDIO_PLACEHOLDER_KEY` is the one place it
-changed. **Still owed:** external distribution with attributable yield (a real `agent-artifacts`
-visit in `/app/admin`).
+**Resolved 2026-07-28:** all four artifacts carry the `npx -y @nlqdb/mcp` headless route beside the
+hosted one (`GLOBAL-003`), from `mcp-install.ts`'s `buildStdio*` builders, with the MCP-scoped
+`sk_mcp_` placeholder (`STDIO_PLACEHOLDER_KEY`) not an account-wide `sk_live_`
+([`SK-APIKEYS-015`](../../../api-keys/FEATURE.md)); `agent-artifacts.test.ts` pins each artifact's
+headless strings to those builders. **Still owed:** external distribution with attributable yield (a
+real `agent-artifacts` visit in `/app/admin`).
 
 ### R-08 — Answer-engine citation baseline
 
