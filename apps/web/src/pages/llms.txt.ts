@@ -175,8 +175,9 @@ export const GET: APIRoute = () => {
     OPTIONAL_LINKS.map((l) => `- [${l.title}](${url(l.path)}): ${l.desc}`).join("\n") +
     `\n\n## Status\n\n` +
     `Pre-beta, open — start anonymously. Phase 0 shipped; Phase 1 onboarding in progress.\n` +
-    `Free chain forever (BYO-LLM at 0% markup). Source is private until general\n` +
-    `availability; SDKs and elements will be open source.\n\n` +
+    `Free chain forever (BYO-LLM at 0% markup). Source is public under FSL-1.1-ALv2\n` +
+    `(source-available, self-hostable for any non-competing use), auto-converting to\n` +
+    `Apache-2.0 two years after each release; no turnkey GA self-host container yet.\n\n` +
     `## Contact\n\n` +
     `Email: hello@nlqdb.com\n`;
 

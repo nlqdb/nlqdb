@@ -129,7 +129,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb open source like Supabase?",
-        a: "The source is private during pre-beta. The SDKs, CLI, framework wrappers, and the `<nlq-data>` web component will be open source at general availability; the platform itself is hosted-only for now.",
+        a: "nlqdb's source is public under FSL-1.1-ALv2 — source-available, free to self-host for any non-competing use, BYO LLM key at 0% markup — auto-converting to Apache-2.0 two years after each release. That's source-available today rather than OSI open-source (Supabase is Apache-2.0/MIT now), and there's no turnkey GA self-host container yet, so the hosted platform stays the convenience — not a moat.",
       },
       {
         q: "What's the pricing model vs Supabase's $25/mo Pro?",
@@ -2502,7 +2502,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb open source like Honcho?",
-        a: "Not in the same way. Honcho is AGPL-3.0 with a self-hostable FastAPI server you can run via Docker. nlqdb's source is available under FSL 1.1, but there's no GA self-host container yet — the platform is hosted-only for now.",
+        a: "Not in the same way. Honcho is AGPL-3.0 with a self-hostable FastAPI server you can run via Docker. nlqdb's source is available under FSL 1.1-ALv2 — self-hostable for any non-competing use, auto-converting to Apache 2.0 after two years — but there's no turnkey GA self-host container yet, so the hosted platform stays the convenience.",
       },
     ],
     demo: {
@@ -2987,7 +2987,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "Self-host / open source",
         us: "no",
         them: "shipped",
-        note: "MindsDB is open source and self-hostable; nlqdb's platform is hosted-only during pre-beta (SDKs/CLI/elements open at GA).",
+        note: "MindsDB is open source and self-hostable; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years, with no turnkey GA self-host container yet.",
       },
     ],
     faqs: [
@@ -3107,7 +3107,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "Self-host / open source",
         us: "no",
         them: "shipped",
-        note: "LangChain is open source and self-hostable; nlqdb's platform is hosted-only during pre-beta (SDKs / CLI / elements open at GA).",
+        note: "LangChain is open source and self-hostable; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years, with no turnkey GA self-host container yet.",
       },
       {
         feature: "100s of framework integrations (models, stores, loaders)",
