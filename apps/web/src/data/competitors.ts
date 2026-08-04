@@ -2987,7 +2987,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "Self-host / open source",
         us: "no",
         them: "shipped",
-        note: "MindsDB is open source and self-hostable; nlqdb's platform is hosted-only during pre-beta (SDKs/CLI/elements open at GA).",
+        note: "MindsDB is open source and self-hostable; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years, with no turnkey GA self-host container yet.",
       },
     ],
     faqs: [
@@ -3107,7 +3107,7 @@ export const COMPETITORS: Competitor[] = [
         feature: "Self-host / open source",
         us: "no",
         them: "shipped",
-        note: "LangChain is open source and self-hostable; nlqdb's platform is hosted-only during pre-beta (SDKs / CLI / elements open at GA).",
+        note: "LangChain is open source and self-hostable; nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years, with no turnkey GA self-host container yet.",
       },
       {
         feature: "100s of framework integrations (models, stores, loaders)",
