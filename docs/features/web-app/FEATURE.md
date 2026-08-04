@@ -82,13 +82,8 @@ With web + API on one origin, `crossSubDomainCookies` is removed — the session
 
 ### SK-WEB-007 — "Copy snippet" inlines the user's `pk_live_` so the key is never a separate errand
 
-- **Decision:** Every chat-generated `<nlq-data>` snippet has the user's `pk_live_<dbId>` already inlined when copied. Anonymous users get a temporary `pk_live_` that rotates to a permanent one on sign-in. The user never has to open the dashboard, find the keys page, click "Reveal", and paste.
-- **Core value:** Effortless UX, Goal-first, Seamless auth
-- **Why:** Getting an API key is the kind of side errand that breaks the goal-first flow. The user wanted an embed; making them collect a key first interrupts the moment. Inlining the key in the chat-copy action keeps the user inside one window. For anonymous users, rotating the key on sign-in is the seamless adoption path (`GLOBAL-007`).
-- **Consequence in code:** Chat panel's "Copy snippet" CTA pre-fills `api-key="pk_live_…"` server-side from the user's (or anonymous device's) per-DB key. The temporary anonymous key is rotated to a permanent one on sign-in via the same endpoint that adopts the anonymous DB. Tested end-to-end in `docs/features/elements/FEATURE.md`. The marketing-page create-result surfaces the *shape* of the same snippet but defers key inlining to the chat — see `SK-WEB-010`.
-- **Alternatives rejected:**
-  - Show the key in the chat as text + ask the user to copy it — extra step, easy to lose, leaks into chat history.
-  - Require sign-in before "Copy snippet" works — breaks the no-login-wall promise.
+**Body:** [`decisions/SK-WEB-007-copy-snippet-inlines-key.md`](./decisions/SK-WEB-007-copy-snippet-inlines-key.md).
+Every chat-generated `<nlq-data>` snippet ships with the user's `pk_live_<dbId>` already inlined on copy; anonymous keys rotate to permanent on sign-in (`GLOBAL-007`). The marketing-page create-result shows the snippet *shape* only — see `SK-WEB-010`.
 
 ### SK-WEB-010 — Marketing-page Copy-snippet shows the embed shape; key inlining stays in the chat
 
@@ -181,6 +176,11 @@ The Tawk.to widget (`SupportChat.astro`, official async snippet) mounts beside `
 
 **Body:** [`decisions/SK-WEB-027-bare-path-301.md`](./decisions/SK-WEB-027-bare-path-301.md).
 `astro build` emits one `301` per built page into `dist/_redirects` (`src/lib/canonical-redirects.ts`), replacing the asset router's 307 — a temporary code Google does not read as a canonicalisation signal, so GSC held bare `/agents` and `/blog/llm-concatenates-…` as index entries competing with their slashed twins. The `/app|/auth|/oauth` prefixes are excluded — the same `dist/` is the merged app host's asset directory (`SK-AUTH-016`), where those are the app's own routes (`SK-WEB-026`) — and a bare path that is a real asset (`/install`) is never shadowed.
+
+### SK-WEB-028 — Machine-discovery surfaces: `.well-known` catalogs, `/auth.md`, Content-Signal, homepage Link header
+
+**Body:** [`decisions/SK-WEB-028-agent-discovery-well-known.md`](./decisions/SK-WEB-028-agent-discovery-well-known.md).
+One unit of static agent-discovery surfaces — `/.well-known/api-catalog` (RFC 9727, advertised by a homepage `Link` header), `/.well-known/ai-catalog.json` with the MCP Server Card inline (SEP-2127 draft, date-pinned), `/.well-known/agent-skills/index.json` (Agent Skills Discovery RFC v0.2.0), `/auth.md`, and a per-group `Content-Signal` declaration on both hosts. Every value derives from its source of truth and is pinned by `src/lib/agent-discovery.test.ts`; only live capability is promised (no `service-desc` without a served OpenAPI doc, no `agent_auth` block, no tool list in the card).
 
 ## GLOBALs governing this feature
 

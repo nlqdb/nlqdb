@@ -6,39 +6,52 @@
 # ignores the `*` group entirely. /cdn-cgi/ is Cloudflare's injected
 # scaffolding (its email-protection links 404 for crawlers); /v1/ is API
 # surface with no crawlable GETs.
+#
+# Content-Signal (contentsignals.org) makes the AI-permissive posture
+# explicit per group — signals attach to the group they appear in, same
+# as Disallows, so the line repeats. Cloudflare's *managed* robots.txt
+# was force-declaring ai-train=no above this file until disabled at the
+# zone 2026-08-04; this declares our real preference. SK-WEB-028.
 
 User-agent: GPTBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 Disallow: /v1/
 
 User-agent: ClaudeBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 Disallow: /v1/
 
 User-agent: anthropic-ai
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 Disallow: /v1/
 
 User-agent: PerplexityBot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 Disallow: /v1/
 
 User-agent: Google-Extended
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 Disallow: /v1/
 
 User-agent: Bingbot
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 Disallow: /v1/
 
 User-agent: *
 Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Disallow: /cdn-cgi/
 Disallow: /v1/
 

@@ -1,0 +1,22 @@
+{
+  "specVersion": "1.0",
+  "entries": [
+    {
+      "identifier": "urn:air:nlqdb.com:mcp:nlqdb",
+      "type": "application/mcp-server-card+json",
+      "data": {
+        "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
+        "name": "com.nlqdb/nlqdb",
+        "title": "nlqdb",
+        "version": "0.1.0",
+        "description": "Analytical memory for AI agents — a real SQL database queried in plain English over MCP.",
+        "websiteUrl": "https://nlqdb.com/agents/",
+        "repository": {
+          "url": "https://github.com/nlqdb/nlqdb",
+          "source": "github"
+        },
+        "remotes": [{ "type": "streamable-http", "url": "https://mcp.nlqdb.com/mcp" }]
+      }
+    }
+  ]
+}
