@@ -68,6 +68,7 @@ acting on it is one free command** (the per-host strings in
 | R-07 | Droppable in-repo artifacts (skill / rules / AGENTS.md / Codex) | med | ~3 | R-04 |
 | R-08 | Answer-engine citation baseline + cadence | low | 1 | R-01 |
 | R-09 | Host plugin/skill venues, one venue per run | low | ~4 | R-07 |
+| R-10 | Authority / referring domains | med | ~3 | — |
 
 **Why this order:** R-01 makes every later slice targeted and is the
 denominator for all yield rows. R-02/03 win the human's search first
@@ -81,19 +82,14 @@ hook and needs the guide to point at. R-08 is ongoing yield.
 
 **Goal:** Know exactly which queries — human-phrased AND coding-agent-phrased —
 we must win, and who issues them.
-**Do:** (a) Create `intent-map.md` in this folder: the stage-0/1 query
-list. Seed set: "AI agent forgets between sessions", "add long term memory
-to AI agent", "agent memory postgres", "best way to store agent memory",
-"mem0 alternative", "per-user memory for AI agent", "agent memory MCP
-server" — plus whatever `bun scripts/gsc-pull.ts` shows we already surface
-for. For each query: rank (volume proxy × fit), who owns the answer today,
-which nlqdb surface should own it, and the **coding-agent phrasing**
-variant (agents search in imperatives: "MCP server for agent memory",
-"persist agent state postgres"). (b) Split `docs/research/personas.md` P2
-into **P2a** (hobbyist tool-agent builder — today's Jordan) and **P2b**
-(**agent-SaaS builder**: multi-tenant product, memory per end-user, builds
-with Claude Code/Cursor/Codex, already runs Postgres/Supabase — their
-default alternative is a DIY `memories` table, not a memory vendor).
+**Do:** (a) Create `intent-map.md` in this folder: the stage-0/1 query list —
+per query: rank (volume proxy × fit), who owns the answer today, which nlqdb
+surface should own it, and the **coding-agent phrasing** variant (agents
+search in imperatives). (b) Split `docs/research/personas.md` P2 into **P2a**
+(hobbyist tool-agent builder) and **P2b** (**agent-SaaS builder**: multi-tenant
+product, memory per end-user, builds with Claude Code/Cursor/Codex, already
+runs Postgres/Supabase — their default alternative is a DIY `memories` table,
+not a memory vendor).
 **Done when:** ✅ intent-map.md with ≥ 15 ranked queries incl. agent
 phrasings ([`intent-map.md`](intent-map.md), 18 queries) · ✅ personas.md
 P2a/P2b split merged.
@@ -141,10 +137,8 @@ after connect, a verification query, what to do on failure. Add a
 (`npx -y @nlqdb/mcp` + an `sk_mcp_` MCP key, swept 2026-07-28 per `SK-APIKEYS-015`), strings owned by
 [`mcp-install.ts`](../../../../../apps/web/src/lib/mcp-install.ts) and pinned to `packages/mcp` by
 [`mcp-install-stdio.test.ts`](../../../../../apps/web/src/lib/mcp-install-stdio.test.ts) ·
-✅ cold-agent walk green 2026-07-29: an agent given only the published
-`docs.nlqdb.com/agent-memory/` URL ran the headless route verbatim (`npx -y @nlqdb/mcp` 0.1.1 + a
-founder-minted `sk_mcp_` key) — initialize, all-5 `tools/list`, then the page's prod verification flow
-(gated write via `nlqdb_query` + fact read-back with its SQL trace).
+✅ cold-agent walk green 2026-07-29: given only the published URL, an agent ran the headless
+route verbatim end-to-end (initialize, all-5 `tools/list`, gated prod write + fact read-back).
 
 ### R-05 — Registry + directory sweep (one venue per run)
 
@@ -157,21 +151,20 @@ Per-venue mechanism and exact payloads live in
 [`acquisition-channels.md`](../../../../research/acquisition-channels.md) +
 [`blocked-by-human.md`](../../../../blocked-by-human.md) — status only here.
 - ✅ #1 official MCP registry — **published 2026-07-22** (`com.nlqdb/nlqdb` v0.1.1, DNS domain-verify;
-  `?utm_source=mcp-registry`). Cascade reached only Glama #4 (connector 07-23; server claimed 07-29,
-  founder queue #3); PulseMCP #3 absent 07-25 (re-check 08-22); Smithery #2 needs its own `smithery
+  `?utm_source=mcp-registry`). Cascade reached only Glama #4 (badge + connector claim done by the founder
+  2026-08-04, awaiting external review); PulseMCP #3 absent 07-25 (re-check 08-22); Smithery #2 needs its own `smithery
   mcp publish`, parked.
 - ✅ #5 mcp.so · ✅ #6 Cursor · ✅ #7 Anthropic connector dir — account-walled, **not** registry
   crawlers, payloads parked. #7 is also plan-gated (Team/Enterprise).
-- ✅ #8 `awesome-mcp-servers` — PR #10984 open since 07-26; merge gated on the Glama score badge
-  (founder queue #3).
+- ✅ #8 `awesome-mcp-servers` — PR #10984 open since 07-26; badge pushed 2026-08-04,
+  awaiting maintainer review.
 - ✅ #9 `mcp.directory` — P2 07-30: registry-ingesting crawler + no-account form fallback, absent
   07-30; payload in [`acquisition-channels.md`](../../../../research/acquisition-channels.md) #23,
   re-check 08-22.
-- ✅ #10 **Cline MCP Marketplace** — P2 08-03: GitHub-issue submission (`[Server Submission]`
-  template — repo URL + 400×400 PNG logo + reason + Cline-setup confirmation), approved listings
-  one-click-installable inside Cline; agent-blocked here (GitHub scope `nlqdb/nlqdb` + logo render +
-  a real Cline-setup pass), payload parked ([`blocked-by-human.md`](../../../../blocked-by-human.md)
-  #5) + ledger #24; repo-linked → `github`-ref yield.
+- ✅ #10 **Cline MCP Marketplace** — P2 08-03: GitHub-issue submission, approved listings
+  one-click-installable inside Cline; agent-blocked here, payload parked
+  ([`blocked-by-human.md`](../../../../blocked-by-human.md) #4) + ledger #24; repo-linked →
+  `github`-ref yield.
 
 ### R-06 — Coding-agent walker (measurement backbone)
 
@@ -203,32 +196,23 @@ below, all from ONE source of truth so command strings never drift from
 `mcp-install.ts`. Distribute via
 the R-04 guide + npm + registries. Add a drift test (artifact strings ==
 `mcp-install.ts`).
-**Done when:** ✅ artifacts published — 4 of 4 host artifacts live (+ a fifth,
-goal-pack artifact: the `nlqdb-docs-memory` docs→memory skill, `SK-PIVOT-017`,
-one-command installable and surfaced on the same three surfaces) in
+**Done when:** ✅ artifacts published — 4 of 4 host artifacts live (+ the
+`nlqdb-docs-memory` goal-pack skill, `SK-PIVOT-017`) in
 [`agent-artifacts/`](../../../../../apps/web/public/agent-artifacts/) (host-neutral
-`AGENTS.snippet.md`, Claude Code skill `nlqdb-memory/SKILL.md`, Cursor `nlqdb-memory.mdc`, Codex
-`codex-config.toml`, + a README index); Channel #12 surfaced on both agent-fetched surfaces (R-04
-docs guide + llms.txt `## For coding agents`) **and one-command installable** —
+`AGENTS.snippet.md`, Claude Code skill `nlqdb-memory/SKILL.md`, Cursor `nlqdb-memory.mdc`,
+Codex `codex-config.toml`, + a README index), on both agent-fetched surfaces (R-04 guide +
+llms.txt `## For coding agents`) **and one-command installable** —
 `npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory`
-(vercel-labs/skills; **run against the live CLI 2026-07-25**: writes `.agents/skills/nlqdb-memory/`
-— read directly by Cursor and Codex — plus a `.claude/skills/` symlink for Claude Code, no account,
-and **no** Cursor rule or `AGENTS.md` entry) → **in-flight**; all artifact links keyed 2026-07-26
-([`NUMBERS.md`](NUMBERS.md)). **Remaining R-07 work is external distribution**:
-`skills.sh` has no submission flow (P2 2026-07-23 — the leaderboard populates from anonymous
-`npx skills` install telemetry), so growth is organic install yield — which now has one more mouth:
-**the install command ships on `@nlqdb/mcp`'s npm README from 0.1.1** (2026-07-27), so no separate
-installer package is needed — plus the yield gate (a real `agent-artifacts` visit in `/app/admin`)
-· ✅ install path on the R-04 page · ✅ drift test green
+(vercel-labs/skills, run against the live CLI 2026-07-25; no account) → **in-flight**, all
+artifact links keyed 2026-07-26 ([`NUMBERS.md`](NUMBERS.md)) · ✅ install path on the R-04
+page, and on `@nlqdb/mcp`'s npm README from 0.1.1 (2026-07-27; `skills.sh` has no submission
+flow — P2 2026-07-23 — so growth is organic install yield) · ✅ drift test green
 ([`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) — every
-connect string == `mcp-install.ts`, served-file URLs pinned to `/mcp`, all `nlqdb.com` links carry
-`utm_source=agent-artifacts`).
-**Resolved 2026-07-28:** all four artifacts carry the `npx -y @nlqdb/mcp` headless route beside the
-hosted one (`GLOBAL-003`), from `mcp-install.ts`'s `buildStdio*` builders, with the MCP-scoped
-`sk_mcp_` placeholder (`STDIO_PLACEHOLDER_KEY`) not an account-wide `sk_live_`
-([`SK-APIKEYS-015`](../../../api-keys/FEATURE.md)); `agent-artifacts.test.ts` pins each artifact's
-headless strings to those builders. **Still owed:** external distribution with attributable yield (a
-real `agent-artifacts` visit in `/app/admin`).
+connect string == `mcp-install.ts`, incl. each artifact's headless `npx -y @nlqdb/mcp` +
+MCP-scoped `sk_mcp_` route (added 2026-07-28; `GLOBAL-003`,
+[`SK-APIKEYS-015`](../../../api-keys/FEATURE.md)); all `nlqdb.com` links carry
+`utm_source=agent-artifacts`). **Still owed:** external distribution with attributable yield
+(a real `agent-artifacts` visit in `/app/admin`).
 
 ### R-08 — Answer-engine citation baseline
 
@@ -272,17 +256,37 @@ in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
   public since 2026-07-22, so this venue was already served before the slice existed.
 - ✅ #4 **Anthropic `claude-community`** (in-product `/plugin` Discover tab) — signed-in
   form only, so the **payload is parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md)
-  #3, 2026-07-29). P2 re-verified: `anthropics/claude-plugins-community` is a read-only mirror;
-  submit via `clau.de/plugin-directory-submission` (security scan → Discover tab). Distinct from
-  the connector directory (R-05 #7 / ledger #9). `claude-plugins-official` is curated with **no
-  application process** — nothing to submit.
-- ✅ #5 **skillsclaude.org** (~7,200 skills) — P2 2026-07-30: **no-account** paste-a-repo form, not
-  an arbitrary-repo crawler (nlqdb absent 8 days despite public). SPA form + headless submit
-  env-blocked → one-field payload **parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md)
-  #5); lists the repo URL → `github`-ref yield (ledger #16), no utm key.
+  #3, 2026-07-29; possibly already submitted 2026-08-04 — founder to confirm). Distinct from the connector directory (R-05 #7 / ledger #9);
+  `claude-plugins-official` is curated with **no application process** — nothing to submit.
+- ✅ #5 **skillsclaude.org** — P2 2026-07-30: **no-account** paste-a-repo form, not an
+  arbitrary-repo crawler (nlqdb absent 8 days despite public); headless submit env-blocked →
+  payload **parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md) #6); repo-linked
+  → `github`-ref yield (ledger #16), no utm key.
 - ⬜ **Install-yield gate:** not done on listings — closes when `/app/admin` shows one
   real `claude-plugin` visit (the same bar R-07 carries; why `plugin.json`'s `homepage`
   keeps its own key, not `agent-artifacts`).
+
+### R-10 — Authority / referring domains
+
+**Goal:** Move DR / referring domains off zero — the measured explanation for
+indexed-pages-at-0-impressions and the 0/10 answer-engine retrieval (nlqdb.com
+DR 0.0 vs mem0.ai 74.0, first read 2026-08-04); authority is what ranks the
+already-shipped R-02/R-03 surface.
+**Do:** (a) **Homepage-link sweep** — re-verify every live listing/venue in
+[`acquisition-channels.md`](../../../../research/acquisition-channels.md) that
+permits a homepage/website field points at an `nlqdb.com` URL (with its utm
+key), not `github.com/nlqdb/nlqdb` — DR-97 github.com absorbs the link equity
+today. (b) **Linkable-asset play** — the agent-memory benchmark blog content is
+the only surface earning agent-memory query impressions; promote it into a
+citable standalone asset (public leaderboard / dataset page) — benchmarks earn
+links, product pages don't. (c) **Measurement** — a DR line each run via
+`bun scripts/ahrefs-dr.ts` (`AHREF_API_KEY`; free public endpoint).
+**Honest constraint:** at $0 the largest referring-domain events are launches
+and community posts, which are founder-shaped (hard rule 3 /
+[`blocked-by-human.md`](../../../../blocked-by-human.md) #1) — this slice
+maximizes what's agent-doable; it does not replace the launch.
+**Done when:** ⬜ homepage-link sweep done across all live venues · ⬜ linkable
+asset live + in llms.txt · ⬜ DR / referring domains ≥ first nonzero read.
 
 ## Current numbers
 
@@ -303,3 +307,4 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)
 - [x] R-08 — answer-engine citation baseline
 - [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (5 of 5 venues resolved — #4 + #5 payloads parked)
+- [ ] R-10 — authority / referring domains

@@ -54,8 +54,10 @@ index truth for the wedge pages; never infer indexing from the sitemap
 registry listings live, stage-0 pages live,
 **acquisition channels live with attributable yield** (the
 `docs/research/acquisition-channels.md` ledger count), the
-R-06 coding-agent walker pass rate (re-run it if merged), and the R-08
-answer-engine citation check when its monthly cadence is due.
+R-06 coding-agent walker pass rate (re-run it if merged), the R-08
+answer-engine citation check when its monthly cadence is due, and Domain
+Rating via `bun scripts/ahrefs-dr.ts` (needs `AHREF_API_KEY`; free public
+endpoint) — record self + the mem0.ai delta (R-10).
 
 ### 2 — One slice
 

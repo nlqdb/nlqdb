@@ -88,6 +88,11 @@ set +a
 # secret needs provisioning. Set a distinct value in .envrc to override.
 : "${OPENROUTER_FRONTIER_API_KEY:=${OPENROUTER_API_KEY:-}}"
 
+# The D-02 docs→memory sync workflow reads secrets.NLQDB_API_KEY — an
+# MCP-scoped `sk_mcp_` key (SK-APIKEYS-015; feeds SK-PIVOT-016 criterion 1).
+# The founder's .envrc holds the value as NLQDB_MCP_API_KEY; map it here.
+: "${NLQDB_API_KEY:=${NLQDB_MCP_API_KEY:-}}"
+
 # --- canonical mirror list ----------------------------------------------
 # Order = .env.example for easy diff. Add new secrets here AND in
 # .env.example simultaneously; CI references must use these exact names.
@@ -155,6 +160,9 @@ SECRETS=(
   # npm publish (release-npm.yml) — changesets/action authenticates as
   # this token when publishing @nlqdb/* packages.
   NPM_TOKEN
+  # D-02 docs→memory sync (memory-sync workflow) — sk_mcp_ MCP-scoped key;
+  # defaults from NLQDB_MCP_API_KEY above.
+  NLQDB_API_KEY
 )
 
 say "Mirroring .envrc → GitHub Actions secrets in $REPO"
