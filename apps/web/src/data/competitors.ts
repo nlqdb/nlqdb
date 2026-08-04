@@ -2502,7 +2502,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb open source like Honcho?",
-        a: "Not in the same way. Honcho is AGPL-3.0 with a self-hostable FastAPI server you can run via Docker. nlqdb's source is available under FSL 1.1, but there's no GA self-host container yet — the platform is hosted-only for now.",
+        a: "Not in the same way. Honcho is AGPL-3.0 with a self-hostable FastAPI server you can run via Docker. nlqdb's source is available under FSL 1.1-ALv2 — self-hostable for any non-competing use, auto-converting to Apache 2.0 after two years — but there's no turnkey GA self-host container yet, so the hosted platform stays the convenience.",
       },
     ],
     demo: {
