@@ -1,6 +1,6 @@
 # D-02 — One-way re-sync hook: CI on merge when `docs/**` changed
 
-**Status:** 🟢 code-complete — **D-02a shipped** (the runnable extractor); **D-02b shipped** (read-verb decided + convergent write path + the workflow). The workflow is committed-but-dark: it skips green until the `NLQDB_API_KEY` secret (queue #2) and the `NLQDB_MEMORY_DB` var (D-04) exist — a flag flip, not a refactor.
+**Status:** 🟢 code-complete — **D-02a shipped** (the runnable extractor); **D-02b shipped** (read-verb decided + convergent write path + the workflow). The workflow is committed-but-dark: it skips green until the `NLQDB_API_KEY` secret (set 2026-08-04, `founder-actions-log.md` Era 5) and the `NLQDB_MEMORY_DB` var (D-04) exist — a flag flip, not a refactor.
 **Sequence:** Dogfood 2 of 7 · **Risk:** low → **D-02b is med** (see finding) · **Runs:** 2 · **Prereqs:** D-01 · **Gate:** the live convergent sync fires once `NLQDB_API_KEY` (see *Credential*) + `NLQDB_MEMORY_DB` are set
 
 ## Finding (2026-08-02) — the slice splits in two
@@ -117,8 +117,8 @@ what makes idempotency a measured unit test rather than an assertion.
       see the resolved design section above (D-02b).
 - [x] `.github/workflows/memory-sync.yml` exists: `push` on `main` filtered to `docs/**`,
       plus `workflow_dispatch`; least-privilege `permissions: contents: read`; concurrency-guarded (D-02b).
-- [x] Missing-secret path skips with a printed reason (green, not red); the repo-secret ask
-      is queue bullet #2 (queued 2026-08-01) (D-02b) — verified locally: `bun src/sync.ts --apply`
+- [x] Missing-secret path skips with a printed reason (green, not red); the repo secret
+      was set 2026-08-04 (`founder-actions-log.md` Era 5) (D-02b) — verified locally: `bun src/sync.ts --apply`
       with no env prints the reason and exits 0.
 - [x] Second consecutive run over an unchanged corpus writes **0 new rows** — measured offline in
       `converge.test.ts` (`planWrites` over an index reflecting run 1 → `factsToWrite` empty). The

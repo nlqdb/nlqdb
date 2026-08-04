@@ -25,6 +25,13 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   benchmark blog, not the stage-0 set ("agent memory benchmark" pos 53, "deep
   memory retrieval benchmark" pos 52, "locomo benchmark ai memory" pos 83).
   R-01 baseline, unmoved.
+- **Domain Rating (R-10, first read 2026-08-04, `bun scripts/ahrefs-dr.ts` —
+  free Ahrefs endpoint): nlqdb.com 0.0 · docs.nlqdb.com 0.0 · mem0.ai 74.0**
+  (github.com, where the repo-linked listings point, is 97.0). Finding: every
+  flat number in this file — 17 flat GSC reads, indexed stage-0 pages at 0
+  impressions, 0/10 answer-engine retrieval — is consistent with DR 0 /
+  ~zero referring domains. Authority is the binding constraint; tracked by
+  the new R-10 slice.
 - **Per-URL index truth (URL Inspection API): 3 of 6 wedge pages indexed.**
   `/agents/` (crawled 08-02, pos 2.9, 10 impr — strongest indexed wedge page),
   `solve/best-way-to-store-agent-memory` (07-20) and
@@ -47,14 +54,16 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   `awesome-mcp-servers` #10 and connector/plugin venues carried forward, not
   re-read live this cycle.
 - Registry/directory listings (carried forward): official registry #3 ✅ active ·
-  Smithery #4 ✅ · Glama #6 crawl-fed (badge + connector-claim founder-gated) ·
-  mcp.so #7 approval queue (re-checked absent 08-04) · Cursor #8 submitted
-  (re-checked absent 08-04) · `mcp.directory` #23 absent (re-check 08-22) ·
-  `awesome-mcp-servers` #10 PR open (merge-gated on Glama badge, founder queue
-  #3) · Anthropic connector dir #9 founder/money-gated · PulseMCP #5 re-checks
-  08-22 · Cline MCP Marketplace #24 payload parked (founder queue #5). Plugin/
+  Smithery #4 ✅ · Glama #6 badge pushed + connector claimed 2026-08-04,
+  awaiting external review · mcp.so #7 approval queue (re-checked absent 08-04)
+  · Cursor #8 submitted (re-checked absent 08-04) · `mcp.directory` #23 absent
+  (re-check 08-22) · `awesome-mcp-servers` #10 PR open (badge pushed 2026-08-04,
+  awaiting maintainer review) · Anthropic connector dir #9 founder/money-gated ·
+  PulseMCP #5 re-checks 08-22 · Cline MCP Marketplace #24 payload parked
+  (founder queue #3). Plugin/
   skill venues (R-09): own marketplace ✅, claudemarketplaces.com ✅ (crawl-fed),
-  SkillsMP ✅, `claude-community` payload parked, `skillsclaude.org` payload
+  SkillsMP ✅, `claude-community` payload parked (possibly already submitted
+  2026-08-04 — founder to confirm), `skillsclaude.org` payload
   parked. **Channels live with attributable yield: 4** (organic, dev.to, github,
   npm); #12 + #22 + #23 + #24 in-flight/parked, yield 0.
 - Coding-agent walker (R-06): **0/1 surfaced** (baseline 2026-07-20). Not re-run:
@@ -67,4 +76,8 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   `agent-artifacts.test.ts`. Install-yield gate (a real `agent-artifacts` visit
   in `/app/admin`) unmeasurable from here.
 - Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10**.
-  Monthly; next 2026-08-22, so not re-run this cycle.
+  Monthly; next 2026-08-22, so not re-run this cycle. Context for the
+  re-check: AI crawlers (GPTBot / ClaudeBot / CCBot / Meta-ExternalAgent —
+  live traffic confirmed in Cloudflare AI Crawl Control) were robots-blocked
+  by a Cloudflare managed policy until 2026-08-04, when the founder disabled
+  it (`founder-actions-log.md` Era 5) — the 0/10 baseline predates the fix.
