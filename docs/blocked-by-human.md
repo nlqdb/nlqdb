@@ -156,7 +156,7 @@ automated OIDC lane, tracked by scorecard row #22.)
    `/app/admin` shows a `claude-plugin` visit).
 
 5. **⏱ ~15 min · since 2026-08-03 — Open a `[Server Submission]` issue on
-   `cline/mcp-marketplace`** (reach R-05 venue #24, ledger row #24). Free,
+   `cline/mcp-marketplace`** (reach R-05 venue #10, ledger row #24). Free,
    **no plan gate, no money** — a GitHub issue on
    [`cline/mcp-marketplace`](https://github.com/cline/mcp-marketplace). Approved
    listings become **one-click installable inside Cline**, one of the largest
