@@ -163,7 +163,7 @@ Per-venue mechanism and exact payloads live in
   re-check 08-22.
 - ✅ #10 **Cline MCP Marketplace** — P2 08-03: GitHub-issue submission, approved listings
   one-click-installable inside Cline; agent-blocked here, payload parked
-  ([`blocked-by-human.md`](../../../../blocked-by-human.md) #4) + ledger #24; repo-linked →
+  ([`blocked-by-human.md`](../../../../blocked-by-human.md) #3) + ledger #24; repo-linked →
   `github`-ref yield.
 
 ### R-06 — Coding-agent walker (measurement backbone)
@@ -256,11 +256,11 @@ in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
   public since 2026-07-22, so this venue was already served before the slice existed.
 - ✅ #4 **Anthropic `claude-community`** (in-product `/plugin` Discover tab) — signed-in
   form only, so the **payload is parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md)
-  #3, 2026-07-29; possibly already submitted 2026-08-04 — founder to confirm). Distinct from the connector directory (R-05 #7 / ledger #9);
+  #2, 2026-07-29; possibly already submitted 2026-08-04 — founder to confirm). Distinct from the connector directory (R-05 #7 / ledger #9);
   `claude-plugins-official` is curated with **no application process** — nothing to submit.
 - ✅ #5 **skillsclaude.org** — P2 2026-07-30: **no-account** paste-a-repo form, not an
   arbitrary-repo crawler (nlqdb absent 8 days despite public); headless submit env-blocked →
-  payload **parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md) #6); repo-linked
+  payload **parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md) #5); repo-linked
   → `github`-ref yield (ledger #16), no utm key.
 - ⬜ **Install-yield gate:** not done on listings — closes when `/app/admin` shows one
   real `claude-plugin` visit (the same bar R-07 carries; why `plugin.json`'s `homepage`
