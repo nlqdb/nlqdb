@@ -9,10 +9,19 @@
   build/don't-build list — the agent **resolves it** using the default
   ladder below, records the resulting `SK-*` / `GLOBAL-*` (or rewrites the
   bullet as a parked-with-trigger line), and does **not** escalate to the
-  founder. The founder is consulted only for the **one** class the values
-  cannot decide: a genuine money / strategy / legal bet. Even then the
-  agent applies the conservative default and lets the founder override
-  asynchronously, rather than blocking on the question.
+  founder. The founder is consulted only when **no codified decision** —
+  this ladder, the `§0` values, any `GLOBAL-*`/`SK-*` — can decide the
+  question: a genuine money / strategy / legal bet, and the escalating
+  bullet must say what was checked and found non-deciding. Even then the
+  agent applies the conservative default so work never blocks, and the ask
+  is framed as **lock a decision** — the founder mints or amends the
+  governing `GLOBAL-*`/`SK-*` from options the agent pre-drafted — never a
+  one-off answer that leaves the next agent re-asking (founder-directed
+  2026-08-04: "teach to fish, don't provide the fish"). Escalations
+  surface **only** as 🔒 *decision-to-lock* bullets in
+  [`blocked-by-human.md`](../blocked-by-human.md) — the single channel the
+  founder reads — capped at **3** live 🔒 bullets; a fourth means merge or
+  re-derive from the ladder first.
 
 - **Core value:** Simple, Free, Goal-first
 
@@ -45,7 +54,7 @@
   | Cost vs scaffolding (absorb LLM cost? charge? add spend?) | Invest in scaffolding; keep the free chain free forever; never gate first value behind cost. | `GLOBAL-026`; Free (`§0`) |
   | Build vs adopt (write our own, or use a library?) | Adopt a small mature package unless it is one of the seven `§8` "build-our-own"; DIY only after the 10-minute research (habit 2). | guidelines habits 1–2; `§8` |
   | Genuinely deferred (needs traffic / a future slice / a pipeline that doesn't exist yet) | Keep parked, but rewrite the bullet as **"Parked until `<trigger>`"** so it is a decision-to-defer, not an unresolved question. | `P4` / `D1` |
-  | **True founder bet** (money out the door, strategic positioning, legal/compliance) | **The only escalation class.** Apply the conservative default so work isn't blocked; the founder overrides asynchronously. | — |
+  | **True founder bet** (money out the door, strategic positioning, legal/compliance — and no codified decision decides it) | **The only escalation class.** Apply the conservative default so work isn't blocked; queue a 🔒 decision-to-lock bullet in `blocked-by-human.md` (cite what was checked, pre-draft the options); the founder **locks** a `GLOBAL-*`/`SK-*` — never hands an unrecorded answer. | founder-directed 2026-08-04 |
 
   New open questions are triaged against this ladder **before** any
   escalation. A bullet that names no class and no trigger is itself a bug —
