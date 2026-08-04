@@ -4,6 +4,7 @@ import Footer from "../components/Footer.astro";
 import Topnav from "../components/Topnav.astro";
 import { ARCH_FLOW_STEPS, ARCH_GROUPS, ARCH_NODES } from "../data/architecture";
 import Base from "../layouts/Base.astro";
+import { appHref } from "../lib/app-href";
 
 // /architecture — the system, explained as an interactive 3D map
 // (SK-WEB-021). The island is the page's one motion moment; everything
@@ -63,7 +64,7 @@ import Base from "../layouts/Base.astro";
       }
 
       <p class="arch-cta-wrap">
-        <a class="cta" href="/app/new/">Ask it something yourself &rarr;</a>
+        <a class="cta" href={appHref("/app/new/")}>Ask it something yourself &rarr;</a>
         <a class="cta cta--ghost" href="/manifesto/">Why it's built this way</a>
       </p>
     </main>

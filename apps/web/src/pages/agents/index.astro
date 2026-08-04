@@ -31,6 +31,7 @@ import Footer from "../../components/Footer.astro";
 import McpInstall from "../../components/McpInstall.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
+import { appHref } from "../../lib/app-href";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
 import {
   buildClaudeCodeCommand,
@@ -154,7 +155,7 @@ const faqJsonLd = faqPageJsonLd(faqs);
           as it learns, queried in English. Not the top-k a vector store returns.
         </p>
 
-        <CreateForm client:load apiBase={apiBase} />
+        <CreateForm client:load apiBase={apiBase} headingLevel="h2" />
 
         <p class="ag-hero__meta">
           Pre-loaded with an agent-memory goal — edit it, or paste your own.
@@ -316,7 +317,7 @@ const faqJsonLd = faqPageJsonLd(faqs);
               running in CI or on a server can&rsquo;t finish it. Run the same
               MCP server locally instead — same five tools, authenticated by a
               key instead of a consent click. Mint an <code>sk_mcp_</code> MCP
-              key once at <a href="/app/keys/">API keys</a> (one signed-in
+              key once at <a href={appHref("/app/keys/")}>API keys</a> (one signed-in
               visit) &mdash; scoped to MCP, revocable on its own &mdash; paste
               it in, and no browser opens again.
             </p>
@@ -334,7 +335,7 @@ const faqJsonLd = faqPageJsonLd(faqs);
 
         <p class="ag-connect__meta">
           No agent handy?
-          <a href="/app/new/" class="ag-connect__try" data-try-goal={heroGoal}>
+          <a href={appHref("/app/new/")} class="ag-connect__try" data-try-goal={heroGoal}>
             Try a query in the browser
           </a>
           — an anonymous database, no sign-in, gone in 72 hours.
@@ -382,6 +383,7 @@ const faqJsonLd = faqPageJsonLd(faqs);
   </script>
 
   <script>
+    import { appHref } from "../../lib/app-href";
     import { attachHandoff } from "../../lib/handoff";
     import { emit } from "../../lib/logsnag";
     import { saveDraft } from "../../lib/prompt-storage";
@@ -429,7 +431,7 @@ const faqJsonLd = faqPageJsonLd(faqs);
         const goal = a.dataset["tryGoal"] ?? "";
         if (goal) saveDraft(goal);
         emit("agents.try_query_clicked", { goal });
-        a.href = attachHandoff(a.getAttribute("href") ?? "/app/new/");
+        a.href = attachHandoff(a.getAttribute("href") ?? appHref("/app/new/"));
       });
     });
   </script>

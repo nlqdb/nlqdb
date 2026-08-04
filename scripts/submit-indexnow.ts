@@ -14,7 +14,13 @@
 
 const HOST = process.env.INDEXNOW_HOST ?? "nlqdb.com";
 // Must match apps/web/public/<key>.txt exactly (8–128 hex chars).
-const KEY = process.env.INDEXNOW_KEY ?? "7019badf5f6c8972331a8dfdce078874";
+// Rotated 2026-08-04: the original key (7019badf…) drew a persistent 403
+// `UserForbiddedToAccessSite` on every deploy — the endpoint never validated
+// it (its first-ever submission predated the key file, and the failed
+// validation stuck), so zero URL lists were accepted while the
+// continue-on-error step stayed green. A fresh key forces re-validation —
+// the documented remedy (indexnow.org/faq; rankmath.com/kb/fix-403-forbidden-error-indexnow).
+const KEY = process.env.INDEXNOW_KEY ?? "2f7f04109df7cacb5bdd6d8057326832";
 const ENDPOINT = process.env.INDEXNOW_ENDPOINT ?? "https://api.indexnow.org/indexnow";
 
 const SITE = `https://${HOST}`;
@@ -59,7 +65,11 @@ function describe(status: number): string {
     case 400:
       return "Bad Request — invalid payload";
     case 403:
-      return "Forbidden — key not found at keyLocation (expected until the key file is deployed)";
+      // This step runs AFTER `wrangler deploy`, so the key file is already
+      // live — a 403 here is a real validation failure, not a first-deploy
+      // ordering artifact. If it persists across deploys, rotate the key
+      // (new apps/web/public/<key>.txt + the KEY default above).
+      return "Forbidden — endpoint could not validate the key at keyLocation";
     case 422:
       return "Unprocessable — URLs don't match host, or key schema mismatch";
     case 429:

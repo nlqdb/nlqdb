@@ -20,6 +20,7 @@ import Footer from "../components/Footer.astro";
 import McpInstall from "../components/McpInstall.astro";
 import Topnav from "../components/Topnav.astro";
 import Base from "../layouts/Base.astro";
+import { appHref } from "../lib/app-href";
 import "../styles/home2.css";
 ---
 
@@ -52,7 +53,7 @@ import "../styles/home2.css";
             <a class="cta cta--ghost" href="#ways">See both ways in</a>
           </div>
           <p class="hero2__jump">
-            No account needed to try — <a href="/app/new/">just describe your data &rarr;</a>
+            No account needed to try — <a href={appHref("/app/new/")}>just describe your data &rarr;</a>
           </p>
         </div>
 
@@ -112,7 +113,7 @@ import "../styles/home2.css";
 
             <p class="door__quiet">
               Not building an agent?
-              <a href="/app/new/">just describe your data &rarr;</a>
+              <a href={appHref("/app/new/")}>just describe your data &rarr;</a>
             </p>
           </article>
 

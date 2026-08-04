@@ -8,6 +8,7 @@
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
+import { appHref } from "../../lib/app-href";
 ---
 <Base
   title="Security Hall of Fame — nlqdb"
@@ -46,7 +47,7 @@ import Base from "../../layouts/Base.astro";
       <section class="hof__cta">
         <h2 class="hof__cta-title">New here? nlqdb is a database you query in plain English.</h2>
         <p>No schema wrangling, no SQL — describe what you want and get the answer.</p>
-        <a class="cta hof__cta-btn" href="/app/new/">Start with a goal &rarr;</a>
+        <a class="cta hof__cta-btn" href={appHref("/app/new/")}>Start with a goal &rarr;</a>
         <p class="hof__cta-meta">
           No sign-in. The anonymous database lasts 72 hours; adopt it with one
           click if you keep it.

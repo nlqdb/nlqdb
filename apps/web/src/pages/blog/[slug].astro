@@ -10,6 +10,7 @@ import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { BLOG_POSTS, blogBySlug } from "../../data/blog";
 import Base from "../../layouts/Base.astro";
+import { appHref } from "../../lib/app-href";
 import { breadcrumbJsonLd } from "../../lib/breadcrumb";
 import { renderInline } from "../../lib/inline-md";
 import { ORGANIZATION_ID_FRAGMENT } from "../../lib/site-jsonld";
@@ -118,7 +119,7 @@ const displayDate = new Date(`${post.date}T00:00:00Z`).toLocaleDateString("en-US
       <section class="blg__cta">
         <h2 class="blg__cta-title">Try nlqdb in 30 seconds</h2>
         <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
-        <a class="cta blg__cta-btn" href="/app/new/" data-blog-slug={post.slug}>
+        <a class="cta blg__cta-btn" href={appHref("/app/new/")} data-blog-slug={post.slug}>
           Start with a goal &rarr;
         </a>
         <p class="blg__cta-meta">

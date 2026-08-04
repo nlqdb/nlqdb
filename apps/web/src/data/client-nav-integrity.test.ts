@@ -207,6 +207,64 @@ describe("client-nav trailing-slash integrity (SK-WEB-022)", () => {
     expect(src.indexOf("embed.tawk.to")).toBeGreaterThan(src.indexOf("DOMContentLoaded"));
   });
 
+  test("every `/app/` link on a marketing-crawlable surface goes through appHref()", () => {
+    // `nlqdb.com/app/*` 301s to the app origin (SK-AUTH-016), so a relative
+    // `/app/…` literal baked into a marketing page is an internal link to a
+    // redirect — the 2026-08-04 Ahrefs audit counted 285 of them (Topnav's
+    // authed slot + every "Start with a goal" CTA). `lib/app-href.ts#appHref`
+    // resolves the target against `PUBLIC_API_BASE`, which names the app
+    // origin exactly where the hop is cross-origin (marketing build) and is
+    // unset where `/app/*` is same-origin (app-host copy, previews, local).
+    // Surfaces that only ever render on the app origin keep plain relative
+    // paths — same-origin there, nothing redirects.
+    const appOriginOnly = [
+      join("src", "pages", "app"),
+      join("src", "pages", "auth"),
+      join("src", "pages", "oauth"),
+      join("src", "components", "chat"),
+      join("src", "components", "admin"),
+      join("src", "components", "keys"),
+    ];
+    const offenders: Record<string, string> = {};
+    for (const file of sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/)) {
+      const rel = relative(REPO_ROOT, file);
+      if (appOriginOnly.some((dir) => rel.includes(dir))) continue;
+      const src = readFileSync(file, "utf8");
+      for (const m of src.matchAll(HREF)) {
+        if (!m[1].startsWith("/app/")) continue;
+        const line = src.slice(0, m.index).split("\n").length;
+        offenders[`${rel}:${line}`] = `raw href to ${m[1]} — use appHref()`;
+      }
+      for (const m of src.matchAll(NAV)) {
+        if (!m[1].startsWith("/app/")) continue;
+        // `appHref("/app/…")` as the (possibly wrapped) literal is the fix,
+        // not an offense.
+        if (m[0].includes("appHref(")) continue;
+        const line = src.slice(0, m.index).split("\n").length;
+        offenders[`${rel}:${line}`] = `raw navigation to ${m[1]} — use appHref()`;
+      }
+    }
+    expect(offenders).toEqual({});
+  });
+
+  test("every appHref() literal is an `/app/…` page path ending in `/`", () => {
+    // The two invariants the raw-literal sweeps above can no longer see once
+    // a target moves behind `appHref(`: the helper only makes sense for
+    // `/app/*` paths, and the path half must carry the trailing slash
+    // (`trailingSlash: "always"` — a bare path redirects on every origin).
+    const offenders: Record<string, string> = {};
+    for (const file of sweepFiles(WEB_SRC, /\.(ts|tsx|astro)$/)) {
+      const src = readFileSync(file, "utf8");
+      for (const m of src.matchAll(/\bappHref\(\s*["'`]([^"'`]*)["'`]/g)) {
+        const offender = !m[1].startsWith("/app/") ? m[1] : trailingSlashOffender(m[1]);
+        if (offender === null) continue;
+        const line = src.slice(0, m.index).split("\n").length;
+        offenders[offender] ??= `${relative(REPO_ROOT, file)}:${line}`;
+      }
+    }
+    expect(offenders).toEqual({});
+  });
+
   test("every static `<a href>` to an internal page path ends in `/`", () => {
     // The href half of the same class — the blind spot that let `href="/terms"`
     // 307-redirect for two days because check-links.mjs isn't in CI.
