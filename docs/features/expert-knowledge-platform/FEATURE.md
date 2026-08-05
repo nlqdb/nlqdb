@@ -29,7 +29,7 @@ repo** per SK-EKP-003.
 competitive receipts (incl. the kill-test):
 [`docs/research/expert-knowledge-platform.md`](../../research/expert-knowledge-platform.md) ·
 business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
-(supersedes SK-PIVOT-020) · rails: `SK-PIVOT-007`/`018`/`021`,
+(the two-axis model) · rails: `SK-PIVOT-007`/`018`/`021`,
 `GLOBAL-036`/`GLOBAL-037`.
 
 ## Touchpoints — read this feature doc before editing
@@ -94,8 +94,8 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 - **Consequence in code:** Fee billing is axis 2 of
   [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
   and lives only in the marketplace surface (private repo per SK-EKP-003) —
-  no fee logic in nlqdb's public core, no memory meters (SK-PIVOT-023 keeps
-  SK-PIVOT-020's axis-1 rejections). A reviewer rejects: fee copy inside
+  no fee logic in nlqdb's public core, no memory meters (SK-PIVOT-023 axis-1
+  rejections stand). A reviewer rejects: fee copy inside
   trust marketing; any seller-facing flow that does not state the fee before
   the seller commits; any fee percentage anywhere before the founder sets it.
 - **Alternatives rejected:** **Content-platform splits (30–50%)** —
@@ -103,7 +103,7 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
   positioning against Skill Refinery's 50/50. · **No monetization** — rejects
   the founder's directive; the marketplace is also company income with its
   own launch (SK-EKP-005). · **Usage meters on memory** — already rejected at
-  the SK-PIVOT-020 level; unchanged.
+  the SK-PIVOT-023 axis-1 level; unchanged.
 
 ### SK-EKP-003 — Hybrid repo split: rails public in nlqdb, marketplace product surface in a private repo with its own CI
 

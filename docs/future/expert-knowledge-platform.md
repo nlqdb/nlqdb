@@ -5,8 +5,8 @@
 > **founder-locked in-session on 2026-08-05**. The canonical home is now
 > [`docs/features/expert-knowledge-platform/FEATURE.md`](../features/expert-knowledge-platform/FEATURE.md)
 > (`SK-EKP-001..005`, plus
-> [`SK-PIVOT-023`](../features/agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
-> superseding SK-PIVOT-020). This file remains the narrative — the vision,
+> [`SK-PIVOT-023`](../features/agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md),
+> the two-axis business model). This file remains the narrative — the vision,
 > the marketing asymmetry, the rails mapping, and the research pointers;
 > for any conflict, the FEATURE.md wins. Implementation proceeds **in
 > parallel** with the `SK-PIVOT-016` dogfood gate (`SK-EKP-005`: neither
@@ -22,7 +22,7 @@
 [`SK-PIVOT-018`](../features/agent-memory-pivot/decisions/SK-PIVOT-018-goal-packs.md)
 (goal packs — a profession is a pack) ·
 [`SK-PIVOT-023`](../features/agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
-(the two-axis business model; supersedes SK-PIVOT-020) ·
+(the two-axis business model) ·
 [`SK-PIVOT-021`](../features/agent-memory-pivot/decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md)
 (one-click journeys on one shared runner) ·
 [`language-tutor-assistant.md`](./language-tutor-assistant.md)
@@ -102,7 +102,7 @@ design work owned by the feature:
 - **(c) Marketplace + fee.** A take-rate on knowledge sales is a **second
   monetization axis** — resolved 2026-08-05 by
   [`SK-PIVOT-023`](../features/agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
-  (supersedes SK-PIVOT-020): a small, Stripe-style, plainly-disclosed fee is
+  (axis 2 of the two-axis model): a small, Stripe-style, plainly-disclosed fee is
   axis 2 of the business model (`SK-EKP-002`); the % stays founder-only.
 - **(d) Trust-claim substance.** Resolved 2026-08-05 by `SK-EKP-001`:
   "not allowed" (contractual, on the true technical floor), never "not

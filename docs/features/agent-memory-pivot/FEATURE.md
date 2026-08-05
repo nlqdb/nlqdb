@@ -140,15 +140,9 @@ gate is **0/5**.
 
 **Body:** [`decisions/SK-PIVOT-019-memory-strategy-benchmark.md`](./decisions/SK-PIVOT-019-memory-strategy-benchmark.md). Same corpus (`SK-PIVOT-017`), same golden queries per `SK-QUAL-023` axis, run against memory strategies (v1: nlqdb, DIY pgvector, plain-context; hosted competitors one per run, ToS-checked) with per-purpose winners published even where nlqdb loses. Public harness in `tools/`; rendered on `/agents`. Build starts when the corpus exists; explicitly not an integrations program.
 
-### SK-PIVOT-020 — Business model, first cut: free is self-host + hosted free tier + BYO key; paid is hosted memory *operations* on the existing premium chain
-
-**Status:** superseded 2026-08-05 by [`SK-PIVOT-023`](./decisions/SK-PIVOT-023-two-axis-business-model.md) — axis 1 carries forward unchanged; the "no second monetization system" clause is retired.
-
-**Body:** [`decisions/SK-PIVOT-020-memory-ops-business-model.md`](./decisions/SK-PIVOT-020-memory-ops-business-model.md).
-
 ### SK-PIVOT-023 — Business model, second cut: two axes — hosted memory operations + the expert-knowledge marketplace fee
 
-**Body:** [`decisions/SK-PIVOT-023-two-axis-business-model.md`](./decisions/SK-PIVOT-023-two-axis-business-model.md). Founder-decided 2026-08-05: axis 1 = hosted memory ops on the GLOBAL-026 premium chain (unchanged, all SK-PIVOT-020 rejections stand); axis 2 = the expert-knowledge marketplace's small, Stripe-style, plainly-disclosed fee ([`SK-EKP-002`](../expert-knowledge-platform/FEATURE.md)), living only in the marketplace surface. Free unchanged; pricing numbers founder-only.
+**Body:** [`decisions/SK-PIVOT-023-two-axis-business-model.md`](./decisions/SK-PIVOT-023-two-axis-business-model.md). Founder-decided 2026-08-05: axis 1 = hosted memory ops on the GLOBAL-026 premium chain (the body carries axis-1's full free/paid definition and its rejected alternatives); axis 2 = the expert-knowledge marketplace's small, Stripe-style, plainly-disclosed fee ([`SK-EKP-002`](../expert-knowledge-platform/FEATURE.md)), living only in the marketplace surface. Free unchanged; pricing numbers founder-only. (First cut retired 2026-08-05; body in git history.)
 
 ### SK-PIVOT-021 — Every goal pack ships as a one-click product journey on one shared runner
 
