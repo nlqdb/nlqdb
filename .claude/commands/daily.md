@@ -28,8 +28,13 @@ audits this loop once a week and sets the weekly focus number.
    note in the scorecard.
 4. `docs/blocked-by-human.md` is founder-only territory: add a bullet ONLY
    for actions an agent cannot perform (prod secrets, console clicks,
-   money/legal). Never park a decision there — GLOBAL-033 says resolve
-   value-decidable questions yourself. The file is a **ranked queue**
+   money/legal). Never park a *value-decidable* decision there — GLOBAL-033
+   says resolve those yourself. A true founder bet that **no codified
+   decision settles** goes in as a 🔒 **decision-to-lock** bullet
+   (GLOBAL-033 as amended 2026-08-04: cite what was checked, pre-draft the
+   options, conservative default applied so nothing blocks) — this is also
+   rule 8's legal path when a dark metric's root blocker is founder-owned.
+   The file is a **ranked queue**
    (expected user-yield per founder-minute; founder-directed 2026-07-22):
    a new bullet opens with `⏱ estimate · blocked since date` and slots in
    by rank, never appends. **A fix that costs money is not a fix**
