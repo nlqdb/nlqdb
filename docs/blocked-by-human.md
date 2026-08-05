@@ -37,19 +37,18 @@ values and criteria live. Read those only when you sit down to do the thing.
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 3 | ~1 min | Paste `github.com/nlqdb/nlqdb` into skillsclaude.org's no-account submit form (optional; first attempt errored 2026-08-05 — retry) | 2026-07-30 |
 
 Only #1 can move real strangers (scorecard row #2); #2 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists. #3 is
-lowest-yield and optional — a 1-min no-account paste that only lands here
-because this env can't drive the form; the founder's first attempt
-(2026-08-05) hit the site's "GitHub returned an error" — retry later.
+exists.
 (Resolved 2026-08-05, same sitting — Era 6: the "Become AI" five locks →
 `SK-EKP-001..005`/`SK-PIVOT-023`, the goal-pack build order locked
 (niche-quality lens → `pack-candidates.md` header), the Anthropic
 plugin-directory submission (pending review), and Cline issue #2197
-(pending review); earlier sittings
+(pending review). **Dropped, not resolved:** the skillsclaude.org paste —
+the founder's VPN security filter flagged the site, it has zero independent
+reputation footprint, and it was the queue's lowest-yield optional item;
+venue marked dropped in reach R-09, never re-queue. Earlier sittings
 in `history/founder-actions-log.md` Eras 4–5. One load-bearing note
 survives: D-02 memory-sync stays dark until D-04 sets `NLQDB_MEMORY_DB`, so
 SK-PIVOT-016 criterion 1's counter is **not** running yet.)
@@ -109,24 +108,6 @@ SK-PIVOT-016 criterion 1's counter is **not** running yet.)
      shipped 2026-07-29 (#835), so a signed-in reviewer can now exercise **all five tools**
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
-
-3. **⏱ ~1 min · since 2026-07-30 — Paste one URL into skillsclaude.org's submit
-   form** (reach R-09 venue #5, ledger yield rolls into `github` row #16).
-   **Optional, lowest-yield** — a marginal skill directory (~7,200 skills) whose
-   listing links the repo, so it adds no separate attribution. It sits in this
-   queue only because it is **no-account** yet needs a browser paste the
-   automation env blocks (P2 2026-07-30: `skillsclaude.org/submit` is a Next.js
-   SPA whose `<form>` has no `action`, and the classifier blocks a headless
-   submit). The site is not an arbitrary-repo crawler — both nlqdb skills have
-   been public since 07-22 yet `?q=nlqdb` returned 0 eight days later — so it
-   must be submitted. First attempt (founder, 2026-08-05) failed on the
-   site's side — "GitHub returned an error", likely their unauthenticated
-   GitHub API rate limit; retry after a pause, nothing on our side to fix.
-   Open `https://skillsclaude.org/submit` (no sign-in) and
-   paste `https://github.com/nlqdb/nlqdb` (it contains
-   `apps/web/public/agent-artifacts/nlqdb-memory/SKILL.md` +
-   `nlqdb-docs-memory/SKILL.md`). On submit, tick reach R-09 #5 to *listed* with
-   the directory URL; nothing else changes (no utm key — `github`-ref yield).
 
 ## Suggestions needing approval (to amend the guidelines)
 
