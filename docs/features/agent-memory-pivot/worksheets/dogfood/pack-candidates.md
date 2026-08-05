@@ -5,7 +5,10 @@ goal packs — proposals only, written for founder ranking (asked 2026-07-29: *"
 list of niche useful agents in the queue?"* — we did not; only pack #1 repo-ops and pack #2
 founder-ops [D-05](D-05-founder-ops-pack.md) existed).
 **Build order: founder-locked 2026-08-05** (in-session) under the founder's stated
-lens — **depth of quality-impact on the pack's niche, not audience size**. The section
+lens — **depth of quality-impact on the pack's niche, not audience size**. Per
+[`SK-EKP-006`](../../../expert-knowledge-platform/FEATURE.md) this order is also the
+expert marketplace's initial **free catalog** roadmap (packs = free listings on the
+same surface as paid knowledge DBs). The section
 numbers below ARE the locked build sequence for every pack after founder-ops (D-05);
 each entry keeps a labeled note on where the pre-lock evidence×fit×reach formula had it
 and why the lens moved it. No `SK-*` ID is minted per candidate and no skill file exists
