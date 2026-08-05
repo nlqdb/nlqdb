@@ -285,8 +285,10 @@ links, product pages don't. (c) **Measurement** — a DR line each run via
 and community posts, which are founder-shaped (hard rule 3 /
 [`blocked-by-human.md`](../../../../blocked-by-human.md) #1) — this slice
 maximizes what's agent-doable; it does not replace the launch.
-**Done when:** ⬜ homepage-link sweep done across all live venues · ⬜ linkable
-asset live + in llms.txt · ⬜ DR / referring domains ≥ first nonzero read.
+**Done when:** ✅ homepage-link sweep done across all live venues (live-verified
+2026-08-05, [`NUMBERS.md`](NUMBERS.md): every venue's homepage field routes at
+`nlqdb.com` + utm; only #10/#24 are github-linked, no homepage field by design) ·
+⬜ linkable asset live + in llms.txt · ⬜ DR / referring domains ≥ first nonzero read.
 
 ## Current numbers
 
@@ -307,4 +309,4 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)
 - [x] R-08 — answer-engine citation baseline
 - [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (5 of 5 venues resolved — #4 + #5 payloads parked)
-- [ ] R-10 — authority / referring domains
+- [ ] R-10 — authority / referring domains — sweep ✅ (08-05); **owed:** linkable asset + in llms.txt, first nonzero DR read
