@@ -39,17 +39,20 @@ values and criteria live. Read those only when you sit down to do the thing.
 | 2 | ~5 min | Submit the `nlqdb-memory` plugin to Anthropic's community plugin directory (`clau.de/plugin-directory-submission`) — possibly already submitted 2026-08-04, check before redoing | 2026-07-29 |
 | 3 | ~15 min | Open a `[Server Submission]` issue on `cline/mcp-marketplace` — free, no plan gate; one-click install inside Cline | 2026-08-03 |
 | 4 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 5 | ~10 min | 🔒 Lock the goal-pack build order — rank candidates #2–#9 in `pack-candidates.md` (your #1 is set; agents' formula order stands as default until you lock) | 2026-07-29 |
-| 6 | ~1 min | Paste `github.com/nlqdb/nlqdb` into skillsclaude.org's no-account submit form (optional; agent-blocked here) | 2026-07-30 |
+| 5 | ~20 min | 🔒 Lock the four "Become AI" expert-knowledge-platform decisions (trust substance · marketplace fee vs SK-PIVOT-020 · pilot profession · sequencing vs the weekly focus) | 2026-08-04 |
+| 6 | ~10 min | 🔒 Lock the goal-pack build order — rank candidates #2–#9 in `pack-candidates.md` (your #1 is set; agents' formula order stands as default until you lock) | 2026-07-29 |
+| 7 | ~1 min | Paste `github.com/nlqdb/nlqdb` into skillsclaude.org's no-account submit form (optional; agent-blocked here) | 2026-07-30 |
 
 Only #1 can move real strangers (scorecard row #2); #4 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
 exists; #2 and #3 are free, no-plan-gate coding-agent-host venues (the
 Anthropic `/plugin` Discover tab and Cline's in-product marketplace) — both
-list nlqdb where an agent-builder is already installing tools. #5 is the
-queue's first 🔒 decision-to-lock — nothing is blocked on it (the agents'
-formula ordering stands as the conservative default), but your lock sets the
-build order for every pack after founder-ops. #6 is lowest-yield and optional
+list nlqdb where an agent-builder is already installing tools. #5 and #6 are
+🔒 decisions-to-lock — nothing is blocked on either (conservative defaults
+applied), but #5 locks the governing records for your 08-04 "Become AI"
+platform idea (including whether it displaces the weekly focus, which only
+you may decide) and #6's lock sets the build order for every pack after
+founder-ops. #7 is lowest-yield and optional
 — a 1-min no-account paste that only lands here because this env can't drive
 the form. (Resolved 2026-08-04, all in
 `history/founder-actions-log.md` Era 5: the Glama badge + connector claim,
@@ -58,25 +61,12 @@ secret via `mirror-secrets-gha.sh` — note the D-02 memory-sync workflow
 stays dark until D-04 sets the `NLQDB_MEMORY_DB` repo variable, so
 SK-PIVOT-016 criterion 1's counter is **not** running yet.)
 
-(**Resolved 2026-07-29 — advisor session, queue 6 → 2:** the founder took the
-`MEMORY_PRESET=1` go decision live — #835 merged, the preset + `nlqdb_remember`
-are prod-enabled for signed-in accounts — and merged the Version-Packages
-release PR #826 (`@nlqdb/mcp@0.1.1` + `@nlqdb/sdk@0.2.2` via
-Trusted-Publisher OIDC; scorecard row #19 is now 0). The **LogSnag** bullet
-resolved the same sitting: the
-founder put `LOGSNAG_TOKEN`/`LOGSNAG_PROJECT` in the session env, the
-`window.__nlqdb_logsnag` hook is wired in `Base.astro` (build-time
-`PUBLIC_LOGSNAG_*`, both deploy workflows), and one live ingest event verified
-the token end-to-end. The **Dependabot #29** bullet resolved too: the founder
-pasted the alert (sharp < 0.35.0 in `apps/docs`, libvips CVEs) and the bump to
-0.35.3 shipped with a verified build. The **`sk_mcp_` walker-key** bullet
-resolved last: the founder minted the key and set it in the walker env, and
-R-04's cold-agent walk ran green the same session — published binary, published
-guide, real prod write + read-back (evidence: reach `INDEX.md` §R-04). All
-operator actions logged in `history/founder-actions-log.md` Era 4. One npm
-laggard remains but needs no human — `@nlqdb/cli@0.1.0` still serves an untagged
-homepage; its `?utm_source=npm` republish changeset is queued on the same
-automated OIDC lane, tracked by scorecard row #22.)
+(**Resolved 2026-07-29 — advisor session, queue 6 → 2:** `MEMORY_PRESET=1`
+went live (#835) + release PR #826 merged; the LogSnag, Dependabot #29 and
+`sk_mcp_` walker-key bullets all closed the same sitting. Details in
+`history/founder-actions-log.md` Era 4 — the record that survives deletion.
+One npm laggard needs no human: `@nlqdb/cli`'s `?utm_source=npm` republish
+rides the automated OIDC lane, tracked by scorecard row #22.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
@@ -191,7 +181,49 @@ automated OIDC lane, tracked by scorecard row #22.)
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-5. **⏱ ~10 min · since 2026-07-29 — 🔒 Lock the goal-pack build order
+5. **⏱ ~20 min · since 2026-08-04 — 🔒 Lock the four "Become AI"
+   expert-knowledge-platform decisions.** Your 08-04 idea — *"AI can't replace
+   you if you become AI"*: any non-technical professional turns their
+   knowledge into a structured DB schema any AI can use as a skill — is
+   codified as a non-blocking vision in
+   [`future/expert-knowledge-platform.md`](./future/expert-knowledge-platform.md)
+   with competitor receipts in
+   [`research/expert-knowledge-platform.md`](./research/expert-knowledge-platform.md)
+   (the wedge is real: the whole market stores prose to recall; nobody stores
+   structure to compute on). Checked and non-deciding: the `GLOBAL-033`
+   ladder (all four are strategy/money bets), `GLOBAL-036`/`GLOBAL-037`,
+   `SK-PIVOT-018`/`020`/`021`, the `§0` values — they supply the rails but
+   don't settle these. Conservative defaults are applied, so nothing is
+   blocked; your lock mints/amends the governing records:
+   1. **Trust-claim substance** — the loud pillar is "we are not allowed to
+      use or read this data." Lock **(a) "not allowed"** — contractual
+      (ToS/DPA) on top of the true technical floor (`GLOBAL-037` schema-only
+      egress, RLS, `SK-HDC-016` delete, FSL self-host): cheap, matches the
+      entire market's ceiling (research §6 — nobody offers more), honest only
+      if worded as *allowed*; or **(b) "not able"** — customer-key
+      encryption/E2E: absolute and unique in the market, but expensive and in
+      tension with server-side NL→SQL (the engine must read rows to answer
+      questions). Default until locked: copy claims only what is true today
+      (= a). Lock mints a new GLOBAL (trust posture for sold knowledge).
+   2. **Marketplace fee** — a take-rate on knowledge sales is a second
+      monetization axis, which
+      [`SK-PIVOT-020`](./features/agent-memory-pivot/decisions/SK-PIVOT-020-memory-ops-business-model.md)
+      as written forbids; per `P1` it is never worked around. Lock one of:
+      extend SK-PIVOT-020 (the fee becomes its one named marketplace
+      exception — Stripe-style, plainly disclosed to sellers, % yours to set
+      later) · supersede it with a new model · reject selling. Default: no
+      selling surface, no fee copy, nothing built.
+   3. **Pilot profession** — recommend inheriting your #1 pack (language
+      tutor, locked 2026-07-29) as the pilot "become AI" pack; confirm or
+      name another (interacts with the pack-order lock, #6 below).
+   4. **Sequencing** — you said *"give it priority"*; the weekly focus (the
+      `SK-PIVOT-016` gate) is your 07-28 documented decision. Lock **(a)**
+      strategy lane: research + codification proceed beside the gate, which
+      stays the execution focus (default applied — note the gate's D-08
+      shared runner is the substrate this platform needs, so gate work *is*
+      empire work), or **(b)** this displaces the weekly focus explicitly.
+
+6. **⏱ ~10 min · since 2026-07-29 — 🔒 Lock the goal-pack build order
    (candidates #2–#9).** [`SK-PIVOT-018`](./features/agent-memory-pivot/decisions/SK-PIVOT-018-goal-packs.md)
    assigns pack ranking to founder taste, so no codified decision can settle
    it (checked: the GLOBAL-033 ladder, `GLOBAL-025`, `SK-PIVOT-018` itself —
@@ -206,7 +238,7 @@ automated OIDC lane, tracked by scorecard row #22.)
    runner. Not the fish: the lock decides *all* future "which pack next"
    questions until you re-rank.
 
-6. **⏱ ~1 min · since 2026-07-30 — Paste one URL into skillsclaude.org's submit
+7. **⏱ ~1 min · since 2026-07-30 — Paste one URL into skillsclaude.org's submit
    form** (reach R-09 venue #5, ledger yield rolls into `github` row #16).
    **Optional, lowest-yield** — a marginal skill directory (~7,200 skills) whose
    listing links the repo, so it adds no separate attribution. It sits in this

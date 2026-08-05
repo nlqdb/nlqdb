@@ -118,6 +118,9 @@ OSS Python SDK adding long-term memory (semantic/episodic/procedural) to LangGra
 ### GBrain — https://github.com/garrytan/gbrain (MIT; Garry Tan / YC, OSS 2026-04)
 Markdown-in-git personal brain + Postgres/pgvector hybrid search + MCP/CLI (OpenClaw/Hermes). **Gap:** single-operator knowledge brain, not hosted multi-tenant NL→SQL memory with fail-closed isolation. **Threat:** Medium–high mindshare / DIY; low on the analytical wedge. *(Added 2026-08-01.)*
 
+### Pinecone Nexus — https://www.pinecone.io (public preview 2026-07)
+"Manifests" convert raw enterprise documents into "organized, queryable knowledge artifacts" **curated at setup time**, not retrieved at query time; vendor benchmark ~90% accuracy vs ~65% RAG baseline. The first big-vendor move from recall toward structured knowledge. **Gap:** distills documents an engineering team already has — no NL→SQL, no `GROUP BY`/`JOIN` over what an agent *remembered*, no hosted memory write path, no non-technical authoring. **Threat:** **High and rising for P2** — narrows the "structure beats prose" messaging gap even though the workload differs. *(Added 2026-08-05; receipts in [`research/expert-knowledge-platform.md`](research/expert-knowledge-platform.md) §5.)*
+
 **Vector / graph recall (P2).** Same gap: rank nearest matches, no relational analytics. Pinecone, Weaviate, Chroma, Qdrant, Milvus — `/vs/*`. **Cognee** (`/vs/cognee`) — OSS knowledge-graph memory (Extract→Cognify→Load); high P2 threat as "not just a vector store," still no SQL.
 
 ### MindsDB — https://mindsdb.com · `/vs/mindsdb`
@@ -173,6 +176,7 @@ Adjacent DIY components. LlamaIndex (MIT) ships `NLSQLTableQueryEngine` (synthes
 | Supermemory | Agent memory | P2 | Benchmark-leading recall API (MIT); recall-only, no SQL |
 | Hindsight (Vectorize) | Agent memory | P2 | Multi-strategy recall + reflect (MIT, MCP-first); LongMemEval leader; still no SQL |
 | GBrain | Agent memory (personal) | P2 | YC-CEO halo; markdown+pgvector brain for OpenClaw/Hermes; single-operator |
+| Pinecone Nexus | Agent knowledge (structured) | P2 | First big-vendor setup-time-curated structured knowledge layer; no NL→SQL/aggregation |
 | Agentic DB (Constructive) | Agent memory (Postgres) | P2 | OSS Postgres memory + Agent Skills; same coding-agent onboarding axis |
 | DIY on your Postgres/Supabase | Agent memory (build) | P2b | Free + in-stack default — loses on isolation/TTL/analytics correctness at scale |
 | Julius AI | NL analytics | P3 | Cheap, consumer-grade CSV + NL workflow |
@@ -203,4 +207,4 @@ Scariest threats within ~12 months: (a) Supabase NL + agent story; (b) MCP Postg
 
 ---
 
-*Last verified: 2026-08-01 (§4 Mem0/Zep/Letta matrix re-verify + Hindsight/GBrain added); 2026-07-18 (§4 DIY + Agentic DB); 2026-07-01 (§1 Neon, §6 LlamaIndex). Re-check quarterly.*
+*Last verified: 2026-08-05 (§4 Pinecone Nexus added); 2026-08-01 (§4 Mem0/Zep/Letta matrix re-verify + Hindsight/GBrain added); 2026-07-18 (§4 DIY + Agentic DB); 2026-07-01 (§1 Neon, §6 LlamaIndex). Re-check quarterly.*
