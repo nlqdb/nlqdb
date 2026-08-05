@@ -53,16 +53,10 @@ order for every pack after founder-ops. (The "Become AI" platform's five
 locks resolved in-session 2026-08-05 → `SK-EKP-001..005` / `SK-PIVOT-023`;
 never re-queued here.) #6 is lowest-yield and optional
 — a 1-min no-account paste that only lands here because this env can't drive
-the form. (Resolved 2026-08-04 — Glama badge + connector claim, robots.txt
-AI-block, `NLQDB_API_KEY` GHA secret — details in
-`history/founder-actions-log.md` Era 5. Note: D-02 memory-sync stays dark
-until D-04 sets `NLQDB_MEMORY_DB`, so SK-PIVOT-016 criterion 1's counter is
-**not** running yet.)
-
-(**Resolved 2026-07-29 — advisor session, queue 6 → 2:** `MEMORY_PRESET=1`
-went live (#835) + release PR #826 merged; the LogSnag, Dependabot #29 and
-`sk_mcp_` walker-key bullets all closed the same sitting. Details in
-`history/founder-actions-log.md` Era 4.)
+the form. (Earlier sittings' resolutions live in
+`history/founder-actions-log.md` Eras 4–5. One load-bearing note survives
+them: D-02 memory-sync stays dark until D-04 sets `NLQDB_MEMORY_DB`, so
+SK-PIVOT-016 criterion 1's counter is **not** running yet.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
@@ -107,6 +101,12 @@ went live (#835) + release PR #826 merged; the LogSnag, Dependabot #29 and
    - **Marketplace / plugin repo:** `https://github.com/nlqdb/nlqdb` (the
      `.claude-plugin/marketplace.json` at the repo root; plugin name
      `nlqdb-memory`)
+   - **Path within repository:** `apps/web/public/agent-artifacts` (where the
+     plugin's `.claude-plugin/plugin.json` lives)
+   - **Supported platforms:** Claude Code only — Cowork is untested; never
+     tick an untested surface (the form says test first)
+   - **Privacy policy URL:** `https://nlqdb.com/privacy` (verified live
+     2026-08-05) · **Contact email:** the founder's read inbox
    - **Display name:** `nlqdb — analytical agent memory`
    - **Tagline (≤55):** `Analytical memory for AI agents. One command.`
    - **Description:** `Persistent, queryable memory for your agent: a real Postgres it asks in plain English over MCP, so it can GROUP BY / JOIN / aggregate over what it remembered instead of recalling the nearest few rows. Bundles the hosted MCP server plus two skills that teach the agent when to use it.`
@@ -122,22 +122,28 @@ went live (#835) + release PR #826 merged; the LogSnag, Dependabot #29 and
    [`cline/mcp-marketplace`](https://github.com/cline/mcp-marketplace). Approved
    listings become **one-click installable inside Cline**, one of the largest
    coding-agent hosts, so this puts nlqdb where a Cline-building agent already
-   installs MCP servers (squarely the reach thesis). P2-verified 2026-08-03: the
-   repo's `[Server Submission]` issue template asks for a repo URL, a 400×400 PNG
-   logo, a reason, and a testing-confirmation that Cline installs the server from
-   the repo README/`llms-install.md`. Agent-blocked here only because this env's
+   installs MCP servers (squarely the reach thesis). Re-verified 2026-08-05
+   against the live template (`mcp-server-submission.yml`): fields are a repo
+   URL, a 400×400 PNG logo, **two required testing checkboxes**, and an
+   optional Additional Information box (there is no separate "reason" field —
+   the pitch goes there). Agent-blocked here only because this env's
    GitHub scope is `nlqdb/nlqdb` (can't open an issue on an external repo). Open
    the template and enter:
+   - **Title:** `[Server Submission]: nlqdb — analytical memory for AI agents`
    - **GitHub repo URL:** `https://github.com/nlqdb/nlqdb`
-   - **Logo (400×400 PNG):** render `apps/web/public/logo.svg` (square, brand mark)
-     to a 400×400 PNG — e.g. `rsvg-convert -w 400 -h 400 apps/web/public/logo.svg > nlqdb-400.png` — and attach it.
-   - **Reason for addition:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY / JOIN / aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect (hosted https://mcp.nlqdb.com/mcp, or headless npx -y @nlqdb/mcp with an sk_mcp_ key); five tools incl. nlqdb_remember / nlqdb_query.`
-   - **Testing confirmation:** **actually run it once** — give Cline only the repo
-     README and watch it set up the server end-to-end (README + the R-04 guide
-     document the headless `npx -y @nlqdb/mcp` + `sk_mcp_` route). If the README
-     alone proves insufficient for Cline's agent-install, the follow-up is a
-     root `llms-install.md` generated from `mcp-install.ts` (drift-tested) — flag
-     it back to `/reach` and it becomes a slice.
+   - **Logo (400×400 PNG):** attach `apps/web/public/brand/nlqdb-400.png` —
+     the brand mark used on all third-party listings (the GitHub org avatar;
+     checked in 2026-08-05. The green `logo.svg` tile is **not** the external
+     brand.)
+   - **Additional Information:** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY / JOIN / aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect (hosted https://mcp.nlqdb.com/mcp — OAuth with dynamic client registration, or headless npx -y @nlqdb/mcp with an sk_mcp_ key from app.nlqdb.com/app/keys); five annotated tools incl. nlqdb_remember / nlqdb_query.`
+   - **Testing checkboxes (both required):** **actually run it once first** —
+     give Cline only the repo README and watch it set up the server end-to-end
+     (headless `npx -y @nlqdb/mcp` + an `sk_mcp_` key from `/app/keys`), then
+     tick both truthfully (the server-stability box is already true: hosted
+     endpoint + `@nlqdb/mcp` are live in prod). If the README alone proves
+     insufficient for Cline's agent-install, **don't tick — stop**; the
+     follow-up is a root `llms-install.md` generated from `mcp-install.ts`
+     (drift-tested) — flag it back to `/reach` and it becomes a slice.
    No utm key: the listing links the repo, so its yield rolls into the `github`
    ref (like `awesome-mcp` #10). On submit, tick reach R-05 Cline to *listed*
    with the issue/listing URL and flip ledger row #24 to **in-flight**.
@@ -203,14 +209,8 @@ went live (#835) + release PR #826 merged; the LogSnag, Dependabot #29 and
 
 ## Suggestions needing approval (to amend the guidelines)
 
-- **Approve P6 as a non-negotiable principle (PR #885)** — #885 adds a 6th
-  binding CLAUDE.md/AGENTS.md principle, *"Customer journeys must be
-  world-class, not merely functional"* (whole-journey: least-click,
-  intent preserved across auth/redirects, honest progress, durable proof,
-  reversible, real E2E walk). It's clear, load-bearing, and contradicts
-  nothing — but making a **new rule non-negotiable for all agents** is a
-  founder call, not a value-decision. Approve → I merge #885 (rest is
-  clean, CI-green); or "guidance, not binding" → I downgrade P6 first.
+None live. (P6 was approved and merged by the founder 2026-08-04, #885 —
+it is binding in CLAUDE.md/AGENTS.md.)
 
 (The auto-merge-tier proposal was **rejected by the founder 2026-07-22**:
 review latency is handled by a separate merger agent, not by `/daily`

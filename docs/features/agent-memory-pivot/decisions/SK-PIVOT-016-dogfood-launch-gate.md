@@ -3,9 +3,9 @@
 - **Decision:** The launch-sequence bullet in
   [`docs/blocked-by-human.md`](../../../blocked-by-human.md) is gated on a
   **dogfood gate**: nlqdb's own operating agents run a real memory workload
-  through the **public** surfaces (`npx -y @nlqdb/mcp` + a self-minted
-  `sk_live_*` key — `sk_mcp_*` is OAuth-mint-only per `SK-APIKEYS-009`, so
-  the stdio transport cannot use one; `nlqdb_remember`/`nlqdb_query` — no
+  through the **public** surfaces (`npx -y @nlqdb/mcp` + a self-minted key —
+  an `sk_mcp_*` from `/app/keys` per `SK-APIKEYS-015`, or an `sk_live_*`;
+  `nlqdb_remember`/`nlqdb_query` — no
   privileged backdoors) until the gate's criteria are green. The gate is
   **condition-gated, not date-gated**
   (founder-directed 2026-07-26: founder availability is random; calendar
