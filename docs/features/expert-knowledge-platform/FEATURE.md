@@ -16,8 +16,10 @@ taking a small, plainly-disclosed fee.
 **Status:** planned — the five governing decisions below were
 **founder-locked 2026-08-05 (in-session)**; implementation is authorized and
 proceeds **in parallel** with the `SK-PIVOT-016` dogfood gate (SK-EKP-005).
-Execution planning (worksheets, slices, launch motion) is the next step; no
-code exists yet.
+Execution plan: [`worksheets/INDEX.md`](worksheets/INDEX.md) (`EK-01..08`,
+picked by `/daily` as its own lane). The private `experts` repo exists
+(founder, 2026-08-05, all-rights-reserved); its slices are parked until
+agent sessions get workspace access to it. No code exists yet.
 **Owners (code):** none yet. The public rails it builds on are
 agent-memory-pivot surfaces (`agent_memory_v1`, goal packs, the shared
 one-click runner). Product-surface code will live partly in a **private
@@ -215,5 +217,6 @@ GLOBAL; index in [`docs/decisions.md`](../../decisions.md)).
 - **Regulated professions** (doctor, lawyer, accountant) — liability/
   advice-regulation research required before any regulated pack ships
   publicly.
-- **Marketplace launch motion + acceptance criteria** — defined at execution
-  planning (its own launch, distinct from Show HN; SK-EKP-005).
+- **Marketplace launch motion + acceptance criteria** — owned by
+  [`EK-08`](worksheets/EK-08-launch-motion.md) (its own launch, distinct
+  from Show HN; SK-EKP-005).
