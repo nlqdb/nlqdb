@@ -260,7 +260,7 @@ in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
   `claude-plugins-official` is curated with **no application process** — nothing to submit.
 - ✅ #5 **skillsclaude.org** — P2 2026-07-30: **no-account** paste-a-repo form, not an
   arbitrary-repo crawler (nlqdb absent 8 days despite public); headless submit env-blocked →
-  payload **parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md) #4; first
+  payload **parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md) #3; first
   founder attempt 2026-08-05 hit the site's "GitHub returned an error" — retry); repo-linked
   → `github`-ref yield (ledger #16), no utm key.
 - ⬜ **Install-yield gate:** not done on listings — closes when `/app/admin` shows one

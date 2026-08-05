@@ -37,20 +37,19 @@ values and criteria live. Read those only when you sit down to do the thing.
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 3 | ~10 min | 🔒 Lock the goal-pack build order — rank candidates #2–#9 in `pack-candidates.md` (your #1 is set; agents' formula order stands as default until you lock) | 2026-07-29 |
-| 4 | ~1 min | Paste `github.com/nlqdb/nlqdb` into skillsclaude.org's no-account submit form (optional; first attempt errored 2026-08-05 — retry) | 2026-07-30 |
+| 3 | ~1 min | Paste `github.com/nlqdb/nlqdb` into skillsclaude.org's no-account submit form (optional; first attempt errored 2026-08-05 — retry) | 2026-07-30 |
 
 Only #1 can move real strangers (scorecard row #2); #2 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists. #3 is the queue's 🔒 decision-to-lock — nothing is blocked on it
-(the agents' formula ordering stands as the conservative default), but your
-lock sets the build order for every pack after founder-ops. #4 is
+exists. #3 is
 lowest-yield and optional — a 1-min no-account paste that only lands here
 because this env can't drive the form; the founder's first attempt
 (2026-08-05) hit the site's "GitHub returned an error" — retry later.
 (Resolved 2026-08-05, same sitting — Era 6: the "Become AI" five locks →
-`SK-EKP-001..005`/`SK-PIVOT-023`, the Anthropic plugin-directory submission
-(pending review), and Cline issue #2197 (pending review); earlier sittings
+`SK-EKP-001..005`/`SK-PIVOT-023`, the goal-pack build order locked
+(niche-quality lens → `pack-candidates.md` header), the Anthropic
+plugin-directory submission (pending review), and Cline issue #2197
+(pending review); earlier sittings
 in `history/founder-actions-log.md` Eras 4–5. One load-bearing note
 survives: D-02 memory-sync stays dark until D-04 sets `NLQDB_MEMORY_DB`, so
 SK-PIVOT-016 criterion 1's counter is **not** running yet.)
@@ -111,21 +110,7 @@ SK-PIVOT-016 criterion 1's counter is **not** running yet.)
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-3. **⏱ ~10 min · since 2026-07-29 — 🔒 Lock the goal-pack build order
-   (candidates #2–#9).** [`SK-PIVOT-018`](./features/agent-memory-pivot/decisions/SK-PIVOT-018-goal-packs.md)
-   assigns pack ranking to founder taste, so no codified decision can settle
-   it (checked: the GLOBAL-033 ladder, `GLOBAL-025`, `SK-PIVOT-018` itself —
-   which is what routes it here). Conservative default already applied:
-   agents' evidence × fit × reach ordering in
-   [`pack-candidates.md`](./features/agent-memory-pivot/worksheets/dogfood/pack-candidates.md)
-   stands until you lock, and your #1 (language tutor, 2026-07-29) is pinned.
-   Your action: read the 9 one-paragraph candidates, reorder #2–#9 (or write
-   "formula order locked"), and the locked order is recorded in that file's
-   header — it becomes the build sequence for every pack after founder-ops
-   (D-05), each shipping as a `SK-PIVOT-021` one-click journey on the shared
-   runner — the lock decides *all* future "which pack next" questions.
-
-4. **⏱ ~1 min · since 2026-07-30 — Paste one URL into skillsclaude.org's submit
+3. **⏱ ~1 min · since 2026-07-30 — Paste one URL into skillsclaude.org's submit
    form** (reach R-09 venue #5, ledger yield rolls into `github` row #16).
    **Optional, lowest-yield** — a marginal skill directory (~7,200 skills) whose
    listing links the repo, so it adds no separate attribution. It sits in this
