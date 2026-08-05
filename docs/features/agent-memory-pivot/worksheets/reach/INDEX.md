@@ -286,9 +286,8 @@ and community posts, which are founder-shaped (hard rule 3 /
 [`blocked-by-human.md`](../../../../blocked-by-human.md) #1) — this slice
 maximizes what's agent-doable; it does not replace the launch.
 **Done when:** ✅ homepage-link sweep done across all live venues (live-verified
-2026-08-05, [`NUMBERS.md`](NUMBERS.md): every venue's homepage field routes at
-`nlqdb.com` + utm; only #10/#24 are github-linked, no homepage field by design) ·
-⬜ linkable asset live + in llms.txt · ⬜ DR / referring domains ≥ first nonzero read.
+2026-08-05 — see [`NUMBERS.md`](NUMBERS.md)) · ⬜ linkable asset live + in
+llms.txt · ⬜ DR / referring domains ≥ first nonzero read.
 
 ## Current numbers
 
