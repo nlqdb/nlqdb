@@ -47,36 +47,22 @@ costs money and waits per `docs/cost-ladder.md` unless a Team org already
 exists; #2 and #3 are free, no-plan-gate coding-agent-host venues (the
 Anthropic `/plugin` Discover tab and Cline's in-product marketplace) — both
 list nlqdb where an agent-builder is already installing tools. #5 is the
-queue's first 🔒 decision-to-lock — nothing is blocked on it (the agents'
-formula ordering stands as the conservative default), but your lock sets the
-build order for every pack after founder-ops. #6 is lowest-yield and optional
+queue's 🔒 decision-to-lock — nothing is blocked on it (the agents' formula
+ordering stands as the conservative default), but your lock sets the build
+order for every pack after founder-ops. (The "Become AI" platform's five
+locks resolved in-session 2026-08-05 → `SK-EKP-001..005` / `SK-PIVOT-023`;
+never re-queued here.) #6 is lowest-yield and optional
 — a 1-min no-account paste that only lands here because this env can't drive
-the form. (Resolved 2026-08-04, all in
-`history/founder-actions-log.md` Era 5: the Glama badge + connector claim,
-the Cloudflare managed robots.txt AI-block, and the `NLQDB_API_KEY` GHA
-secret via `mirror-secrets-gha.sh` — note the D-02 memory-sync workflow
-stays dark until D-04 sets the `NLQDB_MEMORY_DB` repo variable, so
-SK-PIVOT-016 criterion 1's counter is **not** running yet.)
+the form. (Resolved 2026-08-04 — Glama badge + connector claim, robots.txt
+AI-block, `NLQDB_API_KEY` GHA secret — details in
+`history/founder-actions-log.md` Era 5. Note: D-02 memory-sync stays dark
+until D-04 sets `NLQDB_MEMORY_DB`, so SK-PIVOT-016 criterion 1's counter is
+**not** running yet.)
 
-(**Resolved 2026-07-29 — advisor session, queue 6 → 2:** the founder took the
-`MEMORY_PRESET=1` go decision live — #835 merged, the preset + `nlqdb_remember`
-are prod-enabled for signed-in accounts — and merged the Version-Packages
-release PR #826 (`@nlqdb/mcp@0.1.1` + `@nlqdb/sdk@0.2.2` via
-Trusted-Publisher OIDC; scorecard row #19 is now 0). The **LogSnag** bullet
-resolved the same sitting: the
-founder put `LOGSNAG_TOKEN`/`LOGSNAG_PROJECT` in the session env, the
-`window.__nlqdb_logsnag` hook is wired in `Base.astro` (build-time
-`PUBLIC_LOGSNAG_*`, both deploy workflows), and one live ingest event verified
-the token end-to-end. The **Dependabot #29** bullet resolved too: the founder
-pasted the alert (sharp < 0.35.0 in `apps/docs`, libvips CVEs) and the bump to
-0.35.3 shipped with a verified build. The **`sk_mcp_` walker-key** bullet
-resolved last: the founder minted the key and set it in the walker env, and
-R-04's cold-agent walk ran green the same session — published binary, published
-guide, real prod write + read-back (evidence: reach `INDEX.md` §R-04). All
-operator actions logged in `history/founder-actions-log.md` Era 4. One npm
-laggard remains but needs no human — `@nlqdb/cli@0.1.0` still serves an untagged
-homepage; its `?utm_source=npm` republish changeset is queued on the same
-automated OIDC lane, tracked by scorecard row #22.)
+(**Resolved 2026-07-29 — advisor session, queue 6 → 2:** `MEMORY_PRESET=1`
+went live (#835) + release PR #826 merged; the LogSnag, Dependabot #29 and
+`sk_mcp_` walker-key bullets all closed the same sitting. Details in
+`history/founder-actions-log.md` Era 4.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
@@ -93,14 +79,11 @@ automated OIDC lane, tracked by scorecard row #22.)
    HN post + first comment in your own voice from the §3.1 fact sheet
    (never agent copy — the r/SQL lesson), soft-launch lobste.rs/r/SideProject
    first, then Show HN Tue–Thu morning, Product Hunt ≥ 1 week later
-   (account-walled). Attribution (#745) is merged and the prod D1
-   migrations (`0022`–`0025`) are applied (verified live 2026-07-22), so
-   every visit is attributable end-to-end. nlqdb has never launched anywhere;
-   this is the only action in the queue that can move real strangers
-   (scorecard row #2) from 0.
-   **Reaffirmed 2026-07-28 (advisor session): no launch before the pivot has
-   real proof of value — the condition gate stands unchanged, criteria not
-   loosened.** The gate's `MEMORY_PRESET=1` prerequisite **shipped 2026-07-29**
+   (account-walled). Attribution (#745) + the prod D1 migrations
+   (`0022`–`0025`) are live (verified 2026-07-22): every visit is
+   attributable end-to-end. nlqdb has never launched anywhere.
+   **Reaffirmed 07-28 (advisor session): no launch before real proof of
+   value — gate unchanged, criteria not loosened.** The gate's `MEMORY_PRESET=1` prerequisite **shipped 2026-07-29**
    (#835), so all five criteria are now agent-drivable — D-04's prod prereq is
    clear. Execution track:
    [`dogfood/INDEX.md`](./features/agent-memory-pivot/worksheets/dogfood/INDEX.md)
@@ -110,16 +93,14 @@ automated OIDC lane, tracked by scorecard row #22.)
 2. **⏱ ~5 min · since 2026-07-29 — Submit the `nlqdb-memory` plugin to
    Anthropic's community plugin directory** (reach R-09 venue #4, ledger row
    #22). Free, signed-in web form — **no plan gate, no money** (unlike #4).
-   **Possibly already submitted 2026-08-04** — check the submission form page /
-   email receipt before redoing; the public mirror was checked 2026-08-04 and
-   does **not** yet list nlqdb, but it syncs nightly and shows approved
-   listings only, so a pending review is invisible there. P2
-   verified 2026-07-29 (`github.com/anthropics/claude-plugins-community`): that
-   repo is a read-only mirror; submissions go through
-   `clau.de/plugin-directory-submission`, pass automated security scanning, then
-   land in the in-product `/plugin` **Discover** tab and the community
-   marketplace (distinct from `claude-plugins-official`, which is curated with
-   **no** application process — nothing to submit there, ever). The plugin is
+   **Possibly already submitted 2026-08-04** — check the form page / email
+   receipt before redoing; the public mirror doesn't list nlqdb yet, but it
+   shows approved listings only, so a pending review is invisible there. P2
+   verified 2026-07-29: `anthropics/claude-plugins-community` is a read-only
+   mirror; submissions go through `clau.de/plugin-directory-submission`, then
+   land in the in-product `/plugin` **Discover** tab (distinct from
+   `claude-plugins-official`, curated, **no** application process — nothing
+   to submit there, ever). The plugin is
    already live and installable directly today (`/plugin marketplace add
    nlqdb/nlqdb` → `/plugin install nlqdb-memory@nlqdb`); this form only adds
    directory discovery. Open the form and enter:
@@ -203,8 +184,7 @@ automated OIDC lane, tracked by scorecard row #22.)
    "formula order locked"), and the locked order is recorded in that file's
    header — it becomes the build sequence for every pack after founder-ops
    (D-05), each shipping as a `SK-PIVOT-021` one-click journey on the shared
-   runner. Not the fish: the lock decides *all* future "which pack next"
-   questions until you re-rank.
+   runner — the lock decides *all* future "which pack next" questions.
 
 6. **⏱ ~1 min · since 2026-07-30 — Paste one URL into skillsclaude.org's submit
    form** (reach R-09 venue #5, ledger yield rolls into `github` row #16).

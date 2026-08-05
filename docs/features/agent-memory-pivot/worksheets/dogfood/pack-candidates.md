@@ -30,7 +30,7 @@ agent-proposed ordering and are what the founder is being asked to re-rank.
 
 ---
 
-## 1. Language-tutor personal assistant — **founder-set #1**
+## 1. Language-tutor personal assistant — **founder-set #1** · pilot "become AI" pack (`SK-EKP-004`)
 
 - **Persona:** the founder themself first (founder-ops adjacent, like D-05), then P2a/P2b
   builders shipping personal-assistant agents.

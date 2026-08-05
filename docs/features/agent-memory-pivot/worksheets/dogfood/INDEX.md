@@ -50,6 +50,7 @@ assigned to move them. This file is the missing intake.
 | Funnel / distribution / wedge conversion | [`../INDEX.md`](../INDEX.md) (`WS-*`) |
 | Engine quality / agent on-ramp / "wedge claims true" | [`../engine/INDEX.md`](../engine/INDEX.md) (`E-*`) |
 | Acquisition reach (search + coding-agent discovery) | [`../reach/INDEX.md`](../reach/INDEX.md) (`R-*`, `/reach` loop only) |
+| Expert-knowledge marketplace (**parallel track**, `SK-EKP-005` — never blocks or waits on the gate) | [`../../../expert-knowledge-platform/worksheets/INDEX.md`](../../../expert-knowledge-platform/worksheets/INDEX.md) (`EK-*`) |
 
 `D-*` slices are picked by `/daily`, like `WS-*` and `E-*`. The track's own
 engine-side prereq is **satisfied**: E-03 (memory scoping) merged in #851 and

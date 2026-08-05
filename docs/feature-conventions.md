@@ -61,9 +61,14 @@ Two namespaces, both globally unique:
   sticky — never renumber. ("SK" is a historical prefix retained for ID
   stability; treat it as opaque.)
 
-IDs are immutable once a feature cites them. If a decision is reversed,
-add a new ID (`SK-AUTH-014` supersedes `SK-AUTH-007`) and mark the old one
-`Status: superseded by SK-AUTH-014`. Don't delete.
+IDs are immutable, monotonic, and never renumbered or reused. When a decision
+is reversed, mint a new ID (`SK-AUTH-014` replaces `SK-AUTH-007`) and **remove
+the superseded decision entirely** — delete its shard/entry rather than leaving
+a `superseded` stub (founder-directed 2026-08-05). Git history preserves the old
+body; the retired number is never reused, so a gap in the sequence just means a
+decision was removed. The replacing decision must be **self-contained**: fold
+any still-live substance forward into it and repoint every reference to the new
+ID, so nothing cites the deleted one.
 
 ## 3. FEATURE.md template
 
