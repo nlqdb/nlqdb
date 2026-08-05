@@ -4,7 +4,7 @@
 > said, verbatim in substance: *"give it priority."* That directive is recorded
 > here faithfully — **and** the weekly focus (the `SK-PIVOT-016` dogfood gate,
 > founder-set 2026-07-28) is itself a documented decision, so the sequencing
-> between the two is one of the four decisions queued for a founder lock in
+> between the two is one of the five decisions queued for a founder lock in
 > [`blocked-by-human.md`](../blocked-by-human.md) (🔒, per
 > [`GLOBAL-033`](../decisions/GLOBAL-033-resolution-defaults.md)). Until locked,
 > the conservative default applies: **this vision proceeds in the strategy lane
@@ -12,7 +12,7 @@
 > focus.** Note the two are not rivals: the gate's D-08 pack runner is itself
 > the substrate this vision runs on — gate work is empire work.
 >
-> **Promotion trigger:** **founder locks, and nothing else** — the four
+> **Promotion trigger:** **founder locks, and nothing else** — the five
 > decisions in [§ Decisions only the founder can lock](#decisions-only-the-founder-can-lock)
 > resolve into minted/amended `GLOBAL-*`/`SK-*` records before any build. Per
 > `P4 / D5`, **no `SK-*` ID is minted here** — `docs/future/` is pre-decision
@@ -152,6 +152,18 @@ The four findings that shape this vision:
    structure wins on quality when authoring is cheap. nlqdb's bet is that
    the NL interface + interview extraction is what makes structure cheap.
 
+**Kill-test (founder-requested 2026-08-05).** The founder's admission
+criterion, verbatim in substance: *"if there are exactly similar then maybe
+we shouldn't invent."* A dedicated refutation sweep (research doc §5b)
+**found no exact clone — ~85% confidence**. Every candidate holds 2–3 of the
+four corners; none combines non-technical authoring with a computable
+schema. The two half-markets — expert monetization over prose (Skill
+Refinery, Paydog, Kopai) and paid structured queries for agents over
+bring-your-own databases (OnDB, the likeliest convergence threat) — are
+converging monthly. Read: **the idea passes the kill-test today, and the
+white-space window is quarters, not years** — which is itself an input to
+the sequencing lock (decision #4 below).
+
 ## Decisions only the founder can lock
 
 Queued as one bundled 🔒 decision-to-lock bullet in
@@ -172,6 +184,54 @@ Queued as one bundled 🔒 decision-to-lock bullet in
 4. **Sequencing** — (a) research + codification proceed in the strategy lane
    while the `SK-PIVOT-016` gate stays the execution focus (conservative
    default, applied now), or (b) this displaces the weekly focus explicitly.
+   The kill-test's timing read (window = quarters, not years) argues for
+   deciding this sooner rather than later; it does not decide it.
+5. **Repo & IP posture** — see [§ Repo & IP posture](#repo--ip-posture-founder-thoughts-2026-08-05-undecided)
+   below: stay in nlqdb (FSL) vs a new private proprietary repo vs a hybrid
+   split. Conservative default: nothing moves; everything stays where it is.
+
+## Repo & IP posture (founder thoughts, 2026-08-05 — undecided)
+
+The founder is weighing whether this platform should be developed in a **new
+private repository** for proprietary control, versus staying inside the
+public FSL monorepo. One stated concern with the private route was GitHub
+Actions capacity on private repos. Codified here with the `P2` facts; the
+decision is founder lock #5 above.
+
+**The CI-cost concern is a non-issue (researched 2026-08-05, official GitHub
+docs):** private repos on the Free plan get **2,000 Actions minutes/month**;
+overage is metered at **$0.006/min** for the standard Linux runner (≈ $12
+for a further 2,000 min); **self-hosted runners are free** on private repos
+(the announced Mar-2026 metering was postponed indefinitely). At nlqdb's
+scale a private repo pays for its own CI out of pocket change — the repo
+choice is therefore a **pure IP-strategy decision**, not an infrastructure
+trade-off. Each repo's CI runs in that repo; no cross-repo arrangement is
+contemplated.
+
+**The `P1` tensions a private repo must resolve (founder call, not
+agent-inferable):**
+
+- [`GLOBAL-019`](../decisions/GLOBAL-019-apache2-open-source-core.md) makes
+  nlqdb's core FSL source-available with *no Cloud-only features in the
+  critical path*, and the trust pillar leans on
+  [`SK-PIVOT-005`](../features/agent-memory-pivot/decisions/SK-PIVOT-005-fsl-self-host.md)
+  self-hostability as substance. A proprietary platform is admissible as a
+  **separate product** on top of the open rails, but if expert-platform
+  capability creeps into nlqdb's critical path as closed code, GLOBAL-019 is
+  contradicted and must be explicitly superseded first.
+- **Disclosure reality:** this vision doc and its research live in the
+  public nlqdb repo *today* — the idea's framing is already public. If
+  proprietary matters, the lock should come quickly, and detailed product
+  design (interview mechanics, marketplace design) should land in the
+  private home once one exists, not here.
+
+**Pre-drafted options for the lock:** (a) everything stays in nlqdb under
+FSL — simplest, keeps the trust story coherent, forfeits proprietary
+control; (b) a new private repo for the platform, paying its own CI
+(~$0–12/mo) — proprietary, but weakens the self-host trust substance for
+this product and forks the toolchain; (c) hybrid — rails, packs and journeys
+stay public in nlqdb (they are nlqdb surfaces per the rails table), only the
+marketplace/fee surface is private. No default beyond "nothing moves."
 
 ## Non-blocking clause (read this before acting on anything above)
 

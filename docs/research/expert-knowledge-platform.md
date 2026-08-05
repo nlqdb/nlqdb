@@ -179,6 +179,39 @@ Marketplace-economics reference points: Pickaxe creators keep 90–92%
 Coachvox ~10%; general AI-marketplace cuts run 15–30%
 ([fast.io](https://fast.io/resources/top-ai-agent-marketplaces/)).
 
+### §5b. Kill-test addendum (2026-08-05, second pass — founder-requested)
+
+The founder's admission criterion: *"if there are exactly similar then maybe
+we shouldn't invent."* A dedicated refutation sweep (10 search phrasings +
+direct fetches of every candidate) **found no exact clone — ~85% confidence.**
+No product combines non-technical authoring with a computable schema; the
+market splits into two lanes that never intersect:
+
+- **Expert-monetization lane (prose inside):** Skill Refinery (50/50 split;
+  MCP tools are `search_skills`/`get_skill`/`list_skills` — a retrieval
+  catalog, not a database; PR-driven, no independent traction —
+  [site](https://www.mattcretzman.com/skill-refinery)) · Paydog (Stripe-style
+  creator pricing, **waitlist-stage**, showcased numbers are mockups —
+  [paydog.app](https://paydog.app/)) · Kopai (per-message, 70% to creator,
+  tiny live traction — [Product Hunt](https://www.producthunt.com/products/kopai-the-marketplace-for-ai-agents)) ·
+  PLM Network (70/20/10 RAG-container royalties, press-release-driven —
+  [cioinfluence](https://cioinfluence.com/machine-learning/startup-launches-first-ai-knowledge-clearinghouse-paying-experts-royalties-for-ai-use-of-their-work/)).
+- **Structured-data-monetization lane (no authoring):** **OnDB** — the most
+  similar mechanics found and the likeliest convergence threat: paid
+  per-query endpoints over real schemas (Postgres/ClickHouse/…, HTTP-402
+  settlement, "if it has a schema, it works") but sellers must *bring* a
+  database; early-access, data-vendor audience ([ondb.ai](https://www.ondb.ai/)) ·
+  datapoint.market (agents buy datasets, x402/USDC, alpha) · Human
+  Native→Cloudflare pay-per-crawl content licensing.
+
+Big-platform check: Google plans a Q4-2026 *agent* marketplace, Anthropic's
+marketplace sells enterprise tools, OpenAI bills agent usage — none pays
+experts for knowledge ([TNW](https://thenextweb.com/news/google-cloud-next-ai-agents-agentic-era)).
+The x402 agentic-payment rail (Coinbase/Cloudflare) is an accelerant, not a
+competitor. **Timing read:** the two half-lanes are converging monthly
+(Kopai ~06/2026, PLM 07/2026, Nexus 07/2026, OnDB early access) — the
+white-space window is quarters, not years.
+
 ## 6. Synthesis — four findings
 
 1. **The representation gap is real and category-wide.** Every expertise
