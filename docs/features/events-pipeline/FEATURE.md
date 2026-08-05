@@ -85,7 +85,7 @@ when-to-load:
 
 ### SK-EVENTS-007 — PostHog as a future second sink, gated on a real cohort question
 
-- **Status:** Superseded by `SK-EVENTS-013` — the named trigger (a real lifecycle/funnel question, founder directive 2026-07-16) landed and the sink is wired exactly where this decision reserved it (`apps/events-worker/src/sinks/posthog.ts`).
+- **Status:** Superseded by `SK-EVENTS-013` — the named trigger landed and the sink is wired where this decision reserved it.
 
 ### SK-EVENTS-008 — Retry exhaustion drops silently; DLQ deferred until OTel signal warrants it
 
@@ -173,7 +173,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-021** — Each external system has one canonical owning module. *In this feature:* the events-worker owns `EVENTS_QUEUE` (consumer); `packages/events/` owns the producer types; Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/`, so `SK-EVENTS-009`'s sink imports `writeQueryLog` rather than POSTing (owner-to-owner deps are GLOBAL-021-allowed).
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this feature:* `SK-EVENTS-010` + `SK-EVENTS-011`.
-- **GLOBAL-034** — Analytics stack. *In this feature:* the PostHog sink (`SK-EVENTS-013`) drains `EVENTS_QUEUE` server-side, fanning every `ProductEvent` out to PostHog for funnels/cohorts/retention.
+- **GLOBAL-034** — Analytics stack. *In this feature:* the PostHog sink (`SK-EVENTS-013`) fans every `ProductEvent` out to PostHog for funnels/cohorts/retention.
 
 ## Open questions / known unknowns
 
