@@ -200,6 +200,7 @@ supported; else read manually before editing.)
 | `apps/web/src/data/solve.ts`, `apps/web/src/pages/solve/**` | `docs/features/solve-pages/FEATURE.md` |
 | `apps/web/src/data/blog.ts`, `apps/web/src/pages/blog/**`, `apps/web/src/lib/inline-md.ts` | `docs/features/blog/FEATURE.md` |
 | agent-memory pivot: `apps/web/src/pages/agents/**`, `apps/api/src/db-create/presets/agent-memory-v1.ts`, `apps/api/src/memory/**`, `tools/docs-memory/**` (dogfood docs→memory producer), `agent_memory_v1` schema + `app.agent_id` RLS + `nlqdb_remember`/`nlqdb_recall` MCP tools | `docs/features/agent-memory-pivot/FEATURE.md` (also touches `hosted-db-create`, `mcp-server`, `ask-pipeline`) |
+| expert-knowledge platform ("Become AI" marketplace): `docs/features/expert-knowledge-platform/**` (planned — no code yet; the product surface will live partly in a private repo per `SK-EKP-003`) | `docs/features/expert-knowledge-platform/FEATURE.md` |
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/FEATURE.md` |
 | `apps/docs/**`, `docs.nlqdb.com` Starlight site | `docs/features/docs-site/FEATURE.md` |
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |

@@ -1,5 +1,12 @@
 # SK-PIVOT-020 — The pivot's business model, first cut: free is self-host + hosted free tier + BYO key; paid is hosted memory *operations* on the existing premium chain
 
+> **Status: superseded 2026-08-05 by
+> [`SK-PIVOT-023`](./SK-PIVOT-023-two-axis-business-model.md)** (founder,
+> in-session): the model gains a second axis — the expert-knowledge
+> marketplace fee (`SK-EKP-002`). Axis 1 (everything below about free +
+> hosted memory operations) carries forward unchanged inside SK-PIVOT-023;
+> only the "no second monetization system" clause is retired.
+
 - **Decision (founder, 2026-07-28 — a deliberate first cut):** The
   agent-memory wedge monetizes on **one** axis — *hosted memory operations*.
   - **Free:** self-host under FSL-1.1 ([`GLOBAL-019`](../../../decisions/GLOBAL-019-apache2-open-source-core.md),

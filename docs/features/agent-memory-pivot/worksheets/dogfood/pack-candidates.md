@@ -6,7 +6,7 @@ list of niche useful agents in the queue?"* — we did not; only pack #1 repo-op
 founder-ops [D-05](D-05-founder-ops-pack.md) existed).
 **What this is not.** No candidate here is decided, no `SK-*` ID is minted, no skill file
 exists for any of them. **Awaiting founder ranking — queued 2026-08-04** as a 🔒
-decision-to-lock bullet in [`blocked-by-human.md`](../../../../blocked-by-human.md) #6
+decision-to-lock bullet in [`blocked-by-human.md`](../../../../blocked-by-human.md) #5
 (`GLOBAL-033` as amended: `SK-PIVOT-018` assigns the ranking to founder taste, so no
 codified decision settles it; the formula ordering below stands as the conservative
 default until the founder locks).
@@ -30,7 +30,7 @@ agent-proposed ordering and are what the founder is being asked to re-rank.
 
 ---
 
-## 1. Language-tutor personal assistant — **founder-set #1**
+## 1. Language-tutor personal assistant — **founder-set #1** · pilot "become AI" pack (`SK-EKP-004`)
 
 - **Persona:** the founder themself first (founder-ops adjacent, like D-05), then P2a/P2b
   builders shipping personal-assistant agents.

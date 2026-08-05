@@ -1,22 +1,16 @@
 # Future plan — The expert-knowledge platform ("Become AI")
 
-> **Status:** **vision, unscheduled.** Founder-directed 2026-08-04. The founder
-> said, verbatim in substance: *"give it priority."* That directive is recorded
-> here faithfully — **and** the weekly focus (the `SK-PIVOT-016` dogfood gate,
-> founder-set 2026-07-28) is itself a documented decision, so the sequencing
-> between the two is one of the five decisions queued for a founder lock in
-> [`blocked-by-human.md`](../blocked-by-human.md) (🔒, per
-> [`GLOBAL-033`](../decisions/GLOBAL-033-resolution-defaults.md)). Until locked,
-> the conservative default applies: **this vision proceeds in the strategy lane
-> (research + codification, this document) while the gate stays the execution
-> focus.** Note the two are not rivals: the gate's D-08 pack runner is itself
-> the substrate this vision runs on — gate work is empire work.
->
-> **Promotion trigger:** **founder locks, and nothing else** — the five
-> decisions in [§ Decisions only the founder can lock](#decisions-only-the-founder-can-lock)
-> resolve into minted/amended `GLOBAL-*`/`SK-*` records before any build. Per
-> `P4 / D5`, **no `SK-*` ID is minted here** — `docs/future/` is pre-decision
-> by definition.
+> **Status:** **promoted — decisions locked.** Founder-directed 2026-08-04
+> (*"give it priority"*), and all five governing decisions were
+> **founder-locked in-session on 2026-08-05**. The canonical home is now
+> [`docs/features/expert-knowledge-platform/FEATURE.md`](../features/expert-knowledge-platform/FEATURE.md)
+> (`SK-EKP-001..005`, plus
+> [`SK-PIVOT-023`](../features/agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
+> superseding SK-PIVOT-020). This file remains the narrative — the vision,
+> the marketing asymmetry, the rails mapping, and the research pointers;
+> for any conflict, the FEATURE.md wins. Implementation proceeds **in
+> parallel** with the `SK-PIVOT-016` dogfood gate (`SK-EKP-005`: neither
+> blocks the other); execution planning is the feature's next step.
 
 **Cross-refs:**
 [`docs/research/expert-knowledge-platform.md`](../research/expert-knowledge-platform.md)
@@ -27,8 +21,8 @@
 (schema-only LLM egress — the trust pillar's existing technical floor) ·
 [`SK-PIVOT-018`](../features/agent-memory-pivot/decisions/SK-PIVOT-018-goal-packs.md)
 (goal packs — a profession is a pack) ·
-[`SK-PIVOT-020`](../features/agent-memory-pivot/decisions/SK-PIVOT-020-memory-ops-business-model.md)
-(one monetization axis — the decision a marketplace fee would extend) ·
+[`SK-PIVOT-023`](../features/agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
+(the two-axis business model; supersedes SK-PIVOT-020) ·
 [`SK-PIVOT-021`](../features/agent-memory-pivot/decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md)
 (one-click journeys on one shared runner) ·
 [`language-tutor-assistant.md`](./language-tutor-assistant.md)
@@ -62,16 +56,17 @@ just recall.
 
 **Honesty boundary (binding on any copy written from this doc):**
 
-- *Quiet marketing is never hidden terms.* If/when selling ships, the fee is
-  plainly disclosed to sellers in the selling flow and its terms — quiet in
-  the trust pitch, never concealed from the person paying it.
-- *The trust copy must not exceed its technical substance.* The repo's
-  capability-claim culture (P6; the honest-claims guard tests) forbids
-  marketing "we **can't** read it" while operators technically can. Whether
-  the pillar is "not allowed" (contractual) or "not able" (cryptographic) is
-  founder decision #1 below; until locked, copy may claim only what
-  [`GLOBAL-037`](../decisions/GLOBAL-037-schema-only-llm-egress.md) and the
-  isolation rails already make true.
+- *Quiet marketing is never hidden terms.* The fee is plainly disclosed to
+  sellers in the selling flow and its terms — quiet in the trust pitch,
+  never concealed from the person paying it (`SK-EKP-002`).
+- *The trust copy must not exceed its technical substance.* Locked as
+  **"not allowed"** — contractual prohibition on the true technical floor
+  ([`GLOBAL-037`](../decisions/GLOBAL-037-schema-only-llm-egress.md), RLS,
+  delete, FSL self-host); never "we can't read it" while operators
+  technically can. The roadmap that hardens the claim is **1-click
+  sovereign hosting** — the expert's knowledge DB on their own on-prem
+  machine or cloud account, provisioned with opinionated defaults for
+  non-technical users (`SK-EKP-001`).
 
 ## Why this lands on existing rails
 
@@ -90,7 +85,8 @@ and named; nothing here is a parallel system.
 ## The genuine deltas — where decisions are actually needed
 
 Four things have no existing rail. They are the entire new surface of this
-idea, and each is why the founder locks below exist:
+idea; (c) and (d) are resolved by the 2026-08-05 locks, (a) and (b) are
+design work owned by the feature:
 
 - **(a) Extraction-by-interview.** Every shipped pack journey imports
   knowledge that already exists in files (a repo, a log). A professional's
@@ -104,17 +100,15 @@ idea, and each is why the founder locks below exist:
   tenant B's agents to query (never write) a named knowledge DB, revocably,
   with the same fail-closed posture.
 - **(c) Marketplace + fee.** A take-rate on knowledge sales is a **second
-  monetization axis**, which
-  [`SK-PIVOT-020`](../features/agent-memory-pivot/decisions/SK-PIVOT-020-memory-ops-business-model.md)
-  as written ("no second monetization system") does not permit. Per `P1` this
-  is never worked around silently — the founder must explicitly extend or
-  supersede SK-PIVOT-020 before any selling surface exists.
-- **(d) Trust-claim substance.** "Not allowed" (ToS/DPA — cheap, weaker) vs
-  "not able" (customer-key encryption / E2E — expensive, absolute). The
-  research pass shows every incumbent ships the weak form; the strong form
-  would be a category differentiator but constrains the NL→SQL engine itself
-  (the server must read rows to answer queries — see the research doc's
-  trust-posture table for how competitors square this).
+  monetization axis** — resolved 2026-08-05 by
+  [`SK-PIVOT-023`](../features/agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
+  (supersedes SK-PIVOT-020): a small, Stripe-style, plainly-disclosed fee is
+  axis 2 of the business model (`SK-EKP-002`); the % stays founder-only.
+- **(d) Trust-claim substance.** Resolved 2026-08-05 by `SK-EKP-001`:
+  "not allowed" (contractual, on the true technical floor), never "not
+  able" — with **1-click sovereign hosting** as the roadmap that hardens
+  the claim without the E2E-vs-NL→SQL conflict every incumbent would face
+  (see the research doc's trust-posture table).
 
 ## What the research says (2026-08-05 pass)
 
@@ -161,116 +155,44 @@ schema. The two half-markets — expert monetization over prose (Skill
 Refinery, Paydog, Kopai) and paid structured queries for agents over
 bring-your-own databases (OnDB, the likeliest convergence threat) — are
 converging monthly. Read: **the idea passes the kill-test today, and the
-white-space window is quarters, not years** — which is itself an input to
-the sequencing lock (decision #4 below).
+white-space window is quarters, not years.**
 
-## Decisions only the founder can lock
+## The five locked decisions (founder, 2026-08-05 — canonical in the FEATURE.md)
 
-Queued as one bundled 🔒 decision-to-lock bullet in
-[`blocked-by-human.md`](../blocked-by-human.md) (respecting the GLOBAL-033
-3-bullet cap), with options pre-drafted there. In brief:
+All five were resolved by the founder in-session; the canonical five-field
+records live in
+[`docs/features/expert-knowledge-platform/FEATURE.md`](../features/expert-knowledge-platform/FEATURE.md)
+and
+[`SK-PIVOT-023`](../features/agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md).
+One line each:
 
-1. **Trust-claim substance** — lock "not allowed" (contract/DPA now, honest
-   and cheap) or "not able" (customer-key encryption/E2E, expensive, absolute,
-   and in tension with server-side NL→SQL). Conservative default until locked:
-   copy claims only what is technically true today (GLOBAL-037 + RLS +
-   delete + self-host).
-2. **Monetization** — explicitly extend or supersede `SK-PIVOT-020` to admit
-   a marketplace fee, or reject the fee. Conservative default: no selling
-   surface, no fee copy, nothing built.
-3. **First profession** — recommend inheriting the founder's existing #1
-   (language tutor) as the pilot "become AI" pack, since it is already
-   founder-locked; confirm or name another.
-4. **Sequencing** — (a) research + codification proceed in the strategy lane
-   while the `SK-PIVOT-016` gate stays the execution focus (conservative
-   default, applied now), or (b) this displaces the weekly focus explicitly.
-   The kill-test's timing read (window = quarters, not years) argues for
-   deciding this sooner rather than later; it does not decide it.
-5. **Repo & IP posture** — see [§ Repo & IP posture](#repo--ip-posture-founder-thoughts-2026-08-05-undecided)
-   below: stay in nlqdb (FSL) vs a new private proprietary repo vs a hybrid
-   split. Conservative default: nothing moves; everything stays where it is.
+1. **Trust claim** (`SK-EKP-001`): "not allowed" — contractual on the true
+   technical floor; roadmap = 1-click sovereign hosting (expert's own
+   on-prem/cloud machine, opinionated defaults); never claim "can't read"
+   until a shipped mechanism makes it true.
+2. **Monetization** (`SK-PIVOT-023` + `SK-EKP-002`): two axes — hosted
+   memory ops (unchanged) + a small, Stripe-style, plainly-disclosed
+   marketplace fee; % founder-set at ship time.
+3. **Pilot profession** (`SK-EKP-004`): language tutor, inheriting the
+   founder's #1 pack.
+4. **Sequencing** (`SK-EKP-005`): parallel tracks — the marketplace has its
+   own launch and income and is **not** gated on the `SK-PIVOT-016` dogfood
+   gate; neither blocks the other; the gate keeps its Show HN role and its
+   weekly-focus setting.
+5. **Repo & IP** (`SK-EKP-003`): hybrid — rails/packs/journeys public in
+   nlqdb under FSL; the marketplace product surface in a new private repo
+   with its own CI; no closed code in nlqdb's critical path.
 
-## Repo & IP posture (founder thoughts, 2026-08-05 — undecided)
+**Still deliberately open** (per `D1`/`D2`, tracked in the FEATURE.md's Open
+questions): fee % and payout mechanics (founder-only) · cross-tenant
+grant-primitive design · interview-extraction design · regulated-professions
+liability research · the marketplace's own launch motion and acceptance
+criteria (execution planning).
 
-The founder is weighing whether this platform should be developed in a **new
-private repository** for proprietary control, versus staying inside the
-public FSL monorepo. One stated concern with the private route was GitHub
-Actions capacity on private repos. Codified here with the `P2` facts; the
-decision is founder lock #5 above.
-
-**The CI-cost concern is a non-issue (researched 2026-08-05, official GitHub
-docs):** private repos on the Free plan get **2,000 Actions minutes/month**;
-overage is metered at **$0.006/min** for the standard Linux runner (≈ $12
-for a further 2,000 min); **self-hosted runners are free** on private repos
-(the announced Mar-2026 metering was postponed indefinitely). At nlqdb's
-scale a private repo pays for its own CI out of pocket change — the repo
-choice is therefore a **pure IP-strategy decision**, not an infrastructure
-trade-off. Each repo's CI runs in that repo; no cross-repo arrangement is
-contemplated.
-
-**The `P1` tensions a private repo must resolve (founder call, not
-agent-inferable):**
-
-- [`GLOBAL-019`](../decisions/GLOBAL-019-apache2-open-source-core.md) makes
-  nlqdb's core FSL source-available with *no Cloud-only features in the
-  critical path*, and the trust pillar leans on
-  [`SK-PIVOT-005`](../features/agent-memory-pivot/decisions/SK-PIVOT-005-fsl-self-host.md)
-  self-hostability as substance. A proprietary platform is admissible as a
-  **separate product** on top of the open rails, but if expert-platform
-  capability creeps into nlqdb's critical path as closed code, GLOBAL-019 is
-  contradicted and must be explicitly superseded first.
-- **Disclosure reality:** this vision doc and its research live in the
-  public nlqdb repo *today* — the idea's framing is already public. If
-  proprietary matters, the lock should come quickly, and detailed product
-  design (interview mechanics, marketplace design) should land in the
-  private home once one exists, not here.
-
-**Pre-drafted options for the lock:** (a) everything stays in nlqdb under
-FSL — simplest, keeps the trust story coherent, forfeits proprietary
-control; (b) a new private repo for the platform, paying its own CI
-(~$0–12/mo) — proprietary, but weakens the self-host trust substance for
-this product and forks the toolchain; (c) hybrid — rails, packs and journeys
-stay public in nlqdb (they are nlqdb surfaces per the rails table), only the
-marketplace/fee surface is private. No default beyond "nothing moves."
-
-## Non-blocking clause (read this before acting on anything above)
-
-This vision **gates nothing**. Specifically, and enforceably:
-
-- It adds **no criterion** to the `SK-PIVOT-016` dogfood launch gate and
-  makes **no weekly-focus claim** — the founder's "give it priority" is
-  recorded above, and its effect on sequencing is decision #4, a founder
-  lock, not something an agent infers.
-- It creates **no `D-*` slice**, appears in no worksheet sequence, and adds
-  **no scorecard row**.
-- It mints **no `SK-*` ID** and supersedes **no** existing decision — in
-  particular `SK-PIVOT-020` and `GLOBAL-037` stand unmodified until the
-  founder locks otherwise.
-- **Nothing is built from this doc.** The handoff that produced it authorizes
-  research + codification only. An agent that builds an interview journey, a
-  grant primitive, or any selling surface off this doc alone has violated `P1`.
-- The **only** queue entries this vision may have are (i) the 🔒 bullet above
-  and (ii) pack candidates competing under normal founder ranking.
-
-If you arrived here from a link and are deciding what to work on: **this is
-not it.** Read [`docs/scorecard.md`](../scorecard.md) for what is.
-
-## Deliberately open (do not fake-decide these)
-
-Per `D1` / `D2`, open on purpose until the founder locks or until the stage
-that needs them runs its own `P2` research pass:
-
-- **Fee percentage, pricing, payout mechanics** — reserved to the founder by
-  `SK-PIVOT-020`; no number appears anywhere until locked.
-- **Trust-claim substance** — decision #1 above.
-- **Grant-primitive design** (discovery, revocation, per-query metering vs
-  subscription, buyer identity) — engine research at promotion time, not now.
-- **Interview-extraction design** (how profession-shaped questions are
-  generated; how answers become rows without the professional seeing SQL) —
-  the hardest UX problem here; gets its own research pass when promoted.
-- **Regulated professions** (doctor, lawyer, accountant) — liability and
-  advice-regulation questions are a legal bet; not researched here, must be
-  before any regulated-profession pack ships publicly.
+If you arrived here from a link and are deciding what to work on: read
+[`docs/scorecard.md`](../scorecard.md) and the
+[FEATURE.md](../features/expert-knowledge-platform/FEATURE.md) status line —
+this file is narrative, not the queue.
 
 ## Why it's strategically real
 

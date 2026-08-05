@@ -92,7 +92,7 @@ gate is **0/5**.
 
 ### SK-PIVOT-009 — Per-agent memory scoping is row-level RLS keyed on `app.agent_id`, never query-rewriting the LLM's SQL
 
-**Body:** [`decisions/SK-PIVOT-009-agent-scope-rls.md`](./decisions/SK-PIVOT-009-agent-scope-rls.md). E-03's `agent_isolation` policy is **`AS RESTRICTIVE`** (Postgres ANDs it with `tenant_isolation`; a default-permissive policy would OR — dead code), keyed on the `app.agent_id` GUC with a baked tenant-literal arm so the account principal — and the E-04 sweep — keep full visibility. `end_user_id`/`thread_id` narrowing is an opt-in GUC-keyed **hard gate**, never an advisory SQL filter. Zero-config for the SaaS builder and their coding agent: every scope server-defaulted, narrowing is one request field, anon has no memory surface (SK-PIVOT-010).
+**Body:** [`decisions/SK-PIVOT-009-agent-scope-rls.md`](./decisions/SK-PIVOT-009-agent-scope-rls.md). E-03's `agent_isolation` policy is **`AS RESTRICTIVE`**, keyed on the `app.agent_id` GUC with a baked tenant-literal arm; `end_user_id`/`thread_id` narrowing is an opt-in GUC-keyed **hard gate**, never an advisory SQL filter. Zero-config: every scope server-defaulted, anon has no memory surface (SK-PIVOT-010).
 
 ### SK-PIVOT-010 — E-06's preset on-ramp lives on the authed create surface, never the anonymous `/agents` CreateForm
 
@@ -112,7 +112,7 @@ gate is **0/5**.
 
 ### SK-PIVOT-013 — The lead string is "Analytical memory for AI agents"; the WS-13 founder gate tripped 2026-06-24
 
-**Body:** [`decisions/SK-PIVOT-013-headline-reposition.md`](./decisions/SK-PIVOT-013-headline-reposition.md). Founder tripped the GLOBAL-036 headline gate 2026-06-24: the four gated lead strings (Hero lede, `README` H1+tagline, `llms.txt` lede, `package.json` desc + homepage `<title>`/JSON-LD) now lead with **"Analytical memory for AI agents."**; homepage OG → `/og/agents.png`; the `/agents` CTA rebuilt connect-via-MCP. **Head-only** — the proof follow-on landed in **SK-PIVOT-014** (WS-14), itself since superseded on `/` by SK-WEB-018.
+**Body:** [`decisions/SK-PIVOT-013-headline-reposition.md`](./decisions/SK-PIVOT-013-headline-reposition.md). Founder tripped the GLOBAL-036 headline gate 2026-06-24: all four gated lead strings now lead with **"Analytical memory for AI agents."** Head-only — the proof follow-on landed in SK-PIVOT-014, itself since superseded on `/` by SK-WEB-018.
 
 ### SK-PIVOT-014 — Home-flow reposition: the home's proof leads the wedge (WS-14 follow-on to WS-13)
 
@@ -142,7 +142,13 @@ gate is **0/5**.
 
 ### SK-PIVOT-020 — Business model, first cut: free is self-host + hosted free tier + BYO key; paid is hosted memory *operations* on the existing premium chain
 
-**Body:** [`decisions/SK-PIVOT-020-memory-ops-business-model.md`](./decisions/SK-PIVOT-020-memory-ops-business-model.md). Founder-decided 2026-07-28: free = FSL self-host (`SK-PIVOT-005`/GLOBAL-019) + the hosted free tier + BYO LLM key at 0% (GLOBAL-026 unchanged); paid = the memory **operations** a self-hoster would run themselves — per-agent/per-end-user isolation (E-03), TTL/retention sweeps (E-04), the hosted premium model lane — sold through the **existing GLOBAL-026 premium chain**, no second monetization system, no new meter or endpoint. Pricing numbers/packaging are deliberately **not** decided; nothing paid is live, so no pricing copy rides this.
+**Status:** superseded 2026-08-05 by [`SK-PIVOT-023`](./decisions/SK-PIVOT-023-two-axis-business-model.md) — axis 1 carries forward unchanged; the "no second monetization system" clause is retired.
+
+**Body:** [`decisions/SK-PIVOT-020-memory-ops-business-model.md`](./decisions/SK-PIVOT-020-memory-ops-business-model.md).
+
+### SK-PIVOT-023 — Business model, second cut: two axes — hosted memory operations + the expert-knowledge marketplace fee
+
+**Body:** [`decisions/SK-PIVOT-023-two-axis-business-model.md`](./decisions/SK-PIVOT-023-two-axis-business-model.md). Founder-decided 2026-08-05: axis 1 = hosted memory ops on the GLOBAL-026 premium chain (unchanged, all SK-PIVOT-020 rejections stand); axis 2 = the expert-knowledge marketplace's small, Stripe-style, plainly-disclosed fee ([`SK-EKP-002`](../expert-knowledge-platform/FEATURE.md)), living only in the marketplace surface. Free unchanged; pricing numbers founder-only.
 
 ### SK-PIVOT-021 — Every goal pack ships as a one-click product journey on one shared runner
 
@@ -163,7 +169,7 @@ index in [`docs/decisions.md`](../../decisions.md)).
 - **GLOBAL-019** — Free + Open Source core.
   - *In this feature:* the anti-VC angle leans on it; its stale "Apache-2.0 today" wording (and `architecture.md §0`) is corrected to FSL-1.1→Apache in this PR. The FSL-accurate self-host *marketing copy* is WS-10.
 - **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid.
-  - *In this feature:* the wedge's paid line rides this chain and nothing else (`SK-PIVOT-020`); memory never gets its own meter or SKU.
+  - *In this feature:* the wedge's memory-ops paid line rides this chain and nothing else (`SK-PIVOT-023` axis 1); memory never gets its own meter or SKU. The marketplace fee (axis 2) lives in the expert-knowledge-platform feature, not here.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* every new wedge CTA (matrix "try this", the `/agents` connect CTA) emits the typed event; wedge conversion = a registered user reaching a first answer (GLOBAL-036).
 - **GLOBAL-025** — North-star KPIs (advance ≥ 1, degrade 0).
@@ -172,11 +178,9 @@ index in [`docs/decisions.md`](../../decisions.md)).
 
 ## Open questions / known unknowns
 
-- **Capability-matrix freshness — Resolved.** WS-06's `MATRIX_VERIFIED_ON` +
-  `agentMemoryMatrix.test.ts` fail the §8 gate once the date is invalid, future,
-  or > 60 days old — forcing re-verify against `docs/competitors.md` §4. The
-  >60-day case is `skipIf(CI)`: it fires on a date, so as a CI gate it would
-  redden unrelated PRs (`SK-WEB-027` wired these tests into `ci.yml`).
+- **Capability-matrix freshness — Resolved.** `MATRIX_VERIFIED_ON` +
+  `agentMemoryMatrix.test.ts` force a re-verify against `competitors.md` §4
+  when the date is invalid/stale (>60d case `skipIf(CI)`; see the tests).
 - **Self-host container scope** — pulling `ghcr.io/nlqdb/api` forward (WS-11)
   may exceed one daily run and touches infra; the worksheet flags the
   founder/infra gate.
