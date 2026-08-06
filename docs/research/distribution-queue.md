@@ -18,14 +18,7 @@ body in git history). Earliest drafts: [archive](./distribution-queue-archive.md
 
 ## Drafts — unpublished, newest first
 
-- **"Your link checker can't see your JavaScript."** slug
-  `link-checker-cant-see-your-javascript` · venue dev.to (#testing #webdev
-  #frontend) + r/webdev + lobste.rs (`web`) · testing/UX-integrity lesson
-  (run-75→77 arc). Gist: a dead-link sweep over built HTML reads "0 dead"
-  while six real navigations redirect on click — `location.assign("/p")`
-  strings inside React islands, invisible to a checker parsing `href`/`src`
-  out of `dist/`. Guard the string-literal argument of navigation calls.
-  **(collapsed per D4; body in git history.)**
+_(empty — the "link-checker-cant-see-your-javascript" draft published this run; see Published below.)_
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
@@ -35,6 +28,7 @@ removed by hand. Delete the whole line once no venues remain.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 171 — **https://nlqdb.com/blog/link-checker-cant-see-your-javascript/** — dev.to (#testing #webdev #frontend) + r/webdev + lobste.rs (`web`) · testing/UX-integrity lesson (run-75→77 arc, `SK-WEB-022` — a dead-link sweep over built HTML reads "0 dead" while client-side navigations 307-redirect on click; `location.assign("/path")` is a JS string, never an `href` in `dist/`, so the checker is structurally blind to it, and the built-output sweep never ran on the PR anyway; move the invariant to a source-level unit test matching only the string-literal argument of a real `location` navigation — narrow enough to be false-positive-free)
 - run 169 — **https://nlqdb.com/blog/restrictive-rls-agent-memory-scoping/** — dev.to (#postgres #security #ai) + r/PostgreSQL + lobste.rs (`databases`, `security`) · security lesson (`SK-PIVOT-009` — Postgres RLS policies are `PERMISSIVE` by default and OR-combine, so a per-agent `agent_isolation` policy beside the schema's `tenant_isolation` widens access instead of narrowing it; `AS RESTRICTIVE` AND-combines and is the load-bearing keyword; four traps — link table inherits scope, a `FOR ALL` TTL arm blinds your own cleanup DELETE, model SQL can re-arm the GUC, and "unset" is `nullif(current_setting,'') IS NULL` not `IS NULL` on a pooled backend)
 - run 151 — **https://nlqdb.com/blog/guard-advertised-capabilities-against-code/** — dev.to (#api #testing #devrel) + r/ExperiencedDevs + lobste.rs (`practices`) · integrity/testing lesson (run-62→64 arc — advertised `nlqdb_recall`, a verb never built, so a new user's first call hit "tool not found"; the drift-guard had the same bug; derive the allow-set from the shipped artifact, closed-world, every surface)
 - run 78 — **https://nlqdb.com/blog/smoke-test-walks-the-old-ui/** — r/ExperiencedDevs + lobste.rs (`testing`) · e2e/measurement lesson (the run-58 walker re-true — pinned-literal acceptance walkers are a regression detector, but a red that mixes product-breakage with test-drift costs a full triage; make the fail detail name element + expectation, triage reds within a bounded window, and gate "re-run the walker on PRs touching a walked surface" instead of leaving it a convention) · dev.to posted 2026-07-16: https://dev.to/omer_hochman/the-redesign-shipped-the-smoke-test-kept-walking-the-old-ui-47c8
