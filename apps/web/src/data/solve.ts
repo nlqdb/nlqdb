@@ -2073,13 +2073,13 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     oneLiner:
       "If you need the time between two dates — days from signup to first order, hours to resolve a ticket — ask in plain English. nlqdb compiles the date arithmetic (`end - start` for an interval, `EXTRACT(EPOCH FROM (end - start))/86400` for whole days), runs it in Postgres, and shows the SQL so the unit is the one you meant.",
     painContext:
-      "Measuring elapsed time — days from signup to first order, hours to resolve a support ticket, the lag between two events — is the everyday analytical question that's fiddly to get exactly right. Subtracting two `date` values gives an integer number of days, but subtracting two `timestamp` values gives an `interval`, and that's where people trip: `EXTRACT(DAY FROM interval)` returns only the interval's day component — so a 40-day gap Postgres renders as '1 mon 10 days' reads back as 10, not 40. The reliable whole-day count is `EXTRACT(EPOCH FROM (end - start)) / 86400`, and averaging durations means averaging intervals, not the raw dates.",
+      "Measuring elapsed time — days from signup to first order, hours to resolve a support ticket, the lag between two events — is the everyday analytical question that's fiddly to get exactly right. Subtracting two `date` values gives an integer number of days, but subtracting two `timestamp` values gives an `interval`, and that's where people trip: reach for `age(end, start)` and Postgres normalizes the gap into months — a 40-day span comes back as '1 mon 9 days', so `EXTRACT(DAY FROM age(…))` reads 9, not 40. The reliable whole-day count is `EXTRACT(EPOCH FROM (end - start)) / 86400`, and averaging durations means averaging intervals, not the raw dates.",
     demoGoal: "days between each signup and that customer's first order",
     demoWhy:
       "The date subtraction you'd otherwise hand-write — picking the right two timestamps and getting the unit right — is one English goal here, with the SQL shown so you can confirm both.",
     howNlqdbAnswers: [
       "Ask 'days between each signup and that customer's first order'; nlqdb compiles the date subtraction and runs it in Postgres.",
-      "For a plain day count it uses `EXTRACT(EPOCH FROM (end - start)) / 86400`, not `EXTRACT(DAY FROM …)`, which returns only the day part.",
+      "For a plain day count it uses `EXTRACT(EPOCH FROM (end - start)) / 86400`, not `EXTRACT(DAY FROM age(…))`, whose month-normalized interval drops the day total.",
       "To average durations it runs `AVG(end - start)` over the interval — average time from signup to first order in one query.",
       "Every answer shows the compiled SQL under a trace toggle, so you can confirm the two timestamps and the unit.",
     ],
@@ -2094,8 +2094,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         a: "Ask in plain English — 'days between each signup and that customer's first order.' In Postgres, subtracting one timestamp from another gives an `interval`; for a whole-day count nlqdb compiles `EXTRACT(EPOCH FROM (end - start)) / 86400`. It runs the query in Postgres and shows the SQL, so you can confirm which two timestamps it used and the unit.",
       },
       {
-        q: "Why does EXTRACT(DAY FROM …) give the wrong number of days?",
-        a: "Because `EXTRACT(DAY FROM interval)` returns only the day component of the interval, not the total. Subtracting two timestamps 40 days apart yields an interval Postgres may render as '1 mon 10 days', and `EXTRACT(DAY …)` returns 10, not 40. For the true total, use `EXTRACT(EPOCH FROM (end - start)) / 86400`. nlqdb compiles the epoch form and shows it.",
+        q: "Why does EXTRACT(DAY FROM age(...)) give the wrong number of days?",
+        a: "Because `age(end, start)` returns a month-normalized interval: a 40-day gap comes back as '1 mon 9 days', and `EXTRACT(DAY FROM age(…))` returns only that day component, 9, not 40. Plain subtraction (`end - start`) stays in days, but the count that's robust across any gap is `EXTRACT(EPOCH FROM (end - start)) / 86400`. nlqdb compiles the epoch form and shows it.",
       },
       {
         q: "How do I get the average time between two events in SQL?",
