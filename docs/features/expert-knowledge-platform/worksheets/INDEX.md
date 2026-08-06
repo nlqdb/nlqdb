@@ -4,6 +4,11 @@ Execution track for
 [`docs/features/expert-knowledge-platform/FEATURE.md`](../FEATURE.md).
 Runs **in parallel** with the dogfood gate per `SK-EKP-005` — neither blocks
 the other; a slice here never waits on gate progress and never adds to it.
+Driven by its own recurring loop,
+[`/ek`](../../../../.claude/commands/ek.md) (founder-approved 2026-08-06),
+mirroring `/reach` — because `/daily`'s worst-number lever selection has no
+EK number to pick and would otherwise starve the track (measured: 3 daily
+runs post-lock, 0 EK slices).
 Sized and sequenced like the engine/dogfood tracks: one slice per run where
 possible, concrete `Done when` boxes, prereqs stated.
 
