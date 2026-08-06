@@ -1,10 +1,12 @@
 # EK-01 — Interview-extraction: research → design record
 
-**Status:** research done (2026-08-05, `P2` pass with receipts below) — the
-design record is this slice's remaining output; **detailed product design
-lands in `experts`** once agent access exists (`SK-EKP-003`) · **Repo:**
-nlqdb (rail-level design), `experts` (product detail) · **Risk:** med ·
-**Runs:** 1–2 · **Prereqs:** none
+**Status:** design record minted 2026-08-06 as
+[`SK-EKP-007`](../decisions/SK-EKP-007-interview-extraction-design.md)
+(boxes 1 + 3 below); **remaining: box 2** — EK-04's interview-source adapter
+contract updated to name the record. **Detailed product design lands in
+`experts`** once agent access exists (`SK-EKP-003`) · **Repo:** nlqdb
+(rail-level design), `experts` (product detail) · **Risk:** med · **Runs:**
+1–2 · **Prereqs:** none
 
 ## Goal
 
@@ -106,8 +108,9 @@ answer→row mapping, verification UX, session structure — feeding EK-04
 
 ## Done when
 
-- [ ] Design record covering the five stakes + five questions, minted as a
+- [x] Design record covering the five stakes + five questions, minted as a
       new `SK-EKP` decision (rail-level here; product detail in `experts`).
+      → [`SK-EKP-007`](../decisions/SK-EKP-007-interview-extraction-design.md).
 - [ ] EK-04's interview-source adapter contract updated to match.
-- [ ] The `GLOBAL-037` interview/query boundary stated as a testable
-      invariant.
+- [x] The `GLOBAL-037` interview/query boundary stated as a testable
+      invariant. → `INV-EKP-037` in `SK-EKP-007`.
