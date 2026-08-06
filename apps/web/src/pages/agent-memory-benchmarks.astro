@@ -1,0 +1,454 @@
+---
+import Footer from "../components/Footer.astro";
+import Topnav from "../components/Topnav.astro";
+import {
+  ANALYSIS_GAP,
+  BENCHMARKS,
+  DB_DOES_NOT_WIN,
+  LANDSCAPE_VERIFIED_ON,
+  LOCOMO_AUDIT,
+  NLQDB_EVAL_STATUS,
+  REPORTED_RESULTS,
+} from "../data/memoryBenchmarks";
+import Base from "../layouts/Base.astro";
+
+// /agent-memory-benchmarks — a citable landscape of the agent-memory
+// benchmarks the FIELD publishes (reach R-10 b). It promotes the survey blog
+// post into a standalone linkable asset: benchmarks earn links, product pages
+// don't. Data + honesty invariants live in `data/memoryBenchmarks.ts`; this
+// page only renders. NO nlqdb score appears — the own-results harness
+// (SK-PIVOT-019 / D-07) is still corpus-blocked.
+
+const statusLabel: Record<string, string> = {
+  "self-reported": "Self-reported",
+  disputed: "Disputed",
+};
+---
+
+<Base
+  title="The agent-memory benchmark landscape — nlqdb"
+  description="LoCoMo, LongMemEval, DMR, Mem0, Zep: what each agent-memory benchmark actually measures, whose numbers are self-reported, and the analysis-over-memory gap none of them test."
+  canonical="/agent-memory-benchmarks"
+>
+  <div class="page">
+    <Topnav />
+
+    <main class="bm">
+      <header class="bm-head">
+        <p class="bm-kicker">Benchmark landscape</p>
+        <h1 class="bm-title">The agent-memory benchmark landscape.</h1>
+        <p class="bm-lede">
+          Before writing our own memory-quality benchmark we read the ones the
+          field already uses. The short version: almost every headline number
+          is the vendor&rsquo;s own paper, none has been cleanly reproduced by a
+          neutral third party, and almost none of them measure the thing we
+          care about &mdash; analysis over memory. This page is the honest map,
+          with every number linked to its source.
+        </p>
+      </header>
+
+      <section class="bm-section" aria-labelledby="benchmarks-title">
+        <h2 class="bm-h2" id="benchmarks-title">What each benchmark measures</h2>
+        <div class="bm-table-wrap">
+          <table class="bm-table">
+            <thead>
+              <tr>
+                <th scope="col">Benchmark</th>
+                <th scope="col">Measures</th>
+                <th scope="col">Scale</th>
+                <th scope="col">Grading</th>
+                <th scope="col">Isolates analysis?</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                BENCHMARKS.map((b) => (
+                  <tr>
+                    <th scope="row">
+                      <a href={b.source.url} target="_blank" rel="noopener noreferrer">
+                        {b.name}
+                      </a>
+                      <span class="bm-meta">
+                        {b.publisher} &middot; {b.venue} &middot; {b.year}
+                      </span>
+                    </th>
+                    <td>{b.measures}</td>
+                    <td>{b.scale}</td>
+                    <td>{b.grading}</td>
+                    <td class="bm-analysis">
+                      {b.isolatesAnalysis ? (
+                        <span class="bm-yes">Yes</span>
+                      ) : (
+                        <span class="bm-no" title="Grades end-to-end recall, not aggregation over memory">
+                          &#10007; No
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="bm-section" aria-labelledby="results-title">
+        <h2 class="bm-h2" id="results-title">The headline numbers &mdash; and who reported them</h2>
+        <div class="bm-table-wrap">
+          <table class="bm-table">
+            <thead>
+              <tr>
+                <th scope="col">System</th>
+                <th scope="col">Benchmark</th>
+                <th scope="col">Claim</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                REPORTED_RESULTS.map((r) => (
+                  <tr>
+                    <th scope="row">{r.system}</th>
+                    <td>{r.benchmark}</td>
+                    <td>
+                      {r.claim}
+                      <span class="bm-reporter">
+                        {r.reporter} &mdash;{" "}
+                        <a href={r.source.url} target="_blank" rel="noopener noreferrer">
+                          {r.source.label}
+                        </a>
+                      </span>
+                    </td>
+                    <td>
+                      <span class={`bm-pill bm-pill--${r.status}`}>{statusLabel[r.status]}</span>
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="bm-section" aria-labelledby="audit-title">
+        <h2 class="bm-h2" id="audit-title">The reproducibility reality</h2>
+        <p>{LOCOMO_AUDIT.intro}</p>
+        <ul class="bm-list">
+          {LOCOMO_AUDIT.findings.map((f) => <li>{f.text}</li>)}
+        </ul>
+        <p class="bm-cite">
+          <a href={LOCOMO_AUDIT.source.url} target="_blank" rel="noopener noreferrer">
+            {LOCOMO_AUDIT.source.label}
+          </a>
+          . The two leading vendors also publicly dispute each other&rsquo;s LoCoMo
+          methodology &mdash; treat every leaderboard number here as directional,
+          not settled.
+        </p>
+      </section>
+
+      <section class="bm-section" aria-labelledby="gap-title">
+        <h2 class="bm-h2" id="gap-title">{ANALYSIS_GAP.heading}</h2>
+        {ANALYSIS_GAP.body.map((p) => <p>{p}</p>)}
+      </section>
+
+      <section class="bm-section" aria-labelledby="concede-title">
+        <h2 class="bm-h2" id="concede-title">{DB_DOES_NOT_WIN.heading}</h2>
+        <p>{DB_DOES_NOT_WIN.body}</p>
+      </section>
+
+      <section class="bm-section" aria-labelledby="nlqdb-title">
+        <h2 class="bm-h2" id="nlqdb-title">{NLQDB_EVAL_STATUS.heading}</h2>
+        {NLQDB_EVAL_STATUS.body.map((p) => <p>{p}</p>)}
+        <p class="bm-cta-wrap">
+          <a class="cta" href="/agents/">See analytical memory for agents &rarr;</a>
+          <a class="bm-textlink" href={`/blog/${NLQDB_EVAL_STATUS.blogSlug}/`}>
+            Read the full survey
+          </a>
+        </p>
+      </section>
+
+      <p class="bm-verified">
+        Landscape re-verified against the cited sources on {LANDSCAPE_VERIFIED_ON}.
+      </p>
+    </main>
+
+    <Footer />
+  </div>
+</Base>
+
+<style is:global>
+  /* /agent-memory-benchmarks — reference/landscape page. Same editorial
+     system as /manifesto: single --col measure, display type for headings +
+     prose, --mono eyebrows, hairline tables, lime only on the closing CTA. */
+  .bm {
+    max-width: var(--col);
+    margin: 0 auto;
+    padding: clamp(56px, 9vw, 96px) 0 clamp(56px, 8vw, 96px);
+    font-family: var(--display);
+    color: var(--body);
+  }
+
+  .bm-head {
+    margin-bottom: clamp(40px, 6vw, 64px);
+  }
+
+  .bm-kicker {
+    margin: 0 0 20px;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .bm-title {
+    font-family: var(--display);
+    font-size: var(--t-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.02;
+    color: var(--ink);
+    text-wrap: balance;
+    margin: 0 0 24px;
+  }
+
+  .bm-lede {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: var(--t-large);
+    line-height: 1.55;
+    color: var(--body);
+    margin: 0;
+  }
+
+  .bm-section {
+    margin: 0 0 clamp(44px, 6vw, 64px);
+  }
+
+  .bm-section > p {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: var(--t-large);
+    line-height: 1.55;
+    color: var(--body);
+    margin: 0 0 1.1em;
+  }
+
+  .bm-section > p:last-of-type {
+    margin-bottom: 0;
+  }
+
+  .bm-h2 {
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.05;
+    color: var(--ink);
+    margin: 0 0 20px;
+  }
+
+  /* Hairline tables, no card chrome — the /manifesto table system. */
+  .bm-table-wrap {
+    overflow-x: auto;
+  }
+
+  .bm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    line-height: 1.5;
+    text-align: left;
+    color: var(--body);
+  }
+
+  .bm-table th,
+  .bm-table td {
+    padding: 16px 16px 16px 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    font-weight: 400;
+  }
+
+  .bm-table thead th {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: var(--t-small);
+    font-family: var(--mono);
+    padding-bottom: 10px;
+    white-space: nowrap;
+  }
+
+  .bm-table th[scope="row"] {
+    color: var(--ink);
+    font-family: var(--display);
+    font-weight: 600;
+  }
+
+  .bm-table th[scope="row"] a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 3px;
+  }
+
+  .bm-table th[scope="row"] a:hover {
+    text-decoration-color: var(--ink);
+  }
+
+  .bm-meta {
+    display: block;
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+  }
+
+  .bm-reporter {
+    display: block;
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+
+  .bm-reporter a,
+  .bm-cite a {
+    color: var(--body);
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 3px;
+  }
+
+  .bm-reporter a:hover,
+  .bm-cite a:hover {
+    color: var(--ink);
+    text-decoration-color: var(--ink);
+  }
+
+  .bm-analysis {
+    white-space: nowrap;
+  }
+
+  .bm-no {
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: var(--t-small);
+  }
+
+  .bm-yes {
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: var(--t-small);
+  }
+
+  /* Status pills — mono, hairline. Disputed carries a warning tint; the
+     rest read muted so no self-reported number looks endorsed. */
+  .bm-pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    letter-spacing: 0.02em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  .bm-pill--self-reported {
+    color: var(--muted);
+  }
+
+  .bm-pill--disputed {
+    color: #f4b942;
+    border-color: #f4b942;
+  }
+
+  .bm-list {
+    margin: 0 0 1.1em;
+    padding-left: 1.2em;
+  }
+
+  .bm-list li {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: var(--t-large);
+    line-height: 1.55;
+    color: var(--body);
+    margin: 0 0 0.6em;
+  }
+
+  .bm-cite {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: var(--t-body);
+    line-height: 1.6;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .bm-cta-wrap {
+    margin: clamp(28px, 4vw, 40px) 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 24px;
+    align-items: baseline;
+  }
+
+  .bm-textlink {
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--body);
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 3px;
+  }
+
+  .bm-textlink:hover {
+    color: var(--ink);
+    text-decoration-color: var(--ink);
+  }
+
+  .bm-verified {
+    margin: clamp(40px, 6vw, 64px) 0 0;
+    padding-top: clamp(24px, 3vw, 32px);
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    letter-spacing: 0.02em;
+    color: var(--muted);
+  }
+
+  @media (max-width: 720px) {
+    .bm-table thead {
+      display: none;
+    }
+    .bm-table,
+    .bm-table tbody,
+    .bm-table tr {
+      display: block;
+    }
+    .bm-table tr {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+    .bm-table tr:last-child {
+      border-bottom: none;
+    }
+    .bm-table th[scope="row"] {
+      display: block;
+      padding: 0 0 8px;
+      border-bottom: none;
+    }
+    .bm-table td {
+      display: block;
+      padding: 2px 0;
+      border-bottom: none;
+    }
+  }
+</style>
+</Base>
