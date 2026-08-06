@@ -1879,6 +1879,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "running-total-cumulative-sum-in-sql",
       "count-consecutive-days-streak-in-sql",
       "month-over-month-growth-in-sql",
+      "calculate-time-between-two-dates-in-sql",
     ],
   },
   {
@@ -2063,6 +2064,69 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "pivot-rows-into-columns",
       "find-duplicate-rows-in-my-data",
       "find-top-n-rows-per-group",
+    ],
+  },
+  {
+    slug: "calculate-time-between-two-dates-in-sql",
+    persona: "P3 analyst",
+    searchTitle: "How do I calculate the time between two dates in SQL?",
+    oneLiner:
+      "If you need the time between two dates — days from signup to first order, hours to resolve a ticket — ask in plain English. nlqdb compiles the date arithmetic (`end - start` for an interval, `EXTRACT(EPOCH FROM (end - start))/86400` for whole days), runs it in Postgres, and shows the SQL so the unit is the one you meant.",
+    painContext:
+      "Measuring elapsed time — days from signup to first order, hours to resolve a support ticket, the lag between two events — is the everyday analytical question that's fiddly to get exactly right. Subtracting two `date` values gives an integer number of days, but subtracting two `timestamp` values gives an `interval`, and that's where people trip: reach for `age(end, start)` and Postgres normalizes the gap into months — a 40-day span comes back as '1 mon 9 days', so `EXTRACT(DAY FROM age(…))` reads 9, not 40. The reliable whole-day count is `EXTRACT(EPOCH FROM (end - start)) / 86400`, and averaging durations means averaging intervals, not the raw dates.",
+    demoGoal: "days between each signup and that customer's first order",
+    demoWhy:
+      "The date subtraction you'd otherwise hand-write — picking the right two timestamps and getting the unit right — is one English goal here, with the SQL shown so you can confirm both.",
+    howNlqdbAnswers: [
+      "Ask 'days between each signup and that customer's first order'; nlqdb compiles the date subtraction and runs it in Postgres.",
+      "For a plain day count it uses `EXTRACT(EPOCH FROM (end - start)) / 86400`, not `EXTRACT(DAY FROM age(…))`, whose month-normalized interval drops the day total.",
+      "To average durations it runs `AVG(end - start)` over the interval — average time from signup to first order in one query.",
+      "Every answer shows the compiled SQL under a trace toggle, so you can confirm the two timestamps and the unit.",
+    ],
+    whatItDoesnt: [
+      "The two timestamps are ones you name — 'signup' and 'first order'. nlqdb computes the difference between the columns you point at; it won't infer which two events bound the duration.",
+      "A duration is only as correct as the stored timestamps — nlqdb subtracts the values as stored; it doesn't reconcile columns saved in different time zones for you.",
+      "The public `<nlq-data>` embed is read-scoped — it returns the computed durations, it doesn't write. Persisting a duration column goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I calculate the time between two dates in SQL?",
+        a: "Ask in plain English — 'days between each signup and that customer's first order.' In Postgres, subtracting one timestamp from another gives an `interval`; for a whole-day count nlqdb compiles `EXTRACT(EPOCH FROM (end - start)) / 86400`. It runs the query in Postgres and shows the SQL, so you can confirm which two timestamps it used and the unit.",
+      },
+      {
+        q: "Why does EXTRACT(DAY FROM age(...)) give the wrong number of days?",
+        a: "Because `age(end, start)` returns a month-normalized interval: a 40-day gap comes back as '1 mon 9 days', and `EXTRACT(DAY FROM age(…))` returns only that day component, 9, not 40. Plain subtraction (`end - start`) stays in days, but the count that's robust across any gap is `EXTRACT(EPOCH FROM (end - start)) / 86400`. nlqdb compiles the epoch form and shows it.",
+      },
+      {
+        q: "How do I get the average time between two events in SQL?",
+        a: "Ask for the average directly — 'average time from signup to first order.' In Postgres you can average intervals: `AVG(first_order_at - signed_up_at)` returns an average interval, and dividing the epoch by 86400 gives it in days. nlqdb picks the form from your English and shows the SQL, so the averaged unit is the one you meant.",
+      },
+      {
+        q: "Can I compute durations on a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask for the time between your two columns in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and the answer is read-only — nlqdb returns the durations, it doesn't write them back to a column.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.postgresql.org/docs/current/functions-datetime.html",
+        label:
+          "PostgreSQL docs — date/time functions and operators, the canonical reference for interval subtraction, `age()`, and `EXTRACT(EPOCH FROM …)`.",
+      },
+      {
+        url: "https://stackoverflow.com/questions/tagged/datediff",
+        label:
+          "Stack Overflow — the `datediff` tag, the standing hub for 'difference between two dates/timestamps' questions across dialects, including the interval-vs-total-days trap.",
+      },
+      {
+        url: "https://stackoverflow.com/questions/tagged/date-arithmetic",
+        label:
+          "Stack Overflow — the `date-arithmetic` tag, the broader hub for adding and subtracting dates and intervals in SQL.",
+      },
+    ],
+    related: [
+      "count-rows-per-day-including-missing-dates",
+      "month-over-month-growth-in-sql",
+      "count-consecutive-days-streak-in-sql",
     ],
   },
   {
