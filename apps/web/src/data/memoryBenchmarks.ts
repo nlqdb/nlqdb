@@ -139,9 +139,15 @@ export const LOCOMO_AUDIT: {
   intro:
     "The most-cited suite, LoCoMo, was independently audited in 2025 — the first neutral third-party check of any of these numbers. It does not hold up as a settled scoreboard:",
   findings: [
-    { text: "≈6.4% of the answer key is simply wrong — 99 score-corrupting errors across 1,540 questions." },
-    { text: "The LLM judge accepts up to 63% of intentionally-wrong answers, so a high score can mean the grader is lenient, not the system accurate." },
-    { text: "The honest ceiling on the suite as published is roughly 93–94%, not 100% — reported near-perfect scores are inside the noise of a flawed key." },
+    {
+      text: "≈6.4% of the answer key is simply wrong — 99 score-corrupting errors across 1,540 questions.",
+    },
+    {
+      text: "The LLM judge accepts up to 63% of intentionally-wrong answers, so a high score can mean the grader is lenient, not the system accurate.",
+    },
+    {
+      text: "The honest ceiling on the suite as published is roughly 93–94%, not 100% — reported near-perfect scores are inside the noise of a flawed key.",
+    },
   ],
   source: {
     label: "Penfield Labs — “We audited LoCoMo”",
