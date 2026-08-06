@@ -16,6 +16,7 @@ const SITE = "https://nlqdb.com";
 const withSlash = (p: string) => (p.endsWith("/") ? p : `${p}/`);
 const STATIC_ROUTES = [
   "/",
+  "/agent-memory-benchmarks",
   "/agents",
   "/architecture",
   "/blog",

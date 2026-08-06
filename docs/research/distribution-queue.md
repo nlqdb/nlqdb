@@ -18,32 +18,6 @@ body in git history). Earliest drafts: [archive](./distribution-queue-archive.md
 
 ## Drafts — unpublished, newest first
 
-- **"Row-level security has a flavour, and the default one is a silent
-  breach."** slug `restrictive-rls-agent-memory-scoping` · venue dev.to
-  (#postgres #security #ai) + r/PostgreSQL + lobste.rs (`databases`,
-  `security`) · security lesson (`SK-PIVOT-009`). Facts: a shared-schema
-  Postgres DB with a permissive `tenant_isolation` policy needs a *second*
-  boundary inside: per-agent, optional end-user/thread. The read path executes
-  free-form LLM SQL — no AST to inject a `WHERE` into, so RLS or nothing. The
-  invariant is one keyword — `CREATE POLICY` defaults to `PERMISSIVE`,
-  permissive policies **OR**-combine and restrictive ones **AND**
-  (postgresql.org/docs/17/sql-createpolicy.html) — so a default-flavour
-  `agent_isolation` is dead code that reads like security in review. Clause:
-  `USING (current_setting('app.agent_id', true) = agent_id OR … = '<tenant>')`
-  — arm two keeps owner + TTL sweep sighted; an unset GUC matches nothing
-  (fail-closed). Gotchas: (1) a link table with no scope column must
-  inherit it from its parent, else it is unrestricted; (2) a "hide expired" TTL arm in
-  a `FOR ALL` `USING` hides those rows from your cleanup `DELETE` too (Table
-  297 note [a]: SELECT/ALL policies apply to a DELETE reading columns in
-  `WHERE`/`RETURNING`), so sweep as owner; (3) denylist
-  `set_config`/`current_setting` in user SQL, else a CTE re-arms it; (4) "GUC
-  unset" is `nullif(current_setting(x, true), '') IS NULL` — a placeholder GUC
-  reads NULL only until something sets it, then resets to `''` for the session
-  — on a pooled connection a bare `IS NULL` lets one narrowed request zero
-  every later unnarrowed read. Test shape: pin `AS RESTRICTIVE` in a DDL test,
-  then run them on real Postgres — two agents, one DB; (4) only reproduces
-  there.
-
 - **"Your link checker can't see your JavaScript."** slug
   `link-checker-cant-see-your-javascript` · venue dev.to (#testing #webdev
   #frontend) + r/webdev + lobste.rs (`web`) · testing/UX-integrity lesson
@@ -61,6 +35,7 @@ removed by hand. Delete the whole line once no venues remain.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 169 — **https://nlqdb.com/blog/restrictive-rls-agent-memory-scoping/** — dev.to (#postgres #security #ai) + r/PostgreSQL + lobste.rs (`databases`, `security`) · security lesson (`SK-PIVOT-009` — Postgres RLS policies are `PERMISSIVE` by default and OR-combine, so a per-agent `agent_isolation` policy beside the schema's `tenant_isolation` widens access instead of narrowing it; `AS RESTRICTIVE` AND-combines and is the load-bearing keyword; four traps — link table inherits scope, a `FOR ALL` TTL arm blinds your own cleanup DELETE, model SQL can re-arm the GUC, and "unset" is `nullif(current_setting,'') IS NULL` not `IS NULL` on a pooled backend)
 - run 151 — **https://nlqdb.com/blog/guard-advertised-capabilities-against-code/** — dev.to (#api #testing #devrel) + r/ExperiencedDevs + lobste.rs (`practices`) · integrity/testing lesson (run-62→64 arc — advertised `nlqdb_recall`, a verb never built, so a new user's first call hit "tool not found"; the drift-guard had the same bug; derive the allow-set from the shipped artifact, closed-world, every surface)
 - run 78 — **https://nlqdb.com/blog/smoke-test-walks-the-old-ui/** — r/ExperiencedDevs + lobste.rs (`testing`) · e2e/measurement lesson (the run-58 walker re-true — pinned-literal acceptance walkers are a regression detector, but a red that mixes product-breakage with test-drift costs a full triage; make the fail detail name element + expectation, triage reds within a bounded window, and gate "re-run the walker on PRs touching a walked surface" instead of leaving it a convention) · dev.to posted 2026-07-16: https://dev.to/omer_hochman/the-redesign-shipped-the-smoke-test-kept-walking-the-old-ui-47c8
 - run 65 — **https://nlqdb.com/blog/one-shot-recovery-permanent-outage/** — dev.to (#postgres #reliability #architecture) + r/ExperiencedDevs + lobste.rs (`practices`) · reliability lesson (`SK-ASK-024` — a run-exactly-once best-effort repair turns one silent skip into a permanent outage; fix the root, keep it idempotent, and re-trigger from the steady-state symptom because the original event never recurs)
@@ -82,7 +57,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 106 — **https://nlqdb.com/blog/store-form-submissions-without-a-backend/** — r/webdev + r/sideproject · `/solve/store-form-submissions-without-backend` · dev.to posted 2026-07-24: https://dev.to/omer_hochman/you-dont-need-a-backend-to-store-form-submissions-you-need-a-place-to-ask-how-many-3kec
 - run 130 — **https://nlqdb.com/blog/not-in-subquery-null-trap/** — r/SQL + r/PostgreSQL · `/solve/find-rows-with-no-match-in-another-table` · dev.to posted 2026-07-20: https://dev.to/omer_hochman/not-in-returned-zero-rows-it-wasnt-your-data-it-was-one-null-4inj
 - run 102 — **https://nlqdb.com/blog/mcp-server-what-does-the-agent-own/** — r/LLMDevs + r/AI_Agents · `/vs/hex` · dev.to posted 2026-08-03: https://dev.to/omer_hochman/every-data-tool-shipped-an-mcp-server-this-year-your-agent-still-cant-build-on-most-of-them-4cn
-- run 55 — **https://nlqdb.com/blog/text-to-sql-accuracy-schemas-your-users-never-build/** — dev.to + lobste.rs + r/LLMDevs
+- run 55 — **https://nlqdb.com/blog/text-to-sql-accuracy-schemas-your-users-never-build/** — lobste.rs + r/LLMDevs · dev.to posted 2026-08-06: https://dev.to/omer_hochman/your-text-to-sql-accuracy-is-measured-on-schemas-your-users-will-never-build-32b2
 - run 67 — **https://nlqdb.com/blog/ai-internal-tool-builder-faster/** — lobste.rs · `/vs/retool` · dev.to posted 2026-07-28: https://dev.to/omer_hochman/ai-made-the-internal-tool-builder-faster-it-didnt-ask-whether-you-needed-the-tool-32ea
 - run 68 — **https://nlqdb.com/blog/offline-llm-eval-rate-limits/** — dev.to + lobste.rs
 - run 69 — **https://nlqdb.com/blog/sitemap-advertising-redirects/** — lobste.rs · dev.to posted 2026-07-21: https://dev.to/omer_hochman/your-sitemap-is-advertising-redirects-and-your-canonical-tag-points-at-one-2860

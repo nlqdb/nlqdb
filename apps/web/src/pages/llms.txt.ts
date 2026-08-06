@@ -29,6 +29,11 @@ const PRIMARY_LINKS = [
     desc: "Analytical memory for AI agents — give an agent a real Postgres it can GROUP BY, JOIN, and aggregate over, not just top-k vector recall.",
   },
   {
+    title: "Agent-memory benchmark landscape",
+    path: "/agent-memory-benchmarks",
+    desc: "What LoCoMo, LongMemEval, DMR, Mem0 and Zep actually measure, whose numbers are self-reported or disputed, and the analysis-over-memory gap none of them test — every figure linked to its source.",
+  },
+  {
     title: "Manifesto",
     path: "/manifesto",
     desc: "Nine non-negotiables that decide every nlqdb design choice.",
