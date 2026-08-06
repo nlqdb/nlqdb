@@ -111,7 +111,7 @@ pain-driven AEO page, `/solve/calculate-time-between-two-dates-in-sql`, answerin
 existing cluster — scalar/aggregate date arithmetic (subtracting two `date`s → integer days, two
 `timestamp`s → an `interval`), not a window function (running-total/MoM/top-N), an ordered-set aggregate
 (median), a set difference (anti-join), or a reshape (pivot). The page names the two real traps:
-`EXTRACT(DAY FROM interval)` returns only the interval's day *component* (a 40-day gap reads back as 10),
+`age(end, start)` month-normalizes the gap (a 40-day span → '1 mon 9 days', so `EXTRACT(DAY FROM age(…))` reads 9, not 40) whereas plain `end - start` stays in days,
 so the whole-day count is `EXTRACT(EPOCH FROM (end - start)) / 86400`; and averaging durations means
 `AVG(end - start)` over intervals. Full SK-SOLVE-001/002/003 shape: paraphrased search-intent `<h1>`,
 4 `howNlqdbAnswers` (each ≤25 w), 3 honest limits (you name the two timestamps; tz-as-stored; read-only
