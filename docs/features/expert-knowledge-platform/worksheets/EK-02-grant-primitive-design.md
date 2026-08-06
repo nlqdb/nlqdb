@@ -1,7 +1,11 @@
 # EK-02 — Cross-tenant read-grant primitive: research → design record
 
-**Status:** research done (2026-08-05, `P2` pass with receipts below) —
-design record + minted decision are this slice's remaining output ·
+**Status:** design record minted 2026-08-06 as
+[`SK-EKP-008`](../decisions/SK-EKP-008-grant-primitive-design.md) (all four
+`Done when` boxes below satisfied). Routing follow-up — the `FEATURE.md`
+index stub and the `INDEX.md` Tracker tick — is deferred to avoid a file
+collision with open PRs #918 (`FEATURE.md`) and #917 (`INDEX.md`); slice
+stays **in-flight** until that follow-up lands. ·
 **Repo:** nlqdb (engine) · **Risk:** med · **Runs:** 1–2 · **Prereqs:** none
 
 ## Goal
@@ -88,9 +92,19 @@ lesson); per-grant read replicas as v1 default (free-tier cost,
 
 ## Done when
 
-- [ ] Design record answers the five questions (money-ladder ones with a
-      founder check-in) and is minted as a new `SK-EKP` decision.
-- [ ] The NL→SQL scope-validation approach (grant tables only; joins to
-      non-granted tables rejected at validation, not just RLS) is specified.
-- [ ] Revocation-latency bound stated and testable.
-- [ ] EK-06's contract updated if the baseline shifts.
+- [x] Design record answers the five questions (money-ladder ones with a
+      founder check-in) and is minted as a new `SK-EKP` decision —
+      [`SK-EKP-008`](../decisions/SK-EKP-008-grant-primitive-design.md). The
+      MoR money call routes to the existing `SK-EKP-002` ship-time founder
+      gate (no new 🔒 bullet spent); the compute-cost call resolves from
+      `GLOBAL-013` + rate-limit rails.
+- [x] The NL→SQL scope-validation approach (grant tables only; joins to
+      non-granted tables rejected at validation, not just RLS) is specified —
+      `SK-EKP-008` "NL→SQL scope validation" (validation-layer scope refusal
+      **and** non-owner SELECT-only role **and** `FORCE ROW LEVEL SECURITY`).
+- [x] Revocation-latency bound stated and testable — `SK-EKP-008`:
+      fail-closed within a **30 s** (env-tunable) grant-status cache bound;
+      `EK-06` must test it (revoke → assert rejection within the bound).
+- [x] EK-06's contract updated if the baseline shifts — baseline
+      **confirmed, no shift**; `EK-06`'s invariants stand, now anchored to
+      `SK-EKP-008`.
