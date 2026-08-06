@@ -41,6 +41,64 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "restrictive-rls-agent-memory-scoping",
+    title: "Row-level security has a flavour. The default one is a silent breach.",
+    description:
+      "Postgres RLS policies default to PERMISSIVE, so they OR together — a per-agent policy beside a tenant policy widens access instead of narrowing it. The one keyword that fixes it, and four traps.",
+    date: "2026-08-06",
+    body: [
+      {
+        kind: "p",
+        text: "We store agent memory in Postgres — one schema per account, four tables. The account boundary is a permissive `tenant_isolation` policy the provisioner writes first: rows are visible when a session GUC matches the account. That's the outer wall. But a single account often runs *several* agents in the same schema, and one agent should not read another's memory. So we needed a second boundary *inside* the tenant one: per-agent scoping, plus optional end-user and thread narrowing.",
+      },
+      {
+        kind: "p",
+        text: "There's no place to bolt that on at query time. The read path executes free-form SQL a language model wrote — there is no AST we own, no `WHERE` clause we can splice a scope into. It's row-level security or it's nothing. So we wrote an `agent_isolation` policy: the row is visible when `current_setting('app.agent_id')` equals the row's `agent_id`. It read correctly in review. It passed. And it did nothing.",
+      },
+      { kind: "h2", text: "The default flavour OR-combines — so a second policy widens access" },
+      {
+        kind: "p",
+        text: "Every Postgres policy has a flavour, and `CREATE POLICY` defaults to `PERMISSIVE`. The rule that bites: permissive policies **OR** together; restrictive policies **AND** with them (postgresql.org/docs/17/sql-createpolicy.html). We already had one permissive policy on the table — `tenant_isolation`. Adding a second *permissive* `agent_isolation` next to it means a row is visible when the tenant matches **OR** the agent matches. The tenant already matches for every row in the schema. The agent arm can only ever add rows to that set — it is structurally incapable of removing any. The policy that was supposed to wall agents off from each other was dead code that read like security.",
+      },
+      {
+        kind: "p",
+        text: "This is the dangerous class of bug: not a crash, not a red test, but a green checkmark over an OR that should have been an AND. In a code review the clause looks exactly right — it names the column, it reads the GUC, it compares them. What it doesn't show you is the boolean it's being combined with two policies over.",
+      },
+      { kind: "h2", text: "One keyword: AS RESTRICTIVE" },
+      {
+        kind: "p",
+        text: "The fix is a single load-bearing keyword. A restrictive policy is AND-ed with the permissive set, so it can *narrow*: a row survives only if the tenant matches **and** the agent matches. Every scope policy we emit is `AS RESTRICTIVE`, and the schema test pins the keyword — because the failure is invisible at runtime, the only place it can be caught is a DDL assertion that fails loud if someone drops the word.",
+      },
+      {
+        kind: "code",
+        lang: "sql",
+        code: "CREATE POLICY agent_isolation ON facts AS RESTRICTIVE\n  USING (\n    current_setting('app.agent_id', true) = agent_id\n    OR current_setting('app.agent_id', true) = '<tenant>'\n  );",
+      },
+      {
+        kind: "p",
+        text: "The second arm is deliberate: the GUC also matches the baked tenant literal, so the account principal — the dashboard, cross-agent analytics, the TTL sweep that deletes across every agent through the same connection — stays sighted. Fail *closed*, not blind: an unset GUC matches neither an `agent_id` nor the tenant, so a request that forgot to set its scope sees nothing rather than everything.",
+      },
+      { kind: "h2", text: "Four traps that only show up on real Postgres" },
+      {
+        kind: "ol",
+        items: [
+          "**A link table has no scope column of its own.** Our `entity_facts` join table carries only `(entity_id, fact_id)` — no `agent_id`. Left alone under RLS it is unrestricted. It has to inherit scope from its parent: `USING (entity_id IN (SELECT id FROM entities WHERE <agent arm>))`. A scope boundary is only as complete as its least-scoped table.",
+          "**A \"hide expired\" arm in a FOR ALL policy hides rows from your own cleanup.** We wanted expired memory gone from reads before the sweep runs, so `facts` carries an extra `expires_at > now()` arm. But with no `WITH CHECK` declared, `USING` doubles as the write and delete check for `FOR ALL` policies — so that same arm hides expired rows from the `DELETE` meant to reap them. The sweep has to run as the owner (the tenant arm), or it can never see what it's there to delete.",
+          "**Free-form SQL can re-arm the GUC.** The read path runs model-authored SQL. Nothing stops a query from calling `set_config('app.agent_id', …)` inside a CTE and re-scoping itself. `current_setting`/`set_config` have to be on the SQL denylist, or the boundary is advisory.",
+          "**\"GUC is unset\" is not a plain NULL check.** The obvious test for an absent optional scope is `current_setting('app.thread_id', true) IS NULL`. It's wrong. A custom GUC reads NULL only until something sets it; after a `SET LOCAL` resets at transaction end, it reads the **empty string** for the rest of that backend session. Pooled/HTTP connections reuse backends, so with a bare `IS NULL` the first narrowed request on a connection silently zeroes every later un-narrowed read on it. The correct test is `nullif(current_setting(…), '') IS NULL`.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "Every one of those four is invisible in a unit test that inspects the DDL string. Trap 4 only reproduces with two agents sharing one pooled connection against a live PG16. So the test shape is two-layer: pin `AS RESTRICTIVE` and the exact clauses in a fast DDL test, then run a small integration — two agents, one database, one connection — on real Postgres, because that is the only place the connection-reuse bug will ever show its face.",
+      },
+      {
+        kind: "p",
+        text: "This is a data-modelling pattern, not a product feature: any shared-schema multi-tenant Postgres where a second boundary lives inside the first has the same flavour trap. nlqdb is a database you talk to in plain English, and agent memory is one of the shapes it provisions — four tables, RLS written by the provisioner so that the row a model can read is always the row its scope allows, checked by the database rather than by a `WHERE` clause we hope the model wrote.",
+      },
+    ],
+  },
+  {
     slug: "guard-advertised-capabilities-against-code",
     title: "Your docs promised a tool your server never shipped.",
     description:
