@@ -60,7 +60,6 @@ stays pinned). Channel names in each entry are
   written in parallel — **excluded** from this estimate, eventually-built, and must **not**
   block the `SK-PIVOT-016` gate or any `D-*` slice. Only the pack slice is queue-eligible.
 
-
 ## 2. Support-bot resolution ledger
 
 - **Persona:** P2b (agent-SaaS builder, multi-tenant).
@@ -89,7 +88,6 @@ stays pinned). Channel names in each entry are
   quality transformation on the list, on the strongest written-down demand. (Formula had it
   #3: the corpus is the user's, nothing self-seeds.)
 
-
 ## 3. Research-agent source ledger
 
 - **Persona:** P2a.
@@ -116,7 +114,6 @@ stays pinned). Channel names in each entry are
   work dogfoods it. (Formula had it #6 purely on audience size — the factor the founder
   discounted.)
 
-
 ## 4. Per-end-user memory provenance & retention ledger
 
 - **Persona:** P2b.
@@ -142,7 +139,6 @@ stays pinned). Channel names in each entry are
   difference between shippable and not (erasure enforcement, Spain's DPA guide) —
   **boundary:** the pack stays *queryable provenance* and makes **no** compliance claim (A1
   regulated enterprise is an anti-persona).
-
 
 ## 5. Coding-agent fleet ledger
 
@@ -172,7 +168,6 @@ stays pinned). Channel names in each entry are
   (feeds `SK-PIVOT-016` criterion 1 for free) and the one live coding-agent channel — and are
   the argument if sequencing ever needs a swap. (Formula had it #2 on exactly those.)
 
-
 ## 6. Per-tenant agent usage & cost ledger
 
 - **Persona:** P2b.
@@ -196,7 +191,6 @@ stays pinned). Channel names in each entry are
   already has tools; the honest angle stays *"aggregate the rows your agent already writes"*.
   (Formula #5.)
 
-
 ## 7. Incident / on-call agent memory
 
 - **Persona:** P6 (SRE) with a P2b builder wrapping it.
@@ -219,7 +213,6 @@ stays pinned). Channel names in each entry are
   real ask is an NL skin over the ClickHouse they already run (`SK-MULTIENG-005`), so the pack
   serves only the *builder of* an SRE agent.
 
-
 ## 8. Eval / regression ledger for agent builders
 
 - **Persona:** P2a → P2b.
@@ -238,7 +231,6 @@ stays pinned). Channel names in each entry are
   [confident-ai](https://www.confident-ai.com/blog/llm-agent-evaluation-complete-guide)).
 - **Effort:** ~2 runs. **Locked #8** (founder 2026-08-05 — unchanged): the need is already served
   (Braintrust/MLflow lane); the one advantage is that we dogfood it.
-
 
 ## 9. Sales / pipeline agent memory
 
@@ -261,6 +253,7 @@ stays pinned). Channel names in each entry are
   builder-voice quote found. Treat as demo material until a real ask arrives.
 - **Effort:** ~1–2 runs. **Locked #9** (founder 2026-08-05 — unchanged): demos best, evidenced worst — hypothesis
   until a real ask arrives.
+
 ---
 
 ## Explicitly not proposed (so the next agent doesn't re-derive them)

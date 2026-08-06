@@ -67,11 +67,11 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   (absent 08-04) · `mcp.directory` #23 absent (re-check 08-22) ·
   `awesome-mcp-servers` #10 PR open, badge pushed, awaiting maintainer review ·
   Anthropic connector dir #9 founder/money-gated · PulseMCP #5 re-checks 08-22 ·
-  Cline #24 payload parked (founder queue #3). Plugin/skill venues (R-09): own
+  Cline #24 submitted 08-05 (issue #2197, awaiting review). Plugin/skill venues (R-09): own
   marketplace ✅, claudemarketplaces.com ✅ (crawl-fed), SkillsMP ✅,
-  `claude-community` payload parked, `skillsclaude.org` payload parked.
+  `claude-community` submitted 08-05 (pending review), `skillsclaude.org` dropped 08-05 (security read).
   **Channels live with attributable yield: 4** (organic, dev.to, github, npm);
-  #12 + #22 + #23 + #24 in-flight/parked, yield 0.
+  #12 + #22 + #23 + #24 in-flight, yield 0.
 - Coding-agent walker (R-06): **0/1 surfaced** (baseline 2026-07-20). Not re-run:
   no `ANTHROPIC_API_KEY` in this session.
 - Canonical setup guide (R-04): **complete, 3 of 3** (2026-07-29) — cold-agent
