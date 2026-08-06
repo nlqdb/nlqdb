@@ -18,51 +18,54 @@ yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-in
 Acquisition levers stay pullable when no dogfood lever is — as does premium-chain work
 (`SK-LLM-017`, row #20), one rank below.
 
-**Worst number today (run 168, 2026-08-05):** the **weekly-focus `SK-PIVOT-016` dogfood gate 0/5**
-stays the worst number — **dark (rule 8, 7+ consecutive runs 156/158/163/164/165/166/167)** and **not
+**Worst number today (run 170, 2026-08-06):** the **weekly-focus `SK-PIVOT-016` dogfood gate 0/5**
+stays the worst number — **dark (rule 8, 9+ consecutive runs …165/166/167/168/170)** and **not
 pullable**: criteria 1/2/3/5 gate on **D-04** (prod `NLQDB_MEMORY_DB` + the queue-#2 `NLQDB_API_KEY`
 secret) and criterion **4** (ops-temporal 0/4) has **no GLOBAL-037-compliant agent-movable lever**
 (E-09's two unblock paths are both non-daily: a preset-schema DDL-`ENUM` re-scope that touches the
 `SK-PIVOT-007` free-text contract → needs its own scoping run, or a founder supersession — the doc says
-"do not implement"). **This run pulled a lane-1 distribution lever (row #6: /solve 37 → 38 pages)** —
-a new pain-page `combine-multiple-rows-into-one-value-in-sql` (`STRING_AGG`/`GROUP_CONCAT` roll-up),
-deliberately breaking out of the docs-ambiguity rut of runs 164/165/167 (rule 7). See Last change.
+"do not implement"). **This run pulled a lane-1 distribution lever (row #6: /solve 38 → 39 pages)** —
+a new pain-page `calculate-time-between-two-dates-in-sql` (date-arithmetic: `end - start` interval +
+`EXTRACT(EPOCH …)/86400` whole-day count), a distinct primitive from the window/aggregate/set-op cluster.
+Not a rule-7 rut (last 5 merged dailies: 168 distribution · 167 docs · 166 null · 165 docs · 164 docs).
 **Weekly-focus gate (don't overwrite mid-week):** dogfood **0/5**, unchanged — no agent-movable lever
 this run (D-04 secret-blocked; criterion 4 GLOBAL-037-blocked).
 **Top `blocked-by-human` bullet:** fire the Show HN launch sequence (⏱ ~30 min,
-**idle 53 days since 06-13**) — the only bullet that can move real strangers off 0, still
-condition-gated on the `SK-PIVOT-016` gate (0/5). #2 = submit the `nlqdb-memory` plugin to Anthropic's
-community plugin directory (⏱ ~5 min). Queue **depth 6**; head age 53 d is the real cycle time.
-**Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** (10 d) / **#9 Spider 0.2222** (**17 d**
+**idle 54 days since 06-13**) — the only bullet that can move real strangers off 0, still
+condition-gated on the `SK-PIVOT-016` gate (0/5). #2 = submit nlqdb to the Anthropic **connector
+directory** (money-gated, since 07-21). Queue **depth 2** (#911 drained 6→2); head age 54 d is the real cycle time.
+**Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** (11 d) / **#9 Spider 0.2222** (**18 d**
 stale, resume deferred: async multi-window, `main` moved since the 07-27 checkpoint); rows
 **#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck (free-lane saturation,
 remedy costs money ⇒ rule 4); dogfood gate criteria (D-04 secret-blocked, E-09 GLOBAL-037-blocked).
 
-**Rule 6 — GREEN.** `main@acec640` (#909 merged since run 167) — all 8 deploy workflows **success** on
-their HEAD SHA (`db3e903`: Deploy web / API / MCP / docs / elements / events-worker / coming-soon /
-canary), and CI / Security / Release-npm / docs→memory-resync all **success** on `acec640` (2026-08-05
-14:44Z; #909 was docs-only so no deploy fired — expected). Verified full-green locally on this run's
-branch: `bun run typecheck` (exit 0), `bun run lint` (exit 0, warnings only), `bun run test` (exit 0),
-plus `solve.test.ts` 18/18 and `@nlqdb/web test` 480/480. This run's diff is **one file**
-(`apps/web/src/data/solve.ts`, +64 lines — a new `/solve` entry + one inbound `related` link) plus
-`docs/scorecard.md`. Open PRs (2): **#911** (founder-queue sitting + brand asset, opened this cycle),
-draft **#719** (oldest, **19 days**). This run's files overlap **no** open PR (#911 touches
-`blocked-by-human.md` / pack-candidates / `founder-actions-log.md` / a brand PNG; #719 is a docs-research
-draft). Scorecard regen is step-0-exempt.
+**Rule 6 — GREEN.** `main@e24b029` (#911 merged since run 168, docs-only so no deploy fired — expected).
+Prior deploy state carried: all 8 deploy workflows + CI / Security / Release-npm / docs→memory-resync
+last **success** on their HEAD SHAs through run 168. Verified full-green locally on this run's
+branch (after a `bun install` restored container-lost `@cloudflare/workers-types`/`bun-types` — an
+ephemeral-container artifact, not a code change): `bun run typecheck` (exit 0), `bun run lint` (exit 0,
+warnings only), `solve.test.ts` 18/18, `@nlqdb/web test` 480/480, `@nlqdb/web build` (exit 0 — 129 pages,
+new slug rendered + in sitemap 119 + `llms.txt`). This run's diff is **one code file**
+(`apps/web/src/data/solve.ts`, +~72 lines — a new `/solve` entry + one inbound `related` link) plus
+`docs/scorecard.md`. Open PRs (3): **#914** (reach R-10b `/agent-memory-benchmarks`), daily **#913**
+(run 169 RLS blog publish), draft **#719** (oldest, **20 days**). This run's files overlap **no** open PR
+(#913 touches `blog.ts`/`distribution-queue.md`; #914 touches `memoryBenchmarks.ts`/sitemap `STATIC_ROUTES`/
+`llms.txt`/Footer — my `/solve` slug auto-aggregates via the solve loop, not those hand-edited lists;
+#719 is docs-research). Scorecard regen is step-0-exempt.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel, bot-filtered** (RUM/GSC **carried from run 167** — same day, 2026-08-05; not re-pulled, this run's lever is a distribution surface so same-day funnel is unchanged. Users/DBs carried from 07-27 remote-D1, no channel newly live) | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF RUM) | **198 pl / 195 vis** raw, **real-browser floor 60 pl / 59 vis** (07-29→08-05, **carried from run 167**, up from run 159's 40/39; 138 synthetic cut). Real-browser landings led by `docs…/agent-memory/` (**11**), `nlqdb.com/` (9), `/blog/guard-advertised…/` (7), `/agents/` (3) | cut rule: `bot=1` or `userAgentBrowser ∈ {Unknown, ChromeHeadless}` or CF-classified bot ⇒ real-browser is a floor. Read at **7d** (28d comes back sampled) |
+| | **Funnel, bot-filtered** (RUM **re-pulled live 08-06** (`rum-pull.ts`, 7d 07-30→08-06); GSC carried from run 167. Users/DBs carried from 07-27 remote-D1, no channel newly live) | | exclude synthetic stranger-test walker traffic |
+| 1 | Visits, 7d (CF RUM) | **194 pl / 190 vis** raw, **real-browser floor 52 pl / 50 vis** (07-30→08-06, re-pulled 08-06; 142 synthetic cut). Real-browser landings led by `nlqdb.com/` (**12**), `docs…/agent-memory/` (7), `/blog/guard-advertised…/` (6), `/app/new/` + `/agents/` (3 each) | cut rule: `bot=1` or `userAgentBrowser ∈ {Unknown, ChromeHeadless}` or CF-classified bot ⇒ real-browser is a floor. Read at **7d** (28d comes back sampled) |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev (`*@example.com`, `*@preview.dev`) — live remote-D1 07-27; no channel newly live to produce a signal |
 | 3 | DBs total | **254** (07-27 live remote-D1, flat across runs 143–147; synthetic — walker/preview churn) | stranger subset ~0 (row #2) |
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not measurable** (`SK-ONBOARD-007`). Re-verified live 07-27: `databases.source_json is not null` = **0** | target ≥ 95%. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share with ≥ 2 asks |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **106** content pages (`/solve` **38** + `/vs` 31 + `/blog` 37); **118** sitemap URLs — **this run +1** (`/solve/combine-multiple-rows-into-one-value-in-sql`, the `STRING_AGG`/`GROUP_CONCAT` roll-up pain-page; auto-picked up by sitemap + `llms.txt`). Queue **2** (< the 3-deep forced-publish threshold — no publish this run); drafting skipped (optional, P5) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **37** (no change). GSC **carried from run 167** (`gsc-pull.ts`): 28d 07-06→08-03 **8 clicks / 587 impr / pos 19.7** — **19th consecutive roughly-flat read** (was 8/597/19.4), `/security/hall-of-fame/` 4 of 8 clicks. **Referral yield (RUM, live):** 14 pl from 3 referrers — bing 6, google 6, baidu 2; bing already refers `docs…/agent-memory/`. Strengthen-next #1 `/solve/running-total-cumulative-sum-in-sql/` (121 impr / pos 36.3), #2 `find-rows-with-no-match` (44 / 17.5) — both **exactly** runs 163/159's targets (anti-rut, verify at R-08 08-22, not re-pulled). Index status: **3/6 wedge pages indexed**; `build-vs-buy`/`expire-old` discovered-not-crawled (crawl-timing, well-linked from indexed `/agents/`), `docs…/agent-memory/` unknown-to-Google but **live, in sitemap, linked from `/agents/`** ⇒ timing-bound, not fixable | `scripts/gsc-pull.ts` + `scripts/rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
+| 6 | Indexable surfaces | **107** content pages (`/solve` **39** + `/vs` 31 + `/blog` 37); **119** sitemap URLs — **this run +1** (`/solve/calculate-time-between-two-dates-in-sql`, the date-arithmetic "time between two dates" pain-page; build-verified rendered + auto-picked up by sitemap + `llms.txt`). Queue **2** (< the 3-deep forced-publish threshold — no publish this run); drafting skipped (optional, P5) | leading input to rows #1–#3; `rss.xml` + `llms.txt` + sitemap auto-aggregate |
+| 7 | Surface yield | posts **37** (no change). GSC **carried from run 167** (`gsc-pull.ts`): 28d 07-06→08-03 **8 clicks / 587 impr / pos 19.7** — flat. **Referral yield (RUM, re-pulled live 08-06):** 13 pl from 3 referrers — bing 6, google 5, baidu 2; bing refers `/blog/guard-advertised…` (4) + `docs…/agent-memory/` (1), baidu `/blog/agent-memory-vector-store…` (2). Strengthen-next #1 `/solve/running-total-cumulative-sum-in-sql/` (121 impr / pos 36.3), #2 `find-rows-with-no-match` (44 / 17.5) — both runs 163/159's targets (anti-rut, verify at R-08 08-22, not re-pulled). Index status: **3/6 wedge pages indexed**; `build-vs-buy`/`expire-old` discovered-not-crawled (crawl-timing, well-linked from indexed `/agents/`) | `scripts/gsc-pull.ts` + `scripts/rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at N ≤ 12 impr (noise) |
 | | **Engine** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
-| 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **10 d old, staleness trigger fired** (> 7 d), but **dark (rule 8)**: resume is async multi-window and `main` has moved since the 07-27 checkpoint (SHA-keyed cache would miss). Full-run confirmed (`SK-QUAL-011`) | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted; SC dead (#619) |
+| 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **11 d old, staleness trigger fired** (> 7 d), but **dark (rule 8)**: resume is async multi-window and `main` has moved since the 07-27 checkpoint (SHA-keyed cache would miss). Full-run confirmed (`SK-QUAL-011`) | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted; SC dead (#619) |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, [29682993836](https://github.com/nlqdb/nlqdb/actions/runs/29682993836)). The 07-27 re-dispatch [30230040001](https://github.com/nlqdb/nlqdb/actions/runs/30230040001) exited **partial** (checkpoint left behind, `SK-QUAL-013` budget-stop) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004)) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67% → agentic 69.33%, 150-q smoke, 07-06, `SK-QUAL-022`) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69 < the 0.80 floor (row #16 fails on competence, not instrument) |
@@ -82,7 +85,7 @@ draft). Scorecard regen is step-0-exempt.
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0 failed / 9 blocked** — carried from the 07-26 live walk; CI walk [30194859852](https://github.com/nlqdb/nlqdb/actions/runs/30194859852) concluded success. **Not re-walkable from a `/daily` container** (standing constraint re-verified this run): `@playwright/test` pins `~1.60.0` → wants Chromium **1223**; the image ships **1194** (`/opt/pw-browsers/chromium-1194`), so the walker aborts with `Executable doesn't exist`. CI-only until they agree | target **0 `failed`** ✅; `blocked` reported beside it. All walks stop at the 428 `challenge_required` (Turnstile declining a datacenter IP by design, `SK-ANON-012`), so steps past the ask are **observed, not proven** |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub. **npm attribution now reaches the registry for all 3 of 3 packages** (verified live this run): `@nlqdb/sdk@0.2.2` (`?utm_source=npm`), `@nlqdb/mcp@0.1.1` (`.../agents/?utm_source=npm`), and the former laggard **`@nlqdb/cli@0.1.1` — `?utm_source=npm` now live on the registry** (`dist-tags.latest = 0.1.1`, published via #864 + the green Release-npm run). Last-third close ⇒ npm attribution 2/3 → 3/3. MCP official registry published 07-22 (`com.nlqdb/nlqdb`); Glama crawl-listed; Smithery 0 / PulseMCP 0. First-touch attribution live since 07-19 on both create arms; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus: → ≥ 5 live.** Yield from `/app/admin` + `scripts/rum-pull.ts`, never estimated. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 6**; head is the Show HN launch, oldest bullet **53 days** (`SK-PIVOT-016` gate **0/5**); #2 community-plugin-directory submit, #3 `cline/mcp-marketplace` issue, #4 connector directory (money-gated), #5 🔒 goal-pack build-order lock, #6 skillsclaude.org paste | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: 2 — **#911** (founder-queue sitting, would drain queue 6→3 once merged) + draft **#719** (oldest, 19 days) |
+| | **Human queue** — the one non-automatable actor | **depth 2** (#911 drained 6→2); head is the Show HN launch, oldest bullet **54 days** (`SK-PIVOT-016` gate **0/5**); #2 Anthropic connector directory (money-gated, 07-21) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: 3 — **#914** (reach R-10b) + daily **#913** (run 169) + draft **#719** (oldest, 20 days) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated — only open item |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
@@ -95,37 +98,35 @@ draft). Scorecard regen is step-0-exempt.
 `apps/web/src/data/blog.ts` — the one place the list exists; venue variants and full
 lesson gists stay in `research/distribution-queue.md`.
 
-- **This run (168):** shipped a new `/solve` pain-page (row #6 +1), not a `/blog` post. Queue depth 2
+- **This run (170):** shipped a new `/solve` pain-page (row #6 +1), not a `/blog` post. Queue depth 2
   (< 3), so step 3's forced-publish did not fire; dev.to drip self-throttled (one/day, `SK-BLOG-003`).
   Last canonical blog post remains run 151's `/blog/guard-advertised-capabilities-against-code/`.
-  New AEO surface: `nlqdb.com/solve/combine-multiple-rows-into-one-value-in-sql`.
+  New AEO surface: `nlqdb.com/solve/calculate-time-between-two-dates-in-sql`.
 
 ## Last change
 
-**2026-08-05 (run 168)** — **Row #6 indexable surfaces 105 → 106** (`/solve` 37 → 38): shipped a new
-pain-driven AEO page, `/solve/combine-multiple-rows-into-one-value-in-sql`, answering the recurring
-"combine multiple rows into one comma-separated value" search (`STRING_AGG` in Postgres, `GROUP_CONCAT`
-in MySQL, `LISTAGG` in Oracle). It's a genuinely-distinct SQL primitive from the existing cluster — a
-string aggregate that rolls grouped rows into one delimited value with an in-aggregate `ORDER BY`, not a
-per-row window (running-total/MoM/top-N), an ordered-set aggregate (median), a set difference (anti-join),
-or a reshape into columns (pivot). Full SK-SOLVE-001/002/003 shape: paraphrased search-intent `<h1>`,
-≥3 `howNlqdbAnswers` (each ≤25 w), ≥2 honest limits (delimiter/order is yours; roll-up direction only;
-read-only embed), 4 FAQs (each ≤80 w), 3 enduring source hubs (PG aggregate-functions docs + the SO
-`string-aggregation` and `group-concat` tags). To avoid a crawl-orphan ("Discovered — currently not
-indexed"), it links out to 3 same-cluster siblings (pivot, find-duplicate, top-N-per-group) **and**
-receives an inbound `related` link from the topically-tight, already-shipped `pivot-rows-into-columns`.
-`solve.test.ts` 18/18, `@nlqdb/web test` 480/480, typecheck/lint green. Sitemap + `llms.txt`
-auto-aggregate the slug (117 → 118 URLs).
+**2026-08-06 (run 170)** — **Row #6 indexable surfaces 106 → 107** (`/solve` 38 → 39): shipped a new
+pain-driven AEO page, `/solve/calculate-time-between-two-dates-in-sql`, answering the recurring
+"time / difference between two dates in SQL" search. It's a genuinely-distinct primitive from the
+existing cluster — scalar/aggregate date arithmetic (subtracting two `date`s → integer days, two
+`timestamp`s → an `interval`), not a window function (running-total/MoM/top-N), an ordered-set aggregate
+(median), a set difference (anti-join), or a reshape (pivot). The page names the two real traps:
+`EXTRACT(DAY FROM interval)` returns only the interval's day *component* (a 40-day gap reads back as 10),
+so the whole-day count is `EXTRACT(EPOCH FROM (end - start)) / 86400`; and averaging durations means
+`AVG(end - start)` over intervals. Full SK-SOLVE-001/002/003 shape: paraphrased search-intent `<h1>`,
+4 `howNlqdbAnswers` (each ≤25 w), 3 honest limits (you name the two timestamps; tz-as-stored; read-only
+embed), 4 FAQs (each ≤80 w), 3 enduring source hubs (PG date/time-functions docs + the SO `datediff`
+and `date-arithmetic` tags). To avoid a crawl-orphan, it links out to 3 same-cluster date/time siblings
+(count-per-day, MoM, streak) **and** receives an inbound `related` link from the page-1 date sibling
+`count-rows-per-day-including-missing-dates`. `solve.test.ts` 18/18, `@nlqdb/web test` 480/480,
+typecheck/lint exit 0, build exit 0 (129 pages). Sitemap + `llms.txt` auto-aggregate the slug (118 → 119).
 
-**Why lane-1 distribution (not the recent docs rut).** Runs 164/165/167 each pulled lane-3
-docs-ambiguity; a 4th consecutive meta pull is squarely the anti-rut case (rule 7). The operating focus
-is acquisition/distribution (weekly directive), and adding a high-search-volume AEO surface is the
-smallest agent-movable lane-1 lever that needs no strangers, no in-container walker, and no prod secret.
-- **Weekly focus — dogfood gate 0/5 (dark, rule 8, 7+ runs).** Criteria 1/2/3/5 gate on D-04 (prod
-  secret); criterion 4 (ops-temporal 0/4) is E-09, **P1-blocked by `GLOBAL-037`** ("do not implement").
-  Not agent-movable — reported, not pulled.
-- **Lane 2 — UX-flow / engine, not pullable in-container.** Walkers can't run here (row #21: Chromium
-  1194 vs pinned 1223); engine #8/#9 dark (async resume, `main` moved); memory-temporal = E-09 block.
+**Why lane-1 distribution.** Weekly focus (dogfood gate 0/5) is dark (rule 8, 9+ runs): criteria 1/2/3/5
+gate on D-04 (prod secret); criterion 4 (ops-temporal 0/4) is E-09, **P1-blocked by `GLOBAL-037`**. Lane 2
+(UX/engine) isn't pullable in-container: walkers can't run (row #21: Chromium 1194 vs pinned 1223), engine
+#8/#9 dark. So the smallest agent-movable lever is a lane-1 AEO surface that needs no strangers, walker, or
+secret. Not a rule-7 rut — last 5 merged dailies were 168 distribution · 167/165/164 docs · 166 null. Two
+distribution PRs (#913 blog, #914 benchmark asset) are already open; this touches only `solve.ts`, no overlap.
 
 **Four-null check.** `git log`: run 167 moved row #17 and this run is non-null (row #6 delta) — no
 four-null streak, so no surface-area proposal is earned.
