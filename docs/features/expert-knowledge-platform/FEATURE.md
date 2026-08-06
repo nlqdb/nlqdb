@@ -185,6 +185,38 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
   **Marketplace waits for the gate** — serializes two independent income/
   proof motions for no reason.
 
+### SK-EKP-006 — One catalog: goal packs are the marketplace's free listings; niche-agent packs are marketplace instances
+
+- **Decision (founder-proposed, 2026-08-05):** The marketplace catalog and
+  the goal-pack catalog are **one surface with two listing types**:
+  (a) **packs** — free, first-party recipes (the locked
+  [`pack-candidates.md`](../agent-memory-pivot/worksheets/dogfood/pack-candidates.md)
+  order) that an operator installs onto their **own** data via the shared
+  runner — no grant, no fee; (b) **knowledge DBs** — paid, cross-tenant
+  listings of an expert's rows (EK-06 grant + SK-EKP-002 fee). The
+  niche-agent packs are therefore marketplace instances from day one,
+  seeding the supply side. Pack **authoring** opens to third-party experts
+  later; a third-party-sold recipe becomes a paid listing type when that
+  ships, riding the same fee mechanics.
+- **Core value:** Simple, Goal-first, Free
+- **Why:** Both product types run on identical rails (`agent_memory_v1`,
+  `SK-PIVOT-018` recipes, the `SK-PIVOT-021` runner, golden queries); two
+  catalogs would duplicate discovery and split one audience. The locked
+  pack build order doubles as the marketplace's initial catalog roadmap —
+  the marketplace never launches empty (the cold-start answer the
+  research's GPT-Store lesson demands).
+- **Consequence in code:** EK-05's catalog renders both listing types from
+  one model. Installing a pack = the runner journey on the installer's own
+  tenant — **never** a grant, **never** a fee (`SK-PIVOT-023`'s axes and
+  free line unchanged). Querying a knowledge DB = grant + fee. A reviewer
+  rejects a second, separate pack-discovery surface, and any fee attached
+  to a first-party pack install.
+- **Alternatives rejected:** **Separate pack directory beside the
+  marketplace** — duplicated discovery, split audience. · **Making packs
+  paid** — kills the free wedge and contradicts SK-PIVOT-023's free line. ·
+  **Marketplace without packs** — launches empty; cold-start is the
+  documented creator-platform killer.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per

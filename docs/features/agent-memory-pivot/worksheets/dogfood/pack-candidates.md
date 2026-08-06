@@ -4,12 +4,15 @@
 goal packs — proposals only, written for founder ranking (asked 2026-07-29: *"do we have a
 list of niche useful agents in the queue?"* — we did not; only pack #1 repo-ops and pack #2
 founder-ops [D-05](D-05-founder-ops-pack.md) existed).
-**What this is not.** No candidate here is decided, no `SK-*` ID is minted, no skill file
-exists for any of them. **Awaiting founder ranking — queued 2026-08-04** as a 🔒
-decision-to-lock bullet in [`blocked-by-human.md`](../../../../blocked-by-human.md) #5
-(`GLOBAL-033` as amended: `SK-PIVOT-018` assigns the ranking to founder taste, so no
-codified decision settles it; the formula ordering below stands as the conservative
-default until the founder locks).
+**Build order: founder-locked 2026-08-05** (in-session) under the founder's stated
+lens — **depth of quality-impact on the pack's niche, not audience size**. Per
+[`SK-EKP-006`](../../../expert-knowledge-platform/FEATURE.md) this order is also the
+expert marketplace's initial **free catalog** roadmap (packs = free listings on the
+same surface as paid knowledge DBs). The section
+numbers below ARE the locked build sequence for every pack after founder-ops (D-05);
+each entry keeps a labeled note on where the pre-lock evidence×fit×reach formula had it
+and why the lens moved it. No `SK-*` ID is minted per candidate and no skill file exists
+yet — a pick still becomes a `D-NN` slice when its turn comes.
 **Promotion path.** Founder picks one → a new `D-NN` slice is cut in [`INDEX.md`](INDEX.md)
 (same shape as D-05: goal, criterion moved, read-first, steps, `Done when`) → the pack ships
 as extraction recipe + seed entities + ≥ 5 golden queries in the `SK-QUAL-023` family, on
@@ -23,10 +26,9 @@ that need `GROUP BY` / `JOIN` / aggregate / time-window over what the agent reme
 the gap Mem0 / Zep / Letta / vector stores structurally don't serve
 ([`competitors.md` §4](../../../../competitors.md)). A pack whose queries are all
 nearest-neighbour recall belongs to them, not to us.
-**Ranked by** evidence of demand × analytical fit × distribution reach (channel names are
-the [acquisition ledger](../../../../research/acquisition-channels.md) rows) — **except #1,
-which is founder-set** (2026-07-29) and stays #1 regardless of that formula. #2..#9 are the
-agent-proposed ordering and are what the founder is being asked to re-rank.
+**Ordering** is the 2026-08-05 founder lock (#1 was already founder-set 2026-07-29 and
+stays pinned). Channel names in each entry are
+[acquisition ledger](../../../../research/acquisition-channels.md) rows.
 
 ---
 
@@ -58,34 +60,7 @@ agent-proposed ordering and are what the founder is being asked to re-rank.
   written in parallel — **excluded** from this estimate, eventually-built, and must **not**
   block the `SK-PIVOT-016` gate or any `D-*` slice. Only the pack slice is queue-eligible.
 
-## 2. Coding-agent fleet ledger
-
-- **Persona:** [P2a](../../../../research/personas.md) (+ P1 solo builder as operator).
-- **Niche agent it makes useful:** the operator running 4–8 parallel coding agents across
-  worktrees/branches and losing track of which run did what, for how much.
-- **Extraction recipe sketch:** per agent run — task, repo, branch, harness, model, start/end,
-  outcome (merged / abandoned / reverted), retries, tool-call failures, compute cost — from
-  the harness's own session logs, PR/commit metadata, and CI results. Entities: repo, harness,
-  task type. Episodes: one per run.
-- **Seed entities:** nlqdb's own worktree runs (`.claude/worktrees/*`), the `/daily` run
-  numbers, merged-PR history — a corpus we generate several times a day.
-- **Golden queries:** *cost per merged PR by repo, last 30 days* (analytical) · *success rate
-  by task type, week over week* (temporal) · *which repos have the most reverted agent
-  commits* (analytical) · *how many runs are still open and since when* · *which tool call
-  fails most often per harness*.
-- **Distribution:** `agent-artifacts` (row 12 — the one live coding-agent channel, one-command
-  `npx skills add`) + `github` (16); lands on `solve/analyze-agent-tool-call-logs`.
-- **Evidence:** real and current — Cursor 3 runs up to 8 agents in parallel worktrees and
-  Claude Code Agent Teams isolates agents per branch; a background-agent PR costs ~$4–5 in
-  compute; the category's own framing of the pain is *"which agent is blocked, which one
-  changed the wrong file, which branch is safe to merge"*
-  ([nimbalyst](https://nimbalyst.com/blog/best-agent-management-tools-2026/),
-  [ssojet](https://ssojet.com/blog/parallel-sub-agent-coding-tools)).
-- **Effort:** ~2 daily runs. **Rank #2 because** it is the only candidate whose corpus we
-  already produce daily (so it feeds `SK-PIVOT-016` criterion 1 for free) and it ships down
-  the one channel that is live for coding agents.
-
-## 3. Support-bot resolution ledger
+## 2. Support-bot resolution ledger
 
 - **Persona:** P2b (agent-SaaS builder, multi-tenant).
 - **Niche agent it makes useful:** the support-bot fleet operator who must prove the bot
@@ -108,9 +83,36 @@ agent-proposed ordering and are what the founder is being asked to re-rank.
   ([digitalapplied](https://www.digitalapplied.com/blog/ai-customer-support-metrics-deflection-csat-framework-2026),
   [lorikeet](https://www.lorikeetcx.ai/articles/resolution-rate-ai-customer-support-benchmarks-2026),
   [eesel](https://www.eesel.ai/blog/deflection-rate-what-is-it-and-how-to-improve-it)).
-- **Effort:** ~2 runs. **Rank #3 because** the demand is written down as a metric list a
-  vector store cannot compute, and the persona is the reach track's priority buyer — but the
-  corpus is the user's, so nothing self-seeds.
+- **Effort:** ~2 runs. **Locked #2** (founder 2026-08-05, niche-quality lens): the niche is measuring itself
+  with inflated vendor dashboards; this ledger gives an operator ground truth — the deepest
+  quality transformation on the list, on the strongest written-down demand. (Formula had it
+  #3: the corpus is the user's, nothing self-seeds.)
+
+## 3. Research-agent source ledger
+
+- **Persona:** P2a.
+- **Niche agent it makes useful:** the deep-research agent that re-fetches the same sources,
+  can't show which claim rests on what, and occasionally cites a URL that never existed.
+- **Extraction recipe sketch:** per run — claim, source URL, domain, fetch date, dedupe group,
+  support verdict (supported / unsupported / unreachable). Entities: source domain, claim.
+  Episodes: fetches.
+- **Seed entities:** domain, claim, run.
+- **Golden queries:** *sources per claim, and claims with only one source* (analytical) ·
+  *domain-authority mix per run over time* (temporal) · *duplicate-source rate per run*
+  (analytical) · *which domains produced unreachable citations* · *claims contradicted by a
+  later run* (join).
+- **Distribution:** Hacker News (13, founder-posted — the audience that reads citation-audit
+  posts) + organic search (1).
+- **Evidence:** real — a 2026 ACM paper builds deep research around a *persistent Research
+  Ledger* tracking claims, contradictions and gaps; open agents dedupe at 90 % shingle
+  similarity; 3–13 % of cited URLs are fabricated and citation-support metrics overestimate
+  reliability ([Dossier, ACM](https://dl.acm.org/doi/10.1145/3786335.3813122),
+  [arXiv 2604.03173](https://arxiv.org/pdf/2604.03173)).
+- **Effort:** ~2 runs. **Locked #3** (founder 2026-08-05, niche-quality lens): the most categorical quality
+  upgrade here — claim↔source↔verdict tracking makes a research agent a different class of
+  trustworthy, the analytical shape is the purest (a ledger *is* a table), and the EK research
+  work dogfoods it. (Formula had it #6 purely on audience size — the factor the founder
+  discounted.)
 
 ## 4. Per-end-user memory provenance & retention ledger
 
@@ -133,11 +135,40 @@ agent-proposed ordering and are what the founder is being asked to re-rank.
   71-page technical guide on agent-memory systems in Feb 2026
   ([astraea](https://astraea.law/insights/ai-agent-memory-tool-privacy-compliance),
   [typegraph](https://typegraph.ai/blog/retention-policies-ai-memory-compliance)).
-- **Effort:** ~2 runs. **Rank #4 because** it converts our existing TTL + RLS primitives into
-  a legible answer with strong evidence — **boundary:** the pack stays *queryable provenance*
-  and makes **no** compliance claim (A1 regulated enterprise is an anti-persona).
+- **Effort:** ~2 runs. **Locked #4** (founder 2026-08-05 — unchanged from formula): for its niche this is the
+  difference between shippable and not (erasure enforcement, Spain's DPA guide) —
+  **boundary:** the pack stays *queryable provenance* and makes **no** compliance claim (A1
+  regulated enterprise is an anti-persona).
 
-## 5. Per-tenant agent usage & cost ledger
+## 5. Coding-agent fleet ledger
+
+- **Persona:** [P2a](../../../../research/personas.md) (+ P1 solo builder as operator).
+- **Niche agent it makes useful:** the operator running 4–8 parallel coding agents across
+  worktrees/branches and losing track of which run did what, for how much.
+- **Extraction recipe sketch:** per agent run — task, repo, branch, harness, model, start/end,
+  outcome (merged / abandoned / reverted), retries, tool-call failures, compute cost — from
+  the harness's own session logs, PR/commit metadata, and CI results. Entities: repo, harness,
+  task type. Episodes: one per run.
+- **Seed entities:** nlqdb's own worktree runs (`.claude/worktrees/*`), the `/daily` run
+  numbers, merged-PR history — a corpus we generate several times a day.
+- **Golden queries:** *cost per merged PR by repo, last 30 days* (analytical) · *success rate
+  by task type, week over week* (temporal) · *which repos have the most reverted agent
+  commits* (analytical) · *how many runs are still open and since when* · *which tool call
+  fails most often per harness*.
+- **Distribution:** `agent-artifacts` (row 12 — the one live coding-agent channel, one-command
+  `npx skills add`) + `github` (16); lands on `solve/analyze-agent-tool-call-logs`.
+- **Evidence:** real and current — Cursor 3 runs up to 8 agents in parallel worktrees and
+  Claude Code Agent Teams isolates agents per branch; a background-agent PR costs ~$4–5 in
+  compute; the category's own framing of the pain is *"which agent is blocked, which one
+  changed the wrong file, which branch is safe to merge"*
+  ([nimbalyst](https://nimbalyst.com/blog/best-agent-management-tools-2026/),
+  [ssojet](https://ssojet.com/blog/parallel-sub-agent-coding-tools)).
+- **Effort:** ~2 daily runs. **Locked #5** (founder 2026-08-05, niche-quality lens): visibility for the niche rather
+  than transformation of it. Its operational advantages stand — the only self-seeding corpus
+  (feeds `SK-PIVOT-016` criterion 1 for free) and the one live coding-agent channel — and are
+  the argument if sequencing ever needs a swap. (Formula had it #2 on exactly those.)
+
+## 6. Per-tenant agent usage & cost ledger
 
 - **Persona:** P2b.
 - **Niche agent it makes useful:** the agent-SaaS operator whose provider invoice went up and
@@ -155,32 +186,10 @@ agent-proposed ordering and are what the founder is being asked to re-rank.
   that spending increased, but cannot explain which customer … caused it"*
   ([braintrust](https://www.braintrust.dev/articles/how-to-track-llm-costs-2026),
   [metacto](https://www.metacto.com/blogs/llm-cost-attribution-per-user-feature)).
-- **Effort:** ~2 runs. **Rank #5 because** the analytical fit is perfect but the venue is
-  crowded (Langfuse / Helicone / Portkey own the instrumentation story) — the pack's honest
-  angle is *"aggregate the rows your agent already writes"*, not an observability product.
-
-## 6. Research-agent source ledger
-
-- **Persona:** P2a.
-- **Niche agent it makes useful:** the deep-research agent that re-fetches the same sources,
-  can't show which claim rests on what, and occasionally cites a URL that never existed.
-- **Extraction recipe sketch:** per run — claim, source URL, domain, fetch date, dedupe group,
-  support verdict (supported / unsupported / unreachable). Entities: source domain, claim.
-  Episodes: fetches.
-- **Seed entities:** domain, claim, run.
-- **Golden queries:** *sources per claim, and claims with only one source* (analytical) ·
-  *domain-authority mix per run over time* (temporal) · *duplicate-source rate per run*
-  (analytical) · *which domains produced unreachable citations* · *claims contradicted by a
-  later run* (join).
-- **Distribution:** Hacker News (13, founder-posted — the audience that reads citation-audit
-  posts) + organic search (1).
-- **Evidence:** real — a 2026 ACM paper builds deep research around a *persistent Research
-  Ledger* tracking claims, contradictions and gaps; open agents dedupe at 90 % shingle
-  similarity; 3–13 % of cited URLs are fabricated and citation-support metrics overestimate
-  reliability ([Dossier, ACM](https://dl.acm.org/doi/10.1145/3786335.3813122),
-  [arXiv 2604.03173](https://arxiv.org/pdf/2604.03173)).
-- **Effort:** ~2 runs. **Rank #6 because** the analytical shape is the strongest on the list
-  (a ledger *is* a table) but the buyer population is smaller and mostly hobbyist.
+- **Effort:** ~2 runs. **Locked #6** (founder 2026-08-05): real pain, crowded venue (Langfuse / Helicone /
+  Portkey own the instrumentation story) — marginal quality contribution to a niche that
+  already has tools; the honest angle stays *"aggregate the rows your agent already writes"*.
+  (Formula #5.)
 
 ## 7. Incident / on-call agent memory
 
@@ -200,9 +209,9 @@ agent-proposed ordering and are what the founder is being asked to re-rank.
   documented"*
   ([pagerduty](https://www.pagerduty.com/blog/ai/we-built-an-sre-agent-with-memory-and-its-transforming-incident-response/),
   [augmentcode](https://www.augmentcode.com/guides/ai-sre-incident-management)).
-- **Effort:** ~2 runs. **Rank #7 because** P6's real ask is an NL skin over the ClickHouse they
-  already run (`SK-MULTIENG-005`), not a hosted memory DB — so the pack serves the *builder
-  of* an SRE agent, a narrower slice than the evidence suggests.
+- **Effort:** ~2 runs. **Locked #7** (founder 2026-08-05 — unchanged): deep pain, wrong product shape — P6's
+  real ask is an NL skin over the ClickHouse they already run (`SK-MULTIENG-005`), so the pack
+  serves only the *builder of* an SRE agent.
 
 ## 8. Eval / regression ledger for agent builders
 
@@ -220,8 +229,8 @@ agent-proposed ordering and are what the founder is being asked to re-rank.
   dashboards across prompt versions; the residual complaint is that *"issue discovery is
   manual"* ([qaskills](https://qaskills.sh/blog/openai-agent-evals-complete-guide-2026),
   [confident-ai](https://www.confident-ai.com/blog/llm-agent-evaluation-complete-guide)).
-- **Effort:** ~2 runs. **Rank #8 because** we would be entering Braintrust/MLflow's lane with
-  content, and the buyer already owns a tool — its one advantage is that we dogfood it.
+- **Effort:** ~2 runs. **Locked #8** (founder 2026-08-05 — unchanged): the need is already served
+  (Braintrust/MLflow lane); the one advantage is that we dogfood it.
 
 ## 9. Sales / pipeline agent memory
 
@@ -242,7 +251,8 @@ agent-proposed ordering and are what the founder is being asked to re-rank.
   describes CRM sync and pipeline dashboards, not builders complaining they can't aggregate
   agent memory ([amplemarket](https://www.amplemarket.com/blog/best-ai-sales-agents)). No
   builder-voice quote found. Treat as demo material until a real ask arrives.
-- **Effort:** ~1–2 runs. **Rank #9 because** it demos beautifully and is evidenced worst.
+- **Effort:** ~1–2 runs. **Locked #9** (founder 2026-08-05 — unchanged): demos best, evidenced worst — hypothesis
+  until a real ask arrives.
 
 ---
 

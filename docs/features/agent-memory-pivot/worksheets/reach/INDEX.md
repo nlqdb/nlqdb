@@ -161,9 +161,9 @@ Per-venue mechanism and exact payloads live in
 - ✅ #9 `mcp.directory` — P2 07-30: registry-ingesting crawler + no-account form fallback, absent
   07-30; payload in [`acquisition-channels.md`](../../../../research/acquisition-channels.md) #23,
   re-check 08-22.
-- ✅ #10 **Cline MCP Marketplace** — P2 08-03: GitHub-issue submission, approved listings
-  one-click-installable inside Cline; agent-blocked here, payload parked
-  ([`blocked-by-human.md`](../../../../blocked-by-human.md) #3) + ledger #24; repo-linked →
+- ✅ #10 **Cline MCP Marketplace** — **submitted by the founder 2026-08-05**
+  ([issue #2197](https://github.com/cline/mcp-marketplace/issues/2197), awaiting review;
+  ledger #24 in-flight); approved listings one-click-installable inside Cline; repo-linked →
   `github`-ref yield.
 
 ### R-06 — Coding-agent walker (measurement backbone)
@@ -254,14 +254,16 @@ in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
   a dated re-check.
 - ✅ #3 **SkillsMP** — crawls every public repo for `SKILL.md`; both skills have been
   public since 2026-07-22, so this venue was already served before the slice existed.
-- ✅ #4 **Anthropic `claude-community`** (in-product `/plugin` Discover tab) — signed-in
-  form only, so the **payload is parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md)
-  #2, 2026-07-29; possibly already submitted 2026-08-04 — founder to confirm). Distinct from the connector directory (R-05 #7 / ledger #9);
+- ✅ #4 **Anthropic `claude-community`** (in-product `/plugin` Discover tab) —
+  **submitted by the founder 2026-08-05** ("received, review team will evaluate";
+  platforms = Claude Code only, Cowork untested). Distinct from the connector directory (R-05 #7 / ledger #9);
   `claude-plugins-official` is curated with **no application process** — nothing to submit.
-- ✅ #5 **skillsclaude.org** — P2 2026-07-30: **no-account** paste-a-repo form, not an
-  arbitrary-repo crawler (nlqdb absent 8 days despite public); headless submit env-blocked →
-  payload **parked** ([`blocked-by-human.md`](../../../../blocked-by-human.md) #6); repo-linked
-  → `github`-ref yield (ledger #16), no utm key.
+- ❌ #5 **skillsclaude.org** — **dropped 2026-08-05 (founder + security read), never
+  re-queue:** the founder's VPN security filter flagged the site during the submit attempt,
+  a reputation search found zero independent footprint, and the venue was already assessed
+  lowest-yield (repo-linked, no separate attribution). Listing a trust-first product in a
+  flagged, unvetted skill directory is net-negative. (History: P2 2026-07-30 no-account
+  form, not a crawler; first paste attempt errored on the site's side.)
 - ⬜ **Install-yield gate:** not done on listings — closes when `/app/admin` shows one
   real `claude-plugin` visit (the same bar R-07 carries; why `plugin.json`'s `homepage`
   keeps its own key, not `agent-artifacts`).
@@ -307,5 +309,5 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [x] R-06 — coding-agent walker + baseline
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)
 - [x] R-08 — answer-engine citation baseline
-- [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (5 of 5 venues resolved — #4 + #5 payloads parked)
+- [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (5 of 5 venues resolved — #4 submitted 08-05 pending review; #5 dropped 08-05, security read)
 - [ ] R-10 — authority / referring domains — sweep ✅ (08-05); **owed:** linkable asset + in llms.txt, first nonzero DR read
