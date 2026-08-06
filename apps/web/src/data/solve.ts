@@ -1490,6 +1490,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "PostgreSQL docs — the `tablefunc` extension `crosstab()` reference, the canonical Postgres pivot primitive.",
       },
     ],
+    related: ["combine-multiple-rows-into-one-value-in-sql", "find-duplicate-rows-in-my-data"],
   },
   {
     slug: "running-total-cumulative-sum-in-sql",
@@ -1999,6 +2000,69 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "count-rows-per-day-including-missing-dates",
       "running-total-cumulative-sum-in-sql",
       "month-over-month-growth-in-sql",
+    ],
+  },
+  {
+    slug: "combine-multiple-rows-into-one-value-in-sql",
+    persona: "P3 analyst",
+    searchTitle: "How do I combine multiple rows into one comma-separated value in SQL?",
+    oneLiner:
+      "If you want one row per customer with their products rolled into a single comma-separated list — not one row per order line — ask in plain English. nlqdb compiles the string aggregate (`STRING_AGG` in Postgres, `GROUP_CONCAT` in MySQL), orders the items inside the aggregate so the list is stable, and shows the SQL.",
+    painContext:
+      "Rolling many rows up into one value — every product a customer bought as a single 'apples, bananas, cherries' cell, all tags on a post in one line, every error code per host — is the report shape a plain `GROUP BY` can't give you: grouping collapses the rows but leaves you needing an aggregate that concatenates text, not one that sums numbers. Every engine spells it differently — `STRING_AGG` in Postgres and SQL Server, `GROUP_CONCAT` in MySQL, `LISTAGG` in Oracle — and two traps bite: without an explicit `ORDER BY` inside the aggregate the list order is undefined and shuffles between runs, and the delimiter is yours to choose, so a value that itself contains a comma can make the joined string ambiguous.",
+    demoGoal: "each customer's product names combined into one comma-separated list, alphabetized",
+    demoWhy:
+      "The roll-up you'd otherwise hand-write — the string aggregate, the delimiter, and the ORDER BY inside it that keeps the list stable — is one English goal here, with the SQL shown so you can confirm the items come back in the order you asked for.",
+    howNlqdbAnswers: [
+      "Ask 'each customer's product names combined into one comma-separated list'; nlqdb compiles the `STRING_AGG` string aggregate and runs it in Postgres.",
+      "It groups by the customer and rolls each group's rows into one delimited string — one row per customer, not per order line.",
+      "It orders the items inside the aggregate, so the list is stable across runs instead of shuffling in whatever order rows happened to arrive.",
+      "Every answer shows the compiled SQL under a trace toggle, so you can confirm the delimiter and the in-aggregate ordering are what you meant.",
+    ],
+    whatItDoesnt: [
+      "The delimiter and the item order are ones you name — 'comma-separated, alphabetized'. nlqdb compiles and shows them; it won't guess a separator or a sort for you.",
+      "This is the roll-up direction only — combining rows into one value. Splitting a delimited string back into rows (the inverse) is a different query, not this page.",
+      "The public `<nlq-data>` embed is read-scoped — it returns the joined list, it doesn't write. Persisting the rolled-up value goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I combine multiple rows into one comma-separated value in SQL?",
+        a: "Ask in plain English — 'each customer's product names combined into one comma-separated list.' nlqdb compiles a string aggregate — `STRING_AGG(product_name, ', ' ORDER BY product_name)` in Postgres — groups by the customer, and orders the items inside the aggregate so the list is stable. It runs the query in Postgres and shows the SQL, so you can confirm the delimiter and the ordering.",
+      },
+      {
+        q: "What's the difference between STRING_AGG and GROUP_CONCAT?",
+        a: "They're the same idea in different dialects: `STRING_AGG(expr, delimiter)` in Postgres and SQL Server, `GROUP_CONCAT(expr SEPARATOR ',')` in MySQL, `LISTAGG(expr, ',')` in Oracle. All roll grouped rows into one delimited string. nlqdb targets Postgres, so it compiles `STRING_AGG` and shows it — you don't have to remember which engine spells it which way.",
+      },
+      {
+        q: "Why does my concatenated list come back in a random order?",
+        a: "Because a string aggregate has no inherent order — without an explicit `ORDER BY` inside the aggregate, the database concatenates rows in whatever order it read them, which can change between runs. Put the sort inside the aggregate (`STRING_AGG(name, ', ' ORDER BY name)`), not in the outer query. nlqdb compiles the in-aggregate ordering and shows it in the SQL.",
+      },
+      {
+        q: "Can I roll up rows on a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (`nlq db connect`; see /solve/query-existing-postgres-in-natural-language) and ask for the combined list in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and the answer is read-only — nlqdb returns the joined string, it doesn't write it back to a column.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.postgresql.org/docs/current/functions-aggregate.html",
+        label:
+          "PostgreSQL docs — aggregate functions, the canonical reference for `string_agg(expression, delimiter ORDER BY …)` and how it skips NULL inputs.",
+      },
+      {
+        url: "https://stackoverflow.com/questions/tagged/string-aggregation",
+        label:
+          "Stack Overflow — the `string-aggregation` tag, the standing hub for roll-up-rows-into-one-value questions: STRING_AGG vs GROUP_CONCAT, ordering inside the aggregate, and choosing a safe delimiter.",
+      },
+      {
+        url: "https://stackoverflow.com/questions/tagged/group-concat",
+        label:
+          "Stack Overflow — the `group-concat` tag, the MySQL side of the same roll-up question, useful when comparing `GROUP_CONCAT`'s `SEPARATOR` and length-limit behaviour with Postgres `STRING_AGG`.",
+      },
+    ],
+    related: [
+      "pivot-rows-into-columns",
+      "find-duplicate-rows-in-my-data",
+      "find-top-n-rows-per-group",
     ],
   },
   {
