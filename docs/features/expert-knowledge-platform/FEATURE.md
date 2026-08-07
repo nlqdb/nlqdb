@@ -217,6 +217,10 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
   **Marketplace without packs** — launches empty; cold-start is the
   documented creator-platform killer.
 
+### SK-EKP-007 — Interview-extraction design record (ACTA engine · Graphiti-pattern mapping · show-don't-ask verification · recurring debriefs · tested interview/query boundary)
+
+**Body:** [`decisions/SK-EKP-007-interview-extraction-design.md`](decisions/SK-EKP-007-interview-extraction-design.md). The rail-level design fixing EK-01's five stakes and resolving its five open questions (exploratory-led interview with a mechanical probe floor; validity-window contradictions, never overwrite; text-first, voice parked; the database stays fully invisible; the cold-start earnings bridge parked-with-trigger, not escalated). States `INV-EKP-037`: the knowledge-DB **query** path is schema-only to third-party LLMs (reusing the `GLOBAL-037` builder), while the **interview** path is the only path expert cell values reach an LLM — on the expert's own tenant. Product-surface detail lands in `experts` (`SK-EKP-003`).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per
