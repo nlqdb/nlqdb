@@ -221,6 +221,10 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 
 **Body:** [`decisions/SK-EKP-007-interview-extraction-design.md`](decisions/SK-EKP-007-interview-extraction-design.md). The rail-level design fixing EK-01's five stakes and resolving its five open questions (exploratory-led interview with a mechanical probe floor; validity-window contradictions, never overwrite; text-first, voice parked; the database stays fully invisible; the cold-start earnings bridge parked-with-trigger, not escalated). States `INV-EKP-037`: the knowledge-DB **query** path is schema-only to third-party LLMs (reusing the `GLOBAL-037` builder), while the **interview** path is the only path expert cell values reach an LLM — on the expert's own tenant. Product-surface detail lands in `experts` (`SK-EKP-003`).
 
+### SK-EKP-008 — Cross-tenant read-grant primitive design (platform-brokered per-query grant · non-owner SELECT-only role · billed on successful execution · fail-closed within 30 s)
+
+**Body:** [`decisions/SK-EKP-008-grant-primitive-design.md`](decisions/SK-EKP-008-grant-primitive-design.md). The EK-02 design record `EK-06` implements. Tenant A sells tenant B's agents **read-only, revocable, fail-closed, per-query-metered** access to a named knowledge DB via a platform-brokered query (not a copy, not a capability token): a `grants` control-plane row brokered above Postgres (Neon has no cross-project share), authorized per-request fail-closed (status cache ≤ 30 s), executed on the owner's DB under a **non-owner SELECT-only role** with `FORCE ROW LEVEL SECURITY`, scope refused at the **validation layer** (join/subquery reach to non-granted tables rejected before execution), and one **usage record** per successful query, idempotent on the `Idempotency-Key` (`GLOBAL-005`). The public engine emits usage records only — fee logic, fee %, and Stripe stay in `experts` (`SK-EKP-003` / `SK-PIVOT-023` axis 2). Confirms the EK-02 baseline (no shift); settles its five open questions from the `GLOBAL-033` values (MoR + payout route to the `SK-EKP-002` ship-time founder gate — no 🔒 bullet spent).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per
@@ -245,8 +249,10 @@ GLOBAL; index in [`docs/decisions.md`](../../decisions.md)).
 - **Fee % and payout mechanics** — founder-set at ship time (SK-EKP-002);
   no number anywhere before that.
 - **Cross-tenant grant primitive** (selling read access to other tenants'
-  agents: discovery, revocation, metering, buyer identity) — `P2` research
-  when engine work starts; today RLS scopes within a tenant (SK-PIVOT-009).
+  agents: discovery, revocation, metering, buyer identity) — **designed**
+  (`SK-EKP-008`, EK-02); implementation tracked by
+  [`EK-06`](worksheets/EK-06-grant-primitive-impl.md). Today RLS scopes
+  within a tenant (SK-PIVOT-009); the grant brokers above it.
 - **Interview-extraction design** (profession-shaped questions → structured
   rows, no SQL shown) — the hardest UX problem; own research pass when the
   journey is scoped.
