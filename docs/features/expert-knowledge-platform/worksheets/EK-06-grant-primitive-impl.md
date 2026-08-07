@@ -1,7 +1,8 @@
 # EK-06 — Cross-tenant read-grant primitive (implementation)
 
 **Status:** planned · **Repo:** nlqdb (engine) · **Risk:** high ·
-**Runs:** multi · **Prereqs:** EK-02 design record + minted decision
+**Runs:** multi · **Prereqs:** EK-02 design record + minted decision —
+satisfied: [`SK-EKP-008`](../decisions/SK-EKP-008-grant-primitive-design.md)
 
 ## Goal
 
