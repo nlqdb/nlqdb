@@ -1,12 +1,13 @@
 # EK-01 — Interview-extraction: research → design record
 
-**Status:** design record minted 2026-08-06 as
+**Status:** **complete** — design record minted 2026-08-06 as
 [`SK-EKP-007`](../decisions/SK-EKP-007-interview-extraction-design.md)
-(boxes 1 + 3 below); **remaining: box 2** — EK-04's interview-source adapter
-contract updated to name the record. **Detailed product design lands in
-`experts`** once agent access exists (`SK-EKP-003`) · **Repo:** nlqdb
-(rail-level design), `experts` (product detail) · **Risk:** med · **Runs:**
-1–2 · **Prereqs:** none
+(boxes 1 + 3); box 2 landed 2026-08-07 — EK-04's interview-source adapter
+contract now names the record (`source_episode` provenance, ACTA/min-2 probe,
+edit/rank/forced-choice verification) and carries the `INV-EKP-037` egress
+test. **Detailed product design lands in `experts`** once agent access exists
+(`SK-EKP-003`) · **Repo:** nlqdb (rail-level design), `experts` (product
+detail) · **Risk:** med · **Runs:** 1–2 · **Prereqs:** none
 
 ## Goal
 
@@ -111,6 +112,8 @@ answer→row mapping, verification UX, session structure — feeding EK-04
 - [x] Design record covering the five stakes + five questions, minted as a
       new `SK-EKP` decision (rail-level here; product detail in `experts`).
       → [`SK-EKP-007`](../decisions/SK-EKP-007-interview-extraction-design.md).
-- [ ] EK-04's interview-source adapter contract updated to match.
+- [x] EK-04's interview-source adapter contract updated to match →
+      [`EK-04`](EK-04-pilot-authoring-rails.md) §2 + Hard edges + `Done when`
+      now name `SK-EKP-007` / `INV-EKP-037`.
 - [x] The `GLOBAL-037` interview/query boundary stated as a testable
       invariant. → `INV-EKP-037` in `SK-EKP-007`.

@@ -156,8 +156,8 @@ now (bullet-proof: make the bad state unreachable, not caught later).
   rows with `source_episode` provenance**, produced by the ACTA/min-2-probe
   interview; the runner's draft → phases → counters → proof → delete contract
   is unchanged (D-08 N+1). The adapter contract in
-  [`EK-04`](../worksheets/EK-04-pilot-authoring-rails.md) is to be updated to
-  name this record (EK-01's remaining box 2).
+  [`EK-04`](../worksheets/EK-04-pilot-authoring-rails.md) (§2 + Hard edges +
+  Done when) names this record and the `INV-EKP-037` test (EK-01 box 2).
 - The verification surface renders **row cards with edit/rank/forced-choice**
   affordances; a reviewer rejects a yes/no "correct?" confirmation step.
 - The query path over a knowledge DB **must not** introduce a new egress
