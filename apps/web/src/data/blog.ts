@@ -49,7 +49,7 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       {
         kind: "p",
-        text: "We run a dead-link sweep over the built site. It walks every file in `dist/`, pulls out every `href` and `src`, and checks that each internal target resolves to a real page and not a redirect. Our config sets `trailingSlash: \"always\"`, so the host serves `/app/new/` as a 200 and 307-redirects the bare `/app/new`. The sweep is there to catch exactly that — a link written without its trailing slash that costs every clicker a redirect round-trip. For a long time it read a clean `0 dead / 0 redirecting`, and we believed it.",
+        text: 'We run a dead-link sweep over the built site. It walks every file in `dist/`, pulls out every `href` and `src`, and checks that each internal target resolves to a real page and not a redirect. Our config sets `trailingSlash: "always"`, so the host serves `/app/new/` as a 200 and 307-redirects the bare `/app/new`. The sweep is there to catch exactly that — a link written without its trailing slash that costs every clicker a redirect round-trip. For a long time it read a clean `0 dead / 0 redirecting`, and we believed it.',
       },
       {
         kind: "p",
@@ -58,7 +58,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "A checker reads attributes. A React island navigates in JavaScript." },
       {
         kind: "p",
-        text: "The CTA didn't ship as `<a href=\"/app/new/\">`. It shipped as a click handler inside a React island — a `location.assign(…)` call whose string argument was the bare path `/app/new`. After the bundler is done, that target is a string argument to a function call, buried in a minified chunk. There is no `href` attribute anywhere in the built HTML for a checker to parse — the navigation only exists at runtime, when the handler fires. A tool that greps `dist/` for `href`/`src` is structurally blind to it. Same story for a bare `location.href` assignment in an Astro `<script>`, or a `window.open`.",
+        text: "The CTA didn't ship as an `<a href>` pointing at `/app/new/`. It shipped as a click handler inside a React island — a `location.assign(…)` call whose string argument was the bare path `/app/new`. After the bundler is done, that target is a string argument to a function call, buried in a minified chunk. There is no `href` attribute anywhere in the built HTML for a checker to parse — the navigation only exists at runtime, when the handler fires. A tool that greps `dist/` for `href`/`src` is structurally blind to it. Same story for a bare `location.href` assignment in an Astro `<script>`, or a `window.open`.",
       },
       {
         kind: "p",
@@ -67,9 +67,12 @@ export const BLOG_POSTS: BlogPost[] = [
       { kind: "h2", text: "The built-output sweep had a second hole: it never ran in CI" },
       {
         kind: "p",
-        text: "There was a worse version of the same blind spot. The sweep runs on built output, so it only fires when something builds the site — a manual run, or the daily job. It was never wired into CI on the pull request. So a plain static `href=\"/terms\"` — a link the checker *could* see — sat 307-redirecting for two days, because nothing built the site on the PR that introduced it. A guard that only runs after merge is a guard that reports history, not one that blocks a regression.",
+        text: "There was a worse version of the same blind spot. The sweep runs on built output, so it only fires when something builds the site — a manual run, or the daily job. It was never wired into CI on the pull request. So a plain static `href` to `/terms` — a link the checker *could* see — sat 307-redirecting for two days, because nothing built the site on the PR that introduced it. A guard that only runs after merge is a guard that reports history, not one that blocks a regression.",
       },
-      { kind: "h2", text: "Move the check to the source, and spend the effort on the false positives" },
+      {
+        kind: "h2",
+        text: "Move the check to the source, and spend the effort on the false positives",
+      },
       {
         kind: "p",
         text: "The fix is to stop parsing built HTML and start reading source, as a fast unit test that runs on every PR. The naive version — grep the `src/` tree for `location.assign` — drowns in false positives: route matchers, `new URL(location.href)` reads, prose in comments, asset URLs like `/og.png` that legitimately carry no slash. A guard that cries wolf gets suppressed, and a suppressed guard is no guard. The whole game is a match narrow enough to be false-positive-free.",
