@@ -41,6 +41,68 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "link-checker-cant-see-your-javascript",
+    title: "Your link checker can't see your JavaScript.",
+    description:
+      "A dead-link sweep over built HTML read '0 dead' while real clicks 307-redirected. The navigations were client-side location.assign() calls a checker never parses out of dist/.",
+    date: "2026-08-06",
+    body: [
+      {
+        kind: "p",
+        text: 'We run a dead-link sweep over the built site. It walks every file in `dist/`, pulls out every `href` and `src`, and checks that each internal target resolves to a real page and not a redirect. Our config sets `trailingSlash: "always"`, so the host serves `/app/new/` as a 200 and 307-redirects the bare `/app/new`. The sweep is there to catch exactly that — a link written without its trailing slash that costs every clicker a redirect round-trip. For a long time it read a clean `0 dead / 0 redirecting`, and we believed it.',
+      },
+      {
+        kind: "p",
+        text: "Then we watched a real session. A visitor clicked the composer's CTA and the network tab showed a 307 before the page they wanted. The sweep still said zero. It wasn't wrong about what it looked at — it just couldn't see the link, because the link wasn't a link.",
+      },
+      { kind: "h2", text: "A checker reads attributes. A React island navigates in JavaScript." },
+      {
+        kind: "p",
+        text: "The CTA didn't ship as an `<a href>` pointing at `/app/new/`. It shipped as a click handler inside a React island — a `location.assign(…)` call whose string argument was the bare path `/app/new`. After the bundler is done, that target is a string argument to a function call, buried in a minified chunk. There is no `href` attribute anywhere in the built HTML for a checker to parse — the navigation only exists at runtime, when the handler fires. A tool that greps `dist/` for `href`/`src` is structurally blind to it. Same story for a bare `location.href` assignment in an Astro `<script>`, or a `window.open`.",
+      },
+      {
+        kind: "p",
+        text: "So the redirect was invisible in exactly the place we'd promised ourselves it couldn't hide. `ConnectForm.tsx`'s `/app?db=` navigation 307-redirected on every click while the dashboard row read `0 redirecting`. This is the dangerous shape of a bug: not a red test, but a green checkmark over a question the checker was never able to ask.",
+      },
+      { kind: "h2", text: "The built-output sweep had a second hole: it never ran in CI" },
+      {
+        kind: "p",
+        text: "There was a worse version of the same blind spot. The sweep runs on built output, so it only fires when something builds the site — a manual run, or the daily job. It was never wired into CI on the pull request. So a plain static `href` to `/terms` — a link the checker *could* see — sat 307-redirecting for two days, because nothing built the site on the PR that introduced it. A guard that only runs after merge is a guard that reports history, not one that blocks a regression.",
+      },
+      {
+        kind: "h2",
+        text: "Move the check to the source, and spend the effort on the false positives",
+      },
+      {
+        kind: "p",
+        text: "The fix is to stop parsing built HTML and start reading source, as a fast unit test that runs on every PR. The naive version — grep the `src/` tree for `location.assign` — drowns in false positives: route matchers, `new URL(location.href)` reads, prose in comments, asset URLs like `/og.png` that legitimately carry no slash. A guard that cries wolf gets suppressed, and a suppressed guard is no guard. The whole game is a match narrow enough to be false-positive-free.",
+      },
+      {
+        kind: "code",
+        lang: "ts",
+        code: '// Match ONLY the string-literal target of an actual client navigation:\n//   location.assign("…")  |  .replace("…")  |  location.href = "…"\n// bare or window.-prefixed; one optional helper hop so\n//   location.assign(attachHandoff("/dashboard/")) still gets swept.\nconst NAV =\n  /\\blocation(?:\\.href\\s*=|\\.(?:assign|replace)\\s*\\()\\s*(?:\\w+\\(\\s*)?["\'`]([^"\'`]*)["\'`]/g;\n\n// Then, for each captured path, flag the ones that will redirect:\nfunction offends(url) {\n  if (!url.startsWith("/") || url.startsWith("//")) return false; // relative / cross-origin\n  const path = url.split(/[?#]/)[0];\n  if (path.endsWith("/")) return false;              // already correct\n  if (path.split("/").pop().includes(".")) return false; // /og.png — an asset, not a page\n  return true;\n}',
+      },
+      {
+        kind: "p",
+        text: "The narrowness is the design, not an accident. Matching the `location` member (`.assign`/`.replace`/`.href =`) rather than a loose call means an aliased or `.bind`-ed reference can't duck the sweep, and neither member is ever read for anything but navigating. Dropping the trailing-slash rule for a final segment with a dot skips real assets. Skipping `.test.ts` files means the one place that documents the call shape — the test itself — doesn't trip it. The result matches the handful of navigations that genuinely redirect and nothing else, so a failure names the file, the line, and the offending path.",
+      },
+      { kind: "h2", text: "What carries over" },
+      {
+        kind: "ol",
+        items: [
+          "**A checker only guards what it can parse.** A link-checker over built HTML sees `href`/`src` attributes and nothing else. Every client-side navigation — `location.assign`, `location.href =`, `window.open`, a `<meta refresh>` — is invisible to it. Name that blind spot out loud, because the tool will keep reporting a confident zero across it.",
+          "**A guard that runs after merge reports history.** The built-output sweep was real but only fired on a post-merge build, so a redirect it *could* see still shipped. Wire the invariant into the check that runs on the pull request, or it is documentation of past regressions, not prevention of new ones.",
+          "**Move the invariant to the cheapest layer that can see it.** The fact you care about — every internal navigation carries its trailing slash — is decidable from source. A source-level unit test runs in milliseconds on every PR, with no build and no browser, and it can see the JavaScript the HTML sweep never could.",
+          "**A narrow true-positive beats a broad noisy one.** The broad source scan was rejected because it false-positived on route matchers and asset URLs; a guard people mute is worse than none. Match the exact shape that redirects — the string-literal argument of a real navigation — and nothing else.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "This is a measurement-integrity pattern, not a feature: any site with client-side routing and a link checker over built output has the same gap, and the answer is always to move the invariant to a layer that can actually observe it. nlqdb is a database you query in plain English, and the same discipline runs against our own surfaces — the checks that keep every link, verb, and claim we ship provably true are ones we point at ourselves, at the layer where the answer is certain.",
+      },
+    ],
+  },
+  {
     slug: "restrictive-rls-agent-memory-scoping",
     title: "Row-level security has a flavour. The default one is a silent breach.",
     description:
