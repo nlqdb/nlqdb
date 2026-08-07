@@ -3,9 +3,11 @@
 **Status:** in-flight · **Repo:** nlqdb · **Risk:** low · **Runs:** 1–2 ·
 **Prereqs:** none (fully constrained by `SK-EKP-001`) · **Box 3 drafted
 2026-08-07** → [`drafts/ek-03-tos-dpa-delta.md`](../drafts/ek-03-tos-dpa-delta.md)
-(the "not allowed" contract text; awaiting founder approval before publish —
-🔒). Landing + copy (boxes 1–2) and the honest-claims guard (box 4) are later
-runs that enumerate that approved floor.
+(the "not allowed" contract text; awaiting founder sign-off before publish,
+queued in [`blocked-by-human.md`](../../../blocked-by-human.md) as a plain legal
+action — not a 🔒 decision-to-lock, since `SK-EKP-001` is already locked).
+Landing + copy (boxes 1–2) and the honest-claims guard (box 4) are later runs
+that enumerate that approved floor.
 
 ## Goal
 
@@ -44,6 +46,7 @@ Ship the platform's public trust surface: a landing section/page for the
 - [ ] Trust copy enumerates the floor; no "can't read" phrasing anywhere.
 - [~] ToS/DPA delta **drafted** (2026-08-07) →
       [`drafts/ek-03-tos-dpa-delta.md`](../drafts/ek-03-tos-dpa-delta.md);
-      founder approval + publish into `/terms` + `/privacy` is a follow-up run
-      (🔒, `GLOBAL-033`).
+      founder sign-off + publish into `/terms` + `/privacy` is a follow-up run
+      (a plain legal action in `blocked-by-human.md`, not a 🔒 decision-to-lock
+      — `GLOBAL-033`).
 - [ ] Honest-claims guard covers the new surface's claims.
