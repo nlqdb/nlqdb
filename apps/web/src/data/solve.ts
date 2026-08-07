@@ -1490,7 +1490,78 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "PostgreSQL docs — the `tablefunc` extension `crosstab()` reference, the canonical Postgres pivot primitive.",
       },
     ],
-    related: ["combine-multiple-rows-into-one-value-in-sql", "find-duplicate-rows-in-my-data"],
+    related: [
+      "combine-multiple-rows-into-one-value-in-sql",
+      "find-duplicate-rows-in-my-data",
+      "countif-sumif-conditional-aggregate-in-sql",
+    ],
+  },
+  {
+    slug: "countif-sumif-conditional-aggregate-in-sql",
+    persona: "P3 analyst",
+    searchTitle: "How do I do a COUNTIF or SUMIF (conditional count or sum) in SQL?",
+    oneLiner:
+      "If you need a COUNTIF or SUMIF — count or total only the rows that meet a condition, like paid orders or signups from one plan — ask in plain English instead of hand-writing the aggregate. nlqdb compiles `COUNT(*) FILTER (WHERE ...)`, runs it in Postgres, and shows the SQL so you can verify the condition.",
+    painContext:
+      "Analysts and PMs live in this translation — the spreadsheet has `COUNTIF` and `SUMIF`, SQL has no keyword for either, and each workaround has a trap. `COUNT(status = 'paid')` counts every row, not the paid ones, because `COUNT` counts non-null values and the comparison is non-null (true or false) on every row. `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)` works but is verbose and easy to fat-finger across five metrics. `COUNT(*) FILTER (WHERE status = 'paid')` is the clean modern form but keeps getting forgotten — so it's re-Googled every reporting cycle, and the `COUNT` trap over-counts silently without ever erroring.",
+    demoGoal: "count of paid orders and total revenue from paid orders",
+    demoWhy:
+      "The COUNTIF and SUMIF you'd otherwise translate into a CASE expression or a filtered aggregate is one English goal here, with the SQL shown so you can check the exact condition.",
+    howNlqdbAnswers: [
+      "Ask 'how many paid orders'; nlqdb compiles a conditional aggregate (`COUNT(*) FILTER (WHERE status = 'paid')`) and runs it in Postgres.",
+      "Every answer returns the conditional count or sum plus the compiled SQL under a trace toggle — verify the exact `WHERE` condition.",
+      "Combine several COUNTIFs in one pass — paid, refunded, pending as separate columns — without scanning the table once per metric.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect) to count over your real rows.",
+    ],
+    whatItDoesnt: [
+      "The condition must be one you can name — 'paid', 'from the pro plan', 'in the last 30 days'. nlqdb filters on columns and values that exist; it won't infer a business rule you haven't stated.",
+      "nlqdb returns the conditional totals with a read-only SELECT — it's not a BI tool refreshing a live COUNTIF tile on a schedule. That's a scheduled job's work.",
+      "The public `<nlq-data>` embed is read-scoped — it counts and sums existing rows, it doesn't write. No write key belongs in client HTML; loading data goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I do a COUNTIF or SUMIF in SQL?",
+        a: "Ask in plain English — 'how many paid orders, and total revenue from them.' nlqdb compiles the conditional aggregate (`COUNT(*) FILTER (WHERE status = 'paid')`, `SUM(amount) FILTER (WHERE status = 'paid')`), runs it in Postgres, and returns the numbers plus the SQL it ran. You get the COUNTIF/SUMIF without hand-writing a CASE expression per metric. The honest limit: you have to name the condition.",
+      },
+      {
+        q: "Why does COUNT(status = 'paid') count everything instead of just the paid rows?",
+        a: "Because `COUNT(x)` counts non-null values, not true results — `status = 'paid'` is non-null (either true or false) on every row, so it counts them all. The fixes are `COUNT(*) FILTER (WHERE status = 'paid')` or `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)`. nlqdb compiles the FILTER form and shows the SQL, so this over-counting trap can't slip through silently.",
+      },
+      {
+        q: "What's the difference between COUNT(*) FILTER (WHERE ...) and SUM(CASE WHEN ...)?",
+        a: "They compute the same conditional count. `COUNT(*) FILTER (WHERE cond)` is the SQL-standard, readable form (Postgres, SQLite 3.30+); `SUM(CASE WHEN cond THEN 1 ELSE 0 END)` is the portable fallback for engines without FILTER, like MySQL. nlqdb runs on Postgres and compiles the FILTER form, then shows the SQL — paste it, or swap in the CASE version for another engine.",
+      },
+      {
+        q: "Can I get several conditional counts — paid, refunded, pending — in one query?",
+        a: "Yes. Ask for 'counts of paid, refunded, and pending orders' and nlqdb writes one query with a filtered aggregate per bucket — `COUNT(*) FILTER (WHERE status = 'paid')` as one column, repeated per status — so the table is scanned once, not once per metric. It's the same conditional-aggregation pattern a pivot uses; the SQL shows under the trace toggle.",
+      },
+      {
+        q: "Can I do a conditional sum (SUMIF) on a Postgres database I already run?",
+        a: "Yes — connect it with the signed-in BYO connect verb (see /solve/query-existing-postgres-in-natural-language) and ask for the conditional total in place, no ETL into a separate store. The honest limits: BYO connect is signed-in only (not the public embed), and nlqdb returns the SUMIF with a read-only query — it doesn't persist a materialized conditional column for you.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/aggregate-functions",
+        label:
+          "Stack Overflow — the `aggregate-functions` tag, the perennial 'COUNTIF / conditional count in SQL' hub across dialects.",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/sql-expressions.html",
+        label:
+          "PostgreSQL docs — aggregate expressions, including the `FILTER (WHERE ...)` clause nlqdb compiles for a conditional count or sum.",
+      },
+      {
+        url: "https://dba.stackexchange.com/questions/tagged/aggregate",
+        label:
+          "DBA Stack Exchange — the 'aggregate' tag, a perennial 'sum/count only the rows that match' hub.",
+      },
+    ],
+    related: [
+      "pivot-rows-into-columns",
+      "calculate-percentage-of-total-in-sql",
+      "find-duplicate-rows-in-my-data",
+    ],
   },
   {
     slug: "running-total-cumulative-sum-in-sql",
