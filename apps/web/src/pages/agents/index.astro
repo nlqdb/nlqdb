@@ -356,6 +356,36 @@ const faqJsonLd = faqPageJsonLd(faqs);
             ))
           }
         </dl>
+        {/* Deeper reading — the agent-memory `/solve` pages, linked from
+            this indexed hub so the felt-need guides get an inbound crawl
+            path (two of them sit never-crawled behind solve↔solve links
+            alone; reach R-10 crawl-priority lever). Anchor text is each
+            page's searcher-phrased title. */}
+        <nav class="ag-faqs__guides" aria-label="Agent-memory guides">
+          <p class="ag-faqs__guides-label">Guides</p>
+          <ul class="ag-faqs__guides-list">
+            <li>
+              <a href="/solve/best-way-to-store-agent-memory/">
+                What&rsquo;s the best way to store what my AI agent remembers?
+              </a>
+            </li>
+            <li>
+              <a href="/solve/build-vs-buy-agent-memory/">
+                Should I build my own agent memory on Postgres or buy it?
+              </a>
+            </li>
+            <li>
+              <a href="/solve/expire-old-agent-memory/">
+                How do I expire old agent memory automatically instead of writing a cron?
+              </a>
+            </li>
+            <li>
+              <a href="/solve/agent-memory-mcp-server/">
+                Is there an MCP server that gives my AI agent memory?
+              </a>
+            </li>
+          </ul>
+        </nav>
         <p class="ag-faqs__more">
           See the <a href="/vs/">side-by-side comparisons</a> or the
           <a href="/manifesto/#not-title"> manifesto</a>.
@@ -926,6 +956,47 @@ const faqJsonLd = faqPageJsonLd(faqs);
     font-size: var(--t-body);
     color: var(--body);
     line-height: 1.55;
+  }
+
+  /* Deeper-reading list — the four agent-memory `/solve` guides. A quiet
+   * editorial block: mono eyebrow, display-serif links, one per row. */
+  .ag-faqs__guides {
+    margin: clamp(28px, 4vw, 40px) 0 0;
+    padding-top: clamp(20px, 3vw, 28px);
+    border-top: 1px solid var(--rule);
+  }
+
+  .ag-faqs__guides-label {
+    margin: 0 0 clamp(12px, 2vw, 16px);
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .ag-faqs__guides-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .ag-faqs__guides-list a {
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.3;
+    text-decoration: none;
+  }
+
+  .ag-faqs__guides-list a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-underline-offset: 3px;
   }
 
   .ag-faqs__more {

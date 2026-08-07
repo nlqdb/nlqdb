@@ -324,4 +324,4 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)
 - [x] R-08 — answer-engine citation baseline
 - [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (5 of 5 venues resolved — #4 submitted 08-05 pending review; #5 dropped 08-05, security read)
-- [ ] R-10 — authority / referring domains — sweep ✅ (08-05), linkable asset ✅ (08-06, `/agent-memory-benchmarks`); **owed:** first nonzero DR read
+- [ ] R-10 — authority / referring domains — sweep ✅ (08-05), linkable asset ✅ (08-06, `/agent-memory-benchmarks`), crawl-priority lever ✅ (08-07: indexed `/agents` hub now links the four wedge `/solve` pages, targeting the two still-never-crawled orphans — outcome reads at the 08-22 index re-check); **owed:** first nonzero DR read
