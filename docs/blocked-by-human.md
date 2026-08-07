@@ -37,6 +37,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 3 | ~15 min | Approve the EK-03 "not allowed" ToS/DPA draft clauses; on approval a follow-up run publishes them into /terms + /privacy — not urgent, publishes with the EK-05 selling flow | 2026-08-07 |
 
 Only #1 can move real strangers (scorecard row #2); #2 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
@@ -108,6 +109,17 @@ SK-PIVOT-016 criterion 1's counter is **not** running yet.)
      shipped 2026-07-29 (#835), so a signed-in reviewer can now exercise **all five tools**
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
+
+3. **⏱ ~15 min · since 2026-08-07 — Approve the EK-03 ToS/DPA "not allowed"
+   delta** — drafted contract text at
+   [`docs/features/expert-knowledge-platform/drafts/ek-03-tos-dpa-delta.md`](./features/expert-knowledge-platform/drafts/ek-03-tos-dpa-delta.md):
+   two clause blocks (`/terms` + `/privacy`) written per `SK-EKP-001`. Legal
+   wording is a human sign-off, not an agent merge (P6). Read both blocks; on
+   approval a follow-up run publishes them (dating both pages). **Lowest rank —
+   not urgent:** nothing publishes until you approve, and the clauses describe
+   the EK-05 marketplace selling flow that ships later, so this waits until that
+   surface is near launch. Conservative default already applied: the live legal
+   pages are untouched.
 
 ## Suggestions needing approval (to amend the guidelines)
 
