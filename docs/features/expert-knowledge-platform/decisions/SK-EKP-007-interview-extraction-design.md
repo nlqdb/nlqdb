@@ -177,5 +177,3 @@ now (bullet-proof: make the bad state unreachable, not caught later).
   asks.
 - **Building a cold-start earnings subsidy now** — speculative money out the
   door; parked with a trigger, not escalated.
-</content>
-</invoke>
