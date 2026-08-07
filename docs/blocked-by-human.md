@@ -37,10 +37,12 @@ values and criteria live. Read those only when you sit down to do the thing.
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 3 | ~2 min | Schedule the new `/ek` loop — duplicate the `/reach` Routine with prompt `/ek` (optional; `/ek` also works fired manually) | 2026-08-07 |
 
 Only #1 can move real strangers (scorecard row #2); #2 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists.
+exists. #3 is a one-click automation, not blocking — the EK track runs
+whenever `/ek` is fired, by Routine or by hand.
 (Resolved 2026-08-05, same sitting — Era 6: the "Become AI" five locks →
 `SK-EKP-001..005`/`SK-PIVOT-023`, the goal-pack build order locked
 (niche-quality lens → `pack-candidates.md` header), the Anthropic
@@ -108,6 +110,14 @@ SK-PIVOT-016 criterion 1's counter is **not** running yet.)
      shipped 2026-07-29 (#835), so a signed-in reviewer can now exercise **all five tools**
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
+
+3. **⏱ ~2 min · since 2026-08-07 — Schedule the `/ek` loop** (optional). The
+   expert-knowledge marketplace now has its own recurring loop
+   (`.claude/commands/ek.md`, `SK-EKP-005` parallel track) but no scheduler
+   entry, so it only runs when fired. Duplicate the existing `/reach` Routine
+   with prompt `/ek` (a daily cadence is enough — EK slices are meatier than
+   reach venues), or just fire `/ek` by hand in any session. Not blocking:
+   agents progress the EK track on every firing regardless of how it's fired.
 
 ## Suggestions needing approval (to amend the guidelines)
 
