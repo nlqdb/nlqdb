@@ -93,7 +93,7 @@ condition-gated (the repo's idiom — never date-gated).
 
 Tick on merge. Durable status (scorecard rows are regenerated; this is not).
 
-- [ ] EK-01 — interview-extraction design record
+- [x] EK-01 — interview-extraction design record
 - [ ] EK-02 — grant-primitive design record + decision
 - [ ] EK-03 — trust surface (landing + copy + ToS/DPA delta)
 - [ ] EK-04 — pilot authoring rails (language-tutor expert pack, public half)
