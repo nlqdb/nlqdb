@@ -84,8 +84,9 @@ condition-gated (the repo's idiom — never date-gated).
 - **`GLOBAL-037` stands**: no expert cell-values to third-party LLMs —
   including inside interview flows, where the *expert's answers* become
   cell values the moment they're written. The interview LLM sees the
-  conversation (it must); the **query** path stays schema-only. EK-01 must
-  design this boundary explicitly.
+  conversation (it must); the **query** path stays schema-only. EK-01
+  designed this boundary as the testable `INV-EKP-037` invariant
+  (`SK-EKP-007`).
 - **Secrets rule** (`SK-PIVOT-018`): packs store credential metadata, never
   values; interviews must reject secret-shaped answers.
 
