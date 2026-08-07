@@ -1,7 +1,11 @@
 # EK-03 — Trust surface: landing, copy, ToS/DPA delta
 
-**Status:** planned · **Repo:** nlqdb · **Risk:** low · **Runs:** 1–2 ·
-**Prereqs:** none (fully constrained by `SK-EKP-001`)
+**Status:** in-flight · **Repo:** nlqdb · **Risk:** low · **Runs:** 1–2 ·
+**Prereqs:** none (fully constrained by `SK-EKP-001`) · **Box 3 drafted
+2026-08-07** → [`drafts/ek-03-tos-dpa-delta.md`](../drafts/ek-03-tos-dpa-delta.md)
+(the "not allowed" contract text; awaiting founder approval before publish —
+🔒). Landing + copy (boxes 1–2) and the honest-claims guard (box 4) are later
+runs that enumerate that approved floor.
 
 ## Goal
 
@@ -38,5 +42,8 @@ Ship the platform's public trust surface: a landing section/page for the
 
 - [ ] Landing live with the positioning + honest mechanism explanation.
 - [ ] Trust copy enumerates the floor; no "can't read" phrasing anywhere.
-- [ ] ToS/DPA delta drafted and founder-approved before publish.
+- [~] ToS/DPA delta **drafted** (2026-08-07) →
+      [`drafts/ek-03-tos-dpa-delta.md`](../drafts/ek-03-tos-dpa-delta.md);
+      founder approval + publish into `/terms` + `/privacy` is a follow-up run
+      (🔒, `GLOBAL-033`).
 - [ ] Honest-claims guard covers the new surface's claims.
