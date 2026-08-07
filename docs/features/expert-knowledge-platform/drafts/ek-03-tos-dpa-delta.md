@@ -24,13 +24,14 @@ copy never exceeds substance).
 ## The founder call (GLOBAL-033)
 
 Per [`GLOBAL-033`](../../../decisions/GLOBAL-033-resolution-defaults.md)
-the agent-doable remainder (drafting, substance mapping, placement) is done;
-one genuinely-founder-shaped item is parked:
-
-- 🔒 **Founder: read + approve the two clause blocks below, then a follow-up
-  run publishes them into `/terms` and `/privacy` (dating both pages).**
-  Conservative default applied while parked: **publish nothing** — the live
-  legal pages are untouched by this run.
+the agent-doable remainder (drafting, substance mapping, placement) is done.
+The one genuinely founder-shaped item — signing off the legal wording and
+publishing it — is queued in the single channel the founder reads,
+[`blocked-by-human.md`](../../../blocked-by-human.md). It is a **legal human
+action, not a `🔒` decision-to-lock**: `SK-EKP-001` is already locked, so
+publishing only *executes* it — there is no new `GLOBAL-*`/`SK-*` to mint.
+Conservative default already applied: **publish nothing** — the live legal
+pages are untouched by this run.
 
 No fee wording appears here (`SK-EKP-002`: trust-loud, fee-quiet — seller-facing
 fee disclosure lives in the EK-05 selling flow, not the trust/legal surface).
@@ -85,7 +86,8 @@ this block states the stronger, expert-knowledge-specific commitment).
 > the structure of your data (table and column names) — never your row values —
 > is sent to a language-model provider. You can revoke any buyer's access at
 > any time, and you can delete your Expert Knowledge at any time; deletion
-> follows the retention timeline above. Where the marketplace makes us a
+> follows the retention timeline in the "How long we keep it" section. Where
+> the marketplace makes us a
 > processor of personal data on your behalf, the processor terms are presented
 > in the selling flow before you publish.
 
@@ -94,8 +96,10 @@ this block states the stronger, expert-knowledge-specific commitment).
 ## Substance map (SK-EKP-001 honesty check)
 
 Every sentence above is either a **contractual prohibition** (a real "will
-not") or backed by a **shipped technical mechanism** — no capability claim
-exceeds substance, and nowhere does the text say we *cannot* read the data.
+not") or backed by a **technical mechanism** — shipped today, except the
+grant/revocation clause whose mechanism is designed and gates publish (see the
+table). No capability claim exceeds substance *at publish time*, and nowhere
+does the text say we *cannot* read the data.
 
 | Claim in the draft | Kind | Backed by |
 |---|---|---|
@@ -104,7 +108,7 @@ exceeds substance, and nowhere does the text say we *cannot* read the data.
 | "engine reads the relevant rows on the server" (honest carve) | truthful disclosure | server-side NL→SQL reality — *not* a "can't read" claim |
 | "only structure … never row values … to a third-party LLM" | technical | [`GLOBAL-037`](../../../decisions/GLOBAL-037-schema-only-llm-egress.md) schema-only egress |
 | "each expert's knowledge is kept separate" | technical | RLS per-tenant isolation (`SK-PIVOT-009`) |
-| "revoke access … at any time" | technical | grant primitive, revocation bound ([`SK-EKP-008`](../decisions/SK-EKP-008-grant-primitive-design.md)) |
+| "revoke access … at any time" | technical (planned) | grant primitive + revocation bound, *designed* in [`SK-EKP-008`](../decisions/SK-EKP-008-grant-primitive-design.md) but not yet built (FEATURE.md open question); ships with the EK-05 selling flow — this clause publishes only once it does |
 | "delete … at any time" | technical | delete guarantee (`SK-HDC-016`) |
 | "run it on your own infrastructure" | technical | source-available / self-host engine (`GLOBAL-019` FSL, `SK-PIVOT-005`) |
 | "one-click hosted-on-your-own-account … on our roadmap" | **roadmap** | explicitly future — not a current claim (`SK-EKP-001`) |
