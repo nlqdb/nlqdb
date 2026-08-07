@@ -95,7 +95,7 @@ condition-gated (the repo's idiom — never date-gated).
 Tick on merge. Durable status (scorecard rows are regenerated; this is not).
 
 - [x] EK-01 — interview-extraction design record
-- [ ] EK-02 — grant-primitive design record + decision
+- [x] EK-02 — grant-primitive design record + decision (SK-EKP-008, #919; hardened 2026-08-07 after Fable review)
 - [ ] EK-03 — trust surface (landing + copy + ToS/DPA delta)
 - [ ] EK-04 — pilot authoring rails (language-tutor expert pack, public half)
 - [ ] EK-05 — marketplace surface v0 (`experts`) — parked until agent access

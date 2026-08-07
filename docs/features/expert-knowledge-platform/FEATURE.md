@@ -219,7 +219,11 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 
 ### SK-EKP-007 — Interview-extraction design record (ACTA engine · Graphiti-pattern mapping · show-don't-ask verification · recurring debriefs · tested interview/query boundary)
 
-**Body:** [`decisions/SK-EKP-007-interview-extraction-design.md`](decisions/SK-EKP-007-interview-extraction-design.md). The rail-level design fixing EK-01's five stakes and resolving its five open questions (exploratory-led interview with a mechanical probe floor; validity-window contradictions, never overwrite; text-first, voice parked; the database stays fully invisible; the cold-start earnings bridge parked-with-trigger, not escalated). States `INV-EKP-037`: the knowledge-DB **query** path is schema-only to third-party LLMs (reusing the `GLOBAL-037` builder), while the **interview** path is the only path expert cell values reach an LLM — on the expert's own tenant. Product-surface detail lands in `experts` (`SK-EKP-003`).
+**Body:** [`decisions/SK-EKP-007-interview-extraction-design.md`](decisions/SK-EKP-007-interview-extraction-design.md). The rail-level design fixing EK-01's five stakes and resolving its five open questions (exploratory-led interview with a mechanical probe floor; validity-window contradictions, never overwrite; text-first, voice parked; the database stays fully invisible; the cold-start earnings bridge parked-with-trigger, not escalated). States `INV-EKP-037`: the knowledge-DB **query** path is schema-only to third-party LLMs (reusing the `GLOBAL-037` builder), while the **interview** path is the only path expert cell values reach an LLM — on the expert's own tenant. Product-surface detail lands in `experts` (`SK-EKP-003`). *(Note: the interview-path carve-out awaits the founder's GLOBAL-037 amendment — Fable review 2026-08-07; until then GLOBAL-037's canonical text governs.)*
+
+### SK-EKP-008 — Cross-tenant read-grant primitive (platform-brokered · non-owner SELECT-only role · billed on successful execution · fail-closed ≤30 s)
+
+**Body:** [`decisions/SK-EKP-008-grant-primitive-design.md`](decisions/SK-EKP-008-grant-primitive-design.md). Confirms EK-02's baseline and settles its five questions: billable unit = the successfully-executed authorized query (row-count-independent, required idempotency key, broker-synthesized when absent); schema free for introspection, rows are the paid product; in-place execution with per-grant rate limits (read-replica escape hatch parked with trigger); merchant-of-record routed to the founder's SK-EKP-002 ship-time call; buyer identity v1 = tenant API key. Scope enforced at validation (join/subquery reach rejected before execution) plus non-owner role plus per-table FORCE RLS; revocation fail-closed ≤30 s incl. in-flight statement timeout; v1 grants on platform-provisioned hosted DBs only.
 
 ## GLOBALs governing this feature
 
@@ -243,13 +247,8 @@ GLOBAL; index in [`docs/decisions.md`](../../decisions.md)).
 ## Open questions / known unknowns
 
 - **Fee % and payout mechanics** — founder-set at ship time (SK-EKP-002);
-  no number anywhere before that.
-- **Cross-tenant grant primitive** (selling read access to other tenants'
-  agents: discovery, revocation, metering, buyer identity) — `P2` research
-  when engine work starts; today RLS scopes within a tenant (SK-PIVOT-009).
-- **Interview-extraction design** (profession-shaped questions → structured
-  rows, no SQL shown) — the hardest UX problem; own research pass when the
-  journey is scoped.
+  no number anywhere before that. (The grant primitive and interview design
+  are no longer open — resolved by SK-EKP-008 and SK-EKP-007.)
 - **Regulated professions** (doctor, lawyer, accountant) — liability/
   advice-regulation research required before any regulated pack ships
   publicly.

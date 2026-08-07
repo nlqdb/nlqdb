@@ -11,44 +11,47 @@
   `experts` per [`SK-EKP-003`](../FEATURE.md); this record fixes the seam
   EK-04 (public rails) and EK-05 (private product) both build to.
 
-## The five stakes — confirmed as the design
+## The five stakes — confirmed as the design (seam level)
 
-1. **Question engine = ACTA instantiated per profession.** Task diagram
-   first, then the eight fixed knowledge-audit probe categories per step,
-   every probe anchored to a *recent real case* (Critical Decision Method /
-   Critical Incident Technique — "your last difficult student," never "the
-   rules of tutoring"). Laddering continues until an answer carries a
-   *cue + condition + action* triple. **A minimum of two follow-ups per
-   surprising answer is enforced mechanically** (a counter in the session
-   state machine), not by prompt wording — this is the direct guard against
-   the measured LLM interview failure (88% of guideline violations are
-   under-probing, [arXiv:2410.01824](https://arxiv.org/abs/2410.01824)).
-   Repertory-grid triads and laddering are the contrived probes that
-   surface **edge rows** (relations between entities).
+Per `SK-EKP-003`, the **operational methodology** — probe categories and
+wording, counter thresholds and their triggers, session ritual and length,
+verification affordances and copy — is authored in the private `experts`
+repo (`docs/design/interview-methodology.md` there), **not here** (trimmed
+2026-08-07, Fable review of #918: the merged record published the product's
+competitive surface in the public repo). What is public is the **seam**
+EK-04 and EK-05 build to:
+
+1. **Question engine: incident-anchored elicitation with a mechanical probe
+   floor.** Questions anchor on recent real cases, never abstractions, and
+   follow-up depth is enforced by **deterministic counters in the session
+   state machine**, not prompt wording (the measured LLM-interviewer failure
+   is under-probing, [arXiv:2410.01824](https://arxiv.org/abs/2410.01824)).
+   **"Surprising" is deterministic, not LLM-vibes** (gap fixed 2026-08-07):
+   an answer is surprising iff it introduces an entity/rule not yet in
+   session state **or** contradicts a stored fact. **Precedence:** the
+   contradiction rule (one clarifying question citing both statements)
+   wins over the follow-up floor — a contradiction is handled as a
+   contradiction, not probed twice.
 
 2. **Mapping = the Graphiti/Zep pattern on `agent_memory_v1`.** Every
    interview exchange is an **episode row**, kept even when nothing
-   structured extracts from it (the schema-tunnel-vision guard). Per
-   exchange, a structured-output extraction produces entity/fact/edge rows
-   carrying `source_episode` provenance. A contradiction is resolved by
-   **search-before-insert**: the new fact invalidates the old fact's
-   *validity window* rather than overwriting it, and triggers exactly one
-   clarifying question citing both statements. No fact is ever silently
-   destroyed.
+   structured extracts from it. Per exchange, structured-output extraction
+   produces entity/fact/edge rows carrying `source_episode` provenance.
+   Contradiction = **search-before-insert**: the new fact closes the old
+   fact's *validity window*, never overwrites it. No fact is silently
+   destroyed. **Secret-shaped answers are rejected at extraction**
+   (`SK-PIVOT-018`: credential metadata only, never values) — the seam
+   inherits the packs rule explicitly.
 
-3. **Verification = show, don't ask.** Extracted rows are rendered as
-   plain-language cards the expert **edits, ranks, or forced-chooses over**
-   ("always / usually / only adults?"). Read-back "is this correct?" yes/no
-   confirmation is **prohibited** — it is acquiescence-/sycophancy-biased
-   ([arXiv:2504.09343](https://arxiv.org/pdf/2504.09343)). Confirmation is
-   always an edit/rank/forced-choice act, never a binary assent.
+3. **Verification = show, don't ask.** Confirmation is always an
+   edit/rank/forced-choice act over plain-language row cards; yes/no
+   read-back is **prohibited** (acquiescence/sycophancy bias,
+   [arXiv:2504.09343](https://arxiv.org/pdf/2504.09343)).
 
-4. **Sessions = 10–15-minute recurring case-debriefs.** Each session opens
-   with 2–3 replayed facts captured last time (P6 durable proof) and shows
-   a **per-table row-count fill-meter** (honest progress in user-meaningful
-   units, P6 — never a spinner or invented %). Short recurring debriefs
-   beat one 2-hour brain-dump (recall bias 20–50%,
-   [Myin-Germeys 2018](https://onlinelibrary.wiley.com/doi/full/10.1002/wps.20513)).
+4. **Sessions are short, recurring case-debriefs** (time-boxed; the box is
+   the session-end criterion — see Q1), opening with replayed prior facts
+   and honest row-count progress (P6). Recall bias makes one long brain-dump
+   the rejected shape ([Myin-Germeys 2018](https://onlinelibrary.wiley.com/doi/full/10.1002/wps.20513)).
 
 5. **The `GLOBAL-037` boundary** — stated as a tested invariant below.
 
@@ -63,13 +66,22 @@ bet (see Q5).
    by a schema-completion progress bar racing to fill cells — because the
    measured failure mode is *under*-probing, and Goal-first (`§0`) says the
    expert's knowledge, not our table shape, sets the agenda. Schema-fill is
-   the *ceiling* (which tables exist, when a session can end), never the
-   *driver*. Source: guidelines habits + Goal-first (`§0`).
+   the *ceiling*, never the *driver* — and **the session-end criterion is
+   the time-box alone** (reconciled 2026-08-07; stake 4): schema-fill state
+   informs what the *next* session opens with, never extends the current
+   one. Source: guidelines habits + Goal-first (`§0`).
 
 2. **Contested facts at paid query time.** **Validity-window model, never
    overwrite.** A contradiction invalidates the prior fact's window and
    inserts the new one; a query returns the currently-valid fact with its
-   provenance retained. This is the bullet-proof-by-design default (make bad
+   provenance retained. **Named mechanism** (gap fixed 2026-08-07 — as
+   merged, this guarantee had no enforcement point against arbitrary
+   NL→SQL): the preset ships a **`facts_current` view** (validity-window
+   filter baked in) that the schema description steers the planner toward
+   as the default query surface for facts; EK-04 adds a golden query
+   asserting an invalidated fact does not appear in a current-facts answer.
+   Raw-table access still exists for audit queries — that is the feature,
+   not a leak (the buyer can ask *what changed*). This is the bullet-proof-by-design default (make bad
    states unreachable: a destroyed fact is an unrecoverable bad state) and
    the honest-latency value (the buyer can always see *why* a fact holds and
    what it superseded). "Newest silently wins" and "confidence-weighted
@@ -128,12 +140,16 @@ LLM" (impossible for the interviewer) but a **boundary between two paths**:
   egress path is introduced — the boundary holds because the query path is
   *literally the same code* that already never sends cell values.
 - **Test:** an assertion in the EK-04 interview-source-adapter test suite
-  that (a) the query/ask path for a knowledge DB sends zero expert row
-  values to the model (schema tokens only — the existing `GLOBAL-037` egress
-  test extended to the knowledge-DB listing type), and (b) the interview
-  path is the *only* code path that reads expert cell values into an LLM
-  request. A reviewer rejects any marketplace query surface that widens
-  egress beyond schema.
+  that the query/ask path for a knowledge DB sends zero expert row values
+  to the model (schema tokens only — the existing `GLOBAL-037` egress test
+  extended to the knowledge-DB listing type). The former companion clause —
+  "the interview path is the *only* code path reading expert cell values
+  into an LLM request" — is a global negative no test suite can assert
+  (fixed 2026-08-07, Fable review of #918); it is restated as the
+  **reviewable invariant** it actually is: a PR adding any LLM call whose
+  inputs include expert cell values outside the interview/extraction module
+  is rejected in review, and the module boundary makes such a call visible
+  in the diff.
 
 ## Core value
 
