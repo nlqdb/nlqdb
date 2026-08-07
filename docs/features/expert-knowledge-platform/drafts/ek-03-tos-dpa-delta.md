@@ -144,12 +144,15 @@ sovereign hosting is labelled roadmap; no fee percentage anywhere
 
 ---
 
-## Option B — the stronger claim (founder choice, hardens the product first)
+## Option B — **founder-chosen 2026-08-07** (harden the product, then publish the stronger claim)
 
-If the founder wants the marketing-grade sentence — *"your knowledge rows
-are never sent to a language-model provider when buyers query them"* — it
-becomes **true** with two product changes, and only then may the copy swap
-in:
+The founder picked B: the marketing-grade sentence — *"your knowledge rows
+are never sent to a language-model provider when buyers query them"* —
+becomes **true** with two product changes
+([`EK-09`](../worksheets/EK-09-trust-hardening.md)), and only then does the
+stronger copy swap in and publish (with the founder's final wording
+sign-off). Option A's truthful text above remains the fallback if B's
+slices stall:
 
 1. **Knowledge-DB queries skip narration by default** (server-side: the
    granted/knowledge-DB ask path behaves as `Accept: application/json`;
@@ -159,10 +162,10 @@ in:
    whose terms exclude training on inputs/outputs) for the authoring path,
    so the training promise can extend beyond "our own models."
 
-Each is a small EK slice; neither exists today. Until both ship, Option A's
-truthful text is the only publishable version (SK-EKP-001: trust copy never
-exceeds substance). **Founder picks A-now, or B-first-then-stronger-copy —
-queued with the sign-off bullet in `blocked-by-human.md`.**
+Both are `EK-09`'s Done-when boxes; neither exists today. Until both ship,
+Option A's truthful text is the only publishable version (SK-EKP-001: trust
+copy never exceeds substance). Publish order: EK-09 green → stronger copy
+drafted into this file → founder wording sign-off → live.
 
 ## Sources (P2 — 2026 legal norms)
 

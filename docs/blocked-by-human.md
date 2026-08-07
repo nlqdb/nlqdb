@@ -114,18 +114,15 @@ SK-PIVOT-016 criterion 1's counter is **not** running yet.)
    delta** — drafted contract text at
    [`docs/features/expert-knowledge-platform/drafts/ek-03-tos-dpa-delta.md`](./features/expert-knowledge-platform/drafts/ek-03-tos-dpa-delta.md):
    two clause blocks (`/terms` + `/privacy`) written per `SK-EKP-001`,
-   **rewritten 2026-08-07 after Fable review found the first draft's egress
-   claim false against shipped code** (summarize sends result rows to the
-   LLM; the rewrite discloses planning/narration/interview truthfully, with
-   the JSON-only opt-out). Your sign-off now carries **one embedded choice**
-   (drafted as Option A/B in the file): **A** — publish the truthful text
-   as-is; **B** — first harden the product (knowledge-DB queries skip
-   narration by default + pin a no-training interview provider), then
-   publish the stronger "rows never reach an LLM on buyer queries" claim.
-   Legal wording is a human sign-off, not an agent merge (P6). **Lowest
-   rank — not urgent:** nothing publishes until you approve, and the clauses
-   describe the EK-05 selling flow that ships later. Conservative default
-   applied: the live legal pages are untouched.
+   rewritten 2026-08-07 after Fable review (the first draft's egress claim
+   was false against shipped code). **You chose Option B the same day**
+   (harden first: [`EK-09`](./features/expert-knowledge-platform/worksheets/EK-09-trust-hardening.md)
+   makes buyer queries schema-only + pins a no-training interview
+   provider), so what remains here is only the **final wording sign-off
+   once EK-09 is green** — agents will refresh the draft's stronger copy
+   and re-rank this bullet then. Legal wording is a human sign-off, not an
+   agent merge (P6). **Lowest rank — nothing publishes until then**; the
+   live legal pages are untouched.
 
 ## Suggestions needing approval (to amend the guidelines)
 
