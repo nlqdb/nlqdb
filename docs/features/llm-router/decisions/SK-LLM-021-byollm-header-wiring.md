@@ -71,9 +71,9 @@ selector). Key-handling parent: [`SK-PREMIUM-008`](../../premium-tier/decisions/
     the gateway; the allowlist fails loud at the edge (`GLOBAL-012`).
   - **Silent fallback to the free chain on a bad/anon key** — the dark
     pattern `GLOBAL-012` and `SK-PREMIUM-008` both forbid.
-- **Deferred (tracked):** Account-stored keys (`api_keys.scope="byollm"`,
-  KEK-decrypt) and the hosted-premium lane (`SK-LLM-017`, dark pre-§6) stay on
-  the free router. `GLOBAL-003` surface parity (SDK / CLI / MCP / elements +
+- **Deferred (tracked):** The hosted-premium lane (`SK-LLM-017`, dark pre-§6)
+  stays on the free router (account-stored keys shipped in `SK-PREMIUM-012`).
+  `GLOBAL-003` surface parity (SDK / CLI / MCP / elements +
   the `/v1/keys/byollm` endpoints + `/app/keys` UI) is tracked in
   [`premium-tier/FEATURE.md`](../../premium-tier/FEATURE.md) `## Open questions`.
   (The OpenRouter-vs-compat discrepancy is resolved — OpenRouter now dispatches

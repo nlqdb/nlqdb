@@ -130,38 +130,23 @@ export function resolveAskRouter(args: {
   // signal the §6 trigger reads (performance.md §3.3 cardinality rules).
   const presetAttr: Record<string, string> =
     args.preset !== undefined ? { "llm.model_preset": args.preset } : {};
+  const attributes = { ...dispatchLaneAttributes(selection), ...presetAttr };
   if (selection.lane !== "byollm") {
-    return {
-      ok: true,
-      router: args.freeRouter,
-      attributes: { ...dispatchLaneAttributes(selection), ...presetAttr },
-    };
+    return { ok: true, router: args.freeRouter, attributes };
   }
   const { accountId, gatewayId } = args.gateway;
   if (!accountId || !gatewayId) {
-    // AI Gateway is the mandatory egress for every BYOLLM call
-    // (SK-LLM-019), so an unconfigured gateway means the platform can't
-    // serve BYOLLM at all — a deployment-wide operator gap (and a legit
-    // steady state on a self-host that never wired one, GLOBAL-019),
-    // never a user key error.
-    //
-    // The *explicit* per-request header lane fails loud as 503
-    // (SK-LLM-021): the caller asked for their key on THIS call, so we
-    // tell them we can't honour it rather than quietly using ours — the
-    // intent-mismatch SK-LLM-016 forbids. `model: "best"` is the same kind
-    // of explicit frontier ask (SK-PREMIUM-014 forbids silently serving
-    // the free chain for it), so it also keeps the 503. The *ambient*
-    // account-stored lane on `auto`/absent is a stored preference, not a
-    // per-call ask: bricking every such request on a platform gap — when
-    // the strict-$0 chain is right there — is the opposite of what the 503
-    // copy ("the built-in models are still available") promises, so it
-    // degrades to the free chain. The degrade isn't the silent fallback
-    // SK-LLM-016 rejects: that rule guards against hiding a *bad key* and
-    // re-billing us for the user's spend, and here the key is fine, the
-    // free chain is $0, and `llm.byollm_degraded` records the bypass on
-    // the span so no telemetry is hidden (performance.md §3.3). The web
-    // model pill also reflects the resolved free lane, so the user sees
-    // they're on the built-in model, not their stored one.
+    // AI Gateway is the mandatory BYOLLM egress (SK-LLM-019), so an
+    // unconfigured gateway is a deployment-wide operator gap (a legit
+    // self-host steady state, GLOBAL-019), never a user key error. An
+    // *explicit* per-call ask fails loud — the `x-nlq-byollm-key` header
+    // (SK-LLM-021) and `model: "best"` (SK-PREMIUM-014) 503 rather than
+    // quietly serve ours. The *ambient* account-stored lane on `auto`/absent
+    // is a stored preference, not a per-call ask, so it degrades to the free
+    // chain instead of bricking every request. This is not the SK-LLM-016
+    // silent fallback (that guards a *bad key* from re-billing us and hiding
+    // the failure): here the key is fine, the free chain is $0, and
+    // `llm.byollm_degraded` records the bypass on the span.
     if (selection.source === "account" && args.preset !== "best") {
       return {
         ok: true,
@@ -181,9 +166,5 @@ export function resolveAskRouter(args: {
     gatewayId,
     userId: args.userId,
   });
-  return {
-    ok: true,
-    router,
-    attributes: { ...dispatchLaneAttributes(selection), ...presetAttr },
-  };
+  return { ok: true, router, attributes };
 }
