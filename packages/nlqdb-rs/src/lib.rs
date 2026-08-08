@@ -7,6 +7,8 @@
 //! ```rust
 //! // TODO: example usage
 //! ```
+//!
+//! The client surface does not exist yet, so an executable example would mislead users.
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
