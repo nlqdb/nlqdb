@@ -38,6 +38,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 | 3 | ~15 min | Approve the EK-03 "not allowed" ToS/DPA draft clauses; on approval a follow-up run publishes them into /terms + /privacy — not urgent, publishes with the EK-05 selling flow | 2026-08-07 |
+| 4 | ~10 min | Decide what to do with 3 unused LLM keys sitting in env (`NVIDIA_API_KEY`, `COHERE_TRIAL_API_KEY`, `HF_ACCESS_TOKEN`) — weekly free-model sweep found none safe to wire into the free chain as-is | 2026-08-08 |
 
 Only #1 can move real strangers (scorecard row #2); #2 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
@@ -123,6 +124,35 @@ SK-PIVOT-016 criterion 1's counter is **not** running yet.)
    and re-rank this bullet then. Legal wording is a human sign-off, not an
    agent merge (P6). **Lowest rank — nothing publishes until then**; the
    live legal pages are untouched.
+
+4. **⏱ ~10 min · since 2026-08-08 — Decide on 3 unused LLM keys already in
+   env** (`NVIDIA_API_KEY`, `COHERE_TRIAL_API_KEY`, `HF_ACCESS_TOKEN`) —
+   found by this week's [`llm-router`](./features/llm-router/FEATURE.md)
+   free-model sweep: none is registered in `apps/api/src/llm-router.ts`'s
+   chain (`SK-LLM-003`/`SK-LLM-023`/`SK-LLM-028`:
+   `cerebras → gemini/groq → workers-ai → openrouter free → mistral`).
+   Checked whether any beats or extends that chain — conservative default
+   (GLOBAL-033) applied, **none added this run**:
+   - **Cohere trial key** — Cohere's own docs bar trial keys from
+     production/commercial use outright (1,000 calls/mo, 20 RPM chat cap;
+     [docs.cohere.com/docs/rate-limits](https://docs.cohere.com/docs/rate-limits)).
+     Wiring it in would violate their ToS, not just be sub-par.
+   - **NVIDIA NIM free tier** (`build.nvidia.com`) — NVIDIA defines
+     "production" as "serving real end users" and gates that on NVIDIA AI
+     Enterprise; the free key is 40 RPM / ~1–5K credits per month, sized
+     for prototyping, not our live `/v1/ask` traffic
+     ([decodethefuture.org NVIDIA NIM pricing guide](https://decodethefuture.org/en/nvidia-nim-api-pricing-limits-guide/)).
+   - **HF Inference free tier** — Hugging Face itself scopes it to
+     "testing models from the Hub," capped to <10B-param models with
+     unpublished, load-dependent limits and no production commitment
+     ([huggingface.co/docs/hub/rate-limits](https://huggingface.co/docs/hub/rate-limits)).
+   Current chain already matches what 2026 roundups rank as the strongest
+   card-free, production-eligible stack (Groq/Cerebras/Gemini/OpenRouter/
+   Workers AI) — this sweep found nothing better to add. Lock a decision
+   only if you want to override the default: (a) delete the two dead keys
+   (Cohere trial, HF) as cleanup and leave the chain as-is, or (b) buy a
+   real production credential for one of them (Cohere production tier,
+   NVIDIA Enterprise, or HF PRO at $9/mo) to add genuine chain redundancy.
 
 ## Suggestions needing approval (to amend the guidelines)
 
