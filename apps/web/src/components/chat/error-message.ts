@@ -20,7 +20,7 @@ export function messageFor(err: unknown): string {
       case "unauthorized":
         return "Sign in expired — sign in again to continue.";
       case "sql_rejected":
-        return "That query was rejected — try rephrasing.";
+        return sqlRejectedMessage(err.body);
       case "db_unreachable":
       case "db_misconfigured":
         return "Couldn't reach the database — try again.";
@@ -39,6 +39,35 @@ export function messageFor(err: unknown): string {
     }
   }
   return "Something went wrong — try again.";
+}
+
+// SK-ASK-026 — the API already ships the specific allowlist reject reason
+// in `body.reason`; map it to honest, actionable copy instead of the flat
+// "That query was rejected". The destructive-ambiguous family
+// (drop/truncate/delete-all) normally comes back as a `clarify_required`
+// with options and never reaches here — this copy is the defense-in-depth
+// fallback for the stash/cache reject paths that still emit `sql_rejected`.
+const SQL_REJECT_COPY: Record<string, string> = {
+  drop_statement: "Dropping tables isn't supported from chat — start a new database instead.",
+  truncate_statement:
+    "Emptying a whole table isn't a one-click action from chat — delete rows with a filter.",
+  delete_without_where: "That would delete every row — add a filter, or say which rows to remove.",
+  update_without_where:
+    "That would update every row — add a filter (e.g. \"… where status = 'open'\").",
+  grant_or_revoke: "Changing database permissions isn't supported from chat.",
+  alter_statement: "Changing a table's structure isn't supported from chat.",
+  disallowed_verb: "That kind of statement isn't allowed here — ask in plain English.",
+  disallowed_function: "That query uses a function that isn't allowed here.",
+  multi_statement: "Ask one thing at a time — that came through as multiple statements.",
+  parse_failed: "I couldn't turn that into a valid query — try rephrasing.",
+  empty: "That came through empty — try rephrasing.",
+};
+
+function sqlRejectedMessage(body: unknown): string {
+  const reason = (body as { reason?: string } | null)?.reason;
+  return (
+    (reason ? SQL_REJECT_COPY[reason] : undefined) ?? "That query was rejected — try rephrasing."
+  );
 }
 
 // SK-ASK-016 — the pre-flight path returns referencedTables (in the goal,

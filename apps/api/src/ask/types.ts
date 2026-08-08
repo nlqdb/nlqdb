@@ -124,18 +124,36 @@ export type AskResult = {
   trace: Trace;
 };
 
-// SK-ASK-014 — when the classifier returns `kind=create` but the caller
-// pinned a `dbId`, the handler returns this envelope instead of letting
-// the LLM emit `CREATE TABLE` and have the read/write SQL allowlist
-// reject it as the cryptic `disallowed_verb`. Surfaces render a chip
-// with two actions: "Create new database" (re-send without `dbId`) and
-// "Cancel". `pinned_db` is the DB the caller had selected — surfaces
-// echo its slug into the chip prompt.
+// SK-ASK-026 — one interpretation offered on a `destructive_ambiguous`
+// clarify. The surface re-sends `goal` (dropping the DB pin when
+// `forceNoPin`) through the same re-send path the SK-ASK-009 picker and
+// SK-ASK-014 create chip already use — no new privileged action.
+export type ClarifyOption = {
+  label: string;
+  goal: string;
+  forceNoPin?: boolean;
+};
+
+// A `clarify_required` envelope. Two shapes share it:
+//   • `create_or_query_pinned` (SK-ASK-014) — the classifier returned
+//     `kind=create` but the caller pinned a `dbId`. Surfaces render a chip
+//     with two hardcoded actions ("Create new database" / "Cancel") and
+//     echo `pinned_db`'s slug into the prompt. Returned by the handler.
+//   • `destructive_ambiguous` (SK-ASK-026) — the read/write allowlist
+//     rejected the plan for a destructive-ambiguous reason (the "clear db"
+//     family). Surfaces render one chip / choice per `options` entry
+//     instead of the flat `sql_rejected` dead-end. Returned by the
+//     orchestrator at the plan-loop reject.
+// Both replace the cryptic `disallowed_verb`/`sql_rejected` a destructive
+// or create goal would otherwise dead-end on.
 export type ClarifyRequired = {
   status: "clarify_required";
-  clarification: "create_or_query_pinned";
+  clarification: "create_or_query_pinned" | "destructive_ambiguous";
   pinned_db: { id: string; slug: string } | null;
   reason: string;
+  // SK-ASK-026 — present on `destructive_ambiguous`; one re-sendable
+  // interpretation per entry. Absent on `create_or_query_pinned`.
+  options?: ClarifyOption[];
 };
 
 export type AskError =

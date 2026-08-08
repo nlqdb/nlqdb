@@ -25,6 +25,22 @@ export function emitFeatureSignal(
   surface: NlqSurface,
   error: AskError,
 ): void {
+  // SK-ASK-026 — the destructive-op family (drop/truncate/bulk-delete) now
+  // surfaces as a `destructive_ambiguous` clarify rather than `sql_rejected`.
+  // It is still a GLOBAL-024 "not yet" demand signal (the user wants a
+  // one-click destructive op we instead route to safer choices), so keep
+  // emitting `ddl_via_ask` — drop/truncate fired it before the reroute.
+  if (error.status === "clarify_required" && error.clarification === "destructive_ambiguous") {
+    ctx.waitUntil(
+      emitter.emit({
+        name: "feature.requested.ddl_via_ask",
+        principalId,
+        surface,
+        rejectReason: "destructive_ambiguous",
+      }),
+    );
+    return;
+  }
   if (error.status === "sql_rejected" && DDL_REJECT_REASONS.has(error.reason)) {
     ctx.waitUntil(
       emitter.emit({

@@ -262,6 +262,36 @@ describe("handleQuery", () => {
     }
   });
 
+  it("SK-ASK-026: surfaces a destructive_ambiguous clarify with re-sendable options", async () => {
+    const client = stubClient({
+      ask: async () => {
+        throw new NlqdbApiError("clarify", 409, "clarify_required", "/v1/ask", {
+          status: "clarify_required",
+          clarification: "destructive_ambiguous",
+          reason: "Clearing the whole database could mean a few things.",
+          options: [
+            { label: 'Empty the "facts" table', goal: "delete every row from the facts table" },
+            {
+              label: "Start fresh with a new, empty database",
+              goal: "create a new empty database",
+              forceNoPin: true,
+            },
+          ],
+        });
+      },
+    });
+
+    const result = await handleQuery(client, { q: "clear db" });
+
+    expect("err" in result).toBe(true);
+    if ("err" in result) {
+      expect(result.err.code).toBe("clarify_required");
+      expect(result.err.message).toContain("could mean a few things");
+      expect(result.err.action).toContain("delete every row from the facts table");
+      expect(result.err.details?.["options"]).toHaveLength(2);
+    }
+  });
+
   it("returns db_created as ok with the new dbId", async () => {
     const client = stubClient({
       ask: async () => ({
