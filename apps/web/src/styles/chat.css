@@ -347,6 +347,26 @@
   font-weight: 600;
 }
 
+/* Honest signal that the configured key isn't the model answering (#941 —
+   account BYOLLM lane degraded to the free chain). */
+.model-picker__pill--degraded {
+  border-color: var(--danger, #d64545);
+}
+
+.model-picker__pill-warn {
+  color: var(--danger, #d64545);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.model-picker__degraded {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--danger, #d64545);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
 .model-picker__pill-caret {
   color: var(--fg-muted);
   font-size: 10px;

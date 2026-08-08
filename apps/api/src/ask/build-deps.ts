@@ -31,6 +31,7 @@ import { kekFromEnv, openSecret } from "../secret-envelope.ts";
 import { assertTenantRoleName, isTenantRoleMissingError, tenantRoleName } from "../tenant-role.ts";
 import { makeKvDiagSink } from "./diag.ts";
 import { makeFirstQueryTracker } from "./first-query.ts";
+import { makeConfirmStash } from "./confirm-stash.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
 import { makePlanCache } from "./plan-cache.ts";
 import { makeRateLimiter } from "./rate-limit.ts";
@@ -55,6 +56,7 @@ export function buildAskDeps(
   return {
     resolveDb: (id, tenantId) => resolveDb(envBindings.DB, id, tenantId),
     planCache: makePlanCache(envBindings.KV),
+    confirmStash: makeConfirmStash(envBindings.KV),
     llm: llm ?? getLLMRouter(),
     exec: (db, sql, signal) => buildExec(db, sql, signal, scope),
     rateLimiter: makeRateLimiter(envBindings.DB),

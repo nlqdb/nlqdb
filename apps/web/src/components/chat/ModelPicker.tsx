@@ -29,7 +29,7 @@ import {
   useState,
 } from "react";
 import { getChatClient } from "../../lib/chat-client";
-import { resolveProviderRow } from "./model-picker-selection";
+import { resolveModelHealth, resolveProviderRow } from "./model-picker-selection";
 
 // Fired by the free-model nudge (FreeModelNudge, SK-PREMIUM-004) to ask this
 // picker to open + scroll into view. The picker owns its open state; the nudge
@@ -161,6 +161,12 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
     return `${credential.provider} · ${credential.model}`;
   }, [catalog, credential]);
 
+  // Is the configured key actually answering? When it isn't (e.g. the account
+  // BYOLLM lane silently degraded to the free chain, #941), the pill must not
+  // keep claiming the frontier model — surface the truth from the last answer's
+  // trace model (SK-TRUST-002). Only meaningful once a key is configured.
+  const health = resolveModelHealth(credential?.model ?? null, lastModel);
+
   async function selectFree() {
     if (!credential) {
       closePopover();
@@ -231,17 +237,26 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
     <div className="model-picker" ref={rootRef}>
       <button
         type="button"
-        className="model-picker__pill"
+        className={`model-picker__pill${health.degraded ? " model-picker__pill--degraded" : ""}`}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => {
           setOpen((o) => !o);
           if (!catalog) void loadCatalog();
         }}
-        title="Choose which model answers your questions"
+        title={
+          health.degraded
+            ? `Your ${activeLabel} key isn't answering — the last answer ran on ${health.ranOn} (free chain). Check your key.`
+            : "Choose which model answers your questions"
+        }
       >
         <span className="model-picker__pill-label">Model</span>
         <span className="model-picker__pill-value">{activeLabel}</span>
+        {health.degraded ? (
+          <span className="model-picker__pill-warn" aria-hidden="true" title="Key not active">
+            ⚠
+          </span>
+        ) : null}
         <span className="model-picker__pill-caret" aria-hidden="true">
           ▾
         </span>
@@ -398,7 +413,15 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
               </>
             )}
           </div>
-          {lastModel ? <p className="model-picker__last">Last answer used {lastModel}.</p> : null}
+          {health.degraded ? (
+            <p className="model-picker__degraded" role="alert">
+              Your {activeLabel} key isn't answering — the last answer ran on{" "}
+              <strong>{health.ranOn}</strong> (free chain). Check that the key is valid, or the
+              deployment may not have a frontier lane configured.
+            </p>
+          ) : lastModel ? (
+            <p className="model-picker__last">Last answer used {lastModel}.</p>
+          ) : null}
         </div>
       ) : null}
     </div>
