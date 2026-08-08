@@ -1,13 +1,16 @@
 # EK-03 — Trust surface: landing, copy, ToS/DPA delta
 
 **Status:** in-flight · **Repo:** nlqdb · **Risk:** low · **Runs:** 1–2 ·
-**Prereqs:** none (fully constrained by `SK-EKP-001`) · **Box 3 drafted
-2026-08-07** → [`drafts/ek-03-tos-dpa-delta.md`](../drafts/ek-03-tos-dpa-delta.md)
+**Prereqs:** none (fully constrained by `SK-EKP-001`) · **Boxes 1–2 + 4
+shipped 2026-08-08**: the `/experts/` landing
+(`apps/web/src/pages/experts.astro`) with the guard test
+(`apps/web/src/pages/__tests__/experts-trust-claims.test.ts`). **Box 3
+drafted 2026-08-07** → [`drafts/ek-03-tos-dpa-delta.md`](../drafts/ek-03-tos-dpa-delta.md)
 (the "not allowed" contract text; awaiting founder sign-off before publish,
 queued in [`blocked-by-human.md`](../../../blocked-by-human.md) as a plain legal
 action — not a 🔒 decision-to-lock, since `SK-EKP-001` is already locked).
-Landing + copy (boxes 1–2) and the honest-claims guard (box 4) are later runs
-that enumerate that approved floor.
+The slice closes when the founder signs off box 3 and a follow-up run
+publishes it into `/terms` + `/privacy`.
 
 ## Goal
 
@@ -42,11 +45,19 @@ Ship the platform's public trust surface: a landing section/page for the
 
 ## Done when
 
-- [ ] Landing live with the positioning + honest mechanism explanation.
-- [ ] Trust copy enumerates the floor; no "can't read" phrasing anywhere.
+- [x] Landing live with the positioning + honest mechanism explanation
+      (2026-08-08, `/experts/` — the "not allowed" pillar stated with its
+      sequencing: the contract publishes before the first listing opens).
+- [x] Trust copy enumerates the floor; no "can't read" phrasing anywhere
+      (planning schema-only · narration disclosed + JSON-only opt-out ·
+      RLS isolation · delete · FSL self-host; sovereign hosting labeled
+      roadmap/not-shipped).
 - [~] ToS/DPA delta **drafted** (2026-08-07) →
       [`drafts/ek-03-tos-dpa-delta.md`](../drafts/ek-03-tos-dpa-delta.md);
       founder sign-off + publish into `/terms` + `/privacy` is a follow-up run
       (a plain legal action in `blocked-by-human.md`, not a 🔒 decision-to-lock
       — `GLOBAL-033`).
-- [ ] Honest-claims guard covers the new surface's claims.
+- [x] Honest-claims guard covers the new surface's claims (2026-08-08,
+      `experts-trust-claims.test.ts` — bans inability claims, absolutes
+      ahead of EK-09, pricing language, and fake doors; pins the floor
+      enumeration and the honest carve).
