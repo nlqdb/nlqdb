@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 
 // The bug this module fixes: without an identity call, Tawk shows only its own
 // anonymous visitor id. These tests assert the *behaviour* — that setAttributes

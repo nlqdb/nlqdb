@@ -20,10 +20,7 @@ import type { SessionUser } from "./session";
 
 type TawkApi = {
   onLoad?: () => void;
-  setAttributes?: (
-    attributes: Record<string, string>,
-    callback: (error?: unknown) => void,
-  ) => void;
+  setAttributes?: (attributes: Record<string, string>, callback: (error?: unknown) => void) => void;
 };
 
 declare global {
@@ -46,7 +43,8 @@ export function tawkAttributes(user: SessionUser): Record<string, string> {
 
 export function identifyTawkVisitor(user: SessionUser | null): void {
   if (typeof window === "undefined" || !user) return;
-  const api = (window.Tawk_API = window.Tawk_API ?? {});
+  window.Tawk_API ??= {};
+  const api = window.Tawk_API;
   const attributes = tawkAttributes(user);
   const apply = () => api.setAttributes?.(attributes, () => {});
   // Apply now if the widget has already loaded (session resolved late), and
