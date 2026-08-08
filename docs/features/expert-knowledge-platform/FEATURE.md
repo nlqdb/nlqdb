@@ -241,8 +241,8 @@ GLOBAL; index in [`docs/decisions.md`](../../decisions.md)).
 - **GLOBAL-036** — Lead positioning: analytical agent memory.
   - *In this feature:* this platform is the empire-scale expression of the
     same bet — structure to compute on, not prose to recall.
-- **GLOBAL-037** — Schema-only LLM egress.
-  - *In this feature:* the technical floor under the SK-EKP-001 trust claim.
+- **GLOBAL-037** — LLM egress lanes (planning schema-only; amended 2026-08-07).
+  - *In this feature:* the technical floor under the SK-EKP-001 trust claim — lane 3 (interview authoring, own tenant) is `INV-EKP-037`; EK-09 makes buyer-query paths schema-only end-to-end (lane 2 narration skip).
 
 ## Open questions / known unknowns
 
