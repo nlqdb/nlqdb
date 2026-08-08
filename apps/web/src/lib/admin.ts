@@ -75,6 +75,22 @@ export type GtmMetrics = {
     memoryFirst10SuccessRate: number | null;
     memoryLastQueriedAt: string | null;
   };
+  // SK-GTM-009 — the paying-customer watchlist: one row per customers
+  // entry, newest conversion first. Bounded (LIMIT 50 server-side).
+  customers: Array<{
+    email: string;
+    /** Founder/test account — a test purchase is not the first customer. */
+    internal: boolean;
+    status: string;
+    convertedAt: string | null;
+    currentPeriodEnd: string | null;
+    cancelAtPeriodEnd: boolean;
+    dbs: number;
+    /** Lower bounds — first-10 counters saturate at 10 per DB. */
+    first10Asks: number;
+    first10Ok: number;
+    lastActivityAt: string | null;
+  }>;
   trend: Array<{ day: string } & Record<string, unknown>>;
 };
 

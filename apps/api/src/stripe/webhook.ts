@@ -541,11 +541,18 @@ async function syncSubscriptionFields(
   fields: SubscriptionFields,
   userId: string,
 ): Promise<void> {
+  // SK-GTM-009 — `converted_at` stamps the FIRST transition into a
+  // paying status and is never overwritten (COALESCE keeps the
+  // original moment across renewals and status churn). This is the
+  // only write site.
   await db
     .prepare(
       "UPDATE customers SET " +
         "stripe_subscription_id = ?, status = ?, current_period_end = ?, " +
-        "cancel_at_period_end = ?, price_id = ?, updated_at = unixepoch() " +
+        "cancel_at_period_end = ?, price_id = ?, " +
+        "converted_at = CASE WHEN ? IN ('active', 'trialing') " +
+        "THEN COALESCE(converted_at, unixepoch()) ELSE converted_at END, " +
+        "updated_at = unixepoch() " +
         "WHERE user_id = ?",
     )
     .bind(
@@ -554,6 +561,7 @@ async function syncSubscriptionFields(
       fields.currentPeriodEnd,
       fields.cancelAtPeriodEnd,
       fields.priceId,
+      sub.status,
       userId,
     )
     .run();
