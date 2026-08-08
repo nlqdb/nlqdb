@@ -5,8 +5,9 @@
 (boxes 1 + 3); box 2 landed 2026-08-07 — EK-04's interview-source adapter
 contract now names the record (`source_episode` provenance, ACTA/min-2 probe,
 edit/rank/forced-choice verification) and carries the `INV-EKP-037` egress
-test. **Detailed product design lands in `experts`** once agent access exists
-(`SK-EKP-003`) · **Repo:** nlqdb (rail-level design), `experts` (product
+test. **Detailed product design landed in `experts`** 2026-08-07
+(`docs/design/interview-methodology.md` there, via founder-pushed bundle —
+`SK-EKP-003`) · **Repo:** nlqdb (rail-level design), `experts` (product
 detail) · **Risk:** med · **Runs:** 1–2 · **Prereqs:** none
 
 ## Goal

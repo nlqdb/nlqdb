@@ -25,8 +25,15 @@ satisfy):
 - **Metered per query** — every **successfully executed** granted-access
   `/v1/ask` (and only those; SK-EKP-008 Q1) emits a usage
   record attributable to (grant, buyer, seller) — the unit `SK-EKP-002`'s
-  fee later bills against. Metering is idempotent under retries
-  (`GLOBAL-005` applies to any mutating surface this adds).
+  fee later bills against. **A granted query requires an idempotency key**
+  (broker-synthesized and persisted when the client omits one) and the
+  granted path implements **replay** — same key ⇒ same response, no second
+  usage record (SK-EKP-008 as hardened 2026-08-07; `GLOBAL-005`'s optional
+  header alone is not enough for money integrity).
+- **v1 scope-of-applicability** — grants mint on **platform-provisioned
+  hosted DBs only**; BYO grantability is a separate future decision,
+  deny-by-default. Grant `scope` is authoritative over role privileges,
+  and schema widening never widens a grant (SK-EKP-008).
 - **Observable** — OTel spans on the new surface (`GLOBAL-014`); seller
   can see who queried how much (their income statement), buyer can see
   what they spent.
@@ -41,5 +48,7 @@ satisfy):
 - [ ] Cross-tenant read works only through a live grant; kill-tests for
       RLS bypass, GUC spoofing, and join-leakage pass.
 - [ ] Usage records emitted per granted query, idempotent under retry.
-- [ ] Revocation latency measured and within the EK-02 bound.
+- [ ] Revocation latency measured and within the EK-02 bound — including
+      the in-flight half (`statement_timeout` ≤ the 30 s cache bound; the
+      env knob may only tighten).
 - [ ] SDK/CLI/MCP/elements updated or gap tracked.

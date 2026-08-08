@@ -18,7 +18,8 @@
 [`GLOBAL-036`](../decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md)
 (analytical agent memory, the thesis this scales) ·
 [`GLOBAL-037`](../decisions/GLOBAL-037-schema-only-llm-egress.md)
-(schema-only LLM egress — the trust pillar's existing technical floor) ·
+(the enumerated LLM-egress lanes, amended 2026-08-07 — the trust pillar's
+technical floor) ·
 [`SK-PIVOT-018`](../features/agent-memory-pivot/decisions/SK-PIVOT-018-goal-packs.md)
 (goal packs — a profession is a pack) ·
 [`SK-PIVOT-023`](../features/agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
