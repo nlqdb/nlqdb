@@ -128,6 +128,23 @@ Paid plans aren't live yet. The full model strategy is in
 
 Full integration matrix in [`docs/progress.md`](./docs/progress.md).
 
+## Packages on npm
+
+Published to the public npm registry with build provenance
+([`SK-CIPERM-003`](./docs/features/ci-permissions/FEATURE.md)). Version badges
+are live from npm; the table itself is generated from the workspace by
+[`scripts/sync-readme-packages.mjs`](./scripts/sync-readme-packages.mjs), so it
+lists exactly the packages that are un-gated (`"private"` removed) and nothing
+that isn't.
+
+<!-- BEGIN:packages -->
+| Package | Version | What it is | Source |
+|---|---|---|---|
+| [`@nlqdb/cli`](https://www.npmjs.com/package/@nlqdb/cli) | [![@nlqdb/cli](https://img.shields.io/npm/v/@nlqdb/cli?label=npm&color=cb3837)](https://www.npmjs.com/package/@nlqdb/cli) | Shim that installs the nlq CLI binary for the host platform. | [`packages/cli-shim`](./packages/cli-shim) |
+| [`@nlqdb/mcp`](https://www.npmjs.com/package/@nlqdb/mcp) | [![@nlqdb/mcp](https://img.shields.io/npm/v/@nlqdb/mcp?label=npm&color=cb3837)](https://www.npmjs.com/package/@nlqdb/mcp) | Analytical-memory MCP server for nlqdb — a real database your AI agent can GROUP BY / JOIN / aggregate over in natural language, not just recall. | [`packages/mcp`](./packages/mcp) |
+| [`@nlqdb/sdk`](https://www.npmjs.com/package/@nlqdb/sdk) | [![@nlqdb/sdk](https://img.shields.io/npm/v/@nlqdb/sdk?label=npm&color=cb3837)](https://www.npmjs.com/package/@nlqdb/sdk) | Typed HTTP client for the nlqdb /v1 API — works in browsers, Node, Bun, Workers. | [`packages/sdk`](./packages/sdk) |
+<!-- END:packages -->
+
 ## Roadmap
 
 The two sections below are the **live focus**; the numbered phases after
