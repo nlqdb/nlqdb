@@ -28,14 +28,23 @@ interface McpInstallViewProps {
   apiKey?: string;
   /** Override only for staging/preview environments. */
   mcpUrl?: string;
+  /**
+   * Whether the venue rendering this view is already for a signed-in user
+   * (the `/app` chat window is signed-in-only by its page guard). When
+   * `true`, the "Sign in (free)" anon nudge is suppressed — nudging a
+   * signed-in user to sign in is nonsensical. Defaults to `false` for the
+   * anonymous marketing venues (post-create), where the nudge is honest.
+   */
+  signedIn?: boolean;
 }
 
 export default function McpInstallView({
   apiKey = PLACEHOLDER_KEY,
   mcpUrl = MCP_ENDPOINT_URL,
+  signedIn = false,
 }: McpInstallViewProps) {
   const hosts = buildMcpHosts(mcpUrl);
-  const isPlaceholder = apiKey === PLACEHOLDER_KEY;
+  const isPlaceholder = apiKey === PLACEHOLDER_KEY && !signedIn;
   // One panel open at a time (SK-WEB-015 one-motion-moment budget).
   const [openHostId, setOpenHostId] = useState<McpHostEntry["id"] | null>(null);
   return (
