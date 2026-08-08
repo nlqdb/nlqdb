@@ -85,7 +85,7 @@ Before documenting any decision or plan:
 
 Simplify rather than complexify. Each goal must be achieved with minimal steps possible.
 When fixing an issue or adding a feature - always look for a way to remove code, or simplify code rather than adding code. Same for documentations and comments.
-De-prioritize backward compatilibty and prioritze clean code - we are still in a building stage.
+De-prioritize backward compatibility and prioritize clean code - we are still in a building stage.
 
 ### P6. Customer journeys must be world-class, not merely functional
 
