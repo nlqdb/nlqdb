@@ -130,9 +130,46 @@ Full integration matrix in [`docs/progress.md`](./docs/progress.md).
 
 ## Roadmap
 
-The detailed plan below is a summary; the canonical phase plan and exit
-gates live in [`docs/phase-plan.md`](./docs/phase-plan.md). Legend:
+The two sections below are the **live focus**; the numbered phases after
+them are the engine roadmap. Canonical plan + exit gates:
+[`docs/phase-plan.md`](./docs/phase-plan.md). Legend:
 **✓ shipped · ~ in progress · ◯ planned**.
+
+### Now — analytical agent memory (the wedge)
+
+Memory your agent can `GROUP BY`: real Postgres tables per memory type,
+plain-English analytics over what it remembered — not top-k recall.
+
+- ✓ `agent_memory_v1` preset — entities / facts / episodes, one command,
+  live for every account
+- ✓ `nlqdb_remember` — deterministic write path (MCP tool + API + SDK + CLI)
+- ✓ Per-agent / per-end-user / per-thread isolation — hard RLS gates,
+  fail-closed
+- ~ TTL retention — sweep built; cron wiring pending
+- ✓ `/agents` landing + honest competitor capability matrix
+- ✓ Claude Code plugin — `/plugin marketplace add nlqdb/nlqdb` installs the
+  server + both memory skills in one step
+- ~ **Dogfood gate** — nlqdb's own ops running on nlqdb memory through the
+  public MCP surface; the public launch fires when its five criteria are
+  green
+- ◯ Public memory dashboard on `/agents`
+- ◯ One-click repo→memory import (paste a GitHub URL)
+- ◯ Goal packs — per-niche memory recipes (support-bot resolution ledger,
+  research-agent source ledger, …)
+
+### Next — the expert-knowledge marketplace ("Become AI")
+
+Non-technical professionals turn their expertise into structured,
+queryable knowledge that AI agents pay to use. Decisions locked, built in
+parallel with the wedge
+([`docs/features/expert-knowledge-platform/`](./docs/features/expert-knowledge-platform/FEATURE.md)).
+
+- ◯ Interview authoring — answer questions about your craft, get queryable
+  rows (pilot: language tutor)
+- ~ Cross-tenant read grants — mint/list/revoke control plane live;
+  fail-closed read enforcement + per-query metering pending
+- ◯ One catalog — free packs + paid expert knowledge DBs
+- ◯ Trust hardening — buyer queries schema-only end-to-end
 
 ### Phase 0 — Foundations ✓
 

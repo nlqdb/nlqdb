@@ -192,6 +192,9 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `db.query` (Tinybird Pipes mgmt) | Per-call span around `createPipe` / `dropPipe` / `getPipe`. Attributes `db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`, `db.tinybird.pipe`. Latency on `nlqdb.db.duration_ms{operation}`. Owner: `packages/db/src/clickhouse-tinybird/pipe-management.ts` (`SK-MIGRATE-001`). |
 | `dns.resolve`                 | One span per BYO connect-time egress resolve (`GLOBAL-035`); A + AAAA DoH legs nest under it. Attributes `server.address`, `dns.question.name`, `dns.answer.count`; ERROR on fail-loud. Owner: `packages/db/src/doh-resolver.ts`. |
 | `nlqdb.mcp.http.request`     | `SK-MCP-009` — wraps every hosted-MCP Worker request before `OAuthProvider` dispatches (skipped on `GET /health`). Attributes: `http.request.method`, `http.route`, `http.response.status_code`. On `OAuthProvider` error responses `onError` adds `nlqdb.mcp.auth.{error_code,error_status,error_description}` and flips status to ERROR. Owner: `apps/mcp/src/index.ts`. |
+| `nlqdb.grants.mint`           | `POST /v1/grants` — cross-tenant read-grant mint (`SK-EKP-008`). Carries `nlqdb.user.id`, `nlqdb.grants.mint.db_id`, `nlqdb.grants.mint.outcome` (`ok`, `idempotent_replay`, validation rejects, `mint_failed`). |
+| `nlqdb.grants.list`           | `GET /v1/grants` — owner + grantee grant list. Carries `nlqdb.user.id`, `nlqdb.grants.list.count`, `nlqdb.grants.list.outcome`. |
+| `nlqdb.grants.revoke`         | `DELETE /v1/grants/:id` — owner revoke, fail-closed (`SK-EKP-008` 30 s bound). Carries `nlqdb.user.id`, `nlqdb.grants.revoke.grant_id`, `nlqdb.grants.revoke.outcome ∈ {revoked, already_revoked, not_found, internal_error}`. |
 
 ### 3.2 Metric names
 

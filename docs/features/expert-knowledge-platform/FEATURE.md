@@ -16,10 +16,16 @@ taking a small, plainly-disclosed fee.
 **Status:** planned — the five governing decisions below were
 **founder-locked 2026-08-05 (in-session)**; implementation is authorized and
 proceeds **in parallel** with the `SK-PIVOT-016` dogfood gate (SK-EKP-005).
-Execution plan: [`worksheets/INDEX.md`](worksheets/INDEX.md) (`EK-01..08`,
-picked by `/daily` as its own lane). The private `experts` repo exists
-(founder, 2026-08-05, all-rights-reserved); its slices are parked until
-agent sessions get workspace access to it. No code exists yet.
+Execution plan: [`worksheets/INDEX.md`](worksheets/INDEX.md) (`EK-01..09`,
+driven by the `/ek` loop). The private `experts` repo exists (founder,
+2026-08-05, all-rights-reserved) and carries first code: the pilot
+interview CLI + the interview-methodology spec (founder-pushed bundles,
+2026-08-05/07). Direct agent push to `experts` is still pending per-session
+access grants, so `experts`-side slices flow via founder-landed bundles
+until then; EK-05 stays parked on that access. First engine code landed
+2026-08-08: the EK-06 grant control plane (`/v1/grants` mint/list/revoke).
+`GLOBAL-003` gap, tracked here until EK-06 box 5: the grants capability is
+HTTP-API-only — SDK, CLI, MCP, and elements surfaces not yet updated.
 **Owners (code):** none yet. The public rails it builds on are
 agent-memory-pivot surfaces (`agent_memory_v1`, goal packs, the shared
 one-click runner). Product-surface code will live partly in a **private
@@ -34,8 +40,10 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 
 ## Touchpoints — read this feature doc before editing
 
-- `docs/features/expert-knowledge-platform/**` (no code paths yet; this list
-  grows when implementation starts)
+- `docs/features/expert-knowledge-platform/**`
+- `apps/api/src/grants.ts`, `apps/api/migrations/0026_grants.sql`, the
+  `/v1/grants` routes in `apps/api/src/index.ts` — the EK-06 grant
+  control plane (`SK-EKP-008`)
 
 ## Decisions
 
@@ -44,8 +52,9 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 - **Decision (founder, 2026-08-05):** The platform's loud trust pillar is
   **"we are not allowed to use or read this data — it is only theirs"** —
   a contractual prohibition (ToS/DPA) stated on top of the true technical
-  floor (`GLOBAL-037` schema-only LLM egress, RLS isolation, `SK-HDC-016`
-  delete, FSL self-host). Copy never claims "we **can't** read it" while
+  floor (`GLOBAL-037`'s enumerated LLM-egress lanes — planning is
+  schema-only, buyer queries schema-only end-to-end once `EK-09` ships —
+  RLS isolation, `SK-HDC-016` delete, FSL self-host). Copy never claims "we **can't** read it" while
   operators technically can. The roadmap item that hardens the claim is
   **1-click sovereign hosting**: the expert's knowledge DB hosted on their
   own on-prem machine or their own cloud account, provisioned by a one-click

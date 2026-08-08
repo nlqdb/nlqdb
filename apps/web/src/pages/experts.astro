@@ -1,0 +1,610 @@
+---
+// `/experts` — the public trust surface for the expert-knowledge
+// marketplace ("Become AI"). EK-03 boxes 1–2: positioning + honest
+// mechanism explanation, with the trust pillar loud and every claim
+// inside shipped substance (SK-EKP-001; GLOBAL-037's three lanes as
+// amended 2026-08-07).
+//
+// Claim discipline, guarded by `__tests__/experts-trust-claims.test.ts`
+// (EK-03 box 4):
+// - the "not allowed" posture is contractual and lands BEFORE the first
+//   listing — stated as sequencing, not as a live term (the ToS/DPA
+//   delta is drafted, awaiting founder sign-off);
+// - no inability claims (SK-EKP-001: operators technically can read
+//   hosted rows; only sovereign hosting changes that, and it is roadmap);
+// - the stronger "rows stay out of LLM requests end-to-end" claim is
+//   EK-09-gated and appears nowhere here yet;
+// - pricing language lives in the selling flow, not on this surface
+//   (SK-EKP-002: trust-loud); no percentage anywhere;
+// - no fake door: both CTAs are live product today, nothing collects
+//   emails for a product that does not exist.
+//
+// The demo fixtures below render the language-tutor pilot (SK-EKP-004)
+// in the real `agent_memory_v1.facts` shape (SK-PIVOT-007) — the table
+// and columns are the shipped contract, the row values are illustrative
+// and labeled as such, same posture as `/agents`.
+
+import Footer from "../components/Footer.astro";
+import Topnav from "../components/Topnav.astro";
+import Base from "../layouts/Base.astro";
+import { appHref } from "../lib/app-href";
+
+// Step 1 fixture — one interview exchange, shown as designed (the
+// interview product is in build; the label on the card says so).
+const interviewQ = "A student says “yo sabo”. What is happening, and what do you do next?";
+const interviewRow = `facts
+├─ kind      error_pattern
+├─ content   regularises irregular first-person
+│            (sabo → sé); high-frequency verbs
+├─ tags      {beginner, verbs, first-month}
+└─ source    interview`;
+
+// Step 3 fixture — a buyer-shaped question compiled over the same
+// table. The English→SQL mechanism is the live engine; the marketplace
+// access around it is in build.
+const buyerQuestion = "Which mistakes do beginners repeat most in their first month?";
+
+const buyerSql = `SELECT content AS mistake,
+       COUNT(DISTINCT end_user_id) AS students
+  FROM facts
+ WHERE kind = 'error_pattern'
+   AND 'first-month' = ANY (tags)
+ GROUP BY content
+ ORDER BY students DESC;`;
+
+const buyerRows = [
+  { mistake: "ser vs estar in past descriptions", students: 21 },
+  { mistake: "regularises irregular first-person (sabo → sé)", students: 17 },
+  { mistake: "gender agreement on -ma nouns (el problema)", students: 12 },
+  { mistake: "por vs para for deadlines", students: 9 },
+];
+
+// The trust floor — each entry is a shipped mechanism or a live written
+// commitment; the one future item (the contract) states its sequencing
+// out loud. Order: the contract, the honest carve, then the mechanisms.
+const floor = [
+  {
+    h: "The contract comes first.",
+    body: "Before the first listing goes live, our terms add a plain prohibition: nlqdb may not read, use, mine, train on, or resell your knowledge for any purpose other than running the queries you and the buyers you authorise make. The marketplace does not open before those terms do.",
+  },
+  {
+    h: "What the engine necessarily does.",
+    body: "To answer a question, the engine reads the relevant rows on the server — that is the service you turned on. What the contract rules out is every other use.",
+  },
+  {
+    h: "Planning is schema-only.",
+    body: "When a question becomes a query, what reaches the language model is your data’s structure — table and column names, types, the descriptions you author — not your rows.",
+  },
+  {
+    h: "Narration is disclosed, and skippable.",
+    body: "When an answer is narrated back in plain language, the rows that answer returned do pass through the model. That is disclosed in our privacy policy today, and API callers skip narration by requesting JSON-only responses.",
+  },
+  {
+    h: "Isolation by default.",
+    body: "Your rows sit behind Postgres row-level security, isolated per account.",
+  },
+  {
+    h: "Our models don’t train on your data.",
+    body: "Already our written privacy commitment for every database on the platform: we don’t use your data to train our own models.",
+  },
+  {
+    h: "Delete means delete.",
+    body: "You can delete a database at any time; retention timelines are in the privacy policy.",
+  },
+  {
+    h: "Run it yourself.",
+    body: "The engine is source-available under FSL-1.1 — you can run it on your own infrastructure for any non-competing use.",
+  },
+];
+---
+
+<Base
+  title="Become AI — turn your expertise into a knowledge database | nlqdb"
+  description="nlqdb is building a marketplace where a professional's knowledge becomes a structured database agents pay to query — yours to own, isolated by design, with the trust terms in writing before the first listing opens."
+  canonical="/experts"
+>
+  <div class="page">
+    <Topnav />
+
+    <main>
+      {/* BEAT 1 — Positioning. The one loud sentence, then the honest
+          frame: this is being built in the open, and the page says
+          exactly what is true today. */}
+      <section class="hero ek-hero">
+        <h1 class="hero__lede">
+          AI can&rsquo;t replace you if you <em class="ek-hero__em">become</em> AI.
+        </h1>
+        <p class="hero__say">
+          We&rsquo;re building a marketplace where your professional knowledge
+          becomes a structured database — typed rows agents query in plain
+          English and, when the marketplace opens, pay you to use. Not a
+          chatbot trained to sound like you: a knowledge base that stays yours.
+        </p>
+        <p class="ek-hero__meta">
+          In build, in the open. Everything below says whether it is shipped
+          today or still being built — nothing on this page claims more.
+        </p>
+      </section>
+
+      {/* BEAT 2 — The mechanism, three steps. Each card carries an
+          honest status chip: the engine is live, the interview and the
+          marketplace access around it are in build. */}
+      <section class="ek-how" aria-labelledby="ek-how-title">
+        <p class="ek-eyebrow">How you become AI</p>
+        <h2 class="ek-h2" id="ek-how-title">
+          You talk. It becomes a database. Agents query it.
+        </h2>
+
+        <div class="ek-how__grid">
+          <article class="ek-card">
+            <p class="ek-card__label">1 · You talk <span class="ek-chip ek-chip--build">in build</span></p>
+            <p class="ek-card__body">
+              No schema, no SQL, no forms shaped like a database. You answer an
+              interview in plain language; each answer becomes typed rows.
+            </p>
+            <p class="ek-card__q">&ldquo;{interviewQ}&rdquo;</p>
+            <pre class="ek-card__code"><code>{interviewRow}</code></pre>
+            <p class="ek-card__note">
+              Design fixture — the interview product is in build; this shows
+              the designed shape, not a live product.
+            </p>
+          </article>
+
+          <article class="ek-card">
+            <p class="ek-card__label">2 · It becomes a database <span class="ek-chip ek-chip--live">engine live</span></p>
+            <p class="ek-card__body">
+              A real Postgres database of what you know — typed rows you can
+              see, correct, and delete. The engine that runs it is live today:
+              it powers analytical memory for AI agents now.
+            </p>
+            <p class="ek-card__q">&ldquo;{buyerQuestion}&rdquo;</p>
+            <pre class="ek-card__code"><code>{buyerSql}</code></pre>
+            <div class="ek-card__tablewrap">
+              <table class="ek-card__table">
+                <thead>
+                  <tr><th>mistake</th><th>students</th></tr>
+                </thead>
+                <tbody>
+                  {buyerRows.map((r) => (
+                    <tr><td>{r.mistake}</td><td>{r.students}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p class="ek-card__note">
+              Rendered from a fixture in the shipped table shape
+              (<code>agent_memory_v1</code> on Postgres); the English→SQL
+              compile is the live engine. Row values are illustrative.
+            </p>
+          </article>
+
+          <article class="ek-card">
+            <p class="ek-card__label">3 · Agents query it — on your terms <span class="ek-chip ek-chip--build">in build</span></p>
+            <p class="ek-card__body">
+              When the marketplace opens, another agent reaches your knowledge
+              only through a grant you create and can revoke — and buyers pay
+              to query it. Until that ships, no one&rsquo;s agent but your own
+              can touch your rows.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      {/* BEAT 3 — The trust pillar, loud, then the floor it stands on,
+          enumerated (SK-EKP-001). */}
+      <section class="ek-trust" aria-labelledby="ek-trust-title">
+        <p class="ek-eyebrow">The trust deal</p>
+        <h2 class="ek-h2" id="ek-trust-title">Not ours to read.</h2>
+        <p class="ek-trust__lede">
+          The deal the marketplace opens with: <strong>nlqdb is not allowed to
+          use or read your knowledge — it is only yours.</strong> That is a
+          contractual prohibition, written down before the first listing goes
+          live, standing on the floor below — with nothing claimed beyond what
+          is shipped.
+        </p>
+
+        <dl class="ek-trust__floor">
+          {floor.map((f) => (
+            <div class="ek-trust__row">
+              <dt>{f.h}</dt>
+              <dd>{f.body}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <aside class="ek-trust__roadmap">
+          <p class="ek-card__label">On the roadmap — not shipped</p>
+          <p class="ek-trust__roadmap-body">
+            <strong>Sovereign hosting, one click:</strong> your knowledge
+            database on your own machine or your own cloud account, the engine
+            running where the data lives — &ldquo;only yours&rdquo; upgraded
+            from a contract to possession. Until it ships it stays on this
+            roadmap line, and out of our claims.
+          </p>
+        </aside>
+
+        <p class="ek-trust__links">
+          The written record: <a href="/privacy/">privacy policy</a> ·
+          <a href="/terms/">terms</a> · <a href="/manifesto/">manifesto</a>.
+        </p>
+      </section>
+
+      {/* BEAT 4 — The pilot, honestly framed: one profession first,
+          founder as user #1 (SK-EKP-004). */}
+      <section class="ek-pilot" aria-labelledby="ek-pilot-title">
+        <p class="ek-eyebrow">The pilot</p>
+        <h2 class="ek-h2" id="ek-pilot-title">First profession: the language tutor.</h2>
+        <p class="ek-pilot__body">
+          We&rsquo;re building the whole journey on one profession before
+          opening it wider: a language tutor&rsquo;s error taxonomies, mistake
+          patterns, and progress signals — knowledge that is analytical by
+          nature, which is exactly what a structured database is for. The
+          founder is user&nbsp;#1: the first knowledge database is authored and
+          reviewed in-house, before any stranger&rsquo;s livelihood depends on
+          the platform.
+        </p>
+      </section>
+
+      {/* BEAT 5 — What you can do today. Live product only; no dead
+          CTA, no fake door, nothing collecting emails. */}
+      <section class="ek-today" aria-labelledby="ek-today-title">
+        <h2 class="ek-h2" id="ek-today-title">What you can do today</h2>
+        <div class="ek-today__grid">
+          <a class="ek-today__card" href={appHref("/app/new/")}>
+            <p class="ek-today__h">Try the engine →</p>
+            <p class="ek-today__p">
+              Create a database from one sentence and question it in plain
+              English — anonymous, no sign-in, gone in 72 hours.
+            </p>
+          </a>
+          <a class="ek-today__card" href="/agents/">
+            <p class="ek-today__h">Building agents? →</p>
+            <p class="ek-today__p">
+              The same rows power analytical memory for AI agents right now —
+              memory your agents can GROUP&nbsp;BY.
+            </p>
+          </a>
+        </div>
+        <p class="ek-today__meta">
+          When the authoring interview opens, it starts on this page — no email
+          to leave in the meantime.
+        </p>
+      </section>
+    </main>
+
+    <Footer />
+  </div>
+
+  <style is:global>
+    .ek-hero {
+      max-width: var(--col);
+    }
+
+    .ek-hero__em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .ek-hero__meta {
+      margin: 20px 0 0;
+      font-family: var(--mono);
+      font-size: var(--t-small);
+      color: var(--muted);
+      line-height: 1.55;
+      max-width: 60ch;
+    }
+
+    .ek-eyebrow {
+      margin: 0 0 clamp(12px, 2vw, 18px);
+      font-family: var(--mono);
+      font-size: var(--t-small);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .ek-h2 {
+      font-family: var(--display);
+      font-size: var(--t-section);
+      font-weight: 600;
+      color: var(--ink);
+      margin: 0 0 clamp(16px, 2vw, 20px);
+      max-width: 24ch;
+      line-height: 1.1;
+      text-wrap: balance;
+    }
+
+    .ek-how {
+      padding: clamp(64px, 12vw, 120px) 0 clamp(40px, 6vw, 64px);
+      max-width: var(--bleed);
+    }
+
+    .ek-how__grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: clamp(16px, 2.5vw, 24px);
+      margin-top: clamp(28px, 4vw, 40px);
+    }
+
+    @media (min-width: 880px) {
+      .ek-how__grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
+      }
+    }
+
+    .ek-card {
+      margin: 0;
+      padding: clamp(20px, 3vw, 28px);
+      background: var(--raised);
+      border: 1px solid var(--rule);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .ek-card__label {
+      margin: 0;
+      font-family: var(--mono);
+      font-size: var(--t-small);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .ek-chip {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border: 1px solid var(--rule);
+      text-transform: uppercase;
+    }
+
+    .ek-chip--live {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .ek-chip--build {
+      color: var(--muted);
+    }
+
+    .ek-card__body {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: var(--t-body);
+      color: var(--body);
+      line-height: 1.55;
+    }
+
+    .ek-card__q {
+      margin: 0;
+      font-family: var(--display);
+      font-size: var(--t-large);
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.3;
+    }
+
+    .ek-card__code {
+      margin: 0;
+      padding: 14px 16px;
+      background: var(--ground);
+      border: 1px solid var(--rule);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--body);
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .ek-card__note {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: var(--t-small);
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .ek-card__note code {
+      font-family: var(--mono);
+      font-size: 0.9em;
+    }
+
+    .ek-card__tablewrap {
+      overflow-x: auto;
+    }
+
+    .ek-card__table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .ek-card__table th {
+      text-align: left;
+      color: var(--muted);
+      font-weight: 400;
+      padding: 4px 24px 8px 0;
+      border-bottom: 1px solid var(--rule);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .ek-card__table td {
+      color: var(--body);
+      padding: 8px 24px 8px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .ek-card__table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .ek-card__table td:last-child {
+      color: var(--ink);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .ek-trust {
+      padding: clamp(48px, 8vw, 80px) 0;
+      max-width: var(--col);
+      border-top: 1px solid var(--rule);
+    }
+
+    .ek-trust__lede {
+      margin: 0 0 clamp(28px, 4vw, 40px);
+      font-family: var(--sans);
+      font-size: var(--t-large);
+      color: var(--body);
+      line-height: 1.45;
+      max-width: 60ch;
+    }
+
+    .ek-trust__lede strong {
+      color: var(--ink);
+    }
+
+    .ek-trust__floor {
+      margin: 0;
+    }
+
+    .ek-trust__row {
+      padding: 18px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .ek-trust__row:last-child {
+      border-bottom: none;
+    }
+
+    .ek-trust__row dt {
+      margin: 0 0 8px;
+      font-family: var(--display);
+      font-size: var(--t-large);
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.3;
+    }
+
+    .ek-trust__row dd {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: var(--t-body);
+      color: var(--body);
+      line-height: 1.55;
+    }
+
+    .ek-trust__roadmap {
+      margin-top: clamp(28px, 4vw, 40px);
+      padding: clamp(20px, 3vw, 28px);
+      background: var(--raised);
+      border: 1px solid var(--rule);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .ek-trust__roadmap-body {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: var(--t-body);
+      color: var(--body);
+      line-height: 1.55;
+    }
+
+    .ek-trust__links {
+      margin: clamp(20px, 3vw, 28px) 0 0;
+      font-family: var(--mono);
+      font-size: var(--t-small);
+      color: var(--muted);
+    }
+
+    .ek-trust__links a {
+      color: var(--ink);
+    }
+
+    .ek-pilot {
+      padding: clamp(48px, 8vw, 80px) 0;
+      max-width: var(--col);
+      border-top: 1px solid var(--rule);
+    }
+
+    .ek-pilot__body {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: var(--t-large);
+      color: var(--body);
+      line-height: 1.45;
+      max-width: 60ch;
+    }
+
+    .ek-today {
+      padding: clamp(48px, 8vw, 80px) 0 clamp(64px, 10vw, 100px);
+      max-width: var(--col);
+      border-top: 1px solid var(--rule);
+    }
+
+    .ek-today__grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: clamp(16px, 2.5vw, 24px);
+      margin-top: clamp(20px, 3vw, 28px);
+    }
+
+    @media (min-width: 720px) {
+      .ek-today__grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .ek-today__card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: clamp(20px, 3vw, 28px);
+      background: var(--raised);
+      border: 1px solid var(--rule);
+      text-decoration: none;
+    }
+
+    .ek-today__card:hover {
+      border-color: var(--ink);
+    }
+
+    .ek-today__h {
+      margin: 0;
+      font-family: var(--display);
+      font-size: var(--t-large);
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.3;
+    }
+
+    .ek-today__p {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: var(--t-body);
+      color: var(--body);
+      line-height: 1.55;
+    }
+
+    .ek-today__meta {
+      margin: clamp(20px, 3vw, 28px) 0 0;
+      font-family: var(--mono);
+      font-size: var(--t-small);
+      color: var(--muted);
+      line-height: 1.55;
+    }
+  </style>
+</Base>

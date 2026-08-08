@@ -13,7 +13,21 @@
     &middot;
     <a href="/solve/">Solve</a>
     &middot;
+    {/* The two agent-memory wedge solve pages Google has NEVER crawled
+        (2+ weeks): linking them only from `/solve/` (weakly crawled) and
+        `/agents/` (last crawled before those links existed) never reached
+        the crawl queue. A site-wide footer link routes them through the
+        homepage + frequently-crawled indexed pages — reach R-10 crawl
+        lever, same mechanism as Benchmarks / Security below. */}
+    <a href="/solve/build-vs-buy-agent-memory/">Build vs buy memory</a>
+    &middot;
+    <a href="/solve/expire-old-agent-memory/">Expire agent memory</a>
+    &middot;
     <a href="/blog/">Blog</a>
+    &middot;
+    {/* EK-03 — the expert-knowledge trust surface. Footer-linked so the
+        new page is not a sitemap-only orphan to crawlers. */}
+    <a href="/experts/">Become AI</a>
     &middot;
     {/* Sitemap-only otherwise (an orphan to crawlers); the footer link
         gives this reference asset a site-wide inbound link — reach R-10(b),

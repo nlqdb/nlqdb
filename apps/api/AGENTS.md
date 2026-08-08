@@ -19,6 +19,7 @@ Cloudflare Workers HTTP API. Hosts /v1/ask, /v1/run, auth, billing, webhooks.
 - [`auth`](../../docs/features/auth/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`anonymous-mode`](../../docs/features/anonymous-mode/FEATURE.md) — mandatory pre-read for changes that touch `src/principal.ts`, `src/anon-rate-limit.ts`, `src/anon-global-cap.ts`, `src/turnstile.ts`, or the anon `/v1/ask` path.
 - [`api-keys`](../../docs/features/api-keys/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`expert-knowledge-platform`](../../docs/features/expert-knowledge-platform/FEATURE.md) — mandatory pre-read for changes that touch `src/grants.ts` or the `/v1/grants` routes (SK-EKP-008 grant control plane).
 - [`stripe-billing`](../../docs/features/stripe-billing/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`observability`](../../docs/features/observability/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`gtm-metrics`](../../docs/features/gtm-metrics/FEATURE.md) — mandatory pre-read for changes under `src/admin/**` or `src/pmf-survey.ts` (admin gate + GTM/PMF metrics + snapshots + Sean-Ellis survey).

@@ -1,8 +1,12 @@
 # EK-05 — Marketplace surface v0 (`experts` repo)
 
 **Status:** **parked** — until agent sessions can reach the private
-`experts` repo (created by the founder 2026-08-05; workspace access is a
-founder/admin action) · **Repo:** `experts` (private, all-rights-reserved) ·
+`experts` repo directly (created by the founder 2026-08-05; per-session
+access grants still pending). Interim route that already works: agents
+build locally and hand the founder a **git bundle** to push — the pilot CLI
+and the interview-methodology spec landed that way (2026-08-05/07), so
+small `experts` increments are possible pre-access; the full v0 build waits
+for direct push. · **Repo:** `experts` (private, all-rights-reserved) ·
 **Risk:** high · **Runs:** multi · **Prereqs:** EK-01, EK-02, EK-04 + repo
 access
 
