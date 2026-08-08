@@ -61,11 +61,11 @@ kit (loops + conventions as an installable plugin/template).
 
 ## The 2+1 execution (state, not plan)
 
-1. **Kill-test research pass** — running (dispatched 2026-08-08, Fable):
-   existing $0-stack kits/boilerplates, agent-operated-company kits, demand
-   evidence, kit-monetization reality. Lands in
-   `docs/research/free-stack-kit.md`; verdict updates this doc's status.
-2. **Demand test (cheap, first):** the "how we run on $0, operated by
+1. **Kill-test research pass — done (2026-08-08, Fable):** landed in
+   [`docs/research/free-stack-kit.md`](../research/free-stack-kit.md); its
+   verdict set this doc's status above (lane open ~75%, but a low-traction
+   commodity — distribution asset, not product).
+2. **Demand test (cheap, next):** the "how we run on $0, operated by
    agents" public story — content from existing docs on existing machinery
    (blog rails), plus the re-weighted Show HN lead. Traction (referrers,
    comments, kit-asks) = the demand read this doc's promotion trigger
