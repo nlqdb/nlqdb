@@ -541,8 +541,17 @@ app.post("/v1/errors/web", async (c) => {
 // in production the flag is unset and these routes 404. The override on
 // `/auth/sign-in` is intentional — in mock mode the form replaces the
 // static Astro sign-in page bundled into the [assets] binding.
+//
+// Match both `/auth/sign-in` and `/auth/sign-in/`: the real Astro page is
+// built in directory format and Cloudflare Static Assets' `html_handling`
+// resolves either URL to it, but the preview strips that page
+// (`preview-app.yml`) so only this route answers — and Hono matches
+// trailing slashes strictly, so the bare route alone 404s the slashed URL a
+// browser or a human habitually types.
 if (env.MOCK_IDP === "1") {
-  app.get("/auth/sign-in", (c) => c.html(mockSignInFormHtml(new URL(c.req.url).origin)));
+  app.on("GET", ["/auth/sign-in", "/auth/sign-in/"], (c) =>
+    c.html(mockSignInFormHtml(new URL(c.req.url).origin)),
+  );
   app.get("/api/auth/mock-sign-in", (c) => handleMockSignIn(c));
   app.get("/api/dev/inbox", async (c) => c.json(await listInbox(c.env.KV)));
 }
