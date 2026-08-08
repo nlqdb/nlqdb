@@ -218,6 +218,95 @@ describe("repo-ops pack axis semantics", () => {
   });
 });
 
+// The language-tutor expert pack (EK-04 / SK-EKP-004) — the pilot "become AI"
+// pack's public rails. Same contract: assert the answers are *right*, not just
+// that the golds run. Hand-checked against the seed (reference date 2026-08-01).
+describe("language-tutor pack axis semantics", () => {
+  const TUTOR = "language_tutor_memory_v1";
+
+  it("temporal: student:alex's current level is the most-recent (B2), not an older one", () => {
+    const db = seeded(TUTOR);
+    expect(scalar(db, 30)).toBe("level: B2");
+    db.close();
+  });
+
+  it("temporal: grammar slips this month rank subjunctive > article > past-perfect > preposition", () => {
+    const db = seeded(TUTOR);
+    const rows = db.query(goldFor(29)).values() as unknown[][];
+    db.close();
+    expect(rows).toEqual([
+      ["subjunctive", 4],
+      ["article-usage", 3],
+      ["past-perfect", 2],
+      ["preposition-of-time", 1],
+    ]);
+  });
+
+  it("temporal: two June slips are excluded from the this-month grammar tally", () => {
+    const db = seeded(TUTOR);
+    // 12 grammar mistakes total, but only 10 fall in July → tally sums to 10.
+    const rows = db.query(goldFor(29)).values() as unknown[][];
+    db.close();
+    expect(rows.reduce((n, r) => n + (r[1] as number), 0)).toBe(10);
+  });
+
+  it("temporal: two cards are due for review in the week of 2026-08-03, soonest first", () => {
+    const db = seeded(TUTOR);
+    const rows = db.query(goldFor(32)).values() as unknown[][];
+    db.close();
+    expect(rows.map((r) => r[1])).toEqual(["2026-08-05", "2026-08-07"]);
+  });
+
+  it("forgetting: two level facts are stale (A2, B1 superseded by B2)", () => {
+    const db = seeded(TUTOR);
+    expect(scalar(db, 33)).toBe(2);
+    db.close();
+  });
+
+  it("forgetting: small-talk is the one retired topic", () => {
+    const db = seeded(TUTOR);
+    expect(scalar(db, 34)).toBe("small-talk");
+    db.close();
+  });
+
+  it("consolidation: 3 distinct vocabulary words despite ephemeral logged twice", () => {
+    const db = seeded(TUTOR);
+    expect(scalar(db, 35)).toBe(3);
+    expect(db.query(goldFor(36)).values()).toHaveLength(1);
+    db.close();
+  });
+
+  it("analytical: effect (4) and loose (3) are the words wrong ≥3 times", () => {
+    const db = seeded(TUTOR);
+    const rows = db.query(goldFor(37)).values() as unknown[][];
+    db.close();
+    expect(rows).toEqual([
+      ["effect", 4],
+      ["loose", 3],
+    ]);
+  });
+
+  it("analytical: corrections per topic rank travel > business-email > small-talk", () => {
+    const db = seeded(TUTOR);
+    const rows = db.query(goldFor(38)).values() as unknown[][];
+    db.close();
+    expect(rows).toEqual([
+      ["travel", 9],
+      ["business-email", 7],
+      ["small-talk", 5],
+    ]);
+  });
+
+  it("retrieval precision: no other-tutor word leaks into the tutor's answer", () => {
+    const db = seeded(TUTOR);
+    const rows = (db.query(goldFor(28)).values() as unknown[][]).flat();
+    db.close();
+    // The other-tutor agent also recorded an 'effect' mistake — it must not
+    // widen this tutor's list beyond its own three words.
+    expect(rows).toEqual(["advice", "effect", "loose"]);
+  });
+});
+
 describe("toEvalQuestions", () => {
   it("projects to the canonical EvalQuestion shape (empty evidence, gold sql)", () => {
     const out = toEvalQuestions();

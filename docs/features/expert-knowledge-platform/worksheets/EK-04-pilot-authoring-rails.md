@@ -1,7 +1,12 @@
 # EK-04 — Pilot authoring rails: the language-tutor expert pack (public half)
 
-**Status:** planned · **Repo:** nlqdb · **Risk:** high · **Runs:** multi ·
-**Prereqs:** EK-01 design record · the D-08 shared runner exists
+**Status:** in-flight · **Repo:** nlqdb · **Risk:** high · **Runs:** multi ·
+**Prereqs:** EK-01 design record · the D-08 shared runner exists ·
+**Box 1 shipped 2026-08-08:** the language-tutor pack's golden-query set +
+seed corpus landed in the `SK-QUAL-023` memory-quality eval family
+(`tools/eval/src/datasets/memory-quality.ts`, `language_tutor_memory_v1` — 12
+golds, 4 temporal, all five axes; hand-checked semantics guarded in
+`tools/eval/test/datasets/memory-quality.test.ts`). Mirrors D-03's repo-ops set.
 
 ## Goal
 
@@ -52,7 +57,10 @@ takes, this slice owns everything on the nlqdb side of it.
 
 ## Done when
 
-- [ ] Pack recipe + golden queries merged; eval family runs them.
+- [x] Pack recipe + golden queries merged; eval family runs them.
+      (2026-08-08 — `language_tutor_memory_v1` in the `SK-QUAL-023`
+      memory-quality dataset: extraction categories as seed corpus + 12 golden
+      queries, 4 temporal, all five axes; runs via `--dataset memory-quality`.)
 - [ ] Runner executes an interview-sourced import end-to-end (draft →
       progress counters → verify → proof → delete) with zero
       runner-code forks.
