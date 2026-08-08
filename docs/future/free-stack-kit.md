@@ -1,20 +1,29 @@
 # Future plan — the free-stack kit ("create products on fully-free 3rd parties")
 
-> **Status:** **founder-directed 2026-08-08, kill-test pending.** The founder,
-> verbatim in substance: *"I'm more excited about the kit to create products
-> with fully free 3rd parties"* — chosen as option **2 + 1**: (2) run the
-> research pass + kill-test, then a scaffold as its own track if it passes;
-> (1) ship the cheap demand test first — the public "how we run on $0,
-> operated by agents" story, and the Show HN re-weighted to lead with it
-> (the GLOBAL-036 exception recorded in
-> [`launch-kit.md §2`](../research/launch-kit.md)).
+> **Status:** **kill-test done 2026-08-08 — verdict: lane open, not worth
+> occupying as a product.** The founder (2026-08-08, verbatim in substance:
+> *"I'm more excited about the kit to create products with fully free 3rd
+> parties"*) chose option **2 + 1**; the research pass
+> ([`docs/research/free-stack-kit.md`](../research/free-stack-kit.md)) found
+> **no exact clone (~75%)** — the founder's kill-test criterion passes —
+> but every pillar is a low-traction commodity (a 167★ free-LLM gateway
+> with more providers than ours; saturated CF starters; agent-OS kits at a
+> 20★ ceiling), HN currently punishes the agent-run-company kit shape, and
+> boilerplate money is audience-first with zero documented free-tier-buyer
+> conversions. **Standing shape: distribution asset, not product** — the
+> unique assets (production failure lore with receipts; the human/agent
+> pre-staged-payload replay pattern; a live business as reference) ship as
+> editorial content funneling to nlqdb (the 226-point "EU stack" shape),
+> plus the already-recorded Show HN C-story lead. A future agent-OS
+> **free skill pack that dogfoods nlqdb memory** stays admissible as
+> marketing, never a second product.
 >
-> **Promotion trigger:** the kill-test returns no exact clone **and** the
-> demand test shows signal (launch/story traction) **and** the founder
-> confirms — then this becomes a feature + track per
-> [`feature-conventions.md`](../feature-conventions.md). Until then: no
-> `SK-*` minted, no slices, no scorecard row; the `/daily`, `/reach`, `/ek`
-> loops are untouched.
+> **Promotion trigger (kit-as-product, founder-overridable):** the demand
+> test — the story content + launch traction — produces concrete kit-asks
+> (people requesting the scaffold, not just upvoting the story) **and** the
+> founder re-confirms against the research. Until then: no `SK-*` minted,
+> no slices, no scorecard row; the `/daily`, `/reach`, `/ek` loops are
+> untouched.
 
 ## The idea (founder, 2026-08-08)
 
