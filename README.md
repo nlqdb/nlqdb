@@ -59,7 +59,7 @@ hosted server *and* both memory skills in a single step:
 On any other MCP host, [**give your agent memory**](https://docs.nlqdb.com/agent-memory/)
 with one browser-OAuth approval; headless hosts skip the browser with
 `npx -y @nlqdb/mcp` (`0.1.1`) and an `sk_mcp_*` MCP key
-([MCP setup](https://docs.nlqdb.com/mcp/)). `@nlqdb/sdk` (`0.2.2`) and
+([MCP setup](https://docs.nlqdb.com/mcp/)). `@nlqdb/sdk` (`0.3.0`) and
 `@nlqdb/mcp` (`0.1.1`) are both published and importable from npm.
 
 The 60-second walkthrough — plain HTML, CLI, and ten framework wrappers —
@@ -118,7 +118,7 @@ Paid plans aren't live yet. The full model strategy is in
 |---|---|---|
 | HTTP API (`POST /v1/ask`, `POST /v1/run`) | ✓ shipped | `apps/api/src/ask/**` |
 | `<nlq-data>` + `<nlq-action>` elements | ✓ shipped (v0.1) | `packages/elements/**` |
-| `@nlqdb/sdk` (TypeScript) | ✓ shipped (incl. `runSql`) — installable from npm (`0.2.2`) | `packages/sdk/**` |
+| `@nlqdb/sdk` (TypeScript) | ✓ shipped (incl. `runSql` + cross-tenant grant verbs) — installable from npm (`0.3.0`) | `packages/sdk/**` |
 | Framework wrappers (React / Next / Vue / Nuxt / Svelte / SvelteKit / Astro / Solid + Swift) | ~ built + CI-tested; npm / SPM publish pending | `packages/{react,next,…}/**` |
 | Chat app `nlqdb.com/app` | ✓ shipped | `apps/web/**` |
 | Hosted MCP server `mcp.nlqdb.com/mcp` | ✓ shipped (host auto-detect pending) | `apps/mcp/**`, `packages/mcp/**` |
@@ -227,8 +227,8 @@ and shares the link — in under 60 seconds, no card, no config.
   both memory skills in one step
 - ✓ CLI `nlq` (Go) — core verbs + raw-SQL escape hatch; device-login +
   chat REPL pending
-- ✓ `@nlqdb/sdk` — basic methods + `runSql`; published and importable from
-  the registry (`0.2.2`)
+- ✓ `@nlqdb/sdk` — basic methods + `runSql` + cross-tenant grant verbs;
+  published and importable from the registry (`0.3.0`)
 - ~ Framework wrappers + native Swift package — built + CI-tested; npm /
   SPM publish pending
 - ✓ Quality-eval harness (BIRD + Spider 2.0, manual on-demand) — the
