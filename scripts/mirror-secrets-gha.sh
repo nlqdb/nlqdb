@@ -154,6 +154,10 @@ SECRETS=(
   TINYBIRD_API_BASE
   POSTHOG_API_KEY
   POSTHOG_HOST
+  # Tawk.to Secure Mode key (SK-WEB-025). preview-app.yml passes it to the
+  # preview Worker as a --var so /api/tawk/identity can HMAC the visitor email;
+  # prod reads it as a Worker secret (mirror-secrets-workers.sh api).
+  TAWK_TO_API_KEY
   # Preview CI (preview-app.yml) — Neon ephemeral branches + mock IdP
   NEON_PROJECT_ID
   PREVIEW_BETTER_AUTH_SECRET
