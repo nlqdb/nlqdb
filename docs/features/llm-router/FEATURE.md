@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043`; `SK-LLM-044` reverted). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) lands in Phase 2; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043` + `SK-LLM-045`; `SK-LLM-044` reverted). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) lands in Phase 2; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -113,10 +113,9 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 **Body:** [`decisions/SK-LLM-017-hosted-premium-chain.md`](./decisions/SK-LLM-017-hosted-premium-chain.md).
 Third chain alongside `free` and `paid`: **`premium`** = Sonnet 4.6 + GPT-5 + Gemini 2.5 Pro. Fires only when `principal.tier !== "free"` AND (`model === "best"` or auto-classified hard-plan) AND `PREMIUM_METER_LIVE` (§6-gated; pre-§6 dark). Commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
 
-### SK-LLM-015 — OpenRouter code-gen ops default to `qwen/qwen3-coder:free`
+### SK-LLM-015 — OpenRouter code-gen ops default to `qwen/qwen3-coder:free` — SUPERSEDED by SK-LLM-045
 
-**Body:** [`decisions/SK-LLM-015-openrouter-codegen-default.md`](./decisions/SK-LLM-015-openrouter-codegen-default.md).
-OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free`; cheap-tier ops stay on Llama `:free`. Qwen-Coder ≈96% text-to-SQL vs ≈88% Llama 3.3 70B; chain order unchanged (OpenRouter remains universal fallback per `SK-LLM-003`).
+**Body:** [`decisions/SK-LLM-015-openrouter-codegen-default.md`](./decisions/SK-LLM-015-openrouter-codegen-default.md). OpenRouter later dropped these `:free` ids from its catalog entirely — see [`SK-LLM-045`](#sk-llm-045) for the replacement.
 
 ### SK-LLM-018 — Schema-fidelity planner prompt + diagnostic retry framing
 
@@ -217,7 +216,7 @@ added latency on any succeeding call.
 
 ### SK-LLM-042 — Classify a gateway's 200-body error envelope as infra, not `parse`
 
-**Body:** [`decisions/SK-LLM-042-openrouter-200-error-classify.md`](./decisions/SK-LLM-042-openrouter-200-error-classify.md). `classifyBodyError` maps a 200 response whose body carries a top-level `error` (a gateway reporting an upstream mid-request failure) to `rate_limited` / `provider_error` (retryable, [`SK-LLM-038`](#sk-llm-038)-covered) instead of the engine-signal `parse` reason, which scored spurious `no_sql`.
+**Body:** [`decisions/SK-LLM-042-openrouter-200-error-classify.md`](./decisions/SK-LLM-042-openrouter-200-error-classify.md). `classifyBodyError` maps a 200 body with a top-level `error` to `rate_limited` / `provider_error` (retryable, [`SK-LLM-038`](#sk-llm-038)) instead of `parse`, which scored spurious `no_sql`.
 
 ### SK-LLM-043 — Single-column projection directive in the planner prompt (don't concatenate requested columns into one value)
 
@@ -225,7 +224,11 @@ added latency on any succeeding call.
 
 ### SK-LLM-044 — Entity-identification projection directive — REVERTED (regressed BIRD)
 
-**Body:** [`decisions/SK-LLM-044-entity-identification-projection-directive.md`](./decisions/SK-LLM-044-entity-identification-projection-directive.md). Reverted 2026-07-18: the first-ever BIRD measurement of this prompt bullet showed a `SK-QUAL-006` regression on the gate-binding benchmark (BIRD free EA 0.546 → 0.514, McNemar p=0.043) while its Spider justification was statistically flat (p≈0.68). Bullet + test removed; do not re-add without a paired-draw BIRD+Spider net-gain A/B.
+**Body:** [`decisions/SK-LLM-044-entity-identification-projection-directive.md`](./decisions/SK-LLM-044-entity-identification-projection-directive.md). Reverted 2026-07-18: regressed BIRD (free EA 0.546→0.514, p=0.043) with a flat Spider justification (p≈0.68). Bullet + test removed; don't re-add without a paired BIRD+Spider net-gain A/B.
+
+### SK-LLM-045 — OpenRouter free-model roster refresh (supersedes SK-LLM-015)
+
+**Body:** [`decisions/SK-LLM-045-openrouter-free-roster-refresh.md`](./decisions/SK-LLM-045-openrouter-free-roster-refresh.md). OpenRouter converted the SK-LLM-015 ids to paid-only (404ing the universal-fallback tail); replacements: `nvidia/nemotron-3-ultra-550b-a55b:free` (plan/schema_infer/summarize), `google/gemma-4-26b-a4b-it:free` (route/engine_classify).
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
