@@ -691,13 +691,16 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
   const visibleMessages = messages.slice(-visibleCount);
   const hasOlder = messages.length > visibleCount;
 
-  // SK-PREMIUM-013 — the model that answered the most recent reply
+  // SK-PREMIUM-013 — the most recent reply that carries a trace model
   // (trace.model, SK-TRUST-002), shown in the picker as the honest
-  // "which model am I on" signal. Null until a reply's plan event lands.
-  const lastModel = useMemo<string | null>(() => {
+  // "which model am I on" signal. The reply id rides along so the picker
+  // can tell whether that answer predates a just-switched key (#948).
+  // Null until a reply's plan event lands.
+  const lastAnswer = useMemo<{ id: string; model: string } | null>(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
-      if (m?.role === "assistant" && m.reply.trace?.model) return m.reply.trace.model;
+      if (m?.role === "assistant" && m.reply.trace?.model)
+        return { id: m.reply.id, model: m.reply.trace.model };
     }
     return null;
   }, [messages]);
@@ -763,7 +766,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
             {activeDb?.displayName ?? (activeDbId ? displayName(activeDbId) : "All databases")}
           </h1>
           <div className="chat-main__meta">
-            <ModelPicker apiBase={apiBase} lastModel={lastModel} />
+            <ModelPicker apiBase={apiBase} lastAnswer={lastAnswer} />
             <span className="chat-main__hint">
               <kbd>Cmd</kbd>+<kbd>K</kbd> commands · <kbd>Cmd</kbd>+<kbd>/</kbd> trace
             </span>

@@ -54,23 +54,27 @@ describe("resolveProviderRow", () => {
 
 describe("resolveModelHealth", () => {
   test("no key configured → not degraded (free chain has no promised model)", () => {
-    expect(resolveModelHealth(null, "gpt-oss-120b")).toEqual({ degraded: false });
+    expect(resolveModelHealth(null, "gpt-oss-120b", true)).toEqual({ degraded: false });
   });
 
   test("key configured but no answer yet → not degraded", () => {
-    expect(resolveModelHealth("gemini-3.6-flash", null)).toEqual({ degraded: false });
-    expect(resolveModelHealth("gemini-3.6-flash", undefined)).toEqual({ degraded: false });
+    expect(resolveModelHealth("gemini-3.6-flash", null, false)).toEqual({ degraded: false });
+    expect(resolveModelHealth("gemini-3.6-flash", undefined, false)).toEqual({ degraded: false });
   });
 
   test("configured key answered → not degraded", () => {
-    expect(resolveModelHealth("gemini-3.6-flash", "gemini-3.6-flash")).toEqual({ degraded: false });
+    expect(resolveModelHealth("gemini-3.6-flash", "gemini-3.6-flash", true)).toEqual({
+      degraded: false,
+    });
   });
 
   // Production shape: a direct-provider BYOLLM answer reports its model
   // upstream-qualified (byollm.ts), while the credential is the bare id. A
   // genuinely-working key must NOT read as a degrade.
   test("configured key answered under its upstream-qualified trace model → not degraded", () => {
-    expect(resolveModelHealth("gemini-3.6-flash", "google-ai-studio/gemini-3.6-flash")).toEqual({
+    expect(
+      resolveModelHealth("gemini-3.6-flash", "google-ai-studio/gemini-3.6-flash", true),
+    ).toEqual({
       degraded: false,
     });
   });
@@ -78,7 +82,25 @@ describe("resolveModelHealth", () => {
   // The bug this guards: a Gemini key is set but a free model answered (silent
   // degrade). The pill must stop claiming the key and name what actually ran.
   test("configured key did NOT answer → degraded, names the model that ran", () => {
-    expect(resolveModelHealth("gemini-3.6-flash", "gpt-oss-120b")).toEqual({
+    expect(resolveModelHealth("gemini-3.6-flash", "gpt-oss-120b", true)).toEqual({
+      degraded: true,
+      ranOn: "gpt-oss-120b",
+    });
+  });
+
+  // The #948 bug: switching to a new model showed "your key isn't answering"
+  // immediately, because the last answer (from the *previous* model, e.g. a
+  // Gemini key that fell back to the free chain) was compared against the
+  // newly-selected credential. An answer that predates the current key is not
+  // evidence about it — no degrade until the new key has actually answered.
+  test("mismatch but answer predates the current credential → not degraded", () => {
+    expect(resolveModelHealth("claude-fable-5", "gpt-oss-120b", false)).toEqual({
+      degraded: false,
+    });
+  });
+
+  test("mismatch on an answer produced under the current credential → degraded", () => {
+    expect(resolveModelHealth("claude-fable-5", "gpt-oss-120b", true)).toEqual({
       degraded: true,
       ranOn: "gpt-oss-120b",
     });
