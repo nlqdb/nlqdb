@@ -6,8 +6,11 @@ shipped 2026-08-08**: the `/experts/` landing
 (`apps/web/src/pages/experts.astro`) with the guard test
 (`apps/web/src/pages/__tests__/experts-trust-claims.test.ts`). **Box 3
 drafted 2026-08-07** → [`drafts/ek-03-tos-dpa-delta.md`](../drafts/ek-03-tos-dpa-delta.md)
-(the "not allowed" contract text; awaiting founder sign-off before publish,
-queued in [`blocked-by-human.md`](../../../blocked-by-human.md) as a plain legal
+(the "not allowed" contract text; rewritten 2026-08-07 after Fable review,
+**founder chose Option B the same day** — publish waits for
+[`EK-09`](EK-09-trust-hardening.md)'s hardening, then the stronger copy +
+final-wording sign-off, queued in
+[`blocked-by-human.md`](../../../blocked-by-human.md) as a plain legal
 action — not a 🔒 decision-to-lock, since `SK-EKP-001` is already locked).
 The slice closes when the founder signs off box 3 and a follow-up run
 publishes it into `/terms` + `/privacy`.
@@ -25,7 +28,9 @@ Ship the platform's public trust surface: a landing section/page for the
    demo is acceptable — no dead CTA, no fake door.
 2. **Copy** — the `SK-EKP-001` posture verbatim in substance: *not
    allowed* (ToS/DPA prohibition) stacked on the named technical floor
-   (schema-only LLM egress, RLS isolation, delete, FSL self-host);
+   (`GLOBAL-037`'s enumerated egress lanes — planning schema-only, and
+   schema-only end-to-end for buyer queries once EK-09 ships — RLS
+   isolation, delete, FSL self-host);
    sovereign hosting stated as roadmap, never as a current claim.
 3. **ToS/DPA delta** — the actual contractual text that makes "not
    allowed" true: nlqdb may not read, use, train on, or resell expert

@@ -59,7 +59,9 @@ takes, this slice owns everything on the nlqdb side of it.
 - [ ] Rows verifiably on `agent_memory_v1` via public surfaces only.
 - [ ] The N+1 claim holds: diff shows pack content + adapter, no rebuilt
       journey machinery.
-- [ ] `INV-EKP-037` asserted in the adapter test suite (`SK-EKP-007`): the
-      knowledge-DB query/ask path sends schema tokens only — zero expert row
-      values — to the model, and the interview path is the sole code path
-      reading expert cell values into an LLM request.
+- [ ] `INV-EKP-037` asserted in the adapter test suite (`SK-EKP-007`, as
+      hardened 2026-08-07): the knowledge-DB query/ask path sends schema
+      tokens only — zero expert row values — to the model. (The former
+      "sole code path" companion clause is a reviewable invariant, not a
+      test: an LLM call carrying expert cell values outside the
+      interview/extraction module is rejected in review.)
