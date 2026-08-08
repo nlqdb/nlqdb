@@ -175,6 +175,31 @@ export type GtmMetrics = {
     /** Newest activity across memory DBs (ISO), null if never queried. */
     memoryLastQueriedAt: string | null;
   };
+  /**
+   * SK-GTM-009 — the paying-customer watchlist: one row per `customers`
+   * entry so the founder can watch each (early, rare) paying customer's
+   * behavior individually. Per-user rows are safe here — the population
+   * is bounded (LIMIT 50) and this is a D1 admin read, never an OTel
+   * metric (SK-OBS-002/-006 keep user ids out of metric labels).
+   */
+  customers: Array<{
+    email: string;
+    /** Founder/test account (INTERNAL_EMAIL_SQL) — a test purchase must
+        never masquerade as the first real customer. */
+    internal: boolean;
+    status: string;
+    /** First transition into active/trialing (ISO); null for rows that
+        never converted or predate migration 0027. */
+    convertedAt: string | null;
+    currentPeriodEnd: string | null;
+    cancelAtPeriodEnd: boolean;
+    dbs: number;
+    /** Lower bounds — the SK-ONBOARD-006 counters saturate at 10/DB. */
+    first10Asks: number;
+    first10Ok: number;
+    /** Latest of any owned-DB query or chat turn (ISO); null if never active. */
+    lastActivityAt: string | null;
+  }>;
   /** Daily headline history (SK-GTM-003), newest first, ≤ 90 rows. */
   trend: Array<{ day: string; [key: string]: unknown }>;
 };
@@ -225,6 +250,7 @@ export async function computeGtmMetrics(
     snapshots,
     anonDevices,
     memoryDbs,
+    customerRows,
   ] = await db.batch([
     db.prepare(`SELECT COUNT(*) AS total,
         SUM(CASE WHEN ${INTERNAL_EMAIL_SQL} THEN 1 ELSE 0 END) AS internal,
@@ -311,6 +337,24 @@ export async function computeGtmMetrics(
       FROM databases d LEFT JOIN user u ON u.id = d.tenant_id
       WHERE substr(d.id, 1, length(?1)) = ?1`)
       .bind(MEMORY_DB_PREFIX),
+    // SK-GTM-009 — the paying-customer watchlist. One row per customers
+    // entry (all statuses: an `incomplete` row means someone is
+    // mid-checkout, a `canceled` one is churn to learn from). Newest
+    // conversion first; unconverted rows sort by their last sync.
+    db.prepare(`SELECT u.email AS email,
+        CASE WHEN ${INTERNAL_EMAIL_SQL} THEN 1 ELSE 0 END AS internal,
+        c.status AS status, c.converted_at AS convertedAt,
+        c.current_period_end AS currentPeriodEnd,
+        c.cancel_at_period_end AS cancelAtPeriodEnd,
+        COUNT(d.id) AS dbs,
+        COALESCE(SUM(d.first10_asks), 0) AS asks,
+        COALESCE(SUM(d.first10_ok), 0) AS ok,
+        MAX(d.last_queried_at) AS lastDbSec,
+        (SELECT MAX(m.created_at) FROM chat_message m WHERE m.user_id = c.user_id) AS lastChatMs
+      FROM customers c JOIN user u ON u.id = c.user_id
+      LEFT JOIN databases d ON d.tenant_id = c.user_id
+      GROUP BY c.user_id
+      ORDER BY COALESCE(c.converted_at, c.updated_at) DESC LIMIT 50`),
   ]);
 
   const uc = (userCounts?.results?.[0] ?? null) as CountsRow | null;
@@ -343,6 +387,30 @@ export async function computeGtmMetrics(
   const customersByStatus: Record<string, number> = {};
   for (const raw of (customers?.results ?? []) as CountsRow[]) {
     customersByStatus[String(raw["status"])] = num(raw, "n");
+  }
+
+  // SK-GTM-009 — watchlist rows. Timestamp units per the module header:
+  // customers/databases in seconds, chat_message in milliseconds.
+  const customerWatchlist: GtmMetrics["customers"] = [];
+  for (const raw of (customerRows?.results ?? []) as CountsRow[]) {
+    const convertedSec = num(raw, "convertedAt");
+    const periodEndSec = num(raw, "currentPeriodEnd");
+    const lastActivitySec = Math.max(
+      num(raw, "lastDbSec"),
+      Math.floor(num(raw, "lastChatMs") / 1000),
+    );
+    customerWatchlist.push({
+      email: String(raw["email"]),
+      internal: num(raw, "internal") === 1,
+      status: String(raw["status"]),
+      convertedAt: convertedSec > 0 ? new Date(convertedSec * 1000).toISOString() : null,
+      currentPeriodEnd: periodEndSec > 0 ? new Date(periodEndSec * 1000).toISOString() : null,
+      cancelAtPeriodEnd: num(raw, "cancelAtPeriodEnd") === 1,
+      dbs: num(raw, "dbs"),
+      first10Asks: num(raw, "asks"),
+      first10Ok: num(raw, "ok"),
+      lastActivityAt: lastActivitySec > 0 ? new Date(lastActivitySec * 1000).toISOString() : null,
+    });
   }
 
   // SK-GTM-006 — in-product Sean-Ellis Q1 responses. The 40% read
@@ -456,6 +524,7 @@ export async function computeGtmMetrics(
       memoryFirst10SuccessRate: ratio(num(mem, "ok"), num(mem, "asks")),
       memoryLastQueriedAt: memLastSec > 0 ? new Date(memLastSec * 1000).toISOString() : null,
     },
+    customers: customerWatchlist,
     trend,
   };
 }

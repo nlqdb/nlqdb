@@ -16,8 +16,8 @@ when-to-load:
 # Feature: GTM Metrics
 
 **One-liner:** Canonical GTM/PMF metric set — admin-gated live metrics endpoint, daily snapshots, and the `/app/admin` founder dashboard.
-**Status:** implemented (2026-07-19 — endpoint + snapshots + dashboard v1; `SK-GTM-005`/`-006`/`-007` unique-people counts / Sean-Ellis survey / attribution; `SK-GTM-008` the SK-PIVOT-016 launch-gate section, 2026-07-28; external sources out of scope — see Open questions)
-**Owners (code):** `apps/api/src/admin/**`, `apps/api/src/synthetic-ua.ts`, `apps/api/src/pmf-survey.ts`, `apps/api/migrations/0022_gtm_snapshots…0025_pmf_survey.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/lib/pmf-survey.ts`, `apps/web/src/components/chat/PmfSurveyCard.tsx`
+**Status:** implemented (2026-07-19 — endpoint + snapshots + dashboard v1; `SK-GTM-005`/`-006`/`-007` unique-people counts / Sean-Ellis survey / attribution; `SK-GTM-008` the SK-PIVOT-016 launch-gate section, 2026-07-28; `SK-GTM-009` paying-customer watchlist, 2026-08-08; external sources out of scope — see Open questions)
+**Owners (code):** `apps/api/src/admin/**`, `apps/api/src/synthetic-ua.ts`, `apps/api/src/pmf-survey.ts`, `apps/api/migrations/0022_gtm_snapshots…0025_pmf_survey.sql` + `0027_customers_converted_at.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/lib/pmf-survey.ts`, `apps/web/src/components/chat/PmfSurveyCard.tsx`
 
 **Contribution to north-star:** Onboarding — the funnel/activation/retention numbers ARE the onboarding pillar's measurement ([`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)), now continuous; acquisition measurement is first-class ([`GLOBAL-038`](../../decisions/GLOBAL-038-gtm-pmf-instrumentation.md)). No pillar degrades: admin-only D1 reads, off every product request path.
 
@@ -42,6 +42,7 @@ five-field block.
 - [**SK-GTM-006**](decisions/SK-GTM-006-sean-ellis-in-product-survey.md) — Sean-Ellis Q1 ships as an in-product one-click survey, asked once per account on an eligible return visit
 - [**SK-GTM-007**](decisions/SK-GTM-007-first-touch-attribution.md) — First-touch attribution: one localStorage slot, persisted on the created DB row
 - [**SK-GTM-008**](decisions/SK-GTM-008-launch-gate-section.md) — The launch-gate section renders live-from-D1 or static-with-as-of, never an estimate
+- [**SK-GTM-009**](decisions/SK-GTM-009-paying-customer-watchlist.md) — Paying-customer watchlist: per-customer drill-down, built ahead of the first conversion
 
 ## GLOBALs governing this feature
 

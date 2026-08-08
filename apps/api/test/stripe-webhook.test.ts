@@ -29,6 +29,7 @@ type CustomerRow = {
   current_period_end: number | null;
   cancel_at_period_end: number;
   price_id: string | null;
+  converted_at?: number | null;
 };
 
 type FakeD1 = D1Database & {
@@ -111,14 +112,18 @@ function makeFakeD1(seed?: { customers?: CustomerRow[] }): FakeD1 {
           return makeRunResult();
         }
         if (/UPDATE customers SET[\s\S]*stripe_subscription_id/i.test(sql)) {
+          // Mirrors syncSubscriptionFields' bind order — status is bound
+          // twice (once for the SET, once for the SK-GTM-009 converted_at
+          // CASE guard).
           const [
             stripe_subscription_id,
             status,
             current_period_end,
             cancel_at_period_end,
             price_id,
+            convertedStatus,
             user_id,
-          ] = bound as [string, string, number | null, number, string | null, string];
+          ] = bound as [string, string, number | null, number, string | null, string, string];
           const existing = customers.get(user_id);
           if (existing) {
             existing.stripe_subscription_id = stripe_subscription_id;
@@ -126,6 +131,9 @@ function makeFakeD1(seed?: { customers?: CustomerRow[] }): FakeD1 {
             existing.current_period_end = current_period_end;
             existing.cancel_at_period_end = cancel_at_period_end;
             existing.price_id = price_id;
+            if (["active", "trialing"].includes(convertedStatus)) {
+              existing.converted_at = existing.converted_at ?? Math.floor(Date.now() / 1000);
+            }
           }
           return makeRunResult();
         }
@@ -653,6 +661,9 @@ describe("processWebhook — customer.subscription.created", () => {
       current_period_end: 1750000000,
       price_id: "price_starter",
     });
+    // SK-GTM-009 — first transition into a paying status stamps the
+    // conversion moment.
+    expect(db.customers.get("u_99")?.converted_at).toBeGreaterThan(0);
     expect(queue.sent).toHaveLength(1);
     expect(queue.sent[0]?.event).toEqual({
       name: "billing.subscription_created",
@@ -662,6 +673,49 @@ describe("processWebhook — customer.subscription.created", () => {
       priceId: "price_starter",
     });
     expect(queue.sent[0]?.id).toBe("billing.subscription_created.sub_99");
+  });
+
+  // SK-GTM-009 — converted_at records the FIRST paying transition only:
+  // a non-paying sync must not stamp it, and later syncs must not move it.
+  it("stamps converted_at once, and never for a non-paying status", async () => {
+    const makeDb = () =>
+      makeFakeD1({
+        customers: [
+          {
+            user_id: "u_conv",
+            stripe_customer_id: "cus_conv",
+            stripe_subscription_id: null,
+            status: "incomplete",
+            current_period_end: null,
+            cancel_at_period_end: 0,
+            price_id: null,
+          },
+        ],
+      });
+
+    // A `past_due` sync (subscription.updated) must leave converted_at unset.
+    const dbA = makeDb();
+    const pastDue = makeEventStub({
+      id: "evt_upd_pd",
+      type: "customer.subscription.updated",
+      object: makeSubscription({ id: "sub_conv", customer: "cus_conv", status: "past_due" }),
+    });
+    const signerA: WebhookSigner = { constructEventAsync: vi.fn().mockResolvedValue(pastDue) };
+    await processWebhook(makeDeps({ signer: signerA, db: dbA }).deps, "{}", "sig");
+    expect(dbA.customers.get("u_conv")?.converted_at ?? null).toBeNull();
+
+    // active stamps it; a later sync must not overwrite the moment.
+    const dbB = makeDb();
+    const rowB = dbB.customers.get("u_conv");
+    if (rowB) rowB.converted_at = 1_700_000_000;
+    const active = makeEventStub({
+      id: "evt_upd_act",
+      type: "customer.subscription.updated",
+      object: makeSubscription({ id: "sub_conv", customer: "cus_conv", status: "active" }),
+    });
+    const signerB: WebhookSigner = { constructEventAsync: vi.fn().mockResolvedValue(active) };
+    await processWebhook(makeDeps({ signer: signerB, db: dbB }).deps, "{}", "sig");
+    expect(dbB.customers.get("u_conv")?.converted_at).toBe(1_700_000_000);
   });
 
   // SK-STRIPE-012 — Stripe doesn't guarantee event ordering, so this event

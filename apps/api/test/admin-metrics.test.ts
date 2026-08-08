@@ -140,8 +140,20 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
       "INSERT INTO premium_interest (user_id, email) VALUES ('u_s1', 'maya@builders.io')",
     ).run();
     await env.DB.prepare(
-      "INSERT INTO customers (user_id, stripe_customer_id, status) VALUES ('u_s1', 'cus_1', 'active')",
-    ).run();
+      "INSERT INTO customers (user_id, stripe_customer_id, status, converted_at, current_period_end) VALUES ('u_s1', 'cus_1', 'active', ?, ?)",
+    )
+      .bind(nowSec - 5 * DAY, nowSec + 25 * DAY)
+      .run();
+    // A founder test-purchase — must appear on the watchlist flagged
+    // internal, never mistakable for the first real customer (SK-GTM-009).
+    // updated_at is pinned (older than maya's conversion) so the
+    // COALESCE(converted_at, updated_at) sort is deterministic under the
+    // real-clock unixepoch() default.
+    await env.DB.prepare(
+      "INSERT INTO customers (user_id, stripe_customer_id, status, updated_at) VALUES ('u_founder', 'cus_f', 'incomplete', ?)",
+    )
+      .bind(nowSec - 10 * DAY)
+      .run();
 
     const m = await computeGtmMetrics(env.DB, now);
 
@@ -207,9 +219,33 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
 
     expect(m.pmf.premiumInterest).toBe(1);
     expect(m.pmf.payingCustomers).toBe(1);
-    expect(m.pmf.customersByStatus).toEqual({ active: 1 });
+    expect(m.pmf.customersByStatus).toEqual({ active: 1, incomplete: 1 });
     expect(m.pmf.seanEllis.runnable).toBe(false);
     expect(m.pmf.seanEllis.activatedStrangers).toBe(1);
+
+    // SK-GTM-009 — the watchlist: newest conversion (or last sync)
+    // first; behavioral join across the customer's DBs (db_s1 6/5 +
+    // adopted db_a1 1/1), last activity = the newest owned-DB query
+    // (db_s1's, 1 day ago).
+    expect(m.customers).toHaveLength(2);
+    expect(m.customers[0]).toEqual({
+      email: "maya@builders.io",
+      internal: false,
+      status: "active",
+      convertedAt: new Date((nowSec - 5 * DAY) * 1000).toISOString(),
+      currentPeriodEnd: new Date((nowSec + 25 * DAY) * 1000).toISOString(),
+      cancelAtPeriodEnd: false,
+      dbs: 2,
+      first10Asks: 7,
+      first10Ok: 6,
+      lastActivityAt: new Date((nowSec - DAY) * 1000).toISOString(),
+    });
+    expect(m.customers[1]).toMatchObject({
+      email: "omer@nlqdb.com",
+      internal: true,
+      status: "incomplete",
+      convertedAt: null,
+    });
   });
 
   it("returns zeroes/nulls on an empty control plane (no division blowups)", async () => {
@@ -228,6 +264,7 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     expect(m.acquisition.dbsWithSource).toBe(0);
     expect(m.acquisition.dbsBySource).toEqual([]);
     expect(m.acquisition.strangersBySource).toEqual([]);
+    expect(m.customers).toEqual([]);
     expect(m.trend).toEqual([]);
     expect(m.launchGate).toEqual({
       memoryPresetEnabled: false,
@@ -369,6 +406,7 @@ describe("/v1/admin/metrics — SK-GTM-002 auth gate", () => {
       expect(Object.keys(body).sort()).toEqual([
         "acquisition",
         "activation",
+        "customers",
         "funnel",
         "generatedAt",
         "launchGate",
