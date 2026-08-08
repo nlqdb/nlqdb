@@ -30,6 +30,26 @@ describe("messageFor", () => {
     );
   });
 
+  describe("sql_rejected (SK-ASK-026 — honest, reason-specific copy)", () => {
+    test("maps a known reject reason to its specific line", () => {
+      expect(messageFor(apiError("sql_rejected", { reason: "delete_without_where" }))).toBe(
+        "That would delete every row — add a filter, or say which rows to remove.",
+      );
+      expect(messageFor(apiError("sql_rejected", { reason: "multi_statement" }))).toBe(
+        "Ask one thing at a time — that came through as multiple statements.",
+      );
+    });
+
+    test("falls back to the generic line for an unknown or missing reason", () => {
+      expect(messageFor(apiError("sql_rejected", { reason: "brand_new_reason" }))).toBe(
+        "That query was rejected — try rephrasing.",
+      );
+      expect(messageFor(apiError("sql_rejected", null))).toBe(
+        "That query was rejected — try rephrasing.",
+      );
+    });
+  });
+
   describe("schema_mismatch", () => {
     test("names the missing table and the available ones", () => {
       const msg = messageFor(

@@ -186,17 +186,28 @@ describe("orchestrateAsk", () => {
     expect(cache.write).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects an LLM-emitted destructive plan via sql.validate", async () => {
+  it("SK-ASK-026: reshapes an LLM-emitted destructive plan into a destructive_ambiguous clarify", async () => {
     const llm = stubLLM({ plan: { sql: "DROP TABLE users" } });
     const out = await orchestrateAsk(makeDeps({ llm }), {
       goal: "drop everything",
       dbId: "db_1",
       userId: "user_1",
     });
-    expect(out).toEqual({
-      ok: false,
-      error: { status: "sql_rejected", reason: "drop_statement" },
-    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error.status).toBe("clarify_required");
+    if (out.error.status !== "clarify_required") return;
+    expect(out.error.clarification).toBe("destructive_ambiguous");
+    // Options derive from the DB's tables (stubDb → "orders") plus the
+    // deterministic "start fresh" create; no LLM hop involved.
+    expect(out.error.options).toEqual([
+      { label: 'Empty the "orders" table', goal: "delete every row from the orders table" },
+      {
+        label: "Start fresh with a new, empty database",
+        goal: "create a new empty database",
+        forceNoPin: true,
+      },
+    ]);
   });
 
   it("propagates LLM.plan failure as a structured error", async () => {
@@ -1009,7 +1020,7 @@ describe("orchestrateAsk", () => {
     expect(second.previousAttempt?.error).toContain("drop_statement");
   });
 
-  it("GLOBAL-022: plan exhausts 3 attempts then surfaces sql_rejected", async () => {
+  it("GLOBAL-022 + SK-ASK-026: plan exhausts 3 attempts then surfaces a destructive clarify", async () => {
     let calls = 0;
     const llm = stubLLM();
     llm.plan = vi.fn(async () => {
@@ -1021,10 +1032,11 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
-    expect(out).toEqual({
-      ok: false,
-      error: { status: "sql_rejected", reason: "drop_statement" },
-    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error.status).toBe("clarify_required");
+    if (out.error.status !== "clarify_required") return;
+    expect(out.error.clarification).toBe("destructive_ambiguous");
     expect(calls).toBe(3);
   });
 

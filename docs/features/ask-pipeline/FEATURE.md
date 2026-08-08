@@ -152,11 +152,11 @@ Pre-flight `extractTables` check + a `42P01` exec backstop converge on one
 
 ### SK-ASK-019 — Map PG `3F000` (schema does not exist) to `schema_mismatch` with structured logging
 
-- **Decision:** Treat a missing target schema — PG `3F000`, plus the `schema … does not exist` message fallback for Neon HTTP responses that drop `.code` — as `schema_mismatch`, non-recoverable like `42P01` (SK-ASK-016 Defense B): no retry on a deterministic missing-schema, and a structured log so the rare misfires stay greppable.
-- **Core value:** Bullet-proof, Honest latency, Effortless UX
-- **Why:** A D1 row pointed at a Neon schema that had been dropped (≈20 of 25 prod rows orphaned similarly). The INSERT hit `3F000`, which SK-ASK-016's `42P01`-only match missed; SK-ASK-013 retried 3× and surfaced a misleading `db_unreachable`. The structured log is the load-bearing piece — the `SchemaMismatchError` envelope only carries table lists, so without it there's no way to grep which (goal, dbId, sql) triples misfire.
-- **Consequence in code:** the exec catch in `orchestrate.ts` matches `42P01 | 3F000`, wraps `Nonrecoverable("schema_mismatch", new SchemaMismatchError([], []))`, and stamps `nlqdb.ask.schema_mismatch.{reason,pg_code,db_id,sql,goal,pg_message,cache_hit}` on the span + a capped (500-char) `console.error` (`event: schema_mismatch`, `reason: schema_missing | table_missing`).
-- **Alternatives rejected:** Pre-flight `pg_namespace` check every `/v1/ask` — extra Neon round-trip for a < 5% cohort. Auto-drop the orphan D1 row — couples the orchestrator to registry mutation. Keep `db_unreachable` — burns 3 retries, no recovery CTA. Span attributes only — head-sampling loses the rare events.
+**Body:** [`decisions/SK-ASK-019-schema-missing-mapping.md`](./decisions/SK-ASK-019-schema-missing-mapping.md).
+A dropped target schema (PG `3F000`, or the `schema … does not exist` message
+fallback) maps to `schema_mismatch`, non-recoverable like `42P01` — no retry on
+a deterministic missing-schema, plus a structured `console.error` so the rare
+orphan-schema cohort stays greppable where head-sampling would drop it.
 
 ### SK-ASK-020 — `summarize` failure returns rows + a summarize-error envelope, never 5xx
 
@@ -209,6 +209,17 @@ while the cached plan named a foreign schema (`42P01`). `plan-normalize.ts`
 strips the DB's own schema qualifier before validate/exec/cache (search_path
 resolves the bare name); a hit still naming a schema self-heals via re-plan —
 no cache flush (SK-PLAN-003 stands).
+
+### SK-ASK-026 — Destructive-ambiguous rejections become a `clarify_required` with re-sendable options
+
+**Body:** [`decisions/SK-ASK-026-destructive-ambiguous-clarify.md`](./decisions/SK-ASK-026-destructive-ambiguous-clarify.md).
+A destructive-ambiguous reject (`drop_statement` / `truncate_statement` /
+`delete_without_where` — the "clear db" family) returns a `clarify_required`
+with re-sendable `options` (per-table "empty" + "start fresh") instead of the
+flat `sql_rejected`; every other reason keeps `sql_rejected` with honest,
+reason-specific copy. No added LLM hop; cross-surface (`GLOBAL-003`). The
+clarification arm of `SK-TRUST-003`, keyed on the reject reason not a
+confidence floor.
 
 ## The LLM loop
 

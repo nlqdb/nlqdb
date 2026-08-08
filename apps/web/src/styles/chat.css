@@ -925,20 +925,23 @@
   flex-shrink: 0;
 }
 
-.chat-reply__clarify {
+/* The shared reply action-prompt rail (see ReplyChoices.tsx): a prompt line
+   plus a row of choice chips. Used by the DB picker, both clarify variants,
+   and the destructive-clarify options. */
+.chat-reply__choices {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.chat-reply__clarify-prompt {
+.chat-reply__choices-prompt {
   margin: 0;
   font-family: var(--sans);
   font-size: 14px;
   line-height: 1.45;
 }
 
-.chat-reply__clarify-actions {
+.chat-reply__choices-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;

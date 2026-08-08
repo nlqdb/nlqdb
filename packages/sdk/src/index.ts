@@ -311,11 +311,13 @@ export type ApiErrorCode =
   // SK-ASK-009: 409 returned when the LLM disambiguator's confidence
   // is below the floor on a 2+ DB tenant. Body carries `candidate_dbs`.
   | "ambiguous_db"
-  // SK-ASK-014: 409 returned when the caller pinned `dbId` but the
-  // classifier returned `kind=create` (the goal looks like a creation
-  // request, e.g. "new table"). Body carries `pinned_db: {id, slug}` —
-  // surfaces render a chip with two actions: "Create new database"
-  // (re-send without `dbId`) and "Cancel".
+  // 409 clarify — two shapes, distinguished by `body.clarification`.
+  // SK-ASK-014 `create_or_query_pinned`: caller pinned `dbId` but the
+  // classifier returned `kind=create`; `body.pinned_db` set; surfaces offer
+  // "Create new database" / "Cancel". SK-ASK-026 `destructive_ambiguous`:
+  // a destructive-ambiguous plan ("clear db" family) was rejected; instead
+  // of `sql_rejected`, `body.options` carries re-sendable interpretations
+  // and `body.reason` a one-sentence prompt.
   | "clarify_required"
   // SK-SDK-009 / SK-APIKEYS-003 — `/v1/run` rejected the call because
   // the principal is read-only (pk_live tried to write).
@@ -367,6 +369,17 @@ export type CandidateDb = { id: string; slug: string };
 // Null when the pinned id couldn't be resolved (stale URL param).
 export type PinnedDb = { id: string; slug: string };
 
+// SK-ASK-026: one re-sendable interpretation offered on a
+// `destructive_ambiguous` clarify (the "clear db" family). Re-send `goal`
+// (dropping any pinned `dbId` when `forceNoPin`) exactly as you'd send a
+// fresh ask — no special endpoint. Surfaces render these as chips
+// (web) / numbered choices (CLI) / structured options (MCP).
+export type ClarifyOption = {
+  label: string;
+  goal: string;
+  forceNoPin?: boolean;
+};
+
 // JSON body the API returns on every non-2xx response; surfaced as `NlqdbApiError.body`.
 export type ApiErrorBody = {
   status: ApiErrorCode;
@@ -375,9 +388,13 @@ export type ApiErrorBody = {
   limit?: number;
   count?: number;
   candidate_dbs?: CandidateDb[];
-  // SK-ASK-014 — only present on `clarify_required` envelopes.
-  clarification?: "create_or_query_pinned";
+  // SK-ASK-014 / SK-ASK-026 — present on `clarify_required` envelopes.
+  // `create_or_query_pinned` carries `pinned_db`; `destructive_ambiguous`
+  // (the "clear db" family) carries `options` + a one-sentence `reason`.
+  clarification?: "create_or_query_pinned" | "destructive_ambiguous";
   pinned_db?: PinnedDb | null;
+  // SK-ASK-026 — present on a `destructive_ambiguous` clarify.
+  options?: ClarifyOption[];
   // SK-PREMIUM-013 — a deep link to the page that resolves the error, when
   // one exists (e.g. the add-your-key page on a BYOLLM misconfiguration).
   // Non-interactive surfaces render it verbatim so a user isn't stranded on

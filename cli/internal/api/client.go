@@ -65,6 +65,13 @@ type APIError struct {
 	Message    string
 	Path       string
 	Raw        json.RawMessage
+	// SK-ASK-026 — populated on a `clarify_required` envelope. `Reason` is
+	// the one-sentence prompt; `Clarification` distinguishes the SK-ASK-014
+	// create-vs-query shape from the SK-ASK-026 destructive one; `Options`
+	// carries the re-sendable interpretations for the destructive shape.
+	Reason        string
+	Clarification string
+	Options       []ClarifyOption
 }
 
 func (e *APIError) Error() string {
@@ -208,16 +215,21 @@ func extractError(status int, path string, data []byte) *APIError {
 	}
 
 	var asObject struct {
-		Status  string `json:"status"`
-		Code    string `json:"code"`
-		Action  string `json:"action"`
-		Message string `json:"message"`
-		Reason  string `json:"reason"`
+		Status        string          `json:"status"`
+		Code          string          `json:"code"`
+		Action        string          `json:"action"`
+		Message       string          `json:"message"`
+		Reason        string          `json:"reason"`
+		Clarification string          `json:"clarification"`
+		Options       []ClarifyOption `json:"options"`
 	}
 	if err := json.Unmarshal(generic.Error, &asObject); err == nil && asObject.Status != "" {
 		out.Status = asObject.Status
 		out.Code = asObject.Code
 		out.Action = asObject.Action
+		out.Reason = asObject.Reason
+		out.Clarification = asObject.Clarification
+		out.Options = asObject.Options
 		switch {
 		case asObject.Message != "":
 			out.Message = asObject.Message

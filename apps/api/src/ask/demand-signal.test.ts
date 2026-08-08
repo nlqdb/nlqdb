@@ -41,6 +41,41 @@ describe("emitFeatureSignal", () => {
     });
   });
 
+  it("SK-ASK-026: emits ddl_via_ask on a destructive_ambiguous clarify (drop/truncate rerouted here)", async () => {
+    const { emitter, ctx, emitted } = makeRecorder();
+    const error: AskError = {
+      status: "clarify_required",
+      clarification: "destructive_ambiguous",
+      pinned_db: null,
+      reason: "Clearing the whole database could mean a few things.",
+      options: [{ label: "Start fresh", goal: "create a new empty database", forceNoPin: true }],
+    };
+
+    emitFeatureSignal(emitter, ctx, "anon:abc", "hero", error);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0]).toEqual({
+      name: "feature.requested.ddl_via_ask",
+      principalId: "anon:abc",
+      surface: "hero",
+      rejectReason: "destructive_ambiguous",
+    });
+  });
+
+  it("does NOT emit on a create_or_query_pinned clarify (SK-ASK-014 is not a demand signal)", async () => {
+    const { emitter, ctx, emitted } = makeRecorder();
+    const error: AskError = {
+      status: "clarify_required",
+      clarification: "create_or_query_pinned",
+      pinned_db: { id: "db_1", slug: "orders" },
+      reason: "Create a new database, or query orders?",
+    };
+    emitFeatureSignal(emitter, ctx, "u_1", "chat", error);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(emitted).toHaveLength(0);
+  });
+
   it("emits ddl_via_ask for every reason in DDL_REJECT_REASONS", async () => {
     for (const reason of [
       "drop_statement",

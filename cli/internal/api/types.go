@@ -40,6 +40,15 @@ type AskDiff struct {
 	Summary      string `json:"summary"`
 }
 
+// ClarifyOption is one re-sendable interpretation on a SK-ASK-026
+// `destructive_ambiguous` clarify (the "clear db" family). Re-run
+// `nlq ask "<Goal>"` (dropping `--db` when ForceNoPin) to take it.
+type ClarifyOption struct {
+	Label      string `json:"label"`
+	Goal       string `json:"goal"`
+	ForceNoPin bool   `json:"forceNoPin,omitempty"`
+}
+
 // AskResponse is the union of the TS SDK's AskOk + AskCreateResult.
 // Callers narrow on `Kind == "create"` vs `Status == "ok"`.
 type AskResponse struct {
