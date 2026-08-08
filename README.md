@@ -166,7 +166,8 @@ parallel with the wedge
 
 - ◯ Interview authoring — answer questions about your craft, get queryable
   rows (pilot: language tutor)
-- ◯ Cross-tenant read grants — revocable, fail-closed, per-query metered
+- ~ Cross-tenant read grants — mint/list/revoke control plane live;
+  fail-closed read enforcement + per-query metering pending
 - ◯ One catalog — free packs + paid expert knowledge DBs
 - ◯ Trust hardening — buyer queries schema-only end-to-end
 
