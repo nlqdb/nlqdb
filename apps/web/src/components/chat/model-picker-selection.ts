@@ -59,6 +59,12 @@ export function resolveModelHealth(
   // chain there is no promised model, so a differing `lastModel` is expected
   // and not a degrade.)
   if (!configuredModel || !lastModel) return { degraded: false };
-  if (lastModel === configuredModel) return { degraded: false };
+  // A BYOLLM answer's `trace.model` is upstream-qualified (`${upstream}/${model}`,
+  // byollm.ts) while the configured credential is the bare model id — so an
+  // exact match only happens for OpenRouter. Treat a qualified suffix match as
+  // the key answering; otherwise a genuinely-working frontier key would read as
+  // a permanent false degrade.
+  if (lastModel === configuredModel || lastModel.endsWith(`/${configuredModel}`))
+    return { degraded: false };
   return { degraded: true, ranOn: lastModel };
 }

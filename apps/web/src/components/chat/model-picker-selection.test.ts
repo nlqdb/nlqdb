@@ -66,6 +66,15 @@ describe("resolveModelHealth", () => {
     expect(resolveModelHealth("gemini-3.6-flash", "gemini-3.6-flash")).toEqual({ degraded: false });
   });
 
+  // Production shape: a direct-provider BYOLLM answer reports its model
+  // upstream-qualified (byollm.ts), while the credential is the bare id. A
+  // genuinely-working key must NOT read as a degrade.
+  test("configured key answered under its upstream-qualified trace model → not degraded", () => {
+    expect(resolveModelHealth("gemini-3.6-flash", "google-ai-studio/gemini-3.6-flash")).toEqual({
+      degraded: false,
+    });
+  });
+
   // The bug this guards: a Gemini key is set but a free model answered (silent
   // degrade). The pill must stop claiming the key and name what actually ran.
   test("configured key did NOT answer → degraded, names the model that ran", () => {
