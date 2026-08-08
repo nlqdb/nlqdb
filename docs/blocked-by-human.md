@@ -113,13 +113,16 @@ SK-PIVOT-016 criterion 1's counter is **not** running yet.)
 3. **⏱ ~15 min · since 2026-08-07 — Approve the EK-03 ToS/DPA "not allowed"
    delta** — drafted contract text at
    [`docs/features/expert-knowledge-platform/drafts/ek-03-tos-dpa-delta.md`](./features/expert-knowledge-platform/drafts/ek-03-tos-dpa-delta.md):
-   two clause blocks (`/terms` + `/privacy`) written per `SK-EKP-001`. Legal
-   wording is a human sign-off, not an agent merge (P6). Read both blocks; on
-   approval a follow-up run publishes them (dating both pages). **Lowest rank —
-   not urgent:** nothing publishes until you approve, and the clauses describe
-   the EK-05 marketplace selling flow that ships later, so this waits until that
-   surface is near launch. Conservative default already applied: the live legal
-   pages are untouched.
+   two clause blocks (`/terms` + `/privacy`) written per `SK-EKP-001`,
+   rewritten 2026-08-07 after Fable review (the first draft's egress claim
+   was false against shipped code). **You chose Option B the same day**
+   (harden first: [`EK-09`](./features/expert-knowledge-platform/worksheets/EK-09-trust-hardening.md)
+   makes buyer queries schema-only + pins a no-training interview
+   provider), so what remains here is only the **final wording sign-off
+   once EK-09 is green** — agents will refresh the draft's stronger copy
+   and re-rank this bullet then. Legal wording is a human sign-off, not an
+   agent merge (P6). **Lowest rank — nothing publishes until then**; the
+   live legal pages are untouched.
 
 ## Suggestions needing approval (to amend the guidelines)
 

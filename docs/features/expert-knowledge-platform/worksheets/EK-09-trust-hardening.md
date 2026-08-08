@@ -1,0 +1,40 @@
+# EK-09 — Trust hardening (F1-B): schema-only buyer queries + no-training interview provider
+
+**Status:** planned — **founder-chosen 2026-08-07** (Option B of the EK-03
+ToS draft: harden the product so the stronger trust claim becomes true,
+then publish it) · **Repo:** nlqdb (narration skip) + `experts` (provider
+pin) · **Risk:** low–med · **Runs:** 1–2 · **Prereqs:** none for the
+knowledge-DB narration skip; EK-06 for the granted-path half; EK-05 for the
+provider pin to have a surface
+
+## Goal
+
+Make `GLOBAL-037` (as amended) lane 2 schema-only for every buyer-facing
+marketplace path, so the EK-03 draft's stronger claim — *"when buyers query
+your knowledge, your rows are never sent to a language-model provider"* —
+is literally true before it publishes.
+
+1. **Narration skip, server-side** — knowledge-DB asks (and granted-path
+   asks once EK-06 exists) behave as `Accept: application/json` by default:
+   the summarize step is not invoked, rows go to the caller un-narrated.
+   Agent buyers consume rows, not prose — this is the better product for
+   them independent of the trust claim. A human surface may re-enable
+   narration only with an explicit, disclosed toggle.
+2. **No-training interview provider pin** — the interview/extraction model
+   (lane 3) is pinned to a provider whose API terms exclude training on
+   inputs/outputs; the provider abstraction in `experts` keeps the pin a
+   config assertion, tested (a CI check fails if the interview model id
+   falls outside the pinned allowlist).
+3. **Egress test extension** — the `GLOBAL-037` lane-1 egress test asserts
+   zero row-values in LLM requests for a knowledge-DB ask end-to-end
+   (planning *and* the skipped narration), turning the ToS sentence into a
+   guarded invariant (EK-03 box 4's honest-claims guard hooks here).
+
+## Done when
+
+- [ ] Knowledge-DB asks skip narration by default; test proves no
+      summarize call fires.
+- [ ] Granted-path asks inherit the skip (lands with EK-06).
+- [ ] Interview provider pinned + CI-asserted in `experts`.
+- [ ] Egress test extended; EK-03's stronger copy unblocked and its
+      sign-off bullet updated to "wording approval only."

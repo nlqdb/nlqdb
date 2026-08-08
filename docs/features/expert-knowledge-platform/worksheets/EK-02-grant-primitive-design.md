@@ -1,11 +1,12 @@
 # EK-02 — Cross-tenant read-grant primitive: research → design record
 
-**Status:** design record minted 2026-08-06 as
+**Status:** **complete** — design record minted 2026-08-06 as
 [`SK-EKP-008`](../decisions/SK-EKP-008-grant-primitive-design.md) (all four
-`Done when` boxes below satisfied). Routing follow-up — the `FEATURE.md`
-index stub and the `INDEX.md` Tracker tick — is deferred to avoid a file
-collision with open PRs #918 (`FEATURE.md`) and #917 (`INDEX.md`); slice
-stays **in-flight** until that follow-up lands. ·
+`Done when` boxes below satisfied) and hardened 2026-08-07 after the Fable
+review. The routing follow-up that was deferred to dodge a file collision
+with PRs #918 (`FEATURE.md`) / #917 (`INDEX.md`) — the `FEATURE.md` index
+stub and the `INDEX.md` Tracker tick — **landed in this PR**, so the slice
+is no longer in-flight. ·
 **Repo:** nlqdb (engine) · **Risk:** med · **Runs:** 1–2 · **Prereqs:** none
 
 ## Goal

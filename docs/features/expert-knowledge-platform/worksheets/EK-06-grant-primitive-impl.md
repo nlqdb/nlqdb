@@ -18,7 +18,8 @@ satisfy):
 - **Revocable with bounded latency** — revocation takes effect within a
   stated bound (EK-02 sets the number); a revoked grant failing closed is
   tested, not assumed.
-- **Metered per query** — every granted-access `/v1/ask` emits a usage
+- **Metered per query** — every **successfully executed** granted-access
+  `/v1/ask` (and only those; SK-EKP-008 Q1) emits a usage
   record attributable to (grant, buyer, seller) — the unit `SK-EKP-002`'s
   fee later bills against. Metering is idempotent under retries
   (`GLOBAL-005` applies to any mutating surface this adds).

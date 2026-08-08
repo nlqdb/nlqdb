@@ -230,8 +230,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* SK-TRUST-002 shipped — `AskResult` carries the `trace: { sql, plan_id, confidence, model, cache_hit }` block on every successful response; the SSE `plan` event is its streaming form. Writes/DDL `diff` ([`SK-TRUST-001`](../trust-ux/FEATURE.md)) and the `low_confidence` short-circuit ([`SK-TRUST-003`](../trust-ux/FEATURE.md)) are planned.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* `unsupported_verb` (DDL via `/v1/ask`), `low_confidence`, and `db_full` rejections each emit a `feature.requested.*` event.
-- **GLOBAL-037** — Schema-only egress to third-party LLMs; never send user cell-values.
-  - *In this feature:* `orchestrate.ts` passes `db.schemaText` (DDL + evidence) only; no cell-values enter the prompt.
+- **GLOBAL-037** — LLM egress lanes; planning is schema-only.
+  - *In this feature:* `orchestrate.ts` passes `db.schemaText` (DDL + evidence) only on the planning lane; no cell-values enter the prompt.
 
 ## Open questions / known unknowns
 

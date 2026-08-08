@@ -48,6 +48,7 @@ workspace access is a founder/admin action), private-half slices are
 | [EK-06](EK-06-grant-primitive-impl.md) | Grant primitive implementation: revocable, fail-closed, metered cross-tenant read | nlqdb | high | multi | EK-02 |
 | [EK-07](EK-07-sovereign-hosting.md) | Sovereign hosting, 1-click (SK-EKP-001 roadmap): research + design, then build | nlqdb | high | multi | after EK-03; must not delay EK-04–06 |
 | [EK-08](EK-08-launch-motion.md) | The marketplace's own launch motion + acceptance criteria (SK-EKP-005: distinct from Show HN) | both | med | 1–2 | EK-04, EK-05 scoped; founder input on motion |
+| [EK-09](EK-09-trust-hardening.md) | Trust hardening (**F1-B, founder-chosen 2026-08-07**): knowledge/granted asks skip narration by default + no-training interview provider pin — gates the stronger EK-03 trust copy | nlqdb + `experts` | low–med | 1–2 | narration skip: none · granted half: EK-06 · provider pin: EK-05 |
 
 **Why this order.** EK-01/EK-02 are the two research passes the FEATURE.md's
 open questions mandate (`P2`) — everything downstream inherits their design
@@ -81,12 +82,13 @@ condition-gated (the repo's idiom — never date-gated).
   primitive (EK-06) is generic engine surface added once, not per-pack.
 - **The dogfood gate is untouchable from here** (`SK-EKP-005`): no EK slice
   adds a gate criterion, waits on one, or edits `SK-PIVOT-016`.
-- **`GLOBAL-037` stands**: no expert cell-values to third-party LLMs —
-  including inside interview flows, where the *expert's answers* become
-  cell values the moment they're written. The interview LLM sees the
-  conversation (it must); the **query** path stays schema-only. EK-01
-  designed this boundary as the testable `INV-EKP-037` invariant
-  (`SK-EKP-007`).
+- **`GLOBAL-037` (as amended 2026-08-07) stands**: LLM egress is three
+  enumerated lanes — planning is schema-only; narration is disclosed with
+  an opt-out and **skips by default on knowledge/granted paths once EK-09
+  ships**; the interview/extraction path is the founder-approved authoring
+  carve-out (`INV-EKP-037` in `SK-EKP-007`: own tenant, authoring only,
+  no-training provider per F1-B). No slice adds a lane or widens one —
+  that is a founder amendment, never a diff.
 - **Secrets rule** (`SK-PIVOT-018`): packs store credential metadata, never
   values; interviews must reject secret-shaped answers.
 
@@ -95,10 +97,11 @@ condition-gated (the repo's idiom — never date-gated).
 Tick on merge. Durable status (scorecard rows are regenerated; this is not).
 
 - [x] EK-01 — interview-extraction design record
-- [ ] EK-02 — grant-primitive design record + decision
+- [x] EK-02 — grant-primitive design record + decision (SK-EKP-008, #919; hardened 2026-08-07 after Fable review)
 - [ ] EK-03 — trust surface (landing + copy + ToS/DPA delta)
 - [ ] EK-04 — pilot authoring rails (language-tutor expert pack, public half)
 - [ ] EK-05 — marketplace surface v0 (`experts`) — parked until agent access
 - [ ] EK-06 — grant primitive implementation
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
+- [ ] EK-09 — trust hardening (F1-B): narration skip + no-training provider pin

@@ -12,7 +12,8 @@ The private product surface (`SK-EKP-003`): everything a seller and a buyer
 touch that isn't a public rail.
 
 1. **Interview product** — the question-engine driving EK-04's rails:
-   EK-01's design (question generation, follow-ups, read-back verification,
+   EK-01's design (question generation, follow-ups, card-edit/forced-choice
+   verification — never yes/no read-back, per SK-EKP-007 stake 3,
    session structure) as the expert-facing authoring UX.
 2. **Listings — one catalog, two types (`SK-EKP-006`)** — (a) free
    first-party **packs** (the locked pack-candidates order; install = the

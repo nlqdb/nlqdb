@@ -26,22 +26,39 @@ EK-01 interview-extraction record); this is the primitive `EK-06` implements.
     extended, never relaxed.
   - **Execution under a non-owner, SELECT-only role.** The brokered query
     runs on the **owner's** DB under a dedicated role that is
-    `SELECT`-only over the granted scope, is **not** the table owner, and
-    runs with `FORCE ROW LEVEL SECURITY` so owner-side RLS is not bypassed.
-    Identity is **role-level**, immune to the GUC-spoofing failure mode
-    (`app.*` GUCs are set with `SET LOCAL` for audit only, never as the
-    security boundary). Views in the scope use `security_invoker` to avoid
-    definer-view leakage; predicate functions are treated as non-leakproof.
+    `SELECT`-only over the granted scope and is **not** the table owner.
+    Two separate table-level/role-level controls (fixed 2026-08-07, Fable
+    review of #919 — the original sentence conflated them): granted tables
+    carry `ALTER TABLE … FORCE ROW LEVEL SECURITY` (closing the
+    table-**owner** bypass), *and* execution uses the non-owner role
+    (RLS applies to it regardless). The role is assumed with
+    `SET LOCAL ROLE` **inside the request transaction** — never a session
+    `SET ROLE`, which bleeds identity across pooled connections. Identity
+    is **role-level**, immune to the GUC-spoofing failure mode (`app.*`
+    GUCs are set with `SET LOCAL` for audit only, never as the security
+    boundary). Views in the scope use `security_invoker` to avoid
+    definer-view leakage; predicate functions are treated as non-leakproof
+    (reviewable invariant: a grant scope containing any function-backed
+    surface is rejected at mint in v1). **v1 grants are mintable on
+    platform-provisioned hosted DBs only** — on a BYO DB none of the role /
+    FORCE-RLS / no-DDL-functions assumptions hold (`sql-validate-ddl.ts`
+    cannot vouch for DDL it never saw); BYO grantability is a separate
+    future decision, deny-by-default.
   - **Metering (public half only).** Each granted query that executes
     successfully emits **one usage record** attributable to
-    `(grant_id, grantee_tenant_id, owner_db_id)`, idempotent under retry with
-    the request's `Idempotency-Key` as the dedup key (`GLOBAL-005` reused).
-    The public engine emits the *usage record*; turning usage into a
-    **billed fee** is `SK-PIVOT-023` axis 2 and lives **only** in the private
-    `experts` surface (`SK-EKP-003`) — no fee logic, no fee %, and no Stripe
-    call in nlqdb's public core. When billing ships, the meter event's
-    `identifier` is that same `Idempotency-Key` (Stripe 2026 Billing Meters
-    dedupe on `identifier`).
+    `(grant_id, grantee_tenant_id, owner_db_id)`. **A granted query
+    *requires* an idempotency key** (fixed 2026-08-07, Fable review of
+    #919): `GLOBAL-005` makes the `Idempotency-Key` header optional and
+    `/v1/ask` has no dedupe middleware today, so the record's billing
+    invariant was unimplementable as written — EK-06 must (a) synthesize
+    and persist a key in the broker when the client omits one, and
+    (b) implement replay on the granted path (same key ⇒ same response,
+    **no second usage record**). The public engine emits the *usage
+    record*; turning usage into a **billed fee** is `SK-PIVOT-023` axis 2
+    and lives **only** in the private `experts` surface (`SK-EKP-003`) —
+    no fee logic, no fee %, and no Stripe call in nlqdb's public core.
+    When billing ships, the meter event's `identifier` is that same key
+    (Stripe 2026 Billing Meters dedupe on `identifier`).
 
   **Five open questions, settled:**
 
@@ -76,10 +93,16 @@ EK-01 interview-extraction record); this is the primitive `EK-06` implements.
      assumption** (so `EK-06` is not blocked) is **platform-as-MoR** —
      matching the two closest analogues (Snowflake, Apify) and correct for
      the non-technical pilot seller (`SK-EKP-004` language tutor) who cannot
-     run multi-jurisdiction tax themselves. This is *not* a new founder
-     escalation: `SK-EKP-002` already routes payout mechanics to the founder
-     at ship time, so no 🔒 bullet is spent (`GLOBAL-033`: a codified
-     decision already decides *where* the call is made).
+     run multi-jurisdiction tax themselves. Two honesty notes for the
+     ship-time call (added 2026-08-07): "conservative" here means
+     *conservative for the seller's experience*, not for nlqdb —
+     platform-as-MoR is the **maximum** tax/liability posture for the
+     platform, and the founder should weigh that explicitly; and nothing in
+     EK-06 builds on this assumption, so overriding it costs no rework.
+     This is *not* a new founder escalation: `SK-EKP-002` already routes
+     payout mechanics to the founder at ship time, so no 🔒 bullet is spent
+     (`GLOBAL-033`: a codified decision already decides *where* the call is
+     made).
   5. **Buyer-agent identity v1 = the existing tenant API key.** The grant is
      keyed to `grantee_tenant_id`; the buyer's agent already authenticates
      with a tenant API key, which identifies the buyer for authorization and
@@ -89,7 +112,12 @@ EK-01 interview-extraction record); this is the primitive `EK-06` implements.
      decision-to-defer with a concrete trigger.
 
   **NL→SQL scope validation (EK-02 Done-when box 2).** The grant's `scope`
-  enumerates the tables/views the buyer may read. Scope is enforced at the
+  enumerates the tables/views the buyer may read — and it is **authoritative
+  over role privileges** when the two disagree (the role is provisioned
+  *from* the scope; drift between them is a bug that fails closed at
+  validation). A table the owner adds later is **not** auto-included:
+  schema widening never widens a grant (deny-by-default; the owner re-scopes
+  explicitly). Scope is enforced at the
   **validation layer** (the existing `sql-validate` allowlist path), not only
   by RLS: a granted query that references any table/view **outside** the
   grant scope — including via a JOIN, subquery, or CTE to a non-granted table
@@ -102,10 +130,14 @@ EK-01 interview-extraction record); this is the primitive `EK-06` implements.
   Postgres RLS-bypass modes the EK-02 research catalogued.
 
   **Revocation-latency bound (EK-02 Done-when box 3).** A revoked grant fails
-  closed within the grant-status cache TTL, **bounded at 30 s** (env-tunable,
-  fail-safe: unknown/errored status → reject). This is **testable** and
-  `EK-06` must test it, not assume it: revoke a live grant, then assert
-  queries against it are rejected within the bound. This is strictly tighter
+  closed within the grant-status cache TTL, **bounded at 30 s** (env-tunable
+  **downward only** — config may tighten the bound, never widen it past 30 s;
+  fail-safe: unknown/errored status → reject). The bound covers **new**
+  queries; an **in-flight** query at revoke time is bounded separately by the
+  granted path's `statement_timeout`, which EK-06 sets ≤ the same 30 s (fixed
+  2026-08-07 — the original bound silently excluded in-flight queries). This
+  is **testable** and `EK-06` must test it, not assume it: revoke a live
+  grant, then assert queries against it are rejected within the bound. This is strictly tighter
   than Databricks Delta Sharing's cautionary model, where revocation latency
   is bounded by *bearer-token lifetime*; an online per-request check bounds
   it by cache TTL instead.
