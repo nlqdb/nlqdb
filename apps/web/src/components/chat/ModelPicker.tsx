@@ -41,17 +41,19 @@ export const BYOLLM_STATUS_EVENT = "nlqdb:byollm-status";
 
 interface ModelPickerProps {
   apiBase: string;
-  // The model that answered the most recent reply (from the trace, SK-TRUST-002).
-  // Shown inside the popover as the honest "last answer used X" line — distinct
-  // from the *configured* selection the pill reflects.
-  lastModel?: string | null;
+  // The most recent reply's id + the model that answered it (from the trace,
+  // SK-TRUST-002). Shown inside the popover as the honest "last answer used X"
+  // line — distinct from the *configured* selection the pill reflects. The id
+  // lets the picker tell whether that answer predates the current credential
+  // (a just-switched key has no answer of its own yet — #948).
+  lastAnswer?: { id: string; model: string } | null;
 }
 
 // The (provider, model) the user is keying for — set when a model is picked and
 // cleared once the key is saved or cancelled.
 type KeyTarget = { provider: CatalogProvider; option: CatalogModelOption };
 
-export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
+export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
   const [open, setOpen] = useState(false);
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null);
   // True when the last `GET /v1/models` attempt failed. Surfaced as an inline
@@ -72,6 +74,12 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
   // repeat clicks per account, so a reload re-showing the button is harmless.
   const [interest, setInterest] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const rootRef = useRef<HTMLDivElement>(null);
+  // The last answer that already existed when the user last switched keys —
+  // stamped in `submitKey`. Any answer with a different reply id came in after
+  // the switch, so only those count as evidence about the current key. Null
+  // until the first switch this session: a page reload trusts the persisted
+  // answer for the loaded credential (best-effort; self-heals on the next ask).
+  const staleEvidenceIdRef = useRef<string | null>(null);
 
   const client = getChatClient(apiBase);
 
@@ -161,11 +169,20 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
     return `${credential.provider} · ${credential.model}`;
   }, [catalog, credential]);
 
+  const lastModel = lastAnswer?.model ?? null;
   // Is the configured key actually answering? When it isn't (e.g. the account
   // BYOLLM lane silently degraded to the free chain, #941), the pill must not
   // keep claiming the frontier model — surface the truth from the last answer's
-  // trace model (SK-TRUST-002). Only meaningful once a key is configured.
-  const health = resolveModelHealth(credential?.model ?? null, lastModel);
+  // trace model (SK-TRUST-002). Only meaningful once a key is configured, and
+  // only for an answer that ran *after* the current key was selected — a
+  // just-switched key inherits no verdict from the model it replaced (#948).
+  const lastModelUnderCurrentCredential =
+    lastAnswer != null && lastAnswer.id !== staleEvidenceIdRef.current;
+  const health = resolveModelHealth(
+    credential?.model ?? null,
+    lastModel,
+    lastModelUnderCurrentCredential,
+  );
 
   async function selectFree() {
     if (!credential) {
@@ -212,6 +229,10 @@ export default function ModelPicker({ apiBase, lastModel }: ModelPickerProps) {
         model: keyTarget.option.model,
         key,
       });
+      // The key just changed. Whatever answer stands now was produced by the
+      // *previous* model, so it can't tell us whether this new key answers —
+      // remember it, and only a later reply (a new id) proves the new key.
+      staleEvidenceIdRef.current = lastAnswer?.id ?? null;
       await refreshStatus();
       closePopover();
     } catch (err) {
