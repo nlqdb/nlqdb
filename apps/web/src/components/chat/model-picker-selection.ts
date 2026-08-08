@@ -41,3 +41,30 @@ export function resolveProviderRow(
   const isActive = pendingModel === null && activeModel !== null;
   return { shownModel, shownLabel, isActive };
 }
+
+// Whether the configured BYOLLM key actually answered the last question. A key
+// can be selected yet silently NOT used: when the AI Gateway is unconfigured
+// the account BYOLLM lane degrades to the free chain (#941), recorded only on a
+// span — so the pill would keep claiming the frontier model while a free model
+// did the work. We detect it honestly from data the client already has: the
+// configured credential's model vs the last answer's `trace.model`
+// (SK-TRUST-002). A mismatch means the key didn't answer.
+export type ModelHealth = { degraded: false } | { degraded: true; ranOn: string };
+
+export function resolveModelHealth(
+  configuredModel: string | null,
+  lastModel: string | null | undefined,
+): ModelHealth {
+  // No key configured, or no answer yet ⇒ nothing to reconcile. (On the free
+  // chain there is no promised model, so a differing `lastModel` is expected
+  // and not a degrade.)
+  if (!configuredModel || !lastModel) return { degraded: false };
+  // A BYOLLM answer's `trace.model` is upstream-qualified (`${upstream}/${model}`,
+  // byollm.ts) while the configured credential is the bare model id — so an
+  // exact match only happens for OpenRouter. Treat a qualified suffix match as
+  // the key answering; otherwise a genuinely-working frontier key would read as
+  // a permanent false degrade.
+  if (lastModel === configuredModel || lastModel.endsWith(`/${configuredModel}`))
+    return { degraded: false };
+  return { degraded: true, ranOn: lastModel };
+}

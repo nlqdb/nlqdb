@@ -5,6 +5,7 @@
 import { makeNoopEmitter, type ProductEvent } from "@nlqdb/events";
 import type { LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
+import type { ConfirmStash, StashedPlan } from "../src/ask/confirm-stash.ts";
 import { type OrchestrateDeps, orchestrateAsk } from "../src/ask/orchestrate.ts";
 import { hashGoal, type PlanCache } from "../src/ask/plan-cache.ts";
 import type { CachedPlan, DbRecord, OrchestrateEvent, QueryResult } from "../src/ask/types.ts";
@@ -36,6 +37,17 @@ function stubPlanCache(seed: Map<string, CachedPlan> = new Map()) {
       seed.set(`${schemaHash}:${queryHash}`, plan);
     }),
   } satisfies PlanCache;
+}
+
+function stubConfirmStash(seed: Map<string, StashedPlan> = new Map()) {
+  return {
+    lookup: vi.fn(async (tenantId: string, dbId: string, queryHash: string) => {
+      return seed.get(`${tenantId}:${dbId}:${queryHash}`) ?? null;
+    }),
+    write: vi.fn(async (tenantId: string, dbId: string, queryHash: string, plan: StashedPlan) => {
+      seed.set(`${tenantId}:${dbId}:${queryHash}`, plan);
+    }),
+  } satisfies ConfirmStash;
 }
 
 function stubLLM(
@@ -1095,6 +1107,71 @@ describe("orchestrateAsk", () => {
     if (!out.ok) throw new Error("unreachable");
     expect(out.result.requires_confirm).toBeUndefined();
     expect(out.result.diff).toBeUndefined();
+    expect(exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("SK-TRUST-005: the confirm hop runs the EXACT previewed SQL, not a re-plan (the approve→reject bug)", async () => {
+    // One shared stash across both hops (as prod KV would be). The preview hop
+    // plans a valid, allowlist-passing DELETE; the confirm hop's planner has
+    // drifted to a DROP that the allowlist rejects (the real incident: "clear
+    // db" re-planned into a DROP on confirm). The stash must make confirm run
+    // the approved DELETE and never touch the poisoned planner.
+    const stash = stubConfirmStash();
+
+    const previewLlm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    const previewExec = vi.fn(async (_db: DbRecord, sql: string) => {
+      expect(sql).toMatch(/COUNT\(\*\)/i); // only the pre-flight COUNT runs
+      return { rows: [{ c: 5 }], rowCount: 1 };
+    });
+    const preview = await orchestrateAsk(
+      makeDeps({ llm: previewLlm, exec: previewExec, confirmStash: stash }),
+      { goal: "clear db", dbId: "db_1", userId: "user_1" },
+    );
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) throw new Error("unreachable");
+    expect(preview.result.requires_confirm).toBe(true);
+    // The validated preview SQL was stashed under (tenant, db, queryHash).
+    expect(stash.write).toHaveBeenCalledTimes(1);
+
+    // Confirm hop: the planner now returns a statement the allowlist REJECTS.
+    // If the orchestrator re-planned, this would surface `sql_rejected` — the
+    // bug. Bound to the stash, it must run the approved DELETE instead.
+    const confirmLlm = stubLLM({ plan: { sql: "DROP TABLE orders" } });
+    const confirmExec = vi.fn(async (_db: DbRecord, sql: string) => {
+      expect(sql.toUpperCase()).toContain("DELETE FROM ORDERS");
+      expect(sql.toUpperCase()).not.toContain("DROP");
+      return { rows: [], rowCount: 1 };
+    });
+    const commit = await orchestrateAsk(
+      makeDeps({ llm: confirmLlm, exec: confirmExec, confirmStash: stash }),
+      { goal: "clear db", dbId: "db_1", userId: "user_1", confirm: true },
+    );
+    expect(commit.ok).toBe(true);
+    if (!commit.ok) throw new Error("unreachable");
+    expect(commit.result.requires_confirm).toBeUndefined();
+    expect(commit.result.rowCount).toBe(1);
+    // The poisoned planner was never consulted on the confirm hop.
+    expect(confirmLlm.plan).not.toHaveBeenCalled();
+    expect(confirmExec).toHaveBeenCalledTimes(1);
+  });
+
+  it("SK-TRUST-005: with no stashed preview, confirm falls back to re-planning (legacy path)", async () => {
+    // A confirm with an empty stash (expired / legacy client) must not brick —
+    // it re-plans, exactly the pre-SK-TRUST-005 behaviour.
+    const stash = stubConfirmStash();
+    const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    const exec = vi.fn(async () => ({ rows: [], rowCount: 1 }));
+    const out = await orchestrateAsk(makeDeps({ llm, exec, confirmStash: stash }), {
+      goal: "delete order 1",
+      dbId: "db_1",
+      userId: "user_1",
+      confirm: true,
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    expect(out.result.requires_confirm).toBeUndefined();
+    expect(stash.lookup).toHaveBeenCalledTimes(1);
+    expect(llm.plan).toHaveBeenCalledTimes(1); // re-planned on the miss
     expect(exec).toHaveBeenCalledTimes(1);
   });
 

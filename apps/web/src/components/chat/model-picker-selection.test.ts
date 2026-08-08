@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolveProviderRow } from "./model-picker-selection";
+import { resolveModelHealth, resolveProviderRow } from "./model-picker-selection";
 
 const claude = {
   defaultModel: "claude-opus-4",
@@ -49,5 +49,38 @@ describe("resolveProviderRow", () => {
   test("empty model list falls back to the brand label", () => {
     const r = resolveProviderRow({ defaultModel: "", label: "Grok", models: [] }, null, null);
     expect(r.shownLabel).toBe("Grok");
+  });
+});
+
+describe("resolveModelHealth", () => {
+  test("no key configured → not degraded (free chain has no promised model)", () => {
+    expect(resolveModelHealth(null, "gpt-oss-120b")).toEqual({ degraded: false });
+  });
+
+  test("key configured but no answer yet → not degraded", () => {
+    expect(resolveModelHealth("gemini-3.6-flash", null)).toEqual({ degraded: false });
+    expect(resolveModelHealth("gemini-3.6-flash", undefined)).toEqual({ degraded: false });
+  });
+
+  test("configured key answered → not degraded", () => {
+    expect(resolveModelHealth("gemini-3.6-flash", "gemini-3.6-flash")).toEqual({ degraded: false });
+  });
+
+  // Production shape: a direct-provider BYOLLM answer reports its model
+  // upstream-qualified (byollm.ts), while the credential is the bare id. A
+  // genuinely-working key must NOT read as a degrade.
+  test("configured key answered under its upstream-qualified trace model → not degraded", () => {
+    expect(resolveModelHealth("gemini-3.6-flash", "google-ai-studio/gemini-3.6-flash")).toEqual({
+      degraded: false,
+    });
+  });
+
+  // The bug this guards: a Gemini key is set but a free model answered (silent
+  // degrade). The pill must stop claiming the key and name what actually ran.
+  test("configured key did NOT answer → degraded, names the model that ran", () => {
+    expect(resolveModelHealth("gemini-3.6-flash", "gpt-oss-120b")).toEqual({
+      degraded: true,
+      ranOn: "gpt-oss-120b",
+    });
   });
 });

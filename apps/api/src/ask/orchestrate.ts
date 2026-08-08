@@ -15,6 +15,7 @@ import type { LLMRouter } from "@nlqdb/llm";
 import { cachePlanHitsTotal, cachePlanMissesTotal } from "@nlqdb/otel";
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import { deriveSlug } from "../databases/list.ts";
+import type { ConfirmStash } from "./confirm-stash.ts";
 import type { DiagSink } from "./diag.ts";
 import { buildDiff, isWriteVerb } from "./diff.ts";
 import { isReplannableExecError } from "./exec-repair.ts";
@@ -70,6 +71,12 @@ export type OrchestrateDeps = {
   // lost exactly where e2e failures happen; the KV row survives.
   // Optional in tests; production wires `makeKvDiagSink`.
   diag?: DiagSink;
+  // `SK-TRUST-005`: binds a write preview to its commit. The preview hop
+  // stashes the validated SQL here; the confirm hop runs that exact SQL
+  // instead of re-planning the goal (which could yield a different or
+  // allowlist-rejected statement than the user approved). Optional in tests;
+  // when omitted the confirm hop falls back to re-planning (legacy path).
+  confirmStash?: ConfirmStash;
 };
 
 export type OrchestrateOptions = {
@@ -206,9 +213,22 @@ export async function orchestrateAsk(
   // event lands immediately after; on a miss it covers the LLM latency.
   await safeEmit({ type: "plan_pending" });
 
-  let cached = await withSpan("nlqdb.cache.plan.lookup", () =>
-    deps.planCache.lookup(schemaHash, queryHash),
-  );
+  // SK-TRUST-005 — a confirm hop for a write we previewed runs the exact
+  // stashed SQL, never a re-plan. Look it up before touching the plan cache
+  // or the LLM. Absent (expired / legacy client / read path) ⇒ fall through
+  // to normal plan resolution. On a stash hit we skip the cache lookup — the
+  // stash is authoritative for this commit.
+  const confirmStash = deps.confirmStash;
+  const stashed =
+    req.confirm && confirmStash
+      ? await withSpan("nlqdb.confirm.stash.lookup", () =>
+          confirmStash.lookup(req.userId, req.dbId, queryHash),
+        )
+      : null;
+
+  let cached = stashed
+    ? null
+    : await withSpan("nlqdb.cache.plan.lookup", () => deps.planCache.lookup(schemaHash, queryHash));
   // SK-ASK-025 — self-heal a poisoned pre-normalisation entry: a cached plan
   // that STILL names a schema after its own-schema qualifier is stripped was
   // baked against a DIFFERENT DB's physical schema (the cross-DB collision
@@ -237,7 +257,24 @@ export async function orchestrateAsk(
   // still well-formed without claiming a model the cache can't prove.
   let planModel: string;
   let planConfidence: number;
-  if (cached) {
+  // SK-TRUST-005 — set when the commit ran a stashed preview, so the trailing
+  // plan-cache write is skipped: a write plan must never land in the shared
+  // (schema_hash, query_hash) cache (SK-ASK-025 cross-tenant key).
+  let fromConfirmStash = false;
+  if (stashed) {
+    // Run the exact statement the user approved. Re-validate as defense in
+    // depth — the allowlist is the safety boundary regardless of source; it
+    // passed at preview, so a reject here means a tampered / rotated stash.
+    planSql = stashed.sql;
+    planModel = stashed.model;
+    planConfidence = stashed.confidence;
+    const stashValidation = await withSpan("nlqdb.sql.validate", async () => validateSql(planSql));
+    if (!stashValidation.ok) {
+      return { ok: false, error: { status: "sql_rejected", reason: stashValidation.reason } };
+    }
+    cacheHit = false;
+    fromConfirmStash = true;
+  } else if (cached) {
     cachePlanHitsTotal().add(1);
     // SK-ASK-025 — strip this DB's own schema qualifier so the executed SQL
     // resolves via `search_path` (a portable entry is already unqualified, so
@@ -359,6 +396,23 @@ export async function orchestrateAsk(
       }),
     );
     if (diff) {
+      // SK-TRUST-005 — bind this exact validated write to its commit so the
+      // confirm hop runs THIS SQL, not a re-plan of the goal. Best-effort: a
+      // stash-write blip just drops the confirm hop back to re-planning (the
+      // pre-SK-TRUST-005 behaviour), it never blocks the preview.
+      if (confirmStash) {
+        await withSpan(
+          "nlqdb.confirm.stash.write",
+          () =>
+            confirmStash.write(req.userId, req.dbId, queryHash, {
+              sql: planSql,
+              schemaHash,
+              model: planModel,
+              confidence: planConfidence,
+            }),
+          { onError: undefined },
+        );
+      }
       await safeEmit({ type: "confirm_required", diff });
       // SK-TRUST-004 — the preview hop is the denominator of the
       // destructive-op retry rate (`1 − committed/preview_rendered`). A
@@ -559,8 +613,10 @@ export async function orchestrateAsk(
   // that the LLM emits and the SQL allowlist accepts is not the same as
   // a plan that EXECUTES; caching the former poisons every subsequent
   // request with the same goal. KV blip on the write is still non-fatal
-  // (we already have rows for this request).
-  if (!cacheHit) {
+  // (we already have rows for this request). SK-TRUST-005 — a stashed-preview
+  // commit skips the write: a write plan must not enter the shared,
+  // cross-tenant (schema_hash, query_hash) cache (SK-ASK-025).
+  if (!cacheHit && !fromConfirmStash) {
     const fresh: CachedPlan = {
       sql: planSql,
       schemaHash,
