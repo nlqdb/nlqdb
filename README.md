@@ -5,7 +5,7 @@
 Connect nlqdb to Claude, Cursor, Codex, or any MCP host. Your agent writes
 typed rows as it learns, then asks questions in plain English — `GROUP BY`,
 `JOIN`, aggregate over what it remembered. A vector store returns the top-k
-similar chunks; nlqdb runs the query a similarity index structurally can't.
+similar chunks; nlqdb runs the query that a similarity index structurally can't.
 The LLM never emits SQL: it returns a typed plan, our compiler emits the
 parameterised statement, and you see the exact SQL every time.
 
