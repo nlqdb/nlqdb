@@ -49,6 +49,18 @@ jobs:
 
       - name: Build apps/web
         working-directory: apps/web
+        env:
+          # Cloudflare Turnstile TEST sitekey (invisible, always passes) — paired
+          # with the TEST secret injected at `versions upload` below. The preview
+          # is a VERSION of the prod worker, so it inherits the armed prod
+          # TURNSTILE_SECRET (SK-ANON-009); with no sitekey baked here the 428
+          # retry seam resolves a null token and EVERY anon create 428s
+          # unrecoverably — Suite A red on every dispatch after the 2026-07-17
+          # arming (run 30993729683's trace shows the /v1/ask 428). The test
+          # keypair keeps the real widget → token → siteverify journey in the
+          # walk while passing deterministically in headless CI.
+          # Keys: developers.cloudflare.com/turnstile/troubleshooting/testing/
+          PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000BB
         run: bun run build
 
       # Workers Static Assets serves matching files before the fetch handler, so the real sign-in page would shadow the mock-IdP route.
@@ -130,7 +142,13 @@ jobs:
           if [ -n "${GROQ_API_KEY:-}" ]; then
             llm_var=(--var "GROQ_API_KEY:${GROQ_API_KEY}")
           fi
+          # Override the inherited prod TURNSTILE_SECRET for this version only
+          # with the always-passes TEST secret (pair of the test sitekey baked
+          # into the web build above; it accepts only the dummy token that
+          # sitekey mints). Secrets omitted from the file stay inherited.
+          echo '{"TURNSTILE_SECRET":"1x0000000000000000000000000000000AA"}' > /tmp/e2e-preview-secrets.json
           bunx wrangler versions upload \
+            --secrets-file /tmp/e2e-preview-secrets.json \
             --message "${{ inputs.wrangler_message }}" \
             --preview-alias "${E2E_PREVIEW_ALIAS}" \
             --var "NODE_ENV:preview" \
