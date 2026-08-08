@@ -377,7 +377,7 @@ Canonical: `llm-router/FEATURE.md` (`SK-LLM-001..011`). Tables below are at-a-gl
 | Hard-plan fallback | Google AI Studio — Gemini 2.5 Pro | 100 RPD | No |
 | Summarization | Groq — GPT OSS 120B | 1,000 RPD | No |
 | Embeddings | Cloudflare Workers AI — bge-base-en-v1.5 | 10,000 Neurons/day | No |
-| Universal fallback | OpenRouter — `qwen/qwen3-coder:free` (plan / schema_infer); Llama 3.x `:free` (route / summarize) | 50 RPD anon / 1,000 RPD after a one-time $10 deposit | No (deposit unlocks the 1k tier and is kept even if balance falls to $0) |
+| Universal fallback | OpenRouter — `nvidia/nemotron-3-ultra-550b-a55b:free` (plan / schema_infer / summarize); `google/gemma-4-26b-a4b-it:free` (route / engine_classify) (SK-LLM-045) | 50 RPD anon / 1,000 RPD after a one-time $10 deposit | No (deposit unlocks the 1k tier and is kept even if balance falls to $0) |
 
 **Capacity:** ~500 plan + ~10k classify/day (Groq GPT OSS 20B 1,000 RPD, then Workers-AI + OpenRouter failover) → ~2–4k queries/day after the plan cache.
 
