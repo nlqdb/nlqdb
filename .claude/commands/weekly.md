@@ -43,9 +43,18 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
    regression.
 6. **Prompt drift.** Dangling references (decision IDs with no canonical
    file, paths that no longer exist), dead rules, and contradictions in
-   `daily.md`, `reach.md`, and this file — the GLOBAL-027 case (cited everywhere,
+   `daily.md`, `reach.md`, `ek.md`, and this file — the GLOBAL-027 case
+   (cited everywhere,
    canonical file missing until its superseded record landed 2026-07-01)
    is the archetype.
+7. **Public-roadmap truth (`README.md § Roadmap`).** The README is the one
+   roadmap strangers read, and no daily loop owns it — it fossilized for
+   10 days once (found 2026-08-08: the entire agent-memory wedge was
+   absent). Each week: tick/untick markers against shipped reality
+   (worksheet trackers are the source), and confirm the "Now"/"Next"
+   sections still name the live focus and the parallel track. A marker
+   claiming ✓ for something dark is a P6 honesty bug, same class as a
+   phantom capability.
 
 ## Outputs (one PR)
 
