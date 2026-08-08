@@ -33,7 +33,7 @@ describe("/experts claims stay inside shipped substance (SK-EKP-001)", () => {
       // does read rows to answer. This bans the factual denial while leaving
       // the contractual "nlqdb may not read…" (permission) and the positive
       // carve "the engine reads the relevant rows…" untouched.
-      /\b(?:we|nlqdb)\s+(?:do\s+not|don[’']?t)\s+(?:read|see|access|view)\b/i,
+      /\b(?:we|nlqdb)\s+(?:do(?:es)?\s+not|do(?:es)?n[’']?t)\s+(?:read|see|access|view)\b/i,
       /\b(?:nobody|no\s+one)\s+(?:[a-z]+\s+){0,3}?(?:reads?|sees?|accesses?|views?)\b/i,
     ]) {
       expect(page).not.toMatch(banned);
