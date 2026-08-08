@@ -633,6 +633,65 @@ export type ClearByollmResult = { ok: true; cleared: boolean };
 // a "you're counted" state.
 export type PremiumInterestResult = { ok: true };
 
+// SK-EKP-008 — the cross-tenant read-grant control plane (EK-06). A grant
+// lets the owner sell a grantee read-only query access to one named hosted
+// knowledge DB — revocable, fail-closed, per-query metered. These verbs are
+// session-only, the same threat model as the key verbs: a leaked `sk_live_`
+// must never open one tenant's data to another, so they ride a first-party
+// cookie (`withCredentials: true`), never a bearer. Enforcement of the grant
+// on the buyer's `/v1/ask` (scope, role, metering) is EK-06 box 2, server-side.
+
+// `POST /v1/grants` mint request. `scope` enumerates the bare table names the
+// grantee may read and is authoritative — schema widening never widens it.
+// `priceModel` is an opaque tag the private selling surface (`SK-EKP-003`)
+// writes and interprets; the public core never reads it and no fee logic,
+// fee %, or Stripe call lives here (`SK-EKP-002`).
+export type MintGrantRequest = {
+  dbId: string;
+  granteeTenantId: string;
+  scope: string[];
+  priceModel?: string;
+};
+
+// `mintGrant()` result — the minted grant, always `active`. `priceModel` is
+// echoed only when set.
+export type GrantMintResult = {
+  id: string;
+  dbId: string;
+  granteeTenantId: string;
+  scope: string[];
+  priceModel?: string;
+  status: "active";
+  createdAt: number;
+};
+
+// One row in `listGrants()` — both sides of the marketplace in one list:
+// grants the caller sold (`role: "owner"`) and grants it holds
+// (`role: "grantee"`). `revokedAt` is non-null on revoked rows; active rows
+// sort before revoked (one contiguous slice per section, same contract as
+// the keys list).
+export type GrantRecord = {
+  id: string;
+  role: "owner" | "grantee";
+  dbId: string;
+  ownerTenantId: string;
+  granteeTenantId: string;
+  scope: string[];
+  priceModel?: string;
+  status: "active" | "revoked";
+  createdAt: number;
+  revokedAt: number | null;
+};
+
+// `DELETE /v1/grants/:id` response. Idempotent: a re-DELETE on an
+// already-revoked grant returns `alreadyRevoked: true` rather than 404, so
+// retrying scripts don't special-case it. 404 (`grant_not_found`) fires only
+// on an unknown / not-yours id — no cross-tenant existence leak.
+export type RevokeGrantResult = {
+  ok: true;
+  alreadyRevoked: boolean;
+};
+
 /**
  * The typed client returned by {@link createClient} — the only HTTP
  * surface per `GLOBAL-001`. Every method throws {@link NlqdbApiError} on
@@ -840,6 +899,40 @@ export type NlqClient = {
     signal?: AbortSignal;
     idempotencyKey?: string;
   }): Promise<PremiumInterestResult>;
+  /**
+   * `POST /v1/grants` — mint a cross-tenant read grant (`SK-EKP-008`, EK-06):
+   * the owner sells `granteeTenantId` read-only query access to hosted DB
+   * `dbId`, scoped to `scope` (bare table names). **Session-only**: throws
+   * synchronously unless the client was built with `withCredentials: true` —
+   * a leaked `sk_live_` must not be able to open a tenant's data to another
+   * tenant. v1 grants mint on platform-provisioned hosted DBs only (`byo_not_grantable`
+   * on a BYO DB). Errors: `invalid_db_id`/`invalid_grantee`/`scope_*` (400),
+   * `cannot_grant_to_self` (400), `db_not_found`/`grantee_not_found` (404).
+   * Mutating: auto-keyed and replayed under the same key (`SK-SDK-006` / `GLOBAL-005`).
+   */
+  mintGrant(
+    req: MintGrantRequest,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<GrantMintResult>;
+  /**
+   * `GET /v1/grants` — the caller's grants (`SK-EKP-008`), both roles in one
+   * list: sold (`role: "owner"`) and held (`role: "grantee"`), active before
+   * revoked. **Session-only**: throws unless `withCredentials: true` — a
+   * leaked bearer cannot enumerate a tenant's grants.
+   */
+  listGrants(opts?: { signal?: AbortSignal }): Promise<{ grants: GrantRecord[] }>;
+  /**
+   * `DELETE /v1/grants/:id` — owner revoke (`SK-EKP-008`). Fails closed within
+   * the 30 s enforcement bound; a grantee cannot revoke (they walk away by not
+   * querying). Tenant-scoped: an id from another tenant rejects as
+   * `grant_not_found` (404) just like an unknown id — no cross-tenant existence
+   * leak. Idempotent: a re-DELETE returns `alreadyRevoked: true`.
+   * **Session-only**: throws unless `withCredentials: true`. Mutating: auto-keyed.
+   */
+  revokeGrant(
+    grantId: string,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<RevokeGrantResult>;
 };
 
 const DEFAULT_BASE_URL = "https://app.nlqdb.com";
@@ -1294,6 +1387,31 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
       assertSession("registerPremiumInterest");
       return call<PremiumInterestResult>("/v1/premium/interest", {
         method: "POST",
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
+      });
+    },
+    mintGrant: (req, callOpts) => {
+      assertSession("mintGrant");
+      return call<GrantMintResult>("/v1/grants", {
+        method: "POST",
+        body: JSON.stringify(req),
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
+      });
+    },
+    listGrants: (callOpts) => {
+      assertSession("listGrants");
+      return call<{ grants: GrantRecord[] }>("/v1/grants", { signal: callOpts?.signal });
+    },
+    revokeGrant: (grantId, callOpts) => {
+      assertSession("revokeGrant");
+      return call<RevokeGrantResult>(`/v1/grants/${encodeURIComponent(grantId)}`, {
+        method: "DELETE",
         signal: callOpts?.signal,
         ...(callOpts?.idempotencyKey
           ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
