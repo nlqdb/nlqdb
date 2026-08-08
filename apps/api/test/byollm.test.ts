@@ -159,7 +159,7 @@ describe("resolveAskRouter", () => {
     });
   });
 
-  it("reports gateway_unconfigured when a BYOLLM key arrives but AI Gateway is unset", () => {
+  it("reports gateway_unconfigured for an explicit header key when AI Gateway is unset", () => {
     const res = resolveAskRouter({
       headerCredential: { upstream: "openai", model: "gpt-5.2", apiKey: "sk-secret" },
       freeRouter: FREE,
@@ -167,6 +167,76 @@ describe("resolveAskRouter", () => {
       userId: "u1",
     });
     expect(res).toEqual({ ok: false, reason: "gateway_unconfigured" });
+  });
+
+  it("degrades the ambient account lane to the free router when AI Gateway is unset (never a 503)", () => {
+    // The stored-key user set a preference once; a deployment gap must not
+    // brick every request when the built-in chain is right there.
+    const res = resolveAskRouter({
+      headerCredential: null,
+      accountCredential: { upstream: "google-ai-studio", model: "gemini-2.5-flash", apiKey: "g-k" },
+      freeRouter: FREE,
+      gateway: {},
+      userId: "u1",
+    });
+    expect(res).toEqual({
+      ok: true,
+      router: FREE,
+      attributes: {
+        "llm.dispatch_lane": "free",
+        "llm.billed_to": "platform",
+        "llm.byollm_degraded": "gateway_unconfigured",
+      },
+    });
+    if (res.ok) {
+      // The key never leaks into the redacted attributes.
+      expect(JSON.stringify(res.attributes)).not.toContain("g-k");
+      // Degraded to free — not billed to byollm, no provider slug.
+      expect(res.attributes["llm.byollm_provider"]).toBeUndefined();
+      expect(res.attributes["llm.byollm_source"]).toBeUndefined();
+    }
+  });
+
+  it("an explicit header key still wins the 503 even when an account key could degrade", () => {
+    // Precedence unchanged: the header lane is the explicit per-call ask,
+    // so it fails loud rather than silently riding the account fallback.
+    const res = resolveAskRouter({
+      headerCredential: { upstream: "openai", model: "gpt-5.2", apiKey: "sk-hdr" },
+      accountCredential: { upstream: "anthropic", model: "claude-4-5-sonnet", apiKey: "sk-acct" },
+      freeRouter: FREE,
+      gateway: {},
+      userId: "u1",
+    });
+    expect(res).toEqual({ ok: false, reason: "gateway_unconfigured" });
+  });
+
+  it('an explicit "best" on the account lane keeps the 503 — never a silent free downgrade (SK-PREMIUM-014)', () => {
+    const res = resolveAskRouter({
+      headerCredential: null,
+      accountCredential: { upstream: "anthropic", model: "claude-4-5-sonnet", apiKey: "sk-acct" },
+      preset: "best",
+      freeRouter: FREE,
+      gateway: {},
+      userId: "u1",
+    });
+    expect(res).toEqual({ ok: false, reason: "gateway_unconfigured" });
+  });
+
+  it("carries the preset onto the degraded free lane", () => {
+    const res = resolveAskRouter({
+      headerCredential: null,
+      accountCredential: { upstream: "anthropic", model: "claude-4-5-sonnet", apiKey: "sk-acct" },
+      preset: "auto",
+      freeRouter: FREE,
+      gateway: {},
+      userId: "u1",
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.router).toBe(FREE);
+      expect(res.attributes["llm.byollm_degraded"]).toBe("gateway_unconfigured");
+      expect(res.attributes["llm.model_preset"]).toBe("auto");
+    }
   });
 
   // SK-PREMIUM-014 — the `model` preset knob.

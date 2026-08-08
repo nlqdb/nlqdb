@@ -26,10 +26,24 @@ selector). Key-handling parent: [`SK-PREMIUM-008`](../../premium-tier/decisions/
   summarize — so a BYOLLM ask runs end-to-end on the user's key and fails
   loud as one unit if the key is bad, never half on their key and half on
   ours. The **create / DDL path** (`runCreatePath` → `buildDbCreateDeps`)
-  keeps the free router this slice and is left unlabelled (tracked). A BYOLLM
-  key with AI Gateway unconfigured returns a one-sentence 503. `buildAskDeps`
-  gains an optional `llm` override so the per-request router swap lands in
-  one place.
+  keeps the free router this slice and is left unlabelled (tracked). An
+  **explicit** BYOLLM selection with AI Gateway unconfigured returns a
+  one-sentence 503 — the per-request `x-nlq-byollm-key` header and
+  `model: "best"` (SK-PREMIUM-014) are both a per-call ask, so failing loud
+  beats quietly serving ours. The **ambient account-stored lane**
+  (`accountCredential`, `auto`/absent preset — SK-PREMIUM-012) instead
+  **degrades to the free chain** when the gateway is unconfigured: the user
+  set a key once as a preference they never see re-selected per request, so
+  bricking every request on a deployment-wide operator gap — the very state
+  the 503 copy calls survivable ("the built-in models are still available"),
+  and a legit steady state on a self-host that never wired a gateway
+  (GLOBAL-019) — is worse than serving the built-in models. This is not the
+  silent fallback SK-LLM-016 forbids (that rule guards a *bad key* from
+  re-billing us and hiding the failure): here the key is fine, the free chain
+  is $0, and `llm.byollm_degraded="gateway_unconfigured"` records the bypass
+  on the span (performance.md §3.3) while the web model pill shows the
+  resolved free lane. `buildAskDeps` gains an optional `llm` override so the
+  per-request router swap lands in one place.
 - **Core value:** Free, Effortless UX, Honest latency, Bullet-proof
 - **Why:** `SK-LLM-019`/`SK-LLM-020` shipped the provider + the pure
   precedence but explicitly deferred the apps/api wiring; this is that wiring
@@ -57,9 +71,9 @@ selector). Key-handling parent: [`SK-PREMIUM-008`](../../premium-tier/decisions/
     the gateway; the allowlist fails loud at the edge (`GLOBAL-012`).
   - **Silent fallback to the free chain on a bad/anon key** — the dark
     pattern `GLOBAL-012` and `SK-PREMIUM-008` both forbid.
-- **Deferred (tracked):** Account-stored keys (`api_keys.scope="byollm"`,
-  KEK-decrypt) and the hosted-premium lane (`SK-LLM-017`, dark pre-§6) stay on
-  the free router. `GLOBAL-003` surface parity (SDK / CLI / MCP / elements +
+- **Deferred (tracked):** The hosted-premium lane (`SK-LLM-017`, dark pre-§6)
+  stays on the free router (account-stored keys shipped in `SK-PREMIUM-012`).
+  `GLOBAL-003` surface parity (SDK / CLI / MCP / elements +
   the `/v1/keys/byollm` endpoints + `/app/keys` UI) is tracked in
   [`premium-tier/FEATURE.md`](../../premium-tier/FEATURE.md) `## Open questions`.
   (The OpenRouter-vs-compat discrepancy is resolved — OpenRouter now dispatches
