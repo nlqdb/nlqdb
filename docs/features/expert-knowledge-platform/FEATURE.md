@@ -24,8 +24,15 @@ interview CLI + the interview-methodology spec (founder-pushed bundles,
 access grants, so `experts`-side slices flow via founder-landed bundles
 until then; EK-05 stays parked on that access. First engine code landed
 2026-08-08: the EK-06 grant control plane (`/v1/grants` mint/list/revoke).
-`GLOBAL-003` gap, tracked here until EK-06 box 5: the grants capability is
-HTTP-API-only — SDK, CLI, MCP, and elements surfaces not yet updated.
+`GLOBAL-003` gap, tracked here until EK-06 box 5: the grants capability
+reaches the **SDK** as of 2026-08-08 (`mintGrant`/`listGrants`/`revokeGrant`,
+session-only like the key verbs). The **CLI** is the one surface still to add
+(`nlq grants list/revoke`, a follow-up run mirroring `nlq keys`). **MCP and
+elements are out of scope by design, not a gap**: grants are a session-only
+cross-tenant *control-plane* action, so they must never ride a bearer — an
+agent's MCP token minting or revoking a grant is the exact leaked-credential
+threat the `requireSession` gate defends against — and `<nlq-data>` is a
+read/display element with no control-plane surface.
 **Owners (code):** none yet. The public rails it builds on are
 agent-memory-pivot surfaces (`agent_memory_v1`, goal packs, the shared
 one-click runner). Product-surface code will live partly in a **private

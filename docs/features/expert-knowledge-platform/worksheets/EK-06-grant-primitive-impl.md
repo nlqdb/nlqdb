@@ -51,4 +51,9 @@ satisfy):
 - [ ] Revocation latency measured and within the EK-02 bound — including
       the in-flight half (`statement_timeout` ≤ the 30 s cache bound; the
       env knob may only tighten).
-- [ ] SDK/CLI/MCP/elements updated or gap tracked.
+- [~] SDK/CLI/MCP/elements updated or gap tracked. *(2026-08-08 — SDK done:
+      `mintGrant`/`listGrants`/`revokeGrant`, session-only, mirroring the key
+      verbs. CLI (`nlq grants list/revoke`) is the remaining surface, a
+      follow-up run. MCP + elements are out-of-scope-by-design — a session-only
+      cross-tenant control-plane op never rides a bearer or a display element;
+      rationale recorded in the FEATURE.md gap note.)*

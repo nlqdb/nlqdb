@@ -85,6 +85,17 @@ function stubClient(overrides: Partial<NlqClient> & { connect?: ConnectFn } = {}
     remember: async () => {
       throw new Error("remember not stubbed");
     },
+    mintGrant: async () => {
+      // Grant control-plane verbs (SK-EKP-008) are session-only and not an
+      // MCP tool by design; the stubs only satisfy the NlqClient interface.
+      throw new Error("mintGrant not stubbed");
+    },
+    listGrants: async () => {
+      throw new Error("listGrants not stubbed");
+    },
+    revokeGrant: async () => {
+      throw new Error("revokeGrant not stubbed");
+    },
   };
   const { connect, ...rest } = overrides;
   return {
