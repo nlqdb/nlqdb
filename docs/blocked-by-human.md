@@ -38,6 +38,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 | 3 | ~15 min | Approve the EK-03 "not allowed" ToS/DPA draft clauses; on approval a follow-up run publishes them into /terms + /privacy — not urgent, publishes with the EK-05 selling flow | 2026-08-07 |
+| 4 | ~15 min | Set `AI_GATEWAY_ACCOUNT_ID` + `AI_GATEWAY_ID` on the `nlqdb-api` worker — until then every account BYOLLM key silently runs on the free chain (#947 made the degrade honest in the UI; serving the key needs the gateway) | 2026-08-08 |
 
 Only #1 can move real strangers (scorecard row #2); #2 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
@@ -123,6 +124,17 @@ SK-PIVOT-016 criterion 1's counter is **not** running yet.)
    and re-rank this bullet then. Legal wording is a human sign-off, not an
    agent merge (P6). **Lowest rank — nothing publishes until then**; the
    live legal pages are untouched.
+
+4. **⏱ ~15 min · since 2026-08-08 — Configure the Cloudflare AI Gateway on the
+   `nlqdb-api` worker** — set `AI_GATEWAY_ACCOUNT_ID` and `AI_GATEWAY_ID` (create/enable
+   an AI Gateway in the Cloudflare dashboard, then set the two ids as Worker vars).
+   Both are unset today, so **every account-stored BYOLLM key degrades to the free
+   chain** — no account key can actually be served (`SK-LLM-019..021` / `SK-PREMIUM-012`
+   ship the lane, but it can't reach a provider without the gateway). #947 made this
+   degrade *honest* in the model picker (the pill now says the key isn't answering and
+   names the free model that ran), so no user is misled in the meantime. **Lowest rank —
+   ~0 users have configured a BYOLLM key yet, so near-zero current user-yield; do it
+   before promoting BYOLLM / the premium tier.**
 
 ## Suggestions needing approval (to amend the guidelines)
 
