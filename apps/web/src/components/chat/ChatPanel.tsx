@@ -54,6 +54,7 @@ import LeftRail from "./LeftRail";
 import ModelPicker, { BYOLLM_STATUS_EVENT } from "./ModelPicker";
 import Palette, { type PaletteAction } from "./Palette";
 import PmfSurveyCard from "./PmfSurveyCard";
+import ReplyChoices from "./ReplyChoices";
 import { settleInterruptedReply } from "./reply-settle";
 import Trace, { type TraceStepName, type TraceStepRecord } from "./Trace";
 import { displayTraceSteps } from "./trace-steps";
@@ -914,6 +915,7 @@ function ReplyView({
   onPickCandidate,
   onClarifyCreate,
   onClarifyCancel,
+  onClarifyOption,
 }: {
   reply: Reply;
   pkLive: string | null;
@@ -990,62 +992,41 @@ function ReplyView({
             );
           })()
         : null}
+      {/* SK-ASK-009 DB picker — same reply-choices rail as the clarify chips. */}
       {ambiguous ? (
-        <div className="chat-reply__ambiguous">
-          <p className="chat-reply__ambiguous-prompt">
-            Which database did you mean?
-            {ambiguous.reason ? (
-              <span className="chat-reply__ambiguous-reason"> ({ambiguous.reason})</span>
-            ) : null}
-          </p>
-          <ul className="chat-reply__candidates">
-            {ambiguous.candidates.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  className="btn btn--ghost"
-                  onClick={() => onPickCandidate(c.id)}
-                  title={c.slug}
-                >
-                  {displayName(c.id)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {clarify ? (
-        <div className="chat-reply__clarify">
-          {/* SK-ASK-026: destructive_ambiguous — the server sent one
-              re-sendable option per interpretation ("clear db" family).
-              Render a chip for each plus a Cancel. */}
-          {clarify.options && clarify.options.length > 0 ? (
+        <ReplyChoices
+          prompt={
             <>
-              <p className="chat-reply__clarify-prompt">
-                {clarify.prompt ?? "Did you mean one of these?"}
-              </p>
-              <ul className="chat-reply__clarify-actions">
-                {clarify.options.map((option) => (
-                  <li key={option.label}>
-                    <button
-                      type="button"
-                      className="btn btn--ghost"
-                      onClick={() => onClarifyOption(option)}
-                    >
-                      {option.label}
-                    </button>
-                  </li>
-                ))}
-                <li>
-                  <button type="button" className="btn btn--ghost" onClick={onClarifyCancel}>
-                    Cancel
-                  </button>
-                </li>
-              </ul>
+              Which database did you mean?
+              {ambiguous.reason ? <span> ({ambiguous.reason})</span> : null}
             </>
-          ) : (
-            <>
-              <p className="chat-reply__clarify-prompt">
+          }
+          choices={ambiguous.candidates.map((c) => ({
+            label: displayName(c.id),
+            onSelect: () => onPickCandidate(c.id),
+            title: c.slug,
+          }))}
+        />
+      ) : null}
+      {/* SK-ASK-026 destructive-clarify options (per-table "empty" + "start
+          fresh"), else the SK-ASK-014 create/cancel clarify. Both are
+          re-sendable choices on the shared ReplyChoices rail. */}
+      {clarify ? (
+        clarify.options && clarify.options.length > 0 ? (
+          <ReplyChoices
+            prompt={clarify.prompt ?? "Did you mean one of these?"}
+            choices={[
+              ...clarify.options.map((option) => ({
+                label: option.label,
+                onSelect: () => onClarifyOption(option),
+              })),
+              { label: "Cancel", onSelect: onClarifyCancel },
+            ]}
+          />
+        ) : (
+          <ReplyChoices
+            prompt={
+              <>
                 Looks like you want to create something new.{" "}
                 {clarify.pinnedDb ? (
                   <>
@@ -1055,22 +1036,14 @@ function ReplyView({
                 ) : (
                   <>Spin up a fresh database, or rephrase your request?</>
                 )}
-              </p>
-              <ul className="chat-reply__clarify-actions">
-                <li>
-                  <button type="button" className="btn btn--accent" onClick={onClarifyCreate}>
-                    Create new database
-                  </button>
-                </li>
-                <li>
-                  <button type="button" className="btn btn--ghost" onClick={onClarifyCancel}>
-                    Cancel
-                  </button>
-                </li>
-              </ul>
-            </>
-          )}
-        </div>
+              </>
+            }
+            choices={[
+              { label: "Create new database", onSelect: onClarifyCreate, variant: "accent" },
+              { label: "Cancel", onSelect: onClarifyCancel },
+            ]}
+          />
+        )
       ) : null}
       <Answer summary={summary} pending={pending} />
       <Data rows={rows} rowCount={rowCount} pending={pending} />
