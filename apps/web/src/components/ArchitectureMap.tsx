@@ -47,7 +47,11 @@ const C = {
   ink: "#f2f4f1",
   muted: "#9aa099",
   accentCss: "#3ecf8e",
-  edge: 0x6a716a,
+  // Resting request-path: a muted jade-grey, not a dead neutral grey — the
+  // paths read as part of the jade flow system even before a comet lights
+  // them (SK-WEB-021 "flowing jade request paths"). The bright comet streak
+  // still pops hard against it.
+  edge: 0x53685d,
   accent: 0x3ecf8e,
 } as const;
 
@@ -61,6 +65,15 @@ const NODE_H = 1.5;
 const NODE_D = 0.34;
 const CARD_TILT = -0.17; // lean back toward the raised camera
 const PPU = 256;
+
+// Request-path tube tessellation. The old 32×8 tubes read as blocky
+// low-poly prisms — an 8-sided cross-section has a visibly octagonal
+// silhouette against the dark floor, and 32 lengthwise steps facet the
+// bezier bend. Round the cross-section (RADIAL) and smooth the curve
+// (TUBULAR) so the paths look like continuous futuristic conduits. Tubes
+// are cheap (~20 short curves), so the extra vertices are free.
+const TUBE_TUBULAR = 64;
+const TUBE_RADIAL = 20;
 
 // Camera distances that map to the two levels of detail.
 const DETAIL_DIST = 15;
@@ -253,21 +266,27 @@ function floorTexture(three: ThreeModule, maxAniso: number): Texture {
 }
 
 /** One comet streak, tiled and UV-scrolled along each edge tube — replaces
-    the old pulse spheres, whose loop restart read as a visible teleport. */
+    the old pulse spheres, whose loop restart read as a visible teleport.
+    A long, soft trail building to a bright feathered head (both edges
+    smooth, so it reads as flowing light, not a hard blip); wide canvas so
+    the gradient stays clean when stretched along a long path. */
 function streakTexture(three: ThreeModule): Texture {
+  const W = 1024;
   const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 8;
+  canvas.width = W;
+  canvas.height = 16;
   const ctx = canvas.getContext("2d");
   if (ctx) {
-    const g = ctx.createLinearGradient(0, 0, 512, 0);
+    const g = ctx.createLinearGradient(0, 0, W, 0);
     g.addColorStop(0, "rgba(62, 207, 142, 0)");
     g.addColorStop(0.5, "rgba(62, 207, 142, 0)");
-    g.addColorStop(0.86, "rgba(62, 207, 142, 0.75)");
-    g.addColorStop(0.96, "rgba(190, 255, 224, 1)");
+    g.addColorStop(0.66, "rgba(62, 207, 142, 0.1)");
+    g.addColorStop(0.86, "rgba(120, 235, 190, 0.68)");
+    g.addColorStop(0.94, "rgba(214, 255, 233, 1)");
+    g.addColorStop(0.985, "rgba(120, 235, 190, 0.32)");
     g.addColorStop(1, "rgba(62, 207, 142, 0)");
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 512, 8);
+    ctx.fillRect(0, 0, W, 16);
   }
   const tex = new three.CanvasTexture(canvas);
   tex.colorSpace = three.SRGBColorSpace;
@@ -320,6 +339,22 @@ async function createArchScene(
 ): Promise<SceneHandle | null> {
   const three = await import("three");
   const { OrbitControls } = await import("three/addons/controls/OrbitControls.js");
+
+  // All in-scene text is baked into canvas textures once, at build time. If
+  // the web font isn't loaded yet those bakes fall back to a system mono —
+  // wait for it so the labels are always the real face (also makes the
+  // `?poster` capture deterministic).
+  try {
+    if (document.fonts?.ready) await document.fonts.ready;
+  } catch {
+    /* fonts API absent — fall through with whatever's available */
+  }
+
+  // Poster-capture mode (SK-WEB-021 regen hook): `/architecture/?poster`
+  // freezes the opening overview — no idle sway, comets parked mid-path —
+  // so a headless screenshot yields a stable, reproducible poster render.
+  const posterMode =
+    typeof location !== "undefined" && new URLSearchParams(location.search).has("poster");
 
   let renderer: import("three").WebGLRenderer;
   try {
@@ -403,7 +438,7 @@ async function createArchScene(
   // OrbitControls sets touch-action:none, which would also swallow vertical
   // page scrolls started on the canvas — restore the pan-y default.
   renderer.domElement.style.touchAction = "pan-y";
-  controls.autoRotate = motionOk;
+  controls.autoRotate = motionOk && !posterMode;
   controls.autoRotateSpeed = 0.45;
 
   // Anything whose opacity the render loop drives.
@@ -545,8 +580,8 @@ async function createArchScene(
     aggregate: boolean;
   }
   const edgeVisuals: EdgeVisual[] = [];
-  const arrowGeo = new three.ConeGeometry(0.11, 0.3, 10);
-  const puckGeo = new three.SphereGeometry(0.14, 12, 12);
+  const arrowGeo = new three.ConeGeometry(0.1, 0.32, 28);
+  const puckGeo = new three.SphereGeometry(0.13, 32, 24);
   const up = new three.Vector3(0, 1, 0);
   const streakBase = motionOk ? streakTexture(three) : null;
 
@@ -559,7 +594,7 @@ async function createArchScene(
     mid.y += opts.aggregate ? 2.1 : 1.05;
     const curve = new three.QuadraticBezierCurve3(from, mid, to);
     const r = opts.aggregate ? 0.07 : 0.04;
-    const tube = new three.TubeGeometry(curve, 32, r, 8, false);
+    const tube = new three.TubeGeometry(curve, TUBE_TUBULAR, r, TUBE_RADIAL, false);
     const mat = new three.MeshBasicMaterial({ color: C.edge });
     const mesh = new three.Mesh(tube, mat);
     scene.add(mesh);
@@ -599,7 +634,7 @@ async function createArchScene(
       streak.repeat.x = Math.max(1, Math.round(len / 7));
       streak.needsUpdate = true;
       const streakMesh = new three.Mesh(
-        new three.TubeGeometry(curve, 32, r * 2.1, 8, false),
+        new three.TubeGeometry(curve, TUBE_TUBULAR, r * 2.1, TUBE_RADIAL, false),
         new three.MeshBasicMaterial({
           map: streak,
           transparent: true,
@@ -888,7 +923,7 @@ async function createArchScene(
       }
       for (const f of e.fades) applyFade(f, vis * (isSelectedEdge ? 1.18 : 1));
       if (e.streak) {
-        e.streak.offset.x = -(t * e.speed + e.phase);
+        e.streak.offset.x = posterMode ? -(0.68 + e.phase) : -(t * e.speed + e.phase);
       }
     }
 
