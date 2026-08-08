@@ -62,20 +62,33 @@ framing — instead of a surprise in the comments.
 Lead positioning is **analytical agent memory** per
 [GLOBAL-036](../decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md);
 an angle that leads elsewhere needs a deliberate exception, not drift.
+**That exception exists (founder, 2026-08-08):** the Show HN may **lead
+with the C story** — the agent-operated, $0-stack company — carrying angle
+A as the product payload inside it (*"we run our company on free tiers with
+Claude agents; nlqdb is what it built"*). Rationale: the founder's genuine
+excitement lives in C, and an unexcited author can't write the post or
+defend the thread (the r/SQL lesson generalizes: authentic voice is the
+channel). GLOBAL-036 itself is unchanged — product surfaces keep the
+memory-first positioning; this is one post's framing.
 
 - **A. Agent memory that can answer "how many"** (GLOBAL-036 lead): memory
   as four Postgres tables + NL analytics over it; Mem0/Zep/Letta matrix on
-  `/agents`; one-command MCP install. Honesty gates: `nlqdb_remember` +
-  `MEMORY_PRESET` are dark (SK-PIVOT-010) — demo through `nlqdb_query`;
-  FSL-1.1, never "Apache-2.0 today" (GLOBAL-019).
+  `/agents`; one-command MCP install. Honesty gates: FSL-1.1, never
+  "Apache-2.0 today" (GLOBAL-019). (Stale gate removed 2026-08-08:
+  `MEMORY_PRESET=1` shipped 2026-07-29 (#835), and the dogfood gate this
+  launch waits on guarantees `nlqdb_remember` is demoable with real
+  traffic by launch day.)
 - **B. "A database you talk to, with a backend that doesn't exist"** — the
   original wedge: HTML components asking for data in plain English; anon
   first answer in <60 s, no signup.
-- **C. "Built and run ~almost entirely by Claude-code agents"** — the
-  company-process story (daily/weekly/reach loops, scorecard, stranger-test
-  walkers, decision records). Genuinely unusual; HN-native; also the riskiest
-  comment thread. Strong as the *backstory paragraph* inside A or B rather
-  than the title.
+- **C. "Built and run ~almost entirely by Claude-code agents, on a $0
+  stack"** — the company-process story (daily/weekly/reach/ek loops,
+  scorecard, stranger-test walkers, decision records, free-tier
+  infrastructure per GLOBAL-013). Genuinely unusual; HN-native; the
+  riskiest comment thread — and, per the 2026-08-08 founder exception
+  above, **the chosen lead**, with A as the payload. Feeds the
+  free-stack-kit direction ([`docs/future/free-stack-kit.md`](../future/free-stack-kit.md)):
+  launch-day traction on this story is the kit's demand evidence.
 
 ## 3. Venue fact sheets (founder writes final copy)
 
