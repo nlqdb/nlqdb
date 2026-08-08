@@ -35,12 +35,12 @@
 </script>
 <script>
   // Tell Tawk who the signed-in visitor is (name / email / nlqdb user id) so the
-  // operator sees the account instead of Tawk's anonymous visitor id. Same
-  // memoised session probe AppAnalytics uses; runs after the inline embed above.
-  import { fetchSession } from "../lib/session";
-  import { identifyTawkVisitor } from "../lib/tawk";
+  // operator sees the account instead of Tawk's anonymous visitor id. The
+  // identity — with the Secure Mode hash that lets Tawk accept the name/email —
+  // comes from the API; runs after the inline embed above.
+  import { fetchTawkIdentity, identifyTawkVisitor } from "../lib/tawk";
 
   void (async () => {
-    identifyTawkVisitor(await fetchSession());
+    identifyTawkVisitor(await fetchTawkIdentity());
   })();
 </script>

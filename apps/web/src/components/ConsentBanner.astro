@@ -1,0 +1,127 @@
+---
+// /app analytics-consent prompt (SK-WEB-029). Opt-in gate for the PostHog
+// analytics cookie (SK-WEB-024); mounted on the five /app pages next to
+// <AppAnalytics/>. The Tawk support-chat cookie is gated separately by Tawk's
+// own native Consent Form (SK-WEB-025), so this prompt is analytics-only.
+// Marketing stays banner-free (GLOBAL-034). Anchored bottom-left so it never
+// overlaps the Tawk chat bubble (bottom-right).
+---
+<div id="nlq-consent" class="nlq-consent" hidden>
+  <div class="nlq-consent__card" role="region" aria-label="Analytics cookies">
+    <p class="nlq-consent__text">
+      We use analytics cookies (PostHog) to see how the app is used and improve
+      it. They load only if you accept &mdash; your sign-in cookies always stay
+      on. See our <a href="/privacy/">privacy policy</a>.
+    </p>
+    <div class="nlq-consent__actions">
+      <button type="button" id="nlq-consent-accept" class="nlq-consent__btn nlq-consent__btn--accept"
+        >Accept</button
+      >
+      <button type="button" id="nlq-consent-decline" class="nlq-consent__btn">Decline</button>
+    </div>
+  </div>
+</div>
+<button type="button" id="nlq-consent-reopen" class="nlq-consent__reopen" hidden
+  >Analytics settings</button
+>
+
+<style>
+  .nlq-consent {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 2147482000;
+    max-width: 340px;
+  }
+  .nlq-consent__card {
+    background: var(--bg, #14171a);
+    color: var(--body, #c6c9c3);
+    border: 1px solid var(--rule, #232622);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .nlq-consent__text {
+    margin: 0 0 10px;
+  }
+  .nlq-consent__text a {
+    color: var(--ink, #f2f4f1);
+    text-decoration: underline;
+  }
+  .nlq-consent__actions {
+    display: flex;
+    gap: 8px;
+  }
+  .nlq-consent__btn {
+    font: inherit;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--rule, #232622);
+    background: transparent;
+    color: var(--ink, #f2f4f1);
+    cursor: pointer;
+  }
+  .nlq-consent__btn--accept {
+    background: var(--accent, #3ecf8e);
+    border-color: var(--accent, #3ecf8e);
+    color: #0b0f0a;
+    font-weight: 600;
+  }
+  .nlq-consent__reopen {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 2147482000;
+    font: inherit;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--rule, #232622);
+    background: var(--bg, #14171a);
+    color: var(--muted, #8b908a);
+    cursor: pointer;
+    opacity: 0.7;
+  }
+  .nlq-consent__reopen:hover {
+    opacity: 1;
+  }
+</style>
+
+<script>
+  import { readConsent, setConsent } from "../lib/consent";
+
+  const root = document.getElementById("nlq-consent");
+  const reopen = document.getElementById("nlq-consent-reopen");
+  const accept = document.getElementById("nlq-consent-accept");
+  const decline = document.getElementById("nlq-consent-decline");
+
+  function showBanner() {
+    root?.removeAttribute("hidden");
+    reopen?.setAttribute("hidden", "");
+  }
+  function showReopen() {
+    root?.setAttribute("hidden", "");
+    reopen?.removeAttribute("hidden");
+  }
+
+  // No choice yet → prompt; already chosen → just the re-open affordance so
+  // withdrawal stays as easy as granting.
+  if (readConsent() === "unset") showBanner();
+  else showReopen();
+
+  accept?.addEventListener("click", () => {
+    setConsent(true); // dispatches the grant → AppAnalytics loads PostHog in place
+    showReopen();
+  });
+  decline?.addEventListener("click", () => {
+    const wasGranted = readConsent() === "granted";
+    setConsent(false);
+    showReopen();
+    // Withdrawing a prior grant: reload so an already-loaded PostHog stops
+    // capturing (a running SDK can't be cleanly torn down in place).
+    if (wasGranted) window.location.reload();
+  });
+  reopen?.addEventListener("click", showBanner);
+</script>
