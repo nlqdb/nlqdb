@@ -50,6 +50,7 @@ const NON_TOOL_TOKENS = new Set([
   "nlqdb_draft", // draft prompt (localStorage)
   "nlqdb_history", // prompt history (localStorage)
   "nlqdb_src", // first-touch acquisition source (localStorage, SK-GTM-007)
+  "nlqdb_consent", // /app analytics-consent choice (localStorage, SK-WEB-029)
   "nlqdb_logsnag", // analytics channel name
   "nlqdb_create_database", // manifesto foil — intentionally unshipped
   "nlqdb_recall", // the run-62 never-built phantom, referenced as a cautionary

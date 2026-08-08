@@ -4,13 +4,21 @@
 // pages, which stay SDK-free per GLOBAL-034. The script lazy-loads the
 // SDK after the (memoised) session probe so it never blocks first paint,
 // then identifies the signed-in user so lifecycle stitches across visits.
+//
+// PostHog sets cookies, so it is gated behind analytics consent (SK-WEB-029):
+// `whenConsentGranted` fires immediately on a return visit where consent is
+// already stored, or the moment the ConsentBanner's Accept dispatches the
+// grant — never before opt-in.
 ---
 <script>
-  import { fetchSession } from "../lib/session";
+  import { whenConsentGranted } from "../lib/consent";
   import { initAppAnalytics } from "../lib/posthog";
+  import { fetchSession } from "../lib/session";
 
-  void (async () => {
-    const user = await fetchSession();
-    await initAppAnalytics(user);
-  })();
+  whenConsentGranted(() => {
+    void (async () => {
+      const user = await fetchSession();
+      await initAppAnalytics(user);
+    })();
+  });
 </script>
