@@ -196,7 +196,120 @@ const REPO_OPS_MEMORY: MemorySchema = {
   ],
 };
 
-export const MEMORY_QUALITY_SCHEMAS: MemorySchema[] = [AGENT_MEMORY_V1, REPO_OPS_MEMORY];
+// The language-tutor expert pack (EK-04, SK-EKP-004) — the pilot "become AI"
+// pack's public-rail half, on the same `agent_memory_v1` Graphiti shape as
+// repo-ops (no new DDL, SK-PIVOT-007/018). Extraction categories the pack's
+// interview produces: error taxonomy (`mistake` facts tagged by the word or
+// grammar rule slipped on), vocabulary encounters (`vocab_encounter`, with the
+// spaced-repetition review date in `expires_at`), student-profile facts
+// (`student_profile`, level supersedes over time), lesson episodes, and the
+// tutor's own pricing heuristics. Seed entities: word, grammar_rule, topic,
+// student. A second `other-tutor` agent exists so cross-agent isolation
+// (retrieval precision) is testable. Reference date for the temporal golds is
+// 2026-08-01 ("this month" = July 2026); literal date bounds per SK-QUAL-023.
+const LANGUAGE_TUTOR_MEMORY: MemorySchema = {
+  db_id: "language_tutor_memory_v1",
+  shape:
+    "language-tutor expert pack — agent_memory_v1 shape (facts / episodes / entities / entity_facts): mistakes, vocabulary, student profile, lessons, pricing",
+  setup: [
+    "CREATE TABLE facts (id INTEGER PRIMARY KEY, agent_id TEXT NOT NULL, kind TEXT NOT NULL, content TEXT NOT NULL, tags TEXT NOT NULL DEFAULT '', source TEXT, created_at TEXT NOT NULL, expires_at TEXT)",
+    "CREATE TABLE episodes (id INTEGER PRIMARY KEY, agent_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, occurred_at TEXT NOT NULL)",
+    "CREATE TABLE entities (id INTEGER PRIMARY KEY, agent_id TEXT NOT NULL, kind TEXT NOT NULL, canonical_name TEXT NOT NULL, first_seen_at TEXT, last_seen_at TEXT, UNIQUE (agent_id, kind, canonical_name))",
+    "CREATE TABLE entity_facts (entity_id INTEGER NOT NULL REFERENCES entities(id), fact_id INTEGER NOT NULL REFERENCES facts(id), PRIMARY KEY (entity_id, fact_id))",
+    "INSERT INTO entities (id, agent_id, kind, canonical_name, first_seen_at, last_seen_at) VALUES " +
+      "(1,'tutor','word','effect','2026-07-02','2026-07-24')," +
+      "(2,'tutor','word','loose','2026-07-06','2026-07-21')," +
+      "(3,'tutor','word','advice','2026-07-11','2026-07-19')," +
+      "(4,'tutor','word','ephemeral','2026-07-10','2026-07-28')," +
+      "(5,'tutor','word','ubiquitous','2026-07-12','2026-07-12')," +
+      "(6,'tutor','word','serendipity','2026-07-15','2026-07-15')," +
+      "(7,'tutor','grammar_rule','subjunctive','2026-06-20','2026-07-22')," +
+      "(8,'tutor','grammar_rule','article-usage','2026-07-05','2026-07-20')," +
+      "(9,'tutor','grammar_rule','past-perfect','2026-07-10','2026-07-18')," +
+      "(10,'tutor','grammar_rule','preposition-of-time','2026-06-10','2026-07-25')," +
+      "(11,'tutor','topic','travel','2026-07-03','2026-07-24')," +
+      "(12,'tutor','topic','business-email','2026-07-02','2026-07-22')," +
+      "(13,'tutor','topic','small-talk','2026-07-08','2026-07-30')," +
+      "(14,'tutor','student','student:alex','2026-04-01','2026-07-15')," +
+      // A second tutor's agent knows the same word and rule — must never leak.
+      "(15,'other-tutor','word','effect','2026-07-05','2026-07-05')," +
+      "(16,'other-tutor','grammar_rule','subjunctive','2026-07-06','2026-07-06')",
+    "INSERT INTO facts (id, agent_id, kind, content, tags, source, created_at, expires_at) VALUES " +
+      // ── mistakes: grammar (error taxonomy, tagged by rule) ──
+      "(101,'tutor','mistake','indicative used where subjunctive was required','subjunctive',NULL,'2026-07-03',NULL)," +
+      "(102,'tutor','mistake','subjunctive missed in a wish clause','subjunctive',NULL,'2026-07-08',NULL)," +
+      "(103,'tutor','mistake','subjunctive dropped after suggest-that','subjunctive',NULL,'2026-07-15',NULL)," +
+      "(104,'tutor','mistake','subjunctive missed in a formal request','subjunctive',NULL,'2026-07-22',NULL)," +
+      "(105,'tutor','mistake','wrong article a before a vowel sound','article-usage',NULL,'2026-07-05',NULL)," +
+      "(106,'tutor','mistake','omitted the before a unique noun','article-usage',NULL,'2026-07-12',NULL)," +
+      "(107,'tutor','mistake','used the with a generic plural','article-usage',NULL,'2026-07-20',NULL)," +
+      "(108,'tutor','mistake','simple past used where past-perfect needed','past-perfect',NULL,'2026-07-10',NULL)," +
+      "(109,'tutor','mistake','past-perfect missing in reported speech','past-perfect',NULL,'2026-07-18',NULL)," +
+      "(110,'tutor','mistake','used in instead of on for a weekday','preposition-of-time',NULL,'2026-07-25',NULL)," +
+      // two June mistakes — excluded from any this-month (July) window
+      "(111,'tutor','mistake','subjunctive missed in a conditional','subjunctive',NULL,'2026-06-20',NULL)," +
+      "(112,'tutor','mistake','used at instead of in for a month','preposition-of-time',NULL,'2026-06-10',NULL)," +
+      // ── mistakes: vocabulary (error taxonomy, tagged by word) ──
+      "(113,'tutor','mistake','wrote affect for the noun effect','effect',NULL,'2026-07-02',NULL)," +
+      "(114,'tutor','mistake','used effect as a verb','effect',NULL,'2026-07-09',NULL)," +
+      "(115,'tutor','mistake','spelled effect as efect','effect',NULL,'2026-07-16',NULL)," +
+      "(116,'tutor','mistake','used affect for the noun effect again','effect',NULL,'2026-07-24',NULL)," +
+      "(117,'tutor','mistake','wrote loose for lose','loose',NULL,'2026-07-06',NULL)," +
+      "(118,'tutor','mistake','confused loose and lose again','loose',NULL,'2026-07-13',NULL)," +
+      "(119,'tutor','mistake','used loose as a verb','loose',NULL,'2026-07-21',NULL)," +
+      "(120,'tutor','mistake','used advice as a verb','advice',NULL,'2026-07-11',NULL)," +
+      "(121,'tutor','mistake','spelled advise as advice','advice',NULL,'2026-07-19',NULL)," +
+      // ── vocabulary encounters (spaced-repetition review date in expires_at) ──
+      "(130,'tutor','vocab_encounter','introduced ephemeral — lasting a short time','ephemeral',NULL,'2026-07-10','2026-08-05')," +
+      "(131,'tutor','vocab_encounter','introduced ubiquitous — found everywhere','ubiquitous',NULL,'2026-07-12','2026-08-07')," +
+      "(132,'tutor','vocab_encounter','introduced serendipity — a happy accident','serendipity',NULL,'2026-07-15','2026-08-20')," +
+      // a later session re-logged ephemeral verbatim — the duplicate the dedup axis must see through
+      "(133,'tutor','vocab_encounter','introduced ephemeral — lasting a short time','ephemeral',NULL,'2026-07-28','2026-09-01')," +
+      // ── student-profile facts (level supersedes over time) ──
+      "(140,'tutor','student_profile','level: A2','student:alex',NULL,'2026-04-01',NULL)," +
+      "(141,'tutor','student_profile','level: B1','student:alex',NULL,'2026-06-01',NULL)," +
+      "(142,'tutor','student_profile','level: B2','student:alex',NULL,'2026-07-15',NULL)," +
+      "(143,'tutor','student_profile','goal: pass B2 exam','student:alex',NULL,'2026-05-01',NULL)," +
+      "(144,'tutor','student_profile','native language: Spanish','student:alex',NULL,'2026-04-01',NULL)," +
+      // ── retired: a topic the student mastered, dropped from active rotation ──
+      "(150,'tutor','retired','small-talk: mastered, dropped from active practice','small-talk',NULL,'2026-07-30',NULL)," +
+      // ── pricing heuristics (the tutor's own lesson-pricing knowledge) ──
+      "(160,'tutor','pricing_heuristic','charge a premium for exam-prep intensive lessons','pricing',NULL,'2026-05-20',NULL)," +
+      "(161,'tutor','pricing_heuristic','offer a bundle discount for beginner packages','pricing',NULL,'2026-06-10',NULL)," +
+      // ── a second tutor's rows — cross-agent isolation guard ──
+      "(170,'other-tutor','mistake','other student confused effect','effect',NULL,'2026-07-05',NULL)," +
+      "(171,'other-tutor','mistake','other student subjunctive slip','subjunctive',NULL,'2026-07-06',NULL)",
+    "INSERT INTO entity_facts (entity_id, fact_id) VALUES " +
+      // grammar mistakes → rule + topic
+      "(7,101),(12,101),(7,102),(13,102),(7,103),(11,103),(7,104),(12,104)," +
+      "(8,105),(11,105),(8,106),(11,106),(8,107),(12,107)," +
+      "(9,108),(13,108),(9,109),(11,109),(10,110),(13,110)," +
+      "(7,111),(11,111),(10,112),(11,112)," +
+      // vocabulary mistakes → word + topic
+      "(1,113),(12,113),(1,114),(12,114),(1,115),(13,115),(1,116),(11,116)," +
+      "(2,117),(11,117),(2,118),(13,118),(2,119),(11,119)," +
+      "(3,120),(12,120),(3,121),(12,121)," +
+      // vocabulary encounters → word
+      "(4,130),(5,131),(6,132),(4,133)," +
+      // student-profile facts → student
+      "(14,140),(14,141),(14,142),(14,143),(14,144)," +
+      // retired topic → topic
+      "(13,150)," +
+      // second tutor rows → its own entities
+      "(15,170),(16,171)",
+    "INSERT INTO episodes (id, agent_id, role, content, occurred_at) VALUES " +
+      "(1,'tutor','lesson','travel vocabulary and past-perfect drills','2026-07-10')," +
+      "(2,'tutor','lesson','business-email subjunctive and article usage','2026-07-17')," +
+      "(3,'tutor','lesson','small-talk fluency and prepositions of time','2026-07-24')," +
+      "(4,'other-tutor','lesson','another students grammar review','2026-07-20')",
+  ],
+};
+
+export const MEMORY_QUALITY_SCHEMAS: MemorySchema[] = [
+  AGENT_MEMORY_V1,
+  REPO_OPS_MEMORY,
+  LANGUAGE_TUTOR_MEMORY,
+];
 
 // Gold SQL is hand-checked against the seed above — every query returns a
 // non-empty result; every ORDER BY gold is tie-free (SK-QUAL-019).
@@ -509,6 +622,153 @@ export const MEMORY_QUALITY_QUESTIONS: MemoryQuestion[] = [
       "For the repo-ops agent, how many facts are stored per kind? Show the kind and the count.",
     sql: "SELECT f.kind, COUNT(*) FROM facts f WHERE f.agent_id = 'repo-ops' GROUP BY f.kind",
     difficulty: "moderate",
+  },
+
+  // ══ language-tutor expert pack (EK-04 / SK-EKP-004) ═══════════════════════
+  // ── retrieval ─────────────────────────────────────────────────────────────
+  {
+    question_id: 27,
+    db_id: "language_tutor_memory_v1",
+    axis: "retrieval",
+    question: "List the tutor's pricing heuristics.",
+    sql: "SELECT f.content FROM facts f WHERE f.agent_id = 'tutor' AND f.kind = 'pricing_heuristic'",
+    difficulty: "simple",
+  },
+  {
+    question_id: 28,
+    db_id: "language_tutor_memory_v1",
+    axis: "retrieval",
+    question:
+      "Which words has the tutor recorded the student getting wrong? List each word once, alphabetically.",
+    sql:
+      "SELECT DISTINCT e.canonical_name FROM facts f " +
+      "JOIN entity_facts ef ON ef.fact_id = f.id JOIN entities e ON e.id = ef.entity_id " +
+      "WHERE f.agent_id = 'tutor' AND f.kind = 'mistake' AND e.kind = 'word' " +
+      "ORDER BY e.canonical_name",
+    difficulty: "moderate",
+  },
+  // ── temporal ────────────────────────────────────────────────────────────────
+  {
+    question_id: 29,
+    db_id: "language_tutor_memory_v1",
+    axis: "temporal",
+    question:
+      "Which grammar rules did the student slip on most this month (July 2026)? Show the rule and the count, most first.",
+    sql:
+      "SELECT e.canonical_name, COUNT(*) AS n FROM facts f " +
+      "JOIN entity_facts ef ON ef.fact_id = f.id JOIN entities e ON e.id = ef.entity_id " +
+      "WHERE f.agent_id = 'tutor' AND f.kind = 'mistake' AND e.kind = 'grammar_rule' " +
+      "AND f.created_at >= '2026-07-01' AND f.created_at < '2026-08-01' " +
+      "GROUP BY e.id, e.canonical_name ORDER BY n DESC",
+    difficulty: "challenging",
+  },
+  {
+    question_id: 30,
+    db_id: "language_tutor_memory_v1",
+    axis: "temporal",
+    question: "What is student:alex's current level?",
+    sql:
+      "SELECT f.content FROM facts f WHERE f.agent_id = 'tutor' " +
+      "AND f.kind = 'student_profile' AND f.content LIKE 'level:%' " +
+      "ORDER BY f.created_at DESC LIMIT 1",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 31,
+    db_id: "language_tutor_memory_v1",
+    axis: "temporal",
+    question:
+      "List the tutor's lesson sessions in chronological order — what each covered and when.",
+    sql:
+      "SELECT e.content, e.occurred_at FROM episodes e " +
+      "WHERE e.agent_id = 'tutor' AND e.role = 'lesson' ORDER BY e.occurred_at",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 32,
+    db_id: "language_tutor_memory_v1",
+    axis: "temporal",
+    question:
+      "Which vocabulary is due for spaced-repetition review in the week of 2026-08-03? Show the card and its due date, soonest first.",
+    sql:
+      "SELECT f.content, f.expires_at FROM facts f WHERE f.agent_id = 'tutor' " +
+      "AND f.kind = 'vocab_encounter' AND f.expires_at >= '2026-08-03' " +
+      "AND f.expires_at < '2026-08-10' ORDER BY f.expires_at",
+    difficulty: "challenging",
+  },
+  // ── forgetting ──────────────────────────────────────────────────────────────
+  {
+    question_id: 33,
+    db_id: "language_tutor_memory_v1",
+    axis: "forgetting",
+    question: "How many of student:alex's level facts are now stale — superseded by a newer level?",
+    sql:
+      "SELECT COUNT(*) FROM facts f WHERE f.agent_id = 'tutor' " +
+      "AND f.kind = 'student_profile' AND f.content LIKE 'level:%' " +
+      "AND f.created_at < (SELECT MAX(created_at) FROM facts " +
+      "WHERE agent_id = 'tutor' AND kind = 'student_profile' AND content LIKE 'level:%')",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 34,
+    db_id: "language_tutor_memory_v1",
+    axis: "forgetting",
+    question: "Which practice topics has the tutor retired — mastered and dropped from rotation?",
+    sql:
+      "SELECT e.canonical_name FROM facts f " +
+      "JOIN entity_facts ef ON ef.fact_id = f.id JOIN entities e ON e.id = ef.entity_id " +
+      "WHERE f.agent_id = 'tutor' AND f.kind = 'retired'",
+    difficulty: "moderate",
+  },
+  // ── consolidation ─────────────────────────────────────────────────────────────
+  {
+    question_id: 35,
+    db_id: "language_tutor_memory_v1",
+    axis: "consolidation",
+    question:
+      "How many distinct vocabulary words has the tutor introduced? Ignore a word re-logged verbatim in a later session.",
+    sql:
+      "SELECT COUNT(DISTINCT f.content) FROM facts f " +
+      "WHERE f.agent_id = 'tutor' AND f.kind = 'vocab_encounter'",
+    difficulty: "moderate",
+  },
+  {
+    question_id: 36,
+    db_id: "language_tutor_memory_v1",
+    axis: "consolidation",
+    question:
+      "Which vocabulary card did the tutor log more than once with identical content? Show the card and how many times.",
+    sql:
+      "SELECT f.content, COUNT(*) AS n FROM facts f WHERE f.agent_id = 'tutor' " +
+      "AND f.kind = 'vocab_encounter' GROUP BY f.content HAVING COUNT(*) > 1",
+    difficulty: "challenging",
+  },
+  // ── analytical ────────────────────────────────────────────────────────────────
+  {
+    question_id: 37,
+    db_id: "language_tutor_memory_v1",
+    axis: "analytical",
+    question:
+      "Which words did the student get wrong 3 or more times? Show the word and the count, most first.",
+    sql:
+      "SELECT e.canonical_name, COUNT(*) AS n FROM facts f " +
+      "JOIN entity_facts ef ON ef.fact_id = f.id JOIN entities e ON e.id = ef.entity_id " +
+      "WHERE f.agent_id = 'tutor' AND f.kind = 'mistake' AND e.kind = 'word' " +
+      "GROUP BY e.id, e.canonical_name HAVING COUNT(*) >= 3 ORDER BY n DESC",
+    difficulty: "challenging",
+  },
+  {
+    question_id: 38,
+    db_id: "language_tutor_memory_v1",
+    axis: "analytical",
+    question:
+      "Which topics produce the most corrections? Show the topic and the count, most first.",
+    sql:
+      "SELECT e.canonical_name, COUNT(*) AS n FROM facts f " +
+      "JOIN entity_facts ef ON ef.fact_id = f.id JOIN entities e ON e.id = ef.entity_id " +
+      "WHERE f.agent_id = 'tutor' AND f.kind = 'mistake' AND e.kind = 'topic' " +
+      "GROUP BY e.id, e.canonical_name ORDER BY n DESC",
+    difficulty: "challenging",
   },
 ];
 

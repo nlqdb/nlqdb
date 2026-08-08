@@ -1,4 +1,11 @@
-import type { AskDiff, CandidateDb, NlqClient, NlqdbApiError, RememberRequest } from "@nlqdb/sdk";
+import type {
+  ApiErrorCode,
+  AskDiff,
+  CandidateDb,
+  NlqClient,
+  NlqdbApiError,
+  RememberRequest,
+} from "@nlqdb/sdk";
 import { z } from "zod";
 
 export type ToolError = {
@@ -423,6 +430,148 @@ function buildQueryOutput(
   return { rows, rowCount, trace: traceOf(trace) };
 }
 
+// The one place a genuinely-opaque failure lands. GLOBAL-012 bans this
+// phrasing for anything we *can* explain, so every known `ApiErrorCode`
+// gets a specific message below and only truly-unknown codes reach here.
+export const GENERIC_ERROR_MESSAGE = "An unexpected error occurred.";
+const GENERIC_ERROR_ACTION =
+  "Retry once; if the error persists email support@nlqdb.com with the tool name and time.";
+
+type ErrCopy = { message: string; action: string };
+
+// One-sentence message + next action (GLOBAL-012) for every known error
+// code whose copy is static. Codes whose action needs a value from the
+// response body (rate-limit reset, candidate DBs, validation reason) are
+// handled by the explicit branches in `mapSdkError` and listed in
+// `BRANCH_HANDLED_CODES`. The two sets together must cover every literal
+// in the SDK's `ApiErrorCode` union — enforced at compile time just below,
+// so a new status can never silently regress to `GENERIC_ERROR_MESSAGE`.
+const ERROR_COPY = {
+  db_not_found: {
+    message: "No database matched that id for this account.",
+    action:
+      "Call nlqdb_list_databases for valid ids; for agent memory, first create one with db.create { preset: 'agent_memory_v1' }.",
+  },
+  db_unreachable: {
+    message: "nlqdb couldn't reach that database.",
+    action:
+      "Retry shortly; if it persists, confirm the database is running and its connection is current.",
+  },
+  db_misconfigured: {
+    message: "That database's stored connection is no longer usable.",
+    action: "Reconnect it at https://app.nlqdb.com, then re-call.",
+  },
+  schema_unavailable: {
+    message: "nlqdb couldn't read that database's schema just now.",
+    action: "Retry shortly; if it persists, confirm the database is reachable.",
+  },
+  sql_rejected: {
+    message: "The compiled query was blocked by the SQL safety allowlist.",
+    action: "Rephrase the goal — only single-statement, allowlisted queries run.",
+  },
+  llm_failed: {
+    message: "The model failed to produce a plan for that goal.",
+    action: "Retry; if it persists, simplify the goal or name the exact tables and columns.",
+  },
+  clarify_required: {
+    message: "That goal was ambiguous, so nlqdb needs more detail before running it.",
+    action: "Re-call naming the specific table and columns you mean.",
+  },
+  goal_required: {
+    message: "The query goal was missing.",
+    action: "Pass a natural-language goal in `q` (e.g. 'top 5 customers by revenue this year').",
+  },
+  dbId_required: {
+    message: "This call needs an explicit database id.",
+    action: "Pass a `db` id — call nlqdb_list_databases to find it.",
+  },
+  db_required: {
+    message: "This call needs a target database.",
+    action: "Pass a `db` id — call nlqdb_list_databases to find it.",
+  },
+  sql_required: {
+    message: "This tool doesn't run raw SQL.",
+    action: "Use nlqdb_query with a natural-language goal instead.",
+  },
+  sql_too_long: {
+    message: "The SQL statement was too long.",
+    action: "Shorten it, or use nlqdb_query with a natural-language goal.",
+  },
+  invalid_engine: {
+    message: "That database engine isn't supported.",
+    action: "Use engine 'postgres' or 'clickhouse'.",
+  },
+  invalid_model: {
+    message: "`model` must be one of auto, fast, or best.",
+    action: "Re-call with a valid model preset, or omit it.",
+  },
+  invalid_email: {
+    message: "That email address wasn't valid.",
+    action: "Provide a valid email address, then re-call.",
+  },
+  invalid_byollm_key: {
+    message: "The provided LLM provider key was mis-shaped.",
+    action: "Check the key format at https://app.nlqdb.com/app/keys, then re-call.",
+  },
+  byollm_unavailable: {
+    message: "This deployment can't store provider keys right now.",
+    action: "Retry shortly; if it persists, email support@nlqdb.com.",
+  },
+  secret_unconfigured: {
+    message: "This deployment is missing a required secret, so it can't complete that call.",
+    action: "Retry shortly; if it persists, email support@nlqdb.com.",
+  },
+  network_error: {
+    message: "Couldn't reach nlqdb.",
+    action: "Check network connectivity and retry.",
+  },
+  non_json_response: {
+    message: "nlqdb returned an unexpected (non-JSON) response.",
+    action: "Retry shortly; if it persists, email support@nlqdb.com.",
+  },
+  unknown_error: { message: GENERIC_ERROR_MESSAGE, action: GENERIC_ERROR_ACTION },
+} satisfies Record<string, ErrCopy>;
+
+// Codes handled by the explicit body-reading branches in `mapSdkError`
+// (they need a candidate list, a reset time, a validation reason, or
+// bespoke auth copy) rather than the static table above.
+const BRANCH_HANDLED_CODES = [
+  "unauthorized",
+  "forbidden",
+  "connect_requires_account",
+  "ambiguous_db",
+  "rate_limited",
+  "wrong_preset",
+  "aborted",
+  "invalid_request",
+  "introspection_failed",
+  "sealing_unconfigured",
+  "model_unavailable",
+  "invalid_body",
+  "invalid_json",
+] as const;
+
+// Every error code the boundary knows how to phrase — the union of the
+// static table and the branch-handled set. Exported so the anti-regression
+// test can assert each one maps to an actionable, non-generic `ToolError`.
+export const KNOWN_ERROR_CODES: readonly string[] = [
+  ...Object.keys(ERROR_COPY),
+  ...BRANCH_HANDLED_CODES,
+];
+
+// Compile-time exhaustiveness guard (GLOBAL-012). `LiteralOnly` drops the
+// `(string & {})` escape hatch from `ApiErrorCode`, leaving just the named
+// literals; if any of them lacks a mapping, `UnmappedErrorCodes` is not
+// `never` and `Assert` fails to compile, naming the missing code(s). This
+// is the fix for the class of bug where the map drifted out of sync with
+// the SDK union and a real status (db_not_found) surfaced as "An unexpected
+// error occurred." to an agent.
+type LiteralOnly<T> = T extends string ? (string extends T ? never : T) : never;
+type HandledErrorCode = keyof typeof ERROR_COPY | (typeof BRANCH_HANDLED_CODES)[number];
+type UnmappedErrorCodes = Exclude<LiteralOnly<ApiErrorCode>, HandledErrorCode>;
+type AssertNever<T extends never> = T;
+type _AllErrorCodesMapped = AssertNever<UnmappedErrorCodes>;
+
 // Strips raw SDK strings on the unknown bucket so internal details don't reach the host LLM.
 export function mapSdkError(err: unknown): ToolError {
   const apiErr = err as NlqdbApiError | undefined;
@@ -555,11 +704,34 @@ export function mapSdkError(err: unknown): ToolError {
       action: "Add a provider key at https://app.nlqdb.com/app/keys, or omit `model`.",
     };
   }
+  // The server's body-validation errors carry a one-sentence `reason`
+  // naming the offending field (memory/remember.ts validateRememberInput);
+  // surface it verbatim (GLOBAL-012) instead of dropping it into the
+  // generic bucket, which is what left `nlqdb_remember` opaque.
+  if (code === "invalid_body" || code === "invalid_json") {
+    const reason = typeof body?.reason === "string" ? body.reason : undefined;
+    return {
+      code,
+      message:
+        reason ??
+        (code === "invalid_json"
+          ? "The request body wasn't valid JSON."
+          : "The request body was invalid."),
+      action: "Correct the field named in the message, then re-call.",
+    };
+  }
+
+  // Every remaining *known* code has static copy. Only genuinely-unknown
+  // codes (the `(string & {})` escape hatch, or a non-API error) fall
+  // through to the generic bucket below — the compile-time guard above
+  // proves no named `ApiErrorCode` can reach it.
+  const copy = (ERROR_COPY as Record<string, ErrCopy>)[code];
+  if (copy) return { code, ...copy };
+
   return {
     code: String(code),
-    message: "An unexpected error occurred.",
-    action:
-      "Retry once; if the error persists email support@nlqdb.com with the tool name and time.",
+    message: GENERIC_ERROR_MESSAGE,
+    action: GENERIC_ERROR_ACTION,
   };
 }
 

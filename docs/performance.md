@@ -247,7 +247,7 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `reason` (on `llm.failover.total`) | bounded     | `FailoverReason` set + `hedge_lost` (SK-LLM-014). |
 | `nlqdb.cron`            | bounded (~3)        | On `db.query` keep-warm pings (SK-HDC-014); pinned to `wrangler.toml` crons. |
 | `nlqdb.llm.hedge_lost`  | 2 (boolean)         | Span-only on `llm.<op>` for a hedge-cancelled leg (SK-LLM-014); `hedge_lost=true`. Not a metric label. |
-| `llm.dispatch_lane` / `llm.billed_to` / `llm.byollm_provider` / `llm.byollm_source` / `llm.model_preset` | 3 / 3 / ~5 / 2 / 3 | Ask-span only (SK-LLM-020, GLOBAL-026): lane `free`/`byollm`/`premium`; billed-to `platform`/`byollm`/`metered`; byollm slug (not the model); source `header`/`account` (SK-PREMIUM-012); preset `auto`/`fast`/`best`, stamped only when the request sent one (SK-PREMIUM-014 §6 demand signal). Not metric labels. |
+| `llm.dispatch_lane` / `llm.billed_to` / `llm.byollm_provider` / `llm.byollm_source` / `llm.model_preset` / `llm.byollm_degraded` | 3 / 3 / ~5 / 2 / 3 / 1 | Ask-span only (SK-LLM-020, GLOBAL-026): lane `free`/`byollm`/`premium`; billed-to `platform`/`byollm`/`metered`; byollm slug (not the model); source `header`/`account` (SK-PREMIUM-012); preset `auto`/`fast`/`best`, stamped only when the request sent one (SK-PREMIUM-014 §6 demand signal); `byollm_degraded=gateway_unconfigured` stamped only when the ambient account lane fell back to the free chain because AI Gateway is unset (SK-LLM-021). Not metric labels. |
 
 **Cardinality rule:** total combined series < 8 k (Grafana Cloud free
 tier ceiling at 10 k, leave 2 k headroom). The above bounds are

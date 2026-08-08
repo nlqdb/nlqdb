@@ -74,9 +74,10 @@ nlqdb is pre-PMF. We do **not** offer:
 - Slack / Discord / Intercom community channels (in-app chat via Tawk.to is live).
 - Per-customer onboarding.
 
-When we add any of these, they will be announced here and on the
-[changelog](./CHANGELOG.md). Until then: the in-app chat widget, GitHub
-issues, and discussions are the channels, and we read every one.
+When we add any of these, they will be announced here and on
+[GitHub Releases](https://github.com/nlqdb/nlqdb/releases). Until then: the
+in-app chat widget, GitHub issues, and discussions are the channels, and we
+read every one.
 
 ## Conduct
 

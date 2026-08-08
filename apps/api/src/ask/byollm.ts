@@ -86,9 +86,12 @@ export function parseByollmHeader(raw: string | undefined): ParseByollmResult {
 
 export type ResolveAskRouterResult =
   | { ok: true; router: LLMRouter; attributes: Record<string, string> }
-  // The deployment has a BYOLLM key inbound but no AI Gateway configured
-  // — an operator-config gap, surfaced as 503 by the caller (not 4xx: the
-  // request is well-formed, the platform just can't serve the lane).
+  // An *explicit* per-request header key (`x-nlq-byollm-key`) arrived but
+  // the deployment has no AI Gateway configured — an operator-config gap,
+  // surfaced as 503 by the caller (not 4xx: the request is well-formed,
+  // the platform just can't serve the lane the caller asked for on this
+  // call). The *ambient* account-stored lane never reaches here — it
+  // degrades to the free router instead (see `resolveAskRouter`).
   | { ok: false; reason: "gateway_unconfigured" }
   // `model="best"` with no frontier lane (no BYOLLM key; hosted premium
   // §6-dark) — SK-PREMIUM-014. The caller returns 409 `model_unavailable`
@@ -123,17 +126,40 @@ export function resolveAskRouter(args: {
   if (selection.lane === "unavailable") {
     return { ok: false, reason: "frontier_unavailable" };
   }
-  const attributes = {
-    ...dispatchLaneAttributes(selection),
-    // Bounded (3 values) — "which preset do callers send" is the demand
-    // signal the §6 trigger reads (performance.md §3.3 cardinality rules).
-    ...(args.preset !== undefined ? { "llm.model_preset": args.preset } : {}),
-  };
+  // Bounded (3 values) — "which preset do callers send" is the demand
+  // signal the §6 trigger reads (performance.md §3.3 cardinality rules).
+  const presetAttr: Record<string, string> =
+    args.preset !== undefined ? { "llm.model_preset": args.preset } : {};
+  const attributes = { ...dispatchLaneAttributes(selection), ...presetAttr };
   if (selection.lane !== "byollm") {
     return { ok: true, router: args.freeRouter, attributes };
   }
   const { accountId, gatewayId } = args.gateway;
-  if (!accountId || !gatewayId) return { ok: false, reason: "gateway_unconfigured" };
+  if (!accountId || !gatewayId) {
+    // AI Gateway is the mandatory BYOLLM egress (SK-LLM-019), so an
+    // unconfigured gateway is a deployment-wide operator gap (a legit
+    // self-host steady state, GLOBAL-019), never a user key error. An
+    // *explicit* per-call ask fails loud — the `x-nlq-byollm-key` header
+    // (SK-LLM-021) and `model: "best"` (SK-PREMIUM-014) 503 rather than
+    // quietly serve ours. The *ambient* account-stored lane on `auto`/absent
+    // is a stored preference, not a per-call ask, so it degrades to the free
+    // chain instead of bricking every request. This is not the SK-LLM-016
+    // silent fallback (that guards a *bad key* from re-billing us and hiding
+    // the failure): here the key is fine, the free chain is $0, and
+    // `llm.byollm_degraded` records the bypass on the span.
+    if (selection.source === "account" && args.preset !== "best") {
+      return {
+        ok: true,
+        router: args.freeRouter,
+        attributes: {
+          ...dispatchLaneAttributes({ lane: "free" }),
+          "llm.byollm_degraded": "gateway_unconfigured",
+          ...presetAttr,
+        },
+      };
+    }
+    return { ok: false, reason: "gateway_unconfigured" };
+  }
   const router = buildByollmRouter({
     credential: selection.credential,
     accountId,

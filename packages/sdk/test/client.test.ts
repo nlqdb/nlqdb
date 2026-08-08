@@ -1078,6 +1078,120 @@ describe("createClient", () => {
     expect(() => bearer.registerPremiumInterest()).toThrow(/requires `withCredentials: true`/);
   });
 
+  it("mintGrant: POSTs /v1/grants with the session cookie + auto Idempotency-Key", async () => {
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          id: "g_new",
+          dbId: "db_1",
+          granteeTenantId: "t_buyer",
+          scope: ["episodes", "facts"],
+          status: "active",
+          createdAt: 1700000000,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({
+      withCredentials: true,
+      baseUrl: "https://app.nlqdb.com/",
+      fetch: fakeFetch,
+    });
+    const out = await client.mintGrant({
+      dbId: "db_1",
+      granteeTenantId: "t_buyer",
+      scope: ["episodes", "facts"],
+    });
+    expect(capturedUrl).toBe("https://app.nlqdb.com/v1/grants");
+    expect(capturedInit?.method).toBe("POST");
+    expect(capturedInit?.credentials).toBe("include");
+    const headers = (capturedInit?.headers ?? {}) as Record<string, string>;
+    expect(headers["idempotency-key"]).toMatch(/^[0-9a-f]{32}$/);
+    const body = JSON.parse(String(capturedInit?.body)) as Record<string, unknown>;
+    expect(body).toEqual({
+      dbId: "db_1",
+      granteeTenantId: "t_buyer",
+      scope: ["episodes", "facts"],
+    });
+    expect(out.id).toBe("g_new");
+    expect(out.status).toBe("active");
+  });
+
+  it("listGrants: GETs /v1/grants with the session cookie", async () => {
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          grants: [
+            {
+              id: "g_1",
+              role: "owner",
+              dbId: "db_1",
+              ownerTenantId: "t_me",
+              granteeTenantId: "t_buyer",
+              scope: ["episodes"],
+              status: "active",
+              createdAt: 1700000000,
+              revokedAt: null,
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({
+      withCredentials: true,
+      baseUrl: "https://app.nlqdb.com/",
+      fetch: fakeFetch,
+    });
+    const out = await client.listGrants();
+    expect(capturedUrl).toBe("https://app.nlqdb.com/v1/grants");
+    expect(capturedInit?.credentials).toBe("include");
+    expect(capturedInit?.method ?? "GET").toBe("GET");
+    expect(out.grants[0]?.role).toBe("owner");
+  });
+
+  it("revokeGrant: DELETE /v1/grants/:id with auto Idempotency-Key", async () => {
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(JSON.stringify({ ok: true, alreadyRevoked: false }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const client = createClient({
+      withCredentials: true,
+      baseUrl: "https://app.nlqdb.com/",
+      fetch: fakeFetch,
+    });
+    const out = await client.revokeGrant("g 1/needs encoding");
+    expect(capturedUrl).toBe("https://app.nlqdb.com/v1/grants/g%201%2Fneeds%20encoding");
+    expect(capturedInit?.method).toBe("DELETE");
+    const headers = (capturedInit?.headers ?? {}) as Record<string, string>;
+    expect(headers["idempotency-key"]).toMatch(/^[0-9a-f]{32}$/);
+    expect(out).toEqual({ ok: true, alreadyRevoked: false });
+  });
+
+  it("mintGrant/listGrants/revokeGrant: throw without withCredentials (session-only)", () => {
+    const noopFetch: FetchLike = async () => new Response("{}", { status: 200 });
+    const bearer = createClient({ apiKey: "sk_live_x", fetch: noopFetch });
+    expect(() =>
+      bearer.mintGrant({ dbId: "db_1", granteeTenantId: "t_buyer", scope: ["episodes"] }),
+    ).toThrow(/requires `withCredentials: true`/);
+    expect(() => bearer.listGrants()).toThrow(/requires `withCredentials: true`/);
+    expect(() => bearer.revokeGrant("g_1")).toThrow(/requires `withCredentials: true`/);
+  });
+
   it("setByollm: throws when a part is empty before any request goes out", () => {
     let called = false;
     const fakeFetch: FetchLike = async () => {

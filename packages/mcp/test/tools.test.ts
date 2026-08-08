@@ -85,6 +85,17 @@ function stubClient(overrides: Partial<NlqClient> & { connect?: ConnectFn } = {}
     remember: async () => {
       throw new Error("remember not stubbed");
     },
+    mintGrant: async () => {
+      // Grant control-plane verbs (SK-EKP-008) are session-only and not an
+      // MCP tool by design; the stubs only satisfy the NlqClient interface.
+      throw new Error("mintGrant not stubbed");
+    },
+    listGrants: async () => {
+      throw new Error("listGrants not stubbed");
+    },
+    revokeGrant: async () => {
+      throw new Error("revokeGrant not stubbed");
+    },
   };
   const { connect, ...rest } = overrides;
   return {
@@ -479,6 +490,56 @@ describe("handleRemember", () => {
     });
     expect("err" in result && result.err.code).toBe("forbidden");
   });
+
+  // The reported regression: remembering into a db that doesn't resolve
+  // (e.g. no memory DB provisioned yet) returned db_not_found (404), which
+  // had no branch in mapSdkError and surfaced as the opaque generic bucket
+  // — the worst possible first-run message ("email support"). It must now
+  // tell the agent how to self-serve.
+  it("maps db_not_found to a create/list hint, not the generic bucket", async () => {
+    const client = stubClient({
+      remember: async () => {
+        throw new NlqdbApiError("nope", 404, "db_not_found", "/v1/memory/remember", {
+          status: "db_not_found",
+        });
+      },
+    });
+    const result = await handleRemember(client, {
+      db: "db_not_a_memory_db",
+      kind: "fact",
+      payload: { content: "user prefers dark mode" },
+    });
+    expect("err" in result).toBe(true);
+    if ("err" in result) {
+      expect(result.err.code).toBe("db_not_found");
+      expect(result.err.message).not.toBe("An unexpected error occurred.");
+      expect(result.err.action).toMatch(/agent_memory_v1|nlqdb_list_databases/);
+    }
+  });
+
+  // A mis-shaped payload comes back as invalid_body with a one-sentence
+  // `reason` naming the field; surface it verbatim (GLOBAL-012) rather than
+  // dropping it into the generic bucket.
+  it("surfaces the server's invalid_body reason verbatim", async () => {
+    const client = stubClient({
+      remember: async () => {
+        throw new NlqdbApiError("bad body", 400, "invalid_body", "/v1/memory/remember", {
+          status: "invalid_body",
+          reason: "fact `payload.content` is required.",
+        });
+      },
+    });
+    const result = await handleRemember(client, {
+      db: "db_agent_memory_v1_abc123",
+      kind: "fact",
+      payload: {},
+    });
+    expect("err" in result).toBe(true);
+    if ("err" in result) {
+      expect(result.err.code).toBe("invalid_body");
+      expect(result.err.message).toBe("fact `payload.content` is required.");
+    }
+  });
 });
 
 describe("handleConnectDatabase", () => {
@@ -730,6 +791,25 @@ describe("mapSdkError", () => {
       ],
     });
     expect(err.action).toContain("orders");
+  });
+
+  // These statuses previously had no branch and all collapsed to the
+  // generic bucket. Each must now carry a specific message + a next action
+  // and preserve its machine-readable code (GLOBAL-012).
+  it.each([
+    ["db_not_found", 404],
+    ["db_unreachable", 502],
+    ["db_misconfigured", 502],
+    ["schema_unavailable", 422],
+    ["sql_rejected", 400],
+    ["llm_failed", 502],
+    ["clarify_required", 409],
+  ] as const)("maps %s to an actionable, non-generic error", (code, status) => {
+    const err = mapSdkError(new NlqdbApiError(code, status, code, "/v1/ask", { status: code }));
+    expect(err.code).toBe(code);
+    expect(err.message).not.toBe("An unexpected error occurred.");
+    expect(err.message.length).toBeGreaterThan(0);
+    expect(err.action.length).toBeGreaterThan(0);
   });
 });
 

@@ -5,7 +5,7 @@
 Connect nlqdb to Claude, Cursor, Codex, or any MCP host. Your agent writes
 typed rows as it learns, then asks questions in plain English — `GROUP BY`,
 `JOIN`, aggregate over what it remembered. A vector store returns the top-k
-similar chunks; nlqdb runs the query a similarity index structurally can't.
+similar chunks; nlqdb runs the query that a similarity index structurally can't.
 The LLM never emits SQL: it returns a typed plan, our compiler emits the
 parameterised statement, and you see the exact SQL every time.
 
@@ -59,7 +59,7 @@ hosted server *and* both memory skills in a single step:
 On any other MCP host, [**give your agent memory**](https://docs.nlqdb.com/agent-memory/)
 with one browser-OAuth approval; headless hosts skip the browser with
 `npx -y @nlqdb/mcp` (`0.1.1`) and an `sk_mcp_*` MCP key
-([MCP setup](https://docs.nlqdb.com/mcp/)). `@nlqdb/sdk` (`0.2.2`) and
+([MCP setup](https://docs.nlqdb.com/mcp/)). `@nlqdb/sdk` (`0.3.0`) and
 `@nlqdb/mcp` (`0.1.1`) are both published and importable from npm.
 
 The 60-second walkthrough — plain HTML, CLI, and ten framework wrappers —
@@ -118,7 +118,7 @@ Paid plans aren't live yet. The full model strategy is in
 |---|---|---|
 | HTTP API (`POST /v1/ask`, `POST /v1/run`) | ✓ shipped | `apps/api/src/ask/**` |
 | `<nlq-data>` + `<nlq-action>` elements | ✓ shipped (v0.1) | `packages/elements/**` |
-| `@nlqdb/sdk` (TypeScript) | ✓ shipped (incl. `runSql`) — installable from npm (`0.2.2`) | `packages/sdk/**` |
+| `@nlqdb/sdk` (TypeScript) | ✓ shipped (incl. `runSql` + cross-tenant grant verbs) — installable from npm (`0.3.0`) | `packages/sdk/**` |
 | Framework wrappers (React / Next / Vue / Nuxt / Svelte / SvelteKit / Astro / Solid + Swift) | ~ built + CI-tested; npm / SPM publish pending | `packages/{react,next,…}/**` |
 | Chat app `nlqdb.com/app` | ✓ shipped | `apps/web/**` |
 | Hosted MCP server `mcp.nlqdb.com/mcp` | ✓ shipped (host auto-detect pending) | `apps/mcp/**`, `packages/mcp/**` |
@@ -127,6 +127,23 @@ Paid plans aren't live yet. The full model strategy is in
 | `nlq` CLI (Go) | ✓ shipped (core verbs; device-login pending) | `cli/**` |
 
 Full integration matrix in [`docs/progress.md`](./docs/progress.md).
+
+## Packages on npm
+
+Published to the public npm registry with build provenance
+([`SK-CIPERM-003`](./docs/features/ci-permissions/FEATURE.md)). Version badges
+are live from npm; the table itself is generated from the workspace by
+[`scripts/sync-readme-packages.mjs`](./scripts/sync-readme-packages.mjs), so it
+lists exactly the packages that are un-gated (`"private"` removed) and nothing
+that isn't.
+
+<!-- BEGIN:packages -->
+| Package | Version | What it is | Source |
+|---|---|---|---|
+| [`@nlqdb/cli`](https://www.npmjs.com/package/@nlqdb/cli) | [![@nlqdb/cli](https://img.shields.io/npm/v/@nlqdb/cli?label=npm&color=cb3837)](https://www.npmjs.com/package/@nlqdb/cli) | Shim that installs the nlq CLI binary for the host platform. | [`packages/cli-shim`](./packages/cli-shim) |
+| [`@nlqdb/mcp`](https://www.npmjs.com/package/@nlqdb/mcp) | [![@nlqdb/mcp](https://img.shields.io/npm/v/@nlqdb/mcp?label=npm&color=cb3837)](https://www.npmjs.com/package/@nlqdb/mcp) | Analytical-memory MCP server for nlqdb — a real database your AI agent can GROUP BY / JOIN / aggregate over in natural language, not just recall. | [`packages/mcp`](./packages/mcp) |
+| [`@nlqdb/sdk`](https://www.npmjs.com/package/@nlqdb/sdk) | [![@nlqdb/sdk](https://img.shields.io/npm/v/@nlqdb/sdk?label=npm&color=cb3837)](https://www.npmjs.com/package/@nlqdb/sdk) | Typed HTTP client for the nlqdb /v1 API — works in browsers, Node, Bun, Workers. | [`packages/sdk`](./packages/sdk) |
+<!-- END:packages -->
 
 ## Roadmap
 
@@ -210,8 +227,8 @@ and shares the link — in under 60 seconds, no card, no config.
   both memory skills in one step
 - ✓ CLI `nlq` (Go) — core verbs + raw-SQL escape hatch; device-login +
   chat REPL pending
-- ✓ `@nlqdb/sdk` — basic methods + `runSql`; published and importable from
-  the registry (`0.2.2`)
+- ✓ `@nlqdb/sdk` — basic methods + `runSql` + cross-tenant grant verbs;
+  published and importable from the registry (`0.3.0`)
 - ~ Framework wrappers + native Swift package — built + CI-tested; npm /
   SPM publish pending
 - ✓ Quality-eval harness (BIRD + Spider 2.0, manual on-demand) — the

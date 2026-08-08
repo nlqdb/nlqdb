@@ -44,10 +44,10 @@ on:
         type: string
         default: https://openrouter.ai/api/v1
       fallback_candidate_models:
-        description: "Ordered agent-model ids on fallback_provider_base_url, ALL free per GLOBAL-013 — on OpenRouter the `:free` suffix is REQUIRED (a bare slug is PAID; 2026-05-21 a paid Mistral slug burned ~$14). Order = proven agent competence first; nemotron-3-super is BANNED (probe-healthy but collapses to text-format tool calls mid-loop)."
+        description: "Ordered agent-model ids on fallback_provider_base_url, ALL free per GLOBAL-013 — on OpenRouter the `:free` suffix is REQUIRED (a bare slug is PAID; 2026-05-21 a paid Mistral slug burned ~$14). Order = proven agent competence first; nemotron-3-super is BANNED (probe-healthy but collapses to text-format tool calls mid-loop); gpt-oss-20b:free is DROPPED (probe-healthy but too weak to drive the suites — run 30993729683 it burned 3 × 240s Suite-A timeouts while short-circuiting the healthy fallback2 lane; a sub-80B pick is worse than escalating)."
         required: false
         type: string
-        default: "openai/gpt-oss-120b:free,qwen/qwen3-coder:free,qwen/qwen3-next-80b-a3b-instruct:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-20b:free"
+        default: "openai/gpt-oss-120b:free,qwen/qwen3-coder:free,qwen/qwen3-next-80b-a3b-instruct:free,meta-llama/llama-3.3-70b-instruct:free"
       fallback2_provider_base_url:
         description: "Third-provider lane walked only when EVERY primary AND fallback candidate fails the pre-flight. Default SambaNova Cloud ($0 permanent tier, no card, HARD-CAPS at the limit — 429s, never bills, so GLOBAL-013-safe; a pool independent of both NIM and OpenRouter). Caveat: free tier is 20 RPM / 20 RPD / 200K tokens-per-day PER MODEL — enough to run the pre-flight + the bootstrap suite in a dual-saturation window, not a full a→b→c run. See docs/features/e2e-coverage/opencheck-operations.md."
         required: false
