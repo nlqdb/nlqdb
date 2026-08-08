@@ -19,7 +19,10 @@ proceeds **in parallel** with the `SK-PIVOT-016` dogfood gate (SK-EKP-005).
 Execution plan: [`worksheets/INDEX.md`](worksheets/INDEX.md) (`EK-01..08`,
 picked by `/daily` as its own lane). The private `experts` repo exists
 (founder, 2026-08-05, all-rights-reserved); its slices are parked until
-agent sessions get workspace access to it. No code exists yet.
+agent sessions get workspace access to it. First engine code landed
+2026-08-08: the EK-06 grant control plane (`/v1/grants` mint/list/revoke).
+`GLOBAL-003` gap, tracked here until EK-06 box 5: the grants capability is
+HTTP-API-only — SDK, CLI, MCP, and elements surfaces not yet updated.
 **Owners (code):** none yet. The public rails it builds on are
 agent-memory-pivot surfaces (`agent_memory_v1`, goal packs, the shared
 one-click runner). Product-surface code will live partly in a **private
@@ -34,8 +37,10 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 
 ## Touchpoints — read this feature doc before editing
 
-- `docs/features/expert-knowledge-platform/**` (no code paths yet; this list
-  grows when implementation starts)
+- `docs/features/expert-knowledge-platform/**`
+- `apps/api/src/grants.ts`, `apps/api/migrations/0026_grants.sql`, the
+  `/v1/grants` routes in `apps/api/src/index.ts` — the EK-06 grant
+  control plane (`SK-EKP-008`)
 
 ## Decisions
 

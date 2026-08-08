@@ -72,10 +72,18 @@ import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
+import { BYO_SECRET_REF_SENTINEL } from "./db-connect/constants.ts";
 import { AGENT_MEMORY_V1_VERSION, type MemoryPreset } from "./db-create/presets/agent-memory-v1.ts";
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import { recordEvalReport, recordPricingEvent, recordWishlist } from "./events-feature.ts";
+import {
+  listGrantsByTenant,
+  mintGrant,
+  PRICE_MODEL_MAX_LEN,
+  revokeGrantById,
+  validateScope,
+} from "./grants.ts";
 import {
   type AskSource,
   isAllowedEngine,
@@ -254,6 +262,10 @@ app.use("/v1/db/*", credentialedCors);
 app.use("/v1/models", credentialedCors);
 app.use("/v1/keys", credentialedCors);
 app.use("/v1/keys/*", credentialedCors);
+// Grant mint/list/revoke (SK-EKP-008) is a product-UI surface the
+// dashboard hits cross-origin, same posture as `/v1/keys`.
+app.use("/v1/grants", credentialedCors);
+app.use("/v1/grants/*", credentialedCors);
 app.use("/v1/premium/*", credentialedCors);
 app.use("/v1/admin/*", credentialedCors);
 
@@ -2246,6 +2258,214 @@ app.get("/v1/keys", requireSession, async (c) => {
       span.recordException(e);
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.keys.list.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// ─── /v1/grants — cross-tenant read-grant control plane (SK-EKP-008, EK-06) ──
+//
+// `POST /v1/grants` — mint: tenant A sells tenant B read-only query access
+// to one named knowledge DB. Session-only by design, same threat model as
+// `POST /v1/keys`: a leaked `sk_live_` must not be able to open a tenant's
+// data to another tenant. Body:
+// `{ dbId, granteeTenantId, scope: [table, ...], priceModel? }`.
+//
+//   - v1 mints on platform-provisioned hosted DBs only (SK-EKP-008) —
+//     BYO rows are rejected: none of the non-owner-role / FORCE-RLS
+//     assumptions hold on DDL the platform never saw.
+//   - `scope` is bare table names, validated + deduped (`validateScope`);
+//     it is authoritative at enforcement time and never widens with the
+//     schema.
+//   - `priceModel` is stored opaque and never interpreted here — fee
+//     logic is `experts`-only (SK-EKP-002/SK-EKP-003).
+//
+// GLOBAL-005 — KV idempotency dedupe (`grants_mint` scope), same shape as
+// `keys_mint`. The response carries no one-time secret, so the stored
+// replay body is the full response.
+app.post("/v1/grants", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.grants.mint", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+
+      const raw = await parseJsonBody<{
+        dbId?: unknown;
+        granteeTenantId?: unknown;
+        scope?: unknown;
+        priceModel?: unknown;
+      }>(c);
+      if (!raw.ok) {
+        span.setAttribute("nlqdb.grants.mint.outcome", "invalid_json");
+        return c.json({ error: "invalid_json" }, 400);
+      }
+
+      const dbId = typeof raw.body.dbId === "string" ? raw.body.dbId.trim() : "";
+      if (!dbId) {
+        span.setAttribute("nlqdb.grants.mint.outcome", "invalid_db_id");
+        return c.json({ error: "invalid_db_id" }, 400);
+      }
+      span.setAttribute("nlqdb.grants.mint.db_id", dbId);
+
+      const granteeTenantId =
+        typeof raw.body.granteeTenantId === "string" ? raw.body.granteeTenantId.trim() : "";
+      if (!granteeTenantId) {
+        span.setAttribute("nlqdb.grants.mint.outcome", "invalid_grantee");
+        return c.json({ error: "invalid_grantee" }, 400);
+      }
+      if (granteeTenantId === session.user.id) {
+        // A self-grant is always a caller bug — the owner already reads
+        // their own DB; fail loud instead of minting a meaningless row.
+        span.setAttribute("nlqdb.grants.mint.outcome", "cannot_grant_to_self");
+        return c.json({ error: "cannot_grant_to_self" }, 400);
+      }
+
+      const scopeCheck = validateScope(raw.body.scope);
+      if (!scopeCheck.ok) {
+        span.setAttribute("nlqdb.grants.mint.outcome", scopeCheck.reason);
+        return c.json({ error: scopeCheck.reason }, 400);
+      }
+
+      const priceModelRaw = raw.body.priceModel;
+      if (priceModelRaw !== undefined && typeof priceModelRaw !== "string") {
+        span.setAttribute("nlqdb.grants.mint.outcome", "invalid_price_model");
+        return c.json({ error: "invalid_price_model" }, 400);
+      }
+      const priceModel = typeof priceModelRaw === "string" ? priceModelRaw.trim() : "";
+      if (priceModel.length > PRICE_MODEL_MAX_LEN) {
+        span.setAttribute("nlqdb.grants.mint.outcome", "price_model_too_long");
+        return c.json({ error: "price_model_too_long", maxLength: PRICE_MODEL_MAX_LEN }, 400);
+      }
+
+      // GLOBAL-005 — replay a prior mint under the same Idempotency-Key
+      // instead of minting a second grant.
+      const idemKey = c.req.header("Idempotency-Key") ?? undefined;
+      const prior = await idempotencyLookup(c.env.KV, "grants_mint", session.user.id, idemKey);
+      if (prior) {
+        span.setAttribute("nlqdb.grants.mint.outcome", "idempotent_replay");
+        return c.json({ ...prior, replayed: true });
+      }
+
+      // Tenant-scoped resolve — a dbId leaked from another tenant is a 404,
+      // not a 403 (no cross-tenant existence leak).
+      const db = await resolveDb(c.env.DB, dbId, session.user.id);
+      if (!db) {
+        span.setAttribute("nlqdb.grants.mint.outcome", "db_not_found");
+        return c.json({ error: "db_not_found" }, 404);
+      }
+      if (db.connectionBlob !== null || db.connectionSecretRef === BYO_SECRET_REF_SENTINEL) {
+        span.setAttribute("nlqdb.grants.mint.outcome", "byo_not_grantable");
+        return c.json({ error: "byo_not_grantable" }, 400);
+      }
+
+      // Fail loud on a typo'd grantee at mint time (P6) rather than
+      // letting the buyer's first query 403 weeks later.
+      const grantee = await c.env.DB.prepare("SELECT id FROM user WHERE id = ?")
+        .bind(granteeTenantId)
+        .first<{ id: string }>();
+      if (!grantee) {
+        span.setAttribute("nlqdb.grants.mint.outcome", "grantee_not_found");
+        return c.json({ error: "grantee_not_found" }, 404);
+      }
+
+      const grant = await mintGrant(c.env.DB, {
+        ownerTenantId: session.user.id,
+        ownerDbId: dbId,
+        granteeTenantId,
+        scope: scopeCheck.scope,
+        priceModel: priceModel.length > 0 ? priceModel : null,
+      });
+      span.setAttribute("nlqdb.grants.mint.outcome", "ok");
+      const body = {
+        id: grant.id,
+        dbId: grant.ownerDbId,
+        granteeTenantId: grant.granteeTenantId,
+        scope: grant.scope,
+        ...(grant.priceModel ? { priceModel: grant.priceModel } : {}),
+        status: "active" as const,
+        createdAt: grant.createdAt,
+      };
+      idempotencyStore(c.executionCtx, c.env.KV, "grants_mint", session.user.id, idemKey, body);
+      return c.json(body);
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.grants.mint.outcome", "mint_failed");
+      return c.json({ error: "mint_failed" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `GET /v1/grants` — both sides of the marketplace in one list: grants
+// the caller sold (`role: "owner"`) and grants it holds
+// (`role: "grantee"`). Active rows sort before revoked (one contiguous
+// slice per section, same contract as the keys list). Session-only.
+app.get("/v1/grants", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.grants.list", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const grants = await listGrantsByTenant(c.env.DB, session.user.id);
+      span.setAttribute("nlqdb.grants.list.count", grants.length);
+      span.setAttribute("nlqdb.grants.list.outcome", "ok");
+      return c.json({
+        grants: grants.map((g) => ({
+          id: g.id,
+          role: g.ownerTenantId === session.user.id ? ("owner" as const) : ("grantee" as const),
+          dbId: g.ownerDbId,
+          ownerTenantId: g.ownerTenantId,
+          granteeTenantId: g.granteeTenantId,
+          scope: g.scope,
+          ...(g.priceModel ? { priceModel: g.priceModel } : {}),
+          status: g.revokedAt === null ? ("active" as const) : ("revoked" as const),
+          createdAt: g.createdAt,
+          revokedAt: g.revokedAt,
+        })),
+      });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.grants.list.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `DELETE /v1/grants/:id` — owner revoke. Fails closed within the
+// SK-EKP-008 30 s bound: enforcement reads filter `revoked_at IS NULL`
+// at the source, so this row update is the whole revocation. Idempotent
+// re-DELETE returns 200 with `alreadyRevoked: true` (RFC 9110 /
+// GLOBAL-005 — idempotent by construction, no dedupe store needed).
+// Unknown id and another tenant's id are both 404 (no existence leak).
+app.delete("/v1/grants/:id", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.grants.revoke", async (span) => {
+    try {
+      const session = c.var.session;
+      const grantId = c.req.param("id");
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      span.setAttribute("nlqdb.grants.revoke.grant_id", grantId);
+      const outcome = await revokeGrantById(c.env.DB, session.user.id, grantId);
+      span.setAttribute("nlqdb.grants.revoke.outcome", outcome);
+      if (outcome === "not_found") {
+        return c.json({ error: "grant_not_found" }, 404);
+      }
+      return c.json({ ok: true, alreadyRevoked: outcome === "already_revoked" });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.grants.revoke.outcome", "internal_error");
       return c.json({ error: "internal_error" }, 500);
     } finally {
       span.end();

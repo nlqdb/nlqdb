@@ -1,8 +1,12 @@
 # EK-06 — Cross-tenant read-grant primitive (implementation)
 
-**Status:** planned · **Repo:** nlqdb (engine) · **Risk:** high ·
+**Status:** in-flight · **Repo:** nlqdb (engine) · **Risk:** high ·
 **Runs:** multi · **Prereqs:** EK-02 design record + minted decision —
-satisfied: [`SK-EKP-008`](../decisions/SK-EKP-008-grant-primitive-design.md)
+satisfied: [`SK-EKP-008`](../decisions/SK-EKP-008-grant-primitive-design.md) ·
+**Box 1 shipped 2026-08-08:** `grants` control plane (migration 0026 +
+`apps/api/src/grants.ts` + `/v1/grants` mint/list/revoke, session-only,
+KV-idempotent, spanned). `getActiveGrant` is the fail-closed read box 2's
+enforcement consumes; hosted-only + scope-shape checks run at mint.
 
 ## Goal
 
@@ -31,8 +35,9 @@ satisfy):
 
 ## Done when
 
-- [ ] Grant mint/revoke/list shipped behind the public API with
-      idempotency + spans.
+- [x] Grant mint/revoke/list shipped behind the public API with
+      idempotency + spans. *(2026-08-08 — HTTP API; the SDK/CLI/MCP/
+      elements sweep is box 5.)*
 - [ ] Cross-tenant read works only through a live grant; kill-tests for
       RLS bypass, GUC spoofing, and join-leakage pass.
 - [ ] Usage records emitted per granted query, idempotent under retry.
