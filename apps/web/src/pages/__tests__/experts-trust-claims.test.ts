@@ -28,6 +28,13 @@ describe("/experts claims stay inside shipped substance (SK-EKP-001)", () => {
       /\bcannot\s+(read|see|access)/i,
       /\bunable\s+to\s+(read|see|access)/i,
       /\bno\s+way\s+(for\s+us\s+)?to\s+(read|see|access)/i,
+      // The flat indicative form overclaims exactly as the modal one does —
+      // "we don't read your data" is as false as "we can't", since the engine
+      // does read rows to answer. This bans the factual denial while leaving
+      // the contractual "nlqdb may not read…" (permission) and the positive
+      // carve "the engine reads the relevant rows…" untouched.
+      /\b(?:we|nlqdb)\s+(?:do\s+not|don[’']?t)\s+(?:read|see|access|view)\b/i,
+      /\b(?:nobody|no\s+one)\s+(?:[a-z]+\s+){0,3}?(?:reads?|sees?|accesses?|views?)\b/i,
     ]) {
       expect(page).not.toMatch(banned);
     }
