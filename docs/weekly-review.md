@@ -1,64 +1,72 @@
-# Weekly review — 2026-07-18
+# Weekly review — 2026-08-08
 
 Current-state audit of the `/daily` loop (≤ 4 KB, overwritten weekly, no
-changelog). Worst finding first. Covers the 07-11→07-18 window (runs 60–88 +
-the new `/reach` track PRs #721/#724/#727).
+changelog). Worst finding first. Window 2026-08-01→08-08: `/daily` runs
+165–173, `/reach` R-10 (#908/#914/#922/#929), and the new `/ek` track
+(#917–#940, ~11 PRs).
 
-## Worst finding — a standing dark metric lost its human blocker (check 4)
+## Worst finding — the weekly-focus gate's one live blocker is off the founder queue (check 4)
 
-Row #15 (E2E freshness ≈ 0.75) has been the weekly-focus dark metric for two
-weeks; runs 62/67/70 all pin its **sole** fix to an operator-only action —
-arm a 3rd independent free-LLM pool (`FALLBACK2_LLM_API_KEY`, lane already
-wired in `_e2e-opencheck.yml`, "disabled while unset"). PR #714 (07-16) wired
-the lane's code and, in the same PR, **deleted the operator bullet from
-`blocked-by-human.md`** while "clearing the backlog" — but the secret was
-never set. So the scorecard still cites "its `blocked-by-human.md` bullet" for
-a bullet that no longer exists, and the one action that lifts row #15 was
-invisible to the founder for a week. **Restored this PR**, top of
-`blocked-by-human.md`, with a ~5-day-blocked count. Honesty rule: a dark
-metric's human blocker must live in `blocked-by-human.md` until the metric
-moves, not be pruned when the metric is inconvenient.
+The founder-set weekly focus is the
+[`SK-PIVOT-016`](features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
+dogfood gate (**0/5**, dark 12+ `/daily` runs). Its dependency chain is now
+agent-complete: D-02b convergent sync + `memory-sync.yml` shipped (worksheet
+🟢 code-complete) and the `NLQDB_API_KEY` secret was **set by the founder
+2026-08-04** (`history/founder-actions-log.md` line 108). Exactly **one**
+human action remains — provision the prod `agent_memory_v1` memory DB and set
+the `NLQDB_MEMORY_DB` repo variable (D-04) — and it was **not a ranked bullet
+in `blocked-by-human.md`**; it lived only in a parenthetical note (line 54)
+and inside D-04's worksheet. Meanwhile the scorecard (line 23) still cites the
+**already-resolved** `NLQDB_API_KEY` as a live gate blocker and mis-locates it
+as "queue-#2" (queue #2 is the Anthropic directory). So the founder's queue
+showed **no action** for the single $0, ~10-min step that unblocks their own
+weekly focus — the same archetype the 2026-07-18 review caught for row #15.
+**Fixed this PR:** added as ranked bullet #1 in `blocked-by-human.md` (blocked
+since 08-04); it unblocks D-04 → gate criteria 1/2/3 and D-06 → criterion 5
+(to 4/5). Criterion 4 (temporal engine axis) stays separate (E-09,
+GLOBAL-037), so the gate cannot reach 5/5 on the secret alone.
 
-## Monoculture (check 2) — a week of no-yield internal polish
+## Monoculture — distribution content, no conversion yield (check 2)
 
-~12 of ~14 substantive `/daily` runs pulled two internal-quality levers:
-**claim/surface-integrity guards** (rows #18/#19 — runs 72, 74, 76, 77, 87,
-88) and **web-UX trust polish** (SK-WEB/TRUST/HDC/APIKEYS — runs 80–85). Both
-are product-readiness for strangers who aren't arriving: row #2 strangers
-still **0**, row #7 GSC **1 click / 455 impr** flat, external referrals **9
-carried**. The loop obeyed its own lever-order (#1 UX-flow), but the readiness
-lane is saturated with no yield signal. The structural fix already landed —
-the **`/reach` track** (SK-PIVOT-015, 07-17) now owns acquisition on its own
-loop and numbers — so `/daily` should re-point to its measurable
-furthest-from-floor pillar. Hence the focus: **row #8 BIRD** (0.542 < the 0.60
-Phase-2 floor).
+5 of 9 `/daily` runs shipped distribution content pages (168–172: three
+`/solve`, two `/blog`); run 173 was the sanctioned anti-rut yield
+measurement. Its own evidence is the verdict: breadth lifted *leading*
+indicators (GSC impressions 587→640, real-browser floor 52→63) but moved
+**zero** *converting* indicators — 0 clicks on the top-impression page
+(`/solve/running-total…`, 135 impr stuck at page-4 pos 35.4), referral yield
+flat at 13 pl, real strangers still **0** (row #2). Volume without yield ⇒
+next week's content sub-lever is *strengthening the one highest-impression
+page to climb off page 4*, not a 6th new page. Context: the org's other big
+allocation, the new `/ek` marketplace track (~11 PRs), is pre-launch build on
+an unvalidated wedge — sanctioned parallel (SK-EKP-005) but also yield-less
+until it ships.
 
-## Trend (check 1) — flat, no regression
+## Trend — flat, no fresh regression (check 1)
 
-Engine below floor but flat (BIRD 0.542, Spider 0.2963). Onboarding/funnel flat at floor (strangers 0,
-first-10 N=0). UX/perf green (row #21 9/9, row #18 0 dead, p95 1.70 s). No
-`GLOBAL-025` regression tripped.
+No `GLOBAL-025` alert threshold tripped this week. Engine below floor and
+**stale**: BIRD 0.5382 (13 d), Spider 0.2222 (20 d) — both past the >7 d
+staleness alert, resume dark (async multi-window, `main` moved, SHA-keyed
+cache would miss). Funnel up modestly (visits 52→63, GSC impr +53). UX/perf
+green (row #21 0 failed, row #18 0 dead, p95 1.48 s < 1.5 s floor).
+Onboarding flat at floor (strangers 0, first-10 N=0).
 
-## Inert output (check 3) — none agent-fixable
+## Inert output — none in `/daily`; this loop lapsed (check 3)
 
-`distribution-queue.md` holds 2 drafts (below the 3-deep forced-publish gate —
-correctly not draining); dev.to syndication drips one/day (`SK-BLOG-003`);
-Reddit/HN pointers are human-gated by norm. **Watch:** the reach worksheet's
-`NUMBERS.md` is the acquisition yield ledger — confirm next week it's
-actually being written each `/reach` run, else reach becomes the next inert
-loop.
+`/daily` output is consumed: the blog draft queue drained (run 171, 0
+unpublished) and the dev.to drip went live (run 173). The genuine lapse is
+**this** loop — `weekly-review.md` was last rewritten 2026-07-18 (3 weeks;
+the 07-28 focus was founder-set, not `/weekly`-set). Corrected here; watch
+that `/weekly` fires weekly.
 
-## Delta integrity (check 5) — sampled 4, all verify
+## Delta integrity — sampled 5, all verify (check 5)
 
-Re-measured live: docs-ambiguity = **15** (run 78, pinned grep) ✓; `/blog` =
-**36** published (run 79 count-fix, `blog.ts`) ✓; SDK/CLI/MCP integrity guards
-present and deriving from source (runs 88/74/64) ✓; row #18 = 0 dead
-built-output (run 87) consistent with the sweep. No claimed-but-unverified
-delta.
+Re-checked registry entries for runs 168/169/170/171/172 — every claimed
+`/solve` or `/blog` page is present in `apps/web/src/data/{solve,blog}.ts`.
+Scorecard counts (40/39/31) match the registries (raw `slug:` greps over-count
+by 2 on nested cross-links). No claimed-but-unverified delta.
 
-## Prompt drift (check 6) — none
+## Prompt drift — none (check 6)
 
-Every GLOBAL cited in `daily.md`/`weekly.md` (025/026/027/033) resolves to a
-canonical file; every referenced path resolves (`fable-recommendation.md`,
-`stranger-test.sh`, `flow-005-walk.sh`, `gsc-pull.ts`, `syndicate-devto.ts`,
-`baseline-2026-06-15.json`, `phase-plan.md`). No `daily.md` edit this week.
+Every path and GLOBAL ID cited in `daily.md`/`weekly.md` resolves — including
+`GLOBAL-027` (this prompt's named archetype), which now has its canonical
+file. No `daily.md` edit needed.
