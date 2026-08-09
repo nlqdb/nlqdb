@@ -56,9 +56,10 @@ reputation footprint, and it was the queue's lowest-yield optional item;
 venue marked dropped in reach R-09, never re-queue. Earlier sittings
 in `history/founder-actions-log.md` Eras 4–5. One load-bearing note survives:
 D-02 memory-sync stays dark until the **D-04 agent run** creates the prod
-memory DB (authed create surface, `agent_memory_v1` preset) and sets the
-`NLQDB_MEMORY_DB` repo variable — agent work, not a queue bullet, pullable
-since `NLQDB_API_KEY` was set 2026-08-04.)
+memory DB and sets the `NLQDB_MEMORY_DB` repo variable — agent work, not a
+queue bullet (founder-directed 2026-08-09: provisioning is
+product-automated). Live-tested 08-09: one 1-run API change first — preset
+create for user-scoped keys, SK-PIVOT-010 as amended.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 

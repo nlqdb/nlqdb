@@ -1,6 +1,6 @@
 # D-04 — First real sync of nlqdb's own `docs/` corpus + the gate-progress readout
 
-**Status:** ⬜ not started — **prereq chain complete, pullable now** (re-verified 2026-08-08: D-02 🟢 code-complete, `NLQDB_API_KEY` secret set 2026-08-04)
+**Status:** ⬜ not started — **one 1-run API change from pullable** (live-tested 2026-08-09: preset create 401s for user-scoped keys — see prereq chain)
 **Sequence:** Dogfood 4 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** D-01 ✅, D-02 ⬜, ~~E-03 merged → `MEMORY_PRESET=1` in prod~~ ✅ (#851, #835) · **Gate:** none — the founder-sequenced chain completed 2026-07-29
 
 ## Goal
@@ -30,13 +30,20 @@ reached prod *after* the scoping slice, so no unscoped prod memory DB ever
 existed", [`E-03`](../engine/E-03-memory-scoping.md) *Consequence in code*).
 All three boxes the first sync run must check are checked.
 
-**No open prereq remains** (re-verified 2026-08-08): [`D-02`](D-02-resync-hook.md)
-is 🟢 code-complete and its `NLQDB_API_KEY` repo secret was set by the founder
-2026-08-04 (`history/founder-actions-log.md` Era 5). Run 1 below provisions the
-memory DB itself through the authed create surface and sets the
-`NLQDB_MEMORY_DB` repo variable — **all agent work, no founder action**
-(founder-affirmed 2026-08-08: memory-DB provisioning is product-automated,
-never a human queue item). Nothing blocks this slice.
+[`D-02`](D-02-resync-hook.md) is 🟢 code-complete and its `NLQDB_API_KEY`
+repo secret was set by the founder 2026-08-04
+(`history/founder-actions-log.md` Era 5). **One product change remains**,
+found by a live prod test 2026-08-09: the repo-secret key authenticates
+(`GET /v1/databases` → 200) but `POST /v1/databases { preset }` returns
+**401** — the create verb was cookie-session-only, while `remember`/`query`
+already accept user-scoped keys. Per
+[`SK-PIVOT-010`](../../decisions/SK-PIVOT-010-authed-onramp.md) **as amended
+2026-08-09** (founder-directed: provisioning is product-automated, never a
+human queue item), the opening lever is extending preset create to
+user-scoped principals (`sk_live_`/`sk_mcp_`; `anon` + `pk_live` stay
+rejected) — one run. Then run 1 below proceeds unchanged: the agent
+provisions the memory DB with the key and sets the `NLQDB_MEMORY_DB` repo
+variable. **No founder action anywhere in this chain.**
 
 ## Read first
 

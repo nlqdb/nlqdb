@@ -5,26 +5,27 @@ changelog). Worst finding first. Window 2026-08-01→08-08: `/daily` runs
 165–173, `/reach` R-10 (#908/#914/#922/#929), and the new `/ek` track
 (#917–#940, ~11 PRs).
 
-## Worst finding — the weekly focus is marked dark but became pullable 08-04 (check 4)
+## Worst finding — the weekly focus sat dark on a stale citation; a live test pins the real blocker (check 4)
 
 The founder-set weekly focus, the
 [`SK-PIVOT-016`](features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
-dogfood gate (**0/5**), is carried "dark, not pullable" on a **stale blocker
-citation**. The scorecard says criteria 1/2/3/5 gate on the `NLQDB_API_KEY`
-secret — but the founder set it **2026-08-04**
-(`history/founder-actions-log.md` line 108), and D-02b sync shipped
-(worksheet 🟢). Everything left is **agent work**: D-04's own worksheet has
-the agent create the prod memory DB *"through the authed create surface with
-`{ preset: "agent_memory_v1" }` … exactly as a stranger would"* — no
-privileged path is the slice's whole point — then set the `NLQDB_MEMORY_DB`
-repo **variable** (a DB id, not a secret). Provisioning memory DBs is the
-product itself (many DBs, many clients); a human per-DB would contradict the
-wedge. So rule 8's dark marking self-perpetuated 4+ runs past its cause.
-**Correction of this review's own first version (#954, same day):** it wrongly
-queued D-04's provision step as founder bullet #1 — a rule-4 / GLOBAL-033
-violation, founder-flagged; reverted. **Direction: the next `/daily` run pulls
-D-04** (criteria 1/2/3; D-06 → criterion 5 follows). Criterion 4 stays a
-separate engine problem (E-09, GLOBAL-037).
+dogfood gate (**0/5**), was carried "dark, not pullable" citing the
+`NLQDB_API_KEY` secret — which the founder set **2026-08-04**
+(`history/founder-actions-log.md` line 108), with D-02b sync 🟢. A **live
+prod test (2026-08-09)** then pinned what actually remains: the repo-secret
+key authenticates (`GET /v1/databases` → 200) but
+`POST /v1/databases { preset: "agent_memory_v1" }` returns **401** — the
+create verb was cookie-session-only (SK-PIVOT-010) while `remember`/`query`
+already accept user-scoped keys. So the gate is **one 1-run API change from
+pullable**: extend preset create to user-scoped principals
+(founder-directed 2026-08-09 — provisioning is product-automated, many DBs /
+many clients, never a human queue item; SK-PIVOT-010 amended accordingly,
+`anon`/`pk_live` still rejected). This review erred twice before landing
+here: #954 queued the provision on the founder (rule-4/GLOBAL-033 violation,
+founder-flagged), and the same-day correction over-claimed "pullable now" —
+refuted by the live 401. **Direction: next `/daily` ships the create change,
+then D-04** (criteria 1/2/3; D-06 → criterion 5 follows). Criterion 4 stays
+a separate engine problem (E-09, GLOBAL-037).
 
 ## Monoculture — distribution content, no conversion yield (check 2)
 
