@@ -33,7 +33,7 @@ the body) to receive updates.
 | :--- | :--- | :--- | :--- |
 | Cloudflare, Inc. | Edge runtime (Workers), DNS, CDN, static site hosting (Workers Static Assets), cookieless Web Analytics, API gateway, KV / D1 storage, R2 object storage, email routing | Global edge; data-at-rest in US (KV/D1/R2) | https://www.cloudflare.com/cloudflare-customer-dpa/ |
 | PostHog, Inc. | Product analytics on the `/app` product pages only (client SDK, session replay with inputs + conversation masked) + server-side product events | EU (Frankfurt) | https://posthog.com/dpa |
-| tawk.to inc. | In-app support chat widget on the `/app` product pages (chat messages, visitor metadata) | US | https://www.tawk.to/data-protection/dpa-data-processing-addendum/ |
+| tawk.to inc. | In-app support chat widget on the `/app` product pages: chat messages, and — for signed-in users — the account's name, email, and user id passed to identify the visitor (transferred under the EU/UK/Swiss–US Data Privacy Framework, to which tawk.to self-certifies) | US | https://www.tawk.to/data-protection/dpa-data-processing-addendum/ |
 
 ## Planned sub-processors (not yet active)
 

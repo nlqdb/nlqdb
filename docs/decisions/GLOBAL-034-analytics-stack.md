@@ -37,7 +37,11 @@
   server-side (plain `fetch` to `<host>/batch/`, no SDK — stays under
   GLOBAL-013's bundle ceiling); envelope `id` → PostHog `uuid` for
   idempotent dedup. `architecture.md §3.1` + stack table name Cloudflare
-  Web Analytics (not Plausible).
+  Web Analytics (not Plausible). The "no cookie banner" posture is a
+  **marketing** promise: the authenticated `/app` surfaces DO set third-party
+  cookies (PostHog + Tawk) and therefore carry consent gates — an opt-in
+  prompt for PostHog and Tawk's native Consent Form for chat (`SK-WEB-029`).
+  Marketing/blog/vs/solve stay cookieless and banner-free.
 
 - **Alternatives rejected:**
   - **Plausible self-hosted.** Recurring cost + Fly ops for marginal
