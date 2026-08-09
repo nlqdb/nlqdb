@@ -80,6 +80,8 @@ function Metrics({ m }: { m: GtmMetrics }) {
 
       <LaunchGate m={m} />
 
+      <PayingCustomers m={m} />
+
       <section aria-labelledby="admin-h-north">
         <h2 id="admin-h-north">Acquisition north-star</h2>
         <div className="admin__tiles">
@@ -395,6 +397,66 @@ function LaunchGate({ m }: { m: GtmMetrics }) {
         SK-PIVOT-016-dogfood-launch-gate.md and worksheets/dogfood/INDEX.md — this section mirrors
         them.
       </p>
+    </section>
+  );
+}
+
+// SK-GTM-009 — the paying-customer watchlist. Every customers-table row
+// (any status: `incomplete` = someone mid-checkout, `canceled` = churn
+// worth studying), newest conversion first, so the first paid user's
+// behavior is watchable from the moment they land.
+function PayingCustomers({ m }: { m: GtmMetrics }) {
+  return (
+    <section aria-labelledby="admin-h-customers" data-testid="paying-customers">
+      <h2 id="admin-h-customers">Paying customers — watchlist</h2>
+      {m.customers.length === 0 ? (
+        <p className="admin__note">
+          No Stripe customers yet — this table lights up with the first checkout
+          (billing.subscription_created also pushes via LogSnag the moment it happens).
+        </p>
+      ) : (
+        <table className="admin__table" data-testid="customers-table">
+          <thead>
+            <tr>
+              <th scope="col">Customer</th>
+              <th scope="col">Status</th>
+              <th scope="col">Converted</th>
+              <th scope="col">DBs</th>
+              <th scope="col">First-10 asks</th>
+              <th scope="col">Last activity</th>
+              <th scope="col">Renews</th>
+            </tr>
+          </thead>
+          <tbody>
+            {m.customers.map((c) => (
+              <tr key={c.email}>
+                <td>
+                  {c.email}
+                  {c.internal ? <em> (internal)</em> : null}
+                </td>
+                <td>{c.status}</td>
+                <td>{fmtDateTime(c.convertedAt)}</td>
+                <td>{c.dbs}</td>
+                <td>
+                  {c.first10Ok}/{c.first10Asks} ok
+                </td>
+                <td>{fmtDateTime(c.lastActivityAt)}</td>
+                <td>
+                  {fmtDateTime(c.currentPeriodEnd)}
+                  {c.cancelAtPeriodEnd ? <em> (cancels)</em> : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {m.customers.length > 0 && (
+        <p className="admin__note">
+          First-10 asks are a lower bound (counters saturate at 10 per DB, SK-ONBOARD-006); last
+          activity = newest owned-DB query or chat turn. Internal rows are founder/test accounts —
+          not real conversions.
+        </p>
+      )}
     </section>
   );
 }
