@@ -186,7 +186,9 @@ parallel with the wedge
 - ~ Cross-tenant read grants — mint/list/revoke control plane live;
   fail-closed read enforcement + per-query metering pending
 - ◯ One catalog — free packs + paid expert knowledge DBs
-- ◯ Trust hardening — buyer queries schema-only end-to-end
+- ~ Trust hardening — buyer queries schema-only end-to-end: knowledge-DB
+  asks now skip narration by default (returned rows never reach an LLM);
+  granted-path skip + no-training interview-provider pin pending
 
 ### Phase 0 — Foundations ✓
 
