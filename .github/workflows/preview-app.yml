@@ -236,10 +236,21 @@ jobs:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
           DATABASE_URL: ${{ steps.neon.outputs.database_url }}
           BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
+          # Tawk.to Secure Mode key (SK-WEB-025) — lets /api/tawk/identity HMAC
+          # the visitor email so Tawk shows the account name/email in preview.
+          # Optional: when the repo secret is unset, the guarded flag below is
+          # skipped and the endpoint omits the hash (no error).
+          TAWK_TO_API_KEY: ${{ secrets.TAWK_TO_API_KEY }}
           PREVIEW_BASE_URL: "https://pr-${{ env.PR_NUMBER }}-nlqdb-api.omer-hochman.workers.dev"
         run: |
           set -euo pipefail
           mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
+          # Only pass the flag when the secret is present — an empty --var would
+          # override the inherited Worker secret with a blank value.
+          extra=()
+          if [ -n "${TAWK_TO_API_KEY:-}" ]; then
+            extra+=(--var "TAWK_TO_API_KEY:${TAWK_TO_API_KEY}")
+          fi
           bunx wrangler versions upload \
             --message "PR #${PR_NUMBER} @ ${{ github.event.pull_request.head.sha }}" \
             --preview-alias "pr-${PR_NUMBER}" \
@@ -249,7 +260,8 @@ jobs:
             --var "BETTER_AUTH_URL:${PREVIEW_BASE_URL}" \
             --var "MAGIC_LINK_WEB_ORIGIN:${PREVIEW_BASE_URL}" \
             --var "DATABASE_URL:${DATABASE_URL}" \
-            --var "BETTER_AUTH_SECRET:${BETTER_AUTH_SECRET}"
+            --var "BETTER_AUTH_SECRET:${BETTER_AUTH_SECRET}" \
+            ${extra[@]+"${extra[@]}"}
 
       - name: Extract preview URL
         if: always() && steps.deploy.outcome == 'success'

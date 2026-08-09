@@ -237,6 +237,10 @@ const pkLiveCors = cors({
 });
 
 app.use("/api/auth/*", credentialedCors);
+// The Tawk identity probe is a cookie-authed same-origin GET in prod/preview,
+// but local dev serves web (4321) and api (8787) cross-origin — same as the
+// session probe it mirrors, so it needs the same credentialed CORS handler.
+app.use("/api/tawk/*", credentialedCors);
 // `/v1/ask` is hit by both trusted origins (cookie / anon-bearer from
 // the product UI + marketing site) and arbitrary third-party origins
 // carrying `Bearer pk_live_*`. Chaining `cors()` middleware doesn't
@@ -289,7 +293,7 @@ const sessionResolver = {
     });
     if (!result) return null;
     return {
-      user: { id: result.user.id, email: result.user.email },
+      user: { id: result.user.id, name: result.user.name, email: result.user.email },
       session: { token: result.session.token, userId: result.session.userId },
     };
   },
@@ -555,6 +559,26 @@ if (env.MOCK_IDP === "1") {
   app.get("/api/auth/mock-sign-in", (c) => handleMockSignIn(c));
   app.get("/api/dev/inbox", async (c) => c.json(await listInbox(c.env.KV)));
 }
+
+// Tawk.to support-chat identity (SK-WEB-025). The `/app` widget calls this to
+// identify the signed-in visitor to Tawk's dashboard. Tawk Secure Mode only
+// accepts a name/email when accompanied by an HMAC-SHA256(email, TAWK_TO_API_KEY)
+// hash — without it Tawk silently drops them and the operator sees only an
+// anonymous visitor id. The hash is computed server-side so the secret never
+// reaches the browser; exposing the hash for the caller's OWN email is exactly
+// Tawk's identity-verification design. Returns null when unauthenticated
+// (client bails, same as get-session), and omits the hash when TAWK_SECRET is
+// unset — name/email are still attempted and Tawk keeps the anon id until
+// Secure Mode is configured, so nothing crashes pre-provisioning.
+app.get("/api/tawk/identity", async (c) => {
+  const session = await sessionResolver.getSession(c.req.raw);
+  if (!session) return c.json(null);
+  const { id, name, email } = session.user;
+  const hash = email && env.TAWK_TO_API_KEY ? await hmacHex(env.TAWK_TO_API_KEY, email) : undefined;
+  return c.json({ id, name: name ?? undefined, email: email ?? undefined, hash }, 200, {
+    "cache-control": "private, no-store",
+  });
+});
 
 // `POST /v1/ask` (Slice 6).
 //

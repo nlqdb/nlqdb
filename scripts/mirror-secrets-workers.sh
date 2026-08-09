@@ -124,6 +124,10 @@ select_secrets() {
         STRIPE_PRICE_HOBBY
         STRIPE_PRICE_PRO
         RESEND_API_KEY
+        # Tawk.to Secure Mode key (SK-WEB-025) — /api/tawk/identity HMACs the
+        # signed-in visitor's email so Tawk accepts their name/email. Unset ⇒
+        # the endpoint omits the hash and Tawk keeps the anon id (no error).
+        TAWK_TO_API_KEY
       )
       ;;
     events-worker)
