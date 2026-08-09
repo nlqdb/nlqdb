@@ -124,3 +124,9 @@ well the queue bullet was prepared, not by the action itself.
 |---|---|---|---|
 | 2026-08-07 | **F2 — approved the GLOBAL-037 amendment** (in-session): egress restated as three enumerated lanes (planning schema-only · narration disclosed w/ opt-out · interview/extraction authoring carve-out, own tenant only), replacing the overbroad "only schema ever leaves" headline that shipped code contradicted | resolves the two-canonical-texts conflict the Fable review found (SK-EKP-007's carve-out vs GLOBAL-037's absolute text); INV-EKP-037 and the EK INDEX hard rule now anchor to one truth | ~1 min; GLOBAL-037's own text required founder supersession — this is the only path that wasn't a P1 violation |
 | 2026-08-07 | **F1 — chose Option B for the trust claim** (in-session): harden the product first — knowledge/granted asks skip narration by default + no-training interview provider pin (EK-09) — then publish the stronger "buyer queries never send your rows to an LLM" copy | EK-09 minted as the gating slice; the EK-03 ToS sign-off bullet narrows to final-wording-only once EK-09 is green | ~1 min; Option A's truthful text stays as the fallback in the draft |
+
+## Era 8 — 2026-08-09
+
+| Date | Action (surface) | Unblocked | Replay note |
+|---|---|---|---|
+| 2026-08-09 | Enabled Tawk's native **Consent Form** (Tawk dashboard → Administration → Chat Widget → Consent Form) | the `/app` chat cookie is now ePrivacy-gated in-widget per `SK-WEB-029` — the one operator step #959's consent design relies on; blocks the cookie until in-widget accept while keeping the chat bubble visible for everyone | ~2 min; founder-confirmed; keep it enabled. `TAWK_TO_API_KEY` (Secure-Mode identity HMAC) is reported mirrored to GHA + prod Worker in the PR body but has no log line — treat as unverified until confirmed; if unset, identity degrades to an anon id (no error) |

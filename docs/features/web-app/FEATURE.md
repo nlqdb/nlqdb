@@ -140,12 +140,12 @@ The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked
 ### SK-WEB-020 — Calm token system (supersedes SK-WEB-015's quiet-brutalism tokens)
 
 **Body:** [`decisions/SK-WEB-020-calm-token-system.md`](./decisions/SK-WEB-020-calm-token-system.md).
-`global.css` re-based to a **calm** system site-wide (details in the Body file); retains SK-WEB-015's one-accent/one-motion budget and SK-WEB-018 IA + GLOBAL-007 / SK-WEB-003 invariants.
+`global.css` re-based to a **calm** system site-wide (details in the Body); retains SK-WEB-015's one-accent/one-motion budget + SK-WEB-018 IA / GLOBAL-007 / SK-WEB-003 invariants.
 
 ### SK-WEB-021 — `/architecture`: interactive 3D system map on its own route, never on `/`
 
 **Body:** [`decisions/SK-WEB-021-architecture-3d-map.md`](./decisions/SK-WEB-021-architecture-3d-map.md).
-One route (`/architecture/`) renders the system as a three.js zoom-to-detail map (island `ArchitectureMap.tsx`) above a prose walkthrough, both from `src/data/architecture.ts` (mirrors `docs/architecture.md` §2); three.js is dynamic-imported on this route only, motion reduced-motion-gated. Never a homepage background (would contradict SK-WEB-018 / SK-WEB-020 / SK-WEB-001); the home page gets only the 0-JS "Under the hood" poster band linking to it.
+One route (`/architecture/`) renders a three.js zoom-to-detail map (`ArchitectureMap.tsx`, dynamic-imported here only, reduced-motion-gated) over a prose walkthrough from `src/data/architecture.ts`. Never a homepage background — the home page gets only the 0-JS "Under the hood" poster band linking to it.
 
 ### SK-WEB-022 — Client-side navigations must carry the trailing slash (guarded)
 
@@ -155,32 +155,37 @@ Every client-side navigation to an internal page path ends in `/` (`trailingSlas
 ### SK-WEB-023 — IndexNow push on every web deploy; robots + sitemap stay index-open
 
 **Body:** [`decisions/SK-WEB-023-indexnow-push-on-deploy.md`](./decisions/SK-WEB-023-indexnow-push-on-deploy.md).
-Every deploy pushes the live sitemap URL list to IndexNow via a `continue-on-error` step in `deploy-web.yml` (`scripts/submit-indexnow.ts`; the public key file ships from `apps/web/public/`). Index-open posture: `Allow: /` robots, self-referential canonicals (only `/auth/*` is `noindex`), accurate `<lastmod>` for blog posts only.
+Every deploy pushes the sitemap URL list to IndexNow (`continue-on-error` step in `deploy-web.yml`, `scripts/submit-indexnow.ts`). Index-open posture: `Allow: /` robots, self-referential canonicals (only `/auth/*` is `noindex`), `<lastmod>` on blog posts only.
 
 ### SK-WEB-024 — PostHog client capture on the product `/app` surfaces only, with the conversation region masked
 
 **Body:** [`decisions/SK-WEB-024-posthog-app-surfaces-only.md`](./decisions/SK-WEB-024-posthog-app-surfaces-only.md).
-posthog-js lazy-loads on `/app/*` only (`AppAnalytics.astro` + `lib/posthog.ts`); marketing stays SDK-free (`GLOBAL-034`). Session replay masks all inputs and the chat list so user DB contents are never recorded; the publishable key bakes in via `PUBLIC_POSTHOG_*` in both deploy workflows. Client half of `SK-EVENTS-013`.
+posthog-js lazy-loads on `/app/*` only (`AppAnalytics.astro` + `lib/posthog.ts`); marketing stays SDK-free (`GLOBAL-034`). Session replay masks all inputs and the chat list so user DB contents are never recorded; the publishable key bakes in via `PUBLIC_POSTHOG_*` in both deploy workflows. Client half of `SK-EVENTS-013`. Gated behind analytics consent (`SK-WEB-029`) — loads only after opt-in.
 
 ### SK-WEB-025 — Tawk.to support chat on the product `/app` surfaces only
 
 **Body:** [`decisions/SK-WEB-025-tawk-support-chat-app-only.md`](./decisions/SK-WEB-025-tawk-support-chat-app-only.md).
-The Tawk.to widget (`SupportChat.astro`, official async snippet) mounts beside `<AppAnalytics />` on the four `/app` pages only — marketing/blog/vs/solve stay third-party-free, same posture as `SK-WEB-024` (`GLOBAL-034`). Tawk hosts are denylisted in `lib/boot-fallback.ts#EXTENSION_PREFIXES` (+ the `Base.astro` hand-copy, drift-pinned) so its throws never trip the boot panel or `/v1/errors/web`. Disclosed in `privacy.astro`, `SUPPORT.md`, and `SUBPROCESSORS.md`.
+The Tawk.to widget (`SupportChat.astro`, official async snippet) mounts beside `<AppAnalytics />` on the four `/app` pages only — marketing/blog/vs/solve stay third-party-free, same posture as `SK-WEB-024` (`GLOBAL-034`). Tawk hosts are denylisted in `lib/boot-fallback.ts#EXTENSION_PREFIXES` (+ the `Base.astro` hand-copy, drift-pinned) so its throws never trip the boot panel or `/v1/errors/web`. Signed-in visitors are identified via `setAttributes` + a Secure Mode HMAC (`/api/tawk/identity`); cookie consent-gated by Tawk's native Consent Form (`SK-WEB-029`). Disclosed in `privacy.astro`, `SUPPORT.md`, `SUBPROCESSORS.md`.
 
 ### SK-WEB-026 — Merged app host 301-redirects the whole marketing surface to the canonical host
 
 **Body:** [`decisions/SK-WEB-026-app-host-marketing-mirror-301.md`](./decisions/SK-WEB-026-app-host-marketing-mirror-301.md).
-`app.nlqdb.com` serves the same build as `nlqdb.com`, so its whole marketing surface (content trees `/blog|/solve|/vs`, singles, and the `/llms.txt|/rss.xml|/sitemap.xml` aggregators) is a crawlable duplicate there. GSC indexed the app-host copy despite a correct `rel=canonical`, so a thin front-controller (`marketing-mirror.ts`, `run_worker_first`-scoped in `apps/api/wrangler.toml`) 301s that surface to `nlqdb.com`; product/auth/API and the root stay untouched.
+`app.nlqdb.com` serves the same build as `nlqdb.com`, so its marketing surface is a crawlable duplicate; a `run_worker_first`-scoped front-controller (`marketing-mirror.ts`) 301s it to `nlqdb.com`, leaving product/auth/API/root untouched.
 
 ### SK-WEB-027 — Bare page paths 301 to their trailing-slash canonical (generated `_redirects`)
 
 **Body:** [`decisions/SK-WEB-027-bare-path-301.md`](./decisions/SK-WEB-027-bare-path-301.md).
-`astro build` emits one `301` per built page into `dist/_redirects` (`src/lib/canonical-redirects.ts`), replacing the asset router's 307 — a temporary code Google does not read as a canonicalisation signal, so GSC held bare `/agents` and `/blog/llm-concatenates-…` as index entries competing with their slashed twins. The `/app|/auth|/oauth` prefixes are excluded — the same `dist/` is the merged app host's asset directory (`SK-AUTH-016`), where those are the app's own routes (`SK-WEB-026`) — and a bare path that is a real asset (`/install`) is never shadowed.
+`astro build` emits one `301` per built page into `dist/_redirects` (`src/lib/canonical-redirects.ts`), replacing the asset router's 307 (which Google doesn't read as a canonicalisation signal). The `/app|/auth|/oauth` prefixes are excluded (they're the merged app host's own routes, `SK-AUTH-016`/`SK-WEB-026`) and real assets like `/install` are never shadowed.
 
 ### SK-WEB-028 — Machine-discovery surfaces: `.well-known` catalogs, `/auth.md`, Content-Signal, homepage Link header
 
 **Body:** [`decisions/SK-WEB-028-agent-discovery-well-known.md`](./decisions/SK-WEB-028-agent-discovery-well-known.md).
-One unit of static agent-discovery surfaces — `/.well-known/api-catalog` (RFC 9727, advertised by a homepage `Link` header), `/.well-known/ai-catalog.json` with the MCP Server Card inline (SEP-2127 draft, date-pinned), `/.well-known/agent-skills/index.json` (Agent Skills Discovery RFC v0.2.0), `/auth.md`, and a per-group `Content-Signal` declaration on both hosts. Every value derives from its source of truth and is pinned by `src/lib/agent-discovery.test.ts`; only live capability is promised (no `service-desc` without a served OpenAPI doc, no `agent_auth` block, no tool list in the card).
+Static agent-discovery surfaces — `/.well-known/api-catalog` (RFC 9727, advertised by a `Link` header), `/.well-known/ai-catalog.json` (MCP Server Card inline), `/.well-known/agent-skills/index.json`, `/auth.md`, and `Content-Signal` on both hosts. Values derive from source-of-truth, pinned by `src/lib/agent-discovery.test.ts`; only live capability is promised.
+
+### SK-WEB-029 — `/app` cookie consent: PostHog gated by an opt-in prompt, chat gated by Tawk's native Consent Form
+
+**Body:** [`decisions/SK-WEB-029-app-cookie-consent-gate.md`](./decisions/SK-WEB-029-app-cookie-consent-gate.md).
+The two non-essential `/app` cookies are consent-gated (ePrivacy Art 5(3)): PostHog by a first-party prompt (`lib/consent.ts` + `ConsentBanner.astro`; `AppAnalytics.astro` wraps its load in `whenConsentGranted`), Tawk chat by Tawk's native Consent Form (dashboard toggle — keeps the bubble visible, blocks cookies until in-widget accept). Session cookie never gated; marketing stays banner-free (`GLOBAL-034`).
 
 ## GLOBALs governing this feature
 

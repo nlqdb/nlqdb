@@ -17,7 +17,7 @@
 
 import type { Context, MiddlewareHandler } from "hono";
 
-export type SessionUser = { id: string; email?: string | null };
+export type SessionUser = { id: string; name?: string | null; email?: string | null };
 export type Session = {
   user: SessionUser;
   session: { token: string; userId: string };

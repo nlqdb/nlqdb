@@ -86,6 +86,15 @@ declare global {
       // that don't touch BYO storage still run.
       BYO_SECRET_KEK?: string;
 
+      // Tawk.to Secure Mode key (SK-WEB-025). HMAC-SHA256(email, key)
+      // authenticates the visitor's name/email to Tawk's dashboard —
+      // without it Tawk silently drops setAttributes name/email and the
+      // support operator sees only an anonymous visitor id. Optional at
+      // type level: when unset, `GET /api/tawk/identity` omits the hash
+      // and the widget falls back to the anonymous id (no crash). Copied
+      // from the Tawk dashboard's JavaScript API → Secure Mode.
+      TAWK_TO_API_KEY?: string;
+
       // Cloudflare Turnstile secret for the anonymous-create burst
       // gate (SK-ANON-007). Optional at type level: when absent the
       // burst gate skips Turnstile verification (fail-open) so
