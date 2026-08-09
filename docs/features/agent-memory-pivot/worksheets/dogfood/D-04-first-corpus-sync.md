@@ -1,6 +1,6 @@
 # D-04 — First real sync of nlqdb's own `docs/` corpus + the gate-progress readout
 
-**Status:** ⬜ not started — **only D-02 remains in the prereq chain** (verified 2026-08-01, see below)
+**Status:** ⬜ not started — **prereq chain complete, pullable now** (re-verified 2026-08-08: D-02 🟢 code-complete, `NLQDB_API_KEY` secret set 2026-08-04)
 **Sequence:** Dogfood 4 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** D-01 ✅, D-02 ⬜, ~~E-03 merged → `MEMORY_PRESET=1` in prod~~ ✅ (#851, #835) · **Gate:** none — the founder-sequenced chain completed 2026-07-29
 
 ## Goal
@@ -30,11 +30,13 @@ reached prod *after* the scoping slice, so no unscoped prod memory DB ever
 existed", [`E-03`](../engine/E-03-memory-scoping.md) *Consequence in code*).
 All three boxes the first sync run must check are checked.
 
-**The only open prereq is [`D-02`](D-02-resync-hook.md)** — and its gate is a
-founder minute: the workflow needs the `NLQDB_API_KEY` repo secret (queued in
-[`blocked-by-human.md`](../../../../blocked-by-human.md)). A run that finds
-D-02 unmerged pulls D-02 itself (low risk, 1 run); nothing else blocks this
-slice.
+**No open prereq remains** (re-verified 2026-08-08): [`D-02`](D-02-resync-hook.md)
+is 🟢 code-complete and its `NLQDB_API_KEY` repo secret was set by the founder
+2026-08-04 (`history/founder-actions-log.md` Era 5). Run 1 below provisions the
+memory DB itself through the authed create surface and sets the
+`NLQDB_MEMORY_DB` repo variable — **all agent work, no founder action**
+(founder-affirmed 2026-08-08: memory-DB provisioning is product-automated,
+never a human queue item). Nothing blocks this slice.
 
 ## Read first
 
@@ -58,9 +60,11 @@ slice.
    **authed** create surface with `{ preset: "agent_memory_v1" }`
    (`SK-PIVOT-010` — never the anon path). Mint an `sk_mcp_*` MCP key exactly as a
    stranger would, configure `npx -y @nlqdb/mcp`, run D-01's skill against
-   `docs/`. Record: rows written per table, asks issued, wall-clock, and every
-   failure verbatim — the failures are the launch post's whole value ("here's
-   what broke").
+   `docs/`. Set the new DB's id as the `NLQDB_MEMORY_DB` repo variable so
+   [`D-02`](D-02-resync-hook.md)'s `memory-sync.yml` goes live (a variable, not
+   a secret — agent-settable). Record: rows written per table, asks issued,
+   wall-clock, and every failure verbatim — the failures are the launch post's
+   whole value ("here's what broke").
 2. **Run 2 — the gate-progress readout.** Ship a repeatable way to read
    criteria 1–3 off this workload, so `/daily` step 1 can restate `n/5` each run
    without archaeology (SK-PIVOT-016 requires that restatement). Criterion 1 =
