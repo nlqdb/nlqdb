@@ -118,6 +118,9 @@ export default defineConfig(async () => {
                   OAUTH_GITHUB_CLIENT_SECRET_DEV: "test-gh-dev-secret",
                   GOOGLE_CLIENT_ID: "test-google-id",
                   GOOGLE_CLIENT_SECRET: "test-google-secret",
+                  // Tawk Secure Mode key (SK-WEB-025) — /api/tawk/identity HMACs
+                  // the session email with it. Inert for every other route.
+                  TAWK_TO_API_KEY: "test-tawk-secret-key",
                   TEST_MIGRATIONS: migrations,
                 },
               },
@@ -132,6 +135,7 @@ export default defineConfig(async () => {
               "test/cors.test.ts",
               "test/rate-limit.test.ts",
               "test/magic-link.test.ts",
+              "test/tawk-identity.test.ts",
               "test/errors-web.test.ts",
               "test/keys-mint.test.ts",
               "test/grants.test.ts",
