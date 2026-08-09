@@ -23,6 +23,7 @@ var known = map[string]struct{}{
 	"new":        {},
 	"db":         {},
 	"keys":       {},
+	"grants":     {},
 	"byollm":     {},
 	"query":      {},
 	"use":        {},

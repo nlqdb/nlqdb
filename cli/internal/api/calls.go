@@ -85,3 +85,29 @@ func (c *Client) RevokeKey(ctx context.Context, keyID string) (*RevokeKeyResult,
 	}
 	return &out, nil
 }
+
+// ListGrants hits GET /v1/grants (SK-EKP-008, EK-06). Session-only on the
+// server (requireSession); this call resolves a signed-in identity from the
+// keychain — anon callers cannot enumerate grants. Returns both sides of the
+// marketplace: grants the tenant sold (`Role == "owner"`) and grants it holds
+// (`Role == "grantee"`), active rows before revoked.
+func (c *Client) ListGrants(ctx context.Context) ([]GrantRecord, error) {
+	var out GrantsResponse
+	if err := c.do(ctx, http.MethodGet, "/v1/grants", nil, &out); err != nil {
+		return nil, err
+	}
+	return out.Grants, nil
+}
+
+// RevokeGrant hits DELETE /v1/grants/:id (SK-EKP-008). Owner-scoped and
+// idempotent — a re-DELETE on an already-revoked grant returns
+// `AlreadyRevoked: true` instead of an error. `grant_not_found` (HTTP 404)
+// surfaces as an `*APIError` from `c.do` for both an unknown id and another
+// tenant's id (no cross-tenant existence leak).
+func (c *Client) RevokeGrant(ctx context.Context, grantID string) (*RevokeGrantResult, error) {
+	var out RevokeGrantResult
+	if err := c.do(ctx, http.MethodDelete, "/v1/grants/"+url.PathEscape(grantID), nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
