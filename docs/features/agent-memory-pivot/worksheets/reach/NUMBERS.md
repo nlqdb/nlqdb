@@ -41,8 +41,8 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   explanation for every flat row here. R-10's last box (first nonzero DR) stays
   owed; the largest referring-domain events are founder-shaped (launch /
   community posts, `blocked-by-human.md` #1). **P2 note (no action needed):**
-  the free `domain-rating-free` endpoint went **auth-mandatory 2026-08-10** —
-  `ahrefs-dr.ts` already sends `Authorization: Bearer`, so it stayed live.
+  the free `domain-rating-free` endpoint goes **auth-mandatory 2026-08-10** —
+  `ahrefs-dr.ts` already sends `Authorization: Bearer`, so it is future-proofed.
   Referring-domains itself is **not** free-tier readable (`backlinks-stats` is
   Site-Explorer/paid; free test queries only accept `ahrefs.com`/`wordcount.com`
   targets) — so DR stays the only free authority read for `nlqdb.com`; do not
