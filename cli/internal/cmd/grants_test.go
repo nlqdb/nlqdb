@@ -62,8 +62,10 @@ func TestGrantsListRendersBothRoles(t *testing.T) {
 	}
 	// Both roles, the granted DB, the counterparty, and the scope render;
 	// revoked status shows on the held row.
-	for _, want := range []string{"g_owned", "owner", "db_tutor", "buyer_co", "errors,lessons",
-		"g_held", "grantee", "seller_co", "revoked"} {
+	for _, want := range []string{
+		"g_owned", "owner", "db_tutor", "buyer_co", "errors,lessons",
+		"g_held", "grantee", "seller_co", "revoked",
+	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("stdout missing %q; got %q", want, out)
 		}
