@@ -722,6 +722,24 @@ describe("orchestrateAsk", () => {
     expect(llm2.summarize).not.toHaveBeenCalled();
   });
 
+  it("EK-09: knowledge-DB (agent_memory_v1) asks skip narration by default", async () => {
+    // GLOBAL-037 lane 2 (F1-B): a buyer-facing marketplace query is
+    // schema-only end-to-end. No `skipSummary` opt-in is passed — the
+    // summarize LLM hop must still not fire, and no summary is returned.
+    const llm = stubLLM({ summary: { summary: "should never render" } });
+    const out = await orchestrateAsk(
+      makeDeps({ llm, resolveDb: vi.fn(async () => stubDb({ id: "db_agent_memory_v1_abc123" })) }),
+      {
+        goal: "what do I know about the student",
+        dbId: "db_agent_memory_v1_abc123",
+        userId: "user_1",
+      },
+    );
+    if (!out.ok) throw new Error("unreachable");
+    expect(llm.summarize).not.toHaveBeenCalled();
+    expect(out.result.summary).toBeUndefined();
+  });
+
   it("emits SSE events in order: plan_pending → plan → rows → summary", async () => {
     const events: OrchestrateEvent[] = [];
     await orchestrateAsk(

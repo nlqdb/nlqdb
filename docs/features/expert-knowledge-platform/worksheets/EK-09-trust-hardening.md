@@ -1,11 +1,14 @@
 # EK-09 — Trust hardening (F1-B): schema-only buyer queries + no-training interview provider
 
-**Status:** planned — **founder-chosen 2026-08-07** (Option B of the EK-03
+**Status:** in-flight — **founder-chosen 2026-08-07** (Option B of the EK-03
 ToS draft: harden the product so the stronger trust claim becomes true,
 then publish it) · **Repo:** nlqdb (narration skip) + `experts` (provider
 pin) · **Risk:** low–med · **Runs:** 1–2 · **Prereqs:** none for the
 knowledge-DB narration skip; EK-06 for the granted-path half; EK-05 for the
-provider pin to have a surface
+provider pin to have a surface · **Box 1 shipped 2026-08-09:**
+`orchestrateAsk` skips the summarize hop by default for `agent_memory_v1`
+DBs (`isAgentMemoryV1Db`), guarded by an `orchestrate.test.ts` assertion
+that no `summarize` call fires and no summary is returned.
 
 ## Goal
 
@@ -32,8 +35,11 @@ is literally true before it publishes.
 
 ## Done when
 
-- [ ] Knowledge-DB asks skip narration by default; test proves no
-      summarize call fires.
+- [x] Knowledge-DB asks skip narration by default; test proves no
+      summarize call fires. (2026-08-09 — `orchestrateAsk` ORs
+      `isAgentMemoryV1Db(db.id)` into the summarize skip; the
+      `EK-09: knowledge-DB … skip narration by default` test in
+      `apps/api/test/orchestrate.test.ts` asserts `summarize` is not called.)
 - [ ] Granted-path asks inherit the skip (lands with EK-06).
 - [ ] Interview provider pinned + CI-asserted in `experts`.
 - [ ] Egress test extended; EK-03's stronger copy unblocked and its

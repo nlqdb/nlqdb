@@ -15,6 +15,7 @@ import type { LLMRouter } from "@nlqdb/llm";
 import { cachePlanHitsTotal, cachePlanMissesTotal } from "@nlqdb/otel";
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import { deriveSlug } from "../databases/list.ts";
+import { isAgentMemoryV1Db } from "../db-create/presets/agent-memory-v1.ts";
 import type { ConfirmStash } from "./confirm-stash.ts";
 import { destructiveClarify } from "./destructive-clarify.ts";
 import type { DiagSink } from "./diag.ts";
@@ -173,6 +174,14 @@ export async function orchestrateAsk(
   }
   // TS narrows db.schemaHash to string after the guard above.
   const schemaHash = db.schemaHash;
+
+  // EK-09 / GLOBAL-037 lane 2 (F1-B): knowledge-DB (`agent_memory_v1`) asks
+  // skip narration by default so buyer-facing marketplace queries are
+  // schema-only end-to-end — no returned rows reach the summarize LLM hop.
+  // An explicit caller opt-in (`Accept: application/json`) still skips; a
+  // human surface re-enabling narration is a future disclosed toggle
+  // (INV-EKP-037 in SK-EKP-007), not built here.
+  const skipSummary = opts.skipSummary || isAgentMemoryV1Db(db.id);
 
   // SK-ASK-025 — hosted plan SQL is normalised to schema-relative form so
   // the plan cache stays portable across the DBs that share a
@@ -642,7 +651,7 @@ export async function orchestrateAsk(
   await safeEmit({ type: "rows", rows: result.rows, rowCount: result.rowCount });
 
   let summary: string | undefined;
-  if (!opts.skipSummary) {
+  if (!skipSummary) {
     try {
       const out = await deps.llm.summarize({ goal: req.goal, rows: result.rows });
       summary = out.summary;
