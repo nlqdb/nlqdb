@@ -2,6 +2,7 @@ import type {
   ApiErrorCode,
   AskDiff,
   CandidateDb,
+  ClarifyOption,
   NlqClient,
   NlqdbApiError,
   RememberRequest,
@@ -630,6 +631,24 @@ export function mapSdkError(err: unknown): ToolError {
         ? "Re-call with one of the alternatives in `details.alternatives`, or rephrase with the exact table/column names you mean."
         : "Rephrase your goal with the specific table or column names you mean.",
       ...(details ? { details } : {}),
+    };
+  }
+  // SK-ASK-026 — a destructive-ambiguous goal ("clear db" family) comes
+  // back as a clarify carrying re-sendable options, not a flat rejection.
+  // Surface them like `ambiguous_db`'s candidates so a host/agent can pick
+  // a concrete goal and re-call `q` with it. (The SK-ASK-014 create-vs-query
+  // clarify has no options and falls through to the generic entry.)
+  if (code === "clarify_required" && body?.clarification === "destructive_ambiguous") {
+    const options = body?.options as ClarifyOption[] | undefined;
+    return {
+      code: "clarify_required",
+      message: body?.reason ?? "That goal could mean a few different things.",
+      action: options?.length
+        ? `Re-call \`q\` with one of these goals: ${options
+            .map((o) => `"${o.goal}"`)
+            .join(", ")}. Full list in \`details.options\`.`
+        : "Re-call naming exactly which rows to change, or ask to start a new database.",
+      ...(options?.length ? { details: { options } } : {}),
     };
   }
   if (code === "ambiguous_db") {

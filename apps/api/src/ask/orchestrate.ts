@@ -16,6 +16,7 @@ import { cachePlanHitsTotal, cachePlanMissesTotal } from "@nlqdb/otel";
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import { deriveSlug } from "../databases/list.ts";
 import type { ConfirmStash } from "./confirm-stash.ts";
+import { destructiveClarify } from "./destructive-clarify.ts";
 import type { DiagSink } from "./diag.ts";
 import { buildDiff, isWriteVerb } from "./diff.ts";
 import { isReplannableExecError } from "./exec-repair.ts";
@@ -340,7 +341,15 @@ export async function orchestrateAsk(
       planConfidence = lastConfidence;
     } catch (err) {
       if (err instanceof PlanValidationError) {
-        return { ok: false, error: { status: "sql_rejected", reason: err.reason } };
+        // SK-ASK-026 — a destructive-ambiguous reject (the "clear db"
+        // family) becomes a clarify with re-sendable options instead of a
+        // flat sql_rejected dead-end. Every other reason stays sql_rejected;
+        // surfaces render honest, reason-specific copy for those.
+        const clarify = destructiveClarify(err.reason, db);
+        return {
+          ok: false,
+          error: clarify ?? { status: "sql_rejected", reason: err.reason },
+        };
       }
       // LLM provider errors can contain API keys or prompt fragments —
       // the OTel span (llm.plan, SK-LLM-006) captures the root cause.

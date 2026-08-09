@@ -145,7 +145,9 @@ func renderAPIError(cmd *cobra.Command, err error) error {
 	case "ambiguous_db":
 		printErr(cmd, "the goal matches multiple databases — re-run with `--db=<id>` to pin one.")
 	case "clarify_required":
-		printErr(cmd, "the goal looks like a creation request but a DB is pinned — re-run without `--db` to create, or rephrase.")
+		renderClarify(cmd, apiErr)
+	case "sql_rejected":
+		printErr(cmd, "%s", sqlRejectedMessage(apiErr.Reason))
 	case "db_not_found":
 		printErr(cmd, "database not found — try `nlq db list` to see what's available.")
 	case "rate_limited":
@@ -166,6 +168,62 @@ func renderAPIError(cmd *cobra.Command, err error) error {
 		printErr(cmd, "%s", apiErr.Error())
 	}
 	return err
+}
+
+// renderClarify prints a 409 clarify_required. SK-ASK-026's
+// `destructive_ambiguous` shape carries re-sendable options — print the
+// reason then a numbered, re-runnable list (the CLI equivalent of the web
+// chips / MCP choices). The SK-ASK-014 create-vs-query shape has no
+// options, so fall back to the pinned-DB hint.
+func renderClarify(cmd *cobra.Command, apiErr *api.APIError) {
+	if len(apiErr.Options) == 0 {
+		printErr(cmd, "the goal looks like a creation request but a DB is pinned — re-run without `--db` to create, or rephrase.")
+		return
+	}
+	reason := apiErr.Reason
+	if reason == "" {
+		reason = "Did you mean one of these?"
+	}
+	printErr(cmd, "%s", reason)
+	for i, opt := range apiErr.Options {
+		flag := ""
+		if opt.ForceNoPin {
+			// This option routes to the create path — drop the pin.
+			flag = " (run without --db)"
+		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "  %d. %s\n     nlq ask %q%s\n", i+1, opt.Label, opt.Goal, flag)
+	}
+}
+
+// sqlRejectedMessage turns the API's specific allowlist reject reason
+// (SK-ASK-026, `body.reason`) into honest, actionable copy. The
+// destructive-ambiguous family normally arrives as `clarify_required` with
+// options; this covers the remaining reject reasons.
+func sqlRejectedMessage(reason string) string {
+	switch reason {
+	case "drop_statement":
+		return "dropping tables isn't supported from `ask` — start a new database instead."
+	case "truncate_statement":
+		return "emptying a whole table isn't a one-shot `ask` — delete rows with a filter."
+	case "delete_without_where":
+		return "that would delete every row — add a filter, or say which rows to remove."
+	case "update_without_where":
+		return "that would update every row — add a filter (e.g. \"… where status = 'open'\")."
+	case "grant_or_revoke":
+		return "changing database permissions isn't supported from `ask`."
+	case "alter_statement":
+		return "changing a table's structure isn't supported from `ask`."
+	case "disallowed_verb":
+		return "that kind of statement isn't allowed here — ask in plain English."
+	case "disallowed_function":
+		return "that query uses a function that isn't allowed here."
+	case "multi_statement":
+		return "ask one thing at a time — that came through as multiple statements."
+	case "parse_failed", "empty":
+		return "couldn't turn that into a valid query — try rephrasing."
+	default:
+		return "that query was rejected — try rephrasing."
+	}
 }
 
 func renderAuthRequired(cmd *cobra.Command, apiErr *api.APIError) {

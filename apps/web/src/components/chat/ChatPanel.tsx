@@ -29,6 +29,7 @@ import type {
   AskDiff,
   AskOk,
   CandidateDb,
+  ClarifyOption,
   DatabaseSummary,
   SelectedDbEcho,
   TraceEvent,
@@ -53,6 +54,7 @@ import LeftRail from "./LeftRail";
 import ModelPicker, { BYOLLM_STATUS_EVENT } from "./ModelPicker";
 import Palette, { type PaletteAction } from "./Palette";
 import PmfSurveyCard from "./PmfSurveyCard";
+import ReplyChoices from "./ReplyChoices";
 import { settleInterruptedReply } from "./reply-settle";
 import Trace, { type TraceStepName, type TraceStepRecord } from "./Trace";
 import { displayTraceSteps } from "./trace-steps";
@@ -95,7 +97,16 @@ type ReplyState =
   // or query <pinned slug>?") so the user can choose; the previous
   // behaviour was a generic "That query was rejected" via the read/
   // write SQL allowlist's disallowed_verb path.
-  | { kind: "clarify"; pinnedDb: { id: string; slug: string } | null }
+  // SK-ASK-014 `create_or_query_pinned` carries `pinnedDb` (create/cancel
+  // chip). SK-ASK-026 `destructive_ambiguous` carries `options` + `prompt`
+  // (the "clear db" family): render one chip per option, each re-sending
+  // its goal, instead of dead-ending on "That query was rejected".
+  | {
+      kind: "clarify";
+      pinnedDb: { id: string; slug: string } | null;
+      options?: ClarifyOption[];
+      prompt?: string;
+    }
   // `code` is the NlqdbApiError.code (when the failure came from the API) so
   // the free-model nudge can fire only on model-quality failures, not on
   // rate-limit / network / auth noise (SK-PREMIUM-004).
@@ -476,15 +487,23 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
           }));
           return;
         }
-        // SK-ASK-014: 409 clarify_required carries `pinned_db` — the
-        // user pinned a DB but the classifier returned kind=create.
-        // Render a chip with two actions ("Create new database" /
-        // "Cancel") rather than the generic rejection message.
+        // 409 clarify_required. SK-ASK-014 (`create_or_query_pinned`)
+        // carries `pinned_db` → create/cancel chip. SK-ASK-026
+        // (`destructive_ambiguous`, the "clear db" family) carries
+        // `options` + `reason` → one chip per option. Either way we render
+        // a next action rather than the generic rejection message.
         if (err instanceof NlqdbApiError && err.code === "clarify_required") {
           const pinned = err.body?.pinned_db ?? null;
+          const options = err.body?.options;
+          const prompt = err.body?.reason;
           updateReply(replyId, (reply) => ({
             ...reply,
-            state: { kind: "clarify", pinnedDb: pinned },
+            state: {
+              kind: "clarify",
+              pinnedDb: pinned,
+              ...(options ? { options } : {}),
+              ...(prompt ? { prompt } : {}),
+            },
           }));
           return;
         }
@@ -539,6 +558,14 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
   // a fresh DB into the rail and re-pinning it for the next send.
   function acceptClarifyCreate(replyId: string, goal: string) {
     void startSend(goal, { replyId, forceNoPin: true });
+  }
+
+  // SK-ASK-026 — clicking a destructive-clarify option re-sends its goal.
+  // `forceNoPin` routes to the create path (the "start fresh" option);
+  // otherwise the goal re-plans against the pinned DB (the per-table
+  // "empty" options). Same re-send path as the SK-ASK-014 create chip.
+  function pickClarifyOption(replyId: string, goal: string, option: ClarifyOption) {
+    void startSend(goal, { replyId, ...(option.forceNoPin ? { forceNoPin: true } : {}) });
   }
 
   function cancelClarify(replyId: string) {
@@ -825,6 +852,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
                   onPickCandidate={(dbId) => pickCandidate(msg.reply.id, msg.reply.goal, dbId)}
                   onClarifyCreate={() => acceptClarifyCreate(msg.reply.id, msg.reply.goal)}
                   onClarifyCancel={() => cancelClarify(msg.reply.id)}
+                  onClarifyOption={(option) => pickClarifyOption(msg.reply.id, option.goal, option)}
                 />
               </li>
             ),
@@ -890,6 +918,7 @@ function ReplyView({
   onPickCandidate,
   onClarifyCreate,
   onClarifyCancel,
+  onClarifyOption,
 }: {
   reply: Reply;
   pkLive: string | null;
@@ -908,6 +937,8 @@ function ReplyView({
   // `onClarifyCancel` dismisses the reply with a "rephrase" hint.
   onClarifyCreate: () => void;
   onClarifyCancel: () => void;
+  // SK-ASK-026: clicking a destructive-clarify option re-sends its goal.
+  onClarifyOption: (option: ClarifyOption) => void;
 }) {
   const ok = reply.state.kind === "ok" ? reply.state.ok : null;
   const needsConfirm = reply.state.kind === "needs-confirm" ? reply.state.diff : null;
@@ -964,56 +995,58 @@ function ReplyView({
             );
           })()
         : null}
+      {/* SK-ASK-009 DB picker — same reply-choices rail as the clarify chips. */}
       {ambiguous ? (
-        <div className="chat-reply__ambiguous">
-          <p className="chat-reply__ambiguous-prompt">
-            Which database did you mean?
-            {ambiguous.reason ? (
-              <span className="chat-reply__ambiguous-reason"> ({ambiguous.reason})</span>
-            ) : null}
-          </p>
-          <ul className="chat-reply__candidates">
-            {ambiguous.candidates.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  className="btn btn--ghost"
-                  onClick={() => onPickCandidate(c.id)}
-                  title={c.slug}
-                >
-                  {displayName(c.id)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ReplyChoices
+          prompt={
+            <>
+              Which database did you mean?
+              {ambiguous.reason ? <span> ({ambiguous.reason})</span> : null}
+            </>
+          }
+          choices={ambiguous.candidates.map((c) => ({
+            label: displayName(c.id),
+            onSelect: () => onPickCandidate(c.id),
+            title: c.slug,
+          }))}
+        />
       ) : null}
+      {/* SK-ASK-026 destructive-clarify options (per-table "empty" + "start
+          fresh"), else the SK-ASK-014 create/cancel clarify. Both are
+          re-sendable choices on the shared ReplyChoices rail. */}
       {clarify ? (
-        <div className="chat-reply__clarify">
-          <p className="chat-reply__clarify-prompt">
-            Looks like you want to create something new.{" "}
-            {clarify.pinnedDb ? (
+        clarify.options && clarify.options.length > 0 ? (
+          <ReplyChoices
+            prompt={clarify.prompt ?? "Did you mean one of these?"}
+            choices={[
+              ...clarify.options.map((option) => ({
+                label: option.label,
+                onSelect: () => onClarifyOption(option),
+              })),
+              { label: "Cancel", onSelect: onClarifyCancel },
+            ]}
+          />
+        ) : (
+          <ReplyChoices
+            prompt={
               <>
-                Spin up a fresh database, or rephrase to query{" "}
-                <code>{displayName(clarify.pinnedDb.id)}</code>?
+                Looks like you want to create something new.{" "}
+                {clarify.pinnedDb ? (
+                  <>
+                    Spin up a fresh database, or rephrase to query{" "}
+                    <code>{displayName(clarify.pinnedDb.id)}</code>?
+                  </>
+                ) : (
+                  <>Spin up a fresh database, or rephrase your request?</>
+                )}
               </>
-            ) : (
-              <>Spin up a fresh database, or rephrase your request?</>
-            )}
-          </p>
-          <ul className="chat-reply__clarify-actions">
-            <li>
-              <button type="button" className="btn btn--accent" onClick={onClarifyCreate}>
-                Create new database
-              </button>
-            </li>
-            <li>
-              <button type="button" className="btn btn--ghost" onClick={onClarifyCancel}>
-                Cancel
-              </button>
-            </li>
-          </ul>
-        </div>
+            }
+            choices={[
+              { label: "Create new database", onSelect: onClarifyCreate, variant: "accent" },
+              { label: "Cancel", onSelect: onClarifyCancel },
+            ]}
+          />
+        )
       ) : null}
       <Answer summary={summary} pending={pending} />
       <Data rows={rows} rowCount={rowCount} pending={pending} />
