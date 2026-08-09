@@ -54,11 +54,21 @@ export type ModelHealth = { degraded: false } | { degraded: true; ranOn: string 
 export function resolveModelHealth(
   configuredModel: string | null,
   lastModel: string | null | undefined,
+  // Whether `lastModel` is an answer produced *under the current credential*.
+  // An answer that predates the credential (the user just switched keys, or was
+  // on the free chain when it ran) says nothing about whether THIS key answers,
+  // so it must never trip the degrade — otherwise selecting a new model would
+  // inherit the previous model's fallback answer and falsely read as "not
+  // answering" before the user has asked a single question with it (#948).
+  lastModelUnderCurrentCredential: boolean,
 ): ModelHealth {
   // No key configured, or no answer yet ⇒ nothing to reconcile. (On the free
   // chain there is no promised model, so a differing `lastModel` is expected
   // and not a degrade.)
   if (!configuredModel || !lastModel) return { degraded: false };
+  // The only answer that can prove or disprove the current key is one produced
+  // after it was selected. Before that, we have no evidence — stay silent.
+  if (!lastModelUnderCurrentCredential) return { degraded: false };
   // A BYOLLM answer's `trace.model` is upstream-qualified (`${upstream}/${model}`,
   // byollm.ts) while the configured credential is the bare model id — so an
   // exact match only happens for OpenRouter. Treat a qualified suffix match as
