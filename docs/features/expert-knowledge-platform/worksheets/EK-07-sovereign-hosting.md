@@ -1,9 +1,14 @@
 # EK-07 — Sovereign hosting, 1-click (SK-EKP-001 roadmap)
 
-**Status:** planned — deliberately after the marketplace has a first expert
+**Status:** in-flight — deliberately after the marketplace has a first expert
 to serve; must not delay EK-04–06 · **Repo:** nlqdb · **Risk:** high ·
 **Runs:** multi · **Prereqs:** EK-03 shipped (the roadmap claim exists
-publicly); own `P2` research pass before any build
+publicly); own `P2` research pass before any build · **Box 1 shipped
+2026-08-09:** the `P2` research/design pass →
+[`SK-EKP-009`](../decisions/SK-EKP-009-sovereign-hosting-design.md) (v1 =
+own-machine via `WS-11`; cloud-account targets v2; a sovereign DB leaves the
+`SK-EKP-008` broker). The build (boxes 2–3) stays deferred behind its hard
+prereq — the `WS-11` self-host image must ship and run first.
 
 ## Goal
 
@@ -28,7 +33,10 @@ Scope stakes (the research pass refines, the decision record then locks):
 
 ## Done when
 
-- [ ] Research pass done; design record minted as a new SK-EKP decision.
+- [x] Research pass done; design record minted as a new SK-EKP decision.
+      (2026-08-09 — `SK-EKP-009`: v1 own-machine via `WS-11`, cloud targets
+      v2, `pg_dump` move, sovereign-DB-out-of-broker boundary; build gated on
+      `WS-11`.)
 - [ ] v1 journey ships the contract above for at least one provider +
       on-prem.
 - [ ] Trust copy upgraded **only after** a real expert completes the walk

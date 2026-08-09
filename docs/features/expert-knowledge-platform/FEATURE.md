@@ -241,6 +241,10 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 
 **Body:** [`decisions/SK-EKP-008-grant-primitive-design.md`](decisions/SK-EKP-008-grant-primitive-design.md). Confirms EK-02's baseline and settles its five questions: billable unit = the successfully-executed authorized query (row-count-independent, required idempotency key, broker-synthesized when absent); schema free for introspection, rows are the paid product; in-place execution with per-grant rate limits (read-replica escape hatch parked with trigger); merchant-of-record routed to the founder's SK-EKP-002 ship-time call; buyer identity v1 = tenant API key. Scope enforced at validation (join/subquery reach rejected before execution) plus non-owner role plus per-table FORCE RLS; revocation fail-closed ≤30 s incl. in-flight statement timeout; v1 grants on platform-provisioned hosted DBs only.
 
+### SK-EKP-009 — Sovereign hosting, 1-click: v1 = own-machine via the WS-11 container; cloud-account targets are v2; a sovereign DB leaves the marketplace broker
+
+**Body:** [`decisions/SK-EKP-009-sovereign-hosting-design.md`](decisions/SK-EKP-009-sovereign-hosting-design.md). The EK-07 `P2` research/design pass, resolved from the values per `GLOBAL-033`: v1 sovereign target is own-machine (on-prem) via the `WS-11` self-host image — fewest support surfaces, strongest "possession" claim — with cloud-account (Launch-Stack style) targets deferred to v2, one provider at a time, only after a first expert completes the on-prem walk. DB move = `pg_dump`/restore (small knowledge DBs; logical replication parked-with-trigger). Load-bearing boundary: a sovereign DB leaves `SK-EKP-008`'s platform-provisioned scope, so it is **not brokerable** — in v1 an expert either sells brokered access to a hosted DB *or* takes possession; selling into a sovereign DB is a future decision, deny-by-default. Build (EK-07 boxes 2–3) is hard-gated on `WS-11` shipping; changes no trust copy (that is EK-07 box 3, gated on a real expert walk).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per
