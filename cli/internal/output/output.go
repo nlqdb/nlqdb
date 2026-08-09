@@ -79,6 +79,42 @@ func (w *Writer) WriteKeys(rows []api.KeyRecord) error {
 	return tw.Flush()
 }
 
+// WriteGrants renders the inventory from `nlq grants list` — both sides of
+// the marketplace in one list (SK-EKP-008): grants the tenant sold
+// (role "owner") and grants it holds (role "grantee"). Mirrors the keys
+// layout. `priceModel` is an opaque private-surface tag (SK-EKP-002/003) and
+// never surfaces in human output; `--json` carries the raw row through.
+func (w *Writer) WriteGrants(rows []api.GrantRecord) error {
+	if w.Format == FormatJSON {
+		return w.JSON(map[string]any{"grants": rows})
+	}
+	if len(rows) == 0 {
+		_, err := fmt.Fprintln(w.Err, "No grants yet. Grants are minted from the marketplace selling flow.")
+		return err
+	}
+	tw := tabwriter.NewWriter(w.Out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "ID\tROLE\tDB\tCOUNTERPARTY\tSCOPE\tCREATED\tSTATUS")
+	for _, r := range rows {
+		status := "active"
+		if r.RevokedAt != nil {
+			status = "revoked " + formatRelative(*r.RevokedAt)
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			r.ID, r.Role, r.DBID, grantCounterparty(r), strings.Join(r.Scope, ","),
+			formatRelative(r.CreatedAt), status)
+	}
+	return tw.Flush()
+}
+
+// grantCounterparty is the other tenant in the grant: the buyer you sold to
+// (role "owner") or the seller whose DB you query (role "grantee").
+func grantCounterparty(r api.GrantRecord) string {
+	if r.Role == "owner" {
+		return r.GranteeTenantID
+	}
+	return r.OwnerTenantID
+}
+
 func keyLabel(r api.KeyRecord) string {
 	if r.MCPHost != nil && r.DeviceID != nil {
 		return fmt.Sprintf("%s on %s", *r.MCPHost, *r.DeviceID)

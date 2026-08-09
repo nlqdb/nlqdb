@@ -51,9 +51,12 @@ satisfy):
 - [ ] Revocation latency measured and within the EK-02 bound — including
       the in-flight half (`statement_timeout` ≤ the 30 s cache bound; the
       env knob may only tighten).
-- [~] SDK/CLI/MCP/elements updated or gap tracked. *(2026-08-08 — SDK done:
+- [x] SDK/CLI/MCP/elements updated or gap tracked. *(SDK 2026-08-08:
       `mintGrant`/`listGrants`/`revokeGrant`, session-only, mirroring the key
-      verbs. CLI (`nlq grants list/revoke`) is the remaining surface, a
-      follow-up run. MCP + elements are out-of-scope-by-design — a session-only
-      cross-tenant control-plane op never rides a bearer or a display element;
-      rationale recorded in the FEATURE.md gap note.)*
+      verbs. CLI 2026-08-09: `nlq grants list/revoke`, session-only, mirroring
+      `nlq keys` — `GET /v1/grants` + `DELETE /v1/grants/:id`, no `mint` verb
+      (minting is the marketplace selling flow, not the terminal). MCP +
+      elements are out-of-scope-by-design — a session-only cross-tenant
+      control-plane op never rides a bearer or a display element; rationale in
+      the FEATURE.md gap note. The `GLOBAL-003` surface-parity gap is closed;
+      EK-06's engine boxes 2–4 remain the slice's open work.)*

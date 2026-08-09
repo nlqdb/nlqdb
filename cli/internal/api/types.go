@@ -184,3 +184,35 @@ type RevokeKeyResult struct {
 	OK             bool `json:"ok"`
 	AlreadyRevoked bool `json:"alreadyRevoked"`
 }
+
+// GrantRecord mirrors the `GET /v1/grants` row (SK-EKP-008, EK-06). Both
+// sides of the marketplace in one list: grants the tenant sold
+// (`Role == "owner"`) and grants it holds (`Role == "grantee"`). `DBID` is
+// the granted knowledge DB; `PriceModel` is an opaque private-surface tag
+// (SK-EKP-002/003) — the CLI passes it through in `--json` but never renders
+// it in human output. `RevokedAt` is a pointer so an active grant's JSON
+// `null` round-trips distinct from a zero timestamp (mirrors KeyRecord).
+type GrantRecord struct {
+	ID              string   `json:"id"`
+	Role            string   `json:"role"`
+	DBID            string   `json:"dbId"`
+	OwnerTenantID   string   `json:"ownerTenantId"`
+	GranteeTenantID string   `json:"granteeTenantId"`
+	Scope           []string `json:"scope"`
+	PriceModel      string   `json:"priceModel,omitempty"`
+	Status          string   `json:"status"`
+	CreatedAt       int64    `json:"createdAt"`
+	RevokedAt       *int64   `json:"revokedAt"`
+}
+
+type GrantsResponse struct {
+	Grants []GrantRecord `json:"grants"`
+}
+
+// RevokeGrantResult mirrors the SDK's `RevokeGrantResult`. `AlreadyRevoked`
+// is true when the call was a no-op replay on an already-revoked grant
+// (SK-EKP-008 — idempotent re-DELETE).
+type RevokeGrantResult struct {
+	OK             bool `json:"ok"`
+	AlreadyRevoked bool `json:"alreadyRevoked"`
+}
