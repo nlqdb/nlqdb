@@ -237,6 +237,10 @@ const pkLiveCors = cors({
 });
 
 app.use("/api/auth/*", credentialedCors);
+// The Tawk identity probe is a cookie-authed same-origin GET in prod/preview,
+// but local dev serves web (4321) and api (8787) cross-origin — same as the
+// session probe it mirrors, so it needs the same credentialed CORS handler.
+app.use("/api/tawk/*", credentialedCors);
 // `/v1/ask` is hit by both trusted origins (cookie / anon-bearer from
 // the product UI + marketing site) and arbitrary third-party origins
 // carrying `Bearer pk_live_*`. Chaining `cors()` middleware doesn't
