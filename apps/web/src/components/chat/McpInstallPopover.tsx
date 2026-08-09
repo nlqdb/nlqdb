@@ -11,13 +11,16 @@
 // LeftRail's delete dialog uses), click-outside-to-close via a scrim, and
 // restores focus to the trigger on close (`useRestoreFocusOnUnmount`).
 //
-// The hosted MCP (mcp.nlqdb.com) authenticates via OAuth, so the
-// placeholder-key default is correct here — the sign-in nudge in the
-// shared view still points at inlining a per-DB `pk_live_` for element
-// embeds, matching Door A / `/integrations`.
+// The hosted MCP (mcp.nlqdb.com) authenticates via OAuth, so the configs
+// carry no `pk_live_` key to inline. This venue is also signed-in-only —
+// `/app`'s page guard bounces anon visitors to sign-in before the shell
+// paints — so the shared view's "Sign in (free)" anon nudge would be
+// nonsensical here. We pass `signedIn` (from the cached session probe) to
+// suppress it; the rest of the surface is the shared `<McpInstallView>`.
 
 import { useEffect, useRef, useState } from "react";
 import { useFocusTrap, useRestoreFocusOnUnmount } from "../../lib/dialog";
+import { fetchSession } from "../../lib/session";
 import McpInstallView from "../McpInstallView";
 
 export default function McpInstallPopover() {
@@ -41,6 +44,20 @@ export default function McpInstallPopover() {
 function McpInstallDialog({ onClose }: { onClose: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  // Signed-in-only venue (see header) — start optimistic so the nudge
+  // never flashes before the probe resolves, and only reveal it if the
+  // cached session probe comes back anonymous (a session expired between
+  // page load and opening the dialog).
+  const [signedIn, setSignedIn] = useState(true);
+  useEffect(() => {
+    let active = true;
+    void fetchSession().then((user) => {
+      if (active) setSignedIn(user != null);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   useRestoreFocusOnUnmount(() =>
     typeof document === "undefined"
       ? null
@@ -90,7 +107,7 @@ function McpInstallDialog({ onClose }: { onClose: () => void }) {
           Give your agent a database it can talk to. Pick your tool — Cursor and Claude are one
           click.
         </p>
-        <McpInstallView />
+        <McpInstallView signedIn={signedIn} />
       </div>
     </div>
   );
