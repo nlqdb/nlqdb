@@ -198,6 +198,18 @@ of the EK docs against both repos:
   `/ek` only pulls EK-numbered slices, so after EK-06's boxes the track
   stalls into null runs. **Needs a call:** either `/ek` may build the D-08
   runner core when it's the EK bottleneck, or D-08 gets pulled explicitly.
+- **The secrets rule has no enforcement on the public rail either.**
+  `SK-PIVOT-018` ("credential metadata, never values") has zero code
+  enforcement in nlqdb — `apps/api/src/memory/remember.ts` and the MCP
+  `nlqdb_remember` tool accept secret-shaped content freely (checked:
+  no detector exists anywhere in `apps/`/`packages/` non-test code).
+  experts#3's `src/interview/secrets.ts` is instance #1 of the category
+  "secret-shape rejection at agent-memory write surfaces" (≥3 real
+  instances: experts interview · `/v1/memory` write path · MCP tool).
+  The leverage move is server-side enforcement in the memory write path —
+  one enforcement point covering every writer, and per `SK-EKP-003`'s own
+  rule this is a public-rail gap, not something `experts` should keep
+  private. Extraction trigger: the next write surface that needs the rule.
 - **Two locked decisions collide on the roadmap.** `SK-EKP-001` sells
   sovereign hosting as the trust upgrade; `SK-EKP-008` mints v1 grants on
   **platform-provisioned hosted DBs only** — so the expert who takes the
