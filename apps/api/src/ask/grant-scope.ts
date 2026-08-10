@@ -58,10 +58,13 @@ export type GrantScopeResult =
 //
 // `scope` is the grant row's table list; it is already lower-cased and
 // shape-checked at mint (`grants.ts` `validateScope`). Referenced table
-// names are lower-cased for the membership test: v1 grants are
-// platform-provisioned hosted DBs whose identifiers are unquoted
-// lower-case, so a quoted mixed-case identifier can never match a scope
-// entry and correctly falls out of scope.
+// names are lower-cased for the membership test, mirroring Postgres's own
+// case-folding of *unquoted* identifiers (`Lessons` → `lessons`). v1 grants
+// are platform-provisioned hosted DBs whose identifiers are only ever
+// unquoted lower-case, so a quoted mixed-case reference (`"Lessons"`) can
+// resolve only to that same lower-case relation or to nothing — it can
+// never name a distinct out-of-scope table, so lower-casing here cannot
+// smuggle one past the check.
 export function validateGrantScope(rawSql: string, scope: string[]): GrantScopeResult {
   const base = validateSql(rawSql);
   if (!base.ok) return { ok: false, reason: "not_allowed", detail: base.reason };

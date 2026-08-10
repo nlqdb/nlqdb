@@ -78,6 +78,37 @@ describe("validateGrantScope — join-leakage is rejected", () => {
     const res = validateGrantScope("SELECT id FROM lessons UNION SELECT id FROM billing", SCOPE);
     expect(res).toEqual({ ok: false, reason: "out_of_scope", detail: "billing" });
   });
+
+  // CTE-name shadowing must not mask a real out-of-scope read. A CTE named
+  // after the target table, defined in an *inner* scope, does not shadow the
+  // outer real-table reference — the guard must still see `billing`.
+  it("an inner CTE named after a non-granted table does not mask the outer read", () => {
+    const res = validateGrantScope(
+      "SELECT * FROM billing WHERE id IN (WITH billing AS (SELECT id FROM lessons) SELECT id FROM billing)",
+      SCOPE,
+    );
+    expect(res).toEqual({ ok: false, reason: "out_of_scope", detail: "billing" });
+  });
+
+  it("a same-named CTE in a sibling UNION subquery does not mask the outer arm", () => {
+    const res = validateGrantScope(
+      "SELECT id FROM billing UNION SELECT id FROM (WITH billing AS (SELECT 1 AS id) SELECT id FROM billing) q",
+      SCOPE,
+    );
+    expect(res.ok).toBe(false);
+    expect(res.ok ? "" : res.detail).toBe("billing");
+  });
+
+  it("a CTE reading a non-granted table in its own body is not masked by its own name", () => {
+    // Non-recursive CTE bodies cannot see their own name in Postgres, so the
+    // inner `FROM billing` is the real out-of-scope table, not the CTE.
+    const res = validateGrantScope(
+      "WITH billing AS (SELECT * FROM billing) SELECT * FROM billing",
+      SCOPE,
+    );
+    expect(res.ok).toBe(false);
+    expect(res.ok ? "" : res.detail).toBe("billing");
+  });
 });
 
 describe("validateGrantScope — schema widening never widens a grant", () => {
