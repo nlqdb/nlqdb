@@ -54,6 +54,9 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 - `apps/api/src/ask/grant-scope.ts` — the EK-06 box-2 validation-layer
   scope guard (`SK-EKP-008` guardrail #1: join-leakage rejected before
   execution; read-only; deny-by-default)
+- `apps/api/src/grant-status.ts` — the EK-06 box-4 revocation-latency bound
+  (`SK-EKP-008` ≤30 s ceiling for both the NEW-query status cache and the
+  in-flight `statement_timeout`; env-tunable downward only; fail-closed)
 
 ## Decisions
 
