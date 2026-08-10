@@ -32,9 +32,11 @@ public SDK/API. **How the private surface reuses the public runner**
 (published package vs hosted journey embed) is an explicit EK-01/EK-05
 design output — do not fake-decide it here.
 
-Until agent sessions can reach `experts` (founder created it 2026-08-05;
-workspace access is a founder/admin action), private-half slices are
-**parked**, not blocked-silently: their public-rail halves proceed.
+Direct agent push to `experts` is **confirmed working 2026-08-10** (workspace
+access landed; this run pushed a branch and PR #1 merged there earlier), so
+private-half slices are no longer parked-on-access — they proceed on their own
+prereqs (EK-05 boxes 1–3 still gate on EK-04's write-path and EK-06's live
+grant execution).
 
 ## Sequence
 
@@ -100,7 +102,7 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
 - [x] EK-02 — grant-primitive design record + decision (SK-EKP-008, #919; hardened 2026-08-07 after Fable review)
 - [ ] EK-03 — trust surface (landing + copy + ToS/DPA delta)
 - [ ] EK-04 — pilot authoring rails (language-tutor expert pack, public half)
-- [ ] EK-05 — marketplace surface v0 (`experts`) — parked until agent access
+- [ ] EK-05 — marketplace surface v0 (`experts`) — unparked 2026-08-10 (direct agent push confirmed); box 4 boundary guard shipped, boxes 1–3 gated on EK-04/EK-06
 - [ ] EK-06 — grant primitive implementation
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
