@@ -18,18 +18,22 @@ yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-in
 Acquisition levers stay pullable when no dogfood lever is — as does premium-chain work
 (`SK-LLM-017`, row #20), one rank below.
 
-**Worst number today (run 173, 2026-08-08):** the **weekly-focus `SK-PIVOT-016` dogfood gate 0/5**
-stays the worst number — **dark (rule 8, 12+ consecutive runs …166/167/168/170/171/172/173)** and **not
-pullable**: criteria 1/2/3/5 gate on **D-04** (prod `NLQDB_MEMORY_DB` + the queue-#2 `NLQDB_API_KEY`
-secret) and criterion **4** (ops-temporal 0/4) has **no GLOBAL-037-compliant agent-movable lever**
-(E-09's two unblock paths are both non-daily). **This run is a rule-7 distribution-yield measurement run**
+**Worst number today (run 173, 2026-08-08; blocker citation corrected by /weekly 08-08/09):** the
+**weekly-focus `SK-PIVOT-016` dogfood gate 0/5** stays the worst number — but its rule-8 dark marking
+was **stale**: `NLQDB_API_KEY` was set 2026-08-04 (`founder-actions-log.md` Era 5). **Live-tested
+08-09**: the key auths (`GET /v1/databases` 200) but preset create returns **401** (cookie-session-only)
+— so **D-04 is one 1-run API change from pullable**: extend preset create to user-scoped keys
+(SK-PIVOT-010 as amended 08-09, founder-directed), then D-04 moves criteria 1/2/3 and D-06 →
+criterion 5. Only criterion **4** (ops-temporal 0/4) stays blocked (E-09, GLOBAL-037 — both unblock
+paths non-daily). **This run is a rule-7 distribution-yield measurement run**
 (runs 168–172 were **5 consecutive distribution content-page pulls** — a 6th is anti-rut-forbidden). Per
 rule 7 this run **measured the distribution lever's yield live** (fresh RUM + GSC reads, replacing carried
 data) rather than shipping page #41. **Measured delta: real-browser visit floor 52 → 63 pl (+11), GSC
 impressions 587 → 640 (+53, pos flat 19.7 → 19.9), referral yield flat 13 pl, 3/6 wedge pages indexed** —
 the finding is in "Last change". **Next run must diversify** (a non-content lane) per rule 7.
-**Weekly-focus gate (don't overwrite mid-week):** dogfood **0/5**, unchanged — no agent-movable lever
-this run (D-04 secret-blocked; criterion 4 GLOBAL-037-blocked).
+**Weekly-focus gate (don't overwrite mid-week):** dogfood **0/5**, unchanged this run — **the next
+run's lever is the preset-create-for-keys change, then D-04** (live-tested 08-09, see above);
+criterion 4 stays GLOBAL-037-blocked.
 **Top `blocked-by-human` bullet:** fire the Show HN launch sequence (⏱ ~30 min,
 **idle 56 days since 06-13**) — the only bullet that can move real strangers off 0, still
 condition-gated on the `SK-PIVOT-016` gate (0/5). #2 = submit nlqdb to the Anthropic **connector
@@ -38,7 +42,8 @@ since 08-07, from /ek #923). Queue **depth 3**, head age 56 d is the real cycle 
 **Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** (13 d) / **#9 Spider 0.2222** (**20 d**
 stale — resume deferred: async multi-window, `main` moved since the 07-27 checkpoint); rows **#4/#5/#16**
 stranger-dependent (N = 0 until launch); row **#15** opencheck (free-lane saturation, remedy costs money ⇒
-rule 4); dogfood gate criteria (D-04 secret-blocked, E-09 GLOBAL-037-blocked).
+rule 4); dogfood criterion 4 only (E-09 GLOBAL-037-blocked) — **D-04 exited dark 08-04** (secret set;
+live-tested 08-09: one API change remains, top block).
 
 **Rule 6 — GREEN.** Branch based on `main@a0245a3` (reach R-10 #922). Deploy state verified live this run:
 **Deploy API** (run 515) + **Deploy web** (run 363) both last **success** on the current main HEAD SHA
@@ -121,8 +126,9 @@ next run must diversify off the content-page lane** — either strengthen the si
 climb from page 4 (a different sub-lever), or pull a non-content acquisition/UX lever. A 6th new page is
 forbidden and, on this evidence, would not have moved a converting number anyway.
 
-**Why not a different lever this run.** Weekly focus (dogfood 0/5) is dark (rule 8, 12+ runs: D-04 prod
-secret + GLOBAL-037). Engine #8/#9 dark (async resume, `main` moved). Lane-2 walkers can't run in-container
+**Why not a different lever this run.** Weekly focus (dogfood 0/5) was carried dark (rule 8) — a
+citation the 08-08 /weekly found stale: the secret was set 08-04; live-tested 08-09 — **one API
+change, then D-04** (top block). Engine #8/#9 dark (async resume, `main` moved). Lane-2 walkers can't run in-container
 (row #21 Chromium 1194 vs pinned 1223) and run 172 confirmed no genuine UX defect. Lane-3 docs-ambiguity is
 rutted (164/165/167) and `/ek`-owned. So the rule-7 yield measurement — the sanctioned anti-rut action — is
 the honest output; it converts two stale carried rows (#1 08-06, #7 run 167) into live reads and produces the

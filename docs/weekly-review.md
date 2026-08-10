@@ -5,26 +5,27 @@ changelog). Worst finding first. Window 2026-08-01→08-08: `/daily` runs
 165–173, `/reach` R-10 (#908/#914/#922/#929), and the new `/ek` track
 (#917–#940, ~11 PRs).
 
-## Worst finding — the weekly-focus gate's one live blocker is off the founder queue (check 4)
+## Worst finding — the weekly focus sat dark on a stale citation; a live test pins the real blocker (check 4)
 
-The founder-set weekly focus is the
+The founder-set weekly focus, the
 [`SK-PIVOT-016`](features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
-dogfood gate (**0/5**, dark 12+ `/daily` runs). Its dependency chain is now
-agent-complete: D-02b convergent sync + `memory-sync.yml` shipped (worksheet
-🟢 code-complete) and the `NLQDB_API_KEY` secret was **set by the founder
-2026-08-04** (`history/founder-actions-log.md` line 108). Exactly **one**
-human action remains — provision the prod `agent_memory_v1` memory DB and set
-the `NLQDB_MEMORY_DB` repo variable (D-04) — and it was **not a ranked bullet
-in `blocked-by-human.md`**; it lived only in a parenthetical note (line 54)
-and inside D-04's worksheet. Meanwhile the scorecard (line 23) still cites the
-**already-resolved** `NLQDB_API_KEY` as a live gate blocker and mis-locates it
-as "queue-#2" (queue #2 is the Anthropic directory). So the founder's queue
-showed **no action** for the single $0, ~10-min step that unblocks their own
-weekly focus — the same archetype the 2026-07-18 review caught for row #15.
-**Fixed this PR:** added as ranked bullet #1 in `blocked-by-human.md` (blocked
-since 08-04); it unblocks D-04 → gate criteria 1/2/3 and D-06 → criterion 5
-(to 4/5). Criterion 4 (temporal engine axis) stays separate (E-09,
-GLOBAL-037), so the gate cannot reach 5/5 on the secret alone.
+dogfood gate (**0/5**), was carried "dark, not pullable" citing the
+`NLQDB_API_KEY` secret — which the founder set **2026-08-04**
+(`history/founder-actions-log.md` line 108), with D-02b sync 🟢. A **live
+prod test (2026-08-09)** then pinned what actually remains: the repo-secret
+key authenticates (`GET /v1/databases` → 200) but
+`POST /v1/databases { preset: "agent_memory_v1" }` returns **401** — the
+create verb was cookie-session-only (SK-PIVOT-010) while `remember`/`query`
+already accept user-scoped keys. So the gate is **one 1-run API change from
+pullable**: extend preset create to user-scoped principals
+(founder-directed 2026-08-09 — provisioning is product-automated, many DBs /
+many clients, never a human queue item; SK-PIVOT-010 amended accordingly,
+`anon`/`pk_live` still rejected). This review erred twice before landing
+here: #954 queued the provision on the founder (rule-4/GLOBAL-033 violation,
+founder-flagged), and the same-day correction over-claimed "pullable now" —
+refuted by the live 401. **Direction: next `/daily` ships the create change,
+then D-04** (criteria 1/2/3; D-06 → criterion 5 follows). Criterion 4 stays
+a separate engine problem (E-09, GLOBAL-037).
 
 ## Monoculture — distribution content, no conversion yield (check 2)
 

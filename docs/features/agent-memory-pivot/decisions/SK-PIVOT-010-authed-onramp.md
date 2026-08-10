@@ -13,7 +13,8 @@
   `preset` unless `MEMORY_PRESET=1`;
   (2) the companion `POST /v1/memory/remember` write verb rejects `anon`
   (`auth_required`) and `pk_live` (`forbidden`, read-only) — only a
-  user-session key writes memory; (3) `CreateForm` is
+  user-scoped principal (a session or an `sk_live_`/`sk_mcp_` key) writes
+  memory; (3) `CreateForm` is
   anon-only by contract — it always sends `credentials:"omit"` + an anon
   bearer so the device-cap → sign-in handoff works (SK-ANON-008), so it
   structurally cannot call a `requireSession` endpoint. The memory wedge is
@@ -32,3 +33,14 @@
   endpoint** — opens the product to anon memory DBs, violating the pivot's
   authed-on-ramp rule. · **Ship the `/agents` preset UI now against the dark
   flag** — every visitor hits `preset_disabled` 400; a broken on-ramp.
+- **Amended 2026-08-09 (founder-directed, live session):** memory-DB
+  provisioning must be product-automated — agents create these DBs at scale
+  (many DBs, many clients), so a human can never be a per-DB step. The preset
+  create therefore additionally accepts **user-scoped principals**
+  (`sk_live_` / `sk_mcp_`) — the same classes boundary (2) already trusts to
+  *write* memory; `anon` and `pk_live` stay rejected, so the anon boundary
+  and the authed-on-ramp rule are unchanged. Live-tested the same day against
+  prod: `POST /v1/databases { preset: "agent_memory_v1" }` with an `sk_mcp_`
+  key returned **401** under the pre-amendment boundary (list with the same
+  key returned 200) — the change implementing this amendment is the D-04
+  chain's opening lever.

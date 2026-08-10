@@ -35,15 +35,17 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~10 min | Provision the prod `agent_memory_v1` memory DB + set the `NLQDB_MEMORY_DB` repo variable — turns on the code-complete dogfood sync (D-02b/D-04); the only action that moves the SK-PIVOT-016 gate off 0/5 (up to 4/5). $0, free tier | 2026-08-04 |
-| 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate (unblocked by #1); when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 4 | ~15 min | Approve the EK-03 "not allowed" ToS/DPA draft clauses; on approval a follow-up run publishes them into /terms + /privacy — not urgent, publishes with the EK-05 selling flow | 2026-08-07 |
+| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
+| 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 3 | ~15 min | Approve the EK-03 "not allowed" ToS/DPA draft clauses; on approval a follow-up run publishes them into /terms + /privacy — not urgent, publishes with the EK-05 selling flow | 2026-08-07 |
 
-Only #2 (Show HN) can move real strangers (scorecard row #2), and it is gated
-on #1; #3 is the only one that costs money and waits per `docs/cost-ladder.md`
-unless a Team org already exists. #1 is $0 and is the sole remaining prereq
-for the founder-set weekly-focus gate.
+Only #1 can move real strangers (scorecard row #2); #2 is the only one that
+costs money and waits per `docs/cost-ladder.md` unless a Team org already
+exists. No founder action remains on the SK-PIVOT-016 gate path itself: with
+`NLQDB_API_KEY` set (2026-08-04), D-04 — provisioning the memory DB through
+the product's own authed create surface — is **agent work** (the 08-08 weekly
+review briefly queued it here; corrected same day, founder-flagged: rule 4 /
+GLOBAL-033 — never park an agent-performable action on the founder).
 (Resolved 2026-08-05, same sitting — Era 6: the "Become AI" five locks →
 `SK-EKP-001..005`/`SK-PIVOT-023`, the goal-pack build order locked
 (niche-quality lens → `pack-candidates.md` header), the Anthropic
@@ -52,30 +54,16 @@ plugin-directory submission (pending review), and Cline issue #2197
 the founder's VPN security filter flagged the site, it has zero independent
 reputation footprint, and it was the queue's lowest-yield optional item;
 venue marked dropped in reach R-09, never re-queue. Earlier sittings
-in `history/founder-actions-log.md` Eras 4–5. The `NLQDB_MEMORY_DB` prereq
-that keeps SK-PIVOT-016 criterion 1's counter dark is now bullet **#1** below,
-its own ranked action.)
+in `history/founder-actions-log.md` Eras 4–5. One load-bearing note survives:
+D-02 memory-sync stays dark until the **D-04 agent run** creates the prod
+memory DB and sets the `NLQDB_MEMORY_DB` repo variable — agent work, not a
+queue bullet (founder-directed 2026-08-09: provisioning is
+product-automated). Live-tested 08-09: one 1-run API change first — preset
+create for user-scoped keys, SK-PIVOT-010 as amended.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
-1. **⏱ ~10 min · blocked since 2026-08-04 — Provision the prod dogfood memory
-   DB + set `NLQDB_MEMORY_DB`.** The dogfood sync is **code-complete and
-   dark** (D-02b convergent sync + `.github/workflows/memory-sync.yml`,
-   worksheet 🟢): the workflow's `NLQDB_API_KEY` secret was set 2026-08-04
-   (`history/founder-actions-log.md`), so the **only** remaining prereq is a
-   real prod `agent_memory_v1` memory DB and its `NLQDB_MEMORY_DB` connection
-   string as a repo variable. All **$0** on Neon/Cloudflare free tier
-   ([`docs/cost-ladder.md`](./cost-ladder.md) — not a money bet). This is the
-   single action that moves the founder-set weekly-focus
-   [`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
-   gate off **0/5**: it unblocks D-04 → criteria 1/2/3 and enables D-06 →
-   criterion 5 (up to **4/5**). Criterion 4 (the temporal engine axis) stays a
-   separate engine problem (E-09, GLOBAL-037), so the gate cannot reach 5/5 on
-   this alone. Surfaced by the 2026-08-08 weekly review: dark 12+ `/daily`
-   runs yet absent from this queue, while the scorecard mis-cited the
-   already-resolved `NLQDB_API_KEY` as the live blocker.
-
-2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
+1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **now condition-gated on
    the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
    founder-directed 2026-07-26: criteria, never calendar dates — agents
@@ -99,7 +87,7 @@ its own ranked action.)
    (`D-01..D-07`, one slice per criterion), the founder-set weekly focus
    number as of 07-28. Gate progress: **0/5**.
 
-3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -129,7 +117,7 @@ its own ranked action.)
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-4. **⏱ ~15 min · since 2026-08-07 — Approve the EK-03 ToS/DPA "not allowed"
+3. **⏱ ~15 min · since 2026-08-07 — Approve the EK-03 ToS/DPA "not allowed"
    delta** — drafted contract text at
    [`docs/features/expert-knowledge-platform/drafts/ek-03-tos-dpa-delta.md`](./features/expert-knowledge-platform/drafts/ek-03-tos-dpa-delta.md):
    two clause blocks (`/terms` + `/privacy`) written per `SK-EKP-001`,
