@@ -65,6 +65,7 @@ block.
 - [**SK-HDC-018**](decisions/SK-HDC-018-sample-insert-graceful-degradation.md) — A constraint-violating sample row degrades to an un-seeded DB, never a 500.
 - [**SK-HDC-019**](decisions/SK-HDC-019-deterministic-sample-row-salvage.md) — Pre-validate sample rows and drop only the uninsertable ones, salvaging the rest.
 - [**SK-HDC-020**](decisions/SK-HDC-020-agent-memory-preset.md) — Opt-in `agent_memory_v1` schema preset on the create path.
+- [**SK-HDC-021**](decisions/SK-HDC-021-preset-create-accepts-account-keys.md) — Preset create accepts any account-scoped principal (`user`/`sk_live`/`sk_mcp`); generic goal create stays session-only (applies the SK-PIVOT-010 2026-08-09 amendment).
 
 ## GLOBALs governing this feature
 

@@ -3052,23 +3052,36 @@ app.get("/v1/databases", requirePrincipal, async (c) => {
 
 // `POST /v1/databases` — explicit named-database creation from the
 // left-rail "+ New" affordance in the chat surface. Accepts
-// `{ name?, goal? }` (at least one required); uses the same
+// `{ name?, goal?, preset? }` (at least one required); uses the same
 // `orchestrateDbCreate` typed-plan pipeline as the `kind=create`
-// branch of `/v1/ask`. Anonymous access is not permitted here —
-// the left-rail only renders for authenticated sessions.
+// branch of `/v1/ask`. Anonymous access is not permitted (SK-HDC-021):
+// the generic goal/name create is the authenticated chat surface, and
+// the `agent_memory_v1` preset create additionally accepts `sk_live`/
+// `sk_mcp` account keys (the agent on-ramp).
 //
 // Note: the `/v1/ask` create path inherits the `orchestrateAsk`
 // per-account D1 limiter (`SK-HDC-008`); this dedicated
 // `POST /v1/databases` and the sibling `DELETE /v1/databases/:id`
-// do not yet pay through that same gate. The gap is bounded by
-// `requireSession` (no anon traffic) and tenant scope (a user can
-// only thrash their own DBs), so it's accepted for Phase 1.
-app.post("/v1/databases", requireSession, async (c) => {
+// do not yet pay through that same gate. The gap is bounded by the
+// account-principal requirement (no anon traffic) and tenant scope (a
+// principal can only thrash its own tenant's DBs), so it's accepted for
+// Phase 1.
+app.post("/v1/databases", requirePrincipal, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.databases.create", async (span) => {
-    const session = c.var.session;
-    span.setAttribute("nlqdb.user.id", session.user.id);
-    span.setAttribute("nlqdb.surface", "chat");
+    const principal = c.var.principal;
+    span.setAttribute("nlqdb.principal.kind", principal.kind);
+    span.setAttribute("nlqdb.surface", surfaceFromPrincipal(principal));
+
+    // SK-HDC-021 (SK-PIVOT-010 amended 2026-08-09) — auth boundary.
+    // anon and pk_live have no account tenant and never create a DB.
+    const tenantId = accountTenantIdFromPrincipal(principal);
+    if (!tenantId) {
+      span.setAttribute("nlqdb.databases.create.outcome", "account_required");
+      span.end();
+      return c.json({ error: { status: "account_required" as const } }, 403);
+    }
+    span.setAttribute("nlqdb.user.id", tenantId);
 
     const raw = await parseJsonBody<{
       name?: unknown;
@@ -3120,6 +3133,19 @@ app.post("/v1/databases", requireSession, async (c) => {
       preset = raw.body.preset;
     }
 
+    // SK-HDC-021 (SK-PIVOT-010 amended 2026-08-09) — the `agent_memory_v1`
+    // preset is the authed agent on-ramp, so preset create accepts any
+    // account-scoped principal (user session, sk_live, sk_mcp) — the dogfood
+    // provisioner uses an sk_ key. The generic LLM-inferred goal/name create
+    // stays the chat surface only (session), unchanged. The companion write
+    // verb `/v1/memory/remember` already trusts sk_ keys, so this closes the
+    // create-vs-write asymmetry the SK-PIVOT-016 dogfood gate hit.
+    if (!preset && principal.kind !== "user") {
+      span.setAttribute("nlqdb.databases.create.outcome", "create_requires_session");
+      span.end();
+      return c.json({ error: { status: "create_requires_session" as const } }, 403);
+    }
+
     if (!preset && !name && !goal) {
       span.end();
       return c.json({ error: { status: "goal_required" as const } }, 400);
@@ -3164,7 +3190,7 @@ app.post("/v1/databases", requireSession, async (c) => {
     // ceiling). Replay the prior result; `pkLive` is minted-once so it is
     // not stored/re-returned (SK-APIKEYS-013), same as /v1/db/connect.
     const idemKey = c.req.header("Idempotency-Key") ?? undefined;
-    const prior = await idempotencyLookup(c.env.KV, "db_create", session.user.id, idemKey);
+    const prior = await idempotencyLookup(c.env.KV, "db_create", tenantId, idemKey);
     if (prior) {
       span.setAttribute("nlqdb.databases.create.outcome", "idempotent_replay");
       span.end();
@@ -3196,7 +3222,7 @@ app.post("/v1/databases", requireSession, async (c) => {
         ...(name !== undefined ? { name } : {}),
         ...(engine !== undefined ? { engine } : {}),
         ...(preset !== undefined ? { preset } : {}),
-        tenantId: session.user.id,
+        tenantId,
         secretRef,
         // SK-GTM-005 — same stamp as the /v1/ask create arm.
         synthetic: isSyntheticRequest(c.req.header("user-agent"), c.env),
@@ -3210,7 +3236,7 @@ app.post("/v1/databases", requireSession, async (c) => {
       span.setAttribute("nlqdb.databases.create.db_id", result.dbId);
       span.setAttribute("nlqdb.databases.create.engine", result.engine);
       // Store redacted (no one-time `pkLive`) for Idempotency-Key replay.
-      idempotencyStore(c.executionCtx, c.env.KV, "db_create", session.user.id, idemKey, {
+      idempotencyStore(c.executionCtx, c.env.KV, "db_create", tenantId, idemKey, {
         dbId: result.dbId,
         slug: deriveSlug(result.dbId),
         engine: result.engine,
