@@ -102,7 +102,7 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
 - [x] EK-02 — grant-primitive design record + decision (SK-EKP-008, #919; hardened 2026-08-07 after Fable review)
 - [ ] EK-03 — trust surface (landing + copy + ToS/DPA delta)
 - [ ] EK-04 — pilot authoring rails (language-tutor expert pack, public half)
-- [ ] EK-05 — marketplace surface v0 (`experts`) — unparked 2026-08-10 (direct agent push confirmed); box 4 boundary guard shipped, boxes 1–3 gated on EK-04/EK-06
+- [ ] EK-05 — marketplace surface v0 (`experts`) — unparked 2026-08-10 (direct agent push confirmed); box 4 boundary guard authored (experts#2, open), boxes 1–3 gated on EK-04/EK-06
 - [ ] EK-06 — grant primitive implementation
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
