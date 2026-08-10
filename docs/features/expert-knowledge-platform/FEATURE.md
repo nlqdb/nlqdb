@@ -20,8 +20,8 @@ Execution plan: [`worksheets/INDEX.md`](worksheets/INDEX.md) (`EK-01..09`,
 driven by the `/ek` loop). The private `experts` repo exists (founder,
 2026-08-05, all-rights-reserved) and carries the pilot interview CLI + the
 interview-methodology spec. **Direct agent push to `experts` works as of
-2026-08-10** — EK-05 is unparked (#967), with open PRs for its
-SK-EKP-003 boundary guard + its own CI (experts#2/#3, unmerged). First engine code landed
+2026-08-10** — EK-05 is unparked (#967); its SK-EKP-003 boundary guard
+landed (experts#2, merged) and the CI to run it is in flight (experts#3, open). First engine code landed
 2026-08-08: the EK-06 grant control plane (`/v1/grants` mint/list/revoke).
 `GLOBAL-003`, EK-06 box 5 — **closed**: the grants capability reaches the
 **SDK** (`mintGrant`/`listGrants`/`revokeGrant`, session-only like the key

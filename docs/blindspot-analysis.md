@@ -186,11 +186,11 @@ of the EK docs against both repos:
 - **"Enforced by CI" with no CI.** `SK-EKP-003` promises the private repo
   "its own CI"; EK-05/#967 describe the repo-boundary guard as failing CI —
   but `nlqdb/experts` had zero workflows and experts#2 zero check runs. The
-  guard was local-honor-system. **Fix in flight (both open, unmerged):**
-  experts#3 adds the workflow (typecheck + `bun test` on PR/main); it only
-  becomes a real merge-gate once it and experts#2 land together on `experts`
-  main — as separately branched, experts#3 does not carry the guard test, so
-  its own CI run does not yet execute it.
+  guard was local-honor-system. **Fix in flight:** the guard test landed on
+  `experts` main (experts#2, merged 2026-08-10), but with still no workflow
+  there it runs nothing; experts#3 (open) adds the workflow (typecheck +
+  `bun test` on PR/main) that finally executes the guard — the boundary
+  becomes a real merge-gate only once experts#3 lands.
 - **A seam rule with no implementation.** `SK-EKP-007` stake 2 / experts
   AGENTS.md rule 5 ("interviews reject secret-shaped answers") was prose
   only — the pilot CLI wrote a pasted API key into a row. **Fix in flight
