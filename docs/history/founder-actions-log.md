@@ -130,3 +130,9 @@ well the queue bullet was prepared, not by the action itself.
 | Date | Action (surface) | Unblocked | Replay note |
 |---|---|---|---|
 | 2026-08-09 | Enabled Tawk's native **Consent Form** (Tawk dashboard → Administration → Chat Widget → Consent Form) | the `/app` chat cookie is now ePrivacy-gated in-widget per `SK-WEB-029` — the one operator step #959's consent design relies on; blocks the cookie until in-widget accept while keeping the chat bubble visible for everyone | ~2 min; founder-confirmed; keep it enabled. `TAWK_TO_API_KEY` (Secure-Mode identity HMAC) is reported mirrored to GHA + prod Worker in the PR body but has no log line — treat as unverified until confirmed; if unset, identity degrades to an anon id (no error) |
+
+## Era 9 — 2026-08-10 (live review session)
+
+| Date | Action (surface) | Unblocked | Replay note |
+|---|---|---|---|
+| 2026-08-10 | **Approved the SK-PIVOT-010 amendment** (in-session, one-word yes): preset create (`POST /v1/databases {preset}`) additionally accepts user-scoped keys (`sk_live_`/`sk_mcp_`); `anon`/`pk_live` stay rejected | #961 merged; the #963 hold on the #955/#961 pair released; next `/daily` ships the create-verb change → D-04 auto-provisions the prod memory DB (SK-PIVOT-016 path is now all agent work) | ~1 min; recorded as founder-confirmed in SK-PIVOT-010's amendment |

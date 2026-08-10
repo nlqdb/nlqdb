@@ -43,4 +43,6 @@
   prod: `POST /v1/databases { preset: "agent_memory_v1" }` with an `sk_mcp_`
   key returned **401** under the pre-amendment boundary (list with the same
   key returned 200) — the change implementing this amendment is the D-04
-  chain's opening lever.
+  chain's opening lever. **Founder-confirmed 2026-08-10** (live session,
+  resolving the #963 hold): the amendment is locked; `anon`/`pk_live`
+  rejection is the boundary that must never move.
