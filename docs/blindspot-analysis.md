@@ -176,3 +176,33 @@ the context that would let them not miss. Five concrete changes:
 direction check that sets the scorecard's weekly focus and audits gate
 compliance — or run a periodic adversarial blindspot pass like this one.
 The unmeasured rots; schedule the thing that looks at the unmeasured.
+
+## EK-track audit — 2026-08-10
+
+Same meta-pattern ("a rule that isn't measured, hooked, or on the scorecard
+is not part of the system"), new instances — found in an end-to-end review
+of the EK docs against both repos:
+
+- **"Enforced by CI" with no CI.** `SK-EKP-003` promises the private repo
+  "its own CI"; EK-05/#967 describe the repo-boundary guard as failing CI —
+  but `nlqdb/experts` had zero workflows and experts#2 zero check runs. The
+  guard was local-honor-system. **Fixed:** experts#3 adds the workflow
+  (typecheck + test on PR/main).
+- **A seam rule with no implementation.** `SK-EKP-007` stake 2 / experts
+  AGENTS.md rule 5 ("interviews reject secret-shaped answers") was prose
+  only — the pilot CLI wrote a pasted API key into a row. **Fixed:**
+  experts#3 (capture-time re-ask + extraction-time rejection + tests).
+- **The EK critical path runs through a slice no loop owns.** EK-04 boxes
+  2–4 and EK-05 boxes 1–3 all wait on the D-08 shared runner — unticked on
+  the *dogfood* track. `/daily` measurably never picks EK-adjacent work and
+  `/ek` only pulls EK-numbered slices, so after EK-06's boxes the track
+  stalls into null runs. **Needs a call:** either `/ek` may build the D-08
+  runner core when it's the EK bottleneck, or D-08 gets pulled explicitly.
+- **Two locked decisions collide on the roadmap.** `SK-EKP-001` sells
+  sovereign hosting as the trust upgrade; `SK-EKP-008` mints v1 grants on
+  **platform-provisioned hosted DBs only** — so the expert who takes the
+  trust upgrade delists their paid product. EK-07's research pass already
+  owns the question ("grants terminate where?"), but it's buried as a
+  sub-bullet; treat it as EK-07's primary exit question, and until it's
+  answered no surface may market sovereign hosting and marketplace earnings
+  as composable.

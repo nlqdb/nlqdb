@@ -46,6 +46,12 @@ satisfy):
   hosted DBs only**; BYO grantability is a separate future decision,
   deny-by-default. Grant `scope` is authoritative over role privileges,
   and schema widening never widens a grant (SK-EKP-008).
+- **Narration skipped from the first live grant** — EK-09 box 2 lands
+  *with* this slice, not after it: granted-path asks default to
+  un-narrated rows (`Accept: application/json` behavior), so expert cell
+  values never transit the summarize lane on a cross-tenant query. A
+  granted read that narrates rows through an LLM before EK-09's skip is
+  in place would silently spend the trust claim EK-03/EK-09 are building.
 - **Observable** — OTel spans on the new surface (`GLOBAL-014`); seller
   can see who queried how much (their income statement), buyer can see
   what they spent.
