@@ -99,6 +99,7 @@ import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
 import { getLLMRouter } from "./llm-router.ts";
+import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { isMarketingMirrorPath, marketingMirrorRedirect } from "./marketing-mirror.ts";
 import {
   type MemoryScope,
@@ -108,6 +109,9 @@ import {
   validateRememberInput,
 } from "./memory/remember.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
+import { buildPackRunnerDeps, PACKS } from "./pack-runner/deps.ts";
+import { makeD1DraftStore } from "./pack-runner/draft-store.ts";
+import { advanceDraft, createDraft, importView, retryDraft } from "./pack-runner/runner.ts";
 import { loadModelCatalog } from "./models-catalog.ts";
 import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
 import {
@@ -144,10 +148,12 @@ const SERVICE_VERSION = "0.1.0";
 // `Cloudflare.Env` is augmented in src/env.d.ts — using it directly
 // (rather than a parallel local `Bindings` type) keeps the two from
 // drifting when bindings are added.
-const app = new Hono<{
+type AppEnv = {
   Bindings: Cloudflare.Env;
   Variables: RequireSessionVariables & RequirePrincipalVariables;
-}>();
+};
+
+const app = new Hono<AppEnv>();
 
 // Triage instrumentation — log full stack on any uncaught error so
 // `wrangler tail` shows the origin of opaque crashes (e.g. the
@@ -2502,6 +2508,323 @@ app.delete("/v1/grants/:id", requireSession, async (c) => {
       return c.json({ error: "internal_error" }, 500);
     } finally {
       span.end();
+    }
+  });
+});
+
+// ─── /v1/packs/imports — the shared goal-pack import runner ──────────────────
+//
+// One pack-agnostic set of routes for every `SK-PIVOT-018` goal pack
+// (`SK-PIVOT-021`, dogfood D-08). A pack adds an adapter to `PACKS`; it
+// never adds an endpoint, DDL, preset version or MCP tool.
+//
+//   POST   /v1/packs/imports            create a draft + run the preflight
+//   GET    /v1/packs/imports/:id        reopen the same phase (the resume read)
+//   POST   /v1/packs/imports/:id/advance  claim, provision, write, verify
+//   POST   /v1/packs/imports/:id/retry    continue from the last checkpoint
+//   DELETE /v1/packs/imports/:id          alpha cleanup (SK-HDC-016 path)
+//
+// Create + read are **unauthenticated on purpose**: D-08's public preflight
+// is the `GLOBAL-007` first value, and requiring an account to find out
+// whether a repo even has extractable structure is the wall that decision
+// forbids. The opaque draft id is the capability that resumes it, and a
+// per-IP KV throttle is the abuse bound on the anonymous half (same posture
+// as the public wishlist endpoint). Nothing is written to a memory DB before
+// `advance`, which is session-only.
+app.use("/v1/packs/*", credentialedCors);
+
+// Public-half abuse bound: each source acquisition costs a GitHub archive
+// download from a shared Worker egress IP, so the anonymous create is
+// capped per IP rather than per account.
+const PACK_PREFLIGHT_THROTTLE = { prefix: "pk:pre:", max: 20, windowSeconds: 3600 };
+
+app.post("/v1/packs/imports", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.pack.import.create", async (span) => {
+    try {
+      const raw = await parseJsonBody<{ packId?: unknown; source?: unknown }>(c);
+      if (!raw.ok) {
+        span.setAttribute("nlqdb.pack.import.outcome", "invalid_json");
+        return c.json({ error: { status: "invalid_json" as const } }, 400);
+      }
+      const packId = typeof raw.body.packId === "string" ? raw.body.packId.trim() : "";
+      const source = typeof raw.body.source === "string" ? raw.body.source.trim() : "";
+      if (!PACKS[packId]) {
+        span.setAttribute("nlqdb.pack.import.outcome", "unknown_pack");
+        return c.json(
+          { error: { status: "unknown_pack" as const, allowed: Object.keys(PACKS) } },
+          400,
+        );
+      }
+      if (!source || source.length > MAX_GOAL_LENGTH) {
+        span.setAttribute("nlqdb.pack.import.outcome", "invalid_source");
+        return c.json({ error: { status: "source_required" as const } }, 400);
+      }
+      span.setAttribute("nlqdb.pack.id", packId);
+
+      // Session is optional here — present it claims the draft immediately
+      // so a signed-in user never sees the sign-in handoff at all.
+      const session = await sessionResolver.getSession(c.req.raw);
+      const tenantId = session?.user.id ?? null;
+      const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+      if (!tenantId) {
+        const throttle = makeKvThrottle(c.env.KV, PACK_PREFLIGHT_THROTTLE);
+        if (!(await throttle.tryConsume(ip))) {
+          span.setAttribute("nlqdb.pack.import.outcome", "rate_limited");
+          c.header("Retry-After", String(PACK_PREFLIGHT_THROTTLE.windowSeconds));
+          return c.json({ error: { status: "rate_limited" as const } }, 429);
+        }
+      }
+
+      // GLOBAL-005 — a retried create must not start a second import (each
+      // one re-downloads an archive). Dedupe key is the account when there
+      // is one, else the originating IP.
+      const idemKey = c.req.header("Idempotency-Key") ?? undefined;
+      const idemScope = tenantId ?? `ip:${ip}`;
+      const prior = await idempotencyLookup(c.env.KV, "pack_import", idemScope, idemKey);
+      if (prior) {
+        span.setAttribute("nlqdb.pack.import.outcome", "idempotent_replay");
+        return c.json({ ...prior, replayed: true });
+      }
+
+      const deps = buildPackRunnerDeps(c.env, tenantId, packId);
+      const created = await createDraft(deps, { packId, input: source, tenantId });
+      if (!created.ok) {
+        span.setAttribute("nlqdb.pack.import.outcome", created.reason);
+        return c.json(
+          {
+            error: {
+              status: created.reason,
+              ...(created.reason === "invalid_source" ? { reason: created.detail } : {}),
+            },
+          },
+          400,
+        );
+      }
+      // Run the whole pre-write journey in this one request: the user's one
+      // click must produce the real preview, not a queued job.
+      const preflight = await advanceDraft(deps, created.draft, { until: "saving" });
+      const draft = preflight.ok ? preflight.draft : (preflight.draft ?? created.draft);
+      span.setAttribute("nlqdb.pack.import.id", draft.id);
+      span.setAttribute("nlqdb.pack.import.phase", draft.phase);
+      if (!preflight.ok) {
+        span.setAttribute("nlqdb.pack.import.outcome", preflight.reason);
+        // The draft survives every rejection so a retry resumes it; the
+        // status is advisory, never a lost import.
+        return c.json(
+          { import: importView(draft), error: { status: preflight.reason } },
+          preflight.reason === "source_unavailable" ? 422 : 500,
+        );
+      }
+      span.setAttribute("nlqdb.pack.import.outcome", "ok");
+      const body = { import: importView(draft) };
+      idempotencyStore(c.executionCtx, c.env.KV, "pack_import", idemScope, idemKey, body);
+      return c.json(body, 201);
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.pack.import.outcome", "internal_error");
+      return c.json({ error: { status: "internal_error" as const } }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// The resume read. Unauthenticated for the same reason the create is: a
+// refresh or a sign-in round trip must reopen the identical phase before
+// any account exists. An id belonging to a claimed draft is readable only
+// by its owner.
+app.get("/v1/packs/imports/:id", async (c) => {
+  const id = c.req.param("id");
+  const store = makeD1DraftStore(c.env.DB);
+  const draft = await store.get(id);
+  if (!draft) return c.json({ error: { status: "import_not_found" as const } }, 404);
+  if (draft.tenantId) {
+    const session = await sessionResolver.getSession(c.req.raw);
+    // Unknown id and another tenant's id are both 404 — no existence leak.
+    if (session?.user.id !== draft.tenantId) {
+      return c.json({ error: { status: "import_not_found" as const } }, 404);
+    }
+  }
+  return c.json({ import: importView(draft) });
+});
+
+/**
+ * Advance and retry share everything except whether a stamped failure is
+ * cleared first, so they share one handler.
+ */
+async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan(`nlqdb.pack.import.${mode}`, async (span) => {
+    try {
+      const session = c.var.session;
+      // `Context<AppEnv>` is not path-generic, so the param is typed
+      // optional; the route pattern guarantees it.
+      const id = c.req.param("id") ?? "";
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      span.setAttribute("nlqdb.pack.import.id", id);
+
+      const store = makeD1DraftStore(c.env.DB);
+      let draft = await store.get(id);
+      if (!draft) {
+        span.setAttribute("nlqdb.pack.import.outcome", "import_not_found");
+        return c.json({ error: { status: "import_not_found" as const } }, 404);
+      }
+      // The sign-in resume seam: an unclaimed draft is bound to whoever
+      // returns from sign-in first, with no repeated input and no second
+      // confirmation. `claim` is atomic, so a double return is safe.
+      if (draft.tenantId === null) {
+        const claimed = await store.claim(id, session.user.id);
+        if (!claimed) {
+          const fresh = await store.get(id);
+          if (fresh?.tenantId !== session.user.id) {
+            span.setAttribute("nlqdb.pack.import.outcome", "import_not_found");
+            return c.json({ error: { status: "import_not_found" as const } }, 404);
+          }
+        }
+        draft = { ...draft, tenantId: session.user.id };
+      } else if (draft.tenantId !== session.user.id) {
+        span.setAttribute("nlqdb.pack.import.outcome", "import_not_found");
+        return c.json({ error: { status: "import_not_found" as const } }, 404);
+      }
+      span.setAttribute("nlqdb.pack.id", draft.packId);
+
+      // GLOBAL-005 — a replayed advance returns the prior view rather than
+      // re-running a phase. Row-level duplicate protection is the runner's
+      // `saveCursor`; this only spares the round trip.
+      const idemKey = c.req.header("Idempotency-Key") ?? undefined;
+      const prior = await idempotencyLookup(c.env.KV, `pack_${mode}`, session.user.id, idemKey);
+      if (prior) {
+        span.setAttribute("nlqdb.pack.import.outcome", "idempotent_replay");
+        return c.json({ ...prior, replayed: true });
+      }
+
+      // One rate-limit check per user action. The per-row memory writes
+      // inside the phase are not separately limited — see `deps.ts`.
+      const decision = await buildAskDeps(c.env).rateLimiter.check(session.user.id);
+      if (!decision.allowed) {
+        span.setAttribute("nlqdb.pack.import.outcome", "rate_limited");
+        const now = Math.floor(Date.now() / 1000);
+        c.header("Retry-After", String(Math.max(0, decision.resetAt - now)));
+        return c.json({ error: { status: "rate_limited" as const } }, 429);
+      }
+
+      const deps = buildPackRunnerDeps(c.env, session.user.id, draft.packId);
+
+      // Every alpha import gets its own isolated `agent_memory_v1` DB
+      // (D-08 §5) so "delete this test memory" and "import again" are both
+      // unambiguous. Provisioning reuses the SK-HDC-020 preset create — no
+      // second provisioning path exists.
+      if (draft.phase === "saving" && !draft.dbId) {
+        if (c.env.MEMORY_PRESET !== "1") {
+          span.setAttribute("nlqdb.pack.import.outcome", "preset_disabled");
+          return c.json({ error: { status: "preset_disabled" as const } }, 400);
+        }
+        const g = globalThis as unknown as { __filename?: string; __dirname?: string };
+        if (typeof g.__filename === "undefined") g.__filename = "worker";
+        if (typeof g.__dirname === "undefined") g.__dirname = "/";
+        const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
+        const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
+        const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env, (p) =>
+          c.executionCtx.waitUntil(p),
+        );
+        const provisioned = await orchestrateDbCreate(createDeps, {
+          goal: `${draft.packId} memory import`,
+          name: `${draft.packId} import`,
+          preset: AGENT_MEMORY_V1_VERSION,
+          tenantId: session.user.id,
+          secretRef,
+          synthetic: isSyntheticRequest(c.req.header("user-agent"), c.env),
+        });
+        if (!provisioned.ok) {
+          span.setAttribute("nlqdb.pack.import.outcome", `provision_${provisioned.error.kind}`);
+          return c.json({ error: { status: "provision_failed" as const } }, 502);
+        }
+        draft = { ...draft, dbId: provisioned.dbId };
+        await store.save(draft);
+        span.setAttribute("nlqdb.pack.import.db_id", draft.dbId ?? "");
+      }
+
+      const run = mode === "retry" ? retryDraft : advanceDraft;
+      const outcome = await run(deps, draft, { until: "complete" });
+      const settled = outcome.draft ?? draft;
+      span.setAttribute("nlqdb.pack.import.phase", settled.phase);
+      if (!outcome.ok) {
+        span.setAttribute("nlqdb.pack.import.outcome", outcome.reason);
+        // `auth_required` / `db_required` are journey states, not failures:
+        // the draft is intact and the client's next action resumes it.
+        const status = outcome.reason === "source_unavailable" ? 422 : 409;
+        return c.json({ import: importView(settled), error: { status: outcome.reason } }, status);
+      }
+      span.setAttribute("nlqdb.pack.import.outcome", "ok");
+      const body = { import: importView(settled) };
+      idempotencyStore(c.executionCtx, c.env.KV, `pack_${mode}`, session.user.id, idemKey, body);
+      return c.json(body);
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.pack.import.outcome", "internal_error");
+      return c.json({ error: { status: "internal_error" as const } }, 500);
+    } finally {
+      span.end();
+    }
+  });
+}
+
+app.post("/v1/packs/imports/:id/advance", requireSession, (c) => handlePackAdvance(c, "advance"));
+app.post("/v1/packs/imports/:id/retry", requireSession, (c) => handlePackAdvance(c, "retry"));
+
+// `DELETE /v1/packs/imports/:id` — the alpha's "delete this test memory".
+// Reuses the SK-HDC-016 tenant-scoped deletion path verbatim (the
+// SK-HDC-011 `dropSchemaAndRegistry` primitive plus the per-DB `pk_live_`
+// cleanup), so there is exactly one way a hosted DB is destroyed. It
+// deletes only the derived memory DB and the draft — the source repository
+// is never touched. Idempotent by construction (RFC 9110 / GLOBAL-005): a
+// re-DELETE of an already-removed draft is a 404, and a re-DELETE mid-flight
+// re-runs an idempotent drop.
+app.delete("/v1/packs/imports/:id", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.pack.import.delete", async (span) => {
+    const session = c.var.session;
+    const id = c.req.param("id");
+    span.setAttribute("nlqdb.user.id", session.user.id);
+    span.setAttribute("nlqdb.pack.import.id", id);
+    const store = makeD1DraftStore(c.env.DB);
+    const draft = await store.get(id);
+    if (!draft || (draft.tenantId !== null && draft.tenantId !== session.user.id)) {
+      span.setAttribute("nlqdb.pack.import.outcome", "import_not_found");
+      span.end();
+      return c.json({ error: { status: "import_not_found" as const } }, 404);
+    }
+    try {
+      if (draft.dbId) {
+        const record = await resolveDb(c.env.DB, draft.dbId, session.user.id);
+        if (record) {
+          const { buildPgClient, resolveDatabaseUrl } = await import("./db-create/pg-client.ts");
+          const { dropSchemaAndRegistry, stripDbPrefix } = await import(
+            "./db-create/neon-provision.ts"
+          );
+          const pg = buildPgClient(resolveDatabaseUrl(c.env));
+          await dropSchemaAndRegistry(tracer, pg, c.env.DB, draft.dbId, stripDbPrefix(draft.dbId));
+          await c.env.DB.prepare("DELETE FROM api_keys WHERE db_id = ?").bind(draft.dbId).run();
+        }
+      }
+      await store.remove(id);
+      span.setAttribute("nlqdb.pack.import.outcome", "ok");
+      span.end();
+      return c.body(null, 204);
+    } catch (err) {
+      span.recordException(err as Error);
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: err instanceof Error ? err.message : String(err),
+      });
+      span.setAttribute("nlqdb.pack.import.outcome", "internal_error");
+      span.end();
+      return c.json({ error: { status: "internal_error" as const } }, 500);
     }
   });
 });

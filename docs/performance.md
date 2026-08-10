@@ -145,9 +145,8 @@ Operational guardrails:
 | Cloudflare KV (read, hot)    | get               | 5 ms   | 15 ms  |                                  |
 | Cloudflare KV (write)        | put               | 5 ms   | 25 ms  |                                  |
 
-These are *measured-then-budgeted* numbers — when a slice lands its
-instrumentation, the dashboards (§6) will show actual p50/p99 per
-provider, and §2.5 gets updated with real values.
+These are budgets, not measurements; §7 governs replacing them with real
+values once the dashboards (§6) exist.
 
 ---
 
@@ -165,8 +164,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.ask`                   | Top-level wrapper for `/v1/ask` request.       |
 | `nlqdb.cache.plan.lookup`     | KV read for cached plan (label `hit=true/false`). |
 | `nlqdb.cache.plan.write`      | KV write of new plan.                          |
-| `nlqdb.cache.first_query.lookup` | KV read — has this user fired `user.first_query` yet? (`apps/api/src/ask/orchestrate.ts`; `onError`→false to avoid re-emit-forever). |
-| `nlqdb.cache.first_query.commit` | KV write marking `user.first_query` emitted (emit-then-commit; a failed commit re-emits next request, non-fatal). |
+| `nlqdb.cache.first_query.{lookup,commit}` | KV read/write of the `user.first_query` emit marker (`ask/orchestrate.ts`). Emit-then-commit: `lookup` `onError`→false and a failed commit re-emits next request; both non-fatal. |
 | `nlqdb.recent_tables.lookup`  | KV read of principal's recent-tables MRU (`SK-ASK-012`). |
 | `nlqdb.recent_tables.touch`   | KV read-merge-write to push new tables onto the MRU (`SK-ASK-012`). `ctx.waitUntil` on `/v1/ask`; awaited inline on create. |
 | `nlqdb.diag.write`            | KV write persisting a swallowed failure class's SQLSTATE (`SK-ASK-023`) — previews log nowhere, so KV is the durable channel. Swallowed; never blocks the caller's error path. |
@@ -177,10 +175,10 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `llm.engine_classify`         | Hosted db.create — goal text → engine pick (SK-DB-010, SK-MULTIENG-002). Parent carries `nlqdb.engine_classify.fallback_reason ∈ {deferred, below_floor, provider_failed, unknown_string}`. |
 | `nlqdb.sql.validate`          | SQL parse + schema-fit check.                  |
 | `db.query`                    | Neon HTTP execute — standard OTel `db.*`. Attributes: `db.system=postgresql`, `db.operation.name`, `db.statement` (PII-redacted SQL text). |
-| `db.transaction`              | One Neon HTTP `transaction([...])` round-trip; no per-statement `db.query` nests under it. Emitters: db.create provision batch (SK-HDC-012 — adds `db.transaction.statement_count`, `db.transaction.batch_call=true`) and the ACL retarget (SK-ANON-003 / SK-ASK-024 — adds `nlqdb.anon.adopt.regrant_db_id`; the heal path stamps `nlqdb.ask.acl_healed` on the request span). All carry `db.system=postgresql`; on failure `db.transaction.error_sqlstate` (SK-HDC-017). |
+| `db.transaction`              | One Neon HTTP `transaction([...])` round-trip; no per-statement `db.query` nests under it. Always `db.system=postgresql`; on failure `db.transaction.error_sqlstate` (SK-HDC-017). Emitters: db.create provision batch (SK-HDC-012 — adds `db.transaction.statement_count`, `db.transaction.batch_call=true`) and the ACL retarget (SK-ANON-003 / SK-ASK-024 — adds `nlqdb.anon.adopt.regrant_db_id`; heal stamps `nlqdb.ask.acl_healed` on the request span). |
 | `db.query` (Neon keep-warm)   | SK-HDC-014 — every-4-min `SELECT 1` cron ping; discriminator `nlqdb.cron="keep_warm"`. Owner: `db-create/pg-client.ts:keepNeonWarm`. |
 | `nlqdb.auth.oauth.callback`   | `/api/auth/callback/{github,google}` flow.     |
-| `nlqdb.anon.adopt`            | Better Auth `after`-hook adoption hop (SK-ANON-012). Wraps `recordAnonAdoption()` (SK-ANON-003) on magic-link / OAuth callback when the `__Secure-anon-bearer` cookie is present. Carries `nlqdb.user.id`, `nlqdb.anon.adopt.outcome ∈ {adopted, replay, invalid_cookie, invalid_token, token_taken, internal}`. Owner: `apps/api/src/auth.ts`. |
+| `nlqdb.anon.adopt`            | Better Auth `after`-hook adoption hop (SK-ANON-012): wraps `recordAnonAdoption()` (SK-ANON-003) on magic-link / OAuth callback when `__Secure-anon-bearer` is present. Carries `nlqdb.user.id`, `nlqdb.anon.adopt.outcome ∈ {adopted, replay, invalid_cookie, invalid_token, token_taken, internal}`. Owner: `apps/api/src/auth.ts`. |
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
 | `nlqdb.billing.checkout.create` | Stripe Checkout Session create (SK-STRIPE-004). One per `POST /v1/billing/checkout`. Carries `nlqdb.billing.plan`, `nlqdb.user.id`, `nlqdb.billing.checkout_session_id`. |
 | `nlqdb.billing.portal.create` | Stripe Billing Portal Session create (SK-STRIPE-008). One per `POST /v1/billing/portal`. Carries `nlqdb.user.id`, `nlqdb.billing.portal_session_id`. |
@@ -191,10 +189,10 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.workload_analyser.reshape` | One child span per `ReshapeProposal` the cron dispatches. Carries `nlqdb.workload_analyser.{kind, db_id, pipe_pre_existed?, pipe_name?}`. ERROR on a Tinybird create-reject or `schema_hash`-drift rollback (`SK-MIGRATE-004/006`). |
 | `db.query` (Tinybird Pipes mgmt) | Per-call span around `createPipe` / `dropPipe` / `getPipe`. Attributes `db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`, `db.tinybird.pipe`. Latency on `nlqdb.db.duration_ms{operation}`. Owner: `packages/db/src/clickhouse-tinybird/pipe-management.ts` (`SK-MIGRATE-001`). |
 | `dns.resolve`                 | One span per BYO connect-time egress resolve (`GLOBAL-035`); A + AAAA DoH legs nest under it. Attributes `server.address`, `dns.question.name`, `dns.answer.count`; ERROR on fail-loud. Owner: `packages/db/src/doh-resolver.ts`. |
-| `nlqdb.mcp.http.request`     | `SK-MCP-009` — wraps every hosted-MCP Worker request before `OAuthProvider` dispatches (skipped on `GET /health`). Attributes: `http.request.method`, `http.route`, `http.response.status_code`. On `OAuthProvider` error responses `onError` adds `nlqdb.mcp.auth.{error_code,error_status,error_description}` and flips status to ERROR. Owner: `apps/mcp/src/index.ts`. |
-| `nlqdb.grants.mint`           | `POST /v1/grants` — cross-tenant read-grant mint (`SK-EKP-008`). Carries `nlqdb.user.id`, `nlqdb.grants.mint.db_id`, `nlqdb.grants.mint.outcome` (`ok`, `idempotent_replay`, validation rejects, `mint_failed`). |
-| `nlqdb.grants.list`           | `GET /v1/grants` — owner + grantee grant list. Carries `nlqdb.user.id`, `nlqdb.grants.list.count`, `nlqdb.grants.list.outcome`. |
-| `nlqdb.grants.revoke`         | `DELETE /v1/grants/:id` — owner revoke, fail-closed (`SK-EKP-008` 30 s bound). Carries `nlqdb.user.id`, `nlqdb.grants.revoke.grant_id`, `nlqdb.grants.revoke.outcome ∈ {revoked, already_revoked, not_found, internal_error}`. |
+| `nlqdb.mcp.http.request`     | `SK-MCP-009` — every hosted-MCP Worker request before `OAuthProvider` dispatch (`GET /health` skipped). Attributes `http.{request.method,route,response.status_code}`; an `OAuthProvider` error adds `nlqdb.mcp.auth.{error_code,error_status,error_description}` and flips status to ERROR. Owner: `apps/mcp/src/index.ts`. |
+| `nlqdb.grants.{mint,list,revoke}` | The `/v1/grants` cross-tenant read-grant control plane (`SK-EKP-008`). Each carries `nlqdb.user.id` plus its own `nlqdb.grants.<verb>.outcome`; mint adds `.db_id`, list adds `.count`, revoke adds `.grant_id` and is fail-closed within the 30 s bound. |
+| `nlqdb.pack.import.{create,advance,retry,delete}` | The shared goal-pack import runner (`SK-PIVOT-021`, D-08). One per `/v1/packs/imports*` call. Carries `nlqdb.pack.id`, `nlqdb.pack.import.{id,phase,db_id}` and `nlqdb.pack.import.outcome` (`ok`, `idempotent_replay`, `auth_required`, `db_required`, `source_unavailable`, `rate_limited`, `phase_failed`, `internal_error`). |
+| `nlqdb.pack.source.{fetch,archive}` | A pack adapter's source reads (`GLOBAL-014`): `fetch` = a GitHub REST call (commit pin), `archive` = the codeload `tar.gz`. Carry `server.address`, `http.response.status_code`, `nlqdb.pack.source.{outcome,commit,entries}`. |
 
 ### 3.2 Metric names
 
