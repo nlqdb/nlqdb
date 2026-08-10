@@ -95,6 +95,10 @@ alpha may ship without delaying D-04–D-07.
   `nlqdb_remember`/`nlqdb_query`. A reviewer rejects any ops-agent path that
   reaches a privileged endpoint, an internal binding, or the platform DB.
   Dogfooding through a backdoor measures nothing (SK-PIVOT-016).
+  This rule binds *ops agents*, not product code (founder ruling
+  2026-08-10): the D-08 runner writes in-process through the same
+  core/RLS as `/v1/memory`, which is why runner imports never count
+  toward criterion 1.
 - **Markdown stays canonical.** The memory DB is a derived, queryable index.
   Sync is one-way and idempotent; nlqdb never edits markdown. Anything making
   the DB the source of truth is a separate founder decision (P1), not a slice.

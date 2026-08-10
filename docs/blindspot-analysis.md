@@ -204,8 +204,10 @@ of the EK docs against both repos:
   the runner-core build; it landed (`apps/api/src/pack-runner/**`, routes
   `/v1/packs/imports*`), so EK-04 box 2 is unblocked. The remaining D-08
   slices (the `/agents` page + CTA, `return_to` handoff UI, private-repo
-  GitHub App, P2 persona E2E) still have **no loop owner** — same gap, now
-  scoped to UI/E2E rather than the whole runner.
+  GitHub App, P2 persona E2E) now have a loop owner — same-day founder
+  ruling widened `/ek`'s pull rule (`.claude/commands/ek.md` §2): when
+  every pullable EK slice is blocked on the runner, `/ek` builds the next
+  D-08 slice. **Resolved.**
 - **The secrets rule has no enforcement on the public rail either.**
   `SK-PIVOT-018` ("credential metadata, never values") has zero code
   enforcement in nlqdb — `apps/api/src/memory/remember.ts` and the MCP
