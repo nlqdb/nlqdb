@@ -140,6 +140,7 @@ export default defineConfig(async () => {
               "test/errors-web.test.ts",
               "test/keys-mint.test.ts",
               "test/grants.test.ts",
+              "test/grant-usage.test.ts",
               "test/byollm-account.test.ts",
               "test/byollm-endpoints.test.ts",
               "test/premium-interest.test.ts",

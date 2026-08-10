@@ -63,6 +63,14 @@ satisfy):
       GUC-spoof + read-only + schema-widening kill-tests pass. RLS-bypass
       kill-test + live route wiring await the DB-role half; see header.)*
 - [ ] Usage records emitted per granted query, idempotent under retry.
+      *(Meter primitive shipped 2026-08-10 — migration `0028_grant_usage.sql`
+      + `apps/api/src/grant-usage.ts` `recordGrantUsage`: one row per
+      successful granted query, attributed to (grant, buyer, seller),
+      idempotent by the `UNIQUE (grant_id, idempotency_key)` constraint so a
+      retry never double-counts (SK-EKP-008's 2026-08-07 hardening). No fee
+      logic — public-half meter only (SK-EKP-002/003). Live per-query
+      emission from the granted `/v1/ask` route awaits box 2's executor
+      wiring; this is the primitive it calls on HTTP 200.)*
 - [ ] Revocation latency measured and within the EK-02 bound — including
       the in-flight half (`statement_timeout` ≤ the 30 s cache bound; the
       env knob may only tighten).
