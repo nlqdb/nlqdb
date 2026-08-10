@@ -1,12 +1,12 @@
 # EK-05 — Marketplace surface v0 (`experts` repo)
 
-**Status:** **parked** — until agent sessions can reach the private
-`experts` repo directly (created by the founder 2026-08-05; per-session
-access grants still pending). Interim route that already works: agents
-build locally and hand the founder a **git bundle** to push — the pilot CLI
-and the interview-methodology spec landed that way (2026-08-05/07), so
-small `experts` increments are possible pre-access; the full v0 build waits
-for direct push. · **Repo:** `experts` (private, all-rights-reserved) ·
+**Status:** **in-flight** — direct agent push to the private `experts` repo
+is **confirmed working 2026-08-10** (this run pushed `claude/dazzling-clarke-fa6zmh`;
+PR #1 already merged there earlier), so the parked-on-access condition is
+lifted. Box 4's SK-EKP-003 boundary guard is the first slice pushed via direct
+access (experts#2, merged 2026-08-10). Boxes 1–3 (interview → listing, buy → grant, fee split) remain gated on
+their own prereqs: box 1 on EK-04's public write-path, boxes 2–3 on EK-06's
+live grant execution. · **Repo:** `experts` (private, all-rights-reserved) ·
 **Risk:** high · **Runs:** multi · **Prereqs:** EK-01, EK-02, EK-04 + repo
 access
 
@@ -44,4 +44,13 @@ never a private fork of a rail.
       pre-commit.
 - [ ] A buyer purchases → grant works → revocation stops queries.
 - [ ] Fee split executes end-to-end in Stripe test mode with a symbolic %.
-- [ ] Zero nlqdb-private imports; SDK/API only.
+- [~] Zero nlqdb-private imports; SDK/API only. *(Boundary guard landed
+      2026-08-10 — `test/repo-boundary.test.ts` on `experts` main (experts#2, merged):
+      a static-source check that flags any private nlqdb import (`@nlqdb/db`,
+      `@nlqdb/llm`, a non-SDK scoped package, or a relative reach into
+      `nlqdb/apps/**`). Allowlist is `@nlqdb/sdk` only; MCP is a wire surface,
+      deny-by-default. It becomes a CI merge-gate once the repo's
+      workflow (experts#3, open) lands to run it — until then
+      enforcement is review-only. The invariant holds for all current experts
+      product code (interview + CLI); the box closes fully once boxes 1–3 land
+      under it.)*
