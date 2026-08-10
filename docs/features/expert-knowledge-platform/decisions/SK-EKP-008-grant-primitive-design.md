@@ -142,6 +142,18 @@ EK-01 interview-extraction record); this is the primitive `EK-06` implements.
   is bounded by *bearer-token lifetime*; an online per-request check bounds
   it by cache TTL instead.
 
+  **Honesty bound on revocation (noted 2026-08-10).** Revocation bounds
+  **future** queries only. Rows already served are a buyer-side copy no
+  mechanism recalls — one successful broad `SELECT` over the granted scope
+  is a de-facto export at single-query price. Every queried-in-place
+  incumbent carries the same residual; v1 accepts it. The binding
+  consequence is on **copy**: seller-facing text (the EK-05 listing flow,
+  the EK-03 ToS) presents revocation as *stopping future queries*, never as
+  recalling served data — `SK-EKP-001`'s never-exceed-substance rule applies
+  to seller-facing claims exactly as to buyer-facing ones. Volume-shaped
+  mitigations (per-grant row caps, export-shaped-query heuristics) are
+  parked until a real seller asks.
+
 - **Core value:** Bullet-proof, Simple, Free, Goal-first
 
 - **Why:** Every incumbent data marketplace (Snowflake shares, BigQuery

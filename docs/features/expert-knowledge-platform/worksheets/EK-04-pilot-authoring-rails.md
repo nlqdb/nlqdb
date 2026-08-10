@@ -1,7 +1,10 @@
 # EK-04 — Pilot authoring rails: the language-tutor expert pack (public half)
 
 **Status:** in-flight · **Repo:** nlqdb · **Risk:** high · **Runs:** multi ·
-**Prereqs:** EK-01 design record · the D-08 shared runner exists ·
+**Prereqs:** EK-01 design record (met) · the D-08 shared runner (**unmet
+2026-08-10** — D-08 is unticked on the dogfood track, so boxes 2–4 below are
+blocked on work no EK slice owns; the ownership call is tracked in
+`docs/blindspot-analysis.md` §EK-track audit) ·
 **Box 1 shipped 2026-08-08:** the language-tutor pack's golden-query set +
 seed corpus landed in the `SK-QUAL-023` memory-quality eval family
 (`tools/eval/src/datasets/memory-quality.ts`, `language_tutor_memory_v1` — 12

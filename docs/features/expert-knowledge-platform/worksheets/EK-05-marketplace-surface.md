@@ -18,7 +18,11 @@ touch that isn't a public rail.
 1. **Interview product** — the question-engine driving EK-04's rails:
    EK-01's design (question generation, follow-ups, card-edit/forced-choice
    verification — never yes/no read-back, per SK-EKP-007 stake 3,
-   session structure) as the expert-facing authoring UX.
+   session structure) as the expert-facing authoring UX. **This slice also
+   decides how the private surface reuses the public runner** (published
+   package vs hosted journey embed) — the INDEX names that an explicit
+   EK-01/EK-05 design output, and EK-01 closed fixing only the seam, so
+   the reuse mechanism is owed here before box 1 can close.
 2. **Listings — one catalog, two types (`SK-EKP-006`)** — (a) free
    first-party **packs** (the locked pack-candidates order; install = the
    runner journey on the buyer's own tenant, no grant, no fee) and (b)

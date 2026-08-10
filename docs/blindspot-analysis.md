@@ -176,3 +176,52 @@ the context that would let them not miss. Five concrete changes:
 direction check that sets the scorecard's weekly focus and audits gate
 compliance — or run a periodic adversarial blindspot pass like this one.
 The unmeasured rots; schedule the thing that looks at the unmeasured.
+
+## EK-track audit — 2026-08-10
+
+Same meta-pattern ("a rule that isn't measured, hooked, or on the scorecard
+is not part of the system"), new instances — found in an end-to-end review
+of the EK docs against both repos:
+
+- **"Enforced by CI" with no CI.** `SK-EKP-003` promises the private repo
+  "its own CI"; EK-05/#967 describe the repo-boundary guard as failing CI —
+  but `nlqdb/experts` had zero workflows and experts#2 zero check runs. The
+  guard was local-honor-system. **Fix in flight:** the guard test landed on
+  `experts` main (experts#2, merged 2026-08-10), but with still no workflow
+  there it runs nothing; experts#3 (open) adds the workflow (typecheck +
+  `bun test` on PR/main) that finally executes the guard — the boundary
+  becomes a real merge-gate only once experts#3 lands.
+- **A seam rule with no implementation.** `SK-EKP-007` stake 2 / experts
+  AGENTS.md rule 5 ("interviews reject secret-shaped answers") was prose
+  only — the pilot CLI wrote a pasted API key into a row. **Fix in flight
+  (experts#3, open):** capture-time re-ask + extraction-time rejection +
+  tests (`src/interview/secrets.ts`, exercised by CI on that branch).
+- **The EK critical path runs through a slice no loop owns.** EK-04 boxes
+  2–4 and EK-05 boxes 1–3 all wait on the D-08 shared runner — unticked on
+  the *dogfood* track. `/daily` measurably never picks EK-adjacent work and
+  `/ek` only pulls EK-numbered slices, so after EK-06's boxes the track
+  stalls into null runs. **Needs a call:** either `/ek` may build the D-08
+  runner core when it's the EK bottleneck, or D-08 gets pulled explicitly.
+- **The secrets rule has no enforcement on the public rail either.**
+  `SK-PIVOT-018` ("credential metadata, never values") has zero code
+  enforcement in nlqdb — `apps/api/src/memory/remember.ts` and the MCP
+  `nlqdb_remember` tool accept secret-shaped content freely (checked:
+  no detector exists anywhere in `apps/`/`packages/` non-test code).
+  experts#3's `src/interview/secrets.ts` is instance #1 of the category
+  "secret-shape rejection at agent-memory write surfaces" (≥3 real
+  instances: experts interview · `/v1/memory` write path · MCP tool).
+  The leverage move is server-side enforcement in the memory write path —
+  one enforcement point covering every writer, and per `SK-EKP-003`'s own
+  rule this is a public-rail gap, not something `experts` should keep
+  private. Extraction trigger: the next write surface that needs the rule.
+- **Sovereign hosting vs. brokered grants — looked like a collision, already
+  resolved.** `SK-EKP-001` sells sovereign hosting as the trust upgrade;
+  `SK-EKP-008` mints v1 grants on **platform-provisioned hosted DBs only**, so
+  an expert who takes possession would seem to delist their paid product. This
+  is **not** an open question: `SK-EKP-009` (EK-07 box 1, landed 2026-08-09)
+  already locks the answer — a sovereign DB leaves `SK-EKP-008`'s scope and is
+  **not brokerable**, so in v1 an expert either sells brokered access to a
+  hosted DB *or* takes possession, never both (selling into a sovereign DB is
+  a future decision, deny-by-default). The only residual guard is on copy:
+  no surface may market sovereign hosting and marketplace earnings as
+  composable — already covered by `SK-EKP-001`'s never-exceed-substance rule.

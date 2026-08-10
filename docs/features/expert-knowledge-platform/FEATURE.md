@@ -18,11 +18,10 @@ taking a small, plainly-disclosed fee.
 proceeds **in parallel** with the `SK-PIVOT-016` dogfood gate (SK-EKP-005).
 Execution plan: [`worksheets/INDEX.md`](worksheets/INDEX.md) (`EK-01..09`,
 driven by the `/ek` loop). The private `experts` repo exists (founder,
-2026-08-05, all-rights-reserved) and carries first code: the pilot
-interview CLI + the interview-methodology spec (founder-pushed bundles,
-2026-08-05/07). Direct agent push to `experts` is still pending per-session
-access grants, so `experts`-side slices flow via founder-landed bundles
-until then; EK-05 stays parked on that access. First engine code landed
+2026-08-05, all-rights-reserved) and carries the pilot interview CLI + the
+interview-methodology spec. **Direct agent push to `experts` works as of
+2026-08-10** — EK-05 is unparked (#967); its SK-EKP-003 boundary guard
+landed (experts#2, merged) and the CI to run it is in flight (experts#3, open). First engine code landed
 2026-08-08: the EK-06 grant control plane (`/v1/grants` mint/list/revoke).
 `GLOBAL-003`, EK-06 box 5 — **closed**: the grants capability reaches the
 **SDK** (`mintGrant`/`listGrants`/`revokeGrant`, session-only like the key
@@ -144,11 +143,8 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
   is pure IP strategy, not infrastructure.
 - **Consequence in code:** A reviewer rejects marketplace product code
   landing in nlqdb, and any nlqdb PR whose critical path depends on the
-  private repo. Creating the private repository is a founder/operator action
-  (agent sessions here are scoped to `nlqdb/nlqdb`); until it exists,
-  marketplace product code has no home and must not land anywhere. Detailed
-  product design (interview mechanics, marketplace design) is authored in
-  the private repo once it exists, not in public docs.
+  private repo. Detailed product design (interview mechanics, marketplace
+  design) is authored in the private repo, not in public docs.
 - **Alternatives rejected:** **All in nlqdb (FSL)** — simplest, but makes
   the product surface source-visible to the converging competitors named in
   the research (OnDB, Skill Refinery). · **All private** — weakens the
@@ -171,10 +167,8 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 - **Consequence in code:** The first interview-authoring journey and the
   first marketplace listing target the language-tutor pack. A reviewer
   rejects a pilot built on an unranked profession or one requiring new DDL.
-- **Alternatives rejected:** **A regulated profession first (doctor /
-  lawyer / accountant)** — legal exposure before the liability research
-  exists (see Open questions). · **A new unranked profession** — ignores the
-  founder's existing pack ranking.
+  (Alternatives — a regulated profession first, or a new unranked one —
+  fall out of the decision + the regulated-professions open question.)
 
 ### SK-EKP-005 — The marketplace runs in parallel with the dogfood gate; neither blocks the other
 
@@ -273,6 +267,10 @@ GLOBAL; index in [`docs/decisions.md`](../../decisions.md)).
 - **Fee % and payout mechanics** — founder-set at ship time (SK-EKP-002);
   no number anywhere before that. (The grant primitive and interview design
   are no longer open — resolved by SK-EKP-008 and SK-EKP-007.)
+- **Listing demo depth** (EK-05 build decision) — golden-query samples are
+  a listing's "honest demo": do they show **real result rows free** (a leak
+  of the paid product) or query text/shapes only? Interacts with
+  SK-EKP-008 Q2 (schema free for introspection, rows paid).
 - **Regulated professions** (doctor, lawyer, accountant) — liability/
   advice-regulation research required before any regulated pack ships
   publicly.
