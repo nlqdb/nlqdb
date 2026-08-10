@@ -79,7 +79,20 @@ satisfy):
       wiring; this is the primitive it calls on HTTP 200.)*
 - [ ] Revocation latency measured and within the EK-02 bound — including
       the in-flight half (`statement_timeout` ≤ the 30 s cache bound; the
-      env knob may only tighten).
+      env knob may only tighten). *(Bound primitive shipped 2026-08-10 —
+      `apps/api/src/grant-status.ts`: `GRANT_REVOCATION_BOUND_MS` = 30 s is
+      the single ceiling both clocks read. `resolveGrantStatusTtlMs` parses
+      `GRANT_STATUS_TTL_MS` and clamps **downward only** (absent/invalid →
+      ceiling; a value past 30 s pins to 30 s; 0 = re-check every request);
+      `GRANT_STATEMENT_TIMEOUT` fixes the in-flight clock at the ceiling as a
+      PG interval, never 0 (which would disable it). `makeGrantStatusCache`
+      is the fail-closed NEW-query cache — positive-only, so a revoke
+      propagates within the TTL and a null/errored status is never cached;
+      the injected clock makes the ≤ TTL latency deterministically
+      unit-measured (`grant-status.test.ts`). Live per-route measurement —
+      revoke a wired grant, assert rejection within the bound — awaits box
+      2's executor wiring, which sets this `statement_timeout` and consumes
+      this cache.)*
 - [x] SDK/CLI/MCP/elements updated or gap tracked. *(SDK 2026-08-08:
       `mintGrant`/`listGrants`/`revokeGrant`, session-only, mirroring the key
       verbs. CLI 2026-08-09: `nlq grants list/revoke`, session-only, mirroring
