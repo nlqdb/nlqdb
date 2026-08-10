@@ -79,6 +79,7 @@ export default defineConfig(async () => {
               "src/db-connect/connect.test.ts",
               "src/db-create/**/*.test.ts",
               "src/ask/sql-validate-ddl.test.ts",
+              "src/ask/grant-scope.test.ts",
               "src/ask/route-ask.test.ts",
               "src/ask/prelude.test.ts",
               "src/ask/recent-tables.test.ts",

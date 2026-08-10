@@ -52,6 +52,9 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 - `apps/api/src/grants.ts`, `apps/api/migrations/0026_grants.sql`, the
   `/v1/grants` routes in `apps/api/src/index.ts` — the EK-06 grant
   control plane (`SK-EKP-008`)
+- `apps/api/src/ask/grant-scope.ts` — the EK-06 box-2 validation-layer
+  scope guard (`SK-EKP-008` guardrail #1: join-leakage rejected before
+  execution; read-only; deny-by-default)
 
 ## Decisions
 

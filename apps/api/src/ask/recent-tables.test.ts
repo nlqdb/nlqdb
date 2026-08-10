@@ -210,6 +210,50 @@ describe("extractTables", () => {
     expect(out).not.toContain("b");
   });
 
+  it("WITH RECURSIVE: the self-reference is the CTE, not a table", () => {
+    // Postgres shadows any base table of the CTE name throughout a recursive
+    // CTE body, so `FROM t` inside is the working table — not a real read.
+    expect(
+      extractTables(
+        "WITH RECURSIVE t AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM t) SELECT * FROM t",
+      ),
+    ).toEqual([]);
+  });
+
+  it("WITH RECURSIVE: real tables in the body are still kept, self-ref excluded", () => {
+    const out = extractTables(
+      "WITH RECURSIVE t AS (SELECT id FROM real_table UNION ALL SELECT id FROM t) SELECT * FROM t",
+    );
+    expect(out).toEqual(["real_table"]);
+  });
+
+  it("a NON-recursive CTE reading a same-named base table keeps that table (no mask)", () => {
+    // No RECURSIVE keyword → the inner `FROM billing` is the real base table.
+    expect(extractTables("WITH billing AS (SELECT * FROM billing) SELECT * FROM billing")).toEqual([
+      "billing",
+    ]);
+  });
+
+  it("WITH RECURSIVE with the recursive CTE not first: its self-ref is still excluded", () => {
+    // node-sql-parser records `recursive: true` only on the FIRST CTE of a
+    // `WITH RECURSIVE` clause, but the keyword governs the whole clause: the
+    // genuinely-recursive second CTE (`tree`) self-references, which Postgres
+    // resolves to the CTE — so `tree` must not leak as a real table.
+    const out = extractTables(
+      "WITH RECURSIVE regions AS (SELECT id FROM region_seed), tree AS (SELECT id FROM regions UNION ALL SELECT id FROM tree) SELECT * FROM tree",
+    );
+    expect(out).toEqual(["region_seed"]);
+  });
+
+  it("WITH RECURSIVE named after a real table still surfaces a DIFFERENT out-of-scope read", () => {
+    // The recursive self-name (`x`) is excluded, but the anchor's real read
+    // (`billing`) is not — a recursive CTE cannot launder a base-table read.
+    const out = extractTables(
+      "WITH RECURSIVE x AS (SELECT id FROM billing UNION ALL SELECT id FROM x) SELECT * FROM x",
+    );
+    expect(out).toEqual(["billing"]);
+  });
+
   it("returns [] on parse failure (does not throw)", () => {
     expect(extractTables("THIS IS NOT SQL :")).toEqual([]);
   });

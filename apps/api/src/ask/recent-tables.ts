@@ -134,12 +134,24 @@ export function tablesFromSchemaText(schemaText: string): string[] {
   return out;
 }
 
-// Pull table refs out of a SQL plan. Allowlist statement types are
-// SELECT / INSERT / UPDATE / DELETE; CTE aliases (`WITH cte AS …`) are
-// excluded because they're scope-local names, not real tables. Returns
-// deduped names in encounter order; empty array on parse failure or any
-// other statement kind (orchestrator's SQL allowlist already rejected
-// DDL by this point, but defence-in-depth keeps the walk allowlist-style).
+// Pull table refs out of a SQL plan, honoring CTE **lexical scope**.
+// Allowlist statement types are SELECT / INSERT / UPDATE / DELETE. A `WITH`
+// name is a scope-local alias, not a real table, so it is excluded — but
+// only where it is genuinely in scope: within the defining query's main
+// body and within *later* sibling CTE bodies. It is deliberately NOT
+// excluded inside its own body, nor in an unrelated (sibling / enclosing)
+// scope. That closes a scope-membership bypass: a global CTE-name blacklist
+// lets `SELECT * FROM billing WHERE id IN (WITH billing AS (…) SELECT …)`
+// mask the real, out-of-scope outer `billing` read behind an inner CTE of
+// the same name. A `WITH RECURSIVE` clause (node-sql-parser records
+// `recursive: true` on the *first* CTE iff the RECURSIVE keyword is present)
+// puts every CTE name in scope for every body — Postgres shadows any base
+// table of those names throughout the clause, so such a reference resolves to
+// the CTE, never a real table, and excluding them masks no read. A plain
+// (non-RECURSIVE) CTE never sees its own name in its body, so a `FROM billing`
+// in `WITH billing AS (…billing…)` stays surfaced (fail-closed). Returns
+// deduped names in encounter order; empty array on parse failure or any other
+// statement kind.
 export function extractTables(sql: string): string[] {
   let asts: AstNode[];
   try {
@@ -150,22 +162,7 @@ export function extractTables(sql: string): string[] {
   }
   const out = new Set<string>();
   for (const root of asts) {
-    if (!isAllowedStatement(root)) continue;
-    const cteNames = collectCteNames(root);
-    walk(root, (node) => {
-      // Match the from-item / target-table shape:
-      // `{ db: null|string, table: string, as?: string|null, ... }`.
-      // The `db` key is the discriminator — column-refs and other AST
-      // nodes that happen to carry a `table` string never have a `db`
-      // key, so this lets the same walker target both SELECT.from[]
-      // and INSERT/UPDATE/DELETE.table[] without false positives on
-      // `column_ref.table` (which is an alias, not a relation).
-      const obj = node as Record<string, unknown>;
-      if (typeof obj["table"] !== "string") return;
-      if (!("db" in obj)) return;
-      const t = obj["table"] as string;
-      if (!cteNames.has(t)) out.add(t);
-    });
+    if (isAllowedStatement(root)) collectTables(root, new Set(), out);
   }
   return [...out];
 }
@@ -181,17 +178,51 @@ function isAllowedStatement(node: AstNode): boolean {
   );
 }
 
-function collectCteNames(node: unknown): Set<string> {
-  const names = new Set<string>();
-  walk(node, (obj) => {
-    const w = (obj as { with?: unknown }).with;
-    if (!Array.isArray(w)) return;
-    for (const cte of w as Array<{ name?: { value?: unknown } }>) {
-      const name = cte?.name?.value;
-      if (typeof name === "string") names.add(name);
+// Scope-aware walk. `cteScope` is the set of CTE names visible at this node.
+// A relation node is `{ db, table }` — the `db` key discriminates it from a
+// `column_ref` that merely carries a `table` alias string, so the same walk
+// targets SELECT.from[] and INSERT/UPDATE/DELETE.table[] without false
+// positives.
+function collectTables(node: unknown, cteScope: Set<string>, out: Set<string>): void {
+  if (node === null || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (const item of node) collectTables(item, cteScope, out);
+    return;
+  }
+  const obj = node as Record<string, unknown>;
+  if (typeof obj["table"] === "string" && "db" in obj && !cteScope.has(obj["table"])) {
+    out.add(obj["table"]);
+  }
+  const w = obj["with"];
+  if (Array.isArray(w)) {
+    const ctes = w as Array<{ name?: { value?: unknown }; recursive?: unknown }>;
+    // Positional so index i aligns with w[i]; undefined for a nameless CTE.
+    const names = ctes.map((c) => (typeof c?.name?.value === "string" ? c.name.value : undefined));
+    const defined = names.filter((n): n is string => n !== undefined);
+    // `WITH RECURSIVE` is a property of the whole clause, but node-sql-parser
+    // records `recursive: true` only on the *first* CTE — so treat the clause
+    // as recursive if any CTE carries the flag. Under RECURSIVE, Postgres puts
+    // every CTE name (self + earlier + later siblings) in scope for every
+    // body; any reference to one of those names resolves to the CTE, never a
+    // base table, so masking them all masks no read. Without RECURSIVE, a body
+    // sees only *earlier* siblings — never itself, never a later sibling — so a
+    // same-named inner `FROM` stays surfaced and the scope-mask bypass stays
+    // closed.
+    const recursive = ctes.some((c) => c?.recursive === true);
+    for (let i = 0; i < w.length; i++) {
+      const visible = recursive
+        ? defined
+        : names.slice(0, i).filter((n): n is string => n !== undefined);
+      collectTables(w[i], new Set([...cteScope, ...visible]), out);
     }
-  });
-  return names;
+    // The main body (everything but `with`) sees all of this node's names.
+    const mainScope = new Set([...cteScope, ...defined]);
+    for (const [k, v] of Object.entries(obj)) {
+      if (k !== "with") collectTables(v, mainScope, out);
+    }
+    return;
+  }
+  for (const v of Object.values(obj)) collectTables(v, cteScope, out);
 }
 
 function key(principalId: string): string {
@@ -210,14 +241,4 @@ function parseEntries(raw: string | null): RecentTable[] {
   } catch {
     return [];
   }
-}
-
-function walk(node: unknown, visit: (obj: object) => void): void {
-  if (node === null || typeof node !== "object") return;
-  if (Array.isArray(node)) {
-    for (const item of node) walk(item, visit);
-    return;
-  }
-  visit(node);
-  for (const value of Object.values(node)) walk(value, visit);
 }

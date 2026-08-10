@@ -7,6 +7,18 @@ satisfied: [`SK-EKP-008`](../decisions/SK-EKP-008-grant-primitive-design.md) ·
 `apps/api/src/grants.ts` + `/v1/grants` mint/list/revoke, session-only,
 KV-idempotent, spanned). `getActiveGrant` is the fail-closed read box 2's
 enforcement consumes; hosted-only + scope-shape checks run at mint.
+**Box 2 — layer 1 shipped 2026-08-09:** the validation-layer scope guard
+(`apps/api/src/ask/grant-scope.ts` `validateGrantScope`) — `SK-EKP-008`
+guardrail #1 of 3. Composes on the base `/v1/ask` allowlist and rejects,
+before execution: reach to any non-scope table via JOIN / subquery / CTE
+body (join-leakage), schema-widened tables (deny-by-default), any write
+(a grant is SELECT-only), and — inherited — the `set_config` GUC-spoof
+primitive. Fail-closed on unparseable SQL (base allowlist rejects
+`parse_failed` first, so `extractTables` can never fail open). The DB-role
+half — the non-owner SELECT-only role assumed via `SET LOCAL ROLE` and
+`FORCE ROW LEVEL SECURITY` (guardrails #2–3, where the RLS-bypass
+kill-test lives) — and the live wiring into the buyer's `/v1/ask` route
+remain box 2's open work.
 
 ## Goal
 
@@ -46,7 +58,10 @@ satisfy):
       idempotency + spans. *(2026-08-08 — HTTP API; the SDK/CLI/MCP/
       elements sweep is box 5.)*
 - [ ] Cross-tenant read works only through a live grant; kill-tests for
-      RLS bypass, GUC spoofing, and join-leakage pass.
+      RLS bypass, GUC spoofing, and join-leakage pass. *(Layer 1 shipped
+      2026-08-09 — `validateGrantScope`: join-leakage + validation-layer
+      GUC-spoof + read-only + schema-widening kill-tests pass. RLS-bypass
+      kill-test + live route wiring await the DB-role half; see header.)*
 - [ ] Usage records emitted per granted query, idempotent under retry.
 - [ ] Revocation latency measured and within the EK-02 bound — including
       the in-flight half (`statement_timeout` ≤ the 30 s cache bound; the
