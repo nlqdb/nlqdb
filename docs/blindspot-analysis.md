@@ -186,12 +186,16 @@ of the EK docs against both repos:
 - **"Enforced by CI" with no CI.** `SK-EKP-003` promises the private repo
   "its own CI"; EK-05/#967 describe the repo-boundary guard as failing CI —
   but `nlqdb/experts` had zero workflows and experts#2 zero check runs. The
-  guard was local-honor-system. **Fixed:** experts#3 adds the workflow
-  (typecheck + test on PR/main).
+  guard was local-honor-system. **Fix in flight (both open, unmerged):**
+  experts#3 adds the workflow (typecheck + `bun test` on PR/main); it only
+  becomes a real merge-gate once it and experts#2 land together on `experts`
+  main — as separately branched, experts#3 does not carry the guard test, so
+  its own CI run does not yet execute it.
 - **A seam rule with no implementation.** `SK-EKP-007` stake 2 / experts
   AGENTS.md rule 5 ("interviews reject secret-shaped answers") was prose
-  only — the pilot CLI wrote a pasted API key into a row. **Fixed:**
-  experts#3 (capture-time re-ask + extraction-time rejection + tests).
+  only — the pilot CLI wrote a pasted API key into a row. **Fix in flight
+  (experts#3, open):** capture-time re-ask + extraction-time rejection +
+  tests (`src/interview/secrets.ts`, exercised by CI on that branch).
 - **The EK critical path runs through a slice no loop owns.** EK-04 boxes
   2–4 and EK-05 boxes 1–3 all wait on the D-08 shared runner — unticked on
   the *dogfood* track. `/daily` measurably never picks EK-adjacent work and
@@ -210,11 +214,14 @@ of the EK docs against both repos:
   one enforcement point covering every writer, and per `SK-EKP-003`'s own
   rule this is a public-rail gap, not something `experts` should keep
   private. Extraction trigger: the next write surface that needs the rule.
-- **Two locked decisions collide on the roadmap.** `SK-EKP-001` sells
-  sovereign hosting as the trust upgrade; `SK-EKP-008` mints v1 grants on
-  **platform-provisioned hosted DBs only** — so the expert who takes the
-  trust upgrade delists their paid product. EK-07's research pass already
-  owns the question ("grants terminate where?"), but it's buried as a
-  sub-bullet; treat it as EK-07's primary exit question, and until it's
-  answered no surface may market sovereign hosting and marketplace earnings
-  as composable.
+- **Sovereign hosting vs. brokered grants — looked like a collision, already
+  resolved.** `SK-EKP-001` sells sovereign hosting as the trust upgrade;
+  `SK-EKP-008` mints v1 grants on **platform-provisioned hosted DBs only**, so
+  an expert who takes possession would seem to delist their paid product. This
+  is **not** an open question: `SK-EKP-009` (EK-07 box 1, landed 2026-08-09)
+  already locks the answer — a sovereign DB leaves `SK-EKP-008`'s scope and is
+  **not brokerable**, so in v1 an expert either sells brokered access to a
+  hosted DB *or* takes possession, never both (selling into a sovereign DB is
+  a future decision, deny-by-default). The only residual guard is on copy:
+  no surface may market sovereign hosting and marketplace earnings as
+  composable — already covered by `SK-EKP-001`'s never-exceed-substance rule.
