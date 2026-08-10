@@ -131,22 +131,6 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    agent merge (P6). **Lowest rank — nothing publishes until then**; the
    live legal pages are untouched.
 
-## Suggestions needing approval (to amend the guidelines)
-
-1. **⏱ ~5 min · since 2026-08-09 — Approve or reject amending `SK-PIVOT-010`
-   to let user-scoped API keys create preset DBs.** Two held PRs disagree on
-   the `SK-PIVOT-016` gate's real blocker. **#961** cites a live-session
-   direction that memory-DB provisioning must be product-automated, and
-   amends `SK-PIVOT-010` so `POST /v1/databases {preset}` additionally accepts
-   `sk_live_`/`sk_mcp_` keys (`anon`/`pk_live` stay rejected) — which makes
-   provisioning agent-work and drops human bullet **#1** above. **#955** keeps
-   provisioning as a human step (the current merged state, #954). This widens
-   a documented auth boundary, so it needs your one-line **yes/no** — I could
-   not verify the cited direction from here (P1). **Yes →** #961 merges, the
-   next `/daily` ships the create-verb change, then D-04 auto-provisions and
-   bullet #1 drops. **No →** #961 closes, #955 merges, bullet #1 stands. Both
-   PRs are held until you decide.
-
 (P6 was approved and merged by the founder 2026-08-04, #885 — it is binding
 in CLAUDE.md/AGENTS.md.)
 
