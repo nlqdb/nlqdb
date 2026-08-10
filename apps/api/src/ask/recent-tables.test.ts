@@ -234,6 +234,17 @@ describe("extractTables", () => {
     ]);
   });
 
+  it("WITH RECURSIVE with the recursive CTE not first: its self-ref is still excluded", () => {
+    // node-sql-parser records `recursive: true` only on the FIRST CTE of a
+    // `WITH RECURSIVE` clause, but the keyword governs the whole clause: the
+    // genuinely-recursive second CTE (`tree`) self-references, which Postgres
+    // resolves to the CTE — so `tree` must not leak as a real table.
+    const out = extractTables(
+      "WITH RECURSIVE regions AS (SELECT id FROM region_seed), tree AS (SELECT id FROM regions UNION ALL SELECT id FROM tree) SELECT * FROM tree",
+    );
+    expect(out).toEqual(["region_seed"]);
+  });
+
   it("WITH RECURSIVE named after a real table still surfaces a DIFFERENT out-of-scope read", () => {
     // The recursive self-name (`x`) is excluded, but the anchor's real read
     // (`billing`) is not — a recursive CTE cannot launder a base-table read.

@@ -53,6 +53,17 @@ describe("validateGrantScope — in-scope reads pass", () => {
     );
     expect(res).toEqual({ ok: true, tables: ["lessons"] });
   });
+
+  it("a WITH RECURSIVE whose recursive CTE is not first passes (its alias is not a table)", () => {
+    // node-sql-parser flags `recursive` only on the first CTE, but the keyword
+    // governs the whole clause: the second CTE (`t`) is the genuinely recursive
+    // one, and its self-reference must not be mistaken for an out-of-scope read.
+    const res = validateGrantScope(
+      "WITH RECURSIVE seed AS (SELECT id FROM students), t AS (SELECT id FROM lessons UNION ALL SELECT id FROM t) SELECT * FROM t",
+      SCOPE,
+    );
+    expect(res).toEqual({ ok: true, tables: ["students", "lessons"] });
+  });
 });
 
 describe("validateGrantScope — join-leakage is rejected", () => {
