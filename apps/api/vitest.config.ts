@@ -146,6 +146,7 @@ export default defineConfig(async () => {
               "test/pmf-survey.test.ts",
               "test/models.test.ts",
               "test/databases-delete.test.ts",
+              "test/databases-create.test.ts",
               "test/db-connect.test.ts",
               "test/ask-dispatch.test.ts",
               "test/exec-acl-heal.test.ts",
