@@ -67,6 +67,15 @@ export type DraftStore = {
   save(draft: ImportDraft): Promise<void>;
   /** Atomically bind an unclaimed draft to a tenant. False = already claimed. */
   claim(id: string, tenantId: string): Promise<boolean>;
+  /**
+   * Compare-and-swap on `updated_at`: the caller that wins may run a phase,
+   * every concurrent caller that read the same version loses. This is the
+   * only thing that keeps two simultaneous advances of one draft from each
+   * provisioning a DB and each writing the same rows — `saveCursor` alone
+   * only makes a *sequential* retry non-duplicating. Not a lock: nothing is
+   * held, so a crashed advance strands nothing.
+   */
+  lease(id: string, expectedUpdatedAt: number, updatedAt: number): Promise<boolean>;
   remove(id: string): Promise<void>;
 };
 
@@ -165,13 +174,16 @@ export function makeD1DraftStore(d1: D1Database): DraftStore {
         .first<DraftRow>();
       return row ? toDraft(row) : null;
     },
+    // `tenant_id` is deliberately absent: `claim` is its only writer, so an
+    // in-flight phase that read the draft before a sign-in claimed it cannot
+    // save the pre-claim owner back over it.
     async save(draft) {
       const r = toRow(draft);
       await d1
         .prepare(
-          "UPDATE pack_imports SET tenant_id = ?, phase = ?, db_id = ?, save_cursor = ?, state_json = ?, updated_at = ? WHERE id = ?",
+          "UPDATE pack_imports SET phase = ?, db_id = ?, save_cursor = ?, state_json = ?, updated_at = ? WHERE id = ?",
         )
-        .bind(r.tenant_id, r.phase, r.db_id, r.save_cursor, r.state_json, r.updated_at, r.id)
+        .bind(r.phase, r.db_id, r.save_cursor, r.state_json, r.updated_at, r.id)
         .run();
     },
     async claim(id, tenantId) {
@@ -181,6 +193,13 @@ export function makeD1DraftStore(d1: D1Database): DraftStore {
       const upd = await d1
         .prepare("UPDATE pack_imports SET tenant_id = ? WHERE id = ? AND tenant_id IS NULL")
         .bind(tenantId, id)
+        .run();
+      return upd.meta.changes === 1;
+    },
+    async lease(id, expectedUpdatedAt, updatedAt) {
+      const upd = await d1
+        .prepare("UPDATE pack_imports SET updated_at = ? WHERE id = ? AND updated_at = ?")
+        .bind(updatedAt, id, expectedUpdatedAt)
         .run();
       return upd.meta.changes === 1;
     },
@@ -205,13 +224,21 @@ export function makeMemoryDraftStore(): DraftStore & { size(): number } {
       return row ? toDraft({ ...row }) : null;
     },
     async save(draft) {
-      if (!rows.has(draft.id)) return;
-      rows.set(draft.id, toRow(draft));
+      const existing = rows.get(draft.id);
+      if (!existing) return;
+      // Mirrors the D1 UPDATE: `tenant_id` is `claim`'s alone.
+      rows.set(draft.id, { ...toRow(draft), tenant_id: existing.tenant_id });
     },
     async claim(id, tenantId) {
       const row = rows.get(id);
       if (!row || row.tenant_id !== null) return false;
       rows.set(id, { ...row, tenant_id: tenantId });
+      return true;
+    },
+    async lease(id, expectedUpdatedAt, updatedAt) {
+      const row = rows.get(id);
+      if (!row || row.updated_at !== expectedUpdatedAt) return false;
+      rows.set(id, { ...row, updated_at: updatedAt });
       return true;
     },
     async remove(id) {

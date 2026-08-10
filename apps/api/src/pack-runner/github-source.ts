@@ -59,12 +59,19 @@ export function parseRepoInput(input: string): RepoRef | null {
   if (withoutHost.includes("://") || /^[^/]*\.[^/]*\//.test(withoutHost)) return null;
   const parts = withoutHost.split("/");
   const [owner, repo, kind, ...rest] = parts;
-  const NAME = /^[A-Za-z0-9._-]+$/;
-  if (!owner || !repo || !NAME.test(owner) || !NAME.test(repo)) return null;
+  // `owner` and `repo` are interpolated into the fixed api.github.com /
+  // codeload.github.com paths, so a `.`/`..` segment would be normalised away
+  // by fetch and address a *different* GitHub endpoint. GitHub has no such
+  // name (and none over 100 chars), so reject both here.
+  if (!isRepoName(owner) || !isRepoName(repo)) return null;
   if (parts.length === 2) return { owner, repo, ref: null };
   // `/tree/<ref>` may itself contain slashes (`release/1.x`).
   if (kind === "tree" && rest.length > 0) return { owner, repo, ref: rest.join("/") };
   return null;
+}
+
+function isRepoName(name: string | undefined): name is string {
+  return !!name && name !== "." && name !== ".." && /^[A-Za-z0-9._-]{1,100}$/.test(name);
 }
 
 /** Machine codes the runner maps to a next action, never raw HTTP status. */
@@ -206,6 +213,7 @@ function fail(span: { setAttribute: (k: string, v: string) => void }, reason: Ar
 // lines here rather than a dependency.
 
 const BLOCK = 512;
+const EMPTY = new Uint8Array(0);
 
 export async function readTarGz(
   body: ReadableStream<Uint8Array>,
@@ -237,9 +245,15 @@ export async function readTarGz(
   }
   const buf = new Uint8Array(total);
   let at = 0;
-  for (const chunk of chunks) {
+  // Drop each chunk's reference as it is copied, so the expanded archive is
+  // held once rather than twice — `maxTotalBytes` is sized against the
+  // isolate's memory ceiling and a second live copy would double it.
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (!chunk) continue;
     buf.set(chunk, at);
     at += chunk.byteLength;
+    chunks[i] = EMPTY;
   }
   return { ok: true, entries: parseTar(buf, limits) };
 }

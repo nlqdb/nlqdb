@@ -230,7 +230,19 @@ stay so: the import journey is a product surface, like `/v1/chat/messages`
 and `/v1/grants`, not a data capability an agent calls. Promote it only if a
 real caller asks.
 
-**Two findings worth carrying forward.**
+**Hardened in review (2026-08-10).** One advance of a draft runs at a time,
+via a compare-and-swap on the draft's `updated_at` (`DraftStore.lease`,
+`409 import_busy`): without it two simultaneous advances each provisioned a
+Neon schema — one orphaned beyond the reach of the `SK-HDC-016` cleanup — and
+each replayed the same rows into a draft that already had a DB. `saveCursor`
+only makes a *sequential* retry non-duplicating, and KV idempotency cannot
+serialise concurrent callers (`SK-IDEMP-005`). `save` no longer writes
+`tenant_id` (claim is its only writer), the credential guard now inspects the
+whole payload rather than the fields today's packs happen to use, the
+preflight throttle covers signed-in callers too, and `owner`/`repo` reject
+`.`/`..` segments that `fetch` would normalise into a different GitHub path.
+
+**Three findings worth carrying forward.**
 
 1. `entity_facts` **edges cannot be written** through the public surface:
    `nlqdb_remember` has `fact` / `episode` / `entity` verbs and no edge
@@ -241,6 +253,14 @@ real caller asks.
    import of 200 rows cannot pass it); the import is rate-limited once per
    advance at the route instead. Recorded here because it is a deliberate
    granularity choice, not an oversight.
+3. The anonymous half of `POST /v1/packs/imports` scopes its
+   `Idempotency-Key` and its throttle by originating IP, while
+   [`SK-IDEMP-010`](../../../idempotency/FEATURE.md) says the anonymous dedupe
+   identity is the device-token hash. The preflight deliberately requires no
+   anon principal (`GLOBAL-007`: value before any identity), so there is no
+   device token to key on. Flagged rather than resolved: either the preflight
+   adopts the anon principal or `SK-IDEMP-010` gains a no-principal arm — a
+   founder call, not a review fix.
 
 ## Sources checked
 

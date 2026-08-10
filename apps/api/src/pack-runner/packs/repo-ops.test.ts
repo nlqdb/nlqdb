@@ -38,6 +38,13 @@ describe("source naming", () => {
     "https://gitlab.com/nlqdb/nlqdb",
     "https://github.com/nlqdb/nlqdb/blob/main/README.md",
     "https://github.com/nlqdb/nlq db",
+    // A `.`/`..` segment would be normalised away by fetch and address a
+    // different api.github.com path than the one this URL claims.
+    "../..",
+    "https://github.com/../nlqdb",
+    "https://github.com/nlqdb/..",
+    // No GitHub name is this long; the cap keeps the built path bounded.
+    `nlqdb/${"a".repeat(101)}`,
   ])("rejects %s", (input) => {
     expect(parseRepoInput(input)).toBeNull();
   });

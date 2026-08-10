@@ -2567,13 +2567,14 @@ app.post("/v1/packs/imports", async (c) => {
       const session = await sessionResolver.getSession(c.req.raw);
       const tenantId = session?.user.id ?? null;
       const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-      if (!tenantId) {
-        const throttle = makeKvThrottle(c.env.KV, PACK_PREFLIGHT_THROTTLE);
-        if (!(await throttle.tryConsume(ip))) {
-          span.setAttribute("nlqdb.pack.import.outcome", "rate_limited");
-          c.header("Retry-After", String(PACK_PREFLIGHT_THROTTLE.windowSeconds));
-          return c.json({ error: { status: "rate_limited" as const } }, 429);
-        }
+      // Per account when there is one, else per originating IP — an account is
+      // free to create, so exempting signed-in callers would leave the archive
+      // download (the expensive half) with no bound at all.
+      const throttle = makeKvThrottle(c.env.KV, PACK_PREFLIGHT_THROTTLE);
+      if (!(await throttle.tryConsume(tenantId ?? `ip:${ip}`))) {
+        span.setAttribute("nlqdb.pack.import.outcome", "rate_limited");
+        c.header("Retry-After", String(PACK_PREFLIGHT_THROTTLE.windowSeconds));
+        return c.json({ error: { status: "rate_limited" as const } }, 429);
       }
 
       // GLOBAL-005 — a retried create must not start a second import (each
@@ -2692,8 +2693,9 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
       span.setAttribute("nlqdb.pack.id", draft.packId);
 
       // GLOBAL-005 — a replayed advance returns the prior view rather than
-      // re-running a phase. Row-level duplicate protection is the runner's
-      // `saveCursor`; this only spares the round trip.
+      // re-running a phase. This is the cheap path only: KV is eventually
+      // consistent (`SK-IDEMP-005`), so two truly concurrent retries can both
+      // miss it. The D1 lease below is what actually serialises them.
       const idemKey = c.req.header("Idempotency-Key") ?? undefined;
       const prior = await idempotencyLookup(c.env.KV, `pack_${mode}`, session.user.id, idemKey);
       if (prior) {
@@ -2710,6 +2712,20 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
         c.header("Retry-After", String(Math.max(0, decision.resetAt - now)));
         return c.json({ error: { status: "rate_limited" as const } }, 429);
       }
+
+      // Exactly one advance of a draft runs at a time. Without this, two
+      // simultaneous calls both see `saving` with no `dbId` and each
+      // provisions a Neon schema (one of them orphaned, so the SK-HDC-016
+      // cleanup can never reach it), and two calls on a draft that already
+      // has one both replay the same rows into it. The `saveCursor` only
+      // makes a *sequential* retry non-duplicating. Compare-and-swap on
+      // `updated_at`, not a held lock, so a crashed advance strands nothing.
+      const leaseAt = Math.max(Date.now(), draft.updatedAt + 1);
+      if (!(await store.lease(id, draft.updatedAt, leaseAt))) {
+        span.setAttribute("nlqdb.pack.import.outcome", "import_busy");
+        return c.json({ import: importView(draft), error: { status: "import_busy" as const } }, 409);
+      }
+      draft = { ...draft, updatedAt: leaseAt };
 
       const deps = buildPackRunnerDeps(c.env, session.user.id, draft.packId);
 

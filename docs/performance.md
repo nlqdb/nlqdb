@@ -41,8 +41,6 @@ non-zero headroom. Anything that goes over budget at PR time fails CI
 
 ### 2.1 `POST /v1/ask` — cache hit
 
-The hot path. Plan exists in KV; we just look it up, execute SQL, return.
-
 | #  | Stage                                         | p50    | p99    |
 | :- | :-------------------------------------------- | :----- | :----- |
 | 1  | Edge ingress (warm Worker)                    | 5 ms   | 30 ms  |
@@ -56,8 +54,6 @@ The hot path. Plan exists in KV; we just look it up, execute SQL, return.
 |    | Headroom vs SLO                               | 77 ms  | 60 ms  |
 
 ### 2.2 `POST /v1/ask` — cache miss (worst case: with summarize)
-
-The cold path. LLM dominates; everything else has to stay tight.
 
 | #  | Stage                                         | p50    | p99    |
 | :- | :-------------------------------------------- | :----- | :----- |
@@ -76,24 +72,19 @@ The cold path. LLM dominates; everything else has to stay tight.
 |    | **Total (no summarize)**                      | **733 ms**  | **1980 ms** |
 |    | Headroom vs SLO                               | 467 ms / 767 ms | 720 ms / 1520 ms |
 
-The merged `route` LLM call (`apps/api/src/ask/route-ask.ts`,
-SK-ASK-009) runs **only** when `dbId` is absent — see §2.3 for that
-prelude. Pinned-dbId calls skip it entirely.
-
-**Summarize is conditional** — only runs when the result row count is
-above a threshold (default 5) or when the route classifier flagged
-the query as conversational. Most fact-lookup queries return raw rows
-and skip stage 10 entirely.
+Two stages are conditional. The merged `route` call
+(`ask/route-ask.ts`, SK-ASK-009) runs only when `dbId` is absent (§2.3).
+Stage 9 runs only when the row count is over the threshold (default 5)
+or the route classifier flagged the query as conversational, so most
+fact lookups skip it.
 
 ### 2.3 `POST /v1/ask` — `dbId` resolution prelude (dbId omitted)
 
-`SK-ASK-009`. Runs **only** when the request omits `dbId`. One merged
-`routeAsk` call (cheap-tier `llm.route` op) decides
+`SK-ASK-009`. One cheap-tier `llm.route` call decides
 `{kind, targetDbId, referencedTables}` from the goal + dbset +
-recent-tables MRU. `routeAsk` runs in parallel with
-`listDatabasesForTenant`; its own short-circuits (0 dbs /
-recent-table verb hit / slug match) keep most multi-DB sends off a
-full LLM round-trip.
+recent-tables MRU, in parallel with `listDatabasesForTenant`. Its
+short-circuits (0 dbs / recent-table verb hit / slug match) keep most
+multi-DB sends off a full LLM round-trip.
 
 | Path                                                                 | p50    | p99    |
 | :------------------------------------------------------------------- | :----- | :----- |
@@ -102,12 +93,9 @@ full LLM round-trip.
 | 2+ dbs, recent-table substring + verb match (no LLM)                 | 100 ms | 400 ms |
 | 2+ dbs, full LLM `route` (worst case; one cheap-tier call)           | 115 ms | 445 ms |
 
-The merged `route` call replaces yesterday's two cheap-tier calls
-(`classify` + `disambiguate`) with one — halving the LLM round-trips
-on the dbId-absent path. Worst case adds 115/445 ms onto the §2.2
-cache-miss budget: **1148 ms p50 / 3225 ms p99** with summarize,
-**848 ms p50 / 2425 ms p99** without — both inside the 1.5s / 3.5s
-SLO with 352 / 275 ms p99 headroom on the worst path.
+Worst case adds 115/445 ms onto §2.2: **1148 ms p50 / 3225 ms p99**
+with summarize, **848 / 2425 ms** without — both inside the 1.5 s /
+3.5 s SLO (352 / 275 ms p99 headroom).
 
 Operational guardrails:
 - `route` timeout 1500 ms (cheap-tier, `DEFAULT_TIMEOUTS_MS`).
@@ -115,8 +103,6 @@ Operational guardrails:
   attribute records which fast-path won (`slug_fastpath` /
   `recent_table_fastpath` / `single_db_auto` / `llm_auto_target` /
   `ambiguous_409` / `zero_dbs_create_fallback`).
-- Recent-tables MRU per principal (SK-ASK-012 / WS1) caps at 100
-  entries; `routeAsk` projects `(dbId, table)` into the prompt.
 
 ### 2.4 `GET /api/auth/callback/github`
 
@@ -191,7 +177,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `dns.resolve`                 | One span per BYO connect-time egress resolve (`GLOBAL-035`); A + AAAA DoH legs nest under it. Attributes `server.address`, `dns.question.name`, `dns.answer.count`; ERROR on fail-loud. Owner: `packages/db/src/doh-resolver.ts`. |
 | `nlqdb.mcp.http.request`     | `SK-MCP-009` — every hosted-MCP Worker request before `OAuthProvider` dispatch (`GET /health` skipped). Attributes `http.{request.method,route,response.status_code}`; an `OAuthProvider` error adds `nlqdb.mcp.auth.{error_code,error_status,error_description}` and flips status to ERROR. Owner: `apps/mcp/src/index.ts`. |
 | `nlqdb.grants.{mint,list,revoke}` | The `/v1/grants` cross-tenant read-grant control plane (`SK-EKP-008`). Each carries `nlqdb.user.id` plus its own `nlqdb.grants.<verb>.outcome`; mint adds `.db_id`, list adds `.count`, revoke adds `.grant_id` and is fail-closed within the 30 s bound. |
-| `nlqdb.pack.import.{create,advance,retry,delete}` | The shared goal-pack import runner (`SK-PIVOT-021`, D-08). One per `/v1/packs/imports*` call. Carries `nlqdb.pack.id`, `nlqdb.pack.import.{id,phase,db_id}` and `nlqdb.pack.import.outcome` (`ok`, `idempotent_replay`, `auth_required`, `db_required`, `source_unavailable`, `rate_limited`, `phase_failed`, `internal_error`). |
+| `nlqdb.pack.import.{create,advance,retry,delete}` | The shared goal-pack import runner (`SK-PIVOT-021`, D-08). One per `/v1/packs/imports*` call. Carries `nlqdb.pack.id`, `nlqdb.pack.import.{id,phase,db_id}` and `nlqdb.pack.import.outcome` (`ok`, `idempotent_replay`, `auth_required`, `db_required`, `source_unavailable`, `rate_limited`, `import_busy`, `phase_failed`, `internal_error`). |
 | `nlqdb.pack.source.{fetch,archive}` | A pack adapter's source reads (`GLOBAL-014`): `fetch` = a GitHub REST call (commit pin), `archive` = the codeload `tar.gz`. Carry `server.address`, `http.response.status_code`, `nlqdb.pack.source.{outcome,commit,entries}`. |
 
 ### 3.2 Metric names

@@ -106,14 +106,11 @@ export function carriesSecretValue(text: string): boolean {
   return SECRET_VALUE_PATTERNS.some((re) => re.test(text));
 }
 
+// Every field of the payload, not a per-object subset: a pack is free to put
+// text in `tags`, `properties`, `source` or `tool_calls`, and a guard that
+// inspects only the fields today's packs use is a guard a pack can slip past.
 function recordText(record: MemoryRecord): string {
-  if (record.object === "entity") {
-    return `${record.payload.canonical_name} ${JSON.stringify(record.payload.properties ?? {})}`;
-  }
-  if (record.object === "fact") {
-    return `${record.payload.content} ${JSON.stringify(record.payload.source ?? {})}`;
-  }
-  return record.payload.content;
+  return JSON.stringify(record.payload);
 }
 
 /**
@@ -251,6 +248,10 @@ export async function advanceDraft(
       const step = await runPhase(deps, adapter, current, acquire);
       if (!step.ok) return step;
       current = step.draft;
+      // A phase that did not move the draft would spin forever. Only a
+      // corrupt stored `phase` can reach this, but "hang the request" is the
+      // wrong way to find out.
+      if (current.phase === before) return { ok: true, draft: current };
     } catch (err) {
       const detail = err instanceof SourceUnavailable ? err.code : errText(err);
       const reason = err instanceof SourceUnavailable ? "source_unavailable" : "phase_failed";

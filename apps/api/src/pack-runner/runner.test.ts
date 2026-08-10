@@ -391,6 +391,17 @@ describe("credential-value guard", () => {
     expect(draft?.scan?.skipReasons.credential_value_rejected).toBe(1);
   });
 
+  it("also guards a secret hidden in a fact's tags", () => {
+    const { rejected } = guardSecretValues([
+      {
+        category: "c",
+        object: "fact",
+        payload: { content: "harmless", tags: ["ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"] },
+      },
+    ]);
+    expect(rejected).toBe(1);
+  });
+
   it("also guards a secret hidden in a fact's source metadata", () => {
     const { rejected } = guardSecretValues([
       {
@@ -403,6 +414,34 @@ describe("credential-value guard", () => {
       },
     ]);
     expect(rejected).toBe(1);
+  });
+});
+
+// ── the store contract the routes depend on ───────────────────────────
+
+describe("draft store", () => {
+  it("leases a draft to one caller per version, so concurrent advances cannot both run", async () => {
+    const h = harness();
+    const pre = await preflight(h, "session:abc", "tenant-1");
+    if (!pre.ok) throw new Error("unreachable");
+    const version = pre.draft.updatedAt;
+    // Two callers that read the same version: the first wins, the second is
+    // told the draft is busy rather than provisioning and writing twice.
+    expect(await h.store.lease("imp_test", version, version + 1)).toBe(true);
+    expect(await h.store.lease("imp_test", version, version + 2)).toBe(false);
+    // The next request reads the new version and proceeds normally.
+    const fresh = await h.store.get("imp_test");
+    expect(fresh && (await h.store.lease("imp_test", fresh.updatedAt, version + 3))).toBe(true);
+  });
+
+  it("never lets a save rewrite `tenant_id` — `claim` is its only writer", async () => {
+    const h = harness();
+    const pre = await preflight(h);
+    if (!pre.ok) throw new Error("unreachable");
+    expect(await h.store.claim("imp_test", "tenant-9")).toBe(true);
+    // A request that read the draft before the claim saves its own stale copy.
+    await h.store.save({ ...pre.draft, tenantId: null, saveCursor: 0 });
+    expect((await h.store.get("imp_test"))?.tenantId).toBe("tenant-9");
   });
 });
 
