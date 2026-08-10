@@ -45,6 +45,14 @@ describe("validateGrantScope — in-scope reads pass", () => {
     expect(res.ok).toBe(true);
     expect(res.ok && res.tables).toEqual(["lessons"]);
   });
+
+  it("a WITH RECURSIVE over in-scope tables passes (self-ref is not an out-of-scope table)", () => {
+    const res = validateGrantScope(
+      "WITH RECURSIVE t AS (SELECT id FROM lessons UNION ALL SELECT id FROM t) SELECT * FROM t",
+      SCOPE,
+    );
+    expect(res).toEqual({ ok: true, tables: ["lessons"] });
+  });
 });
 
 describe("validateGrantScope — join-leakage is rejected", () => {
@@ -97,6 +105,16 @@ describe("validateGrantScope — join-leakage is rejected", () => {
     );
     expect(res.ok).toBe(false);
     expect(res.ok ? "" : res.detail).toBe("billing");
+  });
+
+  it("a WITH RECURSIVE cannot launder an out-of-scope base-table read in its anchor", () => {
+    // The recursive self-name (`x`) is excluded, but the anchor's real
+    // `FROM billing` is out of scope and must still be rejected.
+    const res = validateGrantScope(
+      "WITH RECURSIVE x AS (SELECT id FROM billing UNION ALL SELECT id FROM x) SELECT * FROM x",
+      SCOPE,
+    );
+    expect(res).toEqual({ ok: false, reason: "out_of_scope", detail: "billing" });
   });
 
   it("a CTE reading a non-granted table in its own body is not masked by its own name", () => {

@@ -143,11 +143,15 @@ export function tablesFromSchemaText(schemaText: string): string[] {
 // scope. That closes a scope-membership bypass: a global CTE-name blacklist
 // lets `SELECT * FROM billing WHERE id IN (WITH billing AS (…) SELECT …)`
 // mask the real, out-of-scope outer `billing` read behind an inner CTE of
-// the same name. node-sql-parser exposes no RECURSIVE flag, so a
-// self-referential/recursive CTE surfaces its own name and is conservatively
-// treated as a table — fail-closed (a false reject) over fail-open (a
-// masked read). Returns deduped names in encounter order; empty array on
-// parse failure or any other statement kind.
+// the same name. A `WITH RECURSIVE` CTE (node-sql-parser sets `recursive:
+// true` iff the RECURSIVE keyword is present) *does* see its own name inside
+// its own body: Postgres shadows any base table of that name throughout the
+// CTE body, so the self-reference resolves to the CTE, never a real table —
+// excluding it there masks no read. A plain (non-RECURSIVE) CTE never sees
+// its own name in its body (`recursive: false`), so a `FROM billing` in
+// `WITH billing AS (…billing…)` stays surfaced (fail-closed). Returns deduped
+// names in encounter order; empty array on parse failure or any other
+// statement kind.
 export function extractTables(sql: string): string[] {
   let asts: AstNode[];
   try {
@@ -191,17 +195,20 @@ function collectTables(node: unknown, cteScope: Set<string>, out: Set<string>): 
   }
   const w = obj["with"];
   if (Array.isArray(w)) {
-    const names = (w as Array<{ name?: { value?: unknown } }>)
-      .map((c) => c?.name?.value)
-      .filter((n): n is string => typeof n === "string");
-    // Each CTE body sees only *earlier* siblings — never itself (recursion
-    // is conservatively surfaced) and never a later sibling — so a
-    // same-named inner CTE cannot mask a real table read in its own body.
+    const ctes = w as Array<{ name?: { value?: unknown }; recursive?: unknown }>;
+    // Positional so index i aligns with w[i]; undefined for a nameless CTE.
+    const names = ctes.map((c) => (typeof c?.name?.value === "string" ? c.name.value : undefined));
+    // A CTE body sees *earlier* siblings, plus its own name iff it is
+    // RECURSIVE (the self-reference resolves to the CTE, never a base table).
+    // A non-recursive CTE never sees its own name, so a same-named inner
+    // `FROM` stays surfaced — the scope-mask bypass stays closed.
     for (let i = 0; i < w.length; i++) {
-      collectTables(w[i], new Set([...cteScope, ...names.slice(0, i)]), out);
+      const visible = names.slice(0, i).filter((n): n is string => n !== undefined);
+      if (ctes[i]?.recursive === true && names[i] !== undefined) visible.push(names[i] as string);
+      collectTables(w[i], new Set([...cteScope, ...visible]), out);
     }
     // The main body (everything but `with`) sees all of this node's names.
-    const mainScope = new Set([...cteScope, ...names]);
+    const mainScope = new Set([...cteScope, ...names.filter((n): n is string => n !== undefined)]);
     for (const [k, v] of Object.entries(obj)) {
       if (k !== "with") collectTables(v, mainScope, out);
     }
