@@ -13,7 +13,8 @@
   `preset` unless `MEMORY_PRESET=1`;
   (2) the companion `POST /v1/memory/remember` write verb rejects `anon`
   (`auth_required`) and `pk_live` (`forbidden`, read-only) — only a
-  user-session key writes memory; (3) `CreateForm` is
+  user-scoped principal (a session or an `sk_live_`/`sk_mcp_` key) writes
+  memory; (3) `CreateForm` is
   anon-only by contract — it always sends `credentials:"omit"` + an anon
   bearer so the device-cap → sign-in handoff works (SK-ANON-008), so it
   structurally cannot call a `requireSession` endpoint. The memory wedge is
