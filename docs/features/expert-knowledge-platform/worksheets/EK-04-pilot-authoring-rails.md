@@ -1,15 +1,22 @@
 # EK-04 — Pilot authoring rails: the language-tutor expert pack (public half)
 
 **Status:** in-flight · **Repo:** nlqdb · **Risk:** high · **Runs:** multi ·
-**Prereqs:** EK-01 design record (met) · the D-08 shared runner (**unmet
-2026-08-10** — D-08 is unticked on the dogfood track, so boxes 2–4 below are
-blocked on work no EK slice owns; the ownership call is tracked in
-`docs/blindspot-analysis.md` §EK-track audit) ·
+**Prereqs:** EK-01 design record (met) · the D-08 shared runner (**met
+2026-08-11** — the pack-runner core landed as #973). ·
 **Box 1 shipped 2026-08-08:** the language-tutor pack's golden-query set +
 seed corpus landed in the `SK-QUAL-023` memory-quality eval family
 (`tools/eval/src/datasets/memory-quality.ts`, `language_tutor_memory_v1` — 12
 golds, 4 temporal, all five axes; hand-checked semantics guarded in
 `tools/eval/test/datasets/memory-quality.test.ts`). Mirrors D-03's repo-ops set.
+**Interview-source adapter landed 2026-08-11** (box 4): the language-tutor
+`PackAdapter` (instance #2) is `apps/api/src/pack-runner/packs/language-tutor.ts`
+— pure `parseSource`/`classify`/`extract` mapping an interview transcript
+(`SK-EKP-007` seam) to `agent_memory_v1` rows with `source_episode`
+provenance, registered with **one `PACKS` entry and zero runner edits** (the
+N+1 proof). Remaining: `acquire`'s live transcript endpoint is wired only via
+injected `fetch` until the `experts` interview service ships (box 2, gates on
+EK-05); the `INV-EKP-037` egress assertion (box 5) extends the `GLOBAL-037`
+test separately.
 
 ## Goal
 
@@ -68,8 +75,11 @@ takes, this slice owns everything on the nlqdb side of it.
       progress counters → verify → proof → delete) with zero
       runner-code forks.
 - [ ] Rows verifiably on `agent_memory_v1` via public surfaces only.
-- [ ] The N+1 claim holds: diff shows pack content + adapter, no rebuilt
-      journey machinery.
+- [x] The N+1 claim holds: diff shows pack content + adapter, no rebuilt
+      journey machinery. (2026-08-11 — `packs/language-tutor.ts` + one `PACKS`
+      entry in `deps.ts`; zero edits to `runner.ts`/`types.ts`/the journey. The
+      runner's own N+1 fake-pack test already proves the runner drives a
+      non-repo pack end-to-end.)
 - [ ] `INV-EKP-037` asserted in the adapter test suite (`SK-EKP-007`, as
       hardened 2026-08-07): the knowledge-DB query/ask path sends schema
       tokens only — zero expert row values — to the model. (The former
