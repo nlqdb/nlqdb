@@ -224,6 +224,31 @@ describe("extraction → agent_memory_v1 rows", () => {
     });
   });
 
+  it("drops a malformed extraction without throwing, keeping the episode", () => {
+    // `extractions` shapes the `experts` service could get wrong across the
+    // HTTP seam: a non-array, an unknown `object`, and a fact missing `content`.
+    const malformed = {
+      id: "ex-bad",
+      episode: "An exchange whose extraction payload is broken.",
+      extractions: { object: "fact", content: "not an array" },
+    } as unknown as InterviewExchange;
+    const notAnArray = exchangeRecords(malformed, "s-abc123");
+    expect(notAnArray).toHaveLength(1);
+    expect(notAnArray[0]?.object).toBe("episode");
+
+    const badElements: InterviewExchange = {
+      id: "ex-bad2",
+      episode: "Good episode, bad rows.",
+      extractions: [
+        { object: "note", kind: "x", name: "y" } as never,
+        { object: "fact", kind: "mistake" } as never,
+      ],
+    };
+    const records = exchangeRecords(badElements, "s-abc123");
+    expect(records).toHaveLength(1);
+    expect(records[0]?.object).toBe("episode");
+  });
+
   it("every planned fact records where it came from (no orphan rows)", () => {
     const facts = languageTutorPack
       .extract(TRANSCRIPT.exchanges.map(item), SOURCE)

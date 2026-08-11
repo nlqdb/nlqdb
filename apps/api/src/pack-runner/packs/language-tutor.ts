@@ -113,6 +113,23 @@ function decodeTranscript(body: unknown): InterviewTranscript | null {
 
 // ── extraction (pure — no model, no network) ───────────────────────────
 
+/**
+ * A well-formed extraction element. `extractions` crosses the HTTP seam
+ * from the `experts` service, so each element is validated here — the same
+ * defensive posture `decodeExchange` takes for `id`/`episode`. A malformed
+ * element is dropped (the episode is still kept) rather than written as an
+ * undefined-valued row or thrown over the whole import.
+ */
+function validExtraction(ex: unknown): ex is InterviewExtraction {
+  if (typeof ex !== "object" || ex === null) return false;
+  const e = ex as Record<string, unknown>;
+  if (e["object"] === "entity")
+    return typeof e["kind"] === "string" && typeof e["name"] === "string";
+  if (e["object"] === "fact")
+    return typeof e["kind"] === "string" && typeof e["content"] === "string";
+  return false;
+}
+
 /** One exchange → its episode row plus the entity/fact rows it extracted. */
 export function exchangeRecords(exchange: InterviewExchange, sessionId: string): MemoryRecord[] {
   // The episode is kept even when nothing structured extracts (SK-EKP-007
@@ -129,7 +146,9 @@ export function exchangeRecords(exchange: InterviewExchange, sessionId: string):
   // no edge verb yet, so the fact→episode link is metadata, not an
   // `entity_facts` row (the D-08 edge-verb gap). The entity anchor (the word
   // or rule slipped on) rides `tags`, exactly as the eval corpus tags it.
-  for (const ex of exchange.extractions ?? []) {
+  const extractions = Array.isArray(exchange.extractions) ? exchange.extractions : [];
+  for (const ex of extractions) {
+    if (!validExtraction(ex)) continue;
     if (ex.object === "entity") {
       records.push({
         category: ex.kind,
@@ -143,7 +162,7 @@ export function exchangeRecords(exchange: InterviewExchange, sessionId: string):
         payload: {
           content: ex.content,
           kind: ex.kind,
-          tags: ex.tags ?? [],
+          tags: Array.isArray(ex.tags) ? ex.tags : [],
           source: { session: sessionId, source_episode: exchange.id },
         },
       });
