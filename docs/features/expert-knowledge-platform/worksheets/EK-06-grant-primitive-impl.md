@@ -19,6 +19,27 @@ half — the non-owner SELECT-only role assumed via `SET LOCAL ROLE` and
 `FORCE ROW LEVEL SECURITY` (guardrails #2–3, where the RLS-bypass
 kill-test lives) — and the live wiring into the buyer's `/v1/ask` route
 remain box 2's open work.
+**Box 2 — DB-role half, role-name convention shipped 2026-08-10:**
+`apps/api/src/grant-role.ts` (`grantRoleName`/`assertGrantRoleName`) — the
+single source of truth for the per-grant, non-owner, SELECT-only role name
+(`grant_<16hex of SHA-256(grantId)>`) the provisioner and the exec path both
+use, so they can never drift (the `tenant-role.ts` rationale applied to the
+grant primitive). Per-**grant** (not per-tenant/per-DB) because the role is
+provisioned *from* the grant's scope and scope is authoritative
+(`SK-EKP-008`); the `grant_` prefix is disjoint from `tenant_`, so a granted
+read can never assume an owner's full-tenant role, and a **missing** grant
+role fails **closed** (no auto-heal, unlike the tenant role) — a grant role
+is created only by the mint / re-scope path, never fabricated on a
+`SET LOCAL ROLE` error. Still box 2's open work: (a) the provisioning DDL
+that `CREATE ROLE`s this name, `GRANT SELECT`s exactly the scope tables,
+`GRANT … TO CURRENT_USER WITH SET TRUE`, and `ALTER TABLE … FORCE ROW LEVEL
+SECURITY` (mirroring `neon-provision.ts`), run at mint and on re-scope;
+(b) the granted-exec step builder (the `buildHostedExecSteps` analogue:
+audit-only `app.*` GUCs → grant `statement_timeout` → `SET LOCAL ROLE
+"grant_…"` → user statement) — its `app.tenant_id`/`app.agent_id` values
+against the `agent_memory_v1` `agent_isolation` RLS policy need **live PG
+verification** (owner rows returned, nothing else), so it lands with (c) the
+live `/v1/ask` route wiring + the RLS-bypass kill-test.
 
 ## Goal
 
@@ -66,8 +87,11 @@ satisfy):
 - [ ] Cross-tenant read works only through a live grant; kill-tests for
       RLS bypass, GUC spoofing, and join-leakage pass. *(Layer 1 shipped
       2026-08-09 — `validateGrantScope`: join-leakage + validation-layer
-      GUC-spoof + read-only + schema-widening kill-tests pass. RLS-bypass
-      kill-test + live route wiring await the DB-role half; see header.)*
+      GUC-spoof + read-only + schema-widening kill-tests pass. Role-name
+      convention shipped 2026-08-10 — `grant-role.ts` (per-grant non-owner
+      SELECT-only role, fail-closed on missing). RLS-bypass kill-test +
+      provisioning DDL + live route wiring await the rest of the DB-role
+      half; see header.)*
 - [ ] Usage records emitted per granted query, idempotent under retry.
       *(Meter primitive shipped 2026-08-10 — migration `0028_grant_usage.sql`
       + `apps/api/src/grant-usage.ts` `recordGrantUsage`: one row per
