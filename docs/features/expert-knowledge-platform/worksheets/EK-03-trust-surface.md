@@ -5,15 +5,13 @@
 shipped 2026-08-08**: the `/experts/` landing
 (`apps/web/src/pages/experts.astro`) with the guard test
 (`apps/web/src/pages/__tests__/experts-trust-claims.test.ts`). **Box 3
-drafted 2026-08-07** → [`drafts/ek-03-tos-dpa-delta.md`](../drafts/ek-03-tos-dpa-delta.md)
-(the "not allowed" contract text; rewritten 2026-08-07 after Fable review,
-**founder chose Option B the same day** — publish waits for
-[`EK-09`](EK-09-trust-hardening.md)'s hardening, then the stronger copy +
-final-wording sign-off, queued in
-[`blocked-by-human.md`](../../../blocked-by-human.md) as a plain legal
-action — not a 🔒 decision-to-lock, since `SK-EKP-001` is already locked).
-The slice closes when the founder signs off box 3 and a follow-up run
-publishes it into `/terms` + `/privacy`.
+signed off 2026-08-10** → [`drafts/ek-03-tos-dpa-delta.md`](../drafts/ek-03-tos-dpa-delta.md)
+(the "not allowed" contract text; rewritten 2026-08-07 after Fable review;
+founder-approved 2026-08-10 with an explicit-consent carve-out added at
+sign-off; the queue bullet is resolved). The slice closes when a follow-up
+run publishes the approved blocks into `/terms` + `/privacy` with the EK-05
+selling flow; [`EK-09`](EK-09-trust-hardening.md)'s stronger copy swaps in
+later after its own one-sentence sign-off.
 
 ## Goal
 
@@ -57,11 +55,11 @@ Ship the platform's public trust surface: a landing section/page for the
       (planning schema-only · narration disclosed + JSON-only opt-out ·
       RLS isolation · delete · FSL self-host; sovereign hosting labeled
       roadmap/not-shipped).
-- [~] ToS/DPA delta **drafted** (2026-08-07) →
+- [~] ToS/DPA delta **drafted** (2026-08-07) and **founder-signed-off**
+      (2026-08-10, explicit-consent carve-out added at sign-off) →
       [`drafts/ek-03-tos-dpa-delta.md`](../drafts/ek-03-tos-dpa-delta.md);
-      founder sign-off + publish into `/terms` + `/privacy` is a follow-up run
-      (a plain legal action in `blocked-by-human.md`, not a 🔒 decision-to-lock
-      — `GLOBAL-033`).
+      remaining: a follow-up run publishes the approved blocks into
+      `/terms` + `/privacy` with the EK-05 selling flow.
 - [x] Honest-claims guard covers the new surface's claims (2026-08-08,
       `experts-trust-claims.test.ts` — bans inability claims, absolutes
       ahead of EK-09, pricing language, and fake doors; pins the floor

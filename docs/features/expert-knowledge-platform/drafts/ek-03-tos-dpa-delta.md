@@ -1,19 +1,20 @@
 # EK-03 · ToS/DPA "not allowed" delta — founder-review draft
 
-**Status:** **drafted 2026-08-07, rewritten same day after Fable review
-(verdict on the first draft: UNSOUND), awaiting founder approval.** The
-first draft claimed *"never your row values … sent to a third-party
-language-model provider"* — **false against shipped code**: the `/v1/ask`
-summarize step sends up to 50 result rows to the LLM provider
-(`apps/api/src/ask/orchestrate.ts` → `llm.summarize({rows})`), skipped only
-on `Accept: application/json`; the live privacy page already discloses this
-honestly. This rewrite is truthful **as shipped** (Option A). The founder
-may instead choose **Option B** (§ below): harden the product so the
-stronger claim becomes true, then publish that. Legal text is a founder
-sign-off, not an agent merge (EK-03 box 3 / P6). **Nothing here is live**
-until the founder approves and a follow-up run lands it into
-[`/terms`](../../../../apps/web/src/pages/terms.astro)
-and [`/privacy`](../../../../apps/web/src/pages/privacy.astro).
+**Status:** **founder-approved 2026-08-10** (guided in-session sign-off):
+the Option A wording below is the signed, publishable contract text, with
+one founder-directed amendment applied at sign-off — the "will not
+use/train" prohibitions carry an **explicit, opt-in, withdrawable consent**
+carve-out. A follow-up run publishes the blocks into
+[`/terms`](../../../../apps/web/src/pages/terms.astro) and
+[`/privacy`](../../../../apps/web/src/pages/privacy.astro) **with the EK-05
+selling flow** (the revocation clause needs that surface to exist). Option B
+(§ below) remains the upgrade path: when EK-09 is green, the stronger copy
+is drafted here and returns for a separate, one-sentence founder wording
+sign-off. History: drafted 2026-08-07, rewritten same day after Fable
+review (first-draft verdict UNSOUND — it claimed *"never your row values …
+sent to a third-party language-model provider"*, false against shipped
+code: the `/v1/ask` summarize step sends up to 50 result rows to the LLM
+provider, skipped only on `Accept: application/json`).
 
 **Governing decision:** [`SK-EKP-001`](../FEATURE.md) — the loud trust pillar
 is *"we are not allowed to use or read this data — it is only theirs"*: a
@@ -34,13 +35,13 @@ copy never exceeds substance).
 
 Per [`GLOBAL-033`](../../../decisions/GLOBAL-033-resolution-defaults.md)
 the agent-doable remainder (drafting, substance mapping, placement) is done.
-The one genuinely founder-shaped item — signing off the legal wording and
-publishing it — is queued in the single channel the founder reads,
-[`blocked-by-human.md`](../../../blocked-by-human.md). It is a **legal human
-action, not a `🔒` decision-to-lock**: `SK-EKP-001` is already locked, so
-publishing only *executes* it — there is no new `GLOBAL-*`/`SK-*` to mint.
-Conservative default already applied: **publish nothing** — the live legal
-pages are untouched by this run.
+The one genuinely founder-shaped item — signing off the legal wording — was
+queued in [`blocked-by-human.md`](../../../blocked-by-human.md) and
+**resolved 2026-08-10** (see `history/founder-actions-log.md` Era 9). It was
+a **legal human action, not a `🔒` decision-to-lock**: `SK-EKP-001` is
+already locked, so publishing only *executes* it — there is no new
+`GLOBAL-*`/`SK-*` to mint. The live legal pages stay untouched until the
+EK-05-timed publish run.
 
 No fee wording appears here (`SK-EKP-002`: trust-loud, fee-quiet — seller-facing
 fee disclosure lives in the EK-05 selling flow, not the trust/legal surface).
@@ -65,9 +66,13 @@ the existing *"Your data and databases"* section.
 > - **What we will not do.** We are not allowed to read, use, mine, benchmark,
 >   resell, or redistribute the content of your Expert Knowledge for any
 >   purpose other than running the queries you (or the buyers you authorise)
->   make against it. We will never use it — the rows, anything derived from
->   them, or metadata about them — to train, fine-tune, or improve our own
->   models, and we do not grant anyone the right to train on it.
+>   make against it, unless you give us your explicit, opt-in consent for a
+>   specific additional use. The same applies to training: we will never use
+>   it — the rows, anything derived from them, or metadata about them — to
+>   train, fine-tune, or improve our own models, and we do not grant anyone
+>   the right to train on it, except with that same explicit consent. Consent
+>   is never a default and never buried in these terms — it is asked for
+>   separately, names the specific use, and you can withdraw it at any time.
 > - **What the service necessarily does.** To answer a question, our engine
 >   reads the relevant rows on the server to produce the answer — that is the
 >   service you turned on. Two things pass through our language-model
@@ -99,7 +104,9 @@ this block states the stronger, expert-knowledge-specific commitment).
 > process it only to run the queries you or the buyers you authorise make
 > against it. We do not read it for any other purpose, do not use it to train
 > or improve our own models, do not grant anyone the right to train on it,
-> and do not sell or share it. What reaches a language-model provider is
+> and do not sell or share it — except where you have given us explicit,
+> opt-in consent for a specific use, which you can withdraw at any time.
+> What reaches a language-model provider is
 > what the "Query text" section above describes for every database: your
 > question and your schema to write the query, and — only when an answer is
 > narrated in plain language — the rows that answer returned (JSON-only API
@@ -127,8 +134,8 @@ does the text say we *cannot* read the data.
 
 | Claim in the draft | Kind | Backed by |
 |---|---|---|
-| "not allowed to read/use … other than running your queries" | contractual | ToS prohibition (this text) |
-| "will never use it to train … **our own** models; we do not grant anyone the right" | contractual | this text + `/privacy` "don't train our own models" line — deliberately **not** "anyone else's model won't train": row egress to free-tier LLM providers is governed by their terms, so that promise is only makeable under Option B |
+| "not allowed to read/use … other than running your queries, unless you give explicit, opt-in consent" | contractual | ToS prohibition (this text); consent carve-out founder-directed 2026-08-10 — opt-in, specific-use, withdrawable, so control stays with the expert (`SK-EKP-001` intact) |
+| "will never use it to train … **our own** models; we do not grant anyone the right, except with that same explicit consent" | contractual | this text + `/privacy` "don't train our own models" line — deliberately **not** "anyone else's model won't train": row egress to free-tier LLM providers is governed by their terms, so that promise is only makeable under Option B |
 | "engine reads the relevant rows on the server" (honest carve) | truthful disclosure | server-side NL→SQL reality — *not* a "can't read" claim |
 | "structure to write the query; returned rows only when narrating; opt-out" | technical, **as shipped** | planning path: [`GLOBAL-037`](../../../decisions/GLOBAL-037-schema-only-llm-egress.md) schema-only prompt assembly · narration path: `orchestrate.ts` summarize (skipped on `Accept: application/json`) · interview path: the authoring service (SK-EKP-007 INV-EKP-037) |
 | "each expert's knowledge is kept separate" | technical | RLS per-tenant isolation (`SK-PIVOT-009`) |
@@ -162,10 +169,11 @@ slices stall:
    whose terms exclude training on inputs/outputs) for the authoring path,
    so the training promise can extend beyond "our own models."
 
-Both are `EK-09`'s Done-when boxes; neither exists today. Until both ship,
-Option A's truthful text is the only publishable version (SK-EKP-001: trust
-copy never exceeds substance). Publish order: EK-09 green → stronger copy
-drafted into this file → founder wording sign-off → live.
+Box 1 shipped 2026-08-09; the rest gate on EK-06/EK-05. **Amended
+2026-08-10 at sign-off:** Option A's approved text publishes with EK-05
+without waiting on EK-09 (SK-EKP-001: trust copy never exceeds substance —
+A never does). When EK-09 is green: stronger copy drafted into this file →
+separate one-sentence founder wording sign-off → swapped in live.
 
 ## Sources (P2 — 2026 legal norms)
 

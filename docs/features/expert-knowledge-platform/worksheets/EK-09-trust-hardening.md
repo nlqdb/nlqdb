@@ -42,5 +42,7 @@ is literally true before it publishes.
       `apps/api/test/orchestrate.test.ts` asserts `summarize` is not called.)
 - [ ] Granted-path asks inherit the skip (lands with EK-06).
 - [ ] Interview provider pinned + CI-asserted in `experts`.
-- [ ] Egress test extended; EK-03's stronger copy unblocked and its
-      sign-off bullet updated to "wording approval only."
+- [ ] Egress test extended; EK-03's stronger copy drafted into the
+      approved delta file and a one-sentence wording sign-off re-queued in
+      `blocked-by-human.md` (the Option A base text was founder-signed
+      2026-08-10 and publishes with EK-05 without waiting here).
