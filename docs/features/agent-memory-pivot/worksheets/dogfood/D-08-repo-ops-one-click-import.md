@@ -1,6 +1,8 @@
 # D-08 — Goal pack #1 as a one-click repo-memory import
 
-**Status:** planned — public alpha until explicit founder promotion
+**Status:** in flight — **runner core landed 2026-08-10** (founder
+direct-ordered to unblock EK-04/EK-05); public alpha until explicit founder
+promotion
 **Sequence:** productization follow-on to D-01 · **Risk:** high · **Runs:** multi ·
 **Prereqs:** D-01, D-04, E-06, `SK-HDC-016` delete · **Gate:** none
 
@@ -178,6 +180,97 @@ is an additional product-quality gate, not a substitute for E2E.
 This advances the `GLOBAL-025` onboarding and UX pillars. It does not add a
 pack-specific engine surface.
 
+## Progress — slice 1, runner core (2026-08-10)
+
+Founder direct-ordered the shared runner core ahead of the rest of the
+journey, because EK-04 boxes 2–4 and EK-05 boxes 1–3 all listed it as an
+unmet prereq that no loop owned. Prereq note: **D-04 has not run**, so the
+runner is code-complete and unit-tested but has not yet imported a real repo
+in production — that is what the acceptance journey below still gates.
+
+**Shipped.**
+
+- `apps/api/src/pack-runner/types.ts` — the pack adapter contract. A pack
+  supplies `parseSource` / `acquire` / `classify` / `extract` /
+  `goldenQueries`; the runner owns everything else. Deliberately free of
+  repo vocabulary (`SourceItem.id`, `SourceDescriptor.pin`) so EK-04's
+  interview adapter is instance #2 with no runner change — asserted, not
+  asserted-in-prose, by the fake non-repository pack in `runner.test.ts`.
+- `apps/api/src/pack-runner/runner.ts` — the five-phase state machine with
+  a durable checkpoint per phase, the per-row `saveCursor` that makes retry
+  non-duplicating on append-only `facts`, planned-vs-read-back
+  reconciliation, and the runner-owned credential-value guard that no pack
+  can opt out of (`SK-PIVOT-018`).
+- `apps/api/src/pack-runner/draft-store.ts` + `migrations/0029_pack_imports.sql`
+  — the opaque draft in D1. `tenant_id` is NULL until an authenticated
+  advance atomically claims it: that is the sign-in resume seam.
+- `apps/api/src/pack-runner/github-source.ts` — anonymous public preflight
+  via two REST calls (pin the default-branch commit) plus the codeload
+  `tar.gz` archive, expanded with the runtime's `DecompressionStream` and a
+  ~50-line tar reader (no dependency, `GLOBAL-013`).
+- `apps/api/src/pack-runner/packs/repo-ops.ts` — instance #1. The
+  open-question and blocked-queue extractors are **imported** from
+  `@nlqdb/docs-memory` (D-01/D-02a), not re-implemented; this adds decision
+  records and cross-references. Row vocabulary matches the `SK-QUAL-023`
+  repo-ops corpus exactly, so D-03's golden queries still answer.
+- Routes: `POST /v1/packs/imports` (public preflight, `Idempotency-Key`),
+  `GET /v1/packs/imports/:id`, `POST …/advance`, `POST …/retry`,
+  `DELETE …/:id` (reuses the `SK-HDC-016` deletion path verbatim).
+  Provisioning reuses the `SK-HDC-020` preset create — no second path.
+- Spans: `nlqdb.pack.source.fetch`, `nlqdb.pack.source.archive`,
+  `nlqdb.pack.import.{create,advance,retry,delete}` (`GLOBAL-014`).
+
+**Deliberately not in this slice** (so the boxes below stay honest): the
+`/agents` page + CTA, the sign-in `return_to` handoff UI, the private-repo
+GitHub App flow, and the P2 persona E2E journey.
+
+`GLOBAL-003` surface gap, tracked here: `/v1/packs/imports*` is HTTP-only —
+no SDK, CLI, MCP tool or `<nlq-data>` support. That is deliberate and may
+stay so: the import journey is a product surface, like `/v1/chat/messages`
+and `/v1/grants`, not a data capability an agent calls. Promote it only if a
+real caller asks.
+
+**Hardened in review (2026-08-10, race close revised 2026-08-11).** One
+advance of a draft runs at a time, via an **expiring in-progress lease held
+for the whole provision-write-verify run** (`DraftStore.acquireLease` /
+`releaseLease`, `lease_until`, `409 import_busy`). Without it two advances
+each provisioned a Neon schema — one orphaned beyond the reach of the
+`SK-HDC-016` cleanup — and each replayed the same rows. The first cut used a
+compare-and-swap on `updated_at`, which closed only the *simultaneous* race:
+a *staggered* second advance that read the draft during the winner's
+provisioning window (the DB is provisioned *after* the lease is taken, so
+`updated_at` is stable across it) passed the CAS and re-entered
+`saving`+no-`dbId`. Because `/v1/packs/imports/:id/advance` is a shipped,
+authenticated route, that was reachable with no UI (a double-click or a
+parallel script), so the momentary CAS was replaced with a held lease that
+rejects any concurrent advance until it is released or lapses. `saveCursor`
+only makes a *sequential* retry non-duplicating, and KV idempotency cannot
+serialise concurrent callers (`SK-IDEMP-005`). `save` no longer writes
+`tenant_id` (claim is its only writer), the credential guard now inspects the
+whole payload rather than the fields today's packs happen to use, the
+preflight throttle covers signed-in callers too, and `owner`/`repo` reject
+`.`/`..` segments that `fetch` would normalise into a different GitHub path.
+
+**Three findings worth carrying forward.**
+
+1. `entity_facts` **edges cannot be written** through the public surface:
+   `nlqdb_remember` has `fact` / `episode` / `entity` verbs and no edge
+   verb. Slice 1 therefore carries cross-references as `reference` facts
+   tagged with both endpoints — the same shape the eval corpus uses — and
+   the edge rows themselves need an engine-track decision, not a pack.
+2. The per-row memory write bypasses the 60/min `/v1/ask` limiter (an
+   import of 200 rows cannot pass it); the import is rate-limited once per
+   advance at the route instead. Recorded here because it is a deliberate
+   granularity choice, not an oversight.
+3. The anonymous half of `POST /v1/packs/imports` scopes its
+   `Idempotency-Key` and its throttle by originating IP, while
+   [`SK-IDEMP-010`](../../../idempotency/FEATURE.md) says the anonymous dedupe
+   identity is the device-token hash. The preflight deliberately requires no
+   anon principal (`GLOBAL-007`: value before any identity), so there is no
+   device token to key on. Flagged rather than resolved: either the preflight
+   adopts the anon principal or `SK-IDEMP-010` gains a no-principal arm — a
+   founder call, not a review fix.
+
 ## Sources checked
 
 - GitHub, **Rate limits for the REST API** — public unauthenticated data is
@@ -194,10 +287,21 @@ pack-specific engine surface.
 
 ## Done when
 
-- [ ] The shared runner—not repo-specific page logic—owns the journey state.
+- [x] The shared runner—not repo-specific page logic—owns the journey state.
+      (2026-08-10 — `apps/api/src/pack-runner/**`. Proven rather than
+      asserted: `runner.test.ts` drives the full journey with a fake
+      **interview** pack whose source is not a repository, so a repo-shaped
+      assumption in the runner breaks the build.)
 - [ ] Public preflight, auth return, private GitHub App return and interrupted
       execution all resume from one opaque import URL.
+      *(Partial 2026-08-10: the opaque draft, the public preflight, the
+      atomic sign-in claim and interrupted-execution resume all work
+      server-side and are unit-tested. Unbuilt: the `return_to` handoff UI
+      and the private-repo GitHub App flow.)*
 - [ ] Progress and completion counts are real and reconcile.
+      *(Partial 2026-08-10: real counters per phase and a planned-vs-read-back
+      reconcile with an honest mismatch list, unit-tested. Not yet observed
+      against a live memory DB — D-04 has not run.)*
 - [ ] The public alpha ships with reset/delete and the P2 E2E journey.
 - [ ] The founder completes and cleans up every acceptance scenario.
 - [ ] The founder explicitly approves removing the alpha label.

@@ -200,13 +200,22 @@ of the EK docs against both repos:
   2–4 and EK-05 boxes 1–3 all wait on the D-08 shared runner — unticked on
   the *dogfood* track. `/daily` measurably never picks EK-adjacent work and
   `/ek` only pulls EK-numbered slices, so after EK-06's boxes the track
-  stalls into null runs. **Needs a call:** either `/ek` may build the D-08
-  runner core when it's the EK bottleneck, or D-08 gets pulled explicitly.
+  stalls into null runs. **Called 2026-08-10:** the founder direct-ordered
+  the runner-core build; it landed (`apps/api/src/pack-runner/**`, routes
+  `/v1/packs/imports*`), so EK-04 box 2 is unblocked. The remaining D-08
+  slices (the `/agents` page + CTA, `return_to` handoff UI, private-repo
+  GitHub App, P2 persona E2E) now have a loop owner — same-day founder
+  ruling widened `/ek`'s pull rule (`.claude/commands/ek.md` §2): when
+  every pullable EK slice is blocked on the runner, `/ek` builds the next
+  D-08 slice. **Resolved.**
 - **The secrets rule has no enforcement on the public rail either.**
   `SK-PIVOT-018` ("credential metadata, never values") has zero code
   enforcement in nlqdb — `apps/api/src/memory/remember.ts` and the MCP
-  `nlqdb_remember` tool accept secret-shaped content freely (checked:
-  no detector exists anywhere in `apps/`/`packages/` non-test code).
+  `nlqdb_remember` tool accept secret-shaped content freely. Narrowed
+  2026-08-10: the D-08 runner now rejects secret-shaped records for every
+  pack (`guardSecretValues`, `apps/api/src/pack-runner/runner.ts`) — but
+  that guards only the *pack-import* writer, so a direct `/v1/memory`
+  or MCP write is still unguarded and the leverage move below stands.
   experts#3's `src/interview/secrets.ts` is instance #1 of the category
   "secret-shape rejection at agent-memory write surfaces" (≥3 real
   instances: experts interview · `/v1/memory` write path · MCP tool).

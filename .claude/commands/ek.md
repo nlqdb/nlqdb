@@ -56,7 +56,11 @@ slice that ships them, not before.
 ### 2 — One slice
 
 Pick the **lowest-numbered `⬜` EK-slice whose prereqs are met** (parked
-slices don't count as pullable). Do the smallest diff that satisfies one of
+slices don't count as pullable). **One chartered exception** (founder
+ruling 2026-08-10): when *every* otherwise-pullable EK slice is blocked on
+the D-08 shared runner, this loop may build the next D-08 runner slice on
+the dogfood track instead — runner/journey work only, its own prereqs met,
+and rule 2 still binds (`SK-PIVOT-016` gate work stays untouchable). Do the smallest diff that satisfies one of
 its `Done when` boxes; a slice may span several runs. Tick the box (and the
 Tracker on completion) in the same PR. Nothing pullable → **null run**: a
 one-line state note in the PR-less run log is enough — busywork is not a

@@ -68,7 +68,7 @@ prod memory DB, see D-04.
 | [D-05](D-05-founder-ops-pack.md) | Goal pack #2 — founder-ops (SK-PIVOT-018), seeded from `history/founder-actions-log.md` | low | ~2 | D-01, D-04 | criterion 1 · Pivot row |
 | [D-06](D-06-agents-memory-dashboard.md) | The public memory dashboard on `/agents` | med | ~2 | D-04 | **criterion 5** |
 | [D-07](D-07-memory-strategy-benchmark.md) ⛔ | Cross-strategy memory benchmark (SK-PIVOT-019) — **blocked** | high | multi | **blocked: the SK-PIVOT-017 corpus + golden queries must exist** (D-03 ✅; D-04 pending) | none — row #22 / answer-engine citations |
-| [D-08](D-08-repo-ops-one-click-import.md) | Goal pack #1 as a one-click public-alpha repo-memory import (SK-PIVOT-021) | high | multi | D-01, D-04, E-06, delete | onboarding + UX · reusable pack runner |
+| [D-08](D-08-repo-ops-one-click-import.md) 🟡 | Goal pack #1 as a one-click public-alpha repo-memory import (SK-PIVOT-021). **Slice 1 done 2026-08-10** (founder direct-ordered): the shared runner core — draft state machine, phase checkpoints, pack adapter contract, repo-ops instance #1, `/v1/packs/imports*` routes. Remaining: `/agents` page + CTA, `return_to` handoff UI, private-repo GitHub App, P2 E2E | high | multi | D-01, D-04, E-06, delete | onboarding + UX · reusable pack runner |
 
 **Why this order.** D-01 is the workload's producer — nothing else in the track
 means anything without it, which is why it is being built first (in parallel,
@@ -95,6 +95,10 @@ alpha may ship without delaying D-04–D-07.
   `nlqdb_remember`/`nlqdb_query`. A reviewer rejects any ops-agent path that
   reaches a privileged endpoint, an internal binding, or the platform DB.
   Dogfooding through a backdoor measures nothing (SK-PIVOT-016).
+  This rule binds *ops agents*, not product code (founder ruling
+  2026-08-10): the D-08 runner writes in-process through the same
+  core/RLS as `/v1/memory`, which is why runner imports never count
+  toward criterion 1.
 - **Markdown stays canonical.** The memory DB is a derived, queryable index.
   Sync is one-way and idempotent; nlqdb never edits markdown. Anything making
   the DB the source of truth is a separate founder decision (P1), not a slice.
@@ -160,4 +164,4 @@ Tick on merge. Keep this list as the durable dogfood status (the scorecard's
 - [ ] D-05 — founder-ops goal pack (pack #2, SK-PIVOT-018)
 - [ ] D-06 — public memory dashboard on `/agents` (criterion 5)
 - [ ] D-07 — cross-strategy memory benchmark (SK-PIVOT-019) — **blocked** on D-03 + D-04
-- [ ] D-08 — one-click repo-memory public alpha on the shared pack runner (SK-PIVOT-021)
+- [ ] D-08 — one-click repo-memory public alpha on the shared pack runner (SK-PIVOT-021). **Slice 1 (runner core) landed 2026-08-10**, founder direct-ordered to unblock EK-04 box 2 / EK-05: `apps/api/src/pack-runner/**` + migration 0029 + `/v1/packs/imports*`. Box unticked on purpose — the `/agents` surface, the `return_to` handoff, the private-repo GitHub App flow, the P2 E2E journey and the founder acceptance walk are all still open
