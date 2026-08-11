@@ -25,8 +25,7 @@
 // the seam sign-in and provider-consent redirects resume through — the
 // draft simply waits at `saving` until it has a tenant and a memory DB.
 
-import type { ImportDraft, ScanCheckpoint, Verification } from "./draft-store.ts";
-import type { DraftStore } from "./draft-store.ts";
+import type { DraftStore, ImportDraft, ScanCheckpoint, Verification } from "./draft-store.ts";
 import {
   IMPORT_PHASES,
   type ImportPhase,

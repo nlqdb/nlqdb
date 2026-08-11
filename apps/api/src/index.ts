@@ -98,8 +98,8 @@ import { httpsRedirectTarget, withHsts } from "./https-enforce.ts";
 import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
-import { getLLMRouter } from "./llm-router.ts";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
+import { getLLMRouter } from "./llm-router.ts";
 import { isMarketingMirrorPath, marketingMirrorRedirect } from "./marketing-mirror.ts";
 import {
   type MemoryScope,
@@ -109,11 +109,11 @@ import {
   validateRememberInput,
 } from "./memory/remember.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
+import { loadModelCatalog } from "./models-catalog.ts";
+import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
 import { buildPackRunnerDeps, PACKS } from "./pack-runner/deps.ts";
 import { makeD1DraftStore } from "./pack-runner/draft-store.ts";
 import { advanceDraft, createDraft, importView, retryDraft } from "./pack-runner/runner.ts";
-import { loadModelCatalog } from "./models-catalog.ts";
-import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
 import {
   getPmfSurveyStatus,
   parseSeanEllisResponse,
@@ -2723,7 +2723,10 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
       const leaseAt = Math.max(Date.now(), draft.updatedAt + 1);
       if (!(await store.lease(id, draft.updatedAt, leaseAt))) {
         span.setAttribute("nlqdb.pack.import.outcome", "import_busy");
-        return c.json({ import: importView(draft), error: { status: "import_busy" as const } }, 409);
+        return c.json(
+          { import: importView(draft), error: { status: "import_busy" as const } },
+          409,
+        );
       }
       draft = { ...draft, updatedAt: leaseAt };
 
