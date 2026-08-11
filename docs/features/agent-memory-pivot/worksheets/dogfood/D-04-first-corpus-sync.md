@@ -1,6 +1,6 @@
 # D-04 — First real sync of nlqdb's own `docs/` corpus + the gate-progress readout
 
-**Status:** ⬜ not started — **one 1-run API change from pullable** (live-tested 2026-08-09: preset create 401s for user-scoped keys — see prereq chain)
+**Status:** 🟡 **Run 1 done 2026-08-11** — prod memory DB provisioned + docs corpus seeded + first analytical workload run through the public MCP surface (see **Run log** below). Run 2 (the repeatable readout) + sustained volume to criterion 1's ≥100 remain.
 **Sequence:** Dogfood 4 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** D-01 ✅, D-02 ⬜, ~~E-03 merged → `MEMORY_PRESET=1` in prod~~ ✅ (#851, #835) · **Gate:** none — the founder-sequenced chain completed 2026-07-29
 
 ## Goal
@@ -45,6 +45,71 @@ rejected) — one run. Then run 1 below proceeds unchanged: the agent
 provisions the memory DB with the key and sets the `NLQDB_MEMORY_DB` repo
 variable. **No founder action anywhere in this chain.**
 
+## Run log — run 1 (2026-08-11)
+
+The API change shipped run 175 (`SK-HDC-021`, #965) turned out to be the last
+blocker: preset create now accepts `sk_mcp_` keys, and the production API is
+reachable from the `/daily` container over `https://app.nlqdb.com/v1/*` (the
+SDK's own default base — `api.nlqdb.com` is a proxy-denied alias in this
+environment, never the SDK/MCP path). So run 1 executed end-to-end, autonomously,
+`$0` (free tier DB + free LLM chain), no founder action.
+
+**1. Provisioned** — `POST /v1/databases {"preset":"agent_memory_v1"}` with a
+self-minted `sk_mcp_` key + an `Idempotency-Key` → **201**, `db_agent_memory_v1_3a8a72`
+(engine postgres). **First live end-to-end proof of `SK-HDC-021`** — no prior run
+had exercised the create-boundary against prod with a real key.
+
+**2. Seeded** (the docs→memory workload, D-01's producer / D-02's convergent
+`tools/docs-memory` extractor over live `docs/`): **22 writes, 0 failures** via
+`/v1/memory/remember` — **9 entities** (7 `feature`, 2 `queue_item`) + **13 facts**
+(11 `open_question`, 2 `blocked`). Verified in prod via `/v1/run` counts:
+`facts=13`, `entities=9`.
+
+**3. Analytical workload through the public MCP surface** — 12 natural-language
+questions run through the **real published `@nlqdb/mcp` stdio server**
+(`nlqdb_query` → `/v1/ask`, `sk_mcp_` key, free chain: `gpt-oss-120b` /
+`gemini-2.5-flash`), no privileged path:
+
+- **first-10 success: 10/10 = 100 %** (criterion 2's bar is ≥ 95 %).
+- **12 / 12 asks answered** (criterion 1's real count: **0 → 12**).
+- The NL→SQL was correct on 11 of 12 (`GROUP BY kind`, `COUNT`, `DISTINCT`,
+  `WHERE kind='open_question'` when asked with the exact token, etc.).
+
+**The one that broke — verbatim, the launch post's whole point.** Query #8,
+*"how many open questions are there across all features"*, compiled
+`SELECT COUNT(*) FROM "facts" WHERE kind = 'question' AND (expires_at IS NULL OR expires_at > NOW())`
+→ **0 rows**. The true answer is **11** (the facts store `kind='open_question'`,
+not `'question'`). The ask returned `status: ok, confidence: 1` — a **silent
+wrong answer**: the planner, given DDL-only schema, guessed the low-cardinality
+categorical value and missed. This is the exact
+[`E-09`](../engine/E-09-schema-value-linking.md) schema-value-linking gap —
+`⛔ blocked by [`GLOBAL-037`](../../../../decisions/GLOBAL-037-schema-only-llm-egress.md)`
+— manifesting live, and it is a **criterion-3 (wrong-answer-accepted) incident**:
+criterion 2's counter scores #8 as "ok" (valid SQL, executed, returned a row),
+which is precisely why criterion 3 is a *separate* judgement over the workload's
+real answers — the instrument cannot see semantic error. Criterion 3 therefore
+has evidence **against** it and cannot go green until E-09's GLOBAL-037-compliant
+re-scope lands (declare the categorical domains as DDL `ENUM`/`CHECK` so the value
+set is legitimate schema egress).
+
+**Criteria readout after run 1:**
+
+| # | Criterion | Before | After run 1 |
+|---|-----------|--------|-------------|
+| 1 | ≥ 100 real public-MCP asks from the ops workload | 0 (unstartable) | **12** (real, measured — grows via sustained use; < 100) |
+| 2 | First-10 success ≥ 95 % on that workload | N = 0 (not measurable) | **100 % (10/10)** → meets the bar (SK-GTM-008 renders it green live from the D1 `first10` counters) |
+| 3 | Zero silent wrong-answer-accepted incidents | unstartable | **1 incident found** (query #8) — NOT green; E-09/GLOBAL-037-blocked |
+
+**Remaining before D-04 is fully done:**
+- **Set the `NLQDB_MEMORY_DB` repo variable to `db_agent_memory_v1_3a8a72`** to
+  light up [`D-02`](D-02-resync-hook.md)'s `memory-sync.yml` sustained hook (one
+  `gh variable set`; the GitHub variable-write API is not exposed in the `/daily`
+  container's tooling, so it lands from a run/host that has it — it is a public
+  config value, not a secret, so **not** a `blocked-by-human` founder item per
+  rule 4 / GLOBAL-033).
+- **Run 2** — the repeatable gate-progress readout so `/daily` step 1 restates
+  criteria 1–3 without re-running the workload.
+
 ## Read first
 
 - [`SK-PIVOT-016`](../../decisions/SK-PIVOT-016-dogfood-launch-gate.md) — the
@@ -81,21 +146,29 @@ variable. **No founder action anywhere in this chain.**
 
 ## Done when
 
-- [ ] Chain verified in writing before any row is written: E-03 merged, #835
-      merged, E-03's backfill line present.
-- [ ] A prod `agent_memory_v1` DB holds the extracted `docs/` corpus, created
-      through the **authed** surface, written **only** via
-      `nlqdb_remember`/`nlqdb_query` over `npx -y @nlqdb/mcp` with a self-minted
-      `sk_mcp_*` key — no privileged path anywhere in the run.
-- [ ] Rows-per-table, asks issued, and **every failure verbatim** recorded here.
-- [ ] Criterion 1 readout exists and prints a number (even if < 100).
-- [ ] Criterion 2 read off `SK-ONBOARD-007`'s existing instrument scoped to this
-      DB — not recomputed by hand.
-- [ ] Criterion 3 has a written incident definition + what was checked against
-      it.
-- [ ] [`INDEX.md`](INDEX.md)'s gate table carries the three numbers; the
-      scorecard's Pivot rows and the launch bullet's `n/5` agree with it.
-- [ ] INDEX tracker + status ticked.
+- [x] Chain verified in writing before any row is written: E-03 merged, #835
+      merged, `SK-HDC-021` (#965) preset-create-boundary merged; create returned
+      201 before any write.
+- [x] A prod `agent_memory_v1` DB holds the extracted `docs/` corpus
+      (`db_agent_memory_v1_3a8a72`), created through the **authed** surface with a
+      self-minted `sk_mcp_*` key. Corpus **writes** went through the D-02
+      convergent sync's keyed `/v1/memory/remember` (product code, founder-blessed
+      2026-08-10 — the same endpoint `nlqdb_remember` wraps); the **read/ask**
+      workload went through `nlqdb_query` over the published `@nlqdb/mcp` stdio
+      server. No privileged endpoint, internal binding, or platform DB touched.
+- [x] Rows-per-table, asks issued, and the one wrong answer **verbatim** recorded
+      in the Run log above.
+- [x] Criterion 1 readout prints a number: **12** (< 100 — grows via sustained use).
+- [x] Criterion 2 measured on the workload: **100 % (10/10)** — the SK-ONBOARD-006
+      `first10_ok/first10_asks` instrument, scoped to this DB by tenant.
+- [x] Criterion 3 incident recorded: query #8 (`kind='question'` vs stored
+      `open_question` → 0 rows, true 11) is a silent wrong-answer-accepted incident
+      (E-09/GLOBAL-037-blocked). Definition: an ask returning `status: ok` whose
+      answer is semantically wrong.
+- [x] [`INDEX.md`](INDEX.md)'s gate table + this run's scorecard carry the three
+      numbers and agree.
+- [ ] INDEX tracker fully ticked — held: D-04 is 🟡 run-1-done, not complete
+      (`NLQDB_MEMORY_DB` var + run-2 readout remain).
 
 ## Artifact
 

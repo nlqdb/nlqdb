@@ -116,11 +116,22 @@ alpha may ship without delaying D-04–D-07.
 
 ## Gate progress — the number this track exists to move
 
-`SK-PIVOT-016`: **0/5 green** (2026-07-29). Criterion 4 is now **measured on
-both corpora** — the last unmeasured half closed by D-03 this run — but not yet
-green: temporal **2/7** (synthetic 2/3, ops 0/4). The gate count is unchanged;
-what changed is that the ops temporal axis went from *unmeasured* to a concrete
-**0/4**. Run 156 read the SK-QUAL-023 run summary and diagnosed the root cause —
+`SK-PIVOT-016`: **1/5 green** (2026-08-11, up from 0/5). **D-04 run 1** ran the
+first real ops workload through the public MCP surface (see
+[`D-04`](D-04-first-corpus-sync.md) Run log): the prod memory DB
+`db_agent_memory_v1_3a8a72` was provisioned + seeded (13 facts, 9 entities), and
+12 analytical asks ran via `nlqdb_query`/`@nlqdb/mcp`. **Criterion 2** goes
+**green** — first-10 success **100 % (10/10)**. **Criterion 1** is now real and
+measured (**12**, < 100). **Criterion 3** gained evidence **against** it — one
+silent wrong-answer (ask #8: planner guessed `kind='question'` for stored
+`open_question`, returned 0 vs true 11), the exact E-09 schema-value-linking gap
+manifesting live, so it stays not-green and GLOBAL-037-blocked. Criterion 4 is
+**measured on both corpora** — temporal **2/7** (synthetic 2/3, ops 0/4). The
+launch is still far off (criterion 1 ≪ 100, criteria 3/4/5 not green); what
+changed is the gate is now driven by a live workload, not a bet.
+
+**Criterion 4 detail** — the ops temporal axis sits at a concrete **0/4**.
+Run 156 read the SK-QUAL-023 run summary and diagnosed the root cause —
 the planner is given DDL-only schema and guesses low-cardinality categorical
 values wrong (`kind='question'` vs `'open_question'`, `role='doc-sync'` vs
 `'sync'`) — and scoped the fix as engine slice
@@ -141,9 +152,9 @@ stays canonical, so a criterion that moves is updated here **and** in
 
 | # | Criterion | State | Owned by |
 |---|-----------|-------|----------|
-| 1 | ≥ 100 real `/v1/ask` calls through the public MCP surface from the ops workload | ⬜ 0 | D-04 (+ D-02, D-05) |
-| 2 | First-10-queries success ≥ 95 % **on that workload** | ⬜ N = 0 | D-04 |
-| 3 | Zero silent data loss / wrong-answer-accepted incidents | ⬜ unstartable | D-04 |
+| 1 | ≥ 100 real `/v1/ask` calls through the public MCP surface from the ops workload | 🟡 **12** (D-04 run 1, 2026-08-11 — real, measured; < 100, grows via sustained use) | D-04 (+ D-02, D-05) |
+| 2 | First-10-queries success ≥ 95 % **on that workload** | ✅ **100 % (10/10)** (D-04 run 1, 2026-08-11 — meets ≥ 95 %) | D-04 |
+| 3 | Zero silent data loss / wrong-answer-accepted incidents | ⬜ **1 incident found** (D-04 run 1: ask #8 `kind='question'` vs stored `open_question` → 0 rows, true 11 — E-09/GLOBAL-037-blocked) | D-04 |
 | 4 | Temporal golden queries pass | ⬜ **temporal 2/7** — synthetic 2/3 + **ops 0/4** (measured 2026-07-29, run 30413719690) | D-03 ✅ (measured) → [E-09](../engine/E-09-schema-value-linking.md) ⛔ **BLOCKED (P1, [`GLOBAL-037`](../../../../decisions/GLOBAL-037-schema-only-llm-egress.md), run 158)** — value-sampling into the prompt is forbidden egress; no compliant agent-movable lever until a DDL-`ENUM`/`CHECK` re-scope |
 | 5 | Live memory dashboard public on `/agents` | ⬜ unshipped | D-06 |
 
@@ -160,7 +171,7 @@ Tick on merge. Keep this list as the durable dogfood status (the scorecard's
 - [x] D-01 — docs→memory extraction skill. **Done 2026-07-29** (#847 merged, ticked in #876): artifact `apps/web/public/agent-artifacts/nlqdb-docs-memory/SKILL.md`, all six acceptance points verified. (#876 ticked the sequence table but missed this line; fixed 2026-08-01 — **D-02 is unblocked and pullable now**.)
 - [ ] D-02 — one-way re-sync hook (CI on merge, `docs/**` paths filter)
 - [x] D-03 — ops-corpus golden-query set (12 questions, 4 temporal) in the `SK-QUAL-023` family. **Done 2026-07-29:** authoring landed #847; this run dispatched [run 30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690) — 27-q free EX 59.26 %, ops temporal **0/4** → diagnosed + scoped as engine slice [E-09](../engine/E-09-schema-value-linking.md) (run 156)
-- [ ] D-04 — first `docs/` corpus sync + gate-progress readout (E-03 → #835 → sync)
+- [~] D-04 — 🟡 **run 1 done 2026-08-11**: prod DB `db_agent_memory_v1_3a8a72` provisioned + seeded (13 facts, 9 entities) + 12 MCP asks (first-10 100 %); criterion 2 → green, criterion 1 = 12, criterion 3 incident found. Remaining: set `NLQDB_MEMORY_DB` repo var + run-2 readout
 - [ ] D-05 — founder-ops goal pack (pack #2, SK-PIVOT-018)
 - [ ] D-06 — public memory dashboard on `/agents` (criterion 5)
 - [ ] D-07 — cross-strategy memory benchmark (SK-PIVOT-019) — **blocked** on D-03 + D-04
