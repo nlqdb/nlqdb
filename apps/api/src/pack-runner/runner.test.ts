@@ -420,18 +420,32 @@ describe("credential-value guard", () => {
 // ── the store contract the routes depend on ───────────────────────────
 
 describe("draft store", () => {
-  it("leases a draft to one caller per version, so concurrent advances cannot both run", async () => {
+  it("holds the lease across the whole run, so a staggered second advance cannot re-enter", async () => {
     const h = harness();
     const pre = await preflight(h, "session:abc", "tenant-1");
     if (!pre.ok) throw new Error("unreachable");
-    const version = pre.draft.updatedAt;
-    // Two callers that read the same version: the first wins, the second is
-    // told the draft is busy rather than provisioning and writing twice.
-    expect(await h.store.lease("imp_test", version, version + 1)).toBe(true);
-    expect(await h.store.lease("imp_test", version, version + 2)).toBe(false);
-    // The next request reads the new version and proceeds normally.
-    const fresh = await h.store.get("imp_test");
-    expect(fresh && (await h.store.lease("imp_test", fresh.updatedAt, version + 3))).toBe(true);
+    // Caller A takes the lease and begins provisioning (nothing released yet).
+    expect(await h.store.acquireLease("imp_test", 1_000, 1_000 + 120_000)).toBe(true);
+    // Caller B arrives *during* A's provisioning window — the exact staggered
+    // race a bare `updated_at` CAS let through: B re-read the draft A had just
+    // touched and would have provisioned a second Neon DB and replayed the
+    // rows. The held lease rejects it as busy no matter what B read.
+    expect(await h.store.acquireLease("imp_test", 2_000, 2_000 + 120_000)).toBe(false);
+    // A finishes and releases; the next advance proceeds normally.
+    await h.store.releaseLease("imp_test");
+    expect(await h.store.acquireLease("imp_test", 3_000, 3_000 + 120_000)).toBe(true);
+  });
+
+  it("lets a crashed advance's lease lapse, so a retry is never stranded", async () => {
+    const h = harness();
+    const pre = await preflight(h, "session:abc", "tenant-1");
+    if (!pre.ok) throw new Error("unreachable");
+    // A takes the lease and never releases it (its Worker was killed).
+    expect(await h.store.acquireLease("imp_test", 1_000, 1_000 + 120_000)).toBe(true);
+    // A retry before expiry is still told busy…
+    expect(await h.store.acquireLease("imp_test", 100_000, 100_000 + 120_000)).toBe(false);
+    // …but once the lease has lapsed, the retry re-acquires and resumes.
+    expect(await h.store.acquireLease("imp_test", 200_000, 200_000 + 120_000)).toBe(true);
   });
 
   it("never lets a save rewrite `tenant_id` — `claim` is its only writer", async () => {

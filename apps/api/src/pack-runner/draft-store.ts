@@ -68,14 +68,19 @@ export type DraftStore = {
   /** Atomically bind an unclaimed draft to a tenant. False = already claimed. */
   claim(id: string, tenantId: string): Promise<boolean>;
   /**
-   * Compare-and-swap on `updated_at`: the caller that wins may run a phase,
-   * every concurrent caller that read the same version loses. This is the
-   * only thing that keeps two simultaneous advances of one draft from each
-   * provisioning a DB and each writing the same rows — `saveCursor` alone
-   * only makes a *sequential* retry non-duplicating. Not a lock: nothing is
-   * held, so a crashed advance strands nothing.
+   * Acquire an exclusive, expiring in-progress lease held for the whole
+   * advance. Wins only when no live lease exists (`lease_until` NULL or
+   * already past `now`), so one advance provisions the DB and writes its
+   * rows while every concurrent advance is told the import is busy —
+   * closing the double-provision and duplicate-write races a bare
+   * `updated_at` CAS could not (a second caller that read the winner's
+   * just-leased version would pass a CAS but not a held lease). Expiring,
+   * not a held lock: a crashed advance's lease lapses and a retry resumes
+   * from `saveCursor`, so nothing is stranded. False ⇒ a live lease is held.
    */
-  lease(id: string, expectedUpdatedAt: number, updatedAt: number): Promise<boolean>;
+  acquireLease(id: string, now: number, leaseUntil: number): Promise<boolean>;
+  /** Release the lease so the next advance can proceed immediately. */
+  releaseLease(id: string): Promise<void>;
   remove(id: string): Promise<void>;
 };
 
@@ -196,12 +201,20 @@ export function makeD1DraftStore(d1: D1Database): DraftStore {
         .run();
       return upd.meta.changes === 1;
     },
-    async lease(id, expectedUpdatedAt, updatedAt) {
+    async acquireLease(id, now, leaseUntil) {
+      // Win only when no live lease is held. The single conditional UPDATE
+      // is the whole mutex — D1 serialises writers, so two concurrent
+      // advances cannot both pass it.
       const upd = await d1
-        .prepare("UPDATE pack_imports SET updated_at = ? WHERE id = ? AND updated_at = ?")
-        .bind(updatedAt, id, expectedUpdatedAt)
+        .prepare(
+          "UPDATE pack_imports SET lease_until = ? WHERE id = ? AND (lease_until IS NULL OR lease_until <= ?)",
+        )
+        .bind(leaseUntil, id, now)
         .run();
       return upd.meta.changes === 1;
+    },
+    async releaseLease(id) {
+      await d1.prepare("UPDATE pack_imports SET lease_until = NULL WHERE id = ?").bind(id).run();
     },
     async remove(id) {
       await d1.prepare("DELETE FROM pack_imports WHERE id = ?").bind(id).run();
@@ -212,6 +225,8 @@ export function makeD1DraftStore(d1: D1Database): DraftStore {
 /** In-memory store for unit tests — the same contract, no D1 boot cost. */
 export function makeMemoryDraftStore(): DraftStore & { size(): number } {
   const rows = new Map<string, DraftRow>();
+  // Lease lives beside the row, not on it — the same split the D1 store keeps.
+  const leases = new Map<string, number>();
   return {
     size: () => rows.size,
     async create(draft) {
@@ -235,14 +250,19 @@ export function makeMemoryDraftStore(): DraftStore & { size(): number } {
       rows.set(id, { ...row, tenant_id: tenantId });
       return true;
     },
-    async lease(id, expectedUpdatedAt, updatedAt) {
-      const row = rows.get(id);
-      if (!row || row.updated_at !== expectedUpdatedAt) return false;
-      rows.set(id, { ...row, updated_at: updatedAt });
+    async acquireLease(id, now, leaseUntil) {
+      if (!rows.has(id)) return false;
+      const held = leases.get(id);
+      if (held !== undefined && held > now) return false;
+      leases.set(id, leaseUntil);
       return true;
+    },
+    async releaseLease(id) {
+      leases.delete(id);
     },
     async remove(id) {
       rows.delete(id);
+      leases.delete(id);
     },
   };
 }

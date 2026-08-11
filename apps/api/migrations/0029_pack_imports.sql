@@ -27,6 +27,13 @@
 --     is NOT a foreign key: the alpha cleanup deletes that DB through the
 --     SK-HDC-016 path and the draft must survive as the record of what
 --     was imported and then removed.
+--   - `lease_until` is an expiring in-progress mutex: one advance holds it
+--     for the whole provision-write-verify run, so a second advance that
+--     arrives during that window (a double-click, a parallel script) is
+--     told `import_busy` instead of provisioning a second Neon DB or
+--     replaying the same rows. It expires on a crash, so nothing is
+--     stranded; a stale lease auto-clears and a retry resumes from
+--     `save_cursor`.
 --
 -- Drafts are disposable product state, not a ledger: a cleanup sweep may
 -- delete stale rows, which is why nothing else references this table.
@@ -38,6 +45,7 @@ CREATE TABLE pack_imports (
   phase TEXT NOT NULL,
   db_id TEXT,
   save_cursor INTEGER NOT NULL DEFAULT 0,
+  lease_until INTEGER,
   state_json TEXT NOT NULL,
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())

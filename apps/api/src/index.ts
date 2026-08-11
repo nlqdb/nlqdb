@@ -2538,6 +2538,13 @@ app.use("/v1/packs/*", credentialedCors);
 // capped per IP rather than per account.
 const PACK_PREFLIGHT_THROTTLE = { prefix: "pk:pre:", max: 20, windowSeconds: 3600 };
 
+// One advance holds the draft's in-progress lease for at most this long.
+// Comfortably longer than a real provision-write-verify run (which the
+// Worker's own invocation limit bounds well under this), so a legitimate
+// advance never self-evicts; short enough that a crashed advance's lease
+// lapses and a retry can resume within the same session.
+const PACK_ADVANCE_LEASE_MS = 120_000;
+
 app.post("/v1/packs/imports", async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.pack.import.create", async (span) => {
@@ -2713,74 +2720,80 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
         return c.json({ error: { status: "rate_limited" as const } }, 429);
       }
 
-      // Exactly one advance of a draft runs at a time. Without this, two
-      // simultaneous calls both see `saving` with no `dbId` and each
-      // provisions a Neon schema (one of them orphaned, so the SK-HDC-016
-      // cleanup can never reach it), and two calls on a draft that already
-      // has one both replay the same rows into it. The `saveCursor` only
-      // makes a *sequential* retry non-duplicating. Compare-and-swap on
-      // `updated_at`, not a held lock, so a crashed advance strands nothing.
-      const leaseAt = Math.max(Date.now(), draft.updatedAt + 1);
-      if (!(await store.lease(id, draft.updatedAt, leaseAt))) {
+      // Exactly one advance of a draft runs at a time. The lease is HELD for
+      // the whole provision-write-verify run — not a momentary compare-and-
+      // swap — because the DB is provisioned and the rows are written *after*
+      // it is taken, and a second advance that read the draft during that
+      // window (a double-click, a parallel script; no UI required) would
+      // otherwise re-enter `saving`+no-`dbId` and provision a second Neon
+      // schema the SK-HDC-016 cleanup can never reach, then replay the same
+      // rows. `saveCursor` only makes a *sequential* retry non-duplicating.
+      // The lease expires, so a crashed advance strands nothing and a retry
+      // resumes from the last checkpoint.
+      const leaseNow = Date.now();
+      if (!(await store.acquireLease(id, leaseNow, leaseNow + PACK_ADVANCE_LEASE_MS))) {
         span.setAttribute("nlqdb.pack.import.outcome", "import_busy");
         return c.json(
           { import: importView(draft), error: { status: "import_busy" as const } },
           409,
         );
       }
-      draft = { ...draft, updatedAt: leaseAt };
+      try {
+        const deps = buildPackRunnerDeps(c.env, session.user.id, draft.packId);
 
-      const deps = buildPackRunnerDeps(c.env, session.user.id, draft.packId);
-
-      // Every alpha import gets its own isolated `agent_memory_v1` DB
-      // (D-08 §5) so "delete this test memory" and "import again" are both
-      // unambiguous. Provisioning reuses the SK-HDC-020 preset create — no
-      // second provisioning path exists.
-      if (draft.phase === "saving" && !draft.dbId) {
-        if (c.env.MEMORY_PRESET !== "1") {
-          span.setAttribute("nlqdb.pack.import.outcome", "preset_disabled");
-          return c.json({ error: { status: "preset_disabled" as const } }, 400);
+        // Every alpha import gets its own isolated `agent_memory_v1` DB
+        // (D-08 §5) so "delete this test memory" and "import again" are both
+        // unambiguous. Provisioning reuses the SK-HDC-020 preset create — no
+        // second provisioning path exists.
+        if (draft.phase === "saving" && !draft.dbId) {
+          if (c.env.MEMORY_PRESET !== "1") {
+            span.setAttribute("nlqdb.pack.import.outcome", "preset_disabled");
+            return c.json({ error: { status: "preset_disabled" as const } }, 400);
+          }
+          const g = globalThis as unknown as { __filename?: string; __dirname?: string };
+          if (typeof g.__filename === "undefined") g.__filename = "worker";
+          if (typeof g.__dirname === "undefined") g.__dirname = "/";
+          const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
+          const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
+          const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env, (p) =>
+            c.executionCtx.waitUntil(p),
+          );
+          const provisioned = await orchestrateDbCreate(createDeps, {
+            goal: `${draft.packId} memory import`,
+            name: `${draft.packId} import`,
+            preset: AGENT_MEMORY_V1_VERSION,
+            tenantId: session.user.id,
+            secretRef,
+            synthetic: isSyntheticRequest(c.req.header("user-agent"), c.env),
+          });
+          if (!provisioned.ok) {
+            span.setAttribute("nlqdb.pack.import.outcome", `provision_${provisioned.error.kind}`);
+            return c.json({ error: { status: "provision_failed" as const } }, 502);
+          }
+          draft = { ...draft, dbId: provisioned.dbId };
+          await store.save(draft);
+          span.setAttribute("nlqdb.pack.import.db_id", draft.dbId ?? "");
         }
-        const g = globalThis as unknown as { __filename?: string; __dirname?: string };
-        if (typeof g.__filename === "undefined") g.__filename = "worker";
-        if (typeof g.__dirname === "undefined") g.__dirname = "/";
-        const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
-        const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
-        const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env, (p) =>
-          c.executionCtx.waitUntil(p),
-        );
-        const provisioned = await orchestrateDbCreate(createDeps, {
-          goal: `${draft.packId} memory import`,
-          name: `${draft.packId} import`,
-          preset: AGENT_MEMORY_V1_VERSION,
-          tenantId: session.user.id,
-          secretRef,
-          synthetic: isSyntheticRequest(c.req.header("user-agent"), c.env),
-        });
-        if (!provisioned.ok) {
-          span.setAttribute("nlqdb.pack.import.outcome", `provision_${provisioned.error.kind}`);
-          return c.json({ error: { status: "provision_failed" as const } }, 502);
-        }
-        draft = { ...draft, dbId: provisioned.dbId };
-        await store.save(draft);
-        span.setAttribute("nlqdb.pack.import.db_id", draft.dbId ?? "");
-      }
 
-      const run = mode === "retry" ? retryDraft : advanceDraft;
-      const outcome = await run(deps, draft, { until: "complete" });
-      const settled = outcome.draft ?? draft;
-      span.setAttribute("nlqdb.pack.import.phase", settled.phase);
-      if (!outcome.ok) {
-        span.setAttribute("nlqdb.pack.import.outcome", outcome.reason);
-        // `auth_required` / `db_required` are journey states, not failures:
-        // the draft is intact and the client's next action resumes it.
-        const status = outcome.reason === "source_unavailable" ? 422 : 409;
-        return c.json({ import: importView(settled), error: { status: outcome.reason } }, status);
+        const run = mode === "retry" ? retryDraft : advanceDraft;
+        const outcome = await run(deps, draft, { until: "complete" });
+        const settled = outcome.draft ?? draft;
+        span.setAttribute("nlqdb.pack.import.phase", settled.phase);
+        if (!outcome.ok) {
+          span.setAttribute("nlqdb.pack.import.outcome", outcome.reason);
+          // `auth_required` / `db_required` are journey states, not failures:
+          // the draft is intact and the client's next action resumes it.
+          const status = outcome.reason === "source_unavailable" ? 422 : 409;
+          return c.json({ import: importView(settled), error: { status: outcome.reason } }, status);
+        }
+        span.setAttribute("nlqdb.pack.import.outcome", "ok");
+        const body = { import: importView(settled) };
+        idempotencyStore(c.executionCtx, c.env.KV, `pack_${mode}`, session.user.id, idemKey, body);
+        return c.json(body);
+      } finally {
+        // Best-effort: an unreleased lease still lapses on its own.
+        await store.releaseLease(id);
       }
-      span.setAttribute("nlqdb.pack.import.outcome", "ok");
-      const body = { import: importView(settled) };
-      idempotencyStore(c.executionCtx, c.env.KV, `pack_${mode}`, session.user.id, idemKey, body);
-      return c.json(body);
     } catch (err) {
       const e = err as Error;
       span.recordException(e);

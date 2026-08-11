@@ -230,11 +230,20 @@ stay so: the import journey is a product surface, like `/v1/chat/messages`
 and `/v1/grants`, not a data capability an agent calls. Promote it only if a
 real caller asks.
 
-**Hardened in review (2026-08-10).** One advance of a draft runs at a time,
-via a compare-and-swap on the draft's `updated_at` (`DraftStore.lease`,
-`409 import_busy`): without it two simultaneous advances each provisioned a
-Neon schema — one orphaned beyond the reach of the `SK-HDC-016` cleanup — and
-each replayed the same rows into a draft that already had a DB. `saveCursor`
+**Hardened in review (2026-08-10, race close revised 2026-08-11).** One
+advance of a draft runs at a time, via an **expiring in-progress lease held
+for the whole provision-write-verify run** (`DraftStore.acquireLease` /
+`releaseLease`, `lease_until`, `409 import_busy`). Without it two advances
+each provisioned a Neon schema — one orphaned beyond the reach of the
+`SK-HDC-016` cleanup — and each replayed the same rows. The first cut used a
+compare-and-swap on `updated_at`, which closed only the *simultaneous* race:
+a *staggered* second advance that read the draft during the winner's
+provisioning window (the DB is provisioned *after* the lease is taken, so
+`updated_at` is stable across it) passed the CAS and re-entered
+`saving`+no-`dbId`. Because `/v1/packs/imports/:id/advance` is a shipped,
+authenticated route, that was reachable with no UI (a double-click or a
+parallel script), so the momentary CAS was replaced with a held lease that
+rejects any concurrent advance until it is released or lapses. `saveCursor`
 only makes a *sequential* retry non-duplicating, and KV idempotency cannot
 serialise concurrent callers (`SK-IDEMP-005`). `save` no longer writes
 `tenant_id` (claim is its only writer), the credential guard now inspects the
