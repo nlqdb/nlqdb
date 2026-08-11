@@ -8,12 +8,16 @@ import { buildAskDeps, buildMemoryExec } from "../ask/build-deps.ts";
 import { resolveDb } from "../db-registry.ts";
 import { orchestrateRemember, type RememberArgs } from "../memory/remember.ts";
 import { makeD1DraftStore } from "./draft-store.ts";
+import { languageTutorPack } from "./packs/language-tutor.ts";
 import { repoOpsPack } from "./packs/repo-ops.ts";
 import type { RunnerDeps } from "./runner.ts";
 import type { PackAdapter, SourceLimits } from "./types.ts";
 
 /** The pack registry. Adding a pack is one entry here plus its adapter. */
-export const PACKS: Record<string, PackAdapter> = { [repoOpsPack.id]: repoOpsPack };
+export const PACKS: Record<string, PackAdapter> = {
+  [repoOpsPack.id]: repoOpsPack,
+  [languageTutorPack.id]: languageTutorPack,
+};
 
 // Caps chosen against the Workers free tier: the whole expanded archive is
 // held in memory once, so `maxTotalBytes` is the real constraint, and a
