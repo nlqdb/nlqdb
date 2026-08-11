@@ -83,7 +83,7 @@ not `'question'`). The ask returned `status: ok, confidence: 1` — a **silent
 wrong answer**: the planner, given DDL-only schema, guessed the low-cardinality
 categorical value and missed. This is the exact
 [`E-09`](../engine/E-09-schema-value-linking.md) schema-value-linking gap —
-`⛔ blocked by [`GLOBAL-037`](../../../../decisions/GLOBAL-037-schema-only-llm-egress.md)`
+⛔ blocked by [`GLOBAL-037`](../../../../decisions/GLOBAL-037-schema-only-llm-egress.md)
 — manifesting live, and it is a **criterion-3 (wrong-answer-accepted) incident**:
 criterion 2's counter scores #8 as "ok" (valid SQL, executed, returned a row),
 which is precisely why criterion 3 is a *separate* judgement over the workload's
