@@ -158,6 +158,22 @@ describe("acquire", () => {
     expect(got).toEqual({ ok: false, reason: "source_malformed" });
   });
 
+  it("measures item size in UTF-8 bytes, not UTF-16 code units", async () => {
+    // A CJK episode: 12 code units but 36 UTF-8 bytes. The byte cap must see
+    // the larger number or a language tutor's transcripts under-count.
+    const cjk: InterviewTranscript = {
+      sessionId: "s-abc123",
+      exchanges: [{ id: "ex-cjk", episode: "日本語".repeat(4) }],
+    };
+    const fetch = vi.fn(async () => jsonResponse(cjk));
+    const got = await languageTutorPack.acquire(SOURCE, ctx(fetch as never));
+    expect(got.ok).toBe(true);
+    if (!got.ok) return;
+    const text = JSON.stringify(cjk.exchanges[0]);
+    expect(got.items[0]?.bytes).toBe(new TextEncoder().encode(text).length);
+    expect(got.items[0]?.bytes).toBeGreaterThan(text.length);
+  });
+
   it("omits an over-large exchange rather than truncating it", async () => {
     const fetch = vi.fn(async () => jsonResponse(TRANSCRIPT));
     const tiny = {

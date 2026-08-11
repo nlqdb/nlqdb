@@ -82,6 +82,11 @@ const TRANSCRIPT_BASE = "https://experts.nlqdb.com/v1/interview-sessions";
 
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
+// A language tutor's transcript is full of accents and CJK, so the byte cap
+// must count UTF-8 bytes (what the DB and the archive reader measure), not
+// `string.length`'s UTF-16 code units, which under-count multi-byte text.
+const utf8 = new TextEncoder();
+
 /** `interview:<id>` or a bare id → the credential-free session id, else null. */
 export function parseSessionRef(input: string): string | null {
   const id = input.trim().replace(/^interview:/i, "");
@@ -262,7 +267,7 @@ export const languageTutorPack: PackAdapter = {
     const items: SourceItem[] = [];
     for (const exchange of fetched.transcript.exchanges.slice(0, ctx.limits.maxItems)) {
       const text = JSON.stringify(exchange);
-      const bytes = text.length;
+      const bytes = utf8.encode(text).length;
       if (bytes > ctx.limits.maxItemBytes) {
         items.push({ id: exchange.id, bytes, text: null, omitted: "too_large" });
       } else {
