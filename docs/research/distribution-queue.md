@@ -18,7 +18,13 @@ body in git history). Earliest drafts: [archive](./distribution-queue-archive.md
 
 ## Drafts — unpublished, newest first
 
-_(empty — the "link-checker-cant-see-your-javascript" draft published this run; see Published below.)_
+- **we-ran-our-own-ops-on-our-own-agent-memory** · venues: `/blog` · dev.to · r/SQL (human) · Show HN
+  (human, launch-gated). **Gist:** nlqdb's own agent queried nlqdb's own `docs/` over the public MCP
+  endpoint (13 facts / 9 entities; 12 NL questions). 10/10 first-ten right — but one silently returned **0**
+  vs true **11** (model guessed `kind='question'`; we store `open_question`). Lesson: **a success-rate metric
+  can't see a semantically-wrong answer** — you need a separate wrong-answer check and value-level schema
+  knowledge. Verbatim numbers + SQL: the `D-04-first-corpus-sync.md` Run log. Unflattering by design
+  (`SK-PIVOT-019`).
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
@@ -55,7 +61,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 67 — **https://nlqdb.com/blog/ai-internal-tool-builder-faster/** — lobste.rs · `/vs/retool` · dev.to posted 2026-07-28: https://dev.to/omer_hochman/ai-made-the-internal-tool-builder-faster-it-didnt-ask-whether-you-needed-the-tool-32ea
 - run 68 — **https://nlqdb.com/blog/offline-llm-eval-rate-limits/** — lobste.rs · dev.to posted 2026-08-08: https://dev.to/omer_hochman/your-offline-llm-eval-isnt-measuring-your-model-its-measuring-your-rate-limits-2ph0
 - run 69 — **https://nlqdb.com/blog/sitemap-advertising-redirects/** — lobste.rs · dev.to posted 2026-07-21: https://dev.to/omer_hochman/your-sitemap-is-advertising-redirects-and-your-canonical-tag-points-at-one-2860
-- run 109 — **https://nlqdb.com/blog/text-to-sql-build-vs-buy/** — dev.to + r/SaaS + r/ExperiencedDevs · `/solve/add-ask-your-data-feature-without-building-text-to-sql`
+- run 109 — **https://nlqdb.com/blog/text-to-sql-build-vs-buy/** — r/SaaS + r/ExperiencedDevs · dev.to ✓ https://dev.to/omer_hochman/the-text-to-sql-demo-takes-an-afternoon-the-other-90-is-why-you-should-buy-it-4iko · `/solve/add-ask-your-data-feature-without-building-text-to-sql`
 - run 119 — **https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/** — dev.to + r/SQL + r/analytics · `/solve/find-duplicate-rows-in-my-data`
 - run 110 — **https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/** — dev.to + r/dataengineering + r/BusinessIntelligence · `/vs/mode`
 - run 131 — **https://nlqdb.com/blog/top-n-rows-per-group/** — r/SQL + r/PostgreSQL · `/solve/find-top-n-rows-per-group` · dev.to posted 2026-07-27 (tags `sql,database,webdev`; queue line named none): https://dev.to/omer_hochman/top-n-per-group-is-the-query-limit-cant-write-57eb
