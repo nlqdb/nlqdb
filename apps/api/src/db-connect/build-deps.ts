@@ -20,10 +20,12 @@ import {
   type ClickhouseConnSpec,
   createDohResolver,
   openByoPostgres,
+  openSupabaseMgmtPostgres,
 } from "@nlqdb/db";
 import { apiKeyHmacSecret, mintPkLiveKey } from "../api-keys.ts";
 import { kekFromEnv } from "../secret-envelope.ts";
 import type { ConnectByoDeps } from "./connect.ts";
+import type { ConnectSupabaseMgmtDeps } from "./connect-supabase-mgmt.ts";
 
 export function buildConnectByoDeps(envBindings: Cloudflare.Env): ConnectByoDeps {
   return {
@@ -43,6 +45,21 @@ export function buildConnectByoDeps(envBindings: Cloudflare.Env): ConnectByoDeps
     // already ran at validate time (`validateByoConnection`); the socket dials
     // the same host.
     buildPostgresQuery: openByoPostgres,
+  };
+}
+
+// Prod deps for `connectSupabaseMgmt` — the OAuth / Management-API connect path
+// (`SK-DBCONN-003`). Mirrors `buildConnectByoDeps` but binds the HTTPS mgmt
+// transport (`openSupabaseMgmtPostgres`) instead of a socket/URL factory; there
+// is no egress resolver because the target is Supabase's own API host.
+export function buildConnectSupabaseMgmtDeps(envBindings: Cloudflare.Env): ConnectSupabaseMgmtDeps {
+  return {
+    kek: kekFromEnv(envBindings),
+    d1: envBindings.DB,
+    randomSuffix: defaultRandomSuffix,
+    mintPkLive: (dbId, tenantId) =>
+      mintPkLiveKey(envBindings.DB, apiKeyHmacSecret(envBindings), dbId, tenantId),
+    buildMgmtQuery: openSupabaseMgmtPostgres,
   };
 }
 

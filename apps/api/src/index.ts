@@ -3614,6 +3614,29 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
   });
 });
 
+// Supabase OAuth connect handshake (`SK-DBCONN-003`). A front-end to the one
+// connect pipeline: `/start` redirects to Supabase consent; `/callback` (auth'd
+// by the one-time KV `state`, not a session) exchanges the code and either
+// connects the single project or bounces to the picker; `/projects` + `/select`
+// serve the multi-project picker. Handlers live in `db-connect/oauth/routes.ts`,
+// lazy-imported to match the connect route below.
+app.get("/v1/db/connect/oauth/supabase/start", requirePrincipal, async (c) => {
+  const { handleSupabaseStart } = await import("./db-connect/oauth/routes.ts");
+  return handleSupabaseStart(c);
+});
+app.get("/v1/db/connect/oauth/supabase/callback", async (c) => {
+  const { handleSupabaseCallback } = await import("./db-connect/oauth/routes.ts");
+  return handleSupabaseCallback(c);
+});
+app.get("/v1/db/connect/oauth/supabase/projects", requirePrincipal, async (c) => {
+  const { handleSupabaseProjects } = await import("./db-connect/oauth/routes.ts");
+  return handleSupabaseProjects(c);
+});
+app.post("/v1/db/connect/oauth/supabase/select", requirePrincipal, async (c) => {
+  const { handleSupabaseSelect } = await import("./db-connect/oauth/routes.ts");
+  return handleSupabaseSelect(c);
+});
+
 // `POST /v1/db/connect` — bring-your-own ClickHouse / Postgres. The
 // caller posts `{ engine, connection_url, name? }`; we validate +
 // egress-guard the URL (GLOBAL-035), introspect the live schema, seal
