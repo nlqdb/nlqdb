@@ -155,7 +155,9 @@ export async function connectByoDb(
       const conn = deps.buildPostgresQuery(args.connectionUrl);
       try {
         // Schema defaults to "public" — the conventional Postgres schema.
-        const schema = await introspectPostgres(conn.query, "public");
+        // `sequential` reads over the socket avoid the cold-socket pipelining
+        // hang postgres.js hits on Workers (`SK-DBCONN-003` open question (g)).
+        const schema = await introspectPostgres(conn.query, "public", { sequential: true });
         rendered = renderByoPostgresSchema(schema);
       } finally {
         await conn.close();

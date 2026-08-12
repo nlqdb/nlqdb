@@ -178,28 +178,40 @@ the rule.
   reasoned N/A class as `<nlq-data>` for the connect verb (`GLOBAL-003`). A future
   `nlq db connect --oauth` via local loopback is a separate capability, not a gap.
 - **(f) Query-time as the Management-API admin, guarded only by `read_only:true`
-  (`SK-DBCONN-003`) — Decided: read-only-only for MVP; role-based defense-in-depth
-  is a follow-up.** The `database/query` endpoint executes as the project admin;
-  the write guard is the `read_only:true` transaction flag plus the upstream
-  leading-verb allowlist. No read-only role is created (simpler, less invasive —
-  `P5`). **Revisit trigger:** supporting writes on a connected Supabase DB, or a
-  need for engine-level privilege isolation → wrap the user statement in
-  `SET LOCAL ROLE` + a provisioned RO role.
+  (`SK-DBCONN-003`) — Resolved: a connected Supabase DB is read-only, permanently
+  (not "MVP").** "Question your database" must never let the planner write to a
+  user's production DB, so every mgmt query runs in a `read_only:true` transaction
+  and the leading-verb allowlist rejects non-reads before execution — two
+  independent guards. No role is created in the user's DB (simpler, less invasive —
+  `P5`), which is *more* honest than the original "we create a read-only role"
+  copy: nlqdb creates nothing. Writes are **out of scope**, not a gap. **Revisit
+  trigger (only if writes are ever a product decision):** a distinct, explicitly
+  confirmed write path wrapping the statement in `SET LOCAL ROLE` + a provisioned
+  RO role — a separate feature, never the default.
 - **(g) postgres.js over Workers sockets hangs against the Supabase pooler
-  (`SK-DBCONN-002`) — Open (worked around, not fixed).** Confirmed in prod
-  (Cloudflare logs, 2026-08-12: ~18.7s hang → 502). Supabase now routes around it
-  via the Management-API transport (`SK-DBCONN-003`), but a **pasted** non-Neon
-  Postgres DSN still rides the socket path and carries the same risk. Leading
-  hypothesis: concurrent-query pipelining on a cold workerd socket
-  (`introspectPostgres` fires 3 queries via `Promise.all`). **Revisit trigger:** a
-  paste-connected non-Neon Postgres reported failing → test serialising the
-  introspection reads, or move paste-Postgres onto a WS-proxy/Hyperdrive path.
+  (`SK-DBCONN-002`) — Resolved: decision + shipped mitigation.** Confirmed in prod
+  (Cloudflare logs, 2026-08-12: ~18.7s hang → 502). Two-part resolution: (1)
+  **Decision** — a non-Neon managed Postgres is connected via **OAuth / the
+  Management-API transport** (Supabase today), which is the supported path; a
+  *pasted* non-Neon Postgres DSN over the Workers socket is **best-effort**, not a
+  supported guarantee. (2) **Mitigation shipped** — `introspectPostgres` now takes
+  `{ sequential }`, and the socket path (`connect.ts`) sets it, so the three reads
+  run one-at-a-time instead of `Promise.all`-pipelining onto a still-connecting
+  socket (the leading hang cause); the mgmt HTTP path keeps the concurrent default.
+  **Residual (folded into the decision, not a standing question):** live-verify
+  against a real non-Neon *pasted* Postgres is the only trigger to reopen — if the
+  serial read still hangs, move paste-Postgres onto a WS-proxy / Hyperdrive path.
 - **(h) OAuth refresh-token rotation race under concurrency (`SK-DBCONN-003`) —
-  Open (accepted at current scale).** `grant-store` refreshes + reseals + persists
-  last-write-wins; if Supabase rotates the refresh token, two concurrent refreshes
-  could strand one. Fine for a single connect owner at low QPS. **Revisit trigger:**
-  observed "needs reconnect" churn on an active mgmt DB → single-flight the refresh
-  (KV lock) or a short access-token cache.
+  Resolved: covered by Supabase's refresh-token reuse interval.** `grant-store`
+  refreshes + reseals + persists last-write-wins. Supabase issues **single-use
+  refresh tokens with a ~10-second reuse interval** (auth-server behavior,
+  P2-checked 2026-08 — [Supabase sessions docs](https://supabase.com/docs/guides/auth/sessions)):
+  a refresh token can be exchanged more than once inside that window, so two
+  concurrent refreshes both succeed and neither is stranded — exactly the window our
+  last-write-wins persist can open. No single-flight needed at any realistic connect
+  QPS. **Revisit trigger:** if the management-OAuth issuer ever enforces strict
+  single-use *and* "needs reconnect" churn appears on an active mgmt DB →
+  single-flight the refresh (KV lock) or cache the access token.
 - **KEK rotation for the BYO blob — Resolved (2026-07-09), see
   [`GLOBAL-031`](../../decisions/GLOBAL-031-byo-secret-envelope.md).**
   The procedure is now scoped there for the shared envelope (BYO blob +

@@ -62,6 +62,14 @@ export type IntrospectedSchema = {
   foreignKeys: IntrospectedForeignKey[];
 };
 
+export type IntrospectOptions = {
+  // Run the reads serially instead of concurrently. Set on the BYO socket path
+  // (postgres.js over Workers `connect()`) to avoid the cold-socket pipelining
+  // hang (`SK-DBCONN-003` open question (g)); the mgmt-API HTTP path leaves it
+  // off and keeps the one-round-trip concurrent reads.
+  sequential?: boolean;
+};
+
 // All three queries take the target schema as `$1` (parameterised — never
 // interpolated) and read only `pg_catalog`, so a role with no rights on a
 // relation simply doesn't see it, consistently across columns/PK/FK.
@@ -120,6 +128,7 @@ ORDER BY c.relname, con.conname, k.ord`;
 export async function introspectPostgres(
   query: PostgresQueryFn,
   schema: string,
+  opts: IntrospectOptions = {},
 ): Promise<IntrospectedSchema> {
   const tracer = trace.getTracer("@nlqdb/db");
   return tracer.startActiveSpan(
@@ -137,13 +146,24 @@ export async function introspectPostgres(
     async (span) => {
       const startedAt = performance.now();
       try {
-        // Independent reads — run them concurrently so a wide schema costs one
-        // round-trip of latency, not three.
-        const [columns, primaryKeys, foreignKeys] = await Promise.all([
-          query(COLUMNS_SQL, [schema]),
-          query(PRIMARY_KEYS_SQL, [schema]),
-          query(FOREIGN_KEYS_SQL, [schema]),
-        ]);
+        // Three independent reads. On the mgmt-API HTTP path (default) run them
+        // concurrently so a wide schema costs one round-trip, not three. On the
+        // BYO socket path (`opts.sequential`, `SK-DBCONN-003` open question (g))
+        // run them one-at-a-time: postgres.js over the Workers `connect()` socket
+        // can hang when queries pipeline onto a still-connecting socket, and a
+        // serial read avoids that cold-socket pipelining. The array-literal below
+        // awaits each element before the next, so it is genuinely sequential.
+        const [columns, primaryKeys, foreignKeys] = opts.sequential
+          ? [
+              await query(COLUMNS_SQL, [schema]),
+              await query(PRIMARY_KEYS_SQL, [schema]),
+              await query(FOREIGN_KEYS_SQL, [schema]),
+            ]
+          : await Promise.all([
+              query(COLUMNS_SQL, [schema]),
+              query(PRIMARY_KEYS_SQL, [schema]),
+              query(FOREIGN_KEYS_SQL, [schema]),
+            ]);
         return assemble(columns.rows, primaryKeys.rows, foreignKeys.rows, schema);
       } catch (err) {
         span.recordException(err as Error);

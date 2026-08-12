@@ -33,6 +33,32 @@ afterEach(() => {
 });
 
 describe("introspectPostgres", () => {
+  it("runs the three reads concurrently by default, serially with { sequential }", async () => {
+    // A query that tracks how many reads overlap; a yield lets concurrent
+    // callers pile up before any resolves.
+    const makeQuery = () => {
+      let inFlight = 0;
+      let peak = 0;
+      const query: PostgresQueryFn = async () => {
+        inFlight++;
+        peak = Math.max(peak, inFlight);
+        await Promise.resolve();
+        await Promise.resolve();
+        inFlight--;
+        return { rows: [] };
+      };
+      return { query, peak: () => peak };
+    };
+
+    const parallel = makeQuery();
+    await introspectPostgres(parallel.query, "public");
+    expect(parallel.peak()).toBe(3); // Promise.all — all three overlap
+
+    const serial = makeQuery();
+    await introspectPostgres(serial.query, "public", { sequential: true });
+    expect(serial.peak()).toBe(1); // one at a time — the socket-path fix (g)
+  });
+
   it("assembles tables with ordered columns, types, and nullability", async () => {
     const { query } = stubQuery({
       columns: [
