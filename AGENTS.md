@@ -230,6 +230,7 @@ don't need the full root view when working in one directory.
 | [`docs/history/`](docs/history/) | Lessons learnt + [`founder-actions-log.md`](docs/history/founder-actions-log.md) (every human operator action) — one doc per topic. |
 | [`docs/blindspot-analysis.md`](docs/blindspot-analysis.md) | Adversarial audit findings + deferred-design tracker. |
 | [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits, marketing, Phase 1 exit, open questions. |
+| [`docs/research/acquisition-channels.md`](docs/research/acquisition-channels.md) + [`-mechanisms.md`](docs/research/acquisition-channels-mechanisms.md) | Canonical acquisition-channel ledger (lean table + tallies) + its per-venue mechanism-notes shard (D4 split). |
 | [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature (e.g. semantic-layer). Promote once decisions are firm. |
 
 These exist for depth; they are not loaded into every session by
