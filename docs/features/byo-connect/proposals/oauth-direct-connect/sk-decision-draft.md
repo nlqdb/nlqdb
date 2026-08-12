@@ -7,9 +7,12 @@ DRAFT — pending P1 sign-off; not an active decision.
 > connect verb defined in **SK-DBCONN-001**. Per CLAUDE.md **P1** ("never contradict a
 > documented decision silently") this **requires the founder to sign off** before any
 > code lands. It **partially supersedes SK-WEB-019** (paste is demoted from primary to
-> fallback; the auth-guard + secrets-never-persisted invariants are *retained*) and
+> fallback; the auth-guard + secrets-never-persisted invariants are *retained*),
 > **extends SK-DBCONN-001** (adds an OAuth front-end that resolves to a connection URL
-> and reuses the same pipeline — it does not replace it).
+> and reuses the same pipeline — it does not replace it), and **depends on
+> SK-DBCONN-002** (postgres.js over Workers sockets, PR #982 — the transport that makes
+> the first provider, Supabase, reachable). The ID below is **SK-DBCONN-003** because
+> SK-DBCONN-002 is taken by that transport decision.
 
 Two decisions in two canonical homes (P3): the backend/pipeline decision in
 `byo-connect`, the page-UX decision in `web-app`. Draft bodies below in the mandatory
@@ -19,15 +22,19 @@ five-field format (`docs/feature-conventions.md` §4).
 
 ## Draft 1 — canonical home: `docs/features/byo-connect/FEATURE.md`
 
-### SK-DBCONN-002 — OAuth provider resolution as a front-end to the one connect pipeline; sealed lifecycle token; paste stays the fallback
+### SK-DBCONN-003 — OAuth provider resolution as a front-end to the one connect pipeline; declarative provider descriptors; sealed lifecycle token; paste stays the fallback
 
-- **Decision:** A provider OAuth grant (Neon first; Supabase next) is turned into a
-  plaintext connection URL by a per-provider `resolveProviderConnection`, which is then
-  fed into the **existing `connectByoDb` orchestrator unchanged** (validate → introspect
-  → seal → register). OAuth adds only (a) a front-end resolver and (b) two handshake
-  helper routes — `GET /v1/db/connect/oauth/:provider/{start,callback}` (PKCE `S256` +
-  one-time `state` in KV, `requirePrincipal` on `start`, connect stays account-only) —
-  never a second connect *data* verb. The durable query credential remains the sealed
+- **Decision:** A provider OAuth grant (**Supabase first; Neon ships when its partner
+  OAuth client lands; no third provider committed**) is turned into a plaintext
+  connection URL by that provider's **`ProviderDescriptor`** — one declarative module
+  (`authorizeUrl`/`tokenUrl`/`scopes`/env-key names/`listProjects`/`resolve`) consumed
+  by a single generic OAuth engine — and is then fed into the **existing `connectByoDb`
+  orchestrator unchanged** (validate → introspect → seal → register). The engine owns
+  the two handshake helper routes — `GET /v1/db/connect/oauth/:provider/{start,callback}`
+  (RFC 9700: PKCE `S256` + one-time TTL'd `state` in KV + exact-match `redirect_uri`;
+  `requirePrincipal` on `start`, connect stays account-only) — never a second connect
+  *data* verb. Adding provider N+1 is one descriptor file + a button entry + two Worker
+  secrets. The durable query credential remains the sealed
   `databases.connection_blob` (a pasted URL and an OAuth-resolved URL are identical once
   registered); the OAuth token is sealed separately (shared envelope, AAD
   `dboauth:<dbId>`) in a new additive `db_oauth_grants` table used **only** for clean
@@ -39,14 +46,17 @@ five-field format (`docs/feature-conventions.md` §4).
   dedicated read-only role) is strictly better than pasting a live DSN. Making OAuth a
   *front-end to the one pipeline* — rather than a parallel connect path — is required by
   **GLOBAL-017** and keeps the sealed-blob storage boundary, egress guard (**GLOBAL-035**),
-  and query-time dispatch in exactly one auditable place; the resolver's only job is to
-  produce a URL the pipeline already knows how to handle. Keeping the DSN (not the token)
-  as the durable artifact means the hot query path needs nothing new and the token table
-  is a tiny, additive, lifecycle-only concern. Neon is first because it is the only
-  Postgres provider whose resolved host the current Workers HTTP driver
-  (`@neondatabase/serverless` `neon()`) can already reach (**GLOBAL-013**, no TCP sockets);
-  every other Postgres provider needs a new Workers wire-protocol transport first.
-- **Consequence in code:** New `resolveProviderConnection` (Neon impl first) + the two
+  and query-time dispatch in exactly one auditable place; a descriptor's only job is to
+  produce a URL the pipeline already knows how to handle, and encoding the mechanics
+  once in the engine makes the RFC 9700 invariants unskippable per-provider. Keeping the
+  DSN (not the token) as the durable artifact means the hot query path needs nothing new
+  and the token table is a tiny, additive, lifecycle-only concern. **Supabase is first**
+  because with **SK-DBCONN-002** (postgres.js over Workers `connect()` sockets) its
+  pooler is reachable and its OAuth app is self-serve — the only provider with no
+  business-negotiation gate; Neon (deepest API fit, but partner-gated) builds in
+  parallel and ships dark until the founder's partner client lands.
+- **Consequence in code:** New `apps/api/src/db-connect/oauth/` — the generic engine +
+  `providers/<provider>.ts` descriptors (Supabase impl first) and the two
   `oauth/:provider/*` routes; the callback calls `connectByoDb` in-process (no re-POST).
   New migration `0030_db_oauth_grants.sql` (additive, forward-only). `sealSecret`/`openSecret`
   gain the `dboauth:<dbId>` context (no new crypto — GLOBAL-031). `DELETE /v1/databases/:id`
@@ -67,17 +77,24 @@ five-field format (`docs/feature-conventions.md` §4).
   - **Store the OAuth token in `connection_blob`.** Conflates the query credential with the
     lifecycle credential and muddies AAD; a separate `db_oauth_grants` row (absence = "paste,
     nothing to revoke") is cleaner and additive.
-  - **Ship a non-Neon provider first.** Blocked on a Workers Postgres-wire transport that
-    Neon doesn't need; Neon-first delivers the journey with zero transport risk.
-- **Source:** canonical here · extends `SK-DBCONN-001` (the pipeline it reuses) ·
-  `SK-DB-013` (validate step) · `GLOBAL-031` (seal) · `GLOBAL-035` (egress) · `GLOBAL-017`
-  (one pipeline) · research.md §0 (transport constraint).
+  - **Ship Neon first.** Its OAuth client is partner-gated (a business negotiation with no
+    deadline) — Neon-first puts a disabled button on the roadmap's critical path. It was the
+    right order only while the BYO path was Neon-HTTP-only; SK-DBCONN-002 removed that.
+  - **A third-party OAuth client library.** Arctic was deprecated July 2026; Better Auth's
+    `genericOAuth` plugin mints sign-in sessions, not resource grants. The flow is ~100
+    lines of fetch in the engine, written once per RFC 9700 (P2-verified 2026-08).
+- **Source:** canonical here · extends `SK-DBCONN-001` (the pipeline it reuses) · depends
+  on `SK-DBCONN-002` (postgres.js Workers transport — reachability) · `SK-DB-013`
+  (validate step) · `GLOBAL-031` (seal) · `GLOBAL-035` (egress) · `GLOBAL-017` (one
+  pipeline) · [RFC 9700](https://datatracker.ietf.org/doc/rfc9700/) · research.md §0
+  (residual TLS-trust constraint).
 
 **Open-questions additions for byo-connect/FEATURE.md:**
-- *(e) Workers Postgres-wire transport for non-Neon OAuth providers* — the existing BYO-PG
-  runner uses Neon-HTTP; Supabase/DO/RDS pooler hosts need a `cloudflare:sockets` wire driver
-  (or rejected per-provider HTTP query APIs). Gates every non-Neon Postgres provider. Decide
-  before Phase 4.
+- *(e) Private-CA providers under runtime-owned TLS verify* — postgres.js on Workers
+  hands cert verification to the runtime's trust store (SK-DBCONN-002), so providers with
+  per-cluster private CAs (DigitalOcean, Aiven, RDS, Cloud SQL) are unreachable however
+  they authenticate. Revisit if Workers gain custom-CA trust or a provider moves to
+  public certs; a one-connection check settles any "TLS?" row in the research matrix.
 - *(f) OAuth surface parity N/A* — SDK/CLI/MCP keep paste (`connection_url`); OAuth is a
   browser-redirect flow they cannot run. Tracked N/A per GLOBAL-003, matching the existing
   connect-verb elements N/A. A future `nlq db connect --oauth` via loopback is a separate
@@ -92,8 +109,9 @@ five-field format (`docs/feature-conventions.md` §4).
 - **Status:** Supersedes **SK-WEB-019** *in part* — the "lead with a paste field" structural
   claim is replaced; SK-WEB-019's auth-guard, `type="password"`, and never-persist-client-side
   invariants are **retained** and apply unchanged to the paste fallback.
-- **Decision:** `/app/connect` leads with a row of provider **Connect** buttons (Neon first,
-  then Supabase) that start the OAuth redirect (`GET /v1/db/connect/oauth/:provider/start`);
+- **Decision:** `/app/connect` leads with a row of provider **Connect** buttons (Supabase
+  first, then Neon — live providers render before dark ones) that start the OAuth redirect
+  (`GET /v1/db/connect/oauth/:provider/start`);
   the paste-a-URL `ConnectForm` moves into a collapsed `<details>` labelled
   *"Advanced / self-hosted"*. ClickHouse Cloud (no OAuth exists) is a button that opens the
   paste panel pre-set to `engine=clickhouse`. A provider whose OAuth client is unconfigured on
@@ -121,7 +139,7 @@ five-field format (`docs/feature-conventions.md` §4).
     path + fallback is the GLOBAL-017 shape.
   - **Keep paste primary, add OAuth as a small link.** Under-delivers the "one click, approve
     on your side" promise that is the whole point.
-- **Source:** canonical here · supersedes-in-part `SK-WEB-019` · backend `SK-DBCONN-002`.
+- **Source:** canonical here · supersedes-in-part `SK-WEB-019` · backend `SK-DBCONN-003`.
 
 ---
 
@@ -135,9 +153,10 @@ five-field format (`docs/feature-conventions.md` §4).
    `web-app/FEATURE.md`'s `## Decisions` index (sharded — it's a decisions/ dir).
 
 2. **`docs/features/byo-connect/FEATURE.md`** —
-   - Add `### SK-DBCONN-002` (Draft 1 above) under `## Decisions`.
-   - Update the `**Status:**` line to note "OAuth-first connect (Neon) added by SK-DBCONN-002;
-     paste demoted to fallback."
+   - Add `### SK-DBCONN-003` (Draft 1 above) under `## Decisions` (as a `decisions/` shard,
+     matching how SK-DBCONN-001/002 are stored after PR #982).
+   - Update the `**Status:**` line to note "OAuth-first connect (Supabase first, Neon
+     partner-gated) added by SK-DBCONN-003; paste demoted to fallback."
    - Under `## GLOBALs governing this feature`, extend the GLOBAL-031 bullet's feature-local
      note to mention the second sealed context `dboauth:<dbId>`; extend GLOBAL-003's note to
      record the OAuth-surface N/A on SDK/CLI/MCP; extend GLOBAL-017's note to state OAuth is a
@@ -145,7 +164,7 @@ five-field format (`docs/feature-conventions.md` §4).
    - Add Open questions **(e)** transport and **(f)** surface-parity N/A (bodies above).
 
 3. **Root `CLAUDE.md` §5 path map** — extend the `byo-connect` row's touch-paths to include
-   `apps/api/src/db-connect/oauth.ts` and the provider resolver path; extend the `web-app` row
+   `apps/api/src/db-connect/oauth/**` (engine + provider descriptors); extend the `web-app` row
    is unnecessary (already `apps/web/**`).
 
 4. **`docs/decisions.md`** — **no new GLOBAL** is required (this composes existing

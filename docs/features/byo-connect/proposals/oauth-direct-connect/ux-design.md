@@ -21,8 +21,8 @@ clearly-labelled fallback for self-hosted / unsupported providers.
 │  we read your schema, you ask in English.                    │
 │                                                              │
 │   ┌──────────────┐  ┌────────────────┐  ┌────────────────┐  │
-│   │  ◆ Connect    │  │  ⬡ Connect      │  │  ✦ Connect      │  │   ← provider buttons
-│   │    Neon       │  │    Supabase     │  │  ClickHouse ▾   │  │     (primary CTA row)
+│   │  ⬡ Connect    │  │  ◆ Connect      │  │  ✦ Connect      │  │   ← provider buttons
+│   │    Supabase   │  │    Neon         │  │  ClickHouse ▾   │  │     (primary CTA row)
 │   └──────────────┘  └────────────────┘  └────────────────┘  │
 │                                                              │
 │   Read-only. You approve on your provider. We never see a    │
@@ -32,8 +32,9 @@ clearly-labelled fallback for self-hosted / unsupported providers.
 └────────────────────────────────────────────────────────────┘
 ```
 
-- **Provider buttons** are the primary action. Buttons for OAuth-live providers
-  (Neon; then Supabase) start the redirect flow. **ClickHouse Cloud has no OAuth** — its
+- **Provider buttons** are the primary action, rendered **live-first** (Supabase ships
+  first; Neon joins when its partner client lands — implementation-plan.md). Buttons
+  for OAuth-live providers start the redirect flow. **ClickHouse Cloud has no OAuth** — its
   button opens the paste panel pre-set to `engine=clickhouse` with a one-line
   "create a read-only key" hint (honest: it is the paste path, not a lie of a button).
 - **Paste-URL** moves into a collapsed `<details>` ("Advanced / self-hosted"). It is the
@@ -42,19 +43,19 @@ clearly-labelled fallback for self-hosted / unsupported providers.
 - Provider buttons whose OAuth app is not yet configured on this deployment render
   **disabled with a "paste for now" affordance**, never a dead button (honest empty state).
 
-## The full P6 journey (Neon happy path)
+## The full P6 journey (Supabase happy path; Neon is the same shape)
 
 1. **Entry** — signed-in user lands on `/app/connect` (auth guard unchanged; anon →
    `/auth/sign-in?return_to=/app/connect`). One primary decision: which provider.
-2. **One primary action** — click **Connect Neon**. Browser navigates to
-   `GET /v1/db/connect/oauth/neon/start`, which 302s to Neon's consent screen. No form,
-   no secret typed.
-3. **Approve on the provider** — the user sees *Neon's* consent screen ("nlqdb wants
-   read access to your projects"), the trust handoff happens on Neon's domain. They pick
-   a project if prompted and approve.
-4. **Redirect back + resume intent** — Neon 302s to
-   `GET /v1/db/connect/oauth/neon/callback?code=…&state=…`. The Worker exchanges the
-   code, provisions a read-only role, fetches the pooled DSN, and runs the **same
+2. **One primary action** — click **Connect Supabase**. Browser navigates to
+   `GET /v1/db/connect/oauth/supabase/start`, which 302s to Supabase's consent screen.
+   No form, no secret typed.
+3. **Approve on the provider** — the user sees *Supabase's* consent screen ("nlqdb
+   wants access to your organization"), the trust handoff happens on the provider's
+   domain. They approve.
+4. **Redirect back + resume intent** — the provider 302s to
+   `GET /v1/db/connect/oauth/supabase/callback?code=…&state=…`. The Worker exchanges the
+   code, provisions a read-only role, assembles the pooler DSN, and runs the **same
    `connectByoDb` pipeline** (validate → introspect → seal → register). It then 302s to
    `/app/connect?connected=<dbId>`. The user's intent ("connect and question my DB") is
    preserved end-to-end; they never re-enter anything.
@@ -77,17 +78,19 @@ clearly-labelled fallback for self-hosted / unsupported providers.
 
 ## Non-happy states (each gets the same care as the happy path)
 
-- **Denied on provider** — user clicks "Deny" on Neon's consent screen. Callback gets
-  `error=access_denied`; redirect to `/app/connect?error=denied` rendering one sentence
-  (**GLOBAL-012**): *"You didn't approve access on Neon — try again, or paste a
-  connection string instead."* The paste fallback is right there. No work lost.
-- **Approved but no projects** (empty) — user has a Neon account but zero projects.
-  *"No databases found in your Neon account — create one on Neon, or paste a connection
-  string."* with a link out. Honest empty state, not a blank success.
+- **Denied on provider** — user clicks "Deny" on the provider's consent screen. Callback
+  gets `error=access_denied`; redirect to `/app/connect?error=denied` rendering one
+  sentence (**GLOBAL-012**, provider name templated): *"You didn't approve access on
+  Supabase — try again, or paste a connection string instead."* The paste fallback is
+  right there. No work lost.
+- **Approved but no projects** (empty) — user has a provider account but zero projects.
+  *"No databases found in your Supabase account — create one on Supabase, or paste a
+  connection string."* with a link out. Honest empty state, not a blank success.
 - **Multiple projects** — if the token grants more than one project, the interstitial
-  shows a **project picker** (name + region) before introspecting. One decision, then
-  resume. (MVP may default to the single/first project and let the user reconnect for
-  another.)
+  **always** shows a project picker (name + region) before introspecting; exactly one
+  project auto-continues with no picker. One decision, then resume. (Silently defaulting
+  to the first project is rejected: connecting the wrong production DB is the worst
+  possible first impression.)
 - **Introspection failed** (bad reach / permissions) — the callback already provisioned
   a role; it surfaces the existing `introspection_failed` one-sentence error and offers
   retry. The orphaned role is cleaned up on retry-or-abandon.

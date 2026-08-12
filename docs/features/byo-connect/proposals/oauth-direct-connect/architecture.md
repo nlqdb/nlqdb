@@ -20,7 +20,7 @@ second connect path.
   ▲                    │   e. register databases row (+ pk_live)      │
   │                    └─────────────────────────────────────────────┘
   │
-  resolveProviderConnection(provider, oauthToken, projectId)
+  descriptor(provider).resolve(oauthToken, projectId)
      └─ returns a plaintext connection URL (DSN)
 ```
 
@@ -30,22 +30,42 @@ into a **plaintext connection URL**. Everything downstream of that URL is the *e
 `__byo_blob__` sentinel, same query-time dispatch. A pasted URL and an OAuth-resolved URL
 are indistinguishable once they reach `connectByoDb`.
 
-### `resolveProviderConnection` (new, pure-ish, per provider)
+### One generic engine + a declarative descriptor per provider
+
+A provider is **one descriptor module**, not a set of routes. Everything mechanical —
+PKCE/state, token exchange, error mapping, token sealing, the `connectByoDb` handoff,
+disconnect — is written once in a generic engine that consumes the descriptor. The
+N+1 provider costs: one descriptor file + a button entry + two Worker secrets.
 
 ```ts
-// packages/db/src/providers/<provider>.ts  (or apps/api/src/db-connect/providers/)
+// apps/api/src/db-connect/oauth/providers/<provider>.ts — the ONLY per-provider file
 type ResolvedConnection = { engine: "postgres" | "clickhouse"; connectionUrl: string;
                             displayName: string; providerRoleName?: string };
 
-// Neon: list projects → create RO role (returns pw) → GET connection_uri?pooled=true
-// Supabase: pick project → POST /database/query CREATE ROLE … → assemble pooler DSN
-async function resolveNeonConnection(token, projectId): Promise<ResolvedConnection>
+type ProviderDescriptor = {
+  id: "supabase" | "neon";                    // route param + button id + span attr
+  authorizeUrl: string; tokenUrl: string; scopes: string;
+  envClientId: string; envClientSecret: string;   // Worker env key names
+  // The user's account may hold several projects: list them for the picker
+  // (auto-continue when exactly one — see ux-design.md).
+  listProjects(token: string): Promise<Array<{ id: string; label: string }>>;
+  // Provider REST → read-only role → plaintext DSN. Each call an OTel span
+  // (GLOBAL-014). Supabase: POST /database/query CREATE ROLE … → pooler DSN.
+  // Neon: create role (returns pw) → GET connection_uri?pooled=true.
+  resolve(token: string, projectId: string): Promise<ResolvedConnection>;
+};
 ```
 
-It performs provider REST calls (each an OTel span, **GLOBAL-014**), and returns a DSN.
-The DSN then flows into `connectByoDb` unchanged. `resolveProviderConnection` lives beside
-`build-deps.ts` because it needs `apps/api` HTTP context; the pure per-provider URL
-assembly can live in `packages/db` (GLOBAL-021 ownership).
+The engine + descriptors live together in `apps/api/src/db-connect/oauth/` — they are
+HTTP-context glue with **no driver code**, so nothing belongs in `packages/db`
+(GLOBAL-021 is about driver ownership, which stays where it is). The resolved DSN
+flows into `connectByoDb` unchanged.
+
+**No third-party OAuth-client dependency** (web-checked 2026-08, P2): Arctic — the
+standard runtime-agnostic OAuth client — was [deprecated July 2026](https://arcticjs.dev/);
+Better Auth's `genericOAuth` plugin is sign-in-shaped (it mints app users/sessions,
+not resource grants). The flow needed here is ~100 lines of fetch against two
+endpoints, written once in the engine per [RFC 9700](https://datatracker.ietf.org/doc/rfc9700/).
 
 ## 2. OAuth callback routes on the Worker
 
@@ -61,15 +81,22 @@ orchestrator in-process rather than re-POSTing.
   `client_id`, `redirect_uri`, `scope`, `state`, `code_challenge`, `S256`.
 - **`GET /v1/db/connect/oauth/:provider/callback`** — reads `code` + `state`; looks up KV
   state (reject on miss → CSRF/expiry), deletes it (one-time use), exchanges `code` at the
-  provider token endpoint with `code_verifier`, calls `resolveProviderConnection`, then
-  `connectByoDb(deps, { engine, connectionUrl, tenantId, name })`. On success optionally
-  seals + stores the OAuth token (§4), then 302s to `/app/connect?connected=<dbId>`. On any
-  failure 302s to `/app/connect?error=<code>` with a **GLOBAL-012** one-sentence mapping.
+  provider token endpoint with `code_verifier`, calls the descriptor's `resolve`, then
+  `connectByoDb(deps, { engine, connectionUrl, tenantId, name })`. On success it seals +
+  stores the OAuth token (§3; from Phase 3 of the implementation plan — Phases 1–2 ship
+  without the grant row and disconnect shows the documented `DROP ROLE` instead), then
+  302s to `/app/connect?connected=<dbId>`. On any failure 302s to
+  `/app/connect?error=<code>` with a **GLOBAL-012** one-sentence mapping.
+
+The flow follows **RFC 9700** (OAuth 2.0 Security BCP, Jan 2025): authorization-code +
+PKCE `S256`, single-use TTL'd `state`, and a `redirect_uri` registered with the provider
+as one exact URL and compared exact-match — never a pattern.
 
 Config: `client_id`/`client_secret` per provider come from Worker env/secrets
-(`NEON_OAUTH_CLIENT_ID` / `..._SECRET`, `SUPABASE_OAUTH_CLIENT_ID` / `..._SECRET`).
-Absent client ⇒ `/start` returns the same 503 shape as the KEK gate, and the web disables
-the button. `redirect_uri` is the API origin (same-origin after the SK-WEB-009 merge).
+(`NEON_OAUTH_CLIENT_ID` / `..._SECRET`, `SUPABASE_OAUTH_CLIENT_ID` / `..._SECRET` — the
+descriptor's `envClientId`/`envClientSecret` name them). Absent client ⇒ `/start` returns
+the same 503 shape as the KEK gate, and the web disables the button. `redirect_uri` is
+the API origin (same-origin after the SK-WEB-009 merge).
 
 ## 3. Token storage — sealed exactly like `connection_blob` (GLOBAL-031)
 
@@ -149,7 +176,13 @@ N/A per GLOBAL-003's tracked-gap clause — identical treatment to the existing 
 - **Durable DSN, optional token:** query-time correctness needs nothing new; the token
   table is a clean, additive, lifecycle-only concern. This keeps the migration tiny and the
   hot path unchanged.
-- **Neon-first falls out of the transport reality** (research.md §0): Neon's resolved host
-  is the one the existing `neon()` HTTP driver already speaks, so Neon needs *zero* new
-  transport. Supabase/DigitalOcean/etc. need a Workers Postgres-wire transport first — an
-  orthogonal, larger piece of work.
+- **Depends on `SK-DBCONN-002`** (postgres.js over Workers `connect()` sockets, PR #982):
+  that transport is what makes the Supabase pooler — and any public, publicly-certed
+  Postgres — reachable, which in turn makes **Supabase-first** the order (research.md §5):
+  it is the one provider with no founder-negotiation gate. Neon builds in parallel and
+  ships when its partner OAuth client lands.
+- **Declarative descriptor over per-provider routes:** the category "provider OAuth
+  connect" has five candidate genuine-OAuth providers in the research matrix; encoding
+  the mechanics once and each provider as a config-shaped descriptor makes the next
+  provider a reviewable one-file diff, and the engine's invariants (state, PKCE, sealing,
+  egress guard) impossible to skip per-provider.

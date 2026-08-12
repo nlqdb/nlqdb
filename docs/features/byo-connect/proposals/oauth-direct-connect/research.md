@@ -8,36 +8,42 @@ claim below is a linked provider doc, not memory.
 
 ---
 
-## 0. The one finding that shapes everything: Workers Postgres reachability
+## 0. Workers Postgres reachability — solved by `SK-DBCONN-002` (PR #982); TLS trust is the residual gate
 
-nlqdb's runtime is Cloudflare Workers (**GLOBAL-013**, no warm TCP sockets on the
-free tier). The existing BYO-Postgres introspection/query path uses
-`@neondatabase/serverless`'s `neon(rawUrl)` **HTTP** function
-(`apps/api/src/db-connect/build-deps.ts:56`). That function speaks Neon's
-**SQL-over-HTTP** protocol and only reaches hosts that implement it (Neon, and
-Neon-protocol-compatible endpoints). The driver's `Pool`/`Client` WebSocket path
-can reach an *arbitrary* Postgres **only through a self-hosted `wsProxy`** placed
-in front of that database — which nlqdb does not run.
-([serverless CONFIG.md](https://github.com/neondatabase/serverless/blob/main/CONFIG.md),
-[serverless README](https://github.com/neondatabase/serverless))
+The first draft of this research found the BYO-Postgres path Neon-only: it ran on
+`@neondatabase/serverless`'s `neon(rawUrl)` **SQL-over-HTTP**, which only reaches
+Neon-protocol hosts. **That constraint no longer holds.** `SK-DBCONN-002`
+(`docs/features/byo-connect/decisions/SK-DBCONN-002-byo-postgres-driver-postgres-js.md`,
+PR #982) moves both BYO-PG call sites onto **postgres.js over the Workers `connect()`
+socket API** (`packages/db/src/postgres-byo.ts`) — a real Postgres wire-protocol TCP
+connection that reaches **any** Postgres host. This proposal assumes SK-DBCONN-002 is
+merged; it is a hard dependency, not an option.
 
-**Consequence:** over the *current* Worker code path, the BYO-Postgres pipeline can
-introspect **Neon** (and Vercel Postgres, which *is* Neon) but **not** a raw Supabase
-pooler / RDS / Cloud SQL / DigitalOcean / etc. — those speak the Postgres wire
-protocol on a TCP port, not Neon-HTTP. Reaching them over Workers needs new transport
-(Cloudflare `connect()` from `cloudflare:sockets` + a wire-protocol driver, or each
-provider's own HTTP query API). **This is pre-existing and out of scope for the OAuth
-design, but it gates every non-Neon Postgres provider** and is the decisive reason to
-ship **Neon first**. ClickHouse-family providers are unaffected — the BYO-ClickHouse
-path is native-HTTP `fetch` (`packages/db/src/clickhouse-byo.ts`) and reaches any host.
+The residual reachability rule (from SK-DBCONN-002's own constraints) — a provider is
+reachable iff **all three** hold:
+
+1. **Public endpoint** (no VPC/private networking gate — rules out default RDS,
+   Fly.io flycast).
+2. **Publicly-trusted TLS cert.** `ssl: "require"` hands the handshake to the
+   Workers runtime, which verifies against its own trust store and cannot be given
+   a custom CA. Providers that ship a **per-cluster private CA** — DigitalOcean
+   ([self-signed chain](https://www.digitalocean.com/community/questions/persistent-self_signed_cert_in_chain-error-on-managed-postgresql-connection)),
+   Aiven, RDS (Amazon-private RDS CA) — **fail verification and are unsupported for
+   now**, OAuth or not.
+3. **IPv4 hostname** (e.g. Supabase's shared Supavisor pooler; the direct
+   `db.<ref>.supabase.co` host is IPv6-only).
+
+ClickHouse-family providers were never gated — the BYO-ClickHouse path is native-HTTP
+`fetch` (`packages/db/src/clickhouse-byo.ts`) and reaches any host.
 
 ---
 
-## 1. Neon — genuine OAuth, reachable today, founder-partner-gated
+## 1. Neon — genuine OAuth, deepest API fit, founder-partner-gated
 
-**Verdict: best technical fit; the only Postgres provider whose OAuth output the
-current Workers pipeline can already query. Shipping is blocked on a founder-obtained
-partner OAuth client.**
+**Verdict: deepest technical fit (create-role returns the password, `connection_uri`
+returns a ready DSN — no SQL round-trip needed). Shipping is blocked on a
+founder-obtained partner OAuth client, which is a calendar-time business
+negotiation — so Neon builds in parallel but ships second.**
 
 - **OAuth model — real authorization-code + PKCE.** Authorize endpoint
   `https://oauth2.neon.tech/oauth2/auth`, token endpoint
@@ -68,18 +74,19 @@ partner OAuth client.**
   - **Get a ready DSN** — `GET /projects/{project_id}/connection_uri?database_name=…&role_name=…&pooled=true`
     returns a standard Postgres URI (`pooled=true` adds the `-pooler` suffix).
     ([Retrieve connection URI](https://api-docs.neon.tech/reference/getconnectionuri))
-- **Why Neon is uniquely feasible today:** the resolved host is a Neon host, so the
-  existing `neon()` HTTP driver already speaks to it — zero new transport code.
-  nlqdb itself runs on Neon (authentic fit), and read-only role isolation is native.
+- **Why Neon still matters:** nlqdb itself runs on Neon (authentic fit), read-only
+  role isolation is native, and it is the only provider whose management API hands
+  back a complete pooled DSN with zero SQL round-trips.
 
 ---
 
-## 2. Supabase — self-serve OAuth app, but needs the Workers-Postgres transport fix
+## 2. Supabase — self-serve OAuth app + reachable pooler ⇒ the first shippable provider
 
-**Verdict: strong. The OAuth app is self-serve (founder can create it in minutes, no
-business gate for the OAuth integration itself), and a management-API SQL endpoint
-lets nlqdb create its own read-only role. Gated on the §0 transport gap, not on a
-partner relationship.**
+**Verdict: build first. The OAuth app is self-serve (founder creates it in minutes,
+no business gate for the OAuth integration itself), a management-API SQL endpoint
+lets nlqdb create its own read-only role, and the shared pooler passes all three §0
+reachability conditions once SK-DBCONN-002 merges. Nothing here waits on a human
+relationship.**
 
 - **OAuth app registration is SELF-SERVE** in the dashboard: org settings →
   **OAuth Apps** tab → *Add application* → yields `client_id` + `client_secret` +
@@ -113,10 +120,12 @@ partner relationship.**
   ([Pooler format](https://www.weweb.io/blog/supabase-connection-string-guide-ports-pooling),
   [IPv4 add-on](https://supabase.com/docs/guides/platform/ipv4-address),
   [IPv4/IPv6 compatibility](https://supabase.com/docs/guides/troubleshooting/supabase--your-network-ipv4-and-ipv6-compatibility-cHe3BP))
-- **Blocker beyond the OAuth app:** the pooler is raw Postgres wire on 6543 — the §0
-  Workers-reachability gap applies. Either (a) solve transport (Cloudflare TCP socket
-  driver), or (b) introspect *through* `database/query` (`read_only:true`) — but (b)
-  would fork the pipeline (see architecture.md; discouraged under **GLOBAL-017**).
+- **Reachability:** the pooler is raw Postgres wire on 6543 — reached by
+  SK-DBCONN-002's postgres.js transport (`prepare: false` is already set
+  connection-wide for Supavisor transaction mode, and the pooler presents a
+  publicly-trusted cert per SK-DBCONN-002's research + `manual-test-postgres.md`
+  walk). The rejected alternative — introspecting *through* `database/query`
+  (`read_only:true`) — would fork the pipeline (see architecture.md; **GLOBAL-017**).
 
 ---
 
@@ -145,32 +154,35 @@ Cloud path; at most add a guided "create a read-only key, paste it" helper.**
 
 Legend — **OAuth?**: (a) genuine authorize-on-provider-side OAuth app a user consents
 to; (m) management API reachable with a *user-pasted* token/key (no browser consent);
-(–) none. **RO role?**: can nlqdb provision/obtain a read-only credential. **Reach?**:
-reachable over the *current* Worker path (Neon-HTTP for PG, native-HTTP for CH) without
-new transport. **Founder-gated?**: needs a human to register an app / partner / secret.
+(–) none. **RO role?**: can nlqdb provision/obtain a read-only credential.
+**Reach?**: passes the three §0 conditions with SK-DBCONN-002 merged — public
+endpoint + publicly-trusted TLS cert + IPv4. *"TLS?"* = PG wire fine but the cert
+trust chain is unverified (a one-connection check settles it); *"no — private CA"* =
+confirmed per-cluster/private CA, blocked until Workers allow custom trust.
+**Founder-gated?**: needs a human to register an app / partner / secret.
 
 ### Postgres-family
 
-| Provider | OAuth? | Mgmt API → DSN? | RO role? | Reach today? | Founder-gated? | Source |
+| Provider | OAuth? | Mgmt API → DSN? | RO role? | Reach? | Founder-gated? | Source |
 |---|---|---|---|---|---|---|
-| **Neon** | **(a)** PKCE | yes (`connection_uri`) | yes (create-role returns pw) | **yes** (Neon-HTTP) | **yes** — partner OAuth client, commercial-relationship-gated | [oauth](https://neon.com/docs/guides/oauth-integration) · [conn uri](https://api-docs.neon.tech/reference/getconnectionuri) |
+| **Supabase** | **(a)** PKCE, **self-serve app** | yes (SQL query → make role → pooler DSN) | yes (`database/query` CREATE ROLE) | **yes** — Supavisor pooler: IPv4 + public TLS | app self-serve (minutes) | [oauth](https://supabase.com/docs/guides/integrations/build-a-supabase-oauth-integration) · [query](https://supabase.com/docs/reference/api/v1-run-a-query) |
+| **Neon** | **(a)** PKCE | yes (`connection_uri`) | yes (create-role returns pw) | **yes** | **yes** — partner OAuth client, commercial-relationship-gated | [oauth](https://neon.com/docs/guides/oauth-integration) · [conn uri](https://api-docs.neon.tech/reference/getconnectionuri) |
 | **Vercel Postgres** (= Neon) | via Vercel/Neon | same as Neon | yes | **yes** (is Neon) | yes (Vercel/Neon marketplace) | [vercel-neon](https://developers.cloudflare.com/workers/databases/third-party-integrations/neon/) |
-| **Supabase** | **(a)** PKCE, **self-serve app** | yes (SQL query → make role → pooler DSN) | yes (`database/query` CREATE ROLE) | **no** (raw PG wire on pooler) | app self-serve; needs transport fix | [oauth](https://supabase.com/docs/guides/integrations/build-a-supabase-oauth-integration) · [query](https://supabase.com/docs/reference/api/v1-run-a-query) |
-| **PlanetScale Postgres** | **(a)** OAuth apps GA | yes (create password) | branch/password scopes | no (PG wire) | app self-serve; MySQL is core (out-of-engine) | [ps-oauth](https://planetscale.com/docs/api/planetscale-api-oauth-applications) · [get pw](https://planetscale.com/docs/api/reference/get_password) |
-| **DigitalOcean Managed PG** | **(a)** OAuth apps, **self-serve** | yes (Databases API returns connection string) | create DB user via API | no (PG wire) | app self-serve | [do-oauth](https://docs.digitalocean.com/reference/api/oauth/) · [do-db](https://docs.digitalocean.com/reference/api/reference/databases/) |
-| **Aiven for PostgreSQL** | (m) personal token | yes (`service_uri`) | yes (SQL: ALTER DEFAULT PRIVILEGES / GRANT) | no (PG wire) | token pasted by user | [aiven api](https://api.aiven.io/doc/) · [aiven ro](https://aiven.io/docs/products/postgresql/howto/readonly-user) |
-| **CockroachDB Cloud** | (m) service-account secret | yes (connection string via API) | SQL user via ccloud/SQL | no (PG wire; CRDB dialect) | key pasted by user | [crdb api](https://www.cockroachlabs.com/docs/cockroachcloud/cloud-api) |
-| **Timescale / Tiger Cloud** | (m) project access key | yes | SQL GRANT | no (PG wire) | key pasted | [ts actions](https://github.com/timescale/cloud-actions) |
-| **Crunchy Bridge** | (m) app_id/secret key | yes (cluster API) | SQL GRANT | no (PG wire) | key pasted | [cb api](https://docs.crunchybridge.com/api) |
-| **Railway** | (a)/(m) OAuth + tokens | yes (GraphQL → `DATABASE_URL`) | SQL GRANT | no (PG wire) | app or token | [rw oauth](https://docs.railway.com/integrations/oauth/login-and-tokens) · [rw api](https://docs.railway.com/integrations/api) |
-| **Render** | (m) API key (owner) | yes (external DB URL) | SQL GRANT | no (PG wire) | key pasted | [render](https://render.com/docs) |
+| **PlanetScale Postgres** | **(a)** OAuth apps GA | yes (create password) | branch/password scopes | TLS? | app self-serve; MySQL is core (out-of-engine) | [ps-oauth](https://planetscale.com/docs/api/planetscale-api-oauth-applications) · [get pw](https://planetscale.com/docs/api/reference/get_password) |
+| **DigitalOcean Managed PG** | **(a)** OAuth apps, **self-serve** | yes (Databases API returns connection string) | create DB user via API | **no — private CA** ([self-signed chain](https://www.digitalocean.com/community/questions/persistent-self_signed_cert_in_chain-error-on-managed-postgresql-connection)) | app self-serve | [do-oauth](https://docs.digitalocean.com/reference/api/oauth/) · [do-db](https://docs.digitalocean.com/reference/api/reference/databases/) |
+| **Aiven for PostgreSQL** | (m) personal token | yes (`service_uri`) | yes (SQL GRANT) | **no — private CA** (per-project Aiven CA) | token pasted by user | [aiven api](https://api.aiven.io/doc/) · [aiven ro](https://aiven.io/docs/products/postgresql/howto/readonly-user) |
+| **CockroachDB Cloud** | (m) service-account secret | yes (connection string via API) | SQL user via ccloud/SQL | TLS? (+ CRDB dialect) | key pasted by user | [crdb api](https://www.cockroachlabs.com/docs/cockroachcloud/cloud-api) |
+| **Timescale / Tiger Cloud** | (m) project access key | yes | SQL GRANT | TLS? | key pasted | [ts actions](https://github.com/timescale/cloud-actions) |
+| **Crunchy Bridge** | (m) app_id/secret key | yes (cluster API) | SQL GRANT | TLS? | key pasted | [cb api](https://docs.crunchybridge.com/api) |
+| **Railway** | (a)/(m) OAuth + tokens | yes (GraphQL → `DATABASE_URL`) | SQL GRANT | TLS? | app or token | [rw oauth](https://docs.railway.com/integrations/oauth/login-and-tokens) · [rw api](https://docs.railway.com/integrations/api) |
+| **Render** | (m) API key (owner) | yes (external DB URL) | SQL GRANT | TLS? | key pasted | [render](https://render.com/docs) |
 | **Fly.io Postgres** | (–) org token | via Machines API | SQL GRANT | no (flycast, not public) | token; not publicly reachable | [fly](https://fly.io/docs) |
-| **AWS RDS / Aurora** | (m) IAM/STS (not consent-OAuth) | ARN/endpoint via API | SQL GRANT | no (PG wire; often private VPC) | IAM app + network gate | [rds](https://docs.aws.amazon.com/rds/) |
-| **Google Cloud SQL / AlloyDB** | (m) Google OAuth + Admin API | list instances; create user | SQL GRANT | no (PG wire; public IP + allowlist) | Google OAuth consent-screen verification | [cloudsql](https://cloud.google.com/sql/docs/postgres/admin-api) |
-| **Azure DB for PostgreSQL** | (m) Entra OAuth + ARM | instance via ARM | SQL GRANT | no (PG wire) | Entra app registration | [azure pg](https://learn.microsoft.com/azure/postgresql/) |
-| **Xata** (now PG platform) | (m) API key | yes | SQL GRANT | no (PG wire) | key pasted | [xata](https://xata.io/docs) |
-| **Nile** | (m) API key | yes | SQL GRANT | no (PG wire) | key pasted | [nile](https://thenile.dev/docs) |
-| **Tembo** | (m) token | yes | SQL GRANT | no; product winding down | token | [tembo](https://tembo.io) |
+| **AWS RDS / Aurora** | (m) IAM/STS (not consent-OAuth) | ARN/endpoint via API | SQL GRANT | **no — private CA** (Amazon RDS CA) + often VPC | IAM app + network gate | [rds](https://docs.aws.amazon.com/rds/) |
+| **Google Cloud SQL / AlloyDB** | (m) Google OAuth + Admin API | list instances; create user | SQL GRANT | **no — private CA** (per-instance Google CA) | Google OAuth consent-screen verification | [cloudsql](https://cloud.google.com/sql/docs/postgres/admin-api) |
+| **Azure DB for PostgreSQL** | (m) Entra OAuth + ARM | instance via ARM | SQL GRANT | TLS? (DigiCert-chained, likely public) | Entra app registration | [azure pg](https://learn.microsoft.com/azure/postgresql/) |
+| **Xata** (now PG platform) | (m) API key | yes | SQL GRANT | TLS? | key pasted | [xata](https://xata.io/docs) |
+| **Nile** | (m) API key | yes | SQL GRANT | TLS? | key pasted | [nile](https://thenile.dev/docs) |
+| **Tembo** | (m) token | yes | SQL GRANT | product winding down | token | [tembo](https://tembo.io) |
 
 ### ClickHouse-family
 
@@ -184,26 +196,28 @@ new transport. **Founder-gated?**: needs a human to register an app / partner / 
 
 ---
 
-## 5. Recommendation — build order
+## 5. Recommendation — build order (unambiguous)
 
-**Build FIRST: Neon.** The only provider that is *both* genuine authorize-on-their-side
-OAuth *and* reachable over the current Worker pipeline with zero new transport code.
-create-role returns a password → dedicated read-only role; `connection_uri?pooled=true`
-→ a DSN the existing `neon()` driver already queries. nlqdb runs on Neon (authentic
-fit). The only blocker is the **founder obtaining a partner OAuth `client_id`/`client_secret`**
-— a relationship the founder already wants ([acquisition-channels row 20](../../../home/user/nlqdb/docs/research/acquisition-channels.md)).
+**Build FIRST: Supabase.** With SK-DBCONN-002 merged it passes every §0 reachability
+condition, the OAuth app is **self-serve** (founder unblocks in minutes, no partner
+gate), and `database/query` cleanly provisions a read-only role. It is the only
+provider where *nothing* waits on a business negotiation — the shortest path from
+sign-off to a live "Connect" button. Neon-first (the first draft's order) would ship
+a **disabled button** until a partner deal closes: a roadmap dependency on a
+negotiation with no deadline.
 
-**Build SECOND: Supabase.** OAuth app is **self-serve** (founder unblocks in minutes,
-no partner gate), `database/query` cleanly provisions a read-only role, shared pooler
-gives an IPv4 DSN. Gated on the §0 transport work (a Workers Postgres-wire driver), not
-on a human relationship — so it is the natural next step once transport lands, and that
-transport unlocks the entire (m)-column Postgres set (DigitalOcean, Aiven, Railway,
-Render, Cockroach, …) at once.
+**Build SECOND: Neon** — the resolver + button are agent-buildable immediately and
+sit dark until the founder's **partner OAuth client** lands
+([acquisition-channels row 20](../../../home/user/nlqdb/docs/research/acquisition-channels.md)
+— a relationship the founder already wants). The founder starts that conversation at
+Phase 0; it runs in parallel, it is not on the critical path.
 
-**Build THIRD: DigitalOcean** (best *second* genuine OAuth: self-serve app + Databases
-API returns a connection string) once the Supabase transport work exists — or **Tinybird**
-if the priority is a ClickHouse-family "connect" that is reachable today (token-paste,
-not browser OAuth, so it advances "no copy-paste" less).
+**No THIRD provider is committed.** DigitalOcean (the next genuine self-serve OAuth)
+is **blocked on its per-cluster private CA** (§0 condition 2), and every remaining
+(m)-column provider is token-paste — it advances "no credential copy-paste" barely at
+all. Revisit after Supabase ships real usage data: the next candidate is whichever of
+PlanetScale/Railway clears a one-connection TLS-trust check *and* shows up in demand
+signals.
 
 **ClickHouse Cloud stays paste-URL** — no OAuth exists to build against.
 
@@ -228,4 +242,8 @@ not browser OAuth, so it advances "no copy-paste" less).
 - CockroachDB Cloud API — https://www.cockroachlabs.com/docs/cockroachcloud/cloud-api
 - Crunchy Bridge API — https://docs.crunchybridge.com/api
 - Railway API/OAuth — https://docs.railway.com/integrations/api
-- neon serverless (non-Neon reach) — https://github.com/neondatabase/serverless/blob/main/CONFIG.md
+- neon serverless (why the old HTTP path was Neon-only) — https://github.com/neondatabase/serverless/blob/main/CONFIG.md
+- postgres.js Workers transport — `SK-DBCONN-002` (this repo) + https://github.com/porsager/postgres
+- DigitalOcean private CA (blocks runtime TLS verify) — https://www.digitalocean.com/community/questions/persistent-self_signed_cert_in_chain-error-on-managed-postgresql-connection
+- OAuth 2.0 Security BCP — https://datatracker.ietf.org/doc/rfc9700/ (RFC 9700, Jan 2025)
+- Arctic OAuth client library deprecated July 2026 — https://arcticjs.dev/ (why the handshake is hand-rolled)
