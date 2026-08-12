@@ -3857,6 +3857,13 @@ app.delete("/v1/databases/:id", requireSession, async (c) => {
     const { dropSchemaAndRegistry, stripDbPrefix } = await import("./db-create/neon-provision.ts");
 
     try {
+      // SK-DBCONN-003 — a Supabase OAuth row has a `db_oauth_grants` row (FK →
+      // databases.id) holding the sealed token. Delete it FIRST so the
+      // `databases` DELETE inside `dropSchemaAndRegistry` can't trip the FK, and
+      // so nlqdb stops holding the token on disconnect (P6 reversible cleanup).
+      // No provider role to DROP — the mgmt transport creates none (read-only).
+      // A non-OAuth row has no grant row, so this is a no-op there.
+      await c.env.DB.prepare("DELETE FROM db_oauth_grants WHERE db_id = ?").bind(dbId).run();
       const pg = buildPgClient(resolveDatabaseUrl(c.env));
       const schemaName = stripDbPrefix(dbId);
       await dropSchemaAndRegistry(tracer, pg, c.env.DB, dbId, schemaName);
