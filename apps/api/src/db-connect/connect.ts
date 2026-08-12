@@ -28,23 +28,18 @@
 // the injected `resolve`).
 
 import {
+  type ByoPostgresConnection,
   type ClickhouseConnSpec,
   type ClickhouseQueryFn,
   type DnsResolver,
   introspectClickhouse,
   introspectPostgres,
-  type PostgresQueryFn,
   renderByoClickhouseSchema,
   renderByoPostgresSchema,
   validateByoConnection,
 } from "@nlqdb/db";
 import { sealSecret } from "../secret-envelope.ts";
 import { BYO_SECRET_REF_SENTINEL } from "./constants.ts";
-
-// Re-export the Postgres introspector's query-fn shape under a local
-// name so the route + tests reference it without a second @nlqdb/db
-// import. It is `PostgresQueryFn` verbatim.
-export type PostgresIntrospectQueryFn = PostgresQueryFn;
 
 export type ConnectByoDeps = {
   // Egress-guarded DNS resolver (GLOBAL-035). Forwarded to
@@ -60,10 +55,12 @@ export type ConnectByoDeps = {
   // tests skip it; failures are swallowed (the DB is already committed).
   mintPkLive?: (dbId: string, tenantId: string) => Promise<string>;
   // Engine live-query factories. The ClickHouse one takes a connection
-  // spec (host/port/secure/db/user/password); the Postgres one takes the
-  // raw URL and returns a query fn the introspector accepts.
+  // spec (host/port/secure/db/user/password) and returns a stateless HTTP
+  // query fn; the Postgres one takes the raw URL and returns a live
+  // socket-backed connection (`query` for introspection + `close`) the
+  // orchestrator closes after the read.
   buildClickhouseQuery: (spec: ClickhouseConnSpec) => ClickhouseQueryFn;
-  buildPostgresQuery: (rawUrl: string) => PostgresIntrospectQueryFn;
+  buildPostgresQuery: (rawUrl: string) => ByoPostgresConnection;
 };
 
 export type ConnectByoArgs = {
@@ -150,10 +147,18 @@ export async function connectByoDb(
       const schema = await introspectClickhouse(query, parsed.database);
       rendered = renderByoClickhouseSchema(schema);
     } else {
-      const query = deps.buildPostgresQuery(args.connectionUrl);
-      // Schema defaults to "public" — the conventional Postgres schema.
-      const schema = await introspectPostgres(query, "public");
-      rendered = renderByoPostgresSchema(schema);
+      // postgres.js opens a real TCP socket (`SK-DBCONN-002`) that must be
+      // closed, so scope it to the introspection read and close in `finally`
+      // (an unclosed Workers socket accumulates toward the runtime's
+      // connection cap). `close()` swallows its own errors.
+      const conn = deps.buildPostgresQuery(args.connectionUrl);
+      try {
+        // Schema defaults to "public" — the conventional Postgres schema.
+        const schema = await introspectPostgres(conn.query, "public");
+        rendered = renderByoPostgresSchema(schema);
+      } finally {
+        await conn.close();
+      }
     }
   } catch {
     return {

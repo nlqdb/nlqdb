@@ -63,7 +63,11 @@ function baseDeps(overrides: Partial<ConnectByoDeps> = {}): ConnectByoDeps {
     d1: stubD1().d1,
     randomSuffix: () => "a1b2c3",
     buildClickhouseQuery: (_spec: ClickhouseConnSpec) => makeChQuery(),
-    buildPostgresQuery: () => async () => ({ rows: [], rowCount: 0 }),
+    buildPostgresQuery: () => ({
+      query: async () => ({ rows: [], rowCount: 0 }),
+      runBounded: async () => ({ rows: [], rowCount: 0 }),
+      close: async () => {},
+    }),
     ...overrides,
   };
 }
