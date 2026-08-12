@@ -1,0 +1,146 @@
+# UX design — OAuth-first `/app/connect`
+
+Redesign of `apps/web/src/pages/app/connect.astro` + `ConnectForm.tsx`. The
+authored-schema create flow (`/app/new`) is untouched. Anchored to **P6** (world-class
+journeys) and the existing **SK-WEB-019** trust posture (auth-guarded, secrets never
+persisted client-side).
+
+## Design principle
+
+Today the connect page opens on *"Paste a read connection string."* — a wall of
+credential handling before any value. The inversion: lead with **provider buttons that
+approve on the provider's side** (zero secret typed into nlqdb), and demote paste to a
+clearly-labelled fallback for self-hosted / unsupported providers.
+
+**Staged demotion (founder call, 2026-08-12).** The collapse of paste happens in two
+stages keyed to how many providers are actually OAuth-live on the deployment:
+
+- **Stage 1 — one live provider (launch):** the provider-button row renders first, but
+  the paste `ConnectForm` stays **fully visible** directly beneath it, under an
+  *"…or paste a connection string"* divider. With only Supabase live, most visitors
+  still need paste; hiding it behind a click would punish them to promote one vendor's
+  logo.
+- **Stage 2 — ≥ 2 live providers:** paste collapses into the `<details>` fallback shown
+  in the diagram below. The SK-WEB-019 supersession completes only at this stage.
+
+The SK-WEB-019 invariants (auth guard, `type="password"`, never persisted client-side)
+bind the paste form identically in both stages.
+
+## Page layout (primary path — Stage 2 shown; Stage 1 renders the paste form expanded below the buttons)
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  Question your database.                                     │
+│  Connect it in one click — approve access on your provider,  │
+│  we read your schema, you ask in English.                    │
+│                                                              │
+│   ┌──────────────┐  ┌────────────────┐  ┌────────────────┐  │
+│   │  ⬡ Connect    │  │  ◆ Connect      │  │  ✦ Connect      │  │   ← provider buttons
+│   │    Supabase   │  │    Neon         │  │  ClickHouse ▾   │  │     (primary CTA row)
+│   └──────────────┘  └────────────────┘  └────────────────┘  │
+│                                                              │
+│   Read-only. You approve on your provider. We never see a    │
+│   password you didn't hand us.                               │
+│                                                              │
+│   ▸ Advanced: paste a connection string (self-hosted / other)│   ← collapsed <details>
+└────────────────────────────────────────────────────────────┘
+```
+
+- **Provider buttons** are the primary action, rendered **live-first** (Supabase ships
+  first; Neon joins when its partner client lands — implementation-plan.md). Buttons
+  for OAuth-live providers start the redirect flow. **ClickHouse Cloud has no OAuth** — its
+  button opens the paste panel pre-set to `engine=clickhouse` with a one-line
+  "create a read-only key" hint (honest: it is the paste path, not a lie of a button).
+- **Paste-URL** is the *entire current ConnectForm*, unchanged in behavior
+  (`type="password"`, never persisted). At Stage 1 it renders expanded below the button
+  row; at Stage 2 it moves into the collapsed `<details>` ("Advanced / self-hosted").
+  Deep link `?engine=` and the LeftRail chips still open it in either stage.
+- Provider buttons whose OAuth app is not yet configured on this deployment render
+  **disabled with a "paste for now" affordance**, never a dead button (honest empty state).
+
+## The full P6 journey (Supabase happy path; Neon is the same shape)
+
+1. **Entry** — signed-in user lands on `/app/connect` (auth guard unchanged; anon →
+   `/auth/sign-in?return_to=/app/connect`). One primary decision: which provider.
+2. **One primary action** — click **Connect Supabase**. Browser navigates to
+   `GET /v1/db/connect/oauth/supabase/start`, which 302s to Supabase's consent screen.
+   No form, no secret typed.
+3. **Approve on the provider** — the user sees *Supabase's* consent screen ("nlqdb
+   wants access to your organization"), the trust handoff happens on the provider's
+   domain. They approve.
+4. **Redirect back + resume intent** — the provider 302s to
+   `GET /v1/db/connect/oauth/supabase/callback?code=…&state=…`. The Worker exchanges the
+   code, provisions a read-only role, assembles the pooler DSN, and runs the **same
+   `connectByoDb` pipeline** (validate → introspect → seal → register). It then 302s to
+   `/app/connect?connected=<dbId>`. The user's intent ("connect and question my DB") is
+   preserved end-to-end; they never re-enter anything.
+5. **Visible, honest progress** — because introspection can take a second or two, the
+   callback lands on an interstitial that reports **user-meaningful units** ("Reading
+   your schema… 12 tables found"), not a spinner-lie. If the flow is fast it goes
+   straight to proof.
+6. **Persistent proof of value** — the connected page renders the **schema preview**
+   card (same `CREATE TABLE` shape as paste/create), the provider + project name pill,
+   and a promoted **"Question it now →"** CTA to `/app?db=<dbId>`. On reload the DB is in
+   the user's list (durable, inspectable) — the proof survives refresh.
+7. **Clear next step** — one CTA into chat, bound to the new DB. Same wow beat the paste
+   path already delivers (SK-WEB-019).
+8. **Undo / disconnect** — the DB list exposes **Disconnect**, which `DELETE`s the
+   `databases` row *and* (when the sealed OAuth token is stored) calls the provider API
+   to **DROP the read-only role nlqdb created** — leaving the user's DB as it was. This
+   is the reversible-cleanup P6 requires; if the token isn't stored (MVP), disconnect
+   still removes nlqdb's copy and the residual read-only role is documented + shown to
+   the user with a copy-paste `DROP ROLE` they can run.
+
+## Non-happy states (each gets the same care as the happy path)
+
+- **Denied on provider** — user clicks "Deny" on the provider's consent screen. Callback
+  gets `error=access_denied`; redirect to `/app/connect?error=denied` rendering one
+  sentence (**GLOBAL-012**, provider name templated): *"You didn't approve access on
+  Supabase — try again, or paste a connection string instead."* The paste fallback is
+  right there. No work lost.
+- **Approved but no projects** (empty) — user has a provider account but zero projects.
+  *"No databases found in your Supabase account — create one on Supabase, or paste a
+  connection string."* with a link out. Honest empty state, not a blank success.
+- **Multiple projects** — if the token grants more than one project, the interstitial
+  **always** shows a project picker (name + region) before introspecting; exactly one
+  project auto-continues with no picker. One decision, then resume. (Silently defaulting
+  to the first project is rejected: connecting the wrong production DB is the worst
+  possible first impression.)
+- **Introspection failed** (bad reach / permissions) — the callback already provisioned
+  a role; it surfaces the existing `introspection_failed` one-sentence error and offers
+  retry. The orphaned role is cleaned up on retry-or-abandon.
+- **Partial** — role created but connection_uri fetch failed: fail closed, clean up the
+  role, one-sentence error + retry. Never a half-registered DB.
+- **Token expired / revoked later** — a query-time re-introspect that 401s marks the DB
+  "needs reconnect" in the list with a one-click re-auth (re-runs `/start`), preserving
+  the dbId so history and keys survive.
+- **State/CSRF mismatch** on callback — reject, redirect to `/app/connect?error=expired`
+  ("That connect link expired — start again."). Never trust a callback without a matching
+  KV state.
+- **OAuth not configured on this deployment** (no `client_id`) — the provider button is
+  disabled with a tooltip and the paste fallback is promoted. The `/start` route returns
+  the same 503 shape the KEK gate uses.
+
+## What stays identical (do not regress)
+
+- Auth-guarded page; connect is account-only (existing rule; OAuth `/start` requires the
+  session).
+- The paste field keeps `type="password"`, `autocomplete="off"`, and **never** touches
+  `localStorage`/`sessionStorage`/query string (SK-WEB-019 invariants).
+- Success still emits the `db.connected` `{ engine }` event (add `{ method: "oauth" | "paste", provider }`)
+  so the Door-B funnel and now the OAuth-vs-paste split read in GTM.
+- Same schema-preview → "Question it now" wow beat for both paths.
+
+## Accessibility / honesty notes
+
+- Provider buttons are real `<a>`/`<button>` with visible labels, not icon-only.
+- The "we never see a password you didn't hand us" line is literally true on the OAuth
+  path (we create a role via the provider API; on paste it is the existing sealed-URL
+  promise). Copy must not overclaim on the paste path.
+- **The write-scope paradox gets honest copy (founder call, 2026-08-12).** Supabase's
+  consent screen will show a *write*-capable scope (`database:write`) because creating
+  the read-only role requires one admin statement. The page must say so **before** the
+  redirect, next to the Connect button: *"Supabase will ask for write access — we use it
+  once, to create a read-only role. After that we only ever read."* Reviewers reject
+  copy that hides or hand-waves the scope the user is about to see.
+- The interstitial's progress is real counts from introspection, never an invented %.
