@@ -92,7 +92,10 @@ negotiation — so Neon builds in parallel but ships second.**
   provision and manage Postgres databases for end users": Neon-sponsored free org up
   to 30k projects, but requires a paid Scale plan + approval — a GLOBAL-013 exception
   the founder must own). The Agent-Plan application and the partner OAuth client are
-  the **same conversation** — ask for both at once.
+  the **same conversation** — ask for both at once. **Founder decision 2026-08-12:
+  deferred (no spend at the $0 stage); re-opens at the phase-plan §6 monetization
+  trigger. Until then the guardrail is: no per-user Neon provisioning, no direct DSNs
+  to nlqdb-owned Neon DBs.**
 
 ---
 

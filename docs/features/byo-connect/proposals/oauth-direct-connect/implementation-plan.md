@@ -21,11 +21,14 @@ reachable and this plan's order collapses back to Neon-only.
 - 🔴 Founder signs off `sk-decision-draft.md` (this changes documented UX per **SK-WEB-019**
   and extends **SK-DBCONN-001** — a **P1** item). Land the SK decisions *before* code
   (P3: decisions in canonical home first).
-- 🔴 Founder **starts the Neon partner-OAuth conversation now** (B2 below) — it is
-  calendar-time, off the critical path, and the earlier it starts the earlier Neon ships.
-  Bundle the [Agent Plan](https://neon.com/docs/introduction/agent-plan) application into
-  the same ask (research.md §1 terms posture): it is the sanctioned vehicle for hosted
-  per-user provisioning later, and today's usage is compliant — nothing to remediate first.
+- 🔴 ~~Founder starts the Neon partner-OAuth conversation now~~ — **DEFERRED by founder
+  decision (2026-08-12): no paid infra at the $0 stage.** The bundled ask (partner OAuth
+  client + [Agent Plan](https://neon.com/docs/introduction/agent-plan)) requires an active
+  paid Scale plan, so it re-opens at the `docs/phase-plan.md` §6 monetization trigger —
+  or earlier if Neon responds to a free-tier partnership inquiry (allowed, zero cost,
+  low expectation). Today's usage is compliant at $0 (research.md §1); the one hard
+  guardrail until the Agent Plan lands: **do not ship per-user Neon projects/branches or
+  hand users direct DSNs to nlqdb-owned Neon DBs** (SK-DB-007 Phase 2b stays parked).
 
 ## Phase 1 — OAuth engine, provider-agnostic (🟢 agent-buildable)
 
