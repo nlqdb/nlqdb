@@ -86,6 +86,12 @@ export {
   type PlanExemplar,
   retrievePlanExemplars,
 } from "./plan-exemplar-pool.ts";
+// The GLOBAL-037 schema-only plan egress builder — the user message the plan
+// hop emits (goal + schema + dialect only; no rows; see
+// `providers/_chat-provider.ts` `plan()`). Exported so cross-package
+// invariant tests assert the real egress, not a reconstruction (INV-EKP-037);
+// its system-message half is `buildPlanSystem`, exported above.
+export { buildPlanUser } from "./prompts.ts";
 export type { ByollmProviderOptions } from "./providers/byollm.ts";
 export { createByollmProvider } from "./providers/byollm.ts";
 export type { CerebrasProviderOptions } from "./providers/cerebras.ts";
