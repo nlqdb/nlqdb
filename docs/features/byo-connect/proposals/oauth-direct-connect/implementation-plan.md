@@ -18,9 +18,13 @@ reachable and this plan's order collapses back to Neon-only.
 
 ## Phase 0 — Decision sign-off (blocking, P1)
 
-- 🔴 Founder signs off `sk-decision-draft.md` (this changes documented UX per **SK-WEB-019**
-  and extends **SK-DBCONN-001** — a **P1** item). Land the SK decisions *before* code
-  (P3: decisions in canonical home first).
+- ✅ **DONE 2026-08-12** — Founder signed off `sk-decision-draft.md` with four recorded
+  calls (README.md): staged paste demotion; `database:write` scope accepted with honest
+  consent copy; sealed lifecycle token stored; **build queued behind the current
+  scorecard focus** (agent-memory dogfood gate) — Phases 1+ start when that focus
+  clears, decisions land in canonical homes in the first build PR after #982 merges
+  (P3: decisions before dependent code). B4/B5 (Supabase OAuth app + secrets,
+  self-serve minutes) can happen any time before Phase 2 E2E.
 - 🔴 ~~Founder starts the Neon partner-OAuth conversation now~~ — **DEFERRED by founder
   decision (2026-08-12): no paid infra at the $0 stage.** The bundled ask (partner OAuth
   client + [Agent Plan](https://neon.com/docs/introduction/agent-plan)) requires an active
@@ -59,9 +63,11 @@ Buildable and unit-testable with a **stub descriptor**; no real client needed ye
    `postgres://nlqdb_ro_<rand>.<ref>:<pw>@aws-0-<region>.pooler.supabase.com:6543/postgres`.
 2. 🟢 Project handling (no MVP hedge): exactly one project ⇒ auto-continue; more than one ⇒
    the callback interstitial renders the picker (ux-design.md). Zero ⇒ honest empty state.
-3. 🟢 Web: `/app/connect` provider-button row (primary) + paste demoted to `<details>`
-   (see ux-design.md); "Connect Supabase" → `/start`; disabled+paste-fallback when
-   unconfigured. `db.connected` event gains `{ method, provider }`.
+3. 🟢 Web: `/app/connect` provider-button row (primary) + paste in its **Stage 1**
+   position — expanded below the buttons; the `<details>` collapse waits for a second
+   live provider (ux-design.md "Staged demotion"). Honest write-scope copy next to the
+   button. "Connect Supabase" → `/start`; disabled+paste-fallback when unconfigured.
+   `db.connected` event gains `{ method, provider }`.
 4. 🟢 Unit tests with mocked Supabase REST (fixtures for projects/query/pooler).
 5. 🔴 **FOUNDER (self-serve, minutes):** create the Supabase OAuth app (org settings →
    OAuth Apps; scopes incl. `database:write` for CREATE ROLE), set
@@ -113,7 +119,7 @@ enabling layer).
 
 | # | Blocker | Provider | Self-serve? | Where |
 |---|---|---|---|---|
-| B1 | P1 sign-off of the SK decision (UX change) | — | founder decision | this repo |
+| ~~B1~~ | ~~P1 sign-off of the SK decision (UX change)~~ — **DONE 2026-08-12** (README.md records the four calls) | — | founder decision | this repo |
 | B2 | Neon **partner** OAuth `client_id`/`client_secret` + redirect registration | Neon | **No** — commercial-relationship-gated; **start at Phase 0, runs in parallel** | Neon partner/support ([row 20](../../../home/user/nlqdb/docs/research/acquisition-channels.md)) |
 | B3 | Set `NEON_OAUTH_CLIENT_ID`/`_SECRET` as Worker secrets | Neon | founder runs `wrangler secret put` | runbook |
 | B4 | Supabase OAuth app (client id/secret/redirect) | Supabase | **Yes** — dashboard, minutes | supabase.com/dashboard org → OAuth Apps |
@@ -122,6 +128,8 @@ enabling layer).
 
 **Everything else in Phases 1–4 is agent-buildable and unit-testable without a real
 provider** by stubbing the descriptor and the token exchange. The critical path to a
-*shipped* OAuth connect is: **merge PR #982 → B1 → Phase 1 → Phase 2 (build) → B4/B5
+*shipped* OAuth connect is: **merge PR #982 → ✅ B1 → Phase 1 → Phase 2 (build) → B4/B5
 (minutes) → Phase 2 E2E.** No step on it waits on a negotiation. Neon joins via
-B2/B3 whenever the partnership closes.
+B2/B3 whenever the partnership closes. **Start gate (founder call, 2026-08-12):**
+Phase 1 begins only once the active scorecard focus (agent-memory dogfood gate) clears —
+this build does not compete with it for runs.

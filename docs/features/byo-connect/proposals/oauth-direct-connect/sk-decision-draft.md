@@ -1,6 +1,8 @@
-DRAFT — pending P1 sign-off; not an active decision.
+SIGNED OFF by founder 2026-08-12 (see README.md for the four recorded calls). Bodies
+below are final; they move to their canonical homes in the first build PR after #982
+merges (per P3, before any code that depends on them).
 
-# Draft SK decisions — OAuth-first connect (for founder P1 sign-off)
+# SK decisions — OAuth-first connect (founder-approved 2026-08-12)
 
 > **P1 flag — read first.** This changes a *documented* customer-facing UX
 > (**SK-WEB-019** leads with "Paste a read connection string") and extends the
@@ -106,16 +108,24 @@ five-field format (`docs/feature-conventions.md` §4).
 
 ### SK-WEB-030 — OAuth-first `/app/connect`: provider buttons primary, paste collapsed to an "Advanced / self-hosted" fallback
 
-- **Status:** Supersedes **SK-WEB-019** *in part* — the "lead with a paste field" structural
-  claim is replaced; SK-WEB-019's auth-guard, `type="password"`, and never-persist-client-side
-  invariants are **retained** and apply unchanged to the paste fallback.
+- **Status:** Supersedes **SK-WEB-019** *in part*, **staged** — the "lead with a paste field"
+  structural claim is replaced by the provider-button row; the paste form's *collapse* waits
+  until ≥ 2 providers are OAuth-live. SK-WEB-019's auth-guard, `type="password"`, and
+  never-persist-client-side invariants are **retained** and apply unchanged to the paste form
+  in both stages.
 - **Decision:** `/app/connect` leads with a row of provider **Connect** buttons (Supabase
   first, then Neon — live providers render before dark ones) that start the OAuth redirect
-  (`GET /v1/db/connect/oauth/:provider/start`);
-  the paste-a-URL `ConnectForm` moves into a collapsed `<details>` labelled
-  *"Advanced / self-hosted"*. ClickHouse Cloud (no OAuth exists) is a button that opens the
+  (`GET /v1/db/connect/oauth/:provider/start`). The paste-a-URL `ConnectForm`'s demotion is
+  **staged (founder call, 2026-08-12)**: while **fewer than two** providers are OAuth-live
+  on the deployment, paste renders **expanded** below the button row ("…or paste a
+  connection string"); once **≥ 2** providers are live it collapses into a `<details>`
+  labelled *"Advanced / self-hosted"* — only then does the SK-WEB-019 structural
+  supersession complete. ClickHouse Cloud (no OAuth exists) is a button that opens the
   paste panel pre-set to `engine=clickhouse`. A provider whose OAuth client is unconfigured on
   the deployment renders **disabled with the paste fallback promoted** — never a dead button.
+  Next to the live provider button, honest pre-redirect copy names the write-capable scope
+  the consent screen will show and why (*"used once, to create a read-only role; after that
+  we only ever read"*).
   The full P6 journey (approve on provider → interstitial with honest table counts → schema
   preview + "Question it now →" → Disconnect that cleans up) is designed for the happy path
   *and* the denied / empty / multi-project / expired / CSRF-mismatch states.
@@ -131,7 +141,8 @@ five-field format (`docs/feature-conventions.md` §4).
   `db.connected` event gains `{ method: "oauth" | "paste", provider }` so the OAuth-vs-paste
   split reads in GTM. Reviewers reject: a dead/enabled provider button when its client is
   unconfigured; a paste field that regresses the SK-WEB-019 secrecy invariants; an OAuth
-  success that skips the schema-preview proof beat.
+  success that skips the schema-preview proof beat; **collapsing paste while fewer than two
+  providers are OAuth-live**.
 - **Alternatives rejected:**
   - **Remove paste entirely.** Strands self-hosted / unsupported providers and every provider
     without OAuth (ClickHouse Cloud, RDS, …). Fallback must stay.
@@ -146,9 +157,10 @@ five-field format (`docs/feature-conventions.md` §4).
 ## Exact edits needed elsewhere (describe only — do NOT make them here)
 
 1. **`docs/features/web-app/decisions/SK-WEB-019-connect-page.md`** — add a `- **Status:**`
-   line at the top: *"Superseded in part by SK-WEB-030 — paste demoted from primary to the
-   'Advanced / self-hosted' fallback; the auth-guard + `type="password"` + never-persist
-   invariants below are retained and now govern the fallback."* Do **not** delete SK-WEB-019
+   line at the top: *"Superseded in part by SK-WEB-030 (staged) — provider buttons lead;
+   paste collapses to the 'Advanced / self-hosted' fallback once ≥ 2 providers are
+   OAuth-live; the auth-guard + `type="password"` + never-persist
+   invariants below are retained and now govern the paste form."* Do **not** delete SK-WEB-019
    (its invariants still bind the paste path). Add the `SK-WEB-030` body to
    `web-app/FEATURE.md`'s `## Decisions` index (sharded — it's a decisions/ dir).
 

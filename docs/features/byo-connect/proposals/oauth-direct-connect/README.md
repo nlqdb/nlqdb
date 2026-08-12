@@ -1,17 +1,26 @@
 # Proposal: OAuth / direct-integration connect
 
-> **Status: PROPOSAL — PENDING P1 SIGN-OFF.** This is research + design only. No
-> shipping code changes, and none of the SK decisions below are active until the
-> founder signs off per CLAUDE.md **P1**.
+> **Status: SIGNED OFF by founder 2026-08-12** (P1 satisfied), with four recorded
+> calls: **(1)** paste demotion is **staged** — paste stays visible alongside the
+> provider buttons until ≥ 2 providers are OAuth-live, then collapses to the
+> "Advanced" fallback; **(2)** the Supabase `database:write` scope is accepted,
+> paired with honest consent copy ("we create a read-only role, then only ever
+> read"); **(3)** the provider OAuth token is stored sealed (lifecycle-only), as
+> drafted; **(4)** the build is **queued behind the current scorecard focus**
+> (agent-memory dogfood gate) — decisions land now, code starts when the focus
+> clears. The SK decisions move to their canonical homes (per
+> `sk-decision-draft.md` §"Exact edits") in the first build PR **after PR #982
+> merges**, to avoid colliding with #982's FEATURE.md rewrite.
 
 Makes BYO connect an OAuth / provider **"Connect"** button (approve on the
 provider side, no credential copy-paste, read-only role) the primary path, and
-demotes paste-a-URL to an "Advanced / self-hosted" fallback.
+demotes paste-a-URL to an "Advanced / self-hosted" fallback (staged: paste stays
+expanded until ≥ 2 providers are OAuth-live — see status note above).
 
 ## Relationship to existing decisions
 
-- **Partially supersedes `SK-WEB-019`** — paste is demoted from the primary
-  `/app/connect` action to a collapsed fallback. SK-WEB-019's auth-guard,
+- **Partially supersedes `SK-WEB-019`** (staged) — provider buttons take the primary
+  `/app/connect` slot; paste collapses only once ≥ 2 providers are live. SK-WEB-019's auth-guard,
   `type="password"`, and never-persist-client-side invariants are **retained**
   and continue to govern the paste fallback.
 - **Extends `SK-DBCONN-001`** — adds an OAuth front-end that resolves a provider

@@ -12,7 +12,21 @@ credential handling before any value. The inversion: lead with **provider button
 approve on the provider's side** (zero secret typed into nlqdb), and demote paste to a
 clearly-labelled fallback for self-hosted / unsupported providers.
 
-## Page layout (primary path)
+**Staged demotion (founder call, 2026-08-12).** The collapse of paste happens in two
+stages keyed to how many providers are actually OAuth-live on the deployment:
+
+- **Stage 1 — one live provider (launch):** the provider-button row renders first, but
+  the paste `ConnectForm` stays **fully visible** directly beneath it, under an
+  *"…or paste a connection string"* divider. With only Supabase live, most visitors
+  still need paste; hiding it behind a click would punish them to promote one vendor's
+  logo.
+- **Stage 2 — ≥ 2 live providers:** paste collapses into the `<details>` fallback shown
+  in the diagram below. The SK-WEB-019 supersession completes only at this stage.
+
+The SK-WEB-019 invariants (auth guard, `type="password"`, never persisted client-side)
+bind the paste form identically in both stages.
+
+## Page layout (primary path — Stage 2 shown; Stage 1 renders the paste form expanded below the buttons)
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -37,9 +51,10 @@ clearly-labelled fallback for self-hosted / unsupported providers.
   for OAuth-live providers start the redirect flow. **ClickHouse Cloud has no OAuth** — its
   button opens the paste panel pre-set to `engine=clickhouse` with a one-line
   "create a read-only key" hint (honest: it is the paste path, not a lie of a button).
-- **Paste-URL** moves into a collapsed `<details>` ("Advanced / self-hosted"). It is the
-  *entire current ConnectForm*, unchanged in behavior (`type="password"`, never
-  persisted). Deep link `?engine=` and the LeftRail chips still open it.
+- **Paste-URL** is the *entire current ConnectForm*, unchanged in behavior
+  (`type="password"`, never persisted). At Stage 1 it renders expanded below the button
+  row; at Stage 2 it moves into the collapsed `<details>` ("Advanced / self-hosted").
+  Deep link `?engine=` and the LeftRail chips still open it in either stage.
 - Provider buttons whose OAuth app is not yet configured on this deployment render
   **disabled with a "paste for now" affordance**, never a dead button (honest empty state).
 
@@ -122,4 +137,10 @@ clearly-labelled fallback for self-hosted / unsupported providers.
 - The "we never see a password you didn't hand us" line is literally true on the OAuth
   path (we create a role via the provider API; on paste it is the existing sealed-URL
   promise). Copy must not overclaim on the paste path.
+- **The write-scope paradox gets honest copy (founder call, 2026-08-12).** Supabase's
+  consent screen will show a *write*-capable scope (`database:write`) because creating
+  the read-only role requires one admin statement. The page must say so **before** the
+  redirect, next to the Connect button: *"Supabase will ask for write access — we use it
+  once, to create a read-only role. After that we only ever read."* Reviewers reject
+  copy that hides or hand-waves the scope the user is about to see.
 - The interstitial's progress is real counts from introspection, never an invented %.
