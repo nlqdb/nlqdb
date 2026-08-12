@@ -31,7 +31,8 @@
       "!**/cli/bin",
       "!**/cli/dist",
       "!**/examples",
-      "!**/.claude"
+      "!**/.claude",
+      "!**/data/agentMemory.data.json"
     ]
   },
   "formatter": {
