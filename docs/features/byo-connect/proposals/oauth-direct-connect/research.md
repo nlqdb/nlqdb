@@ -59,7 +59,7 @@ negotiation — so Neon builds in parallel but ships second.**
   have active commercial relationships with."* The `client_id`/`client_secret` are
   *"provided by Neon when your OAuth application is registered"* — i.e. a manual
   partner onboarding, **not** self-serve. This matches
-  [`acquisition-channels.md` row 20](../../../home/user/nlqdb/docs/research/acquisition-channels.md)
+  [`acquisition-channels.md` row 20](../../../../research/acquisition-channels.md)
   ("Neon 08-10: formal OAuth/API business partnership via support/partner channels —
   account-walled → founder"). An agent cannot register the app. (same doc)
 - **Post-authorization it fully composes to a connection URL:**
@@ -112,7 +112,7 @@ relationship.**
   redirect URI. No approval gate documented.
   ([Build a Supabase OAuth integration](https://supabase.com/docs/guides/integrations/build-a-supabase-oauth-integration))
   - Note: this is *distinct* from the **Partner Catalog** listing, which
-    [`acquisition-channels.md` row 20](../../../home/user/nlqdb/docs/research/acquisition-channels.md)
+    [`acquisition-channels.md` row 20](../../../../research/acquisition-channels.md)
     correctly records as business-viability-gated (registration + bank account/revenue).
     The OAuth integration needs only a Supabase account.
 - **Flow:** authorize `https://api.supabase.com/v1/oauth/authorize`, token
@@ -227,7 +227,7 @@ negotiation with no deadline.
 
 **Build SECOND: Neon** — the resolver + button are agent-buildable immediately and
 sit dark until the founder's **partner OAuth client** lands
-([acquisition-channels row 20](../../../home/user/nlqdb/docs/research/acquisition-channels.md)
+([acquisition-channels row 20](../../../../research/acquisition-channels.md)
 — a relationship the founder already wants). The founder starts that conversation at
 Phase 0; it runs in parallel, it is not on the critical path.
 

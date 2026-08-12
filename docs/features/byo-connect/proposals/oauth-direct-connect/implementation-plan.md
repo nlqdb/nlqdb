@@ -99,7 +99,7 @@ Buildable and unit-testable with a **stub descriptor**; no real client needed ye
 2. 🟢 "Connect Neon" button, wired to the same engine; renders disabled until B2/B3.
 3. 🔴 **FOUNDER:** obtain the Neon **partner OAuth `client_id` + `client_secret`** (Neon
    only grants OAuth to commercial partners —
-   [acquisition-channels row 20](../../../home/user/nlqdb/docs/research/acquisition-channels.md));
+   [acquisition-channels row 20](../../../../research/acquisition-channels.md));
    set Worker secrets; register the exact `redirect_uri`
    (`https://<api-origin>/v1/db/connect/oauth/neon/callback`). **Started at Phase 0;
    lands whenever it lands.**
@@ -120,7 +120,7 @@ enabling layer).
 | # | Blocker | Provider | Self-serve? | Where |
 |---|---|---|---|---|
 | ~~B1~~ | ~~P1 sign-off of the SK decision (UX change)~~ — **DONE 2026-08-12** (README.md records the four calls) | — | founder decision | this repo |
-| B2 | Neon **partner** OAuth `client_id`/`client_secret` + redirect registration | Neon | **No** — commercial-relationship-gated; **start at Phase 0, runs in parallel** | Neon partner/support ([row 20](../../../home/user/nlqdb/docs/research/acquisition-channels.md)) |
+| B2 | Neon **partner** OAuth `client_id`/`client_secret` + redirect registration | Neon | **No** — commercial-relationship-gated; **start at Phase 0, runs in parallel** | Neon partner/support ([row 20](../../../../research/acquisition-channels.md)) |
 | B3 | Set `NEON_OAUTH_CLIENT_ID`/`_SECRET` as Worker secrets | Neon | founder runs `wrangler secret put` | runbook |
 | B4 | Supabase OAuth app (client id/secret/redirect) | Supabase | **Yes** — dashboard, minutes | supabase.com/dashboard org → OAuth Apps |
 | B5 | Set `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` secrets | Supabase | founder runs `wrangler secret put` | runbook |
