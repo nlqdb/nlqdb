@@ -13,10 +13,15 @@ golds, 4 temporal, all five axes; hand-checked semantics guarded in
 — pure `parseSource`/`classify`/`extract` mapping an interview transcript
 (`SK-EKP-007` seam) to `agent_memory_v1` rows with `source_episode`
 provenance, registered with **one `PACKS` entry and zero runner edits** (the
-N+1 proof). Remaining: `acquire`'s live transcript endpoint is wired only via
-injected `fetch` until the `experts` interview service ships (box 2, gates on
-EK-05); the `INV-EKP-037` egress assertion (box 5) extends the `GLOBAL-037`
-test separately.
+N+1 proof). **`INV-EKP-037` egress guard landed 2026-08-12 (box 5):**
+`packs/language-tutor.egress.test.ts` wires the pack's real authored cell
+values to the exact planner egress a buyer's `/v1/ask` plan hop emits
+(`buildPlanSystem` + `buildPlanUser`, now exported from `@nlqdb/llm`) over the
+real `agent_memory_v1` DDL, and asserts zero expert row values transit — the
+schema-only floor under `SK-EKP-001`. Remaining: `acquire`'s live transcript
+endpoint is wired only via injected `fetch` until the `experts` interview
+service ships (box 2, gates on EK-05), which is what the live-import box (2)
+needs.
 
 ## Goal
 
@@ -80,9 +85,14 @@ takes, this slice owns everything on the nlqdb side of it.
       entry in `deps.ts`; zero edits to `runner.ts`/`types.ts`/the journey. The
       runner's own N+1 fake-pack test already proves the runner drives a
       non-repo pack end-to-end.)
-- [ ] `INV-EKP-037` asserted in the adapter test suite (`SK-EKP-007`, as
+- [x] `INV-EKP-037` asserted in the adapter test suite (`SK-EKP-007`, as
       hardened 2026-08-07): the knowledge-DB query/ask path sends schema
-      tokens only — zero expert row values — to the model. (The former
-      "sole code path" companion clause is a reviewable invariant, not a
-      test: an LLM call carrying expert cell values outside the
-      interview/extraction module is rejected in review.)
+      tokens only — zero expert row values — to the model. (2026-08-12 —
+      `packs/language-tutor.egress.test.ts`: the pack's authored rows never
+      appear in the real plan egress `buildPlanSystem`+`buildPlanUser` builds
+      over the `agent_memory_v1` DDL; the summarize hop is skipped for these
+      DBs — `orchestrate.ts` `skipSummary` — so the plan hop is the only LLM
+      egress, and it is schema-only. The former "sole code path" companion
+      clause is a reviewable invariant, not a test: an LLM call carrying
+      expert cell values outside the interview/extraction module is rejected
+      in review.)
