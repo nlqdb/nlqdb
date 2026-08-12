@@ -24,6 +24,7 @@ import Base from "../../layouts/Base.astro";
 import { appHref } from "../../lib/app-href";
 import { breadcrumbJsonLd } from "../../lib/breadcrumb";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
+import { clampDescription, clampTitle } from "../../lib/meta";
 
 export function getStaticPaths() {
   return SOLVE_ENTRIES.map((s) => ({ params: { slug: s.slug } }));
@@ -105,8 +106,8 @@ const breadcrumbLd = breadcrumbJsonLd(
 );
 ---
 <Base
-  title={pageTitle}
-  description={description}
+  title={clampTitle(pageTitle, s.metaTitle)}
+  description={clampDescription(description, s.metaDescription)}
   canonical={canonical}
   ogImage={ogImage}
   ogImageAlt={ogImage ? ogImageAlt : undefined}

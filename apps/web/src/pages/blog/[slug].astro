@@ -13,6 +13,7 @@ import Base from "../../layouts/Base.astro";
 import { appHref } from "../../lib/app-href";
 import { breadcrumbJsonLd } from "../../lib/breadcrumb";
 import { renderInline } from "../../lib/inline-md";
+import { clampDescription, clampTitle } from "../../lib/meta";
 import { ORGANIZATION_ID_FRAGMENT } from "../../lib/site-jsonld";
 
 export function getStaticPaths() {
@@ -65,7 +66,11 @@ const displayDate = new Date(`${post.date}T00:00:00Z`).toLocaleDateString("en-US
   timeZone: "UTC",
 });
 ---
-<Base title={pageTitle} description={post.description} canonical={canonical}>
+<Base
+  title={clampTitle(pageTitle, post.metaTitle)}
+  description={clampDescription(post.description, post.metaDescription)}
+  canonical={canonical}
+>
   <div class="page">
     <Topnav current="blog" />
 

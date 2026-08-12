@@ -78,11 +78,23 @@ export type SolveEntry = {
   // topically-forced internal links. Validated in solve.test.ts (resolves,
   // no self-ref, no dupes).
   related?: string[];
+  // Optional hand-written SEO overrides for the `<title>` / `<meta
+  // description>`. `searchTitle`/`oneLiner` double as the on-page <h1> and
+  // lede, so they're written for the reader, not the ~60/~155-char SERP
+  // snippet; `[slug].astro` word-boundary-clamps them for the meta by
+  // default (lib/meta.ts). Set these where that auto-clamp lands on an
+  // awkward fragment — the visible copy is untouched. Bounds: metaTitle
+  // ≤60, metaDescription ≤155 (guarded by meta-length-integrity.test.ts).
+  metaTitle?: string;
+  metaDescription?: string;
 };
 
 export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "database-claude-cursor-can-query",
+    metaTitle: "Give Claude or Cursor a SQL database via MCP",
+    metaDescription:
+      "Point Claude Desktop or Cursor at nlqdb's MCP server: it provisions Postgres from the agent's first English goal and answers with the SQL shown.",
     persona: "P2 agent builder",
     searchTitle: "How do I give Claude or Cursor a SQL database it can create and query?",
     oneLiner:
@@ -192,6 +204,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "give-ai-agent-persistent-memory",
+    metaTitle: "Give your AI agent persistent memory via MCP",
+    metaDescription:
+      "Give your agent a real database via MCP: nlqdb provisions Postgres from its first goal and answers GROUP BY, top-N, and per-period questions in English.",
     persona: "P2 agent builder",
     searchTitle: "How do I give my AI agent persistent memory across sessions?",
     oneLiner:
@@ -250,6 +265,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "analytical-queries-over-agent-memory",
+    metaTitle: "Run reports over what your AI agent remembered",
+    metaDescription:
+      "Point an MCP agent at nlqdb and ask in English: it runs the GROUP BY and returns rows plus SQL. A vector store recalls one fact; a database reports.",
     persona: "P2 agent builder",
     searchTitle: "How do I run reports over what my AI agent remembered?",
     oneLiner:
@@ -460,6 +478,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "store-query-chatbot-conversation-history",
+    metaTitle: "Store and query your chatbot's conversation history",
+    metaDescription:
+      "Give your chatbot a real database: nlqdb provisions Postgres from your first English goal and runs 'messages per day' or 'active users' as real SQL.",
     persona: "P2 agent builder",
     searchTitle: "How do I store and query my chatbot's conversation history?",
     oneLiner:
@@ -515,6 +536,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "track-ai-token-usage-and-cost",
+    metaTitle: "Track your AI app's token usage and cost per user",
+    metaDescription:
+      "Log each LLM call as a row and ask in English. nlqdb provisions Postgres and runs the GROUP BY, so 'spend per user this month' is a real query.",
     persona: "P2 agent builder",
     searchTitle: "How do I track and query my AI app's token usage and cost per user?",
     oneLiner:
@@ -570,6 +594,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "analyze-agent-tool-call-logs",
+    metaTitle: "Log AI agent tool calls and query which fails most",
+    metaDescription:
+      "Log every agent tool call as a row and ask in English. nlqdb provisions Postgres and runs the GROUP BY, so 'error rate per tool' is a real query.",
     persona: "P2 agent builder",
     searchTitle: "How do I log my AI agent's tool calls and query which tool fails most?",
     oneLiner:
@@ -626,6 +653,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "analyze-rag-retrieval-logs",
+    metaTitle: "Log RAG retrievals and query which sources rank top",
+    metaDescription:
+      "Log each RAG retrieval as a row and ask in English. nlqdb provisions Postgres and runs the GROUP BY, so 'retrievals per source this week' is a real query.",
     persona: "P2 agent builder",
     searchTitle: "How do I log my RAG retrievals and query which sources get used most?",
     oneLiner:
@@ -684,6 +714,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "track-llm-eval-scores-across-prompt-versions",
+    metaTitle: "Track LLM eval scores across prompt versions",
+    metaDescription:
+      "Log each scored eval case as a row and ask in English. nlqdb runs the GROUP BY in Postgres, so 'pass rate per prompt version' is a real query.",
     persona: "P2 agent builder",
     searchTitle: "How do I track and query my LLM eval scores across prompt versions?",
     oneLiner:
@@ -741,6 +774,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "safely-give-ai-agent-database-access",
+    metaTitle: "Safely give an AI agent database access",
+    metaDescription:
+      "nlqdb keeps agents on the data side of a trust boundary: parameterised writes, a fail-closed SQL validator, Postgres RLS per row, and the SQL always shown.",
     persona: "P2 agent builder",
     searchTitle:
       "How do I safely give an AI agent database access without it running dangerous SQL?",
@@ -799,6 +835,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "share-memory-across-multiple-ai-agents",
+    metaTitle: "Give multiple AI agents shared persistent memory",
+    metaDescription:
+      "Give a crew of agents one Postgres they all write to with nlqdb_remember and recall in English — every row tagged by agent, so you can roll memory up.",
     persona: "P2 agent builder",
     searchTitle: "How do I give multiple AI agents shared, persistent memory?",
     oneLiner:
@@ -855,6 +894,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "isolate-ai-agent-memory-per-tenant",
+    metaTitle: "Isolate AI agent memory per tenant, safely",
+    metaDescription:
+      "nlqdb enforces tenant isolation in the database: every Postgres carries a row-level-security policy that fails closed — no scope returns no rows.",
     persona: "P2 agent builder",
     searchTitle: "How do I isolate AI agent memory per tenant so accounts can't read each other?",
     oneLiner:
@@ -2202,6 +2244,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "build-vs-buy-agent-memory",
+    metaTitle: "Build vs buy agent memory on Postgres",
+    metaDescription:
+      "A memories table is easy to start and hard to scale. nlqdb is the buy answer: one MCP command gives your agent a real database, isolation in the engine.",
     persona: "P2 agent builder",
     searchTitle: "Should I build my own agent memory on Postgres or buy it?",
     oneLiner:
@@ -2265,6 +2310,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "best-way-to-store-agent-memory",
+    metaTitle: "The best way to store what your AI agent remembers",
+    metaDescription:
+      "Storage shape decides what you can ask later — a vector store recalls one fact but can't count them. Store agent memory as typed rows in a real database.",
     persona: "P2 agent builder",
     searchTitle: "What's the best way to store what my AI agent remembers?",
     oneLiner:
@@ -2326,6 +2374,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "expire-old-agent-memory",
+    metaTitle: "Expire old agent memory without writing a cron",
+    metaDescription:
+      "Give agent memory an expires_at on typed rows — then expiry is a one-line WHERE you query in English, not a cron. One MCP command sets up the database.",
     persona: "P2 agent builder",
     searchTitle: "How do I expire old agent memory automatically instead of writing a cron?",
     oneLiner:
@@ -2388,6 +2439,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   },
   {
     slug: "agent-memory-mcp-server",
+    metaTitle: "An MCP server that gives your AI agent memory",
+    metaDescription:
+      "Point your coding agent at nlqdb's hosted MCP server with one command. Unlike a blob store, it's a real Postgres your agent writes to and queries.",
     persona: "P2 agent builder",
     searchTitle: "Is there an MCP server that gives my AI agent memory?",
     oneLiner:

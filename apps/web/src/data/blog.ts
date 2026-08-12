@@ -35,6 +35,14 @@ export type BlogPost = {
   // The /vs or /solve page this post anchors, if any — rendered as a
   // "read the full guide" link under the CTA.
   anchor?: { label: string; path: string };
+  // Optional hand-written SEO overrides for the `<title>` / `<meta
+  // description>`. `title`/`description` render on-page as the <h1> and
+  // lede; `[slug].astro` word-boundary-clamps them for the ~60/~155-char
+  // SERP snippet by default (lib/meta.ts). Set these where that auto-clamp
+  // lands on an awkward fragment — the visible copy is untouched. Bounds:
+  // metaTitle ≤60, metaDescription ≤155 (guarded by meta-length-integrity.test.ts).
+  metaTitle?: string;
+  metaDescription?: string;
   body: BlogBlock[];
 };
 

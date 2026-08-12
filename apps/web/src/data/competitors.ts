@@ -63,6 +63,14 @@ export type Competitor = {
   // The demo embedded on the page. Goals chosen to highlight a dimension
   // the competitor doesn't ship.
   demo: ComparisonDemo;
+  // Optional hand-written SEO overrides for the `<title>` / `<meta
+  // description>`. `name`/`oneLiner` render on-page, so they're written for
+  // the reader; `[slug].astro` word-boundary-clamps them for the ~60/~155-char
+  // SERP snippet by default (lib/meta.ts). Set these where that auto-clamp
+  // lands on an awkward fragment — the visible copy is untouched. Bounds:
+  // metaTitle ≤60, metaDescription ≤155 (guarded by meta-length-integrity.test.ts).
+  metaTitle?: string;
+  metaDescription?: string;
 };
 
 export const COMPETITORS: Competitor[] = [
@@ -342,6 +350,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "mem0",
+    metaDescription:
+      "Pick Mem0 for an opinionated add/search/forget memory primitive. Pick nlqdb if your agent also needs to query structured data and run reports.",
     name: "Mem0",
     url: "https://mem0.ai",
     tagline: "Purpose-built memory layer for AI agents.",
@@ -740,6 +750,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "zep",
+    metaDescription:
+      "Pick Zep for a temporal knowledge graph tuned for conversation. Pick nlqdb if your agent must also aggregate memory: GROUP BY, JOIN, HAVING in English.",
     name: "Zep",
     url: "https://www.getzep.com",
     // Agent-memory cluster anchored in docs/competitors.md §4 (verified 2026-06-19).
@@ -845,6 +857,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "letta",
+    metaDescription:
+      "Pick Letta for a stateful agent runtime that manages memory like an OS. Pick nlqdb if your agent must also aggregate it: GROUP BY, JOIN, HAVING in English.",
     name: "Letta",
     url: "https://www.letta.com",
     // Agent-memory cluster anchored in docs/competitors.md §4 (verified 2026-06-19);
@@ -946,6 +960,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "langmem",
+    metaDescription:
+      "Pick LangMem for long-term memory wired into a LangGraph agent. Pick nlqdb if your agent must also aggregate it: GROUP BY, JOIN, and HAVING in English.",
     name: "LangMem",
     url: "https://langchain-ai.github.io/langmem/",
     // Agent-memory cluster anchored in docs/competitors.md §4 (verified 2026-06-19);
@@ -1053,6 +1069,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "pinecone",
+    metaDescription:
+      "Pinecone finds the similar via nearest-neighbour search; nlqdb counts, groups, and ranks typed rows your agent provisions and queries in plain English.",
     name: "Pinecone",
     url: "https://www.pinecone.io",
     // Agent-memory cluster (vector-store wing) anchored in docs/competitors.md
@@ -1157,6 +1175,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "chroma",
+    metaDescription:
+      "Chroma finds the similar with an open-source vector store; nlqdb counts, groups, and ranks typed rows your agent provisions and queries in plain English.",
     name: "Chroma",
     url: "https://www.trychroma.com",
     // Agent-memory cluster (vector-store wing, OSS-first) anchored in
@@ -1265,6 +1285,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "weaviate",
+    metaDescription:
+      "Weaviate ranks the relevant with hybrid search at scale; nlqdb counts, groups, and reports over typed rows your agent provisions in plain English.",
     name: "Weaviate",
     url: "https://weaviate.io",
     // Agent-memory cluster (vector-store wing, enterprise/hybrid-search) anchored
@@ -1375,6 +1397,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "qdrant",
+    metaDescription:
+      "Qdrant ranks the relevant with fast quantized vector search; nlqdb counts, groups, and reports over typed rows your agent provisions in plain English.",
     name: "Qdrant",
     url: "https://qdrant.tech",
     // Agent-memory cluster (vector-store wing, Rust/performance + permissive
@@ -1487,6 +1511,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "cognee",
+    metaDescription:
+      "Cognee recalls by reasoning over a knowledge graph; nlqdb counts, groups, and reports over typed rows your agent provisions and queries in English.",
     name: "Cognee",
     url: "https://www.cognee.ai",
     // Agent-memory cluster (knowledge-graph wing — the "not a vector store"
@@ -2226,6 +2252,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "milvus",
+    metaDescription:
+      "Milvus ranks nearest vectors at billion scale; nlqdb counts, groups, and reports over typed rows your agent provisions and queries in plain English.",
     name: "Milvus",
     url: "https://milvus.io",
     // Agent-memory cluster (open-source vector wing — the large-scale ANN
@@ -2353,6 +2381,8 @@ export const COMPETITORS: Competitor[] = [
     // LoCoMo / ConvoMem with sub-300ms recall. No SQL / aggregation surface
     // over stored memories — semantic recall only (the nlqdb wedge).
     slug: "supermemory",
+    metaDescription:
+      "Pick Supermemory for a best-in-class memory API. Pick nlqdb if your agent also needs analytical queries — counts, group-bys, reports — over what it stores.",
     name: "Supermemory",
     url: "https://supermemory.ai",
     tagline:
@@ -2430,6 +2460,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "honcho",
+    metaDescription:
+      "Pick Honcho to model how each user reasons for personalization. Pick nlqdb if your agent also needs analytical queries over the rows it remembers.",
     name: "Honcho",
     url: "https://honcho.dev",
     tagline:
