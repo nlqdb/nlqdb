@@ -95,6 +95,8 @@ export type { PostgresAdapterOptions, PostgresQueryFn } from "./postgres.ts";
 export { createPostgresAdapter } from "./postgres.ts";
 export type { ByoPostgresConnection, ByoPostgresOptions } from "./postgres-byo.ts";
 export { openByoPostgres } from "./postgres-byo.ts";
+export type { SupabaseMgmtOptions } from "./postgres-supabase-mgmt.ts";
+export { openSupabaseMgmtPostgres, SupabaseMgmtError } from "./postgres-supabase-mgmt.ts";
 export { renderByoClickhouseSchema } from "./render-byo-clickhouse.ts";
 export type { RenderedSchema } from "./render-byo-postgres.ts";
 export { renderByoPostgresSchema } from "./render-byo-postgres.ts";

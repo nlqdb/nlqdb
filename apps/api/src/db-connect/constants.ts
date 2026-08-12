@@ -9,3 +9,13 @@
 // query-time dispatcher (`ask/build-deps.ts`); both import this one const
 // so the writer and reader can never drift.
 export const BYO_SECRET_REF_SENTINEL = "__byo_blob__";
+
+// Sentinel `connection_blob` value for a Supabase database connected via the
+// OAuth / Management-API transport (`SK-DBCONN-003`, Option B). Unlike a pasted
+// BYO row, a mgmt-connected row stores NO sealed DSN — its query credential is
+// the OAuth token sealed in `db_oauth_grants` (AAD `dboauth:<dbId>`), and every
+// query runs over `POST /v1/projects/{ref}/database/query` read-only. The
+// sentinel lets the query-time dispatcher (`ask/build-deps.ts`) route to the
+// mgmt transport with a cheap string check — never a real blob to open, never
+// mistaken for a hosted (blob-less) Neon row. Writer: `connect-supabase-mgmt.ts`.
+export const SUPABASE_MGMT_BLOB_SENTINEL = "__supabase_mgmt__";
