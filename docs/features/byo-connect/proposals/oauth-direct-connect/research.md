@@ -63,7 +63,7 @@ negotiation — so Neon builds in parallel but ships second.**
   ("Neon 08-10: formal OAuth/API business partnership via support/partner channels —
   account-walled → founder"). An agent cannot register the app. (same doc)
 - **Post-authorization it fully composes to a connection URL:**
-  - List the user's projects: `GET https://console.neon.tech/api/v2/projects`
+  - List the user's projects: `GET /api/v2/projects` (base `https://console.neon.tech`)
     (bearer = OAuth access token).
     ([Neon API](https://neon.com/docs/reference/api-reference))
   - **Create a scoped read-only role** — `POST /projects/{project_id}/branches/{branch_id}/roles`.
