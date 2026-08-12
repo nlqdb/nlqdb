@@ -116,11 +116,11 @@ select_secrets() {
         OAUTH_GITHUB_CLIENT_SECRET_DEV
         GOOGLE_CLIENT_ID
         GOOGLE_CLIENT_SECRET
-        # SUPABASE_OAUTH_CLIENT_ID / _SECRET (SK-DBCONN-003, PR #981) are
-        # provisioned in .envrc + GHA now but deliberately omitted here until the
-        # OAuth connect routes that read them ship — per the "not yet shipped"
-        # rule above. Add both to this array in that build PR so the Worker
-        # self-heals them on deploy; without it the routes 503.
+        # SK-DBCONN-003 — the "Connect Supabase" OAuth flow. The routes that read
+        # these have now shipped, so the Worker self-heals them from GHA on deploy;
+        # without them /v1/db/connect/oauth/supabase/start returns 503.
+        SUPABASE_OAUTH_CLIENT_ID
+        SUPABASE_OAUTH_CLIENT_SECRET
         GRAFANA_OTLP_ENDPOINT
         STRIPE_WEBHOOK_SECRET
         # Checkout + billing-status read these at runtime (index.ts) — without

@@ -1,5 +1,11 @@
 # SK-WEB-019 — `/app/connect`: auth-guarded BYO-connect page + `ConnectForm.tsx`
 
+- **Status:** Superseded in part by [`SK-WEB-030`](./SK-WEB-030-oauth-first-connect-page.md)
+  (staged) — a provider "Connect Supabase" button now leads; paste collapses to the
+  "Advanced / self-hosted" fallback once ≥ 2 providers are OAuth-live. The
+  auth-guard, `type="password"`, and never-persist-client-side invariants below are
+  **retained** and now govern the paste form.
+
 The product-side landing for Door B of the two-door home
 ([`SK-WEB-018`](./SK-WEB-018-two-door-home.md)); the backend it posts to is
 [`SK-DBCONN-001`](../../byo-connect/FEATURE.md) (`POST /v1/db/connect`).
