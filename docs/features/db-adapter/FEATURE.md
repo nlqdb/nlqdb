@@ -11,9 +11,9 @@ when-to-load:
 # Feature: DB Adapter
 
 **One-liner:** Engine-agnostic DB interface; Phase 0 ships Postgres via Neon.
-**Status:** implemented (Phase 0 / Slice 3 — single Postgres adapter via Neon HTTP). BYO Postgres: connect route + query path implemented (`SK-DBCONN-001` in [`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md)) — the `SK-DB-011..015` connect primitives are now composed behind `POST /v1/db/connect`.
+**Status:** implemented (Phase 0 / Slice 3 — hosted Postgres adapter via Neon HTTP). BYO Postgres: connect + query path implemented (`SK-DBCONN-001`); the BYO path now runs on **postgres.js over Workers `connect()` sockets** (`SK-DBCONN-002`), so it reaches any non-Neon Postgres. See [`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md).
 **Owners (code):** `packages/db/**`, `apps/api/src/db-registry.ts`
-**Cross-refs:** docs/architecture.md §3.6.5–§3.6.7 (validator + tenancy + BYO) · docs/phase-plan.md §1 · docs/runbook.md §3/§6 · docs/performance.md §2.1 row 6 + §3.1 (`db.query` span) · governing GLOBALs below · `docs/features/hosted-db-create/FEATURE.md` (create-path consumer; SK-HDC-007 splits the provisioner into `provisionDb` / `registerByoDb` over this adapter)
+**Cross-refs:** docs/architecture.md §3.6.5–§3.6.7 · docs/phase-plan.md §1 · docs/runbook.md §3/§6 · docs/performance.md §2.1 row 6 + §3.1 (`db.query` span) · [`hosted-db-create/FEATURE.md`](../hosted-db-create/FEATURE.md) (create-path consumer; `SK-HDC-007` split)
 
 ## Touchpoints — read this feature before editing
 
@@ -33,15 +33,12 @@ when-to-load:
   - Mirror the `pg` driver API — leaks Postgres semantics into the contract; Redis adapter would have to fake half of it.
   - Add a `transaction()` method now — Workers + Neon HTTP don't support multi-statement transactions outside `WITH` CTEs anyway; would lie about what's possible.
 
-### SK-DB-002 — Phase 0 ships one engine: Postgres via `@neondatabase/serverless`
+### SK-DB-002 — Phase 0 hosted adapter: Postgres via `@neondatabase/serverless`
 
-- **Decision:** Phase 0 ships exactly one adapter — `createPostgresAdapter()` over `@neondatabase/serverless` HTTP. No `pg`, no `postgres-js`, no connection pooling middleware. Phase 3 widens to `clickhouse` (via Tinybird) per `SK-MULTIENG-002`; the seam is `Engine` plus a parallel `createXxxAdapter()`.
-- **Core value:** Free, Simple, Bullet-proof
-- **Why:** Workers don't keep TCP sockets warm across requests, so a pooled driver (`pg`) is dead weight on the free tier. Neon's HTTP driver round-trips per query but sidesteps the pool problem and fits the 3 MiB bundle ceiling (`GLOBAL-013`). One engine in Phase 0 means one set of failure modes to learn before adding more.
-- **Consequence in code:** `@nlqdb/db` depends only on `@neondatabase/serverless` + `@opentelemetry/*`. CI fails any PR adding `pg` / `postgres` / `redis` to `packages/db/` without a Phase 3 plan (`docs/phase-plan.md §5`).
-- **Alternatives rejected:**
-  - `pg` with an external pooler (PgBouncer / Neon Pooler) — works but doubles the moving parts and the bundle weight; saves nothing in Phase 0.
-  - Drizzle/Kysely on top — adds a query-builder layer; we emit raw SQL from the planner, the adapter just runs it.
+**Body:** [`decisions/SK-DB-002-phase-0-hosted-adapter.md`](./decisions/SK-DB-002-phase-0-hosted-adapter.md).
+Hosted adapter = `createPostgresAdapter()` over Neon HTTP; the "no `postgres-js`"
+clause is scoped to it. The BYO path uses postgres.js over Workers `connect()`
+sockets ([`SK-DBCONN-002`](../byo-connect/decisions/SK-DBCONN-002-byo-postgres-driver-postgres-js.md)).
 
 ### SK-DB-003 — No connection pool; one HTTP request per execute
 

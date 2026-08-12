@@ -90,7 +90,11 @@ describe("connectByoDb — persisted BYO row (real test D1)", () => {
         d1: env.DB,
         randomSuffix: () => "row001",
         buildClickhouseQuery: () => chQuery,
-        buildPostgresQuery: () => async () => ({ rows: [], rowCount: 0 }),
+        buildPostgresQuery: () => ({
+          query: async () => ({ rows: [], rowCount: 0 }),
+          runBounded: async () => ({ rows: [], rowCount: 0 }),
+          close: async () => {},
+        }),
       },
       { engine: "clickhouse", connectionUrl: CONN_URL, tenantId },
     );

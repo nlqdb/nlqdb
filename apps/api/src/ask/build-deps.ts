@@ -14,6 +14,7 @@ import {
   type ClickhouseConnSpec,
   createDohResolver,
   guardEgressHostResolved,
+  openByoPostgres,
   parseClickhouseUrl,
   parseConnectionUrl,
   type Row,
@@ -363,8 +364,13 @@ async function runHostedPgQuery(
 // the user's DB has no tenant schema or RLS, so those would error. Tenant
 // isolation is at the row level — the `databases` row was already scoped
 // to the tenant by `resolveDb`.
+//
+// Runs over postgres.js / Workers `connect()` sockets (`SK-DBCONN-002`), not
+// the Neon HTTP driver, so a BYO Postgres on ANY host works — `neon()` only
+// speaks Neon's HTTP protocol. The socket connects lazily on the first query,
+// so the egress re-guard below runs BEFORE any socket opens, and the socket is
+// closed in `finally`.
 async function runByoPgQuery(url: string, sql: string, signal?: AbortSignal): Promise<QueryResult> {
-  const neonSql = neon(url, { fullResults: true });
   const operation = detectSqlOperation(sql);
   const tracer = trace.getTracer("@nlqdb/api");
 
@@ -373,13 +379,15 @@ async function runByoPgQuery(url: string, sql: string, signal?: AbortSignal): Pr
     { attributes: { "db.system": "postgresql", "db.operation": operation } },
     async (span) => {
       const startedAt = performance.now();
+      const conn = openByoPostgres(url);
       try {
         signal?.throwIfAborted();
-        // Re-guard the host before the fetch — the same DNS-rebind TOCTOU
-        // narrowing the ClickHouse path does (GLOBAL-035, byo-connect Open
-        // question (c)). The connect-time check ran once; DNS can re-point a
-        // name at a private/metadata address before this query, so re-resolve
+        // Re-guard the host before the socket opens — the same DNS-rebind
+        // TOCTOU narrowing the ClickHouse path does (GLOBAL-035, byo-connect
+        // Open question (c)). The connect-time check ran once; DNS can re-point
+        // a name at a private/metadata address before this query, so re-resolve
         // and re-classify here. Fails closed on a private/reserved verdict.
+        // postgres.js is lazy, so no socket has been dialled yet.
         const parsed = parseConnectionUrl(url);
         // Fail closed if the stored URL no longer parses — symmetric with
         // runClickhouseQuery, which rejects an unparseable URL rather than
@@ -390,24 +398,17 @@ async function runByoPgQuery(url: string, sql: string, signal?: AbortSignal): Pr
         const verdict = await guardEgressHostResolved(parsed.parsed.host, createDohResolver());
         if (!verdict.ok) throw new DbConfigError(verdict.message);
         // Bound the query wall-clock the same as the hosted path. No
-        // search_path / RLS / SET ROLE here — this is the user's own DB
-        // with no tenant schema; a statement timeout is the only exec
-        // guard that applies. Batched so `SET LOCAL` scopes the timeout to
-        // the user statement in the same transaction.
-        const results = await neonSql.transaction([
-          neonSql.query(`SET LOCAL statement_timeout = '${EXEC_STATEMENT_TIMEOUT}'`, []),
-          neonSql.query(sql, []),
-        ]);
-        const result = results[results.length - 1];
-        return {
-          rows: (result?.rows ?? []) as Row[],
-          rowCount: result?.rowCount ?? result?.rows?.length ?? 0,
-        };
+        // search_path / RLS / SET ROLE here — this is the user's own DB with
+        // no tenant schema; a statement timeout is the only exec guard that
+        // applies. Run in one transaction so `SET LOCAL` scopes the timeout to
+        // the user statement even behind a transaction-mode pooler.
+        return await conn.runBounded(sql, EXEC_STATEMENT_TIMEOUT, signal);
       } catch (err) {
         span.recordException(err as Error);
         span.setStatus({ code: SpanStatusCode.ERROR });
         throw err;
       } finally {
+        await conn.close();
         dbDurationMs().record(performance.now() - startedAt, { operation });
         span.end();
       }
