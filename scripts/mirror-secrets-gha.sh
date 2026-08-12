@@ -135,6 +135,13 @@ SECRETS=(
   OAUTH_GITHUB_CLIENT_SECRET_DEV
   GOOGLE_CLIENT_ID
   GOOGLE_CLIENT_SECRET
+  # BYO-connect Supabase OAuth app (SK-DBCONN-003, PR #981 blocker B5). Mirrored
+  # here now to preserve the once-shown Supabase client secret and make it
+  # CI-ready; NOT yet in the api Worker subset (mirror-secrets-workers.sh) — the
+  # connect routes that read it aren't built, so it's promoted there when they
+  # ship, same pattern as INTERNAL_JWT_SECRET above.
+  SUPABASE_OAUTH_CLIENT_ID
+  SUPABASE_OAUTH_CLIENT_SECRET
   RESEND_API_KEY
   STRIPE_SECRET_KEY
   STRIPE_PUBLISHABLE_KEY
