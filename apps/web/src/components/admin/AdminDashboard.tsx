@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { type AdminMetricsResult, fetchAdminMetrics, type GtmMetrics } from "../../lib/admin";
+import { fetchSession } from "../../lib/session";
 import ErrorBoundary from "../ErrorBoundary";
 import { fillDays, fmtDateTime, fmtPct, funnelStages, sparkPoints, trendSeries } from "./format";
 import { GATE_STATIC, gateGreenCount, gateStateGlyph, launchGateCriteria } from "./launch-gate";
@@ -26,12 +27,20 @@ export default function AdminDashboard(props: AdminDashboardProps) {
 
 function AdminDashboardInner({ apiBase }: AdminDashboardProps) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  // Named only in the 403 state (SK-GTM-002): "signed in as who?" is the
+  // one fact that turns a denial into a next action, and the probe is
+  // memoized by lib/session — the page guard already made the call.
+  const [signedInAs, setSignedInAs] = useState<string | null>(null);
 
   useEffect(() => {
     const ac = new AbortController();
     void (async () => {
       const result = await fetchAdminMetrics(apiBase, ac.signal);
-      if (!ac.signal.aborted) setState(result);
+      if (ac.signal.aborted) return;
+      setState(result);
+      if (result.kind !== "forbidden") return;
+      const user = await fetchSession(apiBase);
+      if (!ac.signal.aborted) setSignedInAs(user?.email ?? null);
     })();
     return () => ac.abort();
   }, [apiBase]);
@@ -49,7 +58,10 @@ function AdminDashboardInner({ apiBase }: AdminDashboardProps) {
   if (state.kind === "forbidden") {
     return (
       <p className="admin__status" data-testid="admin-forbidden">
-        This page is for the nlqdb team. <a href="/app/">Back to the app →</a>
+        {signedInAs ? `Signed in as ${signedInAs} — this` : "This"} account isn't on the nlqdb admin
+        list, so the GTM/PMF metrics stay hidden.{" "}
+        <a href="/auth/sign-out/">Sign out and use your admin account</a>, or{" "}
+        <a href="/app/">back to the app →</a>
       </p>
     );
   }

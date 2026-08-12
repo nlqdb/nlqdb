@@ -1,13 +1,15 @@
 // SK-GTM-002 — the ONLY authorization predicate for admin surfaces
 // (GLOBAL-038). Sign-in is OAuth/magic-link only (SK-AUTH-002), so a
 // session email is a verified identity; matching the company domain
-// admits future teammates with zero code change. Server-side gate —
-// the static /app/admin page's client-side copy
-// (apps/web/src/lib/admin-gate.ts) is presentation only, never a
-// security boundary. Reviewed constants, not env vars: the list
-// changes ~never and a code review beats a secret-mirroring errand.
+// admits future teammates with zero code change. The exact-allowlist
+// entry is the founder's real sign-in account (`omer@salfati.group` —
+// the same address SK-GTM-001's INTERNAL_EMAIL_SQL calls internal);
+// without it the founder's own dashboard 403s. No web-side copy: a
+// non-admin sees the API's 403 rendered in place, so there is exactly
+// one predicate. Reviewed constants, not env vars: the list changes
+// ~never and a code review beats a secret-mirroring errand.
 
-const ADMIN_EMAILS = new Set(["omer@nlqdb.com"]);
+const ADMIN_EMAILS = new Set(["omer@salfati.group", "omer@nlqdb.com"]);
 const ADMIN_DOMAINS = new Set(["nlqdb.com"]);
 
 export function isAdminEmail(email: string | null | undefined): boolean {
