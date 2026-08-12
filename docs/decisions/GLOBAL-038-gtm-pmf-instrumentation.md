@@ -7,10 +7,11 @@
   paying customers, the Sean-Ellis survey gate) — computed live from the
   control-plane D1 by `apps/api/src/admin/gtm-metrics.ts`, served at
   admin-gated `GET /v1/admin/metrics`, trended via daily `gtm_snapshots`
-  rows, and rendered at `/app/admin/`. **Admin access** = the exact
-  allowlist (`omer.hochman@gmail.com`) plus any `@nlqdb.com` account email,
-  enforced **server-side in `apps/api`** (`admin/gate.ts`); any web-side
-  check is presentation only. Founder directive 2026-07-19: the current
+  rows, and rendered at `/app/admin/`. **Admin access** = the founder's
+  exact sign-in address plus any `@nlqdb.com` account email, enforced
+  **server-side in `apps/api`** (`admin/gate.ts`, the sole predicate and
+  the only home of the literal list); the web app never re-checks it —
+  it renders the API's 403. Founder directive 2026-07-19: the current
   operating focus is **user acquisition** — GTM/PMF numbers must be
   measured continuously and show real progress. This **amends
   [`GLOBAL-025`](./GLOBAL-025-north-star.md) in part**: its

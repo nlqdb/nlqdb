@@ -1,8 +1,8 @@
 ---
-// Founder GTM/PMF dashboard (SK-GTM-004, GLOBAL-038). The client-side
-// email check below is presentation only — the data boundary is the
-// SK-GTM-002 server gate on `GET /v1/admin/metrics`; a non-admin who
-// bypasses this script sees an empty shell and a 403.
+// Founder GTM/PMF dashboard (SK-GTM-004, GLOBAL-038). The only gate is
+// the SK-GTM-002 server one on `GET /v1/admin/metrics`: this page's
+// script decides sign-in only, and a signed-in non-admin reads the 403
+// as a named in-page state (GLOBAL-012) instead of being bounced.
 
 import AppAnalytics from "../../components/AppAnalytics.astro";
 import AdminDashboard from "../../components/admin/AdminDashboard.tsx";
@@ -31,31 +31,24 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 </Base>
 
 <script>
-  // Inline auth guard — the keys.astro pattern plus the admin email
-  // check (lib/admin-gate.ts, presentation-only copy of the server
-  // predicate). Unauthenticated → sign-in with return_to; signed-in
-  // non-admin → back to /app/.
-  import { isAdminEmail } from "../../lib/admin-gate";
+  // Inline auth guard — the keys.astro pattern, sign-in only. The
+  // admin predicate is not repeated here (SK-GTM-002): a signed-in
+  // non-admin gets the island's named 403 state, never a silent bounce
+  // to /app/ (which auto-pins a DB and reads as "the page moved").
   import { fetchSession, invalidateSession } from "../../lib/session";
 
   const shell = document.getElementById("admin-shell");
   if (shell) {
     const apiBase = (shell as HTMLElement).dataset["apiBase"];
 
-    async function requireAdminSession(): Promise<boolean> {
+    async function requireSignedIn(): Promise<boolean> {
       const user = await fetchSession(apiBase);
-      if (!user) {
-        const returnTo = `${location.pathname}${location.search}${location.hash}`;
-        const signInUrl = new URL("/auth/sign-in/", location.origin);
-        signInUrl.searchParams.set("return_to", returnTo);
-        location.replace(signInUrl.toString());
-        return false;
-      }
-      if (!isAdminEmail(user.email)) {
-        location.replace("/app/");
-        return false;
-      }
-      return true;
+      if (user) return true;
+      const returnTo = `${location.pathname}${location.search}${location.hash}`;
+      const signInUrl = new URL("/auth/sign-in/", location.origin);
+      signInUrl.searchParams.set("return_to", returnTo);
+      location.replace(signInUrl.toString());
+      return false;
     }
 
     // Re-probe on bfcache restore so a signed-out cookie can't leave
@@ -63,12 +56,12 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     window.addEventListener("pageshow", (event) => {
       if (event.persisted) {
         invalidateSession();
-        void requireAdminSession();
+        void requireSignedIn();
       }
     });
 
     void (async () => {
-      if (!(await requireAdminSession())) return;
+      if (!(await requireSignedIn())) return;
       shell.hidden = false;
     })();
   }

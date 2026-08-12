@@ -8,6 +8,10 @@ import { isAdminEmail } from "./gate.ts";
 
 describe("isAdminEmail", () => {
   it("admits the founder allowlist and any @nlqdb.com address", () => {
+    // The founder signs in with this account — the dashboard's whole
+    // audience, so it is pinned first.
+    expect(isAdminEmail("omer@salfati.group")).toBe(true);
+    expect(isAdminEmail("  Omer@Salfati.Group ")).toBe(true);
     expect(isAdminEmail("omer@nlqdb.com")).toBe(true);
     expect(isAdminEmail("hi@nlqdb.com")).toBe(true);
     expect(isAdminEmail("future-teammate@nlqdb.com")).toBe(true);
@@ -23,6 +27,7 @@ describe("isAdminEmail", () => {
     expect(isAdminEmail("attacker@nlqdb.com.evil.io")).toBe(false);
     expect(isAdminEmail("attacker@evilnlqdb.com")).toBe(false);
     expect(isAdminEmail("nlqdb.com")).toBe(false);
+    // salfati.group is an exact-address entry, never a domain grant.
     expect(isAdminEmail("other@salfati.group")).toBe(false);
   });
 
