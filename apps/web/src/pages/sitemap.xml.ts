@@ -14,7 +14,10 @@ const SITE = "https://nlqdb.com";
 // trailing slash and the bare path 301-redirects (matches `trailingSlash:
 // "always"` in astro.config). Advertise the non-redirecting URL.
 const withSlash = (p: string) => (p.endsWith("/") ? p : `${p}/`);
-const STATIC_ROUTES = [
+// Exported so `meta-length-integrity.test.ts` guards SERP meta length on
+// exactly the static routes we advertise to crawlers — one source of truth
+// for "which static pages are indexable".
+export const STATIC_ROUTES = [
   "/",
   "/agent-memory-benchmarks",
   "/agents",
