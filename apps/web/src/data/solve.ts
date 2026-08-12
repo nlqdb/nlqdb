@@ -78,6 +78,15 @@ export type SolveEntry = {
   // topically-forced internal links. Validated in solve.test.ts (resolves,
   // no self-ref, no dupes).
   related?: string[];
+  // Optional hand-written SEO overrides for the `<title>` / `<meta
+  // description>`. `searchTitle`/`oneLiner` double as the on-page <h1> and
+  // lede, so they're written for the reader, not the ~60/~155-char SERP
+  // snippet; `[slug].astro` word-boundary-clamps them for the meta by
+  // default (lib/meta.ts). Set these where that auto-clamp lands on an
+  // awkward fragment — the visible copy is untouched. Bounds: metaTitle
+  // ≤60, metaDescription ≤155 (guarded by meta-length-integrity.test.ts).
+  metaTitle?: string;
+  metaDescription?: string;
 };
 
 export const SOLVE_ENTRIES: SolveEntry[] = [

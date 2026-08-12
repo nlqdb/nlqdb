@@ -63,6 +63,14 @@ export type Competitor = {
   // The demo embedded on the page. Goals chosen to highlight a dimension
   // the competitor doesn't ship.
   demo: ComparisonDemo;
+  // Optional hand-written SEO overrides for the `<title>` / `<meta
+  // description>`. `name`/`oneLiner` render on-page, so they're written for
+  // the reader; `[slug].astro` word-boundary-clamps them for the ~60/~155-char
+  // SERP snippet by default (lib/meta.ts). Set these where that auto-clamp
+  // lands on an awkward fragment — the visible copy is untouched. Bounds:
+  // metaTitle ≤60, metaDescription ≤155 (guarded by meta-length-integrity.test.ts).
+  metaTitle?: string;
+  metaDescription?: string;
 };
 
 export const COMPETITORS: Competitor[] = [
