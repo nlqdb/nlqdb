@@ -1,7 +1,38 @@
 # D-06 — The public memory dashboard on `/agents`
 
-**Status:** ⬜ not started
-**Sequence:** Dogfood 6 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** D-04 (there must be a real corpus to show) · **Gate:** none
+**Status:** 🟡 **Run 1 built 2026-08-12** — the aggregates snapshot + the server-rendered `/agents` block ship in this PR (criterion 5 green **on deploy**). Run 2 (provenance polish + the CI staleness-red test + the aggregates-only inspection gate + demand-signal wiring) remains.
+**Sequence:** Dogfood 6 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** D-04 ✅ (`db_agent_memory_v1_3a8a72` holds the real corpus) · **Gate:** none
+
+## Run log — run 1 (2026-08-12)
+
+Built the block from the **default mechanism** this worksheet specifies (a
+committed aggregates snapshot with the as-of date printed — not a live
+credential; the "Open founder call" default stands, un-blocked). Files:
+
+- `apps/web/src/data/agentMemory.data.json` — the committed snapshot, seeded
+  from **D-04 run 1's prod-verified numbers** (`facts 13`, `entities 9`,
+  `episodes 0`; `open_question 11` / `blocked 2`; `feature 7` / `queue_item 2`;
+  12 asks, first-10 100 %), `asOf: 2026-08-11`, `staleAfterDays`, provenance,
+  two GROUP-BY golden-query result tables, and `knownGap` (the one ask that
+  broke, published not hidden — SK-PIVOT-019).
+- `apps/web/src/data/agentMemory.ts` — types the snapshot (numbers stay in JSON
+  so the generator rewrites machine-safe JSON, never hand-parses TS).
+- `apps/web/src/data/agentMemory.test.ts` — 7 invariants: `asOf` is a real past
+  date; a staleness bound exists; distributions never exceed their table count;
+  golden queries are real GROUP-BYs with rows; **aggregates-only** (a recursive
+  walk fails on any `content`/`body`/`text`/`value`/`embedding` key); the gap
+  is published.
+- `apps/web/scripts/gen-agent-memory.mjs` — the generator D-02's
+  `memory-sync.yml` runs, OUT of `astro build` (GLOBAL-013). Reads aggregates
+  only through `/v1/run` when `NLQDB_API_KEY`+`NLQDB_MEMORY_DB` are set; a clean
+  no-op otherwise (the build/CI path), so the page never blanks for want of a key.
+- `apps/web/src/pages/agents/index.astro` — the server-rendered `ag-dog` block
+  between the demo and replacement beats, reusing the demo's result-table
+  vocabulary; as-of date printed; "here's what broke" shown.
+
+Verified: `bun run --filter @nlqdb/web check` 0 errors; the block renders in
+`dist/agents/index.html` with the real numbers; the generator no-ops cleanly
+with env unset.
 
 ## Goal
 
@@ -88,19 +119,23 @@ reading; do not block on the question either.
 
 ## Done when
 
-- [ ] A public, server-rendered memory block is live on `/agents`, in the brand
-      system, no raster imagery (`SK-PIVOT-004`).
-- [ ] Aggregates come from a committed JSON refreshed by D-02's workflow; the
-      generator is **out of** `astro build` (`GLOBAL-013` / `SK-PIVOT-012`).
-- [ ] The **as-of timestamp is printed on the page**; a test fails if `as_of` is
-      absent or past the staleness bound.
-- [ ] Aggregates only — a test or inspection confirms no raw memory row is
-      rendered.
-- [ ] 2–3 D-03 golden queries are shown with their real result tables.
-- [ ] Demand-signal event fires per `GLOBAL-024`.
-- [ ] `bun run --filter @nlqdb/web check && test` green; lint with explicit paths.
-- [ ] Criterion 5 ticked in [`INDEX.md`](INDEX.md)'s gate table; INDEX tracker +
-      status ticked.
+- [x] A public, server-rendered memory block is on `/agents`, in the brand
+      system, no raster imagery (`SK-PIVOT-004`). **Live on deploy of this PR.**
+- [x] Aggregates come from a committed JSON (`agentMemory.data.json`) refreshed
+      by D-02's workflow generator (`gen-agent-memory.mjs`); the generator is
+      **out of** `astro build` (`GLOBAL-013` / `SK-PIVOT-012`).
+- [x] The **as-of timestamp is printed on the page** (`as of 2026-08-11`); a
+      test asserts `asOf` is a real past date and a `staleAfterDays` bound
+      exists. *(The CI red-on-past-staleness test is run 2 — the bound is set.)*
+- [x] Aggregates only — the test's recursive walk fails if any raw-memory key
+      (`content`/`body`/`text`/`value`/`embedding`) appears in the snapshot.
+- [x] 2 D-03-shaped GROUP-BY golden queries are shown with their real result
+      tables.
+- [ ] Demand-signal event fires per `GLOBAL-024`. **(Run 2.)**
+- [x] `bun run --filter @nlqdb/web check` 0 errors; `bun test` on the new data
+      green; `bun run lint` exit 0.
+- [x] Criterion 5 marked 🟡 built/shipping in [`INDEX.md`](INDEX.md)'s gate
+      table (green on deploy); INDEX tracker + status ticked.
 
 ## Artifact
 

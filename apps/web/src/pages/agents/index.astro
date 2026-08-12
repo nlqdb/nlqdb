@@ -31,6 +31,7 @@ import Footer from "../../components/Footer.astro";
 import McpInstall from "../../components/McpInstall.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
+import { AGENT_MEMORY } from "../../data/agentMemory.ts";
 import { appHref } from "../../lib/app-href";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
 import {
@@ -232,6 +233,79 @@ const faqJsonLd = faqPageJsonLd(faqs);
         <div class="ag-demo__matrix">
           <AgentMemoryMatrix heading="Recall is table stakes. Only one of these can aggregate." />
         </div>
+      </section>
+
+      {/* DOGFOOD — nlqdb's own memory DB, aggregated. Not a mockup: the
+          numbers below are read from a real agent_memory_v1 Postgres DB
+          that nlqdb's own ops agents write to and query through the same
+          public @nlqdb/mcp surface a visitor would use (SK-PIVOT-016
+          criterion 5). Aggregates only; as-of date printed; the one ask
+          that broke is shown too (SK-PIVOT-019). */}
+      <section class="ag-dog" aria-labelledby="ag-dog-title">
+        <p class="ag-dog__eyebrow">We run on this.</p>
+        <h2 class="ag-dog__title" id="ag-dog-title">
+          nlqdb's own memory, live &mdash; one <code>GROUP BY</code> at a time.
+        </h2>
+        <p class="ag-dog__lede">
+          nlqdb's operating agents keep this company's <code>docs/</code> in a
+          real <code>agent_memory_v1</code> database and query it through the
+          exact <code>@nlqdb/mcp</code> server on this page. These are its
+          aggregates, read from prod
+          <time datetime={AGENT_MEMORY.asOf}>as of {AGENT_MEMORY.asOf}</time>.
+        </p>
+
+        <div class="ag-dog__stats" role="list" aria-label="Corpus size">
+          {
+            AGENT_MEMORY.tableCounts.map((t) => (
+              <div class="ag-dog__stat" role="listitem">
+                <span class="ag-dog__stat-n">{t.count}</span>
+                <span class="ag-dog__stat-l">{t.table}</span>
+              </div>
+            ))
+          }
+          <div class="ag-dog__stat" role="listitem">
+            <span class="ag-dog__stat-n">{AGENT_MEMORY.totalAsks}</span>
+            <span class="ag-dog__stat-l">MCP asks</span>
+          </div>
+          <div class="ag-dog__stat" role="listitem">
+            <span class="ag-dog__stat-n">{AGENT_MEMORY.firstTenSuccessPct}%</span>
+            <span class="ag-dog__stat-l">first-10 ok</span>
+          </div>
+        </div>
+
+        <div class="ag-dog__queries">
+          {
+            AGENT_MEMORY.goldenQueries.map((g) => (
+              <article class="ag-dog__q">
+                <p class="ag-dog__q-ask">
+                  <span class="ag-dog__q-tag">nlqdb_query</span> &ldquo;{g.q}&rdquo;
+                </p>
+                <pre class="ag-dog__q-sql"><code>{g.sql}</code></pre>
+                <div class="ag-dog__tablewrap">
+                  <table class="ag-dog__table">
+                    <thead>
+                      <tr>{g.columns.map((c) => <th>{c}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {g.rows.map((r) => (
+                        <tr>
+                          <td>{r[0]}</td>
+                          <td>{r[1]}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            ))
+          }
+        </div>
+
+        <p class="ag-dog__gap">
+          <span class="ag-dog__gap-label">Here's what broke:</span>{" "}
+          {AGENT_MEMORY.knownGap}
+        </p>
+        <p class="ag-dog__prov">{AGENT_MEMORY.provenance}</p>
       </section>
 
       {/* BEAT 3 — The replacement. Editorial-serif strikethrough list
@@ -679,6 +753,191 @@ const faqJsonLd = faqPageJsonLd(faqs);
 
   .ag-demo__matrix {
     margin-top: clamp(40px, 6vw, 64px);
+  }
+
+  /* Dogfood — nlqdb's own memory DB, aggregated. Reuses the demo's
+   * result-table vocabulary so the proof reads as one system. */
+  .ag-dog {
+    padding: clamp(56px, 10vw, 104px) 0 clamp(40px, 6vw, 72px);
+    max-width: var(--col);
+    border-top: 1px solid var(--rule);
+    margin-top: clamp(40px, 6vw, 80px);
+  }
+
+  .ag-dog__eyebrow {
+    margin: 0 0 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--acid, var(--ink));
+  }
+
+  .ag-dog__title {
+    margin: 0 0 14px;
+    font-family: var(--display);
+    font-size: var(--t-section);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+
+  .ag-dog__title code,
+  .ag-dog__lede code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    color: var(--ink);
+  }
+
+  .ag-dog__lede {
+    margin: 0 0 clamp(24px, 4vw, 36px);
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 64ch;
+  }
+
+  .ag-dog__lede time {
+    color: var(--body);
+    white-space: nowrap;
+  }
+
+  .ag-dog__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(20px, 4vw, 44px);
+    padding-bottom: clamp(24px, 4vw, 36px);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .ag-dog__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ag-dog__stat-n {
+    font-family: var(--mono);
+    font-size: clamp(28px, 5vw, 40px);
+    font-weight: 600;
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  .ag-dog__stat-l {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .ag-dog__queries {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: clamp(20px, 3vw, 28px);
+    margin: clamp(28px, 4vw, 40px) 0 clamp(24px, 4vw, 32px);
+  }
+
+  .ag-dog__q {
+    padding: clamp(18px, 3vw, 24px);
+    background: var(--raised);
+    border: 1px solid var(--rule);
+  }
+
+  .ag-dog__q-ask {
+    margin: 0 0 12px;
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--body);
+    line-height: 1.5;
+  }
+
+  .ag-dog__q-tag {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    color: var(--acid, var(--ink));
+  }
+
+  .ag-dog__q-sql {
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    background: var(--sunken, var(--bg));
+    border: 1px solid var(--rule);
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted);
+    white-space: pre;
+  }
+
+  .ag-dog__tablewrap {
+    overflow-x: auto;
+  }
+
+  .ag-dog__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  .ag-dog__table th {
+    text-align: left;
+    color: var(--muted);
+    font-weight: 400;
+    padding: 4px 24px 8px 0;
+    border-bottom: 1px solid var(--rule);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .ag-dog__table td {
+    color: var(--body);
+    padding: 8px 24px 8px 0;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  .ag-dog__table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .ag-dog__table td:last-child {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .ag-dog__gap {
+    margin: 0 0 12px;
+    padding: 14px 16px;
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--acid, var(--rule));
+    font-family: var(--sans);
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.55;
+    max-width: 68ch;
+  }
+
+  .ag-dog__gap-label {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .ag-dog__prov {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.55;
+    max-width: 68ch;
   }
 
   /* Beat 3 — the replacement. Editorial-serif strikethrough list,
