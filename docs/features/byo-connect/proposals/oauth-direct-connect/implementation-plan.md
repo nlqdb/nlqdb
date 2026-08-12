@@ -69,11 +69,12 @@ Buildable and unit-testable with a **stub descriptor**; no real client needed ye
    button. "Connect Supabase" → `/start`; disabled+paste-fallback when unconfigured.
    `db.connected` event gains `{ method, provider }`.
 4. 🟢 Unit tests with mocked Supabase REST (fixtures for projects/query/pooler).
-5. 🔴 **FOUNDER (self-serve, minutes):** create the Supabase OAuth app (org settings →
-   OAuth Apps; scopes incl. `database:write` for CREATE ROLE), set
-   `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` as Worker secrets, register the exact
-   `redirect_uri` (`https://<api-origin>/v1/db/connect/oauth/supabase/callback`).
-   Distinct from the business-gated Partner Catalog listing — no approval gate.
+5. ✅ **DONE 2026-08-12 (founder, B4+B5):** Supabase OAuth app created (scopes
+   `database:write` + `projects:read`; exact `redirect_uri`
+   `https://app.nlqdb.com/v1/db/connect/oauth/supabase/callback` + localhost dev);
+   `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` mirrored to GHA. The build PR promotes them to
+   the api Worker (`mirror-secrets-workers.sh` + deploy) when the routes read them —
+   CI self-heals GHA→Worker, no founder step.
 6. 🟢 E2E once secrets exist: real Supabase consent → connected DB, including the
    one-connection **pooler TLS-trust check** (SK-DBCONN-002's `manual-test-postgres.md`
    walk covers the transport half). P6 requires this real walk before "done".
@@ -122,14 +123,15 @@ enabling layer).
 | ~~B1~~ | ~~P1 sign-off of the SK decision (UX change)~~ — **DONE 2026-08-12** (README.md records the four calls) | — | founder decision | this repo |
 | B2 | Neon **partner** OAuth `client_id`/`client_secret` + redirect registration | Neon | **No** — commercial-relationship-gated; **start at Phase 0, runs in parallel** | Neon partner/support ([row 20](../../../../research/acquisition-channels.md)) |
 | B3 | Set `NEON_OAUTH_CLIENT_ID`/`_SECRET` as Worker secrets | Neon | founder runs `wrangler secret put` | runbook |
-| B4 | Supabase OAuth app (client id/secret/redirect) | Supabase | **Yes** — dashboard, minutes | supabase.com/dashboard org → OAuth Apps |
-| B5 | Set `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` secrets | Supabase | founder runs `wrangler secret put` | runbook |
+| ~~B4~~ | ~~Supabase OAuth app (client id/secret/redirect)~~ — **DONE 2026-08-12** (scopes `database:write` + `projects:read`; callback on `app.nlqdb.com` per SK-AUTH-008; founder-actions-log Era 10) | Supabase | **Yes** — dashboard, minutes | supabase.com/dashboard org → OAuth Apps |
+| ~~B5~~ | ~~Set `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` secrets~~ — **DONE 2026-08-12**: values in GHA via `mirror-secrets-gha.sh`; Worker promotion is a code edit (add both names to `mirror-secrets-workers.sh` api subset) + deploy when the connect routes read them — **no founder step remains** | Supabase | done | runbook |
 | ~~B6~~ | ~~Workers Postgres-wire transport~~ — **landed as `SK-DBCONN-002` (PR #982)**; this plan requires that PR merged | all non-Neon PG | n/a | `packages/db/src/postgres-byo.ts` |
 
 **Everything else in Phases 1–4 is agent-buildable and unit-testable without a real
 provider** by stubbing the descriptor and the token exchange. The critical path to a
-*shipped* OAuth connect is: **merge PR #982 → ✅ B1 → Phase 1 → Phase 2 (build) → B4/B5
-(minutes) → Phase 2 E2E.** No step on it waits on a negotiation. Neon joins via
+*shipped* OAuth connect is: **merge PR #982 → ✅ B1 → Phase 1 → Phase 2 (build) →
+✅ B4/B5 → Phase 2 E2E.** Every founder-gated step on it is already done; what remains
+is agent work. Neon joins via
 B2/B3 whenever the partnership closes. **Start gate (founder call, 2026-08-12):**
 Phase 1 begins only once the active scorecard focus (agent-memory dogfood gate) clears —
 this build does not compete with it for runs.
