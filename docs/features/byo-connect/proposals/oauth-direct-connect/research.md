@@ -77,6 +77,22 @@ negotiation — so Neon builds in parallel but ships second.**
 - **Why Neon still matters:** nlqdb itself runs on Neon (authentic fit), read-only
   role isolation is native, and it is the only provider whose management API hands
   back a complete pooled DSN with zero SQL round-trips.
+- **Terms posture going into the partner ask (checked 2026-08).** Neon's terms are a
+  Product Schedule under the [Databricks MCSA](https://www.databricks.com/legal/mcsa),
+  whose §1.2.2(e) prohibits "sell, resell, license, sublicense, distribute, rent,
+  lease, or otherwise provide access to the Platform Services to any third party".
+  nlqdb's *current* hosted usage is clean: one shared free-tier project,
+  schema-per-tenant (`SK-DB-007`), users only ever touch nlqdb's API — that is
+  app-on-a-database, and Neon states free-plan
+  [commercial use is allowed](https://neon.com/blog/how-to-make-the-most-of-neons-free-plan).
+  The line is crossed if nlqdb ever provisions **per-user Neon projects/branches** or
+  hands users a **direct DSN to nlqdb-owned Neon DBs** (Phase 2b's branch-per-tier is
+  that trigger) — the sanctioned vehicle for that is the
+  [**Agent Plan**](https://neon.com/docs/introduction/agent-plan) ("platforms that
+  provision and manage Postgres databases for end users": Neon-sponsored free org up
+  to 30k projects, but requires a paid Scale plan + approval — a GLOBAL-013 exception
+  the founder must own). The Agent-Plan application and the partner OAuth client are
+  the **same conversation** — ask for both at once.
 
 ---
 

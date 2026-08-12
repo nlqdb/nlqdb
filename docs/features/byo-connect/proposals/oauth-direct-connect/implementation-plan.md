@@ -23,6 +23,9 @@ reachable and this plan's order collapses back to Neon-only.
   (P3: decisions in canonical home first).
 - 🔴 Founder **starts the Neon partner-OAuth conversation now** (B2 below) — it is
   calendar-time, off the critical path, and the earlier it starts the earlier Neon ships.
+  Bundle the [Agent Plan](https://neon.com/docs/introduction/agent-plan) application into
+  the same ask (research.md §1 terms posture): it is the sanctioned vehicle for hosted
+  per-user provisioning later, and today's usage is compliant — nothing to remediate first.
 
 ## Phase 1 — OAuth engine, provider-agnostic (🟢 agent-buildable)
 
