@@ -66,7 +66,7 @@ prod memory DB, see D-04.
 | [D-03](D-03-golden-queries.md) ✅ | Ops-corpus golden-query set (≥ 10, ≥ 3 temporal) in the `SK-QUAL-023` eval family — **done 2026-07-29: first dispatch measured ops temporal 0/4 (run 30413719690)** | med | ~2 | D-01 | **criterion 4** (temporal passes) |
 | [D-04](D-04-first-corpus-sync.md) | First real sync of nlqdb's own `docs/` corpus + the gate-progress readout | med | ~2 | D-01, D-02, ~~E-03 → `MEMORY_PRESET=1`~~ ✅ (#851, #835) | **criteria 1, 2, 3** |
 | [D-05](D-05-founder-ops-pack.md) | Goal pack #2 — founder-ops (SK-PIVOT-018), seeded from `history/founder-actions-log.md` | low | ~2 | D-01, D-04 | criterion 1 · Pivot row |
-| [D-06](D-06-agents-memory-dashboard.md) | The public memory dashboard on `/agents` | med | ~2 | D-04 | **criterion 5** |
+| [D-06](D-06-agents-memory-dashboard.md) 🟡 | The public memory dashboard on `/agents`. **Run 1 built 2026-08-12**: the `ag-dog` block + committed aggregates snapshot + generator + invariants test ship in this PR (criterion 5 green **on deploy**). Run 2 = staleness-CI red + demand-signal | med | ~2 | D-04 | **criterion 5** |
 | [D-07](D-07-memory-strategy-benchmark.md) ⛔ | Cross-strategy memory benchmark (SK-PIVOT-019) — **blocked** | high | multi | **blocked: the SK-PIVOT-017 corpus + golden queries must exist** (D-03 ✅; D-04 pending) | none — row #22 / answer-engine citations |
 | [D-08](D-08-repo-ops-one-click-import.md) 🟡 | Goal pack #1 as a one-click public-alpha repo-memory import (SK-PIVOT-021). **Slice 1 done 2026-08-10** (founder direct-ordered): the shared runner core — draft state machine, phase checkpoints, pack adapter contract, repo-ops instance #1, `/v1/packs/imports*` routes. Remaining: `/agents` page + CTA, `return_to` handoff UI, private-repo GitHub App, P2 E2E | high | multi | D-01, D-04, E-06, delete | onboarding + UX · reusable pack runner |
 
@@ -126,8 +126,12 @@ measured (**12**, < 100). **Criterion 3** gained evidence **against** it — one
 silent wrong-answer (ask #8: planner guessed `kind='question'` for stored
 `open_question`, returned 0 vs true 11), the exact E-09 schema-value-linking gap
 manifesting live, so it stays not-green and GLOBAL-037-blocked. Criterion 4 is
-**measured on both corpora** — temporal **2/7** (synthetic 2/3, ops 0/4). The
-launch is still far off (criterion 1 ≪ 100, criteria 3/4/5 not green); what
+**measured on both corpora** — temporal **2/7** (synthetic 2/3, ops 0/4).
+**Criterion 5** is **built and shipping** (D-06 run 1, 2026-08-12): the
+`/agents` page now carries a server-rendered block rendering the real corpus
+aggregates + two GROUP-BY result tables + the as-of date — it goes **green on
+deploy of this PR** (gate → **2/5**). The
+launch is still far off (criterion 1 ≪ 100, criteria 3/4 not green); what
 changed is the gate is now driven by a live workload, not a bet.
 
 **Criterion 4 detail** — the ops temporal axis sits at a concrete **0/4**.
@@ -156,7 +160,7 @@ stays canonical, so a criterion that moves is updated here **and** in
 | 2 | First-10-queries success ≥ 95 % **on that workload** | ✅ **100 % (10/10)** (D-04 run 1, 2026-08-11 — meets ≥ 95 %) | D-04 |
 | 3 | Zero silent data loss / wrong-answer-accepted incidents | ⬜ **1 incident found** (D-04 run 1: ask #8 `kind='question'` vs stored `open_question` → 0 rows, true 11 — E-09/GLOBAL-037-blocked) | D-04 |
 | 4 | Temporal golden queries pass | ⬜ **temporal 2/7** — synthetic 2/3 + **ops 0/4** (measured 2026-07-29, run 30413719690) | D-03 ✅ (measured) → [E-09](../engine/E-09-schema-value-linking.md) ⛔ **BLOCKED (P1, [`GLOBAL-037`](../../../../decisions/GLOBAL-037-schema-only-llm-egress.md), run 158)** — value-sampling into the prompt is forbidden egress; no compliant agent-movable lever until a DDL-`ENUM`/`CHECK` re-scope |
-| 5 | Live memory dashboard public on `/agents` | ⬜ unshipped | D-06 |
+| 5 | Live memory dashboard public on `/agents` | 🟡 **built, shipping** (D-06 run 1, 2026-08-12) — server-rendered `ag-dog` block renders the real corpus aggregates (13 facts / 9 entities / 12 asks / first-10 100 %) + 2 GROUP-BY tables + as-of date; **green on deploy of the PR** | D-06 |
 
 Criterion 4's synthetic half stays `2/3`; D-03 added the **ops** corpus's 4
 temporal queries and measured them for the first time — **0/4** on the free
@@ -173,6 +177,6 @@ Tick on merge. Keep this list as the durable dogfood status (the scorecard's
 - [x] D-03 — ops-corpus golden-query set (12 questions, 4 temporal) in the `SK-QUAL-023` family. **Done 2026-07-29:** authoring landed #847; this run dispatched [run 30413719690](https://github.com/nlqdb/nlqdb/actions/runs/30413719690) — 27-q free EX 59.26 %, ops temporal **0/4** → diagnosed + scoped as engine slice [E-09](../engine/E-09-schema-value-linking.md) (run 156)
 - [~] D-04 — 🟡 **run 1 done 2026-08-11**: prod DB `db_agent_memory_v1_3a8a72` provisioned + seeded (13 facts, 9 entities) + 12 MCP asks (first-10 100 %); criterion 2 → green, criterion 1 = 12, criterion 3 incident found. Remaining: set `NLQDB_MEMORY_DB` repo var + run-2 readout
 - [ ] D-05 — founder-ops goal pack (pack #2, SK-PIVOT-018)
-- [ ] D-06 — public memory dashboard on `/agents` (criterion 5)
+- [~] D-06 — public memory dashboard on `/agents` (criterion 5). **Run 1 built 2026-08-12**: `apps/web/src/data/agentMemory.{ts,data.json,test.ts}` + `apps/web/scripts/gen-agent-memory.mjs` + the `ag-dog` block in `agents/index.astro`; renders D-04's real prod aggregates, as-of `2026-08-11`, "here's what broke" shown. **Criterion 5 green on deploy.** Remaining: run 2 (staleness-CI red test + demand-signal per GLOBAL-024)
 - [ ] D-07 — cross-strategy memory benchmark (SK-PIVOT-019) — **blocked** on D-03 + D-04
 - [ ] D-08 — one-click repo-memory public alpha on the shared pack runner (SK-PIVOT-021). **Slice 1 (runner core) landed 2026-08-10**, founder direct-ordered to unblock EK-04 box 2 / EK-05: `apps/api/src/pack-runner/**` + migration 0029 + `/v1/packs/imports*`. Box unticked on purpose — the `/agents` surface, the `return_to` handoff, the private-repo GitHub App flow, the P2 E2E journey and the founder acceptance walk are all still open

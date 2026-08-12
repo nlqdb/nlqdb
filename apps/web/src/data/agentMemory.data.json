@@ -1,0 +1,42 @@
+{
+  "asOf": "2026-08-11",
+  "dbId": "db_agent_memory_v1_3a8a72",
+  "provenance": "nlqdb's own docs/ corpus, extracted by the open-source docs→memory skill and synced one-way into a real agent_memory_v1 Postgres DB. Read through the published @nlqdb/mcp server — no privileged path.",
+  "staleAfterDays": 45,
+  "totalAsks": 12,
+  "firstTenSuccessPct": 100,
+  "tableCounts": [
+    { "table": "facts", "count": 13 },
+    { "table": "entities", "count": 9 },
+    { "table": "episodes", "count": 0 }
+  ],
+  "factsByKind": [
+    { "label": "open_question", "count": 11 },
+    { "label": "blocked", "count": 2 }
+  ],
+  "entitiesByType": [
+    { "label": "feature", "count": 7 },
+    { "label": "queue_item", "count": 2 }
+  ],
+  "goldenQueries": [
+    {
+      "q": "open questions per fact kind",
+      "sql": "SELECT kind, COUNT(*) AS n\n  FROM facts\n GROUP BY kind\n ORDER BY n DESC;",
+      "columns": ["kind", "n"],
+      "rows": [
+        ["open_question", 11],
+        ["blocked", 2]
+      ]
+    },
+    {
+      "q": "tracked entities by type",
+      "sql": "SELECT type, COUNT(*) AS n\n  FROM entities\n GROUP BY type\n ORDER BY n DESC;",
+      "columns": ["type", "n"],
+      "rows": [
+        ["feature", 7],
+        ["queue_item", 2]
+      ]
+    }
+  ],
+  "knownGap": "1 of 12 asks returned a confident wrong answer: asked for “open questions”, the planner guessed kind='question' and got 0 — the corpus stores 'open_question', true count 11. A known schema-value-linking gap (E-09). We publish the miss, not just the wins."
+}
