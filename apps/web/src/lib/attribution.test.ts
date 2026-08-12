@@ -5,7 +5,13 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 // referrers are not channels, corrupt slots read as null, and the API
 // `source` projection drops `ts`.
 
-import { captureFirstTouch, firstTouchSource, loadFirstTouch } from "./attribution";
+import {
+  captureFirstTouch,
+  firstTouchSource,
+  importFirstTouch,
+  loadFirstTouch,
+  sanitizeFirstTouch,
+} from "./attribution";
 
 let store: Map<string, string>;
 
@@ -84,5 +90,44 @@ describe("loadFirstTouch / firstTouchSource", () => {
   test("a ts-only touch projects to null, not an empty object", () => {
     store.set("nlqdb_src", JSON.stringify({ ts: 5 }));
     expect(firstTouchSource()).toBeNull();
+  });
+});
+
+describe("sanitizeFirstTouch (cross-origin carry, SK-ANON-015)", () => {
+  test("keeps known string fields + numeric ts, clamps length, drops junk", () => {
+    const touch = sanitizeFirstTouch({
+      ts: 1000,
+      utm_source: "reddit",
+      ref: "reddit.com",
+      landing: "/agents/",
+      evil: "<script>",
+      utm_medium: "x".repeat(500),
+    });
+    expect(touch).toEqual({
+      ts: 1000,
+      utm_source: "reddit",
+      ref: "reddit.com",
+      landing: "/agents/",
+      utm_medium: "x".repeat(160),
+    });
+  });
+
+  test("drops a touch missing a numeric ts (would read back as corrupt)", () => {
+    expect(sanitizeFirstTouch({ utm_source: "hn" })).toBeNull();
+    expect(sanitizeFirstTouch({ ts: "nope", utm_source: "hn" })).toBeNull();
+    expect(sanitizeFirstTouch(null)).toBeNull();
+    expect(sanitizeFirstTouch("string")).toBeNull();
+  });
+});
+
+describe("importFirstTouch (incoming wins)", () => {
+  test("overwrites an existing app-origin capture with the carried touch", () => {
+    // App origin captured the post-OAuth referrer as its first touch…
+    captureFirstTouch("https://app.nlqdb.com/app", "https://accounts.google.com/", 2000);
+    expect(loadFirstTouch()?.ref).toBe("accounts.google.com");
+    // …but the marketing-origin touch carried in the handoff wins.
+    importFirstTouch({ ts: 1000, utm_source: "devto", landing: "/solve/x/" });
+    expect(loadFirstTouch()).toEqual({ ts: 1000, utm_source: "devto", landing: "/solve/x/" });
+    expect(firstTouchSource()).toEqual({ utm_source: "devto", landing: "/solve/x/" });
   });
 });

@@ -44,6 +44,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-AUTH-NN
 - [**SK-AUTH-018**](decisions/SK-AUTH-018-mock-idp-mock-stripe-preview-flags.md) — Preview-only `MOCK_IDP` / `MOCK_STRIPE` flags bypass external IdP, Resend, and Stripe round-trips.
 - [**SK-AUTH-019**](decisions/SK-AUTH-019-sign-out-bypasses-origin-check.md) — `/api/auth/sign-out` bypasses `originCheckMiddleware` via direct `auth.api.signOut`.
 - [**SK-AUTH-020**](decisions/SK-AUTH-020-cookie-cache-fail-open-on-kv-outage.md) — On a KV outage the revocation check fails open: a valid cookie is trusted to its expiry (availability over the tighter revocation window).
+- [**SK-AUTH-021**](decisions/SK-AUTH-021-welcome-email-on-signup.md) — One welcome email fires from the Better Auth `user.create` hook on first signup, best-effort (never fails signup), honoring `MOCK_IDP`.
 
 ## GLOBALs governing this feature
 

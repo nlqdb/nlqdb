@@ -45,6 +45,14 @@ export type AskRequest = {
   // not chosen per-request — store a key via `setByollm()` or pass
   // `byollm` in `ClientOptions`.
   model?: ModelPreset;
+  // SK-GTM-007 — first-touch acquisition attribution. When this ask
+  // routes the create branch (no dbId, 0 DBs, or kind=create), the
+  // web layer forwards the visitor's stored first touch (utm_source,
+  // referrer host, landing path) so the API can stamp it on the new
+  // `databases.source_json`. Telemetry only: the API sanitizes it
+  // (whitelist keys, length caps) and drops it on any problem, never
+  // 400s. Ignored on the query / write branches.
+  source?: Record<string, string>;
 };
 
 // SK-ASK-009: response echo when the API auto-targeted a DB on the

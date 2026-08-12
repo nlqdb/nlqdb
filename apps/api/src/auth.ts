@@ -123,6 +123,57 @@ export const auth = betterAuth({
         },
       },
     },
+    // SK-AUTH-021 — one welcome email the first time a user row is
+    // created (any sign-in method). Best-effort: wrapped so a slow or
+    // failed Resend send can never fail the signup. Fires once per
+    // person (not per sign-in), so returning users aren't re-greeted.
+    user: {
+      create: {
+        after: async (user) => {
+          const email = typeof user.email === "string" ? user.email : "";
+          if (!email) return;
+          // Preview envs (SK-AUTH-018) sink the mail to KV instead of
+          // hitting Resend, exactly like the magic-link path.
+          if (env.MOCK_IDP === "1") {
+            await sinkEmail(env.KV, email, "Welcome to nlqdb", `${webOrigin}/app`);
+            return;
+          }
+          const appUrl = `${webOrigin}/app`;
+          const tracer = trace.getTracer("@nlqdb/api");
+          await tracer.startActiveSpan("nlqdb.auth.welcome_email", async (span) => {
+            try {
+              await sendEmail({
+                to: email,
+                subject: "Welcome to nlqdb",
+                text: [
+                  "Welcome to nlqdb — a database you talk to.",
+                  "",
+                  "Ask a question in plain English and nlqdb writes the SQL,",
+                  "runs it, and shows you the answer. Pick up where you left off:",
+                  "",
+                  appUrl,
+                  "",
+                  "Reply to this email if you get stuck — a human reads it.",
+                ].join("\n"),
+                html: renderWelcomeHtml(appUrl),
+                // GLOBAL-005 — collapse any double-fire of the hook.
+                idempotencyKey: `welcome:${user.id}`,
+              });
+              span.setAttribute("nlqdb.auth.welcome_email.outcome", "sent");
+            } catch (err) {
+              // Best-effort: log for triage, never surface into signup.
+              span.recordException(err as Error);
+              span.setAttribute("nlqdb.auth.welcome_email.outcome", "error");
+              console.error("welcome email send failed", {
+                reason: err instanceof Error ? err.name : "unknown",
+              });
+            } finally {
+              span.end();
+            }
+          });
+        },
+      },
+    },
   },
   // SK-ANON-012 — adoption hook. On successful sign-in (magic-link
   // verify or OAuth callback), read the `__Secure-anon-bearer`
@@ -317,6 +368,18 @@ function renderMagicLinkHtml(link: string): string {
     `<p style="margin:0 0 12px;color:#555;font-size:13px;">Or paste this link into your browser:</p>`,
     `<p style="margin:0;color:#555;font-size:13px;word-break:break-all;">${safe}</p>`,
     '<p style="margin:24px 0 0;color:#888;font-size:12px;">If you didn\'t request this, you can ignore this email.</p>',
+    "</div>",
+  ].join("");
+}
+
+function renderWelcomeHtml(appUrl: string): string {
+  const safe = escapeHtml(appUrl);
+  return [
+    '<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111;">',
+    '<h1 style="font-size:18px;margin:0 0 16px;">Welcome to nlqdb</h1>',
+    '<p style="margin:0 0 16px;">A database you talk to. Ask a question in plain English — nlqdb writes the SQL, runs it, and shows you the answer.</p>',
+    `<p style="margin:0 0 24px;"><a href="${safe}" style="display:inline-block;padding:12px 18px;background:#c6f432;color:#0b0f0a;text-decoration:none;font-weight:600;border:2px solid #0b0f0a;">Open nlqdb</a></p>`,
+    '<p style="margin:0;color:#555;font-size:13px;">Reply to this email if you get stuck — a human reads it.</p>',
     "</div>",
   ].join("");
 }

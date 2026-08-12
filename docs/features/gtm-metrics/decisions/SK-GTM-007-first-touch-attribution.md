@@ -5,8 +5,13 @@
   (`apps/web/src/lib/attribution.ts`) on every page load: the FIRST
   touch a device makes (UTM params, external referrer host, landing
   pathname) is stored once in `localStorage["nlqdb_src"]` and never
-  overwritten. Both web DB-minting surfaces forward it as the request
-  `source` field — `postAskCreate` (`/v1/ask`) and `postConnect`
+  overwritten. The web DB-minting surfaces forward it as the request
+  `source` field — `postAskCreate` (`/v1/ask`), the signed-in chat
+  create path (`ChatPanel`'s unpinned `client.ask`, which reads
+  `firstTouchSource()`; the marketing-origin touch reaches the app
+  origin via the [`SK-ANON-015`](../../anonymous-mode/decisions/SK-ANON-015-cross-origin-handoff-url-fragment.md)
+  handoff `src` field — without it a signed-in create would attribute to
+  the post-OAuth referrer), and `postConnect`
   (`/v1/db/connect`, else a BYO connect-first signup reads `untracked`);
   the API sanitizes it (`sanitizeAskSource` — whitelist keys, 160-char
   caps, **drop-never-400**) and persists it to `databases.source_json`

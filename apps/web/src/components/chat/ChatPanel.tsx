@@ -36,6 +36,7 @@ import type {
 } from "@nlqdb/sdk";
 import { NlqdbApiError } from "@nlqdb/sdk";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { firstTouchSource } from "../../lib/attribution";
 import { getChatClient } from "../../lib/chat-client";
 import { deriveSlug, displayName } from "../../lib/names";
 import { clearPending, loadPending } from "../../lib/prompt-storage";
@@ -401,7 +402,17 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
         // narrowed below to the picker UI. The `"kind" in result`
         // check narrows to AskCreateResult (AskOk has `status` but
         // not `kind`); the else branch is AskOk.
-        const result = await client.ask({ goal }, { signal: ac.signal });
+        //
+        // SK-GTM-007: this is the only chat path that can mint a DB
+        // (kind=create), so it forwards the first touch — carried across
+        // the marketing→app origin hop by the SK-ANON-015 handoff — so
+        // the created row is attributed to its acquiring channel. Absent
+        // touch → omit the field (create stays `untracked`, never 400s).
+        const source = firstTouchSource();
+        const result = await client.ask(
+          { goal, ...(source ? { source } : {}) },
+          { signal: ac.signal },
+        );
         if ("kind" in result) {
           // SK-HDC-001: API created a new DB. Fold it into the rail,
           // re-pin it, and surface a "Created X" reply state so the

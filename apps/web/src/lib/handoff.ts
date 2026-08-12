@@ -23,6 +23,12 @@
 // attach the attacker's DB, pin it via `?db=`, and the token holder
 // would know exactly which DB the victim types into next.
 
+import {
+  type FirstTouch,
+  importFirstTouch,
+  loadFirstTouch,
+  sanitizeFirstTouch,
+} from "./attribution";
 import { emit } from "./logsnag";
 import { loadDraft, type PendingPrompt, saveDraft, savePending } from "./prompt-storage";
 
@@ -48,6 +54,12 @@ export interface HandoffPayload {
   anon?: string;
   pending?: PendingPrompt;
   draft?: string;
+  // SK-GTM-007 / SK-ANON-015 — the marketing-origin first touch, so a DB
+  // minted on the app origin (signed-in chat create) is attributed to the
+  // channel that actually brought the visitor, not the post-OAuth referrer.
+  // Non-credential (unlike `anon`): a crafted value can only mis-attribute
+  // the victim's own signup in our analytics, never fixate identity.
+  src?: FirstTouch;
 }
 
 function safeStorage(): Storage | null {
@@ -90,7 +102,9 @@ function normalize(input: Record<string, unknown>): HandoffPayload | null {
   const draft = typeof input["draft"] === "string" ? input["draft"] : "";
   const text = (draft || (goal.length > MAX_TEXT ? goal : "")).slice(0, MAX_TEXT);
   if (text) payload.draft = text;
-  if (!payload.anon && !payload.pending && !payload.draft) return null;
+  const src = sanitizeFirstTouch(input["src"]);
+  if (src) payload.src = src;
+  if (!payload.anon && !payload.pending && !payload.draft && !payload.src) return null;
   return payload;
 }
 
@@ -120,7 +134,12 @@ export function buildHandoffPayload(): HandoffPayload | null {
   } catch {
     // corrupt slot — drop it from the handoff rather than fail the redirect
   }
-  return normalize({ anon: ls.getItem(ANON_KEY), pending, draft: loadDraft() });
+  return normalize({
+    anon: ls.getItem(ANON_KEY),
+    pending,
+    draft: loadDraft(),
+    src: loadFirstTouch() ?? undefined,
+  });
 }
 
 // Append the handoff fragment to a navigation target. A no-op when
@@ -212,6 +231,10 @@ export function importHandoffFromLocation(): void {
     }
     if (payload.pending) savePending(payload.pending);
     if (payload.draft) saveDraft(payload.draft);
+    // Attribution last: it is the only slot the visitor never loses work
+    // over, so a quota that trips partway must not spend its last bytes
+    // here instead of on the token or prompt above.
+    if (payload.src) importFirstTouch(payload.src);
   } catch {
     // Same funnel meaning as above: an arrival whose payload didn't land.
     emit("handoff.rejected");
