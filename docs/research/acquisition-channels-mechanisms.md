@@ -1,0 +1,127 @@
+# Acquisition channels — venue mechanism notes
+
+Companion shard to [`acquisition-channels.md`](acquisition-channels.md) (D4
+split, 2026-08-12). The lean ledger table + tallies + "why this order" live in
+that file; this shard holds the detailed **P2-verified mechanism notes and
+parked founder payloads** for the heaviest venues, keyed by ledger row number.
+When a row's inline status cell would grow past a one-line summary, relocate the
+detail here and leave a `→ mechanism → [notes](acquisition-channels-mechanisms.md#row-N)`
+pointer in the table — **relocate intel, never delete it**.
+
+## Row #12
+
+**Coding-agent in-repo artifacts** (Claude Code skill, Cursor rules, AGENTS.md, Codex) · key `agent-artifacts`
+
+Artifacts served at `nlqdb.com/agent-artifacts/*`, surfaced to the coding-agent
+read channel (R-04 docs guide + `llms.txt` `## For coding agents`), **and now
+one-command installable**: `npx skills add https://github.com/nlqdb/nlqdb/tree/main/apps/web/public/agent-artifacts/nlqdb-memory`
+(vercel-labs/skills CLI — re-verified by running it 2026-07-27, universal
+install serves 17 hosts — pulls the skill from the public repo into
+`.agents/skills/nlqdb-memory/SKILL.md`, which Cursor and Codex read directly,
+plus a `.claude/skills/` symlink for Claude Code; no account, no publish. It
+writes **no** Cursor rule and **no** `AGENTS.md` entry, so an `AGENTS.md`-only
+host still needs the by-hand snippet). Every outbound link in every artifact
+carries the key (the docs-guide primary link since 2026-07-26, via the rule-1
+forwarder + the drift test covering both hosts). The `npx` line itself is a
+github.com URL (not utm-taggable, like row #10), but a developer who installs it
+lands on the skill's tagged links. Yield 0 pending real agent traffic; **live**
+only when `/app/admin` shows an `agent-artifacts` visit. Still unattributable by
+design: `claude mcp add` → browser OAuth reaches an account without loading an
+apex page at all, so an agent that never clicks a link converts as `untracked`.
+
+**Next step:** grow reach: `skills.sh` has **no submission flow** (P2
+2026-07-23: the leaderboard is built from anonymous `npx skills` install
+telemetry — skills appear automatically from real installs, no account, no
+review), so the only remaining levers are organic install yield (populates the
+leaderboard itself) + npm. **npm now carries it: 2026-07-27 the install command
+moved onto `@nlqdb/mcp`'s README — the page npmjs.com renders — taking the
+published surfaces 3 → 4** (site guide, `llms.txt`, artifacts index, package
+page), pinned by `packages/mcp/test/readme.test.ts` and shipped to the registry
+by the next patch (0.1.1, release PR #826; latest served is still 0.1.0). Next:
+a headless `npx -y @nlqdb/mcp` config beside the browser-OAuth one *inside* the
+artifacts — they still document the hosted route only.
+
+## Row #20
+
+**Integration marketplaces** (Supabase, Vercel templates, Neon partners, Astro) · key = venue slug (`supabase`, `vercel`, …)
+
+Mechanisms P2-verified, all founder/build-gated; each a real referring domain
+(astro.build / neon.com / vercel.com DR ~93) once shipped. **Astro (08-09):**
+npm-publish with `astro-integration` keyword → `withastro/astro` issue
+([docs](https://docs.astro.build/en/guides/integrations/)); blocked,
+`@nlqdb/astro` is `private`. **Neon (08-10):** formal OAuth/API business
+partnership via support/partner channels ([partners](https://neon.com/partners))
+— account-walled → founder; authentic fit (nlqdb runs on Neon). **Vercel
+Templates (08-10):** account-walled form, or a `vercel/examples` **GitHub PR**
+needing MIT `LICENSE` + template `README`/`package.json` + a Vercel-hosted demo
+URL ([examples](https://github.com/vercel/examples)) — agent-buildable, not a
+one-run diff; MIT on the starter only, nlqdb stays FSL-1.1 (`GLOBAL-019`).
+**Supabase (08-11):** Partner Catalog apply form at
+[`supabase.com/partners`](https://supabase.com/partners)
+([marketplace docs](https://supabase.com/docs/guides/platform/marketplace)) —
+gates on **business viability** (registration + bank account, revenue, or VC
+backing) + own T&C/Privacy/AUP + a Supabase-free name; account+business-walled →
+founder, may not clear at $0 revenue. Fit is BYO-only (a Supabase user connects
+their Postgres as a BYO source; nlqdb runs on Neon). **Sweep complete — all four
+founder/build-gated, none agent-shippable as a one-run diff.**
+
+**Next step:** **Astro:** withastro/astro issue on publish (`?utm_source=astro`).
+**Neon:** founder opens partnership. **Vercel:** build Next.js-on-nlqdb starter +
+demo, then PR/form (`?utm_source=vercel`). **Supabase:** founder applies once
+viability bar clears (`?utm_source=supabase`).
+
+## Row #22
+
+**Claude Code plugin** (own git marketplace → Anthropic `claude-community`) · key `claude-plugin`
+
+nlqdb is its own marketplace: `.claude-plugin/marketplace.json` at the repo root
+lists one plugin whose source *is* `apps/web/public/agent-artifacts`, so
+`/plugin marketplace add nlqdb/nlqdb` + `/plugin install nlqdb-memory@nlqdb`
+wires the hosted MCP server **and** both R-07 skills in one step, with zero
+copies to drift (verified end-to-end on the Claude Code CLI: validate passes, 2
+skills + 1 MCP server). No account, no review, permanent — the whole channel is
+agent-shippable, unlike every R-05 registry. The key rides `plugin.json`'s
+`homepage`, the one link `/plugin` surfaces; the bundled skills keep
+`agent-artifacts` (row #12), so plugin-install yield and skill-install yield
+stay separable. **Two downstream venues need nothing from us:**
+[claudemarketplaces.com](https://claudemarketplaces.com/about) (~300 k monthly
+visitors) crawls GitHub **daily for `.claude-plugin/marketplace.json`** — no
+submission exists — and SkillsMP crawls every public repo for `SKILL.md`. **One
+needs a human:** Anthropic's `claude-community` marketplace (in-product `/plugin`
+Discover tab) takes only a signed-in form (`clau.de/plugin-directory-submission`)
+— **founder submitted 2026-08-05, pending Anthropic review** (platforms = Claude
+Code only). `claude-plugins-official` is curated with **no application process**
+— nothing to submit, ever.
+
+**Next step:** watch `/app/admin` for `claude-plugin` yield → live; re-verify
+crawl pickup at R-08 (2026-08-22).
+
+## Row #25
+
+**LobeHub MCP Marketplace** ([`lobehub.com/mcp`](https://lobehub.com/mcp)) · key `lobehub`
+
+**untried — account-walled, founder-gated** (P2 2026-08-12). The **largest** MCP
+directory surfaced this sweep (~56 k servers listed vs the official registry's
+~2 k), absent from this ledger until now. **Mechanism (P2, publish doc
+`market.lobehub.com/s/publish-mcp` 403s to anonymous fetch — consistent with the
+gate):** submit via the `@lobehub/market-cli` CLI —
+`lhm plugin submit https://github.com/nlqdb/nlqdb` — whose documented flow is
+**login → GitHub ownership verification → new listing → `lhm.plugin.json`
+manifest → publish → verify**. The `login` step is a LobeHub-account wall
+(OAuth), so it is **founder work**, not agent-shippable; ownership-verify passes
+trivially (we own `nlqdb/nlqdb`). **Not confirmed to auto-ingest the official
+registry** — the market is CLI-submitted + curated (community additions go
+through manual `[Request]`-style issues on `lobehub/lobehub`, an out-of-scope
+repo), so a manual submit is required to appear *and* to carry our key
+regardless. Sources: <https://lobehub.com/docs/usage/community/mcp-market>,
+<https://market.lobehub.com/s/publish-mcp>,
+[lobehub/lobehub#14133](https://github.com/lobehub/lobehub/issues/14133).
+
+**Next step (founder):** `npx @lobehub/market-cli` →
+`lhm plugin submit https://github.com/nlqdb/nlqdb`, login + verify ownership,
+follow the CLI's `lhm.plugin.json` scaffold (read the exact current schema off
+the publish doc at submit time), set the listing name to lead with memory
+(`nlqdb — analytical memory for AI agents`), description per SK-PIVOT-003, and
+the homepage/link field to `https://nlqdb.com/agents/?utm_source=lobehub`; on
+submit → in-flight, note the listing URL, then watch `/app/admin` for `lobehub`
+yield → live.
