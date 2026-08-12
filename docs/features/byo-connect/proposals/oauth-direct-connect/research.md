@@ -241,25 +241,7 @@ signals.
 
 ## 6. Sources
 
-- Neon OAuth — https://neon.com/docs/guides/oauth-integration
-- Neon connection URI — https://api-docs.neon.tech/reference/getconnectionuri
-- Neon create role — https://api-docs.neon.tech/reference/createprojectbranchrole
-- Neon API — https://neon.com/docs/reference/api-reference
-- Supabase OAuth integration — https://supabase.com/docs/guides/integrations/build-a-supabase-oauth-integration
-- Supabase run a query — https://supabase.com/docs/reference/api/v1-run-a-query
-- Supabase list projects — https://supabase.com/docs/reference/api/v1-list-all-projects
-- Supabase IPv4 add-on — https://supabase.com/docs/guides/platform/ipv4-address
-- Supabase pooler format — https://www.weweb.io/blog/supabase-connection-string-guide-ports-pooling
-- ClickHouse Cloud API keys — https://clickhouse.com/docs/cloud/manage/openapi
-- DigitalOcean OAuth — https://docs.digitalocean.com/reference/api/oauth/
-- DigitalOcean Databases — https://docs.digitalocean.com/reference/api/reference/databases/
-- PlanetScale OAuth apps — https://planetscale.com/docs/api/planetscale-api-oauth-applications
-- Aiven API — https://api.aiven.io/doc/ ; read-only user — https://aiven.io/docs/products/postgresql/howto/readonly-user
-- CockroachDB Cloud API — https://www.cockroachlabs.com/docs/cockroachcloud/cloud-api
-- Crunchy Bridge API — https://docs.crunchybridge.com/api
-- Railway API/OAuth — https://docs.railway.com/integrations/api
-- neon serverless (why the old HTTP path was Neon-only) — https://github.com/neondatabase/serverless/blob/main/CONFIG.md
-- postgres.js Workers transport — `SK-DBCONN-002` (this repo) + https://github.com/porsager/postgres
-- DigitalOcean private CA (blocks runtime TLS verify) — https://www.digitalocean.com/community/questions/persistent-self_signed_cert_in_chain-error-on-managed-postgresql-connection
-- OAuth 2.0 Security BCP — https://datatracker.ietf.org/doc/rfc9700/ (RFC 9700, Jan 2025)
-- Arctic OAuth client library deprecated July 2026 — https://arcticjs.dev/ (why the handshake is hand-rolled)
+Every load-bearing claim above carries its source URL inline (P2). Two references not
+linked elsewhere in this file: postgres.js — https://github.com/porsager/postgres;
+OAuth 2.0 Security BCP — https://datatracker.ietf.org/doc/rfc9700/ (RFC 9700, Jan 2025).
+Arctic's deprecation (why no OAuth-client dependency) is cited in architecture.md.
