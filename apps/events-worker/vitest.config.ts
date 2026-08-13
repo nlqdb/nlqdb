@@ -16,6 +16,7 @@ export default defineConfig({
             "test/logsnag.test.ts",
             "test/query-log.test.ts",
             "test/posthog.test.ts",
+            "test/dunning-email.test.ts",
           ],
         },
       },

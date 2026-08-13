@@ -5,12 +5,12 @@
   sends one welcome email via the shared `sendEmail`
   (`makeEmailSender`, the [`GLOBAL-021`](../../../decisions/GLOBAL-021-external-system-ownership.md)
   Resend owner) — subject "Welcome to nlqdb", a single primary link to
-  `${webOrigin}/app`, plain-text + HTML mirroring the magic-link
-  template's inline styles. The send is **best-effort and never throws
-  into the auth flow**: it is wrapped in an OTel span
-  (`nlqdb.auth.welcome_email`, outcome attribute) and its own try/catch,
-  so a Resend outage or timeout can never fail a signup — the hook
-  always resolves. It runs in the one-time `user.create` hook (not on
+  `${webOrigin}/app`, rendered from the `welcomeEmail` template on the
+  shared `renderEmail` shell. The send goes through the best-effort
+  `notify()` dispatcher (`apps/api/src/email-notify.ts`), which owns the
+  MOCK_IDP sink, the OTel span (`nlqdb.email.send`, `kind=welcome` +
+  `outcome` attributes), and the try/catch swallow, so a Resend outage or
+  timeout can never fail a signup — the hook always resolves. It runs in the one-time `user.create` hook (not on
   any query path), so [`SK-ONBOARD-001`](../../onboarding/FEATURE.md)'s
   "nothing blocks the first query" still holds; the send's latency is
   bounded by the shared 8 s Resend timeout and lands only on the
@@ -30,9 +30,10 @@
   sign-in, so returning users aren't re-greeted.
 - **Consequence in code:** Welcome is telemetry-grade, never
   load-bearing: reviewers reject any version that `await`s the send on
-  the signup path or lets it throw. New outbound email types attach at
-  this same hook or the events-worker sink, never a fresh Resend fetch
-  (`GLOBAL-021`). The `user.create.after` hook is the canonical
+  the signup path or lets it throw. New outbound email types add a
+  `templates.ts` builder and send through the shared `notify()` rail
+  (`packages/email` / `apps/api/src/email-notify.ts`), never a fresh
+  Resend fetch (`GLOBAL-021`). The `user.create.after` hook is the canonical
   first-signup side-effect seam; a second first-signup side effect
   reuses it rather than adding another `hooks.after` path-match.
 - **Alternatives rejected:**

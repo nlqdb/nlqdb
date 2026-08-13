@@ -221,6 +221,19 @@ reason-specific copy. No added LLM hop; cross-surface (`GLOBAL-003`). The
 clarification arm of `SK-TRUST-003`, keyed on the reject reason not a
 confidence floor.
 
+### SK-ASK-027 — First server-error (5xx) on `/v1/ask` sends one best-effort recovery email, signed-in users only
+
+**Body:** [`decisions/SK-ASK-027-first-server-error-email.md`](./decisions/SK-ASK-027-first-server-error-email.md).
+The first time a signed-in user's `/v1/ask` returns a 5xx (our fault —
+`llm_failed` 502 is the common one), send one apologetic "that one's on us"
+recovery email. A single post-handler middleware on `/v1/ask` inspects
+`c.res.status >= 500`; the send goes through the shared best-effort `notify()`
+rail + `serverErrorEmail` template, deduped once-per-account by the new
+`first_error_notified` table (dispatch-after-insert, SK-IDEMP-005/006).
+Deliberately narrow: 5xx only (4xx is the user's own action), signed-in only
+(anon surfaces have no email), once ever. Fire-and-forget (`waitUntil`), never
+blocks or fails the ask response.
+
 ## The LLM loop
 
 Canonical step order is SK-ASK-002. Intentional reinventions on this path are catalogued in `docs/guidelines.md §7`.
