@@ -12,6 +12,8 @@
 // body. PKCE `S256` is used on the authorize leg and the `code_verifier` is
 // replayed on exchange.
 
+import { SpanStatusCode, trace } from "@opentelemetry/api";
+
 const SUPABASE_API_BASE = "https://api.supabase.com";
 export const SUPABASE_AUTHORIZE_URL = `${SUPABASE_API_BASE}/v1/oauth/authorize`;
 export const SUPABASE_TOKEN_URL = `${SUPABASE_API_BASE}/v1/oauth/token`;
@@ -95,37 +97,64 @@ async function tokenRequest(
   const nowSec = opts.now ?? (() => Math.floor(Date.now() / 1000));
   const basic = btoa(`${client.clientId}:${client.clientSecret}`);
 
-  const res = await fetchImpl(SUPABASE_TOKEN_URL, {
-    method: "POST",
-    headers: {
-      authorization: `Basic ${basic}`,
-      "content-type": "application/x-www-form-urlencoded",
+  // GLOBAL-014 — one span per provider REST call. `grant_type` is a bounded,
+  // secret-free label; the code/secret/token never go on the span.
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan(
+    "supabase.oauth.token",
+    {
+      attributes: {
+        "http.request.method": "POST",
+        "server.address": new URL(SUPABASE_TOKEN_URL).host,
+        "oauth.grant_type": body["grant_type"] ?? "",
+      },
     },
-    body: new URLSearchParams(body).toString(),
-  });
+    async (span) => {
+      try {
+        const res = await fetchImpl(SUPABASE_TOKEN_URL, {
+          method: "POST",
+          headers: {
+            authorization: `Basic ${basic}`,
+            "content-type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams(body).toString(),
+        });
+        span.setAttribute("http.response.status_code", res.status);
 
-  if (!res.ok) {
-    // One sentence, no code/secret echoed (`GLOBAL-012`).
-    throw new SupabaseOAuthError(
-      `Supabase rejected the authorization (HTTP ${res.status}); start the connect again.`,
-      res.status,
-    );
-  }
+        if (!res.ok) {
+          // One sentence, no code/secret echoed (`GLOBAL-012`).
+          throw new SupabaseOAuthError(
+            `Supabase rejected the authorization (HTTP ${res.status}); start the connect again.`,
+            res.status,
+          );
+        }
 
-  const json = (await res.json()) as {
-    access_token?: string;
-    refresh_token?: string;
-    expires_in?: number;
-  };
-  if (!json.access_token || !json.refresh_token) {
-    throw new SupabaseOAuthError("Supabase returned an incomplete token response.", res.status);
-  }
-  // Default to 1h if the provider omits expires_in — the refresh path corrects
-  // any drift on the next 401.
-  const expiresIn = typeof json.expires_in === "number" ? json.expires_in : 3600;
-  return {
-    accessToken: json.access_token,
-    refreshToken: json.refresh_token,
-    expiresAt: nowSec() + expiresIn,
-  };
+        const json = (await res.json()) as {
+          access_token?: string;
+          refresh_token?: string;
+          expires_in?: number;
+        };
+        if (!json.access_token || !json.refresh_token) {
+          throw new SupabaseOAuthError(
+            "Supabase returned an incomplete token response.",
+            res.status,
+          );
+        }
+        // Default to 1h if the provider omits expires_in — the refresh path
+        // corrects any drift on the next 401.
+        const expiresIn = typeof json.expires_in === "number" ? json.expires_in : 3600;
+        return {
+          accessToken: json.access_token,
+          refreshToken: json.refresh_token,
+          expiresAt: nowSec() + expiresIn,
+        };
+      } catch (err) {
+        span.recordException(err as Error);
+        span.setStatus({ code: SpanStatusCode.ERROR });
+        throw err;
+      } finally {
+        span.end();
+      }
+    },
+  );
 }

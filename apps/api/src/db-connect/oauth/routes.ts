@@ -61,10 +61,12 @@ function oauthClient(c: ConnectCtx): SupabaseOAuthClient | null {
   return { clientId, clientSecret };
 }
 
-// Same-origin bounce back to the connect page with a one-key status.
+// Same-origin bounce back to the connect page with a one-key status. The
+// trailing slash is load-bearing: `trailingSlash: "always"` 307-redirects a
+// bare `/app/connect`, so omitting it adds a hop on every OAuth return.
 function toConnect(c: ConnectCtx, params: Record<string, string>): Response {
   const qs = new URLSearchParams(params).toString();
-  return c.redirect(`/app/connect?${qs}`, 302);
+  return c.redirect(`/app/connect/?${qs}`, 302);
 }
 
 // GET /start — begin the OAuth redirect. Account-only (requirePrincipal is

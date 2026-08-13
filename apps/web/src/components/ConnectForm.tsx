@@ -13,6 +13,7 @@
 // preview + a "Question it now →" CTA) / error (one sentence, GLOBAL-012).
 
 import { useEffect, useId, useState } from "react";
+import { appHref } from "../lib/app-href";
 import {
   type ConnectEngine,
   type ConnectSuccess,
@@ -326,7 +327,7 @@ function ConnectedCard({ dbId }: { dbId: string }) {
       <p className="connect__hint">
         Your Supabase database is connected and stays read-only. Ask it anything in English.
       </p>
-      <a className="cta connect-result__cta" href={`/app/?db=${encodeURIComponent(dbId)}`}>
+      <a className="cta connect-result__cta" href={appHref(`/app/?db=${encodeURIComponent(dbId)}`)}>
         Question it now →
       </a>
     </section>
@@ -365,7 +366,7 @@ function ProjectPicker({
       ) : projects.length === 0 ? (
         <p className="connect__hint">
           No projects found.{" "}
-          <a className="connect__hint-link" href="/app/connect">
+          <a className="connect__hint-link" href={appHref("/app/connect/")}>
             Start over
           </a>
           .
@@ -408,7 +409,10 @@ function ConnectResultView({ result }: { result: ConnectSuccess }) {
 
       {result.pkLive && <PkLiveRow pkLive={result.pkLive} />}
 
-      <a className="cta connect-result__cta" href={`/app/?db=${encodeURIComponent(result.dbId)}`}>
+      <a
+        className="cta connect-result__cta"
+        href={appHref(`/app/?db=${encodeURIComponent(result.dbId)}`)}
+      >
         Question it now →
       </a>
     </section>
