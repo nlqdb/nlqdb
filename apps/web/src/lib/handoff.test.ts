@@ -210,6 +210,56 @@ describe("buildHandoffPayload / attachHandoff", () => {
   });
 });
 
+describe("first-touch carry (SK-GTM-007 × SK-ANON-015)", () => {
+  const TOUCH = { ts: 1000, utm_source: "devto", ref: "dev.to", landing: "/solve/x/" };
+
+  test("carries the marketing-origin first touch across the hop", () => {
+    store.set("nlqdb_src", JSON.stringify(TOUCH));
+    const target = attachHandoff("/app/new/");
+    // App origin: fresh storage, arriving with the fragment.
+    store = new Map();
+    installWindow(
+      `https://app.nlqdb.com/app/new/${target.slice(target.indexOf("#"))}`,
+      "https://nlqdb.com/",
+    );
+    importHandoffFromLocation();
+    expect(JSON.parse(store.get("nlqdb_src") ?? "{}")).toEqual(TOUCH);
+  });
+
+  test("a first touch alone is worth carrying (no prompt/anon needed)", () => {
+    store.set("nlqdb_src", JSON.stringify(TOUCH));
+    expect(buildHandoffPayload()?.src).toEqual(TOUCH);
+  });
+
+  test("incoming touch wins over an app-origin capture", () => {
+    const target = (() => {
+      store.set("nlqdb_src", JSON.stringify(TOUCH));
+      return attachHandoff("/app/new/");
+    })();
+    store = new Map();
+    installWindow(
+      `https://app.nlqdb.com/app/new/${target.slice(target.indexOf("#"))}`,
+      "https://nlqdb.com/",
+    );
+    // App origin already captured the post-OAuth referrer.
+    store.set("nlqdb_src", JSON.stringify({ ts: 2000, ref: "accounts.google.com" }));
+    importHandoffFromLocation();
+    expect(JSON.parse(store.get("nlqdb_src") ?? "{}").utm_source).toBe("devto");
+  });
+
+  test("a foreign referrer drops the carried touch", () => {
+    store.set("nlqdb_src", JSON.stringify(TOUCH));
+    const target = attachHandoff("/app/new/");
+    store = new Map();
+    installWindow(
+      `https://app.nlqdb.com/app/new/${target.slice(target.indexOf("#"))}`,
+      "https://evil.example/",
+    );
+    importHandoffFromLocation();
+    expect(store.has("nlqdb_src")).toBe(false);
+  });
+});
+
 describe("importHandoffFromLocation", () => {
   function arriveWith(
     payload: Parameters<typeof serializeHandoff>[0],

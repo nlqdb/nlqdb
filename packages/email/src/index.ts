@@ -28,6 +28,25 @@
 // `wrangler dev` exercise sends end-to-end without a Resend account; the
 // dev console prints the body.
 
+// The transactional-email catalog + the shared branded shell. Templates
+// live in this package (the GLOBAL-021 owner) so every send renders through
+// one escaper and one layout; see `templates.ts` / `render.ts`.
+export {
+  type EmailContent,
+  type EmailCta,
+  escapeHtml,
+  type RenderedEmail,
+  renderEmail,
+} from "./render.ts";
+export {
+  dunningEmail,
+  internalErrorAlertEmail,
+  magicLinkEmail,
+  premiumInterestConfirmEmail,
+  serverErrorEmail,
+  welcomeEmail,
+} from "./templates.ts";
+
 // The verified Resend sender. Callers default to this when `RESEND_FROM`
 // is unset; it lives with the owner so magic-link and dunning can't drift
 // to different from-addresses (GLOBAL-021).

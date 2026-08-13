@@ -135,6 +135,11 @@ Pins SK-PREMIUM-008's storage mechanics: the account-stored key is an `api_keys`
 **Body:** [`decisions/SK-PREMIUM-014-model-preset-wire.md`](./decisions/SK-PREMIUM-014-model-preset-wire.md).
 `/v1/ask` accepts `model: "auto"|"fast"|"best"` (unknown → 400 `invalid_model`); `selectDispatchLane` owns the routing: `fast` pins the strict-$0 chain even over stored credentials, `best` requires a frontier lane and 409s `model_unavailable` (with `link`) when none exists — never a silent downgrade. SDK `model`, CLI `--model`, MCP `model`, `<nlq-data model>` are passthroughs of the same enum (GLOBAL-002).
 
+### SK-PREMIUM-016 — "Count me in" sends the user a confirmation email on first click
+
+**Body:** [`decisions/SK-PREMIUM-016-count-me-in-confirmation-email.md`](./decisions/SK-PREMIUM-016-count-me-in-confirmation-email.md).
+The model-picker success copy already promises *"we'll email you when the paid plan ships"* but no email was sent — a broken promise. The first `POST /v1/premium/interest` for an account now sends the **user** a *"You're on the hosted-premium list"* confirmation (alongside the existing founder notify), both through the shared best-effort `notify()` rail + `premiumInterestConfirmEmail` template, deduped once-per-account by the existing `premium_interest` first-insert gate. Fire-and-forget (`waitUntil`); only when the session carries an email.
+
 ### SK-PREMIUM-007 — Plan cache stays product-funded; cap accounting starts at the LLM call site
 
 **Body:** [`decisions/SK-PREMIUM-007-plan-cache-zero-cost.md`](./decisions/SK-PREMIUM-007-plan-cache-zero-cost.md).
