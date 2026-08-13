@@ -29,6 +29,13 @@ GLOBAL:
      gross_margin)`. Target gross margin ≥ 60% post-COGS per Bessemer's
      AI-margin band.
 
+**Status (2026-08):** the `nlqdb.premium.cost_per_query_usd` +
+`nlqdb.premium.tokens_per_query` histograms have **shipped** (defined in
+`packages/otel`, emitted from `settlePremiumQuery` in
+`apps/api/src/billing/premium/index.ts`). Allowance seeds 200/600 are live in
+`apps/api/src/billing/premium/limits.ts` behind a `CALIBRATE-BY` comment,
+awaiting the measured `p50` distribution.
+
 - **Core value:** Bullet-proof, Free, Honest latency
 
 - **Why:**

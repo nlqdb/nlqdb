@@ -3,6 +3,13 @@
 Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
 [`GLOBAL-026`](../../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
 
+**Status (2026-08):** the architectural slot + meter are now wired
+end-to-end in `apps/api/src/billing/premium/**`. The lane stays dark until
+`PREMIUM_METER_LIVE` + `PREMIUM_ANTHROPIC_API_KEY` are set (the [`§6`](../../../phase-plan.md)
+unsolicited-inbound signal has tripped; threshold lowered 5→1). v1 is
+Anthropic-only, model `claude-sonnet-4-6`; the meter now rides Stripe Billing
+Meters directly per [`SK-PREMIUM-017`](./SK-PREMIUM-017-stripe-billing-meters.md).
+
 - **Decision:** When [`phase-plan.md §6`](../../../phase-plan.md) trips and
   Stripe live ships, paid plans gain the **hosted-premium dispatch lane**
   per `GLOBAL-026`, with **flat subscription + included monthly request

@@ -6,6 +6,12 @@ import {
   type Engine,
 } from "@nlqdb/db";
 import { premiumInterestConfirmEmail } from "@nlqdb/email";
+import {
+  buildPremiumRouter,
+  HOSTED_PREMIUM_MODELS,
+  type LLMRouter,
+  totalBillableTokens,
+} from "@nlqdb/llm";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import {
   isValidSpanId,
@@ -62,6 +68,21 @@ import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts"
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
 import { auth, authWaitUntil, REVOCATION_KEY_PREFIX } from "./auth.ts";
+import {
+  evaluateCap,
+  INCLUDED_ALLOWANCE,
+  isOverflowPolicy,
+  makeUsageAccumulator,
+  type PremiumTier,
+  premiumConfigured,
+  readAllowance,
+  reconcilePremiumMeter,
+  recordOverflowFallback,
+  reportPremiumOverage,
+  resolvePreDispatchLane,
+  resolvePremiumEligibility,
+  settlePremiumQuery,
+} from "./billing/premium/index.ts";
 import {
   byollmStatus,
   clearByollmCredential,
@@ -1089,6 +1110,104 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       }
     }
 
+    // ── Hosted-premium lane (SK-PREMIUM-009). Dark unless the operator has
+    // provisioned PREMIUM_ANTHROPIC_API_KEY + the AI Gateway AND flipped
+    // PREMIUM_METER_LIVE — `premiumConfigured` short-circuits before any D1
+    // read, so on a normal deployment this whole block is a provable no-op and
+    // `/v1/ask` routes exactly as before (the dormancy the tests assert). Only
+    // a signed-in paid user with NO BYOLLM credential is eligible: header /
+    // account BYOLLM keys always win (GLOBAL-026 precedence), and `fast` pins
+    // the strict-$0 chain. `best` is satisfiable via this lane, so an eligible
+    // caller never 409s `model_unavailable`.
+    let premiumRun: {
+      tier: PremiumTier;
+      periodStart: number;
+      stripeCustomerId: string;
+      usage: ReturnType<typeof makeUsageAccumulator>;
+      requestKey: string;
+      router: LLMRouter;
+    } | null = null;
+    let premiumEligible = false;
+    let premiumOverflow: "fallback" | "cap" | null = null;
+    if (
+      !byollmCredential &&
+      !accountCredential &&
+      principal.kind === "user" &&
+      parsed.body.model !== "fast" &&
+      premiumConfigured(c.env)
+    ) {
+      const cust = await c.env.DB.prepare(
+        "SELECT c.status AS status, c.price_id AS price_id, c.current_period_end AS cpe, " +
+          "c.stripe_customer_id AS scid, u.overflow_policy AS policy " +
+          "FROM customers c JOIN user u ON u.id = c.user_id WHERE c.user_id = ?",
+      )
+        .bind(principal.id)
+        .first<{
+          status: string;
+          price_id: string | null;
+          cpe: number | null;
+          scid: string;
+          policy: string;
+        }>();
+      if (cust) {
+        const billing = resolveBillingStatus(
+          {
+            status: cust.status,
+            price_id: cust.price_id,
+            current_period_end: cust.cpe,
+            cancel_at_period_end: 0,
+          },
+          c.env.STRIPE_PRICE_HOBBY,
+          c.env.STRIPE_PRICE_PRO,
+        );
+        const elig = resolvePremiumEligibility({
+          env: c.env,
+          plan: billing.plan,
+          currentPeriodEnd: cust.cpe,
+        });
+        if (elig.eligible) {
+          premiumEligible = true;
+          const { remaining } = await readAllowance(
+            c.env.DB,
+            principal.id,
+            elig.periodStart,
+            elig.tier,
+          );
+          const periodRow = await c.env.DB.prepare(
+            "SELECT overage_spent_cents AS spent FROM premium_allowance_period WHERE customer_id = ? AND period_start = ?",
+          )
+            .bind(principal.id, elig.periodStart)
+            .first<{ spent: number }>();
+          const cap = evaluateCap(periodRow?.spent ?? 0);
+          const policy = isOverflowPolicy(cust.policy) ? cust.policy : "meter";
+          const decision = resolvePreDispatchLane({ remaining, policy, capExceeded: cap.exceeded });
+          if (decision.lane === "premium") {
+            const usage = makeUsageAccumulator();
+            premiumRun = {
+              tier: elig.tier,
+              periodStart: elig.periodStart,
+              stripeCustomerId: cust.scid,
+              usage,
+              requestKey: c.req.header("Idempotency-Key") ?? crypto.randomUUID(),
+              router: buildPremiumRouter({
+                apiKey: c.env.PREMIUM_ANTHROPIC_API_KEY ?? "",
+                accountId: c.env.AI_GATEWAY_ACCOUNT_ID ?? "",
+                gatewayId: c.env.AI_GATEWAY_ID ?? "",
+                userId: principal.id,
+                onUsage: usage.sink,
+              }),
+            };
+          } else {
+            // Allowance exhausted + `overflow_policy=fallback`, or the spend cap
+            // hard-hit: the query runs on the free chain, surfaced in the trace
+            // (never silent — GLOBAL-023 / SK-PREMIUM-011).
+            premiumOverflow = decision.reason === "cap" ? "cap" : "fallback";
+            recordOverflowFallback(decision.reason);
+          }
+        }
+      }
+    }
+
     const routing = resolveAskRouter({
       headerCredential: byollmCredential,
       accountCredential,
@@ -1096,6 +1215,8 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       freeRouter: getLLMRouter(),
       gateway: { accountId: c.env.AI_GATEWAY_ACCOUNT_ID, gatewayId: c.env.AI_GATEWAY_ID },
       userId: principal.id,
+      ...(premiumEligible ? { premiumEligible: true } : {}),
+      ...(premiumRun ? { premiumRouter: premiumRun.router } : {}),
     });
     if (!routing.ok) {
       if (routing.reason === "frontier_unavailable") {
@@ -1125,7 +1246,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // query path (the create/DDL branches keep the free router).
     // SK-PREMIUM-014 — `model: "fast"` pins the strict-$0 chain, so the
     // founder-funded frontier upgrade is skipped too, not just BYOLLM.
-    if (routing.attributes["llm.dispatch_lane"] !== "byollm" && parsed.body.model !== "fast") {
+    // A selected hosted-premium lane (`premiumRun`) is a paid entitlement and
+    // outranks the founder-funded free-path upgrade, so skip the frontier
+    // override when premium won.
+    if (
+      !premiumRun &&
+      routing.attributes["llm.dispatch_lane"] !== "byollm" &&
+      parsed.body.model !== "fast"
+    ) {
       const frontierRouter = await resolveFrontierAskRouter(c.env, principal.kind, {
         e2e: (c.req.header("x-nlqdb-e2e") ?? "") === "1",
       });
@@ -1355,6 +1483,57 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       ...(parsed.body.confirm ? { confirm: true as const } : {}),
     };
 
+    // SK-PREMIUM-009/007 — settle the hosted-premium allowance + meter after a
+    // successful dispatch, and build the response's `premium` trace block. A
+    // plan-cache hit never entered the premium router, so `usage` is all-zeros
+    // → no slot consumed, no meter (SK-PREMIUM-007 — the meter is wired at the
+    // LLM call site, not the request boundary). The Stripe report is deferred to
+    // `ctx.waitUntil` so it never blocks the response (SK-PREMIUM-002). Returns
+    // null when the request didn't run on the premium lane (the common case).
+    const settlePremium = async (): Promise<Record<string, unknown> | null> => {
+      if (premiumRun) {
+        const usage = premiumRun.usage.total();
+        if (totalBillableTokens(usage) === 0) return null;
+        const s = await settlePremiumQuery(c.env.DB, {
+          customerId: principal.id,
+          periodStart: premiumRun.periodStart,
+          tier: premiumRun.tier,
+          usage,
+        });
+        if (s.overageCents > 0) {
+          c.executionCtx.waitUntil(
+            reportPremiumOverage(c.env, c.env.DB, {
+              customerId: principal.id,
+              stripeCustomerId: premiumRun.stripeCustomerId,
+              periodStart: premiumRun.periodStart,
+              overageCents: s.overageCents,
+              requestKey: premiumRun.requestKey,
+            }),
+          );
+        }
+        return {
+          lane: "premium",
+          line: s.traceLine,
+          used: s.consumedAfter,
+          included: s.total,
+          remaining: s.remaining,
+          overage_usd: Number((s.overageCents / 100).toFixed(4)),
+        };
+      }
+      if (premiumOverflow) {
+        return {
+          lane: "free",
+          overflow_fallback: true,
+          reason: premiumOverflow,
+          line:
+            premiumOverflow === "cap"
+              ? "Your premium spend cap was reached; this request used the free chain."
+              : "Your included premium requests are used up; this request used the free chain.",
+        };
+      }
+      return null;
+    };
+
     // SK-ANON-002 / SK-ANON-012 — bump `last_queried_at` on every
     // successful /v1/ask so the daily sweep evicts truly-stale anon
     // DBs (90-day TTL) and picks oldest-first under cap pressure.
@@ -1460,7 +1639,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               await commitAnonCreate();
               touchLastQueried();
             }
-            await stream.writeSSE({ event: "done", data: JSON.stringify({ status: "ok" }) });
+            const premiumTrace = await settlePremium();
+            await stream.writeSSE({
+              event: "done",
+              data: JSON.stringify({
+                status: "ok",
+                ...(premiumTrace ? { premium: premiumTrace } : {}),
+              }),
+            });
           }
         } finally {
           span.end();
@@ -1511,9 +1697,12 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // SK-ASK-003: append the `selected_db` echo to the JSON envelope
       // when the LLM disambiguator (or single-DB auto-target) chose
       // for the user. Surface uses it to render attribution.
-      const body = selectedDbEcho
-        ? { ...outcome.result, selected_db: selectedDbEcho }
-        : outcome.result;
+      const premiumTrace = await settlePremium();
+      const body = {
+        ...outcome.result,
+        ...(selectedDbEcho ? { selected_db: selectedDbEcho } : {}),
+        ...(premiumTrace ? { premium: premiumTrace } : {}),
+      };
       return c.json(body);
     } finally {
       span.end();
@@ -2920,9 +3109,27 @@ app.delete("/v1/packs/imports/:id", requireSession, async (c) => {
 // code change. Which entry is active per account is a separate read
 // (`GET /v1/keys/byollm`); this endpoint is the same for everyone, so a short
 // public cache spares a round-trip on every chat load.
-app.get("/v1/models", async (c) =>
-  c.json(await loadModelCatalog(), 200, { "cache-control": "public, max-age=300" }),
-);
+// The response carries a `premium` block (SK-PREMIUM-009 / SK-PREMIUM-013): the
+// hosted-premium model rows (Anthropic live, GPT-5 / Gemini "coming soon"), the
+// per-tier included allowance, and a `live` flag = `premiumConfigured(env)`.
+// Surfaces read `live` to pick the picker/pricing door: dark → interest-capture
+// ("count me in"), live → the real subscribe/checkout CTA. Never a buyable
+// state the deployment can't actually sell (GLOBAL-023).
+app.get("/v1/models", async (c) => {
+  const catalog = await loadModelCatalog();
+  return c.json(
+    {
+      ...catalog,
+      premium: {
+        live: premiumConfigured(c.env),
+        models: HOSTED_PREMIUM_MODELS,
+        allowance: INCLUDED_ALLOWANCE,
+      },
+    },
+    200,
+    { "cache-control": "public, max-age=300" },
+  );
+});
 
 // `/v1/keys/byollm` — account-stored BYOLLM credential (SK-PREMIUM-008,
 // SK-PREMIUM-012). Session-only (a decryptable key must ride a first-party
@@ -4620,6 +4827,28 @@ async function scheduled(
         JSON.stringify({
           msg: "gtm_snapshot_failed",
           message: snapErr instanceof Error ? snapErr.message : String(snapErr),
+        }),
+      );
+    }
+
+    // SK-PREMIUM-017 — daily hosted-premium meter reconciliation. Best-effort
+    // and D1-only on the read side; ack-and-skips when the meter is dark
+    // (PREMIUM_METER_LIVE unset) so it's inert today. Runs before the Tinybird
+    // early-return — it doesn't depend on a Tinybird token.
+    try {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const result = await reconcilePremiumMeter(
+        envBindings,
+        envBindings.DB,
+        nowSec - 25 * 3600,
+        nowSec,
+      );
+      console.info(JSON.stringify({ msg: "premium_meter_reconcile", ...result }));
+    } catch (reconErr) {
+      console.error(
+        JSON.stringify({
+          msg: "premium_meter_reconcile_failed",
+          message: reconErr instanceof Error ? reconErr.message : String(reconErr),
         }),
       );
     }

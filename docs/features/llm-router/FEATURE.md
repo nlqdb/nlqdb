@@ -101,7 +101,7 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 ### SK-LLM-020 — BYOLLM lane selector + single-provider lane router
 
 **Body:** [`decisions/SK-LLM-020-byollm-lane-selector.md`](./decisions/SK-LLM-020-byollm-lane-selector.md).
-`byollm-dispatch.ts` adds three pure primitives — `selectDispatchLane` (`SK-LLM-016`'s header→account→premium→free precedence), `buildByollmRouter` (single-provider, fail-loud per `GLOBAL-012`), `dispatchLaneAttributes` (bounded, key-redacted span attributes). The package stays free of header/DB/KEK access.
+`byollm-dispatch.ts` adds three pure primitives — `selectDispatchLane` (`SK-LLM-016`'s header→account→premium→free precedence), `buildByollmRouter` (single-provider, fail-loud per `GLOBAL-012`), `dispatchLaneAttributes` (bounded, key-redacted span attributes).
 
 ### SK-LLM-021 — BYOLLM header wiring on `/v1/ask`: signed-in-only `x-nlq-byollm-key`, fail-loud, free-router fallthrough
 
@@ -111,7 +111,7 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 ### SK-LLM-017 — Hosted-premium chain: separate provider list, §6-gated meter, never available on free
 
 **Body:** [`decisions/SK-LLM-017-hosted-premium-chain.md`](./decisions/SK-LLM-017-hosted-premium-chain.md).
-Third chain alongside `free` and `paid`: **`premium`** = Sonnet 4.6 + GPT-5 + Gemini 2.5 Pro. Fires only when `principal.tier !== "free"` AND (`model === "best"` or auto-classified hard-plan) AND `PREMIUM_METER_LIVE` (§6-gated; pre-§6 dark). Commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
+Now ships as `buildPremiumRouter` (`packages/llm/src/premium-dispatch.ts`): a single-provider **Anthropic** lane (v1 `claude-sonnet-4-6`) with a usage sink feeding the meter. Fires only on paid tiers, on a `best`/hard plan, behind `PREMIUM_METER_LIVE` (§6-gated; still dark). Commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
 
 ### SK-LLM-015 — OpenRouter code-gen ops default to `qwen/qwen3-coder:free` — SUPERSEDED by SK-LLM-045
 

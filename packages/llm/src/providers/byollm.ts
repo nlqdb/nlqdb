@@ -43,6 +43,11 @@ export type ByollmProviderOptions = {
   // Gateway-auth token (`cf-aig-authorization`) when the AI Gateway is
   // set to "authenticated". Omit for an open gateway.
   gatewayToken?: string;
+  // Optional per-call usage sink. Set by the hosted-premium lane (which
+  // reuses this factory with the platform's own Anthropic key) so the
+  // meter can bill each query; the BYOLLM lane proper leaves it unset (a
+  // user's own key is billed to them at 0% markup, nothing to meter).
+  onUsage?: (usage: import("../types.ts").TokenUsage) => void;
 };
 
 // Per-tenant, per-request cache key: `BYOLLM_<userId>_<sha256(request)>`.
@@ -129,6 +134,7 @@ export function createByollmProvider(opts: ByollmProviderOptions): Provider {
             "cf-aig-cache-key": cacheKey,
             ...(opts.gatewayToken ? { "cf-aig-authorization": `Bearer ${opts.gatewayToken}` } : {}),
           },
+          ...(opts.onUsage ? { onUsage: opts.onUsage } : {}),
         },
         callOpts,
       );

@@ -24,11 +24,13 @@ Enable users to upgrade from Free → Hobby ($10/mo) or Pro ($25/mo) via Stripe 
 | **Free** | $0 forever | 1k queries/mo, 500MB/DB, 7d backups, strict-$0 LLM chain |
 | **Hobby** | $10/mo | 50k queries/mo, 5GB/DB, no pausing, 30d backups, email support |
 | **Pro** | $25/mo min + usage | $0.0005/query over 50k, $0.10/GB-mo over 5GB |
-| **Premium models** (add-on, Hobby+) | Flat sub + metered overage | Frontier routing; §6-gated |
+| **Premium AI queries** (included in Hobby+) | Bundled — no extra sub | Hobby $10 includes ~200 premium queries/mo, Pro $25 includes ~600, on frontier models (v1 Anthropic `claude-sonnet-4-6`); then metered overage at provider list price **+0% markup**, bounded by your spend cap; §6-gated |
 | **BYOLLM** (any tier) | $0 | Paste a provider key; router dispatches at 0% markup |
 | **Enterprise** | Custom | SSO, VPC, audit log, on-prem |
 
 **Honest billing rules (hard):** no card for free tier ever; hitting a limit rate-limits, never silently upgrades; soft cap email at 80%; export always free; one-click cancel.
+
+**Premium roll-out state (GLOBAL-023 — never a buyable state that can't be bought):** the Hobby/Pro tier *prices* are unchanged ($10 / $25) and buyable today. The included-premium-queries line renders as **"rolling out — count me in"** (interest capture only, no charge) while `PREMIUM_METER_LIVE` is off, and becomes a real, chargeable checkout the moment the operator flips the flag.
 
 ---
 
@@ -239,6 +241,6 @@ Live-mode Dashboard setup is **done**: live products + price IDs, the live webho
 
 1. **Deploy to push live secrets to the prod Worker** — live keys + price IDs are in `.envrc` + GHA but not yet on the deployed Worker (a local `secrets:remote` hit Cloudflare 10214; a `deploy-api.yml` run applies them). Until then `/v1/billing/checkout` 503s in prod.
 2. **Set `RESEND_API_KEY` on the events-worker** (`cd apps/events-worker && bun run secrets:remote`, or the deploy workflow self-heals it) so the SK-STRIPE-013 customer dunning email sends. Without it the send no-ops.
-3. **Premium models add-on** (`POST /v1/billing/checkout/premium { db_id }`): gated on §6 + Phase 2 `quality-eval` baseline.
-4. **Lago wiring**: metered overage for Pro queries + premium LLM tokens (Phase 3).
+3. **Premium AI queries go-live**: the lane is wired end-to-end (`apps/api/src/billing/premium/**`); lighting it is the operator flip of `PREMIUM_METER_LIVE` + `PREMIUM_ANTHROPIC_API_KEY` (§6 signal has tripped — threshold lowered 5→1).
+4. **Stripe Billing Meters wiring** (no Lago — `SK-PREMIUM-017`): metered overage for Pro queries + premium LLM tokens rides Stripe Billing Meters directly.
 5. **R2 lifecycle policy**: configure "delete > 90 days" rule on `nlqdb-assets` (SK-STRIPE-006 open question).

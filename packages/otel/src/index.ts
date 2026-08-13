@@ -333,6 +333,80 @@ export const retryTotal = lazyCounter(
   "Recoverable-failure retries fired. Labelled by stage ∈ {route, plan, exec, sdk} and reason ∈ {timeout, network, http_5xx, llm_failed, sql_rejected, db_unreachable, transport, parse, unknown}.",
 );
 
+// ── Hosted-premium meter (premium-tier feature) ─────────────────────────
+//
+// SK-PREMIUM-010 mandates cost-per-query instrumentation ships FIRST (a hard
+// ordering rule): the allowance counts in `limits.ts` are calibrated against
+// this histogram's p50 before the meter goes live. These instruments emit only
+// on the hosted-premium lane (free + BYOLLM lanes are excluded — they don't
+// feed the calibration); the lane is dark until an operator provisions
+// `PREMIUM_ANTHROPIC_API_KEY` + flips `PREMIUM_METER_LIVE`, so in steady state
+// today these record nothing. Cardinality budgets: `provider`/`model` are
+// bounded (Anthropic + `claude-sonnet-4-6` for v1), `sized ∈ {standard, large,
+// refused}` (performance.md §3.3).
+
+// SK-PREMIUM-010 (1) — the calibration input. Per-query hosted-premium COGS in
+// USD, labelled {provider, model, sized}. p50 × allowance ≤ tier_price ×
+// (1 − target_gross_margin) is the calibration inequality.
+export const premiumCostPerQueryUsd = lazyHistogram(
+  "@nlqdb/api",
+  "nlqdb.premium.cost_per_query_usd",
+  "Hosted-premium per-query cost in USD (provider list + 0% markup), labelled by provider, model, sized ∈ {standard, large, refused}. The SK-PREMIUM-010 allowance-calibration input; hosted-premium lane only.",
+  "usd",
+);
+
+// SK-PREMIUM-010 (3) — token distribution behind the request-denominated
+// allowance, so "200 queries" has a measured token distribution under it.
+export const premiumTokensPerQuery = lazyHistogram(
+  "@nlqdb/api",
+  "nlqdb.premium.tokens_per_query",
+  "Hosted-premium billable tokens per query (input + output + cache), labelled by provider, model, sized. Bounds the soft-cap slot math (SK-PREMIUM-010).",
+  "token",
+);
+
+// SK-PREMIUM-009 — per-(customer, period) allowance gauges. Set after each
+// premium dispatch decrements a slot.
+export const premiumAllowanceConsumed = lazyGauge(
+  "@nlqdb/api",
+  "nlqdb.premium.allowance_consumed",
+  "Included premium requests consumed in the current billing period (SK-PREMIUM-009).",
+);
+export const premiumAllowanceRemaining = lazyGauge(
+  "@nlqdb/api",
+  "nlqdb.premium.allowance_remaining",
+  "Included premium requests remaining in the current billing period (SK-PREMIUM-009).",
+);
+
+// SK-PREMIUM-006 — per-(customer, db, key) overage-spend gauge + hard-cap
+// counter. Overage spend only ticks after allowance exhaustion.
+export const premiumSpendUsdCents = lazyGauge(
+  "@nlqdb/api",
+  "nlqdb.premium.spend_usd_cents",
+  "Overage spend this period in USD cents, labelled by customer, db, key (SK-PREMIUM-006). Included-allowance requests never tick this.",
+);
+export const premiumCapHitTotal = lazyCounter(
+  "@nlqdb/api",
+  "nlqdb.premium.cap_hit.total",
+  "Hard per-key spend-cap hits — the router fell through to the strict-$0 chain (SK-PREMIUM-006).",
+);
+
+// SK-PREMIUM-011 — every explicit fallback-to-free at exhaustion (opt-in
+// `overflow_policy=fallback`), never silent (GLOBAL-023).
+export const premiumOverflowFallbackTotal = lazyCounter(
+  "@nlqdb/api",
+  "nlqdb.premium.overflow_fallback_events.total",
+  "Premium requests routed to the free chain at allowance exhaustion under overflow_policy=fallback (SK-PREMIUM-011).",
+);
+
+// SK-PREMIUM-017 — daily reconciliation drift between our internal overage
+// ledger and Stripe's meter-event summaries, in USD cents. A non-zero value is
+// the operator's cue that a meter event failed to report or double-reported.
+export const premiumMeterReconcileDriftUsdCents = lazyGauge(
+  "@nlqdb/api",
+  "nlqdb.premium.meter_reconcile_drift_usd_cents",
+  "Daily reconciliation drift (internal overage ledger − Stripe meter summary) in USD cents (SK-PREMIUM-017).",
+);
+
 export function resetInstrumentsForTest(): void {
   for (const fn of resetFns) fn();
 }
