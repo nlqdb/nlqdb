@@ -12,9 +12,11 @@
   `outcome` attributes), and the try/catch swallow, so a Resend outage or
   timeout can never fail a signup — the hook always resolves. It runs in the one-time `user.create` hook (not on
   any query path), so [`SK-ONBOARD-001`](../../onboarding/FEATURE.md)'s
-  "nothing blocks the first query" still holds; the send's latency is
-  bounded by the shared 8 s Resend timeout and lands only on the
-  once-per-user signup redirect. It honors `MOCK_IDP=1`
+  "nothing blocks the first query" still holds; and the `/api/auth/*`
+  catch-all threads its request `waitUntil` into the hook (`authWaitUntil`),
+  so the send runs *after* the signup redirect rather than delaying it —
+  the hook awaits inline only when no request context is present (unit
+  tests). It honors `MOCK_IDP=1`
   ([`SK-AUTH-018`](SK-AUTH-018-mock-idp-mock-stripe-preview-flags.md)):
   previews sink the mail to KV instead of hitting Resend. A Resend
   `idempotencyKey` of `welcome:${user.id}` collapses any double-fire

@@ -13,6 +13,7 @@
 // any cookie-cached session whose row is gone (≤2s revocation guarantee).
 
 import { env } from "cloudflare:workers";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { DEFAULT_FROM, magicLinkEmail, makeEmailSender, welcomeEmail } from "@nlqdb/email";
 import { trace } from "@opentelemetry/api";
 import { betterAuth } from "better-auth";
@@ -72,6 +73,15 @@ const sendEmail = makeEmailSender({
 // in the KV key for privacy).
 const magicLinkThrottle = makeMagicLinkThrottle(env.KV, { max: 3, windowSeconds: 600 });
 
+// Lets the `/api/auth/*` catch-all thread its request `waitUntil` into Better
+// Auth's `databaseHooks`, which are otherwise awaited inline before the signup
+// response. The SK-AUTH-021 welcome email hands its send here so it runs AFTER
+// the response instead of blocking it — a bare un-awaited promise would be
+// cancelled by the Workers runtime once the response returns. Absent (unit
+// tests, the oauth-init sub-request) the hook awaits inline, which still
+// delivers.
+export const authWaitUntil = new AsyncLocalStorage<(p: Promise<unknown>) => void>();
+
 const kv = env.KV;
 const secondaryStorage = {
   get: async (key: string) => kv.get(key),
@@ -129,18 +139,23 @@ export const auth = betterAuth({
     // the OTel span, and the swallow, so a slow or failed Resend send can
     // never fail the signup. Fires once per person (not per sign-in), so
     // returning users aren't re-greeted; `idempotencyKey` (GLOBAL-005)
-    // collapses any double-fire of the hook.
+    // collapses any double-fire of the hook. Handed to the request
+    // `waitUntil` so the once-per-user signup redirect is never delayed by
+    // the send (`authWaitUntil`); inline await is the no-context fallback.
     user: {
       create: {
         after: async (user) => {
           const email = typeof user.email === "string" ? user.email : "";
           if (!email) return;
-          await notify(env, {
+          const send = notify(env, {
             to: email,
             kind: "welcome",
             message: welcomeEmail(`${webOrigin}/app`),
             idempotencyKey: `welcome:${user.id}`,
           });
+          const waitUntil = authWaitUntil.getStore();
+          if (waitUntil) waitUntil(send);
+          else await send;
         },
       },
     },

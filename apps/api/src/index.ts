@@ -61,7 +61,7 @@ import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
 import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
-import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
+import { auth, authWaitUntil, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import {
   byollmStatus,
   clearByollmCredential,
@@ -4408,7 +4408,13 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
   return tracer.startActiveSpan(spanName, async (span) => {
     if (provider) span.setAttribute("nlqdb.auth.provider", provider);
     try {
-      const response = await auth.handler(c.req.raw);
+      // Thread this request's `waitUntil` into Better Auth's `databaseHooks`
+      // so the SK-AUTH-021 welcome email runs after the signup response
+      // instead of blocking it (see `authWaitUntil` in auth.ts).
+      const response = await authWaitUntil.run(
+        (p) => c.executionCtx.waitUntil(p),
+        () => auth.handler(c.req.raw),
+      );
       const outcome = response.status < 400 ? "success" : "failure";
       span.setAttribute("http.response.status_code", response.status);
       authEventsTotal().add(1, { type: eventType, outcome });
