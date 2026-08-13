@@ -37,6 +37,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 3 | ~15 min | Register the Supabase OAuth app + set `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` prod secrets — unblocks one-click Supabase connect (paste path works meanwhile) | 2026-08-13 |
 
 Only #1 can move real strangers (scorecard row #2); #2 is the only one that
 costs money and waits per `docs/cost-ladder.md` unless a Team org already
@@ -119,6 +120,18 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
      shipped 2026-07-29 (#835), so a signed-in reviewer can now exercise **all five tools**
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
+
+3. **⏱ ~15 min · since 2026-08-13 — Enable one-click Supabase connect in prod**
+   (`SK-DBCONN-003`, shipped #985). The `/app/connect` "Connect Supabase" button
+   is live, but `/start` returns 503 and gracefully falls back to paste until the
+   OAuth app exists. In the Supabase dashboard → org → **OAuth Apps**, register an
+   app with redirect URI
+   `https://app.nlqdb.com/v1/db/connect/oauth/supabase/callback` (add the
+   localhost variant for dev), then set the issued credentials as the
+   `SUPABASE_OAUTH_CLIENT_ID` / `SUPABASE_OAUTH_CLIENT_SECRET` Worker secrets
+   (`scripts/mirror-secrets-workers.sh` promotes them on deploy; `docs/runbook.md`
+   §secrets). Ranked last: no real user has asked to connect a Supabase DB yet,
+   and the paste path already works.
 
 (P6 was approved and merged by the founder 2026-08-04, #885 — it is binding
 in CLAUDE.md/AGENTS.md.)

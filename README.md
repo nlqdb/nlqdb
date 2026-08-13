@@ -255,7 +255,10 @@ and shares the link — in under 60 seconds, no card, no config.
 
 - ~ Bring-your-own Postgres / ClickHouse — connect path live end-to-end
   (`POST /v1/db/connect` + web UI, CLI, SDK, query dispatch); prod-gated on
-  the `BYO_SECRET_KEK` secret
+  the `BYO_SECRET_KEK` secret. **Supabase** adds one-click OAuth connect over
+  the read-only Management-API (no DSN to paste); prod-gated on the
+  `SUPABASE_OAUTH_CLIENT_ID` / `_SECRET` secrets, with a graceful fall-back to
+  paste when unset
 - ◯ SSO (SAML / OIDC), audit-log export, per-org quotas
 - ◯ EU data residency, VPC peering, SOC 2
 
