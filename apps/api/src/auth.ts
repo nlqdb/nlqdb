@@ -13,7 +13,8 @@
 // any cookie-cached session whose row is gone (≤2s revocation guarantee).
 
 import { env } from "cloudflare:workers";
-import { DEFAULT_FROM, makeEmailSender } from "@nlqdb/email";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { DEFAULT_FROM, magicLinkEmail, makeEmailSender, welcomeEmail } from "@nlqdb/email";
 import { trace } from "@opentelemetry/api";
 import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
@@ -25,6 +26,7 @@ import { buildClearCookie, readStashCookie, verifyAnonStash } from "./anon-stash
 import { hashEmail, makeMagicLinkThrottle } from "./auth/magic-link-throttle.ts";
 import { sinkEmail } from "./auth/mock-email-sink.ts";
 import { captureVerifyUrl } from "./auth/mock-idp.ts";
+import { notify } from "./email-notify.ts";
 
 // `isDev` is the localhost gate — only the literal `development` value
 // (set in `apps/api/.dev.vars` for `wrangler dev`) takes the dev path.
@@ -70,6 +72,15 @@ const sendEmail = makeEmailSender({
 // closes that loophole: 3 sends / 10 min per email address (hashed
 // in the KV key for privacy).
 const magicLinkThrottle = makeMagicLinkThrottle(env.KV, { max: 3, windowSeconds: 600 });
+
+// Lets the `/api/auth/*` catch-all thread its request `waitUntil` into Better
+// Auth's `databaseHooks`, which are otherwise awaited inline before the signup
+// response. The SK-AUTH-021 welcome email hands its send here so it runs AFTER
+// the response instead of blocking it — a bare un-awaited promise would be
+// cancelled by the Workers runtime once the response returns. Absent (unit
+// tests, the oauth-init sub-request) the hook awaits inline, which still
+// delivers.
+export const authWaitUntil = new AsyncLocalStorage<(p: Promise<unknown>) => void>();
 
 const kv = env.KV;
 const secondaryStorage = {
@@ -120,6 +131,31 @@ export const auth = betterAuth({
           await kv.put(`${REVOCATION_KEY_PREFIX}${session.token}`, "1", {
             expirationTtl: REVOCATION_TTL_SECONDS,
           });
+        },
+      },
+    },
+    // SK-AUTH-021 — one welcome email the first time a user row is
+    // created (any sign-in method). `notify()` owns the MOCK_IDP sink,
+    // the OTel span, and the swallow, so a slow or failed Resend send can
+    // never fail the signup. Fires once per person (not per sign-in), so
+    // returning users aren't re-greeted; `idempotencyKey` (GLOBAL-005)
+    // collapses any double-fire of the hook. Handed to the request
+    // `waitUntil` so the once-per-user signup redirect is never delayed by
+    // the send (`authWaitUntil`); inline await is the no-context fallback.
+    user: {
+      create: {
+        after: async (user) => {
+          const email = typeof user.email === "string" ? user.email : "";
+          if (!email) return;
+          const send = notify(env, {
+            to: email,
+            kind: "welcome",
+            message: welcomeEmail(`${webOrigin}/app`),
+            idempotencyKey: `welcome:${user.id}`,
+          });
+          const waitUntil = authWaitUntil.getStore();
+          if (waitUntil) waitUntil(send);
+          else await send;
         },
       },
     },
@@ -262,16 +298,7 @@ export const auth = betterAuth({
         try {
           await sendEmail({
             to: email,
-            subject: "Sign in to nlqdb",
-            text: [
-              "Click the link below to sign in to nlqdb. The link",
-              "expires in 10 minutes and can only be used once.",
-              "",
-              continueUrl,
-              "",
-              "If you didn't request this, you can ignore this email.",
-            ].join("\n"),
-            html: renderMagicLinkHtml(continueUrl),
+            ...magicLinkEmail(continueUrl),
           });
         } catch (err) {
           // Resend outage / network / config error. Roll back the
@@ -305,27 +332,4 @@ function buildContinueUrl(verifyUrl: string, fallbackCallback: string): string {
     // verifyUrl wasn't a valid URL — pass through unmodified.
   }
   return `${webOrigin}/auth/continue?next=${encodeURIComponent(next)}`;
-}
-
-function renderMagicLinkHtml(link: string): string {
-  const safe = escapeHtml(link);
-  return [
-    '<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111;">',
-    '<h1 style="font-size:18px;margin:0 0 16px;">Sign in to nlqdb</h1>',
-    '<p style="margin:0 0 20px;">Click the button below to sign in. The link expires in 10 minutes and can only be used once.</p>',
-    `<p style="margin:0 0 24px;"><a href="${safe}" style="display:inline-block;padding:12px 18px;background:#c6f432;color:#0b0f0a;text-decoration:none;font-weight:600;border:2px solid #0b0f0a;">Sign in</a></p>`,
-    `<p style="margin:0 0 12px;color:#555;font-size:13px;">Or paste this link into your browser:</p>`,
-    `<p style="margin:0;color:#555;font-size:13px;word-break:break-all;">${safe}</p>`,
-    '<p style="margin:24px 0 0;color:#888;font-size:12px;">If you didn\'t request this, you can ignore this email.</p>',
-    "</div>",
-  ].join("");
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }

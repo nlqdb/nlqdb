@@ -5,7 +5,7 @@ import {
   createTinybirdAdapter,
   type Engine,
 } from "@nlqdb/db";
-import { DEFAULT_FROM, makeEmailSender } from "@nlqdb/email";
+import { premiumInterestConfirmEmail } from "@nlqdb/email";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import {
   isValidSpanId,
@@ -61,7 +61,7 @@ import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
 import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
-import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
+import { auth, authWaitUntil, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import {
   byollmStatus,
   clearByollmCredential,
@@ -76,7 +76,9 @@ import { BYO_SECRET_REF_SENTINEL } from "./db-connect/constants.ts";
 import { AGENT_MEMORY_V1_VERSION, type MemoryPreset } from "./db-create/presets/agent-memory-v1.ts";
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
+import { notify } from "./email-notify.ts";
 import { recordEvalReport, recordPricingEvent, recordWishlist } from "./events-feature.ts";
+import { notifyFirstServerError } from "./first-error-email.ts";
 import {
   listGrantsByTenant,
   mintGrant,
@@ -98,6 +100,7 @@ import { httpsRedirectTarget, withHsts } from "./https-enforce.ts";
 import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
+import { alertRnd } from "./internal-alert.ts";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { isMarketingMirrorPath, marketingMirrorRedirect } from "./marketing-mirror.ts";
@@ -172,6 +175,36 @@ app.onError((err, c) => {
       method: c.req.method,
     }),
   );
+  // SK-OBS-012 — best-effort, throttled, redacted R&D alert for unexpected
+  // server errors. `waitUntil` so it never delays the 500; wrapped so an
+  // alert failure can't re-enter the error handler.
+  try {
+    const principal = c.var.principal as Principal | undefined;
+    const errText = redactPii(`${e?.name ?? "Error"}: ${e?.message ?? ""}`);
+    const cf = c.req.raw.cf as { colo?: string } | undefined;
+    c.executionCtx.waitUntil(
+      alertRnd(c.env, {
+        kind: "server",
+        summary: `500 ${c.req.method} ${c.req.path} — ${errText}`.slice(0, 160),
+        signature: `server::${c.req.method} ${c.req.path}::${e?.name ?? ""}::${(e?.message ?? "").slice(0, 120)}`,
+        utcDay: new Date().toISOString().slice(0, 10),
+        fields: [
+          ["when", new Date().toISOString()],
+          ["method", c.req.method],
+          ["path", c.req.path],
+          ["status", "500"],
+          ["error", errText.slice(0, 300)],
+          ["stack", redactPii(e?.stack ?? "").slice(0, 2000)],
+          ["principal", principal ? `${principal.kind}:${principal.id}` : "none"],
+          ["cf-ray", c.req.header("cf-ray") ?? ""],
+          ["colo", cf?.colo ?? ""],
+          ["user-agent", redactPii(c.req.header("user-agent") ?? "").slice(0, 200)],
+        ],
+      }),
+    );
+  } catch {
+    // Alert assembly is strictly best-effort — never mask the real 500.
+  }
   return c.text("Internal Server Error", 500);
 });
 
@@ -257,6 +290,23 @@ app.use("/v1/ask", (c, next) => {
   const origin = c.req.header("origin") ?? "";
   const handler = CORS_ALLOWED_ORIGINS.includes(origin) ? credentialedCors : pkLiveCors;
   return handler(c, next);
+});
+// SK-ASK-027 — first-server-error recovery email. After the ask handler
+// runs, if it returned a 5xx for a signed-in user, send one apologetic
+// "that one's on us" email the first time it ever happens to that account
+// (dedup in D1). Fire-and-forget so the ask response isn't delayed; only
+// `user` principals carry an email, so anon / API-key errors are skipped,
+// as are all 4xx (client errors — the user's rate-limit / bad input).
+app.use("/v1/ask", async (c, next) => {
+  await next();
+  if (c.res.status < 500) return;
+  const principal = c.var.principal as Principal | undefined;
+  if (principal?.kind !== "user") return;
+  const email = principal.session.user.email;
+  if (!email) return;
+  c.executionCtx.waitUntil(
+    notifyFirstServerError({ db: c.env.DB, env: c.env, appUrl: webAppUrl() }, principal.id, email),
+  );
 });
 app.use("/v1/chat/*", credentialedCors);
 app.use("/v1/databases", credentialedCors);
@@ -541,6 +591,37 @@ app.post("/v1/errors/web", async (c) => {
         span.end();
       }
     });
+    // SK-OBS-012 — best-effort, throttled, redacted R&D alert for the client
+    // crash. Already deduped once by `errorSinkAllow` above; `alertRnd` adds
+    // the cross-isolate KV dedup + daily cap against the shared Resend quota.
+    const surface = redactPii(String(body["surface"] ?? "unknown")).slice(0, 64);
+    const message = redactPii(String(body["message"] ?? "")).slice(0, 300);
+    c.executionCtx.waitUntil(
+      alertRnd(c.env, {
+        kind: "client",
+        summary: `client ${surface} — ${message}`.slice(0, 160),
+        signature: `client::${String(body["surface"] ?? "")}::${String(body["message"] ?? "").slice(0, 120)}`,
+        utcDay: new Date().toISOString().slice(0, 10),
+        fields: [
+          ["when", new Date().toISOString()],
+          ["surface", surface],
+          ["message", message],
+          ["href", typeof body["href"] === "string" ? redactPii(body["href"]).slice(0, 240) : ""],
+          [
+            "stack",
+            typeof body["stack"] === "string" ? redactPii(body["stack"]).slice(0, 2000) : "",
+          ],
+          [
+            "componentStack",
+            typeof body["componentStack"] === "string"
+              ? redactPii(body["componentStack"]).slice(0, 1000)
+              : "",
+          ],
+          ["traceparent", classifyTraceparent(traceparentHeader)],
+          ["user-agent", redactPii(c.req.header("user-agent") ?? "").slice(0, 200)],
+        ],
+      }),
+    );
   } catch {
     // Best-effort — never let the error sink itself fail loudly.
   }
@@ -3036,28 +3117,33 @@ app.post("/v1/premium/interest", requireSession, async (c) => {
       const { firstTime } = await recordPremiumInterest(c.env.DB, session.user.id, email);
       span.setAttribute("nlqdb.premium.interest.first_time", firstTime);
       if (firstTime) {
-        // Notify the founder once. Best-effort: the signal is already in D1,
-        // so a send failure is logged (in makeEmailSender) and swallowed —
-        // never a 5xx that would tell the user their click didn't land.
-        try {
-          const sendEmail = makeEmailSender({
-            apiKey: c.env.RESEND_API_KEY,
-            from: c.env.RESEND_FROM ?? DEFAULT_FROM,
-          });
-          const who = email ?? `user ${session.user.id}`;
-          await sendEmail({
+        const who = email ?? `user ${session.user.id}`;
+        // Notify the founder once (internal plain-text signal). Best-effort
+        // via `notify()` + `waitUntil` so the click response isn't delayed;
+        // the signal is already in D1, so a send failure is swallowed.
+        c.executionCtx.waitUntil(
+          notify(c.env, {
             to: FOUNDER_EMAIL,
-            subject: `Hosted-premium interest: ${who}`,
-            text: [
-              `${who} clicked "Count me in" on the hosted-premium plan in the chat model picker.`,
-              "",
-              `user id: ${session.user.id}`,
-            ].join("\n"),
+            kind: "premium_interest_founder",
+            message: {
+              subject: `Hosted-premium interest: ${who}`,
+              text: `${who} clicked "Count me in" on the hosted-premium plan in the chat model picker.\n\nuser id: ${session.user.id}`,
+            },
             idempotencyKey: `premium-interest:${session.user.id}`,
-          });
-        } catch (mailErr) {
-          span.setAttribute("nlqdb.premium.interest.notify_failed", true);
-          span.recordException(mailErr as Error);
+          }),
+        );
+        // SK-PREMIUM-016 — confirm to the user, closing the model-picker's
+        // "we'll email you when the paid plan ships" promise that until now
+        // was never kept. Only when the session carries an address.
+        if (email) {
+          c.executionCtx.waitUntil(
+            notify(c.env, {
+              to: email,
+              kind: "premium_interest_confirm",
+              message: premiumInterestConfirmEmail(webAppUrl()),
+              idempotencyKey: `premium-interest-confirm:${session.user.id}`,
+            }),
+          );
         }
       }
       span.setAttribute("nlqdb.premium.interest.outcome", "ok");
@@ -3135,28 +3221,25 @@ app.post("/v1/pmf-survey", requireSession, async (c) => {
       if (firstTime) {
         // Notify the founder per response — the premium-interest pattern
         // (dispatch-after-insert, SK-IDEMP-006). At most one email per
-        // account by construction; best-effort, never a 5xx.
-        try {
-          const sendEmail = makeEmailSender({
-            apiKey: c.env.RESEND_API_KEY,
-            from: c.env.RESEND_FROM ?? DEFAULT_FROM,
-          });
-          const who = email ?? `user ${session.user.id}`;
-          await sendEmail({
+        // account by construction; best-effort via `notify()` + `waitUntil`
+        // so the response isn't delayed and a send failure is swallowed.
+        const who = email ?? `user ${session.user.id}`;
+        c.executionCtx.waitUntil(
+          notify(c.env, {
             to: FOUNDER_EMAIL,
-            subject: `PMF survey (Sean-Ellis Q1): ${response} — ${who}`,
-            text: [
-              `${who} answered the in-product Sean-Ellis Q1 survey: ${response}.`,
-              "",
-              `user id: ${session.user.id}`,
-              "All responses: SELECT response, COUNT(*) FROM pmf_survey GROUP BY response;",
-            ].join("\n"),
+            kind: "pmf_survey_founder",
+            message: {
+              subject: `PMF survey (Sean-Ellis Q1): ${response} — ${who}`,
+              text: [
+                `${who} answered the in-product Sean-Ellis Q1 survey: ${response}.`,
+                "",
+                `user id: ${session.user.id}`,
+                "All responses: SELECT response, COUNT(*) FROM pmf_survey GROUP BY response;",
+              ].join("\n"),
+            },
             idempotencyKey: `pmf-survey:${session.user.id}`,
-          });
-        } catch (mailErr) {
-          span.setAttribute("nlqdb.pmf.survey.notify_failed", true);
-          span.recordException(mailErr as Error);
-        }
+          }),
+        );
       }
       span.setAttribute("nlqdb.pmf.survey.outcome", "ok");
       return c.json({ ok: true });
@@ -4006,6 +4089,16 @@ function toCandidates(
   return dbs.map((d) => ({ id: d.id, slug: d.slug }));
 }
 
+// The product web origin (`/app` lives here). Same resolution order as
+// `buildSignInUrl` so emailed CTAs land on the surface the user came from
+// in dev / staging / prod.
+function webAppUrl(): string {
+  const origin =
+    env.MAGIC_LINK_WEB_ORIGIN ??
+    (typeof auth.options.baseURL === "string" ? auth.options.baseURL : "https://app.nlqdb.com");
+  return `${origin}/app`;
+}
+
 function buildSignInUrl(referer: string | undefined): string {
   const origin =
     env.MAGIC_LINK_WEB_ORIGIN ??
@@ -4315,7 +4408,13 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
   return tracer.startActiveSpan(spanName, async (span) => {
     if (provider) span.setAttribute("nlqdb.auth.provider", provider);
     try {
-      const response = await auth.handler(c.req.raw);
+      // Thread this request's `waitUntil` into Better Auth's `databaseHooks`
+      // so the SK-AUTH-021 welcome email runs after the signup response
+      // instead of blocking it (see `authWaitUntil` in auth.ts).
+      const response = await authWaitUntil.run(
+        (p) => c.executionCtx.waitUntil(p),
+        () => auth.handler(c.req.raw),
+      );
       const outcome = response.status < 400 ? "success" : "failure";
       span.setAttribute("http.response.status_code", response.status);
       authEventsTotal().add(1, { type: eventType, outcome });

@@ -100,6 +100,43 @@ export function captureFirstTouch(
   }
 }
 
+/**
+ * Validate + clamp an untrusted `FirstTouch` (e.g. one arriving in a
+ * cross-origin handoff fragment, `SK-ANON-015`). Returns null unless a
+ * numeric `ts` is present — `loadFirstTouch` treats a `ts`-less blob as
+ * corrupt, so a carry that dropped it would silently never read back.
+ * String fields are trimmed + length-capped exactly like a fresh capture.
+ */
+export function sanitizeFirstTouch(input: unknown): FirstTouch | null {
+  if (typeof input !== "object" || input === null) return null;
+  const o = input as Record<string, unknown>;
+  if (typeof o.ts !== "number" || !Number.isFinite(o.ts)) return null;
+  const touch: FirstTouch = { ts: o.ts };
+  for (const key of ["utm_source", "utm_medium", "utm_campaign", "ref", "landing"] as const) {
+    const v = clean(typeof o[key] === "string" ? (o[key] as string) : undefined);
+    if (v) touch[key] = v;
+  }
+  return touch;
+}
+
+/**
+ * Write a first touch carried in from another origin (`SK-ANON-015`).
+ * Incoming wins, mirroring the `SK-ANON-011` draft rule: the acquiring
+ * touch happened on the origin that sent the handoff (the marketing site),
+ * which is strictly more authoritative than any capture the app origin
+ * made from the post-OAuth referrer. Never load-bearing — drops on any
+ * storage failure.
+ */
+export function importFirstTouch(touch: FirstTouch): void {
+  const ls = safeStorage();
+  if (!ls) return;
+  try {
+    ls.setItem(SRC_KEY, JSON.stringify(touch));
+  } catch {
+    // Quota/privacy-mode — attribution is never load-bearing.
+  }
+}
+
 /** The stored first touch, or null when absent/corrupt. */
 export function loadFirstTouch(): FirstTouch | null {
   const ls = safeStorage();

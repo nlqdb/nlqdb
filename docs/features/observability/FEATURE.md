@@ -127,13 +127,13 @@ when-to-load:
 
 ### SK-OBS-011 — Exceptions → Sentry; traces + metrics → Grafana; spans still `recordException`
 
-- **Decision:** Error/exception triage lives in **Sentry** (5k errors/mo free); traces and metrics go to **Grafana Cloud** via OTel. The two are not redundant: spans still call `span.recordException` so the Grafana side sees the error in the trace timeline, but Sentry is the canonical exception-grouping / alerting UI.
-- **Core value:** Honest latency, Simple
-- **Why:** The boundary was ambiguous (DESIGN §5.4 lists both). Pinning it: Sentry is purpose-built for exception grouping, release-tracking, and noise suppression — re-deriving that in Grafana is wasted effort; OTel traces/metrics are purpose-built for latency/rates — Sentry can't show a span tree. `recordException` on spans keeps the trace self-describing without making Grafana the alerting surface. Resolved per `GLOBAL-033` (build-vs-adopt → use each tool for its job).
-- **Consequence in code:** Uncaught + explicitly-captured exceptions report to Sentry; `setupTelemetry` exports spans/metrics to Grafana; the span-level `recordException` (already wired) stays. No exception-grouping logic is built on the Grafana side.
-- **Alternatives rejected:**
-  - **OTel-only (drop Sentry)** — Grafana error-tracking is less mature for grouping/alerting; we'd rebuild Sentry badly.
-  - **Sentry-only** — loses the span tree and metric histograms OTel gives for free.
+**Body:** [`decisions/SK-OBS-011-sentry-grafana-boundary.md`](./decisions/SK-OBS-011-sentry-grafana-boundary.md).
+Exception triage lives in **Sentry** (canonical grouping/alerting UI); traces + metrics go to **Grafana Cloud** via OTel. Not redundant — spans still `recordException` so Grafana shows the error in the trace timeline, but Sentry owns exception grouping/alerting (`GLOBAL-033`, use each tool for its job).
+
+### SK-OBS-012 — Unexpected server/client errors also fire a throttled, redacted R&D alert email
+
+**Body:** [`decisions/SK-OBS-012-rnd-error-alert-email.md`](./decisions/SK-OBS-012-rnd-error-alert-email.md).
+Unexpected errors (`app.onError` 500s, `/v1/errors/web` client crashes) send a best-effort diagnostic email to `rnd@nlqdb.com` via the `notify()` rail + `internalErrorAlertEmail` template (`alertRnd()`). Complementary to Sentry (`SK-OBS-011`), not a replacement. Two hard constraints: a KV throttle (per-signature hourly dedup + 20/day cap) so it can't drain the **shared 3k/mo Resend quota** and break sign-in email, and `redactPii` on every field (`SK-OBS-008`) so it's never a raw-PII side channel through Resend. Expected 4xx never trigger it.
 
 ## GLOBALs governing this feature
 
