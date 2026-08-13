@@ -98,6 +98,7 @@ import { httpsRedirectTarget, withHsts } from "./https-enforce.ts";
 import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
+import { idempotencyLookup, idempotencyStore } from "./idempotency.ts";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { isMarketingMirrorPath, marketingMirrorRedirect } from "./marketing-mirror.ts";
@@ -2123,39 +2124,6 @@ app.get("/v1/chat/messages", requireSession, async (c) => {
 //
 // Response carries the plaintext exactly once (SK-APIKEYS-002 +
 // SK-APIKEYS-007); subsequent reads return `last4` only.
-// GLOBAL-005 — KV idempotency dedupe for resource-minting endpoints, same
-// shape as `POST /v1/db/connect` (`byo_connect:<tenant>:<key>`, 24h TTL =
-// SK-IDEMP-008). The `Idempotency-Key` header is optional; when present, a
-// prior success is replayed and no second resource is minted/provisioned.
-// The stored body is redacted of any one-time secret (SK-APIKEYS-013) —
-// the plaintext key is returned on the first response only.
-async function idempotencyLookup(
-  kv: KVNamespace,
-  scope: string,
-  tenantId: string,
-  key: string | undefined,
-): Promise<Record<string, unknown> | null> {
-  if (!key) return null;
-  return (await kv.get(`${scope}:${tenantId}:${key}`, "json")) as Record<string, unknown> | null;
-}
-function idempotencyStore(
-  ctx: Pick<ExecutionContext, "waitUntil">,
-  kv: KVNamespace,
-  scope: string,
-  tenantId: string,
-  key: string | undefined,
-  body: Record<string, unknown>,
-): void {
-  if (!key) return;
-  // Fire-and-forget: a KV write failure must not fail an already-committed
-  // mint/provision (mirrors the /v1/db/connect store).
-  ctx.waitUntil(
-    kv
-      .put(`${scope}:${tenantId}:${key}`, JSON.stringify(body), { expirationTtl: 86_400 })
-      .catch(() => {}),
-  );
-}
-
 const KEY_NAME_MAX = 80;
 const MCP_HOST_MAX = 32;
 const DEVICE_ID_MAX = 64;

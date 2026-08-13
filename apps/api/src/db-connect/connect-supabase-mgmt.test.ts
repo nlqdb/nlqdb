@@ -99,6 +99,17 @@ describe("connectSupabaseMgmt", () => {
     });
   });
 
+  it("rejects a malformed project ref with a 400 before any I/O (SSRF guard)", async () => {
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
+    const res = await connectSupabaseMgmt(baseDeps({ buildMgmtQuery: () => ({ query }) }), {
+      ...ARGS,
+      projectRef: "../../v1/projects/other",
+    });
+    expect(res).toMatchObject({ ok: false, status: 400 });
+    // Guard fires before the ref can reach the Management-API URL.
+    expect(query).not.toHaveBeenCalled();
+  });
+
   it("returns 503 when the KEK is unset (cannot seal)", async () => {
     const res = await connectSupabaseMgmt(baseDeps({ kek: undefined }), ARGS);
     expect(res).toMatchObject({ ok: false, status: 503 });

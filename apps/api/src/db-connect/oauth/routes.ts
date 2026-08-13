@@ -16,6 +16,7 @@
 
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { idempotencyLookup, idempotencyStore } from "../../idempotency.ts";
 import type { RequireSessionVariables } from "../../middleware.ts";
 import {
   accountTenantIdFromPrincipal,
@@ -232,6 +233,15 @@ export async function handleSupabaseSelect(c: ConnectCtx): Promise<Response> {
   if (!body?.pick || !body?.ref) {
     return c.json({ error: { status: "invalid_request" as const } }, 400);
   }
+
+  // GLOBAL-005 — idempotent connect. The `pick` id is the natural dedupe key
+  // (an explicit `Idempotency-Key` wins if the caller sends one), so a
+  // double-submit of the same picker replays the first success instead of
+  // minting a second database. Same KV replay shape as `POST /v1/db/connect`.
+  const idemKey = c.req.header("Idempotency-Key") ?? body.pick;
+  const prior = await idempotencyLookup(c.env.KV, "supabase_select", tenantId, idemKey);
+  if (prior) return c.json(prior);
+
   const tokens = await openPick(c, body.pick, tenantId);
   if (!tokens) return c.json({ error: { status: "pick_expired" as const } }, 410);
 
@@ -243,11 +253,15 @@ export async function handleSupabaseSelect(c: ConnectCtx): Promise<Response> {
     tenantId,
     name: typeof body.name === "string" && body.name.trim() ? body.name.trim() : undefined,
   });
-  if (!res.ok)
-    return c.json(
-      { error: { status: "introspection_failed" as const, message: res.message } },
-      res.status as ContentfulStatusCode,
-    );
+  if (!res.ok) {
+    // 400 is a malformed ref (invalid_request); 502/503 are introspection/seal
+    // failures — map to the string code the SDK/CLI switch on (GLOBAL-003).
+    const status =
+      res.status === 400 ? ("invalid_request" as const) : ("introspection_failed" as const);
+    return c.json({ error: { status, message: res.message } }, res.status as ContentfulStatusCode);
+  }
   await c.env.KV.delete(`${KV_PICK_PREFIX}${body.pick}`); // one-time
-  return c.json({ db_id: res.dbId, name: res.name, schema_preview: res.schemaPreview });
+  const responseBody = { db_id: res.dbId, name: res.name, schema_preview: res.schemaPreview };
+  idempotencyStore(c.executionCtx, c.env.KV, "supabase_select", tenantId, idemKey, responseBody);
+  return c.json(responseBody);
 }

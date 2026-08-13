@@ -75,10 +75,30 @@ export type ConnectSupabaseMgmtResult =
 // Max chars of rendered schema returned as a preview (matches `connectByoDb`).
 const SCHEMA_PREVIEW_LIMIT = 4000;
 
+// A Supabase project ref is exactly 20 lowercase alphanumerics. The ref is
+// interpolated into the Management-API URL path
+// (`/v1/projects/${ref}/database/query`), so anything else — `../`, a slash, a
+// scheme, whitespace/CRLF — must be rejected before it can escape the path
+// segment to another endpoint. The `/select` ref is caller-supplied, so this is
+// a load-bearing guard, not cosmetic.
+export function isValidSupabaseRef(ref: string): boolean {
+  return /^[a-z0-9]{20}$/.test(ref);
+}
+
 export async function connectSupabaseMgmt(
   deps: ConnectSupabaseMgmtDeps,
   args: ConnectSupabaseMgmtArgs,
 ): Promise<ConnectSupabaseMgmtResult> {
+  // Reject a malformed project ref before it reaches the URL path (SSRF /
+  // path-traversal guard) — cheapest check first, no I/O.
+  if (!isValidSupabaseRef(args.projectRef)) {
+    return {
+      ok: false,
+      status: 400,
+      message: "That doesn't look like a Supabase project; reconnect and pick a project.",
+    };
+  }
+
   // a. KEK gate FIRST — before any network I/O. Without it the token can't be
   //    sealed, so don't dial the user's project only to fail at persist.
   if (!deps.kek) {
