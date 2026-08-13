@@ -79,7 +79,7 @@ export default defineConfig(async () => {
               "src/https-enforce.test.ts",
               "src/marketing-mirror.test.ts",
               "src/databases/list.test.ts",
-              "src/db-connect/connect.test.ts",
+              "src/db-connect/**/*.test.ts",
               "src/db-create/**/*.test.ts",
               "src/ask/sql-validate-ddl.test.ts",
               "src/grant-status.test.ts",

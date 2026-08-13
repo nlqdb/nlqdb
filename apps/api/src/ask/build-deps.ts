@@ -15,6 +15,7 @@ import {
   createDohResolver,
   guardEgressHostResolved,
   openByoPostgres,
+  openSupabaseMgmtPostgres,
   parseClickhouseUrl,
   parseConnectionUrl,
   type Row,
@@ -24,6 +25,8 @@ import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import type { AclRetarget } from "../anon-adopt.ts";
 import { makeAclRetarget } from "../anon-adopt-regrant.ts";
+import { SUPABASE_MGMT_BLOB_SENTINEL } from "../db-connect/constants.ts";
+import { loadValidSupabaseGrant } from "../db-connect/oauth/grant-store.ts";
 import { resolveDb } from "../db-registry.ts";
 import { buildEventEmitter } from "../events-emitter.ts";
 import { getLLMRouter } from "../llm-router.ts";
@@ -127,6 +130,11 @@ export type ExecRunners = {
   runByoPg: (url: string, sql: string, signal?: AbortSignal) => Promise<QueryResult>;
   // BYO ClickHouse: rebuild the spec from the URL + run the SQL.
   runClickhouse: (url: string, sql: string, signal?: AbortSignal) => Promise<QueryResult>;
+  // BYO Supabase over the Management-API transport (`SK-DBCONN-003`): no URL —
+  // the token rides `db_oauth_grants`, so this runner takes the row and runs the
+  // SQL read-only over HTTPS (`POST /database/query`). No egress guard: the
+  // target is Supabase's own first-party API host, not a user-supplied one.
+  runSupabaseMgmt: (db: DbRecord, sql: string, signal?: AbortSignal) => Promise<QueryResult>;
 };
 
 // Executes the LLM-emitted SQL against the resolved DB. Dispatches on the
@@ -156,6 +164,13 @@ export async function dispatchExec(
   if (db.engine === "clickhouse") {
     const url = await openUrl(db);
     return runners.runClickhouse(url, sql, signal);
+  }
+  // Supabase mgmt-connected row: the sentinel blob carries no DSN — dispatch to
+  // the HTTPS Management-API transport, which loads the sealed token itself
+  // (`SK-DBCONN-003`). Checked before the generic BYO-blob branch so `openUrl`
+  // never tries to `openSecret` the sentinel.
+  if (db.connectionBlob === SUPABASE_MGMT_BLOB_SENTINEL) {
+    return runners.runSupabaseMgmt(db, sql, signal);
   }
   if (db.connectionBlob) {
     const url = await openUrl(db);
@@ -223,6 +238,7 @@ const DEFAULT_RUNNERS: ExecRunners = {
   runHostedPg: runHostedPgQuery,
   runByoPg: runByoPgQuery,
   runClickhouse: runClickhouseQuery,
+  runSupabaseMgmt: runSupabaseMgmtQuery,
 };
 
 // Per-statement wall-clock cap on every request-path exec. DDL already
@@ -414,6 +430,38 @@ async function runByoPgQuery(url: string, sql: string, signal?: AbortSignal): Pr
       }
     },
   );
+}
+
+// BYO Supabase over the Management API (`SK-DBCONN-003`). No sealed DSN: load
+// this row's OAuth token (refreshing it if expired), then run the already-
+// validated SQL read-only over `POST /v1/projects/{ref}/database/query`. The
+// transport adapter owns its own `db.query` span + duration metric, so there is
+// no extra span wrapping here. `read_only:true` (in the adapter) is the guard
+// that keeps an admin-scoped token from ever writing to the user's database.
+async function runSupabaseMgmtQuery(
+  db: DbRecord,
+  sql: string,
+  signal?: AbortSignal,
+): Promise<QueryResult> {
+  const kek = kekFromEnv(env as { BYO_SECRET_KEK?: string });
+  if (!kek) {
+    throw new DbConfigError(
+      `BYO_SECRET_KEK is unset; cannot open the Supabase token (db_id=${db.id})`,
+    );
+  }
+  const clientId = env.SUPABASE_OAUTH_CLIENT_ID;
+  const clientSecret = env.SUPABASE_OAUTH_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new DbConfigError(`Supabase OAuth client is not configured (db_id=${db.id})`);
+  }
+  const { accessToken, projectRef } = await loadValidSupabaseGrant(
+    { d1: env.DB, kek, client: { clientId, clientSecret } },
+    db.id,
+  );
+  signal?.throwIfAborted();
+  const { query } = openSupabaseMgmtPostgres(projectRef, accessToken);
+  const res = await query(sql, [], signal);
+  return { rows: res.rows, rowCount: res.rowCount ?? res.rows.length };
 }
 
 // BYO ClickHouse. Rebuild the spec from the opened URL (parser supplies

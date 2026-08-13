@@ -347,7 +347,12 @@ bun run --cwd apps/api secrets:remote   # wrangler secret bulk → deployed Work
 ```
 
 Both modes filter to the Worker-runtime subset (BETTER_AUTH_SECRET,
-OAUTH_GITHUB_*, GOOGLE_CLIENT_*, LLM keys, DATABASE_URL, GRAFANA_*).
+OAUTH_GITHUB_*, GOOGLE_CLIENT_*, SUPABASE_OAUTH_CLIENT_ID/_SECRET,
+LLM keys, DATABASE_URL, GRAFANA_*). `SUPABASE_OAUTH_*` backs the
+"Connect Supabase" OAuth flow (`SK-DBCONN-003`); the app is self-serve
+(Supabase dashboard → org → OAuth Apps), redirect URI
+`https://app.nlqdb.com/v1/db/connect/oauth/supabase/callback` (+ localhost
+dev). Absent ⇒ `/start` returns 503 and the web button falls back to paste.
 `GRAFANA_OTLP_AUTHORIZATION` is computed from the
 `GRAFANA_CLOUD_INSTANCE_ID:GRAFANA_CLOUD_API_KEY` pair so rotation
 stays on the pair (IMPLEMENTATION §2.6). Re-run after any `.envrc`

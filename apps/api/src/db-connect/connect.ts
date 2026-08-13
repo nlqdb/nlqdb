@@ -40,6 +40,7 @@ import {
 } from "@nlqdb/db";
 import { sealSecret } from "../secret-envelope.ts";
 import { BYO_SECRET_REF_SENTINEL } from "./constants.ts";
+import { makeSlug, mintUniqueDbId } from "./register-helpers.ts";
 
 export type ConnectByoDeps = {
   // Egress-guarded DNS resolver (GLOBAL-035). Forwarded to
@@ -154,7 +155,9 @@ export async function connectByoDb(
       const conn = deps.buildPostgresQuery(args.connectionUrl);
       try {
         // Schema defaults to "public" — the conventional Postgres schema.
-        const schema = await introspectPostgres(conn.query, "public");
+        // `sequential` reads over the socket avoid the cold-socket pipelining
+        // hang postgres.js hits on Workers (`SK-DBCONN-003` open question (g)).
+        const schema = await introspectPostgres(conn.query, "public", { sequential: true });
         rendered = renderByoPostgresSchema(schema);
       } finally {
         await conn.close();
@@ -211,40 +214,6 @@ export async function connectByoDb(
     schemaPreview: rendered.schemaText.slice(0, SCHEMA_PREVIEW_LIMIT),
     pkLive,
   };
-}
-
-// Normalise an arbitrary name into a safe slug body for the dbId
-// (`db_<slug>_<suffix>`). Lowercase, `[a-z0-9_]` only, collapse runs of
-// `_`, trim leading/trailing `_`. Falls back to "byo" when the input
-// reduces to nothing (e.g. a name of only punctuation).
-function makeSlug(raw: string): string {
-  const slug = raw
-    .toLowerCase()
-    .replace(/[^a-z0-9_]+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "");
-  return slug || "byo";
-}
-
-// Mint `db_<slug>_<suffix>` and confirm it's free in D1. Re-mints the
-// suffix on a true collision (bounded to 3 attempts so a misconfigured
-// suffix generator can't loop forever). Returns null if all attempts
-// collide. The id format matches the create path's `db_<slug>_<6char>`,
-// so `deriveSlug` / `displayName` in databases/list.ts render it cleanly.
-async function mintUniqueDbId(
-  d1: D1Database,
-  slug: string,
-  randomSuffix: () => string,
-): Promise<string | null> {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const dbId = `db_${slug}_${randomSuffix()}`;
-    const existing = await d1
-      .prepare("SELECT id FROM databases WHERE id = ?")
-      .bind(dbId)
-      .first<{ id: string }>();
-    if (!existing) return dbId;
-  }
-  return null;
 }
 
 // Extract the password from the raw connection URL. The parsed shapes

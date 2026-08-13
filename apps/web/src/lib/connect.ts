@@ -94,3 +94,99 @@ export async function postConnect(apiBase: string, args: ConnectArgs): Promise<C
   }
   return { ok: false, status: res.status, message: UNREADABLE_MESSAGE };
 }
+
+// ── Supabase OAuth connect (SK-DBCONN-003) ──────────────────────────────────
+// The provider button is a plain navigation to `/start` (it 302s to Supabase);
+// the callback returns to `/app/connect` with `?connected` / `?error` / `?pick`.
+// The two helpers below drive the multi-project picker (`?pick`).
+
+export interface SupabaseProjectOption {
+  ref: string;
+  name: string;
+  region: string;
+}
+
+// One-sentence, action-first copy per callback `?error=` code (GLOBAL-012).
+export function oauthConnectErrorMessage(code: string): string {
+  switch (code) {
+    case "denied":
+      return "You didn't approve access on Supabase — try again, or paste a connection string.";
+    case "no_projects":
+      return "No projects found in your Supabase account — create one, then reconnect.";
+    case "expired":
+      return "That connect link expired — start the Supabase connect again.";
+    case "introspection":
+      return "Connected, but the schema couldn't be read — reconnect and make sure the project is active.";
+    case "unconfigured":
+      return "Supabase connect isn't configured on this deployment — paste a connection string instead.";
+    default:
+      return "Something went wrong connecting Supabase — try again, or paste a connection string.";
+  }
+}
+
+export async function listPickProjects(
+  apiBase: string,
+  pickId: string,
+): Promise<{ ok: true; projects: SupabaseProjectOption[] } | { ok: false; message: string }> {
+  let res: Response;
+  try {
+    res = await fetch(
+      `${apiBase.replace(/\/$/, "")}/v1/db/connect/oauth/supabase/projects?pick=${encodeURIComponent(pickId)}`,
+      { credentials: "include" },
+    );
+  } catch {
+    return { ok: false, message: NETWORK_MESSAGE };
+  }
+  if (!res.ok) return { ok: false, message: oauthConnectErrorMessage("expired") };
+  try {
+    const json = (await res.json()) as { projects?: SupabaseProjectOption[] };
+    return { ok: true, projects: json.projects ?? [] };
+  } catch {
+    return { ok: false, message: UNREADABLE_MESSAGE };
+  }
+}
+
+export async function selectPickProject(
+  apiBase: string,
+  pickId: string,
+  ref: string,
+  name?: string,
+): Promise<ConnectOutcome> {
+  let res: Response;
+  try {
+    res = await fetch(`${apiBase.replace(/\/$/, "")}/v1/db/connect/oauth/supabase/select`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ pick: pickId, ref, ...(name ? { name } : {}) }),
+    });
+  } catch {
+    return { ok: false, status: 0, message: NETWORK_MESSAGE };
+  }
+  if (res.ok) {
+    try {
+      const json = (await res.json()) as { db_id: string; name: string; schema_preview: string };
+      return {
+        ok: true,
+        result: {
+          dbId: json.db_id,
+          name: json.name,
+          engine: "postgres",
+          schemaPreview: json.schema_preview,
+          pkLive: null,
+        },
+      };
+    } catch {
+      return { ok: false, status: res.status, message: UNREADABLE_MESSAGE };
+    }
+  }
+  try {
+    const json = (await res.json()) as { error?: { status?: number; message?: string } };
+    if (json.error?.message) {
+      return { ok: false, status: json.error.status ?? res.status, message: json.error.message };
+    }
+  } catch {
+    // not json — fall through
+  }
+  return { ok: false, status: res.status, message: UNREADABLE_MESSAGE };
+}

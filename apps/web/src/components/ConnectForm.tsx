@@ -13,7 +13,16 @@
 // preview + a "Question it now →" CTA) / error (one sentence, GLOBAL-012).
 
 import { useEffect, useId, useState } from "react";
-import { type ConnectEngine, type ConnectSuccess, postConnect } from "../lib/connect";
+import { appHref } from "../lib/app-href";
+import {
+  type ConnectEngine,
+  type ConnectSuccess,
+  listPickProjects,
+  oauthConnectErrorMessage,
+  postConnect,
+  type SupabaseProjectOption,
+  selectPickProject,
+} from "../lib/connect";
 import ErrorBoundary from "./ErrorBoundary";
 
 interface ConnectFormProps {
@@ -43,6 +52,38 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ConnectSuccess | null>(null);
+
+  // OAuth (Supabase) return states, read from the callback's redirect params:
+  //   ?connected=<dbId>  single-project auto-connect succeeded
+  //   ?error=<code>      denied / expired / no_projects / …
+  //   ?pick=<pickId>     multi-project account → render the project picker
+  const [connectedDbId, setConnectedDbId] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [pickId, setPickId] = useState<string | null>(null);
+  const [pickProjects, setPickProjects] = useState<SupabaseProjectOption[] | null>(null);
+  const [selecting, setSelecting] = useState(false);
+
+  // Parse the OAuth callback params once on mount, then strip them from the URL
+  // so a refresh doesn't replay a stale state.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get("connected");
+    const err = params.get("error");
+    const pick = params.get("pick");
+    if (connected) setConnectedDbId(connected);
+    else if (err) setOauthError(oauthConnectErrorMessage(err));
+    else if (pick) {
+      setPickId(pick);
+      void listPickProjects(apiBase, pick).then((r) => {
+        if (r.ok) setPickProjects(r.projects);
+        else setOauthError(r.message);
+      });
+    }
+    if (connected || err || pick) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [apiBase]);
 
   // SK-WEB-019 — honor a `?engine=` deep link (from the LeftRail connect
   // chips) so Postgres / ClickHouse preselects; default ClickHouse (Door B).
@@ -79,8 +120,61 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
     setLoading(false);
   }
 
+  async function onPickProject(ref: string, projectName: string) {
+    if (!pickId || selecting) return;
+    setSelecting(true);
+    setOauthError(null);
+    const outcome = await selectPickProject(apiBase, pickId, ref, projectName);
+    if (outcome.ok) {
+      setResult(outcome.result);
+      setPickId(null);
+    } else {
+      setOauthError(outcome.message);
+    }
+    setSelecting(false);
+  }
+
+  // Success (paste OR OAuth picker-select) — the schema-preview wow beat.
+  if (result) {
+    return (
+      <section className="connect">
+        <ConnectResultView result={result} />
+      </section>
+    );
+  }
+
+  // Single-project OAuth connect landed via redirect (no preview in the URL).
+  if (connectedDbId) {
+    return (
+      <section className="connect">
+        <ConnectedCard dbId={connectedDbId} />
+      </section>
+    );
+  }
+
+  // Multi-project account — choose which database to connect.
+  if (pickId) {
+    return (
+      <section className="connect">
+        <ProjectPicker
+          projects={pickProjects}
+          selecting={selecting}
+          error={oauthError}
+          onSelect={onPickProject}
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="connect">
+      <ProviderRow apiBase={apiBase} />
+      {oauthError && (
+        <div className="connect__error-wrap" role="alert">
+          <p className="connect__error">{oauthError}</p>
+        </div>
+      )}
+
       <header className="connect__head">
         <h1 className="connect__title">Question your {engineLabel}.</h1>
         <p className="connect__lede">
@@ -202,6 +296,103 @@ function readEngineFromUrl(): ConnectEngine {
   return value === "postgres" ? "postgres" : "clickhouse";
 }
 
+// Provider "Connect" button row (SK-WEB-030). Stage 1 (one live provider):
+// the button leads, the paste form stays visible below. "Connect Supabase" is a
+// plain top-level navigation to `/start` (which 302s to Supabase consent), so
+// no secret is typed into nlqdb. Honest write-scope copy sits alongside.
+function ProviderRow({ apiBase }: { apiBase: string }) {
+  const startHref = `${apiBase.replace(/\/$/, "")}/v1/db/connect/oauth/supabase/start`;
+  return (
+    <div className="connect__providers">
+      <a className="cta connect__provider" href={startHref}>
+        Connect Supabase →
+      </a>
+      <p className="connect__provider-note">
+        You approve on Supabase — no password typed here. Supabase will show a write scope (the one
+        our app requests); we only ever run read-only queries against your data.
+      </p>
+    </div>
+  );
+}
+
+// Single-project OAuth connect landed via the callback redirect (no schema
+// preview in the URL) — a durable, honest completion with the forward CTA.
+function ConnectedCard({ dbId }: { dbId: string }) {
+  return (
+    <section className="connect-result" aria-label="Connected database">
+      <p className="connect-result__id">
+        <span className="connect-result__id-label">connected</span>
+        <code>{dbId}</code>
+      </p>
+      <p className="connect__hint">
+        Your Supabase database is connected and stays read-only. Ask it anything in English.
+      </p>
+      <a className="cta connect-result__cta" href={appHref(`/app/?db=${encodeURIComponent(dbId)}`)}>
+        Question it now →
+      </a>
+    </section>
+  );
+}
+
+// Multi-project picker — the account holds more than one project, so make the
+// user choose (never silently default to the first, which could be production).
+function ProjectPicker({
+  projects,
+  selecting,
+  error,
+  onSelect,
+}: {
+  projects: SupabaseProjectOption[] | null;
+  selecting: boolean;
+  error: string | null;
+  onSelect: (ref: string, name: string) => void;
+}) {
+  return (
+    <section aria-label="Choose a Supabase project">
+      <header className="connect__head">
+        <h1 className="connect__title">Choose a database.</h1>
+        <p className="connect__lede">
+          Your Supabase account has more than one project. Pick the one to connect — we read its
+          schema and it stays read-only.
+        </p>
+      </header>
+      {error && (
+        <div className="connect__error-wrap" role="alert">
+          <p className="connect__error">{error}</p>
+        </div>
+      )}
+      {projects === null ? (
+        <p className="connect__hint">Loading your projects…</p>
+      ) : projects.length === 0 ? (
+        <p className="connect__hint">
+          No projects found.{" "}
+          <a className="connect__hint-link" href={appHref("/app/connect/")}>
+            Start over
+          </a>
+          .
+        </p>
+      ) : (
+        <ul className="connect__project-list">
+          {projects.map((p) => (
+            <li key={p.ref}>
+              <button
+                type="button"
+                className="connect__project"
+                disabled={selecting}
+                onClick={() => onSelect(p.ref, p.name)}
+              >
+                <span className="connect__project-name">{p.name}</span>
+                <span className="connect__project-meta">{p.region}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {selecting && <p className="connect__hint">Reading your schema…</p>}
+    </section>
+  );
+}
+
 function ConnectResultView({ result }: { result: ConnectSuccess }) {
   return (
     <section className="connect-result" aria-label="Connected database">
@@ -218,7 +409,10 @@ function ConnectResultView({ result }: { result: ConnectSuccess }) {
 
       {result.pkLive && <PkLiveRow pkLive={result.pkLive} />}
 
-      <a className="cta connect-result__cta" href={`/app/?db=${encodeURIComponent(result.dbId)}`}>
+      <a
+        className="cta connect-result__cta"
+        href={appHref(`/app/?db=${encodeURIComponent(result.dbId)}`)}
+      >
         Question it now →
       </a>
     </section>

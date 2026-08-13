@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ExecRunners } from "../src/ask/build-deps.ts";
 import { buildHostedExecSteps, dispatchExec } from "../src/ask/build-deps.ts";
 import type { DbRecord, QueryResult } from "../src/ask/types.ts";
+import { SUPABASE_MGMT_BLOB_SENTINEL } from "../src/db-connect/constants.ts";
 
 const EMPTY: QueryResult = { rows: [], rowCount: 0 };
 
@@ -14,11 +15,13 @@ function fakeRunners(): ExecRunners & {
   runHostedPg: ReturnType<typeof vi.fn>;
   runByoPg: ReturnType<typeof vi.fn>;
   runClickhouse: ReturnType<typeof vi.fn>;
+  runSupabaseMgmt: ReturnType<typeof vi.fn>;
 } {
   return {
     runHostedPg: vi.fn(async () => EMPTY),
     runByoPg: vi.fn(async () => EMPTY),
     runClickhouse: vi.fn(async () => EMPTY),
+    runSupabaseMgmt: vi.fn(async () => EMPTY),
   };
 }
 
@@ -72,6 +75,18 @@ describe("dispatchExec", () => {
     // The hosted RLS runner is never used for a BYO row.
     expect(runners.runHostedPg).not.toHaveBeenCalled();
     expect(runners.runClickhouse).not.toHaveBeenCalled();
+  });
+
+  it("Supabase mgmt (sentinel blob) → runSupabaseMgmt with the row, never opening a URL", async () => {
+    const runners = fakeRunners();
+    const openUrl = vi.fn(async () => "unused");
+    const row = db({ connectionBlob: SUPABASE_MGMT_BLOB_SENTINEL, engine: "postgres" });
+    await dispatchExec(row, "SELECT * FROM t", runners, undefined, openUrl);
+    // The token rides db_oauth_grants, not a sealed DSN — no blob is opened.
+    expect(openUrl).not.toHaveBeenCalled();
+    expect(runners.runSupabaseMgmt).toHaveBeenCalledWith(row, "SELECT * FROM t", undefined);
+    expect(runners.runByoPg).not.toHaveBeenCalled();
+    expect(runners.runHostedPg).not.toHaveBeenCalled();
   });
 
   it("ClickHouse → runClickhouse with the opened URL", async () => {

@@ -100,6 +100,7 @@ import { httpsRedirectTarget, withHsts } from "./https-enforce.ts";
 import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
+import { idempotencyLookup, idempotencyStore } from "./idempotency.ts";
 import { alertRnd } from "./internal-alert.ts";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { getLLMRouter } from "./llm-router.ts";
@@ -2204,39 +2205,6 @@ app.get("/v1/chat/messages", requireSession, async (c) => {
 //
 // Response carries the plaintext exactly once (SK-APIKEYS-002 +
 // SK-APIKEYS-007); subsequent reads return `last4` only.
-// GLOBAL-005 — KV idempotency dedupe for resource-minting endpoints, same
-// shape as `POST /v1/db/connect` (`byo_connect:<tenant>:<key>`, 24h TTL =
-// SK-IDEMP-008). The `Idempotency-Key` header is optional; when present, a
-// prior success is replayed and no second resource is minted/provisioned.
-// The stored body is redacted of any one-time secret (SK-APIKEYS-013) —
-// the plaintext key is returned on the first response only.
-async function idempotencyLookup(
-  kv: KVNamespace,
-  scope: string,
-  tenantId: string,
-  key: string | undefined,
-): Promise<Record<string, unknown> | null> {
-  if (!key) return null;
-  return (await kv.get(`${scope}:${tenantId}:${key}`, "json")) as Record<string, unknown> | null;
-}
-function idempotencyStore(
-  ctx: Pick<ExecutionContext, "waitUntil">,
-  kv: KVNamespace,
-  scope: string,
-  tenantId: string,
-  key: string | undefined,
-  body: Record<string, unknown>,
-): void {
-  if (!key) return;
-  // Fire-and-forget: a KV write failure must not fail an already-committed
-  // mint/provision (mirrors the /v1/db/connect store).
-  ctx.waitUntil(
-    kv
-      .put(`${scope}:${tenantId}:${key}`, JSON.stringify(body), { expirationTtl: 86_400 })
-      .catch(() => {}),
-  );
-}
-
 const KEY_NAME_MAX = 80;
 const MCP_HOST_MAX = 32;
 const DEVICE_ID_MAX = 64;
@@ -3697,6 +3665,29 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
   });
 });
 
+// Supabase OAuth connect handshake (`SK-DBCONN-003`). A front-end to the one
+// connect pipeline: `/start` redirects to Supabase consent; `/callback` (auth'd
+// by the one-time KV `state`, not a session) exchanges the code and either
+// connects the single project or bounces to the picker; `/projects` + `/select`
+// serve the multi-project picker. Handlers live in `db-connect/oauth/routes.ts`,
+// lazy-imported to match the connect route below.
+app.get("/v1/db/connect/oauth/supabase/start", requirePrincipal, async (c) => {
+  const { handleSupabaseStart } = await import("./db-connect/oauth/routes.ts");
+  return handleSupabaseStart(c);
+});
+app.get("/v1/db/connect/oauth/supabase/callback", async (c) => {
+  const { handleSupabaseCallback } = await import("./db-connect/oauth/routes.ts");
+  return handleSupabaseCallback(c);
+});
+app.get("/v1/db/connect/oauth/supabase/projects", requirePrincipal, async (c) => {
+  const { handleSupabaseProjects } = await import("./db-connect/oauth/routes.ts");
+  return handleSupabaseProjects(c);
+});
+app.post("/v1/db/connect/oauth/supabase/select", requirePrincipal, async (c) => {
+  const { handleSupabaseSelect } = await import("./db-connect/oauth/routes.ts");
+  return handleSupabaseSelect(c);
+});
+
 // `POST /v1/db/connect` — bring-your-own ClickHouse / Postgres. The
 // caller posts `{ engine, connection_url, name? }`; we validate +
 // egress-guard the URL (GLOBAL-035), introspect the live schema, seal
@@ -3917,6 +3908,13 @@ app.delete("/v1/databases/:id", requireSession, async (c) => {
     const { dropSchemaAndRegistry, stripDbPrefix } = await import("./db-create/neon-provision.ts");
 
     try {
+      // SK-DBCONN-003 — a Supabase OAuth row has a `db_oauth_grants` row (FK →
+      // databases.id) holding the sealed token. Delete it FIRST so the
+      // `databases` DELETE inside `dropSchemaAndRegistry` can't trip the FK, and
+      // so nlqdb stops holding the token on disconnect (P6 reversible cleanup).
+      // No provider role to DROP — the mgmt transport creates none (read-only).
+      // A non-OAuth row has no grant row, so this is a no-op there.
+      await c.env.DB.prepare("DELETE FROM db_oauth_grants WHERE db_id = ?").bind(dbId).run();
       const pg = buildPgClient(resolveDatabaseUrl(c.env));
       const schemaName = stripDbPrefix(dbId);
       await dropSchemaAndRegistry(tracer, pg, c.env.DB, dbId, schemaName);

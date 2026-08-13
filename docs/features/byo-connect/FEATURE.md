@@ -6,6 +6,7 @@ when-to-load:
     - apps/api/src/db-connect/**
     - apps/api/src/ask/build-deps.ts
     - packages/db/src/clickhouse-byo.ts
+    - packages/db/src/postgres-supabase-mgmt.ts
   topics: [byo, connect, clickhouse, postgres, db-connect, sealed-blob]
 ---
 
@@ -18,11 +19,15 @@ live, queryable BYO Postgres / ClickHouse, plus the query-time engine dispatch
 that runs the user's own engine on the `/v1/ask` path.
 **Status:** connect route + query path implemented (`SK-DBCONN-001`) — replaces
 the "primitives landed, `connect.ts` wiring remains" gap that `db-adapter` and
-`multi-engine-adapter` carried. BYO Postgres now runs on **postgres.js over
-Workers `connect()` sockets** (`SK-DBCONN-002`), so connect+query works against
-**any** Postgres (Supabase / RDS / self-hosted), not just Neon; verify with
-[`manual-test-postgres.md`](manual-test-postgres.md). Open gaps (ClickHouse SQL
-dialect, validator, TOCTOU residual) tracked under *Open questions* below.
+`multi-engine-adapter` carried. **Supabase** connects via a
+one-click **OAuth** button and runs over the **Management-API HTTPS transport**
+(`read_only:true`, `SK-DBCONN-003`) — introspection + every query go through
+`POST /v1/projects/{ref}/database/query`, not a socket, because postgres.js over
+Workers sockets (`SK-DBCONN-002`) hangs ~18s against the Supavisor pooler in
+production (Open question (g)). A **pasted** non-Neon Postgres DSN still uses the
+`SK-DBCONN-002` socket path (same known risk). Open gaps (ClickHouse SQL dialect,
+validator, TOCTOU residual, socket reachability, token-refresh concurrency)
+tracked under *Open questions* below.
 **Owners (code):** `apps/api/src/db-connect/connect.ts` (orchestrator) +
 the `POST /v1/db/connect` route handler in `apps/api/src/index.ts`,
 `packages/db/src/clickhouse-byo.ts`, `apps/api/src/ask/build-deps.ts`
@@ -45,7 +50,8 @@ introspection, `SK-DB-015` schema render) · [`multi-engine-adapter/FEATURE.md`]
 Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-DBCONN-NNN`. The list below is the index; open the linked file for the full five-field block.
 
 - [**SK-DBCONN-001**](decisions/SK-DBCONN-001-connect-verb-end-to-end.md) — `POST /v1/db/connect` end-to-end: route + standalone orchestrator + `clickhouse-byo` exec + query-time engine dispatch + sealed-blob storage.
-- [**SK-DBCONN-002**](decisions/SK-DBCONN-002-byo-postgres-driver-postgres-js.md) — BYO Postgres runs on postgres.js over Workers `connect()` sockets, not the Neon HTTP driver (fixes `introspection_failed` for any non-Neon Postgres; supersedes the implicit Neon-HTTP-for-BYO in SK-DBCONN-001).
+- [**SK-DBCONN-002**](decisions/SK-DBCONN-002-byo-postgres-driver-postgres-js.md) — BYO Postgres runs on postgres.js over Workers `connect()` sockets, not the Neon HTTP driver (fixes `introspection_failed` for any non-Neon Postgres; supersedes the implicit Neon-HTTP-for-BYO in SK-DBCONN-001). **Field-failed for Supabase** — the pooler hangs ~18s on Workers (see SK-DBCONN-003 + Open question (g)); still the code path for a pasted non-Neon DSN.
+- [**SK-DBCONN-003**](decisions/SK-DBCONN-003-oauth-supabase-mgmt-api-connect.md) — Supabase connects via OAuth + the Management-API HTTPS transport (`read_only:true`), not a socket DSN; `connectSupabaseMgmt` orchestrator, sealed OAuth token in `db_oauth_grants`, mgmt sentinel + query-time dispatch. Supersedes SK-DBCONN-002 for the Supabase path.
 
 ## GLOBALs governing this feature
 
@@ -166,6 +172,46 @@ the rule.
   relaxation). Conditional follow-up only: if a future schema rev makes the column
   nullable, the sentinel read-path in `db-registry.ts` must be retired in the same
   change.
+- **(e) OAuth surface parity N/A (`SK-DBCONN-003`) — Resolved (tracked N/A).**
+  `/start`+`/callback` are a browser-redirect flow; SDK/CLI/MCP have no consent
+  browser, so OAuth is N/A there and paste (`connection_url`) stays — the same
+  reasoned N/A class as `<nlq-data>` for the connect verb (`GLOBAL-003`). A future
+  `nlq db connect --oauth` via local loopback is a separate capability, not a gap.
+- **(f) Query-time as the Management-API admin, guarded only by `read_only:true`
+  (`SK-DBCONN-003`) — Resolved: a connected Supabase DB is read-only, permanently
+  (not "MVP").** "Question your database" must never let the planner write to a
+  user's production DB, so every mgmt query runs in a `read_only:true` transaction
+  and the leading-verb allowlist rejects non-reads before execution — two
+  independent guards. No role is created in the user's DB (simpler, less invasive —
+  `P5`), which is *more* honest than the original "we create a read-only role"
+  copy: nlqdb creates nothing. Writes are **out of scope**, not a gap. **Revisit
+  trigger (only if writes are ever a product decision):** a distinct, explicitly
+  confirmed write path wrapping the statement in `SET LOCAL ROLE` + a provisioned
+  RO role — a separate feature, never the default.
+- **(g) postgres.js over Workers sockets hangs against the Supabase pooler
+  (`SK-DBCONN-002`) — Resolved: decision + shipped mitigation.** Confirmed in prod
+  (Cloudflare logs, 2026-08-12: ~18.7s hang → 502). Two-part resolution: (1)
+  **Decision** — a non-Neon managed Postgres is connected via **OAuth / the
+  Management-API transport** (Supabase today), which is the supported path; a
+  *pasted* non-Neon Postgres DSN over the Workers socket is **best-effort**, not a
+  supported guarantee. (2) **Mitigation shipped** — `introspectPostgres` now takes
+  `{ sequential }`, and the socket path (`connect.ts`) sets it, so the three reads
+  run one-at-a-time instead of `Promise.all`-pipelining onto a still-connecting
+  socket (the leading hang cause); the mgmt HTTP path keeps the concurrent default.
+  **Residual (folded into the decision, not a standing question):** live-verify
+  against a real non-Neon *pasted* Postgres is the only trigger to reopen — if the
+  serial read still hangs, move paste-Postgres onto a WS-proxy / Hyperdrive path.
+- **(h) OAuth refresh-token rotation race under concurrency (`SK-DBCONN-003`) —
+  Resolved: covered by Supabase's refresh-token reuse interval.** `grant-store`
+  refreshes + reseals + persists last-write-wins. Supabase issues **single-use
+  refresh tokens with a ~10-second reuse interval** (auth-server behavior,
+  P2-checked 2026-08 — [Supabase sessions docs](https://supabase.com/docs/guides/auth/sessions)):
+  a refresh token can be exchanged more than once inside that window, so two
+  concurrent refreshes both succeed and neither is stranded — exactly the window our
+  last-write-wins persist can open. No single-flight needed at any realistic connect
+  QPS. **Revisit trigger:** if the management-OAuth issuer ever enforces strict
+  single-use *and* "needs reconnect" churn appears on an active mgmt DB →
+  single-flight the refresh (KV lock) or cache the access token.
 - **KEK rotation for the BYO blob — Resolved (2026-07-09), see
   [`GLOBAL-031`](../../decisions/GLOBAL-031-byo-secret-envelope.md).**
   The procedure is now scoped there for the shared envelope (BYO blob +

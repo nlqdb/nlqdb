@@ -41,6 +41,14 @@ declare global {
       GOOGLE_CLIENT_ID: string;
       GOOGLE_CLIENT_SECRET: string;
 
+      // Supabase OAuth app (SK-DBCONN-003 — "Connect Supabase"). Optional at
+      // type level: an un-configured deploy compiles, and the OAuth `/start`
+      // route returns the same 503 shape as the KEK gate while the web button
+      // falls back to paste. Same client for prod (app.nlqdb.com callback) and
+      // localhost dev — both redirect URIs are registered on the one OAuth app.
+      SUPABASE_OAUTH_CLIENT_ID?: string;
+      SUPABASE_OAUTH_CLIENT_SECRET?: string;
+
       // LLM router (docs/architecture.md §7.1). Optional at type level — providers
       // whose key is missing at boot still construct, then fail their
       // first call with `not_configured` so the router can skip them.
