@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import {
   dunningEmail,
+  internalErrorAlertEmail,
   magicLinkEmail,
   premiumInterestConfirmEmail,
   renderEmail,
@@ -97,6 +98,21 @@ describe("template catalog", () => {
     const out = serverErrorEmail("https://app.nlqdb.com/app");
     expect(out.text.toLowerCase()).toContain("our fault");
     expect(out.html).toContain("Try again");
+  });
+
+  it("internalErrorAlertEmail dumps context as key/value rows and escapes them", () => {
+    const out = internalErrorAlertEmail("server", "500 POST /v1/ask — TypeError: boom", [
+      ["path", "/v1/ask"],
+      ["error", "TypeError: <script>boom</script>"],
+    ]);
+    expect(out.subject).toBe("[nlqdb server error] 500 POST /v1/ask — TypeError: boom");
+    // Text carries each field one per line.
+    expect(out.text).toContain("path: /v1/ask");
+    expect(out.text).toContain("error: TypeError: <script>boom</script>");
+    // HTML escapes the payload — no live tag can form from field content.
+    expect(out.html).toContain("<pre");
+    expect(out.html).not.toContain("<script>boom");
+    expect(out.html).toContain("&lt;script&gt;boom");
   });
 
   it("dunningEmail links the hosted invoice when present, falls back otherwise", () => {

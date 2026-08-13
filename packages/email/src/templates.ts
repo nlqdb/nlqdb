@@ -9,7 +9,7 @@
 // one clear action, and invite a reply — every send is from a real inbox a
 // human reads.
 
-import { type RenderedEmail, renderEmail } from "./render.ts";
+import { escapeHtml, type RenderedEmail, renderEmail } from "./render.ts";
 
 // Magic-link sign-in (fail-loud send; the only email that blocks its flow).
 // `continueUrl` is the click-through page that shields the token from inbox
@@ -74,6 +74,30 @@ export function serverErrorEmail(appUrl: string): RenderedEmail {
     cta: { label: "Try again", url: appUrl },
     footer: ["Still stuck? Just reply to this email and a human will dig in."],
   });
+}
+
+// Internal R&D error alert (SK-OBS-012) — NOT a customer email. A dense,
+// monospace diagnostic dump to `rnd@nlqdb.com` on an unexpected server/client
+// error, for triage. Reuses the shared `escapeHtml` (the security-relevant
+// mechanic) but renders a `<pre>` context block instead of the branded CTA
+// shell — an alert's shape is a key/value dump, not a call to action. The
+// caller is responsible for redacting PII out of `summary` / `fields` before
+// it reaches here.
+export function internalErrorAlertEmail(
+  kind: "server" | "client",
+  summary: string,
+  fields: Array<[string, string]>,
+): RenderedEmail {
+  const subject = `[nlqdb ${kind} error] ${summary}`.slice(0, 200);
+  const rows = fields.map(([k, v]) => `${k}: ${v}`);
+  const text = [summary, "", ...rows].join("\n");
+  const html =
+    '<div style="font-family:system-ui,sans-serif;color:#111;">' +
+    `<p style="margin:0 0 12px;font-weight:600;">${escapeHtml(summary)}</p>` +
+    '<pre style="margin:0;padding:12px;background:#f5f5f5;border:1px solid #ddd;' +
+    'white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.5;">' +
+    `${escapeHtml(rows.join("\n"))}</pre></div>`;
+  return { subject, text, html };
 }
 
 // Billing dunning (SK-STRIPE-013) — sent from the events-worker on

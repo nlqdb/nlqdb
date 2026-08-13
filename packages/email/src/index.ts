@@ -40,6 +40,7 @@ export {
 } from "./render.ts";
 export {
   dunningEmail,
+  internalErrorAlertEmail,
   magicLinkEmail,
   premiumInterestConfirmEmail,
   serverErrorEmail,
