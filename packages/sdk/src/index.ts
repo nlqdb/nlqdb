@@ -505,15 +505,6 @@ export type ModelCatalog = {
   presets: CatalogPreset[];
   free: { label: string; note: string };
   providers: CatalogProvider[];
-  // Hosted-premium block (SK-PREMIUM-009 / SK-PREMIUM-013). Present on the
-  // `GET /v1/models` response; `live` mirrors the server's `premiumConfigured`
-  // gate so surfaces render the interest-capture door while dark and the real
-  // subscribe CTA once live (GLOBAL-023).
-  premium?: {
-    live: boolean;
-    models: { provider: string; model: string; label: string; status: "live" | "coming_soon" }[];
-    allowance: Record<string, number>;
-  };
 };
 
 // Discriminated so the type system rejects callers that pass both

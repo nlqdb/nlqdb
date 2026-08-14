@@ -84,27 +84,6 @@ declare global {
       // Absent → POST /v1/billing/checkout returns 503 plan_not_configured.
       STRIPE_PRICE_HOBBY?: string;
       STRIPE_PRICE_PRO?: string;
-      // Metered overage Price id for the hosted-premium lane (SK-PREMIUM-002).
-      // Created by the checked-in bootstrap script; attached lazily on first
-      // overage. Absent → overage is ledgered but not attached to a Stripe item.
-      STRIPE_PRICE_OVERAGE_ANTHROPIC?: string;
-      // Stripe Billing Meter id for the premium overage meter — read by the
-      // daily reconciliation (SK-PREMIUM-017). Absent → reconciliation
-      // ack-and-skips.
-      STRIPE_PREMIUM_METER_ID?: string;
-
-      // Hosted-premium meter (premium-tier). BOTH must be set (plus the AI
-      // Gateway) for the lane to leave dormancy — until then `/v1/ask` never
-      // routes to the premium lane and no meter fires (GLOBAL-026 "wired but
-      // dark"; SK-PREMIUM-009). Human-only to provision (blocked-by-human):
-      //   • PREMIUM_ANTHROPIC_API_KEY — the platform's own Anthropic key,
-      //     billed to us; each query is metered back to the customer at 0%
-      //     markup. Rides the AI Gateway compat endpoint.
-      //   • PREMIUM_METER_LIVE — the §6 gate. Only `1` or `true`
-      //     (case-insensitive) flips the meter live; anything else (incl.
-      //     `false`/`0`/`no`) stays dark (`meterLive()` in premium/limits.ts).
-      PREMIUM_ANTHROPIC_API_KEY?: string;
-      PREMIUM_METER_LIVE?: string;
 
       // KEK for the bring-your-own secret-at-rest envelope (`GLOBAL-031`,
       // `src/secret-envelope.ts`) — the single Workers-held key that seals
