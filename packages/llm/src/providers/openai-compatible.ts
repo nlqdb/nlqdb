@@ -166,8 +166,9 @@ export async function openAICompatibleChat(req: ChatRequest, opts?: CallOpts): P
   }
   // Best-effort usage report for the hosted-premium meter. Only fires when a
   // sink is wired (premium lane) and the upstream returned a `usage` block; a
-  // missing/garbled `usage` maps to all-zeros rather than throwing — the meter
-  // treats a zero-token query as a $0 (still consumes one allowance slot).
+  // missing/garbled `usage` maps to all-zeros rather than throwing — the
+  // caller treats zero billable tokens as unmetered (no slot, no charge —
+  // customer-favouring, same as a plan-cache hit).
   if (req.onUsage && parsed.usage) req.onUsage(parseChatUsage(parsed.usage));
   return content;
 }

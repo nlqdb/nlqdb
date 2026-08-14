@@ -158,7 +158,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
   - *In this feature:* Free tier never routes to the paid chain. Premium-tier code in the Worker bundle must respect the 3 MiB ceiling — pricing tables are loaded from KV, not bundled, if they grow.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
-  - *In this feature:* The `nlqdb.premium.spend_usd_cents` gauge and `nlqdb.premium.cap_hit.total` counter are wired alongside the existing `gen_ai.*` attributes on the LLM-router span; no new span is needed, only new attributes/metrics.
+  - *In this feature:* `nlqdb.premium.cap_hit.total` is wired; the `nlqdb.premium.spend_usd_cents` gauge is defined but parked with the per-(DB, key) grain. The meter/reconcile Stripe calls carry `nlqdb.billing.premium.{meter_event,overage_item,reconcile}` spans.
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
   - *In this feature:* The `model` preset is the single way to express "I want better accuracy on this DB" — no parallel `--accuracy=high` flag, no `priority=premium` overload of the existing priority hint.
 - **GLOBAL-019** — Free + Open Source core (FSL-1.1-ALv2 → Apache-2.0); Cloud is convenience, not a moat.

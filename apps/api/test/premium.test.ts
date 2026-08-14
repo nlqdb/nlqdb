@@ -95,19 +95,46 @@ describe("dormancy gate (premiumConfigured)", () => {
 describe("resolvePremiumEligibility", () => {
   it("is never eligible while dark, even for a paid user", () => {
     expect(
-      resolvePremiumEligibility({ env: {}, plan: "pro", currentPeriodEnd: 1000 }).eligible,
+      resolvePremiumEligibility({ env: {}, plan: "pro", status: "active", currentPeriodEnd: 1000 })
+        .eligible,
     ).toBe(false);
   });
   it("is never eligible on free/unknown plans or without a period boundary", () => {
     expect(
-      resolvePremiumEligibility({ env: LIVE_ENV, plan: "free", currentPeriodEnd: 1000 }).eligible,
+      resolvePremiumEligibility({
+        env: LIVE_ENV,
+        plan: "free",
+        status: "active",
+        currentPeriodEnd: 1000,
+      }).eligible,
     ).toBe(false);
     expect(
-      resolvePremiumEligibility({ env: LIVE_ENV, plan: "hobby", currentPeriodEnd: null }).eligible,
+      resolvePremiumEligibility({
+        env: LIVE_ENV,
+        plan: "hobby",
+        status: "active",
+        currentPeriodEnd: null,
+      }).eligible,
     ).toBe(false);
   });
-  it("is eligible for a paid user on a live deployment", () => {
-    const e = resolvePremiumEligibility({ env: LIVE_ENV, plan: "hobby", currentPeriodEnd: 1234 });
+  it("is never eligible when the subscription is not in good standing", () => {
+    // The customers row keeps its price_id after cancellation / payment
+    // failure, so plan alone would meter overage to a subscription that never
+    // invoices it (dunning routes premium back to the free chain).
+    for (const status of ["past_due", "unpaid", "canceled", "incomplete", "paused"]) {
+      expect(
+        resolvePremiumEligibility({ env: LIVE_ENV, plan: "pro", status, currentPeriodEnd: 1000 })
+          .eligible,
+      ).toBe(false);
+    }
+  });
+  it("is eligible for an active paid user on a live deployment", () => {
+    const e = resolvePremiumEligibility({
+      env: LIVE_ENV,
+      plan: "hobby",
+      status: "active",
+      currentPeriodEnd: 1234,
+    });
     expect(e).toEqual({ eligible: true, tier: "hobby", periodStart: 1234 });
   });
 });

@@ -16,6 +16,7 @@
 // would page for a read-only comparison).
 
 import { premiumMeterReconcileDriftUsdCents } from "@nlqdb/otel";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { newStripeClient } from "../../stripe/client.ts";
 
 // Pure: drift = internal reported total − Stripe reported total, in USD cents.
@@ -45,6 +46,12 @@ export async function reconcilePremiumMeter(
   windowStart: number,
   windowEnd: number,
 ): Promise<ReconcileResult> {
+  // Stripe's meter-summary endpoint rejects timestamps that aren't aligned to
+  // minute boundaries; floor both edges once so the D1 sums and the Stripe
+  // read cover the identical window.
+  windowStart = Math.floor(windowStart / 60) * 60;
+  windowEnd = Math.floor(windowEnd / 60) * 60;
+
   // Layer 1 — stuck rows (unreported / errored). Pure D1; always runs.
   const stuckRow = await db
     .prepare(
@@ -67,54 +74,64 @@ export async function reconcilePremiumMeter(
     return { ran: false, reason: "stripe_unconfigured", stuckCents };
   }
 
-  try {
-    const stripe = newStripeClient(env.STRIPE_SECRET_KEY);
-    // Distinct customers with a reported row in the window — Stripe summaries
-    // are per-customer, so we compare each one's internal reported total.
-    const active = await db
-      .prepare(
-        "SELECT customer_id, COALESCE(SUM(cost_cents),0) AS total FROM premium_meter_events " +
-          "WHERE stripe_status = 'reported' AND reported_at >= ? AND reported_at < ? GROUP BY customer_id",
-      )
-      .bind(windowStart, windowEnd)
-      .all<{ customer_id: string; total: number }>();
+  // GLOBAL-014 — the Stripe reads are external calls; span the cross-check.
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.billing.premium.reconcile", async (span) => {
+    try {
+      const stripe = newStripeClient(env.STRIPE_SECRET_KEY as string);
+      // Distinct customers with a reported row in the window — Stripe summaries
+      // are per-customer, so we compare each one's internal reported total.
+      const active = await db
+        .prepare(
+          "SELECT customer_id, COALESCE(SUM(cost_cents),0) AS total FROM premium_meter_events " +
+            "WHERE stripe_status = 'reported' AND reported_at >= ? AND reported_at < ? GROUP BY customer_id",
+        )
+        .bind(windowStart, windowEnd)
+        .all<{ customer_id: string; total: number }>();
 
-    let crossChecked = 0;
-    for (const row of active.results ?? []) {
-      const stripeCustomerId = await stripeCustomerFor(db, row.customer_id);
-      if (!stripeCustomerId) continue;
-      const summaries = await stripe.billing.meters.listEventSummaries(
-        env.STRIPE_PREMIUM_METER_ID,
-        { customer: stripeCustomerId, start_time: windowStart, end_time: windowEnd },
-      );
-      let stripeCents = 0;
-      for (const s of summaries.data) stripeCents += s.aggregated_value;
-      const drift = computeDrift(row.total, stripeCents);
-      crossChecked += 1;
-      if (drift !== 0) {
-        console.warn(
-          JSON.stringify({
-            level: "warn",
-            msg: "premium_meter_reconcile_drift",
-            customer_id: row.customer_id,
-            internal_cents: row.total,
-            stripe_cents: stripeCents,
-            drift_cents: drift,
-          }),
+      let crossChecked = 0;
+      for (const row of active.results ?? []) {
+        const stripeCustomerId = await stripeCustomerFor(db, row.customer_id);
+        if (!stripeCustomerId) continue;
+        const summaries = await stripe.billing.meters.listEventSummaries(
+          env.STRIPE_PREMIUM_METER_ID as string,
+          { customer: stripeCustomerId, start_time: windowStart, end_time: windowEnd },
         );
+        let stripeCents = 0;
+        for (const s of summaries.data) stripeCents += s.aggregated_value;
+        const drift = computeDrift(row.total, stripeCents);
+        crossChecked += 1;
+        if (drift !== 0) {
+          console.warn(
+            JSON.stringify({
+              level: "warn",
+              msg: "premium_meter_reconcile_drift",
+              customer_id: row.customer_id,
+              internal_cents: row.total,
+              stripe_cents: stripeCents,
+              drift_cents: drift,
+            }),
+          );
+        }
       }
+      span.setAttribute("nlqdb.premium.reconcile_cross_checked", crossChecked);
+      return { ran: true, stuckCents, crossChecked };
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      console.error(
+        JSON.stringify({
+          level: "error",
+          msg: "premium_reconcile_stripe_read_failed",
+          error: error.message,
+        }),
+      );
+      return { ran: false, reason: "stripe_error", stuckCents };
+    } finally {
+      span.end();
     }
-    return { ran: true, stuckCents, crossChecked };
-  } catch (err) {
-    console.error(
-      JSON.stringify({
-        level: "error",
-        msg: "premium_reconcile_stripe_read_failed",
-        error: err instanceof Error ? err.message : String(err),
-      }),
-    );
-    return { ran: false, reason: "stripe_error", stuckCents };
-  }
+  });
 }
 
 async function stripeCustomerFor(db: D1Database, userId: string): Promise<string | null> {

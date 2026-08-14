@@ -16,6 +16,7 @@
 // input, SK-PREMIUM-002 #7). This module only moves the resulting cents.
 
 import { PREMIUM_MODEL, PREMIUM_PROVIDER } from "@nlqdb/llm";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import type Stripe from "stripe";
 import { newStripeClient } from "../../stripe/client.ts";
 
@@ -28,8 +29,10 @@ export function overageMeterName(model: string = PREMIUM_MODEL): string {
 
 // Deterministic, idempotent event id. Scoped to the customer + the request's
 // idempotency key (or a caller-supplied stable request id) so a retried
-// `/v1/ask` never double-bills (SK-PREMIUM-002 / GLOBAL-005). Used as BOTH the
-// ledger PK and the Stripe `identifier`.
+// `/v1/ask` that carries the same `Idempotency-Key` can't double-report the
+// meter (SK-PREMIUM-002 / GLOBAL-005) — the allowance-slot decrement is
+// separate and not keyed, and a keyless retry is a fresh dispatch billed as
+// such. Used as BOTH the ledger PK and the Stripe `identifier`.
 export function meterEventId(customerId: string, requestKey: string): string {
   return `premium:${customerId}:${requestKey}`;
 }
@@ -84,38 +87,48 @@ export async function reportMeterEvent(
   if (!env.PREMIUM_METER_LIVE) return { reported: false, reason: "meter_dark" };
   if (!env.STRIPE_SECRET_KEY) return { reported: false, reason: "stripe_unconfigured" };
   const stripe = newStripeClient(env.STRIPE_SECRET_KEY);
-  try {
-    await stripe.billing.meterEvents.create({
-      event_name: overageMeterName(ev.model),
-      identifier: ev.eventId,
-      payload: {
-        stripe_customer_id: ev.stripeCustomerId,
-        // Meter value in USD cents; the human-configured overage Price sets
-        // 1 unit = $0.01 so the sum invoices at exact provider list (0% markup).
-        value: String(Math.round(ev.costCents)),
-      },
-    });
-    await db
-      .prepare("UPDATE premium_meter_events SET stripe_status = 'reported' WHERE event_id = ?")
-      .bind(ev.eventId)
-      .run();
-    return { reported: true };
-  } catch (err) {
-    await db
-      .prepare("UPDATE premium_meter_events SET stripe_status = 'error' WHERE event_id = ?")
-      .bind(ev.eventId)
-      .run()
-      .catch(() => {});
-    console.error(
-      JSON.stringify({
-        level: "error",
-        msg: "premium_meter_report_failed",
-        event_id: ev.eventId,
-        error: err instanceof Error ? err.message : String(err),
-      }),
-    );
-    return { reported: false, reason: "stripe_error" };
-  }
+  const tracer = trace.getTracer("@nlqdb/api");
+  // GLOBAL-014 — the Stripe round-trip is an external call; span it.
+  return tracer.startActiveSpan("nlqdb.billing.premium.meter_event", async (span) => {
+    span.setAttribute("nlqdb.premium.event_id", ev.eventId);
+    try {
+      await stripe.billing.meterEvents.create({
+        event_name: overageMeterName(ev.model),
+        identifier: ev.eventId,
+        payload: {
+          stripe_customer_id: ev.stripeCustomerId,
+          // Meter value in USD cents; the human-configured overage Price sets
+          // 1 unit = $0.01 so the sum invoices at exact provider list (0% markup).
+          value: String(Math.round(ev.costCents)),
+        },
+      });
+      await db
+        .prepare("UPDATE premium_meter_events SET stripe_status = 'reported' WHERE event_id = ?")
+        .bind(ev.eventId)
+        .run();
+      return { reported: true };
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      await db
+        .prepare("UPDATE premium_meter_events SET stripe_status = 'error' WHERE event_id = ?")
+        .bind(ev.eventId)
+        .run()
+        .catch(() => {});
+      console.error(
+        JSON.stringify({
+          level: "error",
+          msg: "premium_meter_report_failed",
+          event_id: ev.eventId,
+          error: error.message,
+        }),
+      );
+      return { reported: false, reason: "stripe_error" };
+    } finally {
+      span.end();
+    }
+  });
 }
 
 // Lazily attach the metered overage subscription item on first overage
@@ -135,4 +148,55 @@ export async function ensureOverageItem(
     price: args.overagePriceId,
   });
   return item.id;
+}
+
+// The env + D1 half of the lazy attach: resolve the customer's subscription id
+// and delegate to `ensureOverageItem`. Meter events without a subscription
+// item on the overage Price aggregate in Stripe but never reach an invoice, so
+// this runs on each overage report (waitUntil, dark lane, low volume — the
+// retrieve is idempotent and cheap at this scale). Best-effort: any failure
+// logs and returns — the meter event still ships and the ledger row stays the
+// reconciliation signal; the attach retries on the customer's next overage.
+export async function ensurePremiumOverageItem(
+  env: {
+    STRIPE_SECRET_KEY?: string;
+    PREMIUM_METER_LIVE?: string;
+    STRIPE_PRICE_OVERAGE_ANTHROPIC?: string;
+  },
+  db: D1Database,
+  customerId: string,
+): Promise<void> {
+  if (!env.PREMIUM_METER_LIVE || !env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_OVERAGE_ANTHROPIC) {
+    return;
+  }
+  const tracer = trace.getTracer("@nlqdb/api");
+  // GLOBAL-014 — Stripe retrieve/create are external calls; span them.
+  await tracer.startActiveSpan("nlqdb.billing.premium.overage_item", async (span) => {
+    try {
+      const row = await db
+        .prepare("SELECT stripe_subscription_id AS sid FROM customers WHERE user_id = ?")
+        .bind(customerId)
+        .first<{ sid: string | null }>();
+      if (!row?.sid) return;
+      const stripe = newStripeClient(env.STRIPE_SECRET_KEY as string);
+      await ensureOverageItem(stripe, {
+        subscriptionId: row.sid,
+        overagePriceId: env.STRIPE_PRICE_OVERAGE_ANTHROPIC as string,
+      });
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      console.error(
+        JSON.stringify({
+          level: "error",
+          msg: "premium_overage_item_attach_failed",
+          user_id: customerId,
+          error: error.message,
+        }),
+      );
+    } finally {
+      span.end();
+    }
+  });
 }

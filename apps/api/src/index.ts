@@ -1115,7 +1115,8 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // PREMIUM_METER_LIVE — `premiumConfigured` short-circuits before any D1
     // read, so on a normal deployment this whole block is a provable no-op and
     // `/v1/ask` routes exactly as before (the dormancy the tests assert). Only
-    // a signed-in paid user with NO BYOLLM credential is eligible: header /
+    // a signed-in, `active`-status paid user with NO BYOLLM credential is
+    // eligible (past_due/canceled fall to the free chain): header /
     // account BYOLLM keys always win (GLOBAL-026 precedence), and `fast` pins
     // the strict-$0 chain. `best` is satisfiable via this lane, so an eligible
     // caller never 409s `model_unavailable`.
@@ -1163,6 +1164,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         const elig = resolvePremiumEligibility({
           env: c.env,
           plan: billing.plan,
+          status: cust.status,
           currentPeriodEnd: cust.cpe,
         });
         if (elig.eligible) {
@@ -1188,7 +1190,15 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               periodStart: elig.periodStart,
               stripeCustomerId: cust.scid,
               usage,
-              requestKey: c.req.header("Idempotency-Key") ?? crypto.randomUUID(),
+              // Meter-event key. The composed Stripe `identifier`
+              // (`premium:<customer>:<key>`) tops out at 100 chars, so an
+              // oversize client key falls back to a UUID (each dispatch is a
+              // real LLM call, so billing it fresh is correct — only the
+              // retry dedup is lost).
+              requestKey: (() => {
+                const k = c.req.header("Idempotency-Key");
+                return k && k.length <= 56 ? k : crypto.randomUUID();
+              })(),
               router: buildPremiumRouter({
                 apiKey: c.env.PREMIUM_ANTHROPIC_API_KEY ?? "",
                 accountId: c.env.AI_GATEWAY_ACCOUNT_ID ?? "",
@@ -1509,6 +1519,19 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
                 periodStart: premiumRun.periodStart,
                 overageCents: s.overageCents,
                 requestKey: premiumRun.requestKey,
+              }).catch((err: unknown) => {
+                // A ledger D1 failure here means the overage never reached the
+                // ledger OR Stripe — silent under-billing; log it so the miss
+                // is at least greppable (the reconcile job can't see a row
+                // that was never inserted).
+                console.error(
+                  JSON.stringify({
+                    level: "error",
+                    msg: "premium_overage_report_failed",
+                    user_id: principal.id,
+                    error: err instanceof Error ? err.message : String(err),
+                  }),
+                );
               }),
             );
           }

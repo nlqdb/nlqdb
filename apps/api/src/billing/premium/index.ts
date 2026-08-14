@@ -27,7 +27,13 @@ import type { BillingPlan } from "../../stripe/billing-status.ts";
 import { consumeAllowance } from "./allowance.ts";
 import { sizedBucket, slotsForTokens } from "./guardrails.ts";
 import { type PremiumTier, tierForPlan } from "./limits.ts";
-import { meterEventId, type OverageEvent, recordOverageLedger, reportMeterEvent } from "./meter.ts";
+import {
+  ensurePremiumOverageItem,
+  meterEventId,
+  type OverageEvent,
+  recordOverageLedger,
+  reportMeterEvent,
+} from "./meter.ts";
 import type { PreDispatchDecision } from "./overflow.ts";
 
 export * from "./allowance.ts";
@@ -46,6 +52,7 @@ export type PremiumEnv = {
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ID?: string;
   STRIPE_SECRET_KEY?: string;
+  STRIPE_PRICE_OVERAGE_ANTHROPIC?: string;
 };
 
 // True only when every operator prerequisite for a LIVE hosted-premium meter is
@@ -66,15 +73,23 @@ export type PremiumEligibility =
   | { eligible: true; tier: PremiumTier; periodStart: number };
 
 // A request is premium-eligible when the lane is configured live, the caller is
-// on a paid tier, and their subscription has a current-period boundary to key
-// the allowance to. Free/unknown tiers and anon principals are never eligible
-// (GLOBAL-026 — free tier never sees hosted premium).
+// on a paid tier IN GOOD STANDING (`status === "active"`), and their
+// subscription has a current-period boundary to key the allowance to.
+// Free/unknown tiers and anon principals are never eligible (GLOBAL-026 — free
+// tier never sees hosted premium). `past_due`/`unpaid`/`canceled` etc. fall to
+// the free chain — the customers row keeps its `price_id` after cancellation
+// and payment failure, so gating on plan alone would meter overage to a
+// subscription that will never invoice it (premium-tier FEATURE.md's
+// payment-fail routing: dunning → free chain, re-enabled on a successful
+// charge via the SK-STRIPE-005 status sync).
 export function resolvePremiumEligibility(args: {
   env: PremiumEnv;
   plan: BillingPlan;
+  status: string;
   currentPeriodEnd: number | null;
 }): PremiumEligibility {
   if (!premiumConfigured(args.env)) return { eligible: false };
+  if (args.status !== "active") return { eligible: false };
   const tier = tierForPlan(args.plan);
   if (!tier || args.currentPeriodEnd == null) return { eligible: false };
   return { eligible: true, tier, periodStart: args.currentPeriodEnd };
@@ -189,7 +204,12 @@ export async function reportPremiumOverage(
   // Only report to Stripe on the first ledger insert (dispatch-after-insert,
   // SK-STRIPE-002 / SK-IDEMP-006) — a retry hits the ledger's ON CONFLICT and
   // never re-reports.
-  if (firstInsert) await reportMeterEvent(env, db, ev);
+  if (!firstInsert) return;
+  // Lazily attach the metered overage subscription item on first overage
+  // (SK-PREMIUM-002 #8) — without it the meter events aggregate in Stripe but
+  // never reach an invoice. Best-effort; the meter event ships regardless.
+  await ensurePremiumOverageItem(env, db, args.customerId);
+  await reportMeterEvent(env, db, ev);
 }
 
 // Surface a free-chain fall-through at the metric layer. The trace surfacing
