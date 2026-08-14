@@ -26,6 +26,33 @@ export default defineConfig({
     starlight({
       title: "nlqdb",
       description: "A database you talk to. Documentation.",
+      // Starlight emits og:title / og:type / og:url / og:description by default
+      // but never og:image — one of the four required Open Graph tags — so every
+      // page reads as an incomplete OG card in social/SEO crawlers. Inject a
+      // single site-wide card (absolute URL, matching apps/web's og-default.png
+      // per GLOBAL-017) plus twitter:image. Static PNG in public/, no build-time
+      // rasteriser on the free-tier path (GLOBAL-013).
+      head: [
+        {
+          tag: "meta",
+          attrs: { property: "og:image", content: "https://docs.nlqdb.com/og-default.png" },
+        },
+        { tag: "meta", attrs: { property: "og:image:width", content: "1200" } },
+        { tag: "meta", attrs: { property: "og:image:height", content: "630" } },
+        { tag: "meta", attrs: { property: "og:image:type", content: "image/png" } },
+        {
+          tag: "meta",
+          attrs: { property: "og:image:alt", content: "nlqdb — a database you talk to." },
+        },
+        {
+          tag: "meta",
+          attrs: { name: "twitter:image", content: "https://docs.nlqdb.com/og-default.png" },
+        },
+        {
+          tag: "meta",
+          attrs: { name: "twitter:image:alt", content: "nlqdb — a database you talk to." },
+        },
+      ],
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/nlqdb/nlqdb" }],
       editLink: {
         baseUrl: "https://github.com/nlqdb/nlqdb/edit/main/apps/docs/",
