@@ -194,20 +194,6 @@ export type CallOpts = {
   signal?: AbortSignal;
 };
 
-// Token usage surfaced by a provider for the hosted-premium meter
-// (premium-tier `SK-PREMIUM-002` #7). The four token classes are kept
-// separate so the meter bills each at the provider's real rate and
-// **never bills cached reads as full input tokens**. `inputTokens` is the
-// NON-cached input (the extractor already subtracted the cache-read subset),
-// so a cost is a clean per-class sum. All lanes can surface this, but only
-// the hosted-premium lane meters it (free/BYOLLM are 0%-markup / not billed).
-export type TokenUsage = {
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
-};
-
 export type Provider = {
   name: ProviderName;
   // Resolved model string (e.g. "openai/gpt-oss-20b") used as the

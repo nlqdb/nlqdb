@@ -82,16 +82,6 @@ export type ModelCatalog = {
   free: { label: string; note: string };
   // BYOLLM provider rows (GLOBAL-026), in display order.
   providers: CatalogProvider[];
-  // Hosted-premium block (SK-PREMIUM-009 / SK-PREMIUM-013). Populated by the
-  // `GET /v1/models` route handler (which reads the deployment env), NOT by the
-  // pure `MODEL_CATALOG` snapshot. Surfaces read `live` to pick the door: dark
-  // → interest capture ("count me in"), live → the real subscribe CTA
-  // (GLOBAL-023 — never a buyable state the deployment can't sell).
-  premium?: {
-    live: boolean;
-    models: { provider: string; model: string; label: string; status: "live" | "coming_soon" }[];
-    allowance: Record<string, number>;
-  };
 };
 
 export const CATALOG_PRESETS: CatalogPreset[] = [

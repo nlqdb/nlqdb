@@ -86,26 +86,6 @@ export {
   type PlanExemplar,
   retrievePlanExemplars,
 } from "./plan-exemplar-pool.ts";
-// Hosted-premium dispatch lane (SK-LLM-017 / SK-PREMIUM-009) — a single-provider
-// Anthropic router with a per-request usage sink for the meter. Dark until an
-// operator provisions the key + flips PREMIUM_METER_LIVE.
-export {
-  buildPremiumRouter,
-  type PremiumRouterOptions,
-} from "./premium-dispatch.ts";
-// Hosted-premium meter pricing (SK-PREMIUM-002) — provider list + 0% markup.
-export {
-  HOSTED_PREMIUM_MODELS,
-  type HostedPremiumModel,
-  isPremiumModelPriced,
-  PREMIUM_MODEL,
-  PREMIUM_PROVIDER,
-  PREMIUM_RATES,
-  type PremiumRate,
-  type PremiumUsage,
-  premiumQueryCostUsdCents,
-  totalBillableTokens,
-} from "./pricing.ts";
 // The GLOBAL-037 schema-only plan egress builder — the user message the plan
 // hop emits (goal + schema + dialect only; no rows; see
 // `providers/_chat-provider.ts` `plan()`). Exported so cross-package
@@ -122,7 +102,6 @@ export type { GroqProviderOptions } from "./providers/groq.ts";
 export { createGroqProvider } from "./providers/groq.ts";
 export type { MistralProviderOptions } from "./providers/mistral.ts";
 export { createMistralProvider } from "./providers/mistral.ts";
-export { parseChatUsage } from "./providers/openai-compatible.ts";
 export type { OpenRouterProviderOptions } from "./providers/openrouter.ts";
 export { createOpenRouterProvider } from "./providers/openrouter.ts";
 export type { WorkersAIProviderOptions } from "./providers/workers-ai.ts";
@@ -165,5 +144,4 @@ export {
   type SchemaInferResponse,
   type SummarizeRequest,
   type SummarizeResponse,
-  type TokenUsage,
 } from "./types.ts";

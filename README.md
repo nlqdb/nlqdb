@@ -249,7 +249,7 @@ and shares the link — in under 60 seconds, no card, no config.
 - ◯ Workload analyzer → migration orchestrator
 - ◯ ClickHouse / DuckDB / Redis as additional engines
 - ◯ Dual-read verification
-- ~ Hosted-premium model lane (demand-gated) — wired end-to-end, dark until the operator flips `PREMIUM_METER_LIVE`
+- ◯ Hosted-premium model lane (demand-gated)
 
 ### Phase 4 — Beyond v1
 
