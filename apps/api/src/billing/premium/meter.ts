@@ -171,7 +171,11 @@ export async function ensurePremiumOverageItem(
   db: D1Database,
   customerId: string,
 ): Promise<void> {
-  if (!meterLive(env.PREMIUM_METER_LIVE) || !env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_OVERAGE_ANTHROPIC) {
+  if (
+    !meterLive(env.PREMIUM_METER_LIVE) ||
+    !env.STRIPE_SECRET_KEY ||
+    !env.STRIPE_PRICE_OVERAGE_ANTHROPIC
+  ) {
     return;
   }
   const tracer = trace.getTracer("@nlqdb/api");
