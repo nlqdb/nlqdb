@@ -494,9 +494,7 @@ export function SubscribeBlock({
           Your {planLabel} plan includes{included != null ? ` ${included}` : ""} frontier
           requests/mo — queries route to Claude Sonnet 4.6 automatically.
         </p>
-        {cancelsOn ? (
-          <p className="model-picker__subscribe-text">Cancels on {cancelsOn}.</p>
-        ) : null}
+        {cancelsOn ? <p className="model-picker__subscribe-text">Cancels on {cancelsOn}.</p> : null}
         <button
           type="button"
           className="btn btn--ghost model-picker__countme"

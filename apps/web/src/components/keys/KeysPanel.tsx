@@ -102,6 +102,7 @@ function KeysPanelInner({ apiBase }: KeysPanelProps) {
         </p>
       ) : (
         <KeysList
+          apiBase={apiBase}
           keys={state.keys}
           onRevokeClick={setConfirmRevoke}
           onMintClick={() => setMintOpen(true)}
@@ -149,10 +150,12 @@ function KeysSkeleton() {
 }
 
 function KeysList({
+  apiBase,
   keys,
   onRevokeClick,
   onMintClick,
 }: {
+  apiBase: string;
   keys: KeyRecord[];
   onRevokeClick: (key: KeyRecord) => void;
   onMintClick: () => void;
@@ -174,22 +177,25 @@ function KeysList({
     <div className="keys__groups">
       <KeysGroup
         title="Active"
+        apiBase={apiBase}
         keys={active}
         onRevokeClick={onRevokeClick}
         emptyMessage="No active keys — every key you mint shows here."
       />
-      {revoked.length > 0 ? <KeysGroup title="Revoked" keys={revoked} /> : null}
+      {revoked.length > 0 ? <KeysGroup title="Revoked" apiBase={apiBase} keys={revoked} /> : null}
     </div>
   );
 }
 
 function KeysGroup({
   title,
+  apiBase,
   keys,
   onRevokeClick,
   emptyMessage,
 }: {
   title: string;
+  apiBase: string;
   keys: KeyRecord[];
   onRevokeClick?: (key: KeyRecord) => void;
   emptyMessage?: string;
@@ -205,7 +211,7 @@ function KeysGroup({
       ) : (
         <ul className="keys-list">
           {keys.map((k) => (
-            <KeyRow key={k.id} record={k} onRevokeClick={onRevokeClick} />
+            <KeyRow key={k.id} apiBase={apiBase} record={k} onRevokeClick={onRevokeClick} />
           ))}
         </ul>
       )}
@@ -214,13 +220,20 @@ function KeysGroup({
 }
 
 function KeyRow({
+  apiBase,
   record,
   onRevokeClick,
 }: {
+  apiBase: string;
   record: KeyRecord;
   onRevokeClick?: (key: KeyRecord) => void;
 }) {
   const summary = summarizeKey(record);
+  // SK-PREMIUM-019 — the per-key default model picker applies only to the
+  // account-scoped secret keys; pk_live_ is read-only + premium-excluded and
+  // revoked rows can't route, so neither gets the control.
+  const showDefaultModel =
+    record.revokedAt === null && (record.keyType === "sk_live" || record.keyType === "sk_mcp");
   return (
     <li className="keys-list__row" data-testid="key-row" data-key-id={record.id}>
       <div className="keys-list__main">
@@ -242,6 +255,7 @@ function KeyRow({
           <span>Last used {summary.lastUsedAtLabel}</span>
         )}
       </div>
+      {showDefaultModel ? <DefaultModelSelect apiBase={apiBase} record={record} /> : null}
       {onRevokeClick && record.revokedAt === null ? (
         <button
           type="button"
@@ -254,6 +268,79 @@ function KeyRow({
         </button>
       ) : null}
     </li>
+  );
+}
+
+// SK-PREMIUM-019 — per-key default `/v1/ask` model. "Auto" clears the default
+// (server stores NULL). Persists via `POST /v1/keys/:id/default-model` with a
+// raw credentialed fetch — the SDK/CLI/MCP set-default surface is a tracked
+// GLOBAL-003 gap, so the web talks to the endpoint directly for now. The
+// mutation is idempotent (SK-PREMIUM-019), so an `Idempotency-Key` is sent
+// per GLOBAL-005 but the endpoint dedupes by construction.
+const DEFAULT_MODEL_OPTIONS = [
+  { value: "", label: "Auto" },
+  { value: "fast", label: "Fast" },
+  { value: "best", label: "Best" },
+] as const;
+
+function DefaultModelSelect({ apiBase, record }: { apiBase: string; record: KeyRecord }) {
+  // The server KeyRecord carries `defaultModel`; the SDK type does not surface
+  // it yet (GLOBAL-003 gap), so read it defensively off the wire value.
+  const persisted = (record as { defaultModel?: string | null }).defaultModel ?? "";
+  const [value, setValue] = useState<string>(persisted);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const selectId = `key-default-model-${record.id}`;
+
+  async function onChange(next: string) {
+    const prev = value;
+    setValue(next);
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiBase}/v1/keys/${encodeURIComponent(record.id)}/default-model`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "Idempotency-Key": `web-default-model-${record.id}-${Date.now()}`,
+        },
+        body: JSON.stringify({ defaultModel: next === "" ? null : next }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch {
+      setValue(prev);
+      setError("Couldn't save. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="keys-list__default-model">
+      <label className="keys-list__default-model-label" htmlFor={selectId}>
+        Default model
+      </label>
+      <select
+        id={selectId}
+        className="keys-list__default-model-select"
+        value={value}
+        disabled={saving}
+        onChange={(e) => void onChange(e.target.value)}
+        data-testid="key-row-default-model"
+      >
+        {DEFAULT_MODEL_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      {error ? (
+        <span className="keys-list__default-model-error" role="alert">
+          {error}
+        </span>
+      ) : null}
+    </div>
   );
 }
 

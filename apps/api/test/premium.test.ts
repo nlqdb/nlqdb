@@ -12,6 +12,7 @@ import {
   consumeAllowance,
   evaluateCap,
   isOverflowPolicy,
+  isPremiumEligiblePrincipalKind,
   makeUsageAccumulator,
   meterEventId,
   overageMeterName,
@@ -147,6 +148,23 @@ describe("resolvePremiumEligibility", () => {
       currentPeriodEnd: 1234,
     });
     expect(e).toEqual({ eligible: true, tier: "hobby", periodStart: 1234 });
+  });
+});
+
+describe("isPremiumEligiblePrincipalKind (SK-PREMIUM-018)", () => {
+  it("admits session users and the account-scoped secret keys", () => {
+    // sk_live_ (SDK/CLI) and sk_mcp_ (headless MCP) resolve to a tenant user
+    // id, so a paying customer's programmatic traffic reaches the paid lane.
+    expect(isPremiumEligiblePrincipalKind("user")).toBe(true);
+    expect(isPremiumEligiblePrincipalKind("sk_live")).toBe(true);
+    expect(isPremiumEligiblePrincipalKind("sk_mcp")).toBe(true);
+  });
+
+  it("excludes pk_live_ (browser-exposed) and anon", () => {
+    // A publishable key embedded in a page could burn the customer's premium
+    // allowance from a drive-by; anon has no account to bill.
+    expect(isPremiumEligiblePrincipalKind("pk_live")).toBe(false);
+    expect(isPremiumEligiblePrincipalKind("anon")).toBe(false);
   });
 });
 

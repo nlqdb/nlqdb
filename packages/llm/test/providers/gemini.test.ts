@@ -157,7 +157,11 @@ describe("createGeminiProvider", () => {
         },
       },
     ]);
-    const withTok = createGeminiProvider({ apiKey, baseUrl: "https://gw.example/models", gatewayToken: "aig_tok" });
+    const withTok = createGeminiProvider({
+      apiKey,
+      baseUrl: "https://gw.example/models",
+      gatewayToken: "aig_tok",
+    });
     await withTok.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
     const noTok = createGeminiProvider({ apiKey, baseUrl: "https://gw.example/models" });
     await noTok.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });

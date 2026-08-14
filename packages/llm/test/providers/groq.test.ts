@@ -95,7 +95,11 @@ describe("createGroqProvider", () => {
         },
       },
     ]);
-    const withTok = createGroqProvider({ apiKey, baseUrl: "https://gw.example/groq", gatewayToken: "aig_tok" });
+    const withTok = createGroqProvider({
+      apiKey,
+      baseUrl: "https://gw.example/groq",
+      gatewayToken: "aig_tok",
+    });
     await withTok.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
     const noTok = createGroqProvider({ apiKey, baseUrl: "https://gw.example/groq" });
     await noTok.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });

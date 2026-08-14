@@ -121,6 +121,15 @@ export function createGeminiProvider(opts: GeminiProviderOptions): Provider {
     name: "gemini",
     models: { ...DEFAULT_MODELS, ...opts.models },
     callChat: ({ model, messages, jsonMode, temperature, opts: callOpts }) =>
-      geminiChat(opts.apiKey, base, model, messages, jsonMode, temperature, callOpts, opts.gatewayToken),
+      geminiChat(
+        opts.apiKey,
+        base,
+        model,
+        messages,
+        jsonMode,
+        temperature,
+        callOpts,
+        opts.gatewayToken,
+      ),
   });
 }

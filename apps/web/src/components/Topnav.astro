@@ -10,7 +10,16 @@
 import { appHref } from "../lib/app-href";
 
 interface Props {
-  current?: "manifesto" | "agents" | "chat" | "keys" | "billing" | "vs" | "solve" | "blog" | "pricing";
+  current?:
+    | "manifesto"
+    | "agents"
+    | "chat"
+    | "keys"
+    | "billing"
+    | "vs"
+    | "solve"
+    | "blog"
+    | "pricing";
 }
 const { current } = Astro.props;
 const inChat = current === "chat";

@@ -58,7 +58,12 @@ describe("resolveBillingUsage", () => {
     // `incomplete` between checkout and subscription.created: no price, no
     // period boundary — must not touch the premium tables.
     const db = stubD1({
-      customer: { status: "incomplete", price_id: null, current_period_end: null, cancel_at_period_end: 0 },
+      customer: {
+        status: "incomplete",
+        price_id: null,
+        current_period_end: null,
+        cancel_at_period_end: 0,
+      },
     });
     const usage = await resolveBillingUsage(db, "user_2", PRICE_HOBBY, PRICE_PRO);
     expect(usage.plan).toBe("unknown");

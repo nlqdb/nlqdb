@@ -9,7 +9,10 @@ import { premiumInterestConfirmEmail } from "@nlqdb/email";
 import {
   buildPremiumRouter,
   HOSTED_PREMIUM_MODELS,
+  isModelPreset,
   type LLMRouter,
+  MODEL_PRESETS,
+  type ModelPreset,
   totalBillableTokens,
 } from "@nlqdb/llm";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
@@ -41,6 +44,7 @@ import { buildSetCookie, signAnonStash } from "./anon-stash.ts";
 import {
   apiKeyHmacSecret,
   bumpKeyLastUsed as bumpKeyLastUsedImpl,
+  getKeyDefaultModel,
   getKeyStatusByHash,
   hmacHex,
   listKeysByTenant,
@@ -48,7 +52,9 @@ import {
   lookupSkKey as lookupSkKeyImpl,
   mintSkLiveKey,
   mintSkMcpKey,
+  resolveEffectiveModelPreset,
   revokeKeyById,
+  setKeyDefaultModel,
 } from "./api-keys.ts";
 import { buildAskDeps, buildEventEmitter, buildMemoryExec } from "./ask/build-deps.ts";
 import {
@@ -72,6 +78,7 @@ import {
   evaluateCap,
   INCLUDED_ALLOWANCE,
   isOverflowPolicy,
+  isPremiumEligiblePrincipalKind,
   makeUsageAccumulator,
   type PremiumTier,
   premiumConfigured,
@@ -770,6 +777,20 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       }
     }
 
+    // SK-PREMIUM-019 — per-API-key default model. Only sk_live_ / sk_mcp_ carry
+    // a resolvable key id; when the request omitted `model`, fall back to the
+    // key's stored default (request > per-key default > server default). One
+    // indexed D1 read, only on the no-`model` path. Set before the premium gate
+    // below so the effective preset drives routing (a key pinned to `fast`
+    // correctly opts out of premium).
+    if (
+      parsed.body.model === undefined &&
+      (principal.kind === "sk_live" || principal.kind === "sk_mcp")
+    ) {
+      const keyDefault = await getKeyDefaultModel(c.env.DB, principal.keyId);
+      parsed.body.model = resolveEffectiveModelPreset(parsed.body.model, keyDefault);
+    }
+
     // Anon-tier gates (SK-ANON-004 / SK-ANON-010 / SK-RL-006). Two
     // layers, two distinct user-facing outcomes:
     //
@@ -1134,7 +1155,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     if (
       !byollmCredential &&
       !accountCredential &&
-      principal.kind === "user" &&
+      // SK-PREMIUM-018 — session users AND sk_live_/sk_mcp_ keys (a paying
+      // customer's SDK/CLI/MCP traffic); pk_live_ excluded (browser-exposed).
+      isPremiumEligiblePrincipalKind(principal.kind) &&
       parsed.body.model !== "fast" &&
       premiumConfigured(c.env)
     ) {
@@ -1208,9 +1231,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
                 onUsage: usage.sink,
                 // SK-LLM-046 — authenticate to the gateway; a single-provider
                 // premium lane has no failover, so a 401 here is a hard fail.
-                ...(c.env.AI_GATEWAY_TOKEN
-                  ? { gatewayToken: c.env.AI_GATEWAY_TOKEN }
-                  : {}),
+                ...(c.env.AI_GATEWAY_TOKEN ? { gatewayToken: c.env.AI_GATEWAY_TOKEN } : {}),
               }),
             };
           } else {
@@ -3537,6 +3558,49 @@ app.delete("/v1/keys/:id", requireSession, async (c) => {
       span.recordException(e);
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.keys.revoke.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `POST /v1/keys/:id/default-model` — set/clear a key's default `/v1/ask`
+// model preset (SK-PREMIUM-019). Session-only (same threat model as
+// POST/DELETE /v1/keys). Distinct sub-path so the /v1/keys/* CORS allow-list
+// (GET/POST/DELETE) covers it without a PATCH method. Idempotent by
+// construction; accepts `Idempotency-Key` (GLOBAL-005). Body:
+// { defaultModel: "auto" | "fast" | "best" | null } — null / "auto" clears.
+app.post("/v1/keys/:id/default-model", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.keys.default_model", async (span) => {
+    try {
+      const session = c.var.session;
+      const keyId = c.req.param("id");
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      span.setAttribute("nlqdb.keys.default_model.key_id", keyId);
+      const body = (await c.req.json().catch(() => null)) as { defaultModel?: unknown } | null;
+      const raw = body?.defaultModel;
+      let value: ModelPreset | null;
+      if (raw === null || raw === undefined || raw === "auto") {
+        value = null;
+      } else if (isModelPreset(raw)) {
+        value = raw;
+      } else {
+        span.setAttribute("nlqdb.keys.default_model.outcome", "invalid_model");
+        return c.json({ error: "invalid_model", value: raw, allowed: [...MODEL_PRESETS] }, 400);
+      }
+      const outcome = await setKeyDefaultModel(c.env.DB, session.user.id, keyId, value);
+      span.setAttribute("nlqdb.keys.default_model.outcome", outcome);
+      if (outcome === "not_found") {
+        return c.json({ error: { status: "key_not_found" as const } }, 404);
+      }
+      return c.json({ ok: true, defaultModel: value });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.keys.default_model.outcome", "internal_error");
       return c.json({ error: "internal_error" }, 500);
     } finally {
       span.end();

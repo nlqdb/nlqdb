@@ -11,7 +11,11 @@
 // to a well-formed zero shape (plan "free", included/consumed/overage 0), so
 // the page renders an empty state instead of erroring.
 
-import { type BillingPlan, type CustomerRow, resolveBillingStatus } from "../../stripe/billing-status.ts";
+import {
+  type BillingPlan,
+  type CustomerRow,
+  resolveBillingStatus,
+} from "../../stripe/billing-status.ts";
 import { readAllowance } from "./allowance.ts";
 import { tierForPlan } from "./limits.ts";
 

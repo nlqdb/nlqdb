@@ -24,6 +24,8 @@
 //     the hash layer (D1 `WHERE key_hash = ?` is an index hit)
 //   - last_4 chars stored for dashboard display only (SK-APIKEYS-002)
 
+import { isModelPreset, type ModelPreset } from "@nlqdb/llm";
+
 export const PK_LIVE_PREFIX = "pk_live_";
 export const SK_LIVE_PREFIX = "sk_live_";
 export const SK_MCP_PREFIX = "sk_mcp_";
@@ -196,6 +198,11 @@ export type KeyRecord = {
   lastUsedAt: number | null;
   createdAt: number;
   revokedAt: number | null;
+  // SK-PREMIUM-019 — per-key default `/v1/ask` model preset ("fast" | "best";
+  // null = no per-key default). Only meaningful on `sk_live` / `sk_mcp` rows —
+  // those are the only kinds whose `/v1/ask` calls resolve a key id (the
+  // dashboard renders the picker for them alone).
+  defaultModel: ModelPreset | null;
 };
 
 // Returns every key row for the tenant, newest first. Active rows
@@ -210,7 +217,7 @@ export async function listKeysByTenant(d1: D1Database, tenantId: string): Promis
       // bearer-key list — excluded so a provider key's last-4 never shows
       // up among the minted `pk_*`/`sk_*` keys (SK-PREMIUM-012).
       "SELECT id, key_type, last_4, name, db_id, mcp_host, device_id, " +
-        "last_used_at, created_at, revoked_at FROM api_keys " +
+        "last_used_at, created_at, revoked_at, default_model FROM api_keys " +
         "WHERE tenant_id = ? AND key_type != 'byollm' " +
         "ORDER BY (revoked_at IS NOT NULL), created_at DESC",
     )
@@ -226,6 +233,7 @@ export async function listKeysByTenant(d1: D1Database, tenantId: string): Promis
       last_used_at: number | null;
       created_at: number;
       revoked_at: number | null;
+      default_model: string | null;
     }>();
   return (res.results ?? []).map((r) => ({
     id: r.id,
@@ -238,6 +246,9 @@ export async function listKeysByTenant(d1: D1Database, tenantId: string): Promis
     lastUsedAt: r.last_used_at,
     createdAt: r.created_at,
     revokedAt: r.revoked_at,
+    // Defensive coerce: a value outside the preset domain (a stale row) reads
+    // as "no default" rather than leaking a garbage preset to the surface.
+    defaultModel: isModelPreset(r.default_model) ? r.default_model : null,
   }));
 }
 
@@ -278,6 +289,64 @@ export async function revokeKeyById(
     .bind(keyId, tenantId)
     .first<{ hit: number }>();
   return row ? "already_revoked" : "not_found";
+}
+
+// ─── per-key default model (SK-PREMIUM-019) ──────────────────────────────────
+
+// Precedence resolver for the `/v1/ask` `model` preset: an explicit request
+// `model` always wins; otherwise the key's stored `default_model` applies;
+// otherwise `undefined` (the caller then falls to the server default —
+// hosted-premium if eligible, else the free chain). Pure so `/v1/ask` calls it
+// directly and the rule is unit-tested in one place. `"auto"` is never stored
+// (normalised to null on write), so a returned value is `"fast" | "best"` in
+// practice, but the type stays the full `ModelPreset` for forward-compat.
+export function resolveEffectiveModelPreset(
+  requestModel: ModelPreset | undefined,
+  keyDefaultModel: ModelPreset | null,
+): ModelPreset | undefined {
+  if (requestModel !== undefined) return requestModel;
+  return keyDefaultModel ?? undefined;
+}
+
+// Reads a bearer key's stored `default_model` by id (the id the principal
+// already resolved, so this is a single indexed lookup). Returns null for an
+// unknown id, a NULL column, or a value outside the preset domain (defensive
+// against a stale row). Called on the `/v1/ask` no-`model` path only.
+export async function getKeyDefaultModel(
+  d1: D1Database,
+  keyId: string,
+): Promise<ModelPreset | null> {
+  const row = await d1
+    .prepare("SELECT default_model FROM api_keys WHERE id = ?")
+    .bind(keyId)
+    .first<{ default_model: string | null }>();
+  if (!row) return null;
+  return isModelPreset(row.default_model) ? row.default_model : null;
+}
+
+export type SetDefaultModelOutcome = "updated" | "not_found";
+
+// Sets (or clears, on `null`) a bearer key's `default_model`, tenant-scoped.
+// Backs `POST /v1/keys/:id/default-model`. Only `sk_live` / `sk_mcp` rows carry
+// a resolvable key id on the `/v1/ask` path, so the write is restricted to
+// them — a `pk_live` (read-only) or `byollm` (credential) row would store an
+// inert value and confuse the picker. Idempotent by construction: re-applying
+// the same value matches the same row and re-writes it, so an `Idempotency-Key`
+// retry (GLOBAL-005) observes the same `"updated"` outcome without a dedupe store.
+export async function setKeyDefaultModel(
+  d1: D1Database,
+  tenantId: string,
+  keyId: string,
+  defaultModel: ModelPreset | null,
+): Promise<SetDefaultModelOutcome> {
+  const upd = await d1
+    .prepare(
+      "UPDATE api_keys SET default_model = ? " +
+        "WHERE id = ? AND tenant_id = ? AND key_type IN ('sk_live', 'sk_mcp')",
+    )
+    .bind(defaultModel, keyId, tenantId)
+    .run();
+  return upd.meta.changes === 1 ? "updated" : "not_found";
 }
 
 // ─── key status (SK-MCP-014 hot-path revalidation) ─────────────────────────
