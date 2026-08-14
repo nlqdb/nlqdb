@@ -18,6 +18,7 @@ import {
   totalBillableTokens,
 } from "@nlqdb/llm";
 import {
+  premiumCapHitTotal,
   premiumCostPerQueryUsd,
   premiumOverflowFallbackTotal,
   premiumTokensPerQuery,
@@ -191,9 +192,11 @@ export async function reportPremiumOverage(
   if (firstInsert) await reportMeterEvent(env, db, ev);
 }
 
-// Surface a fallback-to-free at exhaustion on the metric (SK-PREMIUM-011). The
-// trace surfacing (`overflow_fallback: true`) is set by the handler; this is
-// the counter half.
+// Surface a free-chain fall-through at the metric layer. The trace surfacing
+// (`overflow_fallback: true`) is set by the handler; this is the counter half:
+// `fallback` = allowance-exhaustion opt-in (SK-PREMIUM-011), `cap` = the hard
+// per-key spend-cap hit (SK-PREMIUM-006, GLOBAL-014).
 export function recordOverflowFallback(reason: PreDispatchDecision["reason"]): void {
   if (reason === "fallback") premiumOverflowFallbackTotal().add(1);
+  else if (reason === "cap") premiumCapHitTotal().add(1);
 }

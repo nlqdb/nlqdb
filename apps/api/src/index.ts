@@ -1494,31 +1494,46 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       if (premiumRun) {
         const usage = premiumRun.usage.total();
         if (totalBillableTokens(usage) === 0) return null;
-        const s = await settlePremiumQuery(c.env.DB, {
-          customerId: principal.id,
-          periodStart: premiumRun.periodStart,
-          tier: premiumRun.tier,
-          usage,
-        });
-        if (s.overageCents > 0) {
-          c.executionCtx.waitUntil(
-            reportPremiumOverage(c.env, c.env.DB, {
-              customerId: principal.id,
-              stripeCustomerId: premiumRun.stripeCustomerId,
-              periodStart: premiumRun.periodStart,
-              overageCents: s.overageCents,
-              requestKey: premiumRun.requestKey,
+        try {
+          const s = await settlePremiumQuery(c.env.DB, {
+            customerId: principal.id,
+            periodStart: premiumRun.periodStart,
+            tier: premiumRun.tier,
+            usage,
+          });
+          if (s.overageCents > 0) {
+            c.executionCtx.waitUntil(
+              reportPremiumOverage(c.env, c.env.DB, {
+                customerId: principal.id,
+                stripeCustomerId: premiumRun.stripeCustomerId,
+                periodStart: premiumRun.periodStart,
+                overageCents: s.overageCents,
+                requestKey: premiumRun.requestKey,
+              }),
+            );
+          }
+          return {
+            lane: "premium",
+            line: s.traceLine,
+            used: s.consumedAfter,
+            included: s.total,
+            remaining: s.remaining,
+            overage_usd: Number((s.overageCents / 100).toFixed(4)),
+          };
+        } catch (err) {
+          // Metering is a side-effect: a settlement D1 error must never turn a
+          // paid, successful answer into a 500 — the query goes un-decremented
+          // and un-metered (customer-favouring), logged for reconciliation.
+          console.error(
+            JSON.stringify({
+              level: "error",
+              msg: "premium_settle_failed",
+              user_id: principal.id,
+              error: err instanceof Error ? err.message : String(err),
             }),
           );
+          return null;
         }
-        return {
-          lane: "premium",
-          line: s.traceLine,
-          used: s.consumedAfter,
-          included: s.total,
-          remaining: s.remaining,
-          overage_usd: Number((s.overageCents / 100).toFixed(4)),
-        };
       }
       if (premiumOverflow) {
         return {
