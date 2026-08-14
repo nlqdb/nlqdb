@@ -79,6 +79,7 @@ import {
   reconcilePremiumMeter,
   recordOverflowFallback,
   reportPremiumOverage,
+  resolveBillingUsage,
   resolvePreDispatchLane,
   resolvePremiumEligibility,
   settlePremiumQuery,
@@ -2360,6 +2361,36 @@ app.get("/v1/billing/status", requireSession, async (c) => {
       span.setAttribute("nlqdb.billing.plan", status.plan);
       span.setAttribute("nlqdb.billing.subscription_status", status.status);
       return c.json(status);
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      return c.json({ error: "internal" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `GET /v1/billing/usage` — the caller's current-period hosted-premium
+// allowance (plan + { included, consumed, overage }) for /app/billing
+// (SK-PREMIUM-009). A pure D1 read, no Stripe call — like billing/status it
+// returns a well-formed zero shape (plan "free", 0/0/0) for a free user, not
+// a 404. Web-only (GLOBAL-003).
+app.get("/v1/billing/usage", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.billing.usage", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const usage = await resolveBillingUsage(
+        c.env.DB,
+        session.user.id,
+        c.env.STRIPE_PRICE_HOBBY,
+        c.env.STRIPE_PRICE_PRO,
+      );
+      span.setAttribute("nlqdb.billing.plan", usage.plan);
+      return c.json(usage);
     } catch (err) {
       const e = err as Error;
       span.recordException(e);

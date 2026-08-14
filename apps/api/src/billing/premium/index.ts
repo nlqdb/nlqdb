@@ -23,6 +23,7 @@ import {
   premiumOverflowFallbackTotal,
   premiumTokensPerQuery,
 } from "@nlqdb/otel";
+import type { Principal } from "../../principal.ts";
 import type { BillingPlan } from "../../stripe/billing-status.ts";
 import { consumeAllowance } from "./allowance.ts";
 import { sizedBucket, slotsForTokens } from "./guardrails.ts";
@@ -43,6 +44,7 @@ export * from "./limits.ts";
 export * from "./meter.ts";
 export * from "./overflow.ts";
 export * from "./reconcile.ts";
+export * from "./usage.ts";
 
 // The `env` subset the premium lane reads. All optional at the type level so a
 // deploy with none of them set compiles and stays dark.
@@ -93,6 +95,20 @@ export function resolvePremiumEligibility(args: {
   const tier = tierForPlan(args.plan);
   if (!tier || args.currentPeriodEnd == null) return { eligible: false };
   return { eligible: true, tier, periodStart: args.currentPeriodEnd };
+}
+
+// Which principal kinds may route to the hosted-premium chain (SK-PREMIUM-018).
+// Session `user` and the two account-scoped SDK/CLI/MCP secret keys
+// (`sk_live_` / `sk_mcp_`) are eligible — their `principal.id` IS the tenant
+// user id, so the same `customers JOIN user` paid-status lookup the session
+// path runs resolves them unchanged. `pk_live_` is EXCLUDED: it is a
+// browser-exposed publishable key (SK-APIKEYS-003), so a drive-by page
+// embedding one could burn the customer's premium allowance — the wrong
+// blast radius for a paid lane. `anon` has no account. This is only the
+// *kind* gate; the paid-status + configured checks (resolvePremiumEligibility)
+// and the per-key spend cap (SK-PREMIUM-006) still bound an eligible caller.
+export function isPremiumEligiblePrincipalKind(kind: Principal["kind"]): boolean {
+  return kind === "user" || kind === "sk_live" || kind === "sk_mcp";
 }
 
 // A stable usage accumulator handed to `buildPremiumRouter`'s `onUsage` sink.

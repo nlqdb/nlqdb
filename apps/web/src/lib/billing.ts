@@ -12,6 +12,16 @@ export type BillingStatus = {
   manageable: boolean;
 };
 
+// Current-period hosted-premium usage (SK-PREMIUM-009), backing the
+// `/app/billing` allowance bar. Mirrors the API's `BillingUsage` shape.
+export type BillingUsage = {
+  plan: "free" | "hobby" | "pro" | "unknown";
+  periodStart: number | null;
+  included: number;
+  consumed: number;
+  overage: number;
+};
+
 const trimBase = (apiBase: string) => apiBase.replace(/\/$/, "");
 
 // Formats a Stripe `current_period_end` (unix *seconds*) as a short calendar
@@ -33,6 +43,18 @@ export async function fetchBillingStatus(apiBase: string): Promise<BillingStatus
   try {
     const res = await fetch(`${trimBase(apiBase)}/v1/billing/status`, { credentials: "include" });
     return res.ok ? ((await res.json()) as BillingStatus) : null;
+  } catch {
+    return null;
+  }
+}
+
+// GET /v1/billing/usage — current-period allowance projection, a pure D1 read
+// (no Stripe call). Returns null on any failure so callers treat usage as a
+// progressive enhancement, same posture as `fetchBillingStatus`.
+export async function fetchBillingUsage(apiBase: string): Promise<BillingUsage | null> {
+  try {
+    const res = await fetch(`${trimBase(apiBase)}/v1/billing/usage`, { credentials: "include" });
+    return res.ok ? ((await res.json()) as BillingUsage) : null;
   } catch {
     return null;
   }
