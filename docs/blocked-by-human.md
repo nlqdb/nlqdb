@@ -36,16 +36,13 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 2 | ~15 min | Create the Anthropic Console workspace + set a spend limit + mint the real `PREMIUM_ANTHROPIC_API_KEY` — first step to light the hosted-premium meter (§6 tripped) | 2026-08-13 |
-| 3 | ~20 min | Set Stripe live-mode keys + run the checked-in test-mode bootstrap (`apps/api/scripts/stripe-premium-bootstrap.ts`) first, then set `STRIPE_PRICE_OVERAGE_ANTHROPIC` + `STRIPE_PREMIUM_METER_ID` secrets | 2026-08-13 |
-| 4 | ~2 min | Flip `PREMIUM_METER_LIVE` — the final operator flip that lights the meter | 2026-08-13 |
-| 5 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 6 | ~15 min | Register the Supabase OAuth app + set `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` prod secrets — unblocks one-click Supabase connect (paste path works meanwhile) | 2026-08-13 |
+| 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 3 | ~15 min | Register the Supabase OAuth app + set `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` prod secrets — unblocks one-click Supabase connect (paste path works meanwhile) | 2026-08-13 |
 
-Only #1 can move real strangers (scorecard row #2); #2–#4 light hosted-premium
-monetization now that the §6 signal has tripped and must be done in that order;
-#5 costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists. No founder action remains on the SK-PIVOT-016 gate path itself: with
+Only #1 can move real strangers (scorecard row #2); the hosted-premium meter
+went **live 2026-08-14** (`premium.live=true` in prod — the full activation,
+AI Gateway included, is done and off this queue); #2 costs money and waits per
+`docs/cost-ladder.md` unless a Team org already exists. No founder action remains on the SK-PIVOT-016 gate path itself: with
 `NLQDB_API_KEY` set (2026-08-04), D-04 — provisioning the memory DB through
 the product's own authed create surface — is **agent work** (the 08-08 weekly
 review briefly queued it here; corrected same day, founder-flagged: rule 4 /
@@ -95,25 +92,7 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    criterion 1 = 12 real MCP asks, criterion 3 surfaced one silent wrong-answer
    incident. This founder-only launch half stays gated until all five are green).
 
-2. **⏱ ~15 min · blocked since 2026-08-13 — Create the Anthropic Console
-   workspace + spend limit + mint `PREMIUM_ANTHROPIC_API_KEY`** — money/console
-   action, the first of three steps to light the hosted-premium meter (the §6
-   unsolicited-inbound signal has tripped; threshold lowered 5→1). Create a
-   dedicated workspace, set a hard monthly spend limit, mint the real key, and
-   set it as a Worker secret. v1 is Anthropic-only (`claude-sonnet-4-6`).
-
-3. **⏱ ~20 min · blocked since 2026-08-13 — Set Stripe live-mode keys + run the
-   premium bootstrap** — run the checked-in **test-mode** bootstrap first
-   (`apps/api/scripts/stripe-premium-bootstrap.ts`) to create the overage price +
-   Billing Meter, verify, then repeat in live mode and set the
-   `STRIPE_PRICE_OVERAGE_ANTHROPIC` + `STRIPE_PREMIUM_METER_ID` Worker secrets.
-   Meter rides Stripe Billing Meters directly (no Lago, `SK-PREMIUM-017`).
-
-4. **⏱ ~2 min · blocked since 2026-08-13 — Flip `PREMIUM_METER_LIVE`** — the
-   final operator flip. With #2 + #3 in place, setting this Worker secret lights
-   the hosted-premium lane end-to-end (`GLOBAL-023`: not buyable until this flips).
-
-5. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -143,7 +122,7 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-6. **⏱ ~15 min · since 2026-08-13 — Enable one-click Supabase connect in prod**
+3. **⏱ ~15 min · since 2026-08-13 — Enable one-click Supabase connect in prod**
    (`SK-DBCONN-003`, shipped #985). The `/app/connect` "Connect Supabase" button
    is live, but `/start` returns 503 and gracefully falls back to paste until the
    OAuth app exists. In the Supabase dashboard → org → **OAuth Apps**, register an
