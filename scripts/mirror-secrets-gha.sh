@@ -106,6 +106,10 @@ SECRETS=(
   CLOUDFLARE_ACCOUNT_ID
   CLOUDFLARE_API_TOKEN
   CF_AI_TOKEN
+  # AI Gateway ids — required by the hosted-premium lane (premiumConfigured);
+  # kept CI-ready so a deploy self-heals them onto the Worker once provisioned.
+  AI_GATEWAY_ACCOUNT_ID
+  AI_GATEWAY_ID
   # Turnstile-write CF API token — future automation creates the widget via
   # POST accounts/{id}/challenges/widgets (main CLOUDFLARE_API_TOKEN is read-only).
   CF_TURNSTILE_EDIT_API_TOKEN

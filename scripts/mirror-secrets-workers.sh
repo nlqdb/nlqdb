@@ -98,6 +98,13 @@ select_secrets() {
         CEREBRAS_API_KEY
         CLOUDFLARE_ACCOUNT_ID
         CF_AI_TOKEN
+        # AI Gateway ids. Free lane falls back to direct provider URLs when
+        # unset, but the hosted-premium lane REQUIRES both — `premiumConfigured`
+        # (billing/premium/index.ts) is false without them, so the meter stays
+        # dark. AI_GATEWAY_ACCOUNT_ID == CLOUDFLARE_ACCOUNT_ID; AI_GATEWAY_ID is
+        # the gateway slug you create in Cloudflare → AI → AI Gateway.
+        AI_GATEWAY_ACCOUNT_ID
+        AI_GATEWAY_ID
         DATABASE_URL
         # SK-QUAL-002 — bearer the eval runner POSTs to /v1/events/eval; the
         # API validates the incoming token against this (index.ts). Must match

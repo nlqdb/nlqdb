@@ -36,7 +36,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 2 | ~5 min | Light the hosted-premium meter — the go-live flip: Anthropic key + live Stripe meter/price already provisioned; put the 4 values in `.envrc` (`PREMIUM_METER_LIVE=true`) + run the workers mirror | 2026-08-13 |
+| 2 | ~10 min | Light the hosted-premium meter — Anthropic key + live Stripe meter/price provisioned; still need a **Cloudflare AI Gateway** (premium routes through it — none set in prod), then put the go-live secrets in `.envrc` (`PREMIUM_METER_LIVE=true`) + run the workers mirror | 2026-08-13 |
 | 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 | 4 | ~15 min | Register the Supabase OAuth app + set `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` prod secrets — unblocks one-click Supabase connect (paste path works meanwhile) | 2026-08-13 |
 
@@ -94,17 +94,30 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    criterion 1 = 12 real MCP asks, criterion 3 surfaced one silent wrong-answer
    incident. This founder-only launch half stays gated until all five are green).
 
-2. **⏱ ~5 min · blocked since 2026-08-13 — Light the hosted-premium meter
-   (go-live flip)** — the create-work is done: the Anthropic workspace + spend
-   limit + `PREMIUM_ANTHROPIC_API_KEY` are provisioned (founder-confirmed
-   2026-08-14), and the **live** Stripe overage price + Billing Meter now exist
-   (`STRIPE_PRICE_OVERAGE_ANTHROPIC=price_1U4JAWGWIBMxReMa890SAIg8`,
+2. **⏱ ~10 min · blocked since 2026-08-13 — Light the hosted-premium meter** —
+   most create-work is done: the Anthropic workspace + spend limit +
+   `PREMIUM_ANTHROPIC_API_KEY` are provisioned (founder-confirmed 2026-08-14,
+   already in `.envrc`), and the **live** Stripe overage price + Billing Meter
+   exist (`STRIPE_PRICE_OVERAGE_ANTHROPIC=price_1U4JAWGWIBMxReMa890SAIg8`,
    `STRIPE_PREMIUM_METER_ID=mtr_61VDh7qq8hjksUC1r41GWIBMxReMa6bY`;
-   `SK-PREMIUM-017`, idempotent so a re-run is safe). Only the flip remains: put
-   those two IDs + the Anthropic key + `PREMIUM_METER_LIVE=true` (must be `true`,
-   not `1` — the mirror rejects <4-char values) into `.envrc` and run
-   `./scripts/mirror-secrets-workers.sh remote api`. `GLOBAL-023`: not buyable
-   until `PREMIUM_METER_LIVE` flips; v1 is Anthropic-only (`claude-sonnet-4-6`).
+   `SK-PREMIUM-017`, idempotent so a re-run is safe). **Two things still need
+   you:**
+   - **A Cloudflare AI Gateway** — premium routes the platform Anthropic key
+     through the AI Gateway compat endpoint (`buildPremiumRouter`), and
+     `premiumConfigured` is **false** without it, so the meter stays dark. No
+     gateway id is set on the prod Worker today. In Cloudflare → **AI → AI
+     Gateway**, create a gateway (or reuse one); its slug is `AI_GATEWAY_ID`,
+     and `AI_GATEWAY_ACCOUNT_ID` is your Cloudflare account id (same value as
+     `CLOUDFLARE_ACCOUNT_ID`).
+   - **The go-live secrets + flip** — add to `.envrc`:
+     `STRIPE_PRICE_OVERAGE_ANTHROPIC`, `STRIPE_PREMIUM_METER_ID`,
+     `AI_GATEWAY_ACCOUNT_ID`, `AI_GATEWAY_ID`, and `PREMIUM_METER_LIVE=true`
+     (must be `true`, not `1` — the mirror rejects <4-char values;
+     `PREMIUM_ANTHROPIC_API_KEY` is already there). Then run
+     `./scripts/mirror-secrets-workers.sh remote api`.
+
+   `GLOBAL-023`: not buyable until `PREMIUM_METER_LIVE` flips; v1 is
+   Anthropic-only (`claude-sonnet-4-6`).
 
 3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
