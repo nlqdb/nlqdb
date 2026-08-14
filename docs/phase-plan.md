@@ -178,9 +178,9 @@ it composes on the same auth/SDK; framework wrappers third.
    through it at 0% markup. Ships now because no payment infra is
    required; the hosted-premium lane stays dark until §6 trips.
 
-**Not in Phase 2 by default:** Lago, Listmonk, and the
-hosted-premium LLM lane (architectural slot landed in §10 above; meter
-stays off). These all turn on when §6 trips.
+**Not in Phase 2 by default:** Listmonk and the
+hosted-premium LLM lane (wired end-to-end in §10 above; meter
+stays off). These turn on when §6 trips.
 
 **Exit gate:** MCP installed in 3+ distinct host apps; 1 agent product
 publicly uses nlqdb as memory; 3 non-engineers complete CSV analysis
@@ -241,36 +241,36 @@ disappointed" ≥ 40% (PMF) — measured monthly per
 ## 6. Monetization + scaling trigger
 
 **Building** is never gated — implement it before the signal. What a
-demand-signal gates is **the cost-incurring layers**: Lago metering,
-Listmonk marketing email, and cost-incurring scaling (Cloudflare Pro,
-Neon Launch). None of those turn on by phase number; they turn on when
-one signal trips — whichever happens first:
+demand-signal gates is **the cost-incurring layers**: Listmonk
+marketing email and cost-incurring scaling (Cloudflare Pro, Neon
+Launch). The hosted-premium meter is no longer a separate
+service — it rides Stripe Billing Meters directly
+([`SK-PREMIUM-017`](./features/premium-tier/decisions/SK-PREMIUM-017-stripe-billing-meters.md)).
+None turn on by phase number; they turn on when one signal trips —
+whichever first:
 
 | Signal | Threshold | What it unlocks |
 |---|---|---|
-| Unsolicited inbound asking how to pay | ≥ 5 across GH / Discord / email | Revealed preference. Founder-led pricing conversation (a $1 founding-supporter tier is a cheap hard-signal layer). |
-| Checkout completion rate | ≥ 30% over 50 sessions | Strong enough to commit to Lago metering + the cost-incurring scaling layers. |
+| Unsolicited inbound asking how to pay | ≥ 1 across GH / Discord / email (tripped 2026-08) | Revealed preference. Founder-led pricing conversation (a $1 founding-supporter tier is a cheap hard-signal layer). |
+| Checkout completion rate | ≥ 30% over 50 sessions | Strong enough to commit to Stripe Billing Meters + the cost-incurring scaling layers. |
 
 Thresholds are starting heuristics, not measured truths — adjust on
-first contact with traffic. The [cost ladder](./cost-ladder.md)
-("pay only when someone pays you") is the same rule: free to build
-before the signal, no spending or charging until it trips.
+first contact with traffic. The [cost ladder](./cost-ladder.md) is the
+same rule: free to build, no spend until it trips.
 
 **Reconciliation with the persona-validation plan.** The "2 convert to paid
 Hobby" criterion in [`personas.md §10.4`](./research/personas.md) is measurable
-once Stripe live-mode go-live lands ([`blocked-by-human.md`](./blocked-by-human.md)).
-Phase 1 close requires all personas.md
-qualitative criteria, plus the paid-conversion check once live (or a deliberate
-decision to ship without paid validation if conversions haven't landed within
-the quarter).
+once Stripe live-mode lands ([`blocked-by-human.md`](./blocked-by-human.md)).
+Phase 1 close requires all personas.md qualitative criteria plus that
+paid-conversion check (or a deliberate decision to ship without it).
 
 **What is *not* §6-gated.** Per
 [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md),
 **BYOLLM ships in Phase 2** for every tier (no payment infra needed) and the
-**hosted-premium dispatch slot** lands in the same slice (router precedence,
-span names, schema columns). §6 gates only the *meter firing*: until it trips
-the hosted-premium lane is flagged dark with no path from "paid user" to "we
-billed Stripe for tokens". Lighting it is then a flag flip, not a refactor.
+**hosted-premium lane is now wired end-to-end** (router, meter, and allowance
+seeds in `apps/api/src/billing/premium/**`). §6 gates only the *meter firing*:
+the lane stays dark until the operator flips `PREMIUM_METER_LIVE`. Lighting it
+is a flag flip, not a refactor.
 
 **Scaling triggers (infra, not billing; `GLOBAL-033`):** shard / migrate the
 single D1 at **70% of its daily-read quota (rolling 7-day) or 10k DAU**,
