@@ -84,6 +84,25 @@ describe("createGroqProvider", () => {
     expect(res.summary).toBe("hello world");
   });
 
+  it("sends cf-aig-authorization when a gatewayToken is set, omits it otherwise (SK-LLM-046)", async () => {
+    const seen: Array<string | null> = [];
+    const fetch = mockFetch([
+      {
+        match: /chat\/completions/,
+        respond: (req) => {
+          seen.push(req.headers.get("cf-aig-authorization"));
+          return openAIChatResponse(JSON.stringify({ sql: "SELECT 1" }));
+        },
+      },
+    ]);
+    const withTok = createGroqProvider({ apiKey, baseUrl: "https://gw.example/groq", gatewayToken: "aig_tok" });
+    await withTok.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
+    const noTok = createGroqProvider({ apiKey, baseUrl: "https://gw.example/groq" });
+    await noTok.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
+    expect(seen[0]).toBe("Bearer aig_tok");
+    expect(seen[1]).toBeNull();
+  });
+
   it("model() reflects per-operation defaults", () => {
     const provider = createGroqProvider({ apiKey });
     expect(provider.model("route")).toBe("openai/gpt-oss-20b");

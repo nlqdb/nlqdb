@@ -5,6 +5,17 @@
 import { redactPii } from "@nlqdb/otel";
 import { ProviderError } from "../types.ts";
 
+// AI Gateway auth header. When a Cloudflare AI Gateway has "Authenticated
+// Gateway" enabled, every request must carry `cf-aig-authorization: Bearer
+// <token>` on top of the upstream provider auth — the gateway 401s
+// (`AiGatewayError 2009`) otherwise, which exhausts the whole free chain and
+// bricks `/v1/ask`. Every gateway-routed provider (SK-LLM-046) merges this in;
+// returns `{}` when no token is configured (direct routing, or an
+// unauthenticated gateway) so the header never appears where it isn't needed.
+export function gatewayAuthHeader(gatewayToken?: string): Record<string, string> {
+  return gatewayToken ? { "cf-aig-authorization": `Bearer ${gatewayToken}` } : {};
+}
+
 // Strict JSON parser used by classify/plan responses. Tolerates the
 // common-but-annoying ```json fences some models emit despite
 // response-format being set in the request.

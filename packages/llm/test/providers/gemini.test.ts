@@ -145,4 +145,23 @@ describe("createGeminiProvider", () => {
     expect(goog).toBe(apiKey);
     expect(auth).toBeNull();
   });
+
+  it("sends cf-aig-authorization when a gatewayToken is set, omits it otherwise (SK-LLM-046)", async () => {
+    const seen: Array<string | null> = [];
+    const fetch = mockFetch([
+      {
+        match: /generateContent/,
+        respond: (req) => {
+          seen.push(req.headers.get("cf-aig-authorization"));
+          return geminiResponse(JSON.stringify({ sql: "SELECT 1" }));
+        },
+      },
+    ]);
+    const withTok = createGeminiProvider({ apiKey, baseUrl: "https://gw.example/models", gatewayToken: "aig_tok" });
+    await withTok.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
+    const noTok = createGeminiProvider({ apiKey, baseUrl: "https://gw.example/models" });
+    await noTok.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
+    expect(seen[0]).toBe("Bearer aig_tok");
+    expect(seen[1]).toBeNull();
+  });
 });

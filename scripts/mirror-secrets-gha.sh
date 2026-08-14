@@ -110,6 +110,9 @@ SECRETS=(
   # kept CI-ready so a deploy self-heals them onto the Worker once provisioned.
   AI_GATEWAY_ACCOUNT_ID
   AI_GATEWAY_ID
+  # AI Gateway auth token — sent as cf-aig-authorization when the gateway has
+  # Authenticated Gateway enabled; unset ⇒ no header (SK-LLM-046).
+  AI_GATEWAY_TOKEN
   # Turnstile-write CF API token — future automation creates the widget via
   # POST accounts/{id}/challenges/widgets (main CLOUDFLARE_API_TOKEN is read-only).
   CF_TURNSTILE_EDIT_API_TOKEN

@@ -172,4 +172,32 @@ describe("createWorkersAIProvider", () => {
     ]);
     await expect(provider.route(routeReq, { fetch })).rejects.toThrow(/no route for that path/);
   });
+
+  it("sends cf-aig-authorization when a gatewayToken is set, omits it otherwise (SK-LLM-046)", async () => {
+    const seen: Array<string | null> = [];
+    const fetch = mockFetch([
+      {
+        match: /gw\.example/,
+        respond: (req) => {
+          seen.push(req.headers.get("cf-aig-authorization"));
+          return workersAIResponse("hi");
+        },
+      },
+    ]);
+    const withTok = createWorkersAIProvider({
+      accountId,
+      apiToken,
+      baseUrl: "https://gw.example/workers-ai",
+      gatewayToken: "aig_tok",
+    });
+    await withTok.summarize({ goal: "g", rows: [{ a: 1 }] }, { fetch });
+    const noTok = createWorkersAIProvider({
+      accountId,
+      apiToken,
+      baseUrl: "https://gw.example/workers-ai",
+    });
+    await noTok.summarize({ goal: "g", rows: [{ a: 1 }] }, { fetch });
+    expect(seen[0]).toBe("Bearer aig_tok");
+    expect(seen[1]).toBeNull();
+  });
 });

@@ -115,7 +115,7 @@ export function resolveAskRouter(args: {
   accountCredential?: ByollmCredential | null;
   preset?: ModelPreset;
   freeRouter: LLMRouter;
-  gateway: { accountId?: string; gatewayId?: string };
+  gateway: { accountId?: string; gatewayId?: string; token?: string };
   userId: string;
   // SK-PREMIUM-009 — hosted-premium lane. `premiumEligible` marks that the
   // caller is a paid user on a live-metered deployment (the handler resolves it
@@ -158,7 +158,7 @@ export function resolveAskRouter(args: {
   if (selection.lane !== "byollm") {
     return { ok: true, router: args.freeRouter, attributes };
   }
-  const { accountId, gatewayId } = args.gateway;
+  const { accountId, gatewayId, token: gatewayToken } = args.gateway;
   if (!accountId || !gatewayId) {
     // AI Gateway is the mandatory BYOLLM egress (SK-LLM-019), so an
     // unconfigured gateway is a deployment-wide operator gap (a legit
@@ -189,6 +189,8 @@ export function resolveAskRouter(args: {
     accountId,
     gatewayId,
     userId: args.userId,
+    // SK-LLM-046 — authenticate to the gateway when it requires it.
+    ...(gatewayToken ? { gatewayToken } : {}),
   });
   return { ok: true, router, attributes };
 }

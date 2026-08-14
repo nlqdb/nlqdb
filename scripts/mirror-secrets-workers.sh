@@ -105,6 +105,13 @@ select_secrets() {
         # the gateway slug you create in Cloudflare → AI → AI Gateway.
         AI_GATEWAY_ACCOUNT_ID
         AI_GATEWAY_ID
+        # AI Gateway auth token (`cf-aig-authorization`) — REQUIRED when the
+        # gateway has "Authenticated Gateway" enabled. Sent on every
+        # gateway-routed LLM call (free chain + BYOLLM + premium). Unset ⇒ no
+        # header; if the gateway then requires auth, every call 401s and
+        # /v1/ask 502s (SK-LLM-046). Create it in Cloudflare → AI → AI Gateway
+        # → your gateway → Settings → Authenticated Gateway → create token.
+        AI_GATEWAY_TOKEN
         DATABASE_URL
         # SK-QUAL-002 — bearer the eval runner POSTs to /v1/events/eval; the
         # API validates the incoming token against this (index.ts). Must match

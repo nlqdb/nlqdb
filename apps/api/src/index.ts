@@ -1205,6 +1205,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
                 gatewayId: c.env.AI_GATEWAY_ID ?? "",
                 userId: principal.id,
                 onUsage: usage.sink,
+                // SK-LLM-046 — authenticate to the gateway; a single-provider
+                // premium lane has no failover, so a 401 here is a hard fail.
+                ...(c.env.AI_GATEWAY_TOKEN
+                  ? { gatewayToken: c.env.AI_GATEWAY_TOKEN }
+                  : {}),
               }),
             };
           } else {
@@ -1223,7 +1228,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       accountCredential,
       ...(parsed.body.model !== undefined ? { preset: parsed.body.model } : {}),
       freeRouter: getLLMRouter(),
-      gateway: { accountId: c.env.AI_GATEWAY_ACCOUNT_ID, gatewayId: c.env.AI_GATEWAY_ID },
+      gateway: {
+        accountId: c.env.AI_GATEWAY_ACCOUNT_ID,
+        gatewayId: c.env.AI_GATEWAY_ID,
+        token: c.env.AI_GATEWAY_TOKEN,
+      },
       userId: principal.id,
       ...(premiumEligible ? { premiumEligible: true } : {}),
       ...(premiumRun ? { premiumRouter: premiumRun.router } : {}),

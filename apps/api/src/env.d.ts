@@ -66,6 +66,13 @@ declare global {
       // and unified observability. Keys remain ours; gateway just proxies.
       AI_GATEWAY_ACCOUNT_ID?: string;
       AI_GATEWAY_ID?: string;
+      // AI Gateway auth token — required when the gateway has
+      // "Authenticated Gateway" enabled, sent as `cf-aig-authorization`
+      // on every gateway-routed LLM call (free chain + BYOLLM + premium).
+      // Unset ⇒ no header (unauthenticated gateway, or direct routing).
+      // SK-LLM-046 — omitting it while the gateway requires auth 401s the
+      // whole chain and 502s `/v1/ask`.
+      AI_GATEWAY_TOKEN?: string;
 
       // Default Neon database URL — used when a `databases` row's
       // `connection_secret_ref` resolves to the shared free-tier DB.

@@ -230,6 +230,14 @@ added latency on any succeeding call.
 
 **Body:** [`decisions/SK-LLM-045-openrouter-free-roster-refresh.md`](./decisions/SK-LLM-045-openrouter-free-roster-refresh.md). OpenRouter converted the SK-LLM-015 ids to paid-only (404ing the universal-fallback tail); replacements: `nvidia/nemotron-3-ultra-550b-a55b:free` (plan/schema_infer/summarize), `google/gemma-4-26b-a4b-it:free` (route/engine_classify).
 
+### SK-LLM-046 — AI Gateway auth token (`cf-aig-authorization`) on every gateway-routed lane
+
+**Body:** [`decisions/SK-LLM-046-ai-gateway-auth-token.md`](./decisions/SK-LLM-046-ai-gateway-auth-token.md).
+Every gateway-routed provider (free chain + BYOLLM + premium) sends
+`cf-aig-authorization: Bearer <AI_GATEWAY_TOKEN>` when the secret is set, so an
+"Authenticated Gateway" doesn't `401` the whole chain and 502 `/v1/ask`; unset
+⇒ header omitted, behaviour unchanged. Single header helper `gatewayAuthHeader`.
+
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
 **Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md). `SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows first, FK values present, NOT-NULL complete); deterministic no-500 floor is [`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md).
