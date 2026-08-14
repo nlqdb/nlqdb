@@ -109,7 +109,7 @@ underneath.
   any non-competing use, bring your own LLM key, no per-call fees. The
   license auto-converts to Apache 2.0 two years after each release.
 
-The hosted-premium model lane went live 2026-08-14. The full model strategy is in
+Paid plans aren't live yet. The full model strategy is in
 [`GLOBAL-026`](./docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
 
 ## Surfaces at a glance
@@ -249,7 +249,7 @@ and shares the link — in under 60 seconds, no card, no config.
 - ◯ Workload analyzer → migration orchestrator
 - ◯ ClickHouse / DuckDB / Redis as additional engines
 - ◯ Dual-read verification
-- ✓ Hosted-premium model lane (demand-gated) — live 2026-08-14 (`PREMIUM_METER_LIVE` flipped)
+- ~ Hosted-premium model lane (demand-gated) — wired end-to-end, dark until the operator flips `PREMIUM_METER_LIVE`
 
 ### Phase 4 — Beyond v1
 
