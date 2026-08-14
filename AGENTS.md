@@ -260,9 +260,11 @@ biome from a copy outside `.claude/`, for real signal. CI is unaffected.
 
 ## 8. Quality gates before opening a PR
 
-> **Format and lint before every commit.**
+> **Run `bun run check` (Biome format + lint) before every commit.**
 
-1. `bun run typecheck && bun run lint && bun run test` all green.
+1. `bun run typecheck && bun run check && bun run test` all green — `check` is
+   what CI runs; `bun run lint` alone skips formatting and misses format-only
+   failures.
 2. Every new decision has an ID in its canonical home per `P3`; a new
    `GLOBAL` also adds a row to the `docs/decisions.md` index.
 3. `grep -rn '^### GLOBAL-' docs/features/` prints nothing — features

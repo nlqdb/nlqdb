@@ -2,7 +2,23 @@
 // and the SK-LLM-025 reasoning-preamble recovery fallback.
 
 import { describe, expect, it } from "vitest";
-import { httpError, parseJsonResponse, parseRetryAfter } from "../../src/providers/_shared.ts";
+import {
+  gatewayAuthHeader,
+  httpError,
+  parseJsonResponse,
+  parseRetryAfter,
+} from "../../src/providers/_shared.ts";
+
+describe("gatewayAuthHeader (SK-LLM-046)", () => {
+  it("emits cf-aig-authorization when a token is set", () => {
+    expect(gatewayAuthHeader("tok_123")).toEqual({ "cf-aig-authorization": "Bearer tok_123" });
+  });
+
+  it("emits nothing when the token is undefined or empty", () => {
+    expect(gatewayAuthHeader(undefined)).toEqual({});
+    expect(gatewayAuthHeader("")).toEqual({});
+  });
+});
 
 describe("parseJsonResponse", () => {
   it("parses clean JSON", () => {

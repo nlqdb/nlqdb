@@ -10,7 +10,16 @@
 import { appHref } from "../lib/app-href";
 
 interface Props {
-  current?: "manifesto" | "agents" | "chat" | "keys" | "vs" | "solve" | "blog" | "pricing";
+  current?:
+    | "manifesto"
+    | "agents"
+    | "chat"
+    | "keys"
+    | "billing"
+    | "vs"
+    | "solve"
+    | "blog"
+    | "pricing";
 }
 const { current } = Astro.props;
 const inChat = current === "chat";
@@ -76,6 +85,12 @@ const inChat = current === "chat";
         aria-current={current === "keys" ? "page" : undefined}
       >
         API keys
+      </a>
+      <a
+        href={appHref("/app/billing/")}
+        aria-current={current === "billing" ? "page" : undefined}
+      >
+        Billing
       </a>
       <button type="button" id="topnav-signout" class="topnav__signout">
         Sign out

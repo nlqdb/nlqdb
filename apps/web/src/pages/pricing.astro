@@ -46,7 +46,13 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
               <li>Built-in LLM free — or bring your own key at 0% markup</li>
               <li class="pricing__feature--quiet">Sleeps when idle · wakes in &lt;2s</li>
             </ul>
-            <a href={appHref("/app/")} class="cta cta--ghost pricing__cta">Start free &rarr;</a>
+            <a
+              id="pricing-free-cta"
+              href={appHref("/app/")}
+              class="cta cta--ghost pricing__cta"
+              data-api-base={apiBase}
+              >Start free &rarr;</a
+            >
           </div>
         </article>
 
@@ -70,6 +76,14 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
               <li>5 GB database</li>
               <li>Always on — no sleeping</li>
               <li>Email support</li>
+              <li class="pricing__premium" data-premium-tier="hobby">
+                Includes <strong>~200 premium AI queries</strong>/mo (frontier
+                models), then metered at provider list price, <strong>+0% markup</strong>,
+                with a built-in spend cap.
+                <button type="button" class="pricing__premium-cta" data-premium-interest data-api-base={apiBase} hidden>
+                  Rolling out — count me in &rarr;
+                </button>
+              </li>
             </ul>
             <button
               type="button"
@@ -99,6 +113,14 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
               <li>50,000 queries included, then <strong>$0.0005</strong> each</li>
               <li>5 GB included, then <strong>$0.10</strong> / GB-month</li>
               <li>Opt-in hard cap — never a surprise bill</li>
+              <li class="pricing__premium" data-premium-tier="pro">
+                Includes <strong>~600 premium AI queries</strong>/mo (frontier
+                models), then metered at provider list price, <strong>+0% markup</strong>,
+                with a built-in spend cap.
+                <button type="button" class="pricing__premium-cta" data-premium-interest data-api-base={apiBase} hidden>
+                  Rolling out — count me in &rarr;
+                </button>
+              </li>
             </ul>
             <button
               type="button"
@@ -199,6 +221,62 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   }
   // Count the entrance as soon as the page script runs.
   emitPricing({ event: "view" });
+
+  // Hosted-premium visibility (SK-PREMIUM-009 / SK-PREMIUM-013 / GLOBAL-023).
+  // The premium line is always shown; its affordance follows the live flag
+  // from GET /v1/models `premium.live` (= server `premiumConfigured`):
+  //   • dark → an interest-capture "count me in" button (POST /v1/premium/interest)
+  //   • live → button stays hidden; the plan's Choose Hobby/Pro checkout is the
+  //     real CTA (premium is included in the plan).
+  // Fails safe: if /v1/models can't be read the button stays hidden, so a
+  // premium state that can't actually be bought is never rendered (GLOBAL-023).
+  const premiumButtons = document.querySelectorAll<HTMLButtonElement>(
+    "button[data-premium-interest]",
+  );
+  void (async () => {
+    let live = false;
+    try {
+      const res = await fetch(`${pricingApiBase}/v1/models`, { credentials: "include" });
+      if (res.ok) {
+        const cat = (await res.json()) as { premium?: { live?: boolean } };
+        live = cat.premium?.live === true;
+      }
+    } catch {
+      // Fail safe — leave the interest buttons hidden.
+    }
+    if (live) return; // plan checkout is the CTA once the meter is live.
+    for (const btn of premiumButtons) {
+      btn.hidden = false;
+      btn.addEventListener("click", async () => {
+        const apiBase = (btn.dataset.apiBase ?? "").replace(/\/$/, "");
+        const user = await fetchSession();
+        if (!user) {
+          window.location.assign("/auth/sign-in/?return_to=/pricing/");
+          return;
+        }
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = "Adding you…";
+        try {
+          const res = await fetch(`${apiBase}/v1/premium/interest`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+            credentials: "include",
+          });
+          if (res.ok) {
+            btn.textContent = "You're on the list ✓";
+          } else {
+            btn.disabled = false;
+            btn.textContent = original;
+          }
+        } catch {
+          btn.disabled = false;
+          btn.textContent = original;
+        }
+      });
+    }
+  })();
 
   const buttons = document.querySelectorAll<HTMLButtonElement>("button[data-plan]");
 
@@ -340,8 +418,41 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           cta.textContent = "Switch plan";
         }
       }
+
+      // Bug C — the free card was left out of the plan-aware pass. To a paid
+      // subscriber "Start free →" is wrong: dropping to free is a cancellation,
+      // owned by the Stripe portal (never a custom cancel flow). When already
+      // canceling, the honest "Ends {date}" beats prompting a second downgrade.
+      const freeCta = document.getElementById("pricing-free-cta") as HTMLAnchorElement | null;
+      if (freeCta) {
+        if (ending) {
+          freeCta.textContent = endDate ? `Ends ${endDate}` : "Ending";
+          freeCta.removeAttribute("href");
+          freeCta.setAttribute("aria-disabled", "true");
+        } else {
+          freeCta.textContent = "Downgrade";
+          freeCta.dataset.downgrade = "1";
+          freeCta.removeAttribute("href"); // now a portal opener, not a link
+        }
+      }
     }
   })();
+
+  // Free-card "Downgrade" → the Stripe portal (cancellation lives there). Only
+  // armed after the status pass sets data-downgrade on a paid subscriber.
+  document.getElementById("pricing-free-cta")?.addEventListener("click", async (e) => {
+    const cta = e.currentTarget as HTMLAnchorElement;
+    if (cta.dataset.downgrade !== "1") return; // free/anon: keep the plain link
+    e.preventDefault();
+    const original = cta.textContent;
+    cta.textContent = "Redirecting…";
+    cta.dataset.downgrade = "busy";
+    const outcome = await openBillingPortal(cta.dataset.apiBase ?? "");
+    if (outcome === "ok") return; // browser is already navigating to Stripe
+    cta.textContent = original;
+    cta.dataset.downgrade = "1";
+    alert("Couldn't open the billing portal. Please try “Manage billing” below or email hello@nlqdb.com.");
+  });
 
   manageBtn?.addEventListener("click", async () => {
     manageBtn.disabled = true;
@@ -653,6 +764,26 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     color: var(--ink);
     font-family: var(--mono);
     font-weight: 600;
+  }
+
+  /* Hosted-premium line (SK-PREMIUM-009). The interest affordance is a quiet
+   * inline text button — it only appears while the meter is dark. */
+  .pricing__premium-cta {
+    display: inline-block;
+    margin-top: 0.4rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent, currentColor);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .pricing__premium-cta:disabled {
+    opacity: 0.7;
+    cursor: default;
   }
 
   /* Stretch the foundation `.cta` full-width; the CTAs align in a band at

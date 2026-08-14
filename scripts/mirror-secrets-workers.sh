@@ -98,6 +98,20 @@ select_secrets() {
         CEREBRAS_API_KEY
         CLOUDFLARE_ACCOUNT_ID
         CF_AI_TOKEN
+        # AI Gateway ids. Free lane falls back to direct provider URLs when
+        # unset, but the hosted-premium lane REQUIRES both — `premiumConfigured`
+        # (billing/premium/index.ts) is false without them, so the meter stays
+        # dark. AI_GATEWAY_ACCOUNT_ID == CLOUDFLARE_ACCOUNT_ID; AI_GATEWAY_ID is
+        # the gateway slug you create in Cloudflare → AI → AI Gateway.
+        AI_GATEWAY_ACCOUNT_ID
+        AI_GATEWAY_ID
+        # AI Gateway auth token (`cf-aig-authorization`) — REQUIRED when the
+        # gateway has "Authenticated Gateway" enabled. Sent on every
+        # gateway-routed LLM call (free chain + BYOLLM + premium). Unset ⇒ no
+        # header; if the gateway then requires auth, every call 401s and
+        # /v1/ask 502s (SK-LLM-046). Create it in Cloudflare → AI → AI Gateway
+        # → your gateway → Settings → Authenticated Gateway → create token.
+        AI_GATEWAY_TOKEN
         DATABASE_URL
         # SK-QUAL-002 — bearer the eval runner POSTs to /v1/events/eval; the
         # API validates the incoming token against this (index.ts). Must match
@@ -128,6 +142,14 @@ select_secrets() {
         STRIPE_SECRET_KEY
         STRIPE_PRICE_HOBBY
         STRIPE_PRICE_PRO
+        # Hosted-premium lane (SK-PREMIUM-009). All four stay empty until the
+        # operator lights the meter (blocked-by-human); empty values are skipped,
+        # never pushed, so the lane stays provably dark. PREMIUM_METER_LIVE must
+        # be ≥4 chars — set it to `true`, not `1`.
+        STRIPE_PRICE_OVERAGE_ANTHROPIC
+        STRIPE_PREMIUM_METER_ID
+        PREMIUM_ANTHROPIC_API_KEY
+        PREMIUM_METER_LIVE
         RESEND_API_KEY
         # Tawk.to Secure Mode key (SK-WEB-025) — /api/tawk/identity HMACs the
         # signed-in visitor's email so Tawk accepts their name/email. Unset ⇒

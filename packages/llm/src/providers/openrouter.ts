@@ -10,6 +10,7 @@
 
 import type { LLMOperation, Provider } from "../types.ts";
 import { createChatProvider } from "./_chat-provider.ts";
+import { gatewayAuthHeader } from "./_shared.ts";
 import { openAICompatibleChat } from "./openai-compatible.ts";
 
 const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
@@ -28,6 +29,9 @@ export type OpenRouterProviderOptions = {
   // `/chat/completions` — provider appends that suffix. Example:
   // https://gateway.ai.cloudflare.com/v1/{acc}/{gw}/openrouter/api/v1
   baseUrl?: string;
+  // AI Gateway auth token (`cf-aig-authorization`), set when the gateway
+  // has Authenticated Gateway enabled (SK-LLM-046). Unset ⇒ no header.
+  gatewayToken?: string;
   models?: Partial<Record<LLMOperation, string>>;
 };
 
@@ -46,6 +50,7 @@ export function createOpenRouterProvider(opts: OpenRouterProviderOptions): Provi
           jsonResponse: jsonMode,
           // Greedy (SK-LLM-024) unless the SK-QUAL-017 sampler overrides.
           temperature: temperature ?? 0,
+          headers: gatewayAuthHeader(opts.gatewayToken),
         },
         callOpts,
       ),

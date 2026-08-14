@@ -12,6 +12,7 @@ import {
   adoptApiKeys,
   apiKeyHmacSecret,
   bumpKeyLastUsed,
+  getKeyDefaultModel,
   listKeysByTenant,
   lookupPkLiveKey,
   lookupSkKey,
@@ -19,9 +20,11 @@ import {
   mintSkLiveKey,
   mintSkMcpKey,
   PK_LIVE_PREFIX,
+  resolveEffectiveModelPreset,
   revokeKeyById,
   SK_LIVE_PREFIX,
   SK_MCP_PREFIX,
+  setKeyDefaultModel,
 } from "../src/api-keys.ts";
 
 type InsertCall = { sql: string; params: unknown[] };
@@ -303,6 +306,7 @@ describe("listKeysByTenant", () => {
           last_used_at: 1_700_000_000,
           created_at: 1_699_900_000,
           revoked_at: null,
+          default_model: "best",
         },
         {
           id: "k_2",
@@ -315,6 +319,7 @@ describe("listKeysByTenant", () => {
           last_used_at: null,
           created_at: 1_699_800_000,
           revoked_at: 1_699_850_000,
+          default_model: null,
         },
       ],
     });
@@ -331,6 +336,7 @@ describe("listKeysByTenant", () => {
         lastUsedAt: 1_700_000_000,
         createdAt: 1_699_900_000,
         revokedAt: null,
+        defaultModel: "best",
       },
       {
         id: "k_2",
@@ -343,6 +349,7 @@ describe("listKeysByTenant", () => {
         lastUsedAt: null,
         createdAt: 1_699_800_000,
         revokedAt: 1_699_850_000,
+        defaultModel: null,
       },
     ]);
   });
@@ -454,5 +461,86 @@ describe("adoptApiKeys", () => {
     // NOT be re-keyed onto the signing-in user.
     expect(updates[0]?.sql).toContain("key_type = 'pk_live'");
     expect(updates[0]?.params).toEqual(["u_alice", "anon:abc"]);
+  });
+});
+
+// ─── SK-PREMIUM-019 — per-key default model ─────────────────────────────────
+
+describe("resolveEffectiveModelPreset (SK-PREMIUM-019)", () => {
+  it("prefers an explicit request model over the key default", () => {
+    expect(resolveEffectiveModelPreset("fast", "best")).toBe("fast");
+    expect(resolveEffectiveModelPreset("best", null)).toBe("best");
+  });
+
+  it("falls back to the key default when the request omitted `model`", () => {
+    expect(resolveEffectiveModelPreset(undefined, "best")).toBe("best");
+    expect(resolveEffectiveModelPreset(undefined, "fast")).toBe("fast");
+  });
+
+  it("resolves to undefined (server default) when both are absent", () => {
+    expect(resolveEffectiveModelPreset(undefined, null)).toBeUndefined();
+  });
+});
+
+describe("getKeyDefaultModel (SK-PREMIUM-019)", () => {
+  it("returns the stored preset on a hit", async () => {
+    const { db } = stubDb({ selectRow: { default_model: "best" } });
+    expect(await getKeyDefaultModel(db, "k_1")).toBe("best");
+  });
+
+  it("returns null on an unknown id", async () => {
+    const { db } = stubDb({ selectRow: null });
+    expect(await getKeyDefaultModel(db, "k_missing")).toBeNull();
+  });
+
+  it("coerces a NULL column to null", async () => {
+    const { db } = stubDb({ selectRow: { default_model: null } });
+    expect(await getKeyDefaultModel(db, "k_1")).toBeNull();
+  });
+
+  it("coerces a value outside the preset domain to null (stale row)", async () => {
+    const { db } = stubDb({ selectRow: { default_model: "gpt-9-turbo" } });
+    expect(await getKeyDefaultModel(db, "k_1")).toBeNull();
+  });
+});
+
+describe("setKeyDefaultModel (SK-PREMIUM-019)", () => {
+  // Mirrors revokeStub: the outcome hinges on the conditional UPDATE's
+  // `meta.changes`, so drive that directly.
+  function setStub(changes: number): { db: D1Database; updates: InsertCall[] } {
+    const updates: InsertCall[] = [];
+    const prepare = vi.fn().mockImplementation((sql: string) => ({
+      bind: vi.fn().mockImplementation((...params: unknown[]) => ({
+        run: vi.fn().mockImplementation(async () => {
+          if (sql.startsWith("UPDATE")) updates.push({ sql, params: [...params] });
+          return { success: true, meta: { changes } };
+        }),
+      })),
+    }));
+    return { db: { prepare } as unknown as D1Database, updates };
+  }
+
+  it("returns `updated` and scopes the write to sk_live/sk_mcp rows only", async () => {
+    const { db, updates } = setStub(1);
+    const outcome = await setKeyDefaultModel(db, "u_alice", "k_1", "best");
+    expect(outcome).toBe("updated");
+    expect(updates).toHaveLength(1);
+    expect(updates[0]?.sql).toContain("UPDATE api_keys SET default_model = ?");
+    expect(updates[0]?.sql).toContain("WHERE id = ? AND tenant_id = ?");
+    // pk_live_ (read-only) and byollm (credential) rows are never picker targets.
+    expect(updates[0]?.sql).toContain("key_type IN ('sk_live', 'sk_mcp')");
+    expect(updates[0]?.params).toEqual(["best", "k_1", "u_alice"]);
+  });
+
+  it("clears the default by binding null", async () => {
+    const { db, updates } = setStub(1);
+    const outcome = await setKeyDefaultModel(db, "u_alice", "k_1", null);
+    expect(outcome).toBe("updated");
+    expect(updates[0]?.params).toEqual([null, "k_1", "u_alice"]);
+  });
+
+  it("returns `not_found` when no row matched (wrong tenant, id, or key_type)", async () => {
+    const { db } = setStub(0);
+    expect(await setKeyDefaultModel(db, "u_alice", "k_pk_live", "best")).toBe("not_found");
   });
 });

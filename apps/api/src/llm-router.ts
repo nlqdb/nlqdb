@@ -63,19 +63,33 @@ function aiGatewayBases(accountId?: string, gatewayId?: string): GatewayBases {
 export function getLLMRouter(): LLMRouter {
   if (cached) return cached;
   const gw = aiGatewayBases(env.AI_GATEWAY_ACCOUNT_ID, env.AI_GATEWAY_ID);
+  // Gateway auth token (`cf-aig-authorization`), only meaningful for the
+  // gateway-routed providers below. Pass it alongside each gateway `baseUrl`
+  // so an "Authenticated Gateway" doesn't 401 the whole chain (SK-LLM-046).
+  // `undefined` when the token or the gateway is unconfigured ⇒ no header.
+  const gwToken = env.AI_GATEWAY_TOKEN || undefined;
   const providers = [
     // SK-LLM-023 — Cerebras leads the planner tier (gpt-oss-120b). Routed
     // direct (not via AI Gateway yet); the provider-agnostic plan cache
     // (SK-LLM-010) is the real cache layer, so the gateway gap is cosmetic.
     createCerebrasProvider({ apiKey: env.CEREBRAS_API_KEY ?? "" }),
-    createGroqProvider({ apiKey: env.GROQ_API_KEY ?? "", baseUrl: gw.groq }),
-    createGeminiProvider({ apiKey: env.GEMINI_API_KEY ?? "", baseUrl: gw.gemini }),
+    createGroqProvider({ apiKey: env.GROQ_API_KEY ?? "", baseUrl: gw.groq, gatewayToken: gwToken }),
+    createGeminiProvider({
+      apiKey: env.GEMINI_API_KEY ?? "",
+      baseUrl: gw.gemini,
+      gatewayToken: gwToken,
+    }),
     createWorkersAIProvider({
       apiToken: env.CF_AI_TOKEN ?? "",
       accountId: env.CLOUDFLARE_ACCOUNT_ID ?? "",
       baseUrl: gw.workersAi,
+      gatewayToken: gwToken,
     }),
-    createOpenRouterProvider({ apiKey: env.OPENROUTER_API_KEY ?? "", baseUrl: gw.openrouter }),
+    createOpenRouterProvider({
+      apiKey: env.OPENROUTER_API_KEY ?? "",
+      baseUrl: gw.openrouter,
+      gatewayToken: gwToken,
+    }),
     // SK-LLM-028 — Mistral is the planner-tier capacity backstop at the
     // chain tail. Routed direct (no AI Gateway base), same rationale as
     // Cerebras. Fires only when every head provider is rate-limited out.

@@ -39,9 +39,10 @@ values and criteria live. Read those only when you sit down to do the thing.
 | 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 | 3 | ~15 min | Register the Supabase OAuth app + set `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` prod secrets — unblocks one-click Supabase connect (paste path works meanwhile) | 2026-08-13 |
 
-Only #1 can move real strangers (scorecard row #2); #2 is the only one that
-costs money and waits per `docs/cost-ladder.md` unless a Team org already
-exists. No founder action remains on the SK-PIVOT-016 gate path itself: with
+Only #1 can move real strangers (scorecard row #2); the hosted-premium meter
+went **live 2026-08-14** (`premium.live=true` in prod — the full activation,
+AI Gateway included, is done and off this queue); #2 costs money and waits per
+`docs/cost-ladder.md` unless a Team org already exists. No founder action remains on the SK-PIVOT-016 gate path itself: with
 `NLQDB_API_KEY` set (2026-08-04), D-04 — provisioning the memory DB through
 the product's own authed create surface — is **agent work** (the 08-08 weekly
 review briefly queued it here; corrected same day, founder-flagged: rule 4 /

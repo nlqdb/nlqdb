@@ -128,13 +128,38 @@
 
 .keys-list__row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   gap: 16px;
   align-items: center;
   padding: 14px 16px;
   border: 1px solid var(--rule);
   border-radius: var(--r-md);
   background: var(--bg-elev);
+}
+
+/* SK-PREMIUM-019 — per-key default-model picker (sk_live/sk_mcp rows only). */
+.keys-list__default-model {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.keys-list__default-model-label {
+  color: var(--muted);
+}
+
+.keys-list__default-model-select {
+  padding: 4px 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm, 6px);
+  background: var(--bg-elev);
+  color: inherit;
+}
+
+.keys-list__default-model-error {
+  color: var(--danger, #b91c1c);
+  font-size: 0.75rem;
 }
 
 @media (max-width: 640px) {

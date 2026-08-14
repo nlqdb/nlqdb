@@ -115,12 +115,25 @@ export function resolveAskRouter(args: {
   accountCredential?: ByollmCredential | null;
   preset?: ModelPreset;
   freeRouter: LLMRouter;
-  gateway: { accountId?: string; gatewayId?: string };
+  gateway: { accountId?: string; gatewayId?: string; token?: string };
   userId: string;
+  // SK-PREMIUM-009 — hosted-premium lane. `premiumEligible` marks that the
+  // caller is a paid user on a live-metered deployment (the handler resolves it
+  // via `premiumConfigured` + tier), so `best` is satisfiable and the four-step
+  // precedence (GLOBAL-026) admits `premium` below account-BYOLLM. `premiumRouter`
+  // is the built single-provider Anthropic router when this query runs on the
+  // premium lane; it is ABSENT when the query fell back to the free chain
+  // (allowance exhausted + `overflow_policy=fallback`, or the per-key cap hit) —
+  // then the free router serves it and the handler surfaces the routing change
+  // in the trace (never silent — GLOBAL-023). Both default off ⇒ existing
+  // behavior unchanged (the dormant path).
+  premiumEligible?: boolean;
+  premiumRouter?: LLMRouter;
 }): ResolveAskRouterResult {
   const selection = selectDispatchLane({
     headerCredential: args.headerCredential,
     accountCredential: args.accountCredential ?? null,
+    ...(args.premiumEligible !== undefined ? { premiumEligible: args.premiumEligible } : {}),
     ...(args.preset !== undefined ? { preset: args.preset } : {}),
   });
   if (selection.lane === "unavailable") {
@@ -130,11 +143,22 @@ export function resolveAskRouter(args: {
   // signal the §6 trigger reads (performance.md §3.3 cardinality rules).
   const presetAttr: Record<string, string> =
     args.preset !== undefined ? { "llm.model_preset": args.preset } : {};
+  if (selection.lane === "premium") {
+    // The lane the query actually runs on: premium when a router was built,
+    // else the free chain (the fallback/cap fall-through). Attributes follow
+    // the real lane so `llm.billed_to` never says `metered` for a free serve.
+    const realLane = args.premiumRouter ? selection : ({ lane: "free" } as const);
+    return {
+      ok: true,
+      router: args.premiumRouter ?? args.freeRouter,
+      attributes: { ...dispatchLaneAttributes(realLane), ...presetAttr },
+    };
+  }
   const attributes = { ...dispatchLaneAttributes(selection), ...presetAttr };
   if (selection.lane !== "byollm") {
     return { ok: true, router: args.freeRouter, attributes };
   }
-  const { accountId, gatewayId } = args.gateway;
+  const { accountId, gatewayId, token: gatewayToken } = args.gateway;
   if (!accountId || !gatewayId) {
     // AI Gateway is the mandatory BYOLLM egress (SK-LLM-019), so an
     // unconfigured gateway is a deployment-wide operator gap (a legit
@@ -165,6 +189,8 @@ export function resolveAskRouter(args: {
     accountId,
     gatewayId,
     userId: args.userId,
+    // SK-LLM-046 — authenticate to the gateway when it requires it.
+    ...(gatewayToken ? { gatewayToken } : {}),
   });
   return { ok: true, router, attributes };
 }

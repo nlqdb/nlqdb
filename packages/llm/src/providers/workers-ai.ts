@@ -6,7 +6,7 @@
 
 import { type CallOpts, type LLMOperation, type Provider, ProviderError } from "../types.ts";
 import { createChatProvider } from "./_chat-provider.ts";
-import { httpError, truncate } from "./_shared.ts";
+import { gatewayAuthHeader, httpError, truncate } from "./_shared.ts";
 import type { ChatMessage } from "./openai-compatible.ts";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
@@ -24,6 +24,9 @@ export type WorkersAIProviderOptions = {
   // `/{model}`. Example:
   // https://gateway.ai.cloudflare.com/v1/{acc}/{gw}/workers-ai
   baseUrl?: string;
+  // AI Gateway auth token (`cf-aig-authorization`), set when the gateway
+  // has Authenticated Gateway enabled (SK-LLM-046). Unset ⇒ no header.
+  gatewayToken?: string;
   models?: Partial<Record<LLMOperation, string>>;
 };
 
@@ -44,6 +47,7 @@ async function workersAIChat(
   messages: ChatMessage[],
   temperature: number | undefined,
   opts: CallOpts,
+  gatewayToken?: string,
 ): Promise<string> {
   const fetchFn = opts.fetch ?? globalThis.fetch;
   const url = baseUrl
@@ -57,6 +61,8 @@ async function workersAIChat(
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${apiToken}`,
+        // Only meaningful when `baseUrl` is the AI Gateway; harmless direct.
+        ...gatewayAuthHeader(gatewayToken),
       },
       // SK-LLM-024 — greedy (temperature 0) decoding parity with the rest
       // of the free planner chain. Workers AI's default is 0.6 (stochastic);
@@ -117,6 +123,7 @@ export function createWorkersAIProvider(opts: WorkersAIProviderOptions): Provide
         messages,
         temperature,
         callOpts,
+        opts.gatewayToken,
       ),
   });
 }

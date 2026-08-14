@@ -106,6 +106,13 @@ SECRETS=(
   CLOUDFLARE_ACCOUNT_ID
   CLOUDFLARE_API_TOKEN
   CF_AI_TOKEN
+  # AI Gateway ids — required by the hosted-premium lane (premiumConfigured);
+  # kept CI-ready so a deploy self-heals them onto the Worker once provisioned.
+  AI_GATEWAY_ACCOUNT_ID
+  AI_GATEWAY_ID
+  # AI Gateway auth token — sent as cf-aig-authorization when the gateway has
+  # Authenticated Gateway enabled; unset ⇒ no header (SK-LLM-046).
+  AI_GATEWAY_TOKEN
   # Turnstile-write CF API token — future automation creates the widget via
   # POST accounts/{id}/challenges/widgets (main CLOUDFLARE_API_TOKEN is read-only).
   CF_TURNSTILE_EDIT_API_TOKEN
@@ -148,6 +155,12 @@ SECRETS=(
   STRIPE_WEBHOOK_SECRET
   STRIPE_PRICE_HOBBY
   STRIPE_PRICE_PRO
+  # Hosted-premium lane (SK-PREMIUM-009) — kept CI-ready so a deploy self-heals
+  # them onto the Worker once the operator provisions the values in .envrc.
+  STRIPE_PRICE_OVERAGE_ANTHROPIC
+  STRIPE_PREMIUM_METER_ID
+  PREMIUM_ANTHROPIC_API_KEY
+  PREMIUM_METER_LIVE
   SENTRY_DSN
   GRAFANA_OTLP_ENDPOINT
   GRAFANA_CLOUD_INSTANCE_ID

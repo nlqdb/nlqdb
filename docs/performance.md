@@ -1,14 +1,12 @@
 # nlqdb — Performance & Observability
 
-The "fast" promise made concrete. This doc pins: **SLOs** (§1), the
-**per-stage latency budgets** that sum to fit them (§2), the
-**span / metric / label catalog** (§3), **instrumentation hookpoints**
-(§4), **sampling + cost discipline** for the Grafana Cloud free tier
-(§5), and the **dashboards-as-code** layout (§6).
-
-Not in scope: architectural rationale (see [./architecture.md](./architecture.md)),
-phased plan (see [./phase-plan.md](./phase-plan.md)), current
-state of provisioned infra (see [./runbook.md](./runbook.md)).
+The "fast" promise made concrete: **SLOs** (§1), the **per-stage latency
+budgets** that sum to fit them (§2), the **span / metric / label catalog**
+(§3), **instrumentation hookpoints** (§4), **sampling + cost discipline**
+for the Grafana Cloud free tier (§5), and **dashboards-as-code** (§6).
+Out of scope: architectural rationale ([architecture.md](./architecture.md)),
+phased plan ([phase-plan.md](./phase-plan.md)), provisioned infra
+([runbook.md](./runbook.md)).
 
 ---
 
@@ -35,9 +33,9 @@ regression**: the offending slice gets reverted before the next slice starts.
 
 ## 2. Latency budgets
 
-Each stage gets a per-stage p50 and p99. Stages sum to the SLO with
-non-zero headroom. Anything that goes over budget at PR time fails CI
-(see §4: every slice instruments + asserts its own stage).
+Each stage gets a p50 and p99 that sum to the SLO with non-zero headroom;
+anything over budget at PR time fails CI (§4: every slice instruments +
+asserts its own stage).
 
 ### 2.1 `POST /v1/ask` — cache hit
 
@@ -72,19 +70,18 @@ non-zero headroom. Anything that goes over budget at PR time fails CI
 |    | **Total (no summarize)**                      | **733 ms**  | **1980 ms** |
 |    | Headroom vs SLO                               | 467 ms / 767 ms | 720 ms / 1520 ms |
 
-Two stages are conditional. The merged `route` call
-(`ask/route-ask.ts`, SK-ASK-009) runs only when `dbId` is absent (§2.3).
-Stage 9 runs only when the row count is over the threshold (default 5)
-or the route classifier flagged the query as conversational, so most
-fact lookups skip it.
+Two stages are conditional: the merged `route` call (`ask/route-ask.ts`,
+SK-ASK-009) runs only when `dbId` is absent (§2.3); stage 9 (summarize)
+only when the row count exceeds the threshold (default 5) or the query is
+conversational, so most fact lookups skip it.
 
 ### 2.3 `POST /v1/ask` — `dbId` resolution prelude (dbId omitted)
 
 `SK-ASK-009`. One cheap-tier `llm.route` call decides
-`{kind, targetDbId, referencedTables}` from the goal + dbset +
-recent-tables MRU, in parallel with `listDatabasesForTenant`. Its
-short-circuits (0 dbs / recent-table verb hit / slug match) keep most
-multi-DB sends off a full LLM round-trip.
+`{kind, targetDbId, referencedTables}` from goal + dbset + recent-tables
+MRU, in parallel with `listDatabasesForTenant`; its short-circuits (0 dbs /
+recent-table verb hit / slug match) keep most multi-DB sends off a full LLM
+round-trip.
 
 | Path                                                                 | p50    | p99    |
 | :------------------------------------------------------------------- | :----- | :----- |
@@ -95,14 +92,9 @@ multi-DB sends off a full LLM round-trip.
 
 Worst case adds 115/445 ms onto §2.2: **1148 ms p50 / 3225 ms p99**
 with summarize, **848 / 2425 ms** without — both inside the 1.5 s /
-3.5 s SLO (352 / 275 ms p99 headroom).
-
-Operational guardrails:
-- `route` timeout 1500 ms (cheap-tier, `DEFAULT_TIMEOUTS_MS`).
-- Span `llm.route` per LLM attempt; `nlqdb.ask.dbid_resolution`
-  attribute records which fast-path won (`slug_fastpath` /
-  `recent_table_fastpath` / `single_db_auto` / `llm_auto_target` /
-  `ambiguous_409` / `zero_dbs_create_fallback`).
+3.5 s SLO (352 / 275 ms p99 headroom). Guardrails: `route` timeout
+1500 ms (cheap-tier); the `llm.route` span carries `nlqdb.ask.dbid_resolution`
+= the fast-path that won (values owned by SK-ASK-009).
 
 ### 2.4 `GET /api/auth/callback/github`
 
@@ -121,15 +113,12 @@ Operational guardrails:
 | :--------------------------- | :---------------- | :----- | :----- | :------------------------------- |
 | Cloudflare Workers AI        | route (Llama 8B)  | 80 ms  | 300 ms | Same-region edge — fastest.      |
 | Cloudflare Workers AI        | plan              | 500 ms | 1200 ms | Heavier model.                  |
-| Gemini 2.0 Flash             | route             | 150 ms | 500 ms |                                  |
-| Gemini 2.0 Flash             | plan              | 700 ms | 1800 ms |                                  |
-| Groq (GPT OSS 20B)           | route / engine_classify | 100 ms | 400 ms | Cheap-tier hot path; chain default. |
-| Groq (GPT OSS 120B)          | plan              | 400 ms | 1000 ms | Planner-tier failover.           |
-| OpenRouter (fallback)        | plan              | 1000 ms| 3000 ms | Used only on multi-provider failover. |
+| Gemini 2.0 Flash             | route / plan      | 150 ms / 700 ms | 500 ms / 1800 ms |                     |
+| Groq (GPT OSS 20B/120B)      | route / plan      | 100 ms / 400 ms | 400 ms / 1000 ms | Cheap-tier default; 120B is the planner failover. |
+| OpenRouter (fallback)        | plan              | 1000 ms| 3000 ms | Multi-provider failover only.    |
 | Neon HTTP (us-east-1)        | SELECT (warm)     | 80 ms  | 300 ms | Cold pool can spike to 1 s.      |
 | Cloudflare D1 (read, warm)   | SELECT            | 10 ms  | 30 ms  | listDatabasesForTenant prelude.  |
-| Cloudflare KV (read, hot)    | get               | 5 ms   | 15 ms  |                                  |
-| Cloudflare KV (write)        | put               | 5 ms   | 25 ms  |                                  |
+| Cloudflare KV              | get / put         | 5 ms   | 15 ms / 25 ms |                           |
 
 These are budgets, not measurements; §7 governs replacing them with real
 values once the dashboards (§6) exist.
@@ -150,10 +139,10 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.ask`                   | Top-level wrapper for `/v1/ask` request.       |
 | `nlqdb.cache.plan.lookup`     | KV read for cached plan (label `hit=true/false`). |
 | `nlqdb.cache.plan.write`      | KV write of new plan.                          |
-| `nlqdb.cache.first_query.{lookup,commit}` | KV read/write of the `user.first_query` emit marker (`ask/orchestrate.ts`). Emit-then-commit: `lookup` `onError`→false and a failed commit re-emits next request; both non-fatal. |
+| `nlqdb.cache.first_query.{lookup,commit}` | KV read/write of the `user.first_query` emit marker (`ask/orchestrate.ts`); emit-then-commit, both non-fatal (a failed commit re-emits next request). |
 | `nlqdb.recent_tables.lookup`  | KV read of principal's recent-tables MRU (`SK-ASK-012`). |
-| `nlqdb.recent_tables.touch`   | KV read-merge-write to push new tables onto the MRU (`SK-ASK-012`). `ctx.waitUntil` on `/v1/ask`; awaited inline on create. |
-| `nlqdb.diag.write`            | KV write persisting a swallowed failure class's SQLSTATE (`SK-ASK-023`) — previews log nowhere, so KV is the durable channel. Swallowed; never blocks the caller's error path. |
+| `nlqdb.recent_tables.touch`   | KV read-merge-write pushing new tables onto the MRU (`SK-ASK-012`); `ctx.waitUntil` on `/v1/ask`, inline on create. |
+| `nlqdb.diag.write`            | KV write persisting a swallowed failure's SQLSTATE (`SK-ASK-023`) — KV is the durable channel since previews log nowhere. Swallowed; never blocks the error path. |
 | `llm.route`                   | Merged kind + dbId classification (SK-ASK-009). One cheap-tier call per cache-miss / dbId-absent send; replaces the older `llm.classify` + `llm.disambiguate` pair. |
 | `llm.plan`                    | NL → SQL generation.                           |
 | `llm.summarize`               | Result summarization (conditional).            |
@@ -168,12 +157,13 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
 | `nlqdb.billing.checkout.create` | Stripe Checkout Session create (SK-STRIPE-004). One per `POST /v1/billing/checkout`. Carries `nlqdb.billing.plan`, `nlqdb.user.id`, `nlqdb.billing.checkout_session_id`. |
 | `nlqdb.billing.portal.create` | Stripe Billing Portal Session create (SK-STRIPE-008). One per `POST /v1/billing/portal`. Carries `nlqdb.user.id`, `nlqdb.billing.portal_session_id`. |
+| `nlqdb.billing.premium.{meter_event,overage_item,reconcile}` | Hosted-premium Stripe calls (SK-PREMIUM-017, GLOBAL-014), all dark until `PREMIUM_METER_LIVE`: `meter_event` = Billing Meter event create (carries `nlqdb.premium.event_id`); `overage_item` = lazy overage subscription-item attach; `reconcile` = daily meter-summary cross-check (carries `nlqdb.premium.reconcile_cross_checked`). ERROR on Stripe failure; best-effort, never breaks `/v1/ask`. |
 | `nlqdb.events.emit`           | Product-event sink dispatch (LogSnag + PostHog). Wrapped in `ctx.waitUntil` (off the response path). Server-side only. |
-| `nlqdb.events.sink.query_log` | Tinybird `query_log` Data Source write; one per consumed events-batch. Carries `nlqdb.events.{batch_size,rows_written,circuit_open}`, `http.response.status_code`. Owner: `apps/events-worker/src/sinks/query-log.ts` → `@nlqdb/db/clickhouse-tinybird/query-log.ts` (`SK-EVENTS-009`). |
-| `nlqdb.events.sink.posthog` | PostHog `/batch` fan-out; one per consumed events-batch. Carries `nlqdb.events.batch_size`, `http.response.status_code`. Best-effort — ERROR on failure, never affects ack/retry. Owner: `apps/events-worker/src/sinks/posthog.ts` (`SK-EVENTS-013`). |
-| `nlqdb.workload_analyser.run` | W5 daily cron parent span. Carries `nlqdb.workload_analyser.{query_log_rows, proposals, reshapes_applied, errors, elapsed_ms}`. Owner: `apps/api/src/workload-analyser/cron.ts` (`SK-MIGRATE-001`). |
+| `nlqdb.events.sink.query_log` | Tinybird `query_log` Data Source write; one per events-batch. Carries `nlqdb.events.{batch_size,rows_written,circuit_open}`, `http.response.status_code` (`SK-EVENTS-009`). |
+| `nlqdb.events.sink.posthog` | PostHog `/batch` fan-out; one per events-batch. Carries `nlqdb.events.batch_size`, `http.response.status_code`. Best-effort — ERROR on failure, never affects ack/retry (`SK-EVENTS-013`). |
+| `nlqdb.workload_analyser.run` | W5 daily cron parent span. Carries `nlqdb.workload_analyser.{query_log_rows, proposals, reshapes_applied, errors, elapsed_ms}` (`SK-MIGRATE-001`). |
 | `nlqdb.workload_analyser.reshape` | One child span per `ReshapeProposal` the cron dispatches. Carries `nlqdb.workload_analyser.{kind, db_id, pipe_pre_existed?, pipe_name?}`. ERROR on a Tinybird create-reject or `schema_hash`-drift rollback (`SK-MIGRATE-004/006`). |
-| `db.query` (Tinybird Pipes mgmt) | Per-call span around `createPipe` / `dropPipe` / `getPipe`. Attributes `db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`, `db.tinybird.pipe`. Latency on `nlqdb.db.duration_ms{operation}`. Owner: `packages/db/src/clickhouse-tinybird/pipe-management.ts` (`SK-MIGRATE-001`). |
+| `db.query` (Tinybird Pipes mgmt) | Per-call span around `createPipe` / `dropPipe` / `getPipe`. Attributes `db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`, `db.tinybird.pipe`. Latency on `nlqdb.db.duration_ms{operation}` (`SK-MIGRATE-001`). |
 | `dns.resolve`                 | One span per BYO connect-time egress resolve (`GLOBAL-035`); A + AAAA DoH legs nest under it. Attributes `server.address`, `dns.question.name`, `dns.answer.count`; ERROR on fail-loud. Owner: `packages/db/src/doh-resolver.ts`. |
 | `nlqdb.mcp.http.request`     | `SK-MCP-009` — every hosted-MCP Worker request before `OAuthProvider` dispatch (`GET /health` skipped). Attributes `http.{request.method,route,response.status_code}`; an `OAuthProvider` error adds `nlqdb.mcp.auth.{error_code,error_status,error_description}` and flips status to ERROR. Owner: `apps/mcp/src/index.ts`. |
 | `nlqdb.grants.{mint,list,revoke}` | The `/v1/grants` cross-tenant read-grant control plane (`SK-EKP-008`). Each carries `nlqdb.user.id` plus its own `nlqdb.grants.<verb>.outcome`; mint adds `.db_id`, list adds `.count`, revoke adds `.grant_id` and is fail-closed within the 30 s bound. |
@@ -193,6 +183,7 @@ Counters (suffix `.total`):
 - `nlqdb.events.sink.query_log.failures.total{status_class}` — Tinybird `query_log` write failures (non-2xx or fetch threw). Trip signal for the events-worker circuit-breaker (`SK-EVENTS-009`).
 - `nlqdb.retry.total{stage, reason}` — GLOBAL-022 retries (SK-ASK-013, SK-SDK-008). `stage ∈ {route, plan, exec, sdk}`. Attempts, not requests. Sustained climb = release-blocking.
 - `nlqdb.mcp.auth.failures.total{error_code, status}` — `SK-MCP-009` slice 3c. Hosted-MCP `OAuthProvider` error responses from its `onError` callback. `error_code` ∈ workers-oauth-provider 0.6's set (`invalid_request`, `invalid_client`, `invalid_grant`, `invalid_token`, `temporarily_unavailable`, …); `status` is the HTTP code. Distinguishes probe traffic from misconfiguration.
+- `nlqdb.premium.cap_hit.total` / `nlqdb.premium.overflow_fallback_events.total` — hosted-premium fall-throughs to the free chain (SK-PREMIUM-006 / SK-PREMIUM-011). No per-customer label; aggregate only.
 
 Histograms (latency in ms — explicit `_ms` suffix):
 
@@ -204,11 +195,13 @@ Histograms (latency in ms — explicit `_ms` suffix):
 Other histograms (non-latency):
 
 - `nlqdb.events.sink.query_log.batch_size` (unit `rows`) — events written to Tinybird `query_log` per flush. Bounded by the Cloudflare Queue consumer's `max_batch_size` (currently 100).
+- `nlqdb.premium.cost_per_query_usd` (unit `usd`) / `nlqdb.premium.tokens_per_query` (unit `token`) `{provider, model, sized}` — hosted-premium per-query COGS + token footprint, the SK-PREMIUM-010 allowance-calibration inputs. Bounded labels only; hosted-premium lane, dark until `PREMIUM_METER_LIVE`.
 
 Gauges:
 
 - `nlqdb.tenants.active{window}` — sampled hourly.
 - `nlqdb.recent_tables.entries{principal_kind}` — post-touch MRU length (`SK-ASK-012`).
+- `nlqdb.premium.meter_reconcile_drift_usd_cents` — daily internal-ledger vs Stripe drift (SK-PREMIUM-017); cron-set, unlabelled. Per-(customer, period) allowance is D1-sourced, never a gauge label (§3.3 user-grain ban).
 
 ### 3.3 Label conventions
 
@@ -230,13 +223,13 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `status` (on `llm.calls.total`) | 3              | `ok` / `error` / `hedge_lost` (SK-LLM-014, cancelled hedge legs); filter `status="error"` for real failures. |
 | `reason` (on `llm.failover.total`) | bounded     | `FailoverReason` set + `hedge_lost` (SK-LLM-014). |
 | `nlqdb.cron`            | bounded (~3)        | On `db.query` keep-warm pings (SK-HDC-014); pinned to `wrangler.toml` crons. |
+| `sized`                | 3                   | `standard` / `large` / `refused` — hosted-premium cost/token histograms (SK-PREMIUM-010). |
 | `nlqdb.llm.hedge_lost`  | 2 (boolean)         | Span-only on `llm.<op>` for a hedge-cancelled leg (SK-LLM-014); `hedge_lost=true`. Not a metric label. |
 | `llm.dispatch_lane` / `llm.billed_to` / `llm.byollm_provider` / `llm.byollm_source` / `llm.model_preset` / `llm.byollm_degraded` | 3 / 3 / ~5 / 2 / 3 / 1 | Ask-span only (SK-LLM-020, GLOBAL-026): lane `free`/`byollm`/`premium`; billed-to `platform`/`byollm`/`metered`; byollm slug (not the model); source `header`/`account` (SK-PREMIUM-012); preset `auto`/`fast`/`best`, stamped only when the request sent one (SK-PREMIUM-014 §6 demand signal); `byollm_degraded=gateway_unconfigured` stamped only when the ambient account lane fell back to the free chain because AI Gateway is unset (SK-LLM-021). Not metric labels. |
 
-**Cardinality rule:** total combined series < 8 k (Grafana Cloud free
-tier ceiling at 10 k, leave 2 k headroom). The above bounds are
-designed to fit. Any new label must be added here AND get a
-cardinality assertion in CI.
+**Cardinality rule:** total combined series < 8 k (Grafana Cloud free-tier
+ceiling 10 k, 2 k headroom). The bounds above are designed to fit; any new
+label must be added here AND get a CI cardinality assertion.
 
 ---
 
@@ -255,13 +248,8 @@ in the same PR:
 
 ## 5. Sampling + cost discipline
 
-Grafana Cloud free tier ceilings (current as of 2026-04):
-
-- **Metrics:** 10 k active series.
-- **Logs:** 50 GB / mo.
-- **Traces:** 50 GB / mo.
-
-Sampling rules to stay well under:
+Grafana Cloud free-tier ceilings (2026-04): metrics 10 k active series;
+logs 50 GB/mo; traces 50 GB/mo. Sampling rules to stay well under:
 
 | Path                                | Trace sample rate |
 | :---------------------------------- | :---------------- |
@@ -273,16 +261,11 @@ Sampling rules to stay well under:
 | Any request returning 4xx           | 10 %              |
 | Stripe webhook                      | 100 %             |
 
-**Metrics:** all metrics aggregated at 60 s resolution; histograms
-use 8 buckets (0.005, 0.025, 0.1, 0.25, 0.5, 1, 2.5, 5 s) — enough
-for p50/p95/p99, cheap on series count.
-
-**Logs:** errors at INFO+; everything else at DEBUG only when
-`NLQDB_LOG_LEVEL=debug` (off in prod). Never log secrets, query
-contents, or PII (tenant_id only).
-
-If any of the three ceilings approaches 80 %, the alert fires (see §6)
-and we either raise sampling thresholds or split telemetry across two
+**Metrics:** 60 s resolution; histograms use 8 buckets (0.005, 0.025, 0.1,
+0.25, 0.5, 1, 2.5, 5 s) — enough for p50/p95/p99, cheap on series count.
+**Logs:** errors at INFO+; else DEBUG only when `NLQDB_LOG_LEVEL=debug`
+(off in prod). Never log secrets, query contents, or PII (tenant_id only).
+At 80 % of any ceiling the §6 alert fires; we raise thresholds or split
 stacks before paying.
 
 ---
@@ -290,29 +273,18 @@ stacks before paying.
 ## 6. Dashboards-as-code
 
 Deferred until Phase 1 traffic warrants a tuned view (tracked in
-`features/observability/FEATURE.md` Open questions); spans + metrics
-already export via OTLP. When they land: JSON in
-`ops/grafana/dashboards/`, provisioned from CI on merge to `main`,
-never edited in the Grafana UI — UI changes are detected on the next
-CI run and the JSON wins.
-
-Alerts (provisioned alongside dashboards):
-
-- Any SLO p99 over budget for 5 min → page.
-- Error rate > 0.5 % for 10 min → page.
-- LLM provider failover rate > 5 % over 1 h → ticket.
-- Grafana Cloud series count > 8 k → ticket (cost ceiling approach).
-- KV / D1 / R2 quota usage > 80 % → ticket.
+`features/observability/FEATURE.md`); spans + metrics already export via
+OTLP. When they land: JSON in `ops/grafana/dashboards/`, provisioned from
+CI on merge to `main` (UI edits lose to the next CI run). Alerts land
+alongside: SLO p99 over budget 5 min or error rate > 0.5 % for 10 min →
+page; LLM failover > 5 %/1 h, Grafana series > 8 k, or KV/D1/R2 usage
+> 80 % → ticket.
 
 ---
 
 ## 7. How this doc evolves
 
-- **Budget changes** require a PR; the PR description must state the
-  measurement that motivated the change.
-- **New routes** add a row to §1 (SLO) AND §2 (budget) AND §4
-  (instrumentation hooks) in the same PR.
-- **New providers / engines** add to §2.5 (provider numbers) and
-  §3.3 (label values). Backfill measurements within a week of landing.
-- **New metrics / labels** require a cardinality estimate in the PR
-  description; the CI cardinality assertion catches the rest.
+- **Budget changes** require a PR stating the measurement that motivated it.
+- **New routes** add a row to §1 (SLO) + §2 (budget) + §4 (hooks), same PR.
+- **New providers / engines** add to §2.5 + §3.3; backfill measurements within a week.
+- **New metrics / labels** require a cardinality estimate in the PR; the CI cardinality assertion catches the rest.

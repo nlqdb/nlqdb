@@ -10,7 +10,7 @@
 
 import { type CallOpts, type LLMOperation, type Provider, ProviderError } from "../types.ts";
 import { createChatProvider } from "./_chat-provider.ts";
-import { httpError, truncate } from "./_shared.ts";
+import { gatewayAuthHeader, httpError, truncate } from "./_shared.ts";
 import type { ChatMessage } from "./openai-compatible.ts";
 
 const DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -29,6 +29,9 @@ export type GeminiProviderOptions = {
   // `/{model}:generateContent`. Example:
   // https://gateway.ai.cloudflare.com/v1/{acc}/{gw}/google-ai-studio/v1beta/models
   baseUrl?: string;
+  // AI Gateway auth token (`cf-aig-authorization`), set when the gateway
+  // has Authenticated Gateway enabled (SK-LLM-046). Unset ⇒ no header.
+  gatewayToken?: string;
   models?: Partial<Record<LLMOperation, string>>;
 };
 
@@ -48,6 +51,7 @@ async function geminiChat(
   jsonMode: boolean,
   temperature: number | undefined,
   opts: CallOpts,
+  gatewayToken?: string,
 ): Promise<string> {
   const fetchFn = opts.fetch ?? globalThis.fetch;
   // API key passed via `x-goog-api-key` header rather than the
@@ -82,6 +86,7 @@ async function geminiChat(
       headers: {
         "content-type": "application/json",
         "x-goog-api-key": apiKey,
+        ...gatewayAuthHeader(gatewayToken),
       },
       body: JSON.stringify(body),
       signal: opts.signal,
@@ -116,6 +121,15 @@ export function createGeminiProvider(opts: GeminiProviderOptions): Provider {
     name: "gemini",
     models: { ...DEFAULT_MODELS, ...opts.models },
     callChat: ({ model, messages, jsonMode, temperature, opts: callOpts }) =>
-      geminiChat(opts.apiKey, base, model, messages, jsonMode, temperature, callOpts),
+      geminiChat(
+        opts.apiKey,
+        base,
+        model,
+        messages,
+        jsonMode,
+        temperature,
+        callOpts,
+        opts.gatewayToken,
+      ),
   });
 }

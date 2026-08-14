@@ -101,7 +101,7 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 ### SK-LLM-020 — BYOLLM lane selector + single-provider lane router
 
 **Body:** [`decisions/SK-LLM-020-byollm-lane-selector.md`](./decisions/SK-LLM-020-byollm-lane-selector.md).
-`byollm-dispatch.ts` adds three pure primitives — `selectDispatchLane` (`SK-LLM-016`'s header→account→premium→free precedence), `buildByollmRouter` (single-provider, fail-loud per `GLOBAL-012`), `dispatchLaneAttributes` (bounded, key-redacted span attributes). The package stays free of header/DB/KEK access.
+`byollm-dispatch.ts` adds three pure primitives — `selectDispatchLane` (`SK-LLM-016`'s header→account→premium→free precedence), `buildByollmRouter` (single-provider, fail-loud per `GLOBAL-012`), `dispatchLaneAttributes` (bounded, key-redacted span attributes).
 
 ### SK-LLM-021 — BYOLLM header wiring on `/v1/ask`: signed-in-only `x-nlq-byollm-key`, fail-loud, free-router fallthrough
 
@@ -111,7 +111,7 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 ### SK-LLM-017 — Hosted-premium chain: separate provider list, §6-gated meter, never available on free
 
 **Body:** [`decisions/SK-LLM-017-hosted-premium-chain.md`](./decisions/SK-LLM-017-hosted-premium-chain.md).
-Third chain alongside `free` and `paid`: **`premium`** = Sonnet 4.6 + GPT-5 + Gemini 2.5 Pro. Fires only when `principal.tier !== "free"` AND (`model === "best"` or auto-classified hard-plan) AND `PREMIUM_METER_LIVE` (§6-gated; pre-§6 dark). Commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
+Now ships as `buildPremiumRouter` (`packages/llm/src/premium-dispatch.ts`): a single-provider **Anthropic** lane (v1 `claude-sonnet-4-6`) with a usage sink feeding the meter. Fires only on paid tiers, on a `best`/hard plan, behind `PREMIUM_METER_LIVE` (§6-gated; still dark). Commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
 
 ### SK-LLM-015 — OpenRouter code-gen ops default to `qwen/qwen3-coder:free` — SUPERSEDED by SK-LLM-045
 
@@ -229,6 +229,14 @@ added latency on any succeeding call.
 ### SK-LLM-045 — OpenRouter free-model roster refresh (supersedes SK-LLM-015)
 
 **Body:** [`decisions/SK-LLM-045-openrouter-free-roster-refresh.md`](./decisions/SK-LLM-045-openrouter-free-roster-refresh.md). OpenRouter converted the SK-LLM-015 ids to paid-only (404ing the universal-fallback tail); replacements: `nvidia/nemotron-3-ultra-550b-a55b:free` (plan/schema_infer/summarize), `google/gemma-4-26b-a4b-it:free` (route/engine_classify).
+
+### SK-LLM-046 — AI Gateway auth token (`cf-aig-authorization`) on every gateway-routed lane
+
+**Body:** [`decisions/SK-LLM-046-ai-gateway-auth-token.md`](./decisions/SK-LLM-046-ai-gateway-auth-token.md).
+Every gateway-routed provider (free chain + BYOLLM + premium) sends
+`cf-aig-authorization: Bearer <AI_GATEWAY_TOKEN>` when the secret is set, so an
+"Authenticated Gateway" doesn't `401` the whole chain and 502 `/v1/ask`; unset
+⇒ header omitted, behaviour unchanged. Single header helper `gatewayAuthHeader`.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 

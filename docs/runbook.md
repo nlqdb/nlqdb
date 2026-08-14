@@ -331,6 +331,16 @@ in a chain but missing its key is simply skipped and increments
 `nlqdb.llm.failover.total{reason="not_configured"}` — the next
 provider in the chain handles the call.
 
+**AI Gateway auth** (`AI_GATEWAY_TOKEN`, SK-LLM-046): when the Cloudflare AI
+Gateway has **Authenticated Gateway** enabled, every gateway-routed call (free
+chain + BYOLLM + premium) must carry `cf-aig-authorization: Bearer
+<AI_GATEWAY_TOKEN>` — set the secret to a token created under AI Gateway →
+your gateway → Settings → Authenticated Gateway. **If auth is on and the secret
+is unset, every `/v1/ask` 502s `llm_failed`** (the free `route` chain and the
+single-provider premium lane have no direct backstop). Unset + gateway
+unauthenticated ⇒ no header, unchanged. This is the 2026-08-14 outage: auth was
+enabled at premium go-live but no token was wired.
+
 **Better Auth** (`apps/api/src/auth.ts`): top-level singleton, wired
 via `import { env } from "cloudflare:workers"`. Reads
 `BETTER_AUTH_SECRET`, `OAUTH_GITHUB_CLIENT_{ID,SECRET}` (or `_DEV`

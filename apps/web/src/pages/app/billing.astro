@@ -1,0 +1,498 @@
+---
+// Billing + hosted-premium usage dashboard (SK-PREMIUM-009 / SK-STRIPE-008 /
+// SK-STRIPE-009). Reads `GET /v1/billing/status` (plan + subscription state)
+// and `GET /v1/billing/usage` (current-period frontier-request allowance),
+// renders the plan card + allowance bar, and offers Upgrade (Hobby→Pro via
+// `/v1/billing/checkout`) and Manage billing / Cancel (Stripe portal). Follows
+// `/app/keys` shell shape: inline auth guard, `hidden` shell, Topnav, Footer.
+//
+// Honest by design (P6 / SK-WEB-013): when the subscription is set to cancel,
+// the card reads "Plan ends {date}" and hides Upgrade — no dark pattern that
+// implies continued billing. Free users see a real empty state pointing to
+// `/pricing`, not a blank page.
+
+import AppAnalytics from "../../components/AppAnalytics.astro";
+import ConsentBanner from "../../components/ConsentBanner.astro";
+import Footer from "../../components/Footer.astro";
+import SupportChat from "../../components/SupportChat.astro";
+import Topnav from "../../components/Topnav.astro";
+import Base from "../../layouts/Base.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
+---
+<Base
+  title="Billing — nlqdb"
+  description="Your plan, hosted-premium usage, and billing controls."
+>
+  <div class="page page--billing" id="billing-shell" data-api-base={apiBase} hidden>
+    <Topnav current="billing" />
+    <main class="page__main page__main--billing">
+      <section class="billing" aria-labelledby="billing-title">
+        <header class="billing__header">
+          <div>
+            <h1 class="billing__title" id="billing-title">Billing</h1>
+            <p class="billing__lede">
+              Your plan and hosted-premium request allowance for the current period.
+            </p>
+          </div>
+        </header>
+        <div id="billing-content" class="billing__content">
+          <p class="billing__status" role="status">Loading your plan…</p>
+        </div>
+      </section>
+    </main>
+    <Footer />
+  </div>
+  <AppAnalytics />
+  <ConsentBanner />
+  <SupportChat />
+</Base>
+
+<script>
+  // Inline auth guard — mirrors `/app/keys.astro` (SK-AUTH-016 / SK-WEB-009):
+  // the shell stays `hidden` until `fetchSession` resolves; an unauthenticated
+  // probe redirects to sign-in with a `return_to` so post-signin lands here.
+  import { fetchSession, invalidateSession } from "../../lib/session";
+  import {
+    type BillingStatus,
+    type BillingUsage,
+    fetchBillingStatus,
+    fetchBillingUsage,
+    formatPlanEndDate,
+    openBillingPortal,
+  } from "../../lib/billing";
+
+  const shell = document.getElementById("billing-shell");
+  if (shell) {
+    const apiBase = (shell as HTMLElement).dataset["apiBase"] ?? "";
+    const content = document.getElementById("billing-content");
+
+    async function requireSession(): Promise<boolean> {
+      const user = await fetchSession(apiBase);
+      if (!user) {
+        const returnTo = `${location.pathname}${location.search}${location.hash}`;
+        const signInUrl = new URL("/auth/sign-in/", location.origin);
+        signInUrl.searchParams.set("return_to", returnTo);
+        location.replace(signInUrl.toString());
+        return false;
+      }
+      return true;
+    }
+
+    // Re-probe on bfcache restore so a signed-out cookie can't leave the
+    // billing shell visible (mirrors /app/keys.astro, /app/index.astro).
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) {
+        invalidateSession();
+        void requireSession();
+      }
+    });
+
+    const PLAN_LABEL: Record<string, string> = {
+      free: "Free",
+      hobby: "Hobby",
+      pro: "Pro",
+      unknown: "Subscription",
+    };
+
+    const esc = (s: string) =>
+      s.replace(/[&<>"]/g, (c) =>
+        c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
+      );
+
+    // The empty state a free user (or a caller with no subscription) sees —
+    // a real next step to /pricing, never a blank page (P6).
+    function renderFree(): string {
+      return `
+        <div class="billing-empty">
+          <p class="billing-empty__lede">You're on the <strong>free plan</strong>.</p>
+          <p>Free NL→SQL runs forever. Upgrade to a paid plan for hosted frontier-model
+          routing — a monthly included allowance of premium requests with no markup.</p>
+          <a class="billing-btn billing-btn--primary" href="/pricing/">See plans &rarr;</a>
+        </div>`;
+    }
+
+    // The allowance bar — "N of M frontier requests this period" + overage.
+    // Rendered only when the plan carries an allowance (included > 0).
+    function renderAllowance(usage: BillingUsage | null): string {
+      if (!usage || usage.included <= 0) return "";
+      const pct = Math.min(100, Math.round((usage.consumed / usage.included) * 100));
+      const overageRow =
+        usage.overage > 0
+          ? `<p class="billing-allowance__overage">${usage.overage} overage request${
+              usage.overage === 1 ? "" : "s"
+            } this period, billed at provider list price.</p>`
+          : "";
+      return `
+        <div class="billing-allowance">
+          <p class="billing-allowance__label">
+            <strong>${usage.consumed}</strong> of <strong>${usage.included}</strong>
+            frontier requests this period
+          </p>
+          <div class="billing-allowance__track" role="img"
+               aria-label="${usage.consumed} of ${usage.included} frontier requests used">
+            <div class="billing-allowance__fill" style="width:${pct}%"></div>
+          </div>
+          ${overageRow}
+        </div>`;
+    }
+
+    // The paid-plan card. Branches copy on subscription state:
+    //  • past_due/unpaid → an alert + "Update payment method"
+    //  • cancelAtPeriodEnd → "Plan ends {date}", Upgrade hidden (SK-WEB-013)
+    //  • active → "Next payment: {date}", Upgrade shown for Hobby
+    function renderPaid(status: BillingStatus, usage: BillingUsage | null): string {
+      const label = PLAN_LABEL[status.plan] ?? "Subscription";
+      const endDate = formatPlanEndDate(status.currentPeriodEnd);
+      const canceling = status.cancelAtPeriodEnd;
+      const pastDue = status.status === "past_due" || status.status === "unpaid";
+
+      let banner = "";
+      if (pastDue) {
+        banner = `
+          <p class="billing-alert" role="alert">
+            Your last payment failed — update your payment method to keep hosted premium active.
+          </p>`;
+      }
+
+      let periodLine = "";
+      if (canceling && endDate) {
+        periodLine = `<p class="billing-card__period">Plan ends ${esc(endDate)}.</p>`;
+      } else if (endDate) {
+        periodLine = `<p class="billing-card__period">Next payment: ${esc(endDate)}.</p>`;
+      }
+
+      // Upgrade only makes sense Hobby→Pro and only while not canceling.
+      const showUpgrade = status.plan === "hobby" && !canceling;
+      const upgradeBtn = showUpgrade
+        ? `<button type="button" class="billing-btn billing-btn--primary" id="billing-upgrade">Upgrade to Pro</button>`
+        : "";
+      const manageLabel = canceling ? "Manage billing / Resubscribe" : "Manage billing / Cancel";
+
+      return `
+        ${banner}
+        <div class="billing-card">
+          <div class="billing-card__head">
+            <span class="billing-card__plan">${esc(label)} plan</span>
+            <span class="billing-card__badge billing-card__badge--${esc(status.status)}">${esc(status.status)}</span>
+          </div>
+          ${periodLine}
+          ${renderAllowance(usage)}
+          <div class="billing-card__actions">
+            ${upgradeBtn}
+            <button type="button" class="billing-btn" id="billing-manage">${manageLabel}</button>
+          </div>
+        </div>`;
+    }
+
+    function renderError(): string {
+      return `<p class="billing__status billing__status--error" role="alert">
+        Couldn't load your billing details. Reload the page or email hello@nlqdb.com.
+      </p>`;
+    }
+
+    // Wire the Upgrade (Hobby→Pro) button. Reuses the /pricing checkout flow:
+    // POST /v1/billing/checkout { plan: "pro" }, redirect to the Stripe URL; a
+    // 409 (already subscribed) falls through to the portal where Stripe prorates.
+    function wireUpgrade(): void {
+      const btn = document.getElementById("billing-upgrade") as HTMLButtonElement | null;
+      if (!btn) return;
+      btn.addEventListener("click", async () => {
+        const original = btn.textContent ?? "Upgrade to Pro";
+        btn.disabled = true;
+        btn.textContent = "Redirecting…";
+        try {
+          const res = await fetch(`${apiBase}/v1/billing/checkout`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ plan: "pro" }),
+            credentials: "include",
+          });
+          if (!res.ok) {
+            if (res.status === 409) {
+              // Already subscribed — tier change goes through the portal.
+              const outcome = await openBillingPortal(apiBase);
+              if (outcome !== "ok") {
+                btn.disabled = false;
+                btn.textContent = original;
+                alert("Couldn't open the billing portal. Use “Manage billing” below or email hello@nlqdb.com.");
+              }
+              return;
+            }
+            if (res.status === 503) {
+              btn.textContent = "Not available yet";
+              return;
+            }
+            throw new Error(`checkout failed: ${res.status}`);
+          }
+          const { url } = (await res.json()) as { url: string };
+          window.location.assign(url);
+        } catch {
+          btn.disabled = false;
+          btn.textContent = original;
+          alert("Something went wrong. Please try again or email hello@nlqdb.com.");
+        }
+      });
+    }
+
+    // Wire the Manage billing / Cancel button → Stripe-hosted portal.
+    function wireManage(): void {
+      const btn = document.getElementById("billing-manage") as HTMLButtonElement | null;
+      if (!btn) return;
+      btn.addEventListener("click", async () => {
+        const original = btn.textContent ?? "Manage billing";
+        btn.disabled = true;
+        btn.textContent = "Opening…";
+        const outcome = await openBillingPortal(apiBase);
+        if (outcome === "ok") return; // browser is navigating to Stripe
+        btn.disabled = false;
+        btn.textContent = original;
+        alert("Couldn't open the billing portal. Please try again or email hello@nlqdb.com.");
+      });
+    }
+
+    async function render(): Promise<void> {
+      if (!content) return;
+      const [status, usage] = await Promise.all([
+        fetchBillingStatus(apiBase),
+        fetchBillingUsage(apiBase),
+      ]);
+      if (!status) {
+        content.innerHTML = renderError();
+        return;
+      }
+      // No live subscription → free empty state (SK-STRIPE-009 returns
+      // plan "free"/status "none" for a caller with no customers row).
+      const isFree = status.plan === "free" || status.status === "none";
+      content.innerHTML = isFree ? renderFree() : renderPaid(status, usage);
+      if (!isFree) {
+        wireUpgrade();
+        wireManage();
+      }
+    }
+
+    void (async () => {
+      if (!(await requireSession())) return;
+      shell.hidden = false;
+      await render();
+    })();
+  }
+</script>
+
+<style is:global>
+  .page--billing {
+    max-width: 720px;
+    padding: 0 clamp(16px, 3vw, 32px);
+  }
+
+  .page__main--billing {
+    padding: 32px 0 64px;
+  }
+
+  .billing {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .billing__title {
+    margin: 0 0 8px;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: clamp(22px, 3vw, 28px);
+    letter-spacing: -0.02em;
+  }
+
+  .billing__lede {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--fg-dim);
+    max-width: 56ch;
+    line-height: 1.5;
+  }
+
+  .billing__status {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--fg-dim);
+    padding: 16px;
+    border: 1px dashed var(--rule-2);
+    border-radius: var(--r-md);
+  }
+
+  .billing__status--error {
+    color: #ff8a8a;
+    border-color: #ff8a8a;
+  }
+
+  .billing-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 24px;
+    border: 1px dashed var(--rule-2);
+    border-radius: var(--r-lg);
+    background: var(--bg-elev);
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--fg-dim);
+    line-height: 1.5;
+  }
+
+  .billing-empty p {
+    margin: 0;
+  }
+
+  .billing-empty__lede {
+    color: var(--fg);
+    font-size: 16px;
+  }
+
+  .billing-card {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 22px;
+    border: 1px solid var(--rule);
+    border-radius: var(--r-lg);
+    background: var(--bg-elev);
+    font-family: var(--sans);
+  }
+
+  .billing-card__head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .billing-card__plan {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--fg);
+    letter-spacing: -0.01em;
+  }
+
+  .billing-card__badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border: 1px solid var(--rule-2);
+    border-radius: var(--r-pill);
+    color: var(--fg-dim);
+  }
+
+  .billing-card__badge--active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .billing-card__badge--past_due,
+  .billing-card__badge--unpaid {
+    border-color: #ff8a8a;
+    color: #ff8a8a;
+  }
+
+  .billing-card__period {
+    margin: 0;
+    font-size: 14px;
+    color: var(--fg-dim);
+  }
+
+  .billing-alert {
+    margin: 0 0 4px;
+    padding: 12px 16px;
+    border: 1px solid #ff8a8a;
+    border-radius: var(--r-md);
+    background: rgba(255, 138, 138, 0.08);
+    font-family: var(--sans);
+    font-size: 13px;
+    color: #ff8a8a;
+    line-height: 1.5;
+  }
+
+  .billing-allowance {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .billing-allowance__label {
+    margin: 0;
+    font-size: 14px;
+    color: var(--fg);
+  }
+
+  .billing-allowance__track {
+    height: 10px;
+    width: 100%;
+    border-radius: var(--r-pill);
+    background: var(--bg);
+    border: 1px solid var(--rule-2);
+    overflow: hidden;
+  }
+
+  .billing-allowance__fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width var(--dur-1, 0.2s) var(--ease-std, ease);
+  }
+
+  .billing-allowance__overage {
+    margin: 0;
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
+
+  .billing-card__actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .billing-btn {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 18px;
+    background: transparent;
+    border: 1px solid var(--rule-2);
+    border-radius: var(--r-pill);
+    color: var(--fg);
+    cursor: pointer;
+    text-decoration: none;
+    transition:
+      border-color var(--dur-1, 0.2s) var(--ease-std, ease),
+      color var(--dur-1, 0.2s) var(--ease-std, ease);
+  }
+
+  .billing-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .billing-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+  }
+
+  .billing-btn--primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
+  .billing-btn--primary:hover {
+    color: var(--bg);
+    opacity: 0.9;
+  }
+
+  .billing-btn[disabled] {
+    opacity: 0.6;
+    cursor: default;
+  }
+</style>
