@@ -364,26 +364,10 @@ export const premiumTokensPerQuery = lazyHistogram(
   "token",
 );
 
-// SK-PREMIUM-009 — per-(customer, period) allowance gauges. Set after each
-// premium dispatch decrements a slot.
-export const premiumAllowanceConsumed = lazyGauge(
-  "@nlqdb/api",
-  "nlqdb.premium.allowance_consumed",
-  "Included premium requests consumed in the current billing period (SK-PREMIUM-009).",
-);
-export const premiumAllowanceRemaining = lazyGauge(
-  "@nlqdb/api",
-  "nlqdb.premium.allowance_remaining",
-  "Included premium requests remaining in the current billing period (SK-PREMIUM-009).",
-);
-
-// SK-PREMIUM-006 — per-(customer, db, key) overage-spend gauge + hard-cap
-// counter. Overage spend only ticks after allowance exhaustion.
-export const premiumSpendUsdCents = lazyGauge(
-  "@nlqdb/api",
-  "nlqdb.premium.spend_usd_cents",
-  "Overage spend this period in USD cents, labelled by customer, db, key (SK-PREMIUM-006). Included-allowance requests never tick this.",
-);
+// SK-PREMIUM-006 — hard per-key spend-cap counter (aggregate; no per-customer
+// label). Per-(customer, period) allowance + overage accounting is D1-sourced
+// (`premium_allowance_period`) and surfaced on the response `premium` trace —
+// NOT an OTel label, which would breach the performance.md §3.3 user-grain ban.
 export const premiumCapHitTotal = lazyCounter(
   "@nlqdb/api",
   "nlqdb.premium.cap_hit.total",

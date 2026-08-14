@@ -100,7 +100,9 @@ declare global {
       //   • PREMIUM_ANTHROPIC_API_KEY — the platform's own Anthropic key,
       //     billed to us; each query is metered back to the customer at 0%
       //     markup. Rides the AI Gateway compat endpoint.
-      //   • PREMIUM_METER_LIVE — the §6 gate. Truthy flips the meter live.
+      //   • PREMIUM_METER_LIVE — the §6 gate. Only `1` or `true`
+      //     (case-insensitive) flips the meter live; anything else (incl.
+      //     `false`/`0`/`no`) stays dark (`meterLive()` in premium/limits.ts).
       PREMIUM_ANTHROPIC_API_KEY?: string;
       PREMIUM_METER_LIVE?: string;
 

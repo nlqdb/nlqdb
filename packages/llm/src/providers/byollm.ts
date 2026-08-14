@@ -48,6 +48,12 @@ export type ByollmProviderOptions = {
   // meter can bill each query; the BYOLLM lane proper leaves it unset (a
   // user's own key is billed to them at 0% markup, nothing to meter).
   onUsage?: (usage: import("../types.ts").TokenUsage) => void;
+  // Bypass the AI Gateway response cache for this lane (`cf-aig-skip-cache`).
+  // The hosted-premium lane sets this so a gateway cache HIT can never be
+  // metered as real COGS — every metered call is a genuine upstream call
+  // (SK-PREMIUM-002 0% honest pass-through). The BYOLLM lane leaves it unset
+  // (a cached hit saves the user's own tokens; no meter to distort).
+  skipGatewayCache?: boolean;
 };
 
 // Per-tenant, per-request cache key: `BYOLLM_<userId>_<sha256(request)>`.
@@ -132,6 +138,7 @@ export function createByollmProvider(opts: ByollmProviderOptions): Provider {
           temperature: temperature ?? 0,
           headers: {
             "cf-aig-cache-key": cacheKey,
+            ...(opts.skipGatewayCache ? { "cf-aig-skip-cache": "true" } : {}),
             ...(opts.gatewayToken ? { "cf-aig-authorization": `Bearer ${opts.gatewayToken}` } : {}),
           },
           ...(opts.onUsage ? { onUsage: opts.onUsage } : {}),

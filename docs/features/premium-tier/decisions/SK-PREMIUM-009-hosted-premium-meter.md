@@ -72,8 +72,13 @@ Meters directly per [`SK-PREMIUM-017`](./SK-PREMIUM-017-stripe-billing-meters.md
     `nlqdb.premium_llm.overage.<provider>.<model>` created lazily on
     first overage post-allowance-exhaustion. Per-call USD cost computed
     from `packages/llm/src/pricing.ts` per `SK-PREMIUM-002`.
-  - Per-(customer, period) gauges: `nlqdb.premium.allowance_consumed`
-    and `nlqdb.premium.allowance_remaining`.
+  - Per-(customer, period) allowance accounting is **D1-sourced**
+    (`premium_allowance_period`) and echoed on the `/v1/ask` response
+    `premium` trace block — deliberately NOT an OTel gauge, because a
+    per-customer label breaches performance.md §3.3's user-grain ban and an
+    unlabelled gauge would be meaningless last-write-wins noise. Aggregate
+    premium instruments (cost/token histograms, cap-hit + overflow counters,
+    the reconcile-drift gauge) carry only bounded labels.
   - `/v1/ask` response trace surfaces "This request used 1 of your 200
     included premium requests" (pre-exhaustion) or "This request billed
     $0.03 on overage" (post-exhaustion) per `GLOBAL-011` (honest

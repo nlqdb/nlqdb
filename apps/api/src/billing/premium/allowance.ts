@@ -14,7 +14,6 @@
 // the caller calls this after the LLM router returned usage, so a failed or
 // refused call consumes nothing.
 
-import { premiumAllowanceConsumed, premiumAllowanceRemaining } from "@nlqdb/otel";
 import type { PremiumTier } from "./limits.ts";
 import { INCLUDED_ALLOWANCE } from "./limits.ts";
 
@@ -66,10 +65,6 @@ export async function consumeAllowance(db: D1Database, args: ConsumeArgs): Promi
   const consumedBefore = consumedAfter - args.slots;
   const overageSlots =
     Math.max(0, consumedAfter - rowTotal) - Math.max(0, consumedBefore - rowTotal);
-
-  const remaining = Math.max(0, rowTotal - consumedAfter);
-  premiumAllowanceConsumed().record(consumedAfter, { customer_id: args.customerId });
-  premiumAllowanceRemaining().record(remaining, { customer_id: args.customerId });
 
   return { consumedBefore, consumedAfter, total: rowTotal, overageSlots };
 }

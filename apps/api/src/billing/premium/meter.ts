@@ -19,6 +19,7 @@ import { PREMIUM_MODEL, PREMIUM_PROVIDER } from "@nlqdb/llm";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import type Stripe from "stripe";
 import { newStripeClient } from "../../stripe/client.ts";
+import { meterLive } from "./limits.ts";
 
 // The metered overage subscription-item name (SK-PREMIUM-002 / #8): one per
 // (provider, model). Also the Stripe Billing Meter `event_name` the events
@@ -84,7 +85,7 @@ export async function reportMeterEvent(
   db: D1Database,
   ev: OverageEvent,
 ): Promise<{ reported: boolean; reason?: string }> {
-  if (!env.PREMIUM_METER_LIVE) return { reported: false, reason: "meter_dark" };
+  if (!meterLive(env.PREMIUM_METER_LIVE)) return { reported: false, reason: "meter_dark" };
   if (!env.STRIPE_SECRET_KEY) return { reported: false, reason: "stripe_unconfigured" };
   const stripe = newStripeClient(env.STRIPE_SECRET_KEY);
   const tracer = trace.getTracer("@nlqdb/api");
@@ -143,10 +144,14 @@ export async function ensureOverageItem(
   const sub = await stripe.subscriptions.retrieve(args.subscriptionId);
   const existing = sub.items.data.find((i) => i.price?.id === args.overagePriceId);
   if (existing) return existing.id;
-  const item = await stripe.subscriptionItems.create({
-    subscription: args.subscriptionId,
-    price: args.overagePriceId,
-  });
+  // Idempotency-key the create so two concurrent first-overage reports (both
+  // fresh ledger inserts, both racing the retrieve→create window in waitUntil)
+  // converge on ONE subscription item — a duplicate metered item on the same
+  // meter would bill the overage twice (SK-PREMIUM-002 0% markup honesty).
+  const item = await stripe.subscriptionItems.create(
+    { subscription: args.subscriptionId, price: args.overagePriceId },
+    { idempotencyKey: `premium-overage-item:${args.subscriptionId}:${args.overagePriceId}` },
+  );
   return item.id;
 }
 
@@ -166,7 +171,7 @@ export async function ensurePremiumOverageItem(
   db: D1Database,
   customerId: string,
 ): Promise<void> {
-  if (!env.PREMIUM_METER_LIVE || !env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_OVERAGE_ANTHROPIC) {
+  if (!meterLive(env.PREMIUM_METER_LIVE) || !env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_OVERAGE_ANTHROPIC) {
     return;
   }
   const tracer = trace.getTracer("@nlqdb/api");

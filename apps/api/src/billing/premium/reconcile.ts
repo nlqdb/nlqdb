@@ -18,6 +18,7 @@
 import { premiumMeterReconcileDriftUsdCents } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { newStripeClient } from "../../stripe/client.ts";
+import { meterLive } from "./limits.ts";
 
 // Pure: drift = internal reported total − Stripe reported total, in USD cents.
 // Positive → we recorded overage Stripe hasn't billed; negative → Stripe billed
@@ -69,7 +70,7 @@ export async function reconcilePremiumMeter(
   }
 
   // Layer 2 — Stripe cross-check. Only when live + configured.
-  if (!env.PREMIUM_METER_LIVE) return { ran: false, reason: "meter_dark", stuckCents };
+  if (!meterLive(env.PREMIUM_METER_LIVE)) return { ran: false, reason: "meter_dark", stuckCents };
   if (!env.STRIPE_SECRET_KEY || !env.STRIPE_PREMIUM_METER_ID) {
     return { ran: false, reason: "stripe_unconfigured", stuckCents };
   }

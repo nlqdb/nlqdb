@@ -43,6 +43,17 @@ export const HARD_CEILING_TOKENS = 500_000;
 export const DEFAULT_CAP_USD_CENTS = 1000;
 export const CAP_WARN_FRACTION = 0.8;
 
+// The `PREMIUM_METER_LIVE` gate is an EXPLICIT truthy flag, not "any non-empty
+// string" — otherwise `PREMIUM_METER_LIVE=false` (or `no`/`0`) would light the
+// meter, the opposite of the operator's intent. Enable only on `"1"` or
+// `"true"` (case-insensitive). `"true"` (4 chars) stays valid so the ≥4-char
+// secret-mirror can carry it.
+export function meterLive(value: string | undefined): boolean {
+  if (!value) return false;
+  const v = value.trim().toLowerCase();
+  return v === "1" || v === "true";
+}
+
 // Map a Stripe-derived billing plan to a premium tier, or null for a plan with
 // no hosted-premium allowance (free / unknown). The `customers.price_id` →
 // plan resolution already lives in stripe/billing-status.ts; this only adds the

@@ -26,7 +26,7 @@ import {
 import type { BillingPlan } from "../../stripe/billing-status.ts";
 import { consumeAllowance } from "./allowance.ts";
 import { sizedBucket, slotsForTokens } from "./guardrails.ts";
-import { type PremiumTier, tierForPlan } from "./limits.ts";
+import { meterLive, type PremiumTier, tierForPlan } from "./limits.ts";
 import {
   ensurePremiumOverageItem,
   meterEventId,
@@ -60,7 +60,7 @@ export type PremiumEnv = {
 // GLOBAL-026 "wired but dark"): no key / no gateway / flag off ⇒ dark.
 export function premiumConfigured(env: PremiumEnv): boolean {
   return Boolean(
-    env.PREMIUM_METER_LIVE &&
+    meterLive(env.PREMIUM_METER_LIVE) &&
       env.PREMIUM_ANTHROPIC_API_KEY &&
       env.PREMIUM_ANTHROPIC_API_KEY.trim() !== "" &&
       env.AI_GATEWAY_ACCOUNT_ID &&

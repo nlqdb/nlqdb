@@ -47,6 +47,12 @@ export function buildPremiumRouter(opts: PremiumRouterOptions): LLMRouter {
     gatewayId: opts.gatewayId,
     userId: opts.userId,
     onUsage: opts.onUsage,
+    // Bypass the AI Gateway response cache: a gateway HIT costs $0 upstream, so
+    // metering it would bill the customer for no real COGS — violating the
+    // SK-PREMIUM-002 0%-markup honest pass-through. nlqdb's own plan-cache sits
+    // in front (a cached plan never enters this router), so skipping the
+    // gateway cache costs nothing in practice.
+    skipGatewayCache: true,
     ...(opts.gatewayToken !== undefined ? { gatewayToken: opts.gatewayToken } : {}),
   });
   const chain: ProviderName[] = ["byollm"];

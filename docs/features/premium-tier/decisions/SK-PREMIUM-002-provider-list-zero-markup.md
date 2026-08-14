@@ -23,7 +23,11 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
   (`packages/llm/src/pricing.ts::premiumQueryCostUsdCents`) and reports the
   resulting cents as a Stripe Billing Meter event. Cache tokens bill at their
   real rates — reads at the cache-read price, writes at the cache-write price —
-  **never as full input tokens**. The metered overage subscription item
+  **never as full input tokens**. The premium dispatch sends
+  `cf-aig-skip-cache: true` so an AI-Gateway cache HIT (which costs $0
+  upstream) can never be metered as real COGS — every metered call is a
+  genuine upstream call; nlqdb's own plan-cache sits in front, so this costs
+  nothing in practice (`SK-PREMIUM-007`). The metered overage subscription item
   `nlqdb.premium_llm.overage.anthropic.<model>` is created by the checked-in
   bootstrap script and attached lazily on first overage; the
   [`SK-STRIPE-004`](../../stripe-billing/FEATURE.md) Checkout flow carries the

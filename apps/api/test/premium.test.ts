@@ -90,6 +90,17 @@ describe("dormancy gate (premiumConfigured)", () => {
     expect(premiumConfigured({ ...LIVE_ENV, PREMIUM_ANTHROPIC_API_KEY: "   " })).toBe(false);
     expect(premiumConfigured(LIVE_ENV)).toBe(true);
   });
+  it("treats PREMIUM_METER_LIVE as an explicit truthy flag, not any non-empty string", () => {
+    // The footgun: a `false`/`no`/`0` value must NOT light the meter.
+    for (const off of ["false", "no", "0", "off", " ", "disabled"]) {
+      expect(premiumConfigured({ ...LIVE_ENV, PREMIUM_METER_LIVE: off })).toBe(false);
+    }
+    // `1` and `true` (case-insensitive) enable; `true` is ≥4 chars so the
+    // secret-mirror can carry it.
+    for (const on of ["1", "true", "TRUE", " True "]) {
+      expect(premiumConfigured({ ...LIVE_ENV, PREMIUM_METER_LIVE: on })).toBe(true);
+    }
+  });
 });
 
 describe("resolvePremiumEligibility", () => {
