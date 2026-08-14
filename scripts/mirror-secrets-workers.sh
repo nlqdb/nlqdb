@@ -128,7 +128,7 @@ select_secrets() {
         STRIPE_SECRET_KEY
         STRIPE_PRICE_HOBBY
         STRIPE_PRICE_PRO
-        # Hosted-premium lane (SK-PREMIUM-009). All three stay empty until the
+        # Hosted-premium lane (SK-PREMIUM-009). All four stay empty until the
         # operator lights the meter (blocked-by-human); empty values are skipped,
         # never pushed, so the lane stays provably dark. PREMIUM_METER_LIVE must
         # be ≥4 chars — set it to `true`, not `1`.
