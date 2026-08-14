@@ -408,11 +408,25 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
           ) : null}
 
           <div className="model-picker__subscribe">
-            {interest === "sent" ? (
+            {catalog?.premium?.live ? (
+              // Meter is live (SK-PREMIUM-009): the door is the real subscribe
+              // CTA — a paid plan includes frontier credits, so send the user to
+              // pricing/checkout instead of the interest capture (GLOBAL-023).
+              <>
+                <p className="model-picker__subscribe-text">
+                  Prefer not to bring a key? A paid plan includes frontier-model credits.
+                </p>
+                <a className="btn btn--accent model-picker__countme" href="/pricing/">
+                  See paid plans
+                </a>
+              </>
+            ) : interest === "sent" ? (
               <p className="model-picker__subscribe-text">
                 You're counted — we'll email you when the paid plan ships.
               </p>
             ) : (
+              // Meter dark: interest capture only — never a buyable state that
+              // can't be bought (GLOBAL-023).
               <>
                 <p className="model-picker__subscribe-text">
                   Prefer not to bring a key? A paid plan with included frontier credits is coming
