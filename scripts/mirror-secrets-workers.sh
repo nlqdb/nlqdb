@@ -128,6 +128,14 @@ select_secrets() {
         STRIPE_SECRET_KEY
         STRIPE_PRICE_HOBBY
         STRIPE_PRICE_PRO
+        # Hosted-premium lane (SK-PREMIUM-009). All three stay empty until the
+        # operator lights the meter (blocked-by-human); empty values are skipped,
+        # never pushed, so the lane stays provably dark. PREMIUM_METER_LIVE must
+        # be ≥4 chars — set it to `true`, not `1`.
+        STRIPE_PRICE_OVERAGE_ANTHROPIC
+        STRIPE_PREMIUM_METER_ID
+        PREMIUM_ANTHROPIC_API_KEY
+        PREMIUM_METER_LIVE
         RESEND_API_KEY
         # Tawk.to Secure Mode key (SK-WEB-025) — /api/tawk/identity HMACs the
         # signed-in visitor's email so Tawk accepts their name/email. Unset ⇒

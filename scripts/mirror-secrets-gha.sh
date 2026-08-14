@@ -148,6 +148,12 @@ SECRETS=(
   STRIPE_WEBHOOK_SECRET
   STRIPE_PRICE_HOBBY
   STRIPE_PRICE_PRO
+  # Hosted-premium lane (SK-PREMIUM-009) — kept CI-ready so a deploy self-heals
+  # them onto the Worker once the operator provisions the values in .envrc.
+  STRIPE_PRICE_OVERAGE_ANTHROPIC
+  STRIPE_PREMIUM_METER_ID
+  PREMIUM_ANTHROPIC_API_KEY
+  PREMIUM_METER_LIVE
   SENTRY_DSN
   GRAFANA_OTLP_ENDPOINT
   GRAFANA_CLOUD_INSTANCE_ID
