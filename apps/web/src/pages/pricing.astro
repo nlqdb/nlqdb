@@ -46,7 +46,13 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
               <li>Built-in LLM free — or bring your own key at 0% markup</li>
               <li class="pricing__feature--quiet">Sleeps when idle · wakes in &lt;2s</li>
             </ul>
-            <a href={appHref("/app/")} class="cta cta--ghost pricing__cta">Start free &rarr;</a>
+            <a
+              id="pricing-free-cta"
+              href={appHref("/app/")}
+              class="cta cta--ghost pricing__cta"
+              data-api-base={apiBase}
+              >Start free &rarr;</a
+            >
           </div>
         </article>
 
@@ -412,8 +418,41 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           cta.textContent = "Switch plan";
         }
       }
+
+      // Bug C — the free card was left out of the plan-aware pass. To a paid
+      // subscriber "Start free →" is wrong: dropping to free is a cancellation,
+      // owned by the Stripe portal (never a custom cancel flow). When already
+      // canceling, the honest "Ends {date}" beats prompting a second downgrade.
+      const freeCta = document.getElementById("pricing-free-cta") as HTMLAnchorElement | null;
+      if (freeCta) {
+        if (ending) {
+          freeCta.textContent = endDate ? `Ends ${endDate}` : "Ending";
+          freeCta.removeAttribute("href");
+          freeCta.setAttribute("aria-disabled", "true");
+        } else {
+          freeCta.textContent = "Downgrade";
+          freeCta.dataset.downgrade = "1";
+          freeCta.removeAttribute("href"); // now a portal opener, not a link
+        }
+      }
     }
   })();
+
+  // Free-card "Downgrade" → the Stripe portal (cancellation lives there). Only
+  // armed after the status pass sets data-downgrade on a paid subscriber.
+  document.getElementById("pricing-free-cta")?.addEventListener("click", async (e) => {
+    const cta = e.currentTarget as HTMLAnchorElement;
+    if (cta.dataset.downgrade !== "1") return; // free/anon: keep the plain link
+    e.preventDefault();
+    const original = cta.textContent;
+    cta.textContent = "Redirecting…";
+    cta.dataset.downgrade = "busy";
+    const outcome = await openBillingPortal(cta.dataset.apiBase ?? "");
+    if (outcome === "ok") return; // browser is already navigating to Stripe
+    cta.textContent = original;
+    cta.dataset.downgrade = "1";
+    alert("Couldn't open the billing portal. Please try “Manage billing” below or email hello@nlqdb.com.");
+  });
 
   manageBtn?.addEventListener("click", async () => {
     manageBtn.disabled = true;

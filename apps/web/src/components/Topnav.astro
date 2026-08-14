@@ -77,6 +77,12 @@ const inChat = current === "chat";
       >
         API keys
       </a>
+      <a
+        href={appHref("/app/billing/")}
+        aria-current={current === "billing" ? "page" : undefined}
+      >
+        Billing
+      </a>
       <button type="button" id="topnav-signout" class="topnav__signout">
         Sign out
       </button>

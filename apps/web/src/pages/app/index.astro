@@ -10,6 +10,7 @@ import Footer from "../../components/Footer.astro";
 import SupportChat from "../../components/SupportChat.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
+import { appHref } from "../../lib/app-href";
 
 const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
@@ -25,13 +26,23 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
            screen readers fire on — exposing pre-filled text is unreliable. -->
       <aside id="checkout-banner" class="checkout-banner" role="status">
         <p class="checkout-banner__text" id="checkout-banner-text"></p>
-        <button
-          type="button"
-          id="checkout-banner-dismiss"
-          class="checkout-banner__dismiss"
-          aria-label="Dismiss"
-          hidden
-        >&times;</button>
+        <span class="checkout-banner__actions">
+          {/* P6: the natural next step after paying is to see the plan you
+              just bought. Revealed with the banner. */}
+          <a
+            id="checkout-banner-link"
+            class="checkout-banner__link"
+            href={appHref("/app/billing/")}
+            hidden
+          >View your plan &rarr;</a>
+          <button
+            type="button"
+            id="checkout-banner-dismiss"
+            class="checkout-banner__dismiss"
+            aria-label="Dismiss"
+            hidden
+          >&times;</button>
+        </span>
       </aside>
       <!-- Dunning banner (SK-WEB-012): an empty role="alert" region, present
            from load; the text is injected only when GET /v1/billing/status
@@ -113,6 +124,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
         if (banner && text) {
           banner.classList.add("checkout-banner--shown");
           document.getElementById("checkout-banner-dismiss")?.removeAttribute("hidden");
+          document.getElementById("checkout-banner-link")?.removeAttribute("hidden");
           // Inject on the next frame so the now-exposed region is registered
           // empty first, then the content change triggers the announcement.
           requestAnimationFrame(() => {
@@ -199,7 +211,9 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin: 8px 16px 0;
+    /* Bug A — needs a bottom margin so the banner doesn't butt against the
+     * content below it (was `8px 16px 0`, zero-bottom). */
+    margin: 8px 16px;
     padding: 14px 18px;
     border: 1px solid var(--accent-line);
     border-radius: var(--r-md);
@@ -228,6 +242,24 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     color: var(--ink);
   }
 
+  .checkout-banner__actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .checkout-banner__link {
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .checkout-banner__link:hover {
+    text-decoration: underline;
+  }
+
   /* Same empty-until-shown live-region trick as the checkout banner, but
    * danger-tinted so a payment failure reads as urgent, not a success. */
   .dunning-banner--shown {
@@ -235,7 +267,8 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin: 8px 16px 0;
+    /* Bug A twin — same zero-bottom margin fix as the checkout banner. */
+    margin: 8px 16px;
     padding: 14px 18px;
     border: 1px solid rgba(226, 109, 109, 0.4);
     border-radius: var(--r-md);

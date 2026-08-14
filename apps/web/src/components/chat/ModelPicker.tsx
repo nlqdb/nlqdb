@@ -28,6 +28,8 @@ import {
   useRef,
   useState,
 } from "react";
+import type { BillingStatus } from "../../lib/billing";
+import { fetchBillingStatus, formatPlanEndDate, openBillingPortal } from "../../lib/billing";
 import { getChatClient } from "../../lib/chat-client";
 import { resolveModelHealth, resolveProviderRow } from "./model-picker-selection";
 
@@ -60,6 +62,12 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
   // "Retry" affordance rather than hiding the whole control.
   const [catalogError, setCatalogError] = useState(false);
   const [status, setStatus] = useState<ByollmStatusResponse | null>(null);
+  // The caller's own billing plan (SK-PREMIUM-009). Null until the first fetch
+  // (or on any failure — progressive enhancement). Drives the subscribe block so
+  // a paying customer is never upsold their own plan (Bug B). Fetched on every
+  // picker open, not once per page load: the popover re-checks after the
+  // checkout→webhook race resolves.
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
   // True when the deployment can't store BYOLLM keys (KEK unset → 503). We still
   // show the picker (Free works) but disable the add-key affordance.
   const [byollmDisabled, setByollmDisabled] = useState(false);
@@ -105,6 +113,24 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
       setCatalogError(true);
     }
   }, [client]);
+
+  // `fetchBillingStatus` never throws (returns null on any failure), so a billing
+  // outage just leaves the free-user door in place.
+  const refreshBilling = useCallback(async () => {
+    setBilling(await fetchBillingStatus(apiBase));
+  }, [apiBase]);
+
+  // Re-check billing each time the popover opens — this is how the "activating"
+  // state (SK-PREMIUM-009 webhook race) self-heals into the active-plan state.
+  useEffect(() => {
+    if (open) void refreshBilling();
+  }, [open, refreshBilling]);
+
+  const onManageBilling = useCallback(() => {
+    void openBillingPortal(apiBase).then((outcome) => {
+      if (outcome !== "ok") setFormError("Couldn't open billing — try again.");
+    });
+  }, [apiBase]);
 
   useEffect(() => {
     void loadCatalog();
@@ -407,47 +433,14 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
             </p>
           ) : null}
 
-          <div className="model-picker__subscribe">
-            {catalog?.premium?.live ? (
-              // Meter is live (SK-PREMIUM-009): the door is the real subscribe
-              // CTA — a paid plan includes frontier credits, so send the user to
-              // pricing/checkout instead of the interest capture (GLOBAL-023).
-              <>
-                <p className="model-picker__subscribe-text">
-                  Prefer not to bring a key? A paid plan includes frontier-model credits.
-                </p>
-                <a className="btn btn--accent model-picker__countme" href="/pricing/">
-                  See paid plans
-                </a>
-              </>
-            ) : interest === "sent" ? (
-              <p className="model-picker__subscribe-text">
-                You're counted — we'll email you when the paid plan ships.
-              </p>
-            ) : (
-              // Meter dark: interest capture only — never a buyable state that
-              // can't be bought (GLOBAL-023).
-              <>
-                <p className="model-picker__subscribe-text">
-                  Prefer not to bring a key? A paid plan with included frontier credits is coming
-                  soon.
-                </p>
-                <button
-                  type="button"
-                  className="btn btn--accent model-picker__countme"
-                  onClick={() => void countMeIn()}
-                  disabled={interest === "sending"}
-                >
-                  {interest === "sending" ? "Counting…" : "Count me in"}
-                </button>
-                {interest === "error" ? (
-                  <p className="model-picker__error" role="alert">
-                    Couldn't record that — try again.
-                  </p>
-                ) : null}
-              </>
-            )}
-          </div>
+          <SubscribeBlock
+            billing={billing}
+            premiumLive={catalog?.premium?.live ?? false}
+            allowance={catalog?.premium?.allowance}
+            interest={interest}
+            onCountMeIn={() => void countMeIn()}
+            onManageBilling={onManageBilling}
+          />
           {health.degraded ? (
             <p className="model-picker__degraded" role="alert">
               Your {activeLabel} key isn't answering — the last answer ran on{" "}
@@ -459,6 +452,111 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// The bottom "prefer not to bring a key?" door (SK-PREMIUM-009 / SK-PREMIUM-013).
+// Four honest states keyed off the caller's own billing plan so a paying
+// customer is never upsold their own plan (Bug B). Pure/presentational — all
+// data arrives as props — so it renders (and tests) without effects.
+export function SubscribeBlock({
+  billing,
+  premiumLive,
+  allowance,
+  interest,
+  onCountMeIn,
+  onManageBilling,
+}: {
+  billing: BillingStatus | null;
+  premiumLive: boolean;
+  // `catalog.premium.allowance` — { hobby: 200, pro: 600 }, keyed by plan.
+  allowance: Record<string, number> | undefined;
+  interest: "idle" | "sending" | "sent" | "error";
+  onCountMeIn: () => void;
+  onManageBilling: () => void;
+}) {
+  const plan = billing?.plan;
+  const isPaidPlan = plan === "hobby" || plan === "pro";
+
+  // State 1 — active paid plan. Mirror the server's `status === "active"`
+  // eligibility. No upsell: show what they already bought + a Manage-billing
+  // door (not "See paid plans").
+  if (isPaidPlan && billing?.status === "active") {
+    const planLabel = plan === "pro" ? "Pro" : "Hobby";
+    const included = allowance?.[plan];
+    const cancelsOn = billing.cancelAtPeriodEnd
+      ? formatPlanEndDate(billing.currentPeriodEnd)
+      : null;
+    return (
+      <div className="model-picker__subscribe">
+        <p className="model-picker__subscribe-text">
+          Your {planLabel} plan includes{included != null ? ` ${included}` : ""} frontier
+          requests/mo — queries route to Claude Sonnet 4.6 automatically.
+        </p>
+        {cancelsOn ? (
+          <p className="model-picker__subscribe-text">Cancels on {cancelsOn}.</p>
+        ) : null}
+        <button
+          type="button"
+          className="btn btn--ghost model-picker__countme"
+          onClick={onManageBilling}
+        >
+          Manage billing
+        </button>
+      </div>
+    );
+  }
+
+  // State 2 — payment taken, plan not yet active (the checkout→webhook race,
+  // `status === "incomplete"`). Honest activating copy, no CTA; re-fetched on
+  // each open so it self-heals into State 1.
+  if (billing?.status === "incomplete") {
+    return (
+      <div className="model-picker__subscribe">
+        <p className="model-picker__subscribe-text">Payment received — your plan is activating.</p>
+      </div>
+    );
+  }
+
+  // State 3 — free user. Unchanged behavior: live → real subscribe CTA;
+  // dark → interest capture only (never a buyable state that can't be bought,
+  // GLOBAL-023).
+  return (
+    <div className="model-picker__subscribe">
+      {premiumLive ? (
+        <>
+          <p className="model-picker__subscribe-text">
+            Prefer not to bring a key? A paid plan includes frontier-model credits.
+          </p>
+          <a className="btn btn--accent model-picker__countme" href="/pricing/">
+            See paid plans
+          </a>
+        </>
+      ) : interest === "sent" ? (
+        <p className="model-picker__subscribe-text">
+          You're counted — we'll email you when the paid plan ships.
+        </p>
+      ) : (
+        <>
+          <p className="model-picker__subscribe-text">
+            Prefer not to bring a key? A paid plan with included frontier credits is coming soon.
+          </p>
+          <button
+            type="button"
+            className="btn btn--accent model-picker__countme"
+            onClick={onCountMeIn}
+            disabled={interest === "sending"}
+          >
+            {interest === "sending" ? "Counting…" : "Count me in"}
+          </button>
+          {interest === "error" ? (
+            <p className="model-picker__error" role="alert">
+              Couldn't record that — try again.
+            </p>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
