@@ -14,7 +14,14 @@
 //
 // Turnstile (SK-ANON-012 bot floor): on a 428 the retry seam calls
 // `solveChallenge()` (lib/turnstile.ts — real invisible widget; null
-// on any failure so the API's SK-ANON-009 fail-open decides).
+// on any failure so the API's SK-ANON-009 fail-open decides). When
+// `allowAuthedCreate` is set (`/app/new` only, SK-ANON-016) a signed-in
+// visitor skips the anon path entirely — `postAskCreate(..., { authed:
+// true })` rides the session cookie, which never hits Turnstile or the
+// device cap server-side. A signed-out visitor whose challenge still
+// can't be solved (Turnstile misconfigured or blocked) is hand-off'd to
+// sign-in exactly like the SK-ANON-010 auth_required arc, instead of
+// dead-ending on an unrecoverable "complete the challenge" error.
 //
 // `CreateSnippetView` (SK-WEB-010) renders the embed snippet shape
 // under the schema preview with `pk_live_REPLACE_ME` + a Sign-in CTA.
@@ -40,6 +47,7 @@ import {
   makeDraftSaver,
   savePending,
 } from "../lib/prompt-storage";
+import { fetchSession } from "../lib/session";
 import { makeTtfvOnce } from "../lib/ttfv";
 import { solveChallenge } from "../lib/turnstile";
 import ErrorBoundary from "./ErrorBoundary";
@@ -54,6 +62,12 @@ interface CreateFormProps {
       hero already carries the page's single `h1` — two `h1`s per page is the
       multiple-H1 hygiene flag search tooling raises. */
   headingLevel?: "h1" | "h2";
+  /** SK-ANON-016 — `/app/new/`-only. When set, a signed-in visitor's submit
+      rides the session cookie (authed create, no Turnstile/device cap)
+      instead of the marketing-hero anon path. Never set on the marketing
+      hero or `/agents/` — their anon-only contract (SK-ANON-001) is
+      unchanged. */
+  allowAuthedCreate?: boolean;
 }
 
 const draftSaver = makeDraftSaver();
@@ -68,11 +82,20 @@ export default function CreateForm(props: CreateFormProps) {
   );
 }
 
-function CreateFormInner({ apiBase, headingLevel: Heading = "h1" }: CreateFormProps) {
+function CreateFormInner({
+  apiBase,
+  headingLevel: Heading = "h1",
+  allowAuthedCreate = false,
+}: CreateFormProps) {
   const inputId = useId();
   const errorId = useId();
   const [goal, setGoal] = useState("");
   const [loading, setLoading] = useState(false);
+  // SK-ANON-016 — mirrors the fetchSession() check `submit()` makes at
+  // click time; this copy only drives the lede text, so a stale value
+  // for the first render (before the probe resolves) just shows the
+  // anon copy briefly. Never read for gating — submit() always re-checks.
+  const [signedIn, setSignedIn] = useState(false);
   // Track the structured error, not the rendered string — the rate-limit
   // CTA branch reads `error.kind` rather than scraping the user-facing
   // copy. `networkError` is the `catch` branch (no `CreateError` shape).
@@ -98,6 +121,20 @@ function CreateFormInner({ apiBase, headingLevel: Heading = "h1" }: CreateFormPr
     const landing = dropoff.current.landing("create");
     if (landing) emit(landing.event, landing.props);
   }, []);
+
+  // SK-ANON-016 — `/app/new/` only. Cosmetic (lede copy); submit() does
+  // its own fetchSession() check so a slow probe never mis-gates a fast
+  // submit.
+  useEffect(() => {
+    if (!allowAuthedCreate) return;
+    let cancelled = false;
+    fetchSession().then((user) => {
+      if (!cancelled) setSignedIn(Boolean(user));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [allowAuthedCreate]);
 
   function onGoalChange(next: string) {
     setGoal(next);
@@ -133,13 +170,34 @@ function CreateFormInner({ apiBase, headingLevel: Heading = "h1" }: CreateFormPr
     // alongside the error banner — better than a blank form.
     const submittedAt = new Date().toISOString();
     try {
-      let outcome = await postAskCreate(apiBase, trimmed);
-      // 428 retry seam — one retry with the Turnstile token; a null
-      // token (widget unconfigured/failed) falls through to the error.
-      if (!outcome.ok && outcome.error.kind === "challenge_required") {
-        const token = await solveChallenge();
-        if (token) {
-          outcome = await postAskCreate(apiBase, trimmed, { turnstileToken: token });
+      // SK-ANON-016 — re-check at submit time (not the `signedIn` state,
+      // which only drives copy) so a session that resolves between mount
+      // and click is never missed. `fetchSession()` is memoized, so this
+      // costs nothing when the mount-time probe already settled.
+      const authed = allowAuthedCreate ? Boolean(await fetchSession()) : false;
+      let outcome = await postAskCreate(apiBase, trimmed, { authed });
+      if (!authed) {
+        // 428 retry seam — one retry with the Turnstile token; a null
+        // token (widget unconfigured/failed) falls through below.
+        if (!outcome.ok && outcome.error.kind === "challenge_required") {
+          const token = await solveChallenge();
+          if (token) {
+            outcome = await postAskCreate(apiBase, trimmed, { turnstileToken: token });
+          }
+        }
+        // SK-ANON-016 — the retry seam above had nothing left to try
+        // (no sitekey, blocked script, or the resolved token still came
+        // back invalid — e.g. secret/sitekey shipped out of lockstep,
+        // SK-ANON-009). Rather than dead-end on an unrecoverable
+        // "complete the challenge" error, hand off to sign-in exactly
+        // like the auth_required arc below: the authed branch above
+        // always works regardless of Turnstile's state.
+        if (!outcome.ok && outcome.error.kind === "challenge_required") {
+          savePending({ goal: trimmed, submittedAt });
+          if (typeof window !== "undefined") {
+            window.location.assign(attachHandoff(withReplayFlag(SIGN_IN_FALLBACK_URL)));
+          }
+          return;
         }
       }
       // SK-ANON-010 + SK-ANON-011: stash the prompt and redirect.
@@ -198,7 +256,9 @@ function CreateFormInner({ apiBase, headingLevel: Heading = "h1" }: CreateFormPr
     <section className="createform">
       <Heading className="createform__title">Spin up a database from a sentence.</Heading>
       <p className="createform__lede">
-        Anonymous — no sign-in. Your DB lives 72h; sign in (always free) to keep it.
+        {signedIn
+          ? "Creates a new database on your account."
+          : "Anonymous — no sign-in. Your DB lives 72h; sign in (always free) to keep it."}
       </p>
       <form
         className="createform__form"
@@ -378,6 +438,12 @@ function CreateSnippetView({ primaryTable }: { primaryTable: string | undefined 
     </section>
   );
 }
+
+// SK-ANON-016 — fallback hand-off when the anon path's Turnstile
+// challenge is unrecoverable (no signInUrl ships on `challenge_required`
+// the way it does on `auth_required`). Matches the CreateSnippetView CTA
+// below.
+const SIGN_IN_FALLBACK_URL = "/auth/sign-in/?return_to=/app/";
 
 // SK-ANON-011 / WS02-T3: mark that a pending prompt is expected after
 // sign-in so the chat (/app) can acknowledge the rare case where it

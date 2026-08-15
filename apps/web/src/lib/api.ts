@@ -1,10 +1,18 @@
 // Tiny `/v1/ask` client used by both the marketing hero and
 // `/app/new` (SK-WEB-008 collapsed them onto the same flow).
 //
-// Always anon-bearer authenticated, goal-only body, returns the
+// Anon-bearer authenticated by default, goal-only body, returns the
 // typed-plan create result (SK-HDC-001) on success. Carries the
 // auth_required envelope (SK-ANON-010) for the global-cap soft-
 // promotion to sign-in.
+//
+// `options.authed` (SK-ANON-016, `/app/new`-only) swaps the anon
+// bearer for the session cookie (`credentials: "include"`, no
+// `Authorization` header) so a signed-in visitor creates under their
+// own account and skips the anon Turnstile/device-cap gates entirely
+// — those gates no-op for `principal.kind === "user"` server-side
+// (SK-ANON-006/008). The marketing hero never sets this; its anon-
+// only contract (SK-ANON-001) is unchanged.
 //
 // Why a hand-rolled client and not `@nlqdb/sdk`: the SDK's surface
 // is shaped for `pk_live_<key>` query traffic (the `<nlq-data>`
@@ -83,12 +91,12 @@ interface AuthRequiredEnvelope {
 export async function postAskCreate(
   apiBase: string,
   goal: string,
-  options: { turnstileToken?: string | null } = {},
+  options: { turnstileToken?: string | null; authed?: boolean } = {},
 ): Promise<CreateOutcome> {
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-    authorization: `Bearer ${getOrMintAnonToken()}`,
-  };
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (!options.authed) {
+    headers.authorization = `Bearer ${getOrMintAnonToken()}`;
+  }
   if (options.turnstileToken) {
     headers["cf-turnstile-response"] = options.turnstileToken;
   }
@@ -97,17 +105,17 @@ export async function postAskCreate(
   const res = await fetch(`${apiBase.replace(/\/$/, "")}/v1/ask`, {
     method: "POST",
     headers,
-    // `credentials: "omit"` is load-bearing: the hero is contractually
-    // the anon-first surface (SK-ANON-001). When the hero is served
-    // same-origin with the API, the default `same-origin` policy
-    // would ride the `__Secure-better-auth.session_token` cookie on
-    // every POST — and `requirePrincipal` (SK-ANON-008) gives the
-    // cookie precedence over the anon bearer, so a signed-in user
-    // submitting from the hero would resolve as their authed self
-    // and never hit the SK-ANON-012 device cap. Dropping the cookie
-    // forces the request to run as anon unconditionally, which is
-    // what the device-cap → sign-in handoff requires.
-    credentials: "omit",
+    // `credentials: "omit"` is load-bearing on the anon path: the hero
+    // is contractually the anon-first surface (SK-ANON-001). When
+    // served same-origin with the API, the default `same-origin`
+    // policy would ride the `__Secure-better-auth.session_token`
+    // cookie on every POST — and `requirePrincipal` (SK-ANON-008)
+    // gives the cookie precedence over the anon bearer, so a signed-in
+    // user submitting from the hero would resolve as their authed self
+    // and never hit the SK-ANON-012 device cap. `options.authed` is
+    // the opposite intent (SK-ANON-016): ride the cookie on purpose,
+    // no anon bearer at all.
+    credentials: options.authed ? "include" : "omit",
     // dbId omitted on purpose — the kind=create classifier branch
     // routes the typed-plan pipeline (SK-HDC-001). `source` is the
     // SK-GTM-007 first-touch attribution — telemetry the server

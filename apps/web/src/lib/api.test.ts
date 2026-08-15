@@ -79,6 +79,29 @@ describe("postAskCreate", () => {
     expect(captured?.headers?.get("authorization")).toMatch(/^Bearer anon_/);
   });
 
+  test("options.authed sends credentials: 'include' with no anon bearer (SK-ANON-016)", async () => {
+    mockFetch(
+      new Response(
+        JSON.stringify({
+          kind: "create",
+          db: "db_x",
+          displayName: "x",
+          schemaName: "x",
+          pkLive: null,
+          plan: {},
+          sampleRows: [],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    const { postAskCreate } = await import("./api.ts");
+    await postAskCreate("", "test goal", { authed: true });
+
+    expect(captured?.credentials).toBe("include");
+    expect(captured?.headers?.has("authorization")).toBe(false);
+  });
+
   // The API reports an unusable goal as `422 infer_failed` (index.ts
   // formatCreateJsonResponse). A vague hero goal ("test", "stuff")
   // trips `ambiguous_goal`; a plan that fails validation trips

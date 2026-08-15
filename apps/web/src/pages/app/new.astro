@@ -1,6 +1,9 @@
 ---
-// Anonymous-create permalink alias of the marketing hero
-// (`SK-ANON-008` / `SK-HDC-001` / `SK-WEB-008`).
+// Create permalink alias of the marketing hero (`SK-ANON-008` /
+// `SK-HDC-001` / `SK-WEB-008`). `allowAuthedCreate` (SK-ANON-016) lets a
+// signed-in visitor create under their own account via the session
+// cookie instead of the anon path — the anon path stays the default for
+// signed-out visitors.
 
 import AppAnalytics from "../../components/AppAnalytics.astro";
 import ConsentBanner from "../../components/ConsentBanner.astro";
@@ -19,7 +22,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   <div class="page">
     <Topnav />
     <main>
-      <CreateForm client:load apiBase={apiBase} />
+      <CreateForm client:load apiBase={apiBase} allowAuthedCreate />
     </main>
     <Footer />
   </div>
