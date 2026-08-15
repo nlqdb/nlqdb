@@ -432,7 +432,12 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
         } else {
           freeCta.textContent = "Downgrade";
           freeCta.dataset.downgrade = "1";
-          freeCta.removeAttribute("href"); // now a portal opener, not a link
+          // Now a portal opener, not a link. An href-less <a> is neither
+          // focusable nor Enter-activatable, so promote it to a real control
+          // (keydown handler below) rather than leaving it mouse-only.
+          freeCta.removeAttribute("href");
+          freeCta.setAttribute("role", "button");
+          freeCta.setAttribute("tabindex", "0");
         }
       }
     }
@@ -452,6 +457,18 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     cta.textContent = original;
     cta.dataset.downgrade = "1";
     alert("Couldn't open the billing portal. Please try “Manage billing” below or email hello@nlqdb.com.");
+  });
+
+  // Keyboard parity for the promoted "Downgrade" control (see role/tabindex
+  // above): Enter/Space fire the same portal-open click. No-op while it's still
+  // a plain link (free/anon) or mid-redirect.
+  document.getElementById("pricing-free-cta")?.addEventListener("keydown", (e) => {
+    const cta = e.currentTarget as HTMLElement;
+    if (cta.dataset.downgrade !== "1") return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      cta.click();
+    }
   });
 
   manageBtn?.addEventListener("click", async () => {

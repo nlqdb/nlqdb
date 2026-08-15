@@ -73,6 +73,21 @@ describe("SubscribeBlock — no upsell for a paying customer (Bug B)", () => {
     expect(html).not.toContain("Count me in");
   });
 
+  it("paid but past_due: payment-fix prompt, never the free upsell (Bug B)", () => {
+    const html = renderToStaticMarkup(
+      <SubscribeBlock
+        billing={billing({ plan: "hobby", status: "past_due", manageable: true })}
+        premiumLive
+        allowance={allowance}
+        interest="idle"
+        onCountMeIn={noop}
+        onManageBilling={noop}
+      />,
+    );
+    expect(html).toContain("Update payment method");
+    expect(html).not.toContain("See paid plans");
+  });
+
   it("free user + meter live: real subscribe CTA to /pricing", () => {
     const html = renderToStaticMarkup(
       <SubscribeBlock

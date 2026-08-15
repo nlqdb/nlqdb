@@ -167,7 +167,13 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       const upgradeBtn = showUpgrade
         ? `<button type="button" class="billing-btn billing-btn--primary" id="billing-upgrade">Upgrade to Pro</button>`
         : "";
-      const manageLabel = canceling ? "Manage billing / Resubscribe" : "Manage billing / Cancel";
+      // Past-due opens the same portal, but the label must lead with the action
+      // the alert instructs (update the card), not "Cancel".
+      const manageLabel = pastDue
+        ? "Update payment method"
+        : canceling
+          ? "Manage billing / Resubscribe"
+          : "Manage billing / Cancel";
 
       return `
         ${banner}

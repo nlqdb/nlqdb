@@ -517,6 +517,28 @@ export function SubscribeBlock({
     );
   }
 
+  // State 2b — payment failed on a paid plan (`past_due`/`unpaid`). Premium is
+  // paused server-side (eligibility is `status === "active"`) until the charge
+  // clears, so don't upsell their own plan — point them at billing to fix the
+  // card, matching billing.astro's dunning banner (GLOBAL-023 honesty).
+  if (isPaidPlan && (billing?.status === "past_due" || billing?.status === "unpaid")) {
+    const planLabel = plan === "pro" ? "Pro" : "Hobby";
+    return (
+      <div className="model-picker__subscribe">
+        <p className="model-picker__subscribe-text">
+          Your {planLabel} plan's last payment failed — premium is paused until it's settled.
+        </p>
+        <button
+          type="button"
+          className="btn btn--ghost model-picker__countme"
+          onClick={onManageBilling}
+        >
+          Update payment method
+        </button>
+      </div>
+    );
+  }
+
   // State 3 — free user. Unchanged behavior: live → real subscribe CTA;
   // dark → interest capture only (never a buyable state that can't be bought,
   // GLOBAL-023).

@@ -28,14 +28,25 @@ export function overageMeterName(model: string = PREMIUM_MODEL): string {
   return `nlqdb.premium_llm.overage.${PREMIUM_PROVIDER}.${model}`;
 }
 
-// Deterministic, idempotent event id. Scoped to the customer + the request's
-// idempotency key (or a caller-supplied stable request id) so a retried
-// `/v1/ask` that carries the same `Idempotency-Key` can't double-report the
-// meter (SK-PREMIUM-002 / GLOBAL-005) — the allowance-slot decrement is
-// separate and not keyed, and a keyless retry is a fresh dispatch billed as
-// such. Used as BOTH the ledger PK and the Stripe `identifier`.
-export function meterEventId(customerId: string, requestKey: string): string {
-  return `premium:${customerId}:${requestKey}`;
+// Deterministic event id for one premium dispatch. Scoped to the customer + a
+// fresh per-dispatch id: `/v1/ask` has no idempotent replay, so every retry is a
+// real re-dispatch (new LLM call + allowance slot) and must bill — keying on the
+// client `Idempotency-Key` would silently drop the second dispatch's cost while
+// still decrementing its allowance (SK-PREMIUM-017). Used as BOTH the ledger PK
+// and the Stripe `identifier`, so a retry of the async report itself (within one
+// execution) stays idempotent on both sides.
+export function meterEventId(customerId: string, dispatchId: string): string {
+  return `premium:${customerId}:${dispatchId}`;
+}
+
+// Quantize a per-event cost to sub-cent (1e-6 ¢) precision. Stripe's Billing
+// Meter API rejects values with >15 significant digits and a raw JS float
+// stringifies to up to 17; a whole-cent `Math.round` instead drifts up to
+// 0.5 ¢/event against the full-precision ledger, false-alarming reconciliation.
+// The ledger stores this SAME quantized value, so the two sides compare exactly
+// (SK-PREMIUM-017 / pricing.ts: exact pass-through, no rounding drift).
+export function quantizeMeterCents(costCents: number): number {
+  return Math.round(costCents * 1e6) / 1e6;
 }
 
 export type OverageEvent = {
@@ -98,9 +109,11 @@ export async function reportMeterEvent(
         identifier: ev.eventId,
         payload: {
           stripe_customer_id: ev.stripeCustomerId,
-          // Meter value in USD cents; the human-configured overage Price sets
-          // 1 unit = $0.01 so the sum invoices at exact provider list (0% markup).
-          value: String(Math.round(ev.costCents)),
+          // Meter value in USD cents, full precision (already sub-cent quantized
+          // at construction, matching the ledger row). The human-configured
+          // overage Price sets 1 unit = $0.01 so the sum invoices at exact
+          // provider list (0% markup) — SK-PREMIUM-017 exact pass-through.
+          value: String(ev.costCents),
         },
       });
       await db

@@ -20,9 +20,14 @@ import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { newStripeClient } from "../../stripe/client.ts";
 import { meterLive } from "./limits.ts";
 
+// Both sides sum the same sub-cent-quantized values, so a healthy drift is only
+// float-summation noise; anything above this (1e-6 ¢) is a real dropped/double
+// report. Well below any single event's cost, well above accumulated float error.
+export const DRIFT_EPSILON_CENTS = 1e-6;
+
 // Pure: drift = internal reported total − Stripe reported total, in USD cents.
 // Positive → we recorded overage Stripe hasn't billed; negative → Stripe billed
-// more than our ledger (a double-report). Zero is health.
+// more than our ledger (a double-report). Within ±DRIFT_EPSILON_CENTS is health.
 export function computeDrift(internalCents: number, stripeCents: number): number {
   return internalCents - stripeCents;
 }
@@ -102,7 +107,7 @@ export async function reconcilePremiumMeter(
         for (const s of summaries.data) stripeCents += s.aggregated_value;
         const drift = computeDrift(row.total, stripeCents);
         crossChecked += 1;
-        if (drift !== 0) {
+        if (Math.abs(drift) > DRIFT_EPSILON_CENTS) {
           console.warn(
             JSON.stringify({
               level: "warn",

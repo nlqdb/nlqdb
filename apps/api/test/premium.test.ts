@@ -10,6 +10,7 @@ import {
   checkHardCeiling,
   computeDrift,
   consumeAllowance,
+  DRIFT_EPSILON_CENTS,
   evaluateCap,
   isOverflowPolicy,
   isPremiumEligiblePrincipalKind,
@@ -17,6 +18,7 @@ import {
   meterEventId,
   overageMeterName,
   premiumConfigured,
+  quantizeMeterCents,
   resolvePreDispatchLane,
   resolvePremiumEligibility,
   settlePremiumQuery,
@@ -243,12 +245,34 @@ describe("evaluateCap", () => {
 });
 
 describe("meter identity", () => {
-  it("event id is deterministic per (customer, request-key) — idempotent retries", () => {
-    expect(meterEventId("cus_1", "req_9")).toBe("premium:cus_1:req_9");
-    expect(meterEventId("cus_1", "req_9")).toBe(meterEventId("cus_1", "req_9"));
+  it("event id composes (customer, dispatch-id) — distinct dispatches never collide", () => {
+    expect(meterEventId("cus_1", "d_9")).toBe("premium:cus_1:d_9");
+    // Same dispatch id → same event id (the async report stays idempotent);
+    // different dispatch ids → different events (each real re-dispatch bills).
+    expect(meterEventId("cus_1", "d_9")).toBe(meterEventId("cus_1", "d_9"));
+    expect(meterEventId("cus_1", "d_9")).not.toBe(meterEventId("cus_1", "d_10"));
   });
   it("overage meter name is per provider+model", () => {
     expect(overageMeterName()).toBe("nlqdb.premium_llm.overage.anthropic.claude-sonnet-4-6");
+  });
+});
+
+describe("quantizeMeterCents", () => {
+  it("keeps sub-cent precision (no whole-cent rounding) so ledger and Stripe agree", () => {
+    // The old `Math.round` billed 3.7¢ as 4¢; quantization preserves the value.
+    expect(quantizeMeterCents(3.7)).toBe(3.7);
+    expect(quantizeMeterCents(0.004)).toBe(0.004);
+    // Stringifies safely under Stripe's 15-significant-digit ceiling.
+    expect(String(quantizeMeterCents(1 / 3)).length).toBeLessThanOrEqual(15);
+  });
+});
+
+describe("reconciliation drift tolerance", () => {
+  it("treats float-summation noise as healthy but flags a real dropped/double report", () => {
+    // Identical quantized sums differ only by float noise → within epsilon.
+    expect(Math.abs(computeDrift(3.7 + 3.7 + 3.7, 11.1))).toBeLessThanOrEqual(DRIFT_EPSILON_CENTS);
+    // A whole dropped event is well outside the band.
+    expect(Math.abs(computeDrift(11.1, 7.4))).toBeGreaterThan(DRIFT_EPSILON_CENTS);
   });
 });
 
