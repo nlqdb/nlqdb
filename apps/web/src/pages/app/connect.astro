@@ -98,18 +98,6 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     min-width: 0;
   }
 
-  /* The shared Topnav has no mobile treatment; authed it adds a "Sign out"
-   * slot that overruns 375px in one nowrap row. Scoped to this app page
-   * only: wrap the nav so every link stays visible and the page never
-   * scrolls sideways. */
-  @media (max-width: 720px) {
-    .page--connect .topnav,
-    .page--connect .topnav__links {
-      flex-wrap: wrap;
-      gap: 8px 16px;
-    }
-  }
-
   .connect {
     display: flex;
     flex-direction: column;
