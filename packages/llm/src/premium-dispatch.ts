@@ -32,12 +32,18 @@ export type PremiumRouterOptions = {
 };
 
 // Build the single-provider premium router. Like `buildByollmRouter`, there is
-// deliberately NO failover to the free chain and NO hedge: a premium call is
-// real money, and a silent downgrade would hide a failure and split telemetry
-// (SK-LLM-016 "fail loud"). A bad key surfaces as `AllProvidersFailedError` for
-// the caller to translate into a one-sentence error (GLOBAL-012) — and, per
+// deliberately NO failover to the free chain WITHIN the router and NO hedge: a
+// premium call is real money, and an in-router silent downgrade would hide a
+// failure and split telemetry (SK-LLM-016 "fail loud"). A bad key surfaces as
+// `AllProvidersFailedError` for the caller to translate — and, per
 // SK-PREMIUM-006's decrement-on-dispatch rule, a failed call consumes no
 // allowance slot because `onUsage` never fired.
+//
+// The caller wraps THIS router with `withFallbackRouter` (SK-PREMIUM-020) so a
+// gateway fault that would otherwise `llm_failed` a paid user instead serves the
+// free chain — a surfaced, logged, unmetered LANE fallback, distinct from the
+// in-router failover rejected here (the free chain's direct tail, SK-LLM-047,
+// is what survives the fault the gateway-only premium lane cannot).
 export function buildPremiumRouter(opts: PremiumRouterOptions): LLMRouter {
   const provider = createByollmProvider({
     apiKey: opts.apiKey,

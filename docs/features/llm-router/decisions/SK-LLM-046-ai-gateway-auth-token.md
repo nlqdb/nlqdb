@@ -22,8 +22,11 @@ Gateway** turned on.
   Unauthorized`. At the time, the free `route` chain and the single-provider
   premium lane had **no direct-provider backstop** (the free chains have since
   gained one — [`SK-LLM-047`](./SK-LLM-047-direct-tail-cheap-tier.md); the
-  premium lane remains gateway-only), so an un-authenticated gateway 401s the
-  whole chain and surfaces as `llm_failed` (502) on *every* `/v1/ask` —
+  premium lane is still gateway-only at the transport but now falls back to the
+  free chain at the handler when it faults —
+  [`SK-PREMIUM-020`](../../premium-tier/decisions/SK-PREMIUM-020-dispatch-fallback.md)),
+  so an un-authenticated gateway 401s the whole chain and surfaces as
+  `llm_failed` (502) on *every* `/v1/ask` —
   a full production outage from a dashboard toggle, with no deploy. Enabling
   the gateway's auth is the right posture (it stops a leaked account/gateway id
   from letting a third party burn our provider keys, and protects the premium

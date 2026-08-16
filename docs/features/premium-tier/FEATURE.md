@@ -18,7 +18,7 @@ when-to-load:
 # Feature: Premium Tier (premium-models add-on)
 
 **One-liner:** Two LLM upgrade lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md): **BYOLLM** (every tier including free; the user's provider key, 0% markup) and **hosted premium** on paid plans (frontier routing — Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro — under Shape B: flat sub + included monthly request allowance + soft-meter overage at provider list + 0% markup), with surface-parity model picker and per-key spend cap.
-**Status:** partial. BYOLLM (`SK-PREMIUM-008`) ships. The hosted-premium lane (`SK-PREMIUM-009`/`010`/`011`/`006`/`017`) **went live 2026-08-14** (`PREMIUM_METER_LIVE` flipped + AI Gateway provisioned; `premium.live=true` in prod) — `/v1/ask` routes a paid, no-BYOLLM user to an Anthropic `claude-sonnet-4-6` lane, meters overage to Stripe Billing Meters, and enforces allowance + soft-cap slots + per-key spend cap. v1 Anthropic-only; GPT-5 / Gemini "coming soon".
+**Status:** partial. BYOLLM (`SK-PREMIUM-008`) ships. The hosted-premium lane (`SK-PREMIUM-009`/`010`/`011`/`006`/`017`) **went live 2026-08-14** (`PREMIUM_METER_LIVE` flipped + AI Gateway provisioned; `premium.live=true` in prod) — `/v1/ask` routes a paid, no-BYOLLM user to an Anthropic `claude-sonnet-4-6` lane, meters overage to Stripe Billing Meters, and enforces allowance + soft-cap slots + per-key spend cap. v1 Anthropic-only; GPT-5 / Gemini "coming soon". A gateway fault on the (backstop-less) premium lane now falls back to the free chain instead of `llm_failed`-ing the paid user (`SK-PREMIUM-020`).
 
 **Contribution to north-star:** Engine quality (hosted-premium + BYOLLM give heavy users frontier-model accuracy on real schemas, feeding `quality-eval`'s free-vs-frontier delta KPI per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)) and UX (request-denominated Shape B + opt-in fallback per `SK-PREMIUM-011` keep the boundary honest, no "first-token bill" surprise).
 **Owners (code):** none yet — `apps/api/src/{billing,ask}/**`, `packages/{llm,sdk,elements,mcp}/**`, `apps/web/**`, `cli/` will all carry slices.
@@ -64,18 +64,29 @@ Meter events report async after the response (`ctx.waitUntil`), keyed `premium:<
 **Body:** [`decisions/SK-PREMIUM-003-model-knob.md`](./decisions/SK-PREMIUM-003-model-knob.md).
 The primary knob is presets `model: "auto"|"fast"|"best"` (+Enterprise `"custom"`), never raw model strings in customer code. Amended by `SK-PREMIUM-013` ("Both"): surfaces may also offer an **advanced named picker** — but model strings still never live in a surface file; the catalog is served from `@nlqdb/llm` over the wire (`GET /v1/models`), so a new frontier model is a one-line `catalog.ts` edit, not a customer-code change.
 
-### SK-PREMIUM-004 — In-context free-model nudge fires when the free chain visibly struggled, never on cost surprise
+### SK-PREMIUM-004 — In-context free-model nudge fires when the free chain visibly struggled, never on cost surprise, and never for a premium user
 
-- **Decision:** When the user is on the strict-$0 (free) chain *and* a reply visibly struggled — it failed on a model-quality code (`llm_failed` = couldn't plan, `sql_rejected` = produced disallowed SQL, or `schema_mismatch` **only** on the pre-flight LLM-hallucination path (non-empty `referencedTables`), not the exec-catch infra path (`SK-ASK-016`/`SK-ASK-019`)) or came back below the `0.7` plan-confidence floor — the chat renders a short, non-blocking nudge below that reply: a one-line warning plus a single "Switch model" CTA that opens the header `ModelPicker` (BYOLLM today, hosted-premium when `SK-PREMIUM-009` ships). The nudge never blocks the response — the free-chain answer/error renders first; the nudge is *additional* context, not a paywall. It is gated on the *struggled* condition and on *free chain* (a BYOLLM/frontier user never sees it). The founder-approved copy is blunt — *"The free model sucks — use a frontier model for better answers."* — overriding the softer `GLOBAL-026` "free is great" framing: conversion over brand tone.
-- **Core value:** Effortless UX, Honest latency, Goal-first
-- **Why:** The free chain sometimes errors, and when it doesn't its answers can be lower-accuracy than a frontier model — with no affordance telling the user a better model exists. Firing *only* when the free model actually struggled keeps it out of the way for queries it handles fine, so it isn't banner-blindness. Gating on the free chain avoids the wrong message ("the free model sucks") reaching a user who already brought a frontier key. Rendering below the answer (not modal) preserves `GLOBAL-007` ("no login wall before first value") — the answer lands first, the nudge is a disclosure. Never firing on "we're about to bill you more" prevents the dark pattern where a customer thinks they hit a cap when they really hit a sales prompt.
-- **Consequence in code:** `apps/web/src/components/chat/FreeModelNudge.tsx` renders the warning + CTA. `ChatPanel` gates it on `onFreeChain && freeChainStruggled(reply)`: `freeChainStruggled` reads the reply's error `code` (kept on the `error` reply state) or `trace.confidence` against `LOW_CONFIDENCE_THRESHOLD = 0.7`; `onFreeChain` is learned from the `ModelPicker`'s `BYOLLM_STATUS_EVENT` broadcast (`configured === false` ⇒ free). The CTA dispatches `MODEL_PICKER_OPEN_EVENT`; `ModelPicker` listens, opens, and scrolls itself into view. This is web-only per `GLOBAL-002` — programmatic surfaces (SDK / CLI / MCP / elements) expose `trace.confidence` and the error code and let the embedding app render its own UI. The one-click Stripe-Checkout upgrade action and the per-(user, db) "dismiss for 30d" preference remain **deferred** (tracked in Open questions) — the shipped slice is the nudge + BYOLLM switch, not the hosted-premium checkout (`SK-PREMIUM-009`).
-- **Alternatives rejected:**
-  - Fire on the classifier `hard_plan` verdict — no such verdict is surfaced to any client today (`trace` carries `confidence`, not a classifier label); wiring a new cross-surface field for the trigger was heavier than reusing the confidence floor + error code that already ride the response.
-  - Show the nudge on every free reply — banner blindness within minutes; rejected for the same reason `docs/architecture.md §0` rejects "are you sure" prompts. Gating on the struggled condition is the compromise.
-  - Show it to BYOLLM/frontier users too — the copy is wrong for them (they're already on a frontier model) and switching does nothing.
-  - Block the response and require an upgrade — turns the nudge into a paywall; collapses activation, breaks the "answer first" promise.
-- **Source:** docs/architecture.md §0 (Goal-first, Effortless UX) · docs/architecture.md §6 (honest billing) · `SK-WEB-005` (three-part chat response) · [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) (free-vs-frontier lanes)
+**Body:** [`decisions/SK-PREMIUM-004-free-model-nudge.md`](./decisions/SK-PREMIUM-004-free-model-nudge.md).
+The blunt "the free model sucks — switch model" nudge renders below a reply
+only when the user is on the free chain *and* the reply struggled (a
+model-quality error code or sub-`0.7` confidence). Gated on `onFreeChain &&
+freeChainStruggled(reply)`; `onFreeChain` is now `configured === false && premiumActive === false`,
+so a paid user auto-routed to the hosted-premium model never sees it
+(`SK-PREMIUM-020` fixed that misfire). Web-only per `GLOBAL-002`.
+
+### SK-PREMIUM-020 — A premium-lane dispatch failure falls back to the free chain (surfaced, unmetered), never `llm_failed` for a paid user
+
+**Body:** [`decisions/SK-PREMIUM-020-dispatch-fallback.md`](./decisions/SK-PREMIUM-020-dispatch-fallback.md).
+The gateway-only premium lane (`SK-PREMIUM-009`) has no backstop, so an
+AI-Gateway fault the free chain survives on its direct tail (`SK-LLM-047`)
+otherwise `llm_failed`s a **paying** user while a **free** user sails through.
+`withFallbackRouter` wraps the premium router with the free router at the
+handler: a premium op that throws serves the free chain instead — surfaced in
+the response `premium` trace (`premium_fallback: true`, `GLOBAL-023`), logged,
+and **unmetered/uncharged** (the free leg never fires the premium `onUsage`
+sink). A handler-level *lane* fallback, not the in-router failover `SK-LLM-016`
+rejects (the premium router stays fail-loud). Same posture as `SK-PREMIUM-011`
+(exhaustion→fallback) and `GLOBAL-033` (payment-fail→free chain).
 
 ### SK-PREMIUM-005 — Surface parity per `GLOBAL-003` — model picker, opt-in, and CTA all ship together
 
