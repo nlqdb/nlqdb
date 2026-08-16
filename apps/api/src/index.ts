@@ -1147,7 +1147,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       periodStart: number;
       stripeCustomerId: string;
       usage: ReturnType<typeof makeUsageAccumulator>;
-      requestKey: string;
+      dispatchId: string;
       router: LLMRouter;
     } | null = null;
     let premiumEligible = false;
@@ -1214,15 +1214,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               periodStart: elig.periodStart,
               stripeCustomerId: cust.scid,
               usage,
-              // Meter-event key. The composed Stripe `identifier`
-              // (`premium:<customer>:<key>`) tops out at 100 chars, so an
-              // oversize client key falls back to a UUID (each dispatch is a
-              // real LLM call, so billing it fresh is correct — only the
-              // retry dedup is lost).
-              requestKey: (() => {
-                const k = c.req.header("Idempotency-Key");
-                return k && k.length <= 56 ? k : crypto.randomUUID();
-              })(),
+              // Fresh per-dispatch meter key. `/v1/ask` has no idempotent
+              // replay, so a retry (even under the same client `Idempotency-Key`)
+              // is a real second LLM call that also decrements the allowance —
+              // it must bill fresh, not dedupe against the first (SK-PREMIUM-017).
+              dispatchId: crypto.randomUUID(),
               router: buildPremiumRouter({
                 apiKey: c.env.PREMIUM_ANTHROPIC_API_KEY ?? "",
                 accountId: c.env.AI_GATEWAY_ACCOUNT_ID ?? "",
@@ -1549,7 +1545,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
                 stripeCustomerId: premiumRun.stripeCustomerId,
                 periodStart: premiumRun.periodStart,
                 overageCents: s.overageCents,
-                requestKey: premiumRun.requestKey,
+                dispatchId: premiumRun.dispatchId,
               }).catch((err: unknown) => {
                 // A ledger D1 failure here means the overage never reached the
                 // ledger OR Stripe — silent under-billing; log it so the miss
@@ -3367,7 +3363,8 @@ app.delete("/v1/keys/byollm", requireSession, async (c) => {
 });
 
 // `POST /v1/premium/interest` — the "Count me in" door on the hosted-premium
-// lane (`SK-PREMIUM-013`'s subscribe door, §6-dark). Records demand in the
+// lane (`SK-PREMIUM-013`'s subscribe door, rendered only while the catalog
+// reports `premium.live: false`). Records demand in the
 // `premium_interest` D1 table (one row per account — the durable, queryable
 // signal for the §6 go/no-go); this is a premium-tier demand capture, not a
 // waitlist / access gate (GLOBAL-027 stays intact — the product is open).

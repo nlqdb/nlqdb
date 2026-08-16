@@ -24,7 +24,7 @@ Enable users to upgrade from Free → Hobby ($10/mo) or Pro ($25/mo) via Stripe 
 | **Free** | $0 forever | 1k queries/mo, 500MB/DB, 7d backups, strict-$0 LLM chain |
 | **Hobby** | $10/mo | 50k queries/mo, 5GB/DB, no pausing, 30d backups, email support |
 | **Pro** | $25/mo min + usage | $0.0005/query over 50k, $0.10/GB-mo over 5GB |
-| **Premium AI queries** (included in Hobby+) | Bundled — no extra sub | Hobby $10 includes ~200 premium queries/mo, Pro $25 includes ~600, on frontier models (v1 Anthropic `claude-sonnet-4-6`); then metered overage at provider list price **+0% markup**, bounded by your spend cap; §6-gated |
+| **Premium AI queries** (included in Hobby+) | Bundled — no extra sub | Hobby $10 includes ~200 premium queries/mo, Pro $25 includes ~600, on frontier models (v1 Anthropic `claude-sonnet-4-6`); then metered overage at provider list price **+0% markup**, bounded by your spend cap |
 | **BYOLLM** (any tier) | $0 | Paste a provider key; router dispatches at 0% markup |
 | **Enterprise** | Custom | SSO, VPC, audit log, on-prem |
 

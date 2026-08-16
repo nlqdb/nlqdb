@@ -16,7 +16,7 @@
 //   • presets — the goal-first `auto | fast | best` knob, accepted as the
 //     `model` param on `/v1/ask` and routed by `selectDispatchLane`
 //     (SK-PREMIUM-014): `fast` pins the free chain, `best` demands a frontier
-//     lane (BYOLLM today; hosted premium stays §6-dark) and fails loud when
+//     lane (BYOLLM, or hosted premium on a paid plan) and fails loud when
 //     none exists, `auto`/absent keeps the default precedence.
 //   • providers — the "advanced" named picker, one row per frontier provider
 //     (Claude / GPT / Gemini / Grok / OpenRouter). Each row carries a

@@ -11,12 +11,18 @@ its Lago mention.
      response ships (`ctx.waitUntil`). Allowance decrement + cost + the trace
      line are computed synchronously (one batched D1 write) so the response is
      honest; only the Stripe round-trip is deferred.
-  2. **Idempotent event ids.** Each overage event id is
-     `premium:<customer>:<request-key>` (the request's `Idempotency-Key`, or a
-     stable request id). It's the PK of the internal ledger
-     (`premium_meter_events`) AND the Stripe `identifier`, so a retried request
-     double-bills on neither side. Stripe is reported only on the ledger's
-     first insert (dispatch-after-insert, `SK-STRIPE-002` pattern).
+  2. **Per-dispatch event ids.** Each overage event id is
+     `premium:<customer>:<dispatch-id>`, where `dispatch-id` is a fresh id minted
+     per executed dispatch — **not** the client `Idempotency-Key`. `/v1/ask` has
+     no idempotent replay, so a retry is a real second LLM call that also
+     decrements the allowance and must bill fresh; keying on the client key would
+     silently drop that dispatch's cost. The id is the ledger PK
+     (`premium_meter_events`) AND the Stripe `identifier`, so the async report
+     itself stays idempotent — Stripe is reported only on the ledger's first
+     insert (dispatch-after-insert, `SK-STRIPE-002`). The cost is quantized to
+     sub-cent precision once, so the ledger row and the Stripe event carry the
+     identical value and daily reconciliation compares exactly (no whole-cent
+     rounding drift, which would false-alarm on every overage customer).
   3. **Daily reconciliation.** A daily cron job
      (`apps/api/src/billing/premium/reconcile.ts`) sums the ledger and compares
      against Stripe's per-customer meter summaries, recording drift on
@@ -36,8 +42,8 @@ its Lago mention.
 
 - **Consequence in code:** `apps/api/src/billing/premium/meter.ts` (ledger +
   Stripe report), `reconcile.ts` (daily cron), `apps/api/migrations/0031_premium_meter.sql`
-  (`premium_meter_events`). Dark until `PREMIUM_METER_LIVE` + `STRIPE_PREMIUM_METER_ID`
-  are set (blocked-by-human). The `phase-plan.md §6` "Lago metering" gate is
+  (`premium_meter_events`). Gated by `PREMIUM_METER_LIVE` + `STRIPE_PREMIUM_METER_ID`
+  (flipped live 2026-08-14). The `phase-plan.md §6` "Lago metering" gate is
   restated as "Stripe Billing Meters".
 
 - **Alternatives rejected:**

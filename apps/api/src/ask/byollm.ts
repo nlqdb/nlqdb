@@ -9,7 +9,8 @@
 // Scope: header lane (parse) + the free/header/account router resolution.
 // The account-stored credential is loaded + decrypted by
 // `byollm-account.ts` (KEK-decrypt) and passed in here; the hosted-premium
-// chain (`SK-LLM-017`, dark pre-§6) still stays on the free router. Surface
+// chain (`SK-LLM-017`) resolves here too, via `premiumEligible` +
+// `premiumRouter` on `resolveAskRouter` (`SK-PREMIUM-009`). Surface
 // parity (SDK/CLI/MCP/elements) is tracked as a gap in
 // `premium-tier/FEATURE.md` per `GLOBAL-003`.
 
@@ -93,8 +94,8 @@ export type ResolveAskRouterResult =
   // call). The *ambient* account-stored lane never reaches here — it
   // degrades to the free router instead (see `resolveAskRouter`).
   | { ok: false; reason: "gateway_unconfigured" }
-  // `model="best"` with no frontier lane (no BYOLLM key; hosted premium
-  // §6-dark) — SK-PREMIUM-014. The caller returns 409 `model_unavailable`
+  // `model="best"` with no frontier lane (no BYOLLM key; no hosted-premium
+  // lane for this caller) — SK-PREMIUM-014. The caller returns 409 `model_unavailable`
   // with the two real doors (bring a key / paid plan) rather than
   // silently serving the free chain.
   | { ok: false; reason: "frontier_unavailable" };
@@ -104,8 +105,8 @@ export type ResolveAskRouterResult =
 // `selectDispatchLane`): preset `fast` pins the free router; else header
 // key → account-stored key → free router; preset `best` with no frontier
 // lane resolves `frontier_unavailable`. A BYOLLM lane (either source)
-// dispatches through the user's own key. (The premium lane isn't wired
-// this slice; `selectDispatchLane` still owns the full precedence.)
+// dispatches through the user's own key; the premium lane rides
+// `premiumEligible` + `premiumRouter` below (`SK-PREMIUM-009`).
 // Returns the redacted `llm.dispatch_lane` span attributes alongside, so
 // the caller annotates the existing ask span without a second source of
 // truth. Pure + I/O-free — the caller resolves and decrypts the account

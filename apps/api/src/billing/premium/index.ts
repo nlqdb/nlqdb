@@ -32,6 +32,7 @@ import {
   ensurePremiumOverageItem,
   meterEventId,
   type OverageEvent,
+  quantizeMeterCents,
   recordOverageLedger,
   reportMeterEvent,
 } from "./meter.ts";
@@ -193,9 +194,10 @@ export async function settlePremiumQuery(
 }
 
 // ASYNCHRONOUS overage report (caller: `ctx.waitUntil`). Idempotent ledger write
-// + Stripe Billing Meter event. No-ops when there's no overage. `requestKey` is
-// the request's `Idempotency-Key` (or a stable request id) so a retry can't
-// double-bill.
+// + Stripe Billing Meter event. No-ops when there's no overage. `dispatchId` is a
+// fresh per-dispatch id (NOT the client `Idempotency-Key`) — every re-dispatch is
+// a real billable LLM call, so it must bill fresh; the id only makes the async
+// report itself safe to retry (SK-PREMIUM-017).
 export async function reportPremiumOverage(
   env: PremiumEnv,
   db: D1Database,
@@ -204,16 +206,18 @@ export async function reportPremiumOverage(
     stripeCustomerId: string;
     periodStart: number;
     overageCents: number;
-    requestKey: string;
+    dispatchId: string;
   },
 ): Promise<void> {
   if (args.overageCents <= 0) return;
   const ev: OverageEvent = {
-    eventId: meterEventId(args.customerId, args.requestKey),
+    eventId: meterEventId(args.customerId, args.dispatchId),
     customerId: args.customerId,
     periodStart: args.periodStart,
     model: PREMIUM_MODEL,
-    costCents: args.overageCents,
+    // Quantize once so the ledger row and the Stripe event carry the identical
+    // value and reconciliation compares like against like (SK-PREMIUM-017).
+    costCents: quantizeMeterCents(args.overageCents),
     stripeCustomerId: args.stripeCustomerId,
   };
   const { firstInsert } = await recordOverageLedger(db, ev);
