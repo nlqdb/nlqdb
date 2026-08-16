@@ -111,7 +111,7 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 ### SK-LLM-017 — Hosted-premium chain: separate provider list, §6-gated meter, never available on free
 
 **Body:** [`decisions/SK-LLM-017-hosted-premium-chain.md`](./decisions/SK-LLM-017-hosted-premium-chain.md).
-Now ships as `buildPremiumRouter` (`packages/llm/src/premium-dispatch.ts`): a single-provider **Anthropic** lane (v1 `claude-sonnet-4-6`) with a usage sink feeding the meter. Fires only on paid tiers, on a `best`/hard plan, behind `PREMIUM_METER_LIVE` (§6-gated; still dark). Commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
+Now ships as `buildPremiumRouter` (`packages/llm/src/premium-dispatch.ts`): a single-provider **Anthropic** lane (v1 `claude-sonnet-4-6`) with a usage sink feeding the meter. Fires only on paid tiers, on a `best`/hard plan, behind `PREMIUM_METER_LIVE` (live 2026-08-14). Commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
 
 ### SK-LLM-015 — OpenRouter code-gen ops default to `qwen/qwen3-coder:free` — SUPERSEDED by SK-LLM-045
 

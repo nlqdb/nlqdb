@@ -42,8 +42,8 @@ its Lago mention.
 
 - **Consequence in code:** `apps/api/src/billing/premium/meter.ts` (ledger +
   Stripe report), `reconcile.ts` (daily cron), `apps/api/migrations/0031_premium_meter.sql`
-  (`premium_meter_events`). Dark until `PREMIUM_METER_LIVE` + `STRIPE_PREMIUM_METER_ID`
-  are set (blocked-by-human). The `phase-plan.md §6` "Lago metering" gate is
+  (`premium_meter_events`). Gated by `PREMIUM_METER_LIVE` + `STRIPE_PREMIUM_METER_ID`
+  (flipped live 2026-08-14). The `phase-plan.md §6` "Lago metering" gate is
   restated as "Stripe Billing Meters".
 
 - **Alternatives rejected:**

@@ -176,11 +176,11 @@ it composes on the same auth/SDK; framework wrappers third.
    [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md),
    every user (free or paid) can paste a provider key and route
    through it at 0% markup. Ships now because no payment infra is
-   required; the hosted-premium lane stays dark until §6 trips.
+   required; the hosted-premium lane lit 2026-08-14 (§6 tripped).
 
-**Not in Phase 2 by default:** Listmonk and the
-hosted-premium LLM lane (wired end-to-end in §10 above; meter
-stays off). These turn on when §6 trips.
+**Not in Phase 2 by default:** Listmonk. (The hosted-premium
+LLM lane, wired in §10 above, turned on when §6 tripped —
+live 2026-08-14.)
 
 **Exit gate:** MCP installed in 3+ distinct host apps; 1 agent product
 publicly uses nlqdb as memory; 3 non-engineers complete CSV analysis
@@ -268,9 +268,8 @@ paid-conversion check (or a deliberate decision to ship without it).
 [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md),
 **BYOLLM ships in Phase 2** for every tier (no payment infra needed) and the
 **hosted-premium lane is now wired end-to-end** (router, meter, and allowance
-seeds in `apps/api/src/billing/premium/**`). §6 gates only the *meter firing*:
-the lane stays dark until the operator flips `PREMIUM_METER_LIVE`. Lighting it
-is a flag flip, not a refactor.
+seeds in `apps/api/src/billing/premium/**`). §6 gated only the *meter firing*
+(`PREMIUM_METER_LIVE`) — the operator flipped it live 2026-08-14.
 
 **Scaling triggers (infra, not billing; `GLOBAL-033`):** shard / migrate the
 single D1 at **70% of its daily-read quota (rolling 7-day) or 10k DAU**,
