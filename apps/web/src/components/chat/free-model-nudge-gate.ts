@@ -7,17 +7,17 @@
 // that the nudge would just be banner-blindness.
 export const LOW_CONFIDENCE_THRESHOLD = 0.7;
 
-// Only these API error codes mean the free *model* struggled (couldn't plan /
-// produced disallowed SQL). Rate-limit / auth / network / db-reachability
-// failures are not the model's fault, so a "switch models" nudge there is
-// misleading and is deliberately excluded.
+// Only these API error codes mean the free *model* struggled: couldn't plan
+// (`llm_failed`) or produced disallowed SQL (`sql_rejected`). Rate-limit / auth
+// / network / db-reachability failures are not the model's fault, so a "switch
+// models" nudge there is misleading and is deliberately excluded.
 const MODEL_QUALITY_ERROR_CODES = new Set(["llm_failed", "sql_rejected"]);
 
 // The minimal reply shape the gate reads — structural so `Reply` (defined in
 // ChatPanel) is assignable without a circular import.
 export type StruggleInput = {
   state:
-    | { kind: "error"; code?: string }
+    | { kind: "error"; code?: string; referencedTables?: string[] }
     | { kind: "ok"; ok: { trace?: { confidence?: number } | null } }
     | { kind: string };
   trace?: { confidence?: number } | null;
@@ -25,8 +25,15 @@ export type StruggleInput = {
 
 export function freeChainStruggled(reply: StruggleInput): boolean {
   if (reply.state.kind === "error") {
-    const code = (reply.state as { code?: string }).code;
-    return code !== undefined && MODEL_QUALITY_ERROR_CODES.has(code);
+    const err = reply.state as { code?: string; referencedTables?: string[] };
+    if (err.code !== undefined && MODEL_QUALITY_ERROR_CODES.has(err.code)) return true;
+    // `schema_mismatch` (SK-ASK-016) converges two paths behind one wire code:
+    // the pre-flight hallucination (non-empty `referencedTables` — the model
+    // invented a relation, a model-quality failure the nudge fires on) and the
+    // exec-catch orphaned-schema / missing-relation case (empty — an infra
+    // failure a frontier model fails identically, SK-ASK-019), so gate on the
+    // referenced-table list being non-empty.
+    return err.code === "schema_mismatch" && (err.referencedTables?.length ?? 0) > 0;
   }
   if (reply.state.kind === "ok") {
     const ok = (reply.state as { ok: { trace?: { confidence?: number } | null } }).ok;

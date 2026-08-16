@@ -110,8 +110,11 @@ type ReplyState =
     }
   // `code` is the NlqdbApiError.code (when the failure came from the API) so
   // the free-model nudge can fire only on model-quality failures, not on
-  // rate-limit / network / auth noise (SK-PREMIUM-004).
-  | { kind: "error"; message: string; code?: string };
+  // rate-limit / network / auth noise (SK-PREMIUM-004). `referencedTables`
+  // rides the `schema_mismatch` envelope (SK-ASK-016) and distinguishes the
+  // pre-flight hallucination (non-empty) the nudge fires on from the exec-catch
+  // orphaned-schema infra case (empty).
+  | { kind: "error"; message: string; code?: string; referencedTables?: string[] };
 
 type Reply = {
   id: string;
@@ -524,6 +527,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
             kind: "error",
             message: messageFor(err),
             code: err instanceof NlqdbApiError ? err.code : undefined,
+            referencedTables: err instanceof NlqdbApiError ? err.body?.referencedTables : undefined,
           },
         }));
       }

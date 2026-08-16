@@ -408,6 +408,11 @@ export type ApiErrorBody = {
   // Non-interactive surfaces render it verbatim so a user isn't stranded on
   // an error with no next click (GLOBAL-012, "one sentence + next action").
   link?: string;
+  // SK-ASK-016 — present on `schema_mismatch` envelopes; non-empty only on the
+  // pre-flight hallucination path (the LLM's hallucinated tables), empty on the
+  // exec-catch missing-relation / orphaned-schema path (SK-ASK-019).
+  referencedTables?: string[];
+  schemaTables?: string[];
 };
 
 // Mirrors apps/api/src/chat/types.ts. Keep these definitions in sync
