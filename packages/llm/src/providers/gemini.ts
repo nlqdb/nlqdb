@@ -5,8 +5,8 @@
 // `GEMINI_API_KEY` is a FREE-TIER key (GLOBAL-013): never link billing on it
 // or switch the default model here to a paid one. A denial → rotate to a
 // fresh/unflagged free-tier AI Studio key (SK-LLM-039), not billing. Paid
-// Gemini (2.5 Pro) is the separate §6-gated hosted-premium lane (SK-LLM-017),
-// on its own credential — never this key.
+// Gemini (2.5 Pro) belongs to the separate hosted-premium lane (SK-LLM-017;
+// v1 is Anthropic-only), on its own credential — never this key.
 
 import { type CallOpts, type LLMOperation, type Provider, ProviderError } from "../types.ts";
 import { createChatProvider } from "./_chat-provider.ts";

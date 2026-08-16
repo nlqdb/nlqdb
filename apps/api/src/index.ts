@@ -3363,7 +3363,8 @@ app.delete("/v1/keys/byollm", requireSession, async (c) => {
 });
 
 // `POST /v1/premium/interest` — the "Count me in" door on the hosted-premium
-// lane (`SK-PREMIUM-013`'s subscribe door, §6-dark). Records demand in the
+// lane (`SK-PREMIUM-013`'s subscribe door, rendered only while the catalog
+// reports `premium.live: false`). Records demand in the
 // `premium_interest` D1 table (one row per account — the durable, queryable
 // signal for the §6 go/no-go); this is a premium-tier demand capture, not a
 // waitlist / access gate (GLOBAL-027 stays intact — the product is open).

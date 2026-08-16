@@ -10,8 +10,8 @@ import { createLLMRouter, type LLMRouter } from "./router.ts";
 import type { ProviderName } from "./types.ts";
 
 // The three permanent dispatch lanes (GLOBAL-026): the user's own key,
-// the hosted-premium chain (paid + §6 meter, dark pre-§6 per SK-LLM-017),
-// and the always-free strict-$0 chain (SK-LLM-003).
+// the hosted-premium chain (paid + live meter per SK-LLM-017, behind
+// PREMIUM_METER_LIVE), and the always-free strict-$0 chain (SK-LLM-003).
 export type DispatchLane = "byollm" | "premium" | "free";
 
 // A resolved BYOLLM credential. The caller resolves these — this package
@@ -39,8 +39,8 @@ export type DispatchInputs = {
   accountCredential?: ByollmCredential | null;
   // Step 3 — true when the principal qualifies for the hosted-premium
   // chain: paid tier AND (`model="best"` or auto-classified hard-plan)
-  // AND the §6 meter is live (SK-LLM-017). The caller resolves this; the
-  // premium chain itself stays dark pre-§6.
+  // AND the meter is live (SK-LLM-017). The caller resolves this; the
+  // premium chain stays dark while PREMIUM_METER_LIVE is unset.
   premiumEligible?: boolean;
   // SK-PREMIUM-003 goal-first knob (`SK-PREMIUM-014` wire semantics):
   // `fast` pins the strict-$0 free chain even when a credential is

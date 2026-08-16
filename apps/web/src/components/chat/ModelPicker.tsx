@@ -7,7 +7,8 @@
 // (bring-your-own-key) per GLOBAL-026: selecting one you have no key for opens a
 // gentle inline key form (never a wall), and storing it routes every later ask
 // through your key. The "subscribe for included credits" door is the
-// hosted-premium lane (SK-PREMIUM-009), surfaced as "coming soon" until §6.
+// hosted-premium lane (SK-PREMIUM-009) — a real subscribe CTA when the
+// catalog reports `premium.live`, "coming soon" + interest capture otherwise.
 //
 // The model *strings* never live here: the catalog arrives over the wire from
 // `GET /v1/models` (SK-PREMIUM-003), built live from models.dev, so this file

@@ -260,6 +260,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 
 - **Failover when every provider in a chain fails** — Decided shape (per `GLOBAL-033` → `GLOBAL-012`): throw a structured `provider_chain_exhausted` envelope; **no** head-retry (a fresh `/v1/ask` re-enters the chain). **Parked until** the surfaces render it — not emitted in `packages/llm` yet.
 - **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram shape + LLM-as-judge prompt + "provider silently degrading" alert threshold — depends on the judge harness.
-- **Parked until Lago wiring (Phase 2):** per-user credit accounting (`architecture.md §6`); provider-level cost already covered.
+- **Per-user credit accounting — RESOLVED:** hosted-premium allowance/overage is D1 `premium_allowance_period` + Stripe Billing Meters (`SK-PREMIUM-009`/`017`; no Lago).
 - **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter (`nlqdb.llm.json_recovered.total{op}` at the `router.ts` boundary); the eval run already surfaces the aggregate `no_sql` → `match` shift.
 - **Parked until burst abuse shows up:** free-tier RPM queue ("queued — 2s" UX, `architecture.md §7.1`); today bursts over a provider's RPM fail-and-fall-through. Owned with `rate-limit` / `observability`.

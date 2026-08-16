@@ -924,7 +924,8 @@ export type NlqClient = {
   clearByollm(opts?: { signal?: AbortSignal; idempotencyKey?: string }): Promise<ClearByollmResult>;
   /**
    * `POST /v1/premium/interest` — record a "count me in" for the hosted-premium
-   * plan (`SK-PREMIUM-013`'s subscribe door, shown "coming soon"). Notifies the
+   * plan (`SK-PREMIUM-013`'s subscribe door, shown "coming soon" only while
+   * the catalog reports `premium.live: false`). Notifies the
    * founder with the caller's account identity; the server dedups per account,
    * so repeat clicks don't re-notify. **Session-only**: throws unless
    * `withCredentials: true`. Mutating: auto-keyed (`SK-SDK-006`).
