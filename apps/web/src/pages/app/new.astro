@@ -39,6 +39,34 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   // Provision the anonymous-mode token early so it's in localStorage
   // before CreateForm.tsx hydrates (SK-ANON-001).
   import { getOrMintAnonToken } from "../../lib/anon";
+  import { fetchSession } from "../../lib/session";
+  import { loadDraft, savePending } from "../../lib/prompt-storage";
+  import { appHref } from "../../lib/app-href";
+
   importHandoffFromLocation();
   getOrMintAnonToken();
+
+  // A signed-in visitor does not belong on the anonymous-create page:
+  // CreateForm runs the anon `/v1/ask` path unconditionally
+  // (credentials:"omit", SK-ANON-001), which walls them behind the
+  // Turnstile bot-challenge (SK-ANON-012) — a signed-in user should
+  // create in their own account, not as anon. Route them to the product
+  // chat, which creates + queries under the cookie session. This page is
+  // same-origin with `/app/`, so localStorage crosses directly: promote
+  // any drafted goal to the pending slot ChatPanel replays, so they
+  // continue from where they left off. The probe runs in the background
+  // and the form renders immediately, so a signed-out visitor's
+  // time-to-first-value is unaffected; a signed-in visitor who submits
+  // before the probe resolves is caught by CreateForm's own
+  // challenge → sign-in fallback.
+  fetchSession().then((user) => {
+    if (!user) return;
+    const draft = loadDraft();
+    let dest = appHref("/app/");
+    if (draft) {
+      savePending({ goal: draft, submittedAt: new Date().toISOString() });
+      dest += "?replay=1";
+    }
+    window.location.replace(dest);
+  });
 </script>

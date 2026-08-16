@@ -142,18 +142,37 @@ function CreateFormInner({ apiBase, headingLevel: Heading = "h1" }: CreateFormPr
           outcome = await postAskCreate(apiBase, trimmed, { turnstileToken: token });
         }
       }
-      // SK-ANON-010 + SK-ANON-011: stash the prompt and redirect.
-      // The user lands on /sign-in?return=<here>; post-OAuth, the
-      // landing page reads `nlqdb_pending` and replays the call
-      // against the now-authed cookie session. `signInUrl` points at
-      // the app origin, which may differ from this page's (marketing)
-      // origin — attachHandoff carries the pending prompt, draft, and
-      // anon token across in the URL fragment (SK-ANON-015) so the
-      // app-origin localStorage can rehydrate them.
-      if (!outcome.ok && outcome.error.kind === "auth_required") {
+      // SK-ANON-010 + SK-ANON-011: stash the prompt and redirect to
+      // sign-in. TWO outcomes land here:
+      //   • auth_required — the global (SK-ANON-010) or per-device
+      //     (SK-ANON-012) anon cap tripped; the server supplies a
+      //     `signInUrl`.
+      //   • challenge_required that survived the retry seam above — the
+      //     anon bot-challenge could not be completed on this origin
+      //     (Turnstile widget unavailable, script blocked, or the token
+      //     was rejected). Dead-ending here on "Refresh and try again"
+      //     was the /app/new/ breakage: a signed-in user hit it too,
+      //     because `postAskCreate` runs anon unconditionally
+      //     (credentials:"omit", SK-ANON-001). Falling back to sign-in
+      //     fixes both — an accountable identity skips Turnstile and the
+      //     anon caps, so a signed-in visitor always gets through (the
+      //     already-signed-in short-circuit in sign-in.astro forwards
+      //     them straight to /app) and a signed-out visitor recovers
+      //     with one sign-in. The 428 envelope carries no signInUrl, so
+      //     build the app-origin one client-side.
+      // Either way the prompt is stashed first and carried across the
+      // origin hop (attachHandoff, SK-ANON-015); post-signin replays it.
+      if (
+        !outcome.ok &&
+        (outcome.error.kind === "auth_required" || outcome.error.kind === "challenge_required")
+      ) {
         savePending({ goal: trimmed, submittedAt });
         if (typeof window !== "undefined") {
-          window.location.assign(attachHandoff(withReplayFlag(outcome.error.signInUrl)));
+          const signInUrl =
+            outcome.error.kind === "auth_required"
+              ? outcome.error.signInUrl
+              : buildSignInUrl(apiBase);
+          window.location.assign(attachHandoff(withReplayFlag(signInUrl)));
         }
         return;
       }
@@ -386,6 +405,19 @@ function CreateSnippetView({ primaryTable }: { primaryTable: string | undefined 
 // sign-in.astro folds that into the post-signin `next`, and post-signin
 // preserves it on the final redirect — defaulting to /app, where the
 // composer rehydrates the pending prompt.
+// The SK-ANON-010 auth_required envelope carries a server-built
+// `signInUrl`; the 428 challenge_required envelope does not. Build the
+// app-origin sign-in URL client-side for the challenge fallback, using
+// the same `apiBase` that names the app origin on the marketing build
+// and is empty (same-origin) on the app-host copy — mirroring the
+// server's `buildSignInUrl` shape (`/auth/sign-in/?return_to=/app/`).
+// `withReplayFlag` then adds `replay=1` and `attachHandoff` carries the
+// prompt across the origin hop.
+function buildSignInUrl(apiBase: string): string {
+  const base = apiBase.replace(/\/+$/, "");
+  return `${base}/auth/sign-in/?return_to=/app/`;
+}
+
 function withReplayFlag(signInUrl: string): string {
   try {
     const url = new URL(signInUrl, window.location.origin);
