@@ -1,11 +1,14 @@
-// Production LLM router for `apps/api`. Provider chain per docs/architecture.md §7.1
-// strict-$0: Groq → Gemini → Workers AI → OpenRouter, cost-ordered
-// failover. Providers without API keys fail through `not_configured`.
+// Production LLM router for `apps/api`. Provider chains per
+// docs/architecture.md §7.1: strict-$0, cost-ordered failover.
+// A provider with an absent API key auth-fails (401 → `auth_denied`
+// park, SK-LLM-039) and the chain falls through to the next leg.
 //
 // AI Gateway (Cloudflare): when AI_GATEWAY_ACCOUNT_ID + AI_GATEWAY_ID
-// are set, every provider call is routed through Cloudflare's gateway
-// — gives us caching, retries, fallback, and unified observability for
-// free. Keys remain ours; the gateway proxies authenticated requests.
+// are set, Groq / Gemini / Workers AI / OpenRouter route through
+// Cloudflare's gateway — gives us caching, retries, fallback, and
+// unified observability for free. Keys remain ours; the gateway proxies
+// authenticated requests. Cerebras + Mistral stay direct so every chain
+// keeps a non-gateway leg (SK-LLM-047).
 // Docs: https://developers.cloudflare.com/ai-gateway/.
 
 import { env } from "cloudflare:workers";
@@ -70,8 +73,9 @@ export function getLLMRouter(): LLMRouter {
   const gwToken = env.AI_GATEWAY_TOKEN || undefined;
   const providers = [
     // SK-LLM-023 — Cerebras leads the planner tier (gpt-oss-120b). Routed
-    // direct (not via AI Gateway yet); the provider-agnostic plan cache
-    // (SK-LLM-010) is the real cache layer, so the gateway gap is cosmetic.
+    // direct — load-bearing per SK-LLM-047 (every chain needs a leg that
+    // survives a gateway fault); the provider-agnostic plan cache
+    // (SK-LLM-010) is the real cache layer.
     createCerebrasProvider({ apiKey: env.CEREBRAS_API_KEY ?? "" }),
     createGroqProvider({ apiKey: env.GROQ_API_KEY ?? "", baseUrl: gw.groq, gatewayToken: gwToken }),
     createGeminiProvider({
@@ -91,8 +95,8 @@ export function getLLMRouter(): LLMRouter {
       gatewayToken: gwToken,
     }),
     // SK-LLM-028 — Mistral is the planner-tier capacity backstop at the
-    // chain tail. Routed direct (no AI Gateway base), same rationale as
-    // Cerebras. Fires only when every head provider is rate-limited out.
+    // chain tail. Routed direct — load-bearing per SK-LLM-047, like
+    // Cerebras. Fires only when every head provider is out.
     createMistralProvider({ apiKey: env.MISTRAL_API_KEY ?? "" }),
   ];
   cached = createLLMRouter({
@@ -100,19 +104,23 @@ export function getLLMRouter(): LLMRouter {
     chains: {
       // SK-ASK-009 — merged routeAsk rides the cheap-tier chain (Groq
       // GPT OSS 20B first; the prompt is short and the budget is 1500 ms).
-      route: ["groq", "gemini", "workers-ai", "openrouter"],
+      // Cerebras + Mistral are the SK-LLM-047 direct (non-gateway) tail:
+      // no chain may be gateway-only, or one AI-Gateway fault fails the op.
+      route: ["groq", "gemini", "workers-ai", "openrouter", "cerebras", "mistral"],
       // SK-LLM-023 — Cerebras (gpt-oss-120b) leads the planner tier; on a
       // 429 (free-tier per-minute token/request quota) it fails over to the
       // prior Gemini-first order. SK-LLM-028 appends Mistral as the tail
       // capacity backstop for the full-chain-exhaustion no_sql losses.
       plan: ["cerebras", "gemini", "groq", "workers-ai", "openrouter", "mistral"],
-      summarize: ["groq", "gemini", "workers-ai", "openrouter"],
+      // Direct (non-gateway) tail per SK-LLM-047.
+      summarize: ["groq", "gemini", "workers-ai", "openrouter", "cerebras", "mistral"],
       // SK-LLM-012: schema_infer is its own operation but shares the
       // planner-tier provider chain — same ordering as `plan` so it
       // hits the JSON-strongest provider first.
       schema_infer: ["cerebras", "gemini", "groq", "workers-ai", "openrouter", "mistral"],
-      // SK-DB-010: engine-classifier rides the cheap-tier chain.
-      engine_classify: ["groq", "gemini", "workers-ai", "openrouter"],
+      // SK-DB-010: engine-classifier rides the cheap-tier chain; direct
+      // (non-gateway) tail per SK-LLM-047.
+      engine_classify: ["groq", "gemini", "workers-ai", "openrouter", "cerebras", "mistral"],
     },
     // SK-LLM-014 — Hedged-request race on planner-tier ops, where
     // wall-clock tails are widest and we already pay 0 dollars per

@@ -19,8 +19,10 @@ Gateway** turned on.
 - **Core value:** Bullet-proof, Free
 - **Why:** When "Authenticated Gateway" is enabled, Cloudflare rejects any
   gateway request lacking `cf-aig-authorization` with `AiGatewayError 2009
-  Unauthorized`. The free `route` chain and the single-provider premium lane
-  have **no direct-provider backstop**, so an un-authenticated gateway 401s the
+  Unauthorized`. At the time, the free `route` chain and the single-provider
+  premium lane had **no direct-provider backstop** (the free chains have since
+  gained one — [`SK-LLM-047`](./SK-LLM-047-direct-tail-cheap-tier.md); the
+  premium lane remains gateway-only), so an un-authenticated gateway 401s the
   whole chain and surfaces as `llm_failed` (502) on *every* `/v1/ask` —
   a full production outage from a dashboard toggle, with no deploy. Enabling
   the gateway's auth is the right posture (it stops a leaked account/gateway id
