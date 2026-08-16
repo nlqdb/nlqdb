@@ -10,8 +10,10 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
   and surfaces `FailoverReason: "hedge_lost"` — distinct from `timeout`
   so the breaker doesn't trip on the cancelled leg. **Free-tier chains
   only** (per-op opt-in so paid chains under SK-LLM-007 can stay
-  sequential). Production wires `schema_infer` and `plan` at
-  `afterMs: 800`.
+  sequential). Production wires `schema_infer` and `plan`; the head-start
+  tracks ~p90 of the head model's latency — 800 ms for the original
+  Gemini-Flash head, 2000 ms since the GLM-4.7 head
+  ([`SK-LLM-048`](./SK-LLM-048-glm-4.7-planner-head.md)).
 - **Core value:** Honest latency, Fast, Free
 - **Why:** Trace `285b805cee6e2688768d9ffcd75a86fe` (2026-05-13) —
   anon `/v1/ask kind=create` spent 8.0 s on a Gemini `schema_infer`

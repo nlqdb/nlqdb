@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043` + `SK-LLM-045..047`; `SK-LLM-044` reverted). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) is live (2026-08-14, `SK-PREMIUM-009`).
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043` + `SK-LLM-045..047`; `SK-LLM-044` reverted; `SK-LLM-048` — GLM-4.7 planner head — BIRD/Spider non-regression measured 2026-08-16). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) is live (2026-08-14, `SK-PREMIUM-009`).
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -36,7 +36,7 @@ Every LLM call routes through one `createLLMRouter()` adapter over a cost-ordere
 ### SK-LLM-003 — Day-1 strict-$0 chain: Gemini Flash → Groq → Workers-AI → OpenRouter free
 
 **Body:** [`decisions/SK-LLM-003-strict-zero-chain.md`](./decisions/SK-LLM-003-strict-zero-chain.md).
-`plan` chain `[gemini_flash_free, groq_llama70b_free, openrouter_free]` (+`workers_ai` non-US backup); `route` on `groq_llama8b_free`. Every entry is no-card free (`GLOBAL-013`), env-var configured (`LLM_CHAIN_*`). **Current planner tier:** Cerebras (gpt-oss-120b) head per [`SK-LLM-023`](#sk-llm-023), Mistral tail per [`SK-LLM-028`](#sk-llm-028).
+`plan` chain `[gemini_flash_free, groq_llama70b_free, openrouter_free]` (+`workers_ai` non-US backup); `route` on `groq_llama8b_free`. Every entry is no-card free (`GLOBAL-013`), env-var configured (`LLM_CHAIN_*`). **Current planner tier:** Cerebras GLM-4.7 (`zai-glm-4.7`) head per [`SK-LLM-048`](#sk-llm-048) (gpt-oss-120b retained fallback per [`SK-LLM-023`](#sk-llm-023)), Mistral tail per [`SK-LLM-028`](#sk-llm-028).
 
 ### SK-LLM-004 — Cloudflare AI Gateway sits in front of every paid provider
 
@@ -86,7 +86,7 @@ At ~50 k queries/day, self-host cheap-tier `route` / `engine_classify` on a sing
 ### SK-LLM-014 — Hedged-request race on free-tier chains for planner-tier ops
 
 **Body:** [`decisions/SK-LLM-014-hedged-request-race.md`](./decisions/SK-LLM-014-hedged-request-race.md).
-`LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted with `HEDGE_LOST` so the breaker doesn't trip on the cancel. Free-tier chains only; prod wires `schema_infer` + `plan` at `afterMs: 800`.
+`LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted (`HEDGE_LOST`) without tripping the breaker. Free-tier only; prod wires `schema_infer` + `plan` at `afterMs: 2000` ([`SK-LLM-048`](#sk-llm-048) re-tune).
 
 ### SK-LLM-016 — BYOLLM dispatch lane: per-request override → account-stored → hosted-premium → free
 
@@ -113,18 +113,17 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 **Body:** [`decisions/SK-LLM-017-hosted-premium-chain.md`](./decisions/SK-LLM-017-hosted-premium-chain.md).
 Now ships as `buildPremiumRouter` (`packages/llm/src/premium-dispatch.ts`): a single-provider **Anthropic** lane (v1 `claude-sonnet-4-6`) with a usage sink feeding the meter. Fires only on paid tiers, on a `best`/hard plan, behind `PREMIUM_METER_LIVE` (live 2026-08-14). Commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
 
-### SK-LLM-015 — OpenRouter code-gen ops default to `qwen/qwen3-coder:free` — SUPERSEDED by SK-LLM-045
+### SK-LLM-015 — OpenRouter code-gen default — SUPERSEDED by SK-LLM-045
 
-**Body:** [`decisions/SK-LLM-015-openrouter-codegen-default.md`](./decisions/SK-LLM-015-openrouter-codegen-default.md). OpenRouter later dropped these `:free` ids from its catalog entirely — see [`SK-LLM-045`](#sk-llm-045) for the replacement.
+**Body:** [`decisions/SK-LLM-015-openrouter-codegen-default.md`](./decisions/SK-LLM-015-openrouter-codegen-default.md). Superseded — [`SK-LLM-045`](#sk-llm-045) has the current ids.
 
 ### SK-LLM-018 — Schema-fidelity planner prompt + diagnostic retry framing
 
-**Body:** [`decisions/SK-LLM-018-schema-fidelity-prompt.md`](./decisions/SK-LLM-018-schema-fidelity-prompt.md).
-`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix** ([`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005)).
+**Body:** [`decisions/SK-LLM-018-schema-fidelity-prompt.md`](./decisions/SK-LLM-018-schema-fidelity-prompt.md). `PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; retry reframed as **diagnose-first, surgical-fix** ([`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005)).
 
 ### SK-LLM-013 — `PlanResponse` carries `model` + `confidence` for SK-TRUST-002
 
-**Body:** [`decisions/SK-LLM-013-plan-response-shape.md`](./decisions/SK-LLM-013-plan-response-shape.md). `PlanResponse` widens to `{ sql, model, confidence }`; `confidence` is a `1.0` placeholder until `quality-eval` calibrates per-tier floors (`SK-TRUST-003`). The plan cache stores both so hits return the miss's values.
+**Body:** [`decisions/SK-LLM-013-plan-response-shape.md`](./decisions/SK-LLM-013-plan-response-shape.md). `PlanResponse` widens to `{ sql, model, confidence }`; `confidence` is a `1.0` placeholder until `quality-eval` calibrates per-tier floors (`SK-TRUST-003`). The plan cache stores both.
 
 ### SK-LLM-022 — Hard-plan confidence threshold = 0.75 (env-tunable)
 
@@ -132,8 +131,7 @@ Now ships as `buildPremiumRouter` (`packages/llm/src/premium-dispatch.ts`): a si
 
 ### SK-LLM-023 — Cerebras (gpt-oss-120b) leads the strict-$0 planner-tier chain
 
-**Body:** [`decisions/SK-LLM-023-cerebras-planner-tier.md`](./decisions/SK-LLM-023-cerebras-planner-tier.md).
-Adds Cerebras (`gpt-oss-120b`, OpenAI-compatible, card-free) at the head of the `plan` / `schema_infer` chain: `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends [`SK-LLM-003`](#sk-llm-003); the eval free lane carries the identical chain.
+**Body:** [`decisions/SK-LLM-023-cerebras-planner-tier.md`](./decisions/SK-LLM-023-cerebras-planner-tier.md). Cerebras `gpt-oss-120b` (card-free) heads `plan` / `schema_infer` (later re-headed by [`SK-LLM-048`](#sk-llm-048)); extends [`SK-LLM-003`](#sk-llm-003); eval free lane carries the identical chain.
 
 ### SK-LLM-024 — Deterministic greedy decoding (temperature 0) across the whole free planner chain
 
@@ -141,7 +139,7 @@ Adds Cerebras (`gpt-oss-120b`, OpenAI-compatible, card-free) at the head of the 
 
 ### SK-LLM-025 — Recover the JSON object from reasoning-model preamble leaks before failing the parse
 
-**Body:** [`decisions/SK-LLM-025-json-recovery-fallback.md`](./decisions/SK-LLM-025-json-recovery-fallback.md). `parseJsonResponse` gains a balanced-`{…}` recovery fallback after strict `JSON.parse` throws — recovers reasoning-head ([`SK-LLM-023`](#sk-llm-023)) preamble leaks; additive.
+**Body:** [`decisions/SK-LLM-025-json-recovery-fallback.md`](./decisions/SK-LLM-025-json-recovery-fallback.md). `parseJsonResponse` gains a balanced-`{…}` recovery after strict `JSON.parse` throws — recovers reasoning-head preamble leaks; additive.
 
 ### SK-LLM-026 — Static few-shot exemplars in the planner prompt (DAIL-SQL)
 
@@ -157,19 +155,19 @@ Adds Cerebras (`gpt-oss-120b`, OpenAI-compatible, card-free) at the head of the 
 
 ### SK-LLM-030 — Rate-limit-aware failover + cooldown (a 429 honors the server's Retry-After window)
 
-**Body:** [`decisions/SK-LLM-030-rate-limit-aware-failover.md`](./decisions/SK-LLM-030-rate-limit-aware-failover.md). New `FailoverReason "rate_limited"` + `retryAfterMs` mapped once in `httpError`; the router opens the breaker for the server's Retry-After window (5-min cap). Refines [`SK-LLM-005`](#sk-llm-005).
+**Body:** [`decisions/SK-LLM-030-rate-limit-aware-failover.md`](./decisions/SK-LLM-030-rate-limit-aware-failover.md). New `FailoverReason "rate_limited"` + `retryAfterMs` mapped in `httpError`; the breaker opens for the server's Retry-After window (5-min cap). Refines [`SK-LLM-005`](#sk-llm-005).
 
 ### SK-LLM-029 — NULL-safe extremum ordering directive in the planner prompt
 
-**Body:** [`decisions/SK-LLM-029-null-safe-extremum.md`](./decisions/SK-LLM-029-null-safe-extremum.md). One `PLAN_DIRECTIVES` bullet: filter the ranked column (`WHERE <col> IS NOT NULL`) on single-extreme-row selection (SQLite sorts NULL first).
+**Body:** [`decisions/SK-LLM-029-null-safe-extremum.md`](./decisions/SK-LLM-029-null-safe-extremum.md). One `PLAN_DIRECTIVES` bullet: `WHERE <col> IS NOT NULL` on single-extreme-row selection (SQLite sorts NULL first).
 
 ### SK-LLM-032 — Count-grain directive in the planner prompt (COUNT(DISTINCT) vs COUNT(\*), and SELECT DISTINCT)
 
-**Body:** [`decisions/SK-LLM-032-count-grain-directive.md`](./decisions/SK-LLM-032-count-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Wrong COUNT Object** (`COUNT(*)` vs `COUNT(DISTINCT key)`) and **Missing DISTINCT** ([arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); a guard bounds regression under `SK-QUAL-010`.
+**Body:** [`decisions/SK-LLM-032-count-grain-directive.md`](./decisions/SK-LLM-032-count-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Wrong COUNT Object** (`COUNT(*)` vs `COUNT(DISTINCT key)`) + **Missing DISTINCT** ([arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); `SK-QUAL-010` guard bounds regression.
 
 ### SK-LLM-034 — Group-by-grain directive in the planner prompt (per-group GROUP BY alignment)
 
-**Body:** [`decisions/SK-LLM-034-group-by-grain-directive.md`](./decisions/SK-LLM-034-group-by-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Unaligned Aggregation Structure** (E5, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)): a "per/each/by `<category>`" goal needs a `GROUP BY` on that column.
+**Body:** [`decisions/SK-LLM-034-group-by-grain-directive.md`](./decisions/SK-LLM-034-group-by-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Unaligned Aggregation Structure** (E5, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)): "per/each/by `<category>`" needs a `GROUP BY` on that column.
 
 ### SK-LLM-035 — Numeric-text-cast directive in the planner prompt (cast TEXT-declared columns used numerically)
 
@@ -197,7 +195,7 @@ abort-aware) before the router throws; tail-only ⇒ zero happy-path latency.
 
 ### SK-LLM-039 — Classify 401/403 as `auth_denied` and park the provider for a long cooldown
 
-**Body:** [`decisions/SK-LLM-039-auth-denied-reason.md`](./decisions/SK-LLM-039-auth-denied-reason.md). `httpError` maps 401/403 to a distinct `auth_denied` reason; the first denial opens the breaker for 30 min (the denial is human-gated) so a dead key isn't re-hit and its hedge slot rotates to a live one.
+**Body:** [`decisions/SK-LLM-039-auth-denied-reason.md`](./decisions/SK-LLM-039-auth-denied-reason.md). `httpError` maps 401/403 to `auth_denied`; the first denial opens the breaker 30 min (human-gated) so a dead key isn't re-hit and its hedge slot rotates.
 
 ### SK-LLM-040 — Aggregate-filter directive in the planner prompt (filter groups by an aggregate in HAVING, not WHERE)
 
@@ -205,23 +203,23 @@ abort-aware) before the router throws; tail-only ⇒ zero happy-path latency.
 
 ### SK-LLM-041 — Similarity-retrieved few-shot exemplar selection (DAIL-SQL retrieval half — deterministic core)
 
-**Body:** [`decisions/SK-LLM-041-similarity-retrieved-few-shot.md`](./decisions/SK-LLM-041-similarity-retrieved-few-shot.md). The *retrieval* half of DAIL-SQL ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) that [`SK-LLM-026`](#sk-llm-026) left — `few-shot-select.ts` (masked-token Jaccard top-k) over the curated `plan-exemplar-pool.ts` + the `buildPlanSystem(goal, schema, k)` ablation (default off ⇒ static `PLAN_SYSTEM` byte-for-byte).
+**Body:** [`decisions/SK-LLM-041-similarity-retrieved-few-shot.md`](./decisions/SK-LLM-041-similarity-retrieved-few-shot.md). The DAIL-SQL retrieval half [`SK-LLM-026`](#sk-llm-026) left — masked-token Jaccard top-k exemplar selection; ablation default off ⇒ static `PLAN_SYSTEM`.
 
 ### SK-LLM-042 — Classify a gateway's 200-body error envelope as infra, not `parse`
 
-**Body:** [`decisions/SK-LLM-042-openrouter-200-error-classify.md`](./decisions/SK-LLM-042-openrouter-200-error-classify.md). `classifyBodyError` maps a 200 body with a top-level `error` to `rate_limited` / `provider_error` (retryable, [`SK-LLM-038`](#sk-llm-038)) instead of `parse`, which scored spurious `no_sql`.
+**Body:** [`decisions/SK-LLM-042-openrouter-200-error-classify.md`](./decisions/SK-LLM-042-openrouter-200-error-classify.md). `classifyBodyError` maps a 200 body with a top-level `error` to `rate_limited` / `provider_error` (retryable) instead of `parse` (which scored spurious `no_sql`).
 
 ### SK-LLM-043 — Single-column projection directive in the planner prompt (don't concatenate requested columns into one value)
 
-**Body:** [`decisions/SK-LLM-043-single-column-projection-directive.md`](./decisions/SK-LLM-043-single-column-projection-directive.md). One `PLAN_DIRECTIVES` bullet, the projection sibling of [`SK-LLM-027`](#sk-llm-027): return each requested attribute as its own column, don't fuse them with `||` unless the goal explicitly asks for a combined string. Evidence-picked (`SK-QUAL-014` analyzer on BIRD baseline), zero regression floor; prompt-only.
+**Body:** [`decisions/SK-LLM-043-single-column-projection-directive.md`](./decisions/SK-LLM-043-single-column-projection-directive.md). One `PLAN_DIRECTIVES` bullet, projection sibling of [`SK-LLM-027`](#sk-llm-027): each requested attribute is its own column, never `||`-fused unless asked; prompt-only.
 
 ### SK-LLM-044 — Entity-identification projection directive — REVERTED (regressed BIRD)
 
-**Body:** [`decisions/SK-LLM-044-entity-identification-projection-directive.md`](./decisions/SK-LLM-044-entity-identification-projection-directive.md). Reverted 2026-07-18: regressed BIRD (free EA 0.546→0.514, p=0.043) with a flat Spider justification (p≈0.68). Bullet + test removed; don't re-add without a paired BIRD+Spider net-gain A/B.
+**Body:** [`decisions/SK-LLM-044-entity-identification-projection-directive.md`](./decisions/SK-LLM-044-entity-identification-projection-directive.md). Reverted 2026-07-18 (regressed BIRD, flat Spider); don't re-add without a paired BIRD+Spider net-gain A/B.
 
 ### SK-LLM-045 — OpenRouter free-model roster refresh (supersedes SK-LLM-015)
 
-**Body:** [`decisions/SK-LLM-045-openrouter-free-roster-refresh.md`](./decisions/SK-LLM-045-openrouter-free-roster-refresh.md). OpenRouter converted the SK-LLM-015 ids to paid-only (404ing the universal-fallback tail); replacements: `nvidia/nemotron-3-ultra-550b-a55b:free` (plan/schema_infer/summarize), `google/gemma-4-26b-a4b-it:free` (route/engine_classify).
+**Body:** [`decisions/SK-LLM-045-openrouter-free-roster-refresh.md`](./decisions/SK-LLM-045-openrouter-free-roster-refresh.md). OpenRouter converted the SK-LLM-015 ids to paid-only (404ing the tail); replacements `nvidia/nemotron-3-ultra-550b-a55b:free` (plan/schema_infer/summarize), `google/gemma-4-26b-a4b-it:free` (route/engine_classify).
 
 ### SK-LLM-046 — AI Gateway auth token (`cf-aig-authorization`) on every gateway-routed lane
 
@@ -238,9 +236,18 @@ the four gateway-routed heads so no free chain is gateway-only (2026-08-14
 gateway outage); happy-path order unchanged, direct legs fire only when every
 gateway leg is down.
 
+### SK-LLM-048 — GLM-4.7 (`zai-glm-4.7`, Cerebras) leads the strict-$0 planner tier
+
+**Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md).
+GLM-4.7 heads the planner chain (`cerebras-glm`, same card-free Cerebras key;
+gpt-oss-120b retained fallback, Gemini second). A reasoning model, so
+`reasoning_effort:"low"` + a completion ceiling (else empty `content`);
+[`SK-LLM-014`](#sk-llm-014) hedge 800→2000 ms. Extends [`SK-LLM-023`](#sk-llm-023);
+Gate **measured** 2026-08-16: BIRD/Spider non-regression, `SK-QUAL-002` triggers not tripped (`GLOBAL-025`); one-line revert.
+
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
-**Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md). `SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows first, FK values present, NOT-NULL complete); deterministic no-500 floor is [`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md).
+**Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md). `SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows first, FK values present, NOT-NULL complete); no-500 floor [`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md).
 
 ## GLOBALs governing this feature
 

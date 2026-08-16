@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createCerebrasProvider } from "../../src/providers/cerebras.ts";
+import { createCerebrasGlmProvider, createCerebrasProvider } from "../../src/providers/cerebras.ts";
 import type { ProviderError } from "../../src/types.ts";
 import { mockFetch, openAIChatResponse } from "../_fixtures.ts";
 
@@ -71,5 +71,53 @@ describe("createCerebrasProvider", () => {
     await expect(
       provider.plan({ goal: "g", schema: "s", dialect: "sqlite" }, { fetch }),
     ).rejects.toMatchObject({ reason: "network" } satisfies Partial<ProviderError>);
+  });
+
+  it("the default (gpt-oss-120b) provider sends no reasoning_effort / max_tokens", async () => {
+    const provider = createCerebrasProvider({ apiKey });
+    let sent: Record<string, unknown> = {};
+    const fetch = mockFetch([
+      {
+        match: /api\.cerebras\.ai.*chat\/completions/,
+        respond: async (req) => {
+          sent = (await req.clone().json()) as Record<string, unknown>;
+          return openAIChatResponse(JSON.stringify({ sql: "SELECT 1" }));
+        },
+      },
+    ]);
+    await provider.plan({ goal: "g", schema: "s", dialect: "sqlite" }, { fetch });
+    expect(sent["reasoning_effort"]).toBeUndefined();
+    expect(sent["max_completion_tokens"]).toBeUndefined();
+  });
+});
+
+describe("createCerebrasGlmProvider (SK-LLM-048)", () => {
+  it("names the chain entry cerebras-glm and serves GLM-4.7 on the planner ops", () => {
+    const provider = createCerebrasGlmProvider({ apiKey });
+    expect(provider.name).toBe("cerebras-glm");
+    expect(provider.model("plan")).toBe("zai-glm-4.7");
+    expect(provider.model("schema_infer")).toBe("zai-glm-4.7");
+  });
+
+  it("dispatches with reasoning_effort:low + a max_completion_tokens ceiling so GLM emits content, not just reasoning", async () => {
+    const provider = createCerebrasGlmProvider({ apiKey });
+    let sent: Record<string, unknown> = {};
+    const fetch = mockFetch([
+      {
+        match: /api\.cerebras\.ai.*chat\/completions/,
+        respond: async (req) => {
+          sent = (await req.clone().json()) as Record<string, unknown>;
+          return openAIChatResponse(JSON.stringify({ sql: "SELECT 1" }));
+        },
+      },
+    ]);
+    const res = await provider.plan(
+      { goal: "g", schema: "t(a int)", dialect: "sqlite" },
+      { fetch },
+    );
+    expect(res.sql).toBe("SELECT 1");
+    expect(sent["model"]).toBe("zai-glm-4.7");
+    expect(sent["reasoning_effort"]).toBe("low");
+    expect(sent["max_completion_tokens"]).toBe(3000);
   });
 });
