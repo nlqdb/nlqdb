@@ -7,11 +7,13 @@
 // that the nudge would just be banner-blindness.
 export const LOW_CONFIDENCE_THRESHOLD = 0.7;
 
-// Only these API error codes mean the free *model* struggled (couldn't plan /
-// produced disallowed SQL). Rate-limit / auth / network / db-reachability
-// failures are not the model's fault, so a "switch models" nudge there is
-// misleading and is deliberately excluded.
-const MODEL_QUALITY_ERROR_CODES = new Set(["llm_failed", "sql_rejected"]);
+// Only these API error codes mean the free *model* struggled: couldn't plan
+// (`llm_failed`), produced disallowed SQL (`sql_rejected`), or produced SQL
+// referencing a table the DB doesn't have (`schema_mismatch`, SK-ASK-016 — the
+// LLM hallucinated a relation; deterministic, a replan re-picks it). All three
+// are the model's fault. Rate-limit / auth / network / db-reachability failures
+// are not, so a "switch models" nudge there is misleading and is excluded.
+const MODEL_QUALITY_ERROR_CODES = new Set(["llm_failed", "sql_rejected", "schema_mismatch"]);
 
 // The minimal reply shape the gate reads — structural so `Reply` (defined in
 // ChatPanel) is assignable without a circular import.

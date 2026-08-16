@@ -23,6 +23,10 @@ describe("freeChainStruggled — error path", () => {
   test("fires on model-quality codes", () => {
     expect(freeChainStruggled(errorReply("llm_failed"))).toBe(true);
     expect(freeChainStruggled(errorReply("sql_rejected"))).toBe(true);
+    // SK-ASK-016 — LLM emitted SQL against a table the DB lacks. A
+    // model-quality failure (the model hallucinated the relation), so the
+    // nudge fires even though the plan came back highly confident.
+    expect(freeChainStruggled(errorReply("schema_mismatch"))).toBe(true);
   });
 
   test("does not fire on infra / user-fixable codes", () => {
@@ -32,7 +36,6 @@ describe("freeChainStruggled — error path", () => {
       "network_error",
       "db_unreachable",
       "aborted",
-      "schema_mismatch",
       "db_not_found",
     ]) {
       expect(freeChainStruggled(errorReply(code))).toBe(false);
