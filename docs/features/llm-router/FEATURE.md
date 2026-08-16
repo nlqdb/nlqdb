@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043` + `SK-LLM-045`; `SK-LLM-044` reverted). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) lands in Phase 2; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043` + `SK-LLM-045..047`; `SK-LLM-044` reverted). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) lands in Phase 2; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -174,33 +174,26 @@ Adds Cerebras (`gpt-oss-120b`, OpenAI-compatible, card-free) at the head of the 
 ### SK-LLM-035 — Numeric-text-cast directive in the planner prompt (cast TEXT-declared columns used numerically)
 
 **Body:** [`decisions/SK-LLM-035-numeric-text-cast-directive.md`](./decisions/SK-LLM-035-numeric-text-cast-directive.md).
-One `PLAN_DIRECTIVES` bullet: when the schema declares a column `TEXT` but
-the goal uses it numerically, `CAST(<col> AS REAL)` — SQLite compares TEXT
-lexicographically (`'100' < '9'`). Targets *Implicit Type Conversion* (C1,
-[arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); prompt-only, ≈55 tokens.
+One `PLAN_DIRECTIVES` bullet: `CAST(<col> AS REAL)` when a `TEXT`-declared
+column is used numerically (C1, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); prompt-only.
 
 ### SK-LLM-036 — Workers AI: accept the object-shaped `result.response` a JSON-emitting model returns
 
 **Body:** [`decisions/SK-LLM-036-workers-ai-structured-response.md`](./decisions/SK-LLM-036-workers-ai-structured-response.md).
-The Workers AI REST endpoint returns valid-JSON output pre-parsed as an
-object; accept string *or* object and re-serialize objects so
-`parseJsonResponse` stays the single JSON entry point.
+Accept the string *or* pre-parsed-object `result.response` Workers AI returns;
+objects re-serialize so `parseJsonResponse` stays the single JSON entry point.
 
 ### SK-LLM-037 — Goal-relevant schema pruning in the planner prompt (recall-first, table-granular)
 
 **Body:** [`decisions/SK-LLM-037-goal-relevant-schema-pruning.md`](./decisions/SK-LLM-037-goal-relevant-schema-pruning.md).
-`buildPlanUser` prunes the embedded schema via the pure
-`pruneSchemaForGoal`: keep token-matched tables + their `REFERENCES`
-closure, full schema on any doubt. BIRD-dev 500: 99.8% gold-table recall,
-−7.1% schema chars.
+`buildPlanUser` prunes the schema via the pure `pruneSchemaForGoal`:
+token-matched tables + their `REFERENCES` closure, full schema on any doubt.
 
 ### SK-LLM-038 — Retry the chain-tail provider once on a transient failure
 
 **Body:** [`decisions/SK-LLM-038-tail-transient-retry.md`](./decisions/SK-LLM-038-tail-transient-retry.md).
-When the **last** provider in a chain fails `network`/`http_5xx`, the
-router retries it once (150 ms backoff, abort-aware) before throwing —
-closes the [`SK-LLM-028`](#sk-llm-028) tail gap; tail-only ⇒ zero
-added latency on any succeeding call.
+The chain-tail provider retries once on `network`/`http_5xx` (150 ms backoff,
+abort-aware) before the router throws; tail-only ⇒ zero happy-path latency.
 
 ### SK-LLM-039 — Classify 401/403 as `auth_denied` and park the provider for a long cooldown
 
@@ -208,7 +201,7 @@ added latency on any succeeding call.
 
 ### SK-LLM-040 — Aggregate-filter directive in the planner prompt (filter groups by an aggregate in HAVING, not WHERE)
 
-**Body:** [`decisions/SK-LLM-040-aggregate-filter-having-directive.md`](./decisions/SK-LLM-040-aggregate-filter-having-directive.md). One `PLAN_DIRECTIVES` bullet: a threshold on a group's aggregate goes in HAVING after GROUP BY, not WHERE (plain per-row predicates stay in WHERE) — the *HAVING* half of *Unaligned Aggregation Structure* (E5, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)) that [`SK-LLM-034`](#sk-llm-034) left; prompt-only, ≈55 tokens.
+**Body:** [`decisions/SK-LLM-040-aggregate-filter-having-directive.md`](./decisions/SK-LLM-040-aggregate-filter-having-directive.md). One `PLAN_DIRECTIVES` bullet: aggregate thresholds go in HAVING after GROUP BY, not WHERE — the *HAVING* half of E5 that [`SK-LLM-034`](#sk-llm-034) left; prompt-only.
 
 ### SK-LLM-041 — Similarity-retrieved few-shot exemplar selection (DAIL-SQL retrieval half — deterministic core)
 
@@ -234,9 +227,16 @@ added latency on any succeeding call.
 
 **Body:** [`decisions/SK-LLM-046-ai-gateway-auth-token.md`](./decisions/SK-LLM-046-ai-gateway-auth-token.md).
 Every gateway-routed provider (free chain + BYOLLM + premium) sends
-`cf-aig-authorization: Bearer <AI_GATEWAY_TOKEN>` when the secret is set, so an
-"Authenticated Gateway" doesn't `401` the whole chain and 502 `/v1/ask`; unset
-⇒ header omitted, behaviour unchanged. Single header helper `gatewayAuthHeader`.
+`cf-aig-authorization: Bearer <AI_GATEWAY_TOKEN>` when the secret is set; unset
+⇒ header omitted, behaviour unchanged.
+
+### SK-LLM-047 — Cheap-tier chains carry a direct (non-gateway) tail (Cerebras + Mistral)
+
+**Body:** [`decisions/SK-LLM-047-direct-tail-cheap-tier.md`](./decisions/SK-LLM-047-direct-tail-cheap-tier.md).
+`route`/`summarize`/`engine_classify` append Cerebras + Mistral direct behind
+the four gateway-routed heads so no free chain is gateway-only (2026-08-14
+gateway outage); happy-path order unchanged, direct legs fire only when every
+gateway leg is down.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 

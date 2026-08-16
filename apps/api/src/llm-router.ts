@@ -100,31 +100,22 @@ export function getLLMRouter(): LLMRouter {
     chains: {
       // SK-ASK-009 — merged routeAsk rides the cheap-tier chain (Groq
       // GPT OSS 20B first; the prompt is short and the budget is 1500 ms).
-      // Cerebras + Mistral are appended as DIRECT (non-gateway) tail
-      // fallbacks. The four head providers all egress through the AI
-      // Gateway, so an AI-Gateway outage otherwise fails the whole `route`
-      // stage → `llm_failed` on every signed-in ask (`routeAsk` runs on
-      // every authed /v1/ask, SK-ASK-009). Observed 2026-08-14: while the
-      // gateway was misconfigured, `plan` survived because it already leads
-      // with Cerebras-direct, but `route` had no direct leg and took down
-      // authed traffic wholesale. Tail placement preserves the cheap-tier
-      // ordering on the happy path; the direct legs fire only when every
-      // gateway leg is down.
+      // Cerebras + Mistral are the SK-LLM-047 direct (non-gateway) tail:
+      // no chain may be gateway-only, or one AI-Gateway fault fails the op.
       route: ["groq", "gemini", "workers-ai", "openrouter", "cerebras", "mistral"],
       // SK-LLM-023 — Cerebras (gpt-oss-120b) leads the planner tier; on a
       // 429 (free-tier per-minute token/request quota) it fails over to the
       // prior Gemini-first order. SK-LLM-028 appends Mistral as the tail
       // capacity backstop for the full-chain-exhaustion no_sql losses.
       plan: ["cerebras", "gemini", "groq", "workers-ai", "openrouter", "mistral"],
-      // Same DIRECT tail fallback as `route` (Cerebras + Mistral): the four
-      // gateway-routed heads must not be the only way to summarize.
+      // Direct (non-gateway) tail per SK-LLM-047.
       summarize: ["groq", "gemini", "workers-ai", "openrouter", "cerebras", "mistral"],
       // SK-LLM-012: schema_infer is its own operation but shares the
       // planner-tier provider chain — same ordering as `plan` so it
       // hits the JSON-strongest provider first.
       schema_infer: ["cerebras", "gemini", "groq", "workers-ai", "openrouter", "mistral"],
-      // SK-DB-010: engine-classifier rides the cheap-tier chain, with the
-      // same Cerebras + Mistral direct tail fallback as `route`/`summarize`.
+      // SK-DB-010: engine-classifier rides the cheap-tier chain; direct
+      // (non-gateway) tail per SK-LLM-047.
       engine_classify: ["groq", "gemini", "workers-ai", "openrouter", "cerebras", "mistral"],
     },
     // SK-LLM-014 — Hedged-request race on planner-tier ops, where
