@@ -252,13 +252,25 @@ h3 {
 .topnav__authed:not([hidden]) {
   display: inline-flex;
   align-items: center;
+  gap: 16px;
   padding-left: 16px;
   border-left: 1px solid var(--rule);
 }
 
-/* Avatar menu button — the single control that replaces the old
-   "Open chat / API keys / Billing / Sign out" flat-link row so the
-   authed slot never outgrows narrow viewports. */
+.topnav__chat-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.topnav__chat-link:hover {
+  color: var(--accent-2);
+  text-decoration: none;
+}
+
+/* Avatar button — collapses the account chores (API keys / Billing /
+   Sign out) behind one control so the authed slot stays compact; the
+   primary "Open chat" link stays top-level. */
 .topnav__avatar-wrap {
   position: relative;
 }
@@ -297,7 +309,7 @@ h3 {
   background: var(--bg-elev);
   border: 1px solid var(--rule);
   border-radius: var(--r-md);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--shadow-2);
 }
 
 .topnav__avatar-item {

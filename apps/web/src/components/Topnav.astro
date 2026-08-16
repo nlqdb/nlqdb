@@ -1,9 +1,9 @@
 ---
 // Top navigation. One reveal mechanic — the auth-aware swap:
 // `/api/auth/get-session` probe runs on every page load; when it
-// resolves authed, the "Sign in" link is hidden and an avatar button
-// takes its place, opening a dropdown with Open chat / API keys /
-// Billing / Sign out.
+// resolves authed, the "Sign in" link is hidden and the "Open chat"
+// link + an avatar button take its place; the avatar opens a dropdown
+// with API keys / Billing / Sign out.
 //
 // Marketing-side caveat (`SK-WEB-009`): probe returns null on
 // `nlqdb.com` because the session cookie is host-only on
@@ -73,35 +73,33 @@ const inChat = current === "chat";
     </span>
 
     {/* Authed slot — hidden by default; revealed only after the
-        probe resolves authed. Replaces the sign-in link. Everything
-        that used to be four flat links/buttons (Open chat, API keys,
-        Billing, Sign out) now lives behind one avatar button so the
-        row doesn't outgrow narrow viewports. The "Open chat" item is
-        suppressed when the visitor is already inside the chat
-        (current === "chat") — no reason to offer a jump to the page
-        they're on. */}
+        probe resolves authed. Replaces the sign-in link. "Open chat"
+        stays a top-level one-click link — it's the primary product
+        action, never buried behind a second click — while the account
+        chores (API keys / Billing / Sign out) collapse behind one
+        avatar button so the row stays compact on narrow viewports.
+        The "Open chat" link is suppressed when the visitor is already
+        inside the chat (current === "chat") — no reason to offer a
+        jump to the page they're on. */}
     <span id="topnav-authed" class="topnav__authed" hidden>
+      {!inChat && (
+        <a href={appHref("/app/")} class="topnav__chat-link">Open chat &rarr;</a>
+      )}
       <div class="topnav__avatar-wrap">
         <button
           type="button"
           id="topnav-avatar-btn"
           class="topnav__avatar"
-          aria-haspopup="menu"
           aria-expanded="false"
+          aria-controls="topnav-avatar-panel"
           aria-label="Account menu"
         >
           <span id="topnav-avatar-initial" aria-hidden="true">·</span>
         </button>
-        <div id="topnav-avatar-panel" class="topnav__avatar-panel" role="menu" hidden>
-          {!inChat && (
-            <a href={appHref("/app/")} class="topnav__avatar-item" role="menuitem">
-              Open chat &rarr;
-            </a>
-          )}
+        <div id="topnav-avatar-panel" class="topnav__avatar-panel" hidden>
           <a
             href={appHref("/app/keys/")}
             class="topnav__avatar-item"
-            role="menuitem"
             aria-current={current === "keys" ? "page" : undefined}
           >
             API keys
@@ -109,7 +107,6 @@ const inChat = current === "chat";
           <a
             href={appHref("/app/billing/")}
             class="topnav__avatar-item"
-            role="menuitem"
             aria-current={current === "billing" ? "page" : undefined}
           >
             Billing
@@ -118,7 +115,6 @@ const inChat = current === "chat";
             type="button"
             id="topnav-signout"
             class="topnav__avatar-item topnav__avatar-item--signout"
-            role="menuitem"
           >
             Sign out
           </button>
@@ -154,8 +150,10 @@ const inChat = current === "chat";
   }
 
   // ---- Avatar dropdown -----------------------------------------------
-  // Replaces the four flat authed items with one button + popover
-  // (APG menu-button pattern): click/Escape/outside-click all close it.
+  // APG disclosure pattern — a toggle button revealing plain links —
+  // not `role="menu"` (that role obliges arrow-key focus management;
+  // links + Tab already work). Escape, outside-click, and tab-away
+  // all close it.
   function closeAvatarPanel() {
     if (!avatarPanel || !avatarBtn) return;
     avatarPanel.hidden = true;
@@ -163,6 +161,7 @@ const inChat = current === "chat";
   }
 
   if (avatarBtn && avatarPanel) {
+    const avatarWrap = avatarBtn.parentElement;
     avatarBtn.addEventListener("click", () => {
       const opening = avatarPanel.hidden;
       avatarPanel.hidden = !opening;
@@ -175,7 +174,19 @@ const inChat = current === "chat";
       closeAvatarPanel();
     });
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeAvatarPanel();
+      if (event.key !== "Escape" || avatarPanel.hidden) return;
+      const refocus = avatarWrap?.contains(document.activeElement) ?? false;
+      closeAvatarPanel();
+      if (refocus) avatarBtn.focus();
+    });
+    // Tab-away: close once focus lands outside the wrap. Null
+    // relatedTarget (plain clicks) is left to the outside-click
+    // listener — closing here too would hide the panel between
+    // mousedown and click in Safari and swallow item activation.
+    avatarWrap?.addEventListener("focusout", (event) => {
+      const next = event.relatedTarget as Node | null;
+      if (avatarPanel.hidden || !next || avatarWrap.contains(next)) return;
+      closeAvatarPanel();
     });
   }
 
@@ -186,7 +197,8 @@ const inChat = current === "chat";
     if (signinSlot) signinSlot.setAttribute("hidden", "");
     if (avatarInitial) {
       const source = user.name?.trim() || user.email?.trim() || "";
-      avatarInitial.textContent = source ? source[0].toUpperCase() : "?";
+      // Code-point split — `source[0]` would render half a surrogate pair.
+      avatarInitial.textContent = source ? [...source][0].toUpperCase() : "?";
     }
   })();
 </script>
