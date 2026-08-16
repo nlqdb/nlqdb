@@ -268,23 +268,89 @@ h3 {
   text-decoration: none;
 }
 
-.topnav__signout {
+/* Avatar button — collapses the account chores (API keys / Billing /
+   Sign out) behind one control so the authed slot stays compact; the
+   primary "Open chat" link stays top-level. The panel anchors to the
+   nav row, not the 32px avatar wrap: `.topnav` wraps into rows on
+   narrow viewports, where a wrap-anchored 180px panel hangs past the
+   left screen edge (seen at 375px). */
+.topnav__links {
+  position: relative;
+}
+
+.topnav__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   font-family: var(--sans);
-  font-size: var(--t-small);
-  background: transparent;
-  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--accent-soft);
   border: 1px solid var(--rule-2);
   border-radius: var(--r-pill);
-  padding: 5px 13px;
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-std);
+}
+
+.topnav__avatar:hover,
+.topnav__avatar[aria-expanded="true"] {
+  border-color: var(--accent-line);
+}
+
+/* The panel's <a> items inherit the site ring via `a:focus-visible`;
+   these two are <button>s, so give them the same ring. */
+.topnav__avatar:focus-visible,
+.topnav__avatar-item--signout:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.topnav__avatar-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 6px;
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
+}
+
+.topnav__avatar-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  font-family: var(--sans);
+  font-size: var(--t-small);
+  text-align: left;
+  text-decoration: none;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--r-md);
   cursor: pointer;
   transition:
-    border-color var(--dur-1) var(--ease-std),
+    background var(--dur-1) var(--ease-std),
     color var(--dur-1) var(--ease-std);
 }
 
-.topnav__signout:hover {
-  border-color: var(--accent-line);
+.topnav__avatar-item:hover,
+.topnav__avatar-item[aria-current="page"] {
   color: var(--ink);
+  background: var(--accent-soft);
+}
+
+.topnav__avatar-item--signout {
+  margin-top: 4px;
+  border-top: 1px solid var(--rule);
+  border-radius: 0 0 var(--r-md) var(--r-md);
 }
 
 /* Footer (Footer.astro) */

@@ -1632,21 +1632,6 @@
     padding: 0 12px;
   }
 
-  /* The shared Topnav has no mobile treatment; when authed it adds a
-     "Sign out" (and "Open chat") slot that overruns 375px in one nowrap
-     row. Scoped to this app page only (not the marketing site): let the
-     nav wrap + tighten its gap so every link stays visible and the page
-     never scrolls sideways. */
-  .page--chat .topnav {
-    flex-wrap: wrap;
-    gap: 8px 16px;
-  }
-
-  .page--chat .topnav__links {
-    flex-wrap: wrap;
-    gap: 12px 16px;
-  }
-
   .chat-shell {
     gap: 12px;
     min-height: 0;
