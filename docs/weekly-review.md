@@ -16,8 +16,7 @@ returned `llm_failed` **deterministically for ~1.5 h** (anon/`pk_live` survived
 SPOF (direct fallback on route/summarize/engine_classify). The honesty gap: the
 scorecard — the source of truth `/weekly` exists to keep honest — still reads
 **"0 errors" (row #12, 07-27)** and **premium "flag-dark" (row #20)**, because
-`/daily` hasn't regenerated it since run 177 (08-12). Three days in which
-premium went live and prod had an outage, both unrecorded. Corrective (set as
+`/daily` hasn't regenerated it since run 177 (08-12). Corrective (set as
 the next `/daily`'s first act, not the weekly focus, since step-1 regen is a
 given): record the incident on row #12 and premium-live on row #20.
 
@@ -25,7 +24,7 @@ given): record the incident on row #12 and premium-live on row #20.
 
 Premium hosted-lane live 08-14 is the first monetization path ever open (§6
 unsolicited-inbound signal declared tripped 5→1 by the founder) — a real gain.
-Engine below floor and stale: BIRD 0.5382 (16 d), Spider 0.2222 (23 d), resume
+Engine below floor and stale: BIRD 0.5382 (20 d), Spider 0.2222 (27 d), resume
 deferred (async multi-window; `main` churn misses the SHA-keyed checkpoint).
 Funnel flat, real strangers still **0**. The outage aside (now resolved), no
 `GLOBAL-025` alert threshold stands tripped: main + deploys green, p95 within
@@ -40,13 +39,19 @@ burst (~6) — all pre-launch, **zero attributable yield** (row #2 strangers 0;
 row #22 `source_json` non-null 0). Continues last week's flag; EK is
 founder-sanctioned parallel, so this is a watch, not a redirect.
 
+## Roadmap truth — one stale marker, fixed here (check 7)
+
+README § Roadmap: the `/agents` memory dashboard still read "~ … ships on
+deploy" though it is live (prod-verified: `nlqdb.com/agents` serves the
+`ag-dog` block, as-of 08-11) — flipped to ✓ in this PR. Premium-live was
+already synced (#990); "Now"/"Next" still name the gate + the EK track.
+
 ## Dark metrics — all root-blocked with named cause (check 4)
 
 Engine rows dark ≥ weeks (resume-deferred, cause named). Real strangers /
-first-10 stranger-gated → `blocked-by-human.md` #1 (Show HN, idle **60+ d**,
-condition-gated on the gate). Structural note: the offline eval can't resume
-while `main` moves every few hours — a genuine no-path dark metric, deferred
-honestly. No agent-fixable dark row is being silently skipped.
+first-10 stranger-gated → `blocked-by-human.md` #1 (Show HN, idle **63 d**,
+condition-gated on the gate). No agent-fixable dark row is being silently
+skipped.
 
 ## Inert output — none in `/daily` (check 3)
 
@@ -59,9 +64,7 @@ inert-by-loop.
 Runs 175/176/177 + the 174 null: run 175's auth-boundary seam tests present;
 run 176's prod dogfood workload + the ask-#8 silent-wrong-answer finding
 concrete; run 177's `/agents` block + `agentMemory.{ts,data.json,test.ts}` +
-`apps/web/scripts/gen-agent-memory.mjs` all present (scorecard's
-`scripts/gen-agent-memory.mjs` path is off by one dir — cosmetic). No fabricated
-delta.
+`apps/web/scripts/gen-agent-memory.mjs` all present. No fabricated delta.
 
 ## Prompt drift — none needing an edit (check 6)
 

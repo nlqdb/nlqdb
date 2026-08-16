@@ -169,8 +169,8 @@ plain-English analytics over what it remembered — not top-k recall.
 - ~ **Dogfood gate** — nlqdb's own ops running on nlqdb memory through the
   public MCP surface; the public launch fires when its five criteria are
   green
-- ~ Public memory dashboard on `/agents` — live, aggregates-only block with an
-  as-of date; ships on deploy
+- ✓ Public memory dashboard on `/agents` — live, aggregates-only block with an
+  as-of date
 - ◯ One-click repo→memory import (paste a GitHub URL)
 - ◯ Goal packs — per-niche memory recipes (support-bot resolution ledger,
   research-agent source ledger, …)
