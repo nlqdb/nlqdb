@@ -70,8 +70,9 @@ export function getLLMRouter(): LLMRouter {
   const gwToken = env.AI_GATEWAY_TOKEN || undefined;
   const providers = [
     // SK-LLM-023 — Cerebras leads the planner tier (gpt-oss-120b). Routed
-    // direct (not via AI Gateway yet); the provider-agnostic plan cache
-    // (SK-LLM-010) is the real cache layer, so the gateway gap is cosmetic.
+    // direct — load-bearing per SK-LLM-047 (every chain needs a leg that
+    // survives a gateway fault); the provider-agnostic plan cache
+    // (SK-LLM-010) is the real cache layer.
     createCerebrasProvider({ apiKey: env.CEREBRAS_API_KEY ?? "" }),
     createGroqProvider({ apiKey: env.GROQ_API_KEY ?? "", baseUrl: gw.groq, gatewayToken: gwToken }),
     createGeminiProvider({
@@ -91,8 +92,8 @@ export function getLLMRouter(): LLMRouter {
       gatewayToken: gwToken,
     }),
     // SK-LLM-028 — Mistral is the planner-tier capacity backstop at the
-    // chain tail. Routed direct (no AI Gateway base), same rationale as
-    // Cerebras. Fires only when every head provider is rate-limited out.
+    // chain tail. Routed direct — load-bearing per SK-LLM-047, like
+    // Cerebras. Fires only when every head provider is out.
     createMistralProvider({ apiKey: env.MISTRAL_API_KEY ?? "" }),
   ];
   cached = createLLMRouter({

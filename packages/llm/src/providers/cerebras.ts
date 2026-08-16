@@ -18,8 +18,8 @@ import { openAICompatibleChat } from "./openai-compatible.ts";
 
 const DEFAULT_BASE_URL = "https://api.cerebras.ai/v1";
 
-// One model across ops: only `plan` / `schema_infer` route to Cerebras in
-// the chains, but every op needs a default for `provider.model()`.
+// One model across all ops — Cerebras leads the planner tier
+// (SK-LLM-023) and tails the cheap tier as a direct leg (SK-LLM-047).
 const DEFAULT_MODEL = "gpt-oss-120b";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {

@@ -14,9 +14,9 @@ import { openAICompatibleChat } from "./openai-compatible.ts";
 
 const DEFAULT_BASE_URL = "https://api.mistral.ai/v1";
 
-// Only `plan` / `schema_infer` route to Mistral in the chains, but every
-// op needs a default for `provider.model()`. Mistral Large 3 is the
-// strongest card-free reasoning model the Experiment tier exposes.
+// One model across all ops — the planner-tier tail (SK-LLM-028) and the
+// cheap-tier direct tail (SK-LLM-047). Mistral Large 3 is the strongest
+// card-free reasoning model the Experiment tier exposes.
 const DEFAULT_MODEL = "mistral-large-latest";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
