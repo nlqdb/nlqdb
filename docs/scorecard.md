@@ -17,6 +17,13 @@ only the founder may loosen one, and the gate is condition-gated — never dated
 yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-instrumentation.md).
 Acquisition levers stay pullable when no dogfood lever is — as does premium-chain work
 (`SK-LLM-017`, row #20), one rank below.
+**Weekly focus (`/weekly` 2026-08-15 — affirms the founder's 07-28 gate):** agent-movable
+number = **dogfood criterion 1, real MCP asks 12 → ≥ 100.** Criterion 5 (the `/agents`
+dashboard) shipped run 177, so criterion 1 is the gate's only GLOBAL-037-unblocked lever;
+the gate is still the only path off real strangers = 0 — premium going **live 08-14**
+(row #20, meter firing) doesn't change that. First act of the next `/daily`: regenerate the
+scorecard to record the **08-14 `/v1/ask` outage** (row #12 still reads "0 errors", 07-27) and
+**premium-live** (row #20 still reads "flag-dark") — both real state changes went unrecorded.
 
 **Worst number today (run 177, 2026-08-12):** the **weekly-focus `SK-PIVOT-016` dogfood gate**
 (**1/5**) is still the worst number. This run pulled the gate's **only remaining agent-movable,

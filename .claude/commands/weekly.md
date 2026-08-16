@@ -19,7 +19,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
   founder-resolved 2026-07-19: the hourly reach loop is inside every
   check below, same as daily).
 
-## The audit — six checks, worst finding first
+## The audit — seven checks, worst finding first
 
 1. **Trend.** Per pillar (engine, onboarding, UX, performance) plus the
    funnel: is the week-over-week direction right? Any regression past a
