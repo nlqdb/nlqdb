@@ -1,11 +1,13 @@
-// Production LLM router for `apps/api`. Provider chain per docs/architecture.md §7.1
-// strict-$0: Groq → Gemini → Workers AI → OpenRouter, cost-ordered
-// failover. Providers without API keys fail through `not_configured`.
+// Production LLM router for `apps/api`. Provider chains per
+// docs/architecture.md §7.1: strict-$0, cost-ordered failover.
+// Providers without API keys fail through `not_configured`.
 //
 // AI Gateway (Cloudflare): when AI_GATEWAY_ACCOUNT_ID + AI_GATEWAY_ID
-// are set, every provider call is routed through Cloudflare's gateway
-// — gives us caching, retries, fallback, and unified observability for
-// free. Keys remain ours; the gateway proxies authenticated requests.
+// are set, Groq / Gemini / Workers AI / OpenRouter route through
+// Cloudflare's gateway — gives us caching, retries, fallback, and
+// unified observability for free. Keys remain ours; the gateway proxies
+// authenticated requests. Cerebras + Mistral stay direct so every chain
+// keeps a non-gateway leg (SK-LLM-047).
 // Docs: https://developers.cloudflare.com/ai-gateway/.
 
 import { env } from "cloudflare:workers";
