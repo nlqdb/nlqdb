@@ -9,6 +9,7 @@
 //                           on this lane per `SK-QUAL-009`.
 
 import {
+  createCerebrasGlmProvider,
   createCerebrasProvider,
   createGeminiProvider,
   createGroqProvider,
@@ -77,8 +78,11 @@ export type Lane = {
 
 function buildFreeLane(env: EvalEnv): Lane | null {
   const providers = [];
-  if (env.CEREBRAS_API_KEY)
+  if (env.CEREBRAS_API_KEY) {
+    // SK-LLM-048 — GLM-4.7 head + gpt-oss-120b fallback, both off the one key.
+    providers.push(createCerebrasGlmProvider({ apiKey: env.CEREBRAS_API_KEY }));
     providers.push(createCerebrasProvider({ apiKey: env.CEREBRAS_API_KEY }));
+  }
   if (env.GROQ_API_KEY) providers.push(createGroqProvider({ apiKey: env.GROQ_API_KEY }));
   if (env.GEMINI_API_KEY) providers.push(createGeminiProvider({ apiKey: env.GEMINI_API_KEY }));
   if (env.CF_AI_TOKEN && env.CLOUDFLARE_ACCOUNT_ID) {
@@ -92,12 +96,14 @@ function buildFreeLane(env: EvalEnv): Lane | null {
   if (env.MISTRAL_API_KEY) providers.push(createMistralProvider({ apiKey: env.MISTRAL_API_KEY }));
   if (providers.length === 0) return null;
   // Chain order matches apps/api/src/llm-router.ts so the eval measures what
-  // production ships — Cerebras-led planner tier per SK-LLM-023, Mistral tail
-  // capacity backstop per SK-LLM-028. The router skips any provider whose key
-  // is absent, so a partial-key CI run still runs.
+  // production ships — GLM-4.7 planner head per SK-LLM-048 (gpt-oss-120b
+  // retained third), Mistral tail capacity backstop per SK-LLM-028. The router
+  // skips any provider whose key is absent, so a partial-key CI run still runs.
   const router = createLLMRouter({
     providers,
-    chains: { plan: ["cerebras", "gemini", "groq", "workers-ai", "openrouter", "mistral"] },
+    chains: {
+      plan: ["cerebras-glm", "gemini", "cerebras", "groq", "workers-ai", "openrouter", "mistral"],
+    },
     // SK-LLM-030 — honor a 429's full `Retry-After` window (prod caps it
     // for latency). A long server back-off is exactly the signal the
     // resumable runner checkpoints on rather than recording as no_sql.

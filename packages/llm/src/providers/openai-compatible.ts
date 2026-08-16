@@ -21,6 +21,18 @@ export type ChatRequest = {
   // Forwarded into the request body verbatim. Most callers leave this
   // undefined — the provider's defaults are fine.
   temperature?: number;
+  // SK-LLM-048 — `reasoning_effort` for reasoning models (GLM-4.7 on
+  // Cerebras). Left unset, GLM spends the whole completion on
+  // `reasoning_tokens` and returns empty `content` (→ a `parse` error);
+  // `"low"` caps reasoning to ~1.1k tokens and yields clean JSON. Non-reasoning
+  // models (gpt-oss-120b, Groq, OpenRouter) leave it undefined.
+  reasoningEffort?: "none" | "low" | "medium" | "high";
+  // Hard ceiling on completion tokens (reasoning + content combined). Needed
+  // alongside `reasoningEffort` so a reasoning model can never exhaust the
+  // budget before emitting `content`. Sent as `max_completion_tokens` — the
+  // only ceiling param Cerebras documents (reasoning-model endpoints reject
+  // the legacy `max_tokens`). Undefined ⇒ the provider default.
+  maxTokens?: number;
   // Extra request headers, merged *under* the fixed `content-type` /
   // `authorization` (which always win, so a caller can never silently
   // clobber auth). The BYOLLM provider uses this to carry AI Gateway
@@ -104,6 +116,8 @@ export async function openAICompatibleChat(req: ChatRequest, opts?: CallOpts): P
     model: req.model,
     messages: req.messages,
     ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
+    ...(req.reasoningEffort ? { reasoning_effort: req.reasoningEffort } : {}),
+    ...(req.maxTokens !== undefined ? { max_completion_tokens: req.maxTokens } : {}),
     ...(req.jsonResponse ? { response_format: { type: "json_object" } } : {}),
   };
 

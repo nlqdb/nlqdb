@@ -213,7 +213,7 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `nlqdb.user_id`        | **High** — gated     | Only on auth events; never on per-request metrics. |
 | `nlqdb.engine`         | Low (1-3)            | `postgres`, `clickhouse` (Phase 3 via Tinybird).   |
 | `nlqdb.cache_hit`      | 2                    | `true` / `false`.                                  |
-| `llm.provider`         | Low (4)              | `cf-ai`, `gemini`, `groq`, `openrouter`.           |
+| `llm.provider`         | Low (~8) | The `ProviderName` union in `packages/llm/src/types.ts`. |
 | `llm.model`            | Low (~10)            | Provider-specific; pin via env config.             |
 | `db.system`            | 2                    | `postgresql` (PG); `other_sql` (ClickHouse via Tinybird). |
 | `route`                | Low (~20)            | `/v1/ask`, `/v1/health`, `/v1/auth/*`.             |

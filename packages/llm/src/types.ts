@@ -21,6 +21,9 @@ export type ProviderName =
   | "workers-ai"
   | "openrouter"
   | "cerebras"
+  // SK-LLM-048 — GLM-4.7 planner head, served by the same Cerebras key as
+  // `cerebras` (gpt-oss-120b) but a distinct name so both sit in the chain.
+  | "cerebras-glm"
   | "mistral"
   | "byollm";
 
