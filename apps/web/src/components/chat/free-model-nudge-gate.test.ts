@@ -8,8 +8,8 @@ import { describe, expect, test } from "bun:test";
 
 import { freeChainStruggled, type StruggleInput } from "./free-model-nudge-gate.ts";
 
-function errorReply(code?: string): StruggleInput {
-  return { state: { kind: "error", code } };
+function errorReply(code?: string, referencedTables?: string[]): StruggleInput {
+  return { state: { kind: "error", code, referencedTables } };
 }
 
 function okReply(confidence?: number, traceConfidence?: number): StruggleInput {
@@ -23,10 +23,10 @@ describe("freeChainStruggled — error path", () => {
   test("fires on model-quality codes", () => {
     expect(freeChainStruggled(errorReply("llm_failed"))).toBe(true);
     expect(freeChainStruggled(errorReply("sql_rejected"))).toBe(true);
-    // SK-ASK-016 — LLM emitted SQL against a table the DB lacks. A
-    // model-quality failure (the model hallucinated the relation), so the
-    // nudge fires even though the plan came back highly confident.
-    expect(freeChainStruggled(errorReply("schema_mismatch"))).toBe(true);
+    // SK-ASK-016 — pre-flight hallucination: the LLM emitted SQL against a
+    // table absent from the DDL, so the envelope carries the hallucinated
+    // relations. A model-quality failure, so the nudge fires.
+    expect(freeChainStruggled(errorReply("schema_mismatch", ["orders"]))).toBe(true);
   });
 
   test("does not fire on infra / user-fixable codes", () => {
@@ -40,6 +40,15 @@ describe("freeChainStruggled — error path", () => {
     ]) {
       expect(freeChainStruggled(errorReply(code))).toBe(false);
     }
+  });
+
+  test("does not fire on exec-catch schema_mismatch with no referenced tables", () => {
+    // SK-ASK-019 — orphaned/dropped-schema (`3F000`) and the `42P01` backstop
+    // surface `schema_mismatch` with empty `referencedTables`: an infra failure
+    // a frontier model fails identically, so the "switch models" nudge stays
+    // silent.
+    expect(freeChainStruggled(errorReply("schema_mismatch"))).toBe(false);
+    expect(freeChainStruggled(errorReply("schema_mismatch", []))).toBe(false);
   });
 
   test("does not fire when the error has no code", () => {
