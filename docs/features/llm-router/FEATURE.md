@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043` + `SK-LLM-045..047`; `SK-LLM-044` reverted; `SK-LLM-048` — GLM-4.7 planner head — BIRD/Spider non-regression measured 2026-08-16). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) is live (2026-08-14, `SK-PREMIUM-009`).
+**Status:** implemented for the free chain (per-decision notes below; `SK-LLM-044` reverted; `SK-LLM-049` — schema-metadata directive — eval-run measurement pending). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) is live (2026-08-14, `SK-PREMIUM-009`).
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -96,7 +96,7 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 ### SK-LLM-019 — BYOLLM provider factory: AI Gateway unified endpoint + `cf-aig-cache-key` tenant namespace
 
 **Body:** [`decisions/SK-LLM-019-byollm-provider-factory.md`](./decisions/SK-LLM-019-byollm-provider-factory.md).
-`createByollmProvider` builds a `Provider` from the user's own key + model through AI Gateway's `compat/chat/completions` endpoint: key pass-through (0% markup), `<upstream>/<model>` qualifier, per-tenant `cf-aig-cache-key = BYOLLM_<userId>_<sha256(request)>` namespace. `openrouter` is special-cased to its dedicated `/openrouter/chat/completions` path with a raw model id (added 2026-07, `SK-PREMIUM-008`/`SK-PREMIUM-015`).
+`createByollmProvider` builds a `Provider` from the user's own key + model through AI Gateway's unified endpoint (0% markup), with a per-tenant cache-key namespace; `openrouter` is special-cased to its dedicated path.
 
 ### SK-LLM-020 — BYOLLM lane selector + single-provider lane router
 
@@ -219,7 +219,7 @@ abort-aware) before the router throws; tail-only ⇒ zero happy-path latency.
 
 ### SK-LLM-045 — OpenRouter free-model roster refresh (supersedes SK-LLM-015)
 
-**Body:** [`decisions/SK-LLM-045-openrouter-free-roster-refresh.md`](./decisions/SK-LLM-045-openrouter-free-roster-refresh.md). OpenRouter converted the SK-LLM-015 ids to paid-only (404ing the tail); replacements `nvidia/nemotron-3-ultra-550b-a55b:free` (plan/schema_infer/summarize), `google/gemma-4-26b-a4b-it:free` (route/engine_classify).
+**Body:** [`decisions/SK-LLM-045-openrouter-free-roster-refresh.md`](./decisions/SK-LLM-045-openrouter-free-roster-refresh.md). OpenRouter converted the SK-LLM-015 ids to paid-only (404ing the tail); the current replacement free ids are in the body.
 
 ### SK-LLM-046 — AI Gateway auth token (`cf-aig-authorization`) on every gateway-routed lane
 
@@ -238,12 +238,11 @@ gateway leg is down.
 
 ### SK-LLM-048 — GLM-4.7 (`zai-glm-4.7`, Cerebras) leads the strict-$0 planner tier
 
-**Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md).
-GLM-4.7 heads the planner chain (`cerebras-glm`, same card-free Cerebras key;
-gpt-oss-120b retained fallback, Gemini second). A reasoning model, so
-`reasoning_effort:"low"` + a completion ceiling (else empty `content`);
-[`SK-LLM-014`](#sk-llm-014) hedge 800→2000 ms. Extends [`SK-LLM-023`](#sk-llm-023);
-Gate **measured** 2026-08-16: BIRD/Spider non-regression, `SK-QUAL-002` triggers not tripped (`GLOBAL-025`); one-line revert.
+**Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md). GLM-4.7 (`cerebras-glm`) heads the planner chain, gpt-oss-120b retained fallback; a reasoning model, so `reasoning_effort:"low"` + completion ceiling and [`SK-LLM-014`](#sk-llm-014) hedge 800→2000 ms. Extends [`SK-LLM-023`](#sk-llm-023); gate **measured** 2026-08-16: BIRD/Spider non-regression (`GLOBAL-025`); one-line revert.
+
+### SK-LLM-049 — Schema-metadata goals directive in the planner prompt (answer structure questions from the Schema block, never system catalogs)
+
+**Body:** [`decisions/SK-LLM-049-schema-metadata-goals-directive.md`](./decisions/SK-LLM-049-schema-metadata-goals-directive.md). One `PLAN_DIRECTIVES` bullet: a structure goal ("show all tables") is answered from the Schema block as a constant SELECT of the names, system catalogs banned — the free planner improvised catalog queries the `SK-ASK-016` pre-flight rejected as `schema_mismatch`. Prompt-only; eval gate per `SK-QUAL-002`.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
@@ -268,5 +267,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 - **Failover when every provider in a chain fails** — Decided shape (per `GLOBAL-033` → `GLOBAL-012`): throw a structured `provider_chain_exhausted` envelope; **no** head-retry (a fresh `/v1/ask` re-enters the chain). **Parked until** the surfaces render it — not emitted in `packages/llm` yet.
 - **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram shape + LLM-as-judge prompt + "provider silently degrading" alert threshold — depends on the judge harness.
 - **Per-user credit accounting — RESOLVED:** hosted-premium allowance/overage is D1 `premium_allowance_period` + Stripe Billing Meters (`SK-PREMIUM-009`/`017`; no Lago).
-- **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter (`nlqdb.llm.json_recovered.total{op}` at the `router.ts` boundary); the eval run already surfaces the aggregate `no_sql` → `match` shift.
+- **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter at the `router.ts` boundary.
 - **Parked until burst abuse shows up:** free-tier RPM queue ("queued — 2s" UX, `architecture.md §7.1`); today bursts over a provider's RPM fail-and-fall-through. Owned with `rate-limit` / `observability`.
