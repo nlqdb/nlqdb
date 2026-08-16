@@ -13,12 +13,11 @@ on **every** authed `/v1/ask`, its chain was gateway-only, so signed-in traffic
 returned `llm_failed` **deterministically for ~1.5 h** (anon/`pk_live` survived
 — only the `plan` chain has a direct leg). Resolved: #992 (`SK-LLM-046`,
 `AI_GATEWAY_TOKEN`) merged, main green on `289db5a`; **#993 open** hardens the
-SPOF (direct fallback on route/summarize/engine_classify). The honesty gap: the
-scorecard — the source of truth `/weekly` exists to keep honest — still reads
-**"0 errors" (row #12, 07-27)** and **premium "flag-dark" (row #20)**, because
-`/daily` hasn't regenerated it since run 177 (08-12). Corrective (set as
-the next `/daily`'s first act, not the weekly focus, since step-1 regen is a
-given): record the incident on row #12 and premium-live on row #20.
+SPOF (direct fallback on route/summarize/engine_classify). The honesty gap:
+the scorecard still reads **"0 errors" (row #12, 07-27)** and **premium
+"flag-dark" (row #20)**, because
+`/daily` hasn't regenerated it since run 177 (08-12). Corrective — the next
+`/daily`'s first act: record the incident on row #12 and premium-live on row #20.
 
 ## Trend — monetization pillar opened; engine still stale, no fresh standing regression (check 1)
 
@@ -56,7 +55,7 @@ skipped.
 ## Inert output — none in `/daily` (check 3)
 
 `/daily` output is consumed: distribution queue at 1 unpublished draft (< 3),
-dev.to drip active (run 177). The Show HN kit (60+ d) is gate-blocked, not
+dev.to drip active (run 177). The Show HN kit (63 d) is gate-blocked, not
 inert-by-loop.
 
 ## Delta integrity — sampled 4, all verify (check 5)
@@ -66,9 +65,11 @@ run 176's prod dogfood workload + the ask-#8 silent-wrong-answer finding
 concrete; run 177's `/agents` block + `agentMemory.{ts,data.json,test.ts}` +
 `apps/web/scripts/gen-agent-memory.mjs` all present. No fabricated delta.
 
-## Prompt drift — none needing an edit (check 6)
+## Prompt drift — one, in this prompt itself; fixed (check 6)
 
-Every path + `GLOBAL`/`SK` ID cited in `daily.md`/`weekly.md` resolves
-(GLOBAL-027 canonical file present). `daily.md` rule 5's meter-freeze is a
-conditional whose antecedent (§6) has now tripped — the rule stays correct as
-written (founder-resolved; not edited per P1). No `daily.md` fix this week.
+`weekly.md`'s audit header said "six checks" while listing seven — the drift
+that let this review's first draft skip check 7; header now says seven. All
+paths + `GLOBAL`/`SK` IDs cited in `daily.md`/`reach.md`/`ek.md`/`weekly.md`
+resolve. `daily.md` rule 5's meter-freeze is a conditional whose antecedent
+(§6) has now tripped — correct as written (founder-resolved, not edited, P1).
+No `daily.md`/`reach.md` edit needed.
