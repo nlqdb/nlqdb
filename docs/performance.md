@@ -157,7 +157,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
 | `nlqdb.billing.checkout.create` | Stripe Checkout Session create (SK-STRIPE-004). One per `POST /v1/billing/checkout`. Carries `nlqdb.billing.plan`, `nlqdb.user.id`, `nlqdb.billing.checkout_session_id`. |
 | `nlqdb.billing.portal.create` | Stripe Billing Portal Session create (SK-STRIPE-008). One per `POST /v1/billing/portal`. Carries `nlqdb.user.id`, `nlqdb.billing.portal_session_id`. |
-| `nlqdb.billing.premium.{meter_event,overage_item,reconcile}` | Hosted-premium Stripe calls (SK-PREMIUM-017, GLOBAL-014), all dark until `PREMIUM_METER_LIVE`: `meter_event` = Billing Meter event create (carries `nlqdb.premium.event_id`); `overage_item` = lazy overage subscription-item attach; `reconcile` = daily meter-summary cross-check (carries `nlqdb.premium.reconcile_cross_checked`). ERROR on Stripe failure; best-effort, never breaks `/v1/ask`. |
+| `nlqdb.billing.premium.{meter_event,overage_item,reconcile}` | Hosted-premium Stripe calls (SK-PREMIUM-017, GLOBAL-014), all behind `PREMIUM_METER_LIVE`: `meter_event` = Billing Meter event create (carries `nlqdb.premium.event_id`); `overage_item` = lazy overage subscription-item attach; `reconcile` = daily meter-summary cross-check (carries `nlqdb.premium.reconcile_cross_checked`). ERROR on Stripe failure; best-effort, never breaks `/v1/ask`. |
 | `nlqdb.events.emit`           | Product-event sink dispatch (LogSnag + PostHog). Wrapped in `ctx.waitUntil` (off the response path). Server-side only. |
 | `nlqdb.events.sink.query_log` | Tinybird `query_log` Data Source write; one per events-batch. Carries `nlqdb.events.{batch_size,rows_written,circuit_open}`, `http.response.status_code` (`SK-EVENTS-009`). |
 | `nlqdb.events.sink.posthog` | PostHog `/batch` fan-out; one per events-batch. Carries `nlqdb.events.batch_size`, `http.response.status_code`. Best-effort — ERROR on failure, never affects ack/retry (`SK-EVENTS-013`). |
@@ -195,7 +195,7 @@ Histograms (latency in ms — explicit `_ms` suffix):
 Other histograms (non-latency):
 
 - `nlqdb.events.sink.query_log.batch_size` (unit `rows`) — events written to Tinybird `query_log` per flush. Bounded by the Cloudflare Queue consumer's `max_batch_size` (currently 100).
-- `nlqdb.premium.cost_per_query_usd` (unit `usd`) / `nlqdb.premium.tokens_per_query` (unit `token`) `{provider, model, sized}` — hosted-premium per-query COGS + token footprint, the SK-PREMIUM-010 allowance-calibration inputs. Bounded labels only; hosted-premium lane, dark until `PREMIUM_METER_LIVE`.
+- `nlqdb.premium.cost_per_query_usd` (unit `usd`) / `nlqdb.premium.tokens_per_query` (unit `token`) `{provider, model, sized}` — hosted-premium per-query COGS + token footprint, the SK-PREMIUM-010 allowance-calibration inputs. Bounded labels only; hosted-premium lane, behind `PREMIUM_METER_LIVE`.
 
 Gauges:
 

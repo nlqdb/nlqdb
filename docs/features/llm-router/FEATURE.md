@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043` + `SK-LLM-045..047`; `SK-LLM-044` reverted). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) lands in Phase 2; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043` + `SK-LLM-045..047`; `SK-LLM-044` reverted). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) is live (2026-08-14, `SK-PREMIUM-009`).
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
