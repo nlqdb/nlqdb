@@ -1,6 +1,7 @@
 // Production LLM router for `apps/api`. Provider chains per
 // docs/architecture.md §7.1: strict-$0, cost-ordered failover.
-// Providers without API keys fail through `not_configured`.
+// A provider with an absent API key auth-fails (401 → `auth_denied`
+// park, SK-LLM-039) and the chain falls through to the next leg.
 //
 // AI Gateway (Cloudflare): when AI_GATEWAY_ACCOUNT_ID + AI_GATEWAY_ID
 // are set, Groq / Gemini / Workers AI / OpenRouter route through
