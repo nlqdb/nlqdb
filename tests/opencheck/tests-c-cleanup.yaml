@@ -153,10 +153,11 @@ tests:
   - name: "#sign-out"
     case: |
       The browser is signed in from previous tests. Navigate directly
-      to "/app". In the top navigation bar there is a direct "Sign
-      out" button (no dropdown or user-menu needed — it is visible
-      directly in the primary nav). Click it. Verify the URL is no
-      longer "/app" and the "Sign out" button is no longer in the nav.
+      to "/app". In the top navigation bar there is a round avatar
+      button labeled "Account menu" (it shows the account's initial).
+      Click it to open the account dropdown, then click the "Sign out"
+      item inside the dropdown. Verify the URL is no longer "/app" and
+      the "Account menu" button is no longer in the nav.
 
   - name: "#sign-in-again"
     case: |

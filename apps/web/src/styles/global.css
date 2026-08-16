@@ -270,8 +270,11 @@ h3 {
 
 /* Avatar button — collapses the account chores (API keys / Billing /
    Sign out) behind one control so the authed slot stays compact; the
-   primary "Open chat" link stays top-level. */
-.topnav__avatar-wrap {
+   primary "Open chat" link stays top-level. The panel anchors to the
+   nav row, not the 32px avatar wrap: `.topnav` wraps into rows on
+   narrow viewports, where a wrap-anchored 180px panel hangs past the
+   left screen edge (seen at 375px). */
+.topnav__links {
   position: relative;
 }
 
@@ -295,6 +298,14 @@ h3 {
 .topnav__avatar:hover,
 .topnav__avatar[aria-expanded="true"] {
   border-color: var(--accent-line);
+}
+
+/* The panel's <a> items inherit the site ring via `a:focus-visible`;
+   these two are <button>s, so give them the same ring. */
+.topnav__avatar:focus-visible,
+.topnav__avatar-item--signout:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 
 .topnav__avatar-panel {

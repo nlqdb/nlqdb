@@ -19,7 +19,9 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   description="Founder dashboard: acquisition funnel, activation, retention, PMF signals."
 >
   <div class="page page--admin" id="admin-shell" data-api-base={apiBase} hidden>
-    <Topnav current="chat" />
+    {/* No `current` — this page is not the chat, so the topnav's
+        one-click "Open chat" link must stay offered (P6). */}
+    <Topnav />
     <main class="page__main page__main--admin">
       <AdminDashboard client:only="react" apiBase={apiBase} />
     </main>

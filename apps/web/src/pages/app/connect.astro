@@ -26,7 +26,9 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   description="Connect your own ClickHouse or Postgres database and query it in English. nlqdb reads your schema; your connection string is sealed server-side and never stored in your browser."
 >
   <div class="page page--connect" id="connect-shell" data-api-base={apiBase} hidden>
-    <Topnav current="chat" />
+    {/* No `current` — this page is not the chat, so the topnav's
+        one-click "Open chat" link must stay offered (P6). */}
+    <Topnav />
     <main class="page__main page__main--connect">
       <ConnectForm client:load apiBase={apiBase} />
     </main>
