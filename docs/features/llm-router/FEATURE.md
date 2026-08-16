@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043` + `SK-LLM-045..047`; `SK-LLM-044` reverted; `SK-LLM-048` — GLM-4.7 planner head — merge-gated on a BIRD/Spider non-regression cron). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) is live (2026-08-14, `SK-PREMIUM-009`).
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..043` + `SK-LLM-045..047`; `SK-LLM-044` reverted; `SK-LLM-048` — GLM-4.7 planner head — BIRD/Spider non-regression measured 2026-08-16). BYOLLM (`SK-LLM-016`) is partial — factory / lane selector / `/v1/ask` header lane ship (`SK-LLM-019..021`), account-stored lane per [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `GLOBAL-003` parity tracked in `premium-tier/FEATURE.md`. `SK-LLM-017` (hosted-premium chain) is live (2026-08-14, `SK-PREMIUM-009`).
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -243,7 +243,7 @@ GLM-4.7 heads the planner chain (`cerebras-glm`, same card-free Cerebras key;
 gpt-oss-120b retained fallback, Gemini second). A reasoning model, so
 `reasoning_effort:"low"` + a completion ceiling (else empty `content`);
 [`SK-LLM-014`](#sk-llm-014) hedge 800→2000 ms. Extends [`SK-LLM-023`](#sk-llm-023);
-**merge-gated** on a BIRD/Spider non-regression cron (`GLOBAL-025`), one-line revert.
+Gate **measured** 2026-08-16: BIRD/Spider non-regression, `SK-QUAL-002` triggers not tripped (`GLOBAL-025`); one-line revert.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 

@@ -72,6 +72,16 @@ head's latency profile.
   `schema_infer` head back to `cerebras`), the same posture that reverted
   `SK-LLM-044`. The benchmark deltas above are vendor-reported ranking signal,
   not our own harness's EX numbers — the cron is the source of truth.
+- **Gate measured (2026-08-16, dispatches on the PR branch):** Spider 2.0-lite
+  full — free EX 0.2148 vs baseline 0.2222 (−0.74 pp, −1 question). BIRD
+  Mini-Dev full dispatch (capacity budget-stop at 336/500; paired on the shared
+  336 questions) — free EX 0.5833 vs baseline 0.5982 (−1.49 pp; McNemar
+  b=28/c=23, exact p=0.58), with Gemini fully rate-limited out of the run.
+  Neither `SK-QUAL-002` trigger (≤ −5 pp / p < 0.05) tripped on either dataset.
+  Head-isolated sub-signal: GLM-4.7 answered 81/336 at **EX 0.716**, above
+  every fallback (gpt-oss-120b 0.593) and the baseline slice (0.598). Gate
+  ruled satisfied; a full-500 uncontested-coverage re-measure post-merge
+  remains desirable (the budget-stop checkpoint resumes on re-dispatch).
 - **Alternatives rejected:**
   - **Replace gpt-oss-120b outright (no `cerebras-glm`, just swap the model)** —
     smaller diff, but loses gpt-oss-120b as a known-good planner fallback and
