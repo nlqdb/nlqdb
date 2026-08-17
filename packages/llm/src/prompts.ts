@@ -65,6 +65,18 @@ import type {
 // filters into HAVING (which would scan/aggregate more rows for the same
 // answer, a perf + correctness foothold).
 //
+// SK-LLM-049 — the schema-metadata bullet targets catalog-query
+// hallucination: a goal about the database's structure itself ("show all
+// tables") has no answer inside the user's tables, so a small model
+// improvises an information_schema / pg_catalog / sqlite_master query —
+// often against a guessed schema name — which the SK-ASK-016 pre-flight
+// rejects as `schema_mismatch` (a catalog relation is never in the compiled
+// DDL, and on the shared cluster an unscoped catalog read would leak other
+// tenants' schemas anyway). The Schema block the planner receives IS the
+// authoritative answer, so the rule redirects to a constant SELECT of the
+// names — a FROM-less SELECT passes the read/write allowlist, references no
+// relations, and is valid in both shipped dialects.
+//
 // SK-LLM-035 — the numeric-text-cast bullet targets "Implicit Type Conversion"
 // (C1 in the same arXiv:2501.09310 taxonomy), orthogonal to the SK-LLM-027
 // REAL-cast-ratio rule: that rule casts an integer/integer *division* to avoid
@@ -80,6 +92,7 @@ import type {
 export const PLAN_DIRECTIVES = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
   "Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly.",
+  "When the goal asks about the database's structure itself — what tables exist, or what columns a table has — answer from the Schema block by selecting the names as literal values (e.g. SELECT 'albums' AS table_name UNION ALL SELECT 'artists'); never query system catalogs (information_schema, pg_catalog, sqlite_master) — they are outside the provided schema and the query will be rejected.",
   "When the goal includes an `Evidence:` block, treat it as authoritative annotator context — apply the formulas and column hints it names.",
   "Select exactly the columns the goal asks for, and only those — extra id/name/descriptive columns change the result set and fail execution-accuracy.",
   "Return each attribute the goal names as its own column — do not concatenate columns into one value (e.g. first_name || ' ' || last_name) unless the goal explicitly asks for a single combined string; concatenation collapses the requested columns into one and fails the per-column result set.",

@@ -35,6 +35,17 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     expect(PLAN_SYSTEM).toMatch(/preserve identifier casing exactly/);
   });
 
+  it("carries the SK-LLM-049 schema-metadata directive (structure questions from the Schema block, never catalogs)", () => {
+    // Metadata goals are answered as constant SELECTs of names from the Schema block.
+    expect(PLAN_SYSTEM).toMatch(/asks about the database's structure itself/);
+    expect(PLAN_SYSTEM).toContain("SELECT 'albums' AS table_name UNION ALL SELECT 'artists'");
+    // The catalog ban that closes the hallucination path (SK-ASK-016 rejects these).
+    expect(PLAN_SYSTEM).toContain("information_schema");
+    expect(PLAN_SYSTEM).toContain("pg_catalog");
+    expect(PLAN_SYSTEM).toContain("sqlite_master");
+    expect(PLAN_SYSTEM).toMatch(/never query system catalogs/);
+  });
+
   it("escalates BIRD's `Evidence:` block from hint to authoritative", () => {
     expect(PLAN_SYSTEM).toMatch(/`Evidence:`/);
     expect(PLAN_SYSTEM).toMatch(/authoritative annotator context/);
