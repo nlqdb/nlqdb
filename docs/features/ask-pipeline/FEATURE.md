@@ -46,13 +46,13 @@ when-to-load:
 - **Consequence in code:** `validateReadWrite(sql)` rejects every DDL verb; the DDL validator is a separate file (Zod over `SchemaPlan` + libpg_query parse on the compiled DDL) invoked **only** from the create path. PRs that merge the two validator surfaces are rejected.
 - **Alternatives rejected:** Single validator with a `mode: "rw" | "ddl"` flag — a single `mode` flag flip would re-open DDL to LLM-generated SQL. LLM emits DDL directly — explicitly rejected in `§3.6.2`; the LLM emits a typed plan, our code emits SQL.
 
-### SK-ASK-005 — Summarize is conditional: skip when `Accept: application/json` or row count below threshold
+### SK-ASK-005 — Summarize is skipped on empty results and for JSON clients
 
-- **Decision:** The post-exec LLM summarization step (`llm.summarize`) only runs when (a) the result row count is above a threshold (default 5) **or** (b) the intent classifier flagged the query as conversational. It is skipped entirely when the client sent `Accept: application/json`.
-- **Core value:** Fast, Free, Honest latency
-- **Why:** Summarization adds 300 ms p50 / 800 ms p99 — material on a cache-miss path. Most fact-lookup queries return raw rows; summarising "[{count: 42}]" wastes user time and LLM credits. Programmatic clients (`Accept: application/json`) want raw data; humans on the chat surface want prose.
-- **Consequence in code:** `shouldSummarize(rows, intent, accept)` is a pure function tested in isolation. The summarize step is skipped *before* the LLM call, not inside it (no wasted token spend on a result we'd discard).
-- **Alternatives rejected:** Always summarise — wastes 80% of summarize budget on row-count queries. Always skip — chat surface loses prose; bad UX for the conversational majority.
+- **Decision:** The post-exec LLM summarization step (`llm.summarize`) is skipped when (a) the client opted out of prose (`Accept: application/json`, or an `agent_memory_v1` knowledge DB per GLOBAL-037) **or** (b) the result set is **empty** (0 rows). Every non-empty human-surface result is still summarized.
+- **Core value:** Bullet-proof, Honest, Free
+- **Why:** An empty result is the one input where narration can only fabricate — with no rows to describe, the model invents global claims ("there are no members in the system") or speculates about actions the pipeline never took ("a record would need to be created"). Skipping it is a correctness fix, not just a cost one. Non-empty results keep prose because the summary *is* the chat voice; the SK-LLM anti-fabrication directives bound what it may assert, and `buildSummarizeUser` already caps the prompt at 50 rows so the token cost is bounded. (Earlier revisions gated on a 5-row threshold for latency; that silently dropped useful small-table prose while masking — not fixing — the empty-set hallucination, so the rule is now correctness-anchored.)
+- **Consequence in code:** `shouldSummarize(rowCount, { skipSummary })` is a pure function in `ask/summarize-gate.ts`, tested in isolation. The summarize step is skipped *before* the LLM call, not inside it (no wasted token spend on a result we'd discard).
+- **Alternatives rejected:** Always summarise — narrates empty sets, the exact fabrication case. Row-count threshold (skip ≤ 5) — drops genuinely useful small-result prose and only hides the empty-set lie behind a bigger cutoff.
 
 ### SK-ASK-006 — Anonymous-mode is a separate rate-limit tier — not "free with a lower limit"
 
@@ -84,7 +84,9 @@ when-to-load:
 - **Core value:** Bullet-proof, Fast, Effortless UX
 - **Why:** Without table-level context the classifier can't tell "insert red and blue tables" (`kind=create`) from "insert into red and blue" (`kind=write`). Recent tables are the cheapest disambiguator. Merging halves cheap-tier latency on the dbId-absent path; prompt budget absorbs 100 × ~30 chars ≈ 3 KB.
 - **Consequence in code:** `routeAsk` is the single merged classifier (the old `classifier.ts` / `disambiguate-db.ts` are gone) and runs in parallel with `listDatabasesForTenant`. Anon `kind=create` past the device cap returns the SK-ANON-012 `auth_required` envelope.
-- **Alternatives rejected:** Two cheap-tier calls — overlapping input, double latency. Full schema in prompt — token-explodes on power users. Dbset only — doesn't help the load-bearing "insert red and blue tables" misclassification.
+  - *The routed `kind` is load-bearing downstream, not advisory.* It threads into orchestration as `AskRequest.intent` and reaches the planner (`PlanRequest.intent`): a `write` goal gets a one-line directive so the planner emits INSERT/UPDATE/DELETE rather than defaulting to a SELECT, and the orchestrator **enforces** it — a write intent that plans as a read re-plans through the existing `withStageRetry("plan", …)` loop (reject reason `expected_data_modification`) instead of silently executing the goal as a read and dropping the mutation. Without this the classifier's `write` decision was discarded and the write-vs-read verb was re-derived solely from `isWriteVerb(planSql)`.
+  - *The recent-table fast-path resolves read-vs-write deterministically where it can.* A recent-table hit with a write verb (`add`/`insert`/…) routes `write`; a **verb-less** hit ("members", "orders") routes `query` — a bare reference to a table the user already has is a read, so it must not fall through to the LLM's "unknown table → create" bias and dead-end on the create-a-new-DB clarify. Table matching is singular/plural-tolerant (`member` ↔ `members`, `category` ↔ `categories`) so morphology doesn't drop the match onto the LLM path.
+- **Alternatives rejected:** Two cheap-tier calls — overlapping input, double latency. Full schema in prompt — token-explodes on power users. Dbset only — doesn't help the load-bearing "insert red and blue tables" misclassification. Route `kind` advisory-only (re-derive verb from the plan) — the read-as-write silent-drop bug this closes.
 
 ### SK-ASK-010 — Goal text is capped at 2 000 characters server-side
 

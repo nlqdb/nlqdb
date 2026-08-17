@@ -29,6 +29,7 @@ import { extractTables, type RecentTablesStore, tablesFromSchemaText } from "./r
 import { Nonrecoverable, type RetryReason, withStageRetry } from "./retry.ts";
 import { classifySchemaError, recordExecUnreachable } from "./schema-mismatch.ts";
 import { validateSql } from "./sql-validate.ts";
+import { shouldSummarize } from "./summarize-gate.ts";
 import {
   type AskError,
   type AskRequest,
@@ -326,6 +327,7 @@ export async function orchestrateAsk(
             goal: req.goal,
             schema: planSchema,
             dialect: "postgres",
+            ...(req.intent ? { intent: req.intent } : {}),
             ...(prev ? { previousAttempt: prevAttemptFromError(prev) } : {}),
           });
           // SK-ASK-025 — normalise to schema-relative form BEFORE validate so
@@ -339,6 +341,13 @@ export async function orchestrateAsk(
             // error so prevAttemptFromError can echo it back.
             const reject = new PlanValidationError(sql, validation.reason);
             throw reject;
+          }
+          // SK-ASK-009 — enforce the routed kind: a write goal that planned as
+          // a read would otherwise execute as a SELECT and silently drop the
+          // mutation. Feed the mismatch back so the retry re-plans as a write
+          // (the SK-TRUST-001 preview gate then fires on the corrected verb).
+          if (req.intent === "write" && !isWriteVerb(sql)) {
+            throw new PlanValidationError(sql, "expected_data_modification");
           }
           lastModel = plan.model;
           lastConfidence = plan.confidence;
@@ -651,7 +660,7 @@ export async function orchestrateAsk(
   await safeEmit({ type: "rows", rows: result.rows, rowCount: result.rowCount });
 
   let summary: string | undefined;
-  if (!skipSummary) {
+  if (shouldSummarize(result.rowCount, { skipSummary })) {
     try {
       const out = await deps.llm.summarize({ goal: req.goal, rows: result.rows });
       summary = out.summary;

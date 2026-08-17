@@ -89,6 +89,11 @@ export type PlanRequest = {
   goal: string;
   schema: string;
   dialect: "postgres" | "sqlite";
+  // SK-ASK-009 — the routed `kind` carried into planning. `"write"` tells
+  // the planner the goal modifies data so it emits INSERT/UPDATE/DELETE
+  // instead of defaulting to a SELECT (the read-as-write silent bug). Absent
+  // ⇒ read intent (the historical default); only `"write"` changes the prompt.
+  intent?: "query" | "write";
   // GLOBAL-022 — when a previous plan attempt's SQL was rejected by the
   // validator (or the LLM call itself failed), the orchestrator passes
   // the prior attempt's SQL + reject reason here so the prompt can

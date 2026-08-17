@@ -95,6 +95,8 @@ export default defineConfig(async () => {
               "src/ask/demand-signal.test.ts",
               "src/ask/destructive-clarify.test.ts",
               "src/ask/frontier-router.test.ts",
+              "src/ask/orchestrate.test.ts",
+              "src/ask/summarize-gate.test.ts",
               "src/run/orchestrate.test.ts",
               "src/memory/expire.test.ts",
               "src/memory/remember.test.ts",

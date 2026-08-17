@@ -89,16 +89,18 @@ export async function routeAsk(deps: RouteAskDeps, input: RouteAskInput): Promis
   // table evidence but not enough to decide read vs write).
   const tableHit = matchRecentTable(input.goal, input.recentTables);
   if (tableHit) {
-    const verbKind = pickVerbKind(input.goal);
-    if (verbKind) {
-      return {
-        kind: verbKind,
-        targetDbId: tableHit.dbId,
-        referencedTables: [tableHit.table],
-        confidence: 1,
-        reason: "recent_table_match",
-      };
-    }
+    // Verb keywords pin write-vs-read; a verb-less reference to a table the
+    // user already has ("members", "orders") is idiomatically a read, so
+    // default to query rather than falling through to the LLM — whose
+    // "unknown table → create" bias dead-ends a bare table name on the
+    // create-a-new-db clarify (the reported regression).
+    return {
+      kind: pickVerbKind(input.goal) ?? "query",
+      targetDbId: tableHit.dbId,
+      referencedTables: [tableHit.table],
+      confidence: 1,
+      reason: "recent_table_match",
+    };
   }
 
   // 3. Slug substring fast-path. Picks targetDbId deterministically;
@@ -150,14 +152,34 @@ function matchRecentTable(
   for (const t of recent) {
     const needle = t.table.toLowerCase();
     if (!needle) continue;
-    // Word-boundary match — `\b` is safe for ASCII identifiers, which
-    // is what Postgres tables (and our identifier whitelist) accept.
-    const pattern = new RegExp(`\\b${escapeRegex(needle)}\\b`);
-    if (pattern.test(haystack)) {
-      return { dbId: t.dbId, table: t.table };
+    // Match the table name and its singular/plural variants so "add a
+    // member" hits the `members` table (and vice-versa). Word-boundary
+    // match — `\b` is safe for ASCII identifiers, which is what Postgres
+    // tables (and our identifier whitelist) accept.
+    for (const variant of tableVariants(needle)) {
+      if (new RegExp(`\\b${escapeRegex(variant)}\\b`).test(haystack)) {
+        return { dbId: t.dbId, table: t.table };
+      }
     }
   }
   return null;
+}
+
+// Cheap singular/plural variants of a table name — enough to bridge the
+// common "member" ↔ "members", "category" ↔ "categories" gap without a
+// full stemmer. Returns the name plus its inflected forms; matching any
+// counts as a hit (the stored table name is still what we return).
+function tableVariants(name: string): string[] {
+  const v = new Set<string>([name]);
+  if (name.endsWith("ies")) v.add(`${name.slice(0, -3)}y`);
+  else if (name.endsWith("es")) v.add(name.slice(0, -2));
+  if (name.endsWith("s")) v.add(name.slice(0, -1));
+  else if (name.endsWith("y")) v.add(`${name.slice(0, -1)}ies`);
+  else {
+    v.add(`${name}s`);
+    v.add(`${name}es`);
+  }
+  return [...v];
 }
 
 function pickVerbKind(goal: string): RouteAskKind | null {

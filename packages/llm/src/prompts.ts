@@ -165,7 +165,8 @@ export const PLAN_FEW_SHOT = fewShotBlock([
 export const PLAN_SYSTEM = `${PLAN_DIRECTIVES}\n\n${PLAN_FEW_SHOT}`;
 
 export const SUMMARIZE_SYSTEM = [
-  "You summarize a small result set in plain English, in 1–3 sentences.",
+  "You summarize a query's result rows in plain English, in 1–3 sentences.",
+  "Describe only the rows given — do not state what exists beyond them, that any action was taken, or whether a date is past or future.",
   "Quote concrete numbers and named entities. No code blocks, no markdown.",
 ].join("\n");
 
@@ -225,6 +226,14 @@ export function buildPlanUser(req: PlanRequest): string {
   // may have hidden the table the error names.
   const schema = req.previousAttempt ? req.schema : pruneSchemaForGoal(req.schema, req.goal);
   const parts = [`Dialect: ${req.dialect}`, `Schema:\n${schema}`, `Goal: ${req.goal}`];
+  // SK-ASK-009 — write intent steers the planner to a data-modifying verb;
+  // without it the planner defaults every goal to a SELECT and a write is
+  // silently answered as a read. Read intent adds nothing (SELECT is default).
+  if (req.intent === "write") {
+    parts.push(
+      "Intent: this goal modifies data — emit an INSERT, UPDATE, or DELETE, not a SELECT.",
+    );
+  }
   if (req.previousAttempt) {
     // GLOBAL-022 + SK-LLM-018 — diagnostic-first retry framing: keep the
     // same goal, restrict to schema identifiers, change only what the
