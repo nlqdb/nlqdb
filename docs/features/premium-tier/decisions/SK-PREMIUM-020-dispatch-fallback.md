@@ -40,10 +40,14 @@ premium lane faults.
   `apps/api/src/index.ts` builds the premium `router` as
   `withFallbackRouter(buildPremiumRouter(…), freeRouter, …)`, sets
   `premiumDispatchFellBack` + the span attr + the log in `onFallback`, and
-  `settlePremium` returns the `premium_fallback` trace (instead of `null`) when
-  a premium run consumed zero billable tokens *because it fell back* (the
-  plan-cache-hit zero-token case stays trace-silent). The premium-lane meter
-  math is untouched — a fallback simply never reaches it.
+  `settlePremium` surfaces `premium_fallback: true` in the response `premium`
+  trace whenever the dispatch fell back — both when the whole run consumed zero
+  billable tokens *because it fell back* (returned instead of `null`; the
+  plan-cache-hit zero-token case stays trace-silent) and in the mixed case where
+  an earlier op already billed premium tokens before a later op fell back (the
+  flag rides the `lane: "premium"` block so the partial serve is never silent).
+  The premium-lane meter math is untouched — a fallback op simply never reaches
+  it, so only the ops that truly ran on premium bill.
 - **Alternatives rejected:**
   - **Keep the hard `llm_failed`** — the bug itself; a paid user seeing a worse
     outcome than a free user is indefensible (`GLOBAL-025` UX must not degrade).

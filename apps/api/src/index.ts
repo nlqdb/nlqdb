@@ -1614,6 +1614,13 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             included: s.total,
             remaining: s.remaining,
             overage_usd: Number((s.overageCents / 100).toFixed(4)),
+            // SK-PREMIUM-020 — a later op fell back to the free chain *after* an
+            // earlier op already billed premium tokens (usage > 0). Surface the
+            // mixed serve honestly so it's never silent (GLOBAL-023), matching
+            // the `llm.premium_fallback` span attr already stamped in onFallback.
+            ...(premiumDispatchFellBack
+              ? { premium_fallback: true, reason: "dispatch_error" }
+              : {}),
           };
         } catch (err) {
           // Metering is a side-effect: a settlement D1 error must never turn a
