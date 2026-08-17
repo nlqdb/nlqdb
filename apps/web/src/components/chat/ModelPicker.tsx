@@ -142,6 +142,18 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
     void refreshBilling();
   }, [loadCatalog, refreshStatus, refreshBilling]);
 
+  const credential = status?.configured ? status.credential : null;
+
+  // A paid, active plan on a live-premium deployment auto-routes every query to
+  // the hosted-premium model (SK-PREMIUM-009) when the user brought no BYOLLM
+  // key. That, not "Free", is the built-in lane they're actually on — the bug
+  // this fixes is the pill claiming "Free" for a paying customer whose queries
+  // ran on Claude Sonnet 4.6.
+  const isPaidActive =
+    (billing?.plan === "hobby" || billing?.plan === "pro") && billing?.status === "active";
+  const premiumLiveModel = catalog?.premium?.models.find((m) => m.status === "live") ?? null;
+  const premiumActive = isPaidActive && (catalog?.premium?.live ?? false) && !credential;
+
   // Broadcast the resolved BYOLLM status so the chat panel can gate the nudge.
   // `premiumActive` rides along so a paid user (auto-routed to the premium
   // model, not the free chain) never sees the "the free model sucks" nudge — the
@@ -190,18 +202,6 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
       document.removeEventListener("keydown", onKey);
     };
   }, [open, closePopover]);
-
-  const credential = status?.configured ? status.credential : null;
-
-  // A paid, active plan on a live-premium deployment auto-routes every query to
-  // the hosted-premium model (SK-PREMIUM-009) when the user brought no BYOLLM
-  // key. That, not "Free", is the built-in lane they're actually on — the bug
-  // this fixes is the pill claiming "Free" for a paying customer whose queries
-  // ran on Claude Sonnet 4.6.
-  const isPaidActive =
-    (billing?.plan === "hobby" || billing?.plan === "pro") && billing?.status === "active";
-  const premiumLiveModel = catalog?.premium?.models.find((m) => m.status === "live") ?? null;
-  const premiumActive = isPaidActive && (catalog?.premium?.live ?? false) && !credential;
 
   // The active model's label for the pill: the hosted-premium model on a paid
   // plan, else match the stored BYOLLM credential against the catalog; fall

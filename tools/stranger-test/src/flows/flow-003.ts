@@ -237,7 +237,7 @@ async function doWalk(
     // the browser — that combination failed this step closed on every proxied
     // local walk (measured 2026-07-25).
     const llmsResp = await page.goto(`${baseUrl}/llms.txt`, { timeout: 30_000 }).catch(() => null);
-    if (!llmsResp || llmsResp.status() !== 200) {
+    if (llmsResp?.status() !== 200) {
       steps.push(
         step(
           9,
