@@ -14,6 +14,7 @@ import {
   MODEL_PRESETS,
   type ModelPreset,
   totalBillableTokens,
+  withFallbackRouter,
 } from "@nlqdb/llm";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import {
@@ -1142,6 +1143,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // account BYOLLM keys always win (GLOBAL-026 precedence), and `fast` pins
     // the strict-$0 chain. `best` is satisfiable via this lane, so an eligible
     // caller never 409s `model_unavailable`.
+    // Resolved once (memoized) and reused as both the free lane and the
+    // premium lane's fallback below (SK-PREMIUM-020).
+    const freeRouter = getLLMRouter();
     let premiumRun: {
       tier: PremiumTier;
       periodStart: number;
@@ -1152,6 +1156,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     } | null = null;
     let premiumEligible = false;
     let premiumOverflow: "fallback" | "cap" | null = null;
+    // SK-PREMIUM-020 — set when the gateway-only premium lane threw and the
+    // free chain served the request instead. Surfaced in the response `premium`
+    // trace (never silent, GLOBAL-023) and the ask span.
+    let premiumDispatchFellBack = false;
     if (
       !byollmCredential &&
       !accountCredential &&
@@ -1219,16 +1227,39 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               // is a real second LLM call that also decrements the allowance —
               // it must bill fresh, not dedupe against the first (SK-PREMIUM-017).
               dispatchId: crypto.randomUUID(),
-              router: buildPremiumRouter({
-                apiKey: c.env.PREMIUM_ANTHROPIC_API_KEY ?? "",
-                accountId: c.env.AI_GATEWAY_ACCOUNT_ID ?? "",
-                gatewayId: c.env.AI_GATEWAY_ID ?? "",
-                userId: principal.id,
-                onUsage: usage.sink,
-                // SK-LLM-046 — authenticate to the gateway; a single-provider
-                // premium lane has no failover, so a 401 here is a hard fail.
-                ...(c.env.AI_GATEWAY_TOKEN ? { gatewayToken: c.env.AI_GATEWAY_TOKEN } : {}),
-              }),
+              // SK-PREMIUM-020 — the gateway-only premium lane, wrapped so a
+              // gateway fault serves the free chain (which survives on its
+              // direct tail, SK-LLM-047) instead of `llm_failed`-ing a paid
+              // user. The fallback is surfaced + logged (never silent) and
+              // unmetered (the free leg never fires `usage.sink`).
+              router: withFallbackRouter(
+                buildPremiumRouter({
+                  apiKey: c.env.PREMIUM_ANTHROPIC_API_KEY ?? "",
+                  accountId: c.env.AI_GATEWAY_ACCOUNT_ID ?? "",
+                  gatewayId: c.env.AI_GATEWAY_ID ?? "",
+                  userId: principal.id,
+                  onUsage: usage.sink,
+                  // SK-LLM-046 — authenticate to the gateway.
+                  ...(c.env.AI_GATEWAY_TOKEN ? { gatewayToken: c.env.AI_GATEWAY_TOKEN } : {}),
+                }),
+                freeRouter,
+                (op, err) => {
+                  premiumDispatchFellBack = true;
+                  span.setAttribute("llm.premium_fallback", true);
+                  span.setAttribute("llm.premium_fallback_op", op);
+                  // Fail loud (SK-LLM-016): the premium lane is otherwise
+                  // invisible on failure — the request just 502s with no cause.
+                  console.warn(
+                    JSON.stringify({
+                      level: "warn",
+                      msg: "premium_dispatch_fallback",
+                      op,
+                      user_id: principal.id,
+                      error: err instanceof Error ? err.message : String(err),
+                    }),
+                  );
+                },
+              ),
             };
           } else {
             // Allowance exhausted + `overflow_policy=fallback`, or the spend cap
@@ -1245,7 +1276,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       headerCredential: byollmCredential,
       accountCredential,
       ...(parsed.body.model !== undefined ? { preset: parsed.body.model } : {}),
-      freeRouter: getLLMRouter(),
+      freeRouter,
       gateway: {
         accountId: c.env.AI_GATEWAY_ACCOUNT_ID,
         gatewayId: c.env.AI_GATEWAY_ID,
@@ -1530,7 +1561,21 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const settlePremium = async (): Promise<Record<string, unknown> | null> => {
       if (premiumRun) {
         const usage = premiumRun.usage.total();
-        if (totalBillableTokens(usage) === 0) return null;
+        if (totalBillableTokens(usage) === 0) {
+          // Zero billable tokens on the premium lane means either a plan-cache
+          // hit (no LLM call — SK-PREMIUM-007) or a dispatch fallback to the
+          // free chain (SK-PREMIUM-020). Surface the latter honestly so the
+          // paid user knows premium was skipped and they weren't charged
+          // (GLOBAL-023); the cache-hit case stays trace-silent as before.
+          return premiumDispatchFellBack
+            ? {
+                lane: "free",
+                premium_fallback: true,
+                reason: "dispatch_error",
+                line: "Premium was temporarily unavailable, so this request used the free chain — you weren't charged for it.",
+              }
+            : null;
+        }
         try {
           const s = await settlePremiumQuery(c.env.DB, {
             customerId: principal.id,
@@ -1569,6 +1614,13 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             included: s.total,
             remaining: s.remaining,
             overage_usd: Number((s.overageCents / 100).toFixed(4)),
+            // SK-PREMIUM-020 — a later op fell back to the free chain *after* an
+            // earlier op already billed premium tokens (usage > 0). Surface the
+            // mixed serve honestly so it's never silent (GLOBAL-023), matching
+            // the `llm.premium_fallback` span attr already stamped in onFallback.
+            ...(premiumDispatchFellBack
+              ? { premium_fallback: true, reason: "dispatch_error" }
+              : {}),
           };
         } catch (err) {
           // Metering is a side-effect: a settlement D1 error must never turn a

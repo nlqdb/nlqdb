@@ -136,15 +136,36 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
   useEffect(() => {
     void loadCatalog();
     void refreshStatus();
-  }, [loadCatalog, refreshStatus]);
+    // Fetch billing on mount too (not only on popover open) so the pill and the
+    // free-chain broadcast reflect a paid plan's auto-routed premium model
+    // before the user ever opens the picker (SK-PREMIUM-020 / SK-PREMIUM-013).
+    void refreshBilling();
+  }, [loadCatalog, refreshStatus, refreshBilling]);
+
+  const credential = status?.configured ? status.credential : null;
+
+  // A paid, active plan on a live-premium deployment auto-routes every query to
+  // the hosted-premium model (SK-PREMIUM-009) when the user brought no BYOLLM
+  // key. That, not "Free", is the built-in lane they're actually on — the bug
+  // this fixes is the pill claiming "Free" for a paying customer whose queries
+  // ran on Claude Sonnet 4.6.
+  const isPaidActive =
+    (billing?.plan === "hobby" || billing?.plan === "pro") && billing?.status === "active";
+  const premiumLiveModel = catalog?.premium?.models.find((m) => m.status === "live") ?? null;
+  const premiumActive = isPaidActive && (catalog?.premium?.live ?? false) && !credential;
 
   // Broadcast the resolved BYOLLM status so the chat panel can gate the nudge.
+  // `premiumActive` rides along so a paid user (auto-routed to the premium
+  // model, not the free chain) never sees the "the free model sucks" nudge — the
+  // bug where a paying customer got the free-chain nudge on a premium failure.
   useEffect(() => {
     if (!status) return;
     window.dispatchEvent(
-      new CustomEvent(BYOLLM_STATUS_EVENT, { detail: { configured: status.configured } }),
+      new CustomEvent(BYOLLM_STATUS_EVENT, {
+        detail: { configured: status.configured, premiumActive },
+      }),
     );
-  }, [status]);
+  }, [status, premiumActive]);
 
   // Open (and scroll to) the picker when the free-model nudge requests it.
   useEffect(() => {
@@ -182,19 +203,18 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
     };
   }, [open, closePopover]);
 
-  const credential = status?.configured ? status.credential : null;
-
-  // The active model's label for the pill: match the stored credential against
-  // the catalog; fall back to the raw provider·model if it isn't listed.
+  // The active model's label for the pill: the hosted-premium model on a paid
+  // plan, else match the stored BYOLLM credential against the catalog; fall
+  // back to the raw provider·model if it isn't listed.
   const activeLabel = useMemo(() => {
-    if (!credential) return "Free";
+    if (!credential) return premiumActive ? (premiumLiveModel?.label ?? "Included model") : "Free";
     for (const p of catalog?.providers ?? []) {
       if (p.provider !== credential.provider) continue;
       const hit = p.models.find((m) => m.model === credential.model);
       if (hit) return hit.label;
     }
     return `${credential.provider} · ${credential.model}`;
-  }, [catalog, credential]);
+  }, [catalog, credential, premiumActive, premiumLiveModel]);
 
   const lastModel = lastAnswer?.model ?? null;
   // Is the configured key actually answering? When it isn't (e.g. the account
@@ -313,10 +333,33 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
       {open ? (
         <div className="model-picker__panel" role="menu">
           <p className="model-picker__section">Built-in</p>
+          {premiumActive ? (
+            // Paid plan, no BYOLLM key → queries auto-route to the hosted-premium
+            // model (SK-PREMIUM-009). Shown as the active built-in lane; clicking
+            // just closes (it's already active — there's nothing to switch to).
+            <button
+              type="button"
+              role="menuitemradio"
+              aria-checked={true}
+              className="model-picker__option"
+              onClick={closePopover}
+            >
+              <span className="model-picker__option-main">
+                <span className="model-picker__option-label">
+                  {premiumLiveModel?.label ?? "Included model"}
+                </span>
+                <span className="model-picker__option-note">
+                  Included with your {billing?.plan === "pro" ? "Pro" : "Hobby"} plan — queries
+                  route here automatically, no key needed.
+                </span>
+              </span>
+              <span className="model-picker__active">● Active</span>
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitemradio"
-            aria-checked={!credential}
+            aria-checked={!credential && !premiumActive}
             className="model-picker__option"
             onClick={selectFree}
             disabled={busy}
@@ -327,7 +370,9 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
                 {catalog?.free.note ?? "Built-in models — no key needed."}
               </span>
             </span>
-            {!credential ? <span className="model-picker__active">● Active</span> : null}
+            {!credential && !premiumActive ? (
+              <span className="model-picker__active">● Active</span>
+            ) : null}
           </button>
 
           <p className="model-picker__section">Frontier models · bring your key</p>

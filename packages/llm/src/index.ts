@@ -30,6 +30,9 @@ export {
   type ProviderMeta,
   toCatalogProvider,
 } from "./catalog.ts";
+// SK-PREMIUM-020 — lane fallback wrapper so a premium-lane gateway fault serves
+// the free chain instead of failing a paid user (surfaced, unmetered).
+export { withFallbackRouter } from "./fallback-router.ts";
 // Similarity-retrieved few-shot exemplar selection (SK-LLM-041, DAIL §4.1).
 export {
   type Exemplar,

@@ -755,8 +755,12 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
   const [onFreeChain, setOnFreeChain] = useState(false);
   useEffect(() => {
     function onStatus(e: Event) {
-      const detail = (e as CustomEvent<{ configured: boolean }>).detail;
-      setOnFreeChain(!detail?.configured);
+      const detail = (e as CustomEvent<{ configured: boolean; premiumActive?: boolean }>).detail;
+      // On the free chain only when no BYOLLM key AND not auto-routed to the
+      // hosted-premium model (a paid plan). Otherwise the "the free model sucks"
+      // nudge (SK-PREMIUM-004) would fire for a paying customer whose queries
+      // ran on the premium model — the bug this fixes.
+      setOnFreeChain(!detail?.configured && !detail?.premiumActive);
     }
     window.addEventListener(BYOLLM_STATUS_EVENT, onStatus);
     return () => window.removeEventListener(BYOLLM_STATUS_EVENT, onStatus);
