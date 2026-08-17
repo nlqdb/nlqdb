@@ -30,11 +30,20 @@ provisioned *from* the grant's scope and scope is authoritative
 read can never assume an owner's full-tenant role, and a **missing** grant
 role fails **closed** (no auto-heal, unlike the tenant role) — a grant role
 is created only by the mint / re-scope path, never fabricated on a
-`SET LOCAL ROLE` error. Still box 2's open work: (a) the provisioning DDL
-that `CREATE ROLE`s this name, `GRANT SELECT`s exactly the scope tables,
-`GRANT … TO CURRENT_USER WITH SET TRUE`, and `ALTER TABLE … FORCE ROW LEVEL
-SECURITY` (mirroring `neon-provision.ts`), run at mint and on re-scope;
-(b) the granted-exec step builder (the `buildHostedExecSteps` analogue:
+`SET LOCAL ROLE` error.
+**Box 2 — provisioning DDL builder shipped 2026-08-17 (sub-piece a):**
+`apps/api/src/grant-provision.ts` (`buildGrantRoleDdl`) — the pure,
+unit-tested statement batch that `CREATE ROLE`s the `grant-role.ts` name,
+`GRANT SELECT`s **exactly** the scope tables (never `ALL TABLES` — schema
+widening never widens a grant), `GRANT … TO CURRENT_USER WITH SET TRUE` so
+the owner can `SET LOCAL ROLE`, and `ALTER TABLE … FORCE ROW LEVEL SECURITY`
+per scoped table (guardrail #3), mirroring `neon-provision.ts`. Re-scope
+safe: `REVOKE ALL … FROM` the role precedes the re-`GRANT`, so a re-scope
+that drops a table removes its SELECT; the idempotent DO-block create means
+mint and every re-scope run the identical batch. Fail-closed on an empty
+scope or an unsafe schema/table identifier (SK-HDC-009 re-check before
+interpolation). Still box 2's open work: (b) the granted-exec step builder
+(the `buildHostedExecSteps` analogue:
 audit-only `app.*` GUCs → grant `statement_timeout` → `SET LOCAL ROLE
 "grant_…"` → user statement) — its `app.tenant_id`/`app.agent_id` values
 against the `agent_memory_v1` `agent_isolation` RLS policy need **live PG
@@ -89,9 +98,12 @@ satisfy):
       2026-08-09 — `validateGrantScope`: join-leakage + validation-layer
       GUC-spoof + read-only + schema-widening kill-tests pass. Role-name
       convention shipped 2026-08-10 — `grant-role.ts` (per-grant non-owner
-      SELECT-only role, fail-closed on missing). RLS-bypass kill-test +
-      provisioning DDL + live route wiring await the rest of the DB-role
-      half; see header.)*
+      SELECT-only role, fail-closed on missing). Provisioning DDL builder
+      shipped 2026-08-17 — `grant-provision.ts` `buildGrantRoleDdl`
+      (SELECT-only on exactly the scope, `WITH SET TRUE`, FORCE RLS,
+      re-scope-safe REVOKE, unit-tested). RLS-bypass kill-test + granted-exec
+      step builder + live route wiring await the rest of the DB-role half;
+      see header.)*
 - [ ] Usage records emitted per granted query, idempotent under retry.
       *(Meter primitive shipped 2026-08-10 — migration `0028_grant_usage.sql`
       + `apps/api/src/grant-usage.ts` `recordGrantUsage`: one row per

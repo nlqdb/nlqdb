@@ -85,6 +85,7 @@ export default defineConfig(async () => {
               "src/ask/sql-validate-ddl.test.ts",
               "src/grant-status.test.ts",
               "src/grant-role.test.ts",
+              "src/grant-provision.test.ts",
               "src/ask/grant-scope.test.ts",
               "src/ask/route-ask.test.ts",
               "src/ask/prelude.test.ts",
