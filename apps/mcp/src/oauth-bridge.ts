@@ -140,5 +140,178 @@ async function handleBridgeCallback(url: URL, env: BridgeEnv): Promise<Response>
       deviceId: redeemed.device_id,
     },
   });
-  return Response.redirect(redirectTo, 302);
+  return renderBridgeSuccess(redirectTo, redeemed.mcp_host);
+}
+
+// The MCP client's `redirect_uri` is often `http://localhost:<port>/…`
+// bound to an ephemeral listener the agent CLI opens. That listener can
+// die (agent restart, user closed the terminal, port already reclaimed)
+// between consent and callback, and the browser silently lands on an
+// unreachable page — the founder-observed "terrible onboarding" case
+// (2026-08-18): user grants access, browser shows nothing helpful, tools
+// never register, only manual paste of the full callback URL back to the
+// agent unblocks it. So instead of a bare 302, render a branded page
+// that (a) auto-redirects immediately so a live listener still wins,
+// and (b) if the browser bounces back (dead listener → error → back
+// button), shows explicit success + the callback URL with one-click
+// copy and paste-back instructions. Custom-scheme hosts (`cursor://…`,
+// `claudia://…`) get the redirect flash and the OS hand-off; the copy
+// affordance is meaningful only for `http(s)` targets, and we hide it
+// for schemes the browser can't render as text.
+function renderBridgeSuccess(redirectTo: string, mcpHost: string): Response {
+  const isHttp = /^https?:/i.test(redirectTo);
+  const hostLabel = mcpHost || "your MCP client";
+  const body = renderBridgeSuccessHtml({
+    redirectTo,
+    hostLabel,
+    isHttp,
+  });
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      // Custom schemes and localhost redirects are the whole point; keep
+      // the referrer off so the code doesn't leak into a third-party log.
+      "referrer-policy": "no-referrer",
+    },
+  });
+}
+
+// Kept a pure function so it's unit-testable without the Workers runtime.
+export function renderBridgeSuccessHtml(args: {
+  redirectTo: string;
+  hostLabel: string;
+  isHttp: boolean;
+}): string {
+  const { redirectTo, hostLabel, isHttp } = args;
+  const safeRedirect = escapeHtml(redirectTo);
+  const safeHost = escapeHtml(hostLabel);
+  // `JSON.stringify` does NOT escape `</script>` — a redirect URL that
+  // smuggled `</script><script>...` would break out of the inline block.
+  // The signed flow blob keeps the redirect_uri bound to the registered
+  // client, but defense-in-depth is cheap here.
+  const redirectJson = JSON.stringify(redirectTo)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+  const copyBlock = isHttp
+    ? `
+      <section class="fallback" id="fallback" hidden>
+        <h2 class="fallback__title">Didn't return to your agent?</h2>
+        <p class="fallback__lede">
+          The listener at this address may have closed. Copy the URL below and paste
+          it back into <strong>${safeHost}</strong> to finish connecting.
+        </p>
+        <div class="fallback__row">
+          <code class="fallback__url" id="cb-url">${safeRedirect}</code>
+          <button type="button" class="btn btn--accent" id="cb-copy">Copy URL</button>
+        </div>
+        <p class="fallback__hint" id="cb-hint" aria-live="polite"></p>
+      </section>`
+    : "";
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Connected to nlqdb</title>
+<meta http-equiv="refresh" content="0;url=${safeRedirect}" />
+<style>
+  :root {
+    --deep: #215136;
+    --sage: #49755d;
+    --lime: #c2ea4d;
+    --cream: #f9f8f4;
+    --paper: #e5e4db;
+    --ink: #1b1d1b;
+    --muted: #4b5563;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--cream); color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { min-height: 100vh; display: grid; place-items: center; padding: 48px 24px; }
+  .card { width: 100%; max-width: 520px; background: #fff; border: 1px solid var(--paper);
+    border-radius: 14px; padding: 36px; box-shadow: 0 1px 2px rgba(27,29,27,0.04); }
+  h1 { font-family: "Space Grotesk", Inter, sans-serif; font-weight: 600;
+    letter-spacing: -0.02em; margin: 0 0 12px; font-size: 26px; color: var(--deep); }
+  h2 { font-family: "Space Grotesk", Inter, sans-serif; font-weight: 600;
+    margin: 24px 0 8px; font-size: 16px; color: var(--deep); }
+  p { margin: 0 0 12px; font-size: 14px; line-height: 1.55; color: var(--ink); }
+  .lede { color: var(--muted); font-size: 14px; }
+  .btn { border: 1px solid var(--paper); border-radius: 10px; background: transparent;
+    color: var(--ink); font: inherit; font-size: 13px; padding: 8px 14px; cursor: pointer; }
+  .btn--accent { background: var(--lime); border-color: var(--lime); color: var(--deep);
+    font-weight: 600; }
+  .btn--accent:hover { filter: brightness(0.97); }
+  .fallback { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--paper); }
+  .fallback__title { color: var(--deep); }
+  .fallback__lede { color: var(--muted); }
+  .fallback__row { display: flex; gap: 10px; align-items: stretch; margin: 12px 0 6px; }
+  .fallback__url { flex: 1; min-width: 0; padding: 10px 12px; background: var(--cream);
+    border: 1px solid var(--paper); border-radius: 8px; font-family:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+    color: var(--ink); overflow-wrap: anywhere; word-break: break-all; }
+  .fallback__hint { font-size: 12px; color: var(--sage); min-height: 1em; margin: 4px 0 0; }
+  noscript p { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>You're connected.</h1>
+    <p class="lede">
+      nlqdb granted access to <strong>${safeHost}</strong>. You can close this tab and
+      return to your terminal — the tools should be available now.
+    </p>
+    <noscript>
+      <p>If your agent didn't pick this up automatically, open
+        <a href="${safeRedirect}">this link</a> to hand the code back.</p>
+    </noscript>${copyBlock}
+  </div>
+</main>
+<script>
+  (function () {
+    var target = ${redirectJson};
+    // Give the meta refresh the first shot; if we're still here after a
+    // beat, the listener is likely dead — reveal the fallback so the
+    // user has a recovery path (founder-observed 2026-08-18).
+    try { window.location.replace(target); } catch (e) { /* custom scheme may throw */ }
+    var fb = document.getElementById("fallback");
+    if (fb) {
+      setTimeout(function () { fb.hidden = false; }, 1500);
+    }
+    var btn = document.getElementById("cb-copy");
+    var hint = document.getElementById("cb-hint");
+    if (btn) {
+      btn.addEventListener("click", function () {
+        var done = function (ok) {
+          if (!hint) return;
+          hint.textContent = ok ? "Copied. Paste it back into your agent." :
+            "Couldn't copy — select the URL above and copy manually.";
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(target).then(function () { done(true); },
+            function () { done(false); });
+        } else {
+          done(false);
+        }
+      });
+    }
+  })();
+</script>
+</body>
+</html>`;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
