@@ -7,12 +7,12 @@ reference + the run log.
 
 ## Free LLM model selection (opencheck)
 
-**Policy: FREE MODELS ONLY** (GLOBAL-013). Every LLM key in the e2e
-workflows MUST source from a free provider — never a paid slug. On
-OpenRouter the `:free` suffix is required; the bare slug is **paid** tier
-(2026-05-21: a paid Mistral slug burned ~$14). The OpenRouter key in CI is a
-*paid* key with credits (`is_free_tier:false`), so a non-`:free` slug bills
-real money — the `:free` suffix is the only guard.
+**Policy: FREE MODELS ONLY** (GLOBAL-013), **enforced** by
+`_e2e-opencheck.yml`'s `Assert free-only` step (fail-closed, before the
+pre-flight probe): OpenRouter slugs must be `:free`, and any endpoint off the
+never-bill allowlist `{NVIDIA NIM, SambaNova, OpenRouter :free}` fails the run.
+The CI OpenRouter key carries credits (`is_free_tier:false`), so this
+fail-closed assertion makes a billable slug impossible.
 
 **Two independent LLM budgets per run** (the fix for the 2026-05→06
 exhaustion loop):

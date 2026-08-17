@@ -1,7 +1,8 @@
 # Reusable: run one opencheck suite against a given baseUrl via the OpenAI-compatible endpoint (workflow_call only — callers drive it).
 # OpenAI-compat: opencheck pins @langchain/core ^1.1.24 (v1 ecosystem); @langchain/openai v1.4.5 matches; Groq + OpenRouter :free all expose compatible endpoints.
 #
-# FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER wire a paid model here, even via OpenRouter — :free suffix required on OpenRouter slugs.
+# FREE-ONLY is enforced structurally by the "Assert free-only" step below (GLOBAL-013): OpenRouter
+# slugs must be `:free` and any non-allowlisted endpoint fails closed — no need to hand-audit slugs.
 # The agent model is NOT hard-coded: the pre-flight walks `candidate_models` in order and the first
 # model that answers a real tool-call probe is substituted into the suite YAML (`model: "__MODEL__"`).
 # PRIMARY lane = NVIDIA NIM gpt-oss-120b (2026-07-11 swap): OpenRouter's free pool saturates as a
@@ -44,7 +45,7 @@ on:
         type: string
         default: https://openrouter.ai/api/v1
       fallback_candidate_models:
-        description: "Ordered agent-model ids on fallback_provider_base_url, ALL free per GLOBAL-013 — on OpenRouter the `:free` suffix is REQUIRED (a bare slug is PAID; 2026-05-21 a paid Mistral slug burned ~$14). Order = proven agent competence first; nemotron-3-super is BANNED (probe-healthy but collapses to text-format tool calls mid-loop); gpt-oss-20b:free is DROPPED (probe-healthy but too weak to drive the suites — run 30993729683 it burned 3 × 240s Suite-A timeouts while short-circuiting the healthy fallback2 lane; a sub-80B pick is worse than escalating)."
+        description: "Ordered agent-model ids on fallback_provider_base_url (`:free` enforced by the Assert free-only step). Order = proven agent competence first; nemotron-3-super is BANNED (probe-healthy but collapses to text-format tool calls mid-loop); gpt-oss-20b:free is DROPPED (probe-healthy but too weak to drive the suites — run 30993729683 it burned 3 × 240s Suite-A timeouts while short-circuiting the healthy fallback2 lane; a sub-80B pick is worse than escalating)."
         required: false
         type: string
         default: "openai/gpt-oss-120b:free,qwen/qwen3-coder:free,qwen/qwen3-next-80b-a3b-instruct:free,meta-llama/llama-3.3-70b-instruct:free"
@@ -269,6 +270,46 @@ jobs:
                   f.write(src.replace(old, new, 1))
               print(f"patched {path} (added timeout: 30000, maxRetries: 6)")
           PYEOF
+
+      # Free-only invariant (GLOBAL-013), enforced structurally so billing is impossible, not merely
+      # avoided by convention. The ONLY lane here that can bill is the paid OpenRouter key on a
+      # non-`:free` slug — NIM (dev tier) and SambaNova (permanent free) hard-cap with 429s. Assert
+      # BEFORE the pre-flight probe, which itself would spend on a billable slug. Fail closed on any
+      # endpoint not on the never-bill allowlist so a future edit can't silently re-introduce cost.
+      - name: Assert free-only (GLOBAL-013)
+        shell: bash
+        env:
+          PRIMARY_BASE_URL: ${{ inputs.provider_base_url }}
+          PRIMARY_MODELS: ${{ inputs.candidate_models }}
+          FALLBACK_BASE_URL: ${{ inputs.fallback_provider_base_url }}
+          FALLBACK_MODELS: ${{ inputs.fallback_candidate_models }}
+          FALLBACK2_BASE_URL: ${{ inputs.fallback2_provider_base_url }}
+          FALLBACK2_MODELS: ${{ inputs.fallback2_candidate_models }}
+        run: |
+          set -euo pipefail
+          assert_lane() {
+            local base_url="$1" models_csv="$2" lane="$3" m
+            [ -z "$models_csv" ] && return 0
+            IFS=',' read -ra models <<< "${models_csv// /}"
+            case "$base_url" in
+              # Inherently free tiers — no credits attached, 429 at the cap instead of billing.
+              *integrate.api.nvidia.com*|*api.sambanova.ai*) : ;;
+              # OpenRouter's CI key carries credits ⇒ a bare slug BILLS; require `:free`.
+              *openrouter.ai*)
+                for m in "${models[@]}"; do
+                  case "$m" in
+                    *:free) : ;;
+                    *) echo "::error::free-only violation ($lane): OpenRouter slug '$m' is not ':free' — the CI key is paid and would BILL. Add ':free' or drop it."; exit 1 ;;
+                  esac
+                done ;;
+              *) echo "::error::free-only violation ($lane): base URL '$base_url' is not on the never-bill allowlist {NVIDIA NIM, SambaNova, OpenRouter :free}. Add it here only after confirming it can't bill."; exit 1 ;;
+            esac
+            echo "  $lane: free-only OK ($base_url)"
+          }
+          assert_lane "$PRIMARY_BASE_URL" "$PRIMARY_MODELS" "primary"
+          assert_lane "$FALLBACK_BASE_URL" "$FALLBACK_MODELS" "fallback"
+          assert_lane "$FALLBACK2_BASE_URL" "$FALLBACK2_MODELS" "fallback2"
+          echo "Free-only invariant holds across all lanes."
 
       # Fail-fast: pick the first HEALTHY candidate model before burning 20+ min on opencheck.
       # The probe is tool-call shaped (the agent loop is all tool calls — a model that answers "ping"
