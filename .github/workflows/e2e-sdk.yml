@@ -4,10 +4,18 @@ name: E2E SDK
 
 on:
   workflow_dispatch:
+  # Hermetic (cassette replay, no Neon/LLM/secrets) ⇒ safe to PR-trigger on its own
+  # surface, mirroring e2e-cli.yml. The staging/LLM path (opencheck) stays dispatch-only.
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/sdk/**"
+      - "tests/e2e/sdk/**"
+      - ".github/workflows/e2e-sdk.yml"
 
 concurrency:
-  group: e2e-sdk
-  cancel-in-progress: false
+  group: e2e-sdk-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions: {}
 
