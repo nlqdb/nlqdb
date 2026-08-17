@@ -125,3 +125,34 @@ the publish doc at submit time), set the listing name to lead with memory
 the homepage/link field to `https://nlqdb.com/agents/?utm_source=lobehub`; on
 submit → in-flight, note the listing URL, then watch `/app/admin` for `lobehub`
 yield → live.
+
+## Row #26
+
+**ExplainX.ai MCP directory** ([`explainx.ai/mcp-servers`](https://explainx.ai/mcp-servers)) · key `explainx`
+
+**untried — account-walled, founder-gated** (P2 2026-08-17). A ~2 000-server MCP
+directory that markets itself as the "best integrated discovery" for MCP servers
++ instruction-based skills (browse by category / stars / popularity; install into
+Cursor, VS Code, Claude Desktop). **Mechanism (P2):** the footer links
+`/submission-guidelines`, which routes submissions through the **`/submit` flow
+(account required)** and requests *name, summary, category, tags, install command
+pattern, and SKILL.md-style content*; submissions are pending/approved/rejected
+(explicitly "not a security audit, endorsement, or quality certification"). The
+guidelines also state listings "may be created or updated through internal
+tooling, data partners, or public sources in addition to (or instead of) a
+self-serve submission flow" — a possible ingest path — **but measured live this
+cycle nlqdb is absent** (`explainx.ai/mcp-servers/nlqdb` → HTTP 404; not in site
+search) ~26 days after the official-registry publish, so the narrow-cascade
+finding holds: a manual submit is required to appear *and* to carry our key. The
+account wall makes it **founder work**, not agent-shippable. Contact
+`support@explainx.ai`. Sources:
+<https://explainx.ai/mcp-servers>, <https://explainx.ai/submission-guidelines>,
+<https://www.explainx.ai/blog/top-10-mcp-server-directories-2026>.
+
+**Next step (founder):** sign in at `explainx.ai`, run the `/submit` flow, set
+the name to lead with memory (`nlqdb — analytical memory for AI agents`),
+description per SK-PIVOT-003, install command pattern
+`claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp` (strings owned
+by `mcp-install.ts`), and the website/link field to
+`https://nlqdb.com/agents/?utm_source=explainx`; on submit → in-flight, note the
+listing URL, then watch `/app/admin` for `explainx` yield → live.
