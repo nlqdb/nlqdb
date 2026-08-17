@@ -102,6 +102,23 @@ describe("openBillingPortal", () => {
     expect(await openBillingPortal("")).toBe("not_configured");
   });
 
+  test("maps 409 to no_subscription", async () => {
+    mockFetch(new Response("{}", { status: 409 }));
+    expect(await openBillingPortal("")).toBe("no_subscription");
+  });
+
+  test("sends the switch_plan flow body when asked, and redirects", async () => {
+    mockFetch(
+      new Response(JSON.stringify({ url: "https://billing.stripe.com/s/switch" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    expect(await openBillingPortal("", { flow: "switch_plan" })).toBe("ok");
+    expect(assigned).toBe("https://billing.stripe.com/s/switch");
+    expect(JSON.parse(String(captured?.init?.body))).toEqual({ flow: "switch_plan" });
+  });
+
   test("maps any other non-ok status to error", async () => {
     mockFetch(new Response("{}", { status: 500 }));
     expect(await openBillingPortal("")).toBe("error");

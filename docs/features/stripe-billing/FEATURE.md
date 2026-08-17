@@ -129,6 +129,17 @@ The customer reminder ships from the events-worker `billing.payment_failed` sink
   - Always pass `customer_email`, never `customer` — orphans a Stripe customer on every re-subscribe; the data-integrity bug this fixes.
   - Reconcile/merge duplicate Stripe customers after the fact — Stripe has no customer-merge API; prevention at Checkout time is the only clean path.
 
+### SK-STRIPE-015 — Plan switch deep-links to the portal update flow and self-heals the portal configuration
+
+- **Decision:** "Upgrade to Pro" / "Switch plan" for a live subscriber POSTs `POST /v1/billing/portal` with `{ flow: "switch_plan" }`. The route creates a portal session with `flow_data.type = "subscription_update"` (subscription id only), deep-linking straight to the plan-change page, and passes a `configuration` that has `subscription_update` enabled with **both** plan prices listed as products. That configuration is ensured in code via an idempotent list-or-create (`apps/api/src/stripe/plan-switch.ts`, tagged `metadata.nlqdb_managed = "plan-switch"`, cached per isolate) — no manual Stripe Dashboard toggle. A `switch_plan` caller with no live subscription (terminal status or no `stripe_subscription_id`) gets `409 no_subscription`; the client then routes to Checkout (re-subscribe). The plain portal open (no `flow`) is unchanged.
+- **Core value:** Seamless auth, Honest latency, Bullet-proof
+- **Why:** Stripe's **default** portal configuration ships with plan switching **off**, so the pre-existing `POST /v1/billing/portal` (which SK-STRIPE-010 routes tier changes to) landed the subscriber on the account overview showing only their current plan with no upgrade CTA — the switch was effectively dead. Deep-linking to `subscription_update` gives a real plan picker with proration; ensuring the configuration in code means the flow can't silently break again if the dashboard config is reset or was never fully set up.
+- **Consequence in code:** `subscription_update`, not `subscription_update_confirm` — an active subscription can carry a second **metered overage item** (`ensureOverageItem`, SK-PREMIUM-002), and the confirm flow rejects multi-item subscriptions; the plain flow needs only the subscription id and tolerates the metered item. On any Stripe error the cached configuration id is cleared so a deleted/invalid config re-ensures on the next call. `after_completion.redirect` returns the customer to `/app/billing`. Both web surfaces (`/pricing` "Switch plan", `/app/billing` "Upgrade to Pro") share `openBillingPortal(apiBase, { flow: "switch_plan" })`; the pricing 409 backstop also routes through the switch flow. Web-only (GLOBAL-003), like the rest of billing.
+- **Alternatives rejected:**
+  - Leave plan switching to a manually-configured Dashboard portal — it was the manual gap that shipped the broken flow; ensuring it in code makes the journey self-healing (P6).
+  - `subscription_update_confirm` to pre-select Pro and skip the picker — throws on any subscriber who has ever hit overage (multi-item subscription), i.e. exactly the paying Pro users.
+  - A second `mode: 'subscription'` Checkout to "upgrade" — opens a parallel subscription and double-bills (SK-STRIPE-010).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisions.md`](../../decisions.md)). These rules constrain this feature:
